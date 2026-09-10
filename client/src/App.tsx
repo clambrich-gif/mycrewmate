@@ -18,6 +18,7 @@ import Finances from "./pages/Finances";
 import Excel from "./pages/Excel";
 import PdfExport from "./pages/PdfExport";
 import Security from "./pages/Security";
+import { YearProvider } from "./contexts/YearContext";
 
 function Router() {
   return (
@@ -53,7 +54,9 @@ function App() {
       <ThemeProvider defaultTheme="light">
         <TooltipProvider>
           <Toaster />
-          <Router />
+          <YearProvider>
+            <Router />
+          </YearProvider>
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

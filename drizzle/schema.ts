@@ -35,44 +35,62 @@ export type InsertUser = typeof users.$inferInsert;
 
 // ---------- MyEifelRide Planungsplattform ----------
 
-export const contacts = mysqlTable("contacts", {
-  id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 200 }).notNull(),
-  phone: varchar("phone", { length: 64 }),
-  note: text("note"),
-  sortOrder: int("sortOrder").default(0).notNull(),
+export const eventYears = mysqlTable("event_years", {
+  year: int("year").primaryKey(),
+  label: varchar("label", { length: 120 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
+export type EventYear = typeof eventYears.$inferSelect;
+
+export const contacts = mysqlTable(
+  "contacts",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    year: int("year").default(2026).notNull(),
+    name: varchar("name", { length: 200 }).notNull(),
+    phone: varchar("phone", { length: 64 }),
+    note: text("note"),
+    sortOrder: int("sortOrder").default(0).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [uniqueIndex("contacts_year_name_unique").on(table.year, table.name)]
+);
 export type Contact = typeof contacts.$inferSelect;
 export type InsertContact = typeof contacts.$inferInsert;
 
-export const helpers = mysqlTable("helpers", {
-  id: int("id").autoincrement().primaryKey(),
-  contactId: int("contactId").references(() => contacts.id, {
-    onDelete: "set null",
-  }),
-  name: varchar("name", { length: 200 }).notNull(),
-  email: varchar("email", { length: 320 }),
-  phone: varchar("phone", { length: 64 }),
-  note: text("note"),
-  willHelp: mysqlEnum("willHelp", ["ja", "nein"]).default("ja").notNull(),
-  availFri: mysqlEnum("availFri", ["ja", "nein", "vielleicht"])
-    .default("vielleicht")
-    .notNull(),
-  availSat: mysqlEnum("availSat", ["ja", "nein", "vielleicht"])
-    .default("vielleicht")
-    .notNull(),
-  availSun: mysqlEnum("availSun", ["ja", "nein", "vielleicht"])
-    .default("vielleicht")
-    .notNull(),
-  confirmed: mysqlEnum("confirmed", ["ja", "nein"]).default("nein").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+export const helpers = mysqlTable(
+  "helpers",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    year: int("year").default(2026).notNull(),
+    contactId: int("contactId").references(() => contacts.id, {
+      onDelete: "set null",
+    }),
+    name: varchar("name", { length: 200 }).notNull(),
+    email: varchar("email", { length: 320 }),
+    phone: varchar("phone", { length: 64 }),
+    note: text("note"),
+    willHelp: mysqlEnum("willHelp", ["ja", "nein"]).default("ja").notNull(),
+    availFri: mysqlEnum("availFri", ["ja", "nein", "vielleicht"])
+      .default("vielleicht")
+      .notNull(),
+    availSat: mysqlEnum("availSat", ["ja", "nein", "vielleicht"])
+      .default("vielleicht")
+      .notNull(),
+    availSun: mysqlEnum("availSun", ["ja", "nein", "vielleicht"])
+      .default("vielleicht")
+      .notNull(),
+    confirmed: mysqlEnum("confirmed", ["ja", "nein"]).default("nein").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [uniqueIndex("helpers_year_name_unique").on(table.year, table.name)]
+);
 export type Helper = typeof helpers.$inferSelect;
 export type InsertHelper = typeof helpers.$inferInsert;
 
 export const shifts = mysqlTable("shifts", {
   id: int("id").autoincrement().primaryKey(),
+  year: int("year").default(2026).notNull(),
   day: mysqlEnum("day", ["Freitag", "Samstag", "Sonntag"]).notNull(),
   area: varchar("area", { length: 200 }).notNull(),
   task: varchar("task", { length: 300 }).notNull(),
@@ -135,11 +153,13 @@ export type AppSettings = typeof appSettings.$inferSelect;
 export const securitySettings = mysqlTable("security_settings", {
   id: int("id").primaryKey().default(1),
   passwordHash: varchar("passwordHash", { length: 255 }),
+  adminPasswordHash: varchar("adminPasswordHash", { length: 255 }),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
 export const prepTasks = mysqlTable("prep_tasks", {
   id: int("id").autoincrement().primaryKey(),
+  year: int("year").default(2026).notNull(),
   task: varchar("task", { length: 300 }).notNull(),
   contactId: int("contactId").references(() => contacts.id, {
     onDelete: "set null",
@@ -154,6 +174,7 @@ export type PrepTask = typeof prepTasks.$inferSelect;
 
 export const postTasks = mysqlTable("post_tasks", {
   id: int("id").autoincrement().primaryKey(),
+  year: int("year").default(2026).notNull(),
   task: varchar("task", { length: 300 }).notNull(),
   contactId: int("contactId").references(() => contacts.id, {
     onDelete: "set null",
@@ -168,6 +189,7 @@ export type PostTask = typeof postTasks.$inferSelect;
 
 export const materials = mysqlTable("materials", {
   id: int("id").autoincrement().primaryKey(),
+  year: int("year").default(2026).notNull(),
   article: varchar("article", { length: 300 }).notNull(),
   category: varchar("category", { length: 120 }).default("").notNull(),
   quantity: varchar("quantity", { length: 40 }).default("").notNull(),
@@ -183,6 +205,7 @@ export type Material = typeof materials.$inferSelect;
 
 export const marketing = mysqlTable("marketing", {
   id: int("id").autoincrement().primaryKey(),
+  year: int("year").default(2026).notNull(),
   measure: varchar("measure", { length: 300 }).notNull(),
   channel: varchar("channel", { length: 160 }).default("").notNull(),
   contactId: int("contactId").references(() => contacts.id, {
@@ -198,6 +221,7 @@ export type Marketing = typeof marketing.$inferSelect;
 
 export const approvals = mysqlTable("approvals", {
   id: int("id").autoincrement().primaryKey(),
+  year: int("year").default(2026).notNull(),
   request: varchar("request", { length: 300 }).notNull(),
   contactId: int("contactId").references(() => contacts.id, {
     onDelete: "set null",
@@ -212,6 +236,7 @@ export type Approval = typeof approvals.$inferSelect;
 
 export const cakes = mysqlTable("cakes", {
   id: int("id").autoincrement().primaryKey(),
+  year: int("year").default(2026).notNull(),
   donor: varchar("donor", { length: 200 }).notNull(),
   cake: varchar("cake", { length: 200 }).default("").notNull(),
   dropoffTime: varchar("dropoffTime", { length: 60 }).default("").notNull(),
@@ -222,6 +247,7 @@ export type Cake = typeof cakes.$inferSelect;
 
 export const finances = mysqlTable("finances", {
   id: int("id").autoincrement().primaryKey(),
+  year: int("year").default(2026).notNull(),
   category: varchar("category", { length: 160 }).notNull(),
   income: int("incomeCents").default(0).notNull(),
   expense: int("expenseCents").default(0).notNull(),

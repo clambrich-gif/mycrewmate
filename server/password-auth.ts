@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import type { Request } from "express";
 
 export const SHARED_PASSWORD_OPEN_ID = "shared-password-user";
+export const ADMIN_PASSWORD_OPEN_ID = "shared-password-admin";
 export const PASSWORD_SESSION_MS = 1000 * 60 * 60 * 12;
 
 const MAX_ATTEMPTS = 5;

@@ -10,6 +10,7 @@ import type {
 } from "../drizzle/schema";
 import * as db from "./db";
 import { DAYS, toMinutes, type Day } from "./logic";
+import { currentEventYear } from "./year-context";
 
 const require = createRequire(import.meta.url);
 const { ZipArchive } = require("archiver") as {
@@ -482,7 +483,10 @@ async function loadPlanningData(): Promise<PlanningData> {
     contacts,
     shifts,
     assignments,
-    settings: settings ?? DEFAULT_PDF_SETTINGS,
+    settings: {
+      ...(settings ?? DEFAULT_PDF_SETTINGS),
+      eventYear: String(currentEventYear()),
+    },
   };
 }
 

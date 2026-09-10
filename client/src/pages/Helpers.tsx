@@ -15,6 +15,8 @@ import { trpc } from "@/lib/trpc";
 import { FileDown, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
+import { ResetAreaButton } from "@/components/ResetAreaButton";
 
 const YN = [
   { v: "ja", l: "Ja" },
@@ -61,6 +63,10 @@ export default function Helpers() {
   const [apFilter, setApFilter] = useState("alle");
   const [sortAsc, setSortAsc] = useState(true);
   const [exportingId, setExportingId] = useState<number | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
 
   const invalidate = () => {
     utils.helpers.list.invalidate();
@@ -82,6 +88,7 @@ export default function Helpers() {
   const remove = trpc.helpers.remove.useMutation({
     onSuccess: () => {
       invalidate();
+      setDeleteTarget(null);
       toast.success("Entfernt");
     },
     onError: error => toast.error(error.message),
@@ -127,7 +134,8 @@ export default function Helpers() {
             Aufgaben-PDFs.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap justify-end">
+          <ResetAreaButton area="helpers" label="Helfer" compact />
           <Input
             placeholder="Name"
             value={name}
@@ -344,7 +352,12 @@ export default function Helpers() {
                           variant="ghost"
                           size="icon"
                           title="Löschen"
-                          onClick={() => remove.mutate({ id: helper.id })}
+                          onClick={() =>
+                            setDeleteTarget({
+                              id: helper.id,
+                              name: helper.name,
+                            })
+                          }
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -370,6 +383,17 @@ export default function Helpers() {
         <StatusBadge status="nein" />
         abgesagt/nicht verfügbar
       </p>
+      <AdminPasswordDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={open => !open && setDeleteTarget(null)}
+        title="Helfer löschen?"
+        description={`„${deleteTarget?.name ?? ""}“ wird aus der Helferliste und allen Einsatzzuordnungen des aktuellen Jahres gelöscht.`}
+        confirmLabel="Helfer löschen"
+        busy={remove.isPending}
+        onConfirm={adminPassword =>
+          deleteTarget && remove.mutate({ id: deleteTarget.id, adminPassword })
+        }
+      />
     </div>
   );
 }

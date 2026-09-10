@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { ResetAreaButton } from "@/components/ResetAreaButton";
 
 export default function Finances() {
   const utils = trpc.useUtils();
@@ -71,7 +72,8 @@ export default function Finances() {
             automatisch berechnet.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap justify-end">
+          <ResetAreaButton area="finances" label="Finanzen" compact />
           <Input
             placeholder="Kategorie"
             value={category}

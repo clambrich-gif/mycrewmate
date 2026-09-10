@@ -1,7 +1,11 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import {
+  protectedProcedure as baseProtectedProcedure,
+  publicProcedure,
+  router,
+} from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
 import { TRPCError } from "@trpc/server";
@@ -14,6 +18,7 @@ import {
 import { importExcel, exportExcel } from "./excel";
 import { sdk } from "./_core/sdk";
 import {
+  ADMIN_PASSWORD_OPEN_ID,
   clearPasswordLoginFailures,
   getClientKey,
   hashPassword,
@@ -29,6 +34,15 @@ import {
   createHelperTaskPdf,
   DEFAULT_PDF_SETTINGS,
 } from "./pdf";
+import {
+  currentEventYear,
+  requestedEventYear,
+  withEventYear,
+} from "./year-context";
+
+const protectedProcedure = baseProtectedProcedure.use(({ ctx, next }) =>
+  withEventYear(requestedEventYear(ctx.req), () => next())
+);
 
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
@@ -40,6 +54,20 @@ const ynv = z.enum(["ja", "nein", "vielleicht"]);
 const dayEnum = z.enum(["Freitag", "Samstag", "Sonntag"]);
 const statusTask = z.enum(["offen", "inArbeit", "erledigt"]);
 const passwordInput = z.string().min(10).max(200);
+const eventYearInput = z.number().int().min(2020).max(2100);
+const resetAreaInput = z.enum([
+  "contacts",
+  "helpers",
+  "shifts",
+  "prep",
+  "post",
+  "materials",
+  "marketing",
+  "approvals",
+  "cakes",
+  "finances",
+  "all",
+]);
 const pdfSettingsInput = z.object({
   eventName: z.string().trim().min(1).max(200),
   eventYear: z.string().trim().min(1).max(16),
@@ -115,13 +143,27 @@ const updateShiftInput = z
   })
   .superRefine(validateShiftTimes);
 
+async function requireAdminPassword(password: string) {
+  const hash = (await db.getSecuritySettings())?.adminPasswordHash;
+  if (!hash || !(await verifyPassword(password, hash))) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Administratorpasswort ist nicht korrekt",
+    });
+  }
+}
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
-    passwordStatus: publicProcedure.query(async () => ({
-      enabled: Boolean((await db.getSecuritySettings())?.passwordHash),
-    })),
+    passwordStatus: publicProcedure.query(async () => {
+      const settings = await db.getSecuritySettings();
+      return {
+        enabled: Boolean(settings?.passwordHash),
+        adminEnabled: Boolean(settings?.adminPasswordHash),
+      };
+    }),
     passwordLogin: publicProcedure
       .input(z.object({ password: z.string().min(1).max(200) }))
       .mutation(async ({ ctx, input }) => {
@@ -162,10 +204,53 @@ export const appRouter = router({
         });
         return { success: true } as const;
       }),
+    adminPasswordLogin: publicProcedure
+      .input(z.object({ password: z.string().min(1).max(200) }))
+      .mutation(async ({ ctx, input }) => {
+        const clientKey = `admin:${getClientKey(ctx.req)}`;
+        if (isPasswordLoginBlocked(clientKey)) {
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message:
+              "Zu viele Fehlversuche. Bitte in 15 Minuten erneut versuchen.",
+          });
+        }
+        const hash = (await db.getSecuritySettings())?.adminPasswordHash;
+        if (!hash || !(await verifyPassword(input.password, hash))) {
+          recordFailedPasswordLogin(clientKey);
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Administratorpasswort ist nicht korrekt",
+          });
+        }
+        clearPasswordLoginFailures(clientKey);
+        await db.upsertUser({
+          openId: ADMIN_PASSWORD_OPEN_ID,
+          name: "Administrator",
+          loginMethod: "admin-password",
+          role: "admin",
+          lastSignedIn: new Date(),
+        });
+        const token = await sdk.createSessionToken(ADMIN_PASSWORD_OPEN_ID, {
+          name: "Administrator",
+          expiresInMs: PASSWORD_SESSION_MS,
+        });
+        ctx.res.cookie(COOKIE_NAME, token, {
+          ...getSessionCookieOptions(ctx.req),
+          maxAge: PASSWORD_SESSION_MS,
+        });
+        return { success: true } as const;
+      }),
     setPassword: adminProcedure
       .input(z.object({ password: passwordInput }))
       .mutation(async ({ input }) => {
         await db.setPasswordHash(await hashPassword(input.password));
+        return { success: true } as const;
+      }),
+    setAdminPassword: adminProcedure
+      .input(z.object({ password: passwordInput }))
+      .mutation(async ({ input }) => {
+        await db.setAdminPasswordHash(await hashPassword(input.password));
         return { success: true } as const;
       }),
     logout: publicProcedure.mutation(({ ctx }) => {
@@ -173,6 +258,45 @@ export const appRouter = router({
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
+  }),
+
+  years: router({
+    list: protectedProcedure.query(async () => {
+      await db.ensureEventYear();
+      return db.listEventYears();
+    }),
+    create: protectedProcedure
+      .input(z.object({ year: eventYearInput }))
+      .mutation(async ({ input }) => {
+        await db.ensureEventYear(input.year);
+        return { success: true } as const;
+      }),
+    copyPlan: adminProcedure
+      .input(
+        z.object({
+          sourceYear: eventYearInput,
+          adminPassword: z.string().min(1).max(200),
+        })
+      )
+      .mutation(async ({ input }) => {
+        await requireAdminPassword(input.adminPassword);
+        return db.copyPlanFromYear(input.sourceYear);
+      }),
+  }),
+
+  reset: router({
+    area: adminProcedure
+      .input(
+        z.object({
+          area: resetAreaInput,
+          adminPassword: z.string().min(1).max(200),
+        })
+      )
+      .mutation(async ({ input }) => {
+        await requireAdminPassword(input.adminPassword);
+        await db.resetArea(input.area);
+        return { success: true } as const;
+      }),
   }),
 
   contacts: router({
@@ -185,7 +309,7 @@ export const appRouter = router({
           note: z.string().optional(),
         })
       )
-      .mutation(({ input }) => db.createContact(input)),
+      .mutation(({ input }) => db.upsertContactByName(input)),
     update: protectedProcedure
       .input(
         z.object({
@@ -200,8 +324,16 @@ export const appRouter = router({
         return db.updateContact(id, r);
       }),
     remove: adminProcedure
-      .input(z.object({ id: z.number() }))
-      .mutation(({ input }) => db.deleteContact(input.id)),
+      .input(
+        z.object({
+          id: z.number(),
+          adminPassword: z.string().min(1).max(200),
+        })
+      )
+      .mutation(async ({ input }) => {
+        await requireAdminPassword(input.adminPassword);
+        return db.deleteContact(input.id);
+      }),
   }),
 
   helpers: router({
@@ -218,7 +350,7 @@ export const appRouter = router({
           confirmed: yn.default("nein"),
         })
       )
-      .mutation(({ input }) => db.createHelper(input)),
+      .mutation(({ input }) => db.upsertHelperByName(input)),
     update: protectedProcedure
       .input(
         z.object({
@@ -240,8 +372,16 @@ export const appRouter = router({
         return db.updateHelper(id, rest);
       }),
     remove: adminProcedure
-      .input(z.object({ id: z.number() }))
-      .mutation(({ input }) => db.deleteHelper(input.id)),
+      .input(
+        z.object({
+          id: z.number(),
+          adminPassword: z.string().min(1).max(200),
+        })
+      )
+      .mutation(async ({ input }) => {
+        await requireAdminPassword(input.adminPassword);
+        return db.deleteHelper(input.id);
+      }),
   }),
 
   shifts: router({
@@ -342,7 +482,11 @@ export const appRouter = router({
 
   pdf: router({
     settings: protectedProcedure.query(async () => {
-      const settings = (await db.getAppSettings()) ?? DEFAULT_PDF_SETTINGS;
+      const settings = (await db.getAppSettings()) ?? {
+        ...DEFAULT_PDF_SETTINGS,
+        eventYear: String(currentEventYear()),
+      };
+      settings.eventYear = String(currentEventYear());
       let extraColumns: string[] = [];
       try {
         const parsed = JSON.parse(settings.extraColumns);

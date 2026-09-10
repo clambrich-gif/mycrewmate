@@ -6,6 +6,8 @@ import { trpc } from "@/lib/trpc";
 import { Pencil, Phone, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
+import { ResetAreaButton } from "@/components/ResetAreaButton";
 
 export default function Contacts() {
   const utils = trpc.useUtils();
@@ -16,6 +18,10 @@ export default function Contacts() {
   const [editId, setEditId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
 
   const invalidate = () => {
     utils.contacts.list.invalidate();
@@ -33,6 +39,7 @@ export default function Contacts() {
   const remove = trpc.contacts.remove.useMutation({
     onSuccess: () => {
       invalidate();
+      setDeleteTarget(null);
       toast.success("Entfernt");
     },
     onError: error => toast.error(error.message),
@@ -53,12 +60,15 @@ export default function Contacts() {
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <div>
-        <h1 className="text-2xl font-bold">Ansprechpartner</h1>
-        <p className="text-muted-foreground">
-          Name und Rufnummer werden den Helfern zugeordnet und auf deren
-          Aufgaben-PDF ausgegeben.
-        </p>
+      <div className="flex items-end justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold">Ansprechpartner</h1>
+          <p className="text-muted-foreground">
+            Name und Rufnummer werden den Helfern zugeordnet und auf deren
+            Aufgaben-PDF ausgegeben.
+          </p>
+        </div>
+        <ResetAreaButton area="contacts" label="Ansprechpartner" />
       </div>
       <div className="grid gap-2 sm:grid-cols-[1fr_220px_auto]">
         <Input
@@ -172,7 +182,12 @@ export default function Contacts() {
                         variant="ghost"
                         size="icon"
                         title="Löschen"
-                        onClick={() => remove.mutate({ id: contact.id })}
+                        onClick={() =>
+                          setDeleteTarget({
+                            id: contact.id,
+                            name: contact.name,
+                          })
+                        }
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
@@ -189,6 +204,17 @@ export default function Contacts() {
           )}
         </CardContent>
       </Card>
+      <AdminPasswordDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={open => !open && setDeleteTarget(null)}
+        title="Ansprechpartner löschen?"
+        description={`„${deleteTarget?.name ?? ""}“ wird gelöscht. Bestehende Zuordnungen verlieren dadurch ihren Ansprechpartner.`}
+        confirmLabel="Ansprechpartner löschen"
+        busy={remove.isPending}
+        onConfirm={adminPassword =>
+          deleteTarget && remove.mutate({ id: deleteTarget.id, adminPassword })
+        }
+      />
     </div>
   );
 }

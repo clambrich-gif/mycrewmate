@@ -22,6 +22,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { CopyPreviousPlanButton } from "@/components/CopyPreviousPlanButton";
+import { ResetAreaButton } from "@/components/ResetAreaButton";
 
 const DAYS = ["Freitag", "Samstag", "Sonntag"] as const;
 
@@ -199,7 +201,9 @@ export default function Plan() {
           Ausfälle (rot), Doppelbelegungen werden gewarnt (orange).
         </p>
       </div>
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2 flex-wrap">
+        <CopyPreviousPlanButton />
+        <ResetAreaButton area="shifts" label="Einsatzplan" />
         <Button onClick={openCreate}>
           <Plus className="h-4 w-4 mr-2" />
           Neue Schicht
