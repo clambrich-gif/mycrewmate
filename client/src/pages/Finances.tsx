@@ -1,70 +1,135 @@
-import { trpc } from "@/lib/trpc";
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
-import { Trash2 } from "lucide-react";
-import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { trpc } from "@/lib/trpc";
+import { Trash2 } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+
+const temporaryId = () => -Date.now() - Math.floor(Math.random() * 1_000);
 
 export default function Finances() {
   const utils = trpc.useUtils();
+  const listUtils = utils.finances.list;
   const { user } = useAuth();
   const { data: rows = [], isLoading } = trpc.finances.list.useQuery();
   const [category, setCategory] = useState("");
-  const invalidate = () => utils.finances.list.invalidate();
+
+  const refreshDashboard = () => void utils.dashboard.stats.invalidate();
+
   const create = trpc.finances.create.useMutation({
-    onSuccess: () => {
-      invalidate();
+    onMutate: async input => {
+      await listUtils.cancel();
+      const previous = listUtils.getData();
+      const optimisticId = temporaryId();
+      listUtils.setData(undefined, current => [
+        ...(current ?? []),
+        {
+          id: optimisticId,
+          year: 0,
+          category: input.category,
+          income: input.incomeCents ?? 0,
+          expense: input.expenseCents ?? 0,
+          note: input.note ?? null,
+          sortOrder: 0,
+        },
+      ]);
+      return { previous, optimisticId };
+    },
+    onSuccess: (created, _input, context) => {
+      listUtils.setData(undefined, current =>
+        (current ?? []).map(row =>
+          row.id === context?.optimisticId ? (created as typeof row) : row
+        )
+      );
       setCategory("");
       toast.success("Hinzugefügt");
     },
-    onError: e => toast.error(e.message),
-  });
-  const update = trpc.finances.update.useMutation({
-    onSuccess: invalidate,
-    onError: e => toast.error(e.message),
-  });
-  const remove = trpc.finances.remove.useMutation({
-    onSuccess: () => {
-      invalidate();
-      toast.success("Entfernt");
+    onError: (error, _input, context) => {
+      listUtils.setData(undefined, context?.previous);
+      toast.error(error.message);
     },
-    onError: e => toast.error(e.message),
+    onSettled: refreshDashboard,
   });
+
+  const update = trpc.finances.update.useMutation({
+    onMutate: async input => {
+      await listUtils.cancel();
+      const previous = listUtils.getData();
+      const { id, incomeCents, expenseCents, ...values } = input;
+      const patch = {
+        ...values,
+        ...(incomeCents === undefined ? {} : { income: incomeCents }),
+        ...(expenseCents === undefined ? {} : { expense: expenseCents }),
+      };
+      listUtils.setData(undefined, current =>
+        (current ?? []).map(row => (row.id === id ? { ...row, ...patch } : row))
+      );
+      return { previous };
+    },
+    onError: (error, _input, context) => {
+      listUtils.setData(undefined, context?.previous);
+      toast.error(error.message);
+    },
+    onSettled: refreshDashboard,
+  });
+
+  const remove = trpc.finances.remove.useMutation({
+    onMutate: async input => {
+      await listUtils.cancel();
+      const previous = listUtils.getData();
+      listUtils.setData(undefined, current =>
+        (current ?? []).filter(row => row.id !== input.id)
+      );
+      return { previous };
+    },
+    onSuccess: () => toast.success("Entfernt"),
+    onError: (error, _input, context) => {
+      listUtils.setData(undefined, context?.previous);
+      toast.error(error.message);
+    },
+    onSettled: refreshDashboard,
+  });
+
+  const submitCreate = () => {
+    if (!category.trim() || create.isPending) return;
+    create.mutate({ category: category.trim() });
+  };
 
   const eur = (cents: number) =>
     (cents / 100).toLocaleString("de-DE", {
       style: "currency",
       currency: "EUR",
     });
-  const sumIn = rows.reduce((s, r) => s + r.income, 0);
-  const sumOut = rows.reduce((s, r) => s + r.expense, 0);
+  const sumIn = rows.reduce((sum, row) => sum + row.income, 0);
+  const sumOut = rows.reduce((sum, row) => sum + row.expense, 0);
 
   const NumInput = ({
     value,
     onSave,
   }: {
     value: number;
-    onSave: (v: number) => void;
+    onSave: (value: number) => void;
   }) => (
     <Input
       type="number"
       step="0.01"
       className="h-8 w-28"
       defaultValue={(value / 100).toFixed(2)}
-      onBlur={e => {
-        const v =
-          Math.round(parseFloat(e.target.value.replace(",", ".")) * 100) || 0;
-        if (v !== value) onSave(v);
+      onBlur={event => {
+        const nextValue =
+          Math.round(parseFloat(event.target.value.replace(",", ".")) * 100) ||
+          0;
+        if (nextValue !== value) onSave(nextValue);
       }}
     />
   );
 
   return (
     <div className="space-y-5">
-      <div className="flex items-end justify-between flex-wrap gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Finanzen</h1>
           <p className="text-muted-foreground">
@@ -72,30 +137,25 @@ export default function Finances() {
             automatisch berechnet.
           </p>
         </div>
-        <div className="flex gap-2 flex-wrap justify-end">
+        <div className="flex flex-wrap justify-end gap-2">
           <ResetAreaButton area="finances" label="Finanzen" compact />
           <Input
             placeholder="Kategorie"
             value={category}
-            onChange={e => setCategory(e.target.value)}
+            onChange={event => setCategory(event.target.value)}
             className="w-64"
-            onKeyDown={e =>
-              e.key === "Enter" &&
-              category.trim() &&
-              create.mutate({ category: category.trim() })
-            }
+            onKeyDown={event => event.key === "Enter" && submitCreate()}
           />
           <Button
-            onClick={() =>
-              category.trim() && create.mutate({ category: category.trim() })
-            }
+            onClick={submitCreate}
+            disabled={!category.trim() || create.isPending}
           >
-            Hinzufügen
+            {create.isPending ? "Speichert …" : "Hinzufügen"}
           </Button>
         </div>
       </div>
       <Card className="shadow-sm">
-        <CardContent className="p-0 overflow-x-auto">
+        <CardContent className="overflow-x-auto p-0">
           <table className="w-full text-sm">
             <thead className="bg-muted/60">
               <tr className="text-left">
@@ -103,7 +163,7 @@ export default function Finances() {
                 <th className="p-3 text-right">Einnahmen</th>
                 <th className="p-3 text-right">Ausgaben</th>
                 <th className="p-3 text-right">Differenz</th>
-                <th className="p-3 w-10"></th>
+                <th className="w-10 p-3"></th>
               </tr>
             </thead>
             <tbody>
@@ -114,38 +174,40 @@ export default function Finances() {
                   </td>
                 </tr>
               )}
-              {rows.map(r => {
-                const diff = r.income - r.expense;
+              {rows.map(row => {
+                const difference = row.income - row.expense;
                 return (
-                  <tr key={r.id} className="border-t hover:bg-muted/30">
-                    <td className="p-2 font-medium">{r.category}</td>
+                  <tr key={row.id} className="border-t hover:bg-muted/30">
+                    <td className="p-2 font-medium">{row.category}</td>
                     <td className="p-2 text-right">
                       <NumInput
-                        value={r.income}
-                        onSave={v =>
-                          update.mutate({ id: r.id, incomeCents: v })
+                        value={row.income}
+                        onSave={value =>
+                          update.mutate({ id: row.id, incomeCents: value })
                         }
                       />
                     </td>
                     <td className="p-2 text-right">
                       <NumInput
-                        value={r.expense}
-                        onSave={v =>
-                          update.mutate({ id: r.id, expenseCents: v })
+                        value={row.expense}
+                        onSave={value =>
+                          update.mutate({ id: row.id, expenseCents: value })
                         }
                       />
                     </td>
                     <td
-                      className={`p-2 text-right font-semibold ${diff >= 0 ? "text-[var(--ok)]" : "text-[var(--err)]"}`}
+                      className={`p-2 text-right font-semibold ${difference >= 0 ? "text-[var(--ok)]" : "text-[var(--err)]"}`}
                     >
-                      {eur(diff)}
+                      {eur(difference)}
                     </td>
                     <td className="p-2">
-                      {user?.role === "admin" && (
+                      {user?.role === "admin" && row.id > 0 && (
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => remove.mutate({ id: r.id })}
+                          aria-label={`Finanzkategorie ${row.category} löschen`}
+                          disabled={remove.isPending}
+                          onClick={() => remove.mutate({ id: row.id })}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>

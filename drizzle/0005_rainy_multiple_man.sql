@@ -1,0 +1,1 @@
+ALTER TABLE `prep_tasks` ADD `dueText` varchar(200) DEFAULT '' NOT NULL;

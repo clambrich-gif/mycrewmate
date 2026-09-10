@@ -489,8 +489,21 @@ function yearWhere(table: { id: any; year: any }, id: number) {
   return and(eq(table.id, id), eq(table.year, year()));
 }
 
-export const createPrep = async (v: any) =>
-  ((await getDb()) as DB).insert(prepTasks).values(yearValues(v));
+async function createYearRow(table: any, values: Record<string, unknown>) {
+  const db = (await getDb()) as DB;
+  const result: any = await db.insert(table).values(yearValues(values));
+  const id = Number(result?.[0]?.insertId ?? result?.insertId);
+  const [created] = await db
+    .select()
+    .from(table)
+    .where(yearWhere(table, id))
+    .limit(1);
+  if (!created)
+    throw new Error("Gespeicherter Eintrag konnte nicht gelesen werden");
+  return created;
+}
+
+export const createPrep = async (v: any) => createYearRow(prepTasks, v);
 export const updatePrep = async (id: number, v: any) =>
   ((await getDb()) as DB)
     .update(prepTasks)
@@ -498,8 +511,7 @@ export const updatePrep = async (id: number, v: any) =>
     .where(yearWhere(prepTasks, id));
 export const deletePrep = async (id: number) =>
   ((await getDb()) as DB).delete(prepTasks).where(yearWhere(prepTasks, id));
-export const createPost = async (v: any) =>
-  ((await getDb()) as DB).insert(postTasks).values(yearValues(v));
+export const createPost = async (v: any) => createYearRow(postTasks, v);
 export const updatePost = async (id: number, v: any) =>
   ((await getDb()) as DB)
     .update(postTasks)
@@ -507,8 +519,7 @@ export const updatePost = async (id: number, v: any) =>
     .where(yearWhere(postTasks, id));
 export const deletePost = async (id: number) =>
   ((await getDb()) as DB).delete(postTasks).where(yearWhere(postTasks, id));
-export const createMaterial = async (v: any) =>
-  ((await getDb()) as DB).insert(materials).values(yearValues(v));
+export const createMaterial = async (v: any) => createYearRow(materials, v);
 export const updateMaterial = async (id: number, v: any) =>
   ((await getDb()) as DB)
     .update(materials)
@@ -516,8 +527,7 @@ export const updateMaterial = async (id: number, v: any) =>
     .where(yearWhere(materials, id));
 export const deleteMaterial = async (id: number) =>
   ((await getDb()) as DB).delete(materials).where(yearWhere(materials, id));
-export const createMarketing = async (v: any) =>
-  ((await getDb()) as DB).insert(marketing).values(yearValues(v));
+export const createMarketing = async (v: any) => createYearRow(marketing, v);
 export const updateMarketing = async (id: number, v: any) =>
   ((await getDb()) as DB)
     .update(marketing)
@@ -525,8 +535,7 @@ export const updateMarketing = async (id: number, v: any) =>
     .where(yearWhere(marketing, id));
 export const deleteMarketing = async (id: number) =>
   ((await getDb()) as DB).delete(marketing).where(yearWhere(marketing, id));
-export const createApproval = async (v: any) =>
-  ((await getDb()) as DB).insert(approvals).values(yearValues(v));
+export const createApproval = async (v: any) => createYearRow(approvals, v);
 export const updateApproval = async (id: number, v: any) =>
   ((await getDb()) as DB)
     .update(approvals)
@@ -534,8 +543,7 @@ export const updateApproval = async (id: number, v: any) =>
     .where(yearWhere(approvals, id));
 export const deleteApproval = async (id: number) =>
   ((await getDb()) as DB).delete(approvals).where(yearWhere(approvals, id));
-export const createCake = async (v: any) =>
-  ((await getDb()) as DB).insert(cakes).values(yearValues(v));
+export const createCake = async (v: any) => createYearRow(cakes, v);
 export const updateCake = async (id: number, v: any) =>
   ((await getDb()) as DB).update(cakes).set(v).where(yearWhere(cakes, id));
 export const deleteCake = async (id: number) =>
@@ -557,9 +565,7 @@ export const mapFinanceWrite = ({
   ...(expenseCents === undefined ? {} : { expense: expenseCents }),
 });
 export const createFinance = async (v: FinanceWrite & { category: string }) =>
-  ((await getDb()) as DB)
-    .insert(finances)
-    .values(yearValues(mapFinanceWrite(v)) as typeof finances.$inferInsert);
+  createYearRow(finances, mapFinanceWrite(v));
 export const updateFinance = async (id: number, v: FinanceWrite) =>
   ((await getDb()) as DB)
     .update(finances)

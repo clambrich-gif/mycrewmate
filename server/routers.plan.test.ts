@@ -8,6 +8,7 @@ const dbMocks = vi.hoisted(() => ({
   listAssignments: vi.fn(),
   assignHelper: vi.fn(),
   createShift: vi.fn(),
+  createPrep: vi.fn(),
 }));
 
 vi.mock("./db", () => dbMocks);
@@ -146,6 +147,21 @@ describe("Planungs-API", () => {
       shiftId: 10,
       helperId: 20,
       slot: 0,
+    });
+  });
+
+  it("speichert eine frei formulierte Vorbereitungsfrist unverändert", async () => {
+    const caller = appRouter.createCaller(ctx);
+    dbMocks.createPrep.mockResolvedValue({ insertId: 30 });
+
+    await caller.prep.create({
+      task: "Absperrmaterial prüfen",
+      dueText: "Spätestens zwei Wochen vor Streckenfreigabe",
+    });
+
+    expect(dbMocks.createPrep).toHaveBeenCalledWith({
+      task: "Absperrmaterial prüfen",
+      dueText: "Spätestens zwei Wochen vor Streckenfreigabe",
     });
   });
 });

@@ -1,6 +1,7 @@
-import { trpc } from "@/lib/trpc";
-import { useState } from "react";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -9,11 +10,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
+import { trpc } from "@/lib/trpc";
 import { Trash2 } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
-import { useAuth } from "@/_core/hooks/useAuth";
-import { ResetAreaButton } from "@/components/ResetAreaButton";
 
 const resetAreaByKind = {
   materials: "materials",
@@ -43,13 +43,14 @@ interface Props {
   noStatus?: boolean;
 }
 
+const temporaryId = () => -Date.now() - Math.floor(Math.random() * 1_000);
+
 export default function TaskGeneric({
   kind,
   title,
   addLabel,
   nameKey,
   columns,
-  statusField,
   statusOptions,
   extraField,
   noContact,
@@ -58,27 +59,11 @@ export default function TaskGeneric({
   const utils = trpc.useUtils();
   const { user } = useAuth();
   const api = (trpc as any)[kind];
+  const listUtils = (utils as any)[kind].list;
   const { data: rows = [], isLoading } = api.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const [name, setName] = useState("");
   const [extras, setExtras] = useState<Record<string, string>>({});
-  const invalidate = () => api.list.invalidate();
-  const create = api.create.useMutation({
-    onSuccess: () => {
-      invalidate();
-      setName("");
-      setExtras({});
-      toast.success("Hinzugefügt");
-    },
-  });
-  const update = api.update.useMutation({ onSuccess: invalidate });
-  const remove = api.remove.useMutation({
-    onSuccess: () => {
-      invalidate();
-      toast.success("Entfernt");
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
 
   const defaultStatus = statusOptions ?? [
     { v: "offen", l: "offen" },
@@ -86,13 +71,101 @@ export default function TaskGeneric({
     { v: "erledigt", l: "erledigt" },
   ];
 
+  const refreshDashboard = () => void utils.dashboard.stats.invalidate();
+
+  const create = api.create.useMutation({
+    onMutate: async (input: any) => {
+      await listUtils.cancel();
+      const previous = listUtils.getData();
+      const optimisticId = temporaryId();
+      listUtils.setData(undefined, (current: any[] = []) => [
+        ...current,
+        {
+          id: optimisticId,
+          year: 0,
+          [nameKey]: input[nameKey],
+          ...Object.fromEntries(
+            columns.map(column => [column.key, input[column.key] ?? ""])
+          ),
+          contactId: input.contactId ?? null,
+          status: input.status ?? defaultStatus[0]?.v ?? "offen",
+          ...(extraField
+            ? {
+                [extraField.key]:
+                  input[extraField.key] ?? extraField.options[0]?.v ?? "",
+              }
+            : {}),
+          note: input.note ?? null,
+          sortOrder: 0,
+        },
+      ]);
+      return { previous, optimisticId };
+    },
+    onSuccess: (created: any, _input: any, context: any) => {
+      listUtils.setData(undefined, (current: any[] = []) =>
+        current.map(row => (row.id === context?.optimisticId ? created : row))
+      );
+      setName("");
+      setExtras({});
+      toast.success("Hinzugefügt");
+    },
+    onError: (error: any, _input: any, context: any) => {
+      listUtils.setData(undefined, context?.previous);
+      toast.error(error.message);
+    },
+    onSettled: refreshDashboard,
+  });
+
+  const update = api.update.useMutation({
+    onMutate: async (input: any) => {
+      await listUtils.cancel();
+      const previous = listUtils.getData();
+      listUtils.setData(undefined, (current: any[] = []) =>
+        current.map(row => (row.id === input.id ? { ...row, ...input } : row))
+      );
+      return { previous };
+    },
+    onError: (error: any, _input: any, context: any) => {
+      listUtils.setData(undefined, context?.previous);
+      toast.error(error.message);
+    },
+    onSettled: refreshDashboard,
+  });
+
+  const remove = api.remove.useMutation({
+    onMutate: async (input: { id: number }) => {
+      await listUtils.cancel();
+      const previous = listUtils.getData();
+      listUtils.setData(undefined, (current: any[] = []) =>
+        current.filter(row => row.id !== input.id)
+      );
+      return { previous };
+    },
+    onSuccess: () => toast.success("Entfernt"),
+    onError: (error: any, _input: any, context: any) => {
+      listUtils.setData(undefined, context?.previous);
+      toast.error(error.message);
+    },
+    onSettled: refreshDashboard,
+  });
+
+  const submitCreate = () => {
+    if (!name.trim() || create.isPending) return;
+    create.mutate({ [nameKey]: name.trim(), ...extras });
+  };
+
+  const tableColumnCount =
+    2 +
+    columns.length +
+    (noContact ? 0 : 1) +
+    (noStatus ? 0 : 1) +
+    (extraField ? 1 : 0);
+
   return (
     <div className="space-y-5">
-      <div className="flex items-end justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">{title}</h1>
-        </div>
-        <div className="flex gap-2 flex-wrap justify-end">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <h1 className="text-2xl font-bold">{title}</h1>
+        <div className="flex flex-wrap justify-end gap-2">
           {kind in resetAreaByKind && (
             <ResetAreaButton
               area={resetAreaByKind[kind as keyof typeof resetAreaByKind]}
@@ -103,83 +176,85 @@ export default function TaskGeneric({
           <Input
             placeholder={`Neu: ${addLabel}`}
             value={name}
-            onChange={e => setName(e.target.value)}
+            onChange={event => setName(event.target.value)}
             className="w-64"
-            onKeyDown={e =>
-              e.key === "Enter" &&
-              name.trim() &&
-              create.mutate({ [nameKey]: name.trim() })
-            }
+            onKeyDown={event => event.key === "Enter" && submitCreate()}
           />
-          {columns.map(c => (
+          {columns.map(column => (
             <Input
-              key={c.key}
-              placeholder={c.label}
-              value={extras[c.key] ?? ""}
-              onChange={e => setExtras({ ...extras, [c.key]: e.target.value })}
+              key={column.key}
+              placeholder={column.label}
+              value={extras[column.key] ?? ""}
+              onChange={event =>
+                setExtras(current => ({
+                  ...current,
+                  [column.key]: event.target.value,
+                }))
+              }
               className="w-36"
             />
           ))}
           <Button
-            onClick={() =>
-              name.trim() &&
-              create.mutate({ [nameKey]: name.trim(), ...extras })
-            }
+            onClick={submitCreate}
+            disabled={!name.trim() || create.isPending}
           >
-            Hinzufügen
+            {create.isPending ? "Speichert …" : "Hinzufügen"}
           </Button>
         </div>
       </div>
       <Card className="shadow-sm">
-        <CardContent className="p-0 overflow-x-auto">
+        <CardContent className="overflow-x-auto p-0">
           <table className="w-full text-sm">
             <thead className="bg-muted/60">
               <tr className="text-left">
                 <th className="p-3">{addLabel}</th>
-                {columns.map(c => (
-                  <th key={c.key} className="p-3">
-                    {c.label}
+                {columns.map(column => (
+                  <th key={column.key} className="p-3">
+                    {column.label}
                   </th>
                 ))}
                 {!noContact && <th className="p-3">Verantwortlich</th>}
                 {!noStatus && <th className="p-3">Status</th>}
                 {extraField && <th className="p-3">{extraField.label}</th>}
-                <th className="p-3 w-10"></th>
+                <th className="w-10 p-3"></th>
               </tr>
             </thead>
             <tbody>
               {isLoading && (
                 <tr>
-                  <td className="p-4 text-muted-foreground" colSpan={8}>
+                  <td
+                    className="p-4 text-muted-foreground"
+                    colSpan={tableColumnCount}
+                  >
                     Lade …
                   </td>
                 </tr>
               )}
-              {rows.map((r: any) => (
-                <tr key={r.id} className="border-t hover:bg-muted/30">
+              {rows.map((row: any) => (
+                <tr key={row.id} className="border-t hover:bg-muted/30">
                   <td className="p-2">
                     <Input
                       className="h-8 w-full min-w-[140px] font-medium"
-                      defaultValue={r[nameKey] ?? ""}
-                      onBlur={e => {
-                        if (e.target.value !== (r[nameKey] ?? ""))
+                      defaultValue={row[nameKey] ?? ""}
+                      onBlur={event => {
+                        if (event.target.value !== (row[nameKey] ?? ""))
                           update.mutate({
-                            id: r.id,
-                            [nameKey]: e.target.value,
+                            id: row.id,
+                            [nameKey]: event.target.value,
                           });
                       }}
                     />
                   </td>
-                  {columns.map(c => (
-                    <td key={c.key} className="p-2">
+                  {columns.map(column => (
+                    <td key={column.key} className="p-2">
                       <Input
                         className="h-8 w-full min-w-[90px]"
-                        defaultValue={r[c.key] ?? ""}
-                        onBlur={e => {
-                          if (e.target.value !== (r[c.key] ?? ""))
+                        defaultValue={row[column.key] ?? ""}
+                        onBlur={event => {
+                          if (event.target.value !== (row[column.key] ?? ""))
                             update.mutate({
-                              id: r.id,
-                              [c.key]: e.target.value,
+                              id: row.id,
+                              [column.key]: event.target.value,
                             });
                         }}
                       />
@@ -188,11 +263,11 @@ export default function TaskGeneric({
                   {!noContact && (
                     <td className="p-2">
                       <Select
-                        value={r.contactId ? String(r.contactId) : "none"}
-                        onValueChange={v =>
+                        value={row.contactId ? String(row.contactId) : "none"}
+                        onValueChange={value =>
                           update.mutate({
-                            id: r.id,
-                            contactId: v === "none" ? null : Number(v),
+                            id: row.id,
+                            contactId: value === "none" ? null : Number(value),
                           })
                         }
                       >
@@ -201,9 +276,12 @@ export default function TaskGeneric({
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">—</SelectItem>
-                          {contacts.map(c => (
-                            <SelectItem key={c.id} value={String(c.id)}>
-                              {c.name}
+                          {contacts.map(contact => (
+                            <SelectItem
+                              key={contact.id}
+                              value={String(contact.id)}
+                            >
+                              {contact.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -213,18 +291,18 @@ export default function TaskGeneric({
                   {!noStatus && (
                     <td className="p-2">
                       <Select
-                        value={r.status}
-                        onValueChange={v =>
-                          update.mutate({ id: r.id, status: v })
+                        value={row.status}
+                        onValueChange={value =>
+                          update.mutate({ id: row.id, status: value })
                         }
                       >
                         <SelectTrigger className="h-8 w-[140px]">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {defaultStatus.map(o => (
-                            <SelectItem key={o.v} value={o.v}>
-                              {o.l}
+                          {defaultStatus.map(option => (
+                            <SelectItem key={option.v} value={option.v}>
+                              {option.l}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -234,18 +312,23 @@ export default function TaskGeneric({
                   {extraField && (
                     <td className="p-2">
                       <Select
-                        value={r[extraField.key]}
-                        onValueChange={v =>
-                          update.mutate({ id: r.id, [extraField.key]: v })
+                        value={
+                          row[extraField.key] ?? extraField.options[0]?.v ?? ""
+                        }
+                        onValueChange={value =>
+                          update.mutate({
+                            id: row.id,
+                            [extraField.key]: value,
+                          })
                         }
                       >
                         <SelectTrigger className="h-8 w-[110px]">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {extraField.options.map(o => (
-                            <SelectItem key={o.v} value={o.v}>
-                              {o.l}
+                          {extraField.options.map(option => (
+                            <SelectItem key={option.v} value={option.v}>
+                              {option.l}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -253,11 +336,13 @@ export default function TaskGeneric({
                     </td>
                   )}
                   <td className="p-2">
-                    {user?.role === "admin" && (
+                    {user?.role === "admin" && row.id > 0 && (
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => remove.mutate({ id: r.id })}
+                        aria-label={`${addLabel} ${row[nameKey]} löschen`}
+                        disabled={remove.isPending}
+                        onClick={() => remove.mutate({ id: row.id })}
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
@@ -267,7 +352,10 @@ export default function TaskGeneric({
               ))}
               {!isLoading && rows.length === 0 && (
                 <tr>
-                  <td className="p-4 text-muted-foreground" colSpan={8}>
+                  <td
+                    className="p-4 text-muted-foreground"
+                    colSpan={tableColumnCount}
+                  >
                     Noch keine Einträge.
                   </td>
                 </tr>

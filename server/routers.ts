@@ -541,6 +541,7 @@ export const appRouter = router({
       .input(
         z.object({
           task: z.string().min(1),
+          dueText: z.string().max(200).optional(),
           contactId: z.number().nullable().optional(),
           note: z.string().optional(),
         })
@@ -551,6 +552,7 @@ export const appRouter = router({
         z.object({
           id: z.number(),
           task: z.string().optional(),
+          dueText: z.string().max(200).optional(),
           contactId: z.number().nullable().optional(),
           status: statusTask.optional(),
           note: z.string().nullable().optional(),

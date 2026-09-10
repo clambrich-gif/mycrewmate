@@ -161,6 +161,7 @@ export const prepTasks = mysqlTable("prep_tasks", {
   id: int("id").autoincrement().primaryKey(),
   year: int("year").default(2026).notNull(),
   task: varchar("task", { length: 300 }).notNull(),
+  dueText: varchar("dueText", { length: 200 }).default("").notNull(),
   contactId: int("contactId").references(() => contacts.id, {
     onDelete: "set null",
   }),

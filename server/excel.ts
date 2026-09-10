@@ -157,8 +157,22 @@ export async function importExcel(
     contacts.find(item => key(item.name) === key(name))?.id ?? null;
 
   const prepKeys = new Set((await db.listPrep()).map(item => key(item.task)));
-  for (const row of sheet("VORBEREITUNG").slice(8)) {
-    const task = String(row?.[0] ?? "").trim();
+  const prepRows = sheet("VORBEREITUNG");
+  const prepHeader = findHeader(prepRows, [/^aufgabe$/]);
+  const prepHeaders = prepHeader >= 0 ? prepRows[prepHeader] : [];
+  const prepColumns = {
+    task: column(prepHeaders, [/^aufgabe$/], 0),
+    dueText: column(
+      prepHeaders,
+      [/^zu erledigen bis$/, /^frist$/, /^fällig(?:keit)?$/],
+      -1
+    ),
+    contact: column(prepHeaders, [/^verantwortlich$/], 2),
+    status: column(prepHeaders, [/^status$/], 3),
+    note: column(prepHeaders, [/^bemerkung$/, /^notiz$/], 4),
+  };
+  for (const row of prepRows.slice(prepHeader >= 0 ? prepHeader + 1 : 8)) {
+    const task = String(row?.[prepColumns.task] ?? "").trim();
     if (!task || /^aufgabe$/i.test(task)) continue;
     if (prepKeys.has(key(task))) {
       result.uebersprungen++;
@@ -166,11 +180,13 @@ export async function importExcel(
     }
     await db.createPrep({
       task,
-      contactId: contactId(row?.[2]),
-      status: statusMap(String(row?.[3] ?? "")),
-      note: [String(row?.[1] ?? ""), String(row?.[4] ?? "")]
-        .filter(Boolean)
-        .join(" | "),
+      dueText:
+        prepColumns.dueText >= 0
+          ? String(row?.[prepColumns.dueText] ?? "").trim()
+          : "",
+      contactId: contactId(row?.[prepColumns.contact]),
+      status: statusMap(String(row?.[prepColumns.status] ?? "")),
+      note: String(row?.[prepColumns.note] ?? "").trim() || undefined,
     });
     prepKeys.add(key(task));
     result.vorbereitung++;
@@ -399,6 +415,7 @@ export async function exportExcel(): Promise<Buffer> {
     "VORBEREITUNG",
     (await db.listPrep()).map(item => ({
       Aufgabe: item.task,
+      "Zu erledigen bis": item.dueText,
       Verantwortlich: item.contactId
         ? (contactName.get(item.contactId) ?? "")
         : "",

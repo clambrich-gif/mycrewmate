@@ -1,6 +1,7 @@
-import { trpc } from "@/lib/trpc";
-import { useState } from "react";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -9,12 +10,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
-import { StatusBadge } from "@/components/StatusBadge";
+import { trpc } from "@/lib/trpc";
 import { Trash2 } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
-import { useAuth } from "@/_core/hooks/useAuth";
-import { ResetAreaButton } from "@/components/ResetAreaButton";
+
+const temporaryId = () => -Date.now() - Math.floor(Math.random() * 1_000);
 
 export default function TaskList({
   kind,
@@ -26,93 +27,172 @@ export default function TaskList({
   const utils = trpc.useUtils();
   const { user } = useAuth();
   const api = (trpc as any)[kind];
+  const listUtils = (utils as any)[kind].list;
   const { data: rows = [], isLoading } = api.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const [task, setTask] = useState("");
-  const invalidate = () => api.list.invalidate();
+  const [dueText, setDueText] = useState("");
+  const isPrep = kind === "prep";
+
+  const refreshDashboard = () => void utils.dashboard.stats.invalidate();
+
   const create = api.create.useMutation({
-    onSuccess: () => {
-      invalidate();
+    onMutate: async (input: any) => {
+      await listUtils.cancel();
+      const previous = listUtils.getData();
+      const optimisticId = temporaryId();
+      listUtils.setData(undefined, (current: any[] = []) => [
+        ...current,
+        {
+          id: optimisticId,
+          year: 0,
+          task: input.task,
+          dueText: input.dueText ?? "",
+          contactId: input.contactId ?? null,
+          status: "offen",
+          note: input.note ?? null,
+          sortOrder: 0,
+        },
+      ]);
+      return { previous, optimisticId };
+    },
+    onSuccess: (created: any, _input: any, context: any) => {
+      listUtils.setData(undefined, (current: any[] = []) =>
+        current.map(row => (row.id === context?.optimisticId ? created : row))
+      );
       setTask("");
+      setDueText("");
       toast.success("Hinzugefügt");
     },
-  });
-  const update = api.update.useMutation({ onSuccess: invalidate });
-  const remove = api.remove.useMutation({
-    onSuccess: () => {
-      invalidate();
-      toast.success("Entfernt");
+    onError: (error: any, _input: any, context: any) => {
+      listUtils.setData(undefined, context?.previous);
+      toast.error(error.message);
     },
-    onError: (e: any) => toast.error(e.message),
+    onSettled: refreshDashboard,
   });
+
+  const update = api.update.useMutation({
+    onMutate: async (input: any) => {
+      await listUtils.cancel();
+      const previous = listUtils.getData();
+      listUtils.setData(undefined, (current: any[] = []) =>
+        current.map(row => (row.id === input.id ? { ...row, ...input } : row))
+      );
+      return { previous };
+    },
+    onError: (error: any, _input: any, context: any) => {
+      listUtils.setData(undefined, context?.previous);
+      toast.error(error.message);
+    },
+    onSettled: refreshDashboard,
+  });
+
+  const remove = api.remove.useMutation({
+    onMutate: async (input: { id: number }) => {
+      await listUtils.cancel();
+      const previous = listUtils.getData();
+      listUtils.setData(undefined, (current: any[] = []) =>
+        current.filter(row => row.id !== input.id)
+      );
+      return { previous };
+    },
+    onSuccess: () => toast.success("Entfernt"),
+    onError: (error: any, _input: any, context: any) => {
+      listUtils.setData(undefined, context?.previous);
+      toast.error(error.message);
+    },
+    onSettled: refreshDashboard,
+  });
+
+  const submitCreate = () => {
+    if (!task.trim() || create.isPending) return;
+    create.mutate({
+      task: task.trim(),
+      ...(isPrep ? { dueText: dueText.trim() } : {}),
+    });
+  };
 
   return (
     <div className="space-y-5">
-      <div className="flex items-end justify-between flex-wrap gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">{title}</h1>
           <p className="text-muted-foreground">
-            Aufgaben mit Verantwortlichem und Status.
+            Aufgaben mit Verantwortlichem und Status
+            {isPrep ? " sowie frei formulierbarer Frist." : "."}
           </p>
         </div>
-        <div className="flex gap-2 flex-wrap justify-end">
+        <div className="flex flex-wrap justify-end gap-2">
           <ResetAreaButton area={kind} label={title} compact />
           <Input
             placeholder="Neue Aufgabe"
             value={task}
-            onChange={e => setTask(e.target.value)}
+            onChange={event => setTask(event.target.value)}
             className="w-72"
-            onKeyDown={e =>
-              e.key === "Enter" &&
-              task.trim() &&
-              create.mutate({ task: task.trim() })
-            }
+            onKeyDown={event => event.key === "Enter" && submitCreate()}
           />
+          {isPrep && (
+            <Input
+              placeholder="Zu erledigen bis (Freitext)"
+              value={dueText}
+              onChange={event => setDueText(event.target.value)}
+              className="w-64"
+              onKeyDown={event => event.key === "Enter" && submitCreate()}
+            />
+          )}
           <Button
-            onClick={() => task.trim() && create.mutate({ task: task.trim() })}
+            onClick={submitCreate}
+            disabled={!task.trim() || create.isPending}
           >
-            Hinzufügen
+            {create.isPending ? "Speichert …" : "Hinzufügen"}
           </Button>
         </div>
       </div>
       <Card className="shadow-sm">
-        <CardContent className="p-0 overflow-x-auto">
+        <CardContent className="overflow-x-auto p-0">
           <table className="w-full text-sm">
             <thead className="bg-muted/60">
               <tr className="text-left">
                 <th className="p-3">Aufgabe</th>
                 <th className="p-3">Verantwortlich</th>
                 <th className="p-3">Status</th>
-                <th className="p-3 w-10"></th>
+                {isPrep && <th className="p-3">Zu erledigen bis</th>}
+                <th className="w-10 p-3"></th>
               </tr>
             </thead>
             <tbody>
               {isLoading && (
                 <tr>
-                  <td className="p-4 text-muted-foreground" colSpan={4}>
+                  <td
+                    className="p-4 text-muted-foreground"
+                    colSpan={isPrep ? 5 : 4}
+                  >
                     Lade …
                   </td>
                 </tr>
               )}
-              {rows.map((r: any) => (
-                <tr key={r.id} className="border-t hover:bg-muted/30">
+              {rows.map((row: any) => (
+                <tr key={row.id} className="border-t hover:bg-muted/30">
                   <td className="p-2">
                     <Input
                       className="h-8 w-full min-w-[160px] font-medium"
-                      defaultValue={r.task ?? ""}
-                      onBlur={e => {
-                        if (e.target.value !== (r.task ?? ""))
-                          update.mutate({ id: r.id, task: e.target.value });
+                      defaultValue={row.task ?? ""}
+                      onBlur={event => {
+                        if (event.target.value !== (row.task ?? ""))
+                          update.mutate({
+                            id: row.id,
+                            task: event.target.value,
+                          });
                       }}
                     />
                   </td>
                   <td className="p-2">
                     <Select
-                      value={r.contactId ? String(r.contactId) : "none"}
-                      onValueChange={v =>
+                      value={row.contactId ? String(row.contactId) : "none"}
+                      onValueChange={value =>
                         update.mutate({
-                          id: r.id,
-                          contactId: v === "none" ? null : Number(v),
+                          id: row.id,
+                          contactId: value === "none" ? null : Number(value),
                         })
                       }
                     >
@@ -121,9 +201,12 @@ export default function TaskList({
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">—</SelectItem>
-                        {contacts.map(c => (
-                          <SelectItem key={c.id} value={String(c.id)}>
-                            {c.name}
+                        {contacts.map(contact => (
+                          <SelectItem
+                            key={contact.id}
+                            value={String(contact.id)}
+                          >
+                            {contact.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -131,9 +214,9 @@ export default function TaskList({
                   </td>
                   <td className="p-2">
                     <Select
-                      value={r.status}
-                      onValueChange={v =>
-                        update.mutate({ id: r.id, status: v })
+                      value={row.status}
+                      onValueChange={value =>
+                        update.mutate({ id: row.id, status: value })
                       }
                     >
                       <SelectTrigger className="h-8 w-[140px]">
@@ -146,12 +229,30 @@ export default function TaskList({
                       </SelectContent>
                     </Select>
                   </td>
+                  {isPrep && (
+                    <td className="p-2">
+                      <Input
+                        className="h-8 w-full min-w-[190px]"
+                        defaultValue={row.dueText ?? ""}
+                        placeholder="z. B. 15.05. oder vor Streckenfreigabe"
+                        onBlur={event => {
+                          if (event.target.value !== (row.dueText ?? ""))
+                            update.mutate({
+                              id: row.id,
+                              dueText: event.target.value,
+                            });
+                        }}
+                      />
+                    </td>
+                  )}
                   <td className="p-2">
-                    {user?.role === "admin" && (
+                    {user?.role === "admin" && row.id > 0 && (
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => remove.mutate({ id: r.id })}
+                        aria-label={`Aufgabe ${row.task} löschen`}
+                        disabled={remove.isPending}
+                        onClick={() => remove.mutate({ id: row.id })}
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
@@ -161,7 +262,10 @@ export default function TaskList({
               ))}
               {!isLoading && rows.length === 0 && (
                 <tr>
-                  <td className="p-4 text-muted-foreground" colSpan={4}>
+                  <td
+                    className="p-4 text-muted-foreground"
+                    colSpan={isPrep ? 5 : 4}
+                  >
                     Noch keine Aufgaben.
                   </td>
                 </tr>
