@@ -143,13 +143,13 @@ export default function TaskList({
             {isPrep ? " sowie frei formulierbarer Frist." : "."}
           </p>
         </div>
-        <div className="flex flex-wrap justify-end gap-2">
+        <div className="flex w-full flex-wrap justify-end gap-2 sm:w-auto">
           <ResetAreaButton area={kind} label={title} compact />
           <Input
             placeholder="Neue Aufgabe"
             value={task}
             onChange={event => setTask(event.target.value)}
-            className="w-72"
+            className="w-full sm:w-72"
             onKeyDown={event => event.key === "Enter" && submitCreate()}
           />
           {isPrep && (
@@ -157,11 +157,12 @@ export default function TaskList({
               placeholder="Zu erledigen bis (Freitext)"
               value={dueText}
               onChange={event => setDueText(event.target.value)}
-              className="w-64"
+              className="w-full sm:w-64"
               onKeyDown={event => event.key === "Enter" && submitCreate()}
             />
           )}
           <Button
+            className="w-full sm:w-auto"
             onClick={submitCreate}
             disabled={!task.trim() || create.isPending}
           >
@@ -183,7 +184,7 @@ export default function TaskList({
           Aufgabe {sortAsc ? "A–Z" : "Z–A"}
         </Button>
         <Select value={contactFilter} onValueChange={setContactFilter}>
-          <SelectTrigger className="w-[240px]">
+          <SelectTrigger className="w-full sm:w-[240px]">
             <SelectValue placeholder="Verantwortliche filtern" />
           </SelectTrigger>
           <SelectContent>
@@ -200,7 +201,121 @@ export default function TaskList({
           {visibleRows.length} von {rows.length} Einträgen
         </span>
       </div>
-      <Card className="shadow-sm">
+      <div className="space-y-3 md:hidden">
+        {isLoading && (
+          <Card className="shadow-sm">
+            <CardContent className="p-4 text-sm text-muted-foreground">
+              Lade …
+            </CardContent>
+          </Card>
+        )}
+        {visibleRows.map((row: any) => (
+          <Card key={row.id} className="shadow-sm">
+            <CardContent className="space-y-3 p-4">
+              <div className="space-y-1">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Aufgabe
+                </span>
+                <Input
+                  className="h-10 w-full font-medium"
+                  defaultValue={row.task ?? ""}
+                  onBlur={event => {
+                    if (event.target.value !== (row.task ?? ""))
+                      update.mutate({ id: row.id, task: event.target.value });
+                  }}
+                />
+              </div>
+              <div className="space-y-1">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Verantwortlich
+                </span>
+                <Select
+                  value={row.contactId ? String(row.contactId) : "none"}
+                  onValueChange={value =>
+                    update.mutate({
+                      id: row.id,
+                      contactId: value === "none" ? null : Number(value),
+                    })
+                  }
+                >
+                  <SelectTrigger className="h-10 w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">—</SelectItem>
+                    {contacts.map(contact => (
+                      <SelectItem key={contact.id} value={String(contact.id)}>
+                        {contact.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Status
+                  </span>
+                  <Select
+                    value={row.status}
+                    onValueChange={value =>
+                      update.mutate({ id: row.id, status: value })
+                    }
+                  >
+                    <SelectTrigger className="h-10 w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="offen">offen</SelectItem>
+                      <SelectItem value="inArbeit">in Arbeit</SelectItem>
+                      <SelectItem value="erledigt">erledigt</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {isPrep && (
+                  <div className="space-y-1">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Zu erledigen bis
+                    </span>
+                    <Input
+                      className="h-10 w-full"
+                      defaultValue={row.dueText ?? ""}
+                      placeholder="Frist oder Zeitpunkt"
+                      onBlur={event => {
+                        if (event.target.value !== (row.dueText ?? ""))
+                          update.mutate({
+                            id: row.id,
+                            dueText: event.target.value,
+                          });
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+              {user?.role === "admin" && row.id > 0 && (
+                <Button
+                  variant="outline"
+                  className="w-full border-destructive/40 text-destructive"
+                  disabled={remove.isPending}
+                  onClick={() => remove.mutate({ id: row.id })}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" /> Aufgabe löschen
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+        {!isLoading && visibleRows.length === 0 && (
+          <Card className="shadow-sm">
+            <CardContent className="p-4 text-sm text-muted-foreground">
+              {rows.length === 0
+                ? "Noch keine Aufgaben."
+                : "Keine Aufgaben für diesen Verantwortlichen."}
+            </CardContent>
+          </Card>
+        )}
+      </div>
+      <Card className="hidden shadow-sm md:block">
         <CardContent className="overflow-x-auto p-0">
           <table className="w-full text-sm">
             <thead className="bg-muted/60">

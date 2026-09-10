@@ -199,7 +199,7 @@ export default function TaskGeneric({
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <h1 className="text-2xl font-bold">{title}</h1>
-        <div className="flex flex-wrap justify-end gap-2">
+        <div className="flex w-full flex-wrap justify-end gap-2 sm:w-auto">
           {kind in resetAreaByKind && (
             <ResetAreaButton
               area={resetAreaByKind[kind as keyof typeof resetAreaByKind]}
@@ -211,7 +211,7 @@ export default function TaskGeneric({
             placeholder={`Neu: ${addLabel}`}
             value={name}
             onChange={event => setName(event.target.value)}
-            className="w-64"
+            className="w-full sm:w-64"
             onKeyDown={event => event.key === "Enter" && submitCreate()}
           />
           {columns.map(column => (
@@ -225,10 +225,11 @@ export default function TaskGeneric({
                   [column.key]: event.target.value,
                 }))
               }
-              className="w-36"
+              className="w-full sm:w-36"
             />
           ))}
           <Button
+            className="w-full sm:w-auto"
             onClick={submitCreate}
             disabled={!name.trim() || create.isPending}
           >
@@ -252,7 +253,7 @@ export default function TaskGeneric({
           </Button>
           {!noContact && (
             <Select value={contactFilter} onValueChange={setContactFilter}>
-              <SelectTrigger className="w-[240px]">
+              <SelectTrigger className="w-full sm:w-[240px]">
                 <SelectValue placeholder="Verantwortliche filtern" />
               </SelectTrigger>
               <SelectContent>
@@ -271,7 +272,165 @@ export default function TaskGeneric({
           </span>
         </div>
       )}
-      <Card className="shadow-sm">
+      <div className="space-y-3 md:hidden">
+        {isLoading && (
+          <Card className="shadow-sm">
+            <CardContent className="p-4 text-sm text-muted-foreground">
+              Lade …
+            </CardContent>
+          </Card>
+        )}
+        {visibleRows.map((row: any) => (
+          <Card key={row.id} className="shadow-sm">
+            <CardContent className="space-y-3 p-4">
+              <div className="space-y-1">
+                <span className="text-xs font-medium text-muted-foreground">
+                  {addLabel}
+                </span>
+                <Input
+                  className="h-10 w-full font-medium"
+                  defaultValue={row[nameKey] ?? ""}
+                  onBlur={event => {
+                    if (event.target.value !== (row[nameKey] ?? ""))
+                      update.mutate({
+                        id: row.id,
+                        [nameKey]: event.target.value,
+                      });
+                  }}
+                />
+              </div>
+              {columns.map(column => (
+                <div key={column.key} className="space-y-1">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {column.label}
+                  </span>
+                  <Input
+                    className="h-10 w-full"
+                    defaultValue={row[column.key] ?? ""}
+                    onBlur={event => {
+                      if (event.target.value !== (row[column.key] ?? ""))
+                        update.mutate({
+                          id: row.id,
+                          [column.key]: event.target.value,
+                        });
+                    }}
+                  />
+                </div>
+              ))}
+              {!noContact && (
+                <div className="space-y-1">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Verantwortlich
+                  </span>
+                  <Select
+                    value={row.contactId ? String(row.contactId) : "none"}
+                    onValueChange={value =>
+                      update.mutate({
+                        id: row.id,
+                        contactId: value === "none" ? null : Number(value),
+                      })
+                    }
+                  >
+                    <SelectTrigger className="h-10 w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">—</SelectItem>
+                      {contacts.map(contact => (
+                        <SelectItem key={contact.id} value={String(contact.id)}>
+                          {contact.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {!noStatus && (
+                  <div className="space-y-1">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Status
+                    </span>
+                    <Select
+                      value={row.status}
+                      onValueChange={value =>
+                        update.mutate({ id: row.id, status: value })
+                      }
+                    >
+                      <SelectTrigger className="h-10 w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {defaultStatus.map(option => (
+                          <SelectItem key={option.v} value={option.v}>
+                            {option.l}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                {extraField && (
+                  <div className="space-y-1">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {extraField.label}
+                    </span>
+                    <Select
+                      value={
+                        row[extraField.key] ?? extraField.options[0]?.v ?? ""
+                      }
+                      onValueChange={value =>
+                        update.mutate({
+                          id: row.id,
+                          [extraField.key]: value,
+                        })
+                      }
+                    >
+                      <SelectTrigger className="h-10 w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {extraField.options.map(option => (
+                          <SelectItem key={option.v} value={option.v}>
+                            {option.l}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+              {(user?.role === "admin" || teamCanDelete) && row.id > 0 && (
+                <Button
+                  variant="outline"
+                  className="w-full border-destructive/40 text-destructive"
+                  disabled={remove.isPending}
+                  onClick={() =>
+                    teamCanDelete
+                      ? setDeleteTarget({
+                          id: row.id,
+                          name: String(row[nameKey] ?? ""),
+                        })
+                      : remove.mutate({ id: row.id })
+                  }
+                >
+                  <Trash2 className="mr-2 h-4 w-4" /> {addLabel} löschen
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+        {!isLoading && visibleRows.length === 0 && (
+          <Card className="shadow-sm">
+            <CardContent className="p-4 text-sm text-muted-foreground">
+              {rows.length === 0
+                ? "Noch keine Einträge."
+                : "Keine Einträge für diesen Verantwortlichen."}
+            </CardContent>
+          </Card>
+        )}
+      </div>
+      <Card className="hidden shadow-sm md:block">
         <CardContent className="overflow-x-auto p-0">
           <table className="w-full text-sm">
             <thead className="bg-muted/60">

@@ -1,5 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -11,8 +13,9 @@ import {
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { PERMISSION_MATRIX } from "@shared/permissions";
-import { History, ShieldCheck, Users } from "lucide-react";
+import { History, RotateCcw, ShieldCheck, Users } from "lucide-react";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
 const permissionColor = (value: string) => {
   if (value === "Kein Zugriff")
@@ -71,6 +74,7 @@ export default function Permissions() {
   const isAdmin = user?.role === "admin";
   const [yearFilter, setYearFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [resetOpen, setResetOpen] = useState(false);
   const { data: years = [] } = trpc.years.list.useQuery();
   const auditInput = useMemo(
     () => ({
@@ -83,6 +87,15 @@ export default function Permissions() {
   );
   const audit = trpc.audit.deletions.useQuery(auditInput, {
     enabled: isAdmin,
+  });
+  const utils = trpc.useUtils();
+  const clearAudit = trpc.audit.clear.useMutation({
+    onSuccess: async () => {
+      setResetOpen(false);
+      await utils.audit.deletions.invalidate();
+      toast.success("Löschprotokoll wurde zurückgesetzt");
+    },
+    onError: error => toast.error(error.message),
   });
 
   return (
@@ -125,8 +138,44 @@ export default function Permissions() {
         <CardHeader>
           <CardTitle className="text-base">Berechtigungsmatrix</CardTitle>
         </CardHeader>
-        <CardContent className="overflow-x-auto p-0">
-          <table className="w-full min-w-[850px] text-sm">
+        <CardContent className="p-3 md:p-0">
+          <div className="space-y-3 md:hidden">
+            {PERMISSION_MATRIX.map(row => (
+              <div key={row.area} className="space-y-3 rounded-lg border p-3">
+                <div className="font-semibold">{row.area}</div>
+                <div className="space-y-1">
+                  <div className="text-xs font-medium text-muted-foreground">
+                    Planungsteam
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "whitespace-normal",
+                      permissionColor(row.planningTeam)
+                    )}
+                  >
+                    {row.planningTeam}
+                  </Badge>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-xs font-medium text-muted-foreground">
+                    Administrator
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "whitespace-normal",
+                      permissionColor(row.administrator)
+                    )}
+                  >
+                    {row.administrator}
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">{row.note}</p>
+              </div>
+            ))}
+          </div>
+          <table className="hidden w-full min-w-[850px] text-sm md:table">
             <thead className="bg-muted/60 text-left">
               <tr>
                 <th className="p-3">Bereich</th>
@@ -205,10 +254,17 @@ export default function Permissions() {
                   <SelectItem value="cake">Nur Kuchen</SelectItem>
                 </SelectContent>
               </Select>
+              <Button
+                variant="outline"
+                className="border-destructive/40 text-destructive"
+                onClick={() => setResetOpen(true)}
+              >
+                <RotateCcw className="mr-2 h-4 w-4" /> Protokoll zurücksetzen
+              </Button>
             </div>
           )}
         </CardHeader>
-        <CardContent className={cn(isAdmin && "overflow-x-auto p-0")}>
+        <CardContent className={cn(isAdmin && "p-3 md:p-0")}>
           {!isAdmin ? (
             <div className="rounded-lg border border-dashed bg-muted/30 p-6 text-center text-sm text-muted-foreground">
               Das Löschprotokoll ist ausschließlich für Administratoren
@@ -223,43 +279,94 @@ export default function Permissions() {
               {audit.error.message}
             </p>
           ) : audit.data?.length ? (
-            <table className="w-full min-w-[900px] text-sm">
-              <thead className="bg-muted/60 text-left">
-                <tr>
-                  <th className="p-3">Zeitpunkt</th>
-                  <th className="p-3">Jahr</th>
-                  <th className="p-3">Art</th>
-                  <th className="p-3">Gelöschter Eintrag</th>
-                  <th className="p-3">Vorgang</th>
-                  <th className="p-3">Ausgeführt von</th>
-                  <th className="p-3">Details</th>
-                </tr>
-              </thead>
-              <tbody>
+            <>
+              <div className="space-y-3 md:hidden">
                 {audit.data.map(entry => (
-                  <tr key={entry.id} className="border-t align-top">
-                    <td className="whitespace-nowrap p-3">
-                      {new Date(entry.createdAt).toLocaleString("de-DE")}
-                    </td>
-                    <td className="p-3">{entry.year}</td>
-                    <td className="p-3">{entityLabel[entry.entityType]}</td>
-                    <td className="p-3 font-medium">{entry.entityLabel}</td>
-                    <td className="p-3">{actionLabel[entry.action]}</td>
-                    <td className="p-3">
-                      {entry.actorName}
-                      <div className="text-xs text-muted-foreground">
-                        {entry.actorRole === "admin"
-                          ? "Administrator"
-                          : "Planungsteam"}
+                  <div
+                    key={entry.id}
+                    className="space-y-2 rounded-lg border p-3 text-sm"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="font-semibold">{entry.entityLabel}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {new Date(entry.createdAt).toLocaleString("de-DE")}
+                        </div>
                       </div>
-                    </td>
-                    <td className="p-3 text-muted-foreground">
+                      <Badge variant="outline">
+                        {entityLabel[entry.entityType]} · {entry.year}
+                      </Badge>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Vorgang:</span>{" "}
+                      {actionLabel[entry.action]}
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">
+                        Ausgeführt von:
+                      </span>{" "}
+                      {entry.actorName} (
+                      {entry.actorRole === "admin"
+                        ? "Administrator"
+                        : "Planungsteam"}
+                      )
+                    </div>
+                    {entry.responsibleContactName && (
+                      <div className="font-medium text-primary">
+                        Gewählter Ansprechpartner:{" "}
+                        {entry.responsibleContactName}
+                      </div>
+                    )}
+                    <div className="text-muted-foreground">
                       {detailText(entry.entityType, entry.details)}
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+              <table className="hidden w-full min-w-[900px] text-sm md:table">
+                <thead className="bg-muted/60 text-left">
+                  <tr>
+                    <th className="p-3">Zeitpunkt</th>
+                    <th className="p-3">Jahr</th>
+                    <th className="p-3">Art</th>
+                    <th className="p-3">Gelöschter Eintrag</th>
+                    <th className="p-3">Vorgang</th>
+                    <th className="p-3">Ausgeführt von</th>
+                    <th className="p-3">Details</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {audit.data.map(entry => (
+                    <tr key={entry.id} className="border-t align-top">
+                      <td className="whitespace-nowrap p-3">
+                        {new Date(entry.createdAt).toLocaleString("de-DE")}
+                      </td>
+                      <td className="p-3">{entry.year}</td>
+                      <td className="p-3">{entityLabel[entry.entityType]}</td>
+                      <td className="p-3 font-medium">{entry.entityLabel}</td>
+                      <td className="p-3">{actionLabel[entry.action]}</td>
+                      <td className="p-3">
+                        {entry.actorName}
+                        <div className="text-xs text-muted-foreground">
+                          {entry.actorRole === "admin"
+                            ? "Administrator"
+                            : "Planungsteam"}
+                        </div>
+                        {entry.responsibleContactName && (
+                          <div className="mt-1 text-xs font-medium text-primary">
+                            Gewählter Ansprechpartner:{" "}
+                            {entry.responsibleContactName}
+                          </div>
+                        )}
+                      </td>
+                      <td className="p-3 text-muted-foreground">
+                        {detailText(entry.entityType, entry.details)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
           ) : (
             <div className="p-8 text-center text-sm text-muted-foreground">
               Für die gewählten Filter liegen noch keine Löschungen vor.
@@ -267,6 +374,24 @@ export default function Permissions() {
           )}
         </CardContent>
       </Card>
+      <AdminPasswordDialog
+        open={resetOpen}
+        onOpenChange={setResetOpen}
+        title="Löschprotokoll zurücksetzen?"
+        description={
+          yearFilter === "all"
+            ? "Alle Einträge des Löschprotokolls über sämtliche Jahre werden dauerhaft entfernt."
+            : `Alle Einträge des Löschprotokolls für ${yearFilter} werden dauerhaft entfernt.`
+        }
+        confirmLabel="Protokoll endgültig löschen"
+        busy={clearAudit.isPending}
+        onConfirm={adminPassword =>
+          clearAudit.mutate({
+            adminPassword,
+            eventYear: yearFilter === "all" ? undefined : Number(yearFilter),
+          })
+        }
+      />
     </div>
   );
 }

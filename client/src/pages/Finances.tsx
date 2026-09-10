@@ -137,16 +137,17 @@ export default function Finances() {
             automatisch berechnet.
           </p>
         </div>
-        <div className="flex flex-wrap justify-end gap-2">
+        <div className="flex w-full flex-wrap justify-end gap-2 sm:w-auto">
           <ResetAreaButton area="finances" label="Finanzen" compact />
           <Input
             placeholder="Kategorie"
             value={category}
             onChange={event => setCategory(event.target.value)}
-            className="w-64"
+            className="w-full sm:w-64"
             onKeyDown={event => event.key === "Enter" && submitCreate()}
           />
           <Button
+            className="w-full sm:w-auto"
             onClick={submitCreate}
             disabled={!category.trim() || create.isPending}
           >
@@ -154,7 +155,89 @@ export default function Finances() {
           </Button>
         </div>
       </div>
-      <Card className="shadow-sm">
+      <div className="space-y-3 md:hidden">
+        {isLoading && (
+          <Card className="shadow-sm">
+            <CardContent className="p-4 text-sm text-muted-foreground">
+              Lade …
+            </CardContent>
+          </Card>
+        )}
+        {rows.map(row => {
+          const difference = row.income - row.expense;
+          return (
+            <Card key={row.id} className="shadow-sm">
+              <CardContent className="space-y-3 p-4">
+                <div className="font-semibold">{row.category}</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="space-y-1 text-xs font-medium text-muted-foreground">
+                    Einnahmen
+                    <NumInput
+                      value={row.income}
+                      onSave={value =>
+                        update.mutate({ id: row.id, incomeCents: value })
+                      }
+                    />
+                  </label>
+                  <label className="space-y-1 text-xs font-medium text-muted-foreground">
+                    Ausgaben
+                    <NumInput
+                      value={row.expense}
+                      onSave={value =>
+                        update.mutate({ id: row.id, expenseCents: value })
+                      }
+                    />
+                  </label>
+                </div>
+                <div className="flex items-center justify-between rounded-md bg-muted/50 p-3 text-sm">
+                  <span>Differenz</span>
+                  <strong
+                    className={
+                      difference >= 0 ? "text-[var(--ok)]" : "text-[var(--err)]"
+                    }
+                  >
+                    {eur(difference)}
+                  </strong>
+                </div>
+                {user?.role === "admin" && row.id > 0 && (
+                  <Button
+                    variant="outline"
+                    className="w-full border-destructive/40 text-destructive"
+                    disabled={remove.isPending}
+                    onClick={() => remove.mutate({ id: row.id })}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" /> Kategorie löschen
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+        <Card className="border-primary/20 bg-primary/5 shadow-sm">
+          <CardContent className="space-y-2 p-4 text-sm">
+            <div className="font-bold">Saldo</div>
+            <div className="flex justify-between">
+              <span>Einnahmen</span>
+              <strong>{eur(sumIn)}</strong>
+            </div>
+            <div className="flex justify-between">
+              <span>Ausgaben</span>
+              <strong>{eur(sumOut)}</strong>
+            </div>
+            <div className="flex justify-between border-t pt-2">
+              <span>Differenz</span>
+              <strong
+                className={
+                  sumIn - sumOut >= 0 ? "text-[var(--ok)]" : "text-[var(--err)]"
+                }
+              >
+                {eur(sumIn - sumOut)}
+              </strong>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      <Card className="hidden shadow-sm md:block">
         <CardContent className="overflow-x-auto p-0">
           <table className="w-full text-sm">
             <thead className="bg-muted/60">

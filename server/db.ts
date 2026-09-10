@@ -16,6 +16,7 @@ import {
   postTasks,
   prepTasks,
   securitySettings,
+  shiftAreaContacts,
   shifts,
   users,
 } from "../drizzle/schema";
@@ -115,6 +116,16 @@ export async function listContacts() {
     .where(eq(contacts.year, year()))
     .orderBy(contacts.sortOrder, contacts.name);
 }
+export async function getContact(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const [contact] = await db
+    .select()
+    .from(contacts)
+    .where(and(eq(contacts.id, id), eq(contacts.year, year())))
+    .limit(1);
+  return contact;
+}
 export async function listHelpers() {
   const db = await getDb();
   if (!db) return [];
@@ -132,6 +143,15 @@ export async function listShifts() {
     .from(shifts)
     .where(eq(shifts.year, year()))
     .orderBy(shifts.sortOrder, shifts.id);
+}
+export async function listShiftAreaContacts() {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(shiftAreaContacts)
+    .where(eq(shiftAreaContacts.year, year()))
+    .orderBy(shiftAreaContacts.area);
 }
 export async function listAssignments() {
   const db = await getDb();
@@ -374,6 +394,8 @@ export type AuditActor = {
   name: string;
   role: "user" | "admin";
   loginMethod?: string | null;
+  responsibleContactId?: number | null;
+  responsibleContactName?: string | null;
 };
 
 type AuditEntity = {
@@ -402,6 +424,8 @@ async function recordDeletionAudit(
       actorName: actor.name,
       actorRole: actor.role,
       actorLoginMethod: actor.loginMethod ?? null,
+      responsibleContactId: actor.responsibleContactId ?? null,
+      responsibleContactName: actor.responsibleContactName ?? null,
       details: JSON.stringify(entry.details),
     }))
   );
@@ -476,10 +500,26 @@ export async function listDeletionAuditLogs(filters?: {
     .limit(filters?.limit ?? 500);
 }
 
+export async function clearDeletionAuditLogs(eventYear?: number) {
+  const db = (await getDb()) as DB;
+  if (eventYear === undefined) return db.delete(deletionAuditLogs);
+  return db
+    .delete(deletionAuditLogs)
+    .where(eq(deletionAuditLogs.year, eventYear));
+}
+
 export async function deleteHelper(
   id: number,
   options: { allowAssigned?: boolean; actor: AuditActor }
 ) {
+  if (
+    !options.actor.responsibleContactId ||
+    !options.actor.responsibleContactName
+  ) {
+    throw new Error(
+      "Für die Helferlöschung muss der ausführende Ansprechpartner ausgewählt werden"
+    );
+  }
   const db = (await getDb()) as DB;
   return db.transaction(async tx => {
     const [helper] = await tx
@@ -650,16 +690,76 @@ export async function updateShift(
 ) {
   const db = (await getDb()) as DB;
   const { year: ignored, ...safe } = v;
-  return db
+  const result = await db
     .update(shifts)
     .set(safe)
     .where(and(eq(shifts.id, id), eq(shifts.year, year())));
+  if (safe.area !== undefined) await removeOrphanShiftAreaContacts();
+  return result;
 }
 export async function deleteShift(id: number) {
   const db = (await getDb()) as DB;
-  return db
+  const result = await db
     .delete(shifts)
     .where(and(eq(shifts.id, id), eq(shifts.year, year())));
+  await removeOrphanShiftAreaContacts();
+  return result;
+}
+export async function setShiftAreaContact(
+  area: string,
+  contactId: number | null
+) {
+  const db = (await getDb()) as DB;
+  const normalizedArea = area.trim().replace(/\s+/g, " ");
+  const [existingArea] = await db
+    .select({ id: shifts.id })
+    .from(shifts)
+    .where(and(eq(shifts.year, year()), eq(shifts.area, normalizedArea)))
+    .limit(1);
+  if (!existingArea) throw new Error("Bereich wurde nicht gefunden");
+  if (contactId !== null) {
+    const [contact] = await db
+      .select({ id: contacts.id })
+      .from(contacts)
+      .where(and(eq(contacts.id, contactId), eq(contacts.year, year())))
+      .limit(1);
+    if (!contact) throw new Error("Ansprechpartner wurde nicht gefunden");
+  }
+  if (contactId === null) {
+    return db
+      .delete(shiftAreaContacts)
+      .where(
+        and(
+          eq(shiftAreaContacts.year, year()),
+          eq(shiftAreaContacts.area, normalizedArea)
+        )
+      );
+  }
+  return db
+    .insert(shiftAreaContacts)
+    .values({ year: year(), area: normalizedArea, contactId })
+    .onDuplicateKeyUpdate({ set: { contactId } });
+}
+async function removeOrphanShiftAreaContacts() {
+  const db = (await getDb()) as DB;
+  const activeAreas = await db
+    .select({ area: shifts.area })
+    .from(shifts)
+    .where(eq(shifts.year, year()));
+  if (!activeAreas.length) {
+    return db
+      .delete(shiftAreaContacts)
+      .where(eq(shiftAreaContacts.year, year()));
+  }
+  const areaSet = new Set(activeAreas.map(item => item.area));
+  const mappings = await listShiftAreaContacts();
+  const orphanIds = mappings
+    .filter(item => !areaSet.has(item.area))
+    .map(item => item.id);
+  if (!orphanIds.length) return;
+  return db
+    .delete(shiftAreaContacts)
+    .where(inArray(shiftAreaContacts.id, orphanIds));
 }
 export async function assignHelper(v: {
   shiftId: number;
@@ -915,6 +1015,14 @@ export type ResetArea =
 export async function resetArea(area: ResetArea, actor: AuditActor) {
   const db = (await getDb()) as DB;
   const selectedYear = year();
+  if (
+    (area === "helpers" || area === "all") &&
+    (!actor.responsibleContactId || !actor.responsibleContactName)
+  ) {
+    throw new Error(
+      "Für das Löschen von Helferdaten muss der ausführende Ansprechpartner ausgewählt werden"
+    );
+  }
   const remove = async (table: any) =>
     db.delete(table).where(eq(table.year, selectedYear));
   if (area === "all") {
@@ -951,6 +1059,9 @@ export async function resetArea(area: ResetArea, actor: AuditActor) {
           )
         );
       await tx.delete(shifts).where(eq(shifts.year, selectedYear));
+      await tx
+        .delete(shiftAreaContacts)
+        .where(eq(shiftAreaContacts.year, selectedYear));
       if (helperRows.length) {
         const result = await tx.delete(helpers).where(
           and(
@@ -1042,10 +1153,18 @@ export async function resetArea(area: ResetArea, actor: AuditActor) {
     if (area === "helpers") await syncContactsToSelfHelpers();
     return;
   }
+  if (area === "shifts") {
+    await db.transaction(async tx => {
+      await tx
+        .delete(shiftAreaContacts)
+        .where(eq(shiftAreaContacts.year, selectedYear));
+      await tx.delete(shifts).where(eq(shifts.year, selectedYear));
+    });
+    return;
+  }
   const tableByArea = {
     contacts,
     helpers,
-    shifts,
     prep: prepTasks,
     post: postTasks,
     materials,
@@ -1075,150 +1194,191 @@ export async function copyPlanFromYear(
   if (sourceYear === targetYear)
     throw new Error("Quell- und Zieljahr müssen verschieden sein");
   const db = (await getDb()) as DB;
-  const [
-    sourceContacts,
-    sourceHelpers,
-    sourceShifts,
-    sourceAssignments,
-    targetContacts,
-    targetHelpers,
-    targetShifts,
-  ] = await Promise.all([
-    db.select().from(contacts).where(eq(contacts.year, sourceYear)),
-    db.select().from(helpers).where(eq(helpers.year, sourceYear)),
-    db.select().from(shifts).where(eq(shifts.year, sourceYear)),
-    db
+  return db.transaction(async tx => {
+    const [
+      sourceContacts,
+      sourceHelpers,
+      sourceShifts,
+      sourceAssignments,
+      sourceAreaContacts,
+      targetContacts,
+      targetHelpers,
+      targetShifts,
+      targetAreaContacts,
+    ] = await Promise.all([
+      tx.select().from(contacts).where(eq(contacts.year, sourceYear)),
+      tx.select().from(helpers).where(eq(helpers.year, sourceYear)),
+      tx.select().from(shifts).where(eq(shifts.year, sourceYear)),
+      tx
+        .select({ ...getTableColumns(assignments) })
+        .from(assignments)
+        .innerJoin(shifts, eq(assignments.shiftId, shifts.id))
+        .where(eq(shifts.year, sourceYear)),
+      tx
+        .select()
+        .from(shiftAreaContacts)
+        .where(eq(shiftAreaContacts.year, sourceYear)),
+      tx.select().from(contacts).where(eq(contacts.year, targetYear)),
+      tx.select().from(helpers).where(eq(helpers.year, targetYear)),
+      tx.select().from(shifts).where(eq(shifts.year, targetYear)),
+      tx
+        .select()
+        .from(shiftAreaContacts)
+        .where(eq(shiftAreaContacts.year, targetYear)),
+    ]);
+
+    await tx
+      .insert(eventYears)
+      .values({ year: targetYear, label: `MyEifelRide ${targetYear}` })
+      .onDuplicateKeyUpdate({
+        set: { label: `MyEifelRide ${targetYear}` },
+      });
+
+    const contactMap = new Map<number, number>();
+    const contactByName = new Map(
+      targetContacts.map(item => [normalizePersonName(item.name), item.id])
+    );
+    let contactsCreated = 0;
+    for (const item of sourceContacts) {
+      let targetId = contactByName.get(normalizePersonName(item.name));
+      if (!targetId) {
+        const result: any = await tx.insert(contacts).values({
+          year: targetYear,
+          name: item.name,
+          phone: item.phone,
+          note: item.note,
+          sortOrder: item.sortOrder,
+        });
+        targetId = Number(result?.[0]?.insertId ?? result?.insertId);
+        contactByName.set(normalizePersonName(item.name), targetId);
+        contactsCreated++;
+      }
+      contactMap.set(item.id, targetId);
+    }
+
+    const targetAreaNames = new Set(targetAreaContacts.map(item => item.area));
+    let areaContactsCreated = 0;
+    for (const item of sourceAreaContacts) {
+      const contactId = item.contactId ? contactMap.get(item.contactId) : null;
+      if (!contactId || targetAreaNames.has(item.area)) continue;
+      await tx.insert(shiftAreaContacts).values({
+        year: targetYear,
+        area: item.area,
+        contactId,
+      });
+      targetAreaNames.add(item.area);
+      areaContactsCreated++;
+    }
+
+    const helperMap = new Map<number, number>();
+    const helperByName = new Map(
+      targetHelpers.map(item => [normalizePersonName(item.name), item.id])
+    );
+    let helpersCreated = 0;
+    for (const item of sourceHelpers) {
+      let targetId = helperByName.get(normalizePersonName(item.name));
+      if (!targetId) {
+        const result: any = await tx.insert(helpers).values({
+          year: targetYear,
+          name: item.name,
+          contactId: item.contactId
+            ? (contactMap.get(item.contactId) ?? null)
+            : null,
+          email: item.email,
+          phone: item.phone,
+          note: item.note,
+          willHelp: item.willHelp,
+          availFri: item.availFri,
+          availSat: item.availSat,
+          availSun: item.availSun,
+          confirmed: item.confirmed,
+        });
+        targetId = Number(result?.[0]?.insertId ?? result?.insertId);
+        helperByName.set(normalizePersonName(item.name), targetId);
+        helpersCreated++;
+      }
+      helperMap.set(item.id, targetId);
+    }
+
+    const copiedContacts = await tx
+      .select()
+      .from(contacts)
+      .where(eq(contacts.year, targetYear));
+    for (const contact of copiedContacts) {
+      const helper = await syncContactToSelfHelperWithClient(
+        tx,
+        contact,
+        undefined,
+        targetYear
+      );
+      if (!helperByName.has(normalizePersonName(contact.name))) {
+        helperByName.set(normalizePersonName(contact.name), helper.id);
+        helpersCreated++;
+      }
+    }
+
+    const shiftMap = new Map<number, number>();
+    const targetShiftByKey = new Map(
+      targetShifts.map(item => [shiftKey(item), item.id])
+    );
+    let shiftsCreated = 0;
+    for (const item of sourceShifts) {
+      let targetId = targetShiftByKey.get(shiftKey(item));
+      if (!targetId) {
+        const result: any = await tx.insert(shifts).values({
+          year: targetYear,
+          day: item.day,
+          area: item.area,
+          task: item.task,
+          startTime: item.startTime,
+          endTime: item.endTime,
+          needed: item.needed,
+          note: item.note,
+          sortOrder: item.sortOrder,
+        });
+        targetId = Number(result?.[0]?.insertId ?? result?.insertId);
+        targetShiftByKey.set(shiftKey(item), targetId);
+        shiftsCreated++;
+      }
+      shiftMap.set(item.id, targetId);
+    }
+
+    const currentAssignments = await tx
       .select({ ...getTableColumns(assignments) })
       .from(assignments)
       .innerJoin(shifts, eq(assignments.shiftId, shifts.id))
-      .where(eq(shifts.year, sourceYear)),
-    db.select().from(contacts).where(eq(contacts.year, targetYear)),
-    db.select().from(helpers).where(eq(helpers.year, targetYear)),
-    db.select().from(shifts).where(eq(shifts.year, targetYear)),
-  ]);
-
-  await ensureEventYear(targetYear);
-  const contactMap = new Map<number, number>();
-  const contactByName = new Map(
-    targetContacts.map(item => [normalizePersonName(item.name), item.id])
-  );
-  let contactsCreated = 0;
-  for (const item of sourceContacts) {
-    let targetId = contactByName.get(normalizePersonName(item.name));
-    if (!targetId) {
-      const result: any = await db.insert(contacts).values({
-        year: targetYear,
-        name: item.name,
-        phone: item.phone,
-        note: item.note,
-        sortOrder: item.sortOrder,
-      });
-      targetId = Number(result?.[0]?.insertId ?? result?.insertId);
-      contactByName.set(normalizePersonName(item.name), targetId);
-      contactsCreated++;
-    }
-    contactMap.set(item.id, targetId);
-  }
-
-  const helperMap = new Map<number, number>();
-  const helperByName = new Map(
-    targetHelpers.map(item => [normalizePersonName(item.name), item.id])
-  );
-  let helpersCreated = 0;
-  for (const item of sourceHelpers) {
-    let targetId = helperByName.get(normalizePersonName(item.name));
-    if (!targetId) {
-      const result: any = await db.insert(helpers).values({
-        year: targetYear,
-        name: item.name,
-        contactId: item.contactId
-          ? (contactMap.get(item.contactId) ?? null)
-          : null,
-        email: item.email,
-        phone: item.phone,
-        note: item.note,
-        willHelp: item.willHelp,
-        availFri: item.availFri,
-        availSat: item.availSat,
-        availSun: item.availSun,
-        confirmed: item.confirmed,
-      });
-      targetId = Number(result?.[0]?.insertId ?? result?.insertId);
-      helperByName.set(normalizePersonName(item.name), targetId);
-      helpersCreated++;
-    }
-    helperMap.set(item.id, targetId);
-  }
-
-  const copiedContacts = await db
-    .select()
-    .from(contacts)
-    .where(eq(contacts.year, targetYear));
-  for (const contact of copiedContacts) {
-    const helper = await syncContactToSelfHelperWithClient(
-      db,
-      contact,
-      undefined,
-      targetYear
+      .where(eq(shifts.year, targetYear));
+    const occupied = new Set(
+      currentAssignments.map(item => `${item.shiftId}:${item.slot}`)
     );
-    if (!helperByName.has(normalizePersonName(contact.name))) {
-      helperByName.set(normalizePersonName(contact.name), helper.id);
-      helpersCreated++;
+    const assignedHelpers = new Set(
+      currentAssignments.map(item => `${item.shiftId}:${item.helperId}`)
+    );
+    let assignmentsCreated = 0;
+    for (const item of sourceAssignments) {
+      const shiftId = shiftMap.get(item.shiftId);
+      const helperId = helperMap.get(item.helperId);
+      if (
+        !shiftId ||
+        !helperId ||
+        occupied.has(`${shiftId}:${item.slot}`) ||
+        assignedHelpers.has(`${shiftId}:${helperId}`)
+      )
+        continue;
+      await tx
+        .insert(assignments)
+        .values({ shiftId, helperId, slot: item.slot });
+      occupied.add(`${shiftId}:${item.slot}`);
+      assignedHelpers.add(`${shiftId}:${helperId}`);
+      assignmentsCreated++;
     }
-  }
 
-  const shiftMap = new Map<number, number>();
-  const targetShiftByKey = new Map(
-    targetShifts.map(item => [shiftKey(item), item.id])
-  );
-  let shiftsCreated = 0;
-  for (const item of sourceShifts) {
-    let targetId = targetShiftByKey.get(shiftKey(item));
-    if (!targetId) {
-      const result: any = await db.insert(shifts).values({
-        year: targetYear,
-        day: item.day,
-        area: item.area,
-        task: item.task,
-        startTime: item.startTime,
-        endTime: item.endTime,
-        needed: item.needed,
-        note: item.note,
-        sortOrder: item.sortOrder,
-      });
-      targetId = Number(result?.[0]?.insertId ?? result?.insertId);
-      targetShiftByKey.set(shiftKey(item), targetId);
-      shiftsCreated++;
-    }
-    shiftMap.set(item.id, targetId);
-  }
-
-  const currentAssignments = await db
-    .select({ ...getTableColumns(assignments) })
-    .from(assignments)
-    .innerJoin(shifts, eq(assignments.shiftId, shifts.id))
-    .where(eq(shifts.year, targetYear));
-  const occupied = new Set(
-    currentAssignments.map(item => `${item.shiftId}:${item.slot}`)
-  );
-  const assignedHelpers = new Set(
-    currentAssignments.map(item => `${item.shiftId}:${item.helperId}`)
-  );
-  let assignmentsCreated = 0;
-  for (const item of sourceAssignments) {
-    const shiftId = shiftMap.get(item.shiftId);
-    const helperId = helperMap.get(item.helperId);
-    if (
-      !shiftId ||
-      !helperId ||
-      occupied.has(`${shiftId}:${item.slot}`) ||
-      assignedHelpers.has(`${shiftId}:${helperId}`)
-    )
-      continue;
-    await db.insert(assignments).values({ shiftId, helperId, slot: item.slot });
-    occupied.add(`${shiftId}:${item.slot}`);
-    assignedHelpers.add(`${shiftId}:${helperId}`);
-    assignmentsCreated++;
-  }
-  return { contactsCreated, helpersCreated, shiftsCreated, assignmentsCreated };
+    return {
+      contactsCreated,
+      helpersCreated,
+      shiftsCreated,
+      assignmentsCreated,
+      areaContactsCreated,
+    };
+  });
 }

@@ -58,7 +58,7 @@ export const PERMISSION_MATRIX: readonly PermissionRow[] = [
     area: "PDF-Ausgabe",
     planningTeam: "Vollzugriff",
     administrator: "Vollzugriff",
-    note: "Beide Rollen können Einstellungen pflegen sowie Einzel-, Sammel- und Blankoausgaben erzeugen.",
+    note: "Beide Rollen können Einzel-, Sammel- sowie gefilterte Blanko- und ausgefüllte Einsatzpläne erzeugen.",
   },
   {
     area: "Excel",
@@ -75,7 +75,7 @@ export const PERMISSION_MATRIX: readonly PermissionRow[] = [
   {
     area: "Löschprotokoll",
     planningTeam: "Kein Zugriff",
-    administrator: "Nur ansehen",
-    note: "Das unveränderliche Protokoll zeigt Löschungen von Helfern und Kucheneinträgen über alle Jahre.",
+    administrator: "Ansehen und zurücksetzen",
+    note: "Das Protokoll zeigt Helfer- und Kuchenlöschungen einschließlich des ausgewählten Ansprechpartners. Zurücksetzen erfordert das Administratorpasswort.",
   },
 ];

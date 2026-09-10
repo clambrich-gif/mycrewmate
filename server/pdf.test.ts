@@ -5,11 +5,14 @@ import type {
   Contact,
   Helper,
   Shift,
+  ShiftAreaContact,
 } from "../drizzle/schema";
 import {
   renderAllHelperTaskZip,
   renderBlankPlanPdf,
   renderHelperTaskPdf,
+  renderPlanPdf,
+  selectPlanEvaluations,
 } from "./pdf";
 
 const settings: AppSettings = {
@@ -76,7 +79,7 @@ const shifts: Shift[] = [
     startTime: "17:00",
     endTime: "21:00",
     needed: 2,
-    note: null,
+    note: "Treffpunkt am Materialcontainer",
     sortOrder: 1,
     createdAt: new Date(),
   },
@@ -100,7 +103,23 @@ const assignments: Assignment[] = [
   { id: 3, shiftId: 2, helperId: 1, slot: 0, createdAt: new Date() },
 ];
 
-const data = { helpers, contacts, shifts, assignments, settings };
+const areaContacts: ShiftAreaContact[] = [
+  {
+    id: 1,
+    area: "Aufbau",
+    contactId: 1,
+    updatedAt: new Date(),
+  },
+];
+
+const data = {
+  helpers,
+  contacts,
+  shifts,
+  assignments,
+  areaContacts,
+  settings,
+};
 
 describe("PDF-Erzeugung", () => {
   it("erzeugt eine gültige persönliche Aufgabenübersicht", async () => {
@@ -114,6 +133,49 @@ describe("PDF-Erzeugung", () => {
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
     expect(pdf.length).toBeGreaterThan(2_000);
     expect(pdf.toString("latin1").match(/\/Type\s*\/Page\b/g)).toHaveLength(1);
+  });
+
+  it("erzeugt gefilterte Blanko- und ausgefüllte Einsatzpläne", async () => {
+    const blank = await renderPlanPdf(data, {
+      mode: "blank",
+      days: ["Freitag"],
+      areas: ["Aufbau"],
+      statuses: ["OK"],
+      contactIds: [1],
+    });
+    const filled = await renderPlanPdf(data, {
+      mode: "filled",
+      days: ["Freitag"],
+      areas: ["Aufbau"],
+      statuses: ["OK"],
+      contactIds: [1],
+    });
+    expect(blank.subarray(0, 5).toString()).toBe("%PDF-");
+    expect(filled.subarray(0, 5).toString()).toBe("%PDF-");
+    expect(blank.length).toBeGreaterThan(2_000);
+    expect(filled.length).toBeGreaterThan(2_000);
+  });
+
+  it("filtert zugeordnete und unzugeordnete Bereiche ausdrücklich", () => {
+    const assignedOnly = selectPlanEvaluations(data, {
+      mode: "filled",
+      contactIds: [1],
+      includeUnassignedContact: false,
+    });
+    const unassignedOnly = selectPlanEvaluations(data, {
+      mode: "filled",
+      contactIds: [],
+      includeUnassignedContact: true,
+    });
+    const all = selectPlanEvaluations(data, {
+      mode: "filled",
+      contactIds: [1],
+      includeUnassignedContact: true,
+    });
+
+    expect(assignedOnly.map(item => item.shift.area)).toEqual(["Aufbau"]);
+    expect(unassignedOnly.map(item => item.shift.area)).toEqual(["Start"]);
+    expect(all.map(item => item.shift.area)).toEqual(["Aufbau", "Start"]);
   });
 
   it("liefert für unbekannte Helfer einen klaren Fehler", () => {

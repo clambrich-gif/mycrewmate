@@ -27,6 +27,11 @@ import { ResetAreaButton } from "@/components/ResetAreaButton";
 
 const DAYS = ["Freitag", "Samstag", "Sonntag"] as const;
 
+const formatTimeLabel = (shift: { startTime: string; endTime: string }) =>
+  shift.startTime && shift.endTime
+    ? `${shift.startTime}–${shift.endTime}`
+    : "ganztägig";
+
 type AssignmentT = {
   id: number;
   shiftId: number;
@@ -41,6 +46,7 @@ export default function Plan() {
   const { data: evals = [], isLoading } = trpc.plan.evaluate.useQuery();
   const { data: helpers = [] } = trpc.helpers.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
+  const { data: areaContactRows = [] } = trpc.plan.areaContacts.useQuery();
   const [day, setDay] = useState<string>("alle");
   const [area, setArea] = useState<string>("alle");
   const [status, setStatus] = useState<string>("alle");
@@ -81,6 +87,13 @@ export default function Plan() {
       toast.success("Schicht gelöscht");
     },
     onError: e => toast.error(e.message),
+  });
+  const setAreaContact = trpc.plan.setAreaContact.useMutation({
+    onSuccess: async () => {
+      await utils.plan.areaContacts.invalidate();
+      toast.success("Bereichsansprechpartner gespeichert");
+    },
+    onError: error => toast.error(error.message),
   });
 
   const [dlgOpen, setDlgOpen] = useState(false);
@@ -155,6 +168,10 @@ export default function Plan() {
   );
   const contactName = (id: number | null) =>
     contacts.find(c => c.id === id)?.name ?? "";
+  const areaContactMap = useMemo(
+    () => new Map(areaContactRows.map(item => [item.area, item.contactId])),
+    [areaContactRows]
+  );
   const label = (h: any) =>
     `${h.name}${h.contactId ? ` (${contactName(h.contactId)})` : ""}`;
 
@@ -169,9 +186,9 @@ export default function Plan() {
             e.shift.task.toLowerCase().includes(q.toLowerCase()) ||
             e.shift.area.toLowerCase().includes(q.toLowerCase())) &&
           (apFilter === "alle" ||
-            e.validHelpers.some(h => String(h.contactId ?? "") === apFilter))
+            String(areaContactMap.get(e.shift.area) ?? "") === apFilter)
       ),
-    [evals, day, area, status, q, apFilter]
+    [evals, day, area, status, q, apFilter, areaContactMap]
   );
 
   const activeHelpers = (d: string) =>
@@ -192,6 +209,96 @@ export default function Plan() {
       (e.assigned as AssignmentT[]).map(a => [a.slot, a])
     );
     return Array.from({ length: n }, (_, i) => ({ slot: i, a: bySlot.get(i) }));
+  };
+
+  const renderShiftSlots = (evalE: any) => {
+    const shift = evalE.shift;
+    const assignedHelperIds = new Set<number>(
+      (evalE.assigned as AssignmentT[]).map(assignment => assignment.helperId)
+    );
+    const actives = activeHelpers(shift.day).filter(
+      helper => !assignedHelperIds.has(helper.id)
+    );
+    return (
+      <div className="flex flex-wrap gap-1.5">
+        {slotsFor(evalE).map(({ slot, a }) => {
+          if (!a) {
+            if (!canEditPlan) {
+              return (
+                <span
+                  key={slot}
+                  className="slot slot-offen inline-flex h-9 items-center"
+                >
+                  Platz offen
+                </span>
+              );
+            }
+            return (
+              <Select
+                key={slot}
+                disabled={assign.isPending}
+                onValueChange={value =>
+                  assign.mutate({
+                    shiftId: shift.id,
+                    helperId: Number(value),
+                    slot,
+                  })
+                }
+              >
+                <SelectTrigger className="slot slot-offen h-9 w-full min-w-[180px] sm:w-[220px]">
+                  <SelectValue placeholder="Helfer wählen …" />
+                </SelectTrigger>
+                <SelectContent>
+                  {actives.map(helper => (
+                    <SelectItem key={helper.id} value={String(helper.id)}>
+                      {label(helper)}
+                    </SelectItem>
+                  ))}
+                  {actives.length === 0 && (
+                    <SelectItem value="x" disabled>
+                      Keine verfügbaren Helfer
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            );
+          }
+          const helper =
+            evalE.validHelpers.find((item: any) => item.id === a.helperId) ??
+            evalE.ausfallHelpers.find((item: any) => item.id === a.helperId);
+          const isAusfall = evalE.ausfallHelpers.some(
+            (item: any) => item.id === a.helperId
+          );
+          const isDoppel =
+            !isAusfall && (evalE.doppelIds as Set<number>).has(a.helperId);
+          const className = isAusfall
+            ? "slot-ausfall"
+            : isDoppel
+              ? "slot-doppel"
+              : "slot-ok";
+          return (
+            <span
+              key={slot}
+              className={`slot ${className} inline-flex items-center justify-between gap-1`}
+            >
+              <span className="truncate">{helper ? label(helper) : "?"}</span>
+              {canEditPlan && (
+                <button
+                  className="opacity-60 hover:opacity-100"
+                  title="Entfernen"
+                  onClick={() => unassign.mutate({ id: a.id })}
+                >
+                  ×
+                </button>
+              )}
+            </span>
+          );
+        })}
+        {shift.needed === 0 && (
+          <span className="slot slot-gesperrt">Kein Bedarf</span>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -215,15 +322,86 @@ export default function Plan() {
         </div>
       )}
 
-      <div className="flex gap-3 flex-wrap">
+      {areas.length > 0 && (
+        <Card className="shadow-sm">
+          <CardContent className="p-4">
+            <div className="mb-3">
+              <h2 className="font-semibold">Ansprechpartner je Bereich</h2>
+              <p className="text-sm text-muted-foreground">
+                Die Zuordnung gilt für alle Schichten des Bereichs und steht
+                außerdem als PDF-Filter zur Verfügung.
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {areas.map(areaName => {
+                const selected = areaContactMap.get(areaName) ?? null;
+                return (
+                  <div
+                    key={areaName}
+                    className="rounded-lg border bg-muted/20 p-3"
+                  >
+                    <Label className="mb-1.5 block truncate" title={areaName}>
+                      {areaName}
+                    </Label>
+                    {canEditPlan ? (
+                      <Select
+                        value={selected ? String(selected) : "none"}
+                        onValueChange={value =>
+                          setAreaContact.mutate({
+                            area: areaName,
+                            contactId: value === "none" ? null : Number(value),
+                          })
+                        }
+                      >
+                        <SelectTrigger
+                          className={
+                            selected
+                              ? "w-full bg-white dark:bg-slate-950"
+                              : "w-full border-amber-400 bg-amber-100 text-amber-950 dark:bg-amber-900 dark:text-amber-50"
+                          }
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">
+                            Kein Ansprechpartner
+                          </SelectItem>
+                          {contacts.map(contact => (
+                            <SelectItem
+                              key={contact.id}
+                              value={String(contact.id)}
+                            >
+                              {contact.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <div
+                        className={`rounded-md border px-3 py-2 text-sm ${selected ? "bg-background" : "border-amber-400 bg-amber-100 text-amber-950"}`}
+                      >
+                        {selected
+                          ? contactName(selected)
+                          : "Kein Ansprechpartner"}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:flex lg:flex-wrap">
         <Input
           placeholder="Suchen (Aufgabe/Bereich) …"
           value={q}
           onChange={e => setQ(e.target.value)}
-          className="w-60"
+          className="w-full lg:w-60"
         />
         <Select value={day} onValueChange={setDay}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-full lg:w-40">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -236,7 +414,7 @@ export default function Plan() {
           </SelectContent>
         </Select>
         <Select value={area} onValueChange={setArea}>
-          <SelectTrigger className="w-52">
+          <SelectTrigger className="w-full lg:w-52">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -249,7 +427,7 @@ export default function Plan() {
           </SelectContent>
         </Select>
         <Select value={status} onValueChange={setStatus}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-full lg:w-40">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -260,7 +438,7 @@ export default function Plan() {
           </SelectContent>
         </Select>
         <Select value={apFilter} onValueChange={setApFilter}>
-          <SelectTrigger className="w-52">
+          <SelectTrigger className="w-full lg:w-52">
             <SelectValue placeholder="Ansprechpartner" />
           </SelectTrigger>
           <SelectContent>
@@ -274,14 +452,98 @@ export default function Plan() {
         </Select>
       </div>
 
-      <Card className="shadow-sm">
+      <div className="space-y-3 md:hidden">
+        {filtered.map(e => {
+          const shift = e.shift;
+          return (
+            <Card key={shift.id} className="shadow-sm">
+              <CardContent className="space-y-4 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="mb-1 flex flex-wrap items-center gap-2">
+                      <span className="font-semibold">{shift.day}</span>
+                      <StatusBadge status={e.status} />
+                    </div>
+                    <h2 className="break-words text-lg font-semibold">
+                      {shift.task}
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      {shift.area} · {formatTimeLabel(shift)}
+                    </p>
+                  </div>
+                  {canEditPlan && (
+                    <div className="flex shrink-0 gap-1">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        title="Schicht bearbeiten"
+                        onClick={() => openEdit(shift)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        title="Schicht löschen"
+                        onClick={() => {
+                          if (confirm("Schicht wirklich löschen?"))
+                            deleteShift.mutate({ id: shift.id });
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                <dl className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <dt className="text-xs text-muted-foreground">Bedarf</dt>
+                    <dd className="font-semibold">
+                      {e.besetzt} von {shift.needed} besetzt
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-muted-foreground">
+                      Ansprechpartner
+                    </dt>
+                    <dd className="font-medium">
+                      {contactName(areaContactMap.get(shift.area) ?? null) ||
+                        "nicht zugeordnet"}
+                    </dd>
+                  </div>
+                </dl>
+                {shift.note?.trim() && (
+                  <div className="rounded-md border bg-muted/30 p-3 text-sm">
+                    <span className="font-medium">Bemerkung:</span> {shift.note}
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Eingeteilte Helfer
+                  </p>
+                  {renderShiftSlots(e)}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+        {!isLoading && filtered.length === 0 && (
+          <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+            Keine Schichten gefunden.
+          </div>
+        )}
+      </div>
+
+      <Card className="hidden shadow-sm md:block">
         <CardContent className="p-0 overflow-x-auto">
-          <table className="w-full text-sm min-w-[1200px]">
+          <table className="w-full text-sm min-w-[1500px]">
             <thead className="bg-muted/60 sticky top-0">
               <tr className="text-left">
                 <th className="p-3">Tag</th>
                 <th className="p-3">Bereich</th>
+                <th className="p-3">Ansprechpartner</th>
                 <th className="p-3">Aufgabe</th>
+                <th className="p-3">Bemerkung</th>
                 <th className="p-3">Zeit</th>
                 <th className="p-3">Bedarf</th>
                 <th className="p-3">Besetzt</th>
@@ -294,7 +556,7 @@ export default function Plan() {
             <tbody>
               {isLoading && (
                 <tr>
-                  <td className="p-4 text-muted-foreground" colSpan={10}>
+                  <td className="p-4 text-muted-foreground" colSpan={12}>
                     Lade …
                   </td>
                 </tr>
@@ -302,12 +564,6 @@ export default function Plan() {
               {filtered.map(e => {
                 const s = e.shift;
                 const evalE = e as typeof e & { assigned: AssignmentT[] };
-                const assignedHelperIds = new Set(
-                  evalE.assigned.map(assignment => assignment.helperId)
-                );
-                const actives = activeHelpers(s.day).filter(
-                  helper => !assignedHelperIds.has(helper.id)
-                );
                 return (
                   <tr
                     key={s.id}
@@ -344,7 +600,15 @@ export default function Plan() {
                         )}
                       </div>
                     </td>
+                    <td className="p-3">
+                      {contactName(areaContactMap.get(s.area) ?? null) || (
+                        <span className="text-amber-700">nicht zugeordnet</span>
+                      )}
+                    </td>
                     <td className="p-3">{s.task}</td>
+                    <td className="max-w-64 whitespace-pre-wrap p-3 text-muted-foreground">
+                      {s.note?.trim() || "–"}
+                    </td>
                     <td className="p-3 whitespace-nowrap">
                       {s.startTime && s.endTime
                         ? `${s.startTime}–${s.endTime}`
@@ -373,101 +637,13 @@ export default function Plan() {
                         ""
                       )}
                     </td>
-                    <td className="p-3">
-                      <div className="flex flex-wrap gap-1.5">
-                        {slotsFor(evalE).map(({ slot, a }) => {
-                          if (!a) {
-                            if (!canEditPlan) {
-                              return (
-                                <span
-                                  key={slot}
-                                  className="slot slot-offen inline-flex h-9 items-center"
-                                >
-                                  Platz offen
-                                </span>
-                              );
-                            }
-                            return (
-                              <Select
-                                key={slot}
-                                disabled={assign.isPending}
-                                onValueChange={v =>
-                                  assign.mutate({
-                                    shiftId: s.id,
-                                    helperId: Number(v),
-                                    slot,
-                                  })
-                                }
-                              >
-                                <SelectTrigger className="slot slot-offen h-9 w-[180px]">
-                                  <SelectValue placeholder="Helfer wählen …" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {actives.map(h => (
-                                    <SelectItem key={h.id} value={String(h.id)}>
-                                      {label(h)}
-                                    </SelectItem>
-                                  ))}
-                                  {actives.length === 0 && (
-                                    <SelectItem value="x" disabled>
-                                      Keine verfügbaren Helfer
-                                    </SelectItem>
-                                  )}
-                                </SelectContent>
-                              </Select>
-                            );
-                          }
-                          const h =
-                            evalE.validHelpers.find(
-                              (x: any) => x.id === a.helperId
-                            ) ??
-                            evalE.ausfallHelpers.find(
-                              (x: any) => x.id === a.helperId
-                            );
-                          const isAusfall = evalE.ausfallHelpers.some(
-                            (x: any) => x.id === a.helperId
-                          );
-                          const isDoppel =
-                            !isAusfall &&
-                            (evalE.doppelIds as Set<number>).has(a.helperId);
-                          const cls = isAusfall
-                            ? "slot-ausfall"
-                            : isDoppel
-                              ? "slot-doppel"
-                              : "slot-ok";
-                          return (
-                            <span
-                              key={slot}
-                              className={`slot ${cls} inline-flex items-center justify-between gap-1`}
-                            >
-                              <span className="truncate">
-                                {h ? label(h) : "?"}
-                              </span>
-                              {canEditPlan && (
-                                <button
-                                  className="opacity-60 hover:opacity-100"
-                                  title="Entfernen"
-                                  onClick={() => unassign.mutate({ id: a.id })}
-                                >
-                                  ×
-                                </button>
-                              )}
-                            </span>
-                          );
-                        })}
-                        {e.shift.needed === 0 && (
-                          <span className="slot slot-gesperrt">
-                            Kein Bedarf
-                          </span>
-                        )}
-                      </div>
-                    </td>
+                    <td className="p-3">{renderShiftSlots(evalE)}</td>
                   </tr>
                 );
               })}
               {!isLoading && filtered.length === 0 && (
                 <tr>
-                  <td className="p-4 text-muted-foreground" colSpan={10}>
+                  <td className="p-4 text-muted-foreground" colSpan={12}>
                     Keine Schichten gefunden.
                   </td>
                 </tr>
@@ -483,14 +659,14 @@ export default function Plan() {
       </p>
 
       <Dialog open={dlgOpen} onOpenChange={setDlgOpen}>
-        <DialogContent className="!bg-white !text-slate-950 opacity-100 shadow-2xl dark:!bg-slate-950 dark:!text-slate-50 [&_[data-slot=input]]:!bg-white [&_[data-slot=input]]:dark:!bg-slate-900 [&_[data-slot=select-trigger]]:!bg-white [&_[data-slot=select-trigger]]:dark:!bg-slate-900">
+        <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto !bg-white !text-slate-950 opacity-100 shadow-2xl dark:!bg-slate-950 dark:!text-slate-50 [&_[data-slot=input]]:!bg-white [&_[data-slot=input]]:dark:!bg-slate-900 [&_[data-slot=select-trigger]]:!bg-white [&_[data-slot=select-trigger]]:dark:!bg-slate-900">
           <DialogHeader>
             <DialogTitle>
               {editShift ? "Schicht bearbeiten" : "Neue Schicht"}
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-3 py-2">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <Label>Tag</Label>
                 <Select
@@ -546,7 +722,7 @@ export default function Plan() {
                 placeholder="z. B. Grill & Pommes Tag"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <Label>Beginn</Label>
                 <Input
@@ -574,6 +750,7 @@ export default function Plan() {
               <Input
                 value={form.note}
                 onChange={e => setForm({ ...form, note: e.target.value })}
+                placeholder="z. B. Treffpunkt, Kleidung oder Besonderheiten"
               />
             </div>
           </div>

@@ -33,6 +33,7 @@ import {
   createAllHelperTaskZip,
   createBlankPlanPdf,
   createHelperTaskPdf,
+  createPlanPdf,
   DEFAULT_PDF_SETTINGS,
 } from "./pdf";
 import {
@@ -78,6 +79,17 @@ const pdfSettingsInput = z.object({
   footerText: z.string().trim().max(300),
   extraColumns: z.array(z.string().trim().min(1).max(50)).max(5),
   blankRowsPerShift: z.number().int().min(0).max(20),
+});
+const planPdfInput = z.object({
+  mode: z.enum(["blank", "filled"]),
+  days: z.array(dayEnum).max(3).optional(),
+  areas: z.array(z.string().trim().min(1).max(200)).max(200).optional(),
+  statuses: z
+    .array(z.enum(["OFFEN", "KNAPP", "OK"]))
+    .max(3)
+    .optional(),
+  contactIds: z.array(z.number().int().positive()).max(500).optional(),
+  includeUnassignedContact: z.boolean().optional(),
 });
 const clockTime = z
   .string()
@@ -166,6 +178,24 @@ function auditActor(user: {
       user.name ?? (user.role === "admin" ? "Administrator" : "Planungsteam"),
     role: user.role,
     loginMethod: user.loginMethod,
+  };
+}
+
+async function auditActorWithContact(
+  user: Parameters<typeof auditActor>[0],
+  responsibleContactId: number
+) {
+  const contact = await db.getContact(responsibleContactId);
+  if (!contact) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Der ausgewählte Ansprechpartner wurde nicht gefunden",
+    });
+  }
+  return {
+    ...auditActor(user),
+    responsibleContactId: contact.id,
+    responsibleContactName: contact.name,
   };
 }
 
@@ -306,11 +336,23 @@ export const appRouter = router({
         z.object({
           area: resetAreaInput,
           adminPassword: z.string().min(1).max(200),
+          responsibleContactId: z.number().int().positive().optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
         await requireAdminPassword(input.adminPassword);
-        await db.resetArea(input.area, auditActor(ctx.user));
+        const deletesHelpers = input.area === "helpers" || input.area === "all";
+        if (deletesHelpers && !input.responsibleContactId) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Bitte wählen Sie den verantwortlichen Ansprechpartner für die Helferlöschung aus",
+          });
+        }
+        const actor = input.responsibleContactId
+          ? await auditActorWithContact(ctx.user, input.responsibleContactId)
+          : auditActor(ctx.user);
+        await db.resetArea(input.area, actor);
         return { success: true } as const;
       }),
   }),
@@ -388,11 +430,19 @@ export const appRouter = router({
         return db.updateHelper(id, rest);
       }),
     remove: protectedProcedure
-      .input(z.object({ id: z.number() }))
-      .mutation(({ ctx, input }) =>
+      .input(
+        z.object({
+          id: z.number(),
+          responsibleContactId: z.number().int().positive(),
+        })
+      )
+      .mutation(async ({ ctx, input }) =>
         db.deleteHelper(input.id, {
           allowAssigned: ctx.user.role === "admin",
-          actor: auditActor(ctx.user),
+          actor: await auditActorWithContact(
+            ctx.user,
+            input.responsibleContactId
+          ),
         })
       ),
   }),
@@ -420,6 +470,17 @@ export const appRouter = router({
       ]);
       return evaluateShifts(shifts, assignments, helpers);
     }),
+    areaContacts: protectedProcedure.query(() => db.listShiftAreaContacts()),
+    setAreaContact: adminProcedure
+      .input(
+        z.object({
+          area: z.string().trim().min(1).max(200),
+          contactId: z.number().int().positive().nullable(),
+        })
+      )
+      .mutation(({ input }) =>
+        db.setShiftAreaContact(input.area, input.contactId)
+      ),
     available: protectedProcedure
       .input(z.object({ day: dayEnum }))
       .query(async ({ input }) => {
@@ -541,6 +602,17 @@ export const appRouter = router({
       const pdf = await createBlankPlanPdf();
       return {
         filename: "Einsatzplan_Blanko.pdf",
+        mimeType: "application/pdf",
+        base64: pdf.toString("base64"),
+      };
+    }),
+    plan: protectedProcedure.input(planPdfInput).mutation(async ({ input }) => {
+      const pdf = await createPlanPdf(input);
+      return {
+        filename:
+          input.mode === "blank"
+            ? "Einsatzplan_Blanko.pdf"
+            : "Einsatzplan_Ausgefuellt.pdf",
         mimeType: "application/pdf",
         base64: pdf.toString("base64"),
       };
@@ -780,6 +852,18 @@ export const appRouter = router({
           .optional()
       )
       .query(({ input }) => db.listDeletionAuditLogs(input)),
+    clear: adminProcedure
+      .input(
+        z.object({
+          eventYear: eventYearInput.optional(),
+          adminPassword: z.string().min(1).max(200),
+        })
+      )
+      .mutation(async ({ input }) => {
+        await requireAdminPassword(input.adminPassword);
+        await db.clearDeletionAuditLogs(input.eventYear);
+        return { success: true } as const;
+      }),
   }),
 
   dashboard: router({

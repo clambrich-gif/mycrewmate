@@ -50,6 +50,13 @@
       "when": 1789068952073,
       "tag": "0006_secret_argent",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1789077699975,
+      "tag": "0007_round_living_mummy",
+      "breakpoints": true
     }
   ]
 }

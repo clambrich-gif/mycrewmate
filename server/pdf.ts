@@ -7,9 +7,10 @@ import type {
   Contact,
   Helper,
   Shift,
+  ShiftAreaContact,
 } from "../drizzle/schema";
 import * as db from "./db";
-import { DAYS, toMinutes, type Day } from "./logic";
+import { DAYS, evaluateShifts, toMinutes, type Day } from "./logic";
 import { currentEventYear } from "./year-context";
 
 const require = createRequire(import.meta.url);
@@ -35,6 +36,7 @@ type PlanningData = {
   contacts: Contact[];
   shifts: Shift[];
   assignments: Assignment[];
+  areaContacts?: ShiftAreaContact[];
   settings: AppSettings;
 };
 
@@ -325,8 +327,8 @@ export function renderHelperTaskPdf(data: PlanningData, helperId: number) {
               number: String(number++),
               task:
                 shift.area && shift.area !== "Allgemein"
-                  ? `${shift.task}\n${shift.area}`
-                  : shift.task,
+                  ? `${shift.task}\n${shift.area}${shift.note?.trim() ? `\nBemerkung: ${shift.note.trim()}` : ""}`
+                  : `${shift.task}${shift.note?.trim() ? `\nBemerkung: ${shift.note.trim()}` : ""}`,
               time: formatTime(shift),
               team: team || "–",
             },
@@ -388,22 +390,86 @@ export function renderHelperTaskPdf(data: PlanningData, helperId: number) {
   });
 }
 
-export function renderBlankPlanPdf(data: PlanningData) {
-  const extraColumns = parseExtraColumns(data.settings);
+export type PlanPdfOptions = {
+  mode: "blank" | "filled";
+  days?: Day[];
+  areas?: string[];
+  statuses?: Array<"OFFEN" | "KNAPP" | "OK">;
+  contactIds?: number[];
+  includeUnassignedContact?: boolean;
+};
+
+export function selectPlanEvaluations(
+  data: PlanningData,
+  options: PlanPdfOptions
+) {
+  const selectedDays = new Set(options.days ?? []);
+  const selectedAreas = new Set(options.areas ?? []);
+  const selectedStatuses = new Set(options.statuses ?? []);
+  const selectedContacts = new Set(options.contactIds ?? []);
+  const hasContactFilter =
+    options.contactIds !== undefined ||
+    options.includeUnassignedContact !== undefined;
+  const areaContactByArea = new Map(
+    (data.areaContacts ?? []).map(item => [item.area, item.contactId])
+  );
+  return evaluateShifts(data.shifts, data.assignments, data.helpers)
+    .filter(item => {
+      const contactId = areaContactByArea.get(item.shift.area) ?? null;
+      const contactMatches =
+        contactId === null
+          ? options.includeUnassignedContact === true
+          : selectedContacts.has(contactId);
+      return (
+        (!selectedDays.size || selectedDays.has(item.shift.day as Day)) &&
+        (!selectedAreas.size || selectedAreas.has(item.shift.area)) &&
+        (!selectedStatuses.size || selectedStatuses.has(item.status)) &&
+        (!hasContactFilter || contactMatches)
+      );
+    })
+    .sort((left, right) => sortShifts(left.shift, right.shift));
+}
+
+export function renderPlanPdf(
+  data: PlanningData,
+  options: PlanPdfOptions = { mode: "blank" }
+) {
+  const extraColumns =
+    options.mode === "blank" ? parseExtraColumns(data.settings) : [];
+  const contactById = new Map(
+    data.contacts.map(contact => [contact.id, contact])
+  );
+  const areaContactByArea = new Map(
+    (data.areaContacts ?? []).map(item => [item.area, item.contactId])
+  );
+  const helperById = new Map(data.helpers.map(helper => [helper.id, helper]));
+  const assignmentsByShift = new Map<number, Assignment[]>();
+  for (const assignment of data.assignments) {
+    if (!assignmentsByShift.has(assignment.shiftId))
+      assignmentsByShift.set(assignment.shiftId, []);
+    assignmentsByShift.get(assignment.shiftId)!.push(assignment);
+  }
+  const evaluations = selectPlanEvaluations(data, options);
+
   return collectPdf(doc => {
     const landscapeWidth = doc.page.width - margin * 2;
     drawDocumentHeader(
       doc,
       data.settings,
-      data.settings.blankPlanTitle,
-      `Stand: ${formatDate()} · frei ausfüllbare Planung`
+      options.mode === "blank"
+        ? data.settings.blankPlanTitle
+        : `${data.settings.eventName} – ausgefüllter Einsatzplan`,
+      `Stand: ${formatDate()} · ${options.mode === "blank" ? "frei ausfüllbare Planung" : "aktuelle Helfereinteilung"}`
     );
     const fixedColumns: PdfColumn[] = [
-      { key: "day", label: "Tag", width: 58 },
-      { key: "area", label: "Bereich", width: 90 },
-      { key: "task", label: "Aufgabe", width: 150 },
-      { key: "time", label: "Zeit", width: 74 },
-      { key: "helper", label: "Helfer / Name", width: 120 },
+      { key: "day", label: "Tag", width: 48 },
+      { key: "area", label: "Bereich", width: 76 },
+      { key: "task", label: "Aufgabe", width: 104 },
+      { key: "time", label: "Zeit", width: 62 },
+      { key: "status", label: "Status", width: 48 },
+      { key: "contact", label: data.settings.contactLabel, width: 82 },
+      { key: "note", label: "Bemerkung", width: 102 },
+      { key: "helper", label: "Helfer / Name", width: 104 },
     ];
     const fixedWidth = fixedColumns.reduce(
       (sum, column) => sum + column.width,
@@ -422,8 +488,7 @@ export function renderBlankPlanPdf(data: PlanningData) {
       columns[columns.length - 1].width += availableExtraWidth;
 
     drawTableHeader(doc, columns, margin);
-    const sortedShifts = [...data.shifts].sort(sortShifts);
-    if (sortedShifts.length === 0) {
+    if (evaluations.length === 0) {
       for (
         let index = 0;
         index < Math.max(8, data.settings.blankRowsPerShift);
@@ -432,13 +497,28 @@ export function renderBlankPlanPdf(data: PlanningData) {
         drawTableRow(doc, columns, {}, margin, { minimumHeight: 31 });
       }
     } else {
-      for (const shift of sortedShifts) {
+      for (const evaluation of evaluations) {
+        const shift = evaluation.shift;
+        const areaContactId = areaContactByArea.get(shift.area) ?? null;
+        const areaContact = areaContactId
+          ? contactById.get(areaContactId)
+          : undefined;
+        const shiftAssignments = (assignmentsByShift.get(shift.id) ?? []).sort(
+          (left, right) => left.slot - right.slot
+        );
+        const assignmentBySlot = new Map(
+          shiftAssignments.map(assignment => [assignment.slot, assignment])
+        );
         const rowCount = Math.max(
           1,
           shift.needed,
-          data.settings.blankRowsPerShift
+          options.mode === "blank" ? data.settings.blankRowsPerShift : 0
         );
         for (let row = 0; row < rowCount; row++) {
+          const assignment = assignmentBySlot.get(row);
+          const helper = assignment
+            ? helperById.get(assignment.helperId)
+            : undefined;
           const extraValues = Object.fromEntries(
             extraColumns.map((_, index) => [`extra-${index}`, ""])
           );
@@ -450,7 +530,14 @@ export function renderBlankPlanPdf(data: PlanningData) {
               area: row === 0 ? shift.area : "",
               task: row === 0 ? shift.task : "",
               time: row === 0 ? formatTime(shift) : "",
-              helper: "",
+              status: row === 0 ? evaluation.status : "",
+              contact:
+                row === 0 ? (areaContact?.name ?? "nicht zugeordnet") : "",
+              note: row === 0 ? (shift.note?.trim() ?? "") : "",
+              helper:
+                options.mode === "filled"
+                  ? (helper?.name ?? (row < shift.needed ? "offen" : ""))
+                  : "",
               ...extraValues,
             },
             margin,
@@ -470,19 +557,26 @@ export function renderBlankPlanPdf(data: PlanningData) {
   }, "landscape");
 }
 
+export function renderBlankPlanPdf(data: PlanningData) {
+  return renderPlanPdf(data, { mode: "blank" });
+}
+
 async function loadPlanningData(): Promise<PlanningData> {
-  const [helpers, contacts, shifts, assignments, settings] = await Promise.all([
-    db.listHelpers(),
-    db.listContacts(),
-    db.listShifts(),
-    db.listAssignments(),
-    db.getAppSettings(),
-  ]);
+  const [helpers, contacts, shifts, assignments, areaContacts, settings] =
+    await Promise.all([
+      db.listHelpers(),
+      db.listContacts(),
+      db.listShifts(),
+      db.listAssignments(),
+      db.listShiftAreaContacts(),
+      db.getAppSettings(),
+    ]);
   return {
     helpers,
     contacts,
     shifts,
     assignments,
+    areaContacts,
     settings: {
       ...(settings ?? DEFAULT_PDF_SETTINGS),
       eventYear: String(currentEventYear()),
@@ -496,6 +590,10 @@ export async function createHelperTaskPdf(helperId: number) {
 
 export async function createBlankPlanPdf() {
   return renderBlankPlanPdf(await loadPlanningData());
+}
+
+export async function createPlanPdf(options: PlanPdfOptions) {
+  return renderPlanPdf(await loadPlanningData(), options);
 }
 
 export function renderAllHelperTaskZip(data: PlanningData) {

@@ -104,6 +104,26 @@ export const shifts = mysqlTable("shifts", {
 export type Shift = typeof shifts.$inferSelect;
 export type InsertShift = typeof shifts.$inferInsert;
 
+export const shiftAreaContacts = mysqlTable(
+  "shift_area_contacts",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    year: int("year").default(2026).notNull(),
+    area: varchar("area", { length: 200 }).notNull(),
+    contactId: int("contactId").references(() => contacts.id, {
+      onDelete: "set null",
+    }),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    uniqueIndex("shift_area_contacts_year_area_unique").on(
+      table.year,
+      table.area
+    ),
+  ]
+);
+export type ShiftAreaContact = typeof shiftAreaContacts.$inferSelect;
+
 export const assignments = mysqlTable(
   "assignments",
   {
@@ -172,6 +192,8 @@ export const deletionAuditLogs = mysqlTable("deletion_audit_logs", {
   actorName: varchar("actorName", { length: 200 }).notNull(),
   actorRole: mysqlEnum("actorRole", ["user", "admin"]).notNull(),
   actorLoginMethod: varchar("actorLoginMethod", { length: 64 }),
+  responsibleContactId: int("responsibleContactId"),
+  responsibleContactName: varchar("responsibleContactName", { length: 200 }),
   details: text("details"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });

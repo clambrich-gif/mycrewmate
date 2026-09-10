@@ -14,6 +14,9 @@ const dbMocks = vi.hoisted(() => ({
   deleteCake: vi.fn(),
   createPrep: vi.fn(),
   listDeletionAuditLogs: vi.fn(),
+  getContact: vi.fn(),
+  listShiftAreaContacts: vi.fn(),
+  setShiftAreaContact: vi.fn(),
 }));
 
 vi.mock("./db", () => dbMocks);
@@ -75,6 +78,7 @@ describe("Planungs-API", () => {
     dbMocks.listHelpers.mockResolvedValue([helper]);
     dbMocks.listAssignments.mockResolvedValue([]);
     dbMocks.assignHelper.mockResolvedValue({ insertId: 1 });
+    dbMocks.getContact.mockResolvedValue({ id: 5, name: "Chris Leitung" });
   });
 
   it("weist ungültige oder unvollständige Schichtzeiten zurück", async () => {
@@ -180,9 +184,9 @@ describe("Planungs-API", () => {
     dbMocks.deleteCake.mockResolvedValue({ affectedRows: 1 });
     const caller = appRouter.createCaller(planningTeamCtx);
 
-    await expect(caller.helpers.remove({ id: 20 })).resolves.toEqual({
-      affectedRows: 1,
-    });
+    await expect(
+      caller.helpers.remove({ id: 20, responsibleContactId: 5 })
+    ).resolves.toEqual({ affectedRows: 1 });
     await expect(caller.cakes.remove({ id: 30 })).resolves.toEqual({
       affectedRows: 1,
     });
@@ -193,6 +197,8 @@ describe("Planungs-API", () => {
         name: "Organisation",
         role: "user",
         loginMethod: "manus",
+        responsibleContactId: 5,
+        responsibleContactName: "Chris Leitung",
       },
     });
     expect(dbMocks.deleteCake).toHaveBeenCalledWith(30, {
@@ -207,7 +213,7 @@ describe("Planungs-API", () => {
     dbMocks.deleteHelper.mockResolvedValue({ affectedRows: 1 });
     const caller = appRouter.createCaller(ctx);
 
-    await caller.helpers.remove({ id: 20 });
+    await caller.helpers.remove({ id: 20, responsibleContactId: 5 });
 
     expect(dbMocks.deleteHelper).toHaveBeenCalledWith(20, {
       allowAssigned: true,
@@ -216,8 +222,40 @@ describe("Planungs-API", () => {
         name: "Organisation",
         role: "admin",
         loginMethod: "manus",
+        responsibleContactId: 5,
+        responsibleContactName: "Chris Leitung",
       },
     });
+  });
+
+  it("verlangt bei jeder Helferlöschung einen gültigen Ansprechpartner", async () => {
+    const caller = appRouter.createCaller(ctx);
+    dbMocks.getContact.mockResolvedValueOnce(undefined);
+    await expect(
+      caller.helpers.remove({
+        id: 20,
+        responsibleContactId: 999,
+      })
+    ).rejects.toThrow("nicht gefunden");
+    expect(dbMocks.deleteHelper).not.toHaveBeenCalled();
+  });
+
+  it("lässt Bereichsansprechpartner nur durch Administratoren ändern", async () => {
+    dbMocks.setShiftAreaContact.mockResolvedValue({ affectedRows: 1 });
+    await expect(
+      appRouter.createCaller(ctx).plan.setAreaContact({
+        area: "Start",
+        contactId: 5,
+      })
+    ).resolves.toEqual({ affectedRows: 1 });
+    expect(dbMocks.setShiftAreaContact).toHaveBeenCalledWith("Start", 5);
+
+    await expect(
+      appRouter.createCaller(planningTeamCtx).plan.setAreaContact({
+        area: "Start",
+        contactId: 5,
+      })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("zeigt das Löschprotokoll ausschließlich Administratoren", async () => {

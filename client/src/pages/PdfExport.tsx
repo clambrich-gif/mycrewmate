@@ -1,13 +1,21 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { downloadBase64File } from "@/lib/download";
 import { trpc } from "@/lib/trpc";
 import {
   Download,
   FileArchive,
-  FileText,
+  ListFilter,
   Plus,
   Save,
   Trash2,
@@ -43,8 +51,27 @@ export default function PdfExport() {
   const allHelpers = trpc.pdf.allHelpers.useQuery(undefined, {
     enabled: false,
   });
-  const blankPlan = trpc.pdf.blankPlan.useQuery(undefined, { enabled: false });
+  const { data: plan = [] } = trpc.plan.evaluate.useQuery();
+  const { data: contacts = [] } = trpc.contacts.list.useQuery();
+  const { data: areaContacts = [] } = trpc.plan.areaContacts.useQuery();
   const [form, setForm] = useState<SettingsForm>(EMPTY_FORM);
+  const [planMode, setPlanMode] = useState<"blank" | "filled">("blank");
+  const [selectedDays, setSelectedDays] = useState([
+    "Freitag",
+    "Samstag",
+    "Sonntag",
+  ]);
+  const [selectedStatuses, setSelectedStatuses] = useState([
+    "OFFEN",
+    "KNAPP",
+    "OK",
+  ]);
+  const [selectedAreas, setSelectedAreas] = useState<string[] | null>(null);
+  const [selectedContacts, setSelectedContacts] = useState<number[] | null>(
+    null
+  );
+  const [includeUnassignedContact, setIncludeUnassignedContact] =
+    useState(true);
 
   useEffect(() => {
     if (!settings) return;
@@ -67,6 +94,30 @@ export default function PdfExport() {
     },
     onError: error => toast.error(error.message),
   });
+  const planPdf = trpc.pdf.plan.useMutation({
+    onSuccess: result =>
+      downloadBase64File(result.base64, result.mimeType, result.filename),
+    onError: error => toast.error(error.message),
+  });
+
+  const areas = Array.from(new Set(plan.map(item => item.shift.area))).sort();
+  const mappedContactIds = Array.from(
+    new Set(
+      areaContacts
+        .map(item => item.contactId)
+        .filter((id): id is number => id !== null)
+    )
+  );
+  const activeAreas = selectedAreas ?? areas;
+  const activeContacts = selectedContacts ?? mappedContactIds;
+  const mappedAreas = new Set(
+    areaContacts.filter(item => item.contactId !== null).map(item => item.area)
+  );
+  const hasUnassignedAreas = areas.some(area => !mappedAreas.has(area));
+  const allContactOptionsSelected =
+    activeContacts.length === mappedContactIds.length &&
+    mappedContactIds.every(id => activeContacts.includes(id)) &&
+    (!hasUnassignedAreas || includeUnassignedContact);
 
   const downloadAll = async () => {
     const result = await allHelpers.refetch();
@@ -83,20 +134,32 @@ export default function PdfExport() {
     }
   };
 
-  const downloadBlank = async () => {
-    const result = await blankPlan.refetch();
-    if (result.error) {
-      toast.error(result.error.message);
+  const downloadPlan = () => {
+    if (
+      !selectedDays.length ||
+      !selectedStatuses.length ||
+      !activeAreas.length ||
+      (!activeContacts.length && !includeUnassignedContact)
+    ) {
+      toast.error(
+        "Bitte mindestens einen Tag, Status, Bereich und Ansprechpartner-Filter auswählen"
+      );
       return;
     }
-    if (result.data) {
-      downloadBase64File(
-        result.data.base64,
-        result.data.mimeType,
-        result.data.filename
-      );
-    }
+    planPdf.mutate({
+      mode: planMode,
+      days: selectedDays as Array<"Freitag" | "Samstag" | "Sonntag">,
+      statuses: selectedStatuses as Array<"OFFEN" | "KNAPP" | "OK">,
+      areas: activeAreas,
+      contactIds: activeContacts,
+      includeUnassignedContact,
+    });
   };
+
+  const toggle = <T,>(values: T[], value: T, checked: boolean) =>
+    checked
+      ? Array.from(new Set([...values, value]))
+      : values.filter(v => v !== value);
 
   const updateField = <K extends keyof SettingsForm>(
     key: K,
@@ -110,13 +173,13 @@ export default function PdfExport() {
       <div>
         <h1 className="text-2xl font-bold">PDF-Ausgabe</h1>
         <p className="text-muted-foreground">
-          Persönliche Aufgabenübersichten nach dem Muster der Anlage und einen
-          frei konfigurierbaren Blanko-Einsatzplan erzeugen.
+          Persönliche Aufgabenübersichten sowie frei filterbare Blanko- und
+          ausgefüllte Einsatzpläne erzeugen.
         </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Card className="shadow-sm">
+        <Card className="shadow-sm md:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <FileArchive className="h-5 w-5" /> Alle Helferübersichten
@@ -138,27 +201,201 @@ export default function PdfExport() {
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm">
+        <Card className="shadow-sm md:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <FileText className="h-5 w-5" /> Blanko-Einsatzplan
+              <ListFilter className="h-5 w-5" /> Einsatzplan als PDF
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-5">
             <p className="text-sm text-muted-foreground">
-              Erstellt einen ausfüllbaren Querformat-Plan aus allen angelegten
-              Schichten. Zeilenanzahl und zusätzliche Spalten werden über die
-              Konfiguration bestimmt.
+              Erzeugt wahlweise einen Blanko-Plan oder den aktuell ausgefüllten
+              Einsatzplan. Nur die angehakten Tage, Bereiche, Statuswerte und
+              Bereichsansprechpartner werden aufgenommen.
             </p>
-            <Button
-              variant="outline"
-              onClick={downloadBlank}
-              disabled={blankPlan.isFetching}
-            >
+
+            <div className="grid gap-5 lg:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Ausgabeart</Label>
+                <Select
+                  value={planMode}
+                  onValueChange={value =>
+                    setPlanMode(value as "blank" | "filled")
+                  }
+                >
+                  <SelectTrigger className="w-full bg-white dark:bg-slate-950">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="blank">
+                      Blanko-Einsatzplan zum Ausfüllen
+                    </SelectItem>
+                    <SelectItem value="filled">
+                      Gefüllter Einsatzplan mit Helfern
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Tage</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {["Freitag", "Samstag", "Sonntag"].map(value => (
+                    <label
+                      key={value}
+                      className="flex items-center gap-2 rounded-md border bg-background p-2 text-sm"
+                    >
+                      <Checkbox
+                        checked={selectedDays.includes(value)}
+                        onCheckedChange={checked =>
+                          setSelectedDays(current =>
+                            toggle(current, value, checked === true)
+                          )
+                        }
+                      />
+                      {value}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <Label>Bereiche</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      setSelectedAreas(
+                        activeAreas.length === areas.length ? [] : areas
+                      )
+                    }
+                  >
+                    {activeAreas.length === areas.length
+                      ? "Alle abwählen"
+                      : "Alle auswählen"}
+                  </Button>
+                </div>
+                <div className="max-h-44 space-y-1 overflow-y-auto rounded-md border bg-background p-2">
+                  {areas.map(value => (
+                    <label
+                      key={value}
+                      className="flex items-center gap-2 rounded p-1.5 text-sm hover:bg-muted"
+                    >
+                      <Checkbox
+                        checked={activeAreas.includes(value)}
+                        onCheckedChange={checked =>
+                          setSelectedAreas(
+                            toggle(activeAreas, value, checked === true)
+                          )
+                        }
+                      />
+                      {value}
+                    </label>
+                  ))}
+                  {!areas.length && (
+                    <p className="p-2 text-sm text-muted-foreground">
+                      Noch keine Schichten angelegt.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {["OFFEN", "KNAPP", "OK"].map(value => (
+                      <label
+                        key={value}
+                        className="flex items-center gap-2 rounded-md border bg-background p-2 text-sm"
+                      >
+                        <Checkbox
+                          checked={selectedStatuses.includes(value)}
+                          onCheckedChange={checked =>
+                            setSelectedStatuses(current =>
+                              toggle(current, value, checked === true)
+                            )
+                          }
+                        />
+                        {value}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <Label>Bereichsansprechpartner</Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedContacts(
+                          allContactOptionsSelected ? [] : mappedContactIds
+                        );
+                        setIncludeUnassignedContact(
+                          allContactOptionsSelected ? false : hasUnassignedAreas
+                        );
+                      }}
+                    >
+                      {allContactOptionsSelected
+                        ? "Alle abwählen"
+                        : "Alle auswählen"}
+                    </Button>
+                  </div>
+                  <div className="max-h-32 space-y-1 overflow-y-auto rounded-md border bg-background p-2">
+                    {contacts
+                      .filter(contact => mappedContactIds.includes(contact.id))
+                      .map(contact => (
+                        <label
+                          key={contact.id}
+                          className="flex items-center gap-2 rounded p-1.5 text-sm hover:bg-muted"
+                        >
+                          <Checkbox
+                            checked={activeContacts.includes(contact.id)}
+                            onCheckedChange={checked =>
+                              setSelectedContacts(
+                                toggle(
+                                  activeContacts,
+                                  contact.id,
+                                  checked === true
+                                )
+                              )
+                            }
+                          />
+                          {contact.name}
+                        </label>
+                      ))}
+                    {hasUnassignedAreas && (
+                      <label className="flex items-center gap-2 rounded p-1.5 text-sm hover:bg-muted">
+                        <Checkbox
+                          checked={includeUnassignedContact}
+                          onCheckedChange={checked =>
+                            setIncludeUnassignedContact(checked === true)
+                          }
+                        />
+                        Ohne zugeordneten Ansprechpartner
+                      </label>
+                    )}
+                    {!mappedContactIds.length && !hasUnassignedAreas && (
+                      <p className="p-2 text-sm text-muted-foreground">
+                        Noch keine Einsatzplanbereiche vorhanden.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <Button onClick={downloadPlan} disabled={planPdf.isPending}>
               <Download className="mr-2 h-4 w-4" />
-              {blankPlan.isFetching
+              {planPdf.isPending
                 ? "PDF wird erstellt …"
-                : "Blanko-Plan als PDF"}
+                : planMode === "blank"
+                  ? "Gefilterten Blanko-Plan erzeugen"
+                  : "Gefüllten Einsatzplan erzeugen"}
             </Button>
           </CardContent>
         </Card>

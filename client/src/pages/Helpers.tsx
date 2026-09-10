@@ -84,6 +84,9 @@ export default function Helpers() {
     id: number;
     name: string;
   } | null>(null);
+  const [responsibleContactId, setResponsibleContactId] = useState<
+    number | null
+  >(null);
 
   const invalidate = () => {
     utils.helpers.list.invalidate();
@@ -106,6 +109,7 @@ export default function Helpers() {
     onSuccess: () => {
       invalidate();
       setDeleteTarget(null);
+      setResponsibleContactId(null);
       toast.success("Entfernt");
     },
     onError: error => toast.error(error.message),
@@ -221,7 +225,148 @@ export default function Helpers() {
         </Select>
       </div>
 
-      <Card className="shadow-sm">
+      <div className="space-y-3 md:hidden">
+        {filtered.map(helper => (
+          <Card key={helper.id} className="shadow-sm">
+            <CardContent className="space-y-4 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h2 className="break-words font-semibold">{helper.name}</h2>
+                  {selfHelperIds.has(helper.id) && (
+                    <p className="text-xs text-muted-foreground">
+                      eigener Ansprechpartner-Eintrag
+                    </p>
+                  )}
+                </div>
+                <div className="flex shrink-0 gap-1">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    title="Persönliche Aufgabenübersicht als PDF"
+                    disabled={exportingId === helper.id}
+                    onClick={() => {
+                      setExportingId(helper.id);
+                      exportPdf.mutate({ helperId: helper.id });
+                    }}
+                  >
+                    <FileDown className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    title="Löschen"
+                    disabled={
+                      selfHelperIds.has(helper.id) ||
+                      (user?.role !== "admin" &&
+                        assignedHelperIds.has(helper.id))
+                    }
+                    onClick={() =>
+                      setDeleteTarget({ id: helper.id, name: helper.name })
+                    }
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium">Ansprechpartner</label>
+                <Select
+                  disabled={selfHelperIds.has(helper.id)}
+                  value={helper.contactId ? String(helper.contactId) : "none"}
+                  onValueChange={value =>
+                    update.mutate({
+                      id: helper.id,
+                      contactId: value === "none" ? null : Number(value),
+                    })
+                  }
+                >
+                  <SelectTrigger
+                    className={cn(
+                      "w-full",
+                      !helper.contactId &&
+                        "border-amber-400 bg-amber-100 text-amber-950"
+                    )}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Kein Ansprechpartner</SelectItem>
+                    {contacts.map(contact => (
+                      <SelectItem key={contact.id} value={String(contact.id)}>
+                        {contact.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Telefon Helfer</label>
+                  <Input
+                    key={`${helper.id}-mobile-phone-${helper.phone ?? ""}`}
+                    type="tel"
+                    defaultValue={helper.phone ?? ""}
+                    placeholder="optional"
+                    onBlur={event => {
+                      const value = event.target.value.trim();
+                      if (value !== (helper.phone ?? ""))
+                        update.mutate({
+                          id: helper.id,
+                          phone: value || null,
+                        });
+                    }}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Hinweis für PDF</label>
+                  <Input
+                    key={`${helper.id}-mobile-note-${helper.note ?? ""}`}
+                    defaultValue={helper.note ?? ""}
+                    placeholder="Verfügbarkeit / Bemerkung"
+                    onBlur={event => {
+                      const value = event.target.value.trim();
+                      if (value !== (helper.note ?? ""))
+                        update.mutate({ id: helper.id, note: value || null });
+                    }}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  ["Helfen?", "willHelp", helper.willHelp, YN],
+                  ["Freitag", "availFri", helper.availFri, YNV],
+                  ["Samstag", "availSat", helper.availSat, YNV],
+                  ["Sonntag", "availSun", helper.availSun, YNV],
+                  ["Bestätigt?", "confirmed", helper.confirmed, YN],
+                ].map(([title, field, value, options]) => (
+                  <div key={String(field)} className="space-y-1.5">
+                    <label className="text-xs font-medium">
+                      {String(title)}
+                    </label>
+                    <Sel
+                      value={String(value)}
+                      options={options as typeof YNV}
+                      onChange={next =>
+                        update.mutate({
+                          id: helper.id,
+                          [String(field)]: next,
+                        })
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+        {!isLoading && filtered.length === 0 && (
+          <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+            Keine Helfer gefunden.
+          </div>
+        )}
+      </div>
+
+      <Card className="hidden shadow-sm md:block">
         <CardContent className="overflow-hidden p-0">
           <table className="w-full table-fixed text-xs xl:text-sm">
             <thead className="bg-muted/60">
@@ -458,11 +603,26 @@ export default function Helpers() {
       </p>
       <ConfirmDeleteDialog
         open={Boolean(deleteTarget)}
-        onOpenChange={open => !open && setDeleteTarget(null)}
+        onOpenChange={open => {
+          if (!open) {
+            setDeleteTarget(null);
+            setResponsibleContactId(null);
+          }
+        }}
         title="Helfer löschen?"
         description={`„${deleteTarget?.name ?? ""}“ wird aus der Helferliste und allen Einsatzzuordnungen des aktuellen Jahres gelöscht.`}
         busy={remove.isPending}
-        onConfirm={() => deleteTarget && remove.mutate({ id: deleteTarget.id })}
+        contacts={contacts}
+        responsibleContactId={responsibleContactId}
+        onResponsibleContactChange={setResponsibleContactId}
+        onConfirm={() =>
+          deleteTarget &&
+          responsibleContactId &&
+          remove.mutate({
+            id: deleteTarget.id,
+            responsibleContactId,
+          })
+        }
       />
     </div>
   );
