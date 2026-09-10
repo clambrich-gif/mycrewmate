@@ -11,8 +11,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
-import { Trash2 } from "lucide-react";
-import { useState } from "react";
+import { ArrowDownAZ, ArrowUpZA, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 const temporaryId = () => -Date.now() - Math.floor(Math.random() * 1_000);
@@ -32,7 +32,28 @@ export default function TaskList({
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const [task, setTask] = useState("");
   const [dueText, setDueText] = useState("");
+  const [contactFilter, setContactFilter] = useState("alle");
+  const [sortAsc, setSortAsc] = useState(true);
   const isPrep = kind === "prep";
+
+  const visibleRows = useMemo(
+    () =>
+      [...rows]
+        .filter((row: any) => {
+          if (contactFilter === "alle") return true;
+          if (contactFilter === "ohne") return !row.contactId;
+          return String(row.contactId ?? "") === contactFilter;
+        })
+        .sort((left: any, right: any) => {
+          const comparison = String(left.task).localeCompare(
+            String(right.task),
+            "de",
+            { sensitivity: "base" }
+          );
+          return sortAsc ? comparison : -comparison;
+        }),
+    [rows, contactFilter, sortAsc]
+  );
 
   const refreshDashboard = () => void utils.dashboard.stats.invalidate();
 
@@ -148,6 +169,37 @@ export default function TaskList({
           </Button>
         </div>
       </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setSortAsc(value => !value)}
+        >
+          {sortAsc ? (
+            <ArrowDownAZ className="mr-2 h-4 w-4" />
+          ) : (
+            <ArrowUpZA className="mr-2 h-4 w-4" />
+          )}
+          Aufgabe {sortAsc ? "A–Z" : "Z–A"}
+        </Button>
+        <Select value={contactFilter} onValueChange={setContactFilter}>
+          <SelectTrigger className="w-[240px]">
+            <SelectValue placeholder="Verantwortliche filtern" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="alle">Alle Verantwortlichen</SelectItem>
+            <SelectItem value="ohne">Ohne Verantwortlichen</SelectItem>
+            {contacts.map(contact => (
+              <SelectItem key={contact.id} value={String(contact.id)}>
+                {contact.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <span className="text-sm text-muted-foreground">
+          {visibleRows.length} von {rows.length} Einträgen
+        </span>
+      </div>
       <Card className="shadow-sm">
         <CardContent className="overflow-x-auto p-0">
           <table className="w-full text-sm">
@@ -171,7 +223,7 @@ export default function TaskList({
                   </td>
                 </tr>
               )}
-              {rows.map((row: any) => (
+              {visibleRows.map((row: any) => (
                 <tr key={row.id} className="border-t hover:bg-muted/30">
                   <td className="p-2">
                     <Input
@@ -260,13 +312,15 @@ export default function TaskList({
                   </td>
                 </tr>
               ))}
-              {!isLoading && rows.length === 0 && (
+              {!isLoading && visibleRows.length === 0 && (
                 <tr>
                   <td
                     className="p-4 text-muted-foreground"
                     colSpan={isPrep ? 5 : 4}
                   >
-                    Noch keine Aufgaben.
+                    {rows.length === 0
+                      ? "Noch keine Aufgaben."
+                      : "Keine Aufgaben für diesen Verantwortlichen."}
                   </td>
                 </tr>
               )}

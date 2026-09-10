@@ -231,17 +231,44 @@ export async function createContact(v: {
   note?: string;
 }) {
   const db = (await getDb()) as DB;
-  return db.insert(contacts).values({ ...v, year: year() });
+  return db.transaction(async tx => {
+    const normalizedName = v.name.trim().replace(/\s+/g, " ");
+    const result: any = await tx
+      .insert(contacts)
+      .values({ ...v, name: normalizedName, year: year() });
+    const id = Number(result?.[0]?.insertId ?? result?.insertId);
+    const helper = await syncContactToSelfHelperWithClient(tx, {
+      id,
+      name: normalizedName,
+      phone: v.phone ?? null,
+    });
+    return { id, helperId: helper.id, helperCreated: helper.created };
+  });
 }
 export async function updateContact(
   id: number,
   v: { name?: string; phone?: string | null; note?: string | null }
 ) {
   const db = (await getDb()) as DB;
-  return db
-    .update(contacts)
-    .set(v)
-    .where(and(eq(contacts.id, id), eq(contacts.year, year())));
+  return db.transaction(async tx => {
+    const [before] = await tx
+      .select()
+      .from(contacts)
+      .where(and(eq(contacts.id, id), eq(contacts.year, year())))
+      .limit(1);
+    if (!before) throw new Error("Ansprechpartner wurde nicht gefunden");
+    const values = {
+      ...v,
+      ...(v.name ? { name: v.name.trim().replace(/\s+/g, " ") } : {}),
+    };
+    const contact = { ...before, ...values };
+    const result = await tx
+      .update(contacts)
+      .set(values)
+      .where(and(eq(contacts.id, id), eq(contacts.year, year())));
+    await syncContactToSelfHelperWithClient(tx, contact, before.name);
+    return result;
+  });
 }
 export async function deleteContact(id: number) {
   const db = (await getDb()) as DB;
@@ -264,16 +291,27 @@ export async function upsertContactByName(v: {
       ...(v.note ? { note: v.note } : {}),
     };
     if (Object.keys(updates).length) await updateContact(existing.id, updates);
-    return { id: existing.id, created: false };
+    const helper = await syncContactToSelfHelper({
+      ...existing,
+      phone: v.phone || existing.phone,
+    });
+    return {
+      id: existing.id,
+      created: false,
+      helperId: helper.id,
+      helperCreated: helper.created,
+    };
   }
-  const result: any = await createContact({
+  const result = await createContact({
     name: v.name.trim().replace(/\s+/g, " "),
     phone: v.phone ?? undefined,
     note: v.note ?? undefined,
   });
   return {
-    id: Number(result?.[0]?.insertId ?? result?.insertId),
+    id: result.id,
     created: true,
+    helperId: result.helperId,
+    helperCreated: result.helperCreated,
   };
 }
 
@@ -291,16 +329,74 @@ export async function updateHelper(
 ) {
   const db = (await getDb()) as DB;
   const { year: ignored, ...safe } = v;
-  return db
-    .update(helpers)
-    .set(safe)
-    .where(and(eq(helpers.id, id), eq(helpers.year, year())));
+  return db.transaction(async tx => {
+    const [helper] = await tx
+      .select()
+      .from(helpers)
+      .where(and(eq(helpers.id, id), eq(helpers.year, year())))
+      .limit(1);
+    if (!helper) throw new Error("Helfer wurde nicht gefunden");
+    const selfContact = helper.contactId
+      ? (
+          await tx
+            .select()
+            .from(contacts)
+            .where(
+              and(eq(contacts.id, helper.contactId), eq(contacts.year, year()))
+            )
+            .limit(1)
+        )[0]
+      : undefined;
+    const isSelfHelper =
+      selfContact &&
+      normalizePersonName(selfContact.name) ===
+        normalizePersonName(helper.name);
+    if (
+      isSelfHelper &&
+      ((safe.contactId !== undefined && safe.contactId !== helper.contactId) ||
+        (safe.name !== undefined &&
+          normalizePersonName(safe.name) !== normalizePersonName(helper.name)))
+    ) {
+      throw new Error(
+        "Der eigene Helfereintrag eines Ansprechpartners kann nicht umgehängt oder umbenannt werden"
+      );
+    }
+    return tx
+      .update(helpers)
+      .set(safe)
+      .where(and(eq(helpers.id, id), eq(helpers.year, year())));
+  });
 }
 export async function deleteHelper(id: number) {
   const db = (await getDb()) as DB;
-  return db
-    .delete(helpers)
-    .where(and(eq(helpers.id, id), eq(helpers.year, year())));
+  return db.transaction(async tx => {
+    const [helper] = await tx
+      .select()
+      .from(helpers)
+      .where(and(eq(helpers.id, id), eq(helpers.year, year())))
+      .limit(1);
+    if (!helper) throw new Error("Helfer wurde nicht gefunden");
+    if (helper.contactId) {
+      const [contact] = await tx
+        .select()
+        .from(contacts)
+        .where(
+          and(eq(contacts.id, helper.contactId), eq(contacts.year, year()))
+        )
+        .limit(1);
+      if (
+        contact &&
+        normalizePersonName(contact.name) === normalizePersonName(helper.name)
+      ) {
+        throw new Error(
+          "Dieser Helfer gehört zum gleichnamigen Ansprechpartner. Löschen Sie zuerst den Ansprechpartner."
+        );
+      }
+    }
+    return tx
+      .delete(helpers)
+      .where(and(eq(helpers.id, id), eq(helpers.year, year())));
+  });
 }
 export async function upsertHelperByName(
   v: Partial<typeof helpers.$inferInsert> & { name: string }
@@ -321,6 +417,89 @@ export async function upsertHelperByName(
     id: Number(result?.[0]?.insertId ?? result?.insertId),
     created: true,
   };
+}
+
+export function selfHelperValues(contact: {
+  id: number;
+  name: string;
+  phone?: string | null;
+}) {
+  return {
+    name: contact.name.trim().replace(/\s+/g, " "),
+    contactId: contact.id,
+    phone: contact.phone ?? null,
+  };
+}
+
+async function syncContactToSelfHelperWithClient(
+  client: any,
+  contact: { id: number; name: string; phone?: string | null },
+  previousName?: string,
+  selectedYear = year()
+) {
+  const helperRows = await client
+    .select()
+    .from(helpers)
+    .where(eq(helpers.year, selectedYear));
+  const targetName = normalizePersonName(contact.name);
+  const target = helperRows.find(
+    (item: typeof helpers.$inferSelect) =>
+      normalizePersonName(item.name) === targetName
+  );
+  const previous = previousName
+    ? helperRows.find(
+        (item: typeof helpers.$inferSelect) =>
+          item.contactId === contact.id &&
+          normalizePersonName(item.name) === normalizePersonName(previousName)
+      )
+    : undefined;
+
+  if (previous && target && previous.id !== target.id) {
+    throw new Error(
+      `Der Name „${contact.name}“ wird bereits von einem anderen Helfer verwendet`
+    );
+  }
+
+  const existing = previous ?? target;
+  const values = selfHelperValues(contact);
+  if (existing) {
+    await client
+      .update(helpers)
+      .set(values)
+      .where(and(eq(helpers.id, existing.id), eq(helpers.year, selectedYear)));
+    return { id: existing.id, created: false };
+  }
+
+  const result: any = await client
+    .insert(helpers)
+    .values({ ...values, year: selectedYear });
+  return {
+    id: Number(result?.[0]?.insertId ?? result?.insertId),
+    created: true,
+  };
+}
+
+export async function syncContactToSelfHelper(
+  contact: {
+    id: number;
+    name: string;
+    phone?: string | null;
+  },
+  previousName?: string
+) {
+  const db = (await getDb()) as DB;
+  return syncContactToSelfHelperWithClient(db, contact, previousName);
+}
+
+export async function syncContactsToSelfHelpers() {
+  const contactRows = await listContacts();
+  let created = 0;
+  let updated = 0;
+  for (const contact of contactRows) {
+    const result = await syncContactToSelfHelper(contact);
+    result.created ? created++ : updated++;
+  }
+  return { created, updated };
 }
 
 export async function createShift(
@@ -631,6 +810,7 @@ export async function resetArea(area: ResetArea) {
     finances,
   } as const;
   await remove(tableByArea[area]);
+  if (area === "helpers") await syncContactsToSelfHelpers();
 }
 
 const shiftKey = (shift: {
@@ -724,6 +904,23 @@ export async function copyPlanFromYear(
       helpersCreated++;
     }
     helperMap.set(item.id, targetId);
+  }
+
+  const copiedContacts = await db
+    .select()
+    .from(contacts)
+    .where(eq(contacts.year, targetYear));
+  for (const contact of copiedContacts) {
+    const helper = await syncContactToSelfHelperWithClient(
+      db,
+      contact,
+      undefined,
+      targetYear
+    );
+    if (!helperByName.has(normalizePersonName(contact.name))) {
+      helperByName.set(normalizePersonName(contact.name), helper.id);
+      helpersCreated++;
+    }
   }
 
   const shiftMap = new Map<number, number>();

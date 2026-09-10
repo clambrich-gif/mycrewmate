@@ -11,8 +11,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
-import { Trash2 } from "lucide-react";
-import { useState } from "react";
+import { ArrowDownAZ, ArrowUpZA, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 const resetAreaByKind = {
@@ -41,6 +41,7 @@ interface Props {
   };
   noContact?: boolean;
   noStatus?: boolean;
+  sortableAndFilterable?: boolean;
 }
 
 const temporaryId = () => -Date.now() - Math.floor(Math.random() * 1_000);
@@ -55,6 +56,7 @@ export default function TaskGeneric({
   extraField,
   noContact,
   noStatus,
+  sortableAndFilterable = false,
 }: Props) {
   const utils = trpc.useUtils();
   const { user } = useAuth();
@@ -64,12 +66,34 @@ export default function TaskGeneric({
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const [name, setName] = useState("");
   const [extras, setExtras] = useState<Record<string, string>>({});
+  const [contactFilter, setContactFilter] = useState("alle");
+  const [sortAsc, setSortAsc] = useState(true);
 
   const defaultStatus = statusOptions ?? [
     { v: "offen", l: "offen" },
     { v: "inArbeit", l: "in Arbeit" },
     { v: "erledigt", l: "erledigt" },
   ];
+
+  const visibleRows = useMemo(
+    () =>
+      [...rows]
+        .filter((row: any) => {
+          if (!sortableAndFilterable || contactFilter === "alle") return true;
+          if (contactFilter === "ohne") return !row.contactId;
+          return String(row.contactId ?? "") === contactFilter;
+        })
+        .sort((left: any, right: any) => {
+          if (!sortableAndFilterable) return 0;
+          const comparison = String(left[nameKey] ?? "").localeCompare(
+            String(right[nameKey] ?? ""),
+            "de",
+            { sensitivity: "base" }
+          );
+          return sortAsc ? comparison : -comparison;
+        }),
+    [rows, sortableAndFilterable, contactFilter, nameKey, sortAsc]
+  );
 
   const refreshDashboard = () => void utils.dashboard.stats.invalidate();
 
@@ -202,6 +226,41 @@ export default function TaskGeneric({
           </Button>
         </div>
       </div>
+      {sortableAndFilterable && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setSortAsc(value => !value)}
+          >
+            {sortAsc ? (
+              <ArrowDownAZ className="mr-2 h-4 w-4" />
+            ) : (
+              <ArrowUpZA className="mr-2 h-4 w-4" />
+            )}
+            {addLabel} {sortAsc ? "A–Z" : "Z–A"}
+          </Button>
+          {!noContact && (
+            <Select value={contactFilter} onValueChange={setContactFilter}>
+              <SelectTrigger className="w-[240px]">
+                <SelectValue placeholder="Verantwortliche filtern" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="alle">Alle Verantwortlichen</SelectItem>
+                <SelectItem value="ohne">Ohne Verantwortlichen</SelectItem>
+                {contacts.map(contact => (
+                  <SelectItem key={contact.id} value={String(contact.id)}>
+                    {contact.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <span className="text-sm text-muted-foreground">
+            {visibleRows.length} von {rows.length} Einträgen
+          </span>
+        </div>
+      )}
       <Card className="shadow-sm">
         <CardContent className="overflow-x-auto p-0">
           <table className="w-full text-sm">
@@ -230,7 +289,7 @@ export default function TaskGeneric({
                   </td>
                 </tr>
               )}
-              {rows.map((row: any) => (
+              {visibleRows.map((row: any) => (
                 <tr key={row.id} className="border-t hover:bg-muted/30">
                   <td className="p-2">
                     <Input
@@ -350,13 +409,15 @@ export default function TaskGeneric({
                   </td>
                 </tr>
               ))}
-              {!isLoading && rows.length === 0 && (
+              {!isLoading && visibleRows.length === 0 && (
                 <tr>
                   <td
                     className="p-4 text-muted-foreground"
                     colSpan={tableColumnCount}
                   >
-                    Noch keine Einträge.
+                    {rows.length === 0
+                      ? "Noch keine Einträge."
+                      : "Keine Einträge für diesen Verantwortlichen."}
                   </td>
                 </tr>
               )}

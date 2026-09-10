@@ -339,6 +339,7 @@ export async function importExcel(
     financeKeys.add(key(position));
     result.finanzen++;
   }
+  await db.syncContactsToSelfHelpers();
   return result;
 }
 

@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { downloadBase64File, safeDownloadName } from "@/lib/download";
+import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { FileDown, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -28,6 +29,17 @@ const YNV = [
   { v: "vielleicht", l: "Vielleicht" },
 ] as const;
 
+const valueColor = (value: string) => {
+  if (value === "ja")
+    return "border-emerald-400 bg-emerald-100 text-emerald-950 dark:bg-emerald-900/60 dark:text-emerald-50";
+  if (value === "nein")
+    return "border-red-400 bg-red-100 text-red-950 dark:bg-red-900/60 dark:text-red-50";
+  return "border-amber-400 bg-amber-100 text-amber-950 dark:bg-amber-900/60 dark:text-amber-50";
+};
+
+const personKey = (value: string) =>
+  value.trim().replace(/\s+/g, " ").toLocaleLowerCase("de-DE");
+
 function Sel({
   value,
   onChange,
@@ -39,12 +51,16 @@ function Sel({
 }) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="h-8 w-[110px]">
+      <SelectTrigger className={cn("h-8 w-[110px]", valueColor(value))}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
         {options.map(option => (
-          <SelectItem key={option.v} value={option.v}>
+          <SelectItem
+            key={option.v}
+            value={option.v}
+            className={valueColor(option.v)}
+          >
             {option.l}
           </SelectItem>
         ))}
@@ -123,6 +139,19 @@ export default function Helpers() {
         ),
     [helpers, filter, apFilter, sortAsc]
   );
+  const selfHelperIds = useMemo(() => {
+    const contactById = new Map(contacts.map(contact => [contact.id, contact]));
+    return new Set(
+      helpers
+        .filter(helper => {
+          const contact = helper.contactId
+            ? contactById.get(helper.contactId)
+            : undefined;
+          return contact && personKey(contact.name) === personKey(helper.name);
+        })
+        .map(helper => helper.id)
+    );
+  }, [contacts, helpers]);
 
   return (
     <div className="space-y-5">
@@ -182,13 +211,13 @@ export default function Helpers() {
           <table className="w-full min-w-[1320px] text-sm">
             <thead className="bg-muted/60">
               <tr className="text-left">
-                <th className="p-3">Ansprechpartner</th>
                 <th
                   className="p-3 cursor-pointer select-none"
                   onClick={() => setSortAsc(!sortAsc)}
                 >
                   Name {sortAsc ? "▲" : "▼"}
                 </th>
+                <th className="p-3">Ansprechpartner</th>
                 <th className="p-3">Telefon Helfer</th>
                 <th className="p-3">Hinweis für PDF</th>
                 <th className="p-3">Helfen?</th>
@@ -212,8 +241,17 @@ export default function Helpers() {
                   key={helper.id}
                   className="border-t hover:bg-muted/30 align-top"
                 >
+                  <td className="p-2 font-medium">
+                    {helper.name}
+                    {selfHelperIds.has(helper.id) && (
+                      <div className="text-xs font-normal text-muted-foreground">
+                        eigener Ansprechpartner-Eintrag
+                      </div>
+                    )}
+                  </td>
                   <td className="p-2">
                     <Select
+                      disabled={selfHelperIds.has(helper.id)}
                       value={
                         helper.contactId ? String(helper.contactId) : "none"
                       }
@@ -224,11 +262,22 @@ export default function Helpers() {
                         })
                       }
                     >
-                      <SelectTrigger className="h-8 w-[170px]">
+                      <SelectTrigger
+                        className={cn(
+                          "h-8 w-[170px]",
+                          !helper.contactId &&
+                            "border-amber-400 bg-amber-100 text-amber-950 dark:bg-amber-900/60 dark:text-amber-50"
+                        )}
+                      >
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none">—</SelectItem>
+                        <SelectItem
+                          value="none"
+                          className="bg-amber-100 text-amber-950 dark:bg-amber-900/60 dark:text-amber-50"
+                        >
+                          Kein Ansprechpartner
+                        </SelectItem>
                         {contacts.map(contact => (
                           <SelectItem
                             key={contact.id}
@@ -240,7 +289,6 @@ export default function Helpers() {
                       </SelectContent>
                     </Select>
                   </td>
-                  <td className="p-2 font-medium">{helper.name}</td>
                   <td className="p-2">
                     <Input
                       key={`${helper.id}-phone-${helper.phone ?? ""}`}
@@ -351,7 +399,12 @@ export default function Helpers() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          title="Löschen"
+                          title={
+                            selfHelperIds.has(helper.id)
+                              ? "Zum Löschen zuerst den Ansprechpartner entfernen"
+                              : "Löschen"
+                          }
+                          disabled={selfHelperIds.has(helper.id)}
                           onClick={() =>
                             setDeleteTarget({
                               id: helper.id,

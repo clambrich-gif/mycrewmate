@@ -25,6 +25,9 @@ export default function Contacts() {
 
   const invalidate = () => {
     utils.contacts.list.invalidate();
+    utils.helpers.list.invalidate();
+    utils.plan.evaluate.invalidate();
+    utils.dashboard.stats.invalidate();
     utils.pdf.settings.invalidate();
   };
   const create = trpc.contacts.create.useMutation({
