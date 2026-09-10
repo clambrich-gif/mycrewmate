@@ -157,6 +157,26 @@ export const securitySettings = mysqlTable("security_settings", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+export const deletionAuditLogs = mysqlTable("deletion_audit_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  year: int("year").notNull(),
+  entityType: mysqlEnum("entityType", ["helper", "cake"]).notNull(),
+  entityId: int("entityId").notNull(),
+  entityLabel: varchar("entityLabel", { length: 300 }).notNull(),
+  action: mysqlEnum("action", [
+    "single_delete",
+    "area_reset",
+    "year_reset",
+  ]).notNull(),
+  actorUserId: int("actorUserId").notNull(),
+  actorName: varchar("actorName", { length: 200 }).notNull(),
+  actorRole: mysqlEnum("actorRole", ["user", "admin"]).notNull(),
+  actorLoginMethod: varchar("actorLoginMethod", { length: 64 }),
+  details: text("details"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type DeletionAuditLog = typeof deletionAuditLogs.$inferSelect;
+
 export const prepTasks = mysqlTable("prep_tasks", {
   id: int("id").autoincrement().primaryKey(),
   year: int("year").default(2026).notNull(),

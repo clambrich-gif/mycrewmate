@@ -11,6 +11,7 @@ import {
   LockKeyhole,
   Megaphone,
   Package,
+  ShieldCheck,
   UserCheck,
   Users,
   Wallet,
@@ -37,6 +38,11 @@ export const NAV: readonly NavItem[] = [
   { href: "/finanzen", label: "Finanzen", icon: Wallet },
   { href: "/pdf-export", label: "PDF-Ausgabe", icon: FileDown },
   { href: "/excel", label: "Excel Import/Export", icon: FileSpreadsheet },
+  {
+    href: "/berechtigungen",
+    label: "Rollen & Protokoll",
+    icon: ShieldCheck,
+  },
   {
     href: "/sicherheit",
     label: "Zugangsschutz",

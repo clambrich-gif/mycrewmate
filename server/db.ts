@@ -1,4 +1,4 @@
-import { and, eq, getTableColumns, inArray, or } from "drizzle-orm";
+import { and, desc, eq, getTableColumns, inArray, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   appSettings,
@@ -6,6 +6,7 @@ import {
   assignments,
   cakes,
   contacts,
+  deletionAuditLogs,
   eventYears,
   finances,
   helpers,
@@ -367,9 +368,117 @@ export async function updateHelper(
       .where(and(eq(helpers.id, id), eq(helpers.year, year())));
   });
 }
+
+export type AuditActor = {
+  userId: number;
+  name: string;
+  role: "user" | "admin";
+  loginMethod?: string | null;
+};
+
+type AuditEntity = {
+  entityType: "helper" | "cake";
+  entityId: number;
+  entityLabel: string;
+  details: Record<string, unknown>;
+};
+
+async function recordDeletionAudit(
+  client: any,
+  actor: AuditActor,
+  action: "single_delete" | "area_reset" | "year_reset",
+  entries: AuditEntity[],
+  selectedYear = year()
+) {
+  if (!entries.length) return;
+  await client.insert(deletionAuditLogs).values(
+    entries.map(entry => ({
+      year: selectedYear,
+      entityType: entry.entityType,
+      entityId: entry.entityId,
+      entityLabel: entry.entityLabel,
+      action,
+      actorUserId: actor.userId,
+      actorName: actor.name,
+      actorRole: actor.role,
+      actorLoginMethod: actor.loginMethod ?? null,
+      details: JSON.stringify(entry.details),
+    }))
+  );
+}
+
+function affectedRows(result: any) {
+  return Number(result?.[0]?.affectedRows ?? result?.affectedRows ?? 0);
+}
+
+function requireDeletedRows(result: any, expected: number) {
+  const actual = affectedRows(result);
+  if (actual !== expected) {
+    throw new Error(
+      `Löschung wurde wegen einer gleichzeitigen Änderung abgebrochen (erwartet: ${expected}, gelöscht: ${actual})`
+    );
+  }
+}
+
+const helperAuditEntity = (
+  helper: typeof helpers.$inferSelect,
+  assignmentCount?: number
+): AuditEntity => ({
+  entityType: "helper",
+  entityId: helper.id,
+  entityLabel: helper.name,
+  details: {
+    contactId: helper.contactId,
+    email: helper.email,
+    phone: helper.phone,
+    note: helper.note,
+    willHelp: helper.willHelp,
+    availFri: helper.availFri,
+    availSat: helper.availSat,
+    availSun: helper.availSun,
+    confirmed: helper.confirmed,
+    assignmentCount,
+  },
+});
+
+const cakeAuditEntity = (cake: typeof cakes.$inferSelect): AuditEntity => ({
+  entityType: "cake",
+  entityId: cake.id,
+  entityLabel: cake.donor,
+  details: {
+    cake: cake.cake,
+    dropoffTime: cake.dropoffTime,
+    note: cake.note,
+  },
+});
+
+export async function listDeletionAuditLogs(filters?: {
+  eventYear?: number;
+  entityType?: "helper" | "cake";
+  limit?: number;
+}) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = [
+    ...(filters?.eventYear
+      ? [eq(deletionAuditLogs.year, filters.eventYear)]
+      : []),
+    ...(filters?.entityType
+      ? [eq(deletionAuditLogs.entityType, filters.entityType)]
+      : []),
+  ];
+  const query = db.select().from(deletionAuditLogs);
+  const filteredQuery = conditions.length
+    ? query.where(and(...conditions))
+    : query;
+  return filteredQuery
+    .orderBy(desc(deletionAuditLogs.createdAt), desc(deletionAuditLogs.id))
+    .limit(filters?.limit ?? 500);
+}
+
 export async function deleteHelper(
   id: number,
-  options: { allowAssigned?: boolean } = {}
+  options: { allowAssigned?: boolean; actor: AuditActor }
 ) {
   const db = (await getDb()) as DB;
   return db.transaction(async tx => {
@@ -377,14 +486,15 @@ export async function deleteHelper(
       .select()
       .from(helpers)
       .where(and(eq(helpers.id, id), eq(helpers.year, year())))
-      .limit(1);
+      .limit(1)
+      .for("update");
     if (!helper) throw new Error("Helfer wurde nicht gefunden");
+    const helperAssignments = await tx
+      .select({ id: assignments.id })
+      .from(assignments)
+      .where(eq(assignments.helperId, id));
     if (!options.allowAssigned) {
-      const [assignment] = await tx
-        .select({ id: assignments.id })
-        .from(assignments)
-        .where(eq(assignments.helperId, id))
-        .limit(1);
+      const [assignment] = helperAssignments;
       if (assignment) {
         throw new Error(
           "Dieser Helfer ist im Einsatzplan eingeteilt und kann nur von einem Administrator gelöscht werden"
@@ -408,9 +518,14 @@ export async function deleteHelper(
         );
       }
     }
-    return tx
+    await recordDeletionAudit(tx, options.actor, "single_delete", [
+      helperAuditEntity(helper, helperAssignments.length),
+    ]);
+    const result = await tx
       .delete(helpers)
       .where(and(eq(helpers.id, id), eq(helpers.year, year())));
+    requireDeletedRows(result, 1);
+    return result;
   });
 }
 export async function upsertHelperByName(
@@ -740,8 +855,24 @@ export const deleteApproval = async (id: number) =>
 export const createCake = async (v: any) => createYearRow(cakes, v);
 export const updateCake = async (id: number, v: any) =>
   ((await getDb()) as DB).update(cakes).set(v).where(yearWhere(cakes, id));
-export const deleteCake = async (id: number) =>
-  ((await getDb()) as DB).delete(cakes).where(yearWhere(cakes, id));
+export async function deleteCake(id: number, actor: AuditActor) {
+  const db = (await getDb()) as DB;
+  return db.transaction(async tx => {
+    const [cake] = await tx
+      .select()
+      .from(cakes)
+      .where(yearWhere(cakes, id))
+      .limit(1)
+      .for("update");
+    if (!cake) throw new Error("Kucheneintrag wurde nicht gefunden");
+    await recordDeletionAudit(tx, actor, "single_delete", [
+      cakeAuditEntity(cake),
+    ]);
+    const result = await tx.delete(cakes).where(yearWhere(cakes, id));
+    requireDeletedRows(result, 1);
+    return result;
+  });
+}
 
 type FinanceWrite = {
   category?: string;
@@ -781,13 +912,33 @@ export type ResetArea =
   | "finances"
   | "all";
 
-export async function resetArea(area: ResetArea) {
+export async function resetArea(area: ResetArea, actor: AuditActor) {
   const db = (await getDb()) as DB;
   const selectedYear = year();
   const remove = async (table: any) =>
     db.delete(table).where(eq(table.year, selectedYear));
   if (area === "all") {
     await db.transaction(async tx => {
+      const helperRows = await tx
+        .select()
+        .from(helpers)
+        .where(eq(helpers.year, selectedYear))
+        .for("update");
+      const cakeRows = await tx
+        .select()
+        .from(cakes)
+        .where(eq(cakes.year, selectedYear))
+        .for("update");
+      await recordDeletionAudit(
+        tx,
+        actor,
+        "year_reset",
+        [
+          ...helperRows.map(item => helperAuditEntity(item)),
+          ...cakeRows.map(item => cakeAuditEntity(item)),
+        ],
+        selectedYear
+      );
       await tx
         .delete(assignments)
         .where(
@@ -800,16 +951,95 @@ export async function resetArea(area: ResetArea) {
           )
         );
       await tx.delete(shifts).where(eq(shifts.year, selectedYear));
-      await tx.delete(helpers).where(eq(helpers.year, selectedYear));
+      if (helperRows.length) {
+        const result = await tx.delete(helpers).where(
+          and(
+            eq(helpers.year, selectedYear),
+            inArray(
+              helpers.id,
+              helperRows.map(item => item.id)
+            )
+          )
+        );
+        requireDeletedRows(result, helperRows.length);
+      }
       await tx.delete(contacts).where(eq(contacts.year, selectedYear));
       await tx.delete(prepTasks).where(eq(prepTasks.year, selectedYear));
       await tx.delete(postTasks).where(eq(postTasks.year, selectedYear));
       await tx.delete(materials).where(eq(materials.year, selectedYear));
       await tx.delete(marketing).where(eq(marketing.year, selectedYear));
       await tx.delete(approvals).where(eq(approvals.year, selectedYear));
-      await tx.delete(cakes).where(eq(cakes.year, selectedYear));
+      if (cakeRows.length) {
+        const result = await tx.delete(cakes).where(
+          and(
+            eq(cakes.year, selectedYear),
+            inArray(
+              cakes.id,
+              cakeRows.map(item => item.id)
+            )
+          )
+        );
+        requireDeletedRows(result, cakeRows.length);
+      }
       await tx.delete(finances).where(eq(finances.year, selectedYear));
     });
+    return;
+  }
+  if (area === "helpers" || area === "cakes") {
+    await db.transaction(async tx => {
+      if (area === "helpers") {
+        const rows = await tx
+          .select()
+          .from(helpers)
+          .where(eq(helpers.year, selectedYear))
+          .for("update");
+        await recordDeletionAudit(
+          tx,
+          actor,
+          "area_reset",
+          rows.map(item => helperAuditEntity(item)),
+          selectedYear
+        );
+        if (rows.length) {
+          const result = await tx.delete(helpers).where(
+            and(
+              eq(helpers.year, selectedYear),
+              inArray(
+                helpers.id,
+                rows.map(item => item.id)
+              )
+            )
+          );
+          requireDeletedRows(result, rows.length);
+        }
+      } else {
+        const rows = await tx
+          .select()
+          .from(cakes)
+          .where(eq(cakes.year, selectedYear))
+          .for("update");
+        await recordDeletionAudit(
+          tx,
+          actor,
+          "area_reset",
+          rows.map(item => cakeAuditEntity(item)),
+          selectedYear
+        );
+        if (rows.length) {
+          const result = await tx.delete(cakes).where(
+            and(
+              eq(cakes.year, selectedYear),
+              inArray(
+                cakes.id,
+                rows.map(item => item.id)
+              )
+            )
+          );
+          requireDeletedRows(result, rows.length);
+        }
+      }
+    });
+    if (area === "helpers") await syncContactsToSelfHelpers();
     return;
   }
   const tableByArea = {
@@ -825,7 +1055,6 @@ export async function resetArea(area: ResetArea) {
     finances,
   } as const;
   await remove(tableByArea[area]);
-  if (area === "helpers") await syncContactsToSelfHelpers();
 }
 
 const shiftKey = (shift: {

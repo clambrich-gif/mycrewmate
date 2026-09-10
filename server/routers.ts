@@ -154,6 +154,21 @@ async function requireAdminPassword(password: string) {
   }
 }
 
+function auditActor(user: {
+  id: number;
+  name: string | null;
+  role: "user" | "admin";
+  loginMethod: string | null;
+}): db.AuditActor {
+  return {
+    userId: user.id,
+    name:
+      user.name ?? (user.role === "admin" ? "Administrator" : "Planungsteam"),
+    role: user.role,
+    loginMethod: user.loginMethod,
+  };
+}
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -266,7 +281,7 @@ export const appRouter = router({
       await db.ensureEventYear();
       return db.listEventYears();
     }),
-    create: protectedProcedure
+    create: adminProcedure
       .input(z.object({ year: eventYearInput }))
       .mutation(async ({ input }) => {
         await db.ensureEventYear(input.year);
@@ -293,9 +308,9 @@ export const appRouter = router({
           adminPassword: z.string().min(1).max(200),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
         await requireAdminPassword(input.adminPassword);
-        await db.resetArea(input.area);
+        await db.resetArea(input.area, auditActor(ctx.user));
         return { success: true } as const;
       }),
   }),
@@ -377,6 +392,7 @@ export const appRouter = router({
       .mutation(({ ctx, input }) =>
         db.deleteHelper(input.id, {
           allowAssigned: ctx.user.role === "admin",
+          actor: auditActor(ctx.user),
         })
       ),
   }),
@@ -717,7 +733,9 @@ export const appRouter = router({
       }),
     remove: protectedProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(({ input }) => db.deleteCake(input.id)),
+      .mutation(({ ctx, input }) =>
+        db.deleteCake(input.id, auditActor(ctx.user))
+      ),
   }),
   finances: router({
     list: protectedProcedure.query(() => db.listFinances()),
@@ -748,6 +766,20 @@ export const appRouter = router({
     remove: adminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(({ input }) => db.deleteFinance(input.id)),
+  }),
+
+  audit: router({
+    deletions: adminProcedure
+      .input(
+        z
+          .object({
+            eventYear: eventYearInput.optional(),
+            entityType: z.enum(["helper", "cake"]).optional(),
+            limit: z.number().int().min(1).max(1000).default(500),
+          })
+          .optional()
+      )
+      .query(({ input }) => db.listDeletionAuditLogs(input)),
   }),
 
   dashboard: router({

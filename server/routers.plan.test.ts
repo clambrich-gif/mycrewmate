@@ -13,6 +13,7 @@ const dbMocks = vi.hoisted(() => ({
   deleteHelper: vi.fn(),
   deleteCake: vi.fn(),
   createPrep: vi.fn(),
+  listDeletionAuditLogs: vi.fn(),
 }));
 
 vi.mock("./db", () => dbMocks);
@@ -187,8 +188,19 @@ describe("Planungs-API", () => {
     });
     expect(dbMocks.deleteHelper).toHaveBeenCalledWith(20, {
       allowAssigned: false,
+      actor: {
+        userId: 2,
+        name: "Organisation",
+        role: "user",
+        loginMethod: "manus",
+      },
     });
-    expect(dbMocks.deleteCake).toHaveBeenCalledWith(30);
+    expect(dbMocks.deleteCake).toHaveBeenCalledWith(30, {
+      userId: 2,
+      name: "Organisation",
+      role: "user",
+      loginMethod: "manus",
+    });
   });
 
   it("erlaubt Administratoren bei Helferlöschung auch die Planbereinigung", async () => {
@@ -199,12 +211,35 @@ describe("Planungs-API", () => {
 
     expect(dbMocks.deleteHelper).toHaveBeenCalledWith(20, {
       allowAssigned: true,
+      actor: {
+        userId: 1,
+        name: "Organisation",
+        role: "admin",
+        loginMethod: "manus",
+      },
     });
+  });
+
+  it("zeigt das Löschprotokoll ausschließlich Administratoren", async () => {
+    dbMocks.listDeletionAuditLogs.mockResolvedValue([
+      { id: 1, entityType: "helper", entityLabel: "Alex" },
+    ]);
+
+    await expect(
+      appRouter.createCaller(planningTeamCtx).audit.deletions({ limit: 10 })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(
+      appRouter.createCaller(ctx).audit.deletions({ limit: 10 })
+    ).resolves.toEqual([{ id: 1, entityType: "helper", entityLabel: "Alex" }]);
+    expect(dbMocks.listDeletionAuditLogs).toHaveBeenCalledWith({ limit: 10 });
   });
 
   it("verweigert dem Planungsteam jede Einsatzplanänderung", async () => {
     const caller = appRouter.createCaller(planningTeamCtx);
 
+    await expect(caller.years.create({ year: 2028 })).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
     await expect(
       caller.shifts.create({
         day: "Freitag",

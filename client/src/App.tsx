@@ -18,6 +18,7 @@ import Finances from "./pages/Finances";
 import Excel from "./pages/Excel";
 import PdfExport from "./pages/PdfExport";
 import Security from "./pages/Security";
+import Permissions from "./pages/Permissions";
 import { YearProvider } from "./contexts/YearContext";
 
 function Router() {
@@ -41,6 +42,7 @@ function Router() {
         <Route path="/finanzen" component={Finances} />
         <Route path="/pdf-export" component={PdfExport} />
         <Route path="/excel" component={Excel} />
+        <Route path="/berechtigungen" component={Permissions} />
         <Route path="/sicherheit" component={Security} />
         <Route component={NotFound} />
       </Switch>
