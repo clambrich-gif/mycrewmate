@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,7 +17,6 @@ import { trpc } from "@/lib/trpc";
 import { FileDown, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
 
 const YN = [
@@ -51,7 +51,7 @@ function Sel({
 }) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className={cn("h-8 w-[110px]", valueColor(value))}>
+      <SelectTrigger className={cn("h-8 w-full", valueColor(value))}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -74,6 +74,7 @@ export default function Helpers() {
   const { user } = useAuth();
   const { data: helpers = [], isLoading } = trpc.helpers.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
+  const { data: plan } = trpc.plan.evaluate.useQuery();
   const [name, setName] = useState("");
   const [filter, setFilter] = useState("");
   const [apFilter, setApFilter] = useState("alle");
@@ -132,7 +133,10 @@ export default function Helpers() {
           helper =>
             (!filter ||
               helper.name.toLowerCase().includes(filter.toLowerCase())) &&
-            (apFilter === "alle" || String(helper.contactId ?? "") === apFilter)
+            (apFilter === "alle" ||
+              (apFilter === "ohne"
+                ? !helper.contactId
+                : String(helper.contactId ?? "") === apFilter))
         )
         .sort((a, b) =>
           sortAsc ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)
@@ -152,6 +156,11 @@ export default function Helpers() {
         .map(helper => helper.id)
     );
   }, [contacts, helpers]);
+  const assignedHelperIds = useMemo(
+    () =>
+      new Set((plan ?? []).flatMap(item => item.assigned.map(a => a.helperId))),
+    [plan]
+  );
 
   return (
     <div className="space-y-5">
@@ -197,6 +206,12 @@ export default function Helpers() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="alle">Alle Ansprechpartner</SelectItem>
+            <SelectItem
+              value="ohne"
+              className="bg-amber-100 text-amber-950 dark:bg-amber-900/60 dark:text-amber-50"
+            >
+              Ohne Ansprechpartner
+            </SelectItem>
             {contacts.map(contact => (
               <SelectItem key={contact.id} value={String(contact.id)}>
                 {contact.name}
@@ -207,25 +222,25 @@ export default function Helpers() {
       </div>
 
       <Card className="shadow-sm">
-        <CardContent className="p-0 overflow-x-auto">
-          <table className="w-full min-w-[1320px] text-sm">
+        <CardContent className="overflow-hidden p-0">
+          <table className="w-full table-fixed text-xs xl:text-sm">
             <thead className="bg-muted/60">
               <tr className="text-left">
                 <th
-                  className="p-3 cursor-pointer select-none"
+                  className="w-[12%] cursor-pointer select-none p-2"
                   onClick={() => setSortAsc(!sortAsc)}
                 >
                   Name {sortAsc ? "▲" : "▼"}
                 </th>
-                <th className="p-3">Ansprechpartner</th>
-                <th className="p-3">Telefon Helfer</th>
-                <th className="p-3">Hinweis für PDF</th>
-                <th className="p-3">Helfen?</th>
-                <th className="p-3">Fr</th>
-                <th className="p-3">Sa</th>
-                <th className="p-3">So</th>
-                <th className="p-3">Bestätigt?</th>
-                <th className="p-3 w-24">Aktionen</th>
+                <th className="w-[14%] p-2">Ansprechpartner</th>
+                <th className="w-[10%] p-2">Telefon Helfer</th>
+                <th className="w-[19%] p-2">Hinweis für PDF</th>
+                <th className="w-[7%] p-2">Helfen?</th>
+                <th className="w-[7%] p-2">Fr</th>
+                <th className="w-[7%] p-2">Sa</th>
+                <th className="w-[7%] p-2">So</th>
+                <th className="w-[7%] p-2">Bestätigt?</th>
+                <th className="w-[10%] p-2">Aktionen</th>
               </tr>
             </thead>
             <tbody>
@@ -264,7 +279,7 @@ export default function Helpers() {
                     >
                       <SelectTrigger
                         className={cn(
-                          "h-8 w-[170px]",
+                          "h-8 w-full",
                           !helper.contactId &&
                             "border-amber-400 bg-amber-100 text-amber-950 dark:bg-amber-900/60 dark:text-amber-50"
                         )}
@@ -293,7 +308,7 @@ export default function Helpers() {
                     <Input
                       key={`${helper.id}-phone-${helper.phone ?? ""}`}
                       type="tel"
-                      className="h-8 w-36"
+                      className="h-8 w-full min-w-0"
                       defaultValue={helper.phone ?? ""}
                       placeholder="optional"
                       onBlur={event => {
@@ -310,7 +325,7 @@ export default function Helpers() {
                   <td className="p-2">
                     <Input
                       key={`${helper.id}-note-${helper.note ?? ""}`}
-                      className="h-8 w-52"
+                      className="h-8 w-full min-w-0"
                       defaultValue={helper.note ?? ""}
                       placeholder="Verfügbarkeit / Bemerkung"
                       onBlur={event => {
@@ -381,8 +396,8 @@ export default function Helpers() {
                       }
                     />
                   </td>
-                  <td className="p-2">
-                    <div className="flex gap-1">
+                  <td className="p-1">
+                    <div className="flex min-w-0 justify-center gap-1">
                       <Button
                         variant="ghost"
                         size="icon"
@@ -395,26 +410,31 @@ export default function Helpers() {
                       >
                         <FileDown className="h-4 w-4" />
                       </Button>
-                      {user?.role === "admin" && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          title={
-                            selfHelperIds.has(helper.id)
-                              ? "Zum Löschen zuerst den Ansprechpartner entfernen"
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title={
+                          selfHelperIds.has(helper.id)
+                            ? "Zum Löschen zuerst den Ansprechpartner entfernen"
+                            : user?.role !== "admin" &&
+                                assignedHelperIds.has(helper.id)
+                              ? "Eingeteilte Helfer können nur Administratoren löschen"
                               : "Löschen"
-                          }
-                          disabled={selfHelperIds.has(helper.id)}
-                          onClick={() =>
-                            setDeleteTarget({
-                              id: helper.id,
-                              name: helper.name,
-                            })
-                          }
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      )}
+                        }
+                        disabled={
+                          selfHelperIds.has(helper.id) ||
+                          (user?.role !== "admin" &&
+                            assignedHelperIds.has(helper.id))
+                        }
+                        onClick={() =>
+                          setDeleteTarget({
+                            id: helper.id,
+                            name: helper.name,
+                          })
+                        }
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
                     </div>
                   </td>
                 </tr>
@@ -436,16 +456,13 @@ export default function Helpers() {
         <StatusBadge status="nein" />
         abgesagt/nicht verfügbar
       </p>
-      <AdminPasswordDialog
+      <ConfirmDeleteDialog
         open={Boolean(deleteTarget)}
         onOpenChange={open => !open && setDeleteTarget(null)}
         title="Helfer löschen?"
         description={`„${deleteTarget?.name ?? ""}“ wird aus der Helferliste und allen Einsatzzuordnungen des aktuellen Jahres gelöscht.`}
-        confirmLabel="Helfer löschen"
         busy={remove.isPending}
-        onConfirm={adminPassword =>
-          deleteTarget && remove.mutate({ id: deleteTarget.id, adminPassword })
-        }
+        onConfirm={() => deleteTarget && remove.mutate({ id: deleteTarget.id })}
       />
     </div>
   );

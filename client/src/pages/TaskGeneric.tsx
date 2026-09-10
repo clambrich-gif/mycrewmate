@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -42,6 +43,7 @@ interface Props {
   noContact?: boolean;
   noStatus?: boolean;
   sortableAndFilterable?: boolean;
+  teamCanDelete?: boolean;
 }
 
 const temporaryId = () => -Date.now() - Math.floor(Math.random() * 1_000);
@@ -57,6 +59,7 @@ export default function TaskGeneric({
   noContact,
   noStatus,
   sortableAndFilterable = false,
+  teamCanDelete = false,
 }: Props) {
   const utils = trpc.useUtils();
   const { user } = useAuth();
@@ -68,6 +71,10 @@ export default function TaskGeneric({
   const [extras, setExtras] = useState<Record<string, string>>({});
   const [contactFilter, setContactFilter] = useState("alle");
   const [sortAsc, setSortAsc] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
 
   const defaultStatus = statusOptions ?? [
     { v: "offen", l: "offen" },
@@ -165,7 +172,10 @@ export default function TaskGeneric({
       );
       return { previous };
     },
-    onSuccess: () => toast.success("Entfernt"),
+    onSuccess: () => {
+      setDeleteTarget(null);
+      toast.success("Entfernt");
+    },
     onError: (error: any, _input: any, context: any) => {
       listUtils.setData(undefined, context?.previous);
       toast.error(error.message);
@@ -395,17 +405,25 @@ export default function TaskGeneric({
                     </td>
                   )}
                   <td className="p-2">
-                    {user?.role === "admin" && row.id > 0 && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={`${addLabel} ${row[nameKey]} löschen`}
-                        disabled={remove.isPending}
-                        onClick={() => remove.mutate({ id: row.id })}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    )}
+                    {(user?.role === "admin" || teamCanDelete) &&
+                      row.id > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`${addLabel} ${row[nameKey]} löschen`}
+                          disabled={remove.isPending}
+                          onClick={() =>
+                            teamCanDelete
+                              ? setDeleteTarget({
+                                  id: row.id,
+                                  name: String(row[nameKey] ?? ""),
+                                })
+                              : remove.mutate({ id: row.id })
+                          }
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
                   </td>
                 </tr>
               ))}
@@ -425,6 +443,18 @@ export default function TaskGeneric({
           </table>
         </CardContent>
       </Card>
+      {teamCanDelete && (
+        <ConfirmDeleteDialog
+          open={Boolean(deleteTarget)}
+          onOpenChange={open => !open && setDeleteTarget(null)}
+          title={`${addLabel} löschen?`}
+          description={`„${deleteTarget?.name ?? ""}“ wird aus ${title} im aktuellen Veranstaltungsjahr gelöscht.`}
+          busy={remove.isPending}
+          onConfirm={() =>
+            deleteTarget && remove.mutate({ id: deleteTarget.id })
+          }
+        />
+      )}
     </div>
   );
 }

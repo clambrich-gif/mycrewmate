@@ -372,25 +372,21 @@ export const appRouter = router({
         const { id, ...rest } = input;
         return db.updateHelper(id, rest);
       }),
-    remove: adminProcedure
-      .input(
-        z.object({
-          id: z.number(),
-          adminPassword: z.string().min(1).max(200),
+    remove: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(({ ctx, input }) =>
+        db.deleteHelper(input.id, {
+          allowAssigned: ctx.user.role === "admin",
         })
-      )
-      .mutation(async ({ input }) => {
-        await requireAdminPassword(input.adminPassword);
-        return db.deleteHelper(input.id);
-      }),
+      ),
   }),
 
   shifts: router({
     list: protectedProcedure.query(() => db.listShifts()),
-    create: protectedProcedure
+    create: adminProcedure
       .input(createShiftInput)
       .mutation(({ input }) => db.createShift(input)),
-    update: protectedProcedure.input(updateShiftInput).mutation(({ input }) => {
+    update: adminProcedure.input(updateShiftInput).mutation(({ input }) => {
       const { id, ...rest } = input;
       return db.updateShift(id, rest);
     }),
@@ -414,7 +410,7 @@ export const appRouter = router({
         const hs = await db.listHelpers();
         return hs.filter(h => helperActiveOnDay(h, input.day as Day));
       }),
-    assign: protectedProcedure
+    assign: adminProcedure
       .input(
         z.object({
           shiftId: z.number().int().positive(),
@@ -476,7 +472,7 @@ export const appRouter = router({
           });
         }
       }),
-    unassign: protectedProcedure
+    unassign: adminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(({ input }) => db.unassignHelper(input.id)),
   }),
@@ -719,7 +715,7 @@ export const appRouter = router({
         const { id, ...r } = input;
         return db.updateCake(id, r);
       }),
-    remove: adminProcedure
+    remove: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(({ input }) => db.deleteCake(input.id)),
   }),

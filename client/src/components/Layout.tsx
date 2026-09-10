@@ -274,7 +274,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
       <main className="flex-1 min-w-0 overflow-y-auto">
-        <div className="p-6 max-w-[1400px]">
+        <div
+          className={
+            location === "/helfer" ? "w-full p-4 xl:p-6" : "max-w-[1400px] p-6"
+          }
+        >
           <div className="mb-5 inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
             Planung {year}
           </div>

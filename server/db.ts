@@ -367,7 +367,10 @@ export async function updateHelper(
       .where(and(eq(helpers.id, id), eq(helpers.year, year())));
   });
 }
-export async function deleteHelper(id: number) {
+export async function deleteHelper(
+  id: number,
+  options: { allowAssigned?: boolean } = {}
+) {
   const db = (await getDb()) as DB;
   return db.transaction(async tx => {
     const [helper] = await tx
@@ -376,6 +379,18 @@ export async function deleteHelper(id: number) {
       .where(and(eq(helpers.id, id), eq(helpers.year, year())))
       .limit(1);
     if (!helper) throw new Error("Helfer wurde nicht gefunden");
+    if (!options.allowAssigned) {
+      const [assignment] = await tx
+        .select({ id: assignments.id })
+        .from(assignments)
+        .where(eq(assignments.helperId, id))
+        .limit(1);
+      if (assignment) {
+        throw new Error(
+          "Dieser Helfer ist im Einsatzplan eingeteilt und kann nur von einem Administrator gelöscht werden"
+        );
+      }
+    }
     if (helper.contactId) {
       const [contact] = await tx
         .select()

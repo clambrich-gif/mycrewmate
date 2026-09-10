@@ -7,7 +7,11 @@ const dbMocks = vi.hoisted(() => ({
   listHelpers: vi.fn(),
   listAssignments: vi.fn(),
   assignHelper: vi.fn(),
+  unassignHelper: vi.fn(),
   createShift: vi.fn(),
+  deleteShift: vi.fn(),
+  deleteHelper: vi.fn(),
+  deleteCake: vi.fn(),
   createPrep: vi.fn(),
 }));
 
@@ -56,6 +60,11 @@ const ctx = {
   },
   req: { protocol: "https", headers: {} },
   res: {},
+} as TrpcContext;
+
+const planningTeamCtx = {
+  ...ctx,
+  user: { ...ctx.user!, id: 2, openId: "planning-team", role: "user" as const },
 } as TrpcContext;
 
 describe("Planungs-API", () => {
@@ -162,6 +171,61 @@ describe("Planungs-API", () => {
     expect(dbMocks.createPrep).toHaveBeenCalledWith({
       task: "Absperrmaterial prüfen",
       dueText: "Spätestens zwei Wochen vor Streckenfreigabe",
+    });
+  });
+
+  it("erlaubt dem Planungsteam bestätigte Helfer- und Kuchenlöschungen", async () => {
+    dbMocks.deleteHelper.mockResolvedValue({ affectedRows: 1 });
+    dbMocks.deleteCake.mockResolvedValue({ affectedRows: 1 });
+    const caller = appRouter.createCaller(planningTeamCtx);
+
+    await expect(caller.helpers.remove({ id: 20 })).resolves.toEqual({
+      affectedRows: 1,
+    });
+    await expect(caller.cakes.remove({ id: 30 })).resolves.toEqual({
+      affectedRows: 1,
+    });
+    expect(dbMocks.deleteHelper).toHaveBeenCalledWith(20, {
+      allowAssigned: false,
+    });
+    expect(dbMocks.deleteCake).toHaveBeenCalledWith(30);
+  });
+
+  it("erlaubt Administratoren bei Helferlöschung auch die Planbereinigung", async () => {
+    dbMocks.deleteHelper.mockResolvedValue({ affectedRows: 1 });
+    const caller = appRouter.createCaller(ctx);
+
+    await caller.helpers.remove({ id: 20 });
+
+    expect(dbMocks.deleteHelper).toHaveBeenCalledWith(20, {
+      allowAssigned: true,
+    });
+  });
+
+  it("verweigert dem Planungsteam jede Einsatzplanänderung", async () => {
+    const caller = appRouter.createCaller(planningTeamCtx);
+
+    await expect(
+      caller.shifts.create({
+        day: "Freitag",
+        area: "Start",
+        task: "Anmeldung",
+        startTime: "08:00",
+        endTime: "10:00",
+        needed: 1,
+      })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(
+      caller.plan.assign({ shiftId: 10, helperId: 20, slot: 0 })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(
+      caller.shifts.update({ id: 10, task: "Geänderte Aufgabe" })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.plan.unassign({ id: 1 })).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+    await expect(caller.shifts.remove({ id: 10 })).rejects.toMatchObject({
+      code: "FORBIDDEN",
     });
   });
 });

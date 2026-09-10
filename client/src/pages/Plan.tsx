@@ -37,6 +37,7 @@ type AssignmentT = {
 export default function Plan() {
   const utils = trpc.useUtils();
   const { user } = useAuth();
+  const canEditPlan = user?.role === "admin";
   const { data: evals = [], isLoading } = trpc.plan.evaluate.useQuery();
   const { data: helpers = [] } = trpc.helpers.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
@@ -128,6 +129,7 @@ export default function Plan() {
     setDlgOpen(true);
   };
   const saveShift = () => {
+    if (!canEditPlan) return;
     if (!form.task.trim() || !form.area.trim()) {
       toast.error("Bereich und Aufgabe sind Pflicht");
       return;
@@ -197,18 +199,21 @@ export default function Plan() {
       <div>
         <h1 className="text-2xl font-bold">Einsatzplan</h1>
         <p className="text-muted-foreground">
-          Nur verfügbare, aktive Helfer sind auswählbar. Absagen markieren
-          Ausfälle (rot), Doppelbelegungen werden gewarnt (orange).
+          {canEditPlan
+            ? "Nur verfügbare, aktive Helfer sind auswählbar. Absagen markieren Ausfälle (rot), Doppelbelegungen werden gewarnt (orange)."
+            : "Das Planungsteam kann den Einsatzplan vollständig ansehen und filtern. Änderungen und Helferzuweisungen sind Administratoren vorbehalten."}
         </p>
       </div>
-      <div className="flex justify-end gap-2 flex-wrap">
-        <CopyPreviousPlanButton />
-        <ResetAreaButton area="shifts" label="Einsatzplan" />
-        <Button onClick={openCreate}>
-          <Plus className="h-4 w-4 mr-2" />
-          Neue Schicht
-        </Button>
-      </div>
+      {canEditPlan && (
+        <div className="flex justify-end gap-2 flex-wrap">
+          <CopyPreviousPlanButton />
+          <ResetAreaButton area="shifts" label="Einsatzplan" />
+          <Button onClick={openCreate}>
+            <Plus className="h-4 w-4 mr-2" />
+            Neue Schicht
+          </Button>
+        </div>
+      )}
 
       <div className="flex gap-3 flex-wrap">
         <Input
@@ -312,16 +317,18 @@ export default function Plan() {
                     <td className="p-3">
                       <div className="flex items-center gap-1">
                         <span>{s.area}</span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          title="Schicht bearbeiten"
-                          onClick={() => openEdit(s)}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        {user?.role === "admin" && (
+                        {canEditPlan && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            title="Schicht bearbeiten"
+                            onClick={() => openEdit(s)}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        {canEditPlan && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -370,6 +377,16 @@ export default function Plan() {
                       <div className="flex flex-wrap gap-1.5">
                         {slotsFor(evalE).map(({ slot, a }) => {
                           if (!a) {
+                            if (!canEditPlan) {
+                              return (
+                                <span
+                                  key={slot}
+                                  className="slot slot-offen inline-flex h-9 items-center"
+                                >
+                                  Platz offen
+                                </span>
+                              );
+                            }
                             return (
                               <Select
                                 key={slot}
@@ -426,13 +443,15 @@ export default function Plan() {
                               <span className="truncate">
                                 {h ? label(h) : "?"}
                               </span>
-                              <button
-                                className="opacity-60 hover:opacity-100"
-                                title="Entfernen"
-                                onClick={() => unassign.mutate({ id: a.id })}
-                              >
-                                ×
-                              </button>
+                              {canEditPlan && (
+                                <button
+                                  className="opacity-60 hover:opacity-100"
+                                  title="Entfernen"
+                                  onClick={() => unassign.mutate({ id: a.id })}
+                                >
+                                  ×
+                                </button>
+                              )}
                             </span>
                           );
                         })}
