@@ -42,10 +42,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
           {NAV.map(({ href, label, icon: Icon }) => {
             const active = location === href;
             return (
-              <Link key={href} href={href}>
-                <a className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${active ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}>
-                  <Icon className="h-4 w-4" /> {label}
-                </a>
+              <Link
+                key={href}
+                href={href}
+                className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${active ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}
+              >
+                <Icon className="h-4 w-4" /> {label}
               </Link>
             );
           })}
