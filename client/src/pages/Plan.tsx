@@ -464,7 +464,7 @@ export default function Plan() {
       </p>
 
       <Dialog open={dlgOpen} onOpenChange={setDlgOpen}>
-        <DialogContent>
+        <DialogContent className="!bg-white !text-slate-950 opacity-100 shadow-2xl dark:!bg-slate-950 dark:!text-slate-50 [&_[data-slot=input]]:!bg-white [&_[data-slot=input]]:dark:!bg-slate-900 [&_[data-slot=select-trigger]]:!bg-white [&_[data-slot=select-trigger]]:dark:!bg-slate-900">
           <DialogHeader>
             <DialogTitle>
               {editShift ? "Schicht bearbeiten" : "Neue Schicht"}

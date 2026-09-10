@@ -1,4 +1,4 @@
-import { and, eq, getTableColumns, inArray } from "drizzle-orm";
+import { and, eq, getTableColumns, inArray, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   appSettings,
@@ -85,6 +85,7 @@ export function normalizePersonName(value: string) {
   return value
     .normalize("NFKC")
     .trim()
+    .replace(/\s*\([^)]*\)\s*$/, "")
     .replace(/\s+/g, " ")
     .toLocaleLowerCase("de-DE");
 }
@@ -358,6 +359,63 @@ export async function assignHelper(v: {
 }) {
   const db = (await getDb()) as DB;
   return db.insert(assignments).values(v);
+}
+export async function replaceShiftAssignment(v: {
+  shiftId: number;
+  helperId: number;
+  slot: number;
+}) {
+  const db = (await getDb()) as DB;
+  return db.transaction(async tx => {
+    const [shift] = await tx
+      .select({ id: shifts.id, needed: shifts.needed })
+      .from(shifts)
+      .where(and(eq(shifts.id, v.shiftId), eq(shifts.year, year())))
+      .limit(1);
+    const [helper] = await tx
+      .select({ id: helpers.id })
+      .from(helpers)
+      .where(and(eq(helpers.id, v.helperId), eq(helpers.year, year())))
+      .limit(1);
+    if (!shift || !helper)
+      throw new Error("Schicht oder Helfer wurde nicht gefunden");
+    if (v.slot < 0 || v.slot >= shift.needed)
+      throw new Error("Helferplatz liegt außerhalb des Schichtbedarfs");
+    const current = await tx
+      .select()
+      .from(assignments)
+      .where(eq(assignments.shiftId, v.shiftId));
+    if (
+      current.some(item => item.slot === v.slot && item.helperId === v.helperId)
+    )
+      return;
+    await tx
+      .delete(assignments)
+      .where(
+        and(
+          eq(assignments.shiftId, v.shiftId),
+          or(eq(assignments.slot, v.slot), eq(assignments.helperId, v.helperId))
+        )
+      );
+    await tx.insert(assignments).values(v);
+  });
+}
+export async function removeShiftAssignment(v: {
+  shiftId: number;
+  slot: number;
+}) {
+  const db = (await getDb()) as DB;
+  const [shift] = await db
+    .select({ id: shifts.id })
+    .from(shifts)
+    .where(and(eq(shifts.id, v.shiftId), eq(shifts.year, year())))
+    .limit(1);
+  if (!shift) throw new Error("Schicht wurde nicht gefunden");
+  return db
+    .delete(assignments)
+    .where(
+      and(eq(assignments.shiftId, v.shiftId), eq(assignments.slot, v.slot))
+    );
 }
 export async function unassignHelper(id: number) {
   const db = (await getDb()) as DB;

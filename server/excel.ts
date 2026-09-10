@@ -22,18 +22,10 @@ const availability = (value: unknown): "ja" | "nein" | "vielleicht" => {
   return "vielleicht";
 };
 
-const shiftKey = (value: {
-  day: string;
-  area: string;
-  task: string;
-  startTime: string;
-  endTime: string;
-}) =>
-  [value.day, value.area, value.task, value.startTime, value.endTime]
-    .map(key)
-    .join("|");
-
-export async function importExcel(base64: string) {
+export async function importExcel(
+  base64: string,
+  options: { skipHelperKeys?: string[] } = {}
+) {
   const workbook = XLSX.read(Buffer.from(base64, "base64"), { type: "buffer" });
   const result = {
     kontakte: 0,
@@ -58,116 +50,106 @@ export async function importExcel(base64: string) {
         })
       : [];
 
+  const findHeader = (rows: any[][], required: RegExp[]) => {
+    const index = rows
+      .slice(0, 20)
+      .findIndex(row =>
+        required.every(pattern => row.some(value => pattern.test(key(value))))
+      );
+    return index;
+  };
+  const column = (headers: any[], patterns: RegExp[], fallback: number) => {
+    const index = headers.findIndex(value =>
+      patterns.some(pattern => pattern.test(key(value)))
+    );
+    return index >= 0 ? index : fallback;
+  };
+
   const contactIdByName = new Map<string, number>();
+  const skipHelperKeys = new Set(options.skipHelperKeys ?? []);
   for (const contact of await db.listContacts()) {
     contactIdByName.set(key(contact.name), contact.id);
   }
-  for (const row of sheet("ANSPRECHPARTNER").slice(7)) {
-    const name = String(row?.[0] ?? "").trim();
+  const contactRows = sheet("ANSPRECHPARTNER");
+  const contactHeader = findHeader(contactRows, [
+    /^name(?: \(ansprechpartner\))?$/,
+  ]);
+  const contactHeaders = contactHeader >= 0 ? contactRows[contactHeader] : [];
+  const contactNameColumn = column(
+    contactHeaders,
+    [/^name(?: \(ansprechpartner\))?$/],
+    0
+  );
+  const contactPhoneColumn = column(
+    contactHeaders,
+    [/^rufnummer$/, /^telefon$/],
+    1
+  );
+  const contactNoteColumn = column(
+    contactHeaders,
+    [/^bemerkung$/, /^notiz$/, /^hinweis$/],
+    2
+  );
+  for (const row of contactRows.slice(
+    contactHeader >= 0 ? contactHeader + 1 : 7
+  )) {
+    const name = String(row?.[contactNameColumn] ?? "").trim();
     if (!name || /name \(ansprechpartner\)/i.test(name) || /^tipp:/i.test(name))
       continue;
-    const upserted = await db.upsertContactByName({ name });
+    const upserted = await db.upsertContactByName({
+      name,
+      phone: String(row?.[contactPhoneColumn] ?? "").trim() || undefined,
+      note: String(row?.[contactNoteColumn] ?? "").trim() || undefined,
+    });
     contactIdByName.set(key(name), upserted.id);
     upserted.created ? result.kontakte++ : result.uebersprungen++;
   }
 
-  const helperIdByKey = new Map<string, number>();
-  for (const row of sheet("HELFER").slice(9)) {
-    const contactName = String(row?.[0] ?? "").trim();
-    const name = String(row?.[1] ?? "").trim();
+  const helperRows = sheet("HELFER");
+  const helperHeader = findHeader(helperRows, [/^name(?: helfer)?$/]);
+  const helperHeaders = helperHeader >= 0 ? helperRows[helperHeader] : [];
+  const helperColumns = {
+    contact: column(helperHeaders, [/^ansprechpartner$/], 0),
+    name: column(helperHeaders, [/^name(?: helfer)?$/], 1),
+    email: column(helperHeaders, [/^e-mail$/, /^email$/], -1),
+    phone: column(helperHeaders, [/^telefon(?: helfer)?$/, /^rufnummer$/], -1),
+    willHelp: column(helperHeaders, [/^helfen\??$/], 3),
+    fri: column(helperHeaders, [/^fr(?:eitag)?$/], 4),
+    sat: column(helperHeaders, [/^sa(?:mstag)?$/], 5),
+    sun: column(helperHeaders, [/^so(?:nntag)?$/], 6),
+    note: column(
+      helperHeaders,
+      [/^bemerkung$/, /^hinweis(?: für pdf)?$/, /^notiz$/],
+      -1
+    ),
+    confirmed: column(helperHeaders, [/^bestätigt\??$/, /^bestaetigt\??$/], 8),
+  };
+  for (const row of helperRows.slice(
+    helperHeader >= 0 ? helperHeader + 1 : 9
+  )) {
+    const contactName = String(row?.[helperColumns.contact] ?? "").trim();
+    const name = String(row?.[helperColumns.name] ?? "").trim();
     if (!name || /name helfer/i.test(name)) continue;
+    if (skipHelperKeys.has(db.normalizePersonName(name))) {
+      result.uebersprungen++;
+      continue;
+    }
     const upserted = await db.upsertHelperByName({
       name,
       contactId: contactIdByName.get(key(contactName)) ?? null,
-      willHelp: availability(row?.[3]) === "nein" ? "nein" : "ja",
-      availFri: availability(row?.[4]),
-      availSat: availability(row?.[5]),
-      availSun: availability(row?.[6]),
-      confirmed: availability(row?.[8]) === "ja" ? "ja" : "nein",
+      email: String(row?.[helperColumns.email] ?? "").trim() || undefined,
+      phone: String(row?.[helperColumns.phone] ?? "").trim() || undefined,
+      note: String(row?.[helperColumns.note] ?? "").trim() || undefined,
+      willHelp:
+        availability(row?.[helperColumns.willHelp]) === "nein" ? "nein" : "ja",
+      availFri: availability(row?.[helperColumns.fri]),
+      availSat: availability(row?.[helperColumns.sat]),
+      availSun: availability(row?.[helperColumns.sun]),
+      confirmed:
+        availability(row?.[helperColumns.confirmed]) === "ja" ? "ja" : "nein",
     });
-    helperIdByKey.set(key(name), upserted.id);
-    helperIdByKey.set(key(`${name} (${contactName})`), upserted.id);
     if (upserted.created) result.helfer++;
     else result.aktualisiert++;
-  }
-  for (const helper of await db.listHelpers()) {
-    helperIdByKey.set(key(helper.name), helper.id);
-    const contact = Array.from(contactIdByName.entries()).find(
-      ([, id]) => id === helper.contactId
-    );
-    if (contact)
-      helperIdByKey.set(key(`${helper.name} (${contact[0]})`), helper.id);
-  }
-
-  const existingShifts = new Map(
-    (await db.listShifts()).map(item => [shiftKey(item), item])
-  );
-  const assignmentKeys = new Set(
-    (await db.listAssignments()).map(item => `${item.shiftId}:${item.slot}`)
-  );
-  let lastDay = "";
-  for (const row of sheet("EINSATZPLAN").slice(8)) {
-    const rawDay = String(row?.[0] ?? "").trim();
-    const normalizedDay = rawDay
-      ? rawDay.charAt(0).toUpperCase() + rawDay.slice(1).toLowerCase()
-      : "";
-    if (["Freitag", "Samstag", "Sonntag"].includes(normalizedDay))
-      lastDay = normalizedDay;
-    const area = String(row?.[1] ?? "").trim();
-    const task = String(row?.[2] ?? "").trim();
-    if (!task) continue;
-    const day = (
-      ["Freitag", "Samstag", "Sonntag"].includes(normalizedDay)
-        ? normalizedDay
-        : lastDay
-    ) as "Freitag" | "Samstag" | "Sonntag";
-    if (!["Freitag", "Samstag", "Sonntag"].includes(day)) continue;
-    if (!area && !String(row?.[5] ?? "").trim()) continue;
-    const values = {
-      day,
-      area: area || "Allgemein",
-      task,
-      startTime: String(row?.[3] ?? ""),
-      endTime: String(row?.[4] ?? ""),
-      needed: Number(row?.[5]) || 0,
-      note: String(row?.[10] ?? "").trim(),
-    };
-    const existing = existingShifts.get(shiftKey(values));
-    let shiftId = existing?.id;
-    if (existing) {
-      await db.updateShift(existing.id, {
-        needed: values.needed,
-        note: values.note,
-      });
-      result.aktualisiert++;
-    } else {
-      const inserted: any = await db.createShift(values);
-      shiftId = Number(inserted?.[0]?.insertId ?? inserted?.insertId);
-      existingShifts.set(shiftKey(values), { ...values, id: shiftId } as any);
-      result.schichten++;
-    }
-    for (let slot = 0; slot < 20 && shiftId; slot++) {
-      const raw = row?.[11 + slot];
-      if (typeof raw !== "string") continue;
-      const cell = raw.trim();
-      if (
-        !cell ||
-        /^(OFFEN|KNAPP|OK)$/i.test(cell) ||
-        /doppelbelegung/i.test(cell)
-      )
-        continue;
-      const helperId =
-        helperIdByKey.get(key(cell)) ??
-        helperIdByKey.get(key(cell.replace(/\s*\(.*\)$/, "")));
-      const assignmentKey = `${shiftId}:${slot}`;
-      if (!helperId || assignmentKeys.has(assignmentKey)) {
-        result.uebersprungen++;
-        continue;
-      }
-      await db.assignHelper({ shiftId, helperId, slot });
-      assignmentKeys.add(assignmentKey);
-      result.zuordnungen++;
-    }
   }
 
   const contacts = await db.listContacts();
@@ -394,15 +376,24 @@ export async function exportExcel(): Promise<Buffer> {
   }
   add(
     "EINSATZPLAN",
-    shifts.map(shift => ({
-      Tag: shift.day,
-      Bereich: shift.area,
-      Aufgabe: shift.task,
-      Beginn: shift.startTime,
-      Ende: shift.endTime,
-      Bedarf: shift.needed,
-      Helfer: (byShift.get(shift.id) ?? []).filter(Boolean).join(", "),
-    }))
+    shifts.map(shift => {
+      const assigned = byShift.get(shift.id) ?? [];
+      return {
+        Tag: shift.day,
+        Bereich: shift.area,
+        Aufgabe: shift.task,
+        Beginn: shift.startTime,
+        Ende: shift.endTime,
+        Bedarf: shift.needed,
+        Bemerkung: shift.note ?? "",
+        ...Object.fromEntries(
+          Array.from({ length: 20 }, (_, slot) => [
+            `Helfer ${slot + 1}`,
+            assigned[slot] ?? "",
+          ])
+        ),
+      };
+    })
   );
   add(
     "VORBEREITUNG",

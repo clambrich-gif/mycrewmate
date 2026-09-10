@@ -16,6 +16,7 @@ import {
   type Day,
 } from "./logic";
 import { importExcel, exportExcel } from "./excel";
+import { applyPlanImport, previewExcelImport } from "./import-preview";
 import { sdk } from "./_core/sdk";
 import {
   ADMIN_PASSWORD_OPEN_ID,
@@ -826,9 +827,78 @@ export const appRouter = router({
   }),
 
   excel: router({
-    importFile: adminProcedure
-      .input(z.object({ base64: z.string() }))
-      .mutation(({ input }) => importExcel(input.base64)),
+    previewFile: adminProcedure
+      .input(
+        z.object({
+          base64: z
+            .string()
+            .max(20_000_000, "Excel-Datei ist größer als 15 MB"),
+        })
+      )
+      .mutation(({ input }) => previewExcelImport(input.base64)),
+    applyFile: adminProcedure
+      .input(
+        z.object({
+          base64: z
+            .string()
+            .max(20_000_000, "Excel-Datei ist größer als 15 MB"),
+          selectedShiftKeys: z.array(z.string().max(100)).max(1000),
+          selectedAssignmentKeys: z.array(z.string().max(140)).max(20000),
+          helperDecisions: z
+            .array(
+              z.object({
+                key: z.string().max(300),
+                target: z.string().max(320),
+              })
+            )
+            .max(5000),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const preview = await previewExcelImport(input.base64);
+        const targets = new Map(
+          input.helperDecisions.map(item => [item.key, item.target])
+        );
+        const selectedShifts = new Set(input.selectedShiftKeys);
+        const selectedAssignments = new Set(input.selectedAssignmentKeys);
+        const activeHelperKeys = new Set(
+          preview.shifts
+            .filter(
+              shift =>
+                shift.status !== "conflict" &&
+                (shift.status === "unchanged" || selectedShifts.has(shift.key))
+            )
+            .flatMap(shift =>
+              shift.assignments
+                .filter(
+                  assignment =>
+                    assignment.helperKey &&
+                    selectedAssignments.has(assignment.key)
+                )
+                .map(assignment => assignment.helperKey!)
+            )
+        );
+        const skipHelperKeys = preview.helperSuggestions
+          .filter(item => {
+            const target = targets.get(item.key);
+            const allowedTargets = new Set([
+              "new",
+              item.defaultTarget,
+              ...item.candidates.map(candidate => candidate.key),
+            ]);
+            return (
+              !activeHelperKeys.has(item.key) ||
+              !target ||
+              target === "skip" ||
+              !allowedTargets.has(target) ||
+              target.startsWith("system:")
+            );
+          })
+          .map(item => item.key);
+        const general = await importExcel(input.base64, { skipHelperKeys });
+        const plan = await applyPlanImport(input.base64, input);
+        return { general, plan };
+      }),
     exportFile: protectedProcedure.query(async () => {
       const buf = await exportExcel();
       return { base64: buf.toString("base64") };

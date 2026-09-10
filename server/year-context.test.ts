@@ -27,5 +27,6 @@ describe("Mehrjahresplanung", () => {
   it("normalisiert Personennamen für eine robuste Dublettenprüfung", () => {
     expect(normalizePersonName("  Jörg   Müller ")).toBe("jörg müller");
     expect(normalizePersonName("JÖRG MÜLLER")).toBe("jörg müller");
+    expect(normalizePersonName("Jörg Müller (Team Nord)")).toBe("jörg müller");
   });
 });
