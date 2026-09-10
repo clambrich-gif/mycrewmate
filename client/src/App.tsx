@@ -4,32 +4,45 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import Home from "./pages/Home";
+import { Layout } from "./components/Layout";
+import Dashboard from "./pages/Dashboard";
+import Contacts from "./pages/Contacts";
+import Helpers from "./pages/Helpers";
+import Plan from "./pages/Plan";
+import TaskList from "./pages/TaskList";
+import Materials from "./pages/Materials";
+import Marketing from "./pages/Marketing";
+import Approvals from "./pages/Approvals";
+import Cakes from "./pages/Cakes";
+import Finances from "./pages/Finances";
+import Excel from "./pages/Excel";
 
 function Router() {
-  // make sure to consider if you need authentication for certain routes
   return (
-    <Switch>
-      <Route path={"/"} component={Home} />
-      <Route path={"/404"} component={NotFound} />
-      {/* Final fallback route */}
-      <Route component={NotFound} />
-    </Switch>
+    <Layout>
+      <Switch>
+        <Route path="/" component={Dashboard} />
+        <Route path="/ansprechpartner" component={Contacts} />
+        <Route path="/helfer" component={Helpers} />
+        <Route path="/einsatzplan" component={Plan} />
+        <Route path="/vorbereitung">{() => <TaskList kind="prep" title="Vorbereitung" />}</Route>
+        <Route path="/nachbereitung">{() => <TaskList kind="post" title="Nachbereitung" />}</Route>
+        <Route path="/material" component={Materials} />
+        <Route path="/marketing" component={Marketing} />
+        <Route path="/genehmigungen" component={Approvals} />
+        <Route path="/kuchen" component={Cakes} />
+        <Route path="/finanzen" component={Finances} />
+        <Route path="/excel" component={Excel} />
+        <Route component={NotFound} />
+      </Switch>
+    </Layout>
   );
 }
-
-// NOTE: About Theme
-// - First choose a default theme according to your design style (dark or light bg), than change color palette in index.css
-//   to keep consistent foreground/background color across components
-// - If you want to make theme switchable, pass `switchable` ThemeProvider and use `useTheme` hook
 
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider
-        defaultTheme="light"
-        // switchable
-      >
+      <ThemeProvider defaultTheme="light">
         <TooltipProvider>
           <Toaster />
           <Router />
