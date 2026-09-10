@@ -1,4 +1,12 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import {
+  int,
+  mysqlEnum,
+  mysqlTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  varchar,
+} from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -39,14 +47,22 @@ export type InsertContact = typeof contacts.$inferInsert;
 
 export const helpers = mysqlTable("helpers", {
   id: int("id").autoincrement().primaryKey(),
-  contactId: int("contactId"),
+  contactId: int("contactId").references(() => contacts.id, {
+    onDelete: "set null",
+  }),
   name: varchar("name", { length: 200 }).notNull(),
   email: varchar("email", { length: 320 }),
   phone: varchar("phone", { length: 64 }),
   willHelp: mysqlEnum("willHelp", ["ja", "nein"]).default("ja").notNull(),
-  availFri: mysqlEnum("availFri", ["ja", "nein", "vielleicht"]).default("vielleicht").notNull(),
-  availSat: mysqlEnum("availSat", ["ja", "nein", "vielleicht"]).default("vielleicht").notNull(),
-  availSun: mysqlEnum("availSun", ["ja", "nein", "vielleicht"]).default("vielleicht").notNull(),
+  availFri: mysqlEnum("availFri", ["ja", "nein", "vielleicht"])
+    .default("vielleicht")
+    .notNull(),
+  availSat: mysqlEnum("availSat", ["ja", "nein", "vielleicht"])
+    .default("vielleicht")
+    .notNull(),
+  availSun: mysqlEnum("availSun", ["ja", "nein", "vielleicht"])
+    .default("vielleicht")
+    .notNull(),
   confirmed: mysqlEnum("confirmed", ["ja", "nein"]).default("nein").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
@@ -68,21 +84,39 @@ export const shifts = mysqlTable("shifts", {
 export type Shift = typeof shifts.$inferSelect;
 export type InsertShift = typeof shifts.$inferInsert;
 
-export const assignments = mysqlTable("assignments", {
-  id: int("id").autoincrement().primaryKey(),
-  shiftId: int("shiftId").notNull(),
-  helperId: int("helperId").notNull(),
-  slot: int("slot").default(0).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+export const assignments = mysqlTable(
+  "assignments",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    shiftId: int("shiftId")
+      .notNull()
+      .references(() => shifts.id, { onDelete: "cascade" }),
+    helperId: int("helperId")
+      .notNull()
+      .references(() => helpers.id, { onDelete: "cascade" }),
+    slot: int("slot").default(0).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    uniqueIndex("assignments_shift_slot_unique").on(table.shiftId, table.slot),
+    uniqueIndex("assignments_shift_helper_unique").on(
+      table.shiftId,
+      table.helperId
+    ),
+  ]
+);
 export type Assignment = typeof assignments.$inferSelect;
 export type InsertAssignment = typeof assignments.$inferInsert;
 
 export const prepTasks = mysqlTable("prep_tasks", {
   id: int("id").autoincrement().primaryKey(),
   task: varchar("task", { length: 300 }).notNull(),
-  contactId: int("contactId"),
-  status: mysqlEnum("status", ["offen", "inArbeit", "erledigt"]).default("offen").notNull(),
+  contactId: int("contactId").references(() => contacts.id, {
+    onDelete: "set null",
+  }),
+  status: mysqlEnum("status", ["offen", "inArbeit", "erledigt"])
+    .default("offen")
+    .notNull(),
   note: text("note"),
   sortOrder: int("sortOrder").default(0).notNull(),
 });
@@ -91,8 +125,12 @@ export type PrepTask = typeof prepTasks.$inferSelect;
 export const postTasks = mysqlTable("post_tasks", {
   id: int("id").autoincrement().primaryKey(),
   task: varchar("task", { length: 300 }).notNull(),
-  contactId: int("contactId"),
-  status: mysqlEnum("status", ["offen", "inArbeit", "erledigt"]).default("offen").notNull(),
+  contactId: int("contactId").references(() => contacts.id, {
+    onDelete: "set null",
+  }),
+  status: mysqlEnum("status", ["offen", "inArbeit", "erledigt"])
+    .default("offen")
+    .notNull(),
   note: text("note"),
   sortOrder: int("sortOrder").default(0).notNull(),
 });
@@ -104,7 +142,9 @@ export const materials = mysqlTable("materials", {
   category: varchar("category", { length: 120 }).default("").notNull(),
   quantity: varchar("quantity", { length: 40 }).default("").notNull(),
   unit: varchar("unit", { length: 40 }).default("").notNull(),
-  contactId: int("contactId"),
+  contactId: int("contactId").references(() => contacts.id, {
+    onDelete: "set null",
+  }),
   ordered: mysqlEnum("ordered", ["ja", "nein"]).default("nein").notNull(),
   note: text("note"),
   sortOrder: int("sortOrder").default(0).notNull(),
@@ -115,8 +155,12 @@ export const marketing = mysqlTable("marketing", {
   id: int("id").autoincrement().primaryKey(),
   measure: varchar("measure", { length: 300 }).notNull(),
   channel: varchar("channel", { length: 160 }).default("").notNull(),
-  contactId: int("contactId"),
-  status: mysqlEnum("status", ["offen", "inArbeit", "erledigt"]).default("offen").notNull(),
+  contactId: int("contactId").references(() => contacts.id, {
+    onDelete: "set null",
+  }),
+  status: mysqlEnum("status", ["offen", "inArbeit", "erledigt"])
+    .default("offen")
+    .notNull(),
   note: text("note"),
   sortOrder: int("sortOrder").default(0).notNull(),
 });
@@ -125,8 +169,12 @@ export type Marketing = typeof marketing.$inferSelect;
 export const approvals = mysqlTable("approvals", {
   id: int("id").autoincrement().primaryKey(),
   request: varchar("request", { length: 300 }).notNull(),
-  contactId: int("contactId"),
-  status: mysqlEnum("status", ["offen", "beantragt", "genehmigt", "abgelehnt"]).default("offen").notNull(),
+  contactId: int("contactId").references(() => contacts.id, {
+    onDelete: "set null",
+  }),
+  status: mysqlEnum("status", ["offen", "beantragt", "genehmigt", "abgelehnt"])
+    .default("offen")
+    .notNull(),
   note: text("note"),
   sortOrder: int("sortOrder").default(0).notNull(),
 });

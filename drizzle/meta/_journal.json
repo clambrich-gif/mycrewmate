@@ -15,6 +15,13 @@
       "when": 1789023833349,
       "tag": "0001_open_hellfire_club",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1789027399710,
+      "tag": "0002_deep_jocasta",
+      "breakpoints": true
     }
   ]
 }
