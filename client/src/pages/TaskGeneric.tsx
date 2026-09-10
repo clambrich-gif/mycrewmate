@@ -59,7 +59,10 @@ export default function TaskGeneric({ kind, title, addLabel, nameKey, columns, s
             {isLoading && <tr><td className="p-4 text-muted-foreground" colSpan={8}>Lade …</td></tr>}
             {rows.map((r: any) => (
               <tr key={r.id} className="border-t hover:bg-muted/30">
-                <td className="p-2 font-medium">{r[nameKey]}</td>
+                <td className="p-2">
+                  <Input className="h-8 w-full min-w-[140px] font-medium" defaultValue={r[nameKey] ?? ""}
+                    onBlur={e => { if (e.target.value !== (r[nameKey] ?? "")) update.mutate({ id: r.id, [nameKey]: e.target.value }); }} />
+                </td>
                 {columns.map(c => (
                   <td key={c.key} className="p-2">
                     <Input className="h-8 w-full min-w-[90px]" defaultValue={r[c.key] ?? ""}

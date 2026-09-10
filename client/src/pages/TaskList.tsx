@@ -37,7 +37,10 @@ export default function TaskList({ kind, title }: { kind: "prep" | "post"; title
             {isLoading && <tr><td className="p-4 text-muted-foreground" colSpan={4}>Lade …</td></tr>}
             {rows.map((r: any) => (
               <tr key={r.id} className="border-t hover:bg-muted/30">
-                <td className="p-2 font-medium">{r.task}</td>
+                <td className="p-2">
+                  <Input className="h-8 w-full min-w-[160px] font-medium" defaultValue={r.task ?? ""}
+                    onBlur={e => { if (e.target.value !== (r.task ?? "")) update.mutate({ id: r.id, task: e.target.value }); }} />
+                </td>
                 <td className="p-2">
                   <Select value={r.contactId ? String(r.contactId) : "none"} onValueChange={v => update.mutate({ id: r.id, contactId: v === "none" ? null : Number(v) })}>
                     <SelectTrigger className="h-8 w-[180px]"><SelectValue /></SelectTrigger>

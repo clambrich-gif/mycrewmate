@@ -103,65 +103,67 @@ export async function importExcel(base64: string) {
     }
   }
 
-  // Vorbereitung (Aufgabe, Verantwortlich, Status)
+  // Vorbereitung (Aufgabe=0, Verantwortlich=2, Status=3, Bemerkung=4)
   for (const row of sheet("VORBEREITUNG").slice(8)) {
-    const task = String(row?.[1] ?? "").trim();
-    if (!task || /aufgabe/i.test(task)) continue;
+    const task = String(row?.[0] ?? "").trim();
+    if (!task || /^aufgabe$/i.test(task)) continue;
     const contactId = await findContact(String(row?.[2] ?? "").trim());
-    await db.createPrep({ task, contactId, status: statusMap(String(row?.[3] ?? "")), note: String(row?.[4] ?? "") });
+    await db.createPrep({ task, contactId, status: statusMap(String(row?.[3] ?? "")), note: [String(row?.[1] ?? ""), String(row?.[4] ?? "")].filter(Boolean).join(" | ") });
     result.vorbereitung++;
   }
-  // Nachbereitung
+  // Nachbereitung (Aufgabe=0, Verantwortlich=1, Status=2, Bemerkung=3)
   for (const row of sheet("NACHBEREITUNG").slice(8)) {
-    const task = String(row?.[1] ?? "").trim();
-    if (!task || /aufgabe/i.test(task)) continue;
-    const contactId = await findContact(String(row?.[2] ?? "").trim());
-    await db.createPost({ task, contactId, status: statusMap(String(row?.[3] ?? "")), note: String(row?.[4] ?? "") });
+    const task = String(row?.[0] ?? "").trim();
+    if (!task || /^aufgabe$/i.test(task)) continue;
+    const contactId = await findContact(String(row?.[1] ?? "").trim());
+    await db.createPost({ task, contactId, status: statusMap(String(row?.[2] ?? "")), note: String(row?.[3] ?? "") });
     result.nachbereitung++;
   }
-  // Material (Artikel, Kategorie, Menge, Einheit, Verantwortlich, Bestellt?)
+  // Material (Artikel=0, Kategorie=1, Menge=2, Einheit=3, Verantwortlich=6, Bestellt?=7)
   for (const row of sheet("MATERIAL").slice(8)) {
     const article = String(row?.[0] ?? "").trim();
-    if (!article || /artikel/i.test(article)) continue;
+    if (!article || /^material|artikel/i.test(article)) continue;
     const contactId = await findContact(String(row?.[6] ?? "").trim());
     await db.createMaterial({
       article, category: String(row?.[1] ?? ""), quantity: String(row?.[2] ?? ""),
       unit: String(row?.[3] ?? ""), contactId,
       ordered: String(row?.[7] ?? "").toLowerCase().startsWith("ja") ? "ja" : "nein",
-      note: String(row?.[8] ?? ""),
+      note: [String(row?.[4] ?? ""), String(row?.[5] ?? "")].filter(Boolean).join(" | "),
     });
     result.material++;
   }
-  // Marketing (Maßnahme, Kanal, Verantwortlich, Status)
+  // Marketing (Maßnahme=0, Kanal=1, Verantwortlich=3, Status=4)
   for (const row of sheet("MARKETING").slice(8)) {
     const measure = String(row?.[0] ?? "").trim();
-    if (!measure || /maßnahme|massnahme/i.test(measure)) continue;
-    const contactId = await findContact(String(row?.[2] ?? "").trim());
-    await db.createMarketing({ measure, channel: String(row?.[1] ?? ""), contactId, status: statusMap(String(row?.[4] ?? "")), note: String(row?.[5] ?? "") });
+    if (!measure || /^maßnahme|^massnahme|inhalt/i.test(measure)) continue;
+    const contactId = await findContact(String(row?.[3] ?? "").trim());
+    await db.createMarketing({ measure, channel: String(row?.[1] ?? ""), contactId, status: statusMap(String(row?.[4] ?? "")), note: String(row?.[2] ?? "") });
     result.marketing++;
   }
-  // Genehmigungen (Antrag, Verantwortlich, Status)
+  // Genehmigungen (Antrag=0, Behörde=1, Frist=2, Verantwortlich=3, Status=4, Bemerkung=5)
   for (const row of sheet("GENEHMIGUNGEN").slice(8)) {
     const request = String(row?.[0] ?? "").trim();
-    if (!request || /antrag|genehmigung/i.test(request)) continue;
+    if (!request || /^art der genehmigung/i.test(request)) continue;
     const contactId = await findContact(String(row?.[3] ?? "").trim());
-    await db.createApproval({ request, contactId, status: (["offen","beantragt","genehmigt","abgelehnt"].includes(String(row?.[4] ?? "").toLowerCase()) ? String(row?.[4]).toLowerCase() : "offen") as any, note: String(row?.[5] ?? "") });
+    const st = String(row?.[4] ?? "").toLowerCase();
+    await db.createApproval({ request, contactId, status: (["offen","beantragt","genehmigt","abgelehnt"].includes(st) ? st : "offen") as any, note: [String(row?.[1] ?? ""), String(row?.[2] ?? ""), String(row?.[5] ?? "")].filter(Boolean).join(" | ") });
     result.genehmigungen++;
   }
-  // Kuchen (Spender, Kuchen, Abgabezeit)
+  // Kuchen (Spender=0, Kuchen=1, Abgabezeit=3)
   for (const row of sheet("KUCHEN").slice(8)) {
     const donor = String(row?.[0] ?? "").trim();
-    if (!donor || /spender|name/i.test(donor)) continue;
-    await db.createCake({ donor, cake: String(row?.[1] ?? ""), dropoffTime: String(row?.[2] ?? ""), note: String(row?.[3] ?? "") });
+    if (!donor || /^name spender/i.test(donor)) continue;
+    await db.createCake({ donor, cake: String(row?.[1] ?? ""), dropoffTime: String(row?.[3] ?? ""), note: [String(row?.[2] ?? ""), String(row?.[4] ?? "")].filter(Boolean).join(" | ") });
     result.kuchen++;
   }
-  // Finanzen (Kategorie, Einnahmen, Ausgaben)
+  // Finanzen (Position=0, Kategorie=1, Plan=2, Ist=3) -> Einnahme/Ausgabe nach Kategorie
   for (const row of sheet("FINANZEN").slice(8)) {
-    const category = String(row?.[0] ?? "").trim();
-    if (!category || /kategorie|saldo/i.test(category)) continue;
-    const incomeCents = Math.round(parseFloat(String(row?.[1] ?? "0").replace(",", ".")) * 100) || 0;
-    const expenseCents = Math.round(parseFloat(String(row?.[2] ?? "0").replace(",", ".")) * 100) || 0;
-    await db.createFinance({ category, incomeCents, expenseCents });
+    const pos = String(row?.[0] ?? "").trim();
+    const kat = String(row?.[1] ?? "").trim();
+    if (!pos || /^position$/i.test(pos) || /^einnahmen$|^ausgaben$/i.test(kat)) continue;
+    const amount = Math.round(parseFloat(String(row?.[3] ?? row?.[2] ?? "0").replace(",", ".")) * 100) || 0;
+    const isIncome = /einnahme/i.test(kat);
+    await db.createFinance({ category: pos, incomeCents: isIncome ? amount : 0, expenseCents: isIncome ? 0 : amount, note: String(row?.[5] ?? "") });
     result.finanzen++;
   }
   return result;
