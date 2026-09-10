@@ -12,6 +12,23 @@ import {
   type Day,
 } from "./logic";
 import { importExcel, exportExcel } from "./excel";
+import { sdk } from "./_core/sdk";
+import {
+  clearPasswordLoginFailures,
+  getClientKey,
+  hashPassword,
+  isPasswordLoginBlocked,
+  PASSWORD_SESSION_MS,
+  recordFailedPasswordLogin,
+  SHARED_PASSWORD_OPEN_ID,
+  verifyPassword,
+} from "./password-auth";
+import {
+  createAllHelperTaskZip,
+  createBlankPlanPdf,
+  createHelperTaskPdf,
+  DEFAULT_PDF_SETTINGS,
+} from "./pdf";
 
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
@@ -22,6 +39,17 @@ const yn = z.enum(["ja", "nein"]);
 const ynv = z.enum(["ja", "nein", "vielleicht"]);
 const dayEnum = z.enum(["Freitag", "Samstag", "Sonntag"]);
 const statusTask = z.enum(["offen", "inArbeit", "erledigt"]);
+const passwordInput = z.string().min(10).max(200);
+const pdfSettingsInput = z.object({
+  eventName: z.string().trim().min(1).max(200),
+  eventYear: z.string().trim().min(1).max(16),
+  helperPdfTitle: z.string().trim().min(1).max(200),
+  blankPlanTitle: z.string().trim().min(1).max(200),
+  contactLabel: z.string().trim().min(1).max(120),
+  footerText: z.string().trim().max(300),
+  extraColumns: z.array(z.string().trim().min(1).max(50)).max(5),
+  blankRowsPerShift: z.number().int().min(0).max(20),
+});
 const clockTime = z
   .string()
   .trim()
@@ -91,6 +119,55 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
+    passwordStatus: publicProcedure.query(async () => ({
+      enabled: Boolean((await db.getSecuritySettings())?.passwordHash),
+    })),
+    passwordLogin: publicProcedure
+      .input(z.object({ password: z.string().min(1).max(200) }))
+      .mutation(async ({ ctx, input }) => {
+        const clientKey = getClientKey(ctx.req);
+        if (isPasswordLoginBlocked(clientKey)) {
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message:
+              "Zu viele Fehlversuche. Bitte in 15 Minuten erneut versuchen.",
+          });
+        }
+        const storedHash = (await db.getSecuritySettings())?.passwordHash;
+        const valid = storedHash
+          ? await verifyPassword(input.password, storedHash)
+          : false;
+        if (!valid) {
+          recordFailedPasswordLogin(clientKey);
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Passwort ist nicht korrekt",
+          });
+        }
+        clearPasswordLoginFailures(clientKey);
+        await db.upsertUser({
+          openId: SHARED_PASSWORD_OPEN_ID,
+          name: "Planungsteam",
+          loginMethod: "password",
+          role: "user",
+          lastSignedIn: new Date(),
+        });
+        const token = await sdk.createSessionToken(SHARED_PASSWORD_OPEN_ID, {
+          name: "Planungsteam",
+          expiresInMs: PASSWORD_SESSION_MS,
+        });
+        ctx.res.cookie(COOKIE_NAME, token, {
+          ...getSessionCookieOptions(ctx.req),
+          maxAge: PASSWORD_SESSION_MS,
+        });
+        return { success: true } as const;
+      }),
+    setPassword: adminProcedure
+      .input(z.object({ password: passwordInput }))
+      .mutation(async ({ input }) => {
+        await db.setPasswordHash(await hashPassword(input.password));
+        return { success: true } as const;
+      }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
@@ -101,13 +178,20 @@ export const appRouter = router({
   contacts: router({
     list: protectedProcedure.query(() => db.listContacts()),
     create: protectedProcedure
-      .input(z.object({ name: z.string().min(1), note: z.string().optional() }))
+      .input(
+        z.object({
+          name: z.string().trim().min(1),
+          phone: z.string().trim().max(64).optional(),
+          note: z.string().optional(),
+        })
+      )
       .mutation(({ input }) => db.createContact(input)),
     update: protectedProcedure
       .input(
         z.object({
           id: z.number(),
           name: z.string().min(1),
+          phone: z.string().max(64).nullable().optional(),
           note: z.string().nullable().optional(),
         })
       )
@@ -141,6 +225,9 @@ export const appRouter = router({
           id: z.number(),
           name: z.string().optional(),
           contactId: z.number().nullable().optional(),
+          email: z.string().email().max(320).nullable().optional(),
+          phone: z.string().max(64).nullable().optional(),
+          note: z.string().nullable().optional(),
           willHelp: yn.optional(),
           availFri: ynv.optional(),
           availSat: ynv.optional(),
@@ -251,6 +338,56 @@ export const appRouter = router({
     unassign: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(({ input }) => db.unassignHelper(input.id)),
+  }),
+
+  pdf: router({
+    settings: protectedProcedure.query(async () => {
+      const settings = (await db.getAppSettings()) ?? DEFAULT_PDF_SETTINGS;
+      let extraColumns: string[] = [];
+      try {
+        const parsed = JSON.parse(settings.extraColumns);
+        if (Array.isArray(parsed)) {
+          extraColumns = parsed.filter(item => typeof item === "string");
+        }
+      } catch {}
+      return { ...settings, extraColumns };
+    }),
+    updateSettings: protectedProcedure
+      .input(pdfSettingsInput)
+      .mutation(async ({ input }) => {
+        const { extraColumns, ...rest } = input;
+        await db.updateAppSettings({
+          ...rest,
+          extraColumns: JSON.stringify(extraColumns),
+        });
+        return { success: true } as const;
+      }),
+    helper: protectedProcedure
+      .input(z.object({ helperId: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        const pdf = await createHelperTaskPdf(input.helperId);
+        return {
+          filename: `Aufgaben_Helfer_${input.helperId}.pdf`,
+          mimeType: "application/pdf",
+          base64: pdf.toString("base64"),
+        };
+      }),
+    allHelpers: protectedProcedure.query(async () => {
+      const zip = await createAllHelperTaskZip();
+      return {
+        filename: "Aufgabenuebersichten_MyEifelRide.zip",
+        mimeType: "application/zip",
+        base64: zip.toString("base64"),
+      };
+    }),
+    blankPlan: protectedProcedure.query(async () => {
+      const pdf = await createBlankPlanPdf();
+      return {
+        filename: "Einsatzplan_Blanko.pdf",
+        mimeType: "application/pdf",
+        base64: pdf.toString("base64"),
+      };
+    }),
   }),
 
   prep: router({

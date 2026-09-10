@@ -1,22 +1,52 @@
-import { trpc } from "@/lib/trpc";
-import { useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent } from "@/components/ui/card";
-import { StatusBadge } from "@/components/StatusBadge";
-import { Trash2 } from "lucide-react";
-import { toast } from "sonner";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { StatusBadge } from "@/components/StatusBadge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { downloadBase64File, safeDownloadName } from "@/lib/download";
+import { trpc } from "@/lib/trpc";
+import { FileDown, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
-const YN = [{ v: "ja", l: "Ja" }, { v: "nein", l: "Nein" }] as const;
-const YNV = [{ v: "ja", l: "Ja" }, { v: "nein", l: "Nein" }, { v: "vielleicht", l: "Vielleicht" }] as const;
+const YN = [
+  { v: "ja", l: "Ja" },
+  { v: "nein", l: "Nein" },
+] as const;
+const YNV = [
+  { v: "ja", l: "Ja" },
+  { v: "nein", l: "Nein" },
+  { v: "vielleicht", l: "Vielleicht" },
+] as const;
 
-function Sel({ value, onChange, options }: { value: string; onChange: (v: any) => void; options: readonly { v: string; l: string }[] }) {
+function Sel({
+  value,
+  onChange,
+  options,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  options: readonly { v: string; l: string }[];
+}) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="h-8 w-[110px]"><SelectValue /></SelectTrigger>
-      <SelectContent>{options.map(o => <SelectItem key={o.v} value={o.v}>{o.l}</SelectItem>)}</SelectContent>
+      <SelectTrigger className="h-8 w-[110px]">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map(option => (
+          <SelectItem key={option.v} value={option.v}>
+            {option.l}
+          </SelectItem>
+        ))}
+      </SelectContent>
     </Select>
   );
 }
@@ -30,82 +60,316 @@ export default function Helpers() {
   const [filter, setFilter] = useState("");
   const [apFilter, setApFilter] = useState("alle");
   const [sortAsc, setSortAsc] = useState(true);
+  const [exportingId, setExportingId] = useState<number | null>(null);
 
-  const invalidate = () => { utils.helpers.list.invalidate(); utils.plan.evaluate.invalidate(); utils.dashboard.stats.invalidate(); };
-  const create = trpc.helpers.create.useMutation({ onSuccess: () => { invalidate(); setName(""); toast.success("Helfer hinzugefügt"); } });
-  const update = trpc.helpers.update.useMutation({ onSuccess: invalidate });
-  const remove = trpc.helpers.remove.useMutation({ onSuccess: () => { invalidate(); toast.success("Entfernt"); }, onError: e => toast.error(e.message) });
+  const invalidate = () => {
+    utils.helpers.list.invalidate();
+    utils.plan.evaluate.invalidate();
+    utils.dashboard.stats.invalidate();
+  };
+  const create = trpc.helpers.create.useMutation({
+    onSuccess: () => {
+      invalidate();
+      setName("");
+      toast.success("Helfer hinzugefügt");
+    },
+    onError: error => toast.error(error.message),
+  });
+  const update = trpc.helpers.update.useMutation({
+    onSuccess: invalidate,
+    onError: error => toast.error(error.message),
+  });
+  const remove = trpc.helpers.remove.useMutation({
+    onSuccess: () => {
+      invalidate();
+      toast.success("Entfernt");
+    },
+    onError: error => toast.error(error.message),
+  });
+  const exportPdf = trpc.pdf.helper.useMutation({
+    onSuccess: (result, variables) => {
+      const helper = helpers.find(item => item.id === variables.helperId);
+      downloadBase64File(
+        result.base64,
+        result.mimeType,
+        `Aufgaben_${safeDownloadName(helper?.name ?? String(variables.helperId))}.pdf`
+      );
+      setExportingId(null);
+    },
+    onError: error => {
+      setExportingId(null);
+      toast.error(error.message);
+    },
+  });
 
-  const contactName = (id: number | null) => contacts.find(c => c.id === id)?.name ?? "—";
-  const filtered = useMemo(() => helpers.filter(h =>
-    (!filter || h.name.toLowerCase().includes(filter.toLowerCase())) &&
-    (apFilter === "alle" || String(h.contactId ?? "") === apFilter)
-  ).sort((a, b) => sortAsc ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)), [helpers, filter, apFilter, sortAsc]);
+  const filtered = useMemo(
+    () =>
+      helpers
+        .filter(
+          helper =>
+            (!filter ||
+              helper.name.toLowerCase().includes(filter.toLowerCase())) &&
+            (apFilter === "alle" || String(helper.contactId ?? "") === apFilter)
+        )
+        .sort((a, b) =>
+          sortAsc ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)
+        ),
+    [helpers, filter, apFilter, sortAsc]
+  );
 
   return (
     <div className="space-y-5">
       <div className="flex items-end justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold">Helfer</h1>
-          <p className="text-muted-foreground">Bis zu 200 Helfer mit Ansprechpartner, Helfen-Status und Tagesverfügbarkeit.</p>
+          <p className="text-muted-foreground">
+            Helferdaten, Tagesverfügbarkeit, Hinweise und persönliche
+            Aufgaben-PDFs.
+          </p>
         </div>
         <div className="flex gap-2">
-          <Input placeholder="Name" value={name} onChange={e => setName(e.target.value)} className="w-52" onKeyDown={e => e.key === "Enter" && name.trim() && create.mutate({ name: name.trim() })} />
-          <Button onClick={() => name.trim() && create.mutate({ name: name.trim() })}>Hinzufügen</Button>
+          <Input
+            placeholder="Name"
+            value={name}
+            onChange={event => setName(event.target.value)}
+            className="w-52"
+            onKeyDown={event =>
+              event.key === "Enter" &&
+              name.trim() &&
+              create.mutate({ name: name.trim() })
+            }
+          />
+          <Button
+            onClick={() => name.trim() && create.mutate({ name: name.trim() })}
+          >
+            Hinzufügen
+          </Button>
         </div>
       </div>
 
       <div className="flex gap-3 flex-wrap">
-        <Input placeholder="Suchen …" value={filter} onChange={e => setFilter(e.target.value)} className="w-56" />
+        <Input
+          placeholder="Suchen …"
+          value={filter}
+          onChange={event => setFilter(event.target.value)}
+          className="w-56"
+        />
         <Select value={apFilter} onValueChange={setApFilter}>
-          <SelectTrigger className="w-56"><SelectValue placeholder="Ansprechpartner" /></SelectTrigger>
+          <SelectTrigger className="w-56">
+            <SelectValue placeholder="Ansprechpartner" />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="alle">Alle Ansprechpartner</SelectItem>
-            {contacts.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+            {contacts.map(contact => (
+              <SelectItem key={contact.id} value={String(contact.id)}>
+                {contact.name}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
 
       <Card className="shadow-sm">
         <CardContent className="p-0 overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[1320px] text-sm">
             <thead className="bg-muted/60">
               <tr className="text-left">
                 <th className="p-3">Ansprechpartner</th>
-                <th className="p-3 cursor-pointer select-none" onClick={() => setSortAsc(!sortAsc)}>Name {sortAsc ? "▲" : "▼"}</th>
+                <th
+                  className="p-3 cursor-pointer select-none"
+                  onClick={() => setSortAsc(!sortAsc)}
+                >
+                  Name {sortAsc ? "▲" : "▼"}
+                </th>
+                <th className="p-3">Telefon Helfer</th>
+                <th className="p-3">Hinweis für PDF</th>
                 <th className="p-3">Helfen?</th>
-                <th className="p-3">Fr</th><th className="p-3">Sa</th><th className="p-3">So</th>
-                <th className="p-3">Bestätigt?</th><th className="p-3 w-10"></th>
+                <th className="p-3">Fr</th>
+                <th className="p-3">Sa</th>
+                <th className="p-3">So</th>
+                <th className="p-3">Bestätigt?</th>
+                <th className="p-3 w-24">Aktionen</th>
               </tr>
             </thead>
             <tbody>
-              {isLoading && <tr><td className="p-4 text-muted-foreground" colSpan={8}>Lade …</td></tr>}
-              {filtered.map(h => (
-                <tr key={h.id} className="border-t hover:bg-muted/30">
+              {isLoading && (
+                <tr>
+                  <td className="p-4 text-muted-foreground" colSpan={10}>
+                    Lade …
+                  </td>
+                </tr>
+              )}
+              {filtered.map(helper => (
+                <tr
+                  key={helper.id}
+                  className="border-t hover:bg-muted/30 align-top"
+                >
                   <td className="p-2">
-                    <Select value={h.contactId ? String(h.contactId) : "none"} onValueChange={v => update.mutate({ id: h.id, contactId: v === "none" ? null : Number(v) })}>
-                      <SelectTrigger className="h-8 w-[170px]"><SelectValue /></SelectTrigger>
+                    <Select
+                      value={
+                        helper.contactId ? String(helper.contactId) : "none"
+                      }
+                      onValueChange={value =>
+                        update.mutate({
+                          id: helper.id,
+                          contactId: value === "none" ? null : Number(value),
+                        })
+                      }
+                    >
+                      <SelectTrigger className="h-8 w-[170px]">
+                        <SelectValue />
+                      </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">—</SelectItem>
-                        {contacts.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                        {contacts.map(contact => (
+                          <SelectItem
+                            key={contact.id}
+                            value={String(contact.id)}
+                          >
+                            {contact.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </td>
-                  <td className="p-2 font-medium">{h.name}</td>
-                  <td className="p-2"><Sel value={h.willHelp} options={YN} onChange={v => update.mutate({ id: h.id, willHelp: v })} /></td>
-                  <td className="p-2"><Sel value={h.availFri} options={YNV} onChange={v => update.mutate({ id: h.id, availFri: v })} /></td>
-                  <td className="p-2"><Sel value={h.availSat} options={YNV} onChange={v => update.mutate({ id: h.id, availSat: v })} /></td>
-                  <td className="p-2"><Sel value={h.availSun} options={YNV} onChange={v => update.mutate({ id: h.id, availSun: v })} /></td>
-                  <td className="p-2"><Sel value={h.confirmed} options={YN} onChange={v => update.mutate({ id: h.id, confirmed: v })} /></td>
-                  <td className="p-2">{user?.role === "admin" && <Button variant="ghost" size="icon" onClick={() => remove.mutate({ id: h.id })}><Trash2 className="h-4 w-4 text-destructive" /></Button>}</td>
+                  <td className="p-2 font-medium">{helper.name}</td>
+                  <td className="p-2">
+                    <Input
+                      key={`${helper.id}-phone-${helper.phone ?? ""}`}
+                      type="tel"
+                      className="h-8 w-36"
+                      defaultValue={helper.phone ?? ""}
+                      placeholder="optional"
+                      onBlur={event => {
+                        const value = event.target.value.trim();
+                        if (value !== (helper.phone ?? "")) {
+                          update.mutate({
+                            id: helper.id,
+                            phone: value || null,
+                          });
+                        }
+                      }}
+                    />
+                  </td>
+                  <td className="p-2">
+                    <Input
+                      key={`${helper.id}-note-${helper.note ?? ""}`}
+                      className="h-8 w-52"
+                      defaultValue={helper.note ?? ""}
+                      placeholder="Verfügbarkeit / Bemerkung"
+                      onBlur={event => {
+                        const value = event.target.value.trim();
+                        if (value !== (helper.note ?? "")) {
+                          update.mutate({ id: helper.id, note: value || null });
+                        }
+                      }}
+                    />
+                  </td>
+                  <td className="p-2">
+                    <Sel
+                      value={helper.willHelp}
+                      options={YN}
+                      onChange={value =>
+                        update.mutate({
+                          id: helper.id,
+                          willHelp: value as "ja" | "nein",
+                        })
+                      }
+                    />
+                  </td>
+                  <td className="p-2">
+                    <Sel
+                      value={helper.availFri}
+                      options={YNV}
+                      onChange={value =>
+                        update.mutate({
+                          id: helper.id,
+                          availFri: value as "ja" | "nein" | "vielleicht",
+                        })
+                      }
+                    />
+                  </td>
+                  <td className="p-2">
+                    <Sel
+                      value={helper.availSat}
+                      options={YNV}
+                      onChange={value =>
+                        update.mutate({
+                          id: helper.id,
+                          availSat: value as "ja" | "nein" | "vielleicht",
+                        })
+                      }
+                    />
+                  </td>
+                  <td className="p-2">
+                    <Sel
+                      value={helper.availSun}
+                      options={YNV}
+                      onChange={value =>
+                        update.mutate({
+                          id: helper.id,
+                          availSun: value as "ja" | "nein" | "vielleicht",
+                        })
+                      }
+                    />
+                  </td>
+                  <td className="p-2">
+                    <Sel
+                      value={helper.confirmed}
+                      options={YN}
+                      onChange={value =>
+                        update.mutate({
+                          id: helper.id,
+                          confirmed: value as "ja" | "nein",
+                        })
+                      }
+                    />
+                  </td>
+                  <td className="p-2">
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Persönliche Aufgabenübersicht als PDF"
+                        disabled={exportingId === helper.id}
+                        onClick={() => {
+                          setExportingId(helper.id);
+                          exportPdf.mutate({ helperId: helper.id });
+                        }}
+                      >
+                        <FileDown className="h-4 w-4" />
+                      </Button>
+                      {user?.role === "admin" && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Löschen"
+                          onClick={() => remove.mutate({ id: helper.id })}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
-              {!isLoading && filtered.length === 0 && <tr><td className="p-4 text-muted-foreground" colSpan={8}>Keine Helfer gefunden.</td></tr>}
+              {!isLoading && filtered.length === 0 && (
+                <tr>
+                  <td className="p-4 text-muted-foreground" colSpan={10}>
+                    Keine Helfer gefunden.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </CardContent>
       </Card>
-      <p className="text-xs text-muted-foreground">Legende: <StatusBadge status="ja" /> verfügbar · <StatusBadge status="vielleicht" /> unsicher · <StatusBadge status="nein" /> abgesagt/nicht verfügbar</p>
+      <p className="text-xs text-muted-foreground">
+        Legende: <StatusBadge status="ja" /> verfügbar ·{" "}
+        <StatusBadge status="vielleicht" /> unsicher ·{" "}
+        <StatusBadge status="nein" />
+        abgesagt/nicht verfügbar
+      </p>
     </div>
   );
 }

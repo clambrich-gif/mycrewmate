@@ -16,6 +16,8 @@ import Approvals from "./pages/Approvals";
 import Cakes from "./pages/Cakes";
 import Finances from "./pages/Finances";
 import Excel from "./pages/Excel";
+import PdfExport from "./pages/PdfExport";
+import Security from "./pages/Security";
 
 function Router() {
   return (
@@ -25,14 +27,20 @@ function Router() {
         <Route path="/ansprechpartner" component={Contacts} />
         <Route path="/helfer" component={Helpers} />
         <Route path="/einsatzplan" component={Plan} />
-        <Route path="/vorbereitung">{() => <TaskList kind="prep" title="Vorbereitung" />}</Route>
-        <Route path="/nachbereitung">{() => <TaskList kind="post" title="Nachbereitung" />}</Route>
+        <Route path="/vorbereitung">
+          {() => <TaskList kind="prep" title="Vorbereitung" />}
+        </Route>
+        <Route path="/nachbereitung">
+          {() => <TaskList kind="post" title="Nachbereitung" />}
+        </Route>
         <Route path="/material" component={Materials} />
         <Route path="/marketing" component={Marketing} />
         <Route path="/genehmigungen" component={Approvals} />
         <Route path="/kuchen" component={Cakes} />
         <Route path="/finanzen" component={Finances} />
+        <Route path="/pdf-export" component={PdfExport} />
         <Route path="/excel" component={Excel} />
+        <Route path="/sicherheit" component={Security} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

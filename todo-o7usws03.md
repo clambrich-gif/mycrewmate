@@ -11,3 +11,13 @@
 - [x] Persistenz von Einnahmen und Ausgaben korrigiert
 - [x] Finanz-Eingabefelder browserkompatibel formatiert
 - [x] 16 automatisierte Tests erfolgreich; TypeScript-Prüfung und Produktions-Build erfolgreich
+
+## Erweiterung 2026-09-10
+
+- [x] Passwortmaske erscheint für abgemeldete Benutzer und das initiale Passwort meldet erfolgreich als Bearbeiter an
+- [x] Administrator-Anmeldung über Manus bleibt als Rückfallebene erhalten
+- [x] PDF-Ausgabeseite zeigt ZIP-Sammelabruf, Blanko-PDF und konfigurierbare Vorlagenfelder
+- [x] Persönliches A4-PDF mit realistischen Aufgaben, Mithelfern, Ansprechpartner und Rufnummer visuell geprüft
+- [x] Blanko-PDF im A4-Querformat ohne Leerseite geprüft; ZIP-Sammelabruf technisch validiert
+- [x] 22 automatisierte Tests, TypeScript-Prüfung und Produktions-Build erfolgreich
+- [x] Bearbeiter sehen weder den Navigationspunkt „Zugangsschutz“ noch die Passwortänderungsmaske; Direktzugriff wird abgewiesen

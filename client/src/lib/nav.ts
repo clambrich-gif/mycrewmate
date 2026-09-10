@@ -1,9 +1,29 @@
+import type { LucideIcon } from "lucide-react";
 import {
-  LayoutDashboard, Users, UserCheck, CalendarRange, ClipboardList,
-  ClipboardCheck, Package, Megaphone, FileCheck, Cake, Wallet, FileSpreadsheet,
+  Cake,
+  CalendarRange,
+  ClipboardCheck,
+  ClipboardList,
+  FileCheck,
+  FileDown,
+  FileSpreadsheet,
+  LayoutDashboard,
+  LockKeyhole,
+  Megaphone,
+  Package,
+  UserCheck,
+  Users,
+  Wallet,
 } from "lucide-react";
 
-export const NAV = [
+type NavItem = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  adminOnly?: boolean;
+};
+
+export const NAV: readonly NavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/ansprechpartner", label: "Ansprechpartner", icon: UserCheck },
   { href: "/helfer", label: "Helfer", icon: Users },
@@ -15,5 +35,12 @@ export const NAV = [
   { href: "/genehmigungen", label: "Genehmigungen", icon: FileCheck },
   { href: "/kuchen", label: "Kuchen", icon: Cake },
   { href: "/finanzen", label: "Finanzen", icon: Wallet },
+  { href: "/pdf-export", label: "PDF-Ausgabe", icon: FileDown },
   { href: "/excel", label: "Excel Import/Export", icon: FileSpreadsheet },
-] as const;
+  {
+    href: "/sicherheit",
+    label: "Zugangsschutz",
+    icon: LockKeyhole,
+    adminOnly: true,
+  },
+];

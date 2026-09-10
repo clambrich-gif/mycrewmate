@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
+  appSettings,
   approvals,
   assignments,
   cakes,
@@ -12,6 +13,7 @@ import {
   materials,
   postTasks,
   prepTasks,
+  securitySettings,
   shifts,
   users,
 } from "../drizzle/schema";
@@ -147,15 +149,39 @@ export async function listFinances() {
   if (!db) return [];
   return db.select().from(finances).orderBy(finances.sortOrder, finances.id);
 }
+export async function getAppSettings() {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db
+    .select()
+    .from(appSettings)
+    .where(eq(appSettings.id, 1))
+    .limit(1);
+  return result[0];
+}
+export async function getSecuritySettings() {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db
+    .select()
+    .from(securitySettings)
+    .where(eq(securitySettings.id, 1))
+    .limit(1);
+  return result[0];
+}
 
 // ---------- Mutations ----------
-export async function createContact(v: { name: string; note?: string }) {
+export async function createContact(v: {
+  name: string;
+  phone?: string;
+  note?: string;
+}) {
   const db = (await getDb()) as DB;
   return db.insert(contacts).values(v);
 }
 export async function updateContact(
   id: number,
-  v: { name?: string; note?: string | null }
+  v: { name?: string; phone?: string | null; note?: string | null }
 ) {
   const db = (await getDb()) as DB;
   return db.update(contacts).set(v).where(eq(contacts.id, id));
@@ -220,6 +246,35 @@ export async function unassignHelper(id: number) {
 export async function clearAssignments() {
   const db = (await getDb()) as DB;
   await db.delete(assignments);
+}
+
+export async function updateAppSettings(
+  values: Partial<typeof appSettings.$inferInsert>
+) {
+  const db = (await getDb()) as DB;
+  return db
+    .insert(appSettings)
+    .values({
+      id: 1,
+      eventName: "MyEifelRide",
+      eventYear: "2026",
+      helperPdfTitle: "Aufgabenübersicht",
+      blankPlanTitle: "Einsatzplan – Blanko",
+      contactLabel: "Ansprechpartner",
+      footerText: "",
+      extraColumns: "[]",
+      blankRowsPerShift: 0,
+      ...values,
+    })
+    .onDuplicateKeyUpdate({ set: values });
+}
+
+export async function setPasswordHash(passwordHash: string) {
+  const db = (await getDb()) as DB;
+  return db
+    .insert(securitySettings)
+    .values({ id: 1, passwordHash })
+    .onDuplicateKeyUpdate({ set: { passwordHash } });
 }
 
 // Generische einfache Module

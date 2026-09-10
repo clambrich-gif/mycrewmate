@@ -38,6 +38,7 @@ export type InsertUser = typeof users.$inferInsert;
 export const contacts = mysqlTable("contacts", {
   id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 200 }).notNull(),
+  phone: varchar("phone", { length: 64 }),
   note: text("note"),
   sortOrder: int("sortOrder").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -53,6 +54,7 @@ export const helpers = mysqlTable("helpers", {
   name: varchar("name", { length: 200 }).notNull(),
   email: varchar("email", { length: 320 }),
   phone: varchar("phone", { length: 64 }),
+  note: text("note"),
   willHelp: mysqlEnum("willHelp", ["ja", "nein"]).default("ja").notNull(),
   availFri: mysqlEnum("availFri", ["ja", "nein", "vielleicht"])
     .default("vielleicht")
@@ -107,6 +109,34 @@ export const assignments = mysqlTable(
 );
 export type Assignment = typeof assignments.$inferSelect;
 export type InsertAssignment = typeof assignments.$inferInsert;
+
+export const appSettings = mysqlTable("app_settings", {
+  id: int("id").primaryKey().default(1),
+  eventName: varchar("eventName", { length: 200 })
+    .default("MyEifelRide")
+    .notNull(),
+  eventYear: varchar("eventYear", { length: 16 }).default("2026").notNull(),
+  helperPdfTitle: varchar("helperPdfTitle", { length: 200 })
+    .default("Aufgabenübersicht")
+    .notNull(),
+  blankPlanTitle: varchar("blankPlanTitle", { length: 200 })
+    .default("Einsatzplan – Blanko")
+    .notNull(),
+  contactLabel: varchar("contactLabel", { length: 120 })
+    .default("Ansprechpartner")
+    .notNull(),
+  footerText: varchar("footerText", { length: 300 }).default("").notNull(),
+  extraColumns: text("extraColumns").notNull(),
+  blankRowsPerShift: int("blankRowsPerShift").default(0).notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type AppSettings = typeof appSettings.$inferSelect;
+
+export const securitySettings = mysqlTable("security_settings", {
+  id: int("id").primaryKey().default(1),
+  passwordHash: varchar("passwordHash", { length: 255 }),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
 
 export const prepTasks = mysqlTable("prep_tasks", {
   id: int("id").autoincrement().primaryKey(),
