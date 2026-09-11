@@ -71,17 +71,22 @@ export function ConfirmDeleteDialog({
             </p>
           </div>
         )}
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={busy}>Nein, abbrechen</AlertDialogCancel>
+        <AlertDialogFooter className="flex-col sm:flex-row">
+          <AlertDialogCancel className="w-full sm:w-auto" disabled={busy}>
+            Nein, abbrechen
+          </AlertDialogCancel>
           <AlertDialogAction
             disabled={busy || Boolean(contacts && !responsibleContactId)}
-            className={cn(buttonVariants({ variant: "destructive" }))}
+            className={cn(
+              buttonVariants({ variant: "destructive" }),
+              "w-full min-w-[140px] border border-red-700 !bg-red-600 !text-white shadow-sm hover:!bg-red-700 disabled:!border-red-300 disabled:!bg-red-100 disabled:!text-red-800 disabled:opacity-100 sm:w-auto"
+            )}
             onClick={event => {
               event.preventDefault();
               onConfirm();
             }}
           >
-            {busy ? "Wird gelöscht …" : "Ja, löschen"}
+            {busy ? "Wird gelöscht …" : "OK, löschen"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
