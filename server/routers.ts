@@ -41,7 +41,48 @@ import {
   requestedPlanningScope,
   withPlanningScope,
 } from "./year-context";
-import { storagePut } from "./storage";
+import { storageGetSignedUrl, storagePut } from "./storage";
+
+const GUIDE_PDF_KEY = "RSC-Helferplanung-Anleitung_211fadc0.pdf";
+const GUIDE_PDF_FILENAME = "RSC-Helferplanung-Anleitung.pdf";
+const GUIDE_PDF_MAX_BYTES = 5_000_000;
+
+async function readResponseBodyLimited(
+  response: Response,
+  maxBytes: number
+): Promise<Buffer> {
+  const contentLength = response.headers.get("content-length");
+  if (contentLength) {
+    const declaredBytes = Number(contentLength);
+    if (
+      !Number.isSafeInteger(declaredBytes) ||
+      declaredBytes < 0 ||
+      declaredBytes > maxBytes
+    ) {
+      throw new Error("PDF-Datei überschreitet die Größenbegrenzung");
+    }
+  }
+  if (!response.body) throw new Error("PDF-Datei hat keinen Inhalt");
+
+  const reader = response.body.getReader();
+  const chunks: Buffer[] = [];
+  let totalBytes = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      totalBytes += value.byteLength;
+      if (totalBytes > maxBytes) {
+        void reader.cancel("PDF-Datei überschreitet die Größenbegrenzung");
+        throw new Error("PDF-Datei überschreitet die Größenbegrenzung");
+      }
+      chunks.push(Buffer.from(value));
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return Buffer.concat(chunks, totalBytes);
+}
 
 const scopedProtectedProcedure = baseProtectedProcedure.use(({ ctx, next }) =>
   withPlanningScope(requestedPlanningScope(ctx.req), () => next())
@@ -618,6 +659,41 @@ export const appRouter = router({
     unassign: adminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(({ input }) => db.unassignHelper(input.id)),
+  }),
+
+  help: router({
+    guidePdf: baseProtectedProcedure.mutation(async () => {
+      try {
+        const signedUrl = await storageGetSignedUrl(GUIDE_PDF_KEY);
+        const response = await fetch(signedUrl, {
+          redirect: "follow",
+          signal: AbortSignal.timeout(15_000),
+        });
+        if (!response.ok) throw new Error(`Storage HTTP ${response.status}`);
+        const pdf = await readResponseBodyLimited(
+          response,
+          GUIDE_PDF_MAX_BYTES
+        );
+        if (!pdf.length || pdf.subarray(0, 5).toString("ascii") !== "%PDF-") {
+          throw new Error("Ungültige PDF-Datei");
+        }
+        return {
+          filename: GUIDE_PDF_FILENAME,
+          mimeType: "application/pdf",
+          base64: pdf.toString("base64"),
+        };
+      } catch (error) {
+        console.error(
+          "[Help] PDF-Anleitung konnte nicht geladen werden",
+          error
+        );
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message:
+            "Die PDF-Anleitung konnte nicht geladen werden. Bitte versuchen Sie es erneut.",
+        });
+      }
+    }),
   }),
 
   pdf: router({

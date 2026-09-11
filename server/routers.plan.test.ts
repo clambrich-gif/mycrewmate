@@ -23,8 +23,13 @@ const dbMocks = vi.hoisted(() => ({
   listShiftAreaContacts: vi.fn(),
   setShiftAreaContact: vi.fn(),
 }));
+const storageMocks = vi.hoisted(() => ({
+  storageGetSignedUrl: vi.fn(),
+  storagePut: vi.fn(),
+}));
 
 vi.mock("./db", () => dbMocks);
+vi.mock("./storage", () => storageMocks);
 
 import { appRouter } from "./routers";
 import { hashPassword } from "./password-auth";
@@ -100,6 +105,104 @@ describe("Planungs-API", () => {
       createdAt: new Date(),
     });
     dbMocks.getSecuritySettings.mockResolvedValue({ adminPasswordHash });
+    storageMocks.storageGetSignedUrl.mockResolvedValue(
+      "https://storage.example.test/guide.pdf"
+    );
+  });
+
+  it("liefert die PDF-Anleitung für Administratoren und Planungsteam als Download", async () => {
+    const pdf = Buffer.from("%PDF-1.7\nTestanleitung");
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async () => new Response(pdf, { status: 200 }));
+
+    try {
+      for (const callerContext of [ctx, planningTeamCtx]) {
+        const result = await appRouter
+          .createCaller(callerContext)
+          .help.guidePdf();
+        expect(result.filename).toBe("RSC-Helferplanung-Anleitung.pdf");
+        expect(result.mimeType).toBe("application/pdf");
+        expect(Buffer.from(result.base64, "base64")).toEqual(pdf);
+      }
+      expect(storageMocks.storageGetSignedUrl).toHaveBeenCalledWith(
+        "RSC-Helferplanung-Anleitung_211fadc0.pdf"
+      );
+    } finally {
+      fetchMock.mockRestore();
+    }
+  });
+
+  it("meldet einen verständlichen Fehler, wenn die Anleitung nicht geladen werden kann", async () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response("nicht gefunden", { status: 404 }));
+
+    try {
+      await expect(
+        appRouter.createCaller(planningTeamCtx).help.guidePdf()
+      ).rejects.toThrow("PDF-Anleitung konnte nicht geladen werden");
+    } finally {
+      fetchMock.mockRestore();
+      consoleError.mockRestore();
+    }
+  });
+
+  it("weist eine laut Header zu große Anleitung vor dem Einlesen zurück", async () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response("%PDF-", {
+        status: 200,
+        headers: { "content-length": "5000001" },
+      })
+    );
+
+    try {
+      await expect(appRouter.createCaller(ctx).help.guidePdf()).rejects.toThrow(
+        "PDF-Anleitung konnte nicht geladen werden"
+      );
+    } finally {
+      fetchMock.mockRestore();
+      consoleError.mockRestore();
+    }
+  });
+
+  it("bricht eine unbekannt große Anleitung während des Streams oberhalb von fünf MB ab", async () => {
+    let cancelled = false;
+    let chunkIndex = 0;
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        controller.enqueue(
+          chunkIndex++ === 0
+            ? Buffer.alloc(3_000_000, 65)
+            : Buffer.alloc(2_100_000, 66)
+        );
+      },
+      cancel() {
+        cancelled = true;
+      },
+    });
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(stream, { status: 200 }));
+
+    try {
+      await expect(
+        appRouter.createCaller(planningTeamCtx).help.guidePdf()
+      ).rejects.toThrow("PDF-Anleitung konnte nicht geladen werden");
+      await vi.waitFor(() => expect(cancelled).toBe(true));
+    } finally {
+      fetchMock.mockRestore();
+      consoleError.mockRestore();
+    }
   });
 
   it("lässt Veranstaltungen nur administrativ umbenennen", async () => {

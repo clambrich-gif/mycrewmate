@@ -2,6 +2,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { downloadBase64File } from "@/lib/download";
+import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import {
   BookOpen,
@@ -14,8 +16,7 @@ import {
   Users,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-
-const GUIDE_PDF_URL = "/manus-storage/RSC-Helferplanung-Anleitung_211fadc0.pdf";
+import { toast } from "sonner";
 
 const ROLE_STYLE = {
   alle: "border-sky-300 bg-sky-50 text-sky-900",
@@ -206,6 +207,13 @@ function RoleBadge({ role }: { role: keyof typeof ROLE_STYLE }) {
 
 export default function Help() {
   const [query, setQuery] = useState("");
+  const guidePdf = trpc.help.guidePdf.useMutation({
+    onSuccess: result => {
+      downloadBase64File(result.base64, result.mimeType, result.filename);
+      toast.success("PDF-Anleitung wurde heruntergeladen");
+    },
+    onError: error => toast.error(error.message),
+  });
   const normalizedQuery = query.trim().toLocaleLowerCase("de-DE");
   const filteredSections = useMemo(
     () =>
@@ -236,11 +244,17 @@ export default function Help() {
             PDF-Anleitung.
           </p>
         </div>
-        <Button asChild size="lg" className="shrink-0">
-          <a href={GUIDE_PDF_URL} target="_blank" rel="noreferrer" download>
-            <Download className="h-4 w-4" />
-            PDF-Anleitung öffnen
-          </a>
+        <Button
+          type="button"
+          size="lg"
+          className="shrink-0"
+          disabled={guidePdf.isPending}
+          onClick={() => guidePdf.mutate()}
+        >
+          <Download className="h-4 w-4" />
+          {guidePdf.isPending
+            ? "PDF wird vorbereitet …"
+            : "PDF-Anleitung herunterladen"}
         </Button>
       </div>
 
