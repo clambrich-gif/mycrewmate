@@ -44,7 +44,14 @@ import { FormEvent, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
 
-const RSC_LOGO = "/manus-storage/rsc-eifelland-logo-original_f4a9666b.png";
+const RSC_LOGO = "/manus-storage/rsc-eifelland-logo-chrome_25463ad8.png";
+
+const logoLoading = {
+  loading: "eager" as const,
+  decoding: "sync" as const,
+  fetchPriority: "high" as const,
+  draggable: false,
+};
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { user, loading, isAuthenticated, logout } = useAuth();
@@ -173,6 +180,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <div className="min-h-screen grid place-items-center bg-gradient-to-br from-[oklch(0.97_0.02_250)] to-[oklch(0.92_0.04_240)] p-4">
         <div className="bg-card text-card-foreground rounded-2xl shadow-xl p-8 w-full max-w-md">
           <img
+            {...logoLoading}
             src={RSC_LOGO}
             alt="RSC Eifelland e. V."
             className="mx-auto mb-4 h-20 w-20 rounded-2xl bg-white object-contain shadow-sm"
@@ -299,6 +307,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <img
+            {...logoLoading}
             src={RSC_LOGO}
             alt="RSC Eifelland"
             className="h-11 w-11 shrink-0 rounded-full border-2 border-white bg-white object-contain shadow-md ring-1 ring-slate-300"
@@ -330,6 +339,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <SheetTitle className="flex items-center gap-2">
               <span>RSC Helferplanung</span>
               <img
+                {...logoLoading}
                 src={RSC_LOGO}
                 alt="RSC Eifelland"
                 className="h-12 w-12 rounded-full border-2 border-white bg-white object-contain shadow-md ring-1 ring-slate-300"
@@ -474,6 +484,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <img
+            {...logoLoading}
             src={RSC_LOGO}
             alt="RSC Eifelland e. V."
             className="h-14 w-14 shrink-0 rounded-full border-2 border-white bg-white object-contain shadow-md ring-1 ring-slate-300"

@@ -149,8 +149,8 @@ export default function Permissions() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            Verwaltet Einsatzplan, Importe, Zugänge und sensible Lösch- oder
-            Resetvorgänge.
+            Verwaltet Einsatzplan, Datensicherungen, Zugänge und sensible Lösch-
+            oder Resetvorgänge.
           </CardContent>
         </Card>
       </div>

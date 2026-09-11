@@ -12,6 +12,7 @@ import {
   appSettings,
   approvals,
   assignments,
+  backupRestoreLogs,
   cakes,
   contacts,
   deletionAuditLogs,
@@ -150,6 +151,23 @@ export async function getEvent(id = event()) {
   return selected;
 }
 
+export async function withPlanningWriteLock<T>(callback: () => Promise<T>) {
+  const database = (await getDb()) as DB;
+  const selectedYear = year();
+  return database.transaction(async tx => {
+    const [selected] = await tx
+      .select({ year: eventYears.year })
+      .from(eventYears)
+      .where(eq(eventYears.year, selectedYear))
+      .limit(1)
+      .for("update");
+    if (!selected) {
+      throw new Error("Das gewählte Veranstaltungsjahr ist nicht verfügbar");
+    }
+    return callback();
+  });
+}
+
 function normalizeEventName(name: string) {
   return name.trim().replace(/\s+/g, " ");
 }
@@ -243,6 +261,7 @@ export async function deleteEvent(id: number) {
     await tx.delete(helpers).where(scope(helpers));
     await tx.delete(contacts).where(scope(contacts));
     await tx.delete(deletionAuditLogs).where(eq(deletionAuditLogs.eventId, id));
+    await tx.delete(backupRestoreLogs).where(eq(backupRestoreLogs.eventId, id));
     const result = await tx
       .delete(events)
       .where(and(eq(events.id, id), eq(events.year, selectedYear)));

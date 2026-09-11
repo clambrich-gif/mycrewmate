@@ -1,0 +1,2137 @@
+import { createHash } from "node:crypto";
+import { and, desc, eq, inArray } from "drizzle-orm";
+import * as XLSX from "xlsx";
+import {
+  approvals,
+  assignments,
+  backupRestoreLogs,
+  cakes,
+  contacts,
+  events,
+  eventYears,
+  finances,
+  helpers,
+  marketing,
+  materials,
+  postTasks,
+  prepTasks,
+  shiftAreaContacts,
+  shifts,
+} from "../drizzle/schema";
+import { overlaps, toMinutes } from "./logic";
+import { currentEventId, currentEventYear } from "./year-context";
+import { getDb, type AuditActor } from "./db";
+
+const BACKUP_FORMAT = "RSC-HELFERPLANUNG-SICHERUNG";
+const BACKUP_VERSION = 1;
+const MAX_ROWS_PER_SHEET = 10_000;
+const MAX_CHANGES = 5_000;
+const MAX_UNCOMPRESSED_BYTES = 100_000_000;
+const MAX_ZIP_ENTRIES = 1_000;
+const MAX_CHANGE_PAYLOAD_BYTES = 8_000_000;
+const MAX_CONCURRENT_EXCEL_OPERATIONS = 2;
+let activeExcelOperations = 0;
+const SHEETS = [
+  "ANSPRECHPARTNER",
+  "HELFER",
+  "EINSATZPLAN",
+  "VORBEREITUNG",
+  "NACHBEREITUNG",
+  "MATERIAL",
+  "MARKETING",
+  "GENEHMIGUNGEN",
+  "KUCHEN",
+  "FINANZEN",
+] as const;
+const BACKUP_HEADERS: Record<string, string[]> = {
+  ANSPRECHPARTNER: ["ID", "Name", "Rufnummer", "Bemerkung", "Reihenfolge"],
+  HELFER: [
+    "ID",
+    "Ansprechpartner-ID",
+    "Ansprechpartner",
+    "Name",
+    "E-Mail",
+    "Telefon",
+    "Bemerkung",
+    "Helfen?",
+    "Fr",
+    "Sa",
+    "So",
+    "Bestätigt?",
+  ],
+  EINSATZPLAN: [
+    "ID",
+    "Tag",
+    "Bereich",
+    "Aufgabe",
+    "Beginn",
+    "Ende",
+    "Bedarf",
+    "Bemerkung",
+    "Reihenfolge",
+    "Bereichsansprechpartner-ID",
+    "Bereichsansprechpartner",
+    ...Array.from({ length: 20 }, (_, slot) => [
+      `Helfer ${slot + 1} ID`,
+      `Helfer ${slot + 1}`,
+    ]).flat(),
+  ],
+  VORBEREITUNG: [
+    "ID",
+    "Aufgabe",
+    "Zu erledigen bis",
+    "Verantwortlich-ID",
+    "Verantwortlich",
+    "Status",
+    "Bemerkung",
+    "Reihenfolge",
+  ],
+  NACHBEREITUNG: [
+    "ID",
+    "Aufgabe",
+    "Verantwortlich-ID",
+    "Verantwortlich",
+    "Status",
+    "Bemerkung",
+    "Reihenfolge",
+  ],
+  MATERIAL: [
+    "ID",
+    "Artikel",
+    "Kategorie",
+    "Menge",
+    "Einheit",
+    "Verantwortlich-ID",
+    "Verantwortlich",
+    "Bestellt",
+    "Bemerkung",
+    "Reihenfolge",
+  ],
+  MARKETING: [
+    "ID",
+    "Maßnahme",
+    "Kanal",
+    "Verantwortlich-ID",
+    "Verantwortlich",
+    "Status",
+    "Bemerkung",
+    "Reihenfolge",
+  ],
+  GENEHMIGUNGEN: [
+    "ID",
+    "Antrag",
+    "Verantwortlich-ID",
+    "Verantwortlich",
+    "Status",
+    "Bemerkung",
+    "Reihenfolge",
+  ],
+  KUCHEN: ["ID", "Spender", "Kuchen", "Abgabezeit", "Bemerkung", "Reihenfolge"],
+  FINANZEN: [
+    "ID",
+    "Kategorie",
+    "Einnahmen",
+    "Ausgaben",
+    "Bemerkung",
+    "Reihenfolge",
+  ],
+};
+
+type Client = NonNullable<Awaited<ReturnType<typeof getDb>>>;
+type ChangeAction = "create" | "update" | "delete";
+export type BackupArea = (typeof SHEETS)[number] | "ZUORDNUNGEN";
+export type BackupChange = {
+  key: string;
+  area: BackupArea;
+  action: ChangeAction;
+  label: string;
+  fields: string[];
+  before: Record<string, unknown> | null;
+  after: Record<string, unknown> | null;
+};
+
+export async function withExcelOperationLimit<T>(
+  operation: () => Promise<T>
+): Promise<T> {
+  if (activeExcelOperations >= MAX_CONCURRENT_EXCEL_OPERATIONS) {
+    throw new Error(
+      "Es laufen bereits mehrere Excel-Prüfungen. Bitte versuchen Sie es in wenigen Sekunden erneut."
+    );
+  }
+  activeExcelOperations++;
+  try {
+    return await operation();
+  } finally {
+    activeExcelOperations--;
+  }
+}
+
+type ContactRow = {
+  sourceId: number | null;
+  name: string;
+  phone: string;
+  note: string;
+  sortOrder: number;
+};
+type HelperRow = {
+  sourceId: number | null;
+  contactSourceId: number | null;
+  contactName: string;
+  name: string;
+  email: string;
+  phone: string;
+  note: string;
+  willHelp: "ja" | "nein";
+  availFri: "ja" | "nein" | "vielleicht";
+  availSat: "ja" | "nein" | "vielleicht";
+  availSun: "ja" | "nein" | "vielleicht";
+  confirmed: "ja" | "nein";
+};
+type ShiftRow = {
+  sourceId: number | null;
+  day: "Freitag" | "Samstag" | "Sonntag";
+  area: string;
+  task: string;
+  startTime: string;
+  endTime: string;
+  needed: number;
+  note: string;
+  sortOrder: number;
+  areaContactSourceId: number | null;
+  areaContactName: string;
+  slots: Array<{
+    slot: number;
+    helperSourceId: number | null;
+    helperName: string;
+  }>;
+};
+type TaskRow = {
+  sourceId: number | null;
+  task: string;
+  contactSourceId: number | null;
+  contactName: string;
+  status: "offen" | "inArbeit" | "erledigt";
+  note: string;
+  sortOrder: number;
+};
+type PrepRow = TaskRow & { dueText: string };
+type MaterialRow = {
+  sourceId: number | null;
+  article: string;
+  category: string;
+  quantity: string;
+  unit: string;
+  contactSourceId: number | null;
+  contactName: string;
+  ordered: "ja" | "nein";
+  note: string;
+  sortOrder: number;
+};
+type MarketingRow = {
+  sourceId: number | null;
+  measure: string;
+  channel: string;
+  contactSourceId: number | null;
+  contactName: string;
+  status: "offen" | "inArbeit" | "erledigt";
+  note: string;
+  sortOrder: number;
+};
+type ApprovalRow = {
+  sourceId: number | null;
+  request: string;
+  contactSourceId: number | null;
+  contactName: string;
+  status: "offen" | "beantragt" | "genehmigt" | "abgelehnt";
+  note: string;
+  sortOrder: number;
+};
+type CakeRow = {
+  sourceId: number | null;
+  donor: string;
+  cake: string;
+  dropoffTime: string;
+  note: string;
+  sortOrder: number;
+};
+type FinanceRow = {
+  sourceId: number | null;
+  category: string;
+  income: number;
+  expense: number;
+  note: string;
+  sortOrder: number;
+};
+
+type BackupDocument = {
+  metadata: {
+    format: string;
+    version: number;
+    eventId: number;
+    eventName: string;
+    year: number;
+    exportedAt: string;
+  };
+  contacts: ContactRow[];
+  helpers: HelperRow[];
+  shifts: ShiftRow[];
+  prep: PrepRow[];
+  post: TaskRow[];
+  materials: MaterialRow[];
+  marketing: MarketingRow[];
+  approvals: ApprovalRow[];
+  cakes: CakeRow[];
+  finances: FinanceRow[];
+  warnings: string[];
+};
+
+type CurrentSnapshot = {
+  eventName: string;
+  contacts: any[];
+  helpers: any[];
+  shifts: any[];
+  areaContacts: any[];
+  assignments: any[];
+  prep: any[];
+  post: any[];
+  materials: any[];
+  marketing: any[];
+  approvals: any[];
+  cakes: any[];
+  finances: any[];
+};
+
+const normalize = (value: unknown) =>
+  String(value ?? "")
+    .normalize("NFKC")
+    .trim()
+    .replace(/\s+/g, " ");
+const personKey = (value: unknown) =>
+  normalize(value).toLocaleLowerCase("de-DE");
+const text = (value: unknown, max: number, label: string, required = false) => {
+  const result = normalize(value);
+  if (required && !result) throw new Error(`${label} darf nicht leer sein`);
+  if (result.length > max)
+    throw new Error(`${label} ist länger als ${max} Zeichen`);
+  return result;
+};
+const nullableId = (value: unknown, label: string) => {
+  if (value === null || value === undefined || normalize(value) === "")
+    return null;
+  const number = Number(value);
+  if (!Number.isSafeInteger(number) || number <= 0)
+    throw new Error(`${label} enthält keine gültige ID`);
+  return number;
+};
+const integer = (value: unknown, label: string, min: number, max: number) => {
+  const number = Number(value);
+  if (!Number.isInteger(number) || number < min || number > max)
+    throw new Error(`${label} muss zwischen ${min} und ${max} liegen`);
+  return number;
+};
+const moneyCents = (value: unknown, label: string) => {
+  const number =
+    typeof value === "number"
+      ? value
+      : Number(String(value ?? "0").replace(",", "."));
+  if (!Number.isFinite(number) || number < 0 || number > 100_000_000)
+    throw new Error(`${label} ist kein gültiger positiver Betrag`);
+  return Math.round(number * 100);
+};
+const enumValue = <T extends string>(
+  value: unknown,
+  allowed: readonly T[],
+  label: string,
+  fallback?: T
+): T => {
+  const raw = normalize(value);
+  const match = allowed.find(
+    item => item.toLocaleLowerCase("de-DE") === raw.toLocaleLowerCase("de-DE")
+  );
+  if (match) return match;
+  if (fallback !== undefined && !raw) return fallback;
+  throw new Error(`${label} enthält den ungültigen Wert „${raw}“`);
+};
+const digest = (value: unknown) =>
+  createHash("sha256").update(JSON.stringify(value)).digest("hex");
+const chunk = <T>(rows: T[], size = 500) =>
+  Array.from({ length: Math.ceil(rows.length / size) }, (_, index) =>
+    rows.slice(index * size, (index + 1) * size)
+  );
+
+function sheetRows(workbook: XLSX.WorkBook, name: string) {
+  const sheet = workbook.Sheets[name];
+  if (!sheet) throw new Error(`Pflichtblatt „${name}“ fehlt`);
+  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
+    defval: "",
+    raw: true,
+  });
+  if (rows.length > MAX_ROWS_PER_SHEET)
+    throw new Error(
+      `Blatt „${name}“ enthält mehr als ${MAX_ROWS_PER_SHEET} Zeilen`
+    );
+  return rows;
+}
+
+function metadata(workbook: XLSX.WorkBook) {
+  const rows = sheetRows(workbook, "SICHERUNG_INFO");
+  const values = new Map(
+    rows.map(row => [normalize(row.Schlüssel), normalize(row.Wert)])
+  );
+  const format = values.get("Format") ?? "";
+  const version = Number(values.get("Version"));
+  const eventId = Number(values.get("Veranstaltungs-ID"));
+  const year = Number(values.get("Jahr"));
+  const eventName = values.get("Veranstaltung") ?? "";
+  const exportedAt = values.get("Exportiert am (UTC)") ?? "";
+  if (format !== BACKUP_FORMAT || version !== BACKUP_VERSION)
+    throw new Error(
+      "Die Datei ist keine unterstützte RSC-Sicherungsdatei. Bitte zuerst einen aktuellen Export erstellen."
+    );
+  if (
+    !Number.isSafeInteger(eventId) ||
+    eventId <= 0 ||
+    !Number.isInteger(year) ||
+    !eventName ||
+    !Number.isFinite(Date.parse(exportedAt))
+  )
+    throw new Error(
+      "Die Sicherungsinformationen sind unvollständig oder beschädigt"
+    );
+  return { format, version, eventId, year, eventName, exportedAt };
+}
+
+function ensureUnique<T>(
+  rows: T[],
+  getId: (row: T) => number | null,
+  getLabel: (row: T) => string,
+  sheet: string
+) {
+  const ids = new Set<number>();
+  const labels = new Set<string>();
+  for (const row of rows) {
+    const id = getId(row);
+    if (id !== null && ids.has(id))
+      throw new Error(`${sheet}: technische ID ${id} ist doppelt vorhanden`);
+    if (id !== null) ids.add(id);
+    const label = personKey(getLabel(row));
+    if (labels.has(label))
+      throw new Error(`${sheet}: „${getLabel(row)}“ ist doppelt vorhanden`);
+    labels.add(label);
+  }
+}
+
+function validateZipEnvelope(buffer: Buffer) {
+  const endSignature = 0x06054b50;
+  const centralSignature = 0x02014b50;
+  const searchStart = Math.max(0, buffer.length - 65_557);
+  let endOffset = -1;
+  for (let offset = buffer.length - 22; offset >= searchStart; offset--) {
+    if (buffer.readUInt32LE(offset) === endSignature) {
+      endOffset = offset;
+      break;
+    }
+  }
+  if (endOffset < 0)
+    throw new Error("Die Excel-Datei ist kein gültiges XLSX-Archiv");
+
+  const entryCount = buffer.readUInt16LE(endOffset + 10);
+  const centralSize = buffer.readUInt32LE(endOffset + 12);
+  const centralOffset = buffer.readUInt32LE(endOffset + 16);
+  if (
+    entryCount === 0xffff ||
+    centralSize === 0xffffffff ||
+    centralOffset === 0xffffffff
+  )
+    throw new Error("ZIP64-Excel-Dateien werden nicht unterstützt");
+  if (entryCount > MAX_ZIP_ENTRIES)
+    throw new Error("Die Excel-Datei enthält zu viele interne Dateien");
+  if (centralOffset + centralSize > buffer.length)
+    throw new Error("Die Excel-Datei enthält ein beschädigtes ZIP-Verzeichnis");
+
+  let offset = centralOffset;
+  let uncompressedBytes = 0;
+  for (let entry = 0; entry < entryCount; entry++) {
+    if (
+      offset + 46 > buffer.length ||
+      buffer.readUInt32LE(offset) !== centralSignature
+    )
+      throw new Error(
+        "Die Excel-Datei enthält ein beschädigtes ZIP-Verzeichnis"
+      );
+    const uncompressed = buffer.readUInt32LE(offset + 24);
+    const filenameLength = buffer.readUInt16LE(offset + 28);
+    const extraLength = buffer.readUInt16LE(offset + 30);
+    const commentLength = buffer.readUInt16LE(offset + 32);
+    if (uncompressed === 0xffffffff)
+      throw new Error("ZIP64-Excel-Dateien werden nicht unterstützt");
+    uncompressedBytes += uncompressed;
+    if (uncompressedBytes > MAX_UNCOMPRESSED_BYTES)
+      throw new Error(
+        "Die Excel-Datei ist entpackt größer als 100 MB und wird aus Sicherheitsgründen abgewiesen"
+      );
+    offset += 46 + filenameLength + extraLength + commentLength;
+  }
+}
+
+export function parseBackupWorkbook(base64: string): BackupDocument {
+  const bytes = Buffer.from(base64, "base64");
+  if (!bytes.length || bytes.length > 15_000_000)
+    throw new Error("Die Excel-Datei ist leer oder größer als 15 MB");
+  validateZipEnvelope(bytes);
+  let workbook: XLSX.WorkBook;
+  try {
+    workbook = XLSX.read(bytes, { type: "buffer", cellDates: false });
+  } catch {
+    throw new Error("Die Excel-Datei ist beschädigt oder nicht lesbar");
+  }
+  const meta = metadata(workbook);
+  for (const required of SHEETS)
+    if (!workbook.Sheets[required])
+      throw new Error(`Pflichtblatt „${required}“ fehlt`);
+  const warnings: string[] = [];
+
+  const contactRows = sheetRows(workbook, "ANSPRECHPARTNER").filter(row =>
+    normalize(row.Name)
+  );
+  const parsedContacts: ContactRow[] = contactRows.map((row, index) => ({
+    sourceId: nullableId(row.ID, `ANSPRECHPARTNER Zeile ${index + 2}`),
+    name: text(row.Name, 200, `ANSPRECHPARTNER Zeile ${index + 2}: Name`, true),
+    phone: text(
+      row.Rufnummer,
+      64,
+      `ANSPRECHPARTNER Zeile ${index + 2}: Rufnummer`
+    ),
+    note: text(
+      row.Bemerkung,
+      10_000,
+      `ANSPRECHPARTNER Zeile ${index + 2}: Bemerkung`
+    ),
+    sortOrder: integer(
+      row.Reihenfolge || 0,
+      `ANSPRECHPARTNER Zeile ${index + 2}: Reihenfolge`,
+      0,
+      1_000_000
+    ),
+  }));
+  ensureUnique(
+    parsedContacts,
+    row => row.sourceId,
+    row => row.name,
+    "ANSPRECHPARTNER"
+  );
+  const contactIds = new Set(
+    parsedContacts.flatMap(row => (row.sourceId ? [row.sourceId] : []))
+  );
+  const contactNames = new Map(
+    parsedContacts.map(row => [personKey(row.name), row.sourceId])
+  );
+  const contactRef = (idValue: unknown, nameValue: unknown, label: string) => {
+    const id = nullableId(idValue, label);
+    const nameKey = personKey(nameValue);
+    if (!nameKey) return null;
+    const byName = contactNames.get(nameKey);
+    if (contactNames.has(nameKey)) return byName ?? null;
+    if (id && contactIds.has(id)) return id;
+    if (id || normalize(nameValue))
+      warnings.push(
+        `${label}: gelöschter oder unbekannter Ansprechpartner-Bezug wird geleert.`
+      );
+    return null;
+  };
+
+  const helperRows = sheetRows(workbook, "HELFER").filter(row =>
+    normalize(row.Name)
+  );
+  const parsedHelpers: HelperRow[] = helperRows.map((row, index) => ({
+    sourceId: nullableId(row.ID, `HELFER Zeile ${index + 2}`),
+    contactSourceId: contactRef(
+      row["Ansprechpartner-ID"],
+      row.Ansprechpartner,
+      `HELFER Zeile ${index + 2}: Ansprechpartner`
+    ),
+    contactName: text(
+      row.Ansprechpartner,
+      200,
+      `HELFER Zeile ${index + 2}: Ansprechpartner`
+    ),
+    name: text(row.Name, 200, `HELFER Zeile ${index + 2}: Name`, true),
+    email: text(row["E-Mail"], 320, `HELFER Zeile ${index + 2}: E-Mail`),
+    phone: text(row.Telefon, 64, `HELFER Zeile ${index + 2}: Telefon`),
+    note: text(row.Bemerkung, 10_000, `HELFER Zeile ${index + 2}: Bemerkung`),
+    willHelp: enumValue(
+      row["Helfen?"],
+      ["ja", "nein"] as const,
+      `HELFER Zeile ${index + 2}: Helfen?`,
+      "ja"
+    ),
+    availFri: enumValue(
+      row.Fr,
+      ["ja", "nein", "vielleicht"] as const,
+      `HELFER Zeile ${index + 2}: Freitag`,
+      "vielleicht"
+    ),
+    availSat: enumValue(
+      row.Sa,
+      ["ja", "nein", "vielleicht"] as const,
+      `HELFER Zeile ${index + 2}: Samstag`,
+      "vielleicht"
+    ),
+    availSun: enumValue(
+      row.So,
+      ["ja", "nein", "vielleicht"] as const,
+      `HELFER Zeile ${index + 2}: Sonntag`,
+      "vielleicht"
+    ),
+    confirmed: enumValue(
+      row["Bestätigt?"],
+      ["ja", "nein"] as const,
+      `HELFER Zeile ${index + 2}: Bestätigt?`,
+      "nein"
+    ),
+  }));
+  ensureUnique(
+    parsedHelpers,
+    row => row.sourceId,
+    row => row.name,
+    "HELFER"
+  );
+  for (const contact of parsedContacts) {
+    const selfHelper = parsedHelpers.find(
+      helper => personKey(helper.name) === personKey(contact.name)
+    );
+    const linkedToContact =
+      selfHelper &&
+      ((contact.sourceId !== null &&
+        selfHelper.contactSourceId === contact.sourceId) ||
+        personKey(selfHelper.contactName) === personKey(contact.name));
+    if (!linkedToContact) {
+      throw new Error(
+        `ANSPRECHPARTNER/HELFER: Für „${contact.name}“ muss der gleichnamige eigene Helfereintrag erhalten bleiben und diesem Ansprechpartner zugeordnet sein.`
+      );
+    }
+  }
+  const helperIds = new Set(
+    parsedHelpers.flatMap(row => (row.sourceId ? [row.sourceId] : []))
+  );
+  const helperNames = new Map(
+    parsedHelpers.map(row => [personKey(row.name), row.sourceId])
+  );
+  const helperRef = (idValue: unknown, nameValue: unknown, label: string) => {
+    const id = nullableId(idValue, label);
+    const nameKey = personKey(nameValue);
+    if (!nameKey) return null;
+    const byName = helperNames.get(nameKey);
+    if (helperNames.has(nameKey)) return byName ?? null;
+    if (id && helperIds.has(id)) return id;
+    if (id || normalize(nameValue))
+      warnings.push(
+        `${label}: gelöschter oder unbekannter Helfer wird aus der Einteilung entfernt.`
+      );
+    return null;
+  };
+
+  const shiftRows = sheetRows(workbook, "EINSATZPLAN").filter(row =>
+    normalize(row.Aufgabe)
+  );
+  const parsedShifts: ShiftRow[] = shiftRows.map((row, index) => {
+    const day = enumValue(
+      row.Tag,
+      ["Freitag", "Samstag", "Sonntag"] as const,
+      `EINSATZPLAN Zeile ${index + 2}: Tag`
+    );
+    const startTime = text(
+      row.Beginn,
+      16,
+      `EINSATZPLAN Zeile ${index + 2}: Beginn`
+    );
+    const endTime = text(row.Ende, 16, `EINSATZPLAN Zeile ${index + 2}: Ende`);
+    const start = toMinutes(startTime);
+    const end = toMinutes(endTime);
+    if (
+      (startTime || endTime) &&
+      (start === null || end === null || end <= start)
+    )
+      throw new Error(
+        `EINSATZPLAN Zeile ${index + 2}: Beginn/Ende sind ungültig`
+      );
+    const needed = integer(
+      row.Bedarf,
+      `EINSATZPLAN Zeile ${index + 2}: Bedarf`,
+      0,
+      20
+    );
+    const slots = Array.from({ length: 20 }, (_, slot) => {
+      const helperName = text(
+        row[`Helfer ${slot + 1}`],
+        200,
+        `EINSATZPLAN Zeile ${index + 2}: Helfer ${slot + 1}`
+      );
+      const helperSourceId = helperRef(
+        row[`Helfer ${slot + 1} ID`],
+        helperName,
+        `EINSATZPLAN Zeile ${index + 2}: Helfer ${slot + 1}`
+      );
+      return helperName &&
+        (helperSourceId || helperNames.has(personKey(helperName)))
+        ? { slot, helperSourceId, helperName }
+        : null;
+    }).filter((item): item is NonNullable<typeof item> => item !== null);
+    if (slots.some(slot => slot.slot >= needed))
+      throw new Error(
+        `EINSATZPLAN Zeile ${index + 2}: Ein Helfer steht außerhalb des Bedarfs`
+      );
+    if (
+      new Set(
+        slots.map(slot => slot.helperSourceId ?? personKey(slot.helperName))
+      ).size !== slots.length
+    )
+      throw new Error(
+        `EINSATZPLAN Zeile ${index + 2}: Ein Helfer ist in derselben Schicht doppelt eingetragen`
+      );
+    return {
+      sourceId: nullableId(row.ID, `EINSATZPLAN Zeile ${index + 2}`),
+      day,
+      area: text(
+        row.Bereich,
+        200,
+        `EINSATZPLAN Zeile ${index + 2}: Bereich`,
+        true
+      ),
+      task: text(
+        row.Aufgabe,
+        300,
+        `EINSATZPLAN Zeile ${index + 2}: Aufgabe`,
+        true
+      ),
+      startTime,
+      endTime,
+      needed,
+      note: text(
+        row.Bemerkung,
+        10_000,
+        `EINSATZPLAN Zeile ${index + 2}: Bemerkung`
+      ),
+      sortOrder: integer(
+        row.Reihenfolge || 0,
+        `EINSATZPLAN Zeile ${index + 2}: Reihenfolge`,
+        0,
+        1_000_000
+      ),
+      areaContactSourceId: contactRef(
+        row["Bereichsansprechpartner-ID"],
+        row.Bereichsansprechpartner,
+        `EINSATZPLAN Zeile ${index + 2}: Bereichsansprechpartner`
+      ),
+      areaContactName: text(
+        row.Bereichsansprechpartner,
+        200,
+        `EINSATZPLAN Zeile ${index + 2}: Bereichsansprechpartner`
+      ),
+      slots,
+    };
+  });
+  ensureUnique(
+    parsedShifts,
+    row => row.sourceId,
+    row => `${row.day}|${row.area}|${row.task}|${row.startTime}|${row.endTime}`,
+    "EINSATZPLAN"
+  );
+  const areaContacts = new Map<string, string>();
+  for (const row of parsedShifts) {
+    const key = personKey(row.area);
+    const contactKey = row.areaContactSourceId
+      ? `id:${row.areaContactSourceId}`
+      : `name:${personKey(row.areaContactName)}`;
+    if (areaContacts.has(key) && areaContacts.get(key) !== contactKey)
+      throw new Error(
+        `EINSATZPLAN: Bereich „${row.area}“ hat unterschiedliche Ansprechpartner`
+      );
+    areaContacts.set(key, contactKey);
+  }
+
+  const parseTaskRows = (sheet: "NACHBEREITUNG", withDue = false) =>
+    sheetRows(workbook, sheet)
+      .filter(row => normalize(row.Aufgabe))
+      .map((row, index) => ({
+        sourceId: nullableId(row.ID, `${sheet} Zeile ${index + 2}`),
+        task: text(
+          row.Aufgabe,
+          300,
+          `${sheet} Zeile ${index + 2}: Aufgabe`,
+          true
+        ),
+        ...(withDue
+          ? {
+              dueText: text(
+                row["Zu erledigen bis"],
+                200,
+                `${sheet} Zeile ${index + 2}: Zu erledigen bis`
+              ),
+            }
+          : {}),
+        contactSourceId: contactRef(
+          row["Verantwortlich-ID"],
+          row.Verantwortlich,
+          `${sheet} Zeile ${index + 2}: Verantwortlich`
+        ),
+        contactName: text(
+          row.Verantwortlich,
+          200,
+          `${sheet} Zeile ${index + 2}: Verantwortlich`
+        ),
+        status: enumValue(
+          row.Status,
+          ["offen", "inArbeit", "erledigt"] as const,
+          `${sheet} Zeile ${index + 2}: Status`,
+          "offen"
+        ),
+        note: text(
+          row.Bemerkung,
+          10_000,
+          `${sheet} Zeile ${index + 2}: Bemerkung`
+        ),
+        sortOrder: integer(
+          row.Reihenfolge || 0,
+          `${sheet} Zeile ${index + 2}: Reihenfolge`,
+          0,
+          1_000_000
+        ),
+      }));
+  const parsedPrep: PrepRow[] = sheetRows(workbook, "VORBEREITUNG")
+    .filter(row => normalize(row.Aufgabe))
+    .map((row, index) => ({
+      sourceId: nullableId(row.ID, `VORBEREITUNG Zeile ${index + 2}`),
+      task: text(
+        row.Aufgabe,
+        300,
+        `VORBEREITUNG Zeile ${index + 2}: Aufgabe`,
+        true
+      ),
+      dueText: text(
+        row["Zu erledigen bis"],
+        200,
+        `VORBEREITUNG Zeile ${index + 2}: Zu erledigen bis`
+      ),
+      contactSourceId: contactRef(
+        row["Verantwortlich-ID"],
+        row.Verantwortlich,
+        `VORBEREITUNG Zeile ${index + 2}: Verantwortlich`
+      ),
+      contactName: text(
+        row.Verantwortlich,
+        200,
+        `VORBEREITUNG Zeile ${index + 2}: Verantwortlich`
+      ),
+      status: enumValue(
+        row.Status,
+        ["offen", "inArbeit", "erledigt"] as const,
+        `VORBEREITUNG Zeile ${index + 2}: Status`,
+        "offen"
+      ),
+      note: text(
+        row.Bemerkung,
+        10_000,
+        `VORBEREITUNG Zeile ${index + 2}: Bemerkung`
+      ),
+      sortOrder: integer(
+        row.Reihenfolge || 0,
+        `VORBEREITUNG Zeile ${index + 2}: Reihenfolge`,
+        0,
+        1_000_000
+      ),
+    }));
+  const parsedPost = parseTaskRows("NACHBEREITUNG") as TaskRow[];
+  ensureUnique(
+    parsedPrep,
+    row => row.sourceId,
+    row => row.task,
+    "VORBEREITUNG"
+  );
+  ensureUnique(
+    parsedPost,
+    row => row.sourceId,
+    row => row.task,
+    "NACHBEREITUNG"
+  );
+
+  const parsedMaterials: MaterialRow[] = sheetRows(workbook, "MATERIAL")
+    .filter(row => normalize(row.Artikel))
+    .map((row, index) => ({
+      sourceId: nullableId(row.ID, `MATERIAL Zeile ${index + 2}`),
+      article: text(
+        row.Artikel,
+        300,
+        `MATERIAL Zeile ${index + 2}: Artikel`,
+        true
+      ),
+      category: text(
+        row.Kategorie,
+        120,
+        `MATERIAL Zeile ${index + 2}: Kategorie`
+      ),
+      quantity: text(row.Menge, 40, `MATERIAL Zeile ${index + 2}: Menge`),
+      unit: text(row.Einheit, 40, `MATERIAL Zeile ${index + 2}: Einheit`),
+      contactSourceId: contactRef(
+        row["Verantwortlich-ID"],
+        row.Verantwortlich,
+        `MATERIAL Zeile ${index + 2}: Verantwortlich`
+      ),
+      contactName: text(
+        row.Verantwortlich,
+        200,
+        `MATERIAL Zeile ${index + 2}: Verantwortlich`
+      ),
+      ordered: enumValue(
+        row.Bestellt,
+        ["ja", "nein"] as const,
+        `MATERIAL Zeile ${index + 2}: Bestellt`,
+        "nein"
+      ),
+      note: text(
+        row.Bemerkung,
+        10_000,
+        `MATERIAL Zeile ${index + 2}: Bemerkung`
+      ),
+      sortOrder: integer(
+        row.Reihenfolge || 0,
+        `MATERIAL Zeile ${index + 2}: Reihenfolge`,
+        0,
+        1_000_000
+      ),
+    }));
+  ensureUnique(
+    parsedMaterials,
+    row => row.sourceId,
+    row => row.article,
+    "MATERIAL"
+  );
+
+  const parsedMarketing: MarketingRow[] = sheetRows(workbook, "MARKETING")
+    .filter(row => normalize(row.Maßnahme))
+    .map((row, index) => ({
+      sourceId: nullableId(row.ID, `MARKETING Zeile ${index + 2}`),
+      measure: text(
+        row.Maßnahme,
+        300,
+        `MARKETING Zeile ${index + 2}: Maßnahme`,
+        true
+      ),
+      channel: text(row.Kanal, 160, `MARKETING Zeile ${index + 2}: Kanal`),
+      contactSourceId: contactRef(
+        row["Verantwortlich-ID"],
+        row.Verantwortlich,
+        `MARKETING Zeile ${index + 2}: Verantwortlich`
+      ),
+      contactName: text(
+        row.Verantwortlich,
+        200,
+        `MARKETING Zeile ${index + 2}: Verantwortlich`
+      ),
+      status: enumValue(
+        row.Status,
+        ["offen", "inArbeit", "erledigt"] as const,
+        `MARKETING Zeile ${index + 2}: Status`,
+        "offen"
+      ),
+      note: text(
+        row.Bemerkung,
+        10_000,
+        `MARKETING Zeile ${index + 2}: Bemerkung`
+      ),
+      sortOrder: integer(
+        row.Reihenfolge || 0,
+        `MARKETING Zeile ${index + 2}: Reihenfolge`,
+        0,
+        1_000_000
+      ),
+    }));
+  ensureUnique(
+    parsedMarketing,
+    row => row.sourceId,
+    row => row.measure,
+    "MARKETING"
+  );
+
+  const parsedApprovals: ApprovalRow[] = sheetRows(workbook, "GENEHMIGUNGEN")
+    .filter(row => normalize(row.Antrag))
+    .map((row, index) => ({
+      sourceId: nullableId(row.ID, `GENEHMIGUNGEN Zeile ${index + 2}`),
+      request: text(
+        row.Antrag,
+        300,
+        `GENEHMIGUNGEN Zeile ${index + 2}: Antrag`,
+        true
+      ),
+      contactSourceId: contactRef(
+        row["Verantwortlich-ID"],
+        row.Verantwortlich,
+        `GENEHMIGUNGEN Zeile ${index + 2}: Verantwortlich`
+      ),
+      contactName: text(
+        row.Verantwortlich,
+        200,
+        `GENEHMIGUNGEN Zeile ${index + 2}: Verantwortlich`
+      ),
+      status: enumValue(
+        row.Status,
+        ["offen", "beantragt", "genehmigt", "abgelehnt"] as const,
+        `GENEHMIGUNGEN Zeile ${index + 2}: Status`,
+        "offen"
+      ),
+      note: text(
+        row.Bemerkung,
+        10_000,
+        `GENEHMIGUNGEN Zeile ${index + 2}: Bemerkung`
+      ),
+      sortOrder: integer(
+        row.Reihenfolge || 0,
+        `GENEHMIGUNGEN Zeile ${index + 2}: Reihenfolge`,
+        0,
+        1_000_000
+      ),
+    }));
+  ensureUnique(
+    parsedApprovals,
+    row => row.sourceId,
+    row => row.request,
+    "GENEHMIGUNGEN"
+  );
+
+  const parsedCakes: CakeRow[] = sheetRows(workbook, "KUCHEN")
+    .filter(row => normalize(row.Spender))
+    .map((row, index) => ({
+      sourceId: nullableId(row.ID, `KUCHEN Zeile ${index + 2}`),
+      donor: text(row.Spender, 200, `KUCHEN Zeile ${index + 2}: Spender`, true),
+      cake: text(row.Kuchen, 200, `KUCHEN Zeile ${index + 2}: Kuchen`),
+      dropoffTime: text(
+        row.Abgabezeit,
+        60,
+        `KUCHEN Zeile ${index + 2}: Abgabezeit`
+      ),
+      note: text(row.Bemerkung, 10_000, `KUCHEN Zeile ${index + 2}: Bemerkung`),
+      sortOrder: integer(
+        row.Reihenfolge || 0,
+        `KUCHEN Zeile ${index + 2}: Reihenfolge`,
+        0,
+        1_000_000
+      ),
+    }));
+  ensureUnique(
+    parsedCakes,
+    row => row.sourceId,
+    row => `${row.donor}|${row.cake}`,
+    "KUCHEN"
+  );
+
+  const parsedFinances: FinanceRow[] = sheetRows(workbook, "FINANZEN")
+    .filter(row => normalize(row.Kategorie))
+    .map((row, index) => ({
+      sourceId: nullableId(row.ID, `FINANZEN Zeile ${index + 2}`),
+      category: text(
+        row.Kategorie,
+        160,
+        `FINANZEN Zeile ${index + 2}: Kategorie`,
+        true
+      ),
+      income: moneyCents(
+        row.Einnahmen,
+        `FINANZEN Zeile ${index + 2}: Einnahmen`
+      ),
+      expense: moneyCents(
+        row.Ausgaben,
+        `FINANZEN Zeile ${index + 2}: Ausgaben`
+      ),
+      note: text(
+        row.Bemerkung,
+        10_000,
+        `FINANZEN Zeile ${index + 2}: Bemerkung`
+      ),
+      sortOrder: integer(
+        row.Reihenfolge || 0,
+        `FINANZEN Zeile ${index + 2}: Reihenfolge`,
+        0,
+        1_000_000
+      ),
+    }));
+  ensureUnique(
+    parsedFinances,
+    row => row.sourceId,
+    row => row.category,
+    "FINANZEN"
+  );
+
+  const helperBySourceId = new Map(
+    parsedHelpers.flatMap(row =>
+      row.sourceId ? [[row.sourceId, row] as const] : []
+    )
+  );
+  const shiftBySourceId = new Map(
+    parsedShifts.flatMap(row =>
+      row.sourceId ? [[row.sourceId, row] as const] : []
+    )
+  );
+  const helperShifts = new Map<string, ShiftRow[]>();
+  for (const shift of parsedShifts)
+    for (const slot of shift.slots) {
+      const helper = slot.helperSourceId
+        ? helperBySourceId.get(slot.helperSourceId)
+        : parsedHelpers.find(
+            item => personKey(item.name) === personKey(slot.helperName)
+          );
+      if (!helper) continue;
+      const helperKey = slot.helperSourceId
+        ? `id:${slot.helperSourceId}`
+        : `name:${personKey(slot.helperName)}`;
+      const list = helperShifts.get(helperKey) ?? [];
+      list.push(shift);
+      helperShifts.set(helperKey, list);
+    }
+  for (const [helperKey, assignedShifts] of Array.from(
+    helperShifts.entries()
+  )) {
+    for (let left = 0; left < assignedShifts.length; left++)
+      for (let right = left + 1; right < assignedShifts.length; right++) {
+        const a = assignedShifts[left];
+        const b = assignedShifts[right];
+        if (overlaps(a as any, b as any))
+          throw new Error(
+            `Doppelbelegung: ${helperKey.startsWith("id:") ? (helperBySourceId.get(Number(helperKey.slice(3)))?.name ?? helperKey) : (parsedHelpers.find(item => personKey(item.name) === helperKey.slice(5))?.name ?? helperKey)} ist gleichzeitig in „${a.task}“ und „${b.task}“ eingeteilt`
+          );
+      }
+  }
+  void shiftBySourceId;
+
+  return {
+    metadata: meta,
+    contacts: parsedContacts,
+    helpers: parsedHelpers,
+    shifts: parsedShifts,
+    prep: parsedPrep,
+    post: parsedPost,
+    materials: parsedMaterials,
+    marketing: parsedMarketing,
+    approvals: parsedApprovals,
+    cakes: parsedCakes,
+    finances: parsedFinances,
+    warnings: Array.from(new Set(warnings)),
+  };
+}
+
+async function loadSnapshot(
+  client?: Client | any,
+  lockRows = false
+): Promise<CurrentSnapshot> {
+  const database = client ?? ((await getDb()) as Client);
+  const year = currentEventYear();
+  const eventId = currentEventId();
+  const scope = (table: any) =>
+    and(eq(table.year, year), eq(table.eventId, eventId));
+  const selectRows = (
+    table: any,
+    condition: any,
+    limit?: number
+  ): Promise<any[]> => {
+    let query: any = database.select().from(table).where(condition);
+    if (limit !== undefined) query = query.limit(limit);
+    if (lockRows) query = query.for("update");
+    return query;
+  };
+  const [
+    eventRows,
+    contactRows,
+    helperRows,
+    shiftRows,
+    areaRows,
+    assignmentRows,
+    prepRows,
+    postRows,
+    materialRows,
+    marketingRows,
+    approvalRows,
+    cakeRows,
+    financeRows,
+  ] = await Promise.all([
+    selectRows(events, and(eq(events.id, eventId), eq(events.year, year)), 1),
+    selectRows(contacts, scope(contacts)),
+    selectRows(helpers, scope(helpers)),
+    selectRows(shifts, scope(shifts)),
+    selectRows(shiftAreaContacts, scope(shiftAreaContacts)),
+    selectRows(
+      assignments,
+      inArray(
+        assignments.shiftId,
+        database.select({ id: shifts.id }).from(shifts).where(scope(shifts))
+      )
+    ),
+    selectRows(prepTasks, scope(prepTasks)),
+    selectRows(postTasks, scope(postTasks)),
+    selectRows(materials, scope(materials)),
+    selectRows(marketing, scope(marketing)),
+    selectRows(approvals, scope(approvals)),
+    selectRows(cakes, scope(cakes)),
+    selectRows(finances, scope(finances)),
+  ]);
+  if (!eventRows[0]) throw new Error("Veranstaltung wurde nicht gefunden");
+  return {
+    eventName: eventRows[0].name,
+    contacts: contactRows,
+    helpers: helperRows,
+    shifts: shiftRows,
+    areaContacts: areaRows,
+    assignments: assignmentRows,
+    prep: prepRows,
+    post: postRows,
+    materials: materialRows,
+    marketing: marketingRows,
+    approvals: approvalRows,
+    cakes: cakeRows,
+    finances: financeRows,
+  };
+}
+
+function comparableCurrent(snapshot: CurrentSnapshot) {
+  const clean = (row: any, fields: string[]) =>
+    Object.fromEntries(
+      fields.map(field => [
+        field,
+        row[field] ?? (field === "sortOrder" ? 0 : ""),
+      ])
+    );
+  const contactName = new Map(snapshot.contacts.map(row => [row.id, row.name]));
+  const helperName = new Map(snapshot.helpers.map(row => [row.id, row.name]));
+  const areaContact = new Map(
+    snapshot.areaContacts.map(row => [personKey(row.area), row.contactId])
+  );
+  const assignmentMap = new Map<number, any[]>();
+  for (const assignment of snapshot.assignments) {
+    const list = assignmentMap.get(assignment.shiftId) ?? [];
+    list.push(assignment);
+    assignmentMap.set(assignment.shiftId, list);
+  }
+  const byId = (left: any, right: any) => left.id - right.id;
+  return {
+    contacts: [...snapshot.contacts].sort(byId).map(row => ({
+      sourceId: row.id,
+      ...clean(row, ["name", "phone", "note", "sortOrder"]),
+    })),
+    helpers: [...snapshot.helpers].sort(byId).map(row => ({
+      sourceId: row.id,
+      contactSourceId: row.contactId,
+      contactName: row.contactId ? (contactName.get(row.contactId) ?? "") : "",
+      ...clean(row, [
+        "name",
+        "email",
+        "phone",
+        "note",
+        "willHelp",
+        "availFri",
+        "availSat",
+        "availSun",
+        "confirmed",
+      ]),
+    })),
+    shifts: [...snapshot.shifts].sort(byId).map(row => ({
+      sourceId: row.id,
+      ...clean(row, [
+        "day",
+        "area",
+        "task",
+        "startTime",
+        "endTime",
+        "needed",
+        "note",
+        "sortOrder",
+      ]),
+      areaContactSourceId: areaContact.get(personKey(row.area)) ?? null,
+      areaContactName: areaContact.get(personKey(row.area))
+        ? (contactName.get(areaContact.get(personKey(row.area))!) ?? "")
+        : "",
+      slots: (assignmentMap.get(row.id) ?? [])
+        .sort((a, b) => a.slot - b.slot)
+        .map(item => ({
+          slot: item.slot,
+          helperSourceId: item.helperId,
+          helperName: helperName.get(item.helperId) ?? "",
+        })),
+    })),
+    prep: [...snapshot.prep].sort(byId).map(row => ({
+      sourceId: row.id,
+      contactSourceId: row.contactId,
+      contactName: row.contactId ? (contactName.get(row.contactId) ?? "") : "",
+      ...clean(row, ["task", "dueText", "status", "note", "sortOrder"]),
+    })),
+    post: [...snapshot.post].sort(byId).map(row => ({
+      sourceId: row.id,
+      contactSourceId: row.contactId,
+      contactName: row.contactId ? (contactName.get(row.contactId) ?? "") : "",
+      ...clean(row, ["task", "status", "note", "sortOrder"]),
+    })),
+    materials: [...snapshot.materials].sort(byId).map(row => ({
+      sourceId: row.id,
+      contactSourceId: row.contactId,
+      contactName: row.contactId ? (contactName.get(row.contactId) ?? "") : "",
+      ...clean(row, [
+        "article",
+        "category",
+        "quantity",
+        "unit",
+        "ordered",
+        "note",
+        "sortOrder",
+      ]),
+    })),
+    marketing: [...snapshot.marketing].sort(byId).map(row => ({
+      sourceId: row.id,
+      contactSourceId: row.contactId,
+      contactName: row.contactId ? (contactName.get(row.contactId) ?? "") : "",
+      ...clean(row, ["measure", "channel", "status", "note", "sortOrder"]),
+    })),
+    approvals: [...snapshot.approvals].sort(byId).map(row => ({
+      sourceId: row.id,
+      contactSourceId: row.contactId,
+      contactName: row.contactId ? (contactName.get(row.contactId) ?? "") : "",
+      ...clean(row, ["request", "status", "note", "sortOrder"]),
+    })),
+    cakes: [...snapshot.cakes].sort(byId).map(row => ({
+      sourceId: row.id,
+      ...clean(row, ["donor", "cake", "dropoffTime", "note", "sortOrder"]),
+    })),
+    finances: [...snapshot.finances].sort(byId).map(row => ({
+      sourceId: row.id,
+      category: row.category,
+      income: row.income,
+      expense: row.expense,
+      note: row.note ?? "",
+      sortOrder: row.sortOrder,
+    })),
+  };
+}
+
+const AREA_CONFIG = [
+  ["ANSPRECHPARTNER", "contacts", "name"],
+  ["HELFER", "helpers", "name"],
+  ["EINSATZPLAN", "shifts", "task"],
+  ["VORBEREITUNG", "prep", "task"],
+  ["NACHBEREITUNG", "post", "task"],
+  ["MATERIAL", "materials", "article"],
+  ["MARKETING", "marketing", "measure"],
+  ["GENEHMIGUNGEN", "approvals", "request"],
+  ["KUCHEN", "cakes", "donor"],
+  ["FINANZEN", "finances", "category"],
+] as const;
+const ignoredDiffFields = new Set(["contactName", "areaContactName", "slots"]);
+const diffFieldEqual = (
+  field: string,
+  before: Record<string, unknown>,
+  after: Record<string, unknown>
+) => {
+  if (field === "contactSourceId") {
+    return before.contactSourceId && after.contactSourceId
+      ? before.contactSourceId === after.contactSourceId
+      : personKey(before.contactName) === personKey(after.contactName);
+  }
+  if (field === "areaContactSourceId") {
+    return before.areaContactSourceId && after.areaContactSourceId
+      ? before.areaContactSourceId === after.areaContactSourceId
+      : personKey(before.areaContactName) === personKey(after.areaContactName);
+  }
+  return (
+    JSON.stringify(before[field] ?? null) ===
+    JSON.stringify(after[field] ?? null)
+  );
+};
+function diffDocuments(
+  current: ReturnType<typeof comparableCurrent>,
+  desired: BackupDocument
+) {
+  const changes: BackupChange[] = [];
+  for (const [area, key, labelField] of AREA_CONFIG) {
+    const beforeRows = current[key] as any[];
+    const afterRows = desired[key] as any[];
+    const beforeById = new Map(beforeRows.map(row => [row.sourceId, row]));
+    const beforeByLabel = new Map(
+      beforeRows.map(row => [personKey(row[labelField]), row])
+    );
+    const matched = new Set<number>();
+    for (let index = 0; index < afterRows.length; index++) {
+      const after = afterRows[index];
+      const before =
+        (after.sourceId ? beforeById.get(after.sourceId) : undefined) ??
+        beforeByLabel.get(personKey(after[labelField]));
+      if (!before) {
+        changes.push({
+          key: `${area}:new:${index}`,
+          area,
+          action: "create",
+          label: String(after[labelField]),
+          fields: Object.keys(after).filter(
+            field => field !== "sourceId" && !ignoredDiffFields.has(field)
+          ),
+          before: null,
+          after,
+        });
+        continue;
+      }
+      matched.add(before.sourceId);
+      const fields = Array.from(
+        new Set([...Object.keys(before), ...Object.keys(after)])
+      ).filter(
+        field =>
+          field !== "sourceId" &&
+          !ignoredDiffFields.has(field) &&
+          !diffFieldEqual(field, before, after)
+      );
+      if (fields.length)
+        changes.push({
+          key: `${area}:update:${before.sourceId}`,
+          area,
+          action: "update",
+          label: String(after[labelField]),
+          fields,
+          before,
+          after,
+        });
+    }
+    for (const before of beforeRows)
+      if (!matched.has(before.sourceId))
+        changes.push({
+          key: `${area}:delete:${before.sourceId}`,
+          area,
+          action: "delete",
+          label: String(before[labelField]),
+          fields: [],
+          before,
+          after: null,
+        });
+  }
+  const currentAssignments = (current.shifts as any[]).flatMap(shift =>
+    shift.slots.map((slot: any) => ({
+      shiftSourceId: shift.sourceId,
+      shiftLabel: `${shift.day} · ${shift.area} · ${shift.task}`,
+      ...slot,
+    }))
+  );
+  const desiredAssignments = desired.shifts.flatMap(shift =>
+    shift.slots.map(slot => ({
+      shiftSourceId: shift.sourceId,
+      shiftLabel: `${shift.day} · ${shift.area} · ${shift.task}`,
+      ...slot,
+    }))
+  );
+  const assignmentKey = (row: any) => `${row.shiftLabel}|${row.slot}`;
+  const currentMap = new Map(
+    currentAssignments.map(row => [assignmentKey(row), row])
+  );
+  const desiredMap = new Map(
+    desiredAssignments.map(row => [assignmentKey(row), row])
+  );
+  for (const [key, after] of Array.from(desiredMap.entries())) {
+    const before = currentMap.get(key);
+    if (!before)
+      changes.push({
+        key: `ZUORDNUNGEN:create:${key}`,
+        area: "ZUORDNUNGEN",
+        action: "create",
+        label: `${after.shiftLabel} · Platz ${after.slot + 1}: ${after.helperName}`,
+        fields: ["helperSourceId"],
+        before: null,
+        after,
+      });
+    else if (
+      before.helperSourceId && after.helperSourceId
+        ? before.helperSourceId !== after.helperSourceId
+        : personKey(before.helperName) !== personKey(after.helperName)
+    )
+      changes.push({
+        key: `ZUORDNUNGEN:update:${key}`,
+        area: "ZUORDNUNGEN",
+        action: "update",
+        label: `${after.shiftLabel} · Platz ${after.slot + 1}`,
+        fields: ["helperSourceId"],
+        before,
+        after,
+      });
+  }
+  for (const [key, before] of Array.from(currentMap.entries()))
+    if (!desiredMap.has(key))
+      changes.push({
+        key: `ZUORDNUNGEN:delete:${key}`,
+        area: "ZUORDNUNGEN",
+        action: "delete",
+        label: `${before.shiftLabel} · Platz ${before.slot + 1}: ${before.helperName}`,
+        fields: [],
+        before,
+        after: null,
+      });
+  if (changes.length > MAX_CHANGES)
+    throw new Error(
+      `Die Sicherung erzeugt mehr als ${MAX_CHANGES} Änderungen und kann nicht verarbeitet werden`
+    );
+  return changes;
+}
+
+function summary(changes: BackupChange[]) {
+  const result = {
+    created: 0,
+    updated: 0,
+    deleted: 0,
+    unchanged: 0,
+    byArea: {} as Record<
+      string,
+      { created: number; updated: number; deleted: number }
+    >,
+  };
+  for (const change of changes) {
+    result[
+      change.action === "create"
+        ? "created"
+        : change.action === "update"
+          ? "updated"
+          : "deleted"
+    ]++;
+    const area = result.byArea[change.area] ?? {
+      created: 0,
+      updated: 0,
+      deleted: 0,
+    };
+    area[
+      change.action === "create"
+        ? "created"
+        : change.action === "update"
+          ? "updated"
+          : "deleted"
+    ]++;
+    result.byArea[change.area] = area;
+  }
+  return result;
+}
+
+function serializeChangeDetails(changes: BackupChange[], warnings: string[]) {
+  const details = JSON.stringify({ changes, warnings });
+  if (Buffer.byteLength(details, "utf8") > MAX_CHANGE_PAYLOAD_BYTES)
+    throw new Error(
+      "Die Änderungsvorschau ist zu umfangreich. Bitte teilen Sie die Bearbeitung auf mehrere Sicherungen auf."
+    );
+  return details;
+}
+
+export async function previewBackupRestore(base64: string) {
+  const desired = parseBackupWorkbook(base64);
+  const snapshot = await loadSnapshot();
+  if (
+    desired.metadata.eventId !== currentEventId() ||
+    desired.metadata.year !== currentEventYear() ||
+    desired.metadata.eventName !== snapshot.eventName
+  )
+    throw new Error(
+      `Die Sicherung gehört zu „${desired.metadata.eventName}“ (${desired.metadata.year}), ausgewählt ist „${snapshot.eventName}“ (${currentEventYear()}).`
+    );
+  const current = comparableCurrent(snapshot);
+  const changes = diffDocuments(current, desired);
+  serializeChangeDetails(changes, desired.warnings);
+  return {
+    metadata: desired.metadata,
+    currentDigest: digest(current),
+    workbookDigest: digest(Buffer.from(base64, "base64")),
+    warnings: desired.warnings,
+    changes,
+    totals: summary(changes),
+  };
+}
+
+export type BackupRestorePreview = Awaited<
+  ReturnType<typeof previewBackupRestore>
+>;
+
+async function insertRows(client: any, table: any, rows: any[]) {
+  for (const part of chunk(rows))
+    if (part.length) await client.insert(table).values(part);
+}
+
+export async function restoreBackup(
+  base64: string,
+  sourceFilename: string,
+  expectedCurrentDigest: string,
+  actor: AuditActor
+) {
+  const desired = parseBackupWorkbook(base64);
+  const workbookDigest = digest(Buffer.from(base64, "base64"));
+  const db = (await getDb()) as Client;
+  const year = currentEventYear();
+  const eventId = currentEventId();
+  const scope = (table: any) =>
+    and(eq(table.year, year), eq(table.eventId, eventId));
+  return db.transaction(async tx => {
+    const [yearLock] = await tx
+      .select({ year: eventYears.year })
+      .from(eventYears)
+      .where(eq(eventYears.year, year))
+      .limit(1)
+      .for("update");
+    if (!yearLock)
+      throw new Error("Das gewählte Veranstaltungsjahr ist nicht verfügbar");
+    const [selectedEvent] = await tx
+      .select({ id: events.id })
+      .from(events)
+      .where(and(eq(events.id, eventId), eq(events.year, year)))
+      .limit(1);
+    if (!selectedEvent)
+      throw new Error(
+        "Die Sicherung gehört nicht zur aktuell ausgewählten Veranstaltung"
+      );
+    const snapshot = await loadSnapshot(tx, true);
+    if (
+      desired.metadata.eventId !== eventId ||
+      desired.metadata.year !== year ||
+      desired.metadata.eventName !== snapshot.eventName
+    )
+      throw new Error(
+        "Die Sicherung gehört nicht zur aktuell ausgewählten Veranstaltung"
+      );
+    const current = comparableCurrent(snapshot);
+    const beforeDigest = digest(current);
+    if (beforeDigest !== expectedCurrentDigest)
+      throw new Error(
+        "Die Planung wurde seit der Vorschau geändert. Bitte die Excel-Datei erneut prüfen."
+      );
+    const changes = diffDocuments(current, desired);
+    if (!changes.length)
+      throw new Error("Die Excel-Datei enthält keine Änderungen");
+    const auditDetails = serializeChangeDetails(changes, desired.warnings);
+
+    if (changes.length) {
+      await tx
+        .delete(assignments)
+        .where(
+          inArray(
+            assignments.shiftId,
+            tx.select({ id: shifts.id }).from(shifts).where(scope(shifts))
+          )
+        );
+      await tx.delete(shiftAreaContacts).where(scope(shiftAreaContacts));
+      await tx.delete(shifts).where(scope(shifts));
+      await tx.delete(prepTasks).where(scope(prepTasks));
+      await tx.delete(postTasks).where(scope(postTasks));
+      await tx.delete(materials).where(scope(materials));
+      await tx.delete(marketing).where(scope(marketing));
+      await tx.delete(approvals).where(scope(approvals));
+      await tx.delete(helpers).where(scope(helpers));
+      await tx.delete(contacts).where(scope(contacts));
+      await tx.delete(cakes).where(scope(cakes));
+      await tx.delete(finances).where(scope(finances));
+
+      const currentContactIds = new Set(snapshot.contacts.map(row => row.id));
+      const contactIdBySource = new Map<number, number>();
+      const contactIdByName = new Map<string, number>();
+      for (const row of desired.contacts) {
+        const preservedId =
+          row.sourceId && currentContactIds.has(row.sourceId)
+            ? row.sourceId
+            : undefined;
+        const result: any = await tx.insert(contacts).values({
+          ...(preservedId ? { id: preservedId } : {}),
+          year,
+          eventId,
+          name: row.name,
+          phone: row.phone || null,
+          note: row.note || null,
+          sortOrder: row.sortOrder,
+        });
+        const actualId =
+          preservedId ?? Number(result?.[0]?.insertId ?? result?.insertId);
+        if (row.sourceId) contactIdBySource.set(row.sourceId, actualId);
+        contactIdByName.set(personKey(row.name), actualId);
+      }
+      const resolveContact = (sourceId: number | null, name: string) =>
+        (sourceId ? contactIdBySource.get(sourceId) : undefined) ??
+        contactIdByName.get(personKey(name)) ??
+        null;
+
+      const currentHelperIds = new Set(snapshot.helpers.map(row => row.id));
+      const helperIdBySource = new Map<number, number>();
+      const helperIdByName = new Map<string, number>();
+      for (const row of desired.helpers) {
+        const preservedId =
+          row.sourceId && currentHelperIds.has(row.sourceId)
+            ? row.sourceId
+            : undefined;
+        const result: any = await tx.insert(helpers).values({
+          ...(preservedId ? { id: preservedId } : {}),
+          year,
+          eventId,
+          contactId: resolveContact(row.contactSourceId, row.contactName),
+          name: row.name,
+          email: row.email || null,
+          phone: row.phone || null,
+          note: row.note || null,
+          willHelp: row.willHelp,
+          availFri: row.availFri,
+          availSat: row.availSat,
+          availSun: row.availSun,
+          confirmed: row.confirmed,
+        });
+        const actualId =
+          preservedId ?? Number(result?.[0]?.insertId ?? result?.insertId);
+        if (row.sourceId) helperIdBySource.set(row.sourceId, actualId);
+        helperIdByName.set(personKey(row.name), actualId);
+      }
+      const resolveHelper = (sourceId: number | null, name: string) =>
+        (sourceId ? helperIdBySource.get(sourceId) : undefined) ??
+        helperIdByName.get(personKey(name));
+
+      const currentShiftIds = new Set(snapshot.shifts.map(row => row.id));
+      const shiftIdBySource = new Map<number, number>();
+      const shiftIdByKey = new Map<string, number>();
+      const shiftKey = (row: ShiftRow) =>
+        personKey(
+          `${row.day}|${row.area}|${row.task}|${row.startTime}|${row.endTime}`
+        );
+      for (const row of desired.shifts) {
+        const preservedId =
+          row.sourceId && currentShiftIds.has(row.sourceId)
+            ? row.sourceId
+            : undefined;
+        const result: any = await tx.insert(shifts).values({
+          ...(preservedId ? { id: preservedId } : {}),
+          year,
+          eventId,
+          day: row.day,
+          area: row.area,
+          task: row.task,
+          startTime: row.startTime,
+          endTime: row.endTime,
+          needed: row.needed,
+          note: row.note || null,
+          sortOrder: row.sortOrder,
+        });
+        const actualId =
+          preservedId ?? Number(result?.[0]?.insertId ?? result?.insertId);
+        if (row.sourceId) shiftIdBySource.set(row.sourceId, actualId);
+        shiftIdByKey.set(shiftKey(row), actualId);
+      }
+      const resolveShift = (row: ShiftRow) =>
+        (row.sourceId ? shiftIdBySource.get(row.sourceId) : undefined) ??
+        shiftIdByKey.get(shiftKey(row));
+      const assignmentValues = desired.shifts.flatMap(row =>
+        row.slots.flatMap(slot => {
+          const shiftId = resolveShift(row);
+          const helperId = resolveHelper(slot.helperSourceId, slot.helperName);
+          return shiftId && helperId
+            ? [{ shiftId, helperId, slot: slot.slot }]
+            : [];
+        })
+      );
+      await insertRows(tx, assignments, assignmentValues);
+      const areaValues = Array.from(
+        new Map(desired.shifts.map(row => [personKey(row.area), row])).values()
+      ).flatMap(row => {
+        const contactId = resolveContact(
+          row.areaContactSourceId,
+          row.areaContactName
+        );
+        return contactId ? [{ year, eventId, area: row.area, contactId }] : [];
+      });
+      await insertRows(tx, shiftAreaContacts, areaValues);
+
+      const preserveId = (sourceId: number | null, currentIds: Set<number>) =>
+        sourceId && currentIds.has(sourceId) ? { id: sourceId } : {};
+      await insertRows(
+        tx,
+        prepTasks,
+        desired.prep.map(row => ({
+          ...preserveId(
+            row.sourceId,
+            new Set(snapshot.prep.map(item => item.id))
+          ),
+          year,
+          eventId,
+          task: row.task,
+          dueText: row.dueText,
+          contactId: resolveContact(row.contactSourceId, row.contactName),
+          status: row.status,
+          note: row.note || null,
+          sortOrder: row.sortOrder,
+        }))
+      );
+      const simpleTasks = (wanted: TaskRow[], currentRows: any[]) =>
+        wanted.map(row => ({
+          ...preserveId(
+            row.sourceId,
+            new Set(currentRows.map(item => item.id))
+          ),
+          year,
+          eventId,
+          task: row.task,
+          contactId: resolveContact(row.contactSourceId, row.contactName),
+          status: row.status,
+          note: row.note || null,
+          sortOrder: row.sortOrder,
+        }));
+      await insertRows(tx, postTasks, simpleTasks(desired.post, snapshot.post));
+      await insertRows(
+        tx,
+        materials,
+        desired.materials.map(row => ({
+          ...preserveId(
+            row.sourceId,
+            new Set(snapshot.materials.map(item => item.id))
+          ),
+          year,
+          eventId,
+          article: row.article,
+          category: row.category,
+          quantity: row.quantity,
+          unit: row.unit,
+          contactId: resolveContact(row.contactSourceId, row.contactName),
+          ordered: row.ordered,
+          note: row.note || null,
+          sortOrder: row.sortOrder,
+        }))
+      );
+      await insertRows(
+        tx,
+        marketing,
+        desired.marketing.map(row => ({
+          ...preserveId(
+            row.sourceId,
+            new Set(snapshot.marketing.map(item => item.id))
+          ),
+          year,
+          eventId,
+          measure: row.measure,
+          channel: row.channel,
+          contactId: resolveContact(row.contactSourceId, row.contactName),
+          status: row.status,
+          note: row.note || null,
+          sortOrder: row.sortOrder,
+        }))
+      );
+      await insertRows(
+        tx,
+        approvals,
+        desired.approvals.map(row => ({
+          ...preserveId(
+            row.sourceId,
+            new Set(snapshot.approvals.map(item => item.id))
+          ),
+          year,
+          eventId,
+          request: row.request,
+          contactId: resolveContact(row.contactSourceId, row.contactName),
+          status: row.status,
+          note: row.note || null,
+          sortOrder: row.sortOrder,
+        }))
+      );
+      await insertRows(
+        tx,
+        cakes,
+        desired.cakes.map(row => ({
+          ...preserveId(
+            row.sourceId,
+            new Set(snapshot.cakes.map(item => item.id))
+          ),
+          year,
+          eventId,
+          donor: row.donor,
+          cake: row.cake,
+          dropoffTime: row.dropoffTime,
+          note: row.note || null,
+          sortOrder: row.sortOrder,
+        }))
+      );
+      await insertRows(
+        tx,
+        finances,
+        desired.finances.map(row => ({
+          ...preserveId(
+            row.sourceId,
+            new Set(snapshot.finances.map(item => item.id))
+          ),
+          year,
+          eventId,
+          category: row.category,
+          income: row.income,
+          expense: row.expense,
+          note: row.note || null,
+          sortOrder: row.sortOrder,
+        }))
+      );
+    }
+
+    const after = comparableCurrent(await loadSnapshot(tx));
+    const remainingChanges = diffDocuments(after, desired);
+    if (remainingChanges.length)
+      throw new Error(
+        "Die Wiederherstellung konnte den geprüften Excel-Stand nicht vollständig herstellen und wurde komplett zurückgerollt"
+      );
+    const afterDigest = digest(after);
+    const totals = summary(changes);
+    await tx.insert(backupRestoreLogs).values({
+      year,
+      eventId,
+      eventName: snapshot.eventName,
+      sourceFilename: sourceFilename.slice(0, 255),
+      backupExportedAt: desired.metadata.exportedAt,
+      actorUserId: actor.userId,
+      actorName: actor.name,
+      actorRole: actor.role,
+      actorLoginMethod: actor.loginMethod ?? null,
+      createdCount: totals.created,
+      updatedCount: totals.updated,
+      deletedCount: totals.deleted,
+      beforeDigest,
+      afterDigest,
+      workbookDigest,
+      details: auditDetails,
+    });
+    return { ...totals, warnings: desired.warnings, afterDigest };
+  });
+}
+
+export async function listBackupRestoreLogs(limit = 50) {
+  const db = (await getDb()) as Client;
+  return db
+    .select({
+      id: backupRestoreLogs.id,
+      year: backupRestoreLogs.year,
+      eventId: backupRestoreLogs.eventId,
+      eventName: backupRestoreLogs.eventName,
+      sourceFilename: backupRestoreLogs.sourceFilename,
+      backupExportedAt: backupRestoreLogs.backupExportedAt,
+      actorName: backupRestoreLogs.actorName,
+      actorRole: backupRestoreLogs.actorRole,
+      createdCount: backupRestoreLogs.createdCount,
+      updatedCount: backupRestoreLogs.updatedCount,
+      deletedCount: backupRestoreLogs.deletedCount,
+      createdAt: backupRestoreLogs.createdAt,
+    })
+    .from(backupRestoreLogs)
+    .where(
+      and(
+        eq(backupRestoreLogs.year, currentEventYear()),
+        eq(backupRestoreLogs.eventId, currentEventId())
+      )
+    )
+    .orderBy(desc(backupRestoreLogs.createdAt), desc(backupRestoreLogs.id))
+    .limit(limit);
+}
+
+export async function getBackupRestoreLog(id: number) {
+  const db = (await getDb()) as Client;
+  const [entry] = await db
+    .select()
+    .from(backupRestoreLogs)
+    .where(
+      and(
+        eq(backupRestoreLogs.id, id),
+        eq(backupRestoreLogs.year, currentEventYear()),
+        eq(backupRestoreLogs.eventId, currentEventId())
+      )
+    )
+    .limit(1);
+  if (!entry)
+    throw new Error("Wiederherstellungsprotokoll wurde nicht gefunden");
+  let parsed: { changes?: BackupChange[]; warnings?: string[] } = {};
+  try {
+    parsed = JSON.parse(entry.details);
+  } catch {
+    throw new Error("Wiederherstellungsprotokoll ist beschädigt");
+  }
+  return { ...entry, details: undefined, ...parsed };
+}
+
+export async function exportBackupExcel(): Promise<{
+  buffer: Buffer;
+  exportedAt: string;
+  eventName: string;
+}> {
+  const snapshot = await loadSnapshot();
+  const current: any = comparableCurrent(snapshot);
+  const exportedAt = new Date().toISOString();
+  const workbook = XLSX.utils.book_new();
+  const append = (
+    name: string,
+    rows: Record<string, unknown>[],
+    widths?: number[]
+  ) => {
+    const headers = BACKUP_HEADERS[name] ?? Object.keys(rows[0] ?? {});
+    const sheet = rows.length
+      ? XLSX.utils.json_to_sheet(rows, { header: headers })
+      : XLSX.utils.aoa_to_sheet([headers]);
+    sheet["!freeze"] = {
+      xSplit: 0,
+      ySplit: 1,
+      topLeftCell: "A2",
+      activePane: "bottomLeft",
+      state: "frozen",
+    } as any;
+    sheet["!autofilter"] = rows.length ? { ref: sheet["!ref"]! } : undefined;
+    sheet["!cols"] = (widths ?? headers.map(() => 20)).map((wch, index) =>
+      typeof wch === "number"
+        ? {
+            wch: headers[index]?.endsWith("ID") ? 12 : wch,
+            ...(headers[index]?.endsWith("ID") ? { hidden: true } : {}),
+          }
+        : (wch as any)
+    );
+    XLSX.utils.book_append_sheet(workbook, sheet, name);
+  };
+  append(
+    "SICHERUNG_INFO",
+    [
+      { Schlüssel: "Format", Wert: BACKUP_FORMAT },
+      { Schlüssel: "Version", Wert: BACKUP_VERSION },
+      { Schlüssel: "Veranstaltungs-ID", Wert: currentEventId() },
+      { Schlüssel: "Veranstaltung", Wert: snapshot.eventName },
+      { Schlüssel: "Jahr", Wert: currentEventYear() },
+      { Schlüssel: "Exportiert am (UTC)", Wert: exportedAt },
+      {
+        Schlüssel: "Verwendung",
+        Wert: "Diese Datei ist eine vollständige Sicherung der gewählten Veranstaltung. Gelöschte Zeilen werden bei der Wiederherstellung nach Prüfung auch im Programm gelöscht.",
+      },
+      {
+        Schlüssel: "Wichtig",
+        Wert: "Blattnamen und ausgeblendete ID-Spalten nicht löschen oder verändern. Neue Zeilen erhalten eine leere ID.",
+      },
+    ],
+    [28, 100]
+  );
+  append(
+    "ANSPRECHPARTNER",
+    current.contacts.map((row: any) => ({
+      ID: row.sourceId,
+      Name: row.name,
+      Rufnummer: row.phone,
+      Bemerkung: row.note,
+      Reihenfolge: row.sortOrder,
+    }))
+  );
+  append(
+    "HELFER",
+    current.helpers.map((row: any) => ({
+      ID: row.sourceId,
+      "Ansprechpartner-ID": row.contactSourceId ?? "",
+      Ansprechpartner: row.contactName,
+      Name: row.name,
+      "E-Mail": row.email,
+      Telefon: row.phone,
+      Bemerkung: row.note,
+      "Helfen?": row.willHelp,
+      Fr: row.availFri,
+      Sa: row.availSat,
+      So: row.availSun,
+      "Bestätigt?": row.confirmed,
+    }))
+  );
+  append(
+    "EINSATZPLAN",
+    current.shifts.map((row: any) => ({
+      ID: row.sourceId,
+      Tag: row.day,
+      Bereich: row.area,
+      Aufgabe: row.task,
+      Beginn: row.startTime,
+      Ende: row.endTime,
+      Bedarf: row.needed,
+      Bemerkung: row.note,
+      Reihenfolge: row.sortOrder,
+      "Bereichsansprechpartner-ID": row.areaContactSourceId ?? "",
+      Bereichsansprechpartner: row.areaContactName,
+      ...Object.fromEntries(
+        Array.from({ length: 20 }, (_, slot) => {
+          const assignment = row.slots.find((item: any) => item.slot === slot);
+          return [
+            [`Helfer ${slot + 1} ID`, assignment?.helperSourceId ?? ""],
+            [`Helfer ${slot + 1}`, assignment?.helperName ?? ""],
+          ];
+        }).flat()
+      ),
+    }))
+  );
+  const taskRows = (rows: any[], due = false) =>
+    rows.map(row => ({
+      ID: row.sourceId,
+      Aufgabe: row.task,
+      ...(due ? { "Zu erledigen bis": row.dueText } : {}),
+      "Verantwortlich-ID": row.contactSourceId ?? "",
+      Verantwortlich: row.contactName,
+      Status: row.status,
+      Bemerkung: row.note,
+      Reihenfolge: row.sortOrder,
+    }));
+  append("VORBEREITUNG", taskRows(current.prep, true));
+  append("NACHBEREITUNG", taskRows(current.post));
+  append(
+    "MATERIAL",
+    current.materials.map((row: any) => ({
+      ID: row.sourceId,
+      Artikel: row.article,
+      Kategorie: row.category,
+      Menge: row.quantity,
+      Einheit: row.unit,
+      "Verantwortlich-ID": row.contactSourceId ?? "",
+      Verantwortlich: row.contactName,
+      Bestellt: row.ordered,
+      Bemerkung: row.note,
+      Reihenfolge: row.sortOrder,
+    }))
+  );
+  append(
+    "MARKETING",
+    current.marketing.map((row: any) => ({
+      ID: row.sourceId,
+      Maßnahme: row.measure,
+      Kanal: row.channel,
+      "Verantwortlich-ID": row.contactSourceId ?? "",
+      Verantwortlich: row.contactName,
+      Status: row.status,
+      Bemerkung: row.note,
+      Reihenfolge: row.sortOrder,
+    }))
+  );
+  append(
+    "GENEHMIGUNGEN",
+    current.approvals.map((row: any) => ({
+      ID: row.sourceId,
+      Antrag: row.request,
+      "Verantwortlich-ID": row.contactSourceId ?? "",
+      Verantwortlich: row.contactName,
+      Status: row.status,
+      Bemerkung: row.note,
+      Reihenfolge: row.sortOrder,
+    }))
+  );
+  append(
+    "KUCHEN",
+    current.cakes.map((row: any) => ({
+      ID: row.sourceId,
+      Spender: row.donor,
+      Kuchen: row.cake,
+      Abgabezeit: row.dropoffTime,
+      Bemerkung: row.note,
+      Reihenfolge: row.sortOrder,
+    }))
+  );
+  append(
+    "FINANZEN",
+    current.finances.map((row: any) => ({
+      ID: row.sourceId,
+      Kategorie: row.category,
+      Einnahmen: row.income / 100,
+      Ausgaben: row.expense / 100,
+      Bemerkung: row.note,
+      Reihenfolge: row.sortOrder,
+    }))
+  );
+  return {
+    buffer: XLSX.write(workbook, {
+      type: "buffer",
+      bookType: "xlsx",
+      compression: true,
+    }),
+    exportedAt,
+    eventName: snapshot.eventName,
+  };
+}

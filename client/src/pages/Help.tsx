@@ -130,7 +130,7 @@ const SECTIONS: HelpSection[] = [
       "Gelb markierte Anleitungen betreffen das Planungsteam. Grün markierte Anleitungen sind ausschließlich für Administratoren relevant. Kapitel mit blauem Hinweis gelten für beide Rollen.",
     steps: [
       "Planungsteam: Ansprechpartner und Helfer pflegen, Verfügbarkeiten und Bestätigungen erfassen, operative Listen bearbeiten, PDFs erzeugen, Excel exportieren sowie Einsatzplan ansehen und filtern.",
-      "Administratoren: zusätzlich Veranstaltungen verwalten, Einsatzplan bearbeiten, Helfer zuweisen, Excel importieren, Zugänge und PDF-Konfiguration verwalten sowie sensible Lösch-, Reset- und Wiederherstellungsvorgänge ausführen.",
+      "Administratoren: zusätzlich Veranstaltungen verwalten, Einsatzplan bearbeiten, Helfer zuweisen, Excel-Sicherungen prüfen und wiederherstellen, Zugänge und PDF-Konfiguration verwalten sowie sensible Lösch- und Resetvorgänge ausführen.",
       "Für das Planungsteam irrelevant: Schichten verändern, Helfer im Einsatzplan zuweisen, Veranstaltungen löschen, Passwörter verwalten und Löschprotokolle administrieren.",
     ],
     image: {
@@ -142,12 +142,12 @@ const SECTIONS: HelpSection[] = [
   },
   {
     id: "excel",
-    title: "Excel-Import und -Export",
+    title: "Excel-Datensicherung und Wiederherstellung",
     role: "alle",
     keywords:
-      "excel import export prüfung vorschau schicht zuordnung dublette datei planungsteam administrator",
+      "excel datensicherung import export wiederherstellung prüfung vorschau löschung schicht zuordnung dublette datei planungsteam administrator protokoll",
     summary:
-      "Beide Rollen dürfen Daten exportieren. Nur Administratoren dürfen Excel-Dateien importieren und die vorgeschlagenen Änderungen nach der Prüfvorschau bestätigen. Für das Planungsteam ist der Importteil nicht erforderlich.",
+      "Beide Rollen dürfen den vollständigen aktuellen Veranstaltungsstand als Excel-Sicherung exportieren. Nur Administratoren dürfen eine bearbeitete Sicherung prüfen und nach Administratorpasswort-Freigabe als verbindlichen Sollstand wiederherstellen. Dabei werden auch in Excel gelöschte Zeilen im Programm entfernt. Doppelbelegungen und ungültige Dateien werden blockiert; jeder Vorgang und jede Einzeländerung bleiben im Wiederherstellungsprotokoll nachvollziehbar. Für das Planungsteam ist die Wiederherstellung nicht erforderlich.",
   },
   {
     id: "veranstaltungen",

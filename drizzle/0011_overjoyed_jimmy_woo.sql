@@ -1,0 +1,1 @@
+ALTER TABLE `backup_restore_logs` MODIFY COLUMN `details` mediumtext NOT NULL;

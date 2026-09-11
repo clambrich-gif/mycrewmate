@@ -1,5 +1,6 @@
 import {
   int,
+  mediumtext,
   mysqlEnum,
   mysqlTable,
   text,
@@ -236,6 +237,30 @@ export const deletionAuditLogs = mysqlTable("deletion_audit_logs", {
   restoredByName: varchar("restoredByName", { length: 200 }),
 });
 export type DeletionAuditLog = typeof deletionAuditLogs.$inferSelect;
+
+export const backupRestoreLogs = mysqlTable("backup_restore_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  year: int("year").notNull(),
+  eventId: int("eventId").references(() => events.id, {
+    onDelete: "set null",
+  }),
+  eventName: varchar("eventName", { length: 200 }).notNull(),
+  sourceFilename: varchar("sourceFilename", { length: 255 }).notNull(),
+  backupExportedAt: varchar("backupExportedAt", { length: 40 }).notNull(),
+  actorUserId: int("actorUserId").notNull(),
+  actorName: varchar("actorName", { length: 200 }).notNull(),
+  actorRole: mysqlEnum("actorRole", ["user", "admin"]).notNull(),
+  actorLoginMethod: varchar("actorLoginMethod", { length: 64 }),
+  createdCount: int("createdCount").default(0).notNull(),
+  updatedCount: int("updatedCount").default(0).notNull(),
+  deletedCount: int("deletedCount").default(0).notNull(),
+  beforeDigest: varchar("beforeDigest", { length: 64 }).notNull(),
+  afterDigest: varchar("afterDigest", { length: 64 }).notNull(),
+  workbookDigest: varchar("workbookDigest", { length: 64 }).notNull(),
+  details: mediumtext("details").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type BackupRestoreLog = typeof backupRestoreLogs.$inferSelect;
 
 export const prepTasks = mysqlTable("prep_tasks", {
   id: int("id").autoincrement().primaryKey(),

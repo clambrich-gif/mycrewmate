@@ -71,6 +71,20 @@
       "when": 1789107166755,
       "tag": "0009_many_puff_adder",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1789122094158,
+      "tag": "0010_easy_otto_octavius",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1789122220768,
+      "tag": "0011_overjoyed_jimmy_woo",
+      "breakpoints": true
     }
   ]
 }

@@ -22,14 +22,24 @@ const dbMocks = vi.hoisted(() => ({
   getContact: vi.fn(),
   listShiftAreaContacts: vi.fn(),
   setShiftAreaContact: vi.fn(),
+  withPlanningWriteLock: vi.fn(),
 }));
 const storageMocks = vi.hoisted(() => ({
   storageGetSignedUrl: vi.fn(),
   storagePut: vi.fn(),
 }));
+const backupMocks = vi.hoisted(() => ({
+  exportBackupExcel: vi.fn(),
+  previewBackupRestore: vi.fn(),
+  restoreBackup: vi.fn(),
+  listBackupRestoreLogs: vi.fn(),
+  getBackupRestoreLog: vi.fn(),
+  withExcelOperationLimit: vi.fn(),
+}));
 
 vi.mock("./db", () => dbMocks);
 vi.mock("./storage", () => storageMocks);
+vi.mock("./excel-backup", () => backupMocks);
 
 import { appRouter } from "./routers";
 import { hashPassword } from "./password-auth";
@@ -76,7 +86,11 @@ const ctx = {
     updatedAt: new Date(),
     lastSignedIn: new Date(),
   },
-  req: { protocol: "https", headers: {} },
+  req: {
+    protocol: "https",
+    headers: { "x-forwarded-for": "127.0.0.99" },
+    socket: { remoteAddress: "127.0.0.99" },
+  },
   res: {},
 } as TrpcContext;
 
@@ -105,8 +119,40 @@ describe("Planungs-API", () => {
       createdAt: new Date(),
     });
     dbMocks.getSecuritySettings.mockResolvedValue({ adminPasswordHash });
+    dbMocks.withPlanningWriteLock.mockImplementation(callback => callback());
     storageMocks.storageGetSignedUrl.mockResolvedValue(
       "https://storage.example.test/guide.pdf"
+    );
+    backupMocks.exportBackupExcel.mockResolvedValue({
+      buffer: Buffer.from("xlsx"),
+      exportedAt: "2026-09-11T10:00:00.000Z",
+      eventName: "MyEifelRide",
+    });
+    backupMocks.previewBackupRestore.mockResolvedValue({
+      metadata: {
+        format: "RSC-HELFERPLANUNG-SICHERUNG",
+        version: 1,
+        eventId: 1,
+        eventName: "MyEifelRide",
+        year: 2026,
+        exportedAt: "2026-09-11T10:00:00.000Z",
+      },
+      currentDigest: "a".repeat(64),
+      workbookDigest: "b".repeat(64),
+      warnings: [],
+      changes: [],
+      totals: { created: 0, updated: 0, deleted: 0, unchanged: 0, byArea: {} },
+    });
+    backupMocks.restoreBackup.mockResolvedValue({
+      created: 1,
+      updated: 2,
+      deleted: 3,
+      warnings: [],
+      afterDigest: "c".repeat(64),
+    });
+    backupMocks.listBackupRestoreLogs.mockResolvedValue([]);
+    backupMocks.withExcelOperationLimit.mockImplementation(callback =>
+      callback()
     );
   });
 
@@ -126,7 +172,7 @@ describe("Planungs-API", () => {
         expect(Buffer.from(result.base64, "base64")).toEqual(pdf);
       }
       expect(storageMocks.storageGetSignedUrl).toHaveBeenCalledWith(
-        "RSC-Helferplanung-Anleitung_211fadc0.pdf"
+        "RSC-Helferplanung-Anleitung_b2d47388.pdf"
       );
     } finally {
       fetchMock.mockRestore();
@@ -250,6 +296,60 @@ describe("Planungs-API", () => {
     expect(dbMocks.deleteEvent).toHaveBeenCalledWith(2);
   });
 
+  it("erlaubt beiden Rollen den vollständigen Excel-Sicherungsexport", async () => {
+    for (const callerContext of [ctx, planningTeamCtx]) {
+      const result = await appRouter
+        .createCaller(callerContext)
+        .excel.exportFile();
+      expect(Buffer.from(result.base64, "base64").toString()).toBe("xlsx");
+      expect(result.eventName).toBe("MyEifelRide");
+    }
+    expect(backupMocks.exportBackupExcel).toHaveBeenCalledTimes(2);
+  });
+
+  it("beschränkt Prüfung und Protokolle der Excel-Wiederherstellung auf Administratoren", async () => {
+    await expect(
+      appRouter
+        .createCaller(planningTeamCtx)
+        .excel.previewBackup({ base64: "eA==" })
+    ).rejects.toThrow();
+    await expect(
+      appRouter.createCaller(planningTeamCtx).excel.restoreLogs()
+    ).rejects.toThrow();
+
+    await expect(
+      appRouter.createCaller(ctx).excel.previewBackup({ base64: "eA==" })
+    ).resolves.toMatchObject({ currentDigest: "a".repeat(64) });
+    expect(backupMocks.previewBackupRestore).toHaveBeenCalledWith("eA==");
+  });
+
+  it("stellt eine geprüfte Excel-Sicherung nur mit Administratorpasswort wieder her", async () => {
+    const caller = appRouter.createCaller(ctx);
+    const input = {
+      base64: "eA==",
+      filename: "Sicherung.xlsx",
+      currentDigest: "a".repeat(64),
+    };
+
+    await expect(
+      caller.excel.restoreBackup({ ...input, adminPassword: "falsch" })
+    ).rejects.toThrow("Administratorpasswort");
+    expect(backupMocks.restoreBackup).not.toHaveBeenCalled();
+
+    await expect(
+      caller.excel.restoreBackup({
+        ...input,
+        adminPassword: ADMIN_PASSWORD,
+      })
+    ).resolves.toMatchObject({ created: 1, updated: 2, deleted: 3 });
+    expect(backupMocks.restoreBackup).toHaveBeenCalledWith(
+      "eA==",
+      "Sicherung.xlsx",
+      "a".repeat(64),
+      expect.objectContaining({ userId: 1, role: "admin" })
+    );
+  });
+
   it("weist ungültige oder unvollständige Schichtzeiten zurück", async () => {
     const caller = appRouter.createCaller(ctx);
 
@@ -331,6 +431,7 @@ describe("Planungs-API", () => {
       helperId: 20,
       slot: 0,
     });
+    expect(dbMocks.withPlanningWriteLock).toHaveBeenCalledTimes(1);
   });
 
   it("speichert eine frei formulierte Vorbereitungsfrist unverändert", async () => {

@@ -15,8 +15,14 @@ import {
   toMinutes,
   type Day,
 } from "./logic";
-import { importExcel, exportExcel } from "./excel";
-import { applyPlanImport, previewExcelImport } from "./import-preview";
+import {
+  exportBackupExcel,
+  getBackupRestoreLog,
+  listBackupRestoreLogs,
+  previewBackupRestore,
+  restoreBackup,
+  withExcelOperationLimit,
+} from "./excel-backup";
 import { sdk } from "./_core/sdk";
 import {
   ADMIN_PASSWORD_OPEN_ID,
@@ -43,7 +49,7 @@ import {
 } from "./year-context";
 import { storageGetSignedUrl, storagePut } from "./storage";
 
-const GUIDE_PDF_KEY = "RSC-Helferplanung-Anleitung_211fadc0.pdf";
+const GUIDE_PDF_KEY = "RSC-Helferplanung-Anleitung_b2d47388.pdf";
 const GUIDE_PDF_FILENAME = "RSC-Helferplanung-Anleitung.pdf";
 const GUIDE_PDF_MAX_BYTES = 5_000_000;
 
@@ -88,21 +94,37 @@ const scopedProtectedProcedure = baseProtectedProcedure.use(({ ctx, next }) =>
   withPlanningScope(requestedPlanningScope(ctx.req), () => next())
 );
 
-const protectedProcedure = scopedProtectedProcedure.use(async ({ next }) => {
-  if (!(await db.getEvent())) {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message:
-        "Die gewählte Veranstaltung gehört nicht zum gewählten Veranstaltungsjahr",
-    });
+const protectedProcedure = scopedProtectedProcedure.use(
+  async ({ next, type }) => {
+    if (!(await db.getEvent())) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message:
+          "Die gewählte Veranstaltung gehört nicht zum gewählten Veranstaltungsjahr",
+      });
+    }
+    if (type === "mutation") {
+      return db.withPlanningWriteLock(() => next());
+    }
+    return next();
   }
-  return next();
-});
+);
 
-const scopeAdminProcedure = scopedProtectedProcedure.use(({ ctx, next }) => {
-  if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
-  return next({ ctx });
-});
+const scopeAdminAuthProcedure = scopedProtectedProcedure.use(
+  ({ ctx, next }) => {
+    if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+    return next({ ctx });
+  }
+);
+
+const scopeAdminProcedure = scopeAdminAuthProcedure.use(
+  async ({ next, type }) => {
+    if (type === "mutation") {
+      return db.withPlanningWriteLock(() => next());
+    }
+    return next();
+  }
+);
 
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
@@ -221,14 +243,27 @@ const updateShiftInput = z
   })
   .superRefine(validateShiftTimes);
 
-async function requireAdminPassword(password: string) {
+async function requireAdminPassword(
+  password: string,
+  ctx: { req: any; user: { openId: string } }
+) {
+  const clientKey = `admin-confirm:${ctx.user.openId}:${getClientKey(ctx.req)}`;
+  if (isPasswordLoginBlocked(clientKey)) {
+    throw new TRPCError({
+      code: "TOO_MANY_REQUESTS",
+      message:
+        "Zu viele falsche Passwortversuche. Bitte versuchen Sie es in 15 Minuten erneut.",
+    });
+  }
   const hash = (await db.getSecuritySettings())?.adminPasswordHash;
   if (!hash || !(await verifyPassword(password, hash))) {
+    recordFailedPasswordLogin(clientKey);
     throw new TRPCError({
       code: "BAD_REQUEST",
       message: "Administratorpasswort ist nicht korrekt",
     });
   }
+  clearPasswordLoginFailures(clientKey);
 }
 
 function auditActor(user: {
@@ -372,11 +407,8 @@ export const appRouter = router({
   }),
 
   years: router({
-    list: scopedProtectedProcedure.query(async () => {
-      await db.ensureEventYear();
-      return db.listEventYears();
-    }),
-    create: scopeAdminProcedure
+    list: scopedProtectedProcedure.query(() => db.listEventYears()),
+    create: scopeAdminAuthProcedure
       .input(z.object({ year: eventYearInput }))
       .mutation(async ({ input }) => {
         await db.ensureEventYear(input.year);
@@ -390,8 +422,8 @@ export const appRouter = router({
           adminPassword: z.string().min(1).max(200),
         })
       )
-      .mutation(async ({ input }) => {
-        await requireAdminPassword(input.adminPassword);
+      .mutation(async ({ ctx, input }) => {
+        await requireAdminPassword(input.adminPassword, ctx);
         return db.copyPlanFromEvent(input.sourceEventId);
       }),
   }),
@@ -421,8 +453,8 @@ export const appRouter = router({
           adminPassword: z.string().min(1).max(200),
         })
       )
-      .mutation(async ({ input }) => {
-        await requireAdminPassword(input.adminPassword);
+      .mutation(async ({ ctx, input }) => {
+        await requireAdminPassword(input.adminPassword, ctx);
         return db.deleteEvent(input.id);
       }),
     all: scopedProtectedProcedure.query(async () => {
@@ -447,7 +479,7 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
-        await requireAdminPassword(input.adminPassword);
+        await requireAdminPassword(input.adminPassword, ctx);
         const deletesHelpers = input.area === "helpers" || input.area === "all";
         if (deletesHelpers && !input.responsibleContactId) {
           throw new TRPCError({
@@ -495,8 +527,8 @@ export const appRouter = router({
           adminPassword: z.string().min(1).max(200),
         })
       )
-      .mutation(async ({ input }) => {
-        await requireAdminPassword(input.adminPassword);
+      .mutation(async ({ ctx, input }) => {
+        await requireAdminPassword(input.adminPassword, ctx);
         return db.deleteContact(input.id);
       }),
   }),
@@ -1035,8 +1067,8 @@ export const appRouter = router({
           adminPassword: z.string().min(1).max(200),
         })
       )
-      .mutation(async ({ input }) => {
-        await requireAdminPassword(input.adminPassword);
+      .mutation(async ({ ctx, input }) => {
+        await requireAdminPassword(input.adminPassword, ctx);
         await db.clearDeletionAuditLogs({
           eventYear: input.eventYear,
           eventId: input.eventId,
@@ -1128,7 +1160,7 @@ export const appRouter = router({
   }),
 
   excel: router({
-    previewFile: adminProcedure
+    previewBackup: adminProcedure
       .input(
         z.object({
           base64: z
@@ -1136,74 +1168,43 @@ export const appRouter = router({
             .max(20_000_000, "Excel-Datei ist größer als 15 MB"),
         })
       )
-      .mutation(({ input }) => previewExcelImport(input.base64)),
-    applyFile: adminProcedure
+      .mutation(({ input }) =>
+        withExcelOperationLimit(() => previewBackupRestore(input.base64))
+      ),
+    restoreBackup: scopeAdminAuthProcedure
       .input(
         z.object({
           base64: z
             .string()
             .max(20_000_000, "Excel-Datei ist größer als 15 MB"),
-          selectedShiftKeys: z.array(z.string().max(100)).max(1000),
-          selectedAssignmentKeys: z.array(z.string().max(140)).max(20000),
-          helperDecisions: z
-            .array(
-              z.object({
-                key: z.string().max(300),
-                target: z.string().max(320),
-              })
-            )
-            .max(5000),
+          filename: z.string().trim().min(1).max(255),
+          currentDigest: z.string().regex(/^[a-f0-9]{64}$/),
+          adminPassword: z.string().min(1).max(200),
         })
       )
-      .mutation(async ({ input }) => {
-        const preview = await previewExcelImport(input.base64);
-        const targets = new Map(
-          input.helperDecisions.map(item => [item.key, item.target])
+      .mutation(async ({ ctx, input }) => {
+        await requireAdminPassword(input.adminPassword, ctx);
+        return withExcelOperationLimit(() =>
+          restoreBackup(
+            input.base64,
+            input.filename,
+            input.currentDigest,
+            auditActor(ctx.user)
+          )
         );
-        const selectedShifts = new Set(input.selectedShiftKeys);
-        const selectedAssignments = new Set(input.selectedAssignmentKeys);
-        const activeHelperKeys = new Set(
-          preview.shifts
-            .filter(
-              shift =>
-                shift.status !== "conflict" &&
-                (shift.status === "unchanged" || selectedShifts.has(shift.key))
-            )
-            .flatMap(shift =>
-              shift.assignments
-                .filter(
-                  assignment =>
-                    assignment.helperKey &&
-                    selectedAssignments.has(assignment.key)
-                )
-                .map(assignment => assignment.helperKey!)
-            )
-        );
-        const skipHelperKeys = preview.helperSuggestions
-          .filter(item => {
-            const target = targets.get(item.key);
-            const allowedTargets = new Set([
-              "new",
-              item.defaultTarget,
-              ...item.candidates.map(candidate => candidate.key),
-            ]);
-            return (
-              !activeHelperKeys.has(item.key) ||
-              !target ||
-              target === "skip" ||
-              !allowedTargets.has(target) ||
-              target.startsWith("system:")
-            );
-          })
-          .map(item => item.key);
-        const general = await importExcel(input.base64, { skipHelperKeys });
-        const plan = await applyPlanImport(input.base64, input);
-        return { general, plan };
       }),
     exportFile: protectedProcedure.query(async () => {
-      const buf = await exportExcel();
-      return { base64: buf.toString("base64") };
+      const result = await exportBackupExcel();
+      return {
+        base64: result.buffer.toString("base64"),
+        exportedAt: result.exportedAt,
+        eventName: result.eventName,
+      };
     }),
+    restoreLogs: adminProcedure.query(() => listBackupRestoreLogs()),
+    restoreLog: adminProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .query(({ input }) => getBackupRestoreLog(input.id)),
   }),
 });
 
