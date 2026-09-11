@@ -7,6 +7,7 @@ import {
   FileCheck,
   FileDown,
   FileSpreadsheet,
+  CircleHelp,
   LayoutDashboard,
   LockKeyhole,
   Megaphone,
@@ -49,4 +50,5 @@ export const NAV: readonly NavItem[] = [
     icon: LockKeyhole,
     adminOnly: true,
   },
+  { href: "/hilfe", label: "Hilfe", icon: CircleHelp },
 ];

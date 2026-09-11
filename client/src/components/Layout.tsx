@@ -44,7 +44,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
 
-const RSC_LOGO = "/manus-storage/rsc-eifelland-logo_ee4e2325.png";
+const RSC_LOGO = "/manus-storage/rsc-eifelland-logo-original_f4a9666b.png";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { user, loading, isAuthenticated, logout } = useAuth();
@@ -291,7 +291,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         >
           <Menu className="h-5 w-5" />
         </Button>
-        <div className="flex min-w-0 flex-1 items-center gap-2">
+        <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
           <div className="min-w-0">
             <div className="truncate text-sm font-bold">RSC Helferplanung</div>
             <div className="truncate text-[11px] text-muted-foreground">
@@ -301,7 +301,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <img
             src={RSC_LOGO}
             alt="RSC Eifelland"
-            className="h-8 w-8 shrink-0 rounded-full bg-white object-contain"
+            className="h-11 w-11 shrink-0 rounded-full border-2 border-white bg-white object-contain shadow-md ring-1 ring-slate-300"
           />
         </div>
         <Select
@@ -332,7 +332,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <img
                 src={RSC_LOGO}
                 alt="RSC Eifelland"
-                className="h-9 w-9 rounded-full bg-white object-contain"
+                className="h-12 w-12 rounded-full border-2 border-white bg-white object-contain shadow-md ring-1 ring-slate-300"
               />
             </SheetTitle>
             <SheetDescription>
@@ -466,7 +466,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </Sheet>
 
       <aside className="hidden w-64 shrink-0 flex-col border-r bg-card lg:flex">
-        <div className="h-16 flex items-center gap-2 px-4 border-b">
+        <div className="h-20 flex items-center gap-3 px-4 border-b bg-gradient-to-r from-white to-slate-50 dark:from-slate-950 dark:to-slate-900">
           <div className="min-w-0 flex-1">
             <div className="font-bold leading-tight">RSC Helferplanung</div>
             <div className="truncate text-xs text-muted-foreground">
@@ -476,7 +476,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <img
             src={RSC_LOGO}
             alt="RSC Eifelland e. V."
-            className="h-10 w-10 rounded-full bg-white object-contain"
+            className="h-14 w-14 shrink-0 rounded-full border-2 border-white bg-white object-contain shadow-md ring-1 ring-slate-300"
           />
         </div>
 
