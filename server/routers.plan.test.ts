@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Helper, Shift } from "../drizzle/schema";
 import type { TrpcContext } from "./_core/context";
 
@@ -15,7 +15,10 @@ const dbMocks = vi.hoisted(() => ({
   createPrep: vi.fn(),
   listDeletionAuditLogs: vi.fn(),
   restoreDeletionAuditLog: vi.fn(),
+  getSecuritySettings: vi.fn(),
   getEvent: vi.fn(),
+  updateEventName: vi.fn(),
+  deleteEvent: vi.fn(),
   getContact: vi.fn(),
   listShiftAreaContacts: vi.fn(),
   setShiftAreaContact: vi.fn(),
@@ -24,6 +27,10 @@ const dbMocks = vi.hoisted(() => ({
 vi.mock("./db", () => dbMocks);
 
 import { appRouter } from "./routers";
+import { hashPassword } from "./password-auth";
+
+const ADMIN_PASSWORD = "Test-Administrator-2026!";
+let adminPasswordHash = "";
 
 const shift: Shift = {
   id: 10,
@@ -74,6 +81,10 @@ const planningTeamCtx = {
 } as TrpcContext;
 
 describe("Planungs-API", () => {
+  beforeAll(async () => {
+    adminPasswordHash = await hashPassword(ADMIN_PASSWORD);
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     dbMocks.listShifts.mockResolvedValue([shift]);
@@ -88,6 +99,52 @@ describe("Planungs-API", () => {
       sortOrder: 0,
       createdAt: new Date(),
     });
+    dbMocks.getSecuritySettings.mockResolvedValue({ adminPasswordHash });
+  });
+
+  it("lässt Veranstaltungen nur administrativ umbenennen", async () => {
+    dbMocks.updateEventName.mockResolvedValue({
+      id: 1,
+      year: 2026,
+      name: "RSC Sommerfest",
+    });
+
+    await expect(
+      appRouter.createCaller(ctx).events.update({
+        id: 1,
+        name: " RSC   Sommerfest ",
+      })
+    ).resolves.toMatchObject({ name: "RSC Sommerfest" });
+    expect(dbMocks.updateEventName).toHaveBeenCalledWith(1, "RSC   Sommerfest");
+    await expect(
+      appRouter.createCaller(planningTeamCtx).events.update({
+        id: 1,
+        name: "Nicht erlaubt",
+      })
+    ).rejects.toThrow();
+  });
+
+  it("löscht Veranstaltungen nur mit korrektem Administratorpasswort", async () => {
+    dbMocks.deleteEvent.mockResolvedValue({
+      deletedId: 2,
+      deletedName: "Cross",
+      nextEventId: 1,
+    });
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.events.remove({ id: 2, adminPassword: "falsch" })
+    ).rejects.toThrow("Administratorpasswort");
+    expect(dbMocks.deleteEvent).not.toHaveBeenCalled();
+
+    await expect(
+      caller.events.remove({ id: 2, adminPassword: ADMIN_PASSWORD })
+    ).resolves.toEqual({
+      deletedId: 2,
+      deletedName: "Cross",
+      nextEventId: 1,
+    });
+    expect(dbMocks.deleteEvent).toHaveBeenCalledWith(2);
   });
 
   it("weist ungültige oder unvollständige Schichtzeiten zurück", async () => {

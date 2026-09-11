@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -33,8 +34,11 @@ import {
   KeyRound,
   LogOut,
   Menu,
+  Pencil,
   Plus,
+  Settings2,
   ShieldCheck,
+  Trash2,
 } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -50,9 +54,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [loginMode, setLoginMode] = useState<"user" | "admin">("user");
   const [yearDialogOpen, setYearDialogOpen] = useState(false);
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
+  const [eventManagerOpen, setEventManagerOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [newYear, setNewYear] = useState(year + 1);
   const [newEventName, setNewEventName] = useState("");
+  const [editEventId, setEditEventId] = useState<number | null>(null);
+  const [editEventName, setEditEventName] = useState("");
+  const [deleteEventTarget, setDeleteEventTarget] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
   const utils = trpc.useUtils();
 
   const passwordStatus = trpc.auth.passwordStatus.useQuery(undefined, {
@@ -101,6 +112,42 @@ export function Layout({ children }: { children: React.ReactNode }) {
     },
     onError: error => toast.error(error.message),
   });
+  const updateEvent = trpc.events.update.useMutation({
+    onSuccess: async () => {
+      await Promise.all([
+        utils.events.list.invalidate(),
+        utils.events.current.invalidate(),
+        utils.events.all.invalidate(),
+      ]);
+      setEditEventId(null);
+      setEditEventName("");
+      toast.success("Veranstaltung umbenannt");
+    },
+    onError: error => toast.error(error.message),
+  });
+  const removeEvent = trpc.events.remove.useMutation({
+    onSuccess: async result => {
+      setDeleteEventTarget(null);
+      toast.success(`„${result.deletedName}“ wurde gelöscht`);
+      if (result.deletedId === eventId) {
+        selectEvent(result.nextEventId);
+        return;
+      }
+      await Promise.all([
+        utils.events.list.invalidate(),
+        utils.events.all.invalidate(),
+      ]);
+      setEventManagerOpen(true);
+    },
+    onError: error => toast.error(error.message),
+  });
+
+  const openEventManager = () => {
+    setMobileMenuOpen(false);
+    setEditEventId(null);
+    setEditEventName("");
+    setEventManagerOpen(true);
+  };
 
   const submitPassword = (event: FormEvent) => {
     event.preventDefault();
@@ -339,18 +386,31 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 Veranstaltung
               </Label>
               {user?.role === "admin" && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  title="Veranstaltung anlegen"
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    setEventDialogOpen(true);
-                  }}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
+                <span className="flex items-center gap-0.5">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    title="Veranstaltungen verwalten"
+                    aria-label="Veranstaltungen verwalten"
+                    onClick={openEventManager}
+                  >
+                    <Settings2 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    title="Veranstaltung anlegen"
+                    aria-label="Veranstaltung anlegen"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      setEventDialogOpen(true);
+                    }}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </span>
               )}
             </div>
             <Select
@@ -460,15 +520,28 @@ export function Layout({ children }: { children: React.ReactNode }) {
               Veranstaltung
             </Label>
             {user?.role === "admin" && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                title="Veranstaltung anlegen"
-                onClick={() => setEventDialogOpen(true)}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
+              <span className="flex items-center gap-0.5">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  title="Veranstaltungen verwalten"
+                  aria-label="Veranstaltungen verwalten"
+                  onClick={openEventManager}
+                >
+                  <Settings2 className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  title="Veranstaltung anlegen"
+                  aria-label="Veranstaltung anlegen"
+                  onClick={() => setEventDialogOpen(true)}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </span>
             )}
           </div>
           <Select
@@ -613,6 +686,164 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={eventManagerOpen} onOpenChange={setEventManagerOpen}>
+        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white text-slate-950 dark:bg-slate-950 dark:text-slate-50">
+          <DialogHeader>
+            <DialogTitle>Veranstaltungen {year} verwalten</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Namen können jederzeit geändert werden. Beim Löschen werden alle
+            Planungsdaten dieser Veranstaltung dauerhaft entfernt.
+          </p>
+          <div className="divide-y rounded-lg border">
+            {events.data?.map(item => (
+              <div
+                key={item.id}
+                className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center"
+              >
+                {editEventId === item.id ? (
+                  <Input
+                    autoFocus
+                    className="flex-1"
+                    value={editEventName}
+                    maxLength={200}
+                    onChange={event => setEditEventName(event.target.value)}
+                    onKeyDown={event => {
+                      if (
+                        event.key === "Enter" &&
+                        editEventName.trim().length >= 2
+                      ) {
+                        updateEvent.mutate({
+                          id: item.id,
+                          name: editEventName,
+                        });
+                      }
+                      if (event.key === "Escape") setEditEventId(null);
+                    }}
+                  />
+                ) : (
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-medium">{item.name}</div>
+                    {item.id === eventId && (
+                      <div className="text-xs text-primary">
+                        Aktuell ausgewählt
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div className="flex w-full shrink-0 flex-col justify-end gap-2 sm:w-auto sm:flex-row">
+                  {editEventId === item.id ? (
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-full sm:w-auto"
+                        disabled={updateEvent.isPending}
+                        onClick={() => setEditEventId(null)}
+                      >
+                        Abbrechen
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="w-full sm:w-auto"
+                        disabled={
+                          editEventName.trim().length < 2 ||
+                          updateEvent.isPending
+                        }
+                        onClick={() =>
+                          updateEvent.mutate({
+                            id: item.id,
+                            name: editEventName,
+                          })
+                        }
+                      >
+                        Speichern
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-full sm:w-auto"
+                        onClick={() => {
+                          setEditEventId(item.id);
+                          setEditEventName(item.name);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                        Umbenennen
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="w-full border border-red-700 !bg-red-600 !text-white shadow-sm hover:!bg-red-700 disabled:!border-red-300 disabled:!bg-red-100 disabled:!text-red-800 disabled:opacity-100 sm:w-auto"
+                        disabled={(events.data?.length ?? 0) <= 1}
+                        title={
+                          (events.data?.length ?? 0) <= 1
+                            ? "Die letzte Veranstaltung des Jahres kann nicht gelöscht werden"
+                            : "Veranstaltung löschen"
+                        }
+                        onClick={() => {
+                          setEventManagerOpen(false);
+                          setDeleteEventTarget({
+                            id: item.id,
+                            name: item.name,
+                          });
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Löschen
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+          {(events.data?.length ?? 0) <= 1 && (
+            <p className="text-xs text-muted-foreground">
+              Für jedes Veranstaltungsjahr muss mindestens eine Veranstaltung
+              erhalten bleiben.
+            </p>
+          )}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setEventManagerOpen(false)}
+            >
+              Schließen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AdminPasswordDialog
+        open={Boolean(deleteEventTarget)}
+        onOpenChange={open => {
+          if (!open) {
+            setDeleteEventTarget(null);
+            setEventManagerOpen(true);
+          }
+        }}
+        title="Veranstaltung endgültig löschen?"
+        description={`„${deleteEventTarget?.name ?? ""}“, sämtliche zugehörigen Planungsdaten und Löschprotokolle werden dauerhaft gelöscht. Dieser Vorgang kann nicht rückgängig gemacht werden.`}
+        confirmLabel="Veranstaltung endgültig löschen"
+        busy={removeEvent.isPending}
+        onConfirm={adminPassword =>
+          deleteEventTarget &&
+          removeEvent.mutate({
+            id: deleteEventTarget.id,
+            adminPassword,
+          })
+        }
+      />
     </div>
   );
 }

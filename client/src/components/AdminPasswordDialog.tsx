@@ -16,6 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import { Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export function AdminPasswordDialog({
@@ -57,7 +59,7 @@ export function AdminPasswordDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -99,17 +101,30 @@ export function AdminPasswordDialog({
             </p>
           </div>
         )}
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="sticky bottom-0 -mx-2 -mb-2 rounded-b-lg border-t bg-white px-2 pb-2 pt-4 dark:bg-slate-950">
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full sm:w-auto"
+            disabled={busy}
+            onClick={() => onOpenChange(false)}
+          >
             Abbrechen
           </Button>
           <Button
+            type="button"
             variant={destructive ? "destructive" : "default"}
+            className={cn(
+              "w-full min-w-[150px] shadow-sm sm:w-auto",
+              destructive &&
+                "border border-red-700 !bg-red-600 !text-white hover:!bg-red-700 disabled:!border-red-300 disabled:!bg-red-100 disabled:!text-red-800 disabled:opacity-100"
+            )}
             disabled={!canConfirm || busy}
             onClick={() =>
               onConfirm(password, responsibleContactId ?? undefined)
             }
           >
+            {destructive && <Trash2 className="h-4 w-4" />}
             {busy ? "Wird ausgeführt …" : confirmLabel}
           </Button>
         </DialogFooter>

@@ -150,10 +150,14 @@ export async function getEvent(id = event()) {
   return selected;
 }
 
+function normalizeEventName(name: string) {
+  return name.trim().replace(/\s+/g, " ");
+}
+
 export async function createEvent(name: string, eventYear = year()) {
   const db = (await getDb()) as DB;
   await ensureEventYear(eventYear);
-  const normalizedName = name.trim().replace(/\s+/g, " ");
+  const normalizedName = normalizeEventName(name);
   const [existing] = await db
     .select()
     .from(events)
@@ -165,6 +169,92 @@ export async function createEvent(name: string, eventYear = year()) {
     .values({ year: eventYear, name: normalizedName });
   const id = Number(result?.[0]?.insertId ?? result?.insertId);
   return { id, year: eventYear, name: normalizedName, created: true };
+}
+
+export async function updateEventName(id: number, name: string) {
+  const db = (await getDb()) as DB;
+  const selectedYear = year();
+  const normalizedName = normalizeEventName(name);
+  return db.transaction(async tx => {
+    const [selected] = await tx
+      .select()
+      .from(events)
+      .where(and(eq(events.id, id), eq(events.year, selectedYear)))
+      .limit(1)
+      .for("update");
+    if (!selected) throw new Error("Veranstaltung wurde nicht gefunden");
+    const [duplicate] = await tx
+      .select({ id: events.id })
+      .from(events)
+      .where(
+        and(eq(events.year, selectedYear), eq(events.name, normalizedName))
+      )
+      .limit(1);
+    if (duplicate && duplicate.id !== id) {
+      throw new Error(
+        "Eine Veranstaltung mit diesem Namen ist in diesem Jahr bereits vorhanden"
+      );
+    }
+    await tx
+      .update(events)
+      .set({ name: normalizedName })
+      .where(and(eq(events.id, id), eq(events.year, selectedYear)));
+    return { ...selected, name: normalizedName };
+  });
+}
+
+export async function deleteEvent(id: number) {
+  const db = (await getDb()) as DB;
+  const selectedYear = year();
+  return db.transaction(async tx => {
+    const yearEvents = await tx
+      .select()
+      .from(events)
+      .where(eq(events.year, selectedYear))
+      .orderBy(events.sortOrder, events.name, events.id)
+      .for("update");
+    const selected = yearEvents.find(item => item.id === id);
+    if (!selected) throw new Error("Veranstaltung wurde nicht gefunden");
+    if (yearEvents.length <= 1) {
+      throw new Error(
+        "Die letzte Veranstaltung eines Jahres kann nicht gelöscht werden"
+      );
+    }
+
+    const scope = <T extends { eventId: any }>(table: T) =>
+      eq(table.eventId, id);
+    await tx
+      .delete(assignments)
+      .where(
+        inArray(
+          assignments.shiftId,
+          tx.select({ id: shifts.id }).from(shifts).where(scope(shifts))
+        )
+      );
+    await tx.delete(shiftAreaContacts).where(scope(shiftAreaContacts));
+    await tx.delete(shifts).where(scope(shifts));
+    await tx.delete(prepTasks).where(scope(prepTasks));
+    await tx.delete(postTasks).where(scope(postTasks));
+    await tx.delete(materials).where(scope(materials));
+    await tx.delete(marketing).where(scope(marketing));
+    await tx.delete(approvals).where(scope(approvals));
+    await tx.delete(cakes).where(scope(cakes));
+    await tx.delete(finances).where(scope(finances));
+    await tx.delete(helpers).where(scope(helpers));
+    await tx.delete(contacts).where(scope(contacts));
+    await tx.delete(deletionAuditLogs).where(eq(deletionAuditLogs.eventId, id));
+    const result = await tx
+      .delete(events)
+      .where(and(eq(events.id, id), eq(events.year, selectedYear)));
+    requireDeletedRows(result, 1);
+
+    const nextEvent = yearEvents.find(item => item.id !== id)!;
+    return {
+      deletedId: id,
+      deletedName: selected.name,
+      nextEventId: nextEvent.id,
+    };
+  });
 }
 
 export async function listContacts() {

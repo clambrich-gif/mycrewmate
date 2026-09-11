@@ -10,7 +10,7 @@ export const PERMISSION_MATRIX: readonly PermissionRow[] = [
     area: "Dashboard, Jahre & Veranstaltungen",
     planningTeam: "Ansehen und auswählen",
     administrator: "Vollzugriff",
-    note: "Neue Jahre, mehrere Veranstaltungen je Jahr und die Planübernahme sind administrativ geschützt.",
+    note: "Neue Jahre, Anlegen, Umbenennen und passwortgeschütztes Löschen von Veranstaltungen sowie die Planübernahme sind administrativ geschützt.",
   },
   {
     area: "Ansprechpartner",

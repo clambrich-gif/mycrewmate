@@ -212,7 +212,7 @@ export default function Contacts() {
         onOpenChange={open => !open && setDeleteTarget(null)}
         title="Ansprechpartner löschen?"
         description={`„${deleteTarget?.name ?? ""}“ wird gelöscht. Bestehende Zuordnungen verlieren dadurch ihren Ansprechpartner.`}
-        confirmLabel="Ansprechpartner löschen"
+        confirmLabel="OK, löschen"
         busy={remove.isPending}
         onConfirm={adminPassword =>
           deleteTarget && remove.mutate({ id: deleteTarget.id, adminPassword })

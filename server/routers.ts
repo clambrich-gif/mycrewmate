@@ -365,6 +365,25 @@ export const appRouter = router({
         })
       )
       .mutation(({ input }) => db.createEvent(input.name)),
+    update: adminProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          name: z.string().trim().min(2).max(200),
+        })
+      )
+      .mutation(({ input }) => db.updateEventName(input.id, input.name)),
+    remove: adminProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          adminPassword: z.string().min(1).max(200),
+        })
+      )
+      .mutation(async ({ input }) => {
+        await requireAdminPassword(input.adminPassword);
+        return db.deleteEvent(input.id);
+      }),
     all: scopedProtectedProcedure.query(async () => {
       const years = await db.listEventYears();
       const grouped = await Promise.all(
