@@ -36,19 +36,23 @@ import {
   Plus,
   ShieldCheck,
 } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
 
+const RSC_LOGO = "/manus-storage/rsc-eifelland-logo_ee4e2325.png";
+
 export function Layout({ children }: { children: React.ReactNode }) {
   const { user, loading, isAuthenticated, logout } = useAuth();
-  const { year, selectYear } = useEventYear();
+  const { year, eventId, selectYear, selectEvent } = useEventYear();
   const [location] = useLocation();
   const [password, setPassword] = useState("");
   const [loginMode, setLoginMode] = useState<"user" | "admin">("user");
   const [yearDialogOpen, setYearDialogOpen] = useState(false);
+  const [eventDialogOpen, setEventDialogOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [newYear, setNewYear] = useState(year + 1);
+  const [newEventName, setNewEventName] = useState("");
   const utils = trpc.useUtils();
 
   const passwordStatus = trpc.auth.passwordStatus.useQuery(undefined, {
@@ -58,6 +62,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const years = trpc.years.list.useQuery(undefined, {
     enabled: isAuthenticated,
   });
+  const events = trpc.events.list.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+  const selectedEvent = events.data?.find(item => item.id === eventId);
+
+  useEffect(() => {
+    if (!events.data?.length || selectedEvent) return;
+    selectEvent(events.data[0].id);
+  }, [events.data, selectEvent, selectedEvent]);
   const finishLogin = async () => {
     setPassword("");
     await utils.auth.me.invalidate();
@@ -76,6 +89,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
       await utils.years.list.invalidate();
       setYearDialogOpen(false);
       selectYear(newYear);
+    },
+    onError: error => toast.error(error.message),
+  });
+  const createEvent = trpc.events.create.useMutation({
+    onSuccess: async result => {
+      await utils.events.list.invalidate();
+      setEventDialogOpen(false);
+      setNewEventName("");
+      selectEvent(result.id);
     },
     onError: error => toast.error(error.message),
   });
@@ -103,11 +125,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
     return (
       <div className="min-h-screen grid place-items-center bg-gradient-to-br from-[oklch(0.97_0.02_250)] to-[oklch(0.92_0.04_240)] p-4">
         <div className="bg-card text-card-foreground rounded-2xl shadow-xl p-8 w-full max-w-md">
-          <div className="mx-auto mb-4 h-14 w-14 rounded-2xl bg-primary grid place-items-center">
-            <Bike className="h-7 w-7 text-primary-foreground" />
-          </div>
+          <img
+            src={RSC_LOGO}
+            alt="RSC Eifelland e. V."
+            className="mx-auto mb-4 h-20 w-20 rounded-2xl bg-white object-contain shadow-sm"
+          />
           <div className="text-center">
-            <h1 className="text-2xl font-bold mb-1">MyEifelRide</h1>
+            <h1 className="text-2xl font-bold mb-1">RSC Helferplanung</h1>
             <p className="text-muted-foreground mb-6">
               Geschützte Helfer-Planung für Organisatoren
             </p>
@@ -198,6 +222,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
+  if (
+    events.isLoading ||
+    (events.data !== undefined && events.data.length > 0 && !selectedEvent)
+  ) {
+    return (
+      <div className="min-h-screen grid place-items-center text-muted-foreground">
+        Veranstaltung wird geladen …
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
@@ -211,15 +245,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <Menu className="h-5 w-5" />
         </Button>
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary">
-            <Bike className="h-4 w-4 text-primary-foreground" />
-          </div>
           <div className="min-w-0">
-            <div className="truncate text-sm font-bold">MyEifelRide</div>
-            <div className="text-[11px] text-muted-foreground">
-              Helfer-Planung
+            <div className="truncate text-sm font-bold">RSC Helferplanung</div>
+            <div className="truncate text-[11px] text-muted-foreground">
+              {selectedEvent?.name ?? `Veranstaltung ${year}`}
             </div>
           </div>
+          <img
+            src={RSC_LOGO}
+            alt="RSC Eifelland"
+            className="h-8 w-8 shrink-0 rounded-full bg-white object-contain"
+          />
         </div>
         <Select
           value={String(year)}
@@ -245,10 +281,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <SheetContent side="left" className="w-[88vw] max-w-xs gap-0 p-0">
           <SheetHeader className="border-b text-left">
             <SheetTitle className="flex items-center gap-2">
-              <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary">
-                <Bike className="h-5 w-5 text-primary-foreground" />
-              </span>
-              MyEifelRide Helfer-Planung
+              <span>RSC Helferplanung</span>
+              <img
+                src={RSC_LOGO}
+                alt="RSC Eifelland"
+                className="h-9 w-9 rounded-full bg-white object-contain"
+              />
             </SheetTitle>
             <SheetDescription>
               Planung {year} ·{" "}
@@ -296,6 +334,47 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 ))}
               </SelectContent>
             </Select>
+            <div className="mb-1.5 mt-3 flex items-center justify-between">
+              <Label className="text-xs text-muted-foreground">
+                Veranstaltung
+              </Label>
+              {user?.role === "admin" && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  title="Veranstaltung anlegen"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setEventDialogOpen(true);
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            <Select
+              value={
+                events.data?.some(item => item.id === eventId)
+                  ? String(eventId)
+                  : undefined
+              }
+              onValueChange={value => {
+                selectEvent(Number(value));
+                setMobileMenuOpen(false);
+              }}
+            >
+              <SelectTrigger className="w-full bg-white font-semibold dark:bg-slate-900">
+                <SelectValue placeholder="Veranstaltung wählen" />
+              </SelectTrigger>
+              <SelectContent>
+                {events.data?.map(item => (
+                  <SelectItem key={item.id} value={String(item.id)}>
+                    {item.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <nav className="flex-1 space-y-1 overflow-y-auto p-2">
             {NAV.filter(item => !item.adminOnly || user?.role === "admin").map(
@@ -328,13 +407,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       <aside className="hidden w-64 shrink-0 flex-col border-r bg-card lg:flex">
         <div className="h-16 flex items-center gap-2 px-4 border-b">
-          <div className="h-9 w-9 rounded-xl bg-primary grid place-items-center">
-            <Bike className="h-5 w-5 text-primary-foreground" />
+          <div className="min-w-0 flex-1">
+            <div className="font-bold leading-tight">RSC Helferplanung</div>
+            <div className="truncate text-xs text-muted-foreground">
+              Vereinsorganisation
+            </div>
           </div>
-          <div>
-            <div className="font-bold leading-tight">MyEifelRide</div>
-            <div className="text-xs text-muted-foreground">Helfer-Planung</div>
-          </div>
+          <img
+            src={RSC_LOGO}
+            alt="RSC Eifelland e. V."
+            className="h-10 w-10 rounded-full bg-white object-contain"
+          />
         </div>
 
         <div className="border-b p-3">
@@ -368,6 +451,41 @@ export function Layout({ children }: { children: React.ReactNode }) {
               ).map(item => (
                 <SelectItem key={item.year} value={String(item.year)}>
                   {item.year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="mb-1.5 mt-3 flex items-center justify-between">
+            <Label className="text-xs text-muted-foreground">
+              Veranstaltung
+            </Label>
+            {user?.role === "admin" && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                title="Veranstaltung anlegen"
+                onClick={() => setEventDialogOpen(true)}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+          <Select
+            value={
+              events.data?.some(item => item.id === eventId)
+                ? String(eventId)
+                : undefined
+            }
+            onValueChange={value => selectEvent(Number(value))}
+          >
+            <SelectTrigger className="w-full bg-background font-semibold">
+              <SelectValue placeholder="Veranstaltung wählen" />
+            </SelectTrigger>
+            <SelectContent>
+              {events.data?.map(item => (
+                <SelectItem key={item.id} value={String(item.id)}>
+                  {item.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -416,7 +534,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           }
         >
           <div className="mb-5 inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
-            Planung {year}
+            {selectedEvent?.name ?? "Veranstaltung"} · Planung {year}
           </div>
           {children}
         </div>
@@ -453,6 +571,44 @@ export function Layout({ children }: { children: React.ReactNode }) {
               onClick={() => createYear.mutate({ year: newYear })}
             >
               Jahr anlegen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={eventDialogOpen} onOpenChange={setEventDialogOpen}>
+        <DialogContent className="bg-white text-slate-950 dark:bg-slate-950 dark:text-slate-50">
+          <DialogHeader>
+            <DialogTitle>Veranstaltung für {year} anlegen</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="new-event-name">Name der Veranstaltung</Label>
+            <Input
+              id="new-event-name"
+              value={newEventName}
+              placeholder="z. B. Cross-Veranstaltung"
+              onChange={event => setNewEventName(event.target.value)}
+              onKeyDown={event => {
+                if (event.key === "Enter" && newEventName.trim().length >= 2) {
+                  createEvent.mutate({ name: newEventName });
+                }
+              }}
+            />
+            <p className="text-sm text-muted-foreground">
+              Die neue Veranstaltung erhält im Jahr {year} einen vollständig
+              eigenen Datenbestand.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEventDialogOpen(false)}>
+              Abbrechen
+            </Button>
+            <Button
+              disabled={newEventName.trim().length < 2 || createEvent.isPending}
+              onClick={() => createEvent.mutate({ name: newEventName })}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Veranstaltung anlegen
             </Button>
           </DialogFooter>
         </DialogContent>

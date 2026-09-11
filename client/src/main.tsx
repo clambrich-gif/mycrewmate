@@ -7,7 +7,7 @@ import superjson from "superjson";
 import App from "./App";
 import { startLogin } from "./const";
 import "./index.css";
-import { storedEventYear } from "./contexts/YearContext";
+import { storedEventId, storedEventYear } from "./contexts/YearContext";
 
 const queryClient = new QueryClient();
 
@@ -58,13 +58,17 @@ const trpcClient = trpc.createClient({
               return {
                 Authorization: `Bearer ${token}`,
                 "x-event-year": String(storedEventYear()),
+                "x-event-id": String(storedEventId()),
               };
             }
           }
         } catch {
           // sessionStorage unavailable
         }
-        return { "x-event-year": String(storedEventYear()) };
+        return {
+          "x-event-year": String(storedEventYear()),
+          "x-event-id": String(storedEventId()),
+        };
       },
       fetch(input, init) {
         return globalThis.fetch(input, {

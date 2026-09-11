@@ -73,17 +73,20 @@ export default function Permissions() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const [yearFilter, setYearFilter] = useState("all");
+  const [eventFilter, setEventFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [resetOpen, setResetOpen] = useState(false);
   const { data: years = [] } = trpc.years.list.useQuery();
+  const { data: events = [] } = trpc.events.all.useQuery();
   const auditInput = useMemo(
     () => ({
       eventYear: yearFilter === "all" ? undefined : Number(yearFilter),
+      eventId: eventFilter === "all" ? undefined : Number(eventFilter),
       entityType:
         typeFilter === "all" ? undefined : (typeFilter as "helper" | "cake"),
       limit: 500,
     }),
-    [typeFilter, yearFilter]
+    [eventFilter, typeFilter, yearFilter]
   );
   const audit = trpc.audit.deletions.useQuery(auditInput, {
     enabled: isAdmin,
@@ -94,6 +97,24 @@ export default function Permissions() {
       setResetOpen(false);
       await utils.audit.deletions.invalidate();
       toast.success("Löschprotokoll wurde zurückgesetzt");
+    },
+    onError: error => toast.error(error.message),
+  });
+  const restoreAudit = trpc.audit.restore.useMutation({
+    onSuccess: async result => {
+      await Promise.all([
+        utils.audit.deletions.invalidate(),
+        utils.helpers.list.invalidate(),
+        utils.cakes.list.invalidate(),
+        utils.plan.evaluate.invalidate(),
+        utils.dashboard.stats.invalidate(),
+      ]);
+      const assignmentNote = result.skippedAssignments
+        ? ` ${result.skippedAssignments} frühere Einsatzplätze waren inzwischen belegt oder nicht mehr vorhanden.`
+        : "";
+      toast.success(
+        `„${result.entityLabel}“ wurde in ${result.eventName} wiederhergestellt.${assignmentNote}`
+      );
     },
     onError: error => toast.error(error.message),
   });
@@ -225,8 +246,8 @@ export default function Permissions() {
               <History className="h-5 w-5 text-primary" /> Löschprotokoll
             </CardTitle>
             <p className="mt-1 text-sm text-muted-foreground">
-              Unveränderliche Nachweise über gelöschte Helfer und
-              Kucheneinträge.
+              Nachvollziehbare Nachweise über gelöschte Helfer und
+              Kucheneinträge mit gezielter Wiederherstellung.
             </p>
           </div>
           {isAdmin && (
@@ -252,6 +273,24 @@ export default function Permissions() {
                   <SelectItem value="all">Helfer & Kuchen</SelectItem>
                   <SelectItem value="helper">Nur Helfer</SelectItem>
                   <SelectItem value="cake">Nur Kuchen</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={eventFilter} onValueChange={setEventFilter}>
+                <SelectTrigger className="w-52 bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alle Veranstaltungen</SelectItem>
+                  {events
+                    .filter(
+                      item =>
+                        yearFilter === "all" || item.year === Number(yearFilter)
+                    )
+                    .map(item => (
+                      <SelectItem key={item.id} value={String(item.id)}>
+                        {item.year} · {item.name}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
               <Button
@@ -298,6 +337,12 @@ export default function Permissions() {
                       </Badge>
                     </div>
                     <div>
+                      <span className="text-muted-foreground">
+                        Veranstaltung:
+                      </span>{" "}
+                      {entry.eventName ?? "nicht zugeordnet"}
+                    </div>
+                    <div>
                       <span className="text-muted-foreground">Vorgang:</span>{" "}
                       {actionLabel[entry.action]}
                     </div>
@@ -320,6 +365,21 @@ export default function Permissions() {
                     <div className="text-muted-foreground">
                       {detailText(entry.entityType, entry.details)}
                     </div>
+                    {entry.restoredAt ? (
+                      <Badge className="bg-emerald-100 text-emerald-800">
+                        Wiederhergestellt durch{" "}
+                        {entry.restoredByName ?? "Administrator"}
+                      </Badge>
+                    ) : entry.action === "single_delete" ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={restoreAudit.isPending}
+                        onClick={() => restoreAudit.mutate({ id: entry.id })}
+                      >
+                        <RotateCcw className="mr-2 h-4 w-4" /> Rückgängig
+                      </Button>
+                    ) : null}
                   </div>
                 ))}
               </div>
@@ -328,11 +388,13 @@ export default function Permissions() {
                   <tr>
                     <th className="p-3">Zeitpunkt</th>
                     <th className="p-3">Jahr</th>
+                    <th className="p-3">Veranstaltung</th>
                     <th className="p-3">Art</th>
                     <th className="p-3">Gelöschter Eintrag</th>
                     <th className="p-3">Vorgang</th>
                     <th className="p-3">Ausgeführt von</th>
                     <th className="p-3">Details</th>
+                    <th className="p-3">Wiederherstellung</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -342,6 +404,9 @@ export default function Permissions() {
                         {new Date(entry.createdAt).toLocaleString("de-DE")}
                       </td>
                       <td className="p-3">{entry.year}</td>
+                      <td className="p-3">
+                        {entry.eventName ?? "nicht zugeordnet"}
+                      </td>
                       <td className="p-3">{entityLabel[entry.entityType]}</td>
                       <td className="p-3 font-medium">{entry.entityLabel}</td>
                       <td className="p-3">{actionLabel[entry.action]}</td>
@@ -362,6 +427,28 @@ export default function Permissions() {
                       <td className="p-3 text-muted-foreground">
                         {detailText(entry.entityType, entry.details)}
                       </td>
+                      <td className="p-3">
+                        {entry.restoredAt ? (
+                          <Badge className="bg-emerald-100 text-emerald-800">
+                            Wiederhergestellt
+                          </Badge>
+                        ) : entry.action === "single_delete" ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={restoreAudit.isPending}
+                            onClick={() =>
+                              restoreAudit.mutate({ id: entry.id })
+                            }
+                          >
+                            <RotateCcw className="mr-2 h-4 w-4" /> Rückgängig
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            Nur Einzellöschungen
+                          </span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -379,9 +466,11 @@ export default function Permissions() {
         onOpenChange={setResetOpen}
         title="Löschprotokoll zurücksetzen?"
         description={
-          yearFilter === "all"
-            ? "Alle Einträge des Löschprotokolls über sämtliche Jahre werden dauerhaft entfernt."
-            : `Alle Einträge des Löschprotokolls für ${yearFilter} werden dauerhaft entfernt.`
+          eventFilter !== "all"
+            ? `Alle Einträge des Löschprotokolls für ${events.find(item => item.id === Number(eventFilter))?.name ?? "die gewählte Veranstaltung"} werden dauerhaft entfernt.`
+            : yearFilter === "all"
+              ? "Alle Einträge des Löschprotokolls über sämtliche Jahre werden dauerhaft entfernt."
+              : `Alle Einträge des Löschprotokolls für ${yearFilter} werden dauerhaft entfernt.`
         }
         confirmLabel="Protokoll endgültig löschen"
         busy={clearAudit.isPending}
@@ -389,6 +478,7 @@ export default function Permissions() {
           clearAudit.mutate({
             adminPassword,
             eventYear: yearFilter === "all" ? undefined : Number(yearFilter),
+            eventId: eventFilter === "all" ? undefined : Number(eventFilter),
           })
         }
       />

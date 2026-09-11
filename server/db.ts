@@ -1,4 +1,12 @@
-import { and, desc, eq, getTableColumns, inArray, or } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  getTableColumns,
+  inArray,
+  isNull,
+  or,
+} from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   appSettings,
@@ -7,6 +15,7 @@ import {
   cakes,
   contacts,
   deletionAuditLogs,
+  events,
   eventYears,
   finances,
   helpers,
@@ -21,7 +30,7 @@ import {
   users,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
-import { currentEventYear } from "./year-context";
+import { currentEventId, currentEventYear } from "./year-context";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -82,6 +91,19 @@ export async function getUserByOpenId(openId: string) {
 
 type DB = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 const year = () => currentEventYear();
+const event = () => currentEventId();
+
+function planningScope(table: { year: any; eventId: any }) {
+  return and(eq(table.year, year()), eq(table.eventId, event()));
+}
+
+function planningScopeFor(
+  table: { year: any; eventId: any },
+  selectedYear: number,
+  selectedEventId: number
+) {
+  return and(eq(table.year, selectedYear), eq(table.eventId, selectedEventId));
+}
 
 export function normalizePersonName(value: string) {
   return value
@@ -107,13 +129,51 @@ export async function ensureEventYear(eventYear = year()) {
   return eventYear;
 }
 
+export async function listEvents(eventYear = year()) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(events)
+    .where(eq(events.year, eventYear))
+    .orderBy(events.sortOrder, events.name, events.id);
+}
+
+export async function getEvent(id = event()) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const [selected] = await db
+    .select()
+    .from(events)
+    .where(and(eq(events.id, id), eq(events.year, year())))
+    .limit(1);
+  return selected;
+}
+
+export async function createEvent(name: string, eventYear = year()) {
+  const db = (await getDb()) as DB;
+  await ensureEventYear(eventYear);
+  const normalizedName = name.trim().replace(/\s+/g, " ");
+  const [existing] = await db
+    .select()
+    .from(events)
+    .where(and(eq(events.year, eventYear), eq(events.name, normalizedName)))
+    .limit(1);
+  if (existing) return { ...existing, created: false };
+  const result: any = await db
+    .insert(events)
+    .values({ year: eventYear, name: normalizedName });
+  const id = Number(result?.[0]?.insertId ?? result?.insertId);
+  return { id, year: eventYear, name: normalizedName, created: true };
+}
+
 export async function listContacts() {
   const db = await getDb();
   if (!db) return [];
   return db
     .select()
     .from(contacts)
-    .where(eq(contacts.year, year()))
+    .where(planningScope(contacts))
     .orderBy(contacts.sortOrder, contacts.name);
 }
 export async function getContact(id: number) {
@@ -122,7 +182,7 @@ export async function getContact(id: number) {
   const [contact] = await db
     .select()
     .from(contacts)
-    .where(and(eq(contacts.id, id), eq(contacts.year, year())))
+    .where(and(eq(contacts.id, id), planningScope(contacts)))
     .limit(1);
   return contact;
 }
@@ -132,7 +192,7 @@ export async function listHelpers() {
   return db
     .select()
     .from(helpers)
-    .where(eq(helpers.year, year()))
+    .where(planningScope(helpers))
     .orderBy(helpers.name);
 }
 export async function listShifts() {
@@ -141,7 +201,7 @@ export async function listShifts() {
   return db
     .select()
     .from(shifts)
-    .where(eq(shifts.year, year()))
+    .where(planningScope(shifts))
     .orderBy(shifts.sortOrder, shifts.id);
 }
 export async function listShiftAreaContacts() {
@@ -150,7 +210,7 @@ export async function listShiftAreaContacts() {
   return db
     .select()
     .from(shiftAreaContacts)
-    .where(eq(shiftAreaContacts.year, year()))
+    .where(planningScope(shiftAreaContacts))
     .orderBy(shiftAreaContacts.area);
 }
 export async function listAssignments() {
@@ -160,7 +220,7 @@ export async function listAssignments() {
     .select({ ...getTableColumns(assignments) })
     .from(assignments)
     .innerJoin(shifts, eq(assignments.shiftId, shifts.id))
-    .where(eq(shifts.year, year()));
+    .where(planningScope(shifts));
 }
 export async function listPrep() {
   const db = await getDb();
@@ -168,7 +228,7 @@ export async function listPrep() {
   return db
     .select()
     .from(prepTasks)
-    .where(eq(prepTasks.year, year()))
+    .where(planningScope(prepTasks))
     .orderBy(prepTasks.sortOrder, prepTasks.id);
 }
 export async function listPost() {
@@ -177,7 +237,7 @@ export async function listPost() {
   return db
     .select()
     .from(postTasks)
-    .where(eq(postTasks.year, year()))
+    .where(planningScope(postTasks))
     .orderBy(postTasks.sortOrder, postTasks.id);
 }
 export async function listMaterials() {
@@ -186,7 +246,7 @@ export async function listMaterials() {
   return db
     .select()
     .from(materials)
-    .where(eq(materials.year, year()))
+    .where(planningScope(materials))
     .orderBy(materials.sortOrder, materials.id);
 }
 export async function listMarketing() {
@@ -195,7 +255,7 @@ export async function listMarketing() {
   return db
     .select()
     .from(marketing)
-    .where(eq(marketing.year, year()))
+    .where(planningScope(marketing))
     .orderBy(marketing.sortOrder, marketing.id);
 }
 export async function listApprovals() {
@@ -204,7 +264,7 @@ export async function listApprovals() {
   return db
     .select()
     .from(approvals)
-    .where(eq(approvals.year, year()))
+    .where(planningScope(approvals))
     .orderBy(approvals.sortOrder, approvals.id);
 }
 export async function listCakes() {
@@ -213,7 +273,7 @@ export async function listCakes() {
   return db
     .select()
     .from(cakes)
-    .where(eq(cakes.year, year()))
+    .where(planningScope(cakes))
     .orderBy(cakes.sortOrder, cakes.id);
 }
 export async function listFinances() {
@@ -222,7 +282,7 @@ export async function listFinances() {
   return db
     .select()
     .from(finances)
-    .where(eq(finances.year, year()))
+    .where(planningScope(finances))
     .orderBy(finances.sortOrder, finances.id);
 }
 export async function getAppSettings() {
@@ -254,9 +314,12 @@ export async function createContact(v: {
   const db = (await getDb()) as DB;
   return db.transaction(async tx => {
     const normalizedName = v.name.trim().replace(/\s+/g, " ");
-    const result: any = await tx
-      .insert(contacts)
-      .values({ ...v, name: normalizedName, year: year() });
+    const result: any = await tx.insert(contacts).values({
+      ...v,
+      name: normalizedName,
+      year: year(),
+      eventId: event(),
+    });
     const id = Number(result?.[0]?.insertId ?? result?.insertId);
     const helper = await syncContactToSelfHelperWithClient(tx, {
       id,
@@ -275,7 +338,7 @@ export async function updateContact(
     const [before] = await tx
       .select()
       .from(contacts)
-      .where(and(eq(contacts.id, id), eq(contacts.year, year())))
+      .where(and(eq(contacts.id, id), planningScope(contacts)))
       .limit(1);
     if (!before) throw new Error("Ansprechpartner wurde nicht gefunden");
     const values = {
@@ -286,7 +349,7 @@ export async function updateContact(
     const result = await tx
       .update(contacts)
       .set(values)
-      .where(and(eq(contacts.id, id), eq(contacts.year, year())));
+      .where(and(eq(contacts.id, id), planningScope(contacts)));
     await syncContactToSelfHelperWithClient(tx, contact, before.name);
     return result;
   });
@@ -295,7 +358,7 @@ export async function deleteContact(id: number) {
   const db = (await getDb()) as DB;
   return db
     .delete(contacts)
-    .where(and(eq(contacts.id, id), eq(contacts.year, year())));
+    .where(and(eq(contacts.id, id), planningScope(contacts)));
 }
 
 export async function upsertContactByName(v: {
@@ -340,30 +403,56 @@ export async function createHelper(
   v: Partial<typeof helpers.$inferInsert> & { name: string }
 ) {
   const db = (await getDb()) as DB;
-  return db
-    .insert(helpers)
-    .values({ ...v, year: year() } as typeof helpers.$inferInsert);
+  if (v.contactId !== undefined && v.contactId !== null) {
+    const [contact] = await db
+      .select({ id: contacts.id })
+      .from(contacts)
+      .where(and(eq(contacts.id, v.contactId), planningScope(contacts)))
+      .limit(1);
+    if (!contact) {
+      throw new Error(
+        "Der Ansprechpartner gehört nicht zur ausgewählten Veranstaltung"
+      );
+    }
+  }
+  return db.insert(helpers).values({
+    ...v,
+    year: year(),
+    eventId: event(),
+  } as typeof helpers.$inferInsert);
 }
 export async function updateHelper(
   id: number,
   v: Partial<typeof helpers.$inferInsert>
 ) {
   const db = (await getDb()) as DB;
-  const { year: ignored, ...safe } = v;
+  const { year: ignored, eventId: ignoredEventId, ...safe } = v;
   return db.transaction(async tx => {
     const [helper] = await tx
       .select()
       .from(helpers)
-      .where(and(eq(helpers.id, id), eq(helpers.year, year())))
+      .where(and(eq(helpers.id, id), planningScope(helpers)))
       .limit(1);
     if (!helper) throw new Error("Helfer wurde nicht gefunden");
+    if (safe.contactId !== undefined && safe.contactId !== null) {
+      const [selectedContact] = await tx
+        .select({ id: contacts.id })
+        .from(contacts)
+        .where(and(eq(contacts.id, safe.contactId), planningScope(contacts)))
+        .limit(1);
+      if (!selectedContact) {
+        throw new Error(
+          "Der Ansprechpartner gehört nicht zur ausgewählten Veranstaltung"
+        );
+      }
+    }
     const selfContact = helper.contactId
       ? (
           await tx
             .select()
             .from(contacts)
             .where(
-              and(eq(contacts.id, helper.contactId), eq(contacts.year, year()))
+              and(eq(contacts.id, helper.contactId), planningScope(contacts))
             )
             .limit(1)
         )[0]
@@ -385,7 +474,7 @@ export async function updateHelper(
     return tx
       .update(helpers)
       .set(safe)
-      .where(and(eq(helpers.id, id), eq(helpers.year, year())));
+      .where(and(eq(helpers.id, id), planningScope(helpers)));
   });
 }
 
@@ -410,12 +499,20 @@ async function recordDeletionAudit(
   actor: AuditActor,
   action: "single_delete" | "area_reset" | "year_reset",
   entries: AuditEntity[],
-  selectedYear = year()
+  selectedYear = year(),
+  selectedEventId = event()
 ) {
   if (!entries.length) return;
+  const [selectedEvent] = await client
+    .select({ name: events.name })
+    .from(events)
+    .where(eq(events.id, selectedEventId))
+    .limit(1);
   await client.insert(deletionAuditLogs).values(
     entries.map(entry => ({
       year: selectedYear,
+      eventId: selectedEventId,
+      eventName: selectedEvent?.name ?? null,
       entityType: entry.entityType,
       entityId: entry.entityId,
       entityLabel: entry.entityLabel,
@@ -446,7 +543,7 @@ function requireDeletedRows(result: any, expected: number) {
 
 const helperAuditEntity = (
   helper: typeof helpers.$inferSelect,
-  assignmentCount?: number
+  helperAssignments: Array<{ shiftId: number; slot: number }> = []
 ): AuditEntity => ({
   entityType: "helper",
   entityId: helper.id,
@@ -461,7 +558,8 @@ const helperAuditEntity = (
     availSat: helper.availSat,
     availSun: helper.availSun,
     confirmed: helper.confirmed,
-    assignmentCount,
+    assignments: helperAssignments,
+    assignmentCount: helperAssignments.length,
   },
 });
 
@@ -473,11 +571,13 @@ const cakeAuditEntity = (cake: typeof cakes.$inferSelect): AuditEntity => ({
     cake: cake.cake,
     dropoffTime: cake.dropoffTime,
     note: cake.note,
+    sortOrder: cake.sortOrder,
   },
 });
 
 export async function listDeletionAuditLogs(filters?: {
   eventYear?: number;
+  eventId?: number;
   entityType?: "helper" | "cake";
   limit?: number;
 }) {
@@ -486,6 +586,9 @@ export async function listDeletionAuditLogs(filters?: {
   const conditions = [
     ...(filters?.eventYear
       ? [eq(deletionAuditLogs.year, filters.eventYear)]
+      : []),
+    ...(filters?.eventId
+      ? [eq(deletionAuditLogs.eventId, filters.eventId)]
       : []),
     ...(filters?.entityType
       ? [eq(deletionAuditLogs.entityType, filters.entityType)]
@@ -500,12 +603,203 @@ export async function listDeletionAuditLogs(filters?: {
     .limit(filters?.limit ?? 500);
 }
 
-export async function clearDeletionAuditLogs(eventYear?: number) {
+export async function clearDeletionAuditLogs(filters?: {
+  eventYear?: number;
+  eventId?: number;
+}) {
   const db = (await getDb()) as DB;
-  if (eventYear === undefined) return db.delete(deletionAuditLogs);
-  return db
-    .delete(deletionAuditLogs)
-    .where(eq(deletionAuditLogs.year, eventYear));
+  const conditions = [
+    ...(filters?.eventYear
+      ? [eq(deletionAuditLogs.year, filters.eventYear)]
+      : []),
+    ...(filters?.eventId
+      ? [eq(deletionAuditLogs.eventId, filters.eventId)]
+      : []),
+  ];
+  if (!conditions.length) return db.delete(deletionAuditLogs);
+  return db.delete(deletionAuditLogs).where(and(...conditions));
+}
+
+export async function restoreDeletionAuditLog(
+  id: number,
+  actor: Pick<AuditActor, "userId" | "name">
+) {
+  const db = (await getDb()) as DB;
+  return db.transaction(async tx => {
+    const [entry] = await tx
+      .select()
+      .from(deletionAuditLogs)
+      .where(eq(deletionAuditLogs.id, id))
+      .limit(1)
+      .for("update");
+    if (!entry) throw new Error("Protokolleintrag wurde nicht gefunden");
+    if (entry.action !== "single_delete") {
+      throw new Error(
+        "Nur einzelne Löschungen können gezielt rückgängig gemacht werden"
+      );
+    }
+    if (entry.restoredAt) {
+      throw new Error("Diese Löschung wurde bereits rückgängig gemacht");
+    }
+    if (!entry.eventId) {
+      throw new Error(
+        "Die ursprüngliche Veranstaltung ist nicht mehr verfügbar"
+      );
+    }
+    const [selectedEvent] = await tx
+      .select()
+      .from(events)
+      .where(and(eq(events.id, entry.eventId), eq(events.year, entry.year)))
+      .limit(1);
+    if (!selectedEvent) {
+      throw new Error("Die ursprüngliche Veranstaltung wurde nicht gefunden");
+    }
+
+    let details: Record<string, unknown> = {};
+    try {
+      details = entry.details ? JSON.parse(entry.details) : {};
+    } catch {
+      throw new Error("Der gespeicherte Datensatz ist nicht lesbar");
+    }
+
+    let restoredAssignments = 0;
+    let skippedAssignments = 0;
+    if (entry.entityType === "helper") {
+      const helperRows = await tx
+        .select()
+        .from(helpers)
+        .where(eq(helpers.eventId, entry.eventId));
+      if (
+        helperRows.some(
+          item =>
+            normalizePersonName(item.name) ===
+            normalizePersonName(entry.entityLabel)
+        )
+      ) {
+        throw new Error(
+          `Der Helfer „${entry.entityLabel}“ ist in dieser Veranstaltung bereits vorhanden`
+        );
+      }
+      const requestedContactId =
+        typeof details.contactId === "number" ? details.contactId : null;
+      const [contact] = requestedContactId
+        ? await tx
+            .select({ id: contacts.id })
+            .from(contacts)
+            .where(
+              and(
+                eq(contacts.id, requestedContactId),
+                eq(contacts.eventId, entry.eventId)
+              )
+            )
+            .limit(1)
+        : [];
+      const result: any = await tx.insert(helpers).values({
+        year: entry.year,
+        eventId: entry.eventId,
+        name: entry.entityLabel,
+        contactId: contact?.id ?? null,
+        email: typeof details.email === "string" ? details.email : null,
+        phone: typeof details.phone === "string" ? details.phone : null,
+        note: typeof details.note === "string" ? details.note : null,
+        willHelp: details.willHelp === "nein" ? "nein" : "ja",
+        availFri:
+          details.availFri === "ja" || details.availFri === "nein"
+            ? details.availFri
+            : "vielleicht",
+        availSat:
+          details.availSat === "ja" || details.availSat === "nein"
+            ? details.availSat
+            : "vielleicht",
+        availSun:
+          details.availSun === "ja" || details.availSun === "nein"
+            ? details.availSun
+            : "vielleicht",
+        confirmed: details.confirmed === "ja" ? "ja" : "nein",
+      });
+      const helperId = Number(result?.[0]?.insertId ?? result?.insertId);
+      const assignmentSnapshots = Array.isArray(details.assignments)
+        ? details.assignments
+        : [];
+      for (const snapshot of assignmentSnapshots) {
+        if (
+          !snapshot ||
+          typeof snapshot !== "object" ||
+          typeof snapshot.shiftId !== "number" ||
+          typeof snapshot.slot !== "number"
+        ) {
+          skippedAssignments++;
+          continue;
+        }
+        const [shift] = await tx
+          .select({ id: shifts.id, needed: shifts.needed })
+          .from(shifts)
+          .where(
+            and(
+              eq(shifts.id, snapshot.shiftId),
+              eq(shifts.eventId, entry.eventId)
+            )
+          )
+          .limit(1)
+          .for("update");
+        const [occupied] = shift
+          ? await tx
+              .select({ id: assignments.id })
+              .from(assignments)
+              .where(
+                and(
+                  eq(assignments.shiftId, snapshot.shiftId),
+                  eq(assignments.slot, snapshot.slot)
+                )
+              )
+              .limit(1)
+              .for("update")
+          : [];
+        if (!shift || occupied || snapshot.slot >= shift.needed) {
+          skippedAssignments++;
+          continue;
+        }
+        await tx.insert(assignments).values({
+          shiftId: snapshot.shiftId,
+          helperId,
+          slot: snapshot.slot,
+        });
+        restoredAssignments++;
+      }
+    } else {
+      await tx.insert(cakes).values({
+        year: entry.year,
+        eventId: entry.eventId,
+        donor: entry.entityLabel,
+        cake: typeof details.cake === "string" ? details.cake : "",
+        dropoffTime:
+          typeof details.dropoffTime === "string" ? details.dropoffTime : "",
+        note: typeof details.note === "string" ? details.note : null,
+        sortOrder:
+          typeof details.sortOrder === "number" ? details.sortOrder : 0,
+      });
+    }
+
+    await tx
+      .update(deletionAuditLogs)
+      .set({
+        restoredAt: new Date(),
+        restoredByUserId: actor.userId,
+        restoredByName: actor.name,
+      })
+      .where(
+        and(eq(deletionAuditLogs.id, id), isNull(deletionAuditLogs.restoredAt))
+      );
+
+    return {
+      entityType: entry.entityType,
+      entityLabel: entry.entityLabel,
+      eventId: entry.eventId,
+      eventName: selectedEvent.name,
+      restoredAssignments,
+      skippedAssignments,
+    };
+  });
 }
 
 export async function deleteHelper(
@@ -525,12 +819,16 @@ export async function deleteHelper(
     const [helper] = await tx
       .select()
       .from(helpers)
-      .where(and(eq(helpers.id, id), eq(helpers.year, year())))
+      .where(and(eq(helpers.id, id), planningScope(helpers)))
       .limit(1)
       .for("update");
     if (!helper) throw new Error("Helfer wurde nicht gefunden");
     const helperAssignments = await tx
-      .select({ id: assignments.id })
+      .select({
+        id: assignments.id,
+        shiftId: assignments.shiftId,
+        slot: assignments.slot,
+      })
       .from(assignments)
       .where(eq(assignments.helperId, id));
     if (!options.allowAssigned) {
@@ -545,9 +843,7 @@ export async function deleteHelper(
       const [contact] = await tx
         .select()
         .from(contacts)
-        .where(
-          and(eq(contacts.id, helper.contactId), eq(contacts.year, year()))
-        )
+        .where(and(eq(contacts.id, helper.contactId), planningScope(contacts)))
         .limit(1);
       if (
         contact &&
@@ -559,11 +855,17 @@ export async function deleteHelper(
       }
     }
     await recordDeletionAudit(tx, options.actor, "single_delete", [
-      helperAuditEntity(helper, helperAssignments.length),
+      helperAuditEntity(
+        helper,
+        helperAssignments.map(item => ({
+          shiftId: item.shiftId,
+          slot: item.slot,
+        }))
+      ),
     ]);
     const result = await tx
       .delete(helpers)
-      .where(and(eq(helpers.id, id), eq(helpers.year, year())));
+      .where(and(eq(helpers.id, id), planningScope(helpers)));
     requireDeletedRows(result, 1);
     return result;
   });
@@ -605,12 +907,15 @@ async function syncContactToSelfHelperWithClient(
   client: any,
   contact: { id: number; name: string; phone?: string | null },
   previousName?: string,
-  selectedYear = year()
+  selectedYear = year(),
+  selectedEventId = event()
 ) {
   const helperRows = await client
     .select()
     .from(helpers)
-    .where(eq(helpers.year, selectedYear));
+    .where(
+      and(eq(helpers.year, selectedYear), eq(helpers.eventId, selectedEventId))
+    );
   const targetName = normalizePersonName(contact.name);
   const target = helperRows.find(
     (item: typeof helpers.$inferSelect) =>
@@ -636,13 +941,19 @@ async function syncContactToSelfHelperWithClient(
     await client
       .update(helpers)
       .set(values)
-      .where(and(eq(helpers.id, existing.id), eq(helpers.year, selectedYear)));
+      .where(
+        and(
+          eq(helpers.id, existing.id),
+          eq(helpers.year, selectedYear),
+          eq(helpers.eventId, selectedEventId)
+        )
+      );
     return { id: existing.id, created: false };
   }
 
   const result: any = await client
     .insert(helpers)
-    .values({ ...values, year: selectedYear });
+    .values({ ...values, year: selectedYear, eventId: selectedEventId });
   return {
     id: Number(result?.[0]?.insertId ?? result?.insertId),
     created: true,
@@ -680,20 +991,22 @@ export async function createShift(
   }
 ) {
   const db = (await getDb()) as DB;
-  return db
-    .insert(shifts)
-    .values({ ...v, year: year() } as typeof shifts.$inferInsert);
+  return db.insert(shifts).values({
+    ...v,
+    year: year(),
+    eventId: event(),
+  } as typeof shifts.$inferInsert);
 }
 export async function updateShift(
   id: number,
   v: Partial<typeof shifts.$inferInsert>
 ) {
   const db = (await getDb()) as DB;
-  const { year: ignored, ...safe } = v;
+  const { year: ignored, eventId: ignoredEventId, ...safe } = v;
   const result = await db
     .update(shifts)
     .set(safe)
-    .where(and(eq(shifts.id, id), eq(shifts.year, year())));
+    .where(and(eq(shifts.id, id), planningScope(shifts)));
   if (safe.area !== undefined) await removeOrphanShiftAreaContacts();
   return result;
 }
@@ -701,7 +1014,7 @@ export async function deleteShift(id: number) {
   const db = (await getDb()) as DB;
   const result = await db
     .delete(shifts)
-    .where(and(eq(shifts.id, id), eq(shifts.year, year())));
+    .where(and(eq(shifts.id, id), planningScope(shifts)));
   await removeOrphanShiftAreaContacts();
   return result;
 }
@@ -714,14 +1027,14 @@ export async function setShiftAreaContact(
   const [existingArea] = await db
     .select({ id: shifts.id })
     .from(shifts)
-    .where(and(eq(shifts.year, year()), eq(shifts.area, normalizedArea)))
+    .where(and(planningScope(shifts), eq(shifts.area, normalizedArea)))
     .limit(1);
   if (!existingArea) throw new Error("Bereich wurde nicht gefunden");
   if (contactId !== null) {
     const [contact] = await db
       .select({ id: contacts.id })
       .from(contacts)
-      .where(and(eq(contacts.id, contactId), eq(contacts.year, year())))
+      .where(and(eq(contacts.id, contactId), planningScope(contacts)))
       .limit(1);
     if (!contact) throw new Error("Ansprechpartner wurde nicht gefunden");
   }
@@ -730,14 +1043,19 @@ export async function setShiftAreaContact(
       .delete(shiftAreaContacts)
       .where(
         and(
-          eq(shiftAreaContacts.year, year()),
+          planningScope(shiftAreaContacts),
           eq(shiftAreaContacts.area, normalizedArea)
         )
       );
   }
   return db
     .insert(shiftAreaContacts)
-    .values({ year: year(), area: normalizedArea, contactId })
+    .values({
+      year: year(),
+      eventId: event(),
+      area: normalizedArea,
+      contactId,
+    })
     .onDuplicateKeyUpdate({ set: { contactId } });
 }
 async function removeOrphanShiftAreaContacts() {
@@ -745,11 +1063,9 @@ async function removeOrphanShiftAreaContacts() {
   const activeAreas = await db
     .select({ area: shifts.area })
     .from(shifts)
-    .where(eq(shifts.year, year()));
+    .where(planningScope(shifts));
   if (!activeAreas.length) {
-    return db
-      .delete(shiftAreaContacts)
-      .where(eq(shiftAreaContacts.year, year()));
+    return db.delete(shiftAreaContacts).where(planningScope(shiftAreaContacts));
   }
   const areaSet = new Set(activeAreas.map(item => item.area));
   const mappings = await listShiftAreaContacts();
@@ -779,12 +1095,12 @@ export async function replaceShiftAssignment(v: {
     const [shift] = await tx
       .select({ id: shifts.id, needed: shifts.needed })
       .from(shifts)
-      .where(and(eq(shifts.id, v.shiftId), eq(shifts.year, year())))
+      .where(and(eq(shifts.id, v.shiftId), planningScope(shifts)))
       .limit(1);
     const [helper] = await tx
       .select({ id: helpers.id })
       .from(helpers)
-      .where(and(eq(helpers.id, v.helperId), eq(helpers.year, year())))
+      .where(and(eq(helpers.id, v.helperId), planningScope(helpers)))
       .limit(1);
     if (!shift || !helper)
       throw new Error("Schicht oder Helfer wurde nicht gefunden");
@@ -817,7 +1133,7 @@ export async function removeShiftAssignment(v: {
   const [shift] = await db
     .select({ id: shifts.id })
     .from(shifts)
-    .where(and(eq(shifts.id, v.shiftId), eq(shifts.year, year())))
+    .where(and(eq(shifts.id, v.shiftId), planningScope(shifts)))
     .limit(1);
   if (!shift) throw new Error("Schicht wurde nicht gefunden");
   return db
@@ -835,10 +1151,7 @@ export async function unassignHelper(id: number) {
         eq(assignments.id, id),
         inArray(
           assignments.shiftId,
-          db
-            .select({ id: shifts.id })
-            .from(shifts)
-            .where(eq(shifts.year, year()))
+          db.select({ id: shifts.id }).from(shifts).where(planningScope(shifts))
         )
       )
     );
@@ -850,7 +1163,7 @@ export async function clearAssignments() {
     .where(
       inArray(
         assignments.shiftId,
-        db.select({ id: shifts.id }).from(shifts).where(eq(shifts.year, year()))
+        db.select({ id: shifts.id }).from(shifts).where(planningScope(shifts))
       )
     );
 }
@@ -892,10 +1205,10 @@ export async function setAdminPasswordHash(adminPasswordHash: string) {
 }
 
 function yearValues<T extends Record<string, unknown>>(values: T) {
-  return { ...values, year: year() };
+  return { ...values, year: year(), eventId: event() };
 }
-function yearWhere(table: { id: any; year: any }, id: number) {
-  return and(eq(table.id, id), eq(table.year, year()));
+function yearWhere(table: { id: any; year: any; eventId: any }, id: number) {
+  return and(eq(table.id, id), planningScope(table));
 }
 
 async function createYearRow(table: any, values: Record<string, unknown>) {
@@ -912,43 +1225,65 @@ async function createYearRow(table: any, values: Record<string, unknown>) {
   return created;
 }
 
-export const createPrep = async (v: any) => createYearRow(prepTasks, v);
+async function scopedContactValues(values: Record<string, unknown>) {
+  if (!("contactId" in values) || values.contactId === null) return values;
+  const contactId = Number(values.contactId);
+  const db = (await getDb()) as DB;
+  const [contact] = await db
+    .select({ id: contacts.id })
+    .from(contacts)
+    .where(and(eq(contacts.id, contactId), planningScope(contacts)))
+    .limit(1);
+  if (!contact) {
+    throw new Error(
+      "Der Ansprechpartner gehört nicht zur ausgewählten Veranstaltung"
+    );
+  }
+  return values;
+}
+
+export const createPrep = async (v: any) =>
+  createYearRow(prepTasks, await scopedContactValues(v));
 export const updatePrep = async (id: number, v: any) =>
   ((await getDb()) as DB)
     .update(prepTasks)
-    .set(v)
+    .set(await scopedContactValues(v))
     .where(yearWhere(prepTasks, id));
 export const deletePrep = async (id: number) =>
   ((await getDb()) as DB).delete(prepTasks).where(yearWhere(prepTasks, id));
-export const createPost = async (v: any) => createYearRow(postTasks, v);
+export const createPost = async (v: any) =>
+  createYearRow(postTasks, await scopedContactValues(v));
 export const updatePost = async (id: number, v: any) =>
   ((await getDb()) as DB)
     .update(postTasks)
-    .set(v)
+    .set(await scopedContactValues(v))
     .where(yearWhere(postTasks, id));
 export const deletePost = async (id: number) =>
   ((await getDb()) as DB).delete(postTasks).where(yearWhere(postTasks, id));
-export const createMaterial = async (v: any) => createYearRow(materials, v);
+export const createMaterial = async (v: any) =>
+  createYearRow(materials, await scopedContactValues(v));
 export const updateMaterial = async (id: number, v: any) =>
   ((await getDb()) as DB)
     .update(materials)
-    .set(v)
+    .set(await scopedContactValues(v))
     .where(yearWhere(materials, id));
 export const deleteMaterial = async (id: number) =>
   ((await getDb()) as DB).delete(materials).where(yearWhere(materials, id));
-export const createMarketing = async (v: any) => createYearRow(marketing, v);
+export const createMarketing = async (v: any) =>
+  createYearRow(marketing, await scopedContactValues(v));
 export const updateMarketing = async (id: number, v: any) =>
   ((await getDb()) as DB)
     .update(marketing)
-    .set(v)
+    .set(await scopedContactValues(v))
     .where(yearWhere(marketing, id));
 export const deleteMarketing = async (id: number) =>
   ((await getDb()) as DB).delete(marketing).where(yearWhere(marketing, id));
-export const createApproval = async (v: any) => createYearRow(approvals, v);
+export const createApproval = async (v: any) =>
+  createYearRow(approvals, await scopedContactValues(v));
 export const updateApproval = async (id: number, v: any) =>
   ((await getDb()) as DB)
     .update(approvals)
-    .set(v)
+    .set(await scopedContactValues(v))
     .where(yearWhere(approvals, id));
 export const deleteApproval = async (id: number) =>
   ((await getDb()) as DB).delete(approvals).where(yearWhere(approvals, id));
@@ -1015,6 +1350,7 @@ export type ResetArea =
 export async function resetArea(area: ResetArea, actor: AuditActor) {
   const db = (await getDb()) as DB;
   const selectedYear = year();
+  const selectedEventId = event();
   if (
     (area === "helpers" || area === "all") &&
     (!actor.responsibleContactId || !actor.responsibleContactName)
@@ -1024,18 +1360,21 @@ export async function resetArea(area: ResetArea, actor: AuditActor) {
     );
   }
   const remove = async (table: any) =>
-    db.delete(table).where(eq(table.year, selectedYear));
+    db
+      .delete(table)
+      .where(planningScopeFor(table, selectedYear, selectedEventId));
+
   if (area === "all") {
     await db.transaction(async tx => {
       const helperRows = await tx
         .select()
         .from(helpers)
-        .where(eq(helpers.year, selectedYear))
+        .where(planningScopeFor(helpers, selectedYear, selectedEventId))
         .for("update");
       const cakeRows = await tx
         .select()
         .from(cakes)
-        .where(eq(cakes.year, selectedYear))
+        .where(planningScopeFor(cakes, selectedYear, selectedEventId))
         .for("update");
       await recordDeletionAudit(
         tx,
@@ -1045,27 +1384,30 @@ export async function resetArea(area: ResetArea, actor: AuditActor) {
           ...helperRows.map(item => helperAuditEntity(item)),
           ...cakeRows.map(item => cakeAuditEntity(item)),
         ],
-        selectedYear
+        selectedYear,
+        selectedEventId
+      );
+      await tx.delete(assignments).where(
+        inArray(
+          assignments.shiftId,
+          tx
+            .select({ id: shifts.id })
+            .from(shifts)
+            .where(planningScopeFor(shifts, selectedYear, selectedEventId))
+        )
       );
       await tx
-        .delete(assignments)
-        .where(
-          inArray(
-            assignments.shiftId,
-            tx
-              .select({ id: shifts.id })
-              .from(shifts)
-              .where(eq(shifts.year, selectedYear))
-          )
-        );
-      await tx.delete(shifts).where(eq(shifts.year, selectedYear));
+        .delete(shifts)
+        .where(planningScopeFor(shifts, selectedYear, selectedEventId));
       await tx
         .delete(shiftAreaContacts)
-        .where(eq(shiftAreaContacts.year, selectedYear));
+        .where(
+          planningScopeFor(shiftAreaContacts, selectedYear, selectedEventId)
+        );
       if (helperRows.length) {
         const result = await tx.delete(helpers).where(
           and(
-            eq(helpers.year, selectedYear),
+            planningScopeFor(helpers, selectedYear, selectedEventId),
             inArray(
               helpers.id,
               helperRows.map(item => item.id)
@@ -1074,16 +1416,28 @@ export async function resetArea(area: ResetArea, actor: AuditActor) {
         );
         requireDeletedRows(result, helperRows.length);
       }
-      await tx.delete(contacts).where(eq(contacts.year, selectedYear));
-      await tx.delete(prepTasks).where(eq(prepTasks.year, selectedYear));
-      await tx.delete(postTasks).where(eq(postTasks.year, selectedYear));
-      await tx.delete(materials).where(eq(materials.year, selectedYear));
-      await tx.delete(marketing).where(eq(marketing.year, selectedYear));
-      await tx.delete(approvals).where(eq(approvals.year, selectedYear));
+      await tx
+        .delete(contacts)
+        .where(planningScopeFor(contacts, selectedYear, selectedEventId));
+      await tx
+        .delete(prepTasks)
+        .where(planningScopeFor(prepTasks, selectedYear, selectedEventId));
+      await tx
+        .delete(postTasks)
+        .where(planningScopeFor(postTasks, selectedYear, selectedEventId));
+      await tx
+        .delete(materials)
+        .where(planningScopeFor(materials, selectedYear, selectedEventId));
+      await tx
+        .delete(marketing)
+        .where(planningScopeFor(marketing, selectedYear, selectedEventId));
+      await tx
+        .delete(approvals)
+        .where(planningScopeFor(approvals, selectedYear, selectedEventId));
       if (cakeRows.length) {
         const result = await tx.delete(cakes).where(
           and(
-            eq(cakes.year, selectedYear),
+            planningScopeFor(cakes, selectedYear, selectedEventId),
             inArray(
               cakes.id,
               cakeRows.map(item => item.id)
@@ -1092,29 +1446,33 @@ export async function resetArea(area: ResetArea, actor: AuditActor) {
         );
         requireDeletedRows(result, cakeRows.length);
       }
-      await tx.delete(finances).where(eq(finances.year, selectedYear));
+      await tx
+        .delete(finances)
+        .where(planningScopeFor(finances, selectedYear, selectedEventId));
     });
     return;
   }
+
   if (area === "helpers" || area === "cakes") {
     await db.transaction(async tx => {
       if (area === "helpers") {
         const rows = await tx
           .select()
           .from(helpers)
-          .where(eq(helpers.year, selectedYear))
+          .where(planningScopeFor(helpers, selectedYear, selectedEventId))
           .for("update");
         await recordDeletionAudit(
           tx,
           actor,
           "area_reset",
           rows.map(item => helperAuditEntity(item)),
-          selectedYear
+          selectedYear,
+          selectedEventId
         );
         if (rows.length) {
           const result = await tx.delete(helpers).where(
             and(
-              eq(helpers.year, selectedYear),
+              planningScopeFor(helpers, selectedYear, selectedEventId),
               inArray(
                 helpers.id,
                 rows.map(item => item.id)
@@ -1127,19 +1485,20 @@ export async function resetArea(area: ResetArea, actor: AuditActor) {
         const rows = await tx
           .select()
           .from(cakes)
-          .where(eq(cakes.year, selectedYear))
+          .where(planningScopeFor(cakes, selectedYear, selectedEventId))
           .for("update");
         await recordDeletionAudit(
           tx,
           actor,
           "area_reset",
           rows.map(item => cakeAuditEntity(item)),
-          selectedYear
+          selectedYear,
+          selectedEventId
         );
         if (rows.length) {
           const result = await tx.delete(cakes).where(
             and(
-              eq(cakes.year, selectedYear),
+              planningScopeFor(cakes, selectedYear, selectedEventId),
               inArray(
                 cakes.id,
                 rows.map(item => item.id)
@@ -1153,15 +1512,21 @@ export async function resetArea(area: ResetArea, actor: AuditActor) {
     if (area === "helpers") await syncContactsToSelfHelpers();
     return;
   }
+
   if (area === "shifts") {
     await db.transaction(async tx => {
       await tx
         .delete(shiftAreaContacts)
-        .where(eq(shiftAreaContacts.year, selectedYear));
-      await tx.delete(shifts).where(eq(shifts.year, selectedYear));
+        .where(
+          planningScopeFor(shiftAreaContacts, selectedYear, selectedEventId)
+        );
+      await tx
+        .delete(shifts)
+        .where(planningScopeFor(shifts, selectedYear, selectedEventId));
     });
     return;
   }
+
   const tableByArea = {
     contacts,
     helpers,
@@ -1187,14 +1552,29 @@ const shiftKey = (shift: {
     .map(value => value.trim().toLocaleLowerCase("de-DE"))
     .join("|");
 
-export async function copyPlanFromYear(
-  sourceYear: number,
-  targetYear = year()
+export async function copyPlanFromEvent(
+  sourceEventId: number,
+  targetEventId = event()
 ) {
-  if (sourceYear === targetYear)
-    throw new Error("Quell- und Zieljahr müssen verschieden sein");
+  if (sourceEventId === targetEventId)
+    throw new Error("Quell- und Zielveranstaltung müssen verschieden sein");
   const db = (await getDb()) as DB;
   return db.transaction(async tx => {
+    const [sourceEvent] = await tx
+      .select()
+      .from(events)
+      .where(eq(events.id, sourceEventId))
+      .limit(1);
+    const [targetEvent] = await tx
+      .select()
+      .from(events)
+      .where(eq(events.id, targetEventId))
+      .limit(1);
+    if (!sourceEvent || !targetEvent)
+      throw new Error("Quell- oder Zielveranstaltung wurde nicht gefunden");
+    if (targetEvent.year !== year())
+      throw new Error("Die Zielveranstaltung gehört nicht zum gewählten Jahr");
+
     const [
       sourceContacts,
       sourceHelpers,
@@ -1206,33 +1586,26 @@ export async function copyPlanFromYear(
       targetShifts,
       targetAreaContacts,
     ] = await Promise.all([
-      tx.select().from(contacts).where(eq(contacts.year, sourceYear)),
-      tx.select().from(helpers).where(eq(helpers.year, sourceYear)),
-      tx.select().from(shifts).where(eq(shifts.year, sourceYear)),
+      tx.select().from(contacts).where(eq(contacts.eventId, sourceEventId)),
+      tx.select().from(helpers).where(eq(helpers.eventId, sourceEventId)),
+      tx.select().from(shifts).where(eq(shifts.eventId, sourceEventId)),
       tx
         .select({ ...getTableColumns(assignments) })
         .from(assignments)
         .innerJoin(shifts, eq(assignments.shiftId, shifts.id))
-        .where(eq(shifts.year, sourceYear)),
+        .where(eq(shifts.eventId, sourceEventId)),
       tx
         .select()
         .from(shiftAreaContacts)
-        .where(eq(shiftAreaContacts.year, sourceYear)),
-      tx.select().from(contacts).where(eq(contacts.year, targetYear)),
-      tx.select().from(helpers).where(eq(helpers.year, targetYear)),
-      tx.select().from(shifts).where(eq(shifts.year, targetYear)),
+        .where(eq(shiftAreaContacts.eventId, sourceEventId)),
+      tx.select().from(contacts).where(eq(contacts.eventId, targetEventId)),
+      tx.select().from(helpers).where(eq(helpers.eventId, targetEventId)),
+      tx.select().from(shifts).where(eq(shifts.eventId, targetEventId)),
       tx
         .select()
         .from(shiftAreaContacts)
-        .where(eq(shiftAreaContacts.year, targetYear)),
+        .where(eq(shiftAreaContacts.eventId, targetEventId)),
     ]);
-
-    await tx
-      .insert(eventYears)
-      .values({ year: targetYear, label: `MyEifelRide ${targetYear}` })
-      .onDuplicateKeyUpdate({
-        set: { label: `MyEifelRide ${targetYear}` },
-      });
 
     const contactMap = new Map<number, number>();
     const contactByName = new Map(
@@ -1243,7 +1616,8 @@ export async function copyPlanFromYear(
       let targetId = contactByName.get(normalizePersonName(item.name));
       if (!targetId) {
         const result: any = await tx.insert(contacts).values({
-          year: targetYear,
+          year: targetEvent.year,
+          eventId: targetEvent.id,
           name: item.name,
           phone: item.phone,
           note: item.note,
@@ -1262,7 +1636,8 @@ export async function copyPlanFromYear(
       const contactId = item.contactId ? contactMap.get(item.contactId) : null;
       if (!contactId || targetAreaNames.has(item.area)) continue;
       await tx.insert(shiftAreaContacts).values({
-        year: targetYear,
+        year: targetEvent.year,
+        eventId: targetEvent.id,
         area: item.area,
         contactId,
       });
@@ -1279,7 +1654,8 @@ export async function copyPlanFromYear(
       let targetId = helperByName.get(normalizePersonName(item.name));
       if (!targetId) {
         const result: any = await tx.insert(helpers).values({
-          year: targetYear,
+          year: targetEvent.year,
+          eventId: targetEvent.id,
           name: item.name,
           contactId: item.contactId
             ? (contactMap.get(item.contactId) ?? null)
@@ -1303,13 +1679,14 @@ export async function copyPlanFromYear(
     const copiedContacts = await tx
       .select()
       .from(contacts)
-      .where(eq(contacts.year, targetYear));
+      .where(eq(contacts.eventId, targetEventId));
     for (const contact of copiedContacts) {
       const helper = await syncContactToSelfHelperWithClient(
         tx,
         contact,
         undefined,
-        targetYear
+        targetEvent.year,
+        targetEvent.id
       );
       if (!helperByName.has(normalizePersonName(contact.name))) {
         helperByName.set(normalizePersonName(contact.name), helper.id);
@@ -1326,7 +1703,8 @@ export async function copyPlanFromYear(
       let targetId = targetShiftByKey.get(shiftKey(item));
       if (!targetId) {
         const result: any = await tx.insert(shifts).values({
-          year: targetYear,
+          year: targetEvent.year,
+          eventId: targetEvent.id,
           day: item.day,
           area: item.area,
           task: item.task,
@@ -1347,12 +1725,12 @@ export async function copyPlanFromYear(
       .select({ ...getTableColumns(assignments) })
       .from(assignments)
       .innerJoin(shifts, eq(assignments.shiftId, shifts.id))
-      .where(eq(shifts.year, targetYear));
+      .where(eq(shifts.eventId, targetEventId));
     const occupied = new Set(
-      currentAssignments.map(item => `${item.shiftId}:${item.slot}`)
+      currentAssignments.map(item => String(item.shiftId) + ":" + item.slot)
     );
     const assignedHelpers = new Set(
-      currentAssignments.map(item => `${item.shiftId}:${item.helperId}`)
+      currentAssignments.map(item => String(item.shiftId) + ":" + item.helperId)
     );
     let assignmentsCreated = 0;
     for (const item of sourceAssignments) {
@@ -1361,19 +1739,23 @@ export async function copyPlanFromYear(
       if (
         !shiftId ||
         !helperId ||
-        occupied.has(`${shiftId}:${item.slot}`) ||
-        assignedHelpers.has(`${shiftId}:${helperId}`)
+        occupied.has(String(shiftId) + ":" + item.slot) ||
+        assignedHelpers.has(String(shiftId) + ":" + helperId)
       )
         continue;
-      await tx
-        .insert(assignments)
-        .values({ shiftId, helperId, slot: item.slot });
-      occupied.add(`${shiftId}:${item.slot}`);
-      assignedHelpers.add(`${shiftId}:${helperId}`);
+      await tx.insert(assignments).values({
+        shiftId,
+        helperId,
+        slot: item.slot,
+      });
+      occupied.add(String(shiftId) + ":" + item.slot);
+      assignedHelpers.add(String(shiftId) + ":" + helperId);
       assignmentsCreated++;
     }
 
     return {
+      sourceEvent: sourceEvent.name,
+      targetEvent: targetEvent.name,
       contactsCreated,
       helpersCreated,
       shiftsCreated,

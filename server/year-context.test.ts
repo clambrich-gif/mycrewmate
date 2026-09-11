@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { normalizePersonName, selfHelperValues } from "./db";
 import {
+  currentEventId,
   currentEventYear,
+  DEFAULT_EVENT_ID,
   DEFAULT_EVENT_YEAR,
+  normalizeEventId,
   normalizeEventYear,
+  withEventScope,
   withEventYear,
 } from "./year-context";
 
@@ -22,6 +26,17 @@ describe("Mehrjahresplanung", () => {
     });
     expect(value).toBe(2027);
     expect(currentEventYear()).toBe(DEFAULT_EVENT_YEAR);
+  });
+
+  it("isoliert Jahr und konkrete Veranstaltung gemeinsam", async () => {
+    expect(normalizeEventId("12")).toBe(12);
+    expect(normalizeEventId("ungültig")).toBe(DEFAULT_EVENT_ID);
+    const value = await withEventScope(2027, 12, async () => {
+      await Promise.resolve();
+      return [currentEventYear(), currentEventId()];
+    });
+    expect(value).toEqual([2027, 12]);
+    expect(currentEventId()).toBe(DEFAULT_EVENT_ID);
   });
 
   it("normalisiert Personennamen für eine robuste Dublettenprüfung", () => {

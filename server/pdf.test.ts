@@ -23,6 +23,8 @@ const settings: AppSettings = {
   blankPlanTitle: "Einsatzplan – Blanko",
   contactLabel: "Ansprechpartner Vorstand",
   footerText: "Bitte bei Rückfragen anrufen.",
+  logoKey: null,
+  logoUrl: null,
   extraColumns: JSON.stringify(["Bestätigt", "Notiz"]),
   blankRowsPerShift: 3,
   updatedAt: new Date(),
@@ -126,6 +128,16 @@ describe("PDF-Erzeugung", () => {
     const pdf = await renderHelperTaskPdf(data, 1);
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
     expect(pdf.length).toBeGreaterThan(2_000);
+  });
+
+  it("bettet ein konfiguriertes Logo in die Helferübersicht ein", async () => {
+    const logoBuffer = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+      "base64"
+    );
+    const pdf = await renderHelperTaskPdf({ ...data, logoBuffer }, 1);
+    expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+    expect(pdf.toString("latin1")).toContain("/Subtype /Image");
   });
 
   it("erzeugt einen gültigen konfigurierbaren Blanko-Plan", async () => {

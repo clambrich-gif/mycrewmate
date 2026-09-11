@@ -25,25 +25,29 @@ import { toast } from "sonner";
 
 export function CopyPreviousPlanButton() {
   const { user } = useAuth();
-  const { year } = useEventYear();
+  const { year, eventId } = useEventYear();
   const utils = trpc.useUtils();
-  const { data: years = [] } = trpc.years.list.useQuery();
-  const sourceYears = useMemo(
+  const { data: allEvents = [] } = trpc.events.all.useQuery();
+  const sourceEvents = useMemo(
     () =>
-      years
-        .map(item => item.year)
-        .filter(item => item !== year)
-        .sort((a, b) => b - a),
-    [years, year]
+      allEvents
+        .filter(item => item.id !== eventId)
+        .sort((left, right) =>
+          right.year === left.year
+            ? left.name.localeCompare(right.name, "de")
+            : right.year - left.year
+        ),
+    [allEvents, eventId]
   );
   const [open, setOpen] = useState(false);
-  const [sourceYear, setSourceYear] = useState(year - 1);
+  const [sourceEventId, setSourceEventId] = useState(0);
   const [adminPassword, setAdminPassword] = useState("");
 
   useEffect(() => {
-    const previous = sourceYears.find(item => item < year) ?? sourceYears[0];
-    if (previous) setSourceYear(previous);
-  }, [sourceYears, year]);
+    const previous =
+      sourceEvents.find(item => item.year < year) ?? sourceEvents[0];
+    setSourceEventId(previous?.id ?? 0);
+  }, [sourceEvents, year]);
 
   const copy = trpc.years.copyPlan.useMutation({
     onSuccess: async result => {
@@ -51,7 +55,7 @@ export function CopyPreviousPlanButton() {
       setAdminPassword("");
       await utils.invalidate();
       toast.success(
-        `Übernommen: ${result.shiftsCreated} Schichten, ${result.helpersCreated} Helfer und ${result.assignmentsCreated} Zuordnungen`
+        `Aus „${result.sourceEvent}“ übernommen: ${result.shiftsCreated} Schichten, ${result.helpersCreated} Helfer und ${result.assignmentsCreated} Zuordnungen`
       );
     },
     onError: error => toast.error(error.message),
@@ -63,34 +67,36 @@ export function CopyPreviousPlanButton() {
       <Button
         variant="outline"
         onClick={() => setOpen(true)}
-        disabled={!sourceYears.length}
+        disabled={!sourceEvents.length}
       >
-        <Copy className="mr-2 h-4 w-4" /> Vorjahr übernehmen
+        <Copy className="mr-2 h-4 w-4" /> Plan übernehmen
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
+        <DialogContent className="bg-white text-slate-950 dark:bg-slate-950 dark:text-slate-50">
           <DialogHeader>
-            <DialogTitle>Einsatzplanung nach {year} übernehmen</DialogTitle>
+            <DialogTitle>
+              Planung in die aktuelle Veranstaltung übernehmen
+            </DialogTitle>
             <DialogDescription>
-              Schichten, benötigte Ansprechpartner, Helfer und vorhandene
-              Zuordnungen werden aus dem gewählten Jahr ergänzt. Bereits
-              vorhandene Einträge werden nicht doppelt angelegt.
+              Schichten, Bereichsansprechpartner, Helfer und Zuordnungen werden
+              aus der gewählten Veranstaltung ergänzt. Vorhandene Einträge
+              werden nicht doppelt angelegt.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label>Quelljahr</Label>
+              <Label>Quellveranstaltung</Label>
               <Select
-                value={String(sourceYear)}
-                onValueChange={value => setSourceYear(Number(value))}
+                value={sourceEventId ? String(sourceEventId) : undefined}
+                onValueChange={value => setSourceEventId(Number(value))}
               >
                 <SelectTrigger className="w-full bg-background">
-                  <SelectValue />
+                  <SelectValue placeholder="Veranstaltung auswählen" />
                 </SelectTrigger>
                 <SelectContent>
-                  {sourceYears.map(item => (
-                    <SelectItem key={item} value={String(item)}>
-                      {item}
+                  {sourceEvents.map(item => (
+                    <SelectItem key={item.id} value={String(item.id)}>
+                      {item.year} · {item.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -112,10 +118,12 @@ export function CopyPreviousPlanButton() {
               Abbrechen
             </Button>
             <Button
-              disabled={!adminPassword || copy.isPending}
-              onClick={() => copy.mutate({ sourceYear, adminPassword })}
+              disabled={!adminPassword || !sourceEventId || copy.isPending}
+              onClick={() => copy.mutate({ sourceEventId, adminPassword })}
             >
-              {copy.isPending ? "Wird übernommen …" : `Nach ${year} übernehmen`}
+              {copy.isPending
+                ? "Wird übernommen …"
+                : "In aktuelle Veranstaltung übernehmen"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -38,13 +38,30 @@ import {
 } from "./pdf";
 import {
   currentEventYear,
-  requestedEventYear,
-  withEventYear,
+  requestedPlanningScope,
+  withPlanningScope,
 } from "./year-context";
+import { storagePut } from "./storage";
 
-const protectedProcedure = baseProtectedProcedure.use(({ ctx, next }) =>
-  withEventYear(requestedEventYear(ctx.req), () => next())
+const scopedProtectedProcedure = baseProtectedProcedure.use(({ ctx, next }) =>
+  withPlanningScope(requestedPlanningScope(ctx.req), () => next())
 );
+
+const protectedProcedure = scopedProtectedProcedure.use(async ({ next }) => {
+  if (!(await db.getEvent())) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message:
+        "Die gewählte Veranstaltung gehört nicht zum gewählten Veranstaltungsjahr",
+    });
+  }
+  return next();
+});
+
+const scopeAdminProcedure = scopedProtectedProcedure.use(({ ctx, next }) => {
+  if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+  return next({ ctx });
+});
 
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
@@ -57,6 +74,13 @@ const dayEnum = z.enum(["Freitag", "Samstag", "Sonntag"]);
 const statusTask = z.enum(["offen", "inArbeit", "erledigt"]);
 const passwordInput = z.string().min(10).max(200);
 const eventYearInput = z.number().int().min(2020).max(2100);
+const safeExportName = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ß/g, "ss")
+    .replace(/[^a-zA-Z0-9_-]+/g, "_")
+    .replace(/^_+|_+$/g, "") || "Veranstaltung";
 const resetAreaInput = z.enum([
   "contacts",
   "helpers",
@@ -307,27 +331,50 @@ export const appRouter = router({
   }),
 
   years: router({
-    list: protectedProcedure.query(async () => {
+    list: scopedProtectedProcedure.query(async () => {
       await db.ensureEventYear();
       return db.listEventYears();
     }),
-    create: adminProcedure
+    create: scopeAdminProcedure
       .input(z.object({ year: eventYearInput }))
       .mutation(async ({ input }) => {
         await db.ensureEventYear(input.year);
-        return { success: true } as const;
+        const event = await db.createEvent("MyEifelRide", input.year);
+        return { success: true, event } as const;
       }),
     copyPlan: adminProcedure
       .input(
         z.object({
-          sourceYear: eventYearInput,
+          sourceEventId: z.number().int().positive(),
           adminPassword: z.string().min(1).max(200),
         })
       )
       .mutation(async ({ input }) => {
         await requireAdminPassword(input.adminPassword);
-        return db.copyPlanFromYear(input.sourceYear);
+        return db.copyPlanFromEvent(input.sourceEventId);
       }),
+  }),
+
+  events: router({
+    list: scopedProtectedProcedure.query(() => db.listEvents()),
+    current: scopedProtectedProcedure.query(() => db.getEvent()),
+    create: scopeAdminProcedure
+      .input(
+        z.object({
+          name: z.string().trim().min(2).max(200),
+        })
+      )
+      .mutation(({ input }) => db.createEvent(input.name)),
+    all: scopedProtectedProcedure.query(async () => {
+      const years = await db.listEventYears();
+      const grouped = await Promise.all(
+        years.map(async item => ({
+          year: item.year,
+          events: await db.listEvents(item.year),
+        }))
+      );
+      return grouped.flatMap(group => group.events);
+    }),
   }),
 
   reset: router({
@@ -560,7 +607,9 @@ export const appRouter = router({
         ...DEFAULT_PDF_SETTINGS,
         eventYear: String(currentEventYear()),
       };
+      const selectedEvent = await db.getEvent();
       settings.eventYear = String(currentEventYear());
+      settings.eventName = selectedEvent?.name ?? settings.eventName;
       let extraColumns: string[] = [];
       try {
         const parsed = JSON.parse(settings.extraColumns);
@@ -580,6 +629,33 @@ export const appRouter = router({
         });
         return { success: true } as const;
       }),
+    uploadLogo: protectedProcedure
+      .input(
+        z.object({
+          base64: z.string().max(4_000_000, "Logo ist größer als 3 MB"),
+          mimeType: z.enum(["image/png", "image/jpeg"]),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const buffer = Buffer.from(input.base64, "base64");
+        if (!buffer.length || buffer.length > 3_000_000) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Bitte ein PNG- oder JPEG-Logo bis 3 MB auswählen",
+          });
+        }
+        const extension = input.mimeType === "image/png" ? "png" : "jpg";
+        const uploaded = await storagePut(
+          `pdf-logos/veranstaltungslogo.${extension}`,
+          buffer,
+          input.mimeType
+        );
+        await db.updateAppSettings({
+          logoKey: uploaded.key,
+          logoUrl: uploaded.url,
+        });
+        return uploaded;
+      }),
     helper: protectedProcedure
       .input(z.object({ helperId: z.number().int().positive() }))
       .mutation(async ({ input }) => {
@@ -592,8 +668,9 @@ export const appRouter = router({
       }),
     allHelpers: protectedProcedure.query(async () => {
       const zip = await createAllHelperTaskZip();
+      const selectedEvent = await db.getEvent();
       return {
-        filename: "Aufgabenuebersichten_MyEifelRide.zip",
+        filename: `Aufgabenuebersichten_${safeExportName(selectedEvent?.name ?? "Veranstaltung")}.zip`,
         mimeType: "application/zip",
         base64: zip.toString("base64"),
       };
@@ -608,11 +685,13 @@ export const appRouter = router({
     }),
     plan: protectedProcedure.input(planPdfInput).mutation(async ({ input }) => {
       const pdf = await createPlanPdf(input);
+      const selectedEvent = await db.getEvent();
+      const eventName = safeExportName(selectedEvent?.name ?? "Veranstaltung");
       return {
         filename:
           input.mode === "blank"
-            ? "Einsatzplan_Blanko.pdf"
-            : "Einsatzplan_Ausgefuellt.pdf",
+            ? `Einsatzplan_Blanko_${eventName}.pdf`
+            : `Einsatzplan_Ausgefuellt_${eventName}.pdf`,
         mimeType: "application/pdf",
         base64: pdf.toString("base64"),
       };
@@ -846,6 +925,7 @@ export const appRouter = router({
         z
           .object({
             eventYear: eventYearInput.optional(),
+            eventId: z.number().int().positive().optional(),
             entityType: z.enum(["helper", "cake"]).optional(),
             limit: z.number().int().min(1).max(1000).default(500),
           })
@@ -856,14 +936,26 @@ export const appRouter = router({
       .input(
         z.object({
           eventYear: eventYearInput.optional(),
+          eventId: z.number().int().positive().optional(),
           adminPassword: z.string().min(1).max(200),
         })
       )
       .mutation(async ({ input }) => {
         await requireAdminPassword(input.adminPassword);
-        await db.clearDeletionAuditLogs(input.eventYear);
+        await db.clearDeletionAuditLogs({
+          eventYear: input.eventYear,
+          eventId: input.eventId,
+        });
         return { success: true } as const;
       }),
+    restore: adminProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(({ ctx, input }) =>
+        db.restoreDeletionAuditLog(input.id, {
+          userId: ctx.user.id,
+          name: ctx.user.name ?? "Administrator",
+        })
+      ),
   }),
 
   dashboard: router({

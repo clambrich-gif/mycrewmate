@@ -2,31 +2,68 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import type { Request } from "express";
 
 export const DEFAULT_EVENT_YEAR = 2026;
-export const MIN_EVENT_YEAR = 2020;
-export const MAX_EVENT_YEAR = 2100;
+export const DEFAULT_EVENT_ID = 1;
 
-const yearStorage = new AsyncLocalStorage<number>();
+export type PlanningScope = {
+  year: number;
+  eventId: number;
+};
+
+const planningScopeStorage = new AsyncLocalStorage<PlanningScope>();
 
 export function normalizeEventYear(value: unknown) {
   const year = Number(value);
-  if (
-    !Number.isInteger(year) ||
-    year < MIN_EVENT_YEAR ||
-    year > MAX_EVENT_YEAR
-  ) {
-    return DEFAULT_EVENT_YEAR;
-  }
-  return year;
+  return Number.isInteger(year) && year >= 2020 && year <= 2100
+    ? year
+    : DEFAULT_EVENT_YEAR;
+}
+
+export function normalizeEventId(value: unknown) {
+  const eventId = Number(value);
+  return Number.isInteger(eventId) && eventId > 0 ? eventId : DEFAULT_EVENT_ID;
+}
+
+export function requestedPlanningScope(req: Request): PlanningScope {
+  return {
+    year: normalizeEventYear(req.headers["x-event-year"]),
+    eventId: normalizeEventId(req.headers["x-event-id"]),
+  };
 }
 
 export function requestedEventYear(req: Request) {
-  return normalizeEventYear(req.headers["x-event-year"]);
+  return requestedPlanningScope(req).year;
 }
 
-export function currentEventYear() {
-  return yearStorage.getStore() ?? DEFAULT_EVENT_YEAR;
+export function requestedEventId(req: Request) {
+  return requestedPlanningScope(req).eventId;
+}
+
+export function withPlanningScope<T>(scope: PlanningScope, callback: () => T) {
+  return planningScopeStorage.run(scope, callback);
 }
 
 export function withEventYear<T>(year: number, callback: () => T) {
-  return yearStorage.run(normalizeEventYear(year), callback);
+  return withPlanningScope(
+    { year: normalizeEventYear(year), eventId: DEFAULT_EVENT_ID },
+    callback
+  );
+}
+
+export function withEventScope<T>(
+  year: number,
+  eventId: number,
+  callback: () => T
+) {
+  return withPlanningScope(
+    { year: normalizeEventYear(year), eventId: normalizeEventId(eventId) },
+    callback
+  );
+}
+
+export function currentEventYear() {
+  return planningScopeStorage.getStore()?.year ?? DEFAULT_EVENT_YEAR;
+}
+
+export function currentEventId() {
+  return planningScopeStorage.getStore()?.eventId ?? DEFAULT_EVENT_ID;
 }

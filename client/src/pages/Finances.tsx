@@ -3,6 +3,7 @@ import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { useEventYear } from "@/contexts/YearContext";
 import { trpc } from "@/lib/trpc";
 import { Trash2 } from "lucide-react";
 import { useState } from "react";
@@ -14,6 +15,7 @@ export default function Finances() {
   const utils = trpc.useUtils();
   const listUtils = utils.finances.list;
   const { user } = useAuth();
+  const { year, eventId } = useEventYear();
   const { data: rows = [], isLoading } = trpc.finances.list.useQuery();
   const [category, setCategory] = useState("");
 
@@ -28,7 +30,8 @@ export default function Finances() {
         ...(current ?? []),
         {
           id: optimisticId,
-          year: 0,
+          year,
+          eventId,
           category: input.category,
           income: input.incomeCents ?? 0,
           expense: input.expenseCents ?? 0,

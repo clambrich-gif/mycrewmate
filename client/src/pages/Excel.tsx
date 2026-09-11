@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useEventYear } from "@/contexts/YearContext";
+import { safeDownloadName } from "@/lib/download";
 import { trpc } from "@/lib/trpc";
 import {
   AlertTriangle,
@@ -28,7 +29,10 @@ import type { ExcelImportPreview } from "../../../server/import-preview";
 
 export default function Excel() {
   const { user } = useAuth();
-  const { year } = useEventYear();
+  const { year, eventId } = useEventYear();
+  const { data: events = [] } = trpc.events.list.useQuery();
+  const eventName =
+    events.find(item => item.id === eventId)?.name ?? "Veranstaltung";
   const fileRef = useRef<HTMLInputElement>(null);
   const [filename, setFilename] = useState("");
   const [base64, setBase64] = useState("");
@@ -166,7 +170,7 @@ export default function Excel() {
     });
     const anchor = document.createElement("a");
     anchor.href = URL.createObjectURL(blob);
-    anchor.download = `MyEifelRide_Planung_${year}.xlsx`;
+    anchor.download = `${safeDownloadName(eventName)}_Planung_${year}.xlsx`;
     anchor.click();
     URL.revokeObjectURL(anchor.href);
   };
@@ -188,7 +192,7 @@ export default function Excel() {
       <div>
         <h1 className="text-2xl font-bold">Excel Import / Export</h1>
         <p className="text-muted-foreground">
-          Import und Export beziehen sich ausschließlich auf das gewählte
+          Import und Export beziehen sich ausschließlich auf {eventName} im
           Veranstaltungsjahr {year}.
         </p>
       </div>

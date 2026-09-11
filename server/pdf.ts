@@ -12,6 +12,7 @@ import type {
 import * as db from "./db";
 import { DAYS, evaluateShifts, toMinutes, type Day } from "./logic";
 import { currentEventYear } from "./year-context";
+import { storageGetSignedUrl } from "./storage";
 
 const require = createRequire(import.meta.url);
 const { ZipArchive } = require("archiver") as {
@@ -26,6 +27,8 @@ export const DEFAULT_PDF_SETTINGS = {
   blankPlanTitle: "Einsatzplan – Blanko",
   contactLabel: "Ansprechpartner",
   footerText: "",
+  logoKey: null,
+  logoUrl: null,
   extraColumns: "[]",
   blankRowsPerShift: 0,
   updatedAt: new Date(0),
@@ -38,6 +41,7 @@ type PlanningData = {
   assignments: Assignment[];
   areaContacts?: ShiftAreaContact[];
   settings: AppSettings;
+  logoBuffer?: Buffer;
 };
 
 type PdfColumn = {
@@ -69,7 +73,7 @@ function collectPdf(
       layout,
       margin,
       bufferPages: true,
-      info: { Creator: "MyEifelRide Helfer-Planung" },
+      info: { Creator: "RSC Helferplanung" },
     });
     const chunks: Buffer[] = [];
     doc.on("data", chunk => chunks.push(Buffer.from(chunk)));
@@ -144,21 +148,47 @@ function drawDocumentHeader(
   doc: PDFKit.PDFDocument,
   settings: AppSettings,
   title: string,
-  subtitle?: string
+  subtitle?: string,
+  logoBuffer?: Buffer
 ) {
-  doc.font("Helvetica-Bold").fontSize(21).fillColor(colors.ink).text(title);
+  const headerTop = doc.y;
+  if (logoBuffer) {
+    try {
+      doc.image(
+        logoBuffer,
+        doc.page.width - doc.page.margins.right - 64,
+        headerTop,
+        {
+          fit: [64, 64],
+          align: "right",
+        }
+      );
+    } catch {
+      // Ein beschädigtes Logo darf den operativen PDF-Export nicht blockieren.
+    }
+  }
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(21)
+    .fillColor(colors.ink)
+    .text(title, { width: logoBuffer ? contentWidth - 84 : contentWidth });
   doc.moveDown(0.55);
   doc
     .font("Helvetica-Bold")
     .fontSize(13)
     .fillColor(colors.accent)
-    .text(`${settings.eventName} ${settings.eventYear}`.trim());
+    .text(`${settings.eventName} ${settings.eventYear}`.trim(), {
+      width: logoBuffer ? contentWidth - 84 : contentWidth,
+    });
   doc.moveDown(0.25);
   doc
     .font("Helvetica")
     .fontSize(9)
     .fillColor(colors.muted)
-    .text(subtitle ?? `Stand: ${formatDate()} (aus Helferplanung)`);
+    .text(subtitle ?? `Stand: ${formatDate()} (aus Helferplanung)`, {
+      width: logoBuffer ? contentWidth - 84 : contentWidth,
+    });
+  if (logoBuffer) doc.y = Math.max(doc.y, headerTop + 68);
   doc.moveDown(0.7);
   doc
     .strokeColor(colors.line)
@@ -283,7 +313,9 @@ export function renderHelperTaskPdf(data: PlanningData, helperId: number) {
     drawDocumentHeader(
       doc,
       data.settings,
-      `${data.settings.helperPdfTitle} – ${helper.name}`
+      `${data.settings.helperPdfTitle} – ${helper.name}`,
+      undefined,
+      data.logoBuffer
     );
     doc
       .font("Helvetica-Bold")
@@ -459,7 +491,8 @@ export function renderPlanPdf(
       options.mode === "blank"
         ? data.settings.blankPlanTitle
         : `${data.settings.eventName} – ausgefüllter Einsatzplan`,
-      `Stand: ${formatDate()} · ${options.mode === "blank" ? "frei ausfüllbare Planung" : "aktuelle Helfereinteilung"}`
+      `Stand: ${formatDate()} · ${options.mode === "blank" ? "frei ausfüllbare Planung" : "aktuelle Helfereinteilung"}`,
+      data.logoBuffer
     );
     const fixedColumns: PdfColumn[] = [
       { key: "day", label: "Tag", width: 48 },
@@ -562,25 +595,46 @@ export function renderBlankPlanPdf(data: PlanningData) {
 }
 
 async function loadPlanningData(): Promise<PlanningData> {
-  const [helpers, contacts, shifts, assignments, areaContacts, settings] =
-    await Promise.all([
-      db.listHelpers(),
-      db.listContacts(),
-      db.listShifts(),
-      db.listAssignments(),
-      db.listShiftAreaContacts(),
-      db.getAppSettings(),
-    ]);
+  const [
+    helpers,
+    contacts,
+    shifts,
+    assignments,
+    areaContacts,
+    settings,
+    selectedEvent,
+  ] = await Promise.all([
+    db.listHelpers(),
+    db.listContacts(),
+    db.listShifts(),
+    db.listAssignments(),
+    db.listShiftAreaContacts(),
+    db.getAppSettings(),
+    db.getEvent(),
+  ]);
+  const resolvedSettings = {
+    ...(settings ?? DEFAULT_PDF_SETTINGS),
+    eventName: selectedEvent?.name ?? settings?.eventName ?? "Veranstaltung",
+    eventYear: String(currentEventYear()),
+  };
+  let logoBuffer: Buffer | undefined;
+  if (resolvedSettings.logoKey) {
+    try {
+      const signedUrl = await storageGetSignedUrl(resolvedSettings.logoKey);
+      const response = await fetch(signedUrl);
+      if (response.ok) logoBuffer = Buffer.from(await response.arrayBuffer());
+    } catch (error) {
+      console.warn("[PDF] Logo konnte nicht geladen werden:", error);
+    }
+  }
   return {
     helpers,
     contacts,
     shifts,
     assignments,
     areaContacts,
-    settings: {
-      ...(settings ?? DEFAULT_PDF_SETTINGS),
-      eventYear: String(currentEventYear()),
-    },
+    settings: resolvedSettings,
+    logoBuffer,
   };
 }
 

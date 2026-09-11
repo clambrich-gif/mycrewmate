@@ -7,10 +7,10 @@ export type PermissionRow = {
 
 export const PERMISSION_MATRIX: readonly PermissionRow[] = [
   {
-    area: "Dashboard & Jahresauswahl",
-    planningTeam: "Ansehen und Jahr auswählen",
+    area: "Dashboard, Jahre & Veranstaltungen",
+    planningTeam: "Ansehen und auswählen",
     administrator: "Vollzugriff",
-    note: "Neue Jahre und die Vorjahresübernahme sind administrativ geschützt.",
+    note: "Neue Jahre, mehrere Veranstaltungen je Jahr und die Planübernahme sind administrativ geschützt.",
   },
   {
     area: "Ansprechpartner",
@@ -75,7 +75,7 @@ export const PERMISSION_MATRIX: readonly PermissionRow[] = [
   {
     area: "Löschprotokoll",
     planningTeam: "Kein Zugriff",
-    administrator: "Ansehen und zurücksetzen",
-    note: "Das Protokoll zeigt Helfer- und Kuchenlöschungen einschließlich des ausgewählten Ansprechpartners. Zurücksetzen erfordert das Administratorpasswort.",
+    administrator: "Ansehen, wiederherstellen und zurücksetzen",
+    note: "Einzellöschungen können gezielt rückgängig gemacht werden. Das vollständige Zurücksetzen des Protokolls erfordert das Administratorpasswort.",
   },
 ];

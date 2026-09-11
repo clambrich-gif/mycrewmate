@@ -42,18 +42,36 @@ export const eventYears = mysqlTable("event_years", {
 });
 export type EventYear = typeof eventYears.$inferSelect;
 
+export const events = mysqlTable(
+  "events",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    year: int("year").notNull(),
+    name: varchar("name", { length: 200 }).notNull(),
+    sortOrder: int("sortOrder").default(0).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [uniqueIndex("events_year_name_unique").on(table.year, table.name)]
+);
+export type Event = typeof events.$inferSelect;
+
 export const contacts = mysqlTable(
   "contacts",
   {
     id: int("id").autoincrement().primaryKey(),
     year: int("year").default(2026).notNull(),
+    eventId: int("eventId")
+      .notNull()
+      .references(() => events.id),
     name: varchar("name", { length: 200 }).notNull(),
     phone: varchar("phone", { length: 64 }),
     note: text("note"),
     sortOrder: int("sortOrder").default(0).notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
-  table => [uniqueIndex("contacts_year_name_unique").on(table.year, table.name)]
+  table => [
+    uniqueIndex("contacts_event_name_unique").on(table.eventId, table.name),
+  ]
 );
 export type Contact = typeof contacts.$inferSelect;
 export type InsertContact = typeof contacts.$inferInsert;
@@ -63,6 +81,9 @@ export const helpers = mysqlTable(
   {
     id: int("id").autoincrement().primaryKey(),
     year: int("year").default(2026).notNull(),
+    eventId: int("eventId")
+      .notNull()
+      .references(() => events.id),
     contactId: int("contactId").references(() => contacts.id, {
       onDelete: "set null",
     }),
@@ -83,7 +104,9 @@ export const helpers = mysqlTable(
     confirmed: mysqlEnum("confirmed", ["ja", "nein"]).default("nein").notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
-  table => [uniqueIndex("helpers_year_name_unique").on(table.year, table.name)]
+  table => [
+    uniqueIndex("helpers_event_name_unique").on(table.eventId, table.name),
+  ]
 );
 export type Helper = typeof helpers.$inferSelect;
 export type InsertHelper = typeof helpers.$inferInsert;
@@ -91,6 +114,9 @@ export type InsertHelper = typeof helpers.$inferInsert;
 export const shifts = mysqlTable("shifts", {
   id: int("id").autoincrement().primaryKey(),
   year: int("year").default(2026).notNull(),
+  eventId: int("eventId")
+    .notNull()
+    .references(() => events.id),
   day: mysqlEnum("day", ["Freitag", "Samstag", "Sonntag"]).notNull(),
   area: varchar("area", { length: 200 }).notNull(),
   task: varchar("task", { length: 300 }).notNull(),
@@ -109,6 +135,9 @@ export const shiftAreaContacts = mysqlTable(
   {
     id: int("id").autoincrement().primaryKey(),
     year: int("year").default(2026).notNull(),
+    eventId: int("eventId")
+      .notNull()
+      .references(() => events.id),
     area: varchar("area", { length: 200 }).notNull(),
     contactId: int("contactId").references(() => contacts.id, {
       onDelete: "set null",
@@ -116,8 +145,8 @@ export const shiftAreaContacts = mysqlTable(
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
   table => [
-    uniqueIndex("shift_area_contacts_year_area_unique").on(
-      table.year,
+    uniqueIndex("shift_area_contacts_event_area_unique").on(
+      table.eventId,
       table.area
     ),
   ]
@@ -164,6 +193,8 @@ export const appSettings = mysqlTable("app_settings", {
     .default("Ansprechpartner")
     .notNull(),
   footerText: varchar("footerText", { length: 300 }).default("").notNull(),
+  logoKey: varchar("logoKey", { length: 500 }),
+  logoUrl: varchar("logoUrl", { length: 700 }),
   extraColumns: text("extraColumns").notNull(),
   blankRowsPerShift: int("blankRowsPerShift").default(0).notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -180,6 +211,10 @@ export const securitySettings = mysqlTable("security_settings", {
 export const deletionAuditLogs = mysqlTable("deletion_audit_logs", {
   id: int("id").autoincrement().primaryKey(),
   year: int("year").notNull(),
+  eventId: int("eventId").references(() => events.id, {
+    onDelete: "set null",
+  }),
+  eventName: varchar("eventName", { length: 200 }),
   entityType: mysqlEnum("entityType", ["helper", "cake"]).notNull(),
   entityId: int("entityId").notNull(),
   entityLabel: varchar("entityLabel", { length: 300 }).notNull(),
@@ -196,12 +231,18 @@ export const deletionAuditLogs = mysqlTable("deletion_audit_logs", {
   responsibleContactName: varchar("responsibleContactName", { length: 200 }),
   details: text("details"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
+  restoredAt: timestamp("restoredAt"),
+  restoredByUserId: int("restoredByUserId"),
+  restoredByName: varchar("restoredByName", { length: 200 }),
 });
 export type DeletionAuditLog = typeof deletionAuditLogs.$inferSelect;
 
 export const prepTasks = mysqlTable("prep_tasks", {
   id: int("id").autoincrement().primaryKey(),
   year: int("year").default(2026).notNull(),
+  eventId: int("eventId")
+    .notNull()
+    .references(() => events.id),
   task: varchar("task", { length: 300 }).notNull(),
   dueText: varchar("dueText", { length: 200 }).default("").notNull(),
   contactId: int("contactId").references(() => contacts.id, {
@@ -218,6 +259,9 @@ export type PrepTask = typeof prepTasks.$inferSelect;
 export const postTasks = mysqlTable("post_tasks", {
   id: int("id").autoincrement().primaryKey(),
   year: int("year").default(2026).notNull(),
+  eventId: int("eventId")
+    .notNull()
+    .references(() => events.id),
   task: varchar("task", { length: 300 }).notNull(),
   contactId: int("contactId").references(() => contacts.id, {
     onDelete: "set null",
@@ -233,6 +277,9 @@ export type PostTask = typeof postTasks.$inferSelect;
 export const materials = mysqlTable("materials", {
   id: int("id").autoincrement().primaryKey(),
   year: int("year").default(2026).notNull(),
+  eventId: int("eventId")
+    .notNull()
+    .references(() => events.id),
   article: varchar("article", { length: 300 }).notNull(),
   category: varchar("category", { length: 120 }).default("").notNull(),
   quantity: varchar("quantity", { length: 40 }).default("").notNull(),
@@ -249,6 +296,9 @@ export type Material = typeof materials.$inferSelect;
 export const marketing = mysqlTable("marketing", {
   id: int("id").autoincrement().primaryKey(),
   year: int("year").default(2026).notNull(),
+  eventId: int("eventId")
+    .notNull()
+    .references(() => events.id),
   measure: varchar("measure", { length: 300 }).notNull(),
   channel: varchar("channel", { length: 160 }).default("").notNull(),
   contactId: int("contactId").references(() => contacts.id, {
@@ -265,6 +315,9 @@ export type Marketing = typeof marketing.$inferSelect;
 export const approvals = mysqlTable("approvals", {
   id: int("id").autoincrement().primaryKey(),
   year: int("year").default(2026).notNull(),
+  eventId: int("eventId")
+    .notNull()
+    .references(() => events.id),
   request: varchar("request", { length: 300 }).notNull(),
   contactId: int("contactId").references(() => contacts.id, {
     onDelete: "set null",
@@ -280,6 +333,9 @@ export type Approval = typeof approvals.$inferSelect;
 export const cakes = mysqlTable("cakes", {
   id: int("id").autoincrement().primaryKey(),
   year: int("year").default(2026).notNull(),
+  eventId: int("eventId")
+    .notNull()
+    .references(() => events.id),
   donor: varchar("donor", { length: 200 }).notNull(),
   cake: varchar("cake", { length: 200 }).default("").notNull(),
   dropoffTime: varchar("dropoffTime", { length: 60 }).default("").notNull(),
@@ -291,6 +347,9 @@ export type Cake = typeof cakes.$inferSelect;
 export const finances = mysqlTable("finances", {
   id: int("id").autoincrement().primaryKey(),
   year: int("year").default(2026).notNull(),
+  eventId: int("eventId")
+    .notNull()
+    .references(() => events.id),
   category: varchar("category", { length: 160 }).notNull(),
   income: int("incomeCents").default(0).notNull(),
   expense: int("expenseCents").default(0).notNull(),

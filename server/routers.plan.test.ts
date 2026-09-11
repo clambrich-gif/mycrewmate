@@ -14,6 +14,8 @@ const dbMocks = vi.hoisted(() => ({
   deleteCake: vi.fn(),
   createPrep: vi.fn(),
   listDeletionAuditLogs: vi.fn(),
+  restoreDeletionAuditLog: vi.fn(),
+  getEvent: vi.fn(),
   getContact: vi.fn(),
   listShiftAreaContacts: vi.fn(),
   setShiftAreaContact: vi.fn(),
@@ -79,6 +81,13 @@ describe("Planungs-API", () => {
     dbMocks.listAssignments.mockResolvedValue([]);
     dbMocks.assignHelper.mockResolvedValue({ insertId: 1 });
     dbMocks.getContact.mockResolvedValue({ id: 5, name: "Chris Leitung" });
+    dbMocks.getEvent.mockResolvedValue({
+      id: 1,
+      year: 2026,
+      name: "MyEifelRide",
+      sortOrder: 0,
+      createdAt: new Date(),
+    });
   });
 
   it("weist ungültige oder unvollständige Schichtzeiten zurück", async () => {
@@ -270,6 +279,27 @@ describe("Planungs-API", () => {
       appRouter.createCaller(ctx).audit.deletions({ limit: 10 })
     ).resolves.toEqual([{ id: 1, entityType: "helper", entityLabel: "Alex" }]);
     expect(dbMocks.listDeletionAuditLogs).toHaveBeenCalledWith({ limit: 10 });
+  });
+
+  it("stellt Einzellöschungen ausschließlich für Administratoren wieder her", async () => {
+    dbMocks.restoreDeletionAuditLog.mockResolvedValue({
+      entityType: "helper",
+      entityLabel: "Alex",
+      eventName: "MyEifelRide",
+      restoredAssignments: 1,
+      skippedAssignments: 0,
+    });
+
+    await expect(
+      appRouter.createCaller(planningTeamCtx).audit.restore({ id: 7 })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(
+      appRouter.createCaller(ctx).audit.restore({ id: 7 })
+    ).resolves.toMatchObject({ entityLabel: "Alex", restoredAssignments: 1 });
+    expect(dbMocks.restoreDeletionAuditLog).toHaveBeenCalledWith(
+      7,
+      expect.objectContaining({ userId: 1, name: "Organisation" })
+    );
   });
 
   it("verweigert dem Planungsteam jede Einsatzplanänderung", async () => {

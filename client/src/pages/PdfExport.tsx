@@ -15,6 +15,7 @@ import { trpc } from "@/lib/trpc";
 import {
   Download,
   FileArchive,
+  ImageUp,
   ListFilter,
   Plus,
   Save,
@@ -99,6 +100,37 @@ export default function PdfExport() {
       downloadBase64File(result.base64, result.mimeType, result.filename),
     onError: error => toast.error(error.message),
   });
+  const uploadLogo = trpc.pdf.uploadLogo.useMutation({
+    onSuccess: async () => {
+      await utils.pdf.settings.invalidate();
+      toast.success("Logo gespeichert und für alle Helfer-PDFs aktiviert");
+    },
+    onError: error => toast.error(error.message),
+  });
+
+  const onLogoSelected = (file?: File) => {
+    if (!file) return;
+    if (!(["image/png", "image/jpeg"] as string[]).includes(file.type)) {
+      toast.error("Bitte ein PNG- oder JPEG-Logo auswählen");
+      return;
+    }
+    if (file.size > 3_000_000) {
+      toast.error("Das Logo darf höchstens 3 MB groß sein");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result ?? "");
+      const base64 = dataUrl.split(",")[1];
+      if (!base64) return toast.error("Logo konnte nicht gelesen werden");
+      uploadLogo.mutate({
+        base64,
+        mimeType: file.type as "image/png" | "image/jpeg",
+      });
+    };
+    reader.onerror = () => toast.error("Logo konnte nicht gelesen werden");
+    reader.readAsDataURL(file);
+  };
 
   const areas = Array.from(new Set(plan.map(item => item.shift.area))).sort();
   const mappedContactIds = Array.from(
@@ -414,26 +446,59 @@ export default function PdfExport() {
             </p>
           ) : (
             <>
+              <div className="rounded-xl border bg-muted/30 p-4">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                  <div className="grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-xl border bg-white">
+                    {settings?.logoUrl ? (
+                      <img
+                        src={settings.logoUrl}
+                        alt="Aktuelles PDF-Logo"
+                        className="h-full w-full object-contain p-1"
+                      />
+                    ) : (
+                      <ImageUp className="h-8 w-8 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div>
+                      <Label htmlFor="pdf-logo">
+                        Vereinslogo auf allen Helfer-PDFs
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        PNG oder JPEG bis 3 MB. Das Logo gilt für alle
+                        Veranstaltungen und erscheint oben rechts in jeder
+                        einzelnen und jeder gesammelt erzeugten Helferübersicht.
+                      </p>
+                    </div>
+                    <Input
+                      id="pdf-logo"
+                      type="file"
+                      accept="image/png,image/jpeg"
+                      disabled={uploadLogo.isPending}
+                      onChange={event =>
+                        onLogoSelected(event.target.files?.[0])
+                      }
+                    />
+                    {uploadLogo.isPending && (
+                      <p className="text-xs font-medium text-primary">
+                        Logo wird hochgeladen …
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label htmlFor="event-name">Veranstaltungsname</Label>
-                  <Input
-                    id="event-name"
-                    value={form.eventName}
-                    onChange={event =>
-                      updateField("eventName", event.target.value)
-                    }
-                  />
+                  <Input id="event-name" value={form.eventName} disabled />
+                  <p className="text-xs text-muted-foreground">
+                    Wird aus der oben gewählten Veranstaltung übernommen.
+                  </p>
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="event-year">Jahr / Zusatz</Label>
-                  <Input
-                    id="event-year"
-                    value={form.eventYear}
-                    onChange={event =>
-                      updateField("eventYear", event.target.value)
-                    }
-                  />
+                  <Input id="event-year" value={form.eventYear} disabled />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="helper-title">Titel der Helfer-PDFs</Label>
