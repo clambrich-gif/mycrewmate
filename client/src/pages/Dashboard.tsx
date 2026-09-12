@@ -37,6 +37,7 @@ function MetricCardView({
   metric: MetricCard;
   openTarget: (target: DashboardTarget) => void;
 }) {
+  const isEmpty = metric.value === 0;
   const interactiveCardClass =
     metric.urgency === "red"
       ? "border-red-300 bg-red-50/90 group-hover:border-red-500 group-hover:shadow-red-200/70 group-focus-visible:border-red-500 group-focus-visible:ring-red-500"
@@ -52,21 +53,33 @@ function MetricCardView({
   const card = (
     <Card
       className={`h-full min-w-0 text-slate-950 shadow-sm ${
-        metric.target
+        isEmpty
+          ? "border-slate-200 bg-slate-100/90 text-slate-400 opacity-70"
+          : metric.target
           ? `${interactiveCardClass} transition-[border-color,box-shadow,transform] duration-150 group-hover:shadow-md group-active:scale-[0.99] group-focus-visible:ring-2 group-focus-visible:ring-offset-2`
           : "border-slate-200 bg-white"
       }`}
     >
       <CardHeader className="min-w-0 p-3 pb-1 sm:p-6 sm:pb-1">
-        <CardTitle className="min-w-0 break-words text-xs leading-snug font-medium whitespace-normal text-slate-600 sm:text-sm">
+        <CardTitle
+          className={`min-w-0 break-words text-xs leading-snug font-medium whitespace-normal sm:text-sm ${
+            isEmpty ? "text-slate-400" : "text-slate-600"
+          }`}
+        >
           {metric.label}
         </CardTitle>
       </CardHeader>
       <CardContent className="flex min-w-0 flex-wrap items-end justify-between gap-1 p-3 pt-0 sm:p-6 sm:pt-0">
-        <span className="text-2xl font-bold sm:text-3xl">{metric.value}</span>
+        <span
+          className={`text-2xl font-bold sm:text-3xl ${
+            isEmpty ? "text-slate-400" : ""
+          }`}
+        >
+          {metric.value}
+        </span>
         <span className="flex flex-col items-end gap-1">
-          {metric.badge && <StatusBadge status={metric.badge} />}
-          {metric.target && (
+          {!isEmpty && metric.badge && <StatusBadge status={metric.badge} />}
+          {!isEmpty && metric.target && (
             <span
               className={`flex items-center gap-1 text-[11px] font-semibold sm:text-xs ${actionClass}`}
             >
@@ -80,7 +93,7 @@ function MetricCardView({
   );
 
   const target = metric.target;
-  if (!target) return card;
+  if (!target || isEmpty) return card;
 
   return (
     <button
