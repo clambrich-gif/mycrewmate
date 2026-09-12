@@ -3,6 +3,7 @@ import express from "express";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
+import { registerBrandAssetRoutes } from "../brand-asset-routes";
 import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
@@ -35,6 +36,7 @@ async function startServer() {
   // Projekt- und Excel-Dateien plus Base64-/JSON-Overhead; größere Requests werden früh abgewiesen.
   app.use(express.json({ limit: "25mb" }));
   app.use(express.urlencoded({ limit: "25mb", extended: true }));
+  registerBrandAssetRoutes(app);
   registerHelpVideoRoutes(app);
   registerStorageProxy(app);
   registerOAuthRoutes(app);

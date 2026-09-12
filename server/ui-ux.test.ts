@@ -5,6 +5,17 @@ const source = (relativePath: string) =>
   readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
 describe("UI- und Mobile-UX-Regeln", () => {
+  it("lädt das RSC-Logo browserstabil über eine öffentliche Same-Origin-Route", () => {
+    const layout = source("client/src/components/Layout.tsx");
+
+    expect(layout).toContain('const RSC_LOGO = "/api/brand/rsc-logo"');
+    expect(layout).not.toContain(
+      "/manus-storage/rsc-eifelland-logo-chrome"
+    );
+    expect(layout.match(/src=\{RSC_LOGO\}/g)).toHaveLength(4);
+    expect(layout.match(/alt="RSC Eifelland(?: e\. V\.)?"/g)).toHaveLength(4);
+  });
+
   it("zeigt in der Hilfe ausschließlich das Video der aktiven Rolle", () => {
     const help = source("client/src/pages/Help.tsx");
 

@@ -48,7 +48,7 @@ import { FormEvent, lazy, Suspense, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
 
-const RSC_LOGO = "/manus-storage/rsc-eifelland-logo-chrome_25463ad8.png";
+const RSC_LOGO = "/api/brand/rsc-logo";
 
 const ProjectStorageControls = lazy(() =>
   import("@/components/ProjectStorageControls").then(module => ({
