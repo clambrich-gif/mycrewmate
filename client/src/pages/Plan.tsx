@@ -25,11 +25,19 @@ import { Label } from "@/components/ui/label";
 import { CopyPreviousPlanButton } from "@/components/CopyPreviousPlanButton";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { shiftsOverlap, type ShiftTimeLike } from "@shared/shift-time";
 import {
   eventWeekdays,
   helperAvailableOnDay,
+  WEEKDAY_AVAILABILITY_FIELDS,
+  WEEKDAY_SHORT_LABELS,
   WEEKDAYS,
+  type AvailabilityValue,
   type Weekday,
 } from "@shared/weekdays";
 
@@ -51,6 +59,12 @@ type DropdownShift = ShiftTimeLike & {
   task: string;
   startTime: string;
   endTime: string;
+};
+
+const AVAILABILITY_CLASS: Record<AvailabilityValue, string> = {
+  ja: "text-emerald-300",
+  nein: "text-red-300",
+  vielleicht: "text-amber-300",
 };
 
 export default function Plan() {
@@ -353,22 +367,68 @@ export default function Plan() {
             : isDoppel
               ? "slot-doppel"
               : "slot-ok";
+          const note = helper?.note?.trim() ?? "";
           return (
-            <span
-              key={slot}
-              className={`slot ${className} inline-flex items-center justify-between gap-1`}
-            >
-              <span className="truncate">{helper ? label(helper) : "?"}</span>
-              {canEditPlan && (
-                <button
-                  className="opacity-60 hover:opacity-100"
-                  title="Entfernen"
-                  onClick={() => unassign.mutate({ id: a.id })}
+            <Tooltip key={slot} delayDuration={800} disableHoverableContent>
+              <TooltipTrigger asChild>
+                <span
+                  className={`slot ${className} inline-flex items-center justify-between gap-1`}
+                  tabIndex={0}
                 >
-                  ×
-                </button>
+                  <span className="truncate">
+                    {helper ? label(helper) : "?"}
+                  </span>
+                  {canEditPlan && (
+                    <button
+                      className="opacity-60 hover:opacity-100"
+                      title="Entfernen"
+                      onClick={() => unassign.mutate({ id: a.id })}
+                    >
+                      ×
+                    </button>
+                  )}
+                </span>
+              </TooltipTrigger>
+              {helper && (
+                <TooltipContent
+                  side="top"
+                  sideOffset={8}
+                  className="max-w-72 space-y-2 text-left"
+                >
+                  <p className="font-semibold">{helper.name}</p>
+                  <p>
+                    <span className="font-medium">Telefon Helfer:</span>{" "}
+                    {helper.phone?.trim() || "nicht hinterlegt"}
+                  </p>
+                  {note && (
+                    <>
+                      <p>
+                        <span className="font-medium">Hinweis für PDF:</span>{" "}
+                        {note}
+                      </p>
+                      <div>
+                        <p className="mb-1 font-medium">Verfügbarkeiten:</p>
+                        <div className="flex flex-wrap gap-x-2 gap-y-1">
+                          {activeDays.map(day => {
+                            const availability = helper[
+                              WEEKDAY_AVAILABILITY_FIELDS[day]
+                            ] as AvailabilityValue;
+                            return (
+                              <span
+                                key={day}
+                                className={AVAILABILITY_CLASS[availability]}
+                              >
+                                {WEEKDAY_SHORT_LABELS[day]}: {availability}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </TooltipContent>
               )}
-            </span>
+            </Tooltip>
           );
         })}
         {shift.needed === 0 && (
