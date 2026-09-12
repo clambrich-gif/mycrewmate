@@ -45,7 +45,7 @@ function detailText(entityType: "helper" | "cake", value: string | null) {
     if (entityType === "helper") {
       return [
         `Helfen: ${details.willHelp === "ja" ? "Ja" : "Nein"}`,
-        `Fr/Sa/So: ${details.availFri ?? "–"}/${details.availSat ?? "–"}/${details.availSun ?? "–"}`,
+        `Mo–So: ${details.availMon ?? "–"}/${details.availTue ?? "–"}/${details.availWed ?? "–"}/${details.availThu ?? "–"}/${details.availFri ?? "–"}/${details.availSat ?? "–"}/${details.availSun ?? "–"}`,
         `Bestätigt: ${details.confirmed === "ja" ? "Ja" : "Nein"}`,
         typeof details.assignmentCount === "number"
           ? `Einsätze: ${details.assignmentCount}`

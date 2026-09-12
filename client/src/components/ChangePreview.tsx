@@ -52,9 +52,11 @@ const fieldLabel: Record<string, string> = {
   dropoffTime: "Abgabezeit",
   income: "Einnahmen",
   expense: "Ausgaben",
+  activeDays: "Veranstaltungstage",
 };
 
 const areaLabel: Record<string, string> = {
+  VERANSTALTUNG: "Veranstaltung",
   ANSPRECHPARTNER: "Ansprechpartner",
   HELFER: "Helfer",
   EINSATZPLAN: "Einsatzplan",
@@ -70,6 +72,7 @@ const areaLabel: Record<string, string> = {
 
 function display(value: unknown) {
   if (value === null || value === undefined || value === "") return "–";
+  if (Array.isArray(value)) return value.join(", ");
   if (typeof value === "object") return "geänderter Bezug";
   const text = String(value);
   return text.length > 90 ? `${text.slice(0, 87)}…` : text;

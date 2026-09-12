@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import { downloadBase64File } from "@/lib/download";
 import { trpc } from "@/lib/trpc";
-import { WEEKDAYS, type Weekday } from "@shared/weekdays";
+import { eventWeekdays, type Weekday } from "@shared/weekdays";
 import {
   Download,
   FileArchive,
@@ -22,7 +22,7 @@ import {
   Save,
   Trash2,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 type SettingsForm = {
@@ -54,11 +54,16 @@ export default function PdfExport() {
     enabled: false,
   });
   const { data: plan = [] } = trpc.plan.evaluate.useQuery();
+  const { data: currentEvent } = trpc.events.current.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: areaContacts = [] } = trpc.plan.areaContacts.useQuery();
   const [form, setForm] = useState<SettingsForm>(EMPTY_FORM);
   const [planMode, setPlanMode] = useState<"blank" | "filled">("blank");
-  const [selectedDays, setSelectedDays] = useState<Weekday[]>([...WEEKDAYS]);
+  const activeDays = useMemo(
+    () => (currentEvent ? eventWeekdays(currentEvent.activeDays) : []),
+    [currentEvent?.activeDays]
+  );
+  const [selectedDays, setSelectedDays] = useState<Weekday[]>([]);
   const [selectedStatuses, setSelectedStatuses] = useState([
     "OFFEN",
     "KNAPP",
@@ -84,6 +89,10 @@ export default function PdfExport() {
       blankRowsPerShift: settings.blankRowsPerShift,
     });
   }, [settings]);
+
+  useEffect(() => {
+    setSelectedDays(activeDays);
+  }, [activeDays]);
 
   const save = trpc.pdf.updateSettings.useMutation({
     onSuccess: async () => {
@@ -269,7 +278,7 @@ export default function PdfExport() {
               <div className="space-y-2">
                 <Label>Tage</Label>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  {WEEKDAYS.map(value => (
+                  {activeDays.map(value => (
                     <label
                       key={value}
                       className="flex items-center gap-2 rounded-md border bg-background p-2 text-sm"

@@ -2,6 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
 import { ProjectStorageControls } from "@/components/ProjectStorageControls";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +30,7 @@ import { startLogin } from "@/const";
 import { useEventYear } from "@/contexts/YearContext";
 import { NAV } from "@/lib/nav";
 import { trpc } from "@/lib/trpc";
+import { WEEKDAYS, type Weekday } from "@shared/weekdays";
 import {
   Bike,
   CalendarRange,
@@ -66,6 +68,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [newYear, setNewYear] = useState(year + 1);
   const [newEventName, setNewEventName] = useState("");
+  const [newEventDays, setNewEventDays] = useState<Weekday[]>([
+    "Freitag",
+    "Samstag",
+    "Sonntag",
+  ]);
   const [editEventId, setEditEventId] = useState<number | null>(null);
   const [editEventName, setEditEventName] = useState("");
   const [deleteEventTarget, setDeleteEventTarget] = useState<{
@@ -116,6 +123,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       await utils.events.list.invalidate();
       setEventDialogOpen(false);
       setNewEventName("");
+      setNewEventDays(["Freitag", "Samstag", "Sonntag"]);
       selectEvent(result.id);
     },
     onError: error => toast.error(error.message),
@@ -673,27 +681,69 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={eventDialogOpen} onOpenChange={setEventDialogOpen}>
+      <Dialog
+        open={eventDialogOpen}
+        onOpenChange={open => {
+          setEventDialogOpen(open);
+          if (!open) {
+            setNewEventName("");
+            setNewEventDays(["Freitag", "Samstag", "Sonntag"]);
+          }
+        }}
+      >
         <DialogContent className="bg-white text-slate-950 dark:bg-slate-950 dark:text-slate-50">
           <DialogHeader>
             <DialogTitle>Veranstaltung für {year} anlegen</DialogTitle>
           </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="new-event-name">Name der Veranstaltung</Label>
-            <Input
-              id="new-event-name"
-              value={newEventName}
-              placeholder="z. B. Cross-Veranstaltung"
-              onChange={event => setNewEventName(event.target.value)}
-              onKeyDown={event => {
-                if (event.key === "Enter" && newEventName.trim().length >= 2) {
-                  createEvent.mutate({ name: newEventName });
-                }
-              }}
-            />
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-event-name">Name der Veranstaltung</Label>
+              <Input
+                id="new-event-name"
+                value={newEventName}
+                placeholder="z. B. Cross-Veranstaltung"
+                onChange={event => setNewEventName(event.target.value)}
+              />
+            </div>
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium">
+                Aktive Veranstaltungstage
+              </legend>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {WEEKDAYS.map(day => {
+                  const checked = newEventDays.includes(day);
+                  return (
+                    <label
+                      key={day}
+                      className="flex cursor-pointer items-center gap-2 rounded-md border bg-white px-3 py-2 text-sm dark:bg-slate-900"
+                    >
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={value =>
+                          setNewEventDays(current =>
+                            value
+                              ? WEEKDAYS.filter(item =>
+                                  new Set([...current, day]).has(item)
+                                )
+                              : current.filter(item => item !== day)
+                          )
+                        }
+                      />
+                      {day}
+                    </label>
+                  );
+                })}
+              </div>
+              {newEventDays.length === 0 && (
+                <p className="text-sm font-medium text-red-700">
+                  Bitte mindestens einen Veranstaltungstag auswählen.
+                </p>
+              )}
+            </fieldset>
             <p className="text-sm text-muted-foreground">
               Die neue Veranstaltung erhält im Jahr {year} einen vollständig
-              eigenen Datenbestand.
+              eigenen Datenbestand. Helferverfügbarkeiten und Einsatzplan
+              verwenden nur die ausgewählten Tage.
             </p>
           </div>
           <DialogFooter>
@@ -701,8 +751,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
               Abbrechen
             </Button>
             <Button
-              disabled={newEventName.trim().length < 2 || createEvent.isPending}
-              onClick={() => createEvent.mutate({ name: newEventName })}
+              disabled={
+                newEventName.trim().length < 2 ||
+                newEventDays.length === 0 ||
+                createEvent.isPending
+              }
+              onClick={() =>
+                createEvent.mutate({
+                  name: newEventName,
+                  activeDays: newEventDays,
+                })
+              }
             >
               <Plus className="mr-2 h-4 w-4" />
               Veranstaltung anlegen
@@ -749,6 +808,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 ) : (
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-medium">{item.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {item.activeDays.join(", ")}
+                    </div>
                     {item.id === eventId && (
                       <div className="text-xs text-primary">
                         Aktuell ausgewählt

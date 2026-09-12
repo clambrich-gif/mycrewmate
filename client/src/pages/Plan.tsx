@@ -1,5 +1,5 @@
 import { trpc } from "@/lib/trpc";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -26,7 +26,12 @@ import { CopyPreviousPlanButton } from "@/components/CopyPreviousPlanButton";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 import { shiftsOverlap, type ShiftTimeLike } from "@shared/shift-time";
-import { helperAvailableOnDay, WEEKDAYS, type Weekday } from "@shared/weekdays";
+import {
+  eventWeekdays,
+  helperAvailableOnDay,
+  WEEKDAYS,
+  type Weekday,
+} from "@shared/weekdays";
 
 const formatTimeLabel = (shift: { startTime: string; endTime: string }) =>
   shift.startTime && shift.endTime
@@ -55,12 +60,22 @@ export default function Plan() {
   const { data: evals = [], isLoading } = trpc.plan.evaluate.useQuery();
   const { data: helpers = [] } = trpc.helpers.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
+  const { data: currentEvent, isLoading: isEventLoading } =
+    trpc.events.current.useQuery();
   const { data: areaContactRows = [] } = trpc.plan.areaContacts.useQuery();
+  const activeDays = useMemo(
+    () => (currentEvent ? eventWeekdays(currentEvent.activeDays) : []),
+    [currentEvent?.activeDays]
+  );
   const [day, setDay] = useState<string>("alle");
   const [area, setArea] = useState<string>("alle");
   const [status, setStatus] = useState<string>("alle");
   const [apFilter, setApFilter] = useState<string>("alle");
   const [q, setQ] = useState("");
+
+  useEffect(() => {
+    if (day !== "alle" && !activeDays.includes(day as Weekday)) setDay("alle");
+  }, [activeDays, day]);
 
   const invalidate = () => {
     utils.plan.evaluate.invalidate();
@@ -116,7 +131,7 @@ export default function Plan() {
     needed: number;
     note: string;
   }>({
-    day: "Freitag",
+    day: WEEKDAYS[0],
     area: "",
     task: "",
     startTime: "",
@@ -125,9 +140,10 @@ export default function Plan() {
     note: "",
   });
   const openCreate = () => {
+    if (!activeDays.length) return;
     setEditShift(null);
     setForm({
-      day: "Freitag",
+      day: activeDays[0],
       area: "",
       task: "",
       startTime: "",
@@ -377,7 +393,10 @@ export default function Plan() {
           <ModuleExcelImportButton area="EINSATZPLAN" label="Einsatzplan" />
           <CopyPreviousPlanButton />
           <ResetAreaButton area="shifts" label="Einsatzplan" />
-          <Button onClick={openCreate}>
+          <Button
+            onClick={openCreate}
+            disabled={isEventLoading || !activeDays.length}
+          >
             <Plus className="h-4 w-4 mr-2" />
             Neue Schicht
           </Button>
@@ -468,7 +487,7 @@ export default function Plan() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="alle">Alle Tage</SelectItem>
-            {WEEKDAYS.map(d => (
+            {activeDays.map(d => (
               <SelectItem key={d} value={d}>
                 {d}
               </SelectItem>
@@ -742,7 +761,7 @@ export default function Plan() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {WEEKDAYS.map(d => (
+                    {activeDays.map(d => (
                       <SelectItem key={d} value={d}>
                         {d}
                       </SelectItem>

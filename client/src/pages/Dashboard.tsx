@@ -1,7 +1,7 @@
 import { StatusBadge } from "@/components/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { WEEKDAYS, WEEKDAY_SHORT_LABELS } from "@shared/weekdays";
+import { eventWeekdays, WEEKDAY_SHORT_LABELS } from "@shared/weekdays";
 
 type MetricCard = {
   label: string;
@@ -18,7 +18,10 @@ type MetricSection = {
 
 export default function Dashboard() {
   const { data: s, isLoading } = trpc.dashboard.stats.useQuery();
-  if (isLoading || !s)
+  const { data: currentEvent, isLoading: isEventLoading } =
+    trpc.events.current.useQuery();
+  const activeDays = currentEvent ? eventWeekdays(currentEvent.activeDays) : [];
+  if (isLoading || isEventLoading || !s || !currentEvent)
     return <div className="text-muted-foreground">Lade Dashboard …</div>;
 
   const sections: MetricSection[] = [
@@ -163,7 +166,7 @@ export default function Dashboard() {
               <thead>
                 <tr className="border-b text-left text-muted-foreground">
                   <th className="py-2">Helfer</th>
-                  {WEEKDAYS.map(day => (
+                  {activeDays.map(day => (
                     <th key={day} className="text-right" title={day}>
                       {WEEKDAY_SHORT_LABELS[day]}
                     </th>
@@ -175,7 +178,7 @@ export default function Dashboard() {
                 {s.auslastung.map(a => (
                   <tr key={a.name} className="border-b last:border-0">
                     <td className="py-2">{a.name}</td>
-                    {WEEKDAYS.map(day => (
+                    {activeDays.map(day => (
                       <td key={day} className="text-right">
                         {a.byDay[day]}
                       </td>
@@ -187,7 +190,7 @@ export default function Dashboard() {
                   <tr>
                     <td
                       className="py-3 text-muted-foreground"
-                      colSpan={WEEKDAYS.length + 2}
+                      colSpan={activeDays.length + 2}
                     >
                       Noch keine Helfer eingeteilt.
                     </td>

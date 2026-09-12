@@ -19,6 +19,11 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
+import {
+  eventWeekdays,
+  WEEKDAY_AVAILABILITY_FIELDS,
+  WEEKDAY_SHORT_LABELS,
+} from "@shared/weekdays";
 
 const YN = [
   { v: "ja", l: "Ja" },
@@ -75,7 +80,9 @@ export default function Helpers() {
   const { user } = useAuth();
   const { data: helpers = [], isLoading } = trpc.helpers.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
+  const { data: currentEvent } = trpc.events.current.useQuery();
   const { data: plan } = trpc.plan.evaluate.useQuery();
+  const activeDays = currentEvent ? eventWeekdays(currentEvent.activeDays) : [];
   const [name, setName] = useState("");
   const [filter, setFilter] = useState("");
   const [apFilter, setApFilter] = useState("alle");
@@ -334,29 +341,47 @@ export default function Helpers() {
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                {[
-                  ["Helfen?", "willHelp", helper.willHelp, YN],
-                  ["Freitag", "availFri", helper.availFri, YNV],
-                  ["Samstag", "availSat", helper.availSat, YNV],
-                  ["Sonntag", "availSun", helper.availSun, YNV],
-                  ["Bestätigt?", "confirmed", helper.confirmed, YN],
-                ].map(([title, field, value, options]) => (
-                  <div key={String(field)} className="space-y-1.5">
-                    <label className="text-xs font-medium">
-                      {String(title)}
-                    </label>
-                    <Sel
-                      value={String(value)}
-                      options={options as typeof YNV}
-                      onChange={next =>
-                        update.mutate({
-                          id: helper.id,
-                          [String(field)]: next,
-                        })
-                      }
-                    />
-                  </div>
-                ))}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Helfen?</label>
+                  <Sel
+                    value={helper.willHelp}
+                    options={YN}
+                    onChange={willHelp =>
+                      update.mutate({
+                        id: helper.id,
+                        willHelp: willHelp as "ja" | "nein",
+                      })
+                    }
+                  />
+                </div>
+                {activeDays.map(day => {
+                  const field = WEEKDAY_AVAILABILITY_FIELDS[day];
+                  return (
+                    <div key={day} className="space-y-1.5">
+                      <label className="text-xs font-medium">{day}</label>
+                      <Sel
+                        value={helper[field]}
+                        options={YNV}
+                        onChange={value =>
+                          update.mutate({ id: helper.id, [field]: value })
+                        }
+                      />
+                    </div>
+                  );
+                })}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Bestätigt?</label>
+                  <Sel
+                    value={helper.confirmed}
+                    options={YN}
+                    onChange={confirmed =>
+                      update.mutate({
+                        id: helper.id,
+                        confirmed: confirmed as "ja" | "nein",
+                      })
+                    }
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -369,8 +394,8 @@ export default function Helpers() {
       </div>
 
       <Card className="hidden shadow-sm md:block">
-        <CardContent className="overflow-hidden p-0">
-          <table className="w-full table-fixed text-xs xl:text-sm">
+        <CardContent className="overflow-x-auto p-0">
+          <table className="w-full min-w-[1180px] text-xs xl:text-sm">
             <thead className="bg-muted/60">
               <tr className="text-left">
                 <th
@@ -383,9 +408,11 @@ export default function Helpers() {
                 <th className="w-[10%] p-2">Telefon Helfer</th>
                 <th className="w-[19%] p-2">Hinweis für PDF</th>
                 <th className="w-[7%] p-2">Helfen?</th>
-                <th className="w-[7%] p-2">Fr</th>
-                <th className="w-[7%] p-2">Sa</th>
-                <th className="w-[7%] p-2">So</th>
+                {activeDays.map(day => (
+                  <th key={day} className="w-[68px] p-2" title={day}>
+                    {WEEKDAY_SHORT_LABELS[day]}
+                  </th>
+                ))}
                 <th className="w-[7%] p-2">Bestätigt?</th>
                 <th className="w-[10%] p-2">Aktionen</th>
               </tr>
@@ -393,7 +420,10 @@ export default function Helpers() {
             <tbody>
               {isLoading && (
                 <tr>
-                  <td className="p-4 text-muted-foreground" colSpan={10}>
+                  <td
+                    className="p-4 text-muted-foreground"
+                    colSpan={7 + activeDays.length}
+                  >
                     Lade …
                   </td>
                 </tr>
@@ -495,42 +525,20 @@ export default function Helpers() {
                       }
                     />
                   </td>
-                  <td className="p-2">
-                    <Sel
-                      value={helper.availFri}
-                      options={YNV}
-                      onChange={value =>
-                        update.mutate({
-                          id: helper.id,
-                          availFri: value as "ja" | "nein" | "vielleicht",
-                        })
-                      }
-                    />
-                  </td>
-                  <td className="p-2">
-                    <Sel
-                      value={helper.availSat}
-                      options={YNV}
-                      onChange={value =>
-                        update.mutate({
-                          id: helper.id,
-                          availSat: value as "ja" | "nein" | "vielleicht",
-                        })
-                      }
-                    />
-                  </td>
-                  <td className="p-2">
-                    <Sel
-                      value={helper.availSun}
-                      options={YNV}
-                      onChange={value =>
-                        update.mutate({
-                          id: helper.id,
-                          availSun: value as "ja" | "nein" | "vielleicht",
-                        })
-                      }
-                    />
-                  </td>
+                  {activeDays.map(day => {
+                    const field = WEEKDAY_AVAILABILITY_FIELDS[day];
+                    return (
+                      <td key={day} className="p-2">
+                        <Sel
+                          value={helper[field]}
+                          options={YNV}
+                          onChange={value =>
+                            update.mutate({ id: helper.id, [field]: value })
+                          }
+                        />
+                      </td>
+                    );
+                  })}
                   <td className="p-2">
                     <Sel
                       value={helper.confirmed}
@@ -588,7 +596,10 @@ export default function Helpers() {
               ))}
               {!isLoading && filtered.length === 0 && (
                 <tr>
-                  <td className="p-4 text-muted-foreground" colSpan={10}>
+                  <td
+                    className="p-4 text-muted-foreground"
+                    colSpan={7 + activeDays.length}
+                  >
                     Keine Helfer gefunden.
                   </td>
                 </tr>

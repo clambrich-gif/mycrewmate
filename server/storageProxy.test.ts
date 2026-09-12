@@ -28,7 +28,7 @@ afterAll(async () => {
 describe("Storage-Proxy", () => {
   it("liefert die Anleitung nicht über den öffentlichen Storage-Pfad aus", async () => {
     const response = await fetch(
-      `${baseUrl}/manus-storage/RSC-Helferplanung-Anleitung_ddd7bf07.pdf`,
+      `${baseUrl}/manus-storage/RSC-Helferplanung-Anleitung_2a9c73bd.pdf`,
       { redirect: "manual" }
     );
 

@@ -66,7 +66,7 @@ const SECTIONS: HelpSection[] = [
       "Dieser Ablauf ist die verbindliche Reihenfolge für die Betreuung eines Helfers. Das Planungsteam übernimmt vor allem Erfassung und Rückmeldung. Administratoren bauen zusätzlich den Einsatzplan und teilen Helfer ein.",
     steps: [
       "Helfer in der Helferübersicht eintragen.",
-      "Mit dem Helfer Kontakt aufnehmen und Freitag, Samstag, Sonntag sowie sonstige Bemerkungen klären und erfassen.",
+      "Mit dem Helfer Kontakt aufnehmen und die Verfügbarkeit für alle aktiven Veranstaltungstage sowie sonstige Bemerkungen klären und erfassen.",
       "Warten, bis der Einsatzplan durch das Administratorenteam fertiggestellt ist.",
       "Die persönliche PDF-Helfereinteilung erzeugen und dem Helfer übergeben oder zusenden.",
       "Die Rückmeldung des Helfers abwarten und prüfen, ob die Einteilung in Ordnung ist.",
@@ -90,7 +90,7 @@ const SECTIONS: HelpSection[] = [
     steps: [
       "Über „Neue Schicht“ einen Wochentag von Montag bis Sonntag sowie Bereich, Aufgabe, Zeit, Bedarf und Bemerkung erfassen.",
       "Jedem Einsatzbereich einen Ansprechpartner zuordnen.",
-      "Nur aktive Helfer auswählen. Für Freitag bis Sonntag gelten zusätzlich die gepflegten Tagesverfügbarkeiten; Montag bis Donnerstag stehen aktive Helfer ohne separates Verfügbarkeitsfeld zur Auswahl.",
+      "Nur aktive Helfer auswählen. Für jeden aktiven Veranstaltungstag gilt die in der Helferkartei gepflegte Tagesverfügbarkeit.",
       "Gelb markierte Namen im Auswahlmenü sind am selben Tag zur gewählten Einsatzzeit bereits in einer anderen Schicht eingeteilt. Die Auswahl bleibt bewusst möglich.",
       "Status OFFEN, KNAPP oder OK sowie Warnungen zu Ausfällen und Doppelbelegungen kontrollieren.",
     ],
@@ -157,7 +157,7 @@ const SECTIONS: HelpSection[] = [
     keywords:
       "jahr veranstaltung anlegen umbenennen löschen plus regler übernehmen vorjahr",
     summary:
-      "Administratoren können pro Jahr mehrere Veranstaltungen anlegen, über das Regler-Symbol umbenennen oder nach Passwortbestätigung löschen. Die letzte Veranstaltung eines Jahres bleibt geschützt. Für das Planungsteam ist dieses Kapitel nicht erforderlich; es wählt nur Jahr und Veranstaltung aus.",
+      "Administratoren können pro Jahr mehrere Veranstaltungen anlegen und dabei die aktiven Wochentage Montag bis Sonntag auswählen. Diese Auswahl steuert Helferverfügbarkeiten, Schichtdialoge und Tagesfilter. Eine Planübernahme wird vollständig abgebrochen, wenn die Quelle Schichten an nicht aktiven Zieltagen enthält. Über das Regler-Symbol lassen sich Veranstaltungen umbenennen oder nach Passwortbestätigung löschen. Die letzte Veranstaltung eines Jahres bleibt geschützt. Für das Planungsteam ist dieses Kapitel nicht erforderlich; es wählt nur Jahr und Veranstaltung aus.",
   },
   {
     id: "sicherheit",

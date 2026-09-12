@@ -114,6 +114,10 @@ export async function importExcel(
     email: column(helperHeaders, [/^e-mail$/, /^email$/], -1),
     phone: column(helperHeaders, [/^telefon(?: helfer)?$/, /^rufnummer$/], -1),
     willHelp: column(helperHeaders, [/^helfen\??$/], 3),
+    mon: column(helperHeaders, [/^mo(?:ntag)?$/], -1),
+    tue: column(helperHeaders, [/^di(?:enstag)?$/], -1),
+    wed: column(helperHeaders, [/^mi(?:ttwoch)?$/], -1),
+    thu: column(helperHeaders, [/^do(?:nnerstag)?$/], -1),
     fri: column(helperHeaders, [/^fr(?:eitag)?$/], 4),
     sat: column(helperHeaders, [/^sa(?:mstag)?$/], 5),
     sun: column(helperHeaders, [/^so(?:nntag)?$/], 6),
@@ -142,6 +146,14 @@ export async function importExcel(
       note: String(row?.[helperColumns.note] ?? "").trim() || undefined,
       willHelp:
         availability(row?.[helperColumns.willHelp]) === "nein" ? "nein" : "ja",
+      availMon:
+        helperColumns.mon < 0 ? "ja" : availability(row?.[helperColumns.mon]),
+      availTue:
+        helperColumns.tue < 0 ? "ja" : availability(row?.[helperColumns.tue]),
+      availWed:
+        helperColumns.wed < 0 ? "ja" : availability(row?.[helperColumns.wed]),
+      availThu:
+        helperColumns.thu < 0 ? "ja" : availability(row?.[helperColumns.thu]),
       availFri: availability(row?.[helperColumns.fri]),
       availSat: availability(row?.[helperColumns.sat]),
       availSun: availability(row?.[helperColumns.sun]),
@@ -379,6 +391,10 @@ export async function exportExcel(): Promise<Buffer> {
       Telefon: helper.phone ?? "",
       Bemerkung: helper.note ?? "",
       "Helfen?": helper.willHelp === "ja" ? "Ja" : "Nein",
+      Mo: helper.availMon,
+      Di: helper.availTue,
+      Mi: helper.availWed,
+      Do: helper.availThu,
       Fr: helper.availFri,
       Sa: helper.availSat,
       So: helper.availSun,

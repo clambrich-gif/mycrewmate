@@ -110,6 +110,7 @@ function assertHeaders(sheet: XLSX.WorkSheet, area: ModuleImportArea) {
     throw new Error(
       `${areaName[area]}: Pflichtspalten fehlen: ${missing.join(", ")}`
     );
+  return headers;
 }
 
 const normalized = (value: unknown) =>
@@ -173,6 +174,10 @@ function baseWorkbook(document: BackupDocument) {
       { Schlüssel: "Veranstaltungs-ID", Wert: document.metadata.eventId },
       { Schlüssel: "Veranstaltung", Wert: document.metadata.eventName },
       { Schlüssel: "Jahr", Wert: document.metadata.year },
+      {
+        Schlüssel: "Veranstaltungstage",
+        Wert: document.metadata.activeDays.join(", "),
+      },
       { Schlüssel: "Exportiert am (UTC)", Wert: document.metadata.exportedAt },
     ]
   );
@@ -200,6 +205,10 @@ function rowsFromDocument(document: BackupDocument, area: ModuleImportArea) {
       Telefon: row.phone,
       Bemerkung: row.note,
       "Helfen?": row.willHelp,
+      Mo: row.availMon,
+      Di: row.availTue,
+      Mi: row.availWed,
+      Do: row.availThu,
       Fr: row.availFri,
       Sa: row.availSat,
       So: row.availSun,
@@ -302,11 +311,17 @@ async function buildModuleTarget(base64: string, area: ModuleImportArea) {
   const current = await createCurrentProjectDocument();
   const uploaded = readUploadedExcelWorkbook(base64);
   const source = importedSheet(uploaded, area);
-  assertHeaders(source, area);
+  const sourceHeaders = assertHeaders(source, area);
   const rawImportedRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(
     source,
     { defval: "", raw: true }
   );
+  if (area === "HELFER") {
+    const legacyWeekdays = ["Mo", "Di", "Mi", "Do"];
+    for (const row of rawImportedRows)
+      for (const day of legacyWeekdays)
+        if (!sourceHeaders.has(day)) row[day] = "ja";
+  }
   const importedRows = hydrateExistingIds(
     area,
     rawImportedRows,
@@ -376,6 +391,10 @@ async function buildModuleTarget(base64: string, area: ModuleImportArea) {
           Telefon: contactRow.Rufnummer ?? "",
           Bemerkung: "",
           "Helfen?": "ja",
+          Mo: "vielleicht",
+          Di: "vielleicht",
+          Mi: "vielleicht",
+          Do: "vielleicht",
           Fr: "vielleicht",
           Sa: "vielleicht",
           So: "vielleicht",

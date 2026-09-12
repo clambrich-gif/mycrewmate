@@ -31,7 +31,7 @@ import {
   users,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
-import type { Weekday } from "../shared/weekdays";
+import { eventWeekdays, WEEKDAYS, type Weekday } from "../shared/weekdays";
 import { currentEventId, currentEventYear } from "./year-context";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -134,11 +134,15 @@ export async function ensureEventYear(eventYear = year()) {
 export async function listEvents(eventYear = year()) {
   const db = await getDb();
   if (!db) return [];
-  return db
+  const rows = await db
     .select()
     .from(events)
     .where(eq(events.year, eventYear))
     .orderBy(events.sortOrder, events.name, events.id);
+  return rows.map(row => ({
+    ...row,
+    activeDays: eventWeekdays(row.activeDays),
+  }));
 }
 
 export async function getEvent(id = event()) {
@@ -149,7 +153,9 @@ export async function getEvent(id = event()) {
     .from(events)
     .where(and(eq(events.id, id), eq(events.year, year())))
     .limit(1);
-  return selected;
+  return selected
+    ? { ...selected, activeDays: eventWeekdays(selected.activeDays) }
+    : undefined;
 }
 
 export async function withPlanningWriteLock<T>(callback: () => Promise<T>) {
@@ -173,7 +179,11 @@ function normalizeEventName(name: string) {
   return name.trim().replace(/\s+/g, " ");
 }
 
-export async function createEvent(name: string, eventYear = year()) {
+export async function createEvent(
+  name: string,
+  eventYear = year(),
+  activeDays: Weekday[] = [...WEEKDAYS]
+) {
   const db = (await getDb()) as DB;
   await ensureEventYear(eventYear);
   const normalizedName = normalizeEventName(name);
@@ -182,12 +192,23 @@ export async function createEvent(name: string, eventYear = year()) {
     .from(events)
     .where(and(eq(events.year, eventYear), eq(events.name, normalizedName)))
     .limit(1);
-  if (existing) return { ...existing, created: false };
+  if (existing)
+    return {
+      ...existing,
+      activeDays: eventWeekdays(existing.activeDays),
+      created: false,
+    };
   const result: any = await db
     .insert(events)
-    .values({ year: eventYear, name: normalizedName });
+    .values({ year: eventYear, name: normalizedName, activeDays });
   const id = Number(result?.[0]?.insertId ?? result?.insertId);
-  return { id, year: eventYear, name: normalizedName, created: true };
+  return {
+    id,
+    year: eventYear,
+    name: normalizedName,
+    activeDays,
+    created: true,
+  };
 }
 
 export async function updateEventName(id: number, name: string) {
@@ -707,6 +728,10 @@ const helperAuditEntity = (
     phone: helper.phone,
     note: helper.note,
     willHelp: helper.willHelp,
+    availMon: helper.availMon,
+    availTue: helper.availTue,
+    availWed: helper.availWed,
+    availThu: helper.availThu,
     availFri: helper.availFri,
     availSat: helper.availSat,
     availSun: helper.availSun,
@@ -856,6 +881,22 @@ export async function restoreDeletionAuditLog(
         phone: typeof details.phone === "string" ? details.phone : null,
         note: typeof details.note === "string" ? details.note : null,
         willHelp: details.willHelp === "nein" ? "nein" : "ja",
+        availMon:
+          details.availMon === "ja" || details.availMon === "nein"
+            ? details.availMon
+            : "vielleicht",
+        availTue:
+          details.availTue === "ja" || details.availTue === "nein"
+            ? details.availTue
+            : "vielleicht",
+        availWed:
+          details.availWed === "ja" || details.availWed === "nein"
+            ? details.availWed
+            : "vielleicht",
+        availThu:
+          details.availThu === "ja" || details.availThu === "nein"
+            ? details.availThu
+            : "vielleicht",
         availFri:
           details.availFri === "ja" || details.availFri === "nein"
             ? details.availFri
@@ -1136,6 +1177,13 @@ export async function syncContactsToSelfHelpers() {
   return { created, updated };
 }
 
+async function requireActiveEventDay(day: Weekday) {
+  const selectedEvent = await getEvent();
+  if (!selectedEvent?.activeDays.includes(day)) {
+    throw new Error(`${day} ist für diese Veranstaltung nicht aktiviert`);
+  }
+}
+
 export async function createShift(
   v: Partial<typeof shifts.$inferInsert> & {
     day: Weekday;
@@ -1143,6 +1191,7 @@ export async function createShift(
     task: string;
   }
 ) {
+  await requireActiveEventDay(v.day);
   const db = (await getDb()) as DB;
   return db.insert(shifts).values({
     ...v,
@@ -1154,6 +1203,7 @@ export async function updateShift(
   id: number,
   v: Partial<typeof shifts.$inferInsert>
 ) {
+  if (v.day) await requireActiveEventDay(v.day as Weekday);
   const db = (await getDb()) as DB;
   const { year: ignored, eventId: ignoredEventId, ...safe } = v;
   const result = await db
@@ -1760,6 +1810,16 @@ export async function copyPlanFromEvent(
         .where(eq(shiftAreaContacts.eventId, targetEventId)),
     ]);
 
+    const targetActiveDays = eventWeekdays(targetEvent.activeDays);
+    const sourceShiftDays = new Set(sourceShifts.map(item => item.day));
+    const inactiveSourceDays = WEEKDAYS.filter(
+      day => sourceShiftDays.has(day) && !targetActiveDays.includes(day)
+    );
+    if (inactiveSourceDays.length)
+      throw new Error(
+        `Die Quellplanung enthält Schichten an nicht aktiven Zieltagen: ${inactiveSourceDays.join(", ")}. Bitte wählen Sie diese Tage zuerst beim Anlegen der Zielveranstaltung aus.`
+      );
+
     const contactMap = new Map<number, number>();
     const contactByName = new Map(
       targetContacts.map(item => [normalizePersonName(item.name), item.id])
@@ -1817,6 +1877,10 @@ export async function copyPlanFromEvent(
           phone: item.phone,
           note: item.note,
           willHelp: item.willHelp,
+          availMon: item.availMon,
+          availTue: item.availTue,
+          availWed: item.availWed,
+          availThu: item.availThu,
           availFri: item.availFri,
           availSat: item.availSat,
           availSun: item.availSun,

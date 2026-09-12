@@ -1,5 +1,6 @@
 import {
   int,
+  json,
   mediumtext,
   mysqlEnum,
   mysqlTable,
@@ -8,7 +9,7 @@ import {
   uniqueIndex,
   varchar,
 } from "drizzle-orm/mysql-core";
-import { WEEKDAYS } from "../shared/weekdays";
+import { WEEKDAYS, type Weekday } from "../shared/weekdays";
 
 /**
  * Core user table backing auth flow.
@@ -50,6 +51,7 @@ export const events = mysqlTable(
     id: int("id").autoincrement().primaryKey(),
     year: int("year").notNull(),
     name: varchar("name", { length: 200 }).notNull(),
+    activeDays: json("activeDays").$type<Weekday[]>().notNull(),
     sortOrder: int("sortOrder").default(0).notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
@@ -94,6 +96,18 @@ export const helpers = mysqlTable(
     phone: varchar("phone", { length: 64 }),
     note: text("note"),
     willHelp: mysqlEnum("willHelp", ["ja", "nein"]).default("ja").notNull(),
+    availMon: mysqlEnum("availMon", ["ja", "nein", "vielleicht"])
+      .default("vielleicht")
+      .notNull(),
+    availTue: mysqlEnum("availTue", ["ja", "nein", "vielleicht"])
+      .default("vielleicht")
+      .notNull(),
+    availWed: mysqlEnum("availWed", ["ja", "nein", "vielleicht"])
+      .default("vielleicht")
+      .notNull(),
+    availThu: mysqlEnum("availThu", ["ja", "nein", "vielleicht"])
+      .default("vielleicht")
+      .notNull(),
     availFri: mysqlEnum("availFri", ["ja", "nein", "vielleicht"])
       .default("vielleicht")
       .notNull(),

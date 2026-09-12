@@ -8,10 +8,10 @@ import {
   type BackupDocument,
 } from "./excel-backup";
 import { overlaps, toMinutes } from "./logic";
-import { WEEKDAYS } from "../shared/weekdays";
+import { eventWeekdays, WEEKDAYS } from "../shared/weekdays";
 
 const PROJECT_FORMAT = "RSC-HELFERPLANUNG-PROJEKTDATEI";
-const PROJECT_VERSION = 1;
+const PROJECT_VERSION = 2;
 const MAX_PROJECT_BYTES = 10_000_000;
 const MAX_ROWS = 10_000;
 
@@ -34,6 +34,11 @@ const documentSchema = z
       eventId: z.number().int().positive(),
       eventName: short(200).min(1),
       year: z.number().int().min(2020).max(2100),
+      activeDays: z
+        .array(z.enum(WEEKDAYS))
+        .min(1)
+        .max(WEEKDAYS.length)
+        .refine(days => new Set(days).size === days.length),
       exportedAt: z.string().datetime(),
     }),
     contacts: z
@@ -58,6 +63,10 @@ const documentSchema = z
           phone: short(64),
           note: short(10_000),
           willHelp: z.enum(["ja", "nein"]),
+          availMon: z.enum(["ja", "nein", "vielleicht"]),
+          availTue: z.enum(["ja", "nein", "vielleicht"]),
+          availWed: z.enum(["ja", "nein", "vielleicht"]),
+          availThu: z.enum(["ja", "nein", "vielleicht"]),
           availFri: z.enum(["ja", "nein", "vielleicht"]),
           availSat: z.enum(["ja", "nein", "vielleicht"]),
           availSun: z.enum(["ja", "nein", "vielleicht"]),
@@ -276,7 +285,12 @@ function validateRelations(document: BackupDocument) {
 
   const helperShifts = new Map<string, typeof document.shifts>();
   const areaContacts = new Map<string, string>();
+  const activeDays = new Set(document.metadata.activeDays);
   for (const shift of document.shifts) {
+    if (!activeDays.has(shift.day))
+      throw new Error(
+        `Einsatzplan „${shift.task}“: ${shift.day} ist in den Veranstaltungstagen nicht aktiviert`
+      );
     const start = toMinutes(shift.startTime);
     const end = toMinutes(shift.endTime);
     if ((shift.startTime === "") !== (shift.endTime === ""))
@@ -371,12 +385,38 @@ export function parseProjectFile(base64: string): {
   } catch {
     throw new Error("Die Speicherdatei ist beschädigt oder kein gültiges JSON");
   }
+  if (
+    raw &&
+    typeof raw === "object" &&
+    "metadata" in raw &&
+    raw.metadata &&
+    typeof raw.metadata === "object" &&
+    "version" in raw.metadata &&
+    raw.metadata.version === 1
+  ) {
+    const legacy = raw as Record<string, any>;
+    legacy.metadata = {
+      ...legacy.metadata,
+      version: PROJECT_VERSION,
+      activeDays: [...WEEKDAYS],
+    };
+    legacy.helpers = Array.isArray(legacy.helpers)
+      ? legacy.helpers.map((helper: Record<string, unknown>) => ({
+          ...helper,
+          availMon: helper.availMon ?? "ja",
+          availTue: helper.availTue ?? "ja",
+          availWed: helper.availWed ?? "ja",
+          availThu: helper.availThu ?? "ja",
+        }))
+      : legacy.helpers;
+  }
   const parsed = documentSchema.safeParse(raw);
   if (!parsed.success)
     throw new Error(
       `Die Speicherdatei ist ungültig: ${parsed.error.issues[0]?.path.join(".") || "Struktur"}`
     );
   const document = parsed.data as BackupDocument;
+  document.metadata.activeDays = eventWeekdays(document.metadata.activeDays);
   validateRelations(document);
   return { document, sourceDigest: digest(bytes) };
 }

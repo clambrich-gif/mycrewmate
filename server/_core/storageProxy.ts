@@ -7,6 +7,8 @@ const PROTECTED_STORAGE_KEYS = new Set([
   "RSC-Helferplanung-Anleitung_eb096530.pdf",
   "RSC-Helferplanung-Anleitung_ee2c395b.pdf",
   "RSC-Helferplanung-Anleitung_ddd7bf07.pdf",
+  "RSC-Helferplanung-Anleitung_4f84ed2a.pdf",
+  "RSC-Helferplanung-Anleitung_2a9c73bd.pdf",
 ]);
 
 export function registerStorageProxy(app: Express) {

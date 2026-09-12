@@ -9,6 +9,7 @@ export const WEEKDAYS = [
 ] as const;
 
 export type Weekday = (typeof WEEKDAYS)[number];
+export type AvailabilityValue = "ja" | "nein" | "vielleicht";
 
 export const WEEKDAY_SHORT_LABELS: Record<Weekday, string> = {
   Montag: "Mo",
@@ -20,26 +21,50 @@ export const WEEKDAY_SHORT_LABELS: Record<Weekday, string> = {
   Sonntag: "So",
 };
 
+export const WEEKDAY_AVAILABILITY_FIELDS = {
+  Montag: "availMon",
+  Dienstag: "availTue",
+  Mittwoch: "availWed",
+  Donnerstag: "availThu",
+  Freitag: "availFri",
+  Samstag: "availSat",
+  Sonntag: "availSun",
+} as const satisfies Record<Weekday, string>;
+
+export type AvailabilityField = (typeof WEEKDAY_AVAILABILITY_FIELDS)[Weekday];
+
+export function isWeekday(value: unknown): value is Weekday {
+  return typeof value === "string" && WEEKDAYS.includes(value as Weekday);
+}
+
+/** Entfernt ungültige und doppelte Werte und stellt die Kalenderreihenfolge her. */
+export function orderedWeekdays(value: unknown): Weekday[] {
+  if (!Array.isArray(value)) return [];
+  const selected = new Set(value.filter(isWeekday));
+  return WEEKDAYS.filter(day => selected.has(day));
+}
+
+/** Bestehende Datensätze ohne Konfiguration bleiben mit allen Wochentagen nutzbar. */
+export function eventWeekdays(value: unknown): Weekday[] {
+  const selected = orderedWeekdays(value);
+  return selected.length ? selected : [...WEEKDAYS];
+}
+
 type HelperAvailability = {
   willHelp: "ja" | "nein";
-  availFri: "ja" | "nein" | "vielleicht";
-  availSat: "ja" | "nein" | "vielleicht";
-  availSun: "ja" | "nein" | "vielleicht";
-};
+} & Partial<Record<AvailabilityField, AvailabilityValue>>;
 
-/**
- * Für Montag bis Donnerstag existieren in der Helferkartei bewusst keine
- * separaten Verfügbarkeitsfelder. Aktive Helfer gelten an diesen Tagen daher
- * als auswählbar; Freitag bis Sonntag verwenden weiterhin die gepflegten
- * Tagesangaben.
- */
 export function helperAvailableOnDay(
   helper: HelperAvailability,
   day: Weekday
 ): boolean {
   if (helper.willHelp !== "ja") return false;
-  if (day === "Freitag") return helper.availFri === "ja";
-  if (day === "Samstag") return helper.availSat === "ja";
-  if (day === "Sonntag") return helper.availSun === "ja";
-  return true;
+  const value = helper[WEEKDAY_AVAILABILITY_FIELDS[day]];
+  if (value !== undefined) return value === "ja";
+  return (
+    day === "Montag" ||
+    day === "Dienstag" ||
+    day === "Mittwoch" ||
+    day === "Donnerstag"
+  );
 }

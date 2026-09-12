@@ -189,6 +189,31 @@ describe("Excel-Datensicherung", () => {
     );
   });
 
+  it("erhält bei alten Helferblättern ohne Mo-bis-Do-Spalten die bisherige Werktagsverfügbarkeit", async () => {
+    const exported = await exportBackupExcel();
+    const legacy = mutateWorkbook(exported.buffer, workbook => {
+      const helperRows = XLSX.utils.sheet_to_json<any>(workbook.Sheets.HELFER);
+      for (const row of helperRows) {
+        delete row.Mo;
+        delete row.Di;
+        delete row.Mi;
+        delete row.Do;
+      }
+      replaceSheet(workbook, "HELFER", helperRows);
+    });
+
+    const parsed = parseBackupWorkbook(legacy.toString("base64"));
+    expect(parsed.helpers).toHaveLength(2);
+    for (const helper of parsed.helpers) {
+      expect(helper).toMatchObject({
+        availMon: "ja",
+        availTue: "ja",
+        availWed: "ja",
+        availThu: "ja",
+      });
+    }
+  });
+
   it("übernimmt bei Teilselektion nur die markierte Änderung", async () => {
     data.finances.splice(0, data.finances.length, {
       id: 60,

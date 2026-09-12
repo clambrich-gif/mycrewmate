@@ -1,5 +1,5 @@
 import { COOKIE_NAME } from "@shared/const";
-import { WEEKDAYS } from "@shared/weekdays";
+import { eventWeekdays, WEEKDAYS } from "@shared/weekdays";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import {
@@ -58,7 +58,7 @@ import {
 } from "./year-context";
 import { storageGetSignedUrl, storagePut } from "./storage";
 
-const GUIDE_PDF_KEY = "RSC-Helferplanung-Anleitung_ddd7bf07.pdf";
+const GUIDE_PDF_KEY = "RSC-Helferplanung-Anleitung_2a9c73bd.pdf";
 const GUIDE_PDF_FILENAME = "RSC-Helferplanung-Anleitung.pdf";
 const GUIDE_PDF_MAX_BYTES = 5_000_000;
 
@@ -143,6 +143,13 @@ const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
 const yn = z.enum(["ja", "nein"]);
 const ynv = z.enum(["ja", "nein", "vielleicht"]);
 const dayEnum = z.enum(WEEKDAYS);
+const activeDaysInput = z
+  .array(dayEnum)
+  .min(1, "Mindestens ein Veranstaltungstag muss ausgewählt sein")
+  .max(WEEKDAYS.length)
+  .refine(days => new Set(days).size === days.length, {
+    message: "Veranstaltungstage dürfen nicht doppelt ausgewählt werden",
+  });
 const statusTask = z.enum(["offen", "inArbeit", "erledigt"]);
 const passwordInput = z.string().min(10).max(200);
 const eventYearInput = z.number().int().min(2020).max(2100);
@@ -444,9 +451,12 @@ export const appRouter = router({
       .input(
         z.object({
           name: z.string().trim().min(2).max(200),
+          activeDays: activeDaysInput,
         })
       )
-      .mutation(({ input }) => db.createEvent(input.name)),
+      .mutation(({ input }) =>
+        db.createEvent(input.name, undefined, input.activeDays)
+      ),
     update: adminProcedure
       .input(
         z.object({
@@ -550,6 +560,10 @@ export const appRouter = router({
           name: z.string().min(1),
           contactId: z.number().nullable().optional(),
           willHelp: yn.default("ja"),
+          availMon: ynv.default("vielleicht"),
+          availTue: ynv.default("vielleicht"),
+          availWed: ynv.default("vielleicht"),
+          availThu: ynv.default("vielleicht"),
           availFri: ynv.default("vielleicht"),
           availSat: ynv.default("vielleicht"),
           availSun: ynv.default("vielleicht"),
@@ -567,6 +581,10 @@ export const appRouter = router({
           phone: z.string().max(64).nullable().optional(),
           note: z.string().nullable().optional(),
           willHelp: yn.optional(),
+          availMon: ynv.optional(),
+          availTue: ynv.optional(),
+          availWed: ynv.optional(),
+          availThu: ynv.optional(),
           availFri: ynv.optional(),
           availSat: ynv.optional(),
           availSun: ynv.optional(),
@@ -599,11 +617,29 @@ export const appRouter = router({
     list: protectedProcedure.query(() => db.listShifts()),
     create: adminProcedure
       .input(createShiftInput)
-      .mutation(({ input }) => db.createShift(input)),
-    update: adminProcedure.input(updateShiftInput).mutation(({ input }) => {
-      const { id, ...rest } = input;
-      return db.updateShift(id, rest);
-    }),
+      .mutation(async ({ input }) => {
+        const selectedEvent = await db.getEvent();
+        if (!eventWeekdays(selectedEvent?.activeDays).includes(input.day))
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `${input.day} ist für diese Veranstaltung nicht aktiviert`,
+          });
+        return db.createShift(input);
+      }),
+    update: adminProcedure
+      .input(updateShiftInput)
+      .mutation(async ({ input }) => {
+        if (input.day) {
+          const selectedEvent = await db.getEvent();
+          if (!eventWeekdays(selectedEvent?.activeDays).includes(input.day))
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: `${input.day} ist für diese Veranstaltung nicht aktiviert`,
+            });
+        }
+        const { id, ...rest } = input;
+        return db.updateShift(id, rest);
+      }),
     remove: adminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(({ input }) => db.deleteShift(input.id)),
@@ -820,8 +856,15 @@ export const appRouter = router({
       };
     }),
     plan: protectedProcedure.input(planPdfInput).mutation(async ({ input }) => {
-      const pdf = await createPlanPdf(input);
       const selectedEvent = await db.getEvent();
+      const activeDays = eventWeekdays(selectedEvent?.activeDays);
+      const invalidDay = input.days?.find(day => !activeDays.includes(day));
+      if (invalidDay)
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `${invalidDay} ist für diese Veranstaltung nicht aktiviert`,
+        });
+      const pdf = await createPlanPdf(input);
       const eventName = safeExportName(selectedEvent?.name ?? "Veranstaltung");
       return {
         filename:

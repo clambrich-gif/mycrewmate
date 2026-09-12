@@ -80,7 +80,9 @@ export function CopyPreviousPlanButton() {
             <DialogDescription>
               Schichten, Bereichsansprechpartner, Helfer und Zuordnungen werden
               aus der gewählten Veranstaltung ergänzt. Vorhandene Einträge
-              werden nicht doppelt angelegt.
+              werden nicht doppelt angelegt. Enthält die Quelle Schichten an
+              Tagen, die in der Zielveranstaltung nicht aktiv sind, wird die
+              Übernahme vollständig abgebrochen.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">

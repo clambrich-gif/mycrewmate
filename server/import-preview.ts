@@ -697,6 +697,10 @@ export async function applyPlanImport(
     const created = await db.upsertHelperByName({
       name: targetName,
       willHelp: "ja",
+      availMon: days.has("Montag") ? "ja" : "vielleicht",
+      availTue: days.has("Dienstag") ? "ja" : "vielleicht",
+      availWed: days.has("Mittwoch") ? "ja" : "vielleicht",
+      availThu: days.has("Donnerstag") ? "ja" : "vielleicht",
       availFri: days.has("Freitag") ? "ja" : "vielleicht",
       availSat: days.has("Samstag") ? "ja" : "vielleicht",
       availSun: days.has("Sonntag") ? "ja" : "vielleicht",

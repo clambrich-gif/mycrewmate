@@ -18,6 +18,7 @@ const dbMocks = vi.hoisted(() => ({
   restoreDeletionAuditLog: vi.fn(),
   getSecuritySettings: vi.fn(),
   getEvent: vi.fn(),
+  createEvent: vi.fn(),
   updateEventName: vi.fn(),
   deleteEvent: vi.fn(),
   deleteContact: vi.fn(),
@@ -138,6 +139,7 @@ describe("Planungs-API", () => {
       id: 1,
       year: 2026,
       name: "MyEifelRide",
+      activeDays: [...WEEKDAYS],
       sortOrder: 0,
       createdAt: new Date(),
     });
@@ -216,7 +218,7 @@ describe("Planungs-API", () => {
         expect(Buffer.from(result.base64, "base64")).toEqual(pdf);
       }
       expect(storageMocks.storageGetSignedUrl).toHaveBeenCalledWith(
-        "RSC-Helferplanung-Anleitung_ddd7bf07.pdf"
+        "RSC-Helferplanung-Anleitung_2a9c73bd.pdf"
       );
     } finally {
       fetchMock.mockRestore();
@@ -315,6 +317,33 @@ describe("Planungs-API", () => {
         name: "Nicht erlaubt",
       })
     ).rejects.toThrow();
+  });
+
+  it("legt Veranstaltungen nur mit mindestens einem ausgewählten Wochentag an", async () => {
+    dbMocks.createEvent.mockResolvedValue({
+      id: 3,
+      year: 2026,
+      name: "Cross",
+      activeDays: ["Samstag", "Sonntag"],
+      created: true,
+    });
+
+    await expect(
+      appRouter.createCaller(ctx).events.create({
+        name: "Cross",
+        activeDays: ["Samstag", "Sonntag"],
+      })
+    ).resolves.toMatchObject({ id: 3, activeDays: ["Samstag", "Sonntag"] });
+    expect(dbMocks.createEvent).toHaveBeenCalledWith("Cross", undefined, [
+      "Samstag",
+      "Sonntag",
+    ]);
+
+    await expect(
+      appRouter
+        .createCaller(ctx)
+        .events.create({ name: "Leer", activeDays: [] })
+    ).rejects.toThrow("Mindestens ein Veranstaltungstag");
   });
 
   it("löscht Veranstaltungen nur mit korrektem Administratorpasswort", async () => {
@@ -509,6 +538,27 @@ describe("Planungs-API", () => {
     expect(dbMocks.createShift).toHaveBeenCalledWith(
       expect.objectContaining({ day })
     );
+  });
+
+  it("weist Schichten an nicht aktivierten Veranstaltungstagen zurück", async () => {
+    dbMocks.getEvent.mockResolvedValue({
+      id: 1,
+      year: 2026,
+      name: "Wochenende",
+      activeDays: ["Samstag", "Sonntag"],
+    });
+
+    await expect(
+      appRouter.createCaller(ctx).shifts.create({
+        day: "Freitag",
+        area: "Aufbau",
+        task: "Material vorbereiten",
+        startTime: "09:00",
+        endTime: "11:00",
+        needed: 2,
+      })
+    ).rejects.toThrow("Freitag ist für diese Veranstaltung nicht aktiviert");
+    expect(dbMocks.createShift).not.toHaveBeenCalled();
   });
 
   it("verhindert doppelte Helfer und doppelt belegte Slots", async () => {

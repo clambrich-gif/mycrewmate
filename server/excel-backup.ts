@@ -19,7 +19,12 @@ import {
   shiftAreaContacts,
   shifts,
 } from "../drizzle/schema";
-import { WEEKDAYS, type Weekday } from "../shared/weekdays";
+import {
+  eventWeekdays,
+  orderedWeekdays,
+  WEEKDAYS,
+  type Weekday,
+} from "../shared/weekdays";
 import { overlaps, toMinutes } from "./logic";
 import { currentEventId, currentEventYear } from "./year-context";
 import { getDb, type AuditActor } from "./db";
@@ -56,6 +61,10 @@ export const PROJECT_EXCEL_HEADERS: Record<string, string[]> = {
     "Telefon",
     "Bemerkung",
     "Helfen?",
+    "Mo",
+    "Di",
+    "Mi",
+    "Do",
     "Fr",
     "Sa",
     "So",
@@ -141,7 +150,10 @@ export const PROJECT_EXCEL_HEADERS: Record<string, string[]> = {
 
 type Client = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 type ChangeAction = "create" | "update" | "delete";
-export type BackupArea = (typeof SHEETS)[number] | "ZUORDNUNGEN";
+export type BackupArea =
+  | (typeof SHEETS)[number]
+  | "VERANSTALTUNG"
+  | "ZUORDNUNGEN";
 export type BackupChange = {
   key: string;
   area: BackupArea;
@@ -184,6 +196,10 @@ type HelperRow = {
   phone: string;
   note: string;
   willHelp: "ja" | "nein";
+  availMon: "ja" | "nein" | "vielleicht";
+  availTue: "ja" | "nein" | "vielleicht";
+  availWed: "ja" | "nein" | "vielleicht";
+  availThu: "ja" | "nein" | "vielleicht";
   availFri: "ja" | "nein" | "vielleicht";
   availSat: "ja" | "nein" | "vielleicht";
   availSun: "ja" | "nein" | "vielleicht";
@@ -272,6 +288,7 @@ export type BackupDocument = {
     eventId: number;
     eventName: string;
     year: number;
+    activeDays: Weekday[];
     exportedAt: string;
   };
   contacts: ContactRow[];
@@ -289,6 +306,7 @@ export type BackupDocument = {
 
 type CurrentSnapshot = {
   eventName: string;
+  activeDays: Weekday[];
   contacts: any[];
   helpers: any[];
   shifts: any[];
@@ -385,6 +403,9 @@ function metadata(workbook: XLSX.WorkBook) {
   const eventId = Number(values.get("Veranstaltungs-ID"));
   const year = Number(values.get("Jahr"));
   const eventName = values.get("Veranstaltung") ?? "";
+  const activeDays = orderedWeekdays(
+    (values.get("Veranstaltungstage") ?? "").split(",").map(day => day.trim())
+  );
   const exportedAt = values.get("Exportiert am (UTC)") ?? "";
   if (format !== BACKUP_FORMAT || version !== BACKUP_VERSION)
     throw new Error(
@@ -400,7 +421,15 @@ function metadata(workbook: XLSX.WorkBook) {
     throw new Error(
       "Die Sicherungsinformationen sind unvollständig oder beschädigt"
     );
-  return { format, version, eventId, year, eventName, exportedAt };
+  return {
+    format,
+    version,
+    eventId,
+    year,
+    eventName,
+    activeDays: activeDays.length ? activeDays : [...WEEKDAYS],
+    exportedAt,
+  };
 }
 
 function ensureUnique<T>(
@@ -631,9 +660,12 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
     return null;
   };
 
-  const helperRows = sheetRows(workbook, "HELFER").filter(row =>
-    normalize(row.Name)
-  );
+  const rawHelperRows = sheetRows(workbook, "HELFER");
+  const helperHasColumn = (column: string) =>
+    rawHelperRows.some(row =>
+      Object.prototype.hasOwnProperty.call(row, column)
+    );
+  const helperRows = rawHelperRows.filter(row => normalize(row.Name));
   const parsedHelpers: HelperRow[] = helperRows.map((row, index) => ({
     sourceId: nullableId(row.ID, `HELFER Zeile ${index + 2}`),
     contactSourceId: contactRef(
@@ -655,6 +687,30 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
       ["ja", "nein"] as const,
       `HELFER Zeile ${index + 2}: Helfen?`,
       "ja"
+    ),
+    availMon: enumValue(
+      row.Mo,
+      ["ja", "nein", "vielleicht"] as const,
+      `HELFER Zeile ${index + 2}: Montag`,
+      helperHasColumn("Mo") ? "vielleicht" : "ja"
+    ),
+    availTue: enumValue(
+      row.Di,
+      ["ja", "nein", "vielleicht"] as const,
+      `HELFER Zeile ${index + 2}: Dienstag`,
+      helperHasColumn("Di") ? "vielleicht" : "ja"
+    ),
+    availWed: enumValue(
+      row.Mi,
+      ["ja", "nein", "vielleicht"] as const,
+      `HELFER Zeile ${index + 2}: Mittwoch`,
+      helperHasColumn("Mi") ? "vielleicht" : "ja"
+    ),
+    availThu: enumValue(
+      row.Do,
+      ["ja", "nein", "vielleicht"] as const,
+      `HELFER Zeile ${index + 2}: Donnerstag`,
+      helperHasColumn("Do") ? "vielleicht" : "ja"
     ),
     availFri: enumValue(
       row.Fr,
@@ -731,6 +787,10 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
       WEEKDAYS,
       `EINSATZPLAN Zeile ${index + 2}: Tag`
     );
+    if (!meta.activeDays.includes(day))
+      throw new Error(
+        `EINSATZPLAN Zeile ${index + 2}: ${day} ist für diese Veranstaltung nicht aktiviert`
+      );
     const startTime = text(
       row.Beginn,
       16,
@@ -1266,6 +1326,7 @@ async function loadSnapshot(
   if (!eventRows[0]) throw new Error("Veranstaltung wurde nicht gefunden");
   return {
     eventName: eventRows[0].name,
+    activeDays: eventWeekdays(eventRows[0].activeDays),
     contacts: contactRows,
     helpers: helperRows,
     shifts: shiftRows,
@@ -1316,11 +1377,19 @@ function comparableCurrent(snapshot: CurrentSnapshot) {
         "phone",
         "note",
         "willHelp",
+        "availMon",
+        "availTue",
+        "availWed",
+        "availThu",
         "availFri",
         "availSat",
         "availSun",
         "confirmed",
       ]),
+      availMon: row.availMon ?? "ja",
+      availTue: row.availTue ?? "ja",
+      availWed: row.availWed ?? "ja",
+      availThu: row.availThu ?? "ja",
     })),
     shifts: [...snapshot.shifts].sort(byId).map(row => ({
       sourceId: row.id,
@@ -1496,6 +1565,7 @@ export async function createCurrentProjectDocument(): Promise<BackupDocument> {
       eventId: currentEventId(),
       eventName: snapshot.eventName,
       year: currentEventYear(),
+      activeDays: snapshot.activeDays,
       exportedAt: new Date().toISOString(),
     },
     ...current,
@@ -1672,6 +1742,33 @@ export function diffDocuments(
   return changes;
 }
 
+function eventDaysChange(
+  currentDays: Weekday[],
+  desiredDays: Weekday[]
+): BackupChange[] {
+  const beforeDays = eventWeekdays(currentDays);
+  const afterDays = eventWeekdays(desiredDays);
+  if (JSON.stringify(beforeDays) === JSON.stringify(afterDays)) return [];
+  return [
+    {
+      key: "VERANSTALTUNG:update:activeDays",
+      area: "VERANSTALTUNG",
+      action: "update",
+      label: "Aktive Veranstaltungstage",
+      fields: ["activeDays"],
+      before: { activeDays: beforeDays },
+      after: { activeDays: afterDays },
+    },
+  ];
+}
+
+function snapshotDigest(
+  snapshot: CurrentSnapshot,
+  current = comparableCurrent(snapshot)
+) {
+  return digest({ activeDays: snapshot.activeDays, project: current });
+}
+
 function summary(changes: BackupChange[]) {
   const result = {
     created: 0,
@@ -1747,7 +1844,12 @@ export function buildSelectedDocument(
   );
 
   for (const change of allChanges) {
-    if (!selected.has(change.key) || change.area === "ZUORDNUNGEN") continue;
+    if (
+      !selected.has(change.key) ||
+      change.area === "ZUORDNUNGEN" ||
+      change.area === "VERANSTALTUNG"
+    )
+      continue;
     const collection = areaByName.get(change.area);
     if (!collection) continue;
     const rows = target[collection] as Array<Record<string, any>>;
@@ -1933,11 +2035,14 @@ export async function previewProjectDocument(
       `Die Sicherung gehört zu „${desired.metadata.eventName}“ (${desired.metadata.year}), ausgewählt ist „${snapshot.eventName}“ (${currentEventYear()}).`
     );
   const current = comparableCurrent(snapshot);
-  const changes = diffDocuments(current, desired);
+  const changes = [
+    ...eventDaysChange(snapshot.activeDays, desired.metadata.activeDays),
+    ...diffDocuments(current, desired),
+  ];
   serializeChangeDetails(changes, desired.warnings);
   return {
     metadata: desired.metadata,
-    currentDigest: digest(current),
+    currentDigest: snapshotDigest(snapshot, current),
     workbookDigest: sourceDigest,
     warnings: desired.warnings,
     changes,
@@ -2019,19 +2124,25 @@ export async function restoreProjectDocument(
         "Die Sicherung gehört nicht zur aktuell ausgewählten Veranstaltung"
       );
     const current = comparableCurrent(snapshot);
-    const beforeDigest = digest(current);
+    const beforeDigest = snapshotDigest(snapshot, current);
     if (beforeDigest !== expectedCurrentDigest)
       throw new Error(
         "Die Planung wurde seit der Vorschau geändert. Bitte die Datei erneut prüfen."
       );
-    const allChanges = diffDocuments(current, imported);
+    const allChanges = [
+      ...eventDaysChange(snapshot.activeDays, imported.metadata.activeDays),
+      ...diffDocuments(current, imported),
+    ];
     const desired = buildSelectedDocument(
       current,
       imported,
       allChanges,
       selectedChangeKeys
     );
-    const changes = diffDocuments(current, desired);
+    const changes = [
+      ...eventDaysChange(snapshot.activeDays, desired.metadata.activeDays),
+      ...diffDocuments(current, desired),
+    ];
     if (!changes.length)
       throw new Error("Die Auswahl enthält keine übernehmbaren Änderungen");
     if (
@@ -2074,6 +2185,10 @@ export async function restoreProjectDocument(
     const auditDetails = serializeChangeDetails(changes, imported.warnings);
 
     if (changes.length) {
+      await tx
+        .update(events)
+        .set({ activeDays: desired.metadata.activeDays })
+        .where(and(eq(events.id, eventId), eq(events.year, year)));
       await tx
         .delete(assignments)
         .where(
@@ -2139,6 +2254,10 @@ export async function restoreProjectDocument(
           phone: row.phone || null,
           note: row.note || null,
           willHelp: row.willHelp,
+          availMon: row.availMon,
+          availTue: row.availTue,
+          availWed: row.availWed,
+          availThu: row.availThu,
           availFri: row.availFri,
           availSat: row.availSat,
           availSun: row.availSun,
@@ -2333,14 +2452,19 @@ export async function restoreProjectDocument(
       );
     }
 
-    const after = comparableCurrent(await loadSnapshot(tx));
+    const afterSnapshot = await loadSnapshot(tx);
+    const after = comparableCurrent(afterSnapshot);
     const restoredContent = comparableProjectContent(after);
     const desiredContent = comparableProjectContent(desired);
-    if (JSON.stringify(restoredContent) !== JSON.stringify(desiredContent))
+    if (
+      JSON.stringify(restoredContent) !== JSON.stringify(desiredContent) ||
+      JSON.stringify(afterSnapshot.activeDays) !==
+        JSON.stringify(desired.metadata.activeDays)
+    )
       throw new Error(
         "Die Wiederherstellung konnte den gespeicherten Projektstand nicht vollständig herstellen und wurde komplett zurückgerollt"
       );
-    const afterDigest = digest(after);
+    const afterDigest = snapshotDigest(afterSnapshot, after);
     const totals = summary(changes);
     await tx.insert(backupRestoreLogs).values({
       year,
@@ -2460,6 +2584,10 @@ export async function exportProjectExcel(): Promise<{
       { Schlüssel: "Veranstaltungs-ID", Wert: currentEventId() },
       { Schlüssel: "Veranstaltung", Wert: snapshot.eventName },
       { Schlüssel: "Jahr", Wert: currentEventYear() },
+      {
+        Schlüssel: "Veranstaltungstage",
+        Wert: snapshot.activeDays.join(", "),
+      },
       { Schlüssel: "Exportiert am (UTC)", Wert: exportedAt },
       {
         Schlüssel: "Verwendung",
@@ -2493,6 +2621,10 @@ export async function exportProjectExcel(): Promise<{
       Telefon: row.phone,
       Bemerkung: row.note,
       "Helfen?": row.willHelp,
+      Mo: row.availMon,
+      Di: row.availTue,
+      Mi: row.availWed,
+      Do: row.availThu,
       Fr: row.availFri,
       Sa: row.availSat,
       So: row.availSun,

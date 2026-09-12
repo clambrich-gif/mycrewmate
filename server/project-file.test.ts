@@ -23,7 +23,14 @@ import {
 
 const tableName = (table: any) => table[Symbol.for("drizzle:Name")];
 const data = {
-  events: [{ id: 1, year: 2026, name: "MyEifelRide" }],
+  events: [
+    {
+      id: 1,
+      year: 2026,
+      name: "MyEifelRide",
+      activeDays: [...WEEKDAYS],
+    },
+  ],
   contacts: [
     {
       id: 10,
@@ -46,6 +53,10 @@ const data = {
       phone: "0123",
       note: null,
       willHelp: "ja",
+      availMon: "nein",
+      availTue: "nein",
+      availWed: "nein",
+      availThu: "nein",
       availFri: "ja",
       availSat: "ja",
       availSun: "nein",
@@ -61,6 +72,10 @@ const data = {
       phone: "0456",
       note: null,
       willHelp: "ja",
+      availMon: "nein",
+      availTue: "nein",
+      availWed: "nein",
+      availThu: "nein",
       availFri: "ja",
       availSat: "ja",
       availSun: "nein",
@@ -144,6 +159,10 @@ const helperRow = (name: string, contact = "") => ({
   Telefon: "",
   Bemerkung: "",
   "Helfen?": "ja",
+  Mo: "nein",
+  Di: "nein",
+  Mi: "nein",
+  Do: "nein",
   Fr: "ja",
   Sa: "nein",
   So: "nein",
@@ -164,15 +183,71 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsed = parseProjectFile(exported.buffer.toString("base64"));
     expect(parsed.document.metadata).toMatchObject({
       format: "RSC-HELFERPLANUNG-PROJEKTDATEI",
-      version: 1,
+      version: 2,
       eventId: 1,
       eventName: "MyEifelRide",
       year: 2026,
+      activeDays: [...WEEKDAYS],
     });
     expect(parsed.document.helpers).toHaveLength(2);
     expect(parsed.document.shifts[0].slots[0]).toMatchObject({
       helperSourceId: 21,
       helperName: "Alex Beispiel",
+    });
+  });
+
+  it("führt geänderte Veranstaltungstage im JSON-Vergleich als eigene Änderung", async () => {
+    const exported = await exportProjectFile();
+    const document = JSON.parse(exported.buffer.toString("utf8"));
+    document.metadata.activeDays = ["Freitag", "Samstag"];
+
+    const preview = await previewProjectFile(
+      Buffer.from(JSON.stringify(document)).toString("base64")
+    );
+
+    expect(preview.changes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          area: "VERANSTALTUNG",
+          action: "update",
+          fields: ["activeDays"],
+        }),
+      ])
+    );
+  });
+
+  it("weist Schichten außerhalb der gespeicherten Veranstaltungstage zurück", async () => {
+    const exported = await exportProjectFile();
+    const document = JSON.parse(exported.buffer.toString("utf8"));
+    document.metadata.activeDays = ["Samstag", "Sonntag"];
+
+    expect(() =>
+      parseProjectFile(Buffer.from(JSON.stringify(document)).toString("base64"))
+    ).toThrow("Freitag ist in den Veranstaltungstagen nicht aktiviert");
+  });
+
+  it("lädt Projektdateien der Version 1 mit den bisherigen Werktagsregeln", async () => {
+    const exported = await exportProjectFile();
+    const document = JSON.parse(exported.buffer.toString("utf8"));
+    document.metadata.version = 1;
+    delete document.metadata.activeDays;
+    for (const helper of document.helpers) {
+      delete helper.availMon;
+      delete helper.availTue;
+      delete helper.availWed;
+      delete helper.availThu;
+    }
+
+    const parsed = parseProjectFile(
+      Buffer.from(JSON.stringify(document)).toString("base64")
+    );
+    expect(parsed.document.metadata.version).toBe(2);
+    expect(parsed.document.metadata.activeDays).toEqual([...WEEKDAYS]);
+    expect(parsed.document.helpers[0]).toMatchObject({
+      availMon: "ja",
+      availTue: "ja",
+      availWed: "ja",
+      availThu: "ja",
     });
   });
 
@@ -300,6 +375,33 @@ describe("Projektdatei und modularer Excel-Import", () => {
     );
     expect(preview.totals).toMatchObject({ created: 1, deleted: 2 });
     expect(preview.warnings.join(" ")).toContain("Umbenennung ohne ID");
+  });
+
+  it("behandelt fehlende Mo-bis-Do-Spalten im Helfer-Modulimport als bisher implizit verfügbar", async () => {
+    const withoutWeekdays = (row: ReturnType<typeof helperRow>) => {
+      const { Mo: _mo, Di: _di, Mi: _mi, Do: _do, ...legacy } = row;
+      return legacy;
+    };
+    const preview = await previewModuleExcelImport(
+      helperSheet([
+        withoutWeekdays(helperRow("Chris Leitung", "Chris Leitung")),
+        withoutWeekdays(helperRow("Alex Beispiel", "Chris Leitung")),
+      ]),
+      "HELFER"
+    );
+
+    const helperUpdates = preview.changes.filter(
+      change => change.area === "HELFER" && change.action === "update"
+    );
+    expect(helperUpdates).toHaveLength(2);
+    for (const change of helperUpdates) {
+      expect(change.after).toMatchObject({
+        availMon: "ja",
+        availTue: "ja",
+        availWed: "ja",
+        availThu: "ja",
+      });
+    }
   });
 
   it.each<{
