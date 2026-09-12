@@ -161,29 +161,50 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle>Helferauslastung (eingeteilte Schichten)</CardTitle>
           </CardHeader>
-          <CardContent className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-sm">
+          <CardContent className="overflow-hidden px-3 sm:px-6">
+            <table className="w-full table-fixed text-xs sm:text-sm">
+              <colgroup>
+                <col className="w-[36%]" />
+                {activeDays.map(day => (
+                  <col key={day} />
+                ))}
+                <col className="w-[13%]" />
+              </colgroup>
               <thead>
                 <tr className="border-b text-left text-muted-foreground">
-                  <th className="py-2">Helfer</th>
+                  <th className="py-2 pr-1 sm:pr-2">Helfer</th>
                   {activeDays.map(day => (
-                    <th key={day} className="text-right" title={day}>
+                    <th
+                      key={day}
+                      className="px-0.5 py-2 text-right sm:px-1"
+                      title={day}
+                    >
                       {WEEKDAY_SHORT_LABELS[day]}
                     </th>
                   ))}
-                  <th className="text-right">Gesamt</th>
+                  <th className="py-2 pl-0.5 text-right sm:pl-1">Gesamt</th>
                 </tr>
               </thead>
               <tbody>
                 {s.auslastung.map(a => (
                   <tr key={a.name} className="border-b last:border-0">
-                    <td className="py-2">{a.name}</td>
+                    <td
+                      className="overflow-hidden text-ellipsis whitespace-nowrap py-2 pr-1 sm:pr-2"
+                      title={a.name}
+                    >
+                      {a.name}
+                    </td>
                     {activeDays.map(day => (
-                      <td key={day} className="text-right">
+                      <td
+                        key={day}
+                        className="px-0.5 py-2 text-right tabular-nums sm:px-1"
+                      >
                         {a.byDay[day]}
                       </td>
                     ))}
-                    <td className="text-right font-semibold">{a.gesamt}</td>
+                    <td className="py-2 pl-0.5 text-right font-semibold tabular-nums sm:pl-1">
+                      {a.gesamt}
+                    </td>
                   </tr>
                 ))}
                 {s.auslastung.length === 0 && (
