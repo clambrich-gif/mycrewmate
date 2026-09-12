@@ -1,7 +1,12 @@
 import { StatusBadge } from "@/components/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
-import { eventWeekdays, WEEKDAY_SHORT_LABELS } from "@shared/weekdays";
+import {
+  eventWeekdays,
+  WEEKDAY_AVAILABILITY_FIELDS,
+  WEEKDAY_SHORT_LABELS,
+  type Weekday,
+} from "@shared/weekdays";
 
 type MetricCard = {
   label: string;
@@ -18,10 +23,17 @@ type MetricSection = {
 
 export default function Dashboard() {
   const { data: s, isLoading } = trpc.dashboard.stats.useQuery();
+  const { data: helpers = [], isLoading: areHelpersLoading } =
+    trpc.helpers.list.useQuery();
   const { data: currentEvent, isLoading: isEventLoading } =
     trpc.events.current.useQuery();
   const activeDays = currentEvent ? eventWeekdays(currentEvent.activeDays) : [];
-  if (isLoading || isEventLoading || !s || !currentEvent)
+  const helperByName = new Map(helpers.map(helper => [helper.name, helper]));
+  const zeroAvailability = (helperName: string, day: Weekday) => {
+    const helper = helperByName.get(helperName);
+    return helper?.[WEEKDAY_AVAILABILITY_FIELDS[day]];
+  };
+  if (isLoading || isEventLoading || areHelpersLoading || !s || !currentEvent)
     return <div className="text-muted-foreground">Lade Dashboard …</div>;
 
   const sections: MetricSection[] = [
@@ -158,8 +170,22 @@ export default function Dashboard() {
         </Card>
 
         <Card className="shadow-sm">
-          <CardHeader>
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
             <CardTitle>Helferauslastung (eingeteilte Schichten)</CardTitle>
+            <div
+              className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium sm:text-xs"
+              aria-label="Legende: Null in Grün bedeutet verfügbar, Null in Rot bedeutet nicht verfügbar"
+            >
+              <span className="text-emerald-700 dark:text-emerald-400">
+                <strong>0</strong> = verfügbar
+              </span>
+              <span className="text-muted-foreground" aria-hidden="true">
+                |
+              </span>
+              <span className="text-red-700 dark:text-red-400">
+                <strong>0</strong> = nicht verfügbar
+              </span>
+            </div>
           </CardHeader>
           <CardContent className="overflow-hidden px-3 sm:px-6">
             <table className="w-full table-fixed text-xs sm:text-sm">
@@ -194,14 +220,35 @@ export default function Dashboard() {
                     >
                       {a.name}
                     </td>
-                    {activeDays.map(day => (
-                      <td
-                        key={day}
-                        className="px-0.5 py-2 text-right tabular-nums sm:px-1"
-                      >
-                        {a.byDay[day]}
-                      </td>
-                    ))}
+                    {activeDays.map(day => {
+                      const value = a.byDay[day];
+                      const availability = zeroAvailability(a.name, day);
+                      const availabilityClass =
+                        value !== 0
+                          ? ""
+                          : availability === "ja"
+                            ? "font-semibold text-emerald-700 dark:text-emerald-400"
+                            : availability === "nein"
+                              ? "font-semibold text-red-700 dark:text-red-400"
+                              : "";
+                      const availabilityTitle =
+                        value !== 0
+                          ? undefined
+                          : availability === "ja"
+                            ? `${day}: verfügbar, noch keine Schicht`
+                            : availability === "nein"
+                              ? `${day}: nicht verfügbar`
+                              : `${day}: Verfügbarkeit vielleicht`;
+                      return (
+                        <td
+                          key={day}
+                          className={`px-0.5 py-2 text-right tabular-nums sm:px-1 ${availabilityClass}`}
+                          title={availabilityTitle}
+                        >
+                          {value}
+                        </td>
+                      );
+                    })}
                     <td className="py-2 pl-0.5 text-right font-semibold tabular-nums sm:pl-1">
                       {a.gesamt}
                     </td>
