@@ -5,6 +5,21 @@ const source = (relativePath: string) =>
   readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
 describe("UI- und Mobile-UX-Regeln", () => {
+  it("zeigt in der Hilfe ausschließlich das Video der aktiven Rolle", () => {
+    const help = source("client/src/pages/Help.tsx");
+
+    expect(help).toContain('user?.role === "admin"');
+    expect(help).toContain('user?.role === "user"');
+    expect(help).toContain("Video-Anleitung für Administratoren");
+    expect(help).toContain("Video-Anleitung für das Planungsteam");
+    expect(help).toContain("RSC-Helferplanung-Poster-Administratoren");
+    expect(help).toContain("RSC-Helferplanung-Poster-Planungsteam");
+    expect(help.match(/<video/g)).toHaveLength(1);
+    expect(help).toContain("controls");
+    expect(help).toContain("playsInline");
+    expect(help).toContain("aspect-video w-full max-w-full");
+  });
+
   it("stellt die Login-Rollen als zugänglichen Segmented-Control dar", () => {
     const layout = source("client/src/components/Layout.tsx");
 

@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { downloadBase64File } from "@/lib/download";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
@@ -10,6 +11,7 @@ import {
   CheckCircle2,
   Download,
   FileDown,
+  PlayCircle,
   Search,
   ShieldCheck,
   UserRoundCog,
@@ -211,6 +213,23 @@ function RoleBadge({ role }: { role: keyof typeof ROLE_STYLE }) {
 
 export default function Help() {
   const [query, setQuery] = useState("");
+  const { user } = useAuth();
+  const helpVideo =
+    user?.role === "admin"
+      ? {
+          src: "/manus-storage/RSC-Helferplanung-Erklaervideo-Administratoren_48a1d1ca.mp4",
+          poster:
+            "/manus-storage/RSC-Helferplanung-Poster-Administratoren_483a22df.jpg",
+          label: "Video-Anleitung für Administratoren",
+        }
+      : user?.role === "user"
+        ? {
+            src: "/manus-storage/RSC-Helferplanung-Erklaervideo-Planungsteam_3101461c.mp4",
+            poster:
+              "/manus-storage/RSC-Helferplanung-Poster-Planungsteam_a962d33a.jpg",
+            label: "Video-Anleitung für das Planungsteam",
+          }
+        : null;
   const guidePdf = trpc.help.guidePdf.useMutation({
     onSuccess: result => {
       downloadBase64File(result.base64, result.mimeType, result.filename);
@@ -231,7 +250,7 @@ export default function Help() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(320px,520px)] lg:items-start">
         <div>
           <div className="mb-2 flex items-center gap-2 text-primary">
             <BookOpen className="h-6 w-6" />
@@ -248,18 +267,44 @@ export default function Help() {
             PDF-Anleitung.
           </p>
         </div>
-        <Button
-          type="button"
-          size="lg"
-          className="shrink-0"
-          disabled={guidePdf.isPending}
-          onClick={() => guidePdf.mutate()}
-        >
-          <Download className="h-4 w-4" />
-          {guidePdf.isPending
-            ? "PDF wird vorbereitet …"
-            : "PDF-Anleitung herunterladen"}
-        </Button>
+        <div className="min-w-0 space-y-3">
+          {helpVideo && (
+            <Card className="overflow-hidden border-primary/20 shadow-sm">
+              <CardHeader className="p-4 pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <PlayCircle className="h-5 w-5 text-primary" />
+                  Video-Anleitung
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-3 pt-0 sm:p-4 sm:pt-0">
+                <video
+                  key={helpVideo.src}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  poster={helpVideo.poster}
+                  className="aspect-video w-full max-w-full rounded-lg bg-slate-950 object-contain shadow-inner"
+                  aria-label={helpVideo.label}
+                >
+                  <source src={helpVideo.src} type="video/mp4" />
+                  Ihr Browser unterstützt die Videowiedergabe nicht.
+                </video>
+              </CardContent>
+            </Card>
+          )}
+          <Button
+            type="button"
+            size="lg"
+            className="w-full"
+            disabled={guidePdf.isPending}
+            onClick={() => guidePdf.mutate()}
+          >
+            <Download className="h-4 w-4" />
+            {guidePdf.isPending
+              ? "PDF wird vorbereitet …"
+              : "PDF-Anleitung herunterladen"}
+          </Button>
+        </div>
       </div>
 
       <Card className="border-primary/20 bg-primary/5 shadow-sm">
