@@ -12,13 +12,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { downloadBase64File, safeDownloadName } from "@/lib/download";
-import {
-  resolveAssignmentShareContact,
-  shareAssignmentText,
-} from "@/lib/helper-assignment-share";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
-import { FileDown, Share2, Trash2 } from "lucide-react";
+import { FileDown, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
@@ -159,11 +155,8 @@ export default function Helpers() {
         ),
     [helpers, filter, apFilter, sortAsc]
   );
-  const contactById = useMemo(
-    () => new Map(contacts.map(contact => [contact.id, contact])),
-    [contacts]
-  );
   const selfHelperIds = useMemo(() => {
+    const contactById = new Map(contacts.map(contact => [contact.id, contact]));
     return new Set(
       helpers
         .filter(helper => {
@@ -174,45 +167,12 @@ export default function Helpers() {
         })
         .map(helper => helper.id)
     );
-  }, [contactById, helpers]);
+  }, [contacts, helpers]);
   const assignedHelperIds = useMemo(
     () =>
       new Set((plan ?? []).flatMap(item => item.assigned.map(a => a.helperId))),
     [plan]
   );
-
-  const shareHelperAssignment = async (
-    helper: (typeof helpers)[number]
-  ) => {
-    try {
-      const contact = resolveAssignmentShareContact(helper.contactId, contacts);
-      if (!contact) {
-        toast.error(
-          "Bitte zuerst einen Ansprechpartner oder eine Haupt-Helferleitung mit Rufnummer anlegen."
-        );
-        return;
-      }
-
-      const result = await shareAssignmentText({
-        helperName: helper.name,
-        eventName: currentEvent?.name ?? "die aktuelle Veranstaltung",
-        contact,
-      });
-
-      if (result === "copied") {
-        toast.success(
-          `Einteilungstext für ${helper.name} in die Zwischenablage kopiert! (Jetzt per Mail/WhatsApp einfügen)`
-        );
-      }
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") return;
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Einteilung konnte nicht geteilt werden."
-      );
-    }
-  };
 
   return (
     <div className="space-y-5">
@@ -288,16 +248,6 @@ export default function Helpers() {
                   )}
                 </div>
                 <div className="flex shrink-0 gap-1">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="size-11 shrink-0"
-                    title="Einteilung teilen"
-                    aria-label={`Einteilung für ${helper.name} teilen`}
-                    onClick={() => void shareHelperAssignment(helper)}
-                  >
-                    <Share2 className="h-4 w-4 text-blue-600" />
-                  </Button>
                   <Button
                     variant="outline"
                     size="icon"
@@ -464,7 +414,7 @@ export default function Helpers() {
                   </th>
                 ))}
                 <th className="w-[7%] p-2">Bestätigt?</th>
-                <th className="w-[12%] p-2">Aktionen</th>
+                <th className="w-[10%] p-2">Aktionen</th>
               </tr>
             </thead>
             <tbody>
@@ -603,16 +553,6 @@ export default function Helpers() {
                   </td>
                   <td className="p-1">
                     <div className="flex min-w-0 justify-center gap-1">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="size-11 shrink-0"
-                        title="Einteilung teilen"
-                        aria-label={`Einteilung für ${helper.name} teilen`}
-                        onClick={() => void shareHelperAssignment(helper)}
-                      >
-                        <Share2 className="h-4 w-4 text-blue-600" />
-                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"
