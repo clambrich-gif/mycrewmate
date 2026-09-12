@@ -1,4 +1,10 @@
 import type { Assignment, Helper, Shift } from "../drizzle/schema";
+import {
+  shiftRange as sharedShiftRange,
+  shiftsOverlap,
+} from "../shared/shift-time";
+
+export { toMinutes } from "../shared/shift-time";
 
 export const DAYS = ["Freitag", "Samstag", "Sonntag"] as const;
 export type Day = (typeof DAYS)[number];
@@ -10,32 +16,12 @@ export function helperActiveOnDay(h: Helper, day: Day): boolean {
   return h.availSun === "ja";
 }
 
-/** Minuten seit Mitternacht; ungültige oder leere Werte ergeben null. */
-export function toMinutes(t: string | null | undefined): number | null {
-  if (!t) return null;
-  const match = /^(\d{1,2}):(\d{2})$/.exec(t.trim());
-  if (!match) return null;
-
-  const hours = Number(match[1]);
-  const minutes = Number(match[2]);
-  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
-
-  return hours * 60 + minutes;
-}
-
-/** Beide Zeitfelder leer bedeuten ganztägig. Ungültige Altdaten werden defensiv ganztägig behandelt. */
 export function shiftRange(s: Shift): [number, number] {
-  const start = toMinutes(s.startTime);
-  const end = toMinutes(s.endTime);
-  if (start == null || end == null || end <= start) return [0, 1440];
-  return [start, end];
+  return sharedShiftRange(s);
 }
 
 export function overlaps(a: Shift, b: Shift): boolean {
-  if (a.day !== b.day) return false;
-  const [startA, endA] = shiftRange(a);
-  const [startB, endB] = shiftRange(b);
-  return startA < endB && startB < endA;
+  return shiftsOverlap(a, b);
 }
 
 export type ShiftStatus = "OFFEN" | "KNAPP" | "OK";

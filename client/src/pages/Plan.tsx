@@ -25,6 +25,7 @@ import { Label } from "@/components/ui/label";
 import { CopyPreviousPlanButton } from "@/components/CopyPreviousPlanButton";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
+import { shiftsOverlap, type ShiftTimeLike } from "@shared/shift-time";
 
 const DAYS = ["Freitag", "Samstag", "Sonntag"] as const;
 
@@ -38,6 +39,14 @@ type AssignmentT = {
   shiftId: number;
   helperId: number;
   slot: number;
+};
+
+type DropdownShift = ShiftTimeLike & {
+  id: number;
+  area: string;
+  task: string;
+  startTime: string;
+  endTime: string;
 };
 
 export default function Plan() {
@@ -203,6 +212,27 @@ export default function Plan() {
             : h.availSun === "ja")
     );
 
+  const assignedShiftsByHelper = useMemo(() => {
+    const result = new Map<number, DropdownShift[]>();
+    for (const evaluation of evals) {
+      for (const assignment of evaluation.assigned as AssignmentT[]) {
+        const assigned = result.get(assignment.helperId) ?? [];
+        assigned.push(evaluation.shift);
+        result.set(assignment.helperId, assigned);
+      }
+    }
+    return result;
+  }, [evals]);
+
+  const overlappingAssignments = (
+    helperId: number,
+    currentShift: DropdownShift
+  ) =>
+    (assignedShiftsByHelper.get(helperId) ?? []).filter(
+      other =>
+        other.id !== currentShift.id && shiftsOverlap(other, currentShift)
+    );
+
   // Slots: bis zu needed, max 20
   const slotsFor = (e: any): { slot: number; a: AssignmentT | undefined }[] => {
     const n = Math.min(Math.max(e.shift.needed, 0), 20);
@@ -250,11 +280,41 @@ export default function Plan() {
                   <SelectValue placeholder="Helfer wählen …" />
                 </SelectTrigger>
                 <SelectContent>
-                  {actives.map(helper => (
-                    <SelectItem key={helper.id} value={String(helper.id)}>
-                      {label(helper)}
-                    </SelectItem>
-                  ))}
+                  {actives.map(helper => {
+                    const conflicts = overlappingAssignments(helper.id, shift);
+                    const isAlreadyAssigned = conflicts.length > 0;
+                    const conflictTitle = conflicts
+                      .map(
+                        other =>
+                          `${other.area}: ${other.task} (${formatTimeLabel(other)})`
+                      )
+                      .join(", ");
+                    return (
+                      <SelectItem
+                        key={helper.id}
+                        value={String(helper.id)}
+                        className={
+                          isAlreadyAssigned
+                            ? "bg-amber-100 text-amber-950 focus:bg-amber-200 focus:text-amber-950 dark:bg-amber-900/60 dark:text-amber-50 dark:focus:bg-amber-800"
+                            : undefined
+                        }
+                        title={
+                          isAlreadyAssigned
+                            ? `Zeitgleich eingeteilt: ${conflictTitle}`
+                            : undefined
+                        }
+                      >
+                        <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
+                          <span className="truncate">{label(helper)}</span>
+                          {isAlreadyAssigned && (
+                            <span className="shrink-0 rounded-full border border-amber-500 bg-amber-200 px-2 py-0.5 text-[11px] font-semibold text-amber-950 dark:bg-amber-800 dark:text-amber-50">
+                              bereits belegt
+                            </span>
+                          )}
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
                   {actives.length === 0 && (
                     <SelectItem value="x" disabled>
                       Keine verfügbaren Helfer
@@ -308,7 +368,7 @@ export default function Plan() {
         <h1 className="text-2xl font-bold">Einsatzplan</h1>
         <p className="text-muted-foreground">
           {canEditPlan
-            ? "Nur verfügbare, aktive Helfer sind auswählbar. Absagen markieren Ausfälle (rot), Doppelbelegungen werden gewarnt (orange)."
+            ? "Nur verfügbare, aktive Helfer sind auswählbar. Zeitgleich bereits eingeteilte Helfer sind im Auswahlmenü gelb markiert, bleiben aber auswählbar. Absagen markieren Ausfälle (rot), Doppelbelegungen werden gewarnt (orange)."
             : "Das Planungsteam kann den Einsatzplan vollständig ansehen und filtern. Änderungen und Helferzuweisungen sind Administratoren vorbehalten."}
         </p>
       </div>
@@ -656,6 +716,9 @@ export default function Plan() {
       </Card>
       <p className="text-xs text-muted-foreground">
         Legende: <span className="slot slot-offen inline-block">offen</span>{" "}
+        <span className="inline-block rounded border border-amber-400 bg-amber-100 px-2 py-0.5 text-amber-950">
+          im Dropdown bereits belegt
+        </span>{" "}
         <span className="slot slot-doppel inline-block">Doppelbelegung</span>{" "}
         <span className="slot slot-ausfall inline-block">Ausfall</span>
       </p>

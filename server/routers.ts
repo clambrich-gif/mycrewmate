@@ -57,7 +57,7 @@ import {
 } from "./year-context";
 import { storageGetSignedUrl, storagePut } from "./storage";
 
-const GUIDE_PDF_KEY = "RSC-Helferplanung-Anleitung_ee2c395b.pdf";
+const GUIDE_PDF_KEY = "RSC-Helferplanung-Anleitung_ddd7bf07.pdf";
 const GUIDE_PDF_FILENAME = "RSC-Helferplanung-Anleitung.pdf";
 const GUIDE_PDF_MAX_BYTES = 5_000_000;
 

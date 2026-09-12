@@ -91,6 +91,7 @@ const SECTIONS: HelpSection[] = [
       "Über „Neue Schicht“ Tag, Bereich, Aufgabe, Zeit, Bedarf und Bemerkung erfassen.",
       "Jedem Einsatzbereich einen Ansprechpartner zuordnen.",
       "Nur Helfer auswählen, die am betreffenden Tag mit Ja verfügbar sind.",
+      "Gelb markierte Namen im Auswahlmenü sind am selben Tag zur gewählten Einsatzzeit bereits in einer anderen Schicht eingeteilt. Die Auswahl bleibt bewusst möglich.",
       "Status OFFEN, KNAPP oder OK sowie Warnungen zu Ausfällen und Doppelbelegungen kontrollieren.",
     ],
     image: {

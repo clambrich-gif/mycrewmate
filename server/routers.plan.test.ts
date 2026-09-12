@@ -214,7 +214,7 @@ describe("Planungs-API", () => {
         expect(Buffer.from(result.base64, "base64")).toEqual(pdf);
       }
       expect(storageMocks.storageGetSignedUrl).toHaveBeenCalledWith(
-        "RSC-Helferplanung-Anleitung_ee2c395b.pdf"
+        "RSC-Helferplanung-Anleitung_ddd7bf07.pdf"
       );
     } finally {
       fetchMock.mockRestore();
