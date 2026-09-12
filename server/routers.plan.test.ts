@@ -15,6 +15,7 @@ const dbMocks = vi.hoisted(() => ({
   deleteCake: vi.fn(),
   createPrep: vi.fn(),
   listDeletionAuditLogs: vi.fn(),
+  clearDeletionAuditLogs: vi.fn(),
   restoreDeletionAuditLog: vi.fn(),
   getSecuritySettings: vi.fn(),
   getEvent: vi.fn(),
@@ -735,6 +736,38 @@ describe("Planungs-API", () => {
       7,
       expect.objectContaining({ userId: 1, name: "Organisation" })
     );
+  });
+
+  it("setzt Löschprotokolle nur administrativ und mit Passwort zurück", async () => {
+    dbMocks.clearDeletionAuditLogs.mockResolvedValue({ affectedRows: 1 });
+
+    await expect(
+      appRouter.createCaller(planningTeamCtx).audit.clear({
+        eventYear: 2026,
+        eventId: 1,
+        adminPassword: ADMIN_PASSWORD,
+      })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(
+      appRouter.createCaller(ctx).audit.clear({
+        eventYear: 2026,
+        eventId: 1,
+        adminPassword: "falsch",
+      })
+    ).rejects.toThrow("Administratorpasswort");
+    expect(dbMocks.clearDeletionAuditLogs).not.toHaveBeenCalled();
+
+    await expect(
+      appRouter.createCaller(ctx).audit.clear({
+        eventYear: 2026,
+        eventId: 1,
+        adminPassword: ADMIN_PASSWORD,
+      })
+    ).resolves.toEqual({ success: true });
+    expect(dbMocks.clearDeletionAuditLogs).toHaveBeenCalledWith({
+      eventYear: 2026,
+      eventId: 1,
+    });
   });
 
   it("verweigert dem Planungsteam jede Einsatzplanänderung", async () => {

@@ -21,6 +21,7 @@ import {
 } from "../drizzle/schema";
 import {
   eventWeekdays,
+  helperAvailableOnDay,
   orderedWeekdays,
   WEEKDAYS,
   type Weekday,
@@ -1231,6 +1232,10 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
             item => personKey(item.name) === personKey(slot.helperName)
           );
       if (!helper) continue;
+      if (!helperAvailableOnDay(helper, shift.day))
+        throw new Error(
+          `EINSATZPLAN „${shift.task}“: Helfer „${helper.name}“ ist an ${shift.day} nicht verfügbar`
+        );
       const helperKey = slot.helperSourceId
         ? `id:${slot.helperSourceId}`
         : `name:${personKey(slot.helperName)}`;
@@ -1960,9 +1965,14 @@ export function buildSelectedDocument(
   const helperByName = new Map(
     target.helpers.map(row => [personKey(row.name), row])
   );
+  const activeDays = new Set(eventWeekdays(target.metadata.activeDays));
   const areaContacts = new Map<string, string>();
   const helperShifts = new Map<string, ShiftRow[]>();
   for (const shift of target.shifts) {
+    if (!activeDays.has(shift.day))
+      throw new Error(
+        `Die Auswahl ist nicht vollständig: ${shift.day} wird deaktiviert, aber die Schicht „${shift.task}“ bleibt ausgewählt. Bitte übernehmen Sie auch die zugehörigen Einsatzplanänderungen.`
+      );
     const areaContact =
       (shift.areaContactSourceId
         ? contactById.get(shift.areaContactSourceId)
@@ -1986,6 +1996,10 @@ export function buildSelectedDocument(
           ? helperById.get(slot.helperSourceId)
           : undefined) ?? helperByName.get(personKey(slot.helperName));
       if (!helper) return [];
+      if (!helperAvailableOnDay(helper, shift.day))
+        throw new Error(
+          `EINSATZPLAN „${shift.task}“: Helfer „${helper.name}“ ist an ${shift.day} nicht verfügbar`
+        );
       if (slot.slot < 0 || slot.slot >= shift.needed)
         throw new Error(
           `EINSATZPLAN „${shift.task}“: Ein Helfer steht außerhalb des Bedarfs`

@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as XLSX from "xlsx";
-import { WEEKDAYS } from "../shared/weekdays";
+import {
+  WEEKDAY_AVAILABILITY_FIELDS,
+  WEEKDAYS,
+} from "../shared/weekdays";
 
 const dbMocks = vi.hoisted(() => ({ getDb: vi.fn() }));
 const contextMocks = vi.hoisted(() => ({
@@ -226,6 +229,19 @@ describe("Projektdatei und modularer Excel-Import", () => {
     ).toThrow("Freitag ist in den Veranstaltungstagen nicht aktiviert");
   });
 
+  it("weist Zuweisungen nicht verfügbarer Helfer im JSON-Restore zurück", async () => {
+    const exported = await exportProjectFile();
+    const document = JSON.parse(exported.buffer.toString("utf8"));
+    const assignedHelper = document.helpers.find(
+      (item: any) => item.name === "Alex Beispiel"
+    );
+    assignedHelper.availFri = "nein";
+
+    expect(() =>
+      parseProjectFile(Buffer.from(JSON.stringify(document)).toString("base64"))
+    ).toThrow("Alex Beispiel");
+  });
+
   it("lädt Projektdateien der Version 1 mit den bisherigen Werktagsregeln", async () => {
     const exported = await exportProjectFile();
     const document = JSON.parse(exported.buffer.toString("utf8"));
@@ -310,6 +326,9 @@ describe("Projektdatei und modularer Excel-Import", () => {
       const exported = await exportProjectFile();
       const document = JSON.parse(exported.buffer.toString("utf8"));
       document.shifts[0].day = day;
+      document.helpers.find(
+        (item: any) => item.name === "Alex Beispiel"
+      )[WEEKDAY_AVAILABILITY_FIELDS[day]] = "ja";
       const parsed = parseProjectFile(
         Buffer.from(JSON.stringify(document)).toString("base64")
       );

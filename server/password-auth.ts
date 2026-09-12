@@ -10,11 +10,9 @@ const WINDOW_MS = 15 * 60 * 1000;
 const attempts = new Map<string, { count: number; firstAttemptAt: number }>();
 
 export function getClientKey(req: Request) {
-  const forwarded = req.headers["x-forwarded-for"];
-  const raw = Array.isArray(forwarded)
-    ? forwarded[0]
-    : forwarded?.split(",")[0];
-  return raw?.trim() || req.ip || req.socket.remoteAddress || "unknown";
+  // X-Forwarded-For bleibt vollständig außerhalb der Sicherheitsgrenze, weil
+  // dieser Dienst keine feste, exklusiv kontrollierte Proxy-IP voraussetzt.
+  return req.socket.remoteAddress || "unknown";
 }
 
 function currentEntry(key: string) {

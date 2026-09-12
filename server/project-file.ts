@@ -8,7 +8,11 @@ import {
   type BackupDocument,
 } from "./excel-backup";
 import { overlaps, toMinutes } from "./logic";
-import { eventWeekdays, WEEKDAYS } from "../shared/weekdays";
+import {
+  eventWeekdays,
+  helperAvailableOnDay,
+  WEEKDAYS,
+} from "../shared/weekdays";
 
 const PROJECT_FORMAT = "RSC-HELFERPLANUNG-PROJEKTDATEI";
 const PROJECT_VERSION = 2;
@@ -346,6 +350,10 @@ function validateRelations(document: BackupDocument) {
       )
         throw new Error(
           `Einsatzplan „${shift.task}“: Helfer-ID und Name widersprechen sich`
+        );
+      if (!helperAvailableOnDay(helper, shift.day))
+        throw new Error(
+          `Einsatzplan „${shift.task}“: Helfer „${helper.name}“ ist an ${shift.day} nicht verfügbar`
         );
       const helperKey = helper.sourceId
         ? `id:${helper.sourceId}`

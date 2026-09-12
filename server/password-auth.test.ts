@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   clearPasswordLoginFailures,
+  getClientKey,
   hashPassword,
   isPasswordLoginBlocked,
   recordFailedPasswordLogin,
@@ -26,5 +27,15 @@ describe("Passwortschutz", () => {
     expect(isPasswordLoginBlocked(key)).toBe(true);
     clearPasswordLoginFailures(key);
     expect(isPasswordLoginBlocked(key)).toBe(false);
+  });
+
+  it("ignoriert manipulierbares X-Forwarded-For für den Rate-Limit-Schlüssel", () => {
+    const request = {
+      headers: { "x-forwarded-for": "198.51.100.10" },
+      socket: { remoteAddress: "10.0.0.8" },
+    } as any;
+    expect(getClientKey(request)).toBe("10.0.0.8");
+    request.headers["x-forwarded-for"] = "203.0.113.44";
+    expect(getClientKey(request)).toBe("10.0.0.8");
   });
 });

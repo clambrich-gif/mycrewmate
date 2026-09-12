@@ -265,6 +265,32 @@ describe("Excel-Datensicherung", () => {
     expect(selected.shifts[0].slots).toHaveLength(1);
   });
 
+  it("blockiert eine Tag-Deaktivierung ohne zugehörige Schichtlöschung", async () => {
+    const exported = await exportBackupExcel();
+    const current = parseBackupWorkbook(exported.buffer.toString("base64"));
+    const desired = structuredClone(current);
+    desired.metadata.activeDays = ["Samstag", "Sonntag"];
+    desired.shifts = [];
+    const changes = [
+      {
+        key: "VERANSTALTUNG:update:activeDays",
+        area: "VERANSTALTUNG" as const,
+        action: "update" as const,
+        label: "Aktive Veranstaltungstage",
+        fields: ["activeDays"],
+        before: { activeDays: current.metadata.activeDays },
+        after: { activeDays: desired.metadata.activeDays },
+      },
+      ...diffDocuments(current, desired),
+    ];
+
+    expect(() =>
+      buildSelectedDocument(current, desired, changes, [
+        "VERANSTALTUNG:update:activeDays",
+      ])
+    ).toThrow("zugehörigen Einsatzplanänderungen");
+  });
+
   it("akzeptiert neue Ansprechpartner und ihre verknüpfte eigene Helferzeile ohne IDs", async () => {
     const exported = await exportBackupExcel();
     const changed = mutateWorkbook(exported.buffer, workbook => {
@@ -325,6 +351,20 @@ describe("Excel-Datensicherung", () => {
 
     expect(() => parseBackupWorkbook(changed.toString("base64"))).toThrow(
       "Doppelbelegung"
+    );
+  });
+
+  it("blockiert Zuweisungen nicht verfügbarer Helfer", async () => {
+    const exported = await exportBackupExcel();
+    const changed = mutateWorkbook(exported.buffer, workbook => {
+      const rows = XLSX.utils.sheet_to_json<any>(workbook.Sheets.HELFER);
+      const assignedHelper = rows.find(row => row.Name === "Alex Beispiel");
+      assignedHelper.Fr = "nein";
+      replaceSheet(workbook, "HELFER", rows);
+    });
+
+    expect(() => parseBackupWorkbook(changed.toString("base64"))).toThrow(
+      "Alex Beispiel"
     );
   });
 

@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import {
   and,
   desc,
@@ -31,12 +32,24 @@ import {
   users,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
-import { eventWeekdays, WEEKDAYS, type Weekday } from "../shared/weekdays";
+import {
+  eventWeekdays,
+  helperAvailableOnDay,
+  WEEKDAYS,
+  type Weekday,
+} from "../shared/weekdays";
 import { currentEventId, currentEventYear } from "./year-context";
+import { overlaps } from "./logic";
 
-let _db: ReturnType<typeof drizzle> | null = null;
+type DB = ReturnType<typeof drizzle>;
+type Transaction = Parameters<Parameters<DB["transaction"]>[0]>[0];
+type DBClient = DB | Transaction;
+let _db: DB | null = null;
+const planningWriteClientStorage = new AsyncLocalStorage<DBClient>();
 
-export async function getDb() {
+export async function getDb(): Promise<DBClient | null> {
+  const transactionClient = planningWriteClientStorage.getStore();
+  if (transactionClient) return transactionClient;
   if (!_db && process.env.DATABASE_URL) {
     try {
       _db = drizzle(process.env.DATABASE_URL);
@@ -91,7 +104,6 @@ export async function getUserByOpenId(openId: string) {
   return result[0];
 }
 
-type DB = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 const year = () => currentEventYear();
 const event = () => currentEventId();
 
@@ -161,17 +173,31 @@ export async function getEvent(id = event()) {
 export async function withPlanningWriteLock<T>(callback: () => Promise<T>) {
   const database = (await getDb()) as DB;
   const selectedYear = year();
+  const selectedEventId = event();
   return database.transaction(async tx => {
-    const [selected] = await tx
+    const [selectedYearRow] = await tx
       .select({ year: eventYears.year })
       .from(eventYears)
       .where(eq(eventYears.year, selectedYear))
       .limit(1)
       .for("update");
-    if (!selected) {
+    if (!selectedYearRow) {
       throw new Error("Das gewählte Veranstaltungsjahr ist nicht verfügbar");
     }
-    return callback();
+    const [selectedEvent] = await tx
+      .select({ id: events.id })
+      .from(events)
+      .where(
+        and(eq(events.id, selectedEventId), eq(events.year, selectedYear))
+      )
+      .limit(1)
+      .for("update");
+    if (!selectedEvent) {
+      throw new Error(
+        "Die gewählte Veranstaltung gehört nicht zum gewählten Veranstaltungsjahr"
+      );
+    }
+    return planningWriteClientStorage.run(tx, callback);
   });
 }
 
@@ -282,8 +308,6 @@ export async function deleteEvent(id: number) {
     await tx.delete(finances).where(scope(finances));
     await tx.delete(helpers).where(scope(helpers));
     await tx.delete(contacts).where(scope(contacts));
-    await tx.delete(deletionAuditLogs).where(eq(deletionAuditLogs.eventId, id));
-    await tx.delete(backupRestoreLogs).where(eq(backupRestoreLogs.eventId, id));
     const result = await tx
       .delete(events)
       .where(and(eq(events.id, id), eq(events.year, selectedYear)));
@@ -680,13 +704,20 @@ async function recordDeletionAudit(
   const [selectedEvent] = await client
     .select({ name: events.name })
     .from(events)
-    .where(eq(events.id, selectedEventId))
+    .where(
+      and(eq(events.id, selectedEventId), eq(events.year, selectedYear))
+    )
     .limit(1);
+  if (!selectedEvent) {
+    throw new Error(
+      "Die ausgewählte Veranstaltung gehört nicht zum gewählten Jahr"
+    );
+  }
   await client.insert(deletionAuditLogs).values(
     entries.map(entry => ({
       year: selectedYear,
       eventId: selectedEventId,
-      eventName: selectedEvent?.name ?? null,
+      eventName: selectedEvent.name,
       entityType: entry.entityType,
       entityId: entry.entityId,
       entityLabel: entry.entityLabel,
@@ -803,14 +834,25 @@ export async function restoreDeletionAuditLog(
   actor: Pick<AuditActor, "userId" | "name">
 ) {
   const db = (await getDb()) as DB;
+  const selectedYear = year();
+  const selectedEventId = event();
   return db.transaction(async tx => {
     const [entry] = await tx
       .select()
       .from(deletionAuditLogs)
-      .where(eq(deletionAuditLogs.id, id))
+      .where(
+        and(
+          eq(deletionAuditLogs.id, id),
+          eq(deletionAuditLogs.year, selectedYear),
+          eq(deletionAuditLogs.eventId, selectedEventId)
+        )
+      )
       .limit(1)
       .for("update");
-    if (!entry) throw new Error("Protokolleintrag wurde nicht gefunden");
+    if (!entry)
+      throw new Error(
+        "Protokolleintrag wurde in der ausgewählten Veranstaltung nicht gefunden"
+      );
     if (entry.action !== "single_delete") {
       throw new Error(
         "Nur einzelne Löschungen können gezielt rückgängig gemacht werden"
@@ -819,16 +861,14 @@ export async function restoreDeletionAuditLog(
     if (entry.restoredAt) {
       throw new Error("Diese Löschung wurde bereits rückgängig gemacht");
     }
-    if (!entry.eventId) {
-      throw new Error(
-        "Die ursprüngliche Veranstaltung ist nicht mehr verfügbar"
-      );
-    }
     const [selectedEvent] = await tx
       .select()
       .from(events)
-      .where(and(eq(events.id, entry.eventId), eq(events.year, entry.year)))
-      .limit(1);
+      .where(
+        and(eq(events.id, selectedEventId), eq(events.year, selectedYear))
+      )
+      .limit(1)
+      .for("update");
     if (!selectedEvent) {
       throw new Error("Die ursprüngliche Veranstaltung wurde nicht gefunden");
     }
@@ -842,11 +882,15 @@ export async function restoreDeletionAuditLog(
 
     let restoredAssignments = 0;
     let skippedAssignments = 0;
+    let skippedUnavailableAssignments = 0;
+    let skippedConflictingAssignments = 0;
     if (entry.entityType === "helper") {
       const helperRows = await tx
         .select()
         .from(helpers)
-        .where(eq(helpers.eventId, entry.eventId));
+        .where(
+          planningScopeFor(helpers, selectedYear, selectedEventId)
+        );
       if (
         helperRows.some(
           item =>
@@ -867,14 +911,14 @@ export async function restoreDeletionAuditLog(
             .where(
               and(
                 eq(contacts.id, requestedContactId),
-                eq(contacts.eventId, entry.eventId)
+                planningScopeFor(contacts, selectedYear, selectedEventId)
               )
             )
             .limit(1)
         : [];
-      const result: any = await tx.insert(helpers).values({
-        year: entry.year,
-        eventId: entry.eventId,
+      const restoredHelper = {
+        year: selectedYear,
+        eventId: selectedEventId,
         name: entry.entityLabel,
         contactId: contact?.id ?? null,
         email: typeof details.email === "string" ? details.email : null,
@@ -910,7 +954,8 @@ export async function restoreDeletionAuditLog(
             ? details.availSun
             : "vielleicht",
         confirmed: details.confirmed === "ja" ? "ja" : "nein",
-      });
+      } as const;
+      const result: any = await tx.insert(helpers).values(restoredHelper);
       const helperId = Number(result?.[0]?.insertId ?? result?.insertId);
       const assignmentSnapshots = Array.isArray(details.assignments)
         ? details.assignments
@@ -926,12 +971,12 @@ export async function restoreDeletionAuditLog(
           continue;
         }
         const [shift] = await tx
-          .select({ id: shifts.id, needed: shifts.needed })
+          .select()
           .from(shifts)
           .where(
             and(
               eq(shifts.id, snapshot.shiftId),
-              eq(shifts.eventId, entry.eventId)
+              planningScopeFor(shifts, selectedYear, selectedEventId)
             )
           )
           .limit(1)
@@ -949,8 +994,37 @@ export async function restoreDeletionAuditLog(
               .limit(1)
               .for("update")
           : [];
-        if (!shift || occupied || snapshot.slot >= shift.needed) {
+        if (
+          !shift ||
+          occupied ||
+          snapshot.slot < 0 ||
+          snapshot.slot >= shift.needed
+        ) {
           skippedAssignments++;
+          continue;
+        }
+        if (
+          !eventWeekdays(selectedEvent.activeDays).includes(shift.day) ||
+          !helperAvailableOnDay(restoredHelper, shift.day)
+        ) {
+          skippedAssignments++;
+          skippedUnavailableAssignments++;
+          continue;
+        }
+        const assignedShifts = await tx
+          .select({ ...getTableColumns(shifts) })
+          .from(assignments)
+          .innerJoin(shifts, eq(assignments.shiftId, shifts.id))
+          .where(
+            and(
+              eq(assignments.helperId, helperId),
+              planningScopeFor(shifts, selectedYear, selectedEventId)
+            )
+          )
+          .for("update");
+        if (assignedShifts.some(other => overlaps(shift, other))) {
+          skippedAssignments++;
+          skippedConflictingAssignments++;
           continue;
         }
         await tx.insert(assignments).values({
@@ -962,8 +1036,8 @@ export async function restoreDeletionAuditLog(
       }
     } else {
       await tx.insert(cakes).values({
-        year: entry.year,
-        eventId: entry.eventId,
+        year: selectedYear,
+        eventId: selectedEventId,
         donor: entry.entityLabel,
         cake: typeof details.cake === "string" ? details.cake : "",
         dropoffTime:
@@ -982,16 +1056,23 @@ export async function restoreDeletionAuditLog(
         restoredByName: actor.name,
       })
       .where(
-        and(eq(deletionAuditLogs.id, id), isNull(deletionAuditLogs.restoredAt))
+        and(
+          eq(deletionAuditLogs.id, id),
+          eq(deletionAuditLogs.year, selectedYear),
+          eq(deletionAuditLogs.eventId, selectedEventId),
+          isNull(deletionAuditLogs.restoredAt)
+        )
       );
 
     return {
       entityType: entry.entityType,
       entityLabel: entry.entityLabel,
-      eventId: entry.eventId,
+      eventId: selectedEventId,
       eventName: selectedEvent.name,
       restoredAssignments,
       skippedAssignments,
+      skippedUnavailableAssignments,
+      skippedConflictingAssignments,
     };
   });
 }
@@ -1286,7 +1367,43 @@ export async function assignHelper(v: {
   slot: number;
 }) {
   const db = (await getDb()) as DB;
-  return db.insert(assignments).values(v);
+  return db.transaction(async tx => {
+    const [shift] = await tx
+      .select()
+      .from(shifts)
+      .where(and(eq(shifts.id, v.shiftId), planningScope(shifts)))
+      .limit(1)
+      .for("update");
+    const [helper] = await tx
+      .select()
+      .from(helpers)
+      .where(and(eq(helpers.id, v.helperId), planningScope(helpers)))
+      .limit(1)
+      .for("update");
+    if (!shift || !helper)
+      throw new Error("Schicht oder Helfer wurde nicht gefunden");
+    if (v.slot < 0 || v.slot >= shift.needed)
+      throw new Error("Helferplatz liegt außerhalb des Schichtbedarfs");
+    if (!helperAvailableOnDay(helper, shift.day))
+      throw new Error("Der Helfer ist an diesem Tag nicht verfügbar");
+    const [existing] = await tx
+      .select({ id: assignments.id })
+      .from(assignments)
+      .where(
+        and(
+          eq(assignments.shiftId, v.shiftId),
+          or(
+            eq(assignments.slot, v.slot),
+            eq(assignments.helperId, v.helperId)
+          )
+        )
+      )
+      .limit(1)
+      .for("update");
+    if (existing)
+      throw new Error("Helferplatz oder Helfer ist bereits belegt");
+    return tx.insert(assignments).values(v);
+  });
 }
 export async function replaceShiftAssignment(v: {
   shiftId: number;
@@ -1296,12 +1413,12 @@ export async function replaceShiftAssignment(v: {
   const db = (await getDb()) as DB;
   return db.transaction(async tx => {
     const [shift] = await tx
-      .select({ id: shifts.id, needed: shifts.needed })
+      .select()
       .from(shifts)
       .where(and(eq(shifts.id, v.shiftId), planningScope(shifts)))
       .limit(1);
     const [helper] = await tx
-      .select({ id: helpers.id })
+      .select()
       .from(helpers)
       .where(and(eq(helpers.id, v.helperId), planningScope(helpers)))
       .limit(1);
@@ -1309,10 +1426,13 @@ export async function replaceShiftAssignment(v: {
       throw new Error("Schicht oder Helfer wurde nicht gefunden");
     if (v.slot < 0 || v.slot >= shift.needed)
       throw new Error("Helferplatz liegt außerhalb des Schichtbedarfs");
+    if (!helperAvailableOnDay(helper, shift.day))
+      throw new Error("Der Helfer ist an diesem Tag nicht verfügbar");
     const current = await tx
       .select()
       .from(assignments)
-      .where(eq(assignments.shiftId, v.shiftId));
+      .where(eq(assignments.shiftId, v.shiftId))
+      .for("update");
     if (
       current.some(item => item.slot === v.slot && item.helperId === v.helperId)
     )
@@ -1333,17 +1453,20 @@ export async function removeShiftAssignment(v: {
   slot: number;
 }) {
   const db = (await getDb()) as DB;
-  const [shift] = await db
-    .select({ id: shifts.id })
-    .from(shifts)
-    .where(and(eq(shifts.id, v.shiftId), planningScope(shifts)))
-    .limit(1);
-  if (!shift) throw new Error("Schicht wurde nicht gefunden");
-  return db
-    .delete(assignments)
-    .where(
-      and(eq(assignments.shiftId, v.shiftId), eq(assignments.slot, v.slot))
-    );
+  return db.transaction(async tx => {
+    const [shift] = await tx
+      .select({ id: shifts.id })
+      .from(shifts)
+      .where(and(eq(shifts.id, v.shiftId), planningScope(shifts)))
+      .limit(1)
+      .for("update");
+    if (!shift) throw new Error("Schicht wurde nicht gefunden");
+    return tx
+      .delete(assignments)
+      .where(
+        and(eq(assignments.shiftId, v.shiftId), eq(assignments.slot, v.slot))
+      );
+  });
 }
 export async function unassignHelper(id: number) {
   const db = (await getDb()) as DB;
@@ -1562,10 +1685,6 @@ export async function resetArea(area: ResetArea, actor: AuditActor) {
       "Für das Löschen von Helferdaten muss der ausführende Ansprechpartner ausgewählt werden"
     );
   }
-  const remove = async (table: any) =>
-    db
-      .delete(table)
-      .where(planningScopeFor(table, selectedYear, selectedEventId));
 
   if (area === "all") {
     await db.transaction(async tx => {
@@ -1656,6 +1775,84 @@ export async function resetArea(area: ResetArea, actor: AuditActor) {
     return;
   }
 
+  if (area === "contacts") {
+    await db.transaction(async tx => {
+      const contactRows = await tx
+        .select()
+        .from(contacts)
+        .where(planningScopeFor(contacts, selectedYear, selectedEventId))
+        .for("update");
+      const linkedHelpers = await tx
+        .select()
+        .from(helpers)
+        .where(planningScopeFor(helpers, selectedYear, selectedEventId))
+        .for("update");
+      const contactById = new Map(contactRows.map(item => [item.id, item]));
+      const selfHelpers = linkedHelpers.filter(helper => {
+        const contact = helper.contactId
+          ? contactById.get(helper.contactId)
+          : undefined;
+        return (
+          contact &&
+          normalizePersonName(helper.name) === normalizePersonName(contact.name)
+        );
+      });
+      const selfHelperIds = selfHelpers.map(item => item.id);
+      const assignmentRows = selfHelperIds.length
+        ? await tx
+            .select({
+              helperId: assignments.helperId,
+              shiftId: assignments.shiftId,
+              slot: assignments.slot,
+            })
+            .from(assignments)
+            .where(inArray(assignments.helperId, selfHelperIds))
+            .for("update")
+        : [];
+      await recordDeletionAudit(
+        tx,
+        actor,
+        "area_reset",
+        selfHelpers.map(helper =>
+          helperAuditEntity(
+            helper,
+            assignmentRows
+              .filter(item => item.helperId === helper.id)
+              .map(({ shiftId, slot }) => ({ shiftId, slot }))
+          )
+        ),
+        selectedYear,
+        selectedEventId
+      );
+      if (selfHelperIds.length) {
+        const helperResult = await tx
+          .delete(helpers)
+          .where(
+            and(
+              planningScopeFor(helpers, selectedYear, selectedEventId),
+              inArray(helpers.id, selfHelperIds)
+            )
+          );
+        requireDeletedRows(helperResult, selfHelperIds.length);
+      }
+      if (contactRows.length) {
+        const contactResult = await tx
+          .delete(contacts)
+          .where(
+            and(
+              planningScopeFor(contacts, selectedYear, selectedEventId),
+              inArray(
+                contacts.id,
+                contactRows.map(item => item.id)
+              )
+            )
+          );
+        requireDeletedRows(contactResult, contactRows.length);
+      }
+    });
+    return;
+  }
+
   if (area === "helpers" || area === "cakes") {
     await db.transaction(async tx => {
       if (area === "helpers") {
@@ -1683,6 +1880,20 @@ export async function resetArea(area: ResetArea, actor: AuditActor) {
             )
           );
           requireDeletedRows(result, rows.length);
+        }
+        const contactRows = await tx
+          .select({ id: contacts.id, name: contacts.name, phone: contacts.phone })
+          .from(contacts)
+          .where(planningScopeFor(contacts, selectedYear, selectedEventId))
+          .for("update");
+        if (contactRows.length) {
+          await tx.insert(helpers).values(
+            contactRows.map(contact => ({
+              ...selfHelperValues(contact),
+              year: selectedYear,
+              eventId: selectedEventId,
+            }))
+          );
         }
       } else {
         const rows = await tx
@@ -1712,7 +1923,6 @@ export async function resetArea(area: ResetArea, actor: AuditActor) {
         }
       }
     });
-    if (area === "helpers") await syncContactsToSelfHelpers();
     return;
   }
 
@@ -1731,8 +1941,6 @@ export async function resetArea(area: ResetArea, actor: AuditActor) {
   }
 
   const tableByArea = {
-    contacts,
-    helpers,
     prep: prepTasks,
     post: postTasks,
     materials,
@@ -1741,7 +1949,27 @@ export async function resetArea(area: ResetArea, actor: AuditActor) {
     cakes,
     finances,
   } as const;
-  await remove(tableByArea[area]);
+  const table = tableByArea[area];
+  await db.transaction(async tx => {
+    const rows = await tx
+      .select({ id: table.id })
+      .from(table)
+      .where(planningScopeFor(table, selectedYear, selectedEventId))
+      .for("update");
+    if (!rows.length) return;
+    const result = await tx
+      .delete(table)
+      .where(
+        and(
+          planningScopeFor(table, selectedYear, selectedEventId),
+          inArray(
+            table.id,
+            rows.map(row => row.id)
+          )
+        )
+      );
+    requireDeletedRows(result, rows.length);
+  });
 }
 
 const shiftKey = (shift: {
