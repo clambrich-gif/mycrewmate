@@ -180,30 +180,27 @@ function AssignedHelperChip({
             "nicht hinterlegt"
           )}
         </p>
-        {note && (
-          <>
-            <p>
-              <span className="font-medium">Hinweis für PDF:</span> {note}
-            </p>
-            <div>
-              <p className="mb-1 font-medium">Verfügbarkeiten:</p>
-              <div className="flex flex-wrap gap-x-2 gap-y-1">
-                {activeDays.map(day => {
-                  const availability =
-                    helper[WEEKDAY_AVAILABILITY_FIELDS[day]] ?? "vielleicht";
-                  return (
-                    <span
-                      key={day}
-                      className={AVAILABILITY_CLASS[availability]}
-                    >
-                      {WEEKDAY_SHORT_LABELS[day]}: {availability}
-                    </span>
-                  );
-                })}
-              </div>
-            </div>
-          </>
-        )}
+        <p>
+          <span className="font-medium">Hinweis für PDF:</span> {note || "-"}
+        </p>
+        <div>
+          <p className="mb-1 font-medium">Verfügbarkeiten:</p>
+          <div className="flex flex-wrap gap-x-2 gap-y-1">
+            {activeDays.length ? (
+              activeDays.map(day => {
+                const availability =
+                  helper[WEEKDAY_AVAILABILITY_FIELDS[day]] ?? "vielleicht";
+                return (
+                  <span key={day} className={AVAILABILITY_CLASS[availability]}>
+                    {WEEKDAY_SHORT_LABELS[day]}: {availability}
+                  </span>
+                );
+              })
+            ) : (
+              <span>-</span>
+            )}
+          </div>
+        </div>
       </PopoverContent>
     </Popover>
   );
