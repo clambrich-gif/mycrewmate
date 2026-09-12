@@ -12,7 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Pencil, Plus, Trash2, X } from "lucide-react";
+import { AlertTriangle, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import {
   Dialog,
@@ -21,6 +21,16 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { CopyPreviousPlanButton } from "@/components/CopyPreviousPlanButton";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
@@ -227,6 +237,9 @@ export default function Plan() {
   const [status, setStatus] = useState<string>("alle");
   const [apFilter, setApFilter] = useState<string>("alle");
   const [q, setQ] = useState("");
+  const [deleteCandidate, setDeleteCandidate] = useState<DropdownShift | null>(
+    null
+  );
 
   useEffect(() => {
     if (day !== "alle" && !activeDays.includes(day as Weekday)) setDay("alle");
@@ -263,6 +276,7 @@ export default function Plan() {
   const deleteShift = trpc.shifts.remove.useMutation({
     onSuccess: () => {
       invalidate();
+      setDeleteCandidate(null);
       toast.success("Schicht gelöscht");
     },
     onError: e => toast.error(e.message),
@@ -725,10 +739,7 @@ export default function Plan() {
                         variant="outline"
                         size="icon"
                         title="Schicht löschen"
-                        onClick={() => {
-                          if (confirm("Schicht wirklich löschen?"))
-                            deleteShift.mutate({ id: shift.id });
-                        }}
+                        onClick={() => setDeleteCandidate(shift)}
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
@@ -830,10 +841,7 @@ export default function Plan() {
                             size="icon"
                             className="h-6 w-6"
                             title="Löschen"
-                            onClick={() => {
-                              if (confirm("Schicht wirklich löschen?"))
-                                deleteShift.mutate({ id: s.id });
-                            }}
+                            onClick={() => setDeleteCandidate(s)}
                           >
                             <Trash2 className="h-3.5 w-3.5 text-destructive" />
                           </Button>
@@ -900,6 +908,51 @@ export default function Plan() {
         <span className="slot slot-doppel inline-block">Doppelbelegung</span>{" "}
         <span className="slot slot-ausfall inline-block">Ausfall</span>
       </p>
+
+      <AlertDialog
+        open={Boolean(deleteCandidate)}
+        onOpenChange={open => {
+          if (!open && !deleteShift.isPending) setDeleteCandidate(null);
+        }}
+      >
+        <AlertDialogContent className="z-50 border border-gray-200 !bg-white !text-slate-950 shadow-xl dark:!bg-white dark:!text-slate-950">
+          <AlertDialogHeader>
+            <div className="mx-auto mb-1 flex size-11 items-center justify-center rounded-full bg-red-50 text-red-600 sm:mx-0">
+              <AlertTriangle className="size-5" aria-hidden="true" />
+            </div>
+            <AlertDialogTitle>Schicht löschen</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3 text-left text-gray-600">
+              <span className="block">
+                Möchtest du die Schicht &apos;{deleteCandidate?.area} -{" "}
+                {deleteCandidate?.task}&apos; wirklich löschen?
+              </span>
+              <span className="block rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-800">
+                Dabei werden auch alle dieser Schicht zugeordneten Helferplätze
+                mitgelöscht.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={deleteShift.isPending}
+              className="border-gray-300 bg-gray-100 text-gray-700 hover:bg-gray-200"
+            >
+              Abbrechen
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!deleteCandidate || deleteShift.isPending}
+              className="border border-red-700 !bg-red-600 !text-white shadow-sm hover:!bg-red-700 focus-visible:ring-red-500"
+              onClick={event => {
+                event.preventDefault();
+                if (deleteCandidate && !deleteShift.isPending)
+                  deleteShift.mutate({ id: deleteCandidate.id });
+              }}
+            >
+              {deleteShift.isPending ? "Wird gelöscht …" : "Schicht löschen"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={dlgOpen} onOpenChange={setDlgOpen}>
         <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto !bg-white !text-slate-950 opacity-100 shadow-2xl dark:!bg-slate-950 dark:!text-slate-50 [&_[data-slot=input]]:!bg-white [&_[data-slot=input]]:dark:!bg-slate-900 [&_[data-slot=select-trigger]]:!bg-white [&_[data-slot=select-trigger]]:dark:!bg-slate-900">

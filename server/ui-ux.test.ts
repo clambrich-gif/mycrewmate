@@ -5,6 +5,35 @@ const source = (relativePath: string) =>
   readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
 describe("UI- und Mobile-UX-Regeln", () => {
+  it("stellt die Login-Rollen als zugänglichen Segmented-Control dar", () => {
+    const layout = source("client/src/components/Layout.tsx");
+
+    expect(layout).toContain('role="group"');
+    expect(layout).toContain("aria-pressed={loginMode === \"user\"}");
+    expect(layout).toContain("aria-pressed={loginMode === \"admin\"}");
+    expect(layout).toContain(
+      "bg-white font-semibold text-blue-600 shadow-sm"
+    );
+    expect(layout).toContain(
+      "cursor-pointer text-gray-500 hover:text-gray-900"
+    );
+  });
+
+  it("verwendet für Schichtlöschungen ein internes dynamisches Modal", () => {
+    const plan = source("client/src/pages/Plan.tsx");
+    const alertDialog = source("client/src/components/ui/alert-dialog.tsx");
+
+    expect(plan).not.toMatch(/\bconfirm\s*\(/);
+    expect(plan).toContain("<AlertDialogTitle>Schicht löschen</AlertDialogTitle>");
+    expect(plan).toContain("{deleteCandidate?.area}");
+    expect(plan).toContain("{deleteCandidate?.task}");
+    expect(plan).toContain("zugeordneten Helferplätze");
+    expect(plan).toContain("Abbrechen");
+    expect(plan).toContain('!bg-red-600 !text-white');
+    expect(plan).toContain("dark:!bg-white dark:!text-slate-950");
+    expect(alertDialog).toContain("bg-black/40 backdrop-blur-sm");
+  });
+
   it("hält die Desktop-Navigation viewportfest und den Inhalt separat scrollbar", () => {
     const layout = source("client/src/components/Layout.tsx");
 

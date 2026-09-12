@@ -30,6 +30,7 @@ import { useEventYear } from "@/contexts/YearContext";
 import { NAV } from "@/lib/nav";
 import { preloadRoute } from "@/lib/route-loaders";
 import { trpc } from "@/lib/trpc";
+import { cn } from "@/lib/utils";
 import { WEEKDAYS, type Weekday } from "@shared/weekdays";
 import {
   Bike,
@@ -231,29 +232,43 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 rounded-lg bg-muted p-1 mb-4">
-            <Button
+          <div
+            className="mb-4 grid grid-cols-2 overflow-hidden rounded-xl border border-gray-300 bg-gray-100 p-1"
+            role="group"
+            aria-label="Anmelderolle auswählen"
+          >
+            <button
               type="button"
-              size="sm"
-              variant={loginMode === "user" ? "default" : "ghost"}
+              aria-pressed={loginMode === "user"}
+              className={cn(
+                "min-h-11 rounded-lg px-3 py-2 text-sm transition-[color,background-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1",
+                loginMode === "user"
+                  ? "bg-white font-semibold text-blue-600 shadow-sm"
+                  : "cursor-pointer text-gray-500 hover:text-gray-900"
+              )}
               onClick={() => {
                 setLoginMode("user");
                 setPassword("");
               }}
             >
               Planungsteam
-            </Button>
-            <Button
+            </button>
+            <button
               type="button"
-              size="sm"
-              variant={loginMode === "admin" ? "default" : "ghost"}
+              aria-pressed={loginMode === "admin"}
+              className={cn(
+                "min-h-11 rounded-lg px-3 py-2 text-sm transition-[color,background-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1",
+                loginMode === "admin"
+                  ? "bg-white font-semibold text-blue-600 shadow-sm"
+                  : "cursor-pointer text-gray-500 hover:text-gray-900"
+              )}
               onClick={() => {
                 setLoginMode("admin");
                 setPassword("");
               }}
             >
               Administrator
-            </Button>
+            </button>
           </div>
 
           <form className="space-y-3" onSubmit={submitPassword}>
