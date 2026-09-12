@@ -12,6 +12,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(help).toContain('user?.role === "user"');
     expect(help).toContain("Video-Anleitung für Administratoren");
     expect(help).toContain("Video-Anleitung für das Planungsteam");
+    expect(help).toContain('src: "/api/videos/admin"');
+    expect(help).toContain('src: "/api/videos/planungsteam"');
+    expect(help).not.toContain(
+      "manus-storage/RSC-Helferplanung-Erklaervideo"
+    );
     expect(help).toContain("RSC-Helferplanung-Poster-Administratoren");
     expect(help).toContain("RSC-Helferplanung-Poster-Planungsteam");
     expect(help.match(/<video/g)).toHaveLength(1);

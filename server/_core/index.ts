@@ -6,6 +6,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
+import { registerHelpVideoRoutes } from "../help-video-routes";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 
@@ -34,6 +35,7 @@ async function startServer() {
   // Projekt- und Excel-Dateien plus Base64-/JSON-Overhead; größere Requests werden früh abgewiesen.
   app.use(express.json({ limit: "25mb" }));
   app.use(express.urlencoded({ limit: "25mb", extended: true }));
+  registerHelpVideoRoutes(app);
   registerStorageProxy(app);
   registerOAuthRoutes(app);
   // tRPC API

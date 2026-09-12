@@ -217,14 +217,14 @@ export default function Help() {
   const helpVideo =
     user?.role === "admin"
       ? {
-          src: "/manus-storage/RSC-Helferplanung-Erklaervideo-Administratoren_48a1d1ca.mp4",
+          src: "/api/videos/admin",
           poster:
             "/manus-storage/RSC-Helferplanung-Poster-Administratoren_483a22df.jpg",
           label: "Video-Anleitung für Administratoren",
         }
       : user?.role === "user"
         ? {
-            src: "/manus-storage/RSC-Helferplanung-Erklaervideo-Planungsteam_3101461c.mp4",
+            src: "/api/videos/planungsteam",
             poster:
               "/manus-storage/RSC-Helferplanung-Poster-Planungsteam_a962d33a.jpg",
             label: "Video-Anleitung für das Planungsteam",
