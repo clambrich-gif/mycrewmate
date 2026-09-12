@@ -1179,6 +1179,11 @@ export const appRouter = router({
             .max(20_000_000, "Excel-Datei ist größer als 15 MB"),
           filename: z.string().trim().min(1).max(255),
           currentDigest: z.string().regex(/^[a-f0-9]{64}$/),
+          selectedChangeKeys: z
+            .array(z.string().min(1).max(1024))
+            .min(1)
+            .max(5000)
+            .optional(),
           adminPassword: z.string().min(1).max(200),
         })
       )
@@ -1189,7 +1194,8 @@ export const appRouter = router({
             input.base64,
             input.filename,
             input.currentDigest,
-            auditActor(ctx.user)
+            auditActor(ctx.user),
+            input.selectedChangeKeys
           )
         );
       }),

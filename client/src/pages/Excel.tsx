@@ -3,6 +3,7 @@ import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -93,6 +94,22 @@ function displayValue(value: unknown) {
   return text.length > 80 ? `${text.slice(0, 77)}…` : text;
 }
 
+function displayChangeValue(
+  change: BackupChange,
+  side: "before" | "after",
+  field: string
+) {
+  const row = change[side];
+  if (!row) return "–";
+  if (field === "contactSourceId")
+    return displayValue(row.contactName ?? row[field]);
+  if (field === "areaContactSourceId")
+    return displayValue(row.areaContactName ?? row[field]);
+  if (field === "helperSourceId")
+    return displayValue(row.helperName ?? row[field]);
+  return displayValue(row[field]);
+}
+
 function readAsBase64(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -137,12 +154,31 @@ function SummaryCard({
   );
 }
 
-function ChangeRow({ change }: { change: BackupChange }) {
+function ChangeRow({
+  change,
+  selected,
+  onSelectedChange,
+}: {
+  change: BackupChange;
+  selected?: boolean;
+  onSelectedChange?: (selected: boolean) => void;
+}) {
   const meta = actionMeta[change.action];
   const Icon = meta.icon;
+  const selectable = Boolean(onSelectedChange);
   return (
-    <div className="grid gap-2 rounded-lg border bg-white p-3 text-sm dark:bg-slate-950 sm:grid-cols-[150px_1fr]">
-      <Badge variant="outline" className={`w-fit ${meta.badge}`}>
+    <div
+      className={`grid gap-3 rounded-lg border p-3 text-sm transition-colors ${selectable ? "sm:grid-cols-[36px_150px_1fr]" : "bg-white sm:grid-cols-[150px_1fr] dark:bg-slate-950"} ${selectable && selected ? "border-sky-300 bg-sky-50/70 dark:bg-sky-950/30" : ""} ${selectable && !selected ? "bg-white opacity-65 dark:bg-slate-950" : ""}`}
+    >
+      {selectable && (
+        <Checkbox
+          checked={selected}
+          onCheckedChange={checked => onSelectedChange?.(checked === true)}
+          aria-label={`${change.label} übernehmen`}
+          className="mt-0.5 size-5 border-2 border-slate-500 data-[state=checked]:border-sky-700 data-[state=checked]:!bg-sky-700 data-[state=checked]:!text-white"
+        />
+      )}
+      <Badge variant="outline" className={`h-fit w-fit ${meta.badge}`}>
         <Icon className="mr-1.5 h-3.5 w-3.5" /> {meta.label}
       </Badge>
       <div className="min-w-0">
@@ -154,8 +190,8 @@ function ChangeRow({ change }: { change: BackupChange }) {
                 <span className="font-medium text-foreground">
                   {fieldLabel[field] ?? field}:
                 </span>{" "}
-                {displayValue(change.before?.[field])} →{" "}
-                {displayValue(change.after?.[field])}
+                {displayChangeValue(change, "before", field)} →{" "}
+                {displayChangeValue(change, "after", field)}
               </div>
             ))}
             {change.fields.length > 8 && (
@@ -184,6 +220,9 @@ export default function Excel() {
   const [filename, setFilename] = useState("");
   const [base64, setBase64] = useState("");
   const [preview, setPreview] = useState<BackupRestorePreview | null>(null);
+  const [selectedChangeKeys, setSelectedChangeKeys] = useState<Set<string>>(
+    new Set()
+  );
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [selectedLogId, setSelectedLogId] = useState<number | null>(null);
   const utils = trpc.useUtils();
@@ -200,6 +239,7 @@ export default function Excel() {
   const previewMutation = trpc.excel.previewBackup.useMutation({
     onSuccess: result => {
       setPreview(result);
+      setSelectedChangeKeys(new Set(result.changes.map(change => change.key)));
       toast.success(
         "Sicherung geprüft – alle Änderungen sind unten aufgeführt"
       );
@@ -230,11 +270,42 @@ export default function Excel() {
     }
     return Array.from(groups.entries());
   }, [preview]);
+  const selectedChanges = useMemo(
+    () =>
+      (preview?.changes ?? []).filter(change =>
+        selectedChangeKeys.has(change.key)
+      ),
+    [preview, selectedChangeKeys]
+  );
+  const selectedTotals = useMemo(
+    () => ({
+      created: selectedChanges.filter(change => change.action === "create")
+        .length,
+      updated: selectedChanges.filter(change => change.action === "update")
+        .length,
+      deleted: selectedChanges.filter(change => change.action === "delete")
+        .length,
+    }),
+    [selectedChanges]
+  );
+  const allSelected = Boolean(
+    preview?.changes.length &&
+      selectedChangeKeys.size === preview.changes.length
+  );
+  const toggleChange = (key: string, selected: boolean) => {
+    setSelectedChangeKeys(previous => {
+      const next = new Set(previous);
+      if (selected) next.add(key);
+      else next.delete(key);
+      return next;
+    });
+  };
 
   const clearPreview = () => {
     setFilename("");
     setBase64("");
     setPreview(null);
+    setSelectedChangeKeys(new Set());
     setConfirmOpen(false);
     if (fileRef.current) fileRef.current.value = "";
   };
@@ -415,35 +486,65 @@ export default function Excel() {
                   Die Excel-Datei entspricht bereits exakt dem aktuellen Stand.
                 </div>
               ) : (
-                groupedChanges.map(([area, changes]) => (
-                  <details
-                    key={area}
-                    open
-                    className="rounded-xl border bg-muted/20"
-                  >
-                    <summary className="cursor-pointer select-none px-4 py-3 font-semibold">
-                      {areaLabel[area] ?? area} · {changes.length} Änderung
-                      {changes.length === 1 ? "" : "en"}
-                    </summary>
-                    <div className="space-y-2 border-t p-3">
-                      {changes.slice(0, 500).map(change => (
-                        <ChangeRow key={change.key} change={change} />
-                      ))}
-                      {changes.length > 500 && (
-                        <p className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground">
-                          Weitere {changes.length - 500} Änderungen werden aus
-                          Leistungsgründen hier nicht gerendert, aber
-                          vollständig protokolliert.
-                        </p>
-                      )}
+                <>
+                  <div className="flex flex-col gap-3 rounded-xl border-2 border-sky-300 bg-sky-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <label className="flex cursor-pointer items-center gap-3 font-semibold text-sky-950">
+                      <Checkbox
+                        checked={allSelected}
+                        onCheckedChange={checked =>
+                          setSelectedChangeKeys(
+                            checked === true
+                              ? new Set(
+                                  preview.changes.map(change => change.key)
+                                )
+                              : new Set()
+                          )
+                        }
+                        className="size-6 border-2 border-sky-700 data-[state=checked]:!bg-sky-700 data-[state=checked]:!text-white"
+                      />
+                      Alle Änderungen übernehmen
+                    </label>
+                    <div className="text-sm font-semibold text-sky-900">
+                      {selectedChangeKeys.size} von {preview.changes.length}{" "}
+                      ausgewählt
                     </div>
-                  </details>
-                ))
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Standardmäßig sind alle Änderungen ausgewählt – auch neu
+                    angelegte oder in Excel gelöschte Helfer. Entfernen Sie nur
+                    dann einen Haken, wenn diese einzelne Änderung nicht
+                    übernommen werden soll.
+                  </p>
+                  {groupedChanges.map(([area, changes]) => (
+                    <details
+                      key={area}
+                      open
+                      className="rounded-xl border bg-muted/20"
+                    >
+                      <summary className="cursor-pointer select-none px-4 py-3 font-semibold">
+                        {areaLabel[area] ?? area} · {changes.length} Änderung
+                        {changes.length === 1 ? "" : "en"}
+                      </summary>
+                      <div className="space-y-2 border-t p-3">
+                        {changes.map(change => (
+                          <ChangeRow
+                            key={change.key}
+                            change={change}
+                            selected={selectedChangeKeys.has(change.key)}
+                            onSelectedChange={selected =>
+                              toggleChange(change.key, selected)
+                            }
+                          />
+                        ))}
+                      </div>
+                    </details>
+                  ))}
+                </>
               )}
             </CardContent>
           </Card>
 
-          <Card className="border-red-300 bg-red-50/70 shadow-sm">
+          <Card className="border-2 border-red-500 bg-red-50 shadow-md">
             <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <div className="flex items-center gap-2 font-semibold text-red-950">
@@ -451,16 +552,19 @@ export default function Excel() {
                   wiederherstellen
                 </div>
                 <p className="mt-1 text-sm text-red-900">
-                  Der Vorgang läuft vollständig oder gar nicht und wird mit
-                  Datei, Zeitpunkt, Administrator und jeder Einzeländerung
+                  {selectedChangeKeys.size} Änderung
+                  {selectedChangeKeys.size === 1 ? "" : "en"} ausgewählt. Der
+                  Vorgang läuft vollständig oder gar nicht und wird mit Datei,
+                  Zeitpunkt, Administrator und jeder Einzeländerung
                   protokolliert.
                 </p>
               </div>
               <Button
                 size="lg"
                 variant="destructive"
+                className="min-h-12 min-w-[280px] border-2 border-red-900 !bg-red-700 px-6 font-bold !text-white shadow-lg hover:!bg-red-800 disabled:!border-slate-400 disabled:!bg-slate-300 disabled:!text-slate-700 disabled:opacity-100"
                 disabled={
-                  preview.changes.length === 0 || restoreMutation.isPending
+                  selectedChangeKeys.size === 0 || restoreMutation.isPending
                 }
                 onClick={() => setConfirmOpen(true)}
               >
@@ -535,7 +639,7 @@ export default function Excel() {
         title="Excel-Stand endgültig wiederherstellen?"
         description={
           preview
-            ? `${preview.totals.created} Einträge werden angelegt, ${preview.totals.updated} geändert und ${preview.totals.deleted} gelöscht. Die aktuell ausgewählte Veranstaltung ist danach exakt auf dem geprüften Excel-Stand.`
+            ? `${selectedTotals.created} ausgewählte Einträge werden angelegt, ${selectedTotals.updated} geändert und ${selectedTotals.deleted} gelöscht. Nicht ausgewählte Änderungen bleiben unverändert.`
             : "Die geprüfte Excel-Sicherung wird wiederhergestellt."
         }
         confirmLabel="Ja, Excel-Stand übernehmen"
@@ -546,6 +650,7 @@ export default function Excel() {
             base64,
             filename,
             currentDigest: preview.currentDigest,
+            selectedChangeKeys: Array.from(selectedChangeKeys),
             adminPassword,
           });
         }}

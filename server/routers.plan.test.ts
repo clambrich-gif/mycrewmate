@@ -329,6 +329,7 @@ describe("Planungs-API", () => {
       base64: "eA==",
       filename: "Sicherung.xlsx",
       currentDigest: "a".repeat(64),
+      selectedChangeKeys: ["HELFER:delete:21"],
     };
 
     await expect(
@@ -346,7 +347,8 @@ describe("Planungs-API", () => {
       "eA==",
       "Sicherung.xlsx",
       "a".repeat(64),
-      expect.objectContaining({ userId: 1, role: "admin" })
+      expect.objectContaining({ userId: 1, role: "admin" }),
+      ["HELFER:delete:21"]
     );
   });
 

@@ -147,7 +147,7 @@ const SECTIONS: HelpSection[] = [
     keywords:
       "excel datensicherung import export wiederherstellung prüfung vorschau löschung schicht zuordnung dublette datei planungsteam administrator protokoll",
     summary:
-      "Beide Rollen dürfen den vollständigen aktuellen Veranstaltungsstand als Excel-Sicherung exportieren. Nur Administratoren dürfen eine bearbeitete Sicherung prüfen und nach Administratorpasswort-Freigabe als verbindlichen Sollstand wiederherstellen. Dabei werden auch in Excel gelöschte Zeilen im Programm entfernt. Doppelbelegungen und ungültige Dateien werden blockiert; jeder Vorgang und jede Einzeländerung bleiben im Wiederherstellungsprotokoll nachvollziehbar. Für das Planungsteam ist die Wiederherstellung nicht erforderlich.",
+      "Beide Rollen dürfen den vollständigen aktuellen Veranstaltungsstand als Excel-Sicherung exportieren. Nur Administratoren dürfen eine bearbeitete Sicherung prüfen und nach Administratorpasswort-Freigabe wiederherstellen. In der Vorschau sind standardmäßig alle Änderungen ausgewählt – einschließlich neu angelegter und in Excel gelöschter Helfer. Bei Bedarf können einzelne Änderungen abgewählt werden; zusammengehörige Bezugsänderungen müssen gemeinsam markiert bleiben. Doppelbelegungen und ungültige Dateien werden blockiert, jeder Vorgang und jede übernommene Einzeländerung bleiben im Wiederherstellungsprotokoll nachvollziehbar. Für das Planungsteam ist die Wiederherstellung nicht erforderlich.",
   },
   {
     id: "veranstaltungen",

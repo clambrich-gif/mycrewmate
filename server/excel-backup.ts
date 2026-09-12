@@ -1341,7 +1341,7 @@ const diffFieldEqual = (
     JSON.stringify(after[field] ?? null)
   );
 };
-function diffDocuments(
+export function diffDocuments(
   current: ReturnType<typeof comparableCurrent>,
   desired: BackupDocument
 ) {
@@ -1408,6 +1408,9 @@ function diffDocuments(
   const currentAssignments = (current.shifts as any[]).flatMap(shift =>
     shift.slots.map((slot: any) => ({
       shiftSourceId: shift.sourceId,
+      shiftKey: shift.sourceId
+        ? `id:${shift.sourceId}`
+        : `new:${personKey(`${shift.day}|${shift.area}|${shift.task}|${shift.startTime}|${shift.endTime}`)}`,
       shiftLabel: `${shift.day} · ${shift.area} · ${shift.task}`,
       ...slot,
     }))
@@ -1415,11 +1418,14 @@ function diffDocuments(
   const desiredAssignments = desired.shifts.flatMap(shift =>
     shift.slots.map(slot => ({
       shiftSourceId: shift.sourceId,
+      shiftKey: shift.sourceId
+        ? `id:${shift.sourceId}`
+        : `new:${personKey(`${shift.day}|${shift.area}|${shift.task}|${shift.startTime}|${shift.endTime}`)}`,
       shiftLabel: `${shift.day} · ${shift.area} · ${shift.task}`,
       ...slot,
     }))
   );
-  const assignmentKey = (row: any) => `${row.shiftLabel}|${row.slot}`;
+  const assignmentKey = (row: any) => `${row.shiftKey}|${row.slot}`;
   const currentMap = new Map(
     currentAssignments.map(row => [assignmentKey(row), row])
   );
@@ -1516,6 +1522,208 @@ function serializeChangeDetails(changes: BackupChange[], warnings: string[]) {
   return details;
 }
 
+export function buildSelectedDocument(
+  current: ReturnType<typeof comparableCurrent>,
+  imported: BackupDocument,
+  allChanges: BackupChange[],
+  selectedChangeKeys?: string[]
+): BackupDocument {
+  if (selectedChangeKeys === undefined) return imported;
+  const selected = new Set(selectedChangeKeys);
+  if (!selected.size)
+    throw new Error(
+      "Bitte wählen Sie mindestens eine Änderung zur Übernahme aus"
+    );
+  const known = new Set(allChanges.map(change => change.key));
+  for (const key of Array.from(selected))
+    if (!known.has(key))
+      throw new Error(
+        "Die Änderungsauswahl ist veraltet. Bitte prüfen Sie die Excel-Datei erneut."
+      );
+  if (selected.size === allChanges.length) return imported;
+
+  const target = structuredClone({
+    ...current,
+    metadata: imported.metadata,
+    warnings: imported.warnings,
+  }) as BackupDocument;
+  const areaByName = new Map(
+    AREA_CONFIG.map(([area, collection]) => [area, collection] as const)
+  );
+
+  for (const change of allChanges) {
+    if (!selected.has(change.key) || change.area === "ZUORDNUNGEN") continue;
+    const collection = areaByName.get(change.area);
+    if (!collection) continue;
+    const rows = target[collection] as Array<Record<string, any>>;
+    if (change.action === "create" && change.after) {
+      const created = structuredClone(change.after);
+      if (change.area === "EINSATZPLAN") created.slots = [];
+      rows.push(created);
+      continue;
+    }
+    const sourceId = Number(change.before?.sourceId);
+    const index = rows.findIndex(row => row.sourceId === sourceId);
+    if (index < 0) continue;
+    if (change.action === "delete") rows.splice(index, 1);
+    else if (change.after) {
+      const updated = structuredClone(change.after);
+      if (change.area === "EINSATZPLAN") updated.slots = rows[index].slots;
+      rows[index] = updated;
+    }
+  }
+
+  const shiftKey = (shift: ShiftRow) =>
+    shift.sourceId
+      ? `id:${shift.sourceId}`
+      : `new:${personKey(`${shift.day}|${shift.area}|${shift.task}|${shift.startTime}|${shift.endTime}`)}`;
+  for (const change of allChanges) {
+    if (!selected.has(change.key) || change.area !== "ZUORDNUNGEN") continue;
+    const assignment = (change.after ?? change.before) as Record<string, any>;
+    const shift = target.shifts.find(
+      row => shiftKey(row) === assignment.shiftKey
+    );
+    if (!shift) continue;
+    const slot = Number(assignment.slot);
+    shift.slots = shift.slots.filter(item => item.slot !== slot);
+    if (change.action !== "delete" && change.after) {
+      shift.slots.push({
+        slot,
+        helperSourceId: Number(change.after.helperSourceId) || null,
+        helperName: String(change.after.helperName ?? ""),
+      });
+      shift.slots.sort((left, right) => left.slot - right.slot);
+    }
+  }
+
+  ensureUnique(
+    target.contacts,
+    row => row.sourceId,
+    row => row.name,
+    "ANSPRECHPARTNER"
+  );
+  ensureUnique(
+    target.helpers,
+    row => row.sourceId,
+    row => row.name,
+    "HELFER"
+  );
+  ensureUnique(
+    target.shifts,
+    row => row.sourceId,
+    row => `${row.day}|${row.area}|${row.task}|${row.startTime}|${row.endTime}`,
+    "EINSATZPLAN"
+  );
+
+  const contactById = new Map(
+    target.contacts.flatMap(row =>
+      row.sourceId ? ([[row.sourceId, row]] as const) : []
+    )
+  );
+  const contactByName = new Map(
+    target.contacts.map(row => [personKey(row.name), row])
+  );
+  const normalizeContactRef = (row: {
+    contactSourceId: number | null;
+    contactName: string;
+  }) => {
+    const contact =
+      (row.contactSourceId
+        ? contactById.get(row.contactSourceId)
+        : undefined) ?? contactByName.get(personKey(row.contactName));
+    row.contactSourceId = contact?.sourceId ?? null;
+    row.contactName = contact?.name ?? "";
+  };
+  for (const row of target.helpers) normalizeContactRef(row);
+  for (const row of [
+    ...target.prep,
+    ...target.post,
+    ...target.materials,
+    ...target.marketing,
+    ...target.approvals,
+  ])
+    normalizeContactRef(row);
+  for (const contact of target.contacts) {
+    const selfHelper = target.helpers.find(
+      helper => personKey(helper.name) === personKey(contact.name)
+    );
+    if (!selfHelper)
+      throw new Error(
+        `Für den Ansprechpartner „${contact.name}“ muss auch der gleichnamige Helfereintrag ausgewählt werden.`
+      );
+    selfHelper.contactSourceId = contact.sourceId;
+    selfHelper.contactName = contact.name;
+  }
+
+  const helperById = new Map(
+    target.helpers.flatMap(row =>
+      row.sourceId ? ([[row.sourceId, row]] as const) : []
+    )
+  );
+  const helperByName = new Map(
+    target.helpers.map(row => [personKey(row.name), row])
+  );
+  const areaContacts = new Map<string, string>();
+  const helperShifts = new Map<string, ShiftRow[]>();
+  for (const shift of target.shifts) {
+    const areaContact =
+      (shift.areaContactSourceId
+        ? contactById.get(shift.areaContactSourceId)
+        : undefined) ?? contactByName.get(personKey(shift.areaContactName));
+    shift.areaContactSourceId = areaContact?.sourceId ?? null;
+    shift.areaContactName = areaContact?.name ?? "";
+    const areaKey = personKey(shift.area);
+    const contactKey = shift.areaContactSourceId
+      ? `id:${shift.areaContactSourceId}`
+      : `name:${personKey(shift.areaContactName)}`;
+    if (areaContacts.has(areaKey) && areaContacts.get(areaKey) !== contactKey)
+      throw new Error(
+        `EINSATZPLAN: Bereich „${shift.area}“ hat unterschiedliche Ansprechpartner`
+      );
+    areaContacts.set(areaKey, contactKey);
+
+    const seenHelpers = new Set<string>();
+    shift.slots = shift.slots.flatMap(slot => {
+      const helper =
+        (slot.helperSourceId
+          ? helperById.get(slot.helperSourceId)
+          : undefined) ?? helperByName.get(personKey(slot.helperName));
+      if (!helper) return [];
+      if (slot.slot < 0 || slot.slot >= shift.needed)
+        throw new Error(
+          `EINSATZPLAN „${shift.task}“: Ein Helfer steht außerhalb des Bedarfs`
+        );
+      const helperKey = helper.sourceId
+        ? `id:${helper.sourceId}`
+        : `name:${personKey(helper.name)}`;
+      if (seenHelpers.has(helperKey))
+        throw new Error(
+          `EINSATZPLAN „${shift.task}“: Ein Helfer ist in derselben Schicht doppelt eingetragen`
+        );
+      seenHelpers.add(helperKey);
+      const assigned = helperShifts.get(helperKey) ?? [];
+      assigned.push(shift);
+      helperShifts.set(helperKey, assigned);
+      return [
+        {
+          slot: slot.slot,
+          helperSourceId: helper.sourceId,
+          helperName: helper.name,
+        },
+      ];
+    });
+  }
+  for (const [helperKey, assignedShifts] of Array.from(helperShifts.entries()))
+    for (let left = 0; left < assignedShifts.length; left++)
+      for (let right = left + 1; right < assignedShifts.length; right++)
+        if (overlaps(assignedShifts[left] as any, assignedShifts[right] as any))
+          throw new Error(
+            `Doppelbelegung: ${helperKey} ist gleichzeitig in „${assignedShifts[left].task}“ und „${assignedShifts[right].task}“ eingeteilt`
+          );
+
+  return target;
+}
+
 export async function previewBackupRestore(base64: string) {
   const desired = parseBackupWorkbook(base64);
   const snapshot = await loadSnapshot();
@@ -1553,9 +1761,10 @@ export async function restoreBackup(
   base64: string,
   sourceFilename: string,
   expectedCurrentDigest: string,
-  actor: AuditActor
+  actor: AuditActor,
+  selectedChangeKeys?: string[]
 ) {
-  const desired = parseBackupWorkbook(base64);
+  const imported = parseBackupWorkbook(base64);
   const workbookDigest = digest(Buffer.from(base64, "base64"));
   const db = (await getDb()) as Client;
   const year = currentEventYear();
@@ -1582,9 +1791,9 @@ export async function restoreBackup(
       );
     const snapshot = await loadSnapshot(tx, true);
     if (
-      desired.metadata.eventId !== eventId ||
-      desired.metadata.year !== year ||
-      desired.metadata.eventName !== snapshot.eventName
+      imported.metadata.eventId !== eventId ||
+      imported.metadata.year !== year ||
+      imported.metadata.eventName !== snapshot.eventName
     )
       throw new Error(
         "Die Sicherung gehört nicht zur aktuell ausgewählten Veranstaltung"
@@ -1595,10 +1804,54 @@ export async function restoreBackup(
       throw new Error(
         "Die Planung wurde seit der Vorschau geändert. Bitte die Excel-Datei erneut prüfen."
       );
+    const allChanges = diffDocuments(current, imported);
+    const desired = buildSelectedDocument(
+      current,
+      imported,
+      allChanges,
+      selectedChangeKeys
+    );
     const changes = diffDocuments(current, desired);
     if (!changes.length)
-      throw new Error("Die Excel-Datei enthält keine Änderungen");
-    const auditDetails = serializeChangeDetails(changes, desired.warnings);
+      throw new Error("Die Auswahl enthält keine übernehmbaren Änderungen");
+    if (
+      selectedChangeKeys &&
+      new Set(selectedChangeKeys).size < allChanges.length
+    ) {
+      const selectedKeys = new Set(selectedChangeKeys);
+      const appliedKeys = new Set(changes.map(change => change.key));
+      const expectedByKey = new Map(
+        allChanges.map(change => [change.key, change])
+      );
+      const appliedByKey = new Map(changes.map(change => [change.key, change]));
+      const hasImplicitChanges = Array.from(appliedKeys).some(
+        key => !selectedKeys.has(key)
+      );
+      const hasMissingChanges = Array.from(selectedKeys).some(
+        key => !appliedKeys.has(key)
+      );
+      const hasChangedIntent = Array.from(selectedKeys).some(key => {
+        const expected = expectedByKey.get(key);
+        const applied = appliedByKey.get(key);
+        if (!expected || !applied || expected.action !== applied.action)
+          return true;
+        if (expected.fields.length !== applied.fields.length) return true;
+        return expected.fields.some(
+          field =>
+            !applied.fields.includes(field) ||
+            !diffFieldEqual(
+              field,
+              applied.after ?? applied.before ?? {},
+              expected.after ?? expected.before ?? {}
+            )
+        );
+      });
+      if (hasImplicitChanges || hasMissingChanges || hasChangedIntent)
+        throw new Error(
+          "Die Auswahl ist nicht vollständig: Eine gewählte Änderung benötigt weitere markierte Bezugsänderungen (zum Beispiel Helferzuordnungen oder Ansprechpartner). Bitte markieren Sie die zusammengehörigen Änderungen oder wählen Sie „Alle Änderungen übernehmen“."
+        );
+    }
+    const auditDetails = serializeChangeDetails(changes, imported.warnings);
 
     if (changes.length) {
       await tx
@@ -1873,7 +2126,7 @@ export async function restoreBackup(
       eventId,
       eventName: snapshot.eventName,
       sourceFilename: sourceFilename.slice(0, 255),
-      backupExportedAt: desired.metadata.exportedAt,
+      backupExportedAt: imported.metadata.exportedAt,
       actorUserId: actor.userId,
       actorName: actor.name,
       actorRole: actor.role,
@@ -1886,7 +2139,7 @@ export async function restoreBackup(
       workbookDigest,
       details: auditDetails,
     });
-    return { ...totals, warnings: desired.warnings, afterDigest };
+    return { ...totals, warnings: imported.warnings, afterDigest };
   });
 }
 

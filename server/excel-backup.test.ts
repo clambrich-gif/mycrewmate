@@ -13,6 +13,8 @@ vi.mock("./db", () => dbMocks);
 vi.mock("./year-context", () => contextMocks);
 
 import {
+  buildSelectedDocument,
+  diffDocuments,
   exportBackupExcel,
   parseBackupWorkbook,
   previewBackupRestore,
@@ -128,6 +130,7 @@ function replaceSheet(workbook: XLSX.WorkBook, name: string, rows: any[]) {
 describe("Excel-Datensicherung", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    data.finances.splice(0, data.finances.length);
     dbMocks.getDb.mockResolvedValue(fakeDb());
   });
 
@@ -184,6 +187,57 @@ describe("Excel-Datensicherung", () => {
         expect.objectContaining({ area: "ZUORDNUNGEN", action: "delete" }),
       ])
     );
+  });
+
+  it("übernimmt bei Teilselektion nur die markierte Änderung", async () => {
+    data.finances.splice(0, data.finances.length, {
+      id: 60,
+      year: 2026,
+      eventId: 1,
+      category: "Startgeld",
+      income: 1000,
+      expense: 0,
+      note: null,
+      sortOrder: 0,
+    } as never);
+    const exported = await exportBackupExcel();
+    const current = parseBackupWorkbook(exported.buffer.toString("base64"));
+    const changed = mutateWorkbook(exported.buffer, workbook => {
+      const helperRows = XLSX.utils.sheet_to_json<any>(workbook.Sheets.HELFER);
+      replaceSheet(
+        workbook,
+        "HELFER",
+        helperRows.filter(row => row.Name !== "Alex Beispiel")
+      );
+      const shiftRows = XLSX.utils.sheet_to_json<any>(
+        workbook.Sheets.EINSATZPLAN
+      );
+      shiftRows[0]["Helfer 1 ID"] = "";
+      shiftRows[0]["Helfer 1"] = "";
+      replaceSheet(workbook, "EINSATZPLAN", shiftRows);
+      const financeRows = XLSX.utils.sheet_to_json<any>(
+        workbook.Sheets.FINANZEN
+      );
+      financeRows[0].Einnahmen = 99;
+      replaceSheet(workbook, "FINANZEN", financeRows);
+    });
+    const desired = parseBackupWorkbook(changed.toString("base64"));
+    const changes = diffDocuments(current, desired);
+    const financeChange = changes.find(change => change.area === "FINANZEN");
+    expect(financeChange).toBeDefined();
+
+    const selected = buildSelectedDocument(current, desired, changes, [
+      financeChange!.key,
+    ]);
+    const selectedChanges = diffDocuments(current, selected);
+
+    expect(selectedChanges).toEqual([
+      expect.objectContaining({ area: "FINANZEN", action: "update" }),
+    ]);
+    expect(selected.helpers.some(row => row.name === "Alex Beispiel")).toBe(
+      true
+    );
+    expect(selected.shifts[0].slots).toHaveLength(1);
   });
 
   it("akzeptiert neue Ansprechpartner und ihre verknüpfte eigene Helferzeile ohne IDs", async () => {
