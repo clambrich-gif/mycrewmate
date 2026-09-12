@@ -141,13 +141,13 @@ describe("Hilfevideo-Streaming", () => {
 
     const response = await fetch(`${testServer.baseUrl}/api/videos/admin`, {
       method: "OPTIONS",
-      headers: { Origin: testServer.baseUrl },
+      headers: { Origin: "https://eifelride-jq8ejdus.manus.space" },
     });
 
     expect(response.status).toBe(204);
     expect(response.headers.get("accept-ranges")).toBe("bytes");
     expect(response.headers.get("access-control-allow-origin")).toBe(
-      testServer.baseUrl
+      "https://eifelride-jq8ejdus.manus.space"
     );
     expect(response.headers.get("access-control-allow-headers")).toBe("Range");
     expect(testServer.authenticateRequest).not.toHaveBeenCalled();

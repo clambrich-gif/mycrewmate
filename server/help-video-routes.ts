@@ -16,6 +16,10 @@ const HELP_VIDEOS = {
   },
 } as const;
 
+const TRUSTED_VIDEO_ORIGINS = new Set([
+  "https://eifelride-jq8ejdus.manus.space",
+]);
+
 type HelpVideoAudience = keyof typeof HELP_VIDEOS;
 type AuthenticatedRole = Pick<User, "role">;
 
@@ -55,8 +59,12 @@ function setStreamingHeaders(req: Request, res: Response) {
   const host = req.get("host");
   if (origin && host) {
     try {
-      if (new URL(origin).host === host) {
-        res.set("Access-Control-Allow-Origin", origin);
+      const normalizedOrigin = new URL(origin).origin;
+      if (
+        new URL(origin).host === host ||
+        TRUSTED_VIDEO_ORIGINS.has(normalizedOrigin)
+      ) {
+        res.set("Access-Control-Allow-Origin", normalizedOrigin);
         res.set("Access-Control-Allow-Credentials", "true");
       }
     } catch {
