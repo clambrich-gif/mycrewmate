@@ -26,8 +26,7 @@ import { CopyPreviousPlanButton } from "@/components/CopyPreviousPlanButton";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 import { shiftsOverlap, type ShiftTimeLike } from "@shared/shift-time";
-
-const DAYS = ["Freitag", "Samstag", "Sonntag"] as const;
+import { helperAvailableOnDay, WEEKDAYS, type Weekday } from "@shared/weekdays";
 
 const formatTimeLabel = (shift: { startTime: string; endTime: string }) =>
   shift.startTime && shift.endTime
@@ -109,7 +108,7 @@ export default function Plan() {
   const [dlgOpen, setDlgOpen] = useState(false);
   const [editShift, setEditShift] = useState<any | null>(null);
   const [form, setForm] = useState<{
-    day: (typeof DAYS)[number];
+    day: Weekday;
     area: string;
     task: string;
     startTime: string;
@@ -187,30 +186,31 @@ export default function Plan() {
 
   const filtered = useMemo(
     () =>
-      evals.filter(
-        e =>
-          (day === "alle" || e.shift.day === day) &&
-          (area === "alle" || e.shift.area === area) &&
-          (status === "alle" || e.status === status) &&
-          (!q ||
-            e.shift.task.toLowerCase().includes(q.toLowerCase()) ||
-            e.shift.area.toLowerCase().includes(q.toLowerCase())) &&
-          (apFilter === "alle" ||
-            String(areaContactMap.get(e.shift.area) ?? "") === apFilter)
-      ),
+      evals
+        .filter(
+          e =>
+            (day === "alle" || e.shift.day === day) &&
+            (area === "alle" || e.shift.area === area) &&
+            (status === "alle" || e.status === status) &&
+            (!q ||
+              e.shift.task.toLowerCase().includes(q.toLowerCase()) ||
+              e.shift.area.toLowerCase().includes(q.toLowerCase())) &&
+            (apFilter === "alle" ||
+              String(areaContactMap.get(e.shift.area) ?? "") === apFilter)
+        )
+        .sort(
+          (left, right) =>
+            WEEKDAYS.indexOf(left.shift.day as Weekday) -
+              WEEKDAYS.indexOf(right.shift.day as Weekday) ||
+            left.shift.sortOrder - right.shift.sortOrder ||
+            left.shift.startTime.localeCompare(right.shift.startTime) ||
+            left.shift.id - right.shift.id
+        ),
     [evals, day, area, status, q, apFilter, areaContactMap]
   );
 
   const activeHelpers = (d: string) =>
-    helpers.filter(
-      h =>
-        h.willHelp === "ja" &&
-        (d === "Freitag"
-          ? h.availFri === "ja"
-          : d === "Samstag"
-            ? h.availSat === "ja"
-            : h.availSun === "ja")
-    );
+    helpers.filter(h => helperAvailableOnDay(h, d as Weekday));
 
   const assignedShiftsByHelper = useMemo(() => {
     const result = new Map<number, DropdownShift[]>();
@@ -468,7 +468,7 @@ export default function Plan() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="alle">Alle Tage</SelectItem>
-            {DAYS.map(d => (
+            {WEEKDAYS.map(d => (
               <SelectItem key={d} value={d}>
                 {d}
               </SelectItem>
@@ -736,15 +736,13 @@ export default function Plan() {
                 <Label>Tag</Label>
                 <Select
                   value={form.day}
-                  onValueChange={v =>
-                    setForm({ ...form, day: v as (typeof DAYS)[number] })
-                  }
+                  onValueChange={v => setForm({ ...form, day: v as Weekday })}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {DAYS.map(d => (
+                    {WEEKDAYS.map(d => (
                       <SelectItem key={d} value={d}>
                         {d}
                       </SelectItem>

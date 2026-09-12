@@ -1,0 +1,1 @@
+ALTER TABLE `shifts` MODIFY COLUMN `day` enum('Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag') NOT NULL;

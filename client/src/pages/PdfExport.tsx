@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { downloadBase64File } from "@/lib/download";
 import { trpc } from "@/lib/trpc";
+import { WEEKDAYS, type Weekday } from "@shared/weekdays";
 import {
   Download,
   FileArchive,
@@ -57,11 +58,7 @@ export default function PdfExport() {
   const { data: areaContacts = [] } = trpc.plan.areaContacts.useQuery();
   const [form, setForm] = useState<SettingsForm>(EMPTY_FORM);
   const [planMode, setPlanMode] = useState<"blank" | "filled">("blank");
-  const [selectedDays, setSelectedDays] = useState([
-    "Freitag",
-    "Samstag",
-    "Sonntag",
-  ]);
+  const [selectedDays, setSelectedDays] = useState<Weekday[]>([...WEEKDAYS]);
   const [selectedStatuses, setSelectedStatuses] = useState([
     "OFFEN",
     "KNAPP",
@@ -180,7 +177,7 @@ export default function PdfExport() {
     }
     planPdf.mutate({
       mode: planMode,
-      days: selectedDays as Array<"Freitag" | "Samstag" | "Sonntag">,
+      days: selectedDays,
       statuses: selectedStatuses as Array<"OFFEN" | "KNAPP" | "OK">,
       areas: activeAreas,
       contactIds: activeContacts,
@@ -271,8 +268,8 @@ export default function PdfExport() {
 
               <div className="space-y-2">
                 <Label>Tage</Label>
-                <div className="grid grid-cols-3 gap-2">
-                  {["Freitag", "Samstag", "Sonntag"].map(value => (
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {WEEKDAYS.map(value => (
                     <label
                       key={value}
                       className="flex items-center gap-2 rounded-md border bg-background p-2 text-sm"

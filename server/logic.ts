@@ -3,17 +3,19 @@ import {
   shiftRange as sharedShiftRange,
   shiftsOverlap,
 } from "../shared/shift-time";
+import {
+  helperAvailableOnDay,
+  WEEKDAYS,
+  type Weekday,
+} from "../shared/weekdays";
 
 export { toMinutes } from "../shared/shift-time";
 
-export const DAYS = ["Freitag", "Samstag", "Sonntag"] as const;
-export type Day = (typeof DAYS)[number];
+export const DAYS = WEEKDAYS;
+export type Day = Weekday;
 
 export function helperActiveOnDay(h: Helper, day: Day): boolean {
-  if (h.willHelp !== "ja") return false;
-  if (day === "Freitag") return h.availFri === "ja";
-  if (day === "Samstag") return h.availSat === "ja";
-  return h.availSun === "ja";
+  return helperAvailableOnDay(h, day);
 }
 
 export function shiftRange(s: Shift): [number, number] {

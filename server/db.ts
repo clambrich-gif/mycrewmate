@@ -31,6 +31,7 @@ import {
   users,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
+import type { Weekday } from "../shared/weekdays";
 import { currentEventId, currentEventYear } from "./year-context";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -311,7 +312,7 @@ export async function listShifts() {
     .select()
     .from(shifts)
     .where(planningScope(shifts))
-    .orderBy(shifts.sortOrder, shifts.id);
+    .orderBy(shifts.day, shifts.sortOrder, shifts.startTime, shifts.id);
 }
 export async function listShiftAreaContacts() {
   const db = await getDb();
@@ -1137,7 +1138,7 @@ export async function syncContactsToSelfHelpers() {
 
 export async function createShift(
   v: Partial<typeof shifts.$inferInsert> & {
-    day: "Freitag" | "Samstag" | "Sonntag";
+    day: Weekday;
     area: string;
     task: string;
   }

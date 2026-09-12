@@ -7,6 +7,7 @@ import type {
   Shift,
   ShiftAreaContact,
 } from "../drizzle/schema";
+import { WEEKDAYS } from "../shared/weekdays";
 import {
   renderAllHelperTaskZip,
   renderBlankPlanPdf,
@@ -188,6 +189,20 @@ describe("PDF-Erzeugung", () => {
     expect(assignedOnly.map(item => item.shift.area)).toEqual(["Aufbau"]);
     expect(unassignedOnly.map(item => item.shift.area)).toEqual(["Start"]);
     expect(all.map(item => item.shift.area)).toEqual(["Aufbau", "Start"]);
+  });
+
+  it.each(WEEKDAYS)("filtert den PDF-Plan auf %s", day => {
+    const weeklyShifts = WEEKDAYS.map((weekday, index) => ({
+      ...shifts[0],
+      id: 100 + index,
+      day: weekday,
+      task: `Aufgabe ${weekday}`,
+    }));
+    const result = selectPlanEvaluations(
+      { ...data, shifts: weeklyShifts, assignments: [] },
+      { mode: "filled", days: [day] }
+    );
+    expect(result.map(item => item.shift.day)).toEqual([day]);
   });
 
   it("liefert für unbekannte Helfer einen klaren Fehler", () => {

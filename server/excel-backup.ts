@@ -19,6 +19,7 @@ import {
   shiftAreaContacts,
   shifts,
 } from "../drizzle/schema";
+import { WEEKDAYS, type Weekday } from "../shared/weekdays";
 import { overlaps, toMinutes } from "./logic";
 import { currentEventId, currentEventYear } from "./year-context";
 import { getDb, type AuditActor } from "./db";
@@ -190,7 +191,7 @@ type HelperRow = {
 };
 type ShiftRow = {
   sourceId: number | null;
-  day: "Freitag" | "Samstag" | "Sonntag";
+  day: Weekday;
   area: string;
   task: string;
   startTime: string;
@@ -727,7 +728,7 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
   const parsedShifts: ShiftRow[] = shiftRows.map((row, index) => {
     const day = enumValue(
       row.Tag,
-      ["Freitag", "Samstag", "Sonntag"] as const,
+      WEEKDAYS,
       `EINSATZPLAN Zeile ${index + 2}: Tag`
     );
     const startTime = text(
@@ -1398,6 +1399,90 @@ function comparableCurrent(snapshot: CurrentSnapshot) {
   };
 }
 
+type ProjectCollections = Omit<BackupDocument, "metadata" | "warnings">;
+
+const stableRecord = (row: Record<string, unknown>) =>
+  Object.fromEntries(
+    Object.entries(row).sort(([left], [right]) =>
+      left.localeCompare(right, "de")
+    )
+  );
+const stableRows = (rows: Array<Record<string, unknown>>) =>
+  rows.sort((left, right) =>
+    JSON.stringify(left).localeCompare(JSON.stringify(right), "de")
+  );
+
+/**
+ * Vergleicht einen wiederhergestellten Projektstand fachlich statt anhand der
+ * alten Datenbank-IDs aus der Speicherdatei. Nach einem Vollreset dürfen neu
+ * angelegte Datensätze neue IDs erhalten; Nutzdaten und die über Namen neu
+ * aufgelösten Beziehungen müssen dagegen exakt übereinstimmen.
+ */
+export function comparableProjectContent(
+  document: ProjectCollections | ReturnType<typeof comparableCurrent>
+): Record<string, Array<Record<string, unknown>>> {
+  const withoutIds = (
+    rows: Array<Record<string, unknown>>,
+    referenceFields: string[] = []
+  ) =>
+    stableRows(
+      rows.map(row =>
+        stableRecord(
+          Object.fromEntries(
+            Object.entries(row).filter(
+              ([field]) =>
+                field !== "sourceId" && !referenceFields.includes(field)
+            )
+          )
+        )
+      )
+    );
+
+  return {
+    contacts: withoutIds(document.contacts as Array<Record<string, unknown>>),
+    helpers: withoutIds(document.helpers as Array<Record<string, unknown>>, [
+      "contactSourceId",
+    ]),
+    shifts: stableRows(
+      (document.shifts as ShiftRow[]).map(row =>
+        stableRecord({
+          ...Object.fromEntries(
+            Object.entries(row).filter(
+              ([field]) =>
+                field !== "sourceId" &&
+                field !== "areaContactSourceId" &&
+                field !== "slots"
+            )
+          ),
+          slots: row.slots
+            .map(slot => ({ slot: slot.slot, helperName: slot.helperName }))
+            .sort((left, right) => left.slot - right.slot),
+        })
+      )
+    ),
+    prep: withoutIds(document.prep as Array<Record<string, unknown>>, [
+      "contactSourceId",
+    ]),
+    post: withoutIds(document.post as Array<Record<string, unknown>>, [
+      "contactSourceId",
+    ]),
+    materials: withoutIds(
+      document.materials as Array<Record<string, unknown>>,
+      ["contactSourceId"]
+    ),
+    marketing: withoutIds(
+      document.marketing as Array<Record<string, unknown>>,
+      ["contactSourceId"]
+    ),
+    approvals: withoutIds(
+      document.approvals as Array<Record<string, unknown>>,
+      ["contactSourceId"]
+    ),
+    cakes: withoutIds(document.cakes as Array<Record<string, unknown>>),
+    finances: withoutIds(document.finances as Array<Record<string, unknown>>),
+  };
+}
+
 export async function createCurrentProjectDocument(): Promise<BackupDocument> {
   const snapshot = await loadSnapshot();
   const current = comparableCurrent(snapshot) as Omit<
@@ -1937,7 +2022,7 @@ export async function restoreProjectDocument(
     const beforeDigest = digest(current);
     if (beforeDigest !== expectedCurrentDigest)
       throw new Error(
-        "Die Planung wurde seit der Vorschau geändert. Bitte die Excel-Datei erneut prüfen."
+        "Die Planung wurde seit der Vorschau geändert. Bitte die Datei erneut prüfen."
       );
     const allChanges = diffDocuments(current, imported);
     const desired = buildSelectedDocument(
@@ -2249,10 +2334,11 @@ export async function restoreProjectDocument(
     }
 
     const after = comparableCurrent(await loadSnapshot(tx));
-    const remainingChanges = diffDocuments(after, desired);
-    if (remainingChanges.length)
+    const restoredContent = comparableProjectContent(after);
+    const desiredContent = comparableProjectContent(desired);
+    if (JSON.stringify(restoredContent) !== JSON.stringify(desiredContent))
       throw new Error(
-        "Die Wiederherstellung konnte den geprüften Excel-Stand nicht vollständig herstellen und wurde komplett zurückgerollt"
+        "Die Wiederherstellung konnte den gespeicherten Projektstand nicht vollständig herstellen und wurde komplett zurückgerollt"
       );
     const afterDigest = digest(after);
     const totals = summary(changes);

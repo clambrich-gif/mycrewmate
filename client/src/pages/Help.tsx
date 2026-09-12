@@ -88,9 +88,9 @@ const SECTIONS: HelpSection[] = [
     summary:
       "Nur Administratoren legen Schichten an, pflegen Bereichsansprechpartner und weisen Helfer zu. Planungsteam-Mitglieder können den Plan ansehen und filtern, aber nicht verändern. Für das Planungsteam ist der Bearbeitungsteil dieses Kapitels daher nicht erforderlich.",
     steps: [
-      "Über „Neue Schicht“ Tag, Bereich, Aufgabe, Zeit, Bedarf und Bemerkung erfassen.",
+      "Über „Neue Schicht“ einen Wochentag von Montag bis Sonntag sowie Bereich, Aufgabe, Zeit, Bedarf und Bemerkung erfassen.",
       "Jedem Einsatzbereich einen Ansprechpartner zuordnen.",
-      "Nur Helfer auswählen, die am betreffenden Tag mit Ja verfügbar sind.",
+      "Nur aktive Helfer auswählen. Für Freitag bis Sonntag gelten zusätzlich die gepflegten Tagesverfügbarkeiten; Montag bis Donnerstag stehen aktive Helfer ohne separates Verfügbarkeitsfeld zur Auswahl.",
       "Gelb markierte Namen im Auswahlmenü sind am selben Tag zur gewählten Einsatzzeit bereits in einer anderen Schicht eingeteilt. Die Auswahl bleibt bewusst möglich.",
       "Status OFFEN, KNAPP oder OK sowie Warnungen zu Ausfällen und Doppelbelegungen kontrollieren.",
     ],
@@ -148,7 +148,7 @@ const SECTIONS: HelpSection[] = [
     keywords:
       "json projektdatei speichern laden excel import export modul wiederherstellung prüfung vorschau filter löschung neue helfer schicht zuordnung dublette planungsteam administrator protokoll",
     summary:
-      "Die globalen Schaltflächen „Speichern“ und „Laden“ liegen links unter der Veranstaltungsauswahl. „Speichern“ erzeugt eine kompakte JSON-Projektdatei mit dem vollständigen Stand der gewählten Veranstaltung; beide Rollen dürfen sie sichern. Nur Administratoren dürfen eine Projektdatei nach Vorschau und Passwortfreigabe laden. Excel dient nur noch der Übersicht: Die Gesamtdatei wird unter „Excel-Projektübersicht“ erzeugt. Ein Import erfolgt im jeweiligen Bereich über „Excel importieren“ aus einer aktuellen .xlsx-Datei und verändert ausschließlich dieses Modul samt zwingender direkter Bezüge. Die Vorschau lässt sich nach neuen Daten, Änderungen oder Löschungen filtern; der Filter ändert nur die Anzeige, bestätigt werden immer alle erkannten Änderungen des Bereichs. Bei reinen Umbenennungen muss die ausgeblendete ID-Spalte des Projekt-Exports erhalten bleiben. Doppelbelegungen und ungültige Dateien werden blockiert und jeder Ladevorgang wird protokolliert.",
+      "Die globalen Schaltflächen „Speichern“ und „Laden“ liegen links unter der Veranstaltungsauswahl. „Speichern“ erzeugt eine kompakte JSON-Projektdatei mit dem vollständigen Stand der gewählten Veranstaltung; beide Rollen dürfen sie sichern. Nur Administratoren dürfen eine Projektdatei nach Vorschau und Passwortfreigabe laden. Beim Laden werden die aktuellen Planungsdaten der Veranstaltung innerhalb einer Transaktion vollständig zurückgesetzt und anschließend aus der Datei neu aufgebaut. Excel dient nur noch der Übersicht: Die Gesamtdatei wird unter „Excel-Projektübersicht“ erzeugt. Ein Import erfolgt im jeweiligen Bereich über „Excel importieren“ aus einer aktuellen .xlsx-Datei und verändert ausschließlich dieses Modul samt zwingender direkter Bezüge. Die Vorschau lässt sich nach neuen Daten, Änderungen oder Löschungen filtern; der Filter ändert nur die Anzeige, bestätigt werden immer alle erkannten Änderungen des Bereichs. Bei reinen Umbenennungen muss die ausgeblendete ID-Spalte des Projekt-Exports erhalten bleiben. Doppelbelegungen und ungültige Dateien werden blockiert und jeder Ladevorgang wird protokolliert.",
   },
   {
     id: "veranstaltungen",
@@ -178,15 +178,15 @@ const INDEX_TERMS = [
   ["B", "Bemerkung, Bestätigung, Berechtigungen"],
   ["D", "Dashboard, Doppelbelegung"],
   ["E", "Einsatzplan, Excel, Export"],
-  ["F", "Freitag, Freitag–Sonntag, Filter"],
+  ["F", "Freitag, Filter"],
   ["H", "Helfer, Helfereinteilung, Hilfe"],
   ["I", "Import, Inhaltsverzeichnis"],
   ["J", "Jahr, Ja/Nein"],
   ["L", "Logo, Löschen, Löschprotokoll"],
-  ["M", "Mobilansicht, Material, Marketing"],
+  ["M", "Mobilansicht, Montag, Material, Marketing"],
   ["P", "PDF, Planungsteam, Passwort"],
   ["R", "Rollen, Rückgängig"],
-  ["S", "Samstag, Schicht, Sonntag, Suche"],
+  ["S", "Samstag, Schicht, Sonntag, Suche, sieben Wochentage"],
   ["V", "Veranstaltung, Verfügbarkeit"],
   ["Z", "Zugangsschutz, Zuweisung"],
 ] as const;

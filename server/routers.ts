@@ -1,4 +1,5 @@
 import { COOKIE_NAME } from "@shared/const";
+import { WEEKDAYS } from "@shared/weekdays";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import {
@@ -141,7 +142,7 @@ const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
 
 const yn = z.enum(["ja", "nein"]);
 const ynv = z.enum(["ja", "nein", "vielleicht"]);
-const dayEnum = z.enum(["Freitag", "Samstag", "Sonntag"]);
+const dayEnum = z.enum(WEEKDAYS);
 const statusTask = z.enum(["offen", "inArbeit", "erledigt"]);
 const passwordInput = z.string().min(10).max(200);
 const eventYearInput = z.number().int().min(2020).max(2100);
@@ -177,7 +178,7 @@ const pdfSettingsInput = z.object({
 });
 const planPdfInput = z.object({
   mode: z.enum(["blank", "filled"]),
-  days: z.array(dayEnum).max(3).optional(),
+  days: z.array(dayEnum).max(WEEKDAYS.length).optional(),
   areas: z.array(z.string().trim().min(1).max(200)).max(200).optional(),
   statuses: z
     .array(z.enum(["OFFEN", "KNAPP", "OK"]))
@@ -1145,22 +1146,18 @@ export const appRouter = router({
         })(),
         auslastung: helpers
           .map(h => {
-            const fr = ev.filter(
-              e =>
-                e.shift.day === "Freitag" &&
-                e.validHelpers.some(v => v.id === h.id)
-            ).length;
-            const sa = ev.filter(
-              e =>
-                e.shift.day === "Samstag" &&
-                e.validHelpers.some(v => v.id === h.id)
-            ).length;
-            const so = ev.filter(
-              e =>
-                e.shift.day === "Sonntag" &&
-                e.validHelpers.some(v => v.id === h.id)
-            ).length;
-            return { name: h.name, fr, sa, so, gesamt: fr + sa + so };
+            const byDay = Object.fromEntries(
+              WEEKDAYS.map(day => [
+                day,
+                ev.filter(
+                  e =>
+                    e.shift.day === day &&
+                    e.validHelpers.some(v => v.id === h.id)
+                ).length,
+              ])
+            ) as Record<(typeof WEEKDAYS)[number], number>;
+            const gesamt = WEEKDAYS.reduce((sum, day) => sum + byDay[day], 0);
+            return { name: h.name, byDay, gesamt };
           })
           .filter(x => x.gesamt > 0),
       };

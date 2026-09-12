@@ -1,6 +1,7 @@
 import { StatusBadge } from "@/components/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
+import { WEEKDAYS, WEEKDAY_SHORT_LABELS } from "@shared/weekdays";
 
 type MetricCard = {
   label: string;
@@ -157,14 +158,16 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle>Helferauslastung (eingeteilte Schichten)</CardTitle>
           </CardHeader>
-          <CardContent>
-            <table className="w-full text-sm">
+          <CardContent className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm">
               <thead>
                 <tr className="border-b text-left text-muted-foreground">
                   <th className="py-2">Helfer</th>
-                  <th className="text-right">Fr</th>
-                  <th className="text-right">Sa</th>
-                  <th className="text-right">So</th>
+                  {WEEKDAYS.map(day => (
+                    <th key={day} className="text-right" title={day}>
+                      {WEEKDAY_SHORT_LABELS[day]}
+                    </th>
+                  ))}
                   <th className="text-right">Gesamt</th>
                 </tr>
               </thead>
@@ -172,15 +175,20 @@ export default function Dashboard() {
                 {s.auslastung.map(a => (
                   <tr key={a.name} className="border-b last:border-0">
                     <td className="py-2">{a.name}</td>
-                    <td className="text-right">{a.fr}</td>
-                    <td className="text-right">{a.sa}</td>
-                    <td className="text-right">{a.so}</td>
+                    {WEEKDAYS.map(day => (
+                      <td key={day} className="text-right">
+                        {a.byDay[day]}
+                      </td>
+                    ))}
                     <td className="text-right font-semibold">{a.gesamt}</td>
                   </tr>
                 ))}
                 {s.auslastung.length === 0 && (
                   <tr>
-                    <td className="py-3 text-muted-foreground" colSpan={5}>
+                    <td
+                      className="py-3 text-muted-foreground"
+                      colSpan={WEEKDAYS.length + 2}
+                    >
                       Noch keine Helfer eingeteilt.
                     </td>
                   </tr>

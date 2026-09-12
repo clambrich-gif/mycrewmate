@@ -1,7 +1,8 @@
 import * as XLSX from "xlsx";
 import * as db from "./db";
+import { WEEKDAYS, type Weekday } from "../shared/weekdays";
 
-export type ImportDay = "Freitag" | "Samstag" | "Sonntag";
+export type ImportDay = Weekday;
 
 export type ImportedShiftValues = {
   day: ImportDay;
@@ -83,7 +84,7 @@ export type ImportApplyDecisions = {
   }>;
 };
 
-const DAYS: ImportDay[] = ["Freitag", "Samstag", "Sonntag"];
+const DAYS: readonly ImportDay[] = WEEKDAYS;
 
 export const normalizeImportText = (value: unknown) =>
   String(value ?? "")
@@ -101,11 +102,24 @@ const canonicalName = (value: unknown) =>
 const personKey = (value: unknown) => normalizeImportText(canonicalName(value));
 
 const normalizeDay = (value: unknown): ImportDay | null => {
-  const normalized = normalizeImportText(value);
-  if (normalized.startsWith("fr")) return "Freitag";
-  if (normalized.startsWith("sa")) return "Samstag";
-  if (normalized.startsWith("so")) return "Sonntag";
-  return null;
+  const normalized = normalizeImportText(value).replace(/\.$/, "");
+  const aliases: Record<string, ImportDay> = {
+    mo: "Montag",
+    montag: "Montag",
+    di: "Dienstag",
+    dienstag: "Dienstag",
+    mi: "Mittwoch",
+    mittwoch: "Mittwoch",
+    do: "Donnerstag",
+    donnerstag: "Donnerstag",
+    fr: "Freitag",
+    freitag: "Freitag",
+    sa: "Samstag",
+    samstag: "Samstag",
+    so: "Sonntag",
+    sonntag: "Sonntag",
+  };
+  return aliases[normalized] ?? null;
 };
 
 const normalizeTime = (value: unknown) => {

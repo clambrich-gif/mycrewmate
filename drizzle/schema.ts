@@ -8,6 +8,7 @@ import {
   uniqueIndex,
   varchar,
 } from "drizzle-orm/mysql-core";
+import { WEEKDAYS } from "../shared/weekdays";
 
 /**
  * Core user table backing auth flow.
@@ -118,7 +119,7 @@ export const shifts = mysqlTable("shifts", {
   eventId: int("eventId")
     .notNull()
     .references(() => events.id),
-  day: mysqlEnum("day", ["Freitag", "Samstag", "Sonntag"]).notNull(),
+  day: mysqlEnum("day", WEEKDAYS).notNull(),
   area: varchar("area", { length: 200 }).notNull(),
   task: varchar("task", { length: 300 }).notNull(),
   startTime: varchar("startTime", { length: 16 }).default("").notNull(),

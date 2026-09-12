@@ -66,6 +66,14 @@ describe("helperActiveOnDay", () => {
     expect(helperActiveOnDay(H(3, "ja", "nein"), "Freitag")).toBe(false);
     expect(helperActiveOnDay(H(4, "ja", "vielleicht"), "Freitag")).toBe(false);
   });
+
+  it("stellt aktive Helfer an Montag bis Donnerstag ohne zusätzliches Wochenendfeld bereit", () => {
+    expect(helperActiveOnDay(H(1), "Montag")).toBe(true);
+    expect(helperActiveOnDay(H(2, "nein"), "Mittwoch")).toBe(false);
+    expect(
+      helperActiveOnDay(H(3, "ja", "nein", "nein", "nein"), "Donnerstag")
+    ).toBe(true);
+  });
 });
 
 describe("Zeitlogik", () => {
@@ -92,6 +100,12 @@ describe("Zeitlogik", () => {
       )
     ).toBe(false);
     expect(overlaps(S(1, "Freitag"), S(2, "Samstag"))).toBe(false);
+    expect(
+      overlaps(
+        S(3, "Montag", "09:00", "11:00"),
+        S(4, "Montag", "10:00", "12:00")
+      )
+    ).toBe(true);
   });
 
   it("behandelt ganztägige Schichten als den gesamten Tag", () => {

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as XLSX from "xlsx";
+import { WEEKDAYS } from "../shared/weekdays";
 
 const dbMocks = vi.hoisted(() => ({ getDb: vi.fn() }));
 const contextMocks = vi.hoisted(() => ({
@@ -14,7 +15,7 @@ import {
   parseProjectFile,
   previewProjectFile,
 } from "./project-file";
-import { exportProjectExcel } from "./excel-backup";
+import { comparableProjectContent, exportProjectExcel } from "./excel-backup";
 import {
   previewModuleExcelImport,
   type ModuleImportArea,
@@ -204,6 +205,43 @@ describe("Projektdatei und modularer Excel-Import", () => {
     });
   });
 
+  it("vergleicht einen vollständig neu aufgebauten Projektstand unabhängig von neuen Datenbank-IDs", async () => {
+    const exported = await exportProjectFile();
+    const saved = parseProjectFile(exported.buffer.toString("base64")).document;
+    const restored = structuredClone(saved);
+    restored.contacts[0].sourceId = 1010;
+    restored.helpers[0].sourceId = 2020;
+    restored.helpers[0].contactSourceId = 1010;
+    restored.helpers[1].sourceId = 2021;
+    restored.helpers[1].contactSourceId = 1010;
+    restored.shifts[0].sourceId = 3030;
+    restored.shifts[0].areaContactSourceId = 1010;
+    restored.shifts[0].slots[0].helperSourceId = 2021;
+    restored.contacts[0] = Object.fromEntries(
+      Object.entries(restored.contacts[0]).reverse()
+    );
+    restored.helpers[0] = Object.fromEntries(
+      Object.entries(restored.helpers[0]).reverse()
+    );
+
+    expect(comparableProjectContent(restored)).toEqual(
+      comparableProjectContent(saved)
+    );
+  });
+
+  it.each(WEEKDAYS)(
+    "akzeptiert %s-Schichten in JSON-Projektdateien",
+    async day => {
+      const exported = await exportProjectFile();
+      const document = JSON.parse(exported.buffer.toString("utf8"));
+      document.shifts[0].day = day;
+      const parsed = parseProjectFile(
+        Buffer.from(JSON.stringify(document)).toString("base64")
+      );
+      expect(parsed.document.shifts[0].day).toBe(day);
+    }
+  );
+
   it("weist fremde oder beschädigte Dateien verständlich zurück", () => {
     expect(() =>
       parseProjectFile(Buffer.from("kein json").toString("base64"))
@@ -277,7 +315,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     {
       area: "EINSATZPLAN",
       row: {
-        Tag: "Samstag",
+        Tag: "Montag",
         Bereich: "Ziel",
         Aufgabe: "Zielausgabe",
         Beginn: "10:00",

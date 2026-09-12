@@ -8,6 +8,7 @@ import {
   type BackupDocument,
 } from "./excel-backup";
 import { overlaps, toMinutes } from "./logic";
+import { WEEKDAYS } from "../shared/weekdays";
 
 const PROJECT_FORMAT = "RSC-HELFERPLANUNG-PROJEKTDATEI";
 const PROJECT_VERSION = 1;
@@ -68,7 +69,7 @@ const documentSchema = z
       .array(
         z.object({
           sourceId: id,
-          day: z.enum(["Freitag", "Samstag", "Sonntag"]),
+          day: z.enum(WEEKDAYS),
           area: short(200).min(1),
           task: short(300).min(1),
           startTime: short(16),

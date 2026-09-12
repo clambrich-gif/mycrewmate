@@ -208,6 +208,12 @@ export function ProjectStorageControls({
               <div className="text-xs font-medium">Gelöschte Einträge</div>
             </div>
           </div>
+          <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-950">
+            <strong>Vollständiger Ersatz:</strong> Beim Laden werden alle
+            aktuellen Planungsdaten dieser Veranstaltung zurückgesetzt und aus
+            der JSON-Datei neu aufgebaut. Der Vorgang erfolgt vollständig oder
+            gar nicht.
+          </div>
           <ChangeFilterBar
             value={filter}
             onChange={setFilter}
@@ -245,7 +251,7 @@ export function ProjectStorageControls({
         open={passwordOpen}
         onOpenChange={setPasswordOpen}
         title="Projektstand verbindlich laden"
-        description="Der aktuelle Stand wird durch die geprüfte Projektdatei ersetzt. Der Vorgang wird vollständig protokolliert."
+        description="Alle aktuellen Planungsdaten dieser Veranstaltung werden zurückgesetzt und vollständig aus der geprüften Projektdatei neu aufgebaut. Der Vorgang wird protokolliert."
         confirmLabel="Projektstand laden"
         destructive={false}
         busy={load.isPending}

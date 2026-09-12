@@ -383,7 +383,7 @@ export function renderHelperTaskPdf(data: PlanningData, helperId: number) {
       .fontSize(9.5)
       .fillColor(colors.ink)
       .text(
-        `${helper.name} ist insgesamt an ${helperShifts.length} ${helperShifts.length === 1 ? "Aufgabe" : "Aufgaben"} über das Veranstaltungswochenende eingeteilt.`
+        `${helper.name} ist insgesamt an ${helperShifts.length} ${helperShifts.length === 1 ? "Aufgabe" : "Aufgaben"} über den Veranstaltungszeitraum eingeteilt.`
       );
     doc.moveDown(0.55);
     for (const day of DAYS) {

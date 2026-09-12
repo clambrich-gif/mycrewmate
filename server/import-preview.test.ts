@@ -23,7 +23,8 @@ const mocked = vi.mocked(db);
 
 function workbookBase64(
   helperCell = "Anna Meyer, Bob Neu",
-  includeHelperSheet = false
+  includeHelperSheet = false,
+  day = "Freitag"
 ) {
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(
@@ -40,7 +41,7 @@ function workbookBase64(
         "Helfer",
       ],
       [
-        "Freitag",
+        day,
         "Catering",
         "Getränkeausgabe",
         "08:00",
@@ -176,6 +177,30 @@ describe("Excel-Einsatzplan-Prüfung", () => {
       ],
     });
   });
+
+  it.each([
+    ["Mo", "Montag"],
+    ["Di", "Dienstag"],
+    ["Mi", "Mittwoch"],
+    ["Do", "Donnerstag"],
+    ["Fr", "Freitag"],
+    ["Sa", "Samstag"],
+    ["So", "Sonntag"],
+  ] as const)("erkennt %s als %s", (input, expected) => {
+    const parsed = parsePlanWorkbook(
+      workbookBase64("Anna Meyer", false, input)
+    );
+    expect(parsed.rows[0].values.day).toBe(expected);
+  });
+
+  it.each(["MontagX", "Dorf"])(
+    "interpretiert einen ungültigen Tageswert %s nicht als Wochentag",
+    day => {
+      expect(
+        parsePlanWorkbook(workbookBase64("Anna Meyer", false, day)).rows
+      ).toHaveLength(0);
+    }
+  );
 
   it("bewahrt leere Helferplätze bei expliziten Slotspalten", () => {
     const parsed = parsePlanWorkbook(

@@ -1,5 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Helper, Shift } from "../drizzle/schema";
+import { WEEKDAYS } from "../shared/weekdays";
 import type { TrpcContext } from "./_core/context";
 
 const dbMocks = vi.hoisted(() => ({
@@ -491,6 +492,23 @@ describe("Planungs-API", () => {
         needed: 1,
       })
     ).rejects.toThrow("Ende muss nach dem Beginn");
+  });
+
+  it.each(WEEKDAYS)("legt eine Schicht am %s an", async day => {
+    dbMocks.createShift.mockResolvedValue({ insertId: 77 });
+    await expect(
+      appRouter.createCaller(ctx).shifts.create({
+        day,
+        area: "Aufbau",
+        task: "Material vorbereiten",
+        startTime: "09:00",
+        endTime: "11:00",
+        needed: 2,
+      })
+    ).resolves.toEqual({ insertId: 77 });
+    expect(dbMocks.createShift).toHaveBeenCalledWith(
+      expect.objectContaining({ day })
+    );
   });
 
   it("verhindert doppelte Helfer und doppelt belegte Slots", async () => {
