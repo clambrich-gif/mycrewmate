@@ -29,17 +29,38 @@ const storageMocks = vi.hoisted(() => ({
   storagePut: vi.fn(),
 }));
 const backupMocks = vi.hoisted(() => ({
-  exportBackupExcel: vi.fn(),
-  previewBackupRestore: vi.fn(),
-  restoreBackup: vi.fn(),
+  exportProjectExcel: vi.fn(),
   listBackupRestoreLogs: vi.fn(),
   getBackupRestoreLog: vi.fn(),
   withExcelOperationLimit: vi.fn(),
+}));
+const projectFileMocks = vi.hoisted(() => ({
+  exportProjectFile: vi.fn(),
+  previewProjectFile: vi.fn(),
+  loadProjectFile: vi.fn(),
+}));
+const moduleImportMocks = vi.hoisted(() => ({
+  MODULE_IMPORT_AREAS: [
+    "ANSPRECHPARTNER",
+    "HELFER",
+    "EINSATZPLAN",
+    "VORBEREITUNG",
+    "NACHBEREITUNG",
+    "MATERIAL",
+    "MARKETING",
+    "GENEHMIGUNGEN",
+    "KUCHEN",
+    "FINANZEN",
+  ],
+  previewModuleExcelImport: vi.fn(),
+  applyModuleExcelImport: vi.fn(),
 }));
 
 vi.mock("./db", () => dbMocks);
 vi.mock("./storage", () => storageMocks);
 vi.mock("./excel-backup", () => backupMocks);
+vi.mock("./project-file", () => projectFileMocks);
+vi.mock("./module-excel-import", () => moduleImportMocks);
 
 import { appRouter } from "./routers";
 import { hashPassword } from "./password-auth";
@@ -123,12 +144,17 @@ describe("Planungs-API", () => {
     storageMocks.storageGetSignedUrl.mockResolvedValue(
       "https://storage.example.test/guide.pdf"
     );
-    backupMocks.exportBackupExcel.mockResolvedValue({
+    backupMocks.exportProjectExcel.mockResolvedValue({
       buffer: Buffer.from("xlsx"),
       exportedAt: "2026-09-11T10:00:00.000Z",
       eventName: "MyEifelRide",
     });
-    backupMocks.previewBackupRestore.mockResolvedValue({
+    projectFileMocks.exportProjectFile.mockResolvedValue({
+      buffer: Buffer.from("json"),
+      exportedAt: "2026-09-11T10:00:00.000Z",
+      eventName: "MyEifelRide",
+    });
+    projectFileMocks.previewProjectFile.mockResolvedValue({
       metadata: {
         format: "RSC-HELFERPLANUNG-SICHERUNG",
         version: 1,
@@ -143,7 +169,7 @@ describe("Planungs-API", () => {
       changes: [],
       totals: { created: 0, updated: 0, deleted: 0, unchanged: 0, byArea: {} },
     });
-    backupMocks.restoreBackup.mockResolvedValue({
+    projectFileMocks.loadProjectFile.mockResolvedValue({
       created: 1,
       updated: 2,
       deleted: 3,
@@ -151,6 +177,22 @@ describe("Planungs-API", () => {
       afterDigest: "c".repeat(64),
     });
     backupMocks.listBackupRestoreLogs.mockResolvedValue([]);
+    moduleImportMocks.previewModuleExcelImport.mockResolvedValue({
+      area: "HELFER",
+      areaName: "Helfer",
+      currentDigest: "a".repeat(64),
+      sourceDigest: "b".repeat(64),
+      warnings: [],
+      changes: [],
+      totals: { created: 0, updated: 0, deleted: 0 },
+    });
+    moduleImportMocks.applyModuleExcelImport.mockResolvedValue({
+      created: 1,
+      updated: 2,
+      deleted: 3,
+      warnings: [],
+      afterDigest: "c".repeat(64),
+    });
     backupMocks.withExcelOperationLimit.mockImplementation(callback =>
       callback()
     );
@@ -172,7 +214,7 @@ describe("Planungs-API", () => {
         expect(Buffer.from(result.base64, "base64")).toEqual(pdf);
       }
       expect(storageMocks.storageGetSignedUrl).toHaveBeenCalledWith(
-        "RSC-Helferplanung-Anleitung_b2d47388.pdf"
+        "RSC-Helferplanung-Anleitung_ee2c395b.pdf"
       );
     } finally {
       fetchMock.mockRestore();
@@ -296,59 +338,97 @@ describe("Planungs-API", () => {
     expect(dbMocks.deleteEvent).toHaveBeenCalledWith(2);
   });
 
-  it("erlaubt beiden Rollen den vollständigen Excel-Sicherungsexport", async () => {
+  it("erlaubt beiden Rollen JSON-Speichern und den reinen Excel-Export", async () => {
     for (const callerContext of [ctx, planningTeamCtx]) {
-      const result = await appRouter
-        .createCaller(callerContext)
-        .excel.exportFile();
-      expect(Buffer.from(result.base64, "base64").toString()).toBe("xlsx");
-      expect(result.eventName).toBe("MyEifelRide");
+      const caller = appRouter.createCaller(callerContext);
+      const saved = await caller.projectFile.save();
+      expect(Buffer.from(saved.base64, "base64").toString()).toBe("json");
+      const exported = await caller.excel.exportFile();
+      expect(Buffer.from(exported.base64, "base64").toString()).toBe("xlsx");
+      expect(exported.eventName).toBe("MyEifelRide");
     }
-    expect(backupMocks.exportBackupExcel).toHaveBeenCalledTimes(2);
+    expect(projectFileMocks.exportProjectFile).toHaveBeenCalledTimes(2);
+    expect(backupMocks.exportProjectExcel).toHaveBeenCalledTimes(2);
   });
 
-  it("beschränkt Prüfung und Protokolle der Excel-Wiederherstellung auf Administratoren", async () => {
+  it("beschränkt Prüfung und Protokolle des Projektladens auf Administratoren", async () => {
     await expect(
       appRouter
         .createCaller(planningTeamCtx)
-        .excel.previewBackup({ base64: "eA==" })
+        .projectFile.preview({ base64: "eA==" })
     ).rejects.toThrow();
     await expect(
-      appRouter.createCaller(planningTeamCtx).excel.restoreLogs()
+      appRouter.createCaller(planningTeamCtx).projectFile.restoreLogs()
     ).rejects.toThrow();
 
     await expect(
-      appRouter.createCaller(ctx).excel.previewBackup({ base64: "eA==" })
+      appRouter.createCaller(ctx).projectFile.preview({ base64: "eA==" })
     ).resolves.toMatchObject({ currentDigest: "a".repeat(64) });
-    expect(backupMocks.previewBackupRestore).toHaveBeenCalledWith("eA==");
+    expect(projectFileMocks.previewProjectFile).toHaveBeenCalledWith("eA==");
   });
 
-  it("stellt eine geprüfte Excel-Sicherung nur mit Administratorpasswort wieder her", async () => {
+  it("lädt eine geprüfte JSON-Projektdatei nur mit Administratorpasswort", async () => {
     const caller = appRouter.createCaller(ctx);
     const input = {
       base64: "eA==",
-      filename: "Sicherung.xlsx",
+      filename: "Projekt.rscplanung.json",
       currentDigest: "a".repeat(64),
-      selectedChangeKeys: ["HELFER:delete:21"],
     };
 
     await expect(
-      caller.excel.restoreBackup({ ...input, adminPassword: "falsch" })
+      caller.projectFile.load({ ...input, adminPassword: "falsch" })
     ).rejects.toThrow("Administratorpasswort");
-    expect(backupMocks.restoreBackup).not.toHaveBeenCalled();
+    expect(projectFileMocks.loadProjectFile).not.toHaveBeenCalled();
 
     await expect(
-      caller.excel.restoreBackup({
+      caller.projectFile.load({
         ...input,
         adminPassword: ADMIN_PASSWORD,
       })
     ).resolves.toMatchObject({ created: 1, updated: 2, deleted: 3 });
-    expect(backupMocks.restoreBackup).toHaveBeenCalledWith(
+    expect(projectFileMocks.loadProjectFile).toHaveBeenCalledWith(
       "eA==",
-      "Sicherung.xlsx",
+      "Projekt.rscplanung.json",
       "a".repeat(64),
-      expect.objectContaining({ userId: 1, role: "admin" }),
-      ["HELFER:delete:21"]
+      expect.objectContaining({ userId: 1, role: "admin" })
+    );
+  });
+
+  it("importiert ein Excel-Modul nur administrativ und passwortgeschützt", async () => {
+    await expect(
+      appRouter
+        .createCaller(planningTeamCtx)
+        .excel.previewModule({ area: "HELFER", base64: "eA==" })
+    ).rejects.toThrow();
+    await expect(
+      appRouter.createCaller(ctx).excel.previewModule({
+        area: "HELFER",
+        base64: "eA==",
+      })
+    ).resolves.toMatchObject({ area: "HELFER" });
+
+    const input = {
+      area: "HELFER" as const,
+      base64: "eA==",
+      filename: "Helfer.xlsx",
+      currentDigest: "a".repeat(64),
+    };
+    await expect(
+      appRouter
+        .createCaller(ctx)
+        .excel.applyModule({ ...input, adminPassword: "falsch" })
+    ).rejects.toThrow("Administratorpasswort");
+    await expect(
+      appRouter
+        .createCaller(ctx)
+        .excel.applyModule({ ...input, adminPassword: ADMIN_PASSWORD })
+    ).resolves.toMatchObject({ created: 1, updated: 2, deleted: 3 });
+    expect(moduleImportMocks.applyModuleExcelImport).toHaveBeenCalledWith(
+      "eA==",
+      "HELFER",
+      "Helfer.xlsx",
+      "a".repeat(64),
+      expect.objectContaining({ userId: 1, role: "admin" })
     );
   });
 

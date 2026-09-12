@@ -16,13 +16,21 @@ import {
   type Day,
 } from "./logic";
 import {
-  exportBackupExcel,
+  exportProjectExcel,
   getBackupRestoreLog,
   listBackupRestoreLogs,
-  previewBackupRestore,
-  restoreBackup,
   withExcelOperationLimit,
 } from "./excel-backup";
+import {
+  exportProjectFile,
+  loadProjectFile,
+  previewProjectFile,
+} from "./project-file";
+import {
+  applyModuleExcelImport,
+  MODULE_IMPORT_AREAS,
+  previewModuleExcelImport,
+} from "./module-excel-import";
 import { sdk } from "./_core/sdk";
 import {
   ADMIN_PASSWORD_OPEN_ID,
@@ -49,7 +57,7 @@ import {
 } from "./year-context";
 import { storageGetSignedUrl, storagePut } from "./storage";
 
-const GUIDE_PDF_KEY = "RSC-Helferplanung-Anleitung_b2d47388.pdf";
+const GUIDE_PDF_KEY = "RSC-Helferplanung-Anleitung_ee2c395b.pdf";
 const GUIDE_PDF_FILENAME = "RSC-Helferplanung-Anleitung.pdf";
 const GUIDE_PDF_MAX_BYTES = 5_000_000;
 
@@ -1159,58 +1167,101 @@ export const appRouter = router({
     }),
   }),
 
-  excel: router({
-    previewBackup: adminProcedure
-      .input(
-        z.object({
-          base64: z
-            .string()
-            .max(20_000_000, "Excel-Datei ist größer als 15 MB"),
-        })
-      )
-      .mutation(({ input }) =>
-        withExcelOperationLimit(() => previewBackupRestore(input.base64))
-      ),
-    restoreBackup: scopeAdminAuthProcedure
-      .input(
-        z.object({
-          base64: z
-            .string()
-            .max(20_000_000, "Excel-Datei ist größer als 15 MB"),
-          filename: z.string().trim().min(1).max(255),
-          currentDigest: z.string().regex(/^[a-f0-9]{64}$/),
-          selectedChangeKeys: z
-            .array(z.string().min(1).max(1024))
-            .min(1)
-            .max(5000)
-            .optional(),
-          adminPassword: z.string().min(1).max(200),
-        })
-      )
-      .mutation(async ({ ctx, input }) => {
-        await requireAdminPassword(input.adminPassword, ctx);
-        return withExcelOperationLimit(() =>
-          restoreBackup(
-            input.base64,
-            input.filename,
-            input.currentDigest,
-            auditActor(ctx.user),
-            input.selectedChangeKeys
-          )
-        );
-      }),
-    exportFile: protectedProcedure.query(async () => {
-      const result = await exportBackupExcel();
+  projectFile: router({
+    save: protectedProcedure.query(async () => {
+      const result = await withExcelOperationLimit(() => exportProjectFile());
       return {
         base64: result.buffer.toString("base64"),
         exportedAt: result.exportedAt,
         eventName: result.eventName,
       };
     }),
+    preview: adminProcedure
+      .input(
+        z.object({
+          base64: z
+            .string()
+            .max(14_000_000, "Speicherdatei ist größer als 10 MB"),
+        })
+      )
+      .mutation(({ input }) =>
+        withExcelOperationLimit(() => previewProjectFile(input.base64))
+      ),
+    load: scopeAdminAuthProcedure
+      .input(
+        z.object({
+          base64: z
+            .string()
+            .max(14_000_000, "Speicherdatei ist größer als 10 MB"),
+          filename: z.string().trim().min(1).max(255),
+          currentDigest: z.string().regex(/^[a-f0-9]{64}$/),
+          adminPassword: z.string().min(1).max(200),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await requireAdminPassword(input.adminPassword, ctx);
+        return withExcelOperationLimit(() =>
+          loadProjectFile(
+            input.base64,
+            input.filename,
+            input.currentDigest,
+            auditActor(ctx.user)
+          )
+        );
+      }),
     restoreLogs: adminProcedure.query(() => listBackupRestoreLogs()),
     restoreLog: adminProcedure
       .input(z.object({ id: z.number().int().positive() }))
       .query(({ input }) => getBackupRestoreLog(input.id)),
+  }),
+
+  excel: router({
+    exportFile: protectedProcedure.query(async () => {
+      const result = await withExcelOperationLimit(() => exportProjectExcel());
+      return {
+        base64: result.buffer.toString("base64"),
+        exportedAt: result.exportedAt,
+        eventName: result.eventName,
+      };
+    }),
+    previewModule: adminProcedure
+      .input(
+        z.object({
+          area: z.enum(MODULE_IMPORT_AREAS),
+          base64: z
+            .string()
+            .max(20_000_000, "Excel-Datei ist größer als 15 MB"),
+        })
+      )
+      .mutation(({ input }) =>
+        withExcelOperationLimit(() =>
+          previewModuleExcelImport(input.base64, input.area)
+        )
+      ),
+    applyModule: scopeAdminAuthProcedure
+      .input(
+        z.object({
+          area: z.enum(MODULE_IMPORT_AREAS),
+          base64: z
+            .string()
+            .max(20_000_000, "Excel-Datei ist größer als 15 MB"),
+          filename: z.string().trim().min(1).max(255),
+          currentDigest: z.string().regex(/^[a-f0-9]{64}$/),
+          adminPassword: z.string().min(1).max(200),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await requireAdminPassword(input.adminPassword, ctx);
+        return withExcelOperationLimit(() =>
+          applyModuleExcelImport(
+            input.base64,
+            input.area,
+            input.filename,
+            input.currentDigest,
+            auditActor(ctx.user)
+          )
+        );
+      }),
   }),
 });
 

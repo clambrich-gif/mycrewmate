@@ -61,10 +61,16 @@ export const PERMISSION_MATRIX: readonly PermissionRow[] = [
     note: "Beide Rollen können Einzel-, Sammel- sowie gefilterte Blanko- und ausgefüllte Einsatzpläne erzeugen.",
   },
   {
-    area: "Excel-Datensicherung",
-    planningTeam: "Nur Export",
-    administrator: "Export, Prüfung und Wiederherstellung",
-    note: "Der Export enthält den vollständigen Stand der Veranstaltung. Nur Administratoren können eine bearbeitete Sicherung nach Einzeländerungsprüfung und Passwortfreigabe atomar wiederherstellen; der Vorgang wird vollständig protokolliert.",
+    area: "Projektdatei: Speichern & Laden",
+    planningTeam: "Speichern",
+    administrator: "Speichern, prüfen und laden",
+    note: "Die kompakte JSON-Projektdatei enthält den vollständigen Stand der gewählten Veranstaltung. Das Laden ist passwortgeschützt, atomar und vollständig protokolliert.",
+  },
+  {
+    area: "Excel-Projektübersicht & Modulimporte",
+    planningTeam: "Projektübersicht exportieren",
+    administrator: "Export und modulare Importe",
+    note: "Excel dient der Übersicht. Im jeweiligen Bereich können Administratoren nur dessen Tabellenblatt prüfen und vollständig importieren; Neu-, Änderungs- und Löschfilter erleichtern die Vorschau.",
   },
   {
     area: "Zugangsschutz & Resets",

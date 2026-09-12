@@ -1,6 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
+import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -21,6 +22,13 @@ const resetAreaByKind = {
   marketing: "marketing",
   approvals: "approvals",
   cakes: "cakes",
+} as const;
+
+const importAreaByKind = {
+  materials: "MATERIAL",
+  marketing: "MARKETING",
+  approvals: "GENEHMIGUNGEN",
+  cakes: "KUCHEN",
 } as const;
 
 interface Col {
@@ -200,6 +208,12 @@ export default function TaskGeneric({
       <div className="flex flex-wrap items-end justify-between gap-3">
         <h1 className="text-2xl font-bold">{title}</h1>
         <div className="flex w-full flex-wrap justify-end gap-2 sm:w-auto">
+          {kind in importAreaByKind && (
+            <ModuleExcelImportButton
+              area={importAreaByKind[kind as keyof typeof importAreaByKind]}
+              label={title}
+            />
+          )}
           {kind in resetAreaByKind && (
             <ResetAreaButton
               area={resetAreaByKind[kind as keyof typeof resetAreaByKind]}

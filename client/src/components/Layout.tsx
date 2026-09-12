@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
+import { ProjectStorageControls } from "@/components/ProjectStorageControls";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -445,6 +446,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 ))}
               </SelectContent>
             </Select>
+            <div className="mt-3 border-t pt-3">
+              <Label className="mb-1.5 block text-xs text-muted-foreground">
+                Projektstand
+              </Label>
+              <ProjectStorageControls />
+            </div>
           </div>
           <nav className="flex-1 space-y-1 overflow-y-auto p-2">
             {NAV.filter(item => !item.adminOnly || user?.role === "admin").map(
@@ -574,6 +581,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
               ))}
             </SelectContent>
           </Select>
+          <div className="mt-3 border-t pt-3">
+            <Label className="mb-1.5 block text-xs text-muted-foreground">
+              Projektstand
+            </Label>
+            <ProjectStorageControls />
+          </div>
         </div>
 
         <nav className="flex-1 overflow-y-auto p-2 space-y-0.5">

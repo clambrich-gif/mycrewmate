@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { inflateRawSync } from "node:zlib";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import * as XLSX from "xlsx";
 import {
@@ -43,7 +44,7 @@ const SHEETS = [
   "KUCHEN",
   "FINANZEN",
 ] as const;
-const BACKUP_HEADERS: Record<string, string[]> = {
+export const PROJECT_EXCEL_HEADERS: Record<string, string[]> = {
   ANSPRECHPARTNER: ["ID", "Name", "Rufnummer", "Bemerkung", "Reihenfolge"],
   HELFER: [
     "ID",
@@ -263,7 +264,7 @@ type FinanceRow = {
   sortOrder: number;
 };
 
-type BackupDocument = {
+export type BackupDocument = {
   metadata: {
     format: string;
     version: number;
@@ -422,6 +423,7 @@ function ensureUnique<T>(
 }
 
 function validateZipEnvelope(buffer: Buffer) {
+  const localSignature = 0x04034b50;
   const endSignature = 0x06054b50;
   const centralSignature = 0x02014b50;
   const searchStart = Math.max(0, buffer.length - 65_557);
@@ -451,6 +453,7 @@ function validateZipEnvelope(buffer: Buffer) {
 
   let offset = centralOffset;
   let uncompressedBytes = 0;
+  const localOffsets = new Set<number>();
   for (let entry = 0; entry < entryCount; entry++) {
     if (
       offset + 46 > buffer.length ||
@@ -459,22 +462,104 @@ function validateZipEnvelope(buffer: Buffer) {
       throw new Error(
         "Die Excel-Datei enthält ein beschädigtes ZIP-Verzeichnis"
       );
+    const flags = buffer.readUInt16LE(offset + 8);
+    const method = buffer.readUInt16LE(offset + 10);
+    const compressed = buffer.readUInt32LE(offset + 20);
     const uncompressed = buffer.readUInt32LE(offset + 24);
     const filenameLength = buffer.readUInt16LE(offset + 28);
     const extraLength = buffer.readUInt16LE(offset + 30);
     const commentLength = buffer.readUInt16LE(offset + 32);
-    if (uncompressed === 0xffffffff)
+    const localOffset = buffer.readUInt32LE(offset + 42);
+    if (
+      compressed === 0xffffffff ||
+      uncompressed === 0xffffffff ||
+      localOffset === 0xffffffff
+    )
       throw new Error("ZIP64-Excel-Dateien werden nicht unterstützt");
     uncompressedBytes += uncompressed;
     if (uncompressedBytes > MAX_UNCOMPRESSED_BYTES)
       throw new Error(
         "Die Excel-Datei ist entpackt größer als 100 MB und wird aus Sicherheitsgründen abgewiesen"
       );
+    if (flags & 0x1)
+      throw new Error("Verschlüsselte Excel-Dateien werden nicht unterstützt");
+    if (method !== 0 && method !== 8)
+      throw new Error(
+        "Die Excel-Datei verwendet eine unbekannte Komprimierung"
+      );
+    if (localOffsets.has(localOffset))
+      throw new Error("Die Excel-Datei enthält doppelte ZIP-Einträge");
+    localOffsets.add(localOffset);
+    if (
+      localOffset + 30 > buffer.length ||
+      buffer.readUInt32LE(localOffset) !== localSignature
+    )
+      throw new Error("Die Excel-Datei enthält einen beschädigten ZIP-Eintrag");
+    const localFlags = buffer.readUInt16LE(localOffset + 6);
+    const localMethod = buffer.readUInt16LE(localOffset + 8);
+    const localCompressed = buffer.readUInt32LE(localOffset + 18);
+    const localUncompressed = buffer.readUInt32LE(localOffset + 22);
+    const localNameLength = buffer.readUInt16LE(localOffset + 26);
+    const localExtraLength = buffer.readUInt16LE(localOffset + 28);
+    if (localFlags !== flags || localMethod !== method)
+      throw new Error("Die Excel-Datei enthält widersprüchliche ZIP-Header");
+    const usesDataDescriptor = (flags & 0x8) !== 0;
+    if (
+      !usesDataDescriptor &&
+      (localCompressed !== compressed || localUncompressed !== uncompressed)
+    )
+      throw new Error("Die Excel-Datei enthält widersprüchliche ZIP-Größen");
+    if (
+      usesDataDescriptor &&
+      ((localCompressed !== 0 && localCompressed !== compressed) ||
+        (localUncompressed !== 0 && localUncompressed !== uncompressed))
+    )
+      throw new Error("Die Excel-Datei enthält widersprüchliche ZIP-Größen");
+    const centralName = buffer.subarray(
+      offset + 46,
+      offset + 46 + filenameLength
+    );
+    const localName = buffer.subarray(
+      localOffset + 30,
+      localOffset + 30 + localNameLength
+    );
+    if (!centralName.equals(localName))
+      throw new Error(
+        "Die Excel-Datei enthält widersprüchliche ZIP-Dateinamen"
+      );
+    const payloadStart = localOffset + 30 + localNameLength + localExtraLength;
+    const payloadEnd = payloadStart + compressed;
+    if (payloadEnd > centralOffset || payloadEnd > buffer.length)
+      throw new Error("Die Excel-Datei enthält einen beschädigten ZIP-Eintrag");
+    const payload = buffer.subarray(payloadStart, payloadEnd);
+    if (method === 0) {
+      if (payload.length !== uncompressed)
+        throw new Error("Die Excel-Datei enthält falsche ZIP-Größen");
+    } else {
+      try {
+        const inflated = inflateRawSync(payload, {
+          maxOutputLength: Math.min(
+            uncompressed + 1,
+            MAX_UNCOMPRESSED_BYTES - (uncompressedBytes - uncompressed) + 1
+          ),
+        });
+        if (inflated.length !== uncompressed)
+          throw new Error("Die Excel-Datei enthält falsche ZIP-Größen");
+      } catch (error) {
+        if (error instanceof Error && error.message.includes("ZIP-Größen"))
+          throw error;
+        throw new Error(
+          "Die Excel-Datei überschreitet beim Entpacken das sichere Größenlimit oder ist beschädigt"
+        );
+      }
+    }
     offset += 46 + filenameLength + extraLength + commentLength;
   }
+  if (offset !== centralOffset + centralSize)
+    throw new Error("Die Excel-Datei enthält ein beschädigtes ZIP-Verzeichnis");
 }
 
-export function parseBackupWorkbook(base64: string): BackupDocument {
+export function readUploadedExcelWorkbook(base64: string) {
   const bytes = Buffer.from(base64, "base64");
   if (!bytes.length || bytes.length > 15_000_000)
     throw new Error("Die Excel-Datei ist leer oder größer als 15 MB");
@@ -485,6 +570,11 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
   } catch {
     throw new Error("Die Excel-Datei ist beschädigt oder nicht lesbar");
   }
+  return workbook;
+}
+
+export function parseBackupWorkbook(base64: string): BackupDocument {
+  const workbook = readUploadedExcelWorkbook(base64);
   const meta = metadata(workbook);
   for (const required of SHEETS)
     if (!workbook.Sheets[required])
@@ -1308,6 +1398,26 @@ function comparableCurrent(snapshot: CurrentSnapshot) {
   };
 }
 
+export async function createCurrentProjectDocument(): Promise<BackupDocument> {
+  const snapshot = await loadSnapshot();
+  const current = comparableCurrent(snapshot) as Omit<
+    BackupDocument,
+    "metadata" | "warnings"
+  >;
+  return {
+    metadata: {
+      format: BACKUP_FORMAT,
+      version: BACKUP_VERSION,
+      eventId: currentEventId(),
+      eventName: snapshot.eventName,
+      year: currentEventYear(),
+      exportedAt: new Date().toISOString(),
+    },
+    ...current,
+    warnings: [],
+  };
+}
+
 const AREA_CONFIG = [
   ["ANSPRECHPARTNER", "contacts", "name"],
   ["HELFER", "helpers", "name"],
@@ -1724,8 +1834,10 @@ export function buildSelectedDocument(
   return target;
 }
 
-export async function previewBackupRestore(base64: string) {
-  const desired = parseBackupWorkbook(base64);
+export async function previewProjectDocument(
+  desired: BackupDocument,
+  sourceDigest: string
+) {
   const snapshot = await loadSnapshot();
   if (
     desired.metadata.eventId !== currentEventId() ||
@@ -1741,11 +1853,16 @@ export async function previewBackupRestore(base64: string) {
   return {
     metadata: desired.metadata,
     currentDigest: digest(current),
-    workbookDigest: digest(Buffer.from(base64, "base64")),
+    workbookDigest: sourceDigest,
     warnings: desired.warnings,
     changes,
     totals: summary(changes),
   };
+}
+
+export async function previewBackupRestore(base64: string) {
+  const bytes = Buffer.from(base64, "base64");
+  return previewProjectDocument(parseBackupWorkbook(base64), digest(bytes));
 }
 
 export type BackupRestorePreview = Awaited<
@@ -1764,8 +1881,26 @@ export async function restoreBackup(
   actor: AuditActor,
   selectedChangeKeys?: string[]
 ) {
-  const imported = parseBackupWorkbook(base64);
-  const workbookDigest = digest(Buffer.from(base64, "base64"));
+  const bytes = Buffer.from(base64, "base64");
+  return restoreProjectDocument(
+    parseBackupWorkbook(base64),
+    digest(bytes),
+    sourceFilename,
+    expectedCurrentDigest,
+    actor,
+    selectedChangeKeys
+  );
+}
+
+export async function restoreProjectDocument(
+  imported: BackupDocument,
+  sourceDigest: string,
+  sourceFilename: string,
+  expectedCurrentDigest: string,
+  actor: AuditActor,
+  selectedChangeKeys?: string[]
+) {
+  const workbookDigest = sourceDigest;
   const db = (await getDb()) as Client;
   const year = currentEventYear();
   const eventId = currentEventId();
@@ -2195,7 +2330,7 @@ export async function getBackupRestoreLog(id: number) {
   return { ...entry, details: undefined, ...parsed };
 }
 
-export async function exportBackupExcel(): Promise<{
+export async function exportProjectExcel(): Promise<{
   buffer: Buffer;
   exportedAt: string;
   eventName: string;
@@ -2209,7 +2344,7 @@ export async function exportBackupExcel(): Promise<{
     rows: Record<string, unknown>[],
     widths?: number[]
   ) => {
-    const headers = BACKUP_HEADERS[name] ?? Object.keys(rows[0] ?? {});
+    const headers = PROJECT_EXCEL_HEADERS[name] ?? Object.keys(rows[0] ?? {});
     const sheet = rows.length
       ? XLSX.utils.json_to_sheet(rows, { header: headers })
       : XLSX.utils.aoa_to_sheet([headers]);
@@ -2232,9 +2367,9 @@ export async function exportBackupExcel(): Promise<{
     XLSX.utils.book_append_sheet(workbook, sheet, name);
   };
   append(
-    "SICHERUNG_INFO",
+    "PROJEKT_INFO",
     [
-      { Schlüssel: "Format", Wert: BACKUP_FORMAT },
+      { Schlüssel: "Format", Wert: "RSC-HELFERPLANUNG-PROJEKTUEBERSICHT" },
       { Schlüssel: "Version", Wert: BACKUP_VERSION },
       { Schlüssel: "Veranstaltungs-ID", Wert: currentEventId() },
       { Schlüssel: "Veranstaltung", Wert: snapshot.eventName },
@@ -2242,11 +2377,11 @@ export async function exportBackupExcel(): Promise<{
       { Schlüssel: "Exportiert am (UTC)", Wert: exportedAt },
       {
         Schlüssel: "Verwendung",
-        Wert: "Diese Datei ist eine vollständige Sicherung der gewählten Veranstaltung. Gelöschte Zeilen werden bei der Wiederherstellung nach Prüfung auch im Programm gelöscht.",
+        Wert: "Diese Excel-Datei dient ausschließlich der Übersicht und Dokumentation. Sie ist keine vollständige Speicherdatei. Einzelne Tabellenblätter können im jeweiligen Programmbereich gezielt importiert werden.",
       },
       {
         Schlüssel: "Wichtig",
-        Wert: "Blattnamen und ausgeblendete ID-Spalten nicht löschen oder verändern. Neue Zeilen erhalten eine leere ID.",
+        Wert: "Für einen späteren Modulimport Blattnamen und ausgeblendete ID-Spalten nicht verändern. Neue Zeilen erhalten eine leere ID.",
       },
     ],
     [28, 100]
@@ -2386,5 +2521,34 @@ export async function exportBackupExcel(): Promise<{
     }),
     exportedAt,
     eventName: snapshot.eventName,
+  };
+}
+
+/** @deprecated Nur für bestehende Parser-Regressionsprüfungen; produktiv ist Excel kein Speicherformat mehr. */
+export async function exportBackupExcel() {
+  const result = await exportProjectExcel();
+  const workbook = XLSX.read(result.buffer, {
+    type: "buffer",
+    cellStyles: true,
+  });
+  workbook.SheetNames[0] = "SICHERUNG_INFO";
+  delete workbook.Sheets.PROJEKT_INFO;
+  const sheet = XLSX.utils.json_to_sheet([
+    { Schlüssel: "Format", Wert: BACKUP_FORMAT },
+    { Schlüssel: "Version", Wert: BACKUP_VERSION },
+    { Schlüssel: "Veranstaltungs-ID", Wert: currentEventId() },
+    { Schlüssel: "Veranstaltung", Wert: result.eventName },
+    { Schlüssel: "Jahr", Wert: currentEventYear() },
+    { Schlüssel: "Exportiert am (UTC)", Wert: result.exportedAt },
+  ]);
+  sheet["!cols"] = [{ wch: 28 }, { wch: 100 }];
+  workbook.Sheets.SICHERUNG_INFO = sheet;
+  return {
+    ...result,
+    buffer: XLSX.write(workbook, {
+      type: "buffer",
+      bookType: "xlsx",
+      compression: true,
+    }) as Buffer,
   };
 }

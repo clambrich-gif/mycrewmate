@@ -4,6 +4,8 @@ import { ENV } from "./env";
 const PROTECTED_STORAGE_KEYS = new Set([
   "RSC-Helferplanung-Anleitung_211fadc0.pdf",
   "RSC-Helferplanung-Anleitung_b2d47388.pdf",
+  "RSC-Helferplanung-Anleitung_eb096530.pdf",
+  "RSC-Helferplanung-Anleitung_ee2c395b.pdf",
 ]);
 
 export function registerStorageProxy(app: Express) {

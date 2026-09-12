@@ -129,8 +129,8 @@ const SECTIONS: HelpSection[] = [
     summary:
       "Gelb markierte Anleitungen betreffen das Planungsteam. Grün markierte Anleitungen sind ausschließlich für Administratoren relevant. Kapitel mit blauem Hinweis gelten für beide Rollen.",
     steps: [
-      "Planungsteam: Ansprechpartner und Helfer pflegen, Verfügbarkeiten und Bestätigungen erfassen, operative Listen bearbeiten, PDFs erzeugen, Excel exportieren sowie Einsatzplan ansehen und filtern.",
-      "Administratoren: zusätzlich Veranstaltungen verwalten, Einsatzplan bearbeiten, Helfer zuweisen, Excel-Sicherungen prüfen und wiederherstellen, Zugänge und PDF-Konfiguration verwalten sowie sensible Lösch- und Resetvorgänge ausführen.",
+      "Planungsteam: Ansprechpartner und Helfer pflegen, Verfügbarkeiten und Bestätigungen erfassen, operative Listen bearbeiten, PDFs erzeugen, Projektdateien speichern, Excel-Übersichten exportieren sowie den Einsatzplan ansehen und filtern.",
+      "Administratoren: zusätzlich Veranstaltungen verwalten, Einsatzplan bearbeiten, Helfer zuweisen, Projektdateien laden, Excel-Module importieren, Zugänge und PDF-Konfiguration verwalten sowie sensible Lösch- und Resetvorgänge ausführen.",
       "Für das Planungsteam irrelevant: Schichten verändern, Helfer im Einsatzplan zuweisen, Veranstaltungen löschen, Passwörter verwalten und Löschprotokolle administrieren.",
     ],
     image: {
@@ -142,12 +142,12 @@ const SECTIONS: HelpSection[] = [
   },
   {
     id: "excel",
-    title: "Excel-Datensicherung und Wiederherstellung",
+    title: "Projektdatei speichern/laden und Excel-Module importieren",
     role: "alle",
     keywords:
-      "excel datensicherung import export wiederherstellung prüfung vorschau löschung schicht zuordnung dublette datei planungsteam administrator protokoll",
+      "json projektdatei speichern laden excel import export modul wiederherstellung prüfung vorschau filter löschung neue helfer schicht zuordnung dublette planungsteam administrator protokoll",
     summary:
-      "Beide Rollen dürfen den vollständigen aktuellen Veranstaltungsstand als Excel-Sicherung exportieren. Nur Administratoren dürfen eine bearbeitete Sicherung prüfen und nach Administratorpasswort-Freigabe wiederherstellen. In der Vorschau sind standardmäßig alle Änderungen ausgewählt – einschließlich neu angelegter und in Excel gelöschter Helfer. Bei Bedarf können einzelne Änderungen abgewählt werden; zusammengehörige Bezugsänderungen müssen gemeinsam markiert bleiben. Doppelbelegungen und ungültige Dateien werden blockiert, jeder Vorgang und jede übernommene Einzeländerung bleiben im Wiederherstellungsprotokoll nachvollziehbar. Für das Planungsteam ist die Wiederherstellung nicht erforderlich.",
+      "Die globalen Schaltflächen „Speichern“ und „Laden“ liegen links unter der Veranstaltungsauswahl. „Speichern“ erzeugt eine kompakte JSON-Projektdatei mit dem vollständigen Stand der gewählten Veranstaltung; beide Rollen dürfen sie sichern. Nur Administratoren dürfen eine Projektdatei nach Vorschau und Passwortfreigabe laden. Excel dient nur noch der Übersicht: Die Gesamtdatei wird unter „Excel-Projektübersicht“ erzeugt. Ein Import erfolgt im jeweiligen Bereich über „Excel importieren“ aus einer aktuellen .xlsx-Datei und verändert ausschließlich dieses Modul samt zwingender direkter Bezüge. Die Vorschau lässt sich nach neuen Daten, Änderungen oder Löschungen filtern; der Filter ändert nur die Anzeige, bestätigt werden immer alle erkannten Änderungen des Bereichs. Bei reinen Umbenennungen muss die ausgeblendete ID-Spalte des Projekt-Exports erhalten bleiben. Doppelbelegungen und ungültige Dateien werden blockiert und jeder Ladevorgang wird protokolliert.",
   },
   {
     id: "veranstaltungen",

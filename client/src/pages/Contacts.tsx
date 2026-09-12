@@ -8,6 +8,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
+import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 
 export default function Contacts() {
   const utils = trpc.useUtils();
@@ -71,7 +72,13 @@ export default function Contacts() {
             Aufgaben-PDF ausgegeben.
           </p>
         </div>
-        <ResetAreaButton area="contacts" label="Ansprechpartner" />
+        <div className="flex flex-wrap gap-2">
+          <ModuleExcelImportButton
+            area="ANSPRECHPARTNER"
+            label="Ansprechpartner"
+          />
+          <ResetAreaButton area="contacts" label="Ansprechpartner" />
+        </div>
       </div>
       <div className="grid gap-2 sm:grid-cols-[1fr_220px_auto]">
         <Input

@@ -24,6 +24,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { CopyPreviousPlanButton } from "@/components/CopyPreviousPlanButton";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
+import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 
 const DAYS = ["Freitag", "Samstag", "Sonntag"] as const;
 
@@ -313,6 +314,7 @@ export default function Plan() {
       </div>
       {canEditPlan && (
         <div className="flex justify-end gap-2 flex-wrap">
+          <ModuleExcelImportButton area="EINSATZPLAN" label="Einsatzplan" />
           <CopyPreviousPlanButton />
           <ResetAreaButton area="shifts" label="Einsatzplan" />
           <Button onClick={openCreate}>

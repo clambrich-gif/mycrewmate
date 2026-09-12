@@ -38,7 +38,7 @@ export const NAV: readonly NavItem[] = [
   { href: "/kuchen", label: "Kuchen", icon: Cake },
   { href: "/finanzen", label: "Finanzen", icon: Wallet },
   { href: "/pdf-export", label: "PDF-Ausgabe", icon: FileDown },
-  { href: "/excel", label: "Excel-Datensicherung", icon: FileSpreadsheet },
+  { href: "/excel", label: "Excel-Projektübersicht", icon: FileSpreadsheet },
   {
     href: "/berechtigungen",
     label: "Rollen & Protokoll",

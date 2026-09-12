@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
+import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -141,6 +142,7 @@ export default function Finances() {
           </p>
         </div>
         <div className="flex w-full flex-wrap justify-end gap-2 sm:w-auto">
+          <ModuleExcelImportButton area="FINANZEN" label="Finanzen" />
           <ResetAreaButton area="finances" label="Finanzen" compact />
           <Input
             placeholder="Kategorie"

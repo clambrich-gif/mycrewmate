@@ -31,7 +31,7 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
-  // 15 MB Excel-Datei plus Base64-/JSON-Overhead; größere Requests werden früh abgewiesen.
+  // Projekt- und Excel-Dateien plus Base64-/JSON-Overhead; größere Requests werden früh abgewiesen.
   app.use(express.json({ limit: "25mb" }));
   app.use(express.urlencoded({ limit: "25mb", extended: true }));
   registerStorageProxy(app);

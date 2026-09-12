@@ -18,6 +18,7 @@ import { FileDown, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
+import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 
 const YN = [
   { v: "ja", l: "Ja" },
@@ -177,6 +178,7 @@ export default function Helpers() {
           </p>
         </div>
         <div className="flex gap-2 flex-wrap justify-end">
+          <ModuleExcelImportButton area="HELFER" label="Helfer" />
           <ResetAreaButton area="helpers" label="Helfer" compact />
           <Input
             placeholder="Name"

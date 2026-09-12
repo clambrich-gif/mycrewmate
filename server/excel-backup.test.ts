@@ -331,4 +331,26 @@ describe("Excel-Datensicherung", () => {
       "entpackt größer als 100 MB"
     );
   });
+
+  it("weist manipulierte Central- und Local-Header vor dem SheetJS-Entpacken zurück", async () => {
+    const exported = await exportBackupExcel();
+    const hostile = Buffer.from(exported.buffer);
+    const centralSignature = Buffer.from([0x50, 0x4b, 0x01, 0x02]);
+    let centralOffset = hostile.indexOf(centralSignature);
+    while (centralOffset >= 0) {
+      const method = hostile.readUInt16LE(centralOffset + 10);
+      const uncompressed = hostile.readUInt32LE(centralOffset + 24);
+      if (method === 8 && uncompressed > 100) break;
+      centralOffset = hostile.indexOf(centralSignature, centralOffset + 4);
+    }
+    expect(centralOffset).toBeGreaterThanOrEqual(0);
+    const localOffset = hostile.readUInt32LE(centralOffset + 42);
+    hostile.writeUInt32LE(1, centralOffset + 24);
+    const flags = hostile.readUInt16LE(centralOffset + 8);
+    if ((flags & 0x8) === 0) hostile.writeUInt32LE(1, localOffset + 22);
+
+    expect(() => parseBackupWorkbook(hostile.toString("base64"))).toThrow(
+      /ZIP-Größen|sichere Größenlimit/
+    );
+  });
 });
