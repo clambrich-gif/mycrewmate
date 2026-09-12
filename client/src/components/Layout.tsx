@@ -1,6 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
-import { ProjectStorageControls } from "@/components/ProjectStorageControls";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -29,6 +28,7 @@ import {
 import { startLogin } from "@/const";
 import { useEventYear } from "@/contexts/YearContext";
 import { NAV } from "@/lib/nav";
+import { preloadRoute } from "@/lib/route-loaders";
 import { trpc } from "@/lib/trpc";
 import { WEEKDAYS, type Weekday } from "@shared/weekdays";
 import {
@@ -43,11 +43,17 @@ import {
   ShieldCheck,
   Trash2,
 } from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, lazy, Suspense, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
 
 const RSC_LOGO = "/manus-storage/rsc-eifelland-logo-chrome_25463ad8.png";
+
+const ProjectStorageControls = lazy(() =>
+  import("@/components/ProjectStorageControls").then(module => ({
+    default: module.ProjectStorageControls,
+  }))
+);
 
 const logoLoading = {
   loading: "eager" as const,
@@ -55,6 +61,30 @@ const logoLoading = {
   fetchPriority: "high" as const,
   draggable: false,
 };
+
+function ProjectStorageFallback() {
+  return (
+    <div role="status" aria-label="Projektfunktionen werden geladen">
+      <div className="grid grid-cols-2 gap-2" aria-hidden="true">
+        <div className="h-9 animate-pulse rounded-md border bg-muted" />
+        <div className="h-9 animate-pulse rounded-md border bg-muted" />
+      </div>
+      <div
+        className="mt-1.5 h-4 w-full animate-pulse rounded bg-muted"
+        aria-hidden="true"
+      />
+      <span className="sr-only">Projektfunktionen werden geladen …</span>
+    </div>
+  );
+}
+
+function LazyProjectStorageControls() {
+  return (
+    <Suspense fallback={<ProjectStorageFallback />}>
+      <ProjectStorageControls />
+    </Suspense>
+  );
+}
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { user, loading, isAuthenticated, logout } = useAuth();
@@ -458,7 +488,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <Label className="mb-1.5 block text-xs text-muted-foreground">
                 Projektstand
               </Label>
-              <ProjectStorageControls />
+              <LazyProjectStorageControls />
             </div>
           </div>
           <nav className="flex-1 space-y-1 overflow-y-auto p-2">
@@ -468,6 +498,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   key={href}
                   href={href}
                   onClick={() => setMobileMenuOpen(false)}
+                  onFocus={() => preloadRoute(href)}
+                  onMouseEnter={() => preloadRoute(href)}
+                  onTouchStart={() => preloadRoute(href)}
                   className={`flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium ${location === href ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}
                 >
                   <Icon className="h-5 w-5" /> {label}
@@ -593,7 +626,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <Label className="mb-1.5 block text-xs text-muted-foreground">
               Projektstand
             </Label>
-            <ProjectStorageControls />
+            <LazyProjectStorageControls />
           </div>
         </div>
 
@@ -605,6 +638,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <Link
                   key={href}
                   href={href}
+                  onFocus={() => preloadRoute(href)}
+                  onMouseEnter={() => preloadRoute(href)}
                   className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${active ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}
                 >
                   <Icon className="h-4 w-4" /> {label}
