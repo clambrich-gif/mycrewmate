@@ -5,6 +5,24 @@ const source = (relativePath: string) =>
   readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
 describe("UI- und Mobile-UX-Regeln", () => {
+  it("verknüpft Dashboardwarnungen direkt mit gefilterten Einsatzplanschichten", () => {
+    const dashboard = source("client/src/pages/Dashboard.tsx");
+    const plan = source("client/src/pages/Plan.tsx");
+
+    expect(dashboard).toContain('warningFilter: "konflikte"');
+    expect(dashboard).toContain('warningFilter: "ausfaelle"');
+    expect(dashboard).toContain("navigate(planWarningHref(filter))");
+    expect(dashboard).toContain("Betroffene Schichten im Einsatzplan anzeigen");
+    expect(plan).toContain('warningFilter !== "konflikte" || e.doppelCount > 0');
+    expect(plan).toContain('warningFilter !== "ausfaelle" || e.ausfallCount > 0');
+    expect(plan).toContain('aria-label="Warnungsfilter"');
+    expect(plan).toContain("Nur Doppelbelegungen");
+    expect(plan).toContain("Nur Ausfälle");
+    expect(plan).toContain("Filter aufheben");
+    expect(plan).toContain("Keine Schichten mit Doppelbelegungen gefunden.");
+    expect(plan).toContain("Keine Schichten mit Ausfällen gefunden.");
+  });
+
   it("lädt das RSC-Logo browserstabil über eine öffentliche Same-Origin-Route", () => {
     const layout = source("client/src/components/Layout.tsx");
 

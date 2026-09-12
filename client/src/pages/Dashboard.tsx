@@ -1,6 +1,13 @@
 import { StatusBadge } from "@/components/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  planWarningHref,
+  type PlanWarningFilter,
+} from "@/lib/plan-warning-filter";
+import { preloadRoute } from "@/lib/route-loaders";
 import { trpc } from "@/lib/trpc";
+import { ArrowRight } from "lucide-react";
+import { useLocation } from "wouter";
 import {
   eventWeekdays,
   WEEKDAY_AVAILABILITY_FIELDS,
@@ -12,6 +19,7 @@ type MetricCard = {
   label: string;
   value: number;
   badge: string | null;
+  warningFilter?: PlanWarningFilter;
 };
 
 type MetricSection = {
@@ -21,7 +29,59 @@ type MetricSection = {
   cards: MetricCard[];
 };
 
+function MetricCardView({
+  metric,
+  openWarning,
+}: {
+  metric: MetricCard;
+  openWarning: (filter: PlanWarningFilter) => void;
+}) {
+  const card = (
+    <Card
+      className={`h-full min-w-0 border-slate-200 bg-white text-slate-950 shadow-sm ${
+        metric.warningFilter
+          ? "transition-[border-color,box-shadow,transform] duration-150 group-hover:border-amber-400 group-hover:shadow-md group-active:scale-[0.99] group-focus-visible:border-amber-500 group-focus-visible:ring-2 group-focus-visible:ring-amber-500 group-focus-visible:ring-offset-2"
+          : ""
+      }`}
+    >
+      <CardHeader className="min-w-0 p-3 pb-1 sm:p-6 sm:pb-1">
+        <CardTitle className="min-w-0 break-words text-xs leading-snug font-medium whitespace-normal text-slate-600 sm:text-sm">
+          {metric.label}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex min-w-0 flex-wrap items-end justify-between gap-1 p-3 pt-0 sm:p-6 sm:pt-0">
+        <span className="text-2xl font-bold sm:text-3xl">{metric.value}</span>
+        {metric.warningFilter ? (
+          <span className="flex items-center gap-1 text-[11px] font-semibold text-amber-800 sm:text-xs">
+            Anzeigen
+            <ArrowRight className="size-3.5" aria-hidden="true" />
+          </span>
+        ) : (
+          metric.badge && <StatusBadge status={metric.badge} />
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  const warningFilter = metric.warningFilter;
+  if (!warningFilter) return card;
+
+  return (
+    <button
+      type="button"
+      className="group min-h-11 min-w-0 cursor-pointer rounded-xl text-left focus-visible:outline-none"
+      aria-label={`${metric.label}: ${metric.value}. Betroffene Schichten im Einsatzplan anzeigen`}
+      onPointerEnter={() => preloadRoute("/einsatzplan")}
+      onFocus={() => preloadRoute("/einsatzplan")}
+      onClick={() => openWarning(warningFilter)}
+    >
+      {card}
+    </button>
+  );
+}
+
 export default function Dashboard() {
+  const [, navigate] = useLocation();
   const { data: s, isLoading } = trpc.dashboard.stats.useQuery();
   const { data: helpers = [], isLoading: areHelpersLoading } =
     trpc.helpers.list.useQuery();
@@ -64,8 +124,18 @@ export default function Dashboard() {
       className: "border-amber-300 bg-amber-50/90",
       titleClassName: "text-amber-950",
       cards: [
-        { label: "Doppelbelegungen", value: s.doppelGesamt, badge: "KNAPP" },
-        { label: "Ausfälle", value: s.ausfallGesamt, badge: "OFFEN" },
+        {
+          label: "Doppelbelegungen",
+          value: s.doppelGesamt,
+          badge: "KNAPP",
+          warningFilter: "konflikte",
+        },
+        {
+          label: "Ausfälle",
+          value: s.ausfallGesamt,
+          badge: "OFFEN",
+          warningFilter: "ausfaelle",
+        },
         {
           label: "Offene Vorbereitung",
           value: s.offeneVorbereitung,
@@ -103,22 +173,11 @@ export default function Dashboard() {
             </h2>
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
               {section.cards.map(metric => (
-                <Card
+                <MetricCardView
                   key={metric.label}
-                  className="min-w-0 border-slate-200 bg-white text-slate-950 shadow-sm"
-                >
-                  <CardHeader className="min-w-0 p-3 pb-1 sm:p-6 sm:pb-1">
-                    <CardTitle className="min-w-0 break-words text-xs leading-snug font-medium whitespace-normal text-slate-600 sm:text-sm">
-                      {metric.label}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="flex min-w-0 flex-wrap items-end justify-between gap-1 p-3 pt-0 sm:p-6 sm:pt-0">
-                    <span className="text-2xl font-bold sm:text-3xl">
-                      {metric.value}
-                    </span>
-                    {metric.badge && <StatusBadge status={metric.badge} />}
-                  </CardContent>
-                </Card>
+                  metric={metric}
+                  openWarning={filter => navigate(planWarningHref(filter))}
+                />
               ))}
             </div>
           </section>

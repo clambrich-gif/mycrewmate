@@ -42,6 +42,12 @@ import {
 } from "@/components/ui/popover";
 import { shiftsOverlap, type ShiftTimeLike } from "@shared/shift-time";
 import {
+  PLAN_WARNING_FILTERS,
+  PLAN_WARNING_QUERY_KEY,
+  parsePlanWarningFilter,
+  type PlanWarningSelection,
+} from "@/lib/plan-warning-filter";
+import {
   eventWeekdays,
   helperAvailableOnDay,
   WEEKDAY_AVAILABILITY_FIELDS,
@@ -50,6 +56,7 @@ import {
   type AvailabilityValue,
   type Weekday,
 } from "@shared/weekdays";
+import { useSearchParams } from "wouter";
 
 const formatTimeLabel = (shift: { startTime: string; endTime: string }) =>
   shift.startTime && shift.endTime
@@ -221,6 +228,10 @@ function AssignedHelperChip({
 export default function Plan() {
   const utils = trpc.useUtils();
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const warningFilter = parsePlanWarningFilter(
+    searchParams.get(PLAN_WARNING_QUERY_KEY)
+  );
   const canEditPlan = user?.role === "admin";
   const { data: evals = [], isLoading } = trpc.plan.evaluate.useQuery();
   const { data: helpers = [] } = trpc.helpers.list.useQuery();
@@ -240,6 +251,24 @@ export default function Plan() {
   const [deleteCandidate, setDeleteCandidate] = useState<DropdownShift | null>(
     null
   );
+  const emptyMessage =
+    warningFilter === "konflikte"
+      ? "Keine Schichten mit Doppelbelegungen gefunden."
+      : warningFilter === "ausfaelle"
+        ? "Keine Schichten mit Ausfällen gefunden."
+        : "Keine Schichten gefunden.";
+
+  const updateWarningFilter = (value: PlanWarningSelection) => {
+    setSearchParams(
+      previous => {
+        const next = new URLSearchParams(previous);
+        if (value === "alle") next.delete(PLAN_WARNING_QUERY_KEY);
+        else next.set(PLAN_WARNING_QUERY_KEY, value);
+        return next;
+      },
+      { replace: true }
+    );
+  };
 
   useEffect(() => {
     if (day !== "alle" && !activeDays.includes(day as Weekday)) setDay("alle");
@@ -377,6 +406,8 @@ export default function Plan() {
             (day === "alle" || e.shift.day === day) &&
             (area === "alle" || e.shift.area === area) &&
             (status === "alle" || e.status === status) &&
+            (warningFilter !== "konflikte" || e.doppelCount > 0) &&
+            (warningFilter !== "ausfaelle" || e.ausfallCount > 0) &&
             (!q ||
               e.shift.task.toLowerCase().includes(q.toLowerCase()) ||
               e.shift.area.toLowerCase().includes(q.toLowerCase())) &&
@@ -391,7 +422,7 @@ export default function Plan() {
             left.shift.startTime.localeCompare(right.shift.startTime) ||
             left.shift.id - right.shift.id
         ),
-    [evals, day, area, status, q, apFilter, areaContactMap]
+    [evals, day, area, status, warningFilter, q, apFilter, areaContactMap]
   );
 
   const activeHelpers = (d: string) =>
@@ -647,6 +678,40 @@ export default function Plan() {
         </Card>
       )}
 
+      {warningFilter !== "alle" && (
+        <div
+          className="flex flex-col gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div
+            className="flex min-w-0 items-start gap-3"
+            role="status"
+            aria-live="polite"
+          >
+            <AlertTriangle
+              className="mt-0.5 size-5 shrink-0 text-amber-700"
+              aria-hidden="true"
+            />
+            <div className="min-w-0">
+              <p className="font-semibold">
+                {PLAN_WARNING_FILTERS[warningFilter].label}
+              </p>
+              <p className="text-sm text-amber-800">
+                {PLAN_WARNING_FILTERS[warningFilter].summary}
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="shrink-0 border-amber-400 bg-white text-amber-950 hover:bg-amber-100"
+            onClick={() => updateWarningFilter("alle")}
+          >
+            Filter aufheben
+          </Button>
+        </div>
+      )}
+
       <div className="grid gap-3 sm:grid-cols-2 lg:flex lg:flex-wrap">
         <Input
           placeholder="Suchen (Aufgabe/Bereich) …"
@@ -689,6 +754,26 @@ export default function Plan() {
             <SelectItem value="OFFEN">OFFEN</SelectItem>
             <SelectItem value="KNAPP">KNAPP</SelectItem>
             <SelectItem value="OK">OK</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select
+          value={warningFilter}
+          onValueChange={value =>
+            updateWarningFilter(value as PlanWarningSelection)
+          }
+        >
+          <SelectTrigger
+            className="w-full lg:w-56"
+            aria-label="Warnungsfilter"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="alle">Alle Warnungen</SelectItem>
+            <SelectItem value="konflikte">
+              Nur Doppelbelegungen
+            </SelectItem>
+            <SelectItem value="ausfaelle">Nur Ausfälle</SelectItem>
           </SelectContent>
         </Select>
         <Select value={apFilter} onValueChange={setApFilter}>
@@ -780,7 +865,7 @@ export default function Plan() {
         })}
         {!isLoading && filtered.length === 0 && (
           <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-            Keine Schichten gefunden.
+            {emptyMessage}
           </div>
         )}
       </div>
@@ -892,7 +977,7 @@ export default function Plan() {
               {!isLoading && filtered.length === 0 && (
                 <tr>
                   <td className="p-4 text-muted-foreground" colSpan={12}>
-                    Keine Schichten gefunden.
+                    {emptyMessage}
                   </td>
                 </tr>
               )}
