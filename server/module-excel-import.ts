@@ -120,6 +120,44 @@ const normalized = (value: unknown) =>
     .replace(/\s+/g, " ")
     .toLocaleLowerCase("de-DE");
 
+const MAX_MODULE_ROWS = 10_000;
+const MAX_MODULE_COLUMNS = 256;
+
+export function normalizeModuleSheetRange(
+  sheet: XLSX.WorkSheet,
+  area: ModuleImportArea
+) {
+  let minRow = Number.POSITIVE_INFINITY;
+  let maxRow = -1;
+  let minColumn = Number.POSITIVE_INFINITY;
+  let maxColumn = -1;
+  for (const reference of Object.keys(sheet)) {
+    if (reference.startsWith("!")) continue;
+    try {
+      const cell = XLSX.utils.decode_cell(reference);
+      minRow = Math.min(minRow, cell.r);
+      maxRow = Math.max(maxRow, cell.r);
+      minColumn = Math.min(minColumn, cell.c);
+      maxColumn = Math.max(maxColumn, cell.c);
+    } catch {
+      continue;
+    }
+  }
+  if (maxRow < 0 || maxColumn < 0) return;
+  if (maxRow - minRow > MAX_MODULE_ROWS)
+    throw new Error(
+      `${areaName[area]} enthält mehr als ${MAX_MODULE_ROWS} Datenzeilen`
+    );
+  if (maxColumn - minColumn + 1 > MAX_MODULE_COLUMNS)
+    throw new Error(
+      `${areaName[area]} enthält mehr als ${MAX_MODULE_COLUMNS} Spalten`
+    );
+  sheet["!ref"] = XLSX.utils.encode_range({
+    s: { r: minRow, c: minColumn },
+    e: { r: maxRow, c: maxColumn },
+  });
+}
+
 function rowIdentity(area: ModuleImportArea, row: Record<string, unknown>) {
   if (area === "ANSPRECHPARTNER" || area === "HELFER")
     return normalized(row.Name);
@@ -151,6 +189,43 @@ function hydrateExistingIds(
         ID: row.ID || currentByIdentity.get(rowIdentity(area, row)) || "",
       }) as Record<string, unknown>
   );
+}
+
+export function removeCopiedModuleIds(
+  area: ModuleImportArea,
+  importedRows: Record<string, unknown>[],
+  currentRows: Record<string, unknown>[]
+) {
+  const rowsById = new Map<string, Record<string, unknown>[]>();
+  for (const row of importedRows) {
+    const id = String(row.ID ?? "").trim();
+    if (!id) continue;
+    const rows = rowsById.get(id) ?? [];
+    rows.push(row);
+    rowsById.set(id, rows);
+  }
+  const currentById = new Map(
+    currentRows.map(row => [String(row.ID ?? "").trim(), row])
+  );
+  let corrected = 0;
+  for (const [id, rows] of Array.from(rowsById.entries())) {
+    if (rows.length < 2) continue;
+    const current = currentById.get(id);
+    let keptExisting = false;
+    for (const row of rows) {
+      const isExisting =
+        !keptExisting &&
+        current !== undefined &&
+        rowIdentity(area, row) === rowIdentity(area, current);
+      if (isExisting) {
+        keptExisting = true;
+        continue;
+      }
+      row.ID = "";
+      corrected++;
+    }
+  }
+  return corrected;
 }
 
 function baseWorkbook(document: BackupDocument) {
@@ -311,6 +386,7 @@ async function buildModuleTarget(base64: string, area: ModuleImportArea) {
   const current = await createCurrentProjectDocument();
   const uploaded = readUploadedExcelWorkbook(base64);
   const source = importedSheet(uploaded, area);
+  normalizeModuleSheetRange(source, area);
   const sourceHeaders = assertHeaders(source, area);
   const rawImportedRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(
     source,
@@ -322,11 +398,12 @@ async function buildModuleTarget(base64: string, area: ModuleImportArea) {
       for (const day of legacyWeekdays)
         if (!sourceHeaders.has(day)) row[day] = "ja";
   }
-  const importedRows = hydrateExistingIds(
-    area,
-    rawImportedRows,
-    rowsFromDocument(current, area)
-  );
+  const currentRows = rowsFromDocument(current, area);
+  const correctedCopiedIds =
+    area === "ANSPRECHPARTNER"
+      ? removeCopiedModuleIds(area, rawImportedRows, currentRows)
+      : 0;
+  const importedRows = hydrateExistingIds(area, rawImportedRows, currentRows);
   const workbook = baseWorkbook(current);
   for (const currentArea of MODULE_IMPORT_AREAS) {
     const rows = rowsFromDocument(current, currentArea);
@@ -445,12 +522,22 @@ async function buildModuleTarget(base64: string, area: ModuleImportArea) {
       ...target.warnings,
       `Mögliche Umbenennung ohne ID erkannt: Neue und gelöschte ${area === "HELFER" ? "Helfer" : "Ansprechpartner"} werden als getrennte Datensätze behandelt. Prüfen Sie besonders Einsatzzuordnungen und behalten Sie für reine Umbenennungen die ausgeblendete ID-Spalte aus dem Projekt-Export bei.`,
     ];
+  if (correctedCopiedIds)
+    target.warnings = [
+      ...target.warnings,
+      `${correctedCopiedIds} mitkopierte technische ID${correctedCopiedIds === 1 ? " wurde" : "s wurden"} bei neuen ${areaName[area]}-Zeilen automatisch entfernt. Alle Zeilen werden einzeln geprüft.`,
+    ];
   const unexpected = changes.find(change => !allowedAreas.has(change.area));
   if (unexpected)
     throw new Error(
       `${areaName[area]} kann nicht unabhängig importiert werden: Die Datei erfordert zusätzlich eine Änderung in „${unexpected.area}“.`
     );
-  return { current, target, changes };
+  return {
+    current,
+    target,
+    changes,
+    rowsChecked: importedRows.filter(row => rowIdentity(area, row)).length,
+  };
 }
 
 const summarize = (changes: BackupChange[]) => ({
@@ -463,7 +550,7 @@ export async function previewModuleExcelImport(
   base64: string,
   area: ModuleImportArea
 ) {
-  const { target, changes } = await buildModuleTarget(base64, area);
+  const { target, changes, rowsChecked } = await buildModuleTarget(base64, area);
   const preview = await previewProjectDocument(target, digest(base64));
   return {
     area,
@@ -473,6 +560,7 @@ export async function previewModuleExcelImport(
     warnings: preview.warnings,
     changes,
     totals: summarize(changes),
+    rowsChecked,
   };
 }
 

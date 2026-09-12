@@ -5,6 +5,15 @@ const source = (relativePath: string) =>
   readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
 describe("UI- und Mobile-UX-Regeln", () => {
+  it("zeigt beim Ansprechpartnerimport die Prüfung aller Excel-Zeilen", () => {
+    const moduleImport = source(
+      "client/src/components/ModuleExcelImportButton.tsx"
+    );
+
+    expect(moduleImport).toContain("Vollständige Excel-Prüfung:");
+    expect(moduleImport).toContain("preview.data?.rowsChecked");
+  });
+
   it("deaktiviert Dashboardkarten ohne Treffer visuell und funktional", () => {
     const dashboard = source("client/src/pages/Dashboard.tsx");
 

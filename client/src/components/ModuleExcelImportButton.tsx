@@ -144,6 +144,10 @@ export function ModuleExcelImportButton({
             <strong>Wichtig:</strong> Die Filter ändern nur die Anzeige. Beim
             Bestätigen werden alle unten erkannten Änderungen dieses Bereichs
             übernommen – einschließlich in Excel gelöschter Zeilen.
+            <div className="mt-1 font-semibold">
+              Vollständige Excel-Prüfung: {preview.data?.rowsChecked ?? 0}{" "}
+              Datenzeilen geprüft.
+            </div>
           </div>
           <div className="grid gap-2 sm:grid-cols-3">
             <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-emerald-900">
