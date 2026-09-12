@@ -8,19 +8,32 @@ describe("UI- und Mobile-UX-Regeln", () => {
   it("verknüpft Dashboardwarnungen direkt mit gefilterten Einsatzplanschichten", () => {
     const dashboard = source("client/src/pages/Dashboard.tsx");
     const plan = source("client/src/pages/Plan.tsx");
+    const taskList = source("client/src/pages/TaskList.tsx");
 
-    expect(dashboard).toContain('warningFilter: "konflikte"');
-    expect(dashboard).toContain('warningFilter: "ausfaelle"');
-    expect(dashboard).toContain("navigate(planWarningHref(filter))");
-    expect(dashboard).toContain("Betroffene Schichten im Einsatzplan anzeigen");
+    expect(dashboard).toContain('status: "OFFEN"');
+    expect(dashboard).toContain('status: "KNAPP"');
+    expect(dashboard).toContain('warning: "konflikte"');
+    expect(dashboard).toContain('warning: "ausfaelle"');
+    expect(dashboard).toContain('path: "/vorbereitung", status: "offen"');
+    expect(dashboard).toContain('path: "/nachbereitung", status: "offen"');
+    expect(dashboard).toContain("navigate(dashboardTargetHref(target))");
+    expect(dashboard).toContain("Gefilterte Einträge anzeigen");
+    expect(dashboard).toContain('urgency: "orange"');
+    expect(dashboard).toContain('urgency: "red"');
+    expect(dashboard).toContain("border-orange-300 bg-orange-50/90");
+    expect(dashboard).toContain("border-red-300 bg-red-50/90");
     expect(plan).toContain('warningFilter !== "konflikte" || e.doppelCount > 0');
     expect(plan).toContain('warningFilter !== "ausfaelle" || e.ausfallCount > 0');
+    expect(plan).toContain("parsePlanStatusFilter");
     expect(plan).toContain('aria-label="Warnungsfilter"');
     expect(plan).toContain("Nur Doppelbelegungen");
     expect(plan).toContain("Nur Ausfälle");
     expect(plan).toContain("Filter aufheben");
     expect(plan).toContain("Keine Schichten mit Doppelbelegungen gefunden.");
     expect(plan).toContain("Keine Schichten mit Ausfällen gefunden.");
+    expect(taskList).toContain("parseTaskStatusFilter");
+    expect(taskList).toContain('aria-label="Aufgabenstatus filtern"');
+    expect(taskList).toContain("Nur offene Aufgaben");
   });
 
   it("lädt das RSC-Logo browserstabil über eine öffentliche Same-Origin-Route", () => {

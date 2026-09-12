@@ -1,9 +1,9 @@
 import { StatusBadge } from "@/components/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  planWarningHref,
-  type PlanWarningFilter,
-} from "@/lib/plan-warning-filter";
+  dashboardTargetHref,
+  type DashboardTarget,
+} from "@/lib/dashboard-target-filter";
 import { preloadRoute } from "@/lib/route-loaders";
 import { trpc } from "@/lib/trpc";
 import { ArrowRight } from "lucide-react";
@@ -19,7 +19,8 @@ type MetricCard = {
   label: string;
   value: number;
   badge: string | null;
-  warningFilter?: PlanWarningFilter;
+  target?: DashboardTarget;
+  urgency?: "orange" | "red";
 };
 
 type MetricSection = {
@@ -31,17 +32,29 @@ type MetricSection = {
 
 function MetricCardView({
   metric,
-  openWarning,
+  openTarget,
 }: {
   metric: MetricCard;
-  openWarning: (filter: PlanWarningFilter) => void;
+  openTarget: (target: DashboardTarget) => void;
 }) {
+  const interactiveCardClass =
+    metric.urgency === "red"
+      ? "border-red-300 bg-red-50/90 group-hover:border-red-500 group-hover:shadow-red-200/70 group-focus-visible:border-red-500 group-focus-visible:ring-red-500"
+      : metric.urgency === "orange"
+        ? "border-orange-300 bg-orange-50/90 group-hover:border-orange-500 group-hover:shadow-orange-200/70 group-focus-visible:border-orange-500 group-focus-visible:ring-orange-500"
+        : "border-slate-200 bg-white group-hover:border-blue-400 group-hover:shadow-blue-100/80 group-focus-visible:border-blue-500 group-focus-visible:ring-blue-500";
+  const actionClass =
+    metric.urgency === "red"
+      ? "text-red-700"
+      : metric.urgency === "orange"
+        ? "text-orange-700"
+        : "text-blue-700";
   const card = (
     <Card
-      className={`h-full min-w-0 border-slate-200 bg-white text-slate-950 shadow-sm ${
-        metric.warningFilter
-          ? "transition-[border-color,box-shadow,transform] duration-150 group-hover:border-amber-400 group-hover:shadow-md group-active:scale-[0.99] group-focus-visible:border-amber-500 group-focus-visible:ring-2 group-focus-visible:ring-amber-500 group-focus-visible:ring-offset-2"
-          : ""
+      className={`h-full min-w-0 text-slate-950 shadow-sm ${
+        metric.target
+          ? `${interactiveCardClass} transition-[border-color,box-shadow,transform] duration-150 group-hover:shadow-md group-active:scale-[0.99] group-focus-visible:ring-2 group-focus-visible:ring-offset-2`
+          : "border-slate-200 bg-white"
       }`}
     >
       <CardHeader className="min-w-0 p-3 pb-1 sm:p-6 sm:pb-1">
@@ -51,29 +64,32 @@ function MetricCardView({
       </CardHeader>
       <CardContent className="flex min-w-0 flex-wrap items-end justify-between gap-1 p-3 pt-0 sm:p-6 sm:pt-0">
         <span className="text-2xl font-bold sm:text-3xl">{metric.value}</span>
-        {metric.warningFilter ? (
-          <span className="flex items-center gap-1 text-[11px] font-semibold text-amber-800 sm:text-xs">
-            Anzeigen
-            <ArrowRight className="size-3.5" aria-hidden="true" />
-          </span>
-        ) : (
-          metric.badge && <StatusBadge status={metric.badge} />
-        )}
+        <span className="flex flex-col items-end gap-1">
+          {metric.badge && <StatusBadge status={metric.badge} />}
+          {metric.target && (
+            <span
+              className={`flex items-center gap-1 text-[11px] font-semibold sm:text-xs ${actionClass}`}
+            >
+              Anzeigen
+              <ArrowRight className="size-3.5" aria-hidden="true" />
+            </span>
+          )}
+        </span>
       </CardContent>
     </Card>
   );
 
-  const warningFilter = metric.warningFilter;
-  if (!warningFilter) return card;
+  const target = metric.target;
+  if (!target) return card;
 
   return (
     <button
       type="button"
       className="group min-h-11 min-w-0 cursor-pointer rounded-xl text-left focus-visible:outline-none"
-      aria-label={`${metric.label}: ${metric.value}. Betroffene Schichten im Einsatzplan anzeigen`}
-      onPointerEnter={() => preloadRoute("/einsatzplan")}
-      onFocus={() => preloadRoute("/einsatzplan")}
-      onClick={() => openWarning(warningFilter)}
+      aria-label={`${metric.label}: ${metric.value}. Gefilterte Einträge anzeigen`}
+      onPointerEnter={() => preloadRoute(target.path)}
+      onFocus={() => preloadRoute(target.path)}
+      onClick={() => openTarget(target)}
     >
       {card}
     </button>
@@ -103,8 +119,18 @@ export default function Dashboard() {
       titleClassName: "text-sky-950",
       cards: [
         { label: "Schichten gesamt", value: s.schichtenGesamt, badge: null },
-        { label: "Offen", value: s.offen, badge: "OFFEN" },
-        { label: "Knapp besetzt", value: s.knapp, badge: "KNAPP" },
+        {
+          label: "Offen",
+          value: s.offen,
+          badge: "OFFEN",
+          target: { path: "/einsatzplan", status: "OFFEN" },
+        },
+        {
+          label: "Knapp besetzt",
+          value: s.knapp,
+          badge: "KNAPP",
+          target: { path: "/einsatzplan", status: "KNAPP" },
+        },
         { label: "Voll besetzt", value: s.ok, badge: "OK" },
       ],
     },
@@ -128,23 +154,27 @@ export default function Dashboard() {
           label: "Doppelbelegungen",
           value: s.doppelGesamt,
           badge: "KNAPP",
-          warningFilter: "konflikte",
+          target: { path: "/einsatzplan", warning: "konflikte" },
+          urgency: "orange",
         },
         {
           label: "Ausfälle",
           value: s.ausfallGesamt,
           badge: "OFFEN",
-          warningFilter: "ausfaelle",
+          target: { path: "/einsatzplan", warning: "ausfaelle" },
+          urgency: "red",
         },
         {
           label: "Offene Vorbereitung",
           value: s.offeneVorbereitung,
           badge: null,
+          target: { path: "/vorbereitung", status: "offen" },
         },
         {
           label: "Offene Nachbereitung",
           value: s.offeneNachbereitung,
           badge: null,
+          target: { path: "/nachbereitung", status: "offen" },
         },
       ],
     },
@@ -176,7 +206,7 @@ export default function Dashboard() {
                 <MetricCardView
                   key={metric.label}
                   metric={metric}
-                  openWarning={filter => navigate(planWarningHref(filter))}
+                  openTarget={target => navigate(dashboardTargetHref(target))}
                 />
               ))}
             </div>

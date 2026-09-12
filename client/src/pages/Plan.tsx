@@ -44,9 +44,12 @@ import { shiftsOverlap, type ShiftTimeLike } from "@shared/shift-time";
 import {
   PLAN_WARNING_FILTERS,
   PLAN_WARNING_QUERY_KEY,
+  PLAN_STATUS_QUERY_KEY,
   parsePlanWarningFilter,
+  parsePlanStatusFilter,
+  type PlanStatusFilter,
   type PlanWarningSelection,
-} from "@/lib/plan-warning-filter";
+} from "@/lib/dashboard-target-filter";
 import {
   eventWeekdays,
   helperAvailableOnDay,
@@ -232,6 +235,7 @@ export default function Plan() {
   const warningFilter = parsePlanWarningFilter(
     searchParams.get(PLAN_WARNING_QUERY_KEY)
   );
+  const status = parsePlanStatusFilter(searchParams.get(PLAN_STATUS_QUERY_KEY));
   const canEditPlan = user?.role === "admin";
   const { data: evals = [], isLoading } = trpc.plan.evaluate.useQuery();
   const { data: helpers = [] } = trpc.helpers.list.useQuery();
@@ -245,7 +249,6 @@ export default function Plan() {
   );
   const [day, setDay] = useState<string>("alle");
   const [area, setArea] = useState<string>("alle");
-  const [status, setStatus] = useState<string>("alle");
   const [apFilter, setApFilter] = useState<string>("alle");
   const [q, setQ] = useState("");
   const [deleteCandidate, setDeleteCandidate] = useState<DropdownShift | null>(
@@ -256,6 +259,10 @@ export default function Plan() {
       ? "Keine Schichten mit Doppelbelegungen gefunden."
       : warningFilter === "ausfaelle"
         ? "Keine Schichten mit Ausfällen gefunden."
+        : status === "OFFEN"
+          ? "Keine offenen Schichten gefunden."
+          : status === "KNAPP"
+            ? "Keine knapp besetzten Schichten gefunden."
         : "Keine Schichten gefunden.";
 
   const updateWarningFilter = (value: PlanWarningSelection) => {
@@ -264,6 +271,18 @@ export default function Plan() {
         const next = new URLSearchParams(previous);
         if (value === "alle") next.delete(PLAN_WARNING_QUERY_KEY);
         else next.set(PLAN_WARNING_QUERY_KEY, value);
+        return next;
+      },
+      { replace: true }
+    );
+  };
+
+  const updateStatusFilter = (value: PlanStatusFilter) => {
+    setSearchParams(
+      previous => {
+        const next = new URLSearchParams(previous);
+        if (value === "alle") next.delete(PLAN_STATUS_QUERY_KEY);
+        else next.set(PLAN_STATUS_QUERY_KEY, value);
         return next;
       },
       { replace: true }
@@ -745,7 +764,10 @@ export default function Plan() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={status} onValueChange={setStatus}>
+        <Select
+          value={status}
+          onValueChange={value => updateStatusFilter(value as PlanStatusFilter)}
+        >
           <SelectTrigger className="w-full lg:w-40">
             <SelectValue />
           </SelectTrigger>

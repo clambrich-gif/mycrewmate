@@ -1,0 +1,49 @@
+export const PLAN_WARNING_QUERY_KEY = "warnung";
+export const PLAN_STATUS_QUERY_KEY = "status";
+export const TASK_STATUS_QUERY_KEY = "status";
+
+export const PLAN_WARNING_FILTERS = {
+  konflikte: {
+    label: "Nur Doppelbelegungen",
+    summary: "Es werden nur Schichten mit zeitlichen Doppelbelegungen angezeigt.",
+  },
+  ausfaelle: {
+    label: "Nur Ausfälle",
+    summary: "Es werden nur Schichten mit ausgefallenen Helfern angezeigt.",
+  },
+} as const;
+
+export type PlanWarningFilter = keyof typeof PLAN_WARNING_FILTERS;
+export type PlanWarningSelection = "alle" | PlanWarningFilter;
+export type PlanStatusFilter = "alle" | "OFFEN" | "KNAPP" | "OK";
+export type TaskStatusFilter = "alle" | "offen" | "inArbeit" | "erledigt";
+
+export type DashboardTarget =
+  | { path: "/einsatzplan"; warning: PlanWarningFilter }
+  | { path: "/einsatzplan"; status: Exclude<PlanStatusFilter, "alle"> }
+  | { path: "/vorbereitung" | "/nachbereitung"; status: "offen" };
+
+export function parsePlanWarningFilter(
+  value: string | null
+): PlanWarningSelection {
+  return value === "konflikte" || value === "ausfaelle" ? value : "alle";
+}
+
+export function parsePlanStatusFilter(value: string | null): PlanStatusFilter {
+  return value === "OFFEN" || value === "KNAPP" || value === "OK"
+    ? value
+    : "alle";
+}
+
+export function parseTaskStatusFilter(value: string | null): TaskStatusFilter {
+  return value === "offen" || value === "inArbeit" || value === "erledigt"
+    ? value
+    : "alle";
+}
+
+export function dashboardTargetHref(target: DashboardTarget) {
+  const params = new URLSearchParams();
+  if ("warning" in target) params.set(PLAN_WARNING_QUERY_KEY, target.warning);
+  if ("status" in target) params.set(PLAN_STATUS_QUERY_KEY, target.status);
+  return `${target.path}?${params.toString()}`;
+}

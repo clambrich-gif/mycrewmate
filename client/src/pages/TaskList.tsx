@@ -11,10 +11,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  parseTaskStatusFilter,
+  TASK_STATUS_QUERY_KEY,
+  type TaskStatusFilter,
+} from "@/lib/dashboard-target-filter";
 import { trpc } from "@/lib/trpc";
 import { ArrowDownAZ, ArrowUpZA, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useSearchParams } from "wouter";
 
 const temporaryId = () => -Date.now() - Math.floor(Math.random() * 1_000);
 
@@ -27,6 +33,10 @@ export default function TaskList({
 }) {
   const utils = trpc.useUtils();
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const statusFilter = parseTaskStatusFilter(
+    searchParams.get(TASK_STATUS_QUERY_KEY)
+  );
   const api = (trpc as any)[kind];
   const listUtils = (utils as any)[kind].list;
   const { data: rows = [], isLoading } = api.list.useQuery();
@@ -36,11 +46,19 @@ export default function TaskList({
   const [contactFilter, setContactFilter] = useState("alle");
   const [sortAsc, setSortAsc] = useState(true);
   const isPrep = kind === "prep";
+  const emptyMessage =
+    rows.length === 0
+      ? "Noch keine Aufgaben."
+      : statusFilter === "offen"
+        ? "Keine offenen Aufgaben."
+        : "Keine Aufgaben für die gewählten Filter.";
 
   const visibleRows = useMemo(
     () =>
       [...rows]
         .filter((row: any) => {
+          if (statusFilter !== "alle" && row.status !== statusFilter)
+            return false;
           if (contactFilter === "alle") return true;
           if (contactFilter === "ohne") return !row.contactId;
           return String(row.contactId ?? "") === contactFilter;
@@ -53,8 +71,20 @@ export default function TaskList({
           );
           return sortAsc ? comparison : -comparison;
         }),
-    [rows, contactFilter, sortAsc]
+    [rows, contactFilter, statusFilter, sortAsc]
   );
+
+  const updateStatusFilter = (value: TaskStatusFilter) => {
+    setSearchParams(
+      previous => {
+        const next = new URLSearchParams(previous);
+        if (value === "alle") next.delete(TASK_STATUS_QUERY_KEY);
+        else next.set(TASK_STATUS_QUERY_KEY, value);
+        return next;
+      },
+      { replace: true }
+    );
+  };
 
   const refreshDashboard = () => void utils.dashboard.stats.invalidate();
 
@@ -175,6 +205,31 @@ export default function TaskList({
           </Button>
         </div>
       </div>
+      {statusFilter !== "alle" && (
+        <div className="flex flex-col gap-3 rounded-xl border border-blue-200 bg-blue-50 p-4 text-blue-950 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <div role="status" aria-live="polite">
+            <p className="font-semibold">
+              {statusFilter === "offen"
+                ? "Nur offene Aufgaben"
+                : statusFilter === "inArbeit"
+                  ? "Nur Aufgaben in Arbeit"
+                  : "Nur erledigte Aufgaben"}
+            </p>
+            <p className="text-sm text-blue-800">
+              Die Aufgabenliste ist nach Status gefiltert.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="shrink-0 border-blue-300 bg-white text-blue-950 hover:bg-blue-100"
+            onClick={() => updateStatusFilter("alle")}
+          >
+            Filter aufheben
+          </Button>
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <Button
           type="button"
@@ -188,6 +243,25 @@ export default function TaskList({
           )}
           Aufgabe {sortAsc ? "A–Z" : "Z–A"}
         </Button>
+        <Select
+          value={statusFilter}
+          onValueChange={value =>
+            updateStatusFilter(value as TaskStatusFilter)
+          }
+        >
+          <SelectTrigger
+            className="w-full sm:w-[220px]"
+            aria-label="Aufgabenstatus filtern"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="alle">Alle Status</SelectItem>
+            <SelectItem value="offen">Nur offen</SelectItem>
+            <SelectItem value="inArbeit">Nur in Arbeit</SelectItem>
+            <SelectItem value="erledigt">Nur erledigt</SelectItem>
+          </SelectContent>
+        </Select>
         <Select value={contactFilter} onValueChange={setContactFilter}>
           <SelectTrigger className="w-full sm:w-[240px]">
             <SelectValue placeholder="Verantwortliche filtern" />
@@ -313,9 +387,7 @@ export default function TaskList({
         {!isLoading && visibleRows.length === 0 && (
           <Card className="shadow-sm">
             <CardContent className="p-4 text-sm text-muted-foreground">
-              {rows.length === 0
-                ? "Noch keine Aufgaben."
-                : "Keine Aufgaben für diesen Verantwortlichen."}
+              {emptyMessage}
             </CardContent>
           </Card>
         )}
@@ -438,9 +510,7 @@ export default function TaskList({
                     className="p-4 text-muted-foreground"
                     colSpan={isPrep ? 5 : 4}
                   >
-                    {rows.length === 0
-                      ? "Noch keine Aufgaben."
-                      : "Keine Aufgaben für diesen Verantwortlichen."}
+                    {emptyMessage}
                   </td>
                 </tr>
               )}
