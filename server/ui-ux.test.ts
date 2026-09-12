@@ -5,6 +5,34 @@ const source = (relativePath: string) =>
   readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
 describe("UI- und Mobile-UX-Regeln", () => {
+  it("deaktiviert Dashboardkarten ohne Treffer visuell und funktional", () => {
+    const dashboard = source("client/src/pages/Dashboard.tsx");
+
+    expect(dashboard).toContain("const isEmpty = metric.value === 0");
+    expect(dashboard).toContain("border-slate-200 bg-slate-100/90");
+    expect(dashboard).toContain("if (!target || isEmpty) return card");
+    expect(dashboard).toContain("!isEmpty && metric.target");
+  });
+
+  it("zeigt die Helfer-Einteilungsfreigabe für beide Rollen auf Desktop und Mobil", () => {
+    const helpers = source("client/src/pages/Helpers.tsx");
+
+    expect(helpers.match(/<Share2/g)).toHaveLength(2);
+    expect(helpers.match(/className="size-11 shrink-0"/g)).toHaveLength(2);
+    expect(helpers.match(/Einteilung für \$\{helper\.name\} teilen/g)).toHaveLength(
+      2
+    );
+    expect(helpers).toContain("shareHelperAssignment(helper)");
+    expect(helpers).toContain("currentEvent?.name");
+    expect(helpers).toContain("resolveAssignmentShareContact");
+    expect(helpers).toContain(
+      "in die Zwischenablage kopiert! (Jetzt per Mail/WhatsApp einfügen)"
+    );
+    expect(helpers).not.toMatch(
+      /user\?\.role[^\n]{0,160}shareHelperAssignment/
+    );
+  });
+
   it("verknüpft Dashboardwarnungen direkt mit gefilterten Einsatzplanschichten", () => {
     const dashboard = source("client/src/pages/Dashboard.tsx");
     const plan = source("client/src/pages/Plan.tsx");
