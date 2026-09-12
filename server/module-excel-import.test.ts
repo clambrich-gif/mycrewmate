@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import * as XLSX from "xlsx";
 import {
+  findContactSelfHelperRow,
   normalizeModuleSheetRange,
   removeCopiedModuleIds,
 } from "./module-excel-import";
@@ -66,5 +67,70 @@ describe("modularer Ansprechpartner-Excel-Import", () => {
       )
     ).toBe(0);
     expect(importedRows.map(row => row.ID)).toEqual([11, 12, ""]);
+  });
+
+  it("verwendet den gleichnamigen Selbsthelfer statt des ersten betreuten Helfers", () => {
+    const helpers: Record<string, unknown>[] = [
+      {
+        ID: 21,
+        "Ansprechpartner-ID": 11,
+        Name: "Benedikt Braun",
+      },
+      {
+        ID: 22,
+        "Ansprechpartner-ID": 11,
+        Name: "Martin Reis",
+      },
+    ];
+
+    expect(
+      findContactSelfHelperRow(
+        { ID: 11, Name: "Martin Reis" },
+        helpers,
+        [{ ID: 11, Name: "Martin Reis" }]
+      )?.ID
+    ).toBe(22);
+    expect(helpers[0].Name).toBe("Benedikt Braun");
+  });
+
+  it("benennt bei einer echten Ansprechpartner-Umbenennung nur den bisherigen Selbsthelfer um", () => {
+    const helpers: Record<string, unknown>[] = [
+      {
+        ID: 21,
+        "Ansprechpartner-ID": 11,
+        Name: "Benedikt Braun",
+      },
+      {
+        ID: 22,
+        "Ansprechpartner-ID": 11,
+        Name: "Alter Name",
+      },
+    ];
+
+    expect(
+      findContactSelfHelperRow(
+        { ID: 11, Name: "Neuer Name" },
+        helpers,
+        [{ ID: 11, Name: "Alter Name" }]
+      )?.ID
+    ).toBe(22);
+  });
+
+  it("legt bei fehlendem Selbsthelfer einen neuen an, statt einen betreuten Helfer umzubenennen", () => {
+    const helpers: Record<string, unknown>[] = [
+      {
+        ID: 21,
+        "Ansprechpartner-ID": 11,
+        Name: "Benedikt Braun",
+      },
+    ];
+
+    expect(
+      findContactSelfHelperRow(
+        { ID: 11, Name: "Martin Reis" },
+        helpers,
+        [{ ID: 11, Name: "Martin Reis" }]
+      )
+    ).toBeUndefined();
   });
 });

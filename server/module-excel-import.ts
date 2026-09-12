@@ -228,6 +228,28 @@ export function removeCopiedModuleIds(
   return corrected;
 }
 
+export function findContactSelfHelperRow(
+  contactRow: Record<string, unknown>,
+  helperRows: Record<string, unknown>[],
+  currentContactRows: Record<string, unknown>[]
+) {
+  const contactId = String(contactRow.ID ?? "").trim();
+  const contactName = String(contactRow.Name ?? "").trim();
+  const exactName = helperRows.find(
+    row => normalized(row.Name) === normalized(contactName)
+  );
+  if (exactName || !contactId) return exactName;
+
+  const currentContact = currentContactRows.find(
+    row => String(row.ID ?? "").trim() === contactId
+  );
+  if (!currentContact) return undefined;
+  const previousName = normalized(currentContact.Name);
+  return helperRows.find(
+    row => normalized(row.Name) === previousName
+  );
+}
+
 function baseWorkbook(document: BackupDocument) {
   const workbook = XLSX.utils.book_new();
   const append = (
@@ -419,6 +441,7 @@ async function buildModuleTarget(base64: string, area: ModuleImportArea) {
       })
     : XLSX.utils.aoa_to_sheet([PROJECT_EXCEL_HEADERS[area]]);
   if (area === "ANSPRECHPARTNER") {
+    const currentContactRows = rowsFromDocument(current, "ANSPRECHPARTNER");
     const importedIds = new Set(
       importedRows.map(row => String(row.ID ?? "")).filter(Boolean)
     );
@@ -444,14 +467,12 @@ async function buildModuleTarget(base64: string, area: ModuleImportArea) {
         )
     );
     for (const contactRow of importedRows) {
-      const contactId = String(contactRow.ID ?? "");
       const contactName = String(contactRow.Name ?? "").trim();
       if (!contactName) continue;
-      const existing = helperRows.find(
-        row =>
-          (contactId &&
-            String(row["Ansprechpartner-ID"] ?? "") === contactId) ||
-          normalized(row.Name) === normalized(contactName)
+      const existing = findContactSelfHelperRow(
+        contactRow,
+        helperRows,
+        currentContactRows
       );
       if (existing) {
         existing["Ansprechpartner-ID"] = contactRow.ID ?? "";
