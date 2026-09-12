@@ -105,15 +105,17 @@ export default function Dashboard() {
               {section.cards.map(metric => (
                 <Card
                   key={metric.label}
-                  className="border-slate-200 bg-white text-slate-950 shadow-sm"
+                  className="min-w-0 border-slate-200 bg-white text-slate-950 shadow-sm"
                 >
-                  <CardHeader className="pb-1">
-                    <CardTitle className="text-sm font-medium text-slate-600">
+                  <CardHeader className="min-w-0 p-3 pb-1 sm:p-6 sm:pb-1">
+                    <CardTitle className="min-w-0 break-words text-xs leading-snug font-medium whitespace-normal text-slate-600 sm:text-sm">
                       {metric.label}
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="flex items-end justify-between">
-                    <span className="text-3xl font-bold">{metric.value}</span>
+                  <CardContent className="flex min-w-0 flex-wrap items-end justify-between gap-1 p-3 pt-0 sm:p-6 sm:pt-0">
+                    <span className="text-2xl font-bold sm:text-3xl">
+                      {metric.value}
+                    </span>
                     {metric.badge && <StatusBadge status={metric.badge} />}
                   </CardContent>
                 </Card>

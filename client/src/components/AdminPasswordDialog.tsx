@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export function AdminPasswordDialog({
   open,
@@ -47,19 +47,49 @@ export function AdminPasswordDialog({
   const [responsibleContactId, setResponsibleContactId] = useState<
     number | null
   >(null);
+  const submitLocked = useRef(false);
   useEffect(() => {
     if (!open) {
       setPassword("");
       setResponsibleContactId(null);
+      submitLocked.current = false;
     }
   }, [open]);
+  useEffect(() => {
+    if (!busy) submitLocked.current = false;
+  }, [busy]);
   const canConfirm =
+    !busy &&
     Boolean(password) &&
     (!requireResponsibleContact || Boolean(responsibleContactId));
 
+  const confirm = () => {
+    if (!canConfirm || submitLocked.current) return;
+    submitLocked.current = true;
+    onConfirm(password, responsibleContactId ?? undefined);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
+    <Dialog
+      open={open}
+      onOpenChange={nextOpen => {
+        if (!busy) onOpenChange(nextOpen);
+      }}
+    >
+      <DialogContent
+        className="max-h-[calc(100dvh-2rem)] overflow-y-auto"
+        aria-busy={busy}
+        showCloseButton={!busy}
+        onEscapeKeyDown={event => {
+          if (busy) event.preventDefault();
+        }}
+        onPointerDownOutside={event => {
+          if (busy) event.preventDefault();
+        }}
+        onInteractOutside={event => {
+          if (busy) event.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -71,10 +101,10 @@ export function AdminPasswordDialog({
             type="password"
             autoComplete="current-password"
             value={password}
+            disabled={busy}
             onChange={event => setPassword(event.target.value)}
             onKeyDown={event => {
-              if (event.key === "Enter" && canConfirm)
-                onConfirm(password, responsibleContactId ?? undefined);
+              if (event.key === "Enter") confirm();
             }}
           />
         </div>
@@ -83,6 +113,7 @@ export function AdminPasswordDialog({
             <Label>Wer führt die Löschung durch?</Label>
             <Select
               value={responsibleContactId ? String(responsibleContactId) : ""}
+              disabled={busy}
               onValueChange={value => setResponsibleContactId(Number(value))}
             >
               <SelectTrigger className="w-full bg-white dark:bg-slate-900">
@@ -119,10 +150,8 @@ export function AdminPasswordDialog({
               destructive &&
                 "border border-red-700 !bg-red-600 !text-white hover:!bg-red-700 disabled:!border-red-300 disabled:!bg-red-100 disabled:!text-red-800 disabled:opacity-100"
             )}
-            disabled={!canConfirm || busy}
-            onClick={() =>
-              onConfirm(password, responsibleContactId ?? undefined)
-            }
+            disabled={!canConfirm}
+            onClick={confirm}
           >
             {destructive && <Trash2 className="h-4 w-4" />}
             {busy ? "Wird ausgeführt …" : confirmLabel}

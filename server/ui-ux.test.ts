@@ -1,0 +1,79 @@
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+
+const source = (relativePath: string) =>
+  readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8");
+
+describe("UI- und Mobile-UX-Regeln", () => {
+  it("hält die Desktop-Navigation viewportfest und den Inhalt separat scrollbar", () => {
+    const layout = source("client/src/components/Layout.tsx");
+
+    expect(layout).toContain("lg:h-screen lg:flex-row lg:overflow-hidden");
+    expect(layout).toContain("lg:sticky lg:top-0 lg:flex lg:h-screen");
+    expect(layout).toContain("lg:h-screen lg:overflow-y-auto");
+  });
+
+  it("lässt auf mobilen Geräten Pinch-to-Zoom zu", () => {
+    const html = source("client/index.html");
+
+    expect(html).toContain("width=device-width, initial-scale=1.0");
+    expect(html).not.toMatch(/maximum-scale|user-scalable\s*=\s*no/i);
+  });
+
+  it("sperrt den Admin-Passwortdialog während laufender Aktionen", () => {
+    const dialog = source("client/src/components/AdminPasswordDialog.tsx");
+
+    expect(dialog).toContain("!busy &&");
+    expect(dialog).toContain("disabled={busy}");
+    expect(dialog).toContain("showCloseButton={!busy}");
+    expect(dialog).toContain("if (busy) event.preventDefault()");
+    expect(dialog).toContain("if (!canConfirm || submitLocked.current) return");
+    expect(dialog).toContain("submitLocked.current = true");
+  });
+
+  it("erzwingt für mobile Bedienelemente mindestens 44 Pixel Touchfläche", () => {
+    const button = source("client/src/components/ui/button.tsx");
+    const input = source("client/src/components/ui/input.tsx");
+    const select = source("client/src/components/ui/select.tsx");
+    const checkbox = source("client/src/components/ui/checkbox.tsx");
+    const sheet = source("client/src/components/ui/sheet.tsx");
+    const dialog = source("client/src/components/ui/dialog.tsx");
+    const plan = source("client/src/pages/Plan.tsx");
+    const layout = source("client/src/components/Layout.tsx");
+    const taskList = source("client/src/pages/TaskList.tsx");
+    const taskGeneric = source("client/src/pages/TaskGeneric.tsx");
+
+    expect(button).toContain("min-h-11 min-w-11");
+    expect(input).toContain("h-11");
+    expect(select).toContain("min-h-11");
+    expect(checkbox).toContain("size-11");
+    expect(sheet).toContain("size-11");
+    expect(dialog).toContain("size-11");
+    expect(dialog).toContain("pr-12 text-center sm:pr-0");
+    expect(plan).toContain("min-h-11 min-w-11");
+    expect(layout).toContain(
+      'className="h-11 w-24 bg-white font-semibold dark:bg-slate-900"'
+    );
+    expect(plan).toContain("slot slot-offen h-11");
+    expect(taskList).not.toMatch(/<Input[\s\S]{0,120}className="h-10/);
+    expect(taskGeneric).not.toMatch(/<Input[\s\S]{0,120}className="h-10/);
+    expect(taskList).not.toMatch(
+      /<SelectTrigger[\s\S]{0,120}className="h-10/
+    );
+    expect(taskGeneric).not.toMatch(
+      /<SelectTrigger[\s\S]{0,120}className="h-10/
+    );
+    expect(taskList).toContain('className="h-11 w-full font-medium md:h-10"');
+    expect(taskGeneric).toContain(
+      'className="h-11 w-full font-medium md:h-10"'
+    );
+  });
+
+  it("hält lange Dashboard-Kartentitel auf 320-Pixel-Ansichten umbrechbar", () => {
+    const dashboard = source("client/src/pages/Dashboard.tsx");
+
+    expect(dashboard).toContain("min-w-0 break-words");
+    expect(dashboard).toContain("whitespace-normal");
+    expect(dashboard).toContain("flex-wrap");
+  });
+});

@@ -328,7 +328,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row">
+    <div className="min-h-screen flex flex-col lg:h-screen lg:flex-row lg:overflow-hidden">
       <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b bg-white px-3 shadow-sm dark:bg-slate-950 lg:hidden">
         <Button
           variant="outline"
@@ -356,7 +356,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           value={String(year)}
           onValueChange={value => selectYear(Number(value))}
         >
-          <SelectTrigger className="h-9 w-24 bg-white font-semibold dark:bg-slate-900">
+          <SelectTrigger className="h-11 w-24 bg-white font-semibold dark:bg-slate-900">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -523,7 +523,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </SheetContent>
       </Sheet>
 
-      <aside className="hidden w-64 shrink-0 flex-col border-r bg-card lg:flex">
+      <aside className="hidden w-64 shrink-0 flex-col border-r bg-card lg:sticky lg:top-0 lg:flex lg:h-screen lg:self-start">
         <div className="h-20 flex items-center gap-3 px-4 border-b bg-gradient-to-r from-white to-slate-50 dark:from-slate-950 dark:to-slate-900">
           <div className="min-w-0 flex-1">
             <div className="font-bold leading-tight">RSC Helferplanung</div>
@@ -665,7 +665,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </Button>
         </div>
       </aside>
-      <main className="min-w-0 flex-1 overflow-y-auto">
+      <main className="min-w-0 flex-1 lg:h-screen lg:overflow-y-auto">
         <div
           className={
             location === "/helfer"

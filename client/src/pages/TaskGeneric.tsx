@@ -302,7 +302,7 @@ export default function TaskGeneric({
                   {addLabel}
                 </span>
                 <Input
-                  className="h-10 w-full font-medium"
+                  className="h-11 w-full font-medium md:h-10"
                   defaultValue={row[nameKey] ?? ""}
                   onBlur={event => {
                     if (event.target.value !== (row[nameKey] ?? ""))
@@ -319,7 +319,7 @@ export default function TaskGeneric({
                     {column.label}
                   </span>
                   <Input
-                    className="h-10 w-full"
+                    className="h-11 w-full md:h-10"
                     defaultValue={row[column.key] ?? ""}
                     onBlur={event => {
                       if (event.target.value !== (row[column.key] ?? ""))
@@ -345,7 +345,7 @@ export default function TaskGeneric({
                       })
                     }
                   >
-                    <SelectTrigger className="h-10 w-full">
+                    <SelectTrigger className="h-11 w-full md:h-10">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -371,7 +371,7 @@ export default function TaskGeneric({
                         update.mutate({ id: row.id, status: value })
                       }
                     >
-                      <SelectTrigger className="h-10 w-full">
+                      <SelectTrigger className="h-11 w-full md:h-10">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -400,7 +400,7 @@ export default function TaskGeneric({
                         })
                       }
                     >
-                      <SelectTrigger className="h-10 w-full">
+                      <SelectTrigger className="h-11 w-full md:h-10">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>

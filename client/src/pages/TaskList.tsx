@@ -222,7 +222,7 @@ export default function TaskList({
                   Aufgabe
                 </span>
                 <Input
-                  className="h-10 w-full font-medium"
+                  className="h-11 w-full font-medium md:h-10"
                   defaultValue={row.task ?? ""}
                   onBlur={event => {
                     if (event.target.value !== (row.task ?? ""))
@@ -243,7 +243,7 @@ export default function TaskList({
                     })
                   }
                 >
-                  <SelectTrigger className="h-10 w-full">
+                  <SelectTrigger className="h-11 w-full md:h-10">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -267,7 +267,7 @@ export default function TaskList({
                       update.mutate({ id: row.id, status: value })
                     }
                   >
-                    <SelectTrigger className="h-10 w-full">
+                    <SelectTrigger className="h-11 w-full md:h-10">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -283,7 +283,7 @@ export default function TaskList({
                       Zu erledigen bis
                     </span>
                     <Input
-                      className="h-10 w-full"
+                      className="h-11 w-full md:h-10"
                       defaultValue={row.dueText ?? ""}
                       placeholder="Frist oder Zeitpunkt"
                       onBlur={event => {

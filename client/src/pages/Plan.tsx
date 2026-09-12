@@ -135,7 +135,9 @@ function AssignedHelperChip({
           <span className="truncate">{displayLabel}</span>
           {canRemove && (
             <button
-              className="opacity-60 hover:opacity-100"
+              type="button"
+              aria-label={`${helper.name} aus der Schicht entfernen`}
+              className="-my-2 -mr-2 inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-lg opacity-60 hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:my-0 md:mr-0 md:min-h-0 md:min-w-0 md:text-base"
               title="Entfernen"
               onPointerDown={event => {
                 event.stopPropagation();
@@ -445,7 +447,7 @@ export default function Plan() {
                   })
                 }
               >
-                <SelectTrigger className="slot slot-offen h-9 w-full min-w-[180px] sm:w-[220px]">
+                <SelectTrigger className="slot slot-offen h-11 w-full min-w-[180px] sm:w-[220px] md:h-9">
                   <SelectValue placeholder="Helfer wählen …" />
                 </SelectTrigger>
                 <SelectContent>
