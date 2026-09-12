@@ -1,5 +1,5 @@
 import { trpc } from "@/lib/trpc";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -26,10 +26,10 @@ import { CopyPreviousPlanButton } from "@/components/CopyPreviousPlanButton";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { shiftsOverlap, type ShiftTimeLike } from "@shared/shift-time";
 import {
   eventWeekdays,
@@ -61,11 +61,153 @@ type DropdownShift = ShiftTimeLike & {
   endTime: string;
 };
 
+type AvailabilityField = (typeof WEEKDAY_AVAILABILITY_FIELDS)[Weekday];
+type HelperTooltipData = {
+  name: string;
+  phone: string | null;
+  note: string | null;
+} & Record<AvailabilityField, AvailabilityValue>;
+
 const AVAILABILITY_CLASS: Record<AvailabilityValue, string> = {
-  ja: "text-emerald-300",
-  nein: "text-red-300",
-  vielleicht: "text-amber-300",
+  ja: "text-emerald-700",
+  nein: "text-red-700",
+  vielleicht: "text-amber-700",
 };
+
+function AssignedHelperChip({
+  helper,
+  displayLabel,
+  className,
+  activeDays,
+  canRemove,
+  onRemove,
+}: {
+  helper: HelperTooltipData;
+  displayLabel: string;
+  className: string;
+  activeDays: Weekday[];
+  canRemove: boolean;
+  onRemove: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const openTimer = useRef<number | null>(null);
+  const closeTimer = useRef<number | null>(null);
+  const note = helper.note?.trim() ?? "";
+
+  const clearOpenTimer = () => {
+    if (openTimer.current !== null) window.clearTimeout(openTimer.current);
+    openTimer.current = null;
+  };
+  const clearCloseTimer = () => {
+    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
+    closeTimer.current = null;
+  };
+  const openAfterDelay = (pointerType: string) => {
+    if (pointerType !== "mouse") return;
+    clearCloseTimer();
+    clearOpenTimer();
+    openTimer.current = window.setTimeout(() => setOpen(true), 800);
+  };
+  const closeAfterLeave = (pointerType: string) => {
+    if (pointerType !== "mouse") return;
+    clearOpenTimer();
+    clearCloseTimer();
+    closeTimer.current = window.setTimeout(() => setOpen(false), 120);
+  };
+
+  useEffect(
+    () => () => {
+      clearOpenTimer();
+      clearCloseTimer();
+    },
+    []
+  );
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <span
+          className={`slot ${className} inline-flex items-center justify-between gap-1`}
+          tabIndex={0}
+          onPointerEnter={event => openAfterDelay(event.pointerType)}
+          onPointerLeave={event => closeAfterLeave(event.pointerType)}
+        >
+          <span className="truncate">{displayLabel}</span>
+          {canRemove && (
+            <button
+              className="opacity-60 hover:opacity-100"
+              title="Entfernen"
+              onPointerDown={event => {
+                event.stopPropagation();
+                clearOpenTimer();
+                clearCloseTimer();
+                setOpen(false);
+              }}
+              onClick={event => {
+                event.stopPropagation();
+                onRemove();
+              }}
+            >
+              ×
+            </button>
+          )}
+        </span>
+      </PopoverTrigger>
+      <PopoverContent
+        side="top"
+        sideOffset={8}
+        align="center"
+        avoidCollisions
+        collisionPadding={12}
+        sticky="always"
+        onPointerEnter={event => {
+          if (event.pointerType === "mouse") clearCloseTimer();
+        }}
+        onPointerLeave={event => closeAfterLeave(event.pointerType)}
+        className="z-50 w-[min(18rem,calc(100vw-1.5rem))] max-w-none space-y-2 border border-gray-200 bg-white text-left text-gray-900 opacity-100 shadow-lg duration-200 ease-out data-[state=open]:fade-in-0 motion-reduce:animate-none sm:w-72"
+      >
+        <p className="font-semibold">{helper.name}</p>
+        <p>
+          <span className="font-medium">Telefon Helfer:</span>{" "}
+          {helper.phone?.trim() ? (
+            <a
+              href={`tel:${helper.phone.replace(/[^\d+]/g, "")}`}
+              className="font-medium text-blue-700 underline decoration-blue-300 underline-offset-2 hover:text-blue-900 focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+            >
+              {helper.phone.trim()}
+            </a>
+          ) : (
+            "nicht hinterlegt"
+          )}
+        </p>
+        {note && (
+          <>
+            <p>
+              <span className="font-medium">Hinweis für PDF:</span> {note}
+            </p>
+            <div>
+              <p className="mb-1 font-medium">Verfügbarkeiten:</p>
+              <div className="flex flex-wrap gap-x-2 gap-y-1">
+                {activeDays.map(day => {
+                  const availability =
+                    helper[WEEKDAY_AVAILABILITY_FIELDS[day]] ?? "vielleicht";
+                  return (
+                    <span
+                      key={day}
+                      className={AVAILABILITY_CLASS[availability]}
+                    >
+                      {WEEKDAY_SHORT_LABELS[day]}: {availability}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export default function Plan() {
   const utils = trpc.useUtils();
@@ -367,68 +509,26 @@ export default function Plan() {
             : isDoppel
               ? "slot-doppel"
               : "slot-ok";
-          const note = helper?.note?.trim() ?? "";
+          if (!helper) {
+            return (
+              <span
+                key={slot}
+                className={`slot ${className} inline-flex items-center`}
+              >
+                ?
+              </span>
+            );
+          }
           return (
-            <Tooltip key={slot} delayDuration={800} disableHoverableContent>
-              <TooltipTrigger asChild>
-                <span
-                  className={`slot ${className} inline-flex items-center justify-between gap-1`}
-                  tabIndex={0}
-                >
-                  <span className="truncate">
-                    {helper ? label(helper) : "?"}
-                  </span>
-                  {canEditPlan && (
-                    <button
-                      className="opacity-60 hover:opacity-100"
-                      title="Entfernen"
-                      onClick={() => unassign.mutate({ id: a.id })}
-                    >
-                      ×
-                    </button>
-                  )}
-                </span>
-              </TooltipTrigger>
-              {helper && (
-                <TooltipContent
-                  side="top"
-                  sideOffset={8}
-                  className="max-w-72 space-y-2 text-left"
-                >
-                  <p className="font-semibold">{helper.name}</p>
-                  <p>
-                    <span className="font-medium">Telefon Helfer:</span>{" "}
-                    {helper.phone?.trim() || "nicht hinterlegt"}
-                  </p>
-                  {note && (
-                    <>
-                      <p>
-                        <span className="font-medium">Hinweis für PDF:</span>{" "}
-                        {note}
-                      </p>
-                      <div>
-                        <p className="mb-1 font-medium">Verfügbarkeiten:</p>
-                        <div className="flex flex-wrap gap-x-2 gap-y-1">
-                          {activeDays.map(day => {
-                            const availability = helper[
-                              WEEKDAY_AVAILABILITY_FIELDS[day]
-                            ] as AvailabilityValue;
-                            return (
-                              <span
-                                key={day}
-                                className={AVAILABILITY_CLASS[availability]}
-                              >
-                                {WEEKDAY_SHORT_LABELS[day]}: {availability}
-                              </span>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </TooltipContent>
-              )}
-            </Tooltip>
+            <AssignedHelperChip
+              key={slot}
+              helper={helper}
+              displayLabel={label(helper)}
+              className={className}
+              activeDays={activeDays}
+              canRemove={canEditPlan}
+              onRemove={() => unassign.mutate({ id: a.id })}
+            />
           );
         })}
         {shift.needed === 0 && (
