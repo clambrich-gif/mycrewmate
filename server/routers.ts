@@ -537,7 +537,7 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         await requireAdminPassword(input.adminPassword, ctx);
-        return db.deleteContact(input.id);
+        return db.deleteContact(input.id, auditActor(ctx.user));
       }),
   }),
 

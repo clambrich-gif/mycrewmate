@@ -167,6 +167,9 @@ const SECTIONS: HelpSection[] = [
       "löschen zurücksetzen rückgängig protokoll passwort zugang sicherheit adminpasswort",
     summary:
       "Sensible Löschungen, Resets, Passwörter und Protokollfunktionen sind administrativ geschützt. Einzelne protokollierte Helfer- und Kuchenlöschungen können im Bereich Rollen & Protokoll wiederhergestellt werden.",
+    steps: [
+      "Beim passwortbestätigten Löschen eines Ansprechpartners wird dessen eigener gleichnamiger Helfereintrag automatisch mitgelöscht. Andere von dieser Person betreute Helfer bleiben bestehen und werden nur ohne Ansprechpartner weitergeführt.",
+    ],
   },
 ];
 

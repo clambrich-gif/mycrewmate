@@ -463,11 +463,54 @@ export async function updateContact(
     return result;
   });
 }
-export async function deleteContact(id: number) {
+export async function deleteContact(id: number, actor: AuditActor) {
   const db = (await getDb()) as DB;
-  return db
-    .delete(contacts)
-    .where(and(eq(contacts.id, id), planningScope(contacts)));
+  return db.transaction(async tx => {
+    const [contact] = await tx
+      .select()
+      .from(contacts)
+      .where(and(eq(contacts.id, id), planningScope(contacts)))
+      .limit(1)
+      .for("update");
+    if (!contact) throw new Error("Ansprechpartner wurde nicht gefunden");
+
+    const linkedHelpers = await tx
+      .select()
+      .from(helpers)
+      .where(and(eq(helpers.contactId, id), planningScope(helpers)))
+      .for("update");
+    const selfHelper = linkedHelpers.find(
+      helper =>
+        normalizePersonName(helper.name) === normalizePersonName(contact.name)
+    );
+
+    if (selfHelper) {
+      const helperAssignments = await tx
+        .select({
+          shiftId: assignments.shiftId,
+          slot: assignments.slot,
+        })
+        .from(assignments)
+        .where(eq(assignments.helperId, selfHelper.id))
+        .for("update");
+      await recordDeletionAudit(tx, actor, "single_delete", [
+        helperAuditEntity(selfHelper, helperAssignments),
+      ]);
+      const helperResult = await tx
+        .delete(helpers)
+        .where(and(eq(helpers.id, selfHelper.id), planningScope(helpers)));
+      requireDeletedRows(helperResult, 1);
+    }
+
+    const contactResult = await tx
+      .delete(contacts)
+      .where(and(eq(contacts.id, id), planningScope(contacts)));
+    requireDeletedRows(contactResult, 1);
+    return {
+      deletedContactId: id,
+      deletedHelperId: selfHelper?.id ?? null,
+    };
+  });
 }
 
 export async function upsertContactByName(v: {

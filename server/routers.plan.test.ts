@@ -19,6 +19,7 @@ const dbMocks = vi.hoisted(() => ({
   getEvent: vi.fn(),
   updateEventName: vi.fn(),
   deleteEvent: vi.fn(),
+  deleteContact: vi.fn(),
   getContact: vi.fn(),
   listShiftAreaContacts: vi.fn(),
   setShiftAreaContact: vi.fn(),
@@ -336,6 +337,29 @@ describe("Planungs-API", () => {
       nextEventId: 1,
     });
     expect(dbMocks.deleteEvent).toHaveBeenCalledWith(2);
+  });
+
+  it("löscht Ansprechpartner und eigenen Helfer ohne zusätzliche Ansprechpartnerauswahl", async () => {
+    dbMocks.deleteContact.mockResolvedValue({
+      deletedContactId: 5,
+      deletedHelperId: 20,
+    });
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.contacts.remove({ id: 5, adminPassword: "falsch" })
+    ).rejects.toThrow("Administratorpasswort");
+    expect(dbMocks.deleteContact).not.toHaveBeenCalled();
+
+    await expect(
+      caller.contacts.remove({ id: 5, adminPassword: ADMIN_PASSWORD })
+    ).resolves.toEqual({ deletedContactId: 5, deletedHelperId: 20 });
+    expect(dbMocks.deleteContact).toHaveBeenCalledWith(5, {
+      userId: 1,
+      name: "Organisation",
+      role: "admin",
+      loginMethod: "manus",
+    });
   });
 
   it("erlaubt beiden Rollen JSON-Speichern und den reinen Excel-Export", async () => {

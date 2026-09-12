@@ -16,13 +16,13 @@ export const PERMISSION_MATRIX: readonly PermissionRow[] = [
     area: "Ansprechpartner",
     planningTeam: "Anlegen und bearbeiten",
     administrator: "Vollzugriff",
-    note: "Die Einzellöschung erfordert eine Administratorsitzung; der Bereichsreset zusätzlich das Administratorpasswort.",
+    note: "Die Einzellöschung erfordert eine Administratorsitzung und das Administratorpasswort. Der eigene gleichnamige Helfereintrag wird automatisch ohne weitere Personenauswahl mitgelöscht.",
   },
   {
     area: "Helfer",
     planningTeam: "Anlegen, bearbeiten und eingeschränkt löschen",
     administrator: "Vollzugriff",
-    note: "Eingeteilte Helfer kann nur ein Administrator löschen. Eigene Helfereinträge von Ansprechpartnern werden über den Ansprechpartner verwaltet.",
+    note: "Eingeteilte Helfer kann nur ein Administrator löschen. Eigene Helfereinträge von Ansprechpartnern werden automatisch über die Ansprechpartnerlöschung entfernt.",
   },
   {
     area: "Einsatzplan",

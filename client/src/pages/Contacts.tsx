@@ -41,10 +41,14 @@ export default function Contacts() {
     onError: error => toast.error(error.message),
   });
   const remove = trpc.contacts.remove.useMutation({
-    onSuccess: () => {
+    onSuccess: result => {
       invalidate();
       setDeleteTarget(null);
-      toast.success("Entfernt");
+      toast.success(
+        result.deletedHelperId
+          ? "Ansprechpartner und eigener Helfereintrag entfernt"
+          : "Ansprechpartner entfernt"
+      );
     },
     onError: error => toast.error(error.message),
   });
@@ -218,7 +222,7 @@ export default function Contacts() {
         open={Boolean(deleteTarget)}
         onOpenChange={open => !open && setDeleteTarget(null)}
         title="Ansprechpartner löschen?"
-        description={`„${deleteTarget?.name ?? ""}“ wird gelöscht. Bestehende Zuordnungen verlieren dadurch ihren Ansprechpartner.`}
+        description={`„${deleteTarget?.name ?? ""}“ und der gleichnamige eigene Helfereintrag werden gemeinsam gelöscht. Andere betreute Helfer bleiben erhalten und verlieren nur ihre Ansprechpartner-Zuordnung.`}
         confirmLabel="OK, löschen"
         busy={remove.isPending}
         onConfirm={adminPassword =>
