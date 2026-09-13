@@ -54,7 +54,7 @@ function MetricCardView({
     <Card
       className={`h-full min-w-0 text-slate-950 shadow-sm ${
         isEmpty
-          ? "border-slate-200 bg-slate-100/90 text-slate-400 opacity-70"
+          ? "border-slate-200 bg-slate-100 text-slate-600"
           : metric.target
           ? `${interactiveCardClass} transition-[border-color,box-shadow,transform] duration-150 group-hover:shadow-md group-active:scale-[0.99] group-focus-visible:ring-2 group-focus-visible:ring-offset-2`
           : "border-slate-200 bg-white"
@@ -62,9 +62,7 @@ function MetricCardView({
     >
       <CardHeader className="min-w-0 p-3 pb-1 sm:p-6 sm:pb-1">
         <CardTitle
-          className={`min-w-0 break-words text-xs leading-snug font-medium whitespace-normal sm:text-sm ${
-            isEmpty ? "text-slate-400" : "text-slate-600"
-          }`}
+          className="min-w-0 break-words text-xs leading-snug font-medium whitespace-normal text-slate-600 sm:text-sm"
         >
           {metric.label}
         </CardTitle>
@@ -72,7 +70,7 @@ function MetricCardView({
       <CardContent className="flex min-w-0 flex-wrap items-end justify-between gap-1 p-3 pt-0 sm:p-6 sm:pt-0">
         <span
           className={`text-2xl font-bold sm:text-3xl ${
-            isEmpty ? "text-slate-400" : ""
+            isEmpty ? "text-slate-600" : ""
           }`}
         >
           {metric.value}
@@ -280,13 +278,13 @@ export default function Dashboard() {
               className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium sm:text-xs"
               aria-label="Legende: Null in Grün bedeutet verfügbar, Null in Rot bedeutet nicht verfügbar"
             >
-              <span className="text-emerald-700 dark:text-emerald-400">
+              <span className="text-emerald-700">
                 <strong>0</strong> = verfügbar
               </span>
               <span className="text-muted-foreground" aria-hidden="true">
                 |
               </span>
-              <span className="text-red-700 dark:text-red-400">
+              <span className="text-red-700">
                 <strong>0</strong> = nicht verfügbar
               </span>
             </div>
@@ -331,9 +329,9 @@ export default function Dashboard() {
                         value !== 0
                           ? ""
                           : availability === "ja"
-                            ? "font-semibold text-emerald-700 dark:text-emerald-400"
+                            ? "font-semibold text-emerald-700"
                             : availability === "nein"
-                              ? "font-semibold text-red-700 dark:text-red-400"
+                              ? "font-semibold text-red-700"
                               : "";
                       const availabilityTitle =
                         value !== 0

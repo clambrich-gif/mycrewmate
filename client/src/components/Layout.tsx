@@ -344,7 +344,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen flex flex-col lg:h-screen lg:flex-row lg:overflow-hidden">
-      <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b bg-white px-3 shadow-sm dark:bg-slate-950 lg:hidden">
+      <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b bg-white px-3 text-slate-950 shadow-sm lg:hidden">
         <Button
           variant="outline"
           size="icon"
@@ -371,7 +371,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           value={String(year)}
           onValueChange={value => selectYear(Number(value))}
         >
-          <SelectTrigger className="h-11 w-24 bg-white font-semibold dark:bg-slate-900">
+          <SelectTrigger className="h-11 w-24 bg-white font-semibold text-slate-950">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -388,7 +388,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </header>
 
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-        <SheetContent side="left" className="w-[88vw] max-w-xs gap-0 p-0">
+        <SheetContent
+          side="left"
+          className="w-[88vw] max-w-xs gap-0 bg-white p-0 text-slate-950"
+        >
           <SheetHeader className="border-b text-left">
             <SheetTitle className="flex items-center gap-2">
               <span>RSC Helferplanung</span>
@@ -431,7 +434,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 setMobileMenuOpen(false);
               }}
             >
-              <SelectTrigger className="w-full bg-white font-semibold dark:bg-slate-900">
+              <SelectTrigger className="w-full bg-white font-semibold text-slate-950">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -488,7 +491,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 setMobileMenuOpen(false);
               }}
             >
-              <SelectTrigger className="w-full bg-white font-semibold dark:bg-slate-900">
+              <SelectTrigger className="w-full bg-white font-semibold text-slate-950">
                 <SelectValue placeholder="Veranstaltung wählen" />
               </SelectTrigger>
               <SelectContent>
@@ -545,7 +548,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </Sheet>
 
       <aside className="hidden w-64 shrink-0 flex-col border-r bg-card lg:sticky lg:top-0 lg:flex lg:h-screen lg:self-start">
-        <div className="h-20 flex items-center gap-3 px-4 border-b bg-gradient-to-r from-white to-slate-50 dark:from-slate-950 dark:to-slate-900">
+        <div className="h-20 flex items-center gap-3 border-b bg-gradient-to-r from-white to-slate-50 px-4 text-slate-950">
           <div className="min-w-0 flex-1">
             <div className="font-bold leading-tight">RSC Helferplanung</div>
             <div className="truncate text-xs text-muted-foreground">
@@ -750,7 +753,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           }
         }}
       >
-        <DialogContent className="bg-white text-slate-950 dark:bg-slate-950 dark:text-slate-50">
+        <DialogContent className="bg-white text-slate-950">
           <DialogHeader>
             <DialogTitle>Veranstaltung für {year} anlegen</DialogTitle>
           </DialogHeader>
@@ -774,7 +777,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   return (
                     <label
                       key={day}
-                      className="flex cursor-pointer items-center gap-2 rounded-md border bg-white px-3 py-2 text-sm dark:bg-slate-900"
+                      className="flex cursor-pointer items-center gap-2 rounded-md border bg-white px-3 py-2 text-sm text-slate-950"
                     >
                       <Checkbox
                         checked={checked}
@@ -830,7 +833,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </Dialog>
 
       <Dialog open={eventManagerOpen} onOpenChange={setEventManagerOpen}>
-        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white text-slate-950 dark:bg-slate-950 dark:text-slate-50">
+        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white text-slate-950">
           <DialogHeader>
             <DialogTitle>Veranstaltungen {year} verwalten</DialogTitle>
           </DialogHeader>

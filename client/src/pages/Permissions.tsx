@@ -19,12 +19,12 @@ import { toast } from "sonner";
 
 const permissionColor = (value: string) => {
   if (value === "Kein Zugriff")
-    return "border-red-300 bg-red-50 text-red-800 dark:bg-red-950/50 dark:text-red-100";
+    return "border-red-300 bg-red-50 text-red-800";
   if (value.startsWith("Nur "))
-    return "border-sky-300 bg-sky-50 text-sky-800 dark:bg-sky-950/50 dark:text-sky-100";
+    return "border-sky-300 bg-sky-50 text-sky-800";
   if (value === "Vollzugriff")
-    return "border-emerald-300 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-100";
-  return "border-amber-300 bg-amber-50 text-amber-900 dark:bg-amber-950/50 dark:text-amber-100";
+    return "border-emerald-300 bg-emerald-50 text-emerald-800";
+  return "border-amber-300 bg-amber-50 text-amber-900";
 };
 
 const actionLabel = {
@@ -131,7 +131,7 @@ export default function Permissions() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Card className="border-amber-200 bg-amber-50/60 shadow-sm dark:bg-amber-950/20">
+        <Card className="border-amber-200 bg-amber-50/60 shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base">
               <Users className="h-5 w-5 text-amber-700" /> Planungsteam
@@ -142,7 +142,7 @@ export default function Permissions() {
             filterbar, aber vor Änderungen geschützt.
           </CardContent>
         </Card>
-        <Card className="border-emerald-200 bg-emerald-50/60 shadow-sm dark:bg-emerald-950/20">
+        <Card className="border-emerald-200 bg-emerald-50/60 shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base">
               <ShieldCheck className="h-5 w-5 text-emerald-700" /> Administrator

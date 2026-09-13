@@ -5,6 +5,59 @@ const source = (relativePath: string) =>
   readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
 describe("UI- und Mobile-UX-Regeln", () => {
+  it("erzwingt browserunabhängig ein kontrastfestes Light-Theme", () => {
+    const html = source("client/index.html");
+    const app = source("client/src/App.tsx");
+    const css = source("client/src/index.css");
+    const theme = source("client/src/contexts/ThemeContext.tsx");
+    const toaster = source("client/src/components/ui/sonner.tsx");
+    const layout = source("client/src/components/Layout.tsx");
+    const sheet = source("client/src/components/ui/sheet.tsx");
+    const dialog = source("client/src/components/ui/dialog.tsx");
+    const alertDialog = source("client/src/components/ui/alert-dialog.tsx");
+    const select = source("client/src/components/ui/select.tsx");
+    const dropdown = source("client/src/components/ui/dropdown-menu.tsx");
+    const popover = source("client/src/components/ui/popover.tsx");
+    const tabs = source("client/src/components/ui/tabs.tsx");
+    const permissions = source("client/src/pages/Permissions.tsx");
+
+    expect(html).toContain('<meta name="color-scheme" content="light" />');
+    expect(html).toContain(
+      '<meta name="supported-color-schemes" content="light" />'
+    );
+    expect(css).toContain("@custom-variant dark (&:where(.dark, .dark *));");
+    expect(css.match(/color-scheme:\s*light/g)).toHaveLength(2);
+    expect(app).toContain('forcedTheme="light"');
+    expect(theme).toContain('root.classList.toggle("dark", activeTheme === "dark")');
+    expect(theme).toContain("root.style.colorScheme = activeTheme");
+    expect(toaster).toContain('theme="light"');
+    expect(toaster).not.toContain('from "next-themes"');
+    expect(layout).toContain("bg-white px-3 text-slate-950 shadow-sm");
+    expect(layout).toContain("bg-white p-0 text-slate-950");
+    expect(sheet).not.toContain("dark:!bg-slate-950");
+    expect(dialog).not.toContain("dark:!bg-slate-950");
+    expect(alertDialog).not.toContain("dark:!bg-slate-950");
+    expect(select).toContain('"bg-white text-slate-950 opacity-100');
+    expect(dropdown).toContain('"bg-white text-slate-950 opacity-100');
+    expect(popover).toContain('"bg-white text-slate-950 opacity-100');
+    expect(tabs).not.toContain("dark:");
+    expect(permissions).not.toContain("dark:");
+  });
+
+  it("hält Dashboard-Statusfarben im erzwungenen Light-Theme gut lesbar", () => {
+    const css = source("client/src/index.css");
+    const dashboard = source("client/src/pages/Dashboard.tsx");
+
+    expect(css).toContain("--ok: #166534");
+    expect(css).toContain("--warn: #92400e");
+    expect(css).toContain("--err: #b91c1c");
+    expect(css).toContain(".badge-ok { background:var(--ok-bg); border:1px solid #86efac; color:var(--ok); }");
+    expect(css).toContain(".badge-warn { background:var(--warn-bg); border:1px solid #fcd34d; color:var(--warn); }");
+    expect(css).toContain(".badge-err { background:var(--err-bg); border:1px solid #fca5a5; color:var(--err); }");
+    expect(dashboard).not.toContain("dark:text-emerald-400");
+    expect(dashboard).not.toContain("dark:text-red-400");
+  });
+
   it("grenzt die vier Planungsteam-Fokusbereiche in Desktop- und Mobilnavigation ab", () => {
     const layout = source("client/src/components/Layout.tsx");
     const navigation = source("client/src/lib/nav.ts");
@@ -56,7 +109,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const dashboard = source("client/src/pages/Dashboard.tsx");
 
     expect(dashboard).toContain("const isEmpty = metric.value === 0");
-    expect(dashboard).toContain("border-slate-200 bg-slate-100/90");
+    expect(dashboard).toContain(
+      "border-slate-200 bg-slate-100 text-slate-600"
+    );
     expect(dashboard).toContain("if (!target || isEmpty) return card");
     expect(dashboard).toContain("!isEmpty && metric.target");
   });
@@ -199,7 +254,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dialog).toContain("pr-12 text-center sm:pr-0");
     expect(plan).toContain("min-h-11 min-w-11");
     expect(layout).toContain(
-      'className="h-11 w-24 bg-white font-semibold dark:bg-slate-900"'
+      'className="h-11 w-24 bg-white font-semibold text-slate-950"'
     );
     expect(plan).toContain("slot slot-offen h-11");
     expect(taskList).not.toMatch(/<Input[\s\S]{0,120}className="h-10/);

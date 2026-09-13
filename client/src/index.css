@@ -1,6 +1,10 @@
 @import "tailwindcss";
 
+/* Dark variants are opt-in via an explicit .dark class, never via the OS theme. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
+  color-scheme: light;
   --background: oklch(0.985 0.004 240);
   --foreground: oklch(0.22 0.03 250);
   --card: oklch(1 0 0);
@@ -12,7 +16,7 @@
   --secondary: oklch(0.95 0.01 240);
   --secondary-foreground: oklch(0.28 0.04 250);
   --muted: oklch(0.95 0.01 240);
-  --muted-foreground: oklch(0.5 0.02 250);
+  --muted-foreground: #4b5563;
   --accent: oklch(0.94 0.02 240);
   --accent-foreground: oklch(0.28 0.04 250);
   --destructive: oklch(0.55 0.2 25);
@@ -22,17 +26,18 @@
   --ring: oklch(0.42 0.12 250);
   --radius: 0.6rem;
 
-  --ok: oklch(0.62 0.16 145);
-  --ok-bg: oklch(0.94 0.05 145);
-  --warn: oklch(0.72 0.16 70);
-  --warn-bg: oklch(0.96 0.06 80);
-  --err: oklch(0.55 0.2 25);
-  --err-bg: oklch(0.95 0.04 25);
-  --neutral: oklch(0.93 0.008 240);
+  --ok: #166534;
+  --ok-bg: #dcfce7;
+  --warn: #92400e;
+  --warn-bg: #fef3c7;
+  --err: #b91c1c;
+  --err-bg: #fee2e2;
+  --neutral: #e5e7eb;
 }
 
 @layer base {
   * { border-color: var(--border); }
+  html { color-scheme: light; background: var(--background); }
   body { background: var(--background); color: var(--foreground); font-feature-settings: "ss01", "cv11"; }
 }
 
@@ -41,10 +46,10 @@
 
 /* Ampel-Badges */
 .badge { display:inline-flex; align-items:center; gap:.3rem; padding:.15rem .55rem; border-radius:999px; font-size:.72rem; font-weight:600; line-height:1.4; white-space:nowrap; }
-.badge-ok { background:var(--ok-bg); color:var(--ok); }
-.badge-warn { background:var(--warn-bg); color:var(--warn); }
-.badge-err { background:var(--err-bg); color:var(--err); }
-.badge-neutral { background:var(--neutral); color:var(--muted-foreground); }
+.badge-ok { background:var(--ok-bg); border:1px solid #86efac; color:var(--ok); }
+.badge-warn { background:var(--warn-bg); border:1px solid #fcd34d; color:var(--warn); }
+.badge-err { background:var(--err-bg); border:1px solid #fca5a5; color:var(--err); }
+.badge-neutral { background:var(--neutral); border:1px solid #d1d5db; color:var(--muted-foreground); }
 
 /* Slot-Farben im Einsatzplan */
 .slot { min-width:150px; max-width:200px; border-radius:.4rem; padding:.25rem .4rem; font-size:.78rem; }
