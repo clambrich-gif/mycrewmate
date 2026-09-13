@@ -247,9 +247,11 @@ export default function Helpers() {
         {filtered.map(helper => (
           <Card key={helper.id} className="shadow-sm">
             <CardContent className="space-y-4 p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h2 className="break-words font-semibold">{helper.name}</h2>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <h2 className="break-words text-[26px] leading-[1.05] font-black tracking-tight">
+                    {helper.name}
+                  </h2>
                   {selfHelperIds.has(helper.id) && (
                     <p className="text-xs text-muted-foreground">
                       eigener Ansprechpartner-Eintrag

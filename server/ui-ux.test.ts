@@ -23,6 +23,28 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(mobileCards).not.toContain("compactOnDesktop");
   });
 
+  it("zeigt Helfernamen nur in Mobilkarten als dominanten, flexibel umbrechenden Titel", () => {
+    const helpers = source("client/src/pages/Helpers.tsx");
+    const mobileCards = helpers.slice(
+      helpers.indexOf('<div className="space-y-3 md:hidden">'),
+      helpers.indexOf('<Card className="hidden shadow-sm md:block">')
+    );
+    const desktopTable = helpers.slice(
+      helpers.indexOf('<Card className="hidden shadow-sm md:block">')
+    );
+
+    expect(mobileCards).toContain(
+      'className="flex items-start justify-between gap-2"'
+    );
+    expect(mobileCards).toContain('className="min-w-0 flex-1"');
+    expect(mobileCards).toContain(
+      'className="break-words text-[26px] leading-[1.05] font-black tracking-tight"'
+    );
+    expect(mobileCards.match(/size="icon"/g)).toHaveLength(2);
+    expect(desktopTable).not.toContain("text-[26px]");
+    expect(desktopTable).toContain('className="p-2 font-medium"');
+  });
+
   it("erzwingt browserunabhängig ein kontrastfestes Light-Theme", () => {
     const html = source("client/index.html");
     const app = source("client/src/App.tsx");
