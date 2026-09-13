@@ -5,6 +5,24 @@ const source = (relativePath: string) =>
   readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
 describe("UI- und Mobile-UX-Regeln", () => {
+  it("verdichtet nur die Desktop-Helfertabelle und kürzt Vielleicht geräteübergreifend auf ein Fragezeichen", () => {
+    const helpers = source("client/src/pages/Helpers.tsx");
+    const mobileCards = helpers.slice(
+      helpers.indexOf('<div className="space-y-3 md:hidden">'),
+      helpers.indexOf('<Card className="hidden shadow-sm md:block">')
+    );
+
+    expect(helpers).toContain('{ v: "vielleicht", l: "?" }');
+    expect(helpers).not.toContain('{ v: "vielleicht", l: "Vielleicht" }');
+    expect(helpers).toContain('className="w-full table-fixed text-xs xl:text-sm"');
+    expect(helpers).toContain('<col className="w-[180px]" />');
+    expect(helpers).toContain('<col className="w-[230px]" />');
+    expect(helpers).toContain("892 + activeDays.length * 56");
+    expect(helpers).toContain("md:w-[52px] md:min-w-[52px]");
+    expect(helpers).toContain('className="whitespace-nowrap p-2">Telefon Helfer');
+    expect(mobileCards).not.toContain("compactOnDesktop");
+  });
+
   it("erzwingt browserunabhängig ein kontrastfestes Light-Theme", () => {
     const html = source("client/index.html");
     const app = source("client/src/App.tsx");

@@ -32,7 +32,7 @@ const YN = [
 const YNV = [
   { v: "ja", l: "Ja" },
   { v: "nein", l: "Nein" },
-  { v: "vielleicht", l: "Vielleicht" },
+  { v: "vielleicht", l: "?" },
 ] as const;
 
 const valueColor = (value: string) => {
@@ -50,14 +50,23 @@ function Sel({
   value,
   onChange,
   options,
+  compactOnDesktop = false,
 }: {
   value: string;
   onChange: (value: string) => void;
   options: readonly { v: string; l: string }[];
+  compactOnDesktop?: boolean;
 }) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className={cn("h-8 w-full", valueColor(value))}>
+      <SelectTrigger
+        className={cn(
+          "h-8 w-full",
+          compactOnDesktop &&
+            "md:w-[52px] md:min-w-[52px] md:gap-0.5 md:px-1.5 md:text-xs md:[&_svg]:size-3",
+          valueColor(value)
+        )}
+      >
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -395,26 +404,49 @@ export default function Helpers() {
 
       <Card className="hidden shadow-sm md:block">
         <CardContent className="overflow-x-auto p-0">
-          <table className="w-full min-w-[1180px] text-xs xl:text-sm">
+          <table
+            className="w-full table-fixed text-xs xl:text-sm"
+            style={{ minWidth: 892 + activeDays.length * 56 }}
+          >
+            <colgroup>
+              <col className="w-[140px]" />
+              <col className="w-[150px]" />
+              <col className="w-[180px]" />
+              <col className="w-[230px]" />
+              <col className="w-[56px]" />
+              {activeDays.map(day => (
+                <col key={day} className="w-[56px]" />
+              ))}
+              <col className="w-[56px]" />
+              <col className="w-[80px]" />
+            </colgroup>
             <thead className="bg-muted/60">
               <tr className="text-left">
                 <th
-                  className="w-[12%] cursor-pointer select-none p-2"
+                  className="cursor-pointer select-none p-2"
                   onClick={() => setSortAsc(!sortAsc)}
                 >
                   Name {sortAsc ? "▲" : "▼"}
                 </th>
-                <th className="w-[14%] p-2">Ansprechpartner</th>
-                <th className="w-[10%] p-2">Telefon Helfer</th>
-                <th className="w-[19%] p-2">Hinweis für PDF</th>
-                <th className="w-[7%] p-2">Helfen?</th>
+                <th className="p-2">Ansprechpartner</th>
+                <th className="whitespace-nowrap p-2">Telefon Helfer</th>
+                <th className="p-2">Hinweis für PDF</th>
+                <th className="p-1 text-center text-[11px] leading-tight">
+                  Helfen?
+                </th>
                 {activeDays.map(day => (
-                  <th key={day} className="w-[68px] p-2" title={day}>
+                  <th
+                    key={day}
+                    className="p-1 text-center text-[11px] leading-tight"
+                    title={day}
+                  >
                     {WEEKDAY_SHORT_LABELS[day]}
                   </th>
                 ))}
-                <th className="w-[7%] p-2">Bestätigt?</th>
-                <th className="w-[10%] p-2">Aktionen</th>
+                <th className="p-1 text-center text-[11px] leading-tight">
+                  Bestätigt?
+                </th>
+                <th className="p-2 text-center">Aktionen</th>
               </tr>
             </thead>
             <tbody>
@@ -481,11 +513,11 @@ export default function Helpers() {
                       </SelectContent>
                     </Select>
                   </td>
-                  <td className="p-2">
+                  <td className="p-2 whitespace-nowrap">
                     <Input
                       key={`${helper.id}-phone-${helper.phone ?? ""}`}
                       type="tel"
-                      className="h-8 w-full min-w-0"
+                      className="h-8 w-full min-w-0 whitespace-nowrap"
                       defaultValue={helper.phone ?? ""}
                       placeholder="optional"
                       onBlur={event => {
@@ -513,10 +545,11 @@ export default function Helpers() {
                       }}
                     />
                   </td>
-                  <td className="p-2">
+                  <td className="p-1 text-center">
                     <Sel
                       value={helper.willHelp}
                       options={YN}
+                      compactOnDesktop
                       onChange={value =>
                         update.mutate({
                           id: helper.id,
@@ -528,10 +561,11 @@ export default function Helpers() {
                   {activeDays.map(day => {
                     const field = WEEKDAY_AVAILABILITY_FIELDS[day];
                     return (
-                      <td key={day} className="p-2">
+                      <td key={day} className="p-1 text-center">
                         <Sel
                           value={helper[field]}
                           options={YNV}
+                          compactOnDesktop
                           onChange={value =>
                             update.mutate({ id: helper.id, [field]: value })
                           }
@@ -539,10 +573,11 @@ export default function Helpers() {
                       </td>
                     );
                   })}
-                  <td className="p-2">
+                  <td className="p-1 text-center">
                     <Sel
                       value={helper.confirmed}
                       options={YN}
+                      compactOnDesktop
                       onChange={value =>
                         update.mutate({
                           id: helper.id,
