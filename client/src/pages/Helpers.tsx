@@ -405,7 +405,7 @@ export default function Helpers() {
       </div>
 
       <Card className="hidden shadow-sm md:block">
-        <CardContent className="overflow-x-auto p-0">
+        <CardContent className="helpers-table-scroll p-0">
           <table
             className="w-full table-fixed text-xs xl:text-sm"
             style={{ minWidth: 892 + activeDays.length * 56 }}
@@ -422,7 +422,7 @@ export default function Helpers() {
               <col className="w-[56px]" />
               <col className="w-[80px]" />
             </colgroup>
-            <thead className="bg-muted/60">
+            <thead className="helpers-desktop-sticky-head bg-muted/60">
               <tr className="text-left">
                 <th
                   className="cursor-pointer select-none p-2"

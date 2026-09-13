@@ -58,3 +58,27 @@
 .slot-ok { background:var(--card); border:1px solid var(--border); }
 .slot-doppel { background:var(--warn-bg); border:1px solid var(--warn); color:var(--warn); font-weight:600; }
 .slot-ausfall { background:var(--err-bg); border:1px solid var(--err); color:var(--err); font-weight:600; }
+
+.helpers-table-scroll {
+  overflow-x: auto;
+}
+
+/* Helfertabelle: Sticky-Kopf nur auf breiten Desktopgeräten mit präziser Eingabe. */
+@media (min-width: 1280px) and (hover: hover) and (pointer: fine) {
+  .helpers-table-scroll {
+    overflow: visible;
+  }
+
+  .helpers-desktop-sticky-head {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: #fff;
+    border-bottom: 1px solid #e2e8f0;
+    box-shadow: 0 2px 8px rgb(15 23 42 / 14%);
+  }
+
+  .helpers-desktop-sticky-head th {
+    background: #fff;
+  }
+}

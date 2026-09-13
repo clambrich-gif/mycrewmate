@@ -45,6 +45,33 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(desktopTable).toContain('className="p-2 font-medium"');
   });
 
+  it("fixiert den Helfertabellenkopf ausschließlich in der PC-Webansicht", () => {
+    const helpers = source("client/src/pages/Helpers.tsx");
+    const css = source("client/src/index.css");
+    const mobileCards = helpers.slice(
+      helpers.indexOf('<div className="space-y-3 md:hidden">'),
+      helpers.indexOf('<Card className="hidden shadow-sm md:block">')
+    );
+
+    expect(helpers).toContain(
+      '<CardContent className="helpers-table-scroll p-0">'
+    );
+    expect(helpers).toContain(
+      'className="helpers-desktop-sticky-head bg-muted/60"'
+    );
+    expect(mobileCards).not.toContain("sticky");
+    expect(css).toContain(
+      "@media (min-width: 1280px) and (hover: hover) and (pointer: fine)"
+    );
+    expect(css).toContain(".helpers-desktop-sticky-head {");
+    expect(css).toContain(".helpers-table-scroll {");
+    expect(css).toContain("overflow-x: auto;");
+    expect(css).toContain("overflow: visible;");
+    expect(css).toContain("position: sticky;");
+    expect(css).toContain("box-shadow: 0 2px 8px rgb(15 23 42 / 14%);");
+    expect(css).toContain(".helpers-desktop-sticky-head th {");
+  });
+
   it("erzwingt browserunabhängig ein kontrastfestes Light-Theme", () => {
     const html = source("client/index.html");
     const app = source("client/src/App.tsx");
