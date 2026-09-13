@@ -60,6 +60,7 @@ import {
   type Weekday,
 } from "@shared/weekdays";
 import { useSearchParams } from "wouter";
+import { planEvaluationMatchesSearch } from "@/lib/plan-search";
 
 const formatTimeLabel = (shift: { startTime: string; endTime: string }) =>
   shift.startTime && shift.endTime
@@ -414,6 +415,10 @@ export default function Plan() {
     () => new Map(areaContactRows.map(item => [item.area, item.contactId])),
     [areaContactRows]
   );
+  const helperNameById = useMemo(
+    () => new Map(helpers.map(helper => [helper.id, helper.name])),
+    [helpers]
+  );
   const label = (h: any) =>
     `${h.name}${h.contactId ? ` (${contactName(h.contactId)})` : ""}`;
 
@@ -427,9 +432,7 @@ export default function Plan() {
             (status === "alle" || e.status === status) &&
             (warningFilter !== "konflikte" || e.doppelCount > 0) &&
             (warningFilter !== "ausfaelle" || e.ausfallCount > 0) &&
-            (!q ||
-              e.shift.task.toLowerCase().includes(q.toLowerCase()) ||
-              e.shift.area.toLowerCase().includes(q.toLowerCase())) &&
+            planEvaluationMatchesSearch(e, q, helperNameById) &&
             (apFilter === "alle" ||
               String(areaContactMap.get(e.shift.area) ?? "") === apFilter)
         )
@@ -441,7 +444,17 @@ export default function Plan() {
             left.shift.startTime.localeCompare(right.shift.startTime) ||
             left.shift.id - right.shift.id
         ),
-    [evals, day, area, status, warningFilter, q, apFilter, areaContactMap]
+    [
+      evals,
+      day,
+      area,
+      status,
+      warningFilter,
+      q,
+      apFilter,
+      areaContactMap,
+      helperNameById,
+    ]
   );
 
   const activeHelpers = (d: string) =>
@@ -733,7 +746,8 @@ export default function Plan() {
 
       <div className="grid gap-3 sm:grid-cols-2 lg:flex lg:flex-wrap">
         <Input
-          placeholder="Suchen (Aufgabe/Bereich) …"
+          placeholder="Suchen (Aufgabe/Bereich/Helfer) …"
+          aria-label="Einsatzplan nach Aufgabe, Bereich oder Helfer durchsuchen"
           value={q}
           onChange={e => setQ(e.target.value)}
           className="w-full lg:w-60"

@@ -5,6 +5,17 @@ const source = (relativePath: string) =>
   readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
 describe("UI- und Mobile-UX-Regeln", () => {
+  it("durchsucht den Einsatzplan auch nach eingeteilten Helfern", () => {
+    const plan = source("client/src/pages/Plan.tsx");
+
+    expect(plan).toContain("planEvaluationMatchesSearch");
+    expect(plan).toContain("helperNameById");
+    expect(plan).toContain("Suchen (Aufgabe/Bereich/Helfer) …");
+    expect(plan).toContain(
+      "Einsatzplan nach Aufgabe, Bereich oder Helfer durchsuchen"
+    );
+  });
+
   it("zeigt beim Ansprechpartnerimport die Prüfung aller Excel-Zeilen", () => {
     const moduleImport = source(
       "client/src/components/ModuleExcelImportButton.tsx"
