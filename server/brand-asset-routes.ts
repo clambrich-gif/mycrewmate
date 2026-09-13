@@ -1,11 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { storageGetSignedUrl } from "./storage";
-
-const RSC_LOGO = {
-  storageKey: "rsc-eifelland-logo-chrome_25463ad8.png",
-  contentType: "image/png",
-  filename: "rsc-eifelland-logo.png",
-} as const;
+import { RSC_BRAND_LOGO } from "./brand-assets";
 
 type BrandAssetRouteDependencies = {
   getSignedUrl: (storageKey: string) => Promise<string>;
@@ -22,8 +17,8 @@ function setLogoHeaders(res: Response) {
     "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
     "Access-Control-Allow-Origin": "*",
     "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
-    "Content-Disposition": `inline; filename="${RSC_LOGO.filename}"`,
-    "Content-Type": RSC_LOGO.contentType,
+    "Content-Disposition": `inline; filename="${RSC_BRAND_LOGO.filename}"`,
+    "Content-Type": RSC_BRAND_LOGO.contentType,
     "Cross-Origin-Resource-Policy": "cross-origin",
     "X-Content-Type-Options": "nosniff",
   });
@@ -42,7 +37,9 @@ async function fetchLogo(
   });
 
   try {
-    const signedUrl = await dependencies.getSignedUrl(RSC_LOGO.storageKey);
+    const signedUrl = await dependencies.getSignedUrl(
+      RSC_BRAND_LOGO.storageKey
+    );
     const upstream = await dependencies.fetchImpl(signedUrl, {
       signal: abortController.signal,
     });

@@ -15,7 +15,7 @@ import {
 } from "../shared/weekdays";
 
 const PROJECT_FORMAT = "RSC-HELFERPLANUNG-PROJEKTDATEI";
-const PROJECT_VERSION = 2;
+const PROJECT_VERSION = 3;
 const MAX_PROJECT_BYTES = 10_000_000;
 const MAX_ROWS = 10_000;
 
@@ -43,6 +43,9 @@ const documentSchema = z
         .min(1)
         .max(WEEKDAYS.length)
         .refine(days => new Set(days).size === days.length),
+      pdfLogoKey: short(500).nullable(),
+      pdfLogoUrl: short(700).nullable(),
+      pdfLogoFallback: z.enum(["none", "brand"]),
       exportedAt: z.string().datetime(),
     }),
     contacts: z
@@ -405,7 +408,7 @@ export function parseProjectFile(base64: string): {
     const legacy = raw as Record<string, any>;
     legacy.metadata = {
       ...legacy.metadata,
-      version: PROJECT_VERSION,
+      version: 2,
       activeDays: [...WEEKDAYS],
     };
     legacy.helpers = Array.isArray(legacy.helpers)
@@ -417,6 +420,24 @@ export function parseProjectFile(base64: string): {
           availThu: helper.availThu ?? "ja",
         }))
       : legacy.helpers;
+  }
+  if (
+    raw &&
+    typeof raw === "object" &&
+    "metadata" in raw &&
+    raw.metadata &&
+    typeof raw.metadata === "object" &&
+    "version" in raw.metadata &&
+    raw.metadata.version === 2
+  ) {
+    const legacy = raw as Record<string, any>;
+    legacy.metadata = {
+      ...legacy.metadata,
+      version: PROJECT_VERSION,
+      pdfLogoKey: null,
+      pdfLogoUrl: null,
+      pdfLogoFallback: "none",
+    };
   }
   const parsed = documentSchema.safeParse(raw);
   if (!parsed.success)

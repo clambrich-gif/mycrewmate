@@ -18,7 +18,9 @@ const dbMocks = vi.hoisted(() => ({
   clearDeletionAuditLogs: vi.fn(),
   restoreDeletionAuditLog: vi.fn(),
   getSecuritySettings: vi.fn(),
+  getAppSettings: vi.fn(),
   getEvent: vi.fn(),
+  updateCurrentEventPdfImage: vi.fn(),
   createEvent: vi.fn(),
   updateEventName: vi.fn(),
   deleteEvent: vi.fn(),
@@ -141,6 +143,9 @@ describe("Planungs-API", () => {
       year: 2026,
       name: "MyEifelRide",
       activeDays: [...WEEKDAYS],
+      pdfLogoKey: null,
+      pdfLogoUrl: null,
+      pdfLogoFallback: "none",
       sortOrder: 0,
       createdAt: new Date(),
     });
@@ -149,6 +154,10 @@ describe("Planungs-API", () => {
     storageMocks.storageGetSignedUrl.mockResolvedValue(
       "https://storage.example.test/guide.pdf"
     );
+    storageMocks.storagePut.mockResolvedValue({
+      key: "pdf-logos/events/2026/1/pdf-logo_test.png",
+      url: "/manus-storage/pdf-logos/events/2026/1/pdf-logo_test.png",
+    });
     backupMocks.exportProjectExcel.mockResolvedValue({
       buffer: Buffer.from("xlsx"),
       exportedAt: "2026-09-11T10:00:00.000Z",
@@ -201,6 +210,94 @@ describe("Planungs-API", () => {
     backupMocks.withExcelOperationLimit.mockImplementation(callback =>
       callback()
     );
+  });
+
+  it("liefert in den PDF-Einstellungen nur das Bild des aktuellen Events", async () => {
+    dbMocks.getAppSettings.mockResolvedValue({
+      id: 1,
+      eventName: "Alt",
+      eventYear: "2025",
+      helperPdfTitle: "Aufgabenübersicht",
+      blankPlanTitle: "Einsatzplan – Blanko",
+      contactLabel: "Ansprechpartner",
+      footerText: "",
+      logoKey: "global-alt.png",
+      logoUrl: "/manus-storage/global-alt.png",
+      extraColumns: "[]",
+      blankRowsPerShift: 0,
+      updatedAt: new Date(),
+    });
+    dbMocks.getEvent.mockResolvedValue({
+      id: 77,
+      year: 2027,
+      name: "Weihnachtsfeier",
+      activeDays: ["Sonntag"],
+      pdfLogoKey: "pdf-logos/events/2027/77/weihnachtsbaum.png",
+      pdfLogoUrl:
+        "/manus-storage/pdf-logos/events/2027/77/weihnachtsbaum.png",
+      pdfLogoFallback: "brand",
+      sortOrder: 0,
+      createdAt: new Date(),
+    });
+
+    const result = await appRouter.createCaller(ctx).pdf.settings();
+
+    expect(result).toMatchObject({
+      eventName: "Weihnachtsfeier",
+      logoKey: "pdf-logos/events/2027/77/weihnachtsbaum.png",
+      logoUrl: "/api/pdf/event-image/2027/77",
+      logoFallback: "brand",
+    });
+    expect(result.logoKey).not.toBe("global-alt.png");
+  });
+
+  it("speichert PDF-Bilder im Pfad und Datensatz des aktuellen Events", async () => {
+    const png = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+      "base64"
+    );
+
+    await appRouter.createCaller(planningTeamCtx).pdf.uploadLogo({
+      base64: png.toString("base64"),
+      mimeType: "image/png",
+    });
+
+    expect(storageMocks.storagePut).toHaveBeenCalledWith(
+      "pdf-logos/events/2026/1/pdf-logo.png",
+      png,
+      "image/png"
+    );
+    expect(dbMocks.updateCurrentEventPdfImage).toHaveBeenCalledWith({
+      pdfLogoKey: "pdf-logos/events/2026/1/pdf-logo_test.png",
+      pdfLogoUrl:
+        "/manus-storage/pdf-logos/events/2026/1/pdf-logo_test.png",
+    });
+  });
+
+  it("entfernt Bild und ändert Fallback ausschließlich im aktuellen Event", async () => {
+    const caller = appRouter.createCaller(planningTeamCtx);
+
+    await caller.pdf.clearLogo();
+    await caller.pdf.setLogoFallback({ fallback: "brand" });
+
+    expect(dbMocks.updateCurrentEventPdfImage).toHaveBeenNthCalledWith(1, {
+      pdfLogoKey: null,
+      pdfLogoUrl: null,
+    });
+    expect(dbMocks.updateCurrentEventPdfImage).toHaveBeenNthCalledWith(2, {
+      pdfLogoFallback: "brand",
+    });
+  });
+
+  it("weist Bildinhalte mit unpassender Dateisignatur ab", async () => {
+    await expect(
+      appRouter.createCaller(ctx).pdf.uploadLogo({
+        base64: Buffer.from("kein PNG").toString("base64"),
+        mimeType: "image/png",
+      })
+    ).rejects.toThrow("passt nicht zum ausgewählten Dateiformat");
+    expect(storageMocks.storagePut).not.toHaveBeenCalled();
+    expect(dbMocks.updateCurrentEventPdfImage).not.toHaveBeenCalled();
   });
 
   it("liefert die PDF-Anleitung für Administratoren und Planungsteam als Download", async () => {

@@ -780,8 +780,6 @@ export const appRouter = router({
         eventYear: String(currentEventYear()),
       };
       const selectedEvent = await db.getEvent();
-      settings.eventYear = String(currentEventYear());
-      settings.eventName = selectedEvent?.name ?? settings.eventName;
       let extraColumns: string[] = [];
       try {
         const parsed = JSON.parse(settings.extraColumns);
@@ -789,7 +787,19 @@ export const appRouter = router({
           extraColumns = parsed.filter(item => typeof item === "string");
         }
       } catch {}
-      return { ...settings, extraColumns };
+      return {
+        ...settings,
+        eventYear: String(currentEventYear()),
+        eventName: selectedEvent?.name ?? settings.eventName,
+        logoKey: selectedEvent?.pdfLogoKey ?? null,
+        logoUrl:
+          selectedEvent &&
+          (selectedEvent.pdfLogoKey || selectedEvent.pdfLogoFallback === "brand")
+            ? `/api/pdf/event-image/${selectedEvent.year}/${selectedEvent.id}`
+            : null,
+        logoFallback: selectedEvent?.pdfLogoFallback ?? "none",
+        extraColumns,
+      };
     }),
     updateSettings: protectedProcedure
       .input(pdfSettingsInput)
@@ -816,17 +826,55 @@ export const appRouter = router({
             message: "Bitte ein PNG- oder JPEG-Logo bis 3 MB auswählen",
           });
         }
+        const hasValidSignature =
+          input.mimeType === "image/png"
+            ? buffer.length >= 8 &&
+              buffer.subarray(0, 8).equals(
+                Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])
+              )
+            : buffer.length >= 3 &&
+              buffer[0] === 0xff &&
+              buffer[1] === 0xd8 &&
+              buffer[2] === 0xff;
+        if (!hasValidSignature) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Die Bilddatei passt nicht zum ausgewählten Dateiformat",
+          });
+        }
+        const selectedEvent = await db.getEvent();
+        if (!selectedEvent) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Die ausgewählte Veranstaltung wurde nicht gefunden",
+          });
+        }
         const extension = input.mimeType === "image/png" ? "png" : "jpg";
         const uploaded = await storagePut(
-          `pdf-logos/veranstaltungslogo.${extension}`,
+          `pdf-logos/events/${selectedEvent.year}/${selectedEvent.id}/pdf-logo.${extension}`,
           buffer,
           input.mimeType
         );
-        await db.updateAppSettings({
-          logoKey: uploaded.key,
-          logoUrl: uploaded.url,
+        await db.updateCurrentEventPdfImage({
+          pdfLogoKey: uploaded.key,
+          pdfLogoUrl: uploaded.url,
         });
         return uploaded;
+      }),
+    clearLogo: protectedProcedure.mutation(async () => {
+      await db.updateCurrentEventPdfImage({
+        pdfLogoKey: null,
+        pdfLogoUrl: null,
+      });
+      return { success: true } as const;
+    }),
+    setLogoFallback: protectedProcedure
+      .input(z.object({ fallback: z.enum(["none", "brand"]) }))
+      .mutation(async ({ input }) => {
+        await db.updateCurrentEventPdfImage({
+          pdfLogoFallback: input.fallback,
+        });
+        return { success: true } as const;
       }),
     helper: protectedProcedure
       .input(z.object({ helperId: z.number().int().positive() }))

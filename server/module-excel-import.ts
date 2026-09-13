@@ -275,6 +275,18 @@ function baseWorkbook(document: BackupDocument) {
         Schlüssel: "Veranstaltungstage",
         Wert: document.metadata.activeDays.join(", "),
       },
+      {
+        Schlüssel: "PDF-Bild-Schlüssel",
+        Wert: document.metadata.pdfLogoKey ?? "",
+      },
+      {
+        Schlüssel: "PDF-Bild-URL",
+        Wert: document.metadata.pdfLogoUrl ?? "",
+      },
+      {
+        Schlüssel: "PDF-Bild-Fallback",
+        Wert: document.metadata.pdfLogoFallback,
+      },
       { Schlüssel: "Exportiert am (UTC)", Wert: document.metadata.exportedAt },
     ]
   );

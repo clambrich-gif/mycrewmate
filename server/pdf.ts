@@ -13,6 +13,7 @@ import * as db from "./db";
 import { DAYS, evaluateShifts, toMinutes, type Day } from "./logic";
 import { currentEventYear } from "./year-context";
 import { storageGetSignedUrl } from "./storage";
+import { resolveEventPdfLogoKey } from "./event-pdf-image";
 
 const require = createRequire(import.meta.url);
 const { ZipArchive } = require("archiver") as {
@@ -616,11 +617,16 @@ async function loadPlanningData(): Promise<PlanningData> {
     ...(settings ?? DEFAULT_PDF_SETTINGS),
     eventName: selectedEvent?.name ?? settings?.eventName ?? "Veranstaltung",
     eventYear: String(currentEventYear()),
+    logoKey: selectedEvent?.pdfLogoKey ?? null,
+    logoUrl: selectedEvent?.pdfLogoUrl ?? null,
   };
   let logoBuffer: Buffer | undefined;
-  if (resolvedSettings.logoKey) {
+  const logoStorageKey = selectedEvent
+    ? resolveEventPdfLogoKey(selectedEvent)
+    : null;
+  if (logoStorageKey) {
     try {
-      const signedUrl = await storageGetSignedUrl(resolvedSettings.logoKey);
+      const signedUrl = await storageGetSignedUrl(logoStorageKey);
       const response = await fetch(signedUrl);
       if (response.ok) logoBuffer = Buffer.from(await response.arrayBuffer());
     } catch (error) {

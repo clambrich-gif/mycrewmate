@@ -290,6 +290,9 @@ export type BackupDocument = {
     eventName: string;
     year: number;
     activeDays: Weekday[];
+    pdfLogoKey: string | null;
+    pdfLogoUrl: string | null;
+    pdfLogoFallback: "none" | "brand";
     exportedAt: string;
   };
   contacts: ContactRow[];
@@ -308,6 +311,9 @@ export type BackupDocument = {
 type CurrentSnapshot = {
   eventName: string;
   activeDays: Weekday[];
+  pdfLogoKey: string | null;
+  pdfLogoUrl: string | null;
+  pdfLogoFallback: "none" | "brand";
   contacts: any[];
   helpers: any[];
   shifts: any[];
@@ -407,6 +413,10 @@ function metadata(workbook: XLSX.WorkBook) {
   const activeDays = orderedWeekdays(
     (values.get("Veranstaltungstage") ?? "").split(",").map(day => day.trim())
   );
+  const pdfLogoKey = values.get("PDF-Bild-Schlüssel") || null;
+  const pdfLogoUrl = values.get("PDF-Bild-URL") || null;
+  const pdfLogoFallback: "none" | "brand" =
+    values.get("PDF-Bild-Fallback") === "brand" ? "brand" : "none";
   const exportedAt = values.get("Exportiert am (UTC)") ?? "";
   if (format !== BACKUP_FORMAT || version !== BACKUP_VERSION)
     throw new Error(
@@ -429,6 +439,9 @@ function metadata(workbook: XLSX.WorkBook) {
     year,
     eventName,
     activeDays: activeDays.length ? activeDays : [...WEEKDAYS],
+    pdfLogoKey,
+    pdfLogoUrl,
+    pdfLogoFallback,
     exportedAt,
   };
 }
@@ -1332,6 +1345,9 @@ async function loadSnapshot(
   return {
     eventName: eventRows[0].name,
     activeDays: eventWeekdays(eventRows[0].activeDays),
+    pdfLogoKey: eventRows[0].pdfLogoKey,
+    pdfLogoUrl: eventRows[0].pdfLogoUrl,
+    pdfLogoFallback: eventRows[0].pdfLogoFallback,
     contacts: contactRows,
     helpers: helperRows,
     shifts: shiftRows,
@@ -1571,6 +1587,9 @@ export async function createCurrentProjectDocument(): Promise<BackupDocument> {
       eventName: snapshot.eventName,
       year: currentEventYear(),
       activeDays: snapshot.activeDays,
+      pdfLogoKey: snapshot.pdfLogoKey,
+      pdfLogoUrl: snapshot.pdfLogoUrl,
+      pdfLogoFallback: snapshot.pdfLogoFallback,
       exportedAt: new Date().toISOString(),
     },
     ...current,
@@ -1767,11 +1786,61 @@ function eventDaysChange(
   ];
 }
 
+function eventPdfImageChanges(
+  current: Pick<
+    CurrentSnapshot,
+    "pdfLogoKey" | "pdfLogoUrl" | "pdfLogoFallback"
+  >,
+  desired: BackupDocument["metadata"]
+): BackupChange[] {
+  const changes: BackupChange[] = [];
+  if (
+    current.pdfLogoKey !== desired.pdfLogoKey ||
+    current.pdfLogoUrl !== desired.pdfLogoUrl
+  ) {
+    changes.push({
+      key: "VERANSTALTUNG:update:pdfImage",
+      area: "VERANSTALTUNG",
+      action: "update",
+      label: "Individuelles PDF-Bild",
+      fields: ["pdfLogoKey", "pdfLogoUrl"],
+      before: {
+        pdfLogoKey: current.pdfLogoKey,
+        pdfLogoUrl: current.pdfLogoUrl,
+      },
+      after: {
+        pdfLogoKey: desired.pdfLogoKey,
+        pdfLogoUrl: desired.pdfLogoUrl,
+      },
+    });
+  }
+  if (current.pdfLogoFallback !== desired.pdfLogoFallback) {
+    changes.push({
+      key: "VERANSTALTUNG:update:pdfLogoFallback",
+      area: "VERANSTALTUNG",
+      action: "update",
+      label: "PDF-Bild-Fallback",
+      fields: ["pdfLogoFallback"],
+      before: { pdfLogoFallback: current.pdfLogoFallback },
+      after: { pdfLogoFallback: desired.pdfLogoFallback },
+    });
+  }
+  return changes;
+}
+
 function snapshotDigest(
   snapshot: CurrentSnapshot,
   current = comparableCurrent(snapshot)
 ) {
-  return digest({ activeDays: snapshot.activeDays, project: current });
+  return digest({
+    activeDays: snapshot.activeDays,
+    pdfImage: {
+      key: snapshot.pdfLogoKey,
+      url: snapshot.pdfLogoUrl,
+      fallback: snapshot.pdfLogoFallback,
+    },
+    project: current,
+  });
 }
 
 function summary(changes: BackupChange[]) {
@@ -2051,6 +2120,7 @@ export async function previewProjectDocument(
   const current = comparableCurrent(snapshot);
   const changes = [
     ...eventDaysChange(snapshot.activeDays, desired.metadata.activeDays),
+    ...eventPdfImageChanges(snapshot, desired.metadata),
     ...diffDocuments(current, desired),
   ];
   serializeChangeDetails(changes, desired.warnings);
@@ -2145,6 +2215,7 @@ export async function restoreProjectDocument(
       );
     const allChanges = [
       ...eventDaysChange(snapshot.activeDays, imported.metadata.activeDays),
+      ...eventPdfImageChanges(snapshot, imported.metadata),
       ...diffDocuments(current, imported),
     ];
     const desired = buildSelectedDocument(
@@ -2155,6 +2226,7 @@ export async function restoreProjectDocument(
     );
     const changes = [
       ...eventDaysChange(snapshot.activeDays, desired.metadata.activeDays),
+      ...eventPdfImageChanges(snapshot, desired.metadata),
       ...diffDocuments(current, desired),
     ];
     if (!changes.length)
@@ -2201,7 +2273,12 @@ export async function restoreProjectDocument(
     if (changes.length) {
       await tx
         .update(events)
-        .set({ activeDays: desired.metadata.activeDays })
+        .set({
+          activeDays: desired.metadata.activeDays,
+          pdfLogoKey: desired.metadata.pdfLogoKey,
+          pdfLogoUrl: desired.metadata.pdfLogoUrl,
+          pdfLogoFallback: desired.metadata.pdfLogoFallback,
+        })
         .where(and(eq(events.id, eventId), eq(events.year, year)));
       await tx
         .delete(assignments)
@@ -2473,7 +2550,10 @@ export async function restoreProjectDocument(
     if (
       JSON.stringify(restoredContent) !== JSON.stringify(desiredContent) ||
       JSON.stringify(afterSnapshot.activeDays) !==
-        JSON.stringify(desired.metadata.activeDays)
+        JSON.stringify(desired.metadata.activeDays) ||
+      afterSnapshot.pdfLogoKey !== desired.metadata.pdfLogoKey ||
+      afterSnapshot.pdfLogoUrl !== desired.metadata.pdfLogoUrl ||
+      afterSnapshot.pdfLogoFallback !== desired.metadata.pdfLogoFallback
     )
       throw new Error(
         "Die Wiederherstellung konnte den gespeicherten Projektstand nicht vollständig herstellen und wurde komplett zurückgerollt"
@@ -2601,6 +2681,17 @@ export async function exportProjectExcel(): Promise<{
       {
         Schlüssel: "Veranstaltungstage",
         Wert: snapshot.activeDays.join(", "),
+      },
+      {
+        Schlüssel: "Individuelles PDF-Bild",
+        Wert: snapshot.pdfLogoKey ? "Hinterlegt" : "Nicht hinterlegt",
+      },
+      {
+        Schlüssel: "PDF-Bild-Fallback",
+        Wert:
+          snapshot.pdfLogoFallback === "brand"
+            ? "RSC-Vereinslogo"
+            : "Kein Bild",
       },
       { Schlüssel: "Exportiert am (UTC)", Wert: exportedAt },
       {

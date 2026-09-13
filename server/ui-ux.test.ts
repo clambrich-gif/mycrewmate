@@ -5,6 +5,18 @@ const source = (relativePath: string) =>
   readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
 describe("UI- und Mobile-UX-Regeln", () => {
+  it("kennzeichnet und steuert PDF-Bilder veranstaltungsspezifisch", () => {
+    const pdfExport = source("client/src/pages/PdfExport.tsx");
+
+    expect(pdfExport).toContain("PDF-Bild für {currentEvent?.name");
+    expect(pdfExport).toContain("aktuell ausgewählten Veranstaltung");
+    expect(pdfExport).toContain("trpc.pdf.clearLogo.useMutation");
+    expect(pdfExport).toContain("trpc.pdf.setLogoFallback.useMutation");
+    expect(pdfExport).toContain("Kein Bild drucken");
+    expect(pdfExport).toContain("RSC-Vereinslogo verwenden");
+    expect(pdfExport).not.toContain("Das Logo gilt für alle Veranstaltungen");
+  });
+
   it("durchsucht den Einsatzplan auch nach eingeteilten Helfern", () => {
     const plan = source("client/src/pages/Plan.tsx");
 

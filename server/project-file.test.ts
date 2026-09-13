@@ -32,6 +32,9 @@ const data = {
       year: 2026,
       name: "MyEifelRide",
       activeDays: [...WEEKDAYS],
+      pdfLogoKey: "pdf-logos/events/2026/1/logo.png",
+      pdfLogoUrl: "/manus-storage/pdf-logos/events/2026/1/logo.png",
+      pdfLogoFallback: "none",
     },
   ],
   contacts: [
@@ -186,11 +189,14 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsed = parseProjectFile(exported.buffer.toString("base64"));
     expect(parsed.document.metadata).toMatchObject({
       format: "RSC-HELFERPLANUNG-PROJEKTDATEI",
-      version: 2,
+      version: 3,
       eventId: 1,
       eventName: "MyEifelRide",
       year: 2026,
       activeDays: [...WEEKDAYS],
+      pdfLogoKey: "pdf-logos/events/2026/1/logo.png",
+      pdfLogoUrl: "/manus-storage/pdf-logos/events/2026/1/logo.png",
+      pdfLogoFallback: "none",
     });
     expect(parsed.document.helpers).toHaveLength(2);
     expect(parsed.document.shifts[0].slots[0]).toMatchObject({
@@ -214,6 +220,31 @@ describe("Projektdatei und modularer Excel-Import", () => {
           area: "VERANSTALTUNG",
           action: "update",
           fields: ["activeDays"],
+        }),
+      ])
+    );
+  });
+
+  it("speichert und vergleicht die PDF-Bildkonfiguration des Events", async () => {
+    const exported = await exportProjectFile();
+    const document = JSON.parse(exported.buffer.toString("utf8"));
+    document.metadata.pdfLogoKey = null;
+    document.metadata.pdfLogoUrl = null;
+    document.metadata.pdfLogoFallback = "brand";
+
+    const preview = await previewProjectFile(
+      Buffer.from(JSON.stringify(document)).toString("base64")
+    );
+
+    expect(preview.changes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "VERANSTALTUNG:update:pdfImage",
+          fields: ["pdfLogoKey", "pdfLogoUrl"],
+        }),
+        expect.objectContaining({
+          key: "VERANSTALTUNG:update:pdfLogoFallback",
+          fields: ["pdfLogoFallback"],
         }),
       ])
     );
@@ -257,8 +288,13 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsed = parseProjectFile(
       Buffer.from(JSON.stringify(document)).toString("base64")
     );
-    expect(parsed.document.metadata.version).toBe(2);
+    expect(parsed.document.metadata.version).toBe(3);
     expect(parsed.document.metadata.activeDays).toEqual([...WEEKDAYS]);
+    expect(parsed.document.metadata).toMatchObject({
+      pdfLogoKey: null,
+      pdfLogoUrl: null,
+      pdfLogoFallback: "none",
+    });
     expect(parsed.document.helpers[0]).toMatchObject({
       availMon: "ja",
       availTue: "ja",

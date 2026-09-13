@@ -52,6 +52,11 @@ export const events = mysqlTable(
     year: int("year").notNull(),
     name: varchar("name", { length: 200 }).notNull(),
     activeDays: json("activeDays").$type<Weekday[]>().notNull(),
+    pdfLogoKey: varchar("pdfLogoKey", { length: 500 }),
+    pdfLogoUrl: varchar("pdfLogoUrl", { length: 700 }),
+    pdfLogoFallback: mysqlEnum("pdfLogoFallback", ["none", "brand"])
+      .default("none")
+      .notNull(),
     sortOrder: int("sortOrder").default(0).notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },

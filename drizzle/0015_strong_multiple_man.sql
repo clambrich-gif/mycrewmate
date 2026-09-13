@@ -1,0 +1,1 @@
+ALTER TABLE `events` ADD `pdfLogoFallback` enum('none','brand') DEFAULT 'none' NOT NULL;

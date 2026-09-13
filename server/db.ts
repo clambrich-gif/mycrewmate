@@ -170,6 +170,25 @@ export async function getEvent(id = event()) {
     : undefined;
 }
 
+export async function updateCurrentEventPdfImage(values: {
+  pdfLogoKey?: string | null;
+  pdfLogoUrl?: string | null;
+  pdfLogoFallback?: "none" | "brand";
+}) {
+  const db = (await getDb()) as DB;
+  const [selectedEvent] = await db
+    .select({ id: events.id })
+    .from(events)
+    .where(and(eq(events.id, event()), eq(events.year, year())))
+    .limit(1);
+  if (!selectedEvent) throw new Error("Veranstaltung wurde nicht gefunden");
+  await db
+    .update(events)
+    .set(values)
+    .where(and(eq(events.id, event()), eq(events.year, year())));
+  return values;
+}
+
 export async function withPlanningWriteLock<T>(callback: () => Promise<T>) {
   const database = (await getDb()) as DB;
   const selectedYear = year();
@@ -233,6 +252,9 @@ export async function createEvent(
     year: eventYear,
     name: normalizedName,
     activeDays,
+    pdfLogoKey: null,
+    pdfLogoUrl: null,
+    pdfLogoFallback: "none" as const,
     created: true,
   };
 }

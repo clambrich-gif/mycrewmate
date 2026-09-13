@@ -8,6 +8,7 @@ import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { registerHelpVideoRoutes } from "../help-video-routes";
+import { registerEventPdfImageRoutes } from "../event-pdf-image-routes";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 
@@ -38,6 +39,7 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "25mb", extended: true }));
   registerBrandAssetRoutes(app);
   registerHelpVideoRoutes(app);
+  registerEventPdfImageRoutes(app);
   registerStorageProxy(app);
   registerOAuthRoutes(app);
   // tRPC API

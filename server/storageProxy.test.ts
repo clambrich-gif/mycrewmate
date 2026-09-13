@@ -35,4 +35,16 @@ describe("Storage-Proxy", () => {
     expect(response.status).toBe(404);
     expect(response.headers.get("location")).toBeNull();
   });
+
+  it.each([
+    "pdf-logos/veranstaltungslogo_21d8a485.jpg",
+    "pdf-logos/events/2027/77/pdf-logo_a1b2c3d4.png",
+  ])("liefert PDF-Bilder nicht über den öffentlichen Storage-Pfad aus: %s", async key => {
+    const response = await fetch(`${baseUrl}/manus-storage/${key}`, {
+      redirect: "manual",
+    });
+
+    expect(response.status).toBe(404);
+    expect(response.headers.get("location")).toBeNull();
+  });
 });

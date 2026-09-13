@@ -109,7 +109,25 @@ export default function PdfExport() {
   const uploadLogo = trpc.pdf.uploadLogo.useMutation({
     onSuccess: async () => {
       await utils.pdf.settings.invalidate();
-      toast.success("Logo gespeichert und für alle Helfer-PDFs aktiviert");
+      toast.success(
+        `PDF-Bild für ${currentEvent?.name ?? "die Veranstaltung"} gespeichert`
+      );
+    },
+    onError: error => toast.error(error.message),
+  });
+  const clearLogo = trpc.pdf.clearLogo.useMutation({
+    onSuccess: async () => {
+      await utils.pdf.settings.invalidate();
+      toast.success(
+        `PDF-Bild für ${currentEvent?.name ?? "die Veranstaltung"} entfernt`
+      );
+    },
+    onError: error => toast.error(error.message),
+  });
+  const setLogoFallback = trpc.pdf.setLogoFallback.useMutation({
+    onSuccess: async () => {
+      await utils.pdf.settings.invalidate();
+      toast.success("Fallback für diese Veranstaltung gespeichert");
     },
     onError: error => toast.error(error.message),
   });
@@ -139,6 +157,9 @@ export default function PdfExport() {
   };
 
   const areas = Array.from(new Set(plan.map(item => item.shift.area))).sort();
+  const effectiveLogoUrl =
+    settings?.logoUrl ??
+    (settings?.logoFallback === "brand" ? "/api/brand/rsc-logo" : null);
   const mappedContactIds = Array.from(
     new Set(
       areaContacts
@@ -455,10 +476,10 @@ export default function PdfExport() {
               <div className="rounded-xl border bg-muted/30 p-4">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                   <div className="grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-xl border bg-white">
-                    {settings?.logoUrl ? (
+                    {effectiveLogoUrl ? (
                       <img
-                        src={settings.logoUrl}
-                        alt="Aktuelles PDF-Logo"
+                        src={effectiveLogoUrl}
+                        alt="Aktuelles PDF-Bild dieser Veranstaltung"
                         className="h-full w-full object-contain p-1"
                       />
                     ) : (
@@ -468,28 +489,86 @@ export default function PdfExport() {
                   <div className="min-w-0 flex-1 space-y-2">
                     <div>
                       <Label htmlFor="pdf-logo">
-                        Vereinslogo auf allen Helfer-PDFs
+                        PDF-Bild für {currentEvent?.name ?? "diese Veranstaltung"}
                       </Label>
                       <p className="text-xs text-muted-foreground">
-                        PNG oder JPEG bis 3 MB. Das Logo gilt für alle
-                        Veranstaltungen und erscheint oben rechts in jeder
-                        einzelnen und jeder gesammelt erzeugten Helferübersicht.
+                        PNG oder JPEG bis 3 MB. Das Bild wird ausschließlich in
+                        den PDF-Ausgaben der aktuell ausgewählten Veranstaltung
+                        verwendet. Ohne eigenes Bild wird kein Bild gedruckt.
                       </p>
                     </div>
                     <Input
                       id="pdf-logo"
                       type="file"
                       accept="image/png,image/jpeg"
-                      disabled={uploadLogo.isPending}
-                      onChange={event =>
-                        onLogoSelected(event.target.files?.[0])
+                      disabled={
+                        uploadLogo.isPending ||
+                        clearLogo.isPending ||
+                        setLogoFallback.isPending
                       }
+                      onChange={event => {
+                        onLogoSelected(event.target.files?.[0]);
+                        event.currentTarget.value = "";
+                      }}
                     />
-                    {uploadLogo.isPending && (
+                    {(uploadLogo.isPending ||
+                      clearLogo.isPending ||
+                      setLogoFallback.isPending) && (
                       <p className="text-xs font-medium text-primary">
-                        Logo wird hochgeladen …
+                        {uploadLogo.isPending
+                          ? "Bild wird hochgeladen …"
+                          : clearLogo.isPending
+                            ? "Bild wird entfernt …"
+                            : "Fallback wird gespeichert …"}
                       </p>
                     )}
+                    {settings?.logoUrl && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="border-red-200 bg-white text-red-700 hover:bg-red-50 hover:text-red-800"
+                        disabled={
+                          uploadLogo.isPending ||
+                          clearLogo.isPending ||
+                          setLogoFallback.isPending
+                        }
+                        onClick={() => clearLogo.mutate()}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Bild dieser Veranstaltung entfernen
+                      </Button>
+                    )}
+                    <div className="space-y-1.5 pt-1">
+                      <Label htmlFor="pdf-logo-fallback">
+                        Verhalten ohne individuelles Bild
+                      </Label>
+                      <Select
+                        value={settings?.logoFallback ?? "none"}
+                        disabled={
+                          uploadLogo.isPending ||
+                          clearLogo.isPending ||
+                          setLogoFallback.isPending
+                        }
+                        onValueChange={value =>
+                          setLogoFallback.mutate({
+                            fallback: value as "none" | "brand",
+                          })
+                        }
+                      >
+                        <SelectTrigger
+                          id="pdf-logo-fallback"
+                          className="w-full bg-white dark:bg-slate-950 sm:max-w-sm"
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Kein Bild drucken</SelectItem>
+                          <SelectItem value="brand">
+                            RSC-Vereinslogo verwenden
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
               </div>

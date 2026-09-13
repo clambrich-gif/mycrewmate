@@ -15,6 +15,7 @@ import {
   renderPlanPdf,
   selectPlanEvaluations,
 } from "./pdf";
+import { resolveEventPdfLogoKey } from "./event-pdf-image";
 
 const settings: AppSettings = {
   id: 1,
@@ -125,6 +126,27 @@ const data = {
 };
 
 describe("PDF-Erzeugung", () => {
+  it("löst PDF-Bilder streng nach Eventkonfiguration auf", () => {
+    expect(
+      resolveEventPdfLogoKey({
+        pdfLogoKey: "pdf-logos/events/2027/77/weihnachtsbaum.png",
+        pdfLogoFallback: "brand",
+      })
+    ).toBe("pdf-logos/events/2027/77/weihnachtsbaum.png");
+    expect(
+      resolveEventPdfLogoKey({
+        pdfLogoKey: null,
+        pdfLogoFallback: "none",
+      })
+    ).toBeNull();
+    expect(
+      resolveEventPdfLogoKey({
+        pdfLogoKey: null,
+        pdfLogoFallback: "brand",
+      })
+    ).toBe("rsc-eifelland-logo-chrome_25463ad8.png");
+  });
+
   it("erzeugt eine gültige persönliche Aufgabenübersicht", async () => {
     const pdf = await renderHelperTaskPdf(data, 1);
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
