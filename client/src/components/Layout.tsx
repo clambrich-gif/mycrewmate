@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/sheet";
 import { startLogin } from "@/const";
 import { useEventYear } from "@/contexts/YearContext";
-import { NAV } from "@/lib/nav";
+import { NAV, navigationItemClasses } from "@/lib/nav";
 import { preloadRoute } from "@/lib/route-loaders";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
@@ -508,7 +508,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
           <nav className="flex-1 space-y-1 overflow-y-auto p-2">
             {NAV.filter(item => !item.adminOnly || user?.role === "admin").map(
-              ({ href, label, icon: Icon }) => (
+              ({ href, label, icon: Icon }) => {
+                const active = location === href;
+                return (
                 <Link
                   key={href}
                   href={href}
@@ -516,11 +518,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   onFocus={() => preloadRoute(href)}
                   onMouseEnter={() => preloadRoute(href)}
                   onTouchStart={() => preloadRoute(href)}
-                  className={`flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium ${location === href ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}
+                  className={cn(
+                    "flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
+                    navigationItemClasses(user?.role, href, active)
+                  )}
                 >
                   <Icon className="h-5 w-5" /> {label}
                 </Link>
-              )
+                );
+              }
             )}
           </nav>
           <div className="border-t p-3">
@@ -655,7 +661,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   href={href}
                   onFocus={() => preloadRoute(href)}
                   onMouseEnter={() => preloadRoute(href)}
-                  className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${active ? "bg-primary text-primary-foreground" : "hover:bg-accent"}`}
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
+                    navigationItemClasses(user?.role, href, active)
+                  )}
                 >
                   <Icon className="h-4 w-4" /> {label}
                 </Link>
@@ -667,7 +676,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="min-w-0">
             <div className="text-sm font-medium truncate">{user?.name}</div>
             <div className="text-xs text-muted-foreground">
-              {user?.role === "admin" ? "Administrator" : "Bearbeiter"}
+              {user?.role === "admin" ? "Administrator" : "Planungsteam"}
             </div>
           </div>
           <Button

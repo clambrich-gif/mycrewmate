@@ -52,3 +52,33 @@ export const NAV: readonly NavItem[] = [
   },
   { href: "/hilfe", label: "Hilfe", icon: CircleHelp },
 ];
+
+export const PLANNING_TEAM_FOCUS_PATHS = [
+  "/helfer",
+  "/kuchen",
+  "/pdf-export",
+  "/hilfe",
+] as const;
+
+export function navigationItemClasses(
+  role: "user" | "admin" | null | undefined,
+  href: string,
+  active: boolean
+) {
+  if (role !== "user")
+    return active
+      ? "bg-primary font-medium text-primary-foreground"
+      : "font-medium hover:bg-accent";
+
+  const isFocusPath = PLANNING_TEAM_FOCUS_PATHS.includes(
+    href as (typeof PLANNING_TEAM_FOCUS_PATHS)[number]
+  );
+  return [
+    isFocusPath
+      ? "font-bold text-black opacity-100"
+      : "font-normal text-gray-500",
+    active
+      ? "bg-slate-100 ring-1 ring-inset ring-slate-200"
+      : "hover:bg-slate-100",
+  ].join(" ");
+}

@@ -5,6 +5,21 @@ const source = (relativePath: string) =>
   readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
 describe("UI- und Mobile-UX-Regeln", () => {
+  it("grenzt die vier Planungsteam-Fokusbereiche in Desktop- und Mobilnavigation ab", () => {
+    const layout = source("client/src/components/Layout.tsx");
+    const navigation = source("client/src/lib/nav.ts");
+
+    expect(layout).toContain("navigationItemClasses(user?.role, href, active)");
+    expect(layout.match(/navigationItemClasses\(user\?\.role, href, active\)/g)).toHaveLength(2);
+    expect(navigation).toContain('role !== "user"');
+    expect(navigation).toContain('"/helfer"');
+    expect(navigation).toContain('"/kuchen"');
+    expect(navigation).toContain('"/pdf-export"');
+    expect(navigation).toContain('"/hilfe"');
+    expect(navigation).toContain("font-bold text-black opacity-100");
+    expect(navigation).toContain("font-normal text-gray-500");
+  });
+
   it("kennzeichnet und steuert PDF-Bilder veranstaltungsspezifisch", () => {
     const pdfExport = source("client/src/pages/PdfExport.tsx");
 
