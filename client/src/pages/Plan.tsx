@@ -12,7 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { AlertTriangle, Pencil, Plus, Trash2, X } from "lucide-react";
+import { AlertTriangle, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import {
   Dialog,
@@ -640,24 +640,29 @@ export default function Plan() {
       )}
 
       {areas.length > 0 && (
-        <Card className="shadow-sm">
-          <CardContent className="p-4">
-            <div className="mb-3">
-              <h2 className="font-semibold">Ansprechpartner je Bereich</h2>
-              <p className="text-sm text-muted-foreground">
+        <Card className="border-slate-200 shadow-sm">
+          <CardContent className="p-2 sm:p-2.5">
+            <div className="mb-1.5 px-0.5">
+              <h2 className="text-sm font-semibold">
+                Ansprechpartner je Bereich
+              </h2>
+              <p className="text-xs leading-tight text-muted-foreground">
                 Die Zuordnung gilt für alle Schichten des Bereichs und steht
                 außerdem als PDF-Filter zur Verfügung.
               </p>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-1.5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
               {areas.map(areaName => {
                 const selected = areaContactMap.get(areaName) ?? null;
                 return (
                   <div
                     key={areaName}
-                    className="rounded-lg border bg-muted/20 p-3"
+                    className="min-w-0 rounded-md border bg-slate-50/80 p-1.5"
                   >
-                    <Label className="mb-1.5 block truncate" title={areaName}>
+                    <Label
+                      className="mb-1 block truncate text-xs font-semibold leading-tight"
+                      title={areaName}
+                    >
                       {areaName}
                     </Label>
                     {canEditPlan ? (
@@ -671,10 +676,11 @@ export default function Plan() {
                         }
                       >
                         <SelectTrigger
+                          size="sm"
                           className={
                             selected
-                              ? "w-full bg-white dark:bg-slate-950"
-                              : "w-full border-amber-400 bg-amber-100 text-amber-950 dark:bg-amber-900 dark:text-amber-50"
+                              ? "w-full bg-white px-2 text-xs dark:bg-slate-950"
+                              : "w-full border-amber-400 bg-amber-100 px-2 text-xs text-amber-950 dark:bg-amber-900 dark:text-amber-50"
                           }
                         >
                           <SelectValue />
@@ -695,7 +701,7 @@ export default function Plan() {
                       </Select>
                     ) : (
                       <div
-                        className={`rounded-md border px-3 py-2 text-sm ${selected ? "bg-background" : "border-amber-400 bg-amber-100 text-amber-950"}`}
+                        className={`flex min-h-11 items-center rounded-md border px-2 py-1.5 text-xs md:min-h-8 ${selected ? "bg-white" : "border-amber-400 bg-amber-100 text-amber-950"}`}
                       >
                         {selected
                           ? contactName(selected)
@@ -744,87 +750,95 @@ export default function Plan() {
         </div>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:flex lg:flex-wrap">
-        <Input
-          placeholder="Suchen (Aufgabe/Bereich/Helfer) …"
-          aria-label="Einsatzplan nach Aufgabe, Bereich oder Helfer durchsuchen"
-          value={q}
-          onChange={e => setQ(e.target.value)}
-          className="w-full lg:w-60"
-        />
-        <Select value={day} onValueChange={setDay}>
-          <SelectTrigger className="w-full lg:w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="alle">Alle Tage</SelectItem>
-            {activeDays.map(d => (
-              <SelectItem key={d} value={d}>
-                {d}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={area} onValueChange={setArea}>
-          <SelectTrigger className="w-full lg:w-52">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="alle">Alle Bereiche</SelectItem>
-            {areas.map(a => (
-              <SelectItem key={a} value={a}>
-                {a}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={status}
-          onValueChange={value => updateStatusFilter(value as PlanStatusFilter)}
-        >
-          <SelectTrigger className="w-full lg:w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="alle">Alle Status</SelectItem>
-            <SelectItem value="OFFEN">OFFEN</SelectItem>
-            <SelectItem value="KNAPP">KNAPP</SelectItem>
-            <SelectItem value="OK">OK</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select
-          value={warningFilter}
-          onValueChange={value =>
-            updateWarningFilter(value as PlanWarningSelection)
-          }
-        >
-          <SelectTrigger
-            className="w-full lg:w-56"
-            aria-label="Warnungsfilter"
+      <div className="space-y-2.5">
+        <div className="relative w-full lg:max-w-xl">
+          <Search
+            className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-700"
+            aria-hidden="true"
+          />
+          <Input
+            placeholder="Suchen (Aufgabe/Bereich/Helfer) …"
+            aria-label="Einsatzplan nach Aufgabe, Bereich oder Helfer durchsuchen"
+            value={q}
+            onChange={e => setQ(e.target.value)}
+            className="h-12 w-full border-2 border-slate-400 bg-white pl-11 pr-4 text-base font-medium text-slate-950 shadow-sm placeholder:text-slate-600 focus-visible:border-blue-600 focus-visible:ring-blue-200 md:h-11"
+          />
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap">
+          <Select value={day} onValueChange={setDay}>
+            <SelectTrigger className="w-full lg:w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="alle">Alle Tage</SelectItem>
+              {activeDays.map(d => (
+                <SelectItem key={d} value={d}>
+                  {d}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={area} onValueChange={setArea}>
+            <SelectTrigger className="w-full lg:w-52">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="alle">Alle Bereiche</SelectItem>
+              {areas.map(a => (
+                <SelectItem key={a} value={a}>
+                  {a}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={status}
+            onValueChange={value => updateStatusFilter(value as PlanStatusFilter)}
           >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="alle">Alle Warnungen</SelectItem>
-            <SelectItem value="konflikte">
-              Nur Doppelbelegungen
-            </SelectItem>
-            <SelectItem value="ausfaelle">Nur Ausfälle</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={apFilter} onValueChange={setApFilter}>
-          <SelectTrigger className="w-full lg:w-52">
-            <SelectValue placeholder="Ansprechpartner" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="alle">Alle Ansprechpartner</SelectItem>
-            {contacts.map(c => (
-              <SelectItem key={c.id} value={String(c.id)}>
-                {c.name}
+            <SelectTrigger className="w-full lg:w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="alle">Alle Status</SelectItem>
+              <SelectItem value="OFFEN">OFFEN</SelectItem>
+              <SelectItem value="KNAPP">KNAPP</SelectItem>
+              <SelectItem value="OK">OK</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={warningFilter}
+            onValueChange={value =>
+              updateWarningFilter(value as PlanWarningSelection)
+            }
+          >
+            <SelectTrigger
+              className="w-full lg:w-56"
+              aria-label="Warnungsfilter"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="alle">Alle Warnungen</SelectItem>
+              <SelectItem value="konflikte">
+                Nur Doppelbelegungen
               </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+              <SelectItem value="ausfaelle">Nur Ausfälle</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={apFilter} onValueChange={setApFilter}>
+            <SelectTrigger className="w-full lg:w-52">
+              <SelectValue placeholder="Ansprechpartner" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="alle">Alle Ansprechpartner</SelectItem>
+              {contacts.map(c => (
+                <SelectItem key={c.id} value={String(c.id)}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="space-y-3 md:hidden">

@@ -225,6 +225,22 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain(
       "Einsatzplan nach Aufgabe, Bereich oder Helfer durchsuchen"
     );
+    expect(plan).toContain("<Search");
+    expect(plan).toContain("h-12 w-full border-2 border-slate-400 bg-white");
+    expect(plan).toContain("placeholder:text-slate-600");
+    expect(plan).toContain('className="space-y-2.5"');
+  });
+
+  it("verdichtet die Bereichsansprechpartner auf bis zu fünf Desktopspalten", () => {
+    const plan = source("client/src/pages/Plan.tsx");
+
+    expect(plan).toContain('className="p-2 sm:p-2.5"');
+    expect(plan).toContain(
+      "grid gap-1.5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
+    );
+    expect(plan).toContain("rounded-md border bg-slate-50/80 p-1.5");
+    expect(plan).toMatch(/<SelectTrigger\s+size="sm"\s+className=/);
+    expect(plan).toContain("w-full bg-white px-2 text-xs");
   });
 
   it("zeigt beim Ansprechpartnerimport die Prüfung aller Excel-Zeilen", () => {
