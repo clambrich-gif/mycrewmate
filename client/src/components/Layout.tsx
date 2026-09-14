@@ -47,8 +47,9 @@ import {
   Settings2,
   ShieldCheck,
   Trash2,
+  TriangleAlert,
 } from "lucide-react";
-import { FormEvent, lazy, Suspense, useEffect, useState } from "react";
+import { FormEvent, lazy, Suspense, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
 
@@ -115,6 +116,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     id: number;
     name: string;
   } | null>(null);
+  const loginLockAlertRef = useRef<HTMLDivElement>(null);
   const utils = trpc.useUtils();
 
   const passwordStatus = trpc.auth.passwordStatus.useQuery(undefined, {
@@ -222,6 +224,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const loginAvailable = Boolean(loginEnabled && !planningTeamLocked);
   const loginPending = passwordLogin.isPending || adminPasswordLogin.isPending;
 
+  useEffect(() => {
+    if (!planningTeamLocked) return;
+    loginLockAlertRef.current?.focus({ preventScroll: true });
+  }, [planningTeamLocked]);
+
   if (loading) {
     return (
       <div className="min-h-screen grid place-items-center text-muted-foreground">
@@ -299,12 +306,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
               value={password}
               onChange={event => setPassword(event.target.value)}
               disabled={!loginAvailable || loginPending}
+              aria-describedby={
+                planningTeamLocked ? "planning-team-lock-message" : undefined
+              }
             />
             <Button
               className="w-full"
               size="lg"
               type="submit"
               disabled={!password || !loginAvailable || loginPending}
+              aria-describedby={
+                planningTeamLocked ? "planning-team-lock-message" : undefined
+              }
             >
               {loginMode === "admin" ? (
                 <ShieldCheck className="mr-2 h-4 w-4" />
@@ -323,13 +336,30 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </p>
             )}
             {planningTeamLocked && (
-              <p
-                className="rounded-md border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-800"
+              <div
+                ref={loginLockAlertRef}
+                id="planning-team-lock-message"
+                className="login-lock-alert flex items-start gap-2.5 rounded-lg border border-red-300 bg-red-50 p-3 text-red-900 shadow-sm"
                 role="alert"
+                aria-live="assertive"
+                aria-atomic="true"
+                tabIndex={-1}
               >
-                Der Zugang für das Planungsteam ist gesperrt. Ein Administrator
-                muss die Sperre im Bereich „Zugangsschutz“ aufheben.
-              </p>
+                <TriangleAlert
+                  className="mt-0.5 h-5 w-5 shrink-0 text-red-700"
+                  aria-hidden="true"
+                />
+                <div>
+                  <p className="text-sm font-bold">
+                    Zugang für das Planungsteam gesperrt
+                  </p>
+                  <p className="mt-1 text-sm leading-relaxed text-red-800">
+                    Bitte kontaktieren Sie einen Administrator. Nur ein
+                    Administrator kann die Sperre im Bereich „Zugangsschutz“
+                    wieder aufheben.
+                  </p>
+                </div>
+              </div>
             )}
           </form>
 

@@ -46,6 +46,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
   it("zeigt und entsperrt den dauerhaften Planungsteam-Login ausschließlich im Adminbereich", () => {
     const security = source("client/src/pages/Security.tsx");
     const layout = source("client/src/components/Layout.tsx");
+    const css = source("client/src/index.css");
 
     expect(security).toContain("Sperrstatus Planungsteam");
     expect(security).toContain("status?.planningTeamLocked");
@@ -53,8 +54,19 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(security).toContain("Sperre für Planungsteam aufheben");
     expect(security).toContain('user?.role !== "admin"');
     expect(layout).toContain("passwordStatus.data?.planningTeamLocked");
-    expect(layout).toContain("Ein Administrator");
     expect(layout).toContain("Admin-Freigabe");
+    expect(layout).toContain("Zugang für das Planungsteam gesperrt");
+    expect(layout).toContain("Bitte kontaktieren Sie einen Administrator.");
+    expect(layout).toContain("login-lock-alert");
+    expect(layout).toContain('aria-live="assertive"');
+    expect(layout).toContain("loginLockAlertRef.current?.focus");
+    expect(layout).toContain('id="planning-team-lock-message"');
+    expect(layout).toContain("tabIndex={-1}");
+    expect(layout.match(/planning-team-lock-message/g)).toHaveLength(3);
+    expect(css).toContain("@keyframes login-lock-shake");
+    expect(css).toContain("animation: login-lock-shake 280ms");
+    expect(css).toContain("@media (prefers-reduced-motion: reduce)");
+    expect(css).toContain(".login-lock-alert { animation: none; }");
   });
 
   it("verdichtet nur die Desktop-Helfertabelle und kürzt Vielleicht geräteübergreifend auf ein Fragezeichen", () => {
