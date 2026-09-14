@@ -660,4 +660,21 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(passwordDialog).toContain('name="admin-confirmation-password"');
     expect(passwordDialog).toContain('autoComplete="off"');
   });
+
+  it("nutzt für die Einsatzplantabelle die volle Desktopbreite mit flexibler Helferchipspalte", () => {
+    const layout = source("client/src/components/Layout.tsx");
+    const plan = source("client/src/pages/Plan.tsx");
+
+    expect(layout).toContain('location === "/helfer" || location === "/einsatzplan"');
+    expect(layout).toContain('"w-full p-3 sm:p-4 xl:p-6"');
+    expect(plan).toContain('<Card className="hidden w-full shadow-sm md:block">');
+    expect(plan).toContain('<CardContent className="w-full overflow-x-auto p-0">');
+    expect(plan).toContain(
+      '<table className="w-full table-auto text-sm md:min-w-[1080px] xl:min-w-0">'
+    );
+    expect(plan).not.toContain('min-w-[1500px]');
+    expect(plan).toContain('className="min-w-[400px] p-3"');
+    expect(plan).toContain('className="min-w-[400px] p-3 align-top"');
+    expect(plan).toContain('className="flex flex-wrap gap-1.5"');
+  });
 });

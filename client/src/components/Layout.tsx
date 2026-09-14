@@ -953,7 +953,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <main className="min-w-0 flex-1 lg:h-screen lg:overflow-y-auto">
         <div
           className={
-            location === "/helfer"
+            location === "/helfer" || location === "/einsatzplan"
               ? "w-full p-3 sm:p-4 xl:p-6"
               : "w-full max-w-[1400px] p-3 sm:p-4 lg:p-6"
           }

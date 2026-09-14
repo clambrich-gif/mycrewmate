@@ -1017,9 +1017,9 @@ export default function Plan() {
         )}
       </div>
 
-      <Card className="hidden shadow-sm md:block">
-        <CardContent className="p-0 overflow-x-auto">
-          <table className="w-full text-sm min-w-[1500px]">
+      <Card className="hidden w-full shadow-sm md:block">
+        <CardContent className="w-full overflow-x-auto p-0">
+          <table className="w-full table-auto text-sm md:min-w-[1080px] xl:min-w-0">
             <thead className="bg-muted/60 sticky top-0">
               <tr className="text-left">
                 <th className="p-3">Tag</th>
@@ -1033,7 +1033,9 @@ export default function Plan() {
                 <th className="p-3">Status</th>
                 <th className="p-3">Doppel</th>
                 <th className="p-3">Ausfall</th>
-                <th className="p-3">Eingeteilte Helfer (Anzahl = Bedarf)</th>
+                <th className="min-w-[400px] p-3">
+                  Eingeteilte Helfer (Anzahl = Bedarf)
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -1121,7 +1123,9 @@ export default function Plan() {
                         ""
                       )}
                     </td>
-                    <td className="p-3">{renderShiftSlots(evalE)}</td>
+                    <td className="min-w-[400px] p-3 align-top">
+                      {renderShiftSlots(evalE)}
+                    </td>
                   </tr>
                 );
               })}
