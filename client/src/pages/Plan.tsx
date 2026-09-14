@@ -298,6 +298,7 @@ export default function Plan() {
   const [area, setArea] = useState<string>("alle");
   const [apFilter, setApFilter] = useState<string>("alle");
   const [q, setQ] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [areaContactsExpanded, setAreaContactsExpanded] = useState(false);
   const [deleteCandidate, setDeleteCandidate] = useState<DropdownShift | null>(
     null
@@ -828,12 +829,27 @@ export default function Plan() {
             aria-hidden="true"
           />
           <Input
+            ref={searchInputRef}
             placeholder="Suchen (Aufgabe/Bereich/Helfer) …"
             aria-label="Einsatzplan nach Aufgabe, Bereich oder Helfer durchsuchen"
             value={q}
             onChange={e => setQ(e.target.value)}
-            className="h-12 w-full border-2 border-slate-400 bg-white pl-11 pr-4 text-base font-medium text-slate-950 shadow-sm placeholder:text-slate-600 focus-visible:border-blue-600 focus-visible:ring-blue-200 md:h-11"
+            className="h-12 w-full border-2 border-slate-400 bg-white pl-11 pr-12 text-base font-medium text-slate-950 shadow-sm placeholder:text-slate-600 focus-visible:border-blue-600 focus-visible:ring-blue-200 md:h-11 md:pr-10"
           />
+          {q && (
+            <button
+              type="button"
+              aria-label="Suche löschen"
+              title="Suche löschen"
+              className="absolute right-0.5 top-1/2 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 md:right-1 md:h-8 md:w-8"
+              onClick={() => {
+                setQ("");
+                searchInputRef.current?.focus();
+              }}
+            >
+              <X className="h-5 w-5" aria-hidden="true" />
+            </button>
+          )}
         </div>
         <div className="grid gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap">
           <Select value={day} onValueChange={setDay}>

@@ -236,6 +236,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("<HighlightedText text={shift.task} query={q} />");
     expect(plan).toContain("<HighlightedText text={s.area} query={q} />");
     expect(plan).toContain("searchQuery={q}");
+    expect(plan).toContain('aria-label="Suche löschen"');
+    expect(plan).toContain('setQ("")');
+    expect(plan).toContain("searchInputRef.current?.focus()");
+    expect(plan).toContain("h-11 w-11");
   });
 
   it("verdichtet die Bereichsansprechpartner auf bis zu fünf Desktopspalten", () => {
@@ -251,6 +255,24 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain('aria-expanded={areaContactsExpanded}');
     expect(plan).toContain("xl:hidden");
     expect(plan).toContain("xl:grid xl:grid-cols-4 2xl:grid-cols-5");
+  });
+
+  it("warnt Admins vor dem Laden eines datierten Projektstands", () => {
+    const storage = source(
+      "client/src/components/ProjectStorageControls.tsx"
+    );
+
+    expect(storage).toContain("formatBackupTimestamp");
+    expect(storage).toContain('day: "2-digit"');
+    expect(storage).toContain('month: "2-digit"');
+    expect(storage).toContain(
+      "preview.data?.metadata.exportedAt"
+    );
+    expect(storage).toContain("Speicherstand vom ${formatBackupTimestamp");
+    expect(storage).toContain(
+      "alle Änderungen und Online-Eingaben überschrieben"
+    );
+    expect(storage).toContain('confirmLabel="Laden"');
   });
 
   it("zeigt beim Ansprechpartnerimport die Prüfung aller Excel-Zeilen", () => {

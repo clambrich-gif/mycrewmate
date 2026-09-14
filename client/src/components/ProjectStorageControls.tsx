@@ -30,6 +30,22 @@ const readBase64 = (file: File) =>
     reader.readAsDataURL(file);
   });
 
+const formatBackupTimestamp = (value: string | undefined) => {
+  if (!value) return "unbekanntem Zeitpunkt";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "unbekanntem Zeitpunkt";
+  const day = new Intl.DateTimeFormat("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date);
+  const time = new Intl.DateTimeFormat("de-DE", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+  return `${day} um ${time} Uhr`;
+};
+
 export function ProjectStorageControls({
   onAction,
 }: {
@@ -250,9 +266,9 @@ export function ProjectStorageControls({
       <AdminPasswordDialog
         open={passwordOpen}
         onOpenChange={setPasswordOpen}
-        title="Projektstand verbindlich laden"
-        description="Alle aktuellen Planungsdaten dieser Veranstaltung werden zurückgesetzt und vollständig aus der geprüften Projektdatei neu aufgebaut. Der Vorgang wird protokolliert."
-        confirmLabel="Projektstand laden"
+        title="Projektstand laden"
+        description={`Speicherstand vom ${formatBackupTimestamp(preview.data?.metadata.exportedAt)}. Achtung: Durch das Laden werden alle Änderungen und Online-Eingaben überschrieben, die seit dieser Speicherung vorgenommen wurden.`}
+        confirmLabel="Laden"
         destructive={false}
         busy={load.isPending}
         onConfirm={adminPassword => {
