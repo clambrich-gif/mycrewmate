@@ -18,7 +18,7 @@ describe("Passwortschutz", () => {
     await expect(verifyPassword("falsch", hash)).resolves.toBe(false);
   });
 
-  it("sperrt nach fünf Fehlversuchen und kann nach Erfolg zurückgesetzt werden", () => {
+  it("sperrt den temporären Admin-Schutz nach fünf Fehlversuchen und kann ihn zurücksetzen", () => {
     const key = "test-client-password-lock";
     clearPasswordLoginFailures(key);
     for (let index = 0; index < 4; index++) recordFailedPasswordLogin(key);

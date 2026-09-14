@@ -9,6 +9,7 @@ import {
   timestamp,
   uniqueIndex,
   varchar,
+  boolean,
 } from "drizzle-orm/mysql-core";
 import { WEEKDAYS, type Weekday } from "../shared/weekdays";
 
@@ -248,6 +249,10 @@ export const securitySettings = mysqlTable("security_settings", {
   id: int("id").primaryKey().default(1),
   passwordHash: varchar("passwordHash", { length: 255 }),
   adminPasswordHash: varchar("adminPasswordHash", { length: 255 }),
+  planningTeamFailedAttempts: int("planningTeamFailedAttempts")
+    .default(0)
+    .notNull(),
+  planningTeamLocked: boolean("planningTeamLocked").default(false).notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 

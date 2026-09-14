@@ -33,6 +33,28 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(presence).toContain("Online:");
     expect(presence).toContain("Planer");
     expect(presence).toContain("Admins");
+    expect(presence).toContain("<Popover>");
+    expect(presence).toContain("<PopoverTrigger asChild>");
+    expect(presence).toContain("Wer wird als online gezählt?");
+    expect(presence).toContain("innerhalb der letzten");
+    expect(presence).toContain("10 Minuten");
+    expect(presence).toContain("countsChanged");
+    expect(presence).toContain("scale-[1.04]");
+    expect(presence).toContain("motion-reduce:scale-100");
+  });
+
+  it("zeigt und entsperrt den dauerhaften Planungsteam-Login ausschließlich im Adminbereich", () => {
+    const security = source("client/src/pages/Security.tsx");
+    const layout = source("client/src/components/Layout.tsx");
+
+    expect(security).toContain("Sperrstatus Planungsteam");
+    expect(security).toContain("status?.planningTeamLocked");
+    expect(security).toContain("trpc.auth.unlockPlanningTeamLock.useMutation");
+    expect(security).toContain("Sperre für Planungsteam aufheben");
+    expect(security).toContain('user?.role !== "admin"');
+    expect(layout).toContain("passwordStatus.data?.planningTeamLocked");
+    expect(layout).toContain("Ein Administrator");
+    expect(layout).toContain("Admin-Freigabe");
   });
 
   it("verdichtet nur die Desktop-Helfertabelle und kürzt Vielleicht geräteübergreifend auf ein Fragezeichen", () => {

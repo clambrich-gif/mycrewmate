@@ -4,8 +4,9 @@ import type { Request } from "express";
 export const SHARED_PASSWORD_OPEN_ID = "shared-password-user";
 export const ADMIN_PASSWORD_OPEN_ID = "shared-password-admin";
 export const PASSWORD_SESSION_MS = 1000 * 60 * 60 * 12;
+export const PLANNING_TEAM_MAX_ATTEMPTS = 5;
 
-const MAX_ATTEMPTS = 5;
+const ADMIN_MAX_ATTEMPTS = 5;
 const WINDOW_MS = 15 * 60 * 1000;
 const attempts = new Map<string, { count: number; firstAttemptAt: number }>();
 
@@ -26,7 +27,7 @@ function currentEntry(key: string) {
 }
 
 export function isPasswordLoginBlocked(key: string) {
-  return (currentEntry(key)?.count ?? 0) >= MAX_ATTEMPTS;
+  return (currentEntry(key)?.count ?? 0) >= ADMIN_MAX_ATTEMPTS;
 }
 
 export function recordFailedPasswordLogin(key: string) {

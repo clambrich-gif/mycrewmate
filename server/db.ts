@@ -483,6 +483,89 @@ export async function getSecuritySettings() {
   return result[0];
 }
 
+export type PlanningTeamLoginProtection = {
+  failedAttempts: number;
+  locked: boolean;
+};
+
+export async function getPlanningTeamLoginProtection(): Promise<PlanningTeamLoginProtection> {
+  const settings = await getSecuritySettings();
+  return {
+    failedAttempts: settings?.planningTeamFailedAttempts ?? 0,
+    locked: settings?.planningTeamLocked ?? false,
+  };
+}
+
+export async function recordFailedPlanningTeamPasswordLogin(
+  maxAttempts: number
+): Promise<PlanningTeamLoginProtection> {
+  const database = (await getDb()) as DB;
+  return database.transaction(async tx => {
+    await tx
+      .insert(securitySettings)
+      .values({ id: 1 })
+      .onDuplicateKeyUpdate({ set: { id: 1 } });
+    const [settings] = await tx
+      .select({
+        failedAttempts: securitySettings.planningTeamFailedAttempts,
+        locked: securitySettings.planningTeamLocked,
+      })
+      .from(securitySettings)
+      .where(eq(securitySettings.id, 1))
+      .limit(1)
+      .for("update");
+    if (settings.locked) return settings;
+
+    const failedAttempts = Math.min(
+      settings.failedAttempts + 1,
+      maxAttempts
+    );
+    const locked = failedAttempts >= maxAttempts;
+    await tx
+      .update(securitySettings)
+      .set({ planningTeamFailedAttempts: failedAttempts, planningTeamLocked: locked })
+      .where(eq(securitySettings.id, 1));
+    return { failedAttempts, locked };
+  });
+}
+
+export async function clearPlanningTeamLoginFailuresIfUnlocked() {
+  const database = (await getDb()) as DB;
+  return database.transaction(async tx => {
+    await tx
+      .insert(securitySettings)
+      .values({ id: 1 })
+      .onDuplicateKeyUpdate({ set: { id: 1 } });
+    const [settings] = await tx
+      .select({ locked: securitySettings.planningTeamLocked })
+      .from(securitySettings)
+      .where(eq(securitySettings.id, 1))
+      .limit(1)
+      .for("update");
+    if (settings.locked) return false;
+    await tx
+      .update(securitySettings)
+      .set({ planningTeamFailedAttempts: 0 })
+      .where(eq(securitySettings.id, 1));
+    return true;
+  });
+}
+
+export async function unlockPlanningTeamLogin() {
+  const database = (await getDb()) as DB;
+  return database.transaction(async tx => {
+    await tx
+      .insert(securitySettings)
+      .values({ id: 1 })
+      .onDuplicateKeyUpdate({ set: { id: 1 } });
+    await tx
+      .update(securitySettings)
+      .set({ planningTeamFailedAttempts: 0, planningTeamLocked: false })
+      .where(eq(securitySettings.id, 1));
+    return { failedAttempts: 0, locked: false } as const;
+  });
+}
+
 export async function createContact(v: {
   name: string;
   phone?: string;

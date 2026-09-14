@@ -6,7 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useEventYear } from "@/contexts/YearContext";
 import { trpc } from "@/lib/trpc";
-import { KeyRound, ShieldCheck, UserCog } from "lucide-react";
+import {
+  KeyRound,
+  LoaderCircle,
+  LockKeyhole,
+  ShieldCheck,
+  Unlock,
+  UserCog,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -81,7 +88,11 @@ export default function Security() {
   const { user } = useAuth();
   const { year } = useEventYear();
   const utils = trpc.useUtils();
-  const { data: status } = trpc.auth.passwordStatus.useQuery();
+  const { data: status, isLoading: statusLoading } =
+    trpc.auth.passwordStatus.useQuery(undefined, {
+      refetchInterval: 30_000,
+      refetchIntervalInBackground: false,
+    });
   const setPassword = trpc.auth.setPassword.useMutation({
     onSuccess: async () => {
       await utils.auth.passwordStatus.invalidate();
@@ -93,6 +104,13 @@ export default function Security() {
     onSuccess: async () => {
       await utils.auth.passwordStatus.invalidate();
       toast.success("Administratorpasswort wurde geändert");
+    },
+    onError: error => toast.error(error.message),
+  });
+  const unlockPlanningTeam = trpc.auth.unlockPlanningTeamLock.useMutation({
+    onSuccess: async () => {
+      await utils.auth.passwordStatus.invalidate();
+      toast.success("Sperre für das Planungsteam wurde aufgehoben");
     },
     onError: error => toast.error(error.message),
   });
@@ -134,6 +152,76 @@ export default function Security() {
         />
       </div>
 
+      <Card
+        className={
+          statusLoading
+            ? "border-slate-200 bg-slate-50 shadow-sm"
+            : status?.planningTeamLocked
+            ? "border-red-300 bg-red-50/70 shadow-sm"
+            : "border-emerald-200 bg-emerald-50/60 shadow-sm"
+        }
+      >
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <LockKeyhole
+              className={
+                statusLoading
+                  ? "h-5 w-5 text-slate-500"
+                  : status?.planningTeamLocked
+                  ? "h-5 w-5 text-red-700"
+                  : "h-5 w-5 text-emerald-700"
+              }
+            />
+            Sperrstatus Planungsteam
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div aria-live="polite">
+            {statusLoading ? (
+              <p className="font-semibold text-slate-700">
+                Sperrstatus wird geladen …
+              </p>
+            ) : status?.planningTeamLocked ? (
+              <p className="font-semibold text-red-800">
+                Der Passwortzugang für das Planungsteam ist derzeit gesperrt.
+              </p>
+            ) : (
+              <p className="font-semibold text-emerald-800">
+                Der Passwortzugang für das Planungsteam ist nicht gesperrt.
+              </p>
+            )}
+            <p className="mt-1 text-sm text-slate-600">
+              Nach fünf falschen Eingaben bleibt dieser Zugang gesperrt, bis ein
+              Administrator ihn hier wieder freigibt.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant={status?.planningTeamLocked ? "destructive" : "outline"}
+            className={
+              status?.planningTeamLocked
+                ? "border border-red-700 !bg-red-600 !text-white shadow-sm hover:!bg-red-700 disabled:!border-red-300 disabled:!bg-red-100 disabled:!text-red-800 disabled:opacity-100"
+                : "bg-white text-slate-700"
+            }
+            disabled={
+              statusLoading ||
+              !status?.planningTeamLocked ||
+              unlockPlanningTeam.isPending
+            }
+            onClick={() => unlockPlanningTeam.mutate()}
+          >
+            {unlockPlanningTeam.isPending ? (
+              <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Unlock className="mr-2 h-4 w-4" />
+            )}
+            {unlockPlanningTeam.isPending
+              ? "Sperre wird aufgehoben …"
+              : "Sperre für Planungsteam aufheben"}
+          </Button>
+        </CardContent>
+      </Card>
+
       <Card className="border-destructive/30 shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base text-destructive">
@@ -154,7 +242,8 @@ export default function Security() {
       <div className="rounded-lg border bg-muted/40 p-4 text-sm text-muted-foreground">
         <ShieldCheck className="mr-2 inline h-4 w-4 text-primary" />
         Beide Passwörter werden ausschließlich als bcrypt-Hash gespeichert. Nach
-        fünf Fehlversuchen wird der jeweilige Login 15 Minuten gesperrt;
+        fünf Fehlversuchen bleibt der Planungsteam-Zugang bis zur Admin-Freigabe
+        gesperrt. Die Administrator-Sperre läuft weiterhin nach 15 Minuten ab;
         Sitzungen gelten zwölf Stunden. Die Manus-Anmeldung des
         Hauptadministrators bleibt erhalten.
       </div>

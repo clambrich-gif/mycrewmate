@@ -1,0 +1,2 @@
+ALTER TABLE `security_settings` ADD `planningTeamFailedAttempts` int DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE `security_settings` ADD `planningTeamLocked` boolean DEFAULT false NOT NULL;

@@ -140,7 +140,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
   };
   const passwordLogin = trpc.auth.passwordLogin.useMutation({
     onSuccess: finishLogin,
-    onError: error => toast.error(error.message),
+    onError: async error => {
+      toast.error(error.message);
+      if (error.data?.code === "TOO_MANY_REQUESTS") {
+        await utils.auth.passwordStatus.invalidate();
+      }
+    },
   });
   const adminPasswordLogin = trpc.auth.adminPasswordLogin.useMutation({
     onSuccess: finishLogin,
@@ -211,6 +216,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
     loginMode === "admin"
       ? passwordStatus.data?.adminEnabled
       : passwordStatus.data?.enabled;
+  const planningTeamLocked = Boolean(
+    loginMode === "user" && passwordStatus.data?.planningTeamLocked
+  );
+  const loginAvailable = Boolean(loginEnabled && !planningTeamLocked);
   const loginPending = passwordLogin.isPending || adminPasswordLogin.isPending;
 
   if (loading) {
@@ -289,13 +298,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
               placeholder="Passwort eingeben"
               value={password}
               onChange={event => setPassword(event.target.value)}
-              disabled={!loginEnabled || loginPending}
+              disabled={!loginAvailable || loginPending}
             />
             <Button
               className="w-full"
               size="lg"
               type="submit"
-              disabled={!password || !loginEnabled || loginPending}
+              disabled={!password || !loginAvailable || loginPending}
             >
               {loginMode === "admin" ? (
                 <ShieldCheck className="mr-2 h-4 w-4" />
@@ -311,6 +320,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
             {passwordStatus.data && !loginEnabled && (
               <p className="text-xs text-destructive">
                 Dieser Passwortzugang ist noch nicht eingerichtet.
+              </p>
+            )}
+            {planningTeamLocked && (
+              <p
+                className="rounded-md border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-800"
+                role="alert"
+              >
+                Der Zugang für das Planungsteam ist gesperrt. Ein Administrator
+                muss die Sperre im Bereich „Zugangsschutz“ aufheben.
               </p>
             )}
           </form>
@@ -329,8 +347,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
             Mit Manus anmelden
           </Button>
           <p className="text-xs text-muted-foreground mt-4 text-center">
-            Nach fünf Fehlversuchen wird der jeweilige Zugang für 15 Minuten
-            gesperrt.
+            Nach fünf Fehlversuchen bleibt der Planungsteam-Zugang bis zur
+            Admin-Freigabe gesperrt. Die Administrator-Sperre läuft weiterhin
+            nach 15 Minuten ab.
           </p>
         </div>
       </div>
