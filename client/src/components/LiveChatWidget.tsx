@@ -539,7 +539,7 @@ export function LiveChatWidget({
                 variant="ghost"
                 size="icon"
                 onClick={() => setClearDialogOpen(true)}
-                className="h-8 w-8 border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:text-rose-800"
+                className="h-8 w-8 text-slate-500 hover:bg-red-50 hover:text-red-600"
                 title="Verlauf für alle leeren (nur Admin)"
                 aria-label="Verlauf leeren"
               >

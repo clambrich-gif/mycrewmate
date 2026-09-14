@@ -9,6 +9,7 @@ const dbMocks = vi.hoisted(() => ({
   listAssignments: vi.fn(),
   assignHelper: vi.fn(),
   unassignHelper: vi.fn(),
+  clearAssignments: vi.fn(),
   createShift: vi.fn(),
   updateShift: vi.fn(),
   deleteShift: vi.fn(),
@@ -524,25 +525,19 @@ describe("Planungs-API", () => {
     });
   });
 
-  it("leert Schichtbelegungen nur mit Administratorpasswort", async () => {
-    dbMocks.resetArea.mockResolvedValue(undefined);
+  it("trägt Helfer aus Schichten nur mit Administratorpasswort aus", async () => {
+    dbMocks.clearAssignments.mockResolvedValue({ cleared: 3 });
     const caller = appRouter.createCaller(ctx);
 
     await expect(
-      caller.reset.area({ area: "assignments", adminPassword: "falsch" })
+      caller.plan.clearAssignments({ adminPassword: "falsch" })
     ).rejects.toThrow("Administratorpasswort");
-    expect(dbMocks.resetArea).not.toHaveBeenCalled();
+    expect(dbMocks.clearAssignments).not.toHaveBeenCalled();
 
     await expect(
-      caller.reset.area({
-        area: "assignments",
-        adminPassword: ADMIN_PASSWORD,
-      })
-    ).resolves.toEqual({ success: true });
-    expect(dbMocks.resetArea).toHaveBeenCalledWith(
-      "assignments",
-      expect.objectContaining({ userId: 1, role: "admin" })
-    );
+      caller.plan.clearAssignments({ adminPassword: ADMIN_PASSWORD })
+    ).resolves.toEqual({ cleared: 3 });
+    expect(dbMocks.clearAssignments).toHaveBeenCalledTimes(1);
   });
 
   it("erlaubt beiden Rollen JSON-Speichern und den reinen Excel-Export", async () => {

@@ -411,37 +411,6 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("xl:grid xl:grid-cols-4 2xl:grid-cols-5");
   });
 
-  it("platziert den Belegungsreset zwischen Planübernahme und Einsatzplanreset und kennzeichnet Aktionsarten semantisch", () => {
-    const plan = source("client/src/pages/Plan.tsx");
-    const reset = source("client/src/components/ResetAreaButton.tsx");
-    const importButton = source(
-      "client/src/components/ModuleExcelImportButton.tsx"
-    );
-    const storage = source("client/src/components/ProjectStorageControls.tsx");
-    const pdfExport = source("client/src/pages/PdfExport.tsx");
-
-    const copyPlanIndex = plan.indexOf("<CopyPreviousPlanButton />");
-    const clearAssignmentsIndex = plan.indexOf('area="assignments"');
-    const resetPlanIndex = plan.indexOf('area="shifts"');
-    expect(copyPlanIndex).toBeGreaterThan(-1);
-    expect(clearAssignmentsIndex).toBeGreaterThan(copyPlanIndex);
-    expect(resetPlanIndex).toBeGreaterThan(clearAssignmentsIndex);
-    expect(plan).toContain('buttonLabel="Belegungen leeren"');
-    expect(reset).toContain('"assignments"');
-    expect(reset).toContain(
-      "border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
-    );
-    expect(importButton).toContain(
-      "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
-    );
-    expect(storage).toContain(
-      "border-emerald-200 bg-emerald-50 px-2 text-emerald-800"
-    );
-    expect(pdfExport).toContain(
-      "border-emerald-200 bg-emerald-50 text-emerald-800 file:text-emerald-800"
-    );
-  });
-
   it("warnt Admins vor dem Laden eines datierten Projektstands", () => {
     const storage = source(
       "client/src/components/ProjectStorageControls.tsx"
@@ -586,7 +555,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("{deleteCandidate?.task}");
     expect(plan).toContain("zugeordneten Helferplätze");
     expect(plan).toContain("Abbrechen");
-    expect(plan).toContain('!bg-rose-50 !text-rose-700');
+    expect(plan).toContain('!bg-red-600 !text-white');
     expect(plan).toContain("dark:!bg-white dark:!text-slate-950");
     expect(alertDialog).toContain("bg-black/40 backdrop-blur-sm");
   });
@@ -662,5 +631,25 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain("min-w-0 break-words");
     expect(dashboard).toContain("whitespace-normal");
     expect(dashboard).toContain("flex-wrap");
+  });
+
+  it("leert im Einsatzplan ausschließlich Helferzuweisungen und lässt Aktionsfarben unverändert", () => {
+    const plan = source("client/src/pages/Plan.tsx");
+    const clearButton = source(
+      "client/src/components/ClearPlanAssignmentsButton.tsx"
+    );
+    const resetButton = source("client/src/components/ResetAreaButton.tsx");
+
+    expect(plan.indexOf("<CopyPreviousPlanButton />")).toBeLessThan(
+      plan.indexOf("<ClearPlanAssignmentsButton />")
+    );
+    expect(plan.indexOf("<ClearPlanAssignmentsButton />")).toBeLessThan(
+      plan.indexOf('<ResetAreaButton area="shifts"')
+    );
+    expect(clearButton).toContain("trpc.plan.clearAssignments.useMutation");
+    expect(clearButton).toContain("Die Schichten, Bereiche, Aufgaben");
+    expect(clearButton).toContain("Bereichsansprechpartner bleiben vollständig erhalten");
+    expect(clearButton).toContain("border-destructive/40 text-destructive");
+    expect(resetButton).not.toContain('"assignments"');
   });
 });

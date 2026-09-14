@@ -200,7 +200,6 @@ const safeExportName = (value: string) =>
 const resetAreaInput = z.enum([
   "contacts",
   "helpers",
-  "assignments",
   "shifts",
   "prep",
   "post",
@@ -728,6 +727,16 @@ export const appRouter = router({
       ]);
       return evaluateShifts(shifts, assignments, helpers);
     }),
+    clearAssignments: adminProcedure
+      .input(
+        z.object({
+          adminPassword: z.string().min(1).max(200),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await requireAdminPassword(input.adminPassword, ctx);
+        return db.clearAssignments();
+      }),
     areaContacts: protectedProcedure.query(() => db.listShiftAreaContacts()),
     setAreaContact: adminProcedure
       .input(

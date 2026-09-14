@@ -9,7 +9,6 @@ import { toast } from "sonner";
 type ResetArea =
   | "contacts"
   | "helpers"
-  | "assignments"
   | "shifts"
   | "prep"
   | "post"
@@ -25,13 +24,11 @@ export function ResetAreaButton({
   label,
   onReset,
   compact = false,
-  buttonLabel,
 }: {
   area: ResetArea;
   label: string;
   onReset?: () => void;
   compact?: boolean;
-  buttonLabel?: string;
 }) {
   const { user } = useAuth();
   const utils = trpc.useUtils();
@@ -52,11 +49,11 @@ export function ResetAreaButton({
       <Button
         variant="outline"
         size={compact ? "sm" : "default"}
-        className="border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:text-rose-800"
+        className="border-destructive/40 text-destructive hover:bg-destructive/10"
         onClick={() => setOpen(true)}
       >
         <RotateCcw className="mr-2 h-4 w-4" />
-        {buttonLabel ?? (compact ? "Zurücksetzen" : `${label} zurücksetzen`)}
+        {compact ? "Zurücksetzen" : `${label} zurücksetzen`}
       </Button>
       <AdminPasswordDialog
         open={open}

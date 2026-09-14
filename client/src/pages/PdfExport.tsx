@@ -501,7 +501,6 @@ export default function PdfExport() {
                       id="pdf-logo"
                       type="file"
                       accept="image/png,image/jpeg"
-                      className="border-emerald-200 bg-emerald-50 text-emerald-800 file:text-emerald-800"
                       disabled={
                         uploadLogo.isPending ||
                         clearLogo.isPending ||
@@ -527,7 +526,7 @@ export default function PdfExport() {
                       <Button
                         type="button"
                         variant="outline"
-                        className="border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:text-rose-800"
+                        className="border-red-200 bg-white text-red-700 hover:bg-red-50 hover:text-red-800"
                         disabled={
                           uploadLogo.isPending ||
                           clearLogo.isPending ||
@@ -679,7 +678,6 @@ export default function PdfExport() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:text-rose-800"
                       title="Spalte entfernen"
                       onClick={() =>
                         updateField(
@@ -690,7 +688,7 @@ export default function PdfExport() {
                         )
                       }
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </div>
                 ))}

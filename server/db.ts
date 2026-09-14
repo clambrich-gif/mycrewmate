@@ -1834,14 +1834,43 @@ export async function unassignHelper(id: number) {
 }
 export async function clearAssignments() {
   const db = (await getDb()) as DB;
-  return db
-    .delete(assignments)
-    .where(
-      inArray(
-        assignments.shiftId,
-        db.select({ id: shifts.id }).from(shifts).where(planningScope(shifts))
+  const selectedYear = year();
+  const selectedEventId = event();
+  return db.transaction(async tx => {
+    const scopedShifts = await tx
+      .select({ id: shifts.id })
+      .from(shifts)
+      .where(planningScopeFor(shifts, selectedYear, selectedEventId))
+      .for("update");
+    const shiftIds = scopedShifts.map(shift => shift.id);
+    if (!shiftIds.length) return { cleared: 0 };
+
+    const assignedRows = await tx
+      .select({ id: assignments.id })
+      .from(assignments)
+      .where(
+        and(
+          planningScopeFor(assignments, selectedYear, selectedEventId),
+          inArray(assignments.shiftId, shiftIds)
+        )
       )
-    );
+      .for("update");
+    if (!assignedRows.length) return { cleared: 0 };
+
+    const result = await tx
+      .delete(assignments)
+      .where(
+        and(
+          planningScopeFor(assignments, selectedYear, selectedEventId),
+          inArray(
+            assignments.id,
+            assignedRows.map(assignment => assignment.id)
+          )
+        )
+      );
+    requireDeletedRows(result, assignedRows.length);
+    return { cleared: assignedRows.length };
+  });
 }
 
 export async function updateAppSettings(
@@ -2092,7 +2121,6 @@ export const deleteFinance = async (id: number) =>
 export type ResetArea =
   | "contacts"
   | "helpers"
-  | "assignments"
   | "shifts"
   | "prep"
   | "post"
@@ -2385,21 +2413,6 @@ export async function resetArea(area: ResetArea, actor: AuditActor) {
       await tx
         .delete(shifts)
         .where(planningScopeFor(shifts, selectedYear, selectedEventId));
-    });
-    return;
-  }
-
-  if (area === "assignments") {
-    await db.transaction(async tx => {
-      await tx.delete(assignments).where(
-        inArray(
-          assignments.shiftId,
-          tx
-            .select({ id: shifts.id })
-            .from(shifts)
-            .where(planningScopeFor(shifts, selectedYear, selectedEventId))
-        )
-      );
     });
     return;
   }

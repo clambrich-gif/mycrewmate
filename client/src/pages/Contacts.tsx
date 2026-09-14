@@ -195,7 +195,6 @@ export default function Contacts() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:text-rose-800"
                         title="Löschen"
                         onClick={() =>
                           setDeleteTarget({
@@ -204,7 +203,7 @@ export default function Contacts() {
                           })
                         }
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     )}
                   </span>

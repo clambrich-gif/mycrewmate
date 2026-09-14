@@ -207,7 +207,7 @@ export default function Finances() {
                 {user?.role === "admin" && row.id > 0 && (
                   <Button
                     variant="outline"
-                    className="w-full border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:text-rose-800"
+                    className="w-full border-destructive/40 text-destructive"
                     disabled={remove.isPending}
                     onClick={() => remove.mutate({ id: row.id })}
                   >
@@ -293,12 +293,11 @@ export default function Finances() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:text-rose-800"
                           aria-label={`Finanzkategorie ${row.category} löschen`}
                           disabled={remove.isPending}
                           onClick={() => remove.mutate({ id: row.id })}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       )}
                     </td>

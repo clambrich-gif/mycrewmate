@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { CopyPreviousPlanButton } from "@/components/CopyPreviousPlanButton";
+import { ClearPlanAssignmentsButton } from "@/components/ClearPlanAssignmentsButton";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 import {
@@ -210,7 +211,7 @@ function AssignedHelperChip({
           <button
             type="button"
             aria-label={`${helper.name} aus der Schicht entfernen`}
-            className="-my-1 -mr-1 inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-rose-200 bg-rose-50 text-lg text-rose-700 hover:bg-rose-100 hover:text-rose-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 md:my-0 md:mr-0 md:min-h-0 md:min-w-0 md:text-base"
+            className="-my-1 -mr-1 inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-lg opacity-60 hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:my-0 md:mr-0 md:min-h-0 md:min-w-0 md:text-base"
             title="Entfernen"
             onPointerDown={event => {
               event.stopPropagation();
@@ -682,11 +683,7 @@ export default function Plan() {
         <div className="flex justify-end gap-2 flex-wrap">
           <ModuleExcelImportButton area="EINSATZPLAN" label="Einsatzplan" />
           <CopyPreviousPlanButton />
-          <ResetAreaButton
-            area="assignments"
-            label="Belegungen"
-            buttonLabel="Belegungen leeren"
-          />
+          <ClearPlanAssignmentsButton />
           <ResetAreaButton area="shifts" label="Einsatzplan" />
           <Button
             onClick={openCreate}
@@ -971,11 +968,10 @@ export default function Plan() {
                       <Button
                         variant="outline"
                         size="icon"
-                        className="border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:text-rose-800"
                         title="Schicht löschen"
                         onClick={() => setDeleteCandidate(shift)}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
                   )}
@@ -1075,11 +1071,11 @@ export default function Plan() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-6 w-6 border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:text-rose-800"
+                            className="h-6 w-6"
                             title="Löschen"
                             onClick={() => setDeleteCandidate(s)}
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
                           </Button>
                         )}
                       </div>
@@ -1179,7 +1175,7 @@ export default function Plan() {
             </AlertDialogCancel>
             <AlertDialogAction
               disabled={!deleteCandidate || deleteShift.isPending}
-              className="border border-rose-200 !bg-rose-50 !text-rose-700 shadow-sm hover:!bg-rose-100 hover:!text-rose-800 focus-visible:ring-rose-200"
+              className="border border-red-700 !bg-red-600 !text-white shadow-sm hover:!bg-red-700 focus-visible:ring-red-500"
               onClick={event => {
                 event.preventDefault();
                 if (deleteCandidate && !deleteShift.isPending)
