@@ -6,6 +6,8 @@ import {
 } from "@/components/OnlinePresenceBadge";
 import {
   LiveChatWidget,
+  type ActiveTyperItem,
+  type TeamNoteItem,
   type LiveChatWidgetState,
 } from "@/components/LiveChatWidget";
 import { Button } from "@/components/ui/button";
@@ -53,11 +55,25 @@ import {
   Trash2,
   TriangleAlert,
 } from "lucide-react";
-import { FormEvent, lazy, Suspense, useEffect, useRef, useState } from "react";
+import {
+  FormEvent,
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
 
 const RSC_LOGO = "/api/brand/rsc-logo";
+const CHAT_SNAPSHOT_POLL_MS = 5_000;
+
+type TeamNotesSnapshot = {
+  notes: TeamNoteItem[];
+  typing: ActiveTyperItem[];
+};
 
 const ProjectStorageControls = lazy(() =>
   import("@/components/ProjectStorageControls").then(module => ({
@@ -122,9 +138,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
     name: string;
   } | null>(null);
   const [chatState, setChatState] = useState<LiveChatWidgetState>("closed");
+  const [chatSnapshot, setChatSnapshot] = useState<TeamNotesSnapshot>({
+    notes: [],
+    typing: [],
+  });
   const [unreadNotesCount, setUnreadNotesCount] = useState(0);
   const [hasImportantUnread, setHasImportantUnread] = useState(false);
   const lastSeenChatNoteIdRef = useRef<number>(0);
+  const hasLoadedChatSnapshotRef = useRef(false);
+  const chatStateRef = useRef<LiveChatWidgetState>("closed");
+  const chatSnapshotEpochRef = useRef(0);
+  const chatSnapshotPollInFlightRef = useRef<Promise<void> | null>(null);
+  const chatSnapshotPollQueuedRef = useRef(false);
   const loginLockAlertRef = useRef<HTMLDivElement>(null);
   const loginErrorRef = useRef<HTMLDivElement>(null);
   const utils = trpc.useUtils();
@@ -142,67 +167,122 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const selectedEvent = events.data?.find(item => item.id === eventId);
 
   useEffect(() => {
+    chatSnapshotEpochRef.current += 1;
+    chatSnapshotPollQueuedRef.current = true;
+    setChatSnapshot({ notes: [], typing: [] });
     lastSeenChatNoteIdRef.current = 0;
+    hasLoadedChatSnapshotRef.current = false;
     setUnreadNotesCount(0);
     setHasImportantUnread(false);
   }, [year, eventId]);
 
-  // Vollständige 5-Sekunden-Snapshots erkennen auch ein serverseitiges
-  // Leeren des Verlaufs und setzen den Ungelesen-Zähler auf allen Clients zurück.
+  useEffect(() => {
+    chatStateRef.current = chatState;
+  }, [chatState]);
+
+  // Ein einziger Layout-Owner lädt vollständige 24h-Chat-Snapshots. Parallele
+  // Timer oder manuelle Refreshes werden als ein nachgelagerter Abruf gebündelt,
+  // damit eine langsame Antwort keinen neueren Chatstand überschreiben kann.
+  const refreshChatSnapshot = useCallback(() => {
+    if (chatSnapshotPollInFlightRef.current) {
+      chatSnapshotPollQueuedRef.current = true;
+      return chatSnapshotPollInFlightRef.current;
+    }
+
+    const poll = async () => {
+      do {
+        chatSnapshotPollQueuedRef.current = false;
+        const requestEpoch = chatSnapshotEpochRef.current;
+        try {
+          const snapshot = await utils.client.notes.list.query({ limit: 150 });
+          if (requestEpoch !== chatSnapshotEpochRef.current || !snapshot) {
+            // Der Scope wechselte während des Abrufs: danach exakt einmal den
+            // aktuellen Scope laden, statt eine verspätete Antwort zu verwenden.
+            chatSnapshotPollQueuedRef.current = true;
+            continue;
+          }
+
+          const notesList = (snapshot.notes ?? []) as TeamNoteItem[];
+          const typing = (snapshot.typing ?? []) as ActiveTyperItem[];
+          const orderedNotes = [...notesList].sort((a, b) => a.id - b.id);
+          setChatSnapshot({ notes: orderedNotes, typing });
+
+          if (orderedNotes.length === 0) {
+            lastSeenChatNoteIdRef.current = 0;
+            hasLoadedChatSnapshotRef.current = true;
+            setUnreadNotesCount(0);
+            setHasImportantUnread(false);
+            continue;
+          }
+
+          const newestNoteId = orderedNotes[orderedNotes.length - 1].id;
+          if (!hasLoadedChatSnapshotRef.current) {
+            // Beim Eintritt ist die 24h-Historie sichtbar, aber keine neue
+            // Benachrichtigung. Erst spätere Server-Snapshots zählen als ungelesen.
+            hasLoadedChatSnapshotRef.current = true;
+            lastSeenChatNoteIdRef.current = newestNoteId;
+            setUnreadNotesCount(0);
+            setHasImportantUnread(false);
+            continue;
+          }
+          if (chatStateRef.current === "open") {
+            lastSeenChatNoteIdRef.current = newestNoteId;
+            setUnreadNotesCount(0);
+            setHasImportantUnread(false);
+            continue;
+          }
+
+          const newNotes = orderedNotes.filter(
+            note => note.id > lastSeenChatNoteIdRef.current
+          );
+          if (newNotes.length > 0) {
+            lastSeenChatNoteIdRef.current = newestNoteId;
+            setUnreadNotesCount(previous => previous + newNotes.length);
+            setHasImportantUnread(previous =>
+              previous || newNotes.some(note => Boolean(note.important))
+            );
+          }
+        } catch {
+          // Ein einzelner Pollingfehler bleibt leise und der nächste Tick lädt erneut.
+        }
+      } while (chatSnapshotPollQueuedRef.current);
+    };
+
+    const activePoll = poll().finally(() => {
+      chatSnapshotPollInFlightRef.current = null;
+    });
+    chatSnapshotPollInFlightRef.current = activePoll;
+    return activePoll;
+  }, [utils.client.notes.list]);
+
   useEffect(() => {
     if (!isAuthenticated) return;
-    let isDisposed = false;
-
-    const pollUnread = async () => {
-      try {
-        const snapshot = await utils.client.notes.list.query({ limit: 150 });
-        if (isDisposed || !snapshot) return;
-
-        const notesList = snapshot.notes ?? [];
-        if (notesList.length === 0) {
-          lastSeenChatNoteIdRef.current = 0;
-          setUnreadNotesCount(0);
-          setHasImportantUnread(false);
-          return;
-        }
-
-        const newNotes = notesList.filter(
-          note => note.id > lastSeenChatNoteIdRef.current
-        );
-        const maxId = Math.max(...notesList.map(note => note.id));
-
-        if (chatState === "open") {
-          lastSeenChatNoteIdRef.current = maxId;
-          setUnreadNotesCount(0);
-          setHasImportantUnread(false);
-        } else {
-          setUnreadNotesCount(newNotes.length);
-          setHasImportantUnread(newNotes.some(note => Boolean(note.important)));
-        }
-      } catch {
-        // Ungelesen-Polling leise abfangen
-      }
-    };
-
-    void pollUnread();
-    const timer = window.setInterval(pollUnread, 5_000);
+    void refreshChatSnapshot();
+    const timer = window.setInterval(refreshChatSnapshot, CHAT_SNAPSHOT_POLL_MS);
     return () => {
-      isDisposed = true;
+      // Laufende Antworten aus der abgemeldeten bzw. alten Sitzung dürfen den
+      // aktuellen State nicht mehr überschreiben.
+      chatSnapshotEpochRef.current += 1;
+      chatSnapshotPollQueuedRef.current = false;
       window.clearInterval(timer);
     };
-  }, [isAuthenticated, chatState, utils.client.notes.list, year, eventId]);
+  }, [isAuthenticated, refreshChatSnapshot, year, eventId]);
 
   const openChatWidget = () => {
+    chatStateRef.current = "open";
     setChatState("open");
     setUnreadNotesCount(0);
     setHasImportantUnread(false);
+    void refreshChatSnapshot();
   };
 
   const minimizeChatWidget = () => {
+    chatStateRef.current = "minimized";
     setChatState("minimized");
   };
 
   const closeChatWidget = () => {
+    chatStateRef.current = "closed";
     setChatState("closed");
   };
 
@@ -1174,11 +1254,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {isAuthenticated && (
         <LiveChatWidget
           state={chatState}
+          snapshot={chatSnapshot}
           unreadCount={unreadNotesCount}
           hasImportantUnread={hasImportantUnread}
           onOpen={openChatWidget}
           onMinimize={minimizeChatWidget}
           onClose={closeChatWidget}
+          onRequestSnapshotRefresh={refreshChatSnapshot}
         />
       )}
     </div>

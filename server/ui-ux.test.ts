@@ -49,14 +49,21 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const presence = source("client/src/components/OnlinePresenceBadge.tsx");
 
     expect(layout).toContain("<LiveChatWidget");
+    expect(layout).toContain("CHAT_SNAPSHOT_POLL_MS = 5_000");
+    expect(layout).toContain("chatSnapshotPollInFlightRef");
+    expect(layout).toContain("chatSnapshotPollQueuedRef");
+    expect(layout).toContain("chatSnapshotEpochRef");
+    expect(layout).toContain("const refreshChatSnapshot = useCallback");
+    expect(layout).toContain("snapshot={chatSnapshot}");
+    expect(layout).toContain("onRequestSnapshotRefresh={refreshChatSnapshot}");
     expect(layout).toContain("unreadNotesCount");
     expect(layout).toContain("hasImportantUnread={hasImportantUnread}");
     expect(layout).toContain("onOpenChat={openChatWidget}");
-    expect(layout).toContain("window.setInterval(pollUnread, 5_000)");
+    expect(layout).toContain("window.setInterval(refreshChatSnapshot, CHAT_SNAPSHOT_POLL_MS)");
     expect(layout).toContain("utils.client.notes.list.query({ limit: 150 })");
-    expect(layout).toContain("if (notesList.length === 0)");
+    expect(layout).toContain("if (orderedNotes.length === 0)");
     expect(layout).toContain("setUnreadNotesCount(0)");
-    expect(layout).toContain("setUnreadNotesCount(newNotes.length)");
+    expect(layout).toContain("setUnreadNotesCount(previous => previous + newNotes.length)");
 
     expect(presence).toContain("Live-Notizen & Chat öffnen");
     expect(presence).not.toContain("unreadCount");
@@ -67,7 +74,15 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(widget).toContain("sessionStorage.setItem(storageKey, finalName)");
     expect(widget).toContain("trpc.contacts.list.useQuery");
     expect(widget).toContain("+ Andere Person / Freie Eingabe");
-    expect(widget).toContain("SHORT_POLL_INTERVAL_MS = 5_000");
+    expect(widget).not.toContain("SHORT_POLL_INTERVAL_MS");
+    expect(widget).not.toContain("utils.client.notes.list.query");
+    expect(widget).toContain("snapshot: TeamNotesSnapshot");
+    expect(widget).toContain("onRequestSnapshotRefresh: () => Promise<void>");
+    expect(widget).toContain("void onRequestSnapshotRefresh()");
+    expect(widget).toContain("typingDebounceTimerRef.current = null");
+    expect(widget).toContain("typingMutateRef.current");
+    expect(widget).toContain("Beim Schließen/Minimieren und beim vollständigen Unmount");
+    expect(widget).toContain("window.clearTimeout(typingDebounceTimerRef.current)");
     expect(widget).toContain("trpc.notes.send.useMutation");
     expect(widget).toContain("trpc.notes.clear.useMutation");
     expect(widget).toContain('title="Minimieren (⎯)"');
@@ -101,9 +116,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(widget).toContain("pb-[max(1.5rem,env(safe-area-inset-bottom))]");
     expect(widget).toContain("w-full min-w-0 max-w-full flex-col overflow-x-hidden");
     expect(widget).toContain("h-7 min-w-7");
-    expect(widget).toContain("Vollständiger 24h-Snapshot alle 5 Sekunden");
-    expect(widget).toContain("utils.client.notes.list.query({ limit: 150 })");
-    expect(widget).toContain("setNotes(snapshot)");
+    expect(widget).toContain("Der zentrale Layout-Owner liefert genau einen serialisierten Snapshot");
+    expect(widget).toContain("snapshot.notes.map(note =>");
+    expect(widget).toContain("snapshot.typing.map(t => t.senderName)");
   });
 
   it("zeigt und entsperrt den dauerhaften Planungsteam-Login ausschließlich im Adminbereich", () => {

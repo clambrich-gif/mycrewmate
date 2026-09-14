@@ -40,7 +40,6 @@ import {
 } from "react";
 import { toast } from "sonner";
 
-const SHORT_POLL_INTERVAL_MS = 5_000;
 const SESSION_NAME_STORAGE_PREFIX = "rsc-live-notes-sender-name-";
 const SOUND_ENABLED_STORAGE_PREFIX = "rsc-live-notes-important-sound-";
 const CUSTOM_NAME_VALUE = "__custom_name__";
@@ -66,6 +65,11 @@ export type ActiveTyperItem = {
   updatedAt: string | Date;
 };
 
+export type TeamNotesSnapshot = {
+  notes: TeamNoteItem[];
+  typing: ActiveTyperItem[];
+};
+
 export function formatNoteTime(value: string | Date) {
   const date = typeof value === "string" ? new Date(value) : value;
   if (Number.isNaN(date.getTime())) return "";
@@ -81,25 +85,26 @@ export function roleBadgeText(role: "user" | "admin") {
 
 export function LiveChatWidget({
   state,
+  snapshot,
   unreadCount,
   hasImportantUnread = false,
   onOpen,
   onMinimize,
   onClose,
+  onRequestSnapshotRefresh,
 }: {
   state: LiveChatWidgetState;
+  snapshot: TeamNotesSnapshot;
   unreadCount: number;
   hasImportantUnread?: boolean;
   onOpen: () => void;
   onMinimize: () => void;
   onClose: () => void;
+  onRequestSnapshotRefresh: () => Promise<void>;
 }) {
   const { user, isAuthenticated } = useAuth();
   const { year, eventId } = useEventYear();
-  const utils = trpc.useUtils();
 
-  const [notes, setNotes] = useState<TeamNoteItem[]>([]);
-  const [activeTypers, setActiveTypers] = useState<ActiveTyperItem[]>([]);
   const [message, setMessage] = useState("");
   const [isImportant, setIsImportant] = useState(false);
   const [importantSoundEnabled, setImportantSoundEnabled] = useState(false);
@@ -107,13 +112,14 @@ export function LiveChatWidget({
   const [customName, setCustomName] = useState("");
   const [confirmedName, setConfirmedName] = useState<string | null>(null);
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
+  const typingMutation = trpc.notes.typing.useMutation();
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const highestSeenIdRef = useRef<number>(0);
   const playedImportantNoteIdsRef = useRef<Set<number>>(new Set());
-  const pollTimerRef = useRef<number | null>(null);
+  const receivedInitialSnapshotRef = useRef(false);
   const typingDebounceTimerRef = useRef<number | null>(null);
+  const typingMutateRef = useRef(typingMutation.mutate);
   const isTypingReportedRef = useRef(false);
 
   const storageKey = useMemo(
@@ -159,9 +165,8 @@ export function LiveChatWidget({
   }, [soundStorageKey]);
 
   useEffect(() => {
-    setNotes([]);
-    highestSeenIdRef.current = 0;
     playedImportantNoteIdsRef.current.clear();
+    receivedInitialSnapshotRef.current = false;
   }, [year, eventId]);
 
   const scrollToBottom = useCallback((smooth = false) => {
@@ -216,18 +221,20 @@ export function LiveChatWidget({
     }
   };
 
-  const typingMutation = trpc.notes.typing.useMutation();
+  useEffect(() => {
+    typingMutateRef.current = typingMutation.mutate;
+  }, [typingMutation.mutate]);
 
   const reportTyping = useCallback(
     (typingState: boolean) => {
       if (!confirmedName || isTypingReportedRef.current === typingState) return;
       isTypingReportedRef.current = typingState;
-      typingMutation.mutate({
+      typingMutateRef.current({
         senderName: confirmedName,
         isTyping: typingState,
       });
     },
-    [confirmedName, typingMutation]
+    [confirmedName]
   );
 
   const handleMessageChange = (newText: string) => {
@@ -241,10 +248,12 @@ export function LiveChatWidget({
       }
       typingDebounceTimerRef.current = window.setTimeout(() => {
         reportTyping(false);
+        typingDebounceTimerRef.current = null;
       }, 3_500);
     } else {
       if (typingDebounceTimerRef.current) {
         window.clearTimeout(typingDebounceTimerRef.current);
+        typingDebounceTimerRef.current = null;
       }
       reportTyping(false);
     }
@@ -255,17 +264,10 @@ export function LiveChatWidget({
       setMessage("");
       setIsImportant(false);
       reportTyping(false);
-      setNotes(prev => {
-        if (prev.some(item => item.id === newNote.id)) return prev;
-        const next = [...prev, newNote as TeamNoteItem];
-        highestSeenIdRef.current = Math.max(
-          highestSeenIdRef.current,
-          newNote.id
-        );
-        return next;
-      });
       scrollToBottom(true);
-      void utils.notes.list.invalidate();
+      // Der zentrale Layout-Owner liest nach jeder Mutation den kanonischen
+      // Server-Snapshot. Damit sind Reihenfolge, Clear und Parallelupdates konsistent.
+      void onRequestSnapshotRefresh();
     },
     onError: error => {
       toast.error(error.message || "Nachricht konnte nicht gesendet werden");
@@ -275,10 +277,8 @@ export function LiveChatWidget({
   const clearMutation = trpc.notes.clear.useMutation({
     onSuccess: result => {
       setClearDialogOpen(false);
-      setNotes([]);
-      highestSeenIdRef.current = 0;
       toast.success(`Chatverlauf geleert (${result.deletedCount} Notizen entfernt)`);
-      void utils.notes.list.invalidate();
+      void onRequestSnapshotRefresh();
     },
     onError: error => {
       toast.error(error.message || "Verlauf konnte nicht geleert werden");
@@ -327,67 +327,48 @@ export function LiveChatWidget({
   const isExpanded = state === "open";
   const isMinimized = state === "minimized";
 
-  // Vollständiger 24h-Snapshot alle 5 Sekunden: Ein Admin-Reset liefert
-  // ein leeres Array und leert dadurch zuverlässig den lokalen Verlauf.
+  // Der zentrale Layout-Owner liefert genau einen serialisierten Snapshot für
+  // alle Widgetzustände. Initial geladene 24h-Historie löst keinen Warnton aus.
   useEffect(() => {
-    if (!isAuthenticated) return;
+    const isInitialSnapshot = !receivedInitialSnapshotRef.current;
+    const newImportantNoteIds = snapshot.notes
+      .filter(
+        note => note.important && !playedImportantNoteIdsRef.current.has(note.id)
+      )
+      .map(note => note.id);
+    snapshot.notes.forEach(note => playedImportantNoteIdsRef.current.add(note.id));
+    receivedInitialSnapshotRef.current = true;
 
-    let isDisposed = false;
+    if (!isInitialSnapshot && newImportantNoteIds.length > 0 && !isExpanded) {
+      playImportantAlertTone();
+    }
+    if (isExpanded) scrollToBottom(true);
+  }, [isExpanded, playImportantAlertTone, scrollToBottom, snapshot.notes]);
 
-    const fetchSnapshot = async () => {
-      try {
-        const fetched = await utils.client.notes.list.query({ limit: 150 });
-        if (isDisposed || !fetched) return;
+  // Beim Schließen/Minimieren und beim vollständigen Unmount wird ein evtl.
+  // laufendes Debounce verworfen und der flüchtige Tippstatus zuverlässig beendet.
+  useEffect(() => {
+    if (!isExpanded) {
+      if (typingDebounceTimerRef.current) {
+        window.clearTimeout(typingDebounceTimerRef.current);
+        typingDebounceTimerRef.current = null;
+      }
+      reportTyping(false);
+    }
+  }, [isExpanded, reportTyping]);
 
-        const rawNotes = (fetched.notes ?? []) as TeamNoteItem[];
-        const typers = (fetched.typing ?? []) as ActiveTyperItem[];
-
-        const snapshot = rawNotes.sort((a, b) => a.id - b.id);
-        const newImportantNoteIds = snapshot
-          .filter(
-            note =>
-              note.important && !playedImportantNoteIdsRef.current.has(note.id)
-          )
-          .map(note => note.id);
-        snapshot.forEach(note => playedImportantNoteIdsRef.current.add(note.id));
-        highestSeenIdRef.current = snapshot.length
-          ? Math.max(...snapshot.map(note => note.id))
-          : 0;
-        setNotes(snapshot);
-        setActiveTypers(typers);
-
-        if (newImportantNoteIds.length > 0 && state !== "open") {
-          playImportantAlertTone();
-        }
-
-        if (isExpanded) {
-          scrollToBottom(true);
-        }
-      } catch {
-        // Polling-Fehler nicht blockierend
+  useEffect(() => {
+    return () => {
+      if (typingDebounceTimerRef.current) {
+        window.clearTimeout(typingDebounceTimerRef.current);
+        typingDebounceTimerRef.current = null;
+      }
+      if (isTypingReportedRef.current && confirmedName) {
+        isTypingReportedRef.current = false;
+        typingMutateRef.current({ senderName: confirmedName, isTyping: false });
       }
     };
-
-    void fetchSnapshot();
-
-    pollTimerRef.current = window.setInterval(() => {
-      void fetchSnapshot();
-    }, SHORT_POLL_INTERVAL_MS);
-
-    return () => {
-      isDisposed = true;
-      if (pollTimerRef.current) window.clearInterval(pollTimerRef.current);
-    };
-  }, [
-    isAuthenticated,
-    isExpanded,
-    playImportantAlertTone,
-    scrollToBottom,
-    state,
-    utils.client.notes.list,
-    year,
-    eventId,
-  ]);
+  }, [confirmedName]);
 
   useEffect(() => {
     if (isExpanded) {
@@ -693,7 +674,7 @@ export function LiveChatWidget({
               ref={scrollContainerRef}
               className="flex-1 space-y-2.5 overflow-y-auto p-3 text-sm sm:text-xs"
             >
-              {notes.length === 0 ? (
+              {snapshot.notes.length === 0 ? (
                 <div className="flex h-full flex-col items-center justify-center p-4 text-center text-slate-400">
                   <MessageSquare className="mb-2 h-8 w-8 opacity-40" />
                   <p className="font-medium text-slate-600">Noch keine Notizen</p>
@@ -703,7 +684,7 @@ export function LiveChatWidget({
                   </p>
                 </div>
               ) : (
-                notes.map(note => {
+                snapshot.notes.map(note => {
                   const isOwn =
                     note.senderName.trim().toLowerCase() ===
                     confirmedName.trim().toLowerCase();
@@ -758,7 +739,7 @@ export function LiveChatWidget({
               )}
 
               {/* Synchronisierter Tipp-Indikator */}
-              {activeTypers.length > 0 && (
+              {snapshot.typing.length > 0 && (
                 <div className="flex items-center gap-2 px-2 py-1 text-xs sm:text-[11px] text-blue-700">
                   <span className="flex gap-1">
                     <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-600 [animation-delay:-0.3s]" />
@@ -766,7 +747,7 @@ export function LiveChatWidget({
                     <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-600" />
                   </span>
                   <span className="font-medium italic">
-                    {activeTypers.map(t => t.senderName).join(", ")} tippt gerade …
+                    {snapshot.typing.map(t => t.senderName).join(", ")} tippt gerade …
                   </span>
                 </div>
               )}
