@@ -1610,6 +1610,16 @@ const AREA_CONFIG = [
   ["FINANZEN", "finances", "category"],
 ] as const;
 const ignoredDiffFields = new Set(["contactName", "areaContactName", "slots"]);
+const documentRowIdentity = (
+  area: (typeof AREA_CONFIG)[number][0],
+  row: Record<string, unknown>,
+  labelField: string
+) =>
+  personKey(
+    area === "EINSATZPLAN"
+      ? `${row.day ?? ""}|${row.area ?? ""}|${row.task ?? ""}|${row.startTime ?? ""}|${row.endTime ?? ""}`
+      : row[labelField]
+  );
 const diffFieldEqual = (
   field: string,
   before: Record<string, unknown>,
@@ -1639,15 +1649,17 @@ export function diffDocuments(
     const beforeRows = current[key] as any[];
     const afterRows = desired[key] as any[];
     const beforeById = new Map(beforeRows.map(row => [row.sourceId, row]));
-    const beforeByLabel = new Map(
-      beforeRows.map(row => [personKey(row[labelField]), row])
+    const beforeByIdentity = new Map(
+      beforeRows.map(row => [documentRowIdentity(area, row, labelField), row])
     );
     const matched = new Set<number>();
     for (let index = 0; index < afterRows.length; index++) {
       const after = afterRows[index];
-      const before =
+      const candidate =
         (after.sourceId ? beforeById.get(after.sourceId) : undefined) ??
-        beforeByLabel.get(personKey(after[labelField]));
+        beforeByIdentity.get(documentRowIdentity(area, after, labelField));
+      const before =
+        candidate && !matched.has(candidate.sourceId) ? candidate : undefined;
       if (!before) {
         changes.push({
           key: `${area}:new:${index}`,

@@ -284,6 +284,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(storage).toContain('{hasChanges ? "Abbrechen" : "Schließen"}');
   });
 
+  it("rendert Änderungseinträge auch bei alten doppelten Kennungen mit eindeutigen React-Schlüsseln", () => {
+    const preview = source("client/src/components/ChangePreview.tsx");
+
+    expect(preview).toContain("rows.map((change, index) =>");
+    expect(preview).toContain("key={`${change.key}:${index}`}");
+  });
+
   it("zeigt beim Ansprechpartnerimport die Prüfung aller Excel-Zeilen", () => {
     const moduleImport = source(
       "client/src/components/ModuleExcelImportButton.tsx"

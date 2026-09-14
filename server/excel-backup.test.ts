@@ -189,6 +189,124 @@ describe("Excel-Datensicherung", () => {
     );
   });
 
+  it("ordnet gleichnamige Einsatzplanaufgaben anhand der gesamten Schichtidentität zu", () => {
+    const saturdayTent = {
+      sourceId: 30,
+      day: "Samstag",
+      area: "Aufbau",
+      task: "Zelte",
+      startTime: "09:00",
+      endTime: "11:50",
+      needed: 2,
+      note: "",
+      sortOrder: 0,
+      areaContactSourceId: 10,
+      areaContactName: "Chris Leitung",
+      slots: [],
+    };
+    const sundayTent = {
+      ...saturdayTent,
+      sourceId: 31,
+      day: "Sonntag",
+      area: "Abbau",
+      startTime: "10:00",
+      endTime: "15:00",
+      needed: 3,
+      note: "Anhänger abholen",
+    };
+    const current: any = {
+      contacts: [],
+      helpers: [],
+      shifts: [saturdayTent, sundayTent],
+      prep: [],
+      post: [],
+      materials: [],
+      marketing: [],
+      approvals: [],
+      cakes: [],
+      finances: [],
+    };
+    const desired: any = {
+      ...structuredClone(current),
+      shifts: [
+        {
+          ...saturdayTent,
+          sourceId: 2190004,
+          areaContactSourceId: 20,
+          areaContactName: "Neue Leitung",
+        },
+        {
+          ...sundayTent,
+          sourceId: 2190005,
+          areaContactSourceId: 20,
+          areaContactName: "Neue Leitung",
+        },
+      ],
+    };
+
+    const changes = diffDocuments(current, desired);
+    const shiftUpdateKeys = changes
+      .filter(change => change.area === "EINSATZPLAN")
+      .map(change => change.key);
+
+    expect(shiftUpdateKeys).toEqual([
+      "EINSATZPLAN:update:30",
+      "EINSATZPLAN:update:31",
+    ]);
+    expect(new Set(shiftUpdateKeys).size).toBe(shiftUpdateKeys.length);
+  });
+
+  it("erzeugt keine doppelten Updates, wenn mehrere importierte Zeilen dieselbe Identität beanspruchen", () => {
+    const currentShift = {
+      sourceId: 50,
+      day: "Freitag",
+      area: "Parkplatz",
+      task: "Einweisung",
+      startTime: "08:00",
+      endTime: "10:00",
+      needed: 1,
+      note: "",
+      sortOrder: 0,
+      areaContactSourceId: null,
+      areaContactName: "",
+      slots: [],
+    };
+    const current: any = {
+      contacts: [],
+      helpers: [],
+      shifts: [currentShift],
+      prep: [],
+      post: [],
+      materials: [],
+      marketing: [],
+      approvals: [],
+      cakes: [],
+      finances: [],
+    };
+    const desired: any = {
+      ...structuredClone(current),
+      shifts: [
+        { ...currentShift, sourceId: null, note: "Erste Kopie" },
+        { ...currentShift, sourceId: null, note: "Zweite Kopie" },
+      ],
+    };
+
+    const changes = diffDocuments(current, desired);
+    const shiftChanges = changes.filter(change => change.area === "EINSATZPLAN");
+    const updateKeys = shiftChanges
+      .filter(change => change.action === "update")
+      .map(change => change.key);
+    const createKeys = shiftChanges
+      .filter(change => change.action === "create")
+      .map(change => change.key);
+
+    expect(updateKeys).toEqual(["EINSATZPLAN:update:50"]);
+    expect(createKeys).toEqual(["EINSATZPLAN:new:1"]);
+    expect(new Set(shiftChanges.map(change => change.key)).size).toBe(
+      shiftChanges.length
+    );
+  });
+
   it("erhält bei alten Helferblättern ohne Mo-bis-Do-Spalten die bisherige Werktagsverfügbarkeit", async () => {
     const exported = await exportBackupExcel();
     const legacy = mutateWorkbook(exported.buffer, workbook => {

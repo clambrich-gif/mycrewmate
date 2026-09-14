@@ -201,8 +201,8 @@ export function GroupedChangeList({
             {rows.length === 1 ? "" : "e"}
           </summary>
           <div className="space-y-2 border-t p-3">
-            {rows.map(change => (
-              <ChangeRow key={change.key} change={change} />
+            {rows.map((change, index) => (
+              <ChangeRow key={`${change.key}:${index}`} change={change} />
             ))}
           </div>
         </details>
