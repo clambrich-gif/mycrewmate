@@ -273,6 +273,15 @@ describe("UI- und Mobile-UX-Regeln", () => {
       "alle Änderungen und Online-Eingaben überschrieben"
     );
     expect(storage).toContain('confirmLabel="Laden"');
+    expect(storage).not.toContain(
+      "Die Speicherdatei entspricht bereits dem aktuellen Stand"
+    );
+    expect(storage).toContain("setPreviewOpen(true)");
+    expect(storage).toContain("Speicherdatei erfolgreich geprüft:");
+    expect(storage).toContain(
+      "Es sind keine Änderungen zu übernehmen."
+    );
+    expect(storage).toContain('{hasChanges ? "Abbrechen" : "Schließen"}');
   });
 
   it("zeigt beim Ansprechpartnerimport die Prüfung aller Excel-Zeilen", () => {

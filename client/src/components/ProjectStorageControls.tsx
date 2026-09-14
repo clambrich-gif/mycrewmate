@@ -67,10 +67,6 @@ export function ProjectStorageControls({
   });
   const preview = trpc.projectFile.preview.useMutation({
     onSuccess: result => {
-      if (!result.changes.length) {
-        toast.info("Die Speicherdatei entspricht bereits dem aktuellen Stand");
-        return;
-      }
       setFilter("all");
       setPreviewOpen(true);
     },
@@ -147,6 +143,7 @@ export function ProjectStorageControls({
     updated: 0,
     deleted: 0,
   };
+  const hasChanges = Boolean(preview.data?.changes.length);
 
   return (
     <>
@@ -224,20 +221,33 @@ export function ProjectStorageControls({
               <div className="text-xs font-medium">Gelöschte Einträge</div>
             </div>
           </div>
-          <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-950">
-            <strong>Vollständiger Ersatz:</strong> Beim Laden werden alle
-            aktuellen Planungsdaten dieser Veranstaltung zurückgesetzt und aus
-            der JSON-Datei neu aufgebaut. Der Vorgang erfolgt vollständig oder
-            gar nicht.
-          </div>
-          <ChangeFilterBar
-            value={filter}
-            onChange={setFilter}
-            counts={totals}
-          />
+          {hasChanges ? (
+            <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-950">
+              <strong>Vollständiger Ersatz:</strong> Beim Laden werden alle
+              aktuellen Planungsdaten dieser Veranstaltung zurückgesetzt und
+              aus der JSON-Datei neu aufgebaut. Der Vorgang erfolgt vollständig
+              oder gar nicht.
+            </div>
+          ) : (
+            <div
+              className="rounded-lg border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-950"
+              role="status"
+            >
+              <strong>Speicherdatei erfolgreich geprüft:</strong> Dieser
+              Projektstand entspricht bereits vollständig dem aktuell geladenen
+              Stand. Es sind keine Änderungen zu übernehmen.
+            </div>
+          )}
+          {hasChanges && (
+            <ChangeFilterBar
+              value={filter}
+              onChange={setFilter}
+              counts={totals}
+            />
+          )}
           {!!preview.data?.warnings.length && (
             <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
-              <strong>Hinweise vor dem Laden:</strong>
+              <strong>Hinweise zur Speicherdatei:</strong>
               <ul className="mt-1 list-disc space-y-1 pl-5">
                 {preview.data.warnings.map(warning => (
                   <li key={warning}>{warning}</li>
@@ -245,20 +255,24 @@ export function ProjectStorageControls({
               </ul>
             </div>
           )}
-          <GroupedChangeList
-            changes={preview.data?.changes ?? []}
-            filter={filter}
-          />
+          {hasChanges && (
+            <GroupedChangeList
+              changes={preview.data?.changes ?? []}
+              filter={filter}
+            />
+          )}
           <DialogFooter className="sticky bottom-0 -mx-2 -mb-2 border-t bg-white px-2 pb-2 pt-4 dark:bg-slate-950">
             <Button variant="outline" onClick={() => setPreviewOpen(false)}>
-              Abbrechen
+              {hasChanges ? "Abbrechen" : "Schließen"}
             </Button>
-            <Button
-              className="border border-blue-800 !bg-blue-700 !text-white shadow-md hover:!bg-blue-800"
-              onClick={() => setPasswordOpen(true)}
-            >
-              <Upload className="mr-2 h-4 w-4" /> Alle Änderungen laden
-            </Button>
+            {hasChanges && (
+              <Button
+                className="border border-blue-800 !bg-blue-700 !text-white shadow-md hover:!bg-blue-800"
+                onClick={() => setPasswordOpen(true)}
+              >
+                <Upload className="mr-2 h-4 w-4" /> Alle Änderungen laden
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

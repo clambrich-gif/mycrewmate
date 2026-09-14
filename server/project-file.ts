@@ -291,6 +291,7 @@ function validateRelations(document: BackupDocument) {
     );
 
   const helperShifts = new Map<string, typeof document.shifts>();
+  const helperNames = new Map<string, string>();
   const areaContacts = new Map<string, string>();
   const activeDays = new Set(document.metadata.activeDays);
   for (const shift of document.shifts) {
@@ -366,18 +367,27 @@ function validateRelations(document: BackupDocument) {
           `Einsatzplan „${shift.task}“: Helfer ist doppelt eingetragen`
         );
       seenHelpers.add(helperKey);
+      helperNames.set(helperKey, helper.name);
       const list = helperShifts.get(helperKey) ?? [];
       list.push(shift);
       helperShifts.set(helperKey, list);
     }
   }
-  for (const [helperKey, assigned] of Array.from(helperShifts.entries()))
-    for (let left = 0; left < assigned.length; left++)
+  for (const [helperKey, assigned] of Array.from(helperShifts.entries())) {
+    let overlapWarning = "";
+    for (let left = 0; left < assigned.length && !overlapWarning; left++)
       for (let right = left + 1; right < assigned.length; right++)
-        if (overlaps(assigned[left] as any, assigned[right] as any))
-          throw new Error(
-            `Doppelbelegung: ${helperKey} ist gleichzeitig in „${assigned[left].task}“ und „${assigned[right].task}“ eingeteilt`
-          );
+        if (overlaps(assigned[left] as any, assigned[right] as any)) {
+          overlapWarning = `Doppelbelegung: ${helperNames.get(helperKey) ?? helperKey} ist gleichzeitig in „${assigned[left].task}“ und „${assigned[right].task}“ eingeteilt.`;
+          break;
+        }
+    if (
+      overlapWarning &&
+      document.warnings.length < 1_000 &&
+      !document.warnings.includes(overlapWarning)
+    )
+      document.warnings.push(overlapWarning);
+  }
 }
 
 const digest = (buffer: Buffer) =>

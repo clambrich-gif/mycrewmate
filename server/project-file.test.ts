@@ -273,6 +273,26 @@ describe("Projektdatei und modularer Excel-Import", () => {
     ).toThrow("Alex Beispiel");
   });
 
+  it("akzeptiert zulässige Doppelbelegungen im Projektstand mit Warnung", async () => {
+    const exported = await exportProjectFile();
+    const document = JSON.parse(exported.buffer.toString("utf8"));
+    const parallelShift = structuredClone(document.shifts[0]);
+    parallelShift.sourceId += 1;
+    parallelShift.task = "Parallele Aufgabe";
+    document.shifts.push(parallelShift);
+
+    const parsed = parseProjectFile(
+      Buffer.from(JSON.stringify(document)).toString("base64")
+    );
+
+    expect(parsed.document.shifts).toHaveLength(2);
+    expect(parsed.document.warnings).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("Doppelbelegung: Alex Beispiel"),
+      ])
+    );
+  });
+
   it("lädt Projektdateien der Version 1 mit den bisherigen Werktagsregeln", async () => {
     const exported = await exportProjectFile();
     const document = JSON.parse(exported.buffer.toString("utf8"));
