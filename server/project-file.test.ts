@@ -452,7 +452,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     expect(preview.warnings.join(" ")).toContain("Umbenennung ohne ID");
   });
 
-  it("behandelt fehlende Mo-bis-Do-Spalten im Helfer-Modulimport als bisher implizit verfügbar", async () => {
+  it("behält bei fehlenden Mo-bis-Do-Spalten im Helfer-Modulimport bestehende Verfügbarkeiten bei", async () => {
     const withoutWeekdays = (row: ReturnType<typeof helperRow>) => {
       const { Mo: _mo, Di: _di, Mi: _mi, Do: _do, ...legacy } = row;
       return legacy;
@@ -471,10 +471,10 @@ describe("Projektdatei und modularer Excel-Import", () => {
     expect(helperUpdates).toHaveLength(2);
     for (const change of helperUpdates) {
       expect(change.after).toMatchObject({
-        availMon: "ja",
-        availTue: "ja",
-        availWed: "ja",
-        availThu: "ja",
+        availMon: "nein",
+        availTue: "nein",
+        availWed: "nein",
+        availThu: "nein",
       });
     }
   });

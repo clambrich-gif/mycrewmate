@@ -62,12 +62,18 @@ const moduleImportMocks = vi.hoisted(() => ({
   previewModuleExcelImport: vi.fn(),
   applyModuleExcelImport: vi.fn(),
 }));
+const previewBindingMocks = vi.hoisted(() => ({
+  createPreviewBinding: vi.fn(() => "preview-binding-test-token"),
+  uploadedFileDigest: vi.fn(() => "b".repeat(64)),
+  verifyPreviewBinding: vi.fn(),
+}));
 
 vi.mock("./db", () => dbMocks);
 vi.mock("./storage", () => storageMocks);
 vi.mock("./excel-backup", () => backupMocks);
 vi.mock("./project-file", () => projectFileMocks);
 vi.mock("./module-excel-import", () => moduleImportMocks);
+vi.mock("./import-preview-binding", () => previewBindingMocks);
 
 import { appRouter } from "./routers";
 import { hashPassword } from "./password-auth";
@@ -135,6 +141,11 @@ describe("Planungs-API", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    previewBindingMocks.createPreviewBinding.mockReturnValue(
+      "preview-binding-test-token"
+    );
+    previewBindingMocks.uploadedFileDigest.mockReturnValue("b".repeat(64));
+    previewBindingMocks.verifyPreviewBinding.mockImplementation(() => undefined);
     dbMocks.listShifts.mockResolvedValue([shift]);
     dbMocks.listHelpers.mockResolvedValue([helper]);
     dbMocks.listAssignments.mockResolvedValue([]);
@@ -182,6 +193,7 @@ describe("Planungs-API", () => {
       },
       currentDigest: "a".repeat(64),
       workbookDigest: "b".repeat(64),
+      previewBinding: "preview-binding-test-token",
       warnings: [],
       changes: [],
       totals: { created: 0, updated: 0, deleted: 0, unchanged: 0, byArea: {} },
@@ -199,6 +211,7 @@ describe("Planungs-API", () => {
       areaName: "Helfer",
       currentDigest: "a".repeat(64),
       sourceDigest: "b".repeat(64),
+      previewBinding: "preview-binding-test-token",
       warnings: [],
       changes: [],
       totals: { created: 0, updated: 0, deleted: 0 },
@@ -528,6 +541,7 @@ describe("Planungs-API", () => {
       base64: "eA==",
       filename: "Projekt.rscplanung.json",
       currentDigest: "a".repeat(64),
+      previewBinding: "preview-binding-test-token",
     };
 
     await expect(
@@ -547,6 +561,33 @@ describe("Planungs-API", () => {
       "a".repeat(64),
       expect.objectContaining({ userId: 1, role: "admin" })
     );
+    expect(previewBindingMocks.verifyPreviewBinding).toHaveBeenCalledWith(
+      "preview-binding-test-token",
+      expect.objectContaining({
+        sourceDigest: "b".repeat(64),
+        currentDigest: "a".repeat(64),
+        operation: "project-file",
+        userId: 1,
+      })
+    );
+  });
+
+  it("weist einen Restore mit ungültiger Vorschau-Freigabe vor jeder Übernahme ab", async () => {
+    previewBindingMocks.verifyPreviewBinding.mockImplementation(() => {
+      throw new Error("Die Vorschau-Freigabe ist ungültig oder abgelaufen");
+    });
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.projectFile.load({
+        base64: "eA==",
+        filename: "Projekt.rscplanung.json",
+        currentDigest: "a".repeat(64),
+        previewBinding: "preview-binding-test-token",
+        adminPassword: ADMIN_PASSWORD,
+      })
+    ).rejects.toThrow("Vorschau-Freigabe");
+    expect(projectFileMocks.loadProjectFile).not.toHaveBeenCalled();
   });
 
   it("importiert ein Excel-Modul nur administrativ und passwortgeschützt", async () => {
@@ -567,6 +608,7 @@ describe("Planungs-API", () => {
       base64: "eA==",
       filename: "Helfer.xlsx",
       currentDigest: "a".repeat(64),
+      previewBinding: "preview-binding-test-token",
     };
     await expect(
       appRouter
@@ -584,6 +626,15 @@ describe("Planungs-API", () => {
       "Helfer.xlsx",
       "a".repeat(64),
       expect.objectContaining({ userId: 1, role: "admin" })
+    );
+    expect(previewBindingMocks.verifyPreviewBinding).toHaveBeenCalledWith(
+      "preview-binding-test-token",
+      expect.objectContaining({
+        sourceDigest: "b".repeat(64),
+        currentDigest: "a".repeat(64),
+        operation: "module:HELFER",
+        userId: 1,
+      })
     );
   });
 

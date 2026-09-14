@@ -343,6 +343,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
       "Es sind keine Änderungen zu übernehmen."
     );
     expect(storage).toContain('{hasChanges ? "Abbrechen" : "Schließen"}');
+    expect(storage).toContain("previewBinding: preview.data.previewBinding");
   });
 
   it("rendert Änderungseinträge auch bei alten doppelten Kennungen mit eindeutigen React-Schlüsseln", () => {
@@ -359,6 +360,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
 
     expect(moduleImport).toContain("Vollständige Excel-Prüfung:");
     expect(moduleImport).toContain("preview.data?.rowsChecked");
+    expect(moduleImport).toContain(
+      "previewBinding: preview.data.previewBinding"
+    );
   });
 
   it("deaktiviert Dashboardkarten ohne Treffer visuell und funktional", () => {

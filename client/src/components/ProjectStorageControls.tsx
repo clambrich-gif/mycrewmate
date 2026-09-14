@@ -291,6 +291,7 @@ export function ProjectStorageControls({
             base64: file.base64,
             filename: file.name,
             currentDigest: preview.data.currentDigest,
+            previewBinding: preview.data.previewBinding,
             adminPassword,
           });
         }}

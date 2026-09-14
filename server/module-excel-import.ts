@@ -191,6 +191,117 @@ function hydrateExistingIds(
   );
 }
 
+const OPTIONAL_MODULE_COLUMNS: Record<ModuleImportArea, string[]> = {
+  ANSPRECHPARTNER: ["Rufnummer", "Bemerkung", "Reihenfolge"],
+  HELFER: [
+    "Ansprechpartner-ID",
+    "Ansprechpartner",
+    "E-Mail",
+    "Telefon",
+    "Bemerkung",
+    "Helfen?",
+    "Mo",
+    "Di",
+    "Mi",
+    "Do",
+    "Fr",
+    "Sa",
+    "So",
+    "Bestätigt?",
+  ],
+  EINSATZPLAN: [
+    "Beginn",
+    "Ende",
+    "Bemerkung",
+    "Reihenfolge",
+    "Bereichsansprechpartner-ID",
+    "Bereichsansprechpartner",
+    ...Array.from({ length: 20 }, (_, slot) => [
+      `Helfer ${slot + 1} ID`,
+      `Helfer ${slot + 1}`,
+    ]).flat(),
+  ],
+  VORBEREITUNG: [
+    "Zu erledigen bis",
+    "Verantwortlich-ID",
+    "Verantwortlich",
+    "Status",
+    "Bemerkung",
+    "Reihenfolge",
+  ],
+  NACHBEREITUNG: [
+    "Verantwortlich-ID",
+    "Verantwortlich",
+    "Status",
+    "Bemerkung",
+    "Reihenfolge",
+  ],
+  MATERIAL: [
+    "Kategorie",
+    "Menge",
+    "Einheit",
+    "Verantwortlich-ID",
+    "Verantwortlich",
+    "Bestellt",
+    "Bemerkung",
+    "Reihenfolge",
+  ],
+  MARKETING: [
+    "Kanal",
+    "Verantwortlich-ID",
+    "Verantwortlich",
+    "Status",
+    "Bemerkung",
+    "Reihenfolge",
+  ],
+  GENEHMIGUNGEN: [
+    "Verantwortlich-ID",
+    "Verantwortlich",
+    "Status",
+    "Bemerkung",
+    "Reihenfolge",
+  ],
+  KUCHEN: ["Kuchen", "Abgabezeit", "Bemerkung", "Reihenfolge"],
+  FINANZEN: ["Einnahmen", "Ausgaben", "Bemerkung", "Reihenfolge"],
+};
+
+/**
+ * Fehlende optionale Spalten bedeuten "nicht ändern". Eine vorhandene, aber
+ * leere Zelle bedeutet hingegen bewusstes Leeren. Damit können einfache
+ * Einzelblätter genutzt werden, ohne Bestandsdaten unabsichtlich zu löschen.
+ */
+export function preserveMissingOptionalModuleColumns(
+  area: ModuleImportArea,
+  importedRows: Record<string, unknown>[],
+  currentRows: Record<string, unknown>[],
+  sourceHeaders: Set<string>
+) {
+  const missingColumns = OPTIONAL_MODULE_COLUMNS[area].filter(
+    column => !sourceHeaders.has(column)
+  );
+  if (!missingColumns.length) return 0;
+
+  const currentById = new Map(
+    currentRows.map(row => [String(row.ID ?? "").trim(), row])
+  );
+  const currentByIdentity = new Map(
+    currentRows.map(row => [rowIdentity(area, row), row])
+  );
+  let preserved = 0;
+  for (const row of importedRows) {
+    const id = String(row.ID ?? "").trim();
+    const current =
+      (id ? currentById.get(id) : undefined) ??
+      currentByIdentity.get(rowIdentity(area, row));
+    if (!current) continue;
+    for (const column of missingColumns) {
+      row[column] = current[column] ?? "";
+      preserved++;
+    }
+  }
+  return preserved;
+}
+
 export function removeCopiedModuleIds(
   area: ModuleImportArea,
   importedRows: Record<string, unknown>[],
@@ -209,8 +320,15 @@ export function removeCopiedModuleIds(
   );
   let corrected = 0;
   for (const [id, rows] of Array.from(rowsById.entries())) {
-    if (rows.length < 2) continue;
     const current = currentById.get(id);
+    if (!current) {
+      for (const row of rows) {
+        row.ID = "";
+        corrected++;
+      }
+      continue;
+    }
+    if (rows.length < 2) continue;
     let keptExisting = false;
     for (const row of rows) {
       const isExisting =
@@ -434,9 +552,15 @@ async function buildModuleTarget(base64: string, area: ModuleImportArea) {
   }
   const currentRows = rowsFromDocument(current, area);
   const correctedCopiedIds =
-    area === "ANSPRECHPARTNER"
+    area === "ANSPRECHPARTNER" || area === "HELFER"
       ? removeCopiedModuleIds(area, rawImportedRows, currentRows)
       : 0;
+  const preservedMissingColumns = preserveMissingOptionalModuleColumns(
+    area,
+    rawImportedRows,
+    currentRows,
+    sourceHeaders
+  );
   const importedRows = hydrateExistingIds(area, rawImportedRows, currentRows);
   const workbook = baseWorkbook(current);
   for (const currentArea of MODULE_IMPORT_AREAS) {
@@ -558,7 +682,12 @@ async function buildModuleTarget(base64: string, area: ModuleImportArea) {
   if (correctedCopiedIds)
     target.warnings = [
       ...target.warnings,
-      `${correctedCopiedIds} mitkopierte technische ID${correctedCopiedIds === 1 ? " wurde" : "s wurden"} bei neuen ${areaName[area]}-Zeilen automatisch entfernt. Alle Zeilen werden einzeln geprüft.`,
+      `${correctedCopiedIds} ungültige oder mitkopierte technische ID${correctedCopiedIds === 1 ? " wurde" : "s wurden"} bei ${areaName[area]}-Zeilen automatisch entfernt. Alle Zeilen werden einzeln geprüft.`,
+    ];
+  if (preservedMissingColumns)
+    target.warnings = [
+      ...target.warnings,
+      `${preservedMissingColumns} Werte aus fehlenden optionalen Spalten wurden aus dem bestehenden Stand beibehalten. Vorhandene leere Zellen werden dagegen bewusst als Leerung übernommen.`,
     ];
   const unexpected = changes.find(change => !allowedAreas.has(change.area));
   if (unexpected)

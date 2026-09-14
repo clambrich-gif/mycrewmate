@@ -3,6 +3,7 @@ import * as XLSX from "xlsx";
 import {
   findContactSelfHelperRow,
   normalizeModuleSheetRange,
+  preserveMissingOptionalModuleColumns,
   removeCopiedModuleIds,
 } from "./module-excel-import";
 
@@ -67,6 +68,48 @@ describe("modularer Ansprechpartner-Excel-Import", () => {
       )
     ).toBe(0);
     expect(importedRows.map(row => row.ID)).toEqual([11, 12, ""]);
+  });
+
+  it("entfernt bei Helfern mitkopierte IDs aus zusätzlichen neuen Zeilen", () => {
+    const currentRows: Record<string, unknown>[] = [
+      { ID: 21, Name: "Bestehender Helfer" },
+    ];
+    const importedRows: Record<string, unknown>[] = [
+      { ID: 21, Name: "Bestehender Helfer" },
+      { ID: 21, Name: "Neu kopierter Helfer" },
+    ];
+
+    expect(removeCopiedModuleIds("HELFER", importedRows, currentRows)).toBe(1);
+    expect(importedRows.map(row => row.ID)).toEqual([21, ""]);
+  });
+
+  it("behandelt fehlende optionale Spalten als unverändert, vorhandene Leerwerte aber als bewusste Leerung", () => {
+    const existing: Record<string, unknown>[] = [
+      {
+        ID: 21,
+        Name: "Alex Beispiel",
+        "E-Mail": "alex@example.test",
+        Telefon: "01234",
+        Bemerkung: "Bitte morgens einteilen",
+      },
+    ];
+    const importWithMissingColumns: Record<string, unknown>[] = [
+      { ID: 21, Name: "Alex Beispiel", Telefon: "" },
+    ];
+
+    const preserved = preserveMissingOptionalModuleColumns(
+      "HELFER",
+      importWithMissingColumns,
+      existing,
+      new Set(["ID", "Name", "Telefon"])
+    );
+
+    expect(preserved).toBeGreaterThan(0);
+    expect(importWithMissingColumns[0]).toMatchObject({
+      "E-Mail": "alex@example.test",
+      Bemerkung: "Bitte morgens einteilen",
+      Telefon: "",
+    });
   });
 
   it("verwendet den gleichnamigen Selbsthelfer statt des ersten betreuten Helfers", () => {

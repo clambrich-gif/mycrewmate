@@ -29,6 +29,11 @@ import {
   previewProjectFile,
 } from "./project-file";
 import {
+  createPreviewBinding,
+  uploadedFileDigest,
+  verifyPreviewBinding,
+} from "./import-preview-binding";
+import {
   applyModuleExcelImport,
   MODULE_IMPORT_AREAS,
   previewModuleExcelImport,
@@ -54,6 +59,7 @@ import {
   DEFAULT_PDF_SETTINGS,
 } from "./pdf";
 import {
+  currentEventId,
   currentEventYear,
   requestedPlanningScope,
   withPlanningScope,
@@ -1351,9 +1357,22 @@ export const appRouter = router({
             .max(14_000_000, "Speicherdatei ist größer als 10 MB"),
         })
       )
-      .mutation(({ input }) =>
-        withExcelOperationLimit(() => previewProjectFile(input.base64))
-      ),
+      .mutation(async ({ ctx, input }) => {
+        const result = await withExcelOperationLimit(() =>
+          previewProjectFile(input.base64)
+        );
+        return {
+          ...result,
+          previewBinding: createPreviewBinding({
+            sourceDigest: result.workbookDigest,
+            currentDigest: result.currentDigest,
+            year: currentEventYear(),
+            eventId: currentEventId(),
+            operation: "project-file",
+            userId: ctx.user.id,
+          }),
+        };
+      }),
     load: scopeAdminAuthProcedure
       .input(
         z.object({
@@ -1362,11 +1381,20 @@ export const appRouter = router({
             .max(14_000_000, "Speicherdatei ist größer als 10 MB"),
           filename: z.string().trim().min(1).max(255),
           currentDigest: z.string().regex(/^[a-f0-9]{64}$/),
+          previewBinding: z.string().min(20).max(2_000),
           adminPassword: z.string().min(1).max(200),
         })
       )
       .mutation(async ({ ctx, input }) => {
         await requireAdminPassword(input.adminPassword, ctx);
+        verifyPreviewBinding(input.previewBinding, {
+          sourceDigest: uploadedFileDigest(input.base64),
+          currentDigest: input.currentDigest,
+          year: currentEventYear(),
+          eventId: currentEventId(),
+          operation: "project-file",
+          userId: ctx.user.id,
+        });
         return withExcelOperationLimit(() =>
           loadProjectFile(
             input.base64,
@@ -1400,11 +1428,22 @@ export const appRouter = router({
             .max(20_000_000, "Excel-Datei ist größer als 15 MB"),
         })
       )
-      .mutation(({ input }) =>
-        withExcelOperationLimit(() =>
+      .mutation(async ({ ctx, input }) => {
+        const result = await withExcelOperationLimit(() =>
           previewModuleExcelImport(input.base64, input.area)
-        )
-      ),
+        );
+        return {
+          ...result,
+          previewBinding: createPreviewBinding({
+            sourceDigest: result.sourceDigest,
+            currentDigest: result.currentDigest,
+            year: currentEventYear(),
+            eventId: currentEventId(),
+            operation: `module:${input.area}`,
+            userId: ctx.user.id,
+          }),
+        };
+      }),
     applyModule: scopeAdminAuthProcedure
       .input(
         z.object({
@@ -1414,11 +1453,20 @@ export const appRouter = router({
             .max(20_000_000, "Excel-Datei ist größer als 15 MB"),
           filename: z.string().trim().min(1).max(255),
           currentDigest: z.string().regex(/^[a-f0-9]{64}$/),
+          previewBinding: z.string().min(20).max(2_000),
           adminPassword: z.string().min(1).max(200),
         })
       )
       .mutation(async ({ ctx, input }) => {
         await requireAdminPassword(input.adminPassword, ctx);
+        verifyPreviewBinding(input.previewBinding, {
+          sourceDigest: uploadedFileDigest(input.base64),
+          currentDigest: input.currentDigest,
+          year: currentEventYear(),
+          eventId: currentEventId(),
+          operation: `module:${input.area}`,
+          userId: ctx.user.id,
+        });
         return withExcelOperationLimit(() =>
           applyModuleExcelImport(
             input.base64,
