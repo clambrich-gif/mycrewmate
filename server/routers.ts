@@ -57,10 +57,26 @@ import {
   withPlanningScope,
 } from "./year-context";
 import { storageGetSignedUrl, storagePut } from "./storage";
+import {
+  getOnlinePresenceCounts,
+  recordSessionPresence,
+  removeSessionPresence,
+} from "./session-presence";
 
 const GUIDE_PDF_KEY = "RSC-Helferplanung-Anleitung_2a9c73bd.pdf";
 const GUIDE_PDF_FILENAME = "RSC-Helferplanung-Anleitung.pdf";
 const GUIDE_PDF_MAX_BYTES = 5_000_000;
+
+async function safelyRecordPresence(
+  req: Parameters<typeof recordSessionPresence>[0],
+  user: Parameters<typeof recordSessionPresence>[1]
+) {
+  try {
+    await recordSessionPresence(req, user);
+  } catch (error) {
+    console.warn("[Presence] Aktivitätszeit konnte nicht gespeichert werden", error);
+  }
+}
 
 async function readResponseBodyLimited(
   response: Response,
@@ -99,7 +115,14 @@ async function readResponseBodyLimited(
   return Buffer.concat(chunks, totalBytes);
 }
 
-const scopedProtectedProcedure = baseProtectedProcedure.use(({ ctx, next }) =>
+const activeSessionProcedure = baseProtectedProcedure.use(
+  async ({ ctx, next }) => {
+    await safelyRecordPresence(ctx.req, ctx.user);
+    return next();
+  }
+);
+
+const scopedProtectedProcedure = activeSessionProcedure.use(({ ctx, next }) =>
   withPlanningScope(requestedPlanningScope(ctx.req), () => next())
 );
 
@@ -414,12 +437,25 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         await db.setAdminPasswordHash(await hashPassword(input.password));
         return { success: true } as const;
-      }),
-    logout: publicProcedure.mutation(({ ctx }) => {
+    }),
+    logout: publicProcedure.mutation(async ({ ctx }) => {
+      try {
+        await removeSessionPresence(ctx.req);
+      } catch (error) {
+        console.warn("[Presence] Sitzung konnte beim Logout nicht entfernt werden", error);
+      }
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
+  }),
+
+  presence: router({
+    heartbeat: baseProtectedProcedure.mutation(async ({ ctx }) => {
+      await safelyRecordPresence(ctx.req, ctx.user);
+      return { success: true } as const;
+    }),
+    status: baseProtectedProcedure.query(() => getOnlinePresenceCounts()),
   }),
 
   years: router({

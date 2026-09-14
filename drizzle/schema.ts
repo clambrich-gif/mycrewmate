@@ -1,4 +1,5 @@
 import {
+  index,
   int,
   json,
   mediumtext,
@@ -35,6 +36,27 @@ export const users = mysqlTable("users", {
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
+
+export const sessionPresences = mysqlTable(
+  "session_presences",
+  {
+    sessionKey: varchar("sessionKey", { length: 64 }).primaryKey(),
+    userId: int("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: mysqlEnum("role", ["user", "admin"]).notNull(),
+    lastSeen: timestamp("lastSeen").defaultNow().notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    index("session_presences_last_seen_idx").on(table.lastSeen),
+    index("session_presences_role_last_seen_idx").on(
+      table.role,
+      table.lastSeen
+    ),
+  ]
+);
+export type SessionPresence = typeof sessionPresences.$inferSelect;
 
 // ---------- MyEifelRide Planungsplattform ----------
 

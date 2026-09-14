@@ -5,6 +5,36 @@ const source = (relativePath: string) =>
   readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
 describe("UI- und Mobile-UX-Regeln", () => {
+  it("zeigt PDF-Hinweise bearbeitbar per Desktop-Hover und Touch-Popover vollständig an", () => {
+    const helpers = source("client/src/pages/Helpers.tsx");
+
+    expect(helpers).toContain("function HelperPdfNoteField");
+    expect(helpers).toContain("event.pointerType");
+    expect(helpers).toContain("window.setTimeout(() => setOpen(true), 900)");
+    expect(helpers).toContain("Vollständigen PDF-Hinweis für");
+    expect(helpers).toContain("Kein Hinweis hinterlegt.");
+    expect(helpers).toContain("onBlur={event => {");
+    expect(helpers.match(/<HelperPdfNoteField/g)).toHaveLength(2);
+    expect(helpers).toContain("collisionPadding={12}");
+    expect(helpers).toContain("z-50 w-[min(20rem,calc(100vw-1.5rem))]");
+  });
+
+  it("zeigt rollengetrennte Online-Sitzungen im Desktopkopf und Mobilmenü", () => {
+    const layout = source("client/src/components/Layout.tsx");
+    const presence = source("client/src/components/OnlinePresenceBadge.tsx");
+
+    expect(layout).toContain("const onlinePresence = useOnlinePresence()");
+    expect(layout.match(/<OnlinePresenceBadge/g)).toHaveLength(2);
+    expect(presence).toContain("const PRESENCE_POLL_MS = 60_000");
+    expect(presence).toContain("refetchInterval: PRESENCE_POLL_MS");
+    expect(presence).toContain('document.addEventListener("pointerdown"');
+    expect(presence).toContain('document.addEventListener("keydown"');
+    expect(presence).toContain('document.addEventListener("scroll"');
+    expect(presence).toContain("Online:");
+    expect(presence).toContain("Planer");
+    expect(presence).toContain("Admins");
+  });
+
   it("verdichtet nur die Desktop-Helfertabelle und kürzt Vielleicht geräteübergreifend auf ein Fragezeichen", () => {
     const helpers = source("client/src/pages/Helpers.tsx");
     const mobileCards = helpers.slice(

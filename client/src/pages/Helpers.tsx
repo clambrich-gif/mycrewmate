@@ -5,6 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -14,8 +19,8 @@ import {
 import { downloadBase64File, safeDownloadName } from "@/lib/download";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
-import { FileDown, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { FileDown, Info, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
@@ -81,6 +86,114 @@ function Sel({
         ))}
       </SelectContent>
     </Select>
+  );
+}
+
+function HelperPdfNoteField({
+  helperId,
+  helperName,
+  note,
+  compactOnDesktop = false,
+  onCommit,
+}: {
+  helperId: number;
+  helperName: string;
+  note: string | null;
+  compactOnDesktop?: boolean;
+  onCommit: (value: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const openTimer = useRef<number | null>(null);
+  const closeTimer = useRef<number | null>(null);
+  const editing = useRef(false);
+  const fullNote = note?.trim() ?? "";
+
+  const clearOpenTimer = () => {
+    if (openTimer.current !== null) window.clearTimeout(openTimer.current);
+    openTimer.current = null;
+  };
+  const clearCloseTimer = () => {
+    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
+    closeTimer.current = null;
+  };
+  const openAfterDelay = (pointerType: string) => {
+    if (pointerType !== "mouse" || editing.current) return;
+    clearCloseTimer();
+    clearOpenTimer();
+    openTimer.current = window.setTimeout(() => setOpen(true), 900);
+  };
+  const closeAfterLeave = (pointerType: string) => {
+    if (pointerType !== "mouse") return;
+    clearOpenTimer();
+    clearCloseTimer();
+    closeTimer.current = window.setTimeout(() => setOpen(false), 120);
+  };
+
+  useEffect(
+    () => () => {
+      clearOpenTimer();
+      clearCloseTimer();
+    },
+    []
+  );
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <div
+        className="relative"
+        onPointerEnter={event => openAfterDelay(event.pointerType)}
+        onPointerLeave={event => closeAfterLeave(event.pointerType)}
+      >
+        <Input
+          key={`${helperId}-note-${note ?? ""}`}
+          className={cn(
+            "w-full pr-11 md:pr-9",
+            compactOnDesktop && "h-8 min-w-0"
+          )}
+          defaultValue={note ?? ""}
+          placeholder="Verfügbarkeit / Bemerkung"
+          aria-label={`Hinweis für PDF von ${helperName} bearbeiten`}
+          onFocus={() => {
+            editing.current = true;
+            clearOpenTimer();
+            setOpen(false);
+          }}
+          onBlur={event => {
+            editing.current = false;
+            const value = event.target.value.trim();
+            if (value !== (note ?? "")) onCommit(value || null);
+          }}
+        />
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="absolute inset-y-0 right-0 inline-flex w-11 items-center justify-center rounded-r-md text-slate-500 hover:bg-slate-100 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-blue-600 md:w-8"
+            aria-label={`Vollständigen PDF-Hinweis für ${helperName} anzeigen`}
+            title="Vollständigen Hinweis anzeigen"
+          >
+            <Info className="size-4" />
+          </button>
+        </PopoverTrigger>
+      </div>
+      <PopoverContent
+        side="top"
+        sideOffset={8}
+        align="center"
+        avoidCollisions
+        collisionPadding={12}
+        sticky="always"
+        onPointerEnter={event => {
+          if (event.pointerType === "mouse") clearCloseTimer();
+        }}
+        onPointerLeave={event => closeAfterLeave(event.pointerType)}
+        className="z-50 w-[min(20rem,calc(100vw-1.5rem))] max-w-none space-y-1.5 border border-gray-200 bg-white text-left text-gray-900 opacity-100 shadow-lg duration-200 ease-out data-[state=open]:fade-in-0 motion-reduce:animate-none sm:w-80"
+      >
+        <p className="text-xs font-medium text-slate-500">Hinweis für PDF</p>
+        <p className="whitespace-pre-wrap break-words text-sm">
+          {fullNote || "Kein Hinweis hinterlegt."}
+        </p>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -339,15 +452,11 @@ export default function Helpers() {
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium">Hinweis für PDF</label>
-                  <Input
-                    key={`${helper.id}-mobile-note-${helper.note ?? ""}`}
-                    defaultValue={helper.note ?? ""}
-                    placeholder="Verfügbarkeit / Bemerkung"
-                    onBlur={event => {
-                      const value = event.target.value.trim();
-                      if (value !== (helper.note ?? ""))
-                        update.mutate({ id: helper.id, note: value || null });
-                    }}
+                  <HelperPdfNoteField
+                    helperId={helper.id}
+                    helperName={helper.name}
+                    note={helper.note}
+                    onCommit={note => update.mutate({ id: helper.id, note })}
                   />
                 </div>
               </div>
@@ -534,17 +643,12 @@ export default function Helpers() {
                     />
                   </td>
                   <td className="p-2">
-                    <Input
-                      key={`${helper.id}-note-${helper.note ?? ""}`}
-                      className="h-8 w-full min-w-0"
-                      defaultValue={helper.note ?? ""}
-                      placeholder="Verfügbarkeit / Bemerkung"
-                      onBlur={event => {
-                        const value = event.target.value.trim();
-                        if (value !== (helper.note ?? "")) {
-                          update.mutate({ id: helper.id, note: value || null });
-                        }
-                      }}
+                    <HelperPdfNoteField
+                      helperId={helper.id}
+                      helperName={helper.name}
+                      note={helper.note}
+                      compactOnDesktop
+                      onCommit={note => update.mutate({ id: helper.id, note })}
                     />
                   </td>
                   <td className="p-1 text-center">

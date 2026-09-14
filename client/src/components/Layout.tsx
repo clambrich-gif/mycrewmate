@@ -1,5 +1,9 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
+import {
+  OnlinePresenceBadge,
+  useOnlinePresence,
+} from "@/components/OnlinePresenceBadge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -89,6 +93,7 @@ function LazyProjectStorageControls() {
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { user, loading, isAuthenticated, logout } = useAuth();
+  const onlinePresence = useOnlinePresence();
   const { year, eventId, selectYear, selectEvent } = useEventYear();
   const [location] = useLocation();
   const [password, setPassword] = useState("");
@@ -406,6 +411,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
               Planung {year} ·{" "}
               {user?.role === "admin" ? "Administrator" : "Planungsteam"}
             </SheetDescription>
+            <OnlinePresenceBadge
+              counts={onlinePresence.counts}
+              className="mt-1 w-fit"
+            />
           </SheetHeader>
           <div className="border-b p-3">
             <div className="mb-1.5 flex items-center justify-between">
@@ -548,12 +557,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </Sheet>
 
       <aside className="hidden w-64 shrink-0 flex-col border-r bg-card lg:sticky lg:top-0 lg:flex lg:h-screen lg:self-start">
-        <div className="h-20 flex items-center gap-3 border-b bg-gradient-to-r from-white to-slate-50 px-4 text-slate-950">
+        <div className="flex min-h-24 items-center gap-3 border-b bg-gradient-to-r from-white to-slate-50 px-4 py-3 text-slate-950">
           <div className="min-w-0 flex-1">
             <div className="font-bold leading-tight">RSC Helferplanung</div>
             <div className="truncate text-xs text-muted-foreground">
               Vereinsorganisation
             </div>
+            <OnlinePresenceBadge
+              counts={onlinePresence.counts}
+              className="mt-1.5 max-w-full"
+            />
           </div>
           <img
             {...logoLoading}
