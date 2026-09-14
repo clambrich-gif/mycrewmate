@@ -24,11 +24,13 @@ export function ResetAreaButton({
   label,
   onReset,
   compact = false,
+  mobileButtonLabel,
 }: {
   area: ResetArea;
   label: string;
   onReset?: () => void;
   compact?: boolean;
+  mobileButtonLabel?: string;
 }) {
   const { user } = useAuth();
   const utils = trpc.useUtils();
@@ -53,7 +55,16 @@ export function ResetAreaButton({
         onClick={() => setOpen(true)}
       >
         <RotateCcw className="mr-2 h-4 w-4" />
-        {compact ? "Zurücksetzen" : `${label} zurücksetzen`}
+        {mobileButtonLabel ? (
+          <>
+            <span className="sm:hidden">{mobileButtonLabel}</span>
+            <span className="hidden sm:inline">
+              {compact ? "Zurücksetzen" : `${label} zurücksetzen`}
+            </span>
+          </>
+        ) : (
+          (compact ? "Zurücksetzen" : `${label} zurücksetzen`)
+        )}
       </Button>
       <AdminPasswordDialog
         open={open}

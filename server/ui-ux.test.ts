@@ -647,7 +647,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
       plan.indexOf("<ClearPlanAssignmentsButton")
     );
     expect(plan.indexOf("<ClearPlanAssignmentsButton")).toBeLessThan(
-      plan.indexOf('<ResetAreaButton area="shifts"')
+      plan.indexOf("<ResetAreaButton")
     );
     expect(clearButton).toContain("trpc.plan.clearAssignments.useMutation");
     expect(clearButton).toContain("Die Schichten, Bereiche, Aufgaben");
@@ -676,5 +676,20 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain('className="min-w-[400px] p-3"');
     expect(plan).toContain('className="min-w-[400px] p-3 align-top"');
     expect(plan).toContain('className="flex flex-wrap gap-1.5"');
+  });
+
+  it("ordnet Einsatzplanaktionen ausschließlich mobil als gleich breites Raster an", () => {
+    const plan = source("client/src/pages/Plan.tsx");
+    const resetButton = source("client/src/components/ResetAreaButton.tsx");
+
+    expect(plan).toContain(
+      'grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end'
+    );
+    expect(plan).toContain('[&>[data-slot=button]]:w-full');
+    expect(plan).toContain('sm:[&>[data-slot=button]]:w-auto');
+    expect(plan).toContain('className="col-span-2 !w-full !px-4 !text-base sm:col-auto sm:!w-auto sm:!text-sm"');
+    expect(plan).toContain('mobileButtonLabel="Plan zurücksetzen"');
+    expect(resetButton).toContain('<span className="sm:hidden">{mobileButtonLabel}</span>');
+    expect(resetButton).toContain('<span className="hidden sm:inline">');
   });
 });

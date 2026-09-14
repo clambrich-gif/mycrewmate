@@ -680,14 +680,19 @@ export default function Plan() {
         </p>
       </div>
       {canEditPlan && (
-        <div className="flex justify-end gap-2 flex-wrap">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end [&>[data-slot=button]]:min-w-0 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:px-2 [&>[data-slot=button]]:text-xs sm:[&>[data-slot=button]]:w-auto sm:[&>[data-slot=button]]:px-4 sm:[&>[data-slot=button]]:text-sm">
           <ModuleExcelImportButton area="EINSATZPLAN" label="Einsatzplan" />
           <CopyPreviousPlanButton />
           <ClearPlanAssignmentsButton onCleared={() => setQ("")} />
-          <ResetAreaButton area="shifts" label="Einsatzplan" />
+          <ResetAreaButton
+            area="shifts"
+            label="Einsatzplan"
+            mobileButtonLabel="Plan zurücksetzen"
+          />
           <Button
             onClick={openCreate}
             disabled={isEventLoading || !activeDays.length}
+            className="col-span-2 !w-full !px-4 !text-base sm:col-auto sm:!w-auto sm:!text-sm"
           >
             <Plus className="h-4 w-4 mr-2" />
             Neue Schicht
