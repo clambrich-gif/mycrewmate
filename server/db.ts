@@ -27,6 +27,7 @@ import {
   finances,
   helpers,
   InsertUser,
+  User,
   marketing,
   materials,
   postTasks,
@@ -47,6 +48,7 @@ import {
 } from "../shared/weekdays";
 import { currentEventId, currentEventYear } from "./year-context";
 import { overlaps } from "./logic";
+import { validateExistingAssignmentsForShiftUpdate } from "./shift-update-validation";
 
 type DB = ReturnType<typeof drizzle>;
 type Transaction = Parameters<Parameters<DB["transaction"]>[0]>[0];
@@ -98,6 +100,53 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     .insert(users)
     .values(values)
     .onDuplicateKeyUpdate({ set: updateSet });
+}
+
+/**
+ * OAuth dient ausschließlich dem fest konfigurierten Eigentümerkonto. Andere
+ * Nutzer verwenden die getrennten Passwortzugänge und dürfen nie durch einen
+ * OAuth-Callback als Planungsteam angelegt werden.
+ */
+export function isConfiguredOAuthOwner(
+  openId: string,
+  ownerOpenId = ENV.ownerOpenId
+) {
+  return ownerOpenId.trim().length > 0 && openId === ownerOpenId;
+}
+
+export async function refreshConfiguredOAuthOwner(
+  user: Pick<InsertUser, "openId" | "name" | "email" | "loginMethod" | "lastSignedIn">
+): Promise<User | undefined> {
+  if (!isConfiguredOAuthOwner(user.openId)) return undefined;
+  const db = await getDb();
+  if (!db) return undefined;
+
+  const [existing] = await db
+    .select()
+    .from(users)
+    .where(eq(users.openId, user.openId))
+    .limit(1);
+  if (!existing) return undefined;
+
+  await db
+    .update(users)
+    .set({
+      name: user.name ?? null,
+      email: user.email ?? null,
+      loginMethod: user.loginMethod ?? null,
+      lastSignedIn: user.lastSignedIn ?? new Date(),
+      // Der Eigentümerzugang bleibt unabhängig vom vorherigen Altdatenstatus
+      // administrativ. Dies legt jedoch kein unbekanntes Konto an.
+      role: "admin",
+    })
+    .where(eq(users.id, existing.id));
+
+  const [refreshed] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, existing.id))
+    .limit(1);
+  return refreshed;
 }
 
 export async function getUserByOpenId(openId: string) {
@@ -1398,13 +1447,93 @@ export async function updateShift(
 ) {
   if (v.day) await requireActiveEventDay(v.day as Weekday);
   const db = (await getDb()) as DB;
-  const { year: ignored, eventId: ignoredEventId, ...safe } = v;
-  const result = await db
-    .update(shifts)
-    .set(safe)
-    .where(and(eq(shifts.id, id), planningScope(shifts)));
-  if (safe.area !== undefined) await removeOrphanShiftAreaContacts();
-  return result;
+  const {
+    id: ignoredId,
+    year: ignoredYear,
+    eventId: ignoredEventId,
+    createdAt: ignoredCreatedAt,
+    ...safe
+  } = v;
+  const requiresAssignmentValidation =
+    safe.day !== undefined ||
+    safe.startTime !== undefined ||
+    safe.endTime !== undefined ||
+    safe.needed !== undefined;
+
+  return db.transaction(async tx => {
+    const [existingShift] = await tx
+      .select()
+      .from(shifts)
+      .where(and(eq(shifts.id, id), planningScope(shifts)))
+      .limit(1)
+      .for("update");
+    if (!existingShift) throw new Error("Schicht wurde nicht gefunden");
+
+    const proposedShift = {
+      ...existingShift,
+      ...safe,
+      id: existingShift.id,
+      year: existingShift.year,
+      eventId: existingShift.eventId,
+      createdAt: existingShift.createdAt,
+    } as typeof shifts.$inferSelect;
+
+    if (requiresAssignmentValidation) {
+      const existingAssignments = await tx
+        .select()
+        .from(assignments)
+        .where(eq(assignments.shiftId, existingShift.id))
+        .for("update");
+      const helperIds = Array.from(
+        new Set(existingAssignments.map(item => item.helperId))
+      );
+      const assignedHelpers = helperIds.length
+        ? await tx
+            .select()
+            .from(helpers)
+            .where(and(planningScope(helpers), inArray(helpers.id, helperIds)))
+            .for("update")
+        : [];
+      const relatedAssignments = helperIds.length
+        ? await tx
+            .select({ ...getTableColumns(assignments) })
+            .from(assignments)
+            .innerJoin(shifts, eq(assignments.shiftId, shifts.id))
+            .where(
+              and(
+                planningScope(shifts),
+                inArray(assignments.helperId, helperIds)
+              )
+            )
+            .for("update")
+        : [];
+      const relatedShiftIds = Array.from(
+        new Set(relatedAssignments.map(item => item.shiftId))
+      );
+      const relatedShifts = relatedShiftIds.length
+        ? await tx
+            .select()
+            .from(shifts)
+            .where(and(planningScope(shifts), inArray(shifts.id, relatedShiftIds)))
+            .for("update")
+        : [];
+
+      validateExistingAssignmentsForShiftUpdate({
+        proposedShift,
+        existingAssignments,
+        assignedHelpers,
+        relatedAssignments,
+        relatedShifts,
+      });
+    }
+
+    const result = await tx
+      .update(shifts)
+      .set(safe)
+      .where(and(eq(shifts.id, existingShift.id), planningScope(shifts)));
+    if (safe.area !== undefined) await removeOrphanShiftAreaContactsForClient(tx);
+    return result;
+  });
 }
 export async function deleteShift(id: number) {
   const db = (await getDb()) as DB;
@@ -1456,6 +1585,10 @@ export async function setShiftAreaContact(
 }
 async function removeOrphanShiftAreaContacts() {
   const db = (await getDb()) as DB;
+  return removeOrphanShiftAreaContactsForClient(db);
+}
+
+async function removeOrphanShiftAreaContactsForClient(db: DBClient) {
   const activeAreas = await db
     .select({ area: shifts.area })
     .from(shifts)

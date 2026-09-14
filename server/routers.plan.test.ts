@@ -10,6 +10,7 @@ const dbMocks = vi.hoisted(() => ({
   assignHelper: vi.fn(),
   unassignHelper: vi.fn(),
   createShift: vi.fn(),
+  updateShift: vi.fn(),
   deleteShift: vi.fn(),
   deleteHelper: vi.fn(),
   deleteCake: vi.fn(),
@@ -70,6 +71,7 @@ vi.mock("./module-excel-import", () => moduleImportMocks);
 
 import { appRouter } from "./routers";
 import { hashPassword } from "./password-auth";
+import { ShiftUpdateValidationError } from "./shift-update-validation";
 
 const ADMIN_PASSWORD = "Test-Administrator-2026!";
 let adminPasswordHash = "";
@@ -137,6 +139,7 @@ describe("Planungs-API", () => {
     dbMocks.listHelpers.mockResolvedValue([helper]);
     dbMocks.listAssignments.mockResolvedValue([]);
     dbMocks.assignHelper.mockResolvedValue({ insertId: 1 });
+    dbMocks.updateShift.mockResolvedValue({ affectedRows: 1 });
     dbMocks.getContact.mockResolvedValue({ id: 5, name: "Chris Leitung" });
     dbMocks.getEvent.mockResolvedValue({
       id: 1,
@@ -894,6 +897,21 @@ describe("Planungs-API", () => {
     });
     await expect(caller.shifts.remove({ id: 10 })).rejects.toMatchObject({
       code: "FORBIDDEN",
+    });
+  });
+
+  it("gibt fachlich ungültige Schichtänderungen als verständlichen Eingabefehler zurück", async () => {
+    dbMocks.updateShift.mockRejectedValueOnce(
+      new ShiftUpdateValidationError(
+        "Der neue Helferbedarf wäre kleiner als bereits belegte Helferplätze"
+      )
+    );
+
+    await expect(
+      appRouter.createCaller(ctx).shifts.update({ id: 10, needed: 0 })
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "Der neue Helferbedarf wäre kleiner als bereits belegte Helferplätze",
     });
   });
 });

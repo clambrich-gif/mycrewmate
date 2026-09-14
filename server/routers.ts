@@ -10,6 +10,7 @@ import {
 import { z } from "zod";
 import * as db from "./db";
 import { TRPCError } from "@trpc/server";
+import { ShiftUpdateValidationError } from "./shift-update-validation";
 import {
   evaluateShifts,
   helperActiveOnDay,
@@ -701,7 +702,14 @@ export const appRouter = router({
             });
         }
         const { id, ...rest } = input;
-        return db.updateShift(id, rest);
+        try {
+          return await db.updateShift(id, rest);
+        } catch (error) {
+          if (error instanceof ShiftUpdateValidationError) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+          }
+          throw error;
+        }
       }),
     remove: adminProcedure
       .input(z.object({ id: z.number() }))

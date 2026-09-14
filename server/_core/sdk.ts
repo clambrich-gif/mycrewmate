@@ -7,6 +7,10 @@ import type { Request } from "express";
 import { SignJWT, jwtVerify } from "jose";
 import type { User } from "../../drizzle/schema";
 import * as db from "../db";
+import {
+  ADMIN_PASSWORD_OPEN_ID,
+  SHARED_PASSWORD_OPEN_ID,
+} from "../password-auth";
 import { ENV } from "./env";
 import type {
   ExchangeTokenRequest,
@@ -289,28 +293,31 @@ class SDKServer {
 
     const sessionUserId = session.openId;
     const signedInAt = new Date();
-    let user = await db.getUserByOpenId(sessionUserId);
-
-    // If user not in DB, sync from OAuth server automatically
-    if (!user) {
-      try {
-        const userInfo = await this.getUserInfoWithJwt(sessionToken ?? "");
-        await db.upsertUser({
-          openId: userInfo.openId,
-          name: userInfo.name || null,
-          email: userInfo.email ?? null,
-          loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
-          lastSignedIn: signedInAt,
-        });
-        user = await db.getUserByOpenId(userInfo.openId);
-      } catch (error) {
-        console.error("[Auth] Failed to sync user from OAuth:", error);
-        throw ForbiddenError("Failed to sync user info");
-      }
+    const isPasswordSession =
+      sessionUserId === SHARED_PASSWORD_OPEN_ID ||
+      sessionUserId === ADMIN_PASSWORD_OPEN_ID;
+    if (!isPasswordSession && !db.isConfiguredOAuthOwner(sessionUserId)) {
+      throw ForbiddenError("OAuth session identity is not authorized");
     }
+
+    let user = await db.getUserByOpenId(sessionUserId);
 
     if (!user) {
       throw ForbiddenError("User not found");
+    }
+
+    // OAuth darf nur das bereits konfigurierte Eigentümerkonto aktualisieren.
+    // Passwortsitzungen verwenden ihre vorab angelegten Shared-Identitäten.
+    if (!isPasswordSession) {
+      user = await db.refreshConfiguredOAuthOwner({
+        openId: user.openId,
+        name: user.name,
+        email: user.email,
+        loginMethod: user.loginMethod,
+        lastSignedIn: signedInAt,
+      });
+      if (!user) throw ForbiddenError("OAuth session identity is not authorized");
+      return user;
     }
 
     await db.upsertUser({

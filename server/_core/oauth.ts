@@ -40,13 +40,20 @@ export function registerOAuthRoutes(app: Express) {
         return;
       }
 
-      await db.upsertUser({
+      const authorizedOwner = await db.refreshConfiguredOAuthOwner({
         openId: userInfo.openId,
         name: userInfo.name || null,
         email: userInfo.email ?? null,
         loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
         lastSignedIn: new Date(),
       });
+      if (!authorizedOwner) {
+        res.status(403).json({
+          error:
+            "OAuth-Zugang ist für diese Identität nicht freigegeben. Bitte den Passwortzugang verwenden.",
+        });
+        return;
+      }
 
       const sessionToken = await sdk.createSessionToken(userInfo.openId, {
         name: userInfo.name || "",
