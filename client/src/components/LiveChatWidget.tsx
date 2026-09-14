@@ -223,31 +223,23 @@ export function LiveChatWidget({
   const isExpanded = state === "open";
   const isMinimized = state === "minimized";
 
-  // Inkrementelles Polling alle 5 Sekunden (Short-Polling)
+  // Vollständiger 24h-Snapshot alle 5 Sekunden: Ein Admin-Reset liefert
+  // ein leeres Array und leert dadurch zuverlässig den lokalen Verlauf.
   useEffect(() => {
     if (!isAuthenticated) return;
 
     let isDisposed = false;
 
-    const fetchDelta = async () => {
+    const fetchSnapshot = async () => {
       try {
-        const sinceId = highestSeenIdRef.current || undefined;
-        const fetched = await utils.client.notes.list.query({ sinceId });
-        if (isDisposed || !fetched || !fetched.length) return;
+        const fetched = await utils.client.notes.list.query({ limit: 150 });
+        if (isDisposed || !fetched) return;
 
-        setNotes(prev => {
-          const existingIds = new Set(prev.map(item => item.id));
-          const additions = (fetched as TeamNoteItem[]).filter(
-            item => !existingIds.has(item.id)
-          );
-          if (!additions.length) return prev;
-          const merged = [...prev, ...additions].sort((a, b) => a.id - b.id);
-          highestSeenIdRef.current = Math.max(
-            highestSeenIdRef.current,
-            ...merged.map(m => m.id)
-          );
-          return merged;
-        });
+        const snapshot = (fetched as TeamNoteItem[]).sort((a, b) => a.id - b.id);
+        highestSeenIdRef.current = snapshot.length
+          ? Math.max(...snapshot.map(note => note.id))
+          : 0;
+        setNotes(snapshot);
 
         if (isExpanded) {
           scrollToBottom(true);
@@ -257,10 +249,10 @@ export function LiveChatWidget({
       }
     };
 
-    void fetchDelta();
+    void fetchSnapshot();
 
     pollTimerRef.current = window.setInterval(() => {
-      void fetchDelta();
+      void fetchSnapshot();
     }, SHORT_POLL_INTERVAL_MS);
 
     return () => {
@@ -296,7 +288,7 @@ export function LiveChatWidget({
           <MessageSquare className="h-5 w-5" />
           {unreadCount > 0 && (
             <span
-              className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[11px] font-bold text-white shadow-md ring-2 ring-white animate-pulse"
+              className="absolute -top-2 -right-2 flex h-6 min-w-6 items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] font-bold text-white shadow-lg ring-2 ring-white animate-pulse"
               aria-hidden="true"
             >
               {unreadCount > 99 ? "99+" : unreadCount}
@@ -367,7 +359,7 @@ export function LiveChatWidget({
         aria-label="Live-Team-Notizen und Chat"
         aria-modal="false"
         className={cn(
-          "fixed z-50 flex min-w-0 max-w-full flex-col overflow-x-hidden bg-white text-slate-950 shadow-2xl ring-1 ring-black/10 duration-200",
+          "fixed z-50 flex w-full min-w-0 max-w-full flex-col overflow-x-hidden bg-white text-slate-950 shadow-2xl ring-1 ring-black/10 duration-200",
           // Mobile: Breitenfüllendes Bottom-Sheet, dessen dynamische Höhe über der Tastatur bleibt
           "inset-x-0 bottom-0 h-[85dvh] w-full max-h-[85vh] rounded-t-2xl border-t border-slate-200 [overscroll-behavior:contain] sm:inset-x-auto",
           // Desktop: Schwebendes PIP-Fenster unten rechts
@@ -589,7 +581,7 @@ export function LiveChatWidget({
             </div>
 
             {/* Eingabebereich unten */}
-            <div className="sticky bottom-0 z-10 shrink-0 border-t border-slate-200 bg-slate-50/95 px-2.5 pt-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] backdrop-blur-sm sm:static sm:bg-slate-50/70 sm:p-2.5">
+            <div className="sticky bottom-0 z-10 shrink-0 border-t border-slate-200 bg-slate-50/95 px-4 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] backdrop-blur-sm sm:static sm:bg-slate-50/70 sm:p-2.5">
               <div className="flex items-end gap-1.5">
                 <Textarea
                   ref={textareaRef}
@@ -597,7 +589,7 @@ export function LiveChatWidget({
                   onChange={e => setMessage(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Notiz eingeben (Enter zum Senden) …"
-                  className="min-h-11 max-h-24 resize-none bg-white text-base leading-normal sm:min-h-[40px] sm:text-xs"
+                  className="min-h-11 min-w-0 flex-1 max-h-24 resize-none bg-white text-base leading-normal sm:min-h-[40px] sm:text-xs"
                   rows={1}
                 />
                 <Button

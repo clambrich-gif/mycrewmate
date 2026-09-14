@@ -138,32 +138,35 @@ export function Layout({ children }: { children: React.ReactNode }) {
   });
   const selectedEvent = events.data?.find(item => item.id === eventId);
 
-  // Short-Polling für Ungelesen-Zähler im Hintergrund (alle 5 Sekunden)
+  // Vollständige 5-Sekunden-Snapshots erkennen auch ein serverseitiges
+  // Leeren des Verlaufs und setzen den Ungelesen-Zähler auf allen Clients zurück.
   useEffect(() => {
     if (!isAuthenticated) return;
     let isDisposed = false;
 
     const pollUnread = async () => {
       try {
-        const sinceId = lastSeenChatNoteIdRef.current || undefined;
-        const recent = await utils.client.notes.list.query({ sinceId });
-        if (isDisposed || !recent || !recent.length) return;
+        const snapshot = await utils.client.notes.list.query({ limit: 150 });
+        if (isDisposed || !snapshot) return;
+
+        if (snapshot.length === 0) {
+          lastSeenChatNoteIdRef.current = 0;
+          setUnreadNotesCount(0);
+          return;
+        }
+
+        const newNotes = snapshot.filter(
+          note => note.id > lastSeenChatNoteIdRef.current
+        );
+        const maxId = Math.max(...snapshot.map(note => note.id));
 
         if (chatState === "open") {
-          const maxId = Math.max(...recent.map(r => r.id));
-          lastSeenChatNoteIdRef.current = Math.max(
-            lastSeenChatNoteIdRef.current,
-            maxId
-          );
+          lastSeenChatNoteIdRef.current = maxId;
           setUnreadNotesCount(0);
         } else {
-          // Widget geschlossen oder minimiert -> Zähler erhöhen
-          setUnreadNotesCount(prev => prev + recent.length);
-          const maxId = Math.max(...recent.map(r => r.id));
-          lastSeenChatNoteIdRef.current = Math.max(
-            lastSeenChatNoteIdRef.current,
-            maxId
-          );
+          // Widget geschlossen oder minimiert: exakte Anzahl neuerer Notizen
+          // berechnen, um Akkumulationsfehler bei wiederholten Snapshots auszuschließen.
+          setUnreadNotesCount(newNotes.length);
         }
       } catch {
         // Ungelesen-Polling leise abfangen

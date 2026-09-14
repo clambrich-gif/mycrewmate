@@ -53,6 +53,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain("unreadCount={unreadNotesCount}");
     expect(layout).toContain("onOpenChat={openChatWidget}");
     expect(layout).toContain("window.setInterval(pollUnread, 5_000)");
+    expect(layout).toContain("utils.client.notes.list.query({ limit: 150 })");
+    expect(layout).toContain("if (snapshot.length === 0)");
+    expect(layout).toContain("setUnreadNotesCount(0)");
+    expect(layout).toContain("setUnreadNotesCount(newNotes.length)");
 
     expect(presence).toContain("unreadCount > 0");
     expect(presence).toContain("Live-Notizen & Chat öffnen");
@@ -77,9 +81,14 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(widget).toContain("max-w-full flex-col overflow-x-hidden");
     expect(widget).toContain("[overscroll-behavior:contain]");
     expect(widget).toContain("sticky bottom-0 z-10 shrink-0");
-    expect(widget).toContain("env(safe-area-inset-bottom)");
+    expect(widget).toContain("pb-[max(1.5rem,env(safe-area-inset-bottom))]");
     expect(widget).toContain("text-base leading-normal sm:min-h-[40px] sm:text-xs");
     expect(widget).toContain("h-11 w-11 shrink-0 bg-blue-600");
+    expect(widget).toContain("w-full min-w-0 max-w-full flex-col overflow-x-hidden");
+    expect(widget).toContain("h-6 min-w-6");
+    expect(widget).toContain("Vollständiger 24h-Snapshot alle 5 Sekunden");
+    expect(widget).toContain("utils.client.notes.list.query({ limit: 150 })");
+    expect(widget).toContain("setNotes(snapshot)");
   });
 
   it("zeigt und entsperrt den dauerhaften Planungsteam-Login ausschließlich im Adminbereich", () => {
