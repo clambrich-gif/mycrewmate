@@ -775,16 +775,24 @@ export async function deleteContact(id: number, actor: AuditActor) {
       requireDeletedRows(helperResult, 1);
     }
 
-    // Zusammengesetzte Fremdschlüssel erzwingen, dass Ansprechpartner nur im
-    // gleichen Event/Jahr referenziert werden. Vor dem Löschen werden die
-    // verbleibenden fachlichen Zuweisungen bewusst entkoppelt.
+    // Vor dem Löschen des Ansprechpartners werden abhängige Mappings und Zuweisungen
+    // transaktional aufgeräumt: Bereichskontakte werden gelöscht, Helfer- und
+    // Aufgabenreferenzen entkoppelt (SET NULL).
+    await tx
+      .delete(shiftAreaContacts)
+      .where(
+        and(
+          planningScope(shiftAreaContacts),
+          eq(shiftAreaContacts.contactId, id)
+        )
+      );
+
     const clearContactReference = <TTable extends typeof helpers>(table: TTable) =>
       tx
         .update(table as any)
         .set({ contactId: null })
         .where(and(eq((table as any).contactId, id), planningScope(table as any)));
     await clearContactReference(helpers);
-    await clearContactReference(shiftAreaContacts as any);
     await clearContactReference(prepTasks as any);
     await clearContactReference(postTasks as any);
     await clearContactReference(materials as any);
@@ -2255,6 +2263,33 @@ export async function resetArea(area: ResetArea, actor: AuditActor) {
             )
           );
         requireDeletedRows(helperResult, selfHelperIds.length);
+      }
+      if (contactRows.length) {
+        const contactIds = contactRows.map(item => item.id);
+        await tx
+          .delete(shiftAreaContacts)
+          .where(
+            and(
+              planningScopeFor(shiftAreaContacts, selectedYear, selectedEventId),
+              inArray(shiftAreaContacts.contactId, contactIds)
+            )
+          );
+        const clearContactRefForScope = <TTable extends typeof helpers>(table: TTable) =>
+          tx
+            .update(table as any)
+            .set({ contactId: null })
+            .where(
+              and(
+                planningScopeFor(table as any, selectedYear, selectedEventId),
+                inArray((table as any).contactId, contactIds)
+              )
+            );
+        await clearContactRefForScope(helpers);
+        await clearContactRefForScope(prepTasks as any);
+        await clearContactRefForScope(postTasks as any);
+        await clearContactRefForScope(materials as any);
+        await clearContactRefForScope(marketing as any);
+        await clearContactRefForScope(approvals as any);
       }
       if (contactRows.length) {
         const contactResult = await tx

@@ -240,10 +240,10 @@ export const helpers = mysqlTable(
       foreignColumns: [events.id, events.year],
     }).onDelete("cascade"),
     foreignKey({
-      name: "helpers_contact_event_year_fk",
-      columns: [table.contactId, table.eventId, table.year],
-      foreignColumns: [contacts.id, contacts.eventId, contacts.year],
-    }).onDelete("no action"),
+      name: "helpers_contactId_contacts_id_fk",
+      columns: [table.contactId],
+      foreignColumns: [contacts.id],
+    }).onDelete("set null"),
     uniqueIndex("helpers_event_name_unique").on(table.eventId, table.name),
     uniqueIndex("helpers_id_event_year_unique").on(
       table.id,
@@ -304,10 +304,10 @@ export const shiftAreaContacts = mysqlTable(
       foreignColumns: [events.id, events.year],
     }).onDelete("cascade"),
     foreignKey({
-      name: "shift_area_contacts_contact_event_year_fk",
-      columns: [table.contactId, table.eventId, table.year],
-      foreignColumns: [contacts.id, contacts.eventId, contacts.year],
-    }).onDelete("no action"),
+      name: "shift_area_contacts_contactId_contacts_id_fk",
+      columns: [table.contactId],
+      foreignColumns: [contacts.id],
+    }).onDelete("cascade"),
     uniqueIndex("shift_area_contacts_event_area_unique").on(
       table.eventId,
       table.area
