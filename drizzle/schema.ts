@@ -59,6 +59,18 @@ export const sessionPresences = mysqlTable(
 );
 export type SessionPresence = typeof sessionPresences.$inferSelect;
 
+/** Serverseitig gesperrte, gehashte JWT-Sitzungen (z. B. nach Logout). */
+export const revokedSessions = mysqlTable(
+  "revoked_sessions",
+  {
+    sessionKey: varchar("sessionKey", { length: 64 }).primaryKey(),
+    reason: mysqlEnum("reason", ["logout", "security_reset"]).notNull(),
+    revokedAt: timestamp("revokedAt").defaultNow().notNull(),
+  },
+  table => [index("revoked_sessions_revoked_at_idx").on(table.revokedAt)]
+);
+export type RevokedSession = typeof revokedSessions.$inferSelect;
+
 export const teamNotes = mysqlTable(
   "team_notes",
   {
@@ -302,8 +314,39 @@ export const securitySettings = mysqlTable("security_settings", {
     .default(0)
     .notNull(),
   planningTeamLocked: boolean("planningTeamLocked").default(false).notNull(),
+  planningTeamSessionVersion: int("planningTeamSessionVersion")
+    .default(1)
+    .notNull(),
+  adminSessionVersion: int("adminSessionVersion").default(1).notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
+
+/** Nachvollziehbarkeit sicherheitsrelevanter Änderungen am Team-Chat. */
+export const teamNoteAuditLogs = mysqlTable(
+  "team_note_audit_logs",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    year: int("year").notNull(),
+    eventId: int("eventId").references(() => events.id, {
+      onDelete: "set null",
+    }),
+    eventName: varchar("eventName", { length: 200 }).notNull(),
+    action: mysqlEnum("action", ["clear"]).notNull(),
+    deletedCount: int("deletedCount").default(0).notNull(),
+    actorUserId: int("actorUserId").notNull(),
+    actorName: varchar("actorName", { length: 200 }).notNull(),
+    actorRole: mysqlEnum("actorRole", ["admin"]).notNull(),
+    actorLoginMethod: varchar("actorLoginMethod", { length: 64 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    index("team_note_audit_logs_event_created_idx").on(
+      table.eventId,
+      table.createdAt
+    ),
+  ]
+);
+export type TeamNoteAuditLog = typeof teamNoteAuditLogs.$inferSelect;
 
 export const deletionAuditLogs = mysqlTable("deletion_audit_logs", {
   id: int("id").autoincrement().primaryKey(),

@@ -1,15 +1,8 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
+  Badge,
+} from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -840,30 +833,19 @@ export function LiveChatWidget({
         )}
       </div>
 
-      {/* Admin-Reset Modal */}
-      <AlertDialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
-        <AlertDialogContent className="bg-white">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Verlauf leeren?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Möchtest du alle Notizen dieser Veranstaltung unwiderruflich löschen?
-              Diese Aktion ist sofort für alle Benutzer wirksam.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={clearMutation.isPending}>
-              Abbrechen
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => clearMutation.mutate()}
-              disabled={clearMutation.isPending}
-              className="bg-red-600 text-white hover:bg-red-700"
-            >
-              {clearMutation.isPending ? "Wird geleert …" : "Verlauf jetzt leeren"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Admin-Reset mit Passwort-Reauthentifizierung */}
+      <AdminPasswordDialog
+        open={clearDialogOpen}
+        onOpenChange={setClearDialogOpen}
+        title="Team-Chatverlauf leeren?"
+        description="Möchtest du alle Chat-Notizen dieser Veranstaltung unwiderruflich löschen? Diese Aktion wird auditiert und leert den Verlauf sofort bei allen Benutzern."
+        confirmLabel="Verlauf leeren"
+        busy={clearMutation.isPending}
+        destructive
+        onConfirm={adminPassword => {
+          clearMutation.mutate({ adminPassword });
+        }}
+      />
     </>
   );
 }

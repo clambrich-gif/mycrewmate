@@ -12,6 +12,7 @@ import {
   lt,
   ne as notEq,
   or,
+  sql,
 } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
@@ -32,10 +33,12 @@ import {
   materials,
   postTasks,
   prepTasks,
+  revokedSessions,
   securitySettings,
   shiftAreaContacts,
   shifts,
   teamNotes,
+  teamNoteAuditLogs,
   teamNoteTypings,
   users,
 } from "../drizzle/schema";
@@ -46,6 +49,10 @@ import {
   WEEKDAYS,
   type Weekday,
 } from "../shared/weekdays";
+import {
+  ADMIN_PASSWORD_OPEN_ID,
+  SHARED_PASSWORD_OPEN_ID,
+} from "./password-auth";
 import { currentEventId, currentEventYear } from "./year-context";
 import { overlaps } from "./logic";
 import { validateExistingAssignmentsForShiftUpdate } from "./shift-update-validation";
@@ -1760,19 +1767,98 @@ export async function updateAppSettings(
     })
     .onDuplicateKeyUpdate({ set: safe });
 }
+export async function revokeSessionKey(
+  sessionKey: string,
+  reason: "logout" | "security_reset" = "logout"
+) {
+  const db = (await getDb()) as DB;
+  await db
+    .insert(revokedSessions)
+    .values({ sessionKey, reason, revokedAt: new Date() })
+    .onDuplicateKeyUpdate({ set: { reason, revokedAt: new Date() } });
+}
+
+export async function isSessionRevoked(sessionKey: string) {
+  const db = await getDb();
+  if (!db) return false;
+  const [row] = await db
+    .select({ sessionKey: revokedSessions.sessionKey })
+    .from(revokedSessions)
+    .where(eq(revokedSessions.sessionKey, sessionKey))
+    .limit(1);
+  return Boolean(row);
+}
+
+export async function getExpectedSessionVersion(openId: string) {
+  if (
+    openId !== SHARED_PASSWORD_OPEN_ID &&
+    openId !== ADMIN_PASSWORD_OPEN_ID
+  ) {
+    return 1;
+  }
+  const settings = await getSecuritySettings();
+  return openId === ADMIN_PASSWORD_OPEN_ID
+    ? settings?.adminSessionVersion ?? 1
+    : settings?.planningTeamSessionVersion ?? 1;
+}
+
+export async function bumpSessionVersion(role: "user" | "admin") {
+  const database = (await getDb()) as DB;
+  return database.transaction(async tx => {
+    await tx
+      .insert(securitySettings)
+      .values({ id: 1 })
+      .onDuplicateKeyUpdate({ set: { id: 1 } });
+    const [settings] = await tx
+      .select({
+        planningTeamSessionVersion: securitySettings.planningTeamSessionVersion,
+        adminSessionVersion: securitySettings.adminSessionVersion,
+      })
+      .from(securitySettings)
+      .where(eq(securitySettings.id, 1))
+      .for("update");
+
+    if (role === "admin") {
+      const next = (settings?.adminSessionVersion ?? 1) + 1;
+      await tx
+        .update(securitySettings)
+        .set({ adminSessionVersion: next })
+        .where(eq(securitySettings.id, 1));
+      return next;
+    }
+
+    const next = (settings?.planningTeamSessionVersion ?? 1) + 1;
+    await tx
+      .update(securitySettings)
+      .set({ planningTeamSessionVersion: next })
+      .where(eq(securitySettings.id, 1));
+    return next;
+  });
+}
+
 export async function setPasswordHash(passwordHash: string) {
   const db = (await getDb()) as DB;
   return db
     .insert(securitySettings)
-    .values({ id: 1, passwordHash })
-    .onDuplicateKeyUpdate({ set: { passwordHash } });
+    .values({ id: 1, passwordHash, planningTeamSessionVersion: 2 })
+    .onDuplicateKeyUpdate({
+      set: {
+        passwordHash,
+        planningTeamSessionVersion: sql`${securitySettings.planningTeamSessionVersion} + 1`,
+      },
+    });
 }
 export async function setAdminPasswordHash(adminPasswordHash: string) {
   const db = (await getDb()) as DB;
   return db
     .insert(securitySettings)
-    .values({ id: 1, adminPasswordHash })
-    .onDuplicateKeyUpdate({ set: { adminPasswordHash } });
+    .values({ id: 1, adminPasswordHash, adminSessionVersion: 2 })
+    .onDuplicateKeyUpdate({
+      set: {
+        adminPasswordHash,
+        adminSessionVersion: sql`${securitySettings.adminSessionVersion} + 1`,
+      },
+    });
 }
 
 function yearValues<T extends Record<string, unknown>>(values: T) {
@@ -2393,15 +2479,44 @@ export async function createTeamNote(params: {
   return created;
 }
 
-export async function clearTeamNotes() {
+export async function clearTeamNotes(actor?: AuditActor) {
   const db = (await getDb()) as DB;
-  const [result]: any = await db
-    .delete(teamNotes)
-    .where(planningScope(teamNotes));
-  await db
-    .delete(teamNoteTypings)
-    .where(planningScope(teamNoteTypings));
-  return { deletedCount: affectedRows(result) } as const;
+  const selectedYear = year();
+  const selectedEventId = event();
+  return db.transaction(async tx => {
+    const [selectedEvent] = await tx
+      .select({ name: events.name })
+      .from(events)
+      .where(and(eq(events.id, selectedEventId), eq(events.year, selectedYear)))
+      .limit(1)
+      .for("update");
+    if (!selectedEvent) {
+      throw new Error("Veranstaltung für Chat-Löschung nicht gefunden");
+    }
+
+    const [result]: any = await tx
+      .delete(teamNotes)
+      .where(planningScope(teamNotes));
+    await tx
+      .delete(teamNoteTypings)
+      .where(planningScope(teamNoteTypings));
+
+    const deletedCount = affectedRows(result);
+    if (actor) {
+      await tx.insert(teamNoteAuditLogs).values({
+        year: selectedYear,
+        eventId: selectedEventId,
+        eventName: selectedEvent.name,
+        action: "clear",
+        deletedCount,
+        actorUserId: actor.userId,
+        actorName: actor.name,
+        actorRole: "admin",
+        actorLoginMethod: actor.loginMethod ?? null,
+      });
+    }
+    return { deletedCount } as const;
+  });
 }
 
 export async function copyPlanFromEvent(

@@ -167,7 +167,14 @@ describe("Live-Teamnotizen Backend & Ephemeral Storage", () => {
     expect(note.id).toBe(12);
   });
 
-  it("verwehrt normalen Planern das Leeren des Verlaufs, erlaubt es aber Administratoren", async () => {
+  it("verwehrt normalen Planern das Leeren des Verlaufs, verlangt vom Admin das Passwort und auditiert den Vorgang", async () => {
+    const passwordAuth = await import("./password-auth");
+    const adminHash = await passwordAuth.hashPassword("Super-Geheimes-Admin-Passwort!");
+    vi.spyOn(db, "getSecuritySettings").mockResolvedValue({
+      id: 1,
+      adminPasswordHash: adminHash,
+    } as any);
+    vi.spyOn(db, "getAppSettings").mockResolvedValue({} as any);
     vi.spyOn(db, "getEvent").mockResolvedValue({
       id: 1,
       year: 2026,
@@ -203,13 +210,22 @@ describe("Live-Teamnotizen Backend & Ephemeral Storage", () => {
       },
     });
 
-    await expect(userCaller.notes.clear()).rejects.toThrow();
+    await expect(
+      userCaller.notes.clear({ adminPassword: "falsches-passwort" })
+    ).rejects.toThrow();
 
     const adminCaller = appRouter.createCaller({
       req: {
+        protocol: "https",
         headers: {
           "x-event-year": "2026",
           "x-event-id": "1",
+        },
+        socket: { remoteAddress: "127.0.0.10" },
+        header(name: string) {
+          if (name.toLowerCase() === "x-event-year") return "2026";
+          if (name.toLowerCase() === "x-event-id") return "1";
+          return undefined;
         },
       } as any,
       res: {} as any,
@@ -226,8 +242,20 @@ describe("Live-Teamnotizen Backend & Ephemeral Storage", () => {
       },
     });
 
-    const clearResult = await adminCaller.notes.clear();
-    expect(clearSpy).toHaveBeenCalled();
+    await expect(
+      adminCaller.notes.clear({ adminPassword: "falsches-admin-passwort" })
+    ).rejects.toThrow("Administratorpasswort ist nicht korrekt");
+
+    const clearResult = await adminCaller.notes.clear({
+      adminPassword: "Super-Geheimes-Admin-Passwort!",
+    });
+    expect(clearSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 1,
+        name: "Administrator",
+        role: "admin",
+      })
+    );
     expect(clearResult.deletedCount).toBe(3);
   });
 });

@@ -450,13 +450,13 @@ export const appRouter = router({
         });
         return { success: true } as const;
       }),
-    setPassword: adminProcedure
+    setPassword: accountAdminProcedure
       .input(z.object({ password: passwordInput }))
       .mutation(async ({ input }) => {
         await db.setPasswordHash(await hashPassword(input.password));
         return { success: true } as const;
       }),
-    setAdminPassword: adminProcedure
+    setAdminPassword: accountAdminProcedure
       .input(z.object({ password: passwordInput }))
       .mutation(async ({ input }) => {
         await db.setAdminPasswordHash(await hashPassword(input.password));
@@ -467,6 +467,14 @@ export const appRouter = router({
       return { success: true } as const;
     }),
     logout: publicProcedure.mutation(async ({ ctx }) => {
+      const sessionKey = sessionPresenceKey(ctx.req);
+      if (sessionKey) {
+        try {
+          await db.revokeSessionKey(sessionKey, "logout");
+        } catch (error) {
+          console.warn("[Auth] Sitzungswiderruf fehlgeschlagen", error);
+        }
+      }
       try {
         await removeSessionPresence(ctx.req);
       } catch (error) {
@@ -1481,7 +1489,16 @@ export const appRouter = router({
           sessionKey,
         });
       }),
-    clear: adminProcedure.mutation(() => db.clearTeamNotes()),
+    clear: adminProcedure
+      .input(
+        z.object({
+          adminPassword: z.string().min(1).max(200),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await requireAdminPassword(input.adminPassword, ctx);
+        return db.clearTeamNotes(auditActor(ctx.user));
+      }),
   }),
 });
 
