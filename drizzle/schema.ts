@@ -98,6 +98,9 @@ export const teamNotes = mysqlTable(
       table.createdAt
     ),
     index("team_notes_event_id_idx").on(table.eventId, table.id),
+    // Globaler 24h-Cleanup filtert nur auf createdAt; Eventindizes würden
+    // dafür mit wachsendem Verlauf nicht als führender Index greifen.
+    index("team_notes_created_at_cleanup_idx").on(table.createdAt),
   ]
 );
 export type TeamNote = typeof teamNotes.$inferSelect;
@@ -123,6 +126,8 @@ export const teamNoteTypings = mysqlTable(
       table.eventId,
       table.updatedAt
     ),
+    // Der globale TTL-Cleanup der flüchtigen Tippstatus filtert nur zeitlich.
+    index("team_note_typings_updated_at_cleanup_idx").on(table.updatedAt),
   ]
 );
 export type TeamNoteTyping = typeof teamNoteTypings.$inferSelect;

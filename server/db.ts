@@ -1621,11 +1621,13 @@ export async function updateShift(
 }
 export async function deleteShift(id: number) {
   const db = (await getDb()) as DB;
-  const result = await db
-    .delete(shifts)
-    .where(and(eq(shifts.id, id), planningScope(shifts)));
-  await removeOrphanShiftAreaContacts();
-  return result;
+  return db.transaction(async tx => {
+    const result = await tx
+      .delete(shifts)
+      .where(and(eq(shifts.id, id), planningScope(shifts)));
+    await removeOrphanShiftAreaContactsForClient(tx);
+    return result;
+  });
 }
 export async function setShiftAreaContact(
   area: string,
@@ -1667,11 +1669,6 @@ export async function setShiftAreaContact(
     })
     .onDuplicateKeyUpdate({ set: { contactId } });
 }
-async function removeOrphanShiftAreaContacts() {
-  const db = (await getDb()) as DB;
-  return removeOrphanShiftAreaContactsForClient(db);
-}
-
 async function removeOrphanShiftAreaContactsForClient(db: DBClient) {
   const activeAreas = await db
     .select({ area: shifts.area })
@@ -1681,14 +1678,22 @@ async function removeOrphanShiftAreaContactsForClient(db: DBClient) {
     return db.delete(shiftAreaContacts).where(planningScope(shiftAreaContacts));
   }
   const areaSet = new Set(activeAreas.map(item => item.area));
-  const mappings = await listShiftAreaContacts();
+  const mappings = await db
+    .select({ id: shiftAreaContacts.id, area: shiftAreaContacts.area })
+    .from(shiftAreaContacts)
+    .where(planningScope(shiftAreaContacts));
   const orphanIds = mappings
     .filter(item => !areaSet.has(item.area))
     .map(item => item.id);
   if (!orphanIds.length) return;
   return db
     .delete(shiftAreaContacts)
-    .where(inArray(shiftAreaContacts.id, orphanIds));
+    .where(
+      and(
+        planningScope(shiftAreaContacts),
+        inArray(shiftAreaContacts.id, orphanIds)
+      )
+    );
 }
 export async function assignHelper(v: {
   shiftId: number;

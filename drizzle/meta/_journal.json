@@ -162,6 +162,13 @@
       "when": 1789414845126,
       "tag": "0022_magical_wraith",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "5",
+      "when": 1789419315549,
+      "tag": "0023_rare_night_nurse",
+      "breakpoints": true
     }
   ]
 }
