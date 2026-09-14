@@ -34,6 +34,19 @@ queryClient.getMutationCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.mutation.state.error;
     redirectToLoginIfUnauthorized(error);
+    const mutationKey = event.mutation.options.mutationKey;
+    const mutationKeyParts = Array.isArray(mutationKey)
+      ? mutationKey.flat(Infinity).filter(
+          (part): part is string => typeof part === "string"
+        )
+      : [];
+    const keyPath = mutationKeyParts.join(".");
+    const isHandledPasswordLogin =
+      keyPath === "auth.passwordLogin" ||
+      keyPath === "auth.adminPasswordLogin";
+    // Falsche Zugangsdaten sind eine erwartete Formulareingabe und werden
+    // direkt im Login angezeigt, nicht als technischer API-Fehler gesammelt.
+    if (isHandledPasswordLogin) return;
     console.error("[API Mutation Error]", error);
   }
 });

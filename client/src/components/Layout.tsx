@@ -102,6 +102,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { year, eventId, selectYear, selectEvent } = useEventYear();
   const [location] = useLocation();
   const [password, setPassword] = useState("");
+  const [loginError, setLoginError] = useState<string | null>(null);
   const [loginMode, setLoginMode] = useState<"user" | "admin">("user");
   const [yearDialogOpen, setYearDialogOpen] = useState(false);
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
@@ -125,6 +126,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [hasImportantUnread, setHasImportantUnread] = useState(false);
   const lastSeenChatNoteIdRef = useRef<number>(0);
   const loginLockAlertRef = useRef<HTMLDivElement>(null);
+  const loginErrorRef = useRef<HTMLDivElement>(null);
   const utils = trpc.useUtils();
 
   const passwordStatus = trpc.auth.passwordStatus.useQuery(undefined, {
@@ -210,21 +212,24 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }, [events.data, selectEvent, selectedEvent]);
   const finishLogin = async () => {
     setPassword("");
+    setLoginError(null);
     await utils.auth.me.invalidate();
     toast.success("Anmeldung erfolgreich");
   };
   const passwordLogin = trpc.auth.passwordLogin.useMutation({
+    mutationKey: ["auth", "passwordLogin"],
     onSuccess: finishLogin,
     onError: async error => {
-      toast.error(error.message);
+      setLoginError(error.message);
       if (error.data?.code === "TOO_MANY_REQUESTS") {
         await utils.auth.passwordStatus.invalidate();
       }
     },
   });
   const adminPasswordLogin = trpc.auth.adminPasswordLogin.useMutation({
+    mutationKey: ["auth", "adminPasswordLogin"],
     onSuccess: finishLogin,
-    onError: error => toast.error(error.message),
+    onError: error => setLoginError(error.message),
   });
   const createYear = trpc.years.create.useMutation({
     onSuccess: async () => {
@@ -302,6 +307,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
     loginLockAlertRef.current?.focus({ preventScroll: true });
   }, [planningTeamLocked]);
 
+  useEffect(() => {
+    if (!loginError) return;
+    loginErrorRef.current?.focus({ preventScroll: true });
+  }, [loginError]);
+
   if (loading) {
     return (
       <div className="min-h-screen grid place-items-center text-muted-foreground">
@@ -343,6 +353,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               onClick={() => {
                 setLoginMode("user");
                 setPassword("");
+                setLoginError(null);
               }}
             >
               Planungsteam
@@ -359,6 +370,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               onClick={() => {
                 setLoginMode("admin");
                 setPassword("");
+                setLoginError(null);
               }}
             >
               Administrator
@@ -377,10 +389,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
               autoComplete="current-password"
               placeholder="Passwort eingeben"
               value={password}
-              onChange={event => setPassword(event.target.value)}
+              onChange={event => {
+                setPassword(event.target.value);
+                if (loginError) setLoginError(null);
+              }}
               disabled={!loginAvailable || loginPending}
               aria-describedby={
-                planningTeamLocked ? "planning-team-lock-message" : undefined
+                [
+                  planningTeamLocked ? "planning-team-lock-message" : "",
+                  loginError ? "password-login-error" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ") || undefined
               }
             />
             <Button
@@ -389,7 +409,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
               type="submit"
               disabled={!password || !loginAvailable || loginPending}
               aria-describedby={
-                planningTeamLocked ? "planning-team-lock-message" : undefined
+                [
+                  planningTeamLocked ? "planning-team-lock-message" : "",
+                  loginError ? "password-login-error" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ") || undefined
               }
             >
               {loginMode === "admin" ? (
@@ -407,6 +432,22 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <p className="text-xs text-destructive">
                 Dieser Passwortzugang ist noch nicht eingerichtet.
               </p>
+            )}
+            {loginError && (
+              <div
+                ref={loginErrorRef}
+                id="password-login-error"
+                className="flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-900 shadow-sm"
+                role="alert"
+                aria-live="assertive"
+                tabIndex={-1}
+              >
+                <TriangleAlert
+                  className="mt-0.5 h-4 w-4 shrink-0 text-red-700"
+                  aria-hidden="true"
+                />
+                <span>{loginError}</span>
+              </div>
             )}
             {planningTeamLocked && (
               <div

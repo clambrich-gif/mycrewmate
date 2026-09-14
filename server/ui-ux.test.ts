@@ -130,6 +130,23 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(css).toContain(".login-lock-alert { animation: none; }");
   });
 
+  it("behandelt falsche Zugangsdaten als Formularmeldung statt als technischen API-Fehler", () => {
+    const layout = source("client/src/components/Layout.tsx");
+    const main = source("client/src/main.tsx");
+
+    expect(layout).toContain('const [loginError, setLoginError]');
+    expect(layout).toContain('mutationKey: ["auth", "passwordLogin"]');
+    expect(layout).toContain('mutationKey: ["auth", "adminPasswordLogin"]');
+    expect(layout).toContain('id="password-login-error"');
+    expect(layout).toContain('role="alert"');
+    expect(layout).toContain("loginErrorRef.current?.focus");
+    expect(main).toContain("isHandledPasswordLogin");
+    expect(main).toContain("mutationKey.flat(Infinity)");
+    expect(main).toContain('keyPath === "auth.passwordLogin"');
+    expect(main).toContain('keyPath === "auth.adminPasswordLogin"');
+    expect(main).toContain("if (isHandledPasswordLogin) return;");
+  });
+
   it("verdichtet nur die Desktop-Helfertabelle und kürzt Vielleicht geräteübergreifend auf ein Fragezeichen", () => {
     const helpers = source("client/src/pages/Helpers.tsx");
     const mobileCards = helpers.slice(
