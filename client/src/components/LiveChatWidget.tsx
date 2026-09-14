@@ -416,7 +416,7 @@ export function LiveChatWidget({
           type="button"
           onClick={onOpen}
           className={cn(
-            "fixed bottom-6 right-6 z-50 flex h-16 w-16 min-h-16 min-w-16 items-center justify-center rounded-full border-2 border-white p-0 text-white shadow-2xl transition-[background-color,transform,box-shadow] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-offset-2 motion-safe:hover:scale-105 sm:bottom-4 sm:right-4 sm:h-14 sm:w-14 sm:min-h-14 sm:min-w-14",
+            "fixed bottom-6 right-6 z-50 flex h-16 w-16 min-h-16 min-w-16 items-center justify-center rounded-full border-2 border-white p-0 text-white shadow-2xl transition-[background-color,transform,box-shadow] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-offset-2 motion-safe:hover:scale-105 md:bottom-6 md:right-6 md:h-20 md:w-20 md:min-h-20 md:min-w-20 md:border-[3px] md:shadow-[0_12px_28px_rgba(37,99,235,0.38)]",
             hasUnread
               ? hasImportantUnread
                 ? "animate-pulse bg-red-600 ring-4 ring-red-400 hover:bg-red-700 focus-visible:ring-red-400"
@@ -430,11 +430,11 @@ export function LiveChatWidget({
           }
           title="Live-Notizen & Team-Chat öffnen"
         >
-          <MessageSquare className="h-7 w-7 sm:h-6 sm:w-6" />
+          <MessageSquare className="h-7 w-7 md:!h-10 md:!w-10" />
           {unreadCount > 0 && (
             <span
               className={cn(
-                "absolute -top-2 -right-2 flex h-7 min-w-7 items-center justify-center rounded-full px-1.5 text-xs font-black text-white shadow-lg ring-2 ring-white",
+                "absolute -top-2 -right-2 flex h-7 min-w-7 items-center justify-center rounded-full px-1.5 text-xs font-black text-white shadow-lg ring-2 ring-white md:-top-2.5 md:-right-2.5 md:h-9 md:min-w-9 md:px-2 md:text-sm md:ring-[3px]",
                 hasImportantUnread ? "bg-red-700 ring-yellow-200" : "bg-red-600"
               )}
               aria-hidden="true"

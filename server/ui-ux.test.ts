@@ -77,6 +77,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(widget).toContain("user?.role === \"admin\"");
     expect(widget).toContain("Verlauf für alle leeren");
     expect(widget).toContain("h-16 w-16 min-h-16 min-w-16");
+    expect(widget).toContain("md:h-20 md:w-20 md:min-h-20 md:min-w-20");
+    expect(widget).toContain("md:!h-10 md:!w-10");
+    expect(widget).toContain("md:h-9 md:min-w-9");
     expect(widget).toContain("animate-pulse bg-red-600");
     expect(widget).toContain("text-base sm:text-xs leading-relaxed");
     expect(widget).toContain("tippt gerade …");
