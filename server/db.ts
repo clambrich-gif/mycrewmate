@@ -1,11 +1,15 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import {
   and,
+  asc,
   desc,
   eq,
   getTableColumns,
+  gt,
+  gte,
   inArray,
   isNull,
+  lt,
   or,
 } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
@@ -29,6 +33,7 @@ import {
   securitySettings,
   shiftAreaContacts,
   shifts,
+  teamNotes,
   users,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
@@ -2087,6 +2092,78 @@ const shiftKey = (shift: {
   [shift.day, shift.area, shift.task, shift.startTime, shift.endTime]
     .map(value => value.trim().toLocaleLowerCase("de-DE"))
     .join("|");
+
+export const TEAM_NOTES_TTL_MS = 24 * 60 * 60 * 1000;
+
+export async function cleanupExpiredTeamNotes(now = new Date()) {
+  const db = await getDb();
+  if (!db) return 0;
+  const threshold = new Date(now.getTime() - TEAM_NOTES_TTL_MS);
+  const [result]: any = await (db as DB)
+    .delete(teamNotes)
+    .where(lt(teamNotes.createdAt, threshold));
+  return affectedRows(result);
+}
+
+export async function listTeamNotes(options?: {
+  sinceId?: number;
+  limit?: number;
+  now?: Date;
+}) {
+  const db = await getDb();
+  if (!db) return [];
+  await cleanupExpiredTeamNotes(options?.now);
+  const cutoff = new Date((options?.now ?? new Date()).getTime() - TEAM_NOTES_TTL_MS);
+  const conditions = [
+    planningScope(teamNotes),
+    gte(teamNotes.createdAt, cutoff),
+    ...(options?.sinceId ? [gt(teamNotes.id, options.sinceId)] : []),
+  ];
+  return db
+    .select()
+    .from(teamNotes)
+    .where(and(...conditions))
+    .orderBy(asc(teamNotes.id))
+    .limit(Math.min(options?.limit ?? 150, 300));
+}
+
+export async function createTeamNote(params: {
+  senderUserId?: number | null;
+  senderName: string;
+  senderRole: "user" | "admin";
+  message: string;
+}) {
+  const db = (await getDb()) as DB;
+  await cleanupExpiredTeamNotes();
+  const cleanMessage = params.message.trim();
+  const cleanName = params.senderName.trim().replace(/\s+/g, " ");
+  const result: any = await db.insert(teamNotes).values({
+    year: year(),
+    eventId: event(),
+    senderUserId: params.senderUserId ?? null,
+    senderName: cleanName,
+    senderRole: params.senderRole,
+    message: cleanMessage,
+  });
+  const id = Number(result?.[0]?.insertId ?? result?.insertId);
+  const [created] = await db
+    .select()
+    .from(teamNotes)
+    .where(and(eq(teamNotes.id, id), planningScope(teamNotes)))
+    .limit(1);
+  if (!created) {
+    throw new Error("Team-Notiz konnte nicht gespeichert werden");
+  }
+  return created;
+}
+
+export async function clearTeamNotes() {
+  const db = (await getDb()) as DB;
+  const [result]: any = await db
+    .delete(teamNotes)
+    .where(planningScope(teamNotes));
+  return { deletedCount: affectedRows(result) } as const;
+}
 
 export async function copyPlanFromEvent(
   sourceEventId: number,

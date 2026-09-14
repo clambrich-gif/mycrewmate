@@ -4,6 +4,10 @@ import {
   OnlinePresenceBadge,
   useOnlinePresence,
 } from "@/components/OnlinePresenceBadge";
+import {
+  LiveChatWidget,
+  type LiveChatWidgetState,
+} from "@/components/LiveChatWidget";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -116,6 +120,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
     id: number;
     name: string;
   } | null>(null);
+  const [chatState, setChatState] = useState<LiveChatWidgetState>("closed");
+  const [unreadNotesCount, setUnreadNotesCount] = useState(0);
+  const lastSeenChatNoteIdRef = useRef<number>(0);
   const loginLockAlertRef = useRef<HTMLDivElement>(null);
   const utils = trpc.useUtils();
 
@@ -130,6 +137,59 @@ export function Layout({ children }: { children: React.ReactNode }) {
     enabled: isAuthenticated,
   });
   const selectedEvent = events.data?.find(item => item.id === eventId);
+
+  // Short-Polling für Ungelesen-Zähler im Hintergrund (alle 5 Sekunden)
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let isDisposed = false;
+
+    const pollUnread = async () => {
+      try {
+        const sinceId = lastSeenChatNoteIdRef.current || undefined;
+        const recent = await utils.client.notes.list.query({ sinceId });
+        if (isDisposed || !recent || !recent.length) return;
+
+        if (chatState === "open") {
+          const maxId = Math.max(...recent.map(r => r.id));
+          lastSeenChatNoteIdRef.current = Math.max(
+            lastSeenChatNoteIdRef.current,
+            maxId
+          );
+          setUnreadNotesCount(0);
+        } else {
+          // Widget geschlossen oder minimiert -> Zähler erhöhen
+          setUnreadNotesCount(prev => prev + recent.length);
+          const maxId = Math.max(...recent.map(r => r.id));
+          lastSeenChatNoteIdRef.current = Math.max(
+            lastSeenChatNoteIdRef.current,
+            maxId
+          );
+        }
+      } catch {
+        // Ungelesen-Polling leise abfangen
+      }
+    };
+
+    void pollUnread();
+    const timer = window.setInterval(pollUnread, 5_000);
+    return () => {
+      isDisposed = true;
+      window.clearInterval(timer);
+    };
+  }, [isAuthenticated, chatState, utils.client.notes.list, year, eventId]);
+
+  const openChatWidget = () => {
+    setChatState("open");
+    setUnreadNotesCount(0);
+  };
+
+  const minimizeChatWidget = () => {
+    setChatState("minimized");
+  };
+
+  const closeChatWidget = () => {
+    setChatState("closed");
+  };
 
   useEffect(() => {
     if (!events.data?.length || selectedEvent) return;
@@ -462,6 +522,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </SheetDescription>
             <OnlinePresenceBadge
               counts={onlinePresence.counts}
+              unreadCount={unreadNotesCount}
+              onOpenChat={openChatWidget}
               className="mt-1 w-fit"
             />
           </SheetHeader>
@@ -614,6 +676,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
             <OnlinePresenceBadge
               counts={onlinePresence.counts}
+              unreadCount={unreadNotesCount}
+              onOpenChat={openChatWidget}
               className="mt-1.5 max-w-full"
             />
           </div>
@@ -1054,6 +1118,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
           })
         }
       />
+
+      {isAuthenticated && (
+        <LiveChatWidget
+          state={chatState}
+          unreadCount={unreadNotesCount}
+          onOpen={openChatWidget}
+          onMinimize={minimizeChatWidget}
+          onClose={closeChatWidget}
+        />
+      )}
     </div>
   );
 }

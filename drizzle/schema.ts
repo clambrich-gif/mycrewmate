@@ -59,6 +59,32 @@ export const sessionPresences = mysqlTable(
 );
 export type SessionPresence = typeof sessionPresences.$inferSelect;
 
+export const teamNotes = mysqlTable(
+  "team_notes",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    year: int("year").notNull(),
+    eventId: int("eventId")
+      .notNull()
+      .references(() => events.id, { onDelete: "cascade" }),
+    senderUserId: int("senderUserId").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    senderName: varchar("senderName", { length: 200 }).notNull(),
+    senderRole: mysqlEnum("senderRole", ["user", "admin"]).notNull(),
+    message: text("message").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    index("team_notes_event_created_idx").on(
+      table.eventId,
+      table.createdAt
+    ),
+    index("team_notes_event_id_idx").on(table.eventId, table.id),
+  ]
+);
+export type TeamNote = typeof teamNotes.$inferSelect;
+
 // ---------- MyEifelRide Planungsplattform ----------
 
 export const eventYears = mysqlTable("event_years", {

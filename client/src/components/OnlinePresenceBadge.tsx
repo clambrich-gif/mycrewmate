@@ -6,6 +6,7 @@ import {
 } from "@/components/ui/popover";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { MessageSquare } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 const PRESENCE_POLL_MS = 60_000;
@@ -85,9 +86,13 @@ export function useOnlinePresence() {
 
 export function OnlinePresenceBadge({
   counts,
+  unreadCount = 0,
+  onOpenChat,
   className,
 }: {
   counts: OnlinePresenceCounts | undefined;
+  unreadCount?: number;
+  onOpenChat?: () => void;
   className?: string;
 }) {
   const previousCounts = useRef<OnlinePresenceCounts | null>(null);
@@ -144,6 +149,14 @@ export function OnlinePresenceBadge({
               <span className="whitespace-nowrap">Online wird ermittelt …</span>
             )}
           </span>
+          {unreadCount > 0 && (
+            <span
+              className="ml-0.5 inline-flex items-center gap-0.5 rounded-full bg-red-600 px-1.5 py-0.2 text-[9px] font-bold text-white shadow-xs animate-pulse"
+              title={`${unreadCount} ungelesene Team-Notizen`}
+            >
+              🔴 {unreadCount}
+            </span>
+          )}
         </button>
       </PopoverTrigger>
       <PopoverContent
@@ -178,6 +191,21 @@ export function OnlinePresenceBadge({
           Die Anzeige nennt nur Anzahlen und keine Namen. Sitzungen ohne neue
           Aktivität verschwinden automatisch aus dem Zähler.
         </p>
+        {onOpenChat && (
+          <button
+            type="button"
+            onClick={onOpenChat}
+            className="flex w-full items-center justify-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-700 transition-colors hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          >
+            <MessageSquare className="h-3.5 w-3.5" />
+            Live-Notizen & Chat öffnen
+            {unreadCount > 0 && (
+              <span className="rounded-full bg-red-600 px-1.5 text-[10px] text-white">
+                {unreadCount}
+              </span>
+            )}
+          </button>
+        )}
       </PopoverContent>
     </Popover>
   );

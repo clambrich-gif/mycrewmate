@@ -1,0 +1,646 @@
+import { useAuth } from "@/_core/hooks/useAuth";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { useEventYear } from "@/contexts/YearContext";
+import { trpc } from "@/lib/trpc";
+import { cn } from "@/lib/utils";
+import {
+  Maximize2,
+  MessageSquare,
+  Minus,
+  Send,
+  Trash2,
+  UserCheck,
+  X,
+} from "lucide-react";
+import {
+  FormEvent,
+  KeyboardEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { toast } from "sonner";
+
+const SHORT_POLL_INTERVAL_MS = 5_000;
+const SESSION_NAME_STORAGE_PREFIX = "rsc-live-notes-sender-name-";
+const CUSTOM_NAME_VALUE = "__custom_name__";
+
+export type LiveChatWidgetState = "closed" | "minimized" | "open";
+
+export type TeamNoteItem = {
+  id: number;
+  year: number;
+  eventId: number;
+  senderUserId: number | null;
+  senderName: string;
+  senderRole: "user" | "admin";
+  message: string;
+  createdAt: string | Date;
+};
+
+export function formatNoteTime(value: string | Date) {
+  const date = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("de-DE", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+export function roleBadgeText(role: "user" | "admin") {
+  return role === "admin" ? "Admin" : "Planer";
+}
+
+export function LiveChatWidget({
+  state,
+  unreadCount,
+  onOpen,
+  onMinimize,
+  onClose,
+}: {
+  state: LiveChatWidgetState;
+  unreadCount: number;
+  onOpen: () => void;
+  onMinimize: () => void;
+  onClose: () => void;
+}) {
+  const { user, isAuthenticated } = useAuth();
+  const { year, eventId } = useEventYear();
+  const utils = trpc.useUtils();
+
+  const [notes, setNotes] = useState<TeamNoteItem[]>([]);
+  const [message, setMessage] = useState("");
+  const [selectedContactValue, setSelectedContactValue] = useState("");
+  const [customName, setCustomName] = useState("");
+  const [confirmedName, setConfirmedName] = useState<string | null>(null);
+  const [clearDialogOpen, setClearDialogOpen] = useState(false);
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const highestSeenIdRef = useRef<number>(0);
+  const pollTimerRef = useRef<number | null>(null);
+
+  const storageKey = useMemo(
+    () => `${SESSION_NAME_STORAGE_PREFIX}${year}-${eventId}`,
+    [year, eventId]
+  );
+
+  const contactsQuery = trpc.contacts.list.useQuery(undefined, {
+    enabled: isAuthenticated,
+    staleTime: 60_000,
+  });
+
+  const contacts = useMemo(
+    () => contactsQuery.data ?? [],
+    [contactsQuery.data]
+  );
+
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem(storageKey);
+      if (stored && stored.trim().length >= 2) {
+        setConfirmedName(stored.trim());
+      } else {
+        setConfirmedName(null);
+        setSelectedContactValue("");
+        setCustomName("");
+      }
+    } catch {
+      setConfirmedName(null);
+    }
+  }, [storageKey]);
+
+  useEffect(() => {
+    setNotes([]);
+    highestSeenIdRef.current = 0;
+  }, [year, eventId]);
+
+  const scrollToBottom = useCallback((smooth = false) => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    requestAnimationFrame(() => {
+      el.scrollTo({
+        top: el.scrollHeight,
+        behavior: smooth ? "smooth" : "auto",
+      });
+    });
+  }, []);
+
+  const sendMutation = trpc.notes.send.useMutation({
+    onSuccess: newNote => {
+      setMessage("");
+      setNotes(prev => {
+        if (prev.some(item => item.id === newNote.id)) return prev;
+        const next = [...prev, newNote as TeamNoteItem];
+        highestSeenIdRef.current = Math.max(
+          highestSeenIdRef.current,
+          newNote.id
+        );
+        return next;
+      });
+      scrollToBottom(true);
+      void utils.notes.list.invalidate();
+    },
+    onError: error => {
+      toast.error(error.message || "Nachricht konnte nicht gesendet werden");
+    },
+  });
+
+  const clearMutation = trpc.notes.clear.useMutation({
+    onSuccess: result => {
+      setClearDialogOpen(false);
+      setNotes([]);
+      highestSeenIdRef.current = 0;
+      toast.success(`Chatverlauf geleert (${result.deletedCount} Notizen entfernt)`);
+      void utils.notes.list.invalidate();
+    },
+    onError: error => {
+      toast.error(error.message || "Verlauf konnte nicht geleert werden");
+    },
+  });
+
+  const saveIdentity = (e: FormEvent) => {
+    e.preventDefault();
+    const finalName =
+      selectedContactValue === CUSTOM_NAME_VALUE
+        ? customName.trim()
+        : selectedContactValue.trim();
+
+    if (finalName.length < 2) {
+      toast.error("Bitte wähle deinen Namen aus oder trage einen Namen ein");
+      return;
+    }
+
+    try {
+      sessionStorage.setItem(storageKey, finalName);
+    } catch {
+      // SessionStorage evtl. restriktiv
+    }
+    setConfirmedName(finalName);
+  };
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const handleSend = () => {
+    if (!confirmedName) return;
+    const cleanText = message.trim();
+    if (!cleanText || sendMutation.isPending) return;
+
+    sendMutation.mutate({
+      senderName: confirmedName,
+      message: cleanText,
+    });
+  };
+
+  const isExpanded = state === "open";
+  const isMinimized = state === "minimized";
+
+  // Inkrementelles Polling alle 5 Sekunden (Short-Polling)
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    let isDisposed = false;
+
+    const fetchDelta = async () => {
+      try {
+        const sinceId = highestSeenIdRef.current || undefined;
+        const fetched = await utils.client.notes.list.query({ sinceId });
+        if (isDisposed || !fetched || !fetched.length) return;
+
+        setNotes(prev => {
+          const existingIds = new Set(prev.map(item => item.id));
+          const additions = (fetched as TeamNoteItem[]).filter(
+            item => !existingIds.has(item.id)
+          );
+          if (!additions.length) return prev;
+          const merged = [...prev, ...additions].sort((a, b) => a.id - b.id);
+          highestSeenIdRef.current = Math.max(
+            highestSeenIdRef.current,
+            ...merged.map(m => m.id)
+          );
+          return merged;
+        });
+
+        if (isExpanded) {
+          scrollToBottom(true);
+        }
+      } catch {
+        // Polling-Fehler nicht blockierend
+      }
+    };
+
+    void fetchDelta();
+
+    pollTimerRef.current = window.setInterval(() => {
+      void fetchDelta();
+    }, SHORT_POLL_INTERVAL_MS);
+
+    return () => {
+      isDisposed = true;
+      if (pollTimerRef.current) window.clearInterval(pollTimerRef.current);
+    };
+  }, [isAuthenticated, isExpanded, scrollToBottom, utils.client.notes.list, year, eventId]);
+
+  useEffect(() => {
+    if (isExpanded) {
+      scrollToBottom(false);
+      const timer = window.setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 150);
+      return () => window.clearTimeout(timer);
+    }
+  }, [isExpanded, scrollToBottom]);
+
+  if (!isAuthenticated || state === "closed") {
+    return (
+      <aside aria-label="Live-Notizen und Team-Chat">
+        <Button
+          type="button"
+          onClick={onOpen}
+          className="fixed bottom-4 right-4 z-50 h-12 w-12 rounded-full border-2 border-white bg-blue-600 p-0 text-white shadow-xl hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 motion-safe:transition-transform motion-safe:hover:scale-105"
+          aria-label={
+            unreadCount > 0
+              ? `Team-Notizen öffnen (${unreadCount} ungelesene Nachrichten)`
+              : "Team-Notizen & Live-Chat öffnen"
+          }
+          title="Live-Notizen & Team-Chat öffnen"
+        >
+          <MessageSquare className="h-5 w-5" />
+          {unreadCount > 0 && (
+            <span
+              className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[11px] font-bold text-white shadow-md ring-2 ring-white animate-pulse"
+              aria-hidden="true"
+            >
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          )}
+        </Button>
+      </aside>
+    );
+  }
+
+  // MINIMIERT: Schmale Statusleiste unten rechts
+  if (isMinimized) {
+    return (
+      <aside
+        aria-label="Minimierte Team-Notizen"
+        className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full border border-blue-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 shadow-2xl ring-1 ring-black/5"
+      >
+        <button
+          type="button"
+          onClick={onOpen}
+          className="flex min-h-11 items-center gap-2 rounded-full px-2 py-1 text-left font-semibold text-blue-700 hover:text-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 md:min-h-8"
+          aria-label="Team-Notizen maximieren"
+        >
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-75" />
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-blue-600" />
+          </span>
+          <span>Team-Notizen</span>
+          {unreadCount > 0 && (
+            <span className="ml-1 inline-flex items-center rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+              🔴 {unreadCount}
+            </span>
+          )}
+        </button>
+        <div className="flex items-center gap-1 border-l border-slate-200 pl-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={onOpen}
+            className="h-7 w-7 text-slate-500 hover:text-slate-900"
+            title="Fenster vergrößern"
+            aria-label="Fenster vergrößern"
+          >
+            <Maximize2 className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="h-7 w-7 text-slate-500 hover:text-red-600"
+            title="Schließen"
+            aria-label="Schließen"
+          >
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </aside>
+    );
+  }
+
+  // GEÖFFNET: Picture-in-Picture Drawer / Floating Box
+  return (
+    <>
+      <div
+        role="dialog"
+        aria-label="Live-Team-Notizen und Chat"
+        aria-modal="false"
+        className={cn(
+          "fixed z-50 flex flex-col bg-white text-slate-950 shadow-2xl ring-1 ring-black/10 duration-200",
+          // Mobile: Vollwertiges Bottom-Sheet
+          "inset-x-0 bottom-0 h-[82dvh] max-h-[640px] rounded-t-2xl border-t border-slate-200 sm:inset-x-auto",
+          // Desktop: Schwebendes PIP-Fenster unten rechts
+          "sm:bottom-4 sm:right-4 sm:h-[540px] sm:w-[380px] sm:max-h-[85vh] sm:rounded-xl sm:border sm:border-slate-200"
+        )}
+      >
+        {/* Header mit Titel, Badge & Fenster-Aktionen */}
+        <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/90 px-3.5 py-2.5 sm:rounded-t-xl">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="flex h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500 ring-2 ring-emerald-200" />
+            <div className="min-w-0">
+              <h2 className="truncate text-sm font-bold text-slate-900">
+                Team-Notizen
+              </h2>
+              <p className="truncate text-[10px] text-slate-500">
+                Live-Chat · 24h Speicher
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
+            {user?.role === "admin" && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => setClearDialogOpen(true)}
+                className="h-8 w-8 text-slate-500 hover:bg-red-50 hover:text-red-600"
+                title="Verlauf für alle leeren (nur Admin)"
+                aria-label="Verlauf leeren"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={onMinimize}
+              className="h-8 w-8 text-slate-600 hover:bg-slate-200"
+              title="Minimieren (⎯)"
+              aria-label="Minimieren"
+            >
+              <Minus className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="h-8 w-8 text-slate-600 hover:bg-slate-200 hover:text-slate-900"
+              title="Schließen (✕)"
+              aria-label="Schließen"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* STEP 1: Name auswählen (falls in dieser Sitzung noch nicht gesetzt) */}
+        {!confirmedName ? (
+          <div className="flex flex-1 flex-col justify-center p-4">
+            <div className="mx-auto w-full max-w-xs space-y-4 rounded-lg border border-blue-100 bg-blue-50/60 p-4 text-center">
+              <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-700">
+                <UserCheck className="h-5 w-5" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold text-slate-900">
+                  Wer schreibt hier?
+                </h3>
+                <p className="text-xs leading-relaxed text-slate-600">
+                  Wähle deinen Namen aus den Ansprechpartnern dieser Veranstaltung
+                  oder trage dich frei ein.
+                </p>
+              </div>
+
+              <form onSubmit={saveIdentity} className="space-y-3 text-left">
+                <div className="space-y-1.5">
+                  <Label htmlFor="chat-contact-select" className="text-xs">
+                    Name auswählen
+                  </Label>
+                  <Select
+                    value={selectedContactValue}
+                    onValueChange={setSelectedContactValue}
+                  >
+                    <SelectTrigger
+                      id="chat-contact-select"
+                      className="h-10 w-full bg-white text-xs"
+                    >
+                      <SelectValue placeholder="Ansprechpartner wählen …" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-56">
+                      {contacts.map(c => (
+                        <SelectItem key={c.id} value={c.name} className="text-xs">
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value={CUSTOM_NAME_VALUE} className="text-xs font-semibold text-blue-700">
+                        + Andere Person / Freie Eingabe
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {selectedContactValue === CUSTOM_NAME_VALUE && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="chat-custom-name" className="text-xs">
+                      Dein Name
+                    </Label>
+                    <Input
+                      id="chat-custom-name"
+                      placeholder="z. B. Max Mustermann"
+                      value={customName}
+                      onChange={e => setCustomName(e.target.value)}
+                      className="h-9 bg-white text-xs"
+                      autoFocus
+                    />
+                  </div>
+                )}
+
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="w-full bg-blue-600 text-white hover:bg-blue-700"
+                  disabled={
+                    selectedContactValue === CUSTOM_NAME_VALUE
+                      ? customName.trim().length < 2
+                      : !selectedContactValue
+                  }
+                >
+                  Bestätigen & Beitreten
+                </Button>
+              </form>
+            </div>
+          </div>
+        ) : (
+          /* STEP 2: Chat-Verlauf und Eingabezeile */
+          <>
+            {/* Kopfzeile mit aktuellem Absendernamen */}
+            <div className="flex items-center justify-between border-b border-slate-100 bg-white px-3 py-1.5 text-[11px] text-slate-500">
+              <span className="truncate">
+                Angemeldet als:{" "}
+                <strong className="text-slate-800">{confirmedName}</strong> (
+                {roleBadgeText(user?.role ?? "user")})
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmedName(null);
+                  try {
+                    sessionStorage.removeItem(storageKey);
+                  } catch {}
+                }}
+                className="text-blue-600 hover:underline"
+              >
+                Ändern
+              </button>
+            </div>
+
+            {/* Scrollbarer Nachrichtenbereich */}
+            <div
+              ref={scrollContainerRef}
+              className="flex-1 space-y-2.5 overflow-y-auto p-3 text-xs"
+            >
+              {notes.length === 0 ? (
+                <div className="flex h-full flex-col items-center justify-center p-4 text-center text-slate-400">
+                  <MessageSquare className="mb-2 h-8 w-8 opacity-40" />
+                  <p className="font-medium text-slate-600">Noch keine Notizen</p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
+                    Schreibe eine kurze Live-Nachricht an das Planungsteam und die
+                    Administratoren.
+                  </p>
+                </div>
+              ) : (
+                notes.map(note => {
+                  const isOwn =
+                    note.senderName.trim().toLowerCase() ===
+                    confirmedName.trim().toLowerCase();
+                  return (
+                    <div
+                      key={note.id}
+                      className={cn(
+                        "flex flex-col gap-0.5",
+                        isOwn ? "items-end" : "items-start"
+                      )}
+                    >
+                      <div className="flex items-center gap-1.5 px-1 text-[10px] text-slate-500">
+                        <span className="font-semibold text-slate-700">
+                          {note.senderName}
+                        </span>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "px-1 py-0 text-[9px] font-normal leading-tight",
+                            note.senderRole === "admin"
+                              ? "border-purple-200 bg-purple-50 text-purple-700"
+                              : "border-blue-200 bg-blue-50 text-blue-700"
+                          )}
+                        >
+                          {roleBadgeText(note.senderRole)}
+                        </Badge>
+                        <span className="text-slate-400">
+                          {formatNoteTime(note.createdAt)}
+                        </span>
+                      </div>
+                      <div
+                        className={cn(
+                          "max-w-[88%] rounded-2xl px-3 py-2 text-xs leading-relaxed break-words shadow-xs",
+                          isOwn
+                            ? "bg-blue-600 text-white rounded-tr-xs"
+                            : "bg-slate-100 text-slate-900 rounded-tl-xs border border-slate-200/70"
+                        )}
+                      >
+                        <p className="whitespace-pre-wrap">{note.message}</p>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Eingabebereich unten */}
+            <div className="border-t border-slate-200 bg-slate-50/70 p-2.5">
+              <div className="flex items-end gap-1.5">
+                <Textarea
+                  ref={textareaRef}
+                  value={message}
+                  onChange={e => setMessage(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Notiz eingeben (Enter zum Senden) …"
+                  className="min-h-[40px] max-h-24 resize-none bg-white text-xs leading-normal"
+                  rows={1}
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  disabled={!message.trim() || sendMutation.isPending}
+                  onClick={handleSend}
+                  className="h-10 w-10 shrink-0 bg-blue-600 text-white hover:bg-blue-700"
+                  aria-label="Nachricht senden"
+                  title="Senden"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Admin-Reset Modal */}
+      <AlertDialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
+        <AlertDialogContent className="bg-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Verlauf leeren?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Möchtest du alle Notizen dieser Veranstaltung unwiderruflich löschen?
+              Diese Aktion ist sofort für alle Benutzer wirksam.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={clearMutation.isPending}>
+              Abbrechen
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => clearMutation.mutate()}
+              disabled={clearMutation.isPending}
+              className="bg-red-600 text-white hover:bg-red-700"
+            >
+              {clearMutation.isPending ? "Wird geleert …" : "Verlauf jetzt leeren"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}

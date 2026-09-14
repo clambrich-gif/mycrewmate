@@ -1413,6 +1413,40 @@ export const appRouter = router({
         );
       }),
   }),
+
+  notes: router({
+    list: protectedProcedure
+      .input(
+        z
+          .object({
+            sinceId: z.number().int().positive().optional(),
+            limit: z.number().int().min(1).max(300).optional(),
+          })
+          .optional()
+      )
+      .query(({ input }) =>
+        db.listTeamNotes({
+          sinceId: input?.sinceId,
+          limit: input?.limit,
+        })
+      ),
+    send: protectedProcedure
+      .input(
+        z.object({
+          senderName: z.string().trim().min(2).max(120),
+          message: z.string().trim().min(1).max(2000),
+        })
+      )
+      .mutation(({ ctx, input }) =>
+        db.createTeamNote({
+          senderUserId: ctx.user.id > 0 ? ctx.user.id : null,
+          senderName: input.senderName,
+          senderRole: ctx.user.role,
+          message: input.message,
+        })
+      ),
+    clear: adminProcedure.mutation(() => db.clearTeamNotes()),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

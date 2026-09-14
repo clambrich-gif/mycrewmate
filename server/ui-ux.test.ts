@@ -43,6 +43,36 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(presence).toContain("motion-reduce:scale-100");
   });
 
+  it("integriert das schwebende Live-Notizen & Chat-Widget plattformübergreifend", () => {
+    const layout = source("client/src/components/Layout.tsx");
+    const widget = source("client/src/components/LiveChatWidget.tsx");
+    const presence = source("client/src/components/OnlinePresenceBadge.tsx");
+
+    expect(layout).toContain("<LiveChatWidget");
+    expect(layout).toContain("unreadNotesCount");
+    expect(layout).toContain("unreadCount={unreadNotesCount}");
+    expect(layout).toContain("onOpenChat={openChatWidget}");
+    expect(layout).toContain("window.setInterval(pollUnread, 5_000)");
+
+    expect(presence).toContain("unreadCount > 0");
+    expect(presence).toContain("Live-Notizen & Chat öffnen");
+
+    expect(widget).toContain("fixed bottom-4 right-4 z-50");
+    expect(widget).toContain("sessionStorage.getItem(storageKey)");
+    expect(widget).toContain("sessionStorage.setItem(storageKey, finalName)");
+    expect(widget).toContain("trpc.contacts.list.useQuery");
+    expect(widget).toContain("+ Andere Person / Freie Eingabe");
+    expect(widget).toContain("SHORT_POLL_INTERVAL_MS = 5_000");
+    expect(widget).toContain("trpc.notes.send.useMutation");
+    expect(widget).toContain("trpc.notes.clear.useMutation");
+    expect(widget).toContain('title="Minimieren (⎯)"');
+    expect(widget).toContain('title="Schließen (✕)"');
+    expect(widget).toContain("inset-x-0 bottom-0 h-[82dvh]");
+    expect(widget).toContain("sm:h-[540px] sm:w-[380px]");
+    expect(widget).toContain("user?.role === \"admin\"");
+    expect(widget).toContain("Verlauf für alle leeren");
+  });
+
   it("zeigt und entsperrt den dauerhaften Planungsteam-Login ausschließlich im Adminbereich", () => {
     const security = source("client/src/pages/Security.tsx");
     const layout = source("client/src/components/Layout.tsx");

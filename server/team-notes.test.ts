@@ -1,0 +1,182 @@
+import { describe, expect, it, vi } from "vitest";
+import { appRouter } from "./routers";
+import * as db from "./db";
+
+describe("Live-Teamnotizen Backend & Ephemeral Storage", () => {
+  it("ruft Notizen der letzten 24 Stunden ab und unterstützt inkrementelles Polling mit sinceId", async () => {
+    const listSpy = vi.spyOn(db, "listTeamNotes").mockResolvedValueOnce([
+      {
+        id: 11,
+        year: 2026,
+        eventId: 1,
+        senderUserId: 1,
+        senderName: "Christian Lambrich",
+        senderRole: "admin",
+        message: "Strecke Nord ist geprüft.",
+        createdAt: new Date(),
+      },
+    ] as any);
+
+    const caller = appRouter.createCaller({
+      req: {
+        headers: {
+          "x-event-year": "2026",
+          "x-event-id": "1",
+        },
+      } as any,
+      res: {} as any,
+      user: {
+        id: 1,
+        openId: "admin-id",
+        name: "Christian Lambrich",
+        email: "test@example.com",
+        loginMethod: "admin-password",
+        role: "admin",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastSignedIn: new Date(),
+      },
+    });
+
+    vi.spyOn(db, "getEvent").mockResolvedValueOnce({
+      id: 1,
+      year: 2026,
+      name: "MyEifelRide",
+      activeDays: ["Freitag", "Samstag", "Sonntag"],
+      pdfLogoKey: null,
+      pdfLogoUrl: null,
+      pdfLogoFallback: "none",
+      sortOrder: 0,
+      createdAt: new Date(),
+    });
+
+    const result = await caller.notes.list({ sinceId: 10 });
+    expect(listSpy).toHaveBeenCalledWith({ sinceId: 10, limit: undefined });
+    expect(result).toHaveLength(1);
+    expect(result[0].senderName).toBe("Christian Lambrich");
+  });
+
+  it("erlaubt Planern das Senden und verknüpft die Anmelderolle", async () => {
+    const createSpy = vi.spyOn(db, "createTeamNote").mockResolvedValueOnce({
+      id: 12,
+      year: 2026,
+      eventId: 1,
+      senderUserId: 2,
+      senderName: "Anne Veling",
+      senderRole: "user",
+      message: "Kuchenspenden sind vollständig eingetragen.",
+      createdAt: new Date(),
+    } as any);
+
+    vi.spyOn(db, "getEvent").mockResolvedValueOnce({
+      id: 1,
+      year: 2026,
+      name: "MyEifelRide",
+      activeDays: ["Freitag", "Samstag", "Sonntag"],
+      pdfLogoKey: null,
+      pdfLogoUrl: null,
+      pdfLogoFallback: "none",
+      sortOrder: 0,
+      createdAt: new Date(),
+    });
+    vi.spyOn(db, "withPlanningWriteLock").mockImplementationOnce(async cb => cb());
+
+    const caller = appRouter.createCaller({
+      req: {
+        headers: {
+          "x-event-year": "2026",
+          "x-event-id": "1",
+        },
+      } as any,
+      res: {} as any,
+      user: {
+        id: 2,
+        openId: "user-id",
+        name: "Planungsteam",
+        email: null,
+        loginMethod: "password",
+        role: "user",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastSignedIn: new Date(),
+      },
+    });
+
+    const note = await caller.notes.send({
+      senderName: "Anne Veling",
+      message: "Kuchenspenden sind vollständig eingetragen.",
+    });
+
+    expect(createSpy).toHaveBeenCalledWith({
+      senderUserId: 2,
+      senderName: "Anne Veling",
+      senderRole: "user",
+      message: "Kuchenspenden sind vollständig eingetragen.",
+    });
+    expect(note.id).toBe(12);
+  });
+
+  it("verwehrt normalen Planern das Leeren des Verlaufs, erlaubt es aber Administratoren", async () => {
+    vi.spyOn(db, "getEvent").mockResolvedValue({
+      id: 1,
+      year: 2026,
+      name: "MyEifelRide",
+      activeDays: ["Freitag", "Samstag", "Sonntag"],
+      pdfLogoKey: null,
+      pdfLogoUrl: null,
+      pdfLogoFallback: "none",
+      sortOrder: 0,
+      createdAt: new Date(),
+    });
+    vi.spyOn(db, "withPlanningWriteLock").mockImplementation(async cb => cb());
+    const clearSpy = vi.spyOn(db, "clearTeamNotes").mockResolvedValueOnce({ deletedCount: 3 });
+
+    const userCaller = appRouter.createCaller({
+      req: {
+        headers: {
+          "x-event-year": "2026",
+          "x-event-id": "1",
+        },
+      } as any,
+      res: {} as any,
+      user: {
+        id: 2,
+        openId: "user-id",
+        name: "Planungsteam",
+        email: null,
+        loginMethod: "password",
+        role: "user",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastSignedIn: new Date(),
+      },
+    });
+
+    await expect(userCaller.notes.clear()).rejects.toThrow();
+
+    const adminCaller = appRouter.createCaller({
+      req: {
+        headers: {
+          "x-event-year": "2026",
+          "x-event-id": "1",
+        },
+      } as any,
+      res: {} as any,
+      user: {
+        id: 1,
+        openId: "admin-id",
+        name: "Administrator",
+        email: null,
+        loginMethod: "admin-password",
+        role: "admin",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastSignedIn: new Date(),
+      },
+    });
+
+    const clearResult = await adminCaller.notes.clear();
+    expect(clearSpy).toHaveBeenCalled();
+    expect(clearResult.deletedCount).toBe(3);
+  });
+});
