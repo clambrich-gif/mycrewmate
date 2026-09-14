@@ -572,23 +572,11 @@ export const appRouter = router({
         z.object({
           area: resetAreaInput,
           adminPassword: z.string().min(1).max(200),
-          responsibleContactId: z.number().int().positive().optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
         await requireAdminPassword(input.adminPassword, ctx);
-        const deletesHelpers = input.area === "helpers" || input.area === "all";
-        if (deletesHelpers && !input.responsibleContactId) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message:
-              "Bitte wählen Sie den verantwortlichen Ansprechpartner für die Helferlöschung aus",
-          });
-        }
-        const actor = input.responsibleContactId
-          ? await auditActorWithContact(ctx.user, input.responsibleContactId)
-          : auditActor(ctx.user);
-        await db.resetArea(input.area, actor);
+        await db.resetArea(input.area, auditActor(ctx.user));
         return { success: true } as const;
       }),
   }),

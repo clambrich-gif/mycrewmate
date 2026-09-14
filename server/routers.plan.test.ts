@@ -15,6 +15,7 @@ const dbMocks = vi.hoisted(() => ({
   deleteHelper: vi.fn(),
   deleteCake: vi.fn(),
   createPrep: vi.fn(),
+  resetArea: vi.fn(),
   listDeletionAuditLogs: vi.fn(),
   clearDeletionAuditLogs: vi.fn(),
   restoreDeletionAuditLog: vi.fn(),
@@ -499,6 +500,23 @@ describe("Planungs-API", () => {
       caller.contacts.remove({ id: 5, adminPassword: ADMIN_PASSWORD })
     ).resolves.toEqual({ deletedContactId: 5, deletedHelperId: 20 });
     expect(dbMocks.deleteContact).toHaveBeenCalledWith(5, {
+      userId: 1,
+      name: "Organisation",
+      role: "admin",
+      loginMethod: "manus",
+    });
+  });
+
+  it("setzt alle Helfer als Administrator nur nach Passwortbestätigung zurück", async () => {
+    dbMocks.resetArea.mockResolvedValue(undefined);
+
+    await expect(
+      appRouter.createCaller(ctx).reset.area({
+        area: "helpers",
+        adminPassword: ADMIN_PASSWORD,
+      })
+    ).resolves.toEqual({ success: true });
+    expect(dbMocks.resetArea).toHaveBeenCalledWith("helpers", {
       userId: 1,
       name: "Organisation",
       role: "admin",

@@ -2106,14 +2106,6 @@ export async function resetArea(area: ResetArea, actor: AuditActor) {
   const db = (await getDb()) as DB;
   const selectedYear = year();
   const selectedEventId = event();
-  if (
-    (area === "helpers" || area === "all") &&
-    (!actor.responsibleContactId || !actor.responsibleContactName)
-  ) {
-    throw new Error(
-      "Für das Löschen von Helferdaten muss der ausführende Ansprechpartner ausgewählt werden"
-    );
-  }
 
   if (area === "all") {
     await db.transaction(async tx => {

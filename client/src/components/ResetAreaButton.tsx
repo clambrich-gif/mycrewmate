@@ -33,10 +33,6 @@ export function ResetAreaButton({
   const { user } = useAuth();
   const utils = trpc.useUtils();
   const [open, setOpen] = useState(false);
-  const deletesHelpers = area === "helpers" || area === "all";
-  const { data: contacts = [] } = trpc.contacts.list.useQuery(undefined, {
-    enabled: user?.role === "admin" && deletesHelpers,
-  });
   const reset = trpc.reset.area.useMutation({
     onSuccess: async () => {
       setOpen(false);
@@ -66,11 +62,7 @@ export function ResetAreaButton({
         description={`Alle Einträge im Bereich „${label}“ werden ausschließlich für das aktuell gewählte Veranstaltungsjahr dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`}
         confirmLabel="Daten endgültig löschen"
         busy={reset.isPending}
-        responsibleContacts={contacts}
-        requireResponsibleContact={deletesHelpers}
-        onConfirm={(adminPassword, responsibleContactId) =>
-          reset.mutate({ area, adminPassword, responsibleContactId })
-        }
+        onConfirm={adminPassword => reset.mutate({ area, adminPassword })}
       />
     </>
   );
