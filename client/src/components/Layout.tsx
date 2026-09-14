@@ -120,6 +120,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loginMode, setLoginMode] = useState<"user" | "admin">("user");
+  const [recoveryOpen, setRecoveryOpen] = useState(false);
+  const [recoveryKey, setRecoveryKey] = useState("");
+  const [newAdminPassword, setNewAdminPassword] = useState("");
+  const [recoveryError, setRecoveryError] = useState<string | null>(null);
   const [yearDialogOpen, setYearDialogOpen] = useState(false);
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
   const [eventManagerOpen, setEventManagerOpen] = useState(false);
@@ -293,6 +297,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const finishLogin = async () => {
     setPassword("");
     setLoginError(null);
+    setRecoveryOpen(false);
+    setRecoveryKey("");
+    setNewAdminPassword("");
+    setRecoveryError(null);
     await utils.auth.me.invalidate();
     toast.success("Anmeldung erfolgreich");
   };
@@ -310,6 +318,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
     mutationKey: ["auth", "adminPasswordLogin"],
     onSuccess: finishLogin,
     onError: error => setLoginError(error.message),
+  });
+  const resetAdminWithKey = trpc.auth.resetAdminWithKey.useMutation({
+    mutationKey: ["auth", "resetAdminWithKey"],
+    onSuccess: finishLogin,
+    onError: error => setRecoveryError(error.message),
   });
   const createYear = trpc.years.create.useMutation({
     onSuccess: async () => {
@@ -380,7 +393,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
     loginMode === "user" && passwordStatus.data?.planningTeamLocked
   );
   const loginAvailable = Boolean(loginEnabled && !planningTeamLocked);
-  const loginPending = passwordLogin.isPending || adminPasswordLogin.isPending;
+  const loginPending =
+    passwordLogin.isPending ||
+    adminPasswordLogin.isPending ||
+    resetAdminWithKey.isPending;
 
   useEffect(() => {
     if (!planningTeamLocked) return;
@@ -434,6 +450,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 setLoginMode("user");
                 setPassword("");
                 setLoginError(null);
+                setRecoveryOpen(false);
               }}
             >
               Planungsteam
@@ -457,6 +474,99 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </button>
           </div>
 
+          {loginMode === "admin" && recoveryOpen ? (
+            <form
+              className="space-y-3 rounded-xl border border-blue-200 bg-blue-50/60 p-4"
+              onSubmit={event => {
+                event.preventDefault();
+                setRecoveryError(null);
+                if (!recoveryKey.trim() || !newAdminPassword) return;
+                resetAdminWithKey.mutate({
+                  recoveryKey: recoveryKey.trim(),
+                  newPassword: newAdminPassword,
+                });
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-blue-950 flex items-center gap-1.5">
+                  <ShieldCheck className="h-4 w-4 text-blue-600" />
+                  Notfall-Wiederherstellung
+                </span>
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground hover:text-gray-900 underline"
+                  onClick={() => {
+                    setRecoveryOpen(false);
+                    setRecoveryError(null);
+                  }}
+                >
+                  Zurück zur Anmeldung
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Geben Sie den Master Recovery Key aus der Server-Konfiguration
+                ein, um ein neues Administratorpasswort zu vergeben.
+              </p>
+              <div className="space-y-1.5">
+                <Label htmlFor="master-recovery-key" className="text-xs font-medium">
+                  Master Recovery Key
+                </Label>
+                <Input
+                  id="master-recovery-key"
+                  type="text"
+                  autoComplete="off"
+                  spellCheck={false}
+                  placeholder="z. B. 16-stelliger Schlüssel"
+                  value={recoveryKey}
+                  onChange={e => {
+                    setRecoveryKey(e.target.value);
+                    if (recoveryError) setRecoveryError(null);
+                  }}
+                  disabled={resetAdminWithKey.isPending}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="new-admin-password" className="text-xs font-medium">
+                  Neues Administratorpasswort
+                </Label>
+                <Input
+                  id="new-admin-password"
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder="Mindestens 10 Zeichen"
+                  value={newAdminPassword}
+                  onChange={e => {
+                    setNewAdminPassword(e.target.value);
+                    if (recoveryError) setRecoveryError(null);
+                  }}
+                  disabled={resetAdminWithKey.isPending}
+                />
+              </div>
+              {recoveryError && (
+                <div
+                  className="flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 p-2.5 text-xs text-red-900 shadow-sm"
+                  role="alert"
+                >
+                  <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-700" />
+                  <span>{recoveryError}</span>
+                </div>
+              )}
+              <Button
+                className="w-full mt-2"
+                size="default"
+                type="submit"
+                disabled={
+                  !recoveryKey.trim() ||
+                  newAdminPassword.length < 10 ||
+                  resetAdminWithKey.isPending
+                }
+              >
+                {resetAdminWithKey.isPending
+                  ? "Wiederherstellung läuft …"
+                  : "Passwort neu setzen & anmelden"}
+              </Button>
+            </form>
+          ) : (
           <form className="space-y-3" onSubmit={submitPassword}>
             <Label htmlFor="planning-password">
               {loginMode === "admin"
@@ -508,6 +618,21 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   ? "Als Administrator anmelden"
                   : "Mit Passwort anmelden"}
             </Button>
+            {loginMode === "admin" && (
+              <div className="pt-1 text-center">
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground hover:text-blue-600 underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 rounded"
+                  onClick={() => {
+                    setRecoveryOpen(true);
+                    setLoginError(null);
+                    setRecoveryError(null);
+                  }}
+                >
+                  Passwort vergessen / Recovery
+                </button>
+              </div>
+            )}
             {passwordStatus.data && !loginEnabled && (
               <p className="text-xs text-destructive">
                 Dieser Passwortzugang ist noch nicht eingerichtet.
@@ -556,6 +681,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </div>
             )}
           </form>
+          )}
 
           <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
             <span className="h-px flex-1 bg-border" />

@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import type { Request } from "express";
 
 export const SHARED_PASSWORD_OPEN_ID = "shared-password-user";
@@ -50,4 +51,14 @@ export function hashPassword(password: string) {
 
 export function verifyPassword(password: string, hash: string) {
   return bcrypt.compare(password, hash);
+}
+
+export function verifyRecoveryKey(providedKey: string, configuredKey: string): boolean {
+  const cleanProvided = providedKey.trim();
+  const cleanConfigured = configuredKey.trim();
+  if (!cleanConfigured || !cleanProvided) return false;
+  const providedBuffer = Buffer.from(cleanProvided);
+  const configuredBuffer = Buffer.from(cleanConfigured);
+  if (providedBuffer.length !== configuredBuffer.length) return false;
+  return crypto.timingSafeEqual(providedBuffer, configuredBuffer);
 }

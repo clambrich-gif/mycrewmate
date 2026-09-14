@@ -38,6 +38,7 @@ import {
   MODULE_IMPORT_AREAS,
   previewModuleExcelImport,
 } from "./module-excel-import";
+import { ENV } from "./_core/env";
 import { sdk } from "./_core/sdk";
 import {
   ADMIN_PASSWORD_OPEN_ID,
@@ -50,6 +51,7 @@ import {
   recordFailedPasswordLogin,
   SHARED_PASSWORD_OPEN_ID,
   verifyPassword,
+  verifyRecoveryKey,
 } from "./password-auth";
 import {
   createAllHelperTaskZip,
@@ -439,6 +441,55 @@ export const appRouter = router({
           });
         }
         clearPasswordLoginFailures(clientKey);
+        await db.upsertUser({
+          openId: ADMIN_PASSWORD_OPEN_ID,
+          name: "Administrator",
+          loginMethod: "admin-password",
+          role: "admin",
+          lastSignedIn: new Date(),
+        });
+        const token = await sdk.createSessionToken(ADMIN_PASSWORD_OPEN_ID, {
+          name: "Administrator",
+          expiresInMs: PASSWORD_SESSION_MS,
+        });
+        ctx.res.cookie(COOKIE_NAME, token, {
+          ...getSessionCookieOptions(ctx.req),
+          maxAge: PASSWORD_SESSION_MS,
+        });
+        return { success: true } as const;
+      }),
+    resetAdminWithKey: publicProcedure
+      .input(
+        z.object({
+          recoveryKey: z.string().min(1, "Recovery-Key darf nicht leer sein").max(200),
+          newPassword: passwordInput,
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const clientKey = `admin-recovery:${getClientKey(ctx.req)}`;
+        if (isPasswordLoginBlocked(clientKey)) {
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message:
+              "Zu viele Fehlversuche für den Recovery-Key. Bitte in 15 Minuten erneut versuchen.",
+          });
+        }
+        const configuredKey = ENV.adminRecoveryKey;
+        if (!configuredKey || !verifyRecoveryKey(input.recoveryKey, configuredKey)) {
+          recordFailedPasswordLogin(clientKey);
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Master Recovery Key ist nicht korrekt oder nicht konfiguriert",
+          });
+        }
+        clearPasswordLoginFailures(clientKey);
+        clearPasswordLoginFailures(`admin:${getClientKey(ctx.req)}`);
+
+        // Neues Passwort hashen und in der Datenbank speichern (erhöht gleichzeitig adminSessionVersion)
+        const newHash = await hashPassword(input.newPassword);
+        await db.setAdminPasswordHash(newHash);
+
+        // Admin-Benutzer aktualisieren / erstellen und direkt einloggen
         await db.upsertUser({
           openId: ADMIN_PASSWORD_OPEN_ID,
           name: "Administrator",
