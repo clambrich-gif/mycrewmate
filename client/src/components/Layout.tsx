@@ -139,6 +139,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
   });
   const selectedEvent = events.data?.find(item => item.id === eventId);
 
+  useEffect(() => {
+    lastSeenChatNoteIdRef.current = 0;
+    setUnreadNotesCount(0);
+    setHasImportantUnread(false);
+  }, [year, eventId]);
+
   // Vollständige 5-Sekunden-Snapshots erkennen auch ein serverseitiges
   // Leeren des Verlaufs und setzen den Ungelesen-Zähler auf allen Clients zurück.
   useEffect(() => {
@@ -529,8 +535,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </SheetDescription>
             <OnlinePresenceBadge
               counts={onlinePresence.counts}
-              unreadCount={unreadNotesCount}
-              hasImportantUnread={hasImportantUnread}
               onOpenChat={openChatWidget}
               className="mt-1 w-fit"
             />
@@ -684,8 +688,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
             <OnlinePresenceBadge
               counts={onlinePresence.counts}
-              unreadCount={unreadNotesCount}
-              hasImportantUnread={hasImportantUnread}
               onOpenChat={openChatWidget}
               className="mt-1.5 max-w-full"
             />

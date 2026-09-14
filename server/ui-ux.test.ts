@@ -50,7 +50,6 @@ describe("UI- und Mobile-UX-Regeln", () => {
 
     expect(layout).toContain("<LiveChatWidget");
     expect(layout).toContain("unreadNotesCount");
-    expect(layout).toContain("unreadCount={unreadNotesCount}");
     expect(layout).toContain("hasImportantUnread={hasImportantUnread}");
     expect(layout).toContain("onOpenChat={openChatWidget}");
     expect(layout).toContain("window.setInterval(pollUnread, 5_000)");
@@ -59,9 +58,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain("setUnreadNotesCount(0)");
     expect(layout).toContain("setUnreadNotesCount(newNotes.length)");
 
-    expect(presence).toContain("unreadCount > 0");
     expect(presence).toContain("Live-Notizen & Chat öffnen");
-    expect(presence).toContain("hasImportantUnread");
+    expect(presence).not.toContain("unreadCount");
+    expect(presence).not.toContain("hasImportantUnread");
 
     expect(widget).toContain("fixed bottom-4 right-4 z-50");
     expect(widget).toContain("sessionStorage.getItem(storageKey)");
@@ -83,6 +82,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(widget).toContain("tippt gerade …");
     expect(widget).toContain("[ ] Als Wichtig markieren");
     expect(widget).toContain("Wichtige Durchsage");
+    expect(widget).toContain("SOUND_ENABLED_STORAGE_PREFIX");
+    expect(widget).toContain("playImportantAlertTone");
+    expect(widget).toContain("Warnton für wichtige Durchsagen stummschalten");
+    expect(widget).toContain("Warnton für wichtige Durchsagen aktivieren");
     expect(widget).toContain("h-[85dvh] w-full max-h-[85vh]");
     expect(widget).toContain("max-w-full flex-col overflow-x-hidden");
     expect(widget).toContain("[overscroll-behavior:contain]");

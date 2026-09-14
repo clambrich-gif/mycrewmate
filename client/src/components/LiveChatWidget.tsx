@@ -26,6 +26,8 @@ import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import {
   AlertTriangle,
+  Bell,
+  BellOff,
   Maximize2,
   MessageSquare,
   Minus,
@@ -47,6 +49,7 @@ import { toast } from "sonner";
 
 const SHORT_POLL_INTERVAL_MS = 5_000;
 const SESSION_NAME_STORAGE_PREFIX = "rsc-live-notes-sender-name-";
+const SOUND_ENABLED_STORAGE_PREFIX = "rsc-live-notes-important-sound-";
 const CUSTOM_NAME_VALUE = "__custom_name__";
 
 export type LiveChatWidgetState = "closed" | "minimized" | "open";
@@ -106,6 +109,7 @@ export function LiveChatWidget({
   const [activeTypers, setActiveTypers] = useState<ActiveTyperItem[]>([]);
   const [message, setMessage] = useState("");
   const [isImportant, setIsImportant] = useState(false);
+  const [importantSoundEnabled, setImportantSoundEnabled] = useState(false);
   const [selectedContactValue, setSelectedContactValue] = useState("");
   const [customName, setCustomName] = useState("");
   const [confirmedName, setConfirmedName] = useState<string | null>(null);
@@ -114,12 +118,17 @@ export function LiveChatWidget({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const highestSeenIdRef = useRef<number>(0);
+  const playedImportantNoteIdsRef = useRef<Set<number>>(new Set());
   const pollTimerRef = useRef<number | null>(null);
   const typingDebounceTimerRef = useRef<number | null>(null);
   const isTypingReportedRef = useRef(false);
 
   const storageKey = useMemo(
     () => `${SESSION_NAME_STORAGE_PREFIX}${year}-${eventId}`,
+    [year, eventId]
+  );
+  const soundStorageKey = useMemo(
+    () => `${SOUND_ENABLED_STORAGE_PREFIX}${year}-${eventId}`,
     [year, eventId]
   );
 
@@ -149,8 +158,17 @@ export function LiveChatWidget({
   }, [storageKey]);
 
   useEffect(() => {
+    try {
+      setImportantSoundEnabled(sessionStorage.getItem(soundStorageKey) === "on");
+    } catch {
+      setImportantSoundEnabled(false);
+    }
+  }, [soundStorageKey]);
+
+  useEffect(() => {
     setNotes([]);
     highestSeenIdRef.current = 0;
+    playedImportantNoteIdsRef.current.clear();
   }, [year, eventId]);
 
   const scrollToBottom = useCallback((smooth = false) => {
@@ -163,6 +181,47 @@ export function LiveChatWidget({
       });
     });
   }, []);
+
+  const playImportantAlertTone = useCallback(() => {
+    if (!importantSoundEnabled || typeof window === "undefined") return;
+    try {
+      const AudioContextConstructor =
+        window.AudioContext ??
+        (window as typeof window & { webkitAudioContext?: typeof AudioContext })
+          .webkitAudioContext;
+      if (!AudioContextConstructor) return;
+      const context = new AudioContextConstructor();
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(880, context.currentTime);
+      oscillator.frequency.setValueAtTime(1175, context.currentTime + 0.16);
+      gain.gain.setValueAtTime(0.0001, context.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.11, context.currentTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.42);
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start();
+      oscillator.stop(context.currentTime + 0.45);
+      oscillator.addEventListener("ended", () => void context.close());
+    } catch {
+      // Browser kann Audio ohne vorherige Interaktion blockieren.
+    }
+  }, [importantSoundEnabled]);
+
+  const toggleImportantSound = () => {
+    const next = !importantSoundEnabled;
+    setImportantSoundEnabled(next);
+    try {
+      sessionStorage.setItem(soundStorageKey, next ? "on" : "off");
+    } catch {}
+    if (next) {
+      toast.success("Warnton für wichtige Durchsagen aktiviert");
+      window.setTimeout(playImportantAlertTone, 0);
+    } else {
+      toast.message("Warnton für wichtige Durchsagen stummgeschaltet");
+    }
+  };
 
   const typingMutation = trpc.notes.typing.useMutation();
 
@@ -291,11 +350,22 @@ export function LiveChatWidget({
         const typers = (fetched.typing ?? []) as ActiveTyperItem[];
 
         const snapshot = rawNotes.sort((a, b) => a.id - b.id);
+        const newImportantNoteIds = snapshot
+          .filter(
+            note =>
+              note.important && !playedImportantNoteIdsRef.current.has(note.id)
+          )
+          .map(note => note.id);
+        snapshot.forEach(note => playedImportantNoteIdsRef.current.add(note.id));
         highestSeenIdRef.current = snapshot.length
           ? Math.max(...snapshot.map(note => note.id))
           : 0;
         setNotes(snapshot);
         setActiveTypers(typers);
+
+        if (newImportantNoteIds.length > 0 && state !== "open") {
+          playImportantAlertTone();
+        }
 
         if (isExpanded) {
           scrollToBottom(true);
@@ -315,7 +385,16 @@ export function LiveChatWidget({
       isDisposed = true;
       if (pollTimerRef.current) window.clearInterval(pollTimerRef.current);
     };
-  }, [isAuthenticated, isExpanded, scrollToBottom, utils.client.notes.list, year, eventId]);
+  }, [
+    isAuthenticated,
+    isExpanded,
+    playImportantAlertTone,
+    scrollToBottom,
+    state,
+    utils.client.notes.list,
+    year,
+    eventId,
+  ]);
 
   useEffect(() => {
     if (isExpanded) {
@@ -449,6 +528,35 @@ export function LiveChatWidget({
             </div>
           </div>
           <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={toggleImportantSound}
+              className={cn(
+                "h-9 w-9 border",
+                importantSoundEnabled
+                  ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                  : "border-slate-200 bg-white text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+              )}
+              title={
+                importantSoundEnabled
+                  ? "Warnton für wichtige Durchsagen aktiv – zum Stummschalten klicken"
+                  : "Warnton für wichtige Durchsagen stumm – zum Aktivieren klicken"
+              }
+              aria-label={
+                importantSoundEnabled
+                  ? "Warnton für wichtige Durchsagen stummschalten"
+                  : "Warnton für wichtige Durchsagen aktivieren"
+              }
+              aria-pressed={importantSoundEnabled}
+            >
+              {importantSoundEnabled ? (
+                <Bell className="h-4 w-4" />
+              ) : (
+                <BellOff className="h-4 w-4" />
+              )}
+            </Button>
             {user?.role === "admin" && (
               <Button
                 type="button"

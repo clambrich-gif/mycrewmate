@@ -86,14 +86,10 @@ export function useOnlinePresence() {
 
 export function OnlinePresenceBadge({
   counts,
-  unreadCount = 0,
-  hasImportantUnread = false,
   onOpenChat,
   className,
 }: {
   counts: OnlinePresenceCounts | undefined;
-  unreadCount?: number;
-  hasImportantUnread?: boolean;
   onOpenChat?: () => void;
   className?: string;
 }) {
@@ -151,23 +147,6 @@ export function OnlinePresenceBadge({
               <span className="whitespace-nowrap">Online wird ermittelt …</span>
             )}
           </span>
-          {unreadCount > 0 && (
-            <span
-              className={cn(
-                "ml-0.5 inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.2 text-[9px] font-bold text-white shadow-xs animate-pulse",
-                hasImportantUnread
-                  ? "bg-red-600 ring-2 ring-red-300 shadow-md shadow-red-200"
-                  : "bg-red-600"
-              )}
-              title={
-                hasImportantUnread
-                  ? `⚠️ ${unreadCount} ungelesene Notizen (wichtige Durchsage vorhanden!)`
-                  : `${unreadCount} ungelesene Team-Notizen`
-              }
-            >
-              {hasImportantUnread ? "⚠️" : "🔴"} {unreadCount}
-            </span>
-          )}
         </button>
       </PopoverTrigger>
       <PopoverContent
@@ -210,11 +189,6 @@ export function OnlinePresenceBadge({
           >
             <MessageSquare className="h-3.5 w-3.5" />
             Live-Notizen & Chat öffnen
-            {unreadCount > 0 && (
-              <span className="rounded-full bg-red-600 px-1.5 text-[10px] text-white">
-                {unreadCount}
-              </span>
-            )}
           </button>
         )}
       </PopoverContent>
