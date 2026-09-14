@@ -330,7 +330,7 @@ class SDKServer {
     const isPasswordSession =
       sessionUserId === SHARED_PASSWORD_OPEN_ID ||
       sessionUserId === ADMIN_PASSWORD_OPEN_ID;
-    if (!isPasswordSession && !db.isConfiguredOAuthOwner(sessionUserId)) {
+    if (!isPasswordSession && !(await db.isAuthorizedOAuthOwner(sessionUserId))) {
       throw ForbiddenError("OAuth session identity is not authorized");
     }
 

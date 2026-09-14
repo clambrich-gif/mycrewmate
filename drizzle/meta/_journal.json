@@ -148,6 +148,13 @@
       "when": 1789410513902,
       "tag": "0020_talented_crusher_hogan",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "5",
+      "when": 1789414004616,
+      "tag": "0021_rich_miss_america",
+      "breakpoints": true
     }
   ]
 }

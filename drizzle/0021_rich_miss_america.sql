@@ -1,0 +1,1 @@
+ALTER TABLE `security_settings` ADD `oauthOwnerOpenId` varchar(64);

@@ -310,6 +310,7 @@ export const securitySettings = mysqlTable("security_settings", {
   id: int("id").primaryKey().default(1),
   passwordHash: varchar("passwordHash", { length: 255 }),
   adminPasswordHash: varchar("adminPasswordHash", { length: 255 }),
+  oauthOwnerOpenId: varchar("oauthOwnerOpenId", { length: 64 }),
   planningTeamFailedAttempts: int("planningTeamFailedAttempts")
     .default(0)
     .notNull(),

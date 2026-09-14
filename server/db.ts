@@ -121,32 +121,91 @@ export function isConfiguredOAuthOwner(
   return ownerOpenId.trim().length > 0 && openId === ownerOpenId;
 }
 
+/**
+ * Erlaubt genau das konfigurierte Eigentümerkonto – oder dessen bereits
+ * verifizierte, administrativ gespeicherte Nachfolge-ID. Letztere entsteht
+ * ausschließlich im OAuth-Callback durch eine identische, vom Provider
+ * gelieferte E-Mail-Adresse. Passwortkonten sind ausdrücklich ausgeschlossen.
+ */
+export async function isAuthorizedOAuthOwner(openId: string) {
+  const db = await getDb();
+  if (!db) return false;
+  const [settings] = await db
+    .select({ oauthOwnerOpenId: securitySettings.oauthOwnerOpenId })
+    .from(securitySettings)
+    .where(eq(securitySettings.id, 1))
+    .limit(1);
+  const ownerOpenId = settings?.oauthOwnerOpenId?.trim() || ENV.ownerOpenId;
+  return ownerOpenId.trim().length > 0 && openId === ownerOpenId;
+}
+
 export async function refreshConfiguredOAuthOwner(
   user: Pick<InsertUser, "openId" | "name" | "email" | "loginMethod" | "lastSignedIn">
 ): Promise<User | undefined> {
-  if (!isConfiguredOAuthOwner(user.openId)) return undefined;
   const db = await getDb();
   if (!db) return undefined;
 
-  const [existing] = await db
+  const normalizedEmail = user.email?.trim().toLowerCase();
+  const [settings] = await db
+    .select({ oauthOwnerOpenId: securitySettings.oauthOwnerOpenId })
+    .from(securitySettings)
+    .where(eq(securitySettings.id, 1))
+    .limit(1);
+  const configuredOwnerOpenId =
+    settings?.oauthOwnerOpenId?.trim() || ENV.ownerOpenId;
+  if (!configuredOwnerOpenId.trim()) return undefined;
+
+  const candidates = await db
     .select()
     .from(users)
-    .where(eq(users.openId, user.openId))
-    .limit(1);
+    .where(
+      normalizedEmail
+        ? or(
+            eq(users.openId, user.openId),
+            eq(users.openId, configuredOwnerOpenId),
+            eq(users.email, normalizedEmail)
+          )
+        : or(
+            eq(users.openId, user.openId),
+            eq(users.openId, configuredOwnerOpenId)
+          )
+    )
+    .limit(3);
+  const existing = candidates.find(
+    row => row.openId === configuredOwnerOpenId
+  );
   if (!existing) return undefined;
 
-  await db
-    .update(users)
-    .set({
-      name: user.name ?? null,
-      email: user.email ?? null,
-      loginMethod: user.loginMethod ?? null,
-      lastSignedIn: user.lastSignedIn ?? new Date(),
-      // Der Eigentümerzugang bleibt unabhängig vom vorherigen Altdatenstatus
-      // administrativ. Dies legt jedoch kein unbekanntes Konto an.
-      role: "admin",
-    })
-    .where(eq(users.id, existing.id));
+  const matchesConfiguredOwner = user.openId === configuredOwnerOpenId;
+  const canMigrateOwnerIdentity = Boolean(
+    !matchesConfiguredOwner &&
+      normalizedEmail &&
+      existing.role === "admin" &&
+      existing.loginMethod !== "password" &&
+      existing.loginMethod !== "admin-password" &&
+      existing.email?.trim().toLowerCase() === normalizedEmail
+  );
+  if (!matchesConfiguredOwner && !canMigrateOwnerIdentity) return undefined;
+
+  await db.transaction(async tx => {
+    await tx
+      .update(users)
+      .set({
+        openId: user.openId,
+        name: user.name ?? null,
+        email: user.email ?? null,
+        loginMethod: user.loginMethod ?? null,
+        lastSignedIn: user.lastSignedIn ?? new Date(),
+        // Der Eigentümerzugang bleibt unabhängig vom vorherigen Altdatenstatus
+        // administrativ. Dies legt jedoch kein unbekanntes Konto an.
+        role: "admin",
+      })
+      .where(eq(users.id, existing.id));
+    await tx
+      .insert(securitySettings)
+      .values({ id: 1, oauthOwnerOpenId: user.openId })
+      .onDuplicateKeyUpdate({ set: { oauthOwnerOpenId: user.openId } });
+  });
 
   const [refreshed] = await db
     .select()
