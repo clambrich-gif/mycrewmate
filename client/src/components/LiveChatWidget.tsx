@@ -25,6 +25,7 @@ import { useEventYear } from "@/contexts/YearContext";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import {
+  AlertTriangle,
   Maximize2,
   MessageSquare,
   Minus,
@@ -58,7 +59,15 @@ export type TeamNoteItem = {
   senderName: string;
   senderRole: "user" | "admin";
   message: string;
+  important?: boolean;
   createdAt: string | Date;
+};
+
+export type ActiveTyperItem = {
+  sessionKey: string;
+  senderName: string;
+  senderRole: "user" | "admin";
+  updatedAt: string | Date;
 };
 
 export function formatNoteTime(value: string | Date) {
@@ -77,12 +86,14 @@ export function roleBadgeText(role: "user" | "admin") {
 export function LiveChatWidget({
   state,
   unreadCount,
+  hasImportantUnread = false,
   onOpen,
   onMinimize,
   onClose,
 }: {
   state: LiveChatWidgetState;
   unreadCount: number;
+  hasImportantUnread?: boolean;
   onOpen: () => void;
   onMinimize: () => void;
   onClose: () => void;
@@ -92,7 +103,9 @@ export function LiveChatWidget({
   const utils = trpc.useUtils();
 
   const [notes, setNotes] = useState<TeamNoteItem[]>([]);
+  const [activeTypers, setActiveTypers] = useState<ActiveTyperItem[]>([]);
   const [message, setMessage] = useState("");
+  const [isImportant, setIsImportant] = useState(false);
   const [selectedContactValue, setSelectedContactValue] = useState("");
   const [customName, setCustomName] = useState("");
   const [confirmedName, setConfirmedName] = useState<string | null>(null);
@@ -102,6 +115,8 @@ export function LiveChatWidget({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const highestSeenIdRef = useRef<number>(0);
   const pollTimerRef = useRef<number | null>(null);
+  const typingDebounceTimerRef = useRef<number | null>(null);
+  const isTypingReportedRef = useRef(false);
 
   const storageKey = useMemo(
     () => `${SESSION_NAME_STORAGE_PREFIX}${year}-${eventId}`,
@@ -149,9 +164,45 @@ export function LiveChatWidget({
     });
   }, []);
 
+  const typingMutation = trpc.notes.typing.useMutation();
+
+  const reportTyping = useCallback(
+    (typingState: boolean) => {
+      if (!confirmedName || isTypingReportedRef.current === typingState) return;
+      isTypingReportedRef.current = typingState;
+      typingMutation.mutate({
+        senderName: confirmedName,
+        isTyping: typingState,
+      });
+    },
+    [confirmedName, typingMutation]
+  );
+
+  const handleMessageChange = (newText: string) => {
+    setMessage(newText);
+    if (!confirmedName) return;
+
+    if (newText.trim().length > 0) {
+      reportTyping(true);
+      if (typingDebounceTimerRef.current) {
+        window.clearTimeout(typingDebounceTimerRef.current);
+      }
+      typingDebounceTimerRef.current = window.setTimeout(() => {
+        reportTyping(false);
+      }, 3_500);
+    } else {
+      if (typingDebounceTimerRef.current) {
+        window.clearTimeout(typingDebounceTimerRef.current);
+      }
+      reportTyping(false);
+    }
+  };
+
   const sendMutation = trpc.notes.send.useMutation({
     onSuccess: newNote => {
       setMessage("");
+      setIsImportant(false);
+      reportTyping(false);
       setNotes(prev => {
         if (prev.some(item => item.id === newNote.id)) return prev;
         const next = [...prev, newNote as TeamNoteItem];
@@ -217,6 +268,7 @@ export function LiveChatWidget({
     sendMutation.mutate({
       senderName: confirmedName,
       message: cleanText,
+      important: isImportant,
     });
   };
 
@@ -235,11 +287,15 @@ export function LiveChatWidget({
         const fetched = await utils.client.notes.list.query({ limit: 150 });
         if (isDisposed || !fetched) return;
 
-        const snapshot = (fetched as TeamNoteItem[]).sort((a, b) => a.id - b.id);
+        const rawNotes = (fetched.notes ?? []) as TeamNoteItem[];
+        const typers = (fetched.typing ?? []) as ActiveTyperItem[];
+
+        const snapshot = rawNotes.sort((a, b) => a.id - b.id);
         highestSeenIdRef.current = snapshot.length
           ? Math.max(...snapshot.map(note => note.id))
           : 0;
         setNotes(snapshot);
+        setActiveTypers(typers);
 
         if (isExpanded) {
           scrollToBottom(true);
@@ -271,13 +327,23 @@ export function LiveChatWidget({
     }
   }, [isExpanded, scrollToBottom]);
 
-  if (!isAuthenticated || state === "closed") {
+  if (!isAuthenticated) return null;
+
+  if (state === "closed") {
+    const hasUnread = unreadCount > 0;
     return (
       <aside aria-label="Live-Notizen und Team-Chat">
         <Button
           type="button"
           onClick={onOpen}
-          className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full border-2 border-white bg-blue-600 p-0 text-white shadow-xl hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 motion-safe:transition-transform motion-safe:hover:scale-105 sm:bottom-4 sm:right-4 sm:h-12 sm:w-12"
+          className={cn(
+            "fixed bottom-6 right-6 z-50 flex h-16 w-16 min-h-16 min-w-16 items-center justify-center rounded-full border-2 border-white p-0 text-white shadow-2xl transition-[background-color,transform,box-shadow] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-offset-2 motion-safe:hover:scale-105 sm:bottom-4 sm:right-4 sm:h-14 sm:w-14 sm:min-h-14 sm:min-w-14",
+            hasUnread
+              ? hasImportantUnread
+                ? "animate-pulse bg-red-600 ring-4 ring-red-400 hover:bg-red-700 focus-visible:ring-red-400"
+                : "animate-pulse bg-red-600 ring-2 ring-red-300 hover:bg-red-700 focus-visible:ring-red-300"
+              : "bg-blue-600 hover:bg-blue-700 focus-visible:ring-blue-500"
+          )}
           aria-label={
             unreadCount > 0
               ? `Team-Notizen öffnen (${unreadCount} ungelesene Nachrichten)`
@@ -285,10 +351,13 @@ export function LiveChatWidget({
           }
           title="Live-Notizen & Team-Chat öffnen"
         >
-          <MessageSquare className="h-5 w-5" />
+          <MessageSquare className="h-7 w-7 sm:h-6 sm:w-6" />
           {unreadCount > 0 && (
             <span
-              className="absolute -top-2 -right-2 flex h-6 min-w-6 items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] font-bold text-white shadow-lg ring-2 ring-white animate-pulse"
+              className={cn(
+                "absolute -top-2 -right-2 flex h-7 min-w-7 items-center justify-center rounded-full px-1.5 text-xs font-black text-white shadow-lg ring-2 ring-white",
+                hasImportantUnread ? "bg-red-700 ring-yellow-200" : "bg-red-600"
+              )}
               aria-hidden="true"
             >
               {unreadCount > 99 ? "99+" : unreadCount}
@@ -521,7 +590,7 @@ export function LiveChatWidget({
             {/* Scrollbarer Nachrichtenbereich */}
             <div
               ref={scrollContainerRef}
-              className="flex-1 space-y-2.5 overflow-y-auto p-3 text-xs"
+              className="flex-1 space-y-2.5 overflow-y-auto p-3 text-sm sm:text-xs"
             >
               {notes.length === 0 ? (
                 <div className="flex h-full flex-col items-center justify-center p-4 text-center text-slate-400">
@@ -566,30 +635,79 @@ export function LiveChatWidget({
                       </div>
                       <div
                         className={cn(
-                          "max-w-[88%] rounded-2xl px-3 py-2 text-xs leading-relaxed break-words shadow-xs",
+                          "max-w-[90%] rounded-2xl px-3.5 py-2.5 text-base sm:text-xs leading-relaxed break-words shadow-xs sm:px-3 sm:py-2",
                           isOwn
                             ? "bg-blue-600 text-white rounded-tr-xs"
-                            : "bg-slate-100 text-slate-900 rounded-tl-xs border border-slate-200/70"
+                            : "bg-slate-100 text-slate-900 rounded-tl-xs border border-slate-200/70",
+                          note.important &&
+                            "border-2 border-red-500 bg-red-50 text-red-950 font-medium shadow-md shadow-red-100"
                         )}
                       >
+                        {note.important && (
+                          <div className="mb-1 flex items-center gap-1 text-[11px] font-bold tracking-wide text-red-600 uppercase">
+                            <AlertTriangle className="h-3.5 w-3.5" />
+                            Wichtige Durchsage
+                          </div>
+                        )}
                         <p className="whitespace-pre-wrap">{note.message}</p>
                       </div>
                     </div>
                   );
                 })
               )}
+
+              {/* Synchronisierter Tipp-Indikator */}
+              {activeTypers.length > 0 && (
+                <div className="flex items-center gap-2 px-2 py-1 text-xs sm:text-[11px] text-blue-700">
+                  <span className="flex gap-1">
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-600 [animation-delay:-0.3s]" />
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-600 [animation-delay:-0.15s]" />
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-600" />
+                  </span>
+                  <span className="font-medium italic">
+                    {activeTypers.map(t => t.senderName).join(", ")} tippt gerade …
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Eingabebereich unten */}
-            <div className="sticky bottom-0 z-10 shrink-0 border-t border-slate-200 bg-slate-50/95 px-4 pt-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] backdrop-blur-sm sm:static sm:bg-slate-50/70 sm:p-2.5">
-              <div className="flex items-end gap-1.5">
+            <div className="sticky bottom-0 z-10 w-full shrink-0 border-t border-slate-200 bg-slate-50/95 px-4 pt-2.5 pb-[max(1.5rem,env(safe-area-inset-bottom))] backdrop-blur-sm sm:static sm:bg-slate-50/70 sm:p-2.5">
+              <div className="mb-1.5 flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsImportant(prev => !prev)}
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500",
+                    isImportant
+                      ? "border border-red-300 bg-red-100 text-red-800"
+                      : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-100"
+                  )}
+                  title="Nachricht als wichtige Durchsage hervorheben"
+                  aria-pressed={isImportant}
+                >
+                  <AlertTriangle
+                    className={cn(
+                      "h-3.5 w-3.5",
+                      isImportant ? "text-red-600" : "text-slate-400"
+                    )}
+                  />
+                  <span>{isImportant ? "Wichtig aktiv" : "[ ] Als Wichtig markieren"}</span>
+                </button>
+                {isImportant && (
+                  <span className="text-[10px] font-semibold text-red-600 animate-pulse">
+                    Löst bei allen aktiven Planern Warnsignal aus
+                  </span>
+                )}
+              </div>
+              <div className="flex w-full items-end gap-2">
                 <Textarea
                   ref={textareaRef}
                   value={message}
-                  onChange={e => setMessage(e.target.value)}
+                  onChange={e => handleMessageChange(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Notiz eingeben (Enter zum Senden) …"
-                  className="min-h-11 min-w-0 flex-1 max-h-24 resize-none bg-white text-base leading-normal sm:min-h-[40px] sm:text-xs"
+                  className="min-h-12 min-w-0 flex-1 max-h-28 resize-none bg-white text-base leading-normal sm:min-h-[40px] sm:text-xs"
                   rows={1}
                 />
                 <Button
@@ -597,11 +715,16 @@ export function LiveChatWidget({
                   size="icon"
                   disabled={!message.trim() || sendMutation.isPending}
                   onClick={handleSend}
-                  className="h-11 w-11 shrink-0 bg-blue-600 text-white hover:bg-blue-700 sm:h-10 sm:w-10"
+                  className={cn(
+                    "h-12 w-12 shrink-0 text-white transition-colors sm:h-10 sm:w-10",
+                    isImportant
+                      ? "bg-red-600 hover:bg-red-700"
+                      : "bg-blue-600 hover:bg-blue-700"
+                  )}
                   aria-label="Nachricht senden"
                   title="Senden"
                 >
-                  <Send className="h-4 w-4" />
+                  <Send className="h-5 w-5 sm:h-4 sm:w-4" />
                 </Button>
               </div>
             </div>

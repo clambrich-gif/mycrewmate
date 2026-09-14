@@ -122,6 +122,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   } | null>(null);
   const [chatState, setChatState] = useState<LiveChatWidgetState>("closed");
   const [unreadNotesCount, setUnreadNotesCount] = useState(0);
+  const [hasImportantUnread, setHasImportantUnread] = useState(false);
   const lastSeenChatNoteIdRef = useRef<number>(0);
   const loginLockAlertRef = useRef<HTMLDivElement>(null);
   const utils = trpc.useUtils();
@@ -149,24 +150,26 @@ export function Layout({ children }: { children: React.ReactNode }) {
         const snapshot = await utils.client.notes.list.query({ limit: 150 });
         if (isDisposed || !snapshot) return;
 
-        if (snapshot.length === 0) {
+        const notesList = snapshot.notes ?? [];
+        if (notesList.length === 0) {
           lastSeenChatNoteIdRef.current = 0;
           setUnreadNotesCount(0);
+          setHasImportantUnread(false);
           return;
         }
 
-        const newNotes = snapshot.filter(
+        const newNotes = notesList.filter(
           note => note.id > lastSeenChatNoteIdRef.current
         );
-        const maxId = Math.max(...snapshot.map(note => note.id));
+        const maxId = Math.max(...notesList.map(note => note.id));
 
         if (chatState === "open") {
           lastSeenChatNoteIdRef.current = maxId;
           setUnreadNotesCount(0);
+          setHasImportantUnread(false);
         } else {
-          // Widget geschlossen oder minimiert: exakte Anzahl neuerer Notizen
-          // berechnen, um Akkumulationsfehler bei wiederholten Snapshots auszuschließen.
           setUnreadNotesCount(newNotes.length);
+          setHasImportantUnread(newNotes.some(note => Boolean(note.important)));
         }
       } catch {
         // Ungelesen-Polling leise abfangen
@@ -184,6 +187,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const openChatWidget = () => {
     setChatState("open");
     setUnreadNotesCount(0);
+    setHasImportantUnread(false);
   };
 
   const minimizeChatWidget = () => {
@@ -526,6 +530,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <OnlinePresenceBadge
               counts={onlinePresence.counts}
               unreadCount={unreadNotesCount}
+              hasImportantUnread={hasImportantUnread}
               onOpenChat={openChatWidget}
               className="mt-1 w-fit"
             />
@@ -680,6 +685,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <OnlinePresenceBadge
               counts={onlinePresence.counts}
               unreadCount={unreadNotesCount}
+              hasImportantUnread={hasImportantUnread}
               onOpenChat={openChatWidget}
               className="mt-1.5 max-w-full"
             />
@@ -1126,6 +1132,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <LiveChatWidget
           state={chatState}
           unreadCount={unreadNotesCount}
+          hasImportantUnread={hasImportantUnread}
           onOpen={openChatWidget}
           onMinimize={minimizeChatWidget}
           onClose={closeChatWidget}

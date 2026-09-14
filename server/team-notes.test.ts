@@ -52,8 +52,56 @@ describe("Live-Teamnotizen Backend & Ephemeral Storage", () => {
 
     const result = await caller.notes.list({ sinceId: 10 });
     expect(listSpy).toHaveBeenCalledWith({ sinceId: 10, limit: undefined });
-    expect(result).toHaveLength(1);
-    expect(result[0].senderName).toBe("Christian Lambrich");
+    expect(result.notes).toHaveLength(1);
+    expect(result.notes[0].senderName).toBe("Christian Lambrich");
+  });
+
+  it("liefert aktive Tippende synchron mit der Notizenliste", async () => {
+    const caller = appRouter.createCaller({
+      req: {
+        headers: {
+          "x-event-year": "2026",
+          "x-event-id": "1",
+        },
+      } as any,
+      res: {} as any,
+      user: {
+        id: 1,
+        openId: "admin-id",
+        name: "Christian Lambrich",
+        email: "test@example.com",
+        loginMethod: "admin-password",
+        role: "admin",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastSignedIn: new Date(),
+      },
+    });
+
+    vi.spyOn(db, "getEvent").mockResolvedValueOnce({
+      id: 1,
+      year: 2026,
+      name: "MyEifelRide",
+      activeDays: ["Freitag", "Samstag", "Sonntag"],
+      pdfLogoKey: null,
+      pdfLogoUrl: null,
+      pdfLogoFallback: "none",
+      sortOrder: 0,
+      createdAt: new Date(),
+    });
+    vi.spyOn(db, "listTeamNotes").mockResolvedValueOnce([]);
+    vi.spyOn(db, "listActiveTypers").mockResolvedValueOnce([
+      {
+        sessionKey: "other-session",
+        senderName: "Lukas",
+        senderRole: "user",
+        updatedAt: new Date(),
+      },
+    ] as any);
+
+    const listWithTypers = await caller.notes.list({});
+    expect(listWithTypers.typing).toHaveLength(1);
+    expect(listWithTypers.typing[0].senderName).toBe("Lukas");
   });
 
   it("erlaubt Planern das Senden und verknüpft die Anmelderolle", async () => {
@@ -105,6 +153,7 @@ describe("Live-Teamnotizen Backend & Ephemeral Storage", () => {
     const note = await caller.notes.send({
       senderName: "Anne Veling",
       message: "Kuchenspenden sind vollständig eingetragen.",
+      important: true,
     });
 
     expect(createSpy).toHaveBeenCalledWith({
@@ -112,6 +161,8 @@ describe("Live-Teamnotizen Backend & Ephemeral Storage", () => {
       senderName: "Anne Veling",
       senderRole: "user",
       message: "Kuchenspenden sind vollständig eingetragen.",
+      important: true,
+      sessionKey: null,
     });
     expect(note.id).toBe(12);
   });

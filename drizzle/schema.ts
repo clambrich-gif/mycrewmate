@@ -73,6 +73,7 @@ export const teamNotes = mysqlTable(
     senderName: varchar("senderName", { length: 200 }).notNull(),
     senderRole: mysqlEnum("senderRole", ["user", "admin"]).notNull(),
     message: text("message").notNull(),
+    important: boolean("important").default(false).notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   table => [
@@ -84,6 +85,28 @@ export const teamNotes = mysqlTable(
   ]
 );
 export type TeamNote = typeof teamNotes.$inferSelect;
+
+export const teamNoteTypings = mysqlTable(
+  "team_note_typings",
+  {
+    sessionKey: varchar("sessionKey", { length: 64 }).primaryKey(),
+    year: int("year").notNull(),
+    eventId: int("eventId")
+      .notNull()
+      .references(() => events.id, { onDelete: "cascade" }),
+    userId: int("userId").references(() => users.id, { onDelete: "set null" }),
+    senderName: varchar("senderName", { length: 200 }).notNull(),
+    senderRole: mysqlEnum("senderRole", ["user", "admin"]).notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    index("team_note_typings_event_updated_idx").on(
+      table.eventId,
+      table.updatedAt
+    ),
+  ]
+);
+export type TeamNoteTyping = typeof teamNoteTypings.$inferSelect;
 
 // ---------- MyEifelRide Planungsplattform ----------
 

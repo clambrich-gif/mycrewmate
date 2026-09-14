@@ -10,6 +10,7 @@ import {
   inArray,
   isNull,
   lt,
+  ne as notEq,
   or,
 } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
@@ -34,6 +35,7 @@ import {
   shiftAreaContacts,
   shifts,
   teamNotes,
+  teamNoteTypings,
   users,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
@@ -2094,6 +2096,7 @@ const shiftKey = (shift: {
     .join("|");
 
 export const TEAM_NOTES_TTL_MS = 24 * 60 * 60 * 1000;
+export const TEAM_NOTE_TYPING_TTL_MS = 8 * 1000;
 
 export async function cleanupExpiredTeamNotes(now = new Date()) {
   const db = await getDb();
@@ -2105,6 +2108,16 @@ export async function cleanupExpiredTeamNotes(now = new Date()) {
   return affectedRows(result);
 }
 
+export async function cleanupExpiredTeamNoteTypings(now = new Date()) {
+  const db = await getDb();
+  if (!db) return 0;
+  const threshold = new Date(now.getTime() - TEAM_NOTE_TYPING_TTL_MS);
+  const [result]: any = await (db as DB)
+    .delete(teamNoteTypings)
+    .where(lt(teamNoteTypings.updatedAt, threshold));
+  return affectedRows(result);
+}
+
 export async function listTeamNotes(options?: {
   sinceId?: number;
   limit?: number;
@@ -2113,6 +2126,7 @@ export async function listTeamNotes(options?: {
   const db = await getDb();
   if (!db) return [];
   await cleanupExpiredTeamNotes(options?.now);
+  await cleanupExpiredTeamNoteTypings(options?.now);
   const cutoff = new Date((options?.now ?? new Date()).getTime() - TEAM_NOTES_TTL_MS);
   const conditions = [
     planningScope(teamNotes),
@@ -2127,11 +2141,89 @@ export async function listTeamNotes(options?: {
     .limit(Math.min(options?.limit ?? 150, 300));
 }
 
+export async function setTeamNoteTyping(params: {
+  sessionKey: string;
+  senderUserId?: number | null;
+  senderName: string;
+  senderRole: "user" | "admin";
+  isTyping: boolean;
+}) {
+  const db = (await getDb()) as DB;
+  await cleanupExpiredTeamNoteTypings();
+  if (!params.isTyping) {
+    await db
+      .delete(teamNoteTypings)
+      .where(
+        and(
+          eq(teamNoteTypings.sessionKey, params.sessionKey),
+          planningScope(teamNoteTypings)
+        )
+      );
+    return false;
+  }
+  const now = new Date();
+  const cleanName = params.senderName.trim().replace(/\s+/g, " ");
+  await db
+    .insert(teamNoteTypings)
+    .values({
+      sessionKey: params.sessionKey,
+      year: year(),
+      eventId: event(),
+      userId: params.senderUserId ?? null,
+      senderName: cleanName,
+      senderRole: params.senderRole,
+      updatedAt: now,
+    })
+    .onDuplicateKeyUpdate({
+      set: {
+        year: year(),
+        eventId: event(),
+        userId: params.senderUserId ?? null,
+        senderName: cleanName,
+        senderRole: params.senderRole,
+        updatedAt: now,
+      },
+    });
+  return true;
+}
+
+export async function listActiveTypers(params?: {
+  excludeSessionKey?: string | null;
+  now?: Date;
+}) {
+  const db = await getDb();
+  if (!db) return [];
+  await cleanupExpiredTeamNoteTypings(params?.now);
+  const activeSince = new Date(
+    (params?.now ?? new Date()).getTime() - TEAM_NOTE_TYPING_TTL_MS
+  );
+  const conditions = [
+    planningScope(teamNoteTypings),
+    gte(teamNoteTypings.updatedAt, activeSince),
+    ...(params?.excludeSessionKey
+      ? [notEq(teamNoteTypings.sessionKey, params.excludeSessionKey)]
+      : []),
+  ];
+  const rows = await db
+    .select({
+      sessionKey: teamNoteTypings.sessionKey,
+      senderName: teamNoteTypings.senderName,
+      senderRole: teamNoteTypings.senderRole,
+      updatedAt: teamNoteTypings.updatedAt,
+    })
+    .from(teamNoteTypings)
+    .where(and(...conditions))
+    .orderBy(desc(teamNoteTypings.updatedAt));
+  return rows;
+}
+
 export async function createTeamNote(params: {
   senderUserId?: number | null;
   senderName: string;
   senderRole: "user" | "admin";
   message: string;
+  important?: boolean;
+  sessionKey?: string | null;
 }) {
   const db = (await getDb()) as DB;
   await cleanupExpiredTeamNotes();
@@ -2144,7 +2236,18 @@ export async function createTeamNote(params: {
     senderName: cleanName,
     senderRole: params.senderRole,
     message: cleanMessage,
+    important: Boolean(params.important),
   });
+  if (params.sessionKey) {
+    await db
+      .delete(teamNoteTypings)
+      .where(
+        and(
+          eq(teamNoteTypings.sessionKey, params.sessionKey),
+          planningScope(teamNoteTypings)
+        )
+      );
+  }
   const id = Number(result?.[0]?.insertId ?? result?.insertId);
   const [created] = await db
     .select()
@@ -2162,6 +2265,9 @@ export async function clearTeamNotes() {
   const [result]: any = await db
     .delete(teamNotes)
     .where(planningScope(teamNotes));
+  await db
+    .delete(teamNoteTypings)
+    .where(planningScope(teamNoteTypings));
   return { deletedCount: affectedRows(result) } as const;
 }
 

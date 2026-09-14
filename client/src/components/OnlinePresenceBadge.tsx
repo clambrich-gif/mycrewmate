@@ -87,11 +87,13 @@ export function useOnlinePresence() {
 export function OnlinePresenceBadge({
   counts,
   unreadCount = 0,
+  hasImportantUnread = false,
   onOpenChat,
   className,
 }: {
   counts: OnlinePresenceCounts | undefined;
   unreadCount?: number;
+  hasImportantUnread?: boolean;
   onOpenChat?: () => void;
   className?: string;
 }) {
@@ -151,10 +153,19 @@ export function OnlinePresenceBadge({
           </span>
           {unreadCount > 0 && (
             <span
-              className="ml-0.5 inline-flex items-center gap-0.5 rounded-full bg-red-600 px-1.5 py-0.2 text-[9px] font-bold text-white shadow-xs animate-pulse"
-              title={`${unreadCount} ungelesene Team-Notizen`}
+              className={cn(
+                "ml-0.5 inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.2 text-[9px] font-bold text-white shadow-xs animate-pulse",
+                hasImportantUnread
+                  ? "bg-red-600 ring-2 ring-red-300 shadow-md shadow-red-200"
+                  : "bg-red-600"
+              )}
+              title={
+                hasImportantUnread
+                  ? `⚠️ ${unreadCount} ungelesene Notizen (wichtige Durchsage vorhanden!)`
+                  : `${unreadCount} ungelesene Team-Notizen`
+              }
             >
-              🔴 {unreadCount}
+              {hasImportantUnread ? "⚠️" : "🔴"} {unreadCount}
             </span>
           )}
         </button>

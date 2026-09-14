@@ -62,6 +62,7 @@ import {
   getOnlinePresenceCounts,
   recordSessionPresence,
   removeSessionPresence,
+  sessionPresenceKey,
 } from "./session-presence";
 
 const GUIDE_PDF_KEY = "RSC-Helferplanung-Anleitung_2a9c73bd.pdf";
@@ -1424,27 +1425,54 @@ export const appRouter = router({
           })
           .optional()
       )
-      .query(({ input }) =>
-        db.listTeamNotes({
-          sinceId: input?.sinceId,
-          limit: input?.limit,
+      .query(async ({ ctx, input }) => {
+        const sessionKey = sessionPresenceKey(ctx.req);
+        const [notes, typing] = await Promise.all([
+          db.listTeamNotes({
+            sinceId: input?.sinceId,
+            limit: input?.limit,
+          }),
+          db.listActiveTypers({ excludeSessionKey: sessionKey }),
+        ]);
+        return { notes, typing };
+      }),
+    typing: protectedProcedure
+      .input(
+        z.object({
+          senderName: z.string().trim().min(2).max(120),
+          isTyping: z.boolean(),
         })
-      ),
+      )
+      .mutation(async ({ ctx, input }) => {
+        const sessionKey = sessionPresenceKey(ctx.req);
+        if (!sessionKey) return false;
+        return db.setTeamNoteTyping({
+          sessionKey,
+          senderUserId: ctx.user.id > 0 ? ctx.user.id : null,
+          senderName: input.senderName,
+          senderRole: ctx.user.role,
+          isTyping: input.isTyping,
+        });
+      }),
     send: protectedProcedure
       .input(
         z.object({
           senderName: z.string().trim().min(2).max(120),
           message: z.string().trim().min(1).max(2000),
+          important: z.boolean().optional(),
         })
       )
-      .mutation(({ ctx, input }) =>
-        db.createTeamNote({
+      .mutation(({ ctx, input }) => {
+        const sessionKey = sessionPresenceKey(ctx.req);
+        return db.createTeamNote({
           senderUserId: ctx.user.id > 0 ? ctx.user.id : null,
           senderName: input.senderName,
           senderRole: ctx.user.role,
           message: input.message,
-        })
-      ),
+          important: input.important,
+          sessionKey,
+        });
+      }),
     clear: adminProcedure.mutation(() => db.clearTeamNotes()),
   }),
 });

@@ -51,15 +51,17 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain("<LiveChatWidget");
     expect(layout).toContain("unreadNotesCount");
     expect(layout).toContain("unreadCount={unreadNotesCount}");
+    expect(layout).toContain("hasImportantUnread={hasImportantUnread}");
     expect(layout).toContain("onOpenChat={openChatWidget}");
     expect(layout).toContain("window.setInterval(pollUnread, 5_000)");
     expect(layout).toContain("utils.client.notes.list.query({ limit: 150 })");
-    expect(layout).toContain("if (snapshot.length === 0)");
+    expect(layout).toContain("if (notesList.length === 0)");
     expect(layout).toContain("setUnreadNotesCount(0)");
     expect(layout).toContain("setUnreadNotesCount(newNotes.length)");
 
     expect(presence).toContain("unreadCount > 0");
     expect(presence).toContain("Live-Notizen & Chat öffnen");
+    expect(presence).toContain("hasImportantUnread");
 
     expect(widget).toContain("fixed bottom-4 right-4 z-50");
     expect(widget).toContain("sessionStorage.getItem(storageKey)");
@@ -75,17 +77,19 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(widget).toContain("sm:h-[540px] sm:w-[380px]");
     expect(widget).toContain("user?.role === \"admin\"");
     expect(widget).toContain("Verlauf für alle leeren");
-    expect(widget).toContain("fixed bottom-6 right-6 z-50 h-14 w-14");
-    expect(widget).toContain("sm:bottom-4 sm:right-4 sm:h-12 sm:w-12");
+    expect(widget).toContain("h-16 w-16 min-h-16 min-w-16");
+    expect(widget).toContain("animate-pulse bg-red-600");
+    expect(widget).toContain("text-base sm:text-xs leading-relaxed");
+    expect(widget).toContain("tippt gerade …");
+    expect(widget).toContain("[ ] Als Wichtig markieren");
+    expect(widget).toContain("Wichtige Durchsage");
     expect(widget).toContain("h-[85dvh] w-full max-h-[85vh]");
     expect(widget).toContain("max-w-full flex-col overflow-x-hidden");
     expect(widget).toContain("[overscroll-behavior:contain]");
-    expect(widget).toContain("sticky bottom-0 z-10 shrink-0");
+    expect(widget).toContain("sticky bottom-0 z-10");
     expect(widget).toContain("pb-[max(1.5rem,env(safe-area-inset-bottom))]");
-    expect(widget).toContain("text-base leading-normal sm:min-h-[40px] sm:text-xs");
-    expect(widget).toContain("h-11 w-11 shrink-0 bg-blue-600");
     expect(widget).toContain("w-full min-w-0 max-w-full flex-col overflow-x-hidden");
-    expect(widget).toContain("h-6 min-w-6");
+    expect(widget).toContain("h-7 min-w-7");
     expect(widget).toContain("Vollständiger 24h-Snapshot alle 5 Sekunden");
     expect(widget).toContain("utils.client.notes.list.query({ limit: 150 })");
     expect(widget).toContain("setNotes(snapshot)");
