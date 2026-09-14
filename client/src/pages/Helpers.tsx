@@ -387,6 +387,7 @@ export default function Helpers() {
                   <Button
                     variant="outline"
                     size="icon"
+                    className="border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:text-rose-800"
                     title="Löschen"
                     disabled={
                       selfHelperIds.has(helper.id) ||
@@ -397,7 +398,7 @@ export default function Helpers() {
                       setDeleteTarget({ id: helper.id, name: helper.name })
                     }
                   >
-                    <Trash2 className="h-4 w-4 text-destructive" />
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
@@ -709,6 +710,7 @@ export default function Helpers() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:text-rose-800"
                         title={
                           selfHelperIds.has(helper.id)
                             ? "Zum Löschen zuerst den Ansprechpartner entfernen"
@@ -729,7 +731,7 @@ export default function Helpers() {
                           })
                         }
                       >
-                        <Trash2 className="h-4 w-4 text-destructive" />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </td>

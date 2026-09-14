@@ -118,7 +118,7 @@ export function ModuleExcelImportButton({
         type="button"
         variant="outline"
         size={compact ? "sm" : "default"}
-        className="bg-white dark:bg-slate-950"
+        className="border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 hover:text-emerald-900"
         disabled={preview.isPending}
         onClick={() => inputRef.current?.click()}
       >
@@ -188,7 +188,7 @@ export function ModuleExcelImportButton({
               Abbrechen
             </Button>
             <Button
-              className="border border-blue-800 !bg-blue-700 !text-white shadow-md hover:!bg-blue-800"
+              className="border border-emerald-200 bg-emerald-50 text-emerald-800 shadow-sm hover:bg-emerald-100 hover:text-emerald-900"
               onClick={() => setPasswordOpen(true)}
             >
               <Upload className="mr-2 h-4 w-4" /> Alle{" "}
@@ -206,6 +206,7 @@ export function ModuleExcelImportButton({
         description="Alle geprüften Änderungen dieses Bereichs werden atomar übernommen und protokolliert."
         confirmLabel="Import übernehmen"
         destructive={false}
+        confirmClassName="border border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 hover:text-emerald-900"
         busy={apply.isPending}
         onConfirm={adminPassword => {
           if (!file || !preview.data) return;

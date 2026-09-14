@@ -524,6 +524,27 @@ describe("Planungs-API", () => {
     });
   });
 
+  it("leert Schichtbelegungen nur mit Administratorpasswort", async () => {
+    dbMocks.resetArea.mockResolvedValue(undefined);
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.reset.area({ area: "assignments", adminPassword: "falsch" })
+    ).rejects.toThrow("Administratorpasswort");
+    expect(dbMocks.resetArea).not.toHaveBeenCalled();
+
+    await expect(
+      caller.reset.area({
+        area: "assignments",
+        adminPassword: ADMIN_PASSWORD,
+      })
+    ).resolves.toEqual({ success: true });
+    expect(dbMocks.resetArea).toHaveBeenCalledWith(
+      "assignments",
+      expect.objectContaining({ userId: 1, role: "admin" })
+    );
+  });
+
   it("erlaubt beiden Rollen JSON-Speichern und den reinen Excel-Export", async () => {
     for (const callerContext of [ctx, planningTeamCtx]) {
       const caller = appRouter.createCaller(callerContext);

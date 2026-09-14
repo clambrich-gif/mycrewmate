@@ -175,7 +175,7 @@ export function ProjectStorageControls({
         <Button
           type="button"
           variant="outline"
-          className="min-w-0 bg-white px-2 dark:bg-slate-950"
+          className="min-w-0 border-emerald-200 bg-emerald-50 px-2 text-emerald-800 hover:bg-emerald-100 hover:text-emerald-900"
           disabled={!isAdmin || preview.isPending}
           title={
             isAdmin
@@ -267,7 +267,7 @@ export function ProjectStorageControls({
             </Button>
             {hasChanges && (
               <Button
-                className="border border-blue-800 !bg-blue-700 !text-white shadow-md hover:!bg-blue-800"
+                className="border border-emerald-200 bg-emerald-50 text-emerald-800 shadow-sm hover:bg-emerald-100 hover:text-emerald-900"
                 onClick={() => setPasswordOpen(true)}
               >
                 <Upload className="mr-2 h-4 w-4" /> Alle Änderungen laden
@@ -284,6 +284,7 @@ export function ProjectStorageControls({
         description={`Speicherstand vom ${formatBackupTimestamp(preview.data?.metadata.exportedAt)}. Achtung: Durch das Laden werden alle Änderungen und Online-Eingaben überschrieben, die seit dieser Speicherung vorgenommen wurden.`}
         confirmLabel="Laden"
         destructive={false}
+        confirmClassName="border border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 hover:text-emerald-900"
         busy={load.isPending}
         onConfirm={adminPassword => {
           if (!file || !preview.data) return;

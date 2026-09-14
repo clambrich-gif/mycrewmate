@@ -417,7 +417,7 @@ export default function TaskGeneric({
               {(user?.role === "admin" || teamCanDelete) && row.id > 0 && (
                 <Button
                   variant="outline"
-                  className="w-full border-destructive/40 text-destructive"
+                  className="w-full border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:text-rose-800"
                   disabled={remove.isPending}
                   onClick={() =>
                     teamCanDelete
@@ -583,6 +583,7 @@ export default function TaskGeneric({
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:text-rose-800"
                           aria-label={`${addLabel} ${row[nameKey]} löschen`}
                           disabled={remove.isPending}
                           onClick={() =>
@@ -594,7 +595,7 @@ export default function TaskGeneric({
                               : remove.mutate({ id: row.id })
                           }
                         >
-                          <Trash2 className="h-4 w-4 text-destructive" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       )}
                   </td>

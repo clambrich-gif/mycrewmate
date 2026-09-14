@@ -28,6 +28,7 @@ export function AdminPasswordDialog({
   confirmLabel,
   busy = false,
   destructive = true,
+  confirmClassName,
   responsibleContacts,
   requireResponsibleContact = false,
   onConfirm,
@@ -39,6 +40,7 @@ export function AdminPasswordDialog({
   confirmLabel: string;
   busy?: boolean;
   destructive?: boolean;
+  confirmClassName?: string;
   responsibleContacts?: Array<{ id: number; name: string }>;
   requireResponsibleContact?: boolean;
   onConfirm: (adminPassword: string, responsibleContactId?: number) => void;
@@ -147,8 +149,9 @@ export function AdminPasswordDialog({
             variant={destructive ? "destructive" : "default"}
             className={cn(
               "w-full min-w-[150px] shadow-sm sm:w-auto",
+              confirmClassName,
               destructive &&
-                "border border-red-700 !bg-red-600 !text-white hover:!bg-red-700 disabled:!border-red-300 disabled:!bg-red-100 disabled:!text-red-800 disabled:opacity-100"
+                "border border-rose-200 !bg-rose-50 !text-rose-700 hover:!bg-rose-100 hover:!text-rose-800 disabled:!border-rose-100 disabled:!bg-rose-50 disabled:!text-rose-400 disabled:opacity-100"
             )}
             disabled={!canConfirm}
             onClick={confirm}

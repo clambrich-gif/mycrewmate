@@ -2092,6 +2092,7 @@ export const deleteFinance = async (id: number) =>
 export type ResetArea =
   | "contacts"
   | "helpers"
+  | "assignments"
   | "shifts"
   | "prep"
   | "post"
@@ -2384,6 +2385,21 @@ export async function resetArea(area: ResetArea, actor: AuditActor) {
       await tx
         .delete(shifts)
         .where(planningScopeFor(shifts, selectedYear, selectedEventId));
+    });
+    return;
+  }
+
+  if (area === "assignments") {
+    await db.transaction(async tx => {
+      await tx.delete(assignments).where(
+        inArray(
+          assignments.shiftId,
+          tx
+            .select({ id: shifts.id })
+            .from(shifts)
+            .where(planningScopeFor(shifts, selectedYear, selectedEventId))
+        )
+      );
     });
     return;
   }

@@ -79,7 +79,7 @@ export function ConfirmDeleteDialog({
             disabled={busy || Boolean(contacts && !responsibleContactId)}
             className={cn(
               buttonVariants({ variant: "destructive" }),
-              "w-full min-w-[140px] border border-red-700 !bg-red-600 !text-white shadow-sm hover:!bg-red-700 disabled:!border-red-300 disabled:!bg-red-100 disabled:!text-red-800 disabled:opacity-100 sm:w-auto"
+              "w-full min-w-[140px] border border-rose-200 !bg-rose-50 !text-rose-700 shadow-sm hover:!bg-rose-100 hover:!text-rose-800 disabled:!border-rose-100 disabled:!bg-rose-50 disabled:!text-rose-400 disabled:opacity-100 sm:w-auto"
             )}
             onClick={event => {
               event.preventDefault();

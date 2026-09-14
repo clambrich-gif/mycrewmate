@@ -200,6 +200,7 @@ const safeExportName = (value: string) =>
 const resetAreaInput = z.enum([
   "contacts",
   "helpers",
+  "assignments",
   "shifts",
   "prep",
   "post",

@@ -66,6 +66,7 @@ export function CopyPreviousPlanButton() {
     <>
       <Button
         variant="outline"
+        className="border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 hover:text-emerald-900"
         onClick={() => setOpen(true)}
         disabled={!sourceEvents.length}
       >
@@ -121,6 +122,7 @@ export function CopyPreviousPlanButton() {
             </Button>
             <Button
               disabled={!adminPassword || !sourceEventId || copy.isPending}
+              className="border border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 hover:text-emerald-900"
               onClick={() => copy.mutate({ sourceEventId, adminPassword })}
             >
               {copy.isPending
