@@ -343,7 +343,7 @@ export default function Help() {
                     <a
                       key={section.id}
                       href={`#${section.id}`}
-                      className="block rounded-md px-2 py-1.5 text-sm hover:bg-muted"
+                      className="flex min-h-11 items-center rounded-md px-2 py-1.5 text-base hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 md:min-h-0 md:text-sm"
                     >
                       {SECTIONS.findIndex(item => item.id === section.id) + 1}.{" "}
                       {section.title}
@@ -352,7 +352,7 @@ export default function Help() {
                 )}
                 <a
                   href="#az"
-                  className="block rounded-md px-2 py-1.5 text-sm hover:bg-muted"
+                  className="flex min-h-11 items-center rounded-md px-2 py-1.5 text-base hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 md:min-h-0 md:text-sm"
                 >
                   A–Z-Stichwortregister
                 </a>

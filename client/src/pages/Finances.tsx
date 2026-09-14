@@ -120,7 +120,7 @@ export default function Finances() {
     <Input
       type="number"
       step="0.01"
-      className="h-8 w-28"
+      className="h-11 w-full text-base md:h-8 md:w-28 md:text-sm"
       defaultValue={(value / 100).toFixed(2)}
       onBlur={event => {
         const nextValue =

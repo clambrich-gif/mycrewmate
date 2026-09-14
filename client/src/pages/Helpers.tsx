@@ -66,7 +66,7 @@ function Sel({
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger
         className={cn(
-          "h-8 w-full",
+          "h-11 w-full text-base md:h-8 md:text-sm",
           compactOnDesktop &&
             "md:w-[52px] md:min-w-[52px] md:gap-0.5 md:px-1.5 md:text-xs md:[&_svg]:size-3",
           valueColor(value)

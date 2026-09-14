@@ -440,8 +440,10 @@ export function LiveChatWidget({
           </span>
           <span>Team-Notizen</span>
           {unreadCount > 0 && (
-            <span className="ml-1 inline-flex items-center rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
-              🔴 {unreadCount}
+            <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-red-600 px-2 py-0.5 text-xs font-bold text-white md:text-[10px]">
+              <span className="h-2 w-2 rounded-full bg-white" aria-hidden="true" />
+              <span>{unreadCount}</span>
+              <span className="sr-only">ungelesene Notizen</span>
             </span>
           )}
         </button>
@@ -451,7 +453,7 @@ export function LiveChatWidget({
             variant="ghost"
             size="icon"
             onClick={onOpen}
-            className="h-7 w-7 text-slate-500 hover:text-slate-900"
+            className="h-11 w-11 text-slate-600 hover:text-slate-900 md:h-7 md:w-7"
             title="Fenster vergrößern"
             aria-label="Fenster vergrößern"
           >
@@ -462,7 +464,7 @@ export function LiveChatWidget({
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="h-7 w-7 text-slate-500 hover:text-red-600"
+            className="h-11 w-11 text-slate-600 hover:text-red-600 md:h-7 md:w-7"
             title="Schließen"
             aria-label="Schließen"
           >
@@ -597,7 +599,7 @@ export function LiveChatWidget({
                   >
                     <SelectTrigger
                       id="chat-contact-select"
-                      className="h-10 w-full bg-white text-xs"
+                      className="h-11 w-full bg-white text-base md:h-10 md:text-xs"
                     >
                       <SelectValue placeholder="Ansprechpartner wählen …" />
                     </SelectTrigger>
@@ -624,7 +626,7 @@ export function LiveChatWidget({
                       placeholder="z. B. Max Mustermann"
                       value={customName}
                       onChange={e => setCustomName(e.target.value)}
-                      className="h-9 bg-white text-xs"
+                      className="h-11 bg-white text-base md:h-9 md:text-xs"
                       autoFocus
                     />
                   </div>
@@ -663,7 +665,7 @@ export function LiveChatWidget({
                     sessionStorage.removeItem(storageKey);
                   } catch {}
                 }}
-                className="text-blue-600 hover:underline"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md px-2 text-base text-blue-700 hover:bg-blue-50 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 md:min-h-0 md:min-w-0 md:px-0 md:text-xs"
               >
                 Ändern
               </button>
@@ -760,7 +762,7 @@ export function LiveChatWidget({
                   type="button"
                   onClick={() => setIsImportant(prev => !prev)}
                   className={cn(
-                    "inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500",
+                    "inline-flex min-h-11 items-center gap-1 rounded-md px-2 py-1 text-base font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 md:min-h-0 md:text-xs",
                     isImportant
                       ? "border border-red-300 bg-red-100 text-red-800"
                       : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-100"

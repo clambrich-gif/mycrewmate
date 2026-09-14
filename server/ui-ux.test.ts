@@ -182,6 +182,43 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(mobileCards).not.toContain("compactOnDesktop");
   });
 
+  it("hält mobile Formulare und Aktionen bei 44px und 16px und macht Helferchips per Tastatur erreichbar", () => {
+    const input = source("client/src/components/ui/input.tsx");
+    const button = source("client/src/components/ui/button.tsx");
+    const select = source("client/src/components/ui/select.tsx");
+    const helpers = source("client/src/pages/Helpers.tsx");
+    const finances = source("client/src/pages/Finances.tsx");
+    const plan = source("client/src/pages/Plan.tsx");
+    const widget = source("client/src/components/LiveChatWidget.tsx");
+    const presence = source("client/src/components/OnlinePresenceBadge.tsx");
+    const help = source("client/src/pages/Help.tsx");
+
+    expect(input).toContain("h-11 w-full");
+    expect(input).toContain("text-base text-slate-950");
+    expect(button).toContain("min-h-11 min-w-11");
+    expect(button).toContain("rounded-md text-base font-medium");
+    expect(button).toContain("md:text-sm");
+    expect(select).toContain("min-h-11 w-fit");
+    expect(select).toContain("px-3 py-2 text-base");
+    expect(select).toContain("md:text-sm");
+    expect(helpers).toContain('"h-11 w-full text-base md:h-8 md:text-sm"');
+    expect(finances).toContain('className="h-11 w-full text-base md:h-8 md:w-28 md:text-sm"');
+    expect(plan).toContain("max-h-[calc(100dvh-2rem)]");
+    expect(plan).toContain("max-w-[calc(100vw-2rem)]");
+    expect(plan).toContain("pb-[max(1rem,env(safe-area-inset-bottom))]");
+    expect(plan).toContain('type="button"');
+    expect(plan).toContain("aria-label={`Details zu ${helper.name} anzeigen`}");
+    expect(plan).toContain("<PopoverTrigger asChild>");
+    expect(plan).toContain("min-h-11 min-w-0 flex-1 truncate text-left");
+    expect(widget).toContain("h-11 w-full bg-white text-base md:h-10 md:text-xs");
+    expect(widget).toContain("h-11 bg-white text-base md:h-9 md:text-xs");
+    expect(widget).toContain("inline-flex min-h-11 min-w-11 items-center");
+    expect(presence).toContain("flex min-h-11 w-full items-center");
+    expect(help).toContain("flex min-h-11 items-center rounded-md");
+    expect(widget).toContain("h-11 w-11 text-slate-600 hover:text-slate-900 md:h-7 md:w-7");
+    expect(widget).toContain("ungelesene Notizen");
+  });
+
   it("zeigt Helfernamen nur in Mobilkarten als dominanten, flexibel umbrechenden Titel", () => {
     const helpers = source("client/src/pages/Helpers.tsx");
     const mobileCards = helpers.slice(

@@ -190,38 +190,43 @@ function AssignedHelperChip({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <span
-          className={`slot ${className} inline-flex items-center justify-between gap-1`}
-          tabIndex={0}
-          onPointerEnter={event => openAfterDelay(event.pointerType)}
-          onPointerLeave={event => closeAfterLeave(event.pointerType)}
-        >
+      <div
+        className={`slot ${className} inline-flex min-h-11 items-center gap-1 text-base md:min-h-0 md:text-[.78rem]`}
+        onPointerEnter={event => openAfterDelay(event.pointerType)}
+        onPointerLeave={event => closeAfterLeave(event.pointerType)}
+      >
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="min-h-11 min-w-0 flex-1 truncate text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 md:min-h-0"
+            aria-label={`Details zu ${helper.name} anzeigen`}
+          >
           <span className="truncate">
             <HighlightedText text={displayLabel} query={searchQuery} />
           </span>
-          {canRemove && (
-            <button
-              type="button"
-              aria-label={`${helper.name} aus der Schicht entfernen`}
-              className="-my-2 -mr-2 inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-lg opacity-60 hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:my-0 md:mr-0 md:min-h-0 md:min-w-0 md:text-base"
-              title="Entfernen"
-              onPointerDown={event => {
-                event.stopPropagation();
-                clearOpenTimer();
-                clearCloseTimer();
-                setOpen(false);
-              }}
-              onClick={event => {
-                event.stopPropagation();
-                onRemove();
-              }}
-            >
-              ×
-            </button>
-          )}
-        </span>
-      </PopoverTrigger>
+          </button>
+        </PopoverTrigger>
+        {canRemove && (
+          <button
+            type="button"
+            aria-label={`${helper.name} aus der Schicht entfernen`}
+            className="-my-1 -mr-1 inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-lg opacity-60 hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:my-0 md:mr-0 md:min-h-0 md:min-w-0 md:text-base"
+            title="Entfernen"
+            onPointerDown={event => {
+              event.stopPropagation();
+              clearOpenTimer();
+              clearCloseTimer();
+              setOpen(false);
+            }}
+            onClick={event => {
+              event.stopPropagation();
+              onRemove();
+            }}
+          >
+            ×
+          </button>
+        )}
+      </div>
       <PopoverContent
         side="top"
         sideOffset={8}
@@ -1182,7 +1187,7 @@ export default function Plan() {
       </AlertDialog>
 
       <Dialog open={dlgOpen} onOpenChange={setDlgOpen}>
-        <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto !bg-white !text-slate-950 opacity-100 shadow-2xl dark:!bg-slate-950 dark:!text-slate-50 [&_[data-slot=input]]:!bg-white [&_[data-slot=input]]:dark:!bg-slate-900 [&_[data-slot=select-trigger]]:!bg-white [&_[data-slot=select-trigger]]:dark:!bg-slate-900">
+        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))] !bg-white !text-slate-950 opacity-100 shadow-2xl dark:!bg-slate-950 dark:!text-slate-50 [&_[data-slot=input]]:!bg-white [&_[data-slot=input]]:dark:!bg-slate-900 [&_[data-slot=select-trigger]]:!bg-white [&_[data-slot=select-trigger]]:dark:!bg-slate-900">
           <DialogHeader>
             <DialogTitle>
               {editShift ? "Schicht bearbeiten" : "Neue Schicht"}
