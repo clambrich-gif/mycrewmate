@@ -12,7 +12,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { AlertTriangle, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import {
+  AlertTriangle,
+  ChevronDown,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import {
   Dialog,
@@ -95,9 +103,44 @@ const AVAILABILITY_CLASS: Record<AvailabilityValue, string> = {
   vielleicht: "text-amber-700",
 };
 
+function HighlightedText({ text, query }: { text: string; query: string }) {
+  const normalizedText = text.normalize("NFKC");
+  const normalizedQuery = query.normalize("NFKC").trim();
+  if (!normalizedQuery) return <>{text}</>;
+
+  const escapedQuery = normalizedQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const matcher = new RegExp(escapedQuery, "giu");
+  const parts = [];
+  let cursor = 0;
+  let match = matcher.exec(normalizedText);
+
+  while (match) {
+    const matchIndex = match.index;
+    if (matchIndex > cursor) {
+      parts.push(normalizedText.slice(cursor, matchIndex));
+    }
+    const matchEnd = matchIndex + match[0].length;
+    parts.push(
+      <mark
+        key={`${matchIndex}-${matchEnd}`}
+        className="rounded-sm bg-amber-200 px-0.5 font-semibold text-slate-950"
+      >
+        {normalizedText.slice(matchIndex, matchEnd)}
+      </mark>
+    );
+    cursor = matchEnd;
+    match = matcher.exec(normalizedText);
+  }
+
+  if (cursor === 0) return <>{text}</>;
+  if (cursor < normalizedText.length) parts.push(normalizedText.slice(cursor));
+  return <>{parts}</>;
+}
+
 function AssignedHelperChip({
   helper,
   displayLabel,
+  searchQuery,
   className,
   activeDays,
   canRemove,
@@ -105,6 +148,7 @@ function AssignedHelperChip({
 }: {
   helper: HelperTooltipData;
   displayLabel: string;
+  searchQuery: string;
   className: string;
   activeDays: Weekday[];
   canRemove: boolean;
@@ -153,7 +197,9 @@ function AssignedHelperChip({
           onPointerEnter={event => openAfterDelay(event.pointerType)}
           onPointerLeave={event => closeAfterLeave(event.pointerType)}
         >
-          <span className="truncate">{displayLabel}</span>
+          <span className="truncate">
+            <HighlightedText text={displayLabel} query={searchQuery} />
+          </span>
           {canRemove && (
             <button
               type="button"
@@ -252,6 +298,7 @@ export default function Plan() {
   const [area, setArea] = useState<string>("alle");
   const [apFilter, setApFilter] = useState<string>("alle");
   const [q, setQ] = useState("");
+  const [areaContactsExpanded, setAreaContactsExpanded] = useState(false);
   const [deleteCandidate, setDeleteCandidate] = useState<DropdownShift | null>(
     null
   );
@@ -600,6 +647,7 @@ export default function Plan() {
               key={slot}
               helper={helper}
               displayLabel={label(helper)}
+              searchQuery={q}
               className={className}
               activeDays={activeDays}
               canRemove={canEditPlan}
@@ -642,7 +690,27 @@ export default function Plan() {
       {areas.length > 0 && (
         <Card className="border-slate-200 shadow-sm">
           <CardContent className="p-2 sm:p-2.5">
-            <div className="mb-1.5 px-0.5">
+            <button
+              type="button"
+              className="flex h-11 w-full items-center justify-between gap-3 rounded-md px-1.5 text-left hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1 xl:hidden"
+              aria-expanded={areaContactsExpanded}
+              aria-controls="area-contacts-grid"
+              onClick={() => setAreaContactsExpanded(expanded => !expanded)}
+            >
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-semibold">
+                  Ansprechpartner je Bereich
+                </span>
+                <span className="block text-xs text-muted-foreground">
+                  {areas.length} {areas.length === 1 ? "Bereich" : "Bereiche"}
+                </span>
+              </span>
+              <ChevronDown
+                className={`h-5 w-5 shrink-0 text-slate-600 transition-transform duration-200 ${areaContactsExpanded ? "rotate-180" : ""}`}
+                aria-hidden="true"
+              />
+            </button>
+            <div className="mb-1.5 hidden px-0.5 xl:block">
               <h2 className="text-sm font-semibold">
                 Ansprechpartner je Bereich
               </h2>
@@ -651,7 +719,10 @@ export default function Plan() {
                 außerdem als PDF-Filter zur Verfügung.
               </p>
             </div>
-            <div className="grid gap-1.5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+            <div
+              id="area-contacts-grid"
+              className={`${areaContactsExpanded ? "grid" : "hidden"} mt-1.5 gap-1.5 sm:grid-cols-2 md:grid-cols-3 xl:mt-0 xl:grid xl:grid-cols-4 2xl:grid-cols-5`}
+            >
               {areas.map(areaName => {
                 const selected = areaContactMap.get(areaName) ?? null;
                 return (
@@ -854,10 +925,11 @@ export default function Plan() {
                       <StatusBadge status={e.status} />
                     </div>
                     <h2 className="break-words text-lg font-semibold">
-                      {shift.task}
+                      <HighlightedText text={shift.task} query={q} />
                     </h2>
                     <p className="text-sm text-muted-foreground">
-                      {shift.area} · {formatTimeLabel(shift)}
+                      <HighlightedText text={shift.area} query={q} /> ·{" "}
+                      {formatTimeLabel(shift)}
                     </p>
                   </div>
                   {canEditPlan && (
@@ -958,7 +1030,9 @@ export default function Plan() {
                     <td className="p-3 font-medium">{s.day}</td>
                     <td className="p-3">
                       <div className="flex items-center gap-1">
-                        <span>{s.area}</span>
+                        <span>
+                          <HighlightedText text={s.area} query={q} />
+                        </span>
                         {canEditPlan && (
                           <Button
                             variant="ghost"
@@ -988,7 +1062,9 @@ export default function Plan() {
                         <span className="text-amber-700">nicht zugeordnet</span>
                       )}
                     </td>
-                    <td className="p-3">{s.task}</td>
+                    <td className="p-3">
+                      <HighlightedText text={s.task} query={q} />
+                    </td>
                     <td className="max-w-64 whitespace-pre-wrap p-3 text-muted-foreground">
                       {s.note?.trim() || "–"}
                     </td>

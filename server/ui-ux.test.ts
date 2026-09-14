@@ -229,18 +229,28 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("h-12 w-full border-2 border-slate-400 bg-white");
     expect(plan).toContain("placeholder:text-slate-600");
     expect(plan).toContain('className="space-y-2.5"');
+    expect(plan).toContain("function HighlightedText");
+    expect(plan).toContain('new RegExp(escapedQuery, "giu")');
+    expect(plan).toContain("matchIndex + match[0].length");
+    expect(plan).toContain("bg-amber-200 px-0.5 font-semibold");
+    expect(plan).toContain("<HighlightedText text={shift.task} query={q} />");
+    expect(plan).toContain("<HighlightedText text={s.area} query={q} />");
+    expect(plan).toContain("searchQuery={q}");
   });
 
   it("verdichtet die Bereichsansprechpartner auf bis zu fünf Desktopspalten", () => {
     const plan = source("client/src/pages/Plan.tsx");
 
     expect(plan).toContain('className="p-2 sm:p-2.5"');
-    expect(plan).toContain(
-      "grid gap-1.5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
-    );
+    expect(plan).toContain("mt-1.5 gap-1.5 sm:grid-cols-2 md:grid-cols-3");
     expect(plan).toContain("rounded-md border bg-slate-50/80 p-1.5");
     expect(plan).toMatch(/<SelectTrigger\s+size="sm"\s+className=/);
     expect(plan).toContain("w-full bg-white px-2 text-xs");
+    expect(plan).toContain("areaContactsExpanded");
+    expect(plan).toContain('aria-controls="area-contacts-grid"');
+    expect(plan).toContain('aria-expanded={areaContactsExpanded}');
+    expect(plan).toContain("xl:hidden");
+    expect(plan).toContain("xl:grid xl:grid-cols-4 2xl:grid-cols-5");
   });
 
   it("zeigt beim Ansprechpartnerimport die Prüfung aller Excel-Zeilen", () => {
