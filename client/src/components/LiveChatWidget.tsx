@@ -285,7 +285,7 @@ export function LiveChatWidget({
         <Button
           type="button"
           onClick={onOpen}
-          className="fixed bottom-4 right-4 z-50 h-12 w-12 rounded-full border-2 border-white bg-blue-600 p-0 text-white shadow-xl hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 motion-safe:transition-transform motion-safe:hover:scale-105"
+          className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full border-2 border-white bg-blue-600 p-0 text-white shadow-xl hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 motion-safe:transition-transform motion-safe:hover:scale-105 sm:bottom-4 sm:right-4 sm:h-12 sm:w-12"
           aria-label={
             unreadCount > 0
               ? `Team-Notizen öffnen (${unreadCount} ungelesene Nachrichten)`
@@ -367,9 +367,9 @@ export function LiveChatWidget({
         aria-label="Live-Team-Notizen und Chat"
         aria-modal="false"
         className={cn(
-          "fixed z-50 flex flex-col bg-white text-slate-950 shadow-2xl ring-1 ring-black/10 duration-200",
-          // Mobile: Vollwertiges Bottom-Sheet
-          "inset-x-0 bottom-0 h-[82dvh] max-h-[640px] rounded-t-2xl border-t border-slate-200 sm:inset-x-auto",
+          "fixed z-50 flex min-w-0 max-w-full flex-col overflow-x-hidden bg-white text-slate-950 shadow-2xl ring-1 ring-black/10 duration-200",
+          // Mobile: Breitenfüllendes Bottom-Sheet, dessen dynamische Höhe über der Tastatur bleibt
+          "inset-x-0 bottom-0 h-[85dvh] w-full max-h-[85vh] rounded-t-2xl border-t border-slate-200 [overscroll-behavior:contain] sm:inset-x-auto",
           // Desktop: Schwebendes PIP-Fenster unten rechts
           "sm:bottom-4 sm:right-4 sm:h-[540px] sm:w-[380px] sm:max-h-[85vh] sm:rounded-xl sm:border sm:border-slate-200"
         )}
@@ -589,7 +589,7 @@ export function LiveChatWidget({
             </div>
 
             {/* Eingabebereich unten */}
-            <div className="border-t border-slate-200 bg-slate-50/70 p-2.5">
+            <div className="sticky bottom-0 z-10 shrink-0 border-t border-slate-200 bg-slate-50/95 px-2.5 pt-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] backdrop-blur-sm sm:static sm:bg-slate-50/70 sm:p-2.5">
               <div className="flex items-end gap-1.5">
                 <Textarea
                   ref={textareaRef}
@@ -597,7 +597,7 @@ export function LiveChatWidget({
                   onChange={e => setMessage(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Notiz eingeben (Enter zum Senden) …"
-                  className="min-h-[40px] max-h-24 resize-none bg-white text-xs leading-normal"
+                  className="min-h-11 max-h-24 resize-none bg-white text-base leading-normal sm:min-h-[40px] sm:text-xs"
                   rows={1}
                 />
                 <Button
@@ -605,7 +605,7 @@ export function LiveChatWidget({
                   size="icon"
                   disabled={!message.trim() || sendMutation.isPending}
                   onClick={handleSend}
-                  className="h-10 w-10 shrink-0 bg-blue-600 text-white hover:bg-blue-700"
+                  className="h-11 w-11 shrink-0 bg-blue-600 text-white hover:bg-blue-700 sm:h-10 sm:w-10"
                   aria-label="Nachricht senden"
                   title="Senden"
                 >

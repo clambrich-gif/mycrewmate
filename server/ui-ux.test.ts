@@ -67,10 +67,19 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(widget).toContain("trpc.notes.clear.useMutation");
     expect(widget).toContain('title="Minimieren (⎯)"');
     expect(widget).toContain('title="Schließen (✕)"');
-    expect(widget).toContain("inset-x-0 bottom-0 h-[82dvh]");
+    expect(widget).toContain("inset-x-0 bottom-0 h-[85dvh]");
     expect(widget).toContain("sm:h-[540px] sm:w-[380px]");
     expect(widget).toContain("user?.role === \"admin\"");
     expect(widget).toContain("Verlauf für alle leeren");
+    expect(widget).toContain("fixed bottom-6 right-6 z-50 h-14 w-14");
+    expect(widget).toContain("sm:bottom-4 sm:right-4 sm:h-12 sm:w-12");
+    expect(widget).toContain("h-[85dvh] w-full max-h-[85vh]");
+    expect(widget).toContain("max-w-full flex-col overflow-x-hidden");
+    expect(widget).toContain("[overscroll-behavior:contain]");
+    expect(widget).toContain("sticky bottom-0 z-10 shrink-0");
+    expect(widget).toContain("env(safe-area-inset-bottom)");
+    expect(widget).toContain("text-base leading-normal sm:min-h-[40px] sm:text-xs");
+    expect(widget).toContain("h-11 w-11 shrink-0 bg-blue-600");
   });
 
   it("zeigt und entsperrt den dauerhaften Planungsteam-Login ausschließlich im Adminbereich", () => {
