@@ -9,6 +9,7 @@ import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { registerHelpVideoRoutes } from "../help-video-routes";
 import { registerEventPdfImageRoutes } from "../event-pdf-image-routes";
+import { handleTeamNotesCleanupHeartbeat } from "../chat-cleanup-heartbeat";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 
@@ -42,6 +43,7 @@ async function startServer() {
   registerEventPdfImageRoutes(app);
   registerStorageProxy(app);
   registerOAuthRoutes(app);
+  app.post("/api/scheduled/team-notes-cleanup", handleTeamNotesCleanupHeartbeat);
   // tRPC API
   app.use(
     "/api/trpc",

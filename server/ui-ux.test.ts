@@ -78,7 +78,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(widget).toContain("Verlauf für alle leeren");
     expect(widget).toContain("<AdminPasswordDialog");
     expect(widget).toContain("title=\"Team-Chatverlauf leeren?\"");
-    expect(widget).toContain("clearMutation.mutate({ adminPassword });");
+    expect(widget).toContain(
+      'clearMutation.mutate({ adminPassword, scope: "current_event" });'
+    );
     expect(widget).toContain("h-16 w-16 min-h-16 min-w-16");
     expect(widget).toContain("md:h-20 md:w-20 md:min-h-20 md:min-w-20");
     expect(widget).toContain("md:!h-10 md:!w-10");

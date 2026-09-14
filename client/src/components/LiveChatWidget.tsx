@@ -843,7 +843,7 @@ export function LiveChatWidget({
         busy={clearMutation.isPending}
         destructive
         onConfirm={adminPassword => {
-          clearMutation.mutate({ adminPassword });
+          clearMutation.mutate({ adminPassword, scope: "current_event" });
         }}
       />
     </>

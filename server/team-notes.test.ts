@@ -254,6 +254,10 @@ describe("Live-Teamnotizen Backend & Ephemeral Storage", () => {
         userId: 1,
         name: "Administrator",
         role: "admin",
+      }),
+      expect.objectContaining({
+        year: 2026,
+        eventId: 1,
       })
     );
     expect(clearResult.deletedCount).toBe(3);

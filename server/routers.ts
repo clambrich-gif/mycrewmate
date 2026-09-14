@@ -1541,11 +1541,15 @@ export const appRouter = router({
       .input(
         z.object({
           adminPassword: z.string().min(1).max(200),
+          scope: z.literal("current_event").default("current_event"),
         })
       )
       .mutation(async ({ ctx, input }) => {
         await requireAdminPassword(input.adminPassword, ctx);
-        return db.clearTeamNotes(auditActor(ctx.user));
+        return db.clearTeamNotes(auditActor(ctx.user), {
+          year: currentEventYear(),
+          eventId: currentEventId(),
+        });
       }),
   }),
 });

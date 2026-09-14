@@ -1,4 +1,5 @@
 import {
+  foreignKey,
   index,
   int,
   json,
@@ -76,9 +77,7 @@ export const teamNotes = mysqlTable(
   {
     id: int("id").autoincrement().primaryKey(),
     year: int("year").notNull(),
-    eventId: int("eventId")
-      .notNull()
-      .references(() => events.id, { onDelete: "cascade" }),
+    eventId: int("eventId").notNull(),
     senderUserId: int("senderUserId").references(() => users.id, {
       onDelete: "set null",
     }),
@@ -89,6 +88,11 @@ export const teamNotes = mysqlTable(
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   table => [
+    foreignKey({
+      name: "team_notes_event_year_fk",
+      columns: [table.eventId, table.year],
+      foreignColumns: [events.id, events.year],
+    }).onDelete("cascade"),
     index("team_notes_event_created_idx").on(
       table.eventId,
       table.createdAt
@@ -103,15 +107,18 @@ export const teamNoteTypings = mysqlTable(
   {
     sessionKey: varchar("sessionKey", { length: 64 }).primaryKey(),
     year: int("year").notNull(),
-    eventId: int("eventId")
-      .notNull()
-      .references(() => events.id, { onDelete: "cascade" }),
+    eventId: int("eventId").notNull(),
     userId: int("userId").references(() => users.id, { onDelete: "set null" }),
     senderName: varchar("senderName", { length: 200 }).notNull(),
     senderRole: mysqlEnum("senderRole", ["user", "admin"]).notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
   table => [
+    foreignKey({
+      name: "team_note_typings_event_year_fk",
+      columns: [table.eventId, table.year],
+      foreignColumns: [events.id, events.year],
+    }).onDelete("cascade"),
     index("team_note_typings_event_updated_idx").on(
       table.eventId,
       table.updatedAt
@@ -144,7 +151,15 @@ export const events = mysqlTable(
     sortOrder: int("sortOrder").default(0).notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
-  table => [uniqueIndex("events_year_name_unique").on(table.year, table.name)]
+  table => [
+    foreignKey({
+      name: "events_year_fk",
+      columns: [table.year],
+      foreignColumns: [eventYears.year],
+    }).onDelete("cascade"),
+    uniqueIndex("events_year_name_unique").on(table.year, table.name),
+    uniqueIndex("events_id_year_unique").on(table.id, table.year),
+  ]
 );
 export type Event = typeof events.$inferSelect;
 
@@ -153,9 +168,7 @@ export const contacts = mysqlTable(
   {
     id: int("id").autoincrement().primaryKey(),
     year: int("year").default(2026).notNull(),
-    eventId: int("eventId")
-      .notNull()
-      .references(() => events.id),
+    eventId: int("eventId").notNull(),
     name: varchar("name", { length: 200 }).notNull(),
     phone: varchar("phone", { length: 64 }),
     note: text("note"),
@@ -163,7 +176,17 @@ export const contacts = mysqlTable(
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   table => [
+    foreignKey({
+      name: "contacts_event_year_fk",
+      columns: [table.eventId, table.year],
+      foreignColumns: [events.id, events.year],
+    }).onDelete("cascade"),
     uniqueIndex("contacts_event_name_unique").on(table.eventId, table.name),
+    uniqueIndex("contacts_id_event_year_unique").on(
+      table.id,
+      table.eventId,
+      table.year
+    ),
   ]
 );
 export type Contact = typeof contacts.$inferSelect;
@@ -174,12 +197,8 @@ export const helpers = mysqlTable(
   {
     id: int("id").autoincrement().primaryKey(),
     year: int("year").default(2026).notNull(),
-    eventId: int("eventId")
-      .notNull()
-      .references(() => events.id),
-    contactId: int("contactId").references(() => contacts.id, {
-      onDelete: "set null",
-    }),
+    eventId: int("eventId").notNull(),
+    contactId: int("contactId"),
     name: varchar("name", { length: 200 }).notNull(),
     email: varchar("email", { length: 320 }),
     phone: varchar("phone", { length: 64 }),
@@ -210,28 +229,56 @@ export const helpers = mysqlTable(
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   table => [
+    foreignKey({
+      name: "helpers_event_year_fk",
+      columns: [table.eventId, table.year],
+      foreignColumns: [events.id, events.year],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "helpers_contact_event_year_fk",
+      columns: [table.contactId, table.eventId, table.year],
+      foreignColumns: [contacts.id, contacts.eventId, contacts.year],
+    }).onDelete("no action"),
     uniqueIndex("helpers_event_name_unique").on(table.eventId, table.name),
+    uniqueIndex("helpers_id_event_year_unique").on(
+      table.id,
+      table.eventId,
+      table.year
+    ),
   ]
 );
 export type Helper = typeof helpers.$inferSelect;
 export type InsertHelper = typeof helpers.$inferInsert;
 
-export const shifts = mysqlTable("shifts", {
-  id: int("id").autoincrement().primaryKey(),
-  year: int("year").default(2026).notNull(),
-  eventId: int("eventId")
-    .notNull()
-    .references(() => events.id),
-  day: mysqlEnum("day", WEEKDAYS).notNull(),
-  area: varchar("area", { length: 200 }).notNull(),
-  task: varchar("task", { length: 300 }).notNull(),
-  startTime: varchar("startTime", { length: 16 }).default("").notNull(),
-  endTime: varchar("endTime", { length: 16 }).default("").notNull(),
-  needed: int("needed").default(1).notNull(),
-  note: text("note"),
-  sortOrder: int("sortOrder").default(0).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+export const shifts = mysqlTable(
+  "shifts",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    year: int("year").default(2026).notNull(),
+    eventId: int("eventId").notNull(),
+    day: mysqlEnum("day", WEEKDAYS).notNull(),
+    area: varchar("area", { length: 200 }).notNull(),
+    task: varchar("task", { length: 300 }).notNull(),
+    startTime: varchar("startTime", { length: 16 }).default("").notNull(),
+    endTime: varchar("endTime", { length: 16 }).default("").notNull(),
+    needed: int("needed").default(1).notNull(),
+    note: text("note"),
+    sortOrder: int("sortOrder").default(0).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    foreignKey({
+      name: "shifts_event_year_fk",
+      columns: [table.eventId, table.year],
+      foreignColumns: [events.id, events.year],
+    }).onDelete("cascade"),
+    uniqueIndex("shifts_id_event_year_unique").on(
+      table.id,
+      table.eventId,
+      table.year
+    ),
+  ]
+);
 export type Shift = typeof shifts.$inferSelect;
 export type InsertShift = typeof shifts.$inferInsert;
 
@@ -240,16 +287,22 @@ export const shiftAreaContacts = mysqlTable(
   {
     id: int("id").autoincrement().primaryKey(),
     year: int("year").default(2026).notNull(),
-    eventId: int("eventId")
-      .notNull()
-      .references(() => events.id),
+    eventId: int("eventId").notNull(),
     area: varchar("area", { length: 200 }).notNull(),
-    contactId: int("contactId").references(() => contacts.id, {
-      onDelete: "set null",
-    }),
+    contactId: int("contactId"),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
   table => [
+    foreignKey({
+      name: "shift_area_contacts_event_year_fk",
+      columns: [table.eventId, table.year],
+      foreignColumns: [events.id, events.year],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "shift_area_contacts_contact_event_year_fk",
+      columns: [table.contactId, table.eventId, table.year],
+      foreignColumns: [contacts.id, contacts.eventId, contacts.year],
+    }).onDelete("no action"),
     uniqueIndex("shift_area_contacts_event_area_unique").on(
       table.eventId,
       table.area
@@ -268,10 +321,22 @@ export const assignments = mysqlTable(
     helperId: int("helperId")
       .notNull()
       .references(() => helpers.id, { onDelete: "cascade" }),
+    year: int("year").notNull(),
+    eventId: int("eventId").notNull(),
     slot: int("slot").default(0).notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   table => [
+    foreignKey({
+      name: "assignments_shift_event_year_fk",
+      columns: [table.shiftId, table.eventId, table.year],
+      foreignColumns: [shifts.id, shifts.eventId, shifts.year],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "assignments_helper_event_year_fk",
+      columns: [table.helperId, table.eventId, table.year],
+      foreignColumns: [helpers.id, helpers.eventId, helpers.year],
+    }).onDelete("cascade"),
     uniqueIndex("assignments_shift_slot_unique").on(table.shiftId, table.slot),
     uniqueIndex("assignments_shift_helper_unique").on(
       table.shiftId,
@@ -405,9 +470,7 @@ export type BackupRestoreLog = typeof backupRestoreLogs.$inferSelect;
 export const prepTasks = mysqlTable("prep_tasks", {
   id: int("id").autoincrement().primaryKey(),
   year: int("year").default(2026).notNull(),
-  eventId: int("eventId")
-    .notNull()
-    .references(() => events.id),
+  eventId: int("eventId").notNull(),
   task: varchar("task", { length: 300 }).notNull(),
   dueText: varchar("dueText", { length: 200 }).default("").notNull(),
   contactId: int("contactId").references(() => contacts.id, {
@@ -418,15 +481,19 @@ export const prepTasks = mysqlTable("prep_tasks", {
     .notNull(),
   note: text("note"),
   sortOrder: int("sortOrder").default(0).notNull(),
-});
+}, table => [
+  foreignKey({
+    name: "prep_tasks_event_year_fk",
+    columns: [table.eventId, table.year],
+    foreignColumns: [events.id, events.year],
+  }).onDelete("cascade"),
+]);
 export type PrepTask = typeof prepTasks.$inferSelect;
 
 export const postTasks = mysqlTable("post_tasks", {
   id: int("id").autoincrement().primaryKey(),
   year: int("year").default(2026).notNull(),
-  eventId: int("eventId")
-    .notNull()
-    .references(() => events.id),
+  eventId: int("eventId").notNull(),
   task: varchar("task", { length: 300 }).notNull(),
   contactId: int("contactId").references(() => contacts.id, {
     onDelete: "set null",
@@ -436,15 +503,19 @@ export const postTasks = mysqlTable("post_tasks", {
     .notNull(),
   note: text("note"),
   sortOrder: int("sortOrder").default(0).notNull(),
-});
+}, table => [
+  foreignKey({
+    name: "post_tasks_event_year_fk",
+    columns: [table.eventId, table.year],
+    foreignColumns: [events.id, events.year],
+  }).onDelete("cascade"),
+]);
 export type PostTask = typeof postTasks.$inferSelect;
 
 export const materials = mysqlTable("materials", {
   id: int("id").autoincrement().primaryKey(),
   year: int("year").default(2026).notNull(),
-  eventId: int("eventId")
-    .notNull()
-    .references(() => events.id),
+  eventId: int("eventId").notNull(),
   article: varchar("article", { length: 300 }).notNull(),
   category: varchar("category", { length: 120 }).default("").notNull(),
   quantity: varchar("quantity", { length: 40 }).default("").notNull(),
@@ -455,15 +526,19 @@ export const materials = mysqlTable("materials", {
   ordered: mysqlEnum("ordered", ["ja", "nein"]).default("nein").notNull(),
   note: text("note"),
   sortOrder: int("sortOrder").default(0).notNull(),
-});
+}, table => [
+  foreignKey({
+    name: "materials_event_year_fk",
+    columns: [table.eventId, table.year],
+    foreignColumns: [events.id, events.year],
+  }).onDelete("cascade"),
+]);
 export type Material = typeof materials.$inferSelect;
 
 export const marketing = mysqlTable("marketing", {
   id: int("id").autoincrement().primaryKey(),
   year: int("year").default(2026).notNull(),
-  eventId: int("eventId")
-    .notNull()
-    .references(() => events.id),
+  eventId: int("eventId").notNull(),
   measure: varchar("measure", { length: 300 }).notNull(),
   channel: varchar("channel", { length: 160 }).default("").notNull(),
   contactId: int("contactId").references(() => contacts.id, {
@@ -474,15 +549,19 @@ export const marketing = mysqlTable("marketing", {
     .notNull(),
   note: text("note"),
   sortOrder: int("sortOrder").default(0).notNull(),
-});
+}, table => [
+  foreignKey({
+    name: "marketing_event_year_fk",
+    columns: [table.eventId, table.year],
+    foreignColumns: [events.id, events.year],
+  }).onDelete("cascade"),
+]);
 export type Marketing = typeof marketing.$inferSelect;
 
 export const approvals = mysqlTable("approvals", {
   id: int("id").autoincrement().primaryKey(),
   year: int("year").default(2026).notNull(),
-  eventId: int("eventId")
-    .notNull()
-    .references(() => events.id),
+  eventId: int("eventId").notNull(),
   request: varchar("request", { length: 300 }).notNull(),
   contactId: int("contactId").references(() => contacts.id, {
     onDelete: "set null",
@@ -492,33 +571,47 @@ export const approvals = mysqlTable("approvals", {
     .notNull(),
   note: text("note"),
   sortOrder: int("sortOrder").default(0).notNull(),
-});
+}, table => [
+  foreignKey({
+    name: "approvals_event_year_fk",
+    columns: [table.eventId, table.year],
+    foreignColumns: [events.id, events.year],
+  }).onDelete("cascade"),
+]);
 export type Approval = typeof approvals.$inferSelect;
 
 export const cakes = mysqlTable("cakes", {
   id: int("id").autoincrement().primaryKey(),
   year: int("year").default(2026).notNull(),
-  eventId: int("eventId")
-    .notNull()
-    .references(() => events.id),
+  eventId: int("eventId").notNull(),
   donor: varchar("donor", { length: 200 }).notNull(),
   cake: varchar("cake", { length: 200 }).default("").notNull(),
   dropoffTime: varchar("dropoffTime", { length: 60 }).default("").notNull(),
   note: text("note"),
   sortOrder: int("sortOrder").default(0).notNull(),
-});
+}, table => [
+  foreignKey({
+    name: "cakes_event_year_fk",
+    columns: [table.eventId, table.year],
+    foreignColumns: [events.id, events.year],
+  }).onDelete("cascade"),
+]);
 export type Cake = typeof cakes.$inferSelect;
 
 export const finances = mysqlTable("finances", {
   id: int("id").autoincrement().primaryKey(),
   year: int("year").default(2026).notNull(),
-  eventId: int("eventId")
-    .notNull()
-    .references(() => events.id),
+  eventId: int("eventId").notNull(),
   category: varchar("category", { length: 160 }).notNull(),
   income: int("incomeCents").default(0).notNull(),
   expense: int("expenseCents").default(0).notNull(),
   note: text("note"),
   sortOrder: int("sortOrder").default(0).notNull(),
-});
+}, table => [
+  foreignKey({
+    name: "finances_event_year_fk",
+    columns: [table.eventId, table.year],
+    foreignColumns: [events.id, events.year],
+  }).onDelete("cascade"),
+]);
 export type Finance = typeof finances.$inferSelect;

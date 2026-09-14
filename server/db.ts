@@ -775,6 +775,22 @@ export async function deleteContact(id: number, actor: AuditActor) {
       requireDeletedRows(helperResult, 1);
     }
 
+    // Zusammengesetzte Fremdschlüssel erzwingen, dass Ansprechpartner nur im
+    // gleichen Event/Jahr referenziert werden. Vor dem Löschen werden die
+    // verbleibenden fachlichen Zuweisungen bewusst entkoppelt.
+    const clearContactReference = <TTable extends typeof helpers>(table: TTable) =>
+      tx
+        .update(table as any)
+        .set({ contactId: null })
+        .where(and(eq((table as any).contactId, id), planningScope(table as any)));
+    await clearContactReference(helpers);
+    await clearContactReference(shiftAreaContacts as any);
+    await clearContactReference(prepTasks as any);
+    await clearContactReference(postTasks as any);
+    await clearContactReference(materials as any);
+    await clearContactReference(marketing as any);
+    await clearContactReference(approvals as any);
+
     const contactResult = await tx
       .delete(contacts)
       .where(and(eq(contacts.id, id), planningScope(contacts)));
@@ -1257,6 +1273,8 @@ export async function restoreDeletionAuditLog(
         await tx.insert(assignments).values({
           shiftId: snapshot.shiftId,
           helperId,
+          year: selectedYear,
+          eventId: selectedEventId,
           slot: snapshot.slot,
         });
         restoredAssignments++;
@@ -1713,7 +1731,11 @@ export async function assignHelper(v: {
       .for("update");
     if (existing)
       throw new Error("Helferplatz oder Helfer ist bereits belegt");
-    return tx.insert(assignments).values(v);
+    return tx.insert(assignments).values({
+      ...v,
+      year: shift.year,
+      eventId: shift.eventId,
+    });
   });
 }
 export async function replaceShiftAssignment(v: {
@@ -1756,7 +1778,11 @@ export async function replaceShiftAssignment(v: {
           or(eq(assignments.slot, v.slot), eq(assignments.helperId, v.helperId))
         )
       );
-    await tx.insert(assignments).values(v);
+    await tx.insert(assignments).values({
+      ...v,
+      year: shift.year,
+      eventId: shift.eventId,
+    });
   });
 }
 export async function removeShiftAssignment(v: {
@@ -2538,10 +2564,13 @@ export async function createTeamNote(params: {
   return created;
 }
 
-export async function clearTeamNotes(actor?: AuditActor) {
+export async function clearTeamNotes(
+  actor?: AuditActor,
+  scopeOverride?: { year: number; eventId: number }
+) {
   const db = (await getDb()) as DB;
-  const selectedYear = year();
-  const selectedEventId = event();
+  const selectedYear = scopeOverride?.year ?? year();
+  const selectedEventId = scopeOverride?.eventId ?? event();
   return db.transaction(async tx => {
     const [selectedEvent] = await tx
       .select({ name: events.name })
@@ -2553,12 +2582,16 @@ export async function clearTeamNotes(actor?: AuditActor) {
       throw new Error("Veranstaltung für Chat-Löschung nicht gefunden");
     }
 
+    const eventScopeConditions = <TTable extends typeof teamNotes | typeof teamNoteTypings>(
+      table: TTable
+    ) => and(eq(table.year, selectedYear), eq(table.eventId, selectedEventId));
+
     const [result]: any = await tx
       .delete(teamNotes)
-      .where(planningScope(teamNotes));
+      .where(eventScopeConditions(teamNotes));
     await tx
       .delete(teamNoteTypings)
-      .where(planningScope(teamNoteTypings));
+      .where(eventScopeConditions(teamNoteTypings));
 
     const deletedCount = affectedRows(result);
     if (actor) {
@@ -2786,6 +2819,8 @@ export async function copyPlanFromEvent(
       await tx.insert(assignments).values({
         shiftId,
         helperId,
+        year: targetEvent.year,
+        eventId: targetEvent.id,
         slot: item.slot,
       });
       occupied.add(String(shiftId) + ":" + item.slot);

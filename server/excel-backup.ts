@@ -2413,7 +2413,7 @@ export async function restoreProjectDocument(
           const shiftId = resolveShift(row);
           const helperId = resolveHelper(slot.helperSourceId, slot.helperName);
           return shiftId && helperId
-            ? [{ shiftId, helperId, slot: slot.slot }]
+            ? [{ shiftId, helperId, year, eventId, slot: slot.slot }]
             : [];
         })
       );
