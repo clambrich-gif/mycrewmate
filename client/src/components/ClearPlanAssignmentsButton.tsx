@@ -10,13 +10,14 @@ import { toast } from "sonner";
  * Entfernt ausschließlich Helferzuweisungen der aktuellen Veranstaltung.
  * Schichten, Bereiche und Bereichsansprechpartner bleiben unverändert erhalten.
  */
-export function ClearPlanAssignmentsButton() {
+export function ClearPlanAssignmentsButton({ onCleared }: { onCleared: () => void }) {
   const { user } = useAuth();
   const utils = trpc.useUtils();
   const [open, setOpen] = useState(false);
   const clearAssignments = trpc.plan.clearAssignments.useMutation({
     onSuccess: async result => {
       setOpen(false);
+      onCleared();
       await Promise.all([
         utils.plan.evaluate.invalidate(),
         utils.dashboard.stats.invalidate(),

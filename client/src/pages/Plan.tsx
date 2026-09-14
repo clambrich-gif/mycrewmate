@@ -683,7 +683,7 @@ export default function Plan() {
         <div className="flex justify-end gap-2 flex-wrap">
           <ModuleExcelImportButton area="EINSATZPLAN" label="Einsatzplan" />
           <CopyPreviousPlanButton />
-          <ClearPlanAssignmentsButton />
+          <ClearPlanAssignmentsButton onCleared={() => setQ("")} />
           <ResetAreaButton area="shifts" label="Einsatzplan" />
           <Button
             onClick={openCreate}
@@ -837,6 +837,8 @@ export default function Plan() {
           />
           <Input
             ref={searchInputRef}
+            name="plan-search-query"
+            autoComplete="off"
             placeholder="Suchen (Aufgabe/Bereich/Helfer) …"
             aria-label="Einsatzplan nach Aufgabe, Bereich oder Helfer durchsuchen"
             value={q}

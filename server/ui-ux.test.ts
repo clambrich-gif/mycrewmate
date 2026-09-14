@@ -639,11 +639,14 @@ describe("UI- und Mobile-UX-Regeln", () => {
       "client/src/components/ClearPlanAssignmentsButton.tsx"
     );
     const resetButton = source("client/src/components/ResetAreaButton.tsx");
+    const passwordDialog = source(
+      "client/src/components/AdminPasswordDialog.tsx"
+    );
 
     expect(plan.indexOf("<CopyPreviousPlanButton />")).toBeLessThan(
-      plan.indexOf("<ClearPlanAssignmentsButton />")
+      plan.indexOf("<ClearPlanAssignmentsButton")
     );
-    expect(plan.indexOf("<ClearPlanAssignmentsButton />")).toBeLessThan(
+    expect(plan.indexOf("<ClearPlanAssignmentsButton")).toBeLessThan(
       plan.indexOf('<ResetAreaButton area="shifts"')
     );
     expect(clearButton).toContain("trpc.plan.clearAssignments.useMutation");
@@ -651,5 +654,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(clearButton).toContain("Bereichsansprechpartner bleiben vollständig erhalten");
     expect(clearButton).toContain("border-destructive/40 text-destructive");
     expect(resetButton).not.toContain('"assignments"');
+    expect(plan).toContain('name="plan-search-query"');
+    expect(plan).toContain('autoComplete="off"');
+    expect(plan).toContain('onCleared={() => setQ("")}');
+    expect(passwordDialog).toContain('name="admin-confirmation-password"');
+    expect(passwordDialog).toContain('autoComplete="off"');
   });
 });

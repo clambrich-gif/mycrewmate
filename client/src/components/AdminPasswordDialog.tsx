@@ -98,8 +98,9 @@ export function AdminPasswordDialog({
           <Label htmlFor="admin-confirm-password">Administratorpasswort</Label>
           <Input
             id="admin-confirm-password"
+            name="admin-confirmation-password"
             type="password"
-            autoComplete="current-password"
+            autoComplete="off"
             value={password}
             disabled={busy}
             onChange={event => setPassword(event.target.value)}
