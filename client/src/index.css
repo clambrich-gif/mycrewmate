@@ -41,6 +41,21 @@
   body { background: var(--background); color: var(--foreground); font-feature-settings: "ss01", "cv11"; }
 }
 
+/* iOS/Android: Fokus auf Formularfelder darf die Seite nie automatisch vergrößern.
+   Die Regel umfasst native Felder sowie die Radix-Select-Auslöser und schlägt lokale
+   Kompaktklassen bis zum Desktop-Breakpoint zuverlässig. */
+@media (max-width: 1023px) {
+  input,
+  select,
+  textarea,
+  [data-slot="input"],
+  [data-slot="textarea"],
+  [data-slot="select-trigger"] {
+    font-size: 16px !important;
+    touch-action: manipulation;
+  }
+}
+
 .container { margin-inline: auto; padding-inline: 1rem; max-width: 1400px; }
 .flex { min-width: 0; min-height: 0; }
 

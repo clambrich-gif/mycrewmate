@@ -43,6 +43,28 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(presence).toContain("motion-reduce:scale-100");
   });
 
+  it("unterbindet mobilen Formular-Auto-Zoom global und im HTML-Viewport", () => {
+    const html = source("client/index.html");
+    const css = source("client/src/index.css");
+    const input = source("client/src/components/ui/input.tsx");
+    const textarea = source("client/src/components/ui/textarea.tsx");
+    const select = source("client/src/components/ui/select.tsx");
+
+    expect(html).toContain(
+      'content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"'
+    );
+    expect(css).toContain("@media (max-width: 1023px)");
+    expect(css).toContain('[data-slot="select-trigger"]');
+    expect(css).toContain("font-size: 16px !important;");
+    expect(css).toContain("touch-action: manipulation;");
+    expect(input).toContain("touch-manipulation");
+    expect(input).toContain("text-base text-slate-950");
+    expect(textarea).toContain("touch-manipulation");
+    expect(textarea).toContain("text-base text-slate-950");
+    expect(select).toContain("w-fit touch-manipulation items-center");
+    expect(select).toContain("px-3 py-2 text-base");
+  });
+
   it("integriert das schwebende Live-Notizen & Chat-Widget plattformübergreifend", () => {
     const layout = source("client/src/components/Layout.tsx");
     const widget = source("client/src/components/LiveChatWidget.tsx");
@@ -546,11 +568,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain("lg:h-screen lg:overflow-y-auto");
   });
 
-  it("lässt auf mobilen Geräten Pinch-to-Zoom zu", () => {
+  it("unterbindet auf mobilen Geräten die automatische und manuelle Zoomgeste", () => {
     const html = source("client/index.html");
 
-    expect(html).toContain("width=device-width, initial-scale=1.0");
-    expect(html).not.toMatch(/maximum-scale|user-scalable\s*=\s*no/i);
+    expect(html).toContain(
+      "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    );
   });
 
   it("sperrt den Admin-Passwortdialog während laufender Aktionen", () => {
