@@ -479,6 +479,32 @@ describe("Projektdatei und modularer Excel-Import", () => {
     }
   });
 
+  it("akzeptiert eine alte Ansprechpartner-ID im Helfer-Preview und entkoppelt nur den unauflösbaren Bezug", async () => {
+    const staleReference = {
+      ...helperRow("Alex Beispiel", "Archivierte Leitung"),
+      "Ansprechpartner-ID": 999_999,
+    };
+    const preview = await previewModuleExcelImport(
+      helperSheet([
+        helperRow("Chris Leitung", "Chris Leitung"),
+        staleReference,
+      ]),
+      "HELFER"
+    );
+
+    expect(preview.rowsChecked).toBe(2);
+    expect(preview.warnings).toContain(
+      "HELFER Zeile 3: Ansprechpartner: Fehlende Ansprechpartnerreferenz ID 999999. Der Datensatz bleibt erhalten, die Zuordnung wird entfernt."
+    );
+    expect(preview.changes).toContainEqual(
+      expect.objectContaining({
+        area: "HELFER",
+        action: "update",
+        label: "Alex Beispiel",
+      })
+    );
+  });
+
   it.each<{
     area: ModuleImportArea;
     row: Record<string, unknown>;
@@ -549,7 +575,17 @@ describe("Projektdatei und modularer Excel-Import", () => {
       expect(
         preview.changes.every(change =>
           area === "ANSPRECHPARTNER"
-            ? ["ANSPRECHPARTNER", "HELFER"].includes(change.area)
+            ? [
+                "ANSPRECHPARTNER",
+                "HELFER",
+                "EINSATZPLAN",
+                "VORBEREITUNG",
+                "NACHBEREITUNG",
+                "MATERIAL",
+                "MARKETING",
+                "GENEHMIGUNGEN",
+                "ZUORDNUNGEN",
+              ].includes(change.area)
             : area === "EINSATZPLAN"
               ? ["EINSATZPLAN", "ZUORDNUNGEN"].includes(change.area)
               : change.area === area

@@ -14,6 +14,7 @@ vi.mock("./year-context", () => contextMocks);
 
 import {
   buildSelectedDocument,
+  comparableProjectContent,
   diffDocuments,
   exportBackupExcel,
   normalizeImportedTime,
@@ -530,6 +531,49 @@ describe("Excel-Datensicherung", () => {
     expect(parseBackupWorkbook(changed.toString("base64")).shifts[0]).toMatchObject({
       startTime: "08:00",
       endTime: "10:00",
+    });
+  });
+
+  it("repariert veraltete Ansprechpartnerreferenzen vor der Wiederherstellung ohne Helfer zu verwerfen", async () => {
+    const exported = await exportBackupExcel();
+    const changed = mutateWorkbook(exported.buffer, workbook => {
+      const helperRows = XLSX.utils.sheet_to_json<any>(workbook.Sheets.HELFER);
+      const helper = helperRows.find(row => row.Name === "Alex Beispiel");
+      helper["Ansprechpartner-ID"] = 999_999;
+      helper.Ansprechpartner = "Nicht mehr vorhandene Leitung";
+      replaceSheet(workbook, "HELFER", helperRows);
+    });
+
+    const parsed = parseBackupWorkbook(changed.toString("base64"));
+    const helper = parsed.helpers.find(row => row.name === "Alex Beispiel");
+
+    expect(helper).toMatchObject({
+      contactSourceId: null,
+      contactName: "",
+      name: "Alex Beispiel",
+    });
+    expect(parsed.warnings).toContain(
+      "HELFER Zeile 3: Ansprechpartner: Fehlende Ansprechpartnerreferenz ID 999999. Der Datensatz bleibt erhalten, die Zuordnung wird entfernt."
+    );
+    expect(comparableProjectContent(parsed).helpers).toContainEqual(
+      expect.objectContaining({ name: "Alex Beispiel", contactName: "" })
+    );
+  });
+
+  it("verknüpft einen ID-basierten Ansprechpartnerbezug auch ohne alten Namen kanonisch neu", async () => {
+    const exported = await exportBackupExcel();
+    const changed = mutateWorkbook(exported.buffer, workbook => {
+      const helperRows = XLSX.utils.sheet_to_json<any>(workbook.Sheets.HELFER);
+      const helper = helperRows.find(row => row.Name === "Alex Beispiel");
+      helper["Ansprechpartner-ID"] = 10;
+      helper.Ansprechpartner = "";
+      replaceSheet(workbook, "HELFER", helperRows);
+    });
+
+    const parsed = parseBackupWorkbook(changed.toString("base64"));
+    expect(parsed.helpers.find(row => row.name === "Alex Beispiel")).toMatchObject({
+      contactSourceId: 10,
+      contactName: "Chris Leitung",
     });
   });
 

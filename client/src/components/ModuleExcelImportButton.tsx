@@ -68,7 +68,13 @@ export function ModuleExcelImportButton({
       );
       window.setTimeout(() => window.location.reload(), 500);
     },
-    onError: error => toast.error(error.message),
+    onError: error => {
+      const detail = error.message || "Unbekannte Importursache";
+      console.error(`[${label}-Import] Übernahme abgebrochen: ${detail}`);
+      toast.error(`${label}-Import wurde nicht übernommen: ${detail}`, {
+        duration: 10_000,
+      });
+    },
   });
 
   if (user?.role !== "admin") return null;

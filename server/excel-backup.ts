@@ -806,14 +806,17 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
   const contactRef = (idValue: unknown, nameValue: unknown, label: string) => {
     const id = nullableId(idValue, label);
     const nameKey = personKey(nameValue);
-    if (!nameKey) return null;
-    const byName = contactNames.get(nameKey);
-    if (contactNames.has(nameKey)) return byName ?? null;
+    const byName = nameKey ? contactNames.get(nameKey) : undefined;
+    if (nameKey && contactNames.has(nameKey)) return byName ?? null;
     if (id && contactIds.has(id)) return id;
-    if (id || normalize(nameValue))
+    if (id || nameKey) {
+      const reference = id
+        ? `ID ${id}`
+        : `Name „${String(nameValue ?? "").trim().slice(0, 200)}“`;
       warnings.push(
-        `${label}: gelöschter oder unbekannter Ansprechpartner-Bezug wird geleert.`
+        `${label}: Fehlende Ansprechpartnerreferenz ${reference}. Der Datensatz bleibt erhalten, die Zuordnung wird entfernt.`
       );
+    }
     return null;
   };
 
@@ -1363,6 +1366,60 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
     "FINANZEN"
   );
 
+  // Excel-Dateien können technische Ansprechpartner-IDs aus einem älteren
+  // Projektstand enthalten. Vor der Transaktion werden alle Referenzen auf
+  // den aktuellen, in der Datei tatsächlich vorhandenen Ansprechpartner
+  // zurückgeführt. So entsteht nach einem vollständigen Restore derselbe
+  // kanonische Stand wie in der geprüften Vorschau: gültige Namen/IDs werden
+  // wieder verknüpft, unbekannte Bezüge dagegen bewusst entkoppelt, ohne den
+  // Helfer oder die übrigen Fachdaten zu verwerfen.
+  const contactBySourceId = new Map(
+    parsedContacts.flatMap(row =>
+      row.sourceId ? ([[row.sourceId, row]] as const) : []
+    )
+  );
+  const contactByName = new Map(
+    parsedContacts.map(row => [personKey(row.name), row])
+  );
+  const canonicalizeContactReference = (
+    row: Record<string, any>,
+    sourceField: string,
+    nameField: string
+  ) => {
+    const sourceId = row[sourceField] as number | null;
+    const name = String(row[nameField] ?? "");
+    const contact =
+      (sourceId ? contactBySourceId.get(sourceId) : undefined) ??
+      contactByName.get(personKey(name));
+    if (contact) {
+      row[sourceField] = contact.sourceId;
+      row[nameField] = contact.name;
+      return;
+    }
+    if (sourceId || personKey(name)) {
+      row[sourceField] = null;
+      row[nameField] = "";
+    }
+  };
+  for (const row of parsedHelpers)
+    canonicalizeContactReference(row, "contactSourceId", "contactName");
+  for (const row of parsedShifts)
+    canonicalizeContactReference(
+      row,
+      "areaContactSourceId",
+      "areaContactName"
+    );
+  for (const row of parsedPrep)
+    canonicalizeContactReference(row, "contactSourceId", "contactName");
+  for (const row of parsedPost)
+    canonicalizeContactReference(row, "contactSourceId", "contactName");
+  for (const row of parsedMaterials)
+    canonicalizeContactReference(row, "contactSourceId", "contactName");
+  for (const row of parsedMarketing)
+    canonicalizeContactReference(row, "contactSourceId", "contactName");
+  for (const row of parsedApprovals)
+    canonicalizeContactReference(row, "contactSourceId", "contactName");
+
   const helperBySourceId = new Map(
     parsedHelpers.flatMap(row =>
       row.sourceId ? [[row.sourceId, row] as const] : []
@@ -1708,6 +1765,32 @@ export function comparableProjectContent(
     cakes: withoutIds(document.cakes as Array<Record<string, unknown>>),
     finances: withoutIds(document.finances as Array<Record<string, unknown>>),
   };
+}
+
+function restoreMismatchDetail(
+  restored: Record<string, Array<Record<string, unknown>>>,
+  desired: Record<string, Array<Record<string, unknown>>>,
+  metadataMatches: {
+    activeDays: boolean;
+    pdfLogoKey: boolean;
+    pdfLogoUrl: boolean;
+    pdfLogoFallback: boolean;
+  }
+) {
+  const differingArea = Object.keys(desired).find(
+    area => JSON.stringify(restored[area] ?? []) !== JSON.stringify(desired[area] ?? [])
+  );
+  if (differingArea)
+    return `Abweichung im Bereich ${differingArea}: erwartet ${desired[differingArea]?.length ?? 0} Einträge, wiederhergestellt ${restored[differingArea]?.length ?? 0} Einträge.`;
+  if (!metadataMatches.activeDays)
+    return "Die aktiven Veranstaltungstage stimmen nach der Wiederherstellung nicht mit der Vorschau überein.";
+  if (
+    !metadataMatches.pdfLogoKey ||
+    !metadataMatches.pdfLogoUrl ||
+    !metadataMatches.pdfLogoFallback
+  )
+    return "Die PDF-Bildkonfiguration stimmt nach der Wiederherstellung nicht mit der Vorschau überein.";
+  return "Der wiederhergestellte Datenstand weicht von der geprüften Vorschau ab.";
 }
 
 export async function createCurrentProjectDocument(): Promise<BackupDocument> {
@@ -2685,16 +2768,24 @@ export async function restoreProjectDocument(
     const after = comparableCurrent(afterSnapshot);
     const restoredContent = comparableProjectContent(after);
     const desiredContent = comparableProjectContent(desired);
+    const metadataMatches = {
+      activeDays:
+        JSON.stringify(afterSnapshot.activeDays) ===
+        JSON.stringify(desired.metadata.activeDays),
+      pdfLogoKey: afterSnapshot.pdfLogoKey === desired.metadata.pdfLogoKey,
+      pdfLogoUrl: afterSnapshot.pdfLogoUrl === desired.metadata.pdfLogoUrl,
+      pdfLogoFallback:
+        afterSnapshot.pdfLogoFallback === desired.metadata.pdfLogoFallback,
+    };
     if (
       JSON.stringify(restoredContent) !== JSON.stringify(desiredContent) ||
-      JSON.stringify(afterSnapshot.activeDays) !==
-        JSON.stringify(desired.metadata.activeDays) ||
-      afterSnapshot.pdfLogoKey !== desired.metadata.pdfLogoKey ||
-      afterSnapshot.pdfLogoUrl !== desired.metadata.pdfLogoUrl ||
-      afterSnapshot.pdfLogoFallback !== desired.metadata.pdfLogoFallback
+      !metadataMatches.activeDays ||
+      !metadataMatches.pdfLogoKey ||
+      !metadataMatches.pdfLogoUrl ||
+      !metadataMatches.pdfLogoFallback
     )
       throw new Error(
-        "Die Wiederherstellung konnte den gespeicherten Projektstand nicht vollständig herstellen und wurde komplett zurückgerollt"
+        `Die Wiederherstellung wurde zum Schutz der Daten komplett zurückgerollt: ${restoreMismatchDetail(restoredContent, desiredContent, metadataMatches)}`
       );
     const afterDigest = snapshotDigest(afterSnapshot, after);
     const totals = summary(changes);

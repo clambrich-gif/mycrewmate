@@ -716,6 +716,40 @@ describe("Planungs-API", () => {
     );
   });
 
+  it("protokolliert und meldet die konkrete Transaktionsursache eines Modulimports", async () => {
+    moduleImportMocks.applyModuleExcelImport.mockRejectedValue(
+      new Error(
+        "HELFER Zeile 7: Fehlende Ansprechpartnerreferenz ID 2190010"
+      )
+    );
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const input = {
+      area: "HELFER" as const,
+      base64: "eA==",
+      filename: "Helfer.xlsx",
+      currentDigest: "a".repeat(64),
+      previewBinding: "preview-binding-test-token",
+      adminPassword: ADMIN_PASSWORD,
+    };
+
+    await expect(
+      appRouter.createCaller(ctx).excel.applyModule(input)
+    ).rejects.toThrow(
+      "Excel-Import (HELFER) wurde nicht übernommen: HELFER Zeile 7: Fehlende Ansprechpartnerreferenz ID 2190010"
+    );
+
+    expect(dbMocks.withPlanningWriteLock).toHaveBeenCalledTimes(1);
+    expect(consoleError).toHaveBeenCalledWith(
+      "[Excel-Modulimport] Atomare Übernahme abgebrochen",
+      expect.objectContaining({
+        area: "HELFER",
+        filename: "Helfer.xlsx",
+        detail: "HELFER Zeile 7: Fehlende Ansprechpartnerreferenz ID 2190010",
+      })
+    );
+    consoleError.mockRestore();
+  });
+
   it("weist ungültige oder unvollständige Schichtzeiten zurück", async () => {
     const caller = appRouter.createCaller(ctx);
 

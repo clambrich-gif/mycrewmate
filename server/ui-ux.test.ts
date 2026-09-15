@@ -47,6 +47,14 @@ describe("UI- und Mobile-UX-Regeln", () => {
     );
   });
 
+  it("zeigt beim verbindlichen Modulimport die konkrete Abbruchursache an", () => {
+    const importer = source("client/src/components/ModuleExcelImportButton.tsx");
+
+    expect(importer).toContain("Import wurde nicht übernommen");
+    expect(importer).toContain("Unbekannte Importursache");
+    expect(importer).toContain("duration: 10_000");
+  });
+
   it("zeigt rollengetrennte Online-Sitzungen im Desktopkopf und Mobilmenü", () => {
     const layout = source("client/src/components/Layout.tsx");
     const presence = source("client/src/components/OnlinePresenceBadge.tsx");
