@@ -857,14 +857,19 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain('location === "/helfer" || location === "/einsatzplan"');
     expect(layout).toContain('"w-full p-3 sm:p-4 xl:p-6"');
     expect(plan).toContain('<Card className="hidden w-full shadow-sm md:block">');
-    expect(plan).toContain('<CardContent className="w-full overflow-x-auto p-0">');
+    expect(plan).toContain('<CardContent className="w-full overflow-x-auto p-0 xl:overflow-x-hidden">');
     expect(plan).toContain(
-      '<table className="w-full table-auto text-sm md:min-w-[1080px] xl:min-w-0">'
+      '<table className="w-full table-auto text-sm md:min-w-[1080px] xl:min-w-0 xl:table-fixed xl:text-xs">'
     );
     expect(plan).not.toContain('min-w-[1500px]');
-    expect(plan).toContain('className="min-w-[400px] p-3"');
-    expect(plan).toContain('className="min-w-[400px] p-3 align-top"');
-    expect(plan).toContain('className="flex flex-wrap gap-1.5"');
+    expect(plan).not.toContain('min-w-[400px]');
+    expect(plan).toContain('<col className="w-[24%]" />');
+    expect(plan).toContain('max-w-[10rem] whitespace-pre-wrap break-words');
+    expect(plan).toContain('className="flex max-w-full flex-wrap gap-1 xl:gap-1"');
+    expect(plan).toContain('xl:!min-w-[104px] xl:!max-w-[148px] xl:!px-2 xl:!py-0.5 xl:!text-xs');
+    expect(plan).toContain('<span className="hidden xl:inline">Kontakt</span>');
+    expect(plan).toContain('<abbr title="Bedarf" className="hidden no-underline xl:inline">Bed.</abbr>');
+    expect(plan).toContain('<span className="hidden xl:inline">Eingeteilte Helfer</span>');
   });
 
   it("ordnet Einsatzplanaktionen ausschließlich mobil als gleich breites Raster an", () => {

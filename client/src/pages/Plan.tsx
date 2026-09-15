@@ -192,7 +192,7 @@ function AssignedHelperChip({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <div
-        className={`slot ${className} inline-flex min-h-11 items-center gap-1 text-base md:min-h-0 md:text-[.78rem]`}
+        className={`slot ${className} inline-flex min-h-11 items-center gap-1 text-base md:min-h-0 md:text-[.78rem] xl:!min-w-[104px] xl:!max-w-[148px] xl:!px-2 xl:!py-0.5 xl:!text-xs`}
         onPointerEnter={event => openAfterDelay(event.pointerType)}
         onPointerLeave={event => closeAfterLeave(event.pointerType)}
       >
@@ -553,7 +553,7 @@ export default function Plan() {
       helper => !assignedHelperIds.has(helper.id)
     );
     return (
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex max-w-full flex-wrap gap-1 xl:gap-1">
         {slotsFor(evalE).map(({ slot, a }) => {
           if (!a) {
             if (!canEditPlan) {
@@ -578,7 +578,7 @@ export default function Plan() {
                   })
                 }
               >
-                <SelectTrigger className="slot slot-offen h-11 w-full min-w-[180px] sm:w-[220px] md:h-9">
+                <SelectTrigger className="slot slot-offen h-11 w-full min-w-[180px] sm:w-[220px] md:h-9 xl:min-w-0 xl:w-full">
                   <SelectValue placeholder="Helfer wählen …" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1023,23 +1023,56 @@ export default function Plan() {
       </div>
 
       <Card className="hidden w-full shadow-sm md:block">
-        <CardContent className="w-full overflow-x-auto p-0">
-          <table className="w-full table-auto text-sm md:min-w-[1080px] xl:min-w-0">
+        <CardContent className="w-full overflow-x-auto p-0 xl:overflow-x-hidden">
+          <table className="w-full table-auto text-sm md:min-w-[1080px] xl:min-w-0 xl:table-fixed xl:text-xs">
+            <colgroup>
+              <col className="w-[6%]" />
+              <col className="w-[9%]" />
+              <col className="w-[9%]" />
+              <col className="w-[11%]" />
+              <col className="w-[13%]" />
+              <col className="w-[8%]" />
+              <col className="w-[3.5%]" />
+              <col className="w-[3.5%]" />
+              <col className="w-[6%]" />
+              <col className="w-[3.5%]" />
+              <col className="w-[3.5%]" />
+              <col className="w-[24%]" />
+            </colgroup>
             <thead className="bg-muted/60 sticky top-0">
               <tr className="text-left">
-                <th className="p-3">Tag</th>
-                <th className="p-3">Bereich</th>
-                <th className="p-3">Ansprechpartner</th>
-                <th className="p-3">Aufgabe</th>
-                <th className="p-3">Bemerkung</th>
-                <th className="p-3">Zeit</th>
-                <th className="p-3">Bedarf</th>
-                <th className="p-3">Besetzt</th>
-                <th className="p-3">Status</th>
-                <th className="p-3">Doppel</th>
-                <th className="p-3">Ausfall</th>
-                <th className="min-w-[400px] p-3">
-                  Eingeteilte Helfer (Anzahl = Bedarf)
+                <th className="p-2 xl:p-1.5">Tag</th>
+                <th className="p-2 xl:p-1.5">Bereich</th>
+                <th className="break-words p-2 leading-tight xl:p-1.5">
+                  <span className="xl:hidden">Ansprechpartner</span>
+                  <span className="hidden xl:inline">Kontakt</span>
+                </th>
+                <th className="p-2 xl:p-1.5">Aufgabe</th>
+                <th className="p-2 xl:p-1.5">Bemerkung</th>
+                <th className="p-2 whitespace-nowrap xl:p-1.5">Zeit</th>
+                <th className="p-2 text-center leading-tight xl:p-1.5">
+                  <span className="xl:hidden">Bedarf</span>
+                  <abbr title="Bedarf" className="hidden no-underline xl:inline">Bed.</abbr>
+                </th>
+                <th className="p-2 text-center leading-tight xl:p-1.5">
+                  <span className="xl:hidden">Besetzt</span>
+                  <abbr title="Besetzt" className="hidden no-underline xl:inline">Bes.</abbr>
+                </th>
+                <th className="p-2 text-center leading-tight xl:p-1.5">
+                  <span className="xl:hidden">Status</span>
+                  <abbr title="Status" className="hidden no-underline xl:inline">Stat.</abbr>
+                </th>
+                <th className="p-2 text-center leading-tight xl:p-1.5">
+                  <span className="xl:hidden">Doppel</span>
+                  <abbr title="Doppelbelegungen" className="hidden no-underline xl:inline">Dbl.</abbr>
+                </th>
+                <th className="p-2 text-center leading-tight xl:p-1.5">
+                  <span className="xl:hidden">Ausfall</span>
+                  <abbr title="Ausfälle" className="hidden no-underline xl:inline">Ausf.</abbr>
+                </th>
+                <th className="break-words p-2 leading-tight xl:p-1.5">
+                  <span className="xl:hidden">Eingeteilte Helfer (Anzahl = Bedarf)</span>
+                  <span className="hidden xl:inline">Eingeteilte Helfer</span>
                 </th>
               </tr>
             </thead>
@@ -1059,10 +1092,10 @@ export default function Plan() {
                     key={s.id}
                     className="border-t align-top hover:bg-muted/20"
                   >
-                    <td className="p-3 font-medium">{s.day}</td>
-                    <td className="p-3">
-                      <div className="flex items-center gap-1">
-                        <span>
+                    <td className="p-2 font-medium xl:p-1.5">{s.day}</td>
+                    <td className="p-2 xl:p-1.5">
+                      <div className="flex flex-wrap items-center gap-1">
+                        <span className="max-w-[8rem] break-words [overflow-wrap:anywhere]">
                           <HighlightedText text={s.area} query={q} />
                         </span>
                         {canEditPlan && (
@@ -1089,28 +1122,30 @@ export default function Plan() {
                         )}
                       </div>
                     </td>
-                    <td className="p-3">
-                      {contactName(areaContactMap.get(s.area) ?? null) || (
-                        <span className="text-amber-700">nicht zugeordnet</span>
-                      )}
+                    <td className="p-2 xl:p-1.5">
+                      <span className="block max-w-[8rem] break-words [overflow-wrap:anywhere]">
+                        {contactName(areaContactMap.get(s.area) ?? null) || (
+                          <span className="text-amber-700">nicht zugeordnet</span>
+                        )}
+                      </span>
                     </td>
-                    <td className="p-3">
+                    <td className="max-w-[9rem] break-words p-2 [overflow-wrap:anywhere] xl:p-1.5">
                       <HighlightedText text={s.task} query={q} />
                     </td>
-                    <td className="max-w-64 whitespace-pre-wrap p-3 text-muted-foreground">
+                    <td className="max-w-[10rem] whitespace-pre-wrap break-words p-2 text-muted-foreground [overflow-wrap:anywhere] xl:p-1.5">
                       {s.note?.trim() || "–"}
                     </td>
-                    <td className="p-3 whitespace-nowrap">
+                    <td className="p-2 whitespace-nowrap xl:p-1.5">
                       {s.startTime && s.endTime
                         ? `${s.startTime}–${s.endTime}`
                         : "ganztägig"}
                     </td>
-                    <td className="p-3 font-semibold">{s.needed}</td>
-                    <td className="p-3">{e.besetzt}</td>
-                    <td className="p-3">
+                    <td className="p-2 text-center font-semibold xl:p-1.5">{s.needed}</td>
+                    <td className="p-2 text-center xl:p-1.5">{e.besetzt}</td>
+                    <td className="p-2 text-center xl:p-1.5">
                       <StatusBadge status={e.status} />
                     </td>
-                    <td className="p-3">
+                    <td className="p-2 text-center xl:p-1.5">
                       {e.doppelCount > 0 ? (
                         <span className="badge badge-warn">
                           {e.doppelCount}
@@ -1119,7 +1154,7 @@ export default function Plan() {
                         ""
                       )}
                     </td>
-                    <td className="p-3">
+                    <td className="p-2 text-center xl:p-1.5">
                       {e.ausfallCount > 0 ? (
                         <span className="badge badge-err">
                           {e.ausfallCount}
@@ -1128,7 +1163,7 @@ export default function Plan() {
                         ""
                       )}
                     </td>
-                    <td className="min-w-[400px] p-3 align-top">
+                    <td className="min-w-0 p-2 align-top xl:p-1.5">
                       {renderShiftSlots(evalE)}
                     </td>
                   </tr>
