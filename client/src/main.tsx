@@ -8,8 +8,11 @@ import App from "./App";
 import { startLogin } from "./const";
 import "./index.css";
 import { storedEventId, storedEventYear } from "./contexts/YearContext";
+import { installMobileFocusViewportGuard } from "./lib/mobileFocusViewport";
 
 const queryClient = new QueryClient();
+
+installMobileFocusViewportGuard();
 
 const redirectToLoginIfUnauthorized = (error: unknown) => {
   if (!(error instanceof TRPCClientError)) return;

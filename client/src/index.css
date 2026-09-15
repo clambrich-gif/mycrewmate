@@ -50,10 +50,11 @@
    vergrößern. Die effektive Schriftgröße bleibt bis zum Desktop-Breakpoint zwingend
    bei mindestens 16px – auch in Suche, Filtern, Modal-Dialogen und Chat-Composer.
    Pinch-to-Zoom bleibt über den uneingeschränkten Viewport ausdrücklich möglich. */
-@media (max-width: 1023px) {
+@media screen and (max-width: 1024px) {
   input,
   select,
   textarea,
+  [contenteditable="true"],
   [data-slot="input"],
   [data-slot="textarea"],
   [data-slot="select-trigger"] {

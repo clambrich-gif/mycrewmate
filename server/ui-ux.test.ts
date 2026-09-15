@@ -50,12 +50,15 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const textarea = source("client/src/components/ui/textarea.tsx");
     const select = source("client/src/components/ui/select.tsx");
     const helpers = source("client/src/pages/Helpers.tsx");
+    const main = source("client/src/main.tsx");
+    const viewportGuard = source("client/src/lib/mobileFocusViewport.ts");
 
     expect(html).toContain('content="width=device-width, initial-scale=1.0"');
     expect(html).not.toContain("maximum-scale");
     expect(html).not.toContain("user-scalable=no");
-    expect(css).toContain("@media (max-width: 1023px)");
+    expect(css).toContain("@media screen and (max-width: 1024px)");
     expect(css).toContain("bei mindestens 16px");
+    expect(css).toContain('[contenteditable="true"]');
     expect(css).toContain('[data-slot="select-trigger"]');
     expect(css).toContain("font-size: 16px !important;");
     expect(css).toContain("-webkit-text-size-adjust: 100%;");
@@ -66,7 +69,15 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(textarea).toContain("text-base text-slate-950");
     expect(select).toContain("w-fit touch-manipulation items-center");
     expect(select).toContain("px-3 py-2 text-base");
-    expect(helpers).toContain('"w-full pr-11 text-base md:pr-9 md:text-sm"');
+    expect(helpers).toContain('"w-full pr-11 text-base xl:pr-9 xl:text-sm"');
+    expect(main).toContain("installMobileFocusViewportGuard();");
+    expect(viewportGuard).toContain("LOCKED_VIEWPORT_CONTENT");
+    expect(viewportGuard).toContain("maximum-scale=1.0, user-scalable=no");
+    expect(viewportGuard).toContain('document.addEventListener("focusin"');
+    expect(viewportGuard).toContain('"pointerdown"');
+    expect(viewportGuard).toContain('document.addEventListener("focusout"');
+    expect(viewportGuard).toContain('"blur"');
+    expect(viewportGuard).toContain("isMobileOrTouchViewport");
   });
 
   it("integriert das schwebende Live-Notizen & Chat-Widget plattformübergreifend", () => {
@@ -147,7 +158,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(widget).toContain("snapshot.notes.map(note =>");
     expect(widget).toContain("snapshot.typing.map(t => t.senderName)");
     expect(widget).toContain("text-base leading-normal [-webkit-text-size-adjust:100%]");
-    expect(widget).toContain("lg:min-h-[40px] lg:text-xs");
+    expect(widget).toContain("xl:min-h-[40px] xl:text-xs");
     expect(widget).toContain("[-webkit-text-size-adjust:100%]");
   });
 
