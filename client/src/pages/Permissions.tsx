@@ -295,7 +295,7 @@ export default function Permissions() {
               </Select>
               <Button
                 variant="outline"
-                className="border-destructive/40 text-destructive"
+                className="border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
                 onClick={() => setResetOpen(true)}
               >
                 <RotateCcw className="mr-2 h-4 w-4" /> Protokoll zurücksetzen

@@ -69,7 +69,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(textarea).toContain("text-base text-slate-950");
     expect(select).toContain("w-fit touch-manipulation items-center");
     expect(select).toContain("px-3 py-2 text-base");
-    expect(helpers).toContain('"w-full pr-11 text-base xl:pr-9 xl:text-sm"');
+    expect(helpers).toContain('"w-full pr-11 text-base xl:pr-9"');
+    expect(helpers).not.toContain('"w-full pr-11 text-base xl:pr-9 xl:text-sm"');
     expect(main).toContain("installMobileFocusViewportGuard();");
     expect(viewportGuard).toContain("LOCKED_VIEWPORT_CONTENT");
     expect(viewportGuard).toContain("maximum-scale=1.0, user-scalable=no");
@@ -223,7 +224,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(widget).toContain("snapshot.notes.map(note =>");
     expect(widget).toContain("snapshot.typing.map(t => t.senderName)");
     expect(widget).toContain("text-base leading-normal [-webkit-text-size-adjust:100%]");
-    expect(widget).toContain("xl:min-h-[40px] xl:text-xs");
+    expect(widget).toContain("xl:min-h-[40px]");
+    expect(widget).not.toContain("xl:min-h-[40px] xl:text-xs");
     expect(widget).toContain("[-webkit-text-size-adjust:100%]");
   });
 
@@ -731,7 +733,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain("flex-wrap");
   });
 
-  it("leert im Einsatzplan ausschließlich Helferzuweisungen und lässt Aktionsfarben unverändert", () => {
+  it("leert im Einsatzplan ausschließlich Helferzuweisungen mit semantischem Rose-Styling", () => {
     const plan = source("client/src/pages/Plan.tsx");
     const clearButton = source(
       "client/src/components/ClearPlanAssignmentsButton.tsx"
@@ -750,7 +752,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(clearButton).toContain("trpc.plan.clearAssignments.useMutation");
     expect(clearButton).toContain("Die Schichten, Bereiche, Aufgaben");
     expect(clearButton).toContain("Bereichsansprechpartner bleiben vollständig erhalten");
-    expect(clearButton).toContain("border-destructive/40 text-destructive");
+    expect(clearButton).toContain("border-rose-200 bg-rose-50 text-rose-700");
+    expect(resetButton).toContain("border-rose-200 bg-rose-50 text-rose-700");
     expect(resetButton).not.toContain('"assignments"');
     expect(plan).toContain('name="plan-search-query"');
     expect(plan).toContain('autoComplete="off"');
@@ -802,6 +805,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
       expect(module).toContain("max-lg:[&>[data-slot=button]]:h-11");
       expect(module).toContain("max-lg:[&>[data-slot=button]]:text-base");
       expect(module).toContain("lg:[&>[data-slot=button]]:w-auto");
+    }
+
+    expect(helpers).toContain('className="col-span-2 shadow-xs lg:hidden"');
+    for (const module of [taskList, taskGeneric, finances]) {
       expect(module).toContain('className="col-span-2 shadow-xs lg:col-auto"');
     }
 
@@ -840,5 +847,34 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(router).toContain(
       "await requireAdminPassword(input.currentAdminPassword, ctx)"
     );
+  });
+
+  it("hebt Stammdateneingaben ausschließlich ab dem Desktop-Breakpoint hervor", () => {
+    const helpers = source("client/src/pages/Helpers.tsx");
+    const contacts = source("client/src/pages/Contacts.tsx");
+
+    expect(helpers).toContain('className="hidden border-blue-200 bg-slate-50/80 shadow-sm lg:block"');
+    expect(helpers).toContain("Neuanlage – Name des Helfers");
+    expect(helpers).toContain("Name des neuen Helfers eingeben");
+    expect(helpers).toContain("Helfer hinzufügen");
+    expect(helpers).toContain("bg-indigo-700");
+    expect(helpers).toContain('className="col-span-2 w-full lg:hidden"');
+
+    expect(contacts).toContain('className="hidden border-blue-200 bg-slate-50/80 shadow-sm lg:block"');
+    expect(contacts).toContain("Neuanlage – Name des Ansprechpartners");
+    expect(contacts).toContain("Neuanlage – Rufnummer");
+    expect(contacts).toContain('className="grid gap-2 sm:grid-cols-[1fr_220px_auto] lg:hidden"');
+  });
+
+  it("verwendet Mint für Übernahmen und Rose für Resets", () => {
+    const importButton = source("client/src/components/ModuleExcelImportButton.tsx");
+    const copyButton = source("client/src/components/CopyPreviousPlanButton.tsx");
+    const resetButton = source("client/src/components/ResetAreaButton.tsx");
+    const clearButton = source("client/src/components/ClearPlanAssignmentsButton.tsx");
+
+    expect(importButton).toContain("border-emerald-200 bg-emerald-50 text-emerald-700");
+    expect(copyButton).toContain("border-emerald-200 bg-emerald-50 text-emerald-700");
+    expect(resetButton).toContain("border-rose-200 bg-rose-50 text-rose-700");
+    expect(clearButton).toContain("border-rose-200 bg-rose-50 text-rose-700");
   });
 });

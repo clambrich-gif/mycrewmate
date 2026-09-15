@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { trpc } from "@/lib/trpc";
-import { Pencil, Phone, Trash2 } from "lucide-react";
+import { Pencil, Phone, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
@@ -84,7 +84,7 @@ export default function Contacts() {
           <ResetAreaButton area="contacts" label="Ansprechpartner" />
         </div>
       </div>
-      <div className="grid gap-2 sm:grid-cols-[1fr_220px_auto]">
+      <div className="grid gap-2 sm:grid-cols-[1fr_220px_auto] lg:hidden">
         <Input
           placeholder="Name des Ansprechpartners"
           value={name}
@@ -105,6 +105,45 @@ export default function Contacts() {
           Hinzufügen
         </Button>
       </div>
+      <Card className="hidden border-blue-200 bg-slate-50/80 shadow-sm lg:block">
+        <CardContent className="grid items-end gap-3 p-4 lg:grid-cols-[minmax(0,1fr)_220px_auto]">
+          <div className="space-y-1.5">
+            <label htmlFor="new-contact-name" className="text-sm font-semibold text-slate-800">
+              Neuanlage – Name des Ansprechpartners
+            </label>
+            <Input
+              id="new-contact-name"
+              placeholder="Name des neuen Ansprechpartners eingeben"
+              value={name}
+              onChange={event => setName(event.target.value)}
+              onKeyDown={event => event.key === "Enter" && addContact()}
+              className="h-11 border-slate-300 bg-white text-base shadow-sm placeholder:text-slate-600"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="new-contact-phone" className="text-sm font-semibold text-slate-800">
+              Neuanlage – Rufnummer
+            </label>
+            <Input
+              id="new-contact-phone"
+              type="tel"
+              placeholder="z. B. 0170 1234567"
+              value={phone}
+              onChange={event => setPhone(event.target.value)}
+              onKeyDown={event => event.key === "Enter" && addContact()}
+              className="h-11 border-slate-300 bg-white text-base shadow-sm placeholder:text-slate-600"
+            />
+          </div>
+          <Button
+            className="h-11 bg-indigo-700 px-5 text-base font-semibold shadow-sm hover:bg-indigo-800"
+            onClick={addContact}
+            disabled={create.isPending || !name.trim()}
+          >
+            <Plus className="h-5 w-5" />
+            {create.isPending ? "Speichert …" : "Hinzufügen"}
+          </Button>
+        </CardContent>
+      </Card>
       <Card className="shadow-sm">
         <CardHeader>
           <CardTitle className="text-base">Liste ({contacts.length})</CardTitle>

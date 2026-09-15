@@ -66,6 +66,7 @@ export function CopyPreviousPlanButton() {
     <>
       <Button
         variant="outline"
+        className="border-emerald-200 bg-emerald-50 text-emerald-700 shadow-xs hover:bg-emerald-100"
         onClick={() => setOpen(true)}
         disabled={!sourceEvents.length}
       >

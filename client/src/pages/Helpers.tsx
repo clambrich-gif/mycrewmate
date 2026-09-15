@@ -147,7 +147,7 @@ function HelperPdfNoteField({
         <Input
           key={`${helperId}-note-${note ?? ""}`}
           className={cn(
-            "w-full pr-11 text-base xl:pr-9 xl:text-sm",
+            "w-full pr-11 text-base xl:pr-9",
             compactOnDesktop && "xl:h-8 xl:min-w-0"
           )}
           defaultValue={note ?? ""}
@@ -313,7 +313,7 @@ export default function Helpers() {
             placeholder="Name"
             value={name}
             onChange={event => setName(event.target.value)}
-            className="col-span-2 w-full lg:order-last lg:ml-2 lg:w-52"
+            className="col-span-2 w-full lg:hidden"
             onKeyDown={event =>
               event.key === "Enter" &&
               name.trim() &&
@@ -321,7 +321,7 @@ export default function Helpers() {
             }
           />
           <Button
-            className="col-span-2 shadow-xs lg:col-auto"
+            className="col-span-2 shadow-xs lg:hidden"
             onClick={() => name.trim() && create.mutate({ name: name.trim() })}
             disabled={!name.trim() || create.isPending}
           >
@@ -330,6 +330,36 @@ export default function Helpers() {
           </Button>
         </div>
       </div>
+
+      <Card className="hidden border-blue-200 bg-slate-50/80 shadow-sm lg:block">
+        <CardContent className="flex items-end gap-3 p-4">
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <label htmlFor="new-helper-name" className="text-sm font-semibold text-slate-800">
+              Neuanlage – Name des Helfers
+            </label>
+            <Input
+              id="new-helper-name"
+              placeholder="Name des neuen Helfers eingeben"
+              value={name}
+              onChange={event => setName(event.target.value)}
+              className="h-11 border-slate-300 bg-white text-base shadow-sm placeholder:text-slate-600"
+              onKeyDown={event =>
+                event.key === "Enter" &&
+                name.trim() &&
+                create.mutate({ name: name.trim() })
+              }
+            />
+          </div>
+          <Button
+            className="h-11 bg-indigo-700 px-5 text-base font-semibold shadow-sm hover:bg-indigo-800"
+            onClick={() => name.trim() && create.mutate({ name: name.trim() })}
+            disabled={!name.trim() || create.isPending}
+          >
+            <Plus className="h-5 w-5" />
+            {create.isPending ? "Speichert …" : "Helfer hinzufügen"}
+          </Button>
+        </CardContent>
+      </Card>
 
       <div className="flex w-full flex-col gap-2 lg:flex-row lg:items-center">
         <Input

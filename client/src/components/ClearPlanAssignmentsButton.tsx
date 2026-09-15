@@ -38,7 +38,7 @@ export function ClearPlanAssignmentsButton({ onCleared }: { onCleared: () => voi
       <Button
         type="button"
         variant="outline"
-        className="border-destructive/40 text-destructive hover:bg-destructive/10"
+        className="border-rose-200 bg-rose-50 text-rose-700 shadow-xs hover:bg-rose-100"
         onClick={() => setOpen(true)}
       >
         <UserMinus className="mr-2 h-4 w-4" />

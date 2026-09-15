@@ -819,7 +819,7 @@ export function LiveChatWidget({
                   onChange={e => handleMessageChange(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Notiz eingeben (Enter zum Senden) …"
-                  className="min-h-12 min-w-0 flex-1 max-h-28 resize-none bg-white text-base leading-normal [-webkit-text-size-adjust:100%] [text-size-adjust:100%] xl:min-h-[40px] xl:text-xs"
+                  className="min-h-12 min-w-0 flex-1 max-h-28 resize-none bg-white text-base leading-normal [-webkit-text-size-adjust:100%] [text-size-adjust:100%] xl:min-h-[40px]"
                   rows={1}
                 />
                 <Button

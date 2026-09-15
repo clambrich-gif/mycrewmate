@@ -118,7 +118,7 @@ export function ModuleExcelImportButton({
         type="button"
         variant="outline"
         size={compact ? "sm" : "default"}
-        className="bg-white dark:bg-slate-950"
+        className="border-emerald-200 bg-emerald-50 text-emerald-700 shadow-xs hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300"
         disabled={preview.isPending}
         onClick={() => inputRef.current?.click()}
       >
@@ -188,7 +188,7 @@ export function ModuleExcelImportButton({
               Abbrechen
             </Button>
             <Button
-              className="border border-blue-800 !bg-blue-700 !text-white shadow-md hover:!bg-blue-800"
+              className="border border-emerald-300 !bg-emerald-700 !text-white shadow-md hover:!bg-emerald-800"
               onClick={() => setPasswordOpen(true)}
             >
               <Upload className="mr-2 h-4 w-4" /> Alle{" "}

@@ -419,7 +419,7 @@ export default function TaskGeneric({
               {(user?.role === "admin" || teamCanDelete) && row.id > 0 && (
                 <Button
                   variant="outline"
-                  className="w-full border-destructive/40 text-destructive"
+                  className="w-full border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
                   disabled={remove.isPending}
                   onClick={() =>
                     teamCanDelete

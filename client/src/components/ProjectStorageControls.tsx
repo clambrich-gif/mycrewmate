@@ -175,7 +175,7 @@ export function ProjectStorageControls({
         <Button
           type="button"
           variant="outline"
-          className="min-w-0 bg-white px-2 dark:bg-slate-950"
+          className="min-w-0 border-emerald-200 bg-emerald-50 px-2 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300"
           disabled={!isAdmin || preview.isPending}
           title={
             isAdmin
@@ -267,7 +267,7 @@ export function ProjectStorageControls({
             </Button>
             {hasChanges && (
               <Button
-                className="border border-blue-800 !bg-blue-700 !text-white shadow-md hover:!bg-blue-800"
+                className="border border-emerald-300 !bg-emerald-700 !text-white shadow-md hover:!bg-emerald-800"
                 onClick={() => setPasswordOpen(true)}
               >
                 <Upload className="mr-2 h-4 w-4" /> Alle Änderungen laden
