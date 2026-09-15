@@ -499,7 +499,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 </span>
                 <button
                   type="button"
-                  className="text-xs text-muted-foreground hover:text-gray-900 underline"
+                  className="inline-flex min-h-11 items-center justify-center rounded px-2 text-xs text-muted-foreground underline hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                   onClick={() => {
                     setRecoveryOpen(false);
                     setRecoveryError(null);
@@ -627,7 +627,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <div className="pt-1 text-center">
                 <button
                   type="button"
-                  className="text-xs text-muted-foreground hover:text-blue-600 underline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 rounded"
+                  className="inline-flex min-h-11 items-center justify-center rounded px-2 text-xs text-muted-foreground underline hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                   onClick={() => {
                     setRecoveryOpen(true);
                     setLoginError(null);

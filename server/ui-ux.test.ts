@@ -43,16 +43,16 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(presence).toContain("motion-reduce:scale-100");
   });
 
-  it("unterbindet mobilen Formular-Auto-Zoom global und im HTML-Viewport", () => {
+  it("verhindert mobilen Formular-Auto-Zoom per 16px-Regel und lässt manuelles Zoomen zu", () => {
     const html = source("client/index.html");
     const css = source("client/src/index.css");
     const input = source("client/src/components/ui/input.tsx");
     const textarea = source("client/src/components/ui/textarea.tsx");
     const select = source("client/src/components/ui/select.tsx");
 
-    expect(html).toContain(
-      'content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"'
-    );
+    expect(html).toContain('content="width=device-width, initial-scale=1.0"');
+    expect(html).not.toContain("maximum-scale");
+    expect(html).not.toContain("user-scalable=no");
     expect(css).toContain("@media (max-width: 1023px)");
     expect(css).toContain('[data-slot="select-trigger"]');
     expect(css).toContain("font-size: 16px !important;");
@@ -91,7 +91,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(presence).not.toContain("unreadCount");
     expect(presence).not.toContain("hasImportantUnread");
 
-    expect(widget).toContain("fixed bottom-4 right-4 z-50");
+    expect(widget).toContain("env(safe-area-inset-bottom)+0.75rem");
+    expect(widget).toContain("env(safe-area-inset-bottom)+0.5rem");
     expect(widget).toContain("sessionStorage.getItem(storageKey)");
     expect(widget).toContain("sessionStorage.setItem(storageKey, finalName)");
     expect(widget).toContain("trpc.contacts.list.useQuery");
@@ -141,6 +142,20 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(widget).toContain("Der zentrale Layout-Owner liefert genau einen serialisierten Snapshot");
     expect(widget).toContain("snapshot.notes.map(note =>");
     expect(widget).toContain("snapshot.typing.map(t => t.senderName)");
+  });
+
+  it("sichert Dialoge und Recovery-Links für mobile Tastatur und Touchbedienung ab", () => {
+    const dialog = source("client/src/components/ui/dialog.tsx");
+    const alertDialog = source("client/src/components/ui/alert-dialog.tsx");
+    const layout = source("client/src/components/Layout.tsx");
+
+    expect(dialog).toContain("max-h-[calc(100dvh-2rem)]");
+    expect(dialog).toContain("overflow-y-auto overscroll-contain");
+    expect(alertDialog).toContain("max-h-[calc(100dvh-2rem)]");
+    expect(alertDialog).toContain("overflow-y-auto overscroll-contain");
+    expect(layout).toContain("Passwort vergessen / Recovery");
+    expect(layout).toContain("Zurück zur Anmeldung");
+    expect(layout.match(/inline-flex min-h-11 items-center justify-center/g)).toHaveLength(2);
   });
 
   it("zeigt und entsperrt den dauerhaften Planungsteam-Login ausschließlich im Adminbereich", () => {
@@ -568,12 +583,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain("lg:h-screen lg:overflow-y-auto");
   });
 
-  it("unterbindet auf mobilen Geräten die automatische und manuelle Zoomgeste", () => {
+  it("erlaubt auf mobilen Geräten manuelles Heranzoomen", () => {
     const html = source("client/index.html");
 
-    expect(html).toContain(
-      "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-    );
+    expect(html).toContain("width=device-width, initial-scale=1.0");
+    expect(html).not.toContain("maximum-scale");
+    expect(html).not.toContain("user-scalable=no");
   });
 
   it("sperrt den Admin-Passwortdialog während laufender Aktionen", () => {

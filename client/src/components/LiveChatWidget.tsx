@@ -418,7 +418,7 @@ export function LiveChatWidget({
           type="button"
           onClick={onOpen}
           className={cn(
-            "fixed bottom-6 right-6 z-50 flex h-16 w-16 min-h-16 min-w-16 items-center justify-center rounded-full border-2 border-white p-0 text-white shadow-2xl transition-[background-color,transform,box-shadow] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-offset-2 motion-safe:hover:scale-105 md:bottom-6 md:right-6 md:h-20 md:w-20 md:min-h-20 md:min-w-20 md:border-[3px] md:shadow-[0_12px_28px_rgba(37,99,235,0.38)]",
+            "fixed bottom-[max(1.5rem,calc(env(safe-area-inset-bottom)+0.75rem))] right-6 z-50 flex h-16 w-16 min-h-16 min-w-16 items-center justify-center rounded-full border-2 border-white p-0 text-white shadow-2xl transition-[background-color,transform,box-shadow] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-offset-2 motion-safe:hover:scale-105 md:bottom-6 md:right-6 md:h-20 md:w-20 md:min-h-20 md:min-w-20 md:border-[3px] md:shadow-[0_12px_28px_rgba(37,99,235,0.38)]",
             hasUnread
               ? hasImportantUnread
                 ? "animate-pulse bg-red-600 ring-4 ring-red-400 hover:bg-red-700 focus-visible:ring-red-400"
@@ -454,7 +454,7 @@ export function LiveChatWidget({
     return (
       <aside
         aria-label="Minimierte Team-Notizen"
-        className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full border border-blue-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 shadow-2xl ring-1 ring-black/5"
+        className="fixed bottom-[max(1rem,calc(env(safe-area-inset-bottom)+0.5rem))] right-4 z-50 flex items-center gap-2 rounded-full border border-blue-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 shadow-2xl ring-1 ring-black/5 sm:bottom-4"
       >
         <button
           type="button"
