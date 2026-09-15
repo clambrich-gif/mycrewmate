@@ -249,16 +249,14 @@ export default function Help() {
     user?.role === "admin"
       ? {
           src: "/api/videos/admin",
-          poster:
-            "/manus-storage/RSC-Helferplanung-Poster-Administratoren_483a22df.jpg",
-          label: "Video-Anleitung für Administratoren",
+          poster: "/api/help/images/video-administratoren",
+          label: "Erweiterte Schulung für Administratoren",
         }
       : user?.role === "user"
         ? {
-            src: "/api/videos/planungsteam",
-            poster:
-              "/manus-storage/RSC-Helferplanung-Poster-Planungsteam_a962d33a.jpg",
-            label: "Video-Anleitung für das Planungsteam",
+          src: "/api/videos/planungsteam",
+          poster: "/api/help/images/video-planungsteam",
+          label: "Einweisung für das Planungsteam",
           }
         : null;
   const guidePdf = trpc.help.guidePdf.useMutation({
@@ -309,7 +307,7 @@ export default function Help() {
               <CardHeader className="p-4 pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <PlayCircle className="h-5 w-5 text-primary" />
-                  Video-Anleitung
+                  {helpVideo.label}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-3 pt-0 sm:p-4 sm:pt-0">

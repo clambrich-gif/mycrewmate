@@ -39,7 +39,11 @@ describe("Storage-Proxy", () => {
   it.each([
     "pdf-logos/veranstaltungslogo_21d8a485.jpg",
     "pdf-logos/events/2027/77/pdf-logo_a1b2c3d4.png",
-  ])("liefert PDF-Bilder nicht über den öffentlichen Storage-Pfad aus: %s", async key => {
+    "RSC-Helferplanung-Erklaervideo-Administratoren_48a1d1ca.mp4",
+    "RSC-Helferplanung-Erklaervideo-Planungsteam_3101461c.mp4",
+    "RSC-Helferplanung-Einweisung-Planungsteam_01385146.mp4",
+    "RSC-Helferplanung-Schulung-Administratoren_f2c73550.mp4",
+  ])("liefert geschützte Medien nicht über den öffentlichen Storage-Pfad aus: %s", async key => {
     const response = await fetch(`${baseUrl}/manus-storage/${key}`, {
       redirect: "manual",
     });

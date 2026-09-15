@@ -644,15 +644,15 @@ describe("UI- und Mobile-UX-Regeln", () => {
 
     expect(help).toContain('user?.role === "admin"');
     expect(help).toContain('user?.role === "user"');
-    expect(help).toContain("Video-Anleitung für Administratoren");
-    expect(help).toContain("Video-Anleitung für das Planungsteam");
+    expect(help).toContain("Erweiterte Schulung für Administratoren");
+    expect(help).toContain("Einweisung für das Planungsteam");
     expect(help).toContain('src: "/api/videos/admin"');
     expect(help).toContain('src: "/api/videos/planungsteam"');
     expect(help).not.toContain(
       "manus-storage/RSC-Helferplanung-Erklaervideo"
     );
-    expect(help).toContain("RSC-Helferplanung-Poster-Administratoren");
-    expect(help).toContain("RSC-Helferplanung-Poster-Planungsteam");
+    expect(help).toContain('poster: "/api/help/images/video-administratoren"');
+    expect(help).toContain('poster: "/api/help/images/video-planungsteam"');
     expect(help.match(/<video/g)).toHaveLength(1);
     expect(help).toContain("controls");
     expect(help).toContain("playsInline");

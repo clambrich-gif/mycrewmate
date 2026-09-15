@@ -89,6 +89,9 @@ describe("Hilfevideo-Streaming", () => {
     expect(response.headers.get("access-control-expose-headers")).toContain(
       "Content-Range"
     );
+    expect(testServer.getSignedUrl).toHaveBeenCalledWith(
+      "RSC-Helferplanung-Schulung-Administratoren_f2c73550.mp4"
+    );
   });
 
   it("blockiert das Video der jeweils anderen Rolle serverseitig", async () => {
@@ -131,6 +134,9 @@ describe("Hilfevideo-Streaming", () => {
     expect(response.headers.get("content-type")).toBe("video/mp4");
     expect(response.headers.get("accept-ranges")).toBe("bytes");
     expect(response.headers.get("content-length")).toBe("20812536");
+    expect(testServer.getSignedUrl).toHaveBeenCalledWith(
+      "RSC-Helferplanung-Einweisung-Planungsteam_01385146.mp4"
+    );
   });
 
   it("beantwortet CORS-Preflight ohne Videodownload", async () => {

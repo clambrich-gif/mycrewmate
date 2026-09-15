@@ -10,6 +10,10 @@ const PROTECTED_STORAGE_KEYS = new Set([
   "RSC-Helferplanung-Anleitung_4f84ed2a.pdf",
   "RSC-Helferplanung-Anleitung_2a9c73bd.pdf",
   "Handbuch_RSC_Helferplanung_742fcb04.pdf",
+  "RSC-Helferplanung-Erklaervideo-Administratoren_48a1d1ca.mp4",
+  "RSC-Helferplanung-Erklaervideo-Planungsteam_3101461c.mp4",
+  "RSC-Helferplanung-Einweisung-Planungsteam_01385146.mp4",
+  "RSC-Helferplanung-Schulung-Administratoren_f2c73550.mp4",
 ]);
 
 const PROTECTED_STORAGE_PREFIXES = ["pdf-logos/"];

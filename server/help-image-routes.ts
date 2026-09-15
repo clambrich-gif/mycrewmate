@@ -22,6 +22,14 @@ const HELP_IMAGES = {
     storageKey: "pdf-export-current_5a3894fb.png",
     filename: "hilfe-pdf-ausgabe.png",
   },
+  "video-planungsteam": {
+    storageKey: "planning-login-highlight_f7715b9e.png",
+    filename: "schulung-planungsteam.png",
+  },
+  "video-administratoren": {
+    storageKey: "admin-security-highlight_740eaaef.png",
+    filename: "schulung-administratoren.png",
+  },
 } as const;
 
 type HelpImageName = keyof typeof HELP_IMAGES;

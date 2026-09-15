@@ -8,11 +8,11 @@ import { storageGetSignedUrl } from "./storage";
 const HELP_VIDEOS = {
   admin: {
     role: "admin",
-    storageKey: "RSC-Helferplanung-Erklaervideo-Administratoren_48a1d1ca.mp4",
+    storageKey: "RSC-Helferplanung-Schulung-Administratoren_f2c73550.mp4",
   },
   planungsteam: {
     role: "user",
-    storageKey: "RSC-Helferplanung-Erklaervideo-Planungsteam_3101461c.mp4",
+    storageKey: "RSC-Helferplanung-Einweisung-Planungsteam_01385146.mp4",
   },
 } as const;
 
