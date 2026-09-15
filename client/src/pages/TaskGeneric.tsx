@@ -458,8 +458,10 @@ export default function TaskGeneric({
                   </th>
                 ))}
                 {!noContact && <th className="p-3">Verantwortlich</th>}
-                {!noStatus && <th className="p-3">Status</th>}
-                {extraField && <th className="p-3">{extraField.label}</th>}
+                {!noStatus && <th className="p-3 text-center">Status</th>}
+                {extraField && (
+                  <th className="p-3 text-center">{extraField.label}</th>
+                )}
                 <th className="w-10 p-3"></th>
               </tr>
             </thead>
@@ -533,50 +535,54 @@ export default function TaskGeneric({
                     </td>
                   )}
                   {!noStatus && (
-                    <td className="p-2">
-                      <Select
-                        value={row.status}
-                        onValueChange={value =>
-                          update.mutate({ id: row.id, status: value })
-                        }
-                      >
-                        <SelectTrigger className="h-8 w-[140px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {defaultStatus.map(option => (
-                            <SelectItem key={option.v} value={option.v}>
-                              {option.l}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <td className="p-2 text-center align-middle">
+                      <div className="flex items-center justify-center">
+                        <Select
+                          value={row.status}
+                          onValueChange={value =>
+                            update.mutate({ id: row.id, status: value })
+                          }
+                        >
+                          <SelectTrigger className="h-8 w-[140px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {defaultStatus.map(option => (
+                              <SelectItem key={option.v} value={option.v}>
+                                {option.l}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </td>
                   )}
                   {extraField && (
-                    <td className="p-2">
-                      <Select
-                        value={
-                          row[extraField.key] ?? extraField.options[0]?.v ?? ""
-                        }
-                        onValueChange={value =>
-                          update.mutate({
-                            id: row.id,
-                            [extraField.key]: value,
-                          })
-                        }
-                      >
-                        <SelectTrigger className="h-8 w-[110px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {extraField.options.map(option => (
-                            <SelectItem key={option.v} value={option.v}>
-                              {option.l}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <td className="p-2 text-center align-middle">
+                      <div className="flex items-center justify-center">
+                        <Select
+                          value={
+                            row[extraField.key] ?? extraField.options[0]?.v ?? ""
+                          }
+                          onValueChange={value =>
+                            update.mutate({
+                              id: row.id,
+                              [extraField.key]: value,
+                            })
+                          }
+                        >
+                          <SelectTrigger className="h-8 w-[110px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {extraField.options.map(option => (
+                              <SelectItem key={option.v} value={option.v}>
+                                {option.l}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </td>
                   )}
                   <td className="p-2">

@@ -63,29 +63,36 @@ function Sel({
   compactOnDesktop?: boolean;
 }) {
   return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger
-        className={cn(
-          "h-11 w-full text-base md:h-8 md:text-sm",
-          compactOnDesktop &&
-            "md:w-[52px] md:min-w-[52px] md:gap-0.5 md:px-1.5 md:text-xs md:[&_svg]:size-3",
-          valueColor(value)
-        )}
-      >
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {options.map(option => (
-          <SelectItem
-            key={option.v}
-            value={option.v}
-            className={valueColor(option.v)}
-          >
-            {option.l}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <div
+      className={cn(
+        "w-full",
+        compactOnDesktop && "flex items-center justify-center"
+      )}
+    >
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger
+          className={cn(
+            "h-11 w-full text-base md:h-8 md:text-sm",
+            compactOnDesktop &&
+              "md:w-[52px] md:min-w-[52px] md:gap-0.5 md:px-1.5 md:text-xs md:[&_svg]:size-3",
+            valueColor(value)
+          )}
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map(option => (
+            <SelectItem
+              key={option.v}
+              value={option.v}
+              className={valueColor(option.v)}
+            >
+              {option.l}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
   );
 }
 
@@ -113,7 +120,7 @@ function YesNoToggle({
   return (
     <div
       className={cn(
-        "flex min-h-11 items-center",
+        "flex min-h-11 w-full items-center",
         compactOnDesktop ? "justify-center lg:min-h-8" : "w-full"
       )}
     >
@@ -649,20 +656,26 @@ export default function Helpers() {
                 <th className="p-2">Ansprechpartner</th>
                 <th className="whitespace-nowrap p-2">Telefon Helfer</th>
                 <th className="p-2">Hinweis für PDF</th>
-                <th className="p-1 text-center text-[11px] leading-tight">
-                  Helfen?
+                <th className="p-1 text-center align-middle text-[11px] leading-tight">
+                  <span className="flex min-h-8 items-center justify-center">
+                    Helfen?
+                  </span>
                 </th>
                 {activeDays.map(day => (
                   <th
                     key={day}
-                    className="p-1 text-center text-[11px] leading-tight"
+                    className="p-1 text-center align-middle text-[11px] leading-tight"
                     title={day}
                   >
-                    {WEEKDAY_SHORT_LABELS[day]}
+                    <span className="flex min-h-8 items-center justify-center">
+                      {WEEKDAY_SHORT_LABELS[day]}
+                    </span>
                   </th>
                 ))}
-                <th className="p-1 text-center text-[11px] leading-tight">
-                  Bestätigt?
+                <th className="p-1 text-center align-middle text-[11px] leading-tight">
+                  <span className="flex min-h-8 items-center justify-center">
+                    Bestätigt?
+                  </span>
                 </th>
                 <th className="p-2 text-center">Aktionen</th>
               </tr>
@@ -758,7 +771,7 @@ export default function Helpers() {
                       onCommit={note => update.mutate({ id: helper.id, note })}
                     />
                   </td>
-                  <td className="p-1 text-center">
+                  <td className="p-1 text-center align-middle">
                     <YesNoToggle
                       value={helper.willHelp}
                       compactOnDesktop
@@ -775,7 +788,7 @@ export default function Helpers() {
                   {activeDays.map(day => {
                     const field = WEEKDAY_AVAILABILITY_FIELDS[day];
                     return (
-                      <td key={day} className="p-1 text-center">
+                      <td key={day} className="p-1 text-center align-middle">
                         <Sel
                           value={helper[field]}
                           options={YNV}
@@ -787,7 +800,7 @@ export default function Helpers() {
                       </td>
                     );
                   })}
-                  <td className="p-1 text-center">
+                  <td className="p-1 text-center align-middle">
                     <YesNoToggle
                       value={helper.confirmed}
                       compactOnDesktop

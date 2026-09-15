@@ -19,6 +19,34 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain("z-50 w-[min(20rem,calc(100vw-1.5rem))]");
   });
 
+  it("zentriert Desktop-Status- und Tagessteuerungen unter ihren Tabellenüberschriften", () => {
+    const helpers = source("client/src/pages/Helpers.tsx");
+    const taskList = source("client/src/pages/TaskList.tsx");
+    const taskGeneric = source("client/src/pages/TaskGeneric.tsx");
+
+    expect(helpers).toContain(
+      'compactOnDesktop && "flex items-center justify-center"'
+    );
+    expect(helpers).toContain('"flex min-h-11 w-full items-center"');
+    expect(helpers).toContain(
+      'className="p-1 text-center align-middle text-[11px] leading-tight"'
+    );
+    expect(helpers).toContain(
+      'className="flex min-h-8 items-center justify-center"'
+    );
+    expect(helpers).toContain('className="p-1 text-center align-middle"');
+    expect(taskList).toContain('<th className="p-3 text-center">Status</th>');
+    expect(taskList).toContain(
+      '<div className="flex items-center justify-center">'
+    );
+    expect(taskGeneric).toContain(
+      '{!noStatus && <th className="p-3 text-center">Status</th>}'
+    );
+    expect(taskGeneric).toContain(
+      '<th className="p-3 text-center">{extraField.label}</th>'
+    );
+  });
+
   it("zeigt rollengetrennte Online-Sitzungen im Desktopkopf und Mobilmenü", () => {
     const layout = source("client/src/components/Layout.tsx");
     const presence = source("client/src/components/OnlinePresenceBadge.tsx");

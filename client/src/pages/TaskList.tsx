@@ -401,7 +401,7 @@ export default function TaskList({
               <tr className="text-left">
                 <th className="p-3">Aufgabe</th>
                 <th className="p-3">Verantwortlich</th>
-                <th className="p-3">Status</th>
+                <th className="p-3 text-center">Status</th>
                 {isPrep && <th className="p-3">Zu erledigen bis</th>}
                 <th className="w-10 p-3"></th>
               </tr>
@@ -458,22 +458,24 @@ export default function TaskList({
                       </SelectContent>
                     </Select>
                   </td>
-                  <td className="p-2">
-                    <Select
-                      value={row.status}
-                      onValueChange={value =>
-                        update.mutate({ id: row.id, status: value })
-                      }
-                    >
-                      <SelectTrigger className="h-8 w-[140px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="offen">offen</SelectItem>
-                        <SelectItem value="inArbeit">in Arbeit</SelectItem>
-                        <SelectItem value="erledigt">erledigt</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <td className="p-2 text-center align-middle">
+                    <div className="flex items-center justify-center">
+                      <Select
+                        value={row.status}
+                        onValueChange={value =>
+                          update.mutate({ id: row.id, status: value })
+                        }
+                      >
+                        <SelectTrigger className="h-8 w-[140px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="offen">offen</SelectItem>
+                          <SelectItem value="inArbeit">in Arbeit</SelectItem>
+                          <SelectItem value="erledigt">erledigt</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </td>
                   {isPrep && (
                     <td className="p-2">
