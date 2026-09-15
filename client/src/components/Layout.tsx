@@ -45,15 +45,18 @@ import { WEEKDAYS, type Weekday } from "@shared/weekdays";
 import {
   Bike,
   CalendarRange,
+  Download,
   KeyRound,
   LogOut,
   Menu,
   Pencil,
   Plus,
   Settings2,
+  Share,
   ShieldCheck,
   Trash2,
   TriangleAlert,
+  X,
 } from "lucide-react";
 import {
   FormEvent,
@@ -69,6 +72,26 @@ import { Link, useLocation } from "wouter";
 
 const RSC_LOGO = "/api/brand/rsc-logo";
 const CHAT_SNAPSHOT_POLL_MS = 5_000;
+const PWA_HINT_DISMISSED_KEY = "rsc-pwa-install-hint-dismissed";
+
+type DeferredInstallPrompt = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+};
+
+function isIosDevice() {
+  if (typeof navigator === "undefined") return false;
+  return /iPad|iPhone|iPod/.test(navigator.userAgent);
+}
+
+function isStandalonePwa() {
+  if (typeof window === "undefined") return false;
+  const navigatorWithStandalone = navigator as Navigator & { standalone?: boolean };
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    navigatorWithStandalone.standalone === true
+  );
+}
 
 type TeamNotesSnapshot = {
   notes: TeamNoteItem[];
@@ -141,6 +164,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
     id: number;
     name: string;
   } | null>(null);
+  const [deferredInstallPrompt, setDeferredInstallPrompt] =
+    useState<DeferredInstallPrompt | null>(null);
+  const [showPwaInstallHint, setShowPwaInstallHint] = useState(false);
+  const [pwaInstalled, setPwaInstalled] = useState(false);
   const [chatState, setChatState] = useState<LiveChatWidgetState>("closed");
   const [chatSnapshot, setChatSnapshot] = useState<TeamNotesSnapshot>({
     notes: [],
@@ -158,6 +185,71 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const loginLockAlertRef = useRef<HTMLDivElement>(null);
   const loginErrorRef = useRef<HTMLDivElement>(null);
   const utils = trpc.useUtils();
+
+  useEffect(() => {
+    const displayMode = window.matchMedia("(display-mode: standalone)");
+    const canShowInstallHint = () =>
+      window.matchMedia("(max-width: 1024px), (hover: none) and (pointer: coarse)")
+        .matches;
+    const wasDismissed = () => {
+      try {
+        return sessionStorage.getItem(PWA_HINT_DISMISSED_KEY) === "true";
+      } catch {
+        return false;
+      }
+    };
+    const refreshInstallationState = () => {
+      const installed = isStandalonePwa();
+      setPwaInstalled(installed);
+      if (installed) {
+        setShowPwaInstallHint(false);
+      } else if (canShowInstallHint() && isIosDevice() && !wasDismissed()) {
+        setShowPwaInstallHint(true);
+      }
+    };
+    const handleBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setDeferredInstallPrompt(event as DeferredInstallPrompt);
+      if (canShowInstallHint() && !isStandalonePwa() && !wasDismissed()) {
+        setShowPwaInstallHint(true);
+      }
+    };
+    const handleInstalled = () => {
+      setPwaInstalled(true);
+      setDeferredInstallPrompt(null);
+      setShowPwaInstallHint(false);
+    };
+
+    refreshInstallationState();
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("appinstalled", handleInstalled);
+    displayMode.addEventListener("change", refreshInstallationState);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", handleInstalled);
+      displayMode.removeEventListener("change", refreshInstallationState);
+    };
+  }, []);
+
+  const dismissPwaInstallHint = useCallback(() => {
+    try {
+      sessionStorage.setItem(PWA_HINT_DISMISSED_KEY, "true");
+    } catch {
+      // Der Hinweis darf auch bei deaktiviertem Session Storage geschlossen werden.
+    }
+    setShowPwaInstallHint(false);
+  }, []);
+
+  const installPwa = useCallback(async () => {
+    if (!deferredInstallPrompt) return;
+    await deferredInstallPrompt.prompt();
+    const choice = await deferredInstallPrompt.userChoice;
+    setDeferredInstallPrompt(null);
+    if (choice.outcome === "accepted") {
+      setPwaInstalled(true);
+      setShowPwaInstallHint(false);
+    }
+  }, [deferredInstallPrompt]);
 
   const passwordStatus = trpc.auth.passwordStatus.useQuery(undefined, {
     retry: false,
@@ -892,6 +984,61 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </Label>
               <LazyProjectStorageControls />
             </div>
+            {showPwaInstallHint && !pwaInstalled && (
+              <section
+                className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-slate-900 shadow-sm"
+                aria-label="RSC Helferplanung als App installieren"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-white text-blue-700 shadow-sm ring-1 ring-blue-100">
+                      <Download className="h-4 w-4" aria-hidden="true" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold">
+                        App zum Startbildschirm hinzufügen
+                      </p>
+                      <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
+                        Öffnet die Helferplanung künftig ohne Browserleiste.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-white hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                    onClick={dismissPwaInstallHint}
+                    aria-label="Installationshinweis schließen"
+                  >
+                    <X className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                </div>
+                {deferredInstallPrompt ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="mt-3 min-h-11 w-full border-blue-300 bg-white text-blue-800 hover:bg-blue-100"
+                    onClick={() => void installPwa()}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    App installieren
+                  </Button>
+                ) : (
+                  <div className="mt-2.5 space-y-1 text-xs leading-relaxed text-slate-700">
+                    <p className="flex items-start gap-1.5">
+                      <Share className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-700" />
+                      <span>
+                        <strong>iPhone/iPad:</strong> In Safari <em>Teilen</em> →
+                        „Zum Home-Bildschirm“.
+                      </span>
+                    </p>
+                    <p>
+                      <strong>Android:</strong> Browser-Menü öffnen und „App
+                      installieren“ bzw. „Zum Startbildschirm hinzufügen“ wählen.
+                    </p>
+                  </div>
+                )}
+              </section>
+            )}
           </div>
           <nav className="flex-1 space-y-1 overflow-y-auto p-2">
             {NAV.filter(item => !item.adminOnly || user?.role === "admin").map(

@@ -80,6 +80,44 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(viewportGuard).toContain("isMobileOrTouchViewport");
   });
 
+  it("richtet die Helferplanung als installierbare PWA mit mobilem Installationshinweis ein", () => {
+    const html = source("client/index.html");
+    const main = source("client/src/main.tsx");
+    const layout = source("client/src/components/Layout.tsx");
+    const serviceWorker = source("client/public/service-worker.js");
+    const manifest = JSON.parse(source("client/public/manifest.json"));
+
+    expect(manifest.name).toBe("RSC Helferplanung");
+    expect(manifest.short_name).toBe("Helferplanung");
+    expect(manifest.display).toBe("standalone");
+    expect(manifest.theme_color).toBe("#1e3a5f");
+    expect(manifest.background_color).toBe("#f8fafc");
+    expect(manifest.icons).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          src: "/icons/rsc-helferplanung-192.png",
+          sizes: "192x192",
+        }),
+        expect.objectContaining({
+          src: "/icons/rsc-helferplanung-maskable-512.png",
+          sizes: "512x512",
+          purpose: "maskable",
+        }),
+      ])
+    );
+    expect(html).toContain('<link rel="manifest" href="/manifest.json" />');
+    expect(html).toContain('name="apple-mobile-web-app-capable" content="yes"');
+    expect(html).toContain('/icons/rsc-helferplanung-192.png');
+    expect(main).toContain('navigator.serviceWorker.register("/service-worker.js")');
+    expect(serviceWorker).toContain('const STATIC_CACHE = "rsc-helferplanung-pwa-v1"');
+    expect(serviceWorker).not.toContain("/api/");
+    expect(layout).toContain("beforeinstallprompt");
+    expect(layout).toContain("appinstalled");
+    expect(layout).toContain("App zum Startbildschirm hinzufügen");
+    expect(layout).toContain("iPhone/iPad:");
+    expect(layout).toContain("Android:");
+  });
+
   it("integriert das schwebende Live-Notizen & Chat-Widget plattformübergreifend", () => {
     const layout = source("client/src/components/Layout.tsx");
     const widget = source("client/src/components/LiveChatWidget.tsx");

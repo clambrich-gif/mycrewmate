@@ -14,6 +14,14 @@ const queryClient = new QueryClient();
 
 installMobileFocusViewportGuard();
 
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/service-worker.js").catch(() => {
+      // Die Anwendung bleibt auch ohne Offline-Cache vollständig nutzbar.
+    });
+  });
+}
+
 const redirectToLoginIfUnauthorized = (error: unknown) => {
   if (!(error instanceof TRPCClientError)) return;
   if (typeof window === "undefined") return;
