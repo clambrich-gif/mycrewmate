@@ -7,6 +7,7 @@ import { registerBrandAssetRoutes } from "../brand-asset-routes";
 import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
+import { registerHelpImageRoutes } from "../help-image-routes";
 import { registerHelpVideoRoutes } from "../help-video-routes";
 import { registerEventPdfImageRoutes } from "../event-pdf-image-routes";
 import { handleTeamNotesCleanupHeartbeat } from "../chat-cleanup-heartbeat";
@@ -39,6 +40,7 @@ async function startServer() {
   app.use(express.json({ limit: "25mb" }));
   app.use(express.urlencoded({ limit: "25mb", extended: true }));
   registerBrandAssetRoutes(app);
+  registerHelpImageRoutes(app);
   registerHelpVideoRoutes(app);
   registerEventPdfImageRoutes(app);
   registerStorageProxy(app);

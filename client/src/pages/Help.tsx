@@ -72,7 +72,7 @@ const SECTIONS: HelpSection[] = [
       "Den Projektstand regelmäßig sichern und nach dem Event offene Aufgaben, Material, Finanzen und Nachbereitung abschließen.",
     ],
     image: {
-      src: "/manus-storage/dashboard-current_8a026d64.png",
+      src: "/api/help/images/dashboard",
       alt: "Aktuelles Dashboard der RSC Helferplanung für MyEifelRide 2027",
       caption:
         "Dashboard mit Veranstaltungswahl, drei Kennzahlenbereichen und direktem Zugang zu allen Arbeitsmodulen.",
@@ -107,7 +107,7 @@ const SECTIONS: HelpSection[] = [
       "Nach Versand der Einteilung die verbindliche Rückmeldung im Schalter „Bestätigt?“ dokumentieren.",
     ],
     image: {
-      src: "/manus-storage/helpers-mobile-current_12ee73cd.png",
+      src: "/api/help/images/helpers",
       alt: "Mobile Helferkartei mit Ansprechpartner und PDF-Hinweis",
       caption:
         "Mobile Helferkarte: Ansprechpartner, Kontaktfelder und der PDF-Hinweis bleiben auch auf schmalen Bildschirmen gut bedienbar.",
@@ -128,7 +128,7 @@ const SECTIONS: HelpSection[] = [
       "Status OFFEN, KNAPP oder OK sowie orange Doppelbelegungen und rote Ausfälle vor Beginn jeder Schicht prüfen.",
     ],
     image: {
-      src: "/manus-storage/plan-current_62afa870.png",
+      src: "/api/help/images/plan",
       alt: "Einsatzplan mit Schichten und Bereichsansprechpartnern",
       caption:
         "Einsatzplan mit Bereichsansprechpartnern, Filtern, Schichtzeilen und den Statushinweisen zur Belegung.",
@@ -148,7 +148,7 @@ const SECTIONS: HelpSection[] = [
       "Für Ruhephasen den sichtbaren Stummschalter nutzen. Der Verlauf wird danach automatisch zeitbegrenzt bereinigt.",
     ],
     image: {
-      src: "/manus-storage/chat-current_1677525e.png",
+      src: "/api/help/images/chat",
       alt: "Geöffnetes Live-Chat-Widget der RSC Helferplanung",
       caption:
         "Geöffnetes Notiz-Widget mit Namenszuordnung vor der ersten Nachricht und zentralen Steuerungen im Kopfbereich.",
@@ -193,7 +193,7 @@ const SECTIONS: HelpSection[] = [
       "Die erzeugte Einzel-PDF über die Freigabefunktion des Geräts per Messenger, E-Mail oder Ausdruck weitergeben und anschließend die Rückmeldung dokumentieren.",
     ],
     image: {
-      src: "/manus-storage/pdf-export-current_5a3894fb.png",
+      src: "/api/help/images/pdf",
       alt: "Aktuelle PDF-Ausgabe mit Helferübersicht und Einsatzplanfiltern",
       caption:
         "PDF-Ausgabe mit Sammel-Download der Helfereinteilungen und Filtern für Blanko- oder gefüllte Einsatzpläne.",

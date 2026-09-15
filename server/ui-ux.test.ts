@@ -672,11 +672,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(help).toContain("PDF-Ausgabe und Versand");
     expect(help).toContain("PDF-Handbuch herunterladen");
     expect(help).toContain('placeholder="A–Z-Suche: z. B. Helfer, PDF, Bestätigung oder Excel"');
-    expect(help).toContain("dashboard-current_8a026d64.png");
-    expect(help).toContain("helpers-mobile-current_12ee73cd.png");
-    expect(help).toContain("plan-current_62afa870.png");
-    expect(help).toContain("chat-current_1677525e.png");
-    expect(help).toContain("pdf-export-current_5a3894fb.png");
+    expect(help).toContain('src: "/api/help/images/dashboard"');
+    expect(help).toContain('src: "/api/help/images/helpers"');
+    expect(help).toContain('src: "/api/help/images/plan"');
+    expect(help).toContain('src: "/api/help/images/chat"');
+    expect(help).toContain('src: "/api/help/images/pdf"');
+    expect(help).not.toContain("dashboard-current_8a026d64.png");
   });
 
   it("filtert Hilfekapitel über zugängliche Schnellfilter nach Rolle", () => {
