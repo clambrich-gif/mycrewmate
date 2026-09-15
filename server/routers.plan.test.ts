@@ -333,12 +333,12 @@ describe("Planungs-API", () => {
         const result = await appRouter
           .createCaller(callerContext)
           .help.guidePdf();
-        expect(result.filename).toBe("RSC-Helferplanung-Anleitung.pdf");
+        expect(result.filename).toBe("Handbuch_RSC_Helferplanung.pdf");
         expect(result.mimeType).toBe("application/pdf");
         expect(Buffer.from(result.base64, "base64")).toEqual(pdf);
       }
       expect(storageMocks.storageGetSignedUrl).toHaveBeenCalledWith(
-        "RSC-Helferplanung-Anleitung_2a9c73bd.pdf"
+        "Handbuch_RSC_Helferplanung_742fcb04.pdf"
       );
     } finally {
       fetchMock.mockRestore();

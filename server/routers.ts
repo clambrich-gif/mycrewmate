@@ -77,8 +77,8 @@ import {
   sessionPresenceKey,
 } from "./session-presence";
 
-const GUIDE_PDF_KEY = "RSC-Helferplanung-Anleitung_2a9c73bd.pdf";
-const GUIDE_PDF_FILENAME = "RSC-Helferplanung-Anleitung.pdf";
+const GUIDE_PDF_KEY = "Handbuch_RSC_Helferplanung_742fcb04.pdf";
+const GUIDE_PDF_FILENAME = "Handbuch_RSC_Helferplanung.pdf";
 const GUIDE_PDF_MAX_BYTES = 5_000_000;
 
 async function safelyRecordPresence(

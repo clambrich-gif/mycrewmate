@@ -48,148 +48,165 @@ const SECTIONS: HelpSection[] = [
     title: "Schnellstart und Orientierung",
     role: "alle",
     keywords:
-      "anmelden start dashboard jahr veranstaltung navigation mobil logo",
+      "anmelden start dashboard jahr veranstaltung navigation mobil logo pwa app speichern smartphone sechs schritte",
     summary:
-      "Nach der Anmeldung wählen Sie links zuerst Veranstaltungsjahr und Veranstaltung. Alle Listen, Auswertungen und Exporte beziehen sich ausschließlich auf diese Auswahl. Auf dem Smartphone öffnen Sie dieselbe Navigation über das Menüsymbol oben links.",
-    image: {
-      src: "/manus-storage/dashboard_78912d62.png",
-      alt: "Dashboard der RSC Helferplanung",
-      caption:
-        "Dashboard mit Veranstaltungswahl, Kennzahlen, festem RSC-Logo und Hilfe-Reiter.",
-    },
-  },
-  {
-    id: "helferablauf",
-    title: "Helfereinteilung in sechs Schritten",
-    role: "alle",
-    keywords:
-      "ablauf helfer eintragen kontakt freitag samstag sonntag bemerkung warten einsatzplan pdf senden bestätigen ja nein",
-    summary:
-      "Dieser Ablauf ist die verbindliche Reihenfolge für die Betreuung eines Helfers. Das Planungsteam übernimmt vor allem Erfassung und Rückmeldung. Administratoren bauen zusätzlich den Einsatzplan und teilen Helfer ein.",
+      "Nach der Anmeldung wählen Sie oben links zuerst Veranstaltungsjahr und Veranstaltung. Diese Auswahl ist der Planungsraum: Listen, Kennzahlen, Exporte und Imports beziehen sich immer ausschließlich auf das ausgewählte Event. Auf dem Smartphone öffnen Sie die Navigation über das Menüsymbol; über „Als App auf Handy speichern“ lässt sich die Helferplanung als Progressive Web App auf den Startbildschirm legen.",
     steps: [
-      "Helfer in der Helferübersicht eintragen.",
-      "Mit dem Helfer Kontakt aufnehmen und die Verfügbarkeit für alle aktiven Veranstaltungstage sowie sonstige Bemerkungen klären und erfassen.",
-      "Warten, bis der Einsatzplan durch das Administratorenteam fertiggestellt ist.",
-      "Die persönliche PDF-Helfereinteilung erzeugen und dem Helfer übergeben oder zusenden.",
-      "Die Rückmeldung des Helfers abwarten und prüfen, ob die Einteilung in Ordnung ist.",
-      "In der Helferübersicht das Feld „Bestätigt?“ abschließend auf Ja oder Nein setzen.",
+      "Jahr und Veranstaltung kontrollieren, bevor Daten gelesen, geändert, importiert oder exportiert werden.",
+      "Ansprechpartner anlegen und ihre Rufnummern vollständig pflegen.",
+      "Helfer erfassen, Ansprechpartner zuordnen und die Verfügbarkeiten für jeden aktiven Veranstaltungstag eintragen.",
+      "Schichten, Bereiche, Zeiten und Helferbedarf im Einsatzplan vorbereiten und die Besetzung prüfen.",
+      "Persönliche Einteilungen als PDF ausgeben, verteilen und Rückmeldungen im Feld „Bestätigt?“ dokumentieren.",
+      "Den Projektstand regelmäßig sichern und nach dem Event offene Aufgaben, Material, Finanzen und Nachbereitung abschließen.",
     ],
     image: {
-      src: "/manus-storage/helpers_02bc01e0.png",
-      alt: "Helferübersicht mit Verfügbarkeit und Bestätigung",
+      src: "/manus-storage/dashboard-current_8a026d64.png",
+      alt: "Aktuelles Dashboard der RSC Helferplanung für MyEifelRide 2027",
       caption:
-        "Helferübersicht: Ansprechpartner, Verfügbarkeit, Bemerkung und Bestätigung werden an einer Stelle gepflegt.",
-    },
-  },
-  {
-    id: "einsatzplan",
-    title: "Einsatzplan aufbauen und Helfer einteilen",
-    role: "admin",
-    keywords:
-      "einsatzplan schicht neue schicht bereich aufgabe zeit bedarf bemerkung zuweisen doppelbelegung ausfall",
-    summary:
-      "Nur Administratoren legen Schichten an, pflegen Bereichsansprechpartner und weisen Helfer zu. Planungsteam-Mitglieder können den Plan ansehen und filtern, aber nicht verändern. Für das Planungsteam ist der Bearbeitungsteil dieses Kapitels daher nicht erforderlich.",
-    steps: [
-      "Über „Neue Schicht“ einen Wochentag von Montag bis Sonntag sowie Bereich, Aufgabe, Zeit, Bedarf und Bemerkung erfassen.",
-      "Jedem Einsatzbereich einen Ansprechpartner zuordnen.",
-      "Nur aktive Helfer auswählen. Für jeden aktiven Veranstaltungstag gilt die in der Helferkartei gepflegte Tagesverfügbarkeit.",
-      "Gelb markierte Namen im Auswahlmenü sind am selben Tag zur gewählten Einsatzzeit bereits in einer anderen Schicht eingeteilt. Die Auswahl bleibt bewusst möglich.",
-      "Status OFFEN, KNAPP oder OK sowie Warnungen zu Ausfällen und Doppelbelegungen kontrollieren.",
-    ],
-    image: {
-      src: "/manus-storage/plan_69081e27.png",
-      alt: "Einsatzplan mit Schichten und Helferzuweisungen",
-      caption:
-        "Einsatzplan: Administratoren bearbeiten Schichten und Zuweisungen; das Planungsteam liest und filtert.",
-    },
-  },
-  {
-    id: "pdf",
-    title: "Persönliche Helfer-PDF erzeugen und versenden",
-    role: "alle",
-    keywords:
-      "pdf aufgabenübersicht einzelner helfer zip alle drucken senden logo rufnummer ansprechpartner",
-    summary:
-      "Die persönliche PDF enthält die Aufgaben, Zeiten, Mithelfer, Bemerkungen sowie Name und Rufnummer des Ansprechpartners. Sie kann direkt beim Helfer einzeln oder im Bereich PDF-Ausgabe gesammelt erzeugt werden.",
-    steps: [
-      "Vor der Ausgabe kontrollieren, ob Helfer, Ansprechpartner und Einsatzzuweisungen vollständig sind.",
-      "In der Helferübersicht das PDF-Symbol beim gewünschten Helfer wählen oder unter PDF-Ausgabe alle PDFs als ZIP erzeugen.",
-      "PDF an den Helfer senden und erst nach dessen Rückmeldung den Bestätigungsstatus pflegen.",
-    ],
-    image: {
-      src: "/manus-storage/pdf_ada1281e.png",
-      alt: "Seite PDF-Ausgabe",
-      caption:
-        "PDF-Ausgabe für einzelne Helfer, alle Helfer und gefilterte Einsatzpläne.",
+        "Dashboard mit Veranstaltungswahl, drei Kennzahlenbereichen und direktem Zugang zu allen Arbeitsmodulen.",
     },
   },
   {
     id: "rollen",
-    title: "Rollen: Planungsteam und Administratoren",
+    title: "Rollen und Passwortschutz",
     role: "alle",
     keywords:
-      "rollen rechte berechtigung planungsteam admin administrator zugriff irrelevant verantwortlich",
+      "rollen rechte berechtigung planungsteam administrator admin passwort ändern re-authentifizierung altes passwort zugangsschutz",
     summary:
-      "Gelb markierte Anleitungen betreffen das Planungsteam. Grün markierte Anleitungen sind ausschließlich für Administratoren relevant. Kapitel mit blauem Hinweis gelten für beide Rollen.",
+      "Die Rollen sind bewusst getrennt. Das Planungsteam arbeitet im geschützten Lesemodus für die Gesamtstruktur und pflegt Helfer- sowie Kuchendaten. Administratoren haben den Vollzugriff auf Veranstaltungen, Schichten, Importe, Wiederherstellungen, Exporte, Zugänge und sensible Löschungen. Ein Administratorpasswort kann nur nach Eingabe des aktuellen Administratorpassworts geändert werden; diese erneute Bestätigung schützt vor unbeabsichtigten oder unbefugten Änderungen.",
     steps: [
-      "Planungsteam: Ansprechpartner und Helfer pflegen, Verfügbarkeiten und Bestätigungen erfassen, operative Listen bearbeiten, PDFs erzeugen, Projektdateien speichern, Excel-Übersichten exportieren sowie den Einsatzplan ansehen und filtern.",
-      "Administratoren: zusätzlich Veranstaltungen verwalten, Einsatzplan bearbeiten, Helfer zuweisen, Projektdateien laden, Excel-Module importieren, Zugänge und PDF-Konfiguration verwalten sowie sensible Lösch- und Resetvorgänge ausführen.",
-      "Für das Planungsteam irrelevant: Schichten verändern, Helfer im Einsatzplan zuweisen, Veranstaltungen löschen, Passwörter verwalten und Löschprotokolle administrieren.",
+      "Planungsteam: Helfer- und Kuchendaten pflegen, Verfügbarkeiten und Rückmeldungen erfassen sowie Einteilungen und Hilfen lesen.",
+      "Administratoren: zusätzlich Schichten und Zuweisungen bearbeiten, Projekte laden, Excel-Importe freigeben, Veranstaltungen konfigurieren und Zugangsschutz verwalten.",
+      "Passwörter und Wiederherstellungen niemals in Gruppen teilen. Bei einem Passwortwechsel ist immer das bisherige Administratorpasswort erforderlich.",
+    ],
+  },
+  {
+    id: "helfer",
+    title: "Helferkartei und Verfügbarkeiten",
+    role: "planung",
+    keywords:
+      "helfer helferkartei verfügbar helfer helfen bestätigt ansprechpartner telefon hinweis pdf ampelsystem grün rot gelb vielleicht mobil teilen whatsapp share einteilung",
+    summary:
+      "In der Helferkartei werden Name, Ansprechpartner, Rufnummer, Hinweis für PDF und Tagesverfügbarkeiten zusammengeführt. Das Ampelsystem bedeutet: Grün/Ja ist verfügbar oder bestätigt, Rot/Nein ist nicht verfügbar oder nicht bestätigt, Gelb/? ist unklar und verlangt eine Rückfrage. Der PDF-Hinweis erscheint in der persönlichen Einteilung. Für die Übermittlung kann die erzeugte Einzel-PDF anschließend über das Teilen-Menü des Geräts, zum Beispiel per WhatsApp oder E-Mail, weitergegeben werden.",
+    steps: [
+      "Helfer anlegen oder per aktueller Excel-Datei importieren und einen Ansprechpartner auswählen.",
+      "Für jeden aktiven Veranstaltungstag „Ja“, „Nein“ oder „?“ setzen. Nur die zur Veranstaltung aktivierten Tage werden angezeigt.",
+      "Telefonnummer und Hinweis für PDF eintragen; auf Mobilgeräten liegen die Felder übersichtlich in einer zweispaltigen Kartenansicht.",
+      "Nach Versand der Einteilung die verbindliche Rückmeldung im Schalter „Bestätigt?“ dokumentieren.",
     ],
     image: {
-      src: "/manus-storage/roles_c966c02d.png",
-      alt: "Berechtigungsmatrix für Planungsteam und Administratoren",
+      src: "/manus-storage/helpers-mobile-current_12ee73cd.png",
+      alt: "Mobile Helferkartei mit Ansprechpartner und PDF-Hinweis",
       caption:
-        "Die Berechtigungsmatrix zeigt jederzeit, welche Rolle einen Bereich nur lesen oder vollständig bearbeiten darf.",
+        "Mobile Helferkarte: Ansprechpartner, Kontaktfelder und der PDF-Hinweis bleiben auch auf schmalen Bildschirmen gut bedienbar.",
     },
   },
   {
-    id: "excel",
-    title: "Projektdatei speichern/laden und Excel-Module importieren",
+    id: "einsatzplan",
+    title: "Einsatzplan und intelligente Belegung",
+    role: "admin",
+    keywords:
+      "einsatzplan schicht neue schicht bereich aufgabe zeit bedarf bemerkung zuweisen ansprechpartner doppelt orange ausfall rot filter tag",
+    summary:
+      "Administratoren erstellen Schichten mit Tag, Bereich, Aufgabe, Beginn, Ende, Bedarf und Bemerkung. Jeder Bereich kann einen Ansprechpartner erhalten. Die Anwendung prüft Belegung und Verfügbarkeit: Orange markiert mögliche Doppelbelegungen, Rot kennzeichnet Ausfälle. Beide Hinweise bleiben sichtbar, damit die Einsatzleitung bewusst entscheiden und korrigieren kann. Das Planungsteam kann den Plan lesen und nach Tag, Bereich, Status oder Helfern filtern.",
+    steps: [
+      "Neue Schicht erfassen und nur einen für die Veranstaltung aktiven Wochentag auswählen.",
+      "Bereichsansprechpartner, Zeitfenster, Helferbedarf und Bemerkung festlegen.",
+      "Helfer zuordnen; gelb markierte Namen im Auswahlmenü sind zum betreffenden Zeitpunkt bereits anderweitig eingeteilt, bleiben aber bewusst wählbar.",
+      "Status OFFEN, KNAPP oder OK sowie orange Doppelbelegungen und rote Ausfälle vor Beginn jeder Schicht prüfen.",
+    ],
+    image: {
+      src: "/manus-storage/plan-current_62afa870.png",
+      alt: "Einsatzplan mit Schichten und Bereichsansprechpartnern",
+      caption:
+        "Einsatzplan mit Bereichsansprechpartnern, Filtern, Schichtzeilen und den Statushinweisen zur Belegung.",
+    },
+  },
+  {
+    id: "chat",
+    title: "Live-Chat und Notiz-Widget",
     role: "alle",
     keywords:
-      "json projektdatei speichern laden excel import export modul wiederherstellung prüfung vorschau filter löschung neue helfer schicht zuordnung dublette planungsteam administrator protokoll",
+      "chat notiz nachricht dringend wichtig warnton pulsieren tippt gerade 24 stunden ansprechpartner ungelesen",
     summary:
-      "Die globalen Schaltflächen „Speichern“ und „Laden“ liegen links unter der Veranstaltungsauswahl. „Speichern“ erzeugt eine kompakte JSON-Projektdatei mit dem vollständigen Stand der gewählten Veranstaltung; beide Rollen dürfen sie sichern. Nur Administratoren dürfen eine Projektdatei nach Vorschau und Passwortfreigabe laden. Beim Laden werden die aktuellen Planungsdaten der Veranstaltung innerhalb einer Transaktion vollständig zurückgesetzt und anschließend aus der Datei neu aufgebaut. Excel dient nur noch der Übersicht: Die Gesamtdatei wird unter „Excel-Projektübersicht“ erzeugt. Ein Import erfolgt im jeweiligen Bereich über „Excel importieren“ aus einer aktuellen .xlsx-Datei und verändert ausschließlich dieses Modul samt zwingender direkter Bezüge. Die Vorschau lässt sich nach neuen Daten, Änderungen oder Löschungen filtern; der Filter ändert nur die Anzeige, bestätigt werden immer alle erkannten Änderungen des Bereichs. Bei reinen Umbenennungen muss die ausgeblendete ID-Spalte des Projekt-Exports erhalten bleiben. Doppelbelegungen und ungültige Dateien werden blockiert und jeder Ladevorgang wird protokolliert.",
-  },
-  {
-    id: "veranstaltungen",
-    title: "Jahre und Veranstaltungen verwalten",
-    role: "admin",
-    keywords:
-      "jahr veranstaltung anlegen umbenennen löschen plus regler übernehmen vorjahr",
-    summary:
-      "Administratoren können pro Jahr mehrere Veranstaltungen anlegen und dabei die aktiven Wochentage Montag bis Sonntag auswählen. Diese Auswahl steuert Helferverfügbarkeiten, Schichtdialoge und Tagesfilter. Eine Planübernahme wird vollständig abgebrochen, wenn die Quelle Schichten an nicht aktiven Zieltagen enthält. Über das Regler-Symbol lassen sich Veranstaltungen umbenennen oder nach Passwortbestätigung löschen. Die letzte Veranstaltung eines Jahres bleibt geschützt. Für das Planungsteam ist dieses Kapitel nicht erforderlich; es wählt nur Jahr und Veranstaltung aus.",
-  },
-  {
-    id: "sicherheit",
-    title: "Löschen, Rückgängig und Zugangsschutz",
-    role: "admin",
-    keywords:
-      "löschen zurücksetzen rückgängig protokoll passwort zugang sicherheit adminpasswort",
-    summary:
-      "Sensible Löschungen, Resets, Passwörter und Protokollfunktionen sind administrativ geschützt. Einzelne protokollierte Helfer- und Kuchenlöschungen können im Bereich Rollen & Protokoll wiederhergestellt werden.",
+      "Das schwebende Notiz-Widget rechts unten ist auf allen Seiten verfügbar. Nachrichten werden im kurzen Intervall aktualisiert. Wichtige Durchsagen erhalten eine Signalfarbe und können bei aktivem Ton einen Warnton sowie ein pulsierendes Symbol auslösen. Der Hinweis „… tippt gerade“ zeigt eine aktuelle Eingabe anderer Teilnehmer. Neue Nachrichten werden höchstens 24 Stunden aufbewahrt; Administratoren können den Verlauf für die gewählte Veranstaltung bereinigen.",
     steps: [
-      "Beim passwortbestätigten Löschen eines Ansprechpartners wird dessen eigener gleichnamiger Helfereintrag automatisch mitgelöscht. Andere von dieser Person betreute Helfer bleiben bestehen und werden nur ohne Ansprechpartner weitergeführt.",
+      "Widget öffnen und beim ersten Einsatz den eigenen Ansprechpartner oder einen freien Namen auswählen.",
+      "Nachricht schreiben; bei dringenden Informationen vor dem Senden „Wichtig“ aktivieren.",
+      "Für Ruhephasen den sichtbaren Stummschalter nutzen. Der Verlauf wird danach automatisch zeitbegrenzt bereinigt.",
     ],
+    image: {
+      src: "/manus-storage/chat-current_1677525e.png",
+      alt: "Geöffnetes Live-Chat-Widget der RSC Helferplanung",
+      caption:
+        "Geöffnetes Notiz-Widget mit Namenszuordnung vor der ersten Nachricht und zentralen Steuerungen im Kopfbereich.",
+    },
+  },
+  {
+    id: "fachbereiche",
+    title: "Fachbereiche und Aufgaben",
+    role: "alle",
+    keywords:
+      "vorbereitung nachbereitung material marketing genehmigungen finanzen kuchen aufgaben verantwortlich status offen in arbeit erledigt",
+    summary:
+      "Vorbereitung und Nachbereitung strukturieren die To-dos vor und nach der Veranstaltung. Material hält Artikel, Mengen und Bestellstatus fest. Marketing bündelt Kommunikationsmaßnahmen, Genehmigungen verwalten Anträge und Fristen, Finanzen zeigen Einnahmen und Ausgaben, und Kuchen dokumentiert Spender sowie Abgabezeiten. Die Statuswerte „offen“, „in Arbeit“ und „erledigt“ helfen, den Arbeitsstand für alle transparent zu halten.",
+  },
+  {
+    id: "import",
+    title: "Import, Wiederherstellung und Datensicherheit",
+    role: "admin",
+    keywords:
+      "excel import vorschau spalten leerzeichen anti data drop json speichern laden projektdatei restore wiederherstellung sicherung löschprotokoll id zeit iso ansprechpartner helfer",
+    summary:
+      "„Speichern“ erzeugt eine JSON-Projektdatei des aktuell gewählten Events. Beim administrativen Laden wird der Zielbereich erst in einer Vorschau geprüft und dann vollständig und atomar wiederhergestellt. Die Excel-Projektübersicht dient als Lesekopie; ein Excel-Import erfolgt jeweils im passenden Modul und zeigt vor der Übernahme neue, geänderte und gelöschte Zeilen. Überschriften werden bereinigt, technische IDs gegen Jahr und Event geprüft und Zeitwerte wie Excel- oder ISO-Uhrzeiten vereinheitlicht. So verhindern Vorschau, Scope-Prüfung und die Behandlung leerer Spalten Datenverluste.",
+    steps: [
+      "Vor jeder Wiederherstellung zunächst eine aktuelle JSON-Sicherung speichern.",
+      "Im jeweiligen Modul „Excel importieren“ wählen und die Vorschau nach neuen Daten, Änderungen oder Löschungen kontrollieren.",
+      "Nur als Administrator die geprüfte Vorschau freigeben. Bei einer zwischenzeitlichen Änderung muss die Vorschau erneut erstellt werden.",
+      "Sensible Löschungen und Ladevorgänge im Löschprotokoll nachvollziehen; einzelne protokollierte Helfer- oder Kuchenlöschungen können wiederhergestellt werden.",
+    ],
+  },
+  {
+    id: "pdf",
+    title: "PDF-Ausgabe und Versand",
+    role: "alle",
+    keywords:
+      "pdf ausgabe einzeleinteilung helfer aufgabenübersicht ansprechpartner rufnummer notiz zip blanko gefüllt gesamtübersicht download teilen whatsapp email logo",
+    summary:
+      "Die persönliche Helfer-PDF enthält Aufgaben, Zeiten, Mithelfende, Schichtnotizen sowie Namen und Rufnummern der Ansprechpartner. Sie kann in der Helferkartei pro Person oder gesammelt als ZIP in der PDF-Ausgabe erzeugt werden. Zusätzlich lassen sich Blanko- und gefüllte Einsatzpläne nach Tagen, Bereichen, Status und Ansprechpartnern filtern. Ein für das aktuelle Event hinterlegtes PDF-Bild erscheint ausschließlich in dessen Dokumenten.",
+    steps: [
+      "Vor der Ausgabe Helfer, Ansprechpartner, Rufnummer, Verfügbarkeit und zugewiesene Schichten prüfen.",
+      "Einzel-PDF über das Symbol in der Helferkartei oder alle Einteilungen als ZIP in der PDF-Ausgabe erzeugen.",
+      "Für die Einsatzleitung bei Bedarf eine gefilterte Gesamtübersicht oder einen frei ausfüllbaren Blanko-Plan herunterladen.",
+      "Die erzeugte Einzel-PDF über die Freigabefunktion des Geräts per Messenger, E-Mail oder Ausdruck weitergeben und anschließend die Rückmeldung dokumentieren.",
+    ],
+    image: {
+      src: "/manus-storage/pdf-export-current_5a3894fb.png",
+      alt: "Aktuelle PDF-Ausgabe mit Helferübersicht und Einsatzplanfiltern",
+      caption:
+        "PDF-Ausgabe mit Sammel-Download der Helfereinteilungen und Filtern für Blanko- oder gefüllte Einsatzpläne.",
+    },
   },
 ];
 
 const INDEX_TERMS = [
-  ["A", "Ansprechpartner, Anmeldung, Administrator"],
-  ["B", "Bemerkung, Bestätigung, Berechtigungen"],
-  ["D", "Dashboard, Doppelbelegung"],
+  ["A", "Ansprechpartner, Anmeldung, Administrator, App speichern"],
+  ["B", "Bemerkung, Bestätigung, Bereich, Berechtigungen"],
+  ["C", "Chat, Cookie, Cooldown"],
+  ["D", "Dashboard, Doppelbelegung, Download"],
   ["E", "Einsatzplan, Excel, Export"],
-  ["F", "Freitag, Filter"],
+  ["F", "Fachbereiche, Filter, Finanzen"],
   ["H", "Helfer, Helfereinteilung, Hilfe"],
-  ["I", "Import, Inhaltsverzeichnis"],
+  ["I", "Import, Inhaltsverzeichnis, ISO-Zeit"],
   ["J", "Jahr, Ja/Nein"],
-  ["L", "Logo, Löschen, Löschprotokoll"],
-  ["M", "Mobilansicht, Montag, Material, Marketing"],
-  ["P", "PDF, Planungsteam, Passwort"],
-  ["R", "Rollen, Rückgängig"],
-  ["S", "Samstag, Schicht, Sonntag, Suche, sieben Wochentage"],
-  ["V", "Veranstaltung, Verfügbarkeit"],
+  ["L", "Live-Chat, Löschen, Löschprotokoll"],
+  ["M", "Mobilansicht, Material, Marketing"],
+  ["N", "Nachbereitung, Notiz-Widget"],
+  ["P", "Passwort, PDF, Planungsteam, PWA"],
+  ["R", "Restore, Rollen, Rückgängig"],
+  ["S", "Sicherung, Schicht, Suche, Status"],
+  ["V", "Veranstaltung, Verfügbarkeit, Vorschau"],
+  ["W", "Wichtig, Warnton"],
   ["Z", "Zugangsschutz, Zuweisung"],
 ] as const;
 
@@ -233,7 +250,7 @@ export default function Help() {
   const guidePdf = trpc.help.guidePdf.useMutation({
     onSuccess: result => {
       downloadBase64File(result.base64, result.mimeType, result.filename);
-      toast.success("PDF-Anleitung wurde heruntergeladen");
+      toast.success("PDF-Handbuch wurde heruntergeladen");
     },
     onError: error => toast.error(error.message),
   });
@@ -302,7 +319,7 @@ export default function Help() {
             <Download className="h-4 w-4" />
             {guidePdf.isPending
               ? "PDF wird vorbereitet …"
-              : "PDF-Anleitung herunterladen"}
+              : "PDF-Handbuch herunterladen"}
           </Button>
         </div>
       </div>

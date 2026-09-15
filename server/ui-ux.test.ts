@@ -659,6 +659,26 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(help).toContain("aspect-video w-full max-w-full");
   });
 
+  it("bietet eine durchsuchbare, rollenmarkierte Hilfe für alle acht Handbuchbereiche", () => {
+    const help = source("client/src/pages/Help.tsx");
+
+    expect(help).toContain("Schnellstart und Orientierung");
+    expect(help).toContain("Rollen und Passwortschutz");
+    expect(help).toContain("Helferkartei und Verfügbarkeiten");
+    expect(help).toContain("Einsatzplan und intelligente Belegung");
+    expect(help).toContain("Live-Chat und Notiz-Widget");
+    expect(help).toContain("Fachbereiche und Aufgaben");
+    expect(help).toContain("Import, Wiederherstellung und Datensicherheit");
+    expect(help).toContain("PDF-Ausgabe und Versand");
+    expect(help).toContain("PDF-Handbuch herunterladen");
+    expect(help).toContain('placeholder="A–Z-Suche: z. B. Helfer, PDF, Bestätigung oder Excel"');
+    expect(help).toContain("dashboard-current_8a026d64.png");
+    expect(help).toContain("helpers-mobile-current_12ee73cd.png");
+    expect(help).toContain("plan-current_62afa870.png");
+    expect(help).toContain("chat-current_1677525e.png");
+    expect(help).toContain("pdf-export-current_5a3894fb.png");
+  });
+
   it("stellt die Login-Rollen als zugänglichen Segmented-Control dar", () => {
     const layout = source("client/src/components/Layout.tsx");
 
