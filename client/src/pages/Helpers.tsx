@@ -4,6 +4,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import {
   Popover,
   PopoverContent,
@@ -86,6 +87,56 @@ function Sel({
         ))}
       </SelectContent>
     </Select>
+  );
+}
+
+/**
+ * Direkter Ja/Nein-Schalter für die beiden binären Helferstatus. Der sichtbare
+ * Text bleibt im Tabellenraster erhalten; auf Touch-Geräten ist die ganze
+ * Schaltfläche mindestens 44 px hoch und damit ohne Select-Menü bedienbar.
+ */
+function YesNoToggle({
+  value,
+  onChange,
+  ariaLabel,
+  compactOnDesktop = false,
+  disabled = false,
+}: {
+  value: "ja" | "nein";
+  onChange: (value: "ja" | "nein") => void;
+  ariaLabel: string;
+  compactOnDesktop?: boolean;
+  disabled?: boolean;
+}) {
+  const isYes = value === "ja";
+
+  return (
+    <div className={cn("relative", compactOnDesktop ? "mx-auto w-[78px] lg:w-[68px]" : "w-full")}>
+      <Switch
+        checked={isYes}
+        disabled={disabled}
+        onCheckedChange={checked => onChange(checked ? "ja" : "nein")}
+        aria-label={ariaLabel}
+        className={cn(
+          "h-11 min-h-11 w-full min-w-[78px] rounded-full border-2 border-transparent shadow-sm transition-colors",
+          "data-[state=checked]:bg-emerald-600 data-[state=unchecked]:bg-rose-500",
+          "focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2",
+          "[&_[data-slot=switch-thumb]]:size-9 [&_[data-slot=switch-thumb]]:bg-white [&_[data-slot=switch-thumb]]:shadow-sm",
+          compactOnDesktop &&
+            "lg:h-8 lg:min-h-8 lg:min-w-[68px] lg:[&_[data-slot=switch-thumb]]:size-6"
+        )}
+      />
+      <span
+        aria-hidden="true"
+        className={cn(
+          "pointer-events-none absolute inset-y-0 z-10 flex items-center text-xs font-bold text-white",
+          isYes ? "left-2 pr-9" : "right-2 pl-9",
+          compactOnDesktop && "lg:text-[11px]"
+        )}
+      >
+        {isYes ? "Ja" : "Nein"}
+      </span>
+    </div>
   );
 }
 
@@ -496,13 +547,14 @@ export default function Helpers() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium">Helfen?</label>
-                  <Sel
+                  <YesNoToggle
                     value={helper.willHelp}
-                    options={YN}
+                    ariaLabel={`${helper.name}: Helfen auf ${helper.willHelp === "ja" ? "Nein" : "Ja"} setzen`}
+                    disabled={update.isPending}
                     onChange={willHelp =>
                       update.mutate({
                         id: helper.id,
-                        willHelp: willHelp as "ja" | "nein",
+                        willHelp,
                       })
                     }
                   />
@@ -524,13 +576,14 @@ export default function Helpers() {
                 })}
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium">Bestätigt?</label>
-                  <Sel
+                  <YesNoToggle
                     value={helper.confirmed}
-                    options={YN}
+                    ariaLabel={`${helper.name}: Bestätigung auf ${helper.confirmed === "ja" ? "Nein" : "Ja"} setzen`}
+                    disabled={update.isPending}
                     onChange={confirmed =>
                       update.mutate({
                         id: helper.id,
-                        confirmed: confirmed as "ja" | "nein",
+                        confirmed,
                       })
                     }
                   />
@@ -685,14 +738,15 @@ export default function Helpers() {
                     />
                   </td>
                   <td className="p-1 text-center">
-                    <Sel
+                    <YesNoToggle
                       value={helper.willHelp}
-                      options={YN}
                       compactOnDesktop
+                      disabled={update.isPending}
+                      ariaLabel={`${helper.name}: Helfen auf ${helper.willHelp === "ja" ? "Nein" : "Ja"} setzen`}
                       onChange={value =>
                         update.mutate({
                           id: helper.id,
-                          willHelp: value as "ja" | "nein",
+                          willHelp: value,
                         })
                       }
                     />
@@ -713,14 +767,15 @@ export default function Helpers() {
                     );
                   })}
                   <td className="p-1 text-center">
-                    <Sel
+                    <YesNoToggle
                       value={helper.confirmed}
-                      options={YN}
                       compactOnDesktop
+                      disabled={update.isPending}
+                      ariaLabel={`${helper.name}: Bestätigung auf ${helper.confirmed === "ja" ? "Nein" : "Ja"} setzen`}
                       onChange={value =>
                         update.mutate({
                           id: helper.id,
-                          confirmed: value as "ja" | "nein",
+                          confirmed: value,
                         })
                       }
                     />

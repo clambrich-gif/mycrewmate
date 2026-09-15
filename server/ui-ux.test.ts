@@ -877,4 +877,18 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(resetButton).toContain("border-rose-200 bg-rose-50 text-rose-700");
     expect(clearButton).toContain("border-rose-200 bg-rose-50 text-rose-700");
   });
+
+  it("schaltet Helfen und Bestätigt direkt per beschriftetem Touch-Switch", () => {
+    const helpers = source("client/src/pages/Helpers.tsx");
+
+    expect(helpers).toContain('import { Switch } from "@/components/ui/switch"');
+    expect(helpers).toContain("function YesNoToggle");
+    expect(helpers).toContain("onCheckedChange={checked => onChange(checked ? \"ja\" : \"nein\")}");
+    expect(helpers).toContain("h-11 min-h-11 w-full min-w-[78px]");
+    expect(helpers).toContain("data-[state=checked]:bg-emerald-600");
+    expect(helpers).toContain("data-[state=unchecked]:bg-rose-500");
+    expect(helpers).toContain("Helfen auf");
+    expect(helpers).toContain("Bestätigung auf");
+    expect(helpers.match(/<YesNoToggle/g)).toHaveLength(4);
+  });
 });
