@@ -52,6 +52,7 @@ function Router() {
     <Layout>
       <Suspense fallback={<RouteLoading />}>
         <Switch>
+          <Route path="/dashboard" component={Dashboard} />
           <Route path="/" component={Dashboard} />
           <Route path="/ansprechpartner" component={Contacts} />
           <Route path="/helfer" component={Helpers} />

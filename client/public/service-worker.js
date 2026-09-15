@@ -1,9 +1,12 @@
-const STATIC_CACHE = "rsc-helferplanung-pwa-v1";
+const STATIC_CACHE = "rsc-helferplanung-pwa-v2";
 const PWA_ASSETS = [
   "/manifest.json",
   "/icons/rsc-helferplanung-192.png",
   "/icons/rsc-helferplanung-512.png",
   "/icons/rsc-helferplanung-maskable-512.png",
+  "/icons/shortcut-einsatzplan-192.png",
+  "/icons/shortcut-helferkartei-192.png",
+  "/icons/shortcut-orga-chat-192.png",
 ];
 
 self.addEventListener("install", event => {

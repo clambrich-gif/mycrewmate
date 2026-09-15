@@ -84,6 +84,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const html = source("client/index.html");
     const main = source("client/src/main.tsx");
     const layout = source("client/src/components/Layout.tsx");
+    const app = source("client/src/App.tsx");
     const serviceWorker = source("client/public/service-worker.js");
     const manifest = JSON.parse(source("client/public/manifest.json"));
 
@@ -109,13 +110,39 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(html).toContain('name="apple-mobile-web-app-capable" content="yes"');
     expect(html).toContain('/icons/rsc-helferplanung-192.png');
     expect(main).toContain('navigator.serviceWorker.register("/service-worker.js")');
-    expect(serviceWorker).toContain('const STATIC_CACHE = "rsc-helferplanung-pwa-v1"');
+    expect(serviceWorker).toContain('const STATIC_CACHE = "rsc-helferplanung-pwa-v2"');
     expect(serviceWorker).not.toContain("/api/");
     expect(layout).toContain("beforeinstallprompt");
     expect(layout).toContain("appinstalled");
-    expect(layout).toContain("App zum Startbildschirm hinzufügen");
-    expect(layout).toContain("iPhone/iPad:");
-    expect(layout).toContain("Android:");
+    expect(layout).toContain("📱 Als App auf Handy speichern");
+    expect(layout).toContain("RSC Helferplanung als App speichern");
+    expect(layout).toContain("iOS (iPhone/iPad)");
+    expect(layout).toContain('<TabsTrigger value="android"');
+    expect(layout).toContain("Tippen Sie unten in <strong>Safari</strong>");
+    expect(layout).toContain("Tippen Sie oben rechts in <strong>Chrome</strong>");
+    expect(layout).toContain("requestPwaInstallation");
+    expect(layout).toContain('location.startsWith("/dashboard")');
+    expect(layout).toContain('get("chat") === "open"');
+    expect(app).toContain('<Route path="/dashboard" component={Dashboard} />');
+    expect(manifest.shortcuts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "Einsatzplan",
+          url: "/einsatzplan",
+        }),
+        expect.objectContaining({
+          name: "Helferkartei",
+          url: "/helfer",
+        }),
+        expect.objectContaining({
+          name: "Orga-Chat",
+          url: "/dashboard?chat=open",
+        }),
+      ])
+    );
+    expect(serviceWorker).toContain("shortcut-einsatzplan-192.png");
+    expect(serviceWorker).toContain("shortcut-helferkartei-192.png");
+    expect(serviceWorker).toContain("shortcut-orga-chat-192.png");
   });
 
   it("integriert das schwebende Live-Notizen & Chat-Widget plattformübergreifend", () => {

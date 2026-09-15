@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Sheet,
   SheetContent,
@@ -56,7 +57,6 @@ import {
   ShieldCheck,
   Trash2,
   TriangleAlert,
-  X,
 } from "lucide-react";
 import {
   FormEvent,
@@ -72,17 +72,11 @@ import { Link, useLocation } from "wouter";
 
 const RSC_LOGO = "/api/brand/rsc-logo";
 const CHAT_SNAPSHOT_POLL_MS = 5_000;
-const PWA_HINT_DISMISSED_KEY = "rsc-pwa-install-hint-dismissed";
 
 type DeferredInstallPrompt = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 };
-
-function isIosDevice() {
-  if (typeof navigator === "undefined") return false;
-  return /iPad|iPhone|iPod/.test(navigator.userAgent);
-}
 
 function isStandalonePwa() {
   if (typeof window === "undefined") return false;
@@ -166,7 +160,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   } | null>(null);
   const [deferredInstallPrompt, setDeferredInstallPrompt] =
     useState<DeferredInstallPrompt | null>(null);
-  const [showPwaInstallHint, setShowPwaInstallHint] = useState(false);
+  const [pwaInstallDialogOpen, setPwaInstallDialogOpen] = useState(false);
   const [pwaInstalled, setPwaInstalled] = useState(false);
   const [chatState, setChatState] = useState<LiveChatWidgetState>("closed");
   const [chatSnapshot, setChatSnapshot] = useState<TeamNotesSnapshot>({
@@ -188,36 +182,21 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const displayMode = window.matchMedia("(display-mode: standalone)");
-    const canShowInstallHint = () =>
-      window.matchMedia("(max-width: 1024px), (hover: none) and (pointer: coarse)")
-        .matches;
-    const wasDismissed = () => {
-      try {
-        return sessionStorage.getItem(PWA_HINT_DISMISSED_KEY) === "true";
-      } catch {
-        return false;
-      }
-    };
     const refreshInstallationState = () => {
       const installed = isStandalonePwa();
       setPwaInstalled(installed);
       if (installed) {
-        setShowPwaInstallHint(false);
-      } else if (canShowInstallHint() && isIosDevice() && !wasDismissed()) {
-        setShowPwaInstallHint(true);
+        setPwaInstallDialogOpen(false);
       }
     };
     const handleBeforeInstallPrompt = (event: Event) => {
       event.preventDefault();
       setDeferredInstallPrompt(event as DeferredInstallPrompt);
-      if (canShowInstallHint() && !isStandalonePwa() && !wasDismissed()) {
-        setShowPwaInstallHint(true);
-      }
     };
     const handleInstalled = () => {
       setPwaInstalled(true);
       setDeferredInstallPrompt(null);
-      setShowPwaInstallHint(false);
+      setPwaInstallDialogOpen(false);
     };
 
     refreshInstallationState();
@@ -231,15 +210,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const dismissPwaInstallHint = useCallback(() => {
-    try {
-      sessionStorage.setItem(PWA_HINT_DISMISSED_KEY, "true");
-    } catch {
-      // Der Hinweis darf auch bei deaktiviertem Session Storage geschlossen werden.
-    }
-    setShowPwaInstallHint(false);
-  }, []);
-
   const installPwa = useCallback(async () => {
     if (!deferredInstallPrompt) return;
     await deferredInstallPrompt.prompt();
@@ -247,9 +217,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
     setDeferredInstallPrompt(null);
     if (choice.outcome === "accepted") {
       setPwaInstalled(true);
-      setShowPwaInstallHint(false);
+      setPwaInstallDialogOpen(false);
     }
   }, [deferredInstallPrompt]);
+
+  const requestPwaInstallation = useCallback(() => {
+    if (deferredInstallPrompt) {
+      void installPwa();
+      return;
+    }
+    setMobileMenuOpen(false);
+    window.setTimeout(() => setPwaInstallDialogOpen(true), 150);
+  }, [deferredInstallPrompt, installPwa]);
 
   const passwordStatus = trpc.auth.passwordStatus.useQuery(undefined, {
     retry: false,
@@ -386,6 +365,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
     chatStateRef.current = "closed";
     setChatState("closed");
   };
+
+  useEffect(() => {
+    if (!isAuthenticated || !location.startsWith("/dashboard")) return;
+    if (new URLSearchParams(window.location.search).get("chat") === "open") {
+      openChatWidget();
+    }
+  }, [isAuthenticated, location]);
 
   useEffect(() => {
     if (!events.data?.length || selectedEvent) return;
@@ -984,60 +970,31 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </Label>
               <LazyProjectStorageControls />
             </div>
-            {showPwaInstallHint && !pwaInstalled && (
-              <section
-                className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-slate-900 shadow-sm"
-                aria-label="RSC Helferplanung als App installieren"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-white text-blue-700 shadow-sm ring-1 ring-blue-100">
-                      <Download className="h-4 w-4" aria-hidden="true" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold">
-                        App zum Startbildschirm hinzufügen
-                      </p>
-                      <p className="mt-0.5 text-xs leading-relaxed text-slate-600">
-                        Öffnet die Helferplanung künftig ohne Browserleiste.
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-white hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
-                    onClick={dismissPwaInstallHint}
-                    aria-label="Installationshinweis schließen"
-                  >
-                    <X className="h-4 w-4" aria-hidden="true" />
-                  </button>
-                </div>
-                {deferredInstallPrompt ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="mt-3 min-h-11 w-full border-blue-300 bg-white text-blue-800 hover:bg-blue-100"
-                    onClick={() => void installPwa()}
-                  >
-                    <Download className="mr-2 h-4 w-4" />
-                    App installieren
-                  </Button>
-                ) : (
-                  <div className="mt-2.5 space-y-1 text-xs leading-relaxed text-slate-700">
-                    <p className="flex items-start gap-1.5">
-                      <Share className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-700" />
-                      <span>
-                        <strong>iPhone/iPad:</strong> In Safari <em>Teilen</em> →
-                        „Zum Home-Bildschirm“.
-                      </span>
-                    </p>
-                    <p>
-                      <strong>Android:</strong> Browser-Menü öffnen und „App
-                      installieren“ bzw. „Zum Startbildschirm hinzufügen“ wählen.
-                    </p>
-                  </div>
-                )}
-              </section>
+            {!pwaInstalled && (
+              deferredInstallPrompt ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mt-3 min-h-11 w-full justify-start border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100"
+                  onClick={() => void installPwa()}
+                >
+                  <Download className="mr-2 h-4 w-4" aria-hidden="true" />
+                  <span>📱 Als App auf Handy speichern</span>
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mt-3 min-h-11 w-full justify-start border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setPwaInstallDialogOpen(true);
+                  }}
+                >
+                  <Download className="mr-2 h-4 w-4" aria-hidden="true" />
+                  <span>📱 Als App auf Handy speichern</span>
+                </Button>
+              )
             )}
           </div>
           <nav className="flex-1 space-y-1 overflow-y-auto p-2">
@@ -1528,6 +1485,94 @@ export function Layout({ children }: { children: React.ReactNode }) {
           })
         }
       />
+
+      <Dialog open={pwaInstallDialogOpen} onOpenChange={setPwaInstallDialogOpen}>
+        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white text-slate-950 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Download className="h-5 w-5 text-blue-700" aria-hidden="true" />
+              RSC Helferplanung als App speichern
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm leading-relaxed text-slate-600">
+            Speichern Sie die Helferplanung auf dem Startbildschirm. Danach öffnet
+            sie sich wie eine eigene App ohne Browserleiste.
+          </p>
+          <Tabs defaultValue={deferredInstallPrompt ? "android" : "ios"}>
+            <TabsList className="grid h-11 w-full grid-cols-2 bg-slate-100">
+              <TabsTrigger value="ios" className="min-h-10">
+                iOS (iPhone/iPad)
+              </TabsTrigger>
+              <TabsTrigger value="android" className="min-h-10">
+                Android
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="ios" className="pt-4">
+              <ol className="space-y-3 text-sm leading-relaxed text-slate-800">
+                <li className="flex gap-3">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-800">
+                    1
+                  </span>
+                  <span>
+                    Tippen Sie unten in <strong>Safari</strong> auf das
+                    <strong> Teilen-Symbol</strong> (Quadrat mit Pfeil nach oben).
+                  </span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-800">
+                    2
+                  </span>
+                  <span>
+                    Scrollen Sie nach unten und wählen Sie
+                    <strong> „Zum Home-Bildschirm“</strong>.
+                  </span>
+                </li>
+              </ol>
+            </TabsContent>
+            <TabsContent value="android" className="pt-4">
+              <ol className="space-y-3 text-sm leading-relaxed text-slate-800">
+                <li className="flex gap-3">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-800">
+                    1
+                  </span>
+                  <span>
+                    Tippen Sie oben rechts in <strong>Chrome</strong> auf die
+                    <strong> drei Punkte</strong>.
+                  </span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-800">
+                    2
+                  </span>
+                  <span>
+                    Wählen Sie <strong>„App installieren“</strong> oder
+                    <strong> „Zum Startbildschirm hinzufügen“</strong>.
+                  </span>
+                </li>
+              </ol>
+              {deferredInstallPrompt && (
+                <Button
+                  type="button"
+                  className="mt-4 min-h-11 w-full"
+                  onClick={() => void installPwa()}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  App jetzt installieren
+                </Button>
+              )}
+            </TabsContent>
+          </Tabs>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPwaInstallDialogOpen(false)}
+            >
+              Schließen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {isAuthenticated && (
         <LiveChatWidget
