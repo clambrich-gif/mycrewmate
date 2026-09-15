@@ -41,9 +41,10 @@
   body { background: var(--background); color: var(--foreground); font-feature-settings: "ss01", "cv11"; }
 }
 
-/* iOS/Android: Fokus auf Formularfelder darf die Seite nie automatisch vergrößern.
-   Die Regel umfasst native Felder sowie die Radix-Select-Auslöser und schlägt lokale
-   Kompaktklassen bis zum Desktop-Breakpoint zuverlässig. */
+/* iOS/Safari und Android: Fokus auf Formularfelder darf die Seite nie automatisch
+   vergrößern. Die effektive Schriftgröße bleibt bis zum Desktop-Breakpoint zwingend
+   bei mindestens 16px – auch in Suche, Filtern, Modal-Dialogen und Chat-Composer.
+   Pinch-to-Zoom bleibt über den uneingeschränkten Viewport ausdrücklich möglich. */
 @media (max-width: 1023px) {
   input,
   select,

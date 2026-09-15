@@ -54,6 +54,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(html).not.toContain("maximum-scale");
     expect(html).not.toContain("user-scalable=no");
     expect(css).toContain("@media (max-width: 1023px)");
+    expect(css).toContain("bei mindestens 16px");
     expect(css).toContain('[data-slot="select-trigger"]');
     expect(css).toContain("font-size: 16px !important;");
     expect(css).toContain("touch-action: manipulation;");
@@ -142,6 +143,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(widget).toContain("Der zentrale Layout-Owner liefert genau einen serialisierten Snapshot");
     expect(widget).toContain("snapshot.notes.map(note =>");
     expect(widget).toContain("snapshot.typing.map(t => t.senderName)");
+    expect(widget).toContain("text-base leading-normal lg:min-h-[40px] lg:text-xs");
   });
 
   it("sichert Dialoge und Recovery-Links für mobile Tastatur und Touchbedienung ab", () => {
