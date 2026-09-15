@@ -21,6 +21,8 @@ const dbMocks = vi.hoisted(() => ({
   clearDeletionAuditLogs: vi.fn(),
   restoreDeletionAuditLog: vi.fn(),
   getSecuritySettings: vi.fn(),
+  setPasswordHash: vi.fn(),
+  setAdminPasswordHash: vi.fn(),
   getAppSettings: vi.fn(),
   getEvent: vi.fn(),
   updateCurrentEventPdfImage: vi.fn(),
@@ -166,6 +168,8 @@ describe("Planungs-API", () => {
       createdAt: new Date(),
     });
     dbMocks.getSecuritySettings.mockResolvedValue({ adminPasswordHash });
+    dbMocks.setPasswordHash.mockResolvedValue({ affectedRows: 1 });
+    dbMocks.setAdminPasswordHash.mockResolvedValue({ affectedRows: 1 });
     dbMocks.withPlanningWriteLock.mockImplementation(callback => callback());
     storageMocks.storageGetSignedUrl.mockResolvedValue(
       "https://storage.example.test/guide.pdf"
@@ -538,6 +542,46 @@ describe("Planungs-API", () => {
       caller.plan.clearAssignments({ adminPassword: ADMIN_PASSWORD })
     ).resolves.toEqual({ cleared: 3 });
     expect(dbMocks.clearAssignments).toHaveBeenCalledTimes(1);
+  });
+
+  it("fordert das aktuelle Administratorpasswort vor jeder Passwortänderung", async () => {
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.auth.setPassword({
+        password: "NeuesPlanungsteamPasswort2026!",
+        currentAdminPassword: "falsch",
+      })
+    ).rejects.toThrow("Administratorpasswort");
+    expect(dbMocks.setPasswordHash).not.toHaveBeenCalled();
+
+    await expect(
+      caller.auth.setPassword({
+        password: "NeuesPlanungsteamPasswort2026!",
+        currentAdminPassword: ADMIN_PASSWORD,
+      })
+    ).resolves.toEqual({ success: true });
+    expect(dbMocks.setPasswordHash).toHaveBeenCalledWith(
+      expect.not.stringContaining("NeuesPlanungsteamPasswort2026!")
+    );
+
+    await expect(
+      caller.auth.setAdminPassword({
+        password: "NeuesAdministratorPasswort2026!",
+        currentAdminPassword: "falsch",
+      })
+    ).rejects.toThrow("Administratorpasswort");
+    expect(dbMocks.setAdminPasswordHash).not.toHaveBeenCalled();
+
+    await expect(
+      caller.auth.setAdminPassword({
+        password: "NeuesAdministratorPasswort2026!",
+        currentAdminPassword: ADMIN_PASSWORD,
+      })
+    ).resolves.toEqual({ success: true });
+    expect(dbMocks.setAdminPasswordHash).toHaveBeenCalledWith(
+      expect.not.stringContaining("NeuesAdministratorPasswort2026!")
+    );
   });
 
   it("erlaubt beiden Rollen JSON-Speichern und den reinen Excel-Export", async () => {

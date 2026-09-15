@@ -84,15 +84,56 @@ function importedSheet(workbook: XLSX.WorkBook, area: ModuleImportArea) {
   );
 }
 
-function assertHeaders(sheet: XLSX.WorkSheet, area: ModuleImportArea) {
+/**
+ * Excel übernimmt Überschriften exakt als Objektschlüssel. Ohne diese
+ * Kanonisierung würde beispielsweise "Name " zwar die Pflichtspaltenprüfung
+ * bestehen, aber später nicht über row.Name gelesen werden können.
+ */
+export function normalizeModuleImportHeader(value: unknown) {
+  return String(value ?? "")
+    .normalize("NFKC")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+export function readNormalizedModuleImportRows(sheet: XLSX.WorkSheet) {
   const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
     header: 1,
     defval: "",
     raw: true,
   });
-  const headers = new Set(
-    (rows[0] ?? []).map(value => String(value ?? "").trim()).filter(Boolean)
+  const headerRow = (rows[0] ?? []).map(normalizeModuleImportHeader);
+  const nonEmptyHeaders = headerRow.filter(Boolean);
+  const duplicateHeaders = Array.from(
+    new Set(
+      nonEmptyHeaders.filter(
+        (header, index) => nonEmptyHeaders.indexOf(header) !== index
+      )
+    )
   );
+  if (duplicateHeaders.length)
+    throw new Error(
+      `Die Excel-Datei enthält mehrdeutige Spaltenüberschriften: ${duplicateHeaders.join(", ")}`
+    );
+
+  const importedRows = rows.slice(1).reduce<Record<string, unknown>[]>(
+    (result, values) => {
+      const row: Record<string, unknown> = {};
+      headerRow.forEach((header, index) => {
+        if (header) row[header] = values[index] ?? "";
+      });
+      if (
+        Object.values(row).some(value => String(value ?? "").trim() !== "")
+      )
+        result.push(row);
+      return result;
+    },
+    []
+  );
+  return { headers: new Set(nonEmptyHeaders), importedRows };
+}
+
+function assertHeaders(headers: Set<string>, area: ModuleImportArea) {
   const required: Record<ModuleImportArea, string[]> = {
     ANSPRECHPARTNER: ["Name"],
     HELFER: ["Name"],
@@ -110,7 +151,6 @@ function assertHeaders(sheet: XLSX.WorkSheet, area: ModuleImportArea) {
     throw new Error(
       `${areaName[area]}: Pflichtspalten fehlen: ${missing.join(", ")}`
     );
-  return headers;
 }
 
 const normalized = (value: unknown) =>
@@ -570,11 +610,9 @@ async function buildModuleTarget(base64: string, area: ModuleImportArea) {
   const uploaded = readUploadedExcelWorkbook(base64);
   const source = importedSheet(uploaded, area);
   normalizeModuleSheetRange(source, area);
-  const sourceHeaders = assertHeaders(source, area);
-  const rawImportedRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(
-    source,
-    { defval: "", raw: true }
-  );
+  const { headers: sourceHeaders, importedRows: rawImportedRows } =
+    readNormalizedModuleImportRows(source);
+  assertHeaders(sourceHeaders, area);
   if (area === "HELFER") {
     const legacyWeekdays = ["Mo", "Di", "Mi", "Do"];
     for (const row of rawImportedRows)

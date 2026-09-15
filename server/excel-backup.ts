@@ -386,13 +386,36 @@ const chunk = <T>(rows: T[], size = 500) =>
     rows.slice(index * size, (index + 1) * size)
   );
 
+function normalizeSheetHeader(value: unknown) {
+  return String(value ?? "")
+    .normalize("NFKC")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
 function sheetRows(workbook: XLSX.WorkBook, name: string) {
   const sheet = workbook.Sheets[name];
   if (!sheet) throw new Error(`Pflichtblatt „${name}“ fehlt`);
-  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
+  const rawRows = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
+    header: 1,
     defval: "",
     raw: true,
   });
+  const headerRow = (rawRows[0] ?? []).map(normalizeSheetHeader);
+  const rows = rawRows.slice(1).reduce<Record<string, unknown>[]>(
+    (result, values) => {
+      const row: Record<string, unknown> = {};
+      headerRow.forEach((header, index) => {
+        if (header) row[header] = values[index] ?? "";
+      });
+      if (
+        Object.values(row).some(value => String(value ?? "").trim() !== "")
+      )
+        result.push(row);
+      return result;
+    },
+    []
+  );
   if (rows.length > MAX_ROWS_PER_SHEET)
     throw new Error(
       `Blatt „${name}“ enthält mehr als ${MAX_ROWS_PER_SHEET} Zeilen`

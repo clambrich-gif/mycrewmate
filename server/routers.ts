@@ -536,14 +536,26 @@ export const appRouter = router({
         return { success: true } as const;
       }),
     setPassword: accountAdminProcedure
-      .input(z.object({ password: passwordInput }))
-      .mutation(async ({ input }) => {
+      .input(
+        z.object({
+          password: passwordInput,
+          currentAdminPassword: z.string().min(1).max(200),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await requireAdminPassword(input.currentAdminPassword, ctx);
         await db.setPasswordHash(await hashPassword(input.password));
         return { success: true } as const;
       }),
     setAdminPassword: accountAdminProcedure
-      .input(z.object({ password: passwordInput }))
-      .mutation(async ({ input }) => {
+      .input(
+        z.object({
+          password: passwordInput,
+          currentAdminPassword: z.string().min(1).max(200),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await requireAdminPassword(input.currentAdminPassword, ctx);
         await db.setAdminPasswordHash(await hashPassword(input.password));
         return { success: true } as const;
       }),

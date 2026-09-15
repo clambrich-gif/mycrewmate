@@ -4,10 +4,46 @@ import {
   findContactSelfHelperRow,
   normalizeModuleSheetRange,
   preserveMissingOptionalModuleColumns,
+  readNormalizedModuleImportRows,
   removeCopiedModuleIds,
 } from "./module-excel-import";
 
 describe("modularer Ansprechpartner-Excel-Import", () => {
+  it("normalisiert Excel-Spaltenüberschriften vor der Schlüsselzuordnung", () => {
+    const sheet = XLSX.utils.aoa_to_sheet([
+      [" ID ", "Name ", " Rufnummer", "Bemerkung\u00a0"],
+      [11, "Martin Reis", "02651 100", "Leitung"],
+    ]);
+
+    const { headers, importedRows } = readNormalizedModuleImportRows(sheet);
+
+    expect(Array.from(headers)).toEqual([
+      "ID",
+      "Name",
+      "Rufnummer",
+      "Bemerkung",
+    ]);
+    expect(importedRows).toEqual([
+      {
+        ID: 11,
+        Name: "Martin Reis",
+        Rufnummer: "02651 100",
+        Bemerkung: "Leitung",
+      },
+    ]);
+  });
+
+  it("lehnt nach der Headernormalisierung doppelte Spalten eindeutig ab", () => {
+    const sheet = XLSX.utils.aoa_to_sheet([
+      ["Name", " Name ", "Rufnummer"],
+      ["Martin Reis", "Dublettenwert", "02651 100"],
+    ]);
+
+    expect(() => readNormalizedModuleImportRows(sheet)).toThrow(
+      "mehrdeutige Spaltenüberschriften: Name"
+    );
+  });
+
   it("prüft alle tatsächlich belegten Zeilen trotz veraltetem Excel-Blattbereich", () => {
     const sheet = XLSX.utils.aoa_to_sheet([
       ["ID", "Name", "Rufnummer", "Bemerkung", "Reihenfolge"],

@@ -27,13 +27,14 @@ function PasswordEditor({
   title: string;
   description: string;
   enabled: boolean;
-  onSave: (password: string) => void;
+  onSave: (input: { password: string; currentAdminPassword: string }) => void;
   saving: boolean;
 }) {
+  const [currentAdminPassword, setCurrentAdminPassword] = useState("");
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const matches = password === confirmation;
-  const valid = password.length >= 10 && matches;
+  const valid = Boolean(currentAdminPassword) && password.length >= 10 && matches;
 
   return (
     <Card className="shadow-sm">
@@ -46,6 +47,19 @@ function PasswordEditor({
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">{description}</p>
         <div className="space-y-1.5">
+          <Label>Aktuelles Administratorpasswort</Label>
+          <Input
+            type="password"
+            autoComplete="current-password"
+            value={currentAdminPassword}
+            onChange={event => setCurrentAdminPassword(event.target.value)}
+            placeholder="Zur Bestätigung eingeben"
+          />
+          <p className="text-xs text-muted-foreground">
+            Die Eingabe ist vor jeder Passwortänderung zwingend erforderlich.
+          </p>
+        </div>
+        <div className="space-y-1.5">
           <Label>Neues Passwort</Label>
           <Input
             type="password"
@@ -53,6 +67,7 @@ function PasswordEditor({
             value={password}
             onChange={event => setPassword(event.target.value)}
             placeholder="Mindestens 10 Zeichen"
+            disabled={!currentAdminPassword || saving}
           />
         </div>
         <div className="space-y-1.5">
@@ -62,6 +77,7 @@ function PasswordEditor({
             autoComplete="new-password"
             value={confirmation}
             onChange={event => setConfirmation(event.target.value)}
+            disabled={!currentAdminPassword || saving}
           />
           {confirmation && !matches && (
             <p className="text-xs text-destructive">
@@ -72,7 +88,8 @@ function PasswordEditor({
         <Button
           disabled={!valid || saving}
           onClick={() => {
-            onSave(password);
+            onSave({ password, currentAdminPassword });
+            setCurrentAdminPassword("");
             setPassword("");
             setConfirmation("");
           }}
@@ -148,14 +165,14 @@ export default function Security() {
           description="Erlaubt die normale Bearbeitung der Planung ohne administrative Lösch- und Sicherheitsrechte."
           enabled={Boolean(status?.enabled)}
           saving={setPassword.isPending}
-          onSave={password => setPassword.mutate({ password })}
+          onSave={input => setPassword.mutate(input)}
         />
         <PasswordEditor
           title="Administratorpasswort"
           description="Erteilt weiteren Personen Administratorrechte und bestätigt Zurücksetzungen sowie sensible Löschungen."
           enabled={Boolean(status?.adminEnabled)}
           saving={setAdminPassword.isPending}
-          onSave={password => setAdminPassword.mutate({ password })}
+          onSave={input => setAdminPassword.mutate(input)}
         />
       </div>
 

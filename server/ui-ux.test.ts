@@ -827,4 +827,18 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(logic).toContain("export const TYPING_RENEWAL_MS = 4_000");
     expect(logic).toContain("now - lastReportedAt >= TYPING_RENEWAL_MS");
   });
+
+  it("fordert vor Passwortänderungen die aktuelle Administratorbestätigung", () => {
+    const security = source("client/src/pages/Security.tsx");
+    const router = source("server/routers.ts");
+
+    expect(security).toContain("Aktuelles Administratorpasswort");
+    expect(security).toContain("Die Eingabe ist vor jeder Passwortänderung zwingend erforderlich.");
+    expect(security).toContain("disabled={!currentAdminPassword || saving}");
+    expect(security).toContain("onSave({ password, currentAdminPassword })");
+    expect(router).toContain("currentAdminPassword: z.string().min(1).max(200)");
+    expect(router).toContain(
+      "await requireAdminPassword(input.currentAdminPassword, ctx)"
+    );
+  });
 });
