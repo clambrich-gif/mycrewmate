@@ -43,12 +43,15 @@ import { sdk } from "./_core/sdk";
 import {
   ADMIN_PASSWORD_OPEN_ID,
   clearPasswordLoginFailures,
+  clearPlanningTeamFailures,
   getClientKey,
+  getPlanningTeamRateLimitStatus,
   hashPassword,
   isPasswordLoginBlocked,
   PASSWORD_SESSION_MS,
   PLANNING_TEAM_MAX_ATTEMPTS,
   recordFailedPasswordLogin,
+  recordFailedPlanningTeamLogin,
   SHARED_PASSWORD_OPEN_ID,
   verifyPassword,
   verifyRecoveryKey,
@@ -369,27 +372,37 @@ export const appRouter = router({
     passwordLogin: publicProcedure
       .input(z.object({ password: z.string().min(1).max(200) }))
       .mutation(async ({ ctx, input }) => {
+        const clientKey = `planning:${getClientKey(ctx.req)}`;
         const settings = await db.getSecuritySettings();
+
+        // 1. Gezielte manuelle Sperre durch Administratoren (bleibt unberührt)
         if (settings?.planningTeamLocked) {
           throw new TRPCError({
             code: "TOO_MANY_REQUESTS",
             message:
-              "Der Zugang für das Planungsteam ist nach zu vielen Fehlversuchen gesperrt. Ein Administrator muss die Sperre aufheben.",
+              "Der Zugang für das Planungsteam wurde durch einen Administrator gesperrt. Bitte wenden Sie sich an die Administration.",
           });
         }
+
+        // 2. Zeitbasierter Rate-Limiter (TTL) mit progressiver Verzögerung (DoS-Schutz)
+        const rateLimit = getPlanningTeamRateLimitStatus(clientKey);
+        if (rateLimit.isBlocked) {
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message: `Zu viele Fehlversuche für diesen Anschluss. Bitte warten Sie ${rateLimit.retryAfterSeconds} Sekunden.`,
+          });
+        }
+
         const storedHash = settings?.passwordHash;
         const valid = storedHash
           ? await verifyPassword(input.password, storedHash)
           : false;
         if (!valid) {
-          const protection = await db.recordFailedPlanningTeamPasswordLogin(
-            PLANNING_TEAM_MAX_ATTEMPTS
-          );
-          if (protection.locked) {
+          const failedStatus = recordFailedPlanningTeamLogin(clientKey);
+          if (failedStatus.isBlocked) {
             throw new TRPCError({
               code: "TOO_MANY_REQUESTS",
-              message:
-                "Der Zugang für das Planungsteam ist nach zu vielen Fehlversuchen gesperrt. Ein Administrator muss die Sperre aufheben.",
+              message: `Zu viele Fehlversuche. Bitte warten Sie ${failedStatus.retryAfterSeconds} Sekunden, bevor Sie es erneut versuchen.`,
             });
           }
           throw new TRPCError({
@@ -397,13 +410,10 @@ export const appRouter = router({
             message: "Passwort ist nicht korrekt",
           });
         }
-        if (!(await db.clearPlanningTeamLoginFailuresIfUnlocked())) {
-          throw new TRPCError({
-            code: "TOO_MANY_REQUESTS",
-            message:
-              "Der Zugang für das Planungsteam ist gesperrt. Ein Administrator muss die Sperre aufheben.",
-          });
-        }
+
+        clearPlanningTeamFailures(clientKey);
+        await db.clearPlanningTeamLoginFailuresIfUnlocked();
+
         await db.upsertUser({
           openId: SHARED_PASSWORD_OPEN_ID,
           name: "Planungsteam",
@@ -521,6 +531,10 @@ export const appRouter = router({
       }),
     unlockPlanningTeamLock: accountAdminProcedure.mutation(async () => {
       await db.unlockPlanningTeamLogin();
+      return { success: true } as const;
+    }),
+    lockPlanningTeam: accountAdminProcedure.mutation(async () => {
+      await db.lockPlanningTeamLogin();
       return { success: true } as const;
     }),
     logout: publicProcedure.mutation(async ({ ctx }) => {

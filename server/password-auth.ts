@@ -11,6 +11,18 @@ const ADMIN_MAX_ATTEMPTS = 5;
 const WINDOW_MS = 15 * 60 * 1000;
 const attempts = new Map<string, { count: number; firstAttemptAt: number }>();
 
+/**
+ * Client-spezifischer TTL-Rate-Limiter mit progressiver Verzögerung (Cooldown)
+ * für das Planungsteam. Verhindert, dass anonyme Angreifer durch 5 Fehlversuche
+ * das gesamte Planungsteam global lahmlegen (DoS-Schutz).
+ */
+type PlanningRateLimitEntry = {
+  count: number;
+  firstAttemptAt: number;
+  blockedUntil: number;
+};
+const planningAttempts = new Map<string, PlanningRateLimitEntry>();
+
 export function getClientKey(req: Request) {
   // X-Forwarded-For bleibt vollständig außerhalb der Sicherheitsgrenze, weil
   // dieser Dienst keine feste, exklusiv kontrollierte Proxy-IP voraussetzt.
@@ -43,6 +55,69 @@ export function recordFailedPasswordLogin(key: string) {
 
 export function clearPasswordLoginFailures(key: string) {
   attempts.delete(key);
+}
+
+export function getPlanningTeamCooldownMs(attemptCount: number): number {
+  if (attemptCount < PLANNING_TEAM_MAX_ATTEMPTS) return 0;
+  // Ab dem 5. Fehlversuch progressive Verzögerung:
+  // 5 Versuche: 30s Cooldown
+  // 6 Versuche: 60s (1m) Cooldown
+  // 7 Versuche: 120s (2m) Cooldown
+  // 8+ Versuche: 300s (5m) Cooldown (Maximum)
+  const excess = attemptCount - PLANNING_TEAM_MAX_ATTEMPTS;
+  if (excess === 0) return 30 * 1000;
+  if (excess === 1) return 60 * 1000;
+  if (excess === 2) return 120 * 1000;
+  return 300 * 1000;
+}
+
+export function getPlanningTeamRateLimitStatus(clientKey: string): {
+  isBlocked: boolean;
+  retryAfterSeconds: number;
+  attempts: number;
+} {
+  const entry = planningAttempts.get(clientKey);
+  if (!entry) return { isBlocked: false, retryAfterSeconds: 0, attempts: 0 };
+
+  const now = Date.now();
+  // Zeitfenster abgelaufen (15 Minuten ohne neue Aktionen)?
+  if (now - entry.firstAttemptAt > WINDOW_MS && now > entry.blockedUntil) {
+    planningAttempts.delete(clientKey);
+    return { isBlocked: false, retryAfterSeconds: 0, attempts: 0 };
+  }
+
+  if (now < entry.blockedUntil) {
+    const remainingSec = Math.max(1, Math.ceil((entry.blockedUntil - now) / 1000));
+    return { isBlocked: true, retryAfterSeconds: remainingSec, attempts: entry.count };
+  }
+
+  return { isBlocked: false, retryAfterSeconds: 0, attempts: entry.count };
+}
+
+export function recordFailedPlanningTeamLogin(clientKey: string): {
+  isBlocked: boolean;
+  retryAfterSeconds: number;
+  attempts: number;
+} {
+  const now = Date.now();
+  const existing = planningAttempts.get(clientKey);
+  const count = existing ? existing.count + 1 : 1;
+  const firstAttemptAt = existing ? existing.firstAttemptAt : now;
+  const cooldownMs = getPlanningTeamCooldownMs(count);
+  const blockedUntil = cooldownMs > 0 ? now + cooldownMs : 0;
+
+  planningAttempts.set(clientKey, { count, firstAttemptAt, blockedUntil });
+
+  const remainingSec = cooldownMs > 0 ? Math.ceil(cooldownMs / 1000) : 0;
+  return {
+    isBlocked: remainingSec > 0,
+    retryAfterSeconds: remainingSec,
+    attempts: count,
+  };
+}
+
+export function clearPlanningTeamFailures(clientKey: string) {
+  planningAttempts.delete(clientKey);
 }
 
 export function hashPassword(password: string) {

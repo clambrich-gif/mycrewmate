@@ -114,6 +114,13 @@ export default function Security() {
     },
     onError: error => toast.error(error.message),
   });
+  const lockPlanningTeam = trpc.auth.lockPlanningTeam.useMutation({
+    onSuccess: async () => {
+      await utils.auth.passwordStatus.invalidate();
+      toast.success("Planungsteam-Zugang wurde manuell gesperrt");
+    },
+    onError: error => toast.error(error.message),
+  });
 
   if (user?.role !== "admin") {
     return (
@@ -191,34 +198,47 @@ export default function Security() {
               </p>
             )}
             <p className="mt-1 text-sm text-slate-600">
-              Nach fünf falschen Eingaben bleibt dieser Zugang gesperrt, bis ein
-              Administrator ihn hier wieder freigibt.
+              Fehlversuche unterliegen einer automatischen zeitbasierten Abklingzeit (DoS-Schutz).
+              Zusätzlich können Administratoren den Zugang hier bei Bedarf gezielt manuell sperren oder freigeben.
             </p>
           </div>
-          <Button
-            type="button"
-            variant={status?.planningTeamLocked ? "destructive" : "outline"}
-            className={
-              status?.planningTeamLocked
-                ? "border border-red-700 !bg-red-600 !text-white shadow-sm hover:!bg-red-700 disabled:!border-red-300 disabled:!bg-red-100 disabled:!text-red-800 disabled:opacity-100"
-                : "bg-white text-slate-700"
-            }
-            disabled={
-              statusLoading ||
-              !status?.planningTeamLocked ||
-              unlockPlanningTeam.isPending
-            }
-            onClick={() => unlockPlanningTeam.mutate()}
-          >
-            {unlockPlanningTeam.isPending ? (
-              <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+          <div className="flex flex-wrap items-center gap-3">
+            {status?.planningTeamLocked ? (
+              <Button
+                type="button"
+                variant="destructive"
+                className="border border-red-700 !bg-red-600 !text-white shadow-sm hover:!bg-red-700 disabled:!border-red-300 disabled:!bg-red-100 disabled:!text-red-800 disabled:opacity-100"
+                disabled={statusLoading || unlockPlanningTeam.isPending}
+                onClick={() => unlockPlanningTeam.mutate()}
+              >
+                {unlockPlanningTeam.isPending ? (
+                  <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Unlock className="mr-2 h-4 w-4" />
+                )}
+                {unlockPlanningTeam.isPending
+                  ? "Sperre wird aufgehoben …"
+                  : "Sperre für Planungsteam aufheben"}
+              </Button>
             ) : (
-              <Unlock className="mr-2 h-4 w-4" />
+              <Button
+                type="button"
+                variant="outline"
+                className="border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
+                disabled={statusLoading || lockPlanningTeam.isPending}
+                onClick={() => lockPlanningTeam.mutate()}
+              >
+                {lockPlanningTeam.isPending ? (
+                  <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <LockKeyhole className="mr-2 h-4 w-4" />
+                )}
+                {lockPlanningTeam.isPending
+                  ? "Wird gesperrt …"
+                  : "Planungsteam manuell sperren"}
+              </Button>
             )}
-            {unlockPlanningTeam.isPending
-              ? "Sperre wird aufgehoben …"
-              : "Sperre für Planungsteam aufheben"}
-          </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -242,8 +262,8 @@ export default function Security() {
       <div className="rounded-lg border bg-muted/40 p-4 text-sm text-muted-foreground">
         <ShieldCheck className="mr-2 inline h-4 w-4 text-primary" />
         Beide Passwörter werden ausschließlich als bcrypt-Hash gespeichert. Nach
-        fünf Fehlversuchen bleibt der Planungsteam-Zugang bis zur Admin-Freigabe
-        gesperrt. Die Administrator-Sperre läuft weiterhin nach 15 Minuten ab;
+        fünf Fehlversuchen greift für den anfragenden Anschluss eine progressive
+        Abklingzeit gegen DoS-Angriffe. Die Administrator-Sperre läuft weiterhin nach 15 Minuten ab;
         Sitzungen gelten zwölf Stunden. Die Manus-Anmeldung des
         Hauptadministrators bleibt erhalten.
       </div>

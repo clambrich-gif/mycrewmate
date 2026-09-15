@@ -696,13 +696,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <ShieldCheck className="mr-2 h-4 w-4" />
             Mit Manus anmelden
           </Button>
-          <p className="text-xs text-muted-foreground mt-4 text-center">
-            Nach fünf Fehlversuchen bleibt der Planungsteam-Zugang bis zur
-            Admin-Freigabe gesperrt. Die Administrator-Sperre läuft weiterhin
-            nach 15 Minuten ab.
-          </p>
-        </div>
-      </div>
+              <p className="text-xs text-muted-foreground mt-4 text-center">
+                Nach fünf Fehlversuchen greift für den jeweiligen Anschluss eine
+                zeitbasierte Abklingzeit (Cooldown). Eine dauerhafte Sperre kann
+                nur gezielt durch Administratoren verhängt werden.
+              </p>
+            </div>
+          </div>
     );
   }
   if (

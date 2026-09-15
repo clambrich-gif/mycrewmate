@@ -688,6 +688,21 @@ export async function unlockPlanningTeamLogin() {
   });
 }
 
+export async function lockPlanningTeamLogin() {
+  const database = (await getDb()) as DB;
+  return database.transaction(async tx => {
+    await tx
+      .insert(securitySettings)
+      .values({ id: 1 })
+      .onDuplicateKeyUpdate({ set: { id: 1 } });
+    await tx
+      .update(securitySettings)
+      .set({ planningTeamLocked: true })
+      .where(eq(securitySettings.id, 1));
+    return { locked: true } as const;
+  });
+}
+
 export async function createContact(v: {
   name: string;
   phone?: string;

@@ -154,7 +154,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(security).toContain("Sperre für Planungsteam aufheben");
     expect(security).toContain('user?.role !== "admin"');
     expect(layout).toContain("passwordStatus.data?.planningTeamLocked");
-    expect(layout).toContain("Admin-Freigabe");
+    expect(layout).toContain("Administratoren");
     expect(layout).toContain("Zugang für das Planungsteam gesperrt");
     expect(layout).toContain("Bitte kontaktieren Sie einen Administrator.");
     expect(layout).toContain("login-lock-alert");
