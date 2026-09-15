@@ -863,13 +863,16 @@ describe("UI- und Mobile-UX-Regeln", () => {
     );
     expect(plan).not.toContain('min-w-[1500px]');
     expect(plan).not.toContain('min-w-[400px]');
-    expect(plan).toContain('<col className="w-[24%]" />');
+    expect(plan).toContain('<col className="w-[29%]" />');
+    expect(plan).toContain('<col className="w-[6%]" />');
     expect(plan).toContain('max-w-[10rem] whitespace-pre-wrap break-words');
     expect(plan).toContain('className="flex max-w-full flex-wrap gap-1 xl:gap-1"');
-    expect(plan).toContain('xl:!min-w-[104px] xl:!max-w-[148px] xl:!px-2 xl:!py-0.5 xl:!text-xs');
-    expect(plan).toContain('<span className="hidden xl:inline">Kontakt</span>');
-    expect(plan).toContain('<abbr title="Bedarf" className="hidden no-underline xl:inline">Bed.</abbr>');
-    expect(plan).toContain('<span className="hidden xl:inline">Eingeteilte Helfer</span>');
+    expect(plan).toContain('xl:!min-w-[132px] xl:!max-w-[216px] xl:!px-2 xl:!py-0.5 xl:!text-xs');
+    expect(plan).toContain('<th className="break-words p-2 leading-tight xl:p-1.5">Kontakt</th>');
+    expect(plan).toContain('<th className="p-2 text-center leading-tight xl:px-0.5 xl:py-1.5 xl:whitespace-nowrap">Bedarf</th>');
+    expect(plan).toContain('<th className="p-2 text-center leading-tight xl:px-0.5 xl:py-1.5 xl:whitespace-nowrap">Doppelt</th>');
+    expect(plan).toContain('<th className="p-2 text-center leading-tight xl:px-0.5 xl:py-1.5 xl:whitespace-nowrap">Ausfälle</th>');
+    expect(plan).toContain('<th className="break-words p-2 leading-tight xl:p-1.5">Eingeteilte Helfer</th>');
   });
 
   it("ordnet Einsatzplanaktionen ausschließlich mobil als gleich breites Raster an", () => {

@@ -192,7 +192,7 @@ function AssignedHelperChip({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <div
-        className={`slot ${className} inline-flex min-h-11 items-center gap-1 text-base md:min-h-0 md:text-[.78rem] xl:!min-w-[104px] xl:!max-w-[148px] xl:!px-2 xl:!py-0.5 xl:!text-xs`}
+        className={`slot ${className} inline-flex min-h-11 items-center gap-1 text-base md:min-h-0 md:text-[.78rem] xl:!min-w-[132px] xl:!max-w-[216px] xl:!px-2 xl:!py-0.5 xl:!text-xs`}
         onPointerEnter={event => openAfterDelay(event.pointerType)}
         onPointerLeave={event => closeAfterLeave(event.pointerType)}
       >
@@ -1026,54 +1026,33 @@ export default function Plan() {
         <CardContent className="w-full overflow-x-auto p-0 xl:overflow-x-hidden">
           <table className="w-full table-auto text-sm md:min-w-[1080px] xl:min-w-0 xl:table-fixed xl:text-xs">
             <colgroup>
+              <col className="w-[5%]" />
               <col className="w-[6%]" />
-              <col className="w-[9%]" />
-              <col className="w-[9%]" />
-              <col className="w-[11%]" />
-              <col className="w-[13%]" />
+              <col className="w-[7%]" />
               <col className="w-[8%]" />
-              <col className="w-[3.5%]" />
-              <col className="w-[3.5%]" />
+              <col className="w-[9%]" />
+              <col className="w-[7%]" />
+              <col className="w-[5.5%]" />
               <col className="w-[6%]" />
-              <col className="w-[3.5%]" />
-              <col className="w-[3.5%]" />
-              <col className="w-[24%]" />
+              <col className="w-[5.5%]" />
+              <col className="w-[6%]" />
+              <col className="w-[6%]" />
+              <col className="w-[29%]" />
             </colgroup>
             <thead className="bg-muted/60 sticky top-0">
               <tr className="text-left">
                 <th className="p-2 xl:p-1.5">Tag</th>
                 <th className="p-2 xl:p-1.5">Bereich</th>
-                <th className="break-words p-2 leading-tight xl:p-1.5">
-                  <span className="xl:hidden">Ansprechpartner</span>
-                  <span className="hidden xl:inline">Kontakt</span>
-                </th>
+                <th className="break-words p-2 leading-tight xl:p-1.5">Kontakt</th>
                 <th className="p-2 xl:p-1.5">Aufgabe</th>
                 <th className="p-2 xl:p-1.5">Bemerkung</th>
                 <th className="p-2 whitespace-nowrap xl:p-1.5">Zeit</th>
-                <th className="p-2 text-center leading-tight xl:p-1.5">
-                  <span className="xl:hidden">Bedarf</span>
-                  <abbr title="Bedarf" className="hidden no-underline xl:inline">Bed.</abbr>
-                </th>
-                <th className="p-2 text-center leading-tight xl:p-1.5">
-                  <span className="xl:hidden">Besetzt</span>
-                  <abbr title="Besetzt" className="hidden no-underline xl:inline">Bes.</abbr>
-                </th>
-                <th className="p-2 text-center leading-tight xl:p-1.5">
-                  <span className="xl:hidden">Status</span>
-                  <abbr title="Status" className="hidden no-underline xl:inline">Stat.</abbr>
-                </th>
-                <th className="p-2 text-center leading-tight xl:p-1.5">
-                  <span className="xl:hidden">Doppel</span>
-                  <abbr title="Doppelbelegungen" className="hidden no-underline xl:inline">Dbl.</abbr>
-                </th>
-                <th className="p-2 text-center leading-tight xl:p-1.5">
-                  <span className="xl:hidden">Ausfall</span>
-                  <abbr title="Ausfälle" className="hidden no-underline xl:inline">Ausf.</abbr>
-                </th>
-                <th className="break-words p-2 leading-tight xl:p-1.5">
-                  <span className="xl:hidden">Eingeteilte Helfer (Anzahl = Bedarf)</span>
-                  <span className="hidden xl:inline">Eingeteilte Helfer</span>
-                </th>
+                <th className="p-2 text-center leading-tight xl:px-0.5 xl:py-1.5 xl:whitespace-nowrap">Bedarf</th>
+                <th className="p-2 text-center leading-tight xl:px-0.5 xl:py-1.5 xl:whitespace-nowrap">Besetzt</th>
+                <th className="p-2 text-center leading-tight xl:px-0.5 xl:py-1.5 xl:whitespace-nowrap">Status</th>
+                <th className="p-2 text-center leading-tight xl:px-0.5 xl:py-1.5 xl:whitespace-nowrap">Doppelt</th>
+                <th className="p-2 text-center leading-tight xl:px-0.5 xl:py-1.5 xl:whitespace-nowrap">Ausfälle</th>
+                <th className="break-words p-2 leading-tight xl:p-1.5">Eingeteilte Helfer</th>
               </tr>
             </thead>
             <tbody>
