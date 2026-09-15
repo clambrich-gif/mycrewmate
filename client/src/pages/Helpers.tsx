@@ -147,8 +147,8 @@ function HelperPdfNoteField({
         <Input
           key={`${helperId}-note-${note ?? ""}`}
           className={cn(
-            "w-full pr-11 md:pr-9",
-            compactOnDesktop && "h-8 min-w-0"
+            "w-full pr-11 text-base md:pr-9 md:text-sm",
+            compactOnDesktop && "md:h-8 md:min-w-0"
           )}
           defaultValue={note ?? ""}
           placeholder="Verfügbarkeit / Bemerkung"
