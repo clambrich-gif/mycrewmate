@@ -149,6 +149,48 @@ export const PROJECT_EXCEL_HEADERS: Record<string, string[]> = {
   ],
 };
 
+type AreaContactRow = {
+  area: string;
+  areaContactSourceId: number | null;
+  areaContactName: string;
+};
+
+/**
+ * Ein Bereich hat fachlich genau einen Ansprechpartner. Excel-Dateien können
+ * aber einzelne, leere oder voneinander abweichende Angaben enthalten. Statt
+ * den Import abzubrechen, wird der erste im Blatt auflösbare Ansprechpartner
+ * des Bereichs auf alle seine Schichten übertragen; leere bzw. unbekannte
+ * Angaben werden dabei automatisch mitgezogen.
+ */
+export function reconcileAreaContacts<TRow extends AreaContactRow>(
+  rows: TRow[],
+  resolveContact: (row: TRow) =>
+    | { sourceId: number | null; name: string }
+    | undefined
+) {
+  const preferredContacts = new Map<
+    string,
+    { sourceId: number | null; name: string }
+  >();
+
+  for (const row of rows) {
+    const contact = resolveContact(row);
+    if (!contact) continue;
+    row.areaContactSourceId = contact.sourceId;
+    row.areaContactName = contact.name;
+    const areaKey = personKey(row.area);
+    if (areaKey && contact && !preferredContacts.has(areaKey))
+      preferredContacts.set(areaKey, contact);
+  }
+
+  for (const row of rows) {
+    const contact = preferredContacts.get(personKey(row.area));
+    if (!contact) continue;
+    row.areaContactSourceId = contact.sourceId;
+    row.areaContactName = contact.name;
+  }
+}
+
 type Client = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 type ChangeAction = "create" | "update" | "delete";
 export type BackupArea =
@@ -996,18 +1038,19 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
     row => `${row.day}|${row.area}|${row.task}|${row.startTime}|${row.endTime}`,
     "EINSATZPLAN"
   );
-  const areaContacts = new Map<string, string>();
-  for (const row of parsedShifts) {
-    const key = personKey(row.area);
-    const contactKey = row.areaContactSourceId
-      ? `id:${row.areaContactSourceId}`
-      : `name:${personKey(row.areaContactName)}`;
-    if (areaContacts.has(key) && areaContacts.get(key) !== contactKey)
-      throw new Error(
-        `EINSATZPLAN: Bereich „${row.area}“ hat unterschiedliche Ansprechpartner`
-      );
-    areaContacts.set(key, contactKey);
-  }
+  const parsedContactById = new Map(
+    parsedContacts.flatMap(row =>
+      row.sourceId ? ([[row.sourceId, row]] as const) : []
+    )
+  );
+  const parsedContactByName = new Map(
+    parsedContacts.map(row => [personKey(row.name), row])
+  );
+  reconcileAreaContacts(parsedShifts, row =>
+    (row.areaContactSourceId
+      ? parsedContactById.get(row.areaContactSourceId)
+      : undefined) ?? parsedContactByName.get(personKey(row.areaContactName))
+  );
 
   const parseTaskRows = (sheet: "NACHBEREITUNG", withDue = false) =>
     sheetRows(workbook, sheet)
@@ -2141,28 +2184,17 @@ export function buildSelectedDocument(
     target.helpers.map(row => [personKey(row.name), row])
   );
   const activeDays = new Set(eventWeekdays(target.metadata.activeDays));
-  const areaContacts = new Map<string, string>();
+  reconcileAreaContacts(target.shifts, shift =>
+    (shift.areaContactSourceId
+      ? contactById.get(shift.areaContactSourceId)
+      : undefined) ?? contactByName.get(personKey(shift.areaContactName))
+  );
   const helperShifts = new Map<string, ShiftRow[]>();
   for (const shift of target.shifts) {
     if (!activeDays.has(shift.day))
       throw new Error(
         `Die Auswahl ist nicht vollständig: ${shift.day} wird deaktiviert, aber die Schicht „${shift.task}“ bleibt ausgewählt. Bitte übernehmen Sie auch die zugehörigen Einsatzplanänderungen.`
       );
-    const areaContact =
-      (shift.areaContactSourceId
-        ? contactById.get(shift.areaContactSourceId)
-        : undefined) ?? contactByName.get(personKey(shift.areaContactName));
-    shift.areaContactSourceId = areaContact?.sourceId ?? null;
-    shift.areaContactName = areaContact?.name ?? "";
-    const areaKey = personKey(shift.area);
-    const contactKey = shift.areaContactSourceId
-      ? `id:${shift.areaContactSourceId}`
-      : `name:${personKey(shift.areaContactName)}`;
-    if (areaContacts.has(areaKey) && areaContacts.get(areaKey) !== contactKey)
-      throw new Error(
-        `EINSATZPLAN: Bereich „${shift.area}“ hat unterschiedliche Ansprechpartner`
-      );
-    areaContacts.set(areaKey, contactKey);
 
     const seenHelpers = new Set<string>();
     shift.slots = shift.slots.flatMap(slot => {

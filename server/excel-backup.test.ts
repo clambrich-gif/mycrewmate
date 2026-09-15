@@ -533,6 +533,101 @@ describe("Excel-Datensicherung", () => {
     });
   });
 
+  it("vereinheitlicht leere und unterschiedliche Ansprechpartner innerhalb eines Einsatzbereichs", async () => {
+    const exported = await exportBackupExcel();
+    const changed = mutateWorkbook(exported.buffer, workbook => {
+      const contactRows = XLSX.utils.sheet_to_json<any>(
+        workbook.Sheets.ANSPRECHPARTNER
+      );
+      contactRows.push({
+        ID: 11,
+        Name: "Alex Leitung",
+        Rufnummer: "0999",
+        Bemerkung: "",
+        Reihenfolge: 1,
+      });
+      replaceSheet(workbook, "ANSPRECHPARTNER", contactRows);
+
+      const helperRows = XLSX.utils.sheet_to_json<any>(workbook.Sheets.HELFER);
+      helperRows.push({
+        ID: 22,
+        "Ansprechpartner-ID": 11,
+        Ansprechpartner: "Alex Leitung",
+        Name: "Alex Leitung",
+        "E-Mail": "",
+        Telefon: "0999",
+        Bemerkung: "",
+        "Helfen?": "ja",
+        Mo: "ja",
+        Di: "ja",
+        Mi: "ja",
+        Do: "ja",
+        Fr: "ja",
+        Sa: "ja",
+        So: "ja",
+        "Bestätigt?": "nein",
+      });
+      replaceSheet(workbook, "HELFER", helperRows);
+
+      const [shift] = XLSX.utils.sheet_to_json<any>(
+        workbook.Sheets.EINSATZPLAN
+      );
+      for (let slot = 1; slot <= 20; slot++) {
+        shift[`Helfer ${slot} ID`] = "";
+        shift[`Helfer ${slot}`] = "";
+      }
+      const shifts = [
+        {
+          ...shift,
+          Bereich: "Putzen",
+          Aufgabe: "Aufbau",
+          "Bereichsansprechpartner-ID": "",
+          Bereichsansprechpartner: "",
+        },
+        {
+          ...shift,
+          ID: "",
+          Bereich: "Putzen",
+          Aufgabe: "Sortieren",
+          Beginn: "10:00",
+          Ende: "11:00",
+          "Bereichsansprechpartner-ID": 10,
+          Bereichsansprechpartner: "Chris Leitung",
+        },
+        {
+          ...shift,
+          ID: "",
+          Bereich: "Putzen",
+          Aufgabe: "Abschluss",
+          Beginn: "11:00",
+          Ende: "12:00",
+          "Bereichsansprechpartner-ID": 11,
+          Bereichsansprechpartner: "Alex Leitung",
+        },
+      ];
+      replaceSheet(workbook, "EINSATZPLAN", shifts);
+    });
+
+    const parsed = parseBackupWorkbook(changed.toString("base64"));
+    expect(parsed.shifts).toHaveLength(3);
+    expect(parsed.shifts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          area: "Putzen",
+          areaContactSourceId: 10,
+          areaContactName: "Chris Leitung",
+        }),
+      ])
+    );
+    expect(
+      parsed.shifts.every(
+        row =>
+          row.areaContactSourceId === 10 &&
+          row.areaContactName === "Chris Leitung"
+      )
+    ).toBe(true);
+  });
+
   it("blockiert zeitlich überlappende Doppelbelegungen", async () => {
     const exported = await exportBackupExcel();
     const changed = mutateWorkbook(exported.buffer, workbook => {
