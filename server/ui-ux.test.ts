@@ -679,6 +679,20 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(help).toContain("pdf-export-current_5a3894fb.png");
   });
 
+  it("filtert Hilfekapitel über zugängliche Schnellfilter nach Rolle", () => {
+    const help = source("client/src/pages/Help.tsx");
+
+    expect(help).toContain('useState<keyof typeof ROLE_STYLE>("alle")');
+    expect(help).toContain('aria-label="Hilfekapitel nach Rolle filtern"');
+    expect(help).toContain("Alle Kapitel");
+    expect(help).toContain("Nur Planungsteam");
+    expect(help).toContain("Nur Administratoren");
+    expect(help).toContain("aria-pressed={active}");
+    expect(help).toContain("onClick={() => setRoleFilter(role)}");
+    expect(help).toContain('section.role === "alle"');
+    expect(help).toContain("section.role === roleFilter");
+  });
+
   it("stellt die Login-Rollen als zugänglichen Segmented-Control dar", () => {
     const layout = source("client/src/components/Layout.tsx");
 

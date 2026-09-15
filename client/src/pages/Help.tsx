@@ -32,6 +32,18 @@ const ROLE_LABEL = {
   admin: "Nur Administratoren",
 } as const;
 
+const ROLE_FILTER_LABEL = {
+  alle: "Alle Kapitel",
+  planung: "Nur Planungsteam",
+  admin: "Nur Administratoren",
+} as const;
+
+const ROLE_FILTER_STYLE = {
+  alle: "border-sky-300 bg-sky-50 text-sky-900 hover:bg-sky-100",
+  planung: "border-amber-300 bg-amber-50 text-amber-950 hover:bg-amber-100",
+  admin: "border-emerald-300 bg-emerald-50 text-emerald-950 hover:bg-emerald-100",
+} as const;
+
 type HelpSection = {
   id: string;
   title: string;
@@ -230,6 +242,8 @@ function RoleBadge({ role }: { role: keyof typeof ROLE_STYLE }) {
 
 export default function Help() {
   const [query, setQuery] = useState("");
+  const [roleFilter, setRoleFilter] =
+    useState<keyof typeof ROLE_STYLE>("alle");
   const { user } = useAuth();
   const helpVideo =
     user?.role === "admin"
@@ -257,12 +271,17 @@ export default function Help() {
   const normalizedQuery = query.trim().toLocaleLowerCase("de-DE");
   const filteredSections = useMemo(
     () =>
-      SECTIONS.filter(section =>
-        `${section.title} ${section.summary} ${section.keywords} ${(section.steps ?? []).join(" ")}`
+      SECTIONS.filter(section => {
+        const matchesRole =
+          roleFilter === "alle" ||
+          section.role === "alle" ||
+          section.role === roleFilter;
+        const matchesQuery = `${section.title} ${section.summary} ${section.keywords} ${(section.steps ?? []).join(" ")}`
           .toLocaleLowerCase("de-DE")
-          .includes(normalizedQuery)
-      ),
-    [normalizedQuery]
+          .includes(normalizedQuery);
+        return matchesRole && matchesQuery;
+      }),
+    [normalizedQuery, roleFilter]
   );
 
   return (
@@ -336,10 +355,40 @@ export default function Help() {
               aria-label="Hilfe durchsuchen"
             />
           </div>
-          <div className="flex flex-wrap gap-2">
-            <RoleBadge role="alle" />
-            <RoleBadge role="planung" />
-            <RoleBadge role="admin" />
+          <div
+            className="flex flex-wrap gap-2"
+            role="group"
+            aria-label="Hilfekapitel nach Rolle filtern"
+          >
+            {(Object.keys(ROLE_FILTER_LABEL) as Array<keyof typeof ROLE_STYLE>).map(
+              role => {
+                const active = roleFilter === role;
+                const Icon =
+                  role === "planung"
+                    ? Users
+                    : role === "admin"
+                      ? ShieldCheck
+                      : UserRoundCog;
+                return (
+                  <Button
+                    key={role}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    aria-pressed={active}
+                    onClick={() => setRoleFilter(role)}
+                    className={cn(
+                      "min-h-11 gap-1.5 border text-sm transition-[transform,background-color,box-shadow] duration-150 active:scale-[0.97] md:min-h-9",
+                      ROLE_FILTER_STYLE[role],
+                      active && "ring-2 ring-offset-1 shadow-sm"
+                    )}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {ROLE_FILTER_LABEL[role]}
+                  </Button>
+                );
+              }
+            )}
           </div>
         </CardContent>
       </Card>
@@ -456,8 +505,8 @@ export default function Help() {
                 <Search className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
                 <h2 className="font-semibold">Kein Hilfethema gefunden</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Versuchen Sie einen allgemeineren Begriff oder löschen Sie die
-                  Suche.
+                  Versuchen Sie einen allgemeineren Begriff, ändern Sie den
+                  Rollenfilter oder löschen Sie die Suche.
                 </p>
               </CardContent>
             </Card>
