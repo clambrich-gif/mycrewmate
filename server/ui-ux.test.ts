@@ -457,6 +457,23 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(permissions).not.toContain("dark:");
   });
 
+  it("hält die Löschprotokolltabelle innerhalb der Karte und bricht lange Details um", () => {
+    const permissions = source("client/src/pages/Permissions.tsx");
+    const chat = source("client/src/components/LiveChatWidget.tsx");
+
+    expect(permissions).toContain("min-w-0 max-w-full overflow-hidden shadow-sm lg:mr-24");
+    expect(permissions).toContain("w-full max-w-full table-fixed text-sm");
+    expect(permissions).not.toContain('min-w-[900px]');
+    expect(permissions).toContain("md:px-0 md:pt-0 md:pb-28");
+    expect(permissions).toContain("w-[30%] break-words p-3 text-left");
+    expect(permissions).toContain("w-[15%] break-words p-3 text-left");
+    expect(permissions).toContain("w-full min-w-0 justify-center whitespace-nowrap px-2");
+    expect(permissions).toContain("Vorgang &amp; ausgeführt von");
+    expect(permissions).toContain("[overflow-wrap:anywhere]");
+    expect(permissions).toContain("p-3 align-top leading-relaxed");
+    expect(chat).toContain("md:bottom-8 md:right-8 md:h-20");
+  });
+
   it("hält Dashboard-Statusfarben im erzwungenen Light-Theme gut lesbar", () => {
     const css = source("client/src/index.css");
     const dashboard = source("client/src/pages/Dashboard.tsx");

@@ -45,7 +45,7 @@ function detailText(entityType: "helper" | "cake", value: string | null) {
     if (entityType === "helper") {
       return [
         `Helfen: ${details.willHelp === "ja" ? "Ja" : "Nein"}`,
-        `Mo–So: ${details.availMon ?? "–"}/${details.availTue ?? "–"}/${details.availWed ?? "–"}/${details.availThu ?? "–"}/${details.availFri ?? "–"}/${details.availSat ?? "–"}/${details.availSun ?? "–"}`,
+        `Mo–So: ${details.availMon ?? "–"} / ${details.availTue ?? "–"} / ${details.availWed ?? "–"} / ${details.availThu ?? "–"} / ${details.availFri ?? "–"} / ${details.availSat ?? "–"} / ${details.availSun ?? "–"}`,
         `Bestätigt: ${details.confirmed === "ja" ? "Ja" : "Nein"}`,
         typeof details.assignmentCount === "number"
           ? `Einsätze: ${details.assignmentCount}`
@@ -239,7 +239,7 @@ export default function Permissions() {
         </CardContent>
       </Card>
 
-      <Card className="shadow-sm">
+      <Card className="min-w-0 max-w-full overflow-hidden shadow-sm lg:mr-24">
         <CardHeader className="gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle className="flex items-center gap-2 text-base">
@@ -303,7 +303,12 @@ export default function Permissions() {
             </div>
           )}
         </CardHeader>
-        <CardContent className={cn(isAdmin && "p-3 md:p-0")}>
+        <CardContent
+          className={cn(
+            "min-w-0 max-w-full overflow-hidden",
+            isAdmin && "p-3 md:px-0 md:pt-0 md:pb-28"
+          )}
+        >
           {!isAdmin ? (
             <div className="rounded-lg border border-dashed bg-muted/30 p-6 text-center text-sm text-muted-foreground">
               Das Löschprotokoll ist ausschließlich für Administratoren
@@ -332,7 +337,10 @@ export default function Permissions() {
                           {new Date(entry.createdAt).toLocaleString("de-DE")}
                         </div>
                       </div>
-                      <Badge variant="outline">
+                      <Badge
+                        className="max-w-[45%] break-words whitespace-normal text-left"
+                        variant="outline"
+                      >
                         {entityLabel[entry.entityType]} · {entry.year}
                       </Badge>
                     </div>
@@ -362,7 +370,7 @@ export default function Permissions() {
                         {entry.responsibleContactName}
                       </div>
                     )}
-                    <div className="text-muted-foreground">
+                    <div className="break-words whitespace-normal [overflow-wrap:anywhere] text-muted-foreground">
                       {detailText(entry.entityType, entry.details)}
                     </div>
                     {entry.restoredAt ? (
@@ -383,76 +391,79 @@ export default function Permissions() {
                   </div>
                 ))}
               </div>
-              <table className="hidden w-full min-w-[900px] text-sm md:table">
-                <thead className="bg-muted/60 text-left">
-                  <tr>
-                    <th className="p-3">Zeitpunkt</th>
-                    <th className="p-3">Jahr</th>
-                    <th className="p-3">Veranstaltung</th>
-                    <th className="p-3">Art</th>
-                    <th className="p-3">Gelöschter Eintrag</th>
-                    <th className="p-3">Vorgang</th>
-                    <th className="p-3">Ausgeführt von</th>
-                    <th className="p-3">Details</th>
-                    <th className="p-3">Wiederherstellung</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {audit.data.map(entry => (
-                    <tr key={entry.id} className="border-t align-top">
-                      <td className="whitespace-nowrap p-3">
-                        {new Date(entry.createdAt).toLocaleString("de-DE")}
-                      </td>
-                      <td className="p-3">{entry.year}</td>
-                      <td className="p-3">
-                        {entry.eventName ?? "nicht zugeordnet"}
-                      </td>
-                      <td className="p-3">{entityLabel[entry.entityType]}</td>
-                      <td className="p-3 font-medium">{entry.entityLabel}</td>
-                      <td className="p-3">{actionLabel[entry.action]}</td>
-                      <td className="p-3">
-                        {entry.actorName}
-                        <div className="text-xs text-muted-foreground">
-                          {entry.actorRole === "admin"
-                            ? "Administrator"
-                            : "Planungsteam"}
-                        </div>
-                        {entry.responsibleContactName && (
-                          <div className="mt-1 text-xs font-medium text-primary">
-                            Gewählter Ansprechpartner:{" "}
-                            {entry.responsibleContactName}
-                          </div>
-                        )}
-                      </td>
-                      <td className="p-3 text-muted-foreground">
-                        {detailText(entry.entityType, entry.details)}
-                      </td>
-                      <td className="p-3">
-                        {entry.restoredAt ? (
-                          <Badge className="bg-emerald-100 text-emerald-800">
-                            Wiederhergestellt
-                          </Badge>
-                        ) : entry.action === "single_delete" ? (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={restoreAudit.isPending}
-                            onClick={() =>
-                              restoreAudit.mutate({ id: entry.id })
-                            }
-                          >
-                            <RotateCcw className="mr-2 h-4 w-4" /> Rückgängig
-                          </Button>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">
-                            Nur Einzellöschungen
-                          </span>
-                        )}
-                      </td>
+              <div className="hidden w-full max-w-full overflow-hidden md:block">
+                <table className="w-full max-w-full table-fixed text-sm">
+                  <thead className="bg-muted/60 text-left">
+                    <tr>
+                      <th className="w-[12%] break-words p-3 text-left">Zeitpunkt</th>
+                      <th className="w-[13%] break-words p-3 text-left">Veranstaltung</th>
+                      <th className="w-[15%] break-words p-3 text-left">Gelöschter Eintrag</th>
+                      <th className="w-[15%] break-words p-3 text-left">Vorgang &amp; ausgeführt von</th>
+                      <th className="w-[30%] break-words p-3 text-left">Details</th>
+                      <th className="w-[15%] break-words p-3 text-left">Wiederherstellung</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {audit.data.map(entry => (
+                      <tr key={entry.id} className="border-t align-top">
+                        <td className="break-words whitespace-normal p-3 align-top leading-relaxed [overflow-wrap:anywhere]">
+                          {new Date(entry.createdAt).toLocaleString("de-DE")}
+                        </td>
+                        <td className="break-words whitespace-normal p-3 align-top leading-relaxed [overflow-wrap:anywhere]">
+                          {entry.eventName ?? "nicht zugeordnet"}
+                        </td>
+                        <td className="break-words p-3 align-top font-medium leading-relaxed [overflow-wrap:anywhere]">
+                          {entry.entityLabel}
+                          <div className="mt-1 text-xs font-normal text-muted-foreground">
+                            {entityLabel[entry.entityType]}
+                          </div>
+                        </td>
+                        <td className="break-words whitespace-normal p-3 align-top leading-relaxed [overflow-wrap:anywhere]">
+                          <div className="font-medium">{actionLabel[entry.action]}</div>
+                          {entry.actorName}
+                          <div className="text-xs text-muted-foreground">
+                            {entry.actorRole === "admin"
+                              ? "Administrator"
+                              : "Planungsteam"}
+                          </div>
+                          {entry.responsibleContactName && (
+                            <div className="mt-1 text-xs font-medium text-primary">
+                              Gewählter Ansprechpartner: {" "}
+                              {entry.responsibleContactName}
+                            </div>
+                          )}
+                        </td>
+                        <td className="break-words whitespace-normal p-3 align-top leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">
+                          {detailText(entry.entityType, entry.details)}
+                        </td>
+                        <td className="break-words whitespace-normal px-2 py-3 align-top leading-relaxed [overflow-wrap:anywhere]">
+                          {entry.restoredAt ? (
+                            <Badge className="bg-emerald-100 text-emerald-800">
+                              Wiederhergestellt
+                            </Badge>
+                          ) : entry.action === "single_delete" ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-full min-w-0 justify-center whitespace-nowrap px-2"
+                              disabled={restoreAudit.isPending}
+                              onClick={() =>
+                                restoreAudit.mutate({ id: entry.id })
+                              }
+                            >
+                              <RotateCcw className="mr-2 h-4 w-4" /> Rückgängig
+                            </Button>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">
+                              Nur Einzellöschungen
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </>
           ) : (
             <div className="p-8 text-center text-sm text-muted-foreground">
