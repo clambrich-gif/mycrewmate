@@ -17,7 +17,7 @@ import {
   type TaskStatusFilter,
 } from "@/lib/dashboard-target-filter";
 import { trpc } from "@/lib/trpc";
-import { ArrowDownAZ, ArrowUpZA, Trash2 } from "lucide-react";
+import { ArrowDownAZ, ArrowUpZA, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useSearchParams } from "wouter";
@@ -174,7 +174,7 @@ export default function TaskList({
             {isPrep ? " sowie frei formulierbarer Frist." : "."}
           </p>
         </div>
-        <div className="flex w-full flex-wrap justify-end gap-2 sm:w-auto">
+        <div className="grid w-full grid-cols-2 gap-2 lg:ml-auto lg:flex lg:w-auto lg:flex-wrap lg:justify-end [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 max-lg:[&>[data-slot=button]]:h-11 max-lg:[&>[data-slot=button]]:text-base lg:[&>[data-slot=button]]:w-auto lg:[&>[data-slot=button]]:px-4">
           <ModuleExcelImportButton
             area={kind === "prep" ? "VORBEREITUNG" : "NACHBEREITUNG"}
             label={title}
@@ -184,7 +184,7 @@ export default function TaskList({
             placeholder="Neue Aufgabe"
             value={task}
             onChange={event => setTask(event.target.value)}
-            className="w-full sm:w-72"
+            className="col-span-2 w-full lg:order-last lg:w-72"
             onKeyDown={event => event.key === "Enter" && submitCreate()}
           />
           {isPrep && (
@@ -192,16 +192,17 @@ export default function TaskList({
               placeholder="Zu erledigen bis (Freitext)"
               value={dueText}
               onChange={event => setDueText(event.target.value)}
-              className="w-full sm:w-64"
+              className="col-span-2 w-full lg:order-last lg:ml-2 lg:w-64"
               onKeyDown={event => event.key === "Enter" && submitCreate()}
             />
           )}
           <Button
-            className="w-full sm:w-auto"
+            className="col-span-2 shadow-xs lg:col-auto"
             onClick={submitCreate}
             disabled={!task.trim() || create.isPending}
           >
-            {create.isPending ? "Speichert …" : "Hinzufügen"}
+            <Plus className="mr-1.5 h-4 w-4" />
+            <span>{create.isPending ? "Speichert …" : "Neue Aufgabe"}</span>
           </Button>
         </div>
       </div>
@@ -230,10 +231,11 @@ export default function TaskList({
           </Button>
         </div>
       )}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex w-full flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-center">
         <Button
           type="button"
           variant="outline"
+          className="w-full lg:w-auto"
           onClick={() => setSortAsc(value => !value)}
         >
           {sortAsc ? (
@@ -250,7 +252,7 @@ export default function TaskList({
           }
         >
           <SelectTrigger
-            className="w-full sm:w-[220px]"
+            className="w-full lg:w-[220px]"
             aria-label="Aufgabenstatus filtern"
           >
             <SelectValue />
@@ -263,7 +265,7 @@ export default function TaskList({
           </SelectContent>
         </Select>
         <Select value={contactFilter} onValueChange={setContactFilter}>
-          <SelectTrigger className="w-full sm:w-[240px]">
+          <SelectTrigger className="w-full lg:w-[240px]">
             <SelectValue placeholder="Verantwortliche filtern" />
           </SelectTrigger>
           <SelectContent>
@@ -276,7 +278,7 @@ export default function TaskList({
             ))}
           </SelectContent>
         </Select>
-        <span className="text-sm text-muted-foreground">
+        <span className="w-full text-sm text-muted-foreground lg:w-auto">
           {visibleRows.length} von {rows.length} Einträgen
         </span>
       </div>

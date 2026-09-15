@@ -791,6 +791,28 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(resetButton).toContain('<span className="hidden sm:inline">');
   });
 
+  it("vereinheitlicht die mobilen Modulkopfbereiche bis 1024px mit Aktionsraster und Vollbreitenfeldern", () => {
+    const helpers = source("client/src/pages/Helpers.tsx");
+    const taskList = source("client/src/pages/TaskList.tsx");
+    const taskGeneric = source("client/src/pages/TaskGeneric.tsx");
+    const finances = source("client/src/pages/Finances.tsx");
+
+    for (const module of [helpers, taskList, taskGeneric, finances]) {
+      expect(module).toContain("grid w-full grid-cols-2 gap-2");
+      expect(module).toContain("max-lg:[&>[data-slot=button]]:h-11");
+      expect(module).toContain("max-lg:[&>[data-slot=button]]:text-base");
+      expect(module).toContain("lg:[&>[data-slot=button]]:w-auto");
+      expect(module).toContain('className="col-span-2 shadow-xs lg:col-auto"');
+    }
+
+    expect(helpers).toContain("flex w-full flex-col gap-2 lg:flex-row");
+    expect(helpers).toContain('className="w-full lg:w-56"');
+    expect(taskList).toContain("flex w-full flex-col gap-2 lg:flex-row");
+    expect(taskList).toContain('className="w-full lg:w-[220px]"');
+    expect(taskGeneric).toContain("flex w-full flex-col gap-2 lg:flex-row");
+    expect(taskGeneric).toContain('className="w-full lg:w-[240px]"');
+  });
+
   it("markiert historische Chatnachrichten als initial lautlos und erneuert fortlaufendes Typing gedrosselt", () => {
     const layout = source("client/src/components/Layout.tsx");
     const widget = source("client/src/components/LiveChatWidget.tsx");

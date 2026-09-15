@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useEventYear } from "@/contexts/YearContext";
 import { trpc } from "@/lib/trpc";
-import { Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -141,22 +141,23 @@ export default function Finances() {
             automatisch berechnet.
           </p>
         </div>
-        <div className="flex w-full flex-wrap justify-end gap-2 sm:w-auto">
+        <div className="grid w-full grid-cols-2 gap-2 lg:ml-auto lg:flex lg:w-auto lg:flex-wrap lg:justify-end [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 max-lg:[&>[data-slot=button]]:h-11 max-lg:[&>[data-slot=button]]:text-base lg:[&>[data-slot=button]]:w-auto lg:[&>[data-slot=button]]:px-4">
           <ModuleExcelImportButton area="FINANZEN" label="Finanzen" />
           <ResetAreaButton area="finances" label="Finanzen" compact />
           <Input
             placeholder="Kategorie"
             value={category}
             onChange={event => setCategory(event.target.value)}
-            className="w-full sm:w-64"
+            className="col-span-2 w-full lg:order-last lg:w-64"
             onKeyDown={event => event.key === "Enter" && submitCreate()}
           />
           <Button
-            className="w-full sm:w-auto"
+            className="col-span-2 shadow-xs lg:col-auto"
             onClick={submitCreate}
             disabled={!category.trim() || create.isPending}
           >
-            {create.isPending ? "Speichert …" : "Hinzufügen"}
+            <Plus className="mr-1.5 h-4 w-4" />
+            <span>{create.isPending ? "Speichert …" : "Neue Kategorie"}</span>
           </Button>
         </div>
       </div>

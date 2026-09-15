@@ -19,7 +19,7 @@ import {
 import { downloadBase64File, safeDownloadName } from "@/lib/download";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
-import { FileDown, Info, Trash2 } from "lucide-react";
+import { FileDown, Info, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
@@ -298,7 +298,7 @@ export default function Helpers() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-end justify-between flex-wrap gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Helfer</h1>
           <p className="text-muted-foreground">
@@ -306,14 +306,14 @@ export default function Helpers() {
             Aufgaben-PDFs.
           </p>
         </div>
-        <div className="flex gap-2 flex-wrap justify-end">
+        <div className="grid w-full grid-cols-2 gap-2 lg:ml-auto lg:flex lg:w-auto lg:flex-wrap lg:justify-end [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 max-lg:[&>[data-slot=button]]:h-11 max-lg:[&>[data-slot=button]]:text-base lg:[&>[data-slot=button]]:w-auto lg:[&>[data-slot=button]]:px-4">
           <ModuleExcelImportButton area="HELFER" label="Helfer" />
           <ResetAreaButton area="helpers" label="Helfer" compact />
           <Input
             placeholder="Name"
             value={name}
             onChange={event => setName(event.target.value)}
-            className="w-52"
+            className="col-span-2 w-full lg:order-last lg:ml-2 lg:w-52"
             onKeyDown={event =>
               event.key === "Enter" &&
               name.trim() &&
@@ -321,22 +321,25 @@ export default function Helpers() {
             }
           />
           <Button
+            className="col-span-2 shadow-xs lg:col-auto"
             onClick={() => name.trim() && create.mutate({ name: name.trim() })}
+            disabled={!name.trim() || create.isPending}
           >
-            Hinzufügen
+            <Plus className="mr-1.5 h-4 w-4" />
+            <span>{create.isPending ? "Speichert …" : "Neuer Helfer"}</span>
           </Button>
         </div>
       </div>
 
-      <div className="flex gap-3 flex-wrap">
+      <div className="flex w-full flex-col gap-2 lg:flex-row lg:items-center">
         <Input
           placeholder="Suchen …"
           value={filter}
           onChange={event => setFilter(event.target.value)}
-          className="w-56"
+          className="w-full lg:w-56"
         />
         <Select value={apFilter} onValueChange={setApFilter}>
-          <SelectTrigger className="w-56">
+          <SelectTrigger className="w-full lg:w-56">
             <SelectValue placeholder="Ansprechpartner" />
           </SelectTrigger>
           <SelectContent>

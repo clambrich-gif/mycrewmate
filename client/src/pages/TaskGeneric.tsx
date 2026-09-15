@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
-import { ArrowDownAZ, ArrowUpZA, Trash2 } from "lucide-react";
+import { ArrowDownAZ, ArrowUpZA, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -207,7 +207,7 @@ export default function TaskGeneric({
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <h1 className="text-2xl font-bold">{title}</h1>
-        <div className="flex w-full flex-wrap justify-end gap-2 sm:w-auto">
+        <div className="grid w-full grid-cols-2 gap-2 lg:ml-auto lg:flex lg:w-auto lg:flex-wrap lg:justify-end [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 max-lg:[&>[data-slot=button]]:h-11 max-lg:[&>[data-slot=button]]:text-base lg:[&>[data-slot=button]]:w-auto lg:[&>[data-slot=button]]:px-4">
           {kind in importAreaByKind && (
             <ModuleExcelImportButton
               area={importAreaByKind[kind as keyof typeof importAreaByKind]}
@@ -225,7 +225,7 @@ export default function TaskGeneric({
             placeholder={`Neu: ${addLabel}`}
             value={name}
             onChange={event => setName(event.target.value)}
-            className="w-full sm:w-64"
+            className="col-span-2 w-full lg:order-last lg:w-64"
             onKeyDown={event => event.key === "Enter" && submitCreate()}
           />
           {columns.map(column => (
@@ -239,23 +239,25 @@ export default function TaskGeneric({
                   [column.key]: event.target.value,
                 }))
               }
-              className="w-full sm:w-36"
+              className="col-span-2 w-full lg:order-last lg:ml-2 lg:w-36"
             />
           ))}
           <Button
-            className="w-full sm:w-auto"
+            className="col-span-2 shadow-xs lg:col-auto"
             onClick={submitCreate}
             disabled={!name.trim() || create.isPending}
           >
-            {create.isPending ? "Speichert …" : "Hinzufügen"}
+            <Plus className="mr-1.5 h-4 w-4" />
+            <span>{create.isPending ? "Speichert …" : `Neu: ${addLabel}`}</span>
           </Button>
         </div>
       </div>
       {sortableAndFilterable && (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex w-full flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-center">
           <Button
             type="button"
             variant="outline"
+            className="w-full lg:w-auto"
             onClick={() => setSortAsc(value => !value)}
           >
             {sortAsc ? (
@@ -267,7 +269,7 @@ export default function TaskGeneric({
           </Button>
           {!noContact && (
             <Select value={contactFilter} onValueChange={setContactFilter}>
-              <SelectTrigger className="w-full sm:w-[240px]">
+              <SelectTrigger className="w-full lg:w-[240px]">
                 <SelectValue placeholder="Verantwortliche filtern" />
               </SelectTrigger>
               <SelectContent>
@@ -281,7 +283,7 @@ export default function TaskGeneric({
               </SelectContent>
             </Select>
           )}
-          <span className="text-sm text-muted-foreground">
+          <span className="w-full text-sm text-muted-foreground lg:w-auto">
             {visibleRows.length} von {rows.length} Einträgen
           </span>
         </div>
