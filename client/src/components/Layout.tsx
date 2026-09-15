@@ -146,6 +146,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     notes: [],
     typing: [],
   });
+  const [chatSnapshotInitialized, setChatSnapshotInitialized] = useState(false);
   const [unreadNotesCount, setUnreadNotesCount] = useState(0);
   const [hasImportantUnread, setHasImportantUnread] = useState(false);
   const lastSeenChatNoteIdRef = useRef<number>(0);
@@ -174,6 +175,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     chatSnapshotEpochRef.current += 1;
     chatSnapshotPollQueuedRef.current = true;
     setChatSnapshot({ notes: [], typing: [] });
+    setChatSnapshotInitialized(false);
     lastSeenChatNoteIdRef.current = 0;
     hasLoadedChatSnapshotRef.current = false;
     setUnreadNotesCount(0);
@@ -210,6 +212,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
           const typing = (snapshot.typing ?? []) as ActiveTyperItem[];
           const orderedNotes = [...notesList].sort((a, b) => a.id - b.id);
           setChatSnapshot({ notes: orderedNotes, typing });
+          // Erst ein bestätigter Server-Snapshot darf als Initialhistorie gelten.
+          // Die anfängliche leere React-Ansicht löst daher nie einen Warnton aus.
+          setChatSnapshotInitialized(true);
 
           if (orderedNotes.length === 0) {
             lastSeenChatNoteIdRef.current = 0;
@@ -1381,6 +1386,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <LiveChatWidget
           state={chatState}
           snapshot={chatSnapshot}
+          snapshotInitialized={chatSnapshotInitialized}
           unreadCount={unreadNotesCount}
           hasImportantUnread={hasImportantUnread}
           onOpen={openChatWidget}

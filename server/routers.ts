@@ -136,6 +136,24 @@ const activeSessionProcedure = baseProtectedProcedure.use(
   }
 );
 
+// Reine Hintergrundabfragen (insbesondere notes.list) dürfen keine Präsenz
+// verlängern. Sonst würden inaktive Browsertabs durch 5-Sekunden-Polling
+// dauerhaft als "online" erscheinen.
+const scopedReadProcedure = baseProtectedProcedure
+  .use(({ ctx, next }) =>
+    withPlanningScope(requestedPlanningScope(ctx.req), () => next())
+  )
+  .use(async ({ next }) => {
+    if (!(await db.getEvent())) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message:
+          "Die gewählte Veranstaltung gehört nicht zum gewählten Veranstaltungsjahr",
+      });
+    }
+    return next();
+  });
+
 const accountAdminProcedure = activeSessionProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
   return next({ ctx });
@@ -1543,7 +1561,7 @@ export const appRouter = router({
   }),
 
   notes: router({
-    list: protectedProcedure
+    list: scopedReadProcedure
       .input(
         z
           .object({

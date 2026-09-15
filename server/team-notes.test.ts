@@ -1,8 +1,61 @@
 import { describe, expect, it, vi } from "vitest";
 import { appRouter } from "./routers";
 import * as db from "./db";
+import * as presence from "./session-presence";
 
 describe("Live-Teamnotizen Backend & Ephemeral Storage", () => {
+  it("aktualisiert durch das reine Chat-Polling keine Online-Präsenz", async () => {
+    const presenceSpy = vi
+      .spyOn(presence, "recordSessionPresence")
+      .mockResolvedValue(undefined);
+    const eventSpy = vi.spyOn(db, "getEvent").mockResolvedValue({
+      id: 1,
+      year: 2026,
+      name: "MyEifelRide",
+      activeDays: ["Freitag", "Samstag", "Sonntag"],
+      pdfLogoKey: null,
+      pdfLogoUrl: null,
+      pdfLogoFallback: "none",
+      sortOrder: 0,
+      createdAt: new Date(),
+    });
+    const notesSpy = vi.spyOn(db, "listTeamNotes").mockResolvedValue([]);
+    const typingSpy = vi.spyOn(db, "listActiveTypers").mockResolvedValue([]);
+    const caller = appRouter.createCaller({
+      req: {
+        headers: {
+          "x-event-year": "2026",
+          "x-event-id": "1",
+        },
+      } as any,
+      res: {} as any,
+      user: {
+        id: 1,
+        openId: "admin-id",
+        name: "Administrator",
+        email: null,
+        loginMethod: "admin-password",
+        role: "admin",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastSignedIn: new Date(),
+      },
+    });
+
+    await expect(caller.notes.list({ limit: 150 })).resolves.toEqual({
+      notes: [],
+      typing: [],
+    });
+    expect(notesSpy).toHaveBeenCalledWith({ sinceId: undefined, limit: 150 });
+    expect(typingSpy).toHaveBeenCalledOnce();
+    expect(presenceSpy).not.toHaveBeenCalled();
+
+    presenceSpy.mockRestore();
+    eventSpy.mockRestore();
+    notesSpy.mockRestore();
+    typingSpy.mockRestore();
+  });
+
   it("ruft Notizen der letzten 24 Stunden ab und unterstützt inkrementelles Polling mit sinceId", async () => {
     const listSpy = vi.spyOn(db, "listTeamNotes").mockResolvedValueOnce([
       {

@@ -692,4 +692,19 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(resetButton).toContain('<span className="sm:hidden">{mobileButtonLabel}</span>');
     expect(resetButton).toContain('<span className="hidden sm:inline">');
   });
+
+  it("markiert historische Chatnachrichten als initial lautlos und erneuert fortlaufendes Typing gedrosselt", () => {
+    const layout = source("client/src/components/Layout.tsx");
+    const widget = source("client/src/components/LiveChatWidget.tsx");
+    const logic = source("client/src/components/live-chat-logic.ts");
+
+    expect(layout).toContain("const [chatSnapshotInitialized, setChatSnapshotInitialized] = useState(false)");
+    expect(layout).toContain("setChatSnapshotInitialized(true)");
+    expect(layout).toContain("snapshotInitialized={chatSnapshotInitialized}");
+    expect(widget).toContain("if (!snapshotInitialized) return;");
+    expect(widget).toContain("shouldRenewTypingStatus(typingLastRenewedAtRef.current, now)");
+    expect(widget).toContain("Der Server bereinigt Typing nach 8 Sekunden");
+    expect(logic).toContain("export const TYPING_RENEWAL_MS = 4_000");
+    expect(logic).toContain("now - lastReportedAt >= TYPING_RENEWAL_MS");
+  });
 });

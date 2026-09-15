@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useEventYear } from "@/contexts/YearContext";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { shouldRenewTypingStatus } from "./live-chat-logic";
 import {
   AlertTriangle,
   Bell,
@@ -43,6 +44,7 @@ import { toast } from "sonner";
 const SESSION_NAME_STORAGE_PREFIX = "rsc-live-notes-sender-name-";
 const SOUND_ENABLED_STORAGE_PREFIX = "rsc-live-notes-important-sound-";
 const CUSTOM_NAME_VALUE = "__custom_name__";
+const TYPING_IDLE_MS = 3_500;
 
 export type LiveChatWidgetState = "closed" | "minimized" | "open";
 
@@ -86,6 +88,7 @@ export function roleBadgeText(role: "user" | "admin") {
 export function LiveChatWidget({
   state,
   snapshot,
+  snapshotInitialized,
   unreadCount,
   hasImportantUnread = false,
   onOpen,
@@ -95,6 +98,8 @@ export function LiveChatWidget({
 }: {
   state: LiveChatWidgetState;
   snapshot: TeamNotesSnapshot;
+  /** True erst nach dem ersten bestätigten Server-Snapshot des aktuellen Scopes. */
+  snapshotInitialized: boolean;
   unreadCount: number;
   hasImportantUnread?: boolean;
   onOpen: () => void;
@@ -121,6 +126,7 @@ export function LiveChatWidget({
   const typingDebounceTimerRef = useRef<number | null>(null);
   const typingMutateRef = useRef(typingMutation.mutate);
   const isTypingReportedRef = useRef(false);
+  const typingLastRenewedAtRef = useRef(0);
 
   const storageKey = useMemo(
     () => `${SESSION_NAME_STORAGE_PREFIX}${year}-${eventId}`,
@@ -226,9 +232,16 @@ export function LiveChatWidget({
   }, [typingMutation.mutate]);
 
   const reportTyping = useCallback(
-    (typingState: boolean) => {
-      if (!confirmedName || isTypingReportedRef.current === typingState) return;
+    (typingState: boolean, forceRenewal = false) => {
+      if (!confirmedName) return;
+      if (
+        isTypingReportedRef.current === typingState &&
+        !(typingState && forceRenewal)
+      ) {
+        return;
+      }
       isTypingReportedRef.current = typingState;
+      typingLastRenewedAtRef.current = typingState ? Date.now() : 0;
       typingMutateRef.current({
         senderName: confirmedName,
         isTyping: typingState,
@@ -242,14 +255,22 @@ export function LiveChatWidget({
     if (!confirmedName) return;
 
     if (newText.trim().length > 0) {
-      reportTyping(true);
+      const now = Date.now();
+      if (
+        !isTypingReportedRef.current ||
+        shouldRenewTypingStatus(typingLastRenewedAtRef.current, now)
+      ) {
+        // Der Server bereinigt Typing nach 8 Sekunden. Während fortlaufender
+        // Eingabe erneuern wir gedrosselt spätestens alle 4 Sekunden.
+        reportTyping(true, true);
+      }
       if (typingDebounceTimerRef.current) {
         window.clearTimeout(typingDebounceTimerRef.current);
       }
       typingDebounceTimerRef.current = window.setTimeout(() => {
         reportTyping(false);
         typingDebounceTimerRef.current = null;
-      }, 3_500);
+      }, TYPING_IDLE_MS);
     } else {
       if (typingDebounceTimerRef.current) {
         window.clearTimeout(typingDebounceTimerRef.current);
@@ -330,6 +351,7 @@ export function LiveChatWidget({
   // Der zentrale Layout-Owner liefert genau einen serialisierten Snapshot für
   // alle Widgetzustände. Initial geladene 24h-Historie löst keinen Warnton aus.
   useEffect(() => {
+    if (!snapshotInitialized) return;
     const isInitialSnapshot = !receivedInitialSnapshotRef.current;
     const newImportantNoteIds = snapshot.notes
       .filter(
@@ -343,7 +365,13 @@ export function LiveChatWidget({
       playImportantAlertTone();
     }
     if (isExpanded) scrollToBottom(true);
-  }, [isExpanded, playImportantAlertTone, scrollToBottom, snapshot.notes]);
+  }, [
+    isExpanded,
+    playImportantAlertTone,
+    scrollToBottom,
+    snapshot.notes,
+    snapshotInitialized,
+  ]);
 
   // Beim Schließen/Minimieren und beim vollständigen Unmount wird ein evtl.
   // laufendes Debounce verworfen und der flüchtige Tippstatus zuverlässig beendet.

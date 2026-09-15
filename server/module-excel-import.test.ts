@@ -83,6 +83,77 @@ describe("modularer Ansprechpartner-Excel-Import", () => {
     expect(importedRows.map(row => row.ID)).toEqual([21, ""]);
   });
 
+  it("verwirft scope-fremde technische IDs bei Ansprechpartnern, Helfern, Schichten und Fachlisten", () => {
+    const examples: Array<{
+      area:
+        | "ANSPRECHPARTNER"
+        | "HELFER"
+        | "EINSATZPLAN"
+        | "VORBEREITUNG"
+        | "NACHBEREITUNG"
+        | "MATERIAL"
+        | "MARKETING"
+        | "GENEHMIGUNGEN"
+        | "KUCHEN"
+        | "FINANZEN";
+      row: Record<string, unknown>;
+    }> = [
+      { area: "ANSPRECHPARTNER", row: { ID: 999, Name: "Fremder Kontakt" } },
+      { area: "HELFER", row: { ID: 999, Name: "Fremder Helfer" } },
+      {
+        area: "EINSATZPLAN",
+        row: {
+          ID: 999,
+          Tag: "Freitag",
+          Bereich: "Nord",
+          Aufgabe: "Fremde Schicht",
+          Beginn: "09:00",
+          Ende: "10:00",
+        },
+      },
+      { area: "VORBEREITUNG", row: { ID: 999, Aufgabe: "Fremde Vorbereitung" } },
+      { area: "NACHBEREITUNG", row: { ID: 999, Aufgabe: "Fremde Nachbereitung" } },
+      { area: "MATERIAL", row: { ID: 999, Artikel: "Fremdes Material" } },
+      { area: "MARKETING", row: { ID: 999, Maßnahme: "Fremdes Marketing" } },
+      { area: "GENEHMIGUNGEN", row: { ID: 999, Antrag: "Fremder Antrag" } },
+      { area: "KUCHEN", row: { ID: 999, Spender: "Fremd", Kuchen: "Kuchen" } },
+      { area: "FINANZEN", row: { ID: 999, Kategorie: "Fremde Finanzen" } },
+    ];
+
+    for (const { area, row } of examples) {
+      const imported = [{ ...row }];
+      expect(removeCopiedModuleIds(area, imported, [])).toBe(1);
+      expect(imported[0].ID).toBe("");
+    }
+  });
+
+  it("verwirft eine kopierte Schicht-ID, wenn die fachliche Identität zu einer anderen Schicht gehört", () => {
+    const currentRows: Record<string, unknown>[] = [
+      {
+        ID: 41,
+        Tag: "Freitag",
+        Bereich: "Nord",
+        Aufgabe: "Start",
+        Beginn: "09:00",
+        Ende: "10:00",
+      },
+      {
+        ID: 42,
+        Tag: "Freitag",
+        Bereich: "Süd",
+        Aufgabe: "Ziel",
+        Beginn: "10:00",
+        Ende: "11:00",
+      },
+    ];
+    const importedRows = [{ ...currentRows[1], ID: 41 }];
+
+    expect(
+      removeCopiedModuleIds("EINSATZPLAN", importedRows, currentRows)
+    ).toBe(1);
+    expect(importedRows[0].ID).toBe("");
+  });
+
   it("behandelt fehlende optionale Spalten als unverändert, vorhandene Leerwerte aber als bewusste Leerung", () => {
     const existing: Record<string, unknown>[] = [
       {

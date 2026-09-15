@@ -170,8 +170,9 @@ function rowIdentity(area: ModuleImportArea, row: Record<string, unknown>) {
   if (area === "MATERIAL") return normalized(row.Artikel);
   if (area === "MARKETING") return normalized(row.Maßnahme);
   if (area === "GENEHMIGUNGEN") return normalized(row.Antrag);
-  if (area === "KUCHEN") return normalized(`${row.Spender}|${row.Kuchen}`);
-  return normalized(row.Kategorie);
+  if (area === "KUCHEN")
+    return normalized(`${row.Spender}|${row.Kuchen || row.Bemerkung}`);
+  return normalized(`${row.Kategorie}|${row.Bemerkung || row.Reihenfolge}`);
 }
 
 function hydrateExistingIds(
@@ -318,11 +319,40 @@ export function removeCopiedModuleIds(
   const currentById = new Map(
     currentRows.map(row => [String(row.ID ?? "").trim(), row])
   );
+  const currentByIdentity = new Map(
+    currentRows.map(row => [rowIdentity(area, row), row])
+  );
   let corrected = 0;
+
+  // Eine ID darf nur aus dem aktuell gewählten Event/Jahr stammen. Kommt sie
+  // nicht im aktuellen Modulbestand vor, ist sie aus einem anderen Scope oder
+  // einer alten Datei übernommen und wird vor dem Diff sicher entfernt.
+  for (const row of importedRows) {
+    const id = String(row.ID ?? "").trim();
+    if (!id) continue;
+    const current = currentById.get(id);
+    if (!current) {
+      row.ID = "";
+      corrected++;
+      continue;
+    }
+
+    // Verweist die importierte fachliche Identität eindeutig auf einen anderen
+    // Bestandsdatensatz, wurde die technische ID in eine falsche Zeile kopiert.
+    // Echte Umbenennungen bleiben möglich: Gibt es keine andere passende
+    // Bestandszeile, darf die eindeutige ID der Zeile erhalten bleiben.
+    const sameIdentity = currentByIdentity.get(rowIdentity(area, row));
+    if (sameIdentity && String(sameIdentity.ID ?? "").trim() !== id) {
+      row.ID = "";
+      corrected++;
+    }
+  }
+
   for (const [id, rows] of Array.from(rowsById.entries())) {
     const current = currentById.get(id);
     if (!current) {
       for (const row of rows) {
+        if (!String(row.ID ?? "").trim()) continue;
         row.ID = "";
         corrected++;
       }
@@ -331,6 +361,7 @@ export function removeCopiedModuleIds(
     if (rows.length < 2) continue;
     let keptExisting = false;
     for (const row of rows) {
+      if (String(row.ID ?? "").trim() !== id) continue;
       const isExisting =
         !keptExisting &&
         current !== undefined &&
@@ -551,10 +582,11 @@ async function buildModuleTarget(base64: string, area: ModuleImportArea) {
         if (!sourceHeaders.has(day)) row[day] = "ja";
   }
   const currentRows = rowsFromDocument(current, area);
-  const correctedCopiedIds =
-    area === "ANSPRECHPARTNER" || area === "HELFER"
-      ? removeCopiedModuleIds(area, rawImportedRows, currentRows)
-      : 0;
+  const correctedCopiedIds = removeCopiedModuleIds(
+    area,
+    rawImportedRows,
+    currentRows
+  );
   const preservedMissingColumns = preserveMissingOptionalModuleColumns(
     area,
     rawImportedRows,
