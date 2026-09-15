@@ -16,8 +16,10 @@ import {
   buildSelectedDocument,
   diffDocuments,
   exportBackupExcel,
+  normalizeImportedTime,
   parseBackupWorkbook,
   previewBackupRestore,
+  reconcileContactSelfHelpers,
 } from "./excel-backup";
 
 const tableName = (table: any) => table[Symbol.for("drizzle:Name")];
@@ -450,6 +452,84 @@ describe("Excel-Datensicherung", () => {
       name: "Dana Neu",
       contactName: "Dana Neu",
       contactSourceId: null,
+    });
+  });
+
+  it("verknüpft einen gleichnamigen Helfer beim Import automatisch mit seinem Ansprechpartner", () => {
+    const helpers: any[] = [
+      {
+        sourceId: 21,
+        contactSourceId: null,
+        contactName: "",
+        name: "Klaus Anton",
+        email: "",
+        phone: "",
+        note: "",
+        willHelp: "ja",
+        availMon: "vielleicht",
+        availTue: "vielleicht",
+        availWed: "vielleicht",
+        availThu: "vielleicht",
+        availFri: "ja",
+        availSat: "ja",
+        availSun: "ja",
+        confirmed: "nein",
+      },
+    ];
+
+    expect(
+      reconcileContactSelfHelpers(
+        [{ sourceId: 11, name: "Klaus Anton", phone: "02651 123", note: "", sortOrder: 0 }],
+        helpers
+      )
+    ).toEqual({ linked: 1, created: 0 });
+    expect(helpers[0]).toMatchObject({
+      name: "Klaus Anton",
+      contactSourceId: 11,
+      contactName: "Klaus Anton",
+    });
+  });
+
+  it("ergänzt einen fehlenden eigenen Ansprechpartner-Helfer automatisch", () => {
+    const helpers: any[] = [];
+
+    expect(
+      reconcileContactSelfHelpers(
+        [{ sourceId: 11, name: "Klaus Anton", phone: "02651 123", note: "", sortOrder: 0 }],
+        helpers
+      )
+    ).toEqual({ linked: 0, created: 1 });
+    expect(helpers).toEqual([
+      expect.objectContaining({
+        sourceId: null,
+        contactSourceId: 11,
+        contactName: "Klaus Anton",
+        name: "Klaus Anton",
+        phone: "02651 123",
+      }),
+    ]);
+  });
+
+  it("normalisiert ISO-Zeitstempel und Excel-Tagesbruchteile vor der Einsatzplanvalidierung", () => {
+    expect(normalizeImportedTime("1899-12-31T08:00:00.000Z")).toBe("08:00");
+    expect(normalizeImportedTime("2027-06-14 17:45:30")).toBe("17:45");
+    expect(normalizeImportedTime(8 / 24)).toBe("08:00");
+    expect(normalizeImportedTime(0.5)).toBe("12:00");
+    expect(normalizeImportedTime("08:30")).toBe("08:30");
+  });
+
+  it("akzeptiert ISO-Zeitwerte im Einsatzplan ohne die 16-Zeichen-Freitagabe zu verletzen", async () => {
+    const exported = await exportBackupExcel();
+    const changed = mutateWorkbook(exported.buffer, workbook => {
+      const rows = XLSX.utils.sheet_to_json<any>(workbook.Sheets.EINSATZPLAN);
+      rows[0].Beginn = "1899-12-31T08:00:00.000Z";
+      rows[0].Ende = "1899-12-31T10:00:00.000Z";
+      replaceSheet(workbook, "EINSATZPLAN", rows);
+    });
+
+    expect(parseBackupWorkbook(changed.toString("base64")).shifts[0]).toMatchObject({
+      startTime: "08:00",
+      endTime: "10:00",
     });
   });
 

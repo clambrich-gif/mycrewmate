@@ -3,7 +3,9 @@ import * as XLSX from "xlsx";
 import {
   findContactSelfHelperRow,
   normalizeModuleSheetRange,
+  normalizeModuleImportedShiftTimes,
   preserveMissingOptionalModuleColumns,
+  preserveRequiredContactSelfHelpers,
   readNormalizedModuleImportRows,
   removeCopiedModuleIds,
 } from "./module-excel-import";
@@ -276,11 +278,116 @@ describe("modularer Ansprechpartner-Excel-Import", () => {
     ];
 
     expect(
-      findContactSelfHelperRow(
-        { ID: 11, Name: "Martin Reis" },
-        helpers,
-        [{ ID: 11, Name: "Martin Reis" }]
+        findContactSelfHelperRow(
+          { ID: 11, Name: "Martin Reis" },
+          helpers,
+          [{ ID: 11, Name: "Martin Reis" }]
+        )
+      ).toBeUndefined();
+    });
+
+    it("bevorzugt bei gleichnamigen Helfern denjenigen mit passender Ansprechpartner-ID", () => {
+      const helpers: Record<string, unknown>[] = [
+        {
+          ID: 21,
+          "Ansprechpartner-ID": 99,
+          Name: "Martin Reis",
+        },
+        {
+          ID: 22,
+          "Ansprechpartner-ID": 11,
+          Name: "Martin Reis",
+        },
+      ];
+
+      expect(
+        findContactSelfHelperRow(
+          { ID: 11, Name: "Martin Reis" },
+          helpers,
+          [{ ID: 11, Name: "Martin Reis" }]
+        )?.ID
+      ).toBe(22);
+    });
+
+    it("erhält bei ISO-Zeiten im Einsatzplan die Schicht-ID als Bestandsupdate statt Neuanlage", () => {
+      const currentRows: Record<string, unknown>[] = [
+        {
+          ID: 41,
+          Tag: "Freitag",
+          Bereich: "Nord",
+          Aufgabe: "Start",
+          Beginn: "08:00",
+          Ende: "10:00",
+        },
+      ];
+      const importedRows: Record<string, unknown>[] = [
+        {
+          ID: 41,
+          Tag: "Freitag",
+          Bereich: "Nord",
+          Aufgabe: "Start",
+          Beginn: "1899-12-31T08:00:00.000Z",
+          Ende: "1899-12-31T10:00:00.000Z",
+        },
+      ];
+
+      normalizeModuleImportedShiftTimes("EINSATZPLAN", importedRows);
+      const copied = removeCopiedModuleIds(
+        "EINSATZPLAN",
+        importedRows,
+        currentRows
+      );
+
+      expect(copied).toBe(0);
+      expect(importedRows[0].ID).toBe(41);
+    });
+
+  it("behält den Pflicht-Selbsthelfer eines Ansprechpartners bei einem reinen Helferimport bei", () => {
+    const contacts: Record<string, unknown>[] = [
+      { ID: 11, Name: "Klaus Anton", Rufnummer: "02651 123" },
+    ];
+    const currentHelpers: Record<string, unknown>[] = [
+      {
+        ID: 21,
+        "Ansprechpartner-ID": 11,
+        Ansprechpartner: "Klaus Anton",
+        Name: "Klaus Anton",
+        Telefon: "02651 123",
+        "Helfen?": "ja",
+      },
+      { ID: 22, Name: "Anderer Helfer" },
+    ];
+    const importedHelpers: Record<string, unknown>[] = [
+      { ID: 22, Name: "Anderer Helfer", "Helfen?": "nein" },
+    ];
+
+    expect(
+      preserveRequiredContactSelfHelpers(
+        importedHelpers,
+        contacts,
+        currentHelpers
       )
-    ).toBeUndefined();
+    ).toBe(1);
+    expect(importedHelpers).toContainEqual(
+      expect.objectContaining({
+        ID: 21,
+        Name: "Klaus Anton",
+        "Ansprechpartner-ID": 11,
+        Ansprechpartner: "Klaus Anton",
+      })
+    );
+  });
+
+  it("normalisiert ISO- und Excel-Zeitwerte im Einsatzplan vor dem Vorschau-Diff", () => {
+    const importedRows: Record<string, unknown>[] = [
+      {
+        Beginn: "1899-12-31T08:00:00.000Z",
+        Ende: 10 / 24,
+      },
+    ];
+
+    normalizeModuleImportedShiftTimes("EINSATZPLAN", importedRows);
+
+    expect(importedRows).toEqual([{ Beginn: "08:00", Ende: "10:00" }]);
   });
 });

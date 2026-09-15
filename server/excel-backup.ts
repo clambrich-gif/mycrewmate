@@ -335,6 +335,84 @@ const normalize = (value: unknown) =>
     .replace(/\s+/g, " ");
 const personKey = (value: unknown) =>
   normalize(value).toLocaleLowerCase("de-DE");
+
+/**
+ * Excel speichert Uhrzeiten je nach Vorlage als Tagesbruchteil, Datum/Zeitwert
+ * oder ISO-Text. Für den Einsatzplan wird daraus stets die interne Form HH:MM.
+ * Ein nicht interpretierbarer Rest bleibt höchstens 16 Zeichen lang und wird
+ * anschließend wie bisher durch die strenge Uhrzeitvalidierung abgelehnt.
+ */
+export function normalizeImportedTime(value: unknown) {
+  if (value === null || value === undefined || normalize(value) === "") return "";
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const fraction = ((value % 1) + 1) % 1;
+    const totalMinutes = Math.round(fraction * 24 * 60) % (24 * 60);
+    return `${String(Math.floor(totalMinutes / 60)).padStart(2, "0")}:${String(
+      totalMinutes % 60
+    ).padStart(2, "0")}`;
+  }
+
+  if (value instanceof Date && Number.isFinite(value.getTime()))
+    return value.toISOString().slice(11, 16);
+
+  const raw = normalize(value);
+  const time = raw.match(/(?:^|[T\s])([01]?\d|2[0-3]):([0-5]\d)(?::[0-5]\d(?:\.\d+)?)?(?:Z|\s|$)/);
+  if (time)
+    return `${time[1].padStart(2, "0")}:${time[2]}`;
+
+  return raw.slice(0, 16);
+}
+
+/**
+ * Ansprechpartner besitzen zwingend einen gleichnamigen eigenen Helfereintrag.
+ * Bei Imports wird dieser Systemeintrag nicht als Konflikt abgelehnt, sondern
+ * automatisch mit dem Ansprechpartner verknüpft. Fehlt er vollständig, wird
+ * ein neuer, neutral vorbelegter Systemeintrag ergänzt.
+ */
+export function reconcileContactSelfHelpers(
+  contactRows: ContactRow[],
+  helperRows: HelperRow[]
+) {
+  let linked = 0;
+  let created = 0;
+  for (const contact of contactRows) {
+    const selfHelper = helperRows.find(
+      helper => personKey(helper.name) === personKey(contact.name)
+    );
+    if (selfHelper) {
+      const needsLink =
+        selfHelper.contactSourceId !== contact.sourceId ||
+        selfHelper.contactName !== contact.name;
+      selfHelper.contactSourceId = contact.sourceId;
+      selfHelper.contactName = contact.name;
+      if (needsLink) linked++;
+      continue;
+    }
+
+    helperRows.push({
+      sourceId: null,
+      contactSourceId: contact.sourceId,
+      contactName: contact.name,
+      name: contact.name,
+      email: "",
+      phone: contact.phone,
+      note: "",
+      willHelp: "ja",
+      availMon: "vielleicht",
+      availTue: "vielleicht",
+      availWed: "vielleicht",
+      availThu: "vielleicht",
+      availFri: "vielleicht",
+      availSat: "vielleicht",
+      availSun: "vielleicht",
+      confirmed: "nein",
+    });
+    created++;
+  }
+  return { linked, created };
+}
+
 const text = (value: unknown, max: number, label: string, required = false) => {
   const result = normalize(value);
   if (required && !result) throw new Error(`${label} darf nicht leer sein`);
@@ -780,21 +858,18 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
     row => row.name,
     "HELFER"
   );
-  for (const contact of parsedContacts) {
-    const selfHelper = parsedHelpers.find(
-      helper => personKey(helper.name) === personKey(contact.name)
+  const selfHelperReconciliation = reconcileContactSelfHelpers(
+    parsedContacts,
+    parsedHelpers
+  );
+  if (selfHelperReconciliation.linked)
+    warnings.push(
+      `${selfHelperReconciliation.linked} eigene Ansprechpartner-Helfereinträge wurden automatisch korrekt zugeordnet.`
     );
-    const linkedToContact =
-      selfHelper &&
-      ((contact.sourceId !== null &&
-        selfHelper.contactSourceId === contact.sourceId) ||
-        personKey(selfHelper.contactName) === personKey(contact.name));
-    if (!linkedToContact) {
-      throw new Error(
-        `ANSPRECHPARTNER/HELFER: Für „${contact.name}“ muss der gleichnamige eigene Helfereintrag erhalten bleiben und diesem Ansprechpartner zugeordnet sein.`
-      );
-    }
-  }
+  if (selfHelperReconciliation.created)
+    warnings.push(
+      `${selfHelperReconciliation.created} fehlende eigene Ansprechpartner-Helfereinträge wurden automatisch ergänzt.`
+    );
   const helperIds = new Set(
     parsedHelpers.flatMap(row => (row.sourceId ? [row.sourceId] : []))
   );
@@ -828,12 +903,8 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
       throw new Error(
         `EINSATZPLAN Zeile ${index + 2}: ${day} ist für diese Veranstaltung nicht aktiviert`
       );
-    const startTime = text(
-      row.Beginn,
-      16,
-      `EINSATZPLAN Zeile ${index + 2}: Beginn`
-    );
-    const endTime = text(row.Ende, 16, `EINSATZPLAN Zeile ${index + 2}: Ende`);
+    const startTime = normalizeImportedTime(row.Beginn);
+    const endTime = normalizeImportedTime(row.Ende);
     const start = toMinutes(startTime);
     const end = toMinutes(endTime);
     if (

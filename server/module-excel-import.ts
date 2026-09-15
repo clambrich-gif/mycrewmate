@@ -9,6 +9,7 @@ import {
   previewProjectDocument,
   PROJECT_EXCEL_HEADERS,
   readUploadedExcelWorkbook,
+  normalizeImportedTime,
   restoreProjectDocument,
   type BackupArea,
   type BackupChange,
@@ -424,8 +425,26 @@ export function findContactSelfHelperRow(
 ) {
   const contactId = String(contactRow.ID ?? "").trim();
   const contactName = String(contactRow.Name ?? "").trim();
+  const normalizedContactName = normalized(contactName);
+
+  if (contactId) {
+    const linkedById = helperRows.find(
+      row =>
+        normalized(row.Name) === normalizedContactName &&
+        String(row["Ansprechpartner-ID"] ?? "").trim() === contactId
+    );
+    if (linkedById) return linkedById;
+  }
+
+  const linkedByName = helperRows.find(
+    row =>
+      normalized(row.Name) === normalizedContactName &&
+      normalized(row.Ansprechpartner) === normalizedContactName
+  );
+  if (linkedByName) return linkedByName;
+
   const exactName = helperRows.find(
-    row => normalized(row.Name) === normalized(contactName)
+    row => normalized(row.Name) === normalizedContactName
   );
   if (exactName || !contactId) return exactName;
 
@@ -437,6 +456,53 @@ export function findContactSelfHelperRow(
   return helperRows.find(
     row => normalized(row.Name) === previousName
   );
+}
+
+/**
+ * Ein Ansprechpartner ist immer zugleich als eigener Helfer verzeichnet. Bei
+ * einem reinen Helferimport darf dieser Systemeintrag nicht versehentlich als
+ * Löschung ausgelegt werden: Er wird aus dem aktuellen Scope ergänzt und
+ * behält dabei seine technische ID für einen eindeutigen Update-Diff.
+ */
+export function preserveRequiredContactSelfHelpers(
+  importedHelperRows: Record<string, unknown>[],
+  currentContactRows: Record<string, unknown>[],
+  currentHelperRows: Record<string, unknown>[]
+) {
+  let preserved = 0;
+  for (const contact of currentContactRows) {
+    const contactName = String(contact.Name ?? "").trim();
+    if (!contactName) continue;
+    const existingSelfHelper = findContactSelfHelperRow(
+      contact,
+      currentHelperRows,
+      currentContactRows
+    );
+    if (!existingSelfHelper) continue;
+
+    const alreadyImported = importedHelperRows.some(row => {
+      const rowId = String(row.ID ?? "").trim();
+      const existingId = String(existingSelfHelper.ID ?? "").trim();
+      if (existingId && rowId && rowId === existingId) return true;
+      return normalized(row.Name) === normalized(contactName);
+    });
+    if (alreadyImported) continue;
+
+    importedHelperRows.push({ ...existingSelfHelper });
+    preserved++;
+  }
+  return preserved;
+}
+
+export function normalizeModuleImportedShiftTimes(
+  area: ModuleImportArea,
+  importedRows: Record<string, unknown>[]
+) {
+  if (area !== "EINSATZPLAN") return;
+  for (const row of importedRows) {
+    row.Beginn = normalizeImportedTime(row.Beginn);
+    row.Ende = normalizeImportedTime(row.Ende);
+  }
 }
 
 function baseWorkbook(document: BackupDocument) {
@@ -613,13 +679,20 @@ async function buildModuleTarget(base64: string, area: ModuleImportArea) {
   const { headers: sourceHeaders, importedRows: rawImportedRows } =
     readNormalizedModuleImportRows(source);
   assertHeaders(sourceHeaders, area);
+  const currentRows = rowsFromDocument(current, area);
+  normalizeModuleImportedShiftTimes(area, rawImportedRows);
+  let preservedRequiredSelfHelpers = 0;
   if (area === "HELFER") {
     const legacyWeekdays = ["Mo", "Di", "Mi", "Do"];
     for (const row of rawImportedRows)
       for (const day of legacyWeekdays)
         if (!sourceHeaders.has(day)) row[day] = "ja";
+    preservedRequiredSelfHelpers = preserveRequiredContactSelfHelpers(
+      rawImportedRows,
+      rowsFromDocument(current, "ANSPRECHPARTNER"),
+      currentRows
+    );
   }
-  const currentRows = rowsFromDocument(current, area);
   const correctedCopiedIds = removeCopiedModuleIds(
     area,
     rawImportedRows,
@@ -758,6 +831,11 @@ async function buildModuleTarget(base64: string, area: ModuleImportArea) {
     target.warnings = [
       ...target.warnings,
       `${preservedMissingColumns} Werte aus fehlenden optionalen Spalten wurden aus dem bestehenden Stand beibehalten. Vorhandene leere Zellen werden dagegen bewusst als Leerung übernommen.`,
+    ];
+  if (preservedRequiredSelfHelpers)
+    target.warnings = [
+      ...target.warnings,
+      `${preservedRequiredSelfHelpers} eigene Ansprechpartner-Helfereinträge wurden automatisch beibehalten und korrekt verknüpft.`,
     ];
   const unexpected = changes.find(change => !allowedAreas.has(change.area));
   if (unexpected)
