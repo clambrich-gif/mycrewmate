@@ -176,27 +176,6 @@
       "when": 1789420369793,
       "tag": "0024_brown_rage",
       "breakpoints": true
-    },
-    {
-      "idx": 22,
-      "version": "5",
-      "when": 1789414845126,
-      "tag": "0022_magical_wraith",
-      "breakpoints": true
-    },
-    {
-      "idx": 23,
-      "version": "5",
-      "when": 1789419315549,
-      "tag": "0023_rare_night_nurse",
-      "breakpoints": true
-    },
-    {
-      "idx": 24,
-      "version": "5",
-      "when": 1789420491728,
-      "tag": "0024_brown_rage",
-      "breakpoints": true
     }
   ]
 }
