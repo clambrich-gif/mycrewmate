@@ -4,7 +4,6 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import {
   Popover,
   PopoverContent,
@@ -91,9 +90,10 @@ function Sel({
 }
 
 /**
- * Direkter Ja/Nein-Schalter für die beiden binären Helferstatus. Der sichtbare
- * Text bleibt im Tabellenraster erhalten; auf Touch-Geräten ist die ganze
- * Schaltfläche mindestens 44 px hoch und damit ohne Select-Menü bedienbar.
+ * Direkter Ja/Nein-Schalter für die beiden binären Helferstatus. Der Thumb
+ * liegt stets an einem festen Endanschlag: Nein links, Ja rechts. Die mobile
+ * Schaltfläche bleibt als Touch-Ziel 44 px hoch, wirkt durch die kompakte
+ * 92-px-Schalterbahn aber deutlich ruhiger als die bisherige Vollbreitenform.
  */
 function YesNoToggle({
   value,
@@ -111,31 +111,52 @@ function YesNoToggle({
   const isYes = value === "ja";
 
   return (
-    <div className={cn("relative", compactOnDesktop ? "mx-auto w-[78px] lg:w-[68px]" : "w-full")}>
-      <Switch
-        checked={isYes}
+    <div
+      className={cn(
+        "flex min-h-11 items-center",
+        compactOnDesktop ? "justify-center lg:min-h-8" : "w-full"
+      )}
+    >
+      <button
+        type="button"
+        role="switch"
+        aria-checked={isYes}
         disabled={disabled}
-        onCheckedChange={checked => onChange(checked ? "ja" : "nein")}
+        data-slot="helper-status-toggle"
+        data-state={isYes ? "checked" : "unchecked"}
+        onClick={() => onChange(isYes ? "nein" : "ja")}
         aria-label={ariaLabel}
         className={cn(
-          "h-11 min-h-11 w-full min-w-[78px] rounded-full border-2 border-transparent shadow-sm transition-colors",
-          "data-[state=checked]:bg-emerald-600 data-[state=unchecked]:bg-rose-500",
-          "focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2",
-          "[&_[data-slot=switch-thumb]]:size-9 [&_[data-slot=switch-thumb]]:bg-white [&_[data-slot=switch-thumb]]:shadow-sm",
+          "relative inline-flex h-11 min-h-11 w-[92px] items-center rounded-lg border px-1.5 text-xs font-semibold shadow-xs transition-colors",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2",
+          "disabled:cursor-not-allowed disabled:opacity-50",
+          isYes
+            ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+            : "border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100",
           compactOnDesktop &&
-            "lg:h-8 lg:min-h-8 lg:min-w-[68px] lg:[&_[data-slot=switch-thumb]]:size-6"
-        )}
-      />
-      <span
-        aria-hidden="true"
-        className={cn(
-          "pointer-events-none absolute inset-y-0 z-10 flex items-center text-xs font-bold text-white",
-          isYes ? "left-2 pr-9" : "right-2 pl-9",
-          compactOnDesktop && "lg:text-[11px]"
+            "lg:h-8 lg:min-h-8 lg:w-14 lg:rounded-md lg:px-1 lg:text-[10px]"
         )}
       >
-        {isYes ? "Ja" : "Nein"}
-      </span>
+        <span
+          aria-hidden="true"
+          className={cn(
+            "pointer-events-none absolute left-1.5 top-1.5 size-8 rounded-md shadow-sm transition-transform duration-150 ease-out",
+            isYes ? "translate-x-12 bg-emerald-500" : "translate-x-0 bg-rose-400",
+            compactOnDesktop &&
+              "lg:left-1 lg:top-1 lg:size-5 lg:rounded-sm lg:translate-x-0",
+            compactOnDesktop && isYes && "lg:translate-x-5"
+          )}
+        />
+        <span
+          aria-hidden="true"
+          className={cn(
+            "pointer-events-none relative z-10 flex w-full items-center",
+            isYes ? "justify-start pl-1" : "justify-end pr-1"
+          )}
+        >
+          {isYes ? "Ja" : "Nein"}
+        </span>
+      </button>
     </div>
   );
 }

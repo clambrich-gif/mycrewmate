@@ -878,15 +878,18 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(clearButton).toContain("border-rose-200 bg-rose-50 text-rose-700");
   });
 
-  it("schaltet Helfen und Bestätigt direkt per beschriftetem Touch-Switch", () => {
+  it("schaltet Helfen und Bestätigt kompakt mit festen Ja-Nein-Endanschlägen", () => {
     const helpers = source("client/src/pages/Helpers.tsx");
 
-    expect(helpers).toContain('import { Switch } from "@/components/ui/switch"');
     expect(helpers).toContain("function YesNoToggle");
-    expect(helpers).toContain("onCheckedChange={checked => onChange(checked ? \"ja\" : \"nein\")}");
-    expect(helpers).toContain("h-11 min-h-11 w-full min-w-[78px]");
-    expect(helpers).toContain("data-[state=checked]:bg-emerald-600");
-    expect(helpers).toContain("data-[state=unchecked]:bg-rose-500");
+    expect(helpers).toContain('data-slot="helper-status-toggle"');
+    expect(helpers).toContain('onClick={() => onChange(isYes ? "nein" : "ja")}');
+    expect(helpers).toContain("h-11 min-h-11 w-[92px]");
+    expect(helpers).toContain("translate-x-12 bg-emerald-500");
+    expect(helpers).toContain("translate-x-0 bg-rose-400");
+    expect(helpers).toContain("lg:translate-x-5");
+    expect(helpers).toContain("border-emerald-200 bg-emerald-50 text-emerald-800");
+    expect(helpers).toContain("border-rose-200 bg-rose-50 text-rose-800");
     expect(helpers).toContain("Helfen auf");
     expect(helpers).toContain("Bestätigung auf");
     expect(helpers.match(/<YesNoToggle/g)).toHaveLength(4);
