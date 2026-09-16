@@ -13,8 +13,6 @@ const expectedRoutes = [
   "/vorbereitung",
   "/nachbereitung",
   "/material",
-  "/marketing",
-  "/genehmigungen",
   "/kuchen",
   "/finanzen",
   "/pdf-export",
@@ -39,6 +37,9 @@ describe("Lazy Routes", () => {
     );
     expect(appSource).toContain("lazy(routeLoaders");
     expect(appSource).toContain("<Suspense");
+    expect(appSource).toContain('<Redirect to="/vorbereitung" />');
+    expect(appSource).not.toContain('routeLoaders["/marketing"]');
+    expect(appSource).not.toContain('routeLoaders["/genehmigungen"]');
   });
 
   it("lädt jedes Routemodul mit gültigem Default-Export", async () => {

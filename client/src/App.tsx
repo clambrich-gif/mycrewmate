@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { lazy, Suspense } from "react";
-import { Route, Switch } from "wouter";
+import { Redirect, Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { Layout } from "./components/Layout";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -15,8 +15,6 @@ const Plan = lazy(routeLoaders["/einsatzplan"]);
 const Preparation = lazy(routeLoaders["/vorbereitung"]);
 const TaskList = lazy(routeLoaders["/nachbereitung"]);
 const Materials = lazy(routeLoaders["/material"]);
-const Marketing = lazy(routeLoaders["/marketing"]);
-const Approvals = lazy(routeLoaders["/genehmigungen"]);
 const Cakes = lazy(routeLoaders["/kuchen"]);
 const Finances = lazy(routeLoaders["/finanzen"]);
 const PdfExport = lazy(routeLoaders["/pdf-export"]);
@@ -63,8 +61,12 @@ function Router() {
             {() => <TaskList kind="post" title="Nachbereitung" />}
           </Route>
           <Route path="/material" component={Materials} />
-          <Route path="/marketing" component={Marketing} />
-          <Route path="/genehmigungen" component={Approvals} />
+          <Route path="/marketing">
+            <Redirect to="/vorbereitung" />
+          </Route>
+          <Route path="/genehmigungen">
+            <Redirect to="/vorbereitung" />
+          </Route>
           <Route path="/kuchen" component={Cakes} />
           <Route path="/finanzen" component={Finances} />
           <Route path="/pdf-export" component={PdfExport} />

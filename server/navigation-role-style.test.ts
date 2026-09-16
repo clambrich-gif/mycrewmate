@@ -6,6 +6,23 @@ import {
 } from "../client/src/lib/nav";
 
 describe("rollenabhängige Navigation", () => {
+  it("führt die Fachmodule ohne Marketing und Genehmigungen in der vorgesehenen Reihenfolge", () => {
+    expect(NAV.slice(0, 10).map(item => item.label)).toEqual([
+      "Dashboard",
+      "Ansprechpartner",
+      "Helfer",
+      "Einsatzplan",
+      "Vorbereitung",
+      "Nachbereitung",
+      "Material",
+      "Kuchen",
+      "Finanzen",
+      "PDF-Ausgabe",
+    ]);
+    expect(NAV.map(item => item.label)).not.toContain("Marketing");
+    expect(NAV.map(item => item.label)).not.toContain("Genehmigungen");
+  });
+
   it("hebt für das Planungsteam exakt Helfer, Kuchen, PDF-Ausgabe und Hilfe hervor", () => {
     expect(PLANNING_TEAM_FOCUS_PATHS).toEqual([
       "/helfer",

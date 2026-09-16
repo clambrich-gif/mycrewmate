@@ -17,8 +17,6 @@ export const routeLoaders = {
   "/vorbereitung": preparationLoader,
   "/nachbereitung": taskListLoader,
   "/material": () => import("@/pages/Materials"),
-  "/marketing": () => import("@/pages/Marketing"),
-  "/genehmigungen": () => import("@/pages/Approvals"),
   "/kuchen": () => import("@/pages/Cakes"),
   "/finanzen": () => import("@/pages/Finances"),
   "/pdf-export": () => import("@/pages/PdfExport"),

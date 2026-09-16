@@ -217,9 +217,9 @@ const SECTIONS: HelpSection[] = [
     title: "Fachbereiche und Aufgaben",
     role: "alle",
     keywords:
-      "vorbereitung nachbereitung material marketing genehmigungen finanzen kuchen aufgaben verantwortlich status offen in arbeit erledigt",
+      "vorbereitung nachbereitung material kommunikation marketing genehmigungen finanzen kuchen aufgaben verantwortlich status offen in arbeit erledigt",
     summary:
-      "Vorbereitung und Nachbereitung strukturieren die To-dos vor und nach der Veranstaltung. Material hält Artikel, Mengen und Bestellstatus fest. Marketing bündelt Kommunikationsmaßnahmen, Genehmigungen verwalten Anträge und Fristen, Finanzen zeigen Einnahmen und Ausgaben, und Kuchen dokumentiert Spender sowie Abgabezeiten. Die Statuswerte „offen“, „in Arbeit“ und „erledigt“ helfen, den Arbeitsstand für alle transparent zu halten.",
+      "Vorbereitung und Nachbereitung strukturieren die To-dos vor und nach der Veranstaltung. Kommunikationsmaßnahmen, Anträge und Genehmigungsfristen werden als Kategorien direkt in der Vorbereitung erfasst. Material hält Artikel, Mengen und Bestellstatus fest, Finanzen zeigen Einnahmen und Ausgaben, und Kuchen dokumentiert Spender sowie Abgabezeiten. Die Statuswerte „offen“, „in Arbeit“ und „erledigt“ helfen, den Arbeitsstand für alle transparent zu halten.",
   },
   {
     id: "import",
@@ -270,7 +270,7 @@ const INDEX_TERMS = [
   ["I", "Import, Inhaltsverzeichnis, ISO-Zeit"],
   ["J", "Jahr, Ja/Nein"],
   ["L", "Live-Chat, Löschen, Löschprotokoll"],
-  ["M", "Mobilansicht, Material, Marketing"],
+  ["M", "Mobilansicht, Material"],
   ["N", "Nachbereitung, Notiz-Widget"],
   ["P", "Passwort, PDF, Planungsteam, PWA"],
   ["R", "Restore, Rollen, Rückgängig"],

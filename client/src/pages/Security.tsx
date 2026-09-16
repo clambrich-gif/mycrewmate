@@ -268,8 +268,8 @@ export default function Security() {
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
             Löscht alle Ansprechpartner, Helfer, Schichten, Zuordnungen,
-            Aufgaben, Materialien, Marketingmaßnahmen, Genehmigungen, Kuchen-
-            und Finanzdaten des aktuell gewählten Jahres. Andere
+            Aufgaben, Materialien, Kuchen- und Finanzdaten des aktuell gewählten
+            Jahres. Andere
             Veranstaltungsjahre und die Passwörter bleiben erhalten.
           </p>
           <ResetAreaButton area="all" label={`Alle Planungsdaten ${year}`} />
