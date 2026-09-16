@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { downloadBase64File } from "@/lib/download";
 import { trpc } from "@/lib/trpc";
+import { DEFAULT_WHATSAPP_MESSAGE_TEMPLATE } from "@/lib/whatsappShare";
 import { eventWeekdays, type Weekday } from "@shared/weekdays";
 import {
   Download,
@@ -32,6 +33,7 @@ type SettingsForm = {
   blankPlanTitle: string;
   contactLabel: string;
   footerText: string;
+  whatsAppMessageTemplate: string;
   extraColumns: string[];
   blankRowsPerShift: number;
 };
@@ -43,6 +45,7 @@ const EMPTY_FORM: SettingsForm = {
   blankPlanTitle: "Einsatzplan – Blanko",
   contactLabel: "Ansprechpartner",
   footerText: "",
+  whatsAppMessageTemplate: DEFAULT_WHATSAPP_MESSAGE_TEMPLATE,
   extraColumns: [],
   blankRowsPerShift: 0,
 };
@@ -95,6 +98,8 @@ export default function PdfExport() {
       blankPlanTitle: settings.blankPlanTitle,
       contactLabel: settings.contactLabel,
       footerText: settings.footerText,
+      whatsAppMessageTemplate:
+        settings.whatsAppMessageTemplate || DEFAULT_WHATSAPP_MESSAGE_TEMPLATE,
       extraColumns: settings.extraColumns,
       blankRowsPerShift: settings.blankRowsPerShift,
     });
@@ -755,12 +760,32 @@ export default function PdfExport() {
                 />
               </div>
 
+              <div className="space-y-1.5">
+                <Label htmlFor="whatsapp-message-template">
+                  WhatsApp-Nachricht beim PDF-Teilen
+                </Label>
+                <textarea
+                  id="whatsapp-message-template"
+                  value={form.whatsAppMessageTemplate}
+                  onChange={event =>
+                    updateField("whatsAppMessageTemplate", event.target.value)
+                  }
+                  className="min-h-52 w-full rounded-md border border-input bg-white px-3 py-2 text-base text-slate-950 shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  placeholder={DEFAULT_WHATSAPP_MESSAGE_TEMPLATE}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Der Platzhalter <code>{"{EVENT_NAME}"}</code> wird beim Teilen
+                  automatisch durch die aktuell ausgewählte Veranstaltung ersetzt.
+                </p>
+              </div>
+
               <Button
                 onClick={() => save.mutate(form)}
                 disabled={
                   save.isPending ||
                   !form.eventName.trim() ||
-                  !form.blankPlanTitle.trim()
+                  !form.blankPlanTitle.trim() ||
+                  !form.whatsAppMessageTemplate.trim()
                 }
               >
                 <Save className="mr-2 h-4 w-4" />

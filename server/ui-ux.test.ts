@@ -334,7 +334,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain('className="w-full table-fixed text-xs xl:text-sm"');
     expect(helpers).toContain('<col className="w-[180px]" />');
     expect(helpers).toContain('<col className="w-[230px]" />');
-    expect(helpers).toContain("892 + activeDays.length * 56");
+    expect(helpers).toContain("932 + activeDays.length * 56");
     expect(helpers).toContain("md:w-[52px] md:min-w-[52px]");
     expect(helpers).toContain('className="whitespace-nowrap p-2">Telefon Helfer');
     expect(mobileCards).not.toContain("compactOnDesktop");
@@ -394,7 +394,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(mobileCards).toContain(
       'className="break-words text-[26px] leading-[1.05] font-black tracking-tight"'
     );
-    expect(mobileCards.match(/size="icon"/g)).toHaveLength(2);
+    expect(mobileCards.match(/size="icon"/g)).toHaveLength(3);
     expect(desktopTable).not.toContain("text-[26px]");
     expect(desktopTable).toContain('className="p-2 font-medium"');
   });
@@ -887,12 +887,18 @@ describe("UI- und Mobile-UX-Regeln", () => {
 
   it("bietet in der PDF-Ausgabe einen Ansprechpartnerfilter für Helferübersichten", () => {
     const pdfExport = source("client/src/pages/PdfExport.tsx");
+    const helpers = source("client/src/pages/Helpers.tsx");
 
     expect(pdfExport).toContain("Ansprechpartner filtern");
     expect(pdfExport).toContain("Alle Ansprechpartner (Gesamt-ZIP)");
     expect(pdfExport).toContain("helper-contact-filter");
     expect(pdfExport).toContain("PDFs für ${selectedHelperContact.name} herunterladen");
     expect(pdfExport).toContain("contactId: selectedHelperContactId");
+    expect(pdfExport).toContain("whatsapp-message-template");
+    expect(pdfExport).toContain("WhatsApp-Nachricht beim PDF-Teilen");
+    expect(helpers).toContain("bg-emerald-500 text-white hover:bg-emerald-600");
+    expect(helpers).toContain("Helfer-PDF heruntergeladen & WhatsApp-Text in Zwischenablage kopiert!");
+    expect(helpers.match(/shareHelperPdf/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
   });
 
   it("ordnet Einsatzplanaktionen ausschließlich mobil als gleich breites Raster an", () => {

@@ -368,6 +368,7 @@ export const appSettings = mysqlTable("app_settings", {
     .default("Ansprechpartner")
     .notNull(),
   footerText: varchar("footerText", { length: 300 }).default("").notNull(),
+  whatsAppMessageTemplate: mediumtext("whatsAppMessageTemplate"),
   logoKey: varchar("logoKey", { length: 500 }),
   logoUrl: varchar("logoUrl", { length: 700 }),
   extraColumns: text("extraColumns").notNull(),

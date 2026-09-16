@@ -1903,6 +1903,7 @@ export async function updateAppSettings(
       blankPlanTitle: "Einsatzplan – Blanko",
       contactLabel: "Ansprechpartner",
       footerText: "",
+      whatsAppMessageTemplate: null,
       extraColumns: "[]",
       blankRowsPerShift: 0,
       ...safe,

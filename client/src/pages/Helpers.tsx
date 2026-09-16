@@ -17,9 +17,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { downloadBase64File, safeDownloadName } from "@/lib/download";
+import {
+  buildWhatsAppDeepLink,
+  copyWhatsAppMessage,
+  renderWhatsAppMessage,
+} from "@/lib/whatsappShare";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
-import { FileDown, Info, Plus, Trash2 } from "lucide-react";
+import { FileDown, Info, MessageCircle, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
@@ -282,6 +287,7 @@ export default function Helpers() {
   const { data: helpers = [], isLoading } = trpc.helpers.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: currentEvent } = trpc.events.current.useQuery();
+  const { data: pdfSettings } = trpc.pdf.settings.useQuery();
   const { data: plan } = trpc.plan.evaluate.useQuery();
   const activeDays = currentEvent ? eventWeekdays(currentEvent.activeDays) : [];
   const [name, setName] = useState("");
@@ -289,6 +295,10 @@ export default function Helpers() {
   const [apFilter, setApFilter] = useState("alle");
   const [sortAsc, setSortAsc] = useState(true);
   const [exportingId, setExportingId] = useState<number | null>(null);
+  const [sharingId, setSharingId] = useState<number | null>(null);
+  const shareWindowRef = useRef<Window | null>(null);
+  const shareCopyPromiseRef = useRef<Promise<boolean> | null>(null);
+  const shareMessageRef = useRef("");
   const [deleteTarget, setDeleteTarget] = useState<{
     id: number;
     name: string;
@@ -338,6 +348,54 @@ export default function Helpers() {
       toast.error(error.message);
     },
   });
+  const sharePdfViaWhatsApp = trpc.pdf.helper.useMutation({
+    onSuccess: async (result, variables) => {
+      const helper = helpers.find(item => item.id === variables.helperId);
+      downloadBase64File(
+        result.base64,
+        result.mimeType,
+        `Aufgaben_${safeDownloadName(helper?.name ?? String(variables.helperId))}.pdf`
+      );
+
+      const copied = await shareCopyPromiseRef.current;
+      const whatsappUrl = buildWhatsAppDeepLink(shareMessageRef.current);
+      if (shareWindowRef.current) {
+        shareWindowRef.current.location.href = whatsappUrl;
+        shareWindowRef.current = null;
+      } else {
+        window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+      }
+      shareCopyPromiseRef.current = null;
+      setSharingId(null);
+      toast[copied ? "success" : "message"](
+        copied
+          ? "Helfer-PDF heruntergeladen & WhatsApp-Text in Zwischenablage kopiert!"
+          : "Helfer-PDF heruntergeladen. Der WhatsApp-Text ist im geöffneten Chat eingefügt."
+      );
+    },
+    onError: error => {
+      shareWindowRef.current?.close();
+      shareWindowRef.current = null;
+      shareCopyPromiseRef.current = null;
+      setSharingId(null);
+      toast.error(error.message);
+    },
+  });
+  const shareHelperPdf = (helperId: number) => {
+    if (sharingId !== null) return;
+    const message = renderWhatsAppMessage(
+      pdfSettings?.whatsAppMessageTemplate,
+      currentEvent?.name ?? pdfSettings?.eventName
+    );
+    // Clipboard und leeres Zieltab müssen aus dem echten Nutzertipp starten;
+    // Safari und mobile WebViews blockieren beides nach await-Aufrufen.
+    shareMessageRef.current = message;
+    shareCopyPromiseRef.current = copyWhatsAppMessage(message);
+    shareWindowRef.current = window.open("", "_blank");
+    if (shareWindowRef.current) shareWindowRef.current.opener = null;
+    setSharingId(helperId);
+    sharePdfViaWhatsApp.mutate({ helperId });
+  };
 
   const filtered = useMemo(
     () =>
@@ -497,6 +555,16 @@ export default function Helpers() {
                     <FileDown className="h-4 w-4" />
                   </Button>
                   <Button
+                    size="icon"
+                    className="bg-emerald-500 text-white hover:bg-emerald-600"
+                    title="Helfer-PDF herunterladen und per WhatsApp teilen"
+                    aria-label={`Einteilung von ${helper.name} per WhatsApp teilen`}
+                    disabled={sharingId !== null}
+                    onClick={() => shareHelperPdf(helper.id)}
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                  </Button>
+                  <Button
                     variant="outline"
                     size="icon"
                     title="Löschen"
@@ -631,7 +699,7 @@ export default function Helpers() {
         <CardContent className="helpers-table-scroll p-0">
           <table
             className="w-full table-fixed text-xs xl:text-sm"
-            style={{ minWidth: 892 + activeDays.length * 56 }}
+            style={{ minWidth: 932 + activeDays.length * 56 }}
           >
             <colgroup>
               <col className="w-[140px]" />
@@ -643,7 +711,7 @@ export default function Helpers() {
                 <col key={day} className="w-[56px]" />
               ))}
               <col className="w-[56px]" />
-              <col className="w-[80px]" />
+              <col className="w-[120px]" />
             </colgroup>
             <thead className="helpers-desktop-sticky-head bg-muted/60">
               <tr className="text-left">
@@ -827,6 +895,16 @@ export default function Helpers() {
                         }}
                       >
                         <FileDown className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        className="bg-emerald-500 text-white hover:bg-emerald-600"
+                        title="Helfer-PDF herunterladen und per WhatsApp teilen"
+                        aria-label={`Einteilung von ${helper.name} per WhatsApp teilen`}
+                        disabled={sharingId !== null}
+                        onClick={() => shareHelperPdf(helper.id)}
+                      >
+                        <MessageCircle className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"

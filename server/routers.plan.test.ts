@@ -24,6 +24,7 @@ const dbMocks = vi.hoisted(() => ({
   setPasswordHash: vi.fn(),
   setAdminPasswordHash: vi.fn(),
   getAppSettings: vi.fn(),
+  updateAppSettings: vi.fn(),
   getEvent: vi.fn(),
   updateCurrentEventPdfImage: vi.fn(),
   createEvent: vi.fn(),
@@ -311,6 +312,52 @@ describe("Planungs-API", () => {
     expect(dbMocks.updateCurrentEventPdfImage).toHaveBeenNthCalledWith(2, {
       pdfLogoFallback: "brand",
     });
+  });
+
+  it("speichert und liefert die konfigurierbare WhatsApp-Nachrichtenvorlage in den PDF-Einstellungen", async () => {
+    const caller = appRouter.createCaller(ctx);
+    dbMocks.getAppSettings.mockResolvedValue({
+      id: 1,
+      eventName: "MyEifelRide",
+      eventYear: "2026",
+      helperPdfTitle: "Aufgabenübersicht",
+      blankPlanTitle: "Einsatzplan – Blanko",
+      contactLabel: "Ansprechpartner",
+      footerText: "",
+      whatsAppMessageTemplate: "Hallo! Dein Plan für {EVENT_NAME} ist da. 🚴💨",
+      logoKey: null,
+      logoUrl: null,
+      extraColumns: "[]",
+      blankRowsPerShift: 0,
+      updatedAt: new Date(),
+    });
+    dbMocks.updateAppSettings.mockResolvedValue({ affectedRows: 1 });
+
+    const settings = await caller.pdf.settings();
+    expect(settings.whatsAppMessageTemplate).toBe(
+      "Hallo! Dein Plan für {EVENT_NAME} ist da. 🚴💨"
+    );
+
+    await expect(
+      caller.pdf.updateSettings({
+        eventName: "MyEifelRide",
+        eventYear: "2026",
+        helperPdfTitle: "Aufgabenübersicht",
+        blankPlanTitle: "Einsatzplan – Blanko",
+        contactLabel: "Ansprechpartner",
+        footerText: "Hinweis",
+        whatsAppMessageTemplate:
+          "Individueller Text für {EVENT_NAME}. Bitte zeitnah melden! ⏳",
+        extraColumns: [],
+        blankRowsPerShift: 0,
+      })
+    ).resolves.toEqual({ success: true });
+    expect(dbMocks.updateAppSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        whatsAppMessageTemplate:
+          "Individueller Text für {EVENT_NAME}. Bitte zeitnah melden! ⏳",
+      })
+    );
   });
 
   it("weist Bildinhalte mit unpassender Dateisignatur ab", async () => {
