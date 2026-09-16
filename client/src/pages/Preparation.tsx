@@ -32,11 +32,17 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   AlertTriangle,
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
   FilterX,
+  Info,
   Pencil,
   Plus,
   Search,
@@ -476,30 +482,30 @@ export default function Preparation() {
       </div>
 
       <div className="space-y-3 rounded-xl border bg-slate-50/70 p-3 sm:p-4">
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(18rem,1.8fr)_minmax(10rem,1fr)_minmax(12rem,1fr)_minmax(11rem,1fr)]">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-            <Input
-              value={searchTerm}
-              onChange={event => setSearchTerm(event.target.value)}
-              placeholder="Suchen (Aufgabe/Bereich/Verantwortlicher/Frist) …"
-              className="h-11 bg-white pl-9 pr-8 text-base sm:h-10 sm:text-sm"
-              aria-label="Vorbereitungsaufgaben durchsuchen"
-            />
-            {searchTerm && (
-              <button
-                type="button"
-                onClick={() => setSearchTerm("")}
-                className="absolute right-2.5 top-1/2 inline-flex min-h-11 min-w-11 -translate-y-1/2 items-center justify-center text-slate-400 hover:text-slate-700 sm:min-h-0 sm:min-w-0"
-                aria-label="Suche leeren"
-              >
-                <X className="size-4" />
-              </button>
-            )}
-          </div>
+        <div className="relative w-full max-w-2xl">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            value={searchTerm}
+            onChange={event => setSearchTerm(event.target.value)}
+            placeholder="Suchen (Aufgabe/Bereich/Verantwortlicher/Frist) …"
+            className="h-11 bg-white pl-9 pr-8 text-base sm:h-10 sm:text-sm"
+            aria-label="Vorbereitungsaufgaben durchsuchen"
+          />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm("")}
+              className="absolute right-2.5 top-1/2 inline-flex min-h-11 min-w-11 -translate-y-1/2 items-center justify-center text-slate-400 hover:text-slate-700 sm:min-h-0 sm:min-w-0"
+              aria-label="Suche leeren"
+            >
+              <X className="size-4" />
+            </button>
+          )}
+        </div>
 
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap">
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="h-11 bg-white text-base sm:h-10 sm:text-sm">
+            <SelectTrigger className="h-11 bg-white text-base sm:h-10 sm:text-sm lg:w-[190px]">
               <SelectValue placeholder="Bereich" />
             </SelectTrigger>
             <SelectContent>
@@ -514,7 +520,7 @@ export default function Preparation() {
           </Select>
 
           <Select value={contactFilter} onValueChange={setContactFilter}>
-            <SelectTrigger className="h-11 bg-white text-base sm:h-10 sm:text-sm">
+            <SelectTrigger className="h-11 bg-white text-base sm:h-10 sm:text-sm lg:w-[220px]">
               <SelectValue placeholder="Verantwortlicher" />
             </SelectTrigger>
             <SelectContent>
@@ -532,7 +538,7 @@ export default function Preparation() {
             value={statusFilter}
             onValueChange={value => updateStatusFilter(value as TaskStatusFilter)}
           >
-            <SelectTrigger className="h-11 bg-white text-base sm:h-10 sm:text-sm">
+            <SelectTrigger className="h-11 bg-white text-base sm:h-10 sm:text-sm lg:w-[175px]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -543,26 +549,18 @@ export default function Preparation() {
               <SelectItem value="abgelehnt">Abgelehnt</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          <div className="flex items-center gap-2 text-xs text-slate-500">
-            <span>
-              {filteredRows.length} von {rows.length} Aufgaben angezeigt
-            </span>
-            {hasActiveFilters && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={resetAllFilters}
-                className="h-7 px-2 text-xs text-slate-600 hover:text-slate-900"
-              >
-                <FilterX className="mr-1 size-3.5" />
-                Alle Filter zurücksetzen
-              </Button>
-            )}
-          </div>
+          {hasActiveFilters && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={resetAllFilters}
+              className="h-11 px-2 text-sm text-slate-600 hover:text-slate-900 sm:h-10 lg:ml-1"
+            >
+              <FilterX className="mr-1 size-3.5" />
+              Filter zurücksetzen
+            </Button>
+          )}
         </div>
       </div>
 
@@ -617,15 +615,15 @@ export default function Preparation() {
         </div>
       ) : (
         <>
-          <div className="hidden overflow-hidden rounded-xl border bg-white shadow-sm lg:block">
-            <table className="w-full table-fixed text-left text-sm">
+          <div className="hidden overflow-x-auto rounded-xl border bg-white shadow-sm lg:block">
+            <table className="w-full min-w-[900px] table-auto text-left text-sm">
               <thead className="border-b bg-slate-50/80 text-xs font-semibold text-slate-600">
                 <tr>
-                  <th className="w-[12%] px-3 py-3">Bereich</th>
-                  <th className="w-[20%] px-3 py-3">Aufgabe</th>
+                  <th className="w-[22%] min-w-[230px] whitespace-nowrap px-3 py-3">Bereich</th>
+                  <th className="w-[19%] px-3 py-3">Aufgabe</th>
                   <th className="w-[16%] px-3 py-3">Verantwortlicher</th>
                   <th
-                    className="w-[13%] px-3 py-3"
+                    className="w-[12%] px-3 py-3"
                     aria-sort={
                       dueSortDirection === "asc"
                         ? "ascending"
@@ -655,8 +653,8 @@ export default function Preparation() {
                     </button>
                   </th>
                   <th className="w-[13%] px-3 py-3">Status</th>
-                  <th className="w-[20%] px-3 py-3">Bemerkung</th>
-                  <th className="w-[6%] px-3 py-3 text-center">Aktionen</th>
+                  <th className="w-[8%] px-3 py-3 text-center">Bemerkung</th>
+                  <th className="w-[10%] px-3 py-3 text-center">Aktionen</th>
                 </tr>
               </thead>
               <tbody className="divide-y text-slate-800">
@@ -670,7 +668,9 @@ export default function Preparation() {
                         task.status === "abgelehnt" ? "bg-rose-50/30" : ""
                       }`}
                     >
-                      <td className="break-words px-3 py-3 align-top">{task.category || "—"}</td>
+                      <td className="min-w-[230px] whitespace-nowrap px-3 py-3 align-top">
+                        {task.category || "—"}
+                      </td>
                       <td className="break-words px-3 py-3 align-top font-medium">{task.task}</td>
                       <td className="break-words px-3 py-3 align-top">
                         {task.contactId ? contactMap.get(task.contactId) ?? "—" : "—"}
@@ -705,8 +705,37 @@ export default function Preparation() {
                           </SelectContent>
                         </Select>
                       </td>
-                      <td className="break-words px-3 py-3 align-top whitespace-pre-wrap">
-                        {task.note || "—"}
+                      <td className="px-3 py-3 align-top text-center">
+                        {task.note ? (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8"
+                                title="Vollständige Bemerkung anzeigen"
+                                aria-label={`Bemerkung zu ${task.task} anzeigen`}
+                              >
+                                <Info className="h-4 w-4 text-blue-700" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent
+                              align="center"
+                              side="left"
+                              className="z-50 w-80 max-w-[calc(100vw-2rem)] border-slate-200 bg-white p-3 text-slate-900 shadow-lg"
+                            >
+                              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                Bemerkung
+                              </p>
+                              <p className="max-h-64 overflow-y-auto whitespace-pre-wrap break-words text-sm leading-5">
+                                {task.note}
+                              </p>
+                            </PopoverContent>
+                          </Popover>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
                       </td>
                       <td className="px-3 py-3 align-top">
                         <div className="flex items-center justify-center gap-1">

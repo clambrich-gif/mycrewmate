@@ -689,6 +689,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(prep).toContain('left.category?.trim() || "\\uffff"');
     expect(prep).not.toContain("Sortierung:");
     expect(prep).toContain("Suchen (Aufgabe/Bereich/Verantwortlicher/Frist)");
+    expect(prep).toContain("w-full max-w-2xl");
+    expect(prep).toContain("grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap");
+    expect(prep).not.toContain("Aufgaben angezeigt");
+    expect(prep).toContain("min-w-[230px] whitespace-nowrap");
+    expect(prep).toContain("PopoverContent");
+    expect(prep).toContain("Vollständige Bemerkung anzeigen");
+    expect(prep).toContain("Bemerkung zu ${task.task} anzeigen");
     expect(prep).toContain("categoryFilter");
     expect(prep).toContain("contactFilter");
     expect(prep).toContain("statusFilter");
