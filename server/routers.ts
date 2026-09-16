@@ -1435,7 +1435,10 @@ export const appRouter = router({
         helferBestaetigt: helpers.filter(h => h.confirmed === "ja").length,
         doppelGesamt: ev.reduce((s, e) => s + e.doppelCount, 0),
         ausfallGesamt: ev.reduce((s, e) => s + e.ausfallCount, 0),
+        vorbereitungGesamt: prep.length,
         offeneVorbereitung: prep.filter(p => p.status === "offen").length,
+        vorbereitungInBearbeitung: prep.filter(p => p.status === "inArbeit").length,
+        vorbereitungErledigt: prep.filter(p => p.status === "erledigt").length,
         abgelehnteVorbereitung: prep.filter(p => p.status === "abgelehnt").length,
         offeneNachbereitung: post.filter(p => p.status === "offen").length,
         verantwortlichkeiten: await (async () => {

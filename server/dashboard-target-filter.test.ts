@@ -23,6 +23,9 @@ describe("Dashboard-Zielnavigation", () => {
   });
 
   it("erzeugt stabile Aufgaben-URLs für offene und abgelehnte Vorbereitung sowie Nachbereitung", () => {
+    expect(dashboardTargetHref({ path: "/vorbereitung" })).toBe(
+      "/vorbereitung?"
+    );
     expect(
       dashboardTargetHref({ path: "/vorbereitung", status: "offen" })
     ).toBe("/vorbereitung?status=offen");

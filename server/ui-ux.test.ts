@@ -631,7 +631,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain('status: "KNAPP"');
     expect(dashboard).toContain('warning: "konflikte"');
     expect(dashboard).toContain('warning: "ausfaelle"');
-    expect(dashboard).toContain('path: "/vorbereitung", status: "offen"');
+    expect(dashboard).toContain('target: { path: "/vorbereitung" }');
     expect(dashboard).toContain('path: "/nachbereitung", status: "offen"');
     expect(dashboard).toContain("navigate(dashboardTargetHref(target))");
     expect(dashboard).toContain("Gefilterte Einträge anzeigen");
@@ -652,8 +652,15 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(taskList).toContain('aria-label="Aufgabenstatus filtern"');
     expect(taskList).toContain("Nur offene Aufgaben");
     expect(dashboard).toContain("abgelehnteVorbereitung");
-    expect(dashboard).toContain("Vorbereitung abgelehnt");
-    expect(dashboard).toContain('status: "abgelehnt"');
+    expect(dashboard).toContain("vorbereitungGesamt");
+    expect(dashboard).toContain("vorbereitungInBearbeitung");
+    expect(dashboard).toContain("vorbereitungErledigt");
+    expect(dashboard).toContain("PreparationMetricCardView");
+    expect(dashboard).toContain("Gesamt:");
+    expect(dashboard).toContain("In Bearbeitung / Beantragt");
+    expect(dashboard).toContain("Erledigt / Genehmigt");
+    expect(dashboard).toContain("Vorbereitungen anzeigen");
+    expect(dashboard).toContain('target: { path: "/vorbereitung" }');
   });
 
   it("vereinheitlicht Vorbereitung mit Dialog, Filtern und Aktionsicons des Einsatzplans", () => {

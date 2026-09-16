@@ -21,6 +21,12 @@ type MetricCard = {
   badge: string | null;
   target?: DashboardTarget;
   urgency?: "orange" | "red";
+  preparationBreakdown?: {
+    offen: number;
+    inBearbeitung: number;
+    erledigt: number;
+    abgelehnt: number;
+  };
 };
 
 type MetricSection = {
@@ -30,6 +36,85 @@ type MetricSection = {
   cards: MetricCard[];
 };
 
+function PreparationMetricCardView({
+  metric,
+  openTarget,
+}: {
+  metric: MetricCard;
+  openTarget: (target: DashboardTarget) => void;
+}) {
+  const breakdown = metric.preparationBreakdown;
+  const target = metric.target;
+  if (!breakdown || !target) return null;
+
+  const statuses = [
+    {
+      label: "Offen",
+      value: breakdown.offen,
+      className: "border-amber-200 bg-amber-50 text-amber-950",
+    },
+    {
+      label: "In Bearbeitung / Beantragt",
+      value: breakdown.inBearbeitung,
+      className: "border-blue-200 bg-blue-50 text-blue-950",
+    },
+    {
+      label: "Erledigt / Genehmigt",
+      value: breakdown.erledigt,
+      className: "border-emerald-200 bg-emerald-50 text-emerald-950",
+    },
+    {
+      label: "Abgelehnt",
+      value: breakdown.abgelehnt,
+      className:
+        breakdown.abgelehnt > 0
+          ? "border-red-300 bg-red-50 text-red-950"
+          : "border-rose-200 bg-rose-50/70 text-rose-900",
+    },
+  ];
+
+  return (
+    <button
+      type="button"
+      className="group col-span-2 min-h-11 min-w-0 cursor-pointer rounded-xl text-left focus-visible:outline-none lg:col-span-1"
+      aria-label={`Vorbereitung: Gesamt ${metric.value}. Vorbereitungsübersicht anzeigen`}
+      onPointerEnter={() => preloadRoute(target.path)}
+      onFocus={() => preloadRoute(target.path)}
+      onClick={() => openTarget(target)}
+    >
+      <Card className="h-full min-w-0 border-amber-300 bg-white text-slate-950 shadow-sm transition-[border-color,box-shadow,transform] duration-150 group-hover:border-amber-500 group-hover:shadow-md group-active:scale-[0.99] group-focus-visible:ring-2 group-focus-visible:ring-amber-500 group-focus-visible:ring-offset-2">
+        <CardHeader className="flex min-w-0 flex-row items-baseline justify-between gap-2 p-3 pb-2 sm:p-4 sm:pb-2">
+          <CardTitle className="text-sm font-semibold text-slate-800 sm:text-base">
+            Vorbereitung
+          </CardTitle>
+          <span className="whitespace-nowrap text-xs font-medium text-slate-600">
+            Gesamt: <strong className="text-base text-slate-950">{metric.value}</strong>
+          </span>
+        </CardHeader>
+        <CardContent className="space-y-3 p-3 pt-0 sm:p-4 sm:pt-0">
+          <div className="grid grid-cols-2 gap-2">
+            {statuses.map(status => (
+              <div
+                key={status.label}
+                className={`min-w-0 rounded-lg border px-2.5 py-2 ${status.className}`}
+              >
+                <p className="min-h-8 break-words text-[11px] font-medium leading-tight sm:text-xs">
+                  {status.label}
+                </p>
+                <p className="mt-1 text-xl font-bold leading-none">{status.value}</p>
+              </div>
+            ))}
+          </div>
+          <span className="flex items-center gap-1 text-xs font-semibold text-amber-800">
+            Vorbereitungen anzeigen
+            <ArrowRight className="size-3.5" aria-hidden="true" />
+          </span>
+        </CardContent>
+      </Card>
+    </button>
+  );
+}
+
 function MetricCardView({
   metric,
   openTarget,
@@ -37,6 +122,9 @@ function MetricCardView({
   metric: MetricCard;
   openTarget: (target: DashboardTarget) => void;
 }) {
+  if (metric.preparationBreakdown) {
+    return <PreparationMetricCardView metric={metric} openTarget={openTarget} />;
+  }
   const isEmpty = metric.value === 0;
   const interactiveCardClass =
     metric.urgency === "red"
@@ -161,22 +249,18 @@ export default function Dashboard() {
       className: "border-amber-300 bg-amber-50/90",
       titleClassName: "text-amber-950",
       cards: [
-        ...(s.abgelehnteVorbereitung > 0
-          ? [
-              {
-                label: `Vorbereitung abgelehnt: ${s.abgelehnteVorbereitung} ${
-                  s.abgelehnteVorbereitung === 1 ? "Aufgabe" : "Aufgaben"
-                }`,
-                value: s.abgelehnteVorbereitung,
-                badge: "abgelehnt" as const,
-                target: {
-                  path: "/vorbereitung" as const,
-                  status: "abgelehnt" as const,
-                },
-                urgency: "red" as const,
-              },
-            ]
-          : []),
+        {
+          label: "Vorbereitung",
+          value: s.vorbereitungGesamt,
+          badge: null,
+          target: { path: "/vorbereitung" },
+          preparationBreakdown: {
+            offen: s.offeneVorbereitung,
+            inBearbeitung: s.vorbereitungInBearbeitung,
+            erledigt: s.vorbereitungErledigt,
+            abgelehnt: s.abgelehnteVorbereitung,
+          },
+        },
         {
           label: "Doppelbelegungen",
           value: s.doppelGesamt,
@@ -190,12 +274,6 @@ export default function Dashboard() {
           badge: "OFFEN",
           target: { path: "/einsatzplan", warning: "ausfaelle" },
           urgency: "red",
-        },
-        {
-          label: "Offene Vorbereitung",
-          value: s.offeneVorbereitung,
-          badge: null,
-          target: { path: "/vorbereitung", status: "offen" },
         },
         {
           label: "Offene Nachbereitung",

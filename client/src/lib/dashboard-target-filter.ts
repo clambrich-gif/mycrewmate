@@ -26,6 +26,7 @@ export type TaskStatusFilter =
 export type DashboardTarget =
   | { path: "/einsatzplan"; warning: PlanWarningFilter }
   | { path: "/einsatzplan"; status: Exclude<PlanStatusFilter, "alle"> }
+  | { path: "/vorbereitung" }
   | {
       path: "/vorbereitung" | "/nachbereitung";
       status: "offen" | "abgelehnt";
