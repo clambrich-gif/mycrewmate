@@ -622,6 +622,28 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain("!isEmpty && metric.target");
   });
 
+  it("stellt akute Organisationsaufgaben priorisiert vor die neutralen Dashboardkennzahlen", () => {
+    const dashboard = source("client/src/pages/Dashboard.tsx");
+
+    expect(dashboard).toContain('data-dashboard-section="Heute priorisieren"');
+    expect(dashboard).toContain("Nur Punkte mit direktem Handlungsbedarf");
+    expect(dashboard).toContain("const priorityActions: PriorityAction[]");
+    expect(dashboard).toContain("].slice(0, 4)");
+    expect(dashboard).toContain('id: "ausfaelle"');
+    expect(dashboard).toContain('id: "vorbereitung-abgelehnt"');
+    expect(dashboard).toContain('id: "doppelbelegungen"');
+    expect(dashboard).toContain('id: "offene-schichten"');
+    expect(dashboard).toContain('id: "knappe-schichten"');
+    expect(dashboard).toContain('id: "offene-vorbereitung"');
+    expect(dashboard).toContain('id: "offene-nachbereitung"');
+    expect(dashboard).toContain('id: "einsatzplan-stabil"');
+    expect(dashboard).toContain("PriorityActionCard");
+    expect(dashboard).toContain("Keine dringenden Punkte");
+    expect(dashboard).toContain('title: "Einsatzplanung"');
+    expect(dashboard).toContain('title: "Helferbedarf & Belegung"');
+    expect(dashboard).toContain('title: "Aufgabenstatus"');
+  });
+
   it("verknüpft Dashboardwarnungen direkt mit gefilterten Einsatzplanschichten", () => {
     const dashboard = source("client/src/pages/Dashboard.tsx");
     const plan = source("client/src/pages/Plan.tsx");
@@ -635,9 +657,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain('path: "/nachbereitung", status: "offen"');
     expect(dashboard).toContain("navigate(dashboardTargetHref(target))");
     expect(dashboard).toContain("Gefilterte Einträge anzeigen");
-    expect(dashboard).toContain('urgency: "orange"');
-    expect(dashboard).toContain('urgency: "red"');
-    expect(dashboard).toContain("border-orange-300 bg-orange-50/90");
+    expect(dashboard).toContain('tone: "orange"');
+    expect(dashboard).toContain('tone: "red"');
+    expect(dashboard).toContain("PRIORITY_TONE_CLASSES");
+    expect(dashboard).toContain("border-amber-300 bg-amber-50/90");
     expect(dashboard).toContain("border-red-300 bg-red-50/90");
     expect(plan).toContain('warningFilter !== "konflikte" || e.doppelCount > 0');
     expect(plan).toContain('warningFilter !== "ausfaelle" || e.ausfallCount > 0');

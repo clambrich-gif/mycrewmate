@@ -6,7 +6,16 @@ import {
 } from "@/lib/dashboard-target-filter";
 import { preloadRoute } from "@/lib/route-loaders";
 import { trpc } from "@/lib/trpc";
-import { ArrowRight } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  CheckCircle2,
+  ClipboardList,
+  CircleX,
+  GitCompareArrows,
+  ListTodo,
+  type LucideIcon,
+} from "lucide-react";
 import { useLocation } from "wouter";
 import {
   eventWeekdays,
@@ -35,6 +44,89 @@ type MetricSection = {
   titleClassName: string;
   cards: MetricCard[];
 };
+
+type PriorityAction = {
+  id: string;
+  label: string;
+  value: number;
+  detail: string;
+  tone: "red" | "orange" | "blue" | "green";
+  icon: LucideIcon;
+  target: DashboardTarget;
+};
+
+const PRIORITY_TONE_CLASSES: Record<
+  PriorityAction["tone"],
+  { card: string; icon: string; value: string; action: string }
+> = {
+  red: {
+    card: "border-red-300 bg-red-50/90 hover:border-red-500 hover:shadow-red-100",
+    icon: "bg-red-100 text-red-700",
+    value: "text-red-800",
+    action: "text-red-700",
+  },
+  orange: {
+    card: "border-amber-300 bg-amber-50/90 hover:border-amber-500 hover:shadow-amber-100",
+    icon: "bg-amber-100 text-amber-700",
+    value: "text-amber-800",
+    action: "text-amber-800",
+  },
+  blue: {
+    card: "border-blue-300 bg-blue-50/90 hover:border-blue-500 hover:shadow-blue-100",
+    icon: "bg-blue-100 text-blue-700",
+    value: "text-blue-800",
+    action: "text-blue-700",
+  },
+  green: {
+    card: "border-emerald-300 bg-emerald-50/90 hover:border-emerald-500 hover:shadow-emerald-100",
+    icon: "bg-emerald-100 text-emerald-700",
+    value: "text-emerald-800",
+    action: "text-emerald-700",
+  },
+};
+
+function PriorityActionCard({
+  action,
+  openTarget,
+}: {
+  action: PriorityAction;
+  openTarget: (target: DashboardTarget) => void;
+}) {
+  const Icon = action.icon;
+  const tone = PRIORITY_TONE_CLASSES[action.tone];
+  return (
+    <button
+      type="button"
+      className="group min-h-24 min-w-0 rounded-xl text-left focus-visible:outline-none"
+      aria-label={`${action.label}: ${action.detail}. Zugehörige Einträge anzeigen`}
+      onPointerEnter={() => preloadRoute(action.target.path)}
+      onFocus={() => preloadRoute(action.target.path)}
+      onClick={() => openTarget(action.target)}
+    >
+      <Card
+        className={`h-full min-w-0 border-l-4 text-slate-950 shadow-sm transition-[border-color,box-shadow,transform] duration-150 group-hover:shadow-md group-active:scale-[0.99] group-focus-visible:ring-2 group-focus-visible:ring-offset-2 ${tone.card}`}
+      >
+        <CardContent className="flex min-h-24 items-center gap-3 p-3 sm:p-4">
+          <span className={`flex size-11 shrink-0 items-center justify-center rounded-full ${tone.icon}`}>
+            <Icon className="size-5" aria-hidden="true" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <strong className={`text-2xl leading-none ${tone.value}`}>{action.value}</strong>
+              <span className="text-sm font-bold uppercase tracking-wide text-slate-800">
+                {action.label}
+              </span>
+            </span>
+            <span className="mt-1 block break-words text-sm text-slate-600">
+              {action.detail}
+            </span>
+          </span>
+          <ArrowRight className={`size-5 shrink-0 transition-transform duration-150 group-hover:translate-x-0.5 ${tone.action}`} aria-hidden="true" />
+        </CardContent>
+      </Card>
+    </button>
+  );
+}
 
 function PreparationMetricCardView({
   metric,
@@ -211,9 +303,126 @@ export default function Dashboard() {
   if (isLoading || isEventLoading || areHelpersLoading || !s || !currentEvent)
     return <div className="text-muted-foreground">Lade Dashboard …</div>;
 
+  const priorityActions: PriorityAction[] = [
+    ...(s.ausfallGesamt > 0
+      ? [
+          {
+            id: "ausfaelle",
+            label: "Ausfälle",
+            value: s.ausfallGesamt,
+            detail: "Schichten sofort nachbesetzen",
+            tone: "red" as const,
+            icon: AlertTriangle,
+            target: { path: "/einsatzplan", warning: "ausfaelle" } as const,
+          },
+        ]
+      : []),
+    ...(s.abgelehnteVorbereitung > 0
+      ? [
+          {
+            id: "vorbereitung-abgelehnt",
+            label: "Vorbereitung abgelehnt",
+            value: s.abgelehnteVorbereitung,
+            detail: "Blockierte Aufgabe zeitnah klären",
+            tone: "red" as const,
+            icon: CircleX,
+            target: { path: "/vorbereitung", status: "abgelehnt" } as const,
+          },
+        ]
+      : []),
+    ...(s.doppelGesamt > 0
+      ? [
+          {
+            id: "doppelbelegungen",
+            label: "Doppelbelegungen",
+            value: s.doppelGesamt,
+            detail: "Zeitliche Konflikte prüfen",
+            tone: "orange" as const,
+            icon: GitCompareArrows,
+            target: { path: "/einsatzplan", warning: "konflikte" } as const,
+          },
+        ]
+      : []),
+    ...(s.offen > 0
+      ? [
+          {
+            id: "offene-schichten",
+            label: "Offene Schichten",
+            value: s.offen,
+            detail: "Helferbedarf noch nicht gedeckt",
+            tone: "red" as const,
+            icon: AlertTriangle,
+            target: { path: "/einsatzplan", status: "OFFEN" } as const,
+          },
+        ]
+      : []),
+    ...(s.knapp > 0
+      ? [
+          {
+            id: "knappe-schichten",
+            label: "Knapp besetzt",
+            value: s.knapp,
+            detail: "Besetzung vorsorglich absichern",
+            tone: "orange" as const,
+            icon: AlertTriangle,
+            target: { path: "/einsatzplan", status: "KNAPP" } as const,
+          },
+        ]
+      : []),
+    ...(s.offeneVorbereitung > 0
+      ? [
+          {
+            id: "offene-vorbereitung",
+            label: "Offene Vorbereitungen",
+            value: s.offeneVorbereitung,
+            detail:
+              s.vorbereitungInBearbeitung > 0
+                ? `Weitere ${s.vorbereitungInBearbeitung} bereits in Arbeit`
+                : "Aufgaben und Verantwortlichkeiten prüfen",
+            tone: "orange" as const,
+            icon: ClipboardList,
+            target: { path: "/vorbereitung", status: "offen" } as const,
+          },
+        ]
+      : []),
+    ...(s.offeneNachbereitung > 0
+      ? [
+          {
+            id: "offene-nachbereitung",
+            label: "Offene Nachbereitungen",
+            value: s.offeneNachbereitung,
+            detail: "Restaufgaben abschließen",
+            tone: "blue" as const,
+            icon: ListTodo,
+            target: { path: "/nachbereitung", status: "offen" } as const,
+          },
+        ]
+      : []),
+  ].slice(0, 4);
+
+  const isShiftPlanStable =
+    s.ausfallGesamt === 0 &&
+    s.doppelGesamt === 0 &&
+    s.offen === 0 &&
+    s.knapp === 0;
+  if (s.schichtenGesamt > 0 && isShiftPlanStable && priorityActions.length < 4) {
+    priorityActions.push({
+      id: "einsatzplan-stabil",
+      label: "Einsatzplan stabil",
+      value: s.ok,
+      detail:
+        s.ok === 1
+          ? "1 Schicht vollständig besetzt"
+          : `${s.ok} Schichten vollständig besetzt`,
+      tone: "green",
+      icon: CheckCircle2,
+      target: { path: "/einsatzplan", status: "OK" },
+    });
+  }
+
   const sections: MetricSection[] = [
     {
-      title: "Bereich Schichten",
+      title: "Einsatzplanung",
       className: "border-sky-300 bg-sky-50/90",
       titleClassName: "text-sky-950",
       cards: [
@@ -234,7 +443,7 @@ export default function Dashboard() {
       ],
     },
     {
-      title: "Bereich Helferbedarf & Belegung",
+      title: "Helferbedarf & Belegung",
       className: "border-emerald-300 bg-emerald-50/90",
       titleClassName: "text-emerald-950",
       cards: [
@@ -245,7 +454,7 @@ export default function Dashboard() {
       ],
     },
     {
-      title: "Bereich Handlungsbedarf & Warnungen",
+      title: "Aufgabenstatus",
       className: "border-amber-300 bg-amber-50/90",
       titleClassName: "text-amber-950",
       cards: [
@@ -262,20 +471,6 @@ export default function Dashboard() {
           },
         },
         {
-          label: "Doppelbelegungen",
-          value: s.doppelGesamt,
-          badge: "KNAPP",
-          target: { path: "/einsatzplan", warning: "konflikte" },
-          urgency: "orange",
-        },
-        {
-          label: "Ausfälle",
-          value: s.ausfallGesamt,
-          badge: "OFFEN",
-          target: { path: "/einsatzplan", warning: "ausfaelle" },
-          urgency: "red",
-        },
-        {
           label: "Offene Nachbereitung",
           value: s.offeneNachbereitung,
           badge: null,
@@ -290,9 +485,46 @@ export default function Dashboard() {
       <div>
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <p className="text-muted-foreground">
-          Alle Kennzahlen werden automatisch aus den Planungsdaten berechnet.
+          Die wichtigsten nächsten Schritte stehen zuerst; alle Kennzahlen werden automatisch aus den Planungsdaten berechnet.
         </p>
       </div>
+
+      <section
+        data-dashboard-section="Heute priorisieren"
+        className="rounded-2xl border border-slate-300 bg-slate-50/90 p-3 shadow-sm sm:p-4"
+      >
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-sm font-extrabold tracking-wide text-slate-950 uppercase sm:text-base">
+            Heute priorisieren
+          </h2>
+          <p className="text-xs text-slate-600 sm:text-sm">
+            Nur Punkte mit direktem Handlungsbedarf
+          </p>
+        </div>
+        {priorityActions.length > 0 ? (
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {priorityActions.map(action => (
+              <PriorityActionCard
+                key={action.id}
+                action={action}
+                openTarget={target => navigate(dashboardTargetHref(target))}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="flex min-h-24 items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-emerald-950">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+              <CheckCircle2 className="size-5" aria-hidden="true" />
+            </span>
+            <div>
+              <p className="font-semibold">Keine dringenden Punkte</p>
+              <p className="text-sm text-emerald-800">
+                Für die aktuelle Planung liegen keine offenen Warnungen vor.
+              </p>
+            </div>
+          </div>
+        )}
+      </section>
 
       <div className="space-y-4">
         {sections.map(section => (
