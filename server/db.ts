@@ -57,8 +57,9 @@ import {
 import { currentEventId, currentEventYear } from "./year-context";
 import { overlaps } from "./logic";
 import {
+  normalizedAssignedSlotUpdates,
   splitShiftAssignmentsByHelper,
-  unassignedAssignmentIdsOutsideNeeded,
+  unassignedAssignmentIds,
   validateExistingAssignmentsForShiftUpdate,
 } from "./shift-update-validation";
 
@@ -1703,15 +1704,14 @@ export async function updateShift(
         relatedShifts,
       });
 
-      // Altimporte konnten leere Slot-Zeilen erzeugen. Sobald der Bedarf
-      // sinkt, werden nur diese unbesetzten Plätze am Ende entfernt; echte
-      // Helferzuweisungen wurden unmittelbar zuvor gegen den neuen Bedarf
-      // validiert und können deshalb nie stillschweigend gelöscht werden.
+      // Altimporte konnten leere Slot-Zeilen erzeugen. Diese sind kein
+      // Helferplatz und werden bei einer expliziten Bedarfsänderung entfernt.
+      // Die echten Helfer werden danach in ihre natürliche Reihenfolge
+      // verdichtet. Damit ist etwa eine Belegung in Platz 11 bei zehn echten
+      // Helfern weiterhin zulässig: Entscheidend ist die Helferanzahl, nicht
+      // eine zufällig aus älteren Daten übrig gebliebene Slotnummer.
       if (safe.needed !== undefined) {
-        const emptySlotIds = unassignedAssignmentIdsOutsideNeeded(
-          existingAssignments,
-          proposedShift.needed
-        );
+        const emptySlotIds = unassignedAssignmentIds(existingAssignments);
         if (emptySlotIds.length) {
           await tx
             .delete(assignments)
@@ -1721,6 +1721,38 @@ export async function updateShift(
                 inArray(assignments.id, emptySlotIds)
               )
             );
+        }
+
+        const slotUpdates = normalizedAssignedSlotUpdates(existingAssignments);
+        const movedAssignments = slotUpdates.filter(
+          update => update.previousSlot !== update.slot
+        );
+        if (movedAssignments.length) {
+          // Die Zwischenwerte verhindern, dass der Unique-Index
+          // (shiftId, slot) beim Vertauschen oder Verdichten kollidiert.
+          for (let index = 0; index < movedAssignments.length; index++) {
+            const update = movedAssignments[index];
+            await tx
+              .update(assignments)
+              .set({ slot: -1 - index })
+              .where(
+                and(
+                  eq(assignments.id, update.id),
+                  eq(assignments.shiftId, existingShift.id)
+                )
+              );
+          }
+          for (const update of movedAssignments) {
+            await tx
+              .update(assignments)
+              .set({ slot: update.slot })
+              .where(
+                and(
+                  eq(assignments.id, update.id),
+                  eq(assignments.shiftId, existingShift.id)
+                )
+              );
+          }
         }
       }
     }

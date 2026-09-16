@@ -40,13 +40,26 @@ export function splitShiftAssignmentsByHelper(assignments: Assignment[]) {
   return { assigned, unassigned };
 }
 
-export function unassignedAssignmentIdsOutsideNeeded(
-  assignments: Assignment[],
-  needed: number
-) {
-  return splitShiftAssignmentsByHelper(assignments).unassigned
-    .filter(assignment => assignment.slot >= needed)
-    .map(assignment => assignment.id);
+export function unassignedAssignmentIds(assignments: Assignment[]) {
+  return splitShiftAssignmentsByHelper(assignments).unassigned.map(
+    assignment => assignment.id
+  );
+}
+
+/**
+ * Gibt die kanonische Reihenfolge der echten Helferplätze zurück. So kann ein
+ * älterer Plan mit Lücken (z. B. Helfer in Platz 1 und 11) bei einer zulässigen
+ * Bedarfsreduzierung auf die verbleibenden Plätze 1 bis N verdichtet werden.
+ */
+export function normalizedAssignedSlotUpdates(assignments: Assignment[]) {
+  return splitShiftAssignmentsByHelper(assignments).assigned
+    .slice()
+    .sort((left, right) => left.slot - right.slot || left.id - right.id)
+    .map((assignment, slot) => ({
+      id: assignment.id,
+      previousSlot: assignment.slot,
+      slot,
+    }));
 }
 
 /**
@@ -82,7 +95,7 @@ export function validateExistingAssignmentsForShiftUpdate({
     occupiedSlots.add(assignment.slot);
     assignedHelperIds.add(assignment.helperId);
 
-    if (assignment.slot < 0 || assignment.slot >= proposedShift.needed) {
+    if (assignmentsWithHelpers.length > proposedShift.needed) {
       throw new ShiftUpdateValidationError(
         "Der neue Helferbedarf wäre kleiner als bereits belegte Helferplätze"
       );

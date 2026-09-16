@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { Assignment, Helper, Shift } from "../drizzle/schema";
 import {
+  normalizedAssignedSlotUpdates,
   ShiftUpdateValidationError,
-  unassignedAssignmentIdsOutsideNeeded,
+  unassignedAssignmentIds,
   validateExistingAssignmentsForShiftUpdate,
 } from "./shift-update-validation";
 
@@ -120,21 +121,37 @@ describe("Schichtupdate-Validierung mit bestehenden Zuweisungen", () => {
         relatedShifts: [shift()],
       })
     ).not.toThrow();
-    expect(
-      unassignedAssignmentIdsOutsideNeeded(
-        [realAssignment, emptyLegacySlot],
-        10
-      )
-    ).toEqual([102]);
+    expect(unassignedAssignmentIds([realAssignment, emptyLegacySlot])).toEqual([
+      102,
+    ]);
   });
 
-  it("lehnt eine Bedarfssenkung weiterhin ab, wenn der letzte Slot wirklich besetzt ist", () => {
+  it("verdichtet echte Helfer aus hohen Slots bei einer zulässigen Bedarfssenkung", () => {
+    const firstHelper = assignment({ id: 101, slot: 0 });
+    const tenthHelper = assignment({ id: 102, slot: 10, helperId: 12 });
+
     expect(() =>
       validate({
         proposedShift: shift({ needed: 10 }),
-        existingAssignments: [assignment({ slot: 10 })],
-        assignedHelpers: [helper()],
-        relatedAssignments: [assignment({ slot: 10 })],
+        existingAssignments: [firstHelper, tenthHelper],
+        assignedHelpers: [helper(), helper({ id: 12, name: "Robin Test" })],
+        relatedAssignments: [firstHelper, tenthHelper],
+        relatedShifts: [shift()],
+      })
+    ).not.toThrow();
+    expect(normalizedAssignedSlotUpdates([firstHelper, tenthHelper])).toEqual([
+      { id: 101, previousSlot: 0, slot: 0 },
+      { id: 102, previousSlot: 10, slot: 1 },
+    ]);
+  });
+
+  it("lehnt eine Bedarfssenkung weiterhin ab, wenn mehr echte Helfer als Plätze bleiben", () => {
+    expect(() =>
+      validate({
+        proposedShift: shift({ needed: 1 }),
+        existingAssignments: [assignment({ id: 101 }), assignment({ id: 102, slot: 1, helperId: 12 })],
+        assignedHelpers: [helper(), helper({ id: 12, name: "Robin Test" })],
+        relatedAssignments: [assignment({ id: 101 }), assignment({ id: 102, slot: 1, helperId: 12 })],
         relatedShifts: [shift()],
       })
     ).toThrow("kleiner als bereits belegte Helferplätze");
