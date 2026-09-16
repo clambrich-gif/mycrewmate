@@ -656,16 +656,29 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain('status: "abgelehnt"');
   });
 
-  it("bietet für die Vorbereitung flexible Felder, Statuswording und Echtzeitfilter", () => {
+  it("vereinheitlicht Vorbereitung mit Dialog, Filtern und Aktionsicons des Einsatzplans", () => {
     const prep = source("client/src/pages/Preparation.tsx");
-    expect(prep).toContain("Optionale Felder:");
-    expect(prep).toContain("Bereich / Kategorie");
+    expect(prep).toContain("Neue Vorbereitungsaufgabe");
+    expect(prep).not.toContain("Optionale Felder:");
+    expect(prep).toContain("Vorbereitungsaufgabe bearbeiten");
+    expect(prep).toContain("Vorbereitungsaufgabe löschen");
+    expect(prep).toContain("DialogContent");
+    expect(prep).toContain("DialogFooter");
+    expect(prep).toContain("openCreate");
+    expect(prep).toContain("openEdit");
+    expect(prep).toContain("Pencil");
+    expect(prep).toContain("Trash2");
+    expect(prep).toContain("max-h-[calc(100dvh-2rem)]");
+    expect(prep).toContain("lg:hidden");
+    expect(prep).toContain("h-11 w-11");
+    expect(prep).toContain("Bestehenden Bereich wählen oder neu anlegen");
     expect(prep).toContain("Verantwortlicher");
     expect(prep).toContain("Frist / Abgabedatum (Freitext)");
     expect(prep).toContain("Bemerkungen / Informationen");
-    expect(prep).toContain("Aufgabe (In Arbeit / Erledigt)");
-    expect(prep).toContain("Genehmigung (Beantragt / Genehmigt)");
+    expect(prep).toContain("Beantragt");
+    expect(prep).toContain("Genehmigt");
     expect(prep).toContain("Abgelehnt");
+    expect(prep).toContain("Suchen (Aufgabe/Bereich/Verantwortlicher/Frist)");
     expect(prep).toContain("categoryFilter");
     expect(prep).toContain("contactFilter");
     expect(prep).toContain("statusFilter");

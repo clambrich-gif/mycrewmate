@@ -13,15 +13,33 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Plus,
-  Trash2,
-  ArrowUpDown,
-  Search,
-  FilterX,
-  X,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
   AlertTriangle,
+  ArrowUpDown,
+  FilterX,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
@@ -34,6 +52,44 @@ import {
 
 type PrepStatus = "offen" | "inArbeit" | "erledigt" | "abgelehnt";
 type PrepWording = "aufgabe" | "genehmigung";
+type DialogStatus =
+  | "offen"
+  | "inArbeit"
+  | "beantragt"
+  | "erledigt"
+  | "genehmigt"
+  | "abgelehnt";
+
+type PrepTaskRow = {
+  id: number;
+  category: string;
+  task: string;
+  dueText: string;
+  contactId: number | null;
+  status: PrepStatus;
+  statusWording: PrepWording | null;
+  note: string | null;
+};
+
+type PrepForm = {
+  category: string;
+  task: string;
+  contactId: string;
+  dueText: string;
+  note: string;
+  status: PrepStatus;
+  statusWording: PrepWording;
+};
+
+const EMPTY_FORM: PrepForm = {
+  category: "",
+  task: "",
+  contactId: "none",
+  dueText: "",
+  note: "",
+  status: "offen",
+  statusWording: "aufgabe",
+};
 
 function temporaryId() {
   return -Math.floor(Math.random() * 1_000_000 + 1);
@@ -59,7 +115,34 @@ function getStatusBadgeClass(status: PrepStatus) {
     case "erledigt":
       return "border-emerald-200 bg-emerald-50 text-emerald-900";
     case "abgelehnt":
-      return "border-rose-200 bg-rose-50 text-rose-900 font-semibold";
+      return "border-rose-200 bg-rose-50 font-semibold text-rose-900";
+  }
+}
+
+function dialogStatusValue(form: PrepForm): DialogStatus {
+  if (form.status === "inArbeit") {
+    return form.statusWording === "genehmigung" ? "beantragt" : "inArbeit";
+  }
+  if (form.status === "erledigt") {
+    return form.statusWording === "genehmigung" ? "genehmigt" : "erledigt";
+  }
+  return form.status;
+}
+
+function applyDialogStatus(value: DialogStatus): Pick<PrepForm, "status" | "statusWording"> {
+  switch (value) {
+    case "beantragt":
+      return { status: "inArbeit", statusWording: "genehmigung" };
+    case "genehmigt":
+      return { status: "erledigt", statusWording: "genehmigung" };
+    case "inArbeit":
+      return { status: "inArbeit", statusWording: "aufgabe" };
+    case "erledigt":
+      return { status: "erledigt", statusWording: "aufgabe" };
+    case "abgelehnt":
+      return { status: "abgelehnt", statusWording: "aufgabe" };
+    default:
+      return { status: "offen", statusWording: "aufgabe" };
   }
 }
 
@@ -70,27 +153,17 @@ export default function Preparation() {
 
   const [categoryFilter, setCategoryFilter] = useState<string>("alle");
   const [contactFilter, setContactFilter] = useState<string>("alle");
-  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [sortAsc, setSortAsc] = useState(true);
-
-  // Formular-Felder
-  const [taskText, setTaskText] = useState("");
-  const [categoryText, setCategoryText] = useState("");
-  const [contactId, setContactId] = useState<string>("none");
-  const [dueText, setDueText] = useState("");
-  const [noteText, setNoteText] = useState("");
-  const [formStatus, setFormStatus] = useState<PrepStatus>("offen");
-  const [formWording, setFormWording] = useState<PrepWording>("aufgabe");
-
-  // Optionale Feld-Aktivierungsschalter (Checkboxen / Toggles)
-  const [includeCategory, setIncludeCategory] = useState(false);
-  const [includeContact, setIncludeContact] = useState(false);
-  const [includeDue, setIncludeDue] = useState(false);
-  const [includeNote, setIncludeNote] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<PrepTaskRow | null>(null);
+  const [form, setForm] = useState<PrepForm>(EMPTY_FORM);
+  const [deleteCandidate, setDeleteCandidate] = useState<PrepTaskRow | null>(null);
 
   const utils = trpc.useUtils();
-  const { data: rows = [], isLoading } = trpc.prep.list.useQuery();
+  const { data: rawRows = [], isLoading } = trpc.prep.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
+  const rows = rawRows as PrepTaskRow[];
 
   const refreshDashboard = () => void utils.dashboard.stats.invalidate();
 
@@ -121,17 +194,13 @@ export default function Preparation() {
       utils.prep.list.setData(undefined, (current: any[] = []) =>
         current.map(row => (row.id === context?.optimisticId ? created : row))
       );
-      setTaskText("");
-      setCategoryText("");
-      setContactId("none");
-      setDueText("");
-      setNoteText("");
-      setFormStatus("offen");
-      toast.success("Vorbereitungsaufgabe hinzugefügt");
+      setDialogOpen(false);
+      setForm(EMPTY_FORM);
+      toast.success("Vorbereitungsaufgabe angelegt");
     },
     onError: (error: any, _input: any, context: any) => {
       utils.prep.list.setData(undefined, context?.previous);
-      toast.error(error.message || "Fehler beim Anlegen der Vorbereitungsaufgabe");
+      toast.error(error.message || "Anlegen der Vorbereitungsaufgabe fehlgeschlagen");
     },
     onSettled: () => {
       void utils.prep.list.invalidate();
@@ -147,6 +216,12 @@ export default function Preparation() {
         current.map(row => (row.id === input.id ? { ...row, ...input } : row))
       );
       return { previous };
+    },
+    onSuccess: () => {
+      setDialogOpen(false);
+      setEditingTask(null);
+      setForm(EMPTY_FORM);
+      toast.success("Vorbereitungsaufgabe gespeichert");
     },
     onError: (error: any, _input: any, context: any) => {
       utils.prep.list.setData(undefined, context?.previous);
@@ -167,6 +242,10 @@ export default function Preparation() {
       );
       return { previous };
     },
+    onSuccess: () => {
+      setDeleteCandidate(null);
+      toast.success("Vorbereitungsaufgabe gelöscht");
+    },
     onError: (error: any, _input: any, context: any) => {
       utils.prep.list.setData(undefined, context?.previous);
       toast.error(error.message || "Löschen fehlgeschlagen");
@@ -177,23 +256,59 @@ export default function Preparation() {
     },
   });
 
-  const submitCreate = () => {
-    const trimmedTask = taskText.trim();
-    if (!trimmedTask) {
-      toast.error("Bitte eine Aufgabenbezeichnung eingeben");
-      return;
+  const contactMap = useMemo(
+    () => new Map(contacts.map(contact => [contact.id, contact.name])),
+    [contacts]
+  );
+
+  const availableCategories = useMemo(() => {
+    const categories = new Set<string>();
+    for (const row of rows) {
+      if (row.category?.trim()) categories.add(row.category.trim());
     }
-    create.mutate({
-      task: trimmedTask,
-      category: includeCategory && categoryText.trim() ? categoryText.trim() : "",
-      contactId:
-        includeContact && contactId !== "none" ? Number(contactId) : null,
-      dueText: includeDue && dueText.trim() ? dueText.trim() : "",
-      note: includeNote && noteText.trim() ? noteText.trim() : undefined,
-      status: formStatus,
-      statusWording: formWording,
-    });
-  };
+    return Array.from(categories).sort((a, b) => a.localeCompare(b, "de"));
+  }, [rows]);
+
+  const filteredRows = useMemo(() => {
+    const normalizedQuery = searchTerm.trim().toLocaleLowerCase("de-DE");
+
+    return rows
+      .filter(row => {
+        if (statusFilter !== "alle" && row.status !== statusFilter) return false;
+        if (categoryFilter === "ohne" && row.category?.trim()) return false;
+        if (categoryFilter !== "alle" && categoryFilter !== "ohne") {
+          if (row.category?.trim() !== categoryFilter) return false;
+        }
+        if (contactFilter === "ohne" && row.contactId) return false;
+        if (contactFilter !== "alle" && contactFilter !== "ohne") {
+          if (String(row.contactId ?? "") !== contactFilter) return false;
+        }
+        if (!normalizedQuery) return true;
+
+        const searchable = [
+          row.category,
+          row.task,
+          row.dueText,
+          row.note ?? "",
+          row.contactId ? contactMap.get(row.contactId) ?? "" : "",
+        ]
+          .join(" ")
+          .toLocaleLowerCase("de-DE");
+        return searchable.includes(normalizedQuery);
+      })
+      .sort((left, right) => {
+        const comparison = left.task.localeCompare(right.task, "de", {
+          sensitivity: "base",
+        });
+        return sortAsc ? comparison : -comparison;
+      });
+  }, [rows, statusFilter, categoryFilter, contactFilter, searchTerm, sortAsc, contactMap]);
+
+  const hasActiveFilters =
+    statusFilter !== "alle" ||
+    categoryFilter !== "alle" ||
+    contactFilter !== "alle" ||
+    Boolean(searchTerm.trim());
 
   const updateStatusFilter = (value: TaskStatusFilter) => {
     setSearchParams(
@@ -207,66 +322,6 @@ export default function Preparation() {
     );
   };
 
-  // Liste aller verfügbaren Kategorien für Datalist und Filter
-  const availableCategories = useMemo(() => {
-    const set = new Set<string>();
-    for (const row of rows) {
-      if (row.category && row.category.trim()) {
-        set.add(row.category.trim());
-      }
-    }
-    return Array.from(set).sort((a, b) => a.localeCompare(b, "de"));
-  }, [rows]);
-
-  // Gefilterte Zeilen in Echtzeit
-  const filteredRows = useMemo(() => {
-    const normalizedQuery = searchTerm.trim().toLowerCase();
-
-    return rows
-      .filter(row => {
-        // Statusfilter
-        if (statusFilter !== "alle" && row.status !== statusFilter) return false;
-
-        // Kategoriefilter
-        if (categoryFilter === "ohne") {
-          if (row.category && row.category.trim()) return false;
-        } else if (categoryFilter !== "alle") {
-          if ((row.category || "").trim() !== categoryFilter) return false;
-        }
-
-        // Kontaktfilter
-        if (contactFilter === "ohne") {
-          if (row.contactId) return false;
-        } else if (contactFilter !== "alle") {
-          if (String(row.contactId ?? "") !== contactFilter) return false;
-        }
-
-        // Volltextsuche: Aufgabe, Bemerkung, Frist, Kategorie
-        if (normalizedQuery) {
-          const inTask = (row.task || "").toLowerCase().includes(normalizedQuery);
-          const inNote = (row.note || "").toLowerCase().includes(normalizedQuery);
-          const inDue = (row.dueText || "").toLowerCase().includes(normalizedQuery);
-          const inCategory = (row.category || "")
-            .toLowerCase()
-            .includes(normalizedQuery);
-          if (!inTask && !inNote && !inDue && !inCategory) return false;
-        }
-
-        return true;
-      })
-      .sort((a, b) => {
-        const comp = String(a.task).localeCompare(String(b.task), "de", {
-          sensitivity: "base",
-        });
-        return sortAsc ? comp : -comp;
-      });
-  }, [rows, statusFilter, categoryFilter, contactFilter, searchTerm, sortAsc]);
-
-  const contactMap = useMemo(
-    () => new Map(contacts.map(c => [c.id, c.name])),
-    [contacts]
-  );
-
   const resetAllFilters = () => {
     updateStatusFilter("alle");
     setCategoryFilter("alle");
@@ -274,228 +329,177 @@ export default function Preparation() {
     setSearchTerm("");
   };
 
-  const hasActiveFilters =
-    statusFilter !== "alle" ||
-    categoryFilter !== "alle" ||
-    contactFilter !== "alle" ||
-    Boolean(searchTerm.trim());
+  const openCreate = () => {
+    setEditingTask(null);
+    setForm(EMPTY_FORM);
+    setDialogOpen(true);
+  };
+
+  const openEdit = (task: PrepTaskRow) => {
+    setEditingTask(task);
+    setForm({
+      category: task.category ?? "",
+      task: task.task,
+      contactId: task.contactId ? String(task.contactId) : "none",
+      dueText: task.dueText ?? "",
+      note: task.note ?? "",
+      status: task.status,
+      statusWording: task.statusWording === "genehmigung" ? "genehmigung" : "aufgabe",
+    });
+    setDialogOpen(true);
+  };
+
+  const closeDialog = () => {
+    if (create.isPending || update.isPending) return;
+    setDialogOpen(false);
+    setEditingTask(null);
+    setForm(EMPTY_FORM);
+  };
+
+  const saveTask = () => {
+    const task = form.task.trim();
+    if (!task) {
+      toast.error("Bitte eine Aufgabenbezeichnung eingeben");
+      return;
+    }
+
+    const note = form.note.trim();
+    const payload = {
+      category: form.category.trim(),
+      task,
+      contactId: form.contactId === "none" ? null : Number(form.contactId),
+      dueText: form.dueText.trim(),
+      status: form.status,
+      statusWording: form.statusWording,
+    };
+
+    if (editingTask) update.mutate({ id: editingTask.id, ...payload, note: note || null });
+    else create.mutate({ ...payload, note: note || undefined });
+  };
+
+  const pending = create.isPending || update.isPending;
 
   return (
-    <div className="space-y-6">
-      {/* Header & Modul-Aktionen */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div className="space-y-5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Vorbereitung</h1>
           <p className="text-muted-foreground text-sm">
-            Aufgabenverwaltung für die Festival-Vorbereitung mit flexiblen
-            Feldern, Status-Wortlaut und Filterleiste.
+            Aufgabenverwaltung für die Festival-Vorbereitung mit flexiblen Feldern,
+            Status-Wortlaut und Filterleiste.
           </p>
         </div>
-
-        {/* Responsive Aktions-Buttons: Mobil 2-Spalten-Grid */}
-        <div className="grid w-full grid-cols-2 gap-2 lg:ml-auto lg:flex lg:w-auto lg:flex-wrap lg:justify-end [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 max-lg:[&>[data-slot=button]]:h-11 max-lg:[&>[data-slot=button]]:text-base lg:[&>[data-slot=button]]:w-auto lg:[&>[data-slot=button]]:px-4">
+        <div className="grid w-full grid-cols-2 gap-2 lg:w-auto lg:flex lg:flex-wrap lg:justify-end [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 max-lg:[&>[data-slot=button]]:h-11 max-lg:[&>[data-slot=button]]:text-base lg:[&>[data-slot=button]]:w-auto lg:[&>[data-slot=button]]:px-4">
           <ModuleExcelImportButton area="VORBEREITUNG" label="Vorbereitung" />
           <ResetAreaButton area="prep" label="Vorbereitung" compact />
+          <Button className="col-span-2 lg:col-auto" onClick={openCreate}>
+            <Plus className="mr-2 h-4 w-4" />
+            Neue Vorbereitungsaufgabe
+          </Button>
         </div>
       </div>
 
-      {/* Neue Vorbereitungsaufgabe anlegen (Hervorgehobene Aktions-Karte mit optionalen Checkbox-Toggles) */}
-      <Card className="border-indigo-100 bg-white shadow-sm">
-        <CardContent className="p-4 sm:p-5 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b pb-3">
-            <span className="font-semibold text-sm text-slate-800">
-              Neue Vorbereitungsaufgabe erfassen
-            </span>
-            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600">
-              <span className="font-medium text-slate-500">Optionale Felder:</span>
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <Checkbox
-                  checked={includeCategory}
-                  onCheckedChange={c => setIncludeCategory(Boolean(c))}
-                />
-                <span>Bereich / Kategorie</span>
-              </label>
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <Checkbox
-                  checked={includeContact}
-                  onCheckedChange={c => setIncludeContact(Boolean(c))}
-                />
-                <span>Verantwortlicher</span>
-              </label>
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <Checkbox
-                  checked={includeDue}
-                  onCheckedChange={c => setIncludeDue(Boolean(c))}
-                />
-                <span>Frist (Freitext)</span>
-              </label>
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <Checkbox
-                  checked={includeNote}
-                  onCheckedChange={c => setIncludeNote(Boolean(c))}
-                />
-                <span>Bemerkungen</span>
-              </label>
-            </div>
+      <div className="space-y-3 rounded-xl border bg-slate-50/70 p-3 sm:p-4">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(18rem,1.8fr)_minmax(10rem,1fr)_minmax(12rem,1fr)_minmax(11rem,1fr)]">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              value={searchTerm}
+              onChange={event => setSearchTerm(event.target.value)}
+              placeholder="Suchen (Aufgabe/Bereich/Verantwortlicher/Frist) …"
+              className="h-11 bg-white pl-9 pr-8 text-base sm:h-10 sm:text-sm"
+              aria-label="Vorbereitungsaufgaben durchsuchen"
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm("")}
+                className="absolute right-2.5 top-1/2 inline-flex min-h-11 min-w-11 -translate-y-1/2 items-center justify-center text-slate-400 hover:text-slate-700 sm:min-h-0 sm:min-w-0"
+                aria-label="Suche leeren"
+              >
+                <X className="size-4" />
+              </button>
+            )}
           </div>
 
-          <div className="space-y-3">
-            {/* Pflichtfeld Aufgabe */}
-            <div>
-              <label className="text-xs font-semibold text-slate-700 block mb-1">
-                Aufgabe / Bezeichnung *
-              </label>
-              <Input
-                placeholder="z. B. Genehmigung Streckenverlauf einholen"
-                value={taskText}
-                onChange={e => setTaskText(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && submitCreate()}
-                className="w-full text-base sm:text-sm"
-              />
-            </div>
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="h-11 bg-white text-base sm:h-10 sm:text-sm">
+              <SelectValue placeholder="Bereich" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="alle">Alle Bereiche</SelectItem>
+              <SelectItem value="ohne">Ohne Bereich</SelectItem>
+              {availableCategories.map(category => (
+                <SelectItem key={category} value={category}>
+                  {category}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-            {/* Dynamische optionale Felder */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {includeCategory && (
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">
-                    Bereich / Kategorie
-                  </label>
-                  <Input
-                    list="category-options"
-                    placeholder="Bestehende wählen oder neu eingeben"
-                    value={categoryText}
-                    onChange={e => setCategoryText(e.target.value)}
-                    className="w-full text-base sm:text-sm"
-                  />
-                  <datalist id="category-options">
-                    {availableCategories.map(cat => (
-                      <option key={cat} value={cat} />
-                    ))}
-                  </datalist>
-                </div>
-              )}
+          <Select value={contactFilter} onValueChange={setContactFilter}>
+            <SelectTrigger className="h-11 bg-white text-base sm:h-10 sm:text-sm">
+              <SelectValue placeholder="Verantwortlicher" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="alle">Alle Verantwortlichen</SelectItem>
+              <SelectItem value="ohne">Ohne Zuweisung</SelectItem>
+              {contacts.map(contact => (
+                <SelectItem key={contact.id} value={String(contact.id)}>
+                  {contact.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-              {includeContact && (
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">
-                    Verantwortlicher
-                  </label>
-                  <Select value={contactId} onValueChange={setContactId}>
-                    <SelectTrigger className="w-full h-11 sm:h-10 text-base sm:text-sm">
-                      <SelectValue placeholder="Ansprechpartner wählen" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">— Keine Zuordnung —</SelectItem>
-                      {contacts.map(c => (
-                        <SelectItem key={c.id} value={String(c.id)}>
-                          {c.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+          <Select
+            value={statusFilter}
+            onValueChange={value => updateStatusFilter(value as TaskStatusFilter)}
+          >
+            <SelectTrigger className="h-11 bg-white text-base sm:h-10 sm:text-sm">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="alle">Alle Status</SelectItem>
+              <SelectItem value="offen">Offen</SelectItem>
+              <SelectItem value="inArbeit">In Arbeit / Beantragt</SelectItem>
+              <SelectItem value="erledigt">Erledigt / Genehmigt</SelectItem>
+              <SelectItem value="abgelehnt">Abgelehnt</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-              {includeDue && (
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">
-                    Frist / Abgabedatum (Freitext)
-                  </label>
-                  <Input
-                    placeholder="z. B. Ende März, 14 Tage vorher"
-                    value={dueText}
-                    onChange={e => setDueText(e.target.value)}
-                    className="w-full text-base sm:text-sm"
-                  />
-                </div>
-              )}
-            </div>
-
-            {includeNote && (
-              <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
-                  Bemerkungen / Informationen
-                </label>
-                <Textarea
-                  placeholder="Details, Links oder besondere Absprachen …"
-                  value={noteText}
-                  onChange={e => setNoteText(e.target.value)}
-                  rows={2}
-                  className="w-full text-base sm:text-sm"
-                />
-              </div>
-            )}
-
-            {/* Status-Auswahl & Wording-Toggle */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t">
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="text-xs font-semibold text-slate-700">
-                  Status-Wortlaut:
-                </span>
-                <div className="inline-flex rounded-lg border bg-slate-100 p-0.5 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setFormWording("aufgabe")}
-                    className={`px-2.5 py-1 rounded-md font-medium transition ${
-                      formWording === "aufgabe"
-                        ? "bg-white text-slate-900 shadow-xs"
-                        : "text-slate-600 hover:text-slate-900"
-                    }`}
-                  >
-                    Aufgabe (In Arbeit / Erledigt)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormWording("genehmigung")}
-                    className={`px-2.5 py-1 rounded-md font-medium transition ${
-                      formWording === "genehmigung"
-                        ? "bg-white text-slate-900 shadow-xs"
-                        : "text-slate-600 hover:text-slate-900"
-                    }`}
-                  >
-                    Genehmigung (Beantragt / Genehmigt)
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-semibold text-slate-700">
-                  Start-Status:
-                </span>
-                {(["offen", "inArbeit", "erledigt", "abgelehnt"] as const).map(
-                  st => (
-                    <button
-                      key={st}
-                      type="button"
-                      onClick={() => setFormStatus(st)}
-                      className={`text-xs px-2.5 py-1 rounded-md border font-medium transition ${
-                        formStatus === st
-                          ? getStatusBadgeClass(st) + " ring-1 ring-slate-400"
-                          : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                      }`}
-                    >
-                      {getStatusLabel(st, formWording)}
-                    </button>
-                  )
-                )}
-              </div>
-
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            <span>
+              {filteredRows.length} von {rows.length} Aufgaben angezeigt
+            </span>
+            {hasActiveFilters && (
               <Button
                 type="button"
-                onClick={submitCreate}
-                disabled={!taskText.trim() || create.isPending}
-                className="w-full sm:w-auto ml-auto"
+                variant="ghost"
+                size="sm"
+                onClick={resetAllFilters}
+                className="h-7 px-2 text-xs text-slate-600 hover:text-slate-900"
               >
-                <Plus className="mr-1.5 h-4 w-4" />
-                <span>{create.isPending ? "Speichert …" : "Aufgabe anlegen"}</span>
+                <FilterX className="mr-1 size-3.5" />
+                Alle Filter zurücksetzen
               </Button>
-            </div>
+            )}
           </div>
-        </CardContent>
-      </Card>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setSortAsc(value => !value)}
+            className="h-8 bg-white text-xs"
+          >
+            <ArrowUpDown className="mr-1.5 size-3.5" />
+            Sortierung: {sortAsc ? "A → Z" : "Z → A"}
+          </Button>
+        </div>
+      </div>
 
-      {/* Dashboard-Hinweisbanner bei aktivem Status-Filter */}
       {statusFilter !== "alle" && (
         <div
           className={`flex flex-col gap-3 rounded-xl border p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between ${
@@ -506,7 +510,7 @@ export default function Preparation() {
         >
           <div role="status" aria-live="polite" className="flex items-center gap-2">
             {statusFilter === "abgelehnt" && (
-              <AlertTriangle className="size-5 text-rose-600 shrink-0" />
+              <AlertTriangle className="size-5 shrink-0 text-rose-600" />
             )}
             <div>
               <p className="font-semibold">
@@ -535,112 +539,6 @@ export default function Preparation() {
         </div>
       )}
 
-      {/* Filter- und Suchleiste (Echtzeit, analog zum Einsatzplan) */}
-      <div className="space-y-3 rounded-xl border bg-slate-50/70 p-3 sm:p-4">
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5">
-          {/* Volltext-Suche */}
-          <div className="relative lg:col-span-2">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
-            <Input
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              placeholder="Aufgabe, Bemerkung, Frist, Bereich …"
-              className="pl-9 pr-8 bg-white h-11 sm:h-10 text-base sm:text-sm"
-            />
-            {searchTerm && (
-              <button
-                type="button"
-                onClick={() => setSearchTerm("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
-              >
-                <X className="size-4" />
-              </button>
-            )}
-          </div>
-
-          {/* Bereichs- / Kategorie-Filter */}
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="bg-white h-11 sm:h-10 text-base sm:text-sm">
-              <SelectValue placeholder="Kategorie" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="alle">Alle Bereiche</SelectItem>
-              <SelectItem value="ohne">Ohne Bereich</SelectItem>
-              {availableCategories.map(cat => (
-                <SelectItem key={cat} value={cat}>
-                  {cat}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* Verantwortlicher-Filter */}
-          <Select value={contactFilter} onValueChange={setContactFilter}>
-            <SelectTrigger className="bg-white h-11 sm:h-10 text-base sm:text-sm">
-              <SelectValue placeholder="Verantwortlich" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="alle">Alle Verantwortlichen</SelectItem>
-              <SelectItem value="ohne">Ohne Zuweisung</SelectItem>
-              {contacts.map(c => (
-                <SelectItem key={c.id} value={String(c.id)}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* Status-Filter */}
-          <Select
-            value={statusFilter}
-            onValueChange={val => updateStatusFilter(val as TaskStatusFilter)}
-          >
-            <SelectTrigger className="bg-white h-11 sm:h-10 text-base sm:text-sm">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="alle">Alle Status</SelectItem>
-              <SelectItem value="offen">Offen</SelectItem>
-              <SelectItem value="inArbeit">In Arbeit / Beantragt</SelectItem>
-              <SelectItem value="erledigt">Erledigt / Genehmigt</SelectItem>
-              <SelectItem value="abgelehnt">Abgelehnt</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-          <div className="flex items-center gap-2 text-xs text-slate-500">
-            <span>
-              {filteredRows.length} von {rows.length} Aufgaben angezeigt
-            </span>
-            {hasActiveFilters && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={resetAllFilters}
-                className="h-7 text-xs text-slate-600 hover:text-slate-900 px-2"
-              >
-                <FilterX className="size-3.5 mr-1" />
-                Alle Filter zurücksetzen
-              </Button>
-            )}
-          </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setSortAsc(v => !v)}
-            className="h-8 text-xs bg-white"
-          >
-            <ArrowUpDown className="size-3.5 mr-1.5" />
-            <span>Sortierung: {sortAsc ? "A → Z" : "Z → A"}</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* Aufgabenliste */}
       {isLoading ? (
         <div className="py-12 text-center text-sm text-muted-foreground">
           Vorbereitungsaufgaben werden geladen …
@@ -653,191 +551,70 @@ export default function Preparation() {
         </div>
       ) : (
         <>
-          {/* Desktop-Tabelle (ab lg) */}
-          <div className="hidden lg:block overflow-hidden rounded-xl border bg-white shadow-sm">
-            <table className="w-full text-left text-sm">
+          <div className="hidden overflow-hidden rounded-xl border bg-white shadow-sm lg:block">
+            <table className="w-full table-fixed text-left text-sm">
               <thead className="border-b bg-slate-50/80 text-xs font-semibold text-slate-600">
                 <tr>
-                  <th className="py-3 px-4 w-44">Bereich / Kategorie</th>
-                  <th className="py-3 px-4 min-w-[220px]">Aufgabe</th>
-                  <th className="py-3 px-4 w-44">Frist (Freitext)</th>
-                  <th className="py-3 px-4 w-48">Verantwortlicher</th>
-                  <th className="py-3 px-4 w-48">Status</th>
-                  <th className="py-3 px-4 min-w-[200px]">Bemerkung</th>
-                  <th className="py-3 px-4 w-16 text-right">Aktion</th>
+                  <th className="w-[12%] px-3 py-3">Bereich</th>
+                  <th className="w-[20%] px-3 py-3">Aufgabe</th>
+                  <th className="w-[16%] px-3 py-3">Verantwortlicher</th>
+                  <th className="w-[13%] px-3 py-3">Frist</th>
+                  <th className="w-[13%] px-3 py-3">Status</th>
+                  <th className="w-[20%] px-3 py-3">Bemerkung</th>
+                  <th className="w-[6%] px-3 py-3 text-center">Aktionen</th>
                 </tr>
               </thead>
               <tbody className="divide-y text-slate-800">
-                {filteredRows.map(row => {
-                  const currentWording: PrepWording =
-                    row.statusWording === "genehmigung"
-                      ? "genehmigung"
-                      : "aufgabe";
-
+                {filteredRows.map(task => {
+                  const wording =
+                    task.statusWording === "genehmigung" ? "genehmigung" : "aufgabe";
                   return (
                     <tr
-                      key={row.id}
-                      className={`hover:bg-slate-50/60 transition ${
-                        row.status === "abgelehnt" ? "bg-rose-50/30" : ""
+                      key={task.id}
+                      className={`transition hover:bg-slate-50/60 ${
+                        task.status === "abgelehnt" ? "bg-rose-50/30" : ""
                       }`}
                     >
-                      {/* Bereich / Kategorie */}
-                      <td className="py-2.5 px-4 align-top">
-                        <Input
-                          defaultValue={row.category ?? ""}
-                          placeholder="— Bereich —"
-                          list="category-options"
-                          onBlur={e => {
-                            const val = e.target.value.trim();
-                            if (val !== (row.category ?? "")) {
-                              update.mutate({ id: row.id, category: val });
-                            }
-                          }}
-                          className="h-9 text-xs"
-                        />
+                      <td className="break-words px-3 py-3 align-top">{task.category || "—"}</td>
+                      <td className="break-words px-3 py-3 align-top font-medium">{task.task}</td>
+                      <td className="break-words px-3 py-3 align-top">
+                        {task.contactId ? contactMap.get(task.contactId) ?? "—" : "—"}
                       </td>
-
-                      {/* Aufgabe */}
-                      <td className="py-2.5 px-4 align-top">
-                        <Input
-                          defaultValue={row.task}
-                          placeholder="Aufgabe"
-                          onBlur={e => {
-                            const val = e.target.value.trim();
-                            if (val && val !== row.task) {
-                              update.mutate({ id: row.id, task: val });
-                            }
-                          }}
-                          className="h-9 text-xs font-medium"
-                        />
-                      </td>
-
-                      {/* Frist (Freitext) */}
-                      <td className="py-2.5 px-4 align-top">
-                        <Input
-                          defaultValue={row.dueText ?? ""}
-                          placeholder="z. B. Ende März"
-                          onBlur={e => {
-                            const val = e.target.value.trim();
-                            if (val !== (row.dueText ?? "")) {
-                              update.mutate({ id: row.id, dueText: val });
-                            }
-                          }}
-                          className="h-9 text-xs"
-                        />
-                      </td>
-
-                      {/* Verantwortlicher */}
-                      <td className="py-2.5 px-4 align-top">
-                        <Select
-                          value={row.contactId ? String(row.contactId) : "none"}
-                          onValueChange={val =>
-                            update.mutate({
-                              id: row.id,
-                              contactId: val === "none" ? null : Number(val),
-                            })
-                          }
+                      <td className="break-words px-3 py-3 align-top">{task.dueText || "—"}</td>
+                      <td className="px-3 py-3 align-top">
+                        <Badge
+                          variant="outline"
+                          className={`whitespace-normal ${getStatusBadgeClass(task.status)}`}
                         >
-                          <SelectTrigger className="h-9 text-xs">
-                            <SelectValue placeholder="— Keine Zuordnung —" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">— Keine Zuordnung —</SelectItem>
-                            {contacts.map(c => (
-                              <SelectItem key={c.id} value={String(c.id)}>
-                                {c.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          {getStatusLabel(task.status, wording)}
+                        </Badge>
                       </td>
-
-                      {/* Status + Wording Umschalter */}
-                      <td className="py-2.5 px-4 align-top">
-                        <div className="space-y-1.5">
-                          <Select
-                            value={row.status}
-                            onValueChange={val =>
-                              update.mutate({
-                                id: row.id,
-                                status: val as PrepStatus,
-                              })
-                            }
+                      <td className="break-words px-3 py-3 align-top whitespace-pre-wrap">
+                        {task.note || "—"}
+                      </td>
+                      <td className="px-3 py-3 align-top">
+                        <div className="flex items-center justify-center gap-1">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            title="Vorbereitungsaufgabe bearbeiten"
+                            aria-label={`Aufgabe ${task.task} bearbeiten`}
+                            onClick={() => openEdit(task)}
                           >
-                            <SelectTrigger
-                              className={`h-9 text-xs font-medium ${getStatusBadgeClass(
-                                row.status as PrepStatus
-                              )}`}
-                            >
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="offen">Offen</SelectItem>
-                              <SelectItem value="inArbeit">
-                                {currentWording === "genehmigung"
-                                  ? "Beantragt"
-                                  : "In Arbeit"}
-                              </SelectItem>
-                              <SelectItem value="erledigt">
-                                {currentWording === "genehmigung"
-                                  ? "Genehmigt"
-                                  : "Erledigt"}
-                              </SelectItem>
-                              <SelectItem value="abgelehnt">Abgelehnt</SelectItem>
-                            </SelectContent>
-                          </Select>
-
-                          <div className="flex items-center justify-between text-[10px] text-slate-500">
-                            <span>Wortlaut:</span>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                update.mutate({
-                                  id: row.id,
-                                  statusWording:
-                                    currentWording === "aufgabe"
-                                      ? "genehmigung"
-                                      : "aufgabe",
-                                })
-                              }
-                              className="text-blue-700 hover:underline font-medium"
-                            >
-                              {currentWording === "aufgabe"
-                                ? "Aufgabe ⇄ Genehmigung"
-                                : "Genehmigung ⇄ Aufgabe"}
-                            </button>
-                          </div>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            title="Vorbereitungsaufgabe löschen"
+                            aria-label={`Aufgabe ${task.task} löschen`}
+                            onClick={() => setDeleteCandidate(task)}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
                         </div>
-                      </td>
-
-                      {/* Bemerkung */}
-                      <td className="py-2.5 px-4 align-top">
-                        <Textarea
-                          defaultValue={row.note ?? ""}
-                          placeholder="Bemerkungen …"
-                          rows={1}
-                          onBlur={e => {
-                            const val = e.target.value.trim();
-                            if (val !== (row.note ?? "")) {
-                              update.mutate({ id: row.id, note: val || null });
-                            }
-                          }}
-                          className="text-xs resize-y min-h-[36px]"
-                        />
-                      </td>
-
-                      {/* Aktion: Löschen */}
-                      <td className="py-2.5 px-4 align-top text-right">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => remove.mutate({ id: row.id })}
-                          className="h-8 w-8 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
-                          title="Aufgabe löschen"
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
                       </td>
                     </tr>
                   );
@@ -846,204 +623,73 @@ export default function Preparation() {
             </table>
           </div>
 
-          {/* Mobile Karten-Ansicht (unter lg) */}
           <div className="grid grid-cols-1 gap-3 lg:hidden">
-            {filteredRows.map(row => {
-              const currentWording: PrepWording =
-                row.statusWording === "genehmigung" ? "genehmigung" : "aufgabe";
-
+            {filteredRows.map(task => {
+              const wording =
+                task.statusWording === "genehmigung" ? "genehmigung" : "aufgabe";
               return (
                 <Card
-                  key={row.id}
-                  className={`border shadow-xs ${
-                    row.status === "abgelehnt"
-                      ? "border-rose-300 bg-rose-50/20"
-                      : "border-slate-200 bg-white"
-                  }`}
+                  key={task.id}
+                  className={
+                    task.status === "abgelehnt"
+                      ? "border-rose-300 bg-rose-50/20 shadow-sm"
+                      : "border-slate-200 bg-white shadow-sm"
+                  }
                 >
-                  <CardContent className="p-4 space-y-3">
-                    {/* Kopfzeile Karte: Status-Badge & Löschen */}
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <Badge
-                          variant="outline"
-                          className={getStatusBadgeClass(row.status as PrepStatus)}
-                        >
-                          {getStatusLabel(
-                            row.status as PrepStatus,
-                            currentWording
-                          )}
-                        </Badge>
-                        {row.category && (
-                          <Badge variant="secondary" className="text-xs font-normal">
-                            {row.category}
+                  <CardContent className="space-y-3 p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 space-y-1">
+                        <p className="break-words font-semibold text-slate-900">{task.task}</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          <Badge variant="outline" className={getStatusBadgeClass(task.status)}>
+                            {getStatusLabel(task.status, wording)}
                           </Badge>
-                        )}
+                          {task.category && (
+                            <Badge variant="secondary" className="font-normal">
+                              {task.category}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => remove.mutate({ id: row.id })}
-                        className="h-9 w-9 text-rose-600 hover:bg-rose-50"
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </div>
-
-                    {/* Aufgabe */}
-                    <div>
-                      <span className="text-xs font-medium text-slate-500 block mb-1">
-                        Aufgabe
-                      </span>
-                      <Input
-                        defaultValue={row.task}
-                        placeholder="Aufgabe"
-                        onBlur={e => {
-                          const val = e.target.value.trim();
-                          if (val && val !== row.task) {
-                            update.mutate({ id: row.id, task: val });
-                          }
-                        }}
-                        className="h-11 w-full text-base font-medium"
-                      />
-                    </div>
-
-                    {/* 2-Spalten-Grid für Frist und Kategorie */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <div>
-                        <span className="text-xs font-medium text-slate-500 block mb-1">
-                          Frist (Freitext)
-                        </span>
-                        <Input
-                          defaultValue={row.dueText ?? ""}
-                          placeholder="z. B. Ende März"
-                          onBlur={e => {
-                            const val = e.target.value.trim();
-                            if (val !== (row.dueText ?? "")) {
-                              update.mutate({ id: row.id, dueText: val });
-                            }
-                          }}
-                          className="h-11 w-full text-base"
-                        />
-                      </div>
-
-                      <div>
-                        <span className="text-xs font-medium text-slate-500 block mb-1">
-                          Bereich / Kategorie
-                        </span>
-                        <Input
-                          defaultValue={row.category ?? ""}
-                          placeholder="Kategorie"
-                          list="category-options"
-                          onBlur={e => {
-                            const val = e.target.value.trim();
-                            if (val !== (row.category ?? "")) {
-                              update.mutate({ id: row.id, category: val });
-                            }
-                          }}
-                          className="h-11 w-full text-base"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Verantwortlicher */}
-                    <div>
-                      <span className="text-xs font-medium text-slate-500 block mb-1">
-                        Verantwortlicher
-                      </span>
-                      <Select
-                        value={row.contactId ? String(row.contactId) : "none"}
-                        onValueChange={val =>
-                          update.mutate({
-                            id: row.id,
-                            contactId: val === "none" ? null : Number(val),
-                          })
-                        }
-                      >
-                        <SelectTrigger className="h-11 w-full text-base">
-                          <SelectValue placeholder="— Keine Zuordnung —" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">— Keine Zuordnung —</SelectItem>
-                          {contacts.map(c => (
-                            <SelectItem key={c.id} value={String(c.id)}>
-                              {c.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Status & Wording */}
-                    <div className="space-y-1.5">
-                      <span className="text-xs font-medium text-slate-500 block">
-                        Status ändern
-                      </span>
-                      <div className="grid grid-cols-2 gap-2">
-                        {(["offen", "inArbeit", "erledigt", "abgelehnt"] as const).map(
-                          st => (
-                            <button
-                              key={st}
-                              type="button"
-                              onClick={() =>
-                                update.mutate({
-                                  id: row.id,
-                                  status: st,
-                                })
-                              }
-                              className={`h-11 rounded-lg border text-xs font-medium transition ${
-                                row.status === st
-                                  ? getStatusBadgeClass(st) + " font-bold ring-1 ring-slate-400"
-                                  : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
-                              }`}
-                            >
-                              {getStatusLabel(st, currentWording)}
-                            </button>
-                          )
-                        )}
-                      </div>
-
-                      <div className="flex items-center justify-between pt-1 text-xs text-slate-600">
-                        <span>Wortlaut umschalten:</span>
-                        <button
+                      <div className="flex shrink-0 gap-1">
+                        <Button
                           type="button"
-                          onClick={() =>
-                            update.mutate({
-                              id: row.id,
-                              statusWording:
-                                currentWording === "aufgabe"
-                                  ? "genehmigung"
-                                  : "aufgabe",
-                            })
-                          }
-                          className="font-medium text-blue-700 underline"
+                          variant="outline"
+                          size="icon"
+                          className="h-11 w-11"
+                          title="Vorbereitungsaufgabe bearbeiten"
+                          aria-label={`Aufgabe ${task.task} bearbeiten`}
+                          onClick={() => openEdit(task)}
                         >
-                          {currentWording === "aufgabe"
-                            ? "Aufgabe ⇄ Genehmigung"
-                            : "Genehmigung ⇄ Aufgabe"}
-                        </button>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          className="h-11 w-11"
+                          title="Vorbereitungsaufgabe löschen"
+                          aria-label={`Aufgabe ${task.task} löschen`}
+                          onClick={() => setDeleteCandidate(task)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
                       </div>
                     </div>
-
-                    {/* Bemerkung */}
-                    <div>
-                      <span className="text-xs font-medium text-slate-500 block mb-1">
-                        Bemerkungen / Informationen
-                      </span>
-                      <Textarea
-                        defaultValue={row.note ?? ""}
-                        placeholder="Details …"
-                        rows={2}
-                        onBlur={e => {
-                          const val = e.target.value.trim();
-                          if (val !== (row.note ?? "")) {
-                            update.mutate({ id: row.id, note: val || null });
-                          }
-                        }}
-                        className="w-full text-base"
-                      />
-                    </div>
+                    <dl className="grid grid-cols-1 gap-3 border-t pt-3 text-sm sm:grid-cols-2">
+                      <div>
+                        <dt className="text-xs font-medium text-slate-500">Verantwortlicher</dt>
+                        <dd className="mt-1 break-words">{task.contactId ? contactMap.get(task.contactId) ?? "—" : "—"}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs font-medium text-slate-500">Frist</dt>
+                        <dd className="mt-1 break-words">{task.dueText || "—"}</dd>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <dt className="text-xs font-medium text-slate-500">Bemerkung</dt>
+                        <dd className="mt-1 break-words whitespace-pre-wrap">{task.note || "—"}</dd>
+                      </div>
+                    </dl>
                   </CardContent>
                 </Card>
               );
@@ -1051,6 +697,152 @@ export default function Preparation() {
           </div>
         </>
       )}
+
+      <AlertDialog
+        open={Boolean(deleteCandidate)}
+        onOpenChange={open => {
+          if (!open && !remove.isPending) setDeleteCandidate(null);
+        }}
+      >
+        <AlertDialogContent className="z-50 border border-gray-200 !bg-white !text-slate-950 shadow-xl dark:!bg-white dark:!text-slate-950">
+          <AlertDialogHeader>
+            <div className="mx-auto mb-1 flex size-11 items-center justify-center rounded-full bg-red-50 text-red-600 sm:mx-0">
+              <AlertTriangle className="size-5" aria-hidden="true" />
+            </div>
+            <AlertDialogTitle>Vorbereitungsaufgabe löschen</AlertDialogTitle>
+            <AlertDialogDescription className="text-left text-gray-600">
+              Möchtest du die Aufgabe &apos;{deleteCandidate?.task}&apos; wirklich löschen?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={remove.isPending}>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!deleteCandidate || remove.isPending}
+              className="border border-red-700 !bg-red-600 !text-white shadow-sm hover:!bg-red-700 focus-visible:ring-red-500"
+              onClick={event => {
+                event.preventDefault();
+                if (deleteCandidate && !remove.isPending) {
+                  remove.mutate({ id: deleteCandidate.id });
+                }
+              }}
+            >
+              {remove.isPending ? "Wird gelöscht …" : "Aufgabe löschen"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog open={dialogOpen} onOpenChange={open => (open ? setDialogOpen(true) : closeDialog())}>
+        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))] !bg-white !text-slate-950 opacity-100 shadow-2xl dark:!bg-slate-950 dark:!text-slate-50 [&_[data-slot=input]]:!bg-white [&_[data-slot=select-trigger]]:!bg-white [&_[data-slot=textarea]]:!bg-white dark:[&_[data-slot=input]]:!bg-slate-900 dark:[&_[data-slot=select-trigger]]:!bg-slate-900 dark:[&_[data-slot=textarea]]:!bg-slate-900">
+          <DialogHeader>
+            <DialogTitle>
+              {editingTask ? "Vorbereitungsaufgabe bearbeiten" : "Neue Vorbereitungsaufgabe"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-3 py-2">
+            <div>
+              <Label htmlFor="prep-category">Bereich</Label>
+              <Input
+                id="prep-category"
+                list="preparation-category-options"
+                value={form.category}
+                onChange={event => setForm(current => ({ ...current, category: event.target.value }))}
+                placeholder="Bestehenden Bereich wählen oder neu anlegen"
+              />
+              <datalist id="preparation-category-options">
+                {availableCategories.map(category => (
+                  <option key={category} value={category} />
+                ))}
+              </datalist>
+            </div>
+            <div>
+              <Label htmlFor="prep-task">Aufgabe / Bezeichnung *</Label>
+              <Input
+                id="prep-task"
+                value={form.task}
+                onChange={event => setForm(current => ({ ...current, task: event.target.value }))}
+                placeholder="z. B. Genehmigung Streckenverlauf einholen"
+                onKeyDown={event => {
+                  if (event.key === "Enter") saveTask();
+                }}
+              />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label>Verantwortlicher</Label>
+                <Select
+                  value={form.contactId}
+                  onValueChange={value => setForm(current => ({ ...current, contactId: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Ansprechpartner wählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— Keine Zuordnung —</SelectItem>
+                    {contacts.map(contact => (
+                      <SelectItem key={contact.id} value={String(contact.id)}>
+                        {contact.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="prep-due">Frist / Abgabedatum (Freitext)</Label>
+                <Input
+                  id="prep-due"
+                  value={form.dueText}
+                  onChange={event => setForm(current => ({ ...current, dueText: event.target.value }))}
+                  placeholder="z. B. Ende März"
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="prep-status">Status</Label>
+              <Select
+                value={dialogStatusValue(form)}
+                onValueChange={value =>
+                  setForm(current => ({ ...current, ...applyDialogStatus(value as DialogStatus) }))
+                }
+              >
+                <SelectTrigger id="prep-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="offen">Offen</SelectItem>
+                  <SelectItem value="inArbeit">In Arbeit</SelectItem>
+                  <SelectItem value="beantragt">Beantragt</SelectItem>
+                  <SelectItem value="erledigt">Erledigt</SelectItem>
+                  <SelectItem value="genehmigt">Genehmigt</SelectItem>
+                  <SelectItem value="abgelehnt">Abgelehnt</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="mt-1 text-xs text-slate-500">
+                Beantragt und Genehmigt verwenden intern denselben Ablaufstatus wie In Arbeit bzw. Erledigt.
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="prep-note">Bemerkungen / Informationen</Label>
+              <Textarea
+                id="prep-note"
+                value={form.note}
+                onChange={event => setForm(current => ({ ...current, note: event.target.value }))}
+                placeholder="z. B. Ansprechpartner, Besonderheiten oder nächste Schritte"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={closeDialog} disabled={pending}>
+              <X className="mr-1 h-4 w-4" />
+              Abbrechen
+            </Button>
+            <Button type="button" onClick={saveTask} disabled={pending || !form.task.trim()}>
+              {pending ? "Speichert …" : "Speichern"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
