@@ -18,6 +18,38 @@ type ShiftAssignmentValidationInput = {
 };
 
 /**
+ * Leere Auswahlfelder im Einsatzplan haben normalerweise keine Datenbankzeile.
+ * Ältere Importe können jedoch noch Slot-Zeilen ohne Helferreferenz enthalten.
+ * Diese sind kein belegter Helferplatz und dürfen eine Bedarfssenkung nicht sperren.
+ */
+export function hasAssignedHelper(assignment: Assignment) {
+  return (
+    typeof (assignment as { helperId?: unknown }).helperId === "number" &&
+    Number.isInteger(assignment.helperId) &&
+    assignment.helperId > 0
+  );
+}
+
+export function splitShiftAssignmentsByHelper(assignments: Assignment[]) {
+  const assigned: Assignment[] = [];
+  const unassigned: Assignment[] = [];
+  for (const assignment of assignments) {
+    if (hasAssignedHelper(assignment)) assigned.push(assignment);
+    else unassigned.push(assignment);
+  }
+  return { assigned, unassigned };
+}
+
+export function unassignedAssignmentIdsOutsideNeeded(
+  assignments: Assignment[],
+  needed: number
+) {
+  return splitShiftAssignmentsByHelper(assignments).unassigned
+    .filter(assignment => assignment.slot >= needed)
+    .map(assignment => assignment.id);
+}
+
+/**
  * Prüft vor einer Schichtänderung alle bereits vorhandenen Helferzuweisungen
  * gegen den neuen Stand. Die aufrufende Datenbankfunktion sperrt sämtliche
  * übergebenen Zeilen transaktional, bevor diese rein fachliche Prüfung erfolgt.
@@ -33,8 +65,10 @@ export function validateExistingAssignmentsForShiftUpdate({
   const shiftById = new Map(relatedShifts.map(shift => [shift.id, shift]));
   const occupiedSlots = new Set<number>();
   const assignedHelperIds = new Set<number>();
+  const { assigned: assignmentsWithHelpers } =
+    splitShiftAssignmentsByHelper(existingAssignments);
 
-  for (const assignment of existingAssignments) {
+  for (const assignment of assignmentsWithHelpers) {
     if (occupiedSlots.has(assignment.slot)) {
       throw new ShiftUpdateValidationError(
         "Die Schicht enthält doppelt belegte Helferplätze und kann nicht sicher geändert werden"
@@ -68,6 +102,7 @@ export function validateExistingAssignmentsForShiftUpdate({
 
     for (const relatedAssignment of relatedAssignments) {
       if (
+        !hasAssignedHelper(relatedAssignment) ||
         relatedAssignment.helperId !== assignment.helperId ||
         relatedAssignment.shiftId === proposedShift.id
       ) {

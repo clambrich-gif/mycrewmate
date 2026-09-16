@@ -56,7 +56,11 @@ import {
 } from "./password-auth";
 import { currentEventId, currentEventYear } from "./year-context";
 import { overlaps } from "./logic";
-import { validateExistingAssignmentsForShiftUpdate } from "./shift-update-validation";
+import {
+  splitShiftAssignmentsByHelper,
+  unassignedAssignmentIdsOutsideNeeded,
+  validateExistingAssignmentsForShiftUpdate,
+} from "./shift-update-validation";
 
 type DB = ReturnType<typeof drizzle>;
 type Transaction = Parameters<Parameters<DB["transaction"]>[0]>[0];
@@ -1655,8 +1659,10 @@ export async function updateShift(
         .from(assignments)
         .where(eq(assignments.shiftId, existingShift.id))
         .for("update");
+      const { assigned: assignmentsWithHelpers } =
+        splitShiftAssignmentsByHelper(existingAssignments);
       const helperIds = Array.from(
-        new Set(existingAssignments.map(item => item.helperId))
+        new Set(assignmentsWithHelpers.map(item => item.helperId))
       );
       const assignedHelpers = helperIds.length
         ? await tx
@@ -1696,6 +1702,27 @@ export async function updateShift(
         relatedAssignments,
         relatedShifts,
       });
+
+      // Altimporte konnten leere Slot-Zeilen erzeugen. Sobald der Bedarf
+      // sinkt, werden nur diese unbesetzten Plätze am Ende entfernt; echte
+      // Helferzuweisungen wurden unmittelbar zuvor gegen den neuen Bedarf
+      // validiert und können deshalb nie stillschweigend gelöscht werden.
+      if (safe.needed !== undefined) {
+        const emptySlotIds = unassignedAssignmentIdsOutsideNeeded(
+          existingAssignments,
+          proposedShift.needed
+        );
+        if (emptySlotIds.length) {
+          await tx
+            .delete(assignments)
+            .where(
+              and(
+                eq(assignments.shiftId, existingShift.id),
+                inArray(assignments.id, emptySlotIds)
+              )
+            );
+        }
+      }
     }
 
     const result = await tx

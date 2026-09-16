@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Assignment, Helper, Shift } from "../drizzle/schema";
 import {
   ShiftUpdateValidationError,
+  unassignedAssignmentIdsOutsideNeeded,
   validateExistingAssignmentsForShiftUpdate,
 } from "./shift-update-validation";
 
@@ -98,6 +99,45 @@ describe("Schichtupdate-Validierung mit bestehenden Zuweisungen", () => {
     expect(() => validate({ proposedShift: shift({ needed: 0 }) })).toThrow(
       "kleiner als bereits belegte Helferplätze"
     );
+  });
+
+  it("akzeptiert das Reduzieren eines leeren letzten Slots und markiert ihn zur Bereinigung", () => {
+    const realAssignment = assignment({ id: 101, slot: 9 });
+    // Dieses Format kann aus einer älteren Importdatei stammen. Im aktuellen
+    // Datenmodell entstehen leere Auswahlfelder gar nicht als Assignment.
+    const emptyLegacySlot = assignment({
+      id: 102,
+      slot: 10,
+      helperId: null as never,
+    });
+
+    expect(() =>
+      validate({
+        proposedShift: shift({ needed: 10 }),
+        existingAssignments: [realAssignment, emptyLegacySlot],
+        assignedHelpers: [helper()],
+        relatedAssignments: [realAssignment],
+        relatedShifts: [shift()],
+      })
+    ).not.toThrow();
+    expect(
+      unassignedAssignmentIdsOutsideNeeded(
+        [realAssignment, emptyLegacySlot],
+        10
+      )
+    ).toEqual([102]);
+  });
+
+  it("lehnt eine Bedarfssenkung weiterhin ab, wenn der letzte Slot wirklich besetzt ist", () => {
+    expect(() =>
+      validate({
+        proposedShift: shift({ needed: 10 }),
+        existingAssignments: [assignment({ slot: 10 })],
+        assignedHelpers: [helper()],
+        relatedAssignments: [assignment({ slot: 10 })],
+        relatedShifts: [shift()],
+      })
+    ).toThrow("kleiner als bereits belegte Helferplätze");
   });
 
   it("lehnt einen neuen, für den zugewiesenen Helfer nicht verfügbaren Tag ab", () => {
