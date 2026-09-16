@@ -12,7 +12,10 @@ import {
 } from "@/components/ui/select";
 import { downloadBase64File } from "@/lib/download";
 import { trpc } from "@/lib/trpc";
-import { DEFAULT_WHATSAPP_MESSAGE_TEMPLATE } from "@/lib/whatsappShare";
+import {
+  DEFAULT_WHATSAPP_MESSAGE_TEMPLATE,
+  resolveWhatsAppMessageTemplate,
+} from "@/lib/whatsappShare";
 import { eventWeekdays, type Weekday } from "@shared/weekdays";
 import {
   Download,
@@ -98,8 +101,9 @@ export default function PdfExport() {
       blankPlanTitle: settings.blankPlanTitle,
       contactLabel: settings.contactLabel,
       footerText: settings.footerText,
-      whatsAppMessageTemplate:
-        settings.whatsAppMessageTemplate || DEFAULT_WHATSAPP_MESSAGE_TEMPLATE,
+      whatsAppMessageTemplate: resolveWhatsAppMessageTemplate(
+        settings.whatsAppMessageTemplate
+      ),
       extraColumns: settings.extraColumns,
       blankRowsPerShift: settings.blankRowsPerShift,
     });

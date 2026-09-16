@@ -357,7 +357,10 @@ export default function Helpers() {
       );
 
       const copied = await shareCopyPromiseRef.current;
-      const whatsappUrl = buildWhatsAppDeepLink(shareMessageRef.current);
+      const whatsappUrl = buildWhatsAppDeepLink(
+        shareMessageRef.current,
+        helper?.phone
+      );
       shareCopyPromiseRef.current = null;
       setSharingId(null);
       toast[copied ? "success" : "message"](
