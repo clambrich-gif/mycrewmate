@@ -678,6 +678,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(prep).toContain("Beantragt");
     expect(prep).toContain("Genehmigt");
     expect(prep).toContain("Abgelehnt");
+    expect(prep).toContain("Status für ${task.task} ändern");
+    expect(prep).toContain("statusSelectValue(task.status, wording)");
+    expect(prep).toContain("applyDialogStatus(value as DialogStatus)");
+    expect(prep).toContain('left.category?.trim() || "\\uffff"');
+    expect(prep).not.toContain("Sortierung:");
     expect(prep).toContain("Suchen (Aufgabe/Bereich/Verantwortlicher/Frist)");
     expect(prep).toContain("categoryFilter");
     expect(prep).toContain("contactFilter");

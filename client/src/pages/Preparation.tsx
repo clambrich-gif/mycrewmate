@@ -33,7 +33,6 @@ import {
 import { Label } from "@/components/ui/label";
 import {
   AlertTriangle,
-  ArrowUpDown,
   FilterX,
   Pencil,
   Plus,
@@ -119,14 +118,14 @@ function getStatusBadgeClass(status: PrepStatus) {
   }
 }
 
-function dialogStatusValue(form: PrepForm): DialogStatus {
-  if (form.status === "inArbeit") {
-    return form.statusWording === "genehmigung" ? "beantragt" : "inArbeit";
+function statusSelectValue(status: PrepStatus, wording: PrepWording): DialogStatus {
+  if (status === "inArbeit") {
+    return wording === "genehmigung" ? "beantragt" : "inArbeit";
   }
-  if (form.status === "erledigt") {
-    return form.statusWording === "genehmigung" ? "genehmigt" : "erledigt";
+  if (status === "erledigt") {
+    return wording === "genehmigung" ? "genehmigt" : "erledigt";
   }
-  return form.status;
+  return status;
 }
 
 function applyDialogStatus(value: DialogStatus): Pick<PrepForm, "status" | "statusWording"> {
@@ -154,7 +153,6 @@ export default function Preparation() {
   const [categoryFilter, setCategoryFilter] = useState<string>("alle");
   const [contactFilter, setContactFilter] = useState<string>("alle");
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortAsc, setSortAsc] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<PrepTaskRow | null>(null);
   const [form, setForm] = useState<PrepForm>(EMPTY_FORM);
@@ -297,12 +295,15 @@ export default function Preparation() {
         return searchable.includes(normalizedQuery);
       })
       .sort((left, right) => {
-        const comparison = left.task.localeCompare(right.task, "de", {
+        const leftCategory = left.category?.trim() || "\uffff";
+        const rightCategory = right.category?.trim() || "\uffff";
+        const categoryComparison = leftCategory.localeCompare(rightCategory, "de", {
           sensitivity: "base",
         });
-        return sortAsc ? comparison : -comparison;
+        if (categoryComparison !== 0) return categoryComparison;
+        return left.task.localeCompare(right.task, "de", { sensitivity: "base" });
       });
-  }, [rows, statusFilter, categoryFilter, contactFilter, searchTerm, sortAsc, contactMap]);
+  }, [rows, statusFilter, categoryFilter, contactFilter, searchTerm, contactMap]);
 
   const hasActiveFilters =
     statusFilter !== "alle" ||
@@ -469,7 +470,7 @@ export default function Preparation() {
           </Select>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+        <div className="flex flex-wrap items-center gap-2 pt-1">
           <div className="flex items-center gap-2 text-xs text-slate-500">
             <span>
               {filteredRows.length} von {rows.length} Aufgaben angezeigt
@@ -487,16 +488,6 @@ export default function Preparation() {
               </Button>
             )}
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setSortAsc(value => !value)}
-            className="h-8 bg-white text-xs"
-          >
-            <ArrowUpDown className="mr-1.5 size-3.5" />
-            Sortierung: {sortAsc ? "A → Z" : "Z → A"}
-          </Button>
         </div>
       </div>
 
@@ -582,12 +573,31 @@ export default function Preparation() {
                       </td>
                       <td className="break-words px-3 py-3 align-top">{task.dueText || "—"}</td>
                       <td className="px-3 py-3 align-top">
-                        <Badge
-                          variant="outline"
-                          className={`whitespace-normal ${getStatusBadgeClass(task.status)}`}
+                        <Select
+                          value={statusSelectValue(task.status, wording)}
+                          onValueChange={value =>
+                            update.mutate({
+                              id: task.id,
+                              ...applyDialogStatus(value as DialogStatus),
+                            })
+                          }
+                          disabled={update.isPending}
                         >
-                          {getStatusLabel(task.status, wording)}
-                        </Badge>
+                          <SelectTrigger
+                            aria-label={`Status für ${task.task} ändern`}
+                            className={`h-8 min-w-[128px] border text-xs font-medium ${getStatusBadgeClass(task.status)}`}
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="offen">Offen</SelectItem>
+                            <SelectItem value="inArbeit">In Arbeit</SelectItem>
+                            <SelectItem value="beantragt">Beantragt</SelectItem>
+                            <SelectItem value="erledigt">Erledigt</SelectItem>
+                            <SelectItem value="genehmigt">Genehmigt</SelectItem>
+                            <SelectItem value="abgelehnt">Abgelehnt</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </td>
                       <td className="break-words px-3 py-3 align-top whitespace-pre-wrap">
                         {task.note || "—"}
@@ -800,7 +810,7 @@ export default function Preparation() {
             <div>
               <Label htmlFor="prep-status">Status</Label>
               <Select
-                value={dialogStatusValue(form)}
+                value={statusSelectValue(form.status, form.statusWording)}
                 onValueChange={value =>
                   setForm(current => ({ ...current, ...applyDialogStatus(value as DialogStatus) }))
                 }
