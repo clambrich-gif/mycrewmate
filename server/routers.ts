@@ -1150,12 +1150,16 @@ export const appRouter = router({
           category: z.string().trim().max(120).optional(),
           dueText: z.string().max(200).optional(),
           contactId: z.number().nullable().optional(),
-          status: statusPrep.optional(),
-          statusWording: prepStatusWording.optional(),
           note: z.string().max(10_000).optional(),
         })
       )
-      .mutation(({ input }) => db.createPrep(input)),
+      .mutation(({ input }) =>
+        db.createPrep({
+          ...input,
+          status: "offen",
+          statusWording: "aufgabe",
+        })
+      ),
     update: protectedProcedure
       .input(
         z.object({

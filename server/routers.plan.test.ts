@@ -966,11 +966,11 @@ describe("Planungs-API", () => {
     expect(dbMocks.withPlanningWriteLock).toHaveBeenCalledTimes(1);
   });
 
-  it("speichert eine frei formulierte Vorbereitungsfrist unverändert", async () => {
+  it("initialisiert neue Vorbereitungsaufgaben serverseitig immer mit Offen", async () => {
     const caller = appRouter.createCaller(ctx);
     dbMocks.createPrep.mockResolvedValue({ insertId: 30 });
 
-    await caller.prep.create({
+    await (caller.prep.create as any)({
       task: "Absperrmaterial prüfen",
       category: "Strecke & Sicherheit",
       dueText: "Spätestens zwei Wochen vor Streckenfreigabe",
@@ -982,8 +982,8 @@ describe("Planungs-API", () => {
       task: "Absperrmaterial prüfen",
       category: "Strecke & Sicherheit",
       dueText: "Spätestens zwei Wochen vor Streckenfreigabe",
-      status: "abgelehnt",
-      statusWording: "genehmigung",
+      status: "offen",
+      statusWording: "aufgabe",
     });
   });
 

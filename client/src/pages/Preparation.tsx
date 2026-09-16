@@ -87,6 +87,9 @@ type PrepForm = {
   legacyDueText: string;
   preserveLegacyDueText: boolean;
   note: string;
+};
+
+type StatusUpdate = {
   status: PrepStatus;
   statusWording: PrepWording;
 };
@@ -99,8 +102,6 @@ const EMPTY_FORM: PrepForm = {
   legacyDueText: "",
   preserveLegacyDueText: false,
   note: "",
-  status: "offen",
-  statusWording: "aufgabe",
 };
 
 function temporaryId() {
@@ -179,7 +180,7 @@ function statusSelectValue(status: PrepStatus, wording: PrepWording): DialogStat
   return status;
 }
 
-function applyDialogStatus(value: DialogStatus): Pick<PrepForm, "status" | "statusWording"> {
+function applyDialogStatus(value: DialogStatus): StatusUpdate {
   switch (value) {
     case "beantragt":
       return { status: "inArbeit", statusWording: "genehmigung" };
@@ -421,8 +422,6 @@ export default function Preparation() {
       legacyDueText: parsedDueDate ? "" : task.dueText ?? "",
       preserveLegacyDueText: !parsedDueDate && Boolean(task.dueText?.trim()),
       note: task.note ?? "",
-      status: task.status,
-      statusWording: task.statusWording === "genehmigung" ? "genehmigung" : "aufgabe",
     });
     setDialogOpen(true);
   };
@@ -451,8 +450,6 @@ export default function Preparation() {
       task,
       contactId: form.contactId === "none" ? null : Number(form.contactId),
       dueText,
-      status: form.status,
-      statusWording: form.statusWording,
     };
 
     if (editingTask) update.mutate({ id: editingTask.id, ...payload, note: note || null });
@@ -955,30 +952,6 @@ export default function Preparation() {
                   Datum über den Kalender wählen; gespeichert und angezeigt als TT.MM.JJJJ.
                 </p>
               </div>
-            </div>
-            <div>
-              <Label htmlFor="prep-status">Status</Label>
-              <Select
-                value={statusSelectValue(form.status, form.statusWording)}
-                onValueChange={value =>
-                  setForm(current => ({ ...current, ...applyDialogStatus(value as DialogStatus) }))
-                }
-              >
-                <SelectTrigger id="prep-status">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="offen">Offen</SelectItem>
-                  <SelectItem value="inArbeit">In Arbeit</SelectItem>
-                  <SelectItem value="beantragt">Beantragt</SelectItem>
-                  <SelectItem value="erledigt">Erledigt</SelectItem>
-                  <SelectItem value="genehmigt">Genehmigt</SelectItem>
-                  <SelectItem value="abgelehnt">Abgelehnt</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="mt-1 text-xs text-slate-500">
-                Beantragt und Genehmigt verwenden intern denselben Ablaufstatus wie In Arbeit bzw. Erledigt.
-              </p>
             </div>
             <div>
               <Label htmlFor="prep-note">Bemerkungen / Informationen</Label>

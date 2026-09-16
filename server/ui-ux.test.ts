@@ -683,6 +683,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(prep).toContain("Beantragt");
     expect(prep).toContain("Genehmigt");
     expect(prep).toContain("Abgelehnt");
+    expect(prep).not.toContain('htmlFor="prep-status"');
+    expect(prep).not.toContain("Beantragt und Genehmigt verwenden intern denselben Ablaufstatus");
+    expect(prep).toContain('status: input.status ?? "offen"');
     expect(prep).toContain("Status für ${task.task} ändern");
     expect(prep).toContain("statusSelectValue(task.status, wording)");
     expect(prep).toContain("applyDialogStatus(value as DialogStatus)");
