@@ -9,11 +9,15 @@ import { cn } from "@/lib/utils";
 import {
   BookOpen,
   CheckCircle2,
+  Clock3,
   Download,
   FileDown,
+  MessageCircle,
   PlayCircle,
   Search,
+  Send,
   ShieldCheck,
+  Smartphone,
   UserRoundCog,
   Users,
 } from "lucide-react";
@@ -43,6 +47,39 @@ const ROLE_FILTER_STYLE = {
   planung: "border-amber-300 bg-amber-50 text-amber-950 hover:bg-amber-100",
   admin: "border-emerald-300 bg-emerald-50 text-emerald-950 hover:bg-emerald-100",
 } as const;
+
+const PLANNING_TEAM_FLOW = [
+  {
+    icon: MessageCircle,
+    title: "1. Kontakt aufnehmen",
+    description: "Ansprechpartner, Telefonnummer und offene Fragen klären.",
+  },
+  {
+    icon: Smartphone,
+    title: "2. Verfügbarkeit erfassen",
+    description: "Tage, Einschränkungen und PDF-Hinweis eintragen.",
+  },
+  {
+    icon: Clock3,
+    title: "3. Einteilung abwarten",
+    description: "Den fertigen Plan lesen und mit Filtern prüfen.",
+  },
+  {
+    icon: Send,
+    title: "4. Helferplan senden",
+    description: "Persönlichen PDF-Link per WhatsApp weitergeben.",
+  },
+  {
+    icon: MessageCircle,
+    title: "5. Rückmeldung abwarten",
+    description: "Fragen, Zusagen oder Absagen transparent klären.",
+  },
+  {
+    icon: CheckCircle2,
+    title: "6. Bestätigung setzen",
+    description: "Nach verbindlicher Zusage den Schalter auf Ja stellen.",
+  },
+] as const;
 
 type HelpSection = {
   id: string;
@@ -277,7 +314,7 @@ export default function Help() {
         ? {
           src: "/api/videos/planungsteam",
           poster: "/api/help/images/video-planungsteam",
-          label: "Einweisung für das Planungsteam",
+          label: "Schulung für das Planungsteam: Von A bis Z",
           }
         : null;
   const guidePdf = trpc.help.guidePdf.useMutation({
@@ -344,6 +381,30 @@ export default function Help() {
                   <source src={helpVideo.src} type="video/mp4" />
                   Ihr Browser unterstützt die Videowiedergabe nicht.
                 </video>
+              </CardContent>
+            </Card>
+          )}
+          {user?.role === "user" && (
+            <Card className="border-amber-200 bg-amber-50/50 shadow-sm">
+              <CardHeader className="p-4 pb-2">
+                <CardTitle className="flex items-center gap-2 text-base text-amber-950">
+                  <CheckCircle2 className="h-5 w-5 text-amber-700" />
+                  Dein Ablauf in 6 Schritten
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-2 p-3 pt-1 sm:grid-cols-2 sm:p-4 sm:pt-1">
+                {PLANNING_TEAM_FLOW.map(({ icon: Icon, title, description }) => (
+                  <div
+                    key={title}
+                    className="flex min-w-0 gap-2 rounded-lg border border-amber-200 bg-white/80 p-2.5"
+                  >
+                    <Icon className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-900">{title}</p>
+                      <p className="text-xs leading-5 text-slate-600">{description}</p>
+                    </div>
+                  </div>
+                ))}
               </CardContent>
             </Card>
           )}

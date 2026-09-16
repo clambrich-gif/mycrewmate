@@ -13,6 +13,8 @@ const PROTECTED_STORAGE_KEYS = new Set([
   "RSC-Helferplanung-Erklaervideo-Administratoren_48a1d1ca.mp4",
   "RSC-Helferplanung-Erklaervideo-Planungsteam_3101461c.mp4",
   "RSC-Helferplanung-Einweisung-Planungsteam_01385146.mp4",
+  "RSC-Helferplanung-Planungsteam-Schulung-A-bis-Z_0353653d.mp4",
+  "RSC-Helferplanung-Planungsteam-Schulung-A-bis-Z_199b9f42.mp4",
   "RSC-Helferplanung-Schulung-Administratoren_f2c73550.mp4",
 ]);
 

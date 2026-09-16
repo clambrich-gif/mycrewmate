@@ -12,7 +12,7 @@ const HELP_VIDEOS = {
   },
   planungsteam: {
     role: "user",
-    storageKey: "RSC-Helferplanung-Einweisung-Planungsteam_01385146.mp4",
+    storageKey: "RSC-Helferplanung-Planungsteam-Schulung-A-bis-Z_199b9f42.mp4",
   },
 } as const;
 

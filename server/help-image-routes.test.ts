@@ -111,7 +111,7 @@ describe("Same-Origin-Hilfebilder", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toBe("image/png");
     expect(testServer.getSignedUrl).toHaveBeenCalledWith(
-      "planning-login-highlight_f7715b9e.png"
+      "planungsteam-poster_411f8a0e.png"
     );
   });
 

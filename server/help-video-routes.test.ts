@@ -135,7 +135,7 @@ describe("Hilfevideo-Streaming", () => {
     expect(response.headers.get("accept-ranges")).toBe("bytes");
     expect(response.headers.get("content-length")).toBe("20812536");
     expect(testServer.getSignedUrl).toHaveBeenCalledWith(
-      "RSC-Helferplanung-Einweisung-Planungsteam_01385146.mp4"
+      "RSC-Helferplanung-Planungsteam-Schulung-A-bis-Z_199b9f42.mp4"
     );
   });
 

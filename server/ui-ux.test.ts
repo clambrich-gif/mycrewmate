@@ -670,7 +670,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(help).toContain('user?.role === "admin"');
     expect(help).toContain('user?.role === "user"');
     expect(help).toContain("Erweiterte Schulung für Administratoren");
-    expect(help).toContain("Einweisung für das Planungsteam");
+    expect(help).toContain("Schulung für das Planungsteam: Von A bis Z");
     expect(help).toContain('src: "/api/videos/admin"');
     expect(help).toContain('src: "/api/videos/planungsteam"');
     expect(help).not.toContain(
@@ -682,6 +682,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(help).toContain("controls");
     expect(help).toContain("playsInline");
     expect(help).toContain("aspect-video w-full max-w-full");
+    expect(help).toContain("PLANNING_TEAM_FLOW");
+    expect(help).toContain("Dein Ablauf in 6 Schritten");
+    expect(help).toContain("Persönlichen PDF-Link per WhatsApp weitergeben.");
   });
 
   it("bietet eine durchsuchbare, rollenmarkierte Hilfe für alle Handbuchbereiche", () => {

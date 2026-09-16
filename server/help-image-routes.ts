@@ -27,7 +27,7 @@ const HELP_IMAGES = {
     filename: "hilfe-rsc-als-app-speichern.png",
   },
   "video-planungsteam": {
-    storageKey: "planning-login-highlight_f7715b9e.png",
+    storageKey: "planungsteam-poster_411f8a0e.png",
     filename: "schulung-planungsteam.png",
   },
   "video-administratoren": {

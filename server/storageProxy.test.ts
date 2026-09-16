@@ -42,6 +42,8 @@ describe("Storage-Proxy", () => {
     "RSC-Helferplanung-Erklaervideo-Administratoren_48a1d1ca.mp4",
     "RSC-Helferplanung-Erklaervideo-Planungsteam_3101461c.mp4",
     "RSC-Helferplanung-Einweisung-Planungsteam_01385146.mp4",
+    "RSC-Helferplanung-Planungsteam-Schulung-A-bis-Z_0353653d.mp4",
+    "RSC-Helferplanung-Planungsteam-Schulung-A-bis-Z_199b9f42.mp4",
     "RSC-Helferplanung-Schulung-Administratoren_f2c73550.mp4",
   ])("liefert geschützte Medien nicht über den öffentlichen Storage-Pfad aus: %s", async key => {
     const response = await fetch(`${baseUrl}/manus-storage/${key}`, {
