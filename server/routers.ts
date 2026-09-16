@@ -1065,15 +1065,28 @@ export const appRouter = router({
           base64: pdf.toString("base64"),
         };
       }),
-    allHelpers: protectedProcedure.query(async () => {
-      const zip = await createAllHelperTaskZip();
+    allHelpers: protectedProcedure
+      .input(
+        z.object({ contactId: z.number().int().positive().optional() })
+      )
+      .query(async ({ input }) => {
+      const selectedContact = input.contactId
+        ? await db.getContact(input.contactId)
+        : undefined;
+      if (input.contactId && !selectedContact) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Der ausgewählte Ansprechpartner gehört nicht zur aktuellen Veranstaltung",
+        });
+      }
+      const zip = await createAllHelperTaskZip(input.contactId);
       const selectedEvent = await db.getEvent();
       return {
-        filename: `Aufgabenuebersichten_${safeExportName(selectedEvent?.name ?? "Veranstaltung")}.zip`,
+        filename: `Aufgabenuebersichten_${safeExportName(selectedEvent?.name ?? "Veranstaltung")}${selectedContact ? `_${safeExportName(selectedContact.name)}` : ""}.zip`,
         mimeType: "application/zip",
         base64: zip.toString("base64"),
       };
-    }),
+      }),
     blankPlan: protectedProcedure.query(async () => {
       const pdf = await createBlankPlanPdf();
       return {

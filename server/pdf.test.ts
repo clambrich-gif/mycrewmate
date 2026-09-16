@@ -13,6 +13,7 @@ import {
   renderBlankPlanPdf,
   renderHelperTaskPdf,
   renderPlanPdf,
+  selectHelpersForContact,
   selectPlanEvaluations,
 } from "./pdf";
 import { resolveEventPdfLogoKey } from "./event-pdf-image";
@@ -239,6 +240,36 @@ describe("PDF-Erzeugung", () => {
     );
     expect(zip.toString("latin1")).toContain(
       "Martin_Reis/Aufgaben_Christian_Lambrich.pdf"
+    );
+  });
+
+  it("beschränkt Helferübersichten auf den ausgewählten Ansprechpartner", async () => {
+    const secondContact: Contact = {
+      ...contacts[0],
+      id: 2,
+      name: "Lukas Geisbüsch",
+    };
+    const secondHelper: Helper = {
+      ...helpers[1],
+      id: 3,
+      name: "Mara Zweig",
+      contactId: 2,
+    };
+    const filteredData = {
+      ...data,
+      contacts: [...contacts, secondContact],
+      helpers: [...helpers, secondHelper],
+    };
+
+    expect(selectHelpersForContact(filteredData.helpers, 2)).toEqual([
+      secondHelper,
+    ]);
+    const zip = await renderAllHelperTaskZip(filteredData, 2);
+    expect(zip.toString("latin1")).toContain(
+      "Lukas_Geisbusch/Aufgaben_Mara_Zweig.pdf"
+    );
+    expect(zip.toString("latin1")).not.toContain(
+      "Aufgaben_Elena_Adams.pdf"
     );
   });
 });

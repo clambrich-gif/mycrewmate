@@ -50,9 +50,6 @@ const EMPTY_FORM: SettingsForm = {
 export default function PdfExport() {
   const utils = trpc.useUtils();
   const { data: settings, isLoading } = trpc.pdf.settings.useQuery();
-  const allHelpers = trpc.pdf.allHelpers.useQuery(undefined, {
-    enabled: false,
-  });
   const { data: plan = [] } = trpc.plan.evaluate.useQuery();
   const { data: currentEvent } = trpc.events.current.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
@@ -75,6 +72,19 @@ export default function PdfExport() {
   );
   const [includeUnassignedContact, setIncludeUnassignedContact] =
     useState(true);
+  const [helperContactFilter, setHelperContactFilter] = useState("all");
+  const selectedHelperContactId =
+    helperContactFilter === "all" ? undefined : Number(helperContactFilter);
+  const helperZipInput = useMemo(
+    () => ({ contactId: selectedHelperContactId }),
+    [selectedHelperContactId]
+  );
+  const allHelpers = trpc.pdf.allHelpers.useQuery(helperZipInput, {
+    enabled: false,
+  });
+  const selectedHelperContact = contacts.find(
+    contact => contact.id === selectedHelperContactId
+  );
 
   useEffect(() => {
     if (!settings) return;
@@ -251,12 +261,51 @@ export default function PdfExport() {
               Aufgaben, Zeiten, Mithelfer sowie Name und Rufnummer des
               Ansprechpartners.
             </p>
-            <Button onClick={downloadAll} disabled={allHelpers.isFetching}>
-              <Download className="mr-2 h-4 w-4" />
-              {allHelpers.isFetching
-                ? "PDFs werden erstellt …"
-                : "Alle PDFs als ZIP"}
-            </Button>
+            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+              <div className="space-y-2">
+                <Label htmlFor="helper-contact-filter">
+                  Ansprechpartner filtern
+                </Label>
+                <Select
+                  value={helperContactFilter}
+                  onValueChange={setHelperContactFilter}
+                >
+                  <SelectTrigger
+                    id="helper-contact-filter"
+                    className="min-h-11 w-full bg-white dark:bg-slate-950"
+                  >
+                    <SelectValue placeholder="Ansprechpartner auswählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">
+                      Alle Ansprechpartner (Gesamt-ZIP)
+                    </SelectItem>
+                    {contacts.map(contact => (
+                      <SelectItem key={contact.id} value={String(contact.id)}>
+                        {contact.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {selectedHelperContact
+                    ? `Erstellt ein ZIP-Archiv nur mit Helfer-PDFs für ${selectedHelperContact.name}.`
+                    : "Erstellt ein Gesamt-ZIP mit allen Helfer-PDFs, sortiert nach Ansprechpartnern."}
+                </p>
+              </div>
+              <Button
+                className="min-h-11 w-full md:w-auto"
+                onClick={downloadAll}
+                disabled={allHelpers.isFetching}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                {allHelpers.isFetching
+                  ? "PDFs werden erstellt …"
+                  : selectedHelperContact
+                    ? `PDFs für ${selectedHelperContact.name} herunterladen`
+                    : "Alle PDFs als ZIP"}
+              </Button>
+            </div>
           </CardContent>
         </Card>
 

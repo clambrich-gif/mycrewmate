@@ -885,6 +885,16 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(excel).toContain("utils.projectFile.restoreLogs.invalidate()");
   });
 
+  it("bietet in der PDF-Ausgabe einen Ansprechpartnerfilter für Helferübersichten", () => {
+    const pdfExport = source("client/src/pages/PdfExport.tsx");
+
+    expect(pdfExport).toContain("Ansprechpartner filtern");
+    expect(pdfExport).toContain("Alle Ansprechpartner (Gesamt-ZIP)");
+    expect(pdfExport).toContain("helper-contact-filter");
+    expect(pdfExport).toContain("PDFs für ${selectedHelperContact.name} herunterladen");
+    expect(pdfExport).toContain("contactId: selectedHelperContactId");
+  });
+
   it("ordnet Einsatzplanaktionen ausschließlich mobil als gleich breites Raster an", () => {
     const plan = source("client/src/pages/Plan.tsx");
     const resetButton = source("client/src/components/ResetAreaButton.tsx");

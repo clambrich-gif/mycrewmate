@@ -656,7 +656,20 @@ export async function createPlanPdf(options: PlanPdfOptions) {
   return renderPlanPdf(await loadPlanningData(), options);
 }
 
-export function renderAllHelperTaskZip(data: PlanningData) {
+/** Beschränkt Helfer-PDFs bei Bedarf auf einen einzelnen Ansprechpartner. */
+export function selectHelpersForContact(
+  helpers: Helper[],
+  contactId?: number
+) {
+  return contactId === undefined
+    ? helpers
+    : helpers.filter(helper => helper.contactId === contactId);
+}
+
+export function renderAllHelperTaskZip(
+  data: PlanningData,
+  contactId?: number
+) {
   return new Promise<Buffer>((resolve, reject) => {
     const output: Buffer[] = [];
     const archive = new ZipArchive({ zlib: { level: 9 } });
@@ -667,13 +680,16 @@ export function renderAllHelperTaskZip(data: PlanningData) {
     archive.on("end", () => resolve(Buffer.concat(output)));
 
     void (async () => {
-      if (data.helpers.length === 0) {
+      const selectedHelpers = selectHelpersForContact(data.helpers, contactId);
+      if (selectedHelpers.length === 0) {
         archive.append(
-          "Es sind noch keine Helfer angelegt. Nach dem Anlegen oder Excel-Import enthält dieses Archiv je Helfer eine PDF-Datei.\n",
+          contactId === undefined
+            ? "Es sind noch keine Helfer angelegt. Nach dem Anlegen oder Excel-Import enthält dieses Archiv je Helfer eine PDF-Datei.\n"
+            : "Für diesen Ansprechpartner sind noch keine Helfer zugeordnet.\n",
           { name: "HINWEIS.txt" }
         );
       }
-      for (const helper of data.helpers) {
+      for (const helper of selectedHelpers) {
         const contact = data.contacts.find(
           item => item.id === helper.contactId
         );
@@ -687,6 +703,6 @@ export function renderAllHelperTaskZip(data: PlanningData) {
   });
 }
 
-export async function createAllHelperTaskZip() {
-  return renderAllHelperTaskZip(await loadPlanningData());
+export async function createAllHelperTaskZip(contactId?: number) {
+  return renderAllHelperTaskZip(await loadPlanningData(), contactId);
 }
