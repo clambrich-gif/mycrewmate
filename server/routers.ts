@@ -64,6 +64,7 @@ import {
   createPlanPdf,
   DEFAULT_PDF_SETTINGS,
 } from "./pdf";
+import { createPublicHelperPdfToken } from "./public-helper-pdf-token";
 import {
   currentEventId,
   currentEventYear,
@@ -1065,6 +1066,27 @@ export const appRouter = router({
           filename: `Aufgaben_Helfer_${input.helperId}.pdf`,
           mimeType: "application/pdf",
           base64: pdf.toString("base64"),
+        };
+      }),
+    publicShare: protectedProcedure
+      .input(z.object({ helperId: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        const helper = await db.getHelper(input.helperId);
+        if (!helper) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message:
+              "Der Helfer gehört nicht zur aktuell ausgewählten Veranstaltung",
+          });
+        }
+        const token = createPublicHelperPdfToken({
+          year: currentEventYear(),
+          eventId: currentEventId(),
+          helperId: helper.id,
+        });
+        return {
+          path: `/api/public/pdf/${token}`,
+          expiresAt: Date.now() + 90 * 24 * 60 * 60 * 1000,
         };
       }),
     allHelpers: protectedProcedure

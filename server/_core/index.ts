@@ -10,6 +10,7 @@ import { appRouter } from "../routers";
 import { registerHelpImageRoutes } from "../help-image-routes";
 import { registerHelpVideoRoutes } from "../help-video-routes";
 import { registerEventPdfImageRoutes } from "../event-pdf-image-routes";
+import { registerPublicHelperPdfRoutes } from "../public-helper-pdf-routes";
 import { handleTeamNotesCleanupHeartbeat } from "../chat-cleanup-heartbeat";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -43,6 +44,7 @@ async function startServer() {
   registerHelpImageRoutes(app);
   registerHelpVideoRoutes(app);
   registerEventPdfImageRoutes(app);
+  registerPublicHelperPdfRoutes(app);
   registerStorageProxy(app);
   registerOAuthRoutes(app);
   app.post("/api/scheduled/team-notes-cleanup", handleTeamNotesCleanupHeartbeat);

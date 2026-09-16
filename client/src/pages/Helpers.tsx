@@ -18,8 +18,7 @@ import {
 } from "@/components/ui/select";
 import { downloadBase64File, safeDownloadName } from "@/lib/download";
 import {
-  buildWhatsAppLaunchUrl,
-  copyWhatsAppMessage,
+  buildWhatsAppShareUrl,
   renderWhatsAppMessage,
 } from "@/lib/whatsappShare";
 import { cn } from "@/lib/utils";
@@ -296,7 +295,6 @@ export default function Helpers() {
   const [sortAsc, setSortAsc] = useState(true);
   const [exportingId, setExportingId] = useState<number | null>(null);
   const [sharingId, setSharingId] = useState<number | null>(null);
-  const shareCopyPromiseRef = useRef<Promise<boolean> | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{
     id: number;
     name: string;
@@ -346,41 +344,24 @@ export default function Helpers() {
       toast.error(error.message);
     },
   });
-  const sharePdfViaWhatsApp = trpc.pdf.helper.useMutation({
-    onSuccess: async (result, variables) => {
-      const helper = helpers.find(item => item.id === variables.helperId);
-      downloadBase64File(
-        result.base64,
-        result.mimeType,
-        `Aufgaben_${safeDownloadName(helper?.name ?? String(variables.helperId))}.pdf`
+  const sharePdfViaWhatsApp = trpc.pdf.publicShare.useMutation({
+    onSuccess: result => {
+      const publicPdfUrl = new URL(result.path, window.location.origin).toString();
+      const message = renderWhatsAppMessage(
+        pdfSettings?.whatsAppMessageTemplate,
+        currentEvent?.name ?? pdfSettings?.eventName,
+        publicPdfUrl
       );
-
-      const copied = await shareCopyPromiseRef.current;
-      const whatsappUrl = buildWhatsAppLaunchUrl();
-      shareCopyPromiseRef.current = null;
       setSharingId(null);
-      window.location.assign(whatsappUrl);
-      toast[copied ? "success" : "message"](
-        copied
-          ? "PDF heruntergeladen & Text kopiert. WhatsApp wurde ohne vorgefüllten Text geöffnet."
-          : "PDF heruntergeladen. Der WhatsApp-Text konnte nicht automatisch kopiert werden.",
-      );
+      window.location.assign(buildWhatsAppShareUrl(message));
     },
     onError: error => {
-      shareCopyPromiseRef.current = null;
       setSharingId(null);
       toast.error(error.message);
     },
   });
   const shareHelperPdf = (helperId: number) => {
     if (sharingId !== null) return;
-    const message = renderWhatsAppMessage(
-      pdfSettings?.whatsAppMessageTemplate,
-      currentEvent?.name ?? pdfSettings?.eventName
-    );
-    // Safari und mobile WebViews erlauben die Zwischenablage nur direkt aus
-    // dem Nutzertipp. Der parameterfreie WhatsApp-Start erfolgt nach dem Download.
-    shareCopyPromiseRef.current = copyWhatsAppMessage(message);
     setSharingId(helperId);
     sharePdfViaWhatsApp.mutate({ helperId });
   };
@@ -545,7 +526,7 @@ export default function Helpers() {
                   <Button
                     variant="outline"
                     size="icon"
-                    title="Helfer-PDF herunterladen und per WhatsApp teilen"
+                    title="Persönlichen PDF-Link per WhatsApp teilen"
                     aria-label={`Einteilung von ${helper.name} per WhatsApp teilen`}
                     disabled={sharingId !== null}
                     onClick={() => shareHelperPdf(helper.id)}
@@ -887,7 +868,7 @@ export default function Helpers() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        title="Helfer-PDF herunterladen und per WhatsApp teilen"
+                        title="Persönlichen PDF-Link per WhatsApp teilen"
                         aria-label={`Einteilung von ${helper.name} per WhatsApp teilen`}
                         disabled={sharingId !== null}
                         onClick={() => shareHelperPdf(helper.id)}

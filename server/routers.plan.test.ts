@@ -32,6 +32,7 @@ const dbMocks = vi.hoisted(() => ({
   deleteEvent: vi.fn(),
   deleteContact: vi.fn(),
   getContact: vi.fn(),
+  getHelper: vi.fn(),
   listShiftAreaContacts: vi.fn(),
   setShiftAreaContact: vi.fn(),
   withPlanningWriteLock: vi.fn(),
@@ -158,6 +159,7 @@ describe("Planungs-API", () => {
     dbMocks.assignHelper.mockResolvedValue({ insertId: 1 });
     dbMocks.updateShift.mockResolvedValue({ affectedRows: 1 });
     dbMocks.getContact.mockResolvedValue({ id: 5, name: "Chris Leitung" });
+    dbMocks.getHelper.mockResolvedValue(helper);
     dbMocks.getEvent.mockResolvedValue({
       id: 1,
       year: 2026,
@@ -358,6 +360,25 @@ describe("Planungs-API", () => {
           "Individueller Text für {EVENT_NAME}. Bitte zeitnah melden! ⏳",
       })
     );
+  });
+
+  it("erstellt nur für Helfer im aktuellen Scope einen signierten öffentlichen PDF-Link", async () => {
+    const result = await appRouter.createCaller(ctx).pdf.publicShare({
+      helperId: helper.id,
+    });
+
+    expect(dbMocks.getHelper).toHaveBeenCalledWith(helper.id);
+    expect(result.path).toMatch(
+      /^\/api\/public\/pdf\/[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/
+    );
+    expect(result.expiresAt).toBeGreaterThan(
+      Date.now() + 89 * 24 * 60 * 60 * 1000
+    );
+
+    dbMocks.getHelper.mockResolvedValueOnce(undefined);
+    await expect(
+      appRouter.createCaller(ctx).pdf.publicShare({ helperId: 999_999 })
+    ).rejects.toThrow("gehört nicht zur aktuell ausgewählten Veranstaltung");
   });
 
   it("weist Bildinhalte mit unpassender Dateisignatur ab", async () => {

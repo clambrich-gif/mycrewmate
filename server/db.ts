@@ -279,6 +279,17 @@ export async function listEvents(eventYear = year()) {
   }));
 }
 
+export async function getHelper(helperId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const [helper] = await db
+    .select()
+    .from(helpers)
+    .where(and(eq(helpers.id, helperId), planningScope(helpers)))
+    .limit(1);
+  return helper;
+}
+
 export async function getEvent(id = event()) {
   const db = await getDb();
   if (!db) return undefined;

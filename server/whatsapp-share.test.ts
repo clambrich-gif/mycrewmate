@@ -1,65 +1,63 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildWhatsAppLaunchUrl,
+  buildWhatsAppShareUrl,
   DEFAULT_WHATSAPP_MESSAGE_TEMPLATE,
   renderWhatsAppMessage,
   resolveWhatsAppMessageTemplate,
 } from "../client/src/lib/whatsappShare";
 
+const PDF_LINK = "https://helferplanung.example.test/api/public/pdf/signierter-token";
+
 describe("whatsappShare", () => {
-  it("verwendet die Standardvorlage mit allen geforderten Emojis und ersetzt den Eventnamen", () => {
+  it("verwendet die Standardvorlage mit Event und persönlichem PDF-Link", () => {
     const text = renderWhatsAppMessage(
       DEFAULT_WHATSAPP_MESSAGE_TEMPLATE,
-      "MyEifelRide 2027"
+      "MyEifelRide 2027",
+      PDF_LINK
     );
 
     expect(text).toBe(`Hallo! 👋
 Hier ist dein persönlicher Einsatzplan für unser Event MyEifelRide 2027 🚴💨
-📄 Deinen genauen Plan findest du im angehängten PDF-Dokument.
+📄 Deinen genauen Plan findest du direkt unter folgendem Link:
+${PDF_LINK}
 ℹ️ Deinen persönlichen Ansprechpartner findest du direkt unten auf deinem PDF-Formular.
 ⚠️ Bitte gib uns schnellstmöglich Bescheid, damit wir den gesamten Einsatzplan in Absprache mit allen finalisieren können. ⏳👍
 Vielen Dank für deine fantastische Unterstützung! 🥳
 Dein RSC-Orga-Team 🏆`);
   });
 
-  it("erlaubt eine konfigurierte Vorlage und ersetzt den Platzhalter", () => {
-    const customTemplate =
-      "Moin! Einsatzplan für {EVENT_NAME} liegt anbei. Bitte schnell melden! ⏳";
-    const text = renderWhatsAppMessage(customTemplate, "Frühjahrsfahrt");
+  it("behält individuelle Vorlagen und ergänzt den persönlichen Link bei älteren Texten", () => {
+    const text = renderWhatsAppMessage(
+      "Moin! Einsatzplan für {EVENT_NAME} liegt bereit. ⏳",
+      "Frühjahrsfahrt",
+      PDF_LINK
+    );
 
     expect(text).toBe(
-      "Moin! Einsatzplan für Frühjahrsfahrt liegt anbei. Bitte schnell melden! ⏳"
+      `Moin! Einsatzplan für Frühjahrsfahrt liegt bereit. ⏳\n\n📄 Dein persönlicher Einsatzplan:\n${PDF_LINK}`
     );
   });
 
-  it("startet WhatsApp auf Mobilgeräten ohne Empfänger-, Text- oder Dateiparameter", () => {
-    const link = buildWhatsAppLaunchUrl(
-      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148"
+  it("erzeugt einen direkten WhatsApp-Universal-Link mit komplett kodiertem Nachrichtentext", () => {
+    const message = renderWhatsAppMessage(
+      DEFAULT_WHATSAPP_MESSAGE_TEMPLATE,
+      "MyEifelRide",
+      PDF_LINK
     );
+    const url = buildWhatsAppShareUrl(message);
 
-    expect(link).toBe("whatsapp://");
-    expect(link).not.toContain("?");
-    expect(link).not.toContain("text=");
-    expect(link).not.toContain("blob:");
+    expect(url).toBe(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`);
+    expect(decodeURIComponent(url.split("text=")[1])).toBe(message);
+    expect(url).toContain(encodeURIComponent(PDF_LINK));
+    expect(url).not.toContain("blob:");
   });
 
-  it("startet WhatsApp Web am Desktop ohne Query-Parameter", () => {
-    const link = buildWhatsAppLaunchUrl(
-      "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/128.0 Safari/537.36"
-    );
-
-    expect(link).toBe("https://web.whatsapp.com/");
-    expect(link).not.toContain("?");
-    expect(link).not.toContain("text=");
-    expect(link).not.toContain("blob:");
-  });
-
-  it("ersetzt ausschließlich die frühere Standardvorlage durch den neuen Standardwert", () => {
+  it("ersetzt die bisherigen Standardtexte automatisch durch die Linkvorlage", () => {
     const legacyTemplate = `Hallo! 👋
 Hier ist dein persönlicher Einsatzplan für unser Event {EVENT_NAME} 🚴💨
 📄 Deinen genauen Plan findest du im angehängten PDF-Dokument.
 ℹ️ Deinen persönlichen Ansprechpartner findest du direkt unten auf deinem PDF-Formular.
-⚠️ Bitte gib uns zeitnah eine kurze Rückmeldung, ob der Einsatzplan für dich so in Ordnung ist. Es ist besonders wichtig, dass du uns möglichst schnell zurückmeldest, damit wir den gesamten Einsatzplan in Absprache mit allen finalisieren können. Bitte gib uns daher schnellstmöglich Bescheid! ⏳👍
+⚠️ Bitte gib uns schnellstmöglich Bescheid, damit wir den gesamten Einsatzplan in Absprache mit allen finalisieren können. ⏳👍
 Vielen Dank für deine fantastische Unterstützung! 🥳
 Dein RSC-Orga-Team 🏆`;
     expect(resolveWhatsAppMessageTemplate(legacyTemplate)).toBe(

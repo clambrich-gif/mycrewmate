@@ -780,6 +780,8 @@ export default function PdfExport() {
                 <p className="text-xs text-muted-foreground">
                   Der Platzhalter <code>{"{EVENT_NAME}"}</code> wird beim Teilen
                   automatisch durch die aktuell ausgewählte Veranstaltung ersetzt.
+                  Der Platzhalter <code>{"{PDF_LINK}"}</code> wird durch den
+                  persönlichen, 90 Tage gültigen PDF-Link ersetzt.
                 </p>
               </div>
 
