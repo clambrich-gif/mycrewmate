@@ -208,6 +208,8 @@ export const helpers = mysqlTable(
     email: varchar("email", { length: 320 }),
     phone: varchar("phone", { length: 64 }),
     note: text("note"),
+    // Kurzer, nicht erratbarer Freigabecode für persönliche PDF-Links (/p/:code).
+    pdfShareCode: varchar("pdfShareCode", { length: 12 }),
     willHelp: mysqlEnum("willHelp", ["ja", "nein"]).default("ja").notNull(),
     availMon: mysqlEnum("availMon", ["ja", "nein", "vielleicht"])
       .default("vielleicht")
@@ -250,6 +252,7 @@ export const helpers = mysqlTable(
       table.eventId,
       table.year
     ),
+    uniqueIndex("helpers_pdf_share_code_unique").on(table.pdfShareCode),
   ]
 );
 export type Helper = typeof helpers.$inferSelect;

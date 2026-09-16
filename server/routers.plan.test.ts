@@ -33,6 +33,7 @@ const dbMocks = vi.hoisted(() => ({
   deleteContact: vi.fn(),
   getContact: vi.fn(),
   getHelper: vi.fn(),
+  ensureHelperPdfShareCode: vi.fn(),
   listShiftAreaContacts: vi.fn(),
   setShiftAreaContact: vi.fn(),
   withPlanningWriteLock: vi.fn(),
@@ -160,6 +161,7 @@ describe("Planungs-API", () => {
     dbMocks.updateShift.mockResolvedValue({ affectedRows: 1 });
     dbMocks.getContact.mockResolvedValue({ id: 5, name: "Chris Leitung" });
     dbMocks.getHelper.mockResolvedValue(helper);
+    dbMocks.ensureHelperPdfShareCode.mockResolvedValue("Ab3dE9F_");
     dbMocks.getEvent.mockResolvedValue({
       id: 1,
       year: 2026,
@@ -362,17 +364,16 @@ describe("Planungs-API", () => {
     );
   });
 
-  it("erstellt nur für Helfer im aktuellen Scope einen signierten öffentlichen PDF-Link", async () => {
+  it("erstellt nur für Helfer im aktuellen Scope einen kurzen nicht erratbaren PDF-Link", async () => {
     const result = await appRouter.createCaller(ctx).pdf.publicShare({
       helperId: helper.id,
     });
 
     expect(dbMocks.getHelper).toHaveBeenCalledWith(helper.id);
-    expect(result.path).toMatch(
-      /^\/api\/public\/pdf\/[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/
-    );
+    expect(dbMocks.ensureHelperPdfShareCode).toHaveBeenCalledWith(helper.id);
+    expect(result.path).toBe("/p/Ab3dE9F_");
     expect(result.url).toBe(`https://eifelride-jq8ejdus.manus.space${result.path}`);
-    expect(result.url).toMatch(/^https:\/\/eifelride-jq8ejdus\.manus\.space\/api\/public\/pdf\//);
+    expect(result.url).toBe("https://eifelride-jq8ejdus.manus.space/p/Ab3dE9F_");
     expect(result.expiresAt).toBeGreaterThan(
       Date.now() + 89 * 24 * 60 * 60 * 1000
     );

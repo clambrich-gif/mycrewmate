@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
+import { randomBytes } from "node:crypto";
 import {
   and,
   asc,
@@ -288,6 +289,58 @@ export async function getHelper(helperId: number) {
     .where(and(eq(helpers.id, helperId), planningScope(helpers)))
     .limit(1);
   return helper;
+}
+
+export async function getHelperByPdfShareCode(shareCode: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const [helper] = await db
+    .select()
+    .from(helpers)
+    .where(eq(helpers.pdfShareCode, shareCode))
+    .limit(1);
+  return helper;
+}
+
+function createPdfShareCode() {
+  return randomBytes(6).toString("base64url");
+}
+
+/**
+ * Erstellt bei der ersten Freigabe einen kurzen zufälligen Code für /p/:code.
+ * Die Helfer-ID wird absichtlich nicht offen gelegt und kann nicht hochgezählt
+ * werden. Ein globaler Unique-Index verhindert Code-Kollisionen.
+ */
+export async function ensureHelperPdfShareCode(helperId: number) {
+  const database = (await getDb()) as DB;
+  const helper = await getHelper(helperId);
+  if (!helper) throw new Error("Helfer wurde nicht gefunden");
+  if (helper.pdfShareCode) return helper.pdfShareCode;
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const shareCode = createPdfShareCode();
+    try {
+      const result = await database
+        .update(helpers)
+        .set({ pdfShareCode: shareCode })
+        .where(
+          and(
+            eq(helpers.id, helperId),
+            planningScope(helpers),
+            isNull(helpers.pdfShareCode)
+          )
+        );
+      if (Number((result as { affectedRows?: number }).affectedRows ?? 0) > 0) {
+        return shareCode;
+      }
+      const refreshed = await getHelper(helperId);
+      if (refreshed?.pdfShareCode) return refreshed.pdfShareCode;
+    } catch (error) {
+      if (attempt === 4) throw error;
+    }
+  }
+
+  throw new Error("PDF-Freigabecode konnte nicht erstellt werden");
 }
 
 export async function getEvent(id = event()) {

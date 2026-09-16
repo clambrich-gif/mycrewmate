@@ -8,17 +8,24 @@ const PDF = Buffer.from("%PDF-1.7\nPersönlicher Einsatzplan");
 
 async function startTestServer(options: {
   claims: { year: number; eventId: number; helperId: number } | null;
+  shortCodeClaims?: { year: number; eventId: number; helperId: number } | null;
   pdf?: Buffer;
   createPdfError?: Error;
 }) {
   const app = express();
   const verifyToken = vi.fn(() => options.claims);
+  const findHelperByShortCode = vi.fn(() => options.shortCodeClaims ?? null);
   const createPdf = vi.fn(async () => {
     if (options.createPdfError) throw options.createPdfError;
     return options.pdf ?? PDF;
   });
   const withScope = vi.fn(async (_year, _eventId, callback) => callback());
-  registerPublicHelperPdfRoutes(app, { verifyToken, createPdf, withScope });
+  registerPublicHelperPdfRoutes(app, {
+    verifyToken,
+    findHelperByShortCode,
+    createPdf,
+    withScope,
+  });
 
   const server = await new Promise<Server>(resolve => {
     const instance = app.listen(0, "127.0.0.1", () => resolve(instance));
@@ -31,6 +38,7 @@ async function startTestServer(options: {
   return {
     baseUrl: `http://127.0.0.1:${address.port}`,
     verifyToken,
+    findHelperByShortCode,
     createPdf,
     withScope,
   };
@@ -123,6 +131,35 @@ describe("öffentliche Helfer-PDF-Route", () => {
       "OPTIONS"
     );
     expect(server.verifyToken).not.toHaveBeenCalled();
+    expect(server.createPdf).not.toHaveBeenCalled();
+  });
+
+  it("liefert mit kurzem zufälligem Freigabecode eine Inline-PDF ohne Anmeldung", async () => {
+    const server = await startTestServer({
+      claims: null,
+      shortCodeClaims: { year: 2027, eventId: 1020001, helperId: 44 },
+    });
+
+    const response = await fetch(`${server.baseUrl}/p/Ab3dE9F_`);
+
+    expect(response.status).toBe(200);
+    expect(Buffer.from(await response.arrayBuffer())).toEqual(PDF);
+    expect(response.headers.get("content-type")).toBe("application/pdf");
+    expect(response.headers.get("content-disposition")).toContain("inline");
+    expect(server.findHelperByShortCode).toHaveBeenCalledWith("Ab3dE9F_");
+    expect(server.verifyToken).not.toHaveBeenCalled();
+    expect(server.createPdf).toHaveBeenCalledWith(44);
+  });
+
+  it("weist zu kurze, falsche oder unbekannte Freigabecodes ohne PDF-Daten zurück", async () => {
+    const server = await startTestServer({ claims: null, shortCodeClaims: null });
+
+    const malformed = await fetch(`${server.baseUrl}/p/zu-kurz`);
+    const unknown = await fetch(`${server.baseUrl}/p/Ab3dE9F_`);
+
+    expect(malformed.status).toBe(404);
+    expect(unknown.status).toBe(404);
+    expect(server.findHelperByShortCode).toHaveBeenCalledTimes(1);
     expect(server.createPdf).not.toHaveBeenCalled();
   });
 });

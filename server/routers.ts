@@ -64,7 +64,6 @@ import {
   createPlanPdf,
   DEFAULT_PDF_SETTINGS,
 } from "./pdf";
-import { createPublicHelperPdfToken } from "./public-helper-pdf-token";
 import { publicAppUrl } from "./public-app-url";
 import {
   currentEventId,
@@ -1080,12 +1079,8 @@ export const appRouter = router({
               "Der Helfer gehört nicht zur aktuell ausgewählten Veranstaltung",
           });
         }
-        const token = createPublicHelperPdfToken({
-          year: currentEventYear(),
-          eventId: currentEventId(),
-          helperId: helper.id,
-        });
-        const path = `/api/public/pdf/${token}`;
+        const shareCode = await db.ensureHelperPdfShareCode(helper.id);
+        const path = `/p/${shareCode}`;
         return {
           path,
           url: publicAppUrl(path),
