@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import { downloadBase64File, safeDownloadName } from "@/lib/download";
 import {
-  buildWhatsAppDeepLink,
+  buildWhatsAppLaunchUrl,
   copyWhatsAppMessage,
   renderWhatsAppMessage,
 } from "@/lib/whatsappShare";
@@ -297,7 +297,6 @@ export default function Helpers() {
   const [exportingId, setExportingId] = useState<number | null>(null);
   const [sharingId, setSharingId] = useState<number | null>(null);
   const shareCopyPromiseRef = useRef<Promise<boolean> | null>(null);
-  const shareMessageRef = useRef("");
   const [deleteTarget, setDeleteTarget] = useState<{
     id: number;
     name: string;
@@ -357,20 +356,14 @@ export default function Helpers() {
       );
 
       const copied = await shareCopyPromiseRef.current;
-      const whatsappUrl = buildWhatsAppDeepLink(helper?.phone);
+      const whatsappUrl = buildWhatsAppLaunchUrl();
       shareCopyPromiseRef.current = null;
       setSharingId(null);
+      window.location.assign(whatsappUrl);
       toast[copied ? "success" : "message"](
         copied
-          ? "PDF heruntergeladen & Text kopiert! Öffne WhatsApp, füge das PDF als Datei an und füge den Text ein."
+          ? "PDF heruntergeladen & Text kopiert. WhatsApp wurde ohne vorgefüllten Text geöffnet."
           : "PDF heruntergeladen. Der WhatsApp-Text konnte nicht automatisch kopiert werden.",
-        {
-          action: {
-            label: "WhatsApp öffnen",
-            onClick: () =>
-              window.open(whatsappUrl, "_blank", "noopener,noreferrer"),
-          },
-        }
       );
     },
     onError: error => {
@@ -386,8 +379,7 @@ export default function Helpers() {
       currentEvent?.name ?? pdfSettings?.eventName
     );
     // Safari und mobile WebViews erlauben die Zwischenablage nur direkt aus
-    // dem Nutzertipp; WhatsApp wird deshalb erst nach dem PDF-Download manuell geöffnet.
-    shareMessageRef.current = message;
+    // dem Nutzertipp. Der parameterfreie WhatsApp-Start erfolgt nach dem Download.
     shareCopyPromiseRef.current = copyWhatsAppMessage(message);
     setSharingId(helperId);
     sharePdfViaWhatsApp.mutate({ helperId });

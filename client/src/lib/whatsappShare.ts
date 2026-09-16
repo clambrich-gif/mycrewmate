@@ -33,25 +33,14 @@ export function renderWhatsAppMessage(
 }
 
 /**
- * Formatiert deutsche Mobilnummern für die WhatsApp-URL. Bereits international
- * gespeicherte Nummern bleiben erhalten; bei leerem oder unbrauchbarem Wert
- * wird bewusst kein Empfänger erzwungen.
+ * Startet WhatsApp bewusst ohne Empfänger-, Text- oder Dateiparameter.
+ * Das verhindert insbesondere auf iOS, dass eine temporäre blob:-Adresse in
+ * das WhatsApp-Textfeld übernommen wird. Die Nachricht bleibt ausschließlich
+ * in der Zwischenablage und wird vom Nutzer in WhatsApp eingefügt.
  */
-export function normalizeWhatsAppPhoneNumber(phone: string | null | undefined) {
-  let digits = (phone ?? "").trim().replace(/[^\d+]/g, "");
-  if (!digits) return null;
-  if (digits.startsWith("+")) digits = digits.slice(1);
-  if (digits.startsWith("00")) digits = digits.slice(2);
-  if (digits.startsWith("0")) digits = `49${digits.slice(1)}`;
-  return /^491[5-7]\d{6,10}$/.test(digits) ? digits : null;
-}
-
-/** Öffnet nur den direkten Chat. Die Nachricht wird bewusst nicht per URL übergeben. */
-export function buildWhatsAppDeepLink(phone: string | null | undefined = null) {
-  const normalizedPhone = normalizeWhatsAppPhoneNumber(phone);
-  return normalizedPhone
-    ? `https://api.whatsapp.com/send?phone=${normalizedPhone}`
-    : "https://api.whatsapp.com/";
+export function buildWhatsAppLaunchUrl(userAgent = navigator.userAgent) {
+  const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(userAgent);
+  return isMobile ? "whatsapp://" : "https://web.whatsapp.com/";
 }
 
 export async function copyWhatsAppMessage(

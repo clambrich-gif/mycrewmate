@@ -897,11 +897,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(pdfExport).toContain("whatsapp-message-template");
     expect(pdfExport).toContain("WhatsApp-Nachricht beim PDF-Teilen");
     expect(helpers).not.toContain("bg-emerald-500 text-white hover:bg-emerald-600");
-    expect(helpers).toContain("PDF heruntergeladen & Text kopiert! Öffne WhatsApp, füge das PDF als Datei an und füge den Text ein.");
-    expect(helpers).toContain('label: "WhatsApp öffnen"');
+    expect(helpers).toContain("PDF heruntergeladen & Text kopiert. WhatsApp wurde ohne vorgefüllten Text geöffnet.");
     expect(helpers).not.toContain("shareWindowRef");
-    expect(helpers).toContain("buildWhatsAppDeepLink(helper?.phone)");
-    expect(helpers).not.toContain("buildWhatsAppDeepLink(shareMessageRef.current");
+    expect(helpers).toContain("buildWhatsAppLaunchUrl()");
+    expect(helpers).toContain('window.location.assign(whatsappUrl)');
+    expect(helpers).not.toContain('window.open(whatsappUrl, "_blank", "noopener,noreferrer")');
+    expect(helpers).not.toContain("navigator.share");
+    expect(helpers).not.toContain("buildWhatsAppDeepLink(");
     expect(helpers.match(/shareHelperPdf/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
   });
 

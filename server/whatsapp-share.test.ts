@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildWhatsAppDeepLink,
+  buildWhatsAppLaunchUrl,
   DEFAULT_WHATSAPP_MESSAGE_TEMPLATE,
-  normalizeWhatsAppPhoneNumber,
   renderWhatsAppMessage,
   resolveWhatsAppMessageTemplate,
 } from "../client/src/lib/whatsappShare";
@@ -33,23 +32,26 @@ Dein RSC-Orga-Team 🏆`);
     );
   });
 
-  it("erzeugt einen direkten leeren WhatsApp-Chat mit normalisierter deutscher Mobilnummer", () => {
-    const link = buildWhatsAppDeepLink("0174 455 558");
+  it("startet WhatsApp auf Mobilgeräten ohne Empfänger-, Text- oder Dateiparameter", () => {
+    const link = buildWhatsAppLaunchUrl(
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148"
+    );
 
-    expect(link).toBe("https://api.whatsapp.com/send?phone=49174455558");
+    expect(link).toBe("whatsapp://");
+    expect(link).not.toContain("?");
     expect(link).not.toContain("text=");
     expect(link).not.toContain("blob:");
   });
 
-  it("normalisiert internationale Nummern und behält bei fehlender Nummer den allgemeinen WhatsApp-Start", () => {
-    expect(normalizeWhatsAppPhoneNumber("+49 (174) 455-558")).toBe(
-      "49174455558"
+  it("startet WhatsApp Web am Desktop ohne Query-Parameter", () => {
+    const link = buildWhatsAppLaunchUrl(
+      "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/128.0 Safari/537.36"
     );
-    expect(normalizeWhatsAppPhoneNumber("0049 174 455 558")).toBe(
-      "49174455558"
-    );
-    expect(normalizeWhatsAppPhoneNumber("02651 123456")).toBeNull();
-    expect(buildWhatsAppDeepLink(null)).toBe("https://api.whatsapp.com/");
+
+    expect(link).toBe("https://web.whatsapp.com/");
+    expect(link).not.toContain("?");
+    expect(link).not.toContain("text=");
+    expect(link).not.toContain("blob:");
   });
 
   it("ersetzt ausschließlich die frühere Standardvorlage durch den neuen Standardwert", () => {
