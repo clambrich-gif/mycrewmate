@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   dashboardTargetHref,
+  parseHelperAssignmentFilter,
+  parseHelperConfirmationFilter,
   parsePlanStatusFilter,
   parsePlanWarningFilter,
   parseTaskStatusFilter,
@@ -35,6 +37,13 @@ describe("Dashboard-Zielnavigation", () => {
     expect(
       dashboardTargetHref({ path: "/nachbereitung", status: "offen" })
     ).toBe("/nachbereitung?status=offen");
+    expect(
+      dashboardTargetHref({
+        path: "/helfer",
+        confirmed: "nein",
+        assigned: true,
+      })
+    ).toBe("/helfer?bestaetigt=nein&eingeteilt=ja");
   });
 
   it("akzeptiert ausschließlich unterstützte Filterwerte", () => {
@@ -50,5 +59,10 @@ describe("Dashboard-Zielnavigation", () => {
     expect(parseTaskStatusFilter("abgelehnt")).toBe("abgelehnt");
     expect(parseTaskStatusFilter("OFFEN")).toBe("alle");
     expect(parseTaskStatusFilter(null)).toBe("alle");
+    expect(parseHelperConfirmationFilter("ja")).toBe("ja");
+    expect(parseHelperConfirmationFilter("nein")).toBe("nein");
+    expect(parseHelperConfirmationFilter("offen")).toBe("alle");
+    expect(parseHelperAssignmentFilter("ja")).toBe(true);
+    expect(parseHelperAssignmentFilter("nein")).toBe(false);
   });
 });

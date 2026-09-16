@@ -33,6 +33,13 @@ import {
   WEEKDAY_AVAILABILITY_FIELDS,
   WEEKDAY_SHORT_LABELS,
 } from "@shared/weekdays";
+import {
+  HELPER_ASSIGNMENT_QUERY_KEY,
+  HELPER_CONFIRMATION_QUERY_KEY,
+  parseHelperAssignmentFilter,
+  parseHelperConfirmationFilter,
+} from "@/lib/dashboard-target-filter";
+import { useSearchParams } from "wouter";
 
 const YN = [
   { v: "ja", l: "Ja" },
@@ -281,6 +288,13 @@ function HelperPdfNoteField({
 }
 
 export default function Helpers() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const confirmationFilter = parseHelperConfirmationFilter(
+    searchParams.get(HELPER_CONFIRMATION_QUERY_KEY)
+  );
+  const assignedOnly = parseHelperAssignmentFilter(
+    searchParams.get(HELPER_ASSIGNMENT_QUERY_KEY)
+  );
   const utils = trpc.useUtils();
   const { user } = useAuth();
   const { data: helpers = [], isLoading } = trpc.helpers.list.useQuery();
@@ -365,6 +379,11 @@ export default function Helpers() {
     sharePdfViaWhatsApp.mutate({ helperId });
   };
 
+  const assignedHelperIds = useMemo(
+    () =>
+      new Set((plan ?? []).flatMap(item => item.assigned.map(a => a.helperId))),
+    [plan]
+  );
   const filtered = useMemo(
     () =>
       helpers
@@ -372,6 +391,9 @@ export default function Helpers() {
           helper =>
             (!filter ||
               helper.name.toLowerCase().includes(filter.toLowerCase())) &&
+            (confirmationFilter === "alle" ||
+              helper.confirmed === confirmationFilter) &&
+            (!assignedOnly || assignedHelperIds.has(helper.id)) &&
             (apFilter === "alle" ||
               (apFilter === "ohne"
                 ? !helper.contactId
@@ -380,7 +402,15 @@ export default function Helpers() {
         .sort((a, b) =>
           sortAsc ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)
         ),
-    [helpers, filter, apFilter, sortAsc]
+    [
+      helpers,
+      filter,
+      confirmationFilter,
+      assignedOnly,
+      assignedHelperIds,
+      apFilter,
+      sortAsc,
+    ]
   );
   const selfHelperIds = useMemo(() => {
     const contactById = new Map(contacts.map(contact => [contact.id, contact]));
@@ -395,11 +425,31 @@ export default function Helpers() {
         .map(helper => helper.id)
     );
   }, [contacts, helpers]);
-  const assignedHelperIds = useMemo(
-    () =>
-      new Set((plan ?? []).flatMap(item => item.assigned.map(a => a.helperId))),
-    [plan]
-  );
+
+  const updateConfirmationFilter = (value: "alle" | "ja" | "nein") => {
+    setSearchParams(
+      previous => {
+        const next = new URLSearchParams(previous);
+        next.delete(HELPER_ASSIGNMENT_QUERY_KEY);
+        if (value === "alle") next.delete(HELPER_CONFIRMATION_QUERY_KEY);
+        else next.set(HELPER_CONFIRMATION_QUERY_KEY, value);
+        return next;
+      },
+      { replace: true }
+    );
+  };
+
+  const clearDashboardFeedbackFilter = () => {
+    setSearchParams(
+      previous => {
+        const next = new URLSearchParams(previous);
+        next.delete(HELPER_CONFIRMATION_QUERY_KEY);
+        next.delete(HELPER_ASSIGNMENT_QUERY_KEY);
+        return next;
+      },
+      { replace: true }
+    );
+  };
 
   return (
     <div className="space-y-5">
@@ -492,7 +542,36 @@ export default function Helpers() {
             ))}
           </SelectContent>
         </Select>
+        <Select
+          value={confirmationFilter}
+          onValueChange={value =>
+            updateConfirmationFilter(value as "alle" | "ja" | "nein")
+          }
+        >
+          <SelectTrigger className="w-full lg:w-52" aria-label="Bestätigung filtern">
+            <SelectValue placeholder="Bestätigung" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="alle">Alle Rückmeldungen</SelectItem>
+            <SelectItem value="ja">Bestätigt</SelectItem>
+            <SelectItem value="nein">Noch nicht bestätigt</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
+
+      {assignedOnly && confirmationFilter === "nein" && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+          <span>Dashboardfilter: Nur eingeteilte Helfer ohne Rückmeldung.</span>
+          <Button
+            type="button"
+            variant="ghost"
+            className="min-h-9 px-2 text-amber-900 hover:bg-amber-100 hover:text-amber-950"
+            onClick={clearDashboardFeedbackFilter}
+          >
+            Filter aufheben
+          </Button>
+        </div>
+      )}
 
       <div className="space-y-3 md:hidden">
         {filtered.map(helper => (

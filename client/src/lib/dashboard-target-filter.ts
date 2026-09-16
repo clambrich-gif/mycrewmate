@@ -1,6 +1,8 @@
 export const PLAN_WARNING_QUERY_KEY = "warnung";
 export const PLAN_STATUS_QUERY_KEY = "status";
 export const TASK_STATUS_QUERY_KEY = "status";
+export const HELPER_CONFIRMATION_QUERY_KEY = "bestaetigt";
+export const HELPER_ASSIGNMENT_QUERY_KEY = "eingeteilt";
 
 export const PLAN_WARNING_FILTERS = {
   konflikte: {
@@ -22,11 +24,17 @@ export type TaskStatusFilter =
   | "inArbeit"
   | "erledigt"
   | "abgelehnt";
+export type HelperConfirmationFilter = "alle" | "ja" | "nein";
 
 export type DashboardTarget =
   | { path: "/einsatzplan"; warning: PlanWarningFilter }
   | { path: "/einsatzplan"; status: Exclude<PlanStatusFilter, "alle"> }
   | { path: "/vorbereitung" }
+  | {
+      path: "/helfer";
+      confirmed: Exclude<HelperConfirmationFilter, "alle">;
+      assigned: true;
+    }
   | {
       path: "/vorbereitung" | "/nachbereitung";
       status: "offen" | "abgelehnt";
@@ -53,9 +61,25 @@ export function parseTaskStatusFilter(value: string | null): TaskStatusFilter {
     : "alle";
 }
 
+export function parseHelperConfirmationFilter(
+  value: string | null
+): HelperConfirmationFilter {
+  return value === "ja" || value === "nein" ? value : "alle";
+}
+
+export function parseHelperAssignmentFilter(value: string | null) {
+  return value === "ja";
+}
+
 export function dashboardTargetHref(target: DashboardTarget) {
   const params = new URLSearchParams();
   if ("warning" in target) params.set(PLAN_WARNING_QUERY_KEY, target.warning);
   if ("status" in target) params.set(PLAN_STATUS_QUERY_KEY, target.status);
+  if ("confirmed" in target) {
+    params.set(HELPER_CONFIRMATION_QUERY_KEY, target.confirmed);
+  }
+  if ("assigned" in target && target.assigned) {
+    params.set(HELPER_ASSIGNMENT_QUERY_KEY, "ja");
+  }
   return `${target.path}?${params.toString()}`;
 }

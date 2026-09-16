@@ -659,6 +659,28 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain('const target: DashboardTarget = { path: "/vorbereitung" }');
   });
 
+  it("zeigt die Rückmeldequote eingeteilter Helfer und verlinkt offene Rückmeldungen direkt", () => {
+    const dashboard = source("client/src/pages/Dashboard.tsx");
+    const helpers = source("client/src/pages/Helpers.tsx");
+    const router = source("server/routers.ts");
+
+    expect(router).toContain("helferEingeteilt");
+    expect(router).toContain("helferEingeteiltBestaetigt");
+    expect(router).toContain("helferEingeteiltUnbestaetigt");
+    expect(router).toContain("rueckmeldequote");
+    expect(dashboard).toContain("FeedbackRateCard");
+    expect(dashboard).toContain('data-dashboard-section="Rückmeldequote"');
+    expect(dashboard).toContain("eingeteilte Helfer bestätigt");
+    expect(dashboard).toContain('path: "/helfer"');
+    expect(dashboard).toContain('confirmed: "nein"');
+    expect(dashboard).toContain("assigned: true");
+    expect(helpers).toContain("parseHelperConfirmationFilter");
+    expect(helpers).toContain("parseHelperAssignmentFilter");
+    expect(helpers).toContain("assignedHelperIds.has(helper.id)");
+    expect(helpers).toContain("Dashboardfilter: Nur eingeteilte Helfer ohne Rückmeldung.");
+    expect(helpers).toContain("Filter aufheben");
+  });
+
   it("verknüpft Dashboardwarnungen direkt mit gefilterten Einsatzplanschichten", () => {
     const dashboard = source("client/src/pages/Dashboard.tsx");
     const plan = source("client/src/pages/Plan.tsx");

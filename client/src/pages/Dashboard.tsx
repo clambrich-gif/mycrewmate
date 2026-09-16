@@ -15,6 +15,7 @@ import {
   CircleX,
   GitCompareArrows,
   ListTodo,
+  UsersRound,
   type LucideIcon,
 } from "lucide-react";
 import { useLocation } from "wouter";
@@ -224,6 +225,94 @@ function UpcomingDeadlinesCard({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function FeedbackRateCard({
+  assigned,
+  confirmed,
+  outstanding,
+  rate,
+  openTarget,
+}: {
+  assigned: number;
+  confirmed: number;
+  outstanding: number;
+  rate: number;
+  openTarget: (target: DashboardTarget) => void;
+}) {
+  const target: DashboardTarget = {
+    path: "/helfer",
+    confirmed: "nein",
+    assigned: true,
+  };
+  const isActionable = assigned > 0 && outstanding > 0;
+  const statusText =
+    assigned === 0
+      ? "Noch keine Helfer eingeteilt"
+      : outstanding === 0
+        ? "Alle eingeteilten Helfer bestätigt"
+        : `${outstanding} noch ohne Rückmeldung`;
+
+  const card = (
+    <Card
+      data-dashboard-section="Rückmeldequote"
+      className={`h-full min-w-0 text-slate-950 shadow-sm ${
+        outstanding > 0
+          ? "border-blue-300 bg-blue-50/70"
+          : "border-emerald-300 bg-emerald-50/70"
+      } ${
+        isActionable
+          ? "transition-[border-color,box-shadow,transform] duration-150 group-hover:border-blue-500 group-hover:shadow-md group-active:scale-[0.99] group-focus-visible:ring-2 group-focus-visible:ring-blue-500 group-focus-visible:ring-offset-2"
+          : ""
+      }`}
+    >
+      <CardContent className="flex min-h-44 items-center gap-4 p-4 sm:p-5">
+        <span
+          className="relative flex size-24 shrink-0 items-center justify-center rounded-full"
+          style={{
+            background: `conic-gradient(#16a34a ${rate}%, #dbeafe ${rate}% 100%)`,
+          }}
+          aria-label={`${rate} Prozent Rückmeldequote`}
+        >
+          <span className="flex size-[4.6rem] items-center justify-center rounded-full bg-white text-xl font-bold text-slate-950 shadow-sm">
+            {rate}%
+          </span>
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-2 text-sm font-bold text-slate-900">
+            <UsersRound className="size-5 text-blue-700" aria-hidden="true" />
+            Rückmeldequote
+          </span>
+          <span className="mt-1 block text-sm text-slate-700">
+            <strong className="text-lg text-slate-950">{confirmed} / {assigned}</strong>{" "}
+            eingeteilte Helfer bestätigt
+          </span>
+          <span
+            className={`mt-2 flex items-center gap-1 text-sm font-semibold ${
+              outstanding > 0 ? "text-blue-800" : "text-emerald-800"
+            }`}
+          >
+            {statusText}
+            {isActionable && <ArrowRight className="size-4" aria-hidden="true" />}
+          </span>
+        </span>
+      </CardContent>
+    </Card>
+  );
+
+  if (!isActionable) return card;
+  return (
+    <button
+      type="button"
+      className="group min-h-44 min-w-0 rounded-xl text-left focus-visible:outline-none"
+      aria-label={`Rückmeldequote ${rate} Prozent: ${outstanding} eingeteilte Helfer noch ohne Rückmeldung. Gefilterte Helfer anzeigen`}
+      onPointerEnter={() => preloadRoute(target.path)}
+      onFocus={() => preloadRoute(target.path)}
+      onClick={() => openTarget(target)}
+    >
+      {card}
+    </button>
   );
 }
 
@@ -627,14 +716,21 @@ export default function Dashboard() {
         )}
       </section>
 
-      {upcomingDeadlines.length > 0 && (
-        <div className="max-w-4xl">
+      <section className="grid gap-4 lg:grid-cols-2">
+        {upcomingDeadlines.length > 0 && (
           <UpcomingDeadlinesCard
             deadlines={upcomingDeadlines}
             openTarget={target => navigate(dashboardTargetHref(target))}
           />
-        </div>
-      )}
+        )}
+        <FeedbackRateCard
+          assigned={s.helferEingeteilt}
+          confirmed={s.helferEingeteiltBestaetigt}
+          outstanding={s.helferEingeteiltUnbestaetigt}
+          rate={s.rueckmeldequote}
+          openTarget={target => navigate(dashboardTargetHref(target))}
+        />
+      </section>
 
       <div className="space-y-4">
         {sections.map(section => (

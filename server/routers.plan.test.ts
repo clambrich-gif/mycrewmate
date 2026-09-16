@@ -18,6 +18,12 @@ const dbMocks = vi.hoisted(() => ({
   createPrep: vi.fn(),
   updatePrep: vi.fn(),
   resetArea: vi.fn(),
+  listPrep: vi.fn(),
+  listPost: vi.fn(),
+  listContacts: vi.fn(),
+  listMaterials: vi.fn(),
+  listMarketing: vi.fn(),
+  listApprovals: vi.fn(),
   listDeletionAuditLogs: vi.fn(),
   clearDeletionAuditLogs: vi.fn(),
   restoreDeletionAuditLog: vi.fn(),
@@ -158,6 +164,12 @@ describe("Planungs-API", () => {
     dbMocks.listShifts.mockResolvedValue([shift]);
     dbMocks.listHelpers.mockResolvedValue([helper]);
     dbMocks.listAssignments.mockResolvedValue([]);
+    dbMocks.listPrep.mockResolvedValue([]);
+    dbMocks.listPost.mockResolvedValue([]);
+    dbMocks.listContacts.mockResolvedValue([]);
+    dbMocks.listMaterials.mockResolvedValue([]);
+    dbMocks.listMarketing.mockResolvedValue([]);
+    dbMocks.listApprovals.mockResolvedValue([]);
     dbMocks.assignHelper.mockResolvedValue({ insertId: 1 });
     dbMocks.updateShift.mockResolvedValue({ affectedRows: 1 });
     dbMocks.getContact.mockResolvedValue({ id: 5, name: "Chris Leitung" });
@@ -240,6 +252,31 @@ describe("Planungs-API", () => {
     backupMocks.withExcelOperationLimit.mockImplementation(callback =>
       callback()
     );
+  });
+
+  it("berechnet die Rückmeldequote aus eindeutigen eingeteilten Helfern", async () => {
+    dbMocks.listShifts.mockResolvedValue([
+      shift,
+      { ...shift, id: 11, day: "Samstag", task: "Ausgabe" },
+    ]);
+    dbMocks.listHelpers.mockResolvedValue([
+      { ...helper, id: 20, name: "Alex", confirmed: "ja" },
+      { ...helper, id: 21, name: "Bea", confirmed: "nein" },
+      { ...helper, id: 22, name: "Chris", confirmed: "ja" },
+    ]);
+    dbMocks.listAssignments.mockResolvedValue([
+      { id: 1, shiftId: 10, helperId: 20, slot: 0, createdAt: new Date() },
+      { id: 2, shiftId: 10, helperId: 21, slot: 1, createdAt: new Date() },
+      { id: 3, shiftId: 11, helperId: 20, slot: 0, createdAt: new Date() },
+      { id: 4, shiftId: 11, helperId: null, slot: 1, createdAt: new Date() },
+    ]);
+
+    const stats = await appRouter.createCaller(ctx).dashboard.stats();
+
+    expect(stats.helferEingeteilt).toBe(2);
+    expect(stats.helferEingeteiltBestaetigt).toBe(1);
+    expect(stats.helferEingeteiltUnbestaetigt).toBe(1);
+    expect(stats.rueckmeldequote).toBe(50);
   });
 
   it("liefert in den PDF-Einstellungen nur das Bild des aktuellen Events", async () => {

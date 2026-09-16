@@ -1425,6 +1425,19 @@ export const appRouter = router({
       const ev = evaluateShifts(shifts, assignments, helpers);
       const besetzt = ev.reduce((s, e) => s + e.besetzt, 0);
       const bedarf = ev.reduce((s, e) => s + e.shift.needed, 0);
+      const eingeteilteHelferIds = new Set(
+        assignments
+          .map(assignment => assignment.helperId)
+          .filter((helperId): helperId is number => typeof helperId === "number")
+      );
+      const eingeteilteHelfer = helpers.filter(helper =>
+        eingeteilteHelferIds.has(helper.id)
+      );
+      const eingeteilteBestaetigteHelfer = eingeteilteHelfer.filter(
+        helper => helper.confirmed === "ja"
+      ).length;
+      const eingeteilteUnbestaetigteHelfer =
+        eingeteilteHelfer.length - eingeteilteBestaetigteHelfer;
       return {
         schichtenGesamt: ev.length,
         offen: ev.filter(e => e.status === "OFFEN").length,
@@ -1434,6 +1447,15 @@ export const appRouter = router({
         besetztGesamt: besetzt,
         helferGesamt: helpers.length,
         helferBestaetigt: helpers.filter(h => h.confirmed === "ja").length,
+        helferEingeteilt: eingeteilteHelfer.length,
+        helferEingeteiltBestaetigt: eingeteilteBestaetigteHelfer,
+        helferEingeteiltUnbestaetigt: eingeteilteUnbestaetigteHelfer,
+        rueckmeldequote:
+          eingeteilteHelfer.length === 0
+            ? 0
+            : Math.round(
+                (eingeteilteBestaetigteHelfer / eingeteilteHelfer.length) * 100
+              ),
         doppelGesamt: ev.reduce((s, e) => s + e.doppelCount, 0),
         ausfallGesamt: ev.reduce((s, e) => s + e.ausfallCount, 0),
         vorbereitungGesamt: prep.length,
