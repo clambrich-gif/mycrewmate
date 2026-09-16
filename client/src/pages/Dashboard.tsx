@@ -9,6 +9,7 @@ import { trpc } from "@/lib/trpc";
 import {
   AlertTriangle,
   ArrowRight,
+  CalendarClock,
   CheckCircle2,
   ClipboardList,
   CircleX,
@@ -53,6 +54,17 @@ type PriorityAction = {
   tone: "red" | "orange" | "blue" | "green";
   icon: LucideIcon;
   target: DashboardTarget;
+};
+
+type DashboardDeadline = {
+  taskId: number;
+  task: string;
+  category: string | null;
+  contactName: string | null;
+  dueText: string;
+  dueIso: string;
+  daysUntil: number;
+  status: "offen" | "inArbeit" | "erledigt" | "abgelehnt";
 };
 
 const PRIORITY_TONE_CLASSES: Record<
@@ -125,6 +137,93 @@ function PriorityActionCard({
         </CardContent>
       </Card>
     </button>
+  );
+}
+
+function deadlineTimingLabel(daysUntil: number) {
+  if (daysUntil < 0) {
+    return daysUntil === -1
+      ? "1 Tag überfällig"
+      : `${Math.abs(daysUntil)} Tage überfällig`;
+  }
+  if (daysUntil === 0) return "Heute fällig";
+  if (daysUntil === 1) return "Morgen fällig";
+  return `In ${daysUntil} Tagen`;
+}
+
+function deadlineToneClass(deadline: DashboardDeadline) {
+  if (deadline.status === "abgelehnt" || deadline.daysUntil < 0) {
+    return "border-red-200 bg-red-50 text-red-800";
+  }
+  if (deadline.daysUntil <= 14) {
+    return "border-amber-200 bg-amber-50 text-amber-800";
+  }
+  return "border-blue-200 bg-blue-50 text-blue-800";
+}
+
+function UpcomingDeadlinesCard({
+  deadlines,
+  openTarget,
+}: {
+  deadlines: DashboardDeadline[];
+  openTarget: (target: DashboardTarget) => void;
+}) {
+  if (deadlines.length === 0) return null;
+
+  const target: DashboardTarget = { path: "/vorbereitung" };
+  return (
+    <Card
+      data-dashboard-section="Nächste Fristen"
+      className="border-blue-200 bg-white text-slate-950 shadow-sm"
+    >
+      <CardHeader className="flex flex-row flex-wrap items-baseline justify-between gap-2 p-3 pb-2 sm:p-4 sm:pb-2">
+        <CardTitle className="flex items-center gap-2 text-base text-slate-900">
+          <CalendarClock className="size-5 text-blue-700" aria-hidden="true" />
+          Nächste Fristen
+        </CardTitle>
+        <span className="text-xs text-slate-600">
+          Datierte Vorbereitungsaufgaben
+        </span>
+      </CardHeader>
+      <CardContent className="p-3 pt-0 sm:p-4 sm:pt-0">
+        <div className="divide-y divide-slate-100">
+          {deadlines.map(deadline => (
+            <button
+              key={deadline.taskId}
+              type="button"
+              className="group flex min-h-14 w-full items-center gap-3 py-2 text-left focus-visible:outline-none"
+              aria-label={`${deadline.dueText}: ${deadline.task}. ${deadlineTimingLabel(deadline.daysUntil)}. Vorbereitung öffnen`}
+              onPointerEnter={() => preloadRoute(target.path)}
+              onFocus={() => preloadRoute(target.path)}
+              onClick={() => openTarget(target)}
+            >
+              <span
+                className={`flex min-w-[5.35rem] shrink-0 flex-col rounded-lg border px-2 py-1 text-center ${deadlineToneClass(deadline)}`}
+              >
+                <span className="text-sm font-bold leading-tight">{deadline.dueText}</span>
+                <span className="text-[11px] leading-tight">
+                  {deadlineTimingLabel(deadline.daysUntil)}
+                </span>
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold text-slate-900" title={deadline.task}>
+                  {deadline.task}
+                </span>
+                <span className="mt-0.5 block truncate text-xs text-slate-600">
+                  {[deadline.category, deadline.contactName]
+                    .filter(Boolean)
+                    .join(" · ") || "Ohne Bereich und Verantwortlichen"}
+                </span>
+              </span>
+              <ArrowRight
+                className="size-4 shrink-0 text-blue-700 transition-transform duration-150 group-hover:translate-x-0.5"
+                aria-hidden="true"
+              />
+            </button>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -420,6 +519,8 @@ export default function Dashboard() {
     });
   }
 
+  const upcomingDeadlines = s.naechsteVorbereitungsfristen as DashboardDeadline[];
+
   const sections: MetricSection[] = [
     {
       title: "Einsatzplanung",
@@ -525,6 +626,15 @@ export default function Dashboard() {
           </div>
         )}
       </section>
+
+      {upcomingDeadlines.length > 0 && (
+        <div className="max-w-4xl">
+          <UpcomingDeadlinesCard
+            deadlines={upcomingDeadlines}
+            openTarget={target => navigate(dashboardTargetHref(target))}
+          />
+        </div>
+      )}
 
       <div className="space-y-4">
         {sections.map(section => (

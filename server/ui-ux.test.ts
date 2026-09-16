@@ -644,6 +644,21 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain('title: "Aufgabenstatus"');
   });
 
+  it("zeigt ausschließlich datierte nicht erledigte Vorbereitungsfristen chronologisch im Dashboard", () => {
+    const dashboard = source("client/src/pages/Dashboard.tsx");
+    const router = source("server/routers.ts");
+
+    expect(router).toContain("upcomingPreparationDeadlines(prep, contacts)");
+    expect(router).toContain("naechsteVorbereitungsfristen");
+    expect(dashboard).toContain("UpcomingDeadlinesCard");
+    expect(dashboard).toContain('data-dashboard-section="Nächste Fristen"');
+    expect(dashboard).toContain("Datierte Vorbereitungsaufgaben");
+    expect(dashboard).toContain("deadlineTimingLabel");
+    expect(dashboard).toContain("deadlineToneClass");
+    expect(dashboard).toContain("upcomingDeadlines.length > 0");
+    expect(dashboard).toContain('const target: DashboardTarget = { path: "/vorbereitung" }');
+  });
+
   it("verknüpft Dashboardwarnungen direkt mit gefilterten Einsatzplanschichten", () => {
     const dashboard = source("client/src/pages/Dashboard.tsx");
     const plan = source("client/src/pages/Plan.tsx");

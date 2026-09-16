@@ -78,6 +78,7 @@ import {
   removeSessionPresence,
   sessionPresenceKey,
 } from "./session-presence";
+import { upcomingPreparationDeadlines } from "./dashboard-deadlines";
 
 const GUIDE_PDF_KEY = "Handbuch_RSC_Helferplanung_742fcb04.pdf";
 const GUIDE_PDF_FILENAME = "Handbuch_RSC_Helferplanung.pdf";
@@ -1440,6 +1441,7 @@ export const appRouter = router({
         vorbereitungInBearbeitung: prep.filter(p => p.status === "inArbeit").length,
         vorbereitungErledigt: prep.filter(p => p.status === "erledigt").length,
         abgelehnteVorbereitung: prep.filter(p => p.status === "abgelehnt").length,
+        naechsteVorbereitungsfristen: upcomingPreparationDeadlines(prep, contacts),
         offeneNachbereitung: post.filter(p => p.status === "offen").length,
         verantwortlichkeiten: await (async () => {
           const [materials, marketing, approvals] = await Promise.all([
