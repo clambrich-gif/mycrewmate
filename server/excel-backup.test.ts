@@ -13,6 +13,9 @@ vi.mock("./db", () => dbMocks);
 vi.mock("./year-context", () => contextMocks);
 
 import {
+  BACKUP_RESTORE_LOG_RETENTION_DAYS,
+  MAX_BACKUP_RESTORE_LOGS_PER_SCOPE,
+  backupRestoreLogIdsToPrune,
   buildSelectedDocument,
   comparableProjectContent,
   diffDocuments,
@@ -754,5 +757,26 @@ describe("Excel-Datensicherung", () => {
     expect(() => parseBackupWorkbook(hostile.toString("base64"))).toThrow(
       /ZIP-Größen|sichere Größenlimit/
     );
+  });
+
+  it("bereinigt Wiederherstellungsprotokolle nach 90 Tagen und über 100 Vorgängen", () => {
+    const now = new Date("2026-09-16T12:00:00.000Z");
+    const cutoff = new Date(
+      now.getTime() - BACKUP_RESTORE_LOG_RETENTION_DAYS * 24 * 60 * 60 * 1000
+    );
+    const entries = Array.from(
+      { length: MAX_BACKUP_RESTORE_LOGS_PER_SCOPE + 2 },
+      (_, index) => ({
+        id: index + 1,
+        createdAt: new Date(now.getTime() - index * 60_000),
+      })
+    );
+    entries.push({ id: 999, createdAt: new Date(cutoff.getTime() - 1) });
+
+    expect(backupRestoreLogIdsToPrune(entries, cutoff).sort((a, b) => a - b)).toEqual([
+      101,
+      102,
+      999,
+    ]);
   });
 });

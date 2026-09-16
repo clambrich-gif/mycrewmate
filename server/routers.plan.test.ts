@@ -40,6 +40,7 @@ const storageMocks = vi.hoisted(() => ({
   storagePut: vi.fn(),
 }));
 const backupMocks = vi.hoisted(() => ({
+  clearBackupRestoreLogs: vi.fn(),
   exportProjectExcel: vi.fn(),
   listBackupRestoreLogs: vi.fn(),
   getBackupRestoreLog: vi.fn(),
@@ -212,6 +213,7 @@ describe("Planungs-API", () => {
       afterDigest: "c".repeat(64),
     });
     backupMocks.listBackupRestoreLogs.mockResolvedValue([]);
+    backupMocks.clearBackupRestoreLogs.mockResolvedValue({ deleted: 3 });
     moduleImportMocks.previewModuleExcelImport.mockResolvedValue({
       area: "HELFER",
       areaName: "Helfer",
@@ -611,6 +613,26 @@ describe("Planungs-API", () => {
       appRouter.createCaller(ctx).projectFile.preview({ base64: "eA==" })
     ).resolves.toMatchObject({ currentDigest: "a".repeat(64) });
     expect(projectFileMocks.previewProjectFile).toHaveBeenCalledWith("eA==");
+  });
+
+  it("leert Importprotokolle nur nach erneuter Administratorbestätigung", async () => {
+    await expect(
+      appRouter
+        .createCaller(planningTeamCtx)
+        .projectFile.clearRestoreLogs({ adminPassword: ADMIN_PASSWORD })
+    ).rejects.toThrow();
+
+    const caller = appRouter.createCaller(ctx);
+    await expect(
+      caller.projectFile.clearRestoreLogs({ adminPassword: "falsch" })
+    ).rejects.toThrow("Administratorpasswort");
+    expect(backupMocks.clearBackupRestoreLogs).not.toHaveBeenCalled();
+
+    await expect(
+      caller.projectFile.clearRestoreLogs({ adminPassword: ADMIN_PASSWORD })
+    ).resolves.toEqual({ deleted: 3 });
+    expect(dbMocks.withPlanningWriteLock).toHaveBeenCalledTimes(1);
+    expect(backupMocks.clearBackupRestoreLogs).toHaveBeenCalledTimes(1);
   });
 
   it("lädt eine geprüfte JSON-Projektdatei nur mit Administratorpasswort", async () => {

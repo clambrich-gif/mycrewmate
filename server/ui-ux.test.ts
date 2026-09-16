@@ -875,6 +875,16 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain('<th className="break-words p-2 leading-tight xl:p-1.5">Eingeteilte Helfer</th>');
   });
 
+  it("bietet Administratoren eine passwortgeschützte Bereinigung des Importprotokolls", () => {
+    const excel = source("client/src/pages/Excel.tsx");
+
+    expect(excel).toContain("Automatisch bereinigt: maximal 100 Einträge je Veranstaltung");
+    expect(excel).toContain("Protokoll leeren");
+    expect(excel).toContain("Lade- und Importprotokoll leeren?");
+    expect(excel).toContain("clearLogs.mutate({ adminPassword })");
+    expect(excel).toContain("utils.projectFile.restoreLogs.invalidate()");
+  });
+
   it("ordnet Einsatzplanaktionen ausschließlich mobil als gleich breites Raster an", () => {
     const plan = source("client/src/pages/Plan.tsx");
     const resetButton = source("client/src/components/ResetAreaButton.tsx");

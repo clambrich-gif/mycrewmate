@@ -38,6 +38,8 @@ const MAX_UNCOMPRESSED_BYTES = 100_000_000;
 const MAX_ZIP_ENTRIES = 1_000;
 const MAX_CHANGE_PAYLOAD_BYTES = 8_000_000;
 const MAX_CONCURRENT_EXCEL_OPERATIONS = 2;
+export const BACKUP_RESTORE_LOG_RETENTION_DAYS = 90;
+export const MAX_BACKUP_RESTORE_LOGS_PER_SCOPE = 100;
 let activeExcelOperations = 0;
 const SHEETS = [
   "ANSPRECHPARTNER",
@@ -2807,12 +2809,88 @@ export async function restoreProjectDocument(
       workbookDigest,
       details: auditDetails,
     });
+    await pruneBackupRestoreLogs(tx, { year, eventId });
     return { ...totals, warnings: imported.warnings, afterDigest };
   });
 }
 
+type BackupRestoreLogScope = { year: number; eventId: number };
+
+function backupRestoreLogScope({ year, eventId }: BackupRestoreLogScope) {
+  return and(
+    eq(backupRestoreLogs.year, year),
+    eq(backupRestoreLogs.eventId, eventId)
+  );
+}
+
+/**
+ * Hält das Protokoll pro Veranstaltung kompakt. Die Funktion ist absichtlich
+ * bei jedem erfolgreichen Import sowie beim Öffnen der Protokollübersicht
+ * idempotent: Einträge älter als 90 Tage und Einträge außerhalb der neuesten
+ * 100 Vorgänge werden bereinigt.
+ */
+export async function pruneBackupRestoreLogs(
+  client: Client,
+  scope: BackupRestoreLogScope = {
+    year: currentEventYear(),
+    eventId: currentEventId(),
+  },
+  now = new Date()
+) {
+  const cutoff = new Date(
+    now.getTime() - BACKUP_RESTORE_LOG_RETENTION_DAYS * 24 * 60 * 60 * 1000
+  );
+  const whereScope = backupRestoreLogScope(scope);
+  const entries = await client
+    .select({ id: backupRestoreLogs.id, createdAt: backupRestoreLogs.createdAt })
+    .from(backupRestoreLogs)
+    .where(whereScope)
+    .orderBy(desc(backupRestoreLogs.createdAt), desc(backupRestoreLogs.id))
+  const removableIds = backupRestoreLogIdsToPrune(entries, cutoff);
+  if (removableIds.length === 0) return;
+
+  await client
+    .delete(backupRestoreLogs)
+    .where(and(whereScope, inArray(backupRestoreLogs.id, removableIds)));
+}
+
+/** Liefert alte sowie überzählige IDs, die aus dem Scope entfernt werden dürfen. */
+export function backupRestoreLogIdsToPrune(
+  entries: Array<{ id: number; createdAt: Date }>,
+  cutoff: Date
+) {
+  const oldIds = entries
+    .filter(entry => entry.createdAt < cutoff)
+    .map(entry => entry.id);
+  const currentIds = entries
+    .filter(entry => entry.createdAt >= cutoff)
+    .sort(
+      (left, right) =>
+        right.createdAt.getTime() - left.createdAt.getTime() || right.id - left.id
+    )
+    .slice(MAX_BACKUP_RESTORE_LOGS_PER_SCOPE)
+    .map(entry => entry.id);
+  return [...oldIds, ...currentIds];
+}
+
+/** Löscht bewusst nur die Einträge der aktuell gewählten Veranstaltung. */
+export async function clearBackupRestoreLogs() {
+  const db = (await getDb()) as Client;
+  const scope = { year: currentEventYear(), eventId: currentEventId() };
+  const entries = await db
+    .select({ id: backupRestoreLogs.id })
+    .from(backupRestoreLogs)
+    .where(backupRestoreLogScope(scope));
+  await db
+    .delete(backupRestoreLogs)
+    .where(backupRestoreLogScope(scope));
+  return { deleted: entries.length };
+}
+
 export async function listBackupRestoreLogs(limit = 50) {
   const db = (await getDb()) as Client;
+  const scope = { year: currentEventYear(), eventId: currentEventId() };
+  await pruneBackupRestoreLogs(db, scope);
   return db
     .select({
       id: backupRestoreLogs.id,
@@ -2829,12 +2907,7 @@ export async function listBackupRestoreLogs(limit = 50) {
       createdAt: backupRestoreLogs.createdAt,
     })
     .from(backupRestoreLogs)
-    .where(
-      and(
-        eq(backupRestoreLogs.year, currentEventYear()),
-        eq(backupRestoreLogs.eventId, currentEventId())
-      )
-    )
+    .where(backupRestoreLogScope(scope))
     .orderBy(desc(backupRestoreLogs.createdAt), desc(backupRestoreLogs.id))
     .limit(limit);
 }

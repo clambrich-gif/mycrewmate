@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
 import { GroupedChangeList } from "@/components/ChangePreview";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +19,7 @@ import {
   FileSpreadsheet,
   Info,
   Loader2,
+  Trash2,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -33,6 +35,8 @@ export default function ExcelPage() {
   const { year } = useEventYear();
   const isAdmin = user?.role === "admin";
   const [selectedLogId, setSelectedLogId] = useState<number | null>(null);
+  const [clearLogsOpen, setClearLogsOpen] = useState(false);
+  const utils = trpc.useUtils();
 
   const exportQuery = trpc.excel.exportFile.useQuery(undefined, {
     enabled: false,
@@ -45,6 +49,19 @@ export default function ExcelPage() {
     { id: selectedLogId ?? 0 },
     { enabled: isAdmin && selectedLogId !== null }
   );
+  const clearLogs = trpc.projectFile.clearRestoreLogs.useMutation({
+    onSuccess: async result => {
+      setClearLogsOpen(false);
+      setSelectedLogId(null);
+      await utils.projectFile.restoreLogs.invalidate();
+      toast.success(
+        result.deleted === 1
+          ? "1 Protokolleintrag wurde endgültig gelöscht"
+          : `${result.deleted} Protokolleinträge wurden endgültig gelöscht`
+      );
+    },
+    onError: error => toast.error(error.message),
+  });
 
   const exportExcel = async () => {
     const result = await exportQuery.refetch();
@@ -134,10 +151,26 @@ export default function ExcelPage() {
 
       {isAdmin && (
         <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <ArchiveRestore className="h-5 w-5" /> Lade- und Importprotokoll
-            </CardTitle>
+          <CardHeader className="gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <ArchiveRestore className="h-5 w-5" /> Lade- und Importprotokoll
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Automatisch bereinigt: maximal 100 Einträge je Veranstaltung und
+                zusätzlich höchstens 90 Tage Aufbewahrung.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 sm:w-auto"
+              disabled={!logs.data?.length || clearLogs.isPending}
+              onClick={() => setClearLogsOpen(true)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Protokoll leeren
+            </Button>
           </CardHeader>
           <CardContent>
             {logs.isLoading ? (
@@ -176,6 +209,18 @@ export default function ExcelPage() {
           </CardContent>
         </Card>
       )}
+
+      <AdminPasswordDialog
+        open={clearLogsOpen}
+        onOpenChange={setClearLogsOpen}
+        title="Lade- und Importprotokoll leeren?"
+        description="Alle Lade- und Importprotokolle der aktuell gewählten Veranstaltung und des gewählten Jahres werden dauerhaft gelöscht. Die Planungsdaten selbst bleiben unverändert."
+        confirmLabel="Protokoll endgültig leeren"
+        busy={clearLogs.isPending}
+        onConfirm={adminPassword =>
+          clearLogs.mutate({ adminPassword })
+        }
+      />
 
       <Dialog
         open={selectedLogId !== null}

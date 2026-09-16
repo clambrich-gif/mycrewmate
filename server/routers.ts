@@ -18,6 +18,7 @@ import {
   type Day,
 } from "./logic";
 import {
+  clearBackupRestoreLogs,
   exportProjectExcel,
   getBackupRestoreLog,
   listBackupRestoreLogs,
@@ -1501,6 +1502,12 @@ export const appRouter = router({
     restoreLog: adminProcedure
       .input(z.object({ id: z.number().int().positive() }))
       .query(({ input }) => getBackupRestoreLog(input.id)),
+    clearRestoreLogs: scopeAdminAuthProcedure
+      .input(z.object({ adminPassword: z.string().min(1).max(200) }))
+      .mutation(async ({ ctx, input }) => {
+        await requireAdminPassword(input.adminPassword, ctx);
+        return db.withPlanningWriteLock(() => clearBackupRestoreLogs());
+      }),
   }),
 
   excel: router({
