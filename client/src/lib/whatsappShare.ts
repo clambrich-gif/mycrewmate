@@ -46,13 +46,12 @@ export function normalizeWhatsAppPhoneNumber(phone: string | null | undefined) {
   return /^491[5-7]\d{6,10}$/.test(digits) ? digits : null;
 }
 
-export function buildWhatsAppDeepLink(
-  message: string,
-  phone: string | null | undefined = null
-) {
+/** Öffnet nur den direkten Chat. Die Nachricht wird bewusst nicht per URL übergeben. */
+export function buildWhatsAppDeepLink(phone: string | null | undefined = null) {
   const normalizedPhone = normalizeWhatsAppPhoneNumber(phone);
-  const recipient = normalizedPhone ? `phone=${normalizedPhone}&` : "";
-  return `https://api.whatsapp.com/send?${recipient}text=${encodeURIComponent(message)}`;
+  return normalizedPhone
+    ? `https://api.whatsapp.com/send?phone=${normalizedPhone}`
+    : "https://api.whatsapp.com/";
 }
 
 export async function copyWhatsAppMessage(

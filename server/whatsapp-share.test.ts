@@ -33,16 +33,12 @@ Dein RSC-Orga-Team 🏆`);
     );
   });
 
-  it("erzeugt einen direkten WhatsApp-Link mit normalisierter deutscher Mobilnummer", () => {
-    const message = renderWhatsAppMessage(
-      DEFAULT_WHATSAPP_MESSAGE_TEMPLATE,
-      "Test-Event"
-    );
-    const link = buildWhatsAppDeepLink(message, "0174 455 558");
+  it("erzeugt einen direkten leeren WhatsApp-Chat mit normalisierter deutscher Mobilnummer", () => {
+    const link = buildWhatsAppDeepLink("0174 455 558");
 
-    expect(link).toMatch(/^https:\/\/api\.whatsapp\.com\/send\?phone=49174455558&text=/);
-    expect(link).toContain(encodeURIComponent("Test-Event"));
-    expect(link).toContain(encodeURIComponent("🚴💨"));
+    expect(link).toBe("https://api.whatsapp.com/send?phone=49174455558");
+    expect(link).not.toContain("text=");
+    expect(link).not.toContain("blob:");
   });
 
   it("normalisiert internationale Nummern und behält bei fehlender Nummer den allgemeinen WhatsApp-Start", () => {
@@ -53,9 +49,7 @@ Dein RSC-Orga-Team 🏆`);
       "49174455558"
     );
     expect(normalizeWhatsAppPhoneNumber("02651 123456")).toBeNull();
-    expect(buildWhatsAppDeepLink("Hallo", null)).toBe(
-      "https://api.whatsapp.com/send?text=Hallo"
-    );
+    expect(buildWhatsAppDeepLink(null)).toBe("https://api.whatsapp.com/");
   });
 
   it("ersetzt ausschließlich die frühere Standardvorlage durch den neuen Standardwert", () => {

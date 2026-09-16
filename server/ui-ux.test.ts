@@ -900,6 +900,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain("PDF heruntergeladen & Text kopiert! Öffne WhatsApp, füge das PDF als Datei an und füge den Text ein.");
     expect(helpers).toContain('label: "WhatsApp öffnen"');
     expect(helpers).not.toContain("shareWindowRef");
+    expect(helpers).toContain("buildWhatsAppDeepLink(helper?.phone)");
+    expect(helpers).not.toContain("buildWhatsAppDeepLink(shareMessageRef.current");
     expect(helpers.match(/shareHelperPdf/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
   });
 
