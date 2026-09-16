@@ -700,7 +700,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(prep).not.toContain("Sortierung:");
     expect(prep).toContain("Suchen (Aufgabe/Bereich/Verantwortlicher/Frist)");
     expect(prep).toContain("w-full max-w-2xl");
-    expect(prep).toContain("grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap");
+    expect(prep).toContain("grid grid-cols-1 gap-2 md:flex md:flex-wrap");
+    expect(prep).toContain("h-11 w-full bg-white text-base md:h-10 md:w-[190px]");
+    expect(prep).toContain("h-11 w-full bg-white text-base md:h-10 md:w-[220px]");
+    expect(prep).toContain("h-11 w-full bg-white text-base md:h-10 md:w-[175px]");
     expect(prep).not.toContain("Aufgaben angezeigt");
     expect(prep).toContain("min-w-[230px] whitespace-nowrap");
     expect(prep).toContain("PopoverContent");

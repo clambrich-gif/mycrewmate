@@ -500,9 +500,9 @@ export default function Preparation() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap">
+        <div className="grid grid-cols-1 gap-2 md:flex md:flex-wrap">
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="h-11 bg-white text-base sm:h-10 sm:text-sm lg:w-[190px]">
+            <SelectTrigger className="h-11 w-full bg-white text-base md:h-10 md:w-[190px] md:text-sm">
               <SelectValue placeholder="Bereich" />
             </SelectTrigger>
             <SelectContent>
@@ -517,7 +517,7 @@ export default function Preparation() {
           </Select>
 
           <Select value={contactFilter} onValueChange={setContactFilter}>
-            <SelectTrigger className="h-11 bg-white text-base sm:h-10 sm:text-sm lg:w-[220px]">
+            <SelectTrigger className="h-11 w-full bg-white text-base md:h-10 md:w-[220px] md:text-sm">
               <SelectValue placeholder="Verantwortlicher" />
             </SelectTrigger>
             <SelectContent>
@@ -535,7 +535,7 @@ export default function Preparation() {
             value={statusFilter}
             onValueChange={value => updateStatusFilter(value as TaskStatusFilter)}
           >
-            <SelectTrigger className="h-11 bg-white text-base sm:h-10 sm:text-sm lg:w-[175px]">
+            <SelectTrigger className="h-11 w-full bg-white text-base md:h-10 md:w-[175px] md:text-sm">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -552,7 +552,7 @@ export default function Preparation() {
               variant="ghost"
               size="sm"
               onClick={resetAllFilters}
-              className="h-11 px-2 text-sm text-slate-600 hover:text-slate-900 sm:h-10 lg:ml-1"
+              className="h-11 w-full px-2 text-base text-slate-600 hover:text-slate-900 md:ml-1 md:h-10 md:w-auto md:text-sm"
             >
               <FilterX className="mr-1 size-3.5" />
               Filter zurücksetzen
