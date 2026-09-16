@@ -68,6 +68,14 @@ type DashboardDeadline = {
   status: "offen" | "inArbeit" | "erledigt" | "abgelehnt";
 };
 
+type DailyReadiness = {
+  day: "Freitag" | "Samstag" | "Sonntag";
+  bedarf: number;
+  besetzt: number;
+  fehlend: number;
+  quote: number;
+};
+
 const PRIORITY_TONE_CLASSES: Record<
   PriorityAction["tone"],
   { card: string; icon: string; value: string; action: string }
@@ -307,6 +315,109 @@ function FeedbackRateCard({
       type="button"
       className="group min-h-44 min-w-0 rounded-xl text-left focus-visible:outline-none"
       aria-label={`Rückmeldequote ${rate} Prozent: ${outstanding} eingeteilte Helfer noch ohne Rückmeldung. Gefilterte Helfer anzeigen`}
+      onPointerEnter={() => preloadRoute(target.path)}
+      onFocus={() => preloadRoute(target.path)}
+      onClick={() => openTarget(target)}
+    >
+      {card}
+    </button>
+  );
+}
+
+function readinessTone(readiness: DailyReadiness) {
+  if (readiness.bedarf === 0) {
+    return {
+      label: "Keine Schichten geplant",
+      text: "text-slate-600",
+      track: "bg-slate-200",
+      fill: "bg-slate-400",
+    };
+  }
+  if (readiness.fehlend === 0) {
+    return {
+      label: "Voll besetzt",
+      text: "text-emerald-800",
+      track: "bg-emerald-100",
+      fill: "bg-emerald-500",
+    };
+  }
+  if (readiness.quote >= 75) {
+    return {
+      label: `${readiness.fehlend} Helfer fehlen`,
+      text: "text-amber-800",
+      track: "bg-amber-100",
+      fill: "bg-amber-500",
+    };
+  }
+  return {
+    label: `${readiness.fehlend} Helfer fehlen`,
+    text: "text-red-800",
+    track: "bg-red-100",
+    fill: "bg-red-500",
+  };
+}
+
+function DailyReadinessCard({
+  readiness,
+  openTarget,
+}: {
+  readiness: DailyReadiness[];
+  openTarget: (target: DashboardTarget) => void;
+}) {
+  const target: DashboardTarget = { path: "/einsatzplan" };
+  const hasPlannedShifts = readiness.some(day => day.bedarf > 0);
+  const card = (
+    <Card
+      data-dashboard-section="Einsatzbereitschaft je Festivaltag"
+      className="h-full border-emerald-300 bg-white text-slate-950 shadow-sm"
+    >
+      <CardHeader className="flex flex-row flex-wrap items-baseline justify-between gap-2 p-3 pb-2 sm:p-4 sm:pb-2">
+        <CardTitle className="flex items-center gap-2 text-base text-slate-900">
+          <UsersRound className="size-5 text-emerald-700" aria-hidden="true" />
+          Einsatzbereitschaft je Festivaltag
+        </CardTitle>
+        <span className="text-xs text-slate-600">Besetzt / Bedarf</span>
+      </CardHeader>
+      <CardContent className="grid gap-4 p-3 pt-1 sm:grid-cols-3 sm:p-4 sm:pt-1">
+        {readiness.map(day => {
+          const tone = readinessTone(day);
+          return (
+            <div key={day.day} className="min-w-0">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="font-semibold text-slate-900">{day.day}</span>
+                <span className="whitespace-nowrap text-sm font-bold text-slate-950">
+                  {day.besetzt} / {day.bedarf}
+                </span>
+              </div>
+              <div
+                className={`mt-2 h-2.5 overflow-hidden rounded-full ${tone.track}`}
+                role="progressbar"
+                aria-label={`${day.day}: ${day.besetzt} von ${day.bedarf} Helferplätzen besetzt`}
+                aria-valuemin={0}
+                aria-valuemax={day.bedarf}
+                aria-valuenow={Math.min(day.besetzt, day.bedarf)}
+              >
+                <div
+                  className={`h-full rounded-full transition-[width] duration-200 ${tone.fill}`}
+                  style={{ width: `${day.quote}%` }}
+                />
+              </div>
+              <p className={`mt-1.5 text-xs font-semibold ${tone.text}`}>
+                {tone.label}
+              </p>
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
+
+  if (!hasPlannedShifts) return card;
+  return (
+    <button
+      type="button"
+      className="group min-h-44 min-w-0 rounded-xl text-left focus-visible:outline-none"
+      aria-label="Einsatzbereitschaft je Festivaltag. Einsatzplan anzeigen"
       onPointerEnter={() => preloadRoute(target.path)}
       onFocus={() => preloadRoute(target.path)}
       onClick={() => openTarget(target)}
@@ -609,6 +720,7 @@ export default function Dashboard() {
   }
 
   const upcomingDeadlines = s.naechsteVorbereitungsfristen as DashboardDeadline[];
+  const dailyReadiness = s.taeglicheEinsatzbereitschaft as DailyReadiness[];
 
   const sections: MetricSection[] = [
     {
@@ -715,6 +827,11 @@ export default function Dashboard() {
           </div>
         )}
       </section>
+
+      <DailyReadinessCard
+        readiness={dailyReadiness}
+        openTarget={target => navigate(dashboardTargetHref(target))}
+      />
 
       <section className="grid gap-4 lg:grid-cols-2">
         {upcomingDeadlines.length > 0 && (

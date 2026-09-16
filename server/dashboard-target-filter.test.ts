@@ -10,6 +10,9 @@ import {
 
 describe("Dashboard-Zielnavigation", () => {
   it("erzeugt stabile Einsatzplan-URLs für Warnungs- und Statusfilter", () => {
+    expect(dashboardTargetHref({ path: "/einsatzplan" })).toBe(
+      "/einsatzplan?"
+    );
     expect(
       dashboardTargetHref({ path: "/einsatzplan", warning: "konflikte" })
     ).toBe("/einsatzplan?warnung=konflikte");

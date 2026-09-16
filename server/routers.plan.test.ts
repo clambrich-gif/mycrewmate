@@ -254,13 +254,19 @@ describe("Planungs-API", () => {
     );
   });
 
-  it("berechnet die Rückmeldequote aus eindeutigen eingeteilten Helfern", async () => {
+  it("berechnet Rückmeldequote und Tagesbesetzung aus gültigen Helferzuweisungen", async () => {
     dbMocks.listShifts.mockResolvedValue([
       shift,
       { ...shift, id: 11, day: "Samstag", task: "Ausgabe" },
     ]);
     dbMocks.listHelpers.mockResolvedValue([
-      { ...helper, id: 20, name: "Alex", confirmed: "ja" },
+      {
+        ...helper,
+        id: 20,
+        name: "Alex",
+        confirmed: "ja",
+        availSat: "ja",
+      },
       { ...helper, id: 21, name: "Bea", confirmed: "nein" },
       { ...helper, id: 22, name: "Chris", confirmed: "ja" },
     ]);
@@ -277,6 +283,11 @@ describe("Planungs-API", () => {
     expect(stats.helferEingeteiltBestaetigt).toBe(1);
     expect(stats.helferEingeteiltUnbestaetigt).toBe(1);
     expect(stats.rueckmeldequote).toBe(50);
+    expect(stats.taeglicheEinsatzbereitschaft).toEqual([
+      { day: "Freitag", bedarf: 2, besetzt: 2, fehlend: 0, quote: 100 },
+      { day: "Samstag", bedarf: 2, besetzt: 1, fehlend: 1, quote: 50 },
+      { day: "Sonntag", bedarf: 0, besetzt: 0, fehlend: 0, quote: 0 },
+    ]);
   });
 
   it("liefert in den PDF-Einstellungen nur das Bild des aktuellen Events", async () => {

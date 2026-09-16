@@ -1438,6 +1438,27 @@ export const appRouter = router({
       ).length;
       const eingeteilteUnbestaetigteHelfer =
         eingeteilteHelfer.length - eingeteilteBestaetigteHelfer;
+      const taeglicheEinsatzbereitschaft = (
+        ["Freitag", "Samstag", "Sonntag"] as const
+      ).map(day => {
+        const tagesSchichten = ev.filter(entry => entry.shift.day === day);
+        const bedarf = tagesSchichten.reduce(
+          (sum, entry) => sum + entry.shift.needed,
+          0
+        );
+        const besetzt = tagesSchichten.reduce(
+          (sum, entry) => sum + entry.besetzt,
+          0
+        );
+        const fehlend = Math.max(0, bedarf - besetzt);
+        return {
+          day,
+          bedarf,
+          besetzt,
+          fehlend,
+          quote: bedarf === 0 ? 0 : Math.min(100, Math.round((besetzt / bedarf) * 100)),
+        };
+      });
       return {
         schichtenGesamt: ev.length,
         offen: ev.filter(e => e.status === "OFFEN").length,
@@ -1456,6 +1477,7 @@ export const appRouter = router({
             : Math.round(
                 (eingeteilteBestaetigteHelfer / eingeteilteHelfer.length) * 100
               ),
+        taeglicheEinsatzbereitschaft,
         doppelGesamt: ev.reduce((s, e) => s + e.doppelCount, 0),
         ausfallGesamt: ev.reduce((s, e) => s + e.ausfallCount, 0),
         vorbereitungGesamt: prep.length,

@@ -681,6 +681,23 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain("Filter aufheben");
   });
 
+  it("visualisiert die tägliche Einsatzbereitschaft für das dreitägige Festival", () => {
+    const dashboard = source("client/src/pages/Dashboard.tsx");
+    const router = source("server/routers.ts");
+
+    expect(router).toContain("taeglicheEinsatzbereitschaft");
+    expect(router).toContain('["Freitag", "Samstag", "Sonntag"] as const');
+    expect(router).toContain("fehlend");
+    expect(router).toContain("quote");
+    expect(dashboard).toContain("DailyReadinessCard");
+    expect(dashboard).toContain('data-dashboard-section="Einsatzbereitschaft je Festivaltag"');
+    expect(dashboard).toContain("Einsatzbereitschaft je Festivaltag");
+    expect(dashboard).toContain("Besetzt / Bedarf");
+    expect(dashboard).toContain("readinessTone");
+    expect(dashboard).toContain('role="progressbar"');
+    expect(dashboard).toContain('path: "/einsatzplan"');
+  });
+
   it("verknüpft Dashboardwarnungen direkt mit gefilterten Einsatzplanschichten", () => {
     const dashboard = source("client/src/pages/Dashboard.tsx");
     const plan = source("client/src/pages/Plan.tsx");
