@@ -896,8 +896,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(pdfExport).toContain("contactId: selectedHelperContactId");
     expect(pdfExport).toContain("whatsapp-message-template");
     expect(pdfExport).toContain("WhatsApp-Nachricht beim PDF-Teilen");
-    expect(helpers).toContain("bg-emerald-500 text-white hover:bg-emerald-600");
-    expect(helpers).toContain("Helfer-PDF heruntergeladen & WhatsApp-Text in Zwischenablage kopiert!");
+    expect(helpers).not.toContain("bg-emerald-500 text-white hover:bg-emerald-600");
+    expect(helpers).toContain("PDF heruntergeladen & Text kopiert! Öffne WhatsApp, füge das PDF als Datei an und füge den Text ein.");
+    expect(helpers).toContain('label: "WhatsApp öffnen"');
+    expect(helpers).not.toContain("shareWindowRef");
     expect(helpers.match(/shareHelperPdf/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
   });
 

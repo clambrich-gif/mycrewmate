@@ -296,7 +296,6 @@ export default function Helpers() {
   const [sortAsc, setSortAsc] = useState(true);
   const [exportingId, setExportingId] = useState<number | null>(null);
   const [sharingId, setSharingId] = useState<number | null>(null);
-  const shareWindowRef = useRef<Window | null>(null);
   const shareCopyPromiseRef = useRef<Promise<boolean> | null>(null);
   const shareMessageRef = useRef("");
   const [deleteTarget, setDeleteTarget] = useState<{
@@ -359,23 +358,22 @@ export default function Helpers() {
 
       const copied = await shareCopyPromiseRef.current;
       const whatsappUrl = buildWhatsAppDeepLink(shareMessageRef.current);
-      if (shareWindowRef.current) {
-        shareWindowRef.current.location.href = whatsappUrl;
-        shareWindowRef.current = null;
-      } else {
-        window.open(whatsappUrl, "_blank", "noopener,noreferrer");
-      }
       shareCopyPromiseRef.current = null;
       setSharingId(null);
       toast[copied ? "success" : "message"](
         copied
-          ? "Helfer-PDF heruntergeladen & WhatsApp-Text in Zwischenablage kopiert!"
-          : "Helfer-PDF heruntergeladen. Der WhatsApp-Text ist im geöffneten Chat eingefügt."
+          ? "PDF heruntergeladen & Text kopiert! Öffne WhatsApp, füge das PDF als Datei an und füge den Text ein."
+          : "PDF heruntergeladen. Der WhatsApp-Text konnte nicht automatisch kopiert werden.",
+        {
+          action: {
+            label: "WhatsApp öffnen",
+            onClick: () =>
+              window.open(whatsappUrl, "_blank", "noopener,noreferrer"),
+          },
+        }
       );
     },
     onError: error => {
-      shareWindowRef.current?.close();
-      shareWindowRef.current = null;
       shareCopyPromiseRef.current = null;
       setSharingId(null);
       toast.error(error.message);
@@ -387,12 +385,10 @@ export default function Helpers() {
       pdfSettings?.whatsAppMessageTemplate,
       currentEvent?.name ?? pdfSettings?.eventName
     );
-    // Clipboard und leeres Zieltab müssen aus dem echten Nutzertipp starten;
-    // Safari und mobile WebViews blockieren beides nach await-Aufrufen.
+    // Safari und mobile WebViews erlauben die Zwischenablage nur direkt aus
+    // dem Nutzertipp; WhatsApp wird deshalb erst nach dem PDF-Download manuell geöffnet.
     shareMessageRef.current = message;
     shareCopyPromiseRef.current = copyWhatsAppMessage(message);
-    shareWindowRef.current = window.open("", "_blank");
-    if (shareWindowRef.current) shareWindowRef.current.opener = null;
     setSharingId(helperId);
     sharePdfViaWhatsApp.mutate({ helperId });
   };
@@ -555,8 +551,8 @@ export default function Helpers() {
                     <FileDown className="h-4 w-4" />
                   </Button>
                   <Button
+                    variant="outline"
                     size="icon"
-                    className="bg-emerald-500 text-white hover:bg-emerald-600"
                     title="Helfer-PDF herunterladen und per WhatsApp teilen"
                     aria-label={`Einteilung von ${helper.name} per WhatsApp teilen`}
                     disabled={sharingId !== null}
@@ -897,8 +893,8 @@ export default function Helpers() {
                         <FileDown className="h-4 w-4" />
                       </Button>
                       <Button
+                        variant="ghost"
                         size="icon"
-                        className="bg-emerald-500 text-white hover:bg-emerald-600"
                         title="Helfer-PDF herunterladen und per WhatsApp teilen"
                         aria-label={`Einteilung von ${helper.name} per WhatsApp teilen`}
                         disabled={sharingId !== null}
