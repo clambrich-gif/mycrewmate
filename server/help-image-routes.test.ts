@@ -115,6 +115,22 @@ describe("Same-Origin-Hilfebilder", () => {
     );
   });
 
+  it("liefert die bebilderte PWA-Anleitung über die Same-Origin-Bildroute", async () => {
+    const testServer = await startTestServer({
+      upstream: () => new Response(Uint8Array.from([137, 80, 78, 71])),
+    });
+
+    const response = await fetch(
+      `${testServer.baseUrl}/api/help/images/app-speichern`
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("image/png");
+    expect(testServer.getSignedUrl).toHaveBeenCalledWith(
+      "pwa-app-speichern-telefon_075d3868.png"
+    );
+  });
+
   it("weist unbekannte Bildnamen ab, ohne Storage anzufragen", async () => {
     const testServer = await startTestServer({
       upstream: () => new Response("nicht erwartet"),

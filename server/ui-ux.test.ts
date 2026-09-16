@@ -684,10 +684,14 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(help).toContain("aspect-video w-full max-w-full");
   });
 
-  it("bietet eine durchsuchbare, rollenmarkierte Hilfe für alle acht Handbuchbereiche", () => {
+  it("bietet eine durchsuchbare, rollenmarkierte Hilfe für alle Handbuchbereiche", () => {
     const help = source("client/src/pages/Help.tsx");
 
     expect(help).toContain("Schnellstart und Orientierung");
+    expect(help).toContain("RSC Helferplanung als App auf dem Handy speichern");
+    expect(help).toContain("Progressive Web App (PWA)");
+    expect(help).toContain("Zum Home-Bildschirm");
+    expect(help).toContain("App installieren");
     expect(help).toContain("Rollen und Passwortschutz");
     expect(help).toContain("Helferkartei und Verfügbarkeiten");
     expect(help).toContain("Einsatzplan und intelligente Belegung");
@@ -702,6 +706,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(help).toContain('src: "/api/help/images/plan"');
     expect(help).toContain('src: "/api/help/images/chat"');
     expect(help).toContain('src: "/api/help/images/pdf"');
+    expect(help).toContain('src: "/api/help/images/app-speichern"');
     expect(help).not.toContain("dashboard-current_8a026d64.png");
   });
 
