@@ -24,7 +24,17 @@ const defaultDependencies: PublicHelperPdfRouteDependencies = {
   withScope: (year, eventId, callback) => withEventScope(year, eventId, callback),
 };
 
+function setPublicPdfCorsHeaders(res: Response) {
+  res.set({
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Expose-Headers": "Content-Disposition, Content-Length, Content-Type",
+  });
+}
+
 function setPdfHeaders(res: Response, contentLength?: number) {
+  setPublicPdfCorsHeaders(res);
   res.set({
     "Cache-Control": "private, no-store, max-age=0",
     "Content-Disposition": "inline; filename=Einsatzplan.pdf",
@@ -49,6 +59,7 @@ async function servePublicHelperPdf(
   dependencies: PublicHelperPdfRouteDependencies,
   headOnly: boolean
 ) {
+  setPublicPdfCorsHeaders(res);
   const claims = dependencies.verifyToken(req.params.token ?? "");
   if (!claims) {
     notAvailable(res);
@@ -95,6 +106,10 @@ export function registerPublicHelperPdfRoutes(
   app: Express,
   dependencies: PublicHelperPdfRouteDependencies = defaultDependencies
 ) {
+  app.options("/api/public/pdf/:token", (_req, res) => {
+    setPublicPdfCorsHeaders(res);
+    res.status(204).end();
+  });
   app.head("/api/public/pdf/:token", (req, res) => {
     void servePublicHelperPdf(req, res, dependencies, true);
   });

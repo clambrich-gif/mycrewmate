@@ -65,6 +65,7 @@ import {
   DEFAULT_PDF_SETTINGS,
 } from "./pdf";
 import { createPublicHelperPdfToken } from "./public-helper-pdf-token";
+import { publicAppUrl } from "./public-app-url";
 import {
   currentEventId,
   currentEventYear,
@@ -1084,8 +1085,10 @@ export const appRouter = router({
           eventId: currentEventId(),
           helperId: helper.id,
         });
+        const path = `/api/public/pdf/${token}`;
         return {
-          path: `/api/public/pdf/${token}`,
+          path,
+          url: publicAppUrl(path),
           expiresAt: Date.now() + 90 * 24 * 60 * 60 * 1000,
         };
       }),

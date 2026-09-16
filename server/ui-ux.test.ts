@@ -900,7 +900,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).not.toContain("bg-emerald-500 text-white hover:bg-emerald-600");
     expect(helpers).toContain("trpc.pdf.publicShare.useMutation");
     expect(helpers).toContain("Persönlichen PDF-Link per WhatsApp teilen");
-    expect(helpers).toContain("new URL(result.path, window.location.origin)");
+    expect(helpers).toContain("result.url");
+    expect(helpers).not.toContain("window.location.origin");
     expect(helpers).toContain("buildWhatsAppShareUrl(message)");
     expect(helpers).toContain("window.location.assign(buildWhatsAppShareUrl(message))");
     expect(helpers).not.toContain("shareWindowRef");

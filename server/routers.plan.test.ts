@@ -371,6 +371,8 @@ describe("Planungs-API", () => {
     expect(result.path).toMatch(
       /^\/api\/public\/pdf\/[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/
     );
+    expect(result.url).toBe(`https://eifelride-jq8ejdus.manus.space${result.path}`);
+    expect(result.url).toMatch(/^https:\/\/eifelride-jq8ejdus\.manus\.space\/api\/public\/pdf\//);
     expect(result.expiresAt).toBeGreaterThan(
       Date.now() + 89 * 24 * 60 * 60 * 1000
     );

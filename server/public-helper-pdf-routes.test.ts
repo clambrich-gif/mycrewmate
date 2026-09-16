@@ -60,6 +60,8 @@ describe("öffentliche Helfer-PDF-Route", () => {
     expect(response.headers.get("content-type")).toBe("application/pdf");
     expect(response.headers.get("content-disposition")).toContain("inline");
     expect(response.headers.get("cache-control")).toContain("no-store");
+    expect(response.headers.get("access-control-allow-origin")).toBe("*");
+    expect(response.headers.get("access-control-allow-methods")).toContain("GET");
     expect(response.headers.get("x-robots-tag")).toContain("noindex");
     expect(server.verifyToken).toHaveBeenCalledWith("freigabe-token");
     expect(server.withScope).toHaveBeenCalledWith(
@@ -86,6 +88,7 @@ describe("öffentliche Helfer-PDF-Route", () => {
 
     expect(invalidResponse.status).toBe(404);
     expect(missingResponse.status).toBe(404);
+    expect(invalidResponse.headers.get("access-control-allow-origin")).toBe("*");
     expect(invalid.createPdf).not.toHaveBeenCalled();
   });
 
@@ -102,5 +105,24 @@ describe("öffentliche Helfer-PDF-Route", () => {
     expect(await response.text()).toBe("");
     expect(response.headers.get("content-length")).toBe(String(PDF.length));
     expect(response.headers.get("content-type")).toBe("application/pdf");
+  });
+
+  it("beantwortet CORS-Preflight ohne eine PDF zu erzeugen", async () => {
+    const server = await startTestServer({
+      claims: { year: 2027, eventId: 1020001, helperId: 44 },
+    });
+
+    const response = await fetch(`${server.baseUrl}/api/public/pdf/freigabe-token`, {
+      method: "OPTIONS",
+      headers: { Origin: "https://example.org" },
+    });
+
+    expect(response.status).toBe(204);
+    expect(response.headers.get("access-control-allow-origin")).toBe("*");
+    expect(response.headers.get("access-control-allow-methods")).toContain(
+      "OPTIONS"
+    );
+    expect(server.verifyToken).not.toHaveBeenCalled();
+    expect(server.createPdf).not.toHaveBeenCalled();
   });
 });

@@ -346,11 +346,10 @@ export default function Helpers() {
   });
   const sharePdfViaWhatsApp = trpc.pdf.publicShare.useMutation({
     onSuccess: result => {
-      const publicPdfUrl = new URL(result.path, window.location.origin).toString();
       const message = renderWhatsAppMessage(
         pdfSettings?.whatsAppMessageTemplate,
         currentEvent?.name ?? pdfSettings?.eventName,
-        publicPdfUrl
+        result.url
       );
       setSharingId(null);
       window.location.assign(buildWhatsAppShareUrl(message));
