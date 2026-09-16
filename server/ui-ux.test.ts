@@ -673,7 +673,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(prep).toContain("h-11 w-11");
     expect(prep).toContain("Bestehenden Bereich wählen oder neu anlegen");
     expect(prep).toContain("Verantwortlicher");
-    expect(prep).toContain("Frist / Abgabedatum (Freitext)");
+    expect(prep).toContain("Frist / Abgabedatum");
+    expect(prep).toContain('type="date"');
+    expect(prep).toContain("Datum über den Kalender wählen; gespeichert und angezeigt als TT.MM.JJJJ.");
+    expect(prep).toContain("title=\"Frist chronologisch sortieren\"");
+    expect(prep).toContain("dueSortDirection");
+    expect(prep).toContain("parseDueDate");
     expect(prep).toContain("Bemerkungen / Informationen");
     expect(prep).toContain("Beantragt");
     expect(prep).toContain("Genehmigt");

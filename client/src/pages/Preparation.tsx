@@ -33,6 +33,9 @@ import {
 import { Label } from "@/components/ui/label";
 import {
   AlertTriangle,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   FilterX,
   Pencil,
   Plus,
@@ -75,6 +78,8 @@ type PrepForm = {
   task: string;
   contactId: string;
   dueText: string;
+  legacyDueText: string;
+  preserveLegacyDueText: boolean;
   note: string;
   status: PrepStatus;
   statusWording: PrepWording;
@@ -85,6 +90,8 @@ const EMPTY_FORM: PrepForm = {
   task: "",
   contactId: "none",
   dueText: "",
+  legacyDueText: "",
+  preserveLegacyDueText: false,
   note: "",
   status: "offen",
   statusWording: "aufgabe",
@@ -116,6 +123,44 @@ function getStatusBadgeClass(status: PrepStatus) {
     case "abgelehnt":
       return "border-rose-200 bg-rose-50 font-semibold text-rose-900";
   }
+}
+
+type ParsedDueDate = { iso: string; display: string };
+
+function parseDueDate(value: string | null | undefined): ParsedDueDate | null {
+  const trimmed = value?.trim() ?? "";
+  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+  const germanMatch = /^(\d{1,2})\.(\d{1,2})\.(\d{2}|\d{4})$/.exec(trimmed);
+  const match = isoMatch ?? germanMatch;
+  if (!match) return null;
+
+  const isIso = Boolean(isoMatch);
+  const rawYear = Number(isIso ? match[1] : match[3]);
+  const year = !isIso && rawYear < 100 ? 2000 + rawYear : rawYear;
+  const month = Number(match[2]);
+  const day = Number(isIso ? match[3] : match[1]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  const iso = `${year.toString().padStart(4, "0")}-${month
+    .toString()
+    .padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
+  return {
+    iso,
+    display: `${day.toString().padStart(2, "0")}.${month
+      .toString()
+      .padStart(2, "0")}.${year.toString().padStart(4, "0")}`,
+  };
+}
+
+function formatDueDate(value: string | null | undefined) {
+  return parseDueDate(value)?.display ?? value?.trim() ?? "";
 }
 
 function statusSelectValue(status: PrepStatus, wording: PrepWording): DialogStatus {
@@ -153,6 +198,9 @@ export default function Preparation() {
   const [categoryFilter, setCategoryFilter] = useState<string>("alle");
   const [contactFilter, setContactFilter] = useState<string>("alle");
   const [searchTerm, setSearchTerm] = useState("");
+  const [dueSortDirection, setDueSortDirection] = useState<"asc" | "desc" | null>(
+    null
+  );
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<PrepTaskRow | null>(null);
   const [form, setForm] = useState<PrepForm>(EMPTY_FORM);
@@ -295,6 +343,18 @@ export default function Preparation() {
         return searchable.includes(normalizedQuery);
       })
       .sort((left, right) => {
+        if (dueSortDirection) {
+          const leftDue = parseDueDate(left.dueText);
+          const rightDue = parseDueDate(right.dueText);
+          if (!leftDue || !rightDue) {
+            if (leftDue !== rightDue) return leftDue ? -1 : 1;
+          }
+          const leftTime = leftDue ? Date.parse(`${leftDue.iso}T00:00:00Z`) : 0;
+          const rightTime = rightDue ? Date.parse(`${rightDue.iso}T00:00:00Z`) : 0;
+          if (leftTime !== rightTime) {
+            return dueSortDirection === "asc" ? leftTime - rightTime : rightTime - leftTime;
+          }
+        }
         const leftCategory = left.category?.trim() || "\uffff";
         const rightCategory = right.category?.trim() || "\uffff";
         const categoryComparison = leftCategory.localeCompare(rightCategory, "de", {
@@ -303,7 +363,15 @@ export default function Preparation() {
         if (categoryComparison !== 0) return categoryComparison;
         return left.task.localeCompare(right.task, "de", { sensitivity: "base" });
       });
-  }, [rows, statusFilter, categoryFilter, contactFilter, searchTerm, contactMap]);
+  }, [
+    rows,
+    statusFilter,
+    categoryFilter,
+    contactFilter,
+    searchTerm,
+    dueSortDirection,
+    contactMap,
+  ]);
 
   const hasActiveFilters =
     statusFilter !== "alle" ||
@@ -337,12 +405,15 @@ export default function Preparation() {
   };
 
   const openEdit = (task: PrepTaskRow) => {
+    const parsedDueDate = parseDueDate(task.dueText);
     setEditingTask(task);
     setForm({
       category: task.category ?? "",
       task: task.task,
       contactId: task.contactId ? String(task.contactId) : "none",
-      dueText: task.dueText ?? "",
+      dueText: parsedDueDate?.iso ?? "",
+      legacyDueText: parsedDueDate ? "" : task.dueText ?? "",
+      preserveLegacyDueText: !parsedDueDate && Boolean(task.dueText?.trim()),
       note: task.note ?? "",
       status: task.status,
       statusWording: task.statusWording === "genehmigung" ? "genehmigung" : "aufgabe",
@@ -365,11 +436,15 @@ export default function Preparation() {
     }
 
     const note = form.note.trim();
+    const selectedDueDate = parseDueDate(form.dueText);
+    const dueText = selectedDueDate?.display ?? (
+      form.preserveLegacyDueText ? form.legacyDueText.trim() : ""
+    );
     const payload = {
       category: form.category.trim(),
       task,
       contactId: form.contactId === "none" ? null : Number(form.contactId),
-      dueText: form.dueText.trim(),
+      dueText,
       status: form.status,
       statusWording: form.statusWording,
     };
@@ -549,7 +624,36 @@ export default function Preparation() {
                   <th className="w-[12%] px-3 py-3">Bereich</th>
                   <th className="w-[20%] px-3 py-3">Aufgabe</th>
                   <th className="w-[16%] px-3 py-3">Verantwortlicher</th>
-                  <th className="w-[13%] px-3 py-3">Frist</th>
+                  <th
+                    className="w-[13%] px-3 py-3"
+                    aria-sort={
+                      dueSortDirection === "asc"
+                        ? "ascending"
+                        : dueSortDirection === "desc"
+                          ? "descending"
+                          : "none"
+                    }
+                  >
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1 rounded px-1 -mx-1 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                      onClick={() =>
+                        setDueSortDirection(current =>
+                          current === "asc" ? "desc" : "asc"
+                        )
+                      }
+                      title="Frist chronologisch sortieren"
+                    >
+                      Frist
+                      {dueSortDirection === "asc" ? (
+                        <ArrowUp className="size-3.5" aria-hidden="true" />
+                      ) : dueSortDirection === "desc" ? (
+                        <ArrowDown className="size-3.5" aria-hidden="true" />
+                      ) : (
+                        <ArrowUpDown className="size-3.5 text-slate-400" aria-hidden="true" />
+                      )}
+                    </button>
+                  </th>
                   <th className="w-[13%] px-3 py-3">Status</th>
                   <th className="w-[20%] px-3 py-3">Bemerkung</th>
                   <th className="w-[6%] px-3 py-3 text-center">Aktionen</th>
@@ -571,7 +675,9 @@ export default function Preparation() {
                       <td className="break-words px-3 py-3 align-top">
                         {task.contactId ? contactMap.get(task.contactId) ?? "—" : "—"}
                       </td>
-                      <td className="break-words px-3 py-3 align-top">{task.dueText || "—"}</td>
+                      <td className="break-words px-3 py-3 align-top">
+                        {formatDueDate(task.dueText) || "—"}
+                      </td>
                       <td className="px-3 py-3 align-top">
                         <Select
                           value={statusSelectValue(task.status, wording)}
@@ -693,7 +799,7 @@ export default function Preparation() {
                       </div>
                       <div>
                         <dt className="text-xs font-medium text-slate-500">Frist</dt>
-                        <dd className="mt-1 break-words">{task.dueText || "—"}</dd>
+                        <dd className="mt-1 break-words">{formatDueDate(task.dueText) || "—"}</dd>
                       </div>
                       <div className="sm:col-span-2">
                         <dt className="text-xs font-medium text-slate-500">Bemerkung</dt>
@@ -798,13 +904,27 @@ export default function Preparation() {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="prep-due">Frist / Abgabedatum (Freitext)</Label>
+                <Label htmlFor="prep-due">Frist / Abgabedatum</Label>
                 <Input
                   id="prep-due"
+                  type="date"
                   value={form.dueText}
-                  onChange={event => setForm(current => ({ ...current, dueText: event.target.value }))}
-                  placeholder="z. B. Ende März"
+                  onChange={event =>
+                    setForm(current => ({
+                      ...current,
+                      dueText: event.target.value,
+                      preserveLegacyDueText: false,
+                    }))
+                  }
                 />
+                {form.preserveLegacyDueText && form.legacyDueText && (
+                  <p className="mt-1 text-xs text-amber-700">
+                    Bisherige Freitextfrist wird unverändert beibehalten: {form.legacyDueText}
+                  </p>
+                )}
+                <p className="mt-1 text-xs text-slate-500">
+                  Datum über den Kalender wählen; gespeichert und angezeigt als TT.MM.JJJJ.
+                </p>
               </div>
             </div>
             <div>
