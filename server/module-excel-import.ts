@@ -264,10 +264,12 @@ const OPTIONAL_MODULE_COLUMNS: Record<ModuleImportArea, string[]> = {
     ]).flat(),
   ],
   VORBEREITUNG: [
+    "Kategorie",
     "Zu erledigen bis",
     "Verantwortlich-ID",
     "Verantwortlich",
     "Status",
+    "Status-Wortlaut",
     "Bemerkung",
     "Reihenfolge",
   ],
@@ -601,11 +603,12 @@ function rowsFromDocument(document: BackupDocument, area: ModuleImportArea) {
         }).flat()
       ),
     }));
-  const taskRows = (rows: BackupDocument["post"], due = false) =>
+  const taskRows = (rows: BackupDocument["prep"] | BackupDocument["post"], isPrep = false) =>
     rows.map(row => ({
       ID: row.sourceId,
+      ...(isPrep ? { Kategorie: (row as BackupDocument["prep"][number]).category ?? "" } : {}),
       Aufgabe: row.task,
-      ...(due
+      ...(isPrep
         ? {
             "Zu erledigen bis": (row as BackupDocument["prep"][number]).dueText,
           }
@@ -613,6 +616,11 @@ function rowsFromDocument(document: BackupDocument, area: ModuleImportArea) {
       "Verantwortlich-ID": row.contactSourceId ?? "",
       Verantwortlich: row.contactName,
       Status: row.status,
+      ...(isPrep
+        ? {
+            "Status-Wortlaut": (row as BackupDocument["prep"][number]).statusWording ?? "aufgabe",
+          }
+        : {}),
       Bemerkung: row.note,
       Reihenfolge: row.sortOrder,
     }));

@@ -107,7 +107,16 @@ const documentSchema = z
         })
       )
       .max(MAX_ROWS),
-    prep: z.array(commonTask.extend({ dueText: short(200) })).max(MAX_ROWS),
+    prep: z
+      .array(
+        commonTask.extend({
+          category: short(120).default(""),
+          dueText: short(200),
+          status: z.enum(["offen", "inArbeit", "erledigt", "abgelehnt"]),
+          statusWording: z.enum(["aufgabe", "genehmigung"]).default("aufgabe"),
+        })
+      )
+      .max(MAX_ROWS),
     post: z.array(commonTask).max(MAX_ROWS),
     materials: z
       .array(

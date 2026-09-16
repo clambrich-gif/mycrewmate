@@ -213,6 +213,8 @@ const activeDaysInput = z
     message: "Veranstaltungstage dürfen nicht doppelt ausgewählt werden",
   });
 const statusTask = z.enum(["offen", "inArbeit", "erledigt"]);
+const statusPrep = z.enum(["offen", "inArbeit", "erledigt", "abgelehnt"]);
+const prepStatusWording = z.enum(["aufgabe", "genehmigung"]);
 const passwordInput = z.string().min(10).max(200);
 const eventYearInput = z.number().int().min(2020).max(2100);
 const safeExportName = (value: string) =>
@@ -1144,10 +1146,13 @@ export const appRouter = router({
     create: protectedProcedure
       .input(
         z.object({
-          task: z.string().min(1),
+          task: z.string().trim().min(1).max(300),
+          category: z.string().trim().max(120).optional(),
           dueText: z.string().max(200).optional(),
           contactId: z.number().nullable().optional(),
-          note: z.string().optional(),
+          status: statusPrep.optional(),
+          statusWording: prepStatusWording.optional(),
+          note: z.string().max(10_000).optional(),
         })
       )
       .mutation(({ input }) => db.createPrep(input)),
@@ -1155,11 +1160,13 @@ export const appRouter = router({
       .input(
         z.object({
           id: z.number(),
-          task: z.string().optional(),
+          task: z.string().trim().min(1).max(300).optional(),
+          category: z.string().trim().max(120).optional(),
           dueText: z.string().max(200).optional(),
           contactId: z.number().nullable().optional(),
-          status: statusTask.optional(),
-          note: z.string().nullable().optional(),
+          status: statusPrep.optional(),
+          statusWording: prepStatusWording.optional(),
+          note: z.string().max(10_000).nullable().optional(),
         })
       )
       .mutation(({ input }) => {
@@ -1425,6 +1432,7 @@ export const appRouter = router({
         doppelGesamt: ev.reduce((s, e) => s + e.doppelCount, 0),
         ausfallGesamt: ev.reduce((s, e) => s + e.ausfallCount, 0),
         offeneVorbereitung: prep.filter(p => p.status === "offen").length,
+        abgelehnteVorbereitung: prep.filter(p => p.status === "abgelehnt").length,
         offeneNachbereitung: post.filter(p => p.status === "offen").length,
         verantwortlichkeiten: await (async () => {
           const [materials, marketing, approvals] = await Promise.all([

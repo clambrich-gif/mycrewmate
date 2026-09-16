@@ -481,12 +481,16 @@ export const prepTasks = mysqlTable("prep_tasks", {
   year: int("year").default(2026).notNull(),
   eventId: int("eventId").notNull(),
   task: varchar("task", { length: 300 }).notNull(),
+  category: varchar("category", { length: 120 }).default("").notNull(),
   dueText: varchar("dueText", { length: 200 }).default("").notNull(),
   contactId: int("contactId").references(() => contacts.id, {
     onDelete: "set null",
   }),
-  status: mysqlEnum("status", ["offen", "inArbeit", "erledigt"])
+  status: mysqlEnum("status", ["offen", "inArbeit", "erledigt", "abgelehnt"])
     .default("offen")
+    .notNull(),
+  statusWording: mysqlEnum("statusWording", ["aufgabe", "genehmigung"])
+    .default("aufgabe")
     .notNull(),
   note: text("note"),
   sortOrder: int("sortOrder").default(0).notNull(),

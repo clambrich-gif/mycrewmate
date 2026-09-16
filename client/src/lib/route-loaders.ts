@@ -7,13 +7,14 @@ export type RouteModule = {
 type RouteLoader = () => Promise<RouteModule>;
 
 const taskListLoader: RouteLoader = () => import("@/pages/TaskList");
+const preparationLoader: RouteLoader = () => import("@/pages/Preparation");
 
 export const routeLoaders = {
   "/": () => import("@/pages/Dashboard"),
   "/ansprechpartner": () => import("@/pages/Contacts"),
   "/helfer": () => import("@/pages/Helpers"),
   "/einsatzplan": () => import("@/pages/Plan"),
-  "/vorbereitung": taskListLoader,
+  "/vorbereitung": preparationLoader,
   "/nachbereitung": taskListLoader,
   "/material": () => import("@/pages/Materials"),
   "/marketing": () => import("@/pages/Marketing"),

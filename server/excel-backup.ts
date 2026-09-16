@@ -92,11 +92,13 @@ export const PROJECT_EXCEL_HEADERS: Record<string, string[]> = {
   ],
   VORBEREITUNG: [
     "ID",
+    "Kategorie",
     "Aufgabe",
     "Zu erledigen bis",
     "Verantwortlich-ID",
     "Verantwortlich",
     "Status",
+    "Status-Wortlaut",
     "Bemerkung",
     "Reihenfolge",
   ],
@@ -277,7 +279,18 @@ type TaskRow = {
   note: string;
   sortOrder: number;
 };
-type PrepRow = TaskRow & { dueText: string };
+type PrepRow = {
+  sourceId: number | null;
+  category: string;
+  task: string;
+  dueText: string;
+  contactSourceId: number | null;
+  contactName: string;
+  status: "offen" | "inArbeit" | "erledigt" | "abgelehnt";
+  statusWording: "aufgabe" | "genehmigung";
+  note: string;
+  sortOrder: number;
+};
 type MaterialRow = {
   sourceId: number | null;
   article: string;
@@ -1109,6 +1122,11 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
     .filter(row => normalize(row.Aufgabe))
     .map((row, index) => ({
       sourceId: nullableId(row.ID, `VORBEREITUNG Zeile ${index + 2}`),
+      category: text(
+        row.Kategorie ?? row.Bereich,
+        120,
+        `VORBEREITUNG Zeile ${index + 2}: Kategorie`
+      ),
       task: text(
         row.Aufgabe,
         300,
@@ -1132,9 +1150,15 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
       ),
       status: enumValue(
         row.Status,
-        ["offen", "inArbeit", "erledigt"] as const,
+        ["offen", "inArbeit", "erledigt", "abgelehnt"] as const,
         `VORBEREITUNG Zeile ${index + 2}: Status`,
         "offen"
+      ),
+      statusWording: enumValue(
+        row["Status-Wortlaut"] ?? row.StatusWortlaut,
+        ["aufgabe", "genehmigung"] as const,
+        `VORBEREITUNG Zeile ${index + 2}: Status-Wortlaut`,
+        "aufgabe"
       ),
       note: text(
         row.Bemerkung,
@@ -1636,7 +1660,15 @@ function comparableCurrent(snapshot: CurrentSnapshot) {
       sourceId: row.id,
       contactSourceId: row.contactId,
       contactName: row.contactId ? (contactName.get(row.contactId) ?? "") : "",
-      ...clean(row, ["task", "dueText", "status", "note", "sortOrder"]),
+      ...clean(row, [
+        "category",
+        "task",
+        "dueText",
+        "status",
+        "statusWording",
+        "note",
+        "sortOrder",
+      ]),
     })),
     post: [...snapshot.post].sort(byId).map(row => ({
       sourceId: row.id,
@@ -2652,10 +2684,12 @@ export async function restoreProjectDocument(
           ),
           year,
           eventId,
+          category: row.category ?? "",
           task: row.task,
           dueText: row.dueText,
           contactId: resolveContact(row.contactSourceId, row.contactName),
           status: row.status,
+          statusWording: row.statusWording ?? "aufgabe",
           note: row.note || null,
           sortOrder: row.sortOrder,
         }))
@@ -3063,14 +3097,16 @@ export async function exportProjectExcel(): Promise<{
       ),
     }))
   );
-  const taskRows = (rows: any[], due = false) =>
+  const taskRows = (rows: any[], isPrep = false) =>
     rows.map(row => ({
       ID: row.sourceId,
+      ...(isPrep ? { Kategorie: row.category ?? "" } : {}),
       Aufgabe: row.task,
-      ...(due ? { "Zu erledigen bis": row.dueText } : {}),
+      ...(isPrep ? { "Zu erledigen bis": row.dueText } : {}),
       "Verantwortlich-ID": row.contactSourceId ?? "",
       Verantwortlich: row.contactName,
       Status: row.status,
+      ...(isPrep ? { "Status-Wortlaut": row.statusWording ?? "aufgabe" } : {}),
       Bemerkung: row.note,
       Reihenfolge: row.sortOrder,
     }));

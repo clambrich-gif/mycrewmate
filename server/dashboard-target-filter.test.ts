@@ -22,10 +22,13 @@ describe("Dashboard-Zielnavigation", () => {
     ).toBe("/einsatzplan?status=KNAPP");
   });
 
-  it("erzeugt stabile Aufgaben-URLs für offene Vorbereitung und Nachbereitung", () => {
+  it("erzeugt stabile Aufgaben-URLs für offene und abgelehnte Vorbereitung sowie Nachbereitung", () => {
     expect(
       dashboardTargetHref({ path: "/vorbereitung", status: "offen" })
     ).toBe("/vorbereitung?status=offen");
+    expect(
+      dashboardTargetHref({ path: "/vorbereitung", status: "abgelehnt" })
+    ).toBe("/vorbereitung?status=abgelehnt");
     expect(
       dashboardTargetHref({ path: "/nachbereitung", status: "offen" })
     ).toBe("/nachbereitung?status=offen");
@@ -39,6 +42,9 @@ describe("Dashboard-Zielnavigation", () => {
     expect(parsePlanStatusFilter("KNAPP")).toBe("KNAPP");
     expect(parsePlanStatusFilter("offen")).toBe("alle");
     expect(parseTaskStatusFilter("offen")).toBe("offen");
+    expect(parseTaskStatusFilter("inArbeit")).toBe("inArbeit");
+    expect(parseTaskStatusFilter("erledigt")).toBe("erledigt");
+    expect(parseTaskStatusFilter("abgelehnt")).toBe("abgelehnt");
     expect(parseTaskStatusFilter("OFFEN")).toBe("alle");
     expect(parseTaskStatusFilter(null)).toBe("alle");
   });

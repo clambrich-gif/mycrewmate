@@ -16,6 +16,7 @@ const dbMocks = vi.hoisted(() => ({
   deleteHelper: vi.fn(),
   deleteCake: vi.fn(),
   createPrep: vi.fn(),
+  updatePrep: vi.fn(),
   resetArea: vi.fn(),
   listDeletionAuditLogs: vi.fn(),
   clearDeletionAuditLogs: vi.fn(),
@@ -971,12 +972,38 @@ describe("Planungs-API", () => {
 
     await caller.prep.create({
       task: "Absperrmaterial prüfen",
+      category: "Strecke & Sicherheit",
       dueText: "Spätestens zwei Wochen vor Streckenfreigabe",
+      status: "abgelehnt",
+      statusWording: "genehmigung",
     });
 
     expect(dbMocks.createPrep).toHaveBeenCalledWith({
       task: "Absperrmaterial prüfen",
+      category: "Strecke & Sicherheit",
       dueText: "Spätestens zwei Wochen vor Streckenfreigabe",
+      status: "abgelehnt",
+      statusWording: "genehmigung",
+    });
+  });
+
+  it("aktualisiert Kategorie, Ablehnung und Statuswortlaut einer Vorbereitung", async () => {
+    const caller = appRouter.createCaller(ctx);
+    dbMocks.updatePrep.mockResolvedValue({ affectedRows: 1 });
+
+    await caller.prep.update({
+      id: 30,
+      category: "Behörden",
+      status: "abgelehnt",
+      statusWording: "genehmigung",
+      note: "Rückfrage an Stadtverwaltung erforderlich",
+    });
+
+    expect(dbMocks.updatePrep).toHaveBeenCalledWith(30, {
+      category: "Behörden",
+      status: "abgelehnt",
+      statusWording: "genehmigung",
+      note: "Rückfrage an Stadtverwaltung erforderlich",
     });
   });
 

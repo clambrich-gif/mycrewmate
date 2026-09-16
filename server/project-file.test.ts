@@ -178,6 +178,7 @@ const helperRow = (name: string, contact = "") => ({
 describe("Projektdatei und modularer Excel-Import", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    data.prep_tasks.splice(0, data.prep_tasks.length);
     dbMocks.getDb.mockResolvedValue(fakeDb());
   });
 
@@ -593,4 +594,41 @@ describe("Projektdatei und modularer Excel-Import", () => {
       ).toBe(true);
     }
   );
+
+  it("erhält neue Vorbereitungsfelder und ergänzt Defaults für alte Projektdateien", async () => {
+    (data.prep_tasks as any[]).push({
+      id: 60,
+      year: 2026,
+      eventId: 1,
+      category: "Behörden",
+      task: "Sondernutzung beantragen",
+      dueText: "Ende März",
+      contactId: 10,
+      status: "abgelehnt",
+      statusWording: "genehmigung",
+      note: "Ablehnung begründen lassen",
+      sortOrder: 2,
+    });
+
+    const exported = await exportProjectFile();
+    const current = parseProjectFile(exported.buffer.toString("base64")).document;
+    expect(current.prep[0]).toMatchObject({
+      category: "Behörden",
+      status: "abgelehnt",
+      statusWording: "genehmigung",
+    });
+
+    const legacy = structuredClone(current);
+    delete (legacy.prep[0] as any).category;
+    delete (legacy.prep[0] as any).statusWording;
+    const parsedLegacy = parseProjectFile(
+      Buffer.from(JSON.stringify(legacy)).toString("base64")
+    ).document;
+    expect(parsedLegacy.prep[0]).toMatchObject({
+      category: "",
+      status: "abgelehnt",
+      statusWording: "aufgabe",
+    });
+  });
+
 });

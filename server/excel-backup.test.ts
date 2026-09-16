@@ -137,6 +137,7 @@ describe("Excel-Datensicherung", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     data.finances.splice(0, data.finances.length);
+    data.prep_tasks.splice(0, data.prep_tasks.length);
     dbMocks.getDb.mockResolvedValue(fakeDb());
   });
 
@@ -779,4 +780,52 @@ describe("Excel-Datensicherung", () => {
       999,
     ]);
   });
+
+  it("sichert Kategorie, Ablehnung und Statuswortlaut der Vorbereitung und liest alte Dateien weiter", async () => {
+    (data.prep_tasks as any[]).push({
+      id: 60,
+      year: 2026,
+      eventId: 1,
+      category: "Behörden",
+      task: "Sondernutzung beantragen",
+      dueText: "Ende März",
+      contactId: 10,
+      status: "abgelehnt",
+      statusWording: "genehmigung",
+      note: "Ablehnung begründen lassen",
+      sortOrder: 2,
+    });
+
+    const exported = await exportBackupExcel();
+    const workbook = XLSX.read(exported.buffer, { type: "buffer" });
+    const headers = XLSX.utils.sheet_to_json<any[]>(workbook.Sheets.VORBEREITUNG, {
+      header: 1,
+    })[0];
+    expect(headers).toEqual(
+      expect.arrayContaining(["Kategorie", "Status-Wortlaut"])
+    );
+
+    const parsed = parseBackupWorkbook(exported.buffer.toString("base64"));
+    expect(parsed.prep[0]).toMatchObject({
+      category: "Behörden",
+      task: "Sondernutzung beantragen",
+      status: "abgelehnt",
+      statusWording: "genehmigung",
+    });
+
+    const legacy = mutateWorkbook(exported.buffer, workbook => {
+      const [row] = XLSX.utils.sheet_to_json<any>(
+        workbook.Sheets.VORBEREITUNG
+      );
+      const { Kategorie, "Status-Wortlaut": statusWording, ...legacyRow } = row;
+      replaceSheet(workbook, "VORBEREITUNG", [legacyRow]);
+    });
+    const parsedLegacy = parseBackupWorkbook(legacy.toString("base64"));
+    expect(parsedLegacy.prep[0]).toMatchObject({
+      category: "",
+      status: "abgelehnt",
+      statusWording: "aufgabe",
+    });
+  });
+
 });

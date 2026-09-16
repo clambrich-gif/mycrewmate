@@ -161,6 +161,22 @@ export default function Dashboard() {
       className: "border-amber-300 bg-amber-50/90",
       titleClassName: "text-amber-950",
       cards: [
+        ...(s.abgelehnteVorbereitung > 0
+          ? [
+              {
+                label: `Vorbereitung abgelehnt: ${s.abgelehnteVorbereitung} ${
+                  s.abgelehnteVorbereitung === 1 ? "Aufgabe" : "Aufgaben"
+                }`,
+                value: s.abgelehnteVorbereitung,
+                badge: "abgelehnt" as const,
+                target: {
+                  path: "/vorbereitung" as const,
+                  status: "abgelehnt" as const,
+                },
+                urgency: "red" as const,
+              },
+            ]
+          : []),
         {
           label: "Doppelbelegungen",
           value: s.doppelGesamt,

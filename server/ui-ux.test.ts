@@ -651,6 +651,25 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(taskList).toContain("parseTaskStatusFilter");
     expect(taskList).toContain('aria-label="Aufgabenstatus filtern"');
     expect(taskList).toContain("Nur offene Aufgaben");
+    expect(dashboard).toContain("abgelehnteVorbereitung");
+    expect(dashboard).toContain("Vorbereitung abgelehnt");
+    expect(dashboard).toContain('status: "abgelehnt"');
+  });
+
+  it("bietet für die Vorbereitung flexible Felder, Statuswording und Echtzeitfilter", () => {
+    const prep = source("client/src/pages/Preparation.tsx");
+    expect(prep).toContain("Optionale Felder:");
+    expect(prep).toContain("Bereich / Kategorie");
+    expect(prep).toContain("Verantwortlicher");
+    expect(prep).toContain("Frist / Abgabedatum (Freitext)");
+    expect(prep).toContain("Bemerkungen / Informationen");
+    expect(prep).toContain("Aufgabe (In Arbeit / Erledigt)");
+    expect(prep).toContain("Genehmigung (Beantragt / Genehmigt)");
+    expect(prep).toContain("Abgelehnt");
+    expect(prep).toContain("categoryFilter");
+    expect(prep).toContain("contactFilter");
+    expect(prep).toContain("statusFilter");
+    expect(prep).toContain("searchTerm");
   });
 
   it("lädt das RSC-Logo browserstabil über eine öffentliche Same-Origin-Route", () => {

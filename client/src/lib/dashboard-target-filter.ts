@@ -16,12 +16,20 @@ export const PLAN_WARNING_FILTERS = {
 export type PlanWarningFilter = keyof typeof PLAN_WARNING_FILTERS;
 export type PlanWarningSelection = "alle" | PlanWarningFilter;
 export type PlanStatusFilter = "alle" | "OFFEN" | "KNAPP" | "OK";
-export type TaskStatusFilter = "alle" | "offen" | "inArbeit" | "erledigt";
+export type TaskStatusFilter =
+  | "alle"
+  | "offen"
+  | "inArbeit"
+  | "erledigt"
+  | "abgelehnt";
 
 export type DashboardTarget =
   | { path: "/einsatzplan"; warning: PlanWarningFilter }
   | { path: "/einsatzplan"; status: Exclude<PlanStatusFilter, "alle"> }
-  | { path: "/vorbereitung" | "/nachbereitung"; status: "offen" };
+  | {
+      path: "/vorbereitung" | "/nachbereitung";
+      status: "offen" | "abgelehnt";
+    };
 
 export function parsePlanWarningFilter(
   value: string | null
@@ -36,7 +44,10 @@ export function parsePlanStatusFilter(value: string | null): PlanStatusFilter {
 }
 
 export function parseTaskStatusFilter(value: string | null): TaskStatusFilter {
-  return value === "offen" || value === "inArbeit" || value === "erledigt"
+  return value === "offen" ||
+    value === "inArbeit" ||
+    value === "erledigt" ||
+    value === "abgelehnt"
     ? value
     : "alle";
 }

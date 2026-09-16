@@ -12,7 +12,8 @@ const Dashboard = lazy(routeLoaders["/"]);
 const Contacts = lazy(routeLoaders["/ansprechpartner"]);
 const Helpers = lazy(routeLoaders["/helfer"]);
 const Plan = lazy(routeLoaders["/einsatzplan"]);
-const TaskList = lazy(routeLoaders["/vorbereitung"]);
+const Preparation = lazy(routeLoaders["/vorbereitung"]);
+const TaskList = lazy(routeLoaders["/nachbereitung"]);
 const Materials = lazy(routeLoaders["/material"]);
 const Marketing = lazy(routeLoaders["/marketing"]);
 const Approvals = lazy(routeLoaders["/genehmigungen"]);
@@ -57,9 +58,7 @@ function Router() {
           <Route path="/ansprechpartner" component={Contacts} />
           <Route path="/helfer" component={Helpers} />
           <Route path="/einsatzplan" component={Plan} />
-          <Route path="/vorbereitung">
-            {() => <TaskList kind="prep" title="Vorbereitung" />}
-          </Route>
+          <Route path="/vorbereitung" component={Preparation} />
           <Route path="/nachbereitung">
             {() => <TaskList kind="post" title="Nachbereitung" />}
           </Route>
