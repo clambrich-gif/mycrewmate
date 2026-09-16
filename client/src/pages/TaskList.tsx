@@ -231,11 +231,11 @@ export default function TaskList({
           </Button>
         </div>
       )}
-      <div className="flex w-full flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-center">
+      <div className="flex w-full flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
         <Button
           type="button"
           variant="outline"
-          className="w-full lg:w-auto"
+          className="h-11 w-full text-base md:h-10 md:w-auto md:text-sm"
           onClick={() => setSortAsc(value => !value)}
         >
           {sortAsc ? (
@@ -252,7 +252,7 @@ export default function TaskList({
           }
         >
           <SelectTrigger
-            className="w-full lg:w-[220px]"
+            className="h-11 w-full text-base md:h-10 md:w-[220px] md:text-sm"
             aria-label="Aufgabenstatus filtern"
           >
             <SelectValue />
@@ -265,7 +265,7 @@ export default function TaskList({
           </SelectContent>
         </Select>
         <Select value={contactFilter} onValueChange={setContactFilter}>
-          <SelectTrigger className="w-full lg:w-[240px]">
+          <SelectTrigger className="h-11 w-full text-base md:h-10 md:w-[240px] md:text-sm">
             <SelectValue placeholder="Verantwortliche filtern" />
           </SelectTrigger>
           <SelectContent>
@@ -278,7 +278,7 @@ export default function TaskList({
             ))}
           </SelectContent>
         </Select>
-        <span className="w-full text-sm text-muted-foreground lg:w-auto">
+        <span className="w-full text-sm text-muted-foreground md:w-auto">
           {visibleRows.length} von {rows.length} Einträgen
         </span>
       </div>

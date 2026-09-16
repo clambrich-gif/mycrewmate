@@ -709,6 +709,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(prep).toContain("PopoverContent");
     expect(prep).toContain("Vollständige Bemerkung anzeigen");
     expect(prep).toContain("Bemerkung zu ${task.task} anzeigen");
+    expect(prep).toContain("hasLongMobileNote");
+    expect(prep).toContain("note.length > 120");
+    expect(prep).toContain("line-clamp-3 break-words whitespace-pre-wrap");
+    expect(prep).toContain("Vollständige Bemerkung zu ${task.task} anzeigen");
+    expect(prep).toContain("Vollständige Bemerkung");
     expect(prep).toContain("categoryFilter");
     expect(prep).toContain("contactFilter");
     expect(prep).toContain("statusFilter");
@@ -1019,8 +1024,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
 
     expect(helpers).toContain("flex w-full flex-col gap-2 lg:flex-row");
     expect(helpers).toContain('className="w-full lg:w-56"');
-    expect(taskList).toContain("flex w-full flex-col gap-2 lg:flex-row");
-    expect(taskList).toContain('className="w-full lg:w-[220px]"');
+    expect(taskList).toContain("flex w-full flex-col gap-2 md:flex-row md:flex-wrap md:items-center");
+    expect(taskList).toContain('className="h-11 w-full text-base md:h-10 md:w-[220px] md:text-sm"');
+    expect(taskList).toContain('className="h-11 w-full text-base md:h-10 md:w-[240px] md:text-sm"');
     expect(taskGeneric).toContain("flex w-full flex-col gap-2 lg:flex-row");
     expect(taskGeneric).toContain('className="w-full lg:w-[240px]"');
   });

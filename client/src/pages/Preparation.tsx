@@ -170,6 +170,11 @@ function formatDueDate(value: string | null | undefined) {
   return parseDueDate(value)?.display ?? value?.trim() ?? "";
 }
 
+function hasLongMobileNote(note: string | null | undefined) {
+  if (!note) return false;
+  return note.length > 120 || note.split(/\r?\n/).length > 3;
+}
+
 function statusSelectValue(status: PrepStatus, wording: PrepWording): DialogStatus {
   if (status === "inArbeit") {
     return wording === "genehmigung" ? "beantragt" : "inArbeit";
@@ -769,6 +774,7 @@ export default function Preparation() {
             {filteredRows.map(task => {
               const wording =
                 task.statusWording === "genehmigung" ? "genehmigung" : "aufgabe";
+              const showMobileNotePopover = hasLongMobileNote(task.note);
               return (
                 <Card
                   key={task.id}
@@ -829,7 +835,43 @@ export default function Preparation() {
                       </div>
                       <div className="sm:col-span-2">
                         <dt className="text-xs font-medium text-slate-500">Bemerkung</dt>
-                        <dd className="mt-1 break-words whitespace-pre-wrap">{task.note || "—"}</dd>
+                        {showMobileNotePopover ? (
+                          <dd className="mt-1">
+                            <p className="line-clamp-3 break-words whitespace-pre-wrap">
+                              {task.note}
+                            </p>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="icon"
+                                  className="mt-2 h-11 w-11"
+                                  title="Vollständige Bemerkung anzeigen"
+                                  aria-label={`Vollständige Bemerkung zu ${task.task} anzeigen`}
+                                >
+                                  <Info className="h-4 w-4 text-blue-700" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent
+                                align="start"
+                                side="top"
+                                className="z-50 w-80 max-w-[calc(100vw-2rem)] border-slate-200 bg-white p-3 text-slate-900 shadow-lg"
+                              >
+                                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                  Vollständige Bemerkung
+                                </p>
+                                <p className="max-h-64 overflow-y-auto whitespace-pre-wrap break-words text-sm leading-5">
+                                  {task.note}
+                                </p>
+                              </PopoverContent>
+                            </Popover>
+                          </dd>
+                        ) : (
+                          <dd className="mt-1 break-words whitespace-pre-wrap">
+                            {task.note || "—"}
+                          </dd>
+                        )}
                       </div>
                     </dl>
                   </CardContent>
