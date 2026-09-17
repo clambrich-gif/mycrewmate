@@ -18,7 +18,7 @@ import {
 } from "../shared/weekdays";
 
 const PROJECT_FORMAT = "RSC-HELFERPLANUNG-PROJEKTDATEI";
-const PROJECT_VERSION = 6;
+const PROJECT_VERSION = 7;
 const MAX_PROJECT_BYTES = 10_000_000;
 const MAX_ROWS = 10_000;
 
@@ -110,6 +110,7 @@ const documentSchema = z
           endTime: short(16),
           allowFlexibleAssignment: z.boolean().default(false),
           manualOkConfirmed: z.boolean().default(false),
+          manualDoubleConflictAccepted: z.boolean().default(false),
           needed: z.number().int().min(0).max(20),
           note: short(10_000),
           sortOrder: z.number().int().min(0).max(1_000_000),
@@ -542,6 +543,25 @@ export function parseProjectFile(base64: string): {
       ? legacy.shifts.map((shift: Record<string, unknown>) => ({
           ...shift,
           manualOkConfirmed: shift.manualOkConfirmed ?? false,
+        }))
+      : legacy.shifts;
+  }
+  if (
+    raw &&
+    typeof raw === "object" &&
+    "metadata" in raw &&
+    raw.metadata &&
+    typeof raw.metadata === "object" &&
+    "version" in raw.metadata &&
+    raw.metadata.version === 6
+  ) {
+    const legacy = raw as Record<string, any>;
+    legacy.metadata = { ...legacy.metadata, version: PROJECT_VERSION };
+    legacy.shifts = Array.isArray(legacy.shifts)
+      ? legacy.shifts.map((shift: Record<string, unknown>) => ({
+          ...shift,
+          manualDoubleConflictAccepted:
+            shift.manualDoubleConflictAccepted ?? false,
         }))
       : legacy.shifts;
   }

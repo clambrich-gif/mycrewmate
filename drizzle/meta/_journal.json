@@ -225,6 +225,13 @@
       "when": 1789675830612,
       "tag": "0031_black_juggernaut",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "5",
+      "when": 1789678364069,
+      "tag": "0032_known_ozymandias",
+      "breakpoints": true
     }
   ]
 }

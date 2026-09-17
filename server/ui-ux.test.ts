@@ -1417,6 +1417,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain(
       "Ignoriert zeitliche Abweichungen & markiert die Schicht als vollständig geprüft."
     );
+    expect(plan).toContain('id="shift-manual-double-conflict-accepted"');
+    expect(plan).toContain("✓ Doppelbelegung akzeptieren");
+    expect(plan).toContain(
+      "Gilt nach Prüfung als genehmigt und entfernt die Warnung."
+    );
+    expect(statusBadge).toContain("doubleConflictAccepted = false");
+    expect(statusBadge).toContain("Manuell bestätigt (Doppelbelegung akzeptiert)");
   });
 
   it("zeigt persönliche Zeitfenster in den Helfer-PDFs an", () => {

@@ -1049,7 +1049,10 @@ export async function updateHelper(
       if (affectedShiftIds.length) {
         await tx
           .update(shifts)
-          .set({ manualOkConfirmed: false })
+          .set({
+            manualOkConfirmed: false,
+            manualDoubleConflictAccepted: false,
+          })
           .where(
             and(planningScope(shifts), inArray(shifts.id, affectedShiftIds))
           );
@@ -1786,9 +1789,17 @@ export async function updateShift(
       shiftsFundamentallyChanged &&
       (safe.manualOkConfirmed === undefined ||
         safe.manualOkConfirmed === existingShift.manualOkConfirmed);
+    const shouldResetManualDoubleConflict =
+      shiftsFundamentallyChanged &&
+      (safe.manualDoubleConflictAccepted === undefined ||
+        safe.manualDoubleConflictAccepted ===
+          existingShift.manualDoubleConflictAccepted);
     const updateValues = {
       ...safe,
       ...(shouldResetManualOk ? { manualOkConfirmed: false } : {}),
+      ...(shouldResetManualDoubleConflict
+        ? { manualDoubleConflictAccepted: false }
+        : {}),
     };
     const result = await tx
       .update(shifts)
@@ -1874,6 +1885,40 @@ async function removeOrphanShiftAreaContactsForClient(db: DBClient) {
       )
     );
 }
+
+async function resetManualShiftConfirmationsForHelpers(
+  tx: DBClient,
+  helperIds: number[],
+  additionalShiftIds: number[] = []
+) {
+  const uniqueHelperIds = Array.from(new Set(helperIds));
+  const affectedAssignments = uniqueHelperIds.length
+    ? await tx
+        .select({ shiftId: assignments.shiftId })
+        .from(assignments)
+        .where(
+          and(
+            planningScope(assignments),
+            inArray(assignments.helperId, uniqueHelperIds)
+          )
+        )
+    : [];
+  const affectedShiftIds = Array.from(
+    new Set([
+      ...additionalShiftIds,
+      ...affectedAssignments.map(assignment => assignment.shiftId),
+    ])
+  );
+  if (!affectedShiftIds.length) return;
+  await tx
+    .update(shifts)
+    .set({
+      manualOkConfirmed: false,
+      manualDoubleConflictAccepted: false,
+    })
+    .where(and(planningScope(shifts), inArray(shifts.id, affectedShiftIds)));
+}
+
 export async function assignHelper(v: {
   shiftId: number;
   helperId: number;
@@ -1920,10 +1965,12 @@ export async function assignHelper(v: {
       year: shift.year,
       eventId: shift.eventId,
     });
-    return tx
-      .update(shifts)
-      .set({ manualOkConfirmed: false })
-      .where(eq(shifts.id, shift.id));
+    await resetManualShiftConfirmationsForHelpers(
+      tx,
+      [v.helperId],
+      [shift.id]
+    );
+    return { success: true } as const;
   });
 }
 export async function replaceShiftAssignment(v: {
@@ -1971,10 +2018,12 @@ export async function replaceShiftAssignment(v: {
       year: shift.year,
       eventId: shift.eventId,
     });
-    return tx
-      .update(shifts)
-      .set({ manualOkConfirmed: false })
-      .where(eq(shifts.id, shift.id));
+    await resetManualShiftConfirmationsForHelpers(
+      tx,
+      [v.helperId, ...current.map(item => item.helperId)],
+      [shift.id]
+    );
+    return { success: true } as const;
   });
 }
 export async function removeShiftAssignment(v: {
@@ -1990,22 +2039,32 @@ export async function removeShiftAssignment(v: {
       .limit(1)
       .for("update");
     if (!shift) throw new Error("Schicht wurde nicht gefunden");
+    const [assignment] = await tx
+      .select({ helperId: assignments.helperId })
+      .from(assignments)
+      .where(
+        and(eq(assignments.shiftId, v.shiftId), eq(assignments.slot, v.slot))
+      )
+      .limit(1)
+      .for("update");
     await tx
       .delete(assignments)
       .where(
         and(eq(assignments.shiftId, v.shiftId), eq(assignments.slot, v.slot))
       );
-    return tx
-      .update(shifts)
-      .set({ manualOkConfirmed: false })
-      .where(eq(shifts.id, shift.id));
+    await resetManualShiftConfirmationsForHelpers(
+      tx,
+      assignment ? [assignment.helperId] : [],
+      [shift.id]
+    );
+    return { success: true } as const;
   });
 }
 export async function unassignHelper(id: number) {
   const db = (await getDb()) as DB;
   return db.transaction(async tx => {
     const [assignment] = await tx
-      .select({ shiftId: assignments.shiftId })
+      .select({ shiftId: assignments.shiftId, helperId: assignments.helperId })
       .from(assignments)
       .where(
         and(
@@ -2020,10 +2079,12 @@ export async function unassignHelper(id: number) {
       .for("update");
     if (!assignment) return;
     await tx.delete(assignments).where(eq(assignments.id, id));
-    return tx
-      .update(shifts)
-      .set({ manualOkConfirmed: false })
-      .where(and(eq(shifts.id, assignment.shiftId), planningScope(shifts)));
+    await resetManualShiftConfirmationsForHelpers(
+      tx,
+      [assignment.helperId],
+      [assignment.shiftId]
+    );
+    return { success: true } as const;
   });
 }
 export async function clearAssignments() {
@@ -2065,7 +2126,10 @@ export async function clearAssignments() {
     requireDeletedRows(result, assignedRows.length);
     await tx
       .update(shifts)
-      .set({ manualOkConfirmed: false })
+      .set({
+        manualOkConfirmed: false,
+        manualDoubleConflictAccepted: false,
+      })
       .where(planningScopeFor(shifts, selectedYear, selectedEventId));
     return { cleared: assignedRows.length };
   });

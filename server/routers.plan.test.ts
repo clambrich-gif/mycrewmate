@@ -1561,4 +1561,21 @@ describe("Planungs-API", () => {
       })
     );
   });
+
+  it("übermittelt manualDoubleConflictAccepted beim Aktualisieren einer Schicht an die Datenbank", async () => {
+    dbMocks.updateShift.mockResolvedValueOnce({ affectedRows: 1 });
+
+    const caller = appRouter.createCaller(ctx);
+    await caller.shifts.update({
+      id: 42,
+      manualDoubleConflictAccepted: true,
+    });
+
+    expect(dbMocks.updateShift).toHaveBeenCalledWith(
+      42,
+      expect.objectContaining({
+        manualDoubleConflictAccepted: true,
+      })
+    );
+  });
 });

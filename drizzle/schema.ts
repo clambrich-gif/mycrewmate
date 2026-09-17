@@ -288,6 +288,9 @@ export const shifts = mysqlTable(
       .default(false)
       .notNull(),
     manualOkConfirmed: boolean("manualOkConfirmed").default(false).notNull(),
+    manualDoubleConflictAccepted: boolean("manualDoubleConflictAccepted")
+      .default(false)
+      .notNull(),
     needed: int("needed").default(1).notNull(),
     note: text("note"),
     sortOrder: int("sortOrder").default(0).notNull(),

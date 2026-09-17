@@ -39,7 +39,8 @@ const S = (
   endTime = "12:00",
   needed = 1,
   manualOkConfirmed = false,
-  allowFlexibleAssignment = false
+  allowFlexibleAssignment = false,
+  manualDoubleConflictAccepted = false
 ): Shift => ({
   id,
   day,
@@ -49,6 +50,7 @@ const S = (
   endTime,
   allowFlexibleAssignment,
   manualOkConfirmed,
+  manualDoubleConflictAccepted,
   needed,
   note: null,
   sortOrder: 0,
@@ -260,6 +262,23 @@ describe("evaluateShifts", () => {
 
     expect(evaluation.map(item => item.doppelCount)).toEqual([1, 1, 0]);
     expect(evaluation[2].doppelIds.has(1)).toBe(false);
+  });
+
+  it("setzt doppelCount bei manuell akzeptierter Doppelbelegung auf 0", () => {
+    const shifts = [
+      S(1, "Freitag", "10:00", "12:00", 1, false, false, true),
+      S(2, "Freitag", "11:00", "13:00", 1, false, false, false),
+    ];
+    const evaluation = evaluateShifts(
+      shifts,
+      [A(1, 1), A(2, 1)],
+      [H(1)]
+    );
+
+    expect(evaluation[0].doppelCount).toBe(0);
+    expect(evaluation[0].status).toBe("OK");
+    expect(evaluation[1].doppelCount).toBe(1);
+    expect(evaluation[1].status).toBe("OK");
   });
 
   it("gibt Ausfällen Vorrang vor Doppelbelegungen", () => {

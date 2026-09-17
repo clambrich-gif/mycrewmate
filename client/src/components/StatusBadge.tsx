@@ -9,10 +9,12 @@ export function StatusBadge({
   status,
   timeUndercoverage = false,
   manuallyConfirmed = false,
+  doubleConflictAccepted = false,
 }: {
   status: string;
   timeUndercoverage?: boolean;
   manuallyConfirmed?: boolean;
+  doubleConflictAccepted?: boolean;
 }) {
   const map: Record<string, { cls: string; label: string }> = {
     OK: { cls: "badge-ok", label: "OK" },
@@ -29,8 +31,9 @@ export function StatusBadge({
     nein: { cls: "badge-err", label: "Nein" },
   };
   const base = map[status] ?? { cls: "badge-neutral", label: status };
+  const hasManualConfirmation = manuallyConfirmed || doubleConflictAccepted;
   const m =
-    status === "OK" && manuallyConfirmed
+    status === "OK" && hasManualConfirmation
       ? { ...base, label: "OK ✓" }
       : base;
   const badge = (
@@ -49,7 +52,15 @@ export function StatusBadge({
     </span>
   );
 
-  if (!timeUndercoverage && !manuallyConfirmed) return badge;
+  const hasUnconfirmedTimeUndercoverage =
+    timeUndercoverage && !manuallyConfirmed;
+  if (!hasUnconfirmedTimeUndercoverage && !hasManualConfirmation) return badge;
+
+  const tooltipLabel = doubleConflictAccepted
+    ? manuallyConfirmed
+      ? "Manuell bestätigt (zeitliche Abweichung und Doppelbelegung akzeptiert)"
+      : "Manuell bestätigt (Doppelbelegung akzeptiert)"
+    : "Manuell als vollständig geprüft freigegeben.";
 
   return (
     <Tooltip>
@@ -57,18 +68,18 @@ export function StatusBadge({
         <span
           tabIndex={0}
           aria-label={
-            manuallyConfirmed
-              ? "Schicht manuell als vollständig geprüft freigegeben"
-              : "Zeitliche Unterdeckung der Schicht"
+            hasUnconfirmedTimeUndercoverage
+              ? "Zeitliche Unterdeckung der Schicht"
+              : tooltipLabel
           }
         >
           {badge}
         </span>
       </TooltipTrigger>
       <TooltipContent side="top" sideOffset={6}>
-        {manuallyConfirmed
-          ? "Manuell als vollständig geprüft freigegeben."
-          : "Zeitliche Unterdeckung: Mindestens ein Helfer deckt die Schichtzeit nicht vollständig ab."}
+        {hasUnconfirmedTimeUndercoverage
+          ? "Zeitliche Unterdeckung: Mindestens ein Helfer deckt die Schichtzeit nicht vollständig ab."
+          : tooltipLabel}
       </TooltipContent>
     </Tooltip>
   );

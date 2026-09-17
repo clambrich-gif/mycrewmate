@@ -115,6 +115,7 @@ type DropdownShift = ShiftTimeLike & {
   endTime: string;
   allowFlexibleAssignment: boolean;
   manualOkConfirmed: boolean;
+  manualDoubleConflictAccepted: boolean;
 };
 
 type AvailabilityField = (typeof WEEKDAY_AVAILABILITY_FIELDS)[Weekday];
@@ -610,6 +611,7 @@ export default function Plan() {
     endTime: string;
     allowFlexibleAssignment: boolean;
     manualOkConfirmed: boolean;
+    manualDoubleConflictAccepted: boolean;
     needed: number;
     note: string;
   }>({
@@ -620,6 +622,7 @@ export default function Plan() {
     endTime: "",
     allowFlexibleAssignment: false,
     manualOkConfirmed: false,
+    manualDoubleConflictAccepted: false,
     needed: 1,
     note: "",
   });
@@ -634,6 +637,7 @@ export default function Plan() {
       endTime: "",
       allowFlexibleAssignment: false,
       manualOkConfirmed: false,
+      manualDoubleConflictAccepted: false,
       needed: 1,
       note: "",
     });
@@ -650,6 +654,7 @@ export default function Plan() {
       endTime: s.endTime,
       allowFlexibleAssignment: Boolean(s.allowFlexibleAssignment),
       manualOkConfirmed: Boolean(s.manualOkConfirmed),
+      manualDoubleConflictAccepted: Boolean(s.manualDoubleConflictAccepted),
       needed: s.needed,
       note: s.note ?? "",
     });
@@ -824,9 +829,17 @@ export default function Plan() {
     if (!currentEvaluation) return false;
     return (
       currentEvaluation.assigned.length >= form.needed &&
-      (currentEvaluation.timeUndercoverage || timeWindowConflicts.length > 0)
+      currentEvaluation.timeUndercoverage
     );
-  }, [editShift, evals, form.needed, timeWindowConflicts.length]);
+  }, [editShift, evals, form.needed]);
+
+  const manualDoubleConflictConfirmationAvailable = useMemo(() => {
+    if (!editShift) return false;
+    const currentEvaluation = evals.find(
+      evaluation => evaluation.shift.id === editShift.id
+    );
+    return Boolean(currentEvaluation && currentEvaluation.doppelIds.size > 0);
+  }, [editShift, evals]);
 
   const filtered = useMemo(
     () =>
@@ -1007,7 +1020,9 @@ export default function Plan() {
             (item: any) => item.id === a.helperId
           );
           const isDoppel =
-            !isAusfall && (evalE.doppelIds as Set<number>).has(a.helperId);
+            !isAusfall &&
+            !evalE.shift.manualDoubleConflictAccepted &&
+            (evalE.doppelIds as Set<number>).has(a.helperId);
           const className = isAusfall
             ? "slot-ausfall"
             : isDoppel
@@ -1355,6 +1370,9 @@ export default function Plan() {
                         status={e.status}
                         timeUndercoverage={e.timeUndercoverage}
                         manuallyConfirmed={shift.manualOkConfirmed}
+                        doubleConflictAccepted={
+                          shift.manualDoubleConflictAccepted
+                        }
                       />
                     </div>
                     <h2 className="break-words text-lg font-semibold">
@@ -1536,6 +1554,9 @@ export default function Plan() {
                         status={e.status}
                         timeUndercoverage={e.timeUndercoverage}
                         manuallyConfirmed={s.manualOkConfirmed}
+                        doubleConflictAccepted={
+                          s.manualDoubleConflictAccepted
+                        }
                       />
                     </td>
                     <td className="p-2 text-center xl:p-1.5">
@@ -1854,7 +1875,7 @@ export default function Plan() {
             </div>
           </div>
           <DialogFooter className="gap-2 sm:justify-between">
-            <div className="min-h-10 sm:mr-auto">
+            <div className="min-h-10 space-y-2 sm:mr-auto">
               {manualOkConfirmationAvailable && (
                 <div className="flex items-start gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-2 text-left">
                   <Checkbox
@@ -1876,6 +1897,31 @@ export default function Plan() {
                     </span>
                     <span className="block text-xs font-normal text-emerald-800">
                       Ignoriert zeitliche Abweichungen & markiert die Schicht als vollständig geprüft.
+                    </span>
+                  </Label>
+                </div>
+              )}
+              {manualDoubleConflictConfirmationAvailable && (
+                <div className="flex items-start gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-2 text-left">
+                  <Checkbox
+                    id="shift-manual-double-conflict-accepted"
+                    checked={form.manualDoubleConflictAccepted}
+                    onCheckedChange={checked =>
+                      setForm({
+                        ...form,
+                        manualDoubleConflictAccepted: checked === true,
+                      })
+                    }
+                  />
+                  <Label
+                    htmlFor="shift-manual-double-conflict-accepted"
+                    className="cursor-pointer space-y-0.5 leading-tight"
+                  >
+                    <span className="block text-sm font-medium text-emerald-950">
+                      ✓ Doppelbelegung akzeptieren
+                    </span>
+                    <span className="block text-xs font-normal text-emerald-800">
+                      Gilt nach Prüfung als genehmigt und entfernt die Warnung.
                     </span>
                   </Label>
                 </div>

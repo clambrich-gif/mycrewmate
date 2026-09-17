@@ -157,6 +157,9 @@ export function evaluateShifts(
           ? "KNAPP"
           : "OK";
     const doppelIds = conflictsByShift.get(shift.id) ?? new Set<number>();
+    const doppelCount = shift.manualDoubleConflictAccepted
+      ? 0
+      : validHelpers.filter(helper => doppelIds.has(helper.id)).length;
 
     return {
       shift,
@@ -167,8 +170,7 @@ export function evaluateShifts(
       besetzt,
       status,
       timeUndercoverage,
-      doppelCount: validHelpers.filter(helper => doppelIds.has(helper.id))
-        .length,
+      doppelCount,
       ausfallCount: ausfallHelpers.length,
     };
   });

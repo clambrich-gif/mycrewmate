@@ -194,7 +194,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsed = parseProjectFile(exported.buffer.toString("base64"));
     expect(parsed.document.metadata).toMatchObject({
       format: "RSC-HELFERPLANUNG-PROJEKTDATEI",
-      version: 6,
+      version: 7,
       eventId: 1,
       eventName: "MyEifelRide",
       year: 2026,
@@ -346,7 +346,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsed = parseProjectFile(
       Buffer.from(JSON.stringify(document)).toString("base64")
     );
-    expect(parsed.document.metadata.version).toBe(6);
+    expect(parsed.document.metadata.version).toBe(7);
     expect(parsed.document.metadata.activeDays).toEqual([...WEEKDAYS]);
     expect(parsed.document.metadata).toMatchObject({
       pdfLogoKey: null,
@@ -703,7 +703,22 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsedV5 = parseProjectFile(
       Buffer.from(JSON.stringify(legacyV5)).toString("base64")
     ).document;
-    expect(parsedV5.metadata.version).toBe(6);
+    expect(parsedV5.metadata.version).toBe(7);
     expect(parsedV5.shifts[0].manualOkConfirmed).toBe(false);
+  });
+
+  it("erhaelt manualDoubleConflictAccepted in Schichten und migriert v6-Dateien sauber", async () => {
+    const exported = await exportProjectFile();
+    const current = parseProjectFile(exported.buffer.toString("base64")).document;
+    expect(current.shifts[0]).toHaveProperty("manualDoubleConflictAccepted");
+
+    const legacyV6 = structuredClone(current);
+    legacyV6.metadata.version = 6;
+    delete (legacyV6.shifts[0] as any).manualDoubleConflictAccepted;
+    const parsedV6 = parseProjectFile(
+      Buffer.from(JSON.stringify(legacyV6)).toString("base64")
+    ).document;
+    expect(parsedV6.metadata.version).toBe(7);
+    expect(parsedV6.shifts[0].manualDoubleConflictAccepted).toBe(false);
   });
 });

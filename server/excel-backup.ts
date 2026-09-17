@@ -295,6 +295,7 @@ type ShiftRow = {
   endTime: string;
   allowFlexibleAssignment: boolean;
   manualOkConfirmed: boolean;
+  manualDoubleConflictAccepted: boolean;
   needed: number;
   note: string;
   sortOrder: number;
@@ -1252,6 +1253,12 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
     const manualOkConfirmed = ["ja", "true", "1", "x"].includes(
       manualOkRaw.toLocaleLowerCase("de-DE")
     );
+    const manualDoubleConflictRaw = normalize(
+      row["Doppelbelegung akzeptiert"]
+    );
+    const manualDoubleConflictAccepted = ["ja", "true", "1", "x"].includes(
+      manualDoubleConflictRaw.toLocaleLowerCase("de-DE")
+    );
     const slots = Array.from({ length: 20 }, (_, slot) => {
       const helperName = text(
         row[`Helfer ${slot + 1}`],
@@ -1287,6 +1294,7 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
       endTime,
       allowFlexibleAssignment,
       manualOkConfirmed,
+      manualDoubleConflictAccepted,
       needed,
       note: text(
         row.Bemerkung,
@@ -1755,7 +1763,8 @@ function comparableCurrent(snapshot: CurrentSnapshot) {
           (field === "sortOrder"
             ? 0
             : field === "allowFlexibleAssignment" ||
-                field === "manualOkConfirmed"
+                field === "manualOkConfirmed" ||
+                field === "manualDoubleConflictAccepted"
               ? false
               : ""),
       ])
@@ -1826,6 +1835,7 @@ function comparableCurrent(snapshot: CurrentSnapshot) {
         "endTime",
         "allowFlexibleAssignment",
         "manualOkConfirmed",
+        "manualDoubleConflictAccepted",
         "needed",
         "note",
         "sortOrder",
@@ -2842,6 +2852,7 @@ export async function restoreProjectDocument(
           endTime: row.endTime,
           allowFlexibleAssignment: row.allowFlexibleAssignment,
           manualOkConfirmed: row.manualOkConfirmed,
+          manualDoubleConflictAccepted: row.manualDoubleConflictAccepted,
           needed: row.needed,
           note: row.note || null,
           sortOrder: row.sortOrder,
@@ -3301,6 +3312,9 @@ export async function exportProjectExcel(): Promise<{
       Ende: row.endTime,
       "Flexible Belegung": row.allowFlexibleAssignment ? "Ja" : "Nein",
       "Manuell als OK bestätigt": row.manualOkConfirmed ? "Ja" : "Nein",
+      "Doppelbelegung akzeptiert": row.manualDoubleConflictAccepted
+        ? "Ja"
+        : "Nein",
       Bedarf: row.needed,
       Bemerkung: row.note,
       Reihenfolge: row.sortOrder,

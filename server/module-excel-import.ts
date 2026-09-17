@@ -271,6 +271,7 @@ const OPTIONAL_MODULE_COLUMNS: Record<ModuleImportArea, string[]> = {
     "Ende",
     "Flexible Belegung",
     "Manuell als OK bestätigt",
+    "Doppelbelegung akzeptiert",
     "Bemerkung",
     "Reihenfolge",
     "Bereichsansprechpartner-ID",
@@ -622,6 +623,9 @@ function rowsFromDocument(document: BackupDocument, area: ModuleImportArea) {
       Ende: row.endTime,
       "Flexible Belegung": row.allowFlexibleAssignment ? "Ja" : "Nein",
       "Manuell als OK bestätigt": row.manualOkConfirmed ? "Ja" : "Nein",
+      "Doppelbelegung akzeptiert": row.manualDoubleConflictAccepted
+        ? "Ja"
+        : "Nein",
       Bedarf: row.needed,
       Bemerkung: row.note,
       Reihenfolge: row.sortOrder,

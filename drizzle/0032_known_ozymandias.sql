@@ -1,0 +1,1 @@
+ALTER TABLE `shifts` ADD `manualDoubleConflictAccepted` boolean DEFAULT false NOT NULL;
