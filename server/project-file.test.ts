@@ -77,6 +77,7 @@ const data = {
       email: "alex@example.test",
       phone: "0456",
       note: null,
+      companion: "+ Kind Beispiel",
       willHelp: "ja",
       availMon: "nein",
       availTue: "nein",
@@ -200,6 +201,9 @@ describe("Projektdatei und modularer Excel-Import", () => {
       pdfLogoFallback: "none",
     });
     expect(parsed.document.helpers).toHaveLength(2);
+    expect(parsed.document.helpers.find(helper => helper.name === "Alex Beispiel")).toMatchObject({
+      companion: "+ Kind Beispiel",
+    });
     expect(parsed.document.shifts[0].slots[0]).toMatchObject({
       helperSourceId: 21,
       helperName: "Alex Beispiel",

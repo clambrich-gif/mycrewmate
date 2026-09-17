@@ -1,0 +1,1 @@
+ALTER TABLE `helpers` ADD `companion` varchar(500);

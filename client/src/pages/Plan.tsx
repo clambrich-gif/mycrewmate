@@ -96,6 +96,7 @@ type HelperTooltipData = {
   name: string;
   phone: string | null;
   note: string | null;
+  companion?: string | null;
 } & Record<AvailabilityField, AvailabilityValue>;
 
 type PlanStatusCounts = {
@@ -222,6 +223,7 @@ function AssignedHelperChip({
   const openTimer = useRef<number | null>(null);
   const closeTimer = useRef<number | null>(null);
   const note = helper.note?.trim() ?? "";
+  const companion = helper.companion?.trim() ?? "";
 
   const clearOpenTimer = () => {
     if (openTimer.current !== null) window.clearTimeout(openTimer.current);
@@ -265,9 +267,20 @@ function AssignedHelperChip({
             className="min-h-11 min-w-0 flex-1 truncate text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 md:min-h-0"
             aria-label={`Details zu ${helper.name} anzeigen`}
           >
-          <span className="truncate">
-            <HighlightedText text={displayLabel} query={searchQuery} />
-          </span>
+            <span className="inline-flex max-w-full items-center gap-1 truncate">
+              <span className="truncate">
+                <HighlightedText text={displayLabel} query={searchQuery} />
+              </span>
+              {companion && (
+                <span
+                  className="shrink-0 text-xs leading-none select-none"
+                  title={`zusätzliche Begleitung: ${companion}`}
+                  aria-label={`zusätzliche Begleitung: ${companion}`}
+                >
+                  👪
+                </span>
+              )}
+            </span>
           </button>
         </PopoverTrigger>
         {canRemove && (
@@ -321,6 +334,12 @@ function AssignedHelperChip({
         <p>
           <span className="font-medium">Hinweis für PDF:</span> {note || "-"}
         </p>
+        {companion && (
+          <p className="rounded-md border border-sky-200 bg-sky-50 px-2 py-1 text-xs text-sky-950">
+            <span className="font-semibold">zusätzliche Begleitung:</span>{" "}
+            {companion}
+          </p>
+        )}
         <div>
           <p className="mb-1 font-medium">Verfügbarkeiten:</p>
           <div className="flex flex-wrap gap-x-2 gap-y-1">

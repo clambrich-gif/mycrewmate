@@ -66,6 +66,7 @@ const data = {
       email: "alex@example.test",
       phone: "0456",
       note: "Bitte anrufen",
+      companion: "+ Kind Beispiel",
       willHelp: "ja",
       availFri: "ja",
       availSat: "ja",
@@ -164,6 +165,15 @@ describe("Excel-Datensicherung", () => {
     expect(workbook.Sheets.VORBEREITUNG.A1.v).toBe("ID");
     expect(workbook.Sheets.HELFER["!cols"]?.[0]?.hidden).toBe(true);
     expect(workbook.Sheets.HELFER["!cols"]?.[1]?.hidden).toBe(true);
+    const helperRows = XLSX.utils.sheet_to_json<any>(workbook.Sheets.HELFER);
+    expect(helperRows.find(row => row.Name === "Alex Beispiel")).toMatchObject({
+      "Zusätzliche Begleitung": "+ Kind Beispiel",
+    });
+
+    const parsed = parseBackupWorkbook(result.buffer.toString("base64"));
+    expect(parsed.helpers.find(row => row.name === "Alex Beispiel")).toMatchObject({
+      companion: "+ Kind Beispiel",
+    });
   });
 
   it("erkennt eine aus der Excel-Sicherung entfernte Helferzeile und Zuordnung", async () => {

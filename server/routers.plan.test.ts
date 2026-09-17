@@ -13,6 +13,7 @@ const dbMocks = vi.hoisted(() => ({
   createShift: vi.fn(),
   updateShift: vi.fn(),
   deleteShift: vi.fn(),
+  updateHelper: vi.fn(),
   deleteHelper: vi.fn(),
   deleteCake: vi.fn(),
   createPrep: vi.fn(),
@@ -1109,6 +1110,22 @@ describe("Planungs-API", () => {
       statusWording: "genehmigung",
       logEntry: "Rückfrage an Stadtverwaltung erforderlich",
       logEntryAuthor: "Organisation",
+    });
+  });
+
+  it("speichert eine optionale Begleitperson für Helfer ohne Beeinflussung der Schichtkapazität", async () => {
+    dbMocks.updateHelper.mockResolvedValue({ affectedRows: 1 });
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.helpers.update({
+        id: 42,
+        companion: "+ Frau Muster, + Kind",
+      })
+    ).resolves.toEqual({ affectedRows: 1 });
+
+    expect(dbMocks.updateHelper).toHaveBeenCalledWith(42, {
+      companion: "+ Frau Muster, + Kind",
     });
   });
 

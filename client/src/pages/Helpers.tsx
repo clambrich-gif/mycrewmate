@@ -713,6 +713,26 @@ export default function Helpers() {
                   />
                 </div>
               </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium">
+                  zusätzliche Begleitung (für Einsatzplan)
+                </label>
+                <Input
+                  key={`${helper.id}-mobile-companion-${helper.companion ?? ""}`}
+                  defaultValue={helper.companion ?? ""}
+                  placeholder="z. B. + Frau Muster, + Kind"
+                  aria-label={`zusätzliche Begleitung von ${helper.name} bearbeiten`}
+                  onBlur={event => {
+                    const value = event.target.value.trim();
+                    if (value !== (helper.companion ?? "")) {
+                      update.mutate({
+                        id: helper.id,
+                        companion: value || null,
+                      });
+                    }
+                  }}
+                />
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium">Helfen?</label>
@@ -779,6 +799,7 @@ export default function Helpers() {
               <col className="w-[150px]" />
               <col className="w-[180px]" />
               <col className="w-[230px]" />
+              <col className="w-[220px]" />
               <col className="w-[56px]" />
               {activeDays.map(day => (
                 <col key={day} className="w-[56px]" />
@@ -797,6 +818,7 @@ export default function Helpers() {
                 <th className="p-2">Ansprechpartner</th>
                 <th className="whitespace-nowrap p-2">Telefon Helfer</th>
                 <th className="p-2">Hinweis für PDF</th>
+                <th className="p-2">zusätzliche Begleitung</th>
                 <th className="p-1 text-center align-middle text-[11px] leading-tight">
                   <span className="flex min-h-8 items-center justify-center">
                     Helfen?
@@ -910,6 +932,24 @@ export default function Helpers() {
                       note={helper.note}
                       compactOnDesktop
                       onCommit={note => update.mutate({ id: helper.id, note })}
+                    />
+                  </td>
+                  <td className="p-2">
+                    <Input
+                      key={`${helper.id}-companion-${helper.companion ?? ""}`}
+                      className="h-8 w-full text-base xl:text-xs"
+                      defaultValue={helper.companion ?? ""}
+                      placeholder="optional"
+                      aria-label={`zusätzliche Begleitung für ${helper.name}`}
+                      onBlur={event => {
+                        const value = event.target.value.trim();
+                        if (value !== (helper.companion ?? "")) {
+                          update.mutate({
+                            id: helper.id,
+                            companion: value || null,
+                          });
+                        }
+                      }}
                     />
                   </td>
                   <td className="p-1 text-center align-middle">

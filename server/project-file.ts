@@ -69,6 +69,7 @@ const documentSchema = z
           email: short(320),
           phone: short(64),
           note: short(10_000),
+          companion: short(500).default(""),
           willHelp: z.enum(["ja", "nein"]),
           availMon: z.enum(["ja", "nein", "vielleicht"]),
           availTue: z.enum(["ja", "nein", "vielleicht"]),

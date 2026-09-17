@@ -63,6 +63,7 @@ export const PROJECT_EXCEL_HEADERS: Record<string, string[]> = {
     "E-Mail",
     "Telefon",
     "Bemerkung",
+    "Zusätzliche Begleitung",
     "Helfen?",
     "Mo",
     "Di",
@@ -242,6 +243,7 @@ type HelperRow = {
   email: string;
   phone: string;
   note: string;
+  companion: string;
   willHelp: "ja" | "nein";
   availMon: "ja" | "nein" | "vielleicht";
   availTue: "ja" | "nein" | "vielleicht";
@@ -455,6 +457,7 @@ export function reconcileContactSelfHelpers(
       email: "",
       phone: contact.phone,
       note: "",
+      companion: "",
       willHelp: "ja",
       availMon: "vielleicht",
       availTue: "vielleicht",
@@ -857,6 +860,11 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
     email: text(row["E-Mail"], 320, `HELFER Zeile ${index + 2}: E-Mail`),
     phone: text(row.Telefon, 64, `HELFER Zeile ${index + 2}: Telefon`),
     note: text(row.Bemerkung, 10_000, `HELFER Zeile ${index + 2}: Bemerkung`),
+    companion: text(
+      row["Zusätzliche Begleitung"] ?? row.Begleitung,
+      500,
+      `HELFER Zeile ${index + 2}: Zusätzliche Begleitung`
+    ),
     willHelp: enumValue(
       row["Helfen?"],
       ["ja", "nein"] as const,
@@ -1617,6 +1625,7 @@ function comparableCurrent(snapshot: CurrentSnapshot) {
         "email",
         "phone",
         "note",
+        "companion",
         "willHelp",
         "availMon",
         "availTue",
@@ -2599,6 +2608,7 @@ export async function restoreProjectDocument(
           email: row.email || null,
           phone: row.phone || null,
           note: row.note || null,
+          companion: row.companion || null,
           willHelp: row.willHelp,
           availMon: row.availMon,
           availTue: row.availTue,
@@ -3061,6 +3071,7 @@ export async function exportProjectExcel(): Promise<{
       "E-Mail": row.email,
       Telefon: row.phone,
       Bemerkung: row.note,
+      "Zusätzliche Begleitung": row.companion,
       "Helfen?": row.willHelp,
       Mo: row.availMon,
       Di: row.availTue,

@@ -1259,4 +1259,19 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain("Bestätigung auf");
     expect(helpers.match(/<YesNoToggle/g)).toHaveLength(4);
   });
+
+  it("erfasst zusätzliche unbezahlte Begleitungen in den Helferstammdaten und kennzeichnet sie im Einsatzplan mit 👪", () => {
+    const helpers = source("client/src/pages/Helpers.tsx");
+    const plan = source("client/src/pages/Plan.tsx");
+
+    expect(helpers).toContain("zusätzliche Begleitung (für Einsatzplan)");
+    expect(helpers).toContain("zusätzliche Begleitung");
+    expect(helpers).toContain("z. B. + Frau Muster, + Kind");
+    expect(helpers).toContain("companion: value || null");
+
+    expect(plan).toContain("companion?: string | null");
+    expect(plan).toContain("👪");
+    expect(plan).toContain("title={`zusätzliche Begleitung: ${companion}`}");
+    expect(plan).toContain("zusätzliche Begleitung:");
+  });
 });

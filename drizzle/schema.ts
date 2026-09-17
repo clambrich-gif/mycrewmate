@@ -208,6 +208,7 @@ export const helpers = mysqlTable(
     email: varchar("email", { length: 320 }),
     phone: varchar("phone", { length: 64 }),
     note: text("note"),
+    companion: varchar("companion", { length: 500 }),
     // Kurzer, nicht erratbarer Freigabecode für persönliche PDF-Links (/p/:code).
     pdfShareCode: varchar("pdfShareCode", { length: 12 }),
     willHelp: mysqlEnum("willHelp", ["ja", "nein"]).default("ja").notNull(),

@@ -751,6 +751,7 @@ export const appRouter = router({
           email: z.string().email().max(320).nullable().optional(),
           phone: z.string().max(64).nullable().optional(),
           note: z.string().nullable().optional(),
+          companion: z.string().trim().max(500).nullable().optional(),
           willHelp: yn.optional(),
           availMon: ynv.optional(),
           availTue: ynv.optional(),
