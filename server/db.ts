@@ -1647,15 +1647,6 @@ export async function updateShift(
       .for("update");
     if (!existingShift) throw new Error("Schicht wurde nicht gefunden");
 
-    const proposedShift = {
-      ...existingShift,
-      ...safe,
-      id: existingShift.id,
-      year: existingShift.year,
-      eventId: existingShift.eventId,
-      createdAt: existingShift.createdAt,
-    } as typeof shifts.$inferSelect;
-
     if (requiresAssignmentValidation) {
       const existingAssignments = await tx
         .select()
@@ -1674,36 +1665,14 @@ export async function updateShift(
             .where(and(planningScope(helpers), inArray(helpers.id, helperIds)))
             .for("update")
         : [];
-      const relatedAssignments = helperIds.length
-        ? await tx
-            .select({ ...getTableColumns(assignments) })
-            .from(assignments)
-            .innerJoin(shifts, eq(assignments.shiftId, shifts.id))
-            .where(
-              and(
-                planningScope(shifts),
-                inArray(assignments.helperId, helperIds)
-              )
-            )
-            .for("update")
-        : [];
-      const relatedShiftIds = Array.from(
-        new Set(relatedAssignments.map(item => item.shiftId))
-      );
-      const relatedShifts = relatedShiftIds.length
-        ? await tx
-            .select()
-            .from(shifts)
-            .where(and(planningScope(shifts), inArray(shifts.id, relatedShiftIds)))
-            .for("update")
-        : [];
-
+      const proposedShift = {
+        ...existingShift,
+        ...safe,
+      } as typeof shifts.$inferSelect;
       validateExistingAssignmentsForShiftUpdate({
         proposedShift,
         existingAssignments,
         assignedHelpers,
-        relatedAssignments,
-        relatedShifts,
       });
 
       // Altimporte konnten leere Slot-Zeilen erzeugen. Diese sind kein

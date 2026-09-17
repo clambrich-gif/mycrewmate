@@ -1,10 +1,4 @@
 import type { Assignment, Helper, Shift } from "../drizzle/schema";
-import { overlaps } from "./logic";
-import {
-  helperAvailableForShift,
-  helperAvailabilityWindowLabel,
-  helperHasTimedAvailability,
-} from "../shared/weekdays";
 
 export class ShiftUpdateValidationError extends Error {
   constructor(message: string) {
@@ -17,8 +11,6 @@ type ShiftAssignmentValidationInput = {
   proposedShift: Shift;
   existingAssignments: Assignment[];
   assignedHelpers: Helper[];
-  relatedAssignments: Assignment[];
-  relatedShifts: Shift[];
 };
 
 /**
@@ -67,19 +59,17 @@ export function normalizedAssignedSlotUpdates(assignments: Assignment[]) {
 }
 
 /**
- * Prüft vor einer Schichtänderung alle bereits vorhandenen Helferzuweisungen
- * gegen den neuen Stand. Die aufrufende Datenbankfunktion sperrt sämtliche
- * übergebenen Zeilen transaktional, bevor diese rein fachliche Prüfung erfolgt.
+ * Prüft vor einer Schichtänderung ausschließlich die Datenintegrität bestehender
+ * Helferzuweisungen. Zeitfensterverletzungen und Doppelbelegungen bleiben nach
+ * einer Änderung bewusst als sichtbare Planungshinweise erhalten, damit die
+ * Einsatzleitung Schichtzeiten speichern und anschließend gezielt bereinigen kann.
  */
 export function validateExistingAssignmentsForShiftUpdate({
   proposedShift,
   existingAssignments,
   assignedHelpers,
-  relatedAssignments,
-  relatedShifts,
 }: ShiftAssignmentValidationInput) {
   const helperById = new Map(assignedHelpers.map(helper => [helper.id, helper]));
-  const shiftById = new Map(relatedShifts.map(shift => [shift.id, shift]));
   const occupiedSlots = new Set<number>();
   const assignedHelperIds = new Set<number>();
   const { assigned: assignmentsWithHelpers } =
@@ -110,41 +100,6 @@ export function validateExistingAssignmentsForShiftUpdate({
       throw new ShiftUpdateValidationError(
         "Eine bestehende Helferzuweisung gehört nicht zur aktuellen Veranstaltung"
       );
-    }
-    if (!helperAvailableForShift(helper, proposedShift)) {
-      if (helperHasTimedAvailability(helper, proposedShift.day)) {
-        const shiftTime =
-          proposedShift.startTime && proposedShift.endTime
-            ? `${proposedShift.startTime}–${proposedShift.endTime} Uhr`
-            : "ganztägig";
-        throw new ShiftUpdateValidationError(
-          `Die Schichtzeit ${shiftTime} liegt für „${helper.name}“ am ${proposedShift.day} außerhalb des Zeitfensters (${helperAvailabilityWindowLabel(helper, proposedShift.day)})`
-        );
-      }
-      throw new ShiftUpdateValidationError(
-        `Der Helfer „${helper.name}“ ist für den angegebenen Zeitraum am ${proposedShift.day} nicht verfügbar`
-      );
-    }
-
-    for (const relatedAssignment of relatedAssignments) {
-      if (
-        !hasAssignedHelper(relatedAssignment) ||
-        relatedAssignment.helperId !== assignment.helperId ||
-        relatedAssignment.shiftId === proposedShift.id
-      ) {
-        continue;
-      }
-      const relatedShift = shiftById.get(relatedAssignment.shiftId);
-      if (!relatedShift) {
-        throw new ShiftUpdateValidationError(
-          "Eine bestehende Helferzuweisung verweist nicht auf eine Schicht der aktuellen Veranstaltung"
-        );
-      }
-      if (overlaps(proposedShift, relatedShift)) {
-        throw new ShiftUpdateValidationError(
-          `Die neue Schichtzeit überschneidet sich für „${helper.name}“ mit „${relatedShift.area} – ${relatedShift.task}“`
-        );
-      }
     }
   }
 }

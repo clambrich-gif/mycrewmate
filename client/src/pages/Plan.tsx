@@ -481,6 +481,7 @@ export default function Plan() {
   const [mobileNoteShift, setMobileNoteShift] =
     useState<DropdownShift | null>(null);
   const [mobileNoteValue, setMobileNoteValue] = useState("");
+  const pendingTimeOverlapNotice = useRef<string[]>([]);
   const emptyMessage =
     warningFilter === "konflikte"
       ? "Keine Schichten mit Doppelbelegungen gefunden."
@@ -545,9 +546,20 @@ export default function Plan() {
       invalidate();
       setDlgOpen(false);
       setMobileNoteShift(null);
-      toast.success("Schicht aktualisiert");
+      const overlappingHelpers = pendingTimeOverlapNotice.current;
+      pendingTimeOverlapNotice.current = [];
+      if (overlappingHelpers.length > 0) {
+        toast.warning(
+          `Doppelbelegung aktualisiert: ${overlappingHelpers.join(", ")}`
+        );
+      } else {
+        toast.success("Schicht aktualisiert");
+      }
     },
-    onError: e => toast.error(e.message),
+    onError: e => {
+      pendingTimeOverlapNotice.current = [];
+      toast.error(e.message);
+    },
   });
   const deleteShift = trpc.shifts.remove.useMutation({
     onSuccess: () => {
@@ -599,6 +611,7 @@ export default function Plan() {
     setDlgOpen(true);
   };
   const openEdit = (s: any) => {
+    pendingTimeOverlapNotice.current = [];
     setEditShift(s);
     setForm({
       day: s.day,
@@ -618,6 +631,7 @@ export default function Plan() {
   };
   const saveMobileNote = () => {
     if (!mobileNoteShift || updateShift.isPending) return;
+    pendingTimeOverlapNotice.current = [];
     updateShift.mutate({
       id: mobileNoteShift.id,
       note: mobileNoteValue.trim() || null,
@@ -640,7 +654,12 @@ export default function Plan() {
       toast.error("Das Ende muss nach dem Beginn liegen");
       return;
     }
-    if (editShift) updateShift.mutate({ id: editShift.id, ...form });
+    if (editShift) {
+      pendingTimeOverlapNotice.current = timeOverlapConflicts.map(
+        conflict => conflict.name
+      );
+      updateShift.mutate({ id: editShift.id, ...form });
+    }
     else createShift.mutate({ ...form });
   };
 
@@ -681,10 +700,23 @@ export default function Plan() {
   const label = (h: any) =>
     `${h.name}${h.contactId ? ` (${contactName(h.contactId)})` : ""}`;
 
+  const assignedShiftsByHelper = useMemo(() => {
+    const result = new Map<number, DropdownShift[]>();
+    for (const evaluation of evals) {
+      for (const assignment of evaluation.assigned as AssignmentT[]) {
+        const assigned = result.get(assignment.helperId) ?? [];
+        assigned.push(evaluation.shift);
+        result.set(assignment.helperId, assigned);
+      }
+    }
+    return result;
+  }, [evals]);
+
   /**
    * Warnt bereits im Dialog, bevor eine bestehende Zuweisung durch eine
-   * verlängerte Schichtzeit ungültig würde. Die Servervalidierung bleibt
-   * zusätzlich die verbindliche Absicherung gegen parallele Änderungen.
+   * verlängerte Schichtzeit außerhalb eines hinterlegten Zeitfensters fällt.
+   * Die Warnung ist bewusst nicht blockierend: Die Zuweisung bleibt sichtbar
+   * und wird nach dem Speichern als Ausfall ausgewiesen.
    */
   const timeWindowConflicts = useMemo(() => {
     if (!editShift) return [];
@@ -719,6 +751,39 @@ export default function Plan() {
       ];
     });
   }, [editShift, evals, form.day, form.endTime, form.startTime, helperById]);
+
+  /** Ermittelt neu entstehende zeitliche Doppelbelegungen vor dem Speichern. */
+  const timeOverlapConflicts = useMemo(() => {
+    if (!editShift) return [];
+    const currentEvaluation = evals.find(
+      evaluation => evaluation.shift.id === editShift.id
+    );
+    if (!currentEvaluation) return [];
+    const proposedShift = {
+      ...editShift,
+      day: form.day,
+      startTime: form.startTime,
+      endTime: form.endTime,
+    } as DropdownShift;
+    const seenHelperIds = new Set<number>();
+
+    return currentEvaluation.assigned.flatMap(assignment => {
+      if (seenHelperIds.has(assignment.helperId)) return [];
+      seenHelperIds.add(assignment.helperId);
+      const helper = helperById.get(assignment.helperId);
+      if (!helper) return [];
+      return (assignedShiftsByHelper.get(helper.id) ?? [])
+        .filter(
+          other => other.id !== editShift.id && shiftsOverlap(other, proposedShift)
+        )
+        .map(other => ({
+          id: `${helper.id}-${other.id}`,
+          name: helper.name,
+          otherShift: `${other.area} – ${other.task}`,
+          otherTime: formatTimeLabel(other),
+        }));
+    });
+  }, [assignedShiftsByHelper, editShift, evals, form.day, form.endTime, form.startTime, helperById]);
 
   const filtered = useMemo(
     () =>
@@ -757,18 +822,6 @@ export default function Plan() {
 
   const activeHelpers = (shift: DropdownShift) =>
     helpers.filter(helper => helperAvailableForShift(helper, shift));
-
-  const assignedShiftsByHelper = useMemo(() => {
-    const result = new Map<number, DropdownShift[]>();
-    for (const evaluation of evals) {
-      for (const assignment of evaluation.assigned as AssignmentT[]) {
-        const assigned = result.get(assignment.helperId) ?? [];
-        assigned.push(evaluation.shift);
-        result.set(assignment.helperId, assigned);
-      }
-    }
-    return result;
-  }, [evals]);
 
   const overlappingAssignments = (
     helperId: number,
@@ -1653,8 +1706,40 @@ export default function Plan() {
                       ))}
                     </ul>
                     <p className="text-xs text-amber-900">
-                      Zeitfenster anpassen oder Helfer vor dem Speichern neu
-                      einteilen. Die Änderung wird andernfalls nicht übernommen.
+                      Die Schichtzeit kann gespeichert werden. Der Helfer wird
+                      anschließend als zeitlich nicht verfügbar ausgewiesen,
+                      bis Zeitfenster oder Einteilung angepasst sind.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            {timeOverlapConflicts.length > 0 && (
+              <div
+                role="alert"
+                data-slot="shift-time-overlap-conflict"
+                className="rounded-lg border border-orange-300 bg-orange-50 p-3 text-sm text-orange-950"
+              >
+                <div className="flex items-start gap-2">
+                  <AlertTriangle
+                    className="mt-0.5 size-4 shrink-0 text-orange-700"
+                    aria-hidden="true"
+                  />
+                  <div className="min-w-0 space-y-1">
+                    <p className="font-semibold">
+                      Diese Schichtzeit erzeugt folgende Doppelbelegung:
+                    </p>
+                    <ul className="list-disc space-y-0.5 pl-4">
+                      {timeOverlapConflicts.map(conflict => (
+                        <li key={conflict.id}>
+                          {conflict.name}: {conflict.otherShift} (
+                          {conflict.otherTime})
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="text-xs text-orange-900">
+                      Die Schichtzeit wird gespeichert. Nach der Aktualisierung
+                      markieren beide betroffenen Schichten die Doppelbelegung.
                     </p>
                   </div>
                 </div>

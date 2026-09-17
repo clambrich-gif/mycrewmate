@@ -64,15 +64,11 @@ function validate(overrides: {
   proposedShift?: Shift;
   existingAssignments?: Assignment[];
   assignedHelpers?: Helper[];
-  relatedAssignments?: Assignment[];
-  relatedShifts?: Shift[];
 } = {}) {
   validateExistingAssignmentsForShiftUpdate({
     proposedShift: overrides.proposedShift ?? shift(),
     existingAssignments: overrides.existingAssignments ?? [assignment()],
     assignedHelpers: overrides.assignedHelpers ?? [helper()],
-    relatedAssignments: overrides.relatedAssignments ?? [assignment()],
-    relatedShifts: overrides.relatedShifts ?? [shift()],
   });
 }
 
@@ -84,20 +80,17 @@ describe("Schichtupdate-Validierung mit bestehenden Zuweisungen", () => {
   it("akzeptiert needed=0, wenn für die Schicht noch keine Zuweisungen existieren", () => {
     expect(() =>
       validate({
-        proposedShift: shift({ needed: 0 }),
         existingAssignments: [],
         assignedHelpers: [],
-        relatedAssignments: [],
-        relatedShifts: [],
       })
     ).not.toThrow();
   });
 
   it("lehnt einen Bedarf unterhalb bereits belegter Helferplätze ab", () => {
-    expect(() => validate({ proposedShift: shift({ needed: 0 }) })).toThrow(
+    expect(() => validate({ existingAssignments: [assignment(), assignment({ id: 102, slot: 1, helperId: 12 })], assignedHelpers: [helper(), helper({ id: 12, name: "Robin Test" })] })).toThrow(
       ShiftUpdateValidationError
     );
-    expect(() => validate({ proposedShift: shift({ needed: 0 }) })).toThrow(
+    expect(() => validate({ existingAssignments: [assignment(), assignment({ id: 102, slot: 1, helperId: 12 })], assignedHelpers: [helper(), helper({ id: 12, name: "Robin Test" })] })).toThrow(
       "kleiner als bereits belegte Helferplätze"
     );
   });
@@ -114,11 +107,8 @@ describe("Schichtupdate-Validierung mit bestehenden Zuweisungen", () => {
 
     expect(() =>
       validate({
-        proposedShift: shift({ needed: 10 }),
         existingAssignments: [realAssignment, emptyLegacySlot],
         assignedHelpers: [helper()],
-        relatedAssignments: [realAssignment],
-        relatedShifts: [shift()],
       })
     ).not.toThrow();
     expect(unassignedAssignmentIds([realAssignment, emptyLegacySlot])).toEqual([
@@ -135,8 +125,6 @@ describe("Schichtupdate-Validierung mit bestehenden Zuweisungen", () => {
         proposedShift: shift({ needed: 10 }),
         existingAssignments: [firstHelper, tenthHelper],
         assignedHelpers: [helper(), helper({ id: 12, name: "Robin Test" })],
-        relatedAssignments: [firstHelper, tenthHelper],
-        relatedShifts: [shift()],
       })
     ).not.toThrow();
     expect(normalizedAssignedSlotUpdates([firstHelper, tenthHelper])).toEqual([
@@ -148,51 +136,31 @@ describe("Schichtupdate-Validierung mit bestehenden Zuweisungen", () => {
   it("lehnt eine Bedarfssenkung weiterhin ab, wenn mehr echte Helfer als Plätze bleiben", () => {
     expect(() =>
       validate({
-        proposedShift: shift({ needed: 1 }),
         existingAssignments: [assignment({ id: 101 }), assignment({ id: 102, slot: 1, helperId: 12 })],
         assignedHelpers: [helper(), helper({ id: 12, name: "Robin Test" })],
-        relatedAssignments: [assignment({ id: 101 }), assignment({ id: 102, slot: 1, helperId: 12 })],
-        relatedShifts: [shift()],
       })
     ).toThrow("kleiner als bereits belegte Helferplätze");
   });
 
-  it("lehnt einen neuen, für den zugewiesenen Helfer nicht verfügbaren Tag ab", () => {
+  it("lässt geänderte Verfügbarkeit der bestehenden Einteilung als sichtbaren Planhinweis zu", () => {
     expect(() =>
       validate({
-        proposedShift: shift({ day: "Samstag" }),
         assignedHelpers: [helper({ availSat: "nein" })],
       })
-    ).toThrow("am Samstag nicht verfügbar");
+    ).not.toThrow();
   });
 
-  it("lehnt eine Schichtzeit außerhalb eines gespeicherten Zeitfensters ab", () => {
+  it("lässt eine Schichtzeit außerhalb eines gespeicherten Zeitfensters als Planhinweis zu", () => {
     expect(() =>
       validate({
-        proposedShift: shift({ startTime: "08:00", endTime: "12:00" }),
         assignedHelpers: [
           helper({ availFriStart: "13:00", availFriEnd: "18:00" }),
         ],
       })
-    ).toThrow(
-      "Die Schichtzeit 08:00–12:00 Uhr liegt für „Alex Test“ am Freitag außerhalb des Zeitfensters (Verfügbar: 13:00 – 18:00 Uhr)"
-    );
+    ).not.toThrow();
   });
 
-  it("lehnt eine neue Zeitüberschneidung mit einer anderen Schicht desselben Helfers ab", () => {
-    const otherShift = shift({
-      id: 2,
-      area: "Strecke",
-      task: "Posten 1",
-      startTime: "09:00",
-      endTime: "11:00",
-    });
-    expect(() =>
-      validate({
-        proposedShift: shift({ startTime: "08:30", endTime: "10:30" }),
-        relatedAssignments: [assignment(), assignment({ id: 102, shiftId: 2 })],
-        relatedShifts: [shift(), otherShift],
-      })
-    ).toThrow("überschneidet sich");
+  it("belässt zeitliche Doppelbelegungen für die nachgelagerte Planevaluierung", () => {
+    expect(() => validate()).not.toThrow();
   });
 });

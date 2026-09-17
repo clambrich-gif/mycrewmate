@@ -1383,7 +1383,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain(
       "Die geänderte Schichtzeit passt nicht mehr zu folgenden"
     );
-    expect(plan).toContain("Zeitfenster anpassen oder Helfer vor dem Speichern neu");
+    expect(plan).toContain("Die Schichtzeit kann gespeichert werden.");
+    expect(plan).toContain("const timeOverlapConflicts = useMemo");
+    expect(plan).toContain('data-slot="shift-time-overlap-conflict"');
+    expect(plan).toContain(
+      "Diese Schichtzeit erzeugt folgende Doppelbelegung:"
+    );
+    expect(plan).toContain("Doppelbelegung aktualisiert:");
   });
 
   it("zeigt persönliche Zeitfenster in den Helfer-PDFs an", () => {
