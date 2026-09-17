@@ -1,4 +1,17 @@
-export function StatusBadge({ status }: { status: string }) {
+import { Clock3 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+export function StatusBadge({
+  status,
+  timeUndercoverage = false,
+}: {
+  status: string;
+  timeUndercoverage?: boolean;
+}) {
   const map: Record<string, { cls: string; label: string }> = {
     OK: { cls: "badge-ok", label: "OK" },
     erledigt: { cls: "badge-ok", label: "erledigt" },
@@ -14,5 +27,29 @@ export function StatusBadge({ status }: { status: string }) {
     nein: { cls: "badge-err", label: "Nein" },
   };
   const m = map[status] ?? { cls: "badge-neutral", label: status };
-  return <span className={`badge ${m.cls}`}>{m.label}</span>;
+  const badge = (
+    <span
+      className={`badge inline-flex items-center gap-1 ${m.cls}`}
+      data-slot={timeUndercoverage ? "shift-status-time-undercoverage" : undefined}
+    >
+      {m.label}
+      {timeUndercoverage && <Clock3 className="size-3" aria-hidden="true" />}
+    </span>
+  );
+
+  if (!timeUndercoverage) return badge;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span tabIndex={0} aria-label="Zeitliche Unterdeckung der Schicht">
+          {badge}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top" sideOffset={6}>
+        Zeitliche Unterdeckung: Mindestens ein Helfer deckt die Schichtzeit
+        nicht vollständig ab.
+      </TooltipContent>
+    </Tooltip>
+  );
 }

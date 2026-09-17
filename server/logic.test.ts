@@ -162,6 +162,24 @@ describe("evaluateShifts", () => {
     expect(evaluation[0].ausfallCount).toBe(1);
   });
 
+  it("markiert eine ganztägige Schicht mit zeitlich eingeschränktem Helfer als knapp", () => {
+    const shifts = [S(1, "Freitag", "", "", 2)];
+    const helpers = [
+      { ...H(1), availFriStart: "08:00", availFriEnd: "13:00" },
+      H(2),
+    ];
+    const evaluation = evaluateShifts(
+      shifts,
+      [A(1, 1, 0), A(1, 2, 1)],
+      helpers
+    );
+
+    expect(evaluation[0].besetzt).toBe(2);
+    expect(evaluation[0].ausfallCount).toBe(0);
+    expect(evaluation[0].timeUndercoverage).toBe(true);
+    expect(evaluation[0].status).toBe("KNAPP");
+  });
+
   it("markiert Doppelbelegungen nur an den tatsächlich kollidierenden Schichten", () => {
     const shifts = [
       S(1, "Freitag", "10:00", "12:00"),

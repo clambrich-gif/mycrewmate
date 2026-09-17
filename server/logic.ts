@@ -6,6 +6,7 @@ import {
 import {
   helperAvailableForShift,
   helperAvailableOnDay,
+  helperHasTimedAvailability,
   WEEKDAYS,
   type Weekday,
 } from "../shared/weekdays";
@@ -41,6 +42,7 @@ export interface ShiftEval {
   doppelIds: Set<number>;
   besetzt: number;
   status: ShiftStatus;
+  timeUndercoverage: boolean;
   doppelCount: number;
   ausfallCount: number;
 }
@@ -127,8 +129,26 @@ export function evaluateShifts(
     }
 
     const besetzt = validHelpers.length;
+    // Auch eine nominell voll besetzte ganztägige Schicht bleibt knapp,
+    // wenn mindestens ein eingeteilter Helfer nur ein Zeitfenster abdeckt.
+    // Bei zeitdefinierten Schichten erfasst dieselbe Kennzeichnung zugleich
+    // Helfer, deren eigenes Fenster die Schicht nicht vollständig umfasst.
+    const hasDefinedShiftTime = Boolean(shift.startTime && shift.endTime);
+    const timeUndercoverage = assigned.some(assignment => {
+      const helper = helperById.get(assignment.helperId);
+      return Boolean(
+        helper &&
+          helperAvailableOnDay(helper, shift.day as Day) &&
+          helperHasTimedAvailability(helper, shift.day as Day) &&
+          (!hasDefinedShiftTime || !helperActiveForShift(helper, shift))
+      );
+    });
     const status: ShiftStatus =
-      besetzt === 0 ? "OFFEN" : besetzt < shift.needed ? "KNAPP" : "OK";
+      besetzt === 0
+        ? "OFFEN"
+        : besetzt < shift.needed || (shift.needed > 0 && timeUndercoverage)
+          ? "KNAPP"
+          : "OK";
     const doppelIds = conflictsByShift.get(shift.id) ?? new Set<number>();
 
     return {
@@ -139,6 +159,7 @@ export function evaluateShifts(
       doppelIds,
       besetzt,
       status,
+      timeUndercoverage,
       doppelCount: validHelpers.filter(helper => doppelIds.has(helper.id))
         .length,
       ausfallCount: ausfallHelpers.length,

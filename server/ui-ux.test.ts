@@ -1335,6 +1335,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
   it("erfasst Zeitfenster über ein schlankes Tages-Popover und filtert sie im Einsatzplan hart", () => {
     const helpers = source("client/src/pages/Helpers.tsx");
     const plan = source("client/src/pages/Plan.tsx");
+    const statusBadge = source("client/src/components/StatusBadge.tsx");
 
     expect(helpers).toContain("function DayAvailabilityControl");
     expect(helpers).toContain('data-slot="day-availability-trigger"');
@@ -1390,6 +1391,14 @@ describe("UI- und Mobile-UX-Regeln", () => {
       "Diese Schichtzeit erzeugt folgende Doppelbelegung:"
     );
     expect(plan).toContain("Doppelbelegung aktualisiert:");
+    expect(plan).toContain("timeUndercoverage={e.timeUndercoverage}");
+    expect(statusBadge).toContain("timeUndercoverage = false");
+    expect(statusBadge).toContain(
+      'data-slot={timeUndercoverage ? "shift-status-time-undercoverage" : undefined}'
+    );
+    expect(statusBadge).toContain(
+      "Zeitliche Unterdeckung: Mindestens ein Helfer deckt die Schichtzeit"
+    );
   });
 
   it("zeigt persönliche Zeitfenster in den Helfer-PDFs an", () => {

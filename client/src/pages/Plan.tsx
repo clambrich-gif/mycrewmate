@@ -1286,7 +1286,10 @@ export default function Plan() {
                   <div className="min-w-0">
                     <div className="mb-1 flex flex-wrap items-center gap-2">
                       <span className="font-semibold">{shift.day}</span>
-                      <StatusBadge status={e.status} />
+                      <StatusBadge
+                        status={e.status}
+                        timeUndercoverage={e.timeUndercoverage}
+                      />
                     </div>
                     <h2 className="break-words text-lg font-semibold">
                       <HighlightedText text={shift.task} query={q} />
@@ -1457,7 +1460,10 @@ export default function Plan() {
                     <td className="p-2 text-center font-semibold xl:p-1.5">{s.needed}</td>
                     <td className="p-2 text-center xl:p-1.5">{e.besetzt}</td>
                     <td className="p-2 text-center xl:p-1.5">
-                      <StatusBadge status={e.status} />
+                      <StatusBadge
+                        status={e.status}
+                        timeUndercoverage={e.timeUndercoverage}
+                      />
                     </td>
                     <td className="p-2 text-center xl:p-1.5">
                       {e.doppelCount > 0 ? (
