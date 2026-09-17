@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import {
   AlertTriangle,
   ChevronDown,
+  Clock3,
   Info,
   Pencil,
   Plus,
@@ -64,11 +65,15 @@ import {
 } from "@/lib/dashboard-target-filter";
 import {
   eventWeekdays,
+  helperAvailabilityWindowLabel,
   helperAvailableForShift,
+  helperHasTimedAvailability,
   WEEKDAY_AVAILABILITY_FIELDS,
+  WEEKDAY_AVAILABILITY_TIME_FIELDS,
   WEEKDAY_SHORT_LABELS,
   WEEKDAYS,
   type AvailabilityValue,
+  type AvailabilityTimeField,
   type Weekday,
 } from "@shared/weekdays";
 import { useSearchParams } from "wouter";
@@ -100,7 +105,10 @@ type HelperTooltipData = {
   phone: string | null;
   note: string | null;
   companion?: string | null;
-} & Record<AvailabilityField, AvailabilityValue>;
+  willHelp: "ja" | "nein";
+} &
+  Record<AvailabilityField, AvailabilityValue> &
+  Partial<Record<AvailabilityTimeField, string | null>>;
 
 type PlanStatusCounts = {
   total: number;
@@ -266,6 +274,7 @@ function AssignedHelperChip({
   searchQuery,
   className,
   activeDays,
+  shiftDay,
   canRemove,
   onRemove,
 }: {
@@ -274,6 +283,7 @@ function AssignedHelperChip({
   searchQuery: string;
   className: string;
   activeDays: Weekday[];
+  shiftDay: Weekday;
   canRemove: boolean;
   onRemove: () => void;
 }) {
@@ -282,6 +292,10 @@ function AssignedHelperChip({
   const closeTimer = useRef<number | null>(null);
   const note = helper.note?.trim() ?? "";
   const companion = helper.companion?.trim() ?? "";
+  const timeRestricted = helperHasTimedAvailability(helper, shiftDay);
+  const timeAvailabilityLabel = timeRestricted
+    ? helperAvailabilityWindowLabel(helper, shiftDay)
+    : "";
 
   const clearOpenTimer = () => {
     if (openTimer.current !== null) window.clearTimeout(openTimer.current);
@@ -333,6 +347,15 @@ function AssignedHelperChip({
                   aria-label={`zusätzliche Begleitung: ${companion}`}
                 >
                   👪
+                </span>
+              )}
+              {timeRestricted && (
+                <span
+                  className="shrink-0 text-xs leading-none text-slate-700 select-none"
+                  title={timeAvailabilityLabel}
+                  aria-label={timeAvailabilityLabel}
+                >
+                  <Clock3 className="size-3.5" aria-hidden="true" />
                 </span>
               )}
               <span className="truncate">
@@ -396,6 +419,12 @@ function AssignedHelperChip({
           <p className="rounded-md border border-sky-200 bg-sky-50 px-2 py-1 text-xs text-sky-950">
             <span className="font-semibold">zusätzliche Begleitung:</span>{" "}
             {companion}
+          </p>
+        )}
+        {timeRestricted && (
+          <p className="rounded-md border border-sky-200 bg-sky-50 px-2 py-1 text-xs text-sky-950">
+            <span className="font-semibold">Zeitliche Verfügbarkeit:</span>{" "}
+            {timeAvailabilityLabel}
           </p>
         )}
         <div>
@@ -757,12 +786,27 @@ export default function Plan() {
                   {actives.map(helper => {
                     const conflicts = overlappingAssignments(helper.id, shift);
                     const isAlreadyAssigned = conflicts.length > 0;
+                    const timeRestricted = helperHasTimedAvailability(
+                      helper,
+                      shift.day
+                    );
+                    const timeAvailabilityLabel = timeRestricted
+                      ? helperAvailabilityWindowLabel(helper, shift.day)
+                      : "";
                     const conflictTitle = conflicts
                       .map(
                         other =>
                           `${other.area}: ${other.task} (${formatTimeLabel(other)})`
                       )
                       .join(", ");
+                    const optionTitle = [
+                      timeAvailabilityLabel,
+                      isAlreadyAssigned
+                        ? `Zeitgleich eingeteilt: ${conflictTitle}`
+                        : "",
+                    ]
+                      .filter(Boolean)
+                      .join("\n");
                     return (
                       <SelectItem
                         key={helper.id}
@@ -772,11 +816,7 @@ export default function Plan() {
                             ? "bg-amber-100 text-amber-950 focus:bg-amber-200 focus:text-amber-950 dark:bg-amber-900/60 dark:text-amber-50 dark:focus:bg-amber-800"
                             : undefined
                         }
-                        title={
-                          isAlreadyAssigned
-                            ? `Zeitgleich eingeteilt: ${conflictTitle}`
-                            : undefined
-                        }
+                        title={optionTitle || undefined}
                       >
                         <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
                           <span className="flex min-w-0 items-center gap-1 truncate">
@@ -787,6 +827,15 @@ export default function Plan() {
                                 aria-label={`zusätzliche Begleitung: ${helper.companion.trim()}`}
                               >
                                 👪
+                              </span>
+                            )}
+                            {timeRestricted && (
+                              <span
+                                className="shrink-0 text-xs leading-none text-slate-700 select-none"
+                                title={timeAvailabilityLabel}
+                                aria-label={timeAvailabilityLabel}
+                              >
+                                <Clock3 className="size-3.5" aria-hidden="true" />
                               </span>
                             )}
                             <span className="truncate">{label(helper)}</span>
@@ -840,6 +889,7 @@ export default function Plan() {
               searchQuery={q}
               className={className}
               activeDays={activeDays}
+              shiftDay={shift.day}
               canRemove={canEditPlan}
               onRemove={() => unassign.mutate({ id: a.id })}
             />

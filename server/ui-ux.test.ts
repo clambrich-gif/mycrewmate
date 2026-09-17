@@ -1356,6 +1356,20 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain("<Clock3");
     expect(helpers).toContain("Zeitfenster speichern");
     expect(plan).toContain("helperAvailableForShift");
+    expect(plan).toContain("helperHasTimedAvailability");
+    expect(plan).toContain("helperAvailabilityWindowLabel");
+    expect(plan).toContain("timeRestricted");
+    expect(plan).toContain("timeAvailabilityLabel");
+    expect(plan).toContain("Zeitliche Verfügbarkeit:");
+    expect(plan).toContain('shiftDay={shift.day}');
+    expect(plan).toContain("helperHasTimedAvailability(\n                      helper,\n                      shift.day\n                    )");
+    const assignedChip = plan.slice(
+      plan.indexOf("function AssignedHelperChip"),
+      plan.indexOf("export default function Plan")
+    );
+    expect(assignedChip.indexOf("👪")).toBeLessThan(
+      assignedChip.indexOf("timeRestricted &&")
+    );
     expect(plan).toContain("const activeHelpers = (shift: DropdownShift)");
     expect(plan).toContain("const actives = activeHelpers(shift)");
   });

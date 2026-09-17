@@ -7,6 +7,7 @@ import {
   overlaps,
   toMinutes,
 } from "./logic";
+import { helperAvailabilityWindowLabel } from "../shared/weekdays";
 
 const H = (
   id: number,
@@ -92,6 +93,9 @@ describe("helperActiveOnDay", () => {
       helperActiveForShift(afternoonHelper, S(3, "Freitag", "17:00", "19:00"))
     ).toBe(false);
     expect(helperActiveForShift(afternoonHelper, S(4, "Freitag", "", ""))).toBe(true);
+    expect(helperAvailabilityWindowLabel(afternoonHelper, "Freitag")).toBe(
+      "Verfügbar: 13:00 – 18:00 Uhr"
+    );
   });
 });
 

@@ -167,14 +167,5 @@ export function helperAvailabilityWindowLabel(
 ) {
   const window = helperAvailabilityWindow(helper, day);
   if (!window) return "Ganztägig verfügbar";
-  const known = `${window.start}-${window.end}`;
-  const name =
-    known === "08:00-13:00"
-      ? "Vormittags"
-      : known === "13:00-18:00"
-        ? "Nachmittags"
-        : known === "18:00-23:00"
-          ? "Abends"
-          : "Benutzerdefiniert";
-  return `Verfügbar: ${name} / ${window.start} – ${window.end} Uhr`;
+  return `Verfügbar: ${window.start} – ${window.end} Uhr`;
 }
