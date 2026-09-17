@@ -1,5 +1,9 @@
 import { COOKIE_NAME } from "@shared/const";
-import { eventWeekdays, WEEKDAYS } from "@shared/weekdays";
+import {
+  eventWeekdays,
+  isHelperWithoutFirstContact,
+  WEEKDAYS,
+} from "@shared/weekdays";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import {
@@ -1413,7 +1417,7 @@ export const appRouter = router({
 
   dashboard: router({
     stats: protectedProcedure.query(async () => {
-      const [shifts, assignments, helpers, prep, post, contacts] =
+      const [shifts, assignments, helpers, prep, post, contacts, selectedEvent] =
         await Promise.all([
           db.listShifts(),
           db.listAssignments(),
@@ -1421,6 +1425,7 @@ export const appRouter = router({
           db.listPrep(),
           db.listPost(),
           db.listContacts(),
+          db.getEvent(),
         ]);
       const ev = evaluateShifts(shifts, assignments, helpers);
       const besetzt = ev.reduce((s, e) => s + e.besetzt, 0);
@@ -1438,6 +1443,11 @@ export const appRouter = router({
       ).length;
       const eingeteilteUnbestaetigteHelfer =
         eingeteilteHelfer.length - eingeteilteBestaetigteHelfer;
+      const aktiveFestivaltage = eventWeekdays(selectedEvent?.activeDays);
+      const helferOhneErstkontakt = helpers.filter(helper =>
+        isHelperWithoutFirstContact(helper, aktiveFestivaltage)
+      ).length;
+      const helferKontaktiert = helpers.length - helferOhneErstkontakt;
       const taeglicheEinsatzbereitschaft = (
         ["Freitag", "Samstag", "Sonntag"] as const
       ).map(day => {
@@ -1477,6 +1487,12 @@ export const appRouter = router({
             : Math.round(
                 (eingeteilteBestaetigteHelfer / eingeteilteHelfer.length) * 100
               ),
+        helferOhneErstkontakt,
+        helferKontaktiert,
+        erstkontaktquote:
+          helpers.length === 0
+            ? 0
+            : Math.round((helferKontaktiert / helpers.length) * 100),
         taeglicheEinsatzbereitschaft,
         doppelGesamt: ev.reduce((s, e) => s + e.doppelCount, 0),
         ausfallGesamt: ev.reduce((s, e) => s + e.ausfallCount, 0),

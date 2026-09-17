@@ -290,6 +290,59 @@ describe("Planungs-API", () => {
     ]);
   });
 
+  it("berechnet die Erstkontaktquote aus den Fragezeichen aktiver Festivaltage", async () => {
+    dbMocks.getEvent.mockResolvedValue({
+      id: 1,
+      year: 2026,
+      name: "MyEifelRide",
+      activeDays: ["Freitag", "Samstag", "Sonntag"],
+      pdfLogoKey: null,
+      pdfLogoUrl: null,
+      pdfLogoFallback: "none",
+      sortOrder: 0,
+      createdAt: new Date(),
+    });
+    dbMocks.listHelpers.mockResolvedValue([
+      {
+        ...helper,
+        id: 20,
+        name: "Neu",
+        confirmed: "nein",
+        willHelp: "ja",
+        availFri: "vielleicht",
+        availSat: "vielleicht",
+        availSun: "vielleicht",
+      },
+      {
+        ...helper,
+        id: 21,
+        name: "Kontaktiert",
+        confirmed: "nein",
+        willHelp: "ja",
+        availFri: "ja",
+        availSat: "vielleicht",
+        availSun: "vielleicht",
+      },
+      {
+        ...helper,
+        id: 22,
+        name: "Abgesagt",
+        confirmed: "nein",
+        willHelp: "nein",
+        availFri: "vielleicht",
+        availSat: "vielleicht",
+        availSun: "vielleicht",
+      },
+    ]);
+
+    const stats = await appRouter.createCaller(ctx).dashboard.stats();
+
+    expect(stats.helferGesamt).toBe(3);
+    expect(stats.helferOhneErstkontakt).toBe(1);
+    expect(stats.helferKontaktiert).toBe(2);
+    expect(stats.erstkontaktquote).toBe(67);
+  });
+
   it("liefert in den PDF-Einstellungen nur das Bild des aktuellen Events", async () => {
     dbMocks.getAppSettings.mockResolvedValue({
       id: 1,

@@ -3,6 +3,7 @@ import {
   dashboardTargetHref,
   parseHelperAssignmentFilter,
   parseHelperConfirmationFilter,
+  parseHelperFirstContactFilter,
   parsePlanStatusFilter,
   parsePlanWarningFilter,
   parseTaskStatusFilter,
@@ -47,6 +48,9 @@ describe("Dashboard-Zielnavigation", () => {
         assigned: true,
       })
     ).toBe("/helfer?bestaetigt=nein&eingeteilt=ja");
+    expect(
+      dashboardTargetHref({ path: "/helfer", firstContact: "offen" })
+    ).toBe("/helfer?erstkontakt=offen");
   });
 
   it("akzeptiert ausschließlich unterstützte Filterwerte", () => {
@@ -67,5 +71,7 @@ describe("Dashboard-Zielnavigation", () => {
     expect(parseHelperConfirmationFilter("offen")).toBe("alle");
     expect(parseHelperAssignmentFilter("ja")).toBe(true);
     expect(parseHelperAssignmentFilter("nein")).toBe(false);
+    expect(parseHelperFirstContactFilter("offen")).toBe("offen");
+    expect(parseHelperFirstContactFilter("ja")).toBe("alle");
   });
 });

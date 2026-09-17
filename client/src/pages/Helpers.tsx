@@ -30,14 +30,17 @@ import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 import {
   eventWeekdays,
+  isHelperWithoutFirstContact,
   WEEKDAY_AVAILABILITY_FIELDS,
   WEEKDAY_SHORT_LABELS,
 } from "@shared/weekdays";
 import {
   HELPER_ASSIGNMENT_QUERY_KEY,
   HELPER_CONFIRMATION_QUERY_KEY,
+  HELPER_FIRST_CONTACT_QUERY_KEY,
   parseHelperAssignmentFilter,
   parseHelperConfirmationFilter,
+  parseHelperFirstContactFilter,
 } from "@/lib/dashboard-target-filter";
 import { useSearchParams } from "wouter";
 
@@ -295,6 +298,10 @@ export default function Helpers() {
   const assignedOnly = parseHelperAssignmentFilter(
     searchParams.get(HELPER_ASSIGNMENT_QUERY_KEY)
   );
+  const firstContactFilter = parseHelperFirstContactFilter(
+    searchParams.get(HELPER_FIRST_CONTACT_QUERY_KEY)
+  );
+  const firstContactOnly = firstContactFilter === "offen";
   const utils = trpc.useUtils();
   const { user } = useAuth();
   const { data: helpers = [], isLoading } = trpc.helpers.list.useQuery();
@@ -394,6 +401,8 @@ export default function Helpers() {
             (confirmationFilter === "alle" ||
               helper.confirmed === confirmationFilter) &&
             (!assignedOnly || assignedHelperIds.has(helper.id)) &&
+            (!firstContactOnly ||
+              isHelperWithoutFirstContact(helper, activeDays)) &&
             (apFilter === "alle" ||
               (apFilter === "ohne"
                 ? !helper.contactId
@@ -407,9 +416,11 @@ export default function Helpers() {
       filter,
       confirmationFilter,
       assignedOnly,
+      firstContactOnly,
       assignedHelperIds,
       apFilter,
       sortAsc,
+      activeDays,
     ]
   );
   const selfHelperIds = useMemo(() => {
@@ -431,6 +442,7 @@ export default function Helpers() {
       previous => {
         const next = new URLSearchParams(previous);
         next.delete(HELPER_ASSIGNMENT_QUERY_KEY);
+        next.delete(HELPER_FIRST_CONTACT_QUERY_KEY);
         if (value === "alle") next.delete(HELPER_CONFIRMATION_QUERY_KEY);
         else next.set(HELPER_CONFIRMATION_QUERY_KEY, value);
         return next;
@@ -439,12 +451,13 @@ export default function Helpers() {
     );
   };
 
-  const clearDashboardFeedbackFilter = () => {
+  const clearDashboardHelperFilter = () => {
     setSearchParams(
       previous => {
         const next = new URLSearchParams(previous);
         next.delete(HELPER_CONFIRMATION_QUERY_KEY);
         next.delete(HELPER_ASSIGNMENT_QUERY_KEY);
+        next.delete(HELPER_FIRST_CONTACT_QUERY_KEY);
         return next;
       },
       { replace: true }
@@ -566,7 +579,20 @@ export default function Helpers() {
             type="button"
             variant="ghost"
             className="min-h-9 px-2 text-amber-900 hover:bg-amber-100 hover:text-amber-950"
-            onClick={clearDashboardFeedbackFilter}
+            onClick={clearDashboardHelperFilter}
+          >
+            Filter aufheben
+          </Button>
+        </div>
+      )}
+      {firstContactOnly && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-sm text-orange-950">
+          <span>Dashboardfilter: Nur Helfer ohne Erstkontakt.</span>
+          <Button
+            type="button"
+            variant="ghost"
+            className="min-h-9 px-2 text-orange-900 hover:bg-orange-100 hover:text-orange-950"
+            onClick={clearDashboardHelperFilter}
           >
             Filter aufheben
           </Button>

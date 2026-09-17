@@ -54,6 +54,29 @@ type HelperAvailability = {
   willHelp: "ja" | "nein";
 } & Partial<Record<AvailabilityField, AvailabilityValue>>;
 
+/**
+ * Ein Helfer gilt als noch nicht erstkontaktiert, solange die in der
+ * Veranstaltung aktiven Tage durchgängig auf dem Standardwert "?" stehen und
+ * weder seine Hilfsbereitschaft noch seine Bestätigung verändert wurde.
+ * Änderungen an nicht aktiven Wochentagen fließen bewusst nicht ein.
+ */
+type HelperFirstContactStatus = HelperAvailability & {
+  confirmed: "ja" | "nein";
+};
+
+export function isHelperWithoutFirstContact(
+  helper: HelperFirstContactStatus,
+  activeDays: unknown
+): boolean {
+  return (
+    helper.willHelp === "ja" &&
+    helper.confirmed === "nein" &&
+    eventWeekdays(activeDays).every(
+      day => helper[WEEKDAY_AVAILABILITY_FIELDS[day]] === "vielleicht"
+    )
+  );
+}
+
 export function helperAvailableOnDay(
   helper: HelperAvailability,
   day: Weekday

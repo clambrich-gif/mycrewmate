@@ -324,6 +324,86 @@ function FeedbackRateCard({
   );
 }
 
+function FirstContactRateCard({
+  total,
+  contacted,
+  outstanding,
+  rate,
+  openTarget,
+}: {
+  total: number;
+  contacted: number;
+  outstanding: number;
+  rate: number;
+  openTarget: (target: DashboardTarget) => void;
+}) {
+  const target: DashboardTarget = { path: "/helfer", firstContact: "offen" };
+  const isActionable = total > 0 && outstanding > 0;
+  const statusText =
+    total === 0
+      ? "Noch keine Helfer angelegt"
+      : outstanding === 0
+        ? "Alle Helfer wurden erstkontaktiert"
+        : `${outstanding} Helfer noch ohne Erstkontakt`;
+
+  const card = (
+    <Card
+      data-dashboard-section="Erstkontakt-Quote"
+      className={`h-full min-w-0 border-blue-300 bg-blue-50/70 text-slate-950 shadow-sm ${
+        isActionable
+          ? "transition-[border-color,box-shadow,transform] duration-150 group-hover:border-blue-500 group-hover:shadow-md group-active:scale-[0.99] group-focus-visible:ring-2 group-focus-visible:ring-blue-500 group-focus-visible:ring-offset-2"
+          : ""
+      }`}
+    >
+      <CardContent className="flex min-h-44 items-center gap-4 p-4 sm:p-5">
+        <span
+          className="relative flex size-24 shrink-0 items-center justify-center rounded-full"
+          style={{
+            background: `conic-gradient(#2563eb ${rate}%, #dbeafe ${rate}% 100%)`,
+          }}
+          aria-label={`${rate} Prozent Erstkontakt-Quote`}
+        >
+          <span className="flex size-[4.6rem] items-center justify-center rounded-full bg-white text-xl font-bold text-slate-950 shadow-sm">
+            {rate}%
+          </span>
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-2 text-sm font-bold text-slate-900">
+            <UsersRound className="size-5 text-blue-700" aria-hidden="true" />
+            Erstkontakt-Quote
+          </span>
+          <span className="mt-1 block text-sm text-slate-700">
+            <strong className="text-lg text-slate-950">{contacted} / {total}</strong>{" "}
+            Helfer kontaktiert
+          </span>
+          <span
+            className={`mt-2 flex items-center gap-1 text-sm font-semibold ${
+              outstanding > 0 ? "text-blue-800" : "text-emerald-800"
+            }`}
+          >
+            {statusText}
+            {isActionable && <ArrowRight className="size-4" aria-hidden="true" />}
+          </span>
+        </span>
+      </CardContent>
+    </Card>
+  );
+
+  if (!isActionable) return card;
+  return (
+    <button
+      type="button"
+      className="group min-h-44 min-w-0 rounded-xl text-left focus-visible:outline-none"
+      aria-label={`Erstkontakt-Quote ${rate} Prozent: ${outstanding} Helfer noch ohne Erstkontakt. Gefilterte Helfer anzeigen`}
+      onPointerEnter={() => preloadRoute(target.path)}
+      onFocus={() => preloadRoute(target.path)}
+      onClick={() => openTarget(target)}
+    >
+      {card}
+    </button>
+  );
+}
+
 function readinessTone(readiness: DailyReadiness) {
   if (readiness.bedarf === 0) {
     return {
@@ -819,13 +899,22 @@ export default function Dashboard() {
             openTarget={target => navigate(dashboardTargetHref(target))}
           />
         )}
-        <FeedbackRateCard
-          assigned={s.helferEingeteilt}
-          confirmed={s.helferEingeteiltBestaetigt}
-          outstanding={s.helferEingeteiltUnbestaetigt}
-          rate={s.rueckmeldequote}
-          openTarget={target => navigate(dashboardTargetHref(target))}
-        />
+        <div className="grid gap-4">
+          <FeedbackRateCard
+            assigned={s.helferEingeteilt}
+            confirmed={s.helferEingeteiltBestaetigt}
+            outstanding={s.helferEingeteiltUnbestaetigt}
+            rate={s.rueckmeldequote}
+            openTarget={target => navigate(dashboardTargetHref(target))}
+          />
+          <FirstContactRateCard
+            total={s.helferGesamt}
+            contacted={s.helferKontaktiert}
+            outstanding={s.helferOhneErstkontakt}
+            rate={s.erstkontaktquote}
+            openTarget={target => navigate(dashboardTargetHref(target))}
+          />
+        </div>
       </section>
 
       <div className="space-y-4">

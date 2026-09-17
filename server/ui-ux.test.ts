@@ -681,6 +681,27 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain("Filter aufheben");
   });
 
+  it("zeigt die Erstkontaktquote unter der Rückmeldequote und verlinkt neue Helfer direkt", () => {
+    const dashboard = source("client/src/pages/Dashboard.tsx");
+    const helpers = source("client/src/pages/Helpers.tsx");
+    const router = source("server/routers.ts");
+
+    expect(router).toContain("isHelperWithoutFirstContact(helper, aktiveFestivaltage)");
+    expect(router).toContain("helferOhneErstkontakt");
+    expect(router).toContain("helferKontaktiert");
+    expect(router).toContain("erstkontaktquote");
+    expect(dashboard).toContain("FirstContactRateCard");
+    expect(dashboard).toContain('data-dashboard-section="Erstkontakt-Quote"');
+    expect(dashboard).toContain("Erstkontakt-Quote");
+    expect(dashboard).toContain("Helfer kontaktiert");
+    expect(dashboard).toContain("Helfer noch ohne Erstkontakt");
+    expect(dashboard).toContain("#2563eb");
+    expect(dashboard).toContain('firstContact: "offen"');
+    expect(helpers).toContain("parseHelperFirstContactFilter");
+    expect(helpers).toContain("isHelperWithoutFirstContact(helper, activeDays)");
+    expect(helpers).toContain("Dashboardfilter: Nur Helfer ohne Erstkontakt.");
+  });
+
   it("visualisiert die tägliche Einsatzbereitschaft für das dreitägige Festival", () => {
     const dashboard = source("client/src/pages/Dashboard.tsx");
     const router = source("server/routers.ts");
