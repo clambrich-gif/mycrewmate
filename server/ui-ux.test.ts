@@ -639,7 +639,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain('id: "einsatzplan-stabil"');
     expect(dashboard).toContain("PriorityActionCard");
     expect(dashboard).toContain("Keine dringenden Punkte");
-    expect(dashboard).toContain('title: "Einsatzplanung"');
+    expect(dashboard).not.toContain('title: "Einsatzplanung"');
     expect(dashboard).toContain('title: "Helferbedarf & Belegung"');
     expect(dashboard).toContain('title: "Aufgabenstatus"');
   });
@@ -696,6 +696,30 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain("readinessTone");
     expect(dashboard).toContain('role="progressbar"');
     expect(dashboard).toContain('path: "/einsatzplan"');
+  });
+
+  it("verschiebt die Einsatzplan-Kennzahlen als kompakte Live-Statusleiste in den Einsatzplan", () => {
+    const dashboard = source("client/src/pages/Dashboard.tsx");
+    const plan = source("client/src/pages/Plan.tsx");
+
+    expect(dashboard).not.toContain('title: "Einsatzplanung"');
+    expect(plan).toContain("function PlanStatusBar");
+    expect(plan).toContain('data-plan-status-bar');
+    expect(plan).toContain('aria-label="Status des Einsatzplans"');
+    expect(plan).toContain('label: "Schichten"');
+    expect(plan).toContain('label: "Offen"');
+    expect(plan).toContain('label: "Knapp besetzt"');
+    expect(plan).toContain('label: "Voll besetzt"');
+    expect(plan).toContain('badge: "KNAPP"');
+    expect(plan).toContain('badge: "OK"');
+    expect(plan).toContain("const planStatusCounts = useMemo<PlanStatusCounts>");
+    expect(plan).toContain('entry.status === "OFFEN"');
+    expect(plan).toContain('entry.status === "KNAPP"');
+    expect(plan).toContain('entry.status === "OK"');
+    expect(plan).toContain("utils.plan.evaluate.invalidate()");
+    expect(plan).toContain("<PlanStatusBar counts={planStatusCounts} isLoading={isLoading} />");
+    expect(plan).toContain("xl:flex-row xl:flex-wrap xl:items-center xl:justify-between");
+    expect(plan).toContain("xl:flex-none");
   });
 
   it("verknüpft Dashboardwarnungen direkt mit gefilterten Einsatzplanschichten", () => {
@@ -1071,7 +1095,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const resetButton = source("client/src/components/ResetAreaButton.tsx");
 
     expect(plan).toContain(
-      'grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end'
+      'grid shrink-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end'
     );
     expect(plan).toContain('[&>[data-slot=button]]:w-full');
     expect(plan).toContain('sm:[&>[data-slot=button]]:w-auto');

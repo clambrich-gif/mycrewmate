@@ -724,27 +724,6 @@ export default function Dashboard() {
 
   const sections: MetricSection[] = [
     {
-      title: "Einsatzplanung",
-      className: "border-sky-300 bg-sky-50/90",
-      titleClassName: "text-sky-950",
-      cards: [
-        { label: "Schichten gesamt", value: s.schichtenGesamt, badge: null },
-        {
-          label: "Offen",
-          value: s.offen,
-          badge: "OFFEN",
-          target: { path: "/einsatzplan", status: "OFFEN" },
-        },
-        {
-          label: "Knapp besetzt",
-          value: s.knapp,
-          badge: "KNAPP",
-          target: { path: "/einsatzplan", status: "KNAPP" },
-        },
-        { label: "Voll besetzt", value: s.ok, badge: "OK" },
-      ],
-    },
-    {
       title: "Helferbedarf & Belegung",
       className: "border-emerald-300 bg-emerald-50/90",
       titleClassName: "text-emerald-950",

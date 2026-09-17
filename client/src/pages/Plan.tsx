@@ -98,11 +98,74 @@ type HelperTooltipData = {
   note: string | null;
 } & Record<AvailabilityField, AvailabilityValue>;
 
+type PlanStatusCounts = {
+  total: number;
+  open: number;
+  knapp: number;
+  ok: number;
+};
+
 const AVAILABILITY_CLASS: Record<AvailabilityValue, string> = {
   ja: "text-emerald-700",
   nein: "text-red-700",
   vielleicht: "text-amber-700",
 };
+
+function PlanStatusBar({
+  counts,
+  isLoading,
+}: {
+  counts: PlanStatusCounts;
+  isLoading: boolean;
+}) {
+  const chips = [
+    {
+      label: "Schichten",
+      value: counts.total,
+      className: "border-slate-200 bg-slate-50 text-slate-800",
+      badge: null,
+    },
+    {
+      label: "Offen",
+      value: counts.open,
+      className: "border-red-200 bg-red-50 text-red-800",
+      badge: "OFFEN",
+    },
+    {
+      label: "Knapp besetzt",
+      value: counts.knapp,
+      className: "border-amber-200 bg-amber-50 text-amber-900",
+      badge: "KNAPP",
+    },
+    {
+      label: "Voll besetzt",
+      value: counts.ok,
+      className: "border-emerald-200 bg-emerald-50 text-emerald-900",
+      badge: "OK",
+    },
+  ] as const;
+
+  return (
+    <section
+      aria-label="Status des Einsatzplans"
+      data-plan-status-bar
+      className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 xl:flex-none"
+    >
+      {chips.map(chip => (
+        <span
+          key={chip.label}
+          className={`inline-flex min-h-8 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium whitespace-nowrap ${chip.className}`}
+        >
+          <span>{chip.label}:</span>
+          <strong className="text-sm leading-none tabular-nums">
+            {isLoading ? "–" : chip.value}
+          </strong>
+          {chip.badge && <StatusBadge status={chip.badge} />}
+        </span>
+      ))}
+    </section>
+  );
+}
 
 function HighlightedText({ text, query }: { text: string; query: string }) {
   const normalizedText = text.normalize("NFKC");
@@ -463,6 +526,15 @@ export default function Plan() {
     () => Array.from(new Set(evals.map(e => e.shift.area))),
     [evals]
   );
+  const planStatusCounts = useMemo<PlanStatusCounts>(
+    () => ({
+      total: evals.length,
+      open: evals.filter(entry => entry.status === "OFFEN").length,
+      knapp: evals.filter(entry => entry.status === "KNAPP").length,
+      ok: evals.filter(entry => entry.status === "OK").length,
+    }),
+    [evals]
+  );
   const contactName = (id: number | null) =>
     contacts.find(c => c.id === id)?.name ?? "";
   const areaContactMap = useMemo(
@@ -679,26 +751,29 @@ export default function Plan() {
             : "Das Planungsteam kann den Einsatzplan vollständig ansehen und filtern. Änderungen und Helferzuweisungen sind Administratoren vorbehalten."}
         </p>
       </div>
-      {canEditPlan && (
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end [&>[data-slot=button]]:min-w-0 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:px-2 [&>[data-slot=button]]:text-xs sm:[&>[data-slot=button]]:w-auto sm:[&>[data-slot=button]]:px-4 sm:[&>[data-slot=button]]:text-sm">
-          <ModuleExcelImportButton area="EINSATZPLAN" label="Einsatzplan" />
-          <CopyPreviousPlanButton />
-          <ClearPlanAssignmentsButton onCleared={() => setQ("")} />
-          <ResetAreaButton
-            area="shifts"
-            label="Einsatzplan"
-            mobileButtonLabel="Plan zurücksetzen"
-          />
-          <Button
-            onClick={openCreate}
-            disabled={isEventLoading || !activeDays.length}
-            className="col-span-2 !w-full !px-4 !text-base sm:col-auto sm:!w-auto sm:!text-sm"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Neue Schicht
-          </Button>
-        </div>
-      )}
+      <div className="flex flex-col gap-3 xl:flex-row xl:flex-wrap xl:items-center xl:justify-between">
+        <PlanStatusBar counts={planStatusCounts} isLoading={isLoading} />
+        {canEditPlan && (
+          <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end xl:ml-auto [&>[data-slot=button]]:min-w-0 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:px-2 [&>[data-slot=button]]:text-xs sm:[&>[data-slot=button]]:w-auto sm:[&>[data-slot=button]]:px-4 sm:[&>[data-slot=button]]:text-sm">
+            <ModuleExcelImportButton area="EINSATZPLAN" label="Einsatzplan" />
+            <CopyPreviousPlanButton />
+            <ClearPlanAssignmentsButton onCleared={() => setQ("")} />
+            <ResetAreaButton
+              area="shifts"
+              label="Einsatzplan"
+              mobileButtonLabel="Plan zurücksetzen"
+            />
+            <Button
+              onClick={openCreate}
+              disabled={isEventLoading || !activeDays.length}
+              className="col-span-2 !w-full !px-4 !text-base sm:col-auto sm:!w-auto sm:!text-sm"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Neue Schicht
+            </Button>
+          </div>
+        )}
+      </div>
 
       {areas.length > 0 && (
         <Card className="border-slate-200 shadow-sm">
