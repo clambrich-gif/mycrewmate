@@ -1137,7 +1137,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(passwordDialog).toContain('autoComplete="off"');
   });
 
-  it("nutzt für die Einsatzplantabelle die volle Desktopbreite mit flexibler Helferchipspalte", () => {
+  it("nutzt für die Einsatzplantabelle die volle Desktopbreite mit strukturiertem Helfergrid", () => {
     const layout = source("client/src/components/Layout.tsx");
     const plan = source("client/src/pages/Plan.tsx");
 
@@ -1145,21 +1145,23 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain('"w-full p-3 sm:p-4 xl:p-6"');
     expect(plan).toContain('<Card className="hidden w-full shadow-sm md:block">');
     expect(plan).toContain('<CardContent className="w-full overflow-x-auto p-0 xl:overflow-x-hidden">');
+    expect(plan).toContain('data-slot="roster-table"');
     expect(plan).toContain(
-      '<table className="w-full table-auto text-sm md:min-w-[1080px] xl:min-w-0 xl:table-fixed xl:text-xs">'
+      'className="w-full table-auto text-sm md:min-w-[1100px] xl:min-w-0 xl:table-fixed"'
     );
     expect(plan).not.toContain('min-w-[1500px]');
     expect(plan).not.toContain('min-w-[400px]');
-    expect(plan).toContain('<col className="w-[29%]" />');
-    expect(plan).toContain('<col className="w-[6%]" />');
-    expect(plan).toContain('max-w-[10rem] whitespace-pre-wrap break-words');
-    expect(plan).toContain('className="flex max-w-full flex-wrap gap-1 xl:gap-1"');
-    expect(plan).toContain('xl:!min-w-[132px] xl:!max-w-[216px] xl:!px-2 xl:!py-0.5 xl:!text-xs');
-    expect(plan).toContain('<th className="break-words p-2 leading-tight xl:p-1.5">Kontakt</th>');
-    expect(plan).toContain('<th className="p-2 text-center leading-tight xl:px-0.5 xl:py-1.5 xl:whitespace-nowrap">Bedarf</th>');
-    expect(plan).toContain('<th className="p-2 text-center leading-tight xl:px-0.5 xl:py-1.5 xl:whitespace-nowrap">Doppelt</th>');
-    expect(plan).toContain('<th className="p-2 text-center leading-tight xl:px-0.5 xl:py-1.5 xl:whitespace-nowrap">Ausfälle</th>');
-    expect(plan).toContain('<th className="break-words p-2 leading-tight xl:p-1.5">Eingeteilte Helfer</th>');
+    expect(plan).toContain('<col className="w-[26%]" />');
+    expect(plan).toContain('data-slot="roster-actions"');
+    expect(plan).toContain('data-slot="roster-helper-grid"');
+    expect(plan).toContain('grid max-w-full grid-cols-2 items-start gap-1');
+    expect(plan).toContain('w-full min-w-0 max-w-none min-h-11');
+    expect(plan).toContain('Besetzt / Bedarf');
+    expect(plan).toContain('{e.besetzt} / {s.needed}');
+    expect(plan).toContain('<th className="break-words p-2 leading-tight">Kontakt</th>');
+    expect(plan).toContain('<th className="p-2 text-center leading-tight whitespace-nowrap">Doppelt</th>');
+    expect(plan).toContain('<th className="p-2 text-center leading-tight whitespace-nowrap">Ausfälle</th>');
+    expect(plan).toContain('<th className="break-words p-2 leading-tight">Eingeteilte Helfer</th>');
   });
 
   it("bietet Administratoren eine passwortgeschützte Bereinigung des Importprotokolls", () => {
@@ -1440,6 +1442,24 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(pdf).toContain("Zeitfenster: ${window.start}–${window.end} Uhr");
     expect(pdf).toContain("drawHelperTimeBadge(doc, helper, day)");
     expect(pdf).toContain("helperTimeBadgeLabel(helper, day) ? 99 : 72");
+  });
+
+  it("strukturiert die Einsatzplantabelle mit fester Aktionsspalte, Zwei-Spalten-Helferraster und Filter-Reset", () => {
+    const plan = source("client/src/pages/Plan.tsx");
+
+    expect(plan).toContain('data-slot="roster-table"');
+    expect(plan).toContain('data-slot="roster-actions"');
+    expect(plan).toContain('data-slot="roster-helper-grid"');
+    expect(plan).toContain("Besetzt / Bedarf");
+    expect(plan).toContain("{e.besetzt} / {s.needed}");
+    expect(plan).toContain("grid max-w-full grid-cols-2 items-start gap-1");
+    expect(plan).toContain("w-full min-w-0 max-w-none min-h-11");
+    expect(plan).toContain("const resetPlanFilters = () =>");
+    expect(plan).toContain("setFlexibleAssignmentFilter(\"alle\")");
+    expect(plan).toContain("next.delete(PLAN_WARNING_QUERY_KEY)");
+    expect(plan).toContain("next.delete(PLAN_STATUS_QUERY_KEY)");
+    expect(plan).toContain("Filter zurücksetzen");
+    expect(plan).toContain("Alle Einsatzplanfilter zurücksetzen");
   });
 
   it("erfasst zusätzliche unbezahlte Begleitungen in den Helferstammdaten und kennzeichnet sie im Einsatzplan mit 👪", () => {

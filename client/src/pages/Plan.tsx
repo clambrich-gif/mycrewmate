@@ -22,6 +22,7 @@ import {
   Info,
   Pencil,
   Plus,
+  RotateCcw,
   Search,
   Trash2,
   X,
@@ -348,7 +349,7 @@ function AssignedHelperChip({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <div
-        className={`slot ${className} inline-flex min-h-11 items-center gap-1 text-base md:min-h-0 md:text-[.78rem] xl:!min-w-[132px] xl:!max-w-[216px] xl:!px-2 xl:!py-0.5 xl:!text-xs`}
+        className={`slot ${className} inline-flex w-full min-w-0 max-w-none min-h-11 items-center gap-1 text-base md:min-h-0 md:text-sm xl:!px-2 xl:!py-0.5`}
         onPointerEnter={event => openAfterDelay(event.pointerType)}
         onPointerLeave={event => closeAfterLeave(event.pointerType)}
       >
@@ -535,6 +536,23 @@ export default function Plan() {
         const next = new URLSearchParams(previous);
         if (value === "alle") next.delete(PLAN_STATUS_QUERY_KEY);
         else next.set(PLAN_STATUS_QUERY_KEY, value);
+        return next;
+      },
+      { replace: true }
+    );
+  };
+
+  const resetPlanFilters = () => {
+    setDay("alle");
+    setArea("alle");
+    setApFilter("alle");
+    setFlexibleAssignmentFilter("alle");
+    setQ("");
+    setSearchParams(
+      previous => {
+        const next = new URLSearchParams(previous);
+        next.delete(PLAN_WARNING_QUERY_KEY);
+        next.delete(PLAN_STATUS_QUERY_KEY);
         return next;
       },
       { replace: true }
@@ -909,14 +927,14 @@ export default function Plan() {
       helper => !assignedHelperIds.has(helper.id)
     );
     return (
-      <div className="flex max-w-full flex-wrap gap-1 xl:gap-1">
+      <div className="grid max-w-full grid-cols-2 items-start gap-1">
         {slotsFor(evalE).map(({ slot, a }) => {
           if (!a) {
             if (!canEditPlan) {
               return (
                 <span
                   key={slot}
-                  className="slot slot-offen inline-flex h-9 items-center"
+                  className="slot slot-offen inline-flex h-9 !min-w-0 !max-w-none items-center"
                 >
                   Platz offen
                 </span>
@@ -934,7 +952,7 @@ export default function Plan() {
                   })
                 }
               >
-                <SelectTrigger className="slot slot-offen h-11 w-full min-w-[180px] sm:w-[220px] md:h-9 xl:min-w-0 xl:w-full">
+                <SelectTrigger className="slot slot-offen h-11 !w-full !min-w-0 !max-w-none md:h-9">
                   <SelectValue placeholder="Helfer wählen …" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1032,7 +1050,7 @@ export default function Plan() {
             return (
               <span
                 key={slot}
-                className={`slot ${className} inline-flex items-center`}
+                className={`slot ${className} inline-flex !min-w-0 !max-w-none items-center`}
               >
                 ?
               </span>
@@ -1353,6 +1371,16 @@ export default function Plan() {
               </SelectItem>
             </SelectContent>
           </Select>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full gap-2 border-slate-300 bg-white text-slate-800 hover:bg-slate-100 lg:ml-auto lg:w-auto"
+            onClick={resetPlanFilters}
+            aria-label="Alle Einsatzplanfilter zurücksetzen"
+          >
+            <RotateCcw className="size-4" aria-hidden="true" />
+            Filter zurücksetzen
+          </Button>
         </div>
       </div>
 
@@ -1409,9 +1437,11 @@ export default function Plan() {
                 </div>
                 <dl className="grid grid-cols-2 gap-3 text-sm">
                   <div>
-                    <dt className="text-xs text-muted-foreground">Bedarf</dt>
+                    <dt className="text-xs text-muted-foreground">
+                      Besetzt / Bedarf
+                    </dt>
                     <dd className="font-semibold">
-                      {e.besetzt} von {shift.needed} besetzt
+                      {e.besetzt} / {shift.needed}
                     </dd>
                   </div>
                   <div>
@@ -1449,35 +1479,38 @@ export default function Plan() {
 
       <Card className="hidden w-full shadow-sm md:block">
         <CardContent className="w-full overflow-x-auto p-0 xl:overflow-x-hidden">
-          <table className="w-full table-auto text-sm md:min-w-[1080px] xl:min-w-0 xl:table-fixed xl:text-xs">
+          <table
+            data-slot="roster-table"
+            className="w-full table-auto text-sm md:min-w-[1100px] xl:min-w-0 xl:table-fixed"
+          >
             <colgroup>
               <col className="w-[5%]" />
+              <col className="w-[7%]" />
               <col className="w-[6%]" />
               <col className="w-[7%]" />
               <col className="w-[8%]" />
-              <col className="w-[9%]" />
+              <col className="w-[12%]" />
               <col className="w-[7%]" />
-              <col className="w-[5.5%]" />
+              <col className="w-[8%]" />
               <col className="w-[6%]" />
-              <col className="w-[5.5%]" />
-              <col className="w-[6%]" />
-              <col className="w-[6%]" />
-              <col className="w-[29%]" />
+              <col className="w-[4%]" />
+              <col className="w-[4%]" />
+              <col className="w-[26%]" />
             </colgroup>
             <thead className="bg-muted/60 sticky top-0">
               <tr className="text-left">
-                <th className="p-2 xl:p-1.5">Tag</th>
-                <th className="p-2 xl:p-1.5">Bereich</th>
-                <th className="break-words p-2 leading-tight xl:p-1.5">Kontakt</th>
-                <th className="p-2 xl:p-1.5">Aufgabe</th>
-                <th className="p-2 xl:p-1.5">Bemerkung</th>
-                <th className="p-2 whitespace-nowrap xl:p-1.5">Zeit</th>
-                <th className="p-2 text-center leading-tight xl:px-0.5 xl:py-1.5 xl:whitespace-nowrap">Bedarf</th>
-                <th className="p-2 text-center leading-tight xl:px-0.5 xl:py-1.5 xl:whitespace-nowrap">Besetzt</th>
-                <th className="p-2 text-center leading-tight xl:px-0.5 xl:py-1.5 xl:whitespace-nowrap">Status</th>
-                <th className="p-2 text-center leading-tight xl:px-0.5 xl:py-1.5 xl:whitespace-nowrap">Doppelt</th>
-                <th className="p-2 text-center leading-tight xl:px-0.5 xl:py-1.5 xl:whitespace-nowrap">Ausfälle</th>
-                <th className="break-words p-2 leading-tight xl:p-1.5">Eingeteilte Helfer</th>
+                <th className="p-2">Tag</th>
+                <th className="p-2">Bereich</th>
+                <th className="p-2 text-center"><span className="sr-only">Aktionen</span></th>
+                <th className="break-words p-2 leading-tight">Kontakt</th>
+                <th className="p-2">Aufgabe</th>
+                <th className="p-2">Bemerkung</th>
+                <th className="p-2 whitespace-nowrap">Zeit</th>
+                <th className="p-2 text-center leading-tight whitespace-nowrap">Besetzt / Bedarf</th>
+                <th className="p-2 text-center leading-tight whitespace-nowrap">Status</th>
+                <th className="p-2 text-center leading-tight whitespace-nowrap">Doppelt</th>
+                <th className="p-2 text-center leading-tight whitespace-nowrap">Ausfälle</th>
+                <th className="break-words p-2 leading-tight">Eingeteilte Helfer</th>
               </tr>
             </thead>
             <tbody>
@@ -1498,11 +1531,13 @@ export default function Plan() {
                   >
                     <td className="p-2 font-medium xl:p-1.5">{s.day}</td>
                     <td className="p-2 xl:p-1.5">
-                      <div className="flex flex-wrap items-center gap-1">
-                        <span className="max-w-[8rem] break-words [overflow-wrap:anywhere]">
-                          <HighlightedText text={s.area} query={q} />
-                        </span>
-                        {canEditPlan && (
+                      <span className="block break-words [overflow-wrap:anywhere]">
+                        <HighlightedText text={s.area} query={q} />
+                      </span>
+                    </td>
+                    <td data-slot="roster-actions" className="p-2 xl:p-1.5">
+                      {canEditPlan && (
+                        <div className="flex items-center justify-center gap-1 whitespace-nowrap">
                           <Button
                             variant="ghost"
                             size="icon"
@@ -1512,8 +1547,6 @@ export default function Plan() {
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
-                        )}
-                        {canEditPlan && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -1523,8 +1556,8 @@ export default function Plan() {
                           >
                             <Trash2 className="h-3.5 w-3.5 text-destructive" />
                           </Button>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </td>
                     <td className="p-2 xl:p-1.5">
                       <span className="block max-w-[8rem] break-words [overflow-wrap:anywhere]">
@@ -1533,10 +1566,10 @@ export default function Plan() {
                         )}
                       </span>
                     </td>
-                    <td className="max-w-[9rem] break-words p-2 [overflow-wrap:anywhere] xl:p-1.5">
+                    <td className="break-words p-2 [overflow-wrap:anywhere] xl:p-1.5">
                       <HighlightedText text={s.task} query={q} />
                     </td>
-                    <td className="max-w-[10rem] whitespace-pre-wrap break-words p-2 text-muted-foreground [overflow-wrap:anywhere] xl:p-1.5">
+                    <td className="whitespace-pre-wrap break-words p-2 text-muted-foreground [overflow-wrap:anywhere] xl:p-1.5">
                       {s.note?.trim() || "–"}
                     </td>
                     <td className="p-2 whitespace-nowrap xl:p-1.5">
@@ -1547,8 +1580,9 @@ export default function Plan() {
                         />
                       </div>
                     </td>
-                    <td className="p-2 text-center font-semibold xl:p-1.5">{s.needed}</td>
-                    <td className="p-2 text-center xl:p-1.5">{e.besetzt}</td>
+                    <td className="p-2 text-center font-semibold whitespace-nowrap xl:p-1.5">
+                      {e.besetzt} / {s.needed}
+                    </td>
                     <td className="p-2 text-center xl:p-1.5">
                       <StatusBadge
                         status={e.status}
@@ -1578,7 +1612,9 @@ export default function Plan() {
                       )}
                     </td>
                     <td className="min-w-0 p-2 align-top xl:p-1.5">
-                      {renderShiftSlots(evalE)}
+                      <div data-slot="roster-helper-grid">
+                        {renderShiftSlots(evalE)}
+                      </div>
                     </td>
                   </tr>
                 );
