@@ -1277,5 +1277,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("👪");
     expect(plan).toContain("title={`zusätzliche Begleitung: ${companion}`}");
     expect(plan).toContain("zusätzliche Begleitung:");
+    expect(plan.indexOf("👪")).toBeLessThan(
+      plan.indexOf("<HighlightedText text={displayLabel}")
+    );
+    expect(plan).toContain("helper.companion?.trim() && (");
+    expect(plan).toContain('<span className="truncate">{label(helper)}</span>');
   });
 });

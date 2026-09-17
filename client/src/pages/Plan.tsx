@@ -268,9 +268,6 @@ function AssignedHelperChip({
             aria-label={`Details zu ${helper.name} anzeigen`}
           >
             <span className="inline-flex max-w-full items-center gap-1 truncate">
-              <span className="truncate">
-                <HighlightedText text={displayLabel} query={searchQuery} />
-              </span>
               {companion && (
                 <span
                   className="shrink-0 text-xs leading-none select-none"
@@ -280,6 +277,9 @@ function AssignedHelperChip({
                   👪
                 </span>
               )}
+              <span className="truncate">
+                <HighlightedText text={displayLabel} query={searchQuery} />
+              </span>
             </span>
           </button>
         </PopoverTrigger>
@@ -705,7 +705,18 @@ export default function Plan() {
                         }
                       >
                         <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
-                          <span className="truncate">{label(helper)}</span>
+                          <span className="flex min-w-0 items-center gap-1 truncate">
+                            {helper.companion?.trim() && (
+                              <span
+                                className="shrink-0 text-xs leading-none select-none"
+                                title={`zusätzliche Begleitung: ${helper.companion.trim()}`}
+                                aria-label={`zusätzliche Begleitung: ${helper.companion.trim()}`}
+                              >
+                                👪
+                              </span>
+                            )}
+                            <span className="truncate">{label(helper)}</span>
+                          </span>
                           {isAlreadyAssigned && (
                             <span className="shrink-0 rounded-full border border-amber-500 bg-amber-200 px-2 py-0.5 text-[11px] font-semibold text-amber-950 dark:bg-amber-800 dark:text-amber-50">
                               bereits belegt
