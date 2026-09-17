@@ -60,6 +60,7 @@ import {
   PLAN_WARNING_FILTERS,
   PLAN_WARNING_QUERY_KEY,
   PLAN_STATUS_QUERY_KEY,
+  planStatusMatchesFilter,
   parsePlanWarningFilter,
   parsePlanStatusFilter,
   type PlanStatusFilter,
@@ -514,6 +515,8 @@ export default function Plan() {
           ? "Keine offenen Schichten gefunden."
           : status === "KNAPP"
             ? "Keine knapp besetzten Schichten gefunden."
+            : status === "OK_MANUELL"
+              ? "Keine manuell bestätigten Schichten gefunden."
             : flexibleAssignmentFilter === "flexibel"
               ? "Keine Schichten mit flexibler Belegung gefunden."
         : "Keine Schichten gefunden.";
@@ -866,7 +869,14 @@ export default function Plan() {
           e =>
             (day === "alle" || e.shift.day === day) &&
             (area === "alle" || e.shift.area === area) &&
-            (status === "alle" || e.status === status) &&
+            planStatusMatchesFilter(
+              status,
+              e.status,
+              Boolean(
+                e.shift.manualOkConfirmed ||
+                  e.shift.manualDoubleConflictAccepted
+              )
+            ) &&
             (warningFilter !== "konflikte" || e.doppelCount > 0) &&
             (warningFilter !== "ausfaelle" || e.ausfallCount > 0) &&
             planEvaluationMatchesSearch(e, q, helperNameById) &&
@@ -1317,6 +1327,7 @@ export default function Plan() {
               <SelectItem value="OFFEN">OFFEN</SelectItem>
               <SelectItem value="KNAPP">KNAPP</SelectItem>
               <SelectItem value="OK">OK</SelectItem>
+              <SelectItem value="OK_MANUELL">OK (Manuell)</SelectItem>
             </SelectContent>
           </Select>
           <Select

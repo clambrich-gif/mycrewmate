@@ -18,7 +18,12 @@ export const PLAN_WARNING_FILTERS = {
 
 export type PlanWarningFilter = keyof typeof PLAN_WARNING_FILTERS;
 export type PlanWarningSelection = "alle" | PlanWarningFilter;
-export type PlanStatusFilter = "alle" | "OFFEN" | "KNAPP" | "OK";
+export type PlanStatusFilter =
+  | "alle"
+  | "OFFEN"
+  | "KNAPP"
+  | "OK"
+  | "OK_MANUELL";
 export type TaskStatusFilter =
   | "alle"
   | "offen"
@@ -54,9 +59,22 @@ export function parsePlanWarningFilter(
 }
 
 export function parsePlanStatusFilter(value: string | null): PlanStatusFilter {
-  return value === "OFFEN" || value === "KNAPP" || value === "OK"
+  return value === "OFFEN" ||
+    value === "KNAPP" ||
+    value === "OK" ||
+    value === "OK_MANUELL"
     ? value
     : "alle";
+}
+
+export function planStatusMatchesFilter(
+  filter: PlanStatusFilter,
+  status: string,
+  manuallyConfirmed: boolean
+) {
+  if (filter === "alle") return true;
+  if (filter === "OK_MANUELL") return manuallyConfirmed;
+  return status === filter && !(filter === "OK" && manuallyConfirmed);
 }
 
 export function parseTaskStatusFilter(value: string | null): TaskStatusFilter {

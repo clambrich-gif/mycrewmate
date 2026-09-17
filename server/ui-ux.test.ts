@@ -1460,6 +1460,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("next.delete(PLAN_STATUS_QUERY_KEY)");
     expect(plan).toContain("Filter zurücksetzen");
     expect(plan).toContain("Alle Einsatzplanfilter zurücksetzen");
+    expect(plan).toContain('value="OK_MANUELL">OK (Manuell)</SelectItem>');
+    expect(plan).toContain("planStatusMatchesFilter(");
   });
 
   it("erfasst zusätzliche unbezahlte Begleitungen in den Helferstammdaten und kennzeichnet sie im Einsatzplan mit 👪", () => {

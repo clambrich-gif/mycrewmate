@@ -6,6 +6,7 @@ import {
   parseHelperFirstContactFilter,
   parsePlanStatusFilter,
   parsePlanWarningFilter,
+  planStatusMatchesFilter,
   parseTaskStatusFilter,
 } from "../client/src/lib/dashboard-target-filter";
 
@@ -59,6 +60,7 @@ describe("Dashboard-Zielnavigation", () => {
     expect(parsePlanWarningFilter("unbekannt")).toBe("alle");
     expect(parsePlanStatusFilter("OFFEN")).toBe("OFFEN");
     expect(parsePlanStatusFilter("KNAPP")).toBe("KNAPP");
+    expect(parsePlanStatusFilter("OK_MANUELL")).toBe("OK_MANUELL");
     expect(parsePlanStatusFilter("offen")).toBe("alle");
     expect(parseTaskStatusFilter("offen")).toBe("offen");
     expect(parseTaskStatusFilter("inArbeit")).toBe("inArbeit");
@@ -73,5 +75,14 @@ describe("Dashboard-Zielnavigation", () => {
     expect(parseHelperAssignmentFilter("nein")).toBe(false);
     expect(parseHelperFirstContactFilter("offen")).toBe("offen");
     expect(parseHelperFirstContactFilter("ja")).toBe("alle");
+  });
+
+  it("trennt reguläre OK-Schichten von manuell bestätigten OK-Schichten", () => {
+    expect(planStatusMatchesFilter("OK_MANUELL", "OK", true)).toBe(true);
+    expect(planStatusMatchesFilter("OK_MANUELL", "OK", false)).toBe(false);
+    expect(planStatusMatchesFilter("OK", "OK", false)).toBe(true);
+    expect(planStatusMatchesFilter("OK", "OK", true)).toBe(false);
+    expect(planStatusMatchesFilter("alle", "OK", true)).toBe(true);
+    expect(planStatusMatchesFilter("KNAPP", "KNAPP", false)).toBe(true);
   });
 });
