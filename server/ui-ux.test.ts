@@ -329,8 +329,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
       helpers.indexOf('<Card className="hidden shadow-sm md:block">')
     );
 
-    expect(helpers).toContain('{ v: "vielleicht", l: "?" }');
-    expect(helpers).not.toContain('{ v: "vielleicht", l: "Vielleicht" }');
+    expect(helpers).toContain('availability === "vielleicht" ? "?"');
+    expect(helpers).toContain('? (Unklar)');
+    expect(helpers).not.toContain('l: "Vielleicht"');
     expect(helpers).toContain('className="w-full table-fixed text-xs xl:text-sm"');
     expect(helpers).toContain('<col className="w-[180px]" />');
     expect(helpers).toContain('<col className="w-[230px]" />');
@@ -1331,15 +1332,22 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers.match(/<YesNoToggle/g)).toHaveLength(4);
   });
 
-  it("erfasst Zeitfenster direkt am verfügbaren Helfertag und filtert sie im Einsatzplan hart", () => {
+  it("erfasst Zeitfenster über ein direktes Tages-Popover und filtert sie im Einsatzplan hart", () => {
     const helpers = source("client/src/pages/Helpers.tsx");
     const plan = source("client/src/pages/Plan.tsx");
 
     expect(helpers).toContain("function DayAvailabilityControl");
-    expect(helpers).toContain("Ganztägig");
-    expect(helpers).toContain("Vormittags");
-    expect(helpers).toContain("Nachmittags");
-    expect(helpers).toContain("Benutzerdefiniert");
+    expect(helpers).toContain('data-slot="day-availability-trigger"');
+    expect(helpers).toContain("<PopoverTrigger asChild>");
+    expect(helpers).toContain("availabilityPickerOpen");
+    expect(helpers).toContain("Ja (Ganztägig)");
+    expect(helpers).toContain("Ja (Vormittags)");
+    expect(helpers).toContain("Ja (Nachmittags)");
+    expect(helpers).toContain("Ja (Abends)");
+    expect(helpers).toContain("Ja (Zeiten anpassen …)");
+    expect(helpers).toContain('? (Unklar)');
+    expect(helpers).toContain('commitAvailability("nein")');
+    expect(helpers).not.toContain('<Select value={availability}');
     expect(helpers).toContain("helperHasTimedAvailability");
     expect(helpers).toContain("<Clock3");
     expect(helpers).toContain("Zeitfenster speichern");
