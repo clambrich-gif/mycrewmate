@@ -1,3 +1,5 @@
+import { toMinutes } from "./shift-time";
+
 export const WEEKDAYS = [
   "Montag",
   "Dienstag",
@@ -33,6 +35,20 @@ export const WEEKDAY_AVAILABILITY_FIELDS = {
 
 export type AvailabilityField = (typeof WEEKDAY_AVAILABILITY_FIELDS)[Weekday];
 
+/** Optionale, tagesbezogene Zeitfenster. Leere Werte bedeuten ganztägig. */
+export const WEEKDAY_AVAILABILITY_TIME_FIELDS = {
+  Montag: { start: "availMonStart", end: "availMonEnd" },
+  Dienstag: { start: "availTueStart", end: "availTueEnd" },
+  Mittwoch: { start: "availWedStart", end: "availWedEnd" },
+  Donnerstag: { start: "availThuStart", end: "availThuEnd" },
+  Freitag: { start: "availFriStart", end: "availFriEnd" },
+  Samstag: { start: "availSatStart", end: "availSatEnd" },
+  Sonntag: { start: "availSunStart", end: "availSunEnd" },
+} as const satisfies Record<Weekday, { start: string; end: string }>;
+
+export type AvailabilityTimeField =
+  (typeof WEEKDAY_AVAILABILITY_TIME_FIELDS)[Weekday]["start" | "end"];
+
 export function isWeekday(value: unknown): value is Weekday {
   return typeof value === "string" && WEEKDAYS.includes(value as Weekday);
 }
@@ -52,7 +68,15 @@ export function eventWeekdays(value: unknown): Weekday[] {
 
 type HelperAvailability = {
   willHelp: "ja" | "nein";
-} & Partial<Record<AvailabilityField, AvailabilityValue>>;
+} &
+  Partial<Record<AvailabilityField, AvailabilityValue>> &
+  Partial<Record<AvailabilityTimeField, string | null>>;
+
+export type ShiftAvailabilityLike = {
+  day: Weekday | string;
+  startTime?: string | null;
+  endTime?: string | null;
+};
 
 /**
  * Ein Helfer gilt als noch nicht erstkontaktiert, solange die in der
@@ -90,4 +114,67 @@ export function helperAvailableOnDay(
     day === "Mittwoch" ||
     day === "Donnerstag"
   );
+}
+
+/** Liefert das gespeicherte Zeitfenster; ohne vollständige, gültige Werte gilt ganztägig. */
+export function helperAvailabilityWindow(
+  helper: HelperAvailability,
+  day: Weekday
+) {
+  const fields = WEEKDAY_AVAILABILITY_TIME_FIELDS[day];
+  const start = helper[fields.start]?.trim() ?? "";
+  const end = helper[fields.end]?.trim() ?? "";
+  const startMinutes = toMinutes(start);
+  const endMinutes = toMinutes(end);
+  if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes)
+    return null;
+  return { start, end, startMinutes, endMinutes };
+}
+
+export function helperHasTimedAvailability(
+  helper: HelperAvailability,
+  day: Weekday
+) {
+  return helperAvailabilityWindow(helper, day) !== null;
+}
+
+/**
+ * Ein Helfer muss für eine zeitlich definierte Schicht den gesamten Zeitraum
+ * abdecken. Ganztägige Schichten bleiben bewusst nur an den Tagesstatus
+ * gebunden, weil keine belastbare Uhrzeit zum Abgleich vorliegt.
+ */
+export function helperAvailableForShift(
+  helper: HelperAvailability,
+  shift: ShiftAvailabilityLike
+): boolean {
+  if (!isWeekday(shift.day) || !helperAvailableOnDay(helper, shift.day))
+    return false;
+  const shiftStart = toMinutes(shift.startTime);
+  const shiftEnd = toMinutes(shift.endTime);
+  if (
+    shiftStart === null ||
+    shiftEnd === null ||
+    shiftEnd <= shiftStart
+  )
+    return true;
+  const window = helperAvailabilityWindow(helper, shift.day);
+  return !window || (shiftStart >= window.startMinutes && shiftEnd <= window.endMinutes);
+}
+
+export function helperAvailabilityWindowLabel(
+  helper: HelperAvailability,
+  day: Weekday
+) {
+  const window = helperAvailabilityWindow(helper, day);
+  if (!window) return "Ganztägig verfügbar";
+  const known = `${window.start}-${window.end}`;
+  const name =
+    known === "08:00-13:00"
+      ? "Vormittags"
+      : known === "13:00-18:00"
+        ? "Nachmittags"
+        : known === "18:00-23:00"
+          ? "Abends"
+          : "Benutzerdefiniert";
+  return `Verfügbar: ${name} / ${window.start} – ${window.end} Uhr`;
 }

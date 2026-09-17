@@ -4,6 +4,7 @@ import {
   shiftsOverlap,
 } from "../shared/shift-time";
 import {
+  helperAvailableForShift,
   helperAvailableOnDay,
   WEEKDAYS,
   type Weekday,
@@ -16,6 +17,10 @@ export type Day = Weekday;
 
 export function helperActiveOnDay(h: Helper, day: Day): boolean {
   return helperAvailableOnDay(h, day);
+}
+
+export function helperActiveForShift(h: Helper, shift: Shift): boolean {
+  return helperAvailableForShift(h, shift);
 }
 
 export function shiftRange(s: Shift): [number, number] {
@@ -84,7 +89,7 @@ export function evaluateShifts(
   for (const shift of shifts) {
     for (const assignment of byShift.get(shift.id) ?? []) {
       const helper = helperById.get(assignment.helperId);
-      if (!helper || !helperActiveOnDay(helper, shift.day as Day)) continue;
+      if (!helper || !helperActiveForShift(helper, shift)) continue;
       if (!activeShiftsByHelper.has(helper.id))
         activeShiftsByHelper.set(helper.id, []);
       activeShiftsByHelper.get(helper.id)!.push(shift);
@@ -116,7 +121,7 @@ export function evaluateShifts(
     for (const assignment of assigned) {
       const helper = helperById.get(assignment.helperId);
       if (!helper) continue;
-      if (helperActiveOnDay(helper, shift.day as Day))
+      if (helperActiveForShift(helper, shift))
         validHelpers.push(helper);
       else ausfallHelpers.push(helper);
     }

@@ -21,6 +21,7 @@ import {
 } from "../drizzle/schema";
 import {
   eventWeekdays,
+  helperAvailableForShift,
   helperAvailableOnDay,
   orderedWeekdays,
   WEEKDAYS,
@@ -72,6 +73,20 @@ export const PROJECT_EXCEL_HEADERS: Record<string, string[]> = {
     "Fr",
     "Sa",
     "So",
+    "Mo von",
+    "Mo bis",
+    "Di von",
+    "Di bis",
+    "Mi von",
+    "Mi bis",
+    "Do von",
+    "Do bis",
+    "Fr von",
+    "Fr bis",
+    "Sa von",
+    "Sa bis",
+    "So von",
+    "So bis",
     "Bestätigt?",
   ],
   EINSATZPLAN: [
@@ -252,6 +267,20 @@ type HelperRow = {
   availFri: "ja" | "nein" | "vielleicht";
   availSat: "ja" | "nein" | "vielleicht";
   availSun: "ja" | "nein" | "vielleicht";
+  availMonStart: string;
+  availMonEnd: string;
+  availTueStart: string;
+  availTueEnd: string;
+  availWedStart: string;
+  availWedEnd: string;
+  availThuStart: string;
+  availThuEnd: string;
+  availFriStart: string;
+  availFriEnd: string;
+  availSatStart: string;
+  availSatEnd: string;
+  availSunStart: string;
+  availSunEnd: string;
   confirmed: "ja" | "nein";
 };
 type ShiftRow = {
@@ -466,6 +495,20 @@ export function reconcileContactSelfHelpers(
       availFri: "vielleicht",
       availSat: "vielleicht",
       availSun: "vielleicht",
+      availMonStart: "",
+      availMonEnd: "",
+      availTueStart: "",
+      availTueEnd: "",
+      availWedStart: "",
+      availWedEnd: "",
+      availThuStart: "",
+      availThuEnd: "",
+      availFriStart: "",
+      availFriEnd: "",
+      availSatStart: "",
+      availSatEnd: "",
+      availSunStart: "",
+      availSunEnd: "",
       confirmed: "nein",
     });
     created++;
@@ -556,6 +599,34 @@ export function repairImportedDocumentRelations(document: BackupDocument) {
       `${selfHelperReconciliation.created} fehlende eigene Ansprechpartner-Helfereinträge wurden automatisch ergänzt.`
     );
 
+  for (const helper of document.helpers) {
+    for (const [availability, startField, endField, label] of [
+      ["availMon", "availMonStart", "availMonEnd", "Montag"],
+      ["availTue", "availTueStart", "availTueEnd", "Dienstag"],
+      ["availWed", "availWedStart", "availWedEnd", "Mittwoch"],
+      ["availThu", "availThuStart", "availThuEnd", "Donnerstag"],
+      ["availFri", "availFriStart", "availFriEnd", "Freitag"],
+      ["availSat", "availSatStart", "availSatEnd", "Samstag"],
+      ["availSun", "availSunStart", "availSunEnd", "Sonntag"],
+    ] as const) {
+      const start = helper[startField];
+      const end = helper[endField];
+      const invalid =
+        (start === "") !== (end === "") ||
+        (start !== "" &&
+          (helper[availability] !== "ja" ||
+            toMinutes(start) === null ||
+            toMinutes(end) === null ||
+            toMinutes(end)! <= toMinutes(start)!));
+      if (!invalid) continue;
+      addWarning(
+        `HELFER „${helper.name}“: ungültiges Zeitfenster für ${label} wurde entfernt.`
+      );
+      helper[startField] = "";
+      helper[endField] = "";
+    }
+  }
+
   const activeDays = new Set(eventWeekdays(document.metadata.activeDays));
   document.shifts = document.shifts.filter(shift => {
     if (activeDays.has(shift.day)) return true;
@@ -599,9 +670,9 @@ export function repairImportedDocumentRelations(document: BackupDocument) {
         );
         continue;
       }
-      if (!helperAvailableOnDay(helper, shift.day)) {
+      if (!helperAvailableForShift(helper, shift)) {
         addWarning(
-          `EINSATZPLAN „${shift.task}“: Helfer „${helper.name}“ ist an ${shift.day} nicht verfügbar und wurde aus Platz ${slot.slot + 1} entfernt.`
+          `EINSATZPLAN „${shift.task}“: Helfer „${helper.name}“ ist für die Schichtzeit am ${shift.day} nicht verfügbar und wurde aus Platz ${slot.slot + 1} entfernt.`
         );
         continue;
       }
@@ -1083,6 +1154,20 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
       `HELFER Zeile ${index + 2}: Sonntag`,
       "vielleicht"
     ),
+    availMonStart: text(normalizeImportedTime(row["Mo von"]), 5, `HELFER Zeile ${index + 2}: Montag von`),
+    availMonEnd: text(normalizeImportedTime(row["Mo bis"]), 5, `HELFER Zeile ${index + 2}: Montag bis`),
+    availTueStart: text(normalizeImportedTime(row["Di von"]), 5, `HELFER Zeile ${index + 2}: Dienstag von`),
+    availTueEnd: text(normalizeImportedTime(row["Di bis"]), 5, `HELFER Zeile ${index + 2}: Dienstag bis`),
+    availWedStart: text(normalizeImportedTime(row["Mi von"]), 5, `HELFER Zeile ${index + 2}: Mittwoch von`),
+    availWedEnd: text(normalizeImportedTime(row["Mi bis"]), 5, `HELFER Zeile ${index + 2}: Mittwoch bis`),
+    availThuStart: text(normalizeImportedTime(row["Do von"]), 5, `HELFER Zeile ${index + 2}: Donnerstag von`),
+    availThuEnd: text(normalizeImportedTime(row["Do bis"]), 5, `HELFER Zeile ${index + 2}: Donnerstag bis`),
+    availFriStart: text(normalizeImportedTime(row["Fr von"]), 5, `HELFER Zeile ${index + 2}: Freitag von`),
+    availFriEnd: text(normalizeImportedTime(row["Fr bis"]), 5, `HELFER Zeile ${index + 2}: Freitag bis`),
+    availSatStart: text(normalizeImportedTime(row["Sa von"]), 5, `HELFER Zeile ${index + 2}: Samstag von`),
+    availSatEnd: text(normalizeImportedTime(row["Sa bis"]), 5, `HELFER Zeile ${index + 2}: Samstag bis`),
+    availSunStart: text(normalizeImportedTime(row["So von"]), 5, `HELFER Zeile ${index + 2}: Sonntag von`),
+    availSunEnd: text(normalizeImportedTime(row["So bis"]), 5, `HELFER Zeile ${index + 2}: Sonntag bis`),
     confirmed: enumValue(
       row["Bestätigt?"],
       ["ja", "nein"] as const,
@@ -1689,6 +1774,20 @@ function comparableCurrent(snapshot: CurrentSnapshot) {
         "availFri",
         "availSat",
         "availSun",
+        "availMonStart",
+        "availMonEnd",
+        "availTueStart",
+        "availTueEnd",
+        "availWedStart",
+        "availWedEnd",
+        "availThuStart",
+        "availThuEnd",
+        "availFriStart",
+        "availFriEnd",
+        "availSatStart",
+        "availSatEnd",
+        "availSunStart",
+        "availSunEnd",
         "confirmed",
       ]),
       availMon: row.availMon ?? "ja",
@@ -2672,6 +2771,20 @@ export async function restoreProjectDocument(
           availFri: row.availFri,
           availSat: row.availSat,
           availSun: row.availSun,
+          availMonStart: row.availMonStart || null,
+          availMonEnd: row.availMonEnd || null,
+          availTueStart: row.availTueStart || null,
+          availTueEnd: row.availTueEnd || null,
+          availWedStart: row.availWedStart || null,
+          availWedEnd: row.availWedEnd || null,
+          availThuStart: row.availThuStart || null,
+          availThuEnd: row.availThuEnd || null,
+          availFriStart: row.availFriStart || null,
+          availFriEnd: row.availFriEnd || null,
+          availSatStart: row.availSatStart || null,
+          availSatEnd: row.availSatEnd || null,
+          availSunStart: row.availSunStart || null,
+          availSunEnd: row.availSunEnd || null,
           confirmed: row.confirmed,
         });
         const actualId =
@@ -3135,6 +3248,20 @@ export async function exportProjectExcel(): Promise<{
       Fr: row.availFri,
       Sa: row.availSat,
       So: row.availSun,
+      "Mo von": row.availMonStart,
+      "Mo bis": row.availMonEnd,
+      "Di von": row.availTueStart,
+      "Di bis": row.availTueEnd,
+      "Mi von": row.availWedStart,
+      "Mi bis": row.availWedEnd,
+      "Do von": row.availThuStart,
+      "Do bis": row.availThuEnd,
+      "Fr von": row.availFriStart,
+      "Fr bis": row.availFriEnd,
+      "Sa von": row.availSatStart,
+      "Sa bis": row.availSatEnd,
+      "So von": row.availSunStart,
+      "So bis": row.availSunEnd,
       "Bestätigt?": row.confirmed,
     }))
   );

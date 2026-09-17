@@ -166,6 +166,17 @@ describe("Schichtupdate-Validierung mit bestehenden Zuweisungen", () => {
     ).toThrow("am Samstag nicht verfügbar");
   });
 
+  it("lehnt eine Schichtzeit außerhalb eines gespeicherten Zeitfensters ab", () => {
+    expect(() =>
+      validate({
+        proposedShift: shift({ startTime: "08:00", endTime: "12:00" }),
+        assignedHelpers: [
+          helper({ availFriStart: "13:00", availFriEnd: "18:00" }),
+        ],
+      })
+    ).toThrow("für den angegebenen Zeitraum");
+  });
+
   it("lehnt eine neue Zeitüberschneidung mit einer anderen Schicht desselben Helfers ab", () => {
     const otherShift = shift({
       id: 2,

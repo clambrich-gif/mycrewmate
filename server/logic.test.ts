@@ -3,6 +3,7 @@ import type { Assignment, Helper, Shift } from "../drizzle/schema";
 import {
   evaluateShifts,
   helperActiveOnDay,
+  helperActiveForShift,
   overlaps,
   toMinutes,
 } from "./logic";
@@ -74,6 +75,24 @@ describe("helperActiveOnDay", () => {
       helperActiveOnDay(H(3, "ja", "nein", "nein", "nein"), "Donnerstag")
     ).toBe(true);
   });
+
+  it("fordert bei Zeitfenstern die vollständige Abdeckung einer Schicht", () => {
+    const afternoonHelper = {
+      ...H(5),
+      availFriStart: "13:00",
+      availFriEnd: "18:00",
+    };
+    expect(
+      helperActiveForShift(afternoonHelper, S(1, "Freitag", "08:00", "12:00"))
+    ).toBe(false);
+    expect(
+      helperActiveForShift(afternoonHelper, S(2, "Freitag", "14:00", "17:00"))
+    ).toBe(true);
+    expect(
+      helperActiveForShift(afternoonHelper, S(3, "Freitag", "17:00", "19:00"))
+    ).toBe(false);
+    expect(helperActiveForShift(afternoonHelper, S(4, "Freitag", "", ""))).toBe(true);
+  });
 });
 
 describe("Zeitlogik", () => {
@@ -128,6 +147,15 @@ describe("evaluateShifts", () => {
     expect(evaluation[0].besetzt).toBe(1);
     expect(evaluation[0].ausfallCount).toBe(1);
     expect(evaluation[0].status).toBe("KNAPP");
+  });
+
+  it("zählt eine nicht passende Zeitverfügbarkeit als Ausfall", () => {
+    const shifts = [S(1, "Freitag", "08:00", "12:00", 1)];
+    const helpers = [{ ...H(1), availFriStart: "13:00", availFriEnd: "18:00" }];
+    const evaluation = evaluateShifts(shifts, [A(1, 1)], helpers);
+
+    expect(evaluation[0].besetzt).toBe(0);
+    expect(evaluation[0].ausfallCount).toBe(1);
   });
 
   it("markiert Doppelbelegungen nur an den tatsächlich kollidierenden Schichten", () => {

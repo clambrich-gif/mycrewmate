@@ -1331,6 +1331,23 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers.match(/<YesNoToggle/g)).toHaveLength(4);
   });
 
+  it("erfasst Zeitfenster direkt am verfügbaren Helfertag und filtert sie im Einsatzplan hart", () => {
+    const helpers = source("client/src/pages/Helpers.tsx");
+    const plan = source("client/src/pages/Plan.tsx");
+
+    expect(helpers).toContain("function DayAvailabilityControl");
+    expect(helpers).toContain("Ganztägig");
+    expect(helpers).toContain("Vormittags");
+    expect(helpers).toContain("Nachmittags");
+    expect(helpers).toContain("Benutzerdefiniert");
+    expect(helpers).toContain("helperHasTimedAvailability");
+    expect(helpers).toContain("<Clock3");
+    expect(helpers).toContain("Zeitfenster speichern");
+    expect(plan).toContain("helperAvailableForShift");
+    expect(plan).toContain("const activeHelpers = (shift: DropdownShift)");
+    expect(plan).toContain("const actives = activeHelpers(shift)");
+  });
+
   it("erfasst zusätzliche unbezahlte Begleitungen in den Helferstammdaten und kennzeichnet sie im Einsatzplan mit 👪", () => {
     const helpers = source("client/src/pages/Helpers.tsx");
     const plan = source("client/src/pages/Plan.tsx");

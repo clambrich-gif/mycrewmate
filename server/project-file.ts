@@ -11,12 +11,13 @@ import {
 import { overlaps, toMinutes } from "./logic";
 import {
   eventWeekdays,
+  helperAvailableForShift,
   helperAvailableOnDay,
   WEEKDAYS,
 } from "../shared/weekdays";
 
 const PROJECT_FORMAT = "RSC-HELFERPLANUNG-PROJEKTDATEI";
-const PROJECT_VERSION = 3;
+const PROJECT_VERSION = 4;
 const MAX_PROJECT_BYTES = 10_000_000;
 const MAX_ROWS = 10_000;
 
@@ -79,6 +80,20 @@ const documentSchema = z
           availFri: z.enum(["ja", "nein", "vielleicht"]),
           availSat: z.enum(["ja", "nein", "vielleicht"]),
           availSun: z.enum(["ja", "nein", "vielleicht"]),
+          availMonStart: short(5).default(""),
+          availMonEnd: short(5).default(""),
+          availTueStart: short(5).default(""),
+          availTueEnd: short(5).default(""),
+          availWedStart: short(5).default(""),
+          availWedEnd: short(5).default(""),
+          availThuStart: short(5).default(""),
+          availThuEnd: short(5).default(""),
+          availFriStart: short(5).default(""),
+          availFriEnd: short(5).default(""),
+          availSatStart: short(5).default(""),
+          availSatEnd: short(5).default(""),
+          availSunStart: short(5).default(""),
+          availSunEnd: short(5).default(""),
           confirmed: z.enum(["ja", "nein"]),
         })
       )
@@ -366,9 +381,9 @@ function validateRelations(document: BackupDocument) {
         throw new Error(
           `Einsatzplan „${shift.task}“: Helfer-ID und Name widersprechen sich`
         );
-      if (!helperAvailableOnDay(helper, shift.day))
+      if (!helperAvailableForShift(helper, shift))
         throw new Error(
-          `Einsatzplan „${shift.task}“: Helfer „${helper.name}“ ist an ${shift.day} nicht verfügbar`
+          `Einsatzplan „${shift.task}“: Helfer „${helper.name}“ ist für die Schichtzeit am ${shift.day} nicht verfügbar`
         );
       const helperKey = helper.sourceId
         ? `id:${helper.sourceId}`
@@ -459,6 +474,37 @@ export function parseProjectFile(base64: string): {
       pdfLogoUrl: null,
       pdfLogoFallback: "none",
     };
+  }
+  if (
+    raw &&
+    typeof raw === "object" &&
+    "metadata" in raw &&
+    raw.metadata &&
+    typeof raw.metadata === "object" &&
+    "version" in raw.metadata &&
+    raw.metadata.version === 3
+  ) {
+    const legacy = raw as Record<string, any>;
+    legacy.metadata = { ...legacy.metadata, version: PROJECT_VERSION };
+    legacy.helpers = Array.isArray(legacy.helpers)
+      ? legacy.helpers.map((helper: Record<string, unknown>) => ({
+          ...helper,
+          availMonStart: helper.availMonStart ?? "",
+          availMonEnd: helper.availMonEnd ?? "",
+          availTueStart: helper.availTueStart ?? "",
+          availTueEnd: helper.availTueEnd ?? "",
+          availWedStart: helper.availWedStart ?? "",
+          availWedEnd: helper.availWedEnd ?? "",
+          availThuStart: helper.availThuStart ?? "",
+          availThuEnd: helper.availThuEnd ?? "",
+          availFriStart: helper.availFriStart ?? "",
+          availFriEnd: helper.availFriEnd ?? "",
+          availSatStart: helper.availSatStart ?? "",
+          availSatEnd: helper.availSatEnd ?? "",
+          availSunStart: helper.availSunStart ?? "",
+          availSunEnd: helper.availSunEnd ?? "",
+        }))
+      : legacy.helpers;
   }
   const parsed = documentSchema.safeParse(raw);
   if (!parsed.success)

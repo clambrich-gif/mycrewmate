@@ -1,6 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import {
   eventWeekdays,
+  helperAvailableForShift,
   isHelperWithoutFirstContact,
   WEEKDAYS,
 } from "@shared/weekdays";
@@ -270,6 +271,99 @@ const clockTime = z
   .refine(value => value === "" || toMinutes(value) !== null, {
     message: "Uhrzeit muss im Format HH:MM vorliegen",
   });
+
+const availabilityClockTime = z
+  .string()
+  .trim()
+  .max(5)
+  .refine(value => value === "" || toMinutes(value) !== null, {
+    message: "Uhrzeit muss im Format HH:MM vorliegen",
+  })
+  .nullable()
+  .optional();
+
+const HELPER_TIME_WINDOW_FIELDS = [
+  ["availMon", "availMonStart", "availMonEnd", "Montag"],
+  ["availTue", "availTueStart", "availTueEnd", "Dienstag"],
+  ["availWed", "availWedStart", "availWedEnd", "Mittwoch"],
+  ["availThu", "availThuStart", "availThuEnd", "Donnerstag"],
+  ["availFri", "availFriStart", "availFriEnd", "Freitag"],
+  ["availSat", "availSatStart", "availSatEnd", "Samstag"],
+  ["availSun", "availSunStart", "availSunEnd", "Sonntag"],
+] as const;
+
+function validateHelperTimeWindows(value: Record<string, unknown>, ctx: z.RefinementCtx) {
+  for (const [availabilityField, startField, endField, label] of HELPER_TIME_WINDOW_FIELDS) {
+    const start = value[startField];
+    const end = value[endField];
+    if (start === undefined && end === undefined) continue;
+    const normalizedStart = String(start ?? "").trim();
+    const normalizedEnd = String(end ?? "").trim();
+    if ((normalizedStart === "") !== (normalizedEnd === "")) {
+      ctx.addIssue({
+        code: "custom",
+        path: [startField],
+        message: `${label}: Beginn und Ende müssen gemeinsam gesetzt oder geleert werden`,
+      });
+      continue;
+    }
+    if (normalizedStart && toMinutes(normalizedEnd)! <= toMinutes(normalizedStart)!) {
+      ctx.addIssue({
+        code: "custom",
+        path: [endField],
+        message: `${label}: Das Ende muss nach dem Beginn liegen`,
+      });
+    }
+  }
+}
+
+const helperCreationAvailabilityInput = {
+  availMon: ynv.default("vielleicht"),
+  availTue: ynv.default("vielleicht"),
+  availWed: ynv.default("vielleicht"),
+  availThu: ynv.default("vielleicht"),
+  availFri: ynv.default("vielleicht"),
+  availSat: ynv.default("vielleicht"),
+  availSun: ynv.default("vielleicht"),
+  availMonStart: availabilityClockTime,
+  availMonEnd: availabilityClockTime,
+  availTueStart: availabilityClockTime,
+  availTueEnd: availabilityClockTime,
+  availWedStart: availabilityClockTime,
+  availWedEnd: availabilityClockTime,
+  availThuStart: availabilityClockTime,
+  availThuEnd: availabilityClockTime,
+  availFriStart: availabilityClockTime,
+  availFriEnd: availabilityClockTime,
+  availSatStart: availabilityClockTime,
+  availSatEnd: availabilityClockTime,
+  availSunStart: availabilityClockTime,
+  availSunEnd: availabilityClockTime,
+};
+
+const helperUpdateAvailabilityInput = {
+  availMon: ynv.optional(),
+  availTue: ynv.optional(),
+  availWed: ynv.optional(),
+  availThu: ynv.optional(),
+  availFri: ynv.optional(),
+  availSat: ynv.optional(),
+  availSun: ynv.optional(),
+  availMonStart: availabilityClockTime,
+  availMonEnd: availabilityClockTime,
+  availTueStart: availabilityClockTime,
+  availTueEnd: availabilityClockTime,
+  availWedStart: availabilityClockTime,
+  availWedEnd: availabilityClockTime,
+  availThuStart: availabilityClockTime,
+  availThuEnd: availabilityClockTime,
+  availFriStart: availabilityClockTime,
+  availFriEnd: availabilityClockTime,
+  availSatStart: availabilityClockTime,
+  availSatEnd: availabilityClockTime,
+  availSunStart: availabilityClockTime,
+  availSunEnd: availabilityClockTime,
+};
 
 const validateShiftTimes = (
   value: { startTime?: string; endTime?: string },
@@ -733,16 +827,10 @@ export const appRouter = router({
           phone: z.string().trim().max(64).optional(),
           note: z.string().trim().max(500).optional(),
           willHelp: yn.default("ja"),
-          availMon: ynv.default("vielleicht"),
-          availTue: ynv.default("vielleicht"),
-          availWed: ynv.default("vielleicht"),
-          availThu: ynv.default("vielleicht"),
-          availFri: ynv.default("vielleicht"),
-          availSat: ynv.default("vielleicht"),
-          availSun: ynv.default("vielleicht"),
+          ...helperCreationAvailabilityInput,
           confirmed: yn.default("nein"),
           companion: z.string().trim().max(500).optional(),
-        })
+        }).superRefine(validateHelperTimeWindows)
       )
       .mutation(({ input }) => db.upsertHelperByName(input)),
     update: protectedProcedure
@@ -756,15 +844,9 @@ export const appRouter = router({
           note: z.string().nullable().optional(),
           companion: z.string().trim().max(500).nullable().optional(),
           willHelp: yn.optional(),
-          availMon: ynv.optional(),
-          availTue: ynv.optional(),
-          availWed: ynv.optional(),
-          availThu: ynv.optional(),
-          availFri: ynv.optional(),
-          availSat: ynv.optional(),
-          availSun: ynv.optional(),
+          ...helperUpdateAvailabilityInput,
           confirmed: yn.optional(),
-        })
+        }).superRefine(validateHelperTimeWindows)
       )
       .mutation(({ input }) => {
         const { id, ...rest } = input;
@@ -858,10 +940,22 @@ export const appRouter = router({
         db.setShiftAreaContact(input.area, input.contactId)
       ),
     available: protectedProcedure
-      .input(z.object({ day: dayEnum }))
+      .input(
+        z.object({
+          day: dayEnum,
+          startTime: clockTime.optional(),
+          endTime: clockTime.optional(),
+        }).superRefine(validateShiftTimes)
+      )
       .query(async ({ input }) => {
         const hs = await db.listHelpers();
-        return hs.filter(h => helperActiveOnDay(h, input.day as Day));
+        return hs.filter(h =>
+          helperAvailableForShift(h, {
+            day: input.day,
+            startTime: input.startTime,
+            endTime: input.endTime,
+          })
+        );
       }),
     assign: adminProcedure
       .input(
@@ -889,10 +983,10 @@ export const appRouter = router({
             code: "BAD_REQUEST",
             message: "Dieser Platz liegt außerhalb des Schichtbedarfs",
           });
-        if (!helperActiveOnDay(helper, shift.day as Day))
+        if (!helperAvailableForShift(helper, shift))
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: "Der Helfer ist an diesem Tag nicht verfügbar",
+            message: "Der Helfer ist für diese Schichtzeit nicht verfügbar",
           });
         if (
           assignments.some(

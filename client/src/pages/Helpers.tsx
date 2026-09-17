@@ -32,16 +32,20 @@ import {
 import { cn } from "@/lib/utils";
 import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
 import { trpc } from "@/lib/trpc";
-import { FileDown, Info, MessageCircle, Pencil, Plus, Trash2 } from "lucide-react";
+import { Clock3, FileDown, Info, MessageCircle, Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 import {
   eventWeekdays,
+  helperAvailabilityWindowLabel,
+  helperHasTimedAvailability,
   isHelperWithoutFirstContact,
   WEEKDAY_AVAILABILITY_FIELDS,
+  WEEKDAY_AVAILABILITY_TIME_FIELDS,
   WEEKDAY_SHORT_LABELS,
+  type Weekday,
 } from "@shared/weekdays";
 import {
   HELPER_ASSIGNMENT_QUERY_KEY,
@@ -125,6 +129,167 @@ function Sel({
  * Schaltfläche bleibt als Touch-Ziel 44 px hoch, wirkt durch die kompakte
  * 92-px-Schalterbahn aber deutlich ruhiger als die bisherige Vollbreitenform.
  */
+const AVAILABILITY_PRESETS = [
+  { label: "Ganztägig", start: null, end: null, description: "ohne zeitliche Einschränkung" },
+  { label: "Vormittags", start: "08:00", end: "13:00", description: "08:00 – 13:00 Uhr" },
+  { label: "Nachmittags", start: "13:00", end: "18:00", description: "13:00 – 18:00 Uhr" },
+  { label: "Abends", start: "18:00", end: "23:00", description: "18:00 – 23:00 Uhr" },
+] as const;
+
+/** Tagesstatus und optionales Zeitfenster bleiben in einer Bedienung verbunden. */
+function DayAvailabilityControl({
+  helper,
+  day,
+  compactOnDesktop = false,
+  disabled = false,
+  onCommit,
+}: {
+  helper: any;
+  day: Weekday;
+  compactOnDesktop?: boolean;
+  disabled?: boolean;
+  onCommit: (values: Record<string, string | null>) => void;
+}) {
+  const [timePickerOpen, setTimePickerOpen] = useState(false);
+  const [customOpen, setCustomOpen] = useState(false);
+  const fields = WEEKDAY_AVAILABILITY_TIME_FIELDS[day];
+  const availabilityField = WEEKDAY_AVAILABILITY_FIELDS[day];
+  const availability = helper[availabilityField] as "ja" | "nein" | "vielleicht";
+  const timed = helperHasTimedAvailability(helper, day);
+  const label = helperAvailabilityWindowLabel(helper, day);
+  const [customStart, setCustomStart] = useState(
+    (helper[fields.start] as string | null | undefined) ?? ""
+  );
+  const [customEnd, setCustomEnd] = useState(
+    (helper[fields.end] as string | null | undefined) ?? ""
+  );
+
+  const commitWindow = (start: string | null, end: string | null) => {
+    onCommit({
+      [availabilityField]: "ja",
+      [fields.start]: start,
+      [fields.end]: end,
+    });
+    setTimePickerOpen(false);
+    setCustomOpen(false);
+  };
+
+  const chooseAvailability = (value: string) => {
+    if (value === "ja") {
+      onCommit({ [availabilityField]: "ja" });
+      setCustomStart((helper[fields.start] as string | null | undefined) ?? "");
+      setCustomEnd((helper[fields.end] as string | null | undefined) ?? "");
+      setTimePickerOpen(true);
+      return;
+    }
+    onCommit({
+      [availabilityField]: value,
+      [fields.start]: null,
+      [fields.end]: null,
+    });
+    setTimePickerOpen(false);
+  };
+
+  return (
+    <Popover open={timePickerOpen} onOpenChange={setTimePickerOpen}>
+      <div className={cn("relative w-full", compactOnDesktop && "flex items-center justify-center")}>
+        <Select value={availability} onValueChange={chooseAvailability} disabled={disabled}>
+          <SelectTrigger
+            title={availability === "ja" ? label : undefined}
+            className={cn(
+              "h-11 w-full pr-8 text-base md:h-8 md:text-sm",
+              compactOnDesktop && "md:w-[56px] md:min-w-[56px] md:gap-0.5 md:px-1.5 md:text-xs md:[&_svg]:size-3",
+              valueColor(availability)
+            )}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {YNV.map(option => (
+              <SelectItem key={option.v} value={option.v} className={valueColor(option.v)}>
+                {option.l}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {availability === "ja" && timed && (
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              disabled={disabled}
+              className="absolute inset-y-0 right-0 flex w-9 items-center justify-center rounded-r-md text-emerald-800 hover:bg-emerald-200 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-700 md:w-7"
+              aria-label={`${day}: Zeitfenster ${label} bearbeiten`}
+              title={label}
+            >
+              <Clock3 className="size-3.5" aria-hidden="true" />
+            </button>
+          </PopoverTrigger>
+        )}
+      </div>
+      <PopoverContent
+        className="z-50 w-[min(20rem,calc(100vw-1.5rem))] space-y-3 border bg-white p-3 text-slate-950 shadow-lg"
+        align="center"
+        side="bottom"
+        collisionPadding={12}
+      >
+        <div>
+          <p className="text-sm font-semibold">{day}: verfügbar wann?</p>
+          <p className="text-xs text-muted-foreground">Zeitfenster gelten nur für diesen Tag.</p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {AVAILABILITY_PRESETS.map(preset => (
+            <Button
+              key={preset.label}
+              type="button"
+              variant="outline"
+              className="h-auto min-h-11 justify-start px-3 py-2 text-left"
+              onClick={() => commitWindow(preset.start, preset.end)}
+            >
+              <span>
+                <span className="block font-semibold">{preset.label}</span>
+                <span className="block text-xs font-normal text-muted-foreground">{preset.description}</span>
+              </span>
+            </Button>
+          ))}
+          <Button
+            type="button"
+            variant="outline"
+            className="h-auto min-h-11 justify-start px-3 py-2 text-left sm:col-span-2"
+            onClick={() => setCustomOpen(open => !open)}
+          >
+            <span>
+              <span className="block font-semibold">Benutzerdefiniert</span>
+              <span className="block text-xs font-normal text-muted-foreground">Eigene Uhrzeit von – bis</span>
+            </span>
+          </Button>
+        </div>
+        {customOpen && (
+          <div className="space-y-2 rounded-md border border-slate-200 bg-slate-50 p-3">
+            <div className="grid grid-cols-2 gap-2">
+              <label className="space-y-1 text-xs font-medium">
+                Von
+                <Input type="time" value={customStart} onChange={event => setCustomStart(event.target.value)} />
+              </label>
+              <label className="space-y-1 text-xs font-medium">
+                Bis
+                <Input type="time" value={customEnd} onChange={event => setCustomEnd(event.target.value)} />
+              </label>
+            </div>
+            <Button
+              type="button"
+              className="w-full"
+              disabled={!customStart || !customEnd || customEnd <= customStart}
+              onClick={() => commitWindow(customStart, customEnd)}
+            >
+              Zeitfenster speichern
+            </Button>
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function YesNoToggle({
   value,
   onChange,
@@ -829,20 +994,20 @@ export default function Helpers() {
                     }
                   />
                 </div>
-                {activeDays.map(day => {
-                  const field = WEEKDAY_AVAILABILITY_FIELDS[day];
-                  return (
-                    <div key={day} className="space-y-1.5">
-                      <label className="text-xs font-medium">{day}</label>
-                      <Sel
-                        value={helper[field]}
-                        options={YNV}
-                        onChange={value =>
-                          update.mutate({ id: helper.id, [field]: value })
-                        }
-                      />
-                    </div>
-                  );
+                  {activeDays.map(day => {
+                    return (
+                      <div key={day} className="space-y-1">
+                        <div className="text-sm font-medium">{day}</div>
+                        <DayAvailabilityControl
+                          helper={helper}
+                          day={day}
+                          disabled={update.isPending}
+                          onCommit={values =>
+                            update.mutate({ id: helper.id, ...values } as any)
+                          }
+                        />
+                      </div>
+                    );
                 })}
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium">Bestätigt?</label>
@@ -1048,15 +1213,15 @@ export default function Helpers() {
                     />
                   </td>
                   {activeDays.map(day => {
-                    const field = WEEKDAY_AVAILABILITY_FIELDS[day];
                     return (
                       <td key={day} className="p-1 text-center align-middle">
-                        <Sel
-                          value={helper[field]}
-                          options={YNV}
+                        <DayAvailabilityControl
+                          helper={helper}
+                          day={day}
                           compactOnDesktop
-                          onChange={value =>
-                            update.mutate({ id: helper.id, [field]: value })
+                          disabled={update.isPending}
+                          onCommit={values =>
+                            update.mutate({ id: helper.id, ...values } as any)
                           }
                         />
                       </td>

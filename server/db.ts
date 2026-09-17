@@ -46,6 +46,7 @@ import {
 import { ENV } from "./_core/env";
 import {
   eventWeekdays,
+  helperAvailableForShift,
   helperAvailableOnDay,
   WEEKDAYS,
   type Weekday,
@@ -1865,8 +1866,8 @@ export async function assignHelper(v: {
       throw new Error("Schicht oder Helfer wurde nicht gefunden");
     if (v.slot < 0 || v.slot >= shift.needed)
       throw new Error("Helferplatz liegt außerhalb des Schichtbedarfs");
-    if (!helperAvailableOnDay(helper, shift.day))
-      throw new Error("Der Helfer ist an diesem Tag nicht verfügbar");
+    if (!helperAvailableForShift(helper, shift))
+      throw new Error("Der Helfer ist für diese Schichtzeit nicht verfügbar");
     const [existing] = await tx
       .select({ id: assignments.id })
       .from(assignments)
@@ -1911,8 +1912,8 @@ export async function replaceShiftAssignment(v: {
       throw new Error("Schicht oder Helfer wurde nicht gefunden");
     if (v.slot < 0 || v.slot >= shift.needed)
       throw new Error("Helferplatz liegt außerhalb des Schichtbedarfs");
-    if (!helperAvailableOnDay(helper, shift.day))
-      throw new Error("Der Helfer ist an diesem Tag nicht verfügbar");
+    if (!helperAvailableForShift(helper, shift))
+      throw new Error("Der Helfer ist für diese Schichtzeit nicht verfügbar");
     const current = await tx
       .select()
       .from(assignments)

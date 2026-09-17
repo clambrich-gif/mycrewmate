@@ -64,7 +64,7 @@ import {
 } from "@/lib/dashboard-target-filter";
 import {
   eventWeekdays,
-  helperAvailableOnDay,
+  helperAvailableForShift,
   WEEKDAY_AVAILABILITY_FIELDS,
   WEEKDAY_SHORT_LABELS,
   WEEKDAYS,
@@ -683,8 +683,8 @@ export default function Plan() {
     ]
   );
 
-  const activeHelpers = (d: string) =>
-    helpers.filter(h => helperAvailableOnDay(h, d as Weekday));
+  const activeHelpers = (shift: DropdownShift) =>
+    helpers.filter(helper => helperAvailableForShift(helper, shift));
 
   const assignedShiftsByHelper = useMemo(() => {
     const result = new Map<number, DropdownShift[]>();
@@ -721,7 +721,7 @@ export default function Plan() {
     const assignedHelperIds = new Set<number>(
       (evalE.assigned as AssignmentT[]).map(assignment => assignment.helperId)
     );
-    const actives = activeHelpers(shift.day).filter(
+    const actives = activeHelpers(shift).filter(
       helper => !assignedHelperIds.has(helper.id)
     );
     return (

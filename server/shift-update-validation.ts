@@ -1,6 +1,6 @@
 import type { Assignment, Helper, Shift } from "../drizzle/schema";
 import { overlaps } from "./logic";
-import { helperAvailableOnDay } from "../shared/weekdays";
+import { helperAvailableForShift } from "../shared/weekdays";
 
 export class ShiftUpdateValidationError extends Error {
   constructor(message: string) {
@@ -107,9 +107,9 @@ export function validateExistingAssignmentsForShiftUpdate({
         "Eine bestehende Helferzuweisung gehört nicht zur aktuellen Veranstaltung"
       );
     }
-    if (!helperAvailableOnDay(helper, proposedShift.day)) {
+    if (!helperAvailableForShift(helper, proposedShift)) {
       throw new ShiftUpdateValidationError(
-        `Der Helfer „${helper.name}“ ist am ${proposedShift.day} nicht verfügbar`
+        `Der Helfer „${helper.name}“ ist für den angegebenen Zeitraum am ${proposedShift.day} nicht verfügbar`
       );
     }
 
