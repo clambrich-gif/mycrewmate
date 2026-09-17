@@ -681,7 +681,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain("Filter aufheben");
   });
 
-  it("zeigt die Erstkontaktquote unter der Rückmeldequote und verlinkt neue Helfer direkt", () => {
+  it("stellt Tagesbereitschaft sowie beide Helferquoten gemeinsam dar und verlinkt neue Helfer direkt", () => {
     const dashboard = source("client/src/pages/Dashboard.tsx");
     const helpers = source("client/src/pages/Helpers.tsx");
     const router = source("server/routers.ts");
@@ -700,6 +700,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain("parseHelperFirstContactFilter");
     expect(helpers).toContain("isHelperWithoutFirstContact(helper, activeDays)");
     expect(helpers).toContain("Dashboardfilter: Nur Helfer ohne Erstkontakt.");
+    expect(dashboard).toContain('data-dashboard-section="Einsatzbereitschaft und Helferquoten"');
+    expect(dashboard).toContain('className="grid gap-4 lg:grid-cols-3"');
   });
 
   it("visualisiert die tägliche Einsatzbereitschaft für das dreitägige Festival", () => {
@@ -717,6 +719,16 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain("readinessTone");
     expect(dashboard).toContain('role="progressbar"');
     expect(dashboard).toContain('path: "/einsatzplan"');
+  });
+
+  it("ordnet die nächsten vier Fristen als vollbreite Kartenmatrix unter der Quotenzeile an", () => {
+    const dashboard = source("client/src/pages/Dashboard.tsx");
+
+    expect(dashboard).toContain('className="w-full"');
+    expect(dashboard).toContain('grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-4');
+    expect(dashboard).toContain('min-h-28 min-w-0 flex-col');
+    expect(dashboard).toContain("deadlineTimingLabel(deadline.daysUntil)");
+    expect(dashboard).toContain("Datierte Vorbereitungsaufgaben");
   });
 
   it("verschiebt die Einsatzplan-Kennzahlen als kompakte Live-Statusleiste in den Einsatzplan", () => {

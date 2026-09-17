@@ -195,39 +195,41 @@ function UpcomingDeadlinesCard({
         </span>
       </CardHeader>
       <CardContent className="p-3 pt-0 sm:p-4 sm:pt-0">
-        <div className="divide-y divide-slate-100">
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-4">
           {deadlines.map(deadline => (
             <button
               key={deadline.taskId}
               type="button"
-              className="group flex min-h-14 w-full items-center gap-3 py-2 text-left focus-visible:outline-none"
+              className="group flex min-h-28 min-w-0 flex-col items-stretch justify-between rounded-xl border border-slate-200 bg-slate-50 p-3 text-left transition-[border-color,box-shadow,transform] duration-150 hover:border-blue-300 hover:shadow-sm active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
               aria-label={`${deadline.dueText}: ${deadline.task}. ${deadlineTimingLabel(deadline.daysUntil)}. Vorbereitung öffnen`}
               onPointerEnter={() => preloadRoute(target.path)}
               onFocus={() => preloadRoute(target.path)}
               onClick={() => openTarget(target)}
             >
-              <span
-                className={`flex min-w-[5.35rem] shrink-0 flex-col rounded-lg border px-2 py-1 text-center ${deadlineToneClass(deadline)}`}
-              >
-                <span className="text-sm font-bold leading-tight">{deadline.dueText}</span>
-                <span className="text-[11px] leading-tight">
-                  {deadlineTimingLabel(deadline.daysUntil)}
+              <span className="flex items-start justify-between gap-2">
+                <span
+                  className={`flex shrink-0 flex-col rounded-lg border px-2 py-1 text-center ${deadlineToneClass(deadline)}`}
+                >
+                  <span className="text-sm font-bold leading-tight">{deadline.dueText}</span>
+                  <span className="text-[11px] leading-tight">
+                    {deadlineTimingLabel(deadline.daysUntil)}
+                  </span>
                 </span>
+                <ArrowRight
+                  className="mt-1 size-4 shrink-0 text-blue-700 transition-transform duration-150 group-hover:translate-x-0.5"
+                  aria-hidden="true"
+                />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-semibold text-slate-900" title={deadline.task}>
+                <span className="block line-clamp-2 text-sm font-semibold leading-5 text-slate-900" title={deadline.task}>
                   {deadline.task}
                 </span>
-                <span className="mt-0.5 block truncate text-xs text-slate-600">
+                <span className="mt-1 block line-clamp-2 text-xs leading-4 text-slate-600">
                   {[deadline.category, deadline.contactName]
                     .filter(Boolean)
                     .join(" · ") || "Ohne Bereich und Verantwortlichen"}
                 </span>
               </span>
-              <ArrowRight
-                className="size-4 shrink-0 text-blue-700 transition-transform duration-150 group-hover:translate-x-0.5"
-                aria-hidden="true"
-              />
             </button>
           ))}
         </div>
@@ -887,35 +889,38 @@ export default function Dashboard() {
         )}
       </section>
 
-      <DailyReadinessCard
-        readiness={dailyReadiness}
-        openTarget={target => navigate(dashboardTargetHref(target))}
-      />
+      <section
+        data-dashboard-section="Einsatzbereitschaft und Helferquoten"
+        className="grid gap-4 lg:grid-cols-3"
+      >
+        <DailyReadinessCard
+          readiness={dailyReadiness}
+          openTarget={target => navigate(dashboardTargetHref(target))}
+        />
+        <FeedbackRateCard
+          assigned={s.helferEingeteilt}
+          confirmed={s.helferEingeteiltBestaetigt}
+          outstanding={s.helferEingeteiltUnbestaetigt}
+          rate={s.rueckmeldequote}
+          openTarget={target => navigate(dashboardTargetHref(target))}
+        />
+        <FirstContactRateCard
+          total={s.helferGesamt}
+          contacted={s.helferKontaktiert}
+          outstanding={s.helferOhneErstkontakt}
+          rate={s.erstkontaktquote}
+          openTarget={target => navigate(dashboardTargetHref(target))}
+        />
+      </section>
 
-      <section className="grid gap-4 lg:grid-cols-2">
-        {upcomingDeadlines.length > 0 && (
+      {upcomingDeadlines.length > 0 && (
+        <section className="w-full">
           <UpcomingDeadlinesCard
             deadlines={upcomingDeadlines}
             openTarget={target => navigate(dashboardTargetHref(target))}
           />
-        )}
-        <div className="grid gap-4">
-          <FeedbackRateCard
-            assigned={s.helferEingeteilt}
-            confirmed={s.helferEingeteiltBestaetigt}
-            outstanding={s.helferEingeteiltUnbestaetigt}
-            rate={s.rueckmeldequote}
-            openTarget={target => navigate(dashboardTargetHref(target))}
-          />
-          <FirstContactRateCard
-            total={s.helferGesamt}
-            contacted={s.helferKontaktiert}
-            outstanding={s.helferOhneErstkontakt}
-            rate={s.erstkontaktquote}
-            openTarget={target => navigate(dashboardTargetHref(target))}
-          />
-        </div>
-      </section>
+        </section>
+      )}
 
       <div className="space-y-4">
         {sections.map(section => (
