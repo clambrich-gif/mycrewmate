@@ -1691,13 +1691,13 @@ export default function Plan() {
       </Dialog>
 
       <Dialog open={dlgOpen} onOpenChange={setDlgOpen}>
-        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))] !bg-white !text-slate-950 opacity-100 shadow-2xl dark:!bg-slate-950 dark:!text-slate-50 [&_[data-slot=input]]:!bg-white [&_[data-slot=input]]:dark:!bg-slate-900 [&_[data-slot=select-trigger]]:!bg-white [&_[data-slot=select-trigger]]:dark:!bg-slate-900">
+        <DialogContent className="w-[calc(100vw-2rem)] min-w-0 max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))] !bg-white !text-slate-950 opacity-100 shadow-2xl sm:max-w-xl dark:!bg-slate-950 dark:!text-slate-50 [&_[data-slot=input]]:!bg-white [&_[data-slot=input]]:dark:!bg-slate-900 [&_[data-slot=select-trigger]]:!bg-white [&_[data-slot=select-trigger]]:dark:!bg-slate-900">
           <DialogHeader>
             <DialogTitle>
               {editShift ? "Schicht bearbeiten" : "Neue Schicht"}
             </DialogTitle>
           </DialogHeader>
-          <div className="grid gap-3 py-2">
+          <div className="grid min-w-0 gap-3 py-2">
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <Label>Tag</Label>
@@ -1874,10 +1874,10 @@ export default function Plan() {
               />
             </div>
           </div>
-          <DialogFooter className="gap-2 sm:justify-between">
-            <div className="min-h-10 space-y-2 sm:mr-auto">
+          <DialogFooter className="w-full min-w-0 flex-col gap-3 border-t pt-3 sm:flex-col sm:items-stretch">
+            <div className="w-full min-w-0 space-y-2">
               {manualOkConfirmationAvailable && (
-                <div className="flex items-start gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-2 text-left">
+                <div className="flex w-full min-w-0 items-start gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-2 text-left">
                   <Checkbox
                     id="shift-manual-ok-confirmed"
                     checked={form.manualOkConfirmed}
@@ -1890,7 +1890,7 @@ export default function Plan() {
                   />
                   <Label
                     htmlFor="shift-manual-ok-confirmed"
-                    className="cursor-pointer space-y-0.5 leading-tight"
+                    className="min-w-0 cursor-pointer space-y-0.5 break-words leading-tight"
                   >
                     <span className="block text-sm font-medium text-emerald-950">
                       ✓ Manuell als OK bestätigen
@@ -1902,7 +1902,7 @@ export default function Plan() {
                 </div>
               )}
               {manualDoubleConflictConfirmationAvailable && (
-                <div className="flex items-start gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-2 text-left">
+                <div className="flex w-full min-w-0 items-start gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-2 text-left">
                   <Checkbox
                     id="shift-manual-double-conflict-accepted"
                     checked={form.manualDoubleConflictAccepted}
@@ -1915,7 +1915,7 @@ export default function Plan() {
                   />
                   <Label
                     htmlFor="shift-manual-double-conflict-accepted"
-                    className="cursor-pointer space-y-0.5 leading-tight"
+                    className="min-w-0 cursor-pointer space-y-0.5 break-words leading-tight"
                   >
                     <span className="block text-sm font-medium text-emerald-950">
                       ✓ Doppelbelegung akzeptieren
@@ -1927,7 +1927,7 @@ export default function Plan() {
                 </div>
               )}
             </div>
-            <div className="flex gap-2">
+            <div className="flex w-full flex-wrap justify-end gap-2">
               <Button variant="outline" onClick={() => setDlgOpen(false)}>
                 <X className="h-4 w-4 mr-1" />
                 Abbrechen

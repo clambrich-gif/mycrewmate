@@ -1424,6 +1424,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     );
     expect(statusBadge).toContain("doubleConflictAccepted = false");
     expect(statusBadge).toContain("Manuell bestätigt (Doppelbelegung akzeptiert)");
+    expect(plan).toContain(
+      "w-[calc(100vw-2rem)] min-w-0 max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto"
+    );
+    expect(plan).toContain(
+      "w-full min-w-0 flex-col gap-3 border-t pt-3 sm:flex-col sm:items-stretch"
+    );
+    expect(plan).toContain("flex w-full flex-wrap justify-end gap-2");
   });
 
   it("zeigt persönliche Zeitfenster in den Helfer-PDFs an", () => {
