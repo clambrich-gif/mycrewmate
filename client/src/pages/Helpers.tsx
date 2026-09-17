@@ -311,6 +311,7 @@ export default function Helpers() {
   const { data: plan } = trpc.plan.evaluate.useQuery();
   const activeDays = currentEvent ? eventWeekdays(currentEvent.activeDays) : [];
   const [name, setName] = useState("");
+  const [newHelperCompanion, setNewHelperCompanion] = useState("");
   const [filter, setFilter] = useState("");
   const [apFilter, setApFilter] = useState("alle");
   const [sortAsc, setSortAsc] = useState(true);
@@ -333,6 +334,7 @@ export default function Helpers() {
     onSuccess: () => {
       invalidate();
       setName("");
+      setNewHelperCompanion("");
       toast.success("Helfer hinzugefügt");
     },
     onError: error => toast.error(error.message),
@@ -341,6 +343,14 @@ export default function Helpers() {
     onSuccess: invalidate,
     onError: error => toast.error(error.message),
   });
+  const createNewHelper = () => {
+    const trimmedName = name.trim();
+    if (!trimmedName) return;
+    create.mutate({
+      name: trimmedName,
+      companion: newHelperCompanion.trim() || undefined,
+    });
+  };
   const remove = trpc.helpers.remove.useMutation({
     onSuccess: () => {
       invalidate();
@@ -485,12 +495,24 @@ export default function Helpers() {
             onKeyDown={event =>
               event.key === "Enter" &&
               name.trim() &&
-              create.mutate({ name: name.trim() })
+              createNewHelper()
+            }
+          />
+          <Input
+            placeholder="Zusätzliche Begleitung (optional)"
+            value={newHelperCompanion}
+            onChange={event => setNewHelperCompanion(event.target.value)}
+            className="col-span-2 w-full lg:hidden"
+            aria-label="Zusätzliche Begleitung für neuen Helfer"
+            onKeyDown={event =>
+              event.key === "Enter" &&
+              name.trim() &&
+              createNewHelper()
             }
           />
           <Button
             className="col-span-2 shadow-xs lg:hidden"
-            onClick={() => name.trim() && create.mutate({ name: name.trim() })}
+            onClick={createNewHelper}
             disabled={!name.trim() || create.isPending}
           >
             <Plus className="mr-1.5 h-4 w-4" />
@@ -500,7 +522,7 @@ export default function Helpers() {
       </div>
 
       <Card className="hidden border-blue-200 bg-slate-50/80 shadow-sm lg:block">
-        <CardContent className="flex items-end gap-3 p-4">
+        <CardContent className="grid items-end gap-3 p-4 xl:grid-cols-[minmax(0,1fr)_minmax(17rem,0.6fr)_auto]">
           <div className="min-w-0 flex-1 space-y-1.5">
             <label htmlFor="new-helper-name" className="text-sm font-semibold text-slate-800">
               Neuanlage – Name des Helfers
@@ -514,13 +536,30 @@ export default function Helpers() {
               onKeyDown={event =>
                 event.key === "Enter" &&
                 name.trim() &&
-                create.mutate({ name: name.trim() })
+                createNewHelper()
+              }
+            />
+          </div>
+          <div className="min-w-0 space-y-1.5">
+            <label htmlFor="new-helper-companion" className="text-sm font-semibold text-slate-800">
+              Zusätzliche Begleitung (für Einsatzplan)
+            </label>
+            <Input
+              id="new-helper-companion"
+              placeholder="z. B. + Frau Muster, + Kind"
+              value={newHelperCompanion}
+              onChange={event => setNewHelperCompanion(event.target.value)}
+              className="h-11 border-slate-300 bg-white text-base shadow-sm placeholder:text-slate-600"
+              onKeyDown={event =>
+                event.key === "Enter" &&
+                name.trim() &&
+                createNewHelper()
               }
             />
           </div>
           <Button
             className="h-11 bg-indigo-700 px-5 text-base font-semibold shadow-sm hover:bg-indigo-800"
-            onClick={() => name.trim() && create.mutate({ name: name.trim() })}
+            onClick={createNewHelper}
             disabled={!name.trim() || create.isPending}
           >
             <Plus className="h-5 w-5" />

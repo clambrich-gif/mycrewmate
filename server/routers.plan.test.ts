@@ -13,6 +13,7 @@ const dbMocks = vi.hoisted(() => ({
   createShift: vi.fn(),
   updateShift: vi.fn(),
   deleteShift: vi.fn(),
+  upsertHelperByName: vi.fn(),
   updateHelper: vi.fn(),
   deleteHelper: vi.fn(),
   deleteCake: vi.fn(),
@@ -1127,6 +1128,25 @@ describe("Planungs-API", () => {
     expect(dbMocks.updateHelper).toHaveBeenCalledWith(42, {
       companion: "+ Frau Muster, + Kind",
     });
+  });
+
+  it("übernimmt eine optionale Begleitperson bereits bei der Helferneuanlage", async () => {
+    dbMocks.upsertHelperByName.mockResolvedValue({ id: 44, created: true });
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.helpers.create({
+        name: "Axel Muster",
+        companion: "+ Frau Muster, + Kind",
+      })
+    ).resolves.toEqual({ id: 44, created: true });
+
+    expect(dbMocks.upsertHelperByName).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Axel Muster",
+        companion: "+ Frau Muster, + Kind",
+      })
+    );
   });
 
   it("erlaubt dem Planungsteam bestätigte Helfer- und Kuchenlöschungen", async () => {

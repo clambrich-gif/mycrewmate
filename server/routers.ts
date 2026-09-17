@@ -739,6 +739,7 @@ export const appRouter = router({
           availSat: ynv.default("vielleicht"),
           availSun: ynv.default("vielleicht"),
           confirmed: yn.default("nein"),
+          companion: z.string().trim().max(500).optional(),
         })
       )
       .mutation(({ input }) => db.upsertHelperByName(input)),

@@ -1221,6 +1221,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain('className="hidden border-blue-200 bg-slate-50/80 shadow-sm lg:block"');
     expect(helpers).toContain("Neuanlage – Name des Helfers");
     expect(helpers).toContain("Name des neuen Helfers eingeben");
+    expect(helpers).toContain("Zusätzliche Begleitung (für Einsatzplan)");
+    expect(helpers).toContain('id="new-helper-companion"');
+    expect(helpers).toContain("Zusätzliche Begleitung (optional)");
+    expect(helpers).toContain("createNewHelper()");
     expect(helpers).toContain("Helfer hinzufügen");
     expect(helpers).toContain("bg-indigo-700");
     expect(helpers).toContain('className="col-span-2 w-full lg:hidden"');
