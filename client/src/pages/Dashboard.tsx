@@ -1,4 +1,3 @@
-import { StatusBadge } from "@/components/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   dashboardTargetHref,
@@ -25,27 +24,6 @@ import {
   WEEKDAY_SHORT_LABELS,
   type Weekday,
 } from "@shared/weekdays";
-
-type MetricCard = {
-  label: string;
-  value: number;
-  badge: string | null;
-  target?: DashboardTarget;
-  urgency?: "orange" | "red";
-  preparationBreakdown?: {
-    offen: number;
-    inBearbeitung: number;
-    erledigt: number;
-    abgelehnt: number;
-  };
-};
-
-type MetricSection = {
-  title: string;
-  className: string;
-  titleClassName: string;
-  cards: MetricCard[];
-};
 
 type PriorityAction = {
   id: string;
@@ -509,165 +487,6 @@ function DailyReadinessCard({
   );
 }
 
-function PreparationMetricCardView({
-  metric,
-  openTarget,
-}: {
-  metric: MetricCard;
-  openTarget: (target: DashboardTarget) => void;
-}) {
-  const breakdown = metric.preparationBreakdown;
-  const target = metric.target;
-  if (!breakdown || !target) return null;
-
-  const statuses = [
-    {
-      label: "Offen",
-      value: breakdown.offen,
-      className: "border-amber-200 bg-amber-50 text-amber-950",
-    },
-    {
-      label: "In Bearbeitung / Beantragt",
-      value: breakdown.inBearbeitung,
-      className: "border-blue-200 bg-blue-50 text-blue-950",
-    },
-    {
-      label: "Erledigt / Genehmigt",
-      value: breakdown.erledigt,
-      className: "border-emerald-200 bg-emerald-50 text-emerald-950",
-    },
-    {
-      label: "Abgelehnt",
-      value: breakdown.abgelehnt,
-      className:
-        breakdown.abgelehnt > 0
-          ? "border-red-300 bg-red-50 text-red-950"
-          : "border-rose-200 bg-rose-50/70 text-rose-900",
-    },
-  ];
-
-  return (
-    <button
-      type="button"
-      className="group col-span-2 min-h-11 min-w-0 cursor-pointer rounded-xl text-left focus-visible:outline-none lg:col-span-1"
-      aria-label={`Vorbereitung: Gesamt ${metric.value}. Vorbereitungsübersicht anzeigen`}
-      onPointerEnter={() => preloadRoute(target.path)}
-      onFocus={() => preloadRoute(target.path)}
-      onClick={() => openTarget(target)}
-    >
-      <Card className="h-full min-w-0 border-amber-300 bg-white text-slate-950 shadow-sm transition-[border-color,box-shadow,transform] duration-150 group-hover:border-amber-500 group-hover:shadow-md group-active:scale-[0.99] group-focus-visible:ring-2 group-focus-visible:ring-amber-500 group-focus-visible:ring-offset-2">
-        <CardHeader className="flex min-w-0 flex-row items-baseline justify-between gap-2 p-3 pb-2 sm:p-4 sm:pb-2">
-          <CardTitle className="text-sm font-semibold text-slate-800 sm:text-base">
-            Vorbereitung
-          </CardTitle>
-          <span className="whitespace-nowrap text-xs font-medium text-slate-600">
-            Gesamt: <strong className="text-base text-slate-950">{metric.value}</strong>
-          </span>
-        </CardHeader>
-        <CardContent className="space-y-3 p-3 pt-0 sm:p-4 sm:pt-0">
-          <div className="grid grid-cols-2 gap-2">
-            {statuses.map(status => (
-              <div
-                key={status.label}
-                className={`min-w-0 rounded-lg border px-2.5 py-2 ${status.className}`}
-              >
-                <p className="min-h-8 break-words text-[11px] font-medium leading-tight sm:text-xs">
-                  {status.label}
-                </p>
-                <p className="mt-1 text-xl font-bold leading-none">{status.value}</p>
-              </div>
-            ))}
-          </div>
-          <span className="flex items-center gap-1 text-xs font-semibold text-amber-800">
-            Vorbereitungen anzeigen
-            <ArrowRight className="size-3.5" aria-hidden="true" />
-          </span>
-        </CardContent>
-      </Card>
-    </button>
-  );
-}
-
-function MetricCardView({
-  metric,
-  openTarget,
-}: {
-  metric: MetricCard;
-  openTarget: (target: DashboardTarget) => void;
-}) {
-  if (metric.preparationBreakdown) {
-    return <PreparationMetricCardView metric={metric} openTarget={openTarget} />;
-  }
-  const isEmpty = metric.value === 0;
-  const interactiveCardClass =
-    metric.urgency === "red"
-      ? "border-red-300 bg-red-50/90 group-hover:border-red-500 group-hover:shadow-red-200/70 group-focus-visible:border-red-500 group-focus-visible:ring-red-500"
-      : metric.urgency === "orange"
-        ? "border-orange-300 bg-orange-50/90 group-hover:border-orange-500 group-hover:shadow-orange-200/70 group-focus-visible:border-orange-500 group-focus-visible:ring-orange-500"
-        : "border-slate-200 bg-white group-hover:border-blue-400 group-hover:shadow-blue-100/80 group-focus-visible:border-blue-500 group-focus-visible:ring-blue-500";
-  const actionClass =
-    metric.urgency === "red"
-      ? "text-red-700"
-      : metric.urgency === "orange"
-        ? "text-orange-700"
-        : "text-blue-700";
-  const card = (
-    <Card
-      className={`h-full min-w-0 text-slate-950 shadow-sm ${
-        isEmpty
-          ? "border-slate-200 bg-slate-100 text-slate-600"
-          : metric.target
-          ? `${interactiveCardClass} transition-[border-color,box-shadow,transform] duration-150 group-hover:shadow-md group-active:scale-[0.99] group-focus-visible:ring-2 group-focus-visible:ring-offset-2`
-          : "border-slate-200 bg-white"
-      }`}
-    >
-      <CardHeader className="min-w-0 p-3 pb-1 sm:p-6 sm:pb-1">
-        <CardTitle
-          className="min-w-0 break-words text-xs leading-snug font-medium whitespace-normal text-slate-600 sm:text-sm"
-        >
-          {metric.label}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex min-w-0 flex-wrap items-end justify-between gap-1 p-3 pt-0 sm:p-6 sm:pt-0">
-        <span
-          className={`text-2xl font-bold sm:text-3xl ${
-            isEmpty ? "text-slate-600" : ""
-          }`}
-        >
-          {metric.value}
-        </span>
-        <span className="flex flex-col items-end gap-1">
-          {!isEmpty && metric.badge && <StatusBadge status={metric.badge} />}
-          {!isEmpty && metric.target && (
-            <span
-              className={`flex items-center gap-1 text-[11px] font-semibold sm:text-xs ${actionClass}`}
-            >
-              Anzeigen
-              <ArrowRight className="size-3.5" aria-hidden="true" />
-            </span>
-          )}
-        </span>
-      </CardContent>
-    </Card>
-  );
-
-  const target = metric.target;
-  if (!target || isEmpty) return card;
-
-  return (
-    <button
-      type="button"
-      className="group min-h-11 min-w-0 cursor-pointer rounded-xl text-left focus-visible:outline-none"
-      aria-label={`${metric.label}: ${metric.value}. Gefilterte Einträge anzeigen`}
-      onPointerEnter={() => preloadRoute(target.path)}
-      onFocus={() => preloadRoute(target.path)}
-      onClick={() => openTarget(target)}
-    >
-      {card}
-    </button>
-  );
-}
-
 export default function Dashboard() {
   const [, navigate] = useLocation();
   const { data: s, isLoading } = trpc.dashboard.stats.useQuery();
@@ -804,45 +623,6 @@ export default function Dashboard() {
   const upcomingDeadlines = s.naechsteVorbereitungsfristen as DashboardDeadline[];
   const dailyReadiness = s.taeglicheEinsatzbereitschaft as DailyReadiness[];
 
-  const sections: MetricSection[] = [
-    {
-      title: "Helferbedarf & Belegung",
-      className: "border-emerald-300 bg-emerald-50/90",
-      titleClassName: "text-emerald-950",
-      cards: [
-        { label: "Helferbedarf", value: s.bedarfGesamt, badge: null },
-        { label: "Besetzt", value: s.besetztGesamt, badge: null },
-        { label: "Helfer gesamt", value: s.helferGesamt, badge: null },
-        { label: "Bestätigt", value: s.helferBestaetigt, badge: null },
-      ],
-    },
-    {
-      title: "Aufgabenstatus",
-      className: "border-amber-300 bg-amber-50/90",
-      titleClassName: "text-amber-950",
-      cards: [
-        {
-          label: "Vorbereitung",
-          value: s.vorbereitungGesamt,
-          badge: null,
-          target: { path: "/vorbereitung" },
-          preparationBreakdown: {
-            offen: s.offeneVorbereitung,
-            inBearbeitung: s.vorbereitungInBearbeitung,
-            erledigt: s.vorbereitungErledigt,
-            abgelehnt: s.abgelehnteVorbereitung,
-          },
-        },
-        {
-          label: "Offene Nachbereitung",
-          value: s.offeneNachbereitung,
-          badge: null,
-          target: { path: "/nachbereitung", status: "offen" },
-        },
-      ],
-    },
-  ];
-
   return (
     <div className="space-y-8">
       <div>
@@ -921,31 +701,6 @@ export default function Dashboard() {
           />
         </section>
       )}
-
-      <div className="space-y-4">
-        {sections.map(section => (
-          <section
-            key={section.title}
-            data-dashboard-section={section.title}
-            className={`rounded-2xl border p-3 shadow-sm sm:p-4 ${section.className}`}
-          >
-            <h2
-              className={`mb-3 text-sm font-extrabold tracking-wide uppercase sm:text-base ${section.titleClassName}`}
-            >
-              {section.title}
-            </h2>
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
-              {section.cards.map(metric => (
-                <MetricCardView
-                  key={metric.label}
-                  metric={metric}
-                  openTarget={target => navigate(dashboardTargetHref(target))}
-                />
-              ))}
-            </div>
-          </section>
-        ))}
-      </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="shadow-sm">

@@ -611,15 +611,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     );
   });
 
-  it("deaktiviert Dashboardkarten ohne Treffer visuell und funktional", () => {
+  it("zeigt keine überholten allgemeinen Kennzahlenkarten mehr im Dashboard", () => {
     const dashboard = source("client/src/pages/Dashboard.tsx");
 
-    expect(dashboard).toContain("const isEmpty = metric.value === 0");
-    expect(dashboard).toContain(
-      "border-slate-200 bg-slate-100 text-slate-600"
-    );
-    expect(dashboard).toContain("if (!target || isEmpty) return card");
-    expect(dashboard).toContain("!isEmpty && metric.target");
+    expect(dashboard).not.toContain("function MetricCardView");
+    expect(dashboard).not.toContain("type MetricCard =");
+    expect(dashboard).not.toContain("Helferbedarf & Belegung");
+    expect(dashboard).not.toContain('title: "Aufgabenstatus"');
   });
 
   it("stellt akute Organisationsaufgaben priorisiert vor die neutralen Dashboardkennzahlen", () => {
@@ -640,8 +638,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain("PriorityActionCard");
     expect(dashboard).toContain("Keine dringenden Punkte");
     expect(dashboard).not.toContain('title: "Einsatzplanung"');
-    expect(dashboard).toContain('title: "Helferbedarf & Belegung"');
-    expect(dashboard).toContain('title: "Aufgabenstatus"');
+    expect(dashboard).not.toContain("Helferbedarf & Belegung");
+    expect(dashboard).not.toContain('title: "Aufgabenstatus"');
   });
 
   it("zeigt ausschließlich datierte nicht erledigte Vorbereitungsfristen chronologisch im Dashboard", () => {
@@ -779,10 +777,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain('status: "KNAPP"');
     expect(dashboard).toContain('warning: "konflikte"');
     expect(dashboard).toContain('warning: "ausfaelle"');
-    expect(dashboard).toContain('target: { path: "/vorbereitung" }');
     expect(dashboard).toContain('path: "/nachbereitung", status: "offen"');
     expect(dashboard).toContain("navigate(dashboardTargetHref(target))");
-    expect(dashboard).toContain("Gefilterte Einträge anzeigen");
+    expect(dashboard).toContain("Zugehörige Einträge anzeigen");
     expect(dashboard).toContain('tone: "orange"');
     expect(dashboard).toContain('tone: "red"');
     expect(dashboard).toContain("PRIORITY_TONE_CLASSES");
@@ -801,15 +798,22 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(taskList).toContain('aria-label="Aufgabenstatus filtern"');
     expect(taskList).toContain("Nur offene Aufgaben");
     expect(dashboard).toContain("abgelehnteVorbereitung");
-    expect(dashboard).toContain("vorbereitungGesamt");
-    expect(dashboard).toContain("vorbereitungInBearbeitung");
-    expect(dashboard).toContain("vorbereitungErledigt");
-    expect(dashboard).toContain("PreparationMetricCardView");
-    expect(dashboard).toContain("Gesamt:");
-    expect(dashboard).toContain("In Bearbeitung / Beantragt");
-    expect(dashboard).toContain("Erledigt / Genehmigt");
-    expect(dashboard).toContain("Vorbereitungen anzeigen");
-    expect(dashboard).toContain('target: { path: "/vorbereitung" }');
+    expect(dashboard).toContain("offeneVorbereitung");
+    expect(dashboard).toContain('target: { path: "/vorbereitung", status: "abgelehnt" }');
+    expect(dashboard).toContain('target: { path: "/vorbereitung", status: "offen" }');
+    expect(dashboard).not.toContain("PreparationMetricCardView");
+  });
+
+  it("lässt Verantwortlichkeiten und Helferauslastung direkt an die Fristenkarte anschließen", () => {
+    const dashboard = source("client/src/pages/Dashboard.tsx");
+
+    const deadlines = dashboard.indexOf("<UpcomingDeadlinesCard");
+    const detailCards = dashboard.indexOf('className="grid gap-6 lg:grid-cols-2"');
+    expect(deadlines).toBeGreaterThan(-1);
+    expect(detailCards).toBeGreaterThan(deadlines);
+    expect(dashboard).toContain("Verantwortlichkeiten pro Ansprechpartner");
+    expect(dashboard).toContain("Helferauslastung (eingeteilte Schichten)");
+    expect(dashboard).not.toContain("const sections: MetricSection[]");
   });
 
   it("vereinheitlicht Vorbereitung mit Dialog, Filtern und Aktionsicons des Einsatzplans", () => {
@@ -1042,11 +1046,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
     );
   });
 
-  it("hält lange Dashboard-Kartentitel auf 320-Pixel-Ansichten umbrechbar", () => {
+  it("hält die verbleibenden Dashboardkarten auf 320-Pixel-Ansichten lesbar", () => {
     const dashboard = source("client/src/pages/Dashboard.tsx");
 
-    expect(dashboard).toContain("min-w-0 break-words");
-    expect(dashboard).toContain("whitespace-normal");
+    expect(dashboard).toContain("min-w-0 flex-1");
+    expect(dashboard).toContain("line-clamp-2");
     expect(dashboard).toContain("flex-wrap");
   });
 
