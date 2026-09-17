@@ -771,6 +771,7 @@ export default function Preparation() {
                   const wording =
                     task.statusWording === "genehmigung" ? "genehmigung" : "aufgabe";
                   const latestLogbookEntry = latestPreparationLogbookEntry(task.note);
+                  const logbookEntryCount = preparationLogbookEntryCount(task.note);
                   const showLogbookDetail = preparationLogbookNeedsDetail(task.note);
                   return (
                     <tr
@@ -830,10 +831,19 @@ export default function Preparation() {
                                     variant="outline"
                                     size="icon"
                                     className="h-8 w-8 shrink-0"
-                                    title="Vollständiges Logbuch anzeigen"
-                                    aria-label={`Logbuch zu ${task.task} anzeigen`}
+                                    title={
+                                      logbookEntryCount > 1
+                                        ? `${logbookEntryCount} Logbucheinträge anzeigen`
+                                        : "Vollständiges Logbuch anzeigen"
+                                    }
+                                    aria-label={`Logbuch zu ${task.task} anzeigen${logbookEntryCount > 1 ? ` (${logbookEntryCount} Einträge)` : ""}`}
                                   >
                                     <Info className="h-4 w-4 text-blue-700" />
+                                    {logbookEntryCount > 1 && (
+                                      <span className="-ml-1 rounded-full bg-slate-100 px-1 text-[10px] font-bold leading-4 text-slate-700">
+                                        {logbookEntryCount}
+                                      </span>
+                                    )}
                                   </Button>
                                 </PopoverTrigger>
                                 <PopoverContent

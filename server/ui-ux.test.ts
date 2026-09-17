@@ -892,6 +892,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(prep).toContain("Logbuch zu ${task.task} anzeigen");
     expect(prep).toContain("latestPreparationLogbookEntry");
     expect(prep).toContain("preparationLogbookNeedsDetail");
+    expect(prep).toContain("const logbookEntryCount = preparationLogbookEntryCount(task.note);");
+    expect(prep).toContain("logbookEntryCount > 1");
+    expect(prep).toContain("Logbucheinträge anzeigen");
+    expect(prep).toContain("bg-slate-100 px-1 text-[10px] font-bold");
     expect(prep).toContain("MobilePreparationLogbookField");
     expect(prep).toContain("Logbuch zu ${task.task} ergänzen");
     expect(prep).toContain("Vollständiges Logbuch zu ${task.task} anzeigen");
