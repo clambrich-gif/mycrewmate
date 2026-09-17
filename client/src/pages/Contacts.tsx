@@ -2,6 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
 import { trpc } from "@/lib/trpc";
 import { Pencil, Phone, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
@@ -99,9 +100,13 @@ export default function Contacts() {
           onKeyDown={event => event.key === "Enter" && addContact()}
         />
         <Button
+          type="button"
+          variant="outline"
+          className={CREATION_ACTION_BUTTON_CLASS}
           onClick={addContact}
           disabled={create.isPending || !name.trim()}
         >
+          <Plus className="h-4 w-4" />
           Hinzufügen
         </Button>
       </div>
@@ -135,7 +140,9 @@ export default function Contacts() {
             />
           </div>
           <Button
-            className="h-11 bg-indigo-700 px-5 text-base font-semibold shadow-sm hover:bg-indigo-800"
+            type="button"
+            variant="outline"
+            className={`h-11 px-5 ${CREATION_ACTION_BUTTON_CLASS}`}
             onClick={addContact}
             disabled={create.isPending || !name.trim()}
           >

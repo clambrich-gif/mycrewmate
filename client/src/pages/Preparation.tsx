@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -501,7 +502,12 @@ export default function Preparation() {
         <div className="grid w-full grid-cols-2 gap-2 lg:w-auto lg:flex lg:flex-wrap lg:justify-end [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 max-lg:[&>[data-slot=button]]:h-11 max-lg:[&>[data-slot=button]]:text-base lg:[&>[data-slot=button]]:w-auto lg:[&>[data-slot=button]]:px-4">
           <ModuleExcelImportButton area="VORBEREITUNG" label="Vorbereitung" />
           <ResetAreaButton area="prep" label="Vorbereitung" compact />
-          <Button className="col-span-2 lg:col-auto" onClick={openCreate}>
+          <Button
+            type="button"
+            variant="outline"
+            className={`col-span-2 lg:col-auto ${CREATION_ACTION_BUTTON_CLASS}`}
+            onClick={openCreate}
+          >
             <Plus className="mr-2 h-4 w-4" />
             Neue Vorbereitungsaufgabe
           </Button>

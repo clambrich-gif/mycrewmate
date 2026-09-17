@@ -1,6 +1,7 @@
 import { trpc } from "@/lib/trpc";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
 import {
   Select,
   SelectContent,
@@ -801,9 +802,11 @@ export default function Plan() {
               mobileButtonLabel="Plan zurücksetzen"
             />
             <Button
+              type="button"
+              variant="outline"
               onClick={openCreate}
               disabled={isEventLoading || !activeDays.length}
-              className="col-span-2 !w-full !px-4 !text-base sm:col-auto sm:!w-auto sm:!text-sm"
+              className={`col-span-2 !w-full !px-4 sm:col-auto sm:!w-auto sm:!text-sm ${CREATION_ACTION_BUTTON_CLASS}`}
             >
               <Plus className="h-4 w-4 mr-2" />
               Neue Schicht

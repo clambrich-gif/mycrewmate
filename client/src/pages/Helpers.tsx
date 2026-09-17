@@ -29,6 +29,7 @@ import {
   renderWhatsAppMessage,
 } from "@/lib/whatsappShare";
 import { cn } from "@/lib/utils";
+import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
 import { trpc } from "@/lib/trpc";
 import { FileDown, Info, MessageCircle, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -325,6 +326,9 @@ export default function Helpers() {
   const [newHelperDialogOpen, setNewHelperDialogOpen] = useState(false);
   const [filter, setFilter] = useState("");
   const [apFilter, setApFilter] = useState("alle");
+  const [companionFilter, setCompanionFilter] = useState<
+    "alle" | "mit" | "ohne"
+  >("alle");
   const [sortAsc, setSortAsc] = useState(true);
   const [exportingId, setExportingId] = useState<number | null>(null);
   const [sharingId, setSharingId] = useState<number | null>(null);
@@ -442,7 +446,11 @@ export default function Helpers() {
             (apFilter === "alle" ||
               (apFilter === "ohne"
                 ? !helper.contactId
-                : String(helper.contactId ?? "") === apFilter))
+                : String(helper.contactId ?? "") === apFilter)) &&
+            (companionFilter === "alle" ||
+              (companionFilter === "mit"
+                ? Boolean(helper.companion?.trim())
+                : !helper.companion?.trim()))
         )
         .sort((a, b) =>
           sortAsc ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)
@@ -455,6 +463,7 @@ export default function Helpers() {
       firstContactOnly,
       assignedHelperIds,
       apFilter,
+      companionFilter,
       sortAsc,
       activeDays,
     ]
@@ -514,7 +523,9 @@ export default function Helpers() {
           <ModuleExcelImportButton area="HELFER" label="Helfer" />
           <ResetAreaButton area="helpers" label="Helfer" compact />
           <Button
-            className="col-span-2 bg-indigo-700 text-base font-semibold shadow-xs hover:bg-indigo-800 lg:col-auto"
+            type="button"
+            variant="outline"
+            className={`col-span-2 lg:col-auto ${CREATION_ACTION_BUTTON_CLASS}`}
             onClick={openNewHelperDialog}
           >
             <Plus className="mr-1.5 h-4 w-4" />
@@ -562,6 +573,21 @@ export default function Helpers() {
             <SelectItem value="alle">Alle Rückmeldungen</SelectItem>
             <SelectItem value="ja">Bestätigt</SelectItem>
             <SelectItem value="nein">Noch nicht bestätigt</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select
+          value={companionFilter}
+          onValueChange={value =>
+            setCompanionFilter(value as "alle" | "mit" | "ohne")
+          }
+        >
+          <SelectTrigger className="w-full lg:w-48" aria-label="Begleitung filtern">
+            <SelectValue placeholder="Begleitung" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="alle">Alle Begleitungen</SelectItem>
+            <SelectItem value="mit">Mit Begleitung</SelectItem>
+            <SelectItem value="ohne">Ohne Begleitung</SelectItem>
           </SelectContent>
         </Select>
       </div>

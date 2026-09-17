@@ -1179,7 +1179,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     );
     expect(plan).toContain('[&>[data-slot=button]]:w-full');
     expect(plan).toContain('sm:[&>[data-slot=button]]:w-auto');
-    expect(plan).toContain('className="col-span-2 !w-full !px-4 !text-base sm:col-auto sm:!w-auto sm:!text-sm"');
+    expect(plan).toContain(
+      'className={`col-span-2 !w-full !px-4 sm:col-auto sm:!w-auto sm:!text-sm ${CREATION_ACTION_BUTTON_CLASS}`}'
+    );
     expect(plan).toContain('mobileButtonLabel="Plan zurücksetzen"');
     expect(resetButton).toContain('<span className="sm:hidden">{mobileButtonLabel}</span>');
     expect(resetButton).toContain('<span className="hidden sm:inline">');
@@ -1198,7 +1200,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
       expect(module).toContain("lg:[&>[data-slot=button]]:w-auto");
     }
 
-    expect(helpers).toContain('className="col-span-2 bg-indigo-700 text-base font-semibold shadow-xs hover:bg-indigo-800 lg:col-auto"');
+    expect(helpers).toContain("CREATION_ACTION_BUTTON_CLASS");
     for (const module of [taskList, taskGeneric, finances]) {
       expect(module).toContain('className="col-span-2 shadow-xs lg:col-auto"');
     }
@@ -1262,7 +1264,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helperDialog).not.toContain("YesNoToggle");
     expect(helpers).toContain("createNewHelper()");
     expect(helpers).toContain("Helfer anlegen");
-    expect(helpers).toContain("bg-indigo-700");
+    expect(helpers).toContain("CREATION_ACTION_BUTTON_CLASS");
 
     expect(contacts).toContain('className="hidden border-blue-200 bg-slate-50/80 shadow-sm lg:block"');
     expect(contacts).toContain("Neuanlage – Name des Ansprechpartners");
@@ -1317,5 +1319,34 @@ describe("UI- und Mobile-UX-Regeln", () => {
     );
     expect(plan).toContain("helper.companion?.trim() && (");
     expect(plan).toContain('<span className="truncate">{label(helper)}</span>');
+  });
+
+  it("vereinheitlicht Erstellungsaktionen und filtert Helfer nach zusätzlicher Begleitung", () => {
+    const helpers = source("client/src/pages/Helpers.tsx");
+    const contacts = source("client/src/pages/Contacts.tsx");
+    const plan = source("client/src/pages/Plan.tsx");
+    const preparation = source("client/src/pages/Preparation.tsx");
+    const creationAction = source("client/src/lib/creation-action.ts");
+    const helperHeaderActions = helpers.slice(
+      helpers.indexOf('<div className="flex flex-wrap items-end justify-between gap-3">'),
+      helpers.indexOf('<div className="flex w-full flex-col gap-2 lg:flex-row lg:items-center">')
+    );
+
+    expect(creationAction).toContain("CREATION_ACTION_BUTTON_CLASS");
+    expect(creationAction).toContain("border-slate-300 bg-white");
+    expect(creationAction).toContain("text-base font-semibold");
+    for (const module of [helpers, contacts, plan, preparation]) {
+      expect(module).toContain("CREATION_ACTION_BUTTON_CLASS");
+      expect(module).toContain('variant="outline"');
+    }
+    expect(helperHeaderActions).not.toContain("bg-indigo-700");
+    expect(contacts).not.toContain("bg-indigo-700");
+    expect(helpers).toContain("companionFilter");
+    expect(helpers).toContain('aria-label="Begleitung filtern"');
+    expect(helpers).toContain("Alle Begleitungen");
+    expect(helpers).toContain("Mit Begleitung");
+    expect(helpers).toContain("Ohne Begleitung");
+    expect(helpers).toContain("Boolean(helper.companion?.trim())");
+    expect(helpers).toContain("!helper.companion?.trim()");
   });
 });
