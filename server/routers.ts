@@ -730,6 +730,8 @@ export const appRouter = router({
         z.object({
           name: z.string().min(1),
           contactId: z.number().nullable().optional(),
+          phone: z.string().trim().max(64).optional(),
+          note: z.string().trim().max(500).optional(),
           willHelp: yn.default("ja"),
           availMon: ynv.default("vielleicht"),
           availTue: ynv.default("vielleicht"),

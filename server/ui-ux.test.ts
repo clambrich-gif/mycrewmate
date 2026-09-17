@@ -1171,7 +1171,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
       expect(module).toContain("lg:[&>[data-slot=button]]:w-auto");
     }
 
-    expect(helpers).toContain('className="col-span-2 shadow-xs lg:hidden"');
+    expect(helpers).toContain('className="col-span-2 bg-indigo-700 text-base font-semibold shadow-xs hover:bg-indigo-800 lg:col-auto"');
     for (const module of [taskList, taskGeneric, finances]) {
       expect(module).toContain('className="col-span-2 shadow-xs lg:col-auto"');
     }
@@ -1214,20 +1214,28 @@ describe("UI- und Mobile-UX-Regeln", () => {
     );
   });
 
-  it("hebt Stammdateneingaben ausschließlich ab dem Desktop-Breakpoint hervor", () => {
+  it("erfasst neue Helfer in einem schlanken Dialog mit Stammdaten und sicheren Standardwerten", () => {
     const helpers = source("client/src/pages/Helpers.tsx");
     const contacts = source("client/src/pages/Contacts.tsx");
+    const helperDialog = helpers.slice(
+      helpers.indexOf("<Dialog\n        open={newHelperDialogOpen}"),
+      helpers.indexOf("<ConfirmDeleteDialog")
+    );
 
-    expect(helpers).toContain('className="hidden border-blue-200 bg-slate-50/80 shadow-sm lg:block"');
-    expect(helpers).toContain("Neuanlage – Name des Helfers");
-    expect(helpers).toContain("Name des neuen Helfers eingeben");
-    expect(helpers).toContain("Zusätzliche Begleitung (für Einsatzplan)");
-    expect(helpers).toContain('id="new-helper-companion"');
-    expect(helpers).toContain("Zusätzliche Begleitung (optional)");
+    expect(helpers).toContain("openNewHelperDialog");
+    expect(helpers).toContain("newHelperDialogOpen");
+    expect(helperDialog).toContain("Neuer Helfer anlegen");
+    expect(helperDialog).toContain("Name des Helfers");
+    expect(helperDialog).toContain("Ansprechpartner");
+    expect(helperDialog).toContain("Telefon Helfer");
+    expect(helperDialog).toContain("Hinweis für PDF");
+    expect(helperDialog).toContain("Zusätzliche Begleitung (für Einsatzplan)");
+    expect(helperDialog).toContain("Tagesverfügbarkeiten stehen zunächst");
+    expect(helperDialog).not.toContain("activeDays.map");
+    expect(helperDialog).not.toContain("YesNoToggle");
     expect(helpers).toContain("createNewHelper()");
-    expect(helpers).toContain("Helfer hinzufügen");
+    expect(helpers).toContain("Helfer anlegen");
     expect(helpers).toContain("bg-indigo-700");
-    expect(helpers).toContain('className="col-span-2 w-full lg:hidden"');
 
     expect(contacts).toContain('className="hidden border-blue-200 bg-slate-50/80 shadow-sm lg:block"');
     expect(contacts).toContain("Neuanlage – Name des Ansprechpartners");

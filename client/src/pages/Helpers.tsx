@@ -3,6 +3,13 @@ import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   Popover,
@@ -312,6 +319,10 @@ export default function Helpers() {
   const activeDays = currentEvent ? eventWeekdays(currentEvent.activeDays) : [];
   const [name, setName] = useState("");
   const [newHelperCompanion, setNewHelperCompanion] = useState("");
+  const [newHelperContactId, setNewHelperContactId] = useState("none");
+  const [newHelperPhone, setNewHelperPhone] = useState("");
+  const [newHelperNote, setNewHelperNote] = useState("");
+  const [newHelperDialogOpen, setNewHelperDialogOpen] = useState(false);
   const [filter, setFilter] = useState("");
   const [apFilter, setApFilter] = useState("alle");
   const [sortAsc, setSortAsc] = useState(true);
@@ -330,11 +341,22 @@ export default function Helpers() {
     utils.plan.evaluate.invalidate();
     utils.dashboard.stats.invalidate();
   };
+  const resetNewHelperForm = () => {
+    setName("");
+    setNewHelperCompanion("");
+    setNewHelperContactId("none");
+    setNewHelperPhone("");
+    setNewHelperNote("");
+  };
+  const openNewHelperDialog = () => {
+    resetNewHelperForm();
+    setNewHelperDialogOpen(true);
+  };
   const create = trpc.helpers.create.useMutation({
     onSuccess: () => {
       invalidate();
-      setName("");
-      setNewHelperCompanion("");
+      resetNewHelperForm();
+      setNewHelperDialogOpen(false);
       toast.success("Helfer hinzugefügt");
     },
     onError: error => toast.error(error.message),
@@ -348,6 +370,10 @@ export default function Helpers() {
     if (!trimmedName) return;
     create.mutate({
       name: trimmedName,
+      contactId:
+        newHelperContactId === "none" ? null : Number(newHelperContactId),
+      phone: newHelperPhone.trim() || undefined,
+      note: newHelperNote.trim() || undefined,
       companion: newHelperCompanion.trim() || undefined,
     });
   };
@@ -487,86 +513,15 @@ export default function Helpers() {
         <div className="grid w-full grid-cols-2 gap-2 lg:ml-auto lg:flex lg:w-auto lg:flex-wrap lg:justify-end [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 max-lg:[&>[data-slot=button]]:h-11 max-lg:[&>[data-slot=button]]:text-base lg:[&>[data-slot=button]]:w-auto lg:[&>[data-slot=button]]:px-4">
           <ModuleExcelImportButton area="HELFER" label="Helfer" />
           <ResetAreaButton area="helpers" label="Helfer" compact />
-          <Input
-            placeholder="Name"
-            value={name}
-            onChange={event => setName(event.target.value)}
-            className="col-span-2 w-full lg:hidden"
-            onKeyDown={event =>
-              event.key === "Enter" &&
-              name.trim() &&
-              createNewHelper()
-            }
-          />
-          <Input
-            placeholder="Zusätzliche Begleitung (optional)"
-            value={newHelperCompanion}
-            onChange={event => setNewHelperCompanion(event.target.value)}
-            className="col-span-2 w-full lg:hidden"
-            aria-label="Zusätzliche Begleitung für neuen Helfer"
-            onKeyDown={event =>
-              event.key === "Enter" &&
-              name.trim() &&
-              createNewHelper()
-            }
-          />
           <Button
-            className="col-span-2 shadow-xs lg:hidden"
-            onClick={createNewHelper}
-            disabled={!name.trim() || create.isPending}
+            className="col-span-2 bg-indigo-700 text-base font-semibold shadow-xs hover:bg-indigo-800 lg:col-auto"
+            onClick={openNewHelperDialog}
           >
             <Plus className="mr-1.5 h-4 w-4" />
-            <span>{create.isPending ? "Speichert …" : "Neuer Helfer"}</span>
+            <span>Neuer Helfer</span>
           </Button>
         </div>
       </div>
-
-      <Card className="hidden border-blue-200 bg-slate-50/80 shadow-sm lg:block">
-        <CardContent className="grid items-end gap-3 p-4 xl:grid-cols-[minmax(0,1fr)_minmax(17rem,0.6fr)_auto]">
-          <div className="min-w-0 flex-1 space-y-1.5">
-            <label htmlFor="new-helper-name" className="text-sm font-semibold text-slate-800">
-              Neuanlage – Name des Helfers
-            </label>
-            <Input
-              id="new-helper-name"
-              placeholder="Name des neuen Helfers eingeben"
-              value={name}
-              onChange={event => setName(event.target.value)}
-              className="h-11 border-slate-300 bg-white text-base shadow-sm placeholder:text-slate-600"
-              onKeyDown={event =>
-                event.key === "Enter" &&
-                name.trim() &&
-                createNewHelper()
-              }
-            />
-          </div>
-          <div className="min-w-0 space-y-1.5">
-            <label htmlFor="new-helper-companion" className="text-sm font-semibold text-slate-800">
-              Zusätzliche Begleitung (für Einsatzplan)
-            </label>
-            <Input
-              id="new-helper-companion"
-              placeholder="z. B. + Frau Muster, + Kind"
-              value={newHelperCompanion}
-              onChange={event => setNewHelperCompanion(event.target.value)}
-              className="h-11 border-slate-300 bg-white text-base shadow-sm placeholder:text-slate-600"
-              onKeyDown={event =>
-                event.key === "Enter" &&
-                name.trim() &&
-                createNewHelper()
-              }
-            />
-          </div>
-          <Button
-            className="h-11 bg-indigo-700 px-5 text-base font-semibold shadow-sm hover:bg-indigo-800"
-            onClick={createNewHelper}
-            disabled={!name.trim() || create.isPending}
-          >
-            <Plus className="h-5 w-5" />
-            {create.isPending ? "Speichert …" : "Helfer hinzufügen"}
-          </Button>
-        </CardContent>
-      </Card>
 
       <div className="flex w-full flex-col gap-2 lg:flex-row lg:items-center">
         <Input
@@ -1107,6 +1062,141 @@ export default function Helpers() {
         <StatusBadge status="nein" />
         abgesagt/nicht verfügbar
       </p>
+      <Dialog
+        open={newHelperDialogOpen}
+        onOpenChange={open => {
+          setNewHelperDialogOpen(open);
+          if (!open) resetNewHelperForm();
+        }}
+      >
+        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Neuer Helfer anlegen</DialogTitle>
+          </DialogHeader>
+          <form
+            className="space-y-4"
+            onSubmit={event => {
+              event.preventDefault();
+              createNewHelper();
+            }}
+          >
+            <div className="space-y-1.5">
+              <label
+                htmlFor="new-helper-dialog-name"
+                className="text-sm font-medium"
+              >
+                Name des Helfers <span className="text-destructive">*</span>
+              </label>
+              <Input
+                id="new-helper-dialog-name"
+                autoFocus
+                value={name}
+                onChange={event => setName(event.target.value)}
+                placeholder="z. B. Axel Muster"
+                className="h-11 text-base"
+                required
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="new-helper-dialog-contact"
+                  className="text-sm font-medium"
+                >
+                  Ansprechpartner
+                </label>
+                <Select
+                  value={newHelperContactId}
+                  onValueChange={setNewHelperContactId}
+                >
+                  <SelectTrigger
+                    id="new-helper-dialog-contact"
+                    className="h-11 w-full text-base"
+                  >
+                    <SelectValue placeholder="Ansprechpartner auswählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Kein Ansprechpartner</SelectItem>
+                    {contacts.map(contact => (
+                      <SelectItem key={contact.id} value={String(contact.id)}>
+                        {contact.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="new-helper-dialog-phone"
+                  className="text-sm font-medium"
+                >
+                  Telefon Helfer
+                </label>
+                <Input
+                  id="new-helper-dialog-phone"
+                  type="tel"
+                  value={newHelperPhone}
+                  onChange={event => setNewHelperPhone(event.target.value)}
+                  placeholder="optional"
+                  className="h-11 text-base"
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label
+                htmlFor="new-helper-dialog-note"
+                className="text-sm font-medium"
+              >
+                Hinweis für PDF
+              </label>
+              <Input
+                id="new-helper-dialog-note"
+                value={newHelperNote}
+                onChange={event => setNewHelperNote(event.target.value)}
+                placeholder="Verfügbarkeit / Bemerkung (optional)"
+                className="h-11 text-base"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label
+                htmlFor="new-helper-dialog-companion"
+                className="text-sm font-medium"
+              >
+                Zusätzliche Begleitung (für Einsatzplan)
+              </label>
+              <Input
+                id="new-helper-dialog-companion"
+                value={newHelperCompanion}
+                onChange={event => setNewHelperCompanion(event.target.value)}
+                placeholder="z. B. + Frau Muster, + Kind"
+                className="h-11 text-base"
+              />
+            </div>
+            <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              Neue Helfer starten aktiv. Die Tagesverfügbarkeiten stehen zunächst
+              auf „?“ und werden anschließend direkt in der Helfertabelle gepflegt.
+            </p>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11"
+                onClick={() => setNewHelperDialogOpen(false)}
+              >
+                Abbrechen
+              </Button>
+              <Button
+                type="submit"
+                className="min-h-11 bg-indigo-700 text-base hover:bg-indigo-800"
+                disabled={!name.trim() || create.isPending}
+              >
+                <Plus className="mr-1.5 h-4 w-4" />
+                {create.isPending ? "Speichert …" : "Helfer anlegen"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
       <ConfirmDeleteDialog
         open={Boolean(deleteTarget)}
         onOpenChange={open => {

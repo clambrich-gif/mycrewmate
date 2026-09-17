@@ -1130,13 +1130,16 @@ describe("Planungs-API", () => {
     });
   });
 
-  it("übernimmt eine optionale Begleitperson bereits bei der Helferneuanlage", async () => {
+  it("legt Helfer mit Stammdaten an und setzt Status sowie Tagesverfügbarkeiten auf die sicheren Standardwerte", async () => {
     dbMocks.upsertHelperByName.mockResolvedValue({ id: 44, created: true });
     const caller = appRouter.createCaller(ctx);
 
     await expect(
       caller.helpers.create({
         name: "Axel Muster",
+        contactId: 5,
+        phone: "0174 1234567",
+        note: "Samstag nur nachmittags",
         companion: "+ Frau Muster, + Kind",
       })
     ).resolves.toEqual({ id: 44, created: true });
@@ -1144,7 +1147,15 @@ describe("Planungs-API", () => {
     expect(dbMocks.upsertHelperByName).toHaveBeenCalledWith(
       expect.objectContaining({
         name: "Axel Muster",
+        contactId: 5,
+        phone: "0174 1234567",
+        note: "Samstag nur nachmittags",
         companion: "+ Frau Muster, + Kind",
+        willHelp: "ja",
+        availFri: "vielleicht",
+        availSat: "vielleicht",
+        availSun: "vielleicht",
+        confirmed: "nein",
       })
     );
   });
