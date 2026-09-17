@@ -1489,39 +1489,25 @@ export default function Plan() {
       </div>
 
       <Card className="hidden w-full shadow-sm md:block">
-        <CardContent className="w-full overflow-x-auto p-0 xl:overflow-x-hidden">
+        <CardContent className="w-full overflow-x-auto overscroll-x-contain p-0">
           <table
             data-slot="roster-table"
-            className="w-full table-auto text-sm md:min-w-[1100px] xl:min-w-0 xl:table-fixed"
+            className="w-full min-w-[1565px] table-auto text-sm"
           >
-            <colgroup>
-              <col className="w-[5%]" />
-              <col className="w-[7%]" />
-              <col className="w-[6%]" />
-              <col className="w-[7%]" />
-              <col className="w-[8%]" />
-              <col className="w-[12%]" />
-              <col className="w-[7%]" />
-              <col className="w-[8%]" />
-              <col className="w-[6%]" />
-              <col className="w-[4%]" />
-              <col className="w-[4%]" />
-              <col className="w-[26%]" />
-            </colgroup>
             <thead className="bg-muted/60 sticky top-0">
               <tr className="text-left">
-                <th className="p-2">Tag</th>
-                <th className="p-2">Bereich</th>
-                <th className="p-2 text-center"><span className="sr-only">Aktionen</span></th>
-                <th className="break-words p-2 leading-tight">Kontakt</th>
-                <th className="p-2">Aufgabe</th>
-                <th className="p-2">Bemerkung</th>
-                <th className="p-2 whitespace-nowrap">Zeit</th>
-                <th className="p-2 text-center leading-tight whitespace-nowrap">Besetzt / Bedarf</th>
-                <th className="p-2 text-center leading-tight whitespace-nowrap">Status</th>
-                <th className="p-2 text-center leading-tight whitespace-nowrap">Doppelt</th>
-                <th className="p-2 text-center leading-tight whitespace-nowrap">Ausfälle</th>
-                <th className="break-words p-2 leading-tight">Eingeteilte Helfer</th>
+                <th className="min-w-20 whitespace-nowrap px-3 py-3">Tag</th>
+                <th className="min-w-[130px] whitespace-nowrap px-3 py-3">Bereich</th>
+                <th className="min-w-[75px] whitespace-nowrap px-3 py-3 text-center"><span className="sr-only">Aktionen</span></th>
+                <th className="min-w-[140px] whitespace-nowrap px-3 py-3">Kontakt</th>
+                <th className="min-w-[160px] whitespace-nowrap px-3 py-3">Aufgabe</th>
+                <th className="min-w-[180px] whitespace-nowrap px-3 py-3">Bemerkung</th>
+                <th className="min-w-[120px] whitespace-nowrap px-3 py-3">Zeit</th>
+                <th className="min-w-[110px] whitespace-nowrap px-3 py-3 text-center">Besetzt / Bedarf</th>
+                <th className="min-w-[90px] whitespace-nowrap px-3 py-3 text-center">Status</th>
+                <th className="min-w-[80px] whitespace-nowrap px-3 py-3 text-center">Doppelt</th>
+                <th className="min-w-[80px] whitespace-nowrap px-3 py-3 text-center">Ausfälle</th>
+                <th className="min-w-[320px] whitespace-nowrap px-3 py-3">Eingeteilte Helfer</th>
               </tr>
             </thead>
             <tbody>
@@ -1540,13 +1526,13 @@ export default function Plan() {
                     key={s.id}
                     className="border-t align-top hover:bg-muted/20"
                   >
-                    <td className="p-2 font-medium xl:p-1.5">{s.day}</td>
-                    <td className="p-2 xl:p-1.5">
+                    <td className="whitespace-nowrap px-3 py-2.5 font-medium">{s.day}</td>
+                    <td className="min-w-[130px] px-3 py-2.5">
                       <span className="block break-words [overflow-wrap:anywhere]">
                         <HighlightedText text={s.area} query={q} />
                       </span>
                     </td>
-                    <td data-slot="roster-actions" className="p-2 xl:p-1.5">
+                    <td data-slot="roster-actions" className="min-w-[75px] px-3 py-2.5">
                       {canEditPlan && (
                         <div className="flex items-center justify-center gap-1 whitespace-nowrap">
                           <Button
@@ -1570,20 +1556,20 @@ export default function Plan() {
                         </div>
                       )}
                     </td>
-                    <td className="p-2 xl:p-1.5">
+                    <td className="min-w-[140px] px-3 py-2.5">
                       <span className="block max-w-[8rem] break-words [overflow-wrap:anywhere]">
                         {contactName(areaContactMap.get(s.area) ?? null) || (
                           <span className="text-amber-700">nicht zugeordnet</span>
                         )}
                       </span>
                     </td>
-                    <td className="break-words p-2 [overflow-wrap:anywhere] xl:p-1.5">
+                    <td className="min-w-[160px] break-words px-3 py-2.5 [overflow-wrap:anywhere]">
                       <HighlightedText text={s.task} query={q} />
                     </td>
-                    <td className="whitespace-pre-wrap break-words p-2 text-muted-foreground [overflow-wrap:anywhere] xl:p-1.5">
+                    <td className="min-w-[180px] whitespace-pre-wrap break-words px-3 py-2.5 text-muted-foreground [overflow-wrap:anywhere]">
                       {s.note?.trim() || "–"}
                     </td>
-                    <td className="p-2 whitespace-nowrap xl:p-1.5">
+                    <td className="min-w-[120px] whitespace-nowrap px-3 py-2.5">
                       <div>
                         <span>{formatTimeLabel(s)}</span>
                         <FlexibleTimeNote
@@ -1591,10 +1577,10 @@ export default function Plan() {
                         />
                       </div>
                     </td>
-                    <td className="p-2 text-center font-semibold whitespace-nowrap xl:p-1.5">
+                    <td className="min-w-[110px] whitespace-nowrap px-3 py-2.5 text-center font-semibold">
                       {e.besetzt} / {s.needed}
                     </td>
-                    <td className="p-2 text-center xl:p-1.5">
+                    <td className="min-w-[90px] whitespace-nowrap px-3 py-2.5 text-center">
                       <StatusBadge
                         status={e.status}
                         timeUndercoverage={e.timeUndercoverage}
@@ -1604,7 +1590,7 @@ export default function Plan() {
                         }
                       />
                     </td>
-                    <td className="p-2 text-center xl:p-1.5">
+                    <td className="min-w-[80px] whitespace-nowrap px-3 py-2.5 text-center">
                       {e.doppelCount > 0 ? (
                         <span className="badge badge-warn">
                           {e.doppelCount}
@@ -1613,7 +1599,7 @@ export default function Plan() {
                         ""
                       )}
                     </td>
-                    <td className="p-2 text-center xl:p-1.5">
+                    <td className="min-w-[80px] whitespace-nowrap px-3 py-2.5 text-center">
                       {e.ausfallCount > 0 ? (
                         <span className="badge badge-err">
                           {e.ausfallCount}
@@ -1622,7 +1608,7 @@ export default function Plan() {
                         ""
                       )}
                     </td>
-                    <td className="min-w-0 p-2 align-top xl:p-1.5">
+                    <td className="min-w-[320px] px-3 py-2.5 align-top">
                       <div data-slot="roster-helper-grid">
                         {renderShiftSlots(evalE)}
                       </div>

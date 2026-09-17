@@ -1144,24 +1144,26 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain('location === "/helfer" || location === "/einsatzplan"');
     expect(layout).toContain('"w-full p-3 sm:p-4 xl:p-6"');
     expect(plan).toContain('<Card className="hidden w-full shadow-sm md:block">');
-    expect(plan).toContain('<CardContent className="w-full overflow-x-auto p-0 xl:overflow-x-hidden">');
+    expect(plan).toContain('<CardContent className="w-full overflow-x-auto overscroll-x-contain p-0">');
     expect(plan).toContain('data-slot="roster-table"');
     expect(plan).toContain(
-      'className="w-full table-auto text-sm md:min-w-[1100px] xl:min-w-0 xl:table-fixed"'
+      'className="w-full min-w-[1565px] table-auto text-sm"'
     );
-    expect(plan).not.toContain('min-w-[1500px]');
-    expect(plan).not.toContain('min-w-[400px]');
-    expect(plan).toContain('<col className="w-[26%]" />');
+    expect(plan).not.toContain('xl:overflow-x-hidden');
+    expect(plan).not.toContain('<colgroup>');
     expect(plan).toContain('data-slot="roster-actions"');
     expect(plan).toContain('data-slot="roster-helper-grid"');
     expect(plan).toContain('grid max-w-full grid-cols-2 items-start gap-1');
     expect(plan).toContain('w-full min-w-0 max-w-none min-h-11');
     expect(plan).toContain('Besetzt / Bedarf');
     expect(plan).toContain('{e.besetzt} / {s.needed}');
-    expect(plan).toContain('<th className="break-words p-2 leading-tight">Kontakt</th>');
-    expect(plan).toContain('<th className="p-2 text-center leading-tight whitespace-nowrap">Doppelt</th>');
-    expect(plan).toContain('<th className="p-2 text-center leading-tight whitespace-nowrap">Ausfälle</th>');
-    expect(plan).toContain('<th className="break-words p-2 leading-tight">Eingeteilte Helfer</th>');
+    expect(plan).toContain('min-w-[180px] whitespace-nowrap px-3 py-3">Bemerkung');
+    expect(plan).toContain('min-w-[120px] whitespace-nowrap px-3 py-3">Zeit');
+    expect(plan).toContain('min-w-[110px] whitespace-nowrap px-3 py-3 text-center">Besetzt / Bedarf');
+    expect(plan).toContain('min-w-[90px] whitespace-nowrap px-3 py-3 text-center">Status');
+    expect(plan).toContain('min-w-[80px] whitespace-nowrap px-3 py-3 text-center">Doppelt');
+    expect(plan).toContain('min-w-[80px] whitespace-nowrap px-3 py-3 text-center">Ausfälle');
+    expect(plan).toContain('min-w-[320px] whitespace-nowrap px-3 py-3">Eingeteilte Helfer');
   });
 
   it("bietet Administratoren eine passwortgeschützte Bereinigung des Importprotokolls", () => {
