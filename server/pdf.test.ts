@@ -15,6 +15,7 @@ import {
   renderPlanPdf,
   selectHelpersForContact,
   selectPlanEvaluations,
+  helperTimeBadgeLabel,
 } from "./pdf";
 import { resolveEventPdfLogoKey } from "./event-pdf-image";
 
@@ -152,6 +153,24 @@ describe("PDF-Erzeugung", () => {
     const pdf = await renderHelperTaskPdf(data, 1);
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
     expect(pdf.length).toBeGreaterThan(2_000);
+  });
+
+  it("kennzeichnet ein individuelles Zeitfenster kompakt im Helfer-PDF", async () => {
+    const timedHelper = {
+      ...helpers[0],
+      availFriStart: "08:00",
+      availFriEnd: "13:00",
+    };
+
+    expect(helperTimeBadgeLabel(timedHelper, "Freitag")).toBe(
+      "Zeitfenster: 08:00–13:00 Uhr"
+    );
+    expect(helperTimeBadgeLabel(timedHelper, "Samstag")).toBeNull();
+    const pdf = await renderHelperTaskPdf(
+      { ...data, helpers: [timedHelper, helpers[1]] },
+      timedHelper.id
+    );
+    expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
   });
 
   it("bettet ein konfiguriertes Logo in die Helferübersicht ein", async () => {

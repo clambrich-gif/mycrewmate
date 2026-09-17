@@ -674,8 +674,51 @@ export default function Plan() {
     () => new Map(helpers.map(helper => [helper.id, helper.name])),
     [helpers]
   );
+  const helperById = useMemo(
+    () => new Map(helpers.map(helper => [helper.id, helper])),
+    [helpers]
+  );
   const label = (h: any) =>
     `${h.name}${h.contactId ? ` (${contactName(h.contactId)})` : ""}`;
+
+  /**
+   * Warnt bereits im Dialog, bevor eine bestehende Zuweisung durch eine
+   * verlängerte Schichtzeit ungültig würde. Die Servervalidierung bleibt
+   * zusätzlich die verbindliche Absicherung gegen parallele Änderungen.
+   */
+  const timeWindowConflicts = useMemo(() => {
+    if (!editShift) return [];
+    const currentEvaluation = evals.find(
+      evaluation => evaluation.shift.id === editShift.id
+    );
+    if (!currentEvaluation) return [];
+    const proposedShift = {
+      ...editShift,
+      day: form.day,
+      startTime: form.startTime,
+      endTime: form.endTime,
+    } as DropdownShift;
+    const seenHelperIds = new Set<number>();
+
+    return currentEvaluation.assigned.flatMap(assignment => {
+      if (seenHelperIds.has(assignment.helperId)) return [];
+      seenHelperIds.add(assignment.helperId);
+      const helper = helperById.get(assignment.helperId);
+      if (
+        !helper ||
+        !helperHasTimedAvailability(helper, form.day) ||
+        helperAvailableForShift(helper, proposedShift)
+      )
+        return [];
+      return [
+        {
+          id: helper.id,
+          name: helper.name,
+          window: helperAvailabilityWindowLabel(helper, form.day),
+        },
+      ];
+    });
+  }, [editShift, evals, form.day, form.endTime, form.startTime, helperById]);
 
   const filtered = useMemo(
     () =>
@@ -1586,6 +1629,37 @@ export default function Plan() {
             <p className="text-xs text-muted-foreground">
               Für eine ganztägige Schicht beide Uhrzeitfelder leer lassen.
             </p>
+            {timeWindowConflicts.length > 0 && (
+              <div
+                role="alert"
+                data-slot="shift-time-window-conflict"
+                className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950"
+              >
+                <div className="flex items-start gap-2">
+                  <AlertTriangle
+                    className="mt-0.5 size-4 shrink-0 text-amber-700"
+                    aria-hidden="true"
+                  />
+                  <div className="min-w-0 space-y-1">
+                    <p className="font-semibold">
+                      Die geänderte Schichtzeit passt nicht mehr zu folgenden
+                      eingeteilten Helfern:
+                    </p>
+                    <ul className="list-disc space-y-0.5 pl-4">
+                      {timeWindowConflicts.map(conflict => (
+                        <li key={conflict.id}>
+                          {conflict.name}: {conflict.window}
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="text-xs text-amber-900">
+                      Zeitfenster anpassen oder Helfer vor dem Speichern neu
+                      einteilen. Die Änderung wird andernfalls nicht übernommen.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
             <div>
               <Label>Bemerkung</Label>
               <Input

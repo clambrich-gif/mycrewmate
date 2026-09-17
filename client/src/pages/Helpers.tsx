@@ -545,6 +545,7 @@ export default function Helpers() {
   const [companionFilter, setCompanionFilter] = useState<
     "alle" | "mit" | "ohne"
   >("alle");
+  const [timedAvailabilityOnly, setTimedAvailabilityOnly] = useState(false);
   const [sortAsc, setSortAsc] = useState(true);
   const [exportingId, setExportingId] = useState<number | null>(null);
   const [sharingId, setSharingId] = useState<number | null>(null);
@@ -666,7 +667,9 @@ export default function Helpers() {
             (companionFilter === "alle" ||
               (companionFilter === "mit"
                 ? Boolean(helper.companion?.trim())
-                : !helper.companion?.trim()))
+                : !helper.companion?.trim())) &&
+            (!timedAvailabilityOnly ||
+              activeDays.some(day => helperHasTimedAvailability(helper, day)))
         )
         .sort((a, b) =>
           sortAsc ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)
@@ -680,6 +683,7 @@ export default function Helpers() {
       assignedHelperIds,
       apFilter,
       companionFilter,
+      timedAvailabilityOnly,
       sortAsc,
       activeDays,
     ]
@@ -806,6 +810,22 @@ export default function Helpers() {
             <SelectItem value="ohne">Ohne Begleitung</SelectItem>
           </SelectContent>
         </Select>
+        <Button
+          type="button"
+          variant="outline"
+          aria-pressed={timedAvailabilityOnly}
+          aria-label="Nur Helfer mit Zeitfenstern filtern"
+          className={cn(
+            "min-h-11 w-full justify-start gap-2 lg:min-h-0 lg:w-auto lg:justify-center",
+            timedAvailabilityOnly
+              ? "border-sky-300 bg-sky-50 text-sky-950 hover:bg-sky-100"
+              : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+          )}
+          onClick={() => setTimedAvailabilityOnly(active => !active)}
+        >
+          <Clock3 className="size-4 shrink-0" aria-hidden="true" />
+          Nur Helfer mit Zeitfenstern
+        </Button>
       </div>
 
       {assignedOnly && confirmationFilter === "nein" && (

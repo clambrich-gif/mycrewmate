@@ -174,7 +174,9 @@ describe("Schichtupdate-Validierung mit bestehenden Zuweisungen", () => {
           helper({ availFriStart: "13:00", availFriEnd: "18:00" }),
         ],
       })
-    ).toThrow("für den angegebenen Zeitraum");
+    ).toThrow(
+      "Die Schichtzeit 08:00–12:00 Uhr liegt für „Alex Test“ am Freitag außerhalb des Zeitfensters (Verfügbar: 13:00 – 18:00 Uhr)"
+    );
   });
 
   it("lehnt eine neue Zeitüberschneidung mit einer anderen Schicht desselben Helfers ab", () => {

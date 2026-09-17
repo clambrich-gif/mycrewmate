@@ -1355,6 +1355,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain("helperHasTimedAvailability");
     expect(helpers).toContain("<Clock3");
     expect(helpers).toContain("Zeitfenster speichern");
+    expect(helpers).toContain("timedAvailabilityOnly");
+    expect(helpers).toContain("Nur Helfer mit Zeitfenstern");
+    expect(helpers).toContain("aria-pressed={timedAvailabilityOnly}");
+    expect(helpers).toContain(
+      "activeDays.some(day => helperHasTimedAvailability(helper, day))"
+    );
     expect(plan).toContain("helperAvailableForShift");
     expect(plan).toContain("helperHasTimedAvailability");
     expect(plan).toContain("helperAvailabilityWindowLabel");
@@ -1372,6 +1378,21 @@ describe("UI- und Mobile-UX-Regeln", () => {
     );
     expect(plan).toContain("const activeHelpers = (shift: DropdownShift)");
     expect(plan).toContain("const actives = activeHelpers(shift)");
+    expect(plan).toContain("const timeWindowConflicts = useMemo");
+    expect(plan).toContain('data-slot="shift-time-window-conflict"');
+    expect(plan).toContain(
+      "Die geänderte Schichtzeit passt nicht mehr zu folgenden"
+    );
+    expect(plan).toContain("Zeitfenster anpassen oder Helfer vor dem Speichern neu");
+  });
+
+  it("zeigt persönliche Zeitfenster in den Helfer-PDFs an", () => {
+    const pdf = source("server/pdf.ts");
+
+    expect(pdf).toContain("export function helperTimeBadgeLabel");
+    expect(pdf).toContain("Zeitfenster: ${window.start}–${window.end} Uhr");
+    expect(pdf).toContain("drawHelperTimeBadge(doc, helper, day)");
+    expect(pdf).toContain("helperTimeBadgeLabel(helper, day) ? 99 : 72");
   });
 
   it("erfasst zusätzliche unbezahlte Begleitungen in den Helferstammdaten und kennzeichnet sie im Einsatzplan mit 👪", () => {

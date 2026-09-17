@@ -14,6 +14,7 @@ import { DAYS, evaluateShifts, toMinutes, type Day } from "./logic";
 import { currentEventYear } from "./year-context";
 import { storageGetSignedUrl } from "./storage";
 import { resolveEventPdfLogoKey } from "./event-pdf-image";
+import { helperAvailabilityWindow } from "../shared/weekdays";
 
 const require = createRequire(import.meta.url);
 const { ZipArchive } = require("archiver") as {
@@ -121,6 +122,37 @@ function formatDate(date = new Date()) {
 function formatTime(shift: Shift) {
   if (!shift.startTime || !shift.endTime) return "keine feste Uhrzeit";
   return `${shift.startTime}–${shift.endTime}`;
+}
+
+/** Kompakte Kennzeichnung für persönliche Helfer-PDFs bei begrenzter Tagesverfügbarkeit. */
+export function helperTimeBadgeLabel(helper: Helper, day: Day) {
+  const window = helperAvailabilityWindow(helper, day);
+  return window ? `Zeitfenster: ${window.start}–${window.end} Uhr` : null;
+}
+
+function drawHelperTimeBadge(
+  doc: PDFKit.PDFDocument,
+  helper: Helper,
+  day: Day
+) {
+  const label = helperTimeBadgeLabel(helper, day);
+  if (!label) return;
+  ensureSpace(doc, 28);
+  const width = 170;
+  const y = doc.y;
+  doc
+    .roundedRect(margin, y, width, 19, 5)
+    .fillAndStroke("#e0f2fe", "#7dd3fc");
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(8)
+    .fillColor("#0c4a6e")
+    .text(label, margin + 7, y + 5, {
+      width: width - 14,
+      lineBreak: false,
+    });
+  doc.x = margin;
+  doc.y = y + 27;
 }
 
 function sortShifts(a: Shift, b: Shift) {
@@ -344,9 +376,10 @@ export function renderHelperTaskPdf(data: PlanningData, helperId: number) {
       for (const day of DAYS) {
         const dayShifts = helperShifts.filter(shift => shift.day === day);
         if (dayShifts.length === 0) continue;
-        ensureSpace(doc, 72);
+        ensureSpace(doc, helperTimeBadgeLabel(helper, day) ? 99 : 72);
         doc.font("Helvetica-Bold").fontSize(11).fillColor(colors.ink).text(day);
         doc.moveDown(0.45);
+        drawHelperTimeBadge(doc, helper, day);
         drawTableHeader(doc, columns, margin);
         for (const shift of dayShifts) {
           const team = (assignmentsByShift.get(shift.id) ?? [])

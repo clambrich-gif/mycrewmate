@@ -1,6 +1,10 @@
 import type { Assignment, Helper, Shift } from "../drizzle/schema";
 import { overlaps } from "./logic";
-import { helperAvailableForShift } from "../shared/weekdays";
+import {
+  helperAvailableForShift,
+  helperAvailabilityWindowLabel,
+  helperHasTimedAvailability,
+} from "../shared/weekdays";
 
 export class ShiftUpdateValidationError extends Error {
   constructor(message: string) {
@@ -108,6 +112,15 @@ export function validateExistingAssignmentsForShiftUpdate({
       );
     }
     if (!helperAvailableForShift(helper, proposedShift)) {
+      if (helperHasTimedAvailability(helper, proposedShift.day)) {
+        const shiftTime =
+          proposedShift.startTime && proposedShift.endTime
+            ? `${proposedShift.startTime}–${proposedShift.endTime} Uhr`
+            : "ganztägig";
+        throw new ShiftUpdateValidationError(
+          `Die Schichtzeit ${shiftTime} liegt für „${helper.name}“ am ${proposedShift.day} außerhalb des Zeitfensters (${helperAvailabilityWindowLabel(helper, proposedShift.day)})`
+        );
+      }
       throw new ShiftUpdateValidationError(
         `Der Helfer „${helper.name}“ ist für den angegebenen Zeitraum am ${proposedShift.day} nicht verfügbar`
       );
