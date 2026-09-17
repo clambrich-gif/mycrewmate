@@ -838,6 +838,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(prep).toContain("Logbuch-Eintrag / Aktueller Stand");
     expect(prep).toContain("Bisheriges Logbuch");
     expect(prep).toContain("prependPreparationLogbookEntry");
+    expect(prep).toContain("useAuth");
+    expect(prep).toContain("Datum, Uhrzeit und deinem Namen");
     expect(prep).toContain("Beantragt");
     expect(prep).toContain("Genehmigt");
     expect(prep).toContain("Abgelehnt");

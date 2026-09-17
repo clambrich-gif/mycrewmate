@@ -1,28 +1,39 @@
 export const MAX_PREPARATION_LOGBOOK_LENGTH = 10_000;
 
-const LOGBOOK_ENTRY_START = /(?:^|\r?\n)(\d{2}\.\d{2}\.\d{4}):/g;
-const NEXT_LOGBOOK_ENTRY = /\r?\n(?=\d{2}\.\d{2}\.\d{4}:)/;
+const LOGBOOK_ENTRY_START =
+  /(?:^|\r?\n)(\d{2}\.\d{2}\.\d{4}(?:\s+\d{2}:\d{2}\s+Uhr\s+\([^\r\n)]+\))?):/g;
+const NEXT_LOGBOOK_ENTRY =
+  /\r?\n(?=\d{2}\.\d{2}\.\d{4}(?:\s+\d{2}:\d{2}\s+Uhr\s+\([^\r\n)]+\))?:)/;
 
-export function formatPreparationLogbookDate(at = new Date()) {
-  return new Intl.DateTimeFormat("de-DE", {
+export function formatPreparationLogbookTimestamp(at = new Date()) {
+  const parts = new Intl.DateTimeFormat("de-DE", {
     timeZone: "Europe/Berlin",
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
-  }).format(at);
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(at);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find(value => value.type === type)?.value ?? "";
+
+  return `${part("day")}.${part("month")}.${part("year")} ${part("hour")}:${part("minute")} Uhr`;
 }
 
 /** Fügt einen neuen Sachstand oben vor den vorhandenen Verlauf ein. */
 export function prependPreparationLogbookEntry(
   entry: string | null | undefined,
   existing: string | null | undefined,
-  at = new Date()
+  at = new Date(),
+  author = "Organisation"
 ) {
   const normalizedEntry = entry?.trim() ?? "";
   const normalizedExisting = existing?.trim() ?? "";
   if (!normalizedEntry) return normalizedExisting || null;
 
-  const datedEntry = `${formatPreparationLogbookDate(at)}: ${normalizedEntry}`;
+  const normalizedAuthor = author.trim() || "Organisation";
+  const datedEntry = `${formatPreparationLogbookTimestamp(at)} (${normalizedAuthor}): ${normalizedEntry}`;
   const logbook = normalizedExisting
     ? `${datedEntry}\n${normalizedExisting}`
     : datedEntry;

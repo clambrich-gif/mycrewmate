@@ -2167,13 +2167,18 @@ async function scopedContactValues(values: Record<string, unknown>) {
 }
 
 export const createPrep = async (v: any) => {
-  const { logEntry, ...values } = v;
+  const { logEntry, logEntryAuthor, ...values } = v;
   const valuesWithLogbook =
     logEntry === undefined
       ? values
       : {
           ...values,
-          note: prependPreparationLogbookEntry(logEntry, values.note),
+          note: prependPreparationLogbookEntry(
+            logEntry,
+            values.note,
+            new Date(),
+            logEntryAuthor
+          ),
         };
   return createYearRow(
     prepTasks,
@@ -2181,7 +2186,7 @@ export const createPrep = async (v: any) => {
   );
 };
 export const updatePrep = async (id: number, v: any) => {
-  const { logEntry, ...values } = v;
+  const { logEntry, logEntryAuthor, ...values } = v;
   const database = (await getDb()) as DB;
   if (logEntry === undefined) {
     return database
@@ -2202,7 +2207,12 @@ export const updatePrep = async (id: number, v: any) => {
     .set(
       await scopedContactValues({
         ...values,
-        note: prependPreparationLogbookEntry(logEntry, existing[0].note),
+        note: prependPreparationLogbookEntry(
+          logEntry,
+          existing[0].note,
+          new Date(),
+          logEntryAuthor
+        ),
       })
     )
     .where(yearWhere(prepTasks, id));

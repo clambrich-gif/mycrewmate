@@ -7,18 +7,19 @@ import {
 } from "../shared/preparation-logbook";
 
 describe("Vorbereitungslogbuch", () => {
-  it("setzt neue Einträge mit Datum an den Anfang eines vorhandenen Verlaufs", () => {
+  it("setzt neue Einträge mit Datum, Uhrzeit ohne Sekunden und Autor an den Anfang", () => {
     const logbook = prependPreparationLogbookEntry(
       "Mit Herrn Schneider gesprochen",
       "16.09.2026: Unterlagen angefordert",
-      new Date("2026-09-17T09:30:00Z")
+      new Date("2026-09-17T06:30:45Z"),
+      "Christian Lambrich"
     );
 
     expect(logbook).toBe(
-      "17.09.2026: Mit Herrn Schneider gesprochen\n16.09.2026: Unterlagen angefordert"
+      "17.09.2026 08:30 Uhr (Christian Lambrich): Mit Herrn Schneider gesprochen\n16.09.2026: Unterlagen angefordert"
     );
     expect(latestPreparationLogbookEntry(logbook)).toBe(
-      "17.09.2026: Mit Herrn Schneider gesprochen"
+      "17.09.2026 08:30 Uhr (Christian Lambrich): Mit Herrn Schneider gesprochen"
     );
     expect(preparationLogbookEntryCount(logbook)).toBe(2);
     expect(preparationLogbookNeedsDetail(logbook)).toBe(true);
@@ -33,11 +34,12 @@ describe("Vorbereitungslogbuch", () => {
     const logbook = prependPreparationLogbookEntry(
       "Telefonat geführt\nRückmeldung bis Freitag erwartet",
       null,
-      new Date("2026-09-17T09:30:00Z")
+      new Date("2026-09-17T06:30:00Z"),
+      "Organisation"
     );
 
     expect(latestPreparationLogbookEntry(logbook)).toBe(
-      "17.09.2026: Telefonat geführt\nRückmeldung bis Freitag erwartet"
+      "17.09.2026 08:30 Uhr (Organisation): Telefonat geführt\nRückmeldung bis Freitag erwartet"
     );
     expect(preparationLogbookEntryCount(logbook)).toBe(1);
     expect(preparationLogbookNeedsDetail(logbook, 20)).toBe(true);

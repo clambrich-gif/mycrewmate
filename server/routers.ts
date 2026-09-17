@@ -1159,11 +1159,12 @@ export const appRouter = router({
           logEntry: z.string().max(10_000).optional(),
         })
       )
-      .mutation(({ input }) =>
+      .mutation(({ ctx, input }) =>
         db.createPrep({
           ...input,
           status: "offen",
           statusWording: "aufgabe",
+          logEntryAuthor: auditActor(ctx.user).name,
         })
       ),
     update: protectedProcedure
@@ -1180,9 +1181,14 @@ export const appRouter = router({
           logEntry: z.string().max(10_000).optional(),
         })
       )
-      .mutation(({ input }) => {
+      .mutation(({ ctx, input }) => {
         const { id, ...r } = input;
-        return db.updatePrep(id, r);
+        return db.updatePrep(id, {
+          ...r,
+          ...(r.logEntry === undefined
+            ? {}
+            : { logEntryAuthor: auditActor(ctx.user).name }),
+        });
       }),
     remove: adminProcedure
       .input(z.object({ id: z.number() }))

@@ -1087,6 +1087,7 @@ describe("Planungs-API", () => {
       logEntry: "Erste Prüfung eingeplant",
       status: "offen",
       statusWording: "aufgabe",
+      logEntryAuthor: "Organisation",
     });
   });
 
@@ -1107,6 +1108,7 @@ describe("Planungs-API", () => {
       status: "abgelehnt",
       statusWording: "genehmigung",
       logEntry: "Rückfrage an Stadtverwaltung erforderlich",
+      logEntryAuthor: "Organisation",
     });
   });
 

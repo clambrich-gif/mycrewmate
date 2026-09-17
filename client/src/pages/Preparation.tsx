@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -223,6 +224,8 @@ export default function Preparation() {
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const rows = rawRows as PrepTaskRow[];
 
+  const { user } = useAuth();
+  const logbookAuthor = user?.name?.trim() || (user?.role === "admin" ? "Administrator" : "Planungsteam");
   const refreshDashboard = () => void utils.dashboard.stats.invalidate();
 
   const create = trpc.prep.create.useMutation({
@@ -243,7 +246,7 @@ export default function Preparation() {
           status: input.status ?? "offen",
           statusWording: input.statusWording ?? "aufgabe",
           note: input.logEntry
-            ? prependPreparationLogbookEntry(input.logEntry, null)
+            ? prependPreparationLogbookEntry(input.logEntry, null, new Date(), logbookAuthor)
             : input.note ?? null,
           sortOrder: 0,
         },
@@ -280,7 +283,7 @@ export default function Preparation() {
             ...row,
             ...changes,
             note: logEntry
-              ? prependPreparationLogbookEntry(logEntry, row.note)
+              ? prependPreparationLogbookEntry(logEntry, row.note, new Date(), logbookAuthor)
               : row.note,
           };
         })
@@ -1037,15 +1040,15 @@ export default function Preparation() {
                 }
                 placeholder={
                   editingTask
-                    ? "Neuen Sachstand eintragen – wird oben mit Datum ergänzt"
+                    ? "Neuen Sachstand eintragen – wird oben mit Datum, Uhrzeit und Name ergänzt"
                     : "z. B. Ansprechpartner, Besonderheiten oder nächste Schritte"
                 }
                 rows={3}
               />
               <p className="mt-1 text-xs text-slate-500">
                 {editingTask
-                  ? "Der Eintrag wird beim Speichern oben im Verlauf mit dem aktuellen Datum ergänzt."
-                  : "Der erste Eintrag wird beim Speichern mit dem aktuellen Datum versehen."}
+                  ? "Der Eintrag wird beim Speichern oben im Verlauf mit Datum, Uhrzeit und deinem Namen ergänzt."
+                  : "Der erste Eintrag wird beim Speichern mit Datum, Uhrzeit und deinem Namen versehen."}
               </p>
               {editingTask?.note && (
                 <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
