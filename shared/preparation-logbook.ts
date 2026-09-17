@@ -76,3 +76,17 @@ export function preparationLogbookNeedsDetail(
     latestEntry.split(/\r?\n/).length > 2
   );
 }
+
+/**
+ * Kürzt in einer kompakten mobilen Leseansicht ausschließlich die
+ * Rollen-/Namensklammer des bestehenden Zeitstempels. Der gespeicherte
+ * Verlauf bleibt unverändert und revisionsfähig.
+ */
+export function formatPreparationLogbookForMobileDisplay(
+  logbook: string | null | undefined
+) {
+  return (logbook?.trim() ?? "").replace(
+    /(\d{2}\.\d{2}\.\d{4}\s+\d{2}:\d{2}\s+Uhr)\s+\([^\r\n)]+\):/g,
+    "$1:"
+  );
+}

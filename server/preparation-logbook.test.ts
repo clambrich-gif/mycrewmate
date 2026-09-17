@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatPreparationLogbookForMobileDisplay,
   latestPreparationLogbookEntry,
   preparationLogbookEntryCount,
   preparationLogbookNeedsDetail,
@@ -43,5 +44,14 @@ describe("Vorbereitungslogbuch", () => {
     );
     expect(preparationLogbookEntryCount(logbook)).toBe(1);
     expect(preparationLogbookNeedsDetail(logbook, 20)).toBe(true);
+  });
+
+  it("zeigt mobile Logbuchverläufe ohne Rollen- oder Namensklammer", () => {
+    const logbook =
+      "17.09.2026 08:30 Uhr (Christian Lambrich): Rückmeldung erfolgt am Freitag\n16.09.2026 16:45 Uhr (Planungsteam): Unterlagen angefordert";
+
+    expect(formatPreparationLogbookForMobileDisplay(logbook)).toBe(
+      "17.09.2026 08:30 Uhr: Rückmeldung erfolgt am Freitag\n16.09.2026 16:45 Uhr: Unterlagen angefordert"
+    );
   });
 });

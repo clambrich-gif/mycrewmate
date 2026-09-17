@@ -892,7 +892,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(prep).toContain("Logbuch zu ${task.task} anzeigen");
     expect(prep).toContain("latestPreparationLogbookEntry");
     expect(prep).toContain("preparationLogbookNeedsDetail");
-    expect(prep).toContain("line-clamp-3 break-words whitespace-pre-wrap");
+    expect(prep).toContain("MobilePreparationLogbookField");
+    expect(prep).toContain("Logbuch zu ${task.task} ergänzen");
     expect(prep).toContain("Vollständiges Logbuch zu ${task.task} anzeigen");
     expect(prep).toContain("Logbuch – Verlauf");
     expect(prep).toContain("categoryFilter");
@@ -1348,5 +1349,24 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain("Ohne Begleitung");
     expect(helpers).toContain("Boolean(helper.companion?.trim())");
     expect(helpers).toContain("!helper.companion?.trim()");
+  });
+
+  it("bearbeitet Vorbereitungskarten mobil direkt und zeigt das Logbuch kompakt mit Verlauf an", () => {
+    const prep = source("client/src/pages/Preparation.tsx");
+    const logbook = source("shared/preparation-logbook.ts");
+
+    expect(prep).toContain("function MobilePreparationLogbookField");
+    expect(prep).toContain("formatPreparationLogbookForMobileDisplay");
+    expect(prep).toContain("mobile-prep-contact-${task.id}");
+    expect(prep).toContain("mobile-prep-due-${task.id}");
+    expect(prep).toContain('type="date"');
+    expect(prep).toContain('aria-label={`Status für ${task.task} ändern`}');
+    expect(prep).toContain('aria-label={`Logbuch zu ${task.task} ergänzen`}');
+    expect(prep).toContain('aria-label={`Vollständiges Logbuch zu ${task.task} anzeigen`}');
+    expect(prep).toContain("event.currentTarget.select()");
+    expect(prep).toContain("onCommit={logEntry => update.mutate({ id: task.id, logEntry })}");
+    expect(prep).toContain("Für einen neuen Sachstand den vorhandenen Text überschreiben");
+    expect(logbook).toContain("formatPreparationLogbookForMobileDisplay");
+    expect(logbook).toContain('"$1:"');
   });
 });

@@ -60,6 +60,7 @@ import {
   type TaskStatusFilter,
 } from "@/lib/dashboard-target-filter";
 import {
+  formatPreparationLogbookForMobileDisplay,
   latestPreparationLogbookEntry,
   preparationLogbookNeedsDetail,
   prependPreparationLogbookEntry,
@@ -202,6 +203,62 @@ function applyDialogStatus(value: DialogStatus): StatusUpdate {
     default:
       return { status: "offen", statusWording: "aufgabe" };
   }
+}
+
+function MobilePreparationLogbookField({
+  task,
+  latestEntry,
+  disabled,
+  onCommit,
+}: {
+  task: PrepTaskRow;
+  latestEntry: string;
+  disabled: boolean;
+  onCommit: (entry: string) => void;
+}) {
+  const compactLatestEntry = formatPreparationLogbookForMobileDisplay(latestEntry);
+  const compactHistory = formatPreparationLogbookForMobileDisplay(task.note);
+
+  return (
+    <Popover>
+      <div className="relative">
+        <Input
+          key={`${task.id}-mobile-logbook-${task.note ?? ""}`}
+          defaultValue={compactLatestEntry}
+          disabled={disabled}
+          className="w-full pr-11 text-base"
+          placeholder="Neuen Sachstand eintragen"
+          aria-label={`Logbuch zu ${task.task} ergänzen`}
+          onFocus={event => event.currentTarget.select()}
+          onBlur={event => {
+            const entry = event.target.value.trim();
+            if (entry && entry !== compactLatestEntry) onCommit(entry);
+          }}
+        />
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="absolute inset-y-0 right-0 inline-flex w-11 items-center justify-center rounded-r-md text-slate-500 hover:bg-slate-100 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-blue-600"
+            aria-label={`Vollständiges Logbuch zu ${task.task} anzeigen`}
+            title="Vollständiges Logbuch anzeigen"
+          >
+            <Info className="size-4" />
+          </button>
+        </PopoverTrigger>
+      </div>
+      <PopoverContent
+        align="center"
+        side="top"
+        sideOffset={8}
+        className="z-50 w-[min(20rem,calc(100vw-1.5rem))] max-w-none border border-gray-200 bg-white p-3 text-left text-gray-900 shadow-lg"
+      >
+        <p className="mb-1 text-xs font-medium text-slate-500">Logbuch – Verlauf</p>
+        <p className="max-h-64 overflow-y-auto whitespace-pre-wrap break-words text-sm leading-5">
+          {compactHistory || "Noch kein Logbucheintrag vorhanden."}
+        </p>
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 export default function Preparation() {
@@ -815,24 +872,48 @@ export default function Preparation() {
               const wording =
                 task.statusWording === "genehmigung" ? "genehmigung" : "aufgabe";
               const latestLogbookEntry = latestPreparationLogbookEntry(task.note);
-              const showLogbookDetail = preparationLogbookNeedsDetail(task.note, 120);
+              const dueDate = parseDueDate(task.dueText);
               return (
                 <Card
                   key={task.id}
                   className={
                     task.status === "abgelehnt"
                       ? "border-rose-300 bg-rose-50/20 shadow-sm"
-                      : "border-slate-200 bg-white shadow-sm"
+                      : "shadow-sm"
                   }
                 >
-                  <CardContent className="space-y-3 p-4">
+                  <CardContent className="space-y-4 p-4">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 space-y-1">
-                        <p className="break-words font-semibold text-slate-900">{task.task}</p>
+                        <h2 className="break-words text-[26px] leading-[1.05] font-black tracking-tight text-slate-900">
+                          {task.task}
+                        </h2>
                         <div className="flex flex-wrap gap-1.5">
-                          <Badge variant="outline" className={getStatusBadgeClass(task.status)}>
-                            {getStatusLabel(task.status, wording)}
-                          </Badge>
+                          <Select
+                            value={statusSelectValue(task.status, wording)}
+                            disabled={update.isPending}
+                            onValueChange={value =>
+                              update.mutate({
+                                id: task.id,
+                                ...applyDialogStatus(value as DialogStatus),
+                              })
+                            }
+                          >
+                            <SelectTrigger
+                              aria-label={`Status für ${task.task} ändern`}
+                              className={`h-11 min-w-[136px] border text-base font-medium ${getStatusBadgeClass(task.status)}`}
+                            >
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="offen">Offen</SelectItem>
+                              <SelectItem value="inArbeit">In Arbeit</SelectItem>
+                              <SelectItem value="beantragt">Beantragt</SelectItem>
+                              <SelectItem value="erledigt">Erledigt</SelectItem>
+                              <SelectItem value="genehmigt">Genehmigt</SelectItem>
+                              <SelectItem value="abgelehnt">Abgelehnt</SelectItem>
+                            </SelectContent>
+                          </Select>
                           {task.category && (
                             <Badge variant="secondary" className="font-normal">
                               {task.category}
@@ -865,56 +946,71 @@ export default function Preparation() {
                         </Button>
                       </div>
                     </div>
-                    <dl className="grid grid-cols-1 gap-3 border-t pt-3 text-sm sm:grid-cols-2">
-                      <div>
-                        <dt className="text-xs font-medium text-slate-500">Verantwortlicher</dt>
-                        <dd className="mt-1 break-words">{task.contactId ? contactMap.get(task.contactId) ?? "—" : "—"}</dd>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-medium" htmlFor={`mobile-prep-contact-${task.id}`}>
+                          Verantwortlicher
+                        </label>
+                        <Select
+                          value={task.contactId ? String(task.contactId) : "none"}
+                          disabled={update.isPending}
+                          onValueChange={value =>
+                            update.mutate({
+                              id: task.id,
+                              contactId: value === "none" ? null : Number(value),
+                            })
+                          }
+                        >
+                          <SelectTrigger id={`mobile-prep-contact-${task.id}`} className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Kein Verantwortlicher</SelectItem>
+                            {contacts.map(contact => (
+                              <SelectItem key={contact.id} value={String(contact.id)}>
+                                {contact.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
-                      <div>
-                        <dt className="text-xs font-medium text-slate-500">Frist</dt>
-                        <dd className="mt-1 break-words">{formatDueDate(task.dueText) || "—"}</dd>
-                      </div>
-                      <div className="sm:col-span-2">
-                        <dt className="text-xs font-medium text-slate-500">Logbuch</dt>
-                        {showLogbookDetail ? (
-                          <dd className="mt-1">
-                            <p className="line-clamp-3 break-words whitespace-pre-wrap">
-                              {latestLogbookEntry}
-                            </p>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="icon"
-                                  className="mt-2 h-11 w-11"
-                                  title="Vollständiges Logbuch anzeigen"
-                                  aria-label={`Vollständiges Logbuch zu ${task.task} anzeigen`}
-                                >
-                                  <Info className="h-4 w-4 text-blue-700" />
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent
-                                align="start"
-                                side="top"
-                                className="z-50 w-80 max-w-[calc(100vw-2rem)] border-slate-200 bg-white p-3 text-slate-900 shadow-lg"
-                              >
-                                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                  Logbuch – Verlauf
-                                </p>
-                                <p className="max-h-64 overflow-y-auto whitespace-pre-wrap break-words text-sm leading-5">
-                                  {task.note}
-                                </p>
-                              </PopoverContent>
-                            </Popover>
-                          </dd>
-                        ) : (
-                          <dd className="mt-1 break-words whitespace-pre-wrap">
-                            {latestLogbookEntry || "—"}
-                          </dd>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-medium" htmlFor={`mobile-prep-due-${task.id}`}>
+                          Frist
+                        </label>
+                        <Input
+                          id={`mobile-prep-due-${task.id}`}
+                          type="date"
+                          lang="de-DE"
+                          value={dueDate?.iso ?? ""}
+                          disabled={update.isPending}
+                          aria-label={`Frist für ${task.task} ändern`}
+                          onChange={event =>
+                            update.mutate({
+                              id: task.id,
+                              dueText: parseDueDate(event.target.value)?.display ?? "",
+                            })
+                          }
+                        />
+                        {!dueDate && task.dueText?.trim() && (
+                          <p className="text-xs text-amber-700">
+                            Bisherige Frist: {task.dueText}
+                          </p>
                         )}
                       </div>
-                    </dl>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium">Logbuch</label>
+                      <MobilePreparationLogbookField
+                        task={task}
+                        latestEntry={latestLogbookEntry}
+                        disabled={update.isPending}
+                        onCommit={logEntry => update.mutate({ id: task.id, logEntry })}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Für einen neuen Sachstand den vorhandenen Text überschreiben; er wird oben im Verlauf ergänzt.
+                      </p>
+                      </div>
                   </CardContent>
                 </Card>
               );
