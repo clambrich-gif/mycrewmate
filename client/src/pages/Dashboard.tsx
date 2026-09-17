@@ -708,37 +708,41 @@ export default function Dashboard() {
             <CardTitle>Verantwortlichkeiten pro Ansprechpartner</CardTitle>
           </CardHeader>
           <CardContent className="overflow-x-auto">
-            <table className="min-w-[560px] w-full text-sm">
+            <table className="w-full min-w-[420px] table-fixed text-sm">
+              <colgroup>
+                <col className="w-2/5" />
+                <col className="w-[12%]" />
+                <col className="w-[12%]" />
+                <col className="w-[12%]" />
+                <col className="w-[12%]" />
+                <col className="w-[12%]" />
+              </colgroup>
               <thead>
                 <tr className="border-b text-left text-muted-foreground">
                   <th className="py-2 pr-3">Ansprechpartner</th>
-                  <th className="px-2 py-2 text-right">Helfer</th>
-                  <th className="px-2 py-2 text-right">Vorb.</th>
-                  <th className="px-2 py-2 text-right">Nachb.</th>
-                  <th className="px-2 py-2 text-right">Mat.</th>
-                  <th className="px-2 py-2 text-right">Mark.</th>
-                  <th className="px-2 py-2 text-right">Genehm.</th>
-                  <th className="py-2 pl-2 text-right">Gesamt</th>
+                  <th className="px-1 py-2 text-center whitespace-nowrap">Helfer</th>
+                  <th className="px-1 py-2 text-center whitespace-nowrap">Vorb.</th>
+                  <th className="px-1 py-2 text-center whitespace-nowrap">Nachb.</th>
+                  <th className="px-1 py-2 text-center whitespace-nowrap">Mat.</th>
+                  <th className="px-1 py-2 text-center whitespace-nowrap">Gesamt</th>
                 </tr>
               </thead>
               <tbody>
                 {s.verantwortlichkeiten.map(v => (
                   <tr key={v.name} className="border-b last:border-0">
-                    <td className="py-2 pr-3">{v.name}</td>
-                    <td className="px-2 py-2 text-right">{v.betreuteHelfer}</td>
-                    <td className="px-2 py-2 text-right">{v.vorbereitung}</td>
-                    <td className="px-2 py-2 text-right">{v.nachbereitung}</td>
-                    <td className="px-2 py-2 text-right">{v.material}</td>
-                    <td className="px-2 py-2 text-right">{v.marketing}</td>
-                    <td className="px-2 py-2 text-right">{v.genehmigungen}</td>
-                    <td className="py-2 pl-2 text-right font-semibold">
+                    <td className="break-words py-2 pr-3">{v.name}</td>
+                    <td className="px-1 py-2 text-center tabular-nums">{v.betreuteHelfer}</td>
+                    <td className="px-1 py-2 text-center tabular-nums">{v.vorbereitung}</td>
+                    <td className="px-1 py-2 text-center tabular-nums">{v.nachbereitung}</td>
+                    <td className="px-1 py-2 text-center tabular-nums">{v.material}</td>
+                    <td className="px-1 py-2 text-center font-semibold tabular-nums">
                       {v.gesamt}
                     </td>
                   </tr>
                 ))}
                 {s.verantwortlichkeiten.length === 0 && (
                   <tr>
-                    <td className="py-3 text-muted-foreground" colSpan={8}>
+                    <td className="py-3 text-muted-foreground" colSpan={6}>
                       Noch keine Ansprechpartner angelegt.
                     </td>
                   </tr>

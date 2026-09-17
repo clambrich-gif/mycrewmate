@@ -1521,22 +1521,32 @@ export const appRouter = router({
             db.listMarketing(),
             db.listApprovals(),
           ]);
-          return contacts.map(c => ({
-            name: c.name,
-            betreuteHelfer: helpers.filter(h => h.contactId === c.id).length,
-            vorbereitung: prep.filter(t => t.contactId === c.id).length,
-            nachbereitung: post.filter(t => t.contactId === c.id).length,
-            material: materials.filter(m => m.contactId === c.id).length,
-            marketing: marketing.filter(m => m.contactId === c.id).length,
-            genehmigungen: approvals.filter(a => a.contactId === c.id).length,
-            gesamt:
-              helpers.filter(h => h.contactId === c.id).length +
-              prep.filter(t => t.contactId === c.id).length +
-              post.filter(t => t.contactId === c.id).length +
-              materials.filter(m => m.contactId === c.id).length +
-              marketing.filter(m => m.contactId === c.id).length +
-              approvals.filter(a => a.contactId === c.id).length,
-          }));
+          return contacts.map(contact => {
+            const betreuteHelfer = helpers.filter(
+              helper => helper.contactId === contact.id
+            ).length;
+            // Marketing und Genehmigungen sind fachlich Vorbereitungsaufgaben
+            // und werden daher nur noch gemeinsam in „Vorb.“ ausgewiesen.
+            const vorbereitung =
+              prep.filter(task => task.contactId === contact.id).length +
+              marketing.filter(item => item.contactId === contact.id).length +
+              approvals.filter(item => item.contactId === contact.id).length;
+            const nachbereitung = post.filter(
+              task => task.contactId === contact.id
+            ).length;
+            const material = materials.filter(
+              item => item.contactId === contact.id
+            ).length;
+
+            return {
+              name: contact.name,
+              betreuteHelfer,
+              vorbereitung,
+              nachbereitung,
+              material,
+              gesamt: betreuteHelfer + vorbereitung + nachbereitung + material,
+            };
+          });
         })(),
         auslastung: helpers
           .map(h => {

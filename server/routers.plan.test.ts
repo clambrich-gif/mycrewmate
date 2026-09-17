@@ -345,6 +345,52 @@ describe("Planungs-API", () => {
     expect(stats.erstkontaktquote).toBe(67);
   });
 
+  it("fasst Marketing und Genehmigungen als Vorbereitung je Ansprechpartner zusammen", async () => {
+    dbMocks.listContacts.mockResolvedValue([{ id: 7, name: "Alex Organisation" }]);
+    dbMocks.listHelpers.mockResolvedValue([{ ...helper, contactId: 7 }]);
+    dbMocks.listPrep.mockResolvedValue([
+      {
+        id: 30,
+        task: "Strecke abstimmen",
+        category: "Strecke",
+        dueText: "",
+        contactId: 7,
+        status: "offen",
+      },
+    ]);
+    dbMocks.listPost.mockResolvedValue([
+      { id: 31, task: "Auswertung", contactId: 7, status: "offen" },
+    ]);
+    dbMocks.listMaterials.mockResolvedValue([
+      { id: 32, article: "Funkgeräte", contactId: 7 },
+    ]);
+    dbMocks.listMarketing.mockResolvedValue([
+      { id: 33, measure: "Pressemitteilung", contactId: 7 },
+      { id: 34, measure: "Social Post", contactId: 7 },
+      { id: 35, measure: "Ohne Zuordnung", contactId: null },
+    ]);
+    dbMocks.listApprovals.mockResolvedValue([
+      { id: 36, request: "Streckensperrung", contactId: 7 },
+      { id: 37, request: "Sondernutzung", contactId: 7 },
+      { id: 38, request: "Sanitätsdienst", contactId: 7 },
+    ]);
+
+    const stats = await appRouter.createCaller(ctx).dashboard.stats();
+
+    expect(stats.verantwortlichkeiten).toEqual([
+      {
+        name: "Alex Organisation",
+        betreuteHelfer: 1,
+        vorbereitung: 6,
+        nachbereitung: 1,
+        material: 1,
+        gesamt: 9,
+      },
+    ]);
+    expect(stats.verantwortlichkeiten[0]).not.toHaveProperty("marketing");
+    expect(stats.verantwortlichkeiten[0]).not.toHaveProperty("genehmigungen");
+  });
+
   it("liefert in den PDF-Einstellungen nur das Bild des aktuellen Events", async () => {
     dbMocks.getAppSettings.mockResolvedValue({
       id: 1,

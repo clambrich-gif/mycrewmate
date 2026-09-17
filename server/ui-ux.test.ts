@@ -816,6 +816,29 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).not.toContain("const sections: MetricSection[]");
   });
 
+  it("führt Marketing und Genehmigungen in der sechsspaltigen Verantwortlichkeitstabelle als Vorbereitung", () => {
+    const dashboard = source("client/src/pages/Dashboard.tsx");
+    const router = source("server/routers.ts");
+
+    expect(dashboard).toContain('className="w-full min-w-[420px] table-fixed text-sm"');
+    expect(dashboard).toContain('<col className="w-2/5" />');
+    expect(dashboard).toContain('<th className="px-1 py-2 text-center whitespace-nowrap">Helfer</th>');
+    expect(dashboard).toContain('<th className="px-1 py-2 text-center whitespace-nowrap">Vorb.</th>');
+    expect(dashboard).toContain('<th className="px-1 py-2 text-center whitespace-nowrap">Nachb.</th>');
+    expect(dashboard).toContain('<th className="px-1 py-2 text-center whitespace-nowrap">Mat.</th>');
+    expect(dashboard).toContain('<th className="px-1 py-2 text-center whitespace-nowrap">Gesamt</th>');
+    expect(dashboard).not.toContain(">Mark.<");
+    expect(dashboard).not.toContain(">Genehm.<");
+    expect(dashboard).not.toContain("v.marketing");
+    expect(dashboard).not.toContain("v.genehmigungen");
+    expect(dashboard).toContain("colSpan={6}");
+    expect(router).toContain("const vorbereitung =");
+    expect(router).toContain("marketing.filter(item => item.contactId === contact.id).length");
+    expect(router).toContain("approvals.filter(item => item.contactId === contact.id).length");
+    expect(router).toContain("gesamt: betreuteHelfer + vorbereitung + nachbereitung + material");
+    expect(router).not.toContain("genehmigungen: approvals.filter");
+  });
+
   it("vereinheitlicht Vorbereitung mit Dialog, Filtern und Aktionsicons des Einsatzplans", () => {
     const prep = source("client/src/pages/Preparation.tsx");
     expect(prep).toContain("Neue Vorbereitungsaufgabe");
