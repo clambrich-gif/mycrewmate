@@ -50,6 +50,7 @@ import {
   WEEKDAYS,
   type Weekday,
 } from "../shared/weekdays";
+import { prependPreparationLogbookEntry } from "../shared/preparation-logbook";
 import {
   ADMIN_PASSWORD_OPEN_ID,
   SHARED_PASSWORD_OPEN_ID,
@@ -2165,13 +2166,47 @@ async function scopedContactValues(values: Record<string, unknown>) {
   return values;
 }
 
-export const createPrep = async (v: any) =>
-  createYearRow(prepTasks, await scopedContactValues(v));
-export const updatePrep = async (id: number, v: any) =>
-  ((await getDb()) as DB)
+export const createPrep = async (v: any) => {
+  const { logEntry, ...values } = v;
+  const valuesWithLogbook =
+    logEntry === undefined
+      ? values
+      : {
+          ...values,
+          note: prependPreparationLogbookEntry(logEntry, values.note),
+        };
+  return createYearRow(
+    prepTasks,
+    await scopedContactValues(valuesWithLogbook)
+  );
+};
+export const updatePrep = async (id: number, v: any) => {
+  const { logEntry, ...values } = v;
+  const database = (await getDb()) as DB;
+  if (logEntry === undefined) {
+    return database
+      .update(prepTasks)
+      .set(await scopedContactValues(values))
+      .where(yearWhere(prepTasks, id));
+  }
+
+  const existing = await database
+    .select({ note: prepTasks.note })
+    .from(prepTasks)
+    .where(yearWhere(prepTasks, id))
+    .limit(1);
+  if (!existing[0]) throw new Error("Vorbereitungsaufgabe wurde nicht gefunden");
+
+  return database
     .update(prepTasks)
-    .set(await scopedContactValues(v))
+    .set(
+      await scopedContactValues({
+        ...values,
+        note: prependPreparationLogbookEntry(logEntry, existing[0].note),
+      })
+    )
     .where(yearWhere(prepTasks, id));
+};
 export const deletePrep = async (id: number) =>
   ((await getDb()) as DB).delete(prepTasks).where(yearWhere(prepTasks, id));
 export const createPost = async (v: any) =>

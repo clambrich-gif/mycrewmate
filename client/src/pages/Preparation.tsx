@@ -57,6 +57,11 @@ import {
   TASK_STATUS_QUERY_KEY,
   type TaskStatusFilter,
 } from "@/lib/dashboard-target-filter";
+import {
+  latestPreparationLogbookEntry,
+  preparationLogbookNeedsDetail,
+  prependPreparationLogbookEntry,
+} from "@shared/preparation-logbook";
 
 type PrepStatus = "offen" | "inArbeit" | "erledigt" | "abgelehnt";
 type PrepWording = "aufgabe" | "genehmigung";
@@ -86,7 +91,7 @@ type PrepForm = {
   dueText: string;
   legacyDueText: string;
   preserveLegacyDueText: boolean;
-  note: string;
+  logEntry: string;
 };
 
 type StatusUpdate = {
@@ -101,7 +106,7 @@ const EMPTY_FORM: PrepForm = {
   dueText: "",
   legacyDueText: "",
   preserveLegacyDueText: false,
-  note: "",
+  logEntry: "",
 };
 
 function temporaryId() {
@@ -168,11 +173,6 @@ function parseDueDate(value: string | null | undefined): ParsedDueDate | null {
 
 function formatDueDate(value: string | null | undefined) {
   return parseDueDate(value)?.display ?? value?.trim() ?? "";
-}
-
-function hasLongMobileNote(note: string | null | undefined) {
-  if (!note) return false;
-  return note.length > 120 || note.split(/\r?\n/).length > 3;
 }
 
 function statusSelectValue(status: PrepStatus, wording: PrepWording): DialogStatus {
@@ -242,7 +242,9 @@ export default function Preparation() {
           contactId: input.contactId ?? null,
           status: input.status ?? "offen",
           statusWording: input.statusWording ?? "aufgabe",
-          note: input.note ?? null,
+          note: input.logEntry
+            ? prependPreparationLogbookEntry(input.logEntry, null)
+            : input.note ?? null,
           sortOrder: 0,
         },
       ]);
@@ -271,7 +273,17 @@ export default function Preparation() {
       await utils.prep.list.cancel();
       const previous = utils.prep.list.getData();
       utils.prep.list.setData(undefined, (current: any[] = []) =>
-        current.map(row => (row.id === input.id ? { ...row, ...input } : row))
+        current.map(row => {
+          if (row.id !== input.id) return row;
+          const { logEntry, ...changes } = input;
+          return {
+            ...row,
+            ...changes,
+            note: logEntry
+              ? prependPreparationLogbookEntry(logEntry, row.note)
+              : row.note,
+          };
+        })
       );
       return { previous };
     },
@@ -426,7 +438,7 @@ export default function Preparation() {
       dueText: parsedDueDate?.iso ?? "",
       legacyDueText: parsedDueDate ? "" : task.dueText ?? "",
       preserveLegacyDueText: !parsedDueDate && Boolean(task.dueText?.trim()),
-      note: task.note ?? "",
+      logEntry: "",
     });
     setDialogOpen(true);
   };
@@ -445,7 +457,7 @@ export default function Preparation() {
       return;
     }
 
-    const note = form.note.trim();
+    const logEntry = form.logEntry.trim();
     const selectedDueDate = parseDueDate(form.dueText);
     const dueText = selectedDueDate?.display ?? (
       form.preserveLegacyDueText ? form.legacyDueText.trim() : ""
@@ -457,8 +469,18 @@ export default function Preparation() {
       dueText,
     };
 
-    if (editingTask) update.mutate({ id: editingTask.id, ...payload, note: note || null });
-    else create.mutate({ ...payload, note: note || undefined });
+    if (editingTask) {
+      update.mutate({
+        id: editingTask.id,
+        ...payload,
+        ...(logEntry ? { logEntry } : {}),
+      });
+    } else {
+      create.mutate({
+        ...payload,
+        ...(logEntry ? { logEntry } : {}),
+      });
+    }
   };
 
   const pending = create.isPending || update.isPending;
@@ -655,7 +677,7 @@ export default function Preparation() {
                     </button>
                   </th>
                   <th className="w-[13%] px-3 py-3">Status</th>
-                  <th className="w-[8%] px-3 py-3 text-center">Bemerkung</th>
+                  <th className="w-[8%] px-3 py-3 text-center">Logbuch</th>
                   <th className="w-[10%] px-3 py-3 text-center">Aktionen</th>
                 </tr>
               </thead>
@@ -663,6 +685,8 @@ export default function Preparation() {
                 {filteredRows.map(task => {
                   const wording =
                     task.statusWording === "genehmigung" ? "genehmigung" : "aufgabe";
+                  const latestLogbookEntry = latestPreparationLogbookEntry(task.note);
+                  const showLogbookDetail = preparationLogbookNeedsDetail(task.note);
                   return (
                     <tr
                       key={task.id}
@@ -707,36 +731,43 @@ export default function Preparation() {
                           </SelectContent>
                         </Select>
                       </td>
-                      <td className="px-3 py-3 align-top text-center">
-                        {task.note ? (
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8"
-                                title="Vollständige Bemerkung anzeigen"
-                                aria-label={`Bemerkung zu ${task.task} anzeigen`}
-                              >
-                                <Info className="h-4 w-4 text-blue-700" />
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent
-                              align="center"
-                              side="left"
-                              className="z-50 w-80 max-w-[calc(100vw-2rem)] border-slate-200 bg-white p-3 text-slate-900 shadow-lg"
-                            >
-                              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                Bemerkung
-                              </p>
-                              <p className="max-h-64 overflow-y-auto whitespace-pre-wrap break-words text-sm leading-5">
-                                {task.note}
-                              </p>
-                            </PopoverContent>
-                          </Popover>
+                      <td className="px-3 py-3 align-top">
+                        {latestLogbookEntry ? (
+                          <div className="flex items-start justify-center gap-1">
+                            <p className="line-clamp-2 min-w-0 flex-1 break-words whitespace-pre-wrap text-xs leading-5 text-slate-700">
+                              {latestLogbookEntry}
+                            </p>
+                            {showLogbookDetail && (
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-8 w-8 shrink-0"
+                                    title="Vollständiges Logbuch anzeigen"
+                                    aria-label={`Logbuch zu ${task.task} anzeigen`}
+                                  >
+                                    <Info className="h-4 w-4 text-blue-700" />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                  align="center"
+                                  side="left"
+                                  className="z-50 w-80 max-w-[calc(100vw-2rem)] border-slate-200 bg-white p-3 text-slate-900 shadow-lg"
+                                >
+                                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                    Logbuch – Verlauf
+                                  </p>
+                                  <p className="max-h-64 overflow-y-auto whitespace-pre-wrap break-words text-sm leading-5">
+                                    {task.note}
+                                  </p>
+                                </PopoverContent>
+                              </Popover>
+                            )}
+                          </div>
                         ) : (
-                          <span className="text-slate-400">—</span>
+                          <span className="block text-center text-slate-400">—</span>
                         )}
                       </td>
                       <td className="px-3 py-3 align-top">
@@ -774,7 +805,8 @@ export default function Preparation() {
             {filteredRows.map(task => {
               const wording =
                 task.statusWording === "genehmigung" ? "genehmigung" : "aufgabe";
-              const showMobileNotePopover = hasLongMobileNote(task.note);
+              const latestLogbookEntry = latestPreparationLogbookEntry(task.note);
+              const showLogbookDetail = preparationLogbookNeedsDetail(task.note, 120);
               return (
                 <Card
                   key={task.id}
@@ -834,11 +866,11 @@ export default function Preparation() {
                         <dd className="mt-1 break-words">{formatDueDate(task.dueText) || "—"}</dd>
                       </div>
                       <div className="sm:col-span-2">
-                        <dt className="text-xs font-medium text-slate-500">Bemerkung</dt>
-                        {showMobileNotePopover ? (
+                        <dt className="text-xs font-medium text-slate-500">Logbuch</dt>
+                        {showLogbookDetail ? (
                           <dd className="mt-1">
                             <p className="line-clamp-3 break-words whitespace-pre-wrap">
-                              {task.note}
+                              {latestLogbookEntry}
                             </p>
                             <Popover>
                               <PopoverTrigger asChild>
@@ -847,8 +879,8 @@ export default function Preparation() {
                                   variant="outline"
                                   size="icon"
                                   className="mt-2 h-11 w-11"
-                                  title="Vollständige Bemerkung anzeigen"
-                                  aria-label={`Vollständige Bemerkung zu ${task.task} anzeigen`}
+                                  title="Vollständiges Logbuch anzeigen"
+                                  aria-label={`Vollständiges Logbuch zu ${task.task} anzeigen`}
                                 >
                                   <Info className="h-4 w-4 text-blue-700" />
                                 </Button>
@@ -859,7 +891,7 @@ export default function Preparation() {
                                 className="z-50 w-80 max-w-[calc(100vw-2rem)] border-slate-200 bg-white p-3 text-slate-900 shadow-lg"
                               >
                                 <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                  Vollständige Bemerkung
+                                  Logbuch – Verlauf
                                 </p>
                                 <p className="max-h-64 overflow-y-auto whitespace-pre-wrap break-words text-sm leading-5">
                                   {task.note}
@@ -869,7 +901,7 @@ export default function Preparation() {
                           </dd>
                         ) : (
                           <dd className="mt-1 break-words whitespace-pre-wrap">
-                            {task.note || "—"}
+                            {latestLogbookEntry || "—"}
                           </dd>
                         )}
                       </div>
@@ -996,14 +1028,35 @@ export default function Preparation() {
               </div>
             </div>
             <div>
-              <Label htmlFor="prep-note">Bemerkungen / Informationen</Label>
+              <Label htmlFor="prep-log-entry">Logbuch-Eintrag / Aktueller Stand</Label>
               <Textarea
-                id="prep-note"
-                value={form.note}
-                onChange={event => setForm(current => ({ ...current, note: event.target.value }))}
-                placeholder="z. B. Ansprechpartner, Besonderheiten oder nächste Schritte"
+                id="prep-log-entry"
+                value={form.logEntry}
+                onChange={event =>
+                  setForm(current => ({ ...current, logEntry: event.target.value }))
+                }
+                placeholder={
+                  editingTask
+                    ? "Neuen Sachstand eintragen – wird oben mit Datum ergänzt"
+                    : "z. B. Ansprechpartner, Besonderheiten oder nächste Schritte"
+                }
                 rows={3}
               />
+              <p className="mt-1 text-xs text-slate-500">
+                {editingTask
+                  ? "Der Eintrag wird beim Speichern oben im Verlauf mit dem aktuellen Datum ergänzt."
+                  : "Der erste Eintrag wird beim Speichern mit dem aktuellen Datum versehen."}
+              </p>
+              {editingTask?.note && (
+                <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Bisheriges Logbuch
+                  </p>
+                  <p className="mt-1 max-h-40 overflow-y-auto whitespace-pre-wrap break-words text-sm leading-5 text-slate-700">
+                    {editingTask.note}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>

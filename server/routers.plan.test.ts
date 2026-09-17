@@ -1075,6 +1075,7 @@ describe("Planungs-API", () => {
       task: "Absperrmaterial prüfen",
       category: "Strecke & Sicherheit",
       dueText: "Spätestens zwei Wochen vor Streckenfreigabe",
+      logEntry: "Erste Prüfung eingeplant",
       status: "abgelehnt",
       statusWording: "genehmigung",
     });
@@ -1083,12 +1084,13 @@ describe("Planungs-API", () => {
       task: "Absperrmaterial prüfen",
       category: "Strecke & Sicherheit",
       dueText: "Spätestens zwei Wochen vor Streckenfreigabe",
+      logEntry: "Erste Prüfung eingeplant",
       status: "offen",
       statusWording: "aufgabe",
     });
   });
 
-  it("aktualisiert Kategorie, Ablehnung und Statuswortlaut einer Vorbereitung", async () => {
+  it("aktualisiert Kategorie, Ablehnung, Statuswortlaut und Logbucheintrag einer Vorbereitung", async () => {
     const caller = appRouter.createCaller(ctx);
     dbMocks.updatePrep.mockResolvedValue({ affectedRows: 1 });
 
@@ -1097,14 +1099,14 @@ describe("Planungs-API", () => {
       category: "Behörden",
       status: "abgelehnt",
       statusWording: "genehmigung",
-      note: "Rückfrage an Stadtverwaltung erforderlich",
+      logEntry: "Rückfrage an Stadtverwaltung erforderlich",
     });
 
     expect(dbMocks.updatePrep).toHaveBeenCalledWith(30, {
       category: "Behörden",
       status: "abgelehnt",
       statusWording: "genehmigung",
-      note: "Rückfrage an Stadtverwaltung erforderlich",
+      logEntry: "Rückfrage an Stadtverwaltung erforderlich",
     });
   });
 

@@ -1156,6 +1156,7 @@ export const appRouter = router({
           dueText: z.string().max(200).optional(),
           contactId: z.number().nullable().optional(),
           note: z.string().max(10_000).optional(),
+          logEntry: z.string().max(10_000).optional(),
         })
       )
       .mutation(({ input }) =>
@@ -1176,6 +1177,7 @@ export const appRouter = router({
           status: statusPrep.optional(),
           statusWording: prepStatusWording.optional(),
           note: z.string().max(10_000).nullable().optional(),
+          logEntry: z.string().max(10_000).optional(),
         })
       )
       .mutation(({ input }) => {
