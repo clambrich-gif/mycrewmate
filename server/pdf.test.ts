@@ -16,6 +16,7 @@ import {
   selectHelpersForContact,
   selectPlanEvaluations,
   helperTimeBadgeLabel,
+  planPdfTimeLabel,
 } from "./pdf";
 import { resolveEventPdfLogoKey } from "./event-pdf-image";
 
@@ -169,6 +170,21 @@ describe("PDF-Erzeugung", () => {
     const pdf = await renderHelperTaskPdf(
       { ...data, helpers: [timedHelper, helpers[1]] },
       timedHelper.id
+    );
+    expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+  });
+
+  it("kennzeichnet flexible Schichtbelegung in der Zeitspalte des Einsatzplan-PDFs", async () => {
+    const flexibleShift = {
+      ...shifts[0],
+      allowFlexibleAssignment: true,
+    };
+
+    expect(planPdfTimeLabel(flexibleShift)).toBe("17:00–21:00\n(flexibel)");
+    expect(planPdfTimeLabel(shifts[1])).toBe("06:30–10:00");
+    const pdf = await renderPlanPdf(
+      { ...data, shifts: [flexibleShift, shifts[1]] },
+      { mode: "filled" }
     );
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
   });

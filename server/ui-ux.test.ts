@@ -1395,6 +1395,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("Flexible Belegung erlauben");
     expect(plan).toContain("allowFlexibleAssignment: false");
     expect(plan).toContain("helperEligibleForShift(helper, shift)");
+    expect(plan).toContain("const FlexibleTimeNote");
+    expect(plan).toContain('data-slot="shift-flexible-time-note"');
+    expect(plan).toContain("(flexibel)");
+    expect(plan).toContain("flexibleAssignmentFilter");
+    expect(plan).toContain('aria-label="Flexible Belegung filtern"');
+    expect(plan).toContain("Nur flexible Belegung");
+    expect(plan).toContain("e.shift.allowFlexibleAssignment");
     expect(statusBadge).toContain("timeUndercoverage = false");
     expect(statusBadge).toContain(
       'data-slot={timeUndercoverage ? "shift-status-time-undercoverage" : undefined}'

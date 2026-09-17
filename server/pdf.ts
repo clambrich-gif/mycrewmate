@@ -124,6 +124,12 @@ function formatTime(shift: Shift) {
   return `${shift.startTime}–${shift.endTime}`;
 }
 
+/** Zweizeilige Zeitkennzeichnung für PDF-Einsatzpläne mit flexibler Belegung. */
+export function planPdfTimeLabel(shift: Shift) {
+  const time = formatTime(shift);
+  return shift.allowFlexibleAssignment ? `${time}\n(flexibel)` : time;
+}
+
 /** Kompakte Kennzeichnung für persönliche Helfer-PDFs bei begrenzter Tagesverfügbarkeit. */
 export function helperTimeBadgeLabel(helper: Helper, day: Day) {
   const window = helperAvailabilityWindow(helper, day);
@@ -597,7 +603,7 @@ export function renderPlanPdf(
               day: row === 0 ? shift.day : "",
               area: row === 0 ? shift.area : "",
               task: row === 0 ? shift.task : "",
-              time: row === 0 ? formatTime(shift) : "",
+              time: row === 0 ? planPdfTimeLabel(shift) : "",
               status: row === 0 ? evaluation.status : "",
               contact:
                 row === 0 ? (areaContact?.name ?? "nicht zugeordnet") : "",

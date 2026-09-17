@@ -86,6 +86,20 @@ const formatTimeLabel = (shift: { startTime: string; endTime: string }) =>
     ? `${shift.startTime}–${shift.endTime}`
     : "ganztägig";
 
+const FlexibleTimeNote = ({
+  flexible,
+}: {
+  flexible: boolean;
+}) =>
+  flexible ? (
+    <span
+      data-slot="shift-flexible-time-note"
+      className="block text-xs leading-tight text-muted-foreground"
+    >
+      (flexibel)
+    </span>
+  ) : null;
+
 type AssignmentT = {
   id: number;
   shiftId: number;
@@ -475,6 +489,9 @@ export default function Plan() {
   const [day, setDay] = useState<string>("alle");
   const [area, setArea] = useState<string>("alle");
   const [apFilter, setApFilter] = useState<string>("alle");
+  const [flexibleAssignmentFilter, setFlexibleAssignmentFilter] = useState<
+    "alle" | "flexibel"
+  >("alle");
   const [q, setQ] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [areaContactsExpanded, setAreaContactsExpanded] = useState(false);
@@ -494,6 +511,8 @@ export default function Plan() {
           ? "Keine offenen Schichten gefunden."
           : status === "KNAPP"
             ? "Keine knapp besetzten Schichten gefunden."
+            : flexibleAssignmentFilter === "flexibel"
+              ? "Keine Schichten mit flexibler Belegung gefunden."
         : "Keine Schichten gefunden.";
 
   const updateWarningFilter = (value: PlanWarningSelection) => {
@@ -803,6 +822,8 @@ export default function Plan() {
             (warningFilter !== "konflikte" || e.doppelCount > 0) &&
             (warningFilter !== "ausfaelle" || e.ausfallCount > 0) &&
             planEvaluationMatchesSearch(e, q, helperNameById) &&
+            (flexibleAssignmentFilter === "alle" ||
+              e.shift.allowFlexibleAssignment) &&
             (apFilter === "alle" ||
               String(areaContactMap.get(e.shift.area) ?? "") === apFilter)
         )
@@ -822,6 +843,7 @@ export default function Plan() {
       warningFilter,
       q,
       apFilter,
+      flexibleAssignmentFilter,
       areaContactMap,
       helperNameById,
     ]
@@ -1280,6 +1302,25 @@ export default function Plan() {
               ))}
             </SelectContent>
           </Select>
+          <Select
+            value={flexibleAssignmentFilter}
+            onValueChange={value =>
+              setFlexibleAssignmentFilter(value as "alle" | "flexibel")
+            }
+          >
+            <SelectTrigger
+              className="w-full lg:w-56"
+              aria-label="Flexible Belegung filtern"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="alle">Alle Belegungsarten</SelectItem>
+              <SelectItem value="flexibel">
+                Nur flexible Belegung
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -1304,6 +1345,9 @@ export default function Plan() {
                     <p className="text-sm text-muted-foreground">
                       <HighlightedText text={shift.area} query={q} /> ·{" "}
                       {formatTimeLabel(shift)}
+                      <FlexibleTimeNote
+                        flexible={shift.allowFlexibleAssignment}
+                      />
                     </p>
                   </div>
                   {canEditPlan && (
@@ -1460,9 +1504,12 @@ export default function Plan() {
                       {s.note?.trim() || "–"}
                     </td>
                     <td className="p-2 whitespace-nowrap xl:p-1.5">
-                      {s.startTime && s.endTime
-                        ? `${s.startTime}–${s.endTime}`
-                        : "ganztägig"}
+                      <div>
+                        <span>{formatTimeLabel(s)}</span>
+                        <FlexibleTimeNote
+                          flexible={s.allowFlexibleAssignment}
+                        />
+                      </div>
                     </td>
                     <td className="p-2 text-center font-semibold xl:p-1.5">{s.needed}</td>
                     <td className="p-2 text-center xl:p-1.5">{e.besetzt}</td>
