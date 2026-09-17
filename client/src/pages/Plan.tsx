@@ -114,6 +114,7 @@ type DropdownShift = ShiftTimeLike & {
   startTime: string;
   endTime: string;
   allowFlexibleAssignment: boolean;
+  manualOkConfirmed: boolean;
 };
 
 type AvailabilityField = (typeof WEEKDAY_AVAILABILITY_FIELDS)[Weekday];
@@ -608,6 +609,7 @@ export default function Plan() {
     startTime: string;
     endTime: string;
     allowFlexibleAssignment: boolean;
+    manualOkConfirmed: boolean;
     needed: number;
     note: string;
   }>({
@@ -617,6 +619,7 @@ export default function Plan() {
     startTime: "",
     endTime: "",
     allowFlexibleAssignment: false,
+    manualOkConfirmed: false,
     needed: 1,
     note: "",
   });
@@ -630,6 +633,7 @@ export default function Plan() {
       startTime: "",
       endTime: "",
       allowFlexibleAssignment: false,
+      manualOkConfirmed: false,
       needed: 1,
       note: "",
     });
@@ -645,6 +649,7 @@ export default function Plan() {
       startTime: s.startTime,
       endTime: s.endTime,
       allowFlexibleAssignment: Boolean(s.allowFlexibleAssignment),
+      manualOkConfirmed: Boolean(s.manualOkConfirmed),
       needed: s.needed,
       note: s.note ?? "",
     });
@@ -810,6 +815,18 @@ export default function Plan() {
         }));
     });
   }, [assignedShiftsByHelper, editShift, evals, form.day, form.endTime, form.startTime, helperById]);
+
+  const manualOkConfirmationAvailable = useMemo(() => {
+    if (!editShift || form.needed <= 0) return false;
+    const currentEvaluation = evals.find(
+      evaluation => evaluation.shift.id === editShift.id
+    );
+    if (!currentEvaluation) return false;
+    return (
+      currentEvaluation.assigned.length >= form.needed &&
+      (currentEvaluation.timeUndercoverage || timeWindowConflicts.length > 0)
+    );
+  }, [editShift, evals, form.needed, timeWindowConflicts.length]);
 
   const filtered = useMemo(
     () =>
@@ -1337,6 +1354,7 @@ export default function Plan() {
                       <StatusBadge
                         status={e.status}
                         timeUndercoverage={e.timeUndercoverage}
+                        manuallyConfirmed={shift.manualOkConfirmed}
                       />
                     </div>
                     <h2 className="break-words text-lg font-semibold">
@@ -1517,6 +1535,7 @@ export default function Plan() {
                       <StatusBadge
                         status={e.status}
                         timeUndercoverage={e.timeUndercoverage}
+                        manuallyConfirmed={s.manualOkConfirmed}
                       />
                     </td>
                     <td className="p-2 text-center xl:p-1.5">
@@ -1834,17 +1853,46 @@ export default function Plan() {
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDlgOpen(false)}>
-              <X className="h-4 w-4 mr-1" />
-              Abbrechen
-            </Button>
-            <Button
-              onClick={saveShift}
-              disabled={createShift.isPending || updateShift.isPending}
-            >
-              Speichern
-            </Button>
+          <DialogFooter className="gap-2 sm:justify-between">
+            <div className="min-h-10 sm:mr-auto">
+              {manualOkConfirmationAvailable && (
+                <div className="flex items-start gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-2 text-left">
+                  <Checkbox
+                    id="shift-manual-ok-confirmed"
+                    checked={form.manualOkConfirmed}
+                    onCheckedChange={checked =>
+                      setForm({
+                        ...form,
+                        manualOkConfirmed: checked === true,
+                      })
+                    }
+                  />
+                  <Label
+                    htmlFor="shift-manual-ok-confirmed"
+                    className="cursor-pointer space-y-0.5 leading-tight"
+                  >
+                    <span className="block text-sm font-medium text-emerald-950">
+                      ✓ Manuell als OK bestätigen
+                    </span>
+                    <span className="block text-xs font-normal text-emerald-800">
+                      Ignoriert zeitliche Abweichungen & markiert die Schicht als vollständig geprüft.
+                    </span>
+                  </Label>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setDlgOpen(false)}>
+                <X className="h-4 w-4 mr-1" />
+                Abbrechen
+              </Button>
+              <Button
+                onClick={saveShift}
+                disabled={createShift.isPending || updateShift.isPending}
+              >
+                Speichern
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

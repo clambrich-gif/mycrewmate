@@ -287,6 +287,7 @@ export const shifts = mysqlTable(
     allowFlexibleAssignment: boolean("allowFlexibleAssignment")
       .default(false)
       .notNull(),
+    manualOkConfirmed: boolean("manualOkConfirmed").default(false).notNull(),
     needed: int("needed").default(1).notNull(),
     note: text("note"),
     sortOrder: int("sortOrder").default(0).notNull(),

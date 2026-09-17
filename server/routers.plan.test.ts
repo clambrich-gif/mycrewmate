@@ -1544,4 +1544,21 @@ describe("Planungs-API", () => {
       message: "Der neue Helferbedarf wäre kleiner als bereits belegte Helferplätze",
     });
   });
+
+  it("übermittelt manualOkConfirmed beim Aktualisieren einer Schicht an die Datenbank", async () => {
+    dbMocks.updateShift.mockResolvedValueOnce({ affectedRows: 1 });
+
+    const caller = appRouter.createCaller(ctx);
+    await caller.shifts.update({
+      id: 42,
+      manualOkConfirmed: true,
+    });
+
+    expect(dbMocks.updateShift).toHaveBeenCalledWith(
+      42,
+      expect.objectContaining({
+        manualOkConfirmed: true,
+      })
+    );
+  });
 });

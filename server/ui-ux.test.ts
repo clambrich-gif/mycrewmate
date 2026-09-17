@@ -1403,11 +1403,19 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("Nur flexible Belegung");
     expect(plan).toContain("e.shift.allowFlexibleAssignment");
     expect(statusBadge).toContain("timeUndercoverage = false");
+    expect(statusBadge).toContain("manuallyConfirmed = false");
     expect(statusBadge).toContain(
-      'data-slot={timeUndercoverage ? "shift-status-time-undercoverage" : undefined}'
+      'timeUndercoverage && !manuallyConfirmed'
     );
     expect(statusBadge).toContain(
       "Zeitliche Unterdeckung: Mindestens ein Helfer deckt die Schichtzeit"
+    );
+    expect(statusBadge).toContain("OK ✓");
+    expect(statusBadge).toContain("Manuell als vollständig geprüft freigegeben.");
+    expect(plan).toContain('id="shift-manual-ok-confirmed"');
+    expect(plan).toContain("✓ Manuell als OK bestätigen");
+    expect(plan).toContain(
+      "Ignoriert zeitliche Abweichungen & markiert die Schicht als vollständig geprüft."
     );
   });
 

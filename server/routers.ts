@@ -407,6 +407,7 @@ const createShiftInput = z
     startTime: clockTime.default(""),
     endTime: clockTime.default(""),
     allowFlexibleAssignment: z.boolean().default(false),
+    manualOkConfirmed: z.boolean().default(false),
     needed: z.number().int().min(0).max(20).default(1),
     note: z.string().optional(),
   })
@@ -421,6 +422,7 @@ const updateShiftInput = z
     startTime: clockTime.optional(),
     endTime: clockTime.optional(),
     allowFlexibleAssignment: z.boolean().optional(),
+    manualOkConfirmed: z.boolean().optional(),
     needed: z.number().int().min(0).max(20).optional(),
     note: z.string().nullable().optional(),
   })

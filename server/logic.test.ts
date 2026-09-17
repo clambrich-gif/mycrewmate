@@ -37,7 +37,9 @@ const S = (
   day: Shift["day"],
   startTime = "10:00",
   endTime = "12:00",
-  needed = 1
+  needed = 1,
+  manualOkConfirmed = false,
+  allowFlexibleAssignment = false
 ): Shift => ({
   id,
   day,
@@ -45,7 +47,8 @@ const S = (
   task: `T${id}`,
   startTime,
   endTime,
-  allowFlexibleAssignment: false,
+  allowFlexibleAssignment,
+  manualOkConfirmed,
   needed,
   note: null,
   sortOrder: 0,
@@ -207,6 +210,40 @@ describe("evaluateShifts", () => {
     expect(evaluation[0].ausfallCount).toBe(0);
     expect(evaluation[0].timeUndercoverage).toBe(true);
     expect(evaluation[0].status).toBe("KNAPP");
+  });
+
+  it("bewertet eine zeitlich unterdeckte, voll besetzte Schicht bei manueller Freigabe als OK", () => {
+    const shifts = [
+      S(1, "Freitag", "08:00", "18:00", 2, true, true),
+      S(2, "Freitag", "08:00", "18:00", 2, false, true),
+      S(3, "Freitag", "08:00", "18:00", 2, true, true),
+    ];
+    const helpers = [
+      { ...H(1), availFriStart: "08:00", availFriEnd: "13:00" },
+      H(2),
+    ];
+    const evaluation = evaluateShifts(
+      shifts,
+      [
+        A(1, 1, 0),
+        A(1, 2, 1),
+        A(2, 1, 0),
+        A(2, 2, 1),
+        A(3, 1, 0),
+      ],
+      helpers
+    );
+
+    expect(evaluation[0].besetzt).toBe(2);
+    expect(evaluation[0].timeUndercoverage).toBe(true);
+    expect(evaluation[0].status).toBe("OK");
+
+    expect(evaluation[1].besetzt).toBe(2);
+    expect(evaluation[1].timeUndercoverage).toBe(true);
+    expect(evaluation[1].status).toBe("KNAPP");
+
+    expect(evaluation[2].besetzt).toBe(1);
+    expect(evaluation[2].status).toBe("KNAPP");
   });
 
   it("markiert Doppelbelegungen nur an den tatsächlich kollidierenden Schichten", () => {

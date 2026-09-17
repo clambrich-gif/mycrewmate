@@ -1,0 +1,1 @@
+ALTER TABLE `shifts` ADD `manualOkConfirmed` boolean DEFAULT false NOT NULL;

@@ -144,10 +144,16 @@ export function evaluateShifts(
           (!hasDefinedShiftTime || !helperAvailableForShift(helper, shift))
       );
     });
+    const manualOkApplies =
+      shift.manualOkConfirmed &&
+      shift.needed > 0 &&
+      besetzt >= shift.needed &&
+      timeUndercoverage;
     const status: ShiftStatus =
       besetzt === 0
         ? "OFFEN"
-        : besetzt < shift.needed || (shift.needed > 0 && timeUndercoverage)
+        : besetzt < shift.needed ||
+            (shift.needed > 0 && timeUndercoverage && !manualOkApplies)
           ? "KNAPP"
           : "OK";
     const doppelIds = conflictsByShift.get(shift.id) ?? new Set<number>();

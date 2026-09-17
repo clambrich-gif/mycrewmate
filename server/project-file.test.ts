@@ -194,7 +194,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsed = parseProjectFile(exported.buffer.toString("base64"));
     expect(parsed.document.metadata).toMatchObject({
       format: "RSC-HELFERPLANUNG-PROJEKTDATEI",
-      version: 5,
+      version: 6,
       eventId: 1,
       eventName: "MyEifelRide",
       year: 2026,
@@ -346,7 +346,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsed = parseProjectFile(
       Buffer.from(JSON.stringify(document)).toString("base64")
     );
-    expect(parsed.document.metadata.version).toBe(5);
+    expect(parsed.document.metadata.version).toBe(6);
     expect(parsed.document.metadata.activeDays).toEqual([...WEEKDAYS]);
     expect(parsed.document.metadata).toMatchObject({
       pdfLogoKey: null,
@@ -692,4 +692,18 @@ describe("Projektdatei und modularer Excel-Import", () => {
     });
   });
 
+  it("erhaelt manualOkConfirmed in Schichten und migriert v5-Dateien sauber", async () => {
+    const exported = await exportProjectFile();
+    const current = parseProjectFile(exported.buffer.toString("base64")).document;
+    expect(current.shifts[0]).toHaveProperty("manualOkConfirmed");
+
+    const legacyV5 = structuredClone(current);
+    legacyV5.metadata.version = 5;
+    delete (legacyV5.shifts[0] as any).manualOkConfirmed;
+    const parsedV5 = parseProjectFile(
+      Buffer.from(JSON.stringify(legacyV5)).toString("base64")
+    ).document;
+    expect(parsedV5.metadata.version).toBe(6);
+    expect(parsedV5.shifts[0].manualOkConfirmed).toBe(false);
+  });
 });

@@ -99,6 +99,7 @@ export const PROJECT_EXCEL_HEADERS: Record<string, string[]> = {
     "Ende",
     "Bedarf",
     "Flexible Belegung",
+    "Manuell als OK bestätigt",
     "Bemerkung",
     "Reihenfolge",
     "Bereichsansprechpartner-ID",
@@ -293,6 +294,7 @@ type ShiftRow = {
   startTime: string;
   endTime: string;
   allowFlexibleAssignment: boolean;
+  manualOkConfirmed: boolean;
   needed: number;
   note: string;
   sortOrder: number;
@@ -1246,6 +1248,10 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
     const allowFlexibleAssignment = ["ja", "true", "1", "x"].includes(
       flexibleRaw.toLocaleLowerCase("de-DE")
     );
+    const manualOkRaw = normalize(row["Manuell als OK bestätigt"]);
+    const manualOkConfirmed = ["ja", "true", "1", "x"].includes(
+      manualOkRaw.toLocaleLowerCase("de-DE")
+    );
     const slots = Array.from({ length: 20 }, (_, slot) => {
       const helperName = text(
         row[`Helfer ${slot + 1}`],
@@ -1280,6 +1286,7 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
       startTime,
       endTime,
       allowFlexibleAssignment,
+      manualOkConfirmed,
       needed,
       note: text(
         row.Bemerkung,
@@ -1747,7 +1754,8 @@ function comparableCurrent(snapshot: CurrentSnapshot) {
         row[field] ??
           (field === "sortOrder"
             ? 0
-            : field === "allowFlexibleAssignment"
+            : field === "allowFlexibleAssignment" ||
+                field === "manualOkConfirmed"
               ? false
               : ""),
       ])
@@ -1817,6 +1825,7 @@ function comparableCurrent(snapshot: CurrentSnapshot) {
         "startTime",
         "endTime",
         "allowFlexibleAssignment",
+        "manualOkConfirmed",
         "needed",
         "note",
         "sortOrder",
@@ -2832,6 +2841,7 @@ export async function restoreProjectDocument(
           startTime: row.startTime,
           endTime: row.endTime,
           allowFlexibleAssignment: row.allowFlexibleAssignment,
+          manualOkConfirmed: row.manualOkConfirmed,
           needed: row.needed,
           note: row.note || null,
           sortOrder: row.sortOrder,
@@ -3290,6 +3300,7 @@ export async function exportProjectExcel(): Promise<{
       Beginn: row.startTime,
       Ende: row.endTime,
       "Flexible Belegung": row.allowFlexibleAssignment ? "Ja" : "Nein",
+      "Manuell als OK bestätigt": row.manualOkConfirmed ? "Ja" : "Nein",
       Bedarf: row.needed,
       Bemerkung: row.note,
       Reihenfolge: row.sortOrder,

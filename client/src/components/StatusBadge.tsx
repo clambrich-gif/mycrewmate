@@ -8,9 +8,11 @@ import {
 export function StatusBadge({
   status,
   timeUndercoverage = false,
+  manuallyConfirmed = false,
 }: {
   status: string;
   timeUndercoverage?: boolean;
+  manuallyConfirmed?: boolean;
 }) {
   const map: Record<string, { cls: string; label: string }> = {
     OK: { cls: "badge-ok", label: "OK" },
@@ -26,29 +28,47 @@ export function StatusBadge({
     abgelehnt: { cls: "badge-err", label: "abgelehnt" },
     nein: { cls: "badge-err", label: "Nein" },
   };
-  const m = map[status] ?? { cls: "badge-neutral", label: status };
+  const base = map[status] ?? { cls: "badge-neutral", label: status };
+  const m =
+    status === "OK" && manuallyConfirmed
+      ? { ...base, label: "OK ✓" }
+      : base;
   const badge = (
     <span
       className={`badge inline-flex items-center gap-1 ${m.cls}`}
-      data-slot={timeUndercoverage ? "shift-status-time-undercoverage" : undefined}
+      data-slot={
+        timeUndercoverage && !manuallyConfirmed
+          ? "shift-status-time-undercoverage"
+          : undefined
+      }
     >
       {m.label}
-      {timeUndercoverage && <Clock3 className="size-3" aria-hidden="true" />}
+      {timeUndercoverage && !manuallyConfirmed && (
+        <Clock3 className="size-3" aria-hidden="true" />
+      )}
     </span>
   );
 
-  if (!timeUndercoverage) return badge;
+  if (!timeUndercoverage && !manuallyConfirmed) return badge;
 
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span tabIndex={0} aria-label="Zeitliche Unterdeckung der Schicht">
+        <span
+          tabIndex={0}
+          aria-label={
+            manuallyConfirmed
+              ? "Schicht manuell als vollständig geprüft freigegeben"
+              : "Zeitliche Unterdeckung der Schicht"
+          }
+        >
           {badge}
         </span>
       </TooltipTrigger>
       <TooltipContent side="top" sideOffset={6}>
-        Zeitliche Unterdeckung: Mindestens ein Helfer deckt die Schichtzeit
-        nicht vollständig ab.
+        {manuallyConfirmed
+          ? "Manuell als vollständig geprüft freigegeben."
+          : "Zeitliche Unterdeckung: Mindestens ein Helfer deckt die Schichtzeit nicht vollständig ab."}
       </TooltipContent>
     </Tooltip>
   );

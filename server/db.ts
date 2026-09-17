@@ -963,6 +963,33 @@ export async function updateHelper(
 ) {
   const db = (await getDb()) as DB;
   const { year: ignored, eventId: ignoredEventId, ...safe } = v;
+  const availabilityFields = [
+    "willHelp",
+    "availMon",
+    "availTue",
+    "availWed",
+    "availThu",
+    "availFri",
+    "availSat",
+    "availSun",
+    "availMonStart",
+    "availMonEnd",
+    "availTueStart",
+    "availTueEnd",
+    "availWedStart",
+    "availWedEnd",
+    "availThuStart",
+    "availThuEnd",
+    "availFriStart",
+    "availFriEnd",
+    "availSatStart",
+    "availSatEnd",
+    "availSunStart",
+    "availSunEnd",
+  ] as const;
+  const availabilityChanged = availabilityFields.some(
+    field => safe[field] !== undefined
+  );
   return db.transaction(async tx => {
     const [helper] = await tx
       .select()
@@ -1007,10 +1034,28 @@ export async function updateHelper(
         "Der eigene Helfereintrag eines Ansprechpartners kann nicht umgehängt oder umbenannt werden"
       );
     }
-    return tx
+    const result = await tx
       .update(helpers)
       .set(safe)
       .where(and(eq(helpers.id, id), planningScope(helpers)));
+    if (availabilityChanged) {
+      const affectedAssignments = await tx
+        .select({ shiftId: assignments.shiftId })
+        .from(assignments)
+        .where(and(eq(assignments.helperId, id), planningScope(assignments)));
+      const affectedShiftIds = Array.from(
+        new Set(affectedAssignments.map(assignment => assignment.shiftId))
+      );
+      if (affectedShiftIds.length) {
+        await tx
+          .update(shifts)
+          .set({ manualOkConfirmed: false })
+          .where(
+            and(planningScope(shifts), inArray(shifts.id, affectedShiftIds))
+          );
+      }
+    }
+    return result;
   });
 }
 
@@ -1730,9 +1775,24 @@ export async function updateShift(
       }
     }
 
+    const shiftsFundamentallyChanged =
+      (safe.day !== undefined && safe.day !== existingShift.day) ||
+      (safe.startTime !== undefined && safe.startTime !== existingShift.startTime) ||
+      (safe.endTime !== undefined && safe.endTime !== existingShift.endTime) ||
+      (safe.allowFlexibleAssignment !== undefined &&
+        safe.allowFlexibleAssignment !== existingShift.allowFlexibleAssignment) ||
+      (safe.needed !== undefined && safe.needed !== existingShift.needed);
+    const shouldResetManualOk =
+      shiftsFundamentallyChanged &&
+      (safe.manualOkConfirmed === undefined ||
+        safe.manualOkConfirmed === existingShift.manualOkConfirmed);
+    const updateValues = {
+      ...safe,
+      ...(shouldResetManualOk ? { manualOkConfirmed: false } : {}),
+    };
     const result = await tx
       .update(shifts)
-      .set(safe)
+      .set(updateValues)
       .where(and(eq(shifts.id, existingShift.id), planningScope(shifts)));
     if (safe.area !== undefined) await removeOrphanShiftAreaContactsForClient(tx);
     return result;
@@ -1855,11 +1915,15 @@ export async function assignHelper(v: {
       .for("update");
     if (existing)
       throw new Error("Helferplatz oder Helfer ist bereits belegt");
-    return tx.insert(assignments).values({
+    await tx.insert(assignments).values({
       ...v,
       year: shift.year,
       eventId: shift.eventId,
     });
+    return tx
+      .update(shifts)
+      .set({ manualOkConfirmed: false })
+      .where(eq(shifts.id, shift.id));
   });
 }
 export async function replaceShiftAssignment(v: {
@@ -1907,6 +1971,10 @@ export async function replaceShiftAssignment(v: {
       year: shift.year,
       eventId: shift.eventId,
     });
+    return tx
+      .update(shifts)
+      .set({ manualOkConfirmed: false })
+      .where(eq(shifts.id, shift.id));
   });
 }
 export async function removeShiftAssignment(v: {
@@ -1922,26 +1990,41 @@ export async function removeShiftAssignment(v: {
       .limit(1)
       .for("update");
     if (!shift) throw new Error("Schicht wurde nicht gefunden");
-    return tx
+    await tx
       .delete(assignments)
       .where(
         and(eq(assignments.shiftId, v.shiftId), eq(assignments.slot, v.slot))
       );
+    return tx
+      .update(shifts)
+      .set({ manualOkConfirmed: false })
+      .where(eq(shifts.id, shift.id));
   });
 }
 export async function unassignHelper(id: number) {
   const db = (await getDb()) as DB;
-  return db
-    .delete(assignments)
-    .where(
-      and(
-        eq(assignments.id, id),
-        inArray(
-          assignments.shiftId,
-          db.select({ id: shifts.id }).from(shifts).where(planningScope(shifts))
+  return db.transaction(async tx => {
+    const [assignment] = await tx
+      .select({ shiftId: assignments.shiftId })
+      .from(assignments)
+      .where(
+        and(
+          eq(assignments.id, id),
+          inArray(
+            assignments.shiftId,
+            tx.select({ id: shifts.id }).from(shifts).where(planningScope(shifts))
+          )
         )
       )
-    );
+      .limit(1)
+      .for("update");
+    if (!assignment) return;
+    await tx.delete(assignments).where(eq(assignments.id, id));
+    return tx
+      .update(shifts)
+      .set({ manualOkConfirmed: false })
+      .where(and(eq(shifts.id, assignment.shiftId), planningScope(shifts)));
+  });
 }
 export async function clearAssignments() {
   const db = (await getDb()) as DB;
@@ -1980,6 +2063,10 @@ export async function clearAssignments() {
         )
       );
     requireDeletedRows(result, assignedRows.length);
+    await tx
+      .update(shifts)
+      .set({ manualOkConfirmed: false })
+      .where(planningScopeFor(shifts, selectedYear, selectedEventId));
     return { cleared: assignedRows.length };
   });
 }
