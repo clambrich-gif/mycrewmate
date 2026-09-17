@@ -7,7 +7,10 @@ import {
   overlaps,
   toMinutes,
 } from "./logic";
-import { helperAvailabilityWindowLabel } from "../shared/weekdays";
+import {
+  helperAvailabilityWindowLabel,
+  helperEligibleForShift,
+} from "../shared/weekdays";
 
 const H = (
   id: number,
@@ -42,6 +45,7 @@ const S = (
   task: `T${id}`,
   startTime,
   endTime,
+  allowFlexibleAssignment: false,
   needed,
   note: null,
   sortOrder: 0,
@@ -96,6 +100,31 @@ describe("helperActiveOnDay", () => {
     expect(helperAvailabilityWindowLabel(afternoonHelper, "Freitag")).toBe(
       "Verfügbar: 13:00 – 18:00 Uhr"
     );
+  });
+
+  it("erlaubt Teilzeit-Helfer nur bei aktivierter flexibler Belegung", () => {
+    const partialHelper = {
+      ...H(6),
+      availFriStart: "10:00",
+      availFriEnd: "12:00",
+    };
+    const strictShift = S(6, "Freitag", "09:00", "12:00");
+    const flexibleShift = { ...strictShift, allowFlexibleAssignment: true };
+
+    expect(helperEligibleForShift(partialHelper, strictShift)).toBe(false);
+    expect(helperActiveForShift(partialHelper, flexibleShift)).toBe(true);
+
+    const [evaluation] = evaluateShifts(
+      [flexibleShift],
+      [A(flexibleShift.id, partialHelper.id)],
+      [partialHelper]
+    );
+    expect(evaluation).toMatchObject({
+      besetzt: 1,
+      ausfallCount: 0,
+      timeUndercoverage: true,
+      status: "KNAPP",
+    });
   });
 });
 

@@ -1,6 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import {
   eventWeekdays,
+  helperEligibleForShift,
   helperAvailableForShift,
   isHelperWithoutFirstContact,
   WEEKDAYS,
@@ -405,6 +406,7 @@ const createShiftInput = z
     task: z.string().trim().min(1),
     startTime: clockTime.default(""),
     endTime: clockTime.default(""),
+    allowFlexibleAssignment: z.boolean().default(false),
     needed: z.number().int().min(0).max(20).default(1),
     note: z.string().optional(),
   })
@@ -418,6 +420,7 @@ const updateShiftInput = z
     task: z.string().trim().min(1).optional(),
     startTime: clockTime.optional(),
     endTime: clockTime.optional(),
+    allowFlexibleAssignment: z.boolean().optional(),
     needed: z.number().int().min(0).max(20).optional(),
     note: z.string().nullable().optional(),
   })
@@ -945,15 +948,17 @@ export const appRouter = router({
           day: dayEnum,
           startTime: clockTime.optional(),
           endTime: clockTime.optional(),
+          allowFlexibleAssignment: z.boolean().optional(),
         }).superRefine(validateShiftTimes)
       )
       .query(async ({ input }) => {
         const hs = await db.listHelpers();
         return hs.filter(h =>
-          helperAvailableForShift(h, {
+          helperEligibleForShift(h, {
             day: input.day,
             startTime: input.startTime,
             endTime: input.endTime,
+            allowFlexibleAssignment: input.allowFlexibleAssignment,
           })
         );
       }),
@@ -983,7 +988,7 @@ export const appRouter = router({
             code: "BAD_REQUEST",
             message: "Dieser Platz liegt außerhalb des Schichtbedarfs",
           });
-        if (!helperAvailableForShift(helper, shift))
+        if (!helperEligibleForShift(helper, shift))
           throw new TRPCError({
             code: "BAD_REQUEST",
             message: "Der Helfer ist für diese Schichtzeit nicht verfügbar",

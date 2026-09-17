@@ -76,6 +76,7 @@ export type ShiftAvailabilityLike = {
   day: Weekday | string;
   startTime?: string | null;
   endTime?: string | null;
+  allowFlexibleAssignment?: boolean | null;
 };
 
 /**
@@ -159,6 +160,33 @@ export function helperAvailableForShift(
     return true;
   const window = helperAvailabilityWindow(helper, shift.day);
   return !window || (shiftStart >= window.startMinutes && shiftEnd <= window.endMinutes);
+}
+
+/** Prüft eine echte Zeitüberschneidung für ausdrücklich flexible Schichten. */
+export function helperAvailableForFlexibleShift(
+  helper: HelperAvailability,
+  shift: ShiftAvailabilityLike
+): boolean {
+  if (!isWeekday(shift.day) || !helperAvailableOnDay(helper, shift.day))
+    return false;
+  const shiftStart = toMinutes(shift.startTime);
+  const shiftEnd = toMinutes(shift.endTime);
+  if (shiftStart === null || shiftEnd === null || shiftEnd <= shiftStart)
+    return true;
+  const window = helperAvailabilityWindow(helper, shift.day);
+  return !window || (window.startMinutes < shiftEnd && shiftStart < window.endMinutes);
+}
+
+/** Regulär ist vollständige Abdeckung nötig; flexibel genügt Teilüberschneidung. */
+export function helperEligibleForShift(
+  helper: HelperAvailability,
+  shift: ShiftAvailabilityLike
+): boolean {
+  return (
+    helperAvailableForShift(helper, shift) ||
+    (Boolean(shift.allowFlexibleAssignment) &&
+      helperAvailableForFlexibleShift(helper, shift))
+  );
 }
 
 export function helperAvailabilityWindowLabel(

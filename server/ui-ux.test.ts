@@ -1392,6 +1392,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     );
     expect(plan).toContain("Doppelbelegung aktualisiert:");
     expect(plan).toContain("timeUndercoverage={e.timeUndercoverage}");
+    expect(plan).toContain("Flexible Belegung erlauben");
+    expect(plan).toContain("allowFlexibleAssignment: false");
+    expect(plan).toContain("helperEligibleForShift(helper, shift)");
     expect(statusBadge).toContain("timeUndercoverage = false");
     expect(statusBadge).toContain(
       'data-slot={timeUndercoverage ? "shift-status-time-undercoverage" : undefined}'

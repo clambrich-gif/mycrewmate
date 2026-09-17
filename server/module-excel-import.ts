@@ -269,6 +269,7 @@ const OPTIONAL_MODULE_COLUMNS: Record<ModuleImportArea, string[]> = {
   EINSATZPLAN: [
     "Beginn",
     "Ende",
+    "Flexible Belegung",
     "Bemerkung",
     "Reihenfolge",
     "Bereichsansprechpartner-ID",

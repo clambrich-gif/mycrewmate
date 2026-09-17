@@ -21,6 +21,7 @@ import {
 } from "../drizzle/schema";
 import {
   eventWeekdays,
+  helperEligibleForShift,
   helperAvailableForShift,
   helperAvailableOnDay,
   orderedWeekdays,
@@ -97,6 +98,7 @@ export const PROJECT_EXCEL_HEADERS: Record<string, string[]> = {
     "Beginn",
     "Ende",
     "Bedarf",
+    "Flexible Belegung",
     "Bemerkung",
     "Reihenfolge",
     "Bereichsansprechpartner-ID",
@@ -290,6 +292,7 @@ type ShiftRow = {
   task: string;
   startTime: string;
   endTime: string;
+  allowFlexibleAssignment: boolean;
   needed: number;
   note: string;
   sortOrder: number;
@@ -670,7 +673,7 @@ export function repairImportedDocumentRelations(document: BackupDocument) {
         );
         continue;
       }
-      if (!helperAvailableForShift(helper, shift)) {
+      if (!helperEligibleForShift(helper, shift)) {
         addWarning(
           `EINSATZPLAN „${shift.task}“: Helfer „${helper.name}“ ist für die Schichtzeit am ${shift.day} nicht verfügbar und wurde aus Platz ${slot.slot + 1} entfernt.`
         );
@@ -1239,6 +1242,10 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
       0,
       20
     );
+    const flexibleRaw = normalize(row["Flexible Belegung"]);
+    const allowFlexibleAssignment = ["ja", "true", "1", "x"].includes(
+      flexibleRaw.toLocaleLowerCase("de-DE")
+    );
     const slots = Array.from({ length: 20 }, (_, slot) => {
       const helperName = text(
         row[`Helfer ${slot + 1}`],
@@ -1272,6 +1279,7 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
       ),
       startTime,
       endTime,
+      allowFlexibleAssignment,
       needed,
       note: text(
         row.Bemerkung,
@@ -1736,7 +1744,12 @@ function comparableCurrent(snapshot: CurrentSnapshot) {
     Object.fromEntries(
       fields.map(field => [
         field,
-        row[field] ?? (field === "sortOrder" ? 0 : ""),
+        row[field] ??
+          (field === "sortOrder"
+            ? 0
+            : field === "allowFlexibleAssignment"
+              ? false
+              : ""),
       ])
     );
   const contactName = new Map(snapshot.contacts.map(row => [row.id, row.name]));
@@ -1803,6 +1816,7 @@ function comparableCurrent(snapshot: CurrentSnapshot) {
         "task",
         "startTime",
         "endTime",
+        "allowFlexibleAssignment",
         "needed",
         "note",
         "sortOrder",
@@ -2817,6 +2831,7 @@ export async function restoreProjectDocument(
           task: row.task,
           startTime: row.startTime,
           endTime: row.endTime,
+          allowFlexibleAssignment: row.allowFlexibleAssignment,
           needed: row.needed,
           note: row.note || null,
           sortOrder: row.sortOrder,
@@ -3274,6 +3289,7 @@ export async function exportProjectExcel(): Promise<{
       Aufgabe: row.task,
       Beginn: row.startTime,
       Ende: row.endTime,
+      "Flexible Belegung": row.allowFlexibleAssignment ? "Ja" : "Nein",
       Bedarf: row.needed,
       Bemerkung: row.note,
       Reihenfolge: row.sortOrder,

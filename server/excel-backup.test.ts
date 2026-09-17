@@ -84,6 +84,7 @@ const data = {
       task: "Anmeldung",
       startTime: "08:00",
       endTime: "10:00",
+      allowFlexibleAssignment: true,
       needed: 1,
       note: null,
       sortOrder: 0,
@@ -173,6 +174,9 @@ describe("Excel-Datensicherung", () => {
     const parsed = parseBackupWorkbook(result.buffer.toString("base64"));
     expect(parsed.helpers.find(row => row.name === "Alex Beispiel")).toMatchObject({
       companion: "+ Kind Beispiel",
+    });
+    expect(parsed.shifts.find(row => row.task === "Anmeldung")).toMatchObject({
+      allowFlexibleAssignment: true,
     });
   });
 

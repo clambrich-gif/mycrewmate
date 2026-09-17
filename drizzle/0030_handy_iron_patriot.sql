@@ -1,0 +1,1 @@
+ALTER TABLE `shifts` ADD `allowFlexibleAssignment` boolean DEFAULT false NOT NULL;

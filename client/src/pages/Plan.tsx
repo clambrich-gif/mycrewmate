@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -66,6 +67,7 @@ import {
 import {
   eventWeekdays,
   helperAvailabilityWindowLabel,
+  helperEligibleForShift,
   helperAvailableForShift,
   helperHasTimedAvailability,
   WEEKDAY_AVAILABILITY_FIELDS,
@@ -97,6 +99,7 @@ type DropdownShift = ShiftTimeLike & {
   task: string;
   startTime: string;
   endTime: string;
+  allowFlexibleAssignment: boolean;
 };
 
 type AvailabilityField = (typeof WEEKDAY_AVAILABILITY_FIELDS)[Weekday];
@@ -585,6 +588,7 @@ export default function Plan() {
     task: string;
     startTime: string;
     endTime: string;
+    allowFlexibleAssignment: boolean;
     needed: number;
     note: string;
   }>({
@@ -593,6 +597,7 @@ export default function Plan() {
     task: "",
     startTime: "",
     endTime: "",
+    allowFlexibleAssignment: false,
     needed: 1,
     note: "",
   });
@@ -605,6 +610,7 @@ export default function Plan() {
       task: "",
       startTime: "",
       endTime: "",
+      allowFlexibleAssignment: false,
       needed: 1,
       note: "",
     });
@@ -619,6 +625,7 @@ export default function Plan() {
       task: s.task,
       startTime: s.startTime,
       endTime: s.endTime,
+      allowFlexibleAssignment: Boolean(s.allowFlexibleAssignment),
       needed: s.needed,
       note: s.note ?? "",
     });
@@ -821,7 +828,7 @@ export default function Plan() {
   );
 
   const activeHelpers = (shift: DropdownShift) =>
-    helpers.filter(helper => helperAvailableForShift(helper, shift));
+    helpers.filter(helper => helperEligibleForShift(helper, shift));
 
   const overlappingAssignments = (
     helperId: number,
@@ -1688,6 +1695,26 @@ export default function Plan() {
             <p className="text-xs text-muted-foreground">
               Für eine ganztägige Schicht beide Uhrzeitfelder leer lassen.
             </p>
+            <div className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
+              <Checkbox
+                id="shift-allow-flexible-assignment"
+                checked={form.allowFlexibleAssignment}
+                onCheckedChange={checked =>
+                  setForm({ ...form, allowFlexibleAssignment: checked === true })
+                }
+              />
+              <Label
+                htmlFor="shift-allow-flexible-assignment"
+                className="cursor-pointer space-y-0.5 leading-tight"
+              >
+                <span className="block text-sm font-medium">
+                  Flexible Belegung erlauben
+                </span>
+                <span className="block text-xs font-normal text-muted-foreground">
+                  Erlaubt die Zuweisung von Helfern mit Teilzeit-Verfügbarkeit innerhalb dieses Zeitfensters.
+                </span>
+              </Label>
+            </div>
             {timeWindowConflicts.length > 0 && (
               <div
                 role="alert"
@@ -1712,9 +1739,9 @@ export default function Plan() {
                       ))}
                     </ul>
                     <p className="text-xs text-amber-900">
-                      Die Schichtzeit kann gespeichert werden. Der Helfer wird
-                      anschließend als zeitlich nicht verfügbar ausgewiesen,
-                      bis Zeitfenster oder Einteilung angepasst sind.
+                      {form.allowFlexibleAssignment
+                        ? "Die flexible Belegung kann gespeichert werden. Teilzeit-Helfer bleiben eingeteilt; die Schicht wird als zeitlich knapp markiert."
+                        : "Die Schichtzeit kann gespeichert werden. Der Helfer wird anschließend als zeitlich nicht verfügbar ausgewiesen, bis Zeitfenster oder Einteilung angepasst sind."}
                     </p>
                   </div>
                 </div>

@@ -46,6 +46,7 @@ import {
 import { ENV } from "./_core/env";
 import {
   eventWeekdays,
+  helperEligibleForShift,
   helperAvailableForShift,
   helperAvailableOnDay,
   WEEKDAYS,
@@ -1636,6 +1637,7 @@ export async function updateShift(
     safe.day !== undefined ||
     safe.startTime !== undefined ||
     safe.endTime !== undefined ||
+    safe.allowFlexibleAssignment !== undefined ||
     safe.needed !== undefined;
 
   return db.transaction(async tx => {
@@ -1835,7 +1837,7 @@ export async function assignHelper(v: {
       throw new Error("Schicht oder Helfer wurde nicht gefunden");
     if (v.slot < 0 || v.slot >= shift.needed)
       throw new Error("Helferplatz liegt außerhalb des Schichtbedarfs");
-    if (!helperAvailableForShift(helper, shift))
+    if (!helperEligibleForShift(helper, shift))
       throw new Error("Der Helfer ist für diese Schichtzeit nicht verfügbar");
     const [existing] = await tx
       .select({ id: assignments.id })
@@ -1881,7 +1883,7 @@ export async function replaceShiftAssignment(v: {
       throw new Error("Schicht oder Helfer wurde nicht gefunden");
     if (v.slot < 0 || v.slot >= shift.needed)
       throw new Error("Helferplatz liegt außerhalb des Schichtbedarfs");
-    if (!helperAvailableForShift(helper, shift))
+    if (!helperEligibleForShift(helper, shift))
       throw new Error("Der Helfer ist für diese Schichtzeit nicht verfügbar");
     const current = await tx
       .select()
@@ -2998,6 +3000,7 @@ export async function copyPlanFromEvent(
           task: item.task,
           startTime: item.startTime,
           endTime: item.endTime,
+          allowFlexibleAssignment: item.allowFlexibleAssignment,
           needed: item.needed,
           note: item.note,
           sortOrder: item.sortOrder,

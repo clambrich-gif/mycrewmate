@@ -11,13 +11,14 @@ import {
 import { overlaps, toMinutes } from "./logic";
 import {
   eventWeekdays,
+  helperEligibleForShift,
   helperAvailableForShift,
   helperAvailableOnDay,
   WEEKDAYS,
 } from "../shared/weekdays";
 
 const PROJECT_FORMAT = "RSC-HELFERPLANUNG-PROJEKTDATEI";
-const PROJECT_VERSION = 4;
+const PROJECT_VERSION = 5;
 const MAX_PROJECT_BYTES = 10_000_000;
 const MAX_ROWS = 10_000;
 
@@ -107,6 +108,7 @@ const documentSchema = z
           task: short(300).min(1),
           startTime: short(16),
           endTime: short(16),
+          allowFlexibleAssignment: z.boolean().default(false),
           needed: z.number().int().min(0).max(20),
           note: short(10_000),
           sortOrder: z.number().int().min(0).max(1_000_000),
@@ -381,7 +383,7 @@ function validateRelations(document: BackupDocument) {
         throw new Error(
           `Einsatzplan „${shift.task}“: Helfer-ID und Name widersprechen sich`
         );
-      if (!helperAvailableForShift(helper, shift))
+      if (!helperEligibleForShift(helper, shift))
         throw new Error(
           `Einsatzplan „${shift.task}“: Helfer „${helper.name}“ ist für die Schichtzeit am ${shift.day} nicht verfügbar`
         );
@@ -505,6 +507,24 @@ export function parseProjectFile(base64: string): {
           availSunEnd: helper.availSunEnd ?? "",
         }))
       : legacy.helpers;
+  }
+  if (
+    raw &&
+    typeof raw === "object" &&
+    "metadata" in raw &&
+    raw.metadata &&
+    typeof raw.metadata === "object" &&
+    "version" in raw.metadata &&
+    raw.metadata.version === 4
+  ) {
+    const legacy = raw as Record<string, any>;
+    legacy.metadata = { ...legacy.metadata, version: PROJECT_VERSION };
+    legacy.shifts = Array.isArray(legacy.shifts)
+      ? legacy.shifts.map((shift: Record<string, unknown>) => ({
+          ...shift,
+          allowFlexibleAssignment: shift.allowFlexibleAssignment ?? false,
+        }))
+      : legacy.shifts;
   }
   const parsed = documentSchema.safeParse(raw);
   if (!parsed.success)

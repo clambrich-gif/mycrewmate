@@ -284,6 +284,9 @@ export const shifts = mysqlTable(
     task: varchar("task", { length: 300 }).notNull(),
     startTime: varchar("startTime", { length: 16 }).default("").notNull(),
     endTime: varchar("endTime", { length: 16 }).default("").notNull(),
+    allowFlexibleAssignment: boolean("allowFlexibleAssignment")
+      .default(false)
+      .notNull(),
     needed: int("needed").default(1).notNull(),
     note: text("note"),
     sortOrder: int("sortOrder").default(0).notNull(),

@@ -1221,6 +1221,34 @@ describe("Planungs-API", () => {
     ).rejects.toThrow("außerhalb des Schichtbedarfs");
   });
 
+  it("weist teilverfügbare Helfer nur flexiblen Schichten zu", async () => {
+    const partialHelper = {
+      ...helper,
+      availFriStart: "10:00",
+      availFriEnd: "12:00",
+    };
+    dbMocks.listHelpers.mockResolvedValue([partialHelper]);
+    dbMocks.listShifts.mockResolvedValue([
+      { ...shift, startTime: "09:00", endTime: "12:00" },
+    ]);
+
+    await expect(
+      appRouter.createCaller(ctx).plan.assign({ shiftId: 10, helperId: 20, slot: 0 })
+    ).rejects.toThrow("nicht verfügbar");
+
+    dbMocks.listShifts.mockResolvedValue([
+      {
+        ...shift,
+        startTime: "09:00",
+        endTime: "12:00",
+        allowFlexibleAssignment: true,
+      },
+    ]);
+    await expect(
+      appRouter.createCaller(ctx).plan.assign({ shiftId: 10, helperId: 20, slot: 0 })
+    ).resolves.toEqual({ insertId: 1 });
+  });
+
   it("speichert eine gültige Zuweisung", async () => {
     const caller = appRouter.createCaller(ctx);
 

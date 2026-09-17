@@ -4,6 +4,7 @@ import {
   shiftsOverlap,
 } from "../shared/shift-time";
 import {
+  helperEligibleForShift,
   helperAvailableForShift,
   helperAvailableOnDay,
   helperHasTimedAvailability,
@@ -21,7 +22,7 @@ export function helperActiveOnDay(h: Helper, day: Day): boolean {
 }
 
 export function helperActiveForShift(h: Helper, shift: Shift): boolean {
-  return helperAvailableForShift(h, shift);
+  return helperEligibleForShift(h, shift);
 }
 
 export function shiftRange(s: Shift): [number, number] {
@@ -140,7 +141,7 @@ export function evaluateShifts(
         helper &&
           helperAvailableOnDay(helper, shift.day as Day) &&
           helperHasTimedAvailability(helper, shift.day as Day) &&
-          (!hasDefinedShiftTime || !helperActiveForShift(helper, shift))
+          (!hasDefinedShiftTime || !helperAvailableForShift(helper, shift))
       );
     });
     const status: ShiftStatus =

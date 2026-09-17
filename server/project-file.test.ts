@@ -99,6 +99,7 @@ const data = {
       task: "Anmeldung",
       startTime: "08:00",
       endTime: "10:00",
+      allowFlexibleAssignment: true,
       needed: 1,
       note: null,
       sortOrder: 0,
@@ -193,7 +194,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsed = parseProjectFile(exported.buffer.toString("base64"));
     expect(parsed.document.metadata).toMatchObject({
       format: "RSC-HELFERPLANUNG-PROJEKTDATEI",
-      version: 4,
+      version: 5,
       eventId: 1,
       eventName: "MyEifelRide",
       year: 2026,
@@ -345,7 +346,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsed = parseProjectFile(
       Buffer.from(JSON.stringify(document)).toString("base64")
     );
-    expect(parsed.document.metadata.version).toBe(4);
+    expect(parsed.document.metadata.version).toBe(5);
     expect(parsed.document.metadata.activeDays).toEqual([...WEEKDAYS]);
     expect(parsed.document.metadata).toMatchObject({
       pdfLogoKey: null,
