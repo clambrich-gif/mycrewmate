@@ -24,6 +24,7 @@ import {
   parseBackupWorkbook,
   previewBackupRestore,
   reconcileContactSelfHelpers,
+  resetInvalidatedManualConfirmations,
 } from "./excel-backup";
 
 const tableName = (table: any) => table[Symbol.for("drizzle:Name")];
@@ -178,6 +179,83 @@ describe("Excel-Datensicherung", () => {
     expect(parsed.shifts.find(row => row.task === "Anmeldung")).toMatchObject({
       allowFlexibleAssignment: true,
     });
+    expect(
+      XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets.EINSATZPLAN, {
+        header: 1,
+      })[0]
+    ).toEqual(
+      expect.arrayContaining([
+        "Manuell als OK bestätigt",
+        "Doppelbelegung akzeptiert",
+      ])
+    );
+  });
+
+  it("setzt Freigaben zurück, wenn ein importiertes Zeitfenster eine geprüfte Schicht verändert", () => {
+    const current: any = {
+      contacts: [],
+      helpers: [
+        {
+          sourceId: 20,
+          name: "Alex Beispiel",
+          willHelp: "ja",
+          availFri: "ja",
+          availFriStart: "08:00",
+          availFriEnd: "13:00",
+        },
+      ],
+      shifts: [
+        {
+          sourceId: 30,
+          day: "Freitag",
+          area: "Start",
+          task: "Anmeldung",
+          startTime: "08:00",
+          endTime: "15:00",
+          allowFlexibleAssignment: true,
+          manualOkConfirmed: true,
+          manualDoubleConflictAccepted: true,
+          needed: 1,
+          note: "",
+          sortOrder: 0,
+          areaContactSourceId: null,
+          areaContactName: "",
+          slots: [{ slot: 0, helperSourceId: 20, helperName: "Alex Beispiel" }],
+        },
+      ],
+      prep: [],
+      post: [],
+      materials: [],
+      marketing: [],
+      approvals: [],
+      cakes: [],
+      finances: [],
+    };
+    const target: any = structuredClone({
+      metadata: {
+        format: "RSC-HELFERPLANUNG-SICHERUNG",
+        version: 1,
+        eventId: 1,
+        eventName: "MyEifelRide",
+        year: 2026,
+        activeDays: ["Freitag"],
+        pdfLogoKey: null,
+        pdfLogoUrl: null,
+        pdfLogoFallback: "none",
+        exportedAt: new Date().toISOString(),
+      },
+      ...current,
+      helpers: [{ ...current.helpers[0], availFriEnd: "12:00" }],
+      warnings: [],
+    });
+
+    resetInvalidatedManualConfirmations(current, target);
+
+    expect(target.shifts[0]).toMatchObject({
+      manualOkConfirmed: false,
+      manualDoubleConflictAccepted: false,
+    });
+    expect(target.warnings.join(" ")).toContain("Manuelle Freigaben wurden");
   });
 
   it("erkennt eine aus der Excel-Sicherung entfernte Helferzeile und Zuordnung", async () => {

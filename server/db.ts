@@ -1787,13 +1787,10 @@ export async function updateShift(
       (safe.needed !== undefined && safe.needed !== existingShift.needed);
     const shouldResetManualOk =
       shiftsFundamentallyChanged &&
-      (safe.manualOkConfirmed === undefined ||
-        safe.manualOkConfirmed === existingShift.manualOkConfirmed);
+      existingShift.manualOkConfirmed;
     const shouldResetManualDoubleConflict =
       shiftsFundamentallyChanged &&
-      (safe.manualDoubleConflictAccepted === undefined ||
-        safe.manualDoubleConflictAccepted ===
-          existingShift.manualDoubleConflictAccepted);
+      existingShift.manualDoubleConflictAccepted;
     const updateValues = {
       ...safe,
       ...(shouldResetManualOk ? { manualOkConfirmed: false } : {}),
@@ -1805,6 +1802,17 @@ export async function updateShift(
       .update(shifts)
       .set(updateValues)
       .where(and(eq(shifts.id, existingShift.id), planningScope(shifts)));
+    if (shiftsFundamentallyChanged) {
+      const shiftedAssignments = await tx
+        .select({ helperId: assignments.helperId })
+        .from(assignments)
+        .where(eq(assignments.shiftId, existingShift.id));
+      await resetManualShiftConfirmationsForHelpers(
+        tx,
+        shiftedAssignments.map(assignment => assignment.helperId),
+        [existingShift.id]
+      );
+    }
     if (safe.area !== undefined) await removeOrphanShiftAreaContactsForClient(tx);
     return result;
   });

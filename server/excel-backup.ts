@@ -100,6 +100,7 @@ export const PROJECT_EXCEL_HEADERS: Record<string, string[]> = {
     "Bedarf",
     "Flexible Belegung",
     "Manuell als OK bestätigt",
+    "Doppelbelegung akzeptiert",
     "Bemerkung",
     "Reihenfolge",
     "Bereichsansprechpartner-ID",
@@ -2555,6 +2556,158 @@ export function buildSelectedDocument(
   return target;
 }
 
+/**
+ * Manuelle Freigaben gelten immer nur für den konkret geprüften Planstand.
+ * Bei einem Excel-Import dürfen sie daher nicht an einer geänderten Schicht,
+ * einer geänderten Helferverfügbarkeit oder einer geänderten Zuordnung hängen
+ * bleiben. Die Funktion arbeitet absichtlich auf dem bereits selektierten
+ * Zielstand, damit auch Modulimporte dieselbe Sicherheitsregel einhalten.
+ */
+export function resetInvalidatedManualConfirmations(
+  current: ReturnType<typeof comparableCurrent>,
+  target: BackupDocument
+) {
+  const shiftIdentity = (shift: ShiftRow) =>
+    personKey(
+      `${shift.day}|${shift.area}|${shift.task}|${shift.startTime}|${shift.endTime}`
+    );
+  const helperKey = (helper: Pick<HelperRow, "sourceId" | "name">) =>
+    helper.sourceId ? `id:${helper.sourceId}` : `name:${personKey(helper.name)}`;
+  const slotMap = (shift: ShiftRow) =>
+    new Map(
+      shift.slots.map(slot => [
+        slot.slot,
+        helperKey({ sourceId: slot.helperSourceId, name: slot.helperName }),
+      ])
+    );
+  const sameSlots = (left: ShiftRow, right: ShiftRow) => {
+    const leftSlots = slotMap(left);
+    const rightSlots = slotMap(right);
+    return (
+      leftSlots.size === rightSlots.size &&
+      Array.from(leftSlots.entries()).every(
+        ([slot, helper]) => rightSlots.get(slot) === helper
+      )
+    );
+  };
+  const currentShifts = current.shifts as ShiftRow[];
+  const currentById = new Map(
+    currentShifts.flatMap(shift =>
+      shift.sourceId ? ([[shift.sourceId, shift]] as const) : []
+    )
+  );
+  const currentByIdentity = new Map(
+    currentShifts.map(shift => [shiftIdentity(shift), shift])
+  );
+  const targetById = new Map(
+    target.shifts.flatMap(shift =>
+      shift.sourceId ? ([[shift.sourceId, shift]] as const) : []
+    )
+  );
+  const targetByIdentity = new Map(
+    target.shifts.map(shift => [shiftIdentity(shift), shift])
+  );
+  const resolveCurrentShift = (shift: ShiftRow) =>
+    (shift.sourceId ? currentById.get(shift.sourceId) : undefined) ??
+    currentByIdentity.get(shiftIdentity(shift));
+  const resolveTargetShift = (shift: ShiftRow) =>
+    (shift.sourceId ? targetById.get(shift.sourceId) : undefined) ??
+    targetByIdentity.get(shiftIdentity(shift));
+
+  const helpersWithAssignmentChanges = new Set<string>();
+  const collectAssignedHelpers = (shift: ShiftRow | undefined) => {
+    for (const slot of shift?.slots ?? [])
+      helpersWithAssignmentChanges.add(
+        helperKey({ sourceId: slot.helperSourceId, name: slot.helperName })
+      );
+  };
+  const shiftsWithFundamentalChanges = new Set<ShiftRow>();
+  const shiftsWithAssignmentChanges = new Set<ShiftRow>();
+  for (const shift of target.shifts) {
+    const before = resolveCurrentShift(shift);
+    if (!before) {
+      collectAssignedHelpers(shift);
+      continue;
+    }
+    const fundamentallyChanged =
+      before.day !== shift.day ||
+      before.startTime !== shift.startTime ||
+      before.endTime !== shift.endTime ||
+      before.allowFlexibleAssignment !== shift.allowFlexibleAssignment ||
+      before.needed !== shift.needed;
+    if (fundamentallyChanged) shiftsWithFundamentalChanges.add(shift);
+    if (!sameSlots(before, shift)) {
+      shiftsWithAssignmentChanges.add(shift);
+      collectAssignedHelpers(before);
+      collectAssignedHelpers(shift);
+    }
+  }
+  for (const shift of currentShifts)
+    if (!resolveTargetShift(shift)) collectAssignedHelpers(shift);
+
+  const currentHelpers = current.helpers as HelperRow[];
+  const currentHelpersByKey = new Map(
+    currentHelpers.map(helper => [helperKey(helper), helper])
+  );
+  const targetHelpersByKey = new Map(
+    target.helpers.map(helper => [helperKey(helper), helper])
+  );
+  const availabilityChangeAffects = (helper: HelperRow, day: Weekday) => {
+    const before = currentHelpersByKey.get(helperKey(helper));
+    if (!before) return false;
+    const suffix =
+      day === "Montag"
+        ? "Mon"
+        : day === "Dienstag"
+          ? "Tue"
+          : day === "Mittwoch"
+            ? "Wed"
+            : day === "Donnerstag"
+              ? "Thu"
+              : day === "Freitag"
+                ? "Fri"
+                : day === "Samstag"
+                  ? "Sat"
+                  : "Sun";
+    const fields = [
+      "willHelp",
+      `avail${suffix}`,
+      `avail${suffix}Start`,
+      `avail${suffix}End`,
+    ] as const;
+    return fields.some(field => before[field as keyof HelperRow] !== helper[field as keyof HelperRow]);
+  };
+
+  const resetShiftIds = new Set<number>();
+  for (const shift of target.shifts) {
+    if (!shift.manualOkConfirmed && !shift.manualDoubleConflictAccepted) continue;
+    const assignedHelperKeys = shift.slots.map(slot =>
+      helperKey({ sourceId: slot.helperSourceId, name: slot.helperName })
+    );
+    const assignmentChanged = assignedHelperKeys.some(key =>
+      helpersWithAssignmentChanges.has(key)
+    );
+    const availabilityChanged = assignedHelperKeys.some(key => {
+      const helper = targetHelpersByKey.get(key);
+      return helper ? availabilityChangeAffects(helper, shift.day) : false;
+    });
+    if (
+      !shiftsWithFundamentalChanges.has(shift) &&
+      !shiftsWithAssignmentChanges.has(shift) &&
+      !assignmentChanged &&
+      !availabilityChanged
+    )
+      continue;
+
+    shift.manualOkConfirmed = false;
+    shift.manualDoubleConflictAccepted = false;
+    if (shift.sourceId) resetShiftIds.add(shift.sourceId);
+    const message = `EINSATZPLAN „${shift.task}“: Manuelle Freigaben wurden wegen geänderter Schicht-, Zuordnungs- oder Verfügbarkeitsdaten zurückgesetzt.`;
+    if (!target.warnings.includes(message)) target.warnings.push(message);
+  }
+  return resetShiftIds;
+}
+
 export async function previewProjectDocument(
   desired: BackupDocument,
   sourceDigest: string
@@ -2569,6 +2722,7 @@ export async function previewProjectDocument(
       `Die Sicherung gehört zu „${desired.metadata.eventName}“ (${desired.metadata.year}), ausgewählt ist „${snapshot.eventName}“ (${currentEventYear()}).`
     );
   const current = comparableCurrent(snapshot);
+  resetInvalidatedManualConfirmations(current, desired);
   const changes = [
     ...eventDaysChange(snapshot.activeDays, desired.metadata.activeDays),
     ...eventPdfImageChanges(snapshot, desired.metadata),
@@ -2675,6 +2829,7 @@ export async function restoreProjectDocument(
       allChanges,
       selectedChangeKeys
     );
+    resetInvalidatedManualConfirmations(current, desired);
     const changes = [
       ...eventDaysChange(snapshot.activeDays, desired.metadata.activeDays),
       ...eventPdfImageChanges(snapshot, desired.metadata),
@@ -3421,6 +3576,7 @@ export async function exportProjectExcel(): Promise<{
 
 /** @deprecated Nur für bestehende Parser-Regressionsprüfungen; produktiv ist Excel kein Speicherformat mehr. */
 export async function exportBackupExcel() {
+  const document = await createCurrentProjectDocument();
   const result = await exportProjectExcel();
   const workbook = XLSX.read(result.buffer, {
     type: "buffer",
@@ -3434,6 +3590,22 @@ export async function exportBackupExcel() {
     { Schlüssel: "Veranstaltungs-ID", Wert: currentEventId() },
     { Schlüssel: "Veranstaltung", Wert: result.eventName },
     { Schlüssel: "Jahr", Wert: currentEventYear() },
+    {
+      Schlüssel: "Veranstaltungstage",
+      Wert: document.metadata.activeDays.join(", "),
+    },
+    {
+      Schlüssel: "PDF-Bild-Schlüssel",
+      Wert: document.metadata.pdfLogoKey ?? "",
+    },
+    {
+      Schlüssel: "PDF-Bild-URL",
+      Wert: document.metadata.pdfLogoUrl ?? "",
+    },
+    {
+      Schlüssel: "PDF-Bild-Fallback",
+      Wert: document.metadata.pdfLogoFallback,
+    },
     { Schlüssel: "Exportiert am (UTC)", Wert: result.exportedAt },
   ]);
   sheet["!cols"] = [{ wch: 28 }, { wch: 100 }];
