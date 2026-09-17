@@ -43,6 +43,7 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  Calendar,
   FilterX,
   Info,
   Pencil,
@@ -996,20 +997,34 @@ export default function Preparation() {
                         <label className="text-xs font-medium" htmlFor={`mobile-prep-due-${task.id}`}>
                           Frist
                         </label>
-                        <Input
-                          id={`mobile-prep-due-${task.id}`}
-                          type="date"
-                          lang="de-DE"
-                          value={dueDate?.iso ?? ""}
-                          disabled={update.isPending}
-                          aria-label={`Frist für ${task.task} ändern`}
-                          onChange={event =>
-                            update.mutate({
-                              id: task.id,
-                              dueText: parseDueDate(event.target.value)?.display ?? "",
-                            })
-                          }
-                        />
+                        <div className="relative w-full max-w-full min-w-0 box-border">
+                          <Input
+                            id={`mobile-prep-due-${task.id}`}
+                            type="date"
+                            lang="de-DE"
+                            data-mobile-prep-due
+                            className="w-full max-w-full min-w-0 box-border appearance-none pr-11 [-webkit-appearance:none]"
+                            style={{
+                              width: "100%",
+                              maxWidth: "100%",
+                              boxSizing: "border-box",
+                              WebkitAppearance: "none",
+                            }}
+                            value={dueDate?.iso ?? ""}
+                            disabled={update.isPending}
+                            aria-label={`Frist für ${task.task} ändern`}
+                            onChange={event =>
+                              update.mutate({
+                                id: task.id,
+                                dueText: parseDueDate(event.target.value)?.display ?? "",
+                              })
+                            }
+                          />
+                          <Calendar
+                            aria-hidden="true"
+                            className="pointer-events-none absolute inset-y-0 right-3 my-auto size-4 shrink-0 text-slate-500"
+                          />
+                        </div>
                         {!dueDate && task.dueText?.trim() && (
                           <p className="text-xs text-amber-700">
                             Bisherige Frist: {task.dueText}

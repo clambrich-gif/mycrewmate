@@ -63,6 +63,29 @@
     text-size-adjust: 100%;
     touch-action: manipulation;
   }
+
+  /* iOS/Safari gibt type=date ohne ausdrückliche Begrenzung gelegentlich eine
+     eigene Mindestbreite. Das mobile Fristfeld bleibt deshalb immer bündig
+     innerhalb seiner Vorbereitungskarte. */
+  input[data-mobile-prep-due] {
+    -webkit-appearance: none;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  /* Der sichtbare Lucide-Kalender übernimmt die Orientierung. Das native
+     WebKit-Symbol bleibt als großer Klickbereich erhalten, wird aber nicht
+     doppelt gerendert. */
+  input[data-mobile-prep-due]::-webkit-calendar-picker-indicator {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+  }
 }
 
 .container { margin-inline: auto; padding-inline: 1rem; max-width: 1400px; }

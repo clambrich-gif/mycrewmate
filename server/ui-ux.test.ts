@@ -1354,12 +1354,22 @@ describe("UI- und Mobile-UX-Regeln", () => {
   it("bearbeitet Vorbereitungskarten mobil direkt und zeigt das Logbuch kompakt mit Verlauf an", () => {
     const prep = source("client/src/pages/Preparation.tsx");
     const logbook = source("shared/preparation-logbook.ts");
+    const css = source("client/src/index.css");
 
     expect(prep).toContain("function MobilePreparationLogbookField");
     expect(prep).toContain("formatPreparationLogbookForMobileDisplay");
     expect(prep).toContain("mobile-prep-contact-${task.id}");
     expect(prep).toContain("mobile-prep-due-${task.id}");
     expect(prep).toContain('type="date"');
+    expect(prep).toContain("data-mobile-prep-due");
+    expect(prep).toContain("relative w-full max-w-full min-w-0 box-border");
+    expect(prep).toContain("w-full max-w-full min-w-0 box-border appearance-none pr-11 [-webkit-appearance:none]");
+    expect(prep).toContain("WebkitAppearance: \"none\"");
+    expect(prep).toContain('<Calendar\n                            aria-hidden="true"');
+    expect(css).toContain("input[data-mobile-prep-due]");
+    expect(css).toContain("-webkit-appearance: none;");
+    expect(css).toContain("input[data-mobile-prep-due]::-webkit-calendar-picker-indicator");
+    expect(css).toContain("opacity: 0;");
     expect(prep).toContain('aria-label={`Status für ${task.task} ändern`}');
     expect(prep).toContain('aria-label={`Logbuch zu ${task.task} ergänzen`}');
     expect(prep).toContain('aria-label={`Vollständiges Logbuch zu ${task.task} anzeigen${entryCount ? ` (${entryCount} Einträge)` : ""}`}');
