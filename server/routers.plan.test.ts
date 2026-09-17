@@ -286,9 +286,39 @@ describe("Planungs-API", () => {
     expect(stats.helferEingeteiltUnbestaetigt).toBe(1);
     expect(stats.rueckmeldequote).toBe(50);
     expect(stats.taeglicheEinsatzbereitschaft).toEqual([
-      { day: "Freitag", bedarf: 2, besetzt: 2, fehlend: 0, quote: 100 },
-      { day: "Samstag", bedarf: 2, besetzt: 1, fehlend: 1, quote: 50 },
-      { day: "Sonntag", bedarf: 0, besetzt: 0, fehlend: 0, quote: 0 },
+      {
+        day: "Freitag",
+        bedarf: 2,
+        besetzt: 2,
+        fehlend: 0,
+        quote: 100,
+        ungenutzteHelfer: 1,
+        teilzeitReserve: 0,
+        ungenutzteHelferIds: [22],
+        teilzeitReserveIds: [],
+      },
+      {
+        day: "Samstag",
+        bedarf: 2,
+        besetzt: 1,
+        fehlend: 1,
+        quote: 50,
+        ungenutzteHelfer: 0,
+        teilzeitReserve: 0,
+        ungenutzteHelferIds: [],
+        teilzeitReserveIds: [],
+      },
+      {
+        day: "Sonntag",
+        bedarf: 0,
+        besetzt: 0,
+        fehlend: 0,
+        quote: 0,
+        ungenutzteHelfer: 0,
+        teilzeitReserve: 0,
+        ungenutzteHelferIds: [],
+        teilzeitReserveIds: [],
+      },
     ]);
   });
 
@@ -345,7 +375,7 @@ describe("Planungs-API", () => {
     expect(stats.erstkontaktquote).toBe(67);
   });
 
-  it("ermittelt ungenutzte Helfer und Teilzeit-Reserve aus aktiver Verfügbarkeit und gültigen Zuweisungen", async () => {
+  it("ermittelt ungenutzte Helfer und Teilzeit-Reserve tagesgenau aus aktiver Verfügbarkeit und gültigen Zuweisungen", async () => {
     dbMocks.getEvent.mockResolvedValue({
       id: 1,
       year: 2026,
@@ -404,11 +434,35 @@ describe("Planungs-API", () => {
 
     const stats = await appRouter.createCaller(ctx).dashboard.stats();
 
-    expect(stats.helferPotenzial).toEqual({
-      ungenutzteHelfer: 1,
-      teilzeitReserve: 1,
-      gesamt: 2,
-    });
+    expect(stats.taeglicheEinsatzbereitschaft.map(day => ({
+      day: day.day,
+      ungenutzteHelfer: day.ungenutzteHelfer,
+      teilzeitReserve: day.teilzeitReserve,
+      ungenutzteHelferIds: day.ungenutzteHelferIds,
+      teilzeitReserveIds: day.teilzeitReserveIds,
+    }))).toEqual([
+      {
+        day: "Freitag",
+        ungenutzteHelfer: 1,
+        teilzeitReserve: 0,
+        ungenutzteHelferIds: [20],
+        teilzeitReserveIds: [],
+      },
+      {
+        day: "Samstag",
+        ungenutzteHelfer: 0,
+        teilzeitReserve: 1,
+        ungenutzteHelferIds: [],
+        teilzeitReserveIds: [21],
+      },
+      {
+        day: "Sonntag",
+        ungenutzteHelfer: 0,
+        teilzeitReserve: 0,
+        ungenutzteHelferIds: [],
+        teilzeitReserveIds: [],
+      },
+    ]);
   });
 
   it("fasst Marketing und Genehmigungen als Vorbereitung je Ansprechpartner zusammen", async () => {

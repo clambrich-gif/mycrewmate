@@ -17,6 +17,7 @@ import {
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
+import { useState } from "react";
 import { useLocation } from "wouter";
 import {
   eventWeekdays,
@@ -52,12 +53,10 @@ type DailyReadiness = {
   besetzt: number;
   fehlend: number;
   quote: number;
-};
-
-type HelperPotential = {
   ungenutzteHelfer: number;
   teilzeitReserve: number;
-  gesamt: number;
+  ungenutzteHelferIds: number[];
+  teilzeitReserveIds: number[];
 };
 
 const PRIORITY_TONE_CLASSES: Record<
@@ -390,58 +389,6 @@ function FirstContactRateCard({
   );
 }
 
-function HelperPotentialCard({
-  potential,
-}: {
-  potential: HelperPotential;
-}) {
-  const hasPotential = potential.gesamt > 0;
-  return (
-    <Card
-      data-dashboard-section="Helfer-Potenzial"
-      className={`h-full min-w-0 text-slate-950 shadow-sm ${
-        hasPotential
-          ? "border-violet-300 bg-violet-50/70"
-          : "border-slate-300 bg-slate-50"
-      }`}
-    >
-      <CardContent className="flex min-h-44 items-center gap-4 p-4 sm:p-5">
-        <span
-          className={`flex size-16 shrink-0 items-center justify-center rounded-full ${
-            hasPotential
-              ? "bg-violet-100 text-violet-700"
-              : "bg-slate-200 text-slate-600"
-          }`}
-          aria-hidden="true"
-        >
-          <UsersRound className="size-7" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-2 text-sm font-bold text-slate-900">
-            Helfer-Potenzial
-          </span>
-          <span className="mt-1 block text-sm text-slate-700">
-            <strong className="text-lg text-slate-950">
-              {potential.ungenutzteHelfer}
-            </strong>{" "}
-            ungenutzte Helfer
-          </span>
-          <span
-            className={`mt-2 block text-sm font-semibold ${
-              hasPotential ? "text-violet-800" : "text-slate-700"
-            }`}
-          >
-            {potential.teilzeitReserve} Teilzeit-Reserve
-          </span>
-          <span className="mt-1 block text-xs leading-4 text-slate-600">
-            An mindestens einem Festivaltag verfügbar, aber noch nicht voll genutzt.
-          </span>
-        </span>
-      </CardContent>
-    </Card>
-  );
-}
-
 function readinessTone(readiness: DailyReadiness) {
   if (readiness.bedarf === 0) {
     return {
@@ -478,22 +425,36 @@ function readinessTone(readiness: DailyReadiness) {
 function DailyReadinessCard({
   readiness,
   openTarget,
+  onPotentialFilter,
 }: {
   readiness: DailyReadiness[];
   openTarget: (target: DashboardTarget) => void;
+  onPotentialFilter: (
+    day: DailyReadiness["day"],
+    kind: "ungenutzt" | "teilzeit"
+  ) => void;
 }) {
   const target: DashboardTarget = { path: "/einsatzplan" };
-  const hasPlannedShifts = readiness.some(day => day.bedarf > 0);
-  const card = (
+  return (
     <Card
       data-dashboard-section="Einsatzbereitschaft je Festivaltag"
       className="h-full border-emerald-300 bg-white text-slate-950 shadow-sm"
     >
       <CardHeader className="flex flex-row flex-wrap items-baseline justify-between gap-2 p-3 pb-2 sm:p-4 sm:pb-2">
-        <CardTitle className="flex items-center gap-2 text-base text-slate-900">
-          <UsersRound className="size-5 text-emerald-700" aria-hidden="true" />
-          Einsatzbereitschaft je Festivaltag
-        </CardTitle>
+        <button
+          type="button"
+          className="group flex min-w-0 items-center gap-2 rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
+          aria-label="Einsatzbereitschaft je Festivaltag. Einsatzplan anzeigen"
+          onPointerEnter={() => preloadRoute(target.path)}
+          onFocus={() => preloadRoute(target.path)}
+          onClick={() => openTarget(target)}
+        >
+          <CardTitle className="flex items-center gap-2 text-base text-slate-900">
+            <UsersRound className="size-5 text-emerald-700" aria-hidden="true" />
+            Einsatzbereitschaft je Festivaltag
+          </CardTitle>
+          <ArrowRight className="size-4 shrink-0 text-emerald-700 transition-transform duration-150 group-hover:translate-x-0.5" aria-hidden="true" />
+        </button>
         <span className="text-xs text-slate-600">Besetzt / Bedarf</span>
       </CardHeader>
       <CardContent className="grid gap-4 p-3 pt-1 sm:grid-cols-3 sm:p-4 sm:pt-1">
@@ -523,30 +484,42 @@ function DailyReadinessCard({
               <p className={`mt-1.5 text-xs font-semibold ${tone.text}`}>
                 {tone.label}
               </p>
+              <div className="mt-2 grid gap-1 border-t border-slate-200 pt-2 text-xs">
+                <button
+                  type="button"
+                  disabled={day.ungenutzteHelfer === 0}
+                  className="flex min-h-6 items-baseline justify-between gap-2 rounded text-left text-violet-800 transition-colors hover:text-violet-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 disabled:cursor-default disabled:text-slate-500"
+                  aria-label={`${day.day}: ${day.ungenutzteHelfer} komplett ungenutzte Helfer anzeigen`}
+                  onClick={() => onPotentialFilter(day.day, "ungenutzt")}
+                >
+                  <span>Komplett ungenutzt</span>
+                  <strong className="tabular-nums">{day.ungenutzteHelfer}</strong>
+                </button>
+                <button
+                  type="button"
+                  disabled={day.teilzeitReserve === 0}
+                  className="flex min-h-6 items-baseline justify-between gap-2 rounded text-left text-blue-800 transition-colors hover:text-blue-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-default disabled:text-slate-500"
+                  aria-label={`${day.day}: ${day.teilzeitReserve} Teilzeit-Reserve anzeigen`}
+                  onClick={() => onPotentialFilter(day.day, "teilzeit")}
+                >
+                  <span>Teilzeit-Reserve</span>
+                  <strong className="tabular-nums">{day.teilzeitReserve}</strong>
+                </button>
+              </div>
             </div>
           );
         })}
       </CardContent>
     </Card>
   );
-
-  if (!hasPlannedShifts) return card;
-  return (
-    <button
-      type="button"
-      className="group min-h-44 min-w-0 rounded-xl text-left focus-visible:outline-none"
-      aria-label="Einsatzbereitschaft je Festivaltag. Einsatzplan anzeigen"
-      onPointerEnter={() => preloadRoute(target.path)}
-      onFocus={() => preloadRoute(target.path)}
-      onClick={() => openTarget(target)}
-    >
-      {card}
-    </button>
-  );
 }
 
 export default function Dashboard() {
   const [, navigate] = useLocation();
+  const [workloadFilter, setWorkloadFilter] = useState<{
+    day: DailyReadiness["day"];
+    kind: "ungenutzt" | "teilzeit";
+  } | null>(null);
   const { data: s, isLoading } = trpc.dashboard.stats.useQuery();
   const { data: helpers = [], isLoading: areHelpersLoading } =
     trpc.helpers.list.useQuery();
@@ -680,6 +653,41 @@ export default function Dashboard() {
 
   const upcomingDeadlines = s.naechsteVorbereitungsfristen as DashboardDeadline[];
   const dailyReadiness = s.taeglicheEinsatzbereitschaft as DailyReadiness[];
+  const activePotentialDay = workloadFilter
+    ? dailyReadiness.find(day => day.day === workloadFilter.day)
+    : undefined;
+  const workloadHelperIds = new Set(
+    workloadFilter && activePotentialDay
+      ? workloadFilter.kind === "ungenutzt"
+        ? activePotentialDay.ungenutzteHelferIds
+        : activePotentialDay.teilzeitReserveIds
+      : []
+  );
+  const defaultWorkload = s.auslastung.filter(entry => entry.gesamt > 0);
+  const visibleWorkload = workloadFilter
+    ? s.auslastung.filter(entry => workloadHelperIds.has(entry.id))
+    : defaultWorkload;
+  const workloadFilterLabel = workloadFilter
+    ? `${workloadFilter.day}: ${
+        workloadFilter.kind === "ungenutzt"
+          ? "komplett ungenutzte Helfer"
+          : "Teilzeit-Reserve"
+      }`
+    : null;
+  const showPotentialInWorkload = (
+    day: DailyReadiness["day"],
+    kind: "ungenutzt" | "teilzeit"
+  ) => {
+    setWorkloadFilter(current =>
+      current?.day === day && current.kind === kind ? null : { day, kind }
+    );
+    window.setTimeout(() => {
+      document.getElementById("helferauslastung")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 0);
+  };
 
   return (
     <div className="space-y-8">
@@ -742,11 +750,12 @@ export default function Dashboard() {
       <section
         data-dashboard-section="Helfer-Kennzahlen"
         data-dashboard-level="Helfer-Kennzahlen"
-        className="grid gap-4 md:grid-cols-2 lg:grid-cols-4"
+        className="grid gap-4 md:grid-cols-3"
       >
         <DailyReadinessCard
           readiness={dailyReadiness}
           openTarget={target => navigate(dashboardTargetHref(target))}
+          onPotentialFilter={showPotentialInWorkload}
         />
         <FeedbackRateCard
           assigned={s.helferEingeteilt}
@@ -762,7 +771,6 @@ export default function Dashboard() {
           rate={s.erstkontaktquote}
           openTarget={target => navigate(dashboardTargetHref(target))}
         />
-        <HelperPotentialCard potential={s.helferPotenzial} />
       </section>
 
       <div data-dashboard-level="Tabellendetails" className="grid gap-6 lg:grid-cols-2">
@@ -815,9 +823,28 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm">
+        <Card id="helferauslastung" data-dashboard-section="Helferauslastung" className="scroll-mt-4 shadow-sm">
           <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
-            <CardTitle>Helferauslastung (eingeteilte Schichten)</CardTitle>
+            <div className="min-w-0">
+              <CardTitle>Helferauslastung (eingeteilte Schichten)</CardTitle>
+              {workloadFilterLabel && (
+                <div
+                  data-workload-filter
+                  className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-700"
+                >
+                  <span className="rounded-full bg-violet-100 px-2 py-1 font-semibold text-violet-900">
+                    Filter: {workloadFilterLabel}
+                  </span>
+                  <button
+                    type="button"
+                    className="rounded px-1 font-medium text-blue-800 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                    onClick={() => setWorkloadFilter(null)}
+                  >
+                    Filter aufheben
+                  </button>
+                </div>
+              )}
+            </div>
             <div
               className="flex shrink-0 items-center gap-1.5 text-[11px] font-medium sm:text-xs"
               aria-label="Legende: Null in Grün bedeutet verfügbar, Null in Rot bedeutet nicht verfügbar"
@@ -858,7 +885,7 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                {s.auslastung.map(a => (
+                {visibleWorkload.map(a => (
                   <tr key={a.name} className="border-b last:border-0">
                     <td
                       className="overflow-hidden text-ellipsis whitespace-nowrap py-2 pr-1 sm:pr-2"
@@ -900,13 +927,15 @@ export default function Dashboard() {
                     </td>
                   </tr>
                 ))}
-                {s.auslastung.length === 0 && (
+                {visibleWorkload.length === 0 && (
                   <tr>
                     <td
                       className="py-3 text-muted-foreground"
                       colSpan={activeDays.length + 2}
                     >
-                      Noch keine Helfer eingeteilt.
+                      {workloadFilterLabel
+                        ? `Keine verfügbaren Helfer für ${workloadFilterLabel}.`
+                        : "Noch keine Helfer eingeteilt."}
                     </td>
                   </tr>
                 )}

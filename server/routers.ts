@@ -1460,6 +1460,21 @@ export const appRouter = router({
         isHelperWithoutFirstContact(helper, aktiveFestivaltage)
       ).length;
       const helferKontaktiert = helpers.length - helferOhneErstkontakt;
+      const gueltigeSchichtenJeHelfer = new Map<number, number>();
+      const gueltigeSchichtenJeHelferUndTag = new Map<string, number>();
+      for (const entry of ev) {
+        for (const helper of entry.validHelpers) {
+          gueltigeSchichtenJeHelfer.set(
+            helper.id,
+            (gueltigeSchichtenJeHelfer.get(helper.id) ?? 0) + 1
+          );
+          const key = `${entry.shift.day}:${helper.id}`;
+          gueltigeSchichtenJeHelferUndTag.set(
+            key,
+            (gueltigeSchichtenJeHelferUndTag.get(key) ?? 0) + 1
+          );
+        }
+      }
       const taeglicheEinsatzbereitschaft = (
         ["Freitag", "Samstag", "Sonntag"] as const
       ).map(day => {
@@ -1473,44 +1488,41 @@ export const appRouter = router({
           0
         );
         const fehlend = Math.max(0, bedarf - besetzt);
+        const tagesPotenzial = helpers.reduce(
+          (potenzial, helper) => {
+            if (
+              !aktiveFestivaltage.includes(day) ||
+              !helperActiveOnDay(helper, day)
+            ) {
+              return potenzial;
+            }
+            const eingeteilteSchichten =
+              gueltigeSchichtenJeHelfer.get(helper.id) ?? 0;
+            const schichtenAnDiesemTag =
+              gueltigeSchichtenJeHelferUndTag.get(`${day}:${helper.id}`) ?? 0;
+            if (eingeteilteSchichten === 0) {
+              potenzial.ungenutzteHelferIds.push(helper.id);
+            } else if (schichtenAnDiesemTag === 0) {
+              potenzial.teilzeitReserveIds.push(helper.id);
+            }
+            return potenzial;
+          },
+          {
+            ungenutzteHelferIds: [] as number[],
+            teilzeitReserveIds: [] as number[],
+          }
+        );
         return {
           day,
           bedarf,
           besetzt,
           fehlend,
           quote: bedarf === 0 ? 0 : Math.min(100, Math.round((besetzt / bedarf) * 100)),
+          ungenutzteHelfer: tagesPotenzial.ungenutzteHelferIds.length,
+          teilzeitReserve: tagesPotenzial.teilzeitReserveIds.length,
+          ...tagesPotenzial,
         };
       });
-      const gueltigeSchichtenJeHelfer = new Map<number, number>();
-      for (const entry of ev) {
-        for (const helper of entry.validHelpers) {
-          gueltigeSchichtenJeHelfer.set(
-            helper.id,
-            (gueltigeSchichtenJeHelfer.get(helper.id) ?? 0) + 1
-          );
-        }
-      }
-      const helferPotenzial = helpers.reduce(
-        (potenzial, helper) => {
-          const verfuegbareTage = aktiveFestivaltage.filter(day =>
-            helperActiveOnDay(helper, day as Day)
-          ).length;
-          if (verfuegbareTage === 0) return potenzial;
-
-          const eingeteilteSchichten =
-            gueltigeSchichtenJeHelfer.get(helper.id) ?? 0;
-          if (eingeteilteSchichten === 0) {
-            potenzial.ungenutzteHelfer += 1;
-          } else if (eingeteilteSchichten < verfuegbareTage) {
-            // Die Teilzeit-Reserve enthält nur bereits teilweise eingeplante
-            // Personen. Ungenutzte Helfer werden separat ausgewiesen, damit
-            // beide Kennzahlen eindeutig und ohne Doppelzählung bleiben.
-            potenzial.teilzeitReserve += 1;
-          }
-          return potenzial;
-        },
-        { ungenutzteHelfer: 0, teilzeitReserve: 0 }
-      );
       return {
         schichtenGesamt: ev.length,
         offen: ev.filter(e => e.status === "OFFEN").length,
@@ -1536,11 +1548,6 @@ export const appRouter = router({
             ? 0
             : Math.round((helferKontaktiert / helpers.length) * 100),
         taeglicheEinsatzbereitschaft,
-        helferPotenzial: {
-          ...helferPotenzial,
-          gesamt:
-            helferPotenzial.ungenutzteHelfer + helferPotenzial.teilzeitReserve,
-        },
         doppelGesamt: ev.reduce((s, e) => s + e.doppelCount, 0),
         ausfallGesamt: ev.reduce((s, e) => s + e.ausfallCount, 0),
         vorbereitungGesamt: prep.length,
@@ -1596,9 +1603,9 @@ export const appRouter = router({
               ])
             ) as Record<(typeof WEEKDAYS)[number], number>;
             const gesamt = WEEKDAYS.reduce((sum, day) => sum + byDay[day], 0);
-            return { name: h.name, byDay, gesamt };
+            return { id: h.id, name: h.name, byDay, gesamt };
           })
-          .filter(x => x.gesamt > 0),
+          .sort((left, right) => left.name.localeCompare(right.name, "de")),
       };
     }),
   }),

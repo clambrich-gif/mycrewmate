@@ -679,7 +679,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain("Filter aufheben");
   });
 
-  it("stellt Tagesbereitschaft, Helferquoten und Helferpotenzial gemeinsam dar", () => {
+  it("integriert das Helferpotenzial tagesgenau in die Einsatzbereitschaft", () => {
     const dashboard = source("client/src/pages/Dashboard.tsx");
     const helpers = source("client/src/pages/Helpers.tsx");
     const router = source("server/routers.ts");
@@ -698,17 +698,22 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain("parseHelperFirstContactFilter");
     expect(helpers).toContain("isHelperWithoutFirstContact(helper, activeDays)");
     expect(helpers).toContain("Dashboardfilter: Nur Helfer ohne Erstkontakt.");
-    expect(router).toContain("const helferPotenzial = helpers.reduce(");
     expect(router).toContain("gueltigeSchichtenJeHelfer");
+    expect(router).toContain("gueltigeSchichtenJeHelferUndTag");
     expect(router).toContain("ungenutzteHelfer");
     expect(router).toContain("teilzeitReserve");
-    expect(dashboard).toContain("HelperPotentialCard");
-    expect(dashboard).toContain('data-dashboard-section="Helfer-Potenzial"');
-    expect(dashboard).toContain("Helfer-Potenzial");
-    expect(dashboard).toContain("ungenutzte Helfer");
+    expect(dashboard).not.toContain("HelperPotentialCard");
+    expect(dashboard).not.toContain('data-dashboard-section="Helfer-Potenzial"');
+    expect(dashboard).toContain("Komplett ungenutzt");
     expect(dashboard).toContain("Teilzeit-Reserve");
+    expect(dashboard).toContain("ungenutzteHelferIds");
+    expect(dashboard).toContain("teilzeitReserveIds");
+    expect(dashboard).toContain("showPotentialInWorkload");
+    expect(dashboard).toContain("workloadFilterLabel");
+    expect(dashboard).toContain('id="helferauslastung"');
+    expect(dashboard).toContain("Filter aufheben");
     expect(dashboard).toContain('data-dashboard-section="Helfer-Kennzahlen"');
-    expect(dashboard).toContain('className="grid gap-4 md:grid-cols-2 lg:grid-cols-4"');
+    expect(dashboard).toContain('className="grid gap-4 md:grid-cols-3"');
   });
 
   it("visualisiert die tägliche Einsatzbereitschaft für das dreitägige Festival", () => {
@@ -726,6 +731,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain("readinessTone");
     expect(dashboard).toContain('role="progressbar"');
     expect(dashboard).toContain('path: "/einsatzplan"');
+    expect(dashboard).toContain("Komplett ungenutzt");
+    expect(dashboard).toContain("Teilzeit-Reserve");
+    expect(dashboard).toContain("onPotentialFilter(day.day, \"ungenutzt\")");
+    expect(dashboard).toContain("onPotentialFilter(day.day, \"teilzeit\")");
   });
 
   it("ordnet die nächsten vier Fristen als vollbreite Kartenmatrix unter den Prio-Aktionen an", () => {
