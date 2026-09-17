@@ -1128,7 +1128,7 @@ export default function Plan() {
           <CardContent className="p-2 sm:p-2.5">
             <button
               type="button"
-              className="flex h-11 w-full items-center justify-between gap-3 rounded-md px-1.5 text-left hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1 xl:hidden"
+              className="flex h-11 w-full items-center justify-between gap-3 rounded-md px-1.5 text-left hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1"
               aria-expanded={areaContactsExpanded}
               aria-controls="area-contacts-grid"
               onClick={() => setAreaContactsExpanded(expanded => !expanded)}
@@ -1146,18 +1146,9 @@ export default function Plan() {
                 aria-hidden="true"
               />
             </button>
-            <div className="mb-1.5 hidden px-0.5 xl:block">
-              <h2 className="text-sm font-semibold">
-                Ansprechpartner je Bereich
-              </h2>
-              <p className="text-xs leading-tight text-muted-foreground">
-                Die Zuordnung gilt für alle Schichten des Bereichs und steht
-                außerdem als PDF-Filter zur Verfügung.
-              </p>
-            </div>
             <div
               id="area-contacts-grid"
-              className={`${areaContactsExpanded ? "grid" : "hidden"} mt-1.5 gap-1.5 sm:grid-cols-2 md:grid-cols-3 xl:mt-0 xl:grid xl:grid-cols-4 2xl:grid-cols-5`}
+              className={`${areaContactsExpanded ? "grid" : "hidden"} mt-1.5 gap-1.5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5`}
             >
               {areas.map(areaName => {
                 const selected = areaContactMap.get(areaName) ?? null;

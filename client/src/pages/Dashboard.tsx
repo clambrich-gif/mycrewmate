@@ -711,7 +711,15 @@ export default function Dashboard() {
           </p>
         </div>
         {priorityActions.length > 0 ? (
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div
+            className={`grid gap-3 md:grid-cols-2 ${
+              priorityActions.length === 1
+                ? "xl:grid-cols-1"
+                : priorityActions.length === 2
+                  ? "xl:grid-cols-2"
+                  : "xl:grid-cols-4"
+            }`}
+          >
             {priorityActions.map(action => (
               <PriorityActionCard
                 key={action.id}

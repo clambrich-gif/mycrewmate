@@ -550,7 +550,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("h-11 w-11");
   });
 
-  it("verdichtet die Bereichsansprechpartner auf bis zu fünf Desktopspalten", () => {
+  it("öffnet die Bereichsansprechpartner bedarfsgerecht und verdichtet sie auf bis zu fünf Spalten", () => {
     const plan = source("client/src/pages/Plan.tsx");
 
     expect(plan).toContain('className="p-2 sm:p-2.5"');
@@ -561,8 +561,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("areaContactsExpanded");
     expect(plan).toContain('aria-controls="area-contacts-grid"');
     expect(plan).toContain('aria-expanded={areaContactsExpanded}');
-    expect(plan).toContain("xl:hidden");
-    expect(plan).toContain("xl:grid xl:grid-cols-4 2xl:grid-cols-5");
+    expect(plan).toContain('areaContactsExpanded ? "grid" : "hidden"');
+    expect(plan).toContain("xl:grid-cols-4 2xl:grid-cols-5");
   });
 
   it("warnt Admins vor dem Laden eines datierten Projektstands", () => {
@@ -637,6 +637,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain('id: "offene-nachbereitung"');
     expect(dashboard).toContain('id: "einsatzplan-stabil"');
     expect(dashboard).toContain("PriorityActionCard");
+    expect(dashboard).toContain("priorityActions.length === 1");
+    expect(dashboard).toContain('"xl:grid-cols-2"');
+    expect(dashboard).toContain('"xl:grid-cols-4"');
     expect(dashboard).toContain("Keine dringenden Punkte");
     expect(dashboard).not.toContain('title: "Einsatzplanung"');
     expect(dashboard).not.toContain("Helferbedarf & Belegung");
