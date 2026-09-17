@@ -1332,7 +1332,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers.match(/<YesNoToggle/g)).toHaveLength(4);
   });
 
-  it("erfasst Zeitfenster über ein direktes Tages-Popover und filtert sie im Einsatzplan hart", () => {
+  it("erfasst Zeitfenster über ein schlankes Tages-Popover und filtert sie im Einsatzplan hart", () => {
     const helpers = source("client/src/pages/Helpers.tsx");
     const plan = source("client/src/pages/Plan.tsx");
 
@@ -1341,12 +1341,16 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain("<PopoverTrigger asChild>");
     expect(helpers).toContain("availabilityPickerOpen");
     expect(helpers).toContain("Ja (Ganztägig)");
-    expect(helpers).toContain("Ja (Vormittags)");
-    expect(helpers).toContain("Ja (Nachmittags)");
-    expect(helpers).toContain("Ja (Abends)");
-    expect(helpers).toContain("Ja (Zeiten anpassen …)");
+    expect(helpers).toContain("Ja (Zeit anpassen ...)");
     expect(helpers).toContain('? (Unklar)');
     expect(helpers).toContain('commitAvailability("nein")');
+    expect(helpers).toContain("commitWindow(null, null)");
+    expect(helpers).not.toContain("AVAILABILITY_PRESETS");
+    expect(helpers).not.toContain("Ja (Vormittags)");
+    expect(helpers).not.toContain("Ja (Nachmittags)");
+    expect(helpers).not.toContain("Ja (Abends)");
+    expect(helpers).not.toContain("Zeitfenster gelten nur für diesen Tag.");
+    expect(helpers).not.toContain("Eigene Uhrzeit von – bis");
     expect(helpers).not.toContain('<Select value={availability}');
     expect(helpers).toContain("helperHasTimedAvailability");
     expect(helpers).toContain("<Clock3");

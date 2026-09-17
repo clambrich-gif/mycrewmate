@@ -124,13 +124,6 @@ function Sel({
  * Schaltfläche bleibt als Touch-Ziel 44 px hoch, wirkt durch die kompakte
  * 92-px-Schalterbahn aber deutlich ruhiger als die bisherige Vollbreitenform.
  */
-const AVAILABILITY_PRESETS = [
-  { label: "Ganztägig", menuLabel: "Ja (Ganztägig)", start: null, end: null, description: "ohne zeitliche Einschränkung" },
-  { label: "Vormittags", menuLabel: "Ja (Vormittags)", start: "08:00", end: "13:00", description: "08:00 – 13:00 Uhr" },
-  { label: "Nachmittags", menuLabel: "Ja (Nachmittags)", start: "13:00", end: "18:00", description: "13:00 – 18:00 Uhr" },
-  { label: "Abends", menuLabel: "Ja (Abends)", start: "18:00", end: "23:00", description: "18:00 – 23:00 Uhr" },
-] as const;
-
 /** Tagesstatus und optionales Zeitfenster bleiben in einer Bedienung verbunden. */
 function DayAvailabilityControl({
   helper,
@@ -223,35 +216,23 @@ function DayAvailabilityControl({
         side="bottom"
         collisionPadding={12}
       >
-        <div>
-          <p className="text-sm font-semibold">{day}: Verfügbarkeit wählen</p>
-          <p className="text-xs text-muted-foreground">Zeitfenster gelten nur für diesen Tag.</p>
-        </div>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {AVAILABILITY_PRESETS.map(preset => (
-            <Button
-              key={preset.label}
-              type="button"
-              variant="outline"
-              className="h-auto min-h-11 justify-start px-3 py-2 text-left"
-              onClick={() => commitWindow(preset.start, preset.end)}
-            >
-              <span>
-                <span className="block font-semibold">{preset.menuLabel}</span>
-                <span className="block text-xs font-normal text-muted-foreground">{preset.description}</span>
-              </span>
-            </Button>
-          ))}
+        <p className="text-sm font-semibold">{day}: Verfügbarkeit wählen</p>
+        <div className="grid grid-cols-2 gap-2">
           <Button
             type="button"
             variant="outline"
-            className="h-auto min-h-11 justify-start px-3 py-2 text-left sm:col-span-2"
+            className="min-h-11"
+            onClick={() => commitWindow(null, null)}
+          >
+            Ja (Ganztägig)
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11"
             onClick={() => setCustomOpen(open => !open)}
           >
-            <span>
-              <span className="block font-semibold">Ja (Zeiten anpassen …)</span>
-              <span className="block text-xs font-normal text-muted-foreground">Eigene Uhrzeit von – bis</span>
-            </span>
+            Ja (Zeit anpassen ...)
           </Button>
         </div>
         {customOpen && (
@@ -276,7 +257,7 @@ function DayAvailabilityControl({
             </Button>
           </div>
         )}
-        <div className="grid grid-cols-2 gap-2 border-t border-slate-200 pt-3">
+        <div className="grid grid-cols-2 gap-2">
           <Button
             type="button"
             variant="outline"
