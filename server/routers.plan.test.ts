@@ -345,6 +345,72 @@ describe("Planungs-API", () => {
     expect(stats.erstkontaktquote).toBe(67);
   });
 
+  it("ermittelt ungenutzte Helfer und Teilzeit-Reserve aus aktiver Verfügbarkeit und gültigen Zuweisungen", async () => {
+    dbMocks.getEvent.mockResolvedValue({
+      id: 1,
+      year: 2026,
+      name: "MyEifelRide",
+      activeDays: ["Freitag", "Samstag", "Sonntag"],
+      pdfLogoKey: null,
+      pdfLogoUrl: null,
+      pdfLogoFallback: "none",
+      sortOrder: 0,
+      createdAt: new Date(),
+    });
+    dbMocks.listShifts.mockResolvedValue([
+      shift,
+      { ...shift, id: 11, day: "Samstag", task: "Ausgabe" },
+    ]);
+    dbMocks.listHelpers.mockResolvedValue([
+      {
+        ...helper,
+        id: 20,
+        name: "Ungenutzt",
+        availFri: "ja",
+        availSat: "nein",
+        availSun: "nein",
+      },
+      {
+        ...helper,
+        id: 21,
+        name: "Teilzeit",
+        availFri: "ja",
+        availSat: "ja",
+        availSun: "nein",
+      },
+      {
+        ...helper,
+        id: 22,
+        name: "Voll eingeplant",
+        availFri: "ja",
+        availSat: "ja",
+        availSun: "nein",
+      },
+      {
+        ...helper,
+        id: 23,
+        name: "Abgesagt",
+        willHelp: "nein",
+        availFri: "ja",
+        availSat: "ja",
+        availSun: "ja",
+      },
+    ]);
+    dbMocks.listAssignments.mockResolvedValue([
+      { id: 1, shiftId: 10, helperId: 21, slot: 0, createdAt: new Date() },
+      { id: 2, shiftId: 10, helperId: 22, slot: 1, createdAt: new Date() },
+      { id: 3, shiftId: 11, helperId: 22, slot: 0, createdAt: new Date() },
+    ]);
+
+    const stats = await appRouter.createCaller(ctx).dashboard.stats();
+
+    expect(stats.helferPotenzial).toEqual({
+      ungenutzteHelfer: 1,
+      teilzeitReserve: 1,
+      gesamt: 2,
+    });
+  });
+
   it("fasst Marketing und Genehmigungen als Vorbereitung je Ansprechpartner zusammen", async () => {
     dbMocks.listContacts.mockResolvedValue([{ id: 7, name: "Alex Organisation" }]);
     dbMocks.listHelpers.mockResolvedValue([{ ...helper, contactId: 7 }]);

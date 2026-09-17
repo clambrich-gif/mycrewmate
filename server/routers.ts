@@ -1481,6 +1481,36 @@ export const appRouter = router({
           quote: bedarf === 0 ? 0 : Math.min(100, Math.round((besetzt / bedarf) * 100)),
         };
       });
+      const gueltigeSchichtenJeHelfer = new Map<number, number>();
+      for (const entry of ev) {
+        for (const helper of entry.validHelpers) {
+          gueltigeSchichtenJeHelfer.set(
+            helper.id,
+            (gueltigeSchichtenJeHelfer.get(helper.id) ?? 0) + 1
+          );
+        }
+      }
+      const helferPotenzial = helpers.reduce(
+        (potenzial, helper) => {
+          const verfuegbareTage = aktiveFestivaltage.filter(day =>
+            helperActiveOnDay(helper, day as Day)
+          ).length;
+          if (verfuegbareTage === 0) return potenzial;
+
+          const eingeteilteSchichten =
+            gueltigeSchichtenJeHelfer.get(helper.id) ?? 0;
+          if (eingeteilteSchichten === 0) {
+            potenzial.ungenutzteHelfer += 1;
+          } else if (eingeteilteSchichten < verfuegbareTage) {
+            // Die Teilzeit-Reserve enthält nur bereits teilweise eingeplante
+            // Personen. Ungenutzte Helfer werden separat ausgewiesen, damit
+            // beide Kennzahlen eindeutig und ohne Doppelzählung bleiben.
+            potenzial.teilzeitReserve += 1;
+          }
+          return potenzial;
+        },
+        { ungenutzteHelfer: 0, teilzeitReserve: 0 }
+      );
       return {
         schichtenGesamt: ev.length,
         offen: ev.filter(e => e.status === "OFFEN").length,
@@ -1506,6 +1536,11 @@ export const appRouter = router({
             ? 0
             : Math.round((helferKontaktiert / helpers.length) * 100),
         taeglicheEinsatzbereitschaft,
+        helferPotenzial: {
+          ...helferPotenzial,
+          gesamt:
+            helferPotenzial.ungenutzteHelfer + helferPotenzial.teilzeitReserve,
+        },
         doppelGesamt: ev.reduce((s, e) => s + e.doppelCount, 0),
         ausfallGesamt: ev.reduce((s, e) => s + e.ausfallCount, 0),
         vorbereitungGesamt: prep.length,

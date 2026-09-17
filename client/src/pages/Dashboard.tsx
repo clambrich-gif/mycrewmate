@@ -54,6 +54,12 @@ type DailyReadiness = {
   quote: number;
 };
 
+type HelperPotential = {
+  ungenutzteHelfer: number;
+  teilzeitReserve: number;
+  gesamt: number;
+};
+
 const PRIORITY_TONE_CLASSES: Record<
   PriorityAction["tone"],
   { card: string; icon: string; value: string; action: string }
@@ -384,6 +390,58 @@ function FirstContactRateCard({
   );
 }
 
+function HelperPotentialCard({
+  potential,
+}: {
+  potential: HelperPotential;
+}) {
+  const hasPotential = potential.gesamt > 0;
+  return (
+    <Card
+      data-dashboard-section="Helfer-Potenzial"
+      className={`h-full min-w-0 text-slate-950 shadow-sm ${
+        hasPotential
+          ? "border-violet-300 bg-violet-50/70"
+          : "border-slate-300 bg-slate-50"
+      }`}
+    >
+      <CardContent className="flex min-h-44 items-center gap-4 p-4 sm:p-5">
+        <span
+          className={`flex size-16 shrink-0 items-center justify-center rounded-full ${
+            hasPotential
+              ? "bg-violet-100 text-violet-700"
+              : "bg-slate-200 text-slate-600"
+          }`}
+          aria-hidden="true"
+        >
+          <UsersRound className="size-7" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-2 text-sm font-bold text-slate-900">
+            Helfer-Potenzial
+          </span>
+          <span className="mt-1 block text-sm text-slate-700">
+            <strong className="text-lg text-slate-950">
+              {potential.ungenutzteHelfer}
+            </strong>{" "}
+            ungenutzte Helfer
+          </span>
+          <span
+            className={`mt-2 block text-sm font-semibold ${
+              hasPotential ? "text-violet-800" : "text-slate-700"
+            }`}
+          >
+            {potential.teilzeitReserve} Teilzeit-Reserve
+          </span>
+          <span className="mt-1 block text-xs leading-4 text-slate-600">
+            An mindestens einem Festivaltag verfügbar, aber noch nicht voll genutzt.
+          </span>
+        </span>
+      </CardContent>
+    </Card>
+  );
+}
+
 function readinessTone(readiness: DailyReadiness) {
   if (readiness.bedarf === 0) {
     return {
@@ -669,9 +727,22 @@ export default function Dashboard() {
         )}
       </section>
 
+      {upcomingDeadlines.length > 0 && (
+        <section
+          data-dashboard-level="Fristen"
+          className="w-full"
+        >
+          <UpcomingDeadlinesCard
+            deadlines={upcomingDeadlines}
+            openTarget={target => navigate(dashboardTargetHref(target))}
+          />
+        </section>
+      )}
+
       <section
-        data-dashboard-section="Einsatzbereitschaft und Helferquoten"
-        className="grid gap-4 lg:grid-cols-3"
+        data-dashboard-section="Helfer-Kennzahlen"
+        data-dashboard-level="Helfer-Kennzahlen"
+        className="grid gap-4 md:grid-cols-2 lg:grid-cols-4"
       >
         <DailyReadinessCard
           readiness={dailyReadiness}
@@ -691,18 +762,10 @@ export default function Dashboard() {
           rate={s.erstkontaktquote}
           openTarget={target => navigate(dashboardTargetHref(target))}
         />
+        <HelperPotentialCard potential={s.helferPotenzial} />
       </section>
 
-      {upcomingDeadlines.length > 0 && (
-        <section className="w-full">
-          <UpcomingDeadlinesCard
-            deadlines={upcomingDeadlines}
-            openTarget={target => navigate(dashboardTargetHref(target))}
-          />
-        </section>
-      )}
-
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div data-dashboard-level="Tabellendetails" className="grid gap-6 lg:grid-cols-2">
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle>Verantwortlichkeiten pro Ansprechpartner</CardTitle>

@@ -679,7 +679,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain("Filter aufheben");
   });
 
-  it("stellt Tagesbereitschaft sowie beide Helferquoten gemeinsam dar und verlinkt neue Helfer direkt", () => {
+  it("stellt Tagesbereitschaft, Helferquoten und Helferpotenzial gemeinsam dar", () => {
     const dashboard = source("client/src/pages/Dashboard.tsx");
     const helpers = source("client/src/pages/Helpers.tsx");
     const router = source("server/routers.ts");
@@ -698,8 +698,17 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain("parseHelperFirstContactFilter");
     expect(helpers).toContain("isHelperWithoutFirstContact(helper, activeDays)");
     expect(helpers).toContain("Dashboardfilter: Nur Helfer ohne Erstkontakt.");
-    expect(dashboard).toContain('data-dashboard-section="Einsatzbereitschaft und Helferquoten"');
-    expect(dashboard).toContain('className="grid gap-4 lg:grid-cols-3"');
+    expect(router).toContain("const helferPotenzial = helpers.reduce(");
+    expect(router).toContain("gueltigeSchichtenJeHelfer");
+    expect(router).toContain("ungenutzteHelfer");
+    expect(router).toContain("teilzeitReserve");
+    expect(dashboard).toContain("HelperPotentialCard");
+    expect(dashboard).toContain('data-dashboard-section="Helfer-Potenzial"');
+    expect(dashboard).toContain("Helfer-Potenzial");
+    expect(dashboard).toContain("ungenutzte Helfer");
+    expect(dashboard).toContain("Teilzeit-Reserve");
+    expect(dashboard).toContain('data-dashboard-section="Helfer-Kennzahlen"');
+    expect(dashboard).toContain('className="grid gap-4 md:grid-cols-2 lg:grid-cols-4"');
   });
 
   it("visualisiert die tägliche Einsatzbereitschaft für das dreitägige Festival", () => {
@@ -719,9 +728,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain('path: "/einsatzplan"');
   });
 
-  it("ordnet die nächsten vier Fristen als vollbreite Kartenmatrix unter der Quotenzeile an", () => {
+  it("ordnet die nächsten vier Fristen als vollbreite Kartenmatrix unter den Prio-Aktionen an", () => {
     const dashboard = source("client/src/pages/Dashboard.tsx");
 
+    expect(dashboard).toContain('data-dashboard-level="Fristen"');
     expect(dashboard).toContain('className="w-full"');
     expect(dashboard).toContain('grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-4');
     expect(dashboard).toContain('min-h-28 min-w-0 flex-col');
@@ -804,13 +814,19 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).not.toContain("PreparationMetricCardView");
   });
 
-  it("lässt Verantwortlichkeiten und Helferauslastung direkt an die Fristenkarte anschließen", () => {
+  it("ordnet Prio-Aktionen, Fristen, Helferkennzahlen und Tabellendetails logisch untereinander", () => {
     const dashboard = source("client/src/pages/Dashboard.tsx");
 
+    const priorities = dashboard.indexOf('data-dashboard-section="Heute priorisieren"');
     const deadlines = dashboard.indexOf("<UpcomingDeadlinesCard");
+    const helperKpis = dashboard.indexOf('data-dashboard-section="Helfer-Kennzahlen"');
     const detailCards = dashboard.indexOf('className="grid gap-6 lg:grid-cols-2"');
+    expect(priorities).toBeGreaterThan(-1);
     expect(deadlines).toBeGreaterThan(-1);
-    expect(detailCards).toBeGreaterThan(deadlines);
+    expect(helperKpis).toBeGreaterThan(deadlines);
+    expect(detailCards).toBeGreaterThan(helperKpis);
+    expect(deadlines).toBeGreaterThan(priorities);
+    expect(dashboard).toContain('data-dashboard-level="Tabellendetails"');
     expect(dashboard).toContain("Verantwortlichkeiten pro Ansprechpartner");
     expect(dashboard).toContain("Helferauslastung (eingeteilte Schichten)");
     expect(dashboard).not.toContain("const sections: MetricSection[]");
