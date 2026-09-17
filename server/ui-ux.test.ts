@@ -722,6 +722,21 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("xl:flex-none");
   });
 
+  it("bietet im Schichtdialog bestehende Bereiche zur Auswahl und erlaubt neue Freitexteingaben", () => {
+    const plan = source("client/src/pages/Plan.tsx");
+
+    expect(plan).toContain("const areaOptions = useMemo(");
+    expect(plan).toContain('left.localeCompare(right, "de")');
+    expect(plan).toContain('htmlFor="shift-area"');
+    expect(plan).toContain('id="shift-area"');
+    expect(plan).toContain('list="shift-area-options"');
+    expect(plan).toContain('placeholder="Bestehenden Bereich wählen oder neu anlegen"');
+    expect(plan).toContain('<datalist id="shift-area-options">');
+    expect(plan).toContain("areaOptions.map(areaName => (");
+    expect(plan).toContain('<option key={areaName} value={areaName} />');
+    expect(plan).toContain('setForm({ ...form, area: e.target.value })');
+  });
+
   it("verknüpft Dashboardwarnungen direkt mit gefilterten Einsatzplanschichten", () => {
     const dashboard = source("client/src/pages/Dashboard.tsx");
     const plan = source("client/src/pages/Plan.tsx");

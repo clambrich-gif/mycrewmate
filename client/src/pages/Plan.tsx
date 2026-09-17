@@ -526,6 +526,13 @@ export default function Plan() {
     () => Array.from(new Set(evals.map(e => e.shift.area))),
     [evals]
   );
+  const areaOptions = useMemo(
+    () =>
+      [...areas]
+        .filter(areaName => areaName.trim().length > 0)
+        .sort((left, right) => left.localeCompare(right, "de")),
+    [areas]
+  );
   const planStatusCounts = useMemo<PlanStatusCounts>(
     () => ({
       total: evals.length,
@@ -1335,12 +1342,19 @@ export default function Plan() {
               </div>
             </div>
             <div>
-              <Label>Bereich</Label>
+              <Label htmlFor="shift-area">Bereich</Label>
               <Input
+                id="shift-area"
+                list="shift-area-options"
                 value={form.area}
                 onChange={e => setForm({ ...form, area: e.target.value })}
-                placeholder="z. B. Essen & Getränke"
+                placeholder="Bestehenden Bereich wählen oder neu anlegen"
               />
+              <datalist id="shift-area-options">
+                {areaOptions.map(areaName => (
+                  <option key={areaName} value={areaName} />
+                ))}
+              </datalist>
             </div>
             <div>
               <Label>Aufgabe / Schicht</Label>
