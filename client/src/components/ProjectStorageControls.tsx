@@ -204,7 +204,9 @@ export function ProjectStorageControls({
             </DialogTitle>
             <DialogDescription>
               Datei: {file?.name}. Es werden alle geprüften Änderungen
-              vollständig oder gar nicht übernommen.
+              vollständig oder gar nicht übernommen. Fehlende Ansprechpartner,
+              Helfer und ihre Einsatzzuweisungen werden dabei vorab automatisch
+              bereinigt.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-2 sm:grid-cols-3">

@@ -806,7 +806,7 @@ async function buildModuleTarget(base64: string, area: ModuleImportArea) {
     area === "ANSPRECHPARTNER"
       ? [...MODULE_IMPORT_AREAS, "ZUORDNUNGEN"]
       : area === "HELFER"
-        ? ["HELFER", "ZUORDNUNGEN"]
+        ? ["HELFER", "EINSATZPLAN", "ZUORDNUNGEN"]
         : area === "EINSATZPLAN"
           ? ["EINSATZPLAN", "ZUORDNUNGEN"]
           : [area]
@@ -847,11 +847,6 @@ async function buildModuleTarget(base64: string, area: ModuleImportArea) {
       ...target.warnings,
       `${preservedRequiredSelfHelpers} eigene Ansprechpartner-Helfereinträge wurden automatisch beibehalten und korrekt verknüpft.`,
     ];
-  const unexpected = changes.find(change => !allowedAreas.has(change.area));
-  if (unexpected)
-    throw new Error(
-      `${areaName[area]} kann nicht unabhängig importiert werden: Die Datei erfordert zusätzlich eine Änderung in „${unexpected.area}“.`
-    );
   return {
     current,
     target,

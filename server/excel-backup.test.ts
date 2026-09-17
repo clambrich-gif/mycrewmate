@@ -686,7 +686,7 @@ describe("Excel-Datensicherung", () => {
     ).toBe(true);
   });
 
-  it("blockiert zeitlich überlappende Doppelbelegungen", async () => {
+  it("kennzeichnet zeitlich überlappende Doppelbelegungen weiterhin als Warnung", async () => {
     const exported = await exportBackupExcel();
     const changed = mutateWorkbook(exported.buffer, workbook => {
       const rows = XLSX.utils.sheet_to_json<any>(workbook.Sheets.EINSATZPLAN);
@@ -700,12 +700,11 @@ describe("Excel-Datensicherung", () => {
       replaceSheet(workbook, "EINSATZPLAN", rows);
     });
 
-    expect(() => parseBackupWorkbook(changed.toString("base64"))).toThrow(
-      "Doppelbelegung"
-    );
+    const parsed = parseBackupWorkbook(changed.toString("base64"));
+    expect(parsed.warnings.join(" ")).toContain("Doppelbelegung");
   });
 
-  it("blockiert Zuweisungen nicht verfügbarer Helfer", async () => {
+  it("bereinigt Zuweisungen nicht verfügbarer Helfer", async () => {
     const exported = await exportBackupExcel();
     const changed = mutateWorkbook(exported.buffer, workbook => {
       const rows = XLSX.utils.sheet_to_json<any>(workbook.Sheets.HELFER);
@@ -714,8 +713,95 @@ describe("Excel-Datensicherung", () => {
       replaceSheet(workbook, "HELFER", rows);
     });
 
-    expect(() => parseBackupWorkbook(changed.toString("base64"))).toThrow(
-      "Alex Beispiel"
+    const parsed = parseBackupWorkbook(changed.toString("base64"));
+
+    expect(parsed.shifts[0].slots).toEqual([]);
+    expect(parsed.warnings.join(" ")).toContain("Alex Beispiel");
+    expect(parsed.warnings.join(" ")).toContain("nicht verfügbar");
+  });
+
+  it("bereinigt gelöschte Ansprechpartner und Helfer vor der dominanten Wiederherstellung", async () => {
+    const exported = await exportBackupExcel();
+    const changed = mutateWorkbook(exported.buffer, workbook => {
+      replaceSheet(workbook, "ANSPRECHPARTNER", []);
+      const helperRows = XLSX.utils.sheet_to_json<any>(workbook.Sheets.HELFER);
+      replaceSheet(
+        workbook,
+        "HELFER",
+        helperRows.filter(row => row.Name === "Chris Leitung")
+      );
+    });
+
+    const parsed = parseBackupWorkbook(changed.toString("base64"));
+
+    expect(parsed.contacts).toEqual([]);
+    expect(parsed.helpers).toEqual([
+      expect.objectContaining({ name: "Chris Leitung", contactName: "" }),
+    ]);
+    expect(parsed.shifts[0]).toMatchObject({
+      areaContactSourceId: null,
+      areaContactName: "",
+      slots: [],
+    });
+    expect(parsed.warnings.join(" ")).toContain(
+      "gelöschter oder unbekannter Helfer wird aus der Einteilung entfernt"
+    );
+  });
+
+  it("prüft einen vollständig geänderten Excel-Projektstand mit neuen Zeilen ohne Altbezüge", async () => {
+    const exported = await exportBackupExcel();
+    const changed = mutateWorkbook(exported.buffer, workbook => {
+      replaceSheet(workbook, "ANSPRECHPARTNER", []);
+      replaceSheet(workbook, "HELFER", [
+        {
+          ID: "",
+          "Ansprechpartner-ID": "",
+          Ansprechpartner: "",
+          Name: "Dana Neu",
+          "E-Mail": "dana@example.test",
+          Telefon: "01234",
+          Bemerkung: "Neue Helferin",
+          "Helfen?": "ja",
+          Mo: "vielleicht",
+          Di: "vielleicht",
+          Mi: "vielleicht",
+          Do: "vielleicht",
+          Fr: "ja",
+          Sa: "nein",
+          So: "nein",
+          "Bestätigt?": "nein",
+        },
+      ]);
+      replaceSheet(workbook, "EINSATZPLAN", [
+        {
+          ID: "",
+          Tag: "Freitag",
+          Bereich: "Start",
+          Aufgabe: "Neue Anmeldung",
+          Beginn: "10:00",
+          Ende: "12:00",
+          Bedarf: 1,
+          Bemerkung: "Neue Schicht",
+          Reihenfolge: 0,
+          "Bereichsansprechpartner-ID": "",
+          Bereichsansprechpartner: "",
+          "Helfer 1 ID": "",
+          "Helfer 1": "",
+        },
+      ]);
+    });
+
+    const preview = await previewBackupRestore(changed.toString("base64"));
+
+    expect(preview.totals).toMatchObject({ created: 2, deleted: 5 });
+    expect(preview.changes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ area: "HELFER", action: "create", label: "Dana Neu" }),
+        expect.objectContaining({ area: "EINSATZPLAN", action: "create", label: "Neue Anmeldung" }),
+        expect.objectContaining({ area: "ANSPRECHPARTNER", action: "delete", label: "Chris Leitung" }),
+        expect.objectContaining({ area: "HELFER", action: "delete", label: "Alex Beispiel" }),
+        expect.objectContaining({ area: "ZUORDNUNGEN", action: "delete" }),
+      ])
     );
   });
 

@@ -4,6 +4,7 @@ import type { AuditActor } from "./db";
 import {
   createCurrentProjectDocument,
   previewProjectDocument,
+  repairImportedDocumentRelations,
   restoreProjectDocument,
   type BackupDocument,
 } from "./excel-backup";
@@ -466,6 +467,7 @@ export function parseProjectFile(base64: string): {
     );
   const document = parsed.data as BackupDocument;
   document.metadata.activeDays = eventWeekdays(document.metadata.activeDays);
+  repairImportedDocumentRelations(document);
   validateRelations(document);
   return { document, sourceDigest: digest(bytes) };
 }

@@ -473,6 +473,176 @@ export function reconcileContactSelfHelpers(
   return { linked, created };
 }
 
+/**
+ * Ein Import beschreibt stets den gewünschten Zielstand. Diese Bereinigung
+ * läuft deshalb vor Vorschau, Diff und Transaktion: Verwaiste Ansprechpartner
+ * werden entkoppelt, gelöschte oder nicht verfügbare Helfer aus Slots entfernt
+ * und Schichten außerhalb der aktiven Festivaltage verworfen. So kann kein
+ * früherer Datenrest die atomare Übernahme blockieren.
+ */
+export function repairImportedDocumentRelations(document: BackupDocument) {
+  const addWarning = (message: string) => {
+    if (!document.warnings.includes(message) && document.warnings.length < 1_000)
+      document.warnings.push(message);
+  };
+  const contactBySourceId = new Map(
+    document.contacts.flatMap(row =>
+      row.sourceId ? ([[row.sourceId, row]] as const) : []
+    )
+  );
+  const contactByName = new Map(
+    document.contacts.map(row => [personKey(row.name), row])
+  );
+  const canonicalizeContactReference = (
+    row: { contactSourceId: number | null; contactName: string },
+    label: string
+  ) => {
+    const contact =
+      (row.contactSourceId
+        ? contactBySourceId.get(row.contactSourceId)
+        : undefined) ?? contactByName.get(personKey(row.contactName));
+    if (contact) {
+      row.contactSourceId = contact.sourceId;
+      row.contactName = contact.name;
+      return;
+    }
+    if (row.contactSourceId || personKey(row.contactName)) {
+      addWarning(`${label}: fehlender Ansprechpartnerbezug wurde entfernt.`);
+      row.contactSourceId = null;
+      row.contactName = "";
+    }
+  };
+
+  for (const row of document.helpers)
+    canonicalizeContactReference(row, `Helfer „${row.name}“`);
+  for (const row of [
+    ...document.prep,
+    ...document.post,
+    ...document.materials,
+    ...document.marketing,
+    ...document.approvals,
+  ])
+    canonicalizeContactReference(
+      row,
+      `Eintrag „${"task" in row ? row.task : "article" in row ? row.article : "measure" in row ? row.measure : row.request}“`
+    );
+  for (const row of document.shifts) {
+    const contact =
+      (row.areaContactSourceId
+        ? contactBySourceId.get(row.areaContactSourceId)
+        : undefined) ?? contactByName.get(personKey(row.areaContactName));
+    if (contact) {
+      row.areaContactSourceId = contact.sourceId;
+      row.areaContactName = contact.name;
+    } else if (row.areaContactSourceId || personKey(row.areaContactName)) {
+      addWarning(
+        `Bereich „${row.area}“: fehlender Ansprechpartnerbezug wurde entfernt.`
+      );
+      row.areaContactSourceId = null;
+      row.areaContactName = "";
+    }
+  }
+
+  const selfHelperReconciliation = reconcileContactSelfHelpers(
+    document.contacts,
+    document.helpers
+  );
+  if (selfHelperReconciliation.linked)
+    addWarning(
+      `${selfHelperReconciliation.linked} eigene Ansprechpartner-Helfereinträge wurden automatisch korrekt zugeordnet.`
+    );
+  if (selfHelperReconciliation.created)
+    addWarning(
+      `${selfHelperReconciliation.created} fehlende eigene Ansprechpartner-Helfereinträge wurden automatisch ergänzt.`
+    );
+
+  const activeDays = new Set(eventWeekdays(document.metadata.activeDays));
+  document.shifts = document.shifts.filter(shift => {
+    if (activeDays.has(shift.day)) return true;
+    addWarning(
+      `EINSATZPLAN „${shift.task}“ wurde entfernt, weil ${shift.day} nicht als Veranstaltungstag aktiv ist.`
+    );
+    return false;
+  });
+
+  reconcileAreaContacts(document.shifts, row => {
+    const contact =
+      (row.areaContactSourceId
+        ? contactBySourceId.get(row.areaContactSourceId)
+        : undefined) ?? contactByName.get(personKey(row.areaContactName));
+    return contact
+      ? { sourceId: contact.sourceId, name: contact.name }
+      : undefined;
+  });
+
+  const helperBySourceId = new Map(
+    document.helpers.flatMap(row =>
+      row.sourceId ? ([[row.sourceId, row]] as const) : []
+    )
+  );
+  const helperByName = new Map(
+    document.helpers.map(row => [personKey(row.name), row])
+  );
+  const helperShifts = new Map<string, ShiftRow[]>();
+  for (const shift of document.shifts) {
+    const seenSlots = new Set<number>();
+    const seenHelpers = new Set<string>();
+    const repairedSlots: ShiftRow["slots"] = [];
+    for (const slot of shift.slots) {
+      const helper =
+        (slot.helperSourceId
+          ? helperBySourceId.get(slot.helperSourceId)
+          : undefined) ?? helperByName.get(personKey(slot.helperName));
+      if (!helper) {
+        addWarning(
+          `EINSATZPLAN „${shift.task}“: gelöschter oder unbekannter Helfer „${slot.helperName}“ wurde aus Platz ${slot.slot + 1} entfernt.`
+        );
+        continue;
+      }
+      if (!helperAvailableOnDay(helper, shift.day)) {
+        addWarning(
+          `EINSATZPLAN „${shift.task}“: Helfer „${helper.name}“ ist an ${shift.day} nicht verfügbar und wurde aus Platz ${slot.slot + 1} entfernt.`
+        );
+        continue;
+      }
+      if (slot.slot < 0 || slot.slot >= shift.needed) {
+        addWarning(
+          `EINSATZPLAN „${shift.task}“: Helfer „${helper.name}“ lag außerhalb des Bedarfs und wurde entfernt.`
+        );
+        continue;
+      }
+      const helperKey = helper.sourceId
+        ? `id:${helper.sourceId}`
+        : `name:${personKey(helper.name)}`;
+      if (seenSlots.has(slot.slot) || seenHelpers.has(helperKey)) {
+        addWarning(
+          `EINSATZPLAN „${shift.task}“: doppelte Helferzuweisung für „${helper.name}“ wurde bereinigt.`
+        );
+        continue;
+      }
+      seenSlots.add(slot.slot);
+      seenHelpers.add(helperKey);
+      const assignedShifts = helperShifts.get(helperKey) ?? [];
+      assignedShifts.push(shift);
+      helperShifts.set(helperKey, assignedShifts);
+      repairedSlots.push({
+        slot: slot.slot,
+        helperSourceId: helper.sourceId,
+        helperName: helper.name,
+      });
+    }
+    shift.slots = repairedSlots.sort((left, right) => left.slot - right.slot);
+  }
+  for (const [helperKey, assignedShifts] of Array.from(helperShifts.entries()))
+    for (let left = 0; left < assignedShifts.length; left++)
+      for (let right = left + 1; right < assignedShifts.length; right++)
+        if (overlaps(assignedShifts[left] as any, assignedShifts[right] as any))
+          addWarning(
+            `Doppelbelegung: ${helperKey} ist gleichzeitig in „${assignedShifts[left].task}“ und „${assignedShifts[right].task}“ eingeteilt`
+          );
+  return document;
+}
+
 const text = (value: unknown, max: number, label: string, required = false) => {
   const result = normalize(value);
   if (required && !result) throw new Error(`${label} darf nicht leer sein`);
@@ -967,10 +1137,6 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
       WEEKDAYS,
       `EINSATZPLAN Zeile ${index + 2}: Tag`
     );
-    if (!meta.activeDays.includes(day))
-      throw new Error(
-        `EINSATZPLAN Zeile ${index + 2}: ${day} ist für diese Veranstaltung nicht aktiviert`
-      );
     const startTime = normalizeImportedTime(row.Beginn);
     const endTime = normalizeImportedTime(row.Ende);
     const start = toMinutes(startTime);
@@ -1004,18 +1170,6 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
         ? { slot, helperSourceId, helperName }
         : null;
     }).filter((item): item is NonNullable<typeof item> => item !== null);
-    if (slots.some(slot => slot.slot >= needed))
-      throw new Error(
-        `EINSATZPLAN Zeile ${index + 2}: Ein Helfer steht außerhalb des Bedarfs`
-      );
-    if (
-      new Set(
-        slots.map(slot => slot.helperSourceId ?? personKey(slot.helperName))
-      ).size !== slots.length
-    )
-      throw new Error(
-        `EINSATZPLAN Zeile ${index + 2}: Ein Helfer ist in derselben Schicht doppelt eingetragen`
-      );
     return {
       sourceId: nullableId(row.ID, `EINSATZPLAN Zeile ${index + 2}`),
       day,
@@ -1400,106 +1554,7 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
     "FINANZEN"
   );
 
-  // Excel-Dateien können technische Ansprechpartner-IDs aus einem älteren
-  // Projektstand enthalten. Vor der Transaktion werden alle Referenzen auf
-  // den aktuellen, in der Datei tatsächlich vorhandenen Ansprechpartner
-  // zurückgeführt. So entsteht nach einem vollständigen Restore derselbe
-  // kanonische Stand wie in der geprüften Vorschau: gültige Namen/IDs werden
-  // wieder verknüpft, unbekannte Bezüge dagegen bewusst entkoppelt, ohne den
-  // Helfer oder die übrigen Fachdaten zu verwerfen.
-  const contactBySourceId = new Map(
-    parsedContacts.flatMap(row =>
-      row.sourceId ? ([[row.sourceId, row]] as const) : []
-    )
-  );
-  const contactByName = new Map(
-    parsedContacts.map(row => [personKey(row.name), row])
-  );
-  const canonicalizeContactReference = (
-    row: Record<string, any>,
-    sourceField: string,
-    nameField: string
-  ) => {
-    const sourceId = row[sourceField] as number | null;
-    const name = String(row[nameField] ?? "");
-    const contact =
-      (sourceId ? contactBySourceId.get(sourceId) : undefined) ??
-      contactByName.get(personKey(name));
-    if (contact) {
-      row[sourceField] = contact.sourceId;
-      row[nameField] = contact.name;
-      return;
-    }
-    if (sourceId || personKey(name)) {
-      row[sourceField] = null;
-      row[nameField] = "";
-    }
-  };
-  for (const row of parsedHelpers)
-    canonicalizeContactReference(row, "contactSourceId", "contactName");
-  for (const row of parsedShifts)
-    canonicalizeContactReference(
-      row,
-      "areaContactSourceId",
-      "areaContactName"
-    );
-  for (const row of parsedPrep)
-    canonicalizeContactReference(row, "contactSourceId", "contactName");
-  for (const row of parsedPost)
-    canonicalizeContactReference(row, "contactSourceId", "contactName");
-  for (const row of parsedMaterials)
-    canonicalizeContactReference(row, "contactSourceId", "contactName");
-  for (const row of parsedMarketing)
-    canonicalizeContactReference(row, "contactSourceId", "contactName");
-  for (const row of parsedApprovals)
-    canonicalizeContactReference(row, "contactSourceId", "contactName");
-
-  const helperBySourceId = new Map(
-    parsedHelpers.flatMap(row =>
-      row.sourceId ? [[row.sourceId, row] as const] : []
-    )
-  );
-  const shiftBySourceId = new Map(
-    parsedShifts.flatMap(row =>
-      row.sourceId ? [[row.sourceId, row] as const] : []
-    )
-  );
-  const helperShifts = new Map<string, ShiftRow[]>();
-  for (const shift of parsedShifts)
-    for (const slot of shift.slots) {
-      const helper = slot.helperSourceId
-        ? helperBySourceId.get(slot.helperSourceId)
-        : parsedHelpers.find(
-            item => personKey(item.name) === personKey(slot.helperName)
-          );
-      if (!helper) continue;
-      if (!helperAvailableOnDay(helper, shift.day))
-        throw new Error(
-          `EINSATZPLAN „${shift.task}“: Helfer „${helper.name}“ ist an ${shift.day} nicht verfügbar`
-        );
-      const helperKey = slot.helperSourceId
-        ? `id:${slot.helperSourceId}`
-        : `name:${personKey(slot.helperName)}`;
-      const list = helperShifts.get(helperKey) ?? [];
-      list.push(shift);
-      helperShifts.set(helperKey, list);
-    }
-  for (const [helperKey, assignedShifts] of Array.from(
-    helperShifts.entries()
-  )) {
-    for (let left = 0; left < assignedShifts.length; left++)
-      for (let right = left + 1; right < assignedShifts.length; right++) {
-        const a = assignedShifts[left];
-        const b = assignedShifts[right];
-        if (overlaps(a as any, b as any))
-          throw new Error(
-            `Doppelbelegung: ${helperKey.startsWith("id:") ? (helperBySourceId.get(Number(helperKey.slice(3)))?.name ?? helperKey) : (parsedHelpers.find(item => personKey(item.name) === helperKey.slice(5))?.name ?? helperKey)} ist gleichzeitig in „${a.task}“ und „${b.task}“ eingeteilt`
-          );
-      }
-  }
-  void shiftBySourceId;
-
-  return {
+  return repairImportedDocumentRelations({
     metadata: meta,
     contacts: parsedContacts,
     helpers: parsedHelpers,
@@ -1512,7 +1567,7 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
     cakes: parsedCakes,
     finances: parsedFinances,
     warnings: Array.from(new Set(warnings)),
-  };
+  });
 }
 
 async function loadSnapshot(

@@ -1623,14 +1623,33 @@ export const appRouter = router({
           operation: "project-file",
           userId: ctx.user.id,
         });
-        return withExcelOperationLimit(() =>
-          loadProjectFile(
-            input.base64,
-            input.filename,
-            input.currentDigest,
-            auditActor(ctx.user)
-          )
-        );
+        try {
+          return await withExcelOperationLimit(() =>
+            loadProjectFile(
+              input.base64,
+              input.filename,
+              input.currentDigest,
+              auditActor(ctx.user)
+            )
+          );
+        } catch (error) {
+          const detail =
+            error instanceof Error
+              ? error.message
+              : "Unbekannter Fehler bei der Datenwiederherstellung";
+          console.error("[Projektdatei-Import] Atomare Übernahme abgebrochen", {
+            filename: input.filename,
+            year: currentEventYear(),
+            eventId: currentEventId(),
+            userId: ctx.user.id,
+            detail,
+            error,
+          });
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Projektdatei wurde nicht geladen: ${detail}`,
+          });
+        }
       }),
     restoreLogs: adminProcedure.query(() => listBackupRestoreLogs()),
     restoreLog: adminProcedure

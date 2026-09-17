@@ -180,6 +180,8 @@ describe("Projektdatei und modularer Excel-Import", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     data.prep_tasks.splice(0, data.prep_tasks.length);
+    (data.helpers.find(helper => helper.name === "Alex Beispiel") as any).availFri =
+      "ja";
     dbMocks.getDb.mockResolvedValue(fakeDb());
   });
 
@@ -255,17 +257,22 @@ describe("Projektdatei und modularer Excel-Import", () => {
     );
   });
 
-  it("weist Schichten außerhalb der gespeicherten Veranstaltungstage zurück", async () => {
+  it("bereinigt Schichten außerhalb der gespeicherten Veranstaltungstage", async () => {
     const exported = await exportProjectFile();
     const document = JSON.parse(exported.buffer.toString("utf8"));
     document.metadata.activeDays = ["Samstag", "Sonntag"];
 
-    expect(() =>
-      parseProjectFile(Buffer.from(JSON.stringify(document)).toString("base64"))
-    ).toThrow("Freitag ist in den Veranstaltungstagen nicht aktiviert");
+    const parsed = parseProjectFile(
+      Buffer.from(JSON.stringify(document)).toString("base64")
+    ).document;
+
+    expect(parsed.shifts).toEqual([]);
+    expect(parsed.warnings).toContain(
+      "EINSATZPLAN „Anmeldung“ wurde entfernt, weil Freitag nicht als Veranstaltungstag aktiv ist."
+    );
   });
 
-  it("weist Zuweisungen nicht verfügbarer Helfer im JSON-Restore zurück", async () => {
+  it("entfernt Zuweisungen nicht verfügbarer Helfer im JSON-Restore", async () => {
     const exported = await exportProjectFile();
     const document = JSON.parse(exported.buffer.toString("utf8"));
     const assignedHelper = document.helpers.find(
@@ -273,9 +280,34 @@ describe("Projektdatei und modularer Excel-Import", () => {
     );
     assignedHelper.availFri = "nein";
 
-    expect(() =>
-      parseProjectFile(Buffer.from(JSON.stringify(document)).toString("base64"))
-    ).toThrow("Alex Beispiel");
+    const parsed = parseProjectFile(
+      Buffer.from(JSON.stringify(document)).toString("base64")
+    ).document;
+
+    expect(parsed.shifts[0].slots).toEqual([]);
+    expect(parsed.warnings.join(" ")).toContain("Alex Beispiel");
+    expect(parsed.warnings.join(" ")).toContain("nicht verfügbar");
+  });
+
+  it("entkoppelt gelöschte Ansprechpartner und entfernt ihre verwaisten Helferzuweisungen", async () => {
+    const exported = await exportProjectFile();
+    const document = JSON.parse(exported.buffer.toString("utf8"));
+    document.contacts = [];
+    document.helpers = document.helpers.filter(
+      (helper: any) => helper.name === "Chris Leitung"
+    );
+
+    const parsed = parseProjectFile(
+      Buffer.from(JSON.stringify(document)).toString("base64")
+    ).document;
+
+    expect(parsed.helpers).toEqual([
+      expect.objectContaining({ name: "Chris Leitung", contactName: "" }),
+    ]);
+    expect(parsed.shifts[0]).toMatchObject({
+      areaContactName: "",
+      slots: [],
+    });
   });
 
   it("akzeptiert zulässige Doppelbelegungen im Projektstand mit Warnung", async () => {
@@ -455,6 +487,30 @@ describe("Projektdatei und modularer Excel-Import", () => {
     );
     expect(preview.totals).toMatchObject({ created: 1, deleted: 2 });
     expect(preview.warnings.join(" ")).toContain("Umbenennung ohne ID");
+  });
+
+  it("bereinigt beim Ansprechpartnerimport eine nicht verfügbare Altzuweisung statt abzubrechen", async () => {
+    (data.helpers.find(helper => helper.name === "Alex Beispiel") as any).availFri =
+      "nein";
+
+    const preview = await previewModuleExcelImport(
+      moduleSheet("ANSPRECHPARTNER", [
+        {
+          ID: 10,
+          Name: "Chris Leitung",
+          Rufnummer: "0123",
+          Bemerkung: "",
+          Reihenfolge: 0,
+        },
+      ]),
+      "ANSPRECHPARTNER"
+    );
+
+    expect(preview.changes).toContainEqual(
+      expect.objectContaining({ area: "ZUORDNUNGEN", action: "delete" })
+    );
+    expect(preview.warnings.join(" ")).toContain("Alex Beispiel");
+    expect(preview.warnings.join(" ")).toContain("nicht verfügbar");
   });
 
   it("behält bei fehlenden Mo-bis-Do-Spalten im Helfer-Modulimport bestehende Verfügbarkeiten bei", async () => {

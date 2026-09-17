@@ -71,7 +71,7 @@ export function ModuleExcelImportButton({
     onError: error => {
       const detail = error.message || "Unbekannte Importursache";
       console.error(`[${label}-Import] Übernahme abgebrochen: ${detail}`);
-      toast.error(`${label}-Import wurde nicht übernommen: ${detail}`, {
+      toast.error(`Import wurde nicht übernommen: ${detail}`, {
         duration: 10_000,
       });
     },
@@ -143,13 +143,15 @@ export function ModuleExcelImportButton({
             <DialogDescription>
               Datei: {file?.name}. Es werden ausschließlich Daten des Bereichs „
               {label}“ geprüft. Notwendige direkte Bezüge werden automatisch
-              mitgeführt.
+              mitgeführt und verwaiste Einsatzzuweisungen vor der Übernahme
+              bereinigt.
             </DialogDescription>
           </DialogHeader>
           <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-950">
             <strong>Wichtig:</strong> Die Filter ändern nur die Anzeige. Beim
-            Bestätigen werden alle unten erkannten Änderungen dieses Bereichs
-            übernommen – einschließlich in Excel gelöschter Zeilen.
+              Bestätigen werden alle unten erkannten Änderungen dieses Bereichs
+              übernommen – einschließlich in Excel gelöschter Zeilen und ihrer
+              direkten Einsatzzuweisungen.
             <div className="mt-1 font-semibold">
               Vollständige Excel-Prüfung: {preview.data?.rowsChecked ?? 0}{" "}
               Datenzeilen geprüft.
