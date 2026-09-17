@@ -1362,11 +1362,35 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(prep).toContain('type="date"');
     expect(prep).toContain('aria-label={`Status für ${task.task} ändern`}');
     expect(prep).toContain('aria-label={`Logbuch zu ${task.task} ergänzen`}');
-    expect(prep).toContain('aria-label={`Vollständiges Logbuch zu ${task.task} anzeigen`}');
-    expect(prep).toContain("event.currentTarget.select()");
+    expect(prep).toContain('aria-label={`Vollständiges Logbuch zu ${task.task} anzeigen${entryCount ? ` (${entryCount} Einträge)` : ""}`}');
+    expect(prep).toContain("preparationLogbookEntryCount(task.note)");
+    expect(prep).toContain("Neuen Logbuch-Eintrag verfassen...");
+    expect(prep).toContain("setEntry(\"\")");
     expect(prep).toContain("onCommit={logEntry => update.mutate({ id: task.id, logEntry })}");
-    expect(prep).toContain("Für einen neuen Sachstand den vorhandenen Text überschreiben");
+    expect(prep).toContain("Neue Einträge werden oben im Verlauf ergänzt.");
     expect(logbook).toContain("formatPreparationLogbookForMobileDisplay");
     expect(logbook).toContain('"$1:"');
+  });
+
+  it("öffnet lange mobile Hinweise und Bemerkungen in komfortablen Mehrzeileneditoren", () => {
+    const helpers = source("client/src/pages/Helpers.tsx");
+    const plan = source("client/src/pages/Plan.tsx");
+
+    expect(helpers).toContain("Hinweis für PDF bearbeiten");
+    expect(helpers).toContain("Hinweis für ${helperName}");
+    expect(helpers).toContain("mobile-helper-note-${helperId}");
+    expect(helpers).toContain("Verfügbarkeit, Besonderheiten oder Bemerkungen");
+    expect(helpers).toContain("rows={7}");
+    expect(helpers).toContain("min-h-40 resize-y text-base");
+    expect(helpers).toContain('aria-label={`Hinweis für PDF von ${helperName} mehrzeilig bearbeiten`}');
+
+    expect(plan).toContain("function MobileShiftNote");
+    expect(plan).toContain("Bemerkung bearbeiten");
+    expect(plan).toContain('id="mobile-shift-note"');
+    expect(plan).toContain("Treffpunkt, Material, Besonderheiten oder Hinweise");
+    expect(plan).toContain("const needsDetail = normalizedNote.length > 110");
+    expect(plan).toContain('aria-label={`Vollständige Bemerkung zu ${shiftLabel} anzeigen`}');
+    expect(plan).toContain("openMobileNoteEditor(shift)");
+    expect(plan).toContain("updateShift.mutate({\n      id: mobileNoteShift.id,\n      note: mobileNoteValue.trim() || null,");
   });
 });

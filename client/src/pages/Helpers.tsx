@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Popover,
   PopoverContent,
@@ -31,7 +32,7 @@ import {
 import { cn } from "@/lib/utils";
 import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
 import { trpc } from "@/lib/trpc";
-import { FileDown, Info, MessageCircle, Plus, Trash2 } from "lucide-react";
+import { FileDown, Info, MessageCircle, Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
@@ -204,6 +205,8 @@ function HelperPdfNoteField({
   onCommit: (value: string | null) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [mobileEditorOpen, setMobileEditorOpen] = useState(false);
+  const [mobileNote, setMobileNote] = useState("");
   const openTimer = useRef<number | null>(null);
   const closeTimer = useRef<number | null>(null);
   const editing = useRef(false);
@@ -238,63 +241,121 @@ function HelperPdfNoteField({
     []
   );
 
+  const openMobileEditor = () => {
+    setMobileNote(note ?? "");
+    setMobileEditorOpen(true);
+  };
+
+  const saveMobileNote = () => {
+    onCommit(mobileNote.trim() || null);
+    setMobileEditorOpen(false);
+  };
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <div
-        className="relative"
-        onPointerEnter={event => openAfterDelay(event.pointerType)}
-        onPointerLeave={event => closeAfterLeave(event.pointerType)}
-      >
-        <Input
-          key={`${helperId}-note-${note ?? ""}`}
-          className={cn(
-            "w-full pr-11 text-base xl:pr-9",
-            compactOnDesktop && "xl:h-8 xl:min-w-0"
-          )}
-          defaultValue={note ?? ""}
-          placeholder="Verfügbarkeit / Bemerkung"
-          aria-label={`Hinweis für PDF von ${helperName} bearbeiten`}
-          onFocus={() => {
-            editing.current = true;
-            clearOpenTimer();
-            setOpen(false);
-          }}
-          onBlur={event => {
-            editing.current = false;
-            const value = event.target.value.trim();
-            if (value !== (note ?? "")) onCommit(value || null);
-          }}
-        />
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            className="absolute inset-y-0 right-0 inline-flex w-11 items-center justify-center rounded-r-md text-slate-500 hover:bg-slate-100 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-blue-600 md:w-8"
-            aria-label={`Vollständigen PDF-Hinweis für ${helperName} anzeigen`}
-            title="Vollständigen Hinweis anzeigen"
-          >
-            <Info className="size-4" />
-          </button>
-        </PopoverTrigger>
+    <>
+      <div className="md:hidden">
+        <button
+          type="button"
+          className="flex h-11 w-full items-center rounded-md border bg-white px-3 text-left text-base shadow-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+          aria-label={`Hinweis für PDF von ${helperName} mehrzeilig bearbeiten`}
+          onClick={openMobileEditor}
+        >
+          <span className={cn("line-clamp-1 min-w-0 flex-1 break-words", !fullNote && "text-muted-foreground")}>
+            {fullNote || "Verfügbarkeit / Bemerkung"}
+          </span>
+          <Pencil className="ml-2 size-4 shrink-0 text-slate-500" aria-hidden="true" />
+        </button>
       </div>
-      <PopoverContent
-        side="top"
-        sideOffset={8}
-        align="center"
-        avoidCollisions
-        collisionPadding={12}
-        sticky="always"
-        onPointerEnter={event => {
-          if (event.pointerType === "mouse") clearCloseTimer();
-        }}
-        onPointerLeave={event => closeAfterLeave(event.pointerType)}
-        className="z-50 w-[min(20rem,calc(100vw-1.5rem))] max-w-none space-y-1.5 border border-gray-200 bg-white text-left text-gray-900 opacity-100 shadow-lg duration-200 ease-out data-[state=open]:fade-in-0 motion-reduce:animate-none sm:w-80"
-      >
-        <p className="text-xs font-medium text-slate-500">Hinweis für PDF</p>
-        <p className="whitespace-pre-wrap break-words text-sm">
-          {fullNote || "Kein Hinweis hinterlegt."}
-        </p>
-      </PopoverContent>
-    </Popover>
+
+      <div className="hidden md:block">
+        <Popover open={open} onOpenChange={setOpen}>
+          <div
+            className="relative"
+            onPointerEnter={event => openAfterDelay(event.pointerType)}
+            onPointerLeave={event => closeAfterLeave(event.pointerType)}
+          >
+            <Input
+              key={`${helperId}-note-${note ?? ""}`}
+              className={cn(
+                "w-full pr-11 text-base xl:pr-9",
+                compactOnDesktop && "xl:h-8 xl:min-w-0"
+              )}
+              defaultValue={note ?? ""}
+              placeholder="Verfügbarkeit / Bemerkung"
+              aria-label={`Hinweis für PDF von ${helperName} bearbeiten`}
+              onFocus={() => {
+                editing.current = true;
+                clearOpenTimer();
+                setOpen(false);
+              }}
+              onBlur={event => {
+                editing.current = false;
+                const value = event.target.value.trim();
+                if (value !== (note ?? "")) onCommit(value || null);
+              }}
+            />
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="absolute inset-y-0 right-0 inline-flex w-11 items-center justify-center rounded-r-md text-slate-500 hover:bg-slate-100 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-blue-600 md:w-8"
+                aria-label={`Vollständigen PDF-Hinweis für ${helperName} anzeigen`}
+                title="Vollständigen Hinweis anzeigen"
+              >
+                <Info className="size-4" />
+              </button>
+            </PopoverTrigger>
+          </div>
+          <PopoverContent
+            side="top"
+            sideOffset={8}
+            align="center"
+            avoidCollisions
+            collisionPadding={12}
+            sticky="always"
+            onPointerEnter={event => {
+              if (event.pointerType === "mouse") clearCloseTimer();
+            }}
+            onPointerLeave={event => closeAfterLeave(event.pointerType)}
+            className="z-50 w-[min(20rem,calc(100vw-1.5rem))] max-w-none space-y-1.5 border border-gray-200 bg-white text-left text-gray-900 opacity-100 shadow-lg duration-200 ease-out data-[state=open]:fade-in-0 motion-reduce:animate-none sm:w-80"
+          >
+            <p className="text-xs font-medium text-slate-500">Hinweis für PDF</p>
+            <p className="whitespace-pre-wrap break-words text-sm">
+              {fullNote || "Kein Hinweis hinterlegt."}
+            </p>
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      <Dialog open={mobileEditorOpen} onOpenChange={setMobileEditorOpen}>
+        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] !bg-white !text-slate-950 sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Hinweis für PDF bearbeiten</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <label htmlFor={`mobile-helper-note-${helperId}`} className="text-sm font-medium">
+              Hinweis für {helperName}
+            </label>
+            <Textarea
+              id={`mobile-helper-note-${helperId}`}
+              autoFocus
+              rows={7}
+              value={mobileNote}
+              onChange={event => setMobileNote(event.target.value)}
+              placeholder="Verfügbarkeit, Besonderheiten oder Bemerkungen"
+              className="min-h-40 resize-y text-base"
+            />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setMobileEditorOpen(false)}>
+              Abbrechen
+            </Button>
+            <Button type="button" onClick={saveMobileNote}>
+              Speichern
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

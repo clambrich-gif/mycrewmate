@@ -12,10 +12,12 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
   AlertTriangle,
   ChevronDown,
+  Info,
   Pencil,
   Plus,
   Search,
@@ -112,6 +114,61 @@ const AVAILABILITY_CLASS: Record<AvailabilityValue, string> = {
   nein: "text-red-700",
   vielleicht: "text-amber-700",
 };
+
+function MobileShiftNote({
+  note,
+  shiftLabel,
+  editable,
+  onEdit,
+}: {
+  note: string | null | undefined;
+  shiftLabel: string;
+  editable: boolean;
+  onEdit: () => void;
+}) {
+  const normalizedNote = note?.trim() ?? "";
+  const needsDetail = normalizedNote.length > 110 || normalizedNote.split(/\r?\n/).length > 2;
+
+  return (
+    <Popover>
+      <div className="relative rounded-md border bg-muted/30">
+        <button
+          type="button"
+          disabled={!editable}
+          onClick={onEdit}
+          aria-label={`Bemerkung zu ${shiftLabel}${editable ? " bearbeiten" : " anzeigen"}`}
+          className="min-h-11 w-full rounded-md px-3 py-2 pr-11 text-left text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:cursor-default"
+        >
+          <span className="font-medium">Bemerkung:</span>{" "}
+          <span className={needsDetail ? "line-clamp-2 break-words" : "break-words"}>
+            {normalizedNote || "Keine Bemerkung hinterlegt"}
+          </span>
+        </button>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="absolute inset-y-0 right-0 inline-flex w-11 items-center justify-center rounded-r-md text-slate-500 hover:bg-slate-100 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-blue-600"
+            aria-label={`Vollständige Bemerkung zu ${shiftLabel} anzeigen`}
+            title="Vollständige Bemerkung anzeigen"
+          >
+            <Info className="size-4" />
+          </button>
+        </PopoverTrigger>
+      </div>
+      <PopoverContent
+        align="center"
+        side="top"
+        sideOffset={8}
+        className="z-50 w-[min(20rem,calc(100vw-1.5rem))] max-w-none border border-gray-200 bg-white p-3 text-left text-gray-900 shadow-lg"
+      >
+        <p className="mb-1 text-xs font-medium text-slate-500">Bemerkung</p>
+        <p className="max-h-64 overflow-y-auto whitespace-pre-wrap break-words text-sm leading-5">
+          {normalizedNote || "Keine Bemerkung hinterlegt."}
+        </p>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 function PlanStatusBar({
   counts,
@@ -392,6 +449,9 @@ export default function Plan() {
   const [deleteCandidate, setDeleteCandidate] = useState<DropdownShift | null>(
     null
   );
+  const [mobileNoteShift, setMobileNoteShift] =
+    useState<DropdownShift | null>(null);
+  const [mobileNoteValue, setMobileNoteValue] = useState("");
   const emptyMessage =
     warningFilter === "konflikte"
       ? "Keine Schichten mit Doppelbelegungen gefunden."
@@ -455,6 +515,7 @@ export default function Plan() {
     onSuccess: () => {
       invalidate();
       setDlgOpen(false);
+      setMobileNoteShift(null);
       toast.success("Schicht aktualisiert");
     },
     onError: e => toast.error(e.message),
@@ -520,6 +581,18 @@ export default function Plan() {
       note: s.note ?? "",
     });
     setDlgOpen(true);
+  };
+  const openMobileNoteEditor = (shift: DropdownShift & { note?: string | null }) => {
+    if (!canEditPlan) return;
+    setMobileNoteShift(shift);
+    setMobileNoteValue(shift.note ?? "");
+  };
+  const saveMobileNote = () => {
+    if (!mobileNoteShift || updateShift.isPending) return;
+    updateShift.mutate({
+      id: mobileNoteShift.id,
+      note: mobileNoteValue.trim() || null,
+    });
   };
   const saveShift = () => {
     if (!canEditPlan) return;
@@ -1115,11 +1188,12 @@ export default function Plan() {
                     </dd>
                   </div>
                 </dl>
-                {shift.note?.trim() && (
-                  <div className="rounded-md border bg-muted/30 p-3 text-sm">
-                    <span className="font-medium">Bemerkung:</span> {shift.note}
-                  </div>
-                )}
+                <MobileShiftNote
+                  note={shift.note}
+                  shiftLabel={`${shift.area}: ${shift.task}`}
+                  editable={canEditPlan}
+                  onEdit={() => openMobileNoteEditor(shift)}
+                />
                 <div className="space-y-2">
                   <p className="text-xs font-medium text-muted-foreground">
                     Eingeteilte Helfer
@@ -1327,6 +1401,48 @@ export default function Plan() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog
+        open={Boolean(mobileNoteShift)}
+        onOpenChange={open => {
+          if (!open && !updateShift.isPending) setMobileNoteShift(null);
+        }}
+      >
+        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] !bg-white !text-slate-950 sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Bemerkung bearbeiten</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <label htmlFor="mobile-shift-note" className="text-sm font-medium">
+              {mobileNoteShift
+                ? `${mobileNoteShift.area}: ${mobileNoteShift.task}`
+                : "Bemerkung"}
+            </label>
+            <Textarea
+              id="mobile-shift-note"
+              autoFocus
+              rows={7}
+              value={mobileNoteValue}
+              onChange={event => setMobileNoteValue(event.target.value)}
+              placeholder="Treffpunkt, Material, Besonderheiten oder Hinweise"
+              className="min-h-40 resize-y text-base"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={updateShift.isPending}
+              onClick={() => setMobileNoteShift(null)}
+            >
+              Abbrechen
+            </Button>
+            <Button type="button" disabled={updateShift.isPending} onClick={saveMobileNote}>
+              {updateShift.isPending ? "Speichert …" : "Speichern"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={dlgOpen} onOpenChange={setDlgOpen}>
         <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))] !bg-white !text-slate-950 opacity-100 shadow-2xl dark:!bg-slate-950 dark:!text-slate-50 [&_[data-slot=input]]:!bg-white [&_[data-slot=input]]:dark:!bg-slate-900 [&_[data-slot=select-trigger]]:!bg-white [&_[data-slot=select-trigger]]:dark:!bg-slate-900">

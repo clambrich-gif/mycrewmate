@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
@@ -62,6 +62,7 @@ import {
 import {
   formatPreparationLogbookForMobileDisplay,
   latestPreparationLogbookEntry,
+  preparationLogbookEntryCount,
   preparationLogbookNeedsDetail,
   prependPreparationLogbookEntry,
 } from "@shared/preparation-logbook";
@@ -207,42 +208,59 @@ function applyDialogStatus(value: DialogStatus): StatusUpdate {
 
 function MobilePreparationLogbookField({
   task,
-  latestEntry,
   disabled,
   onCommit,
 }: {
   task: PrepTaskRow;
-  latestEntry: string;
   disabled: boolean;
   onCommit: (entry: string) => void;
 }) {
-  const compactLatestEntry = formatPreparationLogbookForMobileDisplay(latestEntry);
+  const [entry, setEntry] = useState("");
   const compactHistory = formatPreparationLogbookForMobileDisplay(task.note);
+  const entryCount = preparationLogbookEntryCount(task.note);
+
+  useEffect(() => {
+    setEntry("");
+  }, [task.id, task.note]);
+
+  const saveEntry = () => {
+    const normalizedEntry = entry.trim();
+    if (!normalizedEntry) return;
+    onCommit(normalizedEntry);
+    setEntry("");
+  };
 
   return (
     <Popover>
       <div className="relative">
         <Input
-          key={`${task.id}-mobile-logbook-${task.note ?? ""}`}
-          defaultValue={compactLatestEntry}
+          value={entry}
           disabled={disabled}
           className="w-full pr-11 text-base"
-          placeholder="Neuen Sachstand eintragen"
+          placeholder="Neuen Logbuch-Eintrag verfassen..."
           aria-label={`Logbuch zu ${task.task} ergänzen`}
-          onFocus={event => event.currentTarget.select()}
-          onBlur={event => {
-            const entry = event.target.value.trim();
-            if (entry && entry !== compactLatestEntry) onCommit(entry);
+          onChange={event => setEntry(event.target.value)}
+          onBlur={saveEntry}
+          onKeyDown={event => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              saveEntry();
+            }
           }}
         />
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="absolute inset-y-0 right-0 inline-flex w-11 items-center justify-center rounded-r-md text-slate-500 hover:bg-slate-100 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-blue-600"
-            aria-label={`Vollständiges Logbuch zu ${task.task} anzeigen`}
-            title="Vollständiges Logbuch anzeigen"
+            className="absolute inset-y-0 right-0 inline-flex w-11 items-center justify-center gap-0.5 rounded-r-md text-slate-500 hover:bg-slate-100 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-blue-600"
+            aria-label={`Vollständiges Logbuch zu ${task.task} anzeigen${entryCount ? ` (${entryCount} Einträge)` : ""}`}
+            title={entryCount ? `${entryCount} Logbucheinträge anzeigen` : "Vollständiges Logbuch anzeigen"}
           >
             <Info className="size-4" />
+            {entryCount > 0 && (
+              <span className="min-w-4 rounded-full bg-blue-100 px-1 text-[10px] font-bold leading-4 text-blue-800">
+                {entryCount}
+              </span>
+            )}
           </button>
         </PopoverTrigger>
       </div>
@@ -1003,12 +1021,11 @@ export default function Preparation() {
                       <label className="text-xs font-medium">Logbuch</label>
                       <MobilePreparationLogbookField
                         task={task}
-                        latestEntry={latestLogbookEntry}
                         disabled={update.isPending}
                         onCommit={logEntry => update.mutate({ id: task.id, logEntry })}
                       />
                       <p className="text-xs text-muted-foreground">
-                        Für einen neuen Sachstand den vorhandenen Text überschreiben; er wird oben im Verlauf ergänzt.
+                        Neue Einträge werden oben im Verlauf ergänzt.
                       </p>
                       </div>
                   </CardContent>
