@@ -63,6 +63,25 @@ const pageWidth = 595.28;
 const pageHeight = 841.89;
 const margin = 42;
 const contentWidth = pageWidth - margin * 2;
+
+/**
+ * Das feste Breitenbudget hält die vollständige Materialtabelle innerhalb
+ * der A4-Hochformatseite. Die Summe muss immer genau contentWidth ergeben.
+ */
+export const MATERIAL_PACKLIST_PORTRAIT_COLUMNS = [
+  { key: "article", label: "Artikel", width: 120 },
+  { key: "category", label: "Kategorie", width: 78 },
+  { key: "quantity", label: "Menge", width: 55, align: "center" },
+  { key: "location", label: "Ort", width: 65 },
+  { key: "status", label: "Stand", width: 55, align: "center" },
+  { key: "contact", label: "Ansprechpartner", width: 138.28 },
+] as const satisfies readonly PdfColumn[];
+
+export const MATERIAL_PACKLIST_PORTRAIT_WIDTH =
+  MATERIAL_PACKLIST_PORTRAIT_COLUMNS.reduce(
+    (sum, column) => sum + column.width,
+    0
+  );
 const colors = {
   ink: "#172033",
   muted: "#5f6877",
@@ -776,14 +795,12 @@ export function renderMaterialPacklistPdf(
       );
     doc.moveDown(1);
 
-    const columns: PdfColumn[] = [
-      { key: "article", label: "Artikel", width: 176 },
-      { key: "category", label: "Kategorie", width: 95 },
-      { key: "quantity", label: "Menge", width: 66, align: "center" },
-      { key: "location", label: "Ort", width: 90 },
-      { key: "status", label: "Stand", width: 75, align: "center" },
-      { key: "contact", label: data.settings.contactLabel, width: 102 },
-    ];
+    const columns: PdfColumn[] = MATERIAL_PACKLIST_PORTRAIT_COLUMNS.map(
+      column =>
+        column.key === "contact"
+          ? { ...column, label: data.settings.contactLabel }
+          : { ...column }
+    );
     drawTableHeader(doc, columns, margin);
     if (selectedMaterials.length === 0) {
       drawTableRow(

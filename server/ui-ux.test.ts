@@ -1699,6 +1699,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
 
     expect(materials).toContain("trpc.pdf.materialPacklist.useMutation");
     expect(materials).toContain('"PDF drucken"');
+    expect(source("server/pdf.ts")).toContain("MATERIAL_PACKLIST_PORTRAIT_WIDTH");
+    expect(source("server/pdf.ts")).toContain("width: 138");
     expect(locations).toContain("GPX-Streckenoverlays");
     expect(locations).toContain("GPX hochladen");
     expect(mapCard).toContain("trpc.gpxTracks.mapData.useQuery()");

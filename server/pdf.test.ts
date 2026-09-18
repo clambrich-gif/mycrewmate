@@ -20,6 +20,8 @@ import {
   helperTaskCellParts,
   helperTaskCellText,
   planPdfTimeLabel,
+  MATERIAL_PACKLIST_PORTRAIT_COLUMNS,
+  MATERIAL_PACKLIST_PORTRAIT_WIDTH,
   renderMaterialPacklistPdf,
   selectMaterialPacklistMaterials,
 } from "./pdf";
@@ -293,6 +295,12 @@ describe("PDF-Erzeugung", () => {
   });
 
   it("erzeugt eine aus der Tabellenansicht gefilterte Material-Packliste als PDF", async () => {
+    expect(MATERIAL_PACKLIST_PORTRAIT_WIDTH).toBe(511.28);
+    expect(MATERIAL_PACKLIST_PORTRAIT_COLUMNS).toHaveLength(6);
+    expect(
+      MATERIAL_PACKLIST_PORTRAIT_COLUMNS.find(column => column.key === "contact")
+        ?.width
+    ).toBeGreaterThanOrEqual(130);
     const sampleLocation = {
       id: 99,
       year: 2026,
