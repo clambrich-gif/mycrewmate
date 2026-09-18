@@ -587,6 +587,9 @@ export const materials = mysqlTable("materials", {
   category: varchar("category", { length: 120 }).default("").notNull(),
   quantity: varchar("quantity", { length: 40 }).default("").notNull(),
   unit: varchar("unit", { length: 40 }).default("").notNull(),
+  locationId: int("locationId").references(() => locations.id, {
+    onDelete: "set null",
+  }),
   contactId: int("contactId").references(() => contacts.id, {
     onDelete: "set null",
   }),

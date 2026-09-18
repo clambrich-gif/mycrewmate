@@ -194,7 +194,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsed = parseProjectFile(exported.buffer.toString("base64"));
     expect(parsed.document.metadata).toMatchObject({
       format: "RSC-HELFERPLANUNG-PROJEKTDATEI",
-      version: 8,
+      version: 9,
       eventId: 1,
       eventName: "MyEifelRide",
       year: 2026,
@@ -346,7 +346,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsed = parseProjectFile(
       Buffer.from(JSON.stringify(document)).toString("base64")
     );
-    expect(parsed.document.metadata.version).toBe(8);
+    expect(parsed.document.metadata.version).toBe(9);
     expect(parsed.document.metadata.activeDays).toEqual([...WEEKDAYS]);
     expect(parsed.document.metadata).toMatchObject({
       pdfLogoKey: null,
@@ -703,7 +703,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsedV5 = parseProjectFile(
       Buffer.from(JSON.stringify(legacyV5)).toString("base64")
     ).document;
-    expect(parsedV5.metadata.version).toBe(8);
+    expect(parsedV5.metadata.version).toBe(9);
     expect(parsedV5.shifts[0].manualOkConfirmed).toBe(false);
   });
 
@@ -718,7 +718,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsedV6 = parseProjectFile(
       Buffer.from(JSON.stringify(legacyV6)).toString("base64")
     ).document;
-    expect(parsedV6.metadata.version).toBe(8);
+    expect(parsedV6.metadata.version).toBe(9);
     expect(parsedV6.shifts[0].manualDoubleConflictAccepted).toBe(false);
   });
 
@@ -734,8 +734,39 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsedV7 = parseProjectFile(
       Buffer.from(JSON.stringify(legacyV7)).toString("base64")
     ).document;
-    expect(parsedV7.metadata.version).toBe(8);
+    expect(parsedV7.metadata.version).toBe(9);
     expect(parsedV7.locations).toEqual([]);
     expect(parsedV7.shifts[0].locationName).toBe("");
+  });
+
+  it("erhaelt Materialstandorte und migriert v8-Dateien sauber auf Version 9", async () => {
+    (data.materials as any[]).push({
+      id: 91,
+      year: 2026,
+      eventId: 1,
+      article: "Absperrband",
+      category: "Strecke",
+      quantity: "5",
+      unit: "Rollen",
+      locationId: 5,
+      contactId: null,
+      ordered: "ja",
+      note: "Am Bauhof deponieren",
+      sortOrder: 1,
+    });
+
+    const exported = await exportProjectFile();
+    const current = parseProjectFile(exported.buffer.toString("base64")).document;
+    expect(current.materials[0]).toHaveProperty("locationName");
+
+    const legacyV8 = structuredClone(current);
+    legacyV8.metadata.version = 8;
+    delete (legacyV8.materials[0] as any).locationSourceId;
+    delete (legacyV8.materials[0] as any).locationName;
+    const parsedV8 = parseProjectFile(
+      Buffer.from(JSON.stringify(legacyV8)).toString("base64")
+    ).document;
+    expect(parsedV8.metadata.version).toBe(9);
+    expect(parsedV8.materials[0].locationName).toBe("");
   });
 });

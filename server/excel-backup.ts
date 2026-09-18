@@ -143,6 +143,8 @@ export const PROJECT_EXCEL_HEADERS: Record<string, string[]> = {
     "Kategorie",
     "Menge",
     "Einheit",
+    "Ort-ID",
+    "Ort / Zielstandort",
     "Verantwortlich-ID",
     "Verantwortlich",
     "Bestellt",
@@ -353,6 +355,8 @@ type MaterialRow = {
   category: string;
   quantity: string;
   unit: string;
+  locationSourceId: number | null;
+  locationName: string;
   contactSourceId: number | null;
   contactName: string;
   ordered: "ja" | "nein";
@@ -627,6 +631,8 @@ export function repairImportedDocumentRelations(document: BackupDocument) {
     canonicalizeLocationReference(row, `EINSATZPLAN „${row.task}“`);
   for (const row of document.prep)
     canonicalizeLocationReference(row, `VORBEREITUNG „${row.task}“`);
+  for (const row of document.materials)
+    canonicalizeLocationReference(row, `MATERIAL „${row.article}“`);
   for (const row of document.shifts) {
     const contact =
       (row.areaContactSourceId
@@ -1597,6 +1603,16 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
       ),
       quantity: text(row.Menge, 40, `MATERIAL Zeile ${index + 2}: Menge`),
       unit: text(row.Einheit, 40, `MATERIAL Zeile ${index + 2}: Einheit`),
+      locationSourceId: locationRef(
+        row["Ort-ID"],
+        row["Ort / Zielstandort"],
+        `MATERIAL Zeile ${index + 2}: Ort`
+      ),
+      locationName: text(
+        row["Ort / Zielstandort"],
+        200,
+        `MATERIAL Zeile ${index + 2}: Ort`
+      ),
       contactSourceId: contactRef(
         row["Verantwortlich-ID"],
         row.Verantwortlich,
@@ -2013,6 +2029,8 @@ function comparableCurrent(snapshot: CurrentSnapshot) {
       sourceId: row.id,
       contactSourceId: row.contactId,
       contactName: row.contactId ? (contactName.get(row.contactId) ?? "") : "",
+      locationSourceId: row.locationId ?? null,
+      locationName: row.locationId ? (locationName.get(row.locationId) ?? "") : "",
       ...clean(row, [
         "article",
         "category",
@@ -2122,7 +2140,7 @@ export function comparableProjectContent(
     ]),
     materials: withoutIds(
       document.materials as Array<Record<string, unknown>>,
-      ["contactSourceId"]
+      ["contactSourceId", "locationSourceId"]
     ),
     marketing: withoutIds(
       document.marketing as Array<Record<string, unknown>>,
@@ -2634,6 +2652,7 @@ export function buildSelectedDocument(
   };
   for (const row of target.shifts) normalizeLocationRef(row);
   for (const row of target.prep) normalizeLocationRef(row);
+  for (const row of target.materials) normalizeLocationRef(row);
   const normalizeContactRef = (row: {
     contactSourceId: number | null;
     contactName: string;
@@ -3299,6 +3318,7 @@ export async function restoreProjectDocument(
           category: row.category,
           quantity: row.quantity,
           unit: row.unit,
+          locationId: resolveLocation(row.locationSourceId, row.locationName),
           contactId: resolveContact(row.contactSourceId, row.contactName),
           ordered: row.ordered,
           note: row.note || null,
@@ -3734,6 +3754,8 @@ export async function exportProjectExcel(): Promise<{
       Kategorie: row.category,
       Menge: row.quantity,
       Einheit: row.unit,
+      "Ort-ID": row.locationSourceId ?? "",
+      "Ort / Zielstandort": row.locationName,
       "Verantwortlich-ID": row.contactSourceId ?? "",
       Verantwortlich: row.contactName,
       Bestellt: row.ordered,

@@ -1,5 +1,5 @@
 import type { CircleMarker as LeafletCircleMarker } from "leaflet";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   CircleMarker,
   MapContainer,
@@ -15,6 +15,26 @@ const MAP_MARKER_COLORS = {
   complete: "#16a34a",
   neutral: "#64748b",
 } as const;
+
+const MAP_LAYERS = {
+  streets: {
+    label: "Karte",
+    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>-Mitwirkende',
+  },
+  satellite: {
+    label: "Satellit",
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    attribution: "Tiles &copy; Esri",
+  },
+  terrain: {
+    label: "Gelände",
+    url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+    attribution: 'Kartendaten: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>-Mitwirkende, SRTM | Kartenstil: &copy; <a href="https://opentopomap.org">OpenTopoMap</a>',
+  },
+} as const;
+
+type MapLayerKey = keyof typeof MAP_LAYERS;
 
 function statusText(entries: MapEntry[]) {
   if (!entries.length) return "Noch keine Aufgaben zugeordnet";
@@ -47,7 +67,7 @@ function MapViewport({
     }
     map.fitBounds(
       locations.map(location => [location.latitude, location.longitude] as [number, number]),
-      { padding: [28, 28], maxZoom: 14, animate: true }
+      { padding: [36, 36], maxZoom: 14, animate: true }
     );
   }, [focusLocationId, locations, map]);
 
@@ -81,7 +101,7 @@ function LocationMarker({
     <CircleMarker
       ref={markerRef}
       center={[location.latitude, location.longitude]}
-      radius={10}
+      radius={11}
       pathOptions={{
         color: "#ffffff",
         weight: 2,
@@ -91,18 +111,27 @@ function LocationMarker({
       aria-label={`${location.name}: ${statusText(entries)}`}
     >
       <Popup>
-        <div className="min-w-52 text-slate-900">
+        <div className="min-w-56 text-slate-900">
           <strong className="block text-sm">{location.name}</strong>
           <p className="mt-1 text-xs text-slate-600">{statusText(entries)}</p>
           {entries.length ? (
-            <ul className="mt-2 space-y-1 text-sm">
+            <ul className="mt-2 space-y-2 text-sm">
               {entries.map((entry, index) => (
                 <li
                   key={`${entry.label}-${index}`}
                   className={entry.critical ? "text-red-700" : "text-emerald-700"}
                 >
                   <span aria-hidden="true">● </span>
-                  {entry.label} – {entry.status}
+                  <span className="font-medium">{entry.label}</span>
+                  <span className="text-xs"> – {entry.status}</span>
+                  {entry.href && entry.actionLabel && (
+                    <a
+                      href={entry.href}
+                      className="ml-3 inline-block text-xs font-semibold text-blue-700 underline underline-offset-2 hover:text-blue-900"
+                    >
+                      {entry.actionLabel}
+                    </a>
+                  )}
                 </li>
               ))}
             </ul>
@@ -124,28 +153,51 @@ export default function LocationMapClient({
   focusLocationId: number | null;
   onTileLoadFailure: () => void;
 }) {
+  const [layer, setLayer] = useState<MapLayerKey>("streets");
+  const activeLayer = MAP_LAYERS[layer];
+
   return (
-    <MapContainer
-      center={[locations[0].latitude, locations[0].longitude]}
-      zoom={12}
-      scrollWheelZoom={false}
-      className="h-64 w-full sm:h-72"
-      aria-label="Live-Standortkarte mit Festival-Standorten"
-    >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>-Mitwirkende'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        eventHandlers={{ tileerror: onTileLoadFailure }}
-      />
-      <MapViewport locations={locations} focusLocationId={focusLocationId} />
-      {locations.map(location => (
-        <LocationMarker
-          key={location.id}
-          location={location}
-          entries={entriesByLocation.get(location.id) ?? []}
-          focused={focusLocationId === location.id}
+    <div className="relative">
+      <MapContainer
+        center={[locations[0].latitude, locations[0].longitude]}
+        zoom={12}
+        scrollWheelZoom={false}
+        className="h-[360px] w-full sm:h-[440px] lg:h-[560px]"
+        aria-label="Live-Standortkarte mit Festival-Standorten"
+      >
+        <TileLayer
+          key={layer}
+          attribution={activeLayer.attribution}
+          url={activeLayer.url}
+          eventHandlers={{ tileerror: onTileLoadFailure }}
         />
-      ))}
-    </MapContainer>
+        <MapViewport locations={locations} focusLocationId={focusLocationId} />
+        {locations.map(location => (
+          <LocationMarker
+            key={location.id}
+            location={location}
+            entries={entriesByLocation.get(location.id) ?? []}
+            focused={focusLocationId === location.id}
+          />
+        ))}
+      </MapContainer>
+      <div className="absolute left-3 top-3 z-[1000] flex overflow-hidden rounded-md border border-slate-300 bg-white shadow-md">
+        {(Object.keys(MAP_LAYERS) as MapLayerKey[]).map(key => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setLayer(key)}
+            className={`min-h-9 px-3 text-xs font-semibold transition-colors ${
+              layer === key
+                ? "bg-blue-700 text-white"
+                : "bg-white text-slate-700 hover:bg-slate-100"
+            }`}
+            aria-pressed={layer === key}
+          >
+            {MAP_LAYERS[key].label}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }

@@ -759,14 +759,13 @@ export default function Dashboard() {
       <section
         data-dashboard-section="Helfer-Kennzahlen"
         data-dashboard-level="Helfer-Kennzahlen"
-        className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"
+        className="grid gap-4 md:grid-cols-3"
       >
         <DailyReadinessCard
           readiness={dailyReadiness}
           openTarget={target => navigate(dashboardTargetHref(target))}
           onPotentialFilter={showPotentialInWorkload}
         />
-        <LocationMapCard />
         <FeedbackRateCard
           assigned={s.helferEingeteilt}
           confirmed={s.helferEingeteiltBestaetigt}
@@ -781,6 +780,10 @@ export default function Dashboard() {
           rate={s.erstkontaktquote}
           openTarget={target => navigate(dashboardTargetHref(target))}
         />
+      </section>
+
+      <section data-dashboard-level="Live-Standortkarte" className="w-full">
+        <LocationMapCard />
       </section>
 
       <div data-dashboard-level="Tabellendetails" className="grid gap-6 lg:grid-cols-2">

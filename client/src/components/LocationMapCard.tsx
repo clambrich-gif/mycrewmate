@@ -17,6 +17,8 @@ export type MapEntry = {
   label: string;
   status: string;
   critical: boolean;
+  href?: string;
+  actionLabel?: string;
 };
 
 export function LocationMapCard() {
@@ -25,6 +27,7 @@ export function LocationMapCard() {
   const { data: rawLocations = [] } = trpc.locations.list.useQuery();
   const { data: evaluations = [] } = trpc.plan.evaluate.useQuery();
   const { data: preparation = [] } = trpc.prep.list.useQuery();
+  const { data: materials = [] } = trpc.materials.list.useQuery();
   const [tileLoadFailed, setTileLoadFailed] = useState(false);
 
   const locations = useMemo(
@@ -55,6 +58,8 @@ export function LocationMapCard() {
         label: `${shift.day} · ${shift.area}: ${shift.task}`,
         status: evaluation.status,
         critical: evaluation.status === "OFFEN" || evaluation.status === "KNAPP",
+        href: `/einsatzplan?location=${shift.locationId}`,
+        actionLabel: "Einsatzplan filtern",
       });
     }
     for (const task of preparation as Array<{
@@ -67,35 +72,54 @@ export function LocationMapCard() {
         label: `${task.category || "Vorbereitung"}: ${task.task}`,
         status: task.status === "erledigt" ? "ERLEDIGT" : task.status.toUpperCase(),
         critical: task.status !== "erledigt",
+        href: `/vorbereitung?location=${task.locationId}`,
+        actionLabel: "Vorbereitung filtern",
+      });
+    }
+    for (const material of materials as Array<{
+      locationId?: number | null;
+      article: string;
+      quantity: string;
+      unit: string;
+    }>) {
+      add(material.locationId, {
+        label: `Material: ${material.article}`,
+        status: [material.quantity, material.unit].filter(Boolean).join(" ") || "benötigt",
+        critical: false,
+        href: `/material?location=${material.locationId}`,
+        actionLabel: "Material öffnen",
       });
     }
     return entries;
-  }, [evaluations, preparation]);
+  }, [evaluations, materials, preparation]);
 
   return (
     <Card
       data-dashboard-section="Live-Standortkarte"
-      className="h-full overflow-hidden border-blue-200 bg-white shadow-sm"
+      className="overflow-hidden border-blue-200 bg-white shadow-sm"
     >
-      <CardHeader className="flex flex-row flex-wrap items-baseline justify-between gap-2 p-3 pb-2 sm:p-4 sm:pb-2">
-        <CardTitle className="flex items-center gap-2 text-base text-slate-900">
+      <CardHeader className="flex flex-row flex-wrap items-baseline justify-between gap-2 p-4 pb-3 sm:p-5 sm:pb-3">
+        <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
           <MapPin className="size-5 text-blue-700" aria-hidden="true" />
           Live-Standortkarte
         </CardTitle>
-        <span className="text-xs text-slate-600">
-          Rot: Handlungsbedarf · Grün: geprüft
+        <span className="text-xs text-slate-600 sm:text-sm">
+          Rot: Handlungsbedarf · Grün: geprüft · Marker öffnen zum Filtern
         </span>
       </CardHeader>
-      <CardContent className="p-3 pt-0 sm:p-4 sm:pt-0">
+      <CardContent className="p-3 pt-0 sm:p-5 sm:pt-0">
         {!locations.length ? (
-          <div className="flex min-h-44 items-center justify-center rounded-lg border border-dashed bg-slate-50 p-4 text-center text-sm text-slate-600">
+          <div className="flex min-h-72 items-center justify-center rounded-xl border border-dashed bg-slate-50 p-6 text-center text-sm text-slate-600">
             Noch keine Orte hinterlegt. Orte &amp; Standorte öffnen, um die Karte zu aktivieren.
           </div>
         ) : (
-          <div className="relative overflow-hidden rounded-lg border border-slate-200">
+          <div className="relative overflow-hidden rounded-xl border border-slate-200">
             <Suspense
               fallback={
-                <div className="h-64 animate-pulse bg-slate-100 sm:h-72" aria-label="Standortkarte wird geladen" />
+                <div
+                  className="h-[360px] animate-pulse bg-slate-100 sm:h-[440px] lg:h-[560px]"
+                  aria-label="Standortkarte wird geladen"
+                />
               }
             >
               <LocationMapClient

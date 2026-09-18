@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
 import { trpc } from "@/lib/trpc";
-import { ArrowDownAZ, ArrowUpZA, Plus, Trash2 } from "lucide-react";
+import { ArrowDownAZ, ArrowUpZA, MapPin, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -64,6 +64,7 @@ interface Props {
   createInDialog?: boolean;
   createDialogTitle?: string;
   createTriggerLabel?: string;
+  locationField?: boolean;
 }
 
 const temporaryId = () => -Date.now() - Math.floor(Math.random() * 1_000);
@@ -83,6 +84,7 @@ export default function TaskGeneric({
   createInDialog = false,
   createDialogTitle = `Neu: ${addLabel}`,
   createTriggerLabel = `Neu: ${addLabel}`,
+  locationField = false,
 }: Props) {
   const utils = trpc.useUtils();
   const { user } = useAuth();
@@ -90,6 +92,7 @@ export default function TaskGeneric({
   const listUtils = (utils as any)[kind].list;
   const { data: rows = [], isLoading } = api.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
+  const { data: locations = [] } = trpc.locations.list.useQuery();
   const [name, setName] = useState("");
   const [extras, setExtras] = useState<Record<string, string>>({});
   const [contactFilter, setContactFilter] = useState("alle");
@@ -143,6 +146,7 @@ export default function TaskGeneric({
             columns.map(column => [column.key, input[column.key] ?? ""])
           ),
           contactId: input.contactId ?? null,
+          locationId: input.locationId ?? null,
           status: input.status ?? defaultStatus[0]?.v ?? "offen",
           ...(extraField
             ? {
@@ -210,15 +214,25 @@ export default function TaskGeneric({
 
   const submitCreate = () => {
     if (!name.trim() || create.isPending) return;
-    create.mutate({ [nameKey]: name.trim(), ...extras });
+    const { locationId, ...restExtras } = extras;
+    create.mutate({
+      [nameKey]: name.trim(),
+      ...restExtras,
+      ...(locationField
+        ? { locationId: locationId === "none" || !locationId ? null : Number(locationId) }
+        : {}),
+    });
   };
 
   const resetCreateForm = () => {
     setName("");
     setExtras(
-      extraField
-        ? { [extraField.key]: extraField.options[0]?.v ?? "" }
-        : {}
+      {
+        ...(extraField
+          ? { [extraField.key]: extraField.options[0]?.v ?? "" }
+          : {}),
+        ...(locationField ? { locationId: "none" } : {}),
+      }
     );
   };
 
@@ -231,6 +245,7 @@ export default function TaskGeneric({
     2 +
     columns.length +
     (noContact ? 0 : 1) +
+    (locationField ? 1 : 0) +
     (noStatus ? 0 : 1) +
     (extraField ? 1 : 0);
 
@@ -408,6 +423,42 @@ export default function TaskGeneric({
                   </Select>
                 </div>
               )}
+              {locationField && (
+                <div className="space-y-1">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Ort / Zielstandort
+                  </span>
+                  <Select
+                    value={row.locationId ? String(row.locationId) : "none"}
+                    onValueChange={value =>
+                      update.mutate({
+                        id: row.id,
+                        locationId: value === "none" ? null : Number(value),
+                      })
+                    }
+                  >
+                    <SelectTrigger className="h-11 w-full md:h-10">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Kein Ort</SelectItem>
+                      {locations.map(location => (
+                        <SelectItem key={location.id} value={String(location.id)}>
+                          {location.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {row.locationId && (
+                    <a
+                      href={`/?location=${row.locationId}`}
+                      className="inline-flex min-h-8 items-center gap-1 text-xs font-medium text-blue-700 hover:underline"
+                    >
+                      <MapPin className="size-3" aria-hidden="true" />(Karte)
+                    </a>
+                  )}
+                </div>
+              )}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {!noStatus && (
                   <div className="space-y-1">
@@ -505,6 +556,7 @@ export default function TaskGeneric({
                   </th>
                 ))}
                 {!noContact && <th className="p-3">Verantwortlich</th>}
+                {locationField && <th className="p-3">Ort</th>}
                 {!noStatus && <th className="p-3 text-center">Status</th>}
                 {extraField && (
                   <th className="p-3 text-center">{extraField.label}</th>
@@ -579,6 +631,41 @@ export default function TaskGeneric({
                           ))}
                         </SelectContent>
                       </Select>
+                    </td>
+                  )}
+                  {locationField && (
+                    <td className="p-2 align-middle">
+                      <div className="flex min-w-[190px] items-center gap-1.5">
+                        <Select
+                          value={row.locationId ? String(row.locationId) : "none"}
+                          onValueChange={value =>
+                            update.mutate({
+                              id: row.id,
+                              locationId: value === "none" ? null : Number(value),
+                            })
+                          }
+                        >
+                          <SelectTrigger className="h-8 w-[165px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Kein Ort</SelectItem>
+                            {locations.map(location => (
+                              <SelectItem key={location.id} value={String(location.id)}>
+                                {location.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {row.locationId && (
+                          <a
+                            href={`/?location=${row.locationId}`}
+                            className="inline-flex shrink-0 items-center gap-0.5 text-xs font-medium text-blue-700 hover:underline"
+                          >
+                            <MapPin className="size-3" aria-hidden="true" />(Karte)
+                          </a>
+                        )}
+                      </div>
                     </td>
                   )}
                   {!noStatus && (
@@ -736,6 +823,29 @@ export default function TaskGeneric({
                       />
                     </div>
                   ))}
+                </div>
+              )}
+              {locationField && (
+                <div className="space-y-1.5">
+                  <Label htmlFor={`${kind}-create-location`}>Ort / Zielstandort (optional)</Label>
+                  <Select
+                    value={extras.locationId ?? "none"}
+                    onValueChange={value =>
+                      setExtras(current => ({ ...current, locationId: value }))
+                    }
+                  >
+                    <SelectTrigger id={`${kind}-create-location`}>
+                      <SelectValue placeholder="Kein Ort" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Kein Ort</SelectItem>
+                      {locations.map(location => (
+                        <SelectItem key={location.id} value={String(location.id)}>
+                          {location.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
               {extraField && (

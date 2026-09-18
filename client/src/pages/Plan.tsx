@@ -481,6 +481,7 @@ export default function Plan() {
     searchParams.get(PLAN_WARNING_QUERY_KEY)
   );
   const status = parsePlanStatusFilter(searchParams.get(PLAN_STATUS_QUERY_KEY));
+  const locationFilter = Number(searchParams.get("location")) || null;
   const canEditPlan = user?.role === "admin";
   const { data: evals = [], isLoading } = trpc.plan.evaluate.useQuery();
   const { data: helpers = [] } = trpc.helpers.list.useQuery();
@@ -520,7 +521,9 @@ export default function Plan() {
             ? "Keine knapp besetzten Schichten gefunden."
             : status === "OK_MANUELL"
               ? "Keine manuell bestätigten Schichten gefunden."
-            : flexibleAssignmentFilter === "flexibel"
+              : locationFilter
+                ? "Keine Schichten an diesem Standort gefunden."
+              : flexibleAssignmentFilter === "flexibel"
               ? "Keine Schichten mit flexibler Belegung gefunden."
         : "Keine Schichten gefunden.";
 
@@ -559,6 +562,7 @@ export default function Plan() {
         const next = new URLSearchParams(previous);
         next.delete(PLAN_WARNING_QUERY_KEY);
         next.delete(PLAN_STATUS_QUERY_KEY);
+        next.delete("location");
         return next;
       },
       { replace: true }
@@ -876,6 +880,7 @@ export default function Plan() {
           e =>
             (day === "alle" || e.shift.day === day) &&
             (area === "alle" || e.shift.area === area) &&
+            (!locationFilter || e.shift.locationId === locationFilter) &&
             planStatusMatchesFilter(
               status,
               e.status,
@@ -904,6 +909,7 @@ export default function Plan() {
       evals,
       day,
       area,
+      locationFilter,
       status,
       warningFilter,
       q,

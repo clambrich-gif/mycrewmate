@@ -2425,11 +2425,14 @@ export const updatePost = async (id: number, v: any) =>
 export const deletePost = async (id: number) =>
   ((await getDb()) as DB).delete(postTasks).where(yearWhere(postTasks, id));
 export const createMaterial = async (v: any) =>
-  createYearRow(materials, await scopedContactValues(v));
+  createYearRow(
+    materials,
+    await scopedContactValues(await scopedLocationValues(v))
+  );
 export const updateMaterial = async (id: number, v: any) =>
   ((await getDb()) as DB)
     .update(materials)
-    .set(await scopedContactValues(v))
+    .set(await scopedContactValues(await scopedLocationValues(v)))
     .where(yearWhere(materials, id));
 export const deleteMaterial = async (id: number) =>
   ((await getDb()) as DB).delete(materials).where(yearWhere(materials, id));

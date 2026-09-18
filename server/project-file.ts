@@ -18,7 +18,7 @@ import {
 } from "../shared/weekdays";
 
 const PROJECT_FORMAT = "RSC-HELFERPLANUNG-PROJEKTDATEI";
-const PROJECT_VERSION = 8;
+const PROJECT_VERSION = 9;
 const MAX_PROJECT_BYTES = 10_000_000;
 const MAX_ROWS = 10_000;
 
@@ -162,6 +162,8 @@ const documentSchema = z
           category: short(120),
           quantity: short(40),
           unit: short(40),
+          locationSourceId: id,
+          locationName: short(200),
           contactSourceId: id,
           contactName: short(200),
           ordered: z.enum(["ja", "nein"]),
@@ -639,6 +641,32 @@ export function parseProjectFile(base64: string): {
           locationName: task.locationName ?? "",
         }))
       : legacy.prep;
+    legacy.materials = Array.isArray(legacy.materials)
+      ? legacy.materials.map((material: Record<string, unknown>) => ({
+          ...material,
+          locationSourceId: material.locationSourceId ?? null,
+          locationName: material.locationName ?? "",
+        }))
+      : legacy.materials;
+  }
+  if (
+    raw &&
+    typeof raw === "object" &&
+    "metadata" in raw &&
+    raw.metadata &&
+    typeof raw.metadata === "object" &&
+    "version" in raw.metadata &&
+    raw.metadata.version === 8
+  ) {
+    const legacy = raw as Record<string, any>;
+    legacy.metadata = { ...legacy.metadata, version: PROJECT_VERSION };
+    legacy.materials = Array.isArray(legacy.materials)
+      ? legacy.materials.map((material: Record<string, unknown>) => ({
+          ...material,
+          locationSourceId: material.locationSourceId ?? null,
+          locationName: material.locationName ?? "",
+        }))
+      : legacy.materials;
   }
   if (
     raw &&
@@ -667,6 +695,13 @@ export function parseProjectFile(base64: string): {
           locationName: task.locationName ?? "",
         }))
       : document.prep;
+    document.materials = Array.isArray(document.materials)
+      ? document.materials.map((material: Record<string, unknown>) => ({
+          ...material,
+          locationSourceId: material.locationSourceId ?? null,
+          locationName: material.locationName ?? "",
+        }))
+      : document.materials;
   }
   const parsed = documentSchema.safeParse(raw);
   if (!parsed.success)

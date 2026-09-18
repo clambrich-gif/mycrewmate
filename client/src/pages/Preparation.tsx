@@ -288,6 +288,7 @@ export default function Preparation() {
   const [searchParams, setSearchParams] = useSearchParams();
   const rawStatusFilter = searchParams.get(TASK_STATUS_QUERY_KEY);
   const statusFilter: TaskStatusFilter = parseTaskStatusFilter(rawStatusFilter);
+  const locationFilter = Number(searchParams.get("location")) || null;
 
   const [categoryFilter, setCategoryFilter] = useState<string>("alle");
   const [contactFilter, setContactFilter] = useState<string>("alle");
@@ -431,6 +432,7 @@ export default function Preparation() {
     return rows
       .filter(row => {
         if (statusFilter !== "alle" && row.status !== statusFilter) return false;
+        if (locationFilter && row.locationId !== locationFilter) return false;
         if (categoryFilter === "ohne" && row.category?.trim()) return false;
         if (categoryFilter !== "alle" && categoryFilter !== "ohne") {
           if (row.category?.trim() !== categoryFilter) return false;
@@ -476,6 +478,7 @@ export default function Preparation() {
   }, [
     rows,
     statusFilter,
+    locationFilter,
     categoryFilter,
     contactFilter,
     searchTerm,
@@ -485,6 +488,7 @@ export default function Preparation() {
 
   const hasActiveFilters =
     statusFilter !== "alle" ||
+    locationFilter !== null ||
     categoryFilter !== "alle" ||
     contactFilter !== "alle" ||
     Boolean(searchTerm.trim());
@@ -506,6 +510,14 @@ export default function Preparation() {
     setCategoryFilter("alle");
     setContactFilter("alle");
     setSearchTerm("");
+    setSearchParams(
+      previous => {
+        const next = new URLSearchParams(previous);
+        next.delete("location");
+        return next;
+      },
+      { replace: true }
+    );
   };
 
   const openCreate = () => {

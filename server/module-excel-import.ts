@@ -619,6 +619,8 @@ function rowsFromDocument(document: BackupDocument, area: ModuleImportArea) {
       Tag: row.day,
       Bereich: row.area,
       Aufgabe: row.task,
+      "Ort-ID": row.locationSourceId ?? "",
+      "Ort / Standort": row.locationName,
       Beginn: row.startTime,
       Ende: row.endTime,
       "Flexible Belegung": row.allowFlexibleAssignment ? "Ja" : "Nein",
@@ -649,6 +651,8 @@ function rowsFromDocument(document: BackupDocument, area: ModuleImportArea) {
       ...(isPrep
         ? {
             "Zu erledigen bis": (row as BackupDocument["prep"][number]).dueText,
+            "Ort-ID": (row as BackupDocument["prep"][number]).locationSourceId ?? "",
+            "Ort / Standort": (row as BackupDocument["prep"][number]).locationName,
           }
         : {}),
       "Verantwortlich-ID": row.contactSourceId ?? "",
@@ -671,6 +675,8 @@ function rowsFromDocument(document: BackupDocument, area: ModuleImportArea) {
       Kategorie: row.category,
       Menge: row.quantity,
       Einheit: row.unit,
+      "Ort-ID": row.locationSourceId ?? "",
+      "Ort / Zielstandort": row.locationName,
       "Verantwortlich-ID": row.contactSourceId ?? "",
       Verantwortlich: row.contactName,
       Bestellt: row.ordered,

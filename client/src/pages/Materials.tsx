@@ -21,6 +21,7 @@ export default function Materials() {
         ],
       }}
       noStatus
+      locationField
       sortableAndFilterable
       createInDialog
       createDialogTitle="Neuen Artikel anlegen"

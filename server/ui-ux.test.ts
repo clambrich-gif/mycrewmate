@@ -718,9 +718,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain("Filter aufheben");
     expect(dashboard).toContain('data-dashboard-section="Helfer-Kennzahlen"');
     expect(dashboard).toContain(
-      'className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"'
+      'className="grid gap-4 md:grid-cols-3"'
     );
     expect(dashboard).toContain("<LocationMapCard />");
+    expect(dashboard).toContain('data-dashboard-level="Live-Standortkarte"');
     expect(source("client/src/components/LocationMapCard.tsx")).toContain(
       'data-dashboard-section="Live-Standortkarte"'
     );
@@ -1626,6 +1627,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(locations).toContain("Orte & Standorte");
     expect(locations).toContain("Breitengrad (Latitude)");
     expect(locations).toContain("Längengrad (Longitude)");
+
+    const materials = source("client/src/pages/Materials.tsx");
+    const taskGeneric = source("client/src/pages/TaskGeneric.tsx");
+    expect(materials).toContain("locationField");
+    expect(taskGeneric).toContain("Ort / Zielstandort (optional)");
+    expect(taskGeneric).toContain('href={`/?location=${row.locationId}`}');
 
     expect(plan).toContain("Ort / Standort");
     expect(plan).toContain('href={`/?location=${s.locationId}`}');
