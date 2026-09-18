@@ -769,6 +769,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const layout = source("client/src/components/Layout.tsx");
     const router = source("server/routers.ts");
     const eventDates = source("shared/event-dates.ts");
+    const styles = source("client/src/index.css");
 
     expect(dashboard).toContain("EventCountdownWidget");
     expect(dashboard).toContain('data-slot="event-countdown"');
@@ -777,6 +778,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain("border-2 border-amber-400");
     expect(dashboard).toContain("text-4xl font-black");
     expect(dashboard).toContain("shrink-0 !min-w-[17.5rem]");
+    expect(dashboard).toContain("const isUrgent = state.days < 14");
+    expect(dashboard).toContain('data-countdown-urgent={isUrgent ? "true" : "false"}');
+    expect(dashboard).toContain('" countdown-urgent"');
     expect(dashboard).not.toContain("formatEventDate");
     expect(dashboard).toContain("Event läuft!");
     expect(dashboard).toContain("Veranstaltung abgeschlossen");
@@ -789,6 +793,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(router).toContain("startDate");
     expect(router).toContain("endDate");
     expect(eventDates).toContain("eventCountdownState");
+    expect(styles).toContain(".countdown-urgent::after");
+    expect(styles).toContain("@keyframes countdown-urgent-glow");
+    expect(styles).toContain("prefers-reduced-motion: no-preference");
+    expect(styles).toContain("will-change: opacity, transform");
   });
 
   it("verschiebt die Einsatzplan-Kennzahlen als kompakte Live-Statusleiste in den Einsatzplan", () => {

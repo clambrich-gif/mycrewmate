@@ -45,6 +45,14 @@ describe("event-dates & countdown", () => {
     });
   });
 
+  it("liefert für die visuelle 14-Tage-Schwelle einen präzisen Tageswert", () => {
+    const state = eventCountdownState(
+      { startDate: "2027-06-18", endDate: "2027-06-20" },
+      new Date("2027-06-05T00:00:00")
+    );
+    expect(state).toEqual({ kind: "upcoming", days: 13, hours: 0 });
+  });
+
   it("erkennt den laufenden Eventstatus mit aktuellem Eventtag", () => {
     const fixedNow = new Date("2027-06-19T14:30:00");
     const state = eventCountdownState(

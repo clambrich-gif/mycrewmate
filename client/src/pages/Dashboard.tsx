@@ -558,16 +558,18 @@ function EventCountdownWidget({
   }
 
   if (state.kind === "upcoming") {
+    const isUrgent = state.days < 14;
     return (
       <div
         data-slot="event-countdown"
         data-countdown-state="upcoming"
-        className="flex shrink-0 !min-w-[17.5rem] items-center gap-3 rounded-2xl border-2 border-amber-400 bg-gradient-to-r from-amber-100 via-yellow-50 to-orange-100 px-4 py-3 text-slate-950 shadow-md shadow-amber-200/80 ring-1 ring-amber-200 sm:!min-w-[19rem] sm:px-5"
+        data-countdown-urgent={isUrgent ? "true" : "false"}
+        className={`flex shrink-0 !min-w-[17.5rem] items-center gap-3 rounded-2xl border-2 border-amber-400 bg-gradient-to-r from-amber-100 via-yellow-50 to-orange-100 px-4 py-3 text-slate-950 shadow-md shadow-amber-200/80 ring-1 ring-amber-200 sm:!min-w-[19rem] sm:px-5${isUrgent ? " countdown-urgent" : ""}`}
       >
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-lg shadow-sm shadow-amber-300" aria-hidden="true">
+        <span className="relative z-10 flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-lg shadow-sm shadow-amber-300" aria-hidden="true">
           ⏳
         </span>
-        <div className="min-w-0">
+        <div className="relative z-10 min-w-0">
           <div className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-amber-900">
             Eventstart in
           </div>
