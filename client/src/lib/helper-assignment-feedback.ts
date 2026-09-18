@@ -1,4 +1,9 @@
-import { WEEKDAY_SHORT_LABELS, type Weekday } from "@shared/weekdays";
+import {
+  normalizeWeekday,
+  orderedWeekdays,
+  WEEKDAY_SHORT_LABELS,
+  type Weekday,
+} from "@shared/weekdays";
 
 export type HelperAssignmentDay = {
   day: string;
@@ -14,7 +19,7 @@ export type HelperDropdownFeedback =
       segments: Array<{
         day: Weekday;
         label: string;
-        state: "current" | "assigned" | "neutral";
+        state: "current" | "assigned" | "neutral" | "unavailable";
       }>;
     }
   | null;
@@ -27,38 +32,51 @@ export type HelperDropdownFeedback =
 export function helperDropdownAssignmentFeedback({
   assignments,
   activeDays,
+  availabilityByDay,
   currentDay,
   hasTimeConflict,
 }: {
   assignments: HelperAssignmentDay[];
   activeDays: Weekday[];
-  currentDay: Weekday;
+  availabilityByDay: Array<{ day: Weekday; available: boolean }>;
+  currentDay: Weekday | string;
   hasTimeConflict: boolean;
 }): HelperDropdownFeedback {
   if (hasTimeConflict) return { kind: "already-assigned" };
   if (assignments.length === 0) return { kind: "new" };
 
+  // Die Position des Segments ergibt sich ausschließlich aus dem jeweiligen
+  // Eventtag. Weder der Tag der geöffneten Schicht noch die Reihenfolge einer
+  // Zuweisung darf die Zuordnung Fr/Sa/So verschieben.
+  const eventDays = orderedWeekdays(activeDays);
   const assignedDays = new Set<Weekday>(
     assignments.flatMap(assignment => {
-      const day = assignment.day as Weekday;
-      return activeDays.includes(day) ? [day] : [];
+      const day = normalizeWeekday(assignment.day);
+      return day && eventDays.includes(day) ? [day] : [];
     })
   );
   if (assignedDays.size === 0) return { kind: "new" };
+  const availableDays = new Map<Weekday, boolean>(
+    availabilityByDay
+      .filter(item => eventDays.includes(item.day))
+      .map(item => [item.day, item.available])
+  );
+  const selectedDay = normalizeWeekday(currentDay);
 
   return {
     kind: "day-segments",
-    segments: activeDays.map(day => ({
+    segments: eventDays.map(day => ({
       day,
       label: WEEKDAY_SHORT_LABELS[day],
-      // Jeder schon belegte Festivaltag bleibt sichtbar gelb – auch dann,
-      // wenn seine Schicht zeitlich nicht mit dem gerade offenen Slot kollidiert.
-      // Nur ein wirklich noch unbelegter aktueller Tag wird grün gezeigt.
+      // Eine bestehende Schicht bleibt immer gelb sichtbar. Für alle anderen
+      // Tage stammt die Farbe absolut aus dem passenden Helfer-Stammfeld.
       state: assignedDays.has(day)
         ? "assigned"
-        : day === currentDay
-          ? "current"
-          : "neutral",
+        : !availableDays.get(day)
+          ? "unavailable"
+          : day === selectedDay
+            ? "current"
+            : "neutral",
     })),
   };
 }

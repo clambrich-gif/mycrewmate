@@ -70,6 +70,7 @@ import {
 import {
   eventWeekdays,
   helperAvailabilityWindowLabel,
+  helperAvailableOnDay,
   helperEligibleForShift,
   helperAvailableForShift,
   helperHasTimedAvailability,
@@ -266,7 +267,9 @@ function HelperDropdownFeedbackBadge({
               ? "bg-emerald-500 text-white"
               : segment.state === "assigned"
                 ? "bg-amber-200 text-amber-950"
-                : "bg-slate-100 text-slate-600"
+                : segment.state === "unavailable"
+                  ? "bg-slate-100 text-slate-400 line-through"
+                  : "bg-slate-100 text-slate-600"
           } ${index ? "border-l border-white/70" : ""}`}
         >
           {segment.label}
@@ -1077,6 +1080,10 @@ export default function Plan() {
                     const assignmentFeedback = helperDropdownAssignmentFeedback({
                       assignments: assignedDaysByHelper.get(helper.id) ?? [],
                       activeDays,
+                      availabilityByDay: activeDays.map(day => ({
+                        day,
+                        available: helperAvailableOnDay(helper, day),
+                      })),
                       currentDay: shift.day,
                       hasTimeConflict: isAlreadyAssigned,
                     });
@@ -1209,7 +1216,7 @@ export default function Plan() {
         <h1 className="text-2xl font-bold">Einsatzplan</h1>
         <p className="text-muted-foreground">
           {canEditPlan
-            ? "Nur verfügbare, aktive Helfer sind auswählbar. „Neu“ bedeutet noch keine Einteilung; Fr/Sa/So zeigt Einsätze an anderen Tagen (Grün: hier frei, Gelb: dort eingeteilt). Zeitgleich bereits eingeteilte Helfer bleiben gelb markiert und auswählbar. Absagen markieren Ausfälle (rot), Doppelbelegungen werden gewarnt (orange)."
+            ? "Nur verfügbare, aktive Helfer sind auswählbar. „Neu“ bedeutet noch keine Einteilung; die Tagessegmente richten sich nach den Eventtagen (Grün: aktuell frei, Gelb: dort eingeteilt, Grau: nicht verfügbar). Zeitgleich bereits eingeteilte Helfer bleiben gelb markiert und auswählbar. Absagen markieren Ausfälle (rot), Doppelbelegungen werden gewarnt (orange)."
             : "Das Planungsteam kann den Einsatzplan vollständig ansehen und filtern. Änderungen und Helferzuweisungen sind Administratoren vorbehalten."}
         </p>
       </div>

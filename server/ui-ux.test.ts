@@ -1712,6 +1712,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("helperDropdownAssignmentFeedback({");
     expect(plan).toContain("const assignedDaysByHelper = useMemo");
     expect(plan).toContain("assignments: assignedDaysByHelper.get(helper.id) ?? []");
+    expect(plan).toContain("availabilityByDay: activeDays.map(day => ({");
+    expect(plan).toContain("available: helperAvailableOnDay(helper, day)");
+    expect(plan).toContain('segment.state === "unavailable"');
+    expect(plan).toContain("line-through");
     expect(plan).toContain("currentDay: shift.day");
     expect(plan).toContain("normalizeWeekday(evaluation.shift.day)");
     expect(plan).toContain("Bereits eingeteilt");
@@ -1725,8 +1729,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(feedback).toContain('kind: "day-segments"');
     expect(feedback).toContain("hasTimeConflict");
     expect(feedback).toContain("WEEKDAY_SHORT_LABELS");
+    expect(feedback).toContain("orderedWeekdays(activeDays)");
+    expect(feedback).toContain("availabilityByDay");
+    expect(feedback).toContain('? "unavailable"');
     expect(feedback).toContain("assignedDays.has(day)");
-    expect(feedback).toContain("day === currentDay");
+    expect(feedback).toContain("day === selectedDay");
 
     const storageProxy = source("server/_core/storageProxy.ts");
     expect(storageProxy).toContain('const INLINE_LOCATION_LOGO_PREFIX = "location-logos/"');
