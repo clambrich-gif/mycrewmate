@@ -3,8 +3,16 @@ import type {
   CircleMarker as LeafletCircleMarker,
   Marker as LeafletMarker,
 } from "leaflet";
-import { Maximize2, Minimize2, RotateCcw } from "lucide-react";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Maximize2, Minimize2, RotateCcw, X } from "lucide-react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useIsMobile } from "@/hooks/useMobile";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import {
   CircleMarker,
   MapContainer,
@@ -16,6 +24,7 @@ import {
   useMapEvents,
 } from "react-leaflet";
 import type { MapEntry, MapLocation } from "./LocationMapCard";
+import { LocationDetailContent } from "./LocationDetailContent";
 import "leaflet/dist/leaflet.css";
 
 const MAP_MARKER_COLORS = {
@@ -174,11 +183,19 @@ function LocationMarker({
   entries,
   focused,
   zoom,
+  isMobile,
+  onMobileDetailsOpen,
 }: {
   location: MapLocation;
   entries: MapEntry[];
   focused: boolean;
   zoom: number;
+  isMobile: boolean;
+  onMobileDetailsOpen: (
+    location: MapLocation,
+    entries: MapEntry[],
+    source: "marker" | "focus"
+  ) => void;
 }) {
   const circleMarkerRef = useRef<LeafletCircleMarker | null>(null);
   const logoMarkerRef = useRef<LeafletMarker | null>(null);
@@ -201,37 +218,27 @@ function LocationMarker({
 
   useEffect(() => {
     if (!focused) return;
-    const timeout = window.setTimeout(() => markerRef.current?.openPopup(), 120);
+    const timeout = window.setTimeout(() => {
+      if (isMobile) onMobileDetailsOpen(location, entries, "focus");
+      else markerRef.current?.openPopup();
+    }, 120);
     return () => window.clearTimeout(timeout);
-  }, [focused, markerRef]);
+  }, [entries, focused, isMobile, location, markerRef, onMobileDetailsOpen]);
 
-  const popup = (
+  const popup = isMobile ? null : (
     <Popup>
-      <div className="min-w-56 text-slate-900">
-        <strong className="block text-sm">{location.name}</strong>
-        <p className="mt-1 text-xs text-slate-600">{statusText(entries)}</p>
-        {entries.length ? (
-          <ul className="mt-2 space-y-2 text-sm">
-            {entries.map((entry, index) => (
-              <li key={`${entry.label}-${index}`} className={markerEntryClass(entry.severity)}>
-                <span aria-hidden="true">● </span>
-                <span className="font-medium">{entry.label}</span>
-                <span className="text-xs"> – {entry.status}</span>
-                {entry.href && entry.actionLabel ? (
-                  <a
-                    href={entry.href}
-                    className="ml-3 inline-block text-xs font-semibold text-blue-700 underline underline-offset-2 hover:text-blue-900"
-                  >
-                    {entry.actionLabel}
-                  </a>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        ) : null}
-      </div>
+      <LocationDetailContent
+        location={location}
+        entries={entries}
+        statusText={statusText(entries)}
+        entryClassName={markerEntryClass}
+      />
     </Popup>
   );
+
+  const markerEvents = {
+    click: () => onMobileDetailsOpen(location, entries, "marker"),
+  };
 
   if (logoIcon)
     return (
@@ -240,6 +247,7 @@ function LocationMarker({
         position={[location.latitude, location.longitude]}
         icon={logoIcon}
         aria-label={`${location.name}: ${statusText(entries)}`}
+        eventHandlers={markerEvents}
       >
         {popup}
       </Marker>
@@ -250,8 +258,15 @@ function LocationMarker({
       ref={circleMarkerRef}
       center={[location.latitude, location.longitude]}
       radius={Math.max(9, size / 3.6)}
-      pathOptions={{ color: "#ffffff", weight: 2, fillColor: color, fillOpacity: 1 }}
+      pathOptions={{
+        color: "#ffffff",
+        weight: 2,
+        fillColor: color,
+        fillOpacity: 1,
+        className: "location-map-marker",
+      }}
       aria-label={`${location.name}: ${statusText(entries)}`}
+      eventHandlers={markerEvents}
     >
       {popup}
     </CircleMarker>
@@ -280,6 +295,12 @@ export default function LocationMapClient({
   const [markerZoom, setMarkerZoom] = useState(12);
   const [resetKey, setResetKey] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
+  const isMobile = useIsMobile();
+  const [mobileLocationDetails, setMobileLocationDetails] = useState<{
+    location: MapLocation;
+    entries: MapEntry[];
+  } | null>(null);
+  const dismissedMobileFocusRef = useRef<number | null>(null);
   const activeLayer = MAP_LAYERS[layer];
 
   useEffect(() => {
@@ -300,6 +321,12 @@ export default function LocationMapClient({
     document.addEventListener("fullscreenchange", syncFullscreen);
     return () => document.removeEventListener("fullscreenchange", syncFullscreen);
   }, []);
+
+  useEffect(() => {
+    if (dismissedMobileFocusRef.current !== focusLocationId) {
+      dismissedMobileFocusRef.current = null;
+    }
+  }, [focusLocationId]);
 
   const visibleTracks = useMemo(
     () => gpxTracks.filter(track => visibleTrackIds.has(track.id)),
@@ -322,6 +349,24 @@ export default function LocationMapClient({
       await rootRef.current.requestFullscreen?.();
     }
   };
+
+  const closeMobileDetails = useCallback(() => {
+    if (focusLocationId && mobileLocationDetails?.location.id === focusLocationId) {
+      dismissedMobileFocusRef.current = focusLocationId;
+    }
+    setMobileLocationDetails(null);
+  }, [focusLocationId, mobileLocationDetails]);
+
+  const openMobileDetails = useCallback((
+    location: MapLocation,
+    entries: MapEntry[],
+    source: "marker" | "focus"
+  ) => {
+    if (!isMobile) return;
+    if (source === "focus" && dismissedMobileFocusRef.current === location.id) return;
+    if (source === "marker") dismissedMobileFocusRef.current = null;
+    setMobileLocationDetails({ location, entries });
+  }, [isMobile]);
 
   return (
     <div
@@ -380,6 +425,8 @@ export default function LocationMapClient({
             entries={entriesByLocation.get(location.id) ?? []}
             focused={focusLocationId === location.id}
             zoom={markerZoom}
+            isMobile={isMobile}
+            onMobileDetailsOpen={openMobileDetails}
           />
         ))}
       </MapContainer>
@@ -446,6 +493,52 @@ export default function LocationMapClient({
           </div>
         </fieldset>
       ) : null}
+
+      <Sheet
+        open={Boolean(mobileLocationDetails)}
+        onOpenChange={open => {
+          if (!open) closeMobileDetails();
+        }}
+      >
+        <SheetContent
+          side="bottom"
+          data-location-mobile-sheet="true"
+          overlayClassName="z-[3000] bg-slate-950/45"
+          className="z-[3001] max-h-[70vh] min-h-0 gap-0 overflow-hidden rounded-t-2xl border-slate-200 p-0 pb-[env(safe-area-inset-bottom)]"
+          showClose={false}
+        >
+          {mobileLocationDetails && (
+            <>
+              <SheetHeader className="relative shrink-0 border-b border-slate-100 px-5 pb-3 pt-5 text-left">
+                <SheetTitle>{mobileLocationDetails.location.name}</SheetTitle>
+                <SheetDescription>
+                  Standortdetails und direkte Filteraktionen
+                </SheetDescription>
+                <button
+                  type="button"
+                  onClick={closeMobileDetails}
+                  data-location-mobile-sheet-close="true"
+                  className="absolute right-3 top-3 inline-flex size-11 items-center justify-center rounded-md text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                  aria-label="Standortdetails schließen"
+                >
+                  <X className="size-5" aria-hidden="true" />
+                </button>
+              </SheetHeader>
+              <div className="min-h-0 overflow-y-auto overscroll-contain px-5 pb-5 pt-4">
+                <LocationDetailContent
+                  location={mobileLocationDetails.location}
+                  entries={mobileLocationDetails.entries}
+                  statusText={statusText(mobileLocationDetails.entries)}
+                  entryClassName={markerEntryClass}
+                  mobile
+                  showHeading={false}
+                  onClose={closeMobileDetails}
+                />
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

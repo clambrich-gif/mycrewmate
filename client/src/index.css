@@ -146,6 +146,20 @@
   max-height: none !important;
 }
 
+/* Standortdetails dürfen auf Desktop niemals hinter eigenen oder Leaflet-
+   Kartensteuerungen liegen. Das mobile Detailblatt verwendet zusätzlich eine
+   eigene Portalebene oberhalb der Karte. */
+.leaflet-popup-pane,
+.leaflet-popup {
+  z-index: 10000 !important;
+}
+
+.leaflet-control,
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 1000 !important;
+}
+
 /* Standortlogos ersetzen den Standardpin, behalten aber über den kontrastreichen
    Außenring den aktuellen Einsatzstatus auf allen Kartenhintergründen bei. */
 .location-logo-marker {

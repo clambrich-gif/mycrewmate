@@ -1673,10 +1673,30 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(mapClient).toContain("useLayoutEffect");
     expect(mapClient).toContain("map.invalidateSize({ pan: false");
 
+    const locationDetails = source("client/src/components/LocationDetailContent.tsx");
+    const sheet = source("client/src/components/ui/sheet.tsx");
+    expect(mapClient).toContain("useIsMobile");
+    expect(mapClient).toContain("data-location-mobile-sheet=\"true\"");
+    expect(mapClient).toContain("max-h-[70vh]");
+    expect(mapClient).toContain("overflow-y-auto overscroll-contain");
+    expect(mapClient).toContain("isMobile ? null");
+    expect(mapClient).toContain("onMobileDetailsOpen");
+    expect(mapClient).toContain('className: "location-map-marker"');
+    expect(mapClient).toContain('data-location-mobile-sheet-close="true"');
+    expect(mapClient).toContain("dismissedMobileFocusRef");
+    expect(mapClient).toContain("closeMobileDetails");
+    expect(locationDetails).toContain('data-location-detail-content={mobile ? "mobile-sheet" : "desktop-popup"}');
+    expect(locationDetails).toContain("Karte weiter nutzen");
+    expect(sheet).toContain("overlayClassName");
+    expect(sheet).toContain("showClose = true");
+
     const globalStyles = source("client/src/index.css");
     expect(globalStyles).toContain('[data-map-shell="fullscreen"]');
     expect(globalStyles).toContain("width: 100vw !important");
     expect(globalStyles).toContain("height: 100vh !important");
+    expect(globalStyles).toContain(".leaflet-popup-pane,");
+    expect(globalStyles).toContain("z-index: 10000 !important");
+    expect(globalStyles).toContain(".leaflet-control,");
 
     expect(locations).toContain("Standort-Logo / Marker-Icon hochladen (PNG/SVG/JPG)");
     expect(locations).toContain("Marker-Vorschau aktiv");
