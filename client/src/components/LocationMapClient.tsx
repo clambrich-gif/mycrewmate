@@ -3,7 +3,7 @@ import type {
   CircleMarker as LeafletCircleMarker,
   Marker as LeafletMarker,
 } from "leaflet";
-import { Maximize2, Minimize2, RotateCcw, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Maximize2, Minimize2, RotateCcw, X } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useIsMobile } from "@/hooks/useMobile";
 import {
@@ -300,8 +300,26 @@ export default function LocationMapClient({
     location: MapLocation;
     entries: MapEntry[];
   } | null>(null);
-  const dismissedMobileFocusRef = useRef<number | null>(null);
+  const dismissedMobileFocusRef = useRef(new Set<number>());
   const activeLayer = MAP_LAYERS[layer];
+  const mobileNavigationLocations = useMemo(
+    () => [...locations].sort((left, right) => left.name.localeCompare(right.name, "de")),
+    [locations]
+  );
+  const mobileLocationIndex = mobileLocationDetails
+    ? mobileNavigationLocations.findIndex(
+        location => location.id === mobileLocationDetails.location.id
+      )
+    : -1;
+  const previousMobileLocation =
+    mobileLocationIndex > 0
+      ? mobileNavigationLocations[mobileLocationIndex - 1]
+      : null;
+  const nextMobileLocation =
+    mobileLocationIndex >= 0 && mobileLocationIndex < mobileNavigationLocations.length - 1
+      ? mobileNavigationLocations[mobileLocationIndex + 1]
+      : null;
+  const activeLocationId = mobileLocationDetails?.location.id ?? focusLocationId;
 
   useEffect(() => {
     if (!gpxTracks.length) return;
@@ -323,8 +341,8 @@ export default function LocationMapClient({
   }, []);
 
   useEffect(() => {
-    if (dismissedMobileFocusRef.current !== focusLocationId) {
-      dismissedMobileFocusRef.current = null;
+    if (focusLocationId !== null && !dismissedMobileFocusRef.current.has(focusLocationId)) {
+      dismissedMobileFocusRef.current.clear();
     }
   }, [focusLocationId]);
 
@@ -351,9 +369,8 @@ export default function LocationMapClient({
   };
 
   const closeMobileDetails = useCallback(() => {
-    if (focusLocationId && mobileLocationDetails?.location.id === focusLocationId) {
-      dismissedMobileFocusRef.current = focusLocationId;
-    }
+    if (focusLocationId !== null) dismissedMobileFocusRef.current.add(focusLocationId);
+    if (mobileLocationDetails) dismissedMobileFocusRef.current.add(mobileLocationDetails.location.id);
     setMobileLocationDetails(null);
   }, [focusLocationId, mobileLocationDetails]);
 
@@ -363,10 +380,19 @@ export default function LocationMapClient({
     source: "marker" | "focus"
   ) => {
     if (!isMobile) return;
-    if (source === "focus" && dismissedMobileFocusRef.current === location.id) return;
-    if (source === "marker") dismissedMobileFocusRef.current = null;
+    if (source === "focus" && dismissedMobileFocusRef.current.has(location.id)) return;
+    if (source === "marker") dismissedMobileFocusRef.current.delete(location.id);
     setMobileLocationDetails({ location, entries });
   }, [isMobile]);
+
+  const navigateMobileLocation = useCallback((location: MapLocation | null) => {
+    if (!location) return;
+    dismissedMobileFocusRef.current.delete(location.id);
+    setMobileLocationDetails({
+      location,
+      entries: entriesByLocation.get(location.id) ?? [],
+    });
+  }, [entriesByLocation]);
 
   return (
     <div
@@ -400,7 +426,7 @@ export default function LocationMapClient({
           locations={locations}
           tracks={gpxTracks}
           visibleTrackIds={visibleTrackIds}
-          focusLocationId={focusLocationId}
+          focusLocationId={activeLocationId}
           resetKey={resetKey}
           fullscreen={fullscreen}
         />
@@ -423,7 +449,7 @@ export default function LocationMapClient({
             key={location.id}
             location={location}
             entries={entriesByLocation.get(location.id) ?? []}
-            focused={focusLocationId === location.id}
+            focused={activeLocationId === location.id}
             zoom={markerZoom}
             isMobile={isMobile}
             onMobileDetailsOpen={openMobileDetails}
@@ -509,7 +535,7 @@ export default function LocationMapClient({
         >
           {mobileLocationDetails && (
             <>
-              <SheetHeader className="relative shrink-0 border-b border-slate-100 px-5 pb-3 pt-5 text-left">
+              <SheetHeader className="relative shrink-0 border-b border-slate-100 px-5 pb-3 pt-5 pr-16 text-left">
                 <SheetTitle>{mobileLocationDetails.location.name}</SheetTitle>
                 <SheetDescription>
                   Standortdetails und direkte Filteraktionen
@@ -523,6 +549,50 @@ export default function LocationMapClient({
                 >
                   <X className="size-5" aria-hidden="true" />
                 </button>
+                {mobileNavigationLocations.length > 1 ? (
+                  <div
+                    className="mt-3 flex items-center justify-between gap-2"
+                    aria-label="Zwischen Festivalstandorten wechseln"
+                    data-location-mobile-navigation="true"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => navigateMobileLocation(previousMobileLocation)}
+                      disabled={!previousMobileLocation}
+                      data-location-mobile-previous="true"
+                      className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-slate-200 bg-white px-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                      aria-label={
+                        previousMobileLocation
+                          ? `Vorheriger Standort: ${previousMobileLocation.name}`
+                          : "Kein vorheriger Standort"
+                      }
+                    >
+                      <ChevronLeft className="size-5" aria-hidden="true" />
+                      <span className="sr-only">Vorheriger Standort</span>
+                    </button>
+                    <span
+                      className="text-center text-xs font-medium text-slate-500"
+                      aria-live="polite"
+                    >
+                      Standort {mobileLocationIndex + 1} von {mobileNavigationLocations.length}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => navigateMobileLocation(nextMobileLocation)}
+                      disabled={!nextMobileLocation}
+                      data-location-mobile-next="true"
+                      className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-slate-200 bg-white px-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                      aria-label={
+                        nextMobileLocation
+                          ? `Nächster Standort: ${nextMobileLocation.name}`
+                          : "Kein nächster Standort"
+                      }
+                    >
+                      <ChevronRight className="size-5" aria-hidden="true" />
+                      <span className="sr-only">Nächster Standort</span>
+                    </button>
+                  </div>
+                ) : null}
               </SheetHeader>
               <div className="min-h-0 overflow-y-auto overscroll-contain px-5 pb-5 pt-4">
                 <LocationDetailContent

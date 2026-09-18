@@ -1685,6 +1685,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(mapClient).toContain('data-location-mobile-sheet-close="true"');
     expect(mapClient).toContain("dismissedMobileFocusRef");
     expect(mapClient).toContain("closeMobileDetails");
+    expect(mapClient).toContain("navigateMobileLocation");
+    expect(mapClient).toContain('data-location-mobile-navigation="true"');
+    expect(mapClient).toContain('data-location-mobile-previous="true"');
+    expect(mapClient).toContain('data-location-mobile-next="true"');
+    expect(mapClient).toContain("Standort {mobileLocationIndex + 1} von {mobileNavigationLocations.length}");
+    expect(mapClient).toContain("const activeLocationId = mobileLocationDetails?.location.id ?? focusLocationId");
+    expect(mapClient).toContain("focusLocationId={activeLocationId}");
     expect(locationDetails).toContain('data-location-detail-content={mobile ? "mobile-sheet" : "desktop-popup"}');
     expect(locationDetails).toContain("Karte weiter nutzen");
     expect(sheet).toContain("overlayClassName");
