@@ -48,6 +48,8 @@ import {
   Calendar,
   CalendarRange,
   Download,
+  Eye,
+  EyeOff,
   KeyRound,
   LogOut,
   Menu,
@@ -136,6 +138,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { year, eventId, selectYear, selectEvent } = useEventYear();
   const [location] = useLocation();
   const [password, setPassword] = useState("");
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loginMode, setLoginMode] = useState<"user" | "admin">("user");
   const [recoveryOpen, setRecoveryOpen] = useState(false);
@@ -521,8 +524,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen grid place-items-center bg-gradient-to-br from-[oklch(0.97_0.02_250)] to-[oklch(0.92_0.04_240)] p-4">
-        <div className="bg-card text-card-foreground rounded-2xl shadow-xl p-8 w-full max-w-md">
+      <div className="min-h-[100dvh] grid place-items-center bg-gradient-to-br from-[oklch(0.97_0.02_250)] to-[oklch(0.92_0.04_240)] px-4 py-5 sm:p-6">
+        <div className="w-full max-w-md rounded-2xl bg-card p-5 text-card-foreground shadow-xl sm:p-8">
           <img
             {...logoLoading}
             src={RSC_LOGO}
@@ -553,6 +556,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               onClick={() => {
                 setLoginMode("user");
                 setPassword("");
+                setPasswordVisible(false);
                 setLoginError(null);
                 setRecoveryOpen(false);
               }}
@@ -571,6 +575,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               onClick={() => {
                 setLoginMode("admin");
                 setPassword("");
+                setPasswordVisible(false);
                 setLoginError(null);
               }}
             >
@@ -671,34 +676,52 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </Button>
             </form>
           ) : (
-          <form className="space-y-3" onSubmit={submitPassword}>
-            <Label htmlFor="planning-password">
+          <form className="space-y-4" onSubmit={submitPassword}>
+            <Label htmlFor="planning-password" className="text-sm font-semibold">
               {loginMode === "admin"
                 ? "Administratorpasswort"
                 : "Zugangspasswort"}
             </Label>
-            <Input
-              id="planning-password"
-              type="password"
-              autoComplete="current-password"
-              placeholder="Passwort eingeben"
-              value={password}
-              onChange={event => {
-                setPassword(event.target.value);
-                if (loginError) setLoginError(null);
-              }}
-              disabled={!loginAvailable || loginPending}
-              aria-describedby={
-                [
-                  planningTeamLocked ? "planning-team-lock-message" : "",
-                  loginError ? "password-login-error" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ") || undefined
-              }
-            />
+            <div className="relative">
+              <Input
+                id="planning-password"
+                className="h-12 pr-12 text-base"
+                type={passwordVisible ? "text" : "password"}
+                autoComplete="current-password"
+                placeholder="Passwort eingeben"
+                value={password}
+                onChange={event => {
+                  setPassword(event.target.value);
+                  if (loginError) setLoginError(null);
+                }}
+                disabled={!loginAvailable || loginPending}
+                aria-describedby={
+                  [
+                    planningTeamLocked ? "planning-team-lock-message" : "",
+                    loginError ? "password-login-error" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ") || undefined
+                }
+              />
+              <button
+                type="button"
+                className="absolute inset-y-0 right-0 flex min-h-12 min-w-12 items-center justify-center rounded-r-md text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50"
+                aria-label={passwordVisible ? "Passwort verbergen" : "Passwort anzeigen"}
+                aria-pressed={passwordVisible}
+                title={passwordVisible ? "Passwort verbergen" : "Passwort anzeigen"}
+                disabled={!loginAvailable || loginPending}
+                onClick={() => setPasswordVisible(visible => !visible)}
+              >
+                {passwordVisible ? (
+                  <EyeOff className="h-5 w-5" aria-hidden="true" />
+                ) : (
+                  <Eye className="h-5 w-5" aria-hidden="true" />
+                )}
+              </button>
+            </div>
             <Button
-              className="w-full"
+              className="h-12 w-full text-base font-semibold"
               size="lg"
               type="submit"
               disabled={!password || !loginAvailable || loginPending}

@@ -1083,6 +1083,21 @@ describe("UI- und Mobile-UX-Regeln", () => {
     );
   });
 
+  it("bietet auf der mobilen Anmeldung eine gut erreichbare Passwortanzeige", () => {
+    const layout = source("client/src/components/Layout.tsx");
+
+    expect(layout).toContain("const [passwordVisible, setPasswordVisible] = useState(false)");
+    expect(layout).toContain('type={passwordVisible ? "text" : "password"}');
+    expect(layout).toContain('aria-label={passwordVisible ? "Passwort verbergen" : "Passwort anzeigen"}');
+    expect(layout).toContain("onClick={() => setPasswordVisible(visible => !visible)}");
+    expect(layout).toContain("<EyeOff className=\"h-5 w-5\"");
+    expect(layout).toContain("<Eye className=\"h-5 w-5\"");
+    expect(layout).toContain('className="h-12 pr-12 text-base"');
+    expect(layout).toContain('className="h-12 w-full text-base font-semibold"');
+    expect(layout).toContain("min-h-12 min-w-12");
+    expect(layout).toContain("min-h-[100dvh]");
+  });
+
   it("verwendet für Schichtlöschungen ein internes dynamisches Modal", () => {
     const plan = source("client/src/pages/Plan.tsx");
     const alertDialog = source("client/src/components/ui/alert-dialog.tsx");
