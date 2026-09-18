@@ -83,6 +83,7 @@ import {
 } from "@shared/weekdays";
 import { useSearchParams } from "wouter";
 import { planEvaluationMatchesSearch } from "@/lib/plan-search";
+import { helperDropdownAssignmentFeedback } from "@/lib/helper-assignment-feedback";
 
 const formatTimeLabel = (shift: { startTime: string; endTime: string }) =>
   shift.startTime && shift.endTime
@@ -198,6 +199,66 @@ function MobileShiftNote({
         </p>
       </PopoverContent>
     </Popover>
+  );
+}
+
+function HelperDropdownFeedbackBadge({
+  feedback,
+}: {
+  feedback: ReturnType<typeof helperDropdownAssignmentFeedback>;
+}) {
+  if (!feedback) return null;
+  if (feedback.kind === "already-assigned") {
+    return (
+      <span
+        data-slot="helper-dropdown-feedback"
+        data-feedback-kind="already-assigned"
+        className="shrink-0 rounded-full border border-amber-500 bg-amber-200 px-2 py-0.5 text-[11px] font-semibold text-amber-950 dark:bg-amber-800 dark:text-amber-50"
+      >
+        bereits belegt
+      </span>
+    );
+  }
+  if (feedback.kind === "new") {
+    return (
+      <span
+        data-slot="helper-dropdown-feedback"
+        data-feedback-kind="new"
+        className="shrink-0 rounded-full border border-emerald-200 bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800"
+      >
+        Neu
+      </span>
+    );
+  }
+  return (
+    <span
+      data-slot="helper-dropdown-feedback"
+      data-feedback-kind="day-segments"
+      aria-label="Belegung an den Veranstaltungstagen"
+      className="inline-flex shrink-0 overflow-hidden rounded-full border border-slate-200 text-[10px] font-semibold leading-5 shadow-xs"
+    >
+      {feedback.segments.map((segment, index) => (
+        <span
+          key={segment.day}
+          className={`min-w-6 px-1 text-center ${
+            segment.state === "current"
+              ? "bg-emerald-500 text-white"
+              : segment.state === "assigned"
+                ? "bg-amber-200 text-amber-950"
+                : "bg-slate-100 text-slate-600"
+          } ${index ? "border-l border-white/70" : ""}`}
+          title={
+            segment.state === "current"
+              ? `${segment.day}: aktuell frei`
+              : segment.state === "assigned"
+                ? `${segment.day}: bereits eingeteilt`
+                : `${segment.day}: keine Belegung`
+          }
+        >
+          {segment.label}
+        </span>
+      ))}
+    </span>
   );
 }
 
@@ -982,6 +1043,12 @@ export default function Plan() {
                   {actives.map(helper => {
                     const conflicts = overlappingAssignments(helper.id, shift);
                     const isAlreadyAssigned = conflicts.length > 0;
+                    const assignmentFeedback = helperDropdownAssignmentFeedback({
+                      assignments: assignedShiftsByHelper.get(helper.id) ?? [],
+                      activeDays,
+                      currentDay: shift.day,
+                      hasTimeConflict: isAlreadyAssigned,
+                    });
                     const timeRestricted = helperHasTimedAvailability(
                       helper,
                       shift.day
@@ -1036,11 +1103,9 @@ export default function Plan() {
                             )}
                             <span className="truncate">{label(helper)}</span>
                           </span>
-                          {isAlreadyAssigned && (
-                            <span className="shrink-0 rounded-full border border-amber-500 bg-amber-200 px-2 py-0.5 text-[11px] font-semibold text-amber-950 dark:bg-amber-800 dark:text-amber-50">
-                              bereits belegt
-                            </span>
-                          )}
+                          <HelperDropdownFeedbackBadge
+                            feedback={assignmentFeedback}
+                          />
                         </span>
                       </SelectItem>
                     );
@@ -1106,7 +1171,7 @@ export default function Plan() {
         <h1 className="text-2xl font-bold">Einsatzplan</h1>
         <p className="text-muted-foreground">
           {canEditPlan
-            ? "Nur verfügbare, aktive Helfer sind auswählbar. Zeitgleich bereits eingeteilte Helfer sind im Auswahlmenü gelb markiert, bleiben aber auswählbar. Absagen markieren Ausfälle (rot), Doppelbelegungen werden gewarnt (orange)."
+            ? "Nur verfügbare, aktive Helfer sind auswählbar. „Neu“ bedeutet noch keine Einteilung; Fr/Sa/So zeigt Einsätze an anderen Tagen (Grün: hier frei, Gelb: dort eingeteilt). Zeitgleich bereits eingeteilte Helfer bleiben gelb markiert und auswählbar. Absagen markieren Ausfälle (rot), Doppelbelegungen werden gewarnt (orange)."
             : "Das Planungsteam kann den Einsatzplan vollständig ansehen und filtern. Änderungen und Helferzuweisungen sind Administratoren vorbehalten."}
         </p>
       </div>

@@ -254,7 +254,18 @@ export default function Locations() {
           <p className="p-6 text-sm text-muted-foreground">Noch keine Orte angelegt. Erfasse zuerst einen Standort mit Koordinaten.</p>
         ) : locations.map(location => (
           <div key={location.id} className="grid grid-cols-[minmax(0,1fr)_120px_120px_auto] items-center gap-3 border-b px-4 py-3 last:border-0">
-            <span className="min-w-0 truncate font-medium text-slate-900" title={location.name}>{location.name}</span>
+            <span className="flex min-w-0 items-center gap-2">
+              {location.logoUrl && (
+                <img
+                  data-slot="location-logo-thumbnail"
+                  src={location.logoUrl}
+                  alt=""
+                  title={`Logo für ${location.name}`}
+                  className="size-7 shrink-0 rounded-full border-2 border-slate-300 bg-white object-cover shadow-sm"
+                />
+              )}
+              <span className="min-w-0 truncate font-medium text-slate-900" title={location.name}>{location.name}</span>
+            </span>
             <span className="tabular-nums text-sm text-slate-700">{location.latitude.toFixed(5)}</span>
             <span className="tabular-nums text-sm text-slate-700">{location.longitude.toFixed(5)}</span>
             <span className="flex justify-end gap-1">

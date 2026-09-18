@@ -1677,6 +1677,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(locations).toContain("Standort-Logo / Marker-Icon hochladen (PNG/SVG/JPG)");
     expect(locations).toContain("Marker-Vorschau aktiv");
     expect(locations).toContain("Logo entfernen");
+    expect(locations).toContain('data-slot="location-logo-thumbnail"');
+    expect(locations).toContain("Logo für ${location.name}");
 
     expect(mapCard).toContain("logoUrl");
     expect(mapClient).toContain("divIcon");
@@ -1686,5 +1688,27 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(mapClient).toContain("markerSizeForZoom");
     expect(globalStyles).toContain(".location-logo-marker__frame");
     expect(globalStyles).toContain("border: 4px solid var(--location-marker-color, #64748b);");
+  });
+
+  it("gibt in der Helferauswahl Neu-, Tages- und Konfliktstatus klar wieder", () => {
+    const plan = source("client/src/pages/Plan.tsx");
+    const feedback = source("client/src/lib/helper-assignment-feedback.ts");
+
+    expect(plan).toContain("function HelperDropdownFeedbackBadge");
+    expect(plan).toContain('data-slot="helper-dropdown-feedback"');
+    expect(plan).toContain('data-feedback-kind="new"');
+    expect(plan).toContain('data-feedback-kind="day-segments"');
+    expect(plan).toContain('data-feedback-kind="already-assigned"');
+    expect(plan).toContain("bg-emerald-100");
+    expect(plan).toContain("bereits belegt");
+    expect(plan).toContain("helperDropdownAssignmentFeedback({");
+    expect(plan).toContain("assignments: assignedShiftsByHelper.get(helper.id) ?? []");
+    expect(plan).toContain("currentDay: shift.day");
+
+    expect(feedback).toContain('kind: "new"');
+    expect(feedback).toContain('kind: "already-assigned"');
+    expect(feedback).toContain('kind: "day-segments"');
+    expect(feedback).toContain("hasTimeConflict");
+    expect(feedback).toContain("WEEKDAY_SHORT_LABELS");
   });
 });
