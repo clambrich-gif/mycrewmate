@@ -18,6 +18,7 @@ import {
   helperTimeBadgeLabel,
   helperTaskCellText,
   planPdfTimeLabel,
+  renderMaterialPacklistPdf,
 } from "./pdf";
 import { resolveEventPdfLogoKey } from "./event-pdf-image";
 
@@ -255,6 +256,61 @@ describe("PDF-Erzeugung", () => {
     expect(assignedOnly.map(item => item.shift.area)).toEqual(["Aufbau"]);
     expect(unassignedOnly.map(item => item.shift.area)).toEqual(["Start"]);
     expect(all.map(item => item.shift.area)).toEqual(["Aufbau", "Start"]);
+  });
+
+  it("erzeugt eine standortbezogene Material-Packliste als PDF", async () => {
+    const sampleLocation = {
+      id: 99,
+      year: 2026,
+      eventId: 1,
+      name: "VP8 – Pumptrack",
+      latitude: 50.3569,
+      longitude: 6.9458,
+      sortOrder: 0,
+      createdAt: new Date(),
+    };
+    const sampleMaterials = [
+      {
+        id: 1,
+        year: 2026,
+        eventId: 1,
+        article: "Flatterband",
+        category: "Absperrung",
+        quantity: "4",
+        unit: "Rollen",
+        locationId: 99,
+        contactId: 1,
+        ordered: "ja" as const,
+        note: "Für Kurve 2",
+        sortOrder: 1,
+      },
+      {
+        id: 2,
+        year: 2026,
+        eventId: 1,
+        article: "Kabeltrommel",
+        category: "Technik",
+        quantity: "1",
+        unit: "Stück",
+        locationId: 99,
+        contactId: null,
+        ordered: "nein" as const,
+        note: null,
+        sortOrder: 2,
+      },
+    ];
+
+    const pdf = await renderMaterialPacklistPdf(
+      {
+        ...data,
+        locations: [sampleLocation],
+        materials: sampleMaterials,
+      },
+      99
+    );
+
+    expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+    expect(pdf.length).toBeGreaterThan(1_500);
   });
 
   it.each(WEEKDAYS)("filtert den PDF-Plan auf %s", day => {

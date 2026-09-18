@@ -27,6 +27,7 @@ import {
   events,
   eventYears,
   finances,
+  gpxTracks,
   helpers,
   InsertUser,
   User,
@@ -517,6 +518,7 @@ export async function deleteEvent(id: number) {
     await tx.delete(shiftAreaContacts).where(scope(shiftAreaContacts));
     await tx.delete(shifts).where(scope(shifts));
     await tx.delete(prepTasks).where(scope(prepTasks));
+    await tx.delete(gpxTracks).where(scope(gpxTracks));
     await tx.delete(locations).where(scope(locations));
     await tx.delete(postTasks).where(scope(postTasks));
     await tx.delete(materials).where(scope(materials));
@@ -595,6 +597,33 @@ export async function deleteLocation(id: number) {
   const result = await db
     .delete(locations)
     .where(and(eq(locations.id, id), planningScope(locations)));
+  requireDeletedRows(result, 1);
+  return { success: true } as const;
+}
+export async function listGpxTracks() {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(gpxTracks)
+    .where(planningScope(gpxTracks))
+    .orderBy(gpxTracks.name, gpxTracks.id);
+}
+export async function createGpxTrack(
+  value: Pick<typeof gpxTracks.$inferInsert, "name" | "fileKey" | "fileUrl" | "color">
+) {
+  const db = (await getDb()) as DB;
+  return db.insert(gpxTracks).values({
+    ...value,
+    year: year(),
+    eventId: event(),
+  });
+}
+export async function deleteGpxTrack(id: number) {
+  const db = (await getDb()) as DB;
+  const result = await db
+    .delete(gpxTracks)
+    .where(and(eq(gpxTracks.id, id), planningScope(gpxTracks)));
   requireDeletedRows(result, 1);
   return { success: true } as const;
 }

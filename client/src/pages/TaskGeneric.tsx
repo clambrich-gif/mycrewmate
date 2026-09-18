@@ -23,7 +23,7 @@ import {
 import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
 import { trpc } from "@/lib/trpc";
 import { ArrowDownAZ, ArrowUpZA, MapPin, Plus, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 const resetAreaByKind = {
@@ -65,6 +65,7 @@ interface Props {
   createDialogTitle?: string;
   createTriggerLabel?: string;
   locationField?: boolean;
+  headerActions?: ReactNode;
 }
 
 const temporaryId = () => -Date.now() - Math.floor(Math.random() * 1_000);
@@ -85,6 +86,7 @@ export default function TaskGeneric({
   createDialogTitle = `Neu: ${addLabel}`,
   createTriggerLabel = `Neu: ${addLabel}`,
   locationField = false,
+  headerActions,
 }: Props) {
   const utils = trpc.useUtils();
   const { user } = useAuth();
@@ -267,6 +269,7 @@ export default function TaskGeneric({
               compact
             />
           )}
+          {headerActions}
           {createInDialog ? (
             <Button
               type="button"

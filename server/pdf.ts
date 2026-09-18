@@ -6,6 +6,8 @@ import type {
   Assignment,
   Contact,
   Helper,
+  Location,
+  Material,
   Shift,
   ShiftAreaContact,
 } from "../drizzle/schema";
@@ -43,6 +45,8 @@ type PlanningData = {
   shifts: Shift[];
   assignments: Assignment[];
   areaContacts?: ShiftAreaContact[];
+  materials?: Material[];
+  locations?: Location[];
   settings: AppSettings;
   logoBuffer?: Buffer;
 };
@@ -647,6 +651,91 @@ export function renderBlankPlanPdf(data: PlanningData) {
   return renderPlanPdf(data, { mode: "blank" });
 }
 
+/** Erstellt eine operative Packliste für genau einen Festivalstandort. */
+export function renderMaterialPacklistPdf(data: PlanningData, locationId: number) {
+  const location = data.locations?.find(item => item.id === locationId);
+  if (!location) throw new Error("Der Standort wurde nicht gefunden");
+  const contactById = new Map(data.contacts.map(contact => [contact.id, contact]));
+  const selectedMaterials = (data.materials ?? [])
+    .filter(material => material.locationId === locationId)
+    .sort(
+      (left, right) =>
+        left.category.localeCompare(right.category, "de") ||
+        left.article.localeCompare(right.article, "de") ||
+        left.sortOrder - right.sortOrder
+    );
+
+  return collectPdf(doc => {
+    drawDocumentHeader(
+      doc,
+      data.settings,
+      `Material-Packliste – ${location.name}`,
+      `Standort: ${location.name} · Stand: ${formatDate()}`,
+      data.logoBuffer
+    );
+    doc
+      .font("Helvetica")
+      .fontSize(9.5)
+      .fillColor(colors.muted)
+      .text(
+        "Diese Liste bündelt alle Materialartikel, die dem ausgewählten Standort zugeordnet sind. Vor Ort bitte Menge, Zustand und Vollständigkeit prüfen."
+      );
+    doc.moveDown(1);
+
+    const columns: PdfColumn[] = [
+      { key: "article", label: "Artikel", width: 176 },
+      { key: "category", label: "Kategorie", width: 95 },
+      { key: "quantity", label: "Menge", width: 66, align: "center" },
+      { key: "ordered", label: "Bestellt", width: 62, align: "center" },
+      { key: "contact", label: data.settings.contactLabel, width: 117 },
+    ];
+    drawTableHeader(doc, columns, margin);
+    if (selectedMaterials.length === 0) {
+      drawTableRow(
+        doc,
+        columns,
+        { article: "Für diesen Standort sind noch keine Artikel hinterlegt." },
+        margin,
+        { minimumHeight: 34 }
+      );
+    } else {
+      for (const material of selectedMaterials) {
+        const quantity = [material.quantity, material.unit]
+          .filter(Boolean)
+          .join(" ");
+        drawTableRow(
+          doc,
+          columns,
+          {
+            article: material.note?.trim()
+              ? `${material.article}\nNotiz: ${material.note.trim()}`
+              : material.article,
+            category: material.category || "–",
+            quantity: quantity || "–",
+            ordered: material.ordered === "ja" ? "Ja" : "Nein",
+            contact: material.contactId
+              ? (contactById.get(material.contactId)?.name ?? "–")
+              : "–",
+          },
+          margin
+        );
+      }
+    }
+    doc.moveDown(1.2);
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(10)
+      .fillColor(colors.ink)
+      .text("Abnahme vor Ort");
+    doc.moveDown(0.4);
+    doc
+      .font("Helvetica")
+      .fontSize(9)
+      .fillColor(colors.ink)
+      .text("Geprüft von: ______________________________    Datum / Uhrzeit: ______________________________");
+  });
+}
+
 async function loadPlanningData(): Promise<PlanningData> {
   const [
     helpers,
@@ -654,6 +743,8 @@ async function loadPlanningData(): Promise<PlanningData> {
     shifts,
     assignments,
     areaContacts,
+    materials,
+    locations,
     settings,
     selectedEvent,
   ] = await Promise.all([
@@ -662,6 +753,8 @@ async function loadPlanningData(): Promise<PlanningData> {
     db.listShifts(),
     db.listAssignments(),
     db.listShiftAreaContacts(),
+    db.listMaterials(),
+    db.listLocations(),
     db.getAppSettings(),
     db.getEvent(),
   ]);
@@ -691,6 +784,8 @@ async function loadPlanningData(): Promise<PlanningData> {
     shifts,
     assignments,
     areaContacts,
+    materials,
+    locations,
     settings: resolvedSettings,
     logoBuffer,
   };
@@ -706,6 +801,10 @@ export async function createBlankPlanPdf() {
 
 export async function createPlanPdf(options: PlanPdfOptions) {
   return renderPlanPdf(await loadPlanningData(), options);
+}
+
+export async function createMaterialPacklistPdf(locationId: number) {
+  return renderMaterialPacklistPdf(await loadPlanningData(), locationId);
 }
 
 /** Beschränkt Helfer-PDFs bei Bedarf auf einen einzelnen Ansprechpartner. */

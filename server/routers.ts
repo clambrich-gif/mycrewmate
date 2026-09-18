@@ -67,6 +67,7 @@ import {
   createAllHelperTaskZip,
   createBlankPlanPdf,
   createHelperTaskPdf,
+  createMaterialPacklistPdf,
   createPlanPdf,
   DEFAULT_PDF_SETTINGS,
 } from "./pdf";
@@ -863,6 +864,64 @@ export const appRouter = router({
       }),
   }),
 
+  gpxTracks: router({
+    list: protectedProcedure.query(() => db.listGpxTracks()),
+    upload: adminProcedure
+      .input(
+        z.object({
+          name: z.string().trim().min(1).max(200),
+          base64: z.string().min(1).max(8_500_000, "Die GPX-Datei ist größer als 6 MB"),
+          color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Ungültige Streckenfarbe").default("#2563eb"),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const buffer = Buffer.from(input.base64, "base64");
+        if (!buffer.length || buffer.length > 6_000_000) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Bitte eine GPX-Datei bis 6 MB auswählen",
+          });
+        }
+        const xml = buffer.toString("utf8");
+        if (!/<gpx(?:\s|>)/i.test(xml) || !/<(?:trkpt|rtept)(?:\s|>)/i.test(xml)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Die Datei enthält keine gültige GPX-Strecke mit Wegpunkten",
+          });
+        }
+        const selectedEvent = await db.getEvent();
+        if (!selectedEvent) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Die ausgewählte Veranstaltung wurde nicht gefunden",
+          });
+        }
+        const uploaded = await storagePut(
+          `gpx-tracks/events/${selectedEvent.year}/${selectedEvent.id}/${safeExportName(input.name)}.gpx`,
+          buffer,
+          "application/gpx+xml"
+        );
+        const result = await db.createGpxTrack({
+          name: input.name,
+          fileKey: uploaded.key,
+          fileUrl: uploaded.url,
+          color: input.color,
+        });
+        return { ...result, fileUrl: uploaded.url };
+      }),
+    remove: adminProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          adminPassword: z.string().min(1).max(200),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await requireAdminPassword(input.adminPassword, ctx);
+        return db.deleteGpxTrack(input.id);
+      }),
+  }),
+
   helpers: router({
     list: protectedProcedure.query(() => db.listHelpers()),
     create: protectedProcedure
@@ -1290,6 +1349,24 @@ export const appRouter = router({
         base64: pdf.toString("base64"),
       };
     }),
+    materialPacklist: protectedProcedure
+      .input(z.object({ locationId: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        const location = await db.getLocation(input.locationId);
+        if (!location) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Der ausgewählte Standort gehört nicht zur Veranstaltung",
+          });
+        }
+        const pdf = await createMaterialPacklistPdf(input.locationId);
+        const selectedEvent = await db.getEvent();
+        return {
+          filename: `Material_Packliste_${safeExportName(location.name)}_${safeExportName(selectedEvent?.name ?? "Veranstaltung")}.pdf`,
+          mimeType: "application/pdf",
+          base64: pdf.toString("base64"),
+        };
+      }),
   }),
 
   prep: router({

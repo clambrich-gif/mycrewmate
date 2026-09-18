@@ -10,27 +10,53 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
-import { MapPin, Pencil, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { FileUp, MapPin, Pencil, Plus, Route, Trash2 } from "lucide-react";
+import { ChangeEvent, useRef, useState } from "react";
 import { toast } from "sonner";
 
 type LocationForm = { name: string; latitude: string; longitude: string };
 const EMPTY_FORM: LocationForm = { name: "", latitude: "", longitude: "" };
+const MAX_GPX_BYTES = 6_000_000;
+
+function baseName(filename: string) {
+  return filename.replace(/\.gpx$/i, "").trim() || "Strecke";
+}
+
+function readFileAsBase64(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Datei konnte nicht gelesen werden"));
+    reader.onload = () => {
+      const result = String(reader.result ?? "");
+      resolve(result.includes(",") ? result.split(",", 2)[1] : result);
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function Locations() {
   const { user } = useAuth();
   const utils = trpc.useUtils();
   const { data: locations = [], isLoading } = trpc.locations.list.useQuery();
+  const { data: gpxTracks = [], isLoading: tracksLoading } = trpc.gpxTracks.list.useQuery();
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<LocationForm>(EMPTY_FORM);
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
+  const [trackDeleteTarget, setTrackDeleteTarget] = useState<{ id: number; name: string } | null>(null);
+  const [trackName, setTrackName] = useState("");
+  const [trackColor, setTrackColor] = useState("#2563eb");
+  const [selectedTrackFile, setSelectedTrackFile] = useState<File | null>(null);
+  const trackInputRef = useRef<HTMLInputElement>(null);
   const canManage = user?.role === "admin";
   const invalidate = () => {
     void utils.locations.list.invalidate();
+    void utils.gpxTracks.list.invalidate();
     void utils.plan.evaluate.invalidate();
     void utils.prep.list.invalidate();
+    void utils.materials.list.invalidate();
     void utils.dashboard.stats.invalidate();
   };
   const create = trpc.locations.create.useMutation({
@@ -54,6 +80,25 @@ export default function Locations() {
       invalidate();
       setDeleteTarget(null);
       toast.success("Ort gelöscht; bestehende Zuordnungen wurden entfernt");
+    },
+    onError: error => toast.error(error.message),
+  });
+  const uploadTrack = trpc.gpxTracks.upload.useMutation({
+    onSuccess: () => {
+      invalidate();
+      setTrackName("");
+      setTrackColor("#2563eb");
+      setSelectedTrackFile(null);
+      if (trackInputRef.current) trackInputRef.current.value = "";
+      toast.success("GPX-Strecke wurde auf der Live-Karte eingeblendet");
+    },
+    onError: error => toast.error(error.message),
+  });
+  const removeTrack = trpc.gpxTracks.remove.useMutation({
+    onSuccess: () => {
+      invalidate();
+      setTrackDeleteTarget(null);
+      toast.success("GPX-Strecke wurde aus der Karte entfernt");
     },
     onError: error => toast.error(error.message),
   });
@@ -81,8 +126,41 @@ export default function Locations() {
     if (editingId) update.mutate({ id: editingId, name: form.name.trim(), latitude, longitude });
     else create.mutate({ name: form.name.trim(), latitude, longitude });
   };
+  const onTrackFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    if (!file) return;
+    if (!/\.gpx$/i.test(file.name)) {
+      toast.error("Bitte eine Datei im GPX-Format auswählen.");
+      event.target.value = "";
+      return;
+    }
+    if (file.size > MAX_GPX_BYTES) {
+      toast.error("Die GPX-Datei darf höchstens 6 MB groß sein.");
+      event.target.value = "";
+      return;
+    }
+    setSelectedTrackFile(file);
+    if (!trackName.trim()) setTrackName(baseName(file.name));
+  };
+  const submitTrack = async () => {
+    if (!selectedTrackFile) {
+      toast.error("Bitte zuerst eine GPX-Datei auswählen.");
+      return;
+    }
+    if (!trackName.trim()) {
+      toast.error("Bitte eine Bezeichnung für die Strecke eingeben.");
+      return;
+    }
+    try {
+      const base64 = await readFileAsBase64(selectedTrackFile);
+      uploadTrack.mutate({ name: trackName.trim(), base64, color: trackColor });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "GPX-Datei konnte nicht gelesen werden");
+    }
+  };
+
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold">
@@ -90,7 +168,7 @@ export default function Locations() {
             Orte & Standorte
           </h1>
           <p className="text-muted-foreground">
-            Zentral gepflegte Orte stehen in Schichten und Vorbereitungen zur Auswahl und erscheinen auf der Live-Standortkarte.
+            Zentral gepflegte Orte stehen in Schichten, Vorbereitungen und Material zur Auswahl und erscheinen auf der Live-Standortkarte.
           </p>
         </div>
         {canManage && (
@@ -117,6 +195,44 @@ export default function Locations() {
           </div>
         ))}
       </div>
+
+      <section className="rounded-xl border border-blue-200 bg-blue-50/40 p-4 shadow-sm sm:p-5">
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900"><Route className="size-5 text-blue-700" /> GPX-Streckenoverlays</h2>
+            <p className="text-sm text-slate-600">GPX-Dateien werden als Streckenlinien in der Live-Standortkarte angezeigt. Maximal 6 MB je Datei.</p>
+          </div>
+        </div>
+        {canManage && (
+          <div className="grid gap-3 rounded-lg border border-blue-100 bg-white p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
+            <Label className="grid gap-1.5 text-sm font-medium">GPX-Datei
+              <Input ref={trackInputRef} type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml" onChange={onTrackFileChange} />
+            </Label>
+            <div className="grid grid-cols-[minmax(0,1fr)_48px] gap-2">
+              <Label className="grid gap-1.5 text-sm font-medium">Streckenbezeichnung
+                <Input value={trackName} placeholder="z. B. Marathonrunde 2027" onChange={event => setTrackName(event.target.value)} />
+              </Label>
+              <Label className="grid gap-1.5 text-sm font-medium">Farbe
+                <Input aria-label="Streckenfarbe" type="color" value={trackColor} className="h-10 w-12 p-1" onChange={event => setTrackColor(event.target.value)} />
+              </Label>
+            </div>
+            <Button type="button" className="min-h-11" disabled={!selectedTrackFile || uploadTrack.isPending} onClick={submitTrack}>
+              <FileUp className="mr-2 size-4" />{uploadTrack.isPending ? "Wird hochgeladen …" : "GPX hochladen"}
+            </Button>
+          </div>
+        )}
+        <div className="mt-4 divide-y rounded-lg border bg-white">
+          {tracksLoading ? <p className="p-3 text-sm text-muted-foreground">Lade Strecken …</p> : gpxTracks.length === 0 ? (
+            <p className="p-3 text-sm text-muted-foreground">Noch keine GPX-Strecke hinterlegt.</p>
+          ) : gpxTracks.map(track => (
+            <div key={track.id} className="flex min-h-12 items-center justify-between gap-3 px-3 py-2.5">
+              <span className="flex min-w-0 items-center gap-2 font-medium text-slate-900"><span className="size-3 shrink-0 rounded-full" style={{ backgroundColor: track.color }} />{track.name}</span>
+              {canManage && <Button variant="ghost" size="icon" className="shrink-0 text-red-700 hover:text-red-800" aria-label={`${track.name} löschen`} onClick={() => setTrackDeleteTarget(track)}><Trash2 className="size-4" /></Button>}
+            </div>
+          ))}
+        </div>
+      </section>
+
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-lg overflow-x-hidden overflow-y-auto">
           <DialogHeader>
@@ -146,12 +262,24 @@ export default function Locations() {
         open={!!deleteTarget}
         onOpenChange={open => !open && setDeleteTarget(null)}
         title="Ort löschen"
-        description={deleteTarget ? `„${deleteTarget.name}“ wird gelöscht. Zugeordnete Schichten und Vorbereitungen behalten ihre Daten, aber ohne Ortsbezug.` : ""}
+        description={deleteTarget ? `„${deleteTarget.name}“ wird gelöscht. Zugeordnete Schichten, Vorbereitungen und Materialien behalten ihre Daten, aber ohne Ortsbezug.` : ""}
         confirmLabel="Ort löschen"
         destructive
         busy={remove.isPending}
         onConfirm={adminPassword => {
           if (deleteTarget) remove.mutate({ id: deleteTarget.id, adminPassword });
+        }}
+      />
+      <AdminPasswordDialog
+        open={!!trackDeleteTarget}
+        onOpenChange={open => !open && setTrackDeleteTarget(null)}
+        title="GPX-Strecke löschen"
+        description={trackDeleteTarget ? `„${trackDeleteTarget.name}“ wird aus der Live-Standortkarte entfernt.` : ""}
+        confirmLabel="Strecke löschen"
+        destructive
+        busy={removeTrack.isPending}
+        onConfirm={adminPassword => {
+          if (trackDeleteTarget) removeTrack.mutate({ id: trackDeleteTarget.id, adminPassword });
         }}
       />
     </div>

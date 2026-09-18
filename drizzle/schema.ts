@@ -299,6 +299,31 @@ export const locations = mysqlTable(
 export type Location = typeof locations.$inferSelect;
 export type InsertLocation = typeof locations.$inferInsert;
 
+/** Hochgeladene GPX-Strecken für die Live-Standortkarte. */
+export const gpxTracks = mysqlTable(
+  "gpx_tracks",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    year: int("year").default(2026).notNull(),
+    eventId: int("eventId").notNull(),
+    name: varchar("name", { length: 200 }).notNull(),
+    fileKey: varchar("fileKey", { length: 500 }).notNull(),
+    fileUrl: varchar("fileUrl", { length: 700 }).notNull(),
+    color: varchar("color", { length: 7 }).default("#2563eb").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    foreignKey({
+      name: "gpx_tracks_event_year_fk",
+      columns: [table.eventId, table.year],
+      foreignColumns: [events.id, events.year],
+    }).onDelete("cascade"),
+    uniqueIndex("gpx_tracks_event_name_unique").on(table.eventId, table.name),
+  ]
+);
+export type GpxTrack = typeof gpxTracks.$inferSelect;
+export type InsertGpxTrack = typeof gpxTracks.$inferInsert;
+
 export const shifts = mysqlTable(
   "shifts",
   {

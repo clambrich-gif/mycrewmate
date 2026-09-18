@@ -28,6 +28,7 @@ export function LocationMapCard() {
   const { data: evaluations = [] } = trpc.plan.evaluate.useQuery();
   const { data: preparation = [] } = trpc.prep.list.useQuery();
   const { data: materials = [] } = trpc.materials.list.useQuery();
+  const { data: gpxTracks = [] } = trpc.gpxTracks.list.useQuery();
   const [tileLoadFailed, setTileLoadFailed] = useState(false);
 
   const locations = useMemo(
@@ -125,6 +126,7 @@ export function LocationMapCard() {
               <LocationMapClient
                 locations={locations}
                 entriesByLocation={entriesByLocation}
+                gpxTracks={gpxTracks}
                 focusLocationId={focusLocationId}
                 onTileLoadFailure={() => setTileLoadFailed(true)}
               />

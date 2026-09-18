@@ -1649,5 +1649,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(mapClient).toContain("TileLayer");
     expect(mapClient).toContain("openstreetmap.org");
     expect(mapClient).toContain("fitBounds");
+
+    expect(materials).toContain("trpc.pdf.materialPacklist.useMutation");
+    expect(materials).toContain("Packliste PDF");
+    expect(locations).toContain("GPX-Streckenoverlays");
+    expect(locations).toContain("GPX hochladen");
+    expect(mapCard).toContain("trpc.gpxTracks.list.useQuery()");
+    expect(mapClient).toContain("Polyline");
+    expect(mapClient).toContain("GpxOverlays");
   });
 });
