@@ -95,6 +95,7 @@ function MapViewport({
   focusLocationId,
   resetKey,
   fullscreen,
+  onFocusedLocationReady,
 }: {
   locations: MapLocation[];
   tracks: GpxMapTrack[];
@@ -102,6 +103,7 @@ function MapViewport({
   focusLocationId: number | null;
   resetKey: number;
   fullscreen: boolean;
+  onFocusedLocationReady?: (locationId: number) => void;
 }) {
   const map = useMap();
 
@@ -126,8 +128,20 @@ function MapViewport({
   useEffect(() => {
     const focused = locations.find(location => location.id === focusLocationId);
     if (focused) {
+      let readyReported = false;
+      const reportFocusedLocationReady = () => {
+        if (readyReported) return;
+        readyReported = true;
+        map.invalidateSize({ pan: false, debounceMoveend: true });
+        onFocusedLocationReady?.(focused.id);
+      };
       map.setView([focused.latitude, focused.longitude], 16, { animate: true });
-      return;
+      map.once("moveend", reportFocusedLocationReady);
+      const fallback = window.setTimeout(reportFocusedLocationReady, 360);
+      return () => {
+        map.off("moveend", reportFocusedLocationReady);
+        window.clearTimeout(fallback);
+      };
     }
     const points = mapBoundsPoints(locations, tracks, visibleTrackIds);
     if (points.length === 1) {
@@ -140,6 +154,7 @@ function MapViewport({
     fullscreen,
     locations,
     map,
+    onFocusedLocationReady,
     resetKey,
     tracks,
     visibleTrackIds,
@@ -255,12 +270,14 @@ export default function LocationMapClient({
   gpxTracks,
   focusLocationId,
   onTileLoadFailure,
+  onFocusedLocationReady,
 }: {
   locations: MapLocation[];
   entriesByLocation: Map<number, MapEntry[]>;
   gpxTracks: GpxMapTrack[];
   focusLocationId: number | null;
   onTileLoadFailure: () => void;
+  onFocusedLocationReady?: (locationId: number) => void;
 }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const visibleTracksInitialized = useRef(false);
@@ -479,6 +496,7 @@ export default function LocationMapClient({
           focusLocationId={activeLocationId}
           resetKey={resetKey}
           fullscreen={fullscreen}
+          onFocusedLocationReady={onFocusedLocationReady}
         />
         <MapZoomReporter onZoomChange={setMarkerZoom} />
         {visibleTracks.map(track => (

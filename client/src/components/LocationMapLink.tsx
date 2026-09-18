@@ -26,7 +26,7 @@ export function LocationMapLink({
 
   return (
     <a
-      href={`/?location=${location.id}`}
+      href={`/?location=${location.id}&scroll=map`}
       className={`inline-flex min-h-8 max-w-full items-center gap-1 rounded-md bg-blue-50 px-1.5 py-0.5 text-xs font-semibold text-blue-700 transition-colors hover:bg-blue-100 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${className}`}
       aria-label={`${location.name} auf der Live-Standortkarte anzeigen`}
       title={`${location.name} auf der Live-Standortkarte anzeigen`}

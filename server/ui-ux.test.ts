@@ -1677,13 +1677,18 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(prep).toContain("Ort / Standort");
     expect(prep).toContain("<LocationMapLink");
 
-    expect(locationMapLink).toContain('href={`/?location=${location.id}`}');
+    expect(locationMapLink).toContain('href={`/?location=${location.id}&scroll=map`}');
     expect(locationMapLink).toContain("<MapPin");
     expect(locationMapLink).toContain("{location.name}");
     expect(locationMapLink).toContain("Live-Standortkarte anzeigen");
 
     expect(mapCard).toContain("Live-Standortkarte");
     expect(mapCard).toContain('lazy(() => import("./LocationMapClient"))');
+    expect(mapCard).toContain('data-map-scroll-target="true"');
+    expect(mapCard).toContain('id="live-standortkarte"');
+    expect(mapCard).toContain('scrollIntoView({');
+    expect(mapCard).toContain('behavior: "smooth"');
+    expect(mapCard).toContain("onFocusedLocationReady={scrollFocusedLocationIntoView}");
     expect(mapCard).toContain('status === "offen"');
     expect(mapCard).toContain('status === "bestellt"');
     expect(mapCard).toContain('status === "geliefert"');
@@ -1697,6 +1702,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(mapClient).toContain("TileLayer");
     expect(mapClient).toContain("openstreetmap.org");
     expect(mapClient).toContain("fitBounds");
+    expect(mapClient).toContain("onFocusedLocationReady");
+    expect(mapClient).toContain('map.once("moveend", reportFocusedLocationReady)');
+    expect(mapClient).toContain("window.setTimeout(reportFocusedLocationReady, 360)");
     expect(mapClient).toContain('data-map-layer-switcher="top-right"');
     expect(mapClient).toContain("right-3 top-3");
 

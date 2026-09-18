@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
 import { MapPin } from "lucide-react";
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "wouter";
 
 const LocationMapClient = lazy(() => import("./LocationMapClient"));
@@ -27,12 +27,44 @@ export type MapEntry = {
 export function LocationMapCard() {
   const [searchParams] = useSearchParams();
   const focusLocationId = Number(searchParams.get("location")) || null;
+  const scrollToMap = searchParams.get("scroll") === "map";
+  const mapScrollTargetRef = useRef<HTMLDivElement | null>(null);
+  const consumedScrollFocusRef = useRef<string | null>(null);
   const { data: rawLocations = [] } = trpc.locations.list.useQuery();
   const { data: evaluations = [] } = trpc.plan.evaluate.useQuery();
   const { data: preparation = [] } = trpc.prep.list.useQuery();
   const { data: materials = [] } = trpc.materials.list.useQuery();
   const { data: gpxTracks = [] } = trpc.gpxTracks.mapData.useQuery();
   const [tileLoadFailed, setTileLoadFailed] = useState(false);
+
+  useEffect(() => {
+    if (!scrollToMap || focusLocationId === null) {
+      consumedScrollFocusRef.current = null;
+    }
+  }, [focusLocationId, scrollToMap]);
+
+  const scrollFocusedLocationIntoView = useCallback(
+    (loadedLocationId: number) => {
+      const scrollKey = `${focusLocationId}:${loadedLocationId}`;
+      if (
+        !scrollToMap ||
+        focusLocationId !== loadedLocationId ||
+        consumedScrollFocusRef.current === scrollKey
+      ) {
+        return;
+      }
+
+      consumedScrollFocusRef.current = scrollKey;
+      window.requestAnimationFrame(() => {
+        mapScrollTargetRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+          inline: "nearest",
+        });
+      });
+    },
+    [focusLocationId, scrollToMap]
+  );
 
   const locations = useMemo(
     () =>
@@ -126,10 +158,16 @@ export function LocationMapCard() {
   }, [evaluations, materials, preparation]);
 
   return (
-    <Card
-      data-dashboard-section="Live-Standortkarte"
-      className="overflow-hidden border-blue-200 bg-white shadow-sm"
+    <div
+      ref={mapScrollTargetRef}
+      id="live-standortkarte"
+      data-map-scroll-target="true"
+      className="scroll-mt-4"
     >
+      <Card
+        data-dashboard-section="Live-Standortkarte"
+        className="overflow-hidden border-blue-200 bg-white shadow-sm"
+      >
       <CardHeader className="flex flex-row flex-wrap items-baseline justify-between gap-2 p-4 pb-3 sm:p-5 sm:pb-3">
         <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
           <MapPin className="size-5 text-blue-700" aria-hidden="true" />
@@ -160,6 +198,7 @@ export function LocationMapCard() {
                 gpxTracks={gpxTracks}
                 focusLocationId={focusLocationId}
                 onTileLoadFailure={() => setTileLoadFailed(true)}
+                onFocusedLocationReady={scrollFocusedLocationIntoView}
               />
             </Suspense>
             {tileLoadFailed && (
@@ -170,6 +209,7 @@ export function LocationMapCard() {
           </div>
         )}
       </CardContent>
-    </Card>
+      </Card>
+    </div>
   );
 }
