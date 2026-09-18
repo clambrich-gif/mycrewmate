@@ -267,6 +267,17 @@ describe("Planungs-API", () => {
   });
 
   it("berechnet Rückmeldequote und Tagesbesetzung aus gültigen Helferzuweisungen", async () => {
+    dbMocks.getEvent.mockResolvedValue({
+      id: 1,
+      year: 2026,
+      name: "MyEifelRide",
+      activeDays: ["Freitag", "Samstag", "Sonntag"],
+      pdfLogoKey: null,
+      pdfLogoUrl: null,
+      pdfLogoFallback: "none",
+      sortOrder: 0,
+      createdAt: new Date(),
+    });
     dbMocks.listShifts.mockResolvedValue([
       shift,
       { ...shift, id: 11, day: "Samstag", task: "Ausgabe" },
@@ -330,6 +341,32 @@ describe("Planungs-API", () => {
         teilzeitReserveIds: [],
       },
     ]);
+  });
+
+  it("liefert die Tagesbereitschaft ausschließlich für die aktiven Tage eines Eintagsevents", async () => {
+    dbMocks.getEvent.mockResolvedValue({
+      id: 77,
+      year: 2027,
+      name: "Rennen 2027",
+      activeDays: ["Donnerstag"],
+      pdfLogoKey: null,
+      pdfLogoUrl: null,
+      pdfLogoFallback: "none",
+      sortOrder: 0,
+      createdAt: new Date(),
+    });
+    dbMocks.listShifts.mockResolvedValue([
+      { ...shift, day: "Donnerstag", task: "Startnummernausgabe" },
+    ]);
+
+    const stats = await appRouter.createCaller(ctx).dashboard.stats();
+
+    expect(stats.taeglicheEinsatzbereitschaft).toHaveLength(1);
+    expect(stats.taeglicheEinsatzbereitschaft[0]).toMatchObject({
+      day: "Donnerstag",
+      bedarf: 2,
+      besetzt: 0,
+    });
   });
 
   it("berechnet die Erstkontaktquote aus den Fragezeichen aktiver Festivaltage", async () => {

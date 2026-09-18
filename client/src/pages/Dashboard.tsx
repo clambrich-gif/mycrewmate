@@ -49,7 +49,7 @@ type DashboardDeadline = {
 };
 
 type DailyReadiness = {
-  day: "Freitag" | "Samstag" | "Sonntag";
+  day: Weekday;
   bedarf: number;
   besetzt: number;
   fehlend: number;
@@ -423,6 +423,13 @@ function readinessTone(readiness: DailyReadiness) {
   };
 }
 
+function readinessGridClass(dayCount: number) {
+  if (dayCount <= 1) return "grid grid-cols-1 gap-4";
+  if (dayCount === 2) return "grid grid-cols-1 gap-4 md:grid-cols-2";
+  if (dayCount === 3) return "grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3";
+  return "grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4";
+}
+
 function DailyReadinessCard({
   readiness,
   openTarget,
@@ -458,7 +465,7 @@ function DailyReadinessCard({
         </button>
         <span className="text-xs text-slate-600">Besetzt / Bedarf</span>
       </CardHeader>
-      <CardContent className="grid gap-4 p-3 pt-1 sm:grid-cols-3 sm:p-4 sm:pt-1">
+      <CardContent className={`${readinessGridClass(readiness.length)} p-3 pt-1 sm:p-4 sm:pt-1`}>
         {readiness.map(day => {
           const tone = readinessTone(day);
           return (

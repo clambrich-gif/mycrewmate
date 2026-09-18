@@ -727,12 +727,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     );
   });
 
-  it("visualisiert die tägliche Einsatzbereitschaft für das dreitägige Festival", () => {
+  it("visualisiert die tägliche Einsatzbereitschaft für die aktivierten Eventtage", () => {
     const dashboard = source("client/src/pages/Dashboard.tsx");
     const router = source("server/routers.ts");
 
     expect(router).toContain("taeglicheEinsatzbereitschaft");
-    expect(router).toContain('["Freitag", "Samstag", "Sonntag"] as const');
+    expect(router).toContain("aktiveFestivaltage.map(day =>");
+    expect(router).not.toContain('["Freitag", "Samstag", "Sonntag"] as const');
     expect(router).toContain("fehlend");
     expect(router).toContain("quote");
     expect(dashboard).toContain("DailyReadinessCard");
@@ -746,6 +747,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain("Teilzeit-Reserve");
     expect(dashboard).toContain("onPotentialFilter(day.day, \"ungenutzt\")");
     expect(dashboard).toContain("onPotentialFilter(day.day, \"teilzeit\")");
+    expect(dashboard).toContain("function readinessGridClass(dayCount: number)");
+    expect(dashboard).toContain("md:grid-cols-2 lg:grid-cols-3");
+    expect(dashboard).toContain("md:grid-cols-2 lg:grid-cols-4");
+    expect(dashboard).toContain("readinessGridClass(readiness.length)");
   });
 
   it("ordnet die nächsten vier Fristen als vollbreite Kartenmatrix unter den Prio-Aktionen an", () => {

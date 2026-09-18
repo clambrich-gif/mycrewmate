@@ -1935,9 +1935,10 @@ export const appRouter = router({
           );
         }
       }
-      const taeglicheEinsatzbereitschaft = (
-        ["Freitag", "Samstag", "Sonntag"] as const
-      ).map(day => {
+      // Die Kennzahl folgt der tatsächlichen Eventkonfiguration statt einem
+      // starren Fr/Sa/So-Raster. Dadurch sind auch Ein- und Mehrtagesformate
+      // an beliebigen Wochentagen korrekt abgebildet.
+      const taeglicheEinsatzbereitschaft = aktiveFestivaltage.map(day => {
         const tagesSchichten = ev.filter(entry => entry.shift.day === day);
         const bedarf = tagesSchichten.reduce(
           (sum, entry) => sum + entry.shift.needed,
@@ -1950,10 +1951,7 @@ export const appRouter = router({
         const fehlend = Math.max(0, bedarf - besetzt);
         const tagesPotenzial = helpers.reduce(
           (potenzial, helper) => {
-            if (
-              !aktiveFestivaltage.includes(day) ||
-              !helperActiveOnDay(helper, day)
-            ) {
+            if (!helperActiveOnDay(helper, day)) {
               return potenzial;
             }
             const eingeteilteSchichten =
