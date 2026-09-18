@@ -36,7 +36,6 @@ import {
   prependPreparationLogbookEntry,
 } from "@shared/preparation-logbook";
 import {
-  AlertTriangle,
   ArrowUpDown,
   Calendar,
   FilterX,
@@ -756,35 +755,6 @@ export default function PostProcessing() {
           )}
         </div>
       </div>
-
-      {statusFilter !== "alle" && (
-        <div className="flex flex-col gap-3 rounded-xl border border-rose-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-          <div role="status" aria-live="polite" className="flex items-center gap-2">
-            <Info className="size-5 shrink-0 text-rose-600" />
-            <div>
-              <p className="font-semibold text-rose-950">
-                {statusFilter === "offen"
-                  ? "Nur offene Nachbereitungen"
-                  : statusFilter === "inArbeit"
-                    ? "Nur Nachbereitungen in Arbeit"
-                    : "Nur erledigte Nachbereitungen"}
-              </p>
-              <p className="text-sm text-slate-600">
-                Die Liste zeigt ausschließlich Einträge mit diesem Status.
-              </p>
-            </div>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="shrink-0 bg-white border-rose-200 text-rose-900 hover:bg-rose-50"
-            onClick={() => updateStatusFilter("alle")}
-          >
-            Filter aufheben
-          </Button>
-        </div>
-      )}
 
       {isLoading ? (
         <div className="py-12 text-center text-sm text-muted-foreground">

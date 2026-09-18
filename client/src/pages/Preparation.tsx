@@ -30,7 +30,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
-  AlertTriangle,
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
@@ -802,45 +801,6 @@ export default function Preparation() {
           )}
         </div>
       </div>
-
-      {statusFilter !== "alle" && (
-        <div
-          className={`flex flex-col gap-3 rounded-xl border p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between ${
-            statusFilter === "abgelehnt"
-              ? "border-rose-300 bg-rose-50 text-rose-950"
-              : "border-blue-200 bg-blue-50 text-blue-950"
-          }`}
-        >
-          <div role="status" aria-live="polite" className="flex items-center gap-2">
-            {statusFilter === "abgelehnt" && (
-              <AlertTriangle className="size-5 shrink-0 text-rose-600" />
-            )}
-            <div>
-              <p className="font-semibold">
-                {statusFilter === "abgelehnt"
-                  ? "Abgelehnte Vorbereitungen"
-                  : statusFilter === "offen"
-                    ? "Nur offene Vorbereitungen"
-                    : statusFilter === "inArbeit"
-                      ? "Nur Vorbereitungen in Arbeit / beantragt"
-                      : "Nur erledigte / genehmigte Vorbereitungen"}
-              </p>
-              <p className="text-sm opacity-90">
-                Die Liste zeigt ausschließlich Einträge mit diesem Status.
-              </p>
-            </div>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="shrink-0 bg-white"
-            onClick={() => updateStatusFilter("alle")}
-          >
-            Filter aufheben
-          </Button>
-        </div>
-      )}
 
       {isLoading ? (
         <div className="py-12 text-center text-sm text-muted-foreground">

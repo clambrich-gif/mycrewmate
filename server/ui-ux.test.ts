@@ -942,6 +942,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(prep).toContain("categoryFilter");
     expect(prep).toContain("contactFilter");
     expect(prep).toContain("statusFilter");
+    expect(prep).toContain("Filter zurücksetzen");
+    expect(prep).not.toContain("Filter aufheben");
+    expect(prep).not.toContain("Nur offene Vorbereitungen");
     expect(prep).toContain("locationFilter");
     expect(prep).toContain("updateLocationFilter");
     expect(prep).toContain("Alle Standorte");
@@ -1849,6 +1852,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(post).toContain("Alle Verantwortlichen");
     expect(post).toContain("Alle Status");
     expect(post).toContain("PDF drucken");
+    expect(post).toContain("Filter zurücksetzen");
+    expect(post).not.toContain("Filter aufheben");
+    expect(post).not.toContain("Nur offene Nachbereitungen");
     expect(post).toContain("lg:min-w-[500px]");
     expect(post).toContain("sm:grid-cols-3");
     expect(post).toContain("className={`w-full ${CREATION_ACTION_BUTTON_CLASS}`}");
