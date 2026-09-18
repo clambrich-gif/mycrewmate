@@ -1649,6 +1649,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(mapClient).toContain("TileLayer");
     expect(mapClient).toContain("openstreetmap.org");
     expect(mapClient).toContain("fitBounds");
+    expect(mapClient).toContain('data-map-layer-switcher="top-right"');
+    expect(mapClient).toContain("right-3 top-3");
 
     expect(materials).toContain("trpc.pdf.materialPacklist.useMutation");
     expect(materials).toContain("Packliste PDF");

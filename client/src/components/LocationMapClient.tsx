@@ -148,7 +148,10 @@ export default function LocationMapClient({ locations, entriesByLocation, gpxTra
         <GpxOverlays tracks={gpxTracks} />
         {locations.map(location => <LocationMarker key={location.id} location={location} entries={entriesByLocation.get(location.id) ?? []} focused={focusLocationId === location.id} />)}
       </MapContainer>
-      <div className="absolute left-3 top-3 z-[1000] flex overflow-hidden rounded-md border border-slate-300 bg-white shadow-md">
+      <div
+        data-map-layer-switcher="top-right"
+        className="absolute right-3 top-3 z-[1000] flex overflow-hidden rounded-md border border-slate-300 bg-white shadow-md"
+      >
         {(Object.keys(MAP_LAYERS) as MapLayerKey[]).map(key => <button key={key} type="button" onClick={() => setLayer(key)} className={`min-h-9 px-3 text-xs font-semibold transition-colors ${layer === key ? "bg-blue-700 text-white" : "bg-white text-slate-700 hover:bg-slate-100"}`} aria-pressed={layer === key}>{MAP_LAYERS[key].label}</button>)}
       </div>
     </div>
