@@ -46,7 +46,6 @@ import {
   Calendar,
   FilterX,
   Info,
-  MapPin,
   Pencil,
   Plus,
   Search,
@@ -56,6 +55,7 @@ import {
 import { toast } from "sonner";
 import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
+import { LocationMapLink } from "@/components/LocationMapLink";
 import {
   parseTaskStatusFilter,
   TASK_STATUS_QUERY_KEY,
@@ -802,11 +802,11 @@ export default function Preparation() {
                     >
                       <td className="min-w-[230px] whitespace-nowrap px-3 py-3 align-top">
                         <span className="block">{task.category || "—"}</span>
-                        {task.locationId && (
-                          <a href={`/?location=${task.locationId}`} className="mt-0.5 inline-flex items-center gap-1 text-xs font-medium text-blue-700 hover:underline">
-                            <MapPin className="size-3" aria-hidden="true" />(Karte)
-                          </a>
-                        )}
+                        <LocationMapLink
+                          locationId={task.locationId}
+                          locations={locations}
+                          className="mt-0.5"
+                        />
                       </td>
                       <td className="break-words px-3 py-3 align-top font-medium">{task.task}</td>
                       <td className="break-words px-3 py-3 align-top">
@@ -973,11 +973,10 @@ export default function Preparation() {
                               {task.category}
                             </Badge>
                           )}
-                          {task.locationId && (
-                            <a href={`/?location=${task.locationId}`} className="inline-flex min-h-8 items-center gap-1 rounded-full bg-blue-50 px-2 text-xs font-medium text-blue-700 hover:bg-blue-100">
-                              <MapPin className="size-3" aria-hidden="true" />Karte
-                            </a>
-                          )}
+                          <LocationMapLink
+                            locationId={task.locationId}
+                            locations={locations}
+                          />
                         </div>
                       </div>
                       <div className="flex shrink-0 gap-1">

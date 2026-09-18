@@ -1630,17 +1630,21 @@ describe("UI- und Mobile-UX-Regeln", () => {
 
     const materials = source("client/src/pages/Materials.tsx");
     const taskGeneric = source("client/src/pages/TaskGeneric.tsx");
+    const locationMapLink = source("client/src/components/LocationMapLink.tsx");
     expect(materials).toContain("locationField");
     expect(taskGeneric).toContain("Ort / Zielstandort (optional)");
-    expect(taskGeneric).toContain('href={`/?location=${row.locationId}`}');
+    expect(taskGeneric).toContain("<LocationMapLink");
 
     expect(plan).toContain("Ort / Standort");
-    expect(plan).toContain('href={`/?location=${s.locationId}`}');
-    expect(plan).toContain("(Karte)");
+    expect(plan).toContain("<LocationMapLink");
 
     expect(prep).toContain("Ort / Standort");
-    expect(prep).toContain('href={`/?location=${task.locationId}`}');
-    expect(prep).toContain("(Karte)");
+    expect(prep).toContain("<LocationMapLink");
+
+    expect(locationMapLink).toContain('href={`/?location=${location.id}`}');
+    expect(locationMapLink).toContain("<MapPin");
+    expect(locationMapLink).toContain("{location.name}");
+    expect(locationMapLink).toContain("Live-Standortkarte anzeigen");
 
     expect(mapCard).toContain("Live-Standortkarte");
     expect(mapCard).toContain('lazy(() => import("./LocationMapClient"))');

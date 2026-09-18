@@ -22,9 +22,10 @@ import {
 } from "@/components/ui/select";
 import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
 import { trpc } from "@/lib/trpc";
-import { ArrowDownAZ, ArrowUpZA, MapPin, Plus, Trash2 } from "lucide-react";
+import { ArrowDownAZ, ArrowUpZA, Plus, Trash2 } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { LocationMapLink } from "@/components/LocationMapLink";
 
 const resetAreaByKind = {
   materials: "materials",
@@ -452,14 +453,10 @@ export default function TaskGeneric({
                       ))}
                     </SelectContent>
                   </Select>
-                  {row.locationId && (
-                    <a
-                      href={`/?location=${row.locationId}`}
-                      className="inline-flex min-h-8 items-center gap-1 text-xs font-medium text-blue-700 hover:underline"
-                    >
-                      <MapPin className="size-3" aria-hidden="true" />(Karte)
-                    </a>
-                  )}
+                  <LocationMapLink
+                    locationId={row.locationId}
+                    locations={locations}
+                  />
                 </div>
               )}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -660,14 +657,11 @@ export default function TaskGeneric({
                             ))}
                           </SelectContent>
                         </Select>
-                        {row.locationId && (
-                          <a
-                            href={`/?location=${row.locationId}`}
-                            className="inline-flex shrink-0 items-center gap-0.5 text-xs font-medium text-blue-700 hover:underline"
-                          >
-                            <MapPin className="size-3" aria-hidden="true" />(Karte)
-                          </a>
-                        )}
+                        <LocationMapLink
+                          locationId={row.locationId}
+                          locations={locations}
+                          className="shrink-0"
+                        />
                       </div>
                     </td>
                   )}

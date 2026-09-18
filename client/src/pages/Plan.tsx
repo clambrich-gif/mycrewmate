@@ -20,7 +20,6 @@ import {
   ChevronDown,
   Clock3,
   Info,
-  MapPin,
   Pencil,
   Plus,
   RotateCcw,
@@ -86,6 +85,7 @@ import {
 import { useSearchParams } from "wouter";
 import { planEvaluationMatchesSearch } from "@/lib/plan-search";
 import { helperDropdownAssignmentFeedback } from "@/lib/helper-assignment-feedback";
+import { LocationMapLink } from "@/components/LocationMapLink";
 
 const formatTimeLabel = (shift: { startTime: string; endTime: string }) =>
   shift.startTime && shift.endTime
@@ -1538,11 +1538,11 @@ export default function Plan() {
                         flexible={shift.allowFlexibleAssignment}
                       />
                     </p>
-                    {shift.locationId && (
-                      <a href={`/?location=${shift.locationId}`} className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-blue-700 hover:underline">
-                        <MapPin className="size-3" aria-hidden="true" />(Karte)
-                      </a>
-                    )}
+                    <LocationMapLink
+                      locationId={shift.locationId}
+                      locations={locations}
+                      className="mt-1"
+                    />
                   </div>
                   {canEditPlan && (
                     <div className="flex shrink-0 gap-1">
@@ -1650,15 +1650,11 @@ export default function Plan() {
                       <span className="block break-words [overflow-wrap:anywhere]">
                         <HighlightedText text={s.area} query={q} />
                       </span>
-                      {s.locationId && (
-                        <a
-                          href={`/?location=${s.locationId}`}
-                          className="mt-0.5 inline-flex items-center gap-1 text-xs font-medium text-blue-700 hover:underline"
-                          aria-label={`Karte für diese Schicht am Standort anzeigen`}
-                        >
-                          <MapPin className="size-3" aria-hidden="true" />(Karte)
-                        </a>
-                      )}
+                      <LocationMapLink
+                        locationId={s.locationId}
+                        locations={locations}
+                        className="mt-0.5"
+                      />
                     </td>
                     <td data-slot="roster-actions" className="min-w-[75px] px-3 py-2.5">
                       {canEditPlan && (
