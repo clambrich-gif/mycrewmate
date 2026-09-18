@@ -31,10 +31,16 @@ export const PERMISSION_MATRIX: readonly PermissionRow[] = [
     note: "Schichten, Besetzungen, Kopien und Planimporte können ausschließlich Administratoren ändern.",
   },
   {
-    area: "Vor- und Nachbereitung",
+    area: "Vorbereitung",
+    planningTeam: "Vollzugriff mit Löschprotokoll",
+    administrator: "Vollzugriff",
+    note: "Das Planungsteam kann Aufgaben anlegen, bearbeiten und mit Namenseingabe ins Löschprotokoll verschieben. Nur Administratoren können gelöschte Vorbereitungen wiederherstellen oder Resets ausführen.",
+  },
+  {
+    area: "Nachbereitung",
     planningTeam: "Anlegen und bearbeiten",
     administrator: "Vollzugriff",
-    note: "Einzellöschungen und Resets sind administrativ geschützt.",
+    note: "Einzellöschungen und Resets der Nachbereitung bleiben administrativ geschützt.",
   },
   {
     area: "Material, Marketing & Genehmigungen",
@@ -81,7 +87,7 @@ export const PERMISSION_MATRIX: readonly PermissionRow[] = [
   {
     area: "Löschprotokoll",
     planningTeam: "Kein Zugriff",
-    administrator: "Ansehen, wiederherstellen und zurücksetzen",
-    note: "Einzellöschungen können gezielt rückgängig gemacht werden. Das vollständige Zurücksetzen des Protokolls erfordert das Administratorpasswort.",
+    administrator: "Ansehen, filtern, wiederherstellen und zurücksetzen",
+    note: "Einzellöschungen von Helfern, Kuchen und Vorbereitungen können gezielt wiederhergestellt werden. Das vollständige Zurücksetzen des Protokolls erfordert das Administratorpasswort.",
   },
 ];

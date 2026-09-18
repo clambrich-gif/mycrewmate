@@ -19,6 +19,7 @@ const dbMocks = vi.hoisted(() => ({
   deleteCake: vi.fn(),
   createPrep: vi.fn(),
   updatePrep: vi.fn(),
+  deletePrep: vi.fn(),
   resetArea: vi.fn(),
   listPrep: vi.fn(),
   listPost: vi.fn(),
@@ -1309,6 +1310,38 @@ describe("Planungs-API", () => {
       logEntry: "Rückfrage an Stadtverwaltung erforderlich",
       logEntryAuthor: "Organisation",
     });
+  });
+
+  it("erlaubt dem Planungsteam das Verschieben von Vorbereitungsaufgaben ins Löschprotokoll mit Name", async () => {
+    const caller = appRouter.createCaller(planningTeamCtx);
+    dbMocks.deletePrep.mockResolvedValue({ affectedRows: 1 });
+
+    await expect(
+      caller.prep.remove({
+        id: 30,
+        deletedBy: "Christian",
+      })
+    ).resolves.toEqual({ affectedRows: 1 });
+
+    expect(dbMocks.deletePrep).toHaveBeenCalledWith(30, {
+      actor: {
+        userId: 2,
+        name: "Christian",
+        role: "user",
+        loginMethod: "manus",
+      },
+    });
+  });
+
+  it("weist Vorbereitungslöschungen ohne Löschenden ab", async () => {
+    const caller = appRouter.createCaller(planningTeamCtx);
+    await expect(
+      caller.prep.remove({
+        id: 30,
+        deletedBy: "   ",
+      })
+    ).rejects.toThrow();
+    expect(dbMocks.deletePrep).not.toHaveBeenCalled();
   });
 
   it("speichert eine optionale Begleitperson für Helfer ohne Beeinflussung der Schichtkapazität", async () => {

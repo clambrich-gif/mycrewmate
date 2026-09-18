@@ -300,6 +300,7 @@ export default function Preparation() {
   const [editingTask, setEditingTask] = useState<PrepTaskRow | null>(null);
   const [form, setForm] = useState<PrepForm>(EMPTY_FORM);
   const [deleteCandidate, setDeleteCandidate] = useState<PrepTaskRow | null>(null);
+  const [deletedBy, setDeletedBy] = useState("");
 
   const utils = trpc.useUtils();
   const { data: rawRows = [], isLoading } = trpc.prep.list.useQuery();
@@ -401,7 +402,8 @@ export default function Preparation() {
     },
     onSuccess: () => {
       setDeleteCandidate(null);
-      toast.success("Vorbereitungsaufgabe gelöscht");
+      setDeletedBy("");
+      toast.success("Vorbereitungsaufgabe ins Löschprotokoll verschoben");
     },
     onError: (error: any, _input: any, context: any) => {
       utils.prep.list.setData(undefined, context?.previous);
@@ -540,6 +542,11 @@ export default function Preparation() {
       logEntry: "",
     });
     setDialogOpen(true);
+  };
+
+  const openDelete = (task: PrepTaskRow) => {
+    setDeleteCandidate(task);
+    setDeletedBy("");
   };
 
   const closeDialog = () => {
@@ -908,7 +915,7 @@ export default function Preparation() {
                             size="icon"
                             title="Vorbereitungsaufgabe löschen"
                             aria-label={`Aufgabe ${task.task} löschen`}
-                            onClick={() => setDeleteCandidate(task)}
+                            onClick={() => openDelete(task)}
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
@@ -998,7 +1005,7 @@ export default function Preparation() {
                           className="h-11 w-11"
                           title="Vorbereitungsaufgabe löschen"
                           aria-label={`Aufgabe ${task.task} löschen`}
-                          onClick={() => setDeleteCandidate(task)}
+                          onClick={() => openDelete(task)}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -1093,7 +1100,10 @@ export default function Preparation() {
       <AlertDialog
         open={Boolean(deleteCandidate)}
         onOpenChange={open => {
-          if (!open && !remove.isPending) setDeleteCandidate(null);
+          if (!open && !remove.isPending) {
+            setDeleteCandidate(null);
+            setDeletedBy("");
+          }
         }}
       >
         <AlertDialogContent className="z-50 border border-gray-200 !bg-white !text-slate-950 shadow-xl dark:!bg-white dark:!text-slate-950">
@@ -1103,22 +1113,42 @@ export default function Preparation() {
             </div>
             <AlertDialogTitle>Vorbereitungsaufgabe löschen</AlertDialogTitle>
             <AlertDialogDescription className="text-left text-gray-600">
-              Möchtest du die Aufgabe &apos;{deleteCandidate?.task}&apos; wirklich löschen?
+              Die Aufgabe &apos;{deleteCandidate?.task}&apos; wird aus der aktiven Übersicht entfernt und ins Löschprotokoll verschoben.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="prep-deleted-by">Gelöscht von (Name / Kürzel des Verantwortlichen) *</Label>
+            <Input
+              id="prep-deleted-by"
+              value={deletedBy}
+              autoFocus
+              disabled={remove.isPending}
+              placeholder="z. B. Christian"
+              onChange={event => setDeletedBy(event.target.value)}
+              onKeyDown={event => {
+                if (event.key === "Enter" && deleteCandidate && deletedBy.trim() && !remove.isPending) {
+                  event.preventDefault();
+                  remove.mutate({ id: deleteCandidate.id, deletedBy: deletedBy.trim() });
+                }
+              }}
+            />
+            <p className="text-xs text-slate-500">
+              Der Name wird zusammen mit Datum und Uhrzeit im Löschprotokoll gespeichert.
+            </p>
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={remove.isPending}>Abbrechen</AlertDialogCancel>
             <AlertDialogAction
-              disabled={!deleteCandidate || remove.isPending}
+              disabled={!deleteCandidate || !deletedBy.trim() || remove.isPending}
               className="border border-red-700 !bg-red-600 !text-white shadow-sm hover:!bg-red-700 focus-visible:ring-red-500"
               onClick={event => {
                 event.preventDefault();
-                if (deleteCandidate && !remove.isPending) {
-                  remove.mutate({ id: deleteCandidate.id });
+                if (deleteCandidate && deletedBy.trim() && !remove.isPending) {
+                  remove.mutate({ id: deleteCandidate.id, deletedBy: deletedBy.trim() });
                 }
               }}
             >
-              {remove.isPending ? "Wird gelöscht …" : "Aufgabe löschen"}
+              {remove.isPending ? "Wird gelöscht …" : "Eintrag löschen"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

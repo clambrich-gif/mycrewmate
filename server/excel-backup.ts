@@ -1881,7 +1881,7 @@ async function loadSnapshot(
         database.select({ id: shifts.id }).from(shifts).where(scope(shifts))
       )
     ),
-    selectRows(prepTasks, scope(prepTasks)),
+    selectRows(prepTasks, and(scope(prepTasks), eq(prepTasks.deleted, false))),
     selectRows(postTasks, scope(postTasks)),
     selectRows(materials, scope(materials)),
     selectRows(marketing, scope(marketing)),

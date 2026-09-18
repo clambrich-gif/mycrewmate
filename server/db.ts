@@ -689,7 +689,7 @@ export async function listPrep() {
   return db
     .select()
     .from(prepTasks)
-    .where(planningScope(prepTasks))
+    .where(and(planningScope(prepTasks), eq(prepTasks.deleted, false)))
     .orderBy(prepTasks.sortOrder, prepTasks.id);
 }
 export async function listPost() {
@@ -1162,7 +1162,7 @@ export type AuditActor = {
 };
 
 type AuditEntity = {
-  entityType: "helper" | "cake";
+  entityType: "helper" | "cake" | "prep";
   entityId: number;
   entityLabel: string;
   details: Record<string, unknown>;
@@ -1260,10 +1260,29 @@ const cakeAuditEntity = (cake: typeof cakes.$inferSelect): AuditEntity => ({
   },
 });
 
+const prepAuditEntity = (task: typeof prepTasks.$inferSelect): AuditEntity => ({
+  entityType: "prep",
+  entityId: task.id,
+  entityLabel: task.category?.trim()
+    ? `${task.category.trim()} - ${task.task}`
+    : task.task,
+  details: {
+    task: task.task,
+    category: task.category,
+    dueText: task.dueText,
+    locationId: task.locationId,
+    contactId: task.contactId,
+    status: task.status,
+    statusWording: task.statusWording,
+    note: task.note,
+    sortOrder: task.sortOrder,
+  },
+});
+
 export async function listDeletionAuditLogs(filters?: {
   eventYear?: number;
   eventId?: number;
-  entityType?: "helper" | "cake";
+  entityType?: "helper" | "cake" | "prep";
   limit?: number;
 }) {
   const db = await getDb();
@@ -1512,7 +1531,7 @@ export async function restoreDeletionAuditLog(
         });
         restoredAssignments++;
       }
-    } else {
+    } else if (entry.entityType === "cake") {
       await tx.insert(cakes).values({
         year: selectedYear,
         eventId: selectedEventId,
@@ -1524,6 +1543,22 @@ export async function restoreDeletionAuditLog(
         sortOrder:
           typeof details.sortOrder === "number" ? details.sortOrder : 0,
       });
+    } else {
+      const result = await tx
+        .update(prepTasks)
+        .set({ deleted: false })
+        .where(
+          and(
+            eq(prepTasks.id, entry.entityId),
+            planningScopeFor(prepTasks, selectedYear, selectedEventId),
+            eq(prepTasks.deleted, true)
+          )
+        );
+      if (affectedRows(result) !== 1) {
+        throw new Error(
+          "Die Vorbereitungsaufgabe ist nicht mehr wiederherstellbar, weil sie bereits aktiv ist oder inzwischen endgültig entfernt wurde"
+        );
+      }
     }
 
     await tx
@@ -2427,13 +2462,13 @@ export const updatePrep = async (id: number, v: any) => {
     return database
       .update(prepTasks)
       .set(await scopedContactValues(await scopedLocationValues(values)))
-      .where(yearWhere(prepTasks, id));
+      .where(and(yearWhere(prepTasks, id), eq(prepTasks.deleted, false)));
   }
 
   const existing = await database
     .select({ note: prepTasks.note })
     .from(prepTasks)
-    .where(yearWhere(prepTasks, id))
+    .where(and(yearWhere(prepTasks, id), eq(prepTasks.deleted, false)))
     .limit(1);
   if (!existing[0]) throw new Error("Vorbereitungsaufgabe wurde nicht gefunden");
 
@@ -2450,10 +2485,44 @@ export const updatePrep = async (id: number, v: any) => {
         ),
       }))
     )
-    .where(yearWhere(prepTasks, id));
+    .where(and(yearWhere(prepTasks, id), eq(prepTasks.deleted, false)));
 };
-export const deletePrep = async (id: number) =>
-  ((await getDb()) as DB).delete(prepTasks).where(yearWhere(prepTasks, id));
+export async function deletePrep(
+  id: number,
+  options: { actor: AuditActor }
+) {
+  const db = (await getDb()) as DB;
+  return db.transaction(async tx => {
+    const [task] = await tx
+      .select()
+      .from(prepTasks)
+      .where(
+        and(
+          eq(prepTasks.id, id),
+          planningScope(prepTasks),
+          eq(prepTasks.deleted, false)
+        )
+      )
+      .limit(1)
+      .for("update");
+    if (!task) throw new Error("Vorbereitungsaufgabe wurde nicht gefunden");
+    await recordDeletionAudit(tx, options.actor, "single_delete", [
+      prepAuditEntity(task),
+    ]);
+    const result = await tx
+      .update(prepTasks)
+      .set({ deleted: true })
+      .where(
+        and(
+          eq(prepTasks.id, id),
+          planningScope(prepTasks),
+          eq(prepTasks.deleted, false)
+        )
+      );
+    requireDeletedRows(result, 1);
+    return result;
+  });
+}
 export const createPost = async (v: any) =>
   createYearRow(postTasks, await scopedContactValues(v));
 export const updatePost = async (id: number, v: any) =>

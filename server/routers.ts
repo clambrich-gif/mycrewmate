@@ -1590,9 +1590,18 @@ export const appRouter = router({
             : { logEntryAuthor: auditActor(ctx.user).name }),
         });
       }),
-    remove: adminProcedure
-      .input(z.object({ id: z.number() }))
-      .mutation(({ input }) => db.deletePrep(input.id)),
+    remove: protectedProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          deletedBy: z.string().trim().min(1, "Bitte den Namen oder das Kürzel eingeben").max(200),
+        })
+      )
+      .mutation(({ ctx, input }) =>
+        db.deletePrep(input.id, {
+          actor: { ...auditActor(ctx.user), name: input.deletedBy },
+        })
+      ),
   }),
   post: router({
     list: protectedProcedure.query(() => db.listPost()),
@@ -1793,7 +1802,7 @@ export const appRouter = router({
           .object({
             eventYear: eventYearInput.optional(),
             eventId: z.number().int().positive().optional(),
-            entityType: z.enum(["helper", "cake"]).optional(),
+            entityType: z.enum(["helper", "cake", "prep"]).optional(),
             limit: z.number().int().min(1).max(1000).default(500),
           })
           .optional()

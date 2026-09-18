@@ -881,6 +881,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(prep).not.toContain("Optionale Felder:");
     expect(prep).toContain("Vorbereitungsaufgabe bearbeiten");
     expect(prep).toContain("Vorbereitungsaufgabe löschen");
+    expect(prep).toContain("Gelöscht von (Name / Kürzel des Verantwortlichen)");
+    expect(prep).toContain("wird aus der aktiven Übersicht entfernt und ins Löschprotokoll verschoben.");
+    expect(prep).toContain("Eintrag löschen");
+    expect(prep).toContain("disabled={!deleteCandidate || !deletedBy.trim() || remove.isPending}");
     expect(prep).toContain("DialogContent");
     expect(prep).toContain("DialogFooter");
     expect(prep).toContain("openCreate");
@@ -1777,3 +1781,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(storageProxy).toContain("locationLogoContentType(key)");
   });
 });
+  it("erweitert das Löschprotokoll um Vorbereitungen und deren Wiederherstellung", () => {
+    const permissions = source("client/src/pages/Permissions.tsx");
+    const router = source("server/routers.ts");
+    expect(permissions).toContain("Nur Vorbereitungen");
+    expect(permissions).toContain("prep: \"Vorbereitung\"");
+    expect(permissions).toContain("utils.prep.list.invalidate()");
+    expect(permissions).toContain("Gelöscht von:");
+    expect(permissions).toContain("Wiederherstellen");
+    expect(router).toContain("entityType: z.enum([\"helper\", \"cake\", \"prep\"])");
+  });

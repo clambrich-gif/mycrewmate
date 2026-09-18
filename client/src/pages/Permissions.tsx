@@ -36,9 +36,13 @@ const actionLabel = {
 const entityLabel = {
   helper: "Helfer",
   cake: "Kuchen",
+  prep: "Vorbereitung",
 } as const;
 
-function detailText(entityType: "helper" | "cake", value: string | null) {
+function detailText(
+  entityType: "helper" | "cake" | "prep",
+  value: string | null
+) {
   if (!value) return "–";
   try {
     const details = JSON.parse(value) as Record<string, unknown>;
@@ -53,6 +57,17 @@ function detailText(entityType: "helper" | "cake", value: string | null) {
         details.email ? `E-Mail: ${details.email}` : null,
         details.phone ? `Telefon: ${details.phone}` : null,
         details.note ? `Hinweis: ${details.note}` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+    }
+    if (entityType === "prep") {
+      return [
+        details.category ? `Bereich: ${details.category}` : null,
+        details.task ? `Aufgabe: ${details.task}` : null,
+        details.dueText ? `Frist: ${details.dueText}` : null,
+        details.status ? `Status: ${details.status}` : null,
+        details.note ? `Logbuch: ${details.note}` : null,
       ]
         .filter(Boolean)
         .join(" · ");
@@ -106,6 +121,7 @@ export default function Permissions() {
         utils.audit.deletions.invalidate(),
         utils.helpers.list.invalidate(),
         utils.cakes.list.invalidate(),
+        utils.prep.list.invalidate(),
         utils.plan.evaluate.invalidate(),
         utils.dashboard.stats.invalidate(),
       ]);
@@ -246,8 +262,8 @@ export default function Permissions() {
               <History className="h-5 w-5 text-primary" /> Löschprotokoll
             </CardTitle>
             <p className="mt-1 text-sm text-muted-foreground">
-              Nachvollziehbare Nachweise über gelöschte Helfer und
-              Kucheneinträge mit gezielter Wiederherstellung.
+              Nachvollziehbare Nachweise über gelöschte Helfer, Kuchen und
+              Vorbereitungsaufgaben mit gezielter Wiederherstellung.
             </p>
           </div>
           {isAdmin && (
@@ -270,9 +286,10 @@ export default function Permissions() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Helfer & Kuchen</SelectItem>
+                  <SelectItem value="all">Alle Einträge</SelectItem>
                   <SelectItem value="helper">Nur Helfer</SelectItem>
                   <SelectItem value="cake">Nur Kuchen</SelectItem>
+                  <SelectItem value="prep">Nur Vorbereitungen</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={eventFilter} onValueChange={setEventFilter}>
@@ -356,7 +373,9 @@ export default function Permissions() {
                     </div>
                     <div>
                       <span className="text-muted-foreground">
-                        Ausgeführt von:
+                        {entry.entityType === "prep"
+                          ? "Gelöscht von:"
+                          : "Ausgeführt von:"}
                       </span>{" "}
                       {entry.actorName} (
                       {entry.actorRole === "admin"
@@ -385,7 +404,7 @@ export default function Permissions() {
                         disabled={restoreAudit.isPending}
                         onClick={() => restoreAudit.mutate({ id: entry.id })}
                       >
-                        <RotateCcw className="mr-2 h-4 w-4" /> Rückgängig
+                        <RotateCcw className="mr-2 h-4 w-4" /> Wiederherstellen
                       </Button>
                     ) : null}
                   </div>
@@ -420,6 +439,7 @@ export default function Permissions() {
                         </td>
                         <td className="break-words whitespace-normal p-3 align-top leading-relaxed [overflow-wrap:anywhere]">
                           <div className="font-medium">{actionLabel[entry.action]}</div>
+                          {entry.entityType === "prep" ? "Gelöscht von: " : ""}
                           {entry.actorName}
                           <div className="text-xs text-muted-foreground">
                             {entry.actorRole === "admin"
@@ -451,7 +471,7 @@ export default function Permissions() {
                                 restoreAudit.mutate({ id: entry.id })
                               }
                             >
-                              <RotateCcw className="mr-2 h-4 w-4" /> Rückgängig
+                              <RotateCcw className="mr-2 h-4 w-4" /> Wiederherstellen
                             </Button>
                           ) : (
                             <span className="text-xs text-muted-foreground">
