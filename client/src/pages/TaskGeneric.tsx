@@ -4,7 +4,15 @@ import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -12,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
 import { trpc } from "@/lib/trpc";
 import { ArrowDownAZ, ArrowUpZA, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -52,6 +61,9 @@ interface Props {
   noStatus?: boolean;
   sortableAndFilterable?: boolean;
   teamCanDelete?: boolean;
+  createInDialog?: boolean;
+  createDialogTitle?: string;
+  createTriggerLabel?: string;
 }
 
 const temporaryId = () => -Date.now() - Math.floor(Math.random() * 1_000);
@@ -68,6 +80,9 @@ export default function TaskGeneric({
   noStatus,
   sortableAndFilterable = false,
   teamCanDelete = false,
+  createInDialog = false,
+  createDialogTitle = `Neu: ${addLabel}`,
+  createTriggerLabel = `Neu: ${addLabel}`,
 }: Props) {
   const utils = trpc.useUtils();
   const { user } = useAuth();
@@ -79,6 +94,7 @@ export default function TaskGeneric({
   const [extras, setExtras] = useState<Record<string, string>>({});
   const [contactFilter, setContactFilter] = useState("alle");
   const [sortAsc, setSortAsc] = useState(true);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{
     id: number;
     name: string;
@@ -146,6 +162,7 @@ export default function TaskGeneric({
       );
       setName("");
       setExtras({});
+      setCreateDialogOpen(false);
       toast.success("Hinzugefügt");
     },
     onError: (error: any, _input: any, context: any) => {
@@ -196,6 +213,20 @@ export default function TaskGeneric({
     create.mutate({ [nameKey]: name.trim(), ...extras });
   };
 
+  const resetCreateForm = () => {
+    setName("");
+    setExtras(
+      extraField
+        ? { [extraField.key]: extraField.options[0]?.v ?? "" }
+        : {}
+    );
+  };
+
+  const openCreateDialog = () => {
+    resetCreateForm();
+    setCreateDialogOpen(true);
+  };
+
   const tableColumnCount =
     2 +
     columns.length +
@@ -221,35 +252,51 @@ export default function TaskGeneric({
               compact
             />
           )}
-          <Input
-            placeholder={`Neu: ${addLabel}`}
-            value={name}
-            onChange={event => setName(event.target.value)}
-            className="col-span-2 w-full lg:order-last lg:w-64"
-            onKeyDown={event => event.key === "Enter" && submitCreate()}
-          />
-          {columns.map(column => (
-            <Input
-              key={column.key}
-              placeholder={column.label}
-              value={extras[column.key] ?? ""}
-              onChange={event =>
-                setExtras(current => ({
-                  ...current,
-                  [column.key]: event.target.value,
-                }))
-              }
-              className="col-span-2 w-full lg:order-last lg:ml-2 lg:w-36"
-            />
-          ))}
-          <Button
-            className="col-span-2 shadow-xs lg:col-auto"
-            onClick={submitCreate}
-            disabled={!name.trim() || create.isPending}
-          >
-            <Plus className="mr-1.5 h-4 w-4" />
-            <span>{create.isPending ? "Speichert …" : `Neu: ${addLabel}`}</span>
-          </Button>
+          {createInDialog ? (
+            <Button
+              type="button"
+              variant="outline"
+              className={`col-span-2 shadow-xs lg:col-auto ${CREATION_ACTION_BUTTON_CLASS}`}
+              onClick={openCreateDialog}
+            >
+              <Plus className="mr-1.5 h-4 w-4" />
+              <span>{createTriggerLabel}</span>
+            </Button>
+          ) : (
+            <>
+              <Input
+                placeholder={`Neu: ${addLabel}`}
+                value={name}
+                onChange={event => setName(event.target.value)}
+                className="col-span-2 w-full lg:order-last lg:w-64"
+                onKeyDown={event => event.key === "Enter" && submitCreate()}
+              />
+              {columns.map(column => (
+                <Input
+                  key={column.key}
+                  placeholder={column.label}
+                  value={extras[column.key] ?? ""}
+                  onChange={event =>
+                    setExtras(current => ({
+                      ...current,
+                      [column.key]: event.target.value,
+                    }))
+                  }
+                  className="col-span-2 w-full lg:order-last lg:ml-2 lg:w-36"
+                />
+              ))}
+              <Button
+                className="col-span-2 shadow-xs lg:col-auto"
+                onClick={submitCreate}
+                disabled={!name.trim() || create.isPending}
+              >
+                <Plus className="mr-1.5 h-4 w-4" />
+                <span>
+                  {create.isPending ? "Speichert …" : `Neu: ${addLabel}`}
+                </span>
+              </Button>
+            </>
+          )}
         </div>
       </div>
       {sortableAndFilterable && (
@@ -635,6 +682,115 @@ export default function TaskGeneric({
             deleteTarget && remove.mutate({ id: deleteTarget.id })
           }
         />
+      )}
+      {createInDialog && (
+        <Dialog
+          open={createDialogOpen}
+          onOpenChange={open => {
+            if (!open && !create.isPending) {
+              setCreateDialogOpen(false);
+              resetCreateForm();
+            }
+          }}
+        >
+          <DialogContent className="w-[calc(100vw-2rem)] min-w-0 max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))] !bg-white !text-slate-950 shadow-2xl sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>{createDialogTitle}</DialogTitle>
+            </DialogHeader>
+            <form
+              className="grid min-w-0 gap-3 py-2"
+              onSubmit={event => {
+                event.preventDefault();
+                submitCreate();
+              }}
+            >
+              <div className="space-y-1.5">
+                <Label htmlFor={`${kind}-create-name`}>
+                  {addLabel} <span aria-hidden="true">*</span>
+                </Label>
+                <Input
+                  id={`${kind}-create-name`}
+                  value={name}
+                  autoFocus
+                  required
+                  placeholder={`z. B. ${addLabel}`}
+                  onChange={event => setName(event.target.value)}
+                />
+              </div>
+              {columns.length > 0 && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {columns.map(column => (
+                    <div key={column.key} className="space-y-1.5">
+                      <Label htmlFor={`${kind}-create-${column.key}`}>
+                        {column.label}
+                      </Label>
+                      <Input
+                        id={`${kind}-create-${column.key}`}
+                        value={extras[column.key] ?? ""}
+                        onChange={event =>
+                          setExtras(current => ({
+                            ...current,
+                            [column.key]: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+              {extraField && (
+                <div className="space-y-1.5">
+                  <Label htmlFor={`${kind}-create-${extraField.key}`}>
+                    {extraField.label}
+                  </Label>
+                  <Select
+                    value={
+                      extras[extraField.key] ?? extraField.options[0]?.v ?? ""
+                    }
+                    onValueChange={value =>
+                      setExtras(current => ({
+                        ...current,
+                        [extraField.key]: value,
+                      }))
+                    }
+                  >
+                    <SelectTrigger id={`${kind}-create-${extraField.key}`}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {extraField.options.map(option => (
+                        <SelectItem key={option.v} value={option.v}>
+                          {option.l}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <DialogFooter className="mt-1 w-full min-w-0 flex-col gap-3 border-t pt-3 sm:flex-col sm:items-stretch">
+                <div className="flex w-full flex-wrap justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={create.isPending}
+                    onClick={() => {
+                      setCreateDialogOpen(false);
+                      resetCreateForm();
+                    }}
+                  >
+                    Abbrechen
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={!name.trim() || create.isPending}
+                  >
+                    {create.isPending ? "Speichert …" : "Speichern"}
+                  </Button>
+                </div>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

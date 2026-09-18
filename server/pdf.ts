@@ -136,6 +136,21 @@ export function helperTimeBadgeLabel(helper: Helper, day: Day) {
   return window ? `Zeitfenster: ${window.start}–${window.end} Uhr` : null;
 }
 
+/**
+ * Die persönliche Aufgabenübersicht führt Aufgabe, optionalen Bereich und
+ * Bemerkung in einer Tabellenzelle. Vor einer Bemerkung bleibt bewusst eine
+ * freie Textzeile: Sie schafft einen klaren Abstand, ohne selbst als Inhalt
+ * oder spätere Hervorhebung der Bemerkung gerendert zu werden.
+ */
+export function helperTaskCellText(
+  shift: Pick<Shift, "task" | "area" | "note">
+) {
+  const lines = [shift.task];
+  if (shift.area && shift.area !== "Allgemein") lines.push(shift.area);
+  if (shift.note?.trim()) lines.push("", `Bemerkung: ${shift.note.trim()}`);
+  return lines.join("\n");
+}
+
 function drawHelperTimeBadge(
   doc: PDFKit.PDFDocument,
   helper: Helper,
@@ -398,10 +413,7 @@ export function renderHelperTaskPdf(data: PlanningData, helperId: number) {
             columns,
             {
               number: String(number++),
-              task:
-                shift.area && shift.area !== "Allgemein"
-                  ? `${shift.task}\n${shift.area}${shift.note?.trim() ? `\nBemerkung: ${shift.note.trim()}` : ""}`
-                  : `${shift.task}${shift.note?.trim() ? `\nBemerkung: ${shift.note.trim()}` : ""}`,
+              task: helperTaskCellText(shift),
               time: formatTime(shift),
               team: team || "–",
             },

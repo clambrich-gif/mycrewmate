@@ -22,6 +22,9 @@ export default function Materials() {
       }}
       noStatus
       sortableAndFilterable
+      createInDialog
+      createDialogTitle="Neuen Artikel anlegen"
+      createTriggerLabel="Neuer Artikel"
     />
   );
 }

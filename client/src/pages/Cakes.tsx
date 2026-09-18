@@ -14,6 +14,9 @@ export default function Cakes() {
       noContact
       noStatus
       teamCanDelete
+      createInDialog
+      createDialogTitle="Kuchen erfassen"
+      createTriggerLabel="Kuchen erfassen"
     />
   );
 }

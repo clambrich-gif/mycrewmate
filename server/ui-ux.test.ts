@@ -1570,4 +1570,40 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("openMobileNoteEditor(shift)");
     expect(plan).toContain("updateShift.mutate({\n      id: mobileNoteShift.id,\n      note: mobileNoteValue.trim() || null,");
   });
+
+  it("erfasst Nachbereitung, Material und Kuchen über fokussierte Dialoge statt über Inline-Felder", () => {
+    const taskList = source("client/src/pages/TaskList.tsx");
+    const taskGeneric = source("client/src/pages/TaskGeneric.tsx");
+    const materials = source("client/src/pages/Materials.tsx");
+    const cakes = source("client/src/pages/Cakes.tsx");
+
+    expect(taskList).toContain("postCreateDialogOpen");
+    expect(taskList).toContain("Neue Nachbereitungsaufgabe");
+    expect(taskList).toContain('id="post-create-task"');
+    expect(taskList).toContain("openPostCreateDialog");
+    expect(taskList).toContain("CREATION_ACTION_BUTTON_CLASS");
+    expect(taskList).toContain(
+      "w-[calc(100vw-2rem)] min-w-0 max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto"
+    );
+
+    expect(taskGeneric).toContain("createInDialog?: boolean");
+    expect(taskGeneric).toContain("createDialogOpen");
+    expect(taskGeneric).toContain("createDialogTitle");
+    expect(taskGeneric).toContain("createTriggerLabel");
+    expect(taskGeneric).toContain("openCreateDialog");
+    expect(taskGeneric).toContain("resetCreateForm");
+    expect(taskGeneric).toContain("CREATION_ACTION_BUTTON_CLASS");
+    expect(taskGeneric).toContain("DialogContent");
+    expect(taskGeneric).toContain("DialogFooter");
+    expect(taskGeneric).toContain("<Label htmlFor={`${kind}-create-name`}>");
+    expect(taskGeneric).toContain("sm:grid-cols-2");
+
+    expect(materials).toContain("createInDialog");
+    expect(materials).toContain('createDialogTitle="Neuen Artikel anlegen"');
+    expect(materials).toContain('createTriggerLabel="Neuer Artikel"');
+    expect(materials).toContain('label: "Bestellt?"');
+    expect(cakes).toContain("createInDialog");
+    expect(cakes).toContain('createDialogTitle="Kuchen erfassen"');
+    expect(cakes).toContain('createTriggerLabel="Kuchen erfassen"');
+  });
 });

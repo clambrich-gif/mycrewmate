@@ -16,6 +16,7 @@ import {
   selectHelpersForContact,
   selectPlanEvaluations,
   helperTimeBadgeLabel,
+  helperTaskCellText,
   planPdfTimeLabel,
 } from "./pdf";
 import { resolveEventPdfLogoKey } from "./event-pdf-image";
@@ -154,6 +155,13 @@ describe("PDF-Erzeugung", () => {
     const pdf = await renderHelperTaskPdf(data, 1);
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
     expect(pdf.length).toBeGreaterThan(2_000);
+  });
+
+  it("setzt vor Bemerkungen in der persönlichen Aufgabenübersicht eine freie Textzeile", () => {
+    expect(helperTaskCellText(shifts[0])).toBe(
+      "Aufbau Zelte, Verkabelung, Absperrgitter und Banner\nAufbau\n\nBemerkung: Treffpunkt am Materialcontainer"
+    );
+    expect(helperTaskCellText(shifts[1])).toBe("Anmeldung Brevets\nStart");
   });
 
   it("kennzeichnet ein individuelles Zeitfenster kompakt im Helfer-PDF", async () => {

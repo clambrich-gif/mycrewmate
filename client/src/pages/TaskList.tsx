@@ -3,7 +3,15 @@ import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -16,6 +24,7 @@ import {
   TASK_STATUS_QUERY_KEY,
   type TaskStatusFilter,
 } from "@/lib/dashboard-target-filter";
+import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
 import { trpc } from "@/lib/trpc";
 import { ArrowDownAZ, ArrowUpZA, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -43,6 +52,7 @@ export default function TaskList({
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const [task, setTask] = useState("");
   const [dueText, setDueText] = useState("");
+  const [postCreateDialogOpen, setPostCreateDialogOpen] = useState(false);
   const [contactFilter, setContactFilter] = useState("alle");
   const [sortAsc, setSortAsc] = useState(true);
   const isPrep = kind === "prep";
@@ -114,6 +124,7 @@ export default function TaskList({
       );
       setTask("");
       setDueText("");
+      if (!isPrep) setPostCreateDialogOpen(false);
       toast.success("Hinzugefügt");
     },
     onError: (error: any, _input: any, context: any) => {
@@ -164,6 +175,17 @@ export default function TaskList({
     });
   };
 
+  const openPostCreateDialog = () => {
+    setTask("");
+    setPostCreateDialogOpen(true);
+  };
+
+  const closePostCreateDialog = () => {
+    if (create.isPending) return;
+    setPostCreateDialogOpen(false);
+    setTask("");
+  };
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -180,30 +202,44 @@ export default function TaskList({
             label={title}
           />
           <ResetAreaButton area={kind} label={title} compact />
-          <Input
-            placeholder="Neue Aufgabe"
-            value={task}
-            onChange={event => setTask(event.target.value)}
-            className="col-span-2 w-full lg:order-last lg:w-72"
-            onKeyDown={event => event.key === "Enter" && submitCreate()}
-          />
-          {isPrep && (
-            <Input
-              placeholder="Zu erledigen bis (Freitext)"
-              value={dueText}
-              onChange={event => setDueText(event.target.value)}
-              className="col-span-2 w-full lg:order-last lg:ml-2 lg:w-64"
-              onKeyDown={event => event.key === "Enter" && submitCreate()}
-            />
+          {isPrep ? (
+            <>
+              <Input
+                placeholder="Neue Aufgabe"
+                value={task}
+                onChange={event => setTask(event.target.value)}
+                className="col-span-2 w-full lg:order-last lg:w-72"
+                onKeyDown={event => event.key === "Enter" && submitCreate()}
+              />
+              <Input
+                placeholder="Zu erledigen bis (Freitext)"
+                value={dueText}
+                onChange={event => setDueText(event.target.value)}
+                className="col-span-2 w-full lg:order-last lg:ml-2 lg:w-64"
+                onKeyDown={event => event.key === "Enter" && submitCreate()}
+              />
+              <Button
+                className="col-span-2 shadow-xs lg:col-auto"
+                onClick={submitCreate}
+                disabled={!task.trim() || create.isPending}
+              >
+                <Plus className="mr-1.5 h-4 w-4" />
+                <span>
+                  {create.isPending ? "Speichert …" : "Neue Aufgabe"}
+                </span>
+              </Button>
+            </>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              className={`col-span-2 shadow-xs lg:col-auto ${CREATION_ACTION_BUTTON_CLASS}`}
+              onClick={openPostCreateDialog}
+            >
+              <Plus className="mr-1.5 h-4 w-4" />
+              <span>Neue Aufgabe</span>
+            </Button>
           )}
-          <Button
-            className="col-span-2 shadow-xs lg:col-auto"
-            onClick={submitCreate}
-            disabled={!task.trim() || create.isPending}
-          >
-            <Plus className="mr-1.5 h-4 w-4" />
-            <span>{create.isPending ? "Speichert …" : "Neue Aufgabe"}</span>
-          </Button>
         </div>
       </div>
       {statusFilter !== "alle" && (
@@ -522,6 +558,60 @@ export default function TaskList({
           </table>
         </CardContent>
       </Card>
+      {!isPrep && (
+        <Dialog
+          open={postCreateDialogOpen}
+          onOpenChange={open => {
+            if (!open) closePostCreateDialog();
+            else setPostCreateDialogOpen(true);
+          }}
+        >
+          <DialogContent className="w-[calc(100vw-2rem)] min-w-0 max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))] !bg-white !text-slate-950 shadow-2xl sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Neue Nachbereitungsaufgabe</DialogTitle>
+            </DialogHeader>
+            <form
+              className="grid min-w-0 gap-3 py-2"
+              onSubmit={event => {
+                event.preventDefault();
+                submitCreate();
+              }}
+            >
+              <div className="space-y-1.5">
+                <Label htmlFor="post-create-task">
+                  Aufgabe <span aria-hidden="true">*</span>
+                </Label>
+                <Input
+                  id="post-create-task"
+                  value={task}
+                  autoFocus
+                  required
+                  placeholder="z. B. Abbaufläche kontrollieren"
+                  onChange={event => setTask(event.target.value)}
+                />
+              </div>
+              <DialogFooter className="mt-1 w-full min-w-0 flex-col gap-3 border-t pt-3 sm:flex-col sm:items-stretch">
+                <div className="flex w-full flex-wrap justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={create.isPending}
+                    onClick={closePostCreateDialog}
+                  >
+                    Abbrechen
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={!task.trim() || create.isPending}
+                  >
+                    {create.isPending ? "Speichert …" : "Speichern"}
+                  </Button>
+                </div>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
