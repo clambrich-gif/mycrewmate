@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
 import { trpc } from "@/lib/trpc";
-import { ArrowDownAZ, ArrowUpZA, Plus, Trash2 } from "lucide-react";
+import { ArrowDownAZ, ArrowUpZA, Plus, Search, Trash2, X } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { LocationMapLink } from "@/components/LocationMapLink";
@@ -66,8 +66,17 @@ interface Props {
   createInDialog?: boolean;
   createDialogTitle?: string;
   createTriggerLabel?: string;
+  createButtonClassName?: string;
   locationField?: boolean;
   headerActions?: ReactNode;
+  headerLayout?: "default" | "stacked";
+  filterConfig?: {
+    categoryKey: string;
+    categoryLabel: string;
+    statusKey?: string;
+    statusLabel?: string;
+    searchPlaceholder?: string;
+  };
 }
 
 const temporaryId = () => -Date.now() - Math.floor(Math.random() * 1_000);
@@ -88,8 +97,11 @@ export default function TaskGeneric({
   createInDialog = false,
   createDialogTitle = `Neu: ${addLabel}`,
   createTriggerLabel = `Neu: ${addLabel}`,
+  createButtonClassName = CREATION_ACTION_BUTTON_CLASS,
   locationField = false,
   headerActions,
+  headerLayout = "default",
+  filterConfig,
 }: Props) {
   const utils = trpc.useUtils();
   const { user } = useAuth();
@@ -101,6 +113,10 @@ export default function TaskGeneric({
   const [name, setName] = useState("");
   const [extras, setExtras] = useState<Record<string, string>>({});
   const [contactFilter, setContactFilter] = useState("alle");
+  const [categoryFilter, setCategoryFilter] = useState("alle");
+  const [locationFilter, setLocationFilter] = useState("alle");
+  const [fieldFilter, setFieldFilter] = useState("alle");
+  const [searchTerm, setSearchTerm] = useState("");
   const [sortAsc, setSortAsc] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{
@@ -114,17 +130,81 @@ export default function TaskGeneric({
     { v: "inArbeit", l: "in Arbeit" },
     { v: "erledigt", l: "erledigt" },
   ];
+  const filterCategoryKey = filterConfig?.categoryKey;
+  const filterStatusKey = filterConfig?.statusKey;
+  const filterStatusOptions = extraField?.options ?? defaultStatus;
+
+  const contactMap = useMemo(
+    () => new Map(contacts.map((contact: any) => [contact.id, contact.name])),
+    [contacts]
+  );
+  const locationMap = useMemo(
+    () => new Map(locations.map((location: any) => [location.id, location.name])),
+    [locations]
+  );
+  const availableCategories = useMemo(() => {
+    if (!filterCategoryKey) return [];
+    return Array.from(
+      new Set<string>(
+        rows
+          .map((row: any) => String(row[filterCategoryKey] ?? "").trim())
+          .filter(Boolean)
+      )
+    ).sort((left, right) => left.localeCompare(right, "de"));
+  }, [filterCategoryKey, rows]);
 
   const visibleRows = useMemo(
     () =>
       [...rows]
         .filter((row: any) => {
-          if (!sortableAndFilterable || contactFilter === "alle") return true;
-          if (contactFilter === "ohne") return !row.contactId;
-          return String(row.contactId ?? "") === contactFilter;
+          if (sortableAndFilterable && contactFilter !== "alle") {
+            if (contactFilter === "ohne" && row.contactId) return false;
+            if (
+              contactFilter !== "ohne" &&
+              String(row.contactId ?? "") !== contactFilter
+            ) {
+              return false;
+            }
+          }
+
+          if (!filterConfig) return true;
+          if (
+            categoryFilter !== "alle" &&
+            String(row[filterCategoryKey ?? ""] ?? "").trim() !== categoryFilter
+          ) {
+            return false;
+          }
+          if (locationFilter === "ohne" && row.locationId) return false;
+          if (
+            locationFilter !== "alle" &&
+            locationFilter !== "ohne" &&
+            String(row.locationId ?? "") !== locationFilter
+          ) {
+            return false;
+          }
+          if (
+            filterStatusKey &&
+            fieldFilter !== "alle" &&
+            String(row[filterStatusKey] ?? "") !== fieldFilter
+          ) {
+            return false;
+          }
+
+          const normalizedQuery = searchTerm.trim().toLocaleLowerCase("de-DE");
+          if (!normalizedQuery) return true;
+          const searchable = [
+            row[nameKey],
+            ...columns.map(column => row[column.key]),
+            row.contactId ? contactMap.get(row.contactId) ?? "" : "",
+            row.locationId ? locationMap.get(row.locationId) ?? "" : "",
+            filterStatusKey ? row[filterStatusKey] : "",
+          ]
+            .join(" ")
+            .toLocaleLowerCase("de-DE");
+          return searchable.includes(normalizedQuery);
         })
         .sort((left: any, right: any) => {
-          if (!sortableAndFilterable) return 0;
+          if (!sortableAndFilterable || filterConfig) return 0;
           const comparison = String(left[nameKey] ?? "").localeCompare(
             String(right[nameKey] ?? ""),
             "de",
@@ -132,7 +212,23 @@ export default function TaskGeneric({
           );
           return sortAsc ? comparison : -comparison;
         }),
-    [rows, sortableAndFilterable, contactFilter, nameKey, sortAsc]
+    [
+      rows,
+      sortableAndFilterable,
+      filterConfig,
+      contactFilter,
+      categoryFilter,
+      locationFilter,
+      fieldFilter,
+      searchTerm,
+      filterCategoryKey,
+      filterStatusKey,
+      nameKey,
+      columns,
+      contactMap,
+      locationMap,
+      sortAsc,
+    ]
   );
 
   const refreshDashboard = () => void utils.dashboard.stats.invalidate();
@@ -258,58 +354,45 @@ export default function TaskGeneric({
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div
+        className={
+          headerLayout === "stacked"
+            ? "flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between"
+            : "flex flex-wrap items-end justify-between gap-3"
+        }
+      >
         <h1 className="text-2xl font-bold">{title}</h1>
-        <div className="grid w-full grid-cols-2 gap-2 lg:ml-auto lg:flex lg:w-auto lg:flex-wrap lg:justify-end [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 max-lg:[&>[data-slot=button]]:h-11 max-lg:[&>[data-slot=button]]:text-base lg:[&>[data-slot=button]]:w-auto lg:[&>[data-slot=button]]:px-4">
-          {kind in importAreaByKind && (
-            <ModuleExcelImportButton
-              area={importAreaByKind[kind as keyof typeof importAreaByKind]}
-              label={title}
-            />
-          )}
-          {kind in resetAreaByKind && (
-            <ResetAreaButton
-              area={resetAreaByKind[kind as keyof typeof resetAreaByKind]}
-              label={title}
-              compact
-            />
-          )}
-          {headerActions}
-          {createInDialog ? (
-            <Button
-              type="button"
-              variant="outline"
-              className={`col-span-2 shadow-xs lg:col-auto ${CREATION_ACTION_BUTTON_CLASS}`}
-              onClick={openCreateDialog}
-            >
-              <Plus className="mr-1.5 h-4 w-4" />
-              <span>{createTriggerLabel}</span>
-            </Button>
-          ) : (
-            <>
-              <Input
-                placeholder={`Neu: ${addLabel}`}
-                value={name}
-                onChange={event => setName(event.target.value)}
-                className="col-span-2 w-full lg:order-last lg:w-64"
-                onKeyDown={event => event.key === "Enter" && submitCreate()}
-              />
-              {columns.map(column => (
-                <Input
-                  key={column.key}
-                  placeholder={column.label}
-                  value={extras[column.key] ?? ""}
-                  onChange={event =>
-                    setExtras(current => ({
-                      ...current,
-                      [column.key]: event.target.value,
-                    }))
-                  }
-                  className="col-span-2 w-full lg:order-last lg:ml-2 lg:w-36"
+        {headerLayout === "stacked" ? (
+          <div className="w-full space-y-2 xl:w-auto xl:min-w-[780px]">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 [&>button]:w-full [&>button]:justify-center [&>button]:px-2 sm:[&>button]:h-10">
+              {headerActions}
+              {kind in importAreaByKind && (
+                <ModuleExcelImportButton
+                  area={importAreaByKind[kind as keyof typeof importAreaByKind]}
+                  label={title}
                 />
-              ))}
+              )}
+              {kind in resetAreaByKind && (
+                <ResetAreaButton
+                  area={resetAreaByKind[kind as keyof typeof resetAreaByKind]}
+                  label={title}
+                  compact
+                />
+              )}
+            </div>
+            {createInDialog ? (
               <Button
-                className="col-span-2 shadow-xs lg:col-auto"
+                type="button"
+                variant="outline"
+                className={`w-full shadow-xs ${createButtonClassName}`}
+                onClick={openCreateDialog}
+              >
+                <Plus className="mr-1.5 h-4 w-4" />
+                <span>{createTriggerLabel}</span>
+              </Button>
+            ) : (
+              <Button
+                className="w-full shadow-xs"
                 onClick={submitCreate}
                 disabled={!name.trim() || create.isPending}
               >
@@ -318,11 +401,156 @@ export default function TaskGeneric({
                   {create.isPending ? "Speichert …" : `Neu: ${addLabel}`}
                 </span>
               </Button>
-            </>
-          )}
-        </div>
+            )}
+          </div>
+        ) : (
+          <div className="grid w-full grid-cols-2 gap-2 lg:ml-auto lg:flex lg:w-auto lg:flex-wrap lg:justify-end [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 max-lg:[&>[data-slot=button]]:h-11 max-lg:[&>[data-slot=button]]:text-base lg:[&>[data-slot=button]]:w-auto lg:[&>[data-slot=button]]:px-4">
+            {kind in importAreaByKind && (
+              <ModuleExcelImportButton
+                area={importAreaByKind[kind as keyof typeof importAreaByKind]}
+                label={title}
+              />
+            )}
+            {kind in resetAreaByKind && (
+              <ResetAreaButton
+                area={resetAreaByKind[kind as keyof typeof resetAreaByKind]}
+                label={title}
+                compact
+              />
+            )}
+            {headerActions}
+            {createInDialog ? (
+              <Button
+                type="button"
+                variant="outline"
+                className={`col-span-2 shadow-xs lg:col-auto ${createButtonClassName}`}
+                onClick={openCreateDialog}
+              >
+                <Plus className="mr-1.5 h-4 w-4" />
+                <span>{createTriggerLabel}</span>
+              </Button>
+            ) : (
+              <>
+                <Input
+                  placeholder={`Neu: ${addLabel}`}
+                  value={name}
+                  onChange={event => setName(event.target.value)}
+                  className="col-span-2 w-full lg:order-last lg:w-64"
+                  onKeyDown={event => event.key === "Enter" && submitCreate()}
+                />
+                {columns.map(column => (
+                  <Input
+                    key={column.key}
+                    placeholder={column.label}
+                    value={extras[column.key] ?? ""}
+                    onChange={event =>
+                      setExtras(current => ({
+                        ...current,
+                        [column.key]: event.target.value,
+                      }))
+                    }
+                    className="col-span-2 w-full lg:order-last lg:ml-2 lg:w-36"
+                  />
+                ))}
+                <Button
+                  className="col-span-2 shadow-xs lg:col-auto"
+                  onClick={submitCreate}
+                  disabled={!name.trim() || create.isPending}
+                >
+                  <Plus className="mr-1.5 h-4 w-4" />
+                  <span>
+                    {create.isPending ? "Speichert …" : `Neu: ${addLabel}`}
+                  </span>
+                </Button>
+              </>
+            )}
+          </div>
+        )}
       </div>
-      {sortableAndFilterable && (
+      {filterConfig ? (
+        <div className="space-y-3 rounded-xl border bg-slate-50/70 p-3 sm:p-4">
+          <div className="relative w-full max-w-2xl">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              value={searchTerm}
+              onChange={event => setSearchTerm(event.target.value)}
+              placeholder={filterConfig.searchPlaceholder ?? `Suchen (${addLabel}) …`}
+              className="h-11 bg-white pl-9 pr-8 text-base sm:h-10 sm:text-sm"
+              aria-label={`${title} durchsuchen`}
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm("")}
+                className="absolute right-2.5 top-1/2 inline-flex min-h-11 min-w-11 -translate-y-1/2 items-center justify-center text-slate-400 hover:text-slate-700 sm:min-h-0 sm:min-w-0"
+                aria-label="Suche leeren"
+              >
+                <X className="size-4" />
+              </button>
+            )}
+          </div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="h-11 w-full bg-white text-base sm:h-10 sm:text-sm">
+                <SelectValue placeholder={filterConfig.categoryLabel} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="alle">Alle {filterConfig.categoryLabel}</SelectItem>
+                {availableCategories.map(category => (
+                  <SelectItem key={category} value={category}>
+                    {category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={locationFilter} onValueChange={setLocationFilter}>
+              <SelectTrigger className="h-11 w-full bg-white text-base sm:h-10 sm:text-sm">
+                <SelectValue placeholder="Standort" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="alle">Alle Standorte</SelectItem>
+                <SelectItem value="ohne">Ohne Standort</SelectItem>
+                {locations.map((location: any) => (
+                  <SelectItem key={location.id} value={String(location.id)}>
+                    {location.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {!noContact && (
+              <Select value={contactFilter} onValueChange={setContactFilter}>
+                <SelectTrigger className="h-11 w-full bg-white text-base sm:h-10 sm:text-sm">
+                  <SelectValue placeholder="Verantwortlich" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="alle">Alle Verantwortlichen</SelectItem>
+                  <SelectItem value="ohne">Ohne Verantwortlichen</SelectItem>
+                  {contacts.map((contact: any) => (
+                    <SelectItem key={contact.id} value={String(contact.id)}>
+                      {contact.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {filterStatusKey && (
+              <Select value={fieldFilter} onValueChange={setFieldFilter}>
+                <SelectTrigger className="h-11 w-full bg-white text-base sm:h-10 sm:text-sm">
+                  <SelectValue placeholder={filterConfig.statusLabel ?? "Stand"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="alle">Alle {filterConfig.statusLabel ?? "Stände"}</SelectItem>
+                  {filterStatusOptions.map(option => (
+                    <SelectItem key={option.v} value={option.v}>
+                      {option.l}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        </div>
+      ) : sortableAndFilterable && (
         <div className="flex w-full flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-center">
           <Button
             type="button"

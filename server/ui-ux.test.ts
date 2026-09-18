@@ -1625,6 +1625,20 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(materials).toContain('{ v: "offen", l: "🔴 Offen" }');
     expect(materials).toContain('{ v: "bestellt", l: "🟡 Bestellt" }');
     expect(materials).toContain('{ v: "geliefert", l: "🟢 Geliefert" }');
+    expect(materials).toContain('headerLayout="stacked"');
+    expect(materials).toContain("createButtonClassName=\"border-rose-700 bg-rose-600");
+    expect(materials).toContain("filterConfig={{");
+    expect(materials).toContain('searchPlaceholder: "Suchen (Artikel/Kategorie/Verantwortlicher/Ort) …"');
+    expect(materials).toContain('"PDF drucken"');
+    expect(materials).not.toContain("Packliste PDF");
+    expect(materials).not.toContain("sortableAndFilterable");
+    expect(taskGeneric).toContain('headerLayout?: "default" | "stacked"');
+    expect(taskGeneric).toContain("createButtonClassName?: string");
+    expect(taskGeneric).toContain("filterConfig?: {");
+    expect(taskGeneric).toContain("Alle {filterConfig.categoryLabel}");
+    expect(taskGeneric).toContain("Alle Standorte");
+    expect(taskGeneric).toContain("Alle Verantwortlichen");
+    expect(taskGeneric).toContain("Alle {filterConfig.statusLabel ?? \"Stände\"}");
     expect(cakes).toContain("createInDialog");
     expect(cakes).toContain('createDialogTitle="Kuchen erfassen"');
     expect(cakes).toContain('createTriggerLabel="Kuchen erfassen"');
@@ -1678,7 +1692,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(mapClient).toContain("right-3 top-3");
 
     expect(materials).toContain("trpc.pdf.materialPacklist.useMutation");
-    expect(materials).toContain("Packliste PDF");
+    expect(materials).toContain('"PDF drucken"');
     expect(locations).toContain("GPX-Streckenoverlays");
     expect(locations).toContain("GPX hochladen");
     expect(mapCard).toContain("trpc.gpxTracks.mapData.useQuery()");
