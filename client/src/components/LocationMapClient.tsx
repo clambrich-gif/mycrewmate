@@ -1,6 +1,6 @@
 import type { CircleMarker as LeafletCircleMarker } from "leaflet";
 import { Maximize2, Minimize2, RotateCcw } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   CircleMarker,
   MapContainer,
@@ -81,8 +81,22 @@ function MapViewport({
 }) {
   const map = useMap();
 
-  useEffect(() => {
-    window.setTimeout(() => map.invalidateSize(), 80);
+  useLayoutEffect(() => {
+    // Der Browser verschiebt das Element beim Wechsel in die Fullscreen-Top-Layer
+    // erst nach dem fullscreenchange-Event. Zwei Frames plus ein kurzer Fallback
+    // stellen sicher, dass Leaflet seine Kacheln erst nach den finalen Viewportmaßen
+    // berechnet – sonst bleibt die frühere eingebettete Kartenhöhe sichtbar.
+    const invalidate = () =>
+      map.invalidateSize({ pan: false, debounceMoveend: true });
+    invalidate();
+    const frame = window.requestAnimationFrame(() =>
+      window.requestAnimationFrame(invalidate)
+    );
+    const fallback = window.setTimeout(invalidate, 180);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(fallback);
+    };
   }, [fullscreen, map]);
 
   useEffect(() => {
@@ -97,7 +111,15 @@ function MapViewport({
     } else if (points.length > 1) {
       map.fitBounds(points, { padding: [36, 36], maxZoom: 14, animate: true });
     }
-  }, [focusLocationId, locations, map, resetKey, tracks, visibleTrackIds]);
+  }, [
+    focusLocationId,
+    fullscreen,
+    locations,
+    map,
+    resetKey,
+    tracks,
+    visibleTrackIds,
+  ]);
 
   return null;
 }
@@ -233,13 +255,22 @@ export default function LocationMapClient({
     <div
       ref={rootRef}
       data-map-shell={fullscreen ? "fullscreen" : "embedded"}
-      className={fullscreen ? "fixed inset-0 z-[2000] bg-white p-3 sm:p-5" : "relative"}
+      className={
+        fullscreen
+          ? "fixed inset-0 z-[2000] h-[100vh] w-screen max-h-none max-w-none overflow-hidden bg-white"
+          : "relative"
+      }
     >
       <MapContainer
         center={[locations[0].latitude, locations[0].longitude]}
         zoom={12}
         scrollWheelZoom={false}
-        className={fullscreen ? "h-full w-full" : "h-[360px] w-full sm:h-[440px] lg:h-[560px]"}
+        data-map-container={fullscreen ? "fullscreen" : "embedded"}
+        className={
+          fullscreen
+            ? "h-[100vh] min-h-[100vh] w-[100vw] max-h-none max-w-none"
+            : "h-[360px] w-full sm:h-[440px] lg:h-[560px]"
+        }
         aria-label="Live-Standortkarte mit Festival-Standorten und GPX-Strecken"
       >
         <TileLayer

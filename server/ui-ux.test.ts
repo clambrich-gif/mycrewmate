@@ -1662,5 +1662,16 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(mapClient).toContain("Strecken einblenden");
     expect(mapClient).toContain("requestFullscreen");
     expect(mapClient).toContain("Kartenansicht zurücksetzen");
+    expect(mapClient).toContain('data-map-shell={fullscreen ? "fullscreen" : "embedded"}');
+    expect(mapClient).toContain('data-map-container={fullscreen ? "fullscreen" : "embedded"}');
+    expect(mapClient).toContain("h-[100vh]");
+    expect(mapClient).toContain("w-[100vw]");
+    expect(mapClient).toContain("useLayoutEffect");
+    expect(mapClient).toContain("map.invalidateSize({ pan: false");
+
+    const globalStyles = source("client/src/index.css");
+    expect(globalStyles).toContain('[data-map-shell="fullscreen"]');
+    expect(globalStyles).toContain("width: 100vw !important");
+    expect(globalStyles).toContain("height: 100vh !important");
   });
 });

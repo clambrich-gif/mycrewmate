@@ -125,6 +125,27 @@
   overflow-x: auto;
 }
 
+/* Die Fullscreen API verschiebt nur das angeforderte Kartenelement in den
+   Vollbild-Top-Layer. Leaflet behält ohne explizite Maße sonst die frühere
+   Einbettungshöhe bei und zeichnet lediglich einen Kartenstreifen. */
+[data-map-shell="fullscreen"],
+[data-map-shell="fullscreen"]:fullscreen,
+[data-map-shell="fullscreen"]:-webkit-full-screen {
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: none !important;
+  max-height: none !important;
+}
+
+[data-map-shell="fullscreen"] [data-map-container="fullscreen"],
+[data-map-shell="fullscreen"] .leaflet-container {
+  width: 100vw !important;
+  height: 100vh !important;
+  min-height: 100vh !important;
+  max-width: none !important;
+  max-height: none !important;
+}
+
 /* Helfertabelle: Sticky-Kopf nur auf breiten Desktopgeräten mit präziser Eingabe. */
 @media (min-width: 1280px) and (hover: hover) and (pointer: fine) {
   .helpers-table-scroll {
