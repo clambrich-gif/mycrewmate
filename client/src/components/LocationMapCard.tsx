@@ -36,6 +36,7 @@ export function LocationMapCard() {
   const { data: materials = [] } = trpc.materials.list.useQuery();
   const { data: gpxTracks = [] } = trpc.gpxTracks.mapData.useQuery();
   const [tileLoadFailed, setTileLoadFailed] = useState(false);
+  const markTileLoadFailed = useCallback(() => setTileLoadFailed(true), []);
 
   useEffect(() => {
     if (!scrollToMap || focusLocationId === null) {
@@ -197,7 +198,7 @@ export function LocationMapCard() {
                 entriesByLocation={entriesByLocation}
                 gpxTracks={gpxTracks}
                 focusLocationId={focusLocationId}
-                onTileLoadFailure={() => setTileLoadFailed(true)}
+                onTileLoadFailure={markTileLoadFailed}
                 onFocusedLocationReady={scrollFocusedLocationIntoView}
               />
             </Suspense>

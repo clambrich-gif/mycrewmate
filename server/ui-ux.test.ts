@@ -1461,7 +1461,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("timeUndercoverage={e.timeUndercoverage}");
     expect(plan).toContain("Flexible Belegung erlauben");
     expect(plan).toContain("allowFlexibleAssignment: false");
-    expect(plan).toContain("helperEligibleForShift(helper, shift)");
+    expect(plan).toContain("const eligibleHelpersByShift = useMemo");
+    expect(plan).toContain(
+      "helperEligibleForShift(helper, evaluation.shift)"
+    );
     expect(plan).toContain("const FlexibleTimeNote");
     expect(plan).toContain('data-slot="shift-flexible-time-note"');
     expect(plan).toContain("(flexibel)");
@@ -1740,6 +1743,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(mapCard).not.toContain("@/components/Map");
     expect(mapClient).toContain("MapContainer");
     expect(mapClient).toContain("TileLayer");
+    expect(mapClient).toContain("const LocationMarker = memo");
+    expect(mapCard).toContain("const markTileLoadFailed = useCallback");
     expect(mapClient).toContain("openstreetmap.org");
     expect(mapClient).toContain("fitBounds");
     expect(mapClient).toContain("onFocusedLocationReady");
@@ -1824,6 +1829,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(globalStyles).toContain(".leaflet-control,");
 
     expect(locations).toContain("Standort-Logo / Marker-Icon hochladen (PNG/SVG/JPG)");
+    expect(locations).toContain("optimizeLocationLogo(file, mimeType)");
+    expect(source("client/src/lib/location-logo.ts")).toContain(
+      "MAX_LOCATION_LOGO_DIMENSION = 800"
+    );
     expect(locations).toContain("Marker-Vorschau aktiv");
     expect(locations).toContain("Logo entfernen");
     expect(locations).toContain('data-slot="location-logo-thumbnail"');

@@ -12,6 +12,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
+import {
+  locationLogoMimeType,
+  MAX_LOCATION_LOGO_BYTES,
+  optimizeLocationLogo,
+  readFileAsBase64,
+  readFileAsDataUrl,
+} from "@/lib/location-logo";
 import { FileImage, FileUp, MapPin, Pencil, Plus, Route, Trash2 } from "lucide-react";
 import { ChangeEvent, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -19,41 +26,9 @@ import { toast } from "sonner";
 type LocationForm = { name: string; latitude: string; longitude: string };
 const EMPTY_FORM: LocationForm = { name: "", latitude: "", longitude: "" };
 const MAX_GPX_BYTES = 6_000_000;
-const MAX_LOCATION_LOGO_BYTES = 3_000_000;
-const LOCATION_LOGO_MIME_TYPES = ["image/png", "image/jpeg", "image/svg+xml"] as const;
 
 function baseName(filename: string) {
   return filename.replace(/\.gpx$/i, "").trim() || "Strecke";
-}
-
-function readFileAsBase64(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("Datei konnte nicht gelesen werden"));
-    reader.onload = () => {
-      const result = String(reader.result ?? "");
-      resolve(result.includes(",") ? result.split(",", 2)[1] : result);
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-function readFileAsDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("Bilddatei konnte nicht gelesen werden"));
-    reader.onload = () => resolve(String(reader.result ?? ""));
-    reader.readAsDataURL(file);
-  });
-}
-
-function locationLogoMimeType(file: File) {
-  if (LOCATION_LOGO_MIME_TYPES.includes(file.type as (typeof LOCATION_LOGO_MIME_TYPES)[number]))
-    return file.type as (typeof LOCATION_LOGO_MIME_TYPES)[number];
-  if (/\.png$/i.test(file.name)) return "image/png" as const;
-  if (/\.jpe?g$/i.test(file.name)) return "image/jpeg" as const;
-  if (/\.svg$/i.test(file.name)) return "image/svg+xml" as const;
-  return null;
 }
 
 export default function Locations() {
@@ -145,14 +120,15 @@ export default function Locations() {
       event.target.value = "";
       return;
     }
-    if (file.size > MAX_LOCATION_LOGO_BYTES) {
-      toast.error("Das Standort-Logo darf höchstens 3 MB groß sein.");
-      event.target.value = "";
-      return;
-    }
     try {
-      setSelectedLogoFile(file);
-      setLogoPreviewUrl(await readFileAsDataUrl(file));
+      const optimizedLogo = await optimizeLocationLogo(file, mimeType);
+      if (optimizedLogo.size > MAX_LOCATION_LOGO_BYTES) {
+        toast.error("Das Standort-Logo darf höchstens 3 MB groß sein.");
+        event.target.value = "";
+        return;
+      }
+      setSelectedLogoFile(optimizedLogo);
+      setLogoPreviewUrl(await readFileAsDataUrl(optimizedLogo));
       setRemoveExistingLogo(false);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Bilddatei konnte nicht gelesen werden");

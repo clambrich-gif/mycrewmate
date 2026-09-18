@@ -1,0 +1,7 @@
+# Audit-Befund Punkt 1: Data & Code Housekeeping (19.09.2026)
+
+Das Dateisystem enthält keine verwaisten Ordner wie uploads, tmp oder temp. Sämtliche vorhandenen lokalen Bilddateien unter client/public/icons dienen ausschließlich als aktive App- und PWA-Symbole gemäß Web-App-Manifest.
+
+In der Datenbank wurden zehn produktive Dateireferenzen identifiziert: ein Standortlogo für Viehmarkt, zwei PDF-Veranstaltungslogos für MyEifelRide und Grillfest sowie sieben aktive GPX-Streckenverläufe. Alle Schlüssel sind konsistent an bestehende Datensätze gebunden; verwaiste Dateiverweise liegen nicht vor.
+
+Auf Code-Ebene wurden die isolierten Musterseiten ComponentShowcase.tsx und Home.tsx sowie TaskList.tsx als unreferenzierte Template-Relikte identifiziert. ComponentShowcase.tsx enthielt den einzigen verbliebenen Entwickler-Logbefehl (console.log) im Client-Bereich.

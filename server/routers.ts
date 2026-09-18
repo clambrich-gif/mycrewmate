@@ -1387,7 +1387,7 @@ export const appRouter = router({
         extraColumns,
       };
     }),
-    updateSettings: protectedProcedure
+    updateSettings: adminProcedure
       .input(pdfSettingsInput)
       .mutation(async ({ input }) => {
         const { extraColumns, ...rest } = input;
@@ -1397,7 +1397,7 @@ export const appRouter = router({
         });
         return { success: true } as const;
       }),
-    uploadLogo: protectedProcedure
+    uploadLogo: adminProcedure
       .input(
         z.object({
           base64: z.string().max(4_000_000, "Logo ist größer als 3 MB"),
@@ -1447,14 +1447,14 @@ export const appRouter = router({
         });
         return uploaded;
       }),
-    clearLogo: protectedProcedure.mutation(async () => {
+    clearLogo: adminProcedure.mutation(async () => {
       await db.updateCurrentEventPdfImage({
         pdfLogoKey: null,
         pdfLogoUrl: null,
       });
       return { success: true } as const;
     }),
-    setLogoFallback: protectedProcedure
+    setLogoFallback: adminProcedure
       .input(z.object({ fallback: z.enum(["none", "brand"]) }))
       .mutation(async ({ input }) => {
         await db.updateCurrentEventPdfImage({

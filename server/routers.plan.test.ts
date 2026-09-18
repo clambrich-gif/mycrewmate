@@ -628,13 +628,20 @@ describe("Planungs-API", () => {
     ).rejects.toThrow("gehört nicht zur aktuellen Veranstaltung");
   });
 
-  it("speichert PDF-Bilder im Pfad und Datensatz des aktuellen Events", async () => {
+  it("speichert PDF-Bilder im Pfad und Datensatz des aktuellen Events als Administrator", async () => {
     const png = Buffer.from(
       "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
       "base64"
     );
 
-    await appRouter.createCaller(planningTeamCtx).pdf.uploadLogo({
+    await expect(
+      appRouter.createCaller(planningTeamCtx).pdf.uploadLogo({
+        base64: png.toString("base64"),
+        mimeType: "image/png",
+      })
+    ).rejects.toThrow();
+
+    await appRouter.createCaller(ctx).pdf.uploadLogo({
       base64: png.toString("base64"),
       mimeType: "image/png",
     });
@@ -651,8 +658,15 @@ describe("Planungs-API", () => {
     });
   });
 
-  it("entfernt Bild und ändert Fallback ausschließlich im aktuellen Event", async () => {
-    const caller = appRouter.createCaller(planningTeamCtx);
+  it("entfernt Bild und ändert Fallback ausschließlich im aktuellen Event als Administrator", async () => {
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      appRouter.createCaller(planningTeamCtx).pdf.clearLogo()
+    ).rejects.toThrow();
+    await expect(
+      appRouter.createCaller(planningTeamCtx).pdf.setLogoFallback({ fallback: "brand" })
+    ).rejects.toThrow();
 
     await caller.pdf.clearLogo();
     await caller.pdf.setLogoFallback({ fallback: "brand" });

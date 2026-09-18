@@ -1,5 +1,5 @@
 import { trpc } from "@/lib/trpc";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
 import {
@@ -844,8 +844,14 @@ export default function Plan() {
     }),
     [evals]
   );
-  const contactName = (id: number | null) =>
-    contacts.find(c => c.id === id)?.name ?? "";
+  const contactNameById = useMemo(
+    () => new Map(contacts.map(contact => [contact.id, contact.name])),
+    [contacts]
+  );
+  const contactName = useCallback(
+    (id: number | null) => (id === null ? "" : contactNameById.get(id) ?? ""),
+    [contactNameById]
+  );
   const areaContactMap = useMemo(
     () => new Map(areaContactRows.map(item => [item.area, item.contactId])),
     [areaContactRows]
@@ -858,8 +864,11 @@ export default function Plan() {
     () => new Map(helpers.map(helper => [helper.id, helper])),
     [helpers]
   );
-  const label = (h: any) =>
-    `${h.name}${h.contactId ? ` (${contactName(h.contactId)})` : ""}`;
+  const label = useCallback(
+    (helper: { name: string; contactId?: number | null }) =>
+      `${helper.name}${helper.contactId ? ` (${contactName(helper.contactId)})` : ""}`,
+    [contactName]
+  );
 
   const assignedShiftsByHelper = useMemo(() => {
     const result = new Map<number, DropdownShift[]>();
@@ -888,6 +897,30 @@ export default function Plan() {
     }
     return result;
   }, [activeDays, evals]);
+  const eligibleHelpersByShift = useMemo(
+    () =>
+      new Map(
+        evals.map(evaluation => [
+          evaluation.shift.id,
+          helpers.filter(helper => helperEligibleForShift(helper, evaluation.shift)),
+        ])
+      ),
+    [evals, helpers]
+  );
+  const assignmentDisplayByHelper = useMemo(
+    () =>
+      new Map(
+        Array.from(assignedShiftsByHelper.entries()).map(([helperId, assignedShifts]) => [
+          helperId,
+          assignedShifts.map((assignedShift: DropdownShift) => ({
+            day: assignedShift.day,
+            label: `${assignedShift.area}: ${assignedShift.task}`,
+            time: formatTimeLabel(assignedShift),
+          })),
+        ])
+      ),
+    [assignedShiftsByHelper]
+  );
 
   /**
    * Warnt bereits im Dialog, bevor eine bestehende Zuweisung durch eine
@@ -1030,7 +1063,7 @@ export default function Plan() {
   );
 
   const activeHelpers = (shift: DropdownShift) =>
-    helpers.filter(helper => helperEligibleForShift(helper, shift));
+    eligibleHelpersByShift.get(shift.id) ?? [];
 
   const overlappingAssignments = (
     helperId: number,
@@ -1157,13 +1190,7 @@ export default function Plan() {
                           </span>
                           <HelperDropdownFeedbackBadge
                             feedback={assignmentFeedback}
-                            assignments={(assignedShiftsByHelper.get(helper.id) ?? []).map(
-                              assignedShift => ({
-                                day: assignedShift.day,
-                                label: `${assignedShift.area}: ${assignedShift.task}`,
-                                time: formatTimeLabel(assignedShift),
-                              })
-                            )}
+                            assignments={assignmentDisplayByHelper.get(helper.id) ?? []}
                           />
                         </span>
                       </SelectItem>

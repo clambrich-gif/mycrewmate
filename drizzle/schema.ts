@@ -366,6 +366,8 @@ export const shifts = mysqlTable(
       table.eventId,
       table.year
     ),
+    index("shifts_event_year_day_idx").on(table.eventId, table.year, table.day),
+    index("shifts_event_location_idx").on(table.eventId, table.locationId),
   ]
 );
 export type Shift = typeof shifts.$inferSelect;
@@ -431,6 +433,7 @@ export const assignments = mysqlTable(
       table.shiftId,
       table.helperId
     ),
+    index("assignments_helper_event_idx").on(table.helperId, table.eventId),
   ]
 );
 export type Assignment = typeof assignments.$inferSelect;
@@ -586,6 +589,8 @@ export const prepTasks = mysqlTable("prep_tasks", {
     columns: [table.eventId, table.year],
     foreignColumns: [events.id, events.year],
   }).onDelete("cascade"),
+  index("prep_tasks_event_deleted_idx").on(table.eventId, table.year, table.deleted),
+  index("prep_tasks_event_location_idx").on(table.eventId, table.locationId),
 ]);
 export type PrepTask = typeof prepTasks.$inferSelect;
 
@@ -615,6 +620,8 @@ export const postTasks = mysqlTable("post_tasks", {
     columns: [table.eventId, table.year],
     foreignColumns: [events.id, events.year],
   }).onDelete("cascade"),
+  index("post_tasks_event_deleted_idx").on(table.eventId, table.year, table.deleted),
+  index("post_tasks_event_location_idx").on(table.eventId, table.locationId),
 ]);
 export type PostTask = typeof postTasks.$inferSelect;
 
@@ -646,6 +653,8 @@ export const materials = mysqlTable("materials", {
     columns: [table.eventId, table.year],
     foreignColumns: [events.id, events.year],
   }).onDelete("cascade"),
+  index("materials_event_deleted_idx").on(table.eventId, table.year, table.deleted),
+  index("materials_event_location_idx").on(table.eventId, table.locationId),
 ]);
 export type Material = typeof materials.$inferSelect;
 

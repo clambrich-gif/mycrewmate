@@ -4,7 +4,7 @@ import type {
   Marker as LeafletMarker,
 } from "leaflet";
 import { ChevronLeft, ChevronRight, Maximize2, Minimize2, RotateCcw, X } from "lucide-react";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useIsMobile } from "@/hooks/useMobile";
 import {
   Sheet,
@@ -187,7 +187,7 @@ function escapeHtmlAttribute(value: string) {
   });
 }
 
-function LocationMarker({
+const LocationMarker = memo(function LocationMarker({
   location,
   entries,
   focused,
@@ -262,7 +262,7 @@ function LocationMarker({
       eventHandlers={markerEvents}
     />
   );
-}
+});
 
 export default function LocationMapClient({
   locations,

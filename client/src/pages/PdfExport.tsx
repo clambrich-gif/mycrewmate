@@ -26,7 +26,8 @@ import {
   Save,
   Trash2,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { ChangeEvent, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 type SettingsForm = {
@@ -54,6 +55,8 @@ const EMPTY_FORM: SettingsForm = {
 };
 
 export default function PdfExport() {
+  const { user } = useAuth();
+  const canManage = user?.role === "admin";
   const utils = trpc.useUtils();
   const { data: settings, isLoading } = trpc.pdf.settings.useQuery();
   const { data: plan = [] } = trpc.plan.evaluate.useQuery();
@@ -555,7 +558,8 @@ export default function PdfExport() {
                         verwendet. Ohne eigenes Bild wird kein Bild gedruckt.
                       </p>
                     </div>
-                    <Input
+                    {canManage && (
+                      <Input
                       id="pdf-logo"
                       type="file"
                       accept="image/png,image/jpeg"
@@ -569,6 +573,7 @@ export default function PdfExport() {
                         event.currentTarget.value = "";
                       }}
                     />
+                    )}
                     {(uploadLogo.isPending ||
                       clearLogo.isPending ||
                       setLogoFallback.isPending) && (
@@ -580,7 +585,7 @@ export default function PdfExport() {
                             : "Fallback wird gespeichert …"}
                       </p>
                     )}
-                    {settings?.logoUrl && (
+                    {canManage && settings?.logoUrl && (
                       <Button
                         type="button"
                         variant="outline"
@@ -603,6 +608,7 @@ export default function PdfExport() {
                       <Select
                         value={settings?.logoFallback ?? "none"}
                         disabled={
+                          !canManage ||
                           uploadLogo.isPending ||
                           clearLogo.isPending ||
                           setLogoFallback.isPending
@@ -785,7 +791,8 @@ export default function PdfExport() {
                 </p>
               </div>
 
-              <Button
+              {canManage ? (
+                <Button
                 onClick={() => save.mutate(form)}
                 disabled={
                   save.isPending ||
@@ -797,6 +804,11 @@ export default function PdfExport() {
                 <Save className="mr-2 h-4 w-4" />
                 {save.isPending ? "Speichert …" : "Konfiguration speichern"}
               </Button>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">
+                  Hinweis: Die PDF-Grundeinstellungen können nur von Administratoren geändert werden.
+                </p>
+              )}
             </>
           )}
         </CardContent>
