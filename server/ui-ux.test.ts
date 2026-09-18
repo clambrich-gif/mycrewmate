@@ -1619,6 +1619,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const locations = source("client/src/pages/Locations.tsx");
     const nav = source("client/src/lib/nav.ts");
     const mapCard = source("client/src/components/LocationMapCard.tsx");
+    const mapClient = source("client/src/components/LocationMapClient.tsx");
 
     expect(nav).toContain('href: "/orte"');
     expect(nav).toContain('label: "Orte & Standorte"');
@@ -1635,7 +1636,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(prep).toContain("(Karte)");
 
     expect(mapCard).toContain("Live-Standortkarte");
-    expect(mapCard).toContain("MapView");
-    expect(mapCard).toContain("fitBounds");
+    expect(mapCard).toContain('lazy(() => import("./LocationMapClient"))');
+    expect(mapCard).not.toContain("@/components/Map");
+    expect(mapClient).toContain("MapContainer");
+    expect(mapClient).toContain("TileLayer");
+    expect(mapClient).toContain("openstreetmap.org");
+    expect(mapClient).toContain("fitBounds");
   });
 });
