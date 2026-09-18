@@ -38,9 +38,9 @@ export const PERMISSION_MATRIX: readonly PermissionRow[] = [
   },
   {
     area: "Nachbereitung",
-    planningTeam: "Anlegen und bearbeiten",
+    planningTeam: "Vollzugriff mit Löschprotokoll",
     administrator: "Vollzugriff",
-    note: "Einzellöschungen und Resets der Nachbereitung bleiben administrativ geschützt.",
+    note: "Das Planungsteam kann Aufgaben anlegen, bearbeiten und mit Namenseingabe ins Löschprotokoll verschieben. Nur Administratoren können gelöschte Nachbereitungen wiederherstellen oder Resets ausführen.",
   },
   {
     area: "Material, Marketing & Genehmigungen",
@@ -88,6 +88,6 @@ export const PERMISSION_MATRIX: readonly PermissionRow[] = [
     area: "Löschprotokoll",
     planningTeam: "Kein Zugriff",
     administrator: "Ansehen, filtern, wiederherstellen und zurücksetzen",
-    note: "Einzellöschungen von Helfern, Kuchen und Vorbereitungen können gezielt wiederhergestellt werden. Das vollständige Zurücksetzen des Protokolls erfordert das Administratorpasswort.",
+    note: "Einzellöschungen von Helfern, Kuchen sowie Vor- und Nachbereitungen können gezielt wiederhergestellt werden. Das vollständige Zurücksetzen des Protokolls erfordert das Administratorpasswort.",
   },
 ];

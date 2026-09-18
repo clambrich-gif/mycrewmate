@@ -37,10 +37,11 @@ const entityLabel = {
   helper: "Helfer",
   cake: "Kuchen",
   prep: "Vorbereitung",
+  post: "Nachbereitung",
 } as const;
 
 function detailText(
-  entityType: "helper" | "cake" | "prep",
+  entityType: "helper" | "cake" | "prep" | "post",
   value: string | null
 ) {
   if (!value) return "–";
@@ -61,7 +62,7 @@ function detailText(
         .filter(Boolean)
         .join(" · ");
     }
-    if (entityType === "prep") {
+    if (entityType === "prep" || entityType === "post") {
       return [
         details.category ? `Bereich: ${details.category}` : null,
         details.task ? `Aufgabe: ${details.task}` : null,
@@ -98,7 +99,9 @@ export default function Permissions() {
       eventYear: yearFilter === "all" ? undefined : Number(yearFilter),
       eventId: eventFilter === "all" ? undefined : Number(eventFilter),
       entityType:
-        typeFilter === "all" ? undefined : (typeFilter as "helper" | "cake"),
+        typeFilter === "all"
+          ? undefined
+          : (typeFilter as "helper" | "cake" | "prep" | "post"),
       limit: 500,
     }),
     [eventFilter, typeFilter, yearFilter]
@@ -122,6 +125,7 @@ export default function Permissions() {
         utils.helpers.list.invalidate(),
         utils.cakes.list.invalidate(),
         utils.prep.list.invalidate(),
+        utils.post.list.invalidate(),
         utils.plan.evaluate.invalidate(),
         utils.dashboard.stats.invalidate(),
       ]);
@@ -262,8 +266,8 @@ export default function Permissions() {
               <History className="h-5 w-5 text-primary" /> Löschprotokoll
             </CardTitle>
             <p className="mt-1 text-sm text-muted-foreground">
-              Nachvollziehbare Nachweise über gelöschte Helfer, Kuchen und
-              Vorbereitungsaufgaben mit gezielter Wiederherstellung.
+              Nachvollziehbare Nachweise über gelöschte Helfer, Kuchen sowie Vor- und
+              Nachbereitungsaufgaben mit gezielter Wiederherstellung.
             </p>
           </div>
           {isAdmin && (
@@ -290,6 +294,7 @@ export default function Permissions() {
                   <SelectItem value="helper">Nur Helfer</SelectItem>
                   <SelectItem value="cake">Nur Kuchen</SelectItem>
                   <SelectItem value="prep">Nur Vorbereitungen</SelectItem>
+                  <SelectItem value="post">Nur Nachbereitungen</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={eventFilter} onValueChange={setEventFilter}>
@@ -439,7 +444,7 @@ export default function Permissions() {
                         </td>
                         <td className="break-words whitespace-normal p-3 align-top leading-relaxed [overflow-wrap:anywhere]">
                           <div className="font-medium">{actionLabel[entry.action]}</div>
-                          {entry.entityType === "prep" ? "Gelöscht von: " : ""}
+                          {entry.entityType === "prep" || entry.entityType === "post" ? "Gelöscht von: " : ""}
                           {entry.actorName}
                           <div className="text-xs text-muted-foreground">
                             {entry.actorRole === "admin"

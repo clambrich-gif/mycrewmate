@@ -1608,29 +1608,57 @@ export const appRouter = router({
     create: protectedProcedure
       .input(
         z.object({
-          task: z.string().min(1),
+          task: z.string().trim().min(1).max(300),
+          category: z.string().trim().max(120).optional(),
+          dueText: z.string().max(200).optional(),
+          locationId: z.number().int().positive().nullable().optional(),
           contactId: z.number().nullable().optional(),
           note: z.string().optional(),
+          logEntry: z.string().max(10_000).optional(),
         })
       )
-      .mutation(({ input }) => db.createPost(input)),
+      .mutation(({ ctx, input }) =>
+        db.createPost({
+          ...input,
+          status: "offen",
+          logEntryAuthor: auditActor(ctx.user).name,
+        })
+      ),
     update: protectedProcedure
       .input(
         z.object({
-          id: z.number(),
-          task: z.string().optional(),
+          id: z.number().int().positive(),
+          task: z.string().trim().min(1).max(300).optional(),
+          category: z.string().trim().max(120).optional(),
+          dueText: z.string().max(200).optional(),
+          locationId: z.number().int().positive().nullable().optional(),
           contactId: z.number().nullable().optional(),
           status: statusTask.optional(),
           note: z.string().nullable().optional(),
+          logEntry: z.string().max(10_000).optional(),
         })
       )
-      .mutation(({ input }) => {
+      .mutation(({ ctx, input }) => {
         const { id, ...r } = input;
-        return db.updatePost(id, r);
+        return db.updatePost(id, {
+          ...r,
+          ...(r.logEntry === undefined
+            ? {}
+            : { logEntryAuthor: auditActor(ctx.user).name }),
+        });
       }),
-    remove: adminProcedure
-      .input(z.object({ id: z.number() }))
-      .mutation(({ input }) => db.deletePost(input.id)),
+    remove: protectedProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          deletedBy: z.string().trim().min(1, "Bitte den Namen oder das Kürzel eingeben").max(200),
+        })
+      )
+      .mutation(({ ctx, input }) =>
+        db.deletePost(input.id, {
+          actor: { ...auditActor(ctx.user), name: input.deletedBy },
+        })
+      ),
   }),
   materials: router({
     list: protectedProcedure.query(() => db.listMaterials()),
@@ -1802,7 +1830,7 @@ export const appRouter = router({
           .object({
             eventYear: eventYearInput.optional(),
             eventId: z.number().int().positive().optional(),
-            entityType: z.enum(["helper", "cake", "prep"]).optional(),
+            entityType: z.enum(["helper", "cake", "prep", "post"]).optional(),
             limit: z.number().int().min(1).max(1000).default(500),
           })
           .optional()

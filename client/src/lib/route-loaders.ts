@@ -6,8 +6,8 @@ export type RouteModule = {
 
 type RouteLoader = () => Promise<RouteModule>;
 
-const taskListLoader: RouteLoader = () => import("@/pages/TaskList");
 const preparationLoader: RouteLoader = () => import("@/pages/Preparation");
+const postProcessingLoader: RouteLoader = () => import("@/pages/PostProcessing");
 
 export const routeLoaders = {
   "/": () => import("@/pages/Dashboard"),
@@ -15,7 +15,7 @@ export const routeLoaders = {
   "/helfer": () => import("@/pages/Helpers"),
   "/einsatzplan": () => import("@/pages/Plan"),
   "/vorbereitung": preparationLoader,
-  "/nachbereitung": taskListLoader,
+  "/nachbereitung": postProcessingLoader,
   "/material": () => import("@/pages/Materials"),
   "/kuchen": () => import("@/pages/Cakes"),
   "/finanzen": () => import("@/pages/Finances"),

@@ -1781,13 +1781,40 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(storageProxy).toContain("locationLogoContentType(key)");
   });
 });
-  it("erweitert das Löschprotokoll um Vorbereitungen und deren Wiederherstellung", () => {
+  it("erweitert das Löschprotokoll um Vor- und Nachbereitungen und deren Wiederherstellung", () => {
     const permissions = source("client/src/pages/Permissions.tsx");
     const router = source("server/routers.ts");
     expect(permissions).toContain("Nur Vorbereitungen");
+    expect(permissions).toContain("Nur Nachbereitungen");
     expect(permissions).toContain("prep: \"Vorbereitung\"");
+    expect(permissions).toContain("post: \"Nachbereitung\"");
     expect(permissions).toContain("utils.prep.list.invalidate()");
+    expect(permissions).toContain("utils.post.list.invalidate()");
     expect(permissions).toContain("Gelöscht von:");
     expect(permissions).toContain("Wiederherstellen");
-    expect(router).toContain("entityType: z.enum([\"helper\", \"cake\", \"prep\"])");
+    expect(router).toContain("entityType: z.enum([\"helper\", \"cake\", \"prep\", \"post\"])");
+  });
+
+  it("stellt Nachbereitung spiegelgleich zur Vorbereitung mit Pastell-Rosa-Design und 3 Status bereit", () => {
+    const post = source("client/src/pages/PostProcessing.tsx");
+    const app = source("client/src/App.tsx");
+    expect(app).toContain('path="/nachbereitung" component={PostProcessing}');
+    expect(post).toContain("bg-rose-50/50");
+    expect(post).toContain("border-rose-100");
+    expect(post).toContain("Modul Nachbereitung · Pastell-Design");
+    expect(post).toContain("Nachbereitungsaufgabe");
+    expect(post).toContain("LocationMapLink");
+    expect(post).toContain("Standort");
+    expect(post).toContain("Alle Bereiche");
+    expect(post).toContain("Alle Verantwortlichen");
+    expect(post).toContain("Alle Status");
+    expect(post).toContain("PDF drucken");
+    expect(post).toContain("Nachbereitung – Aufgabenübersicht");
+    expect(post).toContain("Gefilterte Ansicht");
+    expect(post).toContain("filteredRows.map(task");
+    expect(post).toContain("Gelöscht von (Name / Kürzel des Verantwortlichen)");
+    expect(post).toContain('type PostStatus = "offen" | "inArbeit" | "erledigt"');
+    expect(post).not.toContain('"abgelehnt"');
+    expect(post).not.toContain('"beantragt"');
+    expect(post).not.toContain('"genehmigt"');
   });

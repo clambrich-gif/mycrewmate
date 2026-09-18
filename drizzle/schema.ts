@@ -508,7 +508,7 @@ export const deletionAuditLogs = mysqlTable("deletion_audit_logs", {
     onDelete: "set null",
   }),
   eventName: varchar("eventName", { length: 200 }),
-  entityType: mysqlEnum("entityType", ["helper", "cake", "prep"]).notNull(),
+  entityType: mysqlEnum("entityType", ["helper", "cake", "prep", "post"]).notNull(),
   entityId: int("entityId").notNull(),
   entityLabel: varchar("entityLabel", { length: 300 }).notNull(),
   action: mysqlEnum("action", [
@@ -591,6 +591,11 @@ export const postTasks = mysqlTable("post_tasks", {
   year: int("year").default(2026).notNull(),
   eventId: int("eventId").notNull(),
   task: varchar("task", { length: 300 }).notNull(),
+  category: varchar("category", { length: 120 }).default("").notNull(),
+  dueText: varchar("dueText", { length: 200 }).default("").notNull(),
+  locationId: int("locationId").references(() => locations.id, {
+    onDelete: "set null",
+  }),
   contactId: int("contactId").references(() => contacts.id, {
     onDelete: "set null",
   }),
@@ -598,6 +603,8 @@ export const postTasks = mysqlTable("post_tasks", {
     .default("offen")
     .notNull(),
   note: text("note"),
+  /** Einzelne Löschungen bleiben für das Administratorprotokoll wiederherstellbar. */
+  deleted: boolean("deleted").default(false).notNull(),
   sortOrder: int("sortOrder").default(0).notNull(),
 }, table => [
   foreignKey({

@@ -18,7 +18,7 @@ import {
 } from "../shared/weekdays";
 
 const PROJECT_FORMAT = "RSC-HELFERPLANUNG-PROJEKTDATEI";
-const PROJECT_VERSION = 10;
+const PROJECT_VERSION = 11;
 const MAX_PROJECT_BYTES = 10_000_000;
 const MAX_ROWS = 10_000;
 
@@ -155,7 +155,16 @@ const documentSchema = z
         })
       )
       .max(MAX_ROWS),
-    post: z.array(commonTask).max(MAX_ROWS),
+    post: z
+      .array(
+        commonTask.extend({
+          category: short(120).default(""),
+          dueText: short(200).default(""),
+          locationSourceId: id,
+          locationName: short(200),
+        })
+      )
+      .max(MAX_ROWS),
     materials: z
       .array(
         z.object({
@@ -696,6 +705,27 @@ export function parseProjectFile(base64: string): {
     raw.metadata &&
     typeof raw.metadata === "object" &&
     "version" in raw.metadata &&
+    raw.metadata.version === 10
+  ) {
+    const legacy = raw as Record<string, any>;
+    legacy.metadata = { ...legacy.metadata, version: PROJECT_VERSION };
+    legacy.post = Array.isArray(legacy.post)
+      ? legacy.post.map((task: Record<string, unknown>) => ({
+          ...task,
+          category: task.category ?? "",
+          dueText: task.dueText ?? "",
+          locationSourceId: task.locationSourceId ?? null,
+          locationName: task.locationName ?? "",
+        }))
+      : legacy.post;
+  }
+  if (
+    raw &&
+    typeof raw === "object" &&
+    "metadata" in raw &&
+    raw.metadata &&
+    typeof raw.metadata === "object" &&
+    "version" in raw.metadata &&
     raw.metadata.version === PROJECT_VERSION
   ) {
     const document = raw as Record<string, any>;
@@ -720,6 +750,15 @@ export function parseProjectFile(base64: string): {
           locationName: task.locationName ?? "",
         }))
       : document.prep;
+    document.post = Array.isArray(document.post)
+      ? document.post.map((task: Record<string, unknown>) => ({
+          ...task,
+          category: task.category ?? "",
+          dueText: task.dueText ?? "",
+          locationSourceId: task.locationSourceId ?? null,
+          locationName: task.locationName ?? "",
+        }))
+      : document.post;
     document.materials = Array.isArray(document.materials)
       ? document.materials.map((material: Record<string, unknown>) => ({
           ...material,

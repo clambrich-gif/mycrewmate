@@ -138,7 +138,11 @@ export const PROJECT_EXCEL_HEADERS: Record<string, string[]> = {
   ],
   NACHBEREITUNG: [
     "ID",
+    "Kategorie",
     "Aufgabe",
+    "Zu erledigen bis",
+    "Ort-ID",
+    "Ort / Standort",
     "Verantwortlich-ID",
     "Verantwortlich",
     "Status",
@@ -338,7 +342,11 @@ type ShiftRow = {
 };
 type TaskRow = {
   sourceId: number | null;
+  category: string;
   task: string;
+  dueText: string;
+  locationSourceId: number | null;
+  locationName: string;
   contactSourceId: number | null;
   contactName: string;
   status: "offen" | "inArbeit" | "erledigt";
@@ -1474,26 +1482,37 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
       : undefined) ?? parsedContactByName.get(personKey(row.areaContactName))
   );
 
-  const parseTaskRows = (sheet: "NACHBEREITUNG", withDue = false) =>
+  const parseTaskRows = (sheet: "NACHBEREITUNG") =>
     sheetRows(workbook, sheet)
       .filter(row => normalize(row.Aufgabe))
       .map((row, index) => ({
         sourceId: nullableId(row.ID, `${sheet} Zeile ${index + 2}`),
+        category: text(
+          row.Kategorie ?? row.Bereich,
+          120,
+          `${sheet} Zeile ${index + 2}: Kategorie`
+        ),
         task: text(
           row.Aufgabe,
           300,
           `${sheet} Zeile ${index + 2}: Aufgabe`,
           true
         ),
-        ...(withDue
-          ? {
-              dueText: text(
-                row["Zu erledigen bis"],
-                200,
-                `${sheet} Zeile ${index + 2}: Zu erledigen bis`
-              ),
-            }
-          : {}),
+        dueText: text(
+          row["Zu erledigen bis"],
+          200,
+          `${sheet} Zeile ${index + 2}: Zu erledigen bis`
+        ),
+        locationSourceId: locationRef(
+          row["Ort-ID"],
+          row["Ort / Standort"],
+          `${sheet} Zeile ${index + 2}: Ort`
+        ),
+        locationName: text(
+          row["Ort / Standort"],
+          200,
+          `${sheet} Zeile ${index + 2}: Ort`
+        ),
         contactSourceId: contactRef(
           row["Verantwortlich-ID"],
           row.Verantwortlich,
@@ -1882,7 +1901,7 @@ async function loadSnapshot(
       )
     ),
     selectRows(prepTasks, and(scope(prepTasks), eq(prepTasks.deleted, false))),
-    selectRows(postTasks, scope(postTasks)),
+    selectRows(postTasks, and(scope(postTasks), eq(postTasks.deleted, false))),
     selectRows(materials, scope(materials)),
     selectRows(marketing, scope(marketing)),
     selectRows(approvals, scope(approvals)),
@@ -2039,7 +2058,9 @@ function comparableCurrent(snapshot: CurrentSnapshot) {
       sourceId: row.id,
       contactSourceId: row.contactId,
       contactName: row.contactId ? (contactName.get(row.contactId) ?? "") : "",
-      ...clean(row, ["task", "status", "note", "sortOrder"]),
+      locationSourceId: row.locationId ?? null,
+      locationName: row.locationId ? (locationName.get(row.locationId) ?? "") : "",
+      ...clean(row, ["category", "task", "dueText", "status", "note", "sortOrder"]),
     })),
     materials: [...snapshot.materials].sort(byId).map(row => ({
       sourceId: row.id,
@@ -3315,7 +3336,10 @@ export async function restoreProjectDocument(
           ),
           year,
           eventId,
+          category: row.category,
           task: row.task,
+          dueText: row.dueText,
+          locationId: resolveLocation(row.locationSourceId, row.locationName),
           contactId: resolveContact(row.contactSourceId, row.contactName),
           status: row.status,
           note: row.note || null,
@@ -3745,13 +3769,13 @@ export async function exportProjectExcel(): Promise<{
       ),
     }))
   );
-  const taskRows = (rows: any[], isPrep = false) =>
+  const taskRows = (rows: any[], includeTaskMetadata = false, isPrep = false) =>
     rows.map(row => ({
       ID: row.sourceId,
-      ...(isPrep ? { Kategorie: row.category ?? "" } : {}),
+      ...(includeTaskMetadata ? { Kategorie: row.category ?? "" } : {}),
       Aufgabe: row.task,
-      ...(isPrep ? { "Zu erledigen bis": row.dueText } : {}),
-      ...(isPrep
+      ...(includeTaskMetadata ? { "Zu erledigen bis": row.dueText } : {}),
+      ...(includeTaskMetadata
         ? {
             "Ort-ID": row.locationSourceId ?? "",
             "Ort / Standort": row.locationName,
@@ -3764,8 +3788,8 @@ export async function exportProjectExcel(): Promise<{
       Bemerkung: row.note,
       Reihenfolge: row.sortOrder,
     }));
-  append("VORBEREITUNG", taskRows(current.prep, true));
-  append("NACHBEREITUNG", taskRows(current.post));
+  append("VORBEREITUNG", taskRows(current.prep, true, true));
+  append("NACHBEREITUNG", taskRows(current.post, true));
   append(
     "MATERIAL",
     current.materials.map((row: any) => ({

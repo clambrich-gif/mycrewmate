@@ -292,6 +292,10 @@ const OPTIONAL_MODULE_COLUMNS: Record<ModuleImportArea, string[]> = {
     "Reihenfolge",
   ],
   NACHBEREITUNG: [
+    "Kategorie",
+    "Zu erledigen bis",
+    "Ort-ID",
+    "Ort / Standort",
     "Verantwortlich-ID",
     "Verantwortlich",
     "Status",

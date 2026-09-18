@@ -698,7 +698,7 @@ export async function listPost() {
   return db
     .select()
     .from(postTasks)
-    .where(planningScope(postTasks))
+    .where(and(planningScope(postTasks), eq(postTasks.deleted, false)))
     .orderBy(postTasks.sortOrder, postTasks.id);
 }
 export async function listMaterials() {
@@ -1162,7 +1162,7 @@ export type AuditActor = {
 };
 
 type AuditEntity = {
-  entityType: "helper" | "cake" | "prep";
+  entityType: "helper" | "cake" | "prep" | "post";
   entityId: number;
   entityLabel: string;
   details: Record<string, unknown>;
@@ -1279,10 +1279,28 @@ const prepAuditEntity = (task: typeof prepTasks.$inferSelect): AuditEntity => ({
   },
 });
 
+const postAuditEntity = (task: typeof postTasks.$inferSelect): AuditEntity => ({
+  entityType: "post",
+  entityId: task.id,
+  entityLabel: task.category?.trim()
+    ? `${task.category.trim()} - ${task.task}`
+    : task.task,
+  details: {
+    task: task.task,
+    category: task.category,
+    dueText: task.dueText,
+    locationId: task.locationId,
+    contactId: task.contactId,
+    status: task.status,
+    note: task.note,
+    sortOrder: task.sortOrder,
+  },
+});
+
 export async function listDeletionAuditLogs(filters?: {
   eventYear?: number;
   eventId?: number;
-  entityType?: "helper" | "cake" | "prep";
+  entityType?: "helper" | "cake" | "prep" | "post";
   limit?: number;
 }) {
   const db = await getDb();
@@ -1543,7 +1561,7 @@ export async function restoreDeletionAuditLog(
         sortOrder:
           typeof details.sortOrder === "number" ? details.sortOrder : 0,
       });
-    } else {
+    } else if (entry.entityType === "prep") {
       const result = await tx
         .update(prepTasks)
         .set({ deleted: false })
@@ -1557,6 +1575,22 @@ export async function restoreDeletionAuditLog(
       if (affectedRows(result) !== 1) {
         throw new Error(
           "Die Vorbereitungsaufgabe ist nicht mehr wiederherstellbar, weil sie bereits aktiv ist oder inzwischen endgültig entfernt wurde"
+        );
+      }
+    } else {
+      const result = await tx
+        .update(postTasks)
+        .set({ deleted: false })
+        .where(
+          and(
+            eq(postTasks.id, entry.entityId),
+            planningScopeFor(postTasks, selectedYear, selectedEventId),
+            eq(postTasks.deleted, true)
+          )
+        );
+      if (affectedRows(result) !== 1) {
+        throw new Error(
+          "Die Nachbereitungsaufgabe ist nicht mehr wiederherstellbar, weil sie bereits aktiv ist oder inzwischen endgültig entfernt wurde"
         );
       }
     }
@@ -2523,15 +2557,91 @@ export async function deletePrep(
     return result;
   });
 }
-export const createPost = async (v: any) =>
-  createYearRow(postTasks, await scopedContactValues(v));
-export const updatePost = async (id: number, v: any) =>
-  ((await getDb()) as DB)
+export const createPost = async (v: any) => {
+  const { logEntry, logEntryAuthor, ...values } = v;
+  const valuesWithLogbook =
+    logEntry === undefined
+      ? values
+      : {
+          ...values,
+          note: prependPreparationLogbookEntry(
+            logEntry,
+            values.note,
+            new Date(),
+            logEntryAuthor
+          ),
+        };
+  return createYearRow(
+    postTasks,
+    await scopedContactValues(await scopedLocationValues(valuesWithLogbook))
+  );
+};
+export const updatePost = async (id: number, v: any) => {
+  const { logEntry, logEntryAuthor, ...values } = v;
+  const database = (await getDb()) as DB;
+  if (logEntry === undefined) {
+    return database
+      .update(postTasks)
+      .set(await scopedContactValues(await scopedLocationValues(values)))
+      .where(and(yearWhere(postTasks, id), eq(postTasks.deleted, false)));
+  }
+  const existing = await database
+    .select({ note: postTasks.note })
+    .from(postTasks)
+    .where(and(yearWhere(postTasks, id), eq(postTasks.deleted, false)))
+    .limit(1);
+  if (!existing[0]) throw new Error("Nachbereitungsaufgabe wurde nicht gefunden");
+  return database
     .update(postTasks)
-    .set(await scopedContactValues(v))
-    .where(yearWhere(postTasks, id));
-export const deletePost = async (id: number) =>
-  ((await getDb()) as DB).delete(postTasks).where(yearWhere(postTasks, id));
+    .set(
+      await scopedContactValues(await scopedLocationValues({
+        ...values,
+        note: prependPreparationLogbookEntry(
+          logEntry,
+          existing[0].note,
+          new Date(),
+          logEntryAuthor
+        ),
+      }))
+    )
+    .where(and(yearWhere(postTasks, id), eq(postTasks.deleted, false)));
+};
+export async function deletePost(
+  id: number,
+  options: { actor: AuditActor }
+) {
+  const db = (await getDb()) as DB;
+  return db.transaction(async tx => {
+    const [task] = await tx
+      .select()
+      .from(postTasks)
+      .where(
+        and(
+          eq(postTasks.id, id),
+          planningScope(postTasks),
+          eq(postTasks.deleted, false)
+        )
+      )
+      .limit(1)
+      .for("update");
+    if (!task) throw new Error("Nachbereitungsaufgabe wurde nicht gefunden");
+    await recordDeletionAudit(tx, options.actor, "single_delete", [
+      postAuditEntity(task),
+    ]);
+    const result = await tx
+      .update(postTasks)
+      .set({ deleted: true })
+      .where(
+        and(
+          eq(postTasks.id, id),
+          planningScope(postTasks),
+          eq(postTasks.deleted, false)
+        )
+      );
+    requireDeletedRows(result, 1);
+    return result;
+  });
+}
 export const createMaterial = async (v: any) =>
   createYearRow(
     materials,

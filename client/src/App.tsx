@@ -14,7 +14,7 @@ const Locations = lazy(routeLoaders["/orte"]);
 const Helpers = lazy(routeLoaders["/helfer"]);
 const Plan = lazy(routeLoaders["/einsatzplan"]);
 const Preparation = lazy(routeLoaders["/vorbereitung"]);
-const TaskList = lazy(routeLoaders["/nachbereitung"]);
+const PostProcessing = lazy(routeLoaders["/nachbereitung"]);
 const Materials = lazy(routeLoaders["/material"]);
 const Cakes = lazy(routeLoaders["/kuchen"]);
 const Finances = lazy(routeLoaders["/finanzen"]);
@@ -59,9 +59,7 @@ function Router() {
           <Route path="/helfer" component={Helpers} />
           <Route path="/einsatzplan" component={Plan} />
           <Route path="/vorbereitung" component={Preparation} />
-          <Route path="/nachbereitung">
-            {() => <TaskList kind="post" title="Nachbereitung" />}
-          </Route>
+          <Route path="/nachbereitung" component={PostProcessing} />
           <Route path="/material" component={Materials} />
           <Route path="/marketing">
             <Redirect to="/vorbereitung" />
