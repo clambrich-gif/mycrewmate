@@ -1688,6 +1688,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(mapClient).toContain("escapeHtmlAttribute");
     expect(mapClient).toContain("CircleMarker");
     expect(mapClient).toContain("markerSizeForZoom");
+    const routers = source("server/routers.ts");
+    const locationLogoRoute = source("server/location-logo-routes.ts");
+    expect(routers).toContain("locationLogoUrl(location)");
+    expect(locationLogoRoute).toContain('"/api/location-logo/:year/:eventId/:locationId"');
+    expect(locationLogoRoute).toContain("Cross-Origin-Resource-Policy");
+    expect(locationLogoRoute).toContain('"Cache-Control": "private, no-store"');
     expect(globalStyles).toContain(".location-logo-marker__frame");
     expect(globalStyles).toContain("border: 4px solid var(--location-marker-color, #64748b);");
   });

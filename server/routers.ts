@@ -79,6 +79,7 @@ import {
   withPlanningScope,
 } from "./year-context";
 import { storageGetSignedUrl, storagePut } from "./storage";
+import { locationLogoUrl } from "./location-logo-routes";
 import {
   getOnlinePresenceCounts,
   recordSessionPresence,
@@ -924,7 +925,15 @@ export const appRouter = router({
   }),
 
   locations: router({
-    list: protectedProcedure.query(() => db.listLocations()),
+    list: protectedProcedure.query(async () =>
+      (await db.listLocations()).map(location => ({
+        ...location,
+        // Die persistierte Storage-URL bleibt für Backups erhalten. Alle Browser
+        // nutzen aber die eigene Same-Origin-Route, damit auch die veröffentlichte
+        // Desktop- und Mobile-App keine Sandbox-Storage-Route benötigt.
+        logoUrl: locationLogoUrl(location),
+      }))
+    ),
     create: adminProcedure
       .input(
         z.object({
