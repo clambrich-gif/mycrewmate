@@ -917,7 +917,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(prep).toContain("applyDialogStatus(value as DialogStatus)");
     expect(prep).toContain('left.category?.trim() || "\\uffff"');
     expect(prep).not.toContain("Sortierung:");
-    expect(prep).toContain("Suchen (Aufgabe/Bereich/Verantwortlicher/Frist)");
+    expect(prep).toContain("Suchen (Aufgabe/Bereich/Verantwortlicher/Ort/Frist)");
     expect(prep).toContain("w-full max-w-2xl");
     expect(prep).toContain("grid grid-cols-1 gap-2 md:flex md:flex-wrap");
     expect(prep).toContain("h-11 w-full bg-white text-base md:h-10 md:w-[190px]");
@@ -942,6 +942,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(prep).toContain("categoryFilter");
     expect(prep).toContain("contactFilter");
     expect(prep).toContain("statusFilter");
+    expect(prep).toContain("locationFilter");
+    expect(prep).toContain("updateLocationFilter");
+    expect(prep).toContain("Alle Standorte");
+    expect(prep).toContain("locationMap.get(row.locationId)");
+    expect(prep).toContain("PDF drucken");
+    expect(prep).toContain("Vorbereitung – Aufgabenübersicht");
+    expect(prep).toContain("triggerPrintPdf");
     expect(prep).toContain("searchTerm");
   });
 
@@ -1834,7 +1841,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(app).toContain('path="/nachbereitung" component={PostProcessing}');
     expect(post).toContain("bg-rose-50/50");
     expect(post).toContain("border-rose-100");
-    expect(post).toContain("Modul Nachbereitung · Pastell-Design");
+    expect(post).not.toContain("Modul Nachbereitung · Pastell-Design");
     expect(post).toContain("Nachbereitungsaufgabe");
     expect(post).toContain("LocationMapLink");
     expect(post).toContain("Standort");

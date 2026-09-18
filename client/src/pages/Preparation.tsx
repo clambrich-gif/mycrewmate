@@ -39,6 +39,7 @@ import {
   Info,
   Pencil,
   Plus,
+  Printer,
   Search,
   Trash2,
   X,
@@ -173,6 +174,15 @@ function parseDueDate(value: string | null | undefined): ParsedDueDate | null {
 
 function formatDueDate(value: string | null | undefined) {
   return parseDueDate(value)?.display ?? value?.trim() ?? "";
+}
+
+function escapePrintHtml(value: string | null | undefined) {
+  return (value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 function statusSelectValue(status: PrepStatus, wording: PrepWording): DialogStatus {
@@ -410,6 +420,10 @@ export default function Preparation() {
     () => new Map(contacts.map(contact => [contact.id, contact.name])),
     [contacts]
   );
+  const locationMap = useMemo(
+    () => new Map(locations.map(location => [location.id, location.name])),
+    [locations]
+  );
 
   const availableCategories = useMemo(() => {
     const categories = new Set<string>();
@@ -442,6 +456,7 @@ export default function Preparation() {
           row.dueText,
           row.note ?? "",
           row.contactId ? contactMap.get(row.contactId) ?? "" : "",
+          row.locationId ? locationMap.get(row.locationId) ?? "" : "",
         ]
           .join(" ")
           .toLocaleLowerCase("de-DE");
@@ -477,6 +492,7 @@ export default function Preparation() {
     searchTerm,
     dueSortDirection,
     contactMap,
+    locationMap,
   ]);
 
   const hasActiveFilters =
@@ -492,6 +508,18 @@ export default function Preparation() {
         const next = new URLSearchParams(previous);
         if (value === "alle") next.delete(TASK_STATUS_QUERY_KEY);
         else next.set(TASK_STATUS_QUERY_KEY, value);
+        return next;
+      },
+      { replace: true }
+    );
+  };
+
+  const updateLocationFilter = (value: string) => {
+    setSearchParams(
+      previous => {
+        const next = new URLSearchParams(previous);
+        if (value === "alle") next.delete("location");
+        else next.set("location", value);
         return next;
       },
       { replace: true }
@@ -581,6 +609,62 @@ export default function Preparation() {
     }
   };
 
+  const triggerPrintPdf = () => {
+    const printWindow = window.open("", "_blank", "popup=yes");
+    if (!printWindow) {
+      toast.error("Der Druckdialog wurde vom Browser blockiert. Bitte Pop-ups für diese Seite erlauben.");
+      return;
+    }
+    printWindow.opener = null;
+
+    const generatedAt = new Intl.DateTimeFormat("de-DE", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date());
+    const printRows = filteredRows
+      .map(task => {
+        const wording = task.statusWording === "genehmigung" ? "genehmigung" : "aufgabe";
+        const locationName = task.locationId
+          ? locationMap.get(task.locationId) ?? "—"
+          : "—";
+        const contactName = task.contactId
+          ? contactMap.get(task.contactId) ?? "—"
+          : "—";
+        return `<tr>
+          <td>${escapePrintHtml(task.category || "—")}</td>
+          <td><strong>${escapePrintHtml(task.task)}</strong></td>
+          <td>${escapePrintHtml(locationName)}</td>
+          <td>${escapePrintHtml(contactName)}</td>
+          <td>${escapePrintHtml(formatDueDate(task.dueText) || "—")}</td>
+          <td>${escapePrintHtml(getStatusLabel(task.status, wording))}</td>
+          <td>${escapePrintHtml(latestPreparationLogbookEntry(task.note) || "—")}</td>
+        </tr>`;
+      })
+      .join("");
+
+    printWindow.document.write(`<!doctype html>
+      <html lang="de"><head><meta charset="utf-8"><title>Vorbereitung – gefilterte Aufgaben</title>
+      <style>
+        @page { size: A4 landscape; margin: 12mm; }
+        * { box-sizing: border-box; }
+        body { color: #172033; font-family: Arial, sans-serif; font-size: 10pt; }
+        h1 { margin: 0; color: #1e3a8a; font-size: 20pt; }
+        .meta { margin: 4px 0 16px; color: #64748b; }
+        table { border-collapse: collapse; width: 100%; }
+        th { background: #eff6ff; color: #1e3a8a; font-size: 9pt; text-align: left; }
+        th, td { border: 1px solid #bfdbfe; padding: 7px; vertical-align: top; }
+        tr:nth-child(even) { background: #f8fbff; }
+        .empty { margin-top: 20px; color: #64748b; }
+      </style></head><body>
+      <h1>Vorbereitung – Aufgabenübersicht</h1>
+      <p class="meta">Gefilterte Ansicht · ${escapePrintHtml(generatedAt)} · ${filteredRows.length} Aufgabe${filteredRows.length === 1 ? "" : "n"}</p>
+      ${printRows ? `<table><thead><tr><th>Bereich</th><th>Aufgabe</th><th>Ort</th><th>Verantwortlich</th><th>Frist</th><th>Status</th><th>Aktueller Logbuchstand</th></tr></thead><tbody>${printRows}</tbody></table>` : '<p class="empty">Keine Aufgaben entsprechen den aktuellen Filtern.</p>'}
+      </body></html>`);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.setTimeout(() => printWindow.print(), 150);
+  };
+
   const pending = create.isPending || update.isPending;
 
   return (
@@ -593,13 +677,24 @@ export default function Preparation() {
             Status-Wortlaut und Filterleiste.
           </p>
         </div>
-        <div className="grid w-full grid-cols-2 gap-2 lg:w-auto lg:flex lg:flex-wrap lg:justify-end [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 max-lg:[&>[data-slot=button]]:h-11 max-lg:[&>[data-slot=button]]:text-base lg:[&>[data-slot=button]]:w-auto lg:[&>[data-slot=button]]:px-4">
-          <ModuleExcelImportButton area="VORBEREITUNG" label="Vorbereitung" />
-          <ResetAreaButton area="prep" label="Vorbereitung" compact />
+        <div className="w-full space-y-2 lg:w-auto lg:min-w-[470px]">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 sm:[&>[data-slot=button]]:h-10 sm:[&>[data-slot=button]]:w-auto sm:[&>[data-slot=button]]:px-4">
+            <Button
+              type="button"
+              variant="outline"
+              className="border-blue-200 bg-white text-slate-800 hover:bg-blue-50 hover:text-blue-900"
+              onClick={triggerPrintPdf}
+            >
+              <Printer className="mr-2 h-4 w-4 text-blue-700" />
+              PDF drucken
+            </Button>
+            <ModuleExcelImportButton area="VORBEREITUNG" label="Vorbereitung" />
+            <ResetAreaButton area="prep" label="Vorbereitung" compact />
+          </div>
           <Button
             type="button"
             variant="outline"
-            className={`col-span-2 lg:col-auto ${CREATION_ACTION_BUTTON_CLASS}`}
+            className={`w-full ${CREATION_ACTION_BUTTON_CLASS}`}
             onClick={openCreate}
           >
             <Plus className="mr-2 h-4 w-4" />
@@ -614,7 +709,7 @@ export default function Preparation() {
           <Input
             value={searchTerm}
             onChange={event => setSearchTerm(event.target.value)}
-            placeholder="Suchen (Aufgabe/Bereich/Verantwortlicher/Frist) …"
+            placeholder="Suchen (Aufgabe/Bereich/Verantwortlicher/Ort/Frist) …"
             className="h-11 bg-white pl-9 pr-8 text-base sm:h-10 sm:text-sm"
             aria-label="Vorbereitungsaufgaben durchsuchen"
           />
@@ -641,6 +736,23 @@ export default function Preparation() {
               {availableCategories.map(category => (
                 <SelectItem key={category} value={category}>
                   {category}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={locationFilter ? String(locationFilter) : "alle"}
+            onValueChange={updateLocationFilter}
+          >
+            <SelectTrigger className="h-11 w-full bg-white text-base md:h-10 md:w-[190px] md:text-sm">
+              <SelectValue placeholder="Standort" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="alle">Alle Standorte</SelectItem>
+              {locations.map(location => (
+                <SelectItem key={location.id} value={String(location.id)}>
+                  {location.name}
                 </SelectItem>
               ))}
             </SelectContent>

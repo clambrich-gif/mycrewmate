@@ -627,10 +627,7 @@ export default function PostProcessing() {
     <div className="space-y-5 rounded-2xl bg-rose-50/50 p-3 sm:p-5 border border-rose-100">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-100/70 px-3 py-1 text-xs font-semibold text-rose-800">
-            Modul Nachbereitung · Pastell-Design
-          </div>
-          <h1 className="mt-2 text-2xl font-bold text-slate-950">Nachbereitung</h1>
+          <h1 className="text-2xl font-bold text-slate-950">Nachbereitung</h1>
           <p className="text-muted-foreground text-sm">
             Aufgabenverwaltung für den Abbau, Rücktransporte, Abrechnungen und Nachbereitung des Festivals.
           </p>
