@@ -42,24 +42,21 @@ export function helperDropdownAssignmentFeedback({
       return activeDays.includes(day) ? [day] : [];
     })
   );
-  const isFreeOnCurrentDay = !assignedDays.has(currentDay);
-  const hasAssignmentOnAnotherDay = Array.from(assignedDays).some(
-    day => day !== currentDay
-  );
-
-  if (!isFreeOnCurrentDay || !hasAssignmentOnAnotherDay) return null;
+  if (assignedDays.size === 0) return { kind: "new" };
 
   return {
     kind: "day-segments",
     segments: activeDays.map(day => ({
       day,
       label: WEEKDAY_SHORT_LABELS[day],
-      state:
-        day === currentDay
+      // Jeder schon belegte Festivaltag bleibt sichtbar gelb – auch dann,
+      // wenn seine Schicht zeitlich nicht mit dem gerade offenen Slot kollidiert.
+      // Nur ein wirklich noch unbelegter aktueller Tag wird grün gezeigt.
+      state: assignedDays.has(day)
+        ? "assigned"
+        : day === currentDay
           ? "current"
-          : assignedDays.has(day)
-            ? "assigned"
-            : "neutral",
+          : "neutral",
     })),
   };
 }

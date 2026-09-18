@@ -10,6 +10,7 @@ import {
 import {
   helperAvailabilityWindowLabel,
   helperEligibleForShift,
+  normalizeWeekday,
 } from "../shared/weekdays";
 
 const H = (
@@ -71,6 +72,35 @@ const A = (
 });
 
 describe("helperActiveOnDay", () => {
+  it("ordnet Fr, Sa und So immer den richtigen Verfügbarkeitsfeldern zu", () => {
+    const guido = H(99, "ja", "ja", "ja", "ja");
+
+    expect(normalizeWeekday("Fr")).toBe("Freitag");
+    expect(normalizeWeekday("samstag")).toBe("Samstag");
+    expect(normalizeWeekday(" SO ")).toBe("Sonntag");
+    expect(
+      helperEligibleForShift(guido, {
+        day: "Fr",
+        startTime: "08:00",
+        endTime: "12:00",
+      })
+    ).toBe(true);
+    expect(
+      helperEligibleForShift(guido, {
+        day: "Sa",
+        startTime: "08:00",
+        endTime: "12:00",
+      })
+    ).toBe(true);
+    expect(
+      helperEligibleForShift(guido, {
+        day: "So",
+        startTime: "08:00",
+        endTime: "12:00",
+      })
+    ).toBe(true);
+  });
+
   it("wertet nur ausdrücklich aktive und verfügbare Helfer als einsetzbar", () => {
     expect(helperActiveOnDay(H(1), "Freitag")).toBe(true);
     expect(helperActiveOnDay(H(2, "nein"), "Freitag")).toBe(false);

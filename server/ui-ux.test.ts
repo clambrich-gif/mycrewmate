@@ -1702,13 +1702,17 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("bg-emerald-100");
     expect(plan).toContain("bereits belegt");
     expect(plan).toContain("helperDropdownAssignmentFeedback({");
-    expect(plan).toContain("assignments: assignedShiftsByHelper.get(helper.id) ?? []");
+    expect(plan).toContain("const assignedDaysByHelper = useMemo");
+    expect(plan).toContain("assignments: assignedDaysByHelper.get(helper.id) ?? []");
     expect(plan).toContain("currentDay: shift.day");
+    expect(plan).toContain("normalizeWeekday(evaluation.shift.day)");
 
     expect(feedback).toContain('kind: "new"');
     expect(feedback).toContain('kind: "already-assigned"');
     expect(feedback).toContain('kind: "day-segments"');
     expect(feedback).toContain("hasTimeConflict");
     expect(feedback).toContain("WEEKDAY_SHORT_LABELS");
+    expect(feedback).toContain("assignedDays.has(day)");
+    expect(feedback).toContain("day === currentDay");
   });
 });

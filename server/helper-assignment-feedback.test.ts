@@ -15,6 +15,17 @@ describe("helperDropdownAssignmentFeedback", () => {
     ).toEqual({ kind: "new" });
   });
 
+  it("behandelt nicht aktive historische Tage nicht als Eventbelegung", () => {
+    expect(
+      helperDropdownAssignmentFeedback({
+        assignments: [{ day: "Montag" }],
+        activeDays: [...activeDays],
+        currentDay: "Samstag",
+        hasTimeConflict: false,
+      })
+    ).toEqual({ kind: "new" });
+  });
+
   it("gibt einer zeitgleichen Belegung immer Vorrang", () => {
     expect(
       helperDropdownAssignmentFeedback({
@@ -44,14 +55,21 @@ describe("helperDropdownAssignmentFeedback", () => {
     });
   });
 
-  it("zeigt keine Segmentanzeige, wenn die aktuelle Tagesbelegung nicht frei ist", () => {
+  it("zeigt auch eine spätere Einteilung am aktuellen Tag gelb an", () => {
     expect(
       helperDropdownAssignmentFeedback({
-        assignments: [{ day: "Samstag" }],
+        assignments: [{ day: "Freitag" }, { day: "Samstag" }],
         activeDays: [...activeDays],
         currentDay: "Samstag",
         hasTimeConflict: false,
       })
-    ).toBeNull();
+    ).toEqual({
+      kind: "day-segments",
+      segments: [
+        { day: "Freitag", label: "Fr", state: "assigned" },
+        { day: "Samstag", label: "Sa", state: "assigned" },
+        { day: "Sonntag", label: "So", state: "neutral" },
+      ],
+    });
   });
 });

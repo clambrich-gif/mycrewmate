@@ -53,6 +53,22 @@ export function isWeekday(value: unknown): value is Weekday {
   return typeof value === "string" && WEEKDAYS.includes(value as Weekday);
 }
 
+/**
+ * Normalisiert ausgeschriebene Wochentage sowie die UI-Kurzformen. Damit
+ * Verfügbarkeiten auch bei importierten oder älteren Datensätzen zuverlässig
+ * dem korrekten Tagesfeld zugeordnet werden.
+ */
+export function normalizeWeekday(value: unknown): Weekday | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().toLocaleLowerCase("de-DE");
+  const match = WEEKDAYS.find(
+    day =>
+      day.toLocaleLowerCase("de-DE") === normalized ||
+      WEEKDAY_SHORT_LABELS[day].toLocaleLowerCase("de-DE") === normalized
+  );
+  return match ?? null;
+}
+
 /** Entfernt ungültige und doppelte Werte und stellt die Kalenderreihenfolge her. */
 export function orderedWeekdays(value: unknown): Weekday[] {
   if (!Array.isArray(value)) return [];
@@ -148,7 +164,8 @@ export function helperAvailableForShift(
   helper: HelperAvailability,
   shift: ShiftAvailabilityLike
 ): boolean {
-  if (!isWeekday(shift.day) || !helperAvailableOnDay(helper, shift.day))
+  const day = normalizeWeekday(shift.day);
+  if (!day || !helperAvailableOnDay(helper, day))
     return false;
   const shiftStart = toMinutes(shift.startTime);
   const shiftEnd = toMinutes(shift.endTime);
@@ -158,7 +175,7 @@ export function helperAvailableForShift(
     shiftEnd <= shiftStart
   )
     return true;
-  const window = helperAvailabilityWindow(helper, shift.day);
+  const window = helperAvailabilityWindow(helper, day);
   return !window || (shiftStart >= window.startMinutes && shiftEnd <= window.endMinutes);
 }
 
@@ -167,13 +184,14 @@ export function helperAvailableForFlexibleShift(
   helper: HelperAvailability,
   shift: ShiftAvailabilityLike
 ): boolean {
-  if (!isWeekday(shift.day) || !helperAvailableOnDay(helper, shift.day))
+  const day = normalizeWeekday(shift.day);
+  if (!day || !helperAvailableOnDay(helper, day))
     return false;
   const shiftStart = toMinutes(shift.startTime);
   const shiftEnd = toMinutes(shift.endTime);
   if (shiftStart === null || shiftEnd === null || shiftEnd <= shiftStart)
     return true;
-  const window = helperAvailabilityWindow(helper, shift.day);
+  const window = helperAvailabilityWindow(helper, day);
   return !window || (window.startMinutes < shiftEnd && shiftStart < window.endMinutes);
 }
 

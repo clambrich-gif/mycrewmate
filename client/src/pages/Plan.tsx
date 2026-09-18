@@ -73,6 +73,7 @@ import {
   helperEligibleForShift,
   helperAvailableForShift,
   helperHasTimedAvailability,
+  normalizeWeekday,
   WEEKDAY_AVAILABILITY_FIELDS,
   WEEKDAY_AVAILABILITY_TIME_FIELDS,
   WEEKDAY_SHORT_LABELS,
@@ -840,6 +841,22 @@ export default function Plan() {
     }
     return result;
   }, [evals]);
+  // Von der kompletten Eventauswertung abgeleitet, nicht nur vom aktuell
+  // sichtbaren Tabellenfilter: Das Dropdown muss auch Einteilungen an anderen
+  // Festivaltagen zuverlässig als gelbes Tagessegment zeigen.
+  const assignedDaysByHelper = useMemo(() => {
+    const result = new Map<number, Array<{ day: Weekday }>>();
+    for (const evaluation of evals) {
+      const day = normalizeWeekday(evaluation.shift.day);
+      if (!day || !activeDays.includes(day)) continue;
+      for (const assignment of evaluation.assigned as AssignmentT[]) {
+        const assignedDays = result.get(assignment.helperId) ?? [];
+        assignedDays.push({ day });
+        result.set(assignment.helperId, assignedDays);
+      }
+    }
+    return result;
+  }, [activeDays, evals]);
 
   /**
    * Warnt bereits im Dialog, bevor eine bestehende Zuweisung durch eine
@@ -1044,7 +1061,7 @@ export default function Plan() {
                     const conflicts = overlappingAssignments(helper.id, shift);
                     const isAlreadyAssigned = conflicts.length > 0;
                     const assignmentFeedback = helperDropdownAssignmentFeedback({
-                      assignments: assignedShiftsByHelper.get(helper.id) ?? [],
+                      assignments: assignedDaysByHelper.get(helper.id) ?? [],
                       activeDays,
                       currentDay: shift.day,
                       hasTimeConflict: isAlreadyAssigned,
