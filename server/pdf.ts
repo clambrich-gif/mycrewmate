@@ -70,6 +70,17 @@ const colors = {
   accent: "#155e75",
 };
 
+/** Einheitliche, zurückhaltende Akzentfarben ausschließlich für Helfer-PDFs. */
+export const helperPdfPastels = {
+  timeBackground: "#f8fafc",
+  timeBorder: "#e2e8f0",
+  timeText: "#475569",
+  shiftNoteBackground: "#fef9c3",
+  shiftNoteText: "#854d0e",
+  helperNoteBackground: "#ffe4e6",
+  helperNoteText: "#9f1239",
+} as const;
+
 function collectPdf(
   build: (doc: PDFKit.PDFDocument) => void,
   layout: "portrait" | "landscape" = "portrait"
@@ -149,10 +160,21 @@ export function helperTimeBadgeLabel(helper: Helper, day: Day) {
 export function helperTaskCellText(
   shift: Pick<Shift, "task" | "area" | "note">
 ) {
+  const { primaryText, noteText } = helperTaskCellParts(shift);
+  return noteText ? `${primaryText}\n\n${noteText}` : primaryText;
+}
+
+/** Trennt den neutralen Aufgabeninhalt von einer bedingt markierten Bemerkung. */
+export function helperTaskCellParts(
+  shift: Pick<Shift, "task" | "area" | "note">
+) {
   const lines = [shift.task];
   if (shift.area && shift.area !== "Allgemein") lines.push(shift.area);
-  if (shift.note?.trim()) lines.push("", `Bemerkung: ${shift.note.trim()}`);
-  return lines.join("\n");
+  const note = shift.note?.trim();
+  return {
+    primaryText: lines.join("\n"),
+    noteText: note ? `Bemerkung: ${note}` : null,
+  };
 }
 
 function drawHelperTimeBadge(
@@ -167,11 +189,11 @@ function drawHelperTimeBadge(
   const y = doc.y;
   doc
     .roundedRect(margin, y, width, 19, 5)
-    .fillAndStroke("#e0f2fe", "#7dd3fc");
+    .fillAndStroke(helperPdfPastels.timeBackground, helperPdfPastels.timeBorder);
   doc
     .font("Helvetica-Bold")
     .fontSize(8)
-    .fillColor("#0c4a6e")
+    .fillColor(helperPdfPastels.timeText)
     .text(label, margin + 7, y + 5, {
       width: width - 14,
       lineBreak: false,
@@ -308,7 +330,10 @@ function drawTableRow(
   columns: PdfColumn[],
   values: Record<string, string>,
   x: number,
-  options: { minimumHeight?: number } = {}
+  options: {
+    minimumHeight?: number;
+    highlightedTaskNote?: string | null;
+  } = {}
 ) {
   doc.font("Helvetica").fontSize(8.5);
   const heights = columns.map(column =>
@@ -331,14 +356,47 @@ function drawTableRow(
     .stroke();
   let cursor = x;
   for (const column of columns) {
+    const columnValue = values[column.key] ?? "";
+    const isHighlightedTaskNote =
+      column.key === "task" && Boolean(options.highlightedTaskNote);
+    const highlightedTaskNote = isHighlightedTaskNote
+      ? options.highlightedTaskNote!
+      : null;
+    const primaryTaskText = isHighlightedTaskNote
+      ? columnValue
+          .slice(0, Math.max(0, columnValue.lastIndexOf(highlightedTaskNote!)))
+          .replace(/\n+$/, "")
+      : columnValue;
     doc
       .fillColor(colors.ink)
-      .text(values[column.key] ?? "", cursor + 5, y + 6, {
+      .text(primaryTaskText, cursor + 5, y + 6, {
         width: column.width - 10,
         height: height - 10,
         align: column.align ?? "left",
         lineGap: 1,
       });
+    if (highlightedTaskNote) {
+      const noteY = y + 6 + doc.heightOfString(primaryTaskText, {
+        width: column.width - 10,
+        lineGap: 1,
+      }) + 4;
+      const noteHeight = doc.heightOfString(highlightedTaskNote, {
+        width: column.width - 14,
+        lineGap: 1,
+      });
+      doc
+        .roundedRect(cursor + 4, noteY - 1, column.width - 8, noteHeight + 4, 2)
+        .fill(helperPdfPastels.shiftNoteBackground);
+      doc
+        .font("Helvetica")
+        .fontSize(8.5)
+        .fillColor(helperPdfPastels.shiftNoteText)
+        .text(highlightedTaskNote, cursor + 5, noteY + 1, {
+          width: column.width - 10,
+          height: height - (noteY - y) - 5,
+          lineGap: 1,
+        });
+    }
     cursor += column.width;
     doc
       .moveTo(cursor, y)
@@ -412,16 +470,20 @@ export function renderHelperTaskPdf(data: PlanningData, helperId: number) {
             .map(assignment => helperById.get(assignment.helperId)?.name)
             .filter((name): name is string => Boolean(name))
             .join(", ");
+          const taskCell = helperTaskCellParts(shift);
           drawTableRow(
             doc,
             columns,
             {
               number: String(number++),
-              task: helperTaskCellText(shift),
+              task: taskCell.noteText
+                ? `${taskCell.primaryText}\n\n${taskCell.noteText}`
+                : taskCell.primaryText,
               time: formatTime(shift),
               team: team || "–",
             },
-            margin
+            margin,
+            { highlightedTaskNote: taskCell.noteText }
           );
         }
         doc.moveDown(1);
@@ -454,16 +516,33 @@ export function renderHelperTaskPdf(data: PlanningData, helperId: number) {
         );
       doc.moveDown(0.25);
     }
-    if (helper.note) {
+    const helperNote = helper.note?.trim();
+    if (helperNote) {
       doc.moveDown(0.4);
       doc
         .font("Helvetica-Bold")
-        .text("Verfügbarkeit / Bemerkungen: ", { continued: true });
-      doc.font("Helvetica").text(helper.note);
+        .fillColor(colors.ink)
+        .text("Verfügbarkeit / Bemerkungen:");
+      doc.moveDown(0.18);
+      const noteX = margin;
+      const noteY = doc.y;
+      const noteWidth = contentWidth;
+      const noteHeight = doc.font("Helvetica").heightOfString(helperNote, {
+        width: noteWidth,
+        lineGap: 1,
+      });
+      doc
+        .roundedRect(noteX - 2, noteY - 1, noteWidth + 2, noteHeight + 4, 2)
+        .fill(helperPdfPastels.helperNoteBackground);
+      doc
+        .font("Helvetica")
+        .fillColor(helperPdfPastels.helperNoteText)
+        .text(helperNote, noteX, noteY + 1, { width: noteWidth, lineGap: 1 });
     }
     doc.moveDown(0.4);
     doc
       .font("Helvetica-Bold")
+      .fillColor(colors.ink)
       .text(`${data.settings.contactLabel}: `, { continued: true });
     doc.font("Helvetica").text(contact?.name ?? "nicht zugeordnet");
     doc.font("Helvetica-Bold").text("Rufnummer: ", { continued: true });

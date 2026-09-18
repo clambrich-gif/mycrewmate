@@ -16,6 +16,8 @@ import {
   selectHelpersForContact,
   selectPlanEvaluations,
   helperTimeBadgeLabel,
+  helperPdfPastels,
+  helperTaskCellParts,
   helperTaskCellText,
   planPdfTimeLabel,
   renderMaterialPacklistPdf,
@@ -163,6 +165,37 @@ describe("PDF-Erzeugung", () => {
       "Aufbau Zelte, Verkabelung, Absperrgitter und Banner\nAufbau\n\nBemerkung: Treffpunkt am Materialcontainer"
     );
     expect(helperTaskCellText(shifts[1])).toBe("Anmeldung Brevets\nStart");
+  });
+
+  it("verwendet Pastellfarben nur für vorhandene Helferhinweise und Schichtbemerkungen", async () => {
+    expect(helperPdfPastels).toEqual({
+      timeBackground: "#f8fafc",
+      timeBorder: "#e2e8f0",
+      timeText: "#475569",
+      shiftNoteBackground: "#fef9c3",
+      shiftNoteText: "#854d0e",
+      helperNoteBackground: "#ffe4e6",
+      helperNoteText: "#9f1239",
+    });
+    expect(helperTaskCellParts(shifts[0])).toEqual({
+      primaryText: "Aufbau Zelte, Verkabelung, Absperrgitter und Banner\nAufbau",
+      noteText: "Bemerkung: Treffpunkt am Materialcontainer",
+    });
+    expect(helperTaskCellParts({ ...shifts[1], note: "   " })).toEqual({
+      primaryText: "Anmeldung Brevets\nStart",
+      noteText: null,
+    });
+
+    const noNotesPdf = await renderHelperTaskPdf(
+      {
+        ...data,
+        helpers: [{ ...helpers[0], note: "   " }, helpers[1]],
+        shifts: shifts.map(shift => ({ ...shift, note: null })),
+      },
+      helpers[0].id
+    );
+    expect(noNotesPdf.subarray(0, 5).toString()).toBe("%PDF-");
+    expect(noNotesPdf.length).toBeGreaterThan(2_000);
   });
 
   it("kennzeichnet ein individuelles Zeitfenster kompakt im Helfer-PDF", async () => {
