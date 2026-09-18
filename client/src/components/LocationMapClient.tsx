@@ -294,7 +294,9 @@ export default function LocationMapClient({
   );
   const [markerZoom, setMarkerZoom] = useState(12);
   const [resetKey, setResetKey] = useState(0);
-  const [fullscreen, setFullscreen] = useState(false);
+  const [nativeFullscreen, setNativeFullscreen] = useState(false);
+  const [cssFullscreen, setCssFullscreen] = useState(false);
+  const fullscreen = nativeFullscreen || cssFullscreen;
   const isMobile = useIsMobile();
   const [mobileLocationDetails, setMobileLocationDetails] = useState<{
     location: MapLocation;
@@ -335,10 +337,35 @@ export default function LocationMapClient({
   }, [gpxTracks]);
 
   useEffect(() => {
-    const syncFullscreen = () => setFullscreen(document.fullscreenElement === rootRef.current);
+    const syncFullscreen = () => {
+      const active = document.fullscreenElement === rootRef.current;
+      setNativeFullscreen(active);
+      if (active) setCssFullscreen(false);
+    };
     document.addEventListener("fullscreenchange", syncFullscreen);
     return () => document.removeEventListener("fullscreenchange", syncFullscreen);
   }, []);
+
+  useEffect(() => {
+    if (!cssFullscreen) return;
+    const previousOverflow = document.body.style.overflow;
+    const previousOverscrollBehavior = document.body.style.overscrollBehavior;
+    document.body.style.overflow = "hidden";
+    document.body.style.overscrollBehavior = "none";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.overscrollBehavior = previousOverscrollBehavior;
+    };
+  }, [cssFullscreen]);
+
+  useEffect(() => {
+    if (!cssFullscreen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setCssFullscreen(false);
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [cssFullscreen]);
 
   useEffect(() => {
     if (focusLocationId !== null && !dismissedMobileFocusRef.current.has(focusLocationId)) {
@@ -361,10 +388,29 @@ export default function LocationMapClient({
 
   const toggleFullscreen = async () => {
     if (!rootRef.current) return;
+    if (cssFullscreen) {
+      setCssFullscreen(false);
+      return;
+    }
     if (document.fullscreenElement === rootRef.current) {
       await document.exitFullscreen?.();
-    } else {
-      await rootRef.current.requestFullscreen?.();
+      return;
+    }
+
+    // iOS Safari bietet für beliebige DIV-Container keine native Fullscreen-API.
+    // In diesem Fall übernimmt das CSS-Overlay denselben sichtbaren Vollbildmodus.
+    if (!document.fullscreenEnabled || !rootRef.current.requestFullscreen) {
+      setCssFullscreen(true);
+      return;
+    }
+
+    try {
+      await rootRef.current.requestFullscreen();
+      window.setTimeout(() => {
+        if (document.fullscreenElement !== rootRef.current) setCssFullscreen(true);
+      }, 180);
+    } catch {
+      setCssFullscreen(true);
     }
   };
 
@@ -398,9 +444,14 @@ export default function LocationMapClient({
     <div
       ref={rootRef}
       data-map-shell={fullscreen ? "fullscreen" : "embedded"}
+      data-map-fullscreen-mode={
+        cssFullscreen ? "css-fallback" : nativeFullscreen ? "native" : "embedded"
+      }
       className={
         fullscreen
-          ? "fixed inset-0 z-[2000] h-[100vh] w-screen max-h-none max-w-none overflow-hidden bg-white"
+          ? `fixed inset-0 z-[2000] h-[100vh] w-screen max-h-none max-w-none overflow-hidden bg-white${
+              cssFullscreen ? " mobile-fullscreen" : ""
+            }`
           : "relative"
       }
     >

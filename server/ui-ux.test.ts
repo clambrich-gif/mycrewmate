@@ -1676,6 +1676,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(mapClient).toContain("data-gpx-layer-control=\"bottom-left\"");
     expect(mapClient).toContain("Strecken einblenden");
     expect(mapClient).toContain("requestFullscreen");
+    expect(mapClient).toContain("document.fullscreenEnabled");
+    expect(mapClient).toContain("cssFullscreen");
+    expect(mapClient).toContain("setCssFullscreen(true)");
+    expect(mapClient).toContain('data-map-fullscreen-mode');
+    expect(mapClient).toContain("mobile-fullscreen");
     expect(mapClient).toContain("Kartenansicht zurücksetzen");
     expect(mapClient).toContain('data-map-shell={fullscreen ? "fullscreen" : "embedded"}');
     expect(mapClient).toContain('data-map-container={fullscreen ? "fullscreen" : "embedded"}');
@@ -1712,6 +1717,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(globalStyles).toContain('[data-map-shell="fullscreen"]');
     expect(globalStyles).toContain("width: 100vw !important");
     expect(globalStyles).toContain("height: 100vh !important");
+    expect(globalStyles).toContain(".mobile-fullscreen");
+    expect(globalStyles).toContain("z-index: 999999 !important");
+    expect(globalStyles).toContain("height: 100dvh !important");
+    expect(globalStyles).toContain("border-radius: 0 !important");
     expect(globalStyles).toContain(".leaflet-popup-pane,");
     expect(globalStyles).toContain("z-index: 10000 !important");
     expect(globalStyles).toContain(".leaflet-control,");

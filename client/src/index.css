@@ -146,6 +146,36 @@
   max-height: none !important;
 }
 
+/* iOS Safari unterstützt die native Fullscreen API nicht für gewöhnliche
+   DIV-Container. Die Klasse bildet den gleichen Kartenmodus als CSS-Overlay
+   ab, inklusive aller Leaflet-Steuerelemente und sicherer Viewporthöhe. */
+.mobile-fullscreen {
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  z-index: 999999 !important;
+  width: 100vw !important;
+  width: 100dvw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  max-width: none !important;
+  max-height: none !important;
+  border-radius: 0 !important;
+}
+
+.mobile-fullscreen [data-map-container="fullscreen"],
+.mobile-fullscreen .leaflet-container {
+  width: 100vw !important;
+  width: 100dvw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
+  border-radius: 0 !important;
+}
+
 /* Standortdetails dürfen auf Desktop niemals hinter eigenen oder Leaflet-
    Kartensteuerungen liegen. Das mobile Detailblatt verwendet zusätzlich eine
    eigene Portalebene oberhalb der Karte. */
