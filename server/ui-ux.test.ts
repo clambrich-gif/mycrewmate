@@ -1718,6 +1718,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(mapClient).toContain("Polyline");
     expect(mapClient).toContain("data-gpx-layer-control=\"bottom-left\"");
     expect(mapClient).toContain("Strecken einblenden");
+    expect(mapClient).toContain("Strecken werden bewusst nicht automatisch eingeblendet");
+    expect(mapClient).toContain("() => new Set()");
+    expect(mapClient).not.toContain("gpxTracks.map(track => track.id)");
     expect(mapClient).toContain("requestFullscreen");
     expect(mapClient).toContain("document.fullscreenEnabled");
     expect(mapClient).toContain("cssFullscreen");

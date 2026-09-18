@@ -280,10 +280,11 @@ export default function LocationMapClient({
   onFocusedLocationReady?: (locationId: number) => void;
 }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const visibleTracksInitialized = useRef(false);
   const [layer, setLayer] = useState<MapLayerKey>("streets");
+  // Strecken werden bewusst nicht automatisch eingeblendet: Die Karte bleibt
+  // beim Aufruf übersichtlich und Planende wählen gezielt die benötigte Route.
   const [visibleTrackIds, setVisibleTrackIds] = useState<Set<number>>(
-    () => new Set(gpxTracks.map(track => track.id))
+    () => new Set()
   );
   const [markerZoom, setMarkerZoom] = useState(12);
   const [resetKey, setResetKey] = useState(0);
@@ -322,19 +323,6 @@ export default function LocationMapClient({
     mobileLocationDetails?.location.id ??
     desktopLocationDetails?.location.id ??
     focusLocationId;
-
-  useEffect(() => {
-    if (!gpxTracks.length) return;
-    setVisibleTrackIds(previous => {
-      const available = new Set(gpxTracks.map(track => track.id));
-      const retained = new Set(Array.from(previous).filter(id => available.has(id)));
-      if (!visibleTracksInitialized.current) {
-        visibleTracksInitialized.current = true;
-        gpxTracks.forEach(track => retained.add(track.id));
-      }
-      return retained;
-    });
-  }, [gpxTracks]);
 
   useEffect(() => {
     const syncFullscreen = () => {
