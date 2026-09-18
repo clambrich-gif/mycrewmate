@@ -45,6 +45,7 @@ import { cn } from "@/lib/utils";
 import { WEEKDAYS, type Weekday } from "@shared/weekdays";
 import {
   Bike,
+  Calendar,
   CalendarRange,
   Download,
   KeyRound,
@@ -154,6 +155,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
   ]);
   const [editEventId, setEditEventId] = useState<number | null>(null);
   const [editEventName, setEditEventName] = useState("");
+  const [editEventStartDate, setEditEventStartDate] = useState("");
+  const [editEventEndDate, setEditEventEndDate] = useState("");
   const [deleteEventTarget, setDeleteEventTarget] = useState<{
     id: number;
     name: string;
@@ -434,7 +437,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
       ]);
       setEditEventId(null);
       setEditEventName("");
-      toast.success("Veranstaltung umbenannt");
+      setEditEventStartDate("");
+      setEditEventEndDate("");
+      toast.success("Veranstaltung gespeichert");
     },
     onError: error => toast.error(error.message),
   });
@@ -459,6 +464,22 @@ export function Layout({ children }: { children: React.ReactNode }) {
     setMobileMenuOpen(false);
     setEditEventId(null);
     setEditEventName("");
+    setEditEventStartDate("");
+    setEditEventEndDate("");
+    setEventManagerOpen(true);
+  };
+
+  const openEventDateSettings = (targetEventId?: number) => {
+    const target =
+      (targetEventId
+        ? events.data?.find(item => item.id === targetEventId)
+        : selectedEvent) ?? events.data?.[0];
+    if (!target) return;
+    setMobileMenuOpen(false);
+    setEditEventId(target.id);
+    setEditEventName(target.name);
+    setEditEventStartDate(target.startDate ?? "");
+    setEditEventEndDate(target.endDate ?? "");
     setEventManagerOpen(true);
   };
 
@@ -1101,6 +1122,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   variant="ghost"
                   size="icon"
                   className="h-7 w-7"
+                  title="Veranstaltungsdaten & Zeitraum bearbeiten"
+                  aria-label="Veranstaltungsdaten & Zeitraum bearbeiten"
+                  data-slot="event-dates-trigger"
+                  onClick={() => openEventDateSettings(eventId)}
+                >
+                  <Calendar className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
                   title="Veranstaltungen verwalten"
                   aria-label="Veranstaltungen verwalten"
                   onClick={openEventManager}
@@ -1341,28 +1373,61 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center"
               >
                 {editEventId === item.id ? (
-                  <Input
-                    autoFocus
-                    className="flex-1"
-                    value={editEventName}
-                    maxLength={200}
-                    onChange={event => setEditEventName(event.target.value)}
-                    onKeyDown={event => {
-                      if (
-                        event.key === "Enter" &&
-                        editEventName.trim().length >= 2
-                      ) {
-                        updateEvent.mutate({
-                          id: item.id,
-                          name: editEventName,
-                        });
-                      }
-                      if (event.key === "Escape") setEditEventId(null);
-                    }}
-                  />
+                  <div className="w-full space-y-3 sm:max-w-md">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Name der Veranstaltung</Label>
+                      <Input
+                        autoFocus
+                        value={editEventName}
+                        onChange={event => setEditEventName(event.target.value)}
+                        className="w-full"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <div className="space-y-1">
+                        <Label htmlFor={`edit-start-date-${item.id}`} className="text-xs text-muted-foreground">
+                          Startdatum
+                        </Label>
+                        <Input
+                          id={`edit-start-date-${item.id}`}
+                          type="date"
+                          value={editEventStartDate}
+                          onChange={event => setEditEventStartDate(event.target.value)}
+                          className="w-full"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor={`edit-end-date-${item.id}`} className="text-xs text-muted-foreground">
+                          Enddatum
+                        </Label>
+                        <Input
+                          id={`edit-end-date-${item.id}`}
+                          type="date"
+                          value={editEventEndDate}
+                          onChange={event => setEditEventEndDate(event.target.value)}
+                          className="w-full"
+                        />
+                      </div>
+                    </div>
+                    {editEventStartDate && editEventEndDate && editEventStartDate > editEventEndDate && (
+                      <p className="text-xs text-destructive">
+                        Das Enddatum darf nicht vor dem Startdatum liegen.
+                      </p>
+                    )}
+                    {Boolean(editEventStartDate) !== Boolean(editEventEndDate) && (
+                      <p className="text-xs text-muted-foreground">
+                        Bitte Start- und Enddatum gemeinsam eintragen oder beide leeren.
+                      </p>
+                    )}
+                  </div>
                 ) : (
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-medium">{item.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {item.startDate && item.endDate
+                        ? `Zeitraum: ${item.startDate} bis ${item.endDate}`
+                        : "Kein Datum hinterlegt"}
+                    </div>
                     <div className="text-xs text-muted-foreground">
                       {item.activeDays.join(", ")}
                     </div>
@@ -1392,12 +1457,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
                         className="w-full sm:w-auto"
                         disabled={
                           editEventName.trim().length < 2 ||
+                          Boolean(editEventStartDate) !== Boolean(editEventEndDate) ||
+                          (Boolean(editEventStartDate) &&
+                            Boolean(editEventEndDate) &&
+                            editEventStartDate > editEventEndDate) ||
                           updateEvent.isPending
                         }
                         onClick={() =>
                           updateEvent.mutate({
                             id: item.id,
                             name: editEventName,
+                            startDate: editEventStartDate || null,
+                            endDate: editEventEndDate || null,
                           })
                         }
                       >
@@ -1414,10 +1485,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
                         onClick={() => {
                           setEditEventId(item.id);
                           setEditEventName(item.name);
+                          setEditEventStartDate(item.startDate ?? "");
+                          setEditEventEndDate(item.endDate ?? "");
                         }}
                       >
                         <Pencil className="h-4 w-4" />
-                        Umbenennen
+                        Bearbeiten
                       </Button>
                       <Button
                         type="button"

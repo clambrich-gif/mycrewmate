@@ -30,7 +30,15 @@ import {
 const tableName = (table: any) => table[Symbol.for("drizzle:Name")];
 
 const data = {
-  events: [{ id: 1, year: 2026, name: "MyEifelRide" }],
+  events: [
+    {
+      id: 1,
+      year: 2026,
+      name: "MyEifelRide",
+      startDate: "2026-06-19",
+      endDate: "2026-06-21",
+    },
+  ],
   contacts: [
     {
       id: 10,
@@ -175,6 +183,10 @@ describe("Excel-Datensicherung", () => {
     });
 
     const parsed = parseBackupWorkbook(result.buffer.toString("base64"));
+    expect(parsed.metadata).toMatchObject({
+      startDate: "2026-06-19",
+      endDate: "2026-06-21",
+    });
     expect(parsed.helpers.find(row => row.name === "Alex Beispiel")).toMatchObject({
       companion: "+ Kind Beispiel",
     });
@@ -191,6 +203,34 @@ describe("Excel-Datensicherung", () => {
         "Doppelbelegung akzeptiert",
       ])
     );
+    const infoRows = XLSX.utils.sheet_to_json<any>(workbook.Sheets.SICHERUNG_INFO);
+    expect(infoRows).toEqual(
+      expect.arrayContaining([
+        { Schlüssel: "Startdatum", Wert: "2026-06-19" },
+        { Schlüssel: "Enddatum", Wert: "2026-06-21" },
+      ])
+    );
+  });
+
+  it("weist unvollständige oder kalenderungültige Veranstaltungszeiträume in Sicherungen zurück", async () => {
+    const result = await exportBackupExcel();
+    const incompleteRange = mutateWorkbook(result.buffer, workbook => {
+      const rows = XLSX.utils.sheet_to_json<any>(workbook.Sheets.SICHERUNG_INFO);
+      rows.find(row => row.Schlüssel === "Enddatum").Wert = "";
+      replaceSheet(workbook, "SICHERUNG_INFO", rows);
+    });
+    expect(() => parseBackupWorkbook(incompleteRange.toString("base64"))).toThrow(
+      "Start- und Enddatum gemeinsam"
+    );
+
+    const invalidCalendarDate = mutateWorkbook(result.buffer, workbook => {
+      const rows = XLSX.utils.sheet_to_json<any>(workbook.Sheets.SICHERUNG_INFO);
+      rows.find(row => row.Schlüssel === "Startdatum").Wert = "2026-02-29";
+      replaceSheet(workbook, "SICHERUNG_INFO", rows);
+    });
+    expect(() =>
+      parseBackupWorkbook(invalidCalendarDate.toString("base64"))
+    ).toThrow("gültige Kalenderdaten");
   });
 
   it("setzt Freigaben zurück, wenn ein importiertes Zeitfenster eine geprüfte Schicht verändert", () => {

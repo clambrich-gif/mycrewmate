@@ -30,6 +30,7 @@ import {
   type Weekday,
 } from "../shared/weekdays";
 import { normalizeMaterialStatus } from "../shared/material-status";
+import { eventDateRangeError } from "../shared/event-dates";
 import { overlaps, toMinutes } from "./logic";
 import { currentEventId, currentEventYear } from "./year-context";
 import { getDb, type AuditActor } from "./db";
@@ -426,6 +427,8 @@ export type BackupDocument = {
     eventName: string;
     year: number;
     activeDays: Weekday[];
+    startDate: string | null;
+    endDate: string | null;
     pdfLogoKey: string | null;
     pdfLogoUrl: string | null;
     pdfLogoFallback: "none" | "brand";
@@ -448,6 +451,8 @@ export type BackupDocument = {
 type CurrentSnapshot = {
   eventName: string;
   activeDays: Weekday[];
+  startDate: string | null;
+  endDate: string | null;
   pdfLogoKey: string | null;
   pdfLogoUrl: string | null;
   pdfLogoFallback: "none" | "brand";
@@ -907,6 +912,8 @@ function metadata(workbook: XLSX.WorkBook) {
   const activeDays = orderedWeekdays(
     (values.get("Veranstaltungstage") ?? "").split(",").map(day => day.trim())
   );
+  const startDate = values.get("Startdatum") || null;
+  const endDate = values.get("Enddatum") || null;
   const pdfLogoKey = values.get("PDF-Bild-Schlüssel") || null;
   const pdfLogoUrl = values.get("PDF-Bild-URL") || null;
   const pdfLogoFallback: "none" | "brand" =
@@ -926,6 +933,11 @@ function metadata(workbook: XLSX.WorkBook) {
     throw new Error(
       "Die Sicherungsinformationen sind unvollständig oder beschädigt"
     );
+  const datesError = eventDateRangeError({ startDate, endDate });
+  if (datesError)
+    throw new Error(
+      `Die Sicherungsinformationen enthalten einen ungültigen Veranstaltungszeitraum: ${datesError}`
+    );
   return {
     format,
     version,
@@ -933,6 +945,8 @@ function metadata(workbook: XLSX.WorkBook) {
     year,
     eventName,
     activeDays: activeDays.length ? activeDays : [...WEEKDAYS],
+    startDate,
+    endDate,
     pdfLogoKey,
     pdfLogoUrl,
     pdfLogoFallback,
@@ -1908,6 +1922,8 @@ async function loadSnapshot(
   return {
     eventName: eventRows[0].name,
     activeDays: eventWeekdays(eventRows[0].activeDays),
+    startDate: eventRows[0].startDate ?? null,
+    endDate: eventRows[0].endDate ?? null,
     pdfLogoKey: eventRows[0].pdfLogoKey,
     pdfLogoUrl: eventRows[0].pdfLogoUrl,
     pdfLogoFallback: eventRows[0].pdfLogoFallback,
@@ -2193,6 +2209,7 @@ function restoreMismatchDetail(
   desired: Record<string, Array<Record<string, unknown>>>,
   metadataMatches: {
     activeDays: boolean;
+    dates: boolean;
     pdfLogoKey: boolean;
     pdfLogoUrl: boolean;
     pdfLogoFallback: boolean;
@@ -2205,6 +2222,8 @@ function restoreMismatchDetail(
     return `Abweichung im Bereich ${differingArea}: erwartet ${desired[differingArea]?.length ?? 0} Einträge, wiederhergestellt ${restored[differingArea]?.length ?? 0} Einträge.`;
   if (!metadataMatches.activeDays)
     return "Die aktiven Veranstaltungstage stimmen nach der Wiederherstellung nicht mit der Vorschau überein.";
+  if (!metadataMatches.dates)
+    return "Der Veranstaltungszeitraum stimmt nach der Wiederherstellung nicht mit der Vorschau überein.";
   if (
     !metadataMatches.pdfLogoKey ||
     !metadataMatches.pdfLogoUrl ||
@@ -2228,6 +2247,8 @@ export async function createCurrentProjectDocument(): Promise<BackupDocument> {
       eventName: snapshot.eventName,
       year: currentEventYear(),
       activeDays: snapshot.activeDays,
+      startDate: snapshot.startDate,
+      endDate: snapshot.endDate,
       pdfLogoKey: snapshot.pdfLogoKey,
       pdfLogoUrl: snapshot.pdfLogoUrl,
       pdfLogoFallback: snapshot.pdfLogoFallback,
@@ -2450,9 +2471,38 @@ function eventDaysChange(
   ];
 }
 
+function eventDatesChange(
+  current: Pick<CurrentSnapshot, "startDate" | "endDate">,
+  desired: BackupDocument["metadata"]
+): BackupChange[] {
+  if (
+    (current.startDate ?? null) === (desired.startDate ?? null) &&
+    (current.endDate ?? null) === (desired.endDate ?? null)
+  ) {
+    return [];
+  }
+  return [
+    {
+      key: "VERANSTALTUNG:update:dates",
+      area: "VERANSTALTUNG",
+      action: "update",
+      label: "Veranstaltungszeitraum",
+      fields: ["startDate", "endDate"],
+      before: {
+        startDate: current.startDate ?? null,
+        endDate: current.endDate ?? null,
+      },
+      after: {
+        startDate: desired.startDate ?? null,
+        endDate: desired.endDate ?? null,
+      },
+    },
+  ];
+}
+
 function eventPdfImageChanges(
   current: Pick<
-    CurrentSnapshot,
+  CurrentSnapshot,
     "pdfLogoKey" | "pdfLogoUrl" | "pdfLogoFallback"
   >,
   desired: BackupDocument["metadata"]
@@ -2498,6 +2548,10 @@ function snapshotDigest(
 ) {
   return digest({
     activeDays: snapshot.activeDays,
+    dates: {
+      startDate: snapshot.startDate,
+      endDate: snapshot.endDate,
+    },
     pdfImage: {
       key: snapshot.pdfLogoKey,
       url: snapshot.pdfLogoUrl,
@@ -2954,6 +3008,7 @@ export async function previewProjectDocument(
   resetInvalidatedManualConfirmations(current, desired);
   const changes = [
     ...eventDaysChange(snapshot.activeDays, desired.metadata.activeDays),
+    ...eventDatesChange(snapshot, desired.metadata),
     ...eventPdfImageChanges(snapshot, desired.metadata),
     ...diffDocuments(current, desired),
   ];
@@ -3110,6 +3165,8 @@ export async function restoreProjectDocument(
         .update(events)
         .set({
           activeDays: desired.metadata.activeDays,
+          startDate: desired.metadata.startDate,
+          endDate: desired.metadata.endDate,
           pdfLogoKey: desired.metadata.pdfLogoKey,
           pdfLogoUrl: desired.metadata.pdfLogoUrl,
           pdfLogoFallback: desired.metadata.pdfLogoFallback,
@@ -3442,6 +3499,9 @@ export async function restoreProjectDocument(
       activeDays:
         JSON.stringify(afterSnapshot.activeDays) ===
         JSON.stringify(desired.metadata.activeDays),
+      dates:
+        afterSnapshot.startDate === desired.metadata.startDate &&
+        afterSnapshot.endDate === desired.metadata.endDate,
       pdfLogoKey: afterSnapshot.pdfLogoKey === desired.metadata.pdfLogoKey,
       pdfLogoUrl: afterSnapshot.pdfLogoUrl === desired.metadata.pdfLogoUrl,
       pdfLogoFallback:
@@ -3450,6 +3510,7 @@ export async function restoreProjectDocument(
     if (
       JSON.stringify(restoredContent) !== JSON.stringify(desiredContent) ||
       !metadataMatches.activeDays ||
+      !metadataMatches.dates ||
       !metadataMatches.pdfLogoKey ||
       !metadataMatches.pdfLogoUrl ||
       !metadataMatches.pdfLogoFallback
@@ -3880,6 +3941,14 @@ export async function exportBackupExcel() {
     {
       Schlüssel: "Veranstaltungstage",
       Wert: document.metadata.activeDays.join(", "),
+    },
+    {
+      Schlüssel: "Startdatum",
+      Wert: document.metadata.startDate ?? "",
+    },
+    {
+      Schlüssel: "Enddatum",
+      Wert: document.metadata.endDate ?? "",
     },
     {
       Schlüssel: "PDF-Bild-Schlüssel",

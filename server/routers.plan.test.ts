@@ -42,7 +42,7 @@ const dbMocks = vi.hoisted(() => ({
   getEvent: vi.fn(),
   updateCurrentEventPdfImage: vi.fn(),
   createEvent: vi.fn(),
-  updateEventName: vi.fn(),
+  updateEventDetails: vi.fn(),
   deleteEvent: vi.fn(),
   deleteContact: vi.fn(),
   getContact: vi.fn(),
@@ -839,19 +839,31 @@ describe("Planungs-API", () => {
   });
 
   it("lässt Veranstaltungen nur administrativ umbenennen", async () => {
-    dbMocks.updateEventName.mockResolvedValue({
+    dbMocks.updateEventDetails.mockResolvedValue({
       id: 1,
       year: 2026,
       name: "RSC Sommerfest",
+      startDate: "2026-07-10",
+      endDate: "2026-07-12",
     });
 
     await expect(
       appRouter.createCaller(ctx).events.update({
         id: 1,
         name: " RSC   Sommerfest ",
+        startDate: "2026-07-10",
+        endDate: "2026-07-12",
       })
-    ).resolves.toMatchObject({ name: "RSC Sommerfest" });
-    expect(dbMocks.updateEventName).toHaveBeenCalledWith(1, "RSC   Sommerfest");
+    ).resolves.toMatchObject({
+      name: "RSC Sommerfest",
+      startDate: "2026-07-10",
+      endDate: "2026-07-12",
+    });
+    expect(dbMocks.updateEventDetails).toHaveBeenCalledWith(1, {
+      name: "RSC   Sommerfest",
+      startDate: "2026-07-10",
+      endDate: "2026-07-12",
+    });
     await expect(
       appRouter.createCaller(planningTeamCtx).events.update({
         id: 1,

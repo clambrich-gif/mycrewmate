@@ -846,10 +846,26 @@ export const appRouter = router({
       .input(
         z.object({
           id: z.number().int().positive(),
-          name: z.string().trim().min(2).max(200),
+          name: z.string().trim().min(2).max(200).optional(),
+          startDate: z
+            .string()
+            .regex(/^\d{4}-\d{2}-\d{2}$/, "Ungültiges Startdatum")
+            .nullable()
+            .optional(),
+          endDate: z
+            .string()
+            .regex(/^\d{4}-\d{2}-\d{2}$/, "Ungültiges Enddatum")
+            .nullable()
+            .optional(),
         })
       )
-      .mutation(({ input }) => db.updateEventName(input.id, input.name)),
+      .mutation(({ input }) =>
+        db.updateEventDetails(input.id, {
+          name: input.name,
+          startDate: input.startDate,
+          endDate: input.endDate,
+        })
+      ),
     remove: adminProcedure
       .input(
         z.object({

@@ -54,6 +54,7 @@ import {
   WEEKDAYS,
   type Weekday,
 } from "../shared/weekdays";
+import { eventDateRangeError } from "../shared/event-dates";
 import { prependPreparationLogbookEntry } from "../shared/preparation-logbook";
 import {
   ADMIN_PASSWORD_OPEN_ID,
@@ -420,6 +421,68 @@ function normalizeEventName(name: string) {
   return name.trim().replace(/\s+/g, " ");
 }
 
+export async function updateEventDetails(
+  id: number,
+  input: {
+    name?: string;
+    startDate?: string | null;
+    endDate?: string | null;
+  }
+) {
+  const db = (await getDb()) as DB;
+  const selectedYear = year();
+  return db.transaction(async tx => {
+    const [selected] = await tx
+      .select()
+      .from(events)
+      .where(and(eq(events.id, id), eq(events.year, selectedYear)))
+      .limit(1)
+      .for("update");
+    if (!selected) throw new Error("Veranstaltung wurde nicht gefunden");
+
+    const nextName =
+      input.name !== undefined ? normalizeEventName(input.name) : selected.name;
+    if (!nextName) throw new Error("Veranstaltungsname darf nicht leer sein");
+    if (input.name !== undefined) {
+      const [duplicate] = await tx
+        .select({ id: events.id })
+        .from(events)
+        .where(
+          and(eq(events.year, selectedYear), eq(events.name, nextName))
+        )
+        .limit(1);
+      if (duplicate && duplicate.id !== id) {
+        throw new Error(
+          "Eine Veranstaltung mit diesem Namen ist in diesem Jahr bereits vorhanden"
+        );
+      }
+    }
+
+    const startDate =
+      input.startDate !== undefined ? input.startDate || null : selected.startDate;
+    const endDate =
+      input.endDate !== undefined ? input.endDate || null : selected.endDate;
+    const datesError = eventDateRangeError({ startDate, endDate });
+    if (datesError) throw new Error(datesError);
+
+    await tx
+      .update(events)
+      .set({
+        name: nextName,
+        startDate,
+        endDate,
+      })
+      .where(and(eq(events.id, id), eq(events.year, selectedYear)));
+
+    return {
+      ...selected,
+      name: nextName,
+      startDate,
+      endDate,
+    };
+  });
+}
+
 export async function createEvent(
   name: string,
   eventYear = year(),
@@ -453,38 +516,6 @@ export async function createEvent(
     pdfLogoFallback: "none" as const,
     created: true,
   };
-}
-
-export async function updateEventName(id: number, name: string) {
-  const db = (await getDb()) as DB;
-  const selectedYear = year();
-  const normalizedName = normalizeEventName(name);
-  return db.transaction(async tx => {
-    const [selected] = await tx
-      .select()
-      .from(events)
-      .where(and(eq(events.id, id), eq(events.year, selectedYear)))
-      .limit(1)
-      .for("update");
-    if (!selected) throw new Error("Veranstaltung wurde nicht gefunden");
-    const [duplicate] = await tx
-      .select({ id: events.id })
-      .from(events)
-      .where(
-        and(eq(events.year, selectedYear), eq(events.name, normalizedName))
-      )
-      .limit(1);
-    if (duplicate && duplicate.id !== id) {
-      throw new Error(
-        "Eine Veranstaltung mit diesem Namen ist in diesem Jahr bereits vorhanden"
-      );
-    }
-    await tx
-      .update(events)
-      .set({ name: normalizedName })
-      .where(and(eq(events.id, id), eq(events.year, selectedYear)));
-    return { ...selected, name: normalizedName };
-  });
 }
 
 export async function deleteEvent(id: number) {

@@ -764,6 +764,29 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain("Datierte Vorbereitungsaufgaben");
   });
 
+  it("zeigt das Live-Countdown-Widget im Dashboardkopf und den Kalender-Trigger im Layout", () => {
+    const dashboard = source("client/src/pages/Dashboard.tsx");
+    const layout = source("client/src/components/Layout.tsx");
+    const router = source("server/routers.ts");
+    const eventDates = source("shared/event-dates.ts");
+
+    expect(dashboard).toContain("EventCountdownWidget");
+    expect(dashboard).toContain('data-slot="event-countdown"');
+    expect(dashboard).toContain("eventCountdownState");
+    expect(dashboard).toContain("Eventstart in");
+    expect(dashboard).toContain("Event läuft!");
+    expect(dashboard).toContain("Veranstaltung abgeschlossen");
+
+    expect(layout).toContain('data-slot="event-dates-trigger"');
+    expect(layout).toContain("openEventDateSettings");
+    expect(layout).toContain("Startdatum");
+    expect(layout).toContain("Enddatum");
+
+    expect(router).toContain("startDate");
+    expect(router).toContain("endDate");
+    expect(eventDates).toContain("eventCountdownState");
+  });
+
   it("verschiebt die Einsatzplan-Kennzahlen als kompakte Live-Statusleiste in den Einsatzplan", () => {
     const dashboard = source("client/src/pages/Dashboard.tsx");
     const plan = source("client/src/pages/Plan.tsx");

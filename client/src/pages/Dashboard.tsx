@@ -9,6 +9,7 @@ import { trpc } from "@/lib/trpc";
 import {
   AlertTriangle,
   ArrowRight,
+  Calendar,
   CalendarClock,
   CheckCircle2,
   ClipboardList,
@@ -18,7 +19,7 @@ import {
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import {
   eventWeekdays,
@@ -26,6 +27,11 @@ import {
   WEEKDAY_SHORT_LABELS,
   type Weekday,
 } from "@shared/weekdays";
+import {
+  eventCountdownState,
+  formatEventDate,
+  type EventCountdownState,
+} from "@shared/event-dates";
 
 type PriorityAction = {
   id: string;
@@ -522,6 +528,92 @@ function DailyReadinessCard({
   );
 }
 
+function EventCountdownWidget({
+  startDate,
+  endDate,
+}: {
+  startDate?: string | null;
+  endDate?: string | null;
+}) {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  const state: EventCountdownState = eventCountdownState(
+    { startDate, endDate },
+    now
+  );
+  if (state.kind === "unconfigured") {
+    return (
+      <div
+        data-slot="event-countdown"
+        data-countdown-state="unconfigured"
+        className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3.5 py-2 text-xs text-slate-500 shadow-sm"
+      >
+        <Calendar className="h-4 w-4 text-slate-400" />
+        <span>Zeitraum konfigurierbar über 📅 in der Seitenleiste</span>
+      </div>
+    );
+  }
+
+  if (state.kind === "upcoming") {
+    return (
+      <div
+        data-slot="event-countdown"
+        data-countdown-state="upcoming"
+        className="flex flex-col items-start gap-1 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-2.5 text-slate-900 shadow-sm sm:flex-row sm:items-center sm:gap-3"
+      >
+        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-800">
+          <span className="text-base">⏳</span>
+          <span>Eventstart in</span>
+        </div>
+        <div className="flex items-baseline gap-1.5 font-bold">
+          <span className="text-2xl text-amber-950 tabular-nums sm:text-3xl">
+            {state.days}
+          </span>
+          <span className="text-xs font-semibold text-amber-900 sm:text-sm">
+            {state.days === 1 ? "Tag" : "Tage"}
+          </span>
+          <span className="text-xs font-semibold text-amber-800">
+            und {state.hours} {state.hours === 1 ? "Std." : "Std."}
+          </span>
+        </div>
+        <span className="text-[11px] text-amber-700">
+          ({formatEventDate(startDate)})
+        </span>
+      </div>
+    );
+  }
+
+  if (state.kind === "live") {
+    return (
+      <div
+        data-slot="event-countdown"
+        data-countdown-state="live"
+        className="flex items-center gap-2 rounded-2xl border border-emerald-300 bg-gradient-to-r from-emerald-50 to-teal-50 px-4 py-2.5 text-emerald-950 shadow-sm"
+      >
+        <span className="text-base">🚀</span>
+        <span className="text-sm font-bold">
+          Event läuft! (Tag {state.day} von {state.totalDays})
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      data-slot="event-countdown"
+      data-countdown-state="completed"
+      className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-100 px-4 py-2 text-xs font-medium text-slate-600 shadow-sm"
+    >
+      <span className="text-base">🏁</span>
+      <span>Veranstaltung abgeschlossen</span>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [, navigate] = useLocation();
   const [workloadFilter, setWorkloadFilter] = useState<{
@@ -699,11 +791,17 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Die wichtigsten nächsten Schritte stehen zuerst; alle Kennzahlen werden automatisch aus den Planungsdaten berechnet.
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground">
+            Die wichtigsten nächsten Schritte stehen zuerst; alle Kennzahlen werden automatisch aus den Planungsdaten berechnet.
+          </p>
+        </div>
+        <EventCountdownWidget
+          startDate={currentEvent.startDate}
+          endDate={currentEvent.endDate}
+        />
       </div>
 
       <section

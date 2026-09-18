@@ -12,6 +12,7 @@ import {
   varchar,
   boolean,
   double,
+  date,
 } from "drizzle-orm/mysql-core";
 import { WEEKDAYS, type Weekday } from "../shared/weekdays";
 
@@ -149,6 +150,8 @@ export const events = mysqlTable(
     year: int("year").notNull(),
     name: varchar("name", { length: 200 }).notNull(),
     activeDays: json("activeDays").$type<Weekday[]>().notNull(),
+    startDate: date("startDate", { mode: "string" }),
+    endDate: date("endDate", { mode: "string" }),
     pdfLogoKey: varchar("pdfLogoKey", { length: 500 }),
     pdfLogoUrl: varchar("pdfLogoUrl", { length: 700 }),
     pdfLogoFallback: mysqlEnum("pdfLogoFallback", ["none", "brand"])

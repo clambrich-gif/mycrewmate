@@ -17,14 +17,44 @@ import {
   WEEKDAYS,
 } from "../shared/weekdays";
 import { normalizeMaterialStatus } from "../shared/material-status";
+import { eventDateRangeError } from "../shared/event-dates";
 
 const PROJECT_FORMAT = "RSC-HELFERPLANUNG-PROJEKTDATEI";
-const PROJECT_VERSION = 12;
+const PROJECT_VERSION = 13;
 const MAX_PROJECT_BYTES = 10_000_000;
 const MAX_ROWS = 10_000;
 
 const id = z.number().int().positive().nullable();
 const short = (max: number) => z.string().max(max);
+const eventMetadataSchema = z
+  .object({
+    format: z.literal(PROJECT_FORMAT),
+    version: z.literal(PROJECT_VERSION),
+    eventId: z.number().int().positive(),
+    eventName: short(200).min(1),
+    year: z.number().int().min(2020).max(2100),
+    activeDays: z
+      .array(z.enum(WEEKDAYS))
+      .min(1)
+      .max(WEEKDAYS.length)
+      .refine(days => new Set(days).size === days.length),
+    pdfLogoKey: short(500).nullable(),
+    pdfLogoUrl: short(700).nullable(),
+    pdfLogoFallback: z.enum(["none", "brand"]),
+    startDate: short(10).regex(/^\d{4}-\d{2}-\d{2}$/).nullable().default(null),
+    endDate: short(10).regex(/^\d{4}-\d{2}-\d{2}$/).nullable().default(null),
+    exportedAt: z.string().datetime(),
+  })
+  .superRefine((metadata, context) => {
+    const error = eventDateRangeError(metadata);
+    if (error) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["startDate"],
+        message: error,
+      });
+    }
+  });
 const commonTask = z.object({
   sourceId: id,
   task: short(300).min(1),
@@ -36,22 +66,7 @@ const commonTask = z.object({
 });
 const documentSchema = z
   .object({
-    metadata: z.object({
-      format: z.literal(PROJECT_FORMAT),
-      version: z.literal(PROJECT_VERSION),
-      eventId: z.number().int().positive(),
-      eventName: short(200).min(1),
-      year: z.number().int().min(2020).max(2100),
-      activeDays: z
-        .array(z.enum(WEEKDAYS))
-        .min(1)
-        .max(WEEKDAYS.length)
-        .refine(days => new Set(days).size === days.length),
-      pdfLogoKey: short(500).nullable(),
-      pdfLogoUrl: short(700).nullable(),
-      pdfLogoFallback: z.enum(["none", "brand"]),
-      exportedAt: z.string().datetime(),
-    }),
+    metadata: eventMetadataSchema,
     contacts: z
       .array(
         z.object({
@@ -748,9 +763,30 @@ export function parseProjectFile(base64: string): {
     raw.metadata &&
     typeof raw.metadata === "object" &&
     "version" in raw.metadata &&
+    raw.metadata.version === 12
+  ) {
+    const legacy = raw as Record<string, any>;
+    legacy.metadata = {
+      ...legacy.metadata,
+      version: PROJECT_VERSION,
+      startDate: legacy.metadata.startDate ?? null,
+      endDate: legacy.metadata.endDate ?? null,
+    };
+  }
+  if (
+    raw &&
+    typeof raw === "object" &&
+    "metadata" in raw &&
+    raw.metadata &&
+    typeof raw.metadata === "object" &&
+    "version" in raw.metadata &&
     raw.metadata.version === PROJECT_VERSION
   ) {
     const document = raw as Record<string, any>;
+    if (document.metadata) {
+      document.metadata.startDate = document.metadata.startDate ?? null;
+      document.metadata.endDate = document.metadata.endDate ?? null;
+    }
     document.locations = Array.isArray(document.locations)
       ? document.locations.map((location: Record<string, unknown>) => ({
           ...location,
