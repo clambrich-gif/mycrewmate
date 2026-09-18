@@ -19,8 +19,50 @@ const PROTECTED_STORAGE_KEYS = new Set([
 ]);
 
 const PROTECTED_STORAGE_PREFIXES = ["pdf-logos/"];
+const INLINE_LOCATION_LOGO_PREFIX = "location-logos/";
+const MAX_LOCATION_LOGO_BYTES = 3_000_000;
 
-export function registerStorageProxy(app: Express) {
+export type StorageProxyDependencies = {
+  getSignedUrl: (key: string) => Promise<string>;
+  fetchImpl: typeof fetch;
+};
+
+function locationLogoContentType(key: string) {
+  const normalized = key.toLocaleLowerCase();
+  if (normalized.endsWith(".svg")) return "image/svg+xml";
+  if (normalized.endsWith(".jpg") || normalized.endsWith(".jpeg"))
+    return "image/jpeg";
+  return "image/png";
+}
+
+const defaultDependencies: StorageProxyDependencies = {
+  getSignedUrl: async key => {
+    if (!ENV.forgeApiUrl || !ENV.forgeApiKey) {
+      throw new Error("Storage proxy not configured");
+    }
+    const forgeUrl = new URL(
+      "v1/storage/presign/get",
+      ENV.forgeApiUrl.replace(/\/+$/, "") + "/"
+    );
+    forgeUrl.searchParams.set("path", key);
+    const forgeResp = await fetch(forgeUrl, {
+      headers: { Authorization: `Bearer ${ENV.forgeApiKey}` },
+    });
+    if (!forgeResp.ok) {
+      const body = await forgeResp.text().catch(() => "");
+      throw new Error(`Storage backend error: ${forgeResp.status} ${body}`);
+    }
+    const { url } = (await forgeResp.json()) as { url: string };
+    if (!url) throw new Error("Empty signed URL from backend");
+    return url;
+  },
+  fetchImpl: fetch,
+};
+
+export function registerStorageProxy(
+  app: Express,
+  dependencies: StorageProxyDependencies = defaultDependencies
+) {
   app.get("/manus-storage/*", async (req, res) => {
     const key = (req.params as Record<string, string>)[0];
     if (!key) {
@@ -35,34 +77,42 @@ export function registerStorageProxy(app: Express) {
       return;
     }
 
-    if (!ENV.forgeApiUrl || !ENV.forgeApiKey) {
-      res.status(500).send("Storage proxy not configured");
-      return;
-    }
-
     try {
-      const forgeUrl = new URL(
-        "v1/storage/presign/get",
-        ENV.forgeApiUrl.replace(/\/+$/, "") + "/"
-      );
-      forgeUrl.searchParams.set("path", key);
+      const url = await dependencies.getSignedUrl(key);
 
-      const forgeResp = await fetch(forgeUrl, {
-        headers: { Authorization: `Bearer ${ENV.forgeApiKey}` },
-      });
-
-      if (!forgeResp.ok) {
-        const body = await forgeResp.text().catch(() => "");
-        console.error(
-          `[StorageProxy] forge error: ${forgeResp.status} ${body}`
-        );
-        res.status(502).send("Storage backend error");
-        return;
-      }
-
-      const { url } = (await forgeResp.json()) as { url: string };
-      if (!url) {
-        res.status(502).send("Empty signed URL from backend");
+      // Standortlogos müssen in Dialogvorschau und Leaflet-divIcon als echte
+      // Same-Origin-Bilder ausgeliefert werden. Ein CloudFront-Redirect kann
+      // je nach eingebettetem Browser oder CSP als defektes Bild enden.
+      if (key.startsWith(INLINE_LOCATION_LOGO_PREFIX)) {
+        const upstream = await dependencies.fetchImpl(url);
+        if (!upstream.ok) {
+          await upstream.body?.cancel();
+          res.status(upstream.status === 404 ? 404 : 502).end();
+          return;
+        }
+        const declaredLength = Number(upstream.headers.get("content-length"));
+        if (
+          Number.isFinite(declaredLength) &&
+          declaredLength > MAX_LOCATION_LOGO_BYTES
+        ) {
+          await upstream.body?.cancel();
+          res.status(502).send("Standortlogo überschreitet die Größenbegrenzung");
+          return;
+        }
+        const bytes = Buffer.from(await upstream.arrayBuffer());
+        if (!bytes.length || bytes.length > MAX_LOCATION_LOGO_BYTES) {
+          res.status(502).send("Standortlogo ist leer oder zu groß");
+          return;
+        }
+        res.set({
+          "Cache-Control": "private, max-age=300",
+          "Content-Disposition": "inline",
+          "Content-Length": String(bytes.length),
+          "Content-Type": locationLogoContentType(key),
+          "Cross-Origin-Resource-Policy": "same-origin",
+          "X-Content-Type-Options": "nosniff",
+        });
+        res.status(200).send(bytes);
         return;
       }
 

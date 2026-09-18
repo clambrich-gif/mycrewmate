@@ -2,6 +2,8 @@ import { WEEKDAY_SHORT_LABELS, type Weekday } from "@shared/weekdays";
 
 export type HelperAssignmentDay = {
   day: string;
+  label?: string;
+  time?: string;
 };
 
 export type HelperDropdownFeedback =

@@ -1684,6 +1684,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(mapClient).toContain("divIcon");
     expect(mapClient).toContain("location-logo-marker");
     expect(mapClient).toContain("--location-marker-color");
+    expect(mapClient).toContain('data-location-marker-logo="true"');
+    expect(mapClient).toContain("escapeHtmlAttribute");
     expect(mapClient).toContain("CircleMarker");
     expect(mapClient).toContain("markerSizeForZoom");
     expect(globalStyles).toContain(".location-logo-marker__frame");
@@ -1706,6 +1708,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("assignments: assignedDaysByHelper.get(helper.id) ?? []");
     expect(plan).toContain("currentDay: shift.day");
     expect(plan).toContain("normalizeWeekday(evaluation.shift.day)");
+    expect(plan).toContain("Bereits eingeteilt");
+    expect(plan).toContain("assignedShift.area}: ${assignedShift.task}");
+    expect(plan).toContain("time: formatTimeLabel(assignedShift)");
+    expect(plan).toContain("title={assignedTooltip}");
+    expect(plan).toContain("cursor-help");
 
     expect(feedback).toContain('kind: "new"');
     expect(feedback).toContain('kind: "already-assigned"');
@@ -1714,5 +1721,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(feedback).toContain("WEEKDAY_SHORT_LABELS");
     expect(feedback).toContain("assignedDays.has(day)");
     expect(feedback).toContain("day === currentDay");
+
+    const storageProxy = source("server/_core/storageProxy.ts");
+    expect(storageProxy).toContain('const INLINE_LOCATION_LOGO_PREFIX = "location-logos/"');
+    expect(storageProxy).toContain("Standortlogos müssen in Dialogvorschau und Leaflet-divIcon");
+    expect(storageProxy).toContain('"Content-Disposition": "inline"');
+    expect(storageProxy).toContain("locationLogoContentType(key)");
   });
 });

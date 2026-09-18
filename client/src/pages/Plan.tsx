@@ -205,8 +205,10 @@ function MobileShiftNote({
 
 function HelperDropdownFeedbackBadge({
   feedback,
+  assignments = [],
 }: {
   feedback: ReturnType<typeof helperDropdownAssignmentFeedback>;
+  assignments?: Array<{ day: string; label?: string; time?: string }>;
 }) {
   if (!feedback) return null;
   if (feedback.kind === "already-assigned") {
@@ -231,12 +233,30 @@ function HelperDropdownFeedbackBadge({
       </span>
     );
   }
-  return (
+  const assignedDetails = feedback.segments.flatMap(segment =>
+    assignments
+      .filter(assignment => normalizeWeekday(assignment.day) === segment.day)
+      .map(assignment => ({
+        day: segment.day,
+        label: assignment.label || "Schicht",
+        time: assignment.time || "ganztägig",
+      }))
+  );
+  const assignedTooltip = assignedDetails.length
+    ? [
+        "Bereits eingeteilt:",
+        ...assignedDetails.map(
+          detail => `${detail.day}: ${detail.label} · ${detail.time}`
+        ),
+      ].join("\n")
+    : "Belegung an den Veranstaltungstagen";
+  const badge = (
     <span
       data-slot="helper-dropdown-feedback"
       data-feedback-kind="day-segments"
-      aria-label="Belegung an den Veranstaltungstagen"
-      className="inline-flex shrink-0 overflow-hidden rounded-full border border-slate-200 text-[10px] font-semibold leading-5 shadow-xs"
+      aria-label={assignedTooltip}
+      title={assignedTooltip}
+      className="inline-flex shrink-0 cursor-help overflow-hidden rounded-full border border-slate-200 text-[10px] font-semibold leading-5 shadow-xs"
     >
       {feedback.segments.map((segment, index) => (
         <span
@@ -248,19 +268,13 @@ function HelperDropdownFeedbackBadge({
                 ? "bg-amber-200 text-amber-950"
                 : "bg-slate-100 text-slate-600"
           } ${index ? "border-l border-white/70" : ""}`}
-          title={
-            segment.state === "current"
-              ? `${segment.day}: aktuell frei`
-              : segment.state === "assigned"
-                ? `${segment.day}: bereits eingeteilt`
-                : `${segment.day}: keine Belegung`
-          }
         >
           {segment.label}
         </span>
       ))}
     </span>
   );
+  return badge;
 }
 
 function PlanStatusBar({
@@ -1122,6 +1136,13 @@ export default function Plan() {
                           </span>
                           <HelperDropdownFeedbackBadge
                             feedback={assignmentFeedback}
+                            assignments={(assignedShiftsByHelper.get(helper.id) ?? []).map(
+                              assignedShift => ({
+                                day: assignedShift.day,
+                                label: `${assignedShift.area}: ${assignedShift.task}`,
+                                time: formatTimeLabel(assignedShift),
+                              })
+                            )}
                           />
                         </span>
                       </SelectItem>

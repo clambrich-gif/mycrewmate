@@ -150,6 +150,19 @@ function markerSizeForZoom(zoom: number) {
   return Math.min(52, Math.max(36, 40 + (zoom - 12) * 2));
 }
 
+function escapeHtmlAttribute(value: string) {
+  return value.replace(/[&<>'"]/g, character => {
+    const entities: Record<string, string> = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      "'": "&#39;",
+      '"': "&quot;",
+    };
+    return entities[character];
+  });
+}
+
 function markerEntryClass(severity: MapEntry["severity"]) {
   if (severity === "critical") return "text-red-700";
   if (severity === "warning") return "text-amber-700";
@@ -176,10 +189,10 @@ function LocationMarker({
 
   const logoIcon = useMemo(() => {
     if (!location.logoUrl) return null;
-    const safeUrl = location.logoUrl.replace(/"/g, "%22");
+    const safeUrl = escapeHtmlAttribute(location.logoUrl);
     return divIcon({
       className: "location-logo-marker",
-      html: `<span class="location-logo-marker__frame" style="--location-marker-color:${color};width:${size}px;height:${size}px"><img src="${safeUrl}" alt="" /></span>`,
+      html: `<span class="location-logo-marker__frame" style="--location-marker-color:${color};width:${size}px;height:${size}px"><img data-location-marker-logo="true" src="${safeUrl}" alt="" style="display:block;width:100%;height:100%;object-fit:cover" /></span>`,
       iconSize: [size, size],
       iconAnchor: [size / 2, size / 2],
       popupAnchor: [0, -size / 2],
