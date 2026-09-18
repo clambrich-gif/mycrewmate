@@ -29,7 +29,7 @@ describe("Material-Softdelete und Löschprotokoll", () => {
         category: "Möbel & Zelte",
         quantity: "15",
         unit: "Garnituren",
-        ordered: "nein",
+        status: "offen",
         note: "Für Festwiese bereithalten",
       });
 
@@ -65,6 +65,7 @@ describe("Material-Softdelete und Löschprotokoll", () => {
           .limit(1);
         expect(rawRow).toBeDefined();
         expect(rawRow.deleted).toBe(true);
+        expect(rawRow.status).toBe("offen");
 
         // 6. Im Löschprotokoll auffindbar
         const auditLogs = await listDeletionAuditLogs({
@@ -91,6 +92,7 @@ describe("Material-Softdelete und Löschprotokoll", () => {
         const restoredItem = afterRestore.find(item => item.id === materialId);
         expect(restoredItem).toBeDefined();
         expect(restoredItem?.article).toBe("Biertischgarnituren (Test-Softdelete)");
+        expect(restoredItem?.status).toBe("offen");
 
         // 9. Im Protokoll als wiederhergestellt vermerkt
         const auditLogsAfterRestore = await listDeletionAuditLogs({

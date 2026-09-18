@@ -108,7 +108,9 @@ export function ChangeRow({ change }: { change: BackupChange }) {
             {change.fields.slice(0, 10).map(field => (
               <div key={field} className="break-words">
                 <span className="font-medium text-foreground">
-                  {fieldLabel[field] ?? field}:
+                  {change.area === "MATERIAL" && field === "status"
+                    ? "Stand"
+                    : fieldLabel[field] ?? field}:
                 </span>{" "}
                 {changeValue(change, "before", field)} →{" "}
                 {changeValue(change, "after", field)}

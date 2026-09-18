@@ -1611,7 +1611,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(materials).toContain("createInDialog");
     expect(materials).toContain('createDialogTitle="Neuen Artikel anlegen"');
     expect(materials).toContain('createTriggerLabel="Neuer Artikel"');
-    expect(materials).toContain('label: "Bestellt?"');
+    expect(materials).toContain('label: "Stand"');
+    expect(materials).toContain('{ v: "offen", l: "🔴 Offen" }');
+    expect(materials).toContain('{ v: "bestellt", l: "🟡 Bestellt" }');
+    expect(materials).toContain('{ v: "geliefert", l: "🟢 Geliefert" }');
     expect(cakes).toContain("createInDialog");
     expect(cakes).toContain('createDialogTitle="Kuchen erfassen"');
     expect(cakes).toContain('createTriggerLabel="Kuchen erfassen"');
@@ -1651,6 +1654,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
 
     expect(mapCard).toContain("Live-Standortkarte");
     expect(mapCard).toContain('lazy(() => import("./LocationMapClient"))');
+    expect(mapCard).toContain('status === "offen"');
+    expect(mapCard).toContain('status === "bestellt"');
+    expect(mapCard).toContain('status === "geliefert"');
+    expect(mapCard).toContain('severity:');
+    expect(mapCard).toContain('"GELIEFERT"');
     expect(mapCard).not.toContain("@/components/Map");
     expect(mapClient).toContain("MapContainer");
     expect(mapClient).toContain("TileLayer");

@@ -1308,7 +1308,7 @@ const materialAuditEntity = (material: typeof materials.$inferSelect): AuditEnti
     unit: material.unit,
     locationId: material.locationId,
     contactId: material.contactId,
-    ordered: material.ordered,
+    status: material.status,
     note: material.note,
     sortOrder: material.sortOrder,
   },

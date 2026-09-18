@@ -629,7 +629,10 @@ export const materials = mysqlTable("materials", {
   contactId: int("contactId").references(() => contacts.id, {
     onDelete: "set null",
   }),
-  ordered: mysqlEnum("ordered", ["ja", "nein"]).default("nein").notNull(),
+  /** Beschaffungsstand: offen, bestellt oder vollständig geliefert. */
+  status: mysqlEnum("status", ["offen", "bestellt", "geliefert"])
+    .default("offen")
+    .notNull(),
   note: text("note"),
   /** Einzelne Löschungen bleiben für das Administratorprotokoll wiederherstellbar. */
   deleted: boolean("deleted").default(false).notNull(),

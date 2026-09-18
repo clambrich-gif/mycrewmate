@@ -16,9 +16,10 @@ import {
   helperAvailableOnDay,
   WEEKDAYS,
 } from "../shared/weekdays";
+import { normalizeMaterialStatus } from "../shared/material-status";
 
 const PROJECT_FORMAT = "RSC-HELFERPLANUNG-PROJEKTDATEI";
-const PROJECT_VERSION = 11;
+const PROJECT_VERSION = 12;
 const MAX_PROJECT_BYTES = 10_000_000;
 const MAX_ROWS = 10_000;
 
@@ -177,7 +178,7 @@ const documentSchema = z
           locationName: short(200),
           contactSourceId: id,
           contactName: short(200),
-          ordered: z.enum(["ja", "nein"]),
+          status: z.enum(["offen", "bestellt", "geliefert"]),
           note: short(10_000),
           sortOrder: z.number().int().min(0).max(1_000_000),
         })
@@ -726,6 +727,27 @@ export function parseProjectFile(base64: string): {
     raw.metadata &&
     typeof raw.metadata === "object" &&
     "version" in raw.metadata &&
+    raw.metadata.version === 11
+  ) {
+    const legacy = raw as Record<string, any>;
+    legacy.metadata = { ...legacy.metadata, version: PROJECT_VERSION };
+    legacy.materials = Array.isArray(legacy.materials)
+      ? legacy.materials.map((material: Record<string, unknown>) => {
+          const { ordered, ...withoutOrdered } = material;
+          return {
+            ...withoutOrdered,
+            status: normalizeMaterialStatus(material.status ?? ordered),
+          };
+        })
+      : legacy.materials;
+  }
+  if (
+    raw &&
+    typeof raw === "object" &&
+    "metadata" in raw &&
+    raw.metadata &&
+    typeof raw.metadata === "object" &&
+    "version" in raw.metadata &&
     raw.metadata.version === PROJECT_VERSION
   ) {
     const document = raw as Record<string, any>;
@@ -760,11 +782,15 @@ export function parseProjectFile(base64: string): {
         }))
       : document.post;
     document.materials = Array.isArray(document.materials)
-      ? document.materials.map((material: Record<string, unknown>) => ({
-          ...material,
-          locationSourceId: material.locationSourceId ?? null,
-          locationName: material.locationName ?? "",
-        }))
+      ? document.materials.map((material: Record<string, unknown>) => {
+          const { ordered, ...withoutOrdered } = material;
+          return {
+            ...withoutOrdered,
+            locationSourceId: material.locationSourceId ?? null,
+            locationName: material.locationName ?? "",
+            status: normalizeMaterialStatus(material.status ?? ordered),
+          };
+        })
       : document.materials;
   }
   const parsed = documentSchema.safeParse(raw);

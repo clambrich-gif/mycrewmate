@@ -308,7 +308,7 @@ const OPTIONAL_MODULE_COLUMNS: Record<ModuleImportArea, string[]> = {
     "Einheit",
     "Verantwortlich-ID",
     "Verantwortlich",
-    "Bestellt",
+    "Stand",
     "Bemerkung",
     "Reihenfolge",
   ],
@@ -683,7 +683,7 @@ function rowsFromDocument(document: BackupDocument, area: ModuleImportArea) {
       "Ort / Zielstandort": row.locationName,
       "Verantwortlich-ID": row.contactSourceId ?? "",
       Verantwortlich: row.contactName,
-      Bestellt: row.ordered,
+      Stand: row.status,
       Bemerkung: row.note,
       Reihenfolge: row.sortOrder,
     }));
@@ -734,6 +734,20 @@ async function buildModuleTarget(base64: string, area: ModuleImportArea) {
   normalizeModuleSheetRange(source, area);
   const { headers: sourceHeaders, importedRows: rawImportedRows } =
     readNormalizedModuleImportRows(source);
+  // Bestandsimporte mit der früheren Ja/Nein-Spalte bleiben vollständig
+  // kompatibel; intern wird ausschließlich der neue Stand verarbeitet.
+  if (
+    area === "MATERIAL" &&
+    sourceHeaders.has("Bestellt") &&
+    !sourceHeaders.has("Stand")
+  ) {
+    sourceHeaders.delete("Bestellt");
+    sourceHeaders.add("Stand");
+    for (const row of rawImportedRows) {
+      row.Stand = row.Bestellt;
+      delete row.Bestellt;
+    }
+  }
   assertHeaders(sourceHeaders, area);
   const currentRows = rowsFromDocument(current, area);
   normalizeModuleImportedShiftTimes(area, rawImportedRows);

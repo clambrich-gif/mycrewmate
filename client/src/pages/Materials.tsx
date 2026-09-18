@@ -36,11 +36,12 @@ export default function Materials() {
         { key: "unit", label: "Einheit" },
       ]}
       extraField={{
-        key: "ordered",
-        label: "Bestellt?",
+        key: "status",
+        label: "Stand",
         options: [
-          { v: "nein", l: "Nein" },
-          { v: "ja", l: "Ja" },
+          { v: "offen", l: "🔴 Offen" },
+          { v: "bestellt", l: "🟡 Bestellt" },
+          { v: "geliefert", l: "🟢 Geliefert" },
         ],
       }}
       noStatus

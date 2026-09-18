@@ -281,6 +281,13 @@
       "when": 1789746885945,
       "tag": "0039_yellow_black_tarantula",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "5",
+      "when": 1789748897793,
+      "tag": "0040_classy_darkstar",
+      "breakpoints": true
     }
   ]
 }

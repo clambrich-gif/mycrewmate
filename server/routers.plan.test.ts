@@ -22,6 +22,8 @@ const dbMocks = vi.hoisted(() => ({
   deletePrep: vi.fn(),
   deletePost: vi.fn(),
   deleteMaterial: vi.fn(),
+  createMaterial: vi.fn(),
+  updateMaterial: vi.fn(),
   resetArea: vi.fn(),
   listPrep: vi.fn(),
   listPost: vi.fn(),
@@ -1395,6 +1397,27 @@ describe("Planungs-API", () => {
         responsibleContactId: 5,
         responsibleContactName: "Christian Lambrich",
       },
+    });
+  });
+
+  it("legt Material standardmäßig als Offen an und akzeptiert den dreistufigen Stand", async () => {
+    const caller = appRouter.createCaller(ctx);
+    dbMocks.createMaterial.mockResolvedValue({ insertId: 71 });
+    dbMocks.updateMaterial.mockResolvedValue({ affectedRows: 1 });
+
+    await expect(
+      caller.materials.create({ article: "Kabelbinder" })
+    ).resolves.toEqual({ insertId: 71 });
+    expect(dbMocks.createMaterial).toHaveBeenCalledWith({
+      article: "Kabelbinder",
+      status: "offen",
+    });
+
+    await expect(
+      caller.materials.update({ id: 71, status: "bestellt" })
+    ).resolves.toEqual({ affectedRows: 1 });
+    expect(dbMocks.updateMaterial).toHaveBeenCalledWith(71, {
+      status: "bestellt",
     });
   });
 

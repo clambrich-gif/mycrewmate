@@ -29,6 +29,7 @@ import {
   WEEKDAYS,
   type Weekday,
 } from "../shared/weekdays";
+import { normalizeMaterialStatus } from "../shared/material-status";
 import { overlaps, toMinutes } from "./logic";
 import { currentEventId, currentEventYear } from "./year-context";
 import { getDb, type AuditActor } from "./db";
@@ -159,7 +160,7 @@ export const PROJECT_EXCEL_HEADERS: Record<string, string[]> = {
     "Ort / Zielstandort",
     "Verantwortlich-ID",
     "Verantwortlich",
-    "Bestellt",
+    "Stand",
     "Bemerkung",
     "Reihenfolge",
   ],
@@ -377,7 +378,7 @@ type MaterialRow = {
   locationName: string;
   contactSourceId: number | null;
   contactName: string;
-  ordered: "ja" | "nein";
+  status: "offen" | "bestellt" | "geliefert";
   note: string;
   sortOrder: number;
 };
@@ -1656,12 +1657,7 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
         200,
         `MATERIAL Zeile ${index + 2}: Verantwortlich`
       ),
-      ordered: enumValue(
-        row.Bestellt,
-        ["ja", "nein"] as const,
-        `MATERIAL Zeile ${index + 2}: Bestellt`,
-        "nein"
-      ),
+      status: normalizeMaterialStatus(row.Stand ?? row.Bestellt),
       note: text(
         row.Bemerkung,
         10_000,
@@ -2073,7 +2069,7 @@ function comparableCurrent(snapshot: CurrentSnapshot) {
         "category",
         "quantity",
         "unit",
-        "ordered",
+        "status",
         "note",
         "sortOrder",
       ]),
@@ -3362,7 +3358,7 @@ export async function restoreProjectDocument(
           unit: row.unit,
           locationId: resolveLocation(row.locationSourceId, row.locationName),
           contactId: resolveContact(row.contactSourceId, row.contactName),
-          ordered: row.ordered,
+          status: row.status,
           note: row.note || null,
           sortOrder: row.sortOrder,
         }))
@@ -3802,7 +3798,7 @@ export async function exportProjectExcel(): Promise<{
       "Ort / Zielstandort": row.locationName,
       "Verantwortlich-ID": row.contactSourceId ?? "",
       Verantwortlich: row.contactName,
-      Bestellt: row.ordered,
+      Stand: row.status,
       Bemerkung: row.note,
       Reihenfolge: row.sortOrder,
     }))

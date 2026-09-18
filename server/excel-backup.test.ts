@@ -1037,4 +1037,49 @@ describe("Excel-Datensicherung", () => {
       logoUrl: "/manus-storage/location-logos/events/2026/1/viehmarkt.png",
     });
   });
+
+  it("exportiert und liest MATERIAL mit Stand (Offen/Bestellt/Geliefert) und migriert alte Bestellt-Spalte", async () => {
+    (data.materials as any[]).push({
+      id: 88,
+      year: 2026,
+      eventId: 1,
+      article: "Warnwesten",
+      category: "Sicherheit",
+      quantity: "20",
+      unit: "Stück",
+      locationId: null,
+      contactId: 10,
+      status: "bestellt",
+      note: "Größe XL",
+      sortOrder: 0,
+      deleted: false,
+    });
+
+    const exported = await exportBackupExcel();
+    const workbook = XLSX.read(exported.buffer, { type: "buffer" });
+    const headers = XLSX.utils.sheet_to_json<any[]>(workbook.Sheets.MATERIAL, {
+      header: 1,
+    })[0];
+    expect(headers).toContain("Stand");
+
+    const rows = XLSX.utils.sheet_to_json<any>(workbook.Sheets.MATERIAL);
+    expect(rows[0]).toMatchObject({
+      Artikel: "Warnwesten",
+      Stand: "bestellt",
+    });
+
+    const parsed = parseBackupWorkbook(exported.buffer.toString("base64"));
+    expect(parsed.materials[0]).toMatchObject({
+      article: "Warnwesten",
+      status: "bestellt",
+    });
+
+    const legacy = mutateWorkbook(exported.buffer, wb => {
+      const [row] = XLSX.utils.sheet_to_json<any>(wb.Sheets.MATERIAL);
+      const { Stand, ...withoutStand } = row;
+      replaceSheet(wb, "MATERIAL", [{ ...withoutStand, Bestellt: "ja" }]);
+    });
+    const parsedLegacy = parseBackupWorkbook(legacy.toString("base64"));
+    expect(parsedLegacy.materials[0].status).toBe("geliefert");
+  });
 });

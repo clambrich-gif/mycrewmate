@@ -96,12 +96,24 @@ export function LocationMapCard() {
       article: string;
       quantity: string;
       unit: string;
+      status: "offen" | "bestellt" | "geliefert";
     }>) {
+      const status = material.status ?? "offen";
       add(material.locationId, {
         label: `Material: ${material.article}`,
-        status: [material.quantity, material.unit].filter(Boolean).join(" ") || "benötigt",
-        critical: false,
-        severity: "neutral",
+        status:
+          status === "geliefert"
+            ? "GELIEFERT"
+            : status === "bestellt"
+              ? "BESTELLT"
+              : "OFFEN",
+        critical: status === "offen",
+        severity:
+          status === "offen"
+            ? "critical"
+            : status === "bestellt"
+              ? "warning"
+              : "complete",
         href: `/material?location=${material.locationId}`,
         actionLabel: "Material öffnen",
       });
@@ -120,7 +132,7 @@ export function LocationMapCard() {
           Live-Standortkarte
         </CardTitle>
         <span className="text-xs text-slate-600 sm:text-sm">
-          Rot: offen · Gelb: in Arbeit oder zeitlich knapp · Grün: geprüft · Marker öffnen zum Filtern
+          Rot: offen · Gelb: in Arbeit, zeitlich knapp oder bestellt · Grün: geprüft / geliefert · Marker öffnen zum Filtern
         </span>
       </CardHeader>
       <CardContent className="p-3 pt-0 sm:p-5 sm:pt-0">

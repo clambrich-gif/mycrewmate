@@ -1,6 +1,7 @@
 import type { Archiver } from "archiver";
 import { createRequire } from "node:module";
 import PDFDocument from "pdfkit";
+import { materialStatusText } from "../shared/material-status";
 import type {
   AppSettings,
   Assignment,
@@ -765,7 +766,7 @@ export function renderMaterialPacklistPdf(data: PlanningData, locationId: number
       { key: "article", label: "Artikel", width: 176 },
       { key: "category", label: "Kategorie", width: 95 },
       { key: "quantity", label: "Menge", width: 66, align: "center" },
-      { key: "ordered", label: "Bestellt", width: 62, align: "center" },
+      { key: "status", label: "Stand", width: 75, align: "center" },
       { key: "contact", label: data.settings.contactLabel, width: 117 },
     ];
     drawTableHeader(doc, columns, margin);
@@ -791,7 +792,7 @@ export function renderMaterialPacklistPdf(data: PlanningData, locationId: number
               : material.article,
             category: material.category || "–",
             quantity: quantity || "–",
-            ordered: material.ordered === "ja" ? "Ja" : "Nein",
+            status: materialStatusText(material.status),
             contact: material.contactId
               ? (contactById.get(material.contactId)?.name ?? "–")
               : "–",

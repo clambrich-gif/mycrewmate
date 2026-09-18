@@ -210,7 +210,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsed = parseProjectFile(exported.buffer.toString("base64"));
     expect(parsed.document.metadata).toMatchObject({
       format: "RSC-HELFERPLANUNG-PROJEKTDATEI",
-      version: 11,
+      version: 12,
       eventId: 1,
       eventName: "MyEifelRide",
       year: 2026,
@@ -369,7 +369,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsed = parseProjectFile(
       Buffer.from(JSON.stringify(document)).toString("base64")
     );
-    expect(parsed.document.metadata.version).toBe(11);
+    expect(parsed.document.metadata.version).toBe(12);
     expect(parsed.document.metadata.activeDays).toEqual([...WEEKDAYS]);
     expect(parsed.document.metadata).toMatchObject({
       pdfLogoKey: null,
@@ -679,6 +679,32 @@ describe("Projektdatei und modularer Excel-Import", () => {
     }
   );
 
+  it.each([
+    ["Stand", "Bestellt", "bestellt"],
+    ["Bestellt", "ja", "geliefert"],
+  ] as const)(
+    "importiert Materialstatus aus der Spalte %s (%s) als %s",
+    async (column, value, expectedStatus) => {
+      const preview = await previewModuleExcelImport(
+        moduleSheet("MATERIAL", [
+          {
+            Artikel: `Kabelbinder ${column}`,
+            [column]: value,
+          },
+        ]),
+        "MATERIAL"
+      );
+
+      expect(preview.changes).toContainEqual(
+        expect.objectContaining({
+          area: "MATERIAL",
+          action: "create",
+          after: expect.objectContaining({ status: expectedStatus }),
+        })
+      );
+    }
+  );
+
   it("erhält neue Vorbereitungsfelder und ergänzt Defaults für alte Projektdateien", async () => {
     (data.prep_tasks as any[]).push({
       id: 60,
@@ -726,7 +752,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsedV5 = parseProjectFile(
       Buffer.from(JSON.stringify(legacyV5)).toString("base64")
     ).document;
-    expect(parsedV5.metadata.version).toBe(11);
+    expect(parsedV5.metadata.version).toBe(12);
     expect(parsedV5.shifts[0].manualOkConfirmed).toBe(false);
   });
 
@@ -741,7 +767,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsedV6 = parseProjectFile(
       Buffer.from(JSON.stringify(legacyV6)).toString("base64")
     ).document;
-    expect(parsedV6.metadata.version).toBe(11);
+    expect(parsedV6.metadata.version).toBe(12);
     expect(parsedV6.shifts[0].manualDoubleConflictAccepted).toBe(false);
   });
 
@@ -757,7 +783,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsedV7 = parseProjectFile(
       Buffer.from(JSON.stringify(legacyV7)).toString("base64")
     ).document;
-    expect(parsedV7.metadata.version).toBe(11);
+    expect(parsedV7.metadata.version).toBe(12);
     expect(parsedV7.locations).toEqual([]);
     expect(parsedV7.shifts[0].locationName).toBe("");
   });
@@ -773,7 +799,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
       unit: "Rollen",
       locationId: 5,
       contactId: null,
-      ordered: "ja",
+      status: "geliefert",
       note: "Am Bauhof deponieren",
       sortOrder: 1,
     });
@@ -789,7 +815,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsedV8 = parseProjectFile(
       Buffer.from(JSON.stringify(legacyV8)).toString("base64")
     ).document;
-    expect(parsedV8.metadata.version).toBe(11);
+    expect(parsedV8.metadata.version).toBe(12);
     expect(parsedV8.materials[0].locationName).toBe("");
   });
   it("erhaelt Standort-Logos und migriert v9-Dateien sauber auf Version 10", async () => {
@@ -817,7 +843,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     delete (legacyV9.locations[0] as any).logoKey;
     delete (legacyV9.locations[0] as any).logoUrl;
     const parsedV9 = parseProjectFile(Buffer.from(JSON.stringify(legacyV9)).toString("base64")).document;
-    expect(parsedV9.metadata.version).toBe(11);
+    expect(parsedV9.metadata.version).toBe(12);
     expect(parsedV9.locations[0].logoKey).toBeNull();
     expect(parsedV9.locations[0].logoUrl).toBeNull();
   });
@@ -835,12 +861,40 @@ describe("Projektdatei und modularer Excel-Import", () => {
       Buffer.from(JSON.stringify(legacyV10)).toString("base64")
     ).document;
 
-    expect(parsed.metadata.version).toBe(11);
+    expect(parsed.metadata.version).toBe(12);
     expect(parsed.post[0]).toMatchObject({
       category: "",
       dueText: "",
       locationSourceId: null,
       locationName: "",
     });
+  });
+
+  it("migriert v11-Dateien mit bisherigem Ja/Nein-Bestellt-Feld sauber auf dreistufigen Stand", async () => {
+    const exported = await exportProjectFile();
+    const legacyV11 = parseProjectFile(exported.buffer.toString("base64")).document;
+    legacyV11.metadata.version = 11;
+    (legacyV11 as any).materials = [
+      {
+        sourceId: 901,
+        article: "Flatterband",
+        category: "Strecke",
+        quantity: "10",
+        unit: "Rollen",
+        locationSourceId: null,
+        locationName: "",
+        contactSourceId: null,
+        contactName: "",
+        ordered: "ja",
+        note: "",
+        sortOrder: 0,
+      },
+    ];
+
+    const parsed = parseProjectFile(
+      Buffer.from(JSON.stringify(legacyV11)).toString("base64")
+    ).document;
+    expect(parsed.metadata.version).toBe(12);
+    expect(parsed.materials[0].status).toBe("geliefert");
   });
 });

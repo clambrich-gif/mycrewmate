@@ -390,4 +390,34 @@ describe("modularer Ansprechpartner-Excel-Import", () => {
 
     expect(importedRows).toEqual([{ Beginn: "08:00", Ende: "10:00" }]);
   });
+
+  it("erhält Stand bei fehlender Spalte im Material-Einzelimport aus dem Bestand", () => {
+    const existing: Record<string, unknown>[] = [
+      {
+        ID: 88,
+        Artikel: "Trassierband",
+        Kategorie: "Strecke",
+        Menge: "5",
+        Einheit: "Rollen",
+        Stand: "bestellt",
+      },
+    ];
+    const importedRows: Record<string, unknown>[] = [
+      { ID: 88, Artikel: "Trassierband", Menge: "8" },
+    ];
+
+    const preserved = preserveMissingOptionalModuleColumns(
+      "MATERIAL",
+      importedRows,
+      existing,
+      new Set(["ID", "Artikel", "Menge"])
+    );
+
+    expect(preserved).toBeGreaterThan(0);
+    expect(importedRows[0]).toMatchObject({
+      Stand: "bestellt",
+      Einheit: "Rollen",
+      Menge: "8",
+    });
+  });
 });

@@ -319,6 +319,7 @@ const activeDaysInput = z
   });
 const statusTask = z.enum(["offen", "inArbeit", "erledigt"]);
 const statusPrep = z.enum(["offen", "inArbeit", "erledigt", "abgelehnt"]);
+const materialStatus = z.enum(["offen", "bestellt", "geliefert"]);
 const prepStatusWording = z.enum(["aufgabe", "genehmigung"]);
 const passwordInput = z.string().min(10).max(200);
 const eventYearInput = z.number().int().min(2020).max(2100);
@@ -1677,7 +1678,7 @@ export const appRouter = router({
           unit: z.string().optional(),
           locationId: z.number().nullable().optional(),
           contactId: z.number().nullable().optional(),
-          ordered: yn.default("nein"),
+          status: materialStatus.default("offen"),
           note: z.string().optional(),
         })
       )
@@ -1692,7 +1693,7 @@ export const appRouter = router({
           unit: z.string().optional(),
           locationId: z.number().nullable().optional(),
           contactId: z.number().nullable().optional(),
-          ordered: yn.optional(),
+          status: materialStatus.optional(),
           note: z.string().nullable().optional(),
         })
       )

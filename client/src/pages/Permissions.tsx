@@ -79,7 +79,17 @@ function detailText(
         details.category ? `Kategorie: ${details.category}` : null,
         details.quantity ? `Menge: ${details.quantity}` : null,
         details.unit ? `Einheit: ${details.unit}` : null,
-        details.ordered === "ja" ? "Bestellt: Ja" : "Bestellt: Nein",
+        details.status
+          ? `Stand: ${
+              details.status === "geliefert"
+                ? "Geliefert"
+                : details.status === "bestellt"
+                  ? "Bestellt"
+                  : "Offen"
+            }`
+          : details.ordered === "ja"
+            ? "Stand: Geliefert"
+            : "Stand: Offen",
         details.note ? `Hinweis: ${details.note}` : null,
       ]
         .filter(Boolean)
