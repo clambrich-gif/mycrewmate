@@ -1,19 +1,26 @@
-import type { CircleMarker as LeafletCircleMarker } from "leaflet";
+import { divIcon } from "leaflet";
+import type {
+  CircleMarker as LeafletCircleMarker,
+  Marker as LeafletMarker,
+} from "leaflet";
 import { Maximize2, Minimize2, RotateCcw } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   CircleMarker,
   MapContainer,
+  Marker,
   Polyline,
   Popup,
   TileLayer,
   useMap,
+  useMapEvents,
 } from "react-leaflet";
 import type { MapEntry, MapLocation } from "./LocationMapCard";
 import "leaflet/dist/leaflet.css";
 
 const MAP_MARKER_COLORS = {
   critical: "#dc2626",
+  warning: "#eab308",
   complete: "#16a34a",
   neutral: "#64748b",
 } as const;
@@ -44,11 +51,19 @@ export type GpxMapTrack = {
   points: Array<[number, number]>;
 };
 
+function markerSeverity(entries: MapEntry[]) {
+  if (entries.some(entry => entry.severity === "critical")) return "critical";
+  if (entries.some(entry => entry.severity === "warning")) return "warning";
+  if (entries.some(entry => entry.severity === "complete")) return "complete";
+  return "neutral";
+}
+
 function statusText(entries: MapEntry[]) {
   if (!entries.length) return "Noch keine Aufgaben zugeordnet";
-  return entries.some(entry => entry.critical)
-    ? "Handlungsbedarf"
-    : "Vollständig geprüft";
+  const severity = markerSeverity(entries);
+  if (severity === "critical") return "Handlungsbedarf";
+  if (severity === "warning") return "In Arbeit oder zeitlich knapp";
+  return severity === "complete" ? "Vollständig geprüft" : "Information hinterlegt";
 }
 
 function mapBoundsPoints(
@@ -124,65 +139,108 @@ function MapViewport({
   return null;
 }
 
+function MapZoomReporter({ onZoomChange }: { onZoomChange: (zoom: number) => void }) {
+  const map = useMap();
+  useEffect(() => onZoomChange(map.getZoom()), [map, onZoomChange]);
+  useMapEvents({ zoomend: () => onZoomChange(map.getZoom()) });
+  return null;
+}
+
+function markerSizeForZoom(zoom: number) {
+  return Math.min(52, Math.max(36, 40 + (zoom - 12) * 2));
+}
+
+function markerEntryClass(severity: MapEntry["severity"]) {
+  if (severity === "critical") return "text-red-700";
+  if (severity === "warning") return "text-amber-700";
+  return severity === "complete" ? "text-emerald-700" : "text-slate-700";
+}
+
 function LocationMarker({
   location,
   entries,
   focused,
+  zoom,
 }: {
   location: MapLocation;
   entries: MapEntry[];
   focused: boolean;
+  zoom: number;
 }) {
-  const markerRef = useRef<LeafletCircleMarker | null>(null);
-  const critical = entries.some(entry => entry.critical);
-  const color = entries.length
-    ? critical
-      ? MAP_MARKER_COLORS.critical
-      : MAP_MARKER_COLORS.complete
-    : MAP_MARKER_COLORS.neutral;
+  const circleMarkerRef = useRef<LeafletCircleMarker | null>(null);
+  const logoMarkerRef = useRef<LeafletMarker | null>(null);
+  const severity = markerSeverity(entries);
+  const color = MAP_MARKER_COLORS[severity];
+  const size = markerSizeForZoom(zoom);
+  const markerRef = location.logoUrl ? logoMarkerRef : circleMarkerRef;
+
+  const logoIcon = useMemo(() => {
+    if (!location.logoUrl) return null;
+    const safeUrl = location.logoUrl.replace(/"/g, "%22");
+    return divIcon({
+      className: "location-logo-marker",
+      html: `<span class="location-logo-marker__frame" style="--location-marker-color:${color};width:${size}px;height:${size}px"><img src="${safeUrl}" alt="" /></span>`,
+      iconSize: [size, size],
+      iconAnchor: [size / 2, size / 2],
+      popupAnchor: [0, -size / 2],
+    });
+  }, [color, location.logoUrl, size]);
 
   useEffect(() => {
     if (!focused) return;
     const timeout = window.setTimeout(() => markerRef.current?.openPopup(), 120);
     return () => window.clearTimeout(timeout);
-  }, [focused]);
+  }, [focused, markerRef]);
+
+  const popup = (
+    <Popup>
+      <div className="min-w-56 text-slate-900">
+        <strong className="block text-sm">{location.name}</strong>
+        <p className="mt-1 text-xs text-slate-600">{statusText(entries)}</p>
+        {entries.length ? (
+          <ul className="mt-2 space-y-2 text-sm">
+            {entries.map((entry, index) => (
+              <li key={`${entry.label}-${index}`} className={markerEntryClass(entry.severity)}>
+                <span aria-hidden="true">● </span>
+                <span className="font-medium">{entry.label}</span>
+                <span className="text-xs"> – {entry.status}</span>
+                {entry.href && entry.actionLabel ? (
+                  <a
+                    href={entry.href}
+                    className="ml-3 inline-block text-xs font-semibold text-blue-700 underline underline-offset-2 hover:text-blue-900"
+                  >
+                    {entry.actionLabel}
+                  </a>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
+    </Popup>
+  );
+
+  if (logoIcon)
+    return (
+      <Marker
+        ref={logoMarkerRef}
+        position={[location.latitude, location.longitude]}
+        icon={logoIcon}
+        aria-label={`${location.name}: ${statusText(entries)}`}
+      >
+        {popup}
+      </Marker>
+    );
 
   return (
     <CircleMarker
-      ref={markerRef}
+      ref={circleMarkerRef}
       center={[location.latitude, location.longitude]}
-      radius={11}
+      radius={Math.max(9, size / 3.6)}
       pathOptions={{ color: "#ffffff", weight: 2, fillColor: color, fillOpacity: 1 }}
       aria-label={`${location.name}: ${statusText(entries)}`}
     >
-      <Popup>
-        <div className="min-w-56 text-slate-900">
-          <strong className="block text-sm">{location.name}</strong>
-          <p className="mt-1 text-xs text-slate-600">{statusText(entries)}</p>
-          {entries.length ? (
-            <ul className="mt-2 space-y-2 text-sm">
-              {entries.map((entry, index) => (
-                <li
-                  key={`${entry.label}-${index}`}
-                  className={entry.critical ? "text-red-700" : "text-emerald-700"}
-                >
-                  <span aria-hidden="true">● </span>
-                  <span className="font-medium">{entry.label}</span>
-                  <span className="text-xs"> – {entry.status}</span>
-                  {entry.href && entry.actionLabel ? (
-                    <a
-                      href={entry.href}
-                      className="ml-3 inline-block text-xs font-semibold text-blue-700 underline underline-offset-2 hover:text-blue-900"
-                    >
-                      {entry.actionLabel}
-                    </a>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
-      </Popup>
+      {popup}
     </CircleMarker>
   );
 }
@@ -206,6 +264,7 @@ export default function LocationMapClient({
   const [visibleTrackIds, setVisibleTrackIds] = useState<Set<number>>(
     () => new Set(gpxTracks.map(track => track.id))
   );
+  const [markerZoom, setMarkerZoom] = useState(12);
   const [resetKey, setResetKey] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
   const activeLayer = MAP_LAYERS[layer];
@@ -287,6 +346,7 @@ export default function LocationMapClient({
           resetKey={resetKey}
           fullscreen={fullscreen}
         />
+        <MapZoomReporter onZoomChange={setMarkerZoom} />
         {visibleTracks.map(track => (
           <Polyline
             key={track.id}
@@ -306,6 +366,7 @@ export default function LocationMapClient({
             location={location}
             entries={entriesByLocation.get(location.id) ?? []}
             focused={focusLocationId === location.id}
+            zoom={markerZoom}
           />
         ))}
       </MapContainer>

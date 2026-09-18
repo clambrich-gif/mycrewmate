@@ -102,6 +102,7 @@ const data = {
   approvals: [],
   cakes: [],
   finances: [],
+  locations: [],
 };
 
 function fakeDb() {
@@ -1007,4 +1008,33 @@ describe("Excel-Datensicherung", () => {
     });
   });
 
+  it("exportiert und liest ORTE mit Logo-Spalten roundtrip-sicher", async () => {
+    (data.locations as any[]).push({
+      id: 77,
+      year: 2026,
+      eventId: 1,
+      name: "Mayen / Viehmarkt",
+      latitude: 50.3271,
+      longitude: 7.2215,
+      logoKey: "location-logos/events/2026/1/viehmarkt.png",
+      logoUrl: "/manus-storage/location-logos/events/2026/1/viehmarkt.png",
+      sortOrder: 0,
+    });
+
+    const exported = await exportBackupExcel();
+    const workbook = XLSX.read(exported.buffer, { type: "buffer" });
+    const orteRows = XLSX.utils.sheet_to_json<any>(workbook.Sheets.ORTE);
+    expect(orteRows[0]).toMatchObject({
+      Ortsname: "Mayen / Viehmarkt",
+      "Logo-Dateischlüssel": "location-logos/events/2026/1/viehmarkt.png",
+      "Logo-URL": "/manus-storage/location-logos/events/2026/1/viehmarkt.png",
+    });
+
+    const parsed = parseBackupWorkbook(exported.buffer.toString("base64"));
+    expect(parsed.locations[0]).toMatchObject({
+      name: "Mayen / Viehmarkt",
+      logoKey: "location-logos/events/2026/1/viehmarkt.png",
+      logoUrl: "/manus-storage/location-logos/events/2026/1/viehmarkt.png",
+    });
+  });
 });

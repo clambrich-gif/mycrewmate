@@ -116,6 +116,7 @@ const data = {
   approvals: [],
   cakes: [],
   finances: [],
+  locations: [],
 };
 
 function fakeDb() {
@@ -194,7 +195,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsed = parseProjectFile(exported.buffer.toString("base64"));
     expect(parsed.document.metadata).toMatchObject({
       format: "RSC-HELFERPLANUNG-PROJEKTDATEI",
-      version: 9,
+      version: 10,
       eventId: 1,
       eventName: "MyEifelRide",
       year: 2026,
@@ -346,7 +347,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsed = parseProjectFile(
       Buffer.from(JSON.stringify(document)).toString("base64")
     );
-    expect(parsed.document.metadata.version).toBe(9);
+    expect(parsed.document.metadata.version).toBe(10);
     expect(parsed.document.metadata.activeDays).toEqual([...WEEKDAYS]);
     expect(parsed.document.metadata).toMatchObject({
       pdfLogoKey: null,
@@ -703,7 +704,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsedV5 = parseProjectFile(
       Buffer.from(JSON.stringify(legacyV5)).toString("base64")
     ).document;
-    expect(parsedV5.metadata.version).toBe(9);
+    expect(parsedV5.metadata.version).toBe(10);
     expect(parsedV5.shifts[0].manualOkConfirmed).toBe(false);
   });
 
@@ -718,7 +719,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsedV6 = parseProjectFile(
       Buffer.from(JSON.stringify(legacyV6)).toString("base64")
     ).document;
-    expect(parsedV6.metadata.version).toBe(9);
+    expect(parsedV6.metadata.version).toBe(10);
     expect(parsedV6.shifts[0].manualDoubleConflictAccepted).toBe(false);
   });
 
@@ -734,7 +735,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsedV7 = parseProjectFile(
       Buffer.from(JSON.stringify(legacyV7)).toString("base64")
     ).document;
-    expect(parsedV7.metadata.version).toBe(9);
+    expect(parsedV7.metadata.version).toBe(10);
     expect(parsedV7.locations).toEqual([]);
     expect(parsedV7.shifts[0].locationName).toBe("");
   });
@@ -766,7 +767,36 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsedV8 = parseProjectFile(
       Buffer.from(JSON.stringify(legacyV8)).toString("base64")
     ).document;
-    expect(parsedV8.metadata.version).toBe(9);
+    expect(parsedV8.metadata.version).toBe(10);
     expect(parsedV8.materials[0].locationName).toBe("");
+  });
+  it("erhaelt Standort-Logos und migriert v9-Dateien sauber auf Version 10", async () => {
+    (data.locations as any[]).push({
+      id: 55,
+      year: 2026,
+      eventId: 1,
+      name: "Mayen / Viehmarkt",
+      latitude: 50.3271,
+      longitude: 7.2215,
+      logoKey: "location-logos/events/2026/1/viehmarkt.png",
+      logoUrl: "/manus-storage/location-logos/events/2026/1/viehmarkt.png",
+      sortOrder: 0,
+    });
+
+    const exported = await exportProjectFile();
+    const current = parseProjectFile(exported.buffer.toString("base64")).document;
+    expect(current.locations[0]).toMatchObject({
+      logoKey: "location-logos/events/2026/1/viehmarkt.png",
+      logoUrl: "/manus-storage/location-logos/events/2026/1/viehmarkt.png",
+    });
+
+    const legacyV9 = structuredClone(current);
+    legacyV9.metadata.version = 9;
+    delete (legacyV9.locations[0] as any).logoKey;
+    delete (legacyV9.locations[0] as any).logoUrl;
+    const parsedV9 = parseProjectFile(Buffer.from(JSON.stringify(legacyV9)).toString("base64")).document;
+    expect(parsedV9.metadata.version).toBe(10);
+    expect(parsedV9.locations[0].logoKey).toBeNull();
+    expect(parsedV9.locations[0].logoUrl).toBeNull();
   });
 });

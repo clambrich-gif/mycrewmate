@@ -46,6 +46,9 @@ const dbMocks = vi.hoisted(() => ({
   listShiftAreaContacts: vi.fn(),
   setShiftAreaContact: vi.fn(),
   withPlanningWriteLock: vi.fn(),
+  getLocation: vi.fn(),
+  createLocation: vi.fn(),
+  updateLocation: vi.fn(),
 }));
 const storageMocks = vi.hoisted(() => ({
   storageGetSignedUrl: vi.fn(),
@@ -1577,5 +1580,121 @@ describe("Planungs-API", () => {
         manualDoubleConflictAccepted: true,
       })
     );
+  });
+  it("laedt gueltige Standort-Logos als Administrator hoch und speichert Key und URL", async () => {
+    dbMocks.getLocation.mockResolvedValue({
+      id: 55,
+      year: 2026,
+      eventId: 1,
+      name: "Mayen / Viehmarkt",
+      latitude: 50.3271,
+      longitude: 7.2215,
+      logoKey: null,
+      logoUrl: null,
+      sortOrder: 0,
+    });
+    dbMocks.updateLocation.mockResolvedValue({ affectedRows: 1 });
+    storageMocks.storagePut.mockResolvedValue({
+      key: "location-logos/events/2026/1/55-Mayen_Viehmarkt.png",
+      url: "/manus-storage/location-logos/events/2026/1/55-Mayen_Viehmarkt.png",
+    });
+
+    const png = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+      "base64"
+    );
+
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.locations.uploadLogo({
+      id: 55,
+      base64: png.toString("base64"),
+      mimeType: "image/png",
+    });
+
+    expect(result).toMatchObject({
+      key: "location-logos/events/2026/1/55-Mayen_Viehmarkt.png",
+      url: "/manus-storage/location-logos/events/2026/1/55-Mayen_Viehmarkt.png",
+    });
+    expect(storageMocks.storagePut).toHaveBeenCalledWith(
+      "location-logos/events/2026/1/55-Mayen_Viehmarkt.png",
+      png,
+      "image/png"
+    );
+    expect(dbMocks.updateLocation).toHaveBeenCalledWith(55, {
+      logoKey: "location-logos/events/2026/1/55-Mayen_Viehmarkt.png",
+      logoUrl: "/manus-storage/location-logos/events/2026/1/55-Mayen_Viehmarkt.png",
+    });
+  });
+
+  it("weist fehlerhaftes Base64 und unpassende Standortlogo-Signaturen ab", async () => {
+    dbMocks.getLocation.mockResolvedValue({
+      id: 55,
+      year: 2026,
+      eventId: 1,
+      name: "Mayen / Viehmarkt",
+      latitude: 50.3271,
+      longitude: 7.2215,
+      logoKey: null,
+      logoUrl: null,
+      sortOrder: 0,
+    });
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.locations.uploadLogo({
+        id: 55,
+        base64: "nicht-gültiges-base64!",
+        mimeType: "image/png",
+      })
+    ).rejects.toThrow("PNG-, SVG- oder JPEG-Logo");
+    await expect(
+      caller.locations.uploadLogo({
+        id: 55,
+        base64: Buffer.from("kein PNG").toString("base64"),
+        mimeType: "image/png",
+      })
+    ).rejects.toThrow("passt nicht zum ausgewählten Dateiformat");
+    expect(storageMocks.storagePut).not.toHaveBeenCalled();
+    expect(dbMocks.updateLocation).not.toHaveBeenCalled();
+  });
+
+  it("setzt Standort-Logos auf null zurueck", async () => {
+    dbMocks.getLocation.mockResolvedValue({
+      id: 55,
+      year: 2026,
+      eventId: 1,
+      name: "Mayen / Viehmarkt",
+      latitude: 50.3271,
+      longitude: 7.2215,
+      logoKey: "key.png",
+      logoUrl: "url.png",
+      sortOrder: 0,
+    });
+    dbMocks.updateLocation.mockResolvedValue({ affectedRows: 1 });
+
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.locations.clearLogo({ id: 55 })).resolves.toEqual({ success: true });
+    expect(dbMocks.updateLocation).toHaveBeenCalledWith(55, {
+      logoKey: null,
+      logoUrl: null,
+    });
+  });
+
+  it("verwehrt dem Planungsteam das Hochladen oder Loeschen von Standort-Logos", async () => {
+    const caller = appRouter.createCaller(planningTeamCtx);
+    const png = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+      "base64"
+    );
+    await expect(
+      caller.locations.uploadLogo({
+        id: 55,
+        base64: png.toString("base64"),
+        mimeType: "image/png",
+      })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.locations.clearLogo({ id: 55 })).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
   });
 });

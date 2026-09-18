@@ -11,12 +11,14 @@ export type MapLocation = {
   name: string;
   latitude: number;
   longitude: number;
+  logoUrl: string | null;
 };
 
 export type MapEntry = {
   label: string;
   status: string;
   critical: boolean;
+  severity: "critical" | "warning" | "complete" | "neutral";
   href?: string;
   actionLabel?: string;
 };
@@ -58,7 +60,13 @@ export function LocationMapCard() {
       add(shift.locationId, {
         label: `${shift.day} · ${shift.area}: ${shift.task}`,
         status: evaluation.status,
-        critical: evaluation.status === "OFFEN" || evaluation.status === "KNAPP",
+        critical: evaluation.status === "OFFEN",
+        severity:
+          evaluation.status === "OFFEN"
+            ? "critical"
+            : evaluation.status === "KNAPP"
+              ? "warning"
+              : "complete",
         href: `/einsatzplan?location=${shift.locationId}`,
         actionLabel: "Einsatzplan filtern",
       });
@@ -72,7 +80,13 @@ export function LocationMapCard() {
       add(task.locationId, {
         label: `${task.category || "Vorbereitung"}: ${task.task}`,
         status: task.status === "erledigt" ? "ERLEDIGT" : task.status.toUpperCase(),
-        critical: task.status !== "erledigt",
+        critical: task.status === "offen" || task.status === "abgelehnt",
+        severity:
+          task.status === "offen" || task.status === "abgelehnt"
+            ? "critical"
+            : task.status === "inArbeit"
+              ? "warning"
+              : "complete",
         href: `/vorbereitung?location=${task.locationId}`,
         actionLabel: "Vorbereitung filtern",
       });
@@ -87,6 +101,7 @@ export function LocationMapCard() {
         label: `Material: ${material.article}`,
         status: [material.quantity, material.unit].filter(Boolean).join(" ") || "benötigt",
         critical: false,
+        severity: "neutral",
         href: `/material?location=${material.locationId}`,
         actionLabel: "Material öffnen",
       });
@@ -105,7 +120,7 @@ export function LocationMapCard() {
           Live-Standortkarte
         </CardTitle>
         <span className="text-xs text-slate-600 sm:text-sm">
-          Rot: Handlungsbedarf · Grün: geprüft · Marker öffnen zum Filtern
+          Rot: offen · Gelb: in Arbeit oder zeitlich knapp · Grün: geprüft · Marker öffnen zum Filtern
         </span>
       </CardHeader>
       <CardContent className="p-3 pt-0 sm:p-5 sm:pt-0">

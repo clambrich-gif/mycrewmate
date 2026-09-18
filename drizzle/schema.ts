@@ -284,6 +284,8 @@ export const locations = mysqlTable(
     name: varchar("name", { length: 200 }).notNull(),
     latitude: double("latitude").notNull(),
     longitude: double("longitude").notNull(),
+    logoKey: varchar("logoKey", { length: 500 }),
+    logoUrl: varchar("logoUrl", { length: 700 }),
     sortOrder: int("sortOrder").default(0).notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },

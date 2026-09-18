@@ -57,7 +57,15 @@ const SHEETS = [
   "FINANZEN",
 ] as const;
 export const PROJECT_EXCEL_HEADERS: Record<string, string[]> = {
-  ORTE: ["ID", "Ortsname", "Breitengrad", "Längengrad", "Reihenfolge"],
+  ORTE: [
+    "ID",
+    "Ortsname",
+    "Breitengrad",
+    "Längengrad",
+    "Logo-Dateischlüssel",
+    "Logo-URL",
+    "Reihenfolge",
+  ],
   ANSPRECHPARTNER: ["ID", "Name", "Rufnummer", "Bemerkung", "Reihenfolge"],
   HELFER: [
     "ID",
@@ -301,6 +309,8 @@ type LocationRow = {
   name: string;
   latitude: number;
   longitude: number;
+  logoKey: string | null;
+  logoUrl: string | null;
   sortOrder: number;
 };
 type ShiftRow = {
@@ -1170,6 +1180,10 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
       -180,
       180
     ),
+    logoKey:
+      text(row["Logo-Dateischlüssel"], 500, `ORTE Zeile ${index + 2}: Logo-Dateischlüssel`) ||
+      null,
+    logoUrl: text(row["Logo-URL"], 700, `ORTE Zeile ${index + 2}: Logo-URL`) || null,
     sortOrder: integer(
       row.Reihenfolge || 0,
       `ORTE Zeile ${index + 2}: Reihenfolge`,
@@ -1973,6 +1987,8 @@ function comparableCurrent(snapshot: CurrentSnapshot) {
     locations: [...snapshot.locations].sort(byId).map(row => ({
       sourceId: row.id,
       ...clean(row, ["name", "latitude", "longitude", "sortOrder"]),
+      logoKey: row.logoKey ?? null,
+      logoUrl: row.logoUrl ?? null,
     })),
     shifts: [...snapshot.shifts].sort(byId).map(row => ({
       sourceId: row.id,
@@ -3145,6 +3161,8 @@ export async function restoreProjectDocument(
           name: row.name,
           latitude: row.latitude,
           longitude: row.longitude,
+          logoKey: row.logoKey,
+          logoUrl: row.logoUrl,
           sortOrder: row.sortOrder,
         });
         const actualId =
@@ -3644,6 +3662,8 @@ export async function exportProjectExcel(): Promise<{
       Ortsname: row.name,
       Breitengrad: row.latitude,
       Längengrad: row.longitude,
+      "Logo-Dateischlüssel": row.logoKey ?? "",
+      "Logo-URL": row.logoUrl ?? "",
       Reihenfolge: row.sortOrder,
     }))
   );

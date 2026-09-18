@@ -12,13 +12,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
-import { FileUp, MapPin, Pencil, Plus, Route, Trash2 } from "lucide-react";
+import { FileImage, FileUp, MapPin, Pencil, Plus, Route, Trash2 } from "lucide-react";
 import { ChangeEvent, useRef, useState } from "react";
 import { toast } from "sonner";
 
 type LocationForm = { name: string; latitude: string; longitude: string };
 const EMPTY_FORM: LocationForm = { name: "", latitude: "", longitude: "" };
 const MAX_GPX_BYTES = 6_000_000;
+const MAX_LOCATION_LOGO_BYTES = 3_000_000;
+const LOCATION_LOGO_MIME_TYPES = ["image/png", "image/jpeg", "image/svg+xml"] as const;
 
 function baseName(filename: string) {
   return filename.replace(/\.gpx$/i, "").trim() || "Strecke";
@@ -36,6 +38,24 @@ function readFileAsBase64(file: File) {
   });
 }
 
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Bilddatei konnte nicht gelesen werden"));
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.readAsDataURL(file);
+  });
+}
+
+function locationLogoMimeType(file: File) {
+  if (LOCATION_LOGO_MIME_TYPES.includes(file.type as (typeof LOCATION_LOGO_MIME_TYPES)[number]))
+    return file.type as (typeof LOCATION_LOGO_MIME_TYPES)[number];
+  if (/\.png$/i.test(file.name)) return "image/png" as const;
+  if (/\.jpe?g$/i.test(file.name)) return "image/jpeg" as const;
+  if (/\.svg$/i.test(file.name)) return "image/svg+xml" as const;
+  return null;
+}
+
 export default function Locations() {
   const { user } = useAuth();
   const utils = trpc.useUtils();
@@ -44,12 +64,16 @@ export default function Locations() {
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<LocationForm>(EMPTY_FORM);
+  const [selectedLogoFile, setSelectedLogoFile] = useState<File | null>(null);
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string | null>(null);
+  const [removeExistingLogo, setRemoveExistingLogo] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
   const [trackDeleteTarget, setTrackDeleteTarget] = useState<{ id: number; name: string } | null>(null);
   const [trackName, setTrackName] = useState("");
   const [trackColor, setTrackColor] = useState("#2563eb");
   const [selectedTrackFile, setSelectedTrackFile] = useState<File | null>(null);
   const trackInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const canManage = user?.role === "admin";
   const invalidate = () => {
     void utils.locations.list.invalidate();
@@ -59,22 +83,10 @@ export default function Locations() {
     void utils.materials.list.invalidate();
     void utils.dashboard.stats.invalidate();
   };
-  const create = trpc.locations.create.useMutation({
-    onSuccess: () => {
-      invalidate();
-      setOpen(false);
-      toast.success("Ort angelegt");
-    },
-    onError: error => toast.error(error.message),
-  });
-  const update = trpc.locations.update.useMutation({
-    onSuccess: () => {
-      invalidate();
-      setOpen(false);
-      toast.success("Ort aktualisiert");
-    },
-    onError: error => toast.error(error.message),
-  });
+  const create = trpc.locations.create.useMutation();
+  const update = trpc.locations.update.useMutation();
+  const uploadLogo = trpc.locations.uploadLogo.useMutation();
+  const clearLogo = trpc.locations.clearLogo.useMutation();
   const remove = trpc.locations.remove.useMutation({
     onSuccess: () => {
       invalidate();
@@ -105,6 +117,10 @@ export default function Locations() {
   const openCreate = () => {
     setEditingId(null);
     setForm(EMPTY_FORM);
+    setSelectedLogoFile(null);
+    setLogoPreviewUrl(null);
+    setRemoveExistingLogo(false);
+    if (logoInputRef.current) logoInputRef.current.value = "";
     setOpen(true);
   };
   const openEdit = (location: (typeof locations)[number]) => {
@@ -114,17 +130,70 @@ export default function Locations() {
       latitude: String(location.latitude),
       longitude: String(location.longitude),
     });
+    setSelectedLogoFile(null);
+    setLogoPreviewUrl(location.logoUrl ?? null);
+    setRemoveExistingLogo(false);
+    if (logoInputRef.current) logoInputRef.current.value = "";
     setOpen(true);
   };
-  const submit = () => {
+  const onLogoFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    if (!file) return;
+    const mimeType = locationLogoMimeType(file);
+    if (!mimeType) {
+      toast.error("Bitte ein PNG-, SVG- oder JPEG-Logo auswählen.");
+      event.target.value = "";
+      return;
+    }
+    if (file.size > MAX_LOCATION_LOGO_BYTES) {
+      toast.error("Das Standort-Logo darf höchstens 3 MB groß sein.");
+      event.target.value = "";
+      return;
+    }
+    try {
+      setSelectedLogoFile(file);
+      setLogoPreviewUrl(await readFileAsDataUrl(file));
+      setRemoveExistingLogo(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Bilddatei konnte nicht gelesen werden");
+      event.target.value = "";
+    }
+  };
+  const removeLogoSelection = () => {
+    setSelectedLogoFile(null);
+    setLogoPreviewUrl(null);
+    setRemoveExistingLogo(true);
+    if (logoInputRef.current) logoInputRef.current.value = "";
+  };
+  const submit = async () => {
     const latitude = Number(form.latitude.replace(",", "."));
     const longitude = Number(form.longitude.replace(",", "."));
     if (!form.name.trim() || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
       toast.error("Bitte Ortsname sowie gültige Breiten- und Längengrade eingeben.");
       return;
     }
-    if (editingId) update.mutate({ id: editingId, name: form.name.trim(), latitude, longitude });
-    else create.mutate({ name: form.name.trim(), latitude, longitude });
+    try {
+      const created = editingId
+        ? null
+        : await create.mutateAsync({ name: form.name.trim(), latitude, longitude });
+      const locationId = editingId ?? created!.id;
+      if (created) setEditingId(locationId);
+      if (editingId)
+        await update.mutateAsync({ id: editingId, name: form.name.trim(), latitude, longitude });
+      if (selectedLogoFile) {
+        const mimeType = locationLogoMimeType(selectedLogoFile);
+        const base64 = await readFileAsBase64(selectedLogoFile);
+        if (!mimeType) throw new Error("Die Bilddatei hat kein unterstütztes Format");
+        await uploadLogo.mutateAsync({ id: locationId, base64, mimeType });
+      } else if (removeExistingLogo && editingId) {
+        await clearLogo.mutateAsync({ id: editingId });
+      }
+      invalidate();
+      setOpen(false);
+      toast.success(editingId ? "Ort aktualisiert" : "Ort angelegt");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Ort konnte nicht gespeichert werden");
+    }
   };
   const onTrackFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
@@ -251,10 +320,36 @@ export default function Locations() {
                 <Input inputMode="decimal" value={form.longitude} placeholder="6.9458" onChange={event => setForm(current => ({ ...current, longitude: event.target.value }))} />
               </label>
             </div>
+            <div className="grid gap-2 rounded-lg border border-slate-200 bg-slate-50/70 p-3">
+              <Label htmlFor="location-logo-upload" className="flex items-center gap-2 text-sm font-medium">
+                <FileImage className="size-4 text-blue-700" aria-hidden="true" />
+                Standort-Logo / Marker-Icon hochladen (PNG/SVG/JPG)
+              </Label>
+              <Input
+                id="location-logo-upload"
+                ref={logoInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/svg+xml,.png,.jpg,.jpeg,.svg"
+                onChange={onLogoFileChange}
+              />
+              <p className="text-xs text-muted-foreground">Optional, maximal 3 MB. Das Logo ersetzt den Standardpin und erhält weiterhin einen farbigen Statusrahmen.</p>
+              {logoPreviewUrl ? (
+                <div className="flex flex-wrap items-center gap-3 rounded-md border bg-white p-2.5">
+                  <img src={logoPreviewUrl} alt="Vorschau des Standortlogos" className="size-12 rounded-full border-4 border-slate-400 object-cover shadow-sm" />
+                  <div className="min-w-0 flex-1 text-xs text-slate-600">
+                    <p className="font-medium text-slate-800">Marker-Vorschau aktiv</p>
+                    <p>Der Außenring passt sich auf der Karte dem Standortstatus an.</p>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" className="min-h-9" onClick={removeLogoSelection}>
+                    Logo entfernen
+                  </Button>
+                </div>
+              ) : null}
+            </div>
           </div>
           <DialogFooter className="flex-wrap gap-2 sm:justify-end">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>Abbrechen</Button>
-            <Button type="button" onClick={submit} disabled={create.isPending || update.isPending}>{editingId ? "Speichern" : "Ort anlegen"}</Button>
+            <Button type="button" onClick={submit} disabled={create.isPending || update.isPending || uploadLogo.isPending || clearLogo.isPending}>{editingId ? "Speichern" : "Ort anlegen"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

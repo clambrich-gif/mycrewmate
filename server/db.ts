@@ -571,19 +571,29 @@ export async function getLocation(id: number) {
   return location;
 }
 export async function createLocation(
-  value: Pick<typeof locations.$inferInsert, "name" | "latitude" | "longitude">
+  value: Pick<
+    typeof locations.$inferInsert,
+    "name" | "latitude" | "longitude" | "logoKey" | "logoUrl"
+  >
 ) {
   const db = (await getDb()) as DB;
-  return db.insert(locations).values({
+  const result: any = await db.insert(locations).values({
     ...value,
     year: year(),
     eventId: event(),
   });
+  const id = Number(result?.[0]?.insertId ?? result?.insertId);
+  const created = Number.isSafeInteger(id) ? await getLocation(id) : undefined;
+  if (!created) throw new Error("Der neue Standort konnte nicht geladen werden");
+  return created;
 }
 export async function updateLocation(
   id: number,
   value: Partial<
-    Pick<typeof locations.$inferInsert, "name" | "latitude" | "longitude">
+    Pick<
+      typeof locations.$inferInsert,
+      "name" | "latitude" | "longitude" | "logoKey" | "logoUrl"
+    >
   >
 ) {
   const db = (await getDb()) as DB;

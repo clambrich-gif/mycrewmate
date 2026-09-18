@@ -253,6 +253,13 @@
       "when": 1789714047208,
       "tag": "0035_military_blizzard",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "5",
+      "when": 1789728554207,
+      "tag": "0036_elite_toxin",
+      "breakpoints": true
     }
   ]
 }

@@ -146,6 +146,48 @@ type GpxMapTrack = {
   points: Array<[number, number]>;
 };
 
+const LOCATION_LOGO_MAX_BYTES = 3_000_000;
+const locationLogoMimeType = z.enum([
+  "image/png",
+  "image/jpeg",
+  "image/svg+xml",
+]);
+type LocationLogoMimeType = z.infer<typeof locationLogoMimeType>;
+
+function locationLogoExtension(mimeType: LocationLogoMimeType) {
+  if (mimeType === "image/png") return "png";
+  if (mimeType === "image/jpeg") return "jpg";
+  return "svg";
+}
+
+function decodeLocationLogoBase64(base64: string) {
+  const compact = base64.replace(/\s/g, "");
+  if (
+    !compact ||
+    compact.length % 4 !== 0 ||
+    !/^[A-Za-z0-9+/]*={0,2}$/.test(compact)
+  )
+    return null;
+  const buffer = Buffer.from(compact, "base64");
+  return buffer.toString("base64") === compact ? buffer : null;
+}
+
+function isValidLocationLogo(buffer: Buffer, mimeType: LocationLogoMimeType) {
+  if (mimeType === "image/png")
+    return (
+      buffer.length >= 8 &&
+      buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+    );
+  if (mimeType === "image/jpeg")
+    return buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+
+  const svg = buffer.toString("utf8").trim();
+  return (
+    /^(?:<\?xml[^>]*>\s*)?<svg\b/i.test(svg) &&
+    !/<script\b|\son\w+\s*=|<foreignObject\b/i.test(svg)
+  );
+}
+
 function parseGpxMapPoints(xml: string): Array<[number, number]> {
   const points: Array<[number, number]> = [];
   const pointTags = Array.from(xml.matchAll(/<(?:trkpt|rtept)\b([^>]*)>/gi));
@@ -904,6 +946,59 @@ export const appRouter = router({
       .mutation(({ input }) => {
         const { id, ...value } = input;
         return db.updateLocation(id, value);
+      }),
+    uploadLogo: adminProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          base64: z.string().min(1).max(4_000_000, "Logo ist größer als 3 MB"),
+          mimeType: locationLogoMimeType,
+        })
+      )
+      .mutation(async ({ input }) => {
+        const location = await db.getLocation(input.id);
+        if (!location) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Der ausgewählte Standort wurde nicht gefunden",
+          });
+        }
+        const buffer = decodeLocationLogoBase64(input.base64);
+        if (!buffer || !buffer.length || buffer.length > LOCATION_LOGO_MAX_BYTES) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Bitte ein PNG-, SVG- oder JPEG-Logo bis 3 MB auswählen",
+          });
+        }
+        if (!isValidLocationLogo(buffer, input.mimeType)) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Die Bilddatei passt nicht zum ausgewählten Dateiformat",
+          });
+        }
+        const uploaded = await storagePut(
+          `location-logos/events/${currentEventYear()}/${currentEventId()}/${location.id}-${safeExportName(location.name)}.${locationLogoExtension(input.mimeType)}`,
+          buffer,
+          input.mimeType
+        );
+        await db.updateLocation(location.id, {
+          logoKey: uploaded.key,
+          logoUrl: uploaded.url,
+        });
+        return uploaded;
+      }),
+    clearLogo: adminProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        const location = await db.getLocation(input.id);
+        if (!location) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Der ausgewählte Standort wurde nicht gefunden",
+          });
+        }
+        await db.updateLocation(location.id, { logoKey: null, logoUrl: null });
+        return { success: true } as const;
       }),
     remove: adminProcedure
       .input(

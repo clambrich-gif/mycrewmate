@@ -1673,5 +1673,18 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(globalStyles).toContain('[data-map-shell="fullscreen"]');
     expect(globalStyles).toContain("width: 100vw !important");
     expect(globalStyles).toContain("height: 100vh !important");
+
+    expect(locations).toContain("Standort-Logo / Marker-Icon hochladen (PNG/SVG/JPG)");
+    expect(locations).toContain("Marker-Vorschau aktiv");
+    expect(locations).toContain("Logo entfernen");
+
+    expect(mapCard).toContain("logoUrl");
+    expect(mapClient).toContain("divIcon");
+    expect(mapClient).toContain("location-logo-marker");
+    expect(mapClient).toContain("--location-marker-color");
+    expect(mapClient).toContain("CircleMarker");
+    expect(mapClient).toContain("markerSizeForZoom");
+    expect(globalStyles).toContain(".location-logo-marker__frame");
+    expect(globalStyles).toContain("border: 4px solid var(--location-marker-color, #64748b);");
   });
 });

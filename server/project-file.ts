@@ -18,7 +18,7 @@ import {
 } from "../shared/weekdays";
 
 const PROJECT_FORMAT = "RSC-HELFERPLANUNG-PROJEKTDATEI";
-const PROJECT_VERSION = 9;
+const PROJECT_VERSION = 10;
 const MAX_PROJECT_BYTES = 10_000_000;
 const MAX_ROWS = 10_000;
 
@@ -106,6 +106,8 @@ const documentSchema = z
           name: short(200).min(1),
           latitude: z.number().finite().min(-90).max(90),
           longitude: z.number().finite().min(-180).max(180),
+          logoKey: short(500).nullable().default(null),
+          logoUrl: short(700).nullable().default(null),
           sortOrder: z.number().int().min(0).max(1_000_000),
         })
       )
@@ -675,11 +677,34 @@ export function parseProjectFile(base64: string): {
     raw.metadata &&
     typeof raw.metadata === "object" &&
     "version" in raw.metadata &&
+    raw.metadata.version === 9
+  ) {
+    const legacy = raw as Record<string, any>;
+    legacy.metadata = { ...legacy.metadata, version: PROJECT_VERSION };
+    legacy.locations = Array.isArray(legacy.locations)
+      ? legacy.locations.map((location: Record<string, unknown>) => ({
+          ...location,
+          logoKey: location.logoKey ?? null,
+          logoUrl: location.logoUrl ?? null,
+        }))
+      : [];
+  }
+  if (
+    raw &&
+    typeof raw === "object" &&
+    "metadata" in raw &&
+    raw.metadata &&
+    typeof raw.metadata === "object" &&
+    "version" in raw.metadata &&
     raw.metadata.version === PROJECT_VERSION
   ) {
     const document = raw as Record<string, any>;
     document.locations = Array.isArray(document.locations)
-      ? document.locations
+      ? document.locations.map((location: Record<string, unknown>) => ({
+          ...location,
+          logoKey: location.logoKey ?? null,
+          logoUrl: location.logoUrl ?? null,
+        }))
       : [];
     document.shifts = Array.isArray(document.shifts)
       ? document.shifts.map((shift: Record<string, unknown>) => ({
