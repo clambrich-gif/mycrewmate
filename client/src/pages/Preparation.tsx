@@ -677,8 +677,8 @@ export default function Preparation() {
             Status-Wortlaut und Filterleiste.
           </p>
         </div>
-        <div className="w-full space-y-2 lg:w-auto lg:min-w-[470px]">
-          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 sm:[&>[data-slot=button]]:h-10 sm:[&>[data-slot=button]]:w-auto sm:[&>[data-slot=button]]:px-4">
+        <div className="w-full space-y-2 lg:w-auto lg:min-w-[500px]">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 sm:[&>[data-slot=button]]:h-10">
             <Button
               type="button"
               variant="outline"

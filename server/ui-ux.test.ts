@@ -1849,6 +1849,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(post).toContain("Alle Verantwortlichen");
     expect(post).toContain("Alle Status");
     expect(post).toContain("PDF drucken");
+    expect(post).toContain("lg:min-w-[500px]");
+    expect(post).toContain("sm:grid-cols-3");
+    expect(post).toContain("className={`w-full ${CREATION_ACTION_BUTTON_CLASS}`}");
     expect(post).toContain("Nachbereitung – Aufgabenübersicht");
     expect(post).toContain("Gefilterte Ansicht");
     expect(post).toContain("filteredRows.map(task");

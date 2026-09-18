@@ -632,22 +632,24 @@ export default function PostProcessing() {
             Aufgabenverwaltung für den Abbau, Rücktransporte, Abrechnungen und Nachbereitung des Festivals.
           </p>
         </div>
-        <div className="grid w-full grid-cols-2 gap-2 lg:w-auto lg:flex lg:flex-wrap lg:justify-end [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 max-lg:[&>[data-slot=button]]:h-11 max-lg:[&>[data-slot=button]]:text-base lg:[&>[data-slot=button]]:w-auto lg:[&>[data-slot=button]]:px-4">
+        <div className="w-full space-y-2 lg:w-auto lg:min-w-[500px]">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 sm:[&>[data-slot=button]]:h-10">
+            <Button
+              type="button"
+              variant="outline"
+              className="border-rose-200 bg-white text-slate-800 hover:bg-rose-50 hover:text-rose-900"
+              onClick={triggerPrintPdf}
+            >
+              <Printer className="mr-2 h-4 w-4 text-rose-700" />
+              PDF drucken
+            </Button>
+            <ModuleExcelImportButton area="NACHBEREITUNG" label="Nachbereitung" />
+            <ResetAreaButton area="post" label="Nachbereitung" compact />
+          </div>
           <Button
             type="button"
             variant="outline"
-            className="border-rose-200 bg-white text-slate-800 hover:bg-rose-50 hover:text-rose-900"
-            onClick={triggerPrintPdf}
-          >
-            <Printer className="mr-2 h-4 w-4 text-rose-700" />
-            PDF drucken
-          </Button>
-          <ModuleExcelImportButton area="NACHBEREITUNG" label="Nachbereitung" />
-          <ResetAreaButton area="post" label="Nachbereitung" compact />
-          <Button
-            type="button"
-            variant="outline"
-            className={`col-span-2 lg:col-auto ${CREATION_ACTION_BUTTON_CLASS}`}
+            className={`w-full ${CREATION_ACTION_BUTTON_CLASS}`}
             onClick={openCreate}
           >
             <Plus className="mr-2 h-4 w-4" />
