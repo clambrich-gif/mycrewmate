@@ -1689,6 +1689,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(mapCard).toContain('status === "geliefert"');
     expect(mapCard).toContain('severity:');
     expect(mapCard).toContain('"GELIEFERT"');
+    expect(mapCard).toContain('section: "preparation"');
+    expect(mapCard).toContain('section: "shifts"');
+    expect(mapCard).toContain('section: "materials"');
     expect(mapCard).not.toContain("@/components/Map");
     expect(mapClient).toContain("MapContainer");
     expect(mapClient).toContain("TileLayer");
@@ -1720,6 +1723,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(mapClient).toContain("w-[100vw]");
     expect(mapClient).toContain("useLayoutEffect");
     expect(mapClient).toContain("map.invalidateSize({ pan: false");
+    expect(mapClient).toContain("desktopLocationDetails");
+    expect(mapClient).toContain('data-location-desktop-panel="true"');
+    expect(mapClient).toContain("max-h-[80vh]");
+    expect(mapClient).toContain("overflow-y-auto overscroll-contain");
+    expect(mapClient).toContain("onLocationDetailsOpen");
 
     const locationDetails = source("client/src/components/LocationDetailContent.tsx");
     const sheet = source("client/src/components/ui/sheet.tsx");
@@ -1727,8 +1735,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(mapClient).toContain("data-location-mobile-sheet=\"true\"");
     expect(mapClient).toContain("max-h-[70vh]");
     expect(mapClient).toContain("overflow-y-auto overscroll-contain");
-    expect(mapClient).toContain("isMobile ? null");
-    expect(mapClient).toContain("onMobileDetailsOpen");
+    expect(mapClient).toContain("openLocationDetails");
+    expect(mapClient).toContain("openMobileDetails");
     expect(mapClient).toContain('className: "location-map-marker"');
     expect(mapClient).toContain('data-location-mobile-sheet-close="true"');
     expect(mapClient).toContain("dismissedMobileFocusRef");
@@ -1738,9 +1746,16 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(mapClient).toContain('data-location-mobile-previous="true"');
     expect(mapClient).toContain('data-location-mobile-next="true"');
     expect(mapClient).toContain("Standort {mobileLocationIndex + 1} von {mobileNavigationLocations.length}");
-    expect(mapClient).toContain("const activeLocationId = mobileLocationDetails?.location.id ?? focusLocationId");
+    expect(mapClient).toContain("const activeLocationId =");
+    expect(mapClient).toContain("mobileLocationDetails?.location.id");
+    expect(mapClient).toContain("desktopLocationDetails?.location.id");
     expect(mapClient).toContain("focusLocationId={activeLocationId}");
-    expect(locationDetails).toContain('data-location-detail-content={mobile ? "mobile-sheet" : "desktop-popup"}');
+    expect(locationDetails).toContain('data-location-detail-content={mobile ? "mobile-sheet" : "desktop-panel"}');
+    expect(locationDetails).toContain('data-location-detail-tabs="true"');
+    expect(locationDetails).toContain('label: "Vorbereitung"');
+    expect(locationDetails).toContain('label: "Schichten"');
+    expect(locationDetails).toContain('label: "Material"');
+    expect(locationDetails).toContain('data-location-detail-panel-close="true"');
     expect(locationDetails).toContain("Karte weiter nutzen");
     expect(sheet).toContain("overlayClassName");
     expect(sheet).toContain("showClose = true");

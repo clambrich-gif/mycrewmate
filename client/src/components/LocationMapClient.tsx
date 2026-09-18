@@ -172,26 +172,18 @@ function escapeHtmlAttribute(value: string) {
   });
 }
 
-function markerEntryClass(severity: MapEntry["severity"]) {
-  if (severity === "critical") return "text-red-700";
-  if (severity === "warning") return "text-amber-700";
-  return severity === "complete" ? "text-emerald-700" : "text-slate-700";
-}
-
 function LocationMarker({
   location,
   entries,
   focused,
   zoom,
-  isMobile,
-  onMobileDetailsOpen,
+  onLocationDetailsOpen,
 }: {
   location: MapLocation;
   entries: MapEntry[];
   focused: boolean;
   zoom: number;
-  isMobile: boolean;
-  onMobileDetailsOpen: (
+  onLocationDetailsOpen: (
     location: MapLocation,
     entries: MapEntry[],
     source: "marker" | "focus"
@@ -219,25 +211,13 @@ function LocationMarker({
   useEffect(() => {
     if (!focused) return;
     const timeout = window.setTimeout(() => {
-      if (isMobile) onMobileDetailsOpen(location, entries, "focus");
-      else markerRef.current?.openPopup();
+      onLocationDetailsOpen(location, entries, "focus");
     }, 120);
     return () => window.clearTimeout(timeout);
-  }, [entries, focused, isMobile, location, markerRef, onMobileDetailsOpen]);
-
-  const popup = isMobile ? null : (
-    <Popup>
-      <LocationDetailContent
-        location={location}
-        entries={entries}
-        statusText={statusText(entries)}
-        entryClassName={markerEntryClass}
-      />
-    </Popup>
-  );
+  }, [entries, focused, location, onLocationDetailsOpen]);
 
   const markerEvents = {
-    click: () => onMobileDetailsOpen(location, entries, "marker"),
+    click: () => onLocationDetailsOpen(location, entries, "marker"),
   };
 
   if (logoIcon)
@@ -248,9 +228,7 @@ function LocationMarker({
         icon={logoIcon}
         aria-label={`${location.name}: ${statusText(entries)}`}
         eventHandlers={markerEvents}
-      >
-        {popup}
-      </Marker>
+      />
     );
 
   return (
@@ -267,9 +245,7 @@ function LocationMarker({
       }}
       aria-label={`${location.name}: ${statusText(entries)}`}
       eventHandlers={markerEvents}
-    >
-      {popup}
-    </CircleMarker>
+    />
   );
 }
 
@@ -302,6 +278,10 @@ export default function LocationMapClient({
     location: MapLocation;
     entries: MapEntry[];
   } | null>(null);
+  const [desktopLocationDetails, setDesktopLocationDetails] = useState<{
+    location: MapLocation;
+    entries: MapEntry[];
+  } | null>(null);
   const dismissedMobileFocusRef = useRef(new Set<number>());
   const activeLayer = MAP_LAYERS[layer];
   const mobileNavigationLocations = useMemo(
@@ -321,7 +301,10 @@ export default function LocationMapClient({
     mobileLocationIndex >= 0 && mobileLocationIndex < mobileNavigationLocations.length - 1
       ? mobileNavigationLocations[mobileLocationIndex + 1]
       : null;
-  const activeLocationId = mobileLocationDetails?.location.id ?? focusLocationId;
+  const activeLocationId =
+    mobileLocationDetails?.location.id ??
+    desktopLocationDetails?.location.id ??
+    focusLocationId;
 
   useEffect(() => {
     if (!gpxTracks.length) return;
@@ -431,6 +414,22 @@ export default function LocationMapClient({
     setMobileLocationDetails({ location, entries });
   }, [isMobile]);
 
+  const openLocationDetails = useCallback((
+    location: MapLocation,
+    entries: MapEntry[],
+    source: "marker" | "focus"
+  ) => {
+    if (isMobile) {
+      openMobileDetails(location, entries, source);
+      return;
+    }
+    setDesktopLocationDetails({ location, entries });
+  }, [isMobile, openMobileDetails]);
+
+  const closeDesktopDetails = useCallback(() => {
+    setDesktopLocationDetails(null);
+  }, []);
+
   const navigateMobileLocation = useCallback((location: MapLocation | null) => {
     if (!location) return;
     dismissedMobileFocusRef.current.delete(location.id);
@@ -502,8 +501,7 @@ export default function LocationMapClient({
             entries={entriesByLocation.get(location.id) ?? []}
             focused={activeLocationId === location.id}
             zoom={markerZoom}
-            isMobile={isMobile}
-            onMobileDetailsOpen={openMobileDetails}
+            onLocationDetailsOpen={openLocationDetails}
           />
         ))}
       </MapContainer>
@@ -547,6 +545,23 @@ export default function LocationMapClient({
           {fullscreen ? <Minimize2 className="size-4" aria-hidden="true" /> : <Maximize2 className="size-4" aria-hidden="true" />}
         </button>
       </div>
+
+      {desktopLocationDetails && !isMobile ? (
+        <aside
+          data-location-desktop-panel="true"
+          aria-label={`Standortdetails für ${desktopLocationDetails.location.name}`}
+          className="absolute bottom-3 right-3 top-16 z-[1100] flex w-[min(25rem,calc(100%-1.5rem))] max-h-[80vh] overflow-hidden rounded-xl border border-slate-200 bg-white/97 shadow-xl backdrop-blur-sm"
+        >
+          <div className="min-h-0 w-full overflow-y-auto overscroll-contain p-4">
+            <LocationDetailContent
+              location={desktopLocationDetails.location}
+              entries={desktopLocationDetails.entries}
+              statusText={statusText(desktopLocationDetails.entries)}
+              onClose={closeDesktopDetails}
+            />
+          </div>
+        </aside>
+      ) : null}
 
       {gpxTracks.length ? (
         <fieldset
@@ -650,7 +665,6 @@ export default function LocationMapClient({
                   location={mobileLocationDetails.location}
                   entries={mobileLocationDetails.entries}
                   statusText={statusText(mobileLocationDetails.entries)}
-                  entryClassName={markerEntryClass}
                   mobile
                   showHeading={false}
                   onClose={closeMobileDetails}

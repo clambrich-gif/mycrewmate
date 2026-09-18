@@ -15,6 +15,7 @@ export type MapLocation = {
 };
 
 export type MapEntry = {
+  section: "preparation" | "shifts" | "materials";
   label: string;
   status: string;
   critical: boolean;
@@ -58,6 +59,7 @@ export function LocationMapCard() {
         task: string;
       };
       add(shift.locationId, {
+        section: "shifts",
         label: `${shift.day} · ${shift.area}: ${shift.task}`,
         status: evaluation.status,
         critical: evaluation.status === "OFFEN",
@@ -78,6 +80,7 @@ export function LocationMapCard() {
       status: string;
     }>) {
       add(task.locationId, {
+        section: "preparation",
         label: `${task.category || "Vorbereitung"}: ${task.task}`,
         status: task.status === "erledigt" ? "ERLEDIGT" : task.status.toUpperCase(),
         critical: task.status === "offen" || task.status === "abgelehnt",
@@ -100,6 +103,7 @@ export function LocationMapCard() {
     }>) {
       const status = material.status ?? "offen";
       add(material.locationId, {
+        section: "materials",
         label: `Material: ${material.article}`,
         status:
           status === "geliefert"
