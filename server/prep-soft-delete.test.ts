@@ -35,13 +35,15 @@ describe("Vorbereitungs-Softdelete und Löschprotokoll", () => {
         const beforeDelete = await listPrep();
         expect(beforeDelete.some(task => task.id === prepId)).toBe(true);
 
-        // 2. Soft-Delete durchführen mit Name "Christian"
+        // 2. Soft-Delete durchführen mit Ansprechpartner "Christian Lambrich"
         await deletePrep(prepId, {
           actor: {
             userId: 2,
             name: "Christian",
             role: "user",
             loginMethod: "password",
+            responsibleContactId: 101,
+            responsibleContactName: "Christian Lambrich",
           },
         });
 
@@ -67,7 +69,7 @@ describe("Vorbereitungs-Softdelete und Löschprotokoll", () => {
         });
         const matchingLog = auditLogs.find(log => log.entityId === prepId);
         expect(matchingLog).toBeDefined();
-        expect(matchingLog?.actorName).toBe("Christian");
+        expect(matchingLog?.responsibleContactName).toBe("Christian Lambrich");
         expect(matchingLog?.entityType).toBe("prep");
         expect(matchingLog?.restoredAt).toBeNull();
 

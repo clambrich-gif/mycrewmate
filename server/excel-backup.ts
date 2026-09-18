@@ -1902,7 +1902,7 @@ async function loadSnapshot(
     ),
     selectRows(prepTasks, and(scope(prepTasks), eq(prepTasks.deleted, false))),
     selectRows(postTasks, and(scope(postTasks), eq(postTasks.deleted, false))),
-    selectRows(materials, scope(materials)),
+    selectRows(materials, and(scope(materials), eq(materials.deleted, false))),
     selectRows(marketing, scope(marketing)),
     selectRows(approvals, scope(approvals)),
     selectRows(cakes, scope(cakes)),

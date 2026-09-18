@@ -40,13 +40,15 @@ describe("Nachbereitungs-Softdelete und Löschprotokoll", () => {
         const beforeDelete = await listPost();
         expect(beforeDelete.some(task => task.id === postId)).toBe(true);
 
-        // 3. Soft-Delete durchführen mit Name "Christian"
+        // 3. Soft-Delete durchführen mit Ansprechpartner "Christian Lambrich"
         await deletePost(postId, {
           actor: {
             userId: 2,
             name: "Christian",
             role: "user",
             loginMethod: "password",
+            responsibleContactId: 101,
+            responsibleContactName: "Christian Lambrich",
           },
         });
 
@@ -72,7 +74,7 @@ describe("Nachbereitungs-Softdelete und Löschprotokoll", () => {
         });
         const matchingLog = auditLogs.find(log => log.entityId === postId);
         expect(matchingLog).toBeDefined();
-        expect(matchingLog?.actorName).toBe("Christian");
+        expect(matchingLog?.responsibleContactName).toBe("Christian Lambrich");
         expect(matchingLog?.entityType).toBe("post");
         expect(matchingLog?.restoredAt).toBeNull();
 

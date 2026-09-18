@@ -1,0 +1,2 @@
+ALTER TABLE `deletion_audit_logs` MODIFY COLUMN `entityType` enum('helper','cake','prep','post','material') NOT NULL;--> statement-breakpoint
+ALTER TABLE `materials` ADD `deleted` boolean DEFAULT false NOT NULL;

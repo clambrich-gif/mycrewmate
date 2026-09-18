@@ -508,7 +508,7 @@ export const deletionAuditLogs = mysqlTable("deletion_audit_logs", {
     onDelete: "set null",
   }),
   eventName: varchar("eventName", { length: 200 }),
-  entityType: mysqlEnum("entityType", ["helper", "cake", "prep", "post"]).notNull(),
+  entityType: mysqlEnum("entityType", ["helper", "cake", "prep", "post", "material"]).notNull(),
   entityId: int("entityId").notNull(),
   entityLabel: varchar("entityLabel", { length: 300 }).notNull(),
   action: mysqlEnum("action", [
@@ -631,6 +631,8 @@ export const materials = mysqlTable("materials", {
   }),
   ordered: mysqlEnum("ordered", ["ja", "nein"]).default("nein").notNull(),
   note: text("note"),
+  /** Einzelne Löschungen bleiben für das Administratorprotokoll wiederherstellbar. */
+  deleted: boolean("deleted").default(false).notNull(),
   sortOrder: int("sortOrder").default(0).notNull(),
 }, table => [
   foreignKey({

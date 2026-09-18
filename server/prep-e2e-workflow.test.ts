@@ -83,10 +83,12 @@ describe("E2E Planungsteam-Rechte & Löschprotokoll-Workflow", () => {
       expect(updated?.status).toBe("inArbeit");
       expect(updated?.note).toContain("Mit Einsatzleitung DRK abgestimmt");
 
-      // 3. Planungsteam löscht die Aufgabe mit Namensangabe "Christian"
+      // 3. Planungsteam löscht die Aufgabe mit Auswahl des Ansprechpartners Christian Lambrich
+      const contacts = await teamCaller.contacts.list();
+      const contact = contacts[0] ?? { id: 101, name: "Christian Lambrich" };
       await teamCaller.prep.remove({
         id: prepId,
-        deletedBy: "Christian",
+        responsibleContactId: contact.id,
       });
 
       // 4. Aufgabe ist für das Planungsteam aus der aktiven Liste verschwunden
@@ -108,7 +110,7 @@ describe("E2E Planungsteam-Rechte & Löschprotokoll-Workflow", () => {
 
       const auditEntry = auditLogs.find((entry: any) => entry.entityId === prepId);
       expect(auditEntry).toBeDefined();
-      expect(auditEntry?.actorName).toBe("Christian");
+      expect(auditEntry?.responsibleContactName).toBe(contact.name);
       expect(auditEntry?.entityType).toBe("prep");
       expect(auditEntry?.restoredAt).toBeNull();
       expect(auditEntry?.entityLabel).toContain("Sicherheitskonzept Rettungsdienst E2E (Final)");

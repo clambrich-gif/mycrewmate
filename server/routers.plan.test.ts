@@ -20,6 +20,8 @@ const dbMocks = vi.hoisted(() => ({
   createPrep: vi.fn(),
   updatePrep: vi.fn(),
   deletePrep: vi.fn(),
+  deletePost: vi.fn(),
+  deleteMaterial: vi.fn(),
   resetArea: vi.fn(),
   listPrep: vi.fn(),
   listPost: vi.fn(),
@@ -1312,36 +1314,88 @@ describe("Planungs-API", () => {
     });
   });
 
-  it("erlaubt dem Planungsteam das Verschieben von Vorbereitungsaufgaben ins Löschprotokoll mit Name", async () => {
+  it("erlaubt dem Planungsteam das Verschieben von Vorbereitungsaufgaben ins Löschprotokoll mit Ansprechpartnerauswahl", async () => {
     const caller = appRouter.createCaller(planningTeamCtx);
+    dbMocks.getContact.mockResolvedValue({ id: 5, name: "Christian Lambrich" });
     dbMocks.deletePrep.mockResolvedValue({ affectedRows: 1 });
 
     await expect(
       caller.prep.remove({
         id: 30,
-        deletedBy: "Christian",
+        responsibleContactId: 5,
       })
     ).resolves.toEqual({ affectedRows: 1 });
 
     expect(dbMocks.deletePrep).toHaveBeenCalledWith(30, {
       actor: {
         userId: 2,
-        name: "Christian",
+        name: "Organisation",
         role: "user",
         loginMethod: "manus",
+        responsibleContactId: 5,
+        responsibleContactName: "Christian Lambrich",
       },
     });
   });
 
-  it("weist Vorbereitungslöschungen ohne Löschenden ab", async () => {
+  it("weist Vorbereitungslöschungen mit unbekanntem Ansprechpartner ab", async () => {
     const caller = appRouter.createCaller(planningTeamCtx);
+    dbMocks.getContact.mockResolvedValue(null);
     await expect(
       caller.prep.remove({
         id: 30,
-        deletedBy: "   ",
+        responsibleContactId: 999,
       })
-    ).rejects.toThrow();
+    ).rejects.toThrow("Ansprechpartner");
     expect(dbMocks.deletePrep).not.toHaveBeenCalled();
+  });
+
+  it("erlaubt dem Planungsteam das Verschieben von Nachbereitungsaufgaben ins Löschprotokoll mit Ansprechpartnerauswahl", async () => {
+    const caller = appRouter.createCaller(planningTeamCtx);
+    dbMocks.getContact.mockResolvedValue({ id: 5, name: "Christian Lambrich" });
+    dbMocks.deletePost.mockResolvedValue({ affectedRows: 1 });
+
+    await expect(
+      caller.post.remove({
+        id: 40,
+        responsibleContactId: 5,
+      })
+    ).resolves.toEqual({ affectedRows: 1 });
+
+    expect(dbMocks.deletePost).toHaveBeenCalledWith(40, {
+      actor: {
+        userId: 2,
+        name: "Organisation",
+        role: "user",
+        loginMethod: "manus",
+        responsibleContactId: 5,
+        responsibleContactName: "Christian Lambrich",
+      },
+    });
+  });
+
+  it("verlangt bei Materiallöschungen die Auswahl eines Ansprechpartners", async () => {
+    const caller = appRouter.createCaller(ctx);
+    dbMocks.getContact.mockResolvedValue({ id: 5, name: "Christian Lambrich" });
+    dbMocks.deleteMaterial.mockResolvedValue({ affectedRows: 1 });
+
+    await expect(
+      caller.materials.remove({
+        id: 50,
+        responsibleContactId: 5,
+      })
+    ).resolves.toEqual({ affectedRows: 1 });
+
+    expect(dbMocks.deleteMaterial).toHaveBeenCalledWith(50, {
+      actor: {
+        userId: 1,
+        name: "Organisation",
+        role: "admin",
+        loginMethod: "manus",
+        responsibleContactId: 5,
+        responsibleContactName: "Christian Lambrich",
+      },
+    });
   });
 
   it("speichert eine optionale Begleitperson für Helfer ohne Beeinflussung der Schichtkapazität", async () => {

@@ -2,16 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { LocationMapLink } from "@/components/LocationMapLink";
 import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -269,7 +260,7 @@ export default function PostProcessing() {
   const [editingTask, setEditingTask] = useState<PostTaskRow | null>(null);
   const [form, setForm] = useState<PostForm>(EMPTY_FORM);
   const [deleteCandidate, setDeleteCandidate] = useState<PostTaskRow | null>(null);
-  const [deletedBy, setDeletedBy] = useState("");
+  const [responsibleContactId, setResponsibleContactId] = useState<number | null>(null);
 
   const utils = trpc.useUtils();
   const { data: rawRows = [], isLoading } = trpc.post.list.useQuery();
@@ -371,7 +362,7 @@ export default function PostProcessing() {
     },
     onSuccess: () => {
       setDeleteCandidate(null);
-      setDeletedBy("");
+      setResponsibleContactId(null);
       toast.success("Nachbereitungsaufgabe ins Löschprotokoll verschoben");
     },
     onError: (error: any, _input: any, context: any) => {
@@ -531,7 +522,7 @@ export default function PostProcessing() {
 
   const openDelete = (task: PostTaskRow) => {
     setDeleteCandidate(task);
-    setDeletedBy("");
+    setResponsibleContactId(null);
   };
 
   const closeDialog = () => {
@@ -1137,62 +1128,29 @@ export default function PostProcessing() {
         </>
       )}
 
-      <AlertDialog
+      <ConfirmDeleteDialog
         open={Boolean(deleteCandidate)}
         onOpenChange={open => {
           if (!open && !remove.isPending) {
             setDeleteCandidate(null);
-            setDeletedBy("");
+            setResponsibleContactId(null);
           }
         }}
-      >
-        <AlertDialogContent className="z-50 border border-gray-200 !bg-white !text-slate-950 shadow-xl">
-          <AlertDialogHeader>
-            <div className="mx-auto mb-1 flex size-11 items-center justify-center rounded-full bg-red-50 text-red-600 sm:mx-0">
-              <AlertTriangle className="size-5" aria-hidden="true" />
-            </div>
-            <AlertDialogTitle>Nachbereitungsaufgabe löschen</AlertDialogTitle>
-            <AlertDialogDescription className="text-left text-gray-600">
-              Die Aufgabe &apos;{deleteCandidate?.task}&apos; wird aus der aktiven Übersicht entfernt und ins Löschprotokoll verschoben.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="post-deleted-by">Gelöscht von (Name / Kürzel des Verantwortlichen) *</Label>
-            <Input
-              id="post-deleted-by"
-              value={deletedBy}
-              autoFocus
-              disabled={remove.isPending}
-              placeholder="z. B. Christian"
-              onChange={event => setDeletedBy(event.target.value)}
-              onKeyDown={event => {
-                if (event.key === "Enter" && deleteCandidate && deletedBy.trim() && !remove.isPending) {
-                  event.preventDefault();
-                  remove.mutate({ id: deleteCandidate.id, deletedBy: deletedBy.trim() });
-                }
-              }}
-            />
-            <p className="text-xs text-slate-500">
-              Der Name wird zusammen mit Datum und Uhrzeit im Löschprotokoll gespeichert.
-            </p>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={remove.isPending}>Abbrechen</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={!deleteCandidate || !deletedBy.trim() || remove.isPending}
-              className="border border-red-700 !bg-red-600 !text-white shadow-sm hover:!bg-red-700 focus-visible:ring-red-500"
-              onClick={event => {
-                event.preventDefault();
-                if (deleteCandidate && deletedBy.trim() && !remove.isPending) {
-                  remove.mutate({ id: deleteCandidate.id, deletedBy: deletedBy.trim() });
-                }
-              }}
-            >
-              {remove.isPending ? "Wird gelöscht …" : "Eintrag löschen"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        title="Nachbereitungsaufgabe löschen?"
+        description={`„${deleteCandidate?.task ?? ""}“ wird aus der aktiven Übersicht entfernt und ins Löschprotokoll verschoben.`}
+        busy={remove.isPending}
+        contacts={contacts}
+        responsibleContactId={responsibleContactId}
+        onResponsibleContactChange={setResponsibleContactId}
+        onConfirm={() =>
+          deleteCandidate &&
+          responsibleContactId &&
+          remove.mutate({
+            id: deleteCandidate.id,
+            responsibleContactId,
+          })
+        }
+      />
 
       <Dialog open={dialogOpen} onOpenChange={open => (open ? setDialogOpen(true) : closeDialog())}>
         <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))] !bg-white !text-slate-950 opacity-100 shadow-2xl">

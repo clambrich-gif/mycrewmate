@@ -707,7 +707,7 @@ export async function listMaterials() {
   return db
     .select()
     .from(materials)
-    .where(planningScope(materials))
+    .where(and(planningScope(materials), eq(materials.deleted, false)))
     .orderBy(materials.sortOrder, materials.id);
 }
 export async function listMarketing() {
@@ -1162,7 +1162,7 @@ export type AuditActor = {
 };
 
 type AuditEntity = {
-  entityType: "helper" | "cake" | "prep" | "post";
+  entityType: "helper" | "cake" | "prep" | "post" | "material";
   entityId: number;
   entityLabel: string;
   details: Record<string, unknown>;
@@ -1297,10 +1297,27 @@ const postAuditEntity = (task: typeof postTasks.$inferSelect): AuditEntity => ({
   },
 });
 
+const materialAuditEntity = (material: typeof materials.$inferSelect): AuditEntity => ({
+  entityType: "material",
+  entityId: material.id,
+  entityLabel: material.article,
+  details: {
+    article: material.article,
+    category: material.category,
+    quantity: material.quantity,
+    unit: material.unit,
+    locationId: material.locationId,
+    contactId: material.contactId,
+    ordered: material.ordered,
+    note: material.note,
+    sortOrder: material.sortOrder,
+  },
+});
+
 export async function listDeletionAuditLogs(filters?: {
   eventYear?: number;
   eventId?: number;
-  entityType?: "helper" | "cake" | "prep" | "post";
+  entityType?: "helper" | "cake" | "prep" | "post" | "material";
   limit?: number;
 }) {
   const db = await getDb();
@@ -1577,7 +1594,7 @@ export async function restoreDeletionAuditLog(
           "Die Vorbereitungsaufgabe ist nicht mehr wiederherstellbar, weil sie bereits aktiv ist oder inzwischen endgültig entfernt wurde"
         );
       }
-    } else {
+    } else if (entry.entityType === "post") {
       const result = await tx
         .update(postTasks)
         .set({ deleted: false })
@@ -1591,6 +1608,22 @@ export async function restoreDeletionAuditLog(
       if (affectedRows(result) !== 1) {
         throw new Error(
           "Die Nachbereitungsaufgabe ist nicht mehr wiederherstellbar, weil sie bereits aktiv ist oder inzwischen endgültig entfernt wurde"
+        );
+      }
+    } else {
+      const result = await tx
+        .update(materials)
+        .set({ deleted: false })
+        .where(
+          and(
+            eq(materials.id, entry.entityId),
+            planningScopeFor(materials, selectedYear, selectedEventId),
+            eq(materials.deleted, true)
+          )
+        );
+      if (affectedRows(result) !== 1) {
+        throw new Error(
+          "Der Materialartikel ist nicht mehr wiederherstellbar, weil er bereits aktiv ist oder inzwischen endgültig entfernt wurde"
         );
       }
     }
@@ -2651,9 +2684,48 @@ export const updateMaterial = async (id: number, v: any) =>
   ((await getDb()) as DB)
     .update(materials)
     .set(await scopedContactValues(await scopedLocationValues(v)))
-    .where(yearWhere(materials, id));
-export const deleteMaterial = async (id: number) =>
-  ((await getDb()) as DB).delete(materials).where(yearWhere(materials, id));
+    .where(and(yearWhere(materials, id), eq(materials.deleted, false)));
+export async function deleteMaterial(id: number, options: { actor: AuditActor }) {
+  if (
+    !options.actor.responsibleContactId ||
+    !options.actor.responsibleContactName
+  ) {
+    throw new Error(
+      "Für die Materiallöschung muss der ausführende Ansprechpartner ausgewählt werden"
+    );
+  }
+  const db = (await getDb()) as DB;
+  return db.transaction(async tx => {
+    const [material] = await tx
+      .select()
+      .from(materials)
+      .where(
+        and(
+          eq(materials.id, id),
+          planningScope(materials),
+          eq(materials.deleted, false)
+        )
+      )
+      .limit(1)
+      .for("update");
+    if (!material) throw new Error("Materialartikel wurde nicht gefunden");
+    await recordDeletionAudit(tx, options.actor, "single_delete", [
+      materialAuditEntity(material),
+    ]);
+    const result = await tx
+      .update(materials)
+      .set({ deleted: true })
+      .where(
+        and(
+          eq(materials.id, id),
+          planningScope(materials),
+          eq(materials.deleted, false)
+        )
+      );
+    requireDeletedRows(result, 1);
+    return result;
+  });
+}
 export const createMarketing = async (v: any) =>
   createYearRow(marketing, await scopedContactValues(v));
 export const updateMarketing = async (id: number, v: any) =>

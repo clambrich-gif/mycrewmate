@@ -46,6 +46,7 @@ export default function Materials() {
       noStatus
       locationField
       sortableAndFilterable
+      deletionRequiresContact
       createInDialog
       createDialogTitle="Neuen Artikel anlegen"
       createTriggerLabel="Neuer Artikel"

@@ -1594,12 +1594,15 @@ export const appRouter = router({
       .input(
         z.object({
           id: z.number().int().positive(),
-          deletedBy: z.string().trim().min(1, "Bitte den Namen oder das Kürzel eingeben").max(200),
+          responsibleContactId: z.number().int().positive(),
         })
       )
-      .mutation(({ ctx, input }) =>
+      .mutation(async ({ ctx, input }) =>
         db.deletePrep(input.id, {
-          actor: { ...auditActor(ctx.user), name: input.deletedBy },
+          actor: await auditActorWithContact(
+            ctx.user,
+            input.responsibleContactId
+          ),
         })
       ),
   }),
@@ -1651,12 +1654,15 @@ export const appRouter = router({
       .input(
         z.object({
           id: z.number().int().positive(),
-          deletedBy: z.string().trim().min(1, "Bitte den Namen oder das Kürzel eingeben").max(200),
+          responsibleContactId: z.number().int().positive(),
         })
       )
-      .mutation(({ ctx, input }) =>
+      .mutation(async ({ ctx, input }) =>
         db.deletePost(input.id, {
-          actor: { ...auditActor(ctx.user), name: input.deletedBy },
+          actor: await auditActorWithContact(
+            ctx.user,
+            input.responsibleContactId
+          ),
         })
       ),
   }),
@@ -1695,8 +1701,20 @@ export const appRouter = router({
         return db.updateMaterial(id, r);
       }),
     remove: adminProcedure
-      .input(z.object({ id: z.number() }))
-      .mutation(({ input }) => db.deleteMaterial(input.id)),
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          responsibleContactId: z.number().int().positive(),
+        })
+      )
+      .mutation(async ({ ctx, input }) =>
+        db.deleteMaterial(input.id, {
+          actor: await auditActorWithContact(
+            ctx.user,
+            input.responsibleContactId
+          ),
+        })
+      ),
   }),
   marketing: router({
     list: protectedProcedure.query(() => db.listMarketing()),
@@ -1830,7 +1848,7 @@ export const appRouter = router({
           .object({
             eventYear: eventYearInput.optional(),
             eventId: z.number().int().positive().optional(),
-            entityType: z.enum(["helper", "cake", "prep", "post"]).optional(),
+            entityType: z.enum(["helper", "cake", "prep", "post", "material"]).optional(),
             limit: z.number().int().min(1).max(1000).default(500),
           })
           .optional()

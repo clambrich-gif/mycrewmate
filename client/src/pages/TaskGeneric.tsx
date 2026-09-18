@@ -62,6 +62,7 @@ interface Props {
   noStatus?: boolean;
   sortableAndFilterable?: boolean;
   teamCanDelete?: boolean;
+  deletionRequiresContact?: boolean;
   createInDialog?: boolean;
   createDialogTitle?: string;
   createTriggerLabel?: string;
@@ -83,6 +84,7 @@ export default function TaskGeneric({
   noStatus,
   sortableAndFilterable = false,
   teamCanDelete = false,
+  deletionRequiresContact = false,
   createInDialog = false,
   createDialogTitle = `Neu: ${addLabel}`,
   createTriggerLabel = `Neu: ${addLabel}`,
@@ -105,6 +107,7 @@ export default function TaskGeneric({
     id: number;
     name: string;
   } | null>(null);
+  const [responsibleContactId, setResponsibleContactId] = useState<number | null>(null);
 
   const defaultStatus = statusOptions ?? [
     { v: "offen", l: "offen" },
@@ -206,6 +209,7 @@ export default function TaskGeneric({
     },
     onSuccess: () => {
       setDeleteTarget(null);
+      setResponsibleContactId(null);
       toast.success("Entfernt");
     },
     onError: (error: any, _input: any, context: any) => {
@@ -520,7 +524,7 @@ export default function TaskGeneric({
                   className="w-full border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
                   disabled={remove.isPending}
                   onClick={() =>
-                    teamCanDelete
+                    (teamCanDelete || deletionRequiresContact)
                       ? setDeleteTarget({
                           id: row.id,
                           name: String(row[nameKey] ?? ""),
@@ -725,7 +729,7 @@ export default function TaskGeneric({
                           aria-label={`${addLabel} ${row[nameKey]} löschen`}
                           disabled={remove.isPending}
                           onClick={() =>
-                            teamCanDelete
+                            (teamCanDelete || deletionRequiresContact)
                               ? setDeleteTarget({
                                   id: row.id,
                                   name: String(row[nameKey] ?? ""),
@@ -755,16 +759,32 @@ export default function TaskGeneric({
           </table>
         </CardContent>
       </Card>
-      {teamCanDelete && (
+      {(teamCanDelete || deletionRequiresContact) && (
         <ConfirmDeleteDialog
           open={Boolean(deleteTarget)}
-          onOpenChange={open => !open && setDeleteTarget(null)}
+          onOpenChange={open => {
+            if (!open) {
+              setDeleteTarget(null);
+              setResponsibleContactId(null);
+            }
+          }}
           title={`${addLabel} löschen?`}
           description={`„${deleteTarget?.name ?? ""}“ wird aus ${title} im aktuellen Veranstaltungsjahr gelöscht.`}
           busy={remove.isPending}
-          onConfirm={() =>
-            deleteTarget && remove.mutate({ id: deleteTarget.id })
+          contacts={deletionRequiresContact ? contacts : undefined}
+          responsibleContactId={responsibleContactId}
+          onResponsibleContactChange={
+            deletionRequiresContact ? setResponsibleContactId : undefined
           }
+          onConfirm={() => {
+            if (!deleteTarget) return;
+            if (deletionRequiresContact) {
+              if (!responsibleContactId) return;
+              remove.mutate({ id: deleteTarget.id, responsibleContactId });
+              return;
+            }
+            remove.mutate({ id: deleteTarget.id });
+          }}
         />
       )}
       {createInDialog && (

@@ -38,10 +38,11 @@ const entityLabel = {
   cake: "Kuchen",
   prep: "Vorbereitung",
   post: "Nachbereitung",
+  material: "Material",
 } as const;
 
 function detailText(
-  entityType: "helper" | "cake" | "prep" | "post",
+  entityType: "helper" | "cake" | "prep" | "post" | "material",
   value: string | null
 ) {
   if (!value) return "–";
@@ -69,6 +70,17 @@ function detailText(
         details.dueText ? `Frist: ${details.dueText}` : null,
         details.status ? `Status: ${details.status}` : null,
         details.note ? `Logbuch: ${details.note}` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+    }
+    if (entityType === "material") {
+      return [
+        details.category ? `Kategorie: ${details.category}` : null,
+        details.quantity ? `Menge: ${details.quantity}` : null,
+        details.unit ? `Einheit: ${details.unit}` : null,
+        details.ordered === "ja" ? "Bestellt: Ja" : "Bestellt: Nein",
+        details.note ? `Hinweis: ${details.note}` : null,
       ]
         .filter(Boolean)
         .join(" · ");
@@ -101,7 +113,7 @@ export default function Permissions() {
       entityType:
         typeFilter === "all"
           ? undefined
-          : (typeFilter as "helper" | "cake" | "prep" | "post"),
+          : (typeFilter as "helper" | "cake" | "prep" | "post" | "material"),
       limit: 500,
     }),
     [eventFilter, typeFilter, yearFilter]
@@ -126,6 +138,7 @@ export default function Permissions() {
         utils.cakes.list.invalidate(),
         utils.prep.list.invalidate(),
         utils.post.list.invalidate(),
+        utils.materials.list.invalidate(),
         utils.plan.evaluate.invalidate(),
         utils.dashboard.stats.invalidate(),
       ]);
@@ -266,8 +279,8 @@ export default function Permissions() {
               <History className="h-5 w-5 text-primary" /> Löschprotokoll
             </CardTitle>
             <p className="mt-1 text-sm text-muted-foreground">
-              Nachvollziehbare Nachweise über gelöschte Helfer, Kuchen sowie Vor- und
-              Nachbereitungsaufgaben mit gezielter Wiederherstellung.
+              Nachvollziehbare Nachweise über gelöschte Helfer, Kuchen, Material sowie
+              Vor- und Nachbereitungsaufgaben mit gezielter Wiederherstellung.
             </p>
           </div>
           {isAdmin && (
@@ -295,6 +308,7 @@ export default function Permissions() {
                   <SelectItem value="cake">Nur Kuchen</SelectItem>
                   <SelectItem value="prep">Nur Vorbereitungen</SelectItem>
                   <SelectItem value="post">Nur Nachbereitungen</SelectItem>
+                  <SelectItem value="material">Nur Material</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={eventFilter} onValueChange={setEventFilter}>
@@ -378,20 +392,19 @@ export default function Permissions() {
                     </div>
                     <div>
                       <span className="text-muted-foreground">
-                        {entry.entityType === "prep"
+                        {entry.action === "single_delete"
                           ? "Gelöscht von:"
                           : "Ausgeführt von:"}
                       </span>{" "}
-                      {entry.actorName} (
+                      {entry.responsibleContactName ?? entry.actorName} (
                       {entry.actorRole === "admin"
                         ? "Administrator"
                         : "Planungsteam"}
                       )
                     </div>
                     {entry.responsibleContactName && (
-                      <div className="font-medium text-primary">
-                        Gewählter Ansprechpartner:{" "}
-                        {entry.responsibleContactName}
+                      <div className="text-xs text-muted-foreground">
+                        Ausgelöst über Benutzerkonto: {entry.actorName}
                       </div>
                     )}
                     <div className="break-words whitespace-normal [overflow-wrap:anywhere] text-muted-foreground">
@@ -444,17 +457,16 @@ export default function Permissions() {
                         </td>
                         <td className="break-words whitespace-normal p-3 align-top leading-relaxed [overflow-wrap:anywhere]">
                           <div className="font-medium">{actionLabel[entry.action]}</div>
-                          {entry.entityType === "prep" || entry.entityType === "post" ? "Gelöscht von: " : ""}
-                          {entry.actorName}
+                          {entry.action === "single_delete" ? "Gelöscht von: " : ""}
+                          {entry.responsibleContactName ?? entry.actorName}
                           <div className="text-xs text-muted-foreground">
                             {entry.actorRole === "admin"
                               ? "Administrator"
                               : "Planungsteam"}
                           </div>
                           {entry.responsibleContactName && (
-                            <div className="mt-1 text-xs font-medium text-primary">
-                              Gewählter Ansprechpartner: {" "}
-                              {entry.responsibleContactName}
+                            <div className="mt-1 text-xs text-muted-foreground">
+                              Ausgelöst über Benutzerkonto: {entry.actorName}
                             </div>
                           )}
                         </td>
