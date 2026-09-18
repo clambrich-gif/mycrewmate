@@ -1656,8 +1656,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(materials).toContain("Packliste PDF");
     expect(locations).toContain("GPX-Streckenoverlays");
     expect(locations).toContain("GPX hochladen");
-    expect(mapCard).toContain("trpc.gpxTracks.list.useQuery()");
+    expect(mapCard).toContain("trpc.gpxTracks.mapData.useQuery()");
     expect(mapClient).toContain("Polyline");
-    expect(mapClient).toContain("GpxOverlays");
+    expect(mapClient).toContain("data-gpx-layer-control=\"bottom-left\"");
+    expect(mapClient).toContain("Strecken einblenden");
+    expect(mapClient).toContain("requestFullscreen");
+    expect(mapClient).toContain("Kartenansicht zurücksetzen");
   });
 });

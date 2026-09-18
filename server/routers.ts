@@ -114,10 +114,10 @@ async function readResponseBodyLimited(
       declaredBytes < 0 ||
       declaredBytes > maxBytes
     ) {
-      throw new Error("PDF-Datei überschreitet die Größenbegrenzung");
+      throw new Error("Datei überschreitet die Größenbegrenzung");
     }
   }
-  if (!response.body) throw new Error("PDF-Datei hat keinen Inhalt");
+  if (!response.body) throw new Error("Datei hat keinen Inhalt");
 
   const reader = response.body.getReader();
   const chunks: Buffer[] = [];
@@ -128,8 +128,8 @@ async function readResponseBodyLimited(
       if (done) break;
       totalBytes += value.byteLength;
       if (totalBytes > maxBytes) {
-        void reader.cancel("PDF-Datei überschreitet die Größenbegrenzung");
-        throw new Error("PDF-Datei überschreitet die Größenbegrenzung");
+        void reader.cancel("Datei überschreitet die Größenbegrenzung");
+        throw new Error("Datei überschreitet die Größenbegrenzung");
       }
       chunks.push(Buffer.from(value));
     }
@@ -137,6 +137,60 @@ async function readResponseBodyLimited(
     reader.releaseLock();
   }
   return Buffer.concat(chunks, totalBytes);
+}
+
+type GpxMapTrack = {
+  id: number;
+  name: string;
+  color: string;
+  points: Array<[number, number]>;
+};
+
+function parseGpxMapPoints(xml: string): Array<[number, number]> {
+  const points: Array<[number, number]> = [];
+  const pointTags = Array.from(xml.matchAll(/<(?:trkpt|rtept)\b([^>]*)>/gi));
+  for (const match of pointTags) {
+    const attributes = match[1];
+    const latitude = Number(attributes.match(/\blat\s*=\s*["']([^"']+)["']/i)?.[1]);
+    const longitude = Number(attributes.match(/\blon\s*=\s*["']([^"']+)["']/i)?.[1]);
+    if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+      points.push([latitude, longitude]);
+    }
+  }
+  if (points.length < 2) {
+    throw new Error("GPX-Datei enthält keine lesbare Streckenlinie");
+  }
+
+  // Große Original-GPX-Dateien werden für die Browserkarte gleichmäßig
+  // ausgedünnt. Start- und Endpunkt bleiben immer erhalten.
+  const maxPoints = 5_000;
+  if (points.length <= maxPoints) return points;
+  const step = Math.ceil((points.length - 1) / (maxPoints - 1));
+  const reduced = points.filter((_, index) => index % step === 0);
+  if (reduced[reduced.length - 1] !== points[points.length - 1]) {
+    reduced.push(points[points.length - 1]);
+  }
+  return reduced;
+}
+
+async function loadGpxMapTrack(track: {
+  id: number;
+  name: string;
+  fileKey: string;
+  color: string;
+}): Promise<GpxMapTrack> {
+  const signedUrl = await storageGetSignedUrl(track.fileKey);
+  const response = await fetch(signedUrl);
+  if (!response.ok) {
+    throw new Error(`GPX-Datei konnte nicht geladen werden (${response.status})`);
+  }
+  const xml = (await readResponseBodyLimited(response, 6_000_000)).toString("utf8");
+  return {
+    id: track.id,
+    name: track.name,
+    color: track.color,
+    points: parseGpxMapPoints(xml),
+  };
 }
 
 const activeSessionProcedure = baseProtectedProcedure.use(
@@ -866,6 +920,23 @@ export const appRouter = router({
 
   gpxTracks: router({
     list: protectedProcedure.query(() => db.listGpxTracks()),
+    mapData: protectedProcedure.query(async () => {
+      const tracks = await db.listGpxTracks();
+      const loaded = await Promise.all(
+        tracks.map(async track => {
+          try {
+            return await loadGpxMapTrack(track);
+          } catch (error) {
+            console.warn(
+              `[GPX] Strecke ${track.id} (${track.name}) konnte nicht für die Karte gelesen werden`,
+              error
+            );
+            return null;
+          }
+        })
+      );
+      return loaded.filter((track): track is GpxMapTrack => track !== null);
+    }),
     upload: adminProcedure
       .input(
         z.object({
