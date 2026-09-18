@@ -49,6 +49,7 @@ const dbMocks = vi.hoisted(() => ({
   getHelper: vi.fn(),
   ensureHelperPdfShareCode: vi.fn(),
   listShiftAreaContacts: vi.fn(),
+  listLocations: vi.fn(),
   setShiftAreaContact: vi.fn(),
   withPlanningWriteLock: vi.fn(),
   getLocation: vi.fn(),
@@ -178,6 +179,7 @@ describe("Planungs-API", () => {
     dbMocks.listPost.mockResolvedValue([]);
     dbMocks.listContacts.mockResolvedValue([]);
     dbMocks.listMaterials.mockResolvedValue([]);
+    dbMocks.listLocations.mockResolvedValue([]);
     dbMocks.listMarketing.mockResolvedValue([]);
     dbMocks.listApprovals.mockResolvedValue([]);
     dbMocks.assignHelper.mockResolvedValue({ insertId: 1 });
@@ -556,6 +558,37 @@ describe("Planungs-API", () => {
       logoFallback: "brand",
     });
     expect(result.logoKey).not.toBe("global-alt.png");
+  });
+
+  it("erstellt die Material-Packliste ausschließlich aus der sichtbaren Auswahl", async () => {
+    dbMocks.listMaterials.mockResolvedValue([
+      {
+        id: 701,
+        article: "Flatterband",
+        category: "Absperrung",
+        quantity: "4",
+        unit: "Rollen",
+        locationId: null,
+        contactId: null,
+        status: "offen",
+        note: null,
+        sortOrder: 0,
+      },
+    ]);
+
+    const result = await appRouter.createCaller(ctx).pdf.materialPacklist({
+      materialIds: [701],
+    });
+
+    expect(result.filename).toBe("Material_Packliste_Gefiltert_MyEifelRide.pdf");
+    expect(result.mimeType).toBe("application/pdf");
+    expect(Buffer.from(result.base64, "base64").subarray(0, 5).toString()).toBe(
+      "%PDF-"
+    );
+
+    await expect(
+      appRouter.createCaller(ctx).pdf.materialPacklist({ materialIds: [999_999] })
+    ).rejects.toThrow("gehört nicht zur aktuellen Veranstaltung");
   });
 
   it("speichert PDF-Bilder im Pfad und Datensatz des aktuellen Events", async () => {

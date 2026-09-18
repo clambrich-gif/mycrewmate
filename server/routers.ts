@@ -1526,19 +1526,25 @@ export const appRouter = router({
       };
     }),
     materialPacklist: protectedProcedure
-      .input(z.object({ locationId: z.number().int().positive() }))
+      .input(
+        z.object({
+          materialIds: z.array(z.number().int().positive()).max(2_000),
+        })
+      )
       .mutation(async ({ input }) => {
-        const location = await db.getLocation(input.locationId);
-        if (!location) {
+        const scopedMaterials = await db.listMaterials();
+        const scopedIds = new Set(scopedMaterials.map(material => material.id));
+        const invalidId = input.materialIds.find(id => !scopedIds.has(id));
+        if (invalidId !== undefined) {
           throw new TRPCError({
             code: "NOT_FOUND",
-            message: "Der ausgewählte Standort gehört nicht zur Veranstaltung",
+            message: "Mindestens ein Materialartikel gehört nicht zur aktuellen Veranstaltung",
           });
         }
-        const pdf = await createMaterialPacklistPdf(input.locationId);
+        const pdf = await createMaterialPacklistPdf(input.materialIds);
         const selectedEvent = await db.getEvent();
         return {
-          filename: `Material_Packliste_${safeExportName(location.name)}_${safeExportName(selectedEvent?.name ?? "Veranstaltung")}.pdf`,
+          filename: `Material_Packliste_Gefiltert_${safeExportName(selectedEvent?.name ?? "Veranstaltung")}.pdf`,
           mimeType: "application/pdf",
           base64: pdf.toString("base64"),
         };

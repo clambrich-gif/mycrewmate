@@ -1626,10 +1626,14 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(materials).toContain('{ v: "bestellt", l: "🟡 Bestellt" }');
     expect(materials).toContain('{ v: "geliefert", l: "🟢 Geliefert" }');
     expect(materials).toContain('headerLayout="stacked"');
+    expect(materials).toContain("stackedActionColumns={3}");
     expect(materials).toContain("createButtonClassName=\"border-rose-700 bg-rose-600");
     expect(materials).toContain("filterConfig={{");
     expect(materials).toContain('searchPlaceholder: "Suchen (Artikel/Kategorie/Verantwortlicher/Ort) …"');
     expect(materials).toContain('"PDF drucken"');
+    expect(materials).toContain("headerActions={({ visibleRows }) =>");
+    expect(materials).toContain("materialIds: visibleRows");
+    expect(materials).not.toContain("Standort für Material-Packliste auswählen");
     expect(materials).not.toContain("Packliste PDF");
     expect(materials).not.toContain("sortableAndFilterable");
     expect(taskGeneric).toContain('headerLayout?: "default" | "stacked"');
@@ -1639,6 +1643,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(taskGeneric).toContain("Alle Standorte");
     expect(taskGeneric).toContain("Alle Verantwortlichen");
     expect(taskGeneric).toContain("Alle {filterConfig.statusLabel ?? \"Stände\"}");
+    expect(taskGeneric).toContain("Filter zurücksetzen");
+    expect(taskGeneric).toContain("const resetAllFilters");
     expect(cakes).toContain("createInDialog");
     expect(cakes).toContain('createDialogTitle="Kuchen erfassen"');
     expect(cakes).toContain('createTriggerLabel="Kuchen erfassen"');

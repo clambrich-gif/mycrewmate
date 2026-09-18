@@ -21,6 +21,7 @@ import {
   helperTaskCellText,
   planPdfTimeLabel,
   renderMaterialPacklistPdf,
+  selectMaterialPacklistMaterials,
 } from "./pdf";
 import { resolveEventPdfLogoKey } from "./event-pdf-image";
 
@@ -291,7 +292,7 @@ describe("PDF-Erzeugung", () => {
     expect(all.map(item => item.shift.area)).toEqual(["Aufbau", "Start"]);
   });
 
-  it("erzeugt eine standortbezogene Material-Packliste als PDF", async () => {
+  it("erzeugt eine aus der Tabellenansicht gefilterte Material-Packliste als PDF", async () => {
     const sampleLocation = {
       id: 99,
       year: 2026,
@@ -331,7 +332,26 @@ describe("PDF-Erzeugung", () => {
         note: null,
         sortOrder: 2,
       },
+      {
+        id: 3,
+        year: 2026,
+        eventId: 1,
+        article: "Müllsäcke",
+        category: "Entsorgung",
+        quantity: "2",
+        unit: "Rollen",
+        locationId: null,
+        contactId: null,
+        status: "bestellt" as const,
+        note: null,
+        sortOrder: 3,
+      },
     ];
+
+    expect(selectMaterialPacklistMaterials(sampleMaterials, [2, 3])).toEqual([
+      sampleMaterials[2],
+      sampleMaterials[1],
+    ]);
 
     const pdf = await renderMaterialPacklistPdf(
       {
@@ -339,7 +359,7 @@ describe("PDF-Erzeugung", () => {
         locations: [sampleLocation],
         materials: sampleMaterials,
       },
-      99
+      [1, 2]
     );
 
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");

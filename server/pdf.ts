@@ -731,26 +731,40 @@ export function renderBlankPlanPdf(data: PlanningData) {
   return renderPlanPdf(data, { mode: "blank" });
 }
 
-/** Erstellt eine operative Packliste für genau einen Festivalstandort. */
-export function renderMaterialPacklistPdf(data: PlanningData, locationId: number) {
-  const location = data.locations?.find(item => item.id === locationId);
-  if (!location) throw new Error("Der Standort wurde nicht gefunden");
-  const contactById = new Map(data.contacts.map(contact => [contact.id, contact]));
-  const selectedMaterials = (data.materials ?? [])
-    .filter(material => material.locationId === locationId)
+/** Wählt ausschließlich die in der aktuellen Tabellenansicht sichtbaren Artikel aus. */
+export function selectMaterialPacklistMaterials(
+  materials: Material[] | undefined,
+  materialIds: number[]
+) {
+  const selectedIds = new Set(materialIds);
+  return (materials ?? [])
+    .filter(material => selectedIds.has(material.id))
     .sort(
       (left, right) =>
         left.category.localeCompare(right.category, "de") ||
         left.article.localeCompare(right.article, "de") ||
         left.sortOrder - right.sortOrder
     );
+}
+
+/** Erstellt eine operative Packliste für die aktuell sichtbare Materialauswahl. */
+export function renderMaterialPacklistPdf(
+  data: PlanningData,
+  materialIds: number[]
+) {
+  const contactById = new Map(data.contacts.map(contact => [contact.id, contact]));
+  const locationById = new Map((data.locations ?? []).map(location => [location.id, location]));
+  const selectedMaterials = selectMaterialPacklistMaterials(
+    data.materials,
+    materialIds
+  );
 
   return collectPdf(doc => {
     drawDocumentHeader(
       doc,
       data.settings,
-      `Material-Packliste – ${location.name}`,
-      `Standort: ${location.name} · Stand: ${formatDate()}`,
+      "Material-Packliste – Gefilterte Ansicht",
+      `Aktuelle Tabellenansicht · Stand: ${formatDate()}`,
       data.logoBuffer
     );
     doc
@@ -758,7 +772,7 @@ export function renderMaterialPacklistPdf(data: PlanningData, locationId: number
       .fontSize(9.5)
       .fillColor(colors.muted)
       .text(
-        "Diese Liste bündelt alle Materialartikel, die dem ausgewählten Standort zugeordnet sind. Vor Ort bitte Menge, Zustand und Vollständigkeit prüfen."
+        "Diese Liste enthält genau die aktuell gefilterten Materialartikel. Vor Ort bitte Menge, Zustand und Vollständigkeit prüfen."
       );
     doc.moveDown(1);
 
@@ -766,15 +780,16 @@ export function renderMaterialPacklistPdf(data: PlanningData, locationId: number
       { key: "article", label: "Artikel", width: 176 },
       { key: "category", label: "Kategorie", width: 95 },
       { key: "quantity", label: "Menge", width: 66, align: "center" },
+      { key: "location", label: "Ort", width: 90 },
       { key: "status", label: "Stand", width: 75, align: "center" },
-      { key: "contact", label: data.settings.contactLabel, width: 117 },
+      { key: "contact", label: data.settings.contactLabel, width: 102 },
     ];
     drawTableHeader(doc, columns, margin);
     if (selectedMaterials.length === 0) {
       drawTableRow(
         doc,
         columns,
-        { article: "Für diesen Standort sind noch keine Artikel hinterlegt." },
+        { article: "Für die aktuelle Filterauswahl sind keine Artikel sichtbar." },
         margin,
         { minimumHeight: 34 }
       );
@@ -792,6 +807,9 @@ export function renderMaterialPacklistPdf(data: PlanningData, locationId: number
               : material.article,
             category: material.category || "–",
             quantity: quantity || "–",
+            location: material.locationId
+              ? (locationById.get(material.locationId)?.name ?? "–")
+              : "–",
             status: materialStatusText(material.status),
             contact: material.contactId
               ? (contactById.get(material.contactId)?.name ?? "–")
@@ -883,8 +901,8 @@ export async function createPlanPdf(options: PlanPdfOptions) {
   return renderPlanPdf(await loadPlanningData(), options);
 }
 
-export async function createMaterialPacklistPdf(locationId: number) {
-  return renderMaterialPacklistPdf(await loadPlanningData(), locationId);
+export async function createMaterialPacklistPdf(materialIds: number[]) {
+  return renderMaterialPacklistPdf(await loadPlanningData(), materialIds);
 }
 
 /** Beschränkt Helfer-PDFs bei Bedarf auf einen einzelnen Ansprechpartner. */

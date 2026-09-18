@@ -22,7 +22,15 @@ import {
 } from "@/components/ui/select";
 import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
 import { trpc } from "@/lib/trpc";
-import { ArrowDownAZ, ArrowUpZA, Plus, Search, Trash2, X } from "lucide-react";
+import {
+  ArrowDownAZ,
+  ArrowUpZA,
+  FilterX,
+  Plus,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { LocationMapLink } from "@/components/LocationMapLink";
@@ -68,8 +76,11 @@ interface Props {
   createTriggerLabel?: string;
   createButtonClassName?: string;
   locationField?: boolean;
-  headerActions?: ReactNode;
+  headerActions?:
+    | ReactNode
+    | ((context: { visibleRows: Array<Record<string, unknown>> }) => ReactNode);
   headerLayout?: "default" | "stacked";
+  stackedActionColumns?: 3 | 4;
   filterConfig?: {
     categoryKey: string;
     categoryLabel: string;
@@ -101,6 +112,7 @@ export default function TaskGeneric({
   locationField = false,
   headerActions,
   headerLayout = "default",
+  stackedActionColumns = 4,
   filterConfig,
 }: Props) {
   const utils = trpc.useUtils();
@@ -157,7 +169,7 @@ export default function TaskGeneric({
     () =>
       [...rows]
         .filter((row: any) => {
-          if (sortableAndFilterable && contactFilter !== "alle") {
+          if ((sortableAndFilterable || filterConfig) && contactFilter !== "alle") {
             if (contactFilter === "ohne" && row.contactId) return false;
             if (
               contactFilter !== "ohne" &&
@@ -351,6 +363,23 @@ export default function TaskGeneric({
     (locationField ? 1 : 0) +
     (noStatus ? 0 : 1) +
     (extraField ? 1 : 0);
+  const renderedHeaderActions =
+    typeof headerActions === "function"
+      ? headerActions({ visibleRows: visibleRows as Array<Record<string, unknown>> })
+      : headerActions;
+  const hasActiveFilters =
+    Boolean(searchTerm.trim()) ||
+    categoryFilter !== "alle" ||
+    locationFilter !== "alle" ||
+    contactFilter !== "alle" ||
+    fieldFilter !== "alle";
+  const resetAllFilters = () => {
+    setSearchTerm("");
+    setCategoryFilter("alle");
+    setLocationFilter("alle");
+    setContactFilter("alle");
+    setFieldFilter("alle");
+  };
 
   return (
     <div className="space-y-5">
@@ -363,9 +392,17 @@ export default function TaskGeneric({
       >
         <h1 className="text-2xl font-bold">{title}</h1>
         {headerLayout === "stacked" ? (
-          <div className="w-full space-y-2 xl:w-auto xl:min-w-[780px]">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 [&>button]:w-full [&>button]:justify-center [&>button]:px-2 sm:[&>button]:h-10">
-              {headerActions}
+          <div
+            className={`w-full space-y-2 xl:w-auto ${
+              stackedActionColumns === 3 ? "xl:min-w-[500px]" : "xl:min-w-[780px]"
+            }`}
+          >
+            <div
+              className={`grid grid-cols-2 gap-2 [&>button]:w-full [&>button]:justify-center [&>button]:px-2 sm:[&>button]:h-10 ${
+                stackedActionColumns === 3 ? "sm:grid-cols-3" : "sm:grid-cols-4"
+              }`}
+            >
+              {renderedHeaderActions}
               {kind in importAreaByKind && (
                 <ModuleExcelImportButton
                   area={importAreaByKind[kind as keyof typeof importAreaByKind]}
@@ -418,7 +455,7 @@ export default function TaskGeneric({
                 compact
               />
             )}
-            {headerActions}
+            {renderedHeaderActions}
             {createInDialog ? (
               <Button
                 type="button"
@@ -489,7 +526,7 @@ export default function TaskGeneric({
               </button>
             )}
           </div>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-[repeat(4,minmax(0,1fr))_auto]">
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
               <SelectTrigger className="h-11 w-full bg-white text-base sm:h-10 sm:text-sm">
                 <SelectValue placeholder={filterConfig.categoryLabel} />
@@ -547,6 +584,18 @@ export default function TaskGeneric({
                   ))}
                 </SelectContent>
               </Select>
+            )}
+            {hasActiveFilters && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={resetAllFilters}
+                className="h-11 w-full px-2 text-base text-slate-600 hover:text-slate-900 xl:ml-1 xl:h-10 xl:w-auto xl:text-sm"
+              >
+                <FilterX className="mr-1 size-3.5" />
+                Filter zurücksetzen
+              </Button>
             )}
           </div>
         </div>
@@ -771,7 +820,9 @@ export default function TaskGeneric({
             <CardContent className="p-4 text-sm text-muted-foreground">
               {rows.length === 0
                 ? "Noch keine Einträge."
-                : "Keine Einträge für diesen Verantwortlichen."}
+                : filterConfig
+                  ? "Keine Einträge für die aktuelle Filterauswahl."
+                  : "Keine Einträge für diesen Verantwortlichen."}
             </CardContent>
           </Card>
         )}
@@ -979,7 +1030,9 @@ export default function TaskGeneric({
                   >
                     {rows.length === 0
                       ? "Noch keine Einträge."
-                      : "Keine Einträge für diesen Verantwortlichen."}
+                      : filterConfig
+                        ? "Keine Einträge für die aktuelle Filterauswahl."
+                        : "Keine Einträge für diesen Verantwortlichen."}
                   </td>
                 </tr>
               )}
