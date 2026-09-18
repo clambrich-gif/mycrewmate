@@ -32,6 +32,7 @@ import {
   User,
   marketing,
   materials,
+  locations,
   postTasks,
   prepTasks,
   revokedSessions,
@@ -516,6 +517,7 @@ export async function deleteEvent(id: number) {
     await tx.delete(shiftAreaContacts).where(scope(shiftAreaContacts));
     await tx.delete(shifts).where(scope(shifts));
     await tx.delete(prepTasks).where(scope(prepTasks));
+    await tx.delete(locations).where(scope(locations));
     await tx.delete(postTasks).where(scope(postTasks));
     await tx.delete(materials).where(scope(materials));
     await tx.delete(marketing).where(scope(marketing));
@@ -546,6 +548,55 @@ export async function listContacts() {
     .from(contacts)
     .where(planningScope(contacts))
     .orderBy(contacts.sortOrder, contacts.name);
+}
+export async function listLocations() {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(locations)
+    .where(planningScope(locations))
+    .orderBy(locations.sortOrder, locations.name);
+}
+export async function getLocation(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const [location] = await db
+    .select()
+    .from(locations)
+    .where(and(eq(locations.id, id), planningScope(locations)))
+    .limit(1);
+  return location;
+}
+export async function createLocation(
+  value: Pick<typeof locations.$inferInsert, "name" | "latitude" | "longitude">
+) {
+  const db = (await getDb()) as DB;
+  return db.insert(locations).values({
+    ...value,
+    year: year(),
+    eventId: event(),
+  });
+}
+export async function updateLocation(
+  id: number,
+  value: Partial<
+    Pick<typeof locations.$inferInsert, "name" | "latitude" | "longitude">
+  >
+) {
+  const db = (await getDb()) as DB;
+  return db
+    .update(locations)
+    .set(value)
+    .where(and(eq(locations.id, id), planningScope(locations)));
+}
+export async function deleteLocation(id: number) {
+  const db = (await getDb()) as DB;
+  const result = await db
+    .delete(locations)
+    .where(and(eq(locations.id, id), planningScope(locations)));
+  requireDeletedRows(result, 1);
+  return { success: true } as const;
 }
 export async function getContact(id: number) {
   const db = await getDb();
@@ -1653,6 +1704,20 @@ async function requireActiveEventDay(day: Weekday) {
   }
 }
 
+async function scopedLocationValues(values: Record<string, unknown>) {
+  if (!("locationId" in values) || values.locationId === null) return values;
+  const locationId = Number(values.locationId);
+  const db = (await getDb()) as DB;
+  const [location] = await db
+    .select({ id: locations.id })
+    .from(locations)
+    .where(and(eq(locations.id, locationId), planningScope(locations)))
+    .limit(1);
+  if (!location)
+    throw new Error("Der Ort gehört nicht zur ausgewählten Veranstaltung");
+  return values;
+}
+
 export async function createShift(
   v: Partial<typeof shifts.$inferInsert> & {
     day: Weekday;
@@ -1663,7 +1728,7 @@ export async function createShift(
   await requireActiveEventDay(v.day);
   const db = (await getDb()) as DB;
   return db.insert(shifts).values({
-    ...v,
+    ...(await scopedLocationValues(v)),
     year: year(),
     eventId: event(),
   } as typeof shifts.$inferInsert);
@@ -1792,7 +1857,7 @@ export async function updateShift(
       shiftsFundamentallyChanged &&
       existingShift.manualDoubleConflictAccepted;
     const updateValues = {
-      ...safe,
+      ...(await scopedLocationValues(safe)),
       ...(shouldResetManualOk ? { manualOkConfirmed: false } : {}),
       ...(shouldResetManualDoubleConflict
         ? { manualDoubleConflictAccepted: false }
@@ -2313,7 +2378,7 @@ export const createPrep = async (v: any) => {
         };
   return createYearRow(
     prepTasks,
-    await scopedContactValues(valuesWithLogbook)
+    await scopedContactValues(await scopedLocationValues(valuesWithLogbook))
   );
 };
 export const updatePrep = async (id: number, v: any) => {
@@ -2322,7 +2387,7 @@ export const updatePrep = async (id: number, v: any) => {
   if (logEntry === undefined) {
     return database
       .update(prepTasks)
-      .set(await scopedContactValues(values))
+      .set(await scopedContactValues(await scopedLocationValues(values)))
       .where(yearWhere(prepTasks, id));
   }
 
@@ -2336,7 +2401,7 @@ export const updatePrep = async (id: number, v: any) => {
   return database
     .update(prepTasks)
     .set(
-      await scopedContactValues({
+      await scopedContactValues(await scopedLocationValues({
         ...values,
         note: prependPreparationLogbookEntry(
           logEntry,
@@ -2344,7 +2409,7 @@ export const updatePrep = async (id: number, v: any) => {
           new Date(),
           logEntryAuthor
         ),
-      })
+      }))
     )
     .where(yearWhere(prepTasks, id));
 };
@@ -3016,6 +3081,7 @@ export async function copyPlanFromEvent(
       sourceShifts,
       sourceAssignments,
       sourceAreaContacts,
+      sourceLocations,
       targetContacts,
       targetHelpers,
       targetShifts,
@@ -3033,6 +3099,7 @@ export async function copyPlanFromEvent(
         .select()
         .from(shiftAreaContacts)
         .where(eq(shiftAreaContacts.eventId, sourceEventId)),
+      tx.select().from(locations).where(eq(locations.eventId, sourceEventId)),
       tx.select().from(contacts).where(eq(contacts.eventId, targetEventId)),
       tx.select().from(helpers).where(eq(helpers.eventId, targetEventId)),
       tx.select().from(shifts).where(eq(shifts.eventId, targetEventId)),
@@ -3143,6 +3210,26 @@ export async function copyPlanFromEvent(
       }
     }
 
+    const locationMap = new Map<number, number>();
+    const targetLocations = await tx.select().from(locations).where(eq(locations.eventId, targetEventId));
+    const locationByName = new Map(targetLocations.map(item => [item.name.trim().toLowerCase(), item.id]));
+    for (const item of sourceLocations) {
+      let targetId = locationByName.get(item.name.trim().toLowerCase());
+      if (!targetId) {
+        const result: any = await tx.insert(locations).values({
+          year: targetEvent.year,
+          eventId: targetEvent.id,
+          name: item.name,
+          latitude: item.latitude,
+          longitude: item.longitude,
+          sortOrder: item.sortOrder,
+        });
+        targetId = Number(result?.[0]?.insertId ?? result?.insertId);
+        locationByName.set(item.name.trim().toLowerCase(), targetId);
+      }
+      locationMap.set(item.id, targetId);
+    }
+
     const shiftMap = new Map<number, number>();
     const targetShiftByKey = new Map(
       targetShifts.map(item => [shiftKey(item), item.id])
@@ -3157,6 +3244,7 @@ export async function copyPlanFromEvent(
           day: item.day,
           area: item.area,
           task: item.task,
+          locationId: item.locationId ? (locationMap.get(item.locationId) ?? null) : null,
           startTime: item.startTime,
           endTime: item.endTime,
           allowFlexibleAssignment: item.allowFlexibleAssignment,

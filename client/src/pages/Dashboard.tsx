@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { LocationMapCard } from "@/components/LocationMapCard";
 import {
   dashboardTargetHref,
   type DashboardTarget,
@@ -758,13 +759,14 @@ export default function Dashboard() {
       <section
         data-dashboard-section="Helfer-Kennzahlen"
         data-dashboard-level="Helfer-Kennzahlen"
-        className="grid gap-4 md:grid-cols-3"
+        className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"
       >
         <DailyReadinessCard
           readiness={dailyReadiness}
           openTarget={target => navigate(dashboardTargetHref(target))}
           onPotentialFilter={showPotentialInWorkload}
         />
+        <LocationMapCard />
         <FeedbackRateCard
           assigned={s.helferEingeteilt}
           confirmed={s.helferEingeteiltBestaetigt}

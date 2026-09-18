@@ -17,6 +17,7 @@ const expectedRoutes = [
   "/finanzen",
   "/pdf-export",
   "/excel",
+  "/orte",
   "/berechtigungen",
   "/sicherheit",
   "/hilfe",

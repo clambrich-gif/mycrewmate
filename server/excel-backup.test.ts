@@ -153,6 +153,7 @@ describe("Excel-Datensicherung", () => {
 
     expect(workbook.SheetNames).toEqual([
       "SICHERUNG_INFO",
+      "ORTE",
       "ANSPRECHPARTNER",
       "HELFER",
       "EINSATZPLAN",

@@ -194,7 +194,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsed = parseProjectFile(exported.buffer.toString("base64"));
     expect(parsed.document.metadata).toMatchObject({
       format: "RSC-HELFERPLANUNG-PROJEKTDATEI",
-      version: 7,
+      version: 8,
       eventId: 1,
       eventName: "MyEifelRide",
       year: 2026,
@@ -346,7 +346,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsed = parseProjectFile(
       Buffer.from(JSON.stringify(document)).toString("base64")
     );
-    expect(parsed.document.metadata.version).toBe(7);
+    expect(parsed.document.metadata.version).toBe(8);
     expect(parsed.document.metadata.activeDays).toEqual([...WEEKDAYS]);
     expect(parsed.document.metadata).toMatchObject({
       pdfLogoKey: null,
@@ -703,7 +703,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsedV5 = parseProjectFile(
       Buffer.from(JSON.stringify(legacyV5)).toString("base64")
     ).document;
-    expect(parsedV5.metadata.version).toBe(7);
+    expect(parsedV5.metadata.version).toBe(8);
     expect(parsedV5.shifts[0].manualOkConfirmed).toBe(false);
   });
 
@@ -718,7 +718,24 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsedV6 = parseProjectFile(
       Buffer.from(JSON.stringify(legacyV6)).toString("base64")
     ).document;
-    expect(parsedV6.metadata.version).toBe(7);
+    expect(parsedV6.metadata.version).toBe(8);
     expect(parsedV6.shifts[0].manualDoubleConflictAccepted).toBe(false);
+  });
+
+  it("erhaelt locations und migriert v7-Dateien ohne Orte sauber auf Version 8", async () => {
+    const exported = await exportProjectFile();
+    const current = parseProjectFile(exported.buffer.toString("base64")).document;
+    expect(current).toHaveProperty("locations");
+
+    const legacyV7 = structuredClone(current);
+    legacyV7.metadata.version = 7;
+    delete (legacyV7 as any).locations;
+    delete (legacyV7.shifts[0] as any).locationName;
+    const parsedV7 = parseProjectFile(
+      Buffer.from(JSON.stringify(legacyV7)).toString("base64")
+    ).document;
+    expect(parsedV7.metadata.version).toBe(8);
+    expect(parsedV7.locations).toEqual([]);
+    expect(parsedV7.shifts[0].locationName).toBe("");
   });
 });

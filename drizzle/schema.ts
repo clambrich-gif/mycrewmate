@@ -11,6 +11,7 @@ import {
   uniqueIndex,
   varchar,
   boolean,
+  double,
 } from "drizzle-orm/mysql-core";
 import { WEEKDAYS, type Weekday } from "../shared/weekdays";
 
@@ -273,6 +274,31 @@ export const helpers = mysqlTable(
 export type Helper = typeof helpers.$inferSelect;
 export type InsertHelper = typeof helpers.$inferInsert;
 
+/** Zentral gepflegte, veranstaltungsbezogene Einsatzorte. */
+export const locations = mysqlTable(
+  "locations",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    year: int("year").default(2026).notNull(),
+    eventId: int("eventId").notNull(),
+    name: varchar("name", { length: 200 }).notNull(),
+    latitude: double("latitude").notNull(),
+    longitude: double("longitude").notNull(),
+    sortOrder: int("sortOrder").default(0).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    foreignKey({
+      name: "locations_event_year_fk",
+      columns: [table.eventId, table.year],
+      foreignColumns: [events.id, events.year],
+    }).onDelete("cascade"),
+    uniqueIndex("locations_event_name_unique").on(table.eventId, table.name),
+  ]
+);
+export type Location = typeof locations.$inferSelect;
+export type InsertLocation = typeof locations.$inferInsert;
+
 export const shifts = mysqlTable(
   "shifts",
   {
@@ -282,6 +308,9 @@ export const shifts = mysqlTable(
     day: mysqlEnum("day", WEEKDAYS).notNull(),
     area: varchar("area", { length: 200 }).notNull(),
     task: varchar("task", { length: 300 }).notNull(),
+    locationId: int("locationId").references(() => locations.id, {
+      onDelete: "set null",
+    }),
     startTime: varchar("startTime", { length: 16 }).default("").notNull(),
     endTime: varchar("endTime", { length: 16 }).default("").notNull(),
     allowFlexibleAssignment: boolean("allowFlexibleAssignment")
@@ -505,6 +534,9 @@ export const prepTasks = mysqlTable("prep_tasks", {
   task: varchar("task", { length: 300 }).notNull(),
   category: varchar("category", { length: 120 }).default("").notNull(),
   dueText: varchar("dueText", { length: 200 }).default("").notNull(),
+  locationId: int("locationId").references(() => locations.id, {
+    onDelete: "set null",
+  }),
   contactId: int("contactId").references(() => contacts.id, {
     onDelete: "set null",
   }),

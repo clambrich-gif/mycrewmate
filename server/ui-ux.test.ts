@@ -717,7 +717,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain('id="helferauslastung"');
     expect(dashboard).toContain("Filter aufheben");
     expect(dashboard).toContain('data-dashboard-section="Helfer-Kennzahlen"');
-    expect(dashboard).toContain('className="grid gap-4 md:grid-cols-3"');
+    expect(dashboard).toContain(
+      'className="grid gap-4 md:grid-cols-2 xl:grid-cols-4"'
+    );
+    expect(dashboard).toContain("<LocationMapCard />");
+    expect(source("client/src/components/LocationMapCard.tsx")).toContain(
+      'data-dashboard-section="Live-Standortkarte"'
+    );
   });
 
   it("visualisiert die tägliche Einsatzbereitschaft für das dreitägige Festival", () => {
@@ -1605,5 +1611,31 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(cakes).toContain("createInDialog");
     expect(cakes).toContain('createDialogTitle="Kuchen erfassen"');
     expect(cakes).toContain('createTriggerLabel="Kuchen erfassen"');
+  });
+
+  it("bietet zentrale Orte, Ortsauswahl und Kartenlinks in Schichten und Vorbereitungen", () => {
+    const plan = source("client/src/pages/Plan.tsx");
+    const prep = source("client/src/pages/Preparation.tsx");
+    const locations = source("client/src/pages/Locations.tsx");
+    const nav = source("client/src/lib/nav.ts");
+    const mapCard = source("client/src/components/LocationMapCard.tsx");
+
+    expect(nav).toContain('href: "/orte"');
+    expect(nav).toContain('label: "Orte & Standorte"');
+    expect(locations).toContain("Orte & Standorte");
+    expect(locations).toContain("Breitengrad (Latitude)");
+    expect(locations).toContain("Längengrad (Longitude)");
+
+    expect(plan).toContain("Ort / Standort");
+    expect(plan).toContain('href={`/?location=${s.locationId}`}');
+    expect(plan).toContain("(Karte)");
+
+    expect(prep).toContain("Ort / Standort");
+    expect(prep).toContain('href={`/?location=${task.locationId}`}');
+    expect(prep).toContain("(Karte)");
+
+    expect(mapCard).toContain("Live-Standortkarte");
+    expect(mapCard).toContain("MapView");
+    expect(mapCard).toContain("fitBounds");
   });
 });

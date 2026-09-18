@@ -10,6 +10,7 @@ import { routeLoaders } from "./lib/route-loaders";
 
 const Dashboard = lazy(routeLoaders["/"]);
 const Contacts = lazy(routeLoaders["/ansprechpartner"]);
+const Locations = lazy(routeLoaders["/orte"]);
 const Helpers = lazy(routeLoaders["/helfer"]);
 const Plan = lazy(routeLoaders["/einsatzplan"]);
 const Preparation = lazy(routeLoaders["/vorbereitung"]);
@@ -54,6 +55,7 @@ function Router() {
           <Route path="/dashboard" component={Dashboard} />
           <Route path="/" component={Dashboard} />
           <Route path="/ansprechpartner" component={Contacts} />
+          <Route path="/orte" component={Locations} />
           <Route path="/helfer" component={Helpers} />
           <Route path="/einsatzplan" component={Plan} />
           <Route path="/vorbereitung" component={Preparation} />

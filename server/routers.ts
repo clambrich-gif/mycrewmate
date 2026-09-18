@@ -404,6 +404,7 @@ const createShiftInput = z
     day: dayEnum,
     area: z.string().trim().min(1),
     task: z.string().trim().min(1),
+    locationId: z.number().int().positive().nullable().optional(),
     startTime: clockTime.default(""),
     endTime: clockTime.default(""),
     allowFlexibleAssignment: z.boolean().default(false),
@@ -420,6 +421,7 @@ const updateShiftInput = z
     day: dayEnum.optional(),
     area: z.string().trim().min(1).optional(),
     task: z.string().trim().min(1).optional(),
+    locationId: z.number().int().positive().nullable().optional(),
     startTime: clockTime.optional(),
     endTime: clockTime.optional(),
     allowFlexibleAssignment: z.boolean().optional(),
@@ -821,6 +823,43 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         await requireAdminPassword(input.adminPassword, ctx);
         return db.deleteContact(input.id, auditActor(ctx.user));
+      }),
+  }),
+
+  locations: router({
+    list: protectedProcedure.query(() => db.listLocations()),
+    create: adminProcedure
+      .input(
+        z.object({
+          name: z.string().trim().min(1).max(200),
+          latitude: z.number().finite().min(-90).max(90),
+          longitude: z.number().finite().min(-180).max(180),
+        })
+      )
+      .mutation(({ input }) => db.createLocation(input)),
+    update: adminProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          name: z.string().trim().min(1).max(200).optional(),
+          latitude: z.number().finite().min(-90).max(90).optional(),
+          longitude: z.number().finite().min(-180).max(180).optional(),
+        })
+      )
+      .mutation(({ input }) => {
+        const { id, ...value } = input;
+        return db.updateLocation(id, value);
+      }),
+    remove: adminProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          adminPassword: z.string().min(1).max(200),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await requireAdminPassword(input.adminPassword, ctx);
+        return db.deleteLocation(input.id);
       }),
   }),
 
@@ -1261,6 +1300,7 @@ export const appRouter = router({
           task: z.string().trim().min(1).max(300),
           category: z.string().trim().max(120).optional(),
           dueText: z.string().max(200).optional(),
+          locationId: z.number().int().positive().nullable().optional(),
           contactId: z.number().nullable().optional(),
           note: z.string().max(10_000).optional(),
           logEntry: z.string().max(10_000).optional(),
@@ -1281,6 +1321,7 @@ export const appRouter = router({
           task: z.string().trim().min(1).max(300).optional(),
           category: z.string().trim().max(120).optional(),
           dueText: z.string().max(200).optional(),
+          locationId: z.number().int().positive().nullable().optional(),
           contactId: z.number().nullable().optional(),
           status: statusPrep.optional(),
           statusWording: prepStatusWording.optional(),

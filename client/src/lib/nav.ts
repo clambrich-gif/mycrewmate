@@ -9,6 +9,7 @@ import {
   CircleHelp,
   LayoutDashboard,
   LockKeyhole,
+  MapPin,
   Package,
   ShieldCheck,
   UserCheck,
@@ -35,6 +36,11 @@ export const NAV: readonly NavItem[] = [
   { href: "/finanzen", label: "Finanzen", icon: Wallet },
   { href: "/pdf-export", label: "PDF-Ausgabe", icon: FileDown },
   { href: "/excel", label: "Excel-Projektübersicht", icon: FileSpreadsheet },
+  {
+    href: "/orte",
+    label: "Orte & Standorte",
+    icon: MapPin,
+  },
   {
     href: "/berechtigungen",
     label: "Rollen & Protokoll",

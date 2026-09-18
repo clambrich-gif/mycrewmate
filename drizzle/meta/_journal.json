@@ -232,6 +232,13 @@
       "when": 1789678364069,
       "tag": "0032_known_ozymandias",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "5",
+      "when": 1789710393842,
+      "tag": "0033_short_apocalypse",
+      "breakpoints": true
     }
   ]
 }

@@ -46,6 +46,7 @@ import {
   Calendar,
   FilterX,
   Info,
+  MapPin,
   Pencil,
   Plus,
   Search,
@@ -83,6 +84,7 @@ type PrepTaskRow = {
   category: string;
   task: string;
   dueText: string;
+  locationId: number | null;
   contactId: number | null;
   status: PrepStatus;
   statusWording: PrepWording | null;
@@ -92,6 +94,7 @@ type PrepTaskRow = {
 type PrepForm = {
   category: string;
   task: string;
+  locationId: string;
   contactId: string;
   dueText: string;
   legacyDueText: string;
@@ -107,6 +110,7 @@ type StatusUpdate = {
 const EMPTY_FORM: PrepForm = {
   category: "",
   task: "",
+  locationId: "none",
   contactId: "none",
   dueText: "",
   legacyDueText: "",
@@ -299,6 +303,7 @@ export default function Preparation() {
   const utils = trpc.useUtils();
   const { data: rawRows = [], isLoading } = trpc.prep.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
+  const { data: locations = [] } = trpc.locations.list.useQuery();
   const rows = rawRows as PrepTaskRow[];
 
   const { user } = useAuth();
@@ -319,6 +324,7 @@ export default function Preparation() {
           category: input.category ?? "",
           task: input.task,
           dueText: input.dueText ?? "",
+          locationId: input.locationId ?? null,
           contactId: input.contactId ?? null,
           status: input.status ?? "offen",
           statusWording: input.statusWording ?? "aufgabe",
@@ -514,6 +520,7 @@ export default function Preparation() {
     setForm({
       category: task.category ?? "",
       task: task.task,
+      locationId: task.locationId ? String(task.locationId) : "none",
       contactId: task.contactId ? String(task.contactId) : "none",
       dueText: parsedDueDate?.iso ?? "",
       legacyDueText: parsedDueDate ? "" : task.dueText ?? "",
@@ -545,6 +552,7 @@ export default function Preparation() {
     const payload = {
       category: form.category.trim(),
       task,
+      locationId: form.locationId === "none" ? null : Number(form.locationId),
       contactId: form.contactId === "none" ? null : Number(form.contactId),
       dueText,
     };
@@ -781,7 +789,12 @@ export default function Preparation() {
                       }`}
                     >
                       <td className="min-w-[230px] whitespace-nowrap px-3 py-3 align-top">
-                        {task.category || "—"}
+                        <span className="block">{task.category || "—"}</span>
+                        {task.locationId && (
+                          <a href={`/?location=${task.locationId}`} className="mt-0.5 inline-flex items-center gap-1 text-xs font-medium text-blue-700 hover:underline">
+                            <MapPin className="size-3" aria-hidden="true" />(Karte)
+                          </a>
+                        )}
                       </td>
                       <td className="break-words px-3 py-3 align-top font-medium">{task.task}</td>
                       <td className="break-words px-3 py-3 align-top">
@@ -947,6 +960,11 @@ export default function Preparation() {
                             <Badge variant="secondary" className="font-normal">
                               {task.category}
                             </Badge>
+                          )}
+                          {task.locationId && (
+                            <a href={`/?location=${task.locationId}`} className="inline-flex min-h-8 items-center gap-1 rounded-full bg-blue-50 px-2 text-xs font-medium text-blue-700 hover:bg-blue-100">
+                              <MapPin className="size-3" aria-hidden="true" />Karte
+                            </a>
                           )}
                         </div>
                       </div>
@@ -1117,6 +1135,19 @@ export default function Preparation() {
                   <option key={category} value={category} />
                 ))}
               </datalist>
+            </div>
+            <div>
+              <Label>Ort / Standort</Label>
+              <Select
+                value={form.locationId}
+                onValueChange={value => setForm(current => ({ ...current, locationId: value }))}
+              >
+                <SelectTrigger><SelectValue placeholder="Kein Ort" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Kein Ort</SelectItem>
+                  {locations.map(location => <SelectItem key={location.id} value={String(location.id)}>{location.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label htmlFor="prep-task">Aufgabe / Bezeichnung *</Label>

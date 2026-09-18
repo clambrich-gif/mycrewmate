@@ -12,6 +12,7 @@ import {
   eventYears,
   finances,
   helpers,
+  locations,
   marketing,
   materials,
   postTasks,
@@ -56,6 +57,7 @@ const SHEETS = [
   "FINANZEN",
 ] as const;
 export const PROJECT_EXCEL_HEADERS: Record<string, string[]> = {
+  ORTE: ["ID", "Ortsname", "Breitengrad", "Längengrad", "Reihenfolge"],
   ANSPRECHPARTNER: ["ID", "Name", "Rufnummer", "Bemerkung", "Reihenfolge"],
   HELFER: [
     "ID",
@@ -95,6 +97,8 @@ export const PROJECT_EXCEL_HEADERS: Record<string, string[]> = {
     "Tag",
     "Bereich",
     "Aufgabe",
+    "Ort-ID",
+    "Ort / Standort",
     "Beginn",
     "Ende",
     "Bedarf",
@@ -115,6 +119,8 @@ export const PROJECT_EXCEL_HEADERS: Record<string, string[]> = {
     "Kategorie",
     "Aufgabe",
     "Zu erledigen bis",
+    "Ort-ID",
+    "Ort / Standort",
     "Verantwortlich-ID",
     "Verantwortlich",
     "Status",
@@ -219,6 +225,7 @@ type Client = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 type ChangeAction = "create" | "update" | "delete";
 export type BackupArea =
   | (typeof SHEETS)[number]
+  | "ORTE"
   | "VERANSTALTUNG"
   | "ZUORDNUNGEN";
 export type BackupChange = {
@@ -287,11 +294,20 @@ type HelperRow = {
   availSunEnd: string;
   confirmed: "ja" | "nein";
 };
+type LocationRow = {
+  sourceId: number | null;
+  name: string;
+  latitude: number;
+  longitude: number;
+  sortOrder: number;
+};
 type ShiftRow = {
   sourceId: number | null;
   day: Weekday;
   area: string;
   task: string;
+  locationSourceId: number | null;
+  locationName: string;
   startTime: string;
   endTime: string;
   allowFlexibleAssignment: boolean;
@@ -322,6 +338,8 @@ type PrepRow = {
   category: string;
   task: string;
   dueText: string;
+  locationSourceId: number | null;
+  locationName: string;
   contactSourceId: number | null;
   contactName: string;
   status: "offen" | "inArbeit" | "erledigt" | "abgelehnt";
@@ -392,6 +410,7 @@ export type BackupDocument = {
   };
   contacts: ContactRow[];
   helpers: HelperRow[];
+  locations: LocationRow[];
   shifts: ShiftRow[];
   prep: PrepRow[];
   post: TaskRow[];
@@ -411,6 +430,7 @@ type CurrentSnapshot = {
   pdfLogoFallback: "none" | "brand";
   contacts: any[];
   helpers: any[];
+  locations: any[];
   shifts: any[];
   areaContacts: any[];
   assignments: any[];
@@ -576,6 +596,37 @@ export function repairImportedDocumentRelations(document: BackupDocument) {
       row,
       `Eintrag „${"task" in row ? row.task : "article" in row ? row.article : "measure" in row ? row.measure : row.request}“`
     );
+  const locationBySourceId = new Map(
+    document.locations.flatMap(row =>
+      row.sourceId ? ([[row.sourceId, row]] as const) : []
+    )
+  );
+  const locationByName = new Map(
+    document.locations.map(row => [personKey(row.name), row])
+  );
+  const canonicalizeLocationReference = (
+    row: { locationSourceId: number | null; locationName: string },
+    label: string
+  ) => {
+    const location =
+      (row.locationSourceId
+        ? locationBySourceId.get(row.locationSourceId)
+        : undefined) ?? locationByName.get(personKey(row.locationName));
+    if (location) {
+      row.locationSourceId = location.sourceId;
+      row.locationName = location.name;
+      return;
+    }
+    if (row.locationSourceId || personKey(row.locationName)) {
+      addWarning(`${label}: fehlender Standortbezug wurde entfernt.`);
+      row.locationSourceId = null;
+      row.locationName = "";
+    }
+  };
+  for (const row of document.shifts)
+    canonicalizeLocationReference(row, `EINSATZPLAN „${row.task}“`);
+  for (const row of document.prep)
+    canonicalizeLocationReference(row, `VORBEREITUNG „${row.task}“`);
   for (const row of document.shifts) {
     const contact =
       (row.areaContactSourceId
@@ -739,6 +790,15 @@ const nullableId = (value: unknown, label: string) => {
 const integer = (value: unknown, label: string, min: number, max: number) => {
   const number = Number(value);
   if (!Number.isInteger(number) || number < min || number > max)
+    throw new Error(`${label} muss zwischen ${min} und ${max} liegen`);
+  return number;
+};
+const coordinate = (value: unknown, label: string, min: number, max: number) => {
+  const number =
+    typeof value === "number"
+      ? value
+      : Number(String(value ?? "").trim().replace(",", "."));
+  if (!Number.isFinite(number) || number < min || number > max)
     throw new Error(`${label} muss zwischen ${min} und ${max} liegen`);
   return number;
 };
@@ -1086,6 +1146,49 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
     return null;
   };
 
+  const locationRows = workbook.Sheets.ORTE
+    ? sheetRows(workbook, "ORTE").filter(row => normalize(row.Ortsname))
+    : [];
+  const parsedLocations: LocationRow[] = locationRows.map((row, index) => ({
+    sourceId: nullableId(row.ID, `ORTE Zeile ${index + 2}`),
+    name: text(row.Ortsname, 200, `ORTE Zeile ${index + 2}: Ortsname`, true),
+    latitude: coordinate(
+      row.Breitengrad,
+      `ORTE Zeile ${index + 2}: Breitengrad`,
+      -90,
+      90
+    ),
+    longitude: coordinate(
+      row.Längengrad,
+      `ORTE Zeile ${index + 2}: Längengrad`,
+      -180,
+      180
+    ),
+    sortOrder: integer(
+      row.Reihenfolge || 0,
+      `ORTE Zeile ${index + 2}: Reihenfolge`,
+      0,
+      1_000_000
+    ),
+  }));
+  ensureUnique(parsedLocations, row => row.sourceId, row => row.name, "ORTE");
+  const locationIds = new Set(
+    parsedLocations.flatMap(row => (row.sourceId ? [row.sourceId] : []))
+  );
+  const locationNames = new Map(
+    parsedLocations.map(row => [personKey(row.name), row.sourceId])
+  );
+  const locationRef = (idValue: unknown, nameValue: unknown, label: string) => {
+    const id = nullableId(idValue, label);
+    const nameKey = personKey(nameValue);
+    const byName = nameKey ? locationNames.get(nameKey) : undefined;
+    if (nameKey && locationNames.has(nameKey)) return byName ?? null;
+    if (id && locationIds.has(id)) return id;
+    if (id || nameKey)
+      warnings.push(`${label}: gelöschter oder unbekannter Ort wird entfernt.`);
+    return null;
+  };
+
   const rawHelperRows = sheetRows(workbook, "HELFER");
   const helperHasColumn = (column: string) =>
     rawHelperRows.some(row =>
@@ -1291,6 +1394,16 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
         `EINSATZPLAN Zeile ${index + 2}: Aufgabe`,
         true
       ),
+      locationSourceId: locationRef(
+        row["Ort-ID"],
+        row["Ort / Standort"],
+        `EINSATZPLAN Zeile ${index + 2}: Ort`
+      ),
+      locationName: text(
+        row["Ort / Standort"],
+        200,
+        `EINSATZPLAN Zeile ${index + 2}: Ort`
+      ),
       startTime,
       endTime,
       allowFlexibleAssignment,
@@ -1408,6 +1521,16 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
         row["Zu erledigen bis"],
         200,
         `VORBEREITUNG Zeile ${index + 2}: Zu erledigen bis`
+      ),
+      locationSourceId: locationRef(
+        row["Ort-ID"],
+        row["Ort / Standort"],
+        `VORBEREITUNG Zeile ${index + 2}: Ort`
+      ),
+      locationName: text(
+        row["Ort / Standort"],
+        200,
+        `VORBEREITUNG Zeile ${index + 2}: Ort`
       ),
       contactSourceId: contactRef(
         row["Verantwortlich-ID"],
@@ -1667,6 +1790,7 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
     metadata: meta,
     contacts: parsedContacts,
     helpers: parsedHelpers,
+    locations: parsedLocations,
     shifts: parsedShifts,
     prep: parsedPrep,
     post: parsedPost,
@@ -1702,6 +1826,7 @@ async function loadSnapshot(
     eventRows,
     contactRows,
     helperRows,
+    locationRows,
     shiftRows,
     areaRows,
     assignmentRows,
@@ -1716,6 +1841,7 @@ async function loadSnapshot(
     selectRows(events, and(eq(events.id, eventId), eq(events.year, year)), 1),
     selectRows(contacts, scope(contacts)),
     selectRows(helpers, scope(helpers)),
+    selectRows(locations, scope(locations)),
     selectRows(shifts, scope(shifts)),
     selectRows(shiftAreaContacts, scope(shiftAreaContacts)),
     selectRows(
@@ -1742,6 +1868,7 @@ async function loadSnapshot(
     pdfLogoFallback: eventRows[0].pdfLogoFallback,
     contacts: contactRows,
     helpers: helperRows,
+    locations: locationRows,
     shifts: shiftRows,
     areaContacts: areaRows,
     assignments: assignmentRows,
@@ -1772,6 +1899,7 @@ function comparableCurrent(snapshot: CurrentSnapshot) {
     );
   const contactName = new Map(snapshot.contacts.map(row => [row.id, row.name]));
   const helperName = new Map(snapshot.helpers.map(row => [row.id, row.name]));
+  const locationName = new Map(snapshot.locations.map(row => [row.id, row.name]));
   const areaContact = new Map(
     snapshot.areaContacts.map(row => [personKey(row.area), row.contactId])
   );
@@ -1826,6 +1954,10 @@ function comparableCurrent(snapshot: CurrentSnapshot) {
       availWed: row.availWed ?? "ja",
       availThu: row.availThu ?? "ja",
     })),
+    locations: [...snapshot.locations].sort(byId).map(row => ({
+      sourceId: row.id,
+      ...clean(row, ["name", "latitude", "longitude", "sortOrder"]),
+    })),
     shifts: [...snapshot.shifts].sort(byId).map(row => ({
       sourceId: row.id,
       ...clean(row, [
@@ -1842,6 +1974,8 @@ function comparableCurrent(snapshot: CurrentSnapshot) {
         "sortOrder",
       ]),
       areaContactSourceId: areaContact.get(personKey(row.area)) ?? null,
+      locationSourceId: row.locationId ?? null,
+      locationName: row.locationId ? (locationName.get(row.locationId) ?? "") : "",
       areaContactName: areaContact.get(personKey(row.area))
         ? (contactName.get(areaContact.get(personKey(row.area))!) ?? "")
         : "",
@@ -1857,6 +1991,8 @@ function comparableCurrent(snapshot: CurrentSnapshot) {
       sourceId: row.id,
       contactSourceId: row.contactId,
       contactName: row.contactId ? (contactName.get(row.contactId) ?? "") : "",
+      locationSourceId: row.locationId ?? null,
+      locationName: row.locationId ? (locationName.get(row.locationId) ?? "") : "",
       ...clean(row, [
         "category",
         "task",
@@ -1954,6 +2090,7 @@ export function comparableProjectContent(
     );
 
   return {
+    locations: withoutIds(document.locations as Array<Record<string, unknown>>),
     contacts: withoutIds(document.contacts as Array<Record<string, unknown>>),
     helpers: withoutIds(document.helpers as Array<Record<string, unknown>>, [
       "contactSourceId",
@@ -1966,6 +2103,7 @@ export function comparableProjectContent(
               ([field]) =>
                 field !== "sourceId" &&
                 field !== "areaContactSourceId" &&
+                field !== "locationSourceId" &&
                 field !== "slots"
             )
           ),
@@ -1977,6 +2115,7 @@ export function comparableProjectContent(
     ),
     prep: withoutIds(document.prep as Array<Record<string, unknown>>, [
       "contactSourceId",
+      "locationSourceId",
     ]),
     post: withoutIds(document.post as Array<Record<string, unknown>>, [
       "contactSourceId",
@@ -2049,6 +2188,7 @@ export async function createCurrentProjectDocument(): Promise<BackupDocument> {
 }
 
 const AREA_CONFIG = [
+  ["ORTE", "locations", "name"],
   ["ANSPRECHPARTNER", "contacts", "name"],
   ["HELFER", "helpers", "name"],
   ["EINSATZPLAN", "shifts", "task"],
@@ -2060,7 +2200,12 @@ const AREA_CONFIG = [
   ["KUCHEN", "cakes", "donor"],
   ["FINANZEN", "finances", "category"],
 ] as const;
-const ignoredDiffFields = new Set(["contactName", "areaContactName", "slots"]);
+const ignoredDiffFields = new Set([
+  "contactName",
+  "areaContactName",
+  "locationName",
+  "slots",
+]);
 const documentRowIdentity = (
   area: (typeof AREA_CONFIG)[number][0],
   row: Record<string, unknown>,
@@ -2086,6 +2231,11 @@ const diffFieldEqual = (
       ? before.areaContactSourceId === after.areaContactSourceId
       : personKey(before.areaContactName) === personKey(after.areaContactName);
   }
+  if (field === "locationSourceId") {
+    return before.locationSourceId && after.locationSourceId
+      ? before.locationSourceId === after.locationSourceId
+      : personKey(before.locationName) === personKey(after.locationName);
+  }
   return (
     JSON.stringify(before[field] ?? null) ===
     JSON.stringify(after[field] ?? null)
@@ -2097,8 +2247,8 @@ export function diffDocuments(
 ) {
   const changes: BackupChange[] = [];
   for (const [area, key, labelField] of AREA_CONFIG) {
-    const beforeRows = current[key] as any[];
-    const afterRows = desired[key] as any[];
+    const beforeRows = ((current as any)[key] ?? []) as any[];
+    const afterRows = ((desired as any)[key] ?? []) as any[];
     const beforeById = new Map(beforeRows.map(row => [row.sourceId, row]));
     const beforeByIdentity = new Map(
       beforeRows.map(row => [documentRowIdentity(area, row, labelField), row])
@@ -2431,6 +2581,12 @@ export function buildSelectedDocument(
   }
 
   ensureUnique(
+    target.locations,
+    row => row.sourceId,
+    row => row.name,
+    "ORTE"
+  );
+  ensureUnique(
     target.contacts,
     row => row.sourceId,
     row => row.name,
@@ -2457,6 +2613,27 @@ export function buildSelectedDocument(
   const contactByName = new Map(
     target.contacts.map(row => [personKey(row.name), row])
   );
+  const locationById = new Map(
+    target.locations.flatMap(row =>
+      row.sourceId ? ([[row.sourceId, row]] as const) : []
+    )
+  );
+  const locationByName = new Map(
+    target.locations.map(row => [personKey(row.name), row])
+  );
+  const normalizeLocationRef = (row: {
+    locationSourceId: number | null;
+    locationName: string;
+  }) => {
+    const location =
+      (row.locationSourceId
+        ? locationById.get(row.locationSourceId)
+        : undefined) ?? locationByName.get(personKey(row.locationName));
+    row.locationSourceId = location?.sourceId ?? null;
+    row.locationName = location?.name ?? "";
+  };
+  for (const row of target.shifts) normalizeLocationRef(row);
+  for (const row of target.prep) normalizeLocationRef(row);
   const normalizeContactRef = (row: {
     contactSourceId: number | null;
     contactName: string;
@@ -2897,6 +3074,7 @@ export async function restoreProjectDocument(
       await tx.delete(shiftAreaContacts).where(scope(shiftAreaContacts));
       await tx.delete(shifts).where(scope(shifts));
       await tx.delete(prepTasks).where(scope(prepTasks));
+      await tx.delete(locations).where(scope(locations));
       await tx.delete(postTasks).where(scope(postTasks));
       await tx.delete(materials).where(scope(materials));
       await tx.delete(marketing).where(scope(marketing));
@@ -2931,6 +3109,33 @@ export async function restoreProjectDocument(
       const resolveContact = (sourceId: number | null, name: string) =>
         (sourceId ? contactIdBySource.get(sourceId) : undefined) ??
         contactIdByName.get(personKey(name)) ??
+        null;
+
+      const currentLocationIds = new Set(snapshot.locations.map(row => row.id));
+      const locationIdBySource = new Map<number, number>();
+      const locationIdByName = new Map<string, number>();
+      for (const row of desired.locations) {
+        const preservedId =
+          row.sourceId && currentLocationIds.has(row.sourceId)
+            ? row.sourceId
+            : undefined;
+        const result: any = await tx.insert(locations).values({
+          ...(preservedId ? { id: preservedId } : {}),
+          year,
+          eventId,
+          name: row.name,
+          latitude: row.latitude,
+          longitude: row.longitude,
+          sortOrder: row.sortOrder,
+        });
+        const actualId =
+          preservedId ?? Number(result?.[0]?.insertId ?? result?.insertId);
+        if (row.sourceId) locationIdBySource.set(row.sourceId, actualId);
+        locationIdByName.set(personKey(row.name), actualId);
+      }
+      const resolveLocation = (sourceId: number | null, name: string) =>
+        (sourceId ? locationIdBySource.get(sourceId) : undefined) ??
+        locationIdByName.get(personKey(name)) ??
         null;
 
       const currentHelperIds = new Set(snapshot.helpers.map(row => row.id));
@@ -3003,6 +3208,7 @@ export async function restoreProjectDocument(
           day: row.day,
           area: row.area,
           task: row.task,
+          locationId: resolveLocation(row.locationSourceId, row.locationName),
           startTime: row.startTime,
           endTime: row.endTime,
           allowFlexibleAssignment: row.allowFlexibleAssignment,
@@ -3056,6 +3262,7 @@ export async function restoreProjectDocument(
           category: row.category ?? "",
           task: row.task,
           dueText: row.dueText,
+          locationId: resolveLocation(row.locationSourceId, row.locationName),
           contactId: resolveContact(row.contactSourceId, row.contactName),
           status: row.status,
           statusWording: row.statusWording ?? "aufgabe",
@@ -3411,6 +3618,16 @@ export async function exportProjectExcel(): Promise<{
     [28, 100]
   );
   append(
+    "ORTE",
+    current.locations.map((row: any) => ({
+      ID: row.sourceId,
+      Ortsname: row.name,
+      Breitengrad: row.latitude,
+      Längengrad: row.longitude,
+      Reihenfolge: row.sortOrder,
+    }))
+  );
+  append(
     "ANSPRECHPARTNER",
     current.contacts.map((row: any) => ({
       ID: row.sourceId,
@@ -3463,6 +3680,8 @@ export async function exportProjectExcel(): Promise<{
       Tag: row.day,
       Bereich: row.area,
       Aufgabe: row.task,
+      "Ort-ID": row.locationSourceId ?? "",
+      "Ort / Standort": row.locationName,
       Beginn: row.startTime,
       Ende: row.endTime,
       "Flexible Belegung": row.allowFlexibleAssignment ? "Ja" : "Nein",
@@ -3492,6 +3711,12 @@ export async function exportProjectExcel(): Promise<{
       ...(isPrep ? { Kategorie: row.category ?? "" } : {}),
       Aufgabe: row.task,
       ...(isPrep ? { "Zu erledigen bis": row.dueText } : {}),
+      ...(isPrep
+        ? {
+            "Ort-ID": row.locationSourceId ?? "",
+            "Ort / Standort": row.locationName,
+          }
+        : {}),
       "Verantwortlich-ID": row.contactSourceId ?? "",
       Verantwortlich: row.contactName,
       Status: row.status,

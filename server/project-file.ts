@@ -18,7 +18,7 @@ import {
 } from "../shared/weekdays";
 
 const PROJECT_FORMAT = "RSC-HELFERPLANUNG-PROJEKTDATEI";
-const PROJECT_VERSION = 7;
+const PROJECT_VERSION = 8;
 const MAX_PROJECT_BYTES = 10_000_000;
 const MAX_ROWS = 10_000;
 
@@ -99,6 +99,17 @@ const documentSchema = z
         })
       )
       .max(MAX_ROWS),
+    locations: z
+      .array(
+        z.object({
+          sourceId: id,
+          name: short(200).min(1),
+          latitude: z.number().finite().min(-90).max(90),
+          longitude: z.number().finite().min(-180).max(180),
+          sortOrder: z.number().int().min(0).max(1_000_000),
+        })
+      )
+      .max(MAX_ROWS),
     shifts: z
       .array(
         z.object({
@@ -106,6 +117,8 @@ const documentSchema = z
           day: z.enum(WEEKDAYS),
           area: short(200).min(1),
           task: short(300).min(1),
+          locationSourceId: id,
+          locationName: short(200),
           startTime: short(16),
           endTime: short(16),
           allowFlexibleAssignment: z.boolean().default(false),
@@ -133,6 +146,8 @@ const documentSchema = z
         commonTask.extend({
           category: short(120).default(""),
           dueText: short(200),
+          locationSourceId: id,
+          locationName: short(200),
           status: z.enum(["offen", "inArbeit", "erledigt", "abgelehnt"]),
           statusWording: z.enum(["aufgabe", "genehmigung"]).default("aufgabe"),
         })
@@ -238,6 +253,7 @@ function assertUnique(
 }
 
 function validateRelations(document: BackupDocument) {
+  assertUnique(document.locations, row => row.name, "Orte");
   assertUnique(document.contacts, row => row.name, "Ansprechpartner");
   assertUnique(document.helpers, row => row.name, "Helfer");
   assertUnique(
@@ -264,6 +280,14 @@ function validateRelations(document: BackupDocument) {
   const contactsByName = new Map(
     document.contacts.map(row => [key(row.name), row])
   );
+  const locationsById = new Map(
+    document.locations.flatMap(row =>
+      row.sourceId === null ? [] : ([[row.sourceId, row]] as const)
+    )
+  );
+  const locationsByName = new Map(
+    document.locations.map(row => [key(row.name), row])
+  );
   const helpersById = new Map(
     document.helpers.flatMap(row =>
       row.sourceId === null ? [] : ([[row.sourceId, row]] as const)
@@ -286,6 +310,18 @@ function validateRelations(document: BackupDocument) {
     if (byId || contactsByName.has(key(name))) return;
     throw new Error(`${label}: Ansprechpartner-Bezug ist ungültig`);
   };
+  const requireLocation = (
+    sourceId: number | null,
+    name: string,
+    label: string
+  ) => {
+    if (sourceId === null && !name) return;
+    const byId = sourceId === null ? undefined : locationsById.get(sourceId);
+    if (byId && name && key(byId.name) !== key(name))
+      throw new Error(`${label}: Orts-ID und Name widersprechen sich`);
+    if (byId || locationsByName.has(key(name))) return;
+    throw new Error(`${label}: Ortsbezug ist ungültig`);
+  };
 
   for (const contact of document.contacts) {
     const helper = helpersByName.get(key(contact.name));
@@ -306,6 +342,18 @@ function validateRelations(document: BackupDocument) {
       helper.contactSourceId,
       helper.contactName,
       `Helfer „${helper.name}“`
+    );
+  for (const shift of document.shifts)
+    requireLocation(
+      shift.locationSourceId,
+      shift.locationName,
+      `Einsatzplan „${shift.task}“`
+    );
+  for (const prep of document.prep)
+    requireLocation(
+      prep.locationSourceId,
+      prep.locationName,
+      `Vorbereitung „${prep.task}“`
     );
   for (const row of [
     ...document.prep,
@@ -564,6 +612,61 @@ export function parseProjectFile(base64: string): {
             shift.manualDoubleConflictAccepted ?? false,
         }))
       : legacy.shifts;
+  }
+  if (
+    raw &&
+    typeof raw === "object" &&
+    "metadata" in raw &&
+    raw.metadata &&
+    typeof raw.metadata === "object" &&
+    "version" in raw.metadata &&
+    raw.metadata.version === 7
+  ) {
+    const legacy = raw as Record<string, any>;
+    legacy.metadata = { ...legacy.metadata, version: PROJECT_VERSION };
+    legacy.locations = Array.isArray(legacy.locations) ? legacy.locations : [];
+    legacy.shifts = Array.isArray(legacy.shifts)
+      ? legacy.shifts.map((shift: Record<string, unknown>) => ({
+          ...shift,
+          locationSourceId: shift.locationSourceId ?? null,
+          locationName: shift.locationName ?? "",
+        }))
+      : legacy.shifts;
+    legacy.prep = Array.isArray(legacy.prep)
+      ? legacy.prep.map((task: Record<string, unknown>) => ({
+          ...task,
+          locationSourceId: task.locationSourceId ?? null,
+          locationName: task.locationName ?? "",
+        }))
+      : legacy.prep;
+  }
+  if (
+    raw &&
+    typeof raw === "object" &&
+    "metadata" in raw &&
+    raw.metadata &&
+    typeof raw.metadata === "object" &&
+    "version" in raw.metadata &&
+    raw.metadata.version === PROJECT_VERSION
+  ) {
+    const document = raw as Record<string, any>;
+    document.locations = Array.isArray(document.locations)
+      ? document.locations
+      : [];
+    document.shifts = Array.isArray(document.shifts)
+      ? document.shifts.map((shift: Record<string, unknown>) => ({
+          ...shift,
+          locationSourceId: shift.locationSourceId ?? null,
+          locationName: shift.locationName ?? "",
+        }))
+      : document.shifts;
+    document.prep = Array.isArray(document.prep)
+      ? document.prep.map((task: Record<string, unknown>) => ({
+          ...task,
+          locationSourceId: task.locationSourceId ?? null,
+          locationName: task.locationName ?? "",
+        }))
+      : document.prep;
   }
   const parsed = documentSchema.safeParse(raw);
   if (!parsed.success)

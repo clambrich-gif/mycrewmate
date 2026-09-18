@@ -20,6 +20,7 @@ import {
   ChevronDown,
   Clock3,
   Info,
+  MapPin,
   Pencil,
   Plus,
   RotateCcw,
@@ -113,6 +114,7 @@ type DropdownShift = ShiftTimeLike & {
   id: number;
   area: string;
   task: string;
+  locationId?: number | null;
   startTime: string;
   endTime: string;
   allowFlexibleAssignment: boolean;
@@ -483,6 +485,7 @@ export default function Plan() {
   const { data: evals = [], isLoading } = trpc.plan.evaluate.useQuery();
   const { data: helpers = [] } = trpc.helpers.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
+  const { data: locations = [] } = trpc.locations.list.useQuery();
   const { data: currentEvent, isLoading: isEventLoading } =
     trpc.events.current.useQuery();
   const { data: areaContactRows = [] } = trpc.plan.areaContacts.useQuery();
@@ -628,6 +631,7 @@ export default function Plan() {
     day: Weekday;
     area: string;
     task: string;
+    locationId: number | null;
     startTime: string;
     endTime: string;
     allowFlexibleAssignment: boolean;
@@ -639,6 +643,7 @@ export default function Plan() {
     day: WEEKDAYS[0],
     area: "",
     task: "",
+    locationId: null,
     startTime: "",
     endTime: "",
     allowFlexibleAssignment: false,
@@ -654,6 +659,7 @@ export default function Plan() {
       day: activeDays[0],
       area: "",
       task: "",
+      locationId: null,
       startTime: "",
       endTime: "",
       allowFlexibleAssignment: false,
@@ -671,6 +677,7 @@ export default function Plan() {
       day: s.day,
       area: s.area,
       task: s.task,
+      locationId: s.locationId ?? null,
       startTime: s.startTime,
       endTime: s.endTime,
       allowFlexibleAssignment: Boolean(s.allowFlexibleAssignment),
@@ -1415,6 +1422,11 @@ export default function Plan() {
                         flexible={shift.allowFlexibleAssignment}
                       />
                     </p>
+                    {shift.locationId && (
+                      <a href={`/?location=${shift.locationId}`} className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-blue-700 hover:underline">
+                        <MapPin className="size-3" aria-hidden="true" />(Karte)
+                      </a>
+                    )}
                   </div>
                   {canEditPlan && (
                     <div className="flex shrink-0 gap-1">
@@ -1522,6 +1534,15 @@ export default function Plan() {
                       <span className="block break-words [overflow-wrap:anywhere]">
                         <HighlightedText text={s.area} query={q} />
                       </span>
+                      {s.locationId && (
+                        <a
+                          href={`/?location=${s.locationId}`}
+                          className="mt-0.5 inline-flex items-center gap-1 text-xs font-medium text-blue-700 hover:underline"
+                          aria-label={`Karte für diese Schicht am Standort anzeigen`}
+                        >
+                          <MapPin className="size-3" aria-hidden="true" />(Karte)
+                        </a>
+                      )}
                     </td>
                     <td data-slot="roster-actions" className="min-w-[75px] px-3 py-2.5">
                       {canEditPlan && (
@@ -1774,6 +1795,24 @@ export default function Plan() {
                   <option key={areaName} value={areaName} />
                 ))}
               </datalist>
+            </div>
+            <div>
+              <Label htmlFor="shift-location">Ort / Standort</Label>
+              <Select
+                value={form.locationId ? String(form.locationId) : "none"}
+                onValueChange={value =>
+                  setForm({
+                    ...form,
+                    locationId: value === "none" ? null : Number(value),
+                  })
+                }
+              >
+                <SelectTrigger id="shift-location"><SelectValue placeholder="Kein Ort" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Kein Ort</SelectItem>
+                  {locations.map(location => <SelectItem key={location.id} value={String(location.id)}>{location.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label>Aufgabe / Schicht</Label>
