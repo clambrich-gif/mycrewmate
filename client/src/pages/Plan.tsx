@@ -69,7 +69,7 @@ import {
 import {
   eventWeekdays,
   helperAvailabilityWindowLabel,
-  helperAvailableOnDay,
+  helperDayAvailability,
   helperEligibleForShift,
   helperAvailableForShift,
   helperHasTimedAvailability,
@@ -243,14 +243,29 @@ function HelperDropdownFeedbackBadge({
         time: assignment.time || "ganztägig",
       }))
   );
-  const assignedTooltip = assignedDetails.length
-    ? [
-        "Bereits eingeteilt:",
-        ...assignedDetails.map(
-          detail => `${detail.day}: ${detail.label} · ${detail.time}`
-        ),
-      ].join("\n")
-    : "Belegung an den Veranstaltungstagen";
+  const segmentStatus = feedback.segments.map(segment => {
+    const stateLabel =
+      segment.state === "assigned"
+        ? "bereits eingeteilt"
+        : segment.state === "current"
+          ? "für diese Schicht verfügbar"
+          : segment.state === "neutral"
+            ? "verfügbar, noch nicht eingeteilt"
+            : "nicht verfügbar";
+    return `${segment.label}: ${stateLabel}`;
+  });
+  const assignedTooltip = [
+    ...(assignedDetails.length
+      ? [
+          "Bereits eingeteilt:",
+          ...assignedDetails.map(
+            detail => `${detail.day}: ${detail.label} · ${detail.time}`
+          ),
+        ]
+      : []),
+    "Tagesstatus:",
+    ...segmentStatus,
+  ].join("\n");
   const badge = (
     <span
       data-slot="helper-dropdown-feedback"
@@ -269,7 +284,7 @@ function HelperDropdownFeedbackBadge({
                 ? "bg-amber-200 text-amber-950"
                 : segment.state === "unavailable"
                   ? "bg-slate-100 text-slate-400 line-through"
-                  : "bg-slate-100 text-slate-600"
+                  : "bg-sky-100 text-sky-800"
           } ${index ? "border-l border-white/70" : ""}`}
         >
           {segment.label}
@@ -534,8 +549,7 @@ function AssignedHelperChip({
           <div className="flex flex-wrap gap-x-2 gap-y-1">
             {activeDays.length ? (
               activeDays.map(day => {
-                const availability =
-                  helper[WEEKDAY_AVAILABILITY_FIELDS[day]] ?? "vielleicht";
+                const availability = helperDayAvailability(helper, day).value;
                 return (
                   <span key={day} className={AVAILABILITY_CLASS[availability]}>
                     {WEEKDAY_SHORT_LABELS[day]}: {availability}
@@ -1082,7 +1096,7 @@ export default function Plan() {
                       activeDays,
                       availabilityByDay: activeDays.map(day => ({
                         day,
-                        available: helperAvailableOnDay(helper, day),
+                        available: helperDayAvailability(helper, day).available,
                       })),
                       currentDay: shift.day,
                       hasTimeConflict: isAlreadyAssigned,

@@ -1717,14 +1717,17 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("const assignedDaysByHelper = useMemo");
     expect(plan).toContain("assignments: assignedDaysByHelper.get(helper.id) ?? []");
     expect(plan).toContain("availabilityByDay: activeDays.map(day => ({");
-    expect(plan).toContain("available: helperAvailableOnDay(helper, day)");
+    expect(plan).toContain("available: helperDayAvailability(helper, day).available");
     expect(plan).toContain('segment.state === "unavailable"');
     expect(plan).toContain("line-through");
+    expect(plan).toContain("bg-sky-100 text-sky-800");
     expect(plan).toContain("currentDay: shift.day");
     expect(plan).toContain("normalizeWeekday(evaluation.shift.day)");
     expect(plan).toContain("Bereits eingeteilt");
     expect(plan).toContain("assignedShift.area}: ${assignedShift.task}");
     expect(plan).toContain("time: formatTimeLabel(assignedShift)");
+    expect(plan).toContain("verfügbar, noch nicht eingeteilt");
+    expect(plan).toContain("für diese Schicht verfügbar");
     expect(plan).toContain("title={assignedTooltip}");
     expect(plan).toContain("cursor-help");
 
@@ -1734,6 +1737,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(feedback).toContain("hasTimeConflict");
     expect(feedback).toContain("WEEKDAY_SHORT_LABELS");
     expect(feedback).toContain("orderedWeekdays(activeDays)");
+    expect(feedback).toContain("normalizeEventWeekday");
     expect(feedback).toContain("availabilityByDay");
     expect(feedback).toContain('? "unavailable"');
     expect(feedback).toContain("assignedDays.has(day)");

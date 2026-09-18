@@ -1,12 +1,12 @@
 import {
-  normalizeWeekday,
+  normalizeEventWeekday,
   orderedWeekdays,
   WEEKDAY_SHORT_LABELS,
   type Weekday,
 } from "@shared/weekdays";
 
 export type HelperAssignmentDay = {
-  day: string;
+  day: string | number;
   label?: string;
   time?: string;
 };
@@ -39,7 +39,7 @@ export function helperDropdownAssignmentFeedback({
   assignments: HelperAssignmentDay[];
   activeDays: Weekday[];
   availabilityByDay: Array<{ day: Weekday; available: boolean }>;
-  currentDay: Weekday | string;
+  currentDay: Weekday | string | number;
   hasTimeConflict: boolean;
 }): HelperDropdownFeedback {
   if (hasTimeConflict) return { kind: "already-assigned" };
@@ -51,7 +51,7 @@ export function helperDropdownAssignmentFeedback({
   const eventDays = orderedWeekdays(activeDays);
   const assignedDays = new Set<Weekday>(
     assignments.flatMap(assignment => {
-      const day = normalizeWeekday(assignment.day);
+      const day = normalizeEventWeekday(assignment.day, eventDays);
       return day && eventDays.includes(day) ? [day] : [];
     })
   );
@@ -61,7 +61,7 @@ export function helperDropdownAssignmentFeedback({
       .filter(item => eventDays.includes(item.day))
       .map(item => [item.day, item.available])
   );
-  const selectedDay = normalizeWeekday(currentDay);
+  const selectedDay = normalizeEventWeekday(currentDay, eventDays);
 
   return {
     kind: "day-segments",

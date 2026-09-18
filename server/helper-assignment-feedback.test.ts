@@ -122,4 +122,29 @@ describe("helperDropdownAssignmentFeedback", () => {
       ],
     });
   });
+
+  it("markiert einen verfügbaren Sonntag unabhängig von Kurzform, Englisch oder Eventindex nie als nicht verfügbar", () => {
+    for (const currentDay of ["So", "Sunday", 2] as const) {
+      expect(
+        helperDropdownAssignmentFeedback({
+          assignments: [{ day: "Fr" }],
+          activeDays: ["Fr", "Sa", "So"] as any,
+          availabilityByDay: [
+            { day: "Freitag", available: true },
+            { day: "Samstag", available: true },
+            { day: "Sonntag", available: true },
+          ],
+          currentDay,
+          hasTimeConflict: false,
+        })
+      ).toEqual({
+        kind: "day-segments",
+        segments: [
+          { day: "Freitag", label: "Fr", state: "assigned" },
+          { day: "Samstag", label: "Sa", state: "neutral" },
+          { day: "Sonntag", label: "So", state: "current" },
+        ],
+      });
+    }
+  });
 });

@@ -61,6 +61,38 @@ export function isWeekday(value: unknown): value is Weekday {
 export function normalizeWeekday(value: unknown): Weekday | null {
   if (typeof value !== "string") return null;
   const normalized = value.trim().toLocaleLowerCase("de-DE");
+  const aliases: Record<string, Weekday> = {
+    mon: "Montag",
+    monday: "Montag",
+    montag: "Montag",
+    di: "Dienstag",
+    tue: "Dienstag",
+    tues: "Dienstag",
+    tuesday: "Dienstag",
+    dienstag: "Dienstag",
+    mi: "Mittwoch",
+    wed: "Mittwoch",
+    wednesday: "Mittwoch",
+    mittwoch: "Mittwoch",
+    do: "Donnerstag",
+    thu: "Donnerstag",
+    thurs: "Donnerstag",
+    thursday: "Donnerstag",
+    donnerstag: "Donnerstag",
+    fr: "Freitag",
+    fri: "Freitag",
+    friday: "Freitag",
+    freitag: "Freitag",
+    sa: "Samstag",
+    sat: "Samstag",
+    saturday: "Samstag",
+    samstag: "Samstag",
+    so: "Sonntag",
+    sun: "Sonntag",
+    sunday: "Sonntag",
+    sonntag: "Sonntag",
+  };
+  if (aliases[normalized]) return aliases[normalized];
   const match = WEEKDAYS.find(
     day =>
       day.toLocaleLowerCase("de-DE") === normalized ||
@@ -69,10 +101,31 @@ export function normalizeWeekday(value: unknown): Weekday | null {
   return match ?? null;
 }
 
+/**
+ * Löst zusätzlich historische Eventtag-Indizes auf. Ein Index bezieht sich
+ * immer auf die tatsächliche Reihenfolge der aktiven Tage – bei Fr/Sa/So ist
+ * also 0 = Freitag, 1 = Samstag und 2 = Sonntag.
+ */
+export function normalizeEventWeekday(
+  value: unknown,
+  activeDays: unknown
+): Weekday | null {
+  const namedDay = normalizeWeekday(value);
+  if (namedDay) return namedDay;
+  const index =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && /^\d+$/.test(value.trim())
+        ? Number(value.trim())
+        : null;
+  if (index === null || !Number.isSafeInteger(index) || index < 0) return null;
+  return eventWeekdays(activeDays)[index] ?? null;
+}
+
 /** Entfernt ungültige und doppelte Werte und stellt die Kalenderreihenfolge her. */
 export function orderedWeekdays(value: unknown): Weekday[] {
   if (!Array.isArray(value)) return [];
-  const selected = new Set(value.filter(isWeekday));
+  const selected = new Set(value.map(normalizeWeekday).filter(isWeekday));
   return WEEKDAYS.filter(day => selected.has(day));
 }
 
@@ -87,6 +140,29 @@ type HelperAvailability = {
 } &
   Partial<Record<AvailabilityField, AvailabilityValue>> &
   Partial<Record<AvailabilityTimeField, string | null>>;
+
+/**
+ * Einziger kanonischer Zugriff auf einen Tagesstatus. Neben der aufgelösten
+ * Anzeige liefert er die fachliche Einsatzfähigkeit; so können Stammdaten,
+ * Tooltip und Dropdown keine unterschiedlichen Tageszuordnungen darstellen.
+ */
+export function helperDayAvailability(
+  helper: HelperAvailability,
+  day: Weekday
+): { value: AvailabilityValue; available: boolean } {
+  const stored = helper[WEEKDAY_AVAILABILITY_FIELDS[day]];
+  const value: AvailabilityValue =
+    stored === "ja" || stored === "nein" || stored === "vielleicht"
+      ? stored
+      : day === "Montag" ||
+          day === "Dienstag" ||
+          day === "Mittwoch" ||
+          day === "Donnerstag"
+        ? "ja"
+        : "vielleicht";
+
+  return { value, available: helper.willHelp === "ja" && value === "ja" };
+}
 
 export type ShiftAvailabilityLike = {
   day: Weekday | string;
@@ -122,15 +198,7 @@ export function helperAvailableOnDay(
   helper: HelperAvailability,
   day: Weekday
 ): boolean {
-  if (helper.willHelp !== "ja") return false;
-  const value = helper[WEEKDAY_AVAILABILITY_FIELDS[day]];
-  if (value !== undefined) return value === "ja";
-  return (
-    day === "Montag" ||
-    day === "Dienstag" ||
-    day === "Mittwoch" ||
-    day === "Donnerstag"
-  );
+  return helperDayAvailability(helper, day).available;
 }
 
 /** Liefert das gespeicherte Zeitfenster; ohne vollständige, gültige Werte gilt ganztägig. */

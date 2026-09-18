@@ -39,6 +39,7 @@ import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 import {
   eventWeekdays,
+  helperDayAvailability,
   helperAvailabilityWindowLabel,
   helperHasTimedAvailability,
   isHelperWithoutFirstContact,
@@ -142,7 +143,7 @@ function DayAvailabilityControl({
   const [customOpen, setCustomOpen] = useState(false);
   const fields = WEEKDAY_AVAILABILITY_TIME_FIELDS[day];
   const availabilityField = WEEKDAY_AVAILABILITY_FIELDS[day];
-  const availability = helper[availabilityField] as "ja" | "nein" | "vielleicht";
+  const availability = helperDayAvailability(helper, day).value;
   const timed = helperHasTimedAvailability(helper, day);
   const label = helperAvailabilityWindowLabel(helper, day);
   const [customStart, setCustomStart] = useState(

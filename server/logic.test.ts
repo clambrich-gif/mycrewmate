@@ -8,9 +8,12 @@ import {
   toMinutes,
 } from "./logic";
 import {
+  helperDayAvailability,
   helperAvailabilityWindowLabel,
   helperEligibleForShift,
+  normalizeEventWeekday,
   normalizeWeekday,
+  orderedWeekdays,
 } from "../shared/weekdays";
 
 const H = (
@@ -78,6 +81,22 @@ describe("helperActiveOnDay", () => {
     expect(normalizeWeekday("Fr")).toBe("Freitag");
     expect(normalizeWeekday("samstag")).toBe("Samstag");
     expect(normalizeWeekday(" SO ")).toBe("Sonntag");
+    expect(normalizeWeekday("Sunday")).toBe("Sonntag");
+    expect(orderedWeekdays(["Fr", "Sa", "So"])).toEqual([
+      "Freitag",
+      "Samstag",
+      "Sonntag",
+    ]);
+    expect(
+      normalizeEventWeekday(2, ["Freitag", "Samstag", "Sonntag"])
+    ).toBe("Sonntag");
+    expect(
+      normalizeEventWeekday("2", ["Freitag", "Samstag", "Sonntag"])
+    ).toBe("Sonntag");
+    expect(helperDayAvailability(guido, "Sonntag")).toEqual({
+      value: "ja",
+      available: true,
+    });
     expect(
       helperEligibleForShift(guido, {
         day: "Fr",
