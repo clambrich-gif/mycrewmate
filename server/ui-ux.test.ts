@@ -774,6 +774,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain('data-slot="event-countdown"');
     expect(dashboard).toContain("eventCountdownState");
     expect(dashboard).toContain("Eventstart in");
+    expect(dashboard).toContain("border-2 border-amber-400");
+    expect(dashboard).toContain("text-4xl font-black");
+    expect(dashboard).toContain("shrink-0 !min-w-[17.5rem]");
+    expect(dashboard).not.toContain("formatEventDate");
     expect(dashboard).toContain("Event läuft!");
     expect(dashboard).toContain("Veranstaltung abgeschlossen");
 

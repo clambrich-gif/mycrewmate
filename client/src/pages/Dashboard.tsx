@@ -29,7 +29,6 @@ import {
 } from "@shared/weekdays";
 import {
   eventCountdownState,
-  formatEventDate,
   type EventCountdownState,
 } from "@shared/event-dates";
 
@@ -563,26 +562,27 @@ function EventCountdownWidget({
       <div
         data-slot="event-countdown"
         data-countdown-state="upcoming"
-        className="flex flex-col items-start gap-1 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-2.5 text-slate-900 shadow-sm sm:flex-row sm:items-center sm:gap-3"
+        className="flex shrink-0 !min-w-[17.5rem] items-center gap-3 rounded-2xl border-2 border-amber-400 bg-gradient-to-r from-amber-100 via-yellow-50 to-orange-100 px-4 py-3 text-slate-950 shadow-md shadow-amber-200/80 ring-1 ring-amber-200 sm:!min-w-[19rem] sm:px-5"
       >
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-800">
-          <span className="text-base">⏳</span>
-          <span>Eventstart in</span>
-        </div>
-        <div className="flex items-baseline gap-1.5 font-bold">
-          <span className="text-2xl text-amber-950 tabular-nums sm:text-3xl">
-            {state.days}
-          </span>
-          <span className="text-xs font-semibold text-amber-900 sm:text-sm">
-            {state.days === 1 ? "Tag" : "Tage"}
-          </span>
-          <span className="text-xs font-semibold text-amber-800">
-            und {state.hours} {state.hours === 1 ? "Std." : "Std."}
-          </span>
-        </div>
-        <span className="text-[11px] text-amber-700">
-          ({formatEventDate(startDate)})
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-lg shadow-sm shadow-amber-300" aria-hidden="true">
+          ⏳
         </span>
+        <div className="min-w-0">
+          <div className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-amber-900">
+            Eventstart in
+          </div>
+          <div className="mt-0.5 flex items-baseline gap-1.5 font-bold">
+            <span className="text-4xl font-black leading-none tabular-nums text-amber-950 sm:text-[2.65rem]">
+              {state.days}
+            </span>
+            <span className="text-sm font-extrabold text-amber-950 sm:text-base">
+              {state.days === 1 ? "Tag" : "Tagen"}
+            </span>
+            <span className="text-xs font-bold text-amber-900 sm:text-sm">
+              · {state.hours} Std.
+            </span>
+          </div>
+        </div>
       </div>
     );
   }
