@@ -329,15 +329,25 @@ describe("UI- und Mobile-UX-Regeln", () => {
       helpers.indexOf('<Card className="hidden shadow-sm md:block">')
     );
 
-    expect(helpers).toContain('availability === "vielleicht" ? "?"');
+    expect(helpers).toContain('availability === "vielleicht"');
+    expect(helpers).toContain('? "?"');
     expect(helpers).toContain('? (Unklar)');
     expect(helpers).not.toContain('l: "Vielleicht"');
     expect(helpers).toContain('className="w-full table-fixed text-xs xl:text-sm"');
+    expect(helpers).toContain('className="helpers-table-scroll p-0"');
     expect(helpers).toContain('<col className="w-[180px]" />');
     expect(helpers).toContain('<col className="w-[230px]" />');
     expect(helpers).toContain("988 + activeDays.length * 56");
     expect(helpers).toContain('<col className="w-[176px]" />');
     expect(helpers).toContain("md:w-[52px] md:min-w-[52px]");
+    expect(helpers).toContain("rounded-full border px-3");
+    expect(helpers).toContain('availability === "ja" && timed');
+    expect(helpers).toContain('? "🕒"');
+    expect(helpers).toContain('className="size-3 shrink-0 opacity-40"');
+    expect(helpers).toContain(
+      "inline-flex h-11 min-h-11 w-[92px] items-center justify-center rounded-full"
+    );
+    expect(helpers).not.toContain("pointer-events-none absolute left-1.5");
     expect(helpers).toContain('className="whitespace-nowrap p-2">Telefon Helfer');
     expect(mobileCards).not.toContain("compactOnDesktop");
   });
@@ -417,7 +427,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     );
     expect(mobileCards).not.toContain("sticky");
     expect(css).toContain(
-      "@media (min-width: 1280px) and (hover: hover) and (pointer: fine)"
+      "@media (min-width: 1720px) and (hover: hover) and (pointer: fine)"
     );
     expect(css).toContain(".helpers-desktop-sticky-head {");
     expect(css).toContain(".helpers-table-scroll {");
@@ -1404,16 +1414,17 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(clearButton).toContain("border-rose-200 bg-rose-50 text-rose-700");
   });
 
-  it("schaltet Helfen und Bestätigt kompakt mit festen Ja-Nein-Endanschlägen", () => {
+  it("schaltet Helfen und Bestätigt kompakt als klare Statuspillen", () => {
     const helpers = source("client/src/pages/Helpers.tsx");
 
     expect(helpers).toContain("function YesNoToggle");
     expect(helpers).toContain('data-slot="helper-status-toggle"');
     expect(helpers).toContain('onClick={() => onChange(isYes ? "nein" : "ja")}');
     expect(helpers).toContain("h-11 min-h-11 w-[92px]");
-    expect(helpers).toContain("translate-x-12 bg-emerald-500");
-    expect(helpers).toContain("translate-x-0 bg-rose-400");
-    expect(helpers).toContain("lg:translate-x-5");
+    expect(helpers).toContain("items-center justify-center rounded-full");
+    expect(helpers).not.toContain("translate-x-12 bg-emerald-500");
+    expect(helpers).not.toContain("translate-x-0 bg-rose-400");
+    expect(helpers).not.toContain("lg:translate-x-5");
     expect(helpers).toContain("border-emerald-200 bg-emerald-50 text-emerald-800");
     expect(helpers).toContain("border-rose-200 bg-rose-50 text-rose-800");
     expect(helpers).toContain("Helfen auf");

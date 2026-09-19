@@ -124,10 +124,9 @@ function Sel({
 }
 
 /**
- * Direkter Ja/Nein-Schalter für die beiden binären Helferstatus. Der Thumb
- * liegt stets an einem festen Endanschlag: Nein links, Ja rechts. Die mobile
- * Schaltfläche bleibt als Touch-Ziel 44 px hoch, wirkt durch die kompakte
- * 92-px-Schalterbahn aber deutlich ruhiger als die bisherige Vollbreitenform.
+ * Direkter Ja/Nein-Schalter für die beiden binären Helferstatus. Der Status
+ * ist als ruhige, einfarbige Pill erkennbar; ein separater Farb-Thumb würde
+ * die schmalen Tabellenzellen unnötig visuell überladen.
  */
 /** Tagesstatus und optionales Zeitfenster bleiben in einer Bedienung verbunden. */
 function DayAvailabilityControl({
@@ -200,18 +199,21 @@ function DayAvailabilityControl({
             aria-label={`${day}: Verfügbarkeit bearbeiten${availability === "ja" ? ` (${label})` : ""}`}
             title={availability === "ja" ? label : `${day}: Verfügbarkeit wählen`}
             className={cn(
-              "flex h-11 w-full items-center justify-center gap-1 rounded-md border px-2 text-base font-medium shadow-xs transition-colors active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 md:h-8 md:text-sm",
-              compactOnDesktop && "md:w-[56px] md:min-w-[56px] md:gap-0.5 md:px-1.5 md:text-xs",
+              "flex h-11 w-full items-center justify-center gap-1 rounded-full border px-3 text-base font-medium shadow-xs transition-colors active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 md:h-8 md:text-sm",
+              compactOnDesktop && "md:w-[52px] md:min-w-[52px] md:gap-0.5 md:px-1.5 md:text-xs",
               valueColor(availability)
             )}
           >
             <span>
-              {availability === "vielleicht" ? "?" : availability === "ja" ? "Ja" : "Nein"}
+              {availability === "vielleicht"
+                ? "?"
+                : availability === "ja" && timed
+                  ? "🕒"
+                  : availability === "ja"
+                    ? "Ja"
+                    : "Nein"}
             </span>
-            {availability === "ja" && timed && (
-              <Clock3 className="size-3.5 shrink-0" aria-hidden="true" />
-            )}
-            <ChevronDown className="size-3 shrink-0" aria-hidden="true" />
+            <ChevronDown className="size-3 shrink-0 opacity-40" aria-hidden="true" />
           </button>
         </PopoverTrigger>
       </div>
@@ -317,35 +319,17 @@ function YesNoToggle({
         onClick={() => onChange(isYes ? "nein" : "ja")}
         aria-label={ariaLabel}
         className={cn(
-          "relative inline-flex h-11 min-h-11 w-[92px] items-center rounded-lg border px-1.5 text-xs font-semibold shadow-xs transition-colors",
+          "inline-flex h-11 min-h-11 w-[92px] items-center justify-center rounded-full border px-3 text-xs font-semibold shadow-xs transition-colors active:scale-[0.97]",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2",
           "disabled:cursor-not-allowed disabled:opacity-50",
           isYes
             ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
             : "border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100",
           compactOnDesktop &&
-            "lg:h-8 lg:min-h-8 lg:w-14 lg:rounded-md lg:px-1 lg:text-[10px]"
+            "lg:h-8 lg:min-h-8 lg:w-14 lg:px-1.5 lg:text-[10px]"
         )}
       >
-        <span
-          aria-hidden="true"
-          className={cn(
-            "pointer-events-none absolute left-1.5 top-1.5 size-8 rounded-md shadow-sm transition-transform duration-150 ease-out",
-            isYes ? "translate-x-12 bg-emerald-500" : "translate-x-0 bg-rose-400",
-            compactOnDesktop &&
-              "lg:left-1 lg:top-1 lg:size-5 lg:rounded-sm lg:translate-x-0",
-            compactOnDesktop && isYes && "lg:translate-x-5"
-          )}
-        />
-        <span
-          aria-hidden="true"
-          className={cn(
-            "pointer-events-none relative z-10 flex w-full items-center",
-            isYes ? "justify-start pl-1" : "justify-end pr-1"
-          )}
-        >
-          {isYes ? "Ja" : "Nein"}
-        </span>
+        <span aria-hidden="true">{isYes ? "Ja" : "Nein"}</span>
       </button>
     </div>
   );

@@ -259,8 +259,10 @@
   object-fit: cover;
 }
 
-/* Helfertabelle: Sticky-Kopf nur auf breiten Desktopgeräten mit präziser Eingabe. */
-@media (min-width: 1280px) and (hover: hover) and (pointer: fine) {
+/* Helfertabelle: Sticky-Kopf nur dann aktivieren, wenn die breite Tabelle
+   neben der Navigation vollständig Platz hat. Darunter bleibt sie horizontal
+   scrollbar, damit die Status- und Aktionsspalten erreichbar bleiben. */
+@media (min-width: 1720px) and (hover: hover) and (pointer: fine) {
   .helpers-table-scroll {
     overflow: visible;
   }
