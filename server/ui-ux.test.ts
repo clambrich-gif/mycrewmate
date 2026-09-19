@@ -1489,6 +1489,20 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(assignedChip.indexOf("👪")).toBeLessThan(
       assignedChip.indexOf("timeRestricted &&")
     );
+    expect(plan).toContain("const AVAILABILITY_PILL_CLASS");
+    expect(assignedChip).toContain(
+      'data-slot="assigned-helper-availability-pills"'
+    );
+    expect(assignedChip).toContain(
+      'data-slot="assigned-helper-availability-pill"'
+    );
+    expect(assignedChip).toContain("items-center gap-1.5");
+    expect(assignedChip).toContain(
+      "rounded-full border px-2 py-0.5 text-[11px] font-semibold"
+    );
+    expect(assignedChip).toContain("helperHasTimedAvailability(helper, day)");
+    expect(assignedChip).toContain('<Clock3 className="size-3"');
+    expect(assignedChip).not.toContain("{WEEKDAY_SHORT_LABELS[day]}: {availability}");
     expect(plan).toContain("const activeHelpers = (shift: DropdownShift)");
     expect(plan).toContain("const actives = activeHelpers(shift)");
     expect(plan).toContain("const timeWindowConflicts = useMemo");

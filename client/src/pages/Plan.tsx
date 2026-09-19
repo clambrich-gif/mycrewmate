@@ -143,10 +143,10 @@ type PlanStatusCounts = {
   ok: number;
 };
 
-const AVAILABILITY_CLASS: Record<AvailabilityValue, string> = {
-  ja: "text-emerald-700",
-  nein: "text-red-700",
-  vielleicht: "text-amber-700",
+const AVAILABILITY_PILL_CLASS: Record<AvailabilityValue, string> = {
+  ja: "border-emerald-200 bg-emerald-50 text-emerald-800",
+  nein: "border-rose-200 bg-rose-50 text-rose-800",
+  vielleicht: "border-amber-200 bg-amber-50 text-amber-900",
 };
 
 function MobileShiftNote({
@@ -546,13 +546,37 @@ function AssignedHelperChip({
         )}
         <div>
           <p className="mb-1 font-medium">Verfügbarkeiten:</p>
-          <div className="flex flex-wrap gap-x-2 gap-y-1">
+          <div
+            data-slot="assigned-helper-availability-pills"
+            className="flex flex-wrap items-center gap-1.5"
+          >
             {activeDays.length ? (
               activeDays.map(day => {
                 const availability = helperDayAvailability(helper, day).value;
+                const timed = helperHasTimedAvailability(helper, day);
+                const timeWindow = timed
+                  ? helperAvailabilityWindowLabel(helper, day)
+                  : "";
+                const dayShortLabel = WEEKDAY_SHORT_LABELS[day];
                 return (
-                  <span key={day} className={AVAILABILITY_CLASS[availability]}>
-                    {WEEKDAY_SHORT_LABELS[day]}: {availability}
+                  <span
+                    key={day}
+                    data-slot="assigned-helper-availability-pill"
+                    data-availability={availability}
+                    title={
+                      timed
+                        ? `${day}: ${availability} · ${timeWindow}`
+                        : `${day}: ${availability}`
+                    }
+                    aria-label={
+                      timed
+                        ? `${day}: ${availability}; ${timeWindow}`
+                        : `${day}: ${availability}`
+                    }
+                    className={`inline-flex min-h-6 items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${AVAILABILITY_PILL_CLASS[availability]}`}
+                  >
+                    <span>{dayShortLabel}</span>
+                    {timed && <Clock3 className="size-3" aria-hidden="true" />}
                   </span>
                 );
               })
