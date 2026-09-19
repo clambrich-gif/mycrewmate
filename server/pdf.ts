@@ -131,7 +131,7 @@ function collectPdf(
       layout,
       margin,
       bufferPages: true,
-      info: { Creator: "RSC Helferplanung" },
+      info: { Creator: "MyCrewMate" },
     });
     const chunks: Buffer[] = [];
     doc.on("data", chunk => chunks.push(Buffer.from(chunk)));

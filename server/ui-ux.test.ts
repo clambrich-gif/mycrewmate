@@ -94,6 +94,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout.match(/<LegalFooterLinks/g)).toHaveLength(3);
     expect(layout.match(/<ImpressumDialog/g)).toHaveLength(2);
     expect(pdf).toContain('import { COPYRIGHT_NOTICE } from "../shared/branding"');
+    expect(pdf).toContain('info: { Creator: "MyCrewMate" }');
     expect(pdf).toContain("doc.text(COPYRIGHT_NOTICE, 0, doc.page.height - 36");
     expect(legal).toContain('export const PRIVACY_POLICY_URL = "https://mycrewmate.de/datenschutz"');
     expect(legal).toContain("Angaben gemäß § 5 DDG:");
@@ -153,19 +154,19 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const serviceWorker = source("client/public/service-worker.js");
     const manifest = JSON.parse(source("client/public/manifest.json"));
 
-    expect(manifest.name).toBe("RSC Helferplanung");
-    expect(manifest.short_name).toBe("Helferplanung");
+    expect(manifest.name).toBe("MyCrewMate · Helferplanung");
+    expect(manifest.short_name).toBe("MyCrewMate");
     expect(manifest.display).toBe("standalone");
     expect(manifest.theme_color).toBe("#1e3a5f");
     expect(manifest.background_color).toBe("#f8fafc");
     expect(manifest.icons).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          src: "/icons/rsc-helferplanung-192.png",
+          src: "/manus-storage/mycrewmate-icon-192_57e9396c.png",
           sizes: "192x192",
         }),
         expect.objectContaining({
-          src: "/icons/rsc-helferplanung-maskable-512.png",
+          src: "/manus-storage/mycrewmate-icon-512_ce31c34d.png",
           sizes: "512x512",
           purpose: "maskable",
         }),
@@ -173,14 +174,17 @@ describe("UI- und Mobile-UX-Regeln", () => {
     );
     expect(html).toContain('<link rel="manifest" href="/manifest.json" />');
     expect(html).toContain('name="apple-mobile-web-app-capable" content="yes"');
-    expect(html).toContain('/icons/rsc-helferplanung-192.png');
+    expect(html).toContain('name="apple-mobile-web-app-title" content="MyCrewMate"');
+    expect(html).toContain("<title>MyCrewMate · Helferplanung</title>");
+    expect(html).toContain('/manus-storage/mycrewmate-icon-192_57e9396c.png');
     expect(main).toContain('navigator.serviceWorker.register("/service-worker.js")');
-    expect(serviceWorker).toContain('const STATIC_CACHE = "rsc-helferplanung-pwa-v2"');
+    expect(serviceWorker).toContain('const STATIC_CACHE = "mycrewmate-pwa-v1"');
+    expect(serviceWorker).toContain('/manus-storage/mycrewmate-icon-512_ce31c34d.png');
     expect(serviceWorker).not.toContain("/api/");
     expect(layout).toContain("beforeinstallprompt");
     expect(layout).toContain("appinstalled");
     expect(layout).toContain("📱 Als App auf Handy speichern");
-    expect(layout).toContain("RSC Helferplanung als App speichern");
+    expect(layout).toContain("MyCrewMate als App speichern");
     expect(layout).toContain("iOS (iPhone/iPad)");
     expect(layout).toContain('<TabsTrigger value="android"');
     expect(layout).toContain("Tippen Sie unten in <strong>Safari</strong>");
@@ -1106,15 +1110,15 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(prep).toContain("searchTerm");
   });
 
-  it("lädt das RSC-Logo browserstabil über eine öffentliche Same-Origin-Route", () => {
+  it("verwendet MyCrewMate-Wortmarke und App-Icon browserstabil", () => {
     const layout = source("client/src/components/Layout.tsx");
 
-    expect(layout).toContain('const RSC_LOGO = "/api/brand/rsc-logo"');
-    expect(layout).not.toContain(
-      "/manus-storage/rsc-eifelland-logo-chrome"
-    );
-    expect(layout.match(/src=\{RSC_LOGO\}/g)).toHaveLength(4);
-    expect(layout.match(/alt="RSC Eifelland(?: e\. V\.)?"/g)).toHaveLength(4);
+    expect(layout).toContain('const MYCREWMATE_WORDMARK = "/manus-storage/mycrewmate-wordmark_853a60e9.png"');
+    expect(layout).toContain('const MYCREWMATE_ICON = "/manus-storage/mycrewmate-icon-512_ce31c34d.png"');
+    expect(layout).not.toContain("const RSC_LOGO");
+    expect(layout.match(/src=\{MYCREWMATE_WORDMARK\}/g)).toHaveLength(3);
+    expect(layout.match(/src=\{MYCREWMATE_ICON\}/g)).toHaveLength(1);
+    expect(layout.match(/alt="MyCrewMate"/g)).toHaveLength(4);
   });
 
   it("zeigt in der Hilfe ausschließlich das Video der aktiven Rolle", () => {
@@ -1144,7 +1148,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const help = source("client/src/pages/Help.tsx");
 
     expect(help).toContain("Schnellstart und Orientierung");
-    expect(help).toContain("RSC Helferplanung als App auf dem Handy speichern");
+    expect(help).toContain("MyCrewMate als App auf dem Handy speichern");
     expect(help).toContain("Progressive Web App (PWA)");
     expect(help).toContain("Zum Home-Bildschirm");
     expect(help).toContain("App installieren");

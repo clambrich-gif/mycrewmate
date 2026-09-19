@@ -110,24 +110,24 @@ const SECTIONS: HelpSection[] = [
     ],
     image: {
       src: "/api/help/images/dashboard",
-      alt: "Aktuelles Dashboard der RSC Helferplanung für MyEifelRide 2027",
+      alt: "Aktuelles Dashboard von MyCrewMate für MyEifelRide 2027",
       caption:
         "Dashboard mit Veranstaltungswahl, drei Kennzahlenbereichen und direktem Zugang zu allen Arbeitsmodulen.",
     },
   },
   {
     id: "app-auf-handy",
-    title: "RSC Helferplanung als App auf dem Handy speichern",
+    title: "MyCrewMate als App auf dem Handy speichern",
     role: "alle",
     keywords:
       "app handy speichern smartphone pwa progressive web app startbildschirm homescreen iphone ipad ios android chrome safari browserleiste menü",
     summary:
-      "Auf Smartphones und Tablets lässt sich die RSC Helferplanung als Progressive Web App (PWA) auf dem Startbildschirm speichern. Sie erhält dort ein eigenes App-Symbol und öffnet sich anschließend wie eine eigene App – ohne die übliche Browserleiste. Es ist keine zusätzliche Installation aus einem App-Store notwendig; Anmeldung und Datenzugriff bleiben dabei unverändert geschützt.",
+      "Auf Smartphones und Tablets lässt sich MyCrewMate als Progressive Web App (PWA) auf dem Startbildschirm speichern. Sie erhält dort ein eigenes App-Symbol und öffnet sich anschließend wie eine eigene App – ohne die übliche Browserleiste. Es ist keine zusätzliche Installation aus einem App-Store notwendig; Anmeldung und Datenzugriff bleiben dabei unverändert geschützt.",
     steps: [
       "Auf dem Smartphone das Seitenmenü über das Menüsymbol oben links öffnen. Der blau hervorgehobene Button „Als App auf Handy speichern“ befindet sich unter „Projektstand“.",
       "Auf iPhone oder iPad den Button antippen. In Safari unten auf das Teilen-Symbol (Quadrat mit Pfeil nach oben) tippen und anschließend „Zum Home-Bildschirm“ auswählen.",
       "Auf Android den Button antippen. In Chrome oben rechts die drei Punkte öffnen und „App installieren“ oder „Zum Startbildschirm hinzufügen“ wählen. Wenn der Installationsdialog erscheint, kann „App jetzt installieren“ direkt verwendet werden.",
-      "Danach das neue RSC-Symbol auf dem Startbildschirm antippen. Die Helferplanung startet im eigenständigen App-Fenster; für die Nutzung ist weiterhin eine Internetverbindung erforderlich.",
+      "Danach das neue MyCrewMate-Symbol auf dem Startbildschirm antippen. Die Helferplanung startet im eigenständigen App-Fenster; für die Nutzung ist weiterhin eine Internetverbindung erforderlich.",
     ],
     image: {
       src: "/api/help/images/app-speichern",
@@ -207,7 +207,7 @@ const SECTIONS: HelpSection[] = [
     ],
     image: {
       src: "/api/help/images/chat",
-      alt: "Geöffnetes Live-Chat-Widget der RSC Helferplanung",
+      alt: "Geöffnetes Live-Chat-Widget von MyCrewMate",
       caption:
         "Geöffnetes Notiz-Widget mit Namenszuordnung vor der ersten Nachricht und zentralen Steuerungen im Kopfbereich.",
     },
@@ -351,7 +351,7 @@ export default function Help() {
             </span>
           </div>
           <h1 className="text-2xl font-bold">
-            Anleitung zur RSC Helferplanung
+            Anleitung zu MyCrewMate
           </h1>
           <p className="max-w-3xl text-muted-foreground">
             Schnelle Hilfe für Planungsteam und Administratoren – mit

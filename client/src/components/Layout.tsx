@@ -75,7 +75,8 @@ import {
 import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
 
-const RSC_LOGO = "/api/brand/rsc-logo";
+const MYCREWMATE_WORDMARK = "/manus-storage/mycrewmate-wordmark_853a60e9.png";
+const MYCREWMATE_ICON = "/manus-storage/mycrewmate-icon-512_ce31c34d.png";
 const CHAT_SNAPSHOT_POLL_MS = 5_000;
 
 type DeferredInstallPrompt = Event & {
@@ -532,13 +533,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div className="w-full max-w-md rounded-2xl border border-white/80 bg-white/90 p-5 text-card-foreground shadow-xl backdrop-blur-sm sm:p-8">
           <img
             {...logoLoading}
-            src={RSC_LOGO}
-            alt="RSC Eifelland e. V."
-            className="mx-auto mb-4 h-20 w-20 rounded-2xl bg-white object-contain shadow-sm"
+            src={MYCREWMATE_WORDMARK}
+            alt="MyCrewMate"
+            className="mx-auto mb-5 h-auto w-full max-w-[280px] object-contain"
           />
           <div className="text-center">
-            <h1 className="text-2xl font-bold mb-1">RSC Helferplanung</h1>
-            <p className="text-muted-foreground mb-6">
+            <h1 className="sr-only">MyCrewMate</h1>
+            <p className="mb-6 text-muted-foreground">
               Geschützte Helfer-Planung für Organisatoren
             </p>
           </div>
@@ -886,16 +887,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </Button>
         <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
           <div className="min-w-0">
-            <div className="truncate text-sm font-bold">RSC Helferplanung</div>
+            <div className="truncate text-sm font-bold">MyCrewMate</div>
             <div className="truncate text-[11px] text-muted-foreground">
               {selectedEvent?.name ?? `Veranstaltung ${year}`}
             </div>
           </div>
           <img
             {...logoLoading}
-            src={RSC_LOGO}
-            alt="RSC Eifelland"
-            className="h-11 w-11 shrink-0 rounded-full border-2 border-white bg-white object-contain shadow-md ring-1 ring-slate-300"
+            src={MYCREWMATE_ICON}
+            alt="MyCrewMate"
+            className="h-10 w-10 shrink-0 rounded-xl bg-white object-contain shadow-sm ring-1 ring-slate-200"
           />
         </div>
         <Select
@@ -924,13 +925,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
           className="w-[88vw] max-w-xs gap-0 bg-white p-0 text-slate-950"
         >
           <SheetHeader className="border-b text-left">
-            <SheetTitle className="flex items-center gap-2">
-              <span>RSC Helferplanung</span>
+            <SheetTitle>
               <img
                 {...logoLoading}
-                src={RSC_LOGO}
-                alt="RSC Eifelland"
-                className="h-12 w-12 rounded-full border-2 border-white bg-white object-contain shadow-md ring-1 ring-slate-300"
+                src={MYCREWMATE_WORDMARK}
+                alt="MyCrewMate"
+                className="h-auto w-full max-w-[190px] object-contain"
               />
             </SheetTitle>
             <SheetDescription>
@@ -1121,9 +1121,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </Sheet>
 
       <aside className="hidden w-64 shrink-0 flex-col border-r bg-card lg:sticky lg:top-0 lg:flex lg:h-screen lg:self-start">
-        <div className="flex min-h-24 items-center gap-3 border-b bg-gradient-to-r from-white to-slate-50 px-4 py-3 text-slate-950">
-          <div className="min-w-0 flex-1">
-            <div className="font-bold leading-tight">RSC Helferplanung</div>
+        <div className="flex min-h-24 flex-col items-start gap-1.5 border-b bg-gradient-to-r from-white to-slate-50 px-4 py-3 text-slate-950">
+          <img
+            {...logoLoading}
+            src={MYCREWMATE_WORDMARK}
+            alt="MyCrewMate"
+            className="h-auto w-full max-w-[218px] object-contain"
+          />
+          <div className="min-w-0">
             <div className="truncate text-xs text-muted-foreground">
               Vereinsorganisation
             </div>
@@ -1133,12 +1138,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
               className="mt-1.5 max-w-full"
             />
           </div>
-          <img
-            {...logoLoading}
-            src={RSC_LOGO}
-            alt="RSC Eifelland e. V."
-            className="h-14 w-14 shrink-0 rounded-full border-2 border-white bg-white object-contain shadow-md ring-1 ring-slate-300"
-          />
         </div>
 
         <div className="border-b p-3">
@@ -1643,7 +1642,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Download className="h-5 w-5 text-blue-700" aria-hidden="true" />
-              RSC Helferplanung als App speichern
+              MyCrewMate als App speichern
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm leading-relaxed text-slate-600">
