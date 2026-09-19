@@ -986,11 +986,17 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(prep).toContain("Suchen (Aufgabe/Bereich/Verantwortlicher/Ort/Frist)");
     expect(prep).toContain("w-full max-w-2xl");
     expect(prep).toContain("grid grid-cols-1 gap-2 md:flex md:flex-wrap");
-    expect(prep).toContain("h-11 w-full bg-white text-base md:h-10 md:w-[190px]");
-    expect(prep).toContain("h-11 w-full bg-white text-base md:h-10 md:w-[220px]");
-    expect(prep).toContain("h-11 w-full bg-white text-base md:h-10 md:w-[175px]");
+    expect(prep).toContain("border-sky-200 bg-white text-base md:h-10 md:w-[190px]");
+    expect(prep).toContain("border-sky-200 bg-white text-base md:h-10 md:w-[220px]");
+    expect(prep).toContain("border-sky-200 bg-white text-base md:h-10 md:w-[175px]");
     expect(prep).not.toContain("Aufgaben angezeigt");
-    expect(prep).toContain("min-w-[230px] whitespace-nowrap");
+    expect(prep).toContain("bg-sky-50/50");
+    expect(prep).toContain("border-sky-100");
+    expect(prep).toContain("bg-blue-600 text-base font-medium text-white");
+    expect(prep).toContain('<th className="w-[15%] px-4 py-3 font-medium">Ort</th>');
+    expect(prep).toContain("border-sky-200 bg-sky-50 px-2 py-0.5");
+    expect(prep).toContain("h-8 w-32 border text-xs font-medium");
+    expect(prep).toContain("min-w-[260px] px-4 py-3 align-top text-slate-600");
     expect(prep).toContain("PopoverContent");
     expect(prep).toContain("Logbuch");
     expect(prep).toContain("Vollständiges Logbuch anzeigen");
@@ -1659,10 +1665,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(creationAction).toContain("CREATION_ACTION_BUTTON_CLASS");
     expect(creationAction).toContain("border-slate-300 bg-white");
     expect(creationAction).toContain("text-base font-semibold");
-    for (const module of [helpers, contacts, plan, preparation]) {
+    for (const module of [helpers, contacts, plan]) {
       expect(module).toContain("CREATION_ACTION_BUTTON_CLASS");
       expect(module).toContain('variant="outline"');
     }
+    expect(preparation).not.toContain("CREATION_ACTION_BUTTON_CLASS");
+    expect(preparation).toContain("bg-blue-600 text-base font-medium text-white");
     expect(helperHeaderActions).not.toContain("bg-indigo-700");
     expect(contacts).not.toContain("bg-indigo-700");
     expect(helpers).toContain("companionFilter");
@@ -1809,6 +1817,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(cakes).toContain("Alle Eigenschaften");
     expect(cakes).toContain("Alle Abgabetage");
     expect(cakes).toContain("Alle Standorte");
+    expect(cakes).toContain("von {donations.length} Spenden sichtbar");
+    expect(cakes).toContain('aria-live="polite"');
     expect(cakes).toContain("resetFilters");
     expect(cakes).toContain("filteredDonations");
     expect(cakes).toContain("<th className=\"p-3\">Ort</th>");

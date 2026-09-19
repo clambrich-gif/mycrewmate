@@ -562,6 +562,11 @@ export default function Cakes() {
             </SelectContent>
           </Select>
         </div>
+        <div className="flex items-center justify-end" aria-live="polite" aria-atomic="true">
+          <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600">
+            {filteredDonations.length} von {donations.length} Spenden sichtbar
+          </span>
+        </div>
       </div>
 
       <div className="space-y-3 md:hidden">

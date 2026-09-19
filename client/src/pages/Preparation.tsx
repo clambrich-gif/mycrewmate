@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
 import { downloadBase64File } from "@/lib/download";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -619,10 +618,10 @@ export default function Preparation() {
   const pending = create.isPending || update.isPending;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 rounded-2xl border border-sky-100 bg-sky-50/50 p-3 sm:p-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Vorbereitung</h1>
+          <h1 className="text-2xl font-bold text-slate-950">Vorbereitung</h1>
           <p className="text-muted-foreground text-sm">
             Aufgabenverwaltung für die Festival-Vorbereitung mit flexiblen Feldern,
             Status-Wortlaut und Filterleiste.
@@ -646,7 +645,7 @@ export default function Preparation() {
           <Button
             type="button"
             variant="outline"
-            className={`w-full ${CREATION_ACTION_BUTTON_CLASS}`}
+            className="w-full border-blue-600 bg-blue-600 text-base font-medium text-white shadow-sm hover:bg-blue-700 hover:text-white focus-visible:ring-blue-500"
             onClick={openCreate}
           >
             <Plus className="mr-2 h-4 w-4" />
@@ -655,14 +654,14 @@ export default function Preparation() {
         </div>
       </div>
 
-      <div className="space-y-3 rounded-xl border bg-slate-50/70 p-3 sm:p-4">
+      <div className="space-y-3 rounded-xl border border-sky-200/80 bg-white/90 p-3 shadow-sm sm:p-4">
         <div className="relative w-full max-w-2xl">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
           <Input
             value={searchTerm}
             onChange={event => setSearchTerm(event.target.value)}
             placeholder="Suchen (Aufgabe/Bereich/Verantwortlicher/Ort/Frist) …"
-            className="h-11 bg-white pl-9 pr-8 text-base sm:h-10 sm:text-sm"
+            className="h-11 border-sky-200 bg-white pl-9 pr-8 text-base sm:h-10 sm:text-sm"
             aria-label="Vorbereitungsaufgaben durchsuchen"
           />
           {searchTerm && (
@@ -679,7 +678,7 @@ export default function Preparation() {
 
         <div className="grid grid-cols-1 gap-2 md:flex md:flex-wrap">
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="h-11 w-full bg-white text-base md:h-10 md:w-[190px] md:text-sm">
+            <SelectTrigger className="h-11 w-full border-sky-200 bg-white text-base md:h-10 md:w-[190px] md:text-sm">
               <SelectValue placeholder="Bereich" />
             </SelectTrigger>
             <SelectContent>
@@ -697,7 +696,7 @@ export default function Preparation() {
             value={locationFilter ? String(locationFilter) : "alle"}
             onValueChange={updateLocationFilter}
           >
-            <SelectTrigger className="h-11 w-full bg-white text-base md:h-10 md:w-[190px] md:text-sm">
+            <SelectTrigger className="h-11 w-full border-sky-200 bg-white text-base md:h-10 md:w-[190px] md:text-sm">
               <SelectValue placeholder="Standort" />
             </SelectTrigger>
             <SelectContent>
@@ -711,7 +710,7 @@ export default function Preparation() {
           </Select>
 
           <Select value={contactFilter} onValueChange={setContactFilter}>
-            <SelectTrigger className="h-11 w-full bg-white text-base md:h-10 md:w-[220px] md:text-sm">
+            <SelectTrigger className="h-11 w-full border-sky-200 bg-white text-base md:h-10 md:w-[220px] md:text-sm">
               <SelectValue placeholder="Verantwortlicher" />
             </SelectTrigger>
             <SelectContent>
@@ -729,7 +728,7 @@ export default function Preparation() {
             value={statusFilter}
             onValueChange={value => updateStatusFilter(value as TaskStatusFilter)}
           >
-            <SelectTrigger className="h-11 w-full bg-white text-base md:h-10 md:w-[175px] md:text-sm">
+            <SelectTrigger className="h-11 w-full border-sky-200 bg-white text-base md:h-10 md:w-[175px] md:text-sm">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -746,7 +745,7 @@ export default function Preparation() {
               variant="ghost"
               size="sm"
               onClick={resetAllFilters}
-              className="h-11 w-full px-2 text-base text-slate-600 hover:text-slate-900 md:ml-1 md:h-10 md:w-auto md:text-sm"
+              className="h-11 w-full px-2 text-base text-sky-700 hover:bg-sky-100/60 hover:text-sky-900 md:ml-1 md:h-10 md:w-auto md:text-sm"
             >
               <FilterX className="mr-1 size-3.5" />
               Filter zurücksetzen
@@ -767,15 +766,16 @@ export default function Preparation() {
         </div>
       ) : (
         <>
-          <div className="hidden overflow-x-auto rounded-xl border bg-white shadow-sm lg:block">
-            <table className="w-full min-w-[900px] table-auto text-left text-sm">
-              <thead className="border-b bg-slate-50/80 text-xs font-semibold text-slate-600">
+          <div className="hidden overflow-x-auto rounded-xl border border-sky-200 bg-white shadow-sm lg:block">
+            <table className="w-full min-w-[1080px] text-left text-sm">
+              <thead className="border-b border-sky-100 bg-sky-50/70 text-slate-600">
                 <tr>
-                  <th className="w-[22%] min-w-[230px] whitespace-nowrap px-3 py-3">Bereich</th>
-                  <th className="w-[19%] px-3 py-3">Aufgabe</th>
-                  <th className="w-[16%] px-3 py-3">Verantwortlicher</th>
+                  <th className="w-[12%] whitespace-nowrap px-4 py-3 font-medium">Bereich</th>
+                  <th className="w-[17%] px-4 py-3 font-medium">Aufgabe</th>
+                  <th className="w-[15%] px-4 py-3 font-medium">Ort</th>
+                  <th className="w-[14%] px-4 py-3 font-medium">Verantwortlicher</th>
                   <th
-                    className="w-[12%] px-3 py-3"
+                    className="w-[10%] px-4 py-3 font-medium"
                     aria-sort={
                       dueSortDirection === "asc"
                         ? "ascending"
@@ -804,12 +804,12 @@ export default function Preparation() {
                       )}
                     </button>
                   </th>
-                  <th className="w-[13%] px-3 py-3">Status</th>
-                  <th className="w-[8%] px-3 py-3 text-center">Logbuch</th>
-                  <th className="w-[10%] px-3 py-3 text-center">Aktionen</th>
+                  <th className="w-[13%] px-4 py-3 font-medium">Status</th>
+                  <th className="min-w-[260px] px-4 py-3 font-medium">Logbuch</th>
+                  <th className="w-[8%] px-4 py-3 text-right font-medium">Aktionen</th>
                 </tr>
               </thead>
-              <tbody className="divide-y text-slate-800">
+              <tbody className="divide-y divide-sky-100 text-slate-800">
                 {filteredRows.map(task => {
                   const wording =
                     task.statusWording === "genehmigung" ? "genehmigung" : "aufgabe";
@@ -819,26 +819,34 @@ export default function Preparation() {
                   return (
                     <tr
                       key={task.id}
-                      className={`transition hover:bg-slate-50/60 ${
+                      className={`transition-colors hover:bg-sky-50/40 ${
                         task.status === "abgelehnt" ? "bg-rose-50/30" : ""
                       }`}
                     >
-                      <td className="min-w-[230px] whitespace-nowrap px-3 py-3 align-top">
-                        <span className="block">{task.category || "—"}</span>
-                        <LocationMapLink
-                          locationId={task.locationId}
-                          locations={locations}
-                          className="mt-0.5"
-                        />
+                      <td className="whitespace-nowrap px-4 py-3 align-top text-slate-700">
+                        {task.category ? (
+                          <Badge className="border border-sky-200 bg-sky-50 px-2 py-0.5 font-normal text-sky-800 shadow-none">
+                            {task.category}
+                          </Badge>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
                       </td>
-                      <td className="break-words px-3 py-3 align-top font-medium">{task.task}</td>
-                      <td className="break-words px-3 py-3 align-top">
+                      <td className="break-words px-4 py-3 align-top font-medium text-slate-950">{task.task}</td>
+                      <td className="px-4 py-3 align-top text-slate-600">
+                        {task.locationId ? (
+                          <LocationMapLink locationId={task.locationId} locations={locations} />
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
+                      </td>
+                      <td className="break-words px-4 py-3 align-top text-slate-700">
                         {task.contactId ? contactMap.get(task.contactId) ?? "—" : "—"}
                       </td>
-                      <td className="break-words px-3 py-3 align-top">
-                        {formatDueDate(task.dueText) || "—"}
+                      <td className="break-words px-4 py-3 align-top text-slate-700">
+                        {formatDueDate(task.dueText) || <span className="text-slate-400">—</span>}
                       </td>
-                      <td className="px-3 py-3 align-top">
+                      <td className="px-4 py-3 align-top">
                         <Select
                           value={statusSelectValue(task.status, wording)}
                           onValueChange={value =>
@@ -851,7 +859,7 @@ export default function Preparation() {
                         >
                           <SelectTrigger
                             aria-label={`Status für ${task.task} ändern`}
-                            className={`h-8 min-w-[128px] border text-xs font-medium ${getStatusBadgeClass(task.status)}`}
+                            className={`h-8 w-32 border text-xs font-medium ${getStatusBadgeClass(task.status)}`}
                           >
                             <SelectValue />
                           </SelectTrigger>
@@ -865,9 +873,9 @@ export default function Preparation() {
                           </SelectContent>
                         </Select>
                       </td>
-                      <td className="px-3 py-3 align-top">
+                      <td className="min-w-[260px] px-4 py-3 align-top text-slate-600">
                         {latestLogbookEntry ? (
-                          <div className="flex items-start justify-center gap-1">
+                          <div className="flex items-start gap-1.5">
                             <p className="line-clamp-2 min-w-0 flex-1 break-words whitespace-pre-wrap text-xs leading-5 text-slate-700">
                               {latestLogbookEntry}
                             </p>
@@ -913,7 +921,7 @@ export default function Preparation() {
                           <span className="block text-center text-slate-400">—</span>
                         )}
                       </td>
-                      <td className="px-3 py-3 align-top">
+                      <td className="px-4 py-3 align-top text-right">
                         <div className="flex items-center justify-center gap-1">
                           <Button
                             type="button"
@@ -956,7 +964,7 @@ export default function Preparation() {
                   className={
                     task.status === "abgelehnt"
                       ? "border-rose-300 bg-rose-50/20 shadow-sm"
-                      : "shadow-sm"
+                      : "border-sky-200 bg-white shadow-sm"
                   }
                 >
                   <CardContent className="space-y-4 p-4">
@@ -978,7 +986,7 @@ export default function Preparation() {
                           >
                             <SelectTrigger
                               aria-label={`Status für ${task.task} ändern`}
-                              className={`h-11 min-w-[136px] border text-base font-medium ${getStatusBadgeClass(task.status)}`}
+                              className={`h-11 w-32 border text-base font-medium ${getStatusBadgeClass(task.status)}`}
                             >
                               <SelectValue />
                             </SelectTrigger>
@@ -992,7 +1000,7 @@ export default function Preparation() {
                             </SelectContent>
                           </Select>
                           {task.category && (
-                            <Badge variant="secondary" className="font-normal">
+                            <Badge className="border border-sky-200 bg-sky-50 font-normal text-sky-800 shadow-none">
                               {task.category}
                             </Badge>
                           )}
@@ -1007,7 +1015,7 @@ export default function Preparation() {
                           type="button"
                           variant="outline"
                           size="icon"
-                          className="h-11 w-11"
+                          className="h-11 w-11 border-sky-200 bg-white hover:bg-sky-50"
                           title="Vorbereitungsaufgabe bearbeiten"
                           aria-label={`Aufgabe ${task.task} bearbeiten`}
                           onClick={() => openEdit(task)}
@@ -1018,7 +1026,7 @@ export default function Preparation() {
                           type="button"
                           variant="outline"
                           size="icon"
-                          className="h-11 w-11"
+                          className="h-11 w-11 border-sky-200 bg-white hover:bg-sky-50"
                           title="Vorbereitungsaufgabe löschen"
                           aria-label={`Aufgabe ${task.task} löschen`}
                           onClick={() => openDelete(task)}
