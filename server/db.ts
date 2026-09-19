@@ -2779,9 +2779,13 @@ export const updateApproval = async (id: number, v: any) =>
     .where(yearWhere(approvals, id));
 export const deleteApproval = async (id: number) =>
   ((await getDb()) as DB).delete(approvals).where(yearWhere(approvals, id));
-export const createCake = async (v: any) => createYearRow(cakes, v);
+export const createCake = async (v: any) =>
+  createYearRow(cakes, await scopedLocationValues(v));
 export const updateCake = async (id: number, v: any) =>
-  ((await getDb()) as DB).update(cakes).set(v).where(yearWhere(cakes, id));
+  ((await getDb()) as DB)
+    .update(cakes)
+    .set(await scopedLocationValues(v))
+    .where(yearWhere(cakes, id));
 export async function deleteCake(id: number, actor: AuditActor) {
   const db = (await getDb()) as DB;
   return db.transaction(async tx => {

@@ -188,6 +188,10 @@ export const PROJECT_EXCEL_HEADERS: Record<string, string[]> = {
     "ID",
     "Spender",
     "Kuchen",
+    "Ort-ID",
+    "Abgabeort / Standort",
+    "Abgabetag / Datum",
+    "Abgabe-Uhrzeit",
     "Vegan",
     "Glutenfrei",
     "Laktosefrei",
@@ -417,7 +421,11 @@ type CakeRow = {
   sourceId: number | null;
   donor: string;
   cake: string;
+  locationSourceId: number | null;
+  locationName: string;
+  dropoffDate: string;
   dropoffTime: string;
+  legacyDropoffText: string;
   vegan: boolean;
   glutenFree: boolean;
   lactoseFree: boolean;
@@ -672,6 +680,8 @@ export function repairImportedDocumentRelations(document: BackupDocument) {
     canonicalizeLocationReference(row, `VORBEREITUNG „${row.task}“`);
   for (const row of document.materials)
     canonicalizeLocationReference(row, `MATERIAL „${row.article}“`);
+  for (const row of document.cakes)
+    canonicalizeLocationReference(row, `KUCHEN „${row.donor} – ${row.cake}“`);
   for (const row of document.shifts) {
     const contact =
       (row.areaContactSourceId
@@ -822,6 +832,18 @@ const text = (value: unknown, max: number, label: string, required = false) => {
   if (required && !result) throw new Error(`${label} darf nicht leer sein`);
   if (result.length > max)
     throw new Error(`${label} ist länger als ${max} Zeichen`);
+  return result;
+};
+const optionalIsoDate = (value: unknown, label: string) => {
+  const result = text(value, 10, label);
+  if (result && !/^\d{4}-\d{2}-\d{2}$/.test(result))
+    throw new Error(`${label} muss im Format JJJJ-MM-TT angegeben werden`);
+  return result;
+};
+const optionalClockTime = (value: unknown, label: string) => {
+  const result = text(value, 5, label);
+  if (result && !/^([01]\d|2[0-3]):[0-5]\d$/.test(result))
+    throw new Error(`${label} muss im Format HH:MM angegeben werden`);
   return result;
 };
 const optionalBoolean = (value: unknown, label: string) => {
@@ -1813,7 +1835,21 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
       sourceId: nullableId(row.ID, `KUCHEN Zeile ${index + 2}`),
       donor: text(row.Spender, 200, `KUCHEN Zeile ${index + 2}: Spender`, true),
       cake: text(row.Kuchen, 200, `KUCHEN Zeile ${index + 2}: Kuchen`),
-      dropoffTime: text(
+      locationSourceId: nullableId(row["Ort-ID"], `KUCHEN Zeile ${index + 2}: Ort-ID`),
+      locationName: text(
+        row["Abgabeort / Standort"],
+        200,
+        `KUCHEN Zeile ${index + 2}: Abgabeort / Standort`
+      ),
+      dropoffDate: optionalIsoDate(
+        row["Abgabetag / Datum"],
+        `KUCHEN Zeile ${index + 2}: Abgabetag / Datum`
+      ),
+      dropoffTime: optionalClockTime(
+        row["Abgabe-Uhrzeit"],
+        `KUCHEN Zeile ${index + 2}: Abgabe-Uhrzeit`
+      ),
+      legacyDropoffText: text(
         row.Abgabezeit,
         60,
         `KUCHEN Zeile ${index + 2}: Abgabezeit`
@@ -2146,10 +2182,14 @@ function comparableCurrent(snapshot: CurrentSnapshot) {
     })),
     cakes: [...snapshot.cakes].sort(byId).map(row => ({
       sourceId: row.id,
+      locationSourceId: row.locationId ?? null,
+      locationName: row.locationId ? (locationName.get(row.locationId) ?? "") : "",
       ...clean(row, [
         "donor",
         "cake",
+        "dropoffDate",
         "dropoffTime",
+        "legacyDropoffText",
         "vegan",
         "glutenFree",
         "lactoseFree",
@@ -2251,7 +2291,9 @@ export function comparableProjectContent(
       document.approvals as Array<Record<string, unknown>>,
       ["contactSourceId"]
     ),
-    cakes: withoutIds(document.cakes as Array<Record<string, unknown>>),
+    cakes: withoutIds(document.cakes as Array<Record<string, unknown>>, [
+      "locationSourceId",
+    ]),
     finances: withoutIds(document.finances as Array<Record<string, unknown>>),
   };
 }
@@ -2792,6 +2834,7 @@ export function buildSelectedDocument(
   for (const row of target.shifts) normalizeLocationRef(row);
   for (const row of target.prep) normalizeLocationRef(row);
   for (const row of target.materials) normalizeLocationRef(row);
+  for (const row of target.cakes) normalizeLocationRef(row);
   const normalizeContactRef = (row: {
     contactSourceId: number | null;
     contactName: string;
@@ -3519,7 +3562,10 @@ export async function restoreProjectDocument(
           eventId,
           donor: row.donor,
           cake: row.cake,
+          locationId: resolveLocation(row.locationSourceId, row.locationName),
+          dropoffDate: row.dropoffDate,
           dropoffTime: row.dropoffTime,
+          legacyDropoffText: row.legacyDropoffText,
           vegan: row.vegan,
           glutenFree: row.glutenFree,
           lactoseFree: row.lactoseFree,
@@ -3951,11 +3997,15 @@ export async function exportProjectExcel(): Promise<{
       ID: row.sourceId,
       Spender: row.donor,
       Kuchen: row.cake,
+      "Ort-ID": row.locationSourceId ?? "",
+      "Abgabeort / Standort": row.locationName,
+      "Abgabetag / Datum": row.dropoffDate,
+      "Abgabe-Uhrzeit": row.dropoffTime,
       Vegan: row.vegan,
       Glutenfrei: row.glutenFree,
       Laktosefrei: row.lactoseFree,
       "Enthält Nüsse": row.containsNuts,
-      Abgabezeit: row.dropoffTime,
+      Abgabezeit: row.legacyDropoffText,
       "Hinweise & Allergene": row.note,
       Reihenfolge: row.sortOrder,
     }))

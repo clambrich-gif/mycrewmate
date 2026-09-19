@@ -10,6 +10,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
 import { trpc } from "@/lib/trpc";
@@ -22,7 +29,10 @@ type CakeRow = {
   id: number;
   donor: string;
   cake: string;
+  locationId: number | null;
+  dropoffDate: string;
   dropoffTime: string;
+  legacyDropoffText: string;
   vegan: boolean;
   glutenFree: boolean;
   lactoseFree: boolean;
@@ -30,11 +40,15 @@ type CakeRow = {
   note: string | null;
 };
 
-type CakeForm = Omit<CakeRow, "id" | "note"> & { note: string };
+type CakeForm = Omit<CakeRow, "id" | "note" | "legacyDropoffText"> & {
+  note: string;
+};
 
 const EMPTY_CAKE_FORM: CakeForm = {
   donor: "",
   cake: "",
+  locationId: null,
+  dropoffDate: "",
   dropoffTime: "",
   vegan: false,
   glutenFree: false,
@@ -72,6 +86,19 @@ const traits = [
 
 type TraitKey = (typeof traits)[number]["key"];
 
+function formatDropoffTime(row: CakeRow) {
+  if (row.dropoffDate) {
+    const weekday = new Intl.DateTimeFormat("de-DE", {
+      weekday: "short",
+    }).format(new Date(`${row.dropoffDate}T12:00:00`));
+    return row.dropoffTime
+      ? `${weekday}, ${row.dropoffTime} Uhr`
+      : weekday;
+  }
+  if (row.dropoffTime) return `${row.dropoffTime} Uhr`;
+  return row.legacyDropoffText || "–";
+}
+
 function TraitTags({ row }: { row: CakeRow }) {
   const selectedTraits = traits.filter(trait => row[trait.key]);
   const note = row.note?.trim();
@@ -104,6 +131,8 @@ export default function Cakes() {
   const utils = trpc.useUtils();
   const { data: rows = [], isLoading } = trpc.cakes.list.useQuery();
   const { data: helpers = [] } = trpc.helpers.list.useQuery();
+  const { data: locations = [] } = trpc.locations.list.useQuery();
+  const { data: selectedEvent } = trpc.events.current.useQuery();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCake, setEditingCake] = useState<CakeRow | null>(null);
   const [form, setForm] = useState<CakeForm>(EMPTY_CAKE_FORM);
@@ -118,6 +147,14 @@ export default function Cakes() {
         )
       ).sort((left, right) => left.localeCompare(right, "de-DE")),
     [helpers]
+  );
+  const locationOptions = useMemo(
+    () => [...locations].sort((left, right) => left.name.localeCompare(right.name, "de-DE")),
+    [locations]
+  );
+  const locationNames = useMemo(
+    () => new Map(locations.map(location => [location.id, location.name])),
+    [locations]
   );
 
   useEffect(() => {
@@ -181,6 +218,8 @@ export default function Cakes() {
     setForm({
       donor: row.donor,
       cake: row.cake,
+      locationId: row.locationId,
+      dropoffDate: row.dropoffDate,
       dropoffTime: row.dropoffTime,
       vegan: row.vegan,
       glutenFree: row.glutenFree,
@@ -203,6 +242,8 @@ export default function Cakes() {
     const values = {
       donor: form.donor.trim(),
       cake: form.cake.trim(),
+      locationId: form.locationId,
+      dropoffDate: form.dropoffDate,
       dropoffTime: form.dropoffTime.trim(),
       vegan: form.vegan,
       glutenFree: form.glutenFree,
@@ -286,8 +327,14 @@ export default function Cakes() {
                 <div className="mt-1"><TraitTags row={row} /></div>
               </div>
               <div>
+                <p className="text-xs font-medium text-muted-foreground">Ort</p>
+                <p className="text-sm text-slate-800">
+                  {row.locationId ? locationNames.get(row.locationId) ?? "–" : "–"}
+                </p>
+              </div>
+              <div>
                 <p className="text-xs font-medium text-muted-foreground">Abgabezeit</p>
-                <p className="text-sm text-slate-800">{row.dropoffTime || "–"}</p>
+                <p className="text-sm text-slate-800">{formatDropoffTime(row)}</p>
               </div>
             </CardContent>
           </Card>
@@ -309,20 +356,24 @@ export default function Cakes() {
                 <th className="p-3">Spender</th>
                 <th className="p-3">Kuchen</th>
                 <th className="min-w-[240px] p-3">Eigenschaften / Allergene</th>
+                <th className="p-3">Ort</th>
                 <th className="p-3">Abgabezeit</th>
                 <th className="w-20 p-3"><span className="sr-only">Aktionen</span></th>
               </tr>
             </thead>
             <tbody>
               {isLoading && (
-                <tr><td colSpan={5} className="p-4 text-muted-foreground">Lade …</td></tr>
+                <tr><td colSpan={6} className="p-4 text-muted-foreground">Lade …</td></tr>
               )}
               {(rows as CakeRow[]).map(row => (
                 <tr key={row.id} className="border-t align-top hover:bg-muted/30">
                   <td className="p-3 font-medium text-slate-950">{row.donor}</td>
                   <td className="p-3 text-slate-800">{row.cake || "–"}</td>
                   <td className="p-3"><TraitTags row={row} /></td>
-                  <td className="whitespace-nowrap p-3 text-slate-800">{row.dropoffTime || "–"}</td>
+                  <td className="whitespace-nowrap p-3 text-slate-800">
+                    {row.locationId ? locationNames.get(row.locationId) ?? "–" : "–"}
+                  </td>
+                  <td className="whitespace-nowrap p-3 text-slate-800">{formatDropoffTime(row)}</td>
                   <td className="p-2">
                     <div className="flex justify-end gap-1">
                       <Button variant="ghost" size="icon" aria-label={`${row.donor} bearbeiten`} onClick={() => openEdit(row)}>
@@ -336,7 +387,7 @@ export default function Cakes() {
                 </tr>
               ))}
               {!isLoading && rows.length === 0 && (
-                <tr><td colSpan={5} className="p-4 text-muted-foreground">Noch keine Kuchenspenden erfasst.</td></tr>
+                <tr><td colSpan={6} className="p-4 text-muted-foreground">Noch keine Kuchenspenden erfasst.</td></tr>
               )}
             </tbody>
           </table>
@@ -384,8 +435,51 @@ export default function Cakes() {
                 <Input id="cake-name" value={form.cake} placeholder="z. B. Rumkuchen" onChange={event => setForm(current => ({ ...current, cake: event.target.value }))} />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="cake-dropoff">Abgabezeit</Label>
-                <Input id="cake-dropoff" value={form.dropoffTime} placeholder="z. B. Sa. 12:00" onChange={event => setForm(current => ({ ...current, dropoffTime: event.target.value }))} />
+                <Label htmlFor="cake-location">Abgabeort / Standort</Label>
+                <Select
+                  value={form.locationId === null ? "none" : String(form.locationId)}
+                  onValueChange={value =>
+                    setForm(current => ({
+                      ...current,
+                      locationId: value === "none" ? null : Number(value),
+                    }))
+                  }
+                >
+                  <SelectTrigger id="cake-location" className="h-11 text-base sm:h-10 sm:text-sm">
+                    <SelectValue placeholder="Kein Ort" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Kein Ort</SelectItem>
+                    {locationOptions.map(location => (
+                      <SelectItem key={location.id} value={String(location.id)}>
+                        {location.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="cake-dropoff-date">Abgabetag / Datum</Label>
+                <Input
+                  id="cake-dropoff-date"
+                  type="date"
+                  value={form.dropoffDate}
+                  min={selectedEvent?.startDate ?? undefined}
+                  max={selectedEvent?.endDate ?? undefined}
+                  className="h-11 text-base sm:h-10 sm:text-sm"
+                  onChange={event => setForm(current => ({ ...current, dropoffDate: event.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="cake-dropoff-time">Abgabe-Uhrzeit</Label>
+                <Input
+                  id="cake-dropoff-time"
+                  type="time"
+                  step="60"
+                  value={form.dropoffTime}
+                  className="h-11 text-base sm:h-10 sm:text-sm"
+                  onChange={event => setForm(current => ({ ...current, dropoffTime: event.target.value }))}
+                />
               </div>
             </div>
 

@@ -709,7 +709,16 @@ export const cakes = mysqlTable("cakes", {
   eventId: int("eventId").notNull(),
   donor: varchar("donor", { length: 200 }).notNull(),
   cake: varchar("cake", { length: 200 }).default("").notNull(),
-  dropoffTime: varchar("dropoffTime", { length: 60 }).default("").notNull(),
+  /** Optionaler Abgabeort; die Kuchenansicht zeigt ihn bewusst ohne Kartenlink. */
+  locationId: int("locationId").references(() => locations.id, {
+    onDelete: "set null",
+  }),
+  /** ISO-Datum für die strukturierte Abgabeplanung. */
+  dropoffDate: varchar("dropoffDate", { length: 10 }).default("").notNull(),
+  /** Strukturierte Uhrzeit im Format HH:MM für native Mobile-Zeitpicker. */
+  dropoffTime: varchar("dropoffTimeStructured", { length: 5 }).default("").notNull(),
+  /** Bisheriger Freitext bleibt für bestehende Kuchenspenden verlustfrei erhalten. */
+  legacyDropoffText: varchar("dropoffTime", { length: 60 }).default("").notNull(),
   /** Freiwillige Kennzeichnungen für die schnelle Ausgabe am Kuchenbuffet. */
   vegan: boolean("vegan").default(false).notNull(),
   glutenFree: boolean("glutenFree").default(false).notNull(),

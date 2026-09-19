@@ -1722,6 +1722,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(cakes).toContain('list="cake-donor-options"');
     expect(cakes).toContain('<datalist id="cake-donor-options">');
     expect(cakes).toContain("Helfer auswählen oder einen neuen Namen frei eingeben.");
+    expect(cakes).toContain("Abgabeort / Standort");
+    expect(cakes).toContain("Abgabetag / Datum");
+    expect(cakes).toContain("Abgabe-Uhrzeit");
+    expect(cakes).toContain('type="date"');
+    expect(cakes).toContain('type="time"');
+    expect(cakes).toContain("<th className=\"p-3\">Ort</th>");
+    expect(cakes).not.toContain("LocationMapLink");
     expect(helpers).toContain("newHelperBringsCake");
     expect(helpers).toContain("cakeWorkflowDonorRef");
     expect(helpers).toContain('Bringt einen Kuchen mit');

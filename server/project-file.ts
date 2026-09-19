@@ -20,7 +20,7 @@ import { normalizeMaterialStatus } from "../shared/material-status";
 import { eventDateRangeError } from "../shared/event-dates";
 
 const PROJECT_FORMAT = "RSC-HELFERPLANUNG-PROJEKTDATEI";
-const PROJECT_VERSION = 14;
+const PROJECT_VERSION = 15;
 const MAX_PROJECT_BYTES = 10_000_000;
 const MAX_ROWS = 10_000;
 
@@ -232,7 +232,15 @@ const documentSchema = z
           sourceId: id,
           donor: short(200).min(1),
           cake: short(200),
-          dropoffTime: short(60),
+          locationSourceId: id,
+          locationName: short(200),
+          dropoffDate: short(10)
+            .regex(/^\d{4}-\d{2}-\d{2}$/)
+            .or(z.literal("")),
+          dropoffTime: short(5)
+            .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+            .or(z.literal("")),
+          legacyDropoffText: short(60),
           vegan: z.boolean().default(false),
           glutenFree: z.boolean().default(false),
           lactoseFree: z.boolean().default(false),
@@ -791,10 +799,37 @@ export function parseProjectFile(base64: string): {
     legacy.cakes = Array.isArray(legacy.cakes)
       ? legacy.cakes.map((cake: Record<string, unknown>) => ({
           ...cake,
+          locationSourceId: null,
+          locationName: "",
+          dropoffDate: "",
+          dropoffTime: "",
+          legacyDropoffText: cake.dropoffTime ?? "",
           vegan: cake.vegan ?? false,
           glutenFree: cake.glutenFree ?? false,
           lactoseFree: cake.lactoseFree ?? false,
           containsNuts: cake.containsNuts ?? false,
+        }))
+      : legacy.cakes;
+  }
+  if (
+    raw &&
+    typeof raw === "object" &&
+    "metadata" in raw &&
+    raw.metadata &&
+    typeof raw.metadata === "object" &&
+    "version" in raw.metadata &&
+    raw.metadata.version === 14
+  ) {
+    const legacy = raw as Record<string, any>;
+    legacy.metadata = { ...legacy.metadata, version: PROJECT_VERSION };
+    legacy.cakes = Array.isArray(legacy.cakes)
+      ? legacy.cakes.map((cake: Record<string, unknown>) => ({
+          ...cake,
+          locationSourceId: null,
+          locationName: "",
+          dropoffDate: "",
+          dropoffTime: "",
+          legacyDropoffText: cake.dropoffTime ?? "",
         }))
       : legacy.cakes;
   }
@@ -856,6 +891,11 @@ export function parseProjectFile(base64: string): {
     document.cakes = Array.isArray(document.cakes)
       ? document.cakes.map((cake: Record<string, unknown>) => ({
           ...cake,
+          locationSourceId: cake.locationSourceId ?? null,
+          locationName: cake.locationName ?? "",
+          dropoffDate: cake.dropoffDate ?? "",
+          dropoffTime: cake.dropoffTime ?? "",
+          legacyDropoffText: cake.legacyDropoffText ?? "",
           vegan: cake.vegan ?? false,
           glutenFree: cake.glutenFree ?? false,
           lactoseFree: cake.lactoseFree ?? false,

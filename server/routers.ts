@@ -1860,7 +1860,17 @@ export const appRouter = router({
         z.object({
           donor: z.string().min(1),
           cake: z.string().optional(),
-          dropoffTime: z.string().optional(),
+          locationId: z.number().int().positive().nullable().optional(),
+          dropoffDate: z
+            .string()
+            .regex(/^\d{4}-\d{2}-\d{2}$/, "Ungültiges Abgabedatum")
+            .or(z.literal(""))
+            .optional(),
+          dropoffTime: z
+            .string()
+            .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Ungültige Abgabe-Uhrzeit")
+            .or(z.literal(""))
+            .optional(),
           vegan: z.boolean().default(false),
           glutenFree: z.boolean().default(false),
           lactoseFree: z.boolean().default(false),
@@ -1875,7 +1885,17 @@ export const appRouter = router({
           id: z.number(),
           donor: z.string().optional(),
           cake: z.string().optional(),
-          dropoffTime: z.string().optional(),
+          locationId: z.number().int().positive().nullable().optional(),
+          dropoffDate: z
+            .string()
+            .regex(/^\d{4}-\d{2}-\d{2}$/, "Ungültiges Abgabedatum")
+            .or(z.literal(""))
+            .optional(),
+          dropoffTime: z
+            .string()
+            .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Ungültige Abgabe-Uhrzeit")
+            .or(z.literal(""))
+            .optional(),
           vegan: z.boolean().optional(),
           glutenFree: z.boolean().optional(),
           lactoseFree: z.boolean().optional(),

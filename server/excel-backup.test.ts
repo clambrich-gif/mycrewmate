@@ -1131,7 +1131,10 @@ describe("Excel-Datensicherung", () => {
       eventId: 1,
       donor: "Josi Volli",
       cake: "Rumkuchen",
-      dropoffTime: "Fr. 14:00",
+      locationId: null,
+      dropoffDate: "2026-06-19",
+      dropoffTime: "14:00",
+      legacyDropoffText: "Fr. 14:00",
       vegan: false,
       glutenFree: false,
       lactoseFree: true,
@@ -1147,6 +1150,10 @@ describe("Excel-Datensicherung", () => {
     })[0];
     expect(headers).toEqual(
       expect.arrayContaining([
+        "Ort-ID",
+        "Abgabeort / Standort",
+        "Abgabetag / Datum",
+        "Abgabe-Uhrzeit",
         "Vegan",
         "Glutenfrei",
         "Laktosefrei",
@@ -1159,7 +1166,9 @@ describe("Excel-Datensicherung", () => {
     expect(parsed.cakes[0]).toMatchObject({
       donor: "Josi Volli",
       cake: "Rumkuchen",
-      dropoffTime: "Fr. 14:00",
+      dropoffDate: "2026-06-19",
+      dropoffTime: "14:00",
+      legacyDropoffText: "Fr. 14:00",
       vegan: false,
       glutenFree: false,
       lactoseFree: true,

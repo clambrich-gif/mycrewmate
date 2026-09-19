@@ -1657,7 +1657,9 @@ describe("Planungs-API", () => {
       caller.cakes.create({
         donor: "Josi Volli",
         cake: "Rumkuchen",
-        dropoffTime: "Sa. 11:30",
+        locationId: 5,
+        dropoffDate: "2026-06-20",
+        dropoffTime: "11:30",
         vegan: false,
         glutenFree: false,
         lactoseFree: true,
@@ -1669,7 +1671,9 @@ describe("Planungs-API", () => {
     expect(dbMocks.createCake).toHaveBeenCalledWith({
       donor: "Josi Volli",
       cake: "Rumkuchen",
-      dropoffTime: "Sa. 11:30",
+      locationId: 5,
+      dropoffDate: "2026-06-20",
+      dropoffTime: "11:30",
       vegan: false,
       glutenFree: false,
       lactoseFree: true,
@@ -1681,12 +1685,14 @@ describe("Planungs-API", () => {
       caller.cakes.update({
         id: 88,
         vegan: true,
+        dropoffTime: "12:00",
         note: "Rezept geändert: jetzt vegan",
       })
     ).resolves.toEqual({ affectedRows: 1 });
 
     expect(dbMocks.updateCake).toHaveBeenCalledWith(88, {
       vegan: true,
+      dropoffTime: "12:00",
       note: "Rezept geändert: jetzt vegan",
     });
   });
