@@ -18,6 +18,8 @@ import {
   selectHelpersForContact,
   selectPlanEvaluations,
   helperTimeBadgeLabel,
+  helperPdfTimeLabel,
+  buildHelperSummaryEntries,
   helperPdfPastels,
   helperTaskCellParts,
   helperTaskCellText,
@@ -220,6 +222,30 @@ describe("PDF-Erzeugung", () => {
     const pdf = await renderHelperTaskPdf(data, 1);
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
     expect(pdf.length).toBeGreaterThan(2_000);
+  });
+
+  it("kennzeichnet zeitlose persönliche Schichten als Ganztags und hält die Zusammenfassung sortiert", () => {
+    expect(helperPdfTimeLabel(shifts[0])).toBe("17:00–21:00");
+    expect(
+      helperPdfTimeLabel({ ...shifts[1], startTime: "", endTime: "" })
+    ).toBe("Ganztags");
+    expect(
+      buildHelperSummaryEntries({
+        taskCount: 4,
+        daySummary: "Freitag: Zeltplatz, Kühlwagen · Samstag: DJ",
+        helperNote: "Kabeltrommel mitbringen",
+        cakeLines: ["Käsekuchen (Fr., 09:00 Uhr in Laubach)"],
+        contactLabel: "Ansprechpartner",
+        contactName: "Martin Reis",
+        contactPhone: "0173515544",
+      }).map(entry => entry.label)
+    ).toEqual([
+      "Einteilung",
+      "Verfügbarkeit / Bemerkungen",
+      "Kuchenspende",
+      "Ansprechpartner",
+      "Rufnummer",
+    ]);
   });
 
   it("listet Kuchenspenden eines Helfers bedingt und mit Abgabeinformationen", async () => {

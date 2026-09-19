@@ -178,6 +178,15 @@ function formatTime(shift: Shift) {
   return `${shift.startTime}–${shift.endTime}`;
 }
 
+/** Persönliche Helferübersichten bezeichnen zeitlose Schichten eindeutig als Ganztags-Einsatz. */
+export function helperPdfTimeLabel(
+  shift: Pick<Shift, "startTime" | "endTime">
+) {
+  return shift.startTime && shift.endTime
+    ? `${shift.startTime}–${shift.endTime}`
+    : "Ganztags";
+}
+
 /** Zweizeilige Zeitkennzeichnung für PDF-Einsatzpläne mit flexibler Belegung. */
 export function planPdfTimeLabel(shift: Shift) {
   const time = formatTime(shift);
@@ -399,7 +408,10 @@ function compactShiftBlockHeight(
   const timeHeight = doc
     .font("Helvetica-Bold")
     .fontSize(9)
-    .heightOfString(formatTime(shift), { width: timeWidth, lineGap: 0.5 });
+    .heightOfString(helperPdfTimeLabel(shift), {
+      width: timeWidth,
+      lineGap: 0.5,
+    });
   const bodyHeight = Math.max(taskHeight, timeHeight, 11);
   const infoHeight = doc
     .font("Helvetica")
@@ -428,7 +440,10 @@ function drawCompactHelperShiftBlock(
   const timeHeight = doc
     .font("Helvetica-Bold")
     .fontSize(9)
-    .heightOfString(formatTime(shift), { width: timeWidth, lineGap: 0.5 });
+    .heightOfString(helperPdfTimeLabel(shift), {
+      width: timeWidth,
+      lineGap: 0.5,
+    });
   const bodyHeight = Math.max(taskHeight, timeHeight, 11);
   const infoY = y + 5 + bodyHeight + 5;
   const infoHeight = doc
@@ -440,7 +455,7 @@ function drawCompactHelperShiftBlock(
     .font("Helvetica-Bold")
     .fontSize(9)
     .fillColor(helperPdfDesign.ink)
-    .text(formatTime(shift), helperPdfMargin, y + 5, {
+    .text(helperPdfTimeLabel(shift), helperPdfMargin, y + 5, {
       width: timeWidth,
       lineGap: 0.5,
     });
@@ -465,6 +480,49 @@ function drawCompactHelperShiftBlock(
 }
 
 type HelperSummaryEntry = { label: string; value: string };
+
+/** Baut die feste Reihenfolge der kompakten persönlichen PDF-Zusammenfassung. */
+export function buildHelperSummaryEntries(input: {
+  taskCount: number;
+  daySummary: string;
+  helperNote?: string | null;
+  cakeLines?: string[];
+  contactLabel: string;
+  contactName?: string | null;
+  contactPhone?: string | null;
+  footerText?: string | null;
+}): HelperSummaryEntry[] {
+  const entries: HelperSummaryEntry[] = [
+    {
+      label: "Einteilung",
+      value: `${input.taskCount} ${input.taskCount === 1 ? "Aufgabe" : "Aufgaben"}${input.daySummary ? ` · ${input.daySummary}` : ""}`,
+    },
+  ];
+  if (input.helperNote?.trim())
+    entries.push({
+      label: "Verfügbarkeit / Bemerkungen",
+      value: input.helperNote.trim(),
+    });
+  const cakeLines = input.cakeLines ?? [];
+  if (cakeLines.length > 0)
+    entries.push({
+      label: cakeLines.length === 1 ? "Kuchenspende" : "Kuchenspenden",
+      value: cakeLines.join(" · "),
+    });
+  entries.push(
+    {
+      label: input.contactLabel,
+      value: input.contactName?.trim() || "nicht zugeordnet",
+    },
+    {
+      label: "Rufnummer",
+      value: input.contactPhone?.trim() || "nicht hinterlegt",
+    }
+  );
+  if (input.footerText?.trim())
+    entries.push({ label: "Hinweis", value: input.footerText.trim() });
+  return entries;
+}
 
 function compactSummaryHeight(
   doc: PDFKit.PDFDocument,
@@ -793,34 +851,16 @@ export function renderHelperTaskPdf(data: PlanningData, helperId: number) {
     })
       .filter((value): value is string => Boolean(value))
       .join(" · ");
-    const summaryEntries: HelperSummaryEntry[] = [
-      {
-        label: "Einteilung",
-        value: `${helperShifts.length} ${helperShifts.length === 1 ? "Aufgabe" : "Aufgaben"}${daySummary ? ` · ${daySummary}` : ""}`,
-      },
-      {
-        label: data.settings.contactLabel,
-        value: contact?.name ?? "nicht zugeordnet",
-      },
-      {
-        label: "Rufnummer",
-        value: contact?.phone?.trim() || "nicht hinterlegt",
-      },
-    ];
-    const helperNote = helper.note?.trim();
-    if (helperNote)
-      summaryEntries.push({
-        label: "Verfügbarkeit / Bemerkungen",
-        value: helperNote,
-      });
-    if (helperCakeLines.length > 0) {
-      summaryEntries.push({
-        label: helperCakeLines.length === 1 ? "Kuchenspende" : "Kuchenspenden",
-        value: helperCakeLines.join(" · "),
-      });
-    }
-    if (data.settings.footerText?.trim())
-      summaryEntries.push({ label: "Hinweis", value: data.settings.footerText.trim() });
+    const summaryEntries = buildHelperSummaryEntries({
+      taskCount: helperShifts.length,
+      daySummary,
+      helperNote: helper.note,
+      cakeLines: helperCakeLines,
+      contactLabel: data.settings.contactLabel,
+      contactName: contact?.name,
+      contactPhone: contact?.phone,
+      footerText: data.settings.footerText,
+    });
     const summaryHeight = compactSummaryHeight(doc, summaryEntries);
     const bottomAnchoredSummaryY = helperPdfBottom - summaryHeight - 10;
     doc.y = Math.max(doc.y + 6, bottomAnchoredSummaryY);
