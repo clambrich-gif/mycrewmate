@@ -34,6 +34,7 @@ import {
   renderPreparationTaskOverviewPdf,
   selectHelperCakes,
   selectDonationOverviewRows,
+  donationCategoryLabel,
   selectMaterialPacklistMaterials,
   selectTaskOverviewRows,
 } from "./pdf";
@@ -633,14 +634,20 @@ describe("PDF-Erzeugung", () => {
 
     expect(selectDonationOverviewRows(donations, [82])).toEqual([donations[1]]);
     expect(selectDonationOverviewRows(donations, [])).toEqual([]);
+    expect(donationCategoryLabel("sonstiges")).toBe("Sonstiges");
 
     const pdf = await renderDonationOverviewPdf(
       { ...data, cakes: donations, locations: cakeLocations },
       [81]
     );
+    const sonstigesPdf = await renderDonationOverviewPdf(
+      { ...data, cakes: donations, locations: cakeLocations },
+      [82]
+    );
     const emptyPdf = await renderDonationOverviewPdf({ ...data, cakes: donations }, []);
 
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+    expect(sonstigesPdf.subarray(0, 5).toString()).toBe("%PDF-");
     expect(emptyPdf.subarray(0, 5).toString()).toBe("%PDF-");
     expect(pdf.length).toBeGreaterThan(1_500);
   });

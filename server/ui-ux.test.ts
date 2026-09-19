@@ -1123,6 +1123,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const layout = source("client/src/components/Layout.tsx");
 
     expect(layout).toContain("const [passwordVisible, setPasswordVisible] = useState(false)");
+    expect(layout).toContain("const [capsLockOn, setCapsLockOn] = useState(false)");
     expect(layout).toContain('type={passwordVisible ? "text" : "password"}');
     expect(layout).toContain('aria-label={passwordVisible ? "Passwort verbergen" : "Passwort anzeigen"}');
     expect(layout).toContain("onClick={() => setPasswordVisible(visible => !visible)}");
@@ -1133,6 +1134,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain(': "Anmelden"');
     expect(layout).toContain("Als Hauptadministrator via Manus anmelden");
     expect(layout).toContain("text-xs leading-relaxed text-gray-400");
+    expect(layout).toContain('event.getModifierState("CapsLock")');
+    expect(layout).toContain('id="password-caps-lock-warning"');
+    expect(layout).toContain("Feststelltaste ist aktiviert.");
+    expect(layout).toContain('role="status"');
     expect(layout).toContain("min-h-12 min-w-12");
     expect(layout).toContain("min-h-[100dvh]");
   });
@@ -1819,6 +1824,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(cakes).toContain('ModuleExcelImportButton area="KUCHEN" label="Spenden"');
     expect(cakes).toContain("Suchen (Spender/Spende/Hinweise/Ort) …");
     expect(cakes).toContain("Alle Kategorien");
+    expect(cakes).toContain('label: "Sonstiges"');
+    expect(cakes).not.toContain('label: "Deftiges"');
     expect(cakes).toContain("Alle Eigenschaften");
     expect(cakes).toContain("Alle Abgabetage");
     expect(cakes).toContain("Alle Standorte");

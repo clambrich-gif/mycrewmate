@@ -1175,5 +1175,14 @@ describe("Excel-Datensicherung", () => {
       containsNuts: true,
       note: "Enthält Alkohol / Rum",
     });
+
+    const legacyCategory = mutateWorkbook(exported.buffer, wb => {
+      const [row] = XLSX.utils.sheet_to_json<any>(wb.Sheets.KUCHEN);
+      replaceSheet(wb, "KUCHEN", [{ ...row, Kategorie: "deftiges" }]);
+    });
+    const parsedLegacyCategory = parseBackupWorkbook(
+      legacyCategory.toString("base64")
+    );
+    expect(parsedLegacyCategory.cakes[0].donationCategory).toBe("sonstiges");
   });
 });

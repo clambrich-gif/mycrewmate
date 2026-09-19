@@ -1737,6 +1737,14 @@ describe("Planungs-API", () => {
       dropoffTime: "12:00",
       note: "Rezept geändert: jetzt vegan",
     });
+
+    await expect(
+      caller.cakes.update({ id: 88, donationCategory: "sonstiges" })
+    ).resolves.toEqual({ affectedRows: 1 });
+
+    expect(dbMocks.updateCake).toHaveBeenLastCalledWith(88, {
+      donationCategory: "sonstiges",
+    });
   });
 
   it("erlaubt Administratoren bei Helferlöschung auch die Planbereinigung", async () => {

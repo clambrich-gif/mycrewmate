@@ -1173,10 +1173,10 @@ export function selectDonationOverviewRows(
     );
 }
 
-function donationCategoryLabel(category: Cake["donationCategory"]) {
+export function donationCategoryLabel(category: Cake["donationCategory"]) {
   if (category === "salat") return "Salat";
   if (category === "snack") return "Dessert";
-  if (category === "sonstiges") return "Deftiges";
+  if (category === "sonstiges") return "Sonstiges";
   return "Kuchen / Gebäck";
 }
 

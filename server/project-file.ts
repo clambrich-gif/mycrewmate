@@ -233,8 +233,9 @@ const documentSchema = z
           donor: short(200).min(1),
           cake: short(200),
           donationCategory: z
-            .enum(["kuchen", "salat", "snack", "sonstiges"])
-            .default("kuchen"),
+            .enum(["kuchen", "salat", "snack", "sonstiges", "deftiges"])
+            .default("kuchen")
+            .transform(value => (value === "deftiges" ? "sonstiges" : value)),
           locationSourceId: id,
           locationName: short(200),
           dropoffDate: short(10)

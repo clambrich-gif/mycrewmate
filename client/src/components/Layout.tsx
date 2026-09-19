@@ -139,6 +139,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
+  const [capsLockOn, setCapsLockOn] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loginMode, setLoginMode] = useState<"user" | "admin">("user");
   const [recoveryOpen, setRecoveryOpen] = useState(false);
@@ -557,6 +558,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 setLoginMode("user");
                 setPassword("");
                 setPasswordVisible(false);
+                setCapsLockOn(false);
                 setLoginError(null);
                 setRecoveryOpen(false);
               }}
@@ -576,6 +578,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 setLoginMode("admin");
                 setPassword("");
                 setPasswordVisible(false);
+                setCapsLockOn(false);
                 setLoginError(null);
               }}
             >
@@ -694,11 +697,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   setPassword(event.target.value);
                   if (loginError) setLoginError(null);
                 }}
+                onKeyDown={event => setCapsLockOn(event.getModifierState("CapsLock"))}
+                onKeyUp={event => setCapsLockOn(event.getModifierState("CapsLock"))}
+                onBlur={() => setCapsLockOn(false)}
                 disabled={!loginAvailable || loginPending}
                 aria-describedby={
                   [
                     planningTeamLocked ? "planning-team-lock-message" : "",
                     loginError ? "password-login-error" : "",
+                    capsLockOn ? "password-caps-lock-warning" : "",
                   ]
                     .filter(Boolean)
                     .join(" ") || undefined
@@ -720,6 +727,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 )}
               </button>
             </div>
+            {capsLockOn && (
+              <p
+                id="password-caps-lock-warning"
+                className="-mt-2 flex items-center gap-1.5 text-xs text-amber-700"
+                role="status"
+                aria-live="polite"
+              >
+                <TriangleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                Feststelltaste ist aktiviert.
+              </p>
+            )}
             <Button
               className="h-12 w-full rounded-lg bg-blue-600 py-2.5 text-base font-semibold text-white shadow-sm hover:bg-blue-700 hover:text-white focus-visible:ring-blue-500"
               size="lg"

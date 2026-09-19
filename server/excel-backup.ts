@@ -1840,7 +1840,7 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
       donor: text(row.Spender, 200, `KUCHEN Zeile ${index + 2}: Spender`, true),
       cake: text(row.Spende ?? row.Kuchen, 200, `KUCHEN Zeile ${index + 2}: Spende`),
       donationCategory: enumValue(
-        row.Kategorie,
+        normalize(row.Kategorie) === "deftiges" ? "sonstiges" : row.Kategorie,
         ["kuchen", "salat", "snack", "sonstiges"] as const,
         `KUCHEN Zeile ${index + 2}: Kategorie`,
         "kuchen"

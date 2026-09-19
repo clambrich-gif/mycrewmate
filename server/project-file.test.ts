@@ -240,6 +240,43 @@ describe("Projektdatei und modularer Excel-Import", () => {
     });
   });
 
+  it("normalisiert die frühere Spendenkategorie Deftiges zu Sonstiges", async () => {
+    const legacyDonation = {
+      id: 90,
+      year: 2026,
+      eventId: 1,
+      donor: "Bea Beispiel",
+      cake: "Brot",
+      donationCategory: "sonstiges",
+      locationId: null,
+      dropoffDate: "2026-06-19",
+      dropoffTime: "09:00",
+      legacyDropoffText: "",
+      vegan: false,
+      glutenFree: false,
+      lactoseFree: false,
+      containsNuts: false,
+      meat: false,
+      note: null,
+      sortOrder: 0,
+    };
+    (data.cakes as any[]).push(legacyDonation);
+
+    try {
+      const exported = await exportProjectFile();
+      const document = JSON.parse(exported.buffer.toString("utf8"));
+      document.cakes[0].donationCategory = "deftiges";
+
+      const parsed = parseProjectFile(
+        Buffer.from(JSON.stringify(document)).toString("base64")
+      );
+
+      expect(parsed.document.cakes[0].donationCategory).toBe("sonstiges");
+    } finally {
+      data.cakes.splice(data.cakes.indexOf(legacyDonation as any), 1);
+    }
+  });
+
   it("führt geänderte Veranstaltungstage im JSON-Vergleich als eigene Änderung", async () => {
     const exported = await exportProjectFile();
     const document = JSON.parse(exported.buffer.toString("utf8"));
