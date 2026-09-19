@@ -335,6 +335,55 @@ function YesNoToggle({
   );
 }
 
+/**
+ * Ausschließlich für die mobile Helferkarte: Die beiden binären Angaben
+ * erhalten einen klaren Schalter statt einer zweiten Variante der Tagespills.
+ * Die Desktop-Tabelle behält bewusst ihren kompakten Ja/Nein-Status bei.
+ */
+function MobileStatusSwitch({
+  value,
+  onChange,
+  ariaLabel,
+  disabled = false,
+}: {
+  value: "ja" | "nein";
+  onChange: (value: "ja" | "nein") => void;
+  ariaLabel: string;
+  disabled?: boolean;
+}) {
+  const isYes = value === "ja";
+
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={isYes}
+      aria-label={ariaLabel}
+      disabled={disabled}
+      data-slot="mobile-helper-status-switch"
+      data-state={isYes ? "checked" : "unchecked"}
+      onClick={() => onChange(isYes ? "nein" : "ja")}
+      className={cn(
+        "relative inline-flex h-11 min-h-11 w-[72px] shrink-0 items-center rounded-full border p-1 shadow-xs transition-colors active:scale-[0.97]",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2",
+        "disabled:cursor-not-allowed disabled:opacity-50",
+        isYes
+          ? "border-emerald-300 bg-emerald-500"
+          : "border-rose-300 bg-rose-100"
+      )}
+    >
+      <span
+        aria-hidden="true"
+        className={cn(
+          "pointer-events-none size-9 rounded-full bg-white shadow-sm transition-transform duration-150 ease-out",
+          isYes ? "translate-x-7" : "translate-x-0"
+        )}
+      />
+      <span className="sr-only">{isYes ? "Ja" : "Nein"}</span>
+    </button>
+  );
+}
+
 function HelperPdfNoteField({
   helperId,
   helperName,
@@ -1067,51 +1116,72 @@ export default function Helpers() {
                   }}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium">Helfen?</label>
-                  <YesNoToggle
-                    value={helper.willHelp}
-                    ariaLabel={`${helper.name}: Helfen auf ${helper.willHelp === "ja" ? "Nein" : "Ja"} setzen`}
-                    disabled={update.isPending}
-                    onChange={willHelp =>
-                      update.mutate({
-                        id: helper.id,
-                        willHelp,
-                      })
-                    }
-                  />
+              <section
+                data-slot="mobile-helper-status-section"
+                aria-label="Allgemeiner Status"
+                className="space-y-2 rounded-xl border border-slate-200 bg-slate-50/80 p-3"
+              >
+                <h3 className="text-sm font-semibold text-slate-900">
+                  Allgemeiner Status
+                </h3>
+                <div className="grid grid-cols-1 gap-2">
+                  <div className="flex min-h-11 items-center justify-between gap-2 rounded-lg bg-white px-3 shadow-xs">
+                    <span className="text-sm font-medium text-slate-800">Helfen?</span>
+                    <MobileStatusSwitch
+                      value={helper.willHelp}
+                      ariaLabel={`${helper.name}: Helfen auf ${helper.willHelp === "ja" ? "Nein" : "Ja"} setzen`}
+                      disabled={update.isPending}
+                      onChange={willHelp =>
+                        update.mutate({
+                          id: helper.id,
+                          willHelp,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="flex min-h-11 items-center justify-between gap-2 rounded-lg bg-white px-3 shadow-xs">
+                    <span className="text-sm font-medium text-slate-800">Bestätigt?</span>
+                    <MobileStatusSwitch
+                      value={helper.confirmed}
+                      ariaLabel={`${helper.name}: Bestätigung auf ${helper.confirmed === "ja" ? "Nein" : "Ja"} setzen`}
+                      disabled={update.isPending}
+                      onChange={confirmed =>
+                        update.mutate({
+                          id: helper.id,
+                          confirmed,
+                        })
+                      }
+                    />
+                  </div>
                 </div>
-                  {activeDays.map(day => {
-                    return (
-                      <div key={day} className="space-y-1">
-                        <div className="text-sm font-medium">{day}</div>
-                        <DayAvailabilityControl
-                          helper={helper}
-                          day={day}
-                          disabled={update.isPending}
-                          onCommit={values =>
-                            update.mutate({ id: helper.id, ...values } as any)
-                          }
-                        />
+              </section>
+
+              <section
+                data-slot="mobile-helper-availability-section"
+                aria-label="Tages-Verfügbarkeiten"
+                className="space-y-2 rounded-xl border border-slate-200 bg-white p-3"
+              >
+                <h3 className="text-sm font-semibold text-slate-900">
+                  Tages-Verfügbarkeiten
+                </h3>
+                <div className="grid grid-cols-3 gap-2">
+                  {activeDays.map(day => (
+                    <div key={day} className="space-y-1.5">
+                      <div className="text-center text-sm font-medium text-slate-800">
+                        {WEEKDAY_SHORT_LABELS[day]}
                       </div>
-                    );
-                })}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium">Bestätigt?</label>
-                  <YesNoToggle
-                    value={helper.confirmed}
-                    ariaLabel={`${helper.name}: Bestätigung auf ${helper.confirmed === "ja" ? "Nein" : "Ja"} setzen`}
-                    disabled={update.isPending}
-                    onChange={confirmed =>
-                      update.mutate({
-                        id: helper.id,
-                        confirmed,
-                      })
-                    }
-                  />
+                      <DayAvailabilityControl
+                        helper={helper}
+                        day={day}
+                        disabled={update.isPending}
+                        onCommit={values =>
+                          update.mutate({ id: helper.id, ...values } as any)
+                        }
+                      />
+                    </div>
+                  ))}
                 </div>
-              </div>
+              </section>
             </CardContent>
           </Card>
         ))}

@@ -350,6 +350,17 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).not.toContain("pointer-events-none absolute left-1.5");
     expect(helpers).toContain('className="whitespace-nowrap p-2">Telefon Helfer');
     expect(mobileCards).not.toContain("compactOnDesktop");
+    expect(mobileCards).toContain('data-slot="mobile-helper-status-section"');
+    expect(mobileCards).toContain("Allgemeiner Status");
+    expect(mobileCards).toContain("<MobileStatusSwitch");
+    expect(mobileCards).toContain('data-slot="mobile-helper-availability-section"');
+    expect(mobileCards).toContain("Tages-Verfügbarkeiten");
+    expect(mobileCards).toContain('className="grid grid-cols-3 gap-2"');
+    expect(mobileCards).not.toContain("<YesNoToggle");
+    expect(helpers).toContain("function MobileStatusSwitch");
+    expect(helpers).toContain('data-slot="mobile-helper-status-switch"');
+    expect(helpers).toContain("w-[72px] shrink-0 items-center rounded-full");
+    expect(helpers).toContain('isYes ? "translate-x-7" : "translate-x-0"');
   });
 
   it("hält mobile Formulare und Aktionen bei 44px und 16px und macht Helferchips per Tastatur erreichbar", () => {
@@ -1429,7 +1440,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain("border-rose-200 bg-rose-50 text-rose-800");
     expect(helpers).toContain("Helfen auf");
     expect(helpers).toContain("Bestätigung auf");
-    expect(helpers.match(/<YesNoToggle/g)).toHaveLength(4);
+    expect(helpers.match(/<YesNoToggle/g)).toHaveLength(2);
+    expect(helpers.match(/<MobileStatusSwitch/g)).toHaveLength(2);
   });
 
   it("erfasst Zeitfenster über ein schlankes Tages-Popover und filtert sie im Einsatzplan hart", () => {
