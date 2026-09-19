@@ -1660,6 +1660,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const taskGeneric = source("client/src/pages/TaskGeneric.tsx");
     const materials = source("client/src/pages/Materials.tsx");
     const cakes = source("client/src/pages/Cakes.tsx");
+    const helpers = source("client/src/pages/Helpers.tsx");
 
     expect(taskList).toContain("postCreateDialogOpen");
     expect(taskList).toContain("Neue Nachbereitungsaufgabe");
@@ -1721,6 +1722,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(cakes).toContain('list="cake-donor-options"');
     expect(cakes).toContain('<datalist id="cake-donor-options">');
     expect(cakes).toContain("Helfer auswählen oder einen neuen Namen frei eingeben.");
+    expect(helpers).toContain("newHelperBringsCake");
+    expect(helpers).toContain("cakeWorkflowDonorRef");
+    expect(helpers).toContain('Bringt einen Kuchen mit');
+    expect(helpers).toContain('setLocation(`/kuchen?donor=${encodeURIComponent(cakeWorkflowDonor)}`)');
+    expect(cakes).toContain('searchParams.get("donor")?.trim() ?? ""');
+    expect(cakes).toContain('setForm({ ...EMPTY_CAKE_FORM, donor: requestedDonor })');
+    expect(cakes).toContain('next.delete("donor")');
   });
 
   it("bietet zentrale Orte, Ortsauswahl und Kartenlinks in Schichten und Vorbereitungen", () => {

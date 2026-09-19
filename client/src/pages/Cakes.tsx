@@ -14,8 +14,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
 import { trpc } from "@/lib/trpc";
 import { Cake, Pencil, Plus, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useSearchParams } from "wouter";
 
 type CakeRow = {
   id: number;
@@ -98,6 +99,8 @@ function TraitTags({ row }: { row: CakeRow }) {
 }
 
 export default function Cakes() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedDonor = searchParams.get("donor")?.trim() ?? "";
   const utils = trpc.useUtils();
   const { data: rows = [], isLoading } = trpc.cakes.list.useQuery();
   const { data: helpers = [] } = trpc.helpers.list.useQuery();
@@ -116,6 +119,21 @@ export default function Cakes() {
       ).sort((left, right) => left.localeCompare(right, "de-DE")),
     [helpers]
   );
+
+  useEffect(() => {
+    if (!requestedDonor) return;
+    setEditingCake(null);
+    setForm({ ...EMPTY_CAKE_FORM, donor: requestedDonor });
+    setDialogOpen(true);
+    setSearchParams(
+      previous => {
+        const next = new URLSearchParams(previous);
+        next.delete("donor");
+        return next;
+      },
+      { replace: true }
+    );
+  }, [requestedDonor, setSearchParams]);
 
   const refresh = () => {
     void utils.cakes.list.invalidate();

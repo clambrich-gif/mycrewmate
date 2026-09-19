@@ -3,6 +3,7 @@ import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -56,7 +57,7 @@ import {
   parseHelperConfirmationFilter,
   parseHelperFirstContactFilter,
 } from "@/lib/dashboard-target-filter";
-import { useSearchParams } from "wouter";
+import { useLocation, useSearchParams } from "wouter";
 
 const YN = [
   { v: "ja", l: "Ja" },
@@ -517,6 +518,7 @@ function HelperPdfNoteField({
 
 export default function Helpers() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const [, setLocation] = useLocation();
   const confirmationFilter = parseHelperConfirmationFilter(
     searchParams.get(HELPER_CONFIRMATION_QUERY_KEY)
   );
@@ -540,7 +542,9 @@ export default function Helpers() {
   const [newHelperContactId, setNewHelperContactId] = useState("none");
   const [newHelperPhone, setNewHelperPhone] = useState("");
   const [newHelperNote, setNewHelperNote] = useState("");
+  const [newHelperBringsCake, setNewHelperBringsCake] = useState(false);
   const [newHelperDialogOpen, setNewHelperDialogOpen] = useState(false);
+  const cakeWorkflowDonorRef = useRef<string | null>(null);
   const [filter, setFilter] = useState("");
   const [apFilter, setApFilter] = useState("alle");
   const [companionFilter, setCompanionFilter] = useState<
@@ -569,6 +573,7 @@ export default function Helpers() {
     setNewHelperContactId("none");
     setNewHelperPhone("");
     setNewHelperNote("");
+    setNewHelperBringsCake(false);
   };
   const openNewHelperDialog = () => {
     resetNewHelperForm();
@@ -576,12 +581,22 @@ export default function Helpers() {
   };
   const create = trpc.helpers.create.useMutation({
     onSuccess: () => {
+      const cakeWorkflowDonor = cakeWorkflowDonorRef.current;
+      cakeWorkflowDonorRef.current = null;
       invalidate();
       resetNewHelperForm();
       setNewHelperDialogOpen(false);
-      toast.success("Helfer hinzugefügt");
+      if (cakeWorkflowDonor) {
+        toast.success("Helfer hinzugefügt – Kuchenspende ergänzen");
+        setLocation(`/kuchen?donor=${encodeURIComponent(cakeWorkflowDonor)}`);
+      } else {
+        toast.success("Helfer hinzugefügt");
+      }
     },
-    onError: error => toast.error(error.message),
+    onError: error => {
+      cakeWorkflowDonorRef.current = null;
+      toast.error(error.message);
+    },
   });
   const update = trpc.helpers.update.useMutation({
     onSuccess: invalidate,
@@ -590,6 +605,7 @@ export default function Helpers() {
   const createNewHelper = () => {
     const trimmedName = name.trim();
     if (!trimmedName) return;
+    cakeWorkflowDonorRef.current = newHelperBringsCake ? trimmedName : null;
     create.mutate({
       name: trimmedName,
       contactId:
@@ -1439,6 +1455,19 @@ export default function Helpers() {
               Neue Helfer starten aktiv. Die Tagesverfügbarkeiten stehen zunächst
               auf „?“ und werden anschließend direkt in der Helfertabelle gepflegt.
             </p>
+            <div className="flex min-h-11 items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3">
+              <Checkbox
+                id="new-helper-dialog-brings-cake"
+                checked={newHelperBringsCake}
+                onCheckedChange={checked => setNewHelperBringsCake(checked === true)}
+              />
+              <label
+                htmlFor="new-helper-dialog-brings-cake"
+                className="cursor-pointer text-sm font-medium text-slate-800"
+              >
+                Bringt einen Kuchen mit
+              </label>
+            </div>
             <DialogFooter className="gap-2 sm:gap-0">
               <Button
                 type="button"
