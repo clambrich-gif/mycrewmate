@@ -1530,8 +1530,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
 
     expect(pdf).toContain("export function helperTimeBadgeLabel");
     expect(pdf).toContain("Zeitfenster: ${window.start}–${window.end} Uhr");
-    expect(pdf).toContain("drawHelperTimeBadge(doc, helper, day)");
-    expect(pdf).toContain("helperTimeBadgeLabel(helper, day) ? 99 : 72");
+    expect(pdf).toContain("drawCompactHelperDayHeading(doc, helper, day)");
+    expect(pdf).toContain('timeWindow.replace("Zeitfenster: ", "")');
+    expect(pdf).not.toContain("drawHelperTimeBadge(doc, helper, day)");
   });
 
   it("strukturiert die Einsatzplantabelle mit fester Aktionsspalte, Zwei-Spalten-Helferraster und Filter-Reset", () => {

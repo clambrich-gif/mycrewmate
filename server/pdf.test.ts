@@ -250,6 +250,34 @@ describe("PDF-Erzeugung", () => {
     expect(pdf.length).toBeGreaterThan(2_000);
   });
 
+  it("hält eine typische persönliche Übersicht mit fünf Schichten und Kuchenspende auf einer A4-Seite", async () => {
+    const fiveShifts: Shift[] = [
+      { ...shifts[0], id: 101, day: "Freitag", task: "Fotobox", area: "Party", startTime: "06:00", endTime: "18:00", note: "Nur von 08:00 bis 12:00 Uhr an der Fotobox." },
+      { ...shifts[0], id: 102, day: "Freitag", task: "Pumptrack", area: "Aufbau", startTime: "08:00", endTime: "14:00", note: "Mindestens drei Anhänger benötigt. Einsatz von 13:00 bis 14:00 Uhr." },
+      { ...shifts[1], id: 103, day: "Samstag", task: "Zeltplatz", area: "Planung", startTime: "09:00", endTime: "10:00", note: "Material am Infostand abholen." },
+      { ...shifts[1], id: 104, day: "Samstag", task: "Bänke", area: "Abbau", startTime: "12:00", endTime: "14:00", note: null },
+      { ...shifts[1], id: 105, day: "Sonntag", task: "VP6", area: "Putzen", startTime: "16:00", endTime: "18:00", note: null },
+    ];
+    const fiveAssignments = fiveShifts.flatMap((shift, index) => [
+      { id: 400 + index * 2, shiftId: shift.id, helperId: 1, slot: 0, createdAt: new Date() },
+      { id: 401 + index * 2, shiftId: shift.id, helperId: 2, slot: 1, createdAt: new Date() },
+    ]);
+
+    const pdf = await renderHelperTaskPdf(
+      {
+        ...data,
+        shifts: fiveShifts,
+        assignments: fiveAssignments,
+        cakes: helperCakes,
+        locations: cakeLocations,
+      },
+      helpers[0].id
+    );
+
+    expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+    expect(pdf.toString("latin1").match(/\/Type\s*\/Page\b/g)).toHaveLength(1);
+  });
+
   it("setzt vor Bemerkungen in der persönlichen Aufgabenübersicht eine freie Textzeile", () => {
     expect(helperTaskCellText(shifts[0])).toBe(
       "Aufbau Zelte, Verkabelung, Absperrgitter und Banner\nAufbau\n\nBemerkung: Treffpunkt am Materialcontainer"
@@ -257,15 +285,15 @@ describe("PDF-Erzeugung", () => {
     expect(helperTaskCellText(shifts[1])).toBe("Anmeldung Brevets\nStart");
   });
 
-  it("verwendet Pastellfarben nur für vorhandene Helferhinweise und Schichtbemerkungen", async () => {
+  it("verwendet ausschließlich neutrale Infoboxen im kompakten Helfer-PDF", async () => {
     expect(helperPdfPastels).toEqual({
-      timeBackground: "#f8fafc",
-      timeBorder: "#e2e8f0",
-      timeText: "#475569",
-      shiftNoteBackground: "#fef9c3",
-      shiftNoteText: "#854d0e",
-      helperNoteBackground: "#ffe4e6",
-      helperNoteText: "#9f1239",
+      timeBackground: "#F9FAFB",
+      timeBorder: "#E5E7EB",
+      timeText: "#1F2937",
+      shiftNoteBackground: "#F9FAFB",
+      shiftNoteText: "#1F2937",
+      helperNoteBackground: "#F9FAFB",
+      helperNoteText: "#1F2937",
     });
     expect(helperTaskCellParts(shifts[0])).toEqual({
       primaryText: "Aufbau Zelte, Verkabelung, Absperrgitter und Banner\nAufbau",
@@ -286,6 +314,7 @@ describe("PDF-Erzeugung", () => {
     );
     expect(noNotesPdf.subarray(0, 5).toString()).toBe("%PDF-");
     expect(noNotesPdf.length).toBeGreaterThan(2_000);
+    expect(noNotesPdf.toString("latin1").match(/\/Type\s*\/Page\b/g)).toHaveLength(1);
   });
 
   it("kennzeichnet ein individuelles Zeitfenster kompakt im Helfer-PDF", async () => {

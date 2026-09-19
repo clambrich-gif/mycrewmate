@@ -97,16 +97,28 @@ const colors = {
   accent: "#155e75",
 };
 
-/** Einheitliche, zurückhaltende Akzentfarben ausschließlich für Helfer-PDFs. */
+/** Einheitliche, neutrale Infoboxen ausschließlich für persönliche Helfer-PDFs. */
 export const helperPdfPastels = {
-  timeBackground: "#f8fafc",
-  timeBorder: "#e2e8f0",
-  timeText: "#475569",
-  shiftNoteBackground: "#fef9c3",
-  shiftNoteText: "#854d0e",
-  helperNoteBackground: "#ffe4e6",
-  helperNoteText: "#9f1239",
+  timeBackground: "#F9FAFB",
+  timeBorder: "#E5E7EB",
+  timeText: "#1F2937",
+  shiftNoteBackground: "#F9FAFB",
+  shiftNoteText: "#1F2937",
+  helperNoteBackground: "#F9FAFB",
+  helperNoteText: "#1F2937",
 } as const;
+
+const helperPdfDesign = {
+  ink: "#1F2937",
+  muted: "#4B5563",
+  accent: "#1E3A8A",
+  line: "#E5E7EB",
+  box: "#F9FAFB",
+} as const;
+
+const helperPdfMargin = 36;
+const helperPdfContentWidth = pageWidth - helperPdfMargin * 2;
+const helperPdfBottom = pageHeight - 48;
 
 function collectPdf(
   build: (doc: PDFKit.PDFDocument) => void,
@@ -261,29 +273,260 @@ export function helperCakeSummaryLine(
   return details.length ? `${cakeName} (${details.join(" ")})` : cakeName;
 }
 
-function drawHelperTimeBadge(
+function ensureHelperPdfSpace(doc: PDFKit.PDFDocument, required: number) {
+  if (doc.y + required <= helperPdfBottom) return;
+  doc.addPage();
+  doc.x = helperPdfMargin;
+  doc.y = helperPdfMargin;
+}
+
+function drawCompactHelperHeader(
+  doc: PDFKit.PDFDocument,
+  settings: AppSettings,
+  helperName: string,
+  logoBuffer?: Buffer
+) {
+  const top = helperPdfMargin;
+  const logoSize = 42;
+  const textWidth = logoBuffer
+    ? helperPdfContentWidth - logoSize - 14
+    : helperPdfContentWidth;
+  doc.x = helperPdfMargin;
+  doc.y = top;
+  if (logoBuffer) {
+    try {
+      doc.image(
+        logoBuffer,
+        doc.page.width - helperPdfMargin - logoSize,
+        top,
+        { fit: [logoSize, logoSize] }
+      );
+    } catch {
+      // Ein beschädigtes Logo darf den operativen PDF-Export nicht blockieren.
+    }
+  }
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(17)
+    .fillColor(helperPdfDesign.ink)
+    .text(`${settings.helperPdfTitle} – ${helperName}`, {
+      width: textWidth,
+      lineBreak: false,
+    });
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(9.5)
+    .fillColor(helperPdfDesign.accent)
+    .text(`${settings.eventName} ${settings.eventYear}`.trim(), {
+      width: textWidth,
+      lineBreak: false,
+    });
+  doc
+    .font("Helvetica")
+    .fontSize(7.5)
+    .fillColor(helperPdfDesign.muted)
+    .text(`Stand: ${formatDate()} · Persönliche Helferübersicht`, {
+      width: textWidth,
+      lineBreak: false,
+    });
+  const lineY = Math.max(doc.y + 6, top + (logoBuffer ? logoSize + 7 : 50));
+  doc
+    .moveTo(helperPdfMargin, lineY)
+    .lineTo(doc.page.width - helperPdfMargin, lineY)
+    .strokeColor(helperPdfDesign.line)
+    .lineWidth(0.7)
+    .stroke();
+  doc.x = helperPdfMargin;
+  doc.y = lineY + 10;
+}
+
+function drawCompactHelperDayHeading(
   doc: PDFKit.PDFDocument,
   helper: Helper,
   day: Day
 ) {
-  const label = helperTimeBadgeLabel(helper, day);
-  if (!label) return;
-  ensureSpace(doc, 28);
-  const width = 170;
+  ensureHelperPdfSpace(doc, 24);
   const y = doc.y;
+  const timeWindow = helperTimeBadgeLabel(helper, day);
   doc
-    .roundedRect(margin, y, width, 19, 5)
-    .fillAndStroke(helperPdfPastels.timeBackground, helperPdfPastels.timeBorder);
+    .moveTo(helperPdfMargin, y + 14)
+    .lineTo(doc.page.width - helperPdfMargin, y + 14)
+    .strokeColor(helperPdfDesign.line)
+    .lineWidth(0.6)
+    .stroke();
   doc
     .font("Helvetica-Bold")
+    .fontSize(10.5)
+    .fillColor(helperPdfDesign.accent)
+    .text(day, helperPdfMargin, y, { continued: Boolean(timeWindow) });
+  if (timeWindow) {
+    doc
+      .font("Helvetica")
+      .fontSize(8)
+      .fillColor(helperPdfDesign.muted)
+      .text(`  ·  ${timeWindow.replace("Zeitfenster: ", "")}`);
+  }
+  doc.x = helperPdfMargin;
+  doc.y = y + 21;
+}
+
+function compactShiftInfo(
+  shift: Shift,
+  team: string
+) {
+  const area = shift.area?.trim();
+  const task = shift.task.trim() || "Aufgabe";
+  const taskLine = area && area !== "Allgemein" ? `${task} · ${area}` : task;
+  const infoLines = [`Mithelfer: ${team || "–"}`];
+  if (shift.note?.trim())
+    infoLines.push(`Schicht-Bemerkung: ${shift.note.trim()}`);
+  return { taskLine, infoText: infoLines.join("\n") };
+}
+
+function compactShiftBlockHeight(
+  doc: PDFKit.PDFDocument,
+  shift: Shift,
+  team: string
+) {
+  const { taskLine, infoText } = compactShiftInfo(shift, team);
+  const timeWidth = 76;
+  const bodyX = helperPdfMargin + timeWidth + 12;
+  const bodyWidth = helperPdfContentWidth - timeWidth - 12;
+  const taskHeight = doc
+    .font("Helvetica-Bold")
+    .fontSize(9.5)
+    .heightOfString(taskLine, { width: bodyWidth, lineGap: 0.5 });
+  const timeHeight = doc
+    .font("Helvetica-Bold")
+    .fontSize(9)
+    .heightOfString(formatTime(shift), { width: timeWidth, lineGap: 0.5 });
+  const bodyHeight = Math.max(taskHeight, timeHeight, 11);
+  const infoHeight = doc
+    .font("Helvetica")
     .fontSize(8)
-    .fillColor(helperPdfPastels.timeText)
-    .text(label, margin + 7, y + 5, {
-      width: width - 14,
-      lineBreak: false,
+    .heightOfString(infoText, { width: bodyWidth - 16, lineGap: 1 });
+  void bodyX;
+  return 5 + bodyHeight + 6 + infoHeight + 12;
+}
+
+function drawCompactHelperShiftBlock(
+  doc: PDFKit.PDFDocument,
+  shift: Shift,
+  team: string
+) {
+  const height = compactShiftBlockHeight(doc, shift, team);
+  ensureHelperPdfSpace(doc, height + 4);
+  const y = doc.y;
+  const timeWidth = 76;
+  const bodyX = helperPdfMargin + timeWidth + 12;
+  const bodyWidth = helperPdfContentWidth - timeWidth - 12;
+  const { taskLine, infoText } = compactShiftInfo(shift, team);
+  const taskHeight = doc
+    .font("Helvetica-Bold")
+    .fontSize(9.5)
+    .heightOfString(taskLine, { width: bodyWidth, lineGap: 0.5 });
+  const timeHeight = doc
+    .font("Helvetica-Bold")
+    .fontSize(9)
+    .heightOfString(formatTime(shift), { width: timeWidth, lineGap: 0.5 });
+  const bodyHeight = Math.max(taskHeight, timeHeight, 11);
+  const infoY = y + 5 + bodyHeight + 5;
+  const infoHeight = doc
+    .font("Helvetica")
+    .fontSize(8)
+    .heightOfString(infoText, { width: bodyWidth - 16, lineGap: 1 });
+
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(9)
+    .fillColor(helperPdfDesign.ink)
+    .text(formatTime(shift), helperPdfMargin, y + 5, {
+      width: timeWidth,
+      lineGap: 0.5,
     });
-  doc.x = margin;
-  doc.y = y + 27;
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(9.5)
+    .fillColor(helperPdfDesign.ink)
+    .text(taskLine, bodyX, y + 5, { width: bodyWidth, lineGap: 0.5 });
+  doc
+    .roundedRect(bodyX, infoY, bodyWidth, infoHeight + 9, 3)
+    .fillAndStroke(helperPdfDesign.box, helperPdfDesign.line);
+  doc
+    .font("Helvetica")
+    .fontSize(8)
+    .fillColor(helperPdfDesign.muted)
+    .text(infoText, bodyX + 8, infoY + 4, {
+      width: bodyWidth - 16,
+      lineGap: 1,
+    });
+  doc.x = helperPdfMargin;
+  doc.y = y + height + 4;
+}
+
+type HelperSummaryEntry = { label: string; value: string };
+
+function compactSummaryHeight(
+  doc: PDFKit.PDFDocument,
+  entries: HelperSummaryEntry[]
+) {
+  const labelWidth = 132;
+  const valueWidth = helperPdfContentWidth - labelWidth - 28;
+  const rows = entries.map(entry => {
+    const valueHeight = doc
+      .font("Helvetica")
+      .fontSize(8.2)
+      .heightOfString(entry.value, { width: valueWidth, lineGap: 1 });
+    return Math.max(12, valueHeight) + 5;
+  });
+  return 20 + 13 + rows.reduce((sum, height) => sum + height, 0) + 8;
+}
+
+function drawCompactHelperSummary(
+  doc: PDFKit.PDFDocument,
+  entries: HelperSummaryEntry[]
+) {
+  const height = compactSummaryHeight(doc, entries);
+  ensureHelperPdfSpace(doc, height);
+  const y = doc.y;
+  const labelWidth = 132;
+  const contentX = helperPdfMargin + 10;
+  const valueX = contentX + labelWidth;
+  const valueWidth = helperPdfContentWidth - labelWidth - 28;
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(10.5)
+    .fillColor(helperPdfDesign.accent)
+    .text("Zusammenfassung", helperPdfMargin, y);
+  const boxY = y + 15;
+  const boxHeight = height - 20;
+  doc
+    .roundedRect(helperPdfMargin, boxY, helperPdfContentWidth, boxHeight, 4)
+    .fillAndStroke(helperPdfDesign.box, helperPdfDesign.line);
+  let rowY = boxY + 7;
+  for (const entry of entries) {
+    const valueHeight = doc
+      .font("Helvetica")
+      .fontSize(8.2)
+      .heightOfString(entry.value, { width: valueWidth, lineGap: 1 });
+    const rowHeight = Math.max(12, valueHeight) + 5;
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(8.2)
+      .fillColor(helperPdfDesign.ink)
+      .text(`${entry.label}:`, contentX, rowY, {
+        width: labelWidth - 8,
+        lineBreak: false,
+      });
+    doc
+      .font("Helvetica")
+      .fontSize(8.2)
+      .fillColor(helperPdfDesign.ink)
+      .text(entry.value, valueX, rowY, { width: valueWidth, lineGap: 1 });
+    rowY += rowHeight;
+  }
+  doc.x = helperPdfMargin;
+  doc.y = y + height;
 }
 
 function sortShifts(a: Shift, b: Shift) {
@@ -518,158 +761,70 @@ export function renderHelperTaskPdf(data: PlanningData, helperId: number) {
   );
 
   return collectPdf(doc => {
-    drawDocumentHeader(
-      doc,
-      data.settings,
-      `${data.settings.helperPdfTitle} – ${helper.name}`,
-      undefined,
-      data.logoBuffer
-    );
-    doc
-      .font("Helvetica-Bold")
-      .fontSize(15)
-      .fillColor(colors.ink)
-      .text("Chronologische Aufgabenübersicht");
-    doc.moveDown(0.8);
+    drawCompactHelperHeader(doc, data.settings, helper.name, data.logoBuffer);
 
     if (helperShifts.length === 0) {
       doc
         .font("Helvetica-Oblique")
-        .fontSize(10)
-        .fillColor(colors.muted)
+        .fontSize(9)
+        .fillColor(helperPdfDesign.muted)
         .text("Keine Aufgaben in der Helfereinteilung gefunden.");
-      doc.moveDown(2);
+      doc.moveDown(1);
     } else {
-      const columns: PdfColumn[] = [
-        { key: "number", label: "Nr.", width: 30, align: "center" },
-        { key: "task", label: "Aufgabe", width: 175 },
-        { key: "time", label: "Zeit", width: 88 },
-        { key: "team", label: "Mithelfer", width: contentWidth - 293 },
-      ];
-      let number = 1;
       for (const day of DAYS) {
         const dayShifts = helperShifts.filter(shift => shift.day === day);
         if (dayShifts.length === 0) continue;
-        ensureSpace(doc, helperTimeBadgeLabel(helper, day) ? 99 : 72);
-        doc.font("Helvetica-Bold").fontSize(11).fillColor(colors.ink).text(day);
-        doc.moveDown(0.45);
-        drawHelperTimeBadge(doc, helper, day);
-        drawTableHeader(doc, columns, margin);
+        drawCompactHelperDayHeading(doc, helper, day);
         for (const shift of dayShifts) {
           const team = (assignmentsByShift.get(shift.id) ?? [])
             .filter(assignment => assignment.helperId !== helperId)
             .map(assignment => helperById.get(assignment.helperId)?.name)
             .filter((name): name is string => Boolean(name))
             .join(", ");
-          const taskCell = helperTaskCellParts(shift);
-          drawTableRow(
-            doc,
-            columns,
-            {
-              number: String(number++),
-              task: taskCell.noteText
-                ? `${taskCell.primaryText}\n\n${taskCell.noteText}`
-                : taskCell.primaryText,
-              time: formatTime(shift),
-              team: team || "–",
-            },
-            margin,
-            { highlightedTaskNote: taskCell.noteText }
-          );
+          drawCompactHelperShiftBlock(doc, shift, team);
         }
-        doc.moveDown(1);
       }
     }
 
-    ensureSpace(doc, 135);
-    doc
-      .font("Helvetica-Bold")
-      .fontSize(15)
-      .fillColor(colors.ink)
-      .text("Zusammenfassung");
-    doc.moveDown(0.45);
-    doc
-      .font("Helvetica")
-      .fontSize(9.5)
-      .fillColor(colors.ink)
-      .text(
-        `${helper.name} ist insgesamt an ${helperShifts.length} ${helperShifts.length === 1 ? "Aufgabe" : "Aufgaben"} über den Veranstaltungszeitraum eingeteilt.`
-      );
-    doc.moveDown(0.55);
-    for (const day of DAYS) {
+    const daySummary = DAYS.map(day => {
       const dayShifts = helperShifts.filter(shift => shift.day === day);
-      if (dayShifts.length === 0) continue;
-      doc.font("Helvetica-Bold").text(`${day}: `, { continued: true });
-      doc
-        .font("Helvetica")
-        .text(
-          `${dayShifts.length} ${dayShifts.length === 1 ? "Aufgabe" : "Aufgaben"} (${dayShifts.map(shift => shift.task).join(", ")})`
-        );
-      doc.moveDown(0.25);
-    }
+      if (dayShifts.length === 0) return null;
+      return `${day}: ${dayShifts.map(shift => shift.task).join(", ")}`;
+    })
+      .filter((value): value is string => Boolean(value))
+      .join(" · ");
+    const summaryEntries: HelperSummaryEntry[] = [
+      {
+        label: "Einteilung",
+        value: `${helperShifts.length} ${helperShifts.length === 1 ? "Aufgabe" : "Aufgaben"}${daySummary ? ` · ${daySummary}` : ""}`,
+      },
+      {
+        label: data.settings.contactLabel,
+        value: contact?.name ?? "nicht zugeordnet",
+      },
+      {
+        label: "Rufnummer",
+        value: contact?.phone?.trim() || "nicht hinterlegt",
+      },
+    ];
     const helperNote = helper.note?.trim();
-    if (helperNote) {
-      doc.moveDown(0.4);
-      doc
-        .font("Helvetica-Bold")
-        .fillColor(colors.ink)
-        .text("Verfügbarkeit / Bemerkungen:");
-      doc.moveDown(0.18);
-      const noteX = margin;
-      const noteY = doc.y;
-      const noteWidth = contentWidth;
-      const noteHeight = doc.font("Helvetica").heightOfString(helperNote, {
-        width: noteWidth,
-        lineGap: 1,
+    if (helperNote)
+      summaryEntries.push({
+        label: "Verfügbarkeit / Bemerkungen",
+        value: helperNote,
       });
-      doc
-        .roundedRect(noteX - 2, noteY - 1, noteWidth + 2, noteHeight + 4, 2)
-        .fill(helperPdfPastels.helperNoteBackground);
-      doc
-        .font("Helvetica")
-        .fillColor(helperPdfPastels.helperNoteText)
-        .text(helperNote, noteX, noteY + 1, { width: noteWidth, lineGap: 1 });
-    }
     if (helperCakeLines.length > 0) {
-      const cakeText = helperCakeLines.join("\n");
-      const cakeX = margin;
-      const cakeWidth = contentWidth;
-      const cakeHeight = doc.font("Helvetica").heightOfString(cakeText, {
-        width: cakeWidth,
-        lineGap: 1,
+      summaryEntries.push({
+        label: helperCakeLines.length === 1 ? "Kuchenspende" : "Kuchenspenden",
+        value: helperCakeLines.join(" · "),
       });
-      ensureSpace(doc, cakeHeight + 34);
-      doc.moveDown(0.4);
-      doc
-        .font("Helvetica-Bold")
-        .fillColor(colors.ink)
-        .text("Kuchen:");
-      doc.moveDown(0.18);
-      const cakeY = doc.y;
-      doc
-        .roundedRect(cakeX - 2, cakeY - 1, cakeWidth + 2, cakeHeight + 4, 2)
-        .fill(helperPdfPastels.helperNoteBackground);
-      doc
-        .font("Helvetica")
-        .fillColor(helperPdfPastels.helperNoteText)
-        .text(cakeText, cakeX, cakeY + 1, { width: cakeWidth, lineGap: 1 });
     }
-    doc.moveDown(0.4);
-    doc
-      .font("Helvetica-Bold")
-      .fillColor(colors.ink)
-      .text(`${data.settings.contactLabel}: `, { continued: true });
-    doc.font("Helvetica").text(contact?.name ?? "nicht zugeordnet");
-    doc.font("Helvetica-Bold").text("Rufnummer: ", { continued: true });
-    doc.font("Helvetica").text(contact?.phone?.trim() || "nicht hinterlegt");
-    if (data.settings.footerText) {
-      doc.moveDown(0.8);
-      doc
-        .font("Helvetica-Oblique")
-        .fontSize(8.5)
-        .fillColor(colors.muted)
-        .text(data.settings.footerText);
-    }
+    if (data.settings.footerText?.trim())
+      summaryEntries.push({ label: "Hinweis", value: data.settings.footerText.trim() });
+    const summaryHeight = compactSummaryHeight(doc, summaryEntries);
+    const bottomAnchoredSummaryY = helperPdfBottom - summaryHeight - 10;
+    doc.y = Math.max(doc.y + 6, bottomAnchoredSummaryY);
+    drawCompactHelperSummary(doc, summaryEntries);
   });
 }
 
