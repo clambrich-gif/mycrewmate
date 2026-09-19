@@ -75,6 +75,9 @@ const valueColor = (value: string) => {
 const personKey = (value: string) =>
   value.trim().replace(/\s+/g, " ").toLocaleLowerCase("de-DE");
 
+const HELPER_ACTION_ICON_BUTTON_CLASS =
+  "h-8 min-h-8 w-8 min-w-8 rounded-md bg-transparent p-1 text-slate-700 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1";
+
 function Sel({
   value,
   onChange,
@@ -540,7 +543,7 @@ function CakeDonationAction({
       onClick={onClick}
       className={cn(
         "relative inline-flex shrink-0 items-center justify-center bg-transparent p-0 leading-none transition-transform duration-150 ease-out hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 active:scale-95",
-        mobile ? "h-11 w-11 text-xl" : "h-8 w-8 text-lg"
+        mobile ? "h-11 w-11 text-xl" : "h-8 w-8 text-[20px]"
       )}
     >
       <span
@@ -941,7 +944,7 @@ export default function Helpers() {
                     </p>
                   )}
                 </div>
-                <div className="flex shrink-0 gap-1">
+                <div className="flex shrink-0 gap-3">
                   <CakeDonationAction
                     helperName={helper.name}
                     count={cakeCountByDonor.get(personKey(helper.name)) ?? 0}
@@ -949,31 +952,45 @@ export default function Helpers() {
                     onClick={() => openCakeDonation(helper.name)}
                   />
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="icon"
-                    title="Persönliche Aufgabenübersicht als PDF"
+                    title="Persönliche Aufgaben-PDF herunterladen"
+                    aria-label={`Persönliche Aufgaben-PDF von ${helper.name} herunterladen`}
+                    className={cn(
+                      HELPER_ACTION_ICON_BUTTON_CLASS,
+                      "h-11 min-h-11 w-11 min-w-11"
+                    )}
                     disabled={exportingId === helper.id}
                     onClick={() => {
                       setExportingId(helper.id);
                       exportPdf.mutate({ helperId: helper.id });
                     }}
                   >
-                    <FileDown className="h-4 w-4" />
+                    <FileDown className="size-5 text-blue-600" aria-hidden="true" />
                   </Button>
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="icon"
-                    title="Persönlichen PDF-Link per WhatsApp teilen"
-                    aria-label={`Einteilung von ${helper.name} per WhatsApp teilen`}
+                    title="Aufgabenplan per WhatsApp an Helfer senden"
+                    aria-label={`Aufgabenplan von ${helper.name} per WhatsApp senden`}
+                    className={cn(
+                      HELPER_ACTION_ICON_BUTTON_CLASS,
+                      "h-11 min-h-11 w-11 min-w-11"
+                    )}
                     disabled={sharingId !== null}
                     onClick={() => shareHelperPdf(helper.id)}
                   >
-                    <MessageCircle className="h-4 w-4" />
+                    <MessageCircle className="size-5 text-[#25D366]" aria-hidden="true" />
                   </Button>
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="icon"
-                    title="Löschen"
+                    title="Helfer entfernen"
+                    aria-label={`Helfer ${helper.name} entfernen`}
+                    className={cn(
+                      HELPER_ACTION_ICON_BUTTON_CLASS,
+                      "h-11 min-h-11 w-11 min-w-11"
+                    )}
                     disabled={
                       selfHelperIds.has(helper.id) ||
                       (user?.role !== "admin" &&
@@ -983,7 +1000,7 @@ export default function Helpers() {
                       setDeleteTarget({ id: helper.id, name: helper.name })
                     }
                   >
-                    <Trash2 className="h-4 w-4 text-destructive" />
+                    <Trash2 className="size-5 text-red-600" aria-hidden="true" />
                   </Button>
                 </div>
               </div>
@@ -1125,7 +1142,7 @@ export default function Helpers() {
         <CardContent className="helpers-table-scroll p-0">
           <table
             className="w-full table-fixed text-xs xl:text-sm"
-            style={{ minWidth: 964 + activeDays.length * 56 }}
+            style={{ minWidth: 988 + activeDays.length * 56 }}
           >
             <colgroup>
               <col className="w-[140px]" />
@@ -1138,7 +1155,7 @@ export default function Helpers() {
                 <col key={day} className="w-[56px]" />
               ))}
               <col className="w-[56px]" />
-              <col className="w-[152px]" />
+              <col className="w-[176px]" />
             </colgroup>
             <thead className="helpers-desktop-sticky-head bg-muted/60">
               <tr className="text-left">
@@ -1329,7 +1346,7 @@ export default function Helpers() {
                     />
                   </td>
                   <td className="p-1">
-                    <div className="flex min-w-0 justify-center gap-1">
+                    <div className="flex min-w-0 justify-center gap-3">
                       <CakeDonationAction
                         helperName={helper.name}
                         count={cakeCountByDonor.get(personKey(helper.name)) ?? 0}
@@ -1338,24 +1355,27 @@ export default function Helpers() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        title="Persönliche Aufgabenübersicht als PDF"
+                        title="Persönliche Aufgaben-PDF herunterladen"
+                        aria-label={`Persönliche Aufgaben-PDF von ${helper.name} herunterladen`}
+                        className={HELPER_ACTION_ICON_BUTTON_CLASS}
                         disabled={exportingId === helper.id}
                         onClick={() => {
                           setExportingId(helper.id);
                           exportPdf.mutate({ helperId: helper.id });
                         }}
                       >
-                        <FileDown className="h-4 w-4" />
+                        <FileDown className="size-5 text-blue-600" aria-hidden="true" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="icon"
-                        title="Persönlichen PDF-Link per WhatsApp teilen"
-                        aria-label={`Einteilung von ${helper.name} per WhatsApp teilen`}
+                        title="Aufgabenplan per WhatsApp an Helfer senden"
+                        aria-label={`Aufgabenplan von ${helper.name} per WhatsApp senden`}
+                        className={HELPER_ACTION_ICON_BUTTON_CLASS}
                         disabled={sharingId !== null}
                         onClick={() => shareHelperPdf(helper.id)}
                       >
-                        <MessageCircle className="h-4 w-4" />
+                        <MessageCircle className="size-5 text-[#25D366]" aria-hidden="true" />
                       </Button>
                       <Button
                         variant="ghost"
@@ -1366,8 +1386,10 @@ export default function Helpers() {
                             : user?.role !== "admin" &&
                                 assignedHelperIds.has(helper.id)
                               ? "Eingeteilte Helfer können nur Administratoren löschen"
-                              : "Löschen"
+                              : "Helfer entfernen"
                         }
+                        aria-label={`Helfer ${helper.name} entfernen`}
+                        className={HELPER_ACTION_ICON_BUTTON_CLASS}
                         disabled={
                           selfHelperIds.has(helper.id) ||
                           (user?.role !== "admin" &&
@@ -1380,7 +1402,7 @@ export default function Helpers() {
                           })
                         }
                       >
-                        <Trash2 className="h-4 w-4 text-destructive" />
+                        <Trash2 className="size-5 text-red-600" aria-hidden="true" />
                       </Button>
                     </div>
                   </td>

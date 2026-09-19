@@ -335,8 +335,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain('className="w-full table-fixed text-xs xl:text-sm"');
     expect(helpers).toContain('<col className="w-[180px]" />');
     expect(helpers).toContain('<col className="w-[230px]" />');
-    expect(helpers).toContain("964 + activeDays.length * 56");
-    expect(helpers).toContain('<col className="w-[152px]" />');
+    expect(helpers).toContain("988 + activeDays.length * 56");
+    expect(helpers).toContain('<col className="w-[176px]" />');
     expect(helpers).toContain("md:w-[52px] md:min-w-[52px]");
     expect(helpers).toContain('className="whitespace-nowrap p-2">Telefon Helfer');
     expect(mobileCards).not.toContain("compactOnDesktop");
@@ -1275,7 +1275,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(pdfExport).toContain("{PDF_LINK}");
     expect(helpers).not.toContain("bg-emerald-500 text-white hover:bg-emerald-600");
     expect(helpers).toContain("trpc.pdf.publicShare.useMutation");
-    expect(helpers).toContain("Persönlichen PDF-Link per WhatsApp teilen");
+    expect(helpers).toContain("Aufgabenplan per WhatsApp an Helfer senden");
     expect(helpers).toContain("result.url");
     expect(helpers).not.toContain("window.location.origin");
     expect(helpers).not.toContain("/api/public/pdf/");
@@ -1588,6 +1588,19 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain("openCakeDonation(helper.name)");
     expect(helpers).toContain("cakeCountByDonor.get(personKey(helper.name)) ?? 0");
     expect(helpers).toContain('setLocation(`/kuchen?donor=${encodeURIComponent(helperName)}`)');
+  });
+
+  it("kennzeichnet PDF, WhatsApp und Löschung in Helferaktionen eindeutig farbig", () => {
+    const helpers = source("client/src/pages/Helpers.tsx");
+
+    expect(helpers).toContain("HELPER_ACTION_ICON_BUTTON_CLASS");
+    expect(helpers).toContain("gap-3");
+    expect(helpers).toContain("Persönliche Aufgaben-PDF herunterladen");
+    expect(helpers).toContain('FileDown className="size-5 text-blue-600"');
+    expect(helpers).toContain("Aufgabenplan per WhatsApp an Helfer senden");
+    expect(helpers).toContain('MessageCircle className="size-5 text-[#25D366]"');
+    expect(helpers).toContain("Helfer entfernen");
+    expect(helpers).toContain('Trash2 className="size-5 text-red-600"');
   });
 
   it("vereinheitlicht Erstellungsaktionen und filtert Helfer nach zusätzlicher Begleitung", () => {
