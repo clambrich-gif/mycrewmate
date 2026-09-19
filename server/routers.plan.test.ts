@@ -632,6 +632,44 @@ describe("Planungs-API", () => {
     ).rejects.toThrow("gehört nicht zur aktuellen Veranstaltung");
   });
 
+  it("erstellt Spenden-PDFs ausschließlich aus der sichtbaren Auswahl", async () => {
+    dbMocks.listCakes.mockResolvedValue([
+      {
+        id: 711,
+        year: 2026,
+        eventId: 1,
+        donor: "Anna Ahrtal",
+        cake: "Kartoffelsalat",
+        donationCategory: "salat",
+        locationId: null,
+        dropoffDate: "2026-06-19",
+        dropoffTime: "09:00",
+        legacyDropoffText: "",
+        vegan: true,
+        glutenFree: false,
+        lactoseFree: false,
+        containsNuts: false,
+        meat: false,
+        note: "Bitte gekühlt lagern",
+        sortOrder: 0,
+      },
+    ]);
+
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.pdf.donationOverview({ donationIds: [711] });
+
+    expect(result.filename).toBe(
+      "Spendenuebersicht_Gefiltert_MyEifelRide.pdf"
+    );
+    expect(result.mimeType).toBe("application/pdf");
+    expect(Buffer.from(result.base64, "base64").subarray(0, 5).toString()).toBe(
+      "%PDF-"
+    );
+    await expect(
+      caller.pdf.donationOverview({ donationIds: [999_999] })
+    ).rejects.toThrow("gehört nicht zur aktuellen Veranstaltung");
+  });
+
   it("erstellt Aufgaben-PDFs ausschließlich aus sichtbaren Vor- und Nachbereitungsaufgaben", async () => {
     const prepTask = {
       id: 801,

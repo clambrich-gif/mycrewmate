@@ -1,4 +1,5 @@
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
+import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -18,8 +19,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
+import { downloadBase64File } from "@/lib/download";
 import { trpc } from "@/lib/trpc";
-import { Gift, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  Gift,
+  Pencil,
+  Plus,
+  Printer,
+  RotateCcw,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useSearchParams } from "wouter";
@@ -73,7 +85,7 @@ const donationCategories: Array<{
 }> = [
   {
     value: "kuchen",
-    label: "Kuchen",
+    label: "Kuchen / Gebäck",
     badgeClass: "border-amber-200 bg-amber-50 text-amber-900",
   },
   {
@@ -83,12 +95,12 @@ const donationCategories: Array<{
   },
   {
     value: "snack",
-    label: "Snack",
+    label: "Dessert",
     badgeClass: "border-sky-200 bg-sky-50 text-sky-800",
   },
   {
     value: "sonstiges",
-    label: "Sonstiges",
+    label: "Deftiges",
     badgeClass: "border-slate-200 bg-slate-50 text-slate-700",
   },
 ];
@@ -139,6 +151,13 @@ function formatDropoffTime(row: DonationRow) {
   }
   if (row.dropoffTime) return `${row.dropoffTime} Uhr`;
   return row.legacyDropoffText || "–";
+}
+
+function weekdayForDropoffDate(value: string) {
+  if (!value) return "";
+  return new Intl.DateTimeFormat("de-DE", { weekday: "long" }).format(
+    new Date(`${value}T12:00:00`)
+  );
 }
 
 function categoryMeta(category: DonationCategory | null | undefined) {
@@ -197,6 +216,13 @@ export default function Cakes() {
   const [editingDonation, setEditingDonation] = useState<DonationRow | null>(null);
   const [form, setForm] = useState<DonationForm>(EMPTY_DONATION_FORM);
   const [deleteTarget, setDeleteTarget] = useState<DonationRow | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<"alle" | DonationCategory>(
+    "alle"
+  );
+  const [traitFilter, setTraitFilter] = useState<"alle" | TraitKey>("alle");
+  const [weekdayFilter, setWeekdayFilter] = useState("alle");
+  const [locationFilter, setLocationFilter] = useState("alle");
   const donorOptions = useMemo(
     () =>
       Array.from(
@@ -219,6 +245,17 @@ export default function Cakes() {
     () => new Map(locations.map(location => [location.id, location.name])),
     [locations]
   );
+  const donationWeekdays = useMemo(() => {
+    const activeDays = selectedEvent?.activeDays ?? [];
+    if (activeDays.length) return activeDays;
+    return Array.from(
+      new Set(
+        (rows as DonationRow[])
+          .map(row => weekdayForDropoffDate(row.dropoffDate))
+          .filter(Boolean)
+      )
+    );
+  }, [rows, selectedEvent?.activeDays]);
 
   useEffect(() => {
     if (!requestedDonor) return;
@@ -328,10 +365,73 @@ export default function Cakes() {
 
   const busy = createDonation.isPending || updateDonation.isPending;
   const donations = rows as DonationRow[];
+  const filteredDonations = useMemo(() => {
+    const query = searchTerm.trim().toLocaleLowerCase("de-DE");
+    return donations.filter(row => {
+      if (categoryFilter !== "alle" && row.donationCategory !== categoryFilter)
+        return false;
+      if (traitFilter !== "alle" && !row[traitFilter]) return false;
+      if (
+        weekdayFilter !== "alle" &&
+        weekdayForDropoffDate(row.dropoffDate) !== weekdayFilter
+      )
+        return false;
+      if (
+        locationFilter !== "alle" &&
+        String(row.locationId ?? "none") !== locationFilter
+      )
+        return false;
+      if (!query) return true;
+      return [
+        row.donor,
+        row.cake,
+        row.note ?? "",
+        row.locationId ? locationNames.get(row.locationId) ?? "" : "",
+      ]
+        .join(" ")
+        .toLocaleLowerCase("de-DE")
+        .includes(query);
+    });
+  }, [
+    donations,
+    searchTerm,
+    categoryFilter,
+    traitFilter,
+    weekdayFilter,
+    locationFilter,
+    locationNames,
+  ]);
+  const hasActiveFilters =
+    Boolean(searchTerm.trim()) ||
+    categoryFilter !== "alle" ||
+    traitFilter !== "alle" ||
+    weekdayFilter !== "alle" ||
+    locationFilter !== "alle";
+  const resetFilters = () => {
+    setSearchTerm("");
+    setCategoryFilter("alle");
+    setTraitFilter("alle");
+    setWeekdayFilter("alle");
+    setLocationFilter("alle");
+  };
+  const donationOverviewPdf = trpc.pdf.donationOverview.useMutation({
+    onSuccess: result => {
+      downloadBase64File(result.base64, result.mimeType, result.filename);
+      toast.success("Spenden-PDF wurde heruntergeladen");
+    },
+    onError: error => toast.error(error.message),
+  });
+  const downloadDonationOverviewPdf = () => {
+    donationOverviewPdf.mutate({
+      donationIds: filteredDonations
+        .map(row => row.id)
+        .filter(id => Number.isSafeInteger(id) && id > 0),
+    });
+  };
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold">
             <Gift className="h-6 w-6 text-rose-600" aria-hidden="true" />
@@ -342,16 +442,125 @@ export default function Cakes() {
             kennzeichnen.
           </p>
         </div>
-        <div className="grid w-full grid-cols-2 gap-2 lg:ml-auto lg:flex lg:w-auto lg:flex-wrap lg:justify-end [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 max-lg:[&>[data-slot=button]]:h-11 max-lg:[&>[data-slot=button]]:text-base lg:[&>[data-slot=button]]:w-auto lg:[&>[data-slot=button]]:px-4">
+        <div className="w-full space-y-2 lg:w-auto lg:min-w-[500px]">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 sm:[&>[data-slot=button]]:h-10">
+            <Button
+              type="button"
+              variant="outline"
+              className="border-blue-200 bg-white text-slate-800 hover:bg-blue-50 hover:text-blue-900"
+              disabled={donationOverviewPdf.isPending}
+              onClick={downloadDonationOverviewPdf}
+            >
+              <Printer className="mr-2 h-4 w-4 text-blue-700" />
+              {donationOverviewPdf.isPending ? "PDF wird erstellt …" : "PDF drucken"}
+            </Button>
+            <ModuleExcelImportButton area="KUCHEN" label="Spenden" />
+            <Button
+              type="button"
+              variant="outline"
+              className="border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:text-rose-900"
+              disabled={!hasActiveFilters}
+              onClick={resetFilters}
+            >
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Zurücksetzen
+            </Button>
+          </div>
           <Button
             type="button"
             variant="outline"
-            className="col-span-2 shadow-xs lg:col-auto"
+            className={`w-full ${CREATION_ACTION_BUTTON_CLASS}`}
             onClick={openCreate}
           >
             <Plus className="mr-1.5 h-4 w-4" />
             Spende erfassen
           </Button>
+        </div>
+      </div>
+
+      <div className="space-y-3 rounded-xl border bg-slate-50/70 p-3 sm:p-4">
+        <div className="relative w-full max-w-2xl">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            value={searchTerm}
+            onChange={event => setSearchTerm(event.target.value)}
+            placeholder="Suchen (Spender/Spende/Hinweise/Ort) …"
+            className="h-11 bg-white pl-9 pr-8 text-base sm:h-10 sm:text-sm"
+            aria-label="Spenden durchsuchen"
+          />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm("")}
+              className="absolute right-2.5 top-1/2 inline-flex min-h-11 min-w-11 -translate-y-1/2 items-center justify-center text-slate-400 hover:text-slate-700 sm:min-h-0 sm:min-w-0"
+              aria-label="Suche leeren"
+            >
+              <X className="size-4" />
+            </button>
+          )}
+        </div>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <Select
+            value={categoryFilter}
+            onValueChange={value =>
+              setCategoryFilter(value as "alle" | DonationCategory)
+            }
+          >
+            <SelectTrigger className="h-11 w-full bg-white text-base sm:h-10 sm:text-sm">
+              <SelectValue placeholder="Kategorie" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="alle">Alle Kategorien</SelectItem>
+              {donationCategories.map(category => (
+                <SelectItem key={category.value} value={category.value}>
+                  {category.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={traitFilter}
+            onValueChange={value => setTraitFilter(value as "alle" | TraitKey)}
+          >
+            <SelectTrigger className="h-11 w-full bg-white text-base sm:h-10 sm:text-sm">
+              <SelectValue placeholder="Eigenschaft" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="alle">Alle Eigenschaften</SelectItem>
+              {traits.map(trait => (
+                <SelectItem key={trait.key} value={trait.key}>
+                  {trait.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={weekdayFilter} onValueChange={setWeekdayFilter}>
+            <SelectTrigger className="h-11 w-full bg-white text-base sm:h-10 sm:text-sm">
+              <SelectValue placeholder="Abgabetag" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="alle">Alle Abgabetage</SelectItem>
+              {donationWeekdays.map(day => (
+                <SelectItem key={day} value={day}>
+                  {day}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={locationFilter} onValueChange={setLocationFilter}>
+            <SelectTrigger className="h-11 w-full bg-white text-base sm:h-10 sm:text-sm">
+              <SelectValue placeholder="Standort" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="alle">Alle Standorte</SelectItem>
+              <SelectItem value="none">Ohne Standort</SelectItem>
+              {locationOptions.map(location => (
+                <SelectItem key={location.id} value={String(location.id)}>
+                  {location.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -363,7 +572,7 @@ export default function Cakes() {
             </CardContent>
           </Card>
         )}
-        {donations.map(row => (
+        {filteredDonations.map(row => (
           <Card key={row.id} className="shadow-sm">
             <CardContent className="space-y-3 p-4">
               <div className="flex items-start justify-between gap-3">
@@ -432,10 +641,12 @@ export default function Cakes() {
             </CardContent>
           </Card>
         ))}
-        {!isLoading && donations.length === 0 && (
+        {!isLoading && filteredDonations.length === 0 && (
           <Card className="shadow-sm">
             <CardContent className="p-4 text-sm text-muted-foreground">
-              Noch keine Spenden erfasst.
+              {hasActiveFilters
+                ? "Keine Spenden entsprechen den aktuellen Filterkriterien."
+                : "Noch keine Spenden erfasst."}
             </CardContent>
           </Card>
         )}
@@ -465,7 +676,7 @@ export default function Cakes() {
                   </td>
                 </tr>
               )}
-              {donations.map(row => (
+              {filteredDonations.map(row => (
                 <tr key={row.id} className="border-t align-top hover:bg-muted/30">
                   <td className="p-3 font-medium text-slate-950">{row.donor}</td>
                   <td className="p-3 text-slate-800">{row.cake || "–"}</td>
@@ -504,10 +715,12 @@ export default function Cakes() {
                   </td>
                 </tr>
               ))}
-              {!isLoading && donations.length === 0 && (
+              {!isLoading && filteredDonations.length === 0 && (
                 <tr>
                   <td colSpan={7} className="p-4 text-muted-foreground">
-                    Noch keine Spenden erfasst.
+                    {hasActiveFilters
+                      ? "Keine Spenden entsprechen den aktuellen Filterkriterien."
+                      : "Noch keine Spenden erfasst."}
                   </td>
                 </tr>
               )}

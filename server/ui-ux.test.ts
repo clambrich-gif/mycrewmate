@@ -1800,6 +1800,17 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(cakes).toContain("Abgabe-Uhrzeit");
     expect(cakes).toContain('type="date"');
     expect(cakes).toContain('type="time"');
+    expect(cakes).toContain("trpc.pdf.donationOverview.useMutation");
+    expect(cakes).toContain("Spenden-PDF wurde heruntergeladen");
+    expect(cakes).toContain("downloadDonationOverviewPdf");
+    expect(cakes).toContain('ModuleExcelImportButton area="KUCHEN" label="Spenden"');
+    expect(cakes).toContain("Suchen (Spender/Spende/Hinweise/Ort) …");
+    expect(cakes).toContain("Alle Kategorien");
+    expect(cakes).toContain("Alle Eigenschaften");
+    expect(cakes).toContain("Alle Abgabetage");
+    expect(cakes).toContain("Alle Standorte");
+    expect(cakes).toContain("resetFilters");
+    expect(cakes).toContain("filteredDonations");
     expect(cakes).toContain("<th className=\"p-3\">Ort</th>");
     expect(cakes).not.toContain("LocationMapLink");
     expect(helpers).toContain("newHelperBringsCake");

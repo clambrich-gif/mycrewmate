@@ -28,10 +28,12 @@ import {
   planPdfTimeLabel,
   MATERIAL_PACKLIST_PORTRAIT_COLUMNS,
   MATERIAL_PACKLIST_PORTRAIT_WIDTH,
+  renderDonationOverviewPdf,
   renderMaterialPacklistPdf,
   renderPostTaskOverviewPdf,
   renderPreparationTaskOverviewPdf,
   selectHelperCakes,
+  selectDonationOverviewRows,
   selectMaterialPacklistMaterials,
   selectTaskOverviewRows,
 } from "./pdf";
@@ -585,6 +587,62 @@ describe("PDF-Erzeugung", () => {
     expect(postPdf.subarray(0, 5).toString()).toBe("%PDF-");
     expect(preparationPdf.length).toBeGreaterThan(1_500);
     expect(postPdf.length).toBeGreaterThan(1_500);
+  });
+
+  it("erzeugt Spenden-PDFs ausschließlich aus der sichtbaren Filterauswahl", async () => {
+    const donations: Cake[] = [
+      {
+        id: 81,
+        year: 2026,
+        eventId: 1,
+        donor: "Anna Ahrtal",
+        cake: "Kartoffelsalat",
+        donationCategory: "salat",
+        locationId: 15,
+        dropoffDate: "2026-06-19",
+        dropoffTime: "09:00",
+        legacyDropoffText: "",
+        vegan: true,
+        glutenFree: true,
+        lactoseFree: false,
+        containsNuts: false,
+        meat: false,
+        note: "Bitte gekühlt lagern",
+        sortOrder: 1,
+      },
+      {
+        id: 82,
+        year: 2026,
+        eventId: 1,
+        donor: "Bert Basalt",
+        cake: "Frikadellen",
+        donationCategory: "sonstiges",
+        locationId: null,
+        dropoffDate: "2026-06-20",
+        dropoffTime: "12:00",
+        legacyDropoffText: "",
+        vegan: false,
+        glutenFree: false,
+        lactoseFree: false,
+        containsNuts: false,
+        meat: true,
+        note: null,
+        sortOrder: 2,
+      },
+    ];
+
+    expect(selectDonationOverviewRows(donations, [82])).toEqual([donations[1]]);
+    expect(selectDonationOverviewRows(donations, [])).toEqual([]);
+
+    const pdf = await renderDonationOverviewPdf(
+      { ...data, cakes: donations, locations: cakeLocations },
+      [81]
+    );
+    const emptyPdf = await renderDonationOverviewPdf({ ...data, cakes: donations }, []);
+
+    expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+    expect(emptyPdf.subarray(0, 5).toString()).toBe("%PDF-");
+    expect(pdf.length).toBeGreaterThan(1_500);
   });
 
   it.each(WEEKDAYS)("filtert den PDF-Plan auf %s", day => {

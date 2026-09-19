@@ -1151,6 +1151,141 @@ export function renderMaterialPacklistPdf(
   });
 }
 
+/** Wählt ausschließlich die in der aktuellen Spendenansicht sichtbaren Zeilen aus. */
+export function selectDonationOverviewRows(
+  donations: Cake[] | undefined,
+  donationIds: number[]
+) {
+  const selectedIds = new Set(donationIds);
+  return (donations ?? [])
+    .filter(donation => selectedIds.has(donation.id))
+    .sort(
+      (left, right) =>
+        (left.dropoffDate || "9999-12-31").localeCompare(
+          right.dropoffDate || "9999-12-31"
+        ) ||
+        (left.dropoffTime || "99:99").localeCompare(
+          right.dropoffTime || "99:99"
+        ) ||
+        left.donor.localeCompare(right.donor, "de") ||
+        left.cake.localeCompare(right.cake, "de") ||
+        left.id - right.id
+    );
+}
+
+function donationCategoryLabel(category: Cake["donationCategory"]) {
+  if (category === "salat") return "Salat";
+  if (category === "snack") return "Dessert";
+  if (category === "sonstiges") return "Deftiges";
+  return "Kuchen / Gebäck";
+}
+
+function donationTraitText(donation: Cake) {
+  const labels = [
+    donation.vegan ? "Vegan" : null,
+    donation.glutenFree ? "Glutenfrei" : null,
+    donation.lactoseFree ? "Laktosefrei" : null,
+    donation.containsNuts ? "Enthält Nüsse" : null,
+    donation.meat ? "Fleischhaltig" : null,
+  ].filter((label): label is string => Boolean(label));
+  const note = donation.note?.trim();
+  return [labels.join(", "), note ? `Hinweis: ${note}` : ""]
+    .filter(Boolean)
+    .join("\n") || "–";
+}
+
+function donationDropoffText(donation: Cake) {
+  if (donation.dropoffDate) {
+    const weekday = cakeWeekdayLabel(donation.dropoffDate);
+    return donation.dropoffTime
+      ? `${weekday}, ${donation.dropoffTime} Uhr`
+      : weekday;
+  }
+  if (donation.dropoffTime) return `${donation.dropoffTime} Uhr`;
+  return donation.legacyDropoffText.trim() || "–";
+}
+
+/** Erstellt eine operative Übersicht der aktuell gefilterten Verpflegungsspenden. */
+export function renderDonationOverviewPdf(
+  data: PlanningData,
+  donationIds: number[]
+) {
+  const selectedDonations = selectDonationOverviewRows(data.cakes, donationIds);
+  const locationById = new Map(
+    (data.locations ?? []).map(location => [location.id, location])
+  );
+
+  return collectPdf(doc => {
+    const landscapeWidth = doc.page.width - margin * 2;
+    drawDocumentHeader(
+      doc,
+      data.settings,
+      "Spendenübersicht – Gefilterte Ansicht",
+      `Aktuelle Tabellenansicht · Stand: ${formatDate()}`,
+      data.logoBuffer
+    );
+    doc
+      .font("Helvetica")
+      .fontSize(9.5)
+      .fillColor(colors.muted)
+      .text(
+        "Diese Übersicht enthält genau die aktuell gefilterten Verpflegungsspenden einschließlich ihrer Eigenschaften, Hinweise und Abgabeinformationen."
+      );
+    doc.moveDown(1);
+
+    const fixedColumns: PdfColumn[] = [
+      { key: "donor", label: "Spender", width: 112 },
+      { key: "donation", label: "Spende", width: 106 },
+      { key: "category", label: "Kategorie", width: 82 },
+      { key: "traits", label: "Eigenschaften & Hinweise", width: 210 },
+      { key: "location", label: "Ort", width: 128 },
+    ];
+    const fixedWidth = fixedColumns.reduce(
+      (sum, column) => sum + column.width,
+      0
+    );
+    const columns: PdfColumn[] = [
+      ...fixedColumns,
+      {
+        key: "dropoff",
+        label: "Abgabezeit",
+        width: landscapeWidth - fixedWidth,
+      },
+    ];
+    drawTableHeader(doc, columns, margin);
+
+    if (selectedDonations.length === 0) {
+      drawTableRow(
+        doc,
+        columns,
+        { donation: "Für die aktuelle Filterauswahl sind keine Spenden sichtbar." },
+        margin,
+        { minimumHeight: 34 }
+      );
+      return;
+    }
+
+    for (const donation of selectedDonations) {
+      drawTableRow(
+        doc,
+        columns,
+        {
+          donor: donation.donor,
+          donation: donation.cake.trim() || "–",
+          category: donationCategoryLabel(donation.donationCategory),
+          traits: donationTraitText(donation),
+          location: donation.locationId
+            ? (locationById.get(donation.locationId)?.name ?? "–")
+            : "–",
+          dropoff: donationDropoffText(donation),
+        },
+        margin,
+        { minimumHeight: 30 }
+      );
+    }
+  }, "landscape");
+}
+
 type TaskOverviewRow = Pick<
   PostTask,
   | "id"
@@ -1376,6 +1511,10 @@ export async function createPlanPdf(options: PlanPdfOptions) {
 
 export async function createMaterialPacklistPdf(materialIds: number[]) {
   return renderMaterialPacklistPdf(await loadPlanningData(), materialIds);
+}
+
+export async function createDonationOverviewPdf(donationIds: number[]) {
+  return renderDonationOverviewPdf(await loadPlanningData(), donationIds);
 }
 
 export async function createPrepTaskOverviewPdf(taskIds: number[]) {

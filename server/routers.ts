@@ -66,6 +66,7 @@ import {
 import {
   createAllHelperTaskZip,
   createBlankPlanPdf,
+  createDonationOverviewPdf,
   createHelperTaskPdf,
   createMaterialPacklistPdf,
   createPlanPdf,
@@ -1563,6 +1564,31 @@ export const appRouter = router({
         const selectedEvent = await db.getEvent();
         return {
           filename: `Material_Packliste_Gefiltert_${safeExportName(selectedEvent?.name ?? "Veranstaltung")}.pdf`,
+          mimeType: "application/pdf",
+          base64: pdf.toString("base64"),
+        };
+      }),
+    donationOverview: protectedProcedure
+      .input(
+        z.object({
+          donationIds: z.array(z.number().int().positive()).max(2_000),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const scopedDonations = await db.listCakes();
+        const scopedIds = new Set(scopedDonations.map(donation => donation.id));
+        const invalidId = input.donationIds.find(id => !scopedIds.has(id));
+        if (invalidId !== undefined) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message:
+              "Mindestens eine Spende gehört nicht zur aktuellen Veranstaltung",
+          });
+        }
+        const pdf = await createDonationOverviewPdf(input.donationIds);
+        const selectedEvent = await db.getEvent();
+        return {
+          filename: `Spendenuebersicht_Gefiltert_${safeExportName(selectedEvent?.name ?? "Veranstaltung")}.pdf`,
           mimeType: "application/pdf",
           base64: pdf.toString("base64"),
         };
