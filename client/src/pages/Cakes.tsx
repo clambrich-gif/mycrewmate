@@ -4,6 +4,11 @@ import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
   Dialog,
   DialogContent,
   DialogFooter,
@@ -25,12 +30,14 @@ import { downloadBase64File } from "@/lib/download";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import {
+  ChevronDown,
   FilterX,
   Gift,
   Pencil,
   Plus,
   Printer,
   Search,
+  Settings2,
   Trash2,
   X,
 } from "lucide-react";
@@ -237,6 +244,7 @@ export default function Cakes() {
     salat: "0",
     snack: "0",
   });
+  const [donationTargetsOpen, setDonationTargetsOpen] = useState(false);
   const donorOptions = useMemo(
     () =>
       Array.from(
@@ -342,6 +350,7 @@ export default function Cakes() {
         utils.events.list.invalidate(),
         utils.dashboard.stats.invalidate(),
       ]);
+      setDonationTargetsOpen(false);
       toast.success("Spenden-Sollwerte gespeichert");
     },
     onError: error => toast.error(error.message),
@@ -553,14 +562,20 @@ export default function Cakes() {
             </button>
           )}
         </div>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:flex md:flex-wrap">
+        <div
+          className={`grid grid-cols-1 gap-2 sm:grid-cols-2 lg:items-center ${
+            hasActiveFilters
+              ? "lg:grid-cols-[repeat(4,minmax(0,1fr))_auto_auto]"
+              : "lg:grid-cols-[repeat(4,minmax(0,1fr))_auto]"
+          }`}
+        >
           <Select
             value={categoryFilter}
             onValueChange={value =>
               setCategoryFilter(value as "alle" | DonationCategory)
             }
           >
-            <SelectTrigger className="h-11 w-full bg-white text-base md:h-10 md:w-[185px] md:text-sm">
+            <SelectTrigger className="h-11 w-full bg-white text-base lg:h-9 lg:text-sm">
               <SelectValue placeholder="Kategorie" />
             </SelectTrigger>
             <SelectContent>
@@ -576,7 +591,7 @@ export default function Cakes() {
             value={traitFilter}
             onValueChange={value => setTraitFilter(value as "alle" | TraitKey)}
           >
-            <SelectTrigger className="h-11 w-full bg-white text-base md:h-10 md:w-[185px] md:text-sm">
+            <SelectTrigger className="h-11 w-full bg-white text-base lg:h-9 lg:text-sm">
               <SelectValue placeholder="Eigenschaft" />
             </SelectTrigger>
             <SelectContent>
@@ -589,7 +604,7 @@ export default function Cakes() {
             </SelectContent>
           </Select>
           <Select value={weekdayFilter} onValueChange={setWeekdayFilter}>
-            <SelectTrigger className="h-11 w-full bg-white text-base md:h-10 md:w-[185px] md:text-sm">
+            <SelectTrigger className="h-11 w-full bg-white text-base lg:h-9 lg:text-sm">
               <SelectValue placeholder="Abgabetag" />
             </SelectTrigger>
             <SelectContent>
@@ -602,7 +617,7 @@ export default function Cakes() {
             </SelectContent>
           </Select>
           <Select value={locationFilter} onValueChange={setLocationFilter}>
-            <SelectTrigger className="h-11 w-full bg-white text-base md:h-10 md:w-[185px] md:text-sm">
+            <SelectTrigger className="h-11 w-full bg-white text-base lg:h-9 lg:text-sm">
               <SelectValue placeholder="Standort" />
             </SelectTrigger>
             <SelectContent>
@@ -621,7 +636,7 @@ export default function Cakes() {
               variant="ghost"
               size="sm"
               data-donation-filter-reset
-              className="h-11 w-full px-2 text-base text-sky-700 hover:bg-sky-100/60 hover:text-sky-900 md:ml-1 md:h-10 md:w-auto md:text-sm"
+              className="h-11 w-full px-2 text-base text-sky-700 hover:bg-sky-100/60 hover:text-sky-900 lg:h-9 lg:w-auto lg:text-sm"
               onClick={resetFilters}
               aria-label="Alle Spendenfilter zurücksetzen"
             >
@@ -629,70 +644,119 @@ export default function Cakes() {
               Filter zurücksetzen
             </Button>
           )}
-        </div>
-        <div className="flex items-center justify-end" aria-live="polite" aria-atomic="true">
-          <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600">
+          <span
+            className="inline-flex h-11 w-full items-center justify-center whitespace-nowrap rounded-full border border-slate-200 bg-white px-3 text-sm font-medium text-slate-600 sm:w-auto sm:justify-self-end lg:h-9 lg:text-xs"
+            aria-live="polite"
+            aria-atomic="true"
+          >
             {filteredDonations.length} von {donations.length} Spenden sichtbar
           </span>
         </div>
       </div>
 
       {user?.role === "admin" && selectedEvent && (
-        <Card className="border-rose-200 bg-rose-50/45 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
-              <div>
-                <h2 className="font-semibold text-slate-950">Spenden-Sollwerte</h2>
-                <p className="text-sm text-slate-600">
-                  Zielmengen für den Soll/Ist-Vergleich im Dashboard festlegen.
-                </p>
-              </div>
-              <span className="text-xs text-slate-500">
-                Nur für Administratoren sichtbar
-              </span>
-            </div>
-            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-              {donationTargetCategories.map(category => (
-                <div key={category.value} className="space-y-1.5">
-                  <Label
-                    htmlFor={`donation-target-${category.value}`}
-                    className="text-xs font-medium text-slate-700"
-                  >
-                    {category.label}
-                  </Label>
-                  <Input
-                    id={`donation-target-${category.value}`}
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    max={10000}
-                    value={donationTargets[category.value]}
-                    onChange={event =>
-                      setDonationTargets(current => ({
-                        ...current,
-                        [category.value]: event.target.value,
-                      }))
-                    }
-                    className="h-11 bg-white text-base sm:h-10 sm:text-sm"
-                    aria-label={`${category.label}: Sollmenge`}
-                  />
-                </div>
-              ))}
-            </div>
-            <div className="mt-3 flex justify-end">
-              <Button
-                type="button"
-                className="bg-rose-700 text-white hover:bg-rose-800"
-                disabled={updateDonationTargets.isPending}
-                onClick={saveDonationTargets}
+        <Collapsible
+          open={donationTargetsOpen}
+          onOpenChange={setDonationTargetsOpen}
+        >
+          <Card
+            data-donation-targets-collapsible
+            className="border-rose-200 bg-rose-50/45 shadow-sm"
+          >
+            <CardContent className="p-2 sm:p-2.5">
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  className={`flex h-11 w-full items-center justify-between gap-3 rounded-lg px-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-600 focus-visible:ring-offset-1 ${
+                    donationTargetsOpen
+                      ? "bg-rose-100/70"
+                      : "hover:bg-rose-100/60"
+                  }`}
+                  aria-controls="donation-targets-content"
+                >
+                  <span className="flex min-w-0 items-center gap-2">
+                    <Settings2
+                      className="size-4 shrink-0 text-rose-700"
+                      aria-hidden="true"
+                    />
+                    <span className="truncate text-sm font-semibold text-slate-950">
+                      Spenden-Sollwerte festlegen
+                    </span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-3">
+                    <span className="hidden text-xs font-medium text-rose-800 lg:inline">
+                      Kuchen {donationTargets.kuchen} · Salat {donationTargets.salat} · Dessert {donationTargets.snack}
+                    </span>
+                    <ChevronDown
+                      className={`size-4 text-rose-700 transition-transform duration-200 ${
+                        donationTargetsOpen ? "rotate-180" : ""
+                      }`}
+                      aria-hidden="true"
+                    />
+                  </span>
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent
+                id="donation-targets-content"
+                className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down"
               >
-                {updateDonationTargets.isPending
-                  ? "Speichert …"
-                  : "Sollwerte speichern"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+                <div className="border-t border-rose-200/80 px-2.5 pb-1 pt-3 sm:px-3">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
+                    <div>
+                      <h2 className="font-semibold text-slate-950">Spenden-Sollwerte</h2>
+                      <p className="text-sm text-slate-600">
+                        Zielmengen für den Soll/Ist-Vergleich im Dashboard festlegen.
+                      </p>
+                    </div>
+                    <span className="text-xs text-slate-500">
+                      Nur für Administratoren sichtbar
+                    </span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    {donationTargetCategories.map(category => (
+                      <div key={category.value} className="space-y-1.5">
+                        <Label
+                          htmlFor={`donation-target-${category.value}`}
+                          className="text-xs font-medium text-slate-700"
+                        >
+                          {category.label}
+                        </Label>
+                        <Input
+                          id={`donation-target-${category.value}`}
+                          type="number"
+                          inputMode="numeric"
+                          min={0}
+                          max={10000}
+                          value={donationTargets[category.value]}
+                          onChange={event =>
+                            setDonationTargets(current => ({
+                              ...current,
+                              [category.value]: event.target.value,
+                            }))
+                          }
+                          className="h-11 bg-white text-base sm:h-10 sm:text-sm"
+                          aria-label={`${category.label}: Sollmenge`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3 flex justify-end">
+                    <Button
+                      type="button"
+                      className="bg-rose-700 text-white hover:bg-rose-800"
+                      disabled={updateDonationTargets.isPending}
+                      onClick={saveDonationTargets}
+                    >
+                      {updateDonationTargets.isPending
+                        ? "Speichert …"
+                        : "Sollwerte speichern"}
+                    </Button>
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </CardContent>
+          </Card>
+        </Collapsible>
       )}
 
       <div className="space-y-3 md:hidden">

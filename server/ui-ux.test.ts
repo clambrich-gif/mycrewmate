@@ -1910,8 +1910,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(cakes).toContain('aria-label="Alle Spendenfilter zurücksetzen"');
     expect(cakes).toContain('<FilterX className="mr-1 size-3.5" aria-hidden="true" />');
     expect(cakes).toContain(
-      "h-11 w-full px-2 text-base text-sky-700 hover:bg-sky-100/60 hover:text-sky-900 md:ml-1 md:h-10 md:w-auto md:text-sm"
+      'lg:grid-cols-[repeat(4,minmax(0,1fr))_auto_auto]'
     );
+    expect(cakes).toContain('className="h-11 w-full bg-white text-base lg:h-9 lg:text-sm"');
+    expect(cakes).toContain('className="inline-flex h-11 w-full items-center justify-center whitespace-nowrap rounded-full');
     expect(cakes).toContain("filteredDonations");
     expect(cakes).toContain("<th className=\"p-3\">Ort</th>");
     expect(cakes).not.toContain("LocationMapLink");
@@ -1931,6 +1933,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(cakes).not.toContain("donationTargetSonstiges");
     expect(cakes).toContain("donationTargetCategories");
     expect(cakes).toContain('grid grid-cols-1 gap-3 sm:grid-cols-3');
+    expect(cakes).toContain("donationTargetsOpen");
+    expect(cakes).toContain("setDonationTargetsOpen(false)");
+    expect(cakes).toContain("data-donation-targets-collapsible");
+    expect(cakes).toContain("Spenden-Sollwerte festlegen");
+    expect(cakes).toContain('aria-controls="donation-targets-content"');
+    expect(cakes).toContain("data-[state=open]:animate-accordion-down");
 
     const resetButton = source("client/src/components/ResetAreaButton.tsx");
     expect(resetButton).toContain("description?: string");
