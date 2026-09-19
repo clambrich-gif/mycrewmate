@@ -1665,6 +1665,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain('flexibleAssignmentFilter !== "alle"');
     expect(plan).toContain("{hasActiveDropdownFilters && (");
     expect(plan).toContain("data-plan-filter-reset");
+    expect(plan).toContain('variant="ghost"');
+    expect(plan).toContain('size="sm"');
+    expect(plan).toContain("<FilterX className=\"mr-1 size-3.5\" aria-hidden=\"true\" />");
+    expect(plan).toContain(
+      "h-11 w-full px-2 text-base text-sky-700 hover:bg-sky-100/60 hover:text-sky-900 lg:ml-1 lg:h-10 lg:w-auto lg:text-sm"
+    );
+    expect(plan).not.toContain("RotateCcw");
     expect(plan).toContain("Filter zurücksetzen");
     expect(plan).toContain("Alle Einsatzplanfilter zurücksetzen");
     expect(plan).toContain('value="OK_MANUELL">OK (Manuell)</SelectItem>');

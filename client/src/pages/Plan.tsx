@@ -18,10 +18,10 @@ import {
   AlertTriangle,
   ChevronDown,
   Clock3,
+  FilterX,
   Info,
   Pencil,
   Plus,
-  RotateCcw,
   Search,
   Trash2,
   X,
@@ -1631,13 +1631,14 @@ export default function Plan() {
           {hasActiveDropdownFilters && (
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
+              size="sm"
               data-plan-filter-reset
-              className="w-full gap-2 border-slate-300 bg-white text-slate-800 hover:bg-slate-100 lg:ml-auto lg:w-auto"
+              className="h-11 w-full px-2 text-base text-sky-700 hover:bg-sky-100/60 hover:text-sky-900 lg:ml-1 lg:h-10 lg:w-auto lg:text-sm"
               onClick={resetPlanFilters}
               aria-label="Alle Einsatzplanfilter zurücksetzen"
             >
-              <RotateCcw className="size-4" aria-hidden="true" />
+              <FilterX className="mr-1 size-3.5" aria-hidden="true" />
               Filter zurücksetzen
             </Button>
           )}
