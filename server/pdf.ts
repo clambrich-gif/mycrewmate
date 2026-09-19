@@ -5,6 +5,7 @@ import { materialStatusText } from "../shared/material-status";
 import type {
   AppSettings,
   Assignment,
+  Cake,
   Contact,
   Helper,
   Location,
@@ -46,6 +47,7 @@ export const DEFAULT_PDF_SETTINGS = {
 type PlanningData = {
   helpers: Helper[];
   contacts: Contact[];
+  cakes?: Cake[];
   shifts: Shift[];
   assignments: Assignment[];
   areaContacts?: ShiftAreaContact[];
@@ -200,6 +202,63 @@ export function helperTaskCellParts(
     primaryText: lines.join("\n"),
     noteText: note ? `Bemerkung: ${note}` : null,
   };
+}
+
+function helperCakeDonorKey(value: string) {
+  return value.trim().replace(/\s+/g, " ").toLocaleLowerCase("de-DE");
+}
+
+/** Wählt die per Namen zugeordneten Kuchenspenden für die persönliche Helferübersicht. */
+export function selectHelperCakes(
+  cakes: Cake[] | undefined,
+  helperName: string
+) {
+  const helperKey = helperCakeDonorKey(helperName);
+  return (cakes ?? [])
+    .filter(cake => helperCakeDonorKey(cake.donor) === helperKey)
+    .sort(
+      (left, right) =>
+        (left.dropoffDate || "9999-12-31").localeCompare(
+          right.dropoffDate || "9999-12-31"
+        ) ||
+        (left.dropoffTime || "99:99").localeCompare(
+          right.dropoffTime || "99:99"
+        ) ||
+        left.sortOrder - right.sortOrder ||
+        left.id - right.id
+    );
+}
+
+function cakeWeekdayLabel(date: string) {
+  const value = new Intl.DateTimeFormat("de-DE", {
+    weekday: "short",
+  }).format(new Date(`${date}T12:00:00`));
+  return value.endsWith(".") ? value : `${value}.`;
+}
+
+/** Formatiert Kuchen samt optionaler Abgabezeit und Standort kompakt für die PDF-Zusammenfassung. */
+export function helperCakeSummaryLine(
+  cake: Cake,
+  locationById: Map<number, Location>
+) {
+  const details: string[] = [];
+  if (cake.dropoffDate) {
+    const dateLabel = cakeWeekdayLabel(cake.dropoffDate);
+    details.push(
+      cake.dropoffTime ? `${dateLabel}, ${cake.dropoffTime} Uhr` : dateLabel
+    );
+  } else if (cake.dropoffTime) {
+    details.push(`${cake.dropoffTime} Uhr`);
+  } else if (cake.legacyDropoffText.trim()) {
+    details.push(cake.legacyDropoffText.trim());
+  }
+  const location = cake.locationId
+    ? locationById.get(cake.locationId)?.name.trim()
+    : "";
+  if (location) details.push(`in ${location}`);
+
+  const cakeName = cake.cake.trim() || "Kuchen";
+  return details.length ? `${cakeName} (${details.join(" ")})` : cakeName;
 }
 
 function drawHelperTimeBadge(
@@ -450,6 +509,13 @@ export function renderHelperTaskPdf(data: PlanningData, helperId: number) {
     .map(assignment => shiftById.get(assignment.shiftId))
     .filter((shift): shift is Shift => Boolean(shift))
     .sort(sortShifts);
+  const helperCakes = selectHelperCakes(data.cakes, helper.name);
+  const locationById = new Map(
+    (data.locations ?? []).map(location => [location.id, location])
+  );
+  const helperCakeLines = helperCakes.map(cake =>
+    helperCakeSummaryLine(cake, locationById)
+  );
 
   return collectPdf(doc => {
     drawDocumentHeader(
@@ -563,6 +629,30 @@ export function renderHelperTaskPdf(data: PlanningData, helperId: number) {
         .font("Helvetica")
         .fillColor(helperPdfPastels.helperNoteText)
         .text(helperNote, noteX, noteY + 1, { width: noteWidth, lineGap: 1 });
+    }
+    if (helperCakeLines.length > 0) {
+      const cakeText = helperCakeLines.join("\n");
+      const cakeX = margin;
+      const cakeWidth = contentWidth;
+      const cakeHeight = doc.font("Helvetica").heightOfString(cakeText, {
+        width: cakeWidth,
+        lineGap: 1,
+      });
+      ensureSpace(doc, cakeHeight + 34);
+      doc.moveDown(0.4);
+      doc
+        .font("Helvetica-Bold")
+        .fillColor(colors.ink)
+        .text("Kuchen:");
+      doc.moveDown(0.18);
+      const cakeY = doc.y;
+      doc
+        .roundedRect(cakeX - 2, cakeY - 1, cakeWidth + 2, cakeHeight + 4, 2)
+        .fill(helperPdfPastels.helperNoteBackground);
+      doc
+        .font("Helvetica")
+        .fillColor(helperPdfPastels.helperNoteText)
+        .text(cakeText, cakeX, cakeY + 1, { width: cakeWidth, lineGap: 1 });
     }
     doc.moveDown(0.4);
     doc
@@ -1007,6 +1097,7 @@ async function loadPlanningData(): Promise<PlanningData> {
   const [
     helpers,
     contacts,
+    cakes,
     shifts,
     assignments,
     areaContacts,
@@ -1019,6 +1110,7 @@ async function loadPlanningData(): Promise<PlanningData> {
   ] = await Promise.all([
     db.listHelpers(),
     db.listContacts(),
+    db.listCakes(),
     db.listShifts(),
     db.listAssignments(),
     db.listShiftAreaContacts(),
@@ -1052,6 +1144,7 @@ async function loadPlanningData(): Promise<PlanningData> {
   return {
     helpers,
     contacts,
+    cakes,
     shifts,
     assignments,
     areaContacts,

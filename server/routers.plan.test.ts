@@ -31,6 +31,7 @@ const dbMocks = vi.hoisted(() => ({
   listPost: vi.fn(),
   listContacts: vi.fn(),
   listMaterials: vi.fn(),
+  listCakes: vi.fn(),
   listMarketing: vi.fn(),
   listApprovals: vi.fn(),
   listDeletionAuditLogs: vi.fn(),
@@ -181,6 +182,7 @@ describe("Planungs-API", () => {
     dbMocks.listPost.mockResolvedValue([]);
     dbMocks.listContacts.mockResolvedValue([]);
     dbMocks.listMaterials.mockResolvedValue([]);
+    dbMocks.listCakes.mockResolvedValue([]);
     dbMocks.listLocations.mockResolvedValue([]);
     dbMocks.listMarketing.mockResolvedValue([]);
     dbMocks.listApprovals.mockResolvedValue([]);

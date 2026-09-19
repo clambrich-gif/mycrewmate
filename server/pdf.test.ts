@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import type {
   AppSettings,
   Assignment,
+  Cake,
   Contact,
   Helper,
+  Location,
   Shift,
   ShiftAreaContact,
 } from "../drizzle/schema";
@@ -19,12 +21,14 @@ import {
   helperPdfPastels,
   helperTaskCellParts,
   helperTaskCellText,
+  helperCakeSummaryLine,
   planPdfTimeLabel,
   MATERIAL_PACKLIST_PORTRAIT_COLUMNS,
   MATERIAL_PACKLIST_PORTRAIT_WIDTH,
   renderMaterialPacklistPdf,
   renderPostTaskOverviewPdf,
   renderPreparationTaskOverviewPdf,
+  selectHelperCakes,
   selectMaterialPacklistMaterials,
   selectTaskOverviewRows,
 } from "./pdf";
@@ -129,6 +133,58 @@ const areaContacts: ShiftAreaContact[] = [
   },
 ];
 
+const cakeLocations: Location[] = [
+  {
+    id: 15,
+    year: 2026,
+    eventId: 1,
+    name: "Laubach",
+    latitude: 50.2,
+    longitude: 7.1,
+    logoKey: null,
+    logoUrl: null,
+    sortOrder: 0,
+    createdAt: new Date(),
+  },
+];
+
+const helperCakes: Cake[] = [
+  {
+    id: 31,
+    year: 2026,
+    eventId: 1,
+    donor: "  Elena   Adams ",
+    cake: "Käsekuchen",
+    locationId: 15,
+    dropoffDate: "2026-06-19",
+    dropoffTime: "09:00",
+    legacyDropoffText: "",
+    vegan: false,
+    glutenFree: false,
+    lactoseFree: false,
+    containsNuts: false,
+    note: null,
+    sortOrder: 0,
+  },
+  {
+    id: 32,
+    year: 2026,
+    eventId: 1,
+    donor: "Christian Lambrich",
+    cake: "Muffins",
+    locationId: null,
+    dropoffDate: "",
+    dropoffTime: "",
+    legacyDropoffText: "Sa.: 12 Uhr",
+    vegan: false,
+    glutenFree: false,
+    lactoseFree: false,
+    containsNuts: false,
+    note: null,
+    sortOrder: 1,
+  },
+];
+
 const data = {
   helpers,
   contacts,
@@ -162,6 +218,34 @@ describe("PDF-Erzeugung", () => {
 
   it("erzeugt eine gültige persönliche Aufgabenübersicht", async () => {
     const pdf = await renderHelperTaskPdf(data, 1);
+    expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+    expect(pdf.length).toBeGreaterThan(2_000);
+  });
+
+  it("listet Kuchenspenden eines Helfers bedingt und mit Abgabeinformationen", async () => {
+    const selected = selectHelperCakes(helperCakes, "Elena Adams");
+    expect(selected).toHaveLength(1);
+    expect(
+      helperCakeSummaryLine(selected[0], new Map([[15, cakeLocations[0]]]))
+    ).toBe("Käsekuchen (Fr., 09:00 Uhr in Laubach)");
+    expect(selectHelperCakes(helperCakes, "Unbekannt")).toEqual([]);
+    expect(selectHelperCakes(undefined, "Elena Adams")).toEqual([]);
+    expect(helperCakeSummaryLine(helperCakes[1], new Map())).toBe(
+      "Muffins (Sa.: 12 Uhr)"
+    );
+    const ordered = selectHelperCakes(
+      [
+        ...helperCakes,
+        { ...helperCakes[1], id: 33, donor: "Elena Adams" },
+      ],
+      "Elena Adams"
+    );
+    expect(ordered.map(cake => cake.id)).toEqual([31, 33]);
+
+    const pdf = await renderHelperTaskPdf(
+      { ...data, cakes: helperCakes, locations: cakeLocations },
+      helpers[0].id
+    );
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
     expect(pdf.length).toBeGreaterThan(2_000);
   });
