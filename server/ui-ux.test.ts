@@ -1890,6 +1890,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(cakes).toContain("Spenden-PDF wurde heruntergeladen");
     expect(cakes).toContain("downloadDonationOverviewPdf");
     expect(cakes).toContain('ModuleExcelImportButton area="KUCHEN" label="Spenden"');
+    expect(cakes).toContain('<ResetAreaButton\n              area="cakes"');
+    expect(cakes).toContain("alle erfassten Spenden und alle eingetragenen Sollwerte");
+    expect(cakes).toContain('confirmLabel="Spenden & Sollwerte löschen"');
+    expect(cakes).toContain('successMessage="Alle Spenden und Sollwerte wurden gelöscht"');
+    expect(cakes).not.toContain("disabled={!hasActiveFilters}");
     expect(cakes).toContain("Suchen (Spender/Spende/Hinweise/Ort) …");
     expect(cakes).toContain("Alle Kategorien");
     expect(cakes).toContain('label: "Sonstiges"');
@@ -1900,6 +1905,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(cakes).toContain("von {donations.length} Spenden sichtbar");
     expect(cakes).toContain('aria-live="polite"');
     expect(cakes).toContain("resetFilters");
+    expect(cakes).toContain("{hasActiveFilters && (");
+    expect(cakes).toContain("data-donation-filter-reset");
+    expect(cakes).toContain('aria-label="Alle Spendenfilter zurücksetzen"');
+    expect(cakes).toContain('<FilterX className="mr-1 size-3.5" aria-hidden="true" />');
+    expect(cakes).toContain(
+      "h-11 w-full px-2 text-base text-sky-700 hover:bg-sky-100/60 hover:text-sky-900 md:ml-1 md:h-10 md:w-auto md:text-sm"
+    );
     expect(cakes).toContain("filteredDonations");
     expect(cakes).toContain("<th className=\"p-3\">Ort</th>");
     expect(cakes).not.toContain("LocationMapLink");
@@ -1919,6 +1931,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(cakes).not.toContain("donationTargetSonstiges");
     expect(cakes).toContain("donationTargetCategories");
     expect(cakes).toContain('grid grid-cols-1 gap-3 sm:grid-cols-3');
+
+    const resetButton = source("client/src/components/ResetAreaButton.tsx");
+    expect(resetButton).toContain("description?: string");
+    expect(resetButton).toContain("confirmLabel?: string");
+    expect(resetButton).toContain("successMessage?: string");
+    expect(resetButton).toContain("successMessage ??");
 
     const dashboard = source("client/src/pages/Dashboard.tsx");
     expect(dashboard).toContain("DonationSummaryCard");

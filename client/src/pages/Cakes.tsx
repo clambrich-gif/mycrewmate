@@ -1,5 +1,6 @@
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
+import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -24,11 +25,11 @@ import { downloadBase64File } from "@/lib/download";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import {
+  FilterX,
   Gift,
   Pencil,
   Plus,
   Printer,
-  RotateCcw,
   Search,
   Trash2,
   X,
@@ -509,16 +510,15 @@ export default function Cakes() {
               {donationOverviewPdf.isPending ? "PDF wird erstellt …" : "PDF drucken"}
             </Button>
             <ModuleExcelImportButton area="KUCHEN" label="Spenden" />
-            <Button
-              type="button"
-              variant="outline"
-              className="border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:text-rose-900"
-              disabled={!hasActiveFilters}
-              onClick={resetFilters}
-            >
-              <RotateCcw className="mr-2 h-4 w-4" />
-              Zurücksetzen
-            </Button>
+            <ResetAreaButton
+              area="cakes"
+              label="Spenden"
+              compact
+              onReset={resetFilters}
+              description="Achtung: Möchtest du wirklich alle erfassten Spenden und alle eingetragenen Sollwerte unwiderruflich löschen? Diese Aktion gilt ausschließlich für die aktuell gewählte Veranstaltung und kann nicht rückgängig gemacht werden."
+              confirmLabel="Spenden & Sollwerte löschen"
+              successMessage="Alle Spenden und Sollwerte wurden gelöscht"
+            />
           </div>
           <Button
             type="button"
@@ -553,14 +553,14 @@ export default function Cakes() {
             </button>
           )}
         </div>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:flex md:flex-wrap">
           <Select
             value={categoryFilter}
             onValueChange={value =>
               setCategoryFilter(value as "alle" | DonationCategory)
             }
           >
-            <SelectTrigger className="h-11 w-full bg-white text-base sm:h-10 sm:text-sm">
+            <SelectTrigger className="h-11 w-full bg-white text-base md:h-10 md:w-[185px] md:text-sm">
               <SelectValue placeholder="Kategorie" />
             </SelectTrigger>
             <SelectContent>
@@ -576,7 +576,7 @@ export default function Cakes() {
             value={traitFilter}
             onValueChange={value => setTraitFilter(value as "alle" | TraitKey)}
           >
-            <SelectTrigger className="h-11 w-full bg-white text-base sm:h-10 sm:text-sm">
+            <SelectTrigger className="h-11 w-full bg-white text-base md:h-10 md:w-[185px] md:text-sm">
               <SelectValue placeholder="Eigenschaft" />
             </SelectTrigger>
             <SelectContent>
@@ -589,7 +589,7 @@ export default function Cakes() {
             </SelectContent>
           </Select>
           <Select value={weekdayFilter} onValueChange={setWeekdayFilter}>
-            <SelectTrigger className="h-11 w-full bg-white text-base sm:h-10 sm:text-sm">
+            <SelectTrigger className="h-11 w-full bg-white text-base md:h-10 md:w-[185px] md:text-sm">
               <SelectValue placeholder="Abgabetag" />
             </SelectTrigger>
             <SelectContent>
@@ -602,7 +602,7 @@ export default function Cakes() {
             </SelectContent>
           </Select>
           <Select value={locationFilter} onValueChange={setLocationFilter}>
-            <SelectTrigger className="h-11 w-full bg-white text-base sm:h-10 sm:text-sm">
+            <SelectTrigger className="h-11 w-full bg-white text-base md:h-10 md:w-[185px] md:text-sm">
               <SelectValue placeholder="Standort" />
             </SelectTrigger>
             <SelectContent>
@@ -615,6 +615,20 @@ export default function Cakes() {
               ))}
             </SelectContent>
           </Select>
+          {hasActiveFilters && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              data-donation-filter-reset
+              className="h-11 w-full px-2 text-base text-sky-700 hover:bg-sky-100/60 hover:text-sky-900 md:ml-1 md:h-10 md:w-auto md:text-sm"
+              onClick={resetFilters}
+              aria-label="Alle Spendenfilter zurücksetzen"
+            >
+              <FilterX className="mr-1 size-3.5" aria-hidden="true" />
+              Filter zurücksetzen
+            </Button>
+          )}
         </div>
         <div className="flex items-center justify-end" aria-live="polite" aria-atomic="true">
           <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600">

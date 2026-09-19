@@ -3137,6 +3137,20 @@ export async function resetArea(area: ResetArea, actor: AuditActor) {
           );
           requireDeletedRows(result, rows.length);
         }
+        await tx
+          .update(events)
+          .set({
+            donationTargetKuchen: 0,
+            donationTargetSalat: 0,
+            donationTargetSnack: 0,
+            donationTargetSonstiges: 0,
+          })
+          .where(
+            and(
+              eq(events.id, selectedEventId),
+              eq(events.year, selectedYear)
+            )
+          );
       }
     });
     return;

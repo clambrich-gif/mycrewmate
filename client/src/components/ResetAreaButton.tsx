@@ -25,12 +25,18 @@ export function ResetAreaButton({
   onReset,
   compact = false,
   mobileButtonLabel,
+  description,
+  confirmLabel,
+  successMessage,
 }: {
   area: ResetArea;
   label: string;
   onReset?: () => void;
   compact?: boolean;
   mobileButtonLabel?: string;
+  description?: string;
+  confirmLabel?: string;
+  successMessage?: string;
 }) {
   const { user } = useAuth();
   const utils = trpc.useUtils();
@@ -40,7 +46,9 @@ export function ResetAreaButton({
       setOpen(false);
       await utils.invalidate();
       onReset?.();
-      toast.success(`${label} wurde für das gewählte Jahr zurückgesetzt`);
+      toast.success(
+        successMessage ?? `${label} wurde für das gewählte Jahr zurückgesetzt`
+      );
     },
     onError: error => toast.error(error.message),
   });
@@ -70,8 +78,11 @@ export function ResetAreaButton({
         open={open}
         onOpenChange={setOpen}
         title={`${label} zurücksetzen?`}
-        description={`Alle Einträge im Bereich „${label}“ werden ausschließlich für das aktuell gewählte Veranstaltungsjahr dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`}
-        confirmLabel="Daten endgültig löschen"
+        description={
+          description ??
+          `Alle Einträge im Bereich „${label}“ werden ausschließlich für das aktuell gewählte Veranstaltungsjahr dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.`
+        }
+        confirmLabel={confirmLabel ?? "Daten endgültig löschen"}
         busy={reset.isPending}
         onConfirm={adminPassword => reset.mutate({ area, adminPassword })}
       />

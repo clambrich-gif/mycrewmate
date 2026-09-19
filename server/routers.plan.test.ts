@@ -1071,6 +1071,38 @@ describe("Planungs-API", () => {
     });
   });
 
+  it("löscht Spenden und Sollwerte nur nach Administratorbestätigung", async () => {
+    dbMocks.resetArea.mockResolvedValue(undefined);
+    const adminCaller = appRouter.createCaller(ctx);
+    const planningCaller = appRouter.createCaller(planningTeamCtx);
+
+    await expect(
+      adminCaller.reset.area({ area: "cakes", adminPassword: "falsch" })
+    ).rejects.toThrow("Administratorpasswort");
+    expect(dbMocks.resetArea).not.toHaveBeenCalled();
+
+    await expect(
+      planningCaller.reset.area({
+        area: "cakes",
+        adminPassword: ADMIN_PASSWORD,
+      })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(dbMocks.resetArea).not.toHaveBeenCalled();
+
+    await expect(
+      adminCaller.reset.area({
+        area: "cakes",
+        adminPassword: ADMIN_PASSWORD,
+      })
+    ).resolves.toEqual({ success: true });
+    expect(dbMocks.resetArea).toHaveBeenCalledWith("cakes", {
+      userId: 1,
+      name: "Organisation",
+      role: "admin",
+      loginMethod: "manus",
+    });
+  });
+
   it("trägt Helfer aus Schichten nur mit Administratorpasswort aus", async () => {
     dbMocks.clearAssignments.mockResolvedValue({ cleared: 3 });
     const caller = appRouter.createCaller(ctx);
