@@ -1530,8 +1530,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
 
     expect(pdf).toContain("export function helperTimeBadgeLabel");
     expect(pdf).toContain("Zeitfenster: ${window.start}–${window.end} Uhr");
+    expect(pdf).toContain("Vom Helfer mitgeteilter Verfügbarkeitszeitraum");
+    expect(pdf).toContain("export function helperAvailabilityHeadingLabel");
     expect(pdf).toContain("drawCompactHelperDayHeading(doc, helper, day)");
-    expect(pdf).toContain('timeWindow.replace("Zeitfenster: ", "")');
+    expect(pdf).toContain(
+      "const availabilityHeading = helperAvailabilityHeadingLabel(helper, day)"
+    );
     expect(pdf).not.toContain("drawHelperTimeBadge(doc, helper, day)");
   });
 

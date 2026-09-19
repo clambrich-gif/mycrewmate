@@ -18,6 +18,7 @@ import {
   selectHelpersForContact,
   selectPlanEvaluations,
   helperTimeBadgeLabel,
+  helperAvailabilityHeadingLabel,
   helperPdfTimeLabel,
   buildHelperSummaryEntries,
   helperPdfPastels,
@@ -253,7 +254,7 @@ describe("PDF-Erzeugung", () => {
     expect(selected).toHaveLength(1);
     expect(
       helperCakeSummaryLine(selected[0], new Map([[15, cakeLocations[0]]]))
-    ).toBe("Käsekuchen (Fr., 09:00 Uhr in Laubach)");
+    ).toBe("Käsekuchen (Fr., 09:00 Uhr – Laubach)");
     expect(selectHelperCakes(helperCakes, "Unbekannt")).toEqual([]);
     expect(selectHelperCakes(undefined, "Elena Adams")).toEqual([]);
     expect(helperCakeSummaryLine(helperCakes[1], new Map())).toBe(
@@ -353,7 +354,11 @@ describe("PDF-Erzeugung", () => {
     expect(helperTimeBadgeLabel(timedHelper, "Freitag")).toBe(
       "Zeitfenster: 08:00–13:00 Uhr"
     );
+    expect(helperAvailabilityHeadingLabel(timedHelper, "Freitag")).toBe(
+      "08:00–13:00 Uhr (Vom Helfer mitgeteilter Verfügbarkeitszeitraum)"
+    );
     expect(helperTimeBadgeLabel(timedHelper, "Samstag")).toBeNull();
+    expect(helperAvailabilityHeadingLabel(timedHelper, "Samstag")).toBeNull();
     const pdf = await renderHelperTaskPdf(
       { ...data, helpers: [timedHelper, helpers[1]] },
       timedHelper.id

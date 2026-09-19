@@ -199,6 +199,14 @@ export function helperTimeBadgeLabel(helper: Helper, day: Day) {
   return window ? `Zeitfenster: ${window.start}–${window.end} Uhr` : null;
 }
 
+/** Erklärt ausschließlich bei hinterlegter Zeiteinschränkung den Ursprung des Tageszeitfensters. */
+export function helperAvailabilityHeadingLabel(helper: Helper, day: Day) {
+  const timeWindow = helperTimeBadgeLabel(helper, day);
+  return timeWindow
+    ? `${timeWindow.replace("Zeitfenster: ", "")} (Vom Helfer mitgeteilter Verfügbarkeitszeitraum)`
+    : null;
+}
+
 /**
  * Die persönliche Aufgabenübersicht führt Aufgabe, optionalen Bereich und
  * Bemerkung in einer Tabellenzelle. Vor einer Bemerkung bleibt bewusst eine
@@ -276,10 +284,10 @@ export function helperCakeSummaryLine(
   const location = cake.locationId
     ? locationById.get(cake.locationId)?.name.trim()
     : "";
-  if (location) details.push(`in ${location}`);
+  if (location) details.push(location);
 
   const cakeName = cake.cake.trim() || "Kuchen";
-  return details.length ? `${cakeName} (${details.join(" ")})` : cakeName;
+  return details.length ? `${cakeName} (${details.join(" – ")})` : cakeName;
 }
 
 function ensureHelperPdfSpace(doc: PDFKit.PDFDocument, required: number) {
@@ -356,7 +364,7 @@ function drawCompactHelperDayHeading(
 ) {
   ensureHelperPdfSpace(doc, 24);
   const y = doc.y;
-  const timeWindow = helperTimeBadgeLabel(helper, day);
+  const availabilityHeading = helperAvailabilityHeadingLabel(helper, day);
   doc
     .moveTo(helperPdfMargin, y + 14)
     .lineTo(doc.page.width - helperPdfMargin, y + 14)
@@ -367,13 +375,13 @@ function drawCompactHelperDayHeading(
     .font("Helvetica-Bold")
     .fontSize(10.5)
     .fillColor(helperPdfDesign.accent)
-    .text(day, helperPdfMargin, y, { continued: Boolean(timeWindow) });
-  if (timeWindow) {
+    .text(day, helperPdfMargin, y, { continued: Boolean(availabilityHeading) });
+  if (availabilityHeading) {
     doc
       .font("Helvetica")
       .fontSize(8)
       .fillColor(helperPdfDesign.muted)
-      .text(`  ·  ${timeWindow.replace("Zeitfenster: ", "")}`);
+      .text(`  ${availabilityHeading}`);
   }
   doc.x = helperPdfMargin;
   doc.y = y + 21;
