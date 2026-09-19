@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
+import { ImpressumDialog, LegalFooterLinks } from "@/components/ImpressumDialog";
 import {
   OnlinePresenceBadge,
   useOnlinePresence,
@@ -147,6 +148,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [recoveryKey, setRecoveryKey] = useState("");
   const [newAdminPassword, setNewAdminPassword] = useState("");
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
+  const [impressumOpen, setImpressumOpen] = useState(false);
   const [yearDialogOpen, setYearDialogOpen] = useState(false);
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
   const [eventManagerOpen, setEventManagerOpen] = useState(false);
@@ -846,9 +848,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
             nur gezielt durch Administratoren verhängt werden.
           </p>
             </div>
-          <p className="pointer-events-none absolute inset-x-4 bottom-3 text-center text-xs text-gray-400 sm:bottom-4">
-            {COPYRIGHT_NOTICE}
-          </p>
+          <div className="absolute inset-x-4 bottom-3 text-center sm:bottom-4">
+            <LegalFooterLinks onOpenImpressum={() => setImpressumOpen(true)} />
+            <button
+              type="button"
+              className="mt-1 rounded px-1 text-xs text-gray-400 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              onClick={() => setImpressumOpen(true)}
+            >
+              {COPYRIGHT_NOTICE}
+            </button>
+          </div>
+          <ImpressumDialog open={impressumOpen} onOpenChange={setImpressumOpen} />
         </div>
     );
   }
@@ -1095,9 +1105,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
             >
               <LogOut className="mr-2 h-4 w-4" /> Abmelden
             </Button>
-            <p className="mt-3 text-center text-[10px] leading-snug text-slate-400">
+            <LegalFooterLinks
+              className="mt-3"
+              onOpenImpressum={() => setImpressumOpen(true)}
+            />
+            <button
+              type="button"
+              className="mt-1 w-full rounded px-1 text-center text-[10px] leading-snug text-slate-400 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              onClick={() => setImpressumOpen(true)}
+            >
               {COPYRIGHT_NOTICE}
-            </p>
+            </button>
           </div>
         </SheetContent>
       </Sheet>
@@ -1263,9 +1281,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
-          <p className="mt-2 text-center text-[10px] leading-snug text-slate-400">
+          <LegalFooterLinks
+            className="mt-2"
+            onOpenImpressum={() => setImpressumOpen(true)}
+          />
+          <button
+            type="button"
+            className="mt-1 w-full rounded px-1 text-center text-[10px] leading-snug text-slate-400 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            onClick={() => setImpressumOpen(true)}
+          >
             {COPYRIGHT_NOTICE}
-          </p>
+          </button>
         </div>
       </aside>
       <main className="min-w-0 flex-1 lg:h-screen lg:overflow-y-auto">
@@ -1609,6 +1635,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
           })
         }
       />
+
+      <ImpressumDialog open={impressumOpen} onOpenChange={setImpressumOpen} />
 
       <Dialog open={pwaInstallDialogOpen} onOpenChange={setPwaInstallDialogOpen}>
         <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white text-slate-950 sm:max-w-md">

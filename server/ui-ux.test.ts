@@ -83,15 +83,28 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const branding = source("shared/branding.ts");
     const layout = source("client/src/components/Layout.tsx");
     const pdf = source("server/pdf.ts");
+    const legal = source("client/src/components/ImpressumDialog.tsx");
 
     expect(branding).toContain(
       "© 2026 MyCrewMate.de · Inhaber: Christian Lambrich · Alle Rechte vorbehalten."
     );
     expect(layout).toContain('import { COPYRIGHT_NOTICE } from "@shared/branding"');
-    expect(layout).toContain("absolute inset-x-4 bottom-3 text-center text-xs text-gray-400");
+    expect(layout).toContain("absolute inset-x-4 bottom-3 text-center sm:bottom-4");
     expect(layout.match(/\{COPYRIGHT_NOTICE\}/g)).toHaveLength(3);
+    expect(layout.match(/<LegalFooterLinks/g)).toHaveLength(3);
+    expect(layout.match(/<ImpressumDialog/g)).toHaveLength(2);
     expect(pdf).toContain('import { COPYRIGHT_NOTICE } from "../shared/branding"');
     expect(pdf).toContain("doc.text(COPYRIGHT_NOTICE, 0, doc.page.height - 36");
+    expect(legal).toContain('export const PRIVACY_POLICY_URL = "https://mycrewmate.de/datenschutz"');
+    expect(legal).toContain("Angaben gemäß § 5 DDG:");
+    expect(legal).toContain("Eichenweg 4");
+    expect(legal).toContain("56729 Nachtsheim");
+    expect(legal).toContain("0174 5111984");
+    expect(legal).toContain("clambrich@gmail.com");
+    expect(legal).toContain("Gemäß § 19 UStG wird keine Umsatzsteuer berechnet und ausgewiesen");
+    expect(legal).toContain("https://ec.europa.eu/consumers/odr/");
+    expect(legal).toContain("Verbraucherstreitbeilegung/Universalschlichtungsstelle:");
+    expect(legal).toContain("Wir sind nicht bereit oder verpflichtet");
   });
 
   it("verhindert mobilen Formular-Auto-Zoom per 16px-Regel und lässt manuelles Zoomen zu", () => {
