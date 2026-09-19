@@ -237,7 +237,7 @@ function helperCakeDonorKey(value: string) {
   return value.trim().replace(/\s+/g, " ").toLocaleLowerCase("de-DE");
 }
 
-/** Wählt die per Namen zugeordneten Kuchenspenden für die persönliche Helferübersicht. */
+/** Wählt die per Namen zugeordneten Verpflegungsspenden für die persönliche Helferübersicht. */
 export function selectHelperCakes(
   cakes: Cake[] | undefined,
   helperName: string
@@ -265,7 +265,7 @@ function cakeWeekdayLabel(date: string) {
   return value.endsWith(".") ? value : `${value}.`;
 }
 
-/** Formatiert Kuchen samt optionaler Abgabezeit und Standort kompakt für die PDF-Zusammenfassung. */
+/** Formatiert eine Spende samt optionaler Abgabezeit und Standort kompakt für die PDF-Zusammenfassung. */
 export function helperCakeSummaryLine(
   cake: Cake,
   locationById: Map<number, Location>
@@ -286,8 +286,10 @@ export function helperCakeSummaryLine(
     : "";
   if (location) details.push(location);
 
-  const cakeName = cake.cake.trim() || "Kuchen";
-  return details.length ? `${cakeName} (${details.join(" – ")})` : cakeName;
+  const donationName = cake.cake.trim() || "Spende";
+  return details.length
+    ? `${donationName} (${details.join(" – ")})`
+    : donationName;
 }
 
 function ensureHelperPdfSpace(doc: PDFKit.PDFDocument, required: number) {
@@ -514,7 +516,7 @@ export function buildHelperSummaryEntries(input: {
   const cakeLines = input.cakeLines ?? [];
   if (cakeLines.length > 0)
     entries.push({
-      label: cakeLines.length === 1 ? "Kuchenspende" : "Kuchenspenden",
+      label: cakeLines.length === 1 ? "Spende" : "Spenden",
       value: cakeLines.join(" · "),
     });
   entries.push(

@@ -1860,6 +1860,9 @@ export const appRouter = router({
         z.object({
           donor: z.string().min(1),
           cake: z.string().optional(),
+          donationCategory: z
+            .enum(["kuchen", "salat", "snack", "sonstiges"])
+            .default("kuchen"),
           locationId: z.number().int().positive().nullable().optional(),
           dropoffDate: z
             .string()
@@ -1875,6 +1878,7 @@ export const appRouter = router({
           glutenFree: z.boolean().default(false),
           lactoseFree: z.boolean().default(false),
           containsNuts: z.boolean().default(false),
+          meat: z.boolean().default(false),
           note: z.string().optional(),
         })
       )
@@ -1885,6 +1889,9 @@ export const appRouter = router({
           id: z.number(),
           donor: z.string().optional(),
           cake: z.string().optional(),
+          donationCategory: z
+            .enum(["kuchen", "salat", "snack", "sonstiges"])
+            .optional(),
           locationId: z.number().int().positive().nullable().optional(),
           dropoffDate: z
             .string()
@@ -1900,6 +1907,7 @@ export const appRouter = router({
           glutenFree: z.boolean().optional(),
           lactoseFree: z.boolean().optional(),
           containsNuts: z.boolean().optional(),
+          meat: z.boolean().optional(),
           note: z.string().nullable().optional(),
         })
       )

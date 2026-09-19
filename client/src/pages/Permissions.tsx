@@ -35,7 +35,7 @@ const actionLabel = {
 
 const entityLabel = {
   helper: "Helfer",
-  cake: "Kuchen",
+  cake: "Spende",
   prep: "Vorbereitung",
   post: "Nachbereitung",
   material: "Material",
@@ -96,8 +96,10 @@ function detailText(
         .join(" · ");
     }
     return [
-      details.cake ? `Kuchen: ${details.cake}` : "Kuchen nicht angegeben",
+      details.cake ? `Spende: ${details.cake}` : "Spende nicht angegeben",
+      details.donationCategory ? `Kategorie: ${details.donationCategory}` : null,
       details.dropoffTime ? `Abgabe: ${details.dropoffTime}` : null,
+      details.meat ? "Fleischhaltig" : null,
       details.note ? `Hinweis: ${details.note}` : null,
     ]
       .filter(Boolean)
@@ -289,7 +291,7 @@ export default function Permissions() {
               <History className="h-5 w-5 text-primary" /> Löschprotokoll
             </CardTitle>
             <p className="mt-1 text-sm text-muted-foreground">
-              Nachvollziehbare Nachweise über gelöschte Helfer, Kuchen, Material sowie
+              Nachvollziehbare Nachweise über gelöschte Helfer, Spenden, Material sowie
               Vor- und Nachbereitungsaufgaben mit gezielter Wiederherstellung.
             </p>
           </div>
@@ -315,7 +317,7 @@ export default function Permissions() {
                 <SelectContent>
                   <SelectItem value="all">Alle Einträge</SelectItem>
                   <SelectItem value="helper">Nur Helfer</SelectItem>
-                  <SelectItem value="cake">Nur Kuchen</SelectItem>
+                  <SelectItem value="cake">Nur Spenden</SelectItem>
                   <SelectItem value="prep">Nur Vorbereitungen</SelectItem>
                   <SelectItem value="post">Nur Nachbereitungen</SelectItem>
                   <SelectItem value="material">Nur Material</SelectItem>

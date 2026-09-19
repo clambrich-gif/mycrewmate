@@ -708,8 +708,18 @@ export const cakes = mysqlTable("cakes", {
   year: int("year").default(2026).notNull(),
   eventId: int("eventId").notNull(),
   donor: varchar("donor", { length: 200 }).notNull(),
+  /** Neutrale Bezeichnung der Spende; der bestehende Spaltenname bleibt kompatibel. */
   cake: varchar("cake", { length: 200 }).default("").notNull(),
-  /** Optionaler Abgabeort; die Kuchenansicht zeigt ihn bewusst ohne Kartenlink. */
+  /** Einfache Verpflegungskategorie für Buffet- und Organisationsübersichten. */
+  donationCategory: mysqlEnum("donationCategory", [
+    "kuchen",
+    "salat",
+    "snack",
+    "sonstiges",
+  ])
+    .default("kuchen")
+    .notNull(),
+  /** Optionaler Abgabeort; die Spendenansicht zeigt ihn bewusst ohne Kartenlink. */
   locationId: int("locationId").references(() => locations.id, {
     onDelete: "set null",
   }),
@@ -724,7 +734,8 @@ export const cakes = mysqlTable("cakes", {
   glutenFree: boolean("glutenFree").default(false).notNull(),
   lactoseFree: boolean("lactoseFree").default(false).notNull(),
   containsNuts: boolean("containsNuts").default(false).notNull(),
-  /** Freitext für zusätzliche Hinweise wie Alkohol oder konkrete Nüsse. */
+  meat: boolean("meat").default(false).notNull(),
+  /** Freitext für zusätzliche Hinweise wie Alkohol oder konkrete Zutaten. */
   note: text("note"),
   sortOrder: int("sortOrder").default(0).notNull(),
 }, table => [

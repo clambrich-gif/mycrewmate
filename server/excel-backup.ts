@@ -187,7 +187,8 @@ export const PROJECT_EXCEL_HEADERS: Record<string, string[]> = {
   KUCHEN: [
     "ID",
     "Spender",
-    "Kuchen",
+    "Spende",
+    "Kategorie",
     "Ort-ID",
     "Abgabeort / Standort",
     "Abgabetag / Datum",
@@ -196,6 +197,7 @@ export const PROJECT_EXCEL_HEADERS: Record<string, string[]> = {
     "Glutenfrei",
     "Laktosefrei",
     "Enthält Nüsse",
+    "Fleischhaltig",
     "Abgabezeit",
     "Hinweise & Allergene",
     "Reihenfolge",
@@ -421,6 +423,7 @@ type CakeRow = {
   sourceId: number | null;
   donor: string;
   cake: string;
+  donationCategory: "kuchen" | "salat" | "snack" | "sonstiges";
   locationSourceId: number | null;
   locationName: string;
   dropoffDate: string;
@@ -430,6 +433,7 @@ type CakeRow = {
   glutenFree: boolean;
   lactoseFree: boolean;
   containsNuts: boolean;
+  meat: boolean;
   note: string;
   sortOrder: number;
 };
@@ -1834,7 +1838,13 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
     .map((row, index) => ({
       sourceId: nullableId(row.ID, `KUCHEN Zeile ${index + 2}`),
       donor: text(row.Spender, 200, `KUCHEN Zeile ${index + 2}: Spender`, true),
-      cake: text(row.Kuchen, 200, `KUCHEN Zeile ${index + 2}: Kuchen`),
+      cake: text(row.Spende ?? row.Kuchen, 200, `KUCHEN Zeile ${index + 2}: Spende`),
+      donationCategory: enumValue(
+        row.Kategorie,
+        ["kuchen", "salat", "snack", "sonstiges"] as const,
+        `KUCHEN Zeile ${index + 2}: Kategorie`,
+        "kuchen"
+      ),
       locationSourceId: nullableId(row["Ort-ID"], `KUCHEN Zeile ${index + 2}: Ort-ID`),
       locationName: text(
         row["Abgabeort / Standort"],
@@ -1866,6 +1876,10 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
       containsNuts: optionalBoolean(
         row["Enthält Nüsse"],
         `KUCHEN Zeile ${index + 2}: Enthält Nüsse`
+      ),
+      meat: optionalBoolean(
+        row.Fleischhaltig,
+        `KUCHEN Zeile ${index + 2}: Fleischhaltig`
       ),
       note: text(
         row["Hinweise & Allergene"] ?? row.Bemerkung,
@@ -2187,6 +2201,7 @@ function comparableCurrent(snapshot: CurrentSnapshot) {
       ...clean(row, [
         "donor",
         "cake",
+        "donationCategory",
         "dropoffDate",
         "dropoffTime",
         "legacyDropoffText",
@@ -2194,6 +2209,7 @@ function comparableCurrent(snapshot: CurrentSnapshot) {
         "glutenFree",
         "lactoseFree",
         "containsNuts",
+        "meat",
         "note",
         "sortOrder",
       ]),
@@ -3562,6 +3578,7 @@ export async function restoreProjectDocument(
           eventId,
           donor: row.donor,
           cake: row.cake,
+          donationCategory: row.donationCategory,
           locationId: resolveLocation(row.locationSourceId, row.locationName),
           dropoffDate: row.dropoffDate,
           dropoffTime: row.dropoffTime,
@@ -3570,6 +3587,7 @@ export async function restoreProjectDocument(
           glutenFree: row.glutenFree,
           lactoseFree: row.lactoseFree,
           containsNuts: row.containsNuts,
+          meat: row.meat,
           note: row.note || null,
           sortOrder: row.sortOrder,
         }))
@@ -3996,7 +4014,8 @@ export async function exportProjectExcel(): Promise<{
     current.cakes.map((row: any) => ({
       ID: row.sourceId,
       Spender: row.donor,
-      Kuchen: row.cake,
+      Spende: row.cake,
+      Kategorie: row.donationCategory,
       "Ort-ID": row.locationSourceId ?? "",
       "Abgabeort / Standort": row.locationName,
       "Abgabetag / Datum": row.dropoffDate,
@@ -4005,6 +4024,7 @@ export async function exportProjectExcel(): Promise<{
       Glutenfrei: row.glutenFree,
       Laktosefrei: row.lactoseFree,
       "Enthält Nüsse": row.containsNuts,
+      Fleischhaltig: row.meat,
       Abgabezeit: row.legacyDropoffText,
       "Hinweise & Allergene": row.note,
       Reihenfolge: row.sortOrder,

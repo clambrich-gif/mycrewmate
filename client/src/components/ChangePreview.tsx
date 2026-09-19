@@ -48,7 +48,9 @@ const fieldLabel: Record<string, string> = {
   channel: "Kanal",
   request: "Antrag",
   donor: "Spender",
-  cake: "Kuchen",
+  cake: "Spende",
+  donationCategory: "Kategorie",
+  meat: "Fleischhaltig",
   dropoffTime: "Abgabezeit",
   income: "Einnahmen",
   expense: "Ausgaben",
@@ -66,7 +68,7 @@ const areaLabel: Record<string, string> = {
   MATERIAL: "Material",
   MARKETING: "Marketing",
   GENEHMIGUNGEN: "Genehmigungen",
-  KUCHEN: "Kuchen",
+  KUCHEN: "Spenden",
   FINANZEN: "Finanzen",
 };
 

@@ -1673,6 +1673,7 @@ describe("Planungs-API", () => {
     expect(dbMocks.createCake).toHaveBeenCalledWith({
       donor: "Josi Volli",
       cake: "Rumkuchen",
+      donationCategory: "kuchen",
       locationId: 5,
       dropoffDate: "2026-06-20",
       dropoffTime: "11:30",
@@ -1680,6 +1681,7 @@ describe("Planungs-API", () => {
       glutenFree: false,
       lactoseFree: true,
       containsNuts: true,
+      meat: false,
       note: "Enthält Alkohol / Rum",
     });
 

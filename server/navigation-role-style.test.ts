@@ -15,7 +15,7 @@ describe("rollenabhängige Navigation", () => {
       "Vorbereitung",
       "Nachbereitung",
       "Material",
-      "Kuchen",
+      "Spenden",
       "Finanzen",
       "PDF-Ausgabe",
     ]);
@@ -26,7 +26,7 @@ describe("rollenabhängige Navigation", () => {
   it("hebt für das Planungsteam exakt Helfer, Kuchen, PDF-Ausgabe und Hilfe hervor", () => {
     expect(PLANNING_TEAM_FOCUS_PATHS).toEqual([
       "/helfer",
-      "/kuchen",
+      "/spenden",
       "/pdf-export",
       "/hilfe",
     ]);

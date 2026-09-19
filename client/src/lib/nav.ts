@@ -1,11 +1,11 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  Cake,
   CalendarRange,
   ClipboardCheck,
   ClipboardList,
   FileDown,
   FileSpreadsheet,
+  Gift,
   CircleHelp,
   LayoutDashboard,
   LockKeyhole,
@@ -32,7 +32,7 @@ export const NAV: readonly NavItem[] = [
   { href: "/vorbereitung", label: "Vorbereitung", icon: ClipboardList },
   { href: "/nachbereitung", label: "Nachbereitung", icon: ClipboardCheck },
   { href: "/material", label: "Material", icon: Package },
-  { href: "/kuchen", label: "Kuchen", icon: Cake },
+  { href: "/spenden", label: "Spenden", icon: Gift },
   { href: "/finanzen", label: "Finanzen", icon: Wallet },
   { href: "/pdf-export", label: "PDF-Ausgabe", icon: FileDown },
   { href: "/excel", label: "Excel-Projektübersicht", icon: FileSpreadsheet },
@@ -57,7 +57,7 @@ export const NAV: readonly NavItem[] = [
 
 export const PLANNING_TEAM_FOCUS_PATHS = [
   "/helfer",
-  "/kuchen",
+  "/spenden",
   "/pdf-export",
   "/hilfe",
 ] as const;

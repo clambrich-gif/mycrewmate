@@ -8,6 +8,7 @@ type RouteLoader = () => Promise<RouteModule>;
 
 const preparationLoader: RouteLoader = () => import("@/pages/Preparation");
 const postProcessingLoader: RouteLoader = () => import("@/pages/PostProcessing");
+const donationsLoader: RouteLoader = () => import("@/pages/Cakes");
 
 export const routeLoaders = {
   "/": () => import("@/pages/Dashboard"),
@@ -17,7 +18,8 @@ export const routeLoaders = {
   "/vorbereitung": preparationLoader,
   "/nachbereitung": postProcessingLoader,
   "/material": () => import("@/pages/Materials"),
-  "/kuchen": () => import("@/pages/Cakes"),
+  "/spenden": donationsLoader,
+  "/kuchen": donationsLoader,
   "/finanzen": () => import("@/pages/Finances"),
   "/pdf-export": () => import("@/pages/PdfExport"),
   "/excel": () => import("@/pages/Excel"),

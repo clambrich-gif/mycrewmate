@@ -20,7 +20,7 @@ import { normalizeMaterialStatus } from "../shared/material-status";
 import { eventDateRangeError } from "../shared/event-dates";
 
 const PROJECT_FORMAT = "RSC-HELFERPLANUNG-PROJEKTDATEI";
-const PROJECT_VERSION = 15;
+const PROJECT_VERSION = 16;
 const MAX_PROJECT_BYTES = 10_000_000;
 const MAX_ROWS = 10_000;
 
@@ -232,6 +232,9 @@ const documentSchema = z
           sourceId: id,
           donor: short(200).min(1),
           cake: short(200),
+          donationCategory: z
+            .enum(["kuchen", "salat", "snack", "sonstiges"])
+            .default("kuchen"),
           locationSourceId: id,
           locationName: short(200),
           dropoffDate: short(10)
@@ -245,6 +248,7 @@ const documentSchema = z
           glutenFree: z.boolean().default(false),
           lactoseFree: z.boolean().default(false),
           containsNuts: z.boolean().default(false),
+          meat: z.boolean().default(false),
           note: short(10_000),
           sortOrder: z.number().int().min(0).max(1_000_000),
         })
@@ -808,6 +812,8 @@ export function parseProjectFile(base64: string): {
           glutenFree: cake.glutenFree ?? false,
           lactoseFree: cake.lactoseFree ?? false,
           containsNuts: cake.containsNuts ?? false,
+          donationCategory: cake.donationCategory ?? "kuchen",
+          meat: cake.meat ?? false,
         }))
       : legacy.cakes;
   }
@@ -830,6 +836,27 @@ export function parseProjectFile(base64: string): {
           dropoffDate: "",
           dropoffTime: "",
           legacyDropoffText: cake.dropoffTime ?? "",
+          donationCategory: cake.donationCategory ?? "kuchen",
+          meat: cake.meat ?? false,
+        }))
+      : legacy.cakes;
+  }
+  if (
+    raw &&
+    typeof raw === "object" &&
+    "metadata" in raw &&
+    raw.metadata &&
+    typeof raw.metadata === "object" &&
+    "version" in raw.metadata &&
+    raw.metadata.version === 15
+  ) {
+    const legacy = raw as Record<string, any>;
+    legacy.metadata = { ...legacy.metadata, version: PROJECT_VERSION };
+    legacy.cakes = Array.isArray(legacy.cakes)
+      ? legacy.cakes.map((cake: Record<string, unknown>) => ({
+          ...cake,
+          donationCategory: cake.donationCategory ?? "kuchen",
+          meat: cake.meat ?? false,
         }))
       : legacy.cakes;
   }
@@ -900,6 +927,8 @@ export function parseProjectFile(base64: string): {
           glutenFree: cake.glutenFree ?? false,
           lactoseFree: cake.lactoseFree ?? false,
           containsNuts: cake.containsNuts ?? false,
+          donationCategory: cake.donationCategory ?? "kuchen",
+          meat: cake.meat ?? false,
         }))
       : document.cakes;
   }

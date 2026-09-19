@@ -243,7 +243,7 @@ describe("PDF-Erzeugung", () => {
     ).toEqual([
       "Einteilung",
       "Verfügbarkeit / Bemerkungen",
-      "Kuchenspende",
+      "Spende",
       "Ansprechpartner",
       "Rufnummer",
     ]);

@@ -18,17 +18,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
 import { trpc } from "@/lib/trpc";
-import { Cake, Pencil, Plus, Trash2 } from "lucide-react";
+import { Gift, Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useSearchParams } from "wouter";
 
-type CakeRow = {
+type DonationCategory = "kuchen" | "salat" | "snack" | "sonstiges";
+
+type DonationRow = {
   id: number;
   donor: string;
+  /** Die historische Datenbanksäule enthält jetzt die neutrale Spendenbezeichnung. */
   cake: string;
+  donationCategory: DonationCategory;
   locationId: number | null;
   dropoffDate: string;
   dropoffTime: string;
@@ -37,16 +40,21 @@ type CakeRow = {
   glutenFree: boolean;
   lactoseFree: boolean;
   containsNuts: boolean;
+  meat: boolean;
   note: string | null;
 };
 
-type CakeForm = Omit<CakeRow, "id" | "note" | "legacyDropoffText"> & {
+type DonationForm = Omit<
+  DonationRow,
+  "id" | "note" | "legacyDropoffText"
+> & {
   note: string;
 };
 
-const EMPTY_CAKE_FORM: CakeForm = {
+const EMPTY_DONATION_FORM: DonationForm = {
   donor: "",
   cake: "",
+  donationCategory: "kuchen",
   locationId: null,
   dropoffDate: "",
   dropoffTime: "",
@@ -54,8 +62,36 @@ const EMPTY_CAKE_FORM: CakeForm = {
   glutenFree: false,
   lactoseFree: false,
   containsNuts: false,
+  meat: false,
   note: "",
 };
+
+const donationCategories: Array<{
+  value: DonationCategory;
+  label: string;
+  badgeClass: string;
+}> = [
+  {
+    value: "kuchen",
+    label: "Kuchen",
+    badgeClass: "border-amber-200 bg-amber-50 text-amber-900",
+  },
+  {
+    value: "salat",
+    label: "Salat",
+    badgeClass: "border-emerald-200 bg-emerald-50 text-emerald-800",
+  },
+  {
+    value: "snack",
+    label: "Snack",
+    badgeClass: "border-sky-200 bg-sky-50 text-sky-800",
+  },
+  {
+    value: "sonstiges",
+    label: "Sonstiges",
+    badgeClass: "border-slate-200 bg-slate-50 text-slate-700",
+  },
+];
 
 const traits = [
   {
@@ -82,11 +118,17 @@ const traits = [
     tagClass: "border-orange-200 bg-orange-50 text-orange-900",
     activeClass: "border-orange-400 bg-orange-100 text-orange-950",
   },
+  {
+    key: "meat",
+    label: "🥩 Fleischhaltig",
+    tagClass: "border-rose-200 bg-rose-50 text-rose-800",
+    activeClass: "border-rose-400 bg-rose-100 text-rose-950",
+  },
 ] as const;
 
 type TraitKey = (typeof traits)[number]["key"];
 
-function formatDropoffTime(row: CakeRow) {
+function formatDropoffTime(row: DonationRow) {
   if (row.dropoffDate) {
     const weekday = new Intl.DateTimeFormat("de-DE", {
       weekday: "short",
@@ -99,7 +141,25 @@ function formatDropoffTime(row: CakeRow) {
   return row.legacyDropoffText || "–";
 }
 
-function TraitTags({ row }: { row: CakeRow }) {
+function categoryMeta(category: DonationCategory | null | undefined) {
+  return (
+    donationCategories.find(item => item.value === category) ??
+    donationCategories[0]
+  );
+}
+
+function CategoryBadge({ category }: { category: DonationCategory }) {
+  const item = categoryMeta(category);
+  return (
+    <span
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium ${item.badgeClass}`}
+    >
+      {item.label}
+    </span>
+  );
+}
+
+function TraitTags({ row }: { row: DonationRow }) {
   const selectedTraits = traits.filter(trait => row[trait.key]);
   const note = row.note?.trim();
 
@@ -134,9 +194,9 @@ export default function Cakes() {
   const { data: locations = [] } = trpc.locations.list.useQuery();
   const { data: selectedEvent } = trpc.events.current.useQuery();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingCake, setEditingCake] = useState<CakeRow | null>(null);
-  const [form, setForm] = useState<CakeForm>(EMPTY_CAKE_FORM);
-  const [deleteTarget, setDeleteTarget] = useState<CakeRow | null>(null);
+  const [editingDonation, setEditingDonation] = useState<DonationRow | null>(null);
+  const [form, setForm] = useState<DonationForm>(EMPTY_DONATION_FORM);
+  const [deleteTarget, setDeleteTarget] = useState<DonationRow | null>(null);
   const donorOptions = useMemo(
     () =>
       Array.from(
@@ -149,7 +209,10 @@ export default function Cakes() {
     [helpers]
   );
   const locationOptions = useMemo(
-    () => [...locations].sort((left, right) => left.name.localeCompare(right.name, "de-DE")),
+    () =>
+      [...locations].sort((left, right) =>
+        left.name.localeCompare(right.name, "de-DE")
+      ),
     [locations]
   );
   const locationNames = useMemo(
@@ -159,8 +222,8 @@ export default function Cakes() {
 
   useEffect(() => {
     if (!requestedDonor) return;
-    setEditingCake(null);
-    setForm({ ...EMPTY_CAKE_FORM, donor: requestedDonor });
+    setEditingDonation(null);
+    setForm({ ...EMPTY_DONATION_FORM, donor: requestedDonor });
     setDialogOpen(true);
     setSearchParams(
       previous => {
@@ -177,30 +240,30 @@ export default function Cakes() {
     void utils.dashboard.stats.invalidate();
   };
 
-  const createCake = trpc.cakes.create.useMutation({
+  const createDonation = trpc.cakes.create.useMutation({
     onSuccess: () => {
-      toast.success("Kuchenspende erfasst");
+      toast.success("Spende erfasst");
       setDialogOpen(false);
-      setForm(EMPTY_CAKE_FORM);
+      setForm(EMPTY_DONATION_FORM);
       refresh();
     },
     onError: error => toast.error(error.message),
   });
 
-  const updateCake = trpc.cakes.update.useMutation({
+  const updateDonation = trpc.cakes.update.useMutation({
     onSuccess: () => {
-      toast.success("Kuchenspende gespeichert");
-      setEditingCake(null);
+      toast.success("Spende gespeichert");
+      setEditingDonation(null);
       setDialogOpen(false);
-      setForm(EMPTY_CAKE_FORM);
+      setForm(EMPTY_DONATION_FORM);
       refresh();
     },
     onError: error => toast.error(error.message),
   });
 
-  const deleteCake = trpc.cakes.remove.useMutation({
+  const deleteDonation = trpc.cakes.remove.useMutation({
     onSuccess: () => {
-      toast.success("Kuchenspende entfernt");
+      toast.success("Spende entfernt");
       setDeleteTarget(null);
       refresh();
     },
@@ -208,16 +271,17 @@ export default function Cakes() {
   });
 
   const openCreate = () => {
-    setEditingCake(null);
-    setForm(EMPTY_CAKE_FORM);
+    setEditingDonation(null);
+    setForm(EMPTY_DONATION_FORM);
     setDialogOpen(true);
   };
 
-  const openEdit = (row: CakeRow) => {
-    setEditingCake(row);
+  const openEdit = (row: DonationRow) => {
+    setEditingDonation(row);
     setForm({
       donor: row.donor,
       cake: row.cake,
+      donationCategory: row.donationCategory ?? "kuchen",
       locationId: row.locationId,
       dropoffDate: row.dropoffDate,
       dropoffTime: row.dropoffTime,
@@ -225,16 +289,17 @@ export default function Cakes() {
       glutenFree: row.glutenFree,
       lactoseFree: row.lactoseFree,
       containsNuts: row.containsNuts,
+      meat: row.meat ?? false,
       note: row.note ?? "",
     });
     setDialogOpen(true);
   };
 
   const closeDialog = () => {
-    if (createCake.isPending || updateCake.isPending) return;
+    if (createDonation.isPending || updateDonation.isPending) return;
     setDialogOpen(false);
-    setEditingCake(null);
-    setForm(EMPTY_CAKE_FORM);
+    setEditingDonation(null);
+    setForm(EMPTY_DONATION_FORM);
   };
 
   const submit = () => {
@@ -242,6 +307,7 @@ export default function Cakes() {
     const values = {
       donor: form.donor.trim(),
       cake: form.cake.trim(),
+      donationCategory: form.donationCategory,
       locationId: form.locationId,
       dropoffDate: form.dropoffDate,
       dropoffTime: form.dropoffTime.trim(),
@@ -249,24 +315,31 @@ export default function Cakes() {
       glutenFree: form.glutenFree,
       lactoseFree: form.lactoseFree,
       containsNuts: form.containsNuts,
+      meat: form.meat,
       note: form.note.trim() || null,
     };
-    if (editingCake) updateCake.mutate({ id: editingCake.id, ...values });
-    else createCake.mutate({ ...values, note: values.note ?? undefined });
+    if (editingDonation)
+      updateDonation.mutate({ id: editingDonation.id, ...values });
+    else createDonation.mutate({ ...values, note: values.note ?? undefined });
   };
 
   const toggleTrait = (key: TraitKey) =>
     setForm(current => ({ ...current, [key]: !current[key] }));
 
-  const busy = createCake.isPending || updateCake.isPending;
+  const busy = createDonation.isPending || updateDonation.isPending;
+  const donations = rows as DonationRow[];
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Kuchen</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-bold">
+            <Gift className="h-6 w-6 text-rose-600" aria-hidden="true" />
+            Spenden
+          </h1>
           <p className="mt-1 text-sm text-slate-600">
-            Spenden schnell erfassen und wichtige Hinweise sichtbar kennzeichnen.
+            Verpflegungsspenden schnell erfassen und wichtige Hinweise sichtbar
+            kennzeichnen.
           </p>
         </div>
         <div className="grid w-full grid-cols-2 gap-2 lg:ml-auto lg:flex lg:w-auto lg:flex-wrap lg:justify-end [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 max-lg:[&>[data-slot=button]]:h-11 max-lg:[&>[data-slot=button]]:text-base lg:[&>[data-slot=button]]:w-auto lg:[&>[data-slot=button]]:px-4">
@@ -277,7 +350,7 @@ export default function Cakes() {
             onClick={openCreate}
           >
             <Plus className="mr-1.5 h-4 w-4" />
-            Kuchen erfassen
+            Spende erfassen
           </Button>
         </div>
       </div>
@@ -290,12 +363,14 @@ export default function Cakes() {
             </CardContent>
           </Card>
         )}
-        {(rows as CakeRow[]).map(row => (
+        {donations.map(row => (
           <Card key={row.id} className="shadow-sm">
             <CardContent className="space-y-3 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground">Spender</p>
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Spender
+                  </p>
                   <p className="font-semibold text-slate-950">{row.donor}</p>
                 </div>
                 <div className="flex shrink-0 gap-1">
@@ -311,20 +386,36 @@ export default function Cakes() {
                     variant="ghost"
                     size="icon"
                     aria-label={`${row.donor} löschen`}
-                    disabled={deleteCake.isPending}
+                    disabled={deleteDonation.isPending}
                     onClick={() => setDeleteTarget(row)}
                   >
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
                 </div>
               </div>
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">Kuchen</p>
-                <p className="text-sm text-slate-800">{row.cake || "–"}</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Spende
+                  </p>
+                  <p className="text-sm text-slate-800">{row.cake || "–"}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Kategorie
+                  </p>
+                  <div className="mt-1">
+                    <CategoryBadge category={row.donationCategory ?? "kuchen"} />
+                  </div>
+                </div>
               </div>
               <div>
-                <p className="text-xs font-medium text-muted-foreground">Eigenschaften / Allergene</p>
-                <div className="mt-1"><TraitTags row={row} /></div>
+                <p className="text-xs font-medium text-muted-foreground">
+                  Eigenschaften & Hinweise
+                </p>
+                <div className="mt-1">
+                  <TraitTags row={row} />
+                </div>
               </div>
               <div>
                 <p className="text-xs font-medium text-muted-foreground">Ort</p>
@@ -333,16 +424,18 @@ export default function Cakes() {
                 </p>
               </div>
               <div>
-                <p className="text-xs font-medium text-muted-foreground">Abgabezeit</p>
+                <p className="text-xs font-medium text-muted-foreground">
+                  Abgabezeit
+                </p>
                 <p className="text-sm text-slate-800">{formatDropoffTime(row)}</p>
               </div>
             </CardContent>
           </Card>
         ))}
-        {!isLoading && rows.length === 0 && (
+        {!isLoading && donations.length === 0 && (
           <Card className="shadow-sm">
             <CardContent className="p-4 text-sm text-muted-foreground">
-              Noch keine Kuchenspenden erfasst.
+              Noch keine Spenden erfasst.
             </CardContent>
           </Card>
         )}
@@ -354,50 +447,84 @@ export default function Cakes() {
             <thead className="bg-muted/60">
               <tr className="text-left">
                 <th className="p-3">Spender</th>
-                <th className="p-3">Kuchen</th>
-                <th className="min-w-[240px] p-3">Eigenschaften / Allergene</th>
+                <th className="p-3">Spende</th>
+                <th className="p-3">Kategorie</th>
+                <th className="min-w-[240px] p-3">Eigenschaften & Hinweise</th>
                 <th className="p-3">Ort</th>
                 <th className="p-3">Abgabezeit</th>
-                <th className="w-20 p-3"><span className="sr-only">Aktionen</span></th>
+                <th className="w-20 p-3">
+                  <span className="sr-only">Aktionen</span>
+                </th>
               </tr>
             </thead>
             <tbody>
               {isLoading && (
-                <tr><td colSpan={6} className="p-4 text-muted-foreground">Lade …</td></tr>
+                <tr>
+                  <td colSpan={7} className="p-4 text-muted-foreground">
+                    Lade …
+                  </td>
+                </tr>
               )}
-              {(rows as CakeRow[]).map(row => (
+              {donations.map(row => (
                 <tr key={row.id} className="border-t align-top hover:bg-muted/30">
                   <td className="p-3 font-medium text-slate-950">{row.donor}</td>
                   <td className="p-3 text-slate-800">{row.cake || "–"}</td>
-                  <td className="p-3"><TraitTags row={row} /></td>
+                  <td className="p-3">
+                    <CategoryBadge category={row.donationCategory ?? "kuchen"} />
+                  </td>
+                  <td className="p-3">
+                    <TraitTags row={row} />
+                  </td>
                   <td className="whitespace-nowrap p-3 text-slate-800">
                     {row.locationId ? locationNames.get(row.locationId) ?? "–" : "–"}
                   </td>
-                  <td className="whitespace-nowrap p-3 text-slate-800">{formatDropoffTime(row)}</td>
+                  <td className="whitespace-nowrap p-3 text-slate-800">
+                    {formatDropoffTime(row)}
+                  </td>
                   <td className="p-2">
                     <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" aria-label={`${row.donor} bearbeiten`} onClick={() => openEdit(row)}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`${row.donor} bearbeiten`}
+                        onClick={() => openEdit(row)}
+                      >
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" aria-label={`${row.donor} löschen`} disabled={deleteCake.isPending} onClick={() => setDeleteTarget(row)}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`${row.donor} löschen`}
+                        disabled={deleteDonation.isPending}
+                        onClick={() => setDeleteTarget(row)}
+                      >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
                   </td>
                 </tr>
               ))}
-              {!isLoading && rows.length === 0 && (
-                <tr><td colSpan={6} className="p-4 text-muted-foreground">Noch keine Kuchenspenden erfasst.</td></tr>
+              {!isLoading && donations.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="p-4 text-muted-foreground">
+                    Noch keine Spenden erfasst.
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
         </CardContent>
       </Card>
 
-      <Dialog open={dialogOpen} onOpenChange={open => (open ? setDialogOpen(true) : closeDialog())}>
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={open => (open ? setDialogOpen(true) : closeDialog())}
+      >
         <DialogContent className="w-[calc(100vw-2rem)] min-w-0 max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))] !bg-white !text-slate-950 shadow-2xl sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editingCake ? "Kuchenspende bearbeiten" : "Kuchen erfassen"}</DialogTitle>
+            <DialogTitle>
+              {editingDonation ? "Spende bearbeiten" : "Spende erfassen"}
+            </DialogTitle>
           </DialogHeader>
           <form
             className="grid min-w-0 gap-4 py-2"
@@ -407,35 +534,68 @@ export default function Cakes() {
             }}
           >
             <div className="space-y-1.5">
-              <Label htmlFor="cake-donor">Spender <span aria-hidden="true">*</span></Label>
+              <Label htmlFor="donation-donor">
+                Spender <span aria-hidden="true">*</span>
+              </Label>
               <Input
-                id="cake-donor"
-                list="cake-donor-options"
+                id="donation-donor"
+                list="donation-donor-options"
                 autoFocus
                 required
                 value={form.donor}
                 placeholder="Helfer auswählen oder Namen eingeben"
-                aria-describedby="cake-donor-hint"
+                aria-describedby="donation-donor-hint"
                 onChange={event =>
                   setForm(current => ({ ...current, donor: event.target.value }))
                 }
               />
-              <datalist id="cake-donor-options">
+              <datalist id="donation-donor-options">
                 {donorOptions.map(name => (
                   <option key={name} value={name} />
                 ))}
               </datalist>
-              <p id="cake-donor-hint" className="text-xs text-muted-foreground">
+              <p id="donation-donor-hint" className="text-xs text-muted-foreground">
                 Helfer auswählen oder einen neuen Namen frei eingeben.
               </p>
             </div>
+
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label htmlFor="cake-name">Kuchen</Label>
-                <Input id="cake-name" value={form.cake} placeholder="z. B. Rumkuchen" onChange={event => setForm(current => ({ ...current, cake: event.target.value }))} />
+                <Label htmlFor="donation-name">Spende</Label>
+                <Input
+                  id="donation-name"
+                  value={form.cake}
+                  placeholder="z. B. Kuchen, Salat, Snack"
+                  onChange={event =>
+                    setForm(current => ({ ...current, cake: event.target.value }))
+                  }
+                />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="cake-location">Abgabeort / Standort</Label>
+                <Label htmlFor="donation-category">Kategorie</Label>
+                <Select
+                  value={form.donationCategory}
+                  onValueChange={value =>
+                    setForm(current => ({
+                      ...current,
+                      donationCategory: value as DonationCategory,
+                    }))
+                  }
+                >
+                  <SelectTrigger id="donation-category" className="h-11 text-base sm:h-10 sm:text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {donationCategories.map(category => (
+                      <SelectItem key={category.value} value={category.value}>
+                        {category.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="donation-location">Abgabeort / Standort</Label>
                 <Select
                   value={form.locationId === null ? "none" : String(form.locationId)}
                   onValueChange={value =>
@@ -445,7 +605,7 @@ export default function Cakes() {
                     }))
                   }
                 >
-                  <SelectTrigger id="cake-location" className="h-11 text-base sm:h-10 sm:text-sm">
+                  <SelectTrigger id="donation-location" className="h-11 text-base sm:h-10 sm:text-sm">
                     <SelectValue placeholder="Kein Ort" />
                   </SelectTrigger>
                   <SelectContent>
@@ -459,32 +619,38 @@ export default function Cakes() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="cake-dropoff-date">Abgabetag / Datum</Label>
+                <Label htmlFor="donation-dropoff-date">Abgabetag / Datum</Label>
                 <Input
-                  id="cake-dropoff-date"
+                  id="donation-dropoff-date"
                   type="date"
                   value={form.dropoffDate}
                   min={selectedEvent?.startDate ?? undefined}
                   max={selectedEvent?.endDate ?? undefined}
                   className="h-11 text-base sm:h-10 sm:text-sm"
-                  onChange={event => setForm(current => ({ ...current, dropoffDate: event.target.value }))}
+                  onChange={event =>
+                    setForm(current => ({ ...current, dropoffDate: event.target.value }))
+                  }
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="cake-dropoff-time">Abgabe-Uhrzeit</Label>
+                <Label htmlFor="donation-dropoff-time">Abgabe-Uhrzeit</Label>
                 <Input
-                  id="cake-dropoff-time"
+                  id="donation-dropoff-time"
                   type="time"
                   step="60"
                   value={form.dropoffTime}
                   className="h-11 text-base sm:h-10 sm:text-sm"
-                  onChange={event => setForm(current => ({ ...current, dropoffTime: event.target.value }))}
+                  onChange={event =>
+                    setForm(current => ({ ...current, dropoffTime: event.target.value }))
+                  }
                 />
               </div>
             </div>
 
             <fieldset className="space-y-2">
-              <legend className="text-sm font-medium text-slate-900">Eigenschaften (optional)</legend>
+              <legend className="text-sm font-medium text-slate-900">
+                Eigenschaften (optional)
+              </legend>
               <div className="grid gap-2 sm:grid-cols-2">
                 {traits.map(trait => {
                   const active = form[trait.key];
@@ -497,7 +663,12 @@ export default function Cakes() {
                       onClick={() => toggleTrait(trait.key)}
                       className={`h-11 justify-start border text-sm shadow-none transition-colors ${active ? trait.activeClass : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"}`}
                     >
-                      <span className="mr-2 inline-flex size-4 items-center justify-center rounded border border-current text-[10px]" aria-hidden="true">{active ? "✓" : ""}</span>
+                      <span
+                        className="mr-2 inline-flex size-4 items-center justify-center rounded border border-current text-[10px]"
+                        aria-hidden="true"
+                      >
+                        {active ? "✓" : ""}
+                      </span>
                       {trait.label}
                     </Button>
                   );
@@ -506,24 +677,25 @@ export default function Cakes() {
             </fieldset>
 
             <div className="space-y-1.5">
-              <Label htmlFor="cake-note">Hinweise & Allergene (optional)</Label>
+              <Label htmlFor="donation-note">Hinweise zur Spende (optional)</Label>
               <Textarea
-                id="cake-note"
-                value={form.note}
+                id="donation-note"
                 rows={3}
-                placeholder="z. B. Enthält Alkohol/Rum, Walnüsse"
-                className="resize-y text-base sm:text-sm"
-                onChange={event => setForm(current => ({ ...current, note: event.target.value }))}
+                value={form.note}
+                placeholder="z. B. Enthält Alkohol/Rum, Walnüsse oder Zutatenhinweise"
+                onChange={event =>
+                  setForm(current => ({ ...current, note: event.target.value }))
+                }
               />
             </div>
 
-            <DialogFooter className="mt-1 w-full min-w-0 flex-col gap-3 border-t pt-3 sm:flex-col sm:items-stretch">
-              <div className="flex w-full flex-wrap justify-end gap-2">
-                <Button type="button" variant="outline" disabled={busy} onClick={closeDialog}>Abbrechen</Button>
-                <Button type="submit" disabled={!form.donor.trim() || busy} className={editingCake ? undefined : CREATION_ACTION_BUTTON_CLASS}>
-                  {busy ? "Speichert …" : "Speichern"}
-                </Button>
-              </div>
+            <DialogFooter className="mt-1 gap-2 border-t pt-3 sm:gap-0">
+              <Button type="button" variant="outline" onClick={closeDialog} disabled={busy}>
+                Abbrechen
+              </Button>
+              <Button type="submit" disabled={!form.donor.trim() || busy}>
+                {busy ? "Speichert …" : "Speichern"}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -532,10 +704,10 @@ export default function Cakes() {
       <ConfirmDeleteDialog
         open={Boolean(deleteTarget)}
         onOpenChange={open => !open && setDeleteTarget(null)}
-        title="Kuchenspende löschen?"
-        description={`„${deleteTarget?.donor ?? ""}“ wird aus Kuchen im aktuellen Veranstaltungsjahr gelöscht.`}
-        busy={deleteCake.isPending}
-        onConfirm={() => deleteTarget && deleteCake.mutate({ id: deleteTarget.id })}
+        title="Spende löschen?"
+        description={`„${deleteTarget?.cake || "Diese Spende"}“ von ${deleteTarget?.donor ?? ""} wird endgültig gelöscht.`}
+        busy={deleteDonation.isPending}
+        onConfirm={() => deleteTarget && deleteDonation.mutate({ id: deleteTarget.id })}
       />
     </div>
   );

@@ -212,7 +212,7 @@ function rowIdentity(area: ModuleImportArea, row: Record<string, unknown>) {
   if (area === "MARKETING") return normalized(row.Maßnahme);
   if (area === "GENEHMIGUNGEN") return normalized(row.Antrag);
   if (area === "KUCHEN")
-    return normalized(`${row.Spender}|${row.Kuchen || row.Bemerkung}`);
+    return normalized(`${row.Spender}|${row.Spende || row.Kuchen || row.Bemerkung}`);
   return normalized(`${row.Kategorie}|${row.Bemerkung || row.Reihenfolge}`);
 }
 
@@ -328,7 +328,8 @@ const OPTIONAL_MODULE_COLUMNS: Record<ModuleImportArea, string[]> = {
     "Reihenfolge",
   ],
   KUCHEN: [
-    "Kuchen",
+    "Spende",
+    "Kategorie",
     "Ort-ID",
     "Abgabeort / Standort",
     "Abgabetag / Datum",
@@ -338,6 +339,7 @@ const OPTIONAL_MODULE_COLUMNS: Record<ModuleImportArea, string[]> = {
     "Glutenfrei",
     "Laktosefrei",
     "Enthält Nüsse",
+    "Fleischhaltig",
     "Hinweise & Allergene",
     "Reihenfolge",
   ],
@@ -725,7 +727,8 @@ function rowsFromDocument(document: BackupDocument, area: ModuleImportArea) {
     return document.cakes.map(row => ({
       ID: row.sourceId,
       Spender: row.donor,
-      Kuchen: row.cake,
+      Spende: row.cake,
+      Kategorie: row.donationCategory,
       "Ort-ID": row.locationSourceId ?? "",
       "Abgabeort / Standort": row.locationName,
       "Abgabetag / Datum": row.dropoffDate,
@@ -735,6 +738,7 @@ function rowsFromDocument(document: BackupDocument, area: ModuleImportArea) {
       Glutenfrei: row.glutenFree,
       Laktosefrei: row.lactoseFree,
       "Enthält Nüsse": row.containsNuts,
+      Fleischhaltig: row.meat,
       "Hinweise & Allergene": row.note,
       Reihenfolge: row.sortOrder,
     }));
@@ -771,6 +775,18 @@ async function buildModuleTarget(base64: string, area: ModuleImportArea) {
   }
   // Ältere Kuchenlisten nannten den Freitext noch "Bemerkung". Diese
   // Kennzeichnung bleibt beim Import vollständig erhalten.
+  if (
+    area === "KUCHEN" &&
+    sourceHeaders.has("Kuchen") &&
+    !sourceHeaders.has("Spende")
+  ) {
+    sourceHeaders.delete("Kuchen");
+    sourceHeaders.add("Spende");
+    for (const row of rawImportedRows) {
+      row.Spende = row.Kuchen;
+      delete row.Kuchen;
+    }
+  }
   if (
     area === "KUCHEN" &&
     sourceHeaders.has("Bemerkung") &&

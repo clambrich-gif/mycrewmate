@@ -565,8 +565,8 @@ function CakeDonationAction({
 }) {
   const hasCakes = count > 0;
   const description = hasCakes
-    ? `Bereits ${count} Kuchen erfasst (Klick für weitere Spende)`
-    : "Kuchen für diesen Helfer erfassen";
+    ? `Bereits ${count} Spenden erfasst (Klick für weitere Spende)`
+    : "Spende für diesen Helfer erfassen";
 
   return (
     <button
@@ -583,7 +583,7 @@ function CakeDonationAction({
         aria-hidden="true"
         className={cn("select-none", hasCakes && "grayscale opacity-45")}
       >
-        🍰
+        🎁
       </span>
       {hasCakes && (
         <span className="absolute right-0 top-0 inline-flex min-w-4 -translate-y-0.5 translate-x-0.5 items-center justify-center rounded-full bg-slate-600 px-1 text-[10px] font-bold leading-4 text-white shadow-sm">
@@ -668,7 +668,7 @@ export default function Helpers() {
     setNewHelperDialogOpen(true);
   };
   const openCakeDonation = (helperName: string) =>
-    setLocation(`/kuchen?donor=${encodeURIComponent(helperName)}`);
+    setLocation(`/spenden?donor=${encodeURIComponent(helperName)}`);
   const create = trpc.helpers.create.useMutation({
     onSuccess: () => {
       const cakeWorkflowDonor = cakeWorkflowDonorRef.current;
@@ -677,8 +677,8 @@ export default function Helpers() {
       resetNewHelperForm();
       setNewHelperDialogOpen(false);
       if (cakeWorkflowDonor) {
-        toast.success("Helfer hinzugefügt – Kuchenspende ergänzen");
-        setLocation(`/kuchen?donor=${encodeURIComponent(cakeWorkflowDonor)}`);
+        toast.success("Helfer hinzugefügt – Spende ergänzen");
+        setLocation(`/spenden?donor=${encodeURIComponent(cakeWorkflowDonor)}`);
       } else {
         toast.success("Helfer hinzugefügt");
       }
@@ -1606,7 +1606,7 @@ export default function Helpers() {
                 htmlFor="new-helper-dialog-brings-cake"
                 className="cursor-pointer text-sm font-medium text-slate-800"
               >
-                Bringt einen Kuchen mit
+                Ich unterstütze mit einer Spende
               </label>
             </div>
             <DialogFooter className="gap-2 sm:gap-0">

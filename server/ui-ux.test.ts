@@ -527,7 +527,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout.match(/navigationItemClasses\(user\?\.role, href, active\)/g)).toHaveLength(2);
     expect(navigation).toContain('role !== "user"');
     expect(navigation).toContain('"/helfer"');
-    expect(navigation).toContain('"/kuchen"');
+    expect(navigation).toContain('"/spenden"');
     expect(navigation).toContain('"/pdf-export"');
     expect(navigation).toContain('"/hilfe"');
     expect(navigation).toContain("font-bold text-black opacity-100");
@@ -1616,20 +1616,20 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain('<span className="truncate">{label(helper)}</span>');
   });
 
-  it("bietet für jeden Helfer eine klickbare Kuchenaktion mit dezentem Zähler", () => {
+  it("bietet für jeden Helfer eine klickbare Spendenaktion mit dezentem Zähler", () => {
     const helpers = source("client/src/pages/Helpers.tsx");
 
     expect(helpers).toContain("function CakeDonationAction");
     expect(helpers).toContain("trpc.cakes.list.useQuery()");
     expect(helpers).toContain("const cakeCountByDonor = useMemo");
     expect(helpers).toContain("personKey(cake.donor)");
-    expect(helpers).toContain("Kuchen für diesen Helfer erfassen");
-    expect(helpers).toContain("Bereits ${count} Kuchen erfasst (Klick für weitere Spende)");
+    expect(helpers).toContain("Spende für diesen Helfer erfassen");
+    expect(helpers).toContain("Bereits ${count} Spenden erfasst (Klick für weitere Spende)");
     expect(helpers).toContain("grayscale opacity-45");
-    expect(helpers).toContain("🍰");
+    expect(helpers).toContain("🎁");
     expect(helpers).toContain("openCakeDonation(helper.name)");
     expect(helpers).toContain("cakeCountByDonor.get(personKey(helper.name)) ?? 0");
-    expect(helpers).toContain('setLocation(`/kuchen?donor=${encodeURIComponent(helperName)}`)');
+    expect(helpers).toContain('setLocation(`/spenden?donor=${encodeURIComponent(helperName)}`)');
   });
 
   it("kennzeichnet PDF, WhatsApp und Löschung in Helferaktionen eindeutig farbig", () => {
@@ -1782,17 +1782,18 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(taskGeneric).toContain("Alle {filterConfig.statusLabel ?? \"Stände\"}");
     expect(taskGeneric).toContain("Filter zurücksetzen");
     expect(taskGeneric).toContain("const resetAllFilters");
-    expect(cakes).toContain("Kuchen erfassen");
-    expect(cakes).toContain("Kuchenspende bearbeiten");
-    expect(cakes).toContain("Eigenschaften / Allergene");
+    expect(cakes).toContain("Spende erfassen");
+    expect(cakes).toContain("Spende bearbeiten");
+    expect(cakes).toContain("Kategorie");
     expect(cakes).toContain("🌱 Vegan");
     expect(cakes).toContain("🌾 Glutenfrei");
     expect(cakes).toContain("🥛 Laktosefrei");
     expect(cakes).toContain("🌰 Enthält Nüsse");
-    expect(cakes).toContain("Hinweise & Allergene (optional)");
+    expect(cakes).toContain("🥩 Fleischhaltig");
+    expect(cakes).toContain("Hinweise zur Spende (optional)");
     expect(cakes).toContain("trpc.helpers.list.useQuery()");
-    expect(cakes).toContain('list="cake-donor-options"');
-    expect(cakes).toContain('<datalist id="cake-donor-options">');
+    expect(cakes).toContain('list="donation-donor-options"');
+    expect(cakes).toContain('<datalist id="donation-donor-options">');
     expect(cakes).toContain("Helfer auswählen oder einen neuen Namen frei eingeben.");
     expect(cakes).toContain("Abgabeort / Standort");
     expect(cakes).toContain("Abgabetag / Datum");
@@ -1803,10 +1804,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(cakes).not.toContain("LocationMapLink");
     expect(helpers).toContain("newHelperBringsCake");
     expect(helpers).toContain("cakeWorkflowDonorRef");
-    expect(helpers).toContain('Bringt einen Kuchen mit');
-    expect(helpers).toContain('setLocation(`/kuchen?donor=${encodeURIComponent(cakeWorkflowDonor)}`)');
+    expect(helpers).toContain('Ich unterstütze mit einer Spende');
+    expect(helpers).toContain('setLocation(`/spenden?donor=${encodeURIComponent(cakeWorkflowDonor)}`)');
     expect(cakes).toContain('searchParams.get("donor")?.trim() ?? ""');
-    expect(cakes).toContain('setForm({ ...EMPTY_CAKE_FORM, donor: requestedDonor })');
+    expect(cakes).toContain('setForm({ ...EMPTY_DONATION_FORM, donor: requestedDonor })');
     expect(cakes).toContain('next.delete("donor")');
   });
 
