@@ -276,7 +276,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(alertDialog).toContain("overflow-y-auto overscroll-contain");
     expect(layout).toContain("Passwort vergessen / Recovery");
     expect(layout).toContain("Zurück zur Anmeldung");
-    expect(layout.match(/inline-flex min-h-11 items-center justify-center/g)).toHaveLength(2);
+    expect(layout.match(/inline-flex min-h-11 items-center justify-center/g)).toHaveLength(3);
   });
 
   it("zeigt und entsperrt den dauerhaften Planungsteam-Login ausschließlich im Adminbereich", () => {
@@ -1113,8 +1113,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
       "bg-white font-semibold text-blue-600 shadow-sm"
     );
     expect(layout).toContain(
-      "cursor-pointer text-gray-500 hover:text-gray-900"
+      "cursor-pointer bg-transparent text-gray-500 hover:bg-white/60 hover:text-gray-900"
     );
+    expect(layout).toContain("bg-transparent text-gray-500");
+    expect(layout).toContain("bg-white font-semibold text-blue-600 shadow-sm");
   });
 
   it("bietet auf der mobilen Anmeldung eine gut erreichbare Passwortanzeige", () => {
@@ -1127,7 +1129,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain("<EyeOff className=\"h-5 w-5\"");
     expect(layout).toContain("<Eye className=\"h-5 w-5\"");
     expect(layout).toContain('className="h-12 pr-12 text-base"');
-    expect(layout).toContain('className="h-12 w-full text-base font-semibold"');
+    expect(layout).toContain("rounded-lg bg-blue-600 py-2.5 text-base font-semibold text-white");
+    expect(layout).toContain(': "Anmelden"');
+    expect(layout).toContain("Als Hauptadministrator via Manus anmelden");
+    expect(layout).toContain("text-xs leading-relaxed text-gray-400");
     expect(layout).toContain("min-h-12 min-w-12");
     expect(layout).toContain("min-h-[100dvh]");
   });

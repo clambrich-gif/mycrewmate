@@ -525,7 +525,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated) {
     return (
       <div className="min-h-[100dvh] grid place-items-center bg-gradient-to-br from-[oklch(0.97_0.02_250)] to-[oklch(0.92_0.04_240)] px-4 py-5 sm:p-6">
-        <div className="w-full max-w-md rounded-2xl bg-card p-5 text-card-foreground shadow-xl sm:p-8">
+        <div className="w-full max-w-md rounded-2xl border border-white/80 bg-white/90 p-5 text-card-foreground shadow-xl backdrop-blur-sm sm:p-8">
           <img
             {...logoLoading}
             src={RSC_LOGO}
@@ -551,7 +551,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 "min-h-11 rounded-lg px-3 py-2 text-sm transition-[color,background-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1",
                 loginMode === "user"
                   ? "bg-white font-semibold text-blue-600 shadow-sm"
-                  : "cursor-pointer text-gray-500 hover:text-gray-900"
+                  : "cursor-pointer bg-transparent text-gray-500 hover:bg-white/60 hover:text-gray-900"
               )}
               onClick={() => {
                 setLoginMode("user");
@@ -570,7 +570,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 "min-h-11 rounded-lg px-3 py-2 text-sm transition-[color,background-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1",
                 loginMode === "admin"
                   ? "bg-white font-semibold text-blue-600 shadow-sm"
-                  : "cursor-pointer text-gray-500 hover:text-gray-900"
+                  : "cursor-pointer bg-transparent text-gray-500 hover:bg-white/60 hover:text-gray-900"
               )}
               onClick={() => {
                 setLoginMode("admin");
@@ -721,7 +721,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </button>
             </div>
             <Button
-              className="h-12 w-full text-base font-semibold"
+              className="h-12 w-full rounded-lg bg-blue-600 py-2.5 text-base font-semibold text-white shadow-sm hover:bg-blue-700 hover:text-white focus-visible:ring-blue-500"
               size="lg"
               type="submit"
               disabled={!password || !loginAvailable || loginPending}
@@ -743,7 +743,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 ? "Wird geprüft …"
                 : loginMode === "admin"
                   ? "Als Administrator anmelden"
-                  : "Mit Passwort anmelden"}
+                  : "Anmelden"}
             </Button>
             {loginMode === "admin" && (
               <div className="pt-1 text-center">
@@ -810,24 +810,22 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </form>
           )}
 
-          <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
-            <span className="h-px flex-1 bg-border" />
-            Hauptadministrator
-            <span className="h-px flex-1 bg-border" />
+          <div className="mt-5 border-t border-slate-200 pt-4 text-center">
+            <p className="text-xs font-medium text-slate-500">Hauptadministrator</p>
+            <button
+              type="button"
+              className="mt-1 inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md px-2 text-xs font-medium text-slate-500 underline-offset-4 hover:text-slate-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              onClick={() => startLogin()}
+            >
+              <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+              Als Hauptadministrator via Manus anmelden
+            </button>
           </div>
-          <Button
-            className="w-full"
-            variant="outline"
-            onClick={() => startLogin()}
-          >
-            <ShieldCheck className="mr-2 h-4 w-4" />
-            Mit Manus anmelden
-          </Button>
-              <p className="text-xs text-muted-foreground mt-4 text-center">
-                Nach fünf Fehlversuchen greift für den jeweiligen Anschluss eine
-                zeitbasierte Abklingzeit (Cooldown). Eine dauerhafte Sperre kann
-                nur gezielt durch Administratoren verhängt werden.
-              </p>
+          <p className="mt-4 text-center text-xs leading-relaxed text-gray-400">
+            Nach fünf Fehlversuchen greift für den jeweiligen Anschluss eine
+            zeitbasierte Abklingzeit (Cooldown). Eine dauerhafte Sperre kann
+            nur gezielt durch Administratoren verhängt werden.
+          </p>
             </div>
           </div>
     );
