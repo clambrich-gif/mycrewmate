@@ -1,7 +1,6 @@
 import { trpc } from "@/lib/trpc";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
 import {
   Select,
   SelectContent,
@@ -337,12 +336,12 @@ function PlanStatusBar({
     <section
       aria-label="Status des Einsatzplans"
       data-plan-status-bar
-      className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 xl:flex-none"
+      className="inline-flex min-w-0 flex-wrap overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm xl:flex-none"
     >
       {chips.map(chip => (
         <span
           key={chip.label}
-          className={`inline-flex min-h-8 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium whitespace-nowrap ${chip.className}`}
+          className={`inline-flex min-h-8 items-center gap-1.5 border-r border-slate-200 px-2.5 py-1 text-xs font-medium whitespace-nowrap last:border-r-0 ${chip.className}`}
         >
           <span>{chip.label}:</span>
           <strong className="text-sm leading-none tabular-nums">
@@ -697,6 +696,15 @@ export default function Plan() {
       { replace: true }
     );
   };
+
+  const hasActiveDropdownFilters =
+    day !== "alle" ||
+    area !== "alle" ||
+    status !== "alle" ||
+    warningFilter !== "alle" ||
+    apFilter !== "alle" ||
+    flexibleAssignmentFilter !== "alle" ||
+    Boolean(locationFilter);
 
   useEffect(() => {
     if (day !== "alle" && !activeDays.includes(day as Weekday)) setDay("alle");
@@ -1309,24 +1317,31 @@ export default function Plan() {
             : "Das Planungsteam kann den Einsatzplan vollständig ansehen und filtern. Änderungen und Helferzuweisungen sind Administratoren vorbehalten."}
         </p>
       </div>
-      <div className="flex flex-col gap-3 xl:flex-row xl:flex-wrap xl:items-center xl:justify-between">
+      <div
+        data-plan-action-header
+        className="flex flex-col gap-3 min-[1440px]:flex-row min-[1440px]:items-start min-[1440px]:justify-between"
+      >
         <PlanStatusBar counts={planStatusCounts} isLoading={isLoading} />
         {canEditPlan && (
-          <div className="grid shrink-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end xl:ml-auto [&>[data-slot=button]]:min-w-0 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:px-2 [&>[data-slot=button]]:text-xs sm:[&>[data-slot=button]]:w-auto sm:[&>[data-slot=button]]:px-4 sm:[&>[data-slot=button]]:text-sm">
-            <ModuleExcelImportButton area="EINSATZPLAN" label="Einsatzplan" />
-            <CopyPreviousPlanButton />
-            <ClearPlanAssignmentsButton onCleared={() => setQ("")} />
-            <ResetAreaButton
-              area="shifts"
-              label="Einsatzplan"
-              mobileButtonLabel="Plan zurücksetzen"
-            />
+          <div className="w-full shrink-0 min-[1440px]:ml-auto min-[1440px]:w-[42rem]">
+            <div
+              data-plan-data-actions
+              className="grid grid-cols-2 gap-2 sm:grid-cols-4 [&>[data-slot=button]]:min-w-0 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:px-2 [&>[data-slot=button]]:text-xs sm:[&>[data-slot=button]]:px-3 sm:[&>[data-slot=button]]:text-sm"
+            >
+              <ModuleExcelImportButton area="EINSATZPLAN" label="Einsatzplan" />
+              <CopyPreviousPlanButton />
+              <ClearPlanAssignmentsButton onCleared={() => setQ("")} />
+              <ResetAreaButton
+                area="shifts"
+                label="Einsatzplan"
+                mobileButtonLabel="Plan zurücksetzen"
+              />
+            </div>
             <Button
               type="button"
-              variant="outline"
               onClick={openCreate}
               disabled={isEventLoading || !activeDays.length}
-              className={`col-span-2 !w-full !px-4 sm:col-auto sm:!w-auto sm:!text-sm ${CREATION_ACTION_BUTTON_CLASS}`}
+              className="mt-2 w-full bg-blue-600 px-4 font-semibold text-white shadow-sm hover:bg-blue-700 focus-visible:ring-blue-500"
             >
               <Plus className="h-4 w-4 mr-2" />
               Neue Schicht
@@ -1613,16 +1628,19 @@ export default function Plan() {
               </SelectItem>
             </SelectContent>
           </Select>
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full gap-2 border-slate-300 bg-white text-slate-800 hover:bg-slate-100 lg:ml-auto lg:w-auto"
-            onClick={resetPlanFilters}
-            aria-label="Alle Einsatzplanfilter zurücksetzen"
-          >
-            <RotateCcw className="size-4" aria-hidden="true" />
-            Filter zurücksetzen
-          </Button>
+          {hasActiveDropdownFilters && (
+            <Button
+              type="button"
+              variant="outline"
+              data-plan-filter-reset
+              className="w-full gap-2 border-slate-300 bg-white text-slate-800 hover:bg-slate-100 lg:ml-auto lg:w-auto"
+              onClick={resetPlanFilters}
+              aria-label="Alle Einsatzplanfilter zurücksetzen"
+            >
+              <RotateCcw className="size-4" aria-hidden="true" />
+              Filter zurücksetzen
+            </Button>
+          )}
         </div>
       </div>
 

@@ -883,7 +883,14 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain('entry.status === "OK"');
     expect(plan).toContain("utils.plan.evaluate.invalidate()");
     expect(plan).toContain("<PlanStatusBar counts={planStatusCounts} isLoading={isLoading} />");
-    expect(plan).toContain("xl:flex-row xl:flex-wrap xl:items-center xl:justify-between");
+    expect(plan).toContain("data-plan-action-header");
+    expect(plan).toContain(
+      "min-[1440px]:flex-row min-[1440px]:items-start min-[1440px]:justify-between"
+    );
+    expect(plan).toContain(
+      "inline-flex min-w-0 flex-wrap overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+    );
+    expect(plan).toContain("border-r border-slate-200");
     expect(plan).toContain("xl:flex-none");
   });
 
@@ -1369,18 +1376,20 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers.match(/shareHelperPdf/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
   });
 
-  it("ordnet Einsatzplanaktionen ausschließlich mobil als gleich breites Raster an", () => {
+  it("ordnet Einsatzplanaktionen als vierteilige Datenzeile mit vollbreiter Hauptaktion an", () => {
     const plan = source("client/src/pages/Plan.tsx");
     const resetButton = source("client/src/components/ResetAreaButton.tsx");
 
-    expect(plan).toContain(
-      'grid shrink-0 grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end'
-    );
+    expect(plan).toContain("data-plan-data-actions");
+    expect(plan).toContain("grid grid-cols-2 gap-2 sm:grid-cols-4");
+    expect(plan).toContain("min-[1440px]:w-[42rem]");
     expect(plan).toContain('[&>[data-slot=button]]:w-full');
-    expect(plan).toContain('sm:[&>[data-slot=button]]:w-auto');
     expect(plan).toContain(
-      'className={`col-span-2 !w-full !px-4 sm:col-auto sm:!w-auto sm:!text-sm ${CREATION_ACTION_BUTTON_CLASS}`}'
+      'className="mt-2 w-full bg-blue-600 px-4 font-semibold text-white shadow-sm hover:bg-blue-700 focus-visible:ring-blue-500"'
     );
+    expect(plan).toContain("<ModuleExcelImportButton area=\"EINSATZPLAN\" label=\"Einsatzplan\" />");
+    expect(plan).toContain("<CopyPreviousPlanButton />");
+    expect(plan).toContain("<ClearPlanAssignmentsButton onCleared={() => setQ(\"\")} />");
     expect(plan).toContain('mobileButtonLabel="Plan zurücksetzen"');
     expect(resetButton).toContain('<span className="sm:hidden">{mobileButtonLabel}</span>');
     expect(resetButton).toContain('<span className="hidden sm:inline">');
@@ -1650,6 +1659,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("next.delete(PLAN_STATUS_QUERY_KEY)");
     expect(plan).toContain("next.delete(PLAN_HELPER_QUERY_KEY)");
     expect(plan).toContain("next.delete(PLAN_DAY_QUERY_KEY)");
+    expect(plan).toContain("const hasActiveDropdownFilters =");
+    expect(plan).toContain('day !== "alle"');
+    expect(plan).toContain('warningFilter !== "alle"');
+    expect(plan).toContain('flexibleAssignmentFilter !== "alle"');
+    expect(plan).toContain("{hasActiveDropdownFilters && (");
+    expect(plan).toContain("data-plan-filter-reset");
     expect(plan).toContain("Filter zurücksetzen");
     expect(plan).toContain("Alle Einsatzplanfilter zurücksetzen");
     expect(plan).toContain('value="OK_MANUELL">OK (Manuell)</SelectItem>');
@@ -1719,10 +1734,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(creationAction).toContain("CREATION_ACTION_BUTTON_CLASS");
     expect(creationAction).toContain("border-slate-300 bg-white");
     expect(creationAction).toContain("text-base font-semibold");
-    for (const module of [helpers, contacts, plan]) {
+    for (const module of [helpers, contacts]) {
       expect(module).toContain("CREATION_ACTION_BUTTON_CLASS");
       expect(module).toContain('variant="outline"');
     }
+    expect(plan).not.toContain("CREATION_ACTION_BUTTON_CLASS");
+    expect(plan).toContain("bg-blue-600 px-4 font-semibold text-white");
     expect(preparation).not.toContain("CREATION_ACTION_BUTTON_CLASS");
     expect(preparation).toContain("bg-blue-600 text-base font-medium text-white");
     expect(helperHeaderActions).not.toContain("bg-indigo-700");
