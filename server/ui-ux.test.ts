@@ -1868,7 +1868,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(cakes).toContain("donationTargetKuchen");
     expect(cakes).toContain("donationTargetSalat");
     expect(cakes).toContain("donationTargetSnack");
-    expect(cakes).toContain("donationTargetSonstiges");
+    expect(cakes).not.toContain("donationTargetSonstiges");
+    expect(cakes).toContain("donationTargetCategories");
+    expect(cakes).toContain('grid grid-cols-1 gap-3 sm:grid-cols-3');
 
     const dashboard = source("client/src/pages/Dashboard.tsx");
     expect(dashboard).toContain("DonationSummaryCard");
@@ -1880,6 +1882,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain("🥛 Laktosefrei");
     expect(dashboard).toContain("🌰 Nüsse");
     expect(dashboard).toContain("🥩 Fleischhaltig");
+    expect(dashboard).toContain('category.id !== "sonstiges"');
+    expect(dashboard).toContain("📦 Sonstiges:");
+    expect(dashboard).toContain('className="flex min-h-20 items-center gap-2');
+    expect(dashboard).toContain('space-y-1.5 px-3 pb-3 pt-0');
+    expect(dashboard).toContain('className="h-full gap-2 border-blue-300');
+    expect(dashboard).toContain('className="h-full gap-2 border-rose-200');
+    expect(dashboard).toContain('className="h-full gap-2 border-emerald-300');
   });
 
   it("bietet zentrale Orte, Ortsauswahl und Kartenlinks in Schichten und Vorbereitungen", () => {

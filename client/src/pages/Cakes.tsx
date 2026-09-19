@@ -106,6 +106,12 @@ const donationCategories: Array<{
   },
 ];
 
+const donationTargetCategories = [
+  { value: "kuchen", label: "Kuchen / Gebäck" },
+  { value: "salat", label: "Salat" },
+  { value: "snack", label: "Dessert" },
+] as const;
+
 const traits = [
   {
     key: "vegan",
@@ -229,7 +235,6 @@ export default function Cakes() {
     kuchen: "0",
     salat: "0",
     snack: "0",
-    sonstiges: "0",
   });
   const donorOptions = useMemo(
     () =>
@@ -286,14 +291,12 @@ export default function Cakes() {
       kuchen: String(selectedEvent.donationTargetKuchen ?? 0),
       salat: String(selectedEvent.donationTargetSalat ?? 0),
       snack: String(selectedEvent.donationTargetSnack ?? 0),
-      sonstiges: String(selectedEvent.donationTargetSonstiges ?? 0),
     });
   }, [
     selectedEvent?.id,
     selectedEvent?.donationTargetKuchen,
     selectedEvent?.donationTargetSalat,
     selectedEvent?.donationTargetSnack,
-    selectedEvent?.donationTargetSonstiges,
   ]);
 
   const refresh = () => {
@@ -463,7 +466,6 @@ export default function Cakes() {
       donationTargetKuchen: values.kuchen,
       donationTargetSalat: values.salat,
       donationTargetSnack: values.snack,
-      donationTargetSonstiges: values.sonstiges,
     });
   };
   const donationOverviewPdf = trpc.pdf.donationOverview.useMutation({
@@ -635,8 +637,8 @@ export default function Cakes() {
                 Nur für Administratoren sichtbar
               </span>
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
-              {donationCategories.map(category => (
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {donationTargetCategories.map(category => (
                 <div key={category.value} className="space-y-1.5">
                   <Label
                     htmlFor={`donation-target-${category.value}`}

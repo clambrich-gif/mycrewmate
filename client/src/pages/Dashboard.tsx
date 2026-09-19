@@ -442,25 +442,25 @@ function CommunicationRateRow({
         ? "Vollständig erledigt"
         : `${outstanding} noch offen`;
   const content = (
-    <div className="flex min-h-[6.25rem] items-center gap-3 rounded-xl border border-slate-200 bg-white/80 p-3">
+    <div className="flex min-h-20 items-center gap-2 rounded-xl border border-slate-200 bg-white/80 p-2">
       <span
-        className="relative flex size-16 shrink-0 items-center justify-center rounded-full"
+        className="relative flex size-12 shrink-0 items-center justify-center rounded-full"
         style={{ background: `conic-gradient(${accent} ${rate}%, ${track} ${rate}% 100%)` }}
         aria-label={`${rate} Prozent ${title}`}
       >
-        <span className="flex size-12 items-center justify-center rounded-full bg-white text-base font-bold text-slate-950 shadow-sm">
+        <span className="flex size-9 items-center justify-center rounded-full bg-white text-sm font-bold text-slate-950 shadow-sm">
           {rate}%
         </span>
       </span>
       <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-1.5 text-sm font-bold text-slate-900">
-          <UsersRound className={`size-4 ${tone === "green" ? "text-emerald-700" : "text-blue-700"}`} aria-hidden="true" />
+        <span className="flex items-center gap-1 text-[13px] font-bold text-slate-900">
+          <UsersRound className={`size-3.5 ${tone === "green" ? "text-emerald-700" : "text-blue-700"}`} aria-hidden="true" />
           {title}
         </span>
-        <span className="mt-1 block text-xs text-slate-700">
-          <strong className="text-sm text-slate-950">{value} / {total}</strong> Helfer
+        <span className="mt-0.5 block text-xs text-slate-700">
+          <strong className="text-[13px] text-slate-950">{value} / {total}</strong> Helfer
         </span>
-        <span className={`mt-1 block text-xs font-semibold ${tone === "green" ? "text-emerald-800" : "text-blue-800"}`}>
+        <span className={`mt-0.5 block text-xs font-semibold ${tone === "green" ? "text-emerald-800" : "text-blue-800"}`}>
           {detail}
         </span>
       </span>
@@ -504,14 +504,14 @@ function HelperStatusCommunicationCard({
   openTarget: (target: DashboardTarget) => void;
 }) {
   return (
-    <Card data-dashboard-section="Helfer-Status & Kommunikation" className="h-full border-blue-300 bg-blue-50/55 text-slate-950 shadow-sm">
-      <CardHeader className="p-3 pb-2 sm:p-4 sm:pb-2">
+    <Card data-dashboard-section="Helfer-Status & Kommunikation" className="h-full gap-2 border-blue-300 bg-blue-50/55 py-2.5 text-slate-950 shadow-sm">
+      <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5">
         <CardTitle className="flex items-center gap-2 text-base text-slate-900">
           <UsersRound className="size-5 text-blue-700" aria-hidden="true" />
           Helfer-Status & Kommunikation
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-2 p-3 pt-1 sm:p-4 sm:pt-1">
+      <CardContent className="space-y-1.5 px-3 pb-3 pt-0 sm:px-4 sm:pb-3">
         <CommunicationRateRow
           title="Rückmeldequote"
           value={confirmed}
@@ -544,6 +544,12 @@ function DonationSummaryCard({
   donations: DonationDashboardStats;
   openDonations: () => void;
 }) {
+  const targetCategories = donations.kategorien.filter(
+    category => category.id !== "sonstiges"
+  );
+  const sonstiges = donations.kategorien.find(
+    category => category.id === "sonstiges"
+  );
   const traitTags = [
     ["🌱 Vegan", donations.eigenschaften.vegan, "border-emerald-200 bg-emerald-50 text-emerald-800"],
     ["🌾 Glutenfrei", donations.eigenschaften.glutenFree, "border-amber-200 bg-amber-50 text-amber-900"],
@@ -552,8 +558,8 @@ function DonationSummaryCard({
     ["🥩 Fleischhaltig", donations.eigenschaften.meat, "border-rose-200 bg-rose-50 text-rose-800"],
   ] as const;
   return (
-    <Card data-dashboard-section="Verpflegungsspenden" className="h-full border-rose-200 bg-rose-50/45 text-slate-950 shadow-sm">
-      <CardHeader className="flex flex-row flex-wrap items-baseline justify-between gap-2 p-3 pb-2 sm:p-4 sm:pb-2">
+    <Card data-dashboard-section="Verpflegungsspenden" className="h-full gap-2 border-rose-200 bg-rose-50/45 py-2.5 text-slate-950 shadow-sm">
+      <CardHeader className="flex flex-row flex-wrap items-baseline justify-between gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5">
         <button
           type="button"
           className="group flex min-w-0 items-center gap-2 rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-600 focus-visible:ring-offset-2"
@@ -570,9 +576,9 @@ function DonationSummaryCard({
         </button>
         <span className="text-xs text-slate-600">Gesamt: {donations.gesamt} erfasst</span>
       </CardHeader>
-      <CardContent className="grid gap-4 p-3 pt-1 sm:p-4 sm:pt-1 lg:grid-cols-[minmax(0,1fr)_minmax(9rem,0.8fr)]">
-        <div className="space-y-2.5">
-          {donations.kategorien.map(category => {
+      <CardContent className="grid gap-3 px-3 pb-3 pt-0 sm:px-4 sm:pb-3 lg:grid-cols-[minmax(0,1fr)_minmax(8.5rem,0.8fr)]">
+        <div className="space-y-1.5">
+          {targetCategories.map(category => {
             const quote = category.target > 0 ? Math.min(100, Math.round((category.ist / category.target) * 100)) : 0;
             const text = category.target > 0 ? `${category.ist} / ${category.target}` : `${category.ist} / –`;
             return (
@@ -581,21 +587,24 @@ function DonationSummaryCard({
                   <span className="min-w-0 truncate font-medium text-slate-800">{category.label}</span>
                   <span className="shrink-0 font-bold tabular-nums text-slate-950">{text}</span>
                 </div>
-                <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-rose-100" role="progressbar" aria-label={`${category.label}: ${category.ist} von ${category.target || 0} Spenden erfasst`} aria-valuemin={0} aria-valuemax={Math.max(category.target, 1)} aria-valuenow={Math.min(category.ist, Math.max(category.target, 1))}>
+                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-rose-100" role="progressbar" aria-label={`${category.label}: ${category.ist} von ${category.target || 0} Spenden erfasst`} aria-valuemin={0} aria-valuemax={Math.max(category.target, 1)} aria-valuenow={Math.min(category.ist, Math.max(category.target, 1))}>
                   <div className="h-full rounded-full bg-rose-500 transition-[width] duration-200" style={{ width: `${quote}%` }} />
                 </div>
               </div>
             );
           })}
-          {donations.kategorien.every(category => category.target === 0) && (
-            <p className="pt-0.5 text-xs text-slate-500">Sollwerte können in der Spendenübersicht festgelegt werden.</p>
+          {sonstiges && (
+            <p className="pt-0.5 text-[11px] text-slate-600">📦 Sonstiges: {sonstiges.ist} erfasst</p>
+          )}
+          {targetCategories.every(category => category.target === 0) && (
+            <p className="text-[11px] text-slate-500">Sollwerte können in der Spendenübersicht festgelegt werden.</p>
           )}
         </div>
-        <div className="border-t border-rose-200 pt-3 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-600">Eigenschaften</p>
-          <div className="flex flex-wrap gap-1.5">
+        <div className="border-t border-rose-200 pt-2 lg:border-l lg:border-t-0 lg:pl-3 lg:pt-0">
+          <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600">Eigenschaften</p>
+          <div className="flex flex-wrap gap-1">
             {traitTags.map(([label, value, className]) => (
-              <span key={label} className={`rounded-full border px-2 py-1 text-xs font-medium ${className}`}>
+              <span key={label} className={`rounded-full border px-1.5 py-0.5 text-[11px] font-medium ${className}`}>
                 {label}: {value}
               </span>
             ))}
@@ -640,10 +649,10 @@ function readinessTone(readiness: DailyReadiness) {
 }
 
 function readinessGridClass(dayCount: number) {
-  if (dayCount <= 1) return "grid grid-cols-1 gap-4";
-  if (dayCount === 2) return "grid grid-cols-1 gap-4 md:grid-cols-2";
-  if (dayCount === 3) return "grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3";
-  return "grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4";
+  if (dayCount <= 1) return "grid grid-cols-1 gap-3";
+  if (dayCount === 2) return "grid grid-cols-1 gap-3 md:grid-cols-2";
+  if (dayCount === 3) return "grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3";
+  return "grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4";
 }
 
 function DailyReadinessCard({
@@ -662,9 +671,9 @@ function DailyReadinessCard({
   return (
     <Card
       data-dashboard-section="Einsatzbereitschaft je Festivaltag"
-      className="h-full border-emerald-300 bg-white text-slate-950 shadow-sm"
+      className="h-full gap-2 border-emerald-300 bg-white py-2.5 text-slate-950 shadow-sm"
     >
-      <CardHeader className="flex flex-row flex-wrap items-baseline justify-between gap-2 p-3 pb-2 sm:p-4 sm:pb-2">
+      <CardHeader className="flex flex-row flex-wrap items-baseline justify-between gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5">
         <button
           type="button"
           className="group flex min-w-0 items-center gap-2 rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
@@ -681,7 +690,7 @@ function DailyReadinessCard({
         </button>
         <span className="text-xs text-slate-600">Besetzt / Bedarf</span>
       </CardHeader>
-      <CardContent className={`${readinessGridClass(readiness.length)} p-3 pt-1 sm:p-4 sm:pt-1`}>
+      <CardContent className={`${readinessGridClass(readiness.length)} px-3 pb-3 pt-0 sm:px-4 sm:pb-3`}>
         {readiness.map(day => {
           const tone = readinessTone(day);
           return (
@@ -693,7 +702,7 @@ function DailyReadinessCard({
                 </span>
               </div>
               <div
-                className={`mt-2 h-2.5 overflow-hidden rounded-full ${tone.track}`}
+                className={`mt-1.5 h-2 overflow-hidden rounded-full ${tone.track}`}
                 role="progressbar"
                 aria-label={`${day.day}: ${day.besetzt} von ${day.bedarf} Helferplätzen besetzt`}
                 aria-valuemin={0}
@@ -705,10 +714,10 @@ function DailyReadinessCard({
                   style={{ width: `${day.quote}%` }}
                 />
               </div>
-              <p className={`mt-1.5 text-xs font-semibold ${tone.text}`}>
+              <p className={`mt-1 text-xs font-semibold ${tone.text}`}>
                 {tone.label}
               </p>
-              <div className="mt-2 grid gap-1 border-t border-slate-200 pt-2 text-xs">
+              <div className="mt-1.5 grid gap-0.5 border-t border-slate-200 pt-1.5 text-xs">
                 <button
                   type="button"
                   disabled={day.ungenutzteHelfer === 0}
