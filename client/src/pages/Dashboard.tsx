@@ -1101,16 +1101,12 @@ export default function Dashboard() {
         />
       </section>
 
-      <section data-dashboard-level="Live-Standortkarte" className="w-full">
-        <LocationMapCard />
-      </section>
-
       <div data-dashboard-level="Tabellendetails" className="grid gap-6 lg:grid-cols-2">
-        <Card className="shadow-sm">
-          <CardHeader>
+        <Card className="flex h-[250px] flex-col overflow-hidden shadow-sm gap-3 py-4">
+          <CardHeader className="shrink-0">
             <CardTitle>Verantwortlichkeiten pro Ansprechpartner</CardTitle>
           </CardHeader>
-          <CardContent className="overflow-x-auto">
+          <CardContent className="min-h-0 flex-1 overflow-auto pt-0">
             <table className="w-full min-w-[420px] table-fixed text-sm">
               <colgroup>
                 <col className="w-2/5" />
@@ -1120,25 +1116,25 @@ export default function Dashboard() {
                 <col className="w-[12%]" />
                 <col className="w-[12%]" />
               </colgroup>
-              <thead>
+              <thead className="sticky top-0 bg-card">
                 <tr className="border-b text-left text-muted-foreground">
-                  <th className="py-2 pr-3">Ansprechpartner</th>
-                  <th className="px-1 py-2 text-center whitespace-nowrap">Helfer</th>
-                  <th className="px-1 py-2 text-center whitespace-nowrap">Vorb.</th>
-                  <th className="px-1 py-2 text-center whitespace-nowrap">Nachb.</th>
-                  <th className="px-1 py-2 text-center whitespace-nowrap">Mat.</th>
-                  <th className="px-1 py-2 text-center whitespace-nowrap">Gesamt</th>
+                  <th className="py-1 pr-3">Ansprechpartner</th>
+                  <th className="px-1 py-1 text-center whitespace-nowrap">Helfer</th>
+                  <th className="px-1 py-1 text-center whitespace-nowrap">Vorb.</th>
+                  <th className="px-1 py-1 text-center whitespace-nowrap">Nachb.</th>
+                  <th className="px-1 py-1 text-center whitespace-nowrap">Mat.</th>
+                  <th className="px-1 py-1 text-center whitespace-nowrap">Gesamt</th>
                 </tr>
               </thead>
               <tbody>
                 {s.verantwortlichkeiten.map(v => (
                   <tr key={v.name} className="border-b last:border-0">
-                    <td className="break-words py-2 pr-3">{v.name}</td>
-                    <td className="px-1 py-2 text-center tabular-nums">{v.betreuteHelfer}</td>
-                    <td className="px-1 py-2 text-center tabular-nums">{v.vorbereitung}</td>
-                    <td className="px-1 py-2 text-center tabular-nums">{v.nachbereitung}</td>
-                    <td className="px-1 py-2 text-center tabular-nums">{v.material}</td>
-                    <td className="px-1 py-2 text-center font-semibold tabular-nums">
+                    <td className="break-words py-1 pr-3">{v.name}</td>
+                    <td className="px-1 py-1 text-center tabular-nums">{v.betreuteHelfer}</td>
+                    <td className="px-1 py-1 text-center tabular-nums">{v.vorbereitung}</td>
+                    <td className="px-1 py-1 text-center tabular-nums">{v.nachbereitung}</td>
+                    <td className="px-1 py-1 text-center tabular-nums">{v.material}</td>
+                    <td className="px-1 py-1 text-center font-semibold tabular-nums">
                       {v.gesamt}
                     </td>
                   </tr>
@@ -1155,8 +1151,12 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card id="helferauslastung" data-dashboard-section="Helferauslastung" className="scroll-mt-4 shadow-sm">
-          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
+        <Card
+          id="helferauslastung"
+          data-dashboard-section="Helferauslastung"
+          className="scroll-mt-4 flex h-[250px] flex-col overflow-hidden shadow-sm gap-3 py-4"
+        >
+          <CardHeader className="shrink-0 flex flex-row flex-wrap items-center justify-between gap-2">
             <div className="min-w-0">
               <CardTitle>Helferauslastung (eingeteilte Schichten)</CardTitle>
               {workloadFilterLabel && (
@@ -1192,7 +1192,7 @@ export default function Dashboard() {
               </span>
             </div>
           </CardHeader>
-          <CardContent className="overflow-hidden px-3 sm:px-6">
+          <CardContent className="min-h-0 flex-1 overflow-y-auto px-3 pt-0 sm:px-6">
             <table className="w-full table-fixed text-xs sm:text-sm">
               <colgroup>
                 <col className="w-[36%]" />
@@ -1201,26 +1201,26 @@ export default function Dashboard() {
                 ))}
                 <col className="w-[13%]" />
               </colgroup>
-              <thead>
+              <thead className="sticky top-0 bg-card">
                 <tr className="border-b text-left text-muted-foreground">
-                  <th className="py-2 pr-1 sm:pr-2">Helfer</th>
+                  <th className="py-1 pr-1 sm:pr-2">Helfer</th>
                   {activeDays.map(day => (
                     <th
                       key={day}
-                      className="px-0.5 py-2 text-right sm:px-1"
+                      className="px-0.5 py-1 text-right sm:px-1"
                       title={day}
                     >
                       {WEEKDAY_SHORT_LABELS[day]}
                     </th>
                   ))}
-                  <th className="py-2 pl-0.5 text-right sm:pl-1">Gesamt</th>
+                  <th className="py-1 pl-0.5 text-right sm:pl-1">Gesamt</th>
                 </tr>
               </thead>
               <tbody>
                 {visibleWorkload.map(a => (
                   <tr key={a.name} className="border-b last:border-0">
                     <td
-                      className="overflow-hidden text-ellipsis whitespace-nowrap py-2 pr-1 sm:pr-2"
+                      className="overflow-hidden text-ellipsis whitespace-nowrap py-1 pr-1 sm:pr-2"
                       title={a.name}
                     >
                       {a.name}
@@ -1247,14 +1247,14 @@ export default function Dashboard() {
                       return (
                         <td
                           key={day}
-                          className={`px-0.5 py-2 text-right tabular-nums sm:px-1 ${availabilityClass}`}
+                          className={`px-0.5 py-1 text-right tabular-nums sm:px-1 ${availabilityClass}`}
                           title={availabilityTitle}
                         >
                           {value}
                         </td>
                       );
                     })}
-                    <td className="py-2 pl-0.5 text-right font-semibold tabular-nums sm:pl-1">
+                    <td className="py-1 pl-0.5 text-right font-semibold tabular-nums sm:pl-1">
                       {a.gesamt}
                     </td>
                   </tr>
@@ -1276,6 +1276,10 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      <section data-dashboard-level="Live-Standortkarte" className="w-full">
+        <LocationMapCard />
+      </section>
     </div>
   );
 }

@@ -787,6 +787,25 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain("Datierte Vorbereitungsaufgaben");
   });
 
+  it("ordnet Kennzahlen, scrollbare Tabellen und Standortkarte in der Dashboard-Hierarchie", () => {
+    const dashboard = source("client/src/pages/Dashboard.tsx");
+    const priorityIndex = dashboard.indexOf('data-dashboard-section="Heute priorisieren"');
+    const deadlinesIndex = dashboard.indexOf('data-dashboard-level="Fristen"');
+    const metricsIndex = dashboard.indexOf('data-dashboard-level="Helfer-Kennzahlen"');
+    const tablesIndex = dashboard.indexOf('data-dashboard-level="Tabellendetails"');
+    const mapIndex = dashboard.indexOf('data-dashboard-level="Live-Standortkarte"');
+
+    expect(priorityIndex).toBeGreaterThanOrEqual(0);
+    expect(priorityIndex).toBeLessThan(deadlinesIndex);
+    expect(deadlinesIndex).toBeLessThan(metricsIndex);
+    expect(metricsIndex).toBeLessThan(tablesIndex);
+    expect(tablesIndex).toBeLessThan(mapIndex);
+    expect(dashboard).toContain('flex h-[250px] flex-col overflow-hidden shadow-sm');
+    expect(dashboard).toContain('min-h-0 flex-1 overflow-auto pt-0');
+    expect(dashboard).toContain('min-h-0 flex-1 overflow-y-auto px-3 pt-0 sm:px-6');
+    expect(dashboard).toContain('thead className="sticky top-0 bg-card"');
+  });
+
   it("zeigt das Live-Countdown-Widget im Dashboardkopf und den Kalender-Trigger im Layout", () => {
     const dashboard = source("client/src/pages/Dashboard.tsx");
     const layout = source("client/src/components/Layout.tsx");
@@ -921,11 +940,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
 
     expect(dashboard).toContain('className="w-full min-w-[420px] table-fixed text-sm"');
     expect(dashboard).toContain('<col className="w-2/5" />');
-    expect(dashboard).toContain('<th className="px-1 py-2 text-center whitespace-nowrap">Helfer</th>');
-    expect(dashboard).toContain('<th className="px-1 py-2 text-center whitespace-nowrap">Vorb.</th>');
-    expect(dashboard).toContain('<th className="px-1 py-2 text-center whitespace-nowrap">Nachb.</th>');
-    expect(dashboard).toContain('<th className="px-1 py-2 text-center whitespace-nowrap">Mat.</th>');
-    expect(dashboard).toContain('<th className="px-1 py-2 text-center whitespace-nowrap">Gesamt</th>');
+    expect(dashboard).toContain('<th className="px-1 py-1 text-center whitespace-nowrap">Helfer</th>');
+    expect(dashboard).toContain('<th className="px-1 py-1 text-center whitespace-nowrap">Vorb.</th>');
+    expect(dashboard).toContain('<th className="px-1 py-1 text-center whitespace-nowrap">Nachb.</th>');
+    expect(dashboard).toContain('<th className="px-1 py-1 text-center whitespace-nowrap">Mat.</th>');
+    expect(dashboard).toContain('<th className="px-1 py-1 text-center whitespace-nowrap">Gesamt</th>');
     expect(dashboard).not.toContain(">Mark.<");
     expect(dashboard).not.toContain(">Genehm.<");
     expect(dashboard).not.toContain("v.marketing");
