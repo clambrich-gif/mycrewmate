@@ -516,6 +516,48 @@ function HelperPdfNoteField({
   );
 }
 
+function CakeDonationAction({
+  helperName,
+  count,
+  onClick,
+  mobile = false,
+}: {
+  helperName: string;
+  count: number;
+  onClick: () => void;
+  mobile?: boolean;
+}) {
+  const hasCakes = count > 0;
+  const description = hasCakes
+    ? `Bereits ${count} Kuchen erfasst (Klick für weitere Spende)`
+    : "Kuchen für diesen Helfer erfassen";
+
+  return (
+    <button
+      type="button"
+      title={description}
+      aria-label={`${description}: ${helperName}`}
+      onClick={onClick}
+      className={cn(
+        "relative inline-flex shrink-0 items-center justify-center bg-transparent p-0 leading-none transition-transform duration-150 ease-out hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 active:scale-95",
+        mobile ? "h-11 w-11 text-xl" : "h-8 w-8 text-lg"
+      )}
+    >
+      <span
+        aria-hidden="true"
+        className={cn("select-none", hasCakes && "grayscale opacity-45")}
+      >
+        🍰
+      </span>
+      {hasCakes && (
+        <span className="absolute right-0 top-0 inline-flex min-w-4 -translate-y-0.5 translate-x-0.5 items-center justify-center rounded-full bg-slate-600 px-1 text-[10px] font-bold leading-4 text-white shadow-sm">
+          {count}
+        </span>
+      )}
+    </button>
+  );
+}
+
 export default function Helpers() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [, setLocation] = useLocation();
@@ -532,11 +574,21 @@ export default function Helpers() {
   const utils = trpc.useUtils();
   const { user } = useAuth();
   const { data: helpers = [], isLoading } = trpc.helpers.list.useQuery();
+  const { data: cakes = [] } = trpc.cakes.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: currentEvent } = trpc.events.current.useQuery();
   const { data: pdfSettings } = trpc.pdf.settings.useQuery();
   const { data: plan } = trpc.plan.evaluate.useQuery();
   const activeDays = currentEvent ? eventWeekdays(currentEvent.activeDays) : [];
+  const cakeCountByDonor = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const cake of cakes) {
+      const donor = personKey(cake.donor);
+      if (!donor) continue;
+      counts.set(donor, (counts.get(donor) ?? 0) + 1);
+    }
+    return counts;
+  }, [cakes]);
   const [name, setName] = useState("");
   const [newHelperCompanion, setNewHelperCompanion] = useState("");
   const [newHelperContactId, setNewHelperContactId] = useState("none");
@@ -579,6 +631,8 @@ export default function Helpers() {
     resetNewHelperForm();
     setNewHelperDialogOpen(true);
   };
+  const openCakeDonation = (helperName: string) =>
+    setLocation(`/kuchen?donor=${encodeURIComponent(helperName)}`);
   const create = trpc.helpers.create.useMutation({
     onSuccess: () => {
       const cakeWorkflowDonor = cakeWorkflowDonorRef.current;
@@ -888,6 +942,12 @@ export default function Helpers() {
                   )}
                 </div>
                 <div className="flex shrink-0 gap-1">
+                  <CakeDonationAction
+                    helperName={helper.name}
+                    count={cakeCountByDonor.get(personKey(helper.name)) ?? 0}
+                    mobile
+                    onClick={() => openCakeDonation(helper.name)}
+                  />
                   <Button
                     variant="outline"
                     size="icon"
@@ -1065,7 +1125,7 @@ export default function Helpers() {
         <CardContent className="helpers-table-scroll p-0">
           <table
             className="w-full table-fixed text-xs xl:text-sm"
-            style={{ minWidth: 932 + activeDays.length * 56 }}
+            style={{ minWidth: 964 + activeDays.length * 56 }}
           >
             <colgroup>
               <col className="w-[140px]" />
@@ -1078,7 +1138,7 @@ export default function Helpers() {
                 <col key={day} className="w-[56px]" />
               ))}
               <col className="w-[56px]" />
-              <col className="w-[120px]" />
+              <col className="w-[152px]" />
             </colgroup>
             <thead className="helpers-desktop-sticky-head bg-muted/60">
               <tr className="text-left">
@@ -1270,6 +1330,11 @@ export default function Helpers() {
                   </td>
                   <td className="p-1">
                     <div className="flex min-w-0 justify-center gap-1">
+                      <CakeDonationAction
+                        helperName={helper.name}
+                        count={cakeCountByDonor.get(personKey(helper.name)) ?? 0}
+                        onClick={() => openCakeDonation(helper.name)}
+                      />
                       <Button
                         variant="ghost"
                         size="icon"

@@ -335,7 +335,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain('className="w-full table-fixed text-xs xl:text-sm"');
     expect(helpers).toContain('<col className="w-[180px]" />');
     expect(helpers).toContain('<col className="w-[230px]" />');
-    expect(helpers).toContain("932 + activeDays.length * 56");
+    expect(helpers).toContain("964 + activeDays.length * 56");
+    expect(helpers).toContain('<col className="w-[152px]" />');
     expect(helpers).toContain("md:w-[52px] md:min-w-[52px]");
     expect(helpers).toContain('className="whitespace-nowrap p-2">Telefon Helfer');
     expect(mobileCards).not.toContain("compactOnDesktop");
@@ -1571,6 +1572,22 @@ describe("UI- und Mobile-UX-Regeln", () => {
     );
     expect(plan).toContain("helper.companion?.trim() && (");
     expect(plan).toContain('<span className="truncate">{label(helper)}</span>');
+  });
+
+  it("bietet für jeden Helfer eine klickbare Kuchenaktion mit dezentem Zähler", () => {
+    const helpers = source("client/src/pages/Helpers.tsx");
+
+    expect(helpers).toContain("function CakeDonationAction");
+    expect(helpers).toContain("trpc.cakes.list.useQuery()");
+    expect(helpers).toContain("const cakeCountByDonor = useMemo");
+    expect(helpers).toContain("personKey(cake.donor)");
+    expect(helpers).toContain("Kuchen für diesen Helfer erfassen");
+    expect(helpers).toContain("Bereits ${count} Kuchen erfasst (Klick für weitere Spende)");
+    expect(helpers).toContain("grayscale opacity-45");
+    expect(helpers).toContain("🍰");
+    expect(helpers).toContain("openCakeDonation(helper.name)");
+    expect(helpers).toContain("cakeCountByDonor.get(personKey(helper.name)) ?? 0");
+    expect(helpers).toContain('setLocation(`/kuchen?donor=${encodeURIComponent(helperName)}`)');
   });
 
   it("vereinheitlicht Erstellungsaktionen und filtert Helfer nach zusätzlicher Begleitung", () => {
