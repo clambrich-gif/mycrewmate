@@ -1,8 +1,10 @@
-const STATIC_CACHE = "mycrewmate-pwa-v1";
+const STATIC_CACHE = "mycrewmate-pwa-v2";
 const PWA_ASSETS = [
   "/manifest.json",
-  "/manus-storage/mycrewmate-icon-192_57e9396c.png",
-  "/manus-storage/mycrewmate-icon-512_ce31c34d.png",
+  "/favicon.ico",
+  "/manus-storage/mycrewmate-pwa-icon-192_9fe74598.png",
+  "/manus-storage/mycrewmate-pwa-icon-512_b16ae84c.png",
+  "/manus-storage/mycrewmate-apple-touch-icon-180_52e02d0f.png",
   "/icons/shortcut-einsatzplan-192.png",
   "/icons/shortcut-helferkartei-192.png",
   "/icons/shortcut-orga-chat-192.png",

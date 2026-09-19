@@ -76,7 +76,7 @@ import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
 
 const MYCREWMATE_WORDMARK = "/manus-storage/mycrewmate-wordmark_853a60e9.png";
-const MYCREWMATE_ICON = "/manus-storage/mycrewmate-icon-512_ce31c34d.png";
+const MYCREWMATE_ICON = "/manus-storage/mycrewmate-pwa-icon-512_b16ae84c.png";
 const CHAT_SNAPSHOT_POLL_MS = 5_000;
 
 type DeferredInstallPrompt = Event & {
@@ -1052,7 +1052,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   className="mt-3 min-h-11 w-full justify-start border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100"
                   onClick={() => void installPwa()}
                 >
-                  <Download className="mr-2 h-4 w-4" aria-hidden="true" />
+                  <img
+                    {...logoLoading}
+                    src={MYCREWMATE_ICON}
+                    alt=""
+                    aria-hidden="true"
+                    className="mr-2 h-10 w-10 rounded-xl shadow-md bg-white p-1.5 object-contain"
+                  />
+                  <Download className="mr-1.5 h-4 w-4" aria-hidden="true" />
                   <span>📱 Als App auf Handy speichern</span>
                 </Button>
               ) : (
@@ -1065,7 +1072,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     setPwaInstallDialogOpen(true);
                   }}
                 >
-                  <Download className="mr-2 h-4 w-4" aria-hidden="true" />
+                  <img
+                    {...logoLoading}
+                    src={MYCREWMATE_ICON}
+                    alt=""
+                    aria-hidden="true"
+                    className="mr-2 h-10 w-10 rounded-xl shadow-md bg-white p-1.5 object-contain"
+                  />
+                  <Download className="mr-1.5 h-4 w-4" aria-hidden="true" />
                   <span>📱 Als App auf Handy speichern</span>
                 </Button>
               )

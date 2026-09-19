@@ -53,22 +53,16 @@
   ],
   "icons": [
     {
-      "src": "/manus-storage/mycrewmate-icon-192_57e9396c.png",
+      "src": "/manus-storage/mycrewmate-pwa-icon-192_9fe74598.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     },
     {
-      "src": "/manus-storage/mycrewmate-icon-512_ce31c34d.png",
+      "src": "/manus-storage/mycrewmate-pwa-icon-512_b16ae84c.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/manus-storage/mycrewmate-icon-512_ce31c34d.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     }
   ]
 }

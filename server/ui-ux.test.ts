@@ -159,31 +159,36 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(manifest.display).toBe("standalone");
     expect(manifest.theme_color).toBe("#1e3a5f");
     expect(manifest.background_color).toBe("#f8fafc");
-    expect(manifest.icons).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          src: "/manus-storage/mycrewmate-icon-192_57e9396c.png",
-          sizes: "192x192",
-        }),
-        expect.objectContaining({
-          src: "/manus-storage/mycrewmate-icon-512_ce31c34d.png",
-          sizes: "512x512",
-          purpose: "maskable",
-        }),
-      ])
-    );
+    expect(manifest.icons).toEqual([
+      {
+        src: "/manus-storage/mycrewmate-pwa-icon-192_9fe74598.png",
+        sizes: "192x192",
+        type: "image/png",
+        purpose: "any maskable",
+      },
+      {
+        src: "/manus-storage/mycrewmate-pwa-icon-512_b16ae84c.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "any maskable",
+      },
+    ]);
     expect(html).toContain('<link rel="manifest" href="/manifest.json" />');
     expect(html).toContain('name="apple-mobile-web-app-capable" content="yes"');
     expect(html).toContain('name="apple-mobile-web-app-title" content="MyCrewMate"');
     expect(html).toContain("<title>MyCrewMate · Helferplanung</title>");
-    expect(html).toContain('/manus-storage/mycrewmate-icon-192_57e9396c.png');
+    expect(html).toContain('<link rel="icon" href="/favicon.ico" sizes="any" />');
+    expect(html).toContain('sizes="180x180" href="/manus-storage/mycrewmate-apple-touch-icon-180_52e02d0f.png"');
+    expect(readFileSync(new URL("../client/public/favicon.ico", import.meta.url)).subarray(0, 4).toString("hex")).toBe("00000100");
     expect(main).toContain('navigator.serviceWorker.register("/service-worker.js")');
-    expect(serviceWorker).toContain('const STATIC_CACHE = "mycrewmate-pwa-v1"');
-    expect(serviceWorker).toContain('/manus-storage/mycrewmate-icon-512_ce31c34d.png');
+    expect(serviceWorker).toContain('const STATIC_CACHE = "mycrewmate-pwa-v2"');
+    expect(serviceWorker).toContain('/manus-storage/mycrewmate-pwa-icon-512_b16ae84c.png');
+    expect(serviceWorker).toContain('/favicon.ico');
     expect(serviceWorker).not.toContain("/api/");
     expect(layout).toContain("beforeinstallprompt");
     expect(layout).toContain("appinstalled");
     expect(layout).toContain("📱 Als App auf Handy speichern");
+    expect(layout).toContain('className="mr-2 h-10 w-10 rounded-xl shadow-md bg-white p-1.5 object-contain"');
     expect(layout).toContain("MyCrewMate als App speichern");
     expect(layout).toContain("iOS (iPhone/iPad)");
     expect(layout).toContain('<TabsTrigger value="android"');
@@ -1114,10 +1119,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const layout = source("client/src/components/Layout.tsx");
 
     expect(layout).toContain('const MYCREWMATE_WORDMARK = "/manus-storage/mycrewmate-wordmark_853a60e9.png"');
-    expect(layout).toContain('const MYCREWMATE_ICON = "/manus-storage/mycrewmate-icon-512_ce31c34d.png"');
+    expect(layout).toContain('const MYCREWMATE_ICON = "/manus-storage/mycrewmate-pwa-icon-512_b16ae84c.png"');
     expect(layout).not.toContain("const RSC_LOGO");
     expect(layout.match(/src=\{MYCREWMATE_WORDMARK\}/g)).toHaveLength(3);
-    expect(layout.match(/src=\{MYCREWMATE_ICON\}/g)).toHaveLength(1);
+    expect(layout.match(/src=\{MYCREWMATE_ICON\}/g)).toHaveLength(3);
     expect(layout.match(/alt="MyCrewMate"/g)).toHaveLength(4);
   });
 
