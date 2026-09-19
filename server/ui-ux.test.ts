@@ -709,6 +709,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
   it("integriert das Helferpotenzial tagesgenau in die Einsatzbereitschaft", () => {
     const dashboard = source("client/src/pages/Dashboard.tsx");
     const helpers = source("client/src/pages/Helpers.tsx");
+    const plan = source("client/src/pages/Plan.tsx");
     const router = source("server/routers.ts");
 
     expect(router).toContain("isHelperWithoutFirstContact(helper, aktiveFestivaltage)");
@@ -739,6 +740,22 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain("workloadFilterLabel");
     expect(dashboard).toContain('id="helferauslastung"');
     expect(dashboard).toContain("Filter aufheben");
+    expect(dashboard).toContain("const openHelperWorkload");
+    expect(dashboard).toContain("helperId: helper.id");
+    expect(dashboard).toContain('data-dashboard-workload-cell="helper"');
+    expect(dashboard).toContain('data-dashboard-workload-cell={day}');
+    expect(dashboard).toContain('data-dashboard-workload-cell="gesamt"');
+    expect(dashboard).toContain("openHelperWorkload(a.name, day)");
+    expect(dashboard).toContain("openHelperWorkload(a.name)");
+    expect(dashboard).toContain("eingeteilte Schichten im Einsatzplan anzeigen");
+    expect(plan).toContain("PLAN_HELPER_QUERY_KEY");
+    expect(plan).toContain("PLAN_DAY_QUERY_KEY");
+    expect(plan).toContain("parsePlanHelperFilter");
+    expect(plan).toContain("parsePlanDayFilter");
+    expect(plan).toContain("dashboardHelperId");
+    expect(plan).toContain("assignment.helperId === dashboardHelperId");
+    expect(plan).toContain("data-dashboard-helper-filter");
+    expect(plan).toContain("Dashboardfilter:");
     expect(dashboard).toContain('data-dashboard-section="Helfer-Kennzahlen"');
     expect(dashboard).toContain(
       'className="grid gap-4 md:grid-cols-3"'
@@ -1631,6 +1648,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("setFlexibleAssignmentFilter(\"alle\")");
     expect(plan).toContain("next.delete(PLAN_WARNING_QUERY_KEY)");
     expect(plan).toContain("next.delete(PLAN_STATUS_QUERY_KEY)");
+    expect(plan).toContain("next.delete(PLAN_HELPER_QUERY_KEY)");
+    expect(plan).toContain("next.delete(PLAN_DAY_QUERY_KEY)");
     expect(plan).toContain("Filter zurücksetzen");
     expect(plan).toContain("Alle Einsatzplanfilter zurücksetzen");
     expect(plan).toContain('value="OK_MANUELL">OK (Manuell)</SelectItem>');

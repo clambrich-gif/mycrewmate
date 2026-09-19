@@ -863,6 +863,18 @@ export default function Dashboard() {
   if (isLoading || isEventLoading || areHelpersLoading || !s || !currentEvent)
     return <div className="text-muted-foreground">Lade Dashboard …</div>;
 
+  const openHelperWorkload = (helperName: string, day?: Weekday) => {
+    const helper = helperByName.get(helperName);
+    if (!helper) return;
+    const target: DashboardTarget = {
+      path: "/einsatzplan",
+      helperId: helper.id,
+      ...(day ? { day } : {}),
+    };
+    preloadRoute(target.path);
+    navigate(dashboardTargetHref(target));
+  };
+
   const priorityActions: PriorityAction[] = [
     ...(s.ausfallGesamt > 0
       ? [
@@ -1235,11 +1247,19 @@ export default function Dashboard() {
               <tbody>
                 {visibleWorkload.map(a => (
                   <tr key={a.name} className="border-b last:border-0">
-                    <td
-                      className="overflow-hidden text-ellipsis whitespace-nowrap py-1 pr-1 sm:pr-2"
-                      title={a.name}
-                    >
-                      {a.name}
+                    <td className="overflow-hidden py-1 pr-1 sm:pr-2">
+                      <button
+                        type="button"
+                        data-dashboard-workload-cell="helper"
+                        className="w-full overflow-hidden text-ellipsis whitespace-nowrap text-left font-medium text-slate-900 underline-offset-2 hover:text-blue-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                        title={`${a.name}: alle eingeteilten Schichten anzeigen`}
+                        aria-label={`${a.name}: alle eingeteilten Schichten im Einsatzplan anzeigen`}
+                        onPointerEnter={() => preloadRoute("/einsatzplan")}
+                        onFocus={() => preloadRoute("/einsatzplan")}
+                        onClick={() => openHelperWorkload(a.name)}
+                      >
+                        {a.name}
+                      </button>
                     </td>
                     {activeDays.map(day => {
                       const value = a.byDay[day];
@@ -1263,15 +1283,36 @@ export default function Dashboard() {
                       return (
                         <td
                           key={day}
-                          className={`px-0.5 py-1 text-right tabular-nums sm:px-1 ${availabilityClass}`}
-                          title={availabilityTitle}
+                          className="px-0.5 py-1 text-right sm:px-1"
                         >
-                          {value}
+                          <button
+                            type="button"
+                            data-dashboard-workload-cell={day}
+                            className={`w-full rounded px-0.5 text-right tabular-nums underline-offset-2 hover:bg-blue-50 hover:text-blue-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${availabilityClass}`}
+                            title={`${availabilityTitle ?? `${day}: ${value} eingeteilte Schichten`}. Einsatzplan anzeigen`}
+                            aria-label={`${a.name}, ${day}: ${value} eingeteilte Schichten im Einsatzplan anzeigen`}
+                            onPointerEnter={() => preloadRoute("/einsatzplan")}
+                            onFocus={() => preloadRoute("/einsatzplan")}
+                            onClick={() => openHelperWorkload(a.name, day)}
+                          >
+                            {value}
+                          </button>
                         </td>
                       );
                     })}
-                    <td className="py-1 pl-0.5 text-right font-semibold tabular-nums sm:pl-1">
-                      {a.gesamt}
+                    <td className="py-1 pl-0.5 text-right sm:pl-1">
+                      <button
+                        type="button"
+                        data-dashboard-workload-cell="gesamt"
+                        className="w-full rounded px-0.5 text-right font-semibold tabular-nums underline-offset-2 hover:bg-blue-50 hover:text-blue-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                        title={`${a.name}: alle eingeteilten Schichten anzeigen`}
+                        aria-label={`${a.name}: insgesamt ${a.gesamt} eingeteilte Schichten im Einsatzplan anzeigen`}
+                        onPointerEnter={() => preloadRoute("/einsatzplan")}
+                        onFocus={() => preloadRoute("/einsatzplan")}
+                        onClick={() => openHelperWorkload(a.name)}
+                      >
+                        {a.gesamt}
+                      </button>
                     </td>
                   </tr>
                 ))}

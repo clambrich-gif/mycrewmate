@@ -4,6 +4,8 @@ import {
   parseHelperAssignmentFilter,
   parseHelperConfirmationFilter,
   parseHelperFirstContactFilter,
+  parsePlanDayFilter,
+  parsePlanHelperFilter,
   parsePlanStatusFilter,
   parsePlanWarningFilter,
   planStatusMatchesFilter,
@@ -27,6 +29,16 @@ describe("Dashboard-Zielnavigation", () => {
     expect(
       dashboardTargetHref({ path: "/einsatzplan", status: "KNAPP" })
     ).toBe("/einsatzplan?status=KNAPP");
+    expect(
+      dashboardTargetHref({
+        path: "/einsatzplan",
+        helperId: 42,
+        day: "Samstag",
+      })
+    ).toBe("/einsatzplan?helfer=42&tag=Samstag");
+    expect(
+      dashboardTargetHref({ path: "/einsatzplan", helperId: 42 })
+    ).toBe("/einsatzplan?helfer=42");
   });
 
   it("erzeugt stabile Aufgaben-URLs für offene und abgelehnte Vorbereitung sowie Nachbereitung", () => {
@@ -62,6 +74,11 @@ describe("Dashboard-Zielnavigation", () => {
     expect(parsePlanStatusFilter("KNAPP")).toBe("KNAPP");
     expect(parsePlanStatusFilter("OK_MANUELL")).toBe("OK_MANUELL");
     expect(parsePlanStatusFilter("offen")).toBe("alle");
+    expect(parsePlanHelperFilter("42")).toBe(42);
+    expect(parsePlanHelperFilter("0")).toBeNull();
+    expect(parsePlanHelperFilter("42.5")).toBeNull();
+    expect(parsePlanDayFilter("Samstag")).toBe("Samstag");
+    expect(parsePlanDayFilter("Feiertag")).toBeNull();
     expect(parseTaskStatusFilter("offen")).toBe("offen");
     expect(parseTaskStatusFilter("inArbeit")).toBe("inArbeit");
     expect(parseTaskStatusFilter("erledigt")).toBe("erledigt");

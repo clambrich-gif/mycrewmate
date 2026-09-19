@@ -57,10 +57,14 @@ import {
 } from "@/components/ui/popover";
 import { shiftsOverlap, type ShiftTimeLike } from "@shared/shift-time";
 import {
+  PLAN_DAY_QUERY_KEY,
+  PLAN_HELPER_QUERY_KEY,
   PLAN_WARNING_FILTERS,
   PLAN_WARNING_QUERY_KEY,
   PLAN_STATUS_QUERY_KEY,
   planStatusMatchesFilter,
+  parsePlanDayFilter,
+  parsePlanHelperFilter,
   parsePlanWarningFilter,
   parsePlanStatusFilter,
   type PlanStatusFilter,
@@ -598,6 +602,12 @@ export default function Plan() {
     searchParams.get(PLAN_WARNING_QUERY_KEY)
   );
   const status = parsePlanStatusFilter(searchParams.get(PLAN_STATUS_QUERY_KEY));
+  const dashboardHelperId = parsePlanHelperFilter(
+    searchParams.get(PLAN_HELPER_QUERY_KEY)
+  );
+  const dashboardDayFilter = parsePlanDayFilter(
+    searchParams.get(PLAN_DAY_QUERY_KEY)
+  );
   const locationFilter = Number(searchParams.get("location")) || null;
   const canEditPlan = user?.role === "admin";
   const { data: evals = [], isLoading } = trpc.plan.evaluate.useQuery();
@@ -611,7 +621,7 @@ export default function Plan() {
     () => (currentEvent ? eventWeekdays(currentEvent.activeDays) : []),
     [currentEvent?.activeDays]
   );
-  const [day, setDay] = useState<string>("alle");
+  const [day, setDay] = useState<string>(() => dashboardDayFilter ?? "alle");
   const [area, setArea] = useState<string>("alle");
   const [apFilter, setApFilter] = useState<string>("alle");
   const [flexibleAssignmentFilter, setFlexibleAssignmentFilter] = useState<
@@ -679,6 +689,8 @@ export default function Plan() {
         const next = new URLSearchParams(previous);
         next.delete(PLAN_WARNING_QUERY_KEY);
         next.delete(PLAN_STATUS_QUERY_KEY);
+        next.delete(PLAN_HELPER_QUERY_KEY);
+        next.delete(PLAN_DAY_QUERY_KEY);
         next.delete("location");
         return next;
       },
@@ -689,6 +701,10 @@ export default function Plan() {
   useEffect(() => {
     if (day !== "alle" && !activeDays.includes(day as Weekday)) setDay("alle");
   }, [activeDays, day]);
+
+  useEffect(() => {
+    if (dashboardDayFilter) setDay(dashboardDayFilter);
+  }, [dashboardDayFilter]);
 
   const invalidate = () => {
     utils.plan.evaluate.invalidate();
@@ -888,6 +904,9 @@ export default function Plan() {
     () => new Map(helpers.map(helper => [helper.id, helper])),
     [helpers]
   );
+  const dashboardHelper = dashboardHelperId
+    ? helperById.get(dashboardHelperId)
+    : null;
   const label = useCallback(
     (helper: { name: string; contactId?: number | null }) =>
       `${helper.name}${helper.contactId ? ` (${contactName(helper.contactId)})` : ""}`,
@@ -1057,6 +1076,10 @@ export default function Plan() {
             ) &&
             (warningFilter !== "konflikte" || e.doppelCount > 0) &&
             (warningFilter !== "ausfaelle" || e.ausfallCount > 0) &&
+            (!dashboardHelperId ||
+              e.assigned.some(
+                assignment => assignment.helperId === dashboardHelperId
+              )) &&
             planEvaluationMatchesSearch(e, q, helperNameById) &&
             (flexibleAssignmentFilter === "alle" ||
               e.shift.allowFlexibleAssignment) &&
@@ -1078,6 +1101,7 @@ export default function Plan() {
       locationFilter,
       status,
       warningFilter,
+      dashboardHelperId,
       q,
       apFilter,
       flexibleAssignmentFilter,
@@ -1430,6 +1454,34 @@ export default function Plan() {
             size="sm"
             className="shrink-0 border-amber-400 bg-white text-amber-950 hover:bg-amber-100"
             onClick={() => updateWarningFilter("alle")}
+          >
+            Filter aufheben
+          </Button>
+        </div>
+      )}
+
+      {dashboardHelperId && (
+        <div
+          data-dashboard-helper-filter
+          className="flex flex-col gap-3 rounded-xl border border-blue-200 bg-blue-50 p-3 text-blue-950 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div className="flex min-w-0 items-start gap-3" role="status" aria-live="polite">
+            <Info className="mt-0.5 size-5 shrink-0 text-blue-700" aria-hidden="true" />
+            <div className="min-w-0">
+              <p className="font-semibold">Dashboardfilter: {dashboardHelper?.name ?? "Helfer"}</p>
+              <p className="text-sm text-blue-800">
+                {dashboardDayFilter
+                  ? `Nur eingeteilte Schichten am ${dashboardDayFilter}.`
+                  : "Nur eingeteilte Schichten dieses Helfers."}
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="shrink-0 border-blue-300 bg-white text-blue-900 hover:bg-blue-100"
+            onClick={resetPlanFilters}
           >
             Filter aufheben
           </Button>
