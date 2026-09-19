@@ -803,7 +803,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain('flex h-[250px] flex-col overflow-hidden shadow-sm');
     expect(dashboard).toContain('min-h-0 flex-1 overflow-auto pt-0');
     expect(dashboard).toContain('min-h-0 flex-1 overflow-y-auto px-3 pt-0 sm:px-6');
-    expect(dashboard).toContain('thead className="sticky top-0 bg-card"');
+    expect(
+      (dashboard.match(/thead className="sticky top-0 z-10 bg-slate-50"/g) ?? []).length
+    ).toBe(2);
+    expect(dashboard).toContain('border-b border-slate-200 bg-slate-50');
+    expect(dashboard).toContain('className="bg-slate-50 py-1 pr-3"');
+    expect(dashboard).toContain('className="bg-slate-50 py-1 pr-1 sm:pr-2"');
   });
 
   it("zeigt das Live-Countdown-Widget im Dashboardkopf und den Kalender-Trigger im Layout", () => {
@@ -940,11 +945,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
 
     expect(dashboard).toContain('className="w-full min-w-[420px] table-fixed text-sm"');
     expect(dashboard).toContain('<col className="w-2/5" />');
-    expect(dashboard).toContain('<th className="px-1 py-1 text-center whitespace-nowrap">Helfer</th>');
-    expect(dashboard).toContain('<th className="px-1 py-1 text-center whitespace-nowrap">Vorb.</th>');
-    expect(dashboard).toContain('<th className="px-1 py-1 text-center whitespace-nowrap">Nachb.</th>');
-    expect(dashboard).toContain('<th className="px-1 py-1 text-center whitespace-nowrap">Mat.</th>');
-    expect(dashboard).toContain('<th className="px-1 py-1 text-center whitespace-nowrap">Gesamt</th>');
+    expect(dashboard).toContain('<th className="bg-slate-50 px-1 py-1 text-center whitespace-nowrap">Helfer</th>');
+    expect(dashboard).toContain('<th className="bg-slate-50 px-1 py-1 text-center whitespace-nowrap">Vorb.</th>');
+    expect(dashboard).toContain('<th className="bg-slate-50 px-1 py-1 text-center whitespace-nowrap">Nachb.</th>');
+    expect(dashboard).toContain('<th className="bg-slate-50 px-1 py-1 text-center whitespace-nowrap">Mat.</th>');
+    expect(dashboard).toContain('<th className="bg-slate-50 px-1 py-1 text-center whitespace-nowrap">Gesamt</th>');
     expect(dashboard).not.toContain(">Mark.<");
     expect(dashboard).not.toContain(">Genehm.<");
     expect(dashboard).not.toContain("v.marketing");
@@ -1889,6 +1894,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain('className="h-full gap-2 border-blue-300');
     expect(dashboard).toContain('className="h-full gap-2 border-rose-200');
     expect(dashboard).toContain('className="h-full gap-2 border-emerald-300');
+    expect(dashboard).toContain('completion >= 100');
+    expect(dashboard).toContain('completion >= 80');
+    expect(dashboard).toContain('bg-emerald-500');
+    expect(dashboard).toContain('bg-amber-400');
+    expect(dashboard).toContain('data-progress-tone={progressTone.name}');
   });
 
   it("bietet zentrale Orte, Ortsauswahl und Kartenlinks in Schichten und Vorbereitungen", () => {

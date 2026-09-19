@@ -579,7 +579,14 @@ function DonationSummaryCard({
       <CardContent className="grid gap-3 px-3 pb-3 pt-0 sm:px-4 sm:pb-3 lg:grid-cols-[minmax(0,1fr)_minmax(8.5rem,0.8fr)]">
         <div className="space-y-1.5">
           {targetCategories.map(category => {
-            const quote = category.target > 0 ? Math.min(100, Math.round((category.ist / category.target) * 100)) : 0;
+            const completion = category.target > 0 ? (category.ist / category.target) * 100 : 0;
+            const quote = Math.min(100, Math.round(completion));
+            const progressTone =
+              completion >= 100
+                ? { name: "erreicht", track: "bg-emerald-100", fill: "bg-emerald-500" }
+                : completion >= 80
+                  ? { name: "fast-erreicht", track: "bg-amber-100", fill: "bg-amber-400" }
+                  : { name: "offen", track: "bg-rose-100", fill: "bg-rose-500" };
             const text = category.target > 0 ? `${category.ist} / ${category.target}` : `${category.ist} / –`;
             return (
               <div key={category.id}>
@@ -587,8 +594,8 @@ function DonationSummaryCard({
                   <span className="min-w-0 truncate font-medium text-slate-800">{category.label}</span>
                   <span className="shrink-0 font-bold tabular-nums text-slate-950">{text}</span>
                 </div>
-                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-rose-100" role="progressbar" aria-label={`${category.label}: ${category.ist} von ${category.target || 0} Spenden erfasst`} aria-valuemin={0} aria-valuemax={Math.max(category.target, 1)} aria-valuenow={Math.min(category.ist, Math.max(category.target, 1))}>
-                  <div className="h-full rounded-full bg-rose-500 transition-[width] duration-200" style={{ width: `${quote}%` }} />
+                <div className={`mt-1 h-1.5 overflow-hidden rounded-full ${progressTone.track}`} role="progressbar" aria-label={`${category.label}: ${category.ist} von ${category.target || 0} Spenden erfasst`} aria-valuemin={0} aria-valuemax={Math.max(category.target, 1)} aria-valuenow={Math.min(category.ist, Math.max(category.target, 1))} data-progress-tone={progressTone.name}>
+                  <div className={`h-full rounded-full ${progressTone.fill} transition-[width] duration-200`} style={{ width: `${quote}%` }} />
                 </div>
               </div>
             );
@@ -1125,14 +1132,14 @@ export default function Dashboard() {
                 <col className="w-[12%]" />
                 <col className="w-[12%]" />
               </colgroup>
-              <thead className="sticky top-0 bg-card">
-                <tr className="border-b text-left text-muted-foreground">
-                  <th className="py-1 pr-3">Ansprechpartner</th>
-                  <th className="px-1 py-1 text-center whitespace-nowrap">Helfer</th>
-                  <th className="px-1 py-1 text-center whitespace-nowrap">Vorb.</th>
-                  <th className="px-1 py-1 text-center whitespace-nowrap">Nachb.</th>
-                  <th className="px-1 py-1 text-center whitespace-nowrap">Mat.</th>
-                  <th className="px-1 py-1 text-center whitespace-nowrap">Gesamt</th>
+              <thead className="sticky top-0 z-10 bg-slate-50">
+                <tr className="border-b border-slate-200 bg-slate-50 text-left text-muted-foreground">
+                  <th className="bg-slate-50 py-1 pr-3">Ansprechpartner</th>
+                  <th className="bg-slate-50 px-1 py-1 text-center whitespace-nowrap">Helfer</th>
+                  <th className="bg-slate-50 px-1 py-1 text-center whitespace-nowrap">Vorb.</th>
+                  <th className="bg-slate-50 px-1 py-1 text-center whitespace-nowrap">Nachb.</th>
+                  <th className="bg-slate-50 px-1 py-1 text-center whitespace-nowrap">Mat.</th>
+                  <th className="bg-slate-50 px-1 py-1 text-center whitespace-nowrap">Gesamt</th>
                 </tr>
               </thead>
               <tbody>
@@ -1210,19 +1217,19 @@ export default function Dashboard() {
                 ))}
                 <col className="w-[13%]" />
               </colgroup>
-              <thead className="sticky top-0 bg-card">
-                <tr className="border-b text-left text-muted-foreground">
-                  <th className="py-1 pr-1 sm:pr-2">Helfer</th>
+              <thead className="sticky top-0 z-10 bg-slate-50">
+                <tr className="border-b border-slate-200 bg-slate-50 text-left text-muted-foreground">
+                  <th className="bg-slate-50 py-1 pr-1 sm:pr-2">Helfer</th>
                   {activeDays.map(day => (
                     <th
                       key={day}
-                      className="px-0.5 py-1 text-right sm:px-1"
+                      className="bg-slate-50 px-0.5 py-1 text-right sm:px-1"
                       title={day}
                     >
                       {WEEKDAY_SHORT_LABELS[day]}
                     </th>
                   ))}
-                  <th className="py-1 pl-0.5 text-right sm:pl-1">Gesamt</th>
+                  <th className="bg-slate-50 py-1 pl-0.5 text-right sm:pl-1">Gesamt</th>
                 </tr>
               </thead>
               <tbody>
