@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
 import { trpc } from "@/lib/trpc";
 import { Cake, Pencil, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 type CakeRow = {
@@ -100,10 +100,22 @@ function TraitTags({ row }: { row: CakeRow }) {
 export default function Cakes() {
   const utils = trpc.useUtils();
   const { data: rows = [], isLoading } = trpc.cakes.list.useQuery();
+  const { data: helpers = [] } = trpc.helpers.list.useQuery();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCake, setEditingCake] = useState<CakeRow | null>(null);
   const [form, setForm] = useState<CakeForm>(EMPTY_CAKE_FORM);
   const [deleteTarget, setDeleteTarget] = useState<CakeRow | null>(null);
+  const donorOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          helpers
+            .map(helper => helper.name.trim())
+            .filter((name): name is string => Boolean(name))
+        )
+      ).sort((left, right) => left.localeCompare(right, "de-DE")),
+    [helpers]
+  );
 
   const refresh = () => {
     void utils.cakes.list.invalidate();
@@ -327,7 +339,26 @@ export default function Cakes() {
           >
             <div className="space-y-1.5">
               <Label htmlFor="cake-donor">Spender <span aria-hidden="true">*</span></Label>
-              <Input id="cake-donor" autoFocus required value={form.donor} placeholder="z. B. Josi Volli" onChange={event => setForm(current => ({ ...current, donor: event.target.value }))} />
+              <Input
+                id="cake-donor"
+                list="cake-donor-options"
+                autoFocus
+                required
+                value={form.donor}
+                placeholder="Helfer auswählen oder Namen eingeben"
+                aria-describedby="cake-donor-hint"
+                onChange={event =>
+                  setForm(current => ({ ...current, donor: event.target.value }))
+                }
+              />
+              <datalist id="cake-donor-options">
+                {donorOptions.map(name => (
+                  <option key={name} value={name} />
+                ))}
+              </datalist>
+              <p id="cake-donor-hint" className="text-xs text-muted-foreground">
+                Helfer auswählen oder einen neuen Namen frei eingeben.
+              </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">

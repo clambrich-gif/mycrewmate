@@ -1717,6 +1717,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(cakes).toContain("🥛 Laktosefrei");
     expect(cakes).toContain("🌰 Enthält Nüsse");
     expect(cakes).toContain("Hinweise & Allergene (optional)");
+    expect(cakes).toContain("trpc.helpers.list.useQuery()");
+    expect(cakes).toContain('list="cake-donor-options"');
+    expect(cakes).toContain('<datalist id="cake-donor-options">');
+    expect(cakes).toContain("Helfer auswählen oder einen neuen Namen frei eingeben.");
   });
 
   it("bietet zentrale Orte, Ortsauswahl und Kartenlinks in Schichten und Vorbereitungen", () => {
