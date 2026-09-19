@@ -184,7 +184,18 @@ export const PROJECT_EXCEL_HEADERS: Record<string, string[]> = {
     "Bemerkung",
     "Reihenfolge",
   ],
-  KUCHEN: ["ID", "Spender", "Kuchen", "Abgabezeit", "Bemerkung", "Reihenfolge"],
+  KUCHEN: [
+    "ID",
+    "Spender",
+    "Kuchen",
+    "Vegan",
+    "Glutenfrei",
+    "Laktosefrei",
+    "Enthält Nüsse",
+    "Abgabezeit",
+    "Hinweise & Allergene",
+    "Reihenfolge",
+  ],
   FINANZEN: [
     "ID",
     "Kategorie",
@@ -407,6 +418,10 @@ type CakeRow = {
   donor: string;
   cake: string;
   dropoffTime: string;
+  vegan: boolean;
+  glutenFree: boolean;
+  lactoseFree: boolean;
+  containsNuts: boolean;
   note: string;
   sortOrder: number;
 };
@@ -808,6 +823,16 @@ const text = (value: unknown, max: number, label: string, required = false) => {
   if (result.length > max)
     throw new Error(`${label} ist länger als ${max} Zeichen`);
   return result;
+};
+const optionalBoolean = (value: unknown, label: string) => {
+  if (value === null || value === undefined || normalize(value) === "") return false;
+  if (typeof value === "boolean") return value;
+  const normalized = normalize(value).toLocaleLowerCase("de-DE");
+  if (["1", "ja", "j", "yes", "true", "wahr", "x", "✓"].includes(normalized))
+    return true;
+  if (["0", "nein", "n", "no", "false", "falsch", "-"].includes(normalized))
+    return false;
+  throw new Error(`${label} muss Ja oder Nein sein`);
 };
 const nullableId = (value: unknown, label: string) => {
   if (value === null || value === undefined || normalize(value) === "")
@@ -1793,7 +1818,24 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
         60,
         `KUCHEN Zeile ${index + 2}: Abgabezeit`
       ),
-      note: text(row.Bemerkung, 10_000, `KUCHEN Zeile ${index + 2}: Bemerkung`),
+      vegan: optionalBoolean(row.Vegan, `KUCHEN Zeile ${index + 2}: Vegan`),
+      glutenFree: optionalBoolean(
+        row.Glutenfrei,
+        `KUCHEN Zeile ${index + 2}: Glutenfrei`
+      ),
+      lactoseFree: optionalBoolean(
+        row.Laktosefrei,
+        `KUCHEN Zeile ${index + 2}: Laktosefrei`
+      ),
+      containsNuts: optionalBoolean(
+        row["Enthält Nüsse"],
+        `KUCHEN Zeile ${index + 2}: Enthält Nüsse`
+      ),
+      note: text(
+        row["Hinweise & Allergene"] ?? row.Bemerkung,
+        10_000,
+        `KUCHEN Zeile ${index + 2}: Hinweise & Allergene`
+      ),
       sortOrder: integer(
         row.Reihenfolge || 0,
         `KUCHEN Zeile ${index + 2}: Reihenfolge`,
@@ -2104,7 +2146,17 @@ function comparableCurrent(snapshot: CurrentSnapshot) {
     })),
     cakes: [...snapshot.cakes].sort(byId).map(row => ({
       sourceId: row.id,
-      ...clean(row, ["donor", "cake", "dropoffTime", "note", "sortOrder"]),
+      ...clean(row, [
+        "donor",
+        "cake",
+        "dropoffTime",
+        "vegan",
+        "glutenFree",
+        "lactoseFree",
+        "containsNuts",
+        "note",
+        "sortOrder",
+      ]),
     })),
     finances: [...snapshot.finances].sort(byId).map(row => ({
       sourceId: row.id,
@@ -3468,6 +3520,10 @@ export async function restoreProjectDocument(
           donor: row.donor,
           cake: row.cake,
           dropoffTime: row.dropoffTime,
+          vegan: row.vegan,
+          glutenFree: row.glutenFree,
+          lactoseFree: row.lactoseFree,
+          containsNuts: row.containsNuts,
           note: row.note || null,
           sortOrder: row.sortOrder,
         }))
@@ -3895,8 +3951,12 @@ export async function exportProjectExcel(): Promise<{
       ID: row.sourceId,
       Spender: row.donor,
       Kuchen: row.cake,
+      Vegan: row.vegan,
+      Glutenfrei: row.glutenFree,
+      Laktosefrei: row.lactoseFree,
+      "Enthält Nüsse": row.containsNuts,
       Abgabezeit: row.dropoffTime,
-      Bemerkung: row.note,
+      "Hinweise & Allergene": row.note,
       Reihenfolge: row.sortOrder,
     }))
   );

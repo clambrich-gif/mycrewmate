@@ -20,7 +20,7 @@ import { normalizeMaterialStatus } from "../shared/material-status";
 import { eventDateRangeError } from "../shared/event-dates";
 
 const PROJECT_FORMAT = "RSC-HELFERPLANUNG-PROJEKTDATEI";
-const PROJECT_VERSION = 13;
+const PROJECT_VERSION = 14;
 const MAX_PROJECT_BYTES = 10_000_000;
 const MAX_ROWS = 10_000;
 
@@ -233,6 +233,10 @@ const documentSchema = z
           donor: short(200).min(1),
           cake: short(200),
           dropoffTime: short(60),
+          vegan: z.boolean().default(false),
+          glutenFree: z.boolean().default(false),
+          lactoseFree: z.boolean().default(false),
+          containsNuts: z.boolean().default(false),
           note: short(10_000),
           sortOrder: z.number().int().min(0).max(1_000_000),
         })
@@ -780,6 +784,27 @@ export function parseProjectFile(base64: string): {
     raw.metadata &&
     typeof raw.metadata === "object" &&
     "version" in raw.metadata &&
+    raw.metadata.version === 13
+  ) {
+    const legacy = raw as Record<string, any>;
+    legacy.metadata = { ...legacy.metadata, version: PROJECT_VERSION };
+    legacy.cakes = Array.isArray(legacy.cakes)
+      ? legacy.cakes.map((cake: Record<string, unknown>) => ({
+          ...cake,
+          vegan: cake.vegan ?? false,
+          glutenFree: cake.glutenFree ?? false,
+          lactoseFree: cake.lactoseFree ?? false,
+          containsNuts: cake.containsNuts ?? false,
+        }))
+      : legacy.cakes;
+  }
+  if (
+    raw &&
+    typeof raw === "object" &&
+    "metadata" in raw &&
+    raw.metadata &&
+    typeof raw.metadata === "object" &&
+    "version" in raw.metadata &&
     raw.metadata.version === PROJECT_VERSION
   ) {
     const document = raw as Record<string, any>;
@@ -828,6 +853,15 @@ export function parseProjectFile(base64: string): {
           };
         })
       : document.materials;
+    document.cakes = Array.isArray(document.cakes)
+      ? document.cakes.map((cake: Record<string, unknown>) => ({
+          ...cake,
+          vegan: cake.vegan ?? false,
+          glutenFree: cake.glutenFree ?? false,
+          lactoseFree: cake.lactoseFree ?? false,
+          containsNuts: cake.containsNuts ?? false,
+        }))
+      : document.cakes;
   }
   const parsed = documentSchema.safeParse(raw);
   if (!parsed.success)

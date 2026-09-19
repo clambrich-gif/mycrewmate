@@ -710,6 +710,12 @@ export const cakes = mysqlTable("cakes", {
   donor: varchar("donor", { length: 200 }).notNull(),
   cake: varchar("cake", { length: 200 }).default("").notNull(),
   dropoffTime: varchar("dropoffTime", { length: 60 }).default("").notNull(),
+  /** Freiwillige Kennzeichnungen für die schnelle Ausgabe am Kuchenbuffet. */
+  vegan: boolean("vegan").default(false).notNull(),
+  glutenFree: boolean("glutenFree").default(false).notNull(),
+  lactoseFree: boolean("lactoseFree").default(false).notNull(),
+  containsNuts: boolean("containsNuts").default(false).notNull(),
+  /** Freitext für zusätzliche Hinweise wie Alkohol oder konkrete Nüsse. */
   note: text("note"),
   sortOrder: int("sortOrder").default(0).notNull(),
 }, table => [

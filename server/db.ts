@@ -1286,6 +1286,10 @@ const cakeAuditEntity = (cake: typeof cakes.$inferSelect): AuditEntity => ({
   details: {
     cake: cake.cake,
     dropoffTime: cake.dropoffTime,
+    vegan: cake.vegan,
+    glutenFree: cake.glutenFree,
+    lactoseFree: cake.lactoseFree,
+    containsNuts: cake.containsNuts,
     note: cake.note,
     sortOrder: cake.sortOrder,
   },

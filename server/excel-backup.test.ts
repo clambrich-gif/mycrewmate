@@ -150,6 +150,7 @@ describe("Excel-Datensicherung", () => {
     vi.clearAllMocks();
     data.finances.splice(0, data.finances.length);
     data.prep_tasks.splice(0, data.prep_tasks.length);
+    data.cakes.splice(0, data.cakes.length);
     dbMocks.getDb.mockResolvedValue(fakeDb());
   });
 
@@ -1121,5 +1122,49 @@ describe("Excel-Datensicherung", () => {
     });
     const parsedLegacy = parseBackupWorkbook(legacy.toString("base64"));
     expect(parsedLegacy.materials[0].status).toBe("geliefert");
+  });
+
+  it("exportiert und liest KUCHEN mit Allergen- und Eigenschaftsspalten roundtrip-sicher", async () => {
+    (data.cakes as any[]).push({
+      id: 71,
+      year: 2026,
+      eventId: 1,
+      donor: "Josi Volli",
+      cake: "Rumkuchen",
+      dropoffTime: "Fr. 14:00",
+      vegan: false,
+      glutenFree: false,
+      lactoseFree: true,
+      containsNuts: true,
+      note: "Enthält Alkohol / Rum",
+      sortOrder: 0,
+    });
+
+    const exported = await exportBackupExcel();
+    const workbook = XLSX.read(exported.buffer, { type: "buffer" });
+    const headers = XLSX.utils.sheet_to_json<any[]>(workbook.Sheets.KUCHEN, {
+      header: 1,
+    })[0];
+    expect(headers).toEqual(
+      expect.arrayContaining([
+        "Vegan",
+        "Glutenfrei",
+        "Laktosefrei",
+        "Enthält Nüsse",
+        "Hinweise & Allergene",
+      ])
+    );
+
+    const parsed = parseBackupWorkbook(exported.buffer.toString("base64"));
+    expect(parsed.cakes[0]).toMatchObject({
+      donor: "Josi Volli",
+      cake: "Rumkuchen",
+      dropoffTime: "Fr. 14:00",
+      vegan: false,
+      glutenFree: false,
+      lactoseFree: true,
+      containsNuts: true,
+      note: "Enthält Alkohol / Rum",
+    });
   });
 });

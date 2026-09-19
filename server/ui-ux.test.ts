@@ -1709,9 +1709,14 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(taskGeneric).toContain("Alle {filterConfig.statusLabel ?? \"Stände\"}");
     expect(taskGeneric).toContain("Filter zurücksetzen");
     expect(taskGeneric).toContain("const resetAllFilters");
-    expect(cakes).toContain("createInDialog");
-    expect(cakes).toContain('createDialogTitle="Kuchen erfassen"');
-    expect(cakes).toContain('createTriggerLabel="Kuchen erfassen"');
+    expect(cakes).toContain("Kuchen erfassen");
+    expect(cakes).toContain("Kuchenspende bearbeiten");
+    expect(cakes).toContain("Eigenschaften / Allergene");
+    expect(cakes).toContain("🌱 Vegan");
+    expect(cakes).toContain("🌾 Glutenfrei");
+    expect(cakes).toContain("🥛 Laktosefrei");
+    expect(cakes).toContain("🌰 Enthält Nüsse");
+    expect(cakes).toContain("Hinweise & Allergene (optional)");
   });
 
   it("bietet zentrale Orte, Ortsauswahl und Kartenlinks in Schichten und Vorbereitungen", () => {

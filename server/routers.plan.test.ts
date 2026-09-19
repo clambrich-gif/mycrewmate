@@ -16,6 +16,8 @@ const dbMocks = vi.hoisted(() => ({
   upsertHelperByName: vi.fn(),
   updateHelper: vi.fn(),
   deleteHelper: vi.fn(),
+  createCake: vi.fn(),
+  updateCake: vi.fn(),
   deleteCake: vi.fn(),
   createPrep: vi.fn(),
   updatePrep: vi.fn(),
@@ -1643,6 +1645,49 @@ describe("Planungs-API", () => {
       name: "Organisation",
       role: "user",
       loginMethod: "manus",
+    });
+  });
+
+  it("erfasst und aktualisiert Kuchenspenden mit optionalen Allergen-Badges und Freitext", async () => {
+    dbMocks.createCake.mockResolvedValue({ id: 88, created: true });
+    dbMocks.updateCake.mockResolvedValue({ affectedRows: 1 });
+    const caller = appRouter.createCaller(planningTeamCtx);
+
+    await expect(
+      caller.cakes.create({
+        donor: "Josi Volli",
+        cake: "Rumkuchen",
+        dropoffTime: "Sa. 11:30",
+        vegan: false,
+        glutenFree: false,
+        lactoseFree: true,
+        containsNuts: true,
+        note: "Enthält Alkohol / Rum",
+      })
+    ).resolves.toEqual({ id: 88, created: true });
+
+    expect(dbMocks.createCake).toHaveBeenCalledWith({
+      donor: "Josi Volli",
+      cake: "Rumkuchen",
+      dropoffTime: "Sa. 11:30",
+      vegan: false,
+      glutenFree: false,
+      lactoseFree: true,
+      containsNuts: true,
+      note: "Enthält Alkohol / Rum",
+    });
+
+    await expect(
+      caller.cakes.update({
+        id: 88,
+        vegan: true,
+        note: "Rezept geändert: jetzt vegan",
+      })
+    ).resolves.toEqual({ affectedRows: 1 });
+
+    expect(dbMocks.updateCake).toHaveBeenCalledWith(88, {
+      vegan: true,
+      note: "Rezept geändert: jetzt vegan",
     });
   });
 

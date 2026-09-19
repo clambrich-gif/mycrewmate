@@ -1861,6 +1861,10 @@ export const appRouter = router({
           donor: z.string().min(1),
           cake: z.string().optional(),
           dropoffTime: z.string().optional(),
+          vegan: z.boolean().default(false),
+          glutenFree: z.boolean().default(false),
+          lactoseFree: z.boolean().default(false),
+          containsNuts: z.boolean().default(false),
           note: z.string().optional(),
         })
       )
@@ -1872,6 +1876,10 @@ export const appRouter = router({
           donor: z.string().optional(),
           cake: z.string().optional(),
           dropoffTime: z.string().optional(),
+          vegan: z.boolean().optional(),
+          glutenFree: z.boolean().optional(),
+          lactoseFree: z.boolean().optional(),
+          containsNuts: z.boolean().optional(),
           note: z.string().nullable().optional(),
         })
       )

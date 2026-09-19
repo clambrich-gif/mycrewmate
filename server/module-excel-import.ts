@@ -327,7 +327,16 @@ const OPTIONAL_MODULE_COLUMNS: Record<ModuleImportArea, string[]> = {
     "Bemerkung",
     "Reihenfolge",
   ],
-  KUCHEN: ["Kuchen", "Abgabezeit", "Bemerkung", "Reihenfolge"],
+  KUCHEN: [
+    "Kuchen",
+    "Abgabezeit",
+    "Vegan",
+    "Glutenfrei",
+    "Laktosefrei",
+    "Enthält Nüsse",
+    "Hinweise & Allergene",
+    "Reihenfolge",
+  ],
   FINANZEN: ["Einnahmen", "Ausgaben", "Bemerkung", "Reihenfolge"],
 };
 
@@ -714,7 +723,11 @@ function rowsFromDocument(document: BackupDocument, area: ModuleImportArea) {
       Spender: row.donor,
       Kuchen: row.cake,
       Abgabezeit: row.dropoffTime,
-      Bemerkung: row.note,
+      Vegan: row.vegan,
+      Glutenfrei: row.glutenFree,
+      Laktosefrei: row.lactoseFree,
+      "Enthält Nüsse": row.containsNuts,
+      "Hinweise & Allergene": row.note,
       Reihenfolge: row.sortOrder,
     }));
   return document.finances.map(row => ({
@@ -746,6 +759,20 @@ async function buildModuleTarget(base64: string, area: ModuleImportArea) {
     for (const row of rawImportedRows) {
       row.Stand = row.Bestellt;
       delete row.Bestellt;
+    }
+  }
+  // Ältere Kuchenlisten nannten den Freitext noch "Bemerkung". Diese
+  // Kennzeichnung bleibt beim Import vollständig erhalten.
+  if (
+    area === "KUCHEN" &&
+    sourceHeaders.has("Bemerkung") &&
+    !sourceHeaders.has("Hinweise & Allergene")
+  ) {
+    sourceHeaders.delete("Bemerkung");
+    sourceHeaders.add("Hinweise & Allergene");
+    for (const row of rawImportedRows) {
+      row["Hinweise & Allergene"] = row.Bemerkung;
+      delete row.Bemerkung;
     }
   }
   assertHeaders(sourceHeaders, area);
