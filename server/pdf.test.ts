@@ -23,7 +23,10 @@ import {
   MATERIAL_PACKLIST_PORTRAIT_COLUMNS,
   MATERIAL_PACKLIST_PORTRAIT_WIDTH,
   renderMaterialPacklistPdf,
+  renderPostTaskOverviewPdf,
+  renderPreparationTaskOverviewPdf,
   selectMaterialPacklistMaterials,
+  selectTaskOverviewRows,
 } from "./pdf";
 import { resolveEventPdfLogoKey } from "./event-pdf-image";
 
@@ -372,6 +375,72 @@ describe("PDF-Erzeugung", () => {
 
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
     expect(pdf.length).toBeGreaterThan(1_500);
+  });
+
+  it("erzeugt Vor- und Nachbereitungs-PDFs ausschließlich aus der sichtbaren Aufgabenwahl", async () => {
+    const prepTasks = [
+      {
+        id: 41,
+        year: 2026,
+        eventId: 1,
+        category: "Genehmigung",
+        task: "Sperrung abstimmen",
+        dueText: "15.05.2026",
+        locationId: null,
+        contactId: 1,
+        status: "inArbeit" as const,
+        statusWording: "genehmigung" as const,
+        note: "18.04.2026 09:00 Uhr (Organisation): Unterlagen eingereicht",
+        deleted: false,
+        sortOrder: 1,
+      },
+      {
+        id: 42,
+        year: 2026,
+        eventId: 1,
+        category: "Strecke",
+        task: "Beschilderung planen",
+        dueText: "",
+        locationId: null,
+        contactId: null,
+        status: "offen" as const,
+        statusWording: "aufgabe" as const,
+        note: null,
+        deleted: false,
+        sortOrder: 2,
+      },
+    ];
+    const postTasks = [
+      {
+        id: 61,
+        year: 2026,
+        eventId: 1,
+        category: "Abbau",
+        task: "Material zurückführen",
+        dueText: "22.06.2026",
+        locationId: null,
+        contactId: 1,
+        status: "erledigt" as const,
+        note: "20.06.2026 15:00 Uhr (Organisation): Abgeschlossen",
+        deleted: false,
+        sortOrder: 1,
+      },
+    ];
+
+    expect(selectTaskOverviewRows(prepTasks, [42])).toEqual([prepTasks[1]]);
+    const preparationPdf = await renderPreparationTaskOverviewPdf(
+      { ...data, prepTasks, postTasks },
+      [41]
+    );
+    const postPdf = await renderPostTaskOverviewPdf(
+      { ...data, prepTasks, postTasks },
+      [61]
+    );
+
+    expect(preparationPdf.subarray(0, 5).toString()).toBe("%PDF-");
+    expect(postPdf.subarray(0, 5).toString()).toBe("%PDF-");
+    expect(preparationPdf.length).toBeGreaterThan(1_500);
+    expect(postPdf.length).toBeGreaterThan(1_500);
   });
 
   it.each(WEEKDAYS)("filtert den PDF-Plan auf %s", day => {

@@ -9,6 +9,8 @@ import type {
   Helper,
   Location,
   Material,
+  PostTask,
+  PrepTask,
   Shift,
   ShiftAreaContact,
 } from "../drizzle/schema";
@@ -18,6 +20,7 @@ import { currentEventYear } from "./year-context";
 import { storageGetSignedUrl } from "./storage";
 import { resolveEventPdfLogoKey } from "./event-pdf-image";
 import { helperAvailabilityWindow } from "../shared/weekdays";
+import { latestPreparationLogbookEntry } from "../shared/preparation-logbook";
 
 const require = createRequire(import.meta.url);
 const { ZipArchive } = require("archiver") as {
@@ -48,6 +51,8 @@ type PlanningData = {
   areaContacts?: ShiftAreaContact[];
   materials?: Material[];
   locations?: Location[];
+  prepTasks?: PrepTask[];
+  postTasks?: PostTask[];
   settings: AppSettings;
   logoBuffer?: Buffer;
 };
@@ -851,6 +856,153 @@ export function renderMaterialPacklistPdf(
   });
 }
 
+type TaskOverviewRow = Pick<
+  PostTask,
+  | "id"
+  | "category"
+  | "task"
+  | "dueText"
+  | "locationId"
+  | "contactId"
+  | "note"
+  | "sortOrder"
+> & {
+  status: PrepTask["status"];
+  statusWording?: PrepTask["statusWording"];
+};
+type TaskOverviewKind = "prep" | "post";
+
+/** Wählt ausschließlich die Aufgaben aus, die in der gefilterten Tabellenansicht sichtbar sind. */
+export function selectTaskOverviewRows(
+  tasks: TaskOverviewRow[] | undefined,
+  taskIds: number[]
+) {
+  const selectedIds = new Set(taskIds);
+  return (tasks ?? [])
+    .filter(task => selectedIds.has(task.id))
+    .sort(
+      (left, right) =>
+        left.category.localeCompare(right.category, "de") ||
+        left.sortOrder - right.sortOrder ||
+        left.id - right.id
+    );
+}
+
+function taskOverviewStatusLabel(task: TaskOverviewRow, kind: TaskOverviewKind) {
+  if (task.status === "offen") return "Offen";
+  if (task.status === "inArbeit") {
+    return kind === "prep" && task.statusWording === "genehmigung"
+      ? "Beantragt"
+      : "In Arbeit";
+  }
+  if (task.status === "erledigt") {
+    return kind === "prep" && task.statusWording === "genehmigung"
+      ? "Genehmigt"
+      : "Erledigt";
+  }
+  return "Abgelehnt";
+}
+
+function renderTaskOverviewPdf(
+  data: PlanningData,
+  taskIds: number[],
+  kind: TaskOverviewKind
+) {
+  const selectedTasks = selectTaskOverviewRows(
+    kind === "prep" ? data.prepTasks : data.postTasks,
+    taskIds
+  );
+  const contactById = new Map(data.contacts.map(contact => [contact.id, contact]));
+  const locationById = new Map(
+    (data.locations ?? []).map(location => [location.id, location])
+  );
+  const title =
+    kind === "prep"
+      ? "Vorbereitung – Aufgabenübersicht"
+      : "Nachbereitung – Aufgabenübersicht";
+
+  return collectPdf(doc => {
+    const landscapeWidth = doc.page.width - margin * 2;
+    drawDocumentHeader(
+      doc,
+      data.settings,
+      title,
+      `Gefilterte Ansicht · Stand: ${formatDate()}`,
+      data.logoBuffer
+    );
+    const fixedColumns: PdfColumn[] = [
+      { key: "category", label: "Bereich", width: 74 },
+      { key: "task", label: "Aufgabe", width: 154 },
+      { key: "location", label: "Ort", width: 72 },
+      { key: "contact", label: data.settings.contactLabel, width: 118 },
+      { key: "due", label: "Frist", width: 68 },
+      { key: "status", label: "Status", width: 70 },
+    ];
+    const fixedWidth = fixedColumns.reduce(
+      (sum, column) => sum + column.width,
+      0
+    );
+    const columns: PdfColumn[] = [
+      ...fixedColumns,
+      {
+        key: "logbook",
+        label: "Aktueller Logbuchstand",
+        width: landscapeWidth - fixedWidth,
+      },
+    ];
+    drawTableHeader(doc, columns, margin);
+
+    if (selectedTasks.length === 0) {
+      drawTableRow(
+        doc,
+        columns,
+        { task: "Für die aktuelle Filterauswahl sind keine Aufgaben sichtbar." },
+        margin,
+        { minimumHeight: 34 }
+      );
+      return;
+    }
+
+    for (const task of selectedTasks) {
+      drawTableRow(
+        doc,
+        columns,
+        {
+          category: task.category || "–",
+          task: task.task,
+          location: task.locationId
+            ? (locationById.get(task.locationId)?.name ?? "–")
+            : "–",
+          contact: task.contactId
+            ? (contactById.get(task.contactId)?.name ?? "–")
+            : "–",
+          due: task.dueText.trim() || "–",
+          status: taskOverviewStatusLabel(task, kind),
+          logbook: latestPreparationLogbookEntry(task.note) || "–",
+        },
+        margin,
+        { minimumHeight: 30 }
+      );
+    }
+  }, "landscape");
+}
+
+/** Erzeugt die Download-PDF exakt aus der aktuellen Filterauswahl der Vorbereitung. */
+export function renderPreparationTaskOverviewPdf(
+  data: PlanningData,
+  taskIds: number[]
+) {
+  return renderTaskOverviewPdf(data, taskIds, "prep");
+}
+
+/** Erzeugt die Download-PDF exakt aus der aktuellen Filterauswahl der Nachbereitung. */
+export function renderPostTaskOverviewPdf(
+  data: PlanningData,
+  taskIds: number[]
+) {
+  return renderTaskOverviewPdf(data, taskIds, "post");
+}
+
 async function loadPlanningData(): Promise<PlanningData> {
   const [
     helpers,
@@ -860,6 +1012,8 @@ async function loadPlanningData(): Promise<PlanningData> {
     areaContacts,
     materials,
     locations,
+    prepTasks,
+    postTasks,
     settings,
     selectedEvent,
   ] = await Promise.all([
@@ -870,6 +1024,8 @@ async function loadPlanningData(): Promise<PlanningData> {
     db.listShiftAreaContacts(),
     db.listMaterials(),
     db.listLocations(),
+    db.listPrep(),
+    db.listPost(),
     db.getAppSettings(),
     db.getEvent(),
   ]);
@@ -901,6 +1057,8 @@ async function loadPlanningData(): Promise<PlanningData> {
     areaContacts,
     materials,
     locations,
+    prepTasks,
+    postTasks,
     settings: resolvedSettings,
     logoBuffer,
   };
@@ -920,6 +1078,14 @@ export async function createPlanPdf(options: PlanPdfOptions) {
 
 export async function createMaterialPacklistPdf(materialIds: number[]) {
   return renderMaterialPacklistPdf(await loadPlanningData(), materialIds);
+}
+
+export async function createPrepTaskOverviewPdf(taskIds: number[]) {
+  return renderPreparationTaskOverviewPdf(await loadPlanningData(), taskIds);
+}
+
+export async function createPostTaskOverviewPdf(taskIds: number[]) {
+  return renderPostTaskOverviewPdf(await loadPlanningData(), taskIds);
 }
 
 /** Beschränkt Helfer-PDFs bei Bedarf auf einen einzelnen Ansprechpartner. */

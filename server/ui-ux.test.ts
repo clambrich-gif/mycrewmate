@@ -932,6 +932,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(prep).toContain("Trash2");
     expect(prep).toContain("max-h-[calc(100dvh-2rem)]");
     expect(prep).toContain("lg:hidden");
+    expect(prep).toContain("trpc.pdf.prepTaskOverview.useMutation");
+    expect(prep).toContain("downloadBase64File");
+    expect(prep).toContain("Vorbereitungs-PDF wurde heruntergeladen");
+    expect(prep).not.toContain('window.open("", "_blank", "popup=yes")');
     expect(prep).toContain("h-11 w-11");
     expect(prep).toContain("Bestehenden Bereich wählen oder neu anlegen");
     expect(prep).toContain("Verantwortlicher");
@@ -990,8 +994,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(prep).toContain("Alle Standorte");
     expect(prep).toContain("locationMap.get(row.locationId)");
     expect(prep).toContain("PDF drucken");
-    expect(prep).toContain("Vorbereitung – Aufgabenübersicht");
-    expect(prep).toContain("triggerPrintPdf");
+    expect(prep).toContain("trpc.pdf.prepTaskOverview.useMutation");
+    expect(prep).toContain("downloadBase64File");
+    expect(prep).toContain("downloadTaskOverviewPdf");
+    expect(prep).not.toContain('window.open("", "_blank", "popup=yes")');
     expect(prep).toContain("searchTerm");
   });
 
@@ -1970,8 +1976,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(post).toContain("lg:min-w-[500px]");
     expect(post).toContain("sm:grid-cols-3");
     expect(post).toContain("className={`w-full ${CREATION_ACTION_BUTTON_CLASS}`}");
-    expect(post).toContain("Nachbereitung – Aufgabenübersicht");
-    expect(post).toContain("Gefilterte Ansicht");
+    expect(post).toContain("trpc.pdf.postTaskOverview.useMutation");
+    expect(post).toContain("downloadBase64File");
+    expect(post).toContain("Nachbereitungs-PDF wurde heruntergeladen");
+    expect(post).not.toContain('window.open("", "_blank", "popup=yes")');
     expect(post).toContain("filteredRows.map(task");
     expect(post).toContain("ConfirmDeleteDialog");
     expect(post).toContain("title=\"Nachbereitungsaufgabe löschen?\"");

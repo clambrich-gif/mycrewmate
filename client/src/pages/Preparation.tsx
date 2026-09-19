@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
+import { downloadBase64File } from "@/lib/download";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -173,15 +174,6 @@ function parseDueDate(value: string | null | undefined): ParsedDueDate | null {
 
 function formatDueDate(value: string | null | undefined) {
   return parseDueDate(value)?.display ?? value?.trim() ?? "";
-}
-
-function escapePrintHtml(value: string | null | undefined) {
-  return (value ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
 }
 
 function statusSelectValue(status: PrepStatus, wording: PrepWording): DialogStatus {
@@ -415,6 +407,14 @@ export default function Preparation() {
     },
   });
 
+  const taskOverviewPdf = trpc.pdf.prepTaskOverview.useMutation({
+    onSuccess: result => {
+      downloadBase64File(result.base64, result.mimeType, result.filename);
+      toast.success("Vorbereitungs-PDF wurde heruntergeladen");
+    },
+    onError: error => toast.error(error.message),
+  });
+
   const contactMap = useMemo(
     () => new Map(contacts.map(contact => [contact.id, contact.name])),
     [contacts]
@@ -608,60 +608,12 @@ export default function Preparation() {
     }
   };
 
-  const triggerPrintPdf = () => {
-    const printWindow = window.open("", "_blank", "popup=yes");
-    if (!printWindow) {
-      toast.error("Der Druckdialog wurde vom Browser blockiert. Bitte Pop-ups für diese Seite erlauben.");
-      return;
-    }
-    printWindow.opener = null;
-
-    const generatedAt = new Intl.DateTimeFormat("de-DE", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(new Date());
-    const printRows = filteredRows
-      .map(task => {
-        const wording = task.statusWording === "genehmigung" ? "genehmigung" : "aufgabe";
-        const locationName = task.locationId
-          ? locationMap.get(task.locationId) ?? "—"
-          : "—";
-        const contactName = task.contactId
-          ? contactMap.get(task.contactId) ?? "—"
-          : "—";
-        return `<tr>
-          <td>${escapePrintHtml(task.category || "—")}</td>
-          <td><strong>${escapePrintHtml(task.task)}</strong></td>
-          <td>${escapePrintHtml(locationName)}</td>
-          <td>${escapePrintHtml(contactName)}</td>
-          <td>${escapePrintHtml(formatDueDate(task.dueText) || "—")}</td>
-          <td>${escapePrintHtml(getStatusLabel(task.status, wording))}</td>
-          <td>${escapePrintHtml(latestPreparationLogbookEntry(task.note) || "—")}</td>
-        </tr>`;
-      })
-      .join("");
-
-    printWindow.document.write(`<!doctype html>
-      <html lang="de"><head><meta charset="utf-8"><title>Vorbereitung – gefilterte Aufgaben</title>
-      <style>
-        @page { size: A4 landscape; margin: 12mm; }
-        * { box-sizing: border-box; }
-        body { color: #172033; font-family: Arial, sans-serif; font-size: 10pt; }
-        h1 { margin: 0; color: #1e3a8a; font-size: 20pt; }
-        .meta { margin: 4px 0 16px; color: #64748b; }
-        table { border-collapse: collapse; width: 100%; }
-        th { background: #eff6ff; color: #1e3a8a; font-size: 9pt; text-align: left; }
-        th, td { border: 1px solid #bfdbfe; padding: 7px; vertical-align: top; }
-        tr:nth-child(even) { background: #f8fbff; }
-        .empty { margin-top: 20px; color: #64748b; }
-      </style></head><body>
-      <h1>Vorbereitung – Aufgabenübersicht</h1>
-      <p class="meta">Gefilterte Ansicht · ${escapePrintHtml(generatedAt)} · ${filteredRows.length} Aufgabe${filteredRows.length === 1 ? "" : "n"}</p>
-      ${printRows ? `<table><thead><tr><th>Bereich</th><th>Aufgabe</th><th>Ort</th><th>Verantwortlich</th><th>Frist</th><th>Status</th><th>Aktueller Logbuchstand</th></tr></thead><tbody>${printRows}</tbody></table>` : '<p class="empty">Keine Aufgaben entsprechen den aktuellen Filtern.</p>'}
-      </body></html>`);
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.setTimeout(() => printWindow.print(), 150);
+  const downloadTaskOverviewPdf = () => {
+    taskOverviewPdf.mutate({
+      taskIds: filteredRows
+        .map(task => task.id)
+        .filter(id => Number.isSafeInteger(id) && id > 0),
+    });
   };
 
   const pending = create.isPending || update.isPending;
@@ -682,10 +634,11 @@ export default function Preparation() {
               type="button"
               variant="outline"
               className="border-blue-200 bg-white text-slate-800 hover:bg-blue-50 hover:text-blue-900"
-              onClick={triggerPrintPdf}
+              disabled={taskOverviewPdf.isPending}
+              onClick={downloadTaskOverviewPdf}
             >
               <Printer className="mr-2 h-4 w-4 text-blue-700" />
-              PDF drucken
+              {taskOverviewPdf.isPending ? "PDF wird erstellt …" : "PDF drucken"}
             </Button>
             <ModuleExcelImportButton area="VORBEREITUNG" label="Vorbereitung" />
             <ResetAreaButton area="prep" label="Vorbereitung" compact />

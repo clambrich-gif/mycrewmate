@@ -628,6 +628,59 @@ describe("Planungs-API", () => {
     ).rejects.toThrow("gehört nicht zur aktuellen Veranstaltung");
   });
 
+  it("erstellt Aufgaben-PDFs ausschließlich aus sichtbaren Vor- und Nachbereitungsaufgaben", async () => {
+    const prepTask = {
+      id: 801,
+      year: 2026,
+      eventId: 1,
+      category: "Strecke",
+      task: "Beschilderung abstimmen",
+      dueText: "15.05.2026",
+      locationId: null,
+      contactId: null,
+      status: "offen" as const,
+      statusWording: "aufgabe" as const,
+      note: null,
+      deleted: false,
+      sortOrder: 0,
+    };
+    const postTask = {
+      id: 901,
+      year: 2026,
+      eventId: 1,
+      category: "Abbau",
+      task: "Material zurückführen",
+      dueText: "22.06.2026",
+      locationId: null,
+      contactId: null,
+      status: "inArbeit" as const,
+      note: null,
+      deleted: false,
+      sortOrder: 0,
+    };
+    dbMocks.listPrep.mockResolvedValue([prepTask]);
+    dbMocks.listPost.mockResolvedValue([postTask]);
+
+    const caller = appRouter.createCaller(ctx);
+    const prepResult = await caller.pdf.prepTaskOverview({ taskIds: [801] });
+    const postResult = await caller.pdf.postTaskOverview({ taskIds: [901] });
+
+    expect(prepResult.filename).toBe("Vorbereitung_Aufgabenuebersicht_MyEifelRide.pdf");
+    expect(postResult.filename).toBe("Nachbereitung_Aufgabenuebersicht_MyEifelRide.pdf");
+    expect(Buffer.from(prepResult.base64, "base64").subarray(0, 5).toString()).toBe(
+      "%PDF-"
+    );
+    expect(Buffer.from(postResult.base64, "base64").subarray(0, 5).toString()).toBe(
+      "%PDF-"
+    );
+    await expect(caller.pdf.prepTaskOverview({ taskIds: [999_999] })).rejects.toThrow(
+      "gehört nicht zur aktuellen Veranstaltung"
+    );
+    await expect(caller.pdf.postTaskOverview({ taskIds: [999_999] })).rejects.toThrow(
+      "gehört nicht zur aktuellen Veranstaltung"
+    );
+  });
+
   it("speichert PDF-Bilder im Pfad und Datensatz des aktuellen Events als Administrator", async () => {
     const png = Buffer.from(
       "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",

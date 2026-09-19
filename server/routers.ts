@@ -69,6 +69,8 @@ import {
   createHelperTaskPdf,
   createMaterialPacklistPdf,
   createPlanPdf,
+  createPostTaskOverviewPdf,
+  createPrepTaskOverviewPdf,
   DEFAULT_PDF_SETTINGS,
 } from "./pdf";
 import { publicAppUrl } from "./public-app-url";
@@ -1561,6 +1563,56 @@ export const appRouter = router({
         const selectedEvent = await db.getEvent();
         return {
           filename: `Material_Packliste_Gefiltert_${safeExportName(selectedEvent?.name ?? "Veranstaltung")}.pdf`,
+          mimeType: "application/pdf",
+          base64: pdf.toString("base64"),
+        };
+      }),
+    prepTaskOverview: protectedProcedure
+      .input(
+        z.object({
+          taskIds: z.array(z.number().int().positive()).max(2_000),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const scopedTasks = await db.listPrep();
+        const scopedIds = new Set(scopedTasks.map(task => task.id));
+        const invalidId = input.taskIds.find(id => !scopedIds.has(id));
+        if (invalidId !== undefined) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message:
+              "Mindestens eine Vorbereitungsaufgabe gehört nicht zur aktuellen Veranstaltung",
+          });
+        }
+        const pdf = await createPrepTaskOverviewPdf(input.taskIds);
+        const selectedEvent = await db.getEvent();
+        return {
+          filename: `Vorbereitung_Aufgabenuebersicht_${safeExportName(selectedEvent?.name ?? "Veranstaltung")}.pdf`,
+          mimeType: "application/pdf",
+          base64: pdf.toString("base64"),
+        };
+      }),
+    postTaskOverview: protectedProcedure
+      .input(
+        z.object({
+          taskIds: z.array(z.number().int().positive()).max(2_000),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const scopedTasks = await db.listPost();
+        const scopedIds = new Set(scopedTasks.map(task => task.id));
+        const invalidId = input.taskIds.find(id => !scopedIds.has(id));
+        if (invalidId !== undefined) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message:
+              "Mindestens eine Nachbereitungsaufgabe gehört nicht zur aktuellen Veranstaltung",
+          });
+        }
+        const pdf = await createPostTaskOverviewPdf(input.taskIds);
+        const selectedEvent = await db.getEvent();
+        return {
+          filename: `Nachbereitung_Aufgabenuebersicht_${safeExportName(selectedEvent?.name ?? "Veranstaltung")}.pdf`,
           mimeType: "application/pdf",
           base64: pdf.toString("base64"),
         };
