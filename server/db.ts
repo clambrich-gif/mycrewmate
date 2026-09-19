@@ -427,6 +427,10 @@ export async function updateEventDetails(
     name?: string;
     startDate?: string | null;
     endDate?: string | null;
+    donationTargetKuchen?: number;
+    donationTargetSalat?: number;
+    donationTargetSnack?: number;
+    donationTargetSonstiges?: number;
   }
 ) {
   const db = (await getDb()) as DB;
@@ -464,6 +468,14 @@ export async function updateEventDetails(
       input.endDate !== undefined ? input.endDate || null : selected.endDate;
     const datesError = eventDateRangeError({ startDate, endDate });
     if (datesError) throw new Error(datesError);
+    const donationTargetKuchen =
+      input.donationTargetKuchen ?? selected.donationTargetKuchen;
+    const donationTargetSalat =
+      input.donationTargetSalat ?? selected.donationTargetSalat;
+    const donationTargetSnack =
+      input.donationTargetSnack ?? selected.donationTargetSnack;
+    const donationTargetSonstiges =
+      input.donationTargetSonstiges ?? selected.donationTargetSonstiges;
 
     await tx
       .update(events)
@@ -471,6 +483,10 @@ export async function updateEventDetails(
         name: nextName,
         startDate,
         endDate,
+        donationTargetKuchen,
+        donationTargetSalat,
+        donationTargetSnack,
+        donationTargetSonstiges,
       })
       .where(and(eq(events.id, id), eq(events.year, selectedYear)));
 
@@ -479,6 +495,10 @@ export async function updateEventDetails(
       name: nextName,
       startDate,
       endDate,
+      donationTargetKuchen,
+      donationTargetSalat,
+      donationTargetSnack,
+      donationTargetSonstiges,
     };
   });
 }
@@ -514,6 +534,10 @@ export async function createEvent(
     pdfLogoKey: null,
     pdfLogoUrl: null,
     pdfLogoFallback: "none" as const,
+    donationTargetKuchen: 0,
+    donationTargetSalat: 0,
+    donationTargetSnack: 0,
+    donationTargetSonstiges: 0,
     created: true,
   };
 }

@@ -2057,4 +2057,119 @@ describe("Planungs-API", () => {
       code: "FORBIDDEN",
     });
   });
+
+  it("erlaubt Administratoren das Speichern von Spenden-Sollwerten je Kategorie", async () => {
+    const adminCaller = appRouter.createCaller(ctx);
+    const planningCaller = appRouter.createCaller(planningTeamCtx);
+
+    dbMocks.updateEventDetails.mockResolvedValue({
+      id: 1,
+      year: 2026,
+      name: "MyEifelRide",
+      donationTargetKuchen: 20,
+      donationTargetSalat: 10,
+      donationTargetSnack: 15,
+      donationTargetSonstiges: 5,
+    });
+
+    await expect(
+      planningCaller.events.update({
+        id: 1,
+        donationTargetKuchen: 20,
+      })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+
+    const result = await adminCaller.events.update({
+      id: 1,
+      donationTargetKuchen: 20,
+      donationTargetSalat: 10,
+      donationTargetSnack: 15,
+      donationTargetSonstiges: 5,
+    });
+
+    expect(result).toMatchObject({
+      donationTargetKuchen: 20,
+      donationTargetSalat: 10,
+      donationTargetSnack: 15,
+      donationTargetSonstiges: 5,
+    });
+    expect(dbMocks.updateEventDetails).toHaveBeenCalledWith(1, {
+      donationTargetKuchen: 20,
+      donationTargetSalat: 10,
+      donationTargetSnack: 15,
+      donationTargetSonstiges: 5,
+    });
+  });
+
+  it("liefert im Dashboard-Stats-Endpunkt Spenden mit Ist/Soll und Eigenschaftszählern", async () => {
+    const caller = appRouter.createCaller(ctx);
+    dbMocks.getEvent.mockResolvedValue({
+      id: 1,
+      year: 2026,
+      name: "MyEifelRide",
+      activeDays: ["Freitag", "Samstag", "Sonntag"],
+      startDate: null,
+      endDate: null,
+      donationTargetKuchen: 15,
+      donationTargetSalat: 8,
+      donationTargetSnack: 12,
+      donationTargetSonstiges: 6,
+    });
+    dbMocks.listCakes.mockResolvedValue([
+      {
+        id: 1,
+        donationCategory: "kuchen",
+        vegan: true,
+        glutenFree: false,
+        lactoseFree: true,
+        containsNuts: false,
+        meat: false,
+      },
+      {
+        id: 2,
+        donationCategory: "salat",
+        vegan: false,
+        glutenFree: true,
+        lactoseFree: false,
+        containsNuts: false,
+        meat: true,
+      },
+      {
+        id: 3,
+        donationCategory: "snack",
+        vegan: true,
+        glutenFree: true,
+        lactoseFree: true,
+        containsNuts: true,
+        meat: false,
+      },
+      {
+        id: 4,
+        donationCategory: "deftiges", // Legacy wird zu sonstiges aggregiert
+        vegan: false,
+        glutenFree: false,
+        lactoseFree: false,
+        containsNuts: false,
+        meat: true,
+      },
+    ]);
+
+    const stats = await caller.dashboard.stats();
+    expect(stats.spenden).toEqual({
+      gesamt: 4,
+      kategorien: [
+        { id: "kuchen", ist: 1, target: 15, label: "Kuchen / Gebäck" },
+        { id: "salat", ist: 1, target: 8, label: "Salat" },
+        { id: "snack", ist: 1, target: 12, label: "Dessert" },
+        { id: "sonstiges", ist: 1, target: 6, label: "Sonstiges" },
+      ],
+      eigenschaften: {
+        vegan: 2,
+        glutenFree: 2,
+        lactoseFree: 2,
+        containsNuts: 1,
+        meat: 2,
+      },
+    });
+  });
 });

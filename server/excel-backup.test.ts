@@ -1185,4 +1185,40 @@ describe("Excel-Datensicherung", () => {
     );
     expect(parsedLegacyCategory.cakes[0].donationCategory).toBe("sonstiges");
   });
+
+  it("exportiert und importiert Spenden-Sollwerte in Metadaten roundtrip-sicher", async () => {
+    const event = data.events[0] as any;
+    event.donationTargetKuchen = 25;
+    event.donationTargetSalat = 12;
+    event.donationTargetSnack = 18;
+    event.donationTargetSonstiges = 9;
+
+    const exported = await exportBackupExcel();
+    const parsed = parseBackupWorkbook(exported.buffer.toString("base64"));
+    expect(parsed.metadata).toMatchObject({
+      donationTargetKuchen: 25,
+      donationTargetSalat: 12,
+      donationTargetSnack: 18,
+      donationTargetSonstiges: 9,
+    });
+
+    const legacy = mutateWorkbook(exported.buffer, wb => {
+      const rows = XLSX.utils.sheet_to_json<any>(wb.Sheets.SICHERUNG_INFO);
+      const filtered = rows.filter(
+        (r: any) =>
+          !String(r.Schlüssel || "").startsWith("Spenden-Soll")
+      );
+      replaceSheet(wb, "SICHERUNG_INFO", filtered);
+    });
+    const parsedLegacy = parseBackupWorkbook(legacy.toString("base64"));
+    expect(parsedLegacy.metadata.donationTargetKuchen).toBe(0);
+    expect(parsedLegacy.metadata.donationTargetSalat).toBe(0);
+    expect(parsedLegacy.metadata.donationTargetSnack).toBe(0);
+    expect(parsedLegacy.metadata.donationTargetSonstiges).toBe(0);
+
+    event.donationTargetKuchen = 0;
+    event.donationTargetSalat = 0;
+    event.donationTargetSnack = 0;
+    event.donationTargetSonstiges = 0;
+  });
 });

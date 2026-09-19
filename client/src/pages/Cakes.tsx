@@ -22,6 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
 import { downloadBase64File } from "@/lib/download";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 import {
   Gift,
   Pencil,
@@ -206,6 +207,7 @@ function TraitTags({ row }: { row: DonationRow }) {
 
 export default function Cakes() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { user } = useAuth();
   const requestedDonor = searchParams.get("donor")?.trim() ?? "";
   const utils = trpc.useUtils();
   const { data: rows = [], isLoading } = trpc.cakes.list.useQuery();
@@ -223,6 +225,12 @@ export default function Cakes() {
   const [traitFilter, setTraitFilter] = useState<"alle" | TraitKey>("alle");
   const [weekdayFilter, setWeekdayFilter] = useState("alle");
   const [locationFilter, setLocationFilter] = useState("alle");
+  const [donationTargets, setDonationTargets] = useState({
+    kuchen: "0",
+    salat: "0",
+    snack: "0",
+    sonstiges: "0",
+  });
   const donorOptions = useMemo(
     () =>
       Array.from(
@@ -272,6 +280,22 @@ export default function Cakes() {
     );
   }, [requestedDonor, setSearchParams]);
 
+  useEffect(() => {
+    if (!selectedEvent) return;
+    setDonationTargets({
+      kuchen: String(selectedEvent.donationTargetKuchen ?? 0),
+      salat: String(selectedEvent.donationTargetSalat ?? 0),
+      snack: String(selectedEvent.donationTargetSnack ?? 0),
+      sonstiges: String(selectedEvent.donationTargetSonstiges ?? 0),
+    });
+  }, [
+    selectedEvent?.id,
+    selectedEvent?.donationTargetKuchen,
+    selectedEvent?.donationTargetSalat,
+    selectedEvent?.donationTargetSnack,
+    selectedEvent?.donationTargetSonstiges,
+  ]);
+
   const refresh = () => {
     void utils.cakes.list.invalidate();
     void utils.dashboard.stats.invalidate();
@@ -303,6 +327,18 @@ export default function Cakes() {
       toast.success("Spende entfernt");
       setDeleteTarget(null);
       refresh();
+    },
+    onError: error => toast.error(error.message),
+  });
+
+  const updateDonationTargets = trpc.events.update.useMutation({
+    onSuccess: async () => {
+      await Promise.all([
+        utils.events.current.invalidate(),
+        utils.events.list.invalidate(),
+        utils.dashboard.stats.invalidate(),
+      ]);
+      toast.success("Spenden-Sollwerte gespeichert");
     },
     onError: error => toast.error(error.message),
   });
@@ -413,6 +449,22 @@ export default function Cakes() {
     setTraitFilter("alle");
     setWeekdayFilter("alle");
     setLocationFilter("alle");
+  };
+  const saveDonationTargets = () => {
+    if (!selectedEvent) return;
+    const values = Object.fromEntries(
+      Object.entries(donationTargets).map(([key, value]) => [
+        key,
+        Math.max(0, Math.min(10_000, Number.parseInt(value || "0", 10) || 0)),
+      ])
+    ) as Record<keyof typeof donationTargets, number>;
+    updateDonationTargets.mutate({
+      id: selectedEvent.id,
+      donationTargetKuchen: values.kuchen,
+      donationTargetSalat: values.salat,
+      donationTargetSnack: values.snack,
+      donationTargetSonstiges: values.sonstiges,
+    });
   };
   const donationOverviewPdf = trpc.pdf.donationOverview.useMutation({
     onSuccess: result => {
@@ -568,6 +620,64 @@ export default function Cakes() {
           </span>
         </div>
       </div>
+
+      {user?.role === "admin" && selectedEvent && (
+        <Card className="border-rose-200 bg-rose-50/45 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
+              <div>
+                <h2 className="font-semibold text-slate-950">Spenden-Sollwerte</h2>
+                <p className="text-sm text-slate-600">
+                  Zielmengen für den Soll/Ist-Vergleich im Dashboard festlegen.
+                </p>
+              </div>
+              <span className="text-xs text-slate-500">
+                Nur für Administratoren sichtbar
+              </span>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
+              {donationCategories.map(category => (
+                <div key={category.value} className="space-y-1.5">
+                  <Label
+                    htmlFor={`donation-target-${category.value}`}
+                    className="text-xs font-medium text-slate-700"
+                  >
+                    {category.label}
+                  </Label>
+                  <Input
+                    id={`donation-target-${category.value}`}
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    max={10000}
+                    value={donationTargets[category.value]}
+                    onChange={event =>
+                      setDonationTargets(current => ({
+                        ...current,
+                        [category.value]: event.target.value,
+                      }))
+                    }
+                    className="h-11 bg-white text-base sm:h-10 sm:text-sm"
+                    aria-label={`${category.label}: Sollmenge`}
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 flex justify-end">
+              <Button
+                type="button"
+                className="bg-rose-700 text-white hover:bg-rose-800"
+                disabled={updateDonationTargets.isPending}
+                onClick={saveDonationTargets}
+              >
+                {updateDonationTargets.isPending
+                  ? "Speichert …"
+                  : "Sollwerte speichern"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="space-y-3 md:hidden">
         {isLoading && (

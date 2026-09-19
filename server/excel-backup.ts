@@ -456,6 +456,10 @@ export type BackupDocument = {
     activeDays: Weekday[];
     startDate: string | null;
     endDate: string | null;
+    donationTargetKuchen: number;
+    donationTargetSalat: number;
+    donationTargetSnack: number;
+    donationTargetSonstiges: number;
     pdfLogoKey: string | null;
     pdfLogoUrl: string | null;
     pdfLogoFallback: "none" | "brand";
@@ -480,6 +484,10 @@ type CurrentSnapshot = {
   activeDays: Weekday[];
   startDate: string | null;
   endDate: string | null;
+  donationTargetKuchen: number;
+  donationTargetSalat: number;
+  donationTargetSnack: number;
+  donationTargetSonstiges: number;
   pdfLogoKey: string | null;
   pdfLogoUrl: string | null;
   pdfLogoFallback: "none" | "brand";
@@ -965,6 +973,14 @@ function metadata(workbook: XLSX.WorkBook) {
   );
   const startDate = values.get("Startdatum") || null;
   const endDate = values.get("Enddatum") || null;
+  const donationTarget = (key: string) => {
+    const value = Number(values.get(key) ?? 0);
+    return Number.isInteger(value) && value >= 0 && value <= 10_000 ? value : 0;
+  };
+  const donationTargetKuchen = donationTarget("Spenden-Soll Kuchen / Gebäck");
+  const donationTargetSalat = donationTarget("Spenden-Soll Salat");
+  const donationTargetSnack = donationTarget("Spenden-Soll Dessert");
+  const donationTargetSonstiges = donationTarget("Spenden-Soll Sonstiges");
   const pdfLogoKey = values.get("PDF-Bild-Schlüssel") || null;
   const pdfLogoUrl = values.get("PDF-Bild-URL") || null;
   const pdfLogoFallback: "none" | "brand" =
@@ -998,6 +1014,10 @@ function metadata(workbook: XLSX.WorkBook) {
     activeDays: activeDays.length ? activeDays : [...WEEKDAYS],
     startDate,
     endDate,
+    donationTargetKuchen,
+    donationTargetSalat,
+    donationTargetSnack,
+    donationTargetSonstiges,
     pdfLogoKey,
     pdfLogoUrl,
     pdfLogoFallback,
@@ -2016,6 +2036,10 @@ async function loadSnapshot(
     activeDays: eventWeekdays(eventRows[0].activeDays),
     startDate: eventRows[0].startDate ?? null,
     endDate: eventRows[0].endDate ?? null,
+    donationTargetKuchen: eventRows[0].donationTargetKuchen ?? 0,
+    donationTargetSalat: eventRows[0].donationTargetSalat ?? 0,
+    donationTargetSnack: eventRows[0].donationTargetSnack ?? 0,
+    donationTargetSonstiges: eventRows[0].donationTargetSonstiges ?? 0,
     pdfLogoKey: eventRows[0].pdfLogoKey,
     pdfLogoUrl: eventRows[0].pdfLogoUrl,
     pdfLogoFallback: eventRows[0].pdfLogoFallback,
@@ -2359,6 +2383,10 @@ export async function createCurrentProjectDocument(): Promise<BackupDocument> {
       activeDays: snapshot.activeDays,
       startDate: snapshot.startDate,
       endDate: snapshot.endDate,
+      donationTargetKuchen: snapshot.donationTargetKuchen,
+      donationTargetSalat: snapshot.donationTargetSalat,
+      donationTargetSnack: snapshot.donationTargetSnack,
+      donationTargetSonstiges: snapshot.donationTargetSonstiges,
       pdfLogoKey: snapshot.pdfLogoKey,
       pdfLogoUrl: snapshot.pdfLogoUrl,
       pdfLogoFallback: snapshot.pdfLogoFallback,
@@ -2610,6 +2638,36 @@ function eventDatesChange(
   ];
 }
 
+function donationTargetsChange(
+  current: Pick<
+    CurrentSnapshot,
+    | "donationTargetKuchen"
+    | "donationTargetSalat"
+    | "donationTargetSnack"
+    | "donationTargetSonstiges"
+  >,
+  desired: BackupDocument["metadata"]
+): BackupChange[] {
+  const fields = [
+    "donationTargetKuchen",
+    "donationTargetSalat",
+    "donationTargetSnack",
+    "donationTargetSonstiges",
+  ] as const;
+  if (fields.every(field => current[field] === desired[field])) return [];
+  return [
+    {
+      key: "VERANSTALTUNG:update:donationTargets",
+      area: "VERANSTALTUNG",
+      action: "update",
+      label: "Spenden-Sollwerte",
+      fields: [...fields],
+      before: Object.fromEntries(fields.map(field => [field, current[field]])),
+      after: Object.fromEntries(fields.map(field => [field, desired[field]])),
+    },
+  ];
+}
+
 function eventPdfImageChanges(
   current: Pick<
   CurrentSnapshot,
@@ -2661,6 +2719,12 @@ function snapshotDigest(
     dates: {
       startDate: snapshot.startDate,
       endDate: snapshot.endDate,
+    },
+    donationTargets: {
+      kuchen: snapshot.donationTargetKuchen,
+      salat: snapshot.donationTargetSalat,
+      snack: snapshot.donationTargetSnack,
+      sonstiges: snapshot.donationTargetSonstiges,
     },
     pdfImage: {
       key: snapshot.pdfLogoKey,
@@ -3120,6 +3184,7 @@ export async function previewProjectDocument(
   const changes = [
     ...eventDaysChange(snapshot.activeDays, desired.metadata.activeDays),
     ...eventDatesChange(snapshot, desired.metadata),
+    ...donationTargetsChange(snapshot, desired.metadata),
     ...eventPdfImageChanges(snapshot, desired.metadata),
     ...diffDocuments(current, desired),
   ];
@@ -3215,6 +3280,7 @@ export async function restoreProjectDocument(
       );
     const allChanges = [
       ...eventDaysChange(snapshot.activeDays, imported.metadata.activeDays),
+      ...donationTargetsChange(snapshot, imported.metadata),
       ...eventPdfImageChanges(snapshot, imported.metadata),
       ...diffDocuments(current, imported),
     ];
@@ -3227,6 +3293,7 @@ export async function restoreProjectDocument(
     resetInvalidatedManualConfirmations(current, desired);
     const changes = [
       ...eventDaysChange(snapshot.activeDays, desired.metadata.activeDays),
+      ...donationTargetsChange(snapshot, desired.metadata),
       ...eventPdfImageChanges(snapshot, desired.metadata),
       ...diffDocuments(current, desired),
     ];
@@ -3278,6 +3345,10 @@ export async function restoreProjectDocument(
           activeDays: desired.metadata.activeDays,
           startDate: desired.metadata.startDate,
           endDate: desired.metadata.endDate,
+          donationTargetKuchen: desired.metadata.donationTargetKuchen,
+          donationTargetSalat: desired.metadata.donationTargetSalat,
+          donationTargetSnack: desired.metadata.donationTargetSnack,
+          donationTargetSonstiges: desired.metadata.donationTargetSonstiges,
           pdfLogoKey: desired.metadata.pdfLogoKey,
           pdfLogoUrl: desired.metadata.pdfLogoUrl,
           pdfLogoFallback: desired.metadata.pdfLogoFallback,
@@ -3622,6 +3693,11 @@ export async function restoreProjectDocument(
       dates:
         afterSnapshot.startDate === desired.metadata.startDate &&
         afterSnapshot.endDate === desired.metadata.endDate,
+      donationTargets:
+        afterSnapshot.donationTargetKuchen === desired.metadata.donationTargetKuchen &&
+        afterSnapshot.donationTargetSalat === desired.metadata.donationTargetSalat &&
+        afterSnapshot.donationTargetSnack === desired.metadata.donationTargetSnack &&
+        afterSnapshot.donationTargetSonstiges === desired.metadata.donationTargetSonstiges,
       pdfLogoKey: afterSnapshot.pdfLogoKey === desired.metadata.pdfLogoKey,
       pdfLogoUrl: afterSnapshot.pdfLogoUrl === desired.metadata.pdfLogoUrl,
       pdfLogoFallback:
@@ -3631,6 +3707,7 @@ export async function restoreProjectDocument(
       JSON.stringify(restoredContent) !== JSON.stringify(desiredContent) ||
       !metadataMatches.activeDays ||
       !metadataMatches.dates ||
+      !metadataMatches.donationTargets ||
       !metadataMatches.pdfLogoKey ||
       !metadataMatches.pdfLogoUrl ||
       !metadataMatches.pdfLogoFallback
@@ -3833,6 +3910,10 @@ export async function exportProjectExcel(): Promise<{
         Schlüssel: "Veranstaltungstage",
         Wert: snapshot.activeDays.join(", "),
       },
+      { Schlüssel: "Spenden-Soll Kuchen / Gebäck", Wert: snapshot.donationTargetKuchen },
+      { Schlüssel: "Spenden-Soll Salat", Wert: snapshot.donationTargetSalat },
+      { Schlüssel: "Spenden-Soll Dessert", Wert: snapshot.donationTargetSnack },
+      { Schlüssel: "Spenden-Soll Sonstiges", Wert: snapshot.donationTargetSonstiges },
       {
         Schlüssel: "Individuelles PDF-Bild",
         Wert: snapshot.pdfLogoKey ? "Hinterlegt" : "Nicht hinterlegt",
@@ -4080,6 +4161,10 @@ export async function exportBackupExcel() {
       Schlüssel: "Enddatum",
       Wert: document.metadata.endDate ?? "",
     },
+    { Schlüssel: "Spenden-Soll Kuchen / Gebäck", Wert: document.metadata.donationTargetKuchen },
+    { Schlüssel: "Spenden-Soll Salat", Wert: document.metadata.donationTargetSalat },
+    { Schlüssel: "Spenden-Soll Dessert", Wert: document.metadata.donationTargetSnack },
+    { Schlüssel: "Spenden-Soll Sonstiges", Wert: document.metadata.donationTargetSonstiges },
     {
       Schlüssel: "PDF-Bild-Schlüssel",
       Wert: document.metadata.pdfLogoKey ?? "",

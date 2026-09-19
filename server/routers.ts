@@ -860,6 +860,15 @@ export const appRouter = router({
             .regex(/^\d{4}-\d{2}-\d{2}$/, "Ungültiges Enddatum")
             .nullable()
             .optional(),
+          donationTargetKuchen: z.number().int().min(0).max(10_000).optional(),
+          donationTargetSalat: z.number().int().min(0).max(10_000).optional(),
+          donationTargetSnack: z.number().int().min(0).max(10_000).optional(),
+          donationTargetSonstiges: z
+            .number()
+            .int()
+            .min(0)
+            .max(10_000)
+            .optional(),
         })
       )
       .mutation(({ input }) =>
@@ -867,6 +876,10 @@ export const appRouter = router({
           name: input.name,
           startDate: input.startDate,
           endDate: input.endDate,
+          donationTargetKuchen: input.donationTargetKuchen,
+          donationTargetSalat: input.donationTargetSalat,
+          donationTargetSnack: input.donationTargetSnack,
+          donationTargetSonstiges: input.donationTargetSonstiges,
         })
       ),
     remove: adminProcedure
@@ -2019,7 +2032,16 @@ export const appRouter = router({
 
   dashboard: router({
     stats: protectedProcedure.query(async () => {
-      const [shifts, assignments, helpers, prep, post, contacts, selectedEvent] =
+      const [
+        shifts,
+        assignments,
+        helpers,
+        prep,
+        post,
+        contacts,
+        donations,
+        selectedEvent,
+      ] =
         await Promise.all([
           db.listShifts(),
           db.listAssignments(),
@@ -2027,6 +2049,7 @@ export const appRouter = router({
           db.listPrep(),
           db.listPost(),
           db.listContacts(),
+          db.listCakes(),
           db.getEvent(),
         ]);
       const ev = evaluateShifts(shifts, assignments, helpers);
@@ -2111,6 +2134,43 @@ export const appRouter = router({
           ...tagesPotenzial,
         };
       });
+      const donationCategories = [
+        {
+          id: "kuchen",
+          label: "Kuchen / Gebäck",
+          target: selectedEvent?.donationTargetKuchen ?? 0,
+        },
+        {
+          id: "salat",
+          label: "Salat",
+          target: selectedEvent?.donationTargetSalat ?? 0,
+        },
+        {
+          id: "snack",
+          label: "Dessert",
+          target: selectedEvent?.donationTargetSnack ?? 0,
+        },
+        {
+          id: "sonstiges",
+          label: "Sonstiges",
+          target: selectedEvent?.donationTargetSonstiges ?? 0,
+        },
+      ] as const;
+      const donationCategoryCounts = new Map(
+        donationCategories.map(category => [category.id, 0])
+      );
+      for (const donation of donations) {
+        const category =
+          (donation.donationCategory as string) === "deftiges"
+            ? "sonstiges"
+            : donation.donationCategory;
+        if (donationCategoryCounts.has(category as (typeof donationCategories)[number]["id"])) {
+          donationCategoryCounts.set(
+            category as (typeof donationCategories)[number]["id"],
+            (donationCategoryCounts.get(category as (typeof donationCategories)[number]["id"]) ?? 0) + 1
+          );
+        }
+      }
       return {
         schichtenGesamt: ev.length,
         offen: ev.filter(e => e.status === "OFFEN").length,
@@ -2145,6 +2205,22 @@ export const appRouter = router({
         abgelehnteVorbereitung: prep.filter(p => p.status === "abgelehnt").length,
         naechsteVorbereitungsfristen: upcomingPreparationDeadlines(prep, contacts),
         offeneNachbereitung: post.filter(p => p.status === "offen").length,
+        spenden: {
+          gesamt: donations.length,
+          kategorien: donationCategories.map(category => ({
+            ...category,
+            ist: donationCategoryCounts.get(category.id) ?? 0,
+          })),
+          eigenschaften: {
+            vegan: donations.filter(donation => donation.vegan).length,
+            glutenFree: donations.filter(donation => donation.glutenFree).length,
+            lactoseFree: donations.filter(donation => donation.lactoseFree)
+              .length,
+            containsNuts: donations.filter(donation => donation.containsNuts)
+              .length,
+            meat: donations.filter(donation => donation.meat).length,
+          },
+        },
         verantwortlichkeiten: await (async () => {
           const [materials, marketing, approvals] = await Promise.all([
             db.listMaterials(),

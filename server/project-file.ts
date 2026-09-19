@@ -20,7 +20,7 @@ import { normalizeMaterialStatus } from "../shared/material-status";
 import { eventDateRangeError } from "../shared/event-dates";
 
 const PROJECT_FORMAT = "RSC-HELFERPLANUNG-PROJEKTDATEI";
-const PROJECT_VERSION = 16;
+const PROJECT_VERSION = 17;
 const MAX_PROJECT_BYTES = 10_000_000;
 const MAX_ROWS = 10_000;
 
@@ -43,6 +43,10 @@ const eventMetadataSchema = z
     pdfLogoFallback: z.enum(["none", "brand"]),
     startDate: short(10).regex(/^\d{4}-\d{2}-\d{2}$/).nullable().default(null),
     endDate: short(10).regex(/^\d{4}-\d{2}-\d{2}$/).nullable().default(null),
+    donationTargetKuchen: z.number().int().min(0).max(10_000).default(0),
+    donationTargetSalat: z.number().int().min(0).max(10_000).default(0),
+    donationTargetSnack: z.number().int().min(0).max(10_000).default(0),
+    donationTargetSonstiges: z.number().int().min(0).max(10_000).default(0),
     exportedAt: z.string().datetime(),
   })
   .superRefine((metadata, context) => {
@@ -868,12 +872,39 @@ export function parseProjectFile(base64: string): {
     raw.metadata &&
     typeof raw.metadata === "object" &&
     "version" in raw.metadata &&
+    raw.metadata.version === 16
+  ) {
+    const legacy = raw as Record<string, any>;
+    legacy.metadata = {
+      ...legacy.metadata,
+      version: PROJECT_VERSION,
+      donationTargetKuchen: 0,
+      donationTargetSalat: 0,
+      donationTargetSnack: 0,
+      donationTargetSonstiges: 0,
+    };
+  }
+  if (
+    raw &&
+    typeof raw === "object" &&
+    "metadata" in raw &&
+    raw.metadata &&
+    typeof raw.metadata === "object" &&
+    "version" in raw.metadata &&
     raw.metadata.version === PROJECT_VERSION
   ) {
     const document = raw as Record<string, any>;
     if (document.metadata) {
       document.metadata.startDate = document.metadata.startDate ?? null;
       document.metadata.endDate = document.metadata.endDate ?? null;
+      document.metadata.donationTargetKuchen =
+        document.metadata.donationTargetKuchen ?? 0;
+      document.metadata.donationTargetSalat =
+        document.metadata.donationTargetSalat ?? 0;
+      document.metadata.donationTargetSnack =
+        document.metadata.donationTargetSnack ?? 0;
+      document.metadata.donationTargetSonstiges =
+        document.metadata.donationTargetSonstiges ?? 0;
     }
     document.locations = Array.isArray(document.locations)
       ? document.locations.map((location: Record<string, unknown>) => ({

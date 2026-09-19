@@ -212,13 +212,17 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsed = parseProjectFile(exported.buffer.toString("base64"));
     expect(parsed.document.metadata).toMatchObject({
       format: "RSC-HELFERPLANUNG-PROJEKTDATEI",
-      version: 16,
+      version: 17,
       eventId: 1,
       eventName: "MyEifelRide",
       year: 2026,
       activeDays: [...WEEKDAYS],
       startDate: "2026-06-19",
       endDate: "2026-06-21",
+      donationTargetKuchen: 0,
+      donationTargetSalat: 0,
+      donationTargetSnack: 0,
+      donationTargetSonstiges: 0,
       pdfLogoKey: "pdf-logos/events/2026/1/logo.png",
       pdfLogoUrl: "/manus-storage/pdf-logos/events/2026/1/logo.png",
       pdfLogoFallback: "none",
@@ -410,7 +414,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsed = parseProjectFile(
       Buffer.from(JSON.stringify(document)).toString("base64")
     );
-    expect(parsed.document.metadata.version).toBe(16);
+    expect(parsed.document.metadata.version).toBe(17);
     expect(parsed.document.metadata.activeDays).toEqual([...WEEKDAYS]);
     expect(parsed.document.metadata).toMatchObject({
       pdfLogoKey: null,
@@ -793,7 +797,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsedV5 = parseProjectFile(
       Buffer.from(JSON.stringify(legacyV5)).toString("base64")
     ).document;
-    expect(parsedV5.metadata.version).toBe(16);
+    expect(parsedV5.metadata.version).toBe(17);
     expect(parsedV5.shifts[0].manualOkConfirmed).toBe(false);
   });
 
@@ -808,7 +812,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsedV6 = parseProjectFile(
       Buffer.from(JSON.stringify(legacyV6)).toString("base64")
     ).document;
-    expect(parsedV6.metadata.version).toBe(16);
+    expect(parsedV6.metadata.version).toBe(17);
     expect(parsedV6.shifts[0].manualDoubleConflictAccepted).toBe(false);
   });
 
@@ -824,7 +828,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsedV7 = parseProjectFile(
       Buffer.from(JSON.stringify(legacyV7)).toString("base64")
     ).document;
-    expect(parsedV7.metadata.version).toBe(16);
+    expect(parsedV7.metadata.version).toBe(17);
     expect(parsedV7.locations).toEqual([]);
     expect(parsedV7.shifts[0].locationName).toBe("");
   });
@@ -856,7 +860,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsedV8 = parseProjectFile(
       Buffer.from(JSON.stringify(legacyV8)).toString("base64")
     ).document;
-    expect(parsedV8.metadata.version).toBe(16);
+    expect(parsedV8.metadata.version).toBe(17);
     expect(parsedV8.materials[0].locationName).toBe("");
   });
   it("erhaelt Standort-Logos und migriert v9-Dateien sauber auf Version 10", async () => {
@@ -884,7 +888,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     delete (legacyV9.locations[0] as any).logoKey;
     delete (legacyV9.locations[0] as any).logoUrl;
     const parsedV9 = parseProjectFile(Buffer.from(JSON.stringify(legacyV9)).toString("base64")).document;
-    expect(parsedV9.metadata.version).toBe(16);
+    expect(parsedV9.metadata.version).toBe(17);
     expect(parsedV9.locations[0].logoKey).toBeNull();
     expect(parsedV9.locations[0].logoUrl).toBeNull();
   });
@@ -902,7 +906,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
       Buffer.from(JSON.stringify(legacyV10)).toString("base64")
     ).document;
 
-    expect(parsed.metadata.version).toBe(16);
+    expect(parsed.metadata.version).toBe(17);
     expect(parsed.post[0]).toMatchObject({
       category: "",
       dueText: "",
@@ -935,7 +939,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsed = parseProjectFile(
       Buffer.from(JSON.stringify(legacyV11)).toString("base64")
     ).document;
-    expect(parsed.metadata.version).toBe(16);
+    expect(parsed.metadata.version).toBe(17);
     expect(parsed.materials[0].status).toBe("geliefert");
   });
 
@@ -949,7 +953,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsed = parseProjectFile(
       Buffer.from(JSON.stringify(legacyV12)).toString("base64")
     ).document;
-    expect(parsed.metadata.version).toBe(16);
+    expect(parsed.metadata.version).toBe(17);
     expect(parsed.metadata.startDate).toBeNull();
     expect(parsed.metadata.endDate).toBeNull();
   });
@@ -972,7 +976,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsed = parseProjectFile(
       Buffer.from(JSON.stringify(legacyV13)).toString("base64")
     ).document;
-    expect(parsed.metadata.version).toBe(16);
+    expect(parsed.metadata.version).toBe(17);
     expect(parsed.cakes[0]).toMatchObject({
       donor: "Josi Volli",
       cake: "Käsekuchen",
@@ -1008,7 +1012,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsed = parseProjectFile(
       Buffer.from(JSON.stringify(legacyV14)).toString("base64")
     ).document;
-    expect(parsed.metadata.version).toBe(16);
+    expect(parsed.metadata.version).toBe(17);
     expect(parsed.cakes[0]).toMatchObject({
       donor: "Rosi Müller",
       cake: "Käsekuchen",
@@ -1050,12 +1054,31 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsed = parseProjectFile(
       Buffer.from(JSON.stringify(legacyV15)).toString("base64")
     ).document;
-    expect(parsed.metadata.version).toBe(16);
+    expect(parsed.metadata.version).toBe(17);
     expect(parsed.cakes[0]).toMatchObject({
       donor: "Christoph Link",
       cake: "Nudelsalat",
       donationCategory: "kuchen",
       meat: false,
     });
+  });
+
+  it("migriert v16-Dateien ohne Spenden-Sollwerte sauber auf Version 17", async () => {
+    const exported = await exportProjectFile();
+    const legacyV16 = parseProjectFile(exported.buffer.toString("base64")).document;
+    legacyV16.metadata.version = 16;
+    delete (legacyV16.metadata as any).donationTargetKuchen;
+    delete (legacyV16.metadata as any).donationTargetSalat;
+    delete (legacyV16.metadata as any).donationTargetSnack;
+    delete (legacyV16.metadata as any).donationTargetSonstiges;
+
+    const parsed = parseProjectFile(
+      Buffer.from(JSON.stringify(legacyV16)).toString("base64")
+    ).document;
+    expect(parsed.metadata.version).toBe(17);
+    expect(parsed.metadata.donationTargetKuchen).toBe(0);
+    expect(parsed.metadata.donationTargetSalat).toBe(0);
+    expect(parsed.metadata.donationTargetSnack).toBe(0);
+    expect(parsed.metadata.donationTargetSonstiges).toBe(0);
   });
 });

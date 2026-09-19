@@ -152,6 +152,12 @@ export const events = mysqlTable(
     activeDays: json("activeDays").$type<Weekday[]>().notNull(),
     startDate: date("startDate", { mode: "string" }),
     endDate: date("endDate", { mode: "string" }),
+    donationTargetKuchen: int("donationTargetKuchen").notNull().default(0),
+    donationTargetSalat: int("donationTargetSalat").notNull().default(0),
+    donationTargetSnack: int("donationTargetSnack").notNull().default(0),
+    donationTargetSonstiges: int("donationTargetSonstiges")
+      .notNull()
+      .default(0),
     pdfLogoKey: varchar("pdfLogoKey", { length: 500 }),
     pdfLogoUrl: varchar("pdfLogoUrl", { length: 700 }),
     pdfLogoFallback: mysqlEnum("pdfLogoFallback", ["none", "brand"])

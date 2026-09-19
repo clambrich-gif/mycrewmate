@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   ClipboardList,
   CircleX,
+  Gift,
   GitCompareArrows,
   ListTodo,
   UsersRound,
@@ -392,6 +393,216 @@ function FirstContactRateCard({
     >
       {card}
     </button>
+  );
+}
+
+type DonationDashboardStats = {
+  gesamt: number;
+  kategorien: Array<{
+    id: "kuchen" | "salat" | "snack" | "sonstiges";
+    label: string;
+    target: number;
+    ist: number;
+  }>;
+  eigenschaften: {
+    vegan: number;
+    glutenFree: number;
+    lactoseFree: number;
+    containsNuts: number;
+    meat: number;
+  };
+};
+
+function CommunicationRateRow({
+  title,
+  value,
+  total,
+  outstanding,
+  rate,
+  tone,
+  actionLabel,
+  onClick,
+}: {
+  title: string;
+  value: number;
+  total: number;
+  outstanding: number;
+  rate: number;
+  tone: "green" | "blue";
+  actionLabel: string;
+  onClick: () => void;
+}) {
+  const actionable = total > 0 && outstanding > 0;
+  const accent = tone === "green" ? "#16a34a" : "#2563eb";
+  const track = tone === "green" ? "#dcfce7" : "#dbeafe";
+  const detail =
+    total === 0
+      ? "Noch keine Helfer erfasst"
+      : outstanding === 0
+        ? "Vollständig erledigt"
+        : `${outstanding} noch offen`;
+  const content = (
+    <div className="flex min-h-[6.25rem] items-center gap-3 rounded-xl border border-slate-200 bg-white/80 p-3">
+      <span
+        className="relative flex size-16 shrink-0 items-center justify-center rounded-full"
+        style={{ background: `conic-gradient(${accent} ${rate}%, ${track} ${rate}% 100%)` }}
+        aria-label={`${rate} Prozent ${title}`}
+      >
+        <span className="flex size-12 items-center justify-center rounded-full bg-white text-base font-bold text-slate-950 shadow-sm">
+          {rate}%
+        </span>
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-1.5 text-sm font-bold text-slate-900">
+          <UsersRound className={`size-4 ${tone === "green" ? "text-emerald-700" : "text-blue-700"}`} aria-hidden="true" />
+          {title}
+        </span>
+        <span className="mt-1 block text-xs text-slate-700">
+          <strong className="text-sm text-slate-950">{value} / {total}</strong> Helfer
+        </span>
+        <span className={`mt-1 block text-xs font-semibold ${tone === "green" ? "text-emerald-800" : "text-blue-800"}`}>
+          {detail}
+        </span>
+      </span>
+      {actionable && <ArrowRight className={`size-4 shrink-0 ${tone === "green" ? "text-emerald-700" : "text-blue-700"}`} aria-hidden="true" />}
+    </div>
+  );
+  if (!actionable) return content;
+  return (
+    <button
+      type="button"
+      className="group w-full rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+      aria-label={`${title}: ${detail}. ${actionLabel}`}
+      onPointerEnter={() => preloadRoute("/helfer")}
+      onFocus={() => preloadRoute("/helfer")}
+      onClick={onClick}
+    >
+      {content}
+    </button>
+  );
+}
+
+function HelperStatusCommunicationCard({
+  assigned,
+  confirmed,
+  feedbackOutstanding,
+  feedbackRate,
+  total,
+  contacted,
+  contactOutstanding,
+  contactRate,
+  openTarget,
+}: {
+  assigned: number;
+  confirmed: number;
+  feedbackOutstanding: number;
+  feedbackRate: number;
+  total: number;
+  contacted: number;
+  contactOutstanding: number;
+  contactRate: number;
+  openTarget: (target: DashboardTarget) => void;
+}) {
+  return (
+    <Card data-dashboard-section="Helfer-Status & Kommunikation" className="h-full border-blue-300 bg-blue-50/55 text-slate-950 shadow-sm">
+      <CardHeader className="p-3 pb-2 sm:p-4 sm:pb-2">
+        <CardTitle className="flex items-center gap-2 text-base text-slate-900">
+          <UsersRound className="size-5 text-blue-700" aria-hidden="true" />
+          Helfer-Status & Kommunikation
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2 p-3 pt-1 sm:p-4 sm:pt-1">
+        <CommunicationRateRow
+          title="Rückmeldequote"
+          value={confirmed}
+          total={assigned}
+          outstanding={feedbackOutstanding}
+          rate={feedbackRate}
+          tone="green"
+          actionLabel="Unbestätigte Helfer anzeigen"
+          onClick={() => openTarget({ path: "/helfer", confirmed: "nein", assigned: true })}
+        />
+        <CommunicationRateRow
+          title="Erstkontakt-Quote"
+          value={contacted}
+          total={total}
+          outstanding={contactOutstanding}
+          rate={contactRate}
+          tone="blue"
+          actionLabel="Helfer ohne Erstkontakt anzeigen"
+          onClick={() => openTarget({ path: "/helfer", firstContact: "offen" })}
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
+function DonationSummaryCard({
+  donations,
+  openDonations,
+}: {
+  donations: DonationDashboardStats;
+  openDonations: () => void;
+}) {
+  const traitTags = [
+    ["🌱 Vegan", donations.eigenschaften.vegan, "border-emerald-200 bg-emerald-50 text-emerald-800"],
+    ["🌾 Glutenfrei", donations.eigenschaften.glutenFree, "border-amber-200 bg-amber-50 text-amber-900"],
+    ["🥛 Laktosefrei", donations.eigenschaften.lactoseFree, "border-sky-200 bg-sky-50 text-sky-800"],
+    ["🌰 Nüsse", donations.eigenschaften.containsNuts, "border-orange-200 bg-orange-50 text-orange-900"],
+    ["🥩 Fleischhaltig", donations.eigenschaften.meat, "border-rose-200 bg-rose-50 text-rose-800"],
+  ] as const;
+  return (
+    <Card data-dashboard-section="Verpflegungsspenden" className="h-full border-rose-200 bg-rose-50/45 text-slate-950 shadow-sm">
+      <CardHeader className="flex flex-row flex-wrap items-baseline justify-between gap-2 p-3 pb-2 sm:p-4 sm:pb-2">
+        <button
+          type="button"
+          className="group flex min-w-0 items-center gap-2 rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-600 focus-visible:ring-offset-2"
+          aria-label="Verpflegungsspenden verwalten"
+          onPointerEnter={() => preloadRoute("/spenden")}
+          onFocus={() => preloadRoute("/spenden")}
+          onClick={openDonations}
+        >
+          <CardTitle className="flex items-center gap-2 text-base text-slate-900">
+            <Gift className="size-5 text-rose-700" aria-hidden="true" />
+            Verpflegungsspenden
+          </CardTitle>
+          <ArrowRight className="size-4 shrink-0 text-rose-700 transition-transform duration-150 group-hover:translate-x-0.5" aria-hidden="true" />
+        </button>
+        <span className="text-xs text-slate-600">Gesamt: {donations.gesamt} erfasst</span>
+      </CardHeader>
+      <CardContent className="grid gap-4 p-3 pt-1 sm:p-4 sm:pt-1 lg:grid-cols-[minmax(0,1fr)_minmax(9rem,0.8fr)]">
+        <div className="space-y-2.5">
+          {donations.kategorien.map(category => {
+            const quote = category.target > 0 ? Math.min(100, Math.round((category.ist / category.target) * 100)) : 0;
+            const text = category.target > 0 ? `${category.ist} / ${category.target}` : `${category.ist} / –`;
+            return (
+              <div key={category.id}>
+                <div className="flex items-baseline justify-between gap-2 text-xs">
+                  <span className="min-w-0 truncate font-medium text-slate-800">{category.label}</span>
+                  <span className="shrink-0 font-bold tabular-nums text-slate-950">{text}</span>
+                </div>
+                <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-rose-100" role="progressbar" aria-label={`${category.label}: ${category.ist} von ${category.target || 0} Spenden erfasst`} aria-valuemin={0} aria-valuemax={Math.max(category.target, 1)} aria-valuenow={Math.min(category.ist, Math.max(category.target, 1))}>
+                  <div className="h-full rounded-full bg-rose-500 transition-[width] duration-200" style={{ width: `${quote}%` }} />
+                </div>
+              </div>
+            );
+          })}
+          {donations.kategorien.every(category => category.target === 0) && (
+            <p className="pt-0.5 text-xs text-slate-500">Sollwerte können in der Spendenübersicht festgelegt werden.</p>
+          )}
+        </div>
+        <div className="border-t border-rose-200 pt-3 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-600">Eigenschaften</p>
+          <div className="flex flex-wrap gap-1.5">
+            {traitTags.map(([label, value, className]) => (
+              <span key={label} className={`rounded-full border px-2 py-1 text-xs font-medium ${className}`}>
+                {label}: {value}
+              </span>
+            ))}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -873,19 +1084,20 @@ export default function Dashboard() {
           openTarget={target => navigate(dashboardTargetHref(target))}
           onPotentialFilter={showPotentialInWorkload}
         />
-        <FeedbackRateCard
+        <HelperStatusCommunicationCard
           assigned={s.helferEingeteilt}
           confirmed={s.helferEingeteiltBestaetigt}
-          outstanding={s.helferEingeteiltUnbestaetigt}
-          rate={s.rueckmeldequote}
-          openTarget={target => navigate(dashboardTargetHref(target))}
-        />
-        <FirstContactRateCard
+          feedbackOutstanding={s.helferEingeteiltUnbestaetigt}
+          feedbackRate={s.rueckmeldequote}
           total={s.helferGesamt}
           contacted={s.helferKontaktiert}
-          outstanding={s.helferOhneErstkontakt}
-          rate={s.erstkontaktquote}
+          contactOutstanding={s.helferOhneErstkontakt}
+          contactRate={s.erstkontaktquote}
           openTarget={target => navigate(dashboardTargetHref(target))}
+        />
+        <DonationSummaryCard
+          donations={s.spenden as DonationDashboardStats}
+          openDonations={() => navigate("/spenden")}
         />
       </section>
 

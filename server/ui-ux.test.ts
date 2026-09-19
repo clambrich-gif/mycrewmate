@@ -692,8 +692,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(router).toContain("helferEingeteiltBestaetigt");
     expect(router).toContain("helferEingeteiltUnbestaetigt");
     expect(router).toContain("rueckmeldequote");
-    expect(dashboard).toContain("FeedbackRateCard");
-    expect(dashboard).toContain('data-dashboard-section="Rückmeldequote"');
+    expect(dashboard).toContain("HelperStatusCommunicationCard");
+    expect(dashboard).toContain('data-dashboard-section="Helfer-Status & Kommunikation"');
+    expect(dashboard).toContain("Rückmeldequote");
     expect(dashboard).toContain("eingeteilte Helfer bestätigt");
     expect(dashboard).toContain('path: "/helfer"');
     expect(dashboard).toContain('confirmed: "nein"');
@@ -714,8 +715,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(router).toContain("helferOhneErstkontakt");
     expect(router).toContain("helferKontaktiert");
     expect(router).toContain("erstkontaktquote");
-    expect(dashboard).toContain("FirstContactRateCard");
-    expect(dashboard).toContain('data-dashboard-section="Erstkontakt-Quote"');
+    expect(dashboard).toContain("HelperStatusCommunicationCard");
+    expect(dashboard).toContain('data-dashboard-section="Helfer-Status & Kommunikation"');
     expect(dashboard).toContain("Erstkontakt-Quote");
     expect(dashboard).toContain("Helfer kontaktiert");
     expect(dashboard).toContain("Helfer noch ohne Erstkontakt");
@@ -1842,6 +1843,24 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(cakes).toContain('searchParams.get("donor")?.trim() ?? ""');
     expect(cakes).toContain('setForm({ ...EMPTY_DONATION_FORM, donor: requestedDonor })');
     expect(cakes).toContain('next.delete("donor")');
+    expect(cakes).toContain("Spenden-Sollwerte");
+    expect(cakes).toContain("Zielmengen für den Soll/Ist-Vergleich im Dashboard festlegen.");
+    expect(cakes).toContain("updateDonationTargets.mutate");
+    expect(cakes).toContain("donationTargetKuchen");
+    expect(cakes).toContain("donationTargetSalat");
+    expect(cakes).toContain("donationTargetSnack");
+    expect(cakes).toContain("donationTargetSonstiges");
+
+    const dashboard = source("client/src/pages/Dashboard.tsx");
+    expect(dashboard).toContain("DonationSummaryCard");
+    expect(dashboard).toContain('data-dashboard-section="Verpflegungsspenden"');
+    expect(dashboard).toContain("Verpflegungsspenden");
+    expect(dashboard).toContain("Spenden erfasst");
+    expect(dashboard).toContain("🌱 Vegan");
+    expect(dashboard).toContain("🌾 Glutenfrei");
+    expect(dashboard).toContain("🥛 Laktosefrei");
+    expect(dashboard).toContain("🌰 Nüsse");
+    expect(dashboard).toContain("🥩 Fleischhaltig");
   });
 
   it("bietet zentrale Orte, Ortsauswahl und Kartenlinks in Schichten und Vorbereitungen", () => {
