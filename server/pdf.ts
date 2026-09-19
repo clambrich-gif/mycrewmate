@@ -22,6 +22,7 @@ import { storageGetSignedUrl } from "./storage";
 import { resolveEventPdfLogoKey } from "./event-pdf-image";
 import { helperAvailabilityWindow } from "../shared/weekdays";
 import { latestPreparationLogbookEntry } from "../shared/preparation-logbook";
+import { COPYRIGHT_NOTICE } from "../shared/branding";
 
 const require = createRequire(import.meta.url);
 const { ZipArchive } = require("archiver") as {
@@ -144,7 +145,12 @@ function collectPdf(
       const current = index - range.start + 1;
       doc.page.margins.bottom = 0;
       doc.font("Helvetica").fontSize(8).fillColor(colors.muted);
-      doc.text(`Seite ${current} von ${range.count}`, 0, doc.page.height - 24, {
+      doc.text(COPYRIGHT_NOTICE, 0, doc.page.height - 36, {
+        align: "center",
+        width: doc.page.width,
+        lineBreak: false,
+      });
+      doc.text(`Seite ${current} von ${range.count}`, 0, doc.page.height - 22, {
         align: "center",
         width: doc.page.width,
         lineBreak: false,

@@ -43,6 +43,7 @@ import { preloadRoute } from "@/lib/route-loaders";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { WEEKDAYS, type Weekday } from "@shared/weekdays";
+import { COPYRIGHT_NOTICE } from "@shared/branding";
 import {
   Bike,
   Calendar,
@@ -525,7 +526,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }
   if (!isAuthenticated) {
     return (
-      <div className="min-h-[100dvh] grid place-items-center bg-gradient-to-br from-[oklch(0.97_0.02_250)] to-[oklch(0.92_0.04_240)] px-4 py-5 sm:p-6">
+      <div className="relative grid min-h-[100dvh] place-items-center bg-gradient-to-br from-[oklch(0.97_0.02_250)] to-[oklch(0.92_0.04_240)] px-4 py-5 sm:p-6">
         <div className="w-full max-w-md rounded-2xl border border-white/80 bg-white/90 p-5 text-card-foreground shadow-xl backdrop-blur-sm sm:p-8">
           <img
             {...logoLoading}
@@ -845,7 +846,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
             nur gezielt durch Administratoren verhängt werden.
           </p>
             </div>
-          </div>
+          <p className="pointer-events-none absolute inset-x-4 bottom-3 text-center text-xs text-gray-400 sm:bottom-4">
+            {COPYRIGHT_NOTICE}
+          </p>
+        </div>
     );
   }
   if (
@@ -1091,6 +1095,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
             >
               <LogOut className="mr-2 h-4 w-4" /> Abmelden
             </Button>
+            <p className="mt-3 text-center text-[10px] leading-snug text-slate-400">
+              {COPYRIGHT_NOTICE}
+            </p>
           </div>
         </SheetContent>
       </Sheet>
@@ -1239,21 +1246,26 @@ export function Layout({ children }: { children: React.ReactNode }) {
             }
           )}
         </nav>
-        <div className="border-t p-3 flex items-center justify-between gap-2">
-          <div className="min-w-0">
-            <div className="text-sm font-medium truncate">{user?.name}</div>
-            <div className="text-xs text-muted-foreground">
-              {user?.role === "admin" ? "Administrator" : "Planungsteam"}
+        <div className="border-t p-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <div className="text-sm font-medium truncate">{user?.name}</div>
+              <div className="text-xs text-muted-foreground">
+                {user?.role === "admin" ? "Administrator" : "Planungsteam"}
+              </div>
             </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Abmelden"
+              onClick={() => logout()}
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            title="Abmelden"
-            onClick={() => logout()}
-          >
-            <LogOut className="h-4 w-4" />
-          </Button>
+          <p className="mt-2 text-center text-[10px] leading-snug text-slate-400">
+            {COPYRIGHT_NOTICE}
+          </p>
         </div>
       </aside>
       <main className="min-w-0 flex-1 lg:h-screen lg:overflow-y-auto">

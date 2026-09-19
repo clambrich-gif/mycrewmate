@@ -79,6 +79,21 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(presence).toContain("motion-reduce:scale-100");
   });
 
+  it("zeigt den zentralen Copyright-Vermerk in Anmeldung, Navigation und PDFs", () => {
+    const branding = source("shared/branding.ts");
+    const layout = source("client/src/components/Layout.tsx");
+    const pdf = source("server/pdf.ts");
+
+    expect(branding).toContain(
+      "© 2026 MyCrewMate.de · Inhaber: Christian Lambrich · Alle Rechte vorbehalten."
+    );
+    expect(layout).toContain('import { COPYRIGHT_NOTICE } from "@shared/branding"');
+    expect(layout).toContain("absolute inset-x-4 bottom-3 text-center text-xs text-gray-400");
+    expect(layout.match(/\{COPYRIGHT_NOTICE\}/g)).toHaveLength(3);
+    expect(pdf).toContain('import { COPYRIGHT_NOTICE } from "../shared/branding"');
+    expect(pdf).toContain("doc.text(COPYRIGHT_NOTICE, 0, doc.page.height - 36");
+  });
+
   it("verhindert mobilen Formular-Auto-Zoom per 16px-Regel und lässt manuelles Zoomen zu", () => {
     const html = source("client/index.html");
     const css = source("client/src/index.css");
