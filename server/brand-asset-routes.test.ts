@@ -68,7 +68,7 @@ describe("Öffentliche MyCrewMate-Logoauslieferung", () => {
       0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
     ]);
     expect(testServer.getSignedUrl).toHaveBeenCalledWith(
-      "mycrewmate-transparent-wordmark_3d0d8ed7.png"
+      "mycrewmate-transparent-wordmark-v2_1282b566.png"
     );
   });
 

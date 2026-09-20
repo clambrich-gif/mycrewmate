@@ -90,7 +90,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     );
     expect(layout).toContain('import { COPYRIGHT_NOTICE } from "@shared/branding"');
     expect(layout).toContain("absolute inset-x-4 bottom-3 text-center sm:bottom-4");
-    expect(layout.match(/\{COPYRIGHT_NOTICE\}/g)).toHaveLength(3);
+    expect(layout.match(/\{COPYRIGHT_NOTICE\}/g)).toHaveLength(1);
+    expect(layout.match(/\{SIDEBAR_COPYRIGHT_NOTICE\}/g)).toHaveLength(2);
     expect(layout.match(/<LegalFooterLinks/g)).toHaveLength(3);
     expect(layout.match(/<ImpressumDialog/g)).toHaveLength(2);
     expect(pdf).toContain('import { COPYRIGHT_NOTICE } from "../shared/branding"');
@@ -1123,7 +1124,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
 
     expect(layout).toContain('const MYCREWMATE_WORDMARK = "/mycrewmate-logo.png"');
     expect(layout).toContain('const MYCREWMATE_ICON = "/manus-storage/mycrewmate-pwa-icon-512_b16ae84c.png"');
-    expect(brandAssets).toContain("mycrewmate-transparent-wordmark_3d0d8ed7.png");
+    expect(brandAssets).toContain("mycrewmate-transparent-wordmark-v2_1282b566.png");
     expect(brandAssets).not.toContain("RSC_BRAND_LOGO");
     expect(layout.match(/src=\{MYCREWMATE_WORDMARK\}/g)).toHaveLength(3);
     expect(layout.match(/src=\{MYCREWMATE_ICON\}/g)).toHaveLength(2);
@@ -1132,9 +1133,16 @@ describe("UI- und Mobile-UX-Regeln", () => {
 
   it("zeigt unter der Wortmarke einen zentrierten Planungstitel ohne Vereinslogo", () => {
     const layout = source("client/src/components/Layout.tsx");
+    const legalFooter = source("client/src/components/ImpressumDialog.tsx");
 
     expect(layout).toContain("VEREINS- &amp; EVENTPLANUNG");
     expect(layout).toContain("text-center text-[11px] font-medium");
+    expect(layout).toContain("bg-transparent object-contain");
+    expect(legalFooter).toContain(
+      "© 2026 MyCrewMate.de · Alle Rechte vorbehalten."
+    );
+    expect(layout).toContain("SIDEBAR_COPYRIGHT_NOTICE");
+    expect(layout).toContain("whitespace-nowrap");
     expect(layout).toContain('<OnlinePresenceBadge\n            counts={onlinePresence.counts}');
     expect(layout).not.toContain("ClubStatusLogoButton");
     expect(layout).not.toContain("ClubLogoModal");

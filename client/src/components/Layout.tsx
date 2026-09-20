@@ -1,6 +1,10 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
-import { ImpressumDialog, LegalFooterLinks } from "@/components/ImpressumDialog";
+import {
+  ImpressumDialog,
+  LegalFooterLinks,
+  SIDEBAR_COPYRIGHT_NOTICE,
+} from "@/components/ImpressumDialog";
 import {
   OnlinePresenceBadge,
   useOnlinePresence,
@@ -536,7 +540,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             {...logoLoading}
             src={MYCREWMATE_WORDMARK}
             alt="MyCrewMate"
-            className="mx-auto mb-5 h-10 w-auto max-w-full object-contain sm:h-12"
+            className="mx-auto mb-5 h-10 w-auto max-w-full bg-transparent object-contain sm:h-12"
           />
           <div className="text-center">
             <h1 className="sr-only">MyCrewMate</h1>
@@ -925,7 +929,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 {...logoLoading}
                 src={MYCREWMATE_WORDMARK}
                 alt="MyCrewMate"
-                className="h-10 w-auto max-w-[190px] object-contain"
+                className="h-10 w-auto max-w-[190px] bg-transparent object-contain"
               />
             </SheetTitle>
             <SheetDescription>
@@ -1105,7 +1109,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               }
             )}
           </nav>
-          <div className="border-t p-3">
+          <div className="border-t px-3 py-2">
             <Button
               variant="outline"
               className="w-full justify-start"
@@ -1117,27 +1121,28 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <LogOut className="mr-2 h-4 w-4" /> Abmelden
             </Button>
             <LegalFooterLinks
-              className="mt-3"
+              compact
+              className="mt-1.5"
               onOpenImpressum={() => setImpressumOpen(true)}
             />
             <button
               type="button"
-              className="mt-1 w-full rounded px-1 text-center text-[10px] leading-snug text-slate-400 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="mt-1 w-full whitespace-nowrap rounded px-1 text-center text-[10px] leading-none text-gray-400 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               onClick={() => setImpressumOpen(true)}
             >
-              {COPYRIGHT_NOTICE}
+              {SIDEBAR_COPYRIGHT_NOTICE}
             </button>
           </div>
         </SheetContent>
       </Sheet>
 
       <aside className="hidden w-64 shrink-0 flex-col border-r bg-card lg:sticky lg:top-0 lg:flex lg:h-screen lg:self-start">
-        <div className="flex min-h-24 flex-col items-center border-b bg-gradient-to-r from-white to-slate-50 px-4 py-3 text-slate-950">
+        <div className="flex min-h-24 flex-col items-center border-b bg-slate-50 px-4 py-3 text-slate-950">
           <img
             {...logoLoading}
             src={MYCREWMATE_WORDMARK}
             alt="MyCrewMate"
-            className="h-10 w-auto max-w-[210px] object-contain"
+            className="h-10 w-auto max-w-[210px] bg-transparent object-contain"
           />
           <div className="mt-1 w-full text-center text-[11px] font-medium tracking-[0.08em] text-slate-600">
             VEREINS- &amp; EVENTPLANUNG
@@ -1272,17 +1277,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
             }
           )}
         </nav>
-        <div className="border-t p-3">
+        <div className="border-t px-3 py-1">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
-              <div className="text-sm font-medium truncate">{user?.name}</div>
-              <div className="text-xs text-muted-foreground">
+              <div className="truncate text-xs font-medium leading-tight">
+                {user?.name}
+              </div>
+              <div className="text-[10px] leading-tight text-muted-foreground">
                 {user?.role === "admin" ? "Administrator" : "Planungsteam"}
               </div>
             </div>
             <Button
               variant="ghost"
               size="icon"
+              className="h-7 w-7"
               title="Abmelden"
               onClick={() => logout()}
             >
@@ -1290,15 +1298,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </Button>
           </div>
           <LegalFooterLinks
-            className="mt-2"
+            compact
+            className="mt-0.5"
             onOpenImpressum={() => setImpressumOpen(true)}
           />
           <button
             type="button"
-            className="mt-1 w-full rounded px-1 text-center text-[10px] leading-snug text-slate-400 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="mt-0.5 w-full whitespace-nowrap rounded px-1 text-center text-[10px] leading-none text-gray-400 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             onClick={() => setImpressumOpen(true)}
           >
-            {COPYRIGHT_NOTICE}
+            {SIDEBAR_COPYRIGHT_NOTICE}
           </button>
         </div>
       </aside>

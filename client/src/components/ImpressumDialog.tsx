@@ -4,6 +4,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { cn } from "@/lib/utils";
 
 export const PRIVACY_POLICY_URL = "https://mycrewmate.de/datenschutz";
+export const SIDEBAR_COPYRIGHT_NOTICE =
+  "© 2026 MyCrewMate.de · Alle Rechte vorbehalten.";
 
 type ImpressumDialogProps = {
   open: boolean;
@@ -13,6 +15,7 @@ type ImpressumDialogProps = {
 type LegalFooterLinksProps = {
   onOpenImpressum: () => void;
   className?: string;
+  compact?: boolean;
 };
 
 /** Einheitliche, öffentlich erreichbare Anbieterkennzeichnung. */
@@ -90,19 +93,36 @@ export function ImpressumDialog({ open, onOpenChange }: ImpressumDialogProps) {
 }
 
 /** Kompakte Rechtslinks für Login, Desktop-Seitenleiste und mobile Navigation. */
-export function LegalFooterLinks({ onOpenImpressum, className }: LegalFooterLinksProps) {
+export function LegalFooterLinks({
+  onOpenImpressum,
+  className,
+  compact = false,
+}: LegalFooterLinksProps) {
   return (
-    <div className={cn("flex items-center justify-center gap-1.5 text-[11px] leading-snug", className)}>
+    <div
+      className={cn(
+        "flex items-center justify-center gap-1.5 whitespace-nowrap text-[11px] leading-none",
+        className
+      )}
+    >
       <button
         type="button"
-        className="rounded px-1 text-slate-500 underline-offset-2 hover:text-blue-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        className={cn(
+          "rounded px-1 underline-offset-2 hover:text-blue-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
+          compact ? "text-[10px] text-gray-400" : "text-slate-500"
+        )}
         onClick={onOpenImpressum}
       >
         Impressum
       </button>
-      <span aria-hidden="true" className="text-slate-300">·</span>
+      <span aria-hidden="true" className="text-slate-300">
+        ·
+      </span>
       <a
-        className="rounded px-1 text-slate-500 underline-offset-2 hover:text-blue-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        className={cn(
+          "rounded px-1 underline-offset-2 hover:text-blue-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
+          compact ? "text-[10px] text-gray-400" : "text-slate-500"
+        )}
         href={PRIVACY_POLICY_URL}
         target="_blank"
         rel="noreferrer"
