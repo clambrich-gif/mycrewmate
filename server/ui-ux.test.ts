@@ -2626,6 +2626,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(manager).toContain("Ansprechpartner");
     expect(manager).toContain("availableContacts");
     expect(manager).toContain("Ansprechpartner-Zugang");
+    expect(manager).toContain("function uniqueContactChoices");
+    expect(manager).toContain("normalizedContactName");
+    expect(manager).toContain("contactChoices.map(contact");
+    expect(manager).toContain("{contact.name}");
+    expect(manager).not.toContain("{contact.name} · {contact.year} · {contact.eventName}");
+    expect(manager).toContain("Freigegebene Veranstaltungen");
 
     expect(contacts).toContain("Passwort / Zugangscode (optional)");
     expect(contacts).toContain("Neues Passwort (optional)");

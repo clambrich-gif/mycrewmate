@@ -44,6 +44,31 @@ const EMPTY_FORM: FormState = {
   currentAdminPassword: "",
 };
 
+type ContactChoice = {
+  id: number;
+  name: string;
+};
+
+function normalizedContactName(name: string) {
+  return name.trim().toLocaleLowerCase("de-DE");
+}
+
+function uniqueContactChoices<T extends ContactChoice>(
+  contacts: T[],
+  preferredContactId: number | null
+) {
+  const choicesByName = new Map<string, T>();
+  for (const contact of contacts) {
+    const normalizedName = normalizedContactName(contact.name);
+    if (!normalizedName) continue;
+    const existing = choicesByName.get(normalizedName);
+    if (!existing || contact.id === preferredContactId) {
+      choicesByName.set(normalizedName, contact);
+    }
+  }
+  return Array.from(choicesByName.values());
+}
+
 export function PlanningTeamAccessManager() {
   const utils = trpc.useUtils();
   const accesses = trpc.planningTeamAccesses.list.useQuery();
@@ -65,6 +90,10 @@ export function PlanningTeamAccessManager() {
     .filter((event): event is NonNullable<typeof event> => Boolean(event));
   const selectedContact = (availableContacts.data ?? []).find(
     contact => contact.id === form.contactId
+  );
+  const contactChoices = useMemo(
+    () => uniqueContactChoices(availableContacts.data ?? [], form.contactId),
+    [availableContacts.data, form.contactId]
   );
   const passwordIsRequired = form.id === null;
   const passwordMatches = form.password === form.confirmation;
@@ -259,7 +288,7 @@ export function PlanningTeamAccessManager() {
                     setForm(current => ({ ...current, contactId: null }));
                     return;
                   }
-                  const contact = (availableContacts.data ?? []).find(
+                  const contact = contactChoices.find(
                     item => item.id === Number(value)
                   );
                   if (!contact) return;
@@ -279,9 +308,9 @@ export function PlanningTeamAccessManager() {
                       Ohne Ansprechpartner-Verknüpfung (Altbestand)
                     </SelectItem>
                   )}
-                  {(availableContacts.data ?? []).map(contact => (
+                  {contactChoices.map(contact => (
                     <SelectItem key={contact.id} value={String(contact.id)}>
-                      {contact.name} · {contact.year} · {contact.eventName}
+                      {contact.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
