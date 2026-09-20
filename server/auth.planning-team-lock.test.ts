@@ -7,6 +7,7 @@ const dbMocks = vi.hoisted(() => ({
   clearPlanningTeamLoginFailuresIfUnlocked: vi.fn(),
   unlockPlanningTeamLogin: vi.fn(),
   lockPlanningTeamLogin: vi.fn(),
+  listPlanningTeamAccessCredentials: vi.fn(),
   upsertUser: vi.fn(),
 }));
 const presenceMocks = vi.hoisted(() => ({
@@ -81,6 +82,9 @@ describe("DoS-Schutz und manuelle Sperre für das Planungsteam", () => {
     dbMocks.lockPlanningTeamLogin.mockResolvedValue({
       locked: true,
     });
+    dbMocks.listPlanningTeamAccessCredentials.mockResolvedValue([
+      { id: 1, label: "Team", passwordHash, sessionVersion: 1 },
+    ]);
   });
 
   it("aktiviert nach 5 Fehlversuchen eine zeitbasierte Abklingzeit (Cooldown) pro Client-Anschluss", async () => {

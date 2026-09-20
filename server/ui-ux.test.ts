@@ -2551,7 +2551,6 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(storageProxy).toContain('"Content-Disposition": "inline"');
     expect(storageProxy).toContain("locationLogoContentType(key)");
   });
-});
   it("erweitert das Löschprotokoll um Vor- und Nachbereitungen und deren Wiederherstellung", () => {
     const permissions = source("client/src/pages/Permissions.tsx");
     const router = source("server/routers.ts");
@@ -2616,3 +2615,14 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(post).not.toContain('"beantragt"');
     expect(post).not.toContain('"genehmigt"');
   });
+
+  it("bindet im Zugangsschutz das Verwaltungsmodul für Planungsteam-Zugänge ein", () => {
+    const security = source("client/src/pages/Security.tsx");
+    const manager = source("client/src/components/PlanningTeamAccessManager.tsx");
+
+    expect(security).toContain("<PlanningTeamAccessManager />");
+    expect(manager).toContain("Planungsteam-Zugänge verwalten");
+    expect(manager).toContain("Freigegebene Veranstaltungen");
+    expect(manager).toContain("Administratorpasswort");
+  });
+});

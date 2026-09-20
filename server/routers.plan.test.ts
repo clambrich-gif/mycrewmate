@@ -1222,24 +1222,6 @@ describe("Planungs-API", () => {
     const caller = appRouter.createCaller(ctx);
 
     await expect(
-      caller.auth.setPassword({
-        password: "NeuesPlanungsteamPasswort2026!",
-        currentAdminPassword: "falsch",
-      })
-    ).rejects.toThrow("Administratorpasswort");
-    expect(dbMocks.setPasswordHash).not.toHaveBeenCalled();
-
-    await expect(
-      caller.auth.setPassword({
-        password: "NeuesPlanungsteamPasswort2026!",
-        currentAdminPassword: ADMIN_PASSWORD,
-      })
-    ).resolves.toEqual({ success: true });
-    expect(dbMocks.setPasswordHash).toHaveBeenCalledWith(
-      expect.not.stringContaining("NeuesPlanungsteamPasswort2026!")
-    );
-
-    await expect(
       caller.auth.setAdminPassword({
         password: "NeuesAdministratorPasswort2026!",
         currentAdminPassword: "falsch",

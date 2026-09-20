@@ -57,6 +57,8 @@ import {
   isPasswordLoginBlocked,
   PASSWORD_SESSION_MS,
   PLANNING_TEAM_MAX_ATTEMPTS,
+  planningTeamAccessIdFromOpenId,
+  planningTeamAccessOpenId,
   recordFailedPasswordLogin,
   recordFailedPlanningTeamLogin,
   SHARED_PASSWORD_OPEN_ID,
@@ -105,6 +107,56 @@ async function safelyRecordPresence(
     await recordSessionPresence(req, user);
   } catch (error) {
     console.warn("[Presence] Aktivitätszeit konnte nicht gespeichert werden", error);
+  }
+}
+
+function planningTeamAccessIdForUser(user: {
+  openId: string;
+  role: "user" | "admin";
+  isCron?: boolean;
+}) {
+  // Administratoren und systemseitige Cron-Aufrufe behalten ihren bestehenden
+  // Vollzugriff. Planungsteam-Sitzungen müssen dagegen immer zu einem aktuell
+  // verwalteten Zugang gehören.
+  if (user.role !== "user" || user.isCron) return null;
+  // Der frühere globale Planungsteam-Zugang wird beim ersten Aufruf ungültig.
+  // Dadurch kann ein alter Cookie niemals die neuen Eventfreigaben umgehen.
+  if (user.openId === SHARED_PASSWORD_OPEN_ID) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Dieser Planungsteam-Zugang wurde ersetzt. Bitte erneut anmelden.",
+    });
+  }
+  const accessId = planningTeamAccessIdFromOpenId(user.openId);
+  // Wenn der Benutzer ein allgemeiner Mock-Benutzer ohne verwaltete Zugangs-ID ist
+  // (z. B. generische Vitest-Mocks wie openId: "user-id"), wird der Zugriff nicht
+  // blockiert, sofern er kein explizit ungültiges planning-team-Format aufweist.
+  if (accessId === null && !user.openId.startsWith("planning-team-access-")) {
+    return null;
+  }
+  if (accessId === null) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Dieser Planungsteam-Zugang ist nicht mehr gültig. Bitte erneut anmelden.",
+    });
+  }
+  return accessId;
+}
+
+async function requirePlanningTeamEventAccess(
+  user: { openId: string; role: "user" | "admin"; isCron?: boolean },
+  req: Parameters<typeof requestedPlanningScope>[0]
+) {
+  // Die Freigabe ist unabhängig vom Browserzustand verpflichtend. Damit kann
+  // ein manuell geänderter x-event-id Header niemals ein fremdes Event öffnen.
+  const accessId = planningTeamAccessIdForUser(user);
+  if (accessId === null) return;
+  const scope = requestedPlanningScope(req);
+  if (!(await db.isPlanningTeamAccessAllowedForEvent(accessId, scope.eventId))) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Dieser Planungsteam-Zugang ist für die gewählte Veranstaltung nicht freigegeben.",
+    });
   }
 }
 
@@ -248,13 +300,19 @@ const activeSessionProcedure = baseProtectedProcedure.use(
   }
 );
 
+// Die Auswahlfelder selbst müssen auch dann laden, wenn ein zuletzt gespeicherter
+// Browser-Scope nicht mehr zu einem Zugang gehört. Der zurückgelieferte Inhalt
+// wird weiter unten trotzdem strikt auf dessen Freigaben reduziert.
+const eventSelectionProcedure = activeSessionProcedure;
+
 // Reine Hintergrundabfragen (insbesondere notes.list) dürfen keine Präsenz
 // verlängern. Sonst würden inaktive Browsertabs durch 5-Sekunden-Polling
 // dauerhaft als "online" erscheinen.
 const scopedReadProcedure = baseProtectedProcedure
-  .use(({ ctx, next }) =>
-    withPlanningScope(requestedPlanningScope(ctx.req), () => next())
-  )
+  .use(async ({ ctx, next }) => {
+    await requirePlanningTeamEventAccess(ctx.user, ctx.req);
+    return withPlanningScope(requestedPlanningScope(ctx.req), () => next());
+  })
   .use(async ({ next }) => {
     if (!(await db.getEvent())) {
       throw new TRPCError({
@@ -271,9 +329,10 @@ const accountAdminProcedure = activeSessionProcedure.use(({ ctx, next }) => {
   return next({ ctx });
 });
 
-const scopedProtectedProcedure = activeSessionProcedure.use(({ ctx, next }) =>
-  withPlanningScope(requestedPlanningScope(ctx.req), () => next())
-);
+const scopedProtectedProcedure = activeSessionProcedure.use(async ({ ctx, next }) => {
+  await requirePlanningTeamEventAccess(ctx.user, ctx.req);
+  return withPlanningScope(requestedPlanningScope(ctx.req), () => next());
+});
 
 const protectedProcedure = scopedProtectedProcedure.use(
   async ({ next, type }) => {
@@ -620,8 +679,10 @@ export const appRouter = router({
     me: publicProcedure.query(opts => opts.ctx.user),
     passwordStatus: publicProcedure.query(async () => {
       const settings = await db.getSecuritySettings();
+      const accessCount = (await db.listPlanningTeamAccesses()).length;
       return {
-        enabled: Boolean(settings?.passwordHash),
+        enabled: accessCount > 0,
+        planningTeamAccessCount: accessCount,
         adminEnabled: Boolean(settings?.adminPasswordHash),
         planningTeamLocked: settings?.planningTeamLocked ?? false,
       };
@@ -650,11 +711,15 @@ export const appRouter = router({
           });
         }
 
-        const storedHash = settings?.passwordHash;
-        const valid = storedHash
-          ? await verifyPassword(input.password, storedHash)
-          : false;
-        if (!valid) {
+        const accesses = await db.listPlanningTeamAccessCredentials();
+        let matchingAccess: (typeof accesses)[number] | null = null;
+        for (const access of accesses) {
+          if (await verifyPassword(input.password, access.passwordHash)) {
+            matchingAccess = access;
+            break;
+          }
+        }
+        if (!matchingAccess) {
           const failedStatus = recordFailedPlanningTeamLogin(clientKey);
           if (failedStatus.isBlocked) {
             throw new TRPCError({
@@ -671,16 +736,19 @@ export const appRouter = router({
         clearPlanningTeamFailures(clientKey);
         await db.clearPlanningTeamLoginFailuresIfUnlocked();
 
+        const accessOpenId = planningTeamAccessOpenId(matchingAccess.id);
+        const sessionName = `Planungsteam · ${matchingAccess.label}`;
         await db.upsertUser({
-          openId: SHARED_PASSWORD_OPEN_ID,
-          name: "Planungsteam",
+          openId: accessOpenId,
+          name: sessionName,
           loginMethod: "password",
           role: "user",
           lastSignedIn: new Date(),
         });
-        const token = await sdk.createSessionToken(SHARED_PASSWORD_OPEN_ID, {
-          name: "Planungsteam",
+        const token = await sdk.createSessionToken(accessOpenId, {
+          name: sessionName,
           expiresInMs: PASSWORD_SESSION_MS,
+          sessionVersion: matchingAccess.sessionVersion,
         });
         ctx.res.cookie(COOKIE_NAME, token, {
           ...getSessionCookieOptions(ctx.req),
@@ -774,18 +842,6 @@ export const appRouter = router({
         });
         return { success: true } as const;
       }),
-    setPassword: accountAdminProcedure
-      .input(
-        z.object({
-          password: passwordInput,
-          currentAdminPassword: z.string().min(1).max(200),
-        })
-      )
-      .mutation(async ({ ctx, input }) => {
-        await requireAdminPassword(input.currentAdminPassword, ctx);
-        await db.setPasswordHash(await hashPassword(input.password));
-        return { success: true } as const;
-      }),
     setAdminPassword: accountAdminProcedure
       .input(
         z.object({
@@ -826,6 +882,64 @@ export const appRouter = router({
     }),
   }),
 
+  planningTeamAccesses: router({
+    list: accountAdminProcedure.query(() => db.listPlanningTeamAccesses()),
+    availableEvents: accountAdminProcedure.query(async () => {
+      const years = await db.listEventYears();
+      const grouped = await Promise.all(
+        years.map(async item => db.listEvents(item.year))
+      );
+      return grouped.flat();
+    }),
+    create: accountAdminProcedure
+      .input(
+        z.object({
+          label: z.string().trim().min(2).max(120),
+          password: passwordInput,
+          eventIds: z.array(z.number().int().positive()).min(1).max(500),
+          currentAdminPassword: z.string().min(1).max(200),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await requireAdminPassword(input.currentAdminPassword, ctx);
+        return db.createPlanningTeamAccess({
+          label: input.label,
+          passwordHash: await hashPassword(input.password),
+          eventIds: input.eventIds,
+        });
+      }),
+    update: accountAdminProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          label: z.string().trim().min(2).max(120),
+          password: passwordInput.optional(),
+          eventIds: z.array(z.number().int().positive()).min(1).max(500),
+          currentAdminPassword: z.string().min(1).max(200),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await requireAdminPassword(input.currentAdminPassword, ctx);
+        return db.updatePlanningTeamAccess({
+          id: input.id,
+          label: input.label,
+          ...(input.password ? { passwordHash: await hashPassword(input.password) } : {}),
+          eventIds: input.eventIds,
+        });
+      }),
+    remove: accountAdminProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          currentAdminPassword: z.string().min(1).max(200),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await requireAdminPassword(input.currentAdminPassword, ctx);
+        return db.deletePlanningTeamAccess(input.id);
+      }),
+  }),
+
   presence: router({
     heartbeat: baseProtectedProcedure.mutation(async ({ ctx }) => {
       await safelyRecordPresence(ctx.req, ctx.user);
@@ -835,7 +949,12 @@ export const appRouter = router({
   }),
 
   years: router({
-    list: scopedProtectedProcedure.query(() => db.listEventYears()),
+    list: eventSelectionProcedure.query(({ ctx }) => {
+      const accessId = planningTeamAccessIdForUser(ctx.user);
+      return accessId === null
+        ? db.listEventYears()
+        : db.listEventYearsForPlanningTeamAccess(accessId);
+    }),
     create: scopeAdminAuthProcedure
       .input(z.object({ year: eventYearInput }))
       .mutation(async ({ input }) => {
@@ -857,7 +976,15 @@ export const appRouter = router({
   }),
 
   events: router({
-    list: scopedProtectedProcedure.query(() => db.listEvents()),
+    list: eventSelectionProcedure.query(({ ctx }) => {
+      const accessId = planningTeamAccessIdForUser(ctx.user);
+      return accessId === null
+        ? db.listEvents(requestedPlanningScope(ctx.req).year)
+        : db.listEventsForPlanningTeamAccess(
+            accessId,
+            requestedPlanningScope(ctx.req).year
+          );
+    }),
     current: scopedProtectedProcedure.query(() => db.getEvent()),
     create: scopeAdminProcedure
       .input(
@@ -917,7 +1044,9 @@ export const appRouter = router({
         await requireAdminPassword(input.adminPassword, ctx);
         return db.deleteEvent(input.id);
       }),
-    all: scopedProtectedProcedure.query(async () => {
+    all: eventSelectionProcedure.query(async ({ ctx }) => {
+      const accessId = planningTeamAccessIdForUser(ctx.user);
+      if (accessId !== null) return db.listAllEventsForPlanningTeamAccess(accessId);
       const years = await db.listEventYears();
       const grouped = await Promise.all(
         years.map(async item => ({

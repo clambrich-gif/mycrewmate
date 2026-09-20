@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { PageTitle } from "@/components/PageTitle";
+import { PlanningTeamAccessManager } from "@/components/PlanningTeamAccessManager";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -111,13 +112,6 @@ export default function Security() {
       refetchInterval: 30_000,
       refetchIntervalInBackground: false,
     });
-  const setPassword = trpc.auth.setPassword.useMutation({
-    onSuccess: async () => {
-      await utils.auth.passwordStatus.invalidate();
-      toast.success("Zugangspasswort wurde geändert");
-    },
-    onError: error => toast.error(error.message),
-  });
   const setAdminPassword = trpc.auth.setAdminPassword.useMutation({
     onSuccess: async () => {
       await utils.auth.passwordStatus.invalidate();
@@ -162,13 +156,6 @@ export default function Security() {
 
       <div className="grid gap-5 md:grid-cols-2">
         <PasswordEditor
-          title="Passwort Planungsteam"
-          description="Erlaubt die normale Bearbeitung der Planung ohne administrative Lösch- und Sicherheitsrechte."
-          enabled={Boolean(status?.enabled)}
-          saving={setPassword.isPending}
-          onSave={input => setPassword.mutate(input)}
-        />
-        <PasswordEditor
           title="Administratorpasswort"
           description="Erteilt weiteren Personen Administratorrechte und bestätigt Zurücksetzungen sowie sensible Löschungen."
           enabled={Boolean(status?.adminEnabled)}
@@ -176,6 +163,8 @@ export default function Security() {
           onSave={input => setAdminPassword.mutate(input)}
         />
       </div>
+
+      <PlanningTeamAccessManager />
 
       <Card
         className={
@@ -279,10 +268,11 @@ export default function Security() {
 
       <div className="rounded-lg border bg-muted/40 p-4 text-sm text-muted-foreground">
         <ShieldCheck className="mr-2 inline h-4 w-4 text-primary" />
-        Beide Passwörter werden ausschließlich als bcrypt-Hash gespeichert. Nach
-        fünf Fehlversuchen greift für den anfragenden Anschluss eine progressive
-        Abklingzeit gegen DoS-Angriffe. Die Administrator-Sperre läuft weiterhin nach 15 Minuten ab;
-        Sitzungen gelten zwölf Stunden. Die Manus-Anmeldung des
+        Administrator- und Planungsteam-Passwörter werden ausschließlich als
+        bcrypt-Hash gespeichert. Jeder Planungsteam-Zugang besitzt eigene
+        Eventfreigaben; Änderungen oder Löschungen beenden dessen bestehende
+        Sitzungen. Nach fünf Fehlversuchen greift für den anfragenden Anschluss
+        eine progressive Abklingzeit gegen DoS-Angriffe. Die Manus-Anmeldung des
         Hauptadministrators bleibt erhalten.
       </div>
     </div>

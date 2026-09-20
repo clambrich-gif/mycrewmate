@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { appRouter } from "./routers";
-import { getDb, createPrep, listPrep, updatePrep } from "./db";
+import {
+  createPlanningTeamAccess,
+  deletePlanningTeamAccess,
+  getDb,
+} from "./db";
 import { prepTasks, deletionAuditLogs } from "../drizzle/schema";
 import { and, eq } from "drizzle-orm";
+import { hashPassword, planningTeamAccessOpenId } from "./password-auth";
 
 const TEAM_USER = {
   id: 240001,
@@ -49,7 +54,17 @@ describe("E2E Planungsteam-Rechte & Löschprotokoll-Workflow", () => {
     const db = await getDb();
     if (!db) throw new Error("Keine Datenbankverbindung");
 
-    const teamCaller = appRouter.createCaller(createContext(TEAM_USER));
+    const testAccess = await createPlanningTeamAccess({
+      label: `E2E-Planungsteam-${Date.now()}`,
+      passwordHash: await hashPassword("E2E-Planungsteam-Passwort!"),
+      eventIds: [1020001],
+    });
+    const teamCaller = appRouter.createCaller(
+      createContext({
+        ...TEAM_USER,
+        openId: planningTeamAccessOpenId(testAccess.id),
+      })
+    );
     const adminCaller = appRouter.createCaller(createContext(ADMIN_USER));
 
     // 1. Planungsteam legt eine neue Vorbereitungsaufgabe an
@@ -141,6 +156,7 @@ describe("E2E Planungsteam-Rechte & Löschprotokoll-Workflow", () => {
         and(eq(deletionAuditLogs.entityType, "prep"), eq(deletionAuditLogs.entityId, prepId))
       );
       await (db as any).delete(prepTasks).where(eq(prepTasks.id, prepId));
+      await deletePlanningTeamAccess(testAccess.id);
     }
   });
 });

@@ -390,6 +390,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }, [isAuthenticated, location]);
 
   useEffect(() => {
+    if (!isAuthenticated || !years.data?.length) return;
+    if (years.data.some(item => item.year === year)) return;
+    // Ein Zugang kann nachträglich auf andere Events beschränkt werden. Ein
+    // veralteter LocalStorage-Wert darf dann nicht zu einer leeren Ansicht führen.
+    selectYear(years.data[0].year);
+  }, [isAuthenticated, selectYear, year, years.data]);
+
+  useEffect(() => {
     if (!events.data?.length || selectedEvent) return;
     selectEvent(events.data[0].id);
   }, [events.data, selectEvent, selectedEvent]);

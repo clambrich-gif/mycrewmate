@@ -7,6 +7,8 @@ export const ADMIN_PASSWORD_OPEN_ID = "shared-password-admin";
 export const PASSWORD_SESSION_MS = 1000 * 60 * 60 * 12;
 export const PLANNING_TEAM_MAX_ATTEMPTS = 5;
 
+const PLANNING_TEAM_ACCESS_OPEN_ID_PREFIX = "planning-team-access-";
+
 const ADMIN_MAX_ATTEMPTS = 5;
 const WINDOW_MS = 15 * 60 * 1000;
 const attempts = new Map<string, { count: number; firstAttemptAt: number }>();
@@ -27,6 +29,31 @@ export function getClientKey(req: Request) {
   // X-Forwarded-For bleibt vollständig außerhalb der Sicherheitsgrenze, weil
   // dieser Dienst keine feste, exklusiv kontrollierte Proxy-IP voraussetzt.
   return req.socket.remoteAddress || "unknown";
+}
+
+/**
+ * Jede Planungsteam-Sitzung gehört genau zu einem verwalteten Zugang. Dadurch
+ * kann die serverseitige Scopeprüfung Freigaben auch nach manueller Änderung
+ * der Browser-Header eindeutig erzwingen.
+ */
+export function planningTeamAccessOpenId(accessId: number) {
+  return `${PLANNING_TEAM_ACCESS_OPEN_ID_PREFIX}${accessId}`;
+}
+
+export function planningTeamAccessIdFromOpenId(openId: string) {
+  const match = new RegExp(`^${PLANNING_TEAM_ACCESS_OPEN_ID_PREFIX}(\\d+)$`).exec(
+    openId
+  );
+  if (!match) return null;
+  const accessId = Number(match[1]);
+  return Number.isInteger(accessId) && accessId > 0 ? accessId : null;
+}
+
+export function isPlanningTeamPasswordOpenId(openId: string) {
+  return (
+    openId === SHARED_PASSWORD_OPEN_ID ||
+    planningTeamAccessIdFromOpenId(openId) !== null
+  );
 }
 
 function currentEntry(key: string) {

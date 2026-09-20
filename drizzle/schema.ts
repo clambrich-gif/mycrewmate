@@ -488,6 +488,48 @@ export const securitySettings = mysqlTable("security_settings", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+/**
+ * Ein separat verwalteter Planungsteam-Zugang. Das Passwort wird ausschließlich
+ * als bcrypt-Hash gespeichert; die zugehörigen Veranstaltungsfreigaben stehen
+ * in `planning_team_access_events`.
+ */
+export const planningTeamAccesses = mysqlTable("planning_team_accesses", {
+  id: int("id").autoincrement().primaryKey(),
+  label: varchar("label", { length: 120 }).notNull(),
+  passwordHash: varchar("passwordHash", { length: 255 }).notNull(),
+  /** Änderungen an Passwort oder Freigaben machen bestehende Sitzungen ungültig. */
+  sessionVersion: int("sessionVersion").default(1).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type PlanningTeamAccess = typeof planningTeamAccesses.$inferSelect;
+
+/** Die explizite Many-to-many-Freigabe eines Planungsteam-Zugangs für Events. */
+export const planningTeamAccessEvents = mysqlTable(
+  "planning_team_access_events",
+  {
+    accessId: int("accessId").notNull(),
+    eventId: int("eventId").notNull(),
+  },
+  table => [
+    foreignKey({
+      name: "pta_events_access_fk",
+      columns: [table.accessId],
+      foreignColumns: [planningTeamAccesses.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "pta_events_event_fk",
+      columns: [table.eventId],
+      foreignColumns: [events.id],
+    }).onDelete("cascade"),
+    uniqueIndex("planning_team_access_event_unique").on(
+      table.accessId,
+      table.eventId
+    ),
+    index("planning_team_access_events_event_idx").on(table.eventId),
+  ]
+);
+
 /** Nachvollziehbarkeit sicherheitsrelevanter Änderungen am Team-Chat. */
 export const teamNoteAuditLogs = mysqlTable(
   "team_note_audit_logs",

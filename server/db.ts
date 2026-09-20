@@ -34,6 +34,8 @@ import {
   marketing,
   materials,
   locations,
+  planningTeamAccesses,
+  planningTeamAccessEvents,
   postTasks,
   prepTasks,
   revokedSessions,
@@ -58,6 +60,7 @@ import { eventDateRangeError } from "../shared/event-dates";
 import { prependPreparationLogbookEntry } from "../shared/preparation-logbook";
 import {
   ADMIN_PASSWORD_OPEN_ID,
+  planningTeamAccessIdFromOpenId,
   SHARED_PASSWORD_OPEN_ID,
 } from "./password-auth";
 import { currentEventId, currentEventYear } from "./year-context";
@@ -289,6 +292,247 @@ export async function listEvents(eventYear = year()) {
     ...row,
     activeDays: eventWeekdays(row.activeDays),
   }));
+}
+
+export type PlanningTeamAccessSummary = {
+  id: number;
+  label: string;
+  eventIds: number[];
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type PlanningTeamAccessCredential = {
+  id: number;
+  label: string;
+  passwordHash: string;
+  sessionVersion: number;
+};
+
+function distinctEventIds(eventIds: number[]) {
+  const normalized = Array.from(new Set(eventIds));
+  if (!normalized.length) {
+    throw new Error("Mindestens eine Veranstaltung muss freigegeben werden");
+  }
+  return normalized;
+}
+
+async function requireExistingEvents(tx: DBClient, eventIds: number[]) {
+  const normalized = distinctEventIds(eventIds);
+  const rows = await tx
+    .select({ id: events.id })
+    .from(events)
+    .where(inArray(events.id, normalized))
+    .for("update");
+  if (rows.length !== normalized.length) {
+    throw new Error("Mindestens eine ausgewählte Veranstaltung wurde nicht gefunden");
+  }
+  return normalized;
+}
+
+export async function listPlanningTeamAccesses(): Promise<
+  PlanningTeamAccessSummary[]
+> {
+  const database = await getDb();
+  if (!database) return [];
+  const rows = await database
+    .select({
+      id: planningTeamAccesses.id,
+      label: planningTeamAccesses.label,
+      createdAt: planningTeamAccesses.createdAt,
+      updatedAt: planningTeamAccesses.updatedAt,
+      eventId: planningTeamAccessEvents.eventId,
+    })
+    .from(planningTeamAccesses)
+    .leftJoin(
+      planningTeamAccessEvents,
+      eq(planningTeamAccessEvents.accessId, planningTeamAccesses.id)
+    )
+    .orderBy(planningTeamAccesses.label, planningTeamAccesses.id);
+
+  const grouped = new Map<number, PlanningTeamAccessSummary>();
+  for (const row of rows) {
+    const current = grouped.get(row.id) ?? {
+      id: row.id,
+      label: row.label,
+      eventIds: [],
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
+    if (row.eventId !== null) current.eventIds.push(row.eventId);
+    grouped.set(row.id, current);
+  }
+  return Array.from(grouped.values()).map(access => ({
+    ...access,
+    eventIds: access.eventIds.sort((a, b) => a - b),
+  }));
+}
+
+export async function listPlanningTeamAccessCredentials(): Promise<
+  PlanningTeamAccessCredential[]
+> {
+  const database = await getDb();
+  if (!database) return [];
+  return database
+    .select({
+      id: planningTeamAccesses.id,
+      label: planningTeamAccesses.label,
+      passwordHash: planningTeamAccesses.passwordHash,
+      sessionVersion: planningTeamAccesses.sessionVersion,
+    })
+    .from(planningTeamAccesses)
+    .orderBy(planningTeamAccesses.id);
+}
+
+export async function createPlanningTeamAccess(input: {
+  label: string;
+  passwordHash: string;
+  eventIds: number[];
+}) {
+  const database = (await getDb()) as DB;
+  return database.transaction(async tx => {
+    const eventIds = await requireExistingEvents(tx, input.eventIds);
+    const result: any = await tx.insert(planningTeamAccesses).values({
+      label: input.label.trim(),
+      passwordHash: input.passwordHash,
+      sessionVersion: 1,
+    });
+    const id = Number(result?.[0]?.insertId ?? result?.insertId);
+    if (!Number.isInteger(id) || id <= 0) {
+      throw new Error("Planungsteam-Zugang konnte nicht angelegt werden");
+    }
+    await tx.insert(planningTeamAccessEvents).values(
+      eventIds.map(eventId => ({ accessId: id, eventId }))
+    );
+    const [access] = await tx
+      .select()
+      .from(planningTeamAccesses)
+      .where(eq(planningTeamAccesses.id, id))
+      .limit(1);
+    if (!access) throw new Error("Planungsteam-Zugang konnte nicht gelesen werden");
+    return { ...access, eventIds };
+  });
+}
+
+export async function updatePlanningTeamAccess(input: {
+  id: number;
+  label: string;
+  passwordHash?: string;
+  eventIds: number[];
+}) {
+  const database = (await getDb()) as DB;
+  return database.transaction(async tx => {
+    const eventIds = await requireExistingEvents(tx, input.eventIds);
+    const [existing] = await tx
+      .select({ id: planningTeamAccesses.id, sessionVersion: planningTeamAccesses.sessionVersion })
+      .from(planningTeamAccesses)
+      .where(eq(planningTeamAccesses.id, input.id))
+      .limit(1)
+      .for("update");
+    if (!existing) throw new Error("Planungsteam-Zugang wurde nicht gefunden");
+
+    await tx
+      .update(planningTeamAccesses)
+      .set({
+        label: input.label.trim(),
+        ...(input.passwordHash ? { passwordHash: input.passwordHash } : {}),
+        sessionVersion: existing.sessionVersion + 1,
+      })
+      .where(eq(planningTeamAccesses.id, input.id));
+    await tx
+      .delete(planningTeamAccessEvents)
+      .where(eq(planningTeamAccessEvents.accessId, input.id));
+    await tx.insert(planningTeamAccessEvents).values(
+      eventIds.map(eventId => ({ accessId: input.id, eventId }))
+    );
+    const [access] = await tx
+      .select()
+      .from(planningTeamAccesses)
+      .where(eq(planningTeamAccesses.id, input.id))
+      .limit(1);
+    if (!access) throw new Error("Planungsteam-Zugang konnte nicht gelesen werden");
+    return { ...access, eventIds };
+  });
+}
+
+export async function deletePlanningTeamAccess(accessId: number) {
+  const database = (await getDb()) as DB;
+  return database.transaction(async tx => {
+    const [access] = await tx
+      .select({ id: planningTeamAccesses.id, label: planningTeamAccesses.label })
+      .from(planningTeamAccesses)
+      .where(eq(planningTeamAccesses.id, accessId))
+      .limit(1)
+      .for("update");
+    if (!access) throw new Error("Planungsteam-Zugang wurde nicht gefunden");
+    await tx.delete(planningTeamAccesses).where(eq(planningTeamAccesses.id, accessId));
+    await tx
+      .delete(users)
+      .where(eq(users.openId, `planning-team-access-${accessId}`));
+    return { deletedId: access.id, deletedLabel: access.label };
+  });
+}
+
+export async function isPlanningTeamAccessAllowedForEvent(
+  accessId: number,
+  eventId: number
+) {
+  const database = await getDb();
+  if (!database) return false;
+  const [access] = await database
+    .select({ accessId: planningTeamAccessEvents.accessId })
+    .from(planningTeamAccessEvents)
+    .where(
+      and(
+        eq(planningTeamAccessEvents.accessId, accessId),
+        eq(planningTeamAccessEvents.eventId, eventId)
+      )
+    )
+    .limit(1);
+  return Boolean(access);
+}
+
+export async function listEventYearsForPlanningTeamAccess(accessId: number) {
+  const database = await getDb();
+  if (!database) return [];
+  return database
+    .selectDistinct({ year: eventYears.year, label: eventYears.label })
+    .from(planningTeamAccessEvents)
+    .innerJoin(events, eq(events.id, planningTeamAccessEvents.eventId))
+    .innerJoin(eventYears, eq(eventYears.year, events.year))
+    .where(eq(planningTeamAccessEvents.accessId, accessId))
+    .orderBy(eventYears.year);
+}
+
+export async function listEventsForPlanningTeamAccess(
+  accessId: number,
+  eventYear = year()
+) {
+  const database = await getDb();
+  if (!database) return [];
+  const rows = await database
+    .select({ event: events })
+    .from(planningTeamAccessEvents)
+    .innerJoin(events, eq(events.id, planningTeamAccessEvents.eventId))
+    .where(
+      and(
+        eq(planningTeamAccessEvents.accessId, accessId),
+        eq(events.year, eventYear)
+      )
+    )
+    .orderBy(events.sortOrder, events.name, events.id);
+  return rows.map(({ event }) => ({
+    ...event,
+    activeDays: eventWeekdays(event.activeDays),
+  }));
+}
+
+export async function listAllEventsForPlanningTeamAccess(accessId: number) {
+  const years = await listEventYearsForPlanningTeamAccess(accessId);
+  const grouped = await Promise.all(
+    years.map(item => listEventsForPlanningTeamAccess(accessId, item.year))
+  );
+  return grouped.flat();
 }
 
 export async function getHelper(helperId: number) {
@@ -2465,6 +2709,18 @@ export async function isSessionRevoked(sessionKey: string) {
 }
 
 export async function getExpectedSessionVersion(openId: string) {
+  const planningTeamAccessId = planningTeamAccessIdFromOpenId(openId);
+  if (planningTeamAccessId !== null) {
+    const database = await getDb();
+    if (!database) return Number.MAX_SAFE_INTEGER;
+    const [access] = await database
+      .select({ sessionVersion: planningTeamAccesses.sessionVersion })
+      .from(planningTeamAccesses)
+      .where(eq(planningTeamAccesses.id, planningTeamAccessId))
+      .limit(1);
+    // Ein gelöschter Zugang soll unmittelbar sämtliche offenen Sitzungen verlieren.
+    return access?.sessionVersion ?? Number.MAX_SAFE_INTEGER;
+  }
   if (
     openId !== SHARED_PASSWORD_OPEN_ID &&
     openId !== ADMIN_PASSWORD_OPEN_ID
