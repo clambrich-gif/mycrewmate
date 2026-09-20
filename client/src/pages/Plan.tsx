@@ -86,7 +86,10 @@ import {
 } from "@shared/weekdays";
 import { useSearchParams } from "wouter";
 import { planEvaluationMatchesSearch } from "@/lib/plan-search";
-import { helperDropdownAssignmentFeedback } from "@/lib/helper-assignment-feedback";
+import {
+  helperDropdownAssignmentFeedback,
+  helperDropdownPriority,
+} from "@/lib/helper-assignment-feedback";
 import { LocationMapLink } from "@/components/LocationMapLink";
 
 const formatTimeLabel = (shift: { startTime: string; endTime: string }) =>
@@ -279,7 +282,12 @@ function HelperDropdownFeedbackBadge({
       {feedback.segments.map((segment, index) => (
         <span
           key={segment.day}
-          className={`min-w-6 px-1 text-center ${
+          data-current-day={segment.isCurrentDay ? "true" : "false"}
+          className={`text-center transition-colors ${
+            segment.isCurrentDay
+              ? "min-w-8 px-1.5 text-[11px] font-extrabold leading-6 shadow-sm ring-1 ring-inset ring-white/80"
+              : "min-w-6 px-1 text-[9px] font-medium leading-5 opacity-80"
+          } ${
             segment.state === "current"
               ? "bg-emerald-500 text-white"
               : segment.state === "assigned"
@@ -1146,6 +1154,28 @@ export default function Plan() {
     const actives = activeHelpers(shift).filter(
       helper => !assignedHelperIds.has(helper.id)
     );
+    const sortedActives = actives
+      .map(helper => {
+        const conflicts = overlappingAssignments(helper.id, shift);
+        const isAlreadyAssigned = conflicts.length > 0;
+        const assignmentFeedback = helperDropdownAssignmentFeedback({
+          assignments: assignedDaysByHelper.get(helper.id) ?? [],
+          activeDays,
+          availabilityByDay: activeDays.map(day => ({
+            day,
+            available: helperDayAvailability(helper, day).available,
+          })),
+          currentDay: shift.day,
+          hasTimeConflict: isAlreadyAssigned,
+        });
+        return { helper, conflicts, isAlreadyAssigned, assignmentFeedback };
+      })
+      .sort(
+        (left, right) =>
+          helperDropdownPriority(left.assignmentFeedback) -
+            helperDropdownPriority(right.assignmentFeedback) ||
+          left.helper.name.localeCompare(right.helper.name, "de")
+      );
     return (
       <div className="grid max-w-full grid-cols-2 items-start gap-1">
         {slotsFor(evalE).map(({ slot, a }) => {
@@ -1176,19 +1206,7 @@ export default function Plan() {
                   <SelectValue placeholder="Helfer wählen …" />
                 </SelectTrigger>
                 <SelectContent>
-                  {actives.map(helper => {
-                    const conflicts = overlappingAssignments(helper.id, shift);
-                    const isAlreadyAssigned = conflicts.length > 0;
-                    const assignmentFeedback = helperDropdownAssignmentFeedback({
-                      assignments: assignedDaysByHelper.get(helper.id) ?? [],
-                      activeDays,
-                      availabilityByDay: activeDays.map(day => ({
-                        day,
-                        available: helperDayAvailability(helper, day).available,
-                      })),
-                      currentDay: shift.day,
-                      hasTimeConflict: isAlreadyAssigned,
-                    });
+                  {sortedActives.map(({ helper, conflicts, isAlreadyAssigned, assignmentFeedback }) => {
                     const timeRestricted = helperHasTimedAvailability(
                       helper,
                       shift.day

@@ -20,9 +20,20 @@ export type HelperDropdownFeedback =
         day: Weekday;
         label: string;
         state: "current" | "assigned" | "neutral" | "unavailable";
+        isCurrentDay: boolean;
       }>;
     }
   | null;
+
+/**
+ * Legt die Reihenfolge im Helfer-Dropdown fest: Neue Helfer zuerst, dann
+ * verfügbare Helfer mit Einteilungen an anderen Tagen und zuletzt Konflikte.
+ */
+export function helperDropdownPriority(feedback: HelperDropdownFeedback) {
+  if (feedback?.kind === "new") return 0;
+  if (feedback?.kind === "already-assigned") return 2;
+  return 1;
+}
 
 /**
  * Erstellt die kompakte Rückmeldung für eine auswählbare Helferperson.
@@ -68,6 +79,7 @@ export function helperDropdownAssignmentFeedback({
     segments: eventDays.map(day => ({
       day,
       label: WEEKDAY_SHORT_LABELS[day],
+      isCurrentDay: day === selectedDay,
       // Eine bestehende Schicht bleibt immer gelb sichtbar. Für alle anderen
       // Tage stammt die Farbe absolut aus dem passenden Helfer-Stammfeld.
       state: assignedDays.has(day)

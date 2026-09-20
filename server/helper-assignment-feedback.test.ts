@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { helperDropdownAssignmentFeedback } from "../client/src/lib/helper-assignment-feedback";
+import {
+  helperDropdownAssignmentFeedback,
+  helperDropdownPriority,
+} from "../client/src/lib/helper-assignment-feedback";
 
 const activeDays = ["Freitag", "Samstag", "Sonntag"] as const;
 const availableEveryDay = activeDays.map(day => ({ day, available: true }));
@@ -56,25 +59,25 @@ describe("helperDropdownAssignmentFeedback", () => {
     expect(feedbackForGuido("Freitag")).toEqual({
       kind: "day-segments",
       segments: [
-        { day: "Freitag", label: "Fr", state: "assigned" },
-        { day: "Samstag", label: "Sa", state: "neutral" },
-        { day: "Sonntag", label: "So", state: "neutral" },
+        { day: "Freitag", label: "Fr", state: "assigned", isCurrentDay: true },
+        { day: "Samstag", label: "Sa", state: "neutral", isCurrentDay: false },
+        { day: "Sonntag", label: "So", state: "neutral", isCurrentDay: false },
       ],
     });
     expect(feedbackForGuido("Samstag")).toEqual({
       kind: "day-segments",
       segments: [
-        { day: "Freitag", label: "Fr", state: "assigned" },
-        { day: "Samstag", label: "Sa", state: "current" },
-        { day: "Sonntag", label: "So", state: "neutral" },
+        { day: "Freitag", label: "Fr", state: "assigned", isCurrentDay: false },
+        { day: "Samstag", label: "Sa", state: "current", isCurrentDay: true },
+        { day: "Sonntag", label: "So", state: "neutral", isCurrentDay: false },
       ],
     });
     expect(feedbackForGuido("Sonntag")).toEqual({
       kind: "day-segments",
       segments: [
-        { day: "Freitag", label: "Fr", state: "assigned" },
-        { day: "Samstag", label: "Sa", state: "neutral" },
-        { day: "Sonntag", label: "So", state: "current" },
+        { day: "Freitag", label: "Fr", state: "assigned", isCurrentDay: false },
+        { day: "Samstag", label: "Sa", state: "neutral", isCurrentDay: false },
+        { day: "Sonntag", label: "So", state: "current", isCurrentDay: true },
       ],
     });
   });
@@ -95,9 +98,9 @@ describe("helperDropdownAssignmentFeedback", () => {
     ).toEqual({
       kind: "day-segments",
       segments: [
-        { day: "Freitag", label: "Fr", state: "assigned" },
-        { day: "Samstag", label: "Sa", state: "unavailable" },
-        { day: "Sonntag", label: "So", state: "current" },
+        { day: "Freitag", label: "Fr", state: "assigned", isCurrentDay: false },
+        { day: "Samstag", label: "Sa", state: "unavailable", isCurrentDay: false },
+        { day: "Sonntag", label: "So", state: "current", isCurrentDay: true },
       ],
     });
   });
@@ -117,8 +120,8 @@ describe("helperDropdownAssignmentFeedback", () => {
     ).toEqual({
       kind: "day-segments",
       segments: [
-        { day: "Samstag", label: "Sa", state: "assigned" },
-        { day: "Sonntag", label: "So", state: "current" },
+        { day: "Samstag", label: "Sa", state: "assigned", isCurrentDay: false },
+        { day: "Sonntag", label: "So", state: "current", isCurrentDay: true },
       ],
     });
   });
@@ -140,11 +143,33 @@ describe("helperDropdownAssignmentFeedback", () => {
       ).toEqual({
         kind: "day-segments",
         segments: [
-          { day: "Freitag", label: "Fr", state: "assigned" },
-          { day: "Samstag", label: "Sa", state: "neutral" },
-          { day: "Sonntag", label: "So", state: "current" },
+          { day: "Freitag", label: "Fr", state: "assigned", isCurrentDay: false },
+          { day: "Samstag", label: "Sa", state: "neutral", isCurrentDay: false },
+          { day: "Sonntag", label: "So", state: "current", isCurrentDay: true },
         ],
       });
     }
+  });
+
+  it("priorisiert neue Helfer vor verfügbaren und zeitgleich belegten Personen", () => {
+    const fresh = helperDropdownAssignmentFeedback({
+      assignments: [],
+      activeDays: [...activeDays],
+      availabilityByDay: availableEveryDay,
+      currentDay: "Freitag",
+      hasTimeConflict: false,
+    });
+    const available = feedbackForGuido("Samstag");
+    const conflict = helperDropdownAssignmentFeedback({
+      assignments: [{ day: "Freitag" }],
+      activeDays: [...activeDays],
+      availabilityByDay: availableEveryDay,
+      currentDay: "Samstag",
+      hasTimeConflict: true,
+    });
+
+    expect(helperDropdownPriority(fresh)).toBe(0);
+    expect(helperDropdownPriority(available)).toBe(1);
+    expect(helperDropdownPriority(conflict)).toBe(2);
   });
 });

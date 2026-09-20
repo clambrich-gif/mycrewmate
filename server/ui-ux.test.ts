@@ -2216,9 +2216,14 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain('data-feedback-kind="new"');
     expect(plan).toContain('data-feedback-kind="day-segments"');
     expect(plan).toContain('data-feedback-kind="already-assigned"');
+    expect(plan).toContain('data-current-day={segment.isCurrentDay ? "true" : "false"}');
     expect(plan).toContain("bg-emerald-100");
     expect(plan).toContain("bereits belegt");
+    expect(plan).toContain("font-extrabold");
+    expect(plan).toContain("opacity-80");
     expect(plan).toContain("helperDropdownAssignmentFeedback({");
+    expect(plan).toContain("const sortedActives = actives");
+    expect(plan).toContain("helperDropdownPriority(left.assignmentFeedback)");
     expect(plan).toContain("const assignedDaysByHelper = useMemo");
     expect(plan).toContain("assignments: assignedDaysByHelper.get(helper.id) ?? []");
     expect(plan).toContain("availabilityByDay: activeDays.map(day => ({");
@@ -2239,6 +2244,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(feedback).toContain('kind: "new"');
     expect(feedback).toContain('kind: "already-assigned"');
     expect(feedback).toContain('kind: "day-segments"');
+    expect(feedback).toContain("helperDropdownPriority");
+    expect(feedback).toContain("isCurrentDay: day === selectedDay");
     expect(feedback).toContain("hasTimeConflict");
     expect(feedback).toContain("WEEKDAY_SHORT_LABELS");
     expect(feedback).toContain("orderedWeekdays(activeDays)");
