@@ -86,10 +86,7 @@ import {
 } from "@shared/weekdays";
 import { useSearchParams } from "wouter";
 import { planEvaluationMatchesSearch } from "@/lib/plan-search";
-import {
-  helperDropdownAssignmentFeedback,
-  helperDropdownPriority,
-} from "@/lib/helper-assignment-feedback";
+import { helperDropdownAssignmentFeedback } from "@/lib/helper-assignment-feedback";
 import { LocationMapLink } from "@/components/LocationMapLink";
 
 const formatTimeLabel = (shift: { startTime: string; endTime: string }) =>
@@ -217,6 +214,17 @@ function HelperDropdownFeedbackBadge({
   assignments?: Array<{ day: string; label?: string; time?: string }>;
 }) {
   if (!feedback) return null;
+  if (feedback.kind === "already-assigned") {
+    return (
+      <span
+        data-slot="helper-dropdown-feedback"
+        data-feedback-kind="already-assigned"
+        className="shrink-0 rounded-full border border-amber-500 bg-amber-200 px-2 py-0.5 text-[11px] font-semibold text-amber-950 dark:bg-amber-800 dark:text-amber-50"
+      >
+        bereits belegt
+      </span>
+    );
+  }
   if (feedback.kind === "new") {
     return (
       <span
@@ -239,9 +247,7 @@ function HelperDropdownFeedbackBadge({
   );
   const segmentStatus = feedback.segments.map(segment => {
     const stateLabel =
-      segment.state === "conflict"
-        ? "im aktuellen Zeitfenster bereits belegt"
-        : segment.state === "assigned"
+      segment.state === "assigned"
         ? "bereits eingeteilt"
         : segment.state === "current"
           ? "für diese Schicht verfügbar"
@@ -268,47 +274,27 @@ function HelperDropdownFeedbackBadge({
       data-feedback-kind="day-segments"
       aria-label={assignedTooltip}
       title={assignedTooltip}
-      className="inline-flex shrink-0 cursor-help overflow-hidden rounded-full border border-slate-200 text-[10px] font-semibold shadow-xs"
+      className="inline-flex shrink-0 cursor-help overflow-hidden rounded-full border border-slate-200 text-[10px] font-semibold leading-5 shadow-xs"
     >
-      {feedback.segments.map(segment => (
+      {feedback.segments.map((segment, index) => (
         <span
           key={segment.day}
-          data-day-state={segment.state}
-          data-current-day={segment.isCurrentDay ? "true" : "false"}
-          className={`${
-            segment.isCurrentDay
-              ? "min-w-8 px-1.5 text-[11px] font-bold leading-6"
-              : "min-w-5 px-1 text-[9px] font-medium leading-5 opacity-85"
-          } text-center ${
+          className={`min-w-6 px-1 text-center ${
             segment.state === "current"
-              ? "bg-emerald-600 text-white"
-              : segment.state === "conflict"
-                ? "bg-amber-300 text-amber-950"
-                : segment.state === "assigned"
-                  ? "bg-orange-100 text-orange-900"
-                  : segment.state === "unavailable"
-                    ? "bg-red-600 text-white line-through"
-                    : "bg-slate-100 text-slate-500"
-          }`}
+              ? "bg-emerald-500 text-white"
+              : segment.state === "assigned"
+                ? "bg-amber-200 text-amber-950"
+                : segment.state === "unavailable"
+                  ? "bg-slate-100 text-slate-400 line-through"
+                  : "bg-sky-100 text-sky-800"
+          } ${index ? "border-l border-white/70" : ""}`}
         >
           {segment.label}
         </span>
       ))}
     </span>
   );
-  return feedback.hasTimeConflict ? (
-    <span className="inline-flex shrink-0 items-center gap-1">
-      {badge}
-      <span
-        data-feedback-conflict-label
-        className="rounded-full border border-amber-500 bg-amber-200 px-1.5 py-0.5 text-[10px] font-semibold text-amber-950"
-      >
-        bereits belegt
-      </span>
-    </span>
-  ) : (
-    badge
-  );
+  return badge;
 }
 
 function PlanStatusBar({
@@ -1160,32 +1146,6 @@ export default function Plan() {
     const actives = activeHelpers(shift).filter(
       helper => !assignedHelperIds.has(helper.id)
     );
-    const sortedActives = actives
-      .map(helper => {
-        const conflicts = overlappingAssignments(helper.id, shift);
-        const isAlreadyAssigned = conflicts.length > 0;
-        const assignmentFeedback = helperDropdownAssignmentFeedback({
-          assignments: assignedDaysByHelper.get(helper.id) ?? [],
-          activeDays,
-          availabilityByDay: activeDays.map(day => {
-            const dayAvailability = helperDayAvailability(helper, day);
-            return {
-              day,
-              available: dayAvailability.available,
-              availability: dayAvailability.value,
-            };
-          }),
-          currentDay: shift.day,
-          hasTimeConflict: isAlreadyAssigned,
-        });
-        return { helper, conflicts, isAlreadyAssigned, assignmentFeedback };
-      })
-      .sort(
-        (left, right) =>
-          helperDropdownPriority(left.assignmentFeedback) -
-            helperDropdownPriority(right.assignmentFeedback) ||
-          label(left.helper).localeCompare(label(right.helper), "de")
-      );
     return (
       <div className="grid max-w-full grid-cols-2 items-start gap-1">
         {slotsFor(evalE).map(({ slot, a }) => {
@@ -1216,7 +1176,19 @@ export default function Plan() {
                   <SelectValue placeholder="Helfer wählen …" />
                 </SelectTrigger>
                 <SelectContent>
-                  {sortedActives.map(({ helper, conflicts, isAlreadyAssigned, assignmentFeedback }) => {
+                  {actives.map(helper => {
+                    const conflicts = overlappingAssignments(helper.id, shift);
+                    const isAlreadyAssigned = conflicts.length > 0;
+                    const assignmentFeedback = helperDropdownAssignmentFeedback({
+                      assignments: assignedDaysByHelper.get(helper.id) ?? [],
+                      activeDays,
+                      availabilityByDay: activeDays.map(day => ({
+                        day,
+                        available: helperDayAvailability(helper, day).available,
+                      })),
+                      currentDay: shift.day,
+                      hasTimeConflict: isAlreadyAssigned,
+                    });
                     const timeRestricted = helperHasTimedAvailability(
                       helper,
                       shift.day
@@ -1279,7 +1251,7 @@ export default function Plan() {
                       </SelectItem>
                     );
                   })}
-                  {sortedActives.length === 0 && (
+                  {actives.length === 0 && (
                     <SelectItem value="x" disabled>
                       Keine verfügbaren Helfer
                     </SelectItem>
@@ -1340,7 +1312,7 @@ export default function Plan() {
         <h1 className="text-2xl font-bold">Einsatzplan</h1>
         <p className="text-muted-foreground">
           {canEditPlan
-            ? "Nur verfügbare, aktive Helfer sind auswählbar. „Neu“ bedeutet noch keine Einteilung; die Tagessegmente richten sich nach den Eventtagen (Grün: aktuell frei, Soft-Orange: dort eingeteilt, Rot: nicht verfügbar). Zeitgleich bereits eingeteilte Helfer bleiben gelb markiert und auswählbar. Absagen markieren Ausfälle (rot), Doppelbelegungen werden gewarnt (orange)."
+            ? "Nur verfügbare, aktive Helfer sind auswählbar. „Neu“ bedeutet noch keine Einteilung; die Tagessegmente richten sich nach den Eventtagen (Grün: aktuell frei, Gelb: dort eingeteilt, Grau: nicht verfügbar). Zeitgleich bereits eingeteilte Helfer bleiben gelb markiert und auswählbar. Absagen markieren Ausfälle (rot), Doppelbelegungen werden gewarnt (orange)."
             : "Das Planungsteam kann den Einsatzplan vollständig ansehen und filtern. Änderungen und Helferzuweisungen sind Administratoren vorbehalten."}
         </p>
       </div>
