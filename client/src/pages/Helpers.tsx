@@ -31,9 +31,8 @@ import {
   renderWhatsAppMessage,
 } from "@/lib/whatsappShare";
 import { cn } from "@/lib/utils";
-import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
 import { trpc } from "@/lib/trpc";
-import { ChevronDown, Clock3, FileDown, Info, MessageCircle, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, Clock3, FileDown, Info, MessageCircle, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
@@ -210,8 +209,8 @@ function DayAvailabilityControl({
                 : availability === "ja" && timed
                   ? "🕒"
                   : availability === "ja"
-                    ? "Ja"
-                    : "Nein"}
+                    ? "✓"
+                    : "✕"}
             </span>
             <ChevronDown className="size-3 shrink-0 opacity-40" aria-hidden="true" />
           </button>
@@ -329,7 +328,9 @@ function YesNoToggle({
             "lg:h-8 lg:min-h-8 lg:w-14 lg:px-1.5 lg:text-[10px]"
         )}
       >
-        <span aria-hidden="true">{isYes ? "Ja" : "Nein"}</span>
+        <span aria-hidden="true" className="text-sm leading-none">
+          {isYes ? "✓" : "✕"}
+        </span>
       </button>
     </div>
   );
@@ -607,6 +608,11 @@ export default function Helpers() {
     searchParams.get(HELPER_FIRST_CONTACT_QUERY_KEY)
   );
   const firstContactOnly = firstContactFilter === "offen";
+  const helperScopeFilter = assignedOnly
+    ? "eingeteilt"
+    : firstContactOnly
+      ? "erstkontakt-offen"
+      : "alle";
   const utils = trpc.useUtils();
   const { user } = useAuth();
   const { data: helpers = [], isLoading } = trpc.helpers.list.useQuery();
@@ -638,6 +644,9 @@ export default function Helpers() {
   const [companionFilter, setCompanionFilter] = useState<
     "alle" | "mit" | "ohne"
   >("alle");
+  const [willHelpFilter, setWillHelpFilter] = useState<"alle" | "ja" | "nein">(
+    "alle"
+  );
   const [timedAvailabilityOnly, setTimedAvailabilityOnly] = useState(false);
   const [sortAsc, setSortAsc] = useState(true);
   const [exportingId, setExportingId] = useState<number | null>(null);
@@ -761,9 +770,16 @@ export default function Helpers() {
         .filter(
           helper =>
             (!filter ||
-              helper.name.toLowerCase().includes(filter.toLowerCase())) &&
+              [helper.name, helper.phone, helper.note]
+                .filter((value): value is string => Boolean(value))
+                .some(value =>
+                  value.toLocaleLowerCase("de-DE").includes(
+                    filter.toLocaleLowerCase("de-DE")
+                  )
+                )) &&
             (confirmationFilter === "alle" ||
               helper.confirmed === confirmationFilter) &&
+            (willHelpFilter === "alle" || helper.willHelp === willHelpFilter) &&
             (!assignedOnly || assignedHelperIds.has(helper.id)) &&
             (!firstContactOnly ||
               isHelperWithoutFirstContact(helper, activeDays)) &&
@@ -785,6 +801,7 @@ export default function Helpers() {
       helpers,
       filter,
       confirmationFilter,
+      willHelpFilter,
       assignedOnly,
       firstContactOnly,
       assignedHelperIds,
@@ -813,10 +830,25 @@ export default function Helpers() {
     setSearchParams(
       previous => {
         const next = new URLSearchParams(previous);
-        next.delete(HELPER_ASSIGNMENT_QUERY_KEY);
-        next.delete(HELPER_FIRST_CONTACT_QUERY_KEY);
         if (value === "alle") next.delete(HELPER_CONFIRMATION_QUERY_KEY);
         else next.set(HELPER_CONFIRMATION_QUERY_KEY, value);
+        return next;
+      },
+      { replace: true }
+    );
+  };
+
+  const updateHelperScopeFilter = (
+    value: "alle" | "eingeteilt" | "erstkontakt-offen"
+  ) => {
+    setSearchParams(
+      previous => {
+        const next = new URLSearchParams(previous);
+        next.delete(HELPER_ASSIGNMENT_QUERY_KEY);
+        next.delete(HELPER_FIRST_CONTACT_QUERY_KEY);
+        if (value === "eingeteilt") next.set(HELPER_ASSIGNMENT_QUERY_KEY, "ja");
+        if (value === "erstkontakt-offen")
+          next.set(HELPER_FIRST_CONTACT_QUERY_KEY, "offen");
         return next;
       },
       { replace: true }
@@ -838,7 +870,7 @@ export default function Helpers() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Helfer</h1>
           <p className="text-muted-foreground">
@@ -846,93 +878,132 @@ export default function Helpers() {
             Aufgaben-PDFs.
           </p>
         </div>
-        <div className="grid w-full grid-cols-2 gap-2 lg:ml-auto lg:flex lg:w-auto lg:flex-wrap lg:justify-end [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 max-lg:[&>[data-slot=button]]:h-11 max-lg:[&>[data-slot=button]]:text-base lg:[&>[data-slot=button]]:w-auto lg:[&>[data-slot=button]]:px-4">
-          <ModuleExcelImportButton area="HELFER" label="Helfer" />
-          <ResetAreaButton area="helpers" label="Helfer" compact />
+        <div className="w-full space-y-2 lg:ml-auto lg:w-[23rem]">
+          <div className="grid grid-cols-2 gap-2 [&>[data-slot=button]]:h-10 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2">
+            <ModuleExcelImportButton area="HELFER" label="Helfer" />
+            <ResetAreaButton area="helpers" label="Helfer" compact />
+          </div>
           <Button
             type="button"
-            variant="outline"
-            className={`col-span-2 lg:col-auto ${CREATION_ACTION_BUTTON_CLASS}`}
+            className="w-full bg-blue-600 px-4 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus-visible:ring-blue-500"
             onClick={openNewHelperDialog}
           >
-            <Plus className="mr-1.5 h-4 w-4" />
-            <span>Neuer Helfer</span>
+            <Plus className="mr-2 h-4 w-4" />
+            Neuer Helfer
           </Button>
         </div>
       </div>
 
-      <div className="flex w-full flex-col gap-2 lg:flex-row lg:items-center">
-        <Input
-          placeholder="Suchen …"
-          value={filter}
-          onChange={event => setFilter(event.target.value)}
-          className="w-full lg:w-56"
-        />
-        <Select value={apFilter} onValueChange={setApFilter}>
-          <SelectTrigger className="w-full lg:w-56">
-            <SelectValue placeholder="Ansprechpartner" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="alle">Alle Ansprechpartner</SelectItem>
-            <SelectItem
-              value="ohne"
-              className="bg-amber-100 text-amber-950 dark:bg-amber-900/60 dark:text-amber-50"
-            >
-              Ohne Ansprechpartner
-            </SelectItem>
-            {contacts.map(contact => (
-              <SelectItem key={contact.id} value={String(contact.id)}>
-                {contact.name}
+      <div className="space-y-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+        <div className="relative w-full">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            placeholder="Suchen (Name, Telefon, Hinweise) …"
+            value={filter}
+            onChange={event => setFilter(event.target.value)}
+            className="h-11 border-slate-200 bg-white pl-9 text-base sm:h-10 sm:text-sm"
+            aria-label="Helfer nach Name, Telefon oder Hinweis durchsuchen"
+          />
+        </div>
+        <div className="grid grid-cols-1 gap-2 md:flex md:flex-wrap">
+          <Select value={apFilter} onValueChange={setApFilter}>
+            <SelectTrigger className="h-11 w-full border-slate-200 bg-white text-base md:h-10 md:w-[190px] md:text-sm">
+              <SelectValue placeholder="Ansprechpartner" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="alle">Alle Ansprechpartner</SelectItem>
+              <SelectItem
+                value="ohne"
+                className="bg-amber-100 text-amber-950 dark:bg-amber-900/60 dark:text-amber-50"
+              >
+                Ohne Ansprechpartner
               </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={confirmationFilter}
-          onValueChange={value =>
-            updateConfirmationFilter(value as "alle" | "ja" | "nein")
-          }
-        >
-          <SelectTrigger className="w-full lg:w-52" aria-label="Bestätigung filtern">
-            <SelectValue placeholder="Bestätigung" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="alle">Alle Rückmeldungen</SelectItem>
-            <SelectItem value="ja">Bestätigt</SelectItem>
-            <SelectItem value="nein">Noch nicht bestätigt</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select
-          value={companionFilter}
-          onValueChange={value =>
-            setCompanionFilter(value as "alle" | "mit" | "ohne")
-          }
-        >
-          <SelectTrigger className="w-full lg:w-48" aria-label="Begleitung filtern">
-            <SelectValue placeholder="Begleitung" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="alle">Alle Begleitungen</SelectItem>
-            <SelectItem value="mit">Mit Begleitung</SelectItem>
-            <SelectItem value="ohne">Ohne Begleitung</SelectItem>
-          </SelectContent>
-        </Select>
-        <Button
-          type="button"
-          variant="outline"
-          aria-pressed={timedAvailabilityOnly}
-          aria-label="Nur Helfer mit Zeitfenstern filtern"
-          className={cn(
-            "min-h-11 w-full justify-start gap-2 lg:min-h-0 lg:w-auto lg:justify-center",
-            timedAvailabilityOnly
-              ? "border-sky-300 bg-sky-50 text-sky-950 hover:bg-sky-100"
-              : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-          )}
-          onClick={() => setTimedAvailabilityOnly(active => !active)}
-        >
-          <Clock3 className="size-4 shrink-0" aria-hidden="true" />
-          Nur Helfer mit Zeitfenstern
-        </Button>
+              {contacts.map(contact => (
+                <SelectItem key={contact.id} value={String(contact.id)}>
+                  {contact.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={companionFilter}
+            onValueChange={value =>
+              setCompanionFilter(value as "alle" | "mit" | "ohne")
+            }
+          >
+            <SelectTrigger className="h-11 w-full border-slate-200 bg-white text-base md:h-10 md:w-[170px] md:text-sm" aria-label="Begleitung filtern">
+              <SelectValue placeholder="Begleitung" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="alle">Alle Begleitungen</SelectItem>
+              <SelectItem value="mit">Mit Begleitung</SelectItem>
+              <SelectItem value="ohne">Ohne Begleitung</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={confirmationFilter}
+            onValueChange={value =>
+              updateConfirmationFilter(value as "alle" | "ja" | "nein")
+            }
+          >
+            <SelectTrigger className="h-11 w-full border-slate-200 bg-white text-base md:h-10 md:w-[175px] md:text-sm" aria-label="Bestätigung filtern">
+              <SelectValue placeholder="Bestätigung" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="alle">Alle Rückmeldungen</SelectItem>
+              <SelectItem value="ja">Bestätigt</SelectItem>
+              <SelectItem value="nein">Noch nicht bestätigt</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={helperScopeFilter}
+            onValueChange={value =>
+              updateHelperScopeFilter(
+                value as "alle" | "eingeteilt" | "erstkontakt-offen"
+              )
+            }
+          >
+            <SelectTrigger className="h-11 w-full border-slate-200 bg-white text-base md:h-10 md:w-[170px] md:text-sm" aria-label="Helferumfang filtern">
+              <SelectValue placeholder="Nur Helfer mit ..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="alle">Nur Helfer mit ...</SelectItem>
+              <SelectItem value="eingeteilt">Nur eingeteilt</SelectItem>
+              <SelectItem value="erstkontakt-offen">Ohne Erstkontakt</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={willHelpFilter}
+            onValueChange={value =>
+              setWillHelpFilter(value as "alle" | "ja" | "nein")
+            }
+          >
+            <SelectTrigger className="h-11 w-full border-slate-200 bg-white text-base md:h-10 md:w-[155px] md:text-sm" aria-label="Helfen filtern">
+              <SelectValue placeholder="Helfen" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="alle">Helfen (Ja/Nein)</SelectItem>
+              <SelectItem value="ja">Helfen: Ja</SelectItem>
+              <SelectItem value="nein">Helfen: Nein</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button
+            type="button"
+            variant="outline"
+            aria-pressed={timedAvailabilityOnly}
+            aria-label="Nur Helfer mit Zeitfenstern filtern"
+            className={cn(
+              "h-11 w-full justify-start gap-2 border-slate-200 text-base md:h-10 md:w-auto md:justify-center md:text-sm",
+              timedAvailabilityOnly
+                ? "border-sky-300 bg-sky-50 text-sky-950 hover:bg-sky-100"
+                : "bg-white text-slate-700 hover:bg-slate-50"
+            )}
+            onClick={() => setTimedAvailabilityOnly(active => !active)}
+          >
+            <Clock3 className="size-4 shrink-0" aria-hidden="true" />
+            Nur Helfer mit Zeitfenstern
+          </Button>
+        </div>
       </div>
 
       {assignedOnly && confirmationFilter === "nein" && (

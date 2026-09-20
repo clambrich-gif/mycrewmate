@@ -1531,20 +1531,23 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const taskGeneric = source("client/src/pages/TaskGeneric.tsx");
     const finances = source("client/src/pages/Finances.tsx");
 
-    for (const module of [helpers, taskList, taskGeneric, finances]) {
+    for (const module of [taskList, taskGeneric, finances]) {
       expect(module).toContain("grid w-full grid-cols-2 gap-2");
       expect(module).toContain("max-lg:[&>[data-slot=button]]:h-11");
       expect(module).toContain("max-lg:[&>[data-slot=button]]:text-base");
       expect(module).toContain("lg:[&>[data-slot=button]]:w-auto");
     }
 
-    expect(helpers).toContain("CREATION_ACTION_BUTTON_CLASS");
+    expect(helpers).toContain("w-full space-y-2 lg:ml-auto lg:w-[23rem]");
+    expect(helpers).toContain("grid grid-cols-2 gap-2");
+    expect(helpers).toContain("[&>[data-slot=button]]:h-10");
+    expect(helpers).toContain("w-full bg-blue-600 px-4 text-base font-medium text-white");
     for (const module of [taskList, taskGeneric, finances]) {
       expect(module).toContain('className="col-span-2 shadow-xs lg:col-auto"');
     }
 
-    expect(helpers).toContain("flex w-full flex-col gap-2 lg:flex-row");
-    expect(helpers).toContain('className="w-full lg:w-56"');
+    expect(helpers).toContain("space-y-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm");
+    expect(helpers).toContain("Suchen (Name, Telefon, Hinweise) …");
     expect(taskList).toContain("flex w-full flex-col gap-2 md:flex-row md:flex-wrap md:items-center");
     expect(taskList).toContain('className="h-11 w-full text-base md:h-10 md:w-[220px] md:text-sm"');
     expect(taskList).toContain('className="h-11 w-full text-base md:h-10 md:w-[240px] md:text-sm"');
@@ -1602,7 +1605,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helperDialog).not.toContain("YesNoToggle");
     expect(helpers).toContain("createNewHelper()");
     expect(helpers).toContain("Helfer anlegen");
-    expect(helpers).toContain("CREATION_ACTION_BUTTON_CLASS");
+    expect(helpers).toContain(
+      "w-full bg-blue-600 px-4 text-base font-medium text-white"
+    );
 
     expect(contacts).toContain('className="hidden border-blue-200 bg-slate-50/80 shadow-sm lg:block"');
     expect(contacts).toContain("Neuanlage – Name des Ansprechpartners");
@@ -1635,6 +1640,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).not.toContain("lg:translate-x-5");
     expect(helpers).toContain("border-emerald-200 bg-emerald-50 text-emerald-800");
     expect(helpers).toContain("border-rose-200 bg-rose-50 text-rose-800");
+    expect(helpers).toContain('isYes ? "✓" : "✕"');
+    expect(helpers).toContain('availability === "ja"\n                    ? "✓"\n                    : "✕"');
     expect(helpers).toContain("Helfen auf");
     expect(helpers).toContain("Bestätigung auf");
     expect(helpers.match(/<YesNoToggle/g)).toHaveLength(2);
@@ -1864,21 +1871,22 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const preparation = source("client/src/pages/Preparation.tsx");
     const creationAction = source("client/src/lib/creation-action.ts");
     const helperHeaderActions = helpers.slice(
-      helpers.indexOf('<div className="flex flex-wrap items-end justify-between gap-3">'),
-      helpers.indexOf('<div className="flex w-full flex-col gap-2 lg:flex-row lg:items-center">')
+      helpers.indexOf('<div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">'),
+      helpers.indexOf('<div className="space-y-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm">')
     );
 
     expect(creationAction).toContain("CREATION_ACTION_BUTTON_CLASS");
     expect(creationAction).toContain("border-slate-300 bg-white");
     expect(creationAction).toContain("text-base font-semibold");
-    for (const module of [helpers, contacts]) {
-      expect(module).toContain("CREATION_ACTION_BUTTON_CLASS");
-      expect(module).toContain('variant="outline"');
-    }
+    expect(contacts).toContain("CREATION_ACTION_BUTTON_CLASS");
+    expect(contacts).toContain('variant="outline"');
+    expect(helpers).not.toContain("CREATION_ACTION_BUTTON_CLASS");
     expect(plan).not.toContain("CREATION_ACTION_BUTTON_CLASS");
     expect(plan).toContain("bg-blue-600 px-4 font-semibold text-white");
     expect(preparation).not.toContain("CREATION_ACTION_BUTTON_CLASS");
     expect(preparation).toContain("bg-blue-600 text-base font-medium text-white");
+    expect(helpers).toContain("grid grid-cols-2 gap-2");
+    expect(helpers).toContain("w-full bg-blue-600 px-4 text-base font-medium text-white");
     expect(helperHeaderActions).not.toContain("bg-indigo-700");
     expect(contacts).not.toContain("bg-indigo-700");
     expect(helpers).toContain("companionFilter");
@@ -1888,6 +1896,29 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain("Ohne Begleitung");
     expect(helpers).toContain("Boolean(helper.companion?.trim())");
     expect(helpers).toContain("!helper.companion?.trim()");
+  });
+
+  it("ordnet Helferfilter wie in der Vorbereitung in einer weißen Suchkarte an", () => {
+    const helpers = source("client/src/pages/Helpers.tsx");
+
+    expect(helpers).toContain(
+      'className="space-y-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm"'
+    );
+    expect(helpers).toContain("<Search");
+    expect(helpers).toContain("Suchen (Name, Telefon, Hinweise) …");
+    expect(helpers).toContain("Helfer nach Name, Telefon oder Hinweis durchsuchen");
+    expect(helpers).toContain("helperScopeFilter");
+    expect(helpers).toContain("willHelpFilter");
+    const filterOrder = [
+      "Alle Ansprechpartner",
+      "Alle Begleitungen",
+      "Alle Rückmeldungen",
+      "Nur Helfer mit ...",
+      "Helfen (Ja/Nein)",
+      "Nur Helfer mit Zeitfenstern",
+    ].map(label => helpers.indexOf(label));
+    expect(filterOrder.every(index => index >= 0)).toBe(true);
+    expect(filterOrder).toEqual([...filterOrder].sort((left, right) => left - right));
   });
 
   it("bearbeitet Vorbereitungskarten mobil direkt und zeigt das Logbuch kompakt mit Verlauf an", () => {
