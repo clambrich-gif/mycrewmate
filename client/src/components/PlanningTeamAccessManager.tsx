@@ -415,7 +415,7 @@ export function PlanningTeamAccessManager() {
           }
         }}
       >
-        <DialogContent className="w-[calc(100%-2rem)] max-w-md overflow-visible">
+        <DialogContent className="w-[calc(100%-2rem)] max-w-md !overflow-visible">
           <form className="space-y-4" onSubmit={submitDelete}>
             <DialogHeader>
               <DialogTitle>Planungsteam-Zugang löschen</DialogTitle>
@@ -434,25 +434,26 @@ export function PlanningTeamAccessManager() {
                 onChange={event => setDeletePassword(event.target.value)}
               />
             </div>
-            <DialogFooter className="flex flex-row flex-nowrap justify-end gap-3 sm:space-x-0">
+            <DialogFooter className="!mt-4 !flex !flex-row !flex-nowrap !items-center !justify-end !gap-3 sm:space-x-0">
               <Button
                 type="button"
                 variant="outline"
-                className="shrink-0 whitespace-nowrap"
+                className="shrink-0 whitespace-nowrap border-slate-300 bg-white text-slate-900 shadow-sm"
                 disabled={deleteAccess.isPending}
                 onClick={() => setDeleteTarget(null)}
               >
                 Abbrechen
               </Button>
-              <Button
+              <button
                 type="submit"
-                variant="destructive"
-                className="shrink-0 whitespace-nowrap"
+                className="inline-flex h-9 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm opacity-100 visible transition-colors hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
                 disabled={!deleteTarget || !deletePassword || deleteAccess.isPending}
               >
-                <Trash2 className="mr-2 h-4 w-4" />
-                {deleteAccess.isPending ? "Wird gelöscht …" : "Zugang löschen"}
-              </Button>
+                <Trash2 className="h-4 w-4" />
+                {deleteAccess.isPending
+                  ? "Wird gelöscht …"
+                  : "Zugangsdaten dauerhaft löschen"}
+              </button>
             </DialogFooter>
           </form>
         </DialogContent>

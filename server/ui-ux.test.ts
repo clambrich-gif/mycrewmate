@@ -2634,10 +2634,15 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(manager).toContain("Freigegebene Veranstaltungen");
     expect(manager).toContain("const submitDelete");
     expect(manager).toContain("<form className=\"space-y-4\" onSubmit={submitDelete}>");
-    expect(manager).toContain("flex flex-row flex-nowrap justify-end gap-3");
+    expect(manager).toContain("!flex !flex-row !flex-nowrap !items-center !justify-end !gap-3");
     expect(manager).toContain('type="submit"');
     expect(manager).toContain("shrink-0 whitespace-nowrap");
-    expect(manager).toContain("overflow-visible");
+    expect(manager).toContain("bg-red-600");
+    expect(manager).toContain("hover:bg-red-700");
+    expect(manager).toContain("text-white");
+    expect(manager).toContain("opacity-100 visible");
+    expect(manager).toContain("Zugangsdaten dauerhaft löschen");
+    expect(manager).toContain("!overflow-visible");
 
     expect(contacts).toContain("Passwort / Zugangscode (optional)");
     expect(contacts).toContain("Neues Passwort (optional)");
