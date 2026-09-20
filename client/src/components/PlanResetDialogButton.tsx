@@ -14,10 +14,16 @@ import { RotateCcw, Trash2, UserMinus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
-export type ConsolidatedResetArea = "shifts" | "prep" | "post" | "materials";
+export type ConsolidatedResetArea =
+  | "helpers"
+  | "shifts"
+  | "prep"
+  | "post"
+  | "materials";
 type ResetChoice = "assignments" | "all";
 
 type ResetCopy = {
+  clearChoiceLabel: string;
   clearDescription: string;
   clearConfirmLabel: string;
   clearSuccess: (count: number) => string;
@@ -27,7 +33,20 @@ type ResetCopy = {
 };
 
 export const CONSOLIDATED_RESET_COPY: Record<ConsolidatedResetArea, ResetCopy> = {
+  helpers: {
+    clearChoiceLabel: "Komplette Belegung leeren",
+    clearDescription:
+      "Alle Helfer bleiben bestehen. Ansprechpartner, Hinweise für PDF und zusätzliche Begleitungen werden entfernt. Helfen wird auf „Ja“, alle Tagesverfügbarkeiten auf „Vielleicht“ und Bestätigt auf „Nein“ zurückgesetzt. Namen, Telefon, E-Mail und bestehende Einsatzplan-Schichten bleiben erhalten.",
+    clearConfirmLabel: "Helfer zurücksetzen",
+    clearSuccess: count =>
+      `${count} Helfer wurden auf den Ausgangszustand zurückgesetzt. Die Helferliste bleibt erhalten.`,
+    clearEmpty: "Es waren keine Helfer vorhanden.",
+    deleteDescription:
+      "Alle Helfer der aktuell gewählten Veranstaltung werden dauerhaft gelöscht. Ansprechpartner und alle übrigen Planungsdaten bleiben erhalten.",
+    deleteSuccess: "Der komplette Helferplan wurde gelöscht.",
+  },
   shifts: {
+    clearChoiceLabel: "Belegungen leeren",
     clearDescription:
       "Alle eingeteilten Helfer werden aus den Schichten der aktuell gewählten Veranstaltung entfernt. Schichten, Bereiche, Aufgaben und Bereichsansprechpartner bleiben erhalten.",
     clearConfirmLabel: "Helfer austragen",
@@ -40,6 +59,7 @@ export const CONSOLIDATED_RESET_COPY: Record<ConsolidatedResetArea, ResetCopy> =
     deleteSuccess: "Der komplette Einsatzplan wurde gelöscht.",
   },
   prep: {
+    clearChoiceLabel: "Belegungen leeren",
     clearDescription:
       "Alle Verantwortlichen und Fristen werden geleert, der Status aller Vorbereitungsaufgaben auf „Offen“ gesetzt und alle Logbucheinträge entfernt. Die Aufgaben selbst bleiben erhalten.",
     clearConfirmLabel: "Belegungen leeren",
@@ -51,6 +71,7 @@ export const CONSOLIDATED_RESET_COPY: Record<ConsolidatedResetArea, ResetCopy> =
     deleteSuccess: "Die komplette Vorbereitung wurde gelöscht.",
   },
   post: {
+    clearChoiceLabel: "Belegungen leeren",
     clearDescription:
       "Alle Verantwortlichen und Fristen werden geleert, der Status aller Nachbereitungsaufgaben auf „Offen“ gesetzt und alle Logbucheinträge entfernt. Die Aufgaben selbst bleiben erhalten.",
     clearConfirmLabel: "Belegungen leeren",
@@ -62,6 +83,7 @@ export const CONSOLIDATED_RESET_COPY: Record<ConsolidatedResetArea, ResetCopy> =
     deleteSuccess: "Die komplette Nachbereitung wurde gelöscht.",
   },
   materials: {
+    clearChoiceLabel: "Belegungen leeren",
     clearDescription:
       "Alle Verantwortlichen werden geleert und der Stand sämtlicher Materialartikel auf „Offen“ zurückgesetzt. Artikel, Mengen, Orte und Bemerkungen bleiben erhalten.",
     clearConfirmLabel: "Belegungen leeren",
@@ -75,7 +97,7 @@ export const CONSOLIDATED_RESET_COPY: Record<ConsolidatedResetArea, ResetCopy> =
 };
 
 /**
- * Bündelt die beiden Resetwege der vier operativen Module. Erst wird eine
+ * Bündelt die beiden Resetwege der operativen Module. Erst wird eine
  * Wahl getroffen; die Datenänderung folgt ausschließlich nach Passwortbestätigung.
  */
 export function PlanResetDialogButton({
@@ -186,7 +208,9 @@ export function PlanResetDialogButton({
                 aria-hidden="true"
               />
               <span className="space-y-1.5">
-                <span className="block font-semibold">Belegungen leeren</span>
+                <span className="block font-semibold">
+                  {copy.clearChoiceLabel}
+                </span>
                 <span className="block text-xs font-normal leading-relaxed">
                   {copy.clearDescription}
                 </span>
@@ -229,7 +253,7 @@ export function PlanResetDialogButton({
         }}
         title={
           isAssignmentChoice
-            ? "Belegungen leeren?"
+            ? `${copy.clearChoiceLabel}?`
             : `Kompletten ${label} löschen?`
         }
         description={

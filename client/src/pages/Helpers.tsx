@@ -36,7 +36,7 @@ import { trpc } from "@/lib/trpc";
 import { ChevronDown, Clock3, FileDown, FilterX, Info, MessageCircle, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ResetAreaButton } from "@/components/ResetAreaButton";
+import { PlanResetDialogButton } from "@/components/PlanResetDialogButton";
 import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 import {
   eventWeekdays,
@@ -900,7 +900,11 @@ export default function Helpers() {
         <div className="w-full space-y-2 lg:ml-auto lg:w-[23rem]">
           <div className="grid grid-cols-2 gap-2 [&>[data-slot=button]]:h-10 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2">
             <ModuleExcelImportButton area="HELFER" label="Helfer" />
-            <ResetAreaButton area="helpers" label="Helfer" compact />
+            <PlanResetDialogButton
+              area="helpers"
+              label="Helfer"
+              onCompleted={invalidate}
+            />
           </div>
           <Button
             type="button"
@@ -1300,7 +1304,7 @@ export default function Helpers() {
         <CardContent className="helpers-table-scroll p-0">
           <table
             className="w-full table-fixed text-xs xl:text-sm"
-            style={{ minWidth: 988 + activeDays.length * 56 }}
+            style={{ minWidth: 1044 + activeDays.length * 56 }}
           >
             <colgroup>
               <col className="w-[140px]" />
@@ -1313,6 +1317,7 @@ export default function Helpers() {
               {activeDays.map(day => (
                 <col key={day} className="w-[56px]" />
               ))}
+              <col className="w-[56px]" />
               <col className="w-[56px]" />
             </colgroup>
             <thead className="helpers-desktop-sticky-head bg-muted/60">
@@ -1349,6 +1354,11 @@ export default function Helpers() {
                     Bestätigt?
                   </span>
                 </th>
+                <th className="p-1 text-center align-middle text-[11px] leading-tight">
+                  <span className="flex min-h-8 items-center justify-center">
+                    Löschen
+                  </span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -1356,14 +1366,18 @@ export default function Helpers() {
                 <tr>
                   <td
                     className="p-4 text-muted-foreground"
-                    colSpan={8 + activeDays.length}
+                    colSpan={9 + activeDays.length}
                   >
                     Lade …
                   </td>
                 </tr>
               )}
-              {filtered.map(helper => (
-                <tr
+              {filtered.map(helper => {
+                const helperDeleteDisabled =
+                  selfHelperIds.has(helper.id) ||
+                  (user?.role !== "admin" && assignedHelperIds.has(helper.id));
+                return (
+                  <tr
                   key={helper.id}
                   className="border-t hover:bg-muted/30 align-top"
                 >
@@ -1406,33 +1420,6 @@ export default function Helpers() {
                         onClick={() => shareHelperPdf(helper.id)}
                       >
                         <MessageCircle className="size-5 text-[#25D366]" aria-hidden="true" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title={
-                          selfHelperIds.has(helper.id)
-                            ? "Zum Löschen zuerst den Ansprechpartner entfernen"
-                            : user?.role !== "admin" &&
-                                assignedHelperIds.has(helper.id)
-                              ? "Eingeteilte Helfer können nur Administratoren löschen"
-                              : "Helfer entfernen"
-                        }
-                        aria-label={`Helfer ${helper.name} entfernen`}
-                        className={HELPER_ACTION_ICON_BUTTON_CLASS}
-                        disabled={
-                          selfHelperIds.has(helper.id) ||
-                          (user?.role !== "admin" &&
-                            assignedHelperIds.has(helper.id))
-                        }
-                        onClick={() =>
-                          setDeleteTarget({
-                            id: helper.id,
-                            name: helper.name,
-                          })
-                        }
-                      >
-                        <Trash2 className="size-5 text-red-600" aria-hidden="true" />
                       </Button>
                     </div>
                   </td>
@@ -1564,13 +1551,50 @@ export default function Helpers() {
                       }
                     />
                   </td>
+                  <td className="p-1 text-center align-middle">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title={
+                        selfHelperIds.has(helper.id)
+                          ? "Zum Löschen zuerst den Ansprechpartner entfernen"
+                          : user?.role !== "admin" &&
+                              assignedHelperIds.has(helper.id)
+                            ? "Eingeteilte Helfer können nur Administratoren löschen"
+                            : "Helfer entfernen"
+                      }
+                      aria-label={`Helfer ${helper.name} entfernen`}
+                      className={cn(
+                        HELPER_ACTION_ICON_BUTTON_CLASS,
+                        helperDeleteDisabled && "cursor-not-allowed"
+                      )}
+                      disabled={helperDeleteDisabled}
+                      onClick={() =>
+                        setDeleteTarget({
+                          id: helper.id,
+                          name: helper.name,
+                        })
+                      }
+                    >
+                      <Trash2
+                        className={cn(
+                          "size-5",
+                          helperDeleteDisabled
+                            ? "text-gray-400 opacity-50"
+                            : "text-red-600"
+                        )}
+                        aria-hidden="true"
+                      />
+                    </Button>
+                  </td>
                 </tr>
-              ))}
+                );
+              })}
               {!isLoading && filtered.length === 0 && (
                 <tr>
                   <td
                     className="p-4 text-muted-foreground"
-                    colSpan={8 + activeDays.length}
+                    colSpan={9 + activeDays.length}
                   >
                     Keine Helfer gefunden.
                   </td>

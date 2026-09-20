@@ -375,7 +375,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain('className="helpers-table-scroll p-0"');
     expect(helpers).toContain('<col className="w-[180px]" />');
     expect(helpers).toContain('<col className="w-[230px]" />');
-    expect(helpers).toContain("988 + activeDays.length * 56");
+    expect(helpers).toContain("1044 + activeDays.length * 56");
     expect(helpers).toContain('<col className="w-[176px]" />');
     expect(helpers).toContain("md:w-[52px] md:min-w-[52px]");
     expect(helpers).toContain("rounded-full border px-3");
@@ -1415,6 +1415,22 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(resetDialog).toContain("Alle Materialartikel der aktuell gewählten Veranstaltung werden dauerhaft gelöscht.");
   });
 
+  it("setzt Helfer über den gemeinsamen Dialog ohne Stammdaten- oder Schichtlöschung zurück", () => {
+    const helpers = source("client/src/pages/Helpers.tsx");
+    const resetDialog = source(
+      "client/src/components/PlanResetDialogButton.tsx"
+    );
+
+    expect(helpers).toContain('<PlanResetDialogButton\n              area="helpers"');
+    expect(helpers).not.toContain('<ResetAreaButton area="helpers"');
+    expect(resetDialog).toContain('| "helpers"');
+    expect(resetDialog).toContain('helpers: {');
+    expect(resetDialog).toContain("Komplette Belegung leeren");
+    expect(resetDialog).toContain("Ansprechpartner, Hinweise für PDF und zusätzliche Begleitungen werden entfernt");
+    expect(resetDialog).toContain("Namen, Telefon, E-Mail und bestehende Einsatzplan-Schichten bleiben erhalten");
+    expect(resetDialog).toContain("Alle Helfer der aktuell gewählten Veranstaltung werden dauerhaft gelöscht");
+  });
+
   it("nutzt für die Einsatzplantabelle die volle Desktopbreite mit strukturiertem Helfergrid", () => {
     const layout = source("client/src/components/Layout.tsx");
     const plan = source("client/src/pages/Plan.tsx");
@@ -1616,7 +1632,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(desktopHeader.indexOf("Hinweis für PDF")).toBeLessThan(
       desktopHeader.indexOf("zusätzliche Begleitung")
     );
-    expect(helpers).toContain("colSpan={8 + activeDays.length}");
+    expect(desktopHeader.indexOf("Bestätigt?")).toBeLessThan(
+      desktopHeader.indexOf("Löschen")
+    );
+    expect(helpers).toContain("helperDeleteDisabled");
+    expect(helpers).toContain('"text-gray-400 opacity-50"');
+    expect(helpers).toContain('"text-red-600"');
+    expect(helpers).toContain("colSpan={9 + activeDays.length}");
   });
 
   it("markiert historische Chatnachrichten als initial lautlos und erneuert fortlaufendes Typing gedrosselt", () => {

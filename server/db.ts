@@ -2662,15 +2662,55 @@ export async function deletePrep(
   });
 }
 
-export type ModuleAssignmentClearArea = "prep" | "post" | "materials";
+export type ModuleAssignmentClearArea =
+  | "helpers"
+  | "prep"
+  | "post"
+  | "materials";
 
 /**
- * Feldwerte für den nicht-destruktiven Modulreset. Die Aufgaben bzw.
+ * Der neutrale Helferzustand entspricht einer noch nicht abgestimmten, aber
+ * grundsätzlich aktiven Person. Stammdaten wie Name, Telefon und E-Mail sowie
+ * bereits bestehende Einsatzplan-Schichten bleiben bewusst unverändert.
+ */
+export const helperAssignmentClearValues = () => ({
+  contactId: null,
+  note: null,
+  companion: null,
+  willHelp: "ja" as const,
+  availMon: "vielleicht" as const,
+  availTue: "vielleicht" as const,
+  availWed: "vielleicht" as const,
+  availThu: "vielleicht" as const,
+  availFri: "vielleicht" as const,
+  availSat: "vielleicht" as const,
+  availSun: "vielleicht" as const,
+  availMonStart: null,
+  availMonEnd: null,
+  availTueStart: null,
+  availTueEnd: null,
+  availWedStart: null,
+  availWedEnd: null,
+  availThuStart: null,
+  availThuEnd: null,
+  availFriStart: null,
+  availFriEnd: null,
+  availSatStart: null,
+  availSatEnd: null,
+  availSunStart: null,
+  availSunEnd: null,
+  confirmed: "nein" as const,
+});
+
+/**
+ * Feldwerte für den nicht-destruktiven Modulreset. Die Helfer, Aufgaben bzw.
  * Materialpositionen bleiben dabei bestehen; nur ihre operative Belegung wird
  * auf den neutralen Ausgangszustand zurückgesetzt.
  */
 export function moduleAssignmentClearValues(area: ModuleAssignmentClearArea) {
   switch (area) {
+    case "helpers":
+      return helperAssignmentClearValues();
     case "prep":
       return {
         contactId: null,
@@ -2696,7 +2736,8 @@ export function moduleAssignmentClearValues(area: ModuleAssignmentClearArea) {
 
 /**
  * Leert ausschließlich die operativen Belegungsfelder der aktuell gewählten
- * Veranstaltung. Einzelne Aufgaben und Materialpositionen werden nie gelöscht.
+ * Veranstaltung. Helfer, einzelne Aufgaben und Materialpositionen werden nie
+ * gelöscht. Bestehende Einsatzplan-Zuweisungen bleiben dabei unberührt.
  */
 export async function clearModuleAssignments(area: ModuleAssignmentClearArea) {
   const database = (await getDb()) as DB;
@@ -2704,6 +2745,28 @@ export async function clearModuleAssignments(area: ModuleAssignmentClearArea) {
   const selectedEventId = event();
 
   return database.transaction(async tx => {
+    if (area === "helpers") {
+      const rows = await tx
+        .select({ id: helpers.id })
+        .from(helpers)
+        .where(planningScopeFor(helpers, selectedYear, selectedEventId))
+        .for("update");
+      if (!rows.length) return { area, cleared: 0 };
+      await tx
+        .update(helpers)
+        .set(moduleAssignmentClearValues("helpers"))
+        .where(
+          and(
+            planningScopeFor(helpers, selectedYear, selectedEventId),
+            inArray(
+              helpers.id,
+              rows.map(row => row.id)
+            )
+          )
+        );
+      return { area, cleared: rows.length };
+    }
+
     if (area === "prep") {
       const rows = await tx
         .select({ id: prepTasks.id })
@@ -3231,20 +3294,6 @@ export async function resetArea(area: ResetArea, actor: AuditActor) {
             )
           );
           requireDeletedRows(result, rows.length);
-        }
-        const contactRows = await tx
-          .select({ id: contacts.id, name: contacts.name, phone: contacts.phone })
-          .from(contacts)
-          .where(planningScopeFor(contacts, selectedYear, selectedEventId))
-          .for("update");
-        if (contactRows.length) {
-          await tx.insert(helpers).values(
-            contactRows.map(contact => ({
-              ...selfHelperValues(contact),
-              year: selectedYear,
-              eventId: selectedEventId,
-            }))
-          );
         }
       } else {
         const rows = await tx

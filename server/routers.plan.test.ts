@@ -1194,6 +1194,30 @@ describe("Planungs-API", () => {
     expect(dbMocks.clearModuleAssignments).toHaveBeenCalledWith("materials");
   });
 
+  it("setzt Helferbelegungen nur mit Administratorpasswort zurück und löscht keine Helfer", async () => {
+    dbMocks.clearModuleAssignments.mockResolvedValue({
+      area: "helpers",
+      cleared: 7,
+    });
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.moduleAssignments.clear({
+        area: "helpers",
+        adminPassword: "falsch",
+      })
+    ).rejects.toThrow("Administratorpasswort");
+    expect(dbMocks.clearModuleAssignments).not.toHaveBeenCalled();
+
+    await expect(
+      caller.moduleAssignments.clear({
+        area: "helpers",
+        adminPassword: ADMIN_PASSWORD,
+      })
+    ).resolves.toEqual({ area: "helpers", cleared: 7 });
+    expect(dbMocks.clearModuleAssignments).toHaveBeenCalledWith("helpers");
+  });
+
   it("fordert das aktuelle Administratorpasswort vor jeder Passwortänderung", async () => {
     const caller = appRouter.createCaller(ctx);
 

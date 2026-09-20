@@ -348,7 +348,12 @@ const resetAreaInput = z.enum([
   "finances",
   "all",
 ]);
-const moduleAssignmentClearArea = z.enum(["prep", "post", "materials"]);
+const moduleAssignmentClearArea = z.enum([
+  "helpers",
+  "prep",
+  "post",
+  "materials",
+]);
 const pdfSettingsInput = z.object({
   eventName: z.string().trim().min(1).max(200),
   eventYear: z.string().trim().min(1).max(16),
