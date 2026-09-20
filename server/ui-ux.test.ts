@@ -2635,6 +2635,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain("Name (alternativ)");
     expect(layout).toContain("adminIdentityDialogOpen");
     expect(layout).toContain("function AdminIdentityDialog");
+    expect(layout).toContain("function uniqueAdminLoginContacts");
+    expect(layout).toContain("LAST_ADMINISTRATOR_NAME_STORAGE_KEY");
+    expect(layout).toContain("getLastAdministratorName()");
+    expect(layout).toContain("rememberAdministratorName(selectedAdministratorName)");
+    expect(layout).toContain("{contact.name}");
+    expect(layout).not.toContain("{contact.name} · {contact.year} · {contact.eventName}");
     const unauthenticatedLayout = layout.slice(
       layout.indexOf("if (!isAuthenticated)"),
       layout.indexOf("if (\n    events.isLoading")

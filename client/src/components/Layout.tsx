@@ -74,6 +74,7 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -83,6 +84,7 @@ import { Link, useLocation } from "wouter";
 const MYCREWMATE_WORDMARK = "/mycrewmate-logo.png";
 const MYCREWMATE_ICON = "/manus-storage/mycrewmate-pwa-icon-512_b16ae84c.png";
 const CHAT_SNAPSHOT_POLL_MS = 5_000;
+const LAST_ADMINISTRATOR_NAME_STORAGE_KEY = "mycrewmate:last-administrator-name";
 
 type DeferredInstallPrompt = Event & {
   prompt: () => Promise<void>;
@@ -147,6 +149,38 @@ type AdminLoginContact = {
   eventName: string;
 };
 
+function normalizeAdministratorName(name: string) {
+  return name.trim().toLocaleLowerCase("de-DE");
+}
+
+function uniqueAdminLoginContacts(contacts: AdminLoginContact[]) {
+  const seenNames = new Set<string>();
+  return contacts.filter(contact => {
+    const normalizedName = normalizeAdministratorName(contact.name);
+    if (!normalizedName || seenNames.has(normalizedName)) return false;
+    seenNames.add(normalizedName);
+    return true;
+  });
+}
+
+function getLastAdministratorName() {
+  if (typeof window === "undefined") return "";
+  try {
+    return window.localStorage.getItem(LAST_ADMINISTRATOR_NAME_STORAGE_KEY)?.trim() ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function rememberAdministratorName(name: string) {
+  if (typeof window === "undefined" || !name.trim()) return;
+  try {
+    window.localStorage.setItem(LAST_ADMINISTRATOR_NAME_STORAGE_KEY, name.trim());
+  } catch {
+    // Die Anmeldung bleibt auch bei deaktiviertem LocalStorage vollständig nutzbar.
+  }
+}
+
 function AdminIdentityDialog({
   open,
   contacts,
@@ -195,10 +229,14 @@ function AdminIdentityDialog({
               <SelectValue placeholder="Ansprechpartner auswählen" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="manual">Freitext verwenden</SelectItem>
+              <SelectItem value="manual">
+                {manualName
+                  ? `Freitext verwenden: ${manualName}`
+                  : "Freitext verwenden"}
+              </SelectItem>
               {contacts.map(contact => (
                 <SelectItem key={contact.id} value={String(contact.id)}>
-                  {contact.name} · {contact.year} · {contact.eventName}
+                  {contact.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -244,7 +282,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [loginMode, setLoginMode] = useState<"user" | "admin">("user");
   const [adminIdentityDialogOpen, setAdminIdentityDialogOpen] = useState(false);
   const [adminLoginContacts, setAdminLoginContacts] = useState<
-    { id: number; name: string; year: number; eventName: string }[]
+    AdminLoginContact[]
   >([]);
   const [selectedAdminContactId, setSelectedAdminContactId] = useState<string>("");
   const [manualAdministratorName, setManualAdministratorName] = useState("");
@@ -293,6 +331,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const loginLockAlertRef = useRef<HTMLDivElement>(null);
   const loginErrorRef = useRef<HTMLDivElement>(null);
   const utils = trpc.useUtils();
+  const uniqueAdminContacts = useMemo(
+    () => uniqueAdminLoginContacts(adminLoginContacts),
+    [adminLoginContacts]
+  );
 
   useEffect(() => {
     const displayMode = window.matchMedia("(display-mode: standalone)");
@@ -523,12 +565,24 @@ export function Layout({ children }: { children: React.ReactNode }) {
     mutationKey: ["auth", "adminPasswordLogin"],
     onSuccess: async result => {
       if (result.requiresIdentity) {
-        setAdminLoginContacts(result.contacts ?? []);
-        setSelectedAdminContactId("");
-        setManualAdministratorName("");
+        const contacts = uniqueAdminLoginContacts(result.contacts ?? []);
+        const lastAdministratorName = getLastAdministratorName();
+        const previouslySelectedContact = contacts.find(
+          contact =>
+            normalizeAdministratorName(contact.name) ===
+            normalizeAdministratorName(lastAdministratorName)
+        );
+        setAdminLoginContacts(contacts);
+        setSelectedAdminContactId(
+          previouslySelectedContact ? String(previouslySelectedContact.id) : ""
+        );
+        setManualAdministratorName(
+          previouslySelectedContact ? "" : lastAdministratorName
+        );
         setAdminIdentityDialogOpen(true);
         return;
       }
+      rememberAdministratorName(selectedAdministratorName);
       await finishLogin();
     },
     onError: error => setLoginError(error.message),
@@ -630,7 +684,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     adminPasswordLogin.isPending ||
     resetAdminWithKey.isPending;
   const selectedAdministratorName =
-    adminLoginContacts.find(contact => String(contact.id) === selectedAdminContactId)
+    uniqueAdminContacts.find(contact => String(contact.id) === selectedAdminContactId)
       ?.name ?? manualAdministratorName.trim();
   const closeAdminIdentityDialog = () => {
     setAdminIdentityDialogOpen(false);
@@ -642,7 +696,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const adminIdentityDialog = (
     <AdminIdentityDialog
       open={adminIdentityDialogOpen}
-      contacts={adminLoginContacts}
+      contacts={uniqueAdminContacts}
       selectedContactId={selectedAdminContactId}
       manualName={manualAdministratorName}
       selectedName={selectedAdministratorName}
