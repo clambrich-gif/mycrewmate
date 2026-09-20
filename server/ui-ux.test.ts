@@ -1472,7 +1472,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(pdfExport).toContain("includeMaterials");
   });
 
-  it("ordnet Einsatzplanaktionen als einzeilige Viererleiste mit vollbreiter Hauptaktion an", () => {
+  it("ordnet Einsatzplanaktionen mobil zweispaltig und ab Tablet einzeilig an", () => {
     const plan = source("client/src/pages/Plan.tsx");
     const resetButton = source("client/src/components/ResetAreaButton.tsx");
     const clearAssignments = source(
@@ -1484,7 +1484,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     );
 
     expect(plan).toContain("data-plan-data-actions");
-    expect(plan).toContain("flex flex-nowrap items-center justify-between gap-2 overflow-x-auto pb-1 whitespace-nowrap");
+    expect(plan).toContain("grid grid-cols-2 gap-2 sm:flex sm:flex-nowrap sm:items-center sm:justify-between");
+    expect(plan).toContain("[&>[data-slot=button]]:w-full");
+    expect(plan).toContain("sm:[&>[data-slot=button]]:w-auto");
     expect(plan).toContain('[&>[data-slot=button]]:whitespace-nowrap');
     expect(plan).toContain("min-[1280px]:w-[46rem]");
     expect(plan).toContain(
@@ -1905,7 +1907,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(filterOrder).toEqual([...filterOrder].sort((left, right) => left - right));
   });
 
-  it("kennzeichnet alle Hauptseiten mit konsistenten farbigen Markenicons", () => {
+  it("kennzeichnet Hauptseiten mit ruhigen einfarbigen Titelicons", () => {
     const pageTitle = source("client/src/components/PageTitle.tsx");
     const pages: Array<[string, string]> = [
       ["client/src/pages/Dashboard.tsx", "dashboard"],
@@ -1926,10 +1928,14 @@ describe("UI- und Mobile-UX-Regeln", () => {
 
     expect(pageTitle).toContain('"flex items-center gap-3 text-2xl font-bold"');
     expect(pageTitle).toContain("LayoutDashboard");
-    expect(pageTitle).toContain("text-blue-700");
-    expect(pageTitle).toContain("UserCheck");
+    expect(pageTitle).toContain("User,");
+    expect(pageTitle).toContain("Users,");
     expect(pageTitle).toContain("text-blue-900");
-    expect(pageTitle).toContain("text-orange-500");
+    expect(pageTitle).toContain("const blueClassName");
+    expect(pageTitle).not.toContain("text-orange");
+    expect(pageTitle).not.toContain("UserCheck");
+    expect(pageTitle).not.toContain("UserRound");
+    expect(pageTitle).not.toContain("relative inline-flex");
     expect(pageTitle).toContain("FileDown");
     expect(pageTitle).toContain("text-red-600");
     expect(pageTitle).toContain("FileSpreadsheet");

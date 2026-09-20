@@ -1279,7 +1279,7 @@ export default function Plan() {
           <div className="w-full shrink-0 min-[1280px]:w-[46rem]">
             <div
               data-plan-data-actions
-              className="flex flex-nowrap items-center justify-between gap-2 overflow-x-auto pb-1 whitespace-nowrap [&>[data-slot=button]]:h-9 [&>[data-slot=button]]:shrink-0 [&>[data-slot=button]]:whitespace-nowrap"
+              className="grid grid-cols-2 gap-2 sm:flex sm:flex-nowrap sm:items-center sm:justify-between sm:gap-2 sm:overflow-x-auto sm:pb-1 sm:whitespace-nowrap [&>[data-slot=button]]:h-9 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:whitespace-nowrap sm:[&>[data-slot=button]]:w-auto sm:[&>[data-slot=button]]:shrink-0"
             >
               <ModuleExcelImportButton
                 area="EINSATZPLAN"
