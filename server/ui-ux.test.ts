@@ -1138,9 +1138,14 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain("VEREINS- &amp; EVENTPLANUNG");
     expect(layout).toContain("text-center text-[11px] font-medium");
     expect(layout).toContain("bg-transparent object-contain");
+    expect(layout).toContain("items-center border-b bg-white px-4 py-3");
+    expect(layout).toContain("flex flex-col border-t px-3 pt-0.5 pb-1 leading-none");
+    expect(layout).toContain('className="h-6 w-6 shrink-0"');
+    expect(layout).toContain('className="mt-0.5 block w-full whitespace-nowrap rounded px-0 text-center text-[9px] leading-none text-gray-400');
     expect(legalFooter).toContain(
       "© 2026 MyCrewMate.de · Alle Rechte vorbehalten."
     );
+    expect(legalFooter).toContain("gap-0.5 whitespace-nowrap text-[9px] leading-none");
     expect(layout).toContain("SIDEBAR_COPYRIGHT_NOTICE");
     expect(layout).toContain("whitespace-nowrap");
     expect(layout).toContain('<OnlinePresenceBadge\n            counts={onlinePresence.counts}');

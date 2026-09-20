@@ -1137,7 +1137,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </Sheet>
 
       <aside className="hidden w-64 shrink-0 flex-col border-r bg-card lg:sticky lg:top-0 lg:flex lg:h-screen lg:self-start">
-        <div className="flex min-h-24 flex-col items-center border-b bg-slate-50 px-4 py-3 text-slate-950">
+        <div className="flex min-h-24 flex-col items-center border-b bg-white px-4 py-3 text-slate-950">
           <img
             {...logoLoading}
             src={MYCREWMATE_WORDMARK}
@@ -1277,34 +1277,34 @@ export function Layout({ children }: { children: React.ReactNode }) {
             }
           )}
         </nav>
-        <div className="border-t px-3 py-1">
-          <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-col border-t px-3 pt-0.5 pb-1 leading-none">
+          <div className="flex items-center justify-between gap-2 leading-none">
             <div className="min-w-0">
-              <div className="truncate text-xs font-medium leading-tight">
+              <div className="truncate text-xs font-medium leading-none">
                 {user?.name}
               </div>
-              <div className="text-[10px] leading-tight text-muted-foreground">
+              <div className="text-[10px] leading-none text-muted-foreground">
                 {user?.role === "admin" ? "Administrator" : "Planungsteam"}
               </div>
             </div>
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7"
+              className="h-6 w-6 shrink-0"
               title="Abmelden"
               onClick={() => logout()}
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-3.5 w-3.5" />
             </Button>
           </div>
           <LegalFooterLinks
             compact
-            className="mt-0.5"
+            className="mt-px"
             onOpenImpressum={() => setImpressumOpen(true)}
           />
           <button
             type="button"
-            className="mt-0.5 w-full whitespace-nowrap rounded px-1 text-center text-[10px] leading-none text-gray-400 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="mt-0.5 block w-full whitespace-nowrap rounded px-0 text-center text-[9px] leading-none text-gray-400 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             onClick={() => setImpressumOpen(true)}
           >
             {SIDEBAR_COPYRIGHT_NOTICE}

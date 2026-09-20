@@ -101,7 +101,9 @@ export function LegalFooterLinks({
   return (
     <div
       className={cn(
-        "flex items-center justify-center gap-1.5 whitespace-nowrap text-[11px] leading-none",
+        compact
+          ? "flex items-center justify-center gap-0.5 whitespace-nowrap text-[9px] leading-none"
+          : "flex items-center justify-center gap-1.5 whitespace-nowrap text-[11px] leading-none",
         className
       )}
     >
@@ -109,7 +111,7 @@ export function LegalFooterLinks({
         type="button"
         className={cn(
           "rounded px-1 underline-offset-2 hover:text-blue-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
-          compact ? "text-[10px] text-gray-400" : "text-slate-500"
+          compact ? "px-0 text-[9px] leading-none text-gray-400" : "text-slate-500"
         )}
         onClick={onOpenImpressum}
       >
@@ -121,7 +123,7 @@ export function LegalFooterLinks({
       <a
         className={cn(
           "rounded px-1 underline-offset-2 hover:text-blue-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
-          compact ? "text-[10px] text-gray-400" : "text-slate-500"
+          compact ? "px-0 text-[9px] leading-none text-gray-400" : "text-slate-500"
         )}
         href={PRIVACY_POLICY_URL}
         target="_blank"
