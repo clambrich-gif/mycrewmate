@@ -192,9 +192,6 @@ export function ProjectStorageControls({
           Laden
         </Button>
       </div>
-      <p className="mt-1.5 text-[11px] leading-4 text-muted-foreground">
-        Kompakte Projektdatei der aktuell gewählten Veranstaltung.
-      </p>
 
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
         <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-4xl overflow-y-auto bg-white text-slate-950 dark:bg-slate-950 dark:text-slate-50">

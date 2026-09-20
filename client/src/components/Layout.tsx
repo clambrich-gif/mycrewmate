@@ -1039,8 +1039,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 ))}
               </SelectContent>
             </Select>
-            <div className="mt-3 border-t pt-3">
-              <Label className="mb-1.5 block text-xs text-muted-foreground">
+            <div className="mt-2 border-t pt-2">
+              <Label className="mb-1 block text-xs text-muted-foreground">
                 Projektstand
               </Label>
               <LazyProjectStorageControls />
@@ -1248,15 +1248,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
               ))}
             </SelectContent>
           </Select>
-          <div className="mt-3 border-t pt-3">
-            <Label className="mb-1.5 block text-xs text-muted-foreground">
+          <div className="mt-2 border-t pt-2">
+            <Label className="mb-1 block text-xs text-muted-foreground">
               Projektstand
             </Label>
             <LazyProjectStorageControls />
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto p-2 space-y-0.5">
+        <nav className="flex-1 overflow-y-auto px-2 pb-2 pt-1.5 space-y-0.5">
           {NAV.filter(item => !item.adminOnly || user?.role === "admin").map(
             ({ href, label, icon: Icon }) => {
               const active = location === href;

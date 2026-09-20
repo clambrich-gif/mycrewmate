@@ -1156,6 +1156,20 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).not.toContain("Vereinslogo ändern");
   });
 
+  it("verdichtet den Projektstand ohne redundanten Hilfetext vor der Navigation", () => {
+    const layout = source("client/src/components/Layout.tsx");
+    const storageControls = source("client/src/components/ProjectStorageControls.tsx");
+
+    expect(storageControls).not.toContain(
+      "Kompakte Projektdatei der aktuell gewählten Veranstaltung."
+    );
+    expect(layout.match(/className="mt-2 border-t pt-2"/g)).toHaveLength(2);
+    expect(layout.match(/className="mb-1 block text-xs text-muted-foreground"/g)).toHaveLength(2);
+    expect(layout).toContain(
+      'className="flex-1 overflow-y-auto px-2 pb-2 pt-1.5 space-y-0.5"'
+    );
+  });
+
   it("zeigt in der Hilfe ausschließlich das Video der aktiven Rolle", () => {
     const help = source("client/src/pages/Help.tsx");
 
