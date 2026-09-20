@@ -40,10 +40,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
       '<div className="flex items-center justify-center">'
     );
     expect(taskGeneric).toContain(
-      '{!noStatus && <th className="p-3 text-center">Status</th>}'
-    );
-    expect(taskGeneric).toContain(
-      '<th className="p-3 text-center">{extraField.label}</th>'
+      'isMaterialTable ? `${STICKY_TABLE_HEADER_CELL_CLASS} text-center` : "p-3 text-center"'
     );
   });
 
@@ -1066,7 +1063,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(prep).toContain("bg-sky-50/50");
     expect(prep).toContain("border-sky-100");
     expect(prep).toContain("bg-blue-600 text-base font-medium text-white");
-    expect(prep).toContain('<th className="w-[15%] px-4 py-3 font-medium">Ort</th>');
+    expect(prep).toContain('w-[15%] ${STICKY_TABLE_HEADER_CELL_CLASS}');
     expect(prep).toContain("border-sky-200 bg-sky-50 px-2 py-0.5");
     expect(prep).toContain("h-8 w-32 border text-xs font-medium");
     expect(prep).toContain("min-w-[260px] px-4 py-3 align-top text-slate-600");
@@ -1438,7 +1435,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain('location === "/helfer" || location === "/einsatzplan"');
     expect(layout).toContain('"w-full p-3 sm:p-4 xl:p-6"');
     expect(plan).toContain('<Card className="hidden w-full shadow-sm md:block">');
-    expect(plan).toContain('<CardContent className="w-full overflow-x-auto overscroll-x-contain p-0">');
+    expect(plan).toContain("STICKY_TABLE_CONTAINER_CLASS");
+    expect(plan).toContain('data-sticky-table-header="plan"');
     expect(plan).toContain('data-slot="roster-table"');
     expect(plan).toContain(
       'className="w-full min-w-[1600px] table-auto text-sm"'
@@ -1453,13 +1451,40 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain('w-full min-w-0 max-w-none min-h-11');
     expect(plan).toContain('Besetzt / Bedarf');
     expect(plan).toContain('{e.besetzt} / {s.needed}');
-    expect(plan).toContain('min-w-[180px] whitespace-nowrap px-3 py-3">Bemerkung');
-    expect(plan).toContain('min-w-[120px] whitespace-nowrap px-3 py-3">Zeit');
-    expect(plan).toContain('min-w-[110px] whitespace-nowrap px-3 py-3 text-center">Besetzt / Bedarf');
-    expect(plan).toContain('min-w-[90px] whitespace-nowrap px-3 py-3 text-center">Status');
-    expect(plan).toContain('min-w-[80px] whitespace-nowrap px-3 py-3 text-center">Doppelt');
-    expect(plan).toContain('min-w-[80px] whitespace-nowrap px-3 py-3 text-center">Ausfälle');
-    expect(plan).toContain('min-w-[320px] whitespace-nowrap px-3 py-3">Eingeteilte Helfer');
+    expect(plan).toContain("STICKY_TABLE_HEADER_CELL_CLASS");
+    expect(plan).toContain('min-w-[320px] whitespace-nowrap ${STICKY_TABLE_HEADER_CELL_CLASS}');
+  });
+
+  it("fixiert die Haupttabellen mit deckend weißen, kompakten Kopfzeilen im jeweiligen Scrollrahmen", () => {
+    const sticky = source("client/src/lib/sticky-table.ts");
+    const plan = source("client/src/pages/Plan.tsx");
+    const preparation = source("client/src/pages/Preparation.tsx");
+    const post = source("client/src/pages/PostProcessing.tsx");
+    const materials = source("client/src/pages/Materials.tsx");
+    const generic = source("client/src/pages/TaskGeneric.tsx");
+    const donations = source("client/src/pages/Cakes.tsx");
+    const finances = source("client/src/pages/Finances.tsx");
+
+    expect(sticky).toContain("max-h-[calc(100dvh-18rem)] overflow-x-auto overflow-y-auto overscroll-contain");
+    expect(sticky).toContain("sticky top-0 z-10 border-b border-gray-200 bg-white opacity-100");
+    expect(sticky).toContain("font-semibold text-gray-700 shadow-sm");
+    expect(sticky).toContain("[&>tr>th]:bg-white");
+    expect(sticky).toContain('"px-3 py-2.5"');
+
+    expect(plan).toContain('data-sticky-table-header="plan"');
+    expect(preparation).toContain('data-sticky-table-header="preparation"');
+    expect(post).toContain('data-sticky-table-header="postprocessing"');
+    expect(donations).toContain('data-sticky-table-header="donations"');
+    expect(finances).toContain('data-sticky-table-header="finances"');
+    expect(materials).toContain('kind="materials"');
+    expect(generic).toContain('const isMaterialTable = kind === "materials"');
+    expect(generic).toContain('data-sticky-table-header={isMaterialTable ? "materials" : undefined}');
+
+    for (const module of [plan, preparation, post, generic, donations, finances]) {
+      expect(module).toContain("STICKY_TABLE_CONTAINER_CLASS");
+      expect(module).toContain("STICKY_TABLE_HEADER_CLASS");
+      expect(module).toContain("STICKY_TABLE_HEADER_CELL_CLASS");
+    }
   });
 
   it("bietet Administratoren eine passwortgeschützte Bereinigung des Importprotokolls", () => {
@@ -2214,7 +2239,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(cakes).toContain('className="h-11 w-full bg-white text-base lg:h-9 lg:text-sm"');
     expect(cakes).toContain('className="inline-flex h-11 w-full items-center justify-center whitespace-nowrap rounded-full');
     expect(cakes).toContain("filteredDonations");
-    expect(cakes).toContain("<th className=\"p-3\">Ort</th>");
+    expect(cakes).toContain('<th className={STICKY_TABLE_HEADER_CELL_CLASS}>Ort</th>');
     expect(cakes).not.toContain("LocationMapLink");
     expect(helpers).toContain("newHelperBringsCake");
     expect(helpers).toContain("cakeWorkflowDonorRef");

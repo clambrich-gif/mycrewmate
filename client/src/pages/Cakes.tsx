@@ -28,6 +28,11 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
 import { downloadBase64File } from "@/lib/download";
+import {
+  STICKY_TABLE_CONTAINER_CLASS,
+  STICKY_TABLE_HEADER_CLASS,
+  STICKY_TABLE_HEADER_CELL_CLASS,
+} from "@/lib/sticky-table";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import {
@@ -845,17 +850,20 @@ export default function Cakes() {
       </div>
 
       <Card className="hidden shadow-sm md:block">
-        <CardContent className="overflow-x-auto p-0">
+        <CardContent className={`${STICKY_TABLE_CONTAINER_CLASS} p-0`}>
           <table className="w-full text-sm">
-            <thead className="bg-muted/60">
+            <thead
+              data-sticky-table-header="donations"
+              className={STICKY_TABLE_HEADER_CLASS}
+            >
               <tr className="text-left">
-                <th className="p-3">Spender</th>
-                <th className="p-3">Spende</th>
-                <th className="p-3">Kategorie</th>
-                <th className="min-w-[240px] p-3">Eigenschaften & Hinweise</th>
-                <th className="p-3">Ort</th>
-                <th className="p-3">Abgabezeit</th>
-                <th className="w-20 p-3">
+                <th className={STICKY_TABLE_HEADER_CELL_CLASS}>Spender</th>
+                <th className={STICKY_TABLE_HEADER_CELL_CLASS}>Spende</th>
+                <th className={STICKY_TABLE_HEADER_CELL_CLASS}>Kategorie</th>
+                <th className={`min-w-[240px] ${STICKY_TABLE_HEADER_CELL_CLASS}`}>Eigenschaften & Hinweise</th>
+                <th className={STICKY_TABLE_HEADER_CELL_CLASS}>Ort</th>
+                <th className={STICKY_TABLE_HEADER_CELL_CLASS}>Abgabezeit</th>
+                <th className={`w-20 ${STICKY_TABLE_HEADER_CELL_CLASS}`}>
                   <span className="sr-only">Aktionen</span>
                 </th>
               </tr>

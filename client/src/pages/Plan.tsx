@@ -1,4 +1,9 @@
 import { trpc } from "@/lib/trpc";
+import {
+  STICKY_TABLE_CONTAINER_CLASS,
+  STICKY_TABLE_HEADER_CLASS,
+  STICKY_TABLE_HEADER_CELL_CLASS,
+} from "@/lib/sticky-table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PageTitle } from "@/components/PageTitle";
 import { Button } from "@/components/ui/button";
@@ -1665,26 +1670,29 @@ export default function Plan() {
       </div>
 
       <Card className="hidden w-full shadow-sm md:block">
-        <CardContent className="w-full overflow-x-auto overscroll-x-contain p-0">
+        <CardContent className={`w-full ${STICKY_TABLE_CONTAINER_CLASS} p-0`}>
           <table
             data-slot="roster-table"
             className="w-full min-w-[1600px] table-auto text-sm"
           >
-            <thead className="bg-muted/60 sticky top-0">
+            <thead
+              data-sticky-table-header="plan"
+              className={STICKY_TABLE_HEADER_CLASS}
+            >
               <tr className="text-left">
-                <th className="min-w-20 whitespace-nowrap px-3 py-3">Tag</th>
-                <th className="min-w-[130px] whitespace-nowrap px-3 py-3">Bereich</th>
-                <th className="min-w-[75px] whitespace-nowrap px-3 py-3 text-center"><span className="sr-only">Aktionen</span></th>
-                <th className="min-w-[140px] whitespace-nowrap px-3 py-3">Kontakt</th>
-                <th className="min-w-[160px] whitespace-nowrap px-3 py-3">Aufgabe</th>
-                <th className="min-w-[180px] whitespace-nowrap px-3 py-3">Bemerkung</th>
-                <th className="min-w-[120px] whitespace-nowrap px-3 py-3">Zeit</th>
-                <th className="min-w-[110px] whitespace-nowrap px-3 py-3 text-center">Besetzt / Bedarf</th>
-                <th className="min-w-[90px] whitespace-nowrap px-3 py-3 text-center">Status</th>
-                <th className="min-w-[80px] whitespace-nowrap px-3 py-3 text-center">Doppelt</th>
-                <th className="min-w-[80px] whitespace-nowrap px-3 py-3 text-center">Ausfälle</th>
-                <th className="min-w-[320px] whitespace-nowrap px-3 py-3">Eingeteilte Helfer</th>
-                <th className="w-12 whitespace-nowrap px-2 py-3 text-center">
+                <th className={`min-w-20 whitespace-nowrap ${STICKY_TABLE_HEADER_CELL_CLASS}`}>Tag</th>
+                <th className={`min-w-[130px] whitespace-nowrap ${STICKY_TABLE_HEADER_CELL_CLASS}`}>Bereich</th>
+                <th className={`min-w-[75px] whitespace-nowrap ${STICKY_TABLE_HEADER_CELL_CLASS} text-center`}><span className="sr-only">Aktionen</span></th>
+                <th className={`min-w-[140px] whitespace-nowrap ${STICKY_TABLE_HEADER_CELL_CLASS}`}>Kontakt</th>
+                <th className={`min-w-[160px] whitespace-nowrap ${STICKY_TABLE_HEADER_CELL_CLASS}`}>Aufgabe</th>
+                <th className={`min-w-[180px] whitespace-nowrap ${STICKY_TABLE_HEADER_CELL_CLASS}`}>Bemerkung</th>
+                <th className={`min-w-[120px] whitespace-nowrap ${STICKY_TABLE_HEADER_CELL_CLASS}`}>Zeit</th>
+                <th className={`min-w-[110px] whitespace-nowrap ${STICKY_TABLE_HEADER_CELL_CLASS} text-center`}>Besetzt / Bedarf</th>
+                <th className={`min-w-[90px] whitespace-nowrap ${STICKY_TABLE_HEADER_CELL_CLASS} text-center`}>Status</th>
+                <th className={`min-w-[80px] whitespace-nowrap ${STICKY_TABLE_HEADER_CELL_CLASS} text-center`}>Doppelt</th>
+                <th className={`min-w-[80px] whitespace-nowrap ${STICKY_TABLE_HEADER_CELL_CLASS} text-center`}>Ausfälle</th>
+                <th className={`min-w-[320px] whitespace-nowrap ${STICKY_TABLE_HEADER_CELL_CLASS}`}>Eingeteilte Helfer</th>
+                <th className="w-12 whitespace-nowrap px-2 py-2.5 text-center">
                   <span className="sr-only">Schicht löschen</span>
                 </th>
               </tr>

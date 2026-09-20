@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "wouter";
 import { trpc } from "@/lib/trpc";
+import {
+  STICKY_TABLE_CONTAINER_CLASS,
+  STICKY_TABLE_HEADER_CLASS,
+  STICKY_TABLE_HEADER_CELL_CLASS,
+} from "@/lib/sticky-table";
 import { downloadBase64File } from "@/lib/download";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -773,16 +778,21 @@ export default function Preparation() {
         </div>
       ) : (
         <>
-          <div className="hidden overflow-x-auto rounded-xl border border-sky-200 bg-white shadow-sm lg:block">
+          <div
+            className={`hidden rounded-xl border border-sky-200 bg-white shadow-sm lg:block ${STICKY_TABLE_CONTAINER_CLASS}`}
+          >
             <table className="w-full min-w-[1080px] text-left text-sm">
-              <thead className="border-b border-sky-100 bg-sky-50/70 text-slate-600">
+              <thead
+                data-sticky-table-header="preparation"
+                className={STICKY_TABLE_HEADER_CLASS}
+              >
                 <tr>
-                  <th className="w-[12%] whitespace-nowrap px-4 py-3 font-medium">Bereich</th>
-                  <th className="w-[17%] px-4 py-3 font-medium">Aufgabe</th>
-                  <th className="w-[15%] px-4 py-3 font-medium">Ort</th>
-                  <th className="w-[14%] px-4 py-3 font-medium">Verantwortlicher</th>
+                  <th className={`w-[12%] whitespace-nowrap ${STICKY_TABLE_HEADER_CELL_CLASS}`}>Bereich</th>
+                  <th className={`w-[17%] ${STICKY_TABLE_HEADER_CELL_CLASS}`}>Aufgabe</th>
+                  <th className={`w-[15%] ${STICKY_TABLE_HEADER_CELL_CLASS}`}>Ort</th>
+                  <th className={`w-[14%] ${STICKY_TABLE_HEADER_CELL_CLASS}`}>Verantwortlicher</th>
                   <th
-                    className="w-[10%] px-4 py-3 font-medium"
+                    className={`w-[10%] ${STICKY_TABLE_HEADER_CELL_CLASS}`}
                     aria-sort={
                       dueSortDirection === "asc"
                         ? "ascending"
@@ -811,9 +821,9 @@ export default function Preparation() {
                       )}
                     </button>
                   </th>
-                  <th className="w-[13%] px-4 py-3 font-medium">Status</th>
-                  <th className="min-w-[260px] px-4 py-3 font-medium">Logbuch</th>
-                  <th className="w-[8%] px-4 py-3 text-right font-medium">Aktionen</th>
+                  <th className={`w-[13%] ${STICKY_TABLE_HEADER_CELL_CLASS}`}>Status</th>
+                  <th className={`min-w-[260px] ${STICKY_TABLE_HEADER_CELL_CLASS}`}>Logbuch</th>
+                  <th className={`w-[8%] ${STICKY_TABLE_HEADER_CELL_CLASS} text-right`}>Aktionen</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-sky-100 text-slate-800">

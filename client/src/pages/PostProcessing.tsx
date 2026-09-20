@@ -30,6 +30,11 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
+import {
+  STICKY_TABLE_CONTAINER_CLASS,
+  STICKY_TABLE_HEADER_CLASS,
+  STICKY_TABLE_HEADER_CELL_CLASS,
+} from "@/lib/sticky-table";
 import { downloadBase64File } from "@/lib/download";
 import {
   formatPreparationLogbookForMobileDisplay,
@@ -729,15 +734,20 @@ export default function PostProcessing() {
         </div>
       ) : (
         <>
-          <div className="hidden rounded-xl border border-rose-200 bg-white shadow-sm lg:block overflow-x-auto">
+          <div
+            className={`hidden rounded-xl border border-rose-200 bg-white shadow-sm lg:block ${STICKY_TABLE_CONTAINER_CLASS}`}
+          >
             <table className="w-full text-sm">
-              <thead className="border-b border-rose-100 bg-rose-50/70 text-left text-slate-600">
+              <thead
+                data-sticky-table-header="postprocessing"
+                className={STICKY_TABLE_HEADER_CLASS}
+              >
                 <tr>
-                  <th className="px-4 py-3 font-medium">Bereich</th>
-                  <th className="px-4 py-3 font-medium">Aufgabe</th>
-                  <th className="px-4 py-3 font-medium">Ort</th>
-                  <th className="px-4 py-3 font-medium">Verantwortlicher</th>
-                  <th className="px-4 py-3 font-medium">
+                  <th className={STICKY_TABLE_HEADER_CELL_CLASS}>Bereich</th>
+                  <th className={STICKY_TABLE_HEADER_CELL_CLASS}>Aufgabe</th>
+                  <th className={STICKY_TABLE_HEADER_CELL_CLASS}>Ort</th>
+                  <th className={STICKY_TABLE_HEADER_CELL_CLASS}>Verantwortlicher</th>
+                  <th className={STICKY_TABLE_HEADER_CELL_CLASS}>
                     <button
                       type="button"
                       className="inline-flex items-center gap-1 hover:text-slate-900"
@@ -752,9 +762,9 @@ export default function PostProcessing() {
                       <ArrowUpDown className="h-3.5 w-3.5 text-slate-400" />
                     </button>
                   </th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Logbuch</th>
-                  <th className="px-4 py-3 text-right font-medium">Aktionen</th>
+                  <th className={STICKY_TABLE_HEADER_CELL_CLASS}>Status</th>
+                  <th className={STICKY_TABLE_HEADER_CELL_CLASS}>Logbuch</th>
+                  <th className={`${STICKY_TABLE_HEADER_CELL_CLASS} text-right`}>Aktionen</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-rose-100">

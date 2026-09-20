@@ -5,6 +5,11 @@ import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  STICKY_TABLE_CONTAINER_CLASS,
+  STICKY_TABLE_HEADER_CLASS,
+  STICKY_TABLE_HEADER_CELL_CLASS,
+} from "@/lib/sticky-table";
 import { useEventYear } from "@/contexts/YearContext";
 import { trpc } from "@/lib/trpc";
 import { Plus, Trash2 } from "lucide-react";
@@ -245,15 +250,18 @@ export default function Finances() {
         </Card>
       </div>
       <Card className="hidden shadow-sm md:block">
-        <CardContent className="overflow-x-auto p-0">
+        <CardContent className={`${STICKY_TABLE_CONTAINER_CLASS} p-0`}>
           <table className="w-full text-sm">
-            <thead className="bg-muted/60">
+            <thead
+              data-sticky-table-header="finances"
+              className={STICKY_TABLE_HEADER_CLASS}
+            >
               <tr className="text-left">
-                <th className="p-3">Kategorie</th>
-                <th className="p-3 text-right">Einnahmen</th>
-                <th className="p-3 text-right">Ausgaben</th>
-                <th className="p-3 text-right">Differenz</th>
-                <th className="w-10 p-3"></th>
+                <th className={STICKY_TABLE_HEADER_CELL_CLASS}>Kategorie</th>
+                <th className={`${STICKY_TABLE_HEADER_CELL_CLASS} text-right`}>Einnahmen</th>
+                <th className={`${STICKY_TABLE_HEADER_CELL_CLASS} text-right`}>Ausgaben</th>
+                <th className={`${STICKY_TABLE_HEADER_CELL_CLASS} text-right`}>Differenz</th>
+                <th className={`w-10 ${STICKY_TABLE_HEADER_CELL_CLASS}`}></th>
               </tr>
             </thead>
             <tbody>

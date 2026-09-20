@@ -23,6 +23,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
+import {
+  STICKY_TABLE_CONTAINER_CLASS,
+  STICKY_TABLE_HEADER_CLASS,
+  STICKY_TABLE_HEADER_CELL_CLASS,
+} from "@/lib/sticky-table";
 import { trpc } from "@/lib/trpc";
 import {
   ArrowDownAZ,
@@ -153,6 +158,7 @@ export default function TaskGeneric({
   const filterCategoryKey = filterConfig?.categoryKey;
   const filterStatusKey = filterConfig?.statusKey;
   const filterStatusOptions = extraField?.options ?? defaultStatus;
+  const isMaterialTable = kind === "materials";
 
   const contactMap = useMemo(
     () => new Map(contacts.map((contact: any) => [contact.id, contact.name])),
@@ -842,23 +848,28 @@ export default function TaskGeneric({
         )}
       </div>
       <Card className="hidden shadow-sm md:block">
-        <CardContent className="overflow-x-auto p-0">
+        <CardContent
+          className={isMaterialTable ? `${STICKY_TABLE_CONTAINER_CLASS} p-0` : "overflow-x-auto p-0"}
+        >
           <table className="w-full text-sm">
-            <thead className="bg-muted/60">
+            <thead
+              data-sticky-table-header={isMaterialTable ? "materials" : undefined}
+              className={isMaterialTable ? STICKY_TABLE_HEADER_CLASS : "bg-muted/60"}
+            >
               <tr className="text-left">
-                <th className="p-3">{addLabel}</th>
+                <th className={isMaterialTable ? STICKY_TABLE_HEADER_CELL_CLASS : "p-3"}>{addLabel}</th>
                 {columns.map(column => (
-                  <th key={column.key} className="p-3">
+                  <th key={column.key} className={isMaterialTable ? STICKY_TABLE_HEADER_CELL_CLASS : "p-3"}>
                     {column.label}
                   </th>
                 ))}
-                {!noContact && <th className="p-3">Verantwortlich</th>}
-                {locationField && <th className="p-3">Ort</th>}
-                {!noStatus && <th className="p-3 text-center">Status</th>}
+                {!noContact && <th className={isMaterialTable ? STICKY_TABLE_HEADER_CELL_CLASS : "p-3"}>Verantwortlich</th>}
+                {locationField && <th className={isMaterialTable ? STICKY_TABLE_HEADER_CELL_CLASS : "p-3"}>Ort</th>}
+                {!noStatus && <th className={isMaterialTable ? `${STICKY_TABLE_HEADER_CELL_CLASS} text-center` : "p-3 text-center"}>Status</th>}
                 {extraField && (
-                  <th className="p-3 text-center">{extraField.label}</th>
+                  <th className={isMaterialTable ? `${STICKY_TABLE_HEADER_CELL_CLASS} text-center` : "p-3 text-center"}>{extraField.label}</th>
                 )}
-                <th className="w-10 p-3"></th>
+                <th className={isMaterialTable ? `w-10 ${STICKY_TABLE_HEADER_CELL_CLASS}` : "w-10 p-3"}></th>
               </tr>
             </thead>
             <tbody>
