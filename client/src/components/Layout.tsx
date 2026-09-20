@@ -140,6 +140,98 @@ function LazyProjectStorageControls() {
   );
 }
 
+type AdminLoginContact = {
+  id: number;
+  name: string;
+  year: number;
+  eventName: string;
+};
+
+function AdminIdentityDialog({
+  open,
+  contacts,
+  selectedContactId,
+  manualName,
+  selectedName,
+  busy,
+  onOpenChange,
+  onContactChange,
+  onManualNameChange,
+  onCancel,
+  onConfirm,
+}: {
+  open: boolean;
+  contacts: AdminLoginContact[];
+  selectedContactId: string;
+  manualName: string;
+  selectedName: string;
+  busy: boolean;
+  onOpenChange: (open: boolean) => void;
+  onContactChange: (value: string) => void;
+  onManualNameChange: (value: string) => void;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-white text-slate-950 sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Wer meldet sich als Administrator an?</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-slate-600">
+          Wählen Sie einen hinterlegten Ansprechpartner aus oder tragen Sie
+          einen Namen ein. Diese Auswahl kennzeichnet die aktuelle Sitzung.
+        </p>
+        <div className="space-y-2">
+          <Label htmlFor="administrator-contact-select">
+            Schnellauswahl Ansprechpartner
+          </Label>
+          <Select
+            value={selectedContactId || "manual"}
+            onValueChange={onContactChange}
+            disabled={busy}
+          >
+            <SelectTrigger id="administrator-contact-select">
+              <SelectValue placeholder="Ansprechpartner auswählen" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="manual">Freitext verwenden</SelectItem>
+              {contacts.map(contact => (
+                <SelectItem key={contact.id} value={String(contact.id)}>
+                  {contact.name} · {contact.year} · {contact.eventName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="administrator-manual-name">Name (alternativ)</Label>
+          <Input
+            id="administrator-manual-name"
+            value={manualName}
+            onChange={event => onManualNameChange(event.target.value)}
+            placeholder="Name eingeben, falls die Person neu ist"
+            disabled={Boolean(selectedContactId) || busy}
+          />
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" disabled={busy} onClick={onCancel}>
+            Abbrechen
+          </Button>
+          <Button
+            type="button"
+            disabled={selectedName.trim().length < 2 || busy}
+            onClick={onConfirm}
+          >
+            <ShieldCheck className="mr-2 h-4 w-4" />
+            {busy ? "Anmeldung läuft …" : "Anmelden"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function Layout({ children }: { children: React.ReactNode }) {
   const { user, loading, isAuthenticated, logout } = useAuth();
   const onlinePresence = useOnlinePresence();
@@ -540,6 +632,41 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const selectedAdministratorName =
     adminLoginContacts.find(contact => String(contact.id) === selectedAdminContactId)
       ?.name ?? manualAdministratorName.trim();
+  const closeAdminIdentityDialog = () => {
+    setAdminIdentityDialogOpen(false);
+    setAdminLoginContacts([]);
+    setSelectedAdminContactId("");
+    setManualAdministratorName("");
+    setPassword("");
+  };
+  const adminIdentityDialog = (
+    <AdminIdentityDialog
+      open={adminIdentityDialogOpen}
+      contacts={adminLoginContacts}
+      selectedContactId={selectedAdminContactId}
+      manualName={manualAdministratorName}
+      selectedName={selectedAdministratorName}
+      busy={adminPasswordLogin.isPending}
+      onOpenChange={open => {
+        if (!open && !adminPasswordLogin.isPending) closeAdminIdentityDialog();
+      }}
+      onContactChange={value => {
+        setSelectedAdminContactId(value === "manual" ? "" : value);
+        if (value !== "manual") setManualAdministratorName("");
+      }}
+      onManualNameChange={value => {
+        setManualAdministratorName(value);
+        if (value) setSelectedAdminContactId("");
+      }}
+      onCancel={closeAdminIdentityDialog}
+      onConfirm={() =>
+        adminPasswordLogin.mutate({
+          password,
+          administratorName: selectedAdministratorName.trim(),
+        })
+      }
+    />
+  );
 
   useEffect(() => {
     if (!planningTeamLocked) return;
@@ -890,6 +1017,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               {COPYRIGHT_NOTICE}
             </button>
           </div>
+          {adminIdentityDialog}
           <ImpressumDialog open={impressumOpen} onOpenChange={setImpressumOpen} />
         </div>
     );
@@ -1687,100 +1815,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
           })
         }
       />
-
-      <Dialog
-        open={adminIdentityDialogOpen}
-        onOpenChange={open => {
-          if (!open && !adminPasswordLogin.isPending) {
-            setAdminIdentityDialogOpen(false);
-            setAdminLoginContacts([]);
-            setSelectedAdminContactId("");
-            setManualAdministratorName("");
-            setPassword("");
-          }
-        }}
-      >
-        <DialogContent className="bg-white text-slate-950 sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Wer meldet sich als Administrator an?</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-slate-600">
-            Wählen Sie einen hinterlegten Ansprechpartner aus oder tragen Sie
-            einen Namen ein. Diese Auswahl kennzeichnet die aktuelle Sitzung.
-          </p>
-          <div className="space-y-2">
-            <Label htmlFor="administrator-contact-select">
-              Schnellauswahl Ansprechpartner
-            </Label>
-            <Select
-              value={selectedAdminContactId || "manual"}
-              onValueChange={value => {
-                setSelectedAdminContactId(value === "manual" ? "" : value);
-                if (value !== "manual") setManualAdministratorName("");
-              }}
-              disabled={adminPasswordLogin.isPending}
-            >
-              <SelectTrigger id="administrator-contact-select">
-                <SelectValue placeholder="Ansprechpartner auswählen" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="manual">Freitext verwenden</SelectItem>
-                {adminLoginContacts.map(contact => (
-                  <SelectItem key={contact.id} value={String(contact.id)}>
-                    {contact.name} · {contact.year} · {contact.eventName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="administrator-manual-name">Name (alternativ)</Label>
-            <Input
-              id="administrator-manual-name"
-              value={manualAdministratorName}
-              onChange={event => {
-                setManualAdministratorName(event.target.value);
-                if (event.target.value) setSelectedAdminContactId("");
-              }}
-              placeholder="Name eingeben, falls die Person neu ist"
-              disabled={Boolean(selectedAdminContactId) || adminPasswordLogin.isPending}
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={adminPasswordLogin.isPending}
-              onClick={() => {
-                setAdminIdentityDialogOpen(false);
-                setAdminLoginContacts([]);
-                setSelectedAdminContactId("");
-                setManualAdministratorName("");
-                setPassword("");
-              }}
-            >
-              Abbrechen
-            </Button>
-            <Button
-              type="button"
-              disabled={
-                selectedAdministratorName.trim().length < 2 ||
-                !password ||
-                adminPasswordLogin.isPending
-              }
-              onClick={() =>
-                adminPasswordLogin.mutate({
-                  password,
-                  administratorName: selectedAdministratorName.trim(),
-                })
-              }
-            >
-              <ShieldCheck className="mr-2 h-4 w-4" />
-              {adminPasswordLogin.isPending ? "Anmeldung läuft …" : "Anmelden"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <ImpressumDialog open={impressumOpen} onOpenChange={setImpressumOpen} />
 

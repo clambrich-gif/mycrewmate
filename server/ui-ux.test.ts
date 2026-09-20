@@ -2634,6 +2634,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain("Schnellauswahl Ansprechpartner");
     expect(layout).toContain("Name (alternativ)");
     expect(layout).toContain("adminIdentityDialogOpen");
+    expect(layout).toContain("function AdminIdentityDialog");
+    const unauthenticatedLayout = layout.slice(
+      layout.indexOf("if (!isAuthenticated)"),
+      layout.indexOf("if (\n    events.isLoading")
+    );
+    expect(unauthenticatedLayout).toContain("{adminIdentityDialog}");
     expect(layout).toContain("Angemeldet:");
     expect(manager).toContain("Passwort aktiv");
     expect(permissions).toContain("Aktivitätsprotokoll");
