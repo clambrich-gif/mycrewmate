@@ -12,14 +12,15 @@ export type HelperAssignmentDay = {
 };
 
 export type HelperDropdownFeedback =
-  | { kind: "already-assigned" }
   | { kind: "new" }
   | {
       kind: "day-segments";
+      hasTimeConflict: boolean;
       segments: Array<{
         day: Weekday;
         label: string;
-        state: "current" | "assigned" | "neutral" | "unavailable";
+        isCurrentDay: boolean;
+        state: "current" | "conflict" | "assigned" | "neutral" | "unavailable";
       }>;
     }
   | null;
@@ -38,11 +39,14 @@ export function helperDropdownAssignmentFeedback({
 }: {
   assignments: HelperAssignmentDay[];
   activeDays: Weekday[];
-  availabilityByDay: Array<{ day: Weekday; available: boolean }>;
+  availabilityByDay: Array<{
+    day: Weekday;
+    available: boolean;
+    availability?: "ja" | "nein" | "vielleicht";
+  }>;
   currentDay: Weekday | string | number;
   hasTimeConflict: boolean;
 }): HelperDropdownFeedback {
-  if (hasTimeConflict) return { kind: "already-assigned" };
   if (assignments.length === 0) return { kind: "new" };
 
   // Die Position des Segments ergibt sich ausschließlich aus dem jeweiligen
@@ -56,27 +60,54 @@ export function helperDropdownAssignmentFeedback({
     })
   );
   if (assignedDays.size === 0) return { kind: "new" };
-  const availableDays = new Map<Weekday, boolean>(
+  const availability = new Map<
+    Weekday,
+    { available: boolean; availability?: "ja" | "nein" | "vielleicht" }
+  >(
     availabilityByDay
       .filter(item => eventDays.includes(item.day))
-      .map(item => [item.day, item.available])
+      .map(item => [item.day, item])
   );
   const selectedDay = normalizeEventWeekday(currentDay, eventDays);
 
+  const isExplicitlyUnavailable = (day: Weekday) => {
+    const dayAvailability = availability.get(day);
+    // Ältere Aufrufer ohne expliziten Status bleiben kompatibel: Ein
+    // nicht-verfügbarer Tag gilt dort weiterhin als klare Abwesenheit.
+    return (
+      dayAvailability?.availability === "nein" ||
+      (dayAvailability?.availability === undefined && !dayAvailability?.available)
+    );
+  };
+
   return {
     kind: "day-segments",
+    hasTimeConflict,
     segments: eventDays.map(day => ({
       day,
       label: WEEKDAY_SHORT_LABELS[day],
-      // Eine bestehende Schicht bleibt immer gelb sichtbar. Für alle anderen
-      // Tage stammt die Farbe absolut aus dem passenden Helfer-Stammfeld.
-      state: assignedDays.has(day)
-        ? "assigned"
-        : !availableDays.get(day)
-          ? "unavailable"
-          : day === selectedDay
-            ? "current"
-            : "neutral",
+      isCurrentDay: day === selectedDay,
+      // Der aktive Schichttag richtet sich nach dem realen Zeitfenster:
+      // ohne Überschneidung grün, bei echter Doppelbelegung gelb. Bereits
+      // vorhandene Schichten an anderen Eventtagen bleiben nur Kontext.
+      state:
+        day === selectedDay
+          ? hasTimeConflict
+            ? "conflict"
+            : isExplicitlyUnavailable(day)
+              ? "unavailable"
+              : "current"
+          : assignedDays.has(day)
+            ? "assigned"
+            : isExplicitlyUnavailable(day)
+              ? "unavailable"
+              : "neutral",
     })),
   };
+}
+
+/** Sortierung: neue Helfer, verfügbare Helfer, zeitlich bereits Belegte. */
+export function helperDropdownPriority(feedback: HelperDropdownFeedback) {
+  if (!feedback || feedback.kind === "new") return 0;
+  return feedback.hasTimeConflict ? 2 : 1;
 }
