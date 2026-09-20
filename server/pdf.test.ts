@@ -201,25 +201,17 @@ const data = {
 };
 
 describe("PDF-Erzeugung", () => {
-  it("löst PDF-Bilder streng nach Eventkonfiguration auf", () => {
+  it("löst PDF-Bilder ausschließlich nach individuellem Eventbild auf", () => {
     expect(
       resolveEventPdfLogoKey({
         pdfLogoKey: "pdf-logos/events/2027/77/weihnachtsbaum.png",
-        pdfLogoFallback: "brand",
       })
     ).toBe("pdf-logos/events/2027/77/weihnachtsbaum.png");
     expect(
       resolveEventPdfLogoKey({
         pdfLogoKey: null,
-        pdfLogoFallback: "none",
       })
     ).toBeNull();
-    expect(
-      resolveEventPdfLogoKey({
-        pdfLogoKey: null,
-        pdfLogoFallback: "brand",
-      })
-    ).toBe("mycrewmate-wordmark_853a60e9.png");
   });
 
   it("erzeugt eine gültige persönliche Aufgabenübersicht", async () => {

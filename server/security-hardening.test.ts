@@ -22,11 +22,11 @@ describe("Punkt 3: Sicherheits- und Berechtigungs-Hardening", () => {
     expect(routers).toContain("previewModule: adminProcedure");
   });
 
-  it("schützt die PDF-Konfiguration und das Event-Logo mit adminProcedure", () => {
+  it("schützt die PDF-Konfiguration und das individuelle Event-Bild mit adminProcedure", () => {
     expect(routers).toContain("updateSettings: adminProcedure");
     expect(routers).toContain("uploadLogo: adminProcedure");
     expect(routers).toContain("clearLogo: adminProcedure");
-    expect(routers).toContain("setLogoFallback: adminProcedure");
+    expect(routers).not.toContain("setLogoFallback: adminProcedure");
   });
 
   it("beschränkt die Zugangsschutz-Navigation streng auf Administratoren", () => {

@@ -78,16 +78,15 @@ export function registerBrandAssetRoutes(
   app: Express,
   dependencies: BrandAssetRouteDependencies = defaultDependencies
 ) {
-  for (const path of ["/mycrewmate-logo.png", "/api/brand/rsc-logo"]) {
-    app.options(path, (_req, res) => {
-      setLogoHeaders(res);
-      res.status(204).end();
-    });
-    app.head(path, (req, res) => {
-      void fetchLogo(req, res, dependencies, true);
-    });
-    app.get(path, (req, res) => {
-      void fetchLogo(req, res, dependencies, false);
-    });
-  }
+  const path = "/mycrewmate-logo.png";
+  app.options(path, (_req, res) => {
+    setLogoHeaders(res);
+    res.status(204).end();
+  });
+  app.head(path, (req, res) => {
+    void fetchLogo(req, res, dependencies, true);
+  });
+  app.get(path, (req, res) => {
+    void fetchLogo(req, res, dependencies, false);
+  });
 }

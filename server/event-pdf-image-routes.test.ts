@@ -9,7 +9,6 @@ async function startTestServer(options?: {
   authenticated?: boolean;
   event?: {
     pdfLogoKey: string | null;
-    pdfLogoFallback: "none" | "brand";
   } | null;
 }) {
   const app = express();
@@ -22,7 +21,6 @@ async function startTestServer(options?: {
       ? (options.event ?? null)
       : {
           pdfLogoKey: "pdf-logos/events/2027/77/weihnachtsbaum.png",
-          pdfLogoFallback: "none" as const,
         }
   );
   const getSignedUrl = vi.fn(async () => "https://storage.test/event-image.png");
@@ -90,26 +88,15 @@ describe("Veranstaltungsspezifische PDF-Bildauslieferung", () => {
     );
   });
 
-  it("verwendet nur bei konfiguriertem Fallback die MyCrewMate-Wortmarke", async () => {
-    const withFallback = await startTestServer({
-      event: { pdfLogoKey: null, pdfLogoFallback: "brand" },
-    });
-    const fallbackResponse = await fetch(
-      `${withFallback.baseUrl}/api/pdf/event-image/2027/77`
-    );
-    expect(fallbackResponse.status).toBe(200);
-    expect(withFallback.getSignedUrl).toHaveBeenCalledWith(
-      "mycrewmate-wordmark_853a60e9.png"
-    );
-
-    const withoutFallback = await startTestServer({
-      event: { pdfLogoKey: null, pdfLogoFallback: "none" },
+  it("liefert ohne individuelles Bild keinen Markenfallback", async () => {
+    const withoutImage = await startTestServer({
+      event: { pdfLogoKey: null },
     });
     const emptyResponse = await fetch(
-      `${withoutFallback.baseUrl}/api/pdf/event-image/2027/78`
+      `${withoutImage.baseUrl}/api/pdf/event-image/2027/78`
     );
     expect(emptyResponse.status).toBe(404);
-    expect(withoutFallback.getSignedUrl).not.toHaveBeenCalled();
+    expect(withoutImage.getSignedUrl).not.toHaveBeenCalled();
   });
 
   it("liefert ohne gültige Sitzung kein Eventbild aus", async () => {

@@ -577,9 +577,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(pdfExport).toContain("PDF-Bild für {currentEvent?.name");
     expect(pdfExport).toContain("aktuell ausgewählten Veranstaltung");
     expect(pdfExport).toContain("trpc.pdf.clearLogo.useMutation");
-    expect(pdfExport).toContain("trpc.pdf.setLogoFallback.useMutation");
-    expect(pdfExport).toContain("Kein Bild drucken");
-    expect(pdfExport).toContain("RSC-Vereinslogo verwenden");
+    expect(pdfExport).toContain("Verhalten ohne individuelles Bild");
+    expect(pdfExport).toContain('<Select value="none" disabled>');
+    expect(pdfExport).toContain('<SelectItem value="none">Kein Bild drucken</SelectItem>');
+    expect(pdfExport).not.toContain("trpc.pdf.setLogoFallback.useMutation");
+    expect(pdfExport).not.toContain("RSC-Vereinslogo verwenden");
     expect(pdfExport).not.toContain("Das Logo gilt für alle Veranstaltungen");
   });
 
@@ -1115,32 +1117,29 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(prep).toContain("searchTerm");
   });
 
-  it("verwendet MyCrewMate-Wortmarke und App-Icon browserstabil", () => {
+  it("verwendet die transparente MyCrewMate-Wortmarke und das App-Icon browserstabil", () => {
     const layout = source("client/src/components/Layout.tsx");
+    const brandAssets = source("server/brand-assets.ts");
 
     expect(layout).toContain('const MYCREWMATE_WORDMARK = "/mycrewmate-logo.png"');
     expect(layout).toContain('const MYCREWMATE_ICON = "/manus-storage/mycrewmate-pwa-icon-512_b16ae84c.png"');
-    expect(layout).not.toContain("const RSC_LOGO");
+    expect(brandAssets).toContain("mycrewmate-transparent-wordmark_3d0d8ed7.png");
+    expect(brandAssets).not.toContain("RSC_BRAND_LOGO");
     expect(layout.match(/src=\{MYCREWMATE_WORDMARK\}/g)).toHaveLength(3);
     expect(layout.match(/src=\{MYCREWMATE_ICON\}/g)).toHaveLength(2);
     expect(layout.match(/alt="MyCrewMate"/g)).toHaveLength(3);
   });
 
-  it("liefert eine administratorgeschützte Vereinslogo-Steuerung neben der Statusanzeige", () => {
+  it("zeigt unter der Wortmarke einen zentrierten Planungstitel ohne Vereinslogo", () => {
     const layout = source("client/src/components/Layout.tsx");
 
-    expect(layout).toContain("function ClubStatusLogoButton");
-    expect(layout).toContain("function ClubLogoModal");
-    expect(layout).toContain("trpc.branding.uploadTenantLogo.useMutation");
-    expect(layout).toContain("utils.branding.current.invalidate()");
-    expect(layout).toContain('accept="image/png,image/jpeg"');
-    expect(layout).toContain("MAX_CLUB_LOGO_BYTES");
-    expect(layout).toContain('"relative grid h-7 w-7 shrink-0 place-items-center overflow-hidden rounded-full border border-slate-200 bg-white p-0.5 shadow-sm transition');
-    expect(layout).toContain("Vereinslogo ändern");
-    expect(layout).toContain("branding.data?.tenantLogoUrl");
-    expect(layout.match(/<ClubStatusLogoButton/g)).toHaveLength(3);
-    expect(layout).toContain("<ClubLogoModal");
-    expect(layout).not.toContain("trpc.pdf.uploadLogo.useMutation");
+    expect(layout).toContain("VEREINS- &amp; EVENTPLANUNG");
+    expect(layout).toContain("text-center text-[11px] font-medium");
+    expect(layout).toContain('<OnlinePresenceBadge\n            counts={onlinePresence.counts}');
+    expect(layout).not.toContain("ClubStatusLogoButton");
+    expect(layout).not.toContain("ClubLogoModal");
+    expect(layout).not.toContain("trpc.branding.current.useQuery");
+    expect(layout).not.toContain("Vereinslogo ändern");
   });
 
   it("zeigt in der Hilfe ausschließlich das Video der aktiven Rolle", () => {

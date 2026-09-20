@@ -146,13 +146,6 @@ export default function PdfExport() {
     },
     onError: error => toast.error(error.message),
   });
-  const setLogoFallback = trpc.pdf.setLogoFallback.useMutation({
-    onSuccess: async () => {
-      await utils.pdf.settings.invalidate();
-      toast.success("Fallback für diese Veranstaltung gespeichert");
-    },
-    onError: error => toast.error(error.message),
-  });
 
   const onLogoSelected = (file?: File) => {
     if (!file) return;
@@ -179,9 +172,7 @@ export default function PdfExport() {
   };
 
   const areas = Array.from(new Set(plan.map(item => item.shift.area))).sort();
-  const effectiveLogoUrl =
-    settings?.logoUrl ??
-    (settings?.logoFallback === "brand" ? "/api/brand/rsc-logo" : null);
+  const effectiveLogoUrl = settings?.logoUrl ?? null;
   const mappedContactIds = Array.from(
     new Set(
       areaContacts
@@ -565,8 +556,7 @@ export default function PdfExport() {
                       accept="image/png,image/jpeg"
                       disabled={
                         uploadLogo.isPending ||
-                        clearLogo.isPending ||
-                        setLogoFallback.isPending
+                        clearLogo.isPending
                       }
                       onChange={event => {
                         onLogoSelected(event.target.files?.[0]);
@@ -574,15 +564,11 @@ export default function PdfExport() {
                       }}
                     />
                     )}
-                    {(uploadLogo.isPending ||
-                      clearLogo.isPending ||
-                      setLogoFallback.isPending) && (
+                    {(uploadLogo.isPending || clearLogo.isPending) && (
                       <p className="text-xs font-medium text-primary">
                         {uploadLogo.isPending
                           ? "Bild wird hochgeladen …"
-                          : clearLogo.isPending
-                            ? "Bild wird entfernt …"
-                            : "Fallback wird gespeichert …"}
+                          : "Bild wird entfernt …"}
                       </p>
                     )}
                     {canManage && settings?.logoUrl && (
@@ -592,8 +578,7 @@ export default function PdfExport() {
                         className="border-red-200 bg-white text-red-700 hover:bg-red-50 hover:text-red-800"
                         disabled={
                           uploadLogo.isPending ||
-                          clearLogo.isPending ||
-                          setLogoFallback.isPending
+                          clearLogo.isPending
                         }
                         onClick={() => clearLogo.mutate()}
                       >
@@ -605,20 +590,7 @@ export default function PdfExport() {
                       <Label htmlFor="pdf-logo-fallback">
                         Verhalten ohne individuelles Bild
                       </Label>
-                      <Select
-                        value={settings?.logoFallback ?? "none"}
-                        disabled={
-                          !canManage ||
-                          uploadLogo.isPending ||
-                          clearLogo.isPending ||
-                          setLogoFallback.isPending
-                        }
-                        onValueChange={value =>
-                          setLogoFallback.mutate({
-                            fallback: value as "none" | "brand",
-                          })
-                        }
-                      >
+                      <Select value="none" disabled>
                         <SelectTrigger
                           id="pdf-logo-fallback"
                           className="w-full bg-white dark:bg-slate-950 sm:max-w-sm"
@@ -627,9 +599,6 @@ export default function PdfExport() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">Kein Bild drucken</SelectItem>
-                          <SelectItem value="brand">
-                            RSC-Vereinslogo verwenden
-                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

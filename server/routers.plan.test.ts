@@ -597,7 +597,7 @@ describe("Planungs-API", () => {
       eventName: "Weihnachtsfeier",
       logoKey: "pdf-logos/events/2027/77/weihnachtsbaum.png",
       logoUrl: "/api/pdf/event-image/2027/77",
-      logoFallback: "brand",
+      logoFallback: "none",
     });
     expect(result.logoKey).not.toBe("global-alt.png");
   });
@@ -802,25 +802,16 @@ describe("Planungs-API", () => {
     });
   });
 
-  it("entfernt Bild und ändert Fallback ausschließlich im aktuellen Event als Administrator", async () => {
-    const caller = appRouter.createCaller(ctx);
-
+  it("entfernt das individuelle Bild ausschließlich im aktuellen Event als Administrator", async () => {
     await expect(
       appRouter.createCaller(planningTeamCtx).pdf.clearLogo()
     ).rejects.toThrow();
-    await expect(
-      appRouter.createCaller(planningTeamCtx).pdf.setLogoFallback({ fallback: "brand" })
-    ).rejects.toThrow();
 
-    await caller.pdf.clearLogo();
-    await caller.pdf.setLogoFallback({ fallback: "brand" });
+    await appRouter.createCaller(ctx).pdf.clearLogo();
 
-    expect(dbMocks.updateCurrentEventPdfImage).toHaveBeenNthCalledWith(1, {
+    expect(dbMocks.updateCurrentEventPdfImage).toHaveBeenCalledWith({
       pdfLogoKey: null,
       pdfLogoUrl: null,
-    });
-    expect(dbMocks.updateCurrentEventPdfImage).toHaveBeenNthCalledWith(2, {
-      pdfLogoFallback: "brand",
     });
   });
 

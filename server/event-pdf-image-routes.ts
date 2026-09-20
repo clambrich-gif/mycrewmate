@@ -29,7 +29,6 @@ const defaultDependencies: EventPdfImageRouteDependencies = {
     const [event] = await db
       .select({
         pdfLogoKey: events.pdfLogoKey,
-        pdfLogoFallback: events.pdfLogoFallback,
       })
       .from(events)
       .where(and(eq(events.id, eventId), eq(events.year, year)))

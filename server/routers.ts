@@ -1451,11 +1451,10 @@ export const appRouter = router({
         eventName: selectedEvent?.name ?? settings.eventName,
         logoKey: selectedEvent?.pdfLogoKey ?? null,
         logoUrl:
-          selectedEvent &&
-          (selectedEvent.pdfLogoKey || selectedEvent.pdfLogoFallback === "brand")
+          selectedEvent && selectedEvent.pdfLogoKey
             ? `/api/pdf/event-image/${selectedEvent.year}/${selectedEvent.id}`
             : null,
-        logoFallback: selectedEvent?.pdfLogoFallback ?? "none",
+        logoFallback: "none" as const,
         whatsAppMessageTemplate: settings.whatsAppMessageTemplate ?? null,
         extraColumns,
       };
@@ -1527,14 +1526,6 @@ export const appRouter = router({
       });
       return { success: true } as const;
     }),
-    setLogoFallback: adminProcedure
-      .input(z.object({ fallback: z.enum(["none", "brand"]) }))
-      .mutation(async ({ input }) => {
-        await db.updateCurrentEventPdfImage({
-          pdfLogoFallback: input.fallback,
-        });
-        return { success: true } as const;
-      }),
     helper: protectedProcedure
       .input(z.object({ helperId: z.number().int().positive() }))
       .mutation(async ({ input }) => {
