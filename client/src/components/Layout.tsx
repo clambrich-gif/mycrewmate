@@ -921,7 +921,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <SheetContent
           side="left"
-          className="w-[88vw] max-w-xs gap-0 bg-white p-0 text-slate-950"
+          overlayClassName="z-50"
+          className="z-50 w-[88vw] max-w-xs gap-0 bg-white p-0 text-slate-950"
         >
           <SheetHeader className="border-b text-left">
             <SheetTitle>

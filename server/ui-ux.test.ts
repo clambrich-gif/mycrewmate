@@ -1681,6 +1681,27 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(logic).toContain("now - lastReportedAt >= TYPING_RENEWAL_MS");
   });
 
+  it("hält eingebettete Karten hinter mobilem Menü und Chat, ohne den Vollbildmodus zu beeinträchtigen", () => {
+    const layout = source("client/src/components/Layout.tsx");
+    const widget = source("client/src/components/LiveChatWidget.tsx");
+    const map = source("client/src/components/Map.tsx");
+    const mapClient = source("client/src/components/LocationMapClient.tsx");
+    const globalStyles = source("client/src/index.css");
+
+    expect(layout).toContain('overlayClassName="z-50"');
+    expect(layout).toContain('className="z-50 w-[88vw] max-w-xs');
+    expect(widget).toContain("right-6 z-40 flex h-16");
+    expect(widget).toContain("right-4 z-40 flex items-center");
+    expect(widget).toContain('"fixed z-40 flex w-full');
+    expect(map).toContain('"relative z-0 isolate h-[500px] w-full"');
+    expect(mapClient).toContain(': "relative z-0 isolate"');
+    expect(mapClient).toContain('overlayClassName="z-30 bg-slate-950/45"');
+    expect(mapClient).toContain('className="z-[31] max-h-[70vh]');
+    expect(mapClient).toContain("fixed inset-0 z-[2000]");
+    expect(globalStyles).toContain(".mobile-fullscreen");
+    expect(globalStyles).toContain("z-index: 999999 !important");
+  });
+
   it("fordert vor Passwortänderungen die aktuelle Administratorbestätigung", () => {
     const security = source("client/src/pages/Security.tsx");
     const router = source("server/routers.ts");

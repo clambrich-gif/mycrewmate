@@ -418,7 +418,7 @@ export function LiveChatWidget({
           type="button"
           onClick={onOpen}
           className={cn(
-            "fixed bottom-[max(1.5rem,calc(env(safe-area-inset-bottom)+0.75rem))] right-6 z-50 flex h-16 w-16 min-h-16 min-w-16 items-center justify-center rounded-full border-2 border-white p-0 text-white shadow-2xl transition-[background-color,transform,box-shadow] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-offset-2 motion-safe:hover:scale-105 md:bottom-8 md:right-8 md:h-20 md:w-20 md:min-h-20 md:min-w-20 md:border-[3px] md:shadow-[0_12px_28px_rgba(37,99,235,0.38)]",
+            "fixed bottom-[max(1.5rem,calc(env(safe-area-inset-bottom)+0.75rem))] right-6 z-40 flex h-16 w-16 min-h-16 min-w-16 items-center justify-center rounded-full border-2 border-white p-0 text-white shadow-2xl transition-[background-color,transform,box-shadow] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-offset-2 motion-safe:hover:scale-105 md:bottom-8 md:right-8 md:h-20 md:w-20 md:min-h-20 md:min-w-20 md:border-[3px] md:shadow-[0_12px_28px_rgba(37,99,235,0.38)]",
             hasUnread
               ? hasImportantUnread
                 ? "animate-pulse bg-red-600 ring-4 ring-red-400 hover:bg-red-700 focus-visible:ring-red-400"
@@ -454,7 +454,7 @@ export function LiveChatWidget({
     return (
       <aside
         aria-label="Minimierte Team-Notizen"
-        className="fixed bottom-[max(1rem,calc(env(safe-area-inset-bottom)+0.5rem))] right-4 z-50 flex items-center gap-2 rounded-full border border-blue-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 shadow-2xl ring-1 ring-black/5 sm:bottom-4"
+        className="fixed bottom-[max(1rem,calc(env(safe-area-inset-bottom)+0.5rem))] right-4 z-40 flex items-center gap-2 rounded-full border border-blue-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 shadow-2xl ring-1 ring-black/5 sm:bottom-4"
       >
         <button
           type="button"
@@ -511,7 +511,7 @@ export function LiveChatWidget({
         aria-label="Live-Team-Notizen und Chat"
         aria-modal="false"
         className={cn(
-          "fixed z-50 flex w-full min-w-0 max-w-full flex-col overflow-x-hidden bg-white text-slate-950 shadow-2xl ring-1 ring-black/10 duration-200",
+          "fixed z-40 flex w-full min-w-0 max-w-full flex-col overflow-x-hidden bg-white text-slate-950 shadow-2xl ring-1 ring-black/10 duration-200",
           // Mobile: Breitenfüllendes Bottom-Sheet, dessen dynamische Höhe über der Tastatur bleibt
           "inset-x-0 bottom-0 h-[85dvh] w-full max-h-[85vh] rounded-t-2xl border-t border-slate-200 [overscroll-behavior:contain] sm:inset-x-auto",
           // Desktop: Schwebendes PIP-Fenster unten rechts

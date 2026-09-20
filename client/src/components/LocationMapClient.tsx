@@ -456,7 +456,7 @@ export default function LocationMapClient({
           ? `fixed inset-0 z-[2000] h-[100vh] w-screen max-h-none max-w-none overflow-hidden bg-white${
               cssFullscreen ? " mobile-fullscreen" : ""
             }`
-          : "relative"
+          : "relative z-0 isolate"
       }
     >
       <MapContainer
@@ -601,8 +601,8 @@ export default function LocationMapClient({
         <SheetContent
           side="bottom"
           data-location-mobile-sheet="true"
-          overlayClassName="z-[3000] bg-slate-950/45"
-          className="z-[3001] max-h-[70vh] min-h-0 gap-0 overflow-hidden rounded-t-2xl border-slate-200 p-0 pb-[env(safe-area-inset-bottom)]"
+          overlayClassName="z-30 bg-slate-950/45"
+          className="z-[31] max-h-[70vh] min-h-0 gap-0 overflow-hidden rounded-t-2xl border-slate-200 p-0 pb-[env(safe-area-inset-bottom)]"
           showClose={false}
         >
           {mobileLocationDetails && (
