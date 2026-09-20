@@ -10,6 +10,7 @@ const dbMocks = vi.hoisted(() => ({
   assignHelper: vi.fn(),
   unassignHelper: vi.fn(),
   clearAssignments: vi.fn(),
+  clearModuleAssignments: vi.fn(),
   createShift: vi.fn(),
   updateShift: vi.fn(),
   deleteShift: vi.fn(),
@@ -189,6 +190,10 @@ describe("Planungs-API", () => {
     dbMocks.listApprovals.mockResolvedValue([]);
     dbMocks.assignHelper.mockResolvedValue({ insertId: 1 });
     dbMocks.updateShift.mockResolvedValue({ affectedRows: 1 });
+    dbMocks.clearModuleAssignments.mockResolvedValue({
+      area: "prep",
+      cleared: 0,
+    });
     dbMocks.getContact.mockResolvedValue({ id: 5, name: "Chris Leitung" });
     dbMocks.getHelper.mockResolvedValue(helper);
     dbMocks.ensureHelperPdfShareCode.mockResolvedValue("Ab3dE9F_");
@@ -1156,6 +1161,37 @@ describe("Planungs-API", () => {
       caller.plan.clearAssignments({ adminPassword: ADMIN_PASSWORD })
     ).resolves.toEqual({ cleared: 3 });
     expect(dbMocks.clearAssignments).toHaveBeenCalledTimes(1);
+  });
+
+  it("leert Modulbelegungen nur mit Administratorpasswort und ohne Datenlöschung", async () => {
+    dbMocks.clearModuleAssignments.mockResolvedValue({
+      area: "materials",
+      cleared: 4,
+    });
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.moduleAssignments.clear({
+        area: "materials",
+        adminPassword: "falsch",
+      })
+    ).rejects.toThrow("Administratorpasswort");
+    expect(dbMocks.clearModuleAssignments).not.toHaveBeenCalled();
+
+    await expect(
+      appRouter.createCaller(planningTeamCtx).moduleAssignments.clear({
+        area: "prep",
+        adminPassword: ADMIN_PASSWORD,
+      })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+
+    await expect(
+      caller.moduleAssignments.clear({
+        area: "materials",
+        adminPassword: ADMIN_PASSWORD,
+      })
+    ).resolves.toEqual({ area: "materials", cleared: 4 });
+    expect(dbMocks.clearModuleAssignments).toHaveBeenCalledWith("materials");
   });
 
   it("fordert das aktuelle Administratorpasswort vor jeder Passwortänderung", async () => {

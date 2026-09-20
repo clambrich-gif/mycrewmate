@@ -47,6 +47,7 @@ import {
 import { toast } from "sonner";
 import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
+import { ClearModuleAssignmentsButton } from "@/components/ClearModuleAssignmentsButton";
 import { LocationMapLink } from "@/components/LocationMapLink";
 import {
   parseTaskStatusFilter,
@@ -630,8 +631,8 @@ export default function Preparation() {
             Status-Wortlaut und Filterleiste.
           </p>
         </div>
-        <div className="w-full space-y-2 lg:w-auto lg:min-w-[500px]">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 sm:[&>[data-slot=button]]:h-10">
+        <div className="w-full space-y-2 lg:w-auto lg:min-w-[660px]">
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-4 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:whitespace-nowrap [&>[data-slot=button]]:px-2 lg:[&>[data-slot=button]]:h-10">
             <Button
               type="button"
               variant="outline"
@@ -642,7 +643,12 @@ export default function Preparation() {
               <Printer className="mr-2 h-4 w-4 text-blue-700" />
               {taskOverviewPdf.isPending ? "PDF wird erstellt …" : "PDF drucken"}
             </Button>
-            <ModuleExcelImportButton area="VORBEREITUNG" label="Vorbereitung" />
+            <ModuleExcelImportButton
+              area="VORBEREITUNG"
+              label="Vorbereitung"
+              buttonLabel="Excel Import"
+            />
+            <ClearModuleAssignmentsButton area="prep" label="Vorbereitung" />
             <ResetAreaButton area="prep" label="Vorbereitung" compact />
           </div>
           <Button

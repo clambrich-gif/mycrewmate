@@ -1379,6 +1379,46 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(passwordDialog).toContain('autoComplete="off"');
   });
 
+  it("ordnet die vier Aktionen für Vorbereitung, Nachbereitung und Material und leert dort nur Belegungsfelder", () => {
+    const prep = source("client/src/pages/Preparation.tsx");
+    const post = source("client/src/pages/PostProcessing.tsx");
+    const materials = source("client/src/pages/Materials.tsx");
+    const taskGeneric = source("client/src/pages/TaskGeneric.tsx");
+    const clearButton = source(
+      "client/src/components/ClearModuleAssignmentsButton.tsx"
+    );
+
+    for (const module of [prep, post]) {
+      expect(module).toContain("lg:min-w-[660px]");
+      expect(module).toContain("grid grid-cols-2 gap-2 lg:grid-cols-4");
+      expect(module).toContain('buttonLabel="Excel Import"');
+      expect(module).toContain("<ClearModuleAssignmentsButton");
+      expect(module.indexOf("PDF drucken")).toBeLessThan(
+        module.indexOf("buttonLabel=\"Excel Import\"")
+      );
+      expect(module.indexOf("buttonLabel=\"Excel Import\"")).toBeLessThan(
+        module.indexOf("<ClearModuleAssignmentsButton")
+      );
+      expect(module.indexOf("<ClearModuleAssignmentsButton")).toBeLessThan(
+        module.indexOf("<ResetAreaButton")
+      );
+    }
+
+    expect(materials).toContain("stackedActionColumns={4}");
+    expect(materials).toContain('excelImportButtonLabel="Excel Import"');
+    expect(materials).toContain('clearAssignmentsArea="materials"');
+    expect(taskGeneric).toContain("clearAssignmentsArea?: \"prep\" | \"post\" | \"materials\"");
+    expect(taskGeneric).toContain("lg:grid-cols-4");
+    expect(taskGeneric).toContain("<ClearModuleAssignmentsButton");
+    expect(clearButton).toContain("trpc.moduleAssignments.clear.useMutation");
+    expect(clearButton).toContain("Möchtest du wirklich alle Belegungen leeren?");
+    expect(clearButton).toContain("Die Aufgaben selbst bleiben vollständig erhalten.");
+    expect(clearButton).toContain("Die Artikel, Mengen, Orte und Bemerkungen bleiben vollständig erhalten.");
+    expect(clearButton).toContain("utils.prep.list.invalidate()");
+    expect(clearButton).toContain("utils.post.list.invalidate()");
+    expect(clearButton).toContain("utils.materials.list.invalidate()");
+  });
+
   it("nutzt für die Einsatzplantabelle die volle Desktopbreite mit strukturiertem Helfergrid", () => {
     const layout = source("client/src/components/Layout.tsx");
     const plan = source("client/src/pages/Plan.tsx");
@@ -2043,7 +2083,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(materials).toContain('{ v: "bestellt", l: "🟡 Bestellt" }');
     expect(materials).toContain('{ v: "geliefert", l: "🟢 Geliefert" }');
     expect(materials).toContain('headerLayout="stacked"');
-    expect(materials).toContain("stackedActionColumns={3}");
+    expect(materials).toContain("stackedActionColumns={4}");
     expect(materials).toContain("createButtonClassName=\"border-rose-700 bg-rose-600");
     expect(materials).toContain("filterConfig={{");
     expect(materials).toContain('searchPlaceholder: "Suchen (Artikel/Kategorie/Verantwortlicher/Ort) …"');
@@ -2435,8 +2475,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(post).toContain("Filter zurücksetzen");
     expect(post).not.toContain("Filter aufheben");
     expect(post).not.toContain("Nur offene Nachbereitungen");
-    expect(post).toContain("lg:min-w-[500px]");
-    expect(post).toContain("sm:grid-cols-3");
+    expect(post).toContain("lg:min-w-[660px]");
+    expect(post).toContain("lg:grid-cols-4");
     expect(post).toContain("className={`w-full ${CREATION_ACTION_BUTTON_CLASS}`}");
     expect(post).toContain("trpc.pdf.postTaskOverview.useMutation");
     expect(post).toContain("downloadBase64File");

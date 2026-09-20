@@ -3,6 +3,7 @@ import { LocationMapLink } from "@/components/LocationMapLink";
 import { PageTitle } from "@/components/PageTitle";
 import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
+import { ClearModuleAssignmentsButton } from "@/components/ClearModuleAssignmentsButton";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -587,8 +588,8 @@ export default function PostProcessing() {
             Aufgabenverwaltung für den Abbau, Rücktransporte, Abrechnungen und Nachbereitung des Festivals.
           </p>
         </div>
-        <div className="w-full space-y-2 lg:w-auto lg:min-w-[500px]">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 sm:[&>[data-slot=button]]:h-10">
+        <div className="w-full space-y-2 lg:w-auto lg:min-w-[660px]">
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-4 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:whitespace-nowrap [&>[data-slot=button]]:px-2 lg:[&>[data-slot=button]]:h-10">
             <Button
               type="button"
               variant="outline"
@@ -599,7 +600,12 @@ export default function PostProcessing() {
               <Printer className="mr-2 h-4 w-4 text-rose-700" />
               {taskOverviewPdf.isPending ? "PDF wird erstellt …" : "PDF drucken"}
             </Button>
-            <ModuleExcelImportButton area="NACHBEREITUNG" label="Nachbereitung" />
+            <ModuleExcelImportButton
+              area="NACHBEREITUNG"
+              label="Nachbereitung"
+              buttonLabel="Excel Import"
+            />
+            <ClearModuleAssignmentsButton area="post" label="Nachbereitung" />
             <ResetAreaButton area="post" label="Nachbereitung" compact />
           </div>
           <Button

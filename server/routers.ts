@@ -348,6 +348,7 @@ const resetAreaInput = z.enum([
   "finances",
   "all",
 ]);
+const moduleAssignmentClearArea = z.enum(["prep", "post", "materials"]);
 const pdfSettingsInput = z.object({
   eventName: z.string().trim().min(1).max(200),
   eventYear: z.string().trim().min(1).max(16),
@@ -1893,6 +1894,19 @@ export const appRouter = router({
           ),
         })
       ),
+  }),
+  moduleAssignments: router({
+    clear: scopeAdminProcedure
+      .input(
+        z.object({
+          area: moduleAssignmentClearArea,
+          adminPassword: z.string().min(1).max(200),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await requireAdminPassword(input.adminPassword, ctx);
+        return db.clearModuleAssignments(input.area);
+      }),
   }),
   materials: router({
     list: protectedProcedure.query(() => db.listMaterials()),

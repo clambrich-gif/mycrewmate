@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
+import { ClearModuleAssignmentsButton } from "@/components/ClearModuleAssignmentsButton";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 import { PageTitle, type PageTitleIconKind } from "@/components/PageTitle";
@@ -83,6 +84,8 @@ interface Props {
     | ((context: { visibleRows: Array<Record<string, unknown>> }) => ReactNode);
   headerLayout?: "default" | "stacked";
   stackedActionColumns?: 3 | 4;
+  excelImportButtonLabel?: string;
+  clearAssignmentsArea?: "prep" | "post" | "materials";
   filterConfig?: {
     categoryKey: string;
     categoryLabel: string;
@@ -116,6 +119,8 @@ export default function TaskGeneric({
   headerActions,
   headerLayout = "default",
   stackedActionColumns = 4,
+  excelImportButtonLabel,
+  clearAssignmentsArea,
   filterConfig,
 }: Props) {
   const utils = trpc.useUtils();
@@ -397,18 +402,25 @@ export default function TaskGeneric({
         {headerLayout === "stacked" ? (
           <div
             className={`w-full space-y-2 xl:w-auto ${
-              stackedActionColumns === 3 ? "xl:min-w-[500px]" : "xl:min-w-[780px]"
+              stackedActionColumns === 3 ? "xl:min-w-[500px]" : "xl:min-w-[660px]"
             }`}
           >
             <div
-              className={`grid grid-cols-2 gap-2 [&>button]:w-full [&>button]:justify-center [&>button]:px-2 sm:[&>button]:h-10 ${
-                stackedActionColumns === 3 ? "sm:grid-cols-3" : "sm:grid-cols-4"
+              className={`grid grid-cols-2 gap-2 [&>button]:w-full [&>button]:justify-center [&>button]:whitespace-nowrap [&>button]:px-2 lg:[&>button]:h-10 ${
+                stackedActionColumns === 3 ? "lg:grid-cols-3" : "lg:grid-cols-4"
               }`}
             >
               {renderedHeaderActions}
               {kind in importAreaByKind && (
                 <ModuleExcelImportButton
                   area={importAreaByKind[kind as keyof typeof importAreaByKind]}
+                  label={title}
+                  buttonLabel={excelImportButtonLabel}
+                />
+              )}
+              {clearAssignmentsArea && (
+                <ClearModuleAssignmentsButton
+                  area={clearAssignmentsArea}
                   label={title}
                 />
               )}

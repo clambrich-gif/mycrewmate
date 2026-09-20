@@ -2661,6 +2661,132 @@ export async function deletePrep(
     return result;
   });
 }
+
+export type ModuleAssignmentClearArea = "prep" | "post" | "materials";
+
+/**
+ * Feldwerte für den nicht-destruktiven Modulreset. Die Aufgaben bzw.
+ * Materialpositionen bleiben dabei bestehen; nur ihre operative Belegung wird
+ * auf den neutralen Ausgangszustand zurückgesetzt.
+ */
+export function moduleAssignmentClearValues(area: ModuleAssignmentClearArea) {
+  switch (area) {
+    case "prep":
+      return {
+        contactId: null,
+        dueText: "",
+        status: "offen" as const,
+        statusWording: "aufgabe" as const,
+        note: null,
+      };
+    case "post":
+      return {
+        contactId: null,
+        dueText: "",
+        status: "offen" as const,
+        note: null,
+      };
+    case "materials":
+      return {
+        contactId: null,
+        status: "offen" as const,
+      };
+  }
+}
+
+/**
+ * Leert ausschließlich die operativen Belegungsfelder der aktuell gewählten
+ * Veranstaltung. Einzelne Aufgaben und Materialpositionen werden nie gelöscht.
+ */
+export async function clearModuleAssignments(area: ModuleAssignmentClearArea) {
+  const database = (await getDb()) as DB;
+  const selectedYear = year();
+  const selectedEventId = event();
+
+  return database.transaction(async tx => {
+    if (area === "prep") {
+      const rows = await tx
+        .select({ id: prepTasks.id })
+        .from(prepTasks)
+        .where(
+          and(
+            planningScopeFor(prepTasks, selectedYear, selectedEventId),
+            eq(prepTasks.deleted, false)
+          )
+        )
+        .for("update");
+      if (!rows.length) return { area, cleared: 0 };
+      await tx
+        .update(prepTasks)
+        .set(moduleAssignmentClearValues("prep"))
+        .where(
+          and(
+            planningScopeFor(prepTasks, selectedYear, selectedEventId),
+            eq(prepTasks.deleted, false),
+            inArray(
+              prepTasks.id,
+              rows.map(row => row.id)
+            )
+          )
+        );
+      return { area, cleared: rows.length };
+    }
+
+    if (area === "post") {
+      const rows = await tx
+        .select({ id: postTasks.id })
+        .from(postTasks)
+        .where(
+          and(
+            planningScopeFor(postTasks, selectedYear, selectedEventId),
+            eq(postTasks.deleted, false)
+          )
+        )
+        .for("update");
+      if (!rows.length) return { area, cleared: 0 };
+      await tx
+        .update(postTasks)
+        .set(moduleAssignmentClearValues("post"))
+        .where(
+          and(
+            planningScopeFor(postTasks, selectedYear, selectedEventId),
+            eq(postTasks.deleted, false),
+            inArray(
+              postTasks.id,
+              rows.map(row => row.id)
+            )
+          )
+        );
+      return { area, cleared: rows.length };
+    }
+
+    const rows = await tx
+      .select({ id: materials.id })
+      .from(materials)
+      .where(
+        and(
+          planningScopeFor(materials, selectedYear, selectedEventId),
+          eq(materials.deleted, false)
+        )
+      )
+      .for("update");
+    if (!rows.length) return { area, cleared: 0 };
+    await tx
+      .update(materials)
+      .set(moduleAssignmentClearValues("materials"))
+      .where(
+        and(
+          planningScopeFor(materials, selectedYear, selectedEventId),
+          eq(materials.deleted, false),
+          inArray(
+            materials.id,
+            rows.map(row => row.id)
+          )
+        )
+      );
+    return { area, cleared: rows.length };
+  });
+}
 export const createPost = async (v: any) => {
   const { logEntry, logEntryAuthor, ...values } = v;
   const valuesWithLogbook =
