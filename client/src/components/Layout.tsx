@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/sheet";
 import { startLogin } from "@/const";
 import { useEventYear } from "@/contexts/YearContext";
+import { readFileAsBase64 } from "@/lib/location-logo";
 import { NAV, navigationItemClasses } from "@/lib/nav";
 import { preloadRoute } from "@/lib/route-loaders";
 import { trpc } from "@/lib/trpc";
@@ -52,6 +53,7 @@ import {
   Download,
   Eye,
   EyeOff,
+  FileImage,
   KeyRound,
   LogOut,
   Menu,
@@ -64,6 +66,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import {
+  ChangeEvent,
   FormEvent,
   lazy,
   Suspense,
@@ -75,9 +78,10 @@ import {
 import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
 
-const MYCREWMATE_WORDMARK = "/manus-storage/mycrewmate-wordmark_853a60e9.png";
+const MYCREWMATE_WORDMARK = "/mycrewmate-logo.png";
 const MYCREWMATE_ICON = "/manus-storage/mycrewmate-pwa-icon-512_b16ae84c.png";
 const CHAT_SNAPSHOT_POLL_MS = 5_000;
+const MAX_CLUB_LOGO_BYTES = 3_000_000;
 
 type DeferredInstallPrompt = Event & {
   prompt: () => Promise<void>;
@@ -132,6 +136,97 @@ function LazyProjectStorageControls() {
     <Suspense fallback={<ProjectStorageFallback />}>
       <ProjectStorageControls />
     </Suspense>
+  );
+}
+
+function ClubLogoControl({
+  logoUrl,
+  canManage,
+  compact = false,
+}: {
+  logoUrl: string | null;
+  canManage: boolean;
+  compact?: boolean;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const utils = trpc.useUtils();
+  const uploadLogo = trpc.pdf.uploadLogo.useMutation({
+    onSuccess: async () => {
+      await Promise.all([
+        utils.events.list.invalidate(),
+        utils.pdf.settings.invalidate(),
+      ]);
+      toast.success("Vereinslogo wurde aktualisiert");
+    },
+    onError: error => toast.error(error.message),
+  });
+
+  const onFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    event.target.value = "";
+    if (!file) return;
+    if (file.type !== "image/png" && file.type !== "image/jpeg") {
+      toast.error("Bitte ein PNG- oder JPEG-Vereinslogo auswählen.");
+      return;
+    }
+    if (file.size > MAX_CLUB_LOGO_BYTES) {
+      toast.error("Das Vereinslogo darf höchstens 3 MB groß sein.");
+      return;
+    }
+    try {
+      await uploadLogo.mutateAsync({
+        base64: await readFileAsBase64(file),
+        mimeType: file.type,
+      });
+    } catch (error) {
+      if (!(error instanceof Error)) {
+        toast.error("Vereinslogo konnte nicht hochgeladen werden.");
+      }
+    }
+  };
+
+  const label = logoUrl ? "Vereinslogo ändern" : "Vereinslogo hochladen";
+
+  return (
+    <div className="group relative shrink-0">
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/png,image/jpeg"
+        className="hidden"
+        onChange={event => void onFileChange(event)}
+      />
+      <button
+        type="button"
+        aria-label={label}
+        title={canManage ? label : "Vereinslogo"}
+        disabled={!canManage || uploadLogo.isPending}
+        className={cn(
+          "relative grid place-items-center overflow-hidden rounded-xl border border-slate-200 bg-white p-1 shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
+          compact ? "h-10 w-10" : "h-12 w-12",
+          canManage
+            ? "cursor-pointer hover:border-blue-300 hover:shadow-md"
+            : "cursor-default",
+          uploadLogo.isPending && "animate-pulse"
+        )}
+        onClick={() => inputRef.current?.click()}
+      >
+        {logoUrl ? (
+          <img
+            src={logoUrl}
+            alt="Vereinslogo"
+            className="h-full w-full object-contain"
+          />
+        ) : (
+          <FileImage className="h-5 w-5 text-slate-400" aria-hidden="true" />
+        )}
+        {canManage && (
+          <span className="absolute inset-x-0 bottom-0 flex h-4 items-center justify-center bg-slate-900/70 text-[8px] font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+            {logoUrl ? "Ändern" : "+ Logo"}
+          </span>
+        )}
+      </button>
+    </div>
   );
 }
 
@@ -252,6 +347,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
     enabled: isAuthenticated,
   });
   const selectedEvent = events.data?.find(item => item.id === eventId);
+  const clubLogoUrl = selectedEvent?.pdfLogoKey
+    ? `/api/pdf/event-image/${year}/${selectedEvent.id}`
+    : null;
+  const canManageClubLogo = user?.role === "admin";
 
   useEffect(() => {
     chatSnapshotEpochRef.current += 1;
@@ -535,7 +634,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             {...logoLoading}
             src={MYCREWMATE_WORDMARK}
             alt="MyCrewMate"
-            className="mx-auto mb-5 h-auto w-full max-w-[280px] object-contain"
+            className="mx-auto mb-5 h-10 w-auto max-w-full object-contain sm:h-12"
           />
           <div className="text-center">
             <h1 className="sr-only">MyCrewMate</h1>
@@ -892,11 +991,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
               {selectedEvent?.name ?? `Veranstaltung ${year}`}
             </div>
           </div>
-          <img
-            {...logoLoading}
-            src={MYCREWMATE_ICON}
-            alt="MyCrewMate"
-            className="h-10 w-10 shrink-0 rounded-xl bg-white object-contain shadow-sm ring-1 ring-slate-200"
+          <ClubLogoControl
+            logoUrl={clubLogoUrl}
+            canManage={canManageClubLogo}
+            compact
           />
         </div>
         <Select
@@ -926,12 +1024,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
         >
           <SheetHeader className="border-b text-left">
             <SheetTitle>
-              <img
-                {...logoLoading}
-                src={MYCREWMATE_WORDMARK}
-                alt="MyCrewMate"
-                className="h-auto w-full max-w-[190px] object-contain"
-              />
+              <div className="flex items-center gap-2">
+                <ClubLogoControl
+                  logoUrl={clubLogoUrl}
+                  canManage={canManageClubLogo}
+                  compact
+                />
+                <img
+                  {...logoLoading}
+                  src={MYCREWMATE_WORDMARK}
+                  alt="MyCrewMate"
+                  className="h-10 w-auto max-w-[190px] object-contain"
+                />
+              </div>
             </SheetTitle>
             <SheetDescription>
               Planung {year} ·{" "}
@@ -1136,12 +1241,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       <aside className="hidden w-64 shrink-0 flex-col border-r bg-card lg:sticky lg:top-0 lg:flex lg:h-screen lg:self-start">
         <div className="flex min-h-24 flex-col items-start gap-1.5 border-b bg-gradient-to-r from-white to-slate-50 px-4 py-3 text-slate-950">
-          <img
-            {...logoLoading}
-            src={MYCREWMATE_WORDMARK}
-            alt="MyCrewMate"
-            className="h-auto w-full max-w-[218px] object-contain"
-          />
+          <div className="flex w-full items-center gap-2">
+            <ClubLogoControl
+              logoUrl={clubLogoUrl}
+              canManage={canManageClubLogo}
+            />
+            <img
+              {...logoLoading}
+              src={MYCREWMATE_WORDMARK}
+              alt="MyCrewMate"
+              className="h-10 w-auto max-w-[174px] object-contain"
+            />
+          </div>
           <div className="min-w-0">
             <div className="truncate text-xs text-muted-foreground">
               Vereinsorganisation

@@ -1118,12 +1118,28 @@ describe("UI- und Mobile-UX-Regeln", () => {
   it("verwendet MyCrewMate-Wortmarke und App-Icon browserstabil", () => {
     const layout = source("client/src/components/Layout.tsx");
 
-    expect(layout).toContain('const MYCREWMATE_WORDMARK = "/manus-storage/mycrewmate-wordmark_853a60e9.png"');
+    expect(layout).toContain('const MYCREWMATE_WORDMARK = "/mycrewmate-logo.png"');
     expect(layout).toContain('const MYCREWMATE_ICON = "/manus-storage/mycrewmate-pwa-icon-512_b16ae84c.png"');
     expect(layout).not.toContain("const RSC_LOGO");
     expect(layout.match(/src=\{MYCREWMATE_WORDMARK\}/g)).toHaveLength(3);
-    expect(layout.match(/src=\{MYCREWMATE_ICON\}/g)).toHaveLength(3);
-    expect(layout.match(/alt="MyCrewMate"/g)).toHaveLength(4);
+    expect(layout.match(/src=\{MYCREWMATE_ICON\}/g)).toHaveLength(2);
+    expect(layout.match(/alt="MyCrewMate"/g)).toHaveLength(3);
+  });
+
+  it("liefert eine administratorgeschützte Vereinslogo-Steuerung neben der Wortmarke", () => {
+    const layout = source("client/src/components/Layout.tsx");
+
+    expect(layout).toContain("function ClubLogoControl");
+    expect(layout).toContain("trpc.pdf.uploadLogo.useMutation");
+    expect(layout).toContain("utils.events.list.invalidate()");
+    expect(layout).toContain('accept="image/png,image/jpeg"');
+    expect(layout).toContain("MAX_CLUB_LOGO_BYTES");
+    expect(layout).toContain('aria-label={label}');
+    expect(layout).toContain('"group relative shrink-0"');
+    expect(layout).toContain('"cursor-pointer hover:border-blue-300 hover:shadow-md"');
+    expect(layout).toContain("Vereinslogo hochladen");
+    expect(layout).toContain("/api/pdf/event-image/${year}/${selectedEvent.id}");
+    expect(layout.match(/<ClubLogoControl/g)).toHaveLength(3);
   });
 
   it("zeigt in der Hilfe ausschließlich das Video der aktiven Rolle", () => {

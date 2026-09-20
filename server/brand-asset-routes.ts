@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { storageGetSignedUrl } from "./storage";
-import { RSC_BRAND_LOGO } from "./brand-assets";
+import { MYCREWMATE_WORDMARK } from "./brand-assets";
 
 type BrandAssetRouteDependencies = {
   getSignedUrl: (storageKey: string) => Promise<string>;
@@ -17,8 +17,8 @@ function setLogoHeaders(res: Response) {
     "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
     "Access-Control-Allow-Origin": "*",
     "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
-    "Content-Disposition": `inline; filename="${RSC_BRAND_LOGO.filename}"`,
-    "Content-Type": RSC_BRAND_LOGO.contentType,
+    "Content-Disposition": `inline; filename="${MYCREWMATE_WORDMARK.filename}"`,
+    "Content-Type": MYCREWMATE_WORDMARK.contentType,
     "Cross-Origin-Resource-Policy": "cross-origin",
     "X-Content-Type-Options": "nosniff",
   });
@@ -38,7 +38,7 @@ async function fetchLogo(
 
   try {
     const signedUrl = await dependencies.getSignedUrl(
-      RSC_BRAND_LOGO.storageKey
+      MYCREWMATE_WORDMARK.storageKey
     );
     const upstream = await dependencies.fetchImpl(signedUrl, {
       signal: abortController.signal,
@@ -78,14 +78,16 @@ export function registerBrandAssetRoutes(
   app: Express,
   dependencies: BrandAssetRouteDependencies = defaultDependencies
 ) {
-  app.options("/api/brand/rsc-logo", (_req, res) => {
-    setLogoHeaders(res);
-    res.status(204).end();
-  });
-  app.head("/api/brand/rsc-logo", (req, res) => {
-    void fetchLogo(req, res, dependencies, true);
-  });
-  app.get("/api/brand/rsc-logo", (req, res) => {
-    void fetchLogo(req, res, dependencies, false);
-  });
+  for (const path of ["/mycrewmate-logo.png", "/api/brand/rsc-logo"]) {
+    app.options(path, (_req, res) => {
+      setLogoHeaders(res);
+      res.status(204).end();
+    });
+    app.head(path, (req, res) => {
+      void fetchLogo(req, res, dependencies, true);
+    });
+    app.get(path, (req, res) => {
+      void fetchLogo(req, res, dependencies, false);
+    });
+  }
 }

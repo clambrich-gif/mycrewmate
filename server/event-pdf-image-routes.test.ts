@@ -90,7 +90,7 @@ describe("Veranstaltungsspezifische PDF-Bildauslieferung", () => {
     );
   });
 
-  it("verwendet nur bei konfiguriertem Fallback das RSC-Vereinslogo", async () => {
+  it("verwendet nur bei konfiguriertem Fallback die MyCrewMate-Wortmarke", async () => {
     const withFallback = await startTestServer({
       event: { pdfLogoKey: null, pdfLogoFallback: "brand" },
     });
@@ -99,7 +99,7 @@ describe("Veranstaltungsspezifische PDF-Bildauslieferung", () => {
     );
     expect(fallbackResponse.status).toBe(200);
     expect(withFallback.getSignedUrl).toHaveBeenCalledWith(
-      "rsc-eifelland-logo-chrome_25463ad8.png"
+      "mycrewmate-wordmark_853a60e9.png"
     );
 
     const withoutFallback = await startTestServer({

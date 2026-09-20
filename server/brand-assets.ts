@@ -1,5 +1,8 @@
-export const RSC_BRAND_LOGO = {
-  storageKey: "rsc-eifelland-logo-chrome_25463ad8.png",
+export const MYCREWMATE_WORDMARK = {
+  storageKey: "mycrewmate-wordmark_853a60e9.png",
   contentType: "image/png",
-  filename: "rsc-eifelland-logo.png",
+  filename: "mycrewmate-logo.png",
 } as const;
+
+/** Rückwärtskompatibler Name für bestehende PDF-Brandfallbacks. */
+export const RSC_BRAND_LOGO = MYCREWMATE_WORDMARK;

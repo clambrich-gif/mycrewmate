@@ -219,7 +219,7 @@ describe("PDF-Erzeugung", () => {
         pdfLogoKey: null,
         pdfLogoFallback: "brand",
       })
-    ).toBe("rsc-eifelland-logo-chrome_25463ad8.png");
+    ).toBe("mycrewmate-wordmark_853a60e9.png");
   });
 
   it("erzeugt eine gültige persönliche Aufgabenübersicht", async () => {

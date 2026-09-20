@@ -49,10 +49,10 @@ afterEach(async () => {
   );
 });
 
-describe("Öffentliche RSC-Logoauslieferung", () => {
+describe("Öffentliche MyCrewMate-Logoauslieferung", () => {
   it("liefert das PNG direkt ohne Storage-Redirect aus", async () => {
     const testServer = await startTestServer();
-    const response = await fetch(`${testServer.baseUrl}/api/brand/rsc-logo`, {
+    const response = await fetch(`${testServer.baseUrl}/mycrewmate-logo.png`, {
       redirect: "manual",
     });
     const bytes = new Uint8Array(await response.arrayBuffer());
@@ -68,13 +68,13 @@ describe("Öffentliche RSC-Logoauslieferung", () => {
       0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
     ]);
     expect(testServer.getSignedUrl).toHaveBeenCalledWith(
-      "rsc-eifelland-logo-chrome_25463ad8.png"
+      "mycrewmate-wordmark_853a60e9.png"
     );
   });
 
   it("liefert HEAD-Metadaten ohne Bildinhalt", async () => {
     const testServer = await startTestServer();
-    const response = await fetch(`${testServer.baseUrl}/api/brand/rsc-logo`, {
+    const response = await fetch(`${testServer.baseUrl}/mycrewmate-logo.png`, {
       method: "HEAD",
     });
 
@@ -87,7 +87,7 @@ describe("Öffentliche RSC-Logoauslieferung", () => {
 
   it("beantwortet öffentlichen CORS-Preflight ohne Storagezugriff", async () => {
     const testServer = await startTestServer();
-    const response = await fetch(`${testServer.baseUrl}/api/brand/rsc-logo`, {
+    const response = await fetch(`${testServer.baseUrl}/mycrewmate-logo.png`, {
       method: "OPTIONS",
       headers: { Origin: "https://example.org" },
     });
