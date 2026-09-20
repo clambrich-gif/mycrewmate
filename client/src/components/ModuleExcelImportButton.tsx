@@ -124,14 +124,14 @@ export function ModuleExcelImportButton({
         type="button"
         variant="outline"
         size={compact ? "sm" : "default"}
-        className="border-emerald-200 bg-emerald-50 text-emerald-700 shadow-xs hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300"
+        className="inline-flex items-center gap-2 whitespace-nowrap border-emerald-200 bg-emerald-50 text-emerald-700 px-3 py-1.5 shadow-xs has-[>svg]:px-3 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300"
         disabled={preview.isPending}
         onClick={() => inputRef.current?.click()}
       >
         {preview.isPending ? (
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
-          <FileSpreadsheet className="mr-2 h-4 w-4" />
+          <FileSpreadsheet className="h-4 w-4" />
         )}
         Excel importieren
       </Button>

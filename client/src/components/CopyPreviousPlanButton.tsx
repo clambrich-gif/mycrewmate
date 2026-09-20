@@ -66,11 +66,11 @@ export function CopyPreviousPlanButton() {
     <>
       <Button
         variant="outline"
-        className="border-emerald-200 bg-emerald-50 text-emerald-700 shadow-xs hover:bg-emerald-100"
+        className="inline-flex items-center gap-2 whitespace-nowrap border-emerald-200 bg-emerald-50 text-emerald-700 px-3 py-1.5 shadow-xs has-[>svg]:px-3 hover:bg-emerald-100"
         onClick={() => setOpen(true)}
         disabled={!sourceEvents.length}
       >
-        <Copy className="mr-2 h-4 w-4" /> Plan übernehmen
+        <Copy className="h-4 w-4" /> Plan übernehmen
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="bg-white text-slate-950 dark:bg-slate-950 dark:text-slate-50">

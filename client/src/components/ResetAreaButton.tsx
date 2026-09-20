@@ -59,10 +59,10 @@ export function ResetAreaButton({
       <Button
         variant="outline"
         size={compact ? "sm" : "default"}
-        className="border-rose-200 bg-rose-50 text-rose-700 shadow-xs hover:bg-rose-100"
+        className="inline-flex items-center gap-2 whitespace-nowrap border-rose-200 bg-rose-50 text-rose-700 px-3.5 py-1.5 shadow-xs has-[>svg]:px-3.5 hover:bg-rose-100"
         onClick={() => setOpen(true)}
       >
-        <RotateCcw className="mr-2 h-4 w-4" />
+        <RotateCcw className="h-4 w-4" />
         {mobileButtonLabel ? (
           <>
             <span className="sm:hidden">{mobileButtonLabel}</span>

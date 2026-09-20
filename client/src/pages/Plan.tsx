@@ -1351,7 +1351,7 @@ export default function Plan() {
           <div className="w-full shrink-0 min-[1440px]:ml-auto min-[1440px]:w-[42rem]">
             <div
               data-plan-data-actions
-              className="grid grid-cols-2 gap-2 sm:grid-cols-4 [&>[data-slot=button]]:min-w-0 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:px-2 [&>[data-slot=button]]:text-xs sm:[&>[data-slot=button]]:px-3 sm:[&>[data-slot=button]]:text-sm"
+              className="flex flex-wrap items-center justify-end gap-2 [&>[data-slot=button]]:h-9 [&>[data-slot=button]]:min-w-0 [&>[data-slot=button]]:whitespace-nowrap"
             >
               <ModuleExcelImportButton area="EINSATZPLAN" label="Einsatzplan" />
               <CopyPreviousPlanButton />

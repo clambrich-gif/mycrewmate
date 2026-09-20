@@ -1492,11 +1492,18 @@ describe("UI- und Mobile-UX-Regeln", () => {
   it("ordnet Einsatzplanaktionen als vierteilige Datenzeile mit vollbreiter Hauptaktion an", () => {
     const plan = source("client/src/pages/Plan.tsx");
     const resetButton = source("client/src/components/ResetAreaButton.tsx");
+    const clearAssignments = source(
+      "client/src/components/ClearPlanAssignmentsButton.tsx"
+    );
+    const copyPlan = source("client/src/components/CopyPreviousPlanButton.tsx");
+    const excelImport = source(
+      "client/src/components/ModuleExcelImportButton.tsx"
+    );
 
     expect(plan).toContain("data-plan-data-actions");
-    expect(plan).toContain("grid grid-cols-2 gap-2 sm:grid-cols-4");
+    expect(plan).toContain("flex flex-wrap items-center justify-end gap-2");
+    expect(plan).toContain('[&>[data-slot=button]]:whitespace-nowrap');
     expect(plan).toContain("min-[1440px]:w-[42rem]");
-    expect(plan).toContain('[&>[data-slot=button]]:w-full');
     expect(plan).toContain(
       'className="mt-2 w-full bg-blue-600 px-4 font-semibold text-white shadow-sm hover:bg-blue-700 focus-visible:ring-blue-500"'
     );
@@ -1506,6 +1513,16 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain('mobileButtonLabel="Plan zurücksetzen"');
     expect(resetButton).toContain('<span className="sm:hidden">{mobileButtonLabel}</span>');
     expect(resetButton).toContain('<span className="hidden sm:inline">');
+    expect(resetButton).toContain(
+      "inline-flex items-center gap-2 whitespace-nowrap border-rose-200"
+    );
+    expect(resetButton).toContain("px-3.5 py-1.5");
+    expect(resetButton).toContain('<RotateCcw className="h-4 w-4" />');
+    for (const actionButton of [clearAssignments, copyPlan, excelImport]) {
+      expect(actionButton).toContain("inline-flex items-center gap-2 whitespace-nowrap");
+      expect(actionButton).toContain("px-3 py-1.5");
+    }
+    expect(clearAssignments).toContain('<UserMinus className="h-4 w-4" />');
   });
 
   it("vereinheitlicht die mobilen Modulkopfbereiche bis 1024px mit Aktionsraster und Vollbreitenfeldern", () => {
