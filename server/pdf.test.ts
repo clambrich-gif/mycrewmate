@@ -44,6 +44,7 @@ import {
   selectMaterialPacklistMaterials,
   selectTaskOverviewRows,
   CONTACT_CHECKLIST_MARKER,
+  renderPlanningTeamAccessSheetsPdf,
 } from "./pdf";
 import { resolveEventPdfLogoKey } from "./event-pdf-image";
 
@@ -208,6 +209,37 @@ const data = {
 };
 
 describe("PDF-Erzeugung", () => {
+  it("erzeugt für jeden Planungsteamzugang eine eigene sichere A4-Seite", async () => {
+    const oneSheet = await renderPlanningTeamAccessSheetsPdf([
+      {
+        accessId: 1,
+        contactName: "Anne Veling",
+        initialPassword: "MCM-Einmalcode123",
+        events: [{ year: 2027, name: "MyEifelRide" }],
+      },
+    ]);
+    const twoSheets = await renderPlanningTeamAccessSheetsPdf([
+      {
+        accessId: 1,
+        contactName: "Anne Veling",
+        initialPassword: "MCM-Einmalcode123",
+        events: [{ year: 2027, name: "MyEifelRide" }],
+      },
+      {
+        accessId: 2,
+        contactName: "Christian Lambrich",
+        events: [{ year: 2026, name: "Grillfest" }],
+      },
+    ]);
+
+    expect(oneSheet.subarray(0, 5).toString()).toBe("%PDF-");
+    expect(twoSheets.subarray(0, 5).toString()).toBe("%PDF-");
+    expect(twoSheets.length).toBeGreaterThan(oneSheet.length);
+    expect(() => renderPlanningTeamAccessSheetsPdf([])).toThrow(
+      "keine Ansprechpartner-Zugänge"
+    );
+  });
+
   it("löst PDF-Bilder ausschließlich nach individuellem Eventbild auf", () => {
     expect(
       resolveEventPdfLogoKey({

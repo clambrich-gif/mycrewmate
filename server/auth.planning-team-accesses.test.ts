@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { appRouter } from "./routers";
 import * as db from "./db";
 import * as passwordAuth from "./password-auth";
+import * as pdf from "./pdf";
 import {
   ADMIN_PASSWORD_OPEN_ID,
   planningTeamAccessOpenId,
@@ -396,5 +397,138 @@ describe("Event-based Access Control für Planungsteam", () => {
     expect(listActivitiesSpy).toHaveBeenCalled();
     expect(activities).toHaveLength(1);
     expect(activities[0].actorName).toBe("Christian Lambrich");
+  });
+
+  it("erzeugt einen neuen Zugangscode nur für das Einmal-Zugangsblatt und gibt ihn nicht über die API zurück", async () => {
+    vi.spyOn(db, "getSecuritySettings").mockResolvedValue({
+      adminPasswordHash: "$2a$10$hashedAdmin",
+    } as any);
+    vi.spyOn(passwordAuth, "verifyPassword").mockResolvedValue(true);
+    const createAccessSpy = vi
+      .spyOn(db, "createPlanningTeamAccess")
+      .mockResolvedValue({
+        id: 17,
+        contactId: 4,
+        label: "Anne Veling",
+        passwordHash: "$2a$10$generated",
+        sessionVersion: 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        eventIds: [10],
+      } as any);
+    vi.spyOn(db, "listAllContactsForPlanningTeamAccess").mockResolvedValue([
+      {
+        id: 4,
+        name: "Anne Veling",
+        year: 2027,
+        eventId: 10,
+        eventName: "MyEifelRide",
+      },
+    ] as any);
+    vi.spyOn(db, "listEventYears").mockResolvedValue([
+      { year: 2027, label: "2027" },
+    ] as any);
+    vi.spyOn(db, "listEvents").mockResolvedValue([
+      { id: 10, year: 2027, name: "MyEifelRide" },
+    ] as any);
+    const accessSheetSpy = vi
+      .spyOn(pdf, "createPlanningTeamAccessSheetsPdf")
+      .mockResolvedValue(Buffer.from("%PDF-test"));
+
+    const adminCaller = appRouter.createCaller({
+      user: {
+        id: 1,
+        openId: ADMIN_PASSWORD_OPEN_ID,
+        role: "admin",
+        name: "Admin",
+        email: null,
+        sessionVersion: 1,
+        avatarUrl: null,
+        accountBlocked: false,
+        lastSignedIn: new Date(),
+      },
+      req: mockReq(),
+      res: { setHeader: vi.fn(), clearCookie: vi.fn() } as any,
+    });
+
+    const result = await adminCaller.planningTeamAccesses.createWithAccessSheet({
+      label: "Anne Veling",
+      contactId: 4,
+      eventIds: [10],
+      currentAdminPassword: "admin-passwort-123",
+    });
+
+    expect(createAccessSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contactId: 4,
+        eventIds: [10],
+        passwordHash: expect.stringMatching(/^\$2/),
+      })
+    );
+    expect(accessSheetSpy).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          contactName: "Anne Veling",
+          initialPassword: expect.stringMatching(/^MCM-/),
+        }),
+      ]
+    );
+    expect(result).toEqual(
+      expect.objectContaining({
+        accessId: 17,
+        filename: "Zugangsblatt_Anne_Veling.pdf",
+        mimeType: "application/pdf",
+      })
+    );
+    expect(result).not.toHaveProperty("initialPassword");
+  });
+
+  it("druckt bestehende Zugangsblätter ohne gespeicherte Klartextpasswörter nach", async () => {
+    vi.spyOn(db, "listPlanningTeamAccesses").mockResolvedValue([
+      {
+        id: 8,
+        contactId: 2,
+        contactName: "Christian Lambrich",
+        label: "Christian Lambrich",
+        eventIds: [10],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
+    vi.spyOn(db, "listEventYears").mockResolvedValue([
+      { year: 2027, label: "2027" },
+    ] as any);
+    vi.spyOn(db, "listEvents").mockResolvedValue([
+      { id: 10, year: 2027, name: "MyEifelRide" },
+    ] as any);
+    const accessSheetSpy = vi
+      .spyOn(pdf, "createPlanningTeamAccessSheetsPdf")
+      .mockResolvedValue(Buffer.from("%PDF-test"));
+
+    const adminCaller = appRouter.createCaller({
+      user: {
+        id: 1,
+        openId: ADMIN_PASSWORD_OPEN_ID,
+        role: "admin",
+        name: "Admin",
+        email: null,
+        sessionVersion: 1,
+        avatarUrl: null,
+        accountBlocked: false,
+        lastSignedIn: new Date(),
+      },
+      req: mockReq(),
+      res: { setHeader: vi.fn(), clearCookie: vi.fn() } as any,
+    });
+
+    const result = await adminCaller.planningTeamAccesses.accessSheets();
+    expect(accessSheetSpy).toHaveBeenCalledWith([
+      expect.objectContaining({
+        contactName: "Christian Lambrich",
+      }),
+    ]);
+    const renderedSheet = accessSheetSpy.mock.calls[0][0][0];
+    expect(renderedSheet.initialPassword).toBeUndefined();
+    expect(result.base64).toBe(Buffer.from("%PDF-test").toString("base64"));
   });
 });

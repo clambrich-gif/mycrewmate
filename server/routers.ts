@@ -1,4 +1,5 @@
 import { COOKIE_NAME } from "@shared/const";
+import { randomBytes } from "node:crypto";
 import {
   eventWeekdays,
   helperEligibleForShift,
@@ -76,6 +77,7 @@ import {
   createPlanPdf,
   createPostTaskOverviewPdf,
   createPrepTaskOverviewPdf,
+  createPlanningTeamAccessSheetsPdf,
   DEFAULT_PDF_SETTINGS,
 } from "./pdf";
 import { publicAppUrl } from "./public-app-url";
@@ -494,6 +496,42 @@ const safeExportName = (value: string) =>
     .replace(/ß/g, "ss")
     .replace(/[^a-zA-Z0-9_-]+/g, "_")
     .replace(/^_+|_+$/g, "") || "Veranstaltung";
+
+/** Der Code wird ausschließlich für den aktuellen Einmaldruck erzeugt und nie persistiert. */
+function generatePlanningTeamAccessPassword() {
+  return `MCM-${randomBytes(18).toString("base64url")}`;
+}
+
+async function createPlanningTeamAccessSheetsFile(
+  accesses: db.PlanningTeamAccessSummary[],
+  initialPasswords = new Map<number, string>()
+) {
+  const years = await db.listEventYears();
+  const eventGroups = await Promise.all(
+    years.map(async item => db.listEvents(item.year))
+  );
+  const eventById = new Map(
+    eventGroups.flat().map(event => [event.id, event] as const)
+  );
+  const sheets = accesses.map(access => ({
+    accessId: access.id,
+    contactName: access.contactName ?? access.label,
+    events: access.eventIds.flatMap(eventId => {
+      const event = eventById.get(eventId);
+      return event ? [{ year: event.year, name: event.name }] : [];
+    }),
+    ...(initialPasswords.has(access.id)
+      ? { initialPassword: initialPasswords.get(access.id)! }
+      : {}),
+  }));
+  if (sheets.length === 0) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Es sind keine Planungsteam-Zugänge für den Druck vorhanden",
+    });
+  }
+  return createPlanningTeamAccessSheetsPdf(sheets);
+}
 const resetAreaInput = z.enum([
   "contacts",
   "helpers",
@@ -1007,6 +1045,55 @@ export const appRouter = router({
           eventIds: input.eventIds,
         });
       }),
+    createWithAccessSheet: accountAdminProcedure
+      .input(
+        z.object({
+          label: z.string().trim().min(2).max(120),
+          contactId: z.number().int().positive(),
+          eventIds: z.array(z.number().int().positive()).min(1).max(500),
+          currentAdminPassword: z.string().min(1).max(200),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await requireAdminPassword(input.currentAdminPassword, ctx);
+        const initialPassword = generatePlanningTeamAccessPassword();
+        const contact = (await db.listAllContactsForPlanningTeamAccess()).find(
+          item => item.id === input.contactId
+        );
+        if (!contact) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Der ausgewählte Ansprechpartner wurde nicht gefunden",
+          });
+        }
+        // Die PDF-Erzeugung muss vor dem Persistieren gelingen: sonst wäre ein
+        // unbekannter Einmalcode gespeichert, der nicht erneut abrufbar ist.
+        const initialSheet: db.PlanningTeamAccessSummary = {
+          id: input.contactId,
+          contactId: input.contactId,
+          contactName: contact.name,
+          label: contact.name,
+          eventIds: input.eventIds,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+        const pdf = await createPlanningTeamAccessSheetsFile(
+          [initialSheet],
+          new Map([[initialSheet.id, initialPassword]])
+        );
+        const access = await db.createPlanningTeamAccess({
+          label: input.label,
+          contactId: input.contactId,
+          passwordHash: await hashPassword(initialPassword),
+          eventIds: input.eventIds,
+        });
+        return {
+          accessId: access.id,
+          filename: `Zugangsblatt_${safeExportName(access.label)}.pdf`,
+          mimeType: "application/pdf",
+          base64: pdf.toString("base64"),
+        };
+      }),
     update: accountAdminProcedure
       .input(
         z.object({
@@ -1028,6 +1115,56 @@ export const appRouter = router({
           eventIds: input.eventIds,
         });
       }),
+    resetAndPrint: accountAdminProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          currentAdminPassword: z.string().min(1).max(200),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await requireAdminPassword(input.currentAdminPassword, ctx);
+        const existing = (await db.listPlanningTeamAccesses()).find(
+          access => access.id === input.id
+        );
+        if (!existing) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Planungsteam-Zugang wurde nicht gefunden",
+          });
+        }
+        const initialPassword = generatePlanningTeamAccessPassword();
+        // Auch beim Reset wird das PDF vor dem Passwortwechsel erzeugt, damit
+        // ein Fehler niemals einen unbekannten neuen Zugangscode hinterlässt.
+        const pdf = await createPlanningTeamAccessSheetsFile(
+          [existing],
+          new Map([[existing.id, initialPassword]])
+        );
+        const updated = await db.updatePlanningTeamAccess({
+          id: existing.id,
+          label: existing.label,
+          contactId: existing.contactId,
+          passwordHash: await hashPassword(initialPassword),
+          eventIds: existing.eventIds,
+        });
+        return {
+          accessId: updated.id,
+          filename: `Zugangsblatt_${safeExportName(updated.label)}.pdf`,
+          mimeType: "application/pdf",
+          base64: pdf.toString("base64"),
+        };
+      }),
+    accessSheets: accountAdminProcedure.mutation(async () => {
+      const accesses = (await db.listPlanningTeamAccesses()).filter(
+        access => Boolean(access.contactId && access.contactName)
+      );
+      const pdf = await createPlanningTeamAccessSheetsFile(accesses);
+      return {
+        filename: "Zugangsblätter_Planungsteam.pdf",
+        mimeType: "application/pdf",
+        base64: pdf.toString("base64"),
+      };
+    }),
     remove: accountAdminProcedure
       .input(
         z.object({

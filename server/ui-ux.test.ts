@@ -2643,6 +2643,14 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(manager).toContain("opacity-100 visible");
     expect(manager).toContain("Zugangsdaten dauerhaft löschen");
     expect(manager).toContain("!overflow-visible");
+    expect(manager).toContain("Zugangsblätter drucken (PDF)");
+    expect(manager).toContain("createWithAccessSheet");
+    expect(manager).toContain("resetAndPrint");
+    expect(manager).toContain("Passwort zurücksetzen &amp; Zugangsblatt drucken");
+    expect(manager).toContain("Der reguläre Nachdruck enthält aus Sicherheitsgründen keine Zugangscodes");
+    expect(manager).toContain("Der Klartextcode erscheint nur im direkt heruntergeladenen PDF");
+    expect(manager).toContain("downloadBase64File(result.base64, result.mimeType, result.filename)");
+    expect(manager).not.toContain("planning-access-password-confirmation");
 
     expect(contacts).toContain("Passwort / Zugangscode (optional)");
     expect(contacts).toContain("Neues Passwort (optional)");

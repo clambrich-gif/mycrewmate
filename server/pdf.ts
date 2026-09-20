@@ -23,6 +23,7 @@ import { resolveEventPdfLogoKey } from "./event-pdf-image";
 import { helperAvailabilityWindow } from "../shared/weekdays";
 import { latestPreparationLogbookEntry } from "../shared/preparation-logbook";
 import { COPYRIGHT_NOTICE } from "../shared/branding";
+import { MYCREWMATE_WORDMARK } from "./brand-assets";
 
 const require = createRequire(import.meta.url);
 const { ZipArchive } = require("archiver") as {
@@ -73,6 +74,15 @@ const pageWidth = 595.28;
 const pageHeight = 841.89;
 const margin = 42;
 const contentWidth = pageWidth - margin * 2;
+const MYCREWMATE_ACCESS_URL = "https://mycrewmate.de";
+
+/** Ein Zugangsblatt enthält nur beim initialen Erstellen bzw. Zurücksetzen einen Klartextcode. */
+export type PlanningTeamAccessSheet = {
+  accessId: number;
+  contactName: string;
+  events: Array<{ year: number; name: string }>;
+  initialPassword?: string;
+};
 
 /**
  * Das feste Breitenbudget hält die vollständige Materialtabelle innerhalb
@@ -681,6 +691,199 @@ function drawDocumentHeader(
     .lineTo(doc.page.width - doc.page.margins.right, doc.y)
     .stroke();
   doc.moveDown(1.2);
+}
+
+function drawPlanningTeamAccessSheetHeader(
+  doc: PDFKit.PDFDocument,
+  wordmarkBuffer?: Buffer
+) {
+  const headerTop = doc.y;
+  const wordmarkWidth = 188;
+  if (wordmarkBuffer) {
+    try {
+      doc.image(wordmarkBuffer, margin, headerTop, {
+        fit: [wordmarkWidth, 56],
+      });
+    } catch {
+      // Ein fehlendes Markenbild darf die sichere Zugangsausgabe nicht blockieren.
+    }
+  }
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(18)
+    .fillColor(colors.ink)
+    .text("Zugangsblatt", margin, headerTop + 4, {
+      align: "right",
+      width: contentWidth,
+      lineBreak: false,
+    });
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(10)
+    .fillColor(colors.accent)
+    .text("PLANUNGSTEAM", margin, headerTop + 28, {
+      align: "right",
+      width: contentWidth,
+      lineBreak: false,
+    });
+  if (!wordmarkBuffer) {
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(19)
+      .fillColor(colors.ink)
+      .text("MyCrewMate", margin, headerTop + 4);
+  }
+  doc.y = headerTop + 72;
+  doc
+    .strokeColor(colors.line)
+    .lineWidth(0.8)
+    .moveTo(margin, doc.y)
+    .lineTo(pageWidth - margin, doc.y)
+    .stroke();
+  doc.moveDown(1.45);
+}
+
+function drawPlanningTeamAccessSheetBox(
+  doc: PDFKit.PDFDocument,
+  title: string,
+  lines: Array<{ label: string; value: string }>,
+  options: { highlight?: boolean } = {}
+) {
+  const labelWidth = 138;
+  const valueWidth = contentWidth - labelWidth - 32;
+  const rowHeights = lines.map(line => {
+    const valueHeight = doc
+      .font("Helvetica")
+      .fontSize(10.5)
+      .heightOfString(line.value, { width: valueWidth, lineGap: 2 });
+    return Math.max(24, valueHeight + 12);
+  });
+  const boxHeight = 42 + rowHeights.reduce((sum, height) => sum + height, 0) + 10;
+  const y = doc.y;
+  doc
+    .roundedRect(margin, y, contentWidth, boxHeight, 6)
+    .fillAndStroke(options.highlight ? "#FEF2F2" : "#F8FAFC", options.highlight ? "#FCA5A5" : colors.line);
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(11)
+    .fillColor(options.highlight ? "#991B1B" : colors.accent)
+    .text(title, margin + 14, y + 13, { lineBreak: false });
+  let rowY = y + 34;
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index];
+    if (index > 0) {
+      doc
+        .strokeColor(options.highlight ? "#FECACA" : colors.line)
+        .lineWidth(0.5)
+        .moveTo(margin + 14, rowY - 5)
+        .lineTo(pageWidth - margin - 14, rowY - 5)
+        .stroke();
+    }
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(9)
+      .fillColor(colors.muted)
+      .text(line.label, margin + 14, rowY + 2, {
+        width: labelWidth - 12,
+        lineBreak: false,
+      });
+    doc
+      .font("Helvetica")
+      .fontSize(10.5)
+      .fillColor(colors.ink)
+      .text(line.value, margin + labelWidth, rowY, {
+        width: valueWidth,
+        lineGap: 2,
+      });
+    rowY += rowHeights[index];
+  }
+  doc.x = margin;
+  doc.y = y + boxHeight;
+}
+
+/** Erzeugt ein DIN-A4-Zugangsblatt je Ansprechpartner; Klartextcodes bleiben optional und einmalig. */
+export function renderPlanningTeamAccessSheetsPdf(
+  sheets: PlanningTeamAccessSheet[],
+  wordmarkBuffer?: Buffer
+) {
+  if (sheets.length === 0) {
+    throw new Error("Es sind keine Ansprechpartner-Zugänge für den Druck vorhanden");
+  }
+  return collectPdf(doc => {
+    sheets.forEach((sheet, index) => {
+      if (index > 0) doc.addPage();
+      drawPlanningTeamAccessSheetHeader(doc, wordmarkBuffer);
+      doc
+        .font("Helvetica-Bold")
+        .fontSize(22)
+        .fillColor(colors.ink)
+        .text(sheet.contactName, margin, doc.y);
+      doc.moveDown(0.35);
+      doc
+        .font("Helvetica")
+        .fontSize(10)
+        .fillColor(colors.muted)
+        .text("Persönlicher Planungsteam-Zugang · Bitte vertraulich behandeln.");
+      doc.moveDown(1);
+
+      drawPlanningTeamAccessSheetBox(doc, "Zugang", [
+        { label: "Zugangs-URL", value: MYCREWMATE_ACCESS_URL },
+        { label: "Rolle", value: "Planungsteam" },
+      ]);
+      doc.moveDown(0.9);
+
+      if (sheet.initialPassword) {
+        drawPlanningTeamAccessSheetBox(
+          doc,
+          "Einmalig ausgegebener Zugangscode",
+          [{ label: "Passwort", value: sheet.initialPassword }],
+          { highlight: true }
+        );
+        doc.moveDown(0.9);
+      } else {
+        drawPlanningTeamAccessSheetBox(doc, "Passwort", [
+          {
+            label: "Hinweis",
+            value:
+              "Passwort bereits vergeben / Aus Sicherheitsgründen nicht erneut abrufbar. Bei Verlust bitte Passwort über den Administrator zurücksetzen lassen.",
+          },
+        ]);
+        doc.moveDown(0.9);
+      }
+
+      drawPlanningTeamAccessSheetBox(doc, "Freigegebene Veranstaltungen", [
+        {
+          label: "Freigaben",
+          value:
+            sheet.events.length > 0
+              ? sheet.events.map(event => `• ${event.year} · ${event.name}`).join("\n")
+              : "Keine Veranstaltungen freigegeben.",
+        },
+      ]);
+      doc.moveDown(1.1);
+      const noticeY = doc.y;
+      doc
+        .roundedRect(margin, noticeY, contentWidth, 62, 6)
+        .fillAndStroke("#FFF7ED", "#FED7AA");
+      doc
+        .font("Helvetica-Bold")
+        .fontSize(10)
+        .fillColor("#9A3412")
+        .text("Sicherheitshinweis", margin + 14, noticeY + 11, {
+          lineBreak: false,
+        });
+      doc
+        .font("Helvetica")
+        .fontSize(9)
+        .fillColor(colors.ink)
+        .text(
+          "Dieses Zugangsblatt ist vertraulich. Den Zugangscode nicht weitergeben, nicht digital speichern und nach der Erstausgabe sicher verwahren.",
+          margin + 14,
+          noticeY + 27,
+          { width: contentWidth - 28, lineGap: 1 }
+        );
+    });
+  });
 }
 
 function ensureSpace(
@@ -1880,6 +2083,28 @@ export async function createPrepTaskOverviewPdf(taskIds: number[]) {
 
 export async function createPostTaskOverviewPdf(taskIds: number[]) {
   return renderPostTaskOverviewPdf(await loadPlanningData(), taskIds);
+}
+
+async function loadMyCrewMateWordmarkBuffer() {
+  try {
+    const signedUrl = await storageGetSignedUrl(MYCREWMATE_WORDMARK.storageKey);
+    const response = await fetch(signedUrl);
+    if (!response.ok) return undefined;
+    return Buffer.from(await response.arrayBuffer());
+  } catch (error) {
+    console.warn("[PDF] MyCrewMate-Logo konnte nicht geladen werden:", error);
+    return undefined;
+  }
+}
+
+/** Lädt das offizielle Markenlogo und erzeugt die vertraulichen Zugangsblätter. */
+export async function createPlanningTeamAccessSheetsPdf(
+  sheets: PlanningTeamAccessSheet[]
+) {
+  return renderPlanningTeamAccessSheetsPdf(
+    sheets,
+    await loadMyCrewMateWordmarkBuffer()
+  );
 }
 
 /** Beschränkt Helfer-PDFs bei Bedarf auf einen einzelnen Ansprechpartner. */

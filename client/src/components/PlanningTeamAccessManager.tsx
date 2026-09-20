@@ -19,8 +19,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { downloadBase64File } from "@/lib/download";
 import { trpc } from "@/lib/trpc";
-import { KeyRound, LoaderCircle, Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { FileDown, LoaderCircle, Pencil, Plus, Printer, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
 import { type FormEvent, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -28,8 +29,6 @@ type FormState = {
   id: number | null;
   contactId: number | null;
   label: string;
-  password: string;
-  confirmation: string;
   eventIds: number[];
   currentAdminPassword: string;
 };
@@ -38,8 +37,6 @@ const EMPTY_FORM: FormState = {
   id: null,
   contactId: null,
   label: "",
-  password: "",
-  confirmation: "",
   eventIds: [],
   currentAdminPassword: "",
 };
@@ -80,6 +77,11 @@ export function PlanningTeamAccessManager() {
     label: string;
   } | null>(null);
   const [deletePassword, setDeletePassword] = useState("");
+  const [resetTarget, setResetTarget] = useState<{
+    id: number;
+    label: string;
+  } | null>(null);
+  const [resetPassword, setResetPassword] = useState("");
 
   const eventById = useMemo(
     () => new Map((availableEvents.data ?? []).map(event => [event.id, event])),
@@ -95,16 +97,11 @@ export function PlanningTeamAccessManager() {
     () => uniqueContactChoices(availableContacts.data ?? [], form.contactId),
     [availableContacts.data, form.contactId]
   );
-  const passwordIsRequired = form.id === null;
-  const passwordMatches = form.password === form.confirmation;
   const valid =
     form.label.trim().length >= 2 &&
     (form.id !== null || form.contactId !== null) &&
     form.eventIds.length > 0 &&
-    Boolean(form.currentAdminPassword) &&
-    (!passwordIsRequired || form.password.length >= 10) &&
-    (!form.password || form.password.length >= 10) &&
-    passwordMatches;
+    Boolean(form.currentAdminPassword);
 
   const invalidate = async () => {
     await Promise.all([
@@ -112,11 +109,12 @@ export function PlanningTeamAccessManager() {
       utils.auth.passwordStatus.invalidate(),
     ]);
   };
-  const createAccess = trpc.planningTeamAccesses.create.useMutation({
-    onSuccess: async () => {
+  const createAccess = trpc.planningTeamAccesses.createWithAccessSheet.useMutation({
+    onSuccess: async result => {
+      downloadBase64File(result.base64, result.mimeType, result.filename);
       await invalidate();
       setForm(EMPTY_FORM);
-      toast.success("Planungsteam-Zugang angelegt");
+      toast.success("Planungsteam-Zugang angelegt; Einmal-Zugangsblatt wird heruntergeladen");
     },
     onError: error => toast.error(error.message),
   });
@@ -138,6 +136,23 @@ export function PlanningTeamAccessManager() {
     },
     onError: error => toast.error(error.message),
   });
+  const resetAndPrint = trpc.planningTeamAccesses.resetAndPrint.useMutation({
+    onSuccess: async result => {
+      downloadBase64File(result.base64, result.mimeType, result.filename);
+      await invalidate();
+      setResetTarget(null);
+      setResetPassword("");
+      toast.success("Passwort zurückgesetzt; Einmal-Zugangsblatt wird heruntergeladen");
+    },
+    onError: error => toast.error(error.message),
+  });
+  const accessSheets = trpc.planningTeamAccesses.accessSheets.useMutation({
+    onSuccess: result => {
+      downloadBase64File(result.base64, result.mimeType, result.filename);
+      toast.success("Zugangsblätter ohne Passwörter werden heruntergeladen");
+    },
+    onError: error => toast.error(error.message),
+  });
 
   const submitDelete = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -148,6 +163,15 @@ export function PlanningTeamAccessManager() {
     });
   };
 
+  const submitReset = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!resetTarget || !resetPassword || resetAndPrint.isPending) return;
+    resetAndPrint.mutate({
+      id: resetTarget.id,
+      currentAdminPassword: resetPassword,
+    });
+  };
+
   const save = () => {
     if (!valid) return;
     const input = {
@@ -155,14 +179,12 @@ export function PlanningTeamAccessManager() {
       contactId: form.contactId,
       eventIds: form.eventIds,
       currentAdminPassword: form.currentAdminPassword,
-      ...(form.password ? { password: form.password } : {}),
     };
     if (form.id === null) {
       if (form.contactId === null) return;
       createAccess.mutate({
         ...input,
         contactId: form.contactId,
-        password: form.password,
       });
     } else {
       updateAccess.mutate({ ...input, id: form.id });
@@ -183,14 +205,13 @@ export function PlanningTeamAccessManager() {
       id: access.id,
       contactId: access.contactId,
       label: access.label,
-      password: "",
-      confirmation: "",
       eventIds: access.eventIds,
       currentAdminPassword: "",
     });
   };
 
-  const busy = createAccess.isPending || updateAccess.isPending;
+  const busy =
+    createAccess.isPending || updateAccess.isPending || resetAndPrint.isPending;
 
   return (
     <Card className="border-blue-200 shadow-sm" data-planning-team-access-manager>
@@ -206,6 +227,21 @@ export function PlanningTeamAccessManager() {
         </p>
       </CardHeader>
       <CardContent className="space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <p className="max-w-2xl text-xs text-slate-600">
+            Der reguläre Nachdruck enthält aus Sicherheitsgründen keine Zugangscodes. Für einen neuen Code bitte den Zugang gezielt zurücksetzen.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            className="shrink-0 border-blue-200 bg-white text-blue-800 hover:bg-blue-50"
+            disabled={accessSheets.isPending || (accesses.data ?? []).filter(access => access.contactId && access.contactName).length === 0}
+            onClick={() => accessSheets.mutate()}
+          >
+            {accessSheets.isPending ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2 h-4 w-4" />}
+            Zugangsblätter drucken (PDF)
+          </Button>
+        </div>
         <div className="overflow-hidden rounded-lg border border-slate-200">
           <div className="border-b bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
             Vorhandene Zugänge
@@ -247,9 +283,21 @@ export function PlanningTeamAccessManager() {
                             .join(" · ")}
                     </p>
                   </div>
-                  <div className="flex shrink-0 gap-2">
+                  <div className="flex shrink-0 flex-wrap gap-2">
                     <Button type="button" variant="outline" size="sm" onClick={() => editAccess(access)}>
                       <Pencil className="mr-1.5 h-3.5 w-3.5" /> Bearbeiten
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="border-amber-200 text-amber-800 hover:bg-amber-50 hover:text-amber-900"
+                      onClick={() => {
+                        setResetTarget({ id: access.id, label: access.contactName ?? access.label });
+                        setResetPassword("");
+                      }}
+                    >
+                      <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Passwort zurücksetzen &amp; Zugangsblatt drucken
                     </Button>
                     <Button
                       type="button"
@@ -275,8 +323,8 @@ export function PlanningTeamAccessManager() {
               </h3>
               <p className="text-xs text-slate-600">
                 {form.id === null
-                  ? "Passwort und mindestens eine Veranstaltung sind erforderlich."
-                  : "Ein neues Passwort ist optional; Freigabeänderungen melden die bestehende Sitzung ab."}
+                  ? "Der Zugangscode wird sicher erzeugt und ausschließlich im sofort heruntergeladenen Einmal-Zugangsblatt ausgegeben."
+                  : "Freigabeänderungen melden die bestehende Sitzung ab. Ein Passwortwechsel erfolgt getrennt mit einem neuen Einmal-Zugangsblatt."}
               </p>
             </div>
             {form.id !== null && (
@@ -286,7 +334,7 @@ export function PlanningTeamAccessManager() {
             )}
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4">
             <div className="space-y-1.5 md:col-span-2">
               <Label htmlFor="planning-access-contact">Ansprechpartner</Label>
               <Select
@@ -331,34 +379,6 @@ export function PlanningTeamAccessManager() {
                     ? "Für einen neuen Zugang bitte einen Ansprechpartner auswählen."
                     : "Altbestand ohne Ansprechpartner-Verknüpfung."}
               </p>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="planning-access-password">
-                {form.id === null ? "Passwort" : "Neues Passwort (optional)"}
-              </Label>
-              <Input
-                id="planning-access-password"
-                type="password"
-                autoComplete="new-password"
-                value={form.password}
-                placeholder="Mindestens 10 Zeichen"
-                disabled={busy}
-                onChange={event => setForm(current => ({ ...current, password: event.target.value }))}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="planning-access-password-confirmation">Passwort bestätigen</Label>
-              <Input
-                id="planning-access-password-confirmation"
-                type="password"
-                autoComplete="new-password"
-                value={form.confirmation}
-                disabled={busy}
-                onChange={event => setForm(current => ({ ...current, confirmation: event.target.value }))}
-              />
-              {form.confirmation && !passwordMatches && (
-                <p className="text-xs font-medium text-red-700">Die Passwörter stimmen nicht überein.</p>
-              )}
             </div>
           </div>
 
@@ -454,6 +474,55 @@ export function PlanningTeamAccessManager() {
                   ? "Wird gelöscht …"
                   : "Zugangsdaten dauerhaft löschen"}
               </button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={Boolean(resetTarget)}
+        onOpenChange={open => {
+          if (!open && !resetAndPrint.isPending) {
+            setResetTarget(null);
+            setResetPassword("");
+          }
+        }}
+      >
+        <DialogContent className="w-[calc(100%-2rem)] max-w-md">
+          <form className="space-y-4" onSubmit={submitReset}>
+            <DialogHeader>
+              <DialogTitle>Passwort zurücksetzen &amp; Zugangsblatt drucken</DialogTitle>
+              <DialogDescription>
+                Für „{resetTarget?.label}“ wird ein neuer Zugangscode erzeugt. Bestehende Sitzungen verlieren sofort ihren Zugriff. Der Klartextcode erscheint nur im direkt heruntergeladenen PDF.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label htmlFor="planning-access-reset-password">Administratorpasswort</Label>
+              <Input
+                id="planning-access-reset-password"
+                type="password"
+                autoComplete="current-password"
+                value={resetPassword}
+                disabled={resetAndPrint.isPending}
+                onChange={event => setResetPassword(event.target.value)}
+              />
+            </div>
+            <DialogFooter className="flex flex-row flex-nowrap items-center justify-end gap-3 sm:space-x-0">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={resetAndPrint.isPending}
+                onClick={() => setResetTarget(null)}
+              >
+                Abbrechen
+              </Button>
+              <Button
+                type="submit"
+                className="shrink-0 whitespace-nowrap bg-amber-600 text-white hover:bg-amber-700"
+                disabled={!resetTarget || !resetPassword || resetAndPrint.isPending}
+              >
+                {resetAndPrint.isPending ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                Neues Passwort &amp; PDF erzeugen
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
