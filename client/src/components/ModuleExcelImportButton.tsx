@@ -33,10 +33,12 @@ const readBase64 = (file: File) =>
 export function ModuleExcelImportButton({
   area,
   label,
+  buttonLabel = "Excel importieren",
   compact = true,
 }: {
   area: ModuleImportArea;
   label: string;
+  buttonLabel?: string;
   compact?: boolean;
 }) {
   const { user } = useAuth();
@@ -133,7 +135,7 @@ export function ModuleExcelImportButton({
         ) : (
           <FileSpreadsheet className="h-4 w-4" />
         )}
-        Excel importieren
+        {buttonLabel}
       </Button>
 
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>

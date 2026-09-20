@@ -142,13 +142,6 @@ type HelperTooltipData = {
   Record<AvailabilityField, AvailabilityValue> &
   Partial<Record<AvailabilityTimeField, string | null>>;
 
-type PlanStatusCounts = {
-  total: number;
-  open: number;
-  knapp: number;
-  ok: number;
-};
-
 const AVAILABILITY_PILL_CLASS: Record<AvailabilityValue, string> = {
   ja: "border-emerald-200 bg-emerald-50 text-emerald-800",
   nein: "border-rose-200 bg-rose-50 text-rose-800",
@@ -312,62 +305,6 @@ function HelperDropdownFeedbackBadge({
     </span>
   );
   return badge;
-}
-
-function PlanStatusBar({
-  counts,
-  isLoading,
-}: {
-  counts: PlanStatusCounts;
-  isLoading: boolean;
-}) {
-  const chips = [
-    {
-      label: "Schichten",
-      value: counts.total,
-      className: "border-slate-200 bg-slate-50 text-slate-800",
-      badge: null,
-    },
-    {
-      label: "Offen",
-      value: counts.open,
-      className: "border-red-200 bg-red-50 text-red-800",
-      badge: "OFFEN",
-    },
-    {
-      label: "Knapp besetzt",
-      value: counts.knapp,
-      className: "border-amber-200 bg-amber-50 text-amber-900",
-      badge: "KNAPP",
-    },
-    {
-      label: "Voll besetzt",
-      value: counts.ok,
-      className: "border-emerald-200 bg-emerald-50 text-emerald-900",
-      badge: "OK",
-    },
-  ] as const;
-
-  return (
-    <section
-      aria-label="Status des Einsatzplans"
-      data-plan-status-bar
-      className="inline-flex min-w-0 flex-wrap overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm xl:flex-none"
-    >
-      {chips.map(chip => (
-        <span
-          key={chip.label}
-          className={`inline-flex min-h-8 items-center gap-1.5 border-r border-slate-200 px-2.5 py-1 text-xs font-medium whitespace-nowrap last:border-r-0 ${chip.className}`}
-        >
-          <span>{chip.label}:</span>
-          <strong className="text-sm leading-none tabular-nums">
-            {isLoading ? "–" : chip.value}
-          </strong>
-          {chip.badge && <StatusBadge status={chip.badge} />}
-        </span>
-      ))}
-    </section>
-  );
 }
 
 function HighlightedText({ text, query }: { text: string; query: string }) {
@@ -899,15 +836,6 @@ export default function Plan() {
         .sort((left, right) => left.localeCompare(right, "de")),
     [areas]
   );
-  const planStatusCounts = useMemo<PlanStatusCounts>(
-    () => ({
-      total: evals.length,
-      open: evals.filter(entry => entry.status === "OFFEN").length,
-      knapp: evals.filter(entry => entry.status === "KNAPP").length,
-      ok: evals.filter(entry => entry.status === "OK").length,
-    }),
-    [evals]
-  );
   const contactNameById = useMemo(
     () => new Map(contacts.map(contact => [contact.id, contact.name])),
     [contacts]
@@ -1345,22 +1273,24 @@ export default function Plan() {
       </div>
       <div
         data-plan-action-header
-        className="flex flex-col gap-3 min-[1440px]:flex-row min-[1440px]:items-start min-[1440px]:justify-between"
+        className="flex w-full justify-end"
       >
-        <PlanStatusBar counts={planStatusCounts} isLoading={isLoading} />
         {canEditPlan && (
-          <div className="w-full shrink-0 min-[1440px]:ml-auto min-[1440px]:w-[42rem]">
+          <div className="w-full shrink-0 min-[1280px]:w-[46rem]">
             <div
               data-plan-data-actions
-              className="flex flex-wrap items-center justify-end gap-2 [&>[data-slot=button]]:h-9 [&>[data-slot=button]]:min-w-0 [&>[data-slot=button]]:whitespace-nowrap"
+              className="flex flex-nowrap items-center justify-between gap-2 overflow-x-auto pb-1 whitespace-nowrap [&>[data-slot=button]]:h-9 [&>[data-slot=button]]:shrink-0 [&>[data-slot=button]]:whitespace-nowrap"
             >
-              <ModuleExcelImportButton area="EINSATZPLAN" label="Einsatzplan" />
+              <ModuleExcelImportButton
+                area="EINSATZPLAN"
+                label="Einsatzplan"
+                buttonLabel="Excel Import"
+              />
               <CopyPreviousPlanButton />
               <ClearPlanAssignmentsButton onCleared={() => setQ("")} />
               <ResetAreaButton
                 area="shifts"
                 label="Einsatzplan"
-                mobileButtonLabel="Plan zurücksetzen"
               />
             </div>
             <Button

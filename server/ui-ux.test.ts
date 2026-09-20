@@ -903,35 +903,18 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(styles).toContain("will-change: opacity, transform");
   });
 
-  it("verschiebt die Einsatzplan-Kennzahlen als kompakte Live-Statusleiste in den Einsatzplan", () => {
+  it("zeigt im Einsatzplankopf keine Statusbadges mehr", () => {
     const dashboard = source("client/src/pages/Dashboard.tsx");
     const plan = source("client/src/pages/Plan.tsx");
 
     expect(dashboard).not.toContain('title: "Einsatzplanung"');
-    expect(plan).toContain("function PlanStatusBar");
-    expect(plan).toContain('data-plan-status-bar');
-    expect(plan).toContain('aria-label="Status des Einsatzplans"');
-    expect(plan).toContain('label: "Schichten"');
-    expect(plan).toContain('label: "Offen"');
-    expect(plan).toContain('label: "Knapp besetzt"');
-    expect(plan).toContain('label: "Voll besetzt"');
-    expect(plan).toContain('badge: "KNAPP"');
-    expect(plan).toContain('badge: "OK"');
-    expect(plan).toContain("const planStatusCounts = useMemo<PlanStatusCounts>");
-    expect(plan).toContain('entry.status === "OFFEN"');
-    expect(plan).toContain('entry.status === "KNAPP"');
-    expect(plan).toContain('entry.status === "OK"');
+    expect(plan).not.toContain("function PlanStatusBar");
+    expect(plan).not.toContain('data-plan-status-bar');
+    expect(plan).not.toContain("PlanStatusCounts");
+    expect(plan).not.toContain("planStatusCounts");
     expect(plan).toContain("utils.plan.evaluate.invalidate()");
-    expect(plan).toContain("<PlanStatusBar counts={planStatusCounts} isLoading={isLoading} />");
     expect(plan).toContain("data-plan-action-header");
-    expect(plan).toContain(
-      "min-[1440px]:flex-row min-[1440px]:items-start min-[1440px]:justify-between"
-    );
-    expect(plan).toContain(
-      "inline-flex min-w-0 flex-wrap overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
-    );
-    expect(plan).toContain("border-r border-slate-200");
-    expect(plan).toContain("xl:flex-none");
+    expect(plan).toContain('className="flex w-full justify-end"');
   });
 
   it("bietet im Schichtdialog bestehende Bereiche zur Auswahl und erlaubt neue Freitexteingaben", () => {
@@ -1489,7 +1472,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(pdfExport).toContain("includeMaterials");
   });
 
-  it("ordnet Einsatzplanaktionen als vierteilige Datenzeile mit vollbreiter Hauptaktion an", () => {
+  it("ordnet Einsatzplanaktionen als einzeilige Viererleiste mit vollbreiter Hauptaktion an", () => {
     const plan = source("client/src/pages/Plan.tsx");
     const resetButton = source("client/src/components/ResetAreaButton.tsx");
     const clearAssignments = source(
@@ -1501,18 +1484,16 @@ describe("UI- und Mobile-UX-Regeln", () => {
     );
 
     expect(plan).toContain("data-plan-data-actions");
-    expect(plan).toContain("flex flex-wrap items-center justify-end gap-2");
+    expect(plan).toContain("flex flex-nowrap items-center justify-between gap-2 overflow-x-auto pb-1 whitespace-nowrap");
     expect(plan).toContain('[&>[data-slot=button]]:whitespace-nowrap');
-    expect(plan).toContain("min-[1440px]:w-[42rem]");
+    expect(plan).toContain("min-[1280px]:w-[46rem]");
     expect(plan).toContain(
       'className="mt-2 w-full bg-blue-600 px-4 font-semibold text-white shadow-sm hover:bg-blue-700 focus-visible:ring-blue-500"'
     );
-    expect(plan).toContain("<ModuleExcelImportButton area=\"EINSATZPLAN\" label=\"Einsatzplan\" />");
+    expect(plan).toContain('buttonLabel="Excel Import"');
     expect(plan).toContain("<CopyPreviousPlanButton />");
     expect(plan).toContain("<ClearPlanAssignmentsButton onCleared={() => setQ(\"\")} />");
-    expect(plan).toContain('mobileButtonLabel="Plan zurücksetzen"');
-    expect(resetButton).toContain('<span className="sm:hidden">{mobileButtonLabel}</span>');
-    expect(resetButton).toContain('<span className="hidden sm:inline">');
+    expect(plan).not.toContain('mobileButtonLabel="Plan zurücksetzen"');
     expect(resetButton).toContain(
       "inline-flex items-center gap-2 whitespace-nowrap border-rose-200"
     );
@@ -1523,6 +1504,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
       expect(actionButton).toContain("px-3 py-1.5");
     }
     expect(clearAssignments).toContain('<UserMinus className="h-4 w-4" />');
+    expect(excelImport).toContain('buttonLabel = "Excel importieren"');
+    expect(excelImport).toContain("buttonLabel?: string");
+    expect(excelImport).toContain("{buttonLabel}");
   });
 
   it("vereinheitlicht die mobilen Modulkopfbereiche bis 1024px mit Aktionsraster und Vollbreitenfeldern", () => {
