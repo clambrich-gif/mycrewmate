@@ -328,7 +328,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(security).toContain("Sperre für Planungsteam aufheben");
     expect(security).toContain('user?.role !== "admin"');
     expect(layout).toContain("passwordStatus.data?.planningTeamLocked");
-    expect(layout).toContain("Administratoren");
+    expect(layout).toContain("Nach 5 Fehlversuchen greift eine zeitbasierte Sperre (Cooldown).");
     expect(layout).toContain("Zugang für das Planungsteam gesperrt");
     expect(layout).toContain("Bitte kontaktieren Sie einen Administrator.");
     expect(layout).toContain("login-lock-alert");
@@ -1139,7 +1139,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain("text-center text-[11px] font-medium");
     expect(layout).toContain("bg-transparent object-contain");
     expect(layout).toContain("items-center border-b bg-white px-4 py-3");
-    expect(layout).toContain("flex flex-col border-t px-3 pt-0.5 pb-1 leading-none");
+    expect(layout).toContain("flex flex-col border-t border-slate-200/70 px-3 pt-0.5 pb-1 leading-none");
     expect(layout).toContain('className="h-6 w-6 shrink-0"');
     expect(layout).toContain('className="mt-0.5 block w-full whitespace-nowrap rounded px-0 text-center text-[9px] leading-none text-gray-400');
     expect(legalFooter).toContain(
@@ -1248,7 +1248,14 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain("rounded-lg bg-blue-600 py-2.5 text-base font-semibold text-white");
     expect(layout).toContain(': "Anmelden"');
     expect(layout).toContain("Als Hauptadministrator via Manus anmelden");
-    expect(layout).toContain("text-xs leading-relaxed text-gray-400");
+    expect(layout).toContain("VEREINS- &amp; EVENTPLANUNG");
+    expect(layout).not.toContain("Geschützte Helfer-Planung für Organisatoren");
+    expect(layout).toContain("Nach 5 Fehlversuchen greift eine zeitbasierte Sperre (Cooldown).");
+    expect(layout).toContain("mt-2 border-t border-slate-200 pt-1 text-center");
+    expect(layout).toContain("mt-2 pb-1");
+    expect(layout.indexOf("Nach 5 Fehlversuchen greift eine zeitbasierte Sperre (Cooldown).")).toBeLessThan(
+      layout.lastIndexOf("Hauptadministrator</p>")
+    );
     expect(layout).toContain('event.getModifierState("CapsLock")');
     expect(layout).toContain('id="password-caps-lock-warning"');
     expect(layout).toContain("Feststelltaste ist aktiviert.");

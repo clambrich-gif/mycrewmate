@@ -535,17 +535,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated) {
     return (
       <div className="relative grid min-h-[100dvh] place-items-center bg-gradient-to-br from-[oklch(0.97_0.02_250)] to-[oklch(0.92_0.04_240)] px-4 py-5 sm:p-6">
-        <div className="w-full max-w-md rounded-2xl border border-white/80 bg-white/90 p-5 text-card-foreground shadow-xl backdrop-blur-sm sm:p-8">
-          <img
-            {...logoLoading}
-            src={MYCREWMATE_WORDMARK}
-            alt="MyCrewMate"
-            className="mx-auto mb-5 h-10 w-auto max-w-full bg-transparent object-contain sm:h-12"
-          />
-          <div className="text-center">
+        <div className="w-full max-w-md rounded-2xl border border-white/80 bg-white/90 p-5 text-card-foreground shadow-xl backdrop-blur-sm sm:p-6">
+          <div className="mb-4 text-center">
             <h1 className="sr-only">MyCrewMate</h1>
-            <p className="mb-6 text-muted-foreground">
-              Geschützte Helfer-Planung für Organisatoren
+            <img
+              {...logoLoading}
+              src={MYCREWMATE_WORDMARK}
+              alt="MyCrewMate"
+              className="mx-auto h-10 w-auto max-w-full bg-transparent object-contain sm:h-12"
+            />
+            <p className="mt-1 text-[11px] font-medium tracking-[0.08em] text-slate-600">
+              VEREINS- &amp; EVENTPLANUNG
             </p>
           </div>
 
@@ -837,22 +837,22 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </form>
           )}
 
-          <div className="mt-5 border-t border-slate-200 pt-4 text-center">
-            <p className="text-xs font-medium text-slate-500">Hauptadministrator</p>
-            <button
-              type="button"
-              className="mt-1 inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md px-2 text-xs font-medium text-slate-500 underline-offset-4 hover:text-slate-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-              onClick={() => startLogin()}
-            >
-              <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
-              Als Hauptadministrator via Manus anmelden
-            </button>
+          <div className="mt-2 border-t border-slate-200 pt-1 text-center">
+            <p className="text-[10px] leading-tight text-gray-400">
+              Nach 5 Fehlversuchen greift eine zeitbasierte Sperre (Cooldown).
+            </p>
+            <div className="mt-2 pb-1">
+              <p className="text-xs font-medium text-slate-500">Hauptadministrator</p>
+              <button
+                type="button"
+                className="mt-0.5 inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md px-2 text-xs font-medium text-slate-500 underline-offset-4 hover:text-slate-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                onClick={() => startLogin()}
+              >
+                <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                Als Hauptadministrator via Manus anmelden
+              </button>
+            </div>
           </div>
-          <p className="mt-4 text-center text-xs leading-relaxed text-gray-400">
-            Nach fünf Fehlversuchen greift für den jeweiligen Anschluss eine
-            zeitbasierte Abklingzeit (Cooldown). Eine dauerhafte Sperre kann
-            nur gezielt durch Administratoren verhängt werden.
-          </p>
             </div>
           <div className="absolute inset-x-4 bottom-3 text-center sm:bottom-4">
             <LegalFooterLinks onOpenImpressum={() => setImpressumOpen(true)} />
@@ -1277,7 +1277,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             }
           )}
         </nav>
-        <div className="flex flex-col border-t px-3 pt-0.5 pb-1 leading-none">
+        <div className="flex flex-col border-t border-slate-200/70 px-3 pt-0.5 pb-1 leading-none">
           <div className="flex items-center justify-between gap-2 leading-none">
             <div className="min-w-0">
               <div className="truncate text-xs font-medium leading-none">
