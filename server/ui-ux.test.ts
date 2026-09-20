@@ -972,7 +972,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain('aria-label="Warnungsfilter"');
     expect(plan).toContain("Nur Doppelbelegungen");
     expect(plan).toContain("Nur Ausfälle");
-    expect(plan).toContain("Filter aufheben");
+    expect(plan).not.toContain("PLAN_WARNING_FILTERS");
+    expect(plan).not.toContain('warningFilter !== "alle" && (');
     expect(plan).toContain("Keine Schichten mit Doppelbelegungen gefunden.");
     expect(plan).toContain("Keine Schichten mit Ausfällen gefunden.");
     expect(taskList).toContain("parseTaskStatusFilter");

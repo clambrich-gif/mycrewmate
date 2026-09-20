@@ -58,7 +58,6 @@ import { shiftsOverlap, type ShiftTimeLike } from "@shared/shift-time";
 import {
   PLAN_DAY_QUERY_KEY,
   PLAN_HELPER_QUERY_KEY,
-  PLAN_WARNING_FILTERS,
   PLAN_WARNING_QUERY_KEY,
   PLAN_STATUS_QUERY_KEY,
   planStatusMatchesFilter,
@@ -1439,40 +1438,6 @@ export default function Plan() {
             </div>
           </CardContent>
         </Card>
-      )}
-
-      {warningFilter !== "alle" && (
-        <div
-          className="flex flex-col gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950 shadow-sm sm:flex-row sm:items-center sm:justify-between"
-        >
-          <div
-            className="flex min-w-0 items-start gap-3"
-            role="status"
-            aria-live="polite"
-          >
-            <AlertTriangle
-              className="mt-0.5 size-5 shrink-0 text-amber-700"
-              aria-hidden="true"
-            />
-            <div className="min-w-0">
-              <p className="font-semibold">
-                {PLAN_WARNING_FILTERS[warningFilter].label}
-              </p>
-              <p className="text-sm text-amber-800">
-                {PLAN_WARNING_FILTERS[warningFilter].summary}
-              </p>
-            </div>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="shrink-0 border-amber-400 bg-white text-amber-950 hover:bg-amber-100"
-            onClick={() => updateWarningFilter("alle")}
-          >
-            Filter aufheben
-          </Button>
-        </div>
       )}
 
       {dashboardHelperId && (
