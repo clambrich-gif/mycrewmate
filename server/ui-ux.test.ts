@@ -2632,6 +2632,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(manager).toContain("{contact.name}");
     expect(manager).not.toContain("{contact.name} · {contact.year} · {contact.eventName}");
     expect(manager).toContain("Freigegebene Veranstaltungen");
+    expect(manager).toContain("const submitDelete");
+    expect(manager).toContain("<form className=\"space-y-4\" onSubmit={submitDelete}>");
+    expect(manager).toContain("flex flex-row flex-nowrap justify-end gap-3");
+    expect(manager).toContain('type="submit"');
+    expect(manager).toContain("shrink-0 whitespace-nowrap");
+    expect(manager).toContain("overflow-visible");
 
     expect(contacts).toContain("Passwort / Zugangscode (optional)");
     expect(contacts).toContain("Neues Passwort (optional)");

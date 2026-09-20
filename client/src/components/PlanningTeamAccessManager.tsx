@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
 import { KeyRound, LoaderCircle, Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { type FormEvent, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 type FormState = {
@@ -138,6 +138,15 @@ export function PlanningTeamAccessManager() {
     },
     onError: error => toast.error(error.message),
   });
+
+  const submitDelete = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!deleteTarget || !deletePassword || deleteAccess.isPending) return;
+    deleteAccess.mutate({
+      id: deleteTarget.id,
+      currentAdminPassword: deletePassword,
+    });
+  };
 
   const save = () => {
     if (!valid) return;
@@ -406,41 +415,46 @@ export function PlanningTeamAccessManager() {
           }
         }}
       >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Planungsteam-Zugang löschen</DialogTitle>
-            <DialogDescription>
-              Der Zugang „{deleteTarget?.label}“ wird dauerhaft entfernt. Alle dazugehörigen Sitzungen verlieren sofort ihren Zugriff.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="planning-access-delete-password">Administratorpasswort</Label>
-            <Input
-              id="planning-access-delete-password"
-              type="password"
-              autoComplete="current-password"
-              value={deletePassword}
-              disabled={deleteAccess.isPending}
-              onChange={event => setDeletePassword(event.target.value)}
-            />
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" disabled={deleteAccess.isPending} onClick={() => setDeleteTarget(null)}>
-              Abbrechen
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={!deleteTarget || !deletePassword || deleteAccess.isPending}
-              onClick={() => {
-                if (!deleteTarget) return;
-                deleteAccess.mutate({ id: deleteTarget.id, currentAdminPassword: deletePassword });
-              }}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              {deleteAccess.isPending ? "Wird gelöscht …" : "Zugang löschen"}
-            </Button>
-          </DialogFooter>
+        <DialogContent className="w-[calc(100%-2rem)] max-w-md overflow-visible">
+          <form className="space-y-4" onSubmit={submitDelete}>
+            <DialogHeader>
+              <DialogTitle>Planungsteam-Zugang löschen</DialogTitle>
+              <DialogDescription>
+                Der Zugang „{deleteTarget?.label}“ wird dauerhaft entfernt. Alle dazugehörigen Sitzungen verlieren sofort ihren Zugriff.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label htmlFor="planning-access-delete-password">Administratorpasswort</Label>
+              <Input
+                id="planning-access-delete-password"
+                type="password"
+                autoComplete="current-password"
+                value={deletePassword}
+                disabled={deleteAccess.isPending}
+                onChange={event => setDeletePassword(event.target.value)}
+              />
+            </div>
+            <DialogFooter className="flex flex-row flex-nowrap justify-end gap-3 sm:space-x-0">
+              <Button
+                type="button"
+                variant="outline"
+                className="shrink-0 whitespace-nowrap"
+                disabled={deleteAccess.isPending}
+                onClick={() => setDeleteTarget(null)}
+              >
+                Abbrechen
+              </Button>
+              <Button
+                type="submit"
+                variant="destructive"
+                className="shrink-0 whitespace-nowrap"
+                disabled={!deleteTarget || !deletePassword || deleteAccess.isPending}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                {deleteAccess.isPending ? "Wird gelöscht …" : "Zugang löschen"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </Card>
