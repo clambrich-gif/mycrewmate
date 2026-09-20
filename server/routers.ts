@@ -905,6 +905,63 @@ export const appRouter = router({
     }),
   }),
 
+  branding: router({
+    current: activeSessionProcedure.query(async () => {
+      const settings = await db.getAppSettings();
+      return {
+        tenantLogoKey: settings?.tenantLogoKey ?? null,
+        tenantLogoUrl: settings?.tenantLogoKey ? "/api/tenant-logo" : null,
+      };
+    }),
+    uploadTenantLogo: accountAdminProcedure
+      .input(
+        z.object({
+          base64: z.string().max(4_000_000, "Vereinslogo ist größer als 3 MB"),
+          mimeType: z.enum(["image/png", "image/jpeg"]),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const buffer = Buffer.from(input.base64, "base64");
+        if (!buffer.length || buffer.length > 3_000_000) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Bitte ein PNG- oder JPEG-Vereinslogo bis 3 MB auswählen",
+          });
+        }
+        const hasValidSignature =
+          input.mimeType === "image/png"
+            ? buffer.length >= 8 &&
+              buffer.subarray(0, 8).equals(
+                Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])
+              )
+            : buffer.length >= 3 &&
+              buffer[0] === 0xff &&
+              buffer[1] === 0xd8 &&
+              buffer[2] === 0xff;
+        if (!hasValidSignature) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Die Bilddatei passt nicht zum ausgewählten Dateiformat",
+          });
+        }
+        const extension = input.mimeType === "image/png" ? "png" : "jpg";
+        const uploaded = await storagePut(
+          `tenant-logos/ui/tenant-logo.${extension}`,
+          buffer,
+          input.mimeType
+        );
+        await db.updateTenantLogo({
+          tenantLogoKey: uploaded.key,
+          tenantLogoUrl: uploaded.url,
+        });
+        return { ...uploaded, tenantLogoUrl: "/api/tenant-logo" };
+      }),
+    clearTenantLogo: accountAdminProcedure.mutation(async () => {
+      await db.updateTenantLogo({ tenantLogoKey: null, tenantLogoUrl: null });
+      return { success: true } as const;
+    }),
+  }),
+
   reset: router({
     area: adminProcedure
       .input(

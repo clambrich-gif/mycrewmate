@@ -12,6 +12,7 @@ import { registerHelpVideoRoutes } from "../help-video-routes";
 import { registerEventPdfImageRoutes } from "../event-pdf-image-routes";
 import { registerPublicHelperPdfRoutes } from "../public-helper-pdf-routes";
 import { registerLocationLogoRoutes } from "../location-logo-routes";
+import { registerTenantLogoRoutes } from "../tenant-logo-routes";
 import { handleTeamNotesCleanupHeartbeat } from "../chat-cleanup-heartbeat";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -47,6 +48,7 @@ async function startServer() {
   registerEventPdfImageRoutes(app);
   registerPublicHelperPdfRoutes(app);
   registerLocationLogoRoutes(app);
+  registerTenantLogoRoutes(app);
   registerStorageProxy(app);
   registerOAuthRoutes(app);
   app.post("/api/scheduled/team-notes-cleanup", handleTeamNotesCleanupHeartbeat);

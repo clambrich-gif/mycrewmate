@@ -42,6 +42,7 @@ const dbMocks = vi.hoisted(() => ({
   setAdminPasswordHash: vi.fn(),
   getAppSettings: vi.fn(),
   updateAppSettings: vi.fn(),
+  updateTenantLogo: vi.fn(),
   getEvent: vi.fn(),
   updateCurrentEventPdfImage: vi.fn(),
   createEvent: vi.fn(),
@@ -599,6 +600,54 @@ describe("Planungs-API", () => {
       logoFallback: "brand",
     });
     expect(result.logoKey).not.toBe("global-alt.png");
+  });
+
+  it("verwaltet das globale Vereinslogo getrennt vom PDF-Event-Logo", async () => {
+    dbMocks.getAppSettings.mockResolvedValue({
+      id: 1,
+      eventName: "MyEifelRide",
+      eventYear: "2027",
+      helperPdfTitle: "Aufgabenübersicht",
+      blankPlanTitle: "Einsatzplan – Blanko",
+      contactLabel: "Ansprechpartner",
+      footerText: "",
+      tenantLogoKey: "tenant-logos/ui/tenant-logo.png",
+      tenantLogoUrl: "/manus-storage/tenant-logos/ui/tenant-logo.png",
+      logoKey: null,
+      logoUrl: null,
+      extraColumns: "[]",
+      blankRowsPerShift: 0,
+      updatedAt: new Date(),
+    });
+
+    const caller = appRouter.createCaller(ctx);
+    const current = await caller.branding.current();
+    expect(current).toEqual({
+      tenantLogoKey: "tenant-logos/ui/tenant-logo.png",
+      tenantLogoUrl: "/api/tenant-logo",
+    });
+
+    const samplePng = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 1]).toString("base64");
+    await caller.branding.uploadTenantLogo({
+      base64: samplePng,
+      mimeType: "image/png",
+    });
+
+    expect(storageMocks.storagePut).toHaveBeenCalledWith(
+      "tenant-logos/ui/tenant-logo.png",
+      expect.any(Buffer),
+      "image/png"
+    );
+    expect(dbMocks.updateTenantLogo).toHaveBeenCalledWith({
+      tenantLogoKey: expect.any(String),
+      tenantLogoUrl: expect.any(String),
+    });
+
+    await caller.branding.clearTenantLogo();
+    expect(dbMocks.updateTenantLogo).toHaveBeenCalledWith({
+      tenantLogoKey: null,
+      tenantLogoUrl: null,
+    });
   });
 
   it("erstellt die Material-Packliste ausschließlich aus der sichtbaren Auswahl", async () => {

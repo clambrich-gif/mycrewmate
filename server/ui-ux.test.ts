@@ -1126,20 +1126,21 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout.match(/alt="MyCrewMate"/g)).toHaveLength(3);
   });
 
-  it("liefert eine administratorgeschützte Vereinslogo-Steuerung neben der Wortmarke", () => {
+  it("liefert eine administratorgeschützte Vereinslogo-Steuerung neben der Statusanzeige", () => {
     const layout = source("client/src/components/Layout.tsx");
 
-    expect(layout).toContain("function ClubLogoControl");
-    expect(layout).toContain("trpc.pdf.uploadLogo.useMutation");
-    expect(layout).toContain("utils.events.list.invalidate()");
+    expect(layout).toContain("function ClubStatusLogoButton");
+    expect(layout).toContain("function ClubLogoModal");
+    expect(layout).toContain("trpc.branding.uploadTenantLogo.useMutation");
+    expect(layout).toContain("utils.branding.current.invalidate()");
     expect(layout).toContain('accept="image/png,image/jpeg"');
     expect(layout).toContain("MAX_CLUB_LOGO_BYTES");
-    expect(layout).toContain('aria-label={label}');
-    expect(layout).toContain('"group relative shrink-0"');
-    expect(layout).toContain('"cursor-pointer hover:border-blue-300 hover:shadow-md"');
-    expect(layout).toContain("Vereinslogo hochladen");
-    expect(layout).toContain("/api/pdf/event-image/${year}/${selectedEvent.id}");
-    expect(layout.match(/<ClubLogoControl/g)).toHaveLength(3);
+    expect(layout).toContain('"relative grid h-7 w-7 shrink-0 place-items-center overflow-hidden rounded-full border border-slate-200 bg-white p-0.5 shadow-sm transition');
+    expect(layout).toContain("Vereinslogo ändern");
+    expect(layout).toContain("branding.data?.tenantLogoUrl");
+    expect(layout.match(/<ClubStatusLogoButton/g)).toHaveLength(3);
+    expect(layout).toContain("<ClubLogoModal");
+    expect(layout).not.toContain("trpc.pdf.uploadLogo.useMutation");
   });
 
   it("zeigt in der Hilfe ausschließlich das Video der aktiven Rolle", () => {

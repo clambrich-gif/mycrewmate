@@ -462,6 +462,8 @@ export const appSettings = mysqlTable("app_settings", {
     .notNull(),
   footerText: varchar("footerText", { length: 300 }).default("").notNull(),
   whatsAppMessageTemplate: mediumtext("whatsAppMessageTemplate"),
+  tenantLogoKey: varchar("tenantLogoKey", { length: 500 }),
+  tenantLogoUrl: varchar("tenantLogoUrl", { length: 700 }),
   logoKey: varchar("logoKey", { length: 500 }),
   logoUrl: varchar("logoUrl", { length: 700 }),
   extraColumns: text("extraColumns").notNull(),

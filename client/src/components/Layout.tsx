@@ -16,6 +16,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -139,29 +140,35 @@ function LazyProjectStorageControls() {
   );
 }
 
-function ClubLogoControl({
+function ClubLogoModal({
+  open,
+  onOpenChange,
   logoUrl,
-  canManage,
-  compact = false,
 }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   logoUrl: string | null;
-  canManage: boolean;
-  compact?: boolean;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const utils = trpc.useUtils();
-  const uploadLogo = trpc.pdf.uploadLogo.useMutation({
+  const uploadLogo = trpc.branding.uploadTenantLogo.useMutation({
     onSuccess: async () => {
-      await Promise.all([
-        utils.events.list.invalidate(),
-        utils.pdf.settings.invalidate(),
-      ]);
-      toast.success("Vereinslogo wurde aktualisiert");
+      await utils.branding.current.invalidate();
+      toast.success("Vereinslogo wurde erfolgreich aktualisiert");
+      onOpenChange(false);
+    },
+    onError: error => toast.error(error.message),
+  });
+  const clearLogo = trpc.branding.clearTenantLogo.useMutation({
+    onSuccess: async () => {
+      await utils.branding.current.invalidate();
+      toast.success("Vereinslogo wurde entfernt");
+      onOpenChange(false);
     },
     onError: error => toast.error(error.message),
   });
 
-  const onFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+  const onFileSelected = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
     event.target.value = "";
     if (!file) return;
@@ -180,53 +187,112 @@ function ClubLogoControl({
       });
     } catch (error) {
       if (!(error instanceof Error)) {
-        toast.error("Vereinslogo konnte nicht hochgeladen werden.");
+        toast.error("Vereinslogo konnte nicht gespeichert werden.");
       }
     }
   };
 
-  const label = logoUrl ? "Vereinslogo ändern" : "Vereinslogo hochladen";
-
   return (
-    <div className="group relative shrink-0">
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/png,image/jpeg"
-        className="hidden"
-        onChange={event => void onFileChange(event)}
-      />
-      <button
-        type="button"
-        aria-label={label}
-        title={canManage ? label : "Vereinslogo"}
-        disabled={!canManage || uploadLogo.isPending}
-        className={cn(
-          "relative grid place-items-center overflow-hidden rounded-xl border border-slate-200 bg-white p-1 shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
-          compact ? "h-10 w-10" : "h-12 w-12",
-          canManage
-            ? "cursor-pointer hover:border-blue-300 hover:shadow-md"
-            : "cursor-default",
-          uploadLogo.isPending && "animate-pulse"
-        )}
-        onClick={() => inputRef.current?.click()}
-      >
-        {logoUrl ? (
-          <img
-            src={logoUrl}
-            alt="Vereinslogo"
-            className="h-full w-full object-contain"
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md bg-white text-slate-950">
+        <DialogHeader>
+          <DialogTitle>Vereinslogo ändern</DialogTitle>
+          <DialogDescription>
+            Lade ein globales Vereinslogo für die Benutzeroberfläche hoch. Das Logo
+            wird neben der Statusanzeige dargestellt und bleibt unabhängig vom
+            Veranstaltungs-PDF-Logo.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col items-center gap-4 py-2">
+          <div className="grid h-24 w-24 place-items-center overflow-hidden rounded-full border border-slate-200 bg-white p-2 shadow-sm">
+            <img
+              {...logoLoading}
+              src={logoUrl || MYCREWMATE_ICON}
+              alt="Vereinslogo"
+              className="h-full w-full object-contain"
+            />
+          </div>
+          <p className="text-center text-xs text-muted-foreground">
+            PNG oder JPEG bis 3 MB. Ohne eigenes Logo wird das MyCrewMate-Symbol
+            verwendet.
+          </p>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg"
+            className="hidden"
+            onChange={event => void onFileSelected(event)}
           />
-        ) : (
-          <FileImage className="h-5 w-5 text-slate-400" aria-hidden="true" />
-        )}
-        {canManage && (
-          <span className="absolute inset-x-0 bottom-0 flex h-4 items-center justify-center bg-slate-900/70 text-[8px] font-semibold text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-            {logoUrl ? "Ändern" : "+ Logo"}
-          </span>
-        )}
-      </button>
-    </div>
+        </div>
+        <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
+          {logoUrl ? (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={clearLogo.isPending || uploadLogo.isPending}
+              className="text-red-600 hover:bg-red-50 hover:text-red-700"
+              onClick={() => void clearLogo.mutateAsync()}
+            >
+              {clearLogo.isPending ? "Entferne …" : "Logo entfernen"}
+            </Button>
+          ) : (
+            <div />
+          )}
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={uploadLogo.isPending || clearLogo.isPending}
+              onClick={() => onOpenChange(false)}
+            >
+              Abbrechen
+            </Button>
+            <Button
+              type="button"
+              disabled={uploadLogo.isPending || clearLogo.isPending}
+              className="bg-blue-600 text-white hover:bg-blue-700"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {uploadLogo.isPending ? "Speichere …" : "Neues Logo auswählen"}
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ClubStatusLogoButton({
+  logoUrl,
+  canManage,
+  onOpenModal,
+}: {
+  logoUrl: string | null;
+  canManage: boolean;
+  onOpenModal: () => void;
+}) {
+  const label = canManage ? "Vereinslogo ändern" : "Vereinslogo";
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      disabled={!canManage}
+      onClick={onOpenModal}
+      className={cn(
+        "relative grid h-7 w-7 shrink-0 place-items-center overflow-hidden rounded-full border border-slate-200 bg-white p-0.5 shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
+        canManage
+          ? "cursor-pointer hover:border-blue-400 hover:shadow-md"
+          : "cursor-default"
+      )}
+    >
+      <img
+        {...logoLoading}
+        src={logoUrl || MYCREWMATE_ICON}
+        alt="Vereinslogo"
+        className="h-full w-full rounded-full object-contain"
+      />
+    </button>
   );
 }
 
@@ -245,6 +311,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [newAdminPassword, setNewAdminPassword] = useState("");
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
   const [impressumOpen, setImpressumOpen] = useState(false);
+  const [clubLogoModalOpen, setClubLogoModalOpen] = useState(false);
   const [yearDialogOpen, setYearDialogOpen] = useState(false);
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
   const [eventManagerOpen, setEventManagerOpen] = useState(false);
@@ -346,10 +413,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const events = trpc.events.list.useQuery(undefined, {
     enabled: isAuthenticated,
   });
+  const branding = trpc.branding.current.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
   const selectedEvent = events.data?.find(item => item.id === eventId);
-  const clubLogoUrl = selectedEvent?.pdfLogoKey
-    ? `/api/pdf/event-image/${year}/${selectedEvent.id}`
-    : null;
+  const clubLogoUrl = branding.data?.tenantLogoUrl ?? null;
   const canManageClubLogo = user?.role === "admin";
 
   useEffect(() => {
@@ -991,10 +1059,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
               {selectedEvent?.name ?? `Veranstaltung ${year}`}
             </div>
           </div>
-          <ClubLogoControl
+          <ClubStatusLogoButton
             logoUrl={clubLogoUrl}
             canManage={canManageClubLogo}
-            compact
+            onOpenModal={() => setClubLogoModalOpen(true)}
           />
         </div>
         <Select
@@ -1024,29 +1092,32 @@ export function Layout({ children }: { children: React.ReactNode }) {
         >
           <SheetHeader className="border-b text-left">
             <SheetTitle>
-              <div className="flex items-center gap-2">
-                <ClubLogoControl
-                  logoUrl={clubLogoUrl}
-                  canManage={canManageClubLogo}
-                  compact
-                />
-                <img
-                  {...logoLoading}
-                  src={MYCREWMATE_WORDMARK}
-                  alt="MyCrewMate"
-                  className="h-10 w-auto max-w-[190px] object-contain"
-                />
-              </div>
+              <img
+                {...logoLoading}
+                src={MYCREWMATE_WORDMARK}
+                alt="MyCrewMate"
+                className="h-10 w-auto max-w-[190px] object-contain"
+              />
             </SheetTitle>
             <SheetDescription>
               Planung {year} ·{" "}
               {user?.role === "admin" ? "Administrator" : "Planungsteam"}
             </SheetDescription>
-            <OnlinePresenceBadge
-              counts={onlinePresence.counts}
-              onOpenChat={openChatWidget}
-              className="mt-1 w-fit"
-            />
+            <div className="mt-1 flex items-center gap-2">
+              <OnlinePresenceBadge
+                counts={onlinePresence.counts}
+                onOpenChat={openChatWidget}
+                className="w-fit"
+              />
+              <ClubStatusLogoButton
+                logoUrl={clubLogoUrl}
+                canManage={canManageClubLogo}
+                onOpenModal={() => {
+                  setMobileMenuOpen(false);
+                  setClubLogoModalOpen(true);
+                }}
+              />
+            </div>
           </SheetHeader>
           <div className="border-b p-3">
             <div className="mb-1.5 flex items-center justify-between">
@@ -1241,27 +1312,28 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       <aside className="hidden w-64 shrink-0 flex-col border-r bg-card lg:sticky lg:top-0 lg:flex lg:h-screen lg:self-start">
         <div className="flex min-h-24 flex-col items-start gap-1.5 border-b bg-gradient-to-r from-white to-slate-50 px-4 py-3 text-slate-950">
-          <div className="flex w-full items-center gap-2">
-            <ClubLogoControl
-              logoUrl={clubLogoUrl}
-              canManage={canManageClubLogo}
-            />
-            <img
-              {...logoLoading}
-              src={MYCREWMATE_WORDMARK}
-              alt="MyCrewMate"
-              className="h-10 w-auto max-w-[174px] object-contain"
-            />
-          </div>
+          <img
+            {...logoLoading}
+            src={MYCREWMATE_WORDMARK}
+            alt="MyCrewMate"
+            className="h-10 w-auto max-w-[200px] object-contain"
+          />
           <div className="min-w-0">
             <div className="truncate text-xs text-muted-foreground">
               Vereinsorganisation
             </div>
-            <OnlinePresenceBadge
-              counts={onlinePresence.counts}
-              onOpenChat={openChatWidget}
-              className="mt-1.5 max-w-full"
-            />
+            <div className="mt-1.5 flex items-center gap-2">
+              <OnlinePresenceBadge
+                counts={onlinePresence.counts}
+                onOpenChat={openChatWidget}
+                className="max-w-full"
+              />
+              <ClubStatusLogoButton
+                logoUrl={clubLogoUrl}
+                canManage={canManageClubLogo}
+                onOpenModal={() => setClubLogoModalOpen(true)}
+              />
+            </div>
           </div>
         </div>
 
@@ -1761,6 +1833,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
       />
 
       <ImpressumDialog open={impressumOpen} onOpenChange={setImpressumOpen} />
+
+      <ClubLogoModal
+        open={clubLogoModalOpen}
+        onOpenChange={setClubLogoModalOpen}
+        logoUrl={clubLogoUrl}
+      />
 
       <Dialog open={pwaInstallDialogOpen} onOpenChange={setPwaInstallDialogOpen}>
         <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white text-slate-950 sm:max-w-md">

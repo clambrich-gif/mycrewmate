@@ -38,6 +38,8 @@ export const DEFAULT_PDF_SETTINGS = {
   contactLabel: "Ansprechpartner",
   footerText: "",
   whatsAppMessageTemplate: null,
+  tenantLogoKey: null,
+  tenantLogoUrl: null,
   logoKey: null,
   logoUrl: null,
   extraColumns: "[]",

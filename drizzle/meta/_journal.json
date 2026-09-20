@@ -330,6 +330,13 @@
       "when": 1789835435736,
       "tag": "0046_parched_mephisto",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "5",
+      "when": 1789863696429,
+      "tag": "0047_new_iron_fist",
+      "breakpoints": true
     }
   ]
 }

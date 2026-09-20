@@ -2427,11 +2427,20 @@ export async function updateAppSettings(
       contactLabel: "Ansprechpartner",
       footerText: "",
       whatsAppMessageTemplate: null,
+      tenantLogoKey: null,
+      tenantLogoUrl: null,
       extraColumns: "[]",
       blankRowsPerShift: 0,
       ...safe,
     })
     .onDuplicateKeyUpdate({ set: safe });
+}
+
+export async function updateTenantLogo(values: {
+  tenantLogoKey: string | null;
+  tenantLogoUrl: string | null;
+}) {
+  return updateAppSettings(values);
 }
 export async function revokeSessionKey(
   sessionKey: string,
