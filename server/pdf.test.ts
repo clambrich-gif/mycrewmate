@@ -6,16 +6,22 @@ import type {
   Contact,
   Helper,
   Location,
+  Material,
+  PostTask,
+  PrepTask,
   Shift,
   ShiftAreaContact,
 } from "../drizzle/schema";
 import { WEEKDAYS } from "../shared/weekdays";
 import {
   renderAllHelperTaskZip,
+  renderContactOverviewPdf,
+  renderContactOverviewZip,
   renderBlankPlanPdf,
   renderHelperTaskPdf,
   renderPlanPdf,
   selectHelpersForContact,
+  selectContactOverviewRows,
   selectPlanEvaluations,
   helperTimeBadgeLabel,
   helperAvailabilityHeadingLabel,
@@ -37,6 +43,7 @@ import {
   donationCategoryLabel,
   selectMaterialPacklistMaterials,
   selectTaskOverviewRows,
+  CONTACT_CHECKLIST_MARKER,
 } from "./pdf";
 import { resolveEventPdfLogoKey } from "./event-pdf-image";
 
@@ -660,6 +667,86 @@ describe("PDF-Erzeugung", () => {
 
   it("liefert für unbekannte Helfer einen klaren Fehler", () => {
     expect(() => renderHelperTaskPdf(data, 999)).toThrow("nicht gefunden");
+  });
+
+  it("erstellt Ansprechpartner-Arbeitsmappen mit Bereichsverantwortung, eigenen Schichten und Checklisten", async () => {
+    const prepTasks: PrepTask[] = [
+      {
+        id: 91,
+        year: 2026,
+        eventId: 1,
+        category: "Genehmigung",
+        task: "Sperrung final abstimmen",
+        dueText: "15.05.2026",
+        locationId: null,
+        contactId: 1,
+        status: "inArbeit",
+        statusWording: "genehmigung",
+        note: "Unterlagen sind eingereicht",
+        deleted: false,
+        sortOrder: 1,
+      },
+    ];
+    const postTasks: PostTask[] = [
+      {
+        id: 92,
+        year: 2026,
+        eventId: 1,
+        category: "Abbau",
+        task: "Beschilderung einsammeln",
+        dueText: "22.06.2026",
+        locationId: null,
+        contactId: 1,
+        status: "offen",
+        note: null,
+        deleted: false,
+        sortOrder: 1,
+      },
+    ];
+    const materials: Material[] = [
+      {
+        id: 93,
+        year: 2026,
+        eventId: 1,
+        article: "Absperrband",
+        category: "Strecke",
+        quantity: "4",
+        unit: "Rollen",
+        locationId: null,
+        contactId: 1,
+        status: "bestellt",
+        note: "Vor Ausgabe prüfen",
+        deleted: false,
+        sortOrder: 1,
+      },
+    ];
+    const contactData = { ...data, prepTasks, postTasks, materials };
+    const rows = selectContactOverviewRows(contactData, 1);
+
+    // Schicht 1 ist Bereichsverantwortung, Schicht 2 ist eine eigene Helferschicht.
+    expect(rows.shifts.map(row => row.shift.id)).toEqual([1, 2]);
+    expect(rows.shifts[0]?.responsibility).toContain("Bereichsverantwortung");
+    expect(rows.shifts[1]?.responsibility).toContain("eigene Schicht");
+    expect(rows.prepTasks).toEqual(prepTasks);
+    expect(rows.postTasks).toEqual(postTasks);
+    expect(rows.materials).toEqual(materials);
+    expect(CONTACT_CHECKLIST_MARKER).toBe("[ ]");
+
+    const options = {
+      includeShifts: true,
+      includePreparation: true,
+      includePostProcessing: true,
+      includeMaterials: true,
+    };
+    const pdf = await renderContactOverviewPdf(contactData, 1, options);
+    const zip = await renderContactOverviewZip(contactData, [1], options);
+
+    expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+    expect(pdf.length).toBeGreaterThan(2_000);
+    expect(zip.subarray(0, 2).toString()).toBe("PK");
+    expect(zip.toString("latin1")).toContain(
+      "Ansprechpartner_Martin_Reis.pdf"
+    );
   });
 
   it("bündelt alle Helfer-PDFs in Ansprechpartnerordnern", async () => {

@@ -1464,6 +1464,31 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers.match(/shareHelperPdf/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
   });
 
+  it("strukturiert die PDF-Ausgabe als geschlossene Accordions mit Ansprechpartner-Arbeitsmappen an zweiter Stelle", () => {
+    const pdfExport = source("client/src/pages/PdfExport.tsx");
+
+    expect(pdfExport).toContain("CollapsibleTrigger");
+    expect(pdfExport).toContain("const [open, setOpen] = useState(false)");
+    expect(pdfExport).toContain('title="Alle Helferübersichten"');
+    expect(pdfExport).toContain('title="Ansprechpartner-Übersichten"');
+    expect(pdfExport).toContain('title="Einsatzplan als PDF"');
+    expect(pdfExport).toContain('title="Vorlage frei konfigurieren"');
+    expect(pdfExport.indexOf('title="Alle Helferübersichten"')).toBeLessThan(
+      pdfExport.indexOf('title="Ansprechpartner-Übersichten"')
+    );
+    expect(pdfExport.indexOf('title="Ansprechpartner-Übersichten"')).toBeLessThan(
+      pdfExport.indexOf('title="Einsatzplan als PDF"')
+    );
+    expect(pdfExport.indexOf('title="Einsatzplan als PDF"')).toBeLessThan(
+      pdfExport.indexOf('title="Vorlage frei konfigurieren"')
+    );
+    expect(pdfExport).toContain("contactOverviewExportMode");
+    expect(pdfExport).toContain("contactOverviewZip");
+    expect(pdfExport).toContain("Gedruckte [ ]-Checkliste");
+    expect(pdfExport).toContain("includePostProcessing");
+    expect(pdfExport).toContain("includeMaterials");
+  });
+
   it("ordnet Einsatzplanaktionen als vierteilige Datenzeile mit vollbreiter Hauptaktion an", () => {
     const plan = source("client/src/pages/Plan.tsx");
     const resetButton = source("client/src/components/ResetAreaButton.tsx");

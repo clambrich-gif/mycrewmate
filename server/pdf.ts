@@ -1058,6 +1058,348 @@ export function renderBlankPlanPdf(data: PlanningData) {
   return renderPlanPdf(data, { mode: "blank" });
 }
 
+/** Auswahl der Inhaltsblöcke einer Ansprechpartner-Übersicht. */
+export type ContactOverviewPdfOptions = {
+  includeShifts: boolean;
+  includePreparation: boolean;
+  includePostProcessing: boolean;
+  includeMaterials: boolean;
+};
+
+export const CONTACT_CHECKLIST_MARKER = "[ ]";
+
+type ContactOverviewRows = {
+  shifts: Array<{
+    shift: Shift;
+    responsibility: string;
+    status: "OFFEN" | "KNAPP" | "OK";
+    helpers: string;
+  }>;
+  prepTasks: PrepTask[];
+  postTasks: PostTask[];
+  materials: Material[];
+};
+
+/**
+ * Bündelt alle operativen Inhalte eines Ansprechpartners. Bereichsverantwortung
+ * wird über die Zuordnung der Einsatzplanbereiche ermittelt; zusätzlich werden
+ * eigene Schichten berücksichtigt, wenn der Ansprechpartner selbst als Helfer
+ * eingeteilt ist.
+ */
+export function selectContactOverviewRows(
+  data: PlanningData,
+  contactId: number
+): ContactOverviewRows {
+  const responsibleAreas = new Set(
+    (data.areaContacts ?? [])
+      .filter(item => item.contactId === contactId)
+      .map(item => item.area)
+  );
+  const ownHelperIds = new Set(
+    data.helpers
+      .filter(helper => helper.contactId === contactId)
+      .map(helper => helper.id)
+  );
+  const ownShiftIds = new Set(
+    data.assignments
+      .filter(assignment => ownHelperIds.has(assignment.helperId))
+      .map(assignment => assignment.shiftId)
+  );
+  const helperById = new Map(data.helpers.map(helper => [helper.id, helper]));
+  const assignmentsByShift = new Map<number, Assignment[]>();
+  for (const assignment of data.assignments) {
+    if (!assignmentsByShift.has(assignment.shiftId))
+      assignmentsByShift.set(assignment.shiftId, []);
+    assignmentsByShift.get(assignment.shiftId)!.push(assignment);
+  }
+  const statusByShiftId = new Map(
+    evaluateShifts(data.shifts, data.assignments, data.helpers).map(item => [
+      item.shift.id,
+      item.status,
+    ])
+  );
+
+  return {
+    shifts: data.shifts
+      .filter(
+        shift =>
+          responsibleAreas.has(shift.area) || ownShiftIds.has(shift.id)
+      )
+      .sort(sortShifts)
+      .map(shift => {
+        const responsibility = [
+          responsibleAreas.has(shift.area) ? "Bereichsverantwortung" : null,
+          ownShiftIds.has(shift.id) ? "eigene Schicht" : null,
+        ]
+          .filter((value): value is string => Boolean(value))
+          .join(" · ");
+        const helpers = (assignmentsByShift.get(shift.id) ?? [])
+          .sort((left, right) => left.slot - right.slot)
+          .map(assignment => helperById.get(assignment.helperId)?.name)
+          .filter((name): name is string => Boolean(name))
+          .join(", ");
+        return {
+          shift,
+          responsibility,
+          status: statusByShiftId.get(shift.id) ?? "OFFEN",
+          helpers: helpers || "offen",
+        };
+      }),
+    prepTasks: (data.prepTasks ?? [])
+      .filter(task => task.contactId === contactId)
+      .sort(
+        (left, right) =>
+          left.category.localeCompare(right.category, "de") ||
+          left.sortOrder - right.sortOrder ||
+          left.id - right.id
+      ),
+    postTasks: (data.postTasks ?? [])
+      .filter(task => task.contactId === contactId)
+      .sort(
+        (left, right) =>
+          left.category.localeCompare(right.category, "de") ||
+          left.sortOrder - right.sortOrder ||
+          left.id - right.id
+      ),
+    materials: (data.materials ?? [])
+      .filter(material => material.contactId === contactId)
+      .sort(
+        (left, right) =>
+          left.category.localeCompare(right.category, "de") ||
+          left.article.localeCompare(right.article, "de") ||
+          left.sortOrder - right.sortOrder ||
+          left.id - right.id
+      ),
+  };
+}
+
+function drawContactOverviewSection(
+  doc: PDFKit.PDFDocument,
+  title: string,
+  description: string
+) {
+  ensureSpace(doc, 44);
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(13)
+    .fillColor(colors.accent)
+    .text(title);
+  doc
+    .font("Helvetica")
+    .fontSize(8.5)
+    .fillColor(colors.muted)
+    .text(description);
+  doc.moveDown(0.55);
+}
+
+/**
+ * Erstellt die persönliche Arbeitsmappe eines Ansprechpartners. Die
+ * Planinformationen bleiben als Tabelle lesbar; für operative Aufgaben wird
+ * bewusst ein gedrucktes "[ ]" pro Zeile erzeugt, damit die PDF auch als
+ * Papier-Checkliste nutzbar ist.
+ */
+export function renderContactOverviewPdf(
+  data: PlanningData,
+  contactId: number,
+  options: ContactOverviewPdfOptions
+) {
+  const contact = data.contacts.find(item => item.id === contactId);
+  if (!contact) throw new Error("Ansprechpartner wurde nicht gefunden");
+  const rows = selectContactOverviewRows(data, contactId);
+  const locationById = new Map(
+    (data.locations ?? []).map(location => [location.id, location])
+  );
+
+  return collectPdf(doc => {
+    const landscapeWidth = doc.page.width - margin * 2;
+    drawDocumentHeader(
+      doc,
+      data.settings,
+      `Ansprechpartner-Übersicht – ${contact.name}`,
+      [
+        contact.phone?.trim() ? `Rufnummer: ${contact.phone.trim()}` : null,
+        `Stand: ${formatDate()}`,
+      ]
+        .filter((value): value is string => Boolean(value))
+        .join(" · "),
+      data.logoBuffer
+    );
+
+    if (options.includeShifts) {
+      drawContactOverviewSection(
+        doc,
+        "Einsatzplan & Schichten",
+        "Bereichsverantwortung und eigene Schichten in tabellarischer Übersicht."
+      );
+      const columns: PdfColumn[] = [
+        { key: "day", label: "Tag", width: 56 },
+        { key: "time", label: "Zeit", width: 64 },
+        { key: "area", label: "Bereich", width: 88 },
+        { key: "task", label: "Aufgabe", width: 176 },
+        { key: "responsibility", label: "Zuordnung", width: 112 },
+        { key: "status", label: "Status", width: 56, align: "center" },
+        {
+          key: "helpers",
+          label: "Eingeteilte Helfer",
+          width: landscapeWidth - 552,
+        },
+      ];
+      drawTableHeader(doc, columns, margin);
+      if (rows.shifts.length === 0) {
+        drawTableRow(
+          doc,
+          columns,
+          { task: "Keine Bereichsverantwortung oder eigenen Schichten vorhanden." },
+          margin,
+          { minimumHeight: 32 }
+        );
+      }
+      for (const item of rows.shifts) {
+        drawTableRow(
+          doc,
+          columns,
+          {
+            day: item.shift.day,
+            time: item.shift.allowFlexibleAssignment
+              ? `${helperPdfTimeLabel(item.shift)}\n(flexibel)`
+              : helperPdfTimeLabel(item.shift),
+            area: item.shift.area,
+            task: item.shift.note?.trim()
+              ? `${item.shift.task}\nBemerkung: ${item.shift.note.trim()}`
+              : item.shift.task,
+            responsibility: item.responsibility,
+            status: item.status,
+            helpers: item.helpers,
+          },
+          margin,
+          { minimumHeight: 30 }
+        );
+      }
+    }
+
+    const checklistColumns: PdfColumn[] = [
+      { key: "check", label: "", width: 30, align: "center" },
+      { key: "category", label: "Bereich", width: 88 },
+      { key: "task", label: "Aufgabe / Artikel", width: 188 },
+      { key: "location", label: "Ort", width: 88 },
+      { key: "due", label: "Frist / Menge", width: 82 },
+      { key: "status", label: "Status", width: 70, align: "center" },
+      { key: "note", label: "Hinweis", width: landscapeWidth - 546 },
+    ];
+
+    if (options.includePreparation) {
+      drawContactOverviewSection(
+        doc,
+        "Vorbereitung",
+        "Zum Ausdrucken: Die Kästchen links können vor Ort oder im Team abgehakt werden."
+      );
+      drawTableHeader(doc, checklistColumns, margin);
+      if (rows.prepTasks.length === 0) {
+        drawTableRow(
+          doc,
+          checklistColumns,
+          { task: "Keine Vorbereitungsaufgaben zugeordnet." },
+          margin,
+          { minimumHeight: 32 }
+        );
+      }
+      for (const task of rows.prepTasks) {
+        drawTableRow(
+          doc,
+          checklistColumns,
+          {
+            check: CONTACT_CHECKLIST_MARKER,
+            category: task.category || "–",
+            task: task.task,
+            location: task.locationId
+              ? (locationById.get(task.locationId)?.name ?? "–")
+              : "–",
+            due: task.dueText.trim() || "–",
+            status: taskOverviewStatusLabel(task, "prep"),
+            note: latestPreparationLogbookEntry(task.note) || "–",
+          },
+          margin,
+          { minimumHeight: 30 }
+        );
+      }
+    }
+
+    if (options.includePostProcessing) {
+      drawContactOverviewSection(
+        doc,
+        "Nachbereitung",
+        "Zum Ausdrucken: Die Kästchen links können vor Ort oder im Team abgehakt werden."
+      );
+      drawTableHeader(doc, checklistColumns, margin);
+      if (rows.postTasks.length === 0) {
+        drawTableRow(
+          doc,
+          checklistColumns,
+          { task: "Keine Nachbereitungsaufgaben zugeordnet." },
+          margin,
+          { minimumHeight: 32 }
+        );
+      }
+      for (const task of rows.postTasks) {
+        drawTableRow(
+          doc,
+          checklistColumns,
+          {
+            check: CONTACT_CHECKLIST_MARKER,
+            category: task.category || "–",
+            task: task.task,
+            location: task.locationId
+              ? (locationById.get(task.locationId)?.name ?? "–")
+              : "–",
+            due: task.dueText.trim() || "–",
+            status: taskOverviewStatusLabel(task, "post"),
+            note: task.note?.trim() || "–",
+          },
+          margin,
+          { minimumHeight: 30 }
+        );
+      }
+    }
+
+    if (options.includeMaterials) {
+      drawContactOverviewSection(
+        doc,
+        "Material",
+        "Zum Ausdrucken: Die Kästchen links dienen als Material- und Abnahme-Checkliste."
+      );
+      drawTableHeader(doc, checklistColumns, margin);
+      if (rows.materials.length === 0) {
+        drawTableRow(
+          doc,
+          checklistColumns,
+          { task: "Keine Materialartikel zugeordnet." },
+          margin,
+          { minimumHeight: 32 }
+        );
+      }
+      for (const material of rows.materials) {
+        drawTableRow(
+          doc,
+          checklistColumns,
+          {
+            check: CONTACT_CHECKLIST_MARKER,
+            category: material.category || "–",
+            task: material.article,
+            location: material.locationId
+              ? (locationById.get(material.locationId)?.name ?? "–")
+              : "–",
+            due: [material.quantity, material.unit].filter(Boolean).join(" ") || "–",
+            status: materialStatusText(material.status),
+            note: material.note?.trim() || "–",
+          },
+          margin,
+          { minimumHeight: 30 }
+        );
+      }
+    }
+  }, "landscape");
+}
+
 /** Wählt ausschließlich die in der aktuellen Tabellenansicht sichtbaren Artikel aus. */
 export function selectMaterialPacklistMaterials(
   materials: Material[] | undefined,
@@ -1517,6 +1859,13 @@ export async function createPlanPdf(options: PlanPdfOptions) {
   return renderPlanPdf(await loadPlanningData(), options);
 }
 
+export async function createContactOverviewPdf(
+  contactId: number,
+  options: ContactOverviewPdfOptions
+) {
+  return renderContactOverviewPdf(await loadPlanningData(), contactId, options);
+}
+
 export async function createMaterialPacklistPdf(materialIds: number[]) {
   return renderMaterialPacklistPdf(await loadPlanningData(), materialIds);
 }
@@ -1582,4 +1931,52 @@ export function renderAllHelperTaskZip(
 
 export async function createAllHelperTaskZip(contactId?: number) {
   return renderAllHelperTaskZip(await loadPlanningData(), contactId);
+}
+
+/** Bündelt die Arbeitsmappen der ausgewählten Ansprechpartner in einer ZIP-Datei. */
+export function renderContactOverviewZip(
+  data: PlanningData,
+  contactIds: number[],
+  options: ContactOverviewPdfOptions
+) {
+  return new Promise<Buffer>((resolve, reject) => {
+    const output: Buffer[] = [];
+    const archive = new ZipArchive({ zlib: { level: 9 } });
+    archive.on("data", (chunk: Buffer | Uint8Array) =>
+      output.push(Buffer.from(chunk))
+    );
+    archive.on("error", reject);
+    archive.on("end", () => resolve(Buffer.concat(output)));
+
+    void (async () => {
+      const selectedIds = new Set(contactIds);
+      const selectedContacts = data.contacts.filter(contact =>
+        selectedIds.has(contact.id)
+      );
+      if (selectedContacts.length === 0) {
+        archive.append(
+          "Für die aktuelle Auswahl wurden keine Ansprechpartner gefunden.\n",
+          { name: "HINWEIS.txt" }
+        );
+      }
+      for (const contact of selectedContacts) {
+        const pdf = await renderContactOverviewPdf(data, contact.id, options);
+        archive.append(pdf, {
+          name: `Ansprechpartner_${safeFilename(contact.name)}.pdf`,
+        });
+      }
+      await archive.finalize();
+    })().catch(reject);
+  });
+}
+
+export async function createContactOverviewZip(
+  contactIds: number[],
+  options: ContactOverviewPdfOptions
+) {
+  return renderContactOverviewZip(
+    await loadPlanningData(),
+    contactIds,
+    options
+  );
 }

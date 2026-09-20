@@ -1,6 +1,11 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -18,6 +23,8 @@ import {
 } from "@/lib/whatsappShare";
 import { eventWeekdays, type Weekday } from "@shared/weekdays";
 import {
+  ChevronDown,
+  ClipboardCheck,
   Download,
   FileArchive,
   ImageUp,
@@ -25,9 +32,17 @@ import {
   Plus,
   Save,
   Trash2,
+  UsersRound,
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { ChangeEvent, useEffect, useMemo, useState } from "react";
+import {
+  ChangeEvent,
+  useEffect,
+  useMemo,
+  useState,
+  type ComponentType,
+  type ReactNode,
+} from "react";
 import { toast } from "sonner";
 
 type SettingsForm = {
@@ -53,6 +68,55 @@ const EMPTY_FORM: SettingsForm = {
   extraColumns: [],
   blankRowsPerShift: 0,
 };
+
+type PdfSectionProps = {
+  title: string;
+  description: string;
+  icon: ComponentType<{ className?: string }>;
+  children: ReactNode;
+};
+
+/** Ein ruhiges Accordion hält die PDF-Ausgabe bei vielen Exportoptionen übersichtlich. */
+function PdfSection({
+  title,
+  description,
+  icon: Icon,
+  children,
+}: PdfSectionProps) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <Card className="overflow-hidden shadow-sm">
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="group flex w-full items-center justify-between gap-4 text-left transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+            aria-label={`${title} ${open ? "einklappen" : "aufklappen"}`}
+          >
+            <span className="block min-w-0 flex-1 px-6 py-4">
+              <span className="flex items-center gap-2 text-base font-semibold text-foreground">
+                <Icon className="h-5 w-5 text-slate-700" />
+                {title}
+              </span>
+              <span className="mt-1 block text-sm font-normal text-muted-foreground">
+                {description}
+              </span>
+            </span>
+            <ChevronDown
+              className={`mr-5 h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-200 ${
+                open ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="border-t border-slate-100 data-[state=closed]:animate-none">
+          <CardContent className="space-y-5 pt-5">{children}</CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
+  );
+}
 
 export default function PdfExport() {
   const { user } = useAuth();
@@ -82,6 +146,16 @@ export default function PdfExport() {
   const [includeUnassignedContact, setIncludeUnassignedContact] =
     useState(true);
   const [helperContactFilter, setHelperContactFilter] = useState("all");
+  const [selectedContactOverviewIds, setSelectedContactOverviewIds] =
+    useState<number[]>([]);
+  const [contactOverviewExportMode, setContactOverviewExportMode] =
+    useState<"single" | "zip">("zip");
+  const [contactOverviewContent, setContactOverviewContent] = useState({
+    includeShifts: true,
+    includePreparation: true,
+    includePostProcessing: true,
+    includeMaterials: true,
+  });
   const selectedHelperContactId =
     helperContactFilter === "all" ? undefined : Number(helperContactFilter);
   const helperZipInput = useMemo(
@@ -116,6 +190,17 @@ export default function PdfExport() {
     setSelectedDays(activeDays);
   }, [activeDays]);
 
+  useEffect(() => {
+    setSelectedContactOverviewIds(current => {
+      const validCurrent = current.filter(id =>
+        contacts.some(contact => contact.id === id)
+      );
+      return validCurrent.length > 0
+        ? validCurrent
+        : contacts.map(contact => contact.id);
+    });
+  }, [contacts]);
+
   const save = trpc.pdf.updateSettings.useMutation({
     onSuccess: async () => {
       await utils.pdf.settings.invalidate();
@@ -124,6 +209,16 @@ export default function PdfExport() {
     onError: error => toast.error(error.message),
   });
   const planPdf = trpc.pdf.plan.useMutation({
+    onSuccess: result =>
+      downloadBase64File(result.base64, result.mimeType, result.filename),
+    onError: error => toast.error(error.message),
+  });
+  const contactOverviewPdf = trpc.pdf.contactOverview.useMutation({
+    onSuccess: result =>
+      downloadBase64File(result.base64, result.mimeType, result.filename),
+    onError: error => toast.error(error.message),
+  });
+  const contactOverviewZip = trpc.pdf.contactOverviewZip.useMutation({
     onSuccess: result =>
       downloadBase64File(result.base64, result.mimeType, result.filename),
     onError: error => toast.error(error.message),
@@ -190,6 +285,10 @@ export default function PdfExport() {
     activeContacts.length === mappedContactIds.length &&
     mappedContactIds.every(id => activeContacts.includes(id)) &&
     (!hasUnassignedAreas || includeUnassignedContact);
+  const allContactOverviewSelected =
+    contacts.length > 0 &&
+    selectedContactOverviewIds.length === contacts.length &&
+    contacts.every(contact => selectedContactOverviewIds.includes(contact.id));
 
   const downloadAll = async () => {
     const result = await allHelpers.refetch();
@@ -204,6 +303,37 @@ export default function PdfExport() {
         result.data.filename
       );
     }
+  };
+
+  const downloadContactOverviews = () => {
+    if (!selectedContactOverviewIds.length) {
+      toast.error("Bitte mindestens einen Ansprechpartner auswählen");
+      return;
+    }
+    if (
+      !contactOverviewContent.includeShifts &&
+      !contactOverviewContent.includePreparation &&
+      !contactOverviewContent.includePostProcessing &&
+      !contactOverviewContent.includeMaterials
+    ) {
+      toast.error("Bitte mindestens einen Inhaltsbereich auswählen");
+      return;
+    }
+    const input = {
+      contactIds: selectedContactOverviewIds,
+      ...contactOverviewContent,
+    };
+    if (contactOverviewExportMode === "single") {
+      if (selectedContactOverviewIds.length !== 1) {
+        toast.error(
+          "Für ein Einzel-PDF bitte genau einen Ansprechpartner auswählen"
+        );
+        return;
+      }
+      contactOverviewPdf.mutate(input);
+      return;
+    }
+    contactOverviewZip.mutate(input);
   };
 
   const downloadPlan = () => {
@@ -250,20 +380,12 @@ export default function PdfExport() {
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card className="shadow-sm md:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <FileArchive className="h-5 w-5" /> Alle Helferübersichten
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Erstellt pro Helfer ein separates PDF und bündelt alle Dateien
-              nach Ansprechpartnern in einer ZIP-Datei. Jede Übersicht enthält
-              Aufgaben, Zeiten, Mithelfer sowie Name und Rufnummer des
-              Ansprechpartners.
-            </p>
+      <div className="space-y-4">
+        <PdfSection
+          title="Alle Helferübersichten"
+          description="Persönliche Aufgaben-PDFs nach Ansprechpartnern herunterladen."
+          icon={FileArchive}
+        >
             <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
               <div className="space-y-2">
                 <Label htmlFor="helper-contact-filter">
@@ -309,21 +431,170 @@ export default function PdfExport() {
                     : "Alle PDFs als ZIP"}
               </Button>
             </div>
-          </CardContent>
-        </Card>
+        </PdfSection>
 
-        <Card className="shadow-sm md:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <ListFilter className="h-5 w-5" /> Einsatzplan als PDF
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <p className="text-sm text-muted-foreground">
-              Erzeugt wahlweise einen Blanko-Plan oder den aktuell ausgefüllten
-              Einsatzplan. Nur die angehakten Tage, Bereiche, Statuswerte und
-              Bereichsansprechpartner werden aufgenommen.
-            </p>
+        <PdfSection
+          title="Ansprechpartner-Übersichten"
+          description="Arbeitsmappen mit Bereichsverantwortung, Schichten und druckbaren Checklisten erstellen."
+          icon={UsersRound}
+        >
+          <div className="grid gap-5 lg:grid-cols-2">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label>Ansprechpartner</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    setSelectedContactOverviewIds(
+                      allContactOverviewSelected
+                        ? []
+                        : contacts.map(contact => contact.id)
+                    )
+                  }
+                >
+                  {allContactOverviewSelected
+                    ? "Alle abwählen"
+                    : "Alle auswählen"}
+                </Button>
+              </div>
+              <div className="max-h-52 space-y-1 overflow-y-auto rounded-md border bg-background p-2">
+                {contacts.map(contact => (
+                  <label
+                    key={contact.id}
+                    className="flex items-center gap-2 rounded p-1.5 text-sm hover:bg-muted"
+                  >
+                    <Checkbox
+                      checked={selectedContactOverviewIds.includes(contact.id)}
+                      onCheckedChange={checked =>
+                        setSelectedContactOverviewIds(current =>
+                          toggle(current, contact.id, checked === true)
+                        )
+                      }
+                    />
+                    {contact.name}
+                  </label>
+                ))}
+                {!contacts.length && (
+                  <p className="p-2 text-sm text-muted-foreground">
+                    Noch keine Ansprechpartner angelegt.
+                  </p>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {selectedContactOverviewIds.length === contacts.length
+                  ? "Alle Ansprechpartner sind ausgewählt."
+                  : `${selectedContactOverviewIds.length} Ansprechpartner ausgewählt.`}
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="contact-overview-export-mode">Ausgabe</Label>
+                <Select
+                  value={contactOverviewExportMode}
+                  onValueChange={value =>
+                    setContactOverviewExportMode(value as "single" | "zip")
+                  }
+                >
+                  <SelectTrigger
+                    id="contact-overview-export-mode"
+                    className="w-full bg-white dark:bg-slate-950"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="single">
+                      Einzelnes Ansprechpartner-PDF
+                    </SelectItem>
+                    <SelectItem value="zip">
+                      Gesamt-ZIP für die Auswahl
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {contactOverviewExportMode === "single"
+                    ? "Für ein Einzel-PDF bitte genau einen Ansprechpartner auswählen."
+                    : "Erstellt für jeden ausgewählten Ansprechpartner eine eigene PDF-Datei im ZIP-Archiv."}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Inhalte</Label>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {[
+                    [
+                      "includeShifts",
+                      "Einsatzplan & Schichten",
+                      "Bereichsverantwortung und eigene Schichten",
+                    ],
+                    [
+                      "includePreparation",
+                      "Vorbereitung",
+                      "Gedruckte [ ]-Checkliste",
+                    ],
+                    [
+                      "includePostProcessing",
+                      "Nachbereitung",
+                      "Gedruckte [ ]-Checkliste",
+                    ],
+                    [
+                      "includeMaterials",
+                      "Material",
+                      "Gedruckte [ ]-Checkliste",
+                    ],
+                  ].map(([key, label, hint]) => {
+                    const contentKey = key as keyof typeof contactOverviewContent;
+                    return (
+                      <label
+                        key={contentKey}
+                        className="flex items-start gap-2 rounded-md border bg-background p-2 text-sm"
+                      >
+                        <Checkbox
+                          checked={contactOverviewContent[contentKey]}
+                          onCheckedChange={checked =>
+                            setContactOverviewContent(current => ({
+                              ...current,
+                              [contentKey]: checked === true,
+                            }))
+                          }
+                        />
+                        <span>
+                          <span className="block font-medium">{label}</span>
+                          <span className="block text-xs text-muted-foreground">
+                            {hint}
+                          </span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <Button
+                className="min-h-11 w-full sm:w-auto"
+                onClick={downloadContactOverviews}
+                disabled={
+                  contactOverviewPdf.isPending || contactOverviewZip.isPending
+                }
+              >
+                <Download className="mr-2 h-4 w-4" />
+                {contactOverviewPdf.isPending || contactOverviewZip.isPending
+                  ? "PDFs werden erstellt …"
+                  : contactOverviewExportMode === "single"
+                    ? "Ansprechpartner-PDF herunterladen"
+                    : "Ansprechpartner-PDFs als ZIP"}
+              </Button>
+            </div>
+          </div>
+        </PdfSection>
+
+        <PdfSection
+          title="Einsatzplan als PDF"
+          description="Blanko- oder ausgefüllten Einsatzplan nach Tagen, Bereichen und Status filtern."
+          icon={ListFilter}
+        >
 
             <div className="grid gap-5 lg:grid-cols-2">
               <div className="space-y-2">
@@ -508,17 +779,14 @@ export default function PdfExport() {
                   ? "Gefilterten Blanko-Plan erzeugen"
                   : "Gefüllten Einsatzplan erzeugen"}
             </Button>
-          </CardContent>
-        </Card>
+        </PdfSection>
       </div>
 
-      <Card className="shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-base">
-            Vorlage frei konfigurieren
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-5">
+      <PdfSection
+        title="Vorlage frei konfigurieren"
+        description="PDF-Titel, Logo, Zusatzspalten und Hinweise für die aktuelle Veranstaltung verwalten."
+        icon={ClipboardCheck}
+      >
           {isLoading ? (
             <p className="text-muted-foreground">
               Konfiguration wird geladen …
@@ -780,8 +1048,7 @@ export default function PdfExport() {
               )}
             </>
           )}
-        </CardContent>
-      </Card>
+      </PdfSection>
     </div>
   );
 }

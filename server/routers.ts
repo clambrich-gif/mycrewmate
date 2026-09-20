@@ -66,6 +66,8 @@ import {
 import {
   createAllHelperTaskZip,
   createBlankPlanPdf,
+  createContactOverviewPdf,
+  createContactOverviewZip,
   createDonationOverviewPdf,
   createHelperTaskPdf,
   createMaterialPacklistPdf,
@@ -368,6 +370,22 @@ const planPdfInput = z.object({
   contactIds: z.array(z.number().int().positive()).max(500).optional(),
   includeUnassignedContact: z.boolean().optional(),
 });
+const contactOverviewPdfInput = z
+  .object({
+    contactIds: z.array(z.number().int().positive()).min(1).max(500),
+    includeShifts: z.boolean(),
+    includePreparation: z.boolean(),
+    includePostProcessing: z.boolean(),
+    includeMaterials: z.boolean(),
+  })
+  .refine(
+    input =>
+      input.includeShifts ||
+      input.includePreparation ||
+      input.includePostProcessing ||
+      input.includeMaterials,
+    { message: "Bitte mindestens einen Inhaltsbereich auswählen" }
+  );
 const clockTime = z
   .string()
   .trim()
@@ -1576,6 +1594,54 @@ export const appRouter = router({
         mimeType: "application/zip",
         base64: zip.toString("base64"),
       };
+      }),
+    contactOverview: protectedProcedure
+      .input(contactOverviewPdfInput)
+      .mutation(async ({ input }) => {
+        if (input.contactIds.length !== 1) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Für ein einzelnes Ansprechpartner-PDF bitte genau einen Ansprechpartner auswählen",
+          });
+        }
+        const contact = await db.getContact(input.contactIds[0]);
+        if (!contact) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message:
+              "Der ausgewählte Ansprechpartner gehört nicht zur aktuellen Veranstaltung",
+          });
+        }
+        const pdf = await createContactOverviewPdf(contact.id, input);
+        return {
+          filename: `Ansprechpartner_Uebersicht_${safeExportName(contact.name)}.pdf`,
+          mimeType: "application/pdf",
+          base64: pdf.toString("base64"),
+        };
+      }),
+    contactOverviewZip: protectedProcedure
+      .input(contactOverviewPdfInput)
+      .mutation(async ({ input }) => {
+        const contacts = await db.listContacts();
+        const scopedContactIds = new Set(contacts.map(contact => contact.id));
+        const invalidId = input.contactIds.find(
+          contactId => !scopedContactIds.has(contactId)
+        );
+        if (invalidId !== undefined) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message:
+              "Mindestens ein Ansprechpartner gehört nicht zur aktuellen Veranstaltung",
+          });
+        }
+        const zip = await createContactOverviewZip(input.contactIds, input);
+        const selectedEvent = await db.getEvent();
+        return {
+          filename: `Ansprechpartner_Uebersichten_${safeExportName(selectedEvent?.name ?? "Veranstaltung")}.zip`,
+          mimeType: "application/zip",
+          base64: zip.toString("base64"),
+        };
       }),
     blankPlan: protectedProcedure.query(async () => {
       const pdf = await createBlankPlanPdf();
