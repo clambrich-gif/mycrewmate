@@ -598,7 +598,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("<Search");
     expect(plan).toContain("h-12 w-full border-2 border-slate-400 bg-white");
     expect(plan).toContain("placeholder:text-slate-600");
-    expect(plan).toContain('className="space-y-2.5"');
+    expect(plan).toContain('className="flex flex-col gap-2.5"');
     expect(plan).toContain("function HighlightedText");
     expect(plan).toContain('new RegExp(escapedQuery, "giu")');
     expect(plan).toContain("matchIndex + match[0].length");
@@ -1350,73 +1350,69 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain("flex-wrap");
   });
 
-  it("leert im Einsatzplan ausschließlich Helferzuweisungen mit semantischem Rose-Styling", () => {
+  it("bündelt die zwei Einsatzplan-Resetwege hinter einem passwortgeschützten Dialog", () => {
     const plan = source("client/src/pages/Plan.tsx");
-    const clearButton = source(
-      "client/src/components/ClearPlanAssignmentsButton.tsx"
+    const resetDialog = source(
+      "client/src/components/PlanResetDialogButton.tsx"
     );
-    const resetButton = source("client/src/components/ResetAreaButton.tsx");
     const passwordDialog = source(
       "client/src/components/AdminPasswordDialog.tsx"
     );
 
     expect(plan.indexOf("<CopyPreviousPlanButton />")).toBeLessThan(
-      plan.indexOf("<ClearPlanAssignmentsButton")
+      plan.indexOf("<PlanResetDialogButton")
     );
-    expect(plan.indexOf("<ClearPlanAssignmentsButton")).toBeLessThan(
-      plan.indexOf("<ResetAreaButton")
-    );
-    expect(clearButton).toContain("trpc.plan.clearAssignments.useMutation");
-    expect(clearButton).toContain("Die Schichten, Bereiche, Aufgaben");
-    expect(clearButton).toContain("Bereichsansprechpartner bleiben vollständig erhalten");
-    expect(clearButton).toContain("border-rose-200 bg-rose-50 text-rose-700");
-    expect(resetButton).toContain("border-rose-200 bg-rose-50 text-rose-700");
-    expect(resetButton).not.toContain('"assignments"');
+    expect(plan).not.toContain("<ClearPlanAssignmentsButton");
+    expect(plan).not.toContain("<ResetAreaButton");
+    expect(resetDialog).toContain("trpc.plan.clearAssignments.useMutation");
+    expect(resetDialog).toContain("trpc.moduleAssignments.clear.useMutation");
+    expect(resetDialog).toContain("trpc.reset.area.useMutation");
+    expect(resetDialog).toContain("Belegungen leeren");
+    expect(resetDialog).toContain("Kompletten Plan löschen");
+    expect(resetDialog).toContain("Alle eingeteilten Helfer werden aus den Schichten");
+    expect(resetDialog).toContain("border-rose-200 bg-rose-50");
+    expect(resetDialog).toContain("text-rose-700");
     expect(plan).toContain('name="plan-search-query"');
     expect(plan).toContain('autoComplete="off"');
-    expect(plan).toContain('onCleared={() => setQ("")}');
+    expect(plan).toContain('onCompleted={() => setQ("")}');
     expect(passwordDialog).toContain('name="admin-confirmation-password"');
     expect(passwordDialog).toContain('autoComplete="off"');
   });
 
-  it("ordnet die vier Aktionen für Vorbereitung, Nachbereitung und Material und leert dort nur Belegungsfelder", () => {
+  it("ordnet die drei Modulaktionen und den gemeinsamen Resetdialog für Vorbereitung, Nachbereitung und Material", () => {
     const prep = source("client/src/pages/Preparation.tsx");
     const post = source("client/src/pages/PostProcessing.tsx");
     const materials = source("client/src/pages/Materials.tsx");
     const taskGeneric = source("client/src/pages/TaskGeneric.tsx");
-    const clearButton = source(
-      "client/src/components/ClearModuleAssignmentsButton.tsx"
+    const resetDialog = source(
+      "client/src/components/PlanResetDialogButton.tsx"
     );
 
     for (const module of [prep, post]) {
-      expect(module).toContain("lg:min-w-[660px]");
-      expect(module).toContain("grid grid-cols-2 gap-2 lg:grid-cols-4");
+      expect(module).toContain("lg:min-w-[500px]");
+      expect(module).toContain("grid grid-cols-2 gap-2 lg:grid-cols-3");
       expect(module).toContain('buttonLabel="Excel Import"');
-      expect(module).toContain("<ClearModuleAssignmentsButton");
+      expect(module).toContain("<PlanResetDialogButton");
       expect(module.indexOf("PDF drucken")).toBeLessThan(
         module.indexOf("buttonLabel=\"Excel Import\"")
       );
       expect(module.indexOf("buttonLabel=\"Excel Import\"")).toBeLessThan(
-        module.indexOf("<ClearModuleAssignmentsButton")
+        module.indexOf("<PlanResetDialogButton")
       );
-      expect(module.indexOf("<ClearModuleAssignmentsButton")).toBeLessThan(
-        module.indexOf("<ResetAreaButton")
-      );
+      expect(module).not.toContain("<ClearModuleAssignmentsButton");
+      expect(module).not.toContain("<ResetAreaButton");
     }
 
-    expect(materials).toContain("stackedActionColumns={4}");
+    expect(materials).toContain("stackedActionColumns={3}");
     expect(materials).toContain('excelImportButtonLabel="Excel Import"');
     expect(materials).toContain('clearAssignmentsArea="materials"');
     expect(taskGeneric).toContain("clearAssignmentsArea?: \"prep\" | \"post\" | \"materials\"");
-    expect(taskGeneric).toContain("lg:grid-cols-4");
-    expect(taskGeneric).toContain("<ClearModuleAssignmentsButton");
-    expect(clearButton).toContain("trpc.moduleAssignments.clear.useMutation");
-    expect(clearButton).toContain("Möchtest du wirklich alle Belegungen leeren?");
-    expect(clearButton).toContain("Die Aufgaben selbst bleiben vollständig erhalten.");
-    expect(clearButton).toContain("Die Artikel, Mengen, Orte und Bemerkungen bleiben vollständig erhalten.");
-    expect(clearButton).toContain("utils.prep.list.invalidate()");
-    expect(clearButton).toContain("utils.post.list.invalidate()");
-    expect(clearButton).toContain("utils.materials.list.invalidate()");
+    expect(taskGeneric).toContain("lg:grid-cols-3");
+    expect(taskGeneric).toContain("<PlanResetDialogButton");
+    expect(taskGeneric).not.toContain("<ClearModuleAssignmentsButton");
+    expect(resetDialog).toContain("Alle Verantwortlichen und Fristen werden geleert");
+    expect(resetDialog).toContain("Stand sämtlicher Materialartikel auf „Offen“ zurückgesetzt");
+    expect(resetDialog).toContain("Alle Materialartikel der aktuell gewählten Veranstaltung werden dauerhaft gelöscht.");
   });
 
   it("nutzt für die Einsatzplantabelle die volle Desktopbreite mit strukturiertem Helfergrid", () => {
@@ -1429,12 +1425,14 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain('<CardContent className="w-full overflow-x-auto overscroll-x-contain p-0">');
     expect(plan).toContain('data-slot="roster-table"');
     expect(plan).toContain(
-      'className="w-full min-w-[1565px] table-auto text-sm"'
+      'className="w-full min-w-[1600px] table-auto text-sm"'
     );
     expect(plan).not.toContain('xl:overflow-x-hidden');
     expect(plan).not.toContain('<colgroup>');
     expect(plan).toContain('data-slot="roster-actions"');
     expect(plan).toContain('data-slot="roster-helper-grid"');
+    expect(plan).toContain('data-slot="roster-delete-action"');
+    expect(plan).toContain('canEditPlan ? "text-red-600" : "text-gray-400 opacity-50"');
     expect(plan).toContain('grid max-w-full grid-cols-2 items-start gap-1');
     expect(plan).toContain('w-full min-w-0 max-w-none min-h-11');
     expect(plan).toContain('Besetzt / Bedarf');
@@ -1514,9 +1512,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
 
   it("ordnet Einsatzplanaktionen mobil zweispaltig und ab Tablet einzeilig an", () => {
     const plan = source("client/src/pages/Plan.tsx");
-    const resetButton = source("client/src/components/ResetAreaButton.tsx");
-    const clearAssignments = source(
-      "client/src/components/ClearPlanAssignmentsButton.tsx"
+    const resetDialog = source(
+      "client/src/components/PlanResetDialogButton.tsx"
     );
     const copyPlan = source("client/src/components/CopyPreviousPlanButton.tsx");
     const excelImport = source(
@@ -1528,24 +1525,23 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("[&>[data-slot=button]]:w-full");
     expect(plan).toContain("sm:[&>[data-slot=button]]:w-auto");
     expect(plan).toContain('[&>[data-slot=button]]:whitespace-nowrap');
-    expect(plan).toContain("min-[1280px]:w-[46rem]");
+    expect(plan).toContain("min-[1280px]:w-[38rem]");
     expect(plan).toContain(
       'className="mt-2 w-full bg-blue-600 px-4 font-semibold text-white shadow-sm hover:bg-blue-700 focus-visible:ring-blue-500"'
     );
     expect(plan).toContain('buttonLabel="Excel Import"');
     expect(plan).toContain("<CopyPreviousPlanButton />");
-    expect(plan).toContain("<ClearPlanAssignmentsButton onCleared={() => setQ(\"\")} />");
-    expect(plan).not.toContain('mobileButtonLabel="Plan zurücksetzen"');
-    expect(resetButton).toContain(
+    expect(plan).toContain("<PlanResetDialogButton");
+    expect(plan).not.toContain("<ClearPlanAssignmentsButton");
+    expect(resetDialog).toContain(
       "inline-flex items-center gap-2 whitespace-nowrap border-rose-200"
     );
-    expect(resetButton).toContain("px-3.5 py-1.5");
-    expect(resetButton).toContain('<RotateCcw className="h-4 w-4" />');
-    for (const actionButton of [clearAssignments, copyPlan, excelImport]) {
+    expect(resetDialog).toContain("px-3.5 py-1.5");
+    expect(resetDialog).toContain("<RotateCcw");
+    for (const actionButton of [copyPlan, excelImport]) {
       expect(actionButton).toContain("inline-flex items-center gap-2 whitespace-nowrap");
       expect(actionButton).toContain("px-3 py-1.5");
     }
-    expect(clearAssignments).toContain('<UserMinus className="h-4 w-4" />');
     expect(excelImport).toContain('buttonLabel = "Excel importieren"');
     expect(excelImport).toContain("buttonLabel?: string");
     expect(excelImport).toContain("{buttonLabel}");
@@ -1572,7 +1568,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
       expect(module).toContain('className="col-span-2 shadow-xs lg:col-auto"');
     }
 
-    expect(helpers).toContain("space-y-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm");
+    expect(helpers).toContain("flex flex-col gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm");
     expect(helpers).toContain("Suchen (Name, Telefon, Hinweise) …");
     expect(taskList).toContain("flex w-full flex-col gap-2 md:flex-row md:flex-wrap md:items-center");
     expect(taskList).toContain('className="h-11 w-full text-base md:h-10 md:w-[220px] md:text-sm"');
@@ -1940,7 +1936,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const creationAction = source("client/src/lib/creation-action.ts");
     const helperHeaderActions = helpers.slice(
       helpers.indexOf('<div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">'),
-      helpers.indexOf('<div className="space-y-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm">')
+      helpers.indexOf('<div className="flex flex-col gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm">')
     );
 
     expect(creationAction).toContain("CREATION_ACTION_BUTTON_CLASS");
@@ -1968,10 +1964,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
 
   it("ordnet Helferfilter wie in der Vorbereitung in einer weißen Suchkarte an", () => {
     const helpers = source("client/src/pages/Helpers.tsx");
+    const plan = source("client/src/pages/Plan.tsx");
 
     expect(helpers).toContain(
-      'className="space-y-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm"'
+      'className="flex flex-col gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm"'
     );
+    expect(helpers).toContain('className="order-2 relative w-full md:order-1 md:max-w-[551px]"');
+    expect(helpers).toContain('className="order-1 grid grid-cols-1 gap-2 md:order-2 md:flex md:flex-wrap"');
     expect(helpers).toContain("<Search");
     expect(helpers).toContain("Suchen (Name, Telefon, Hinweise) …");
     expect(helpers).toContain("Helfer nach Name, Telefon oder Hinweis durchsuchen");
@@ -1987,6 +1986,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     ].map(label => helpers.indexOf(label));
     expect(filterOrder.every(index => index >= 0)).toBe(true);
     expect(filterOrder).toEqual([...filterOrder].sort((left, right) => left - right));
+    expect(plan).toContain('className="order-2 relative w-full md:order-1 lg:max-w-xl"');
+    expect(plan).toContain('className="order-1 grid gap-2 sm:grid-cols-2 md:order-2 lg:flex lg:flex-wrap"');
   });
 
   it("kennzeichnet Hauptseiten mit ruhigen einfarbigen Titelicons", () => {
@@ -2125,7 +2126,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(materials).toContain('{ v: "bestellt", l: "🟡 Bestellt" }');
     expect(materials).toContain('{ v: "geliefert", l: "🟢 Geliefert" }');
     expect(materials).toContain('headerLayout="stacked"');
-    expect(materials).toContain("stackedActionColumns={4}");
+    expect(materials).toContain("stackedActionColumns={3}");
     expect(materials).toContain("createButtonClassName=\"border-rose-700 bg-rose-600");
     expect(materials).toContain("filterConfig={{");
     expect(materials).toContain('searchPlaceholder: "Suchen (Artikel/Kategorie/Verantwortlicher/Ort) …"');
@@ -2517,8 +2518,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(post).toContain("Filter zurücksetzen");
     expect(post).not.toContain("Filter aufheben");
     expect(post).not.toContain("Nur offene Nachbereitungen");
-    expect(post).toContain("lg:min-w-[660px]");
-    expect(post).toContain("lg:grid-cols-4");
+    expect(post).toContain("lg:min-w-[500px]");
+    expect(post).toContain("lg:grid-cols-3");
     expect(post).toContain("className={`w-full ${CREATION_ACTION_BUTTON_CLASS}`}");
     expect(post).toContain("trpc.pdf.postTaskOverview.useMutation");
     expect(post).toContain("downloadBase64File");

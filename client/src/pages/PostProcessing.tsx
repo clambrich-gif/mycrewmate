@@ -2,8 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { LocationMapLink } from "@/components/LocationMapLink";
 import { PageTitle } from "@/components/PageTitle";
 import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
-import { ResetAreaButton } from "@/components/ResetAreaButton";
-import { ClearModuleAssignmentsButton } from "@/components/ClearModuleAssignmentsButton";
+import { PlanResetDialogButton } from "@/components/PlanResetDialogButton";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -588,8 +587,8 @@ export default function PostProcessing() {
             Aufgabenverwaltung für den Abbau, Rücktransporte, Abrechnungen und Nachbereitung des Festivals.
           </p>
         </div>
-        <div className="w-full space-y-2 lg:w-auto lg:min-w-[660px]">
-          <div className="grid grid-cols-2 gap-2 lg:grid-cols-4 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:whitespace-nowrap [&>[data-slot=button]]:px-2 lg:[&>[data-slot=button]]:h-10">
+        <div className="w-full space-y-2 lg:w-auto lg:min-w-[500px]">
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-3 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:whitespace-nowrap [&>[data-slot=button]]:px-2 lg:[&>[data-slot=button]]:h-10">
             <Button
               type="button"
               variant="outline"
@@ -605,8 +604,7 @@ export default function PostProcessing() {
               label="Nachbereitung"
               buttonLabel="Excel Import"
             />
-            <ClearModuleAssignmentsButton area="post" label="Nachbereitung" />
-            <ResetAreaButton area="post" label="Nachbereitung" compact />
+            <PlanResetDialogButton area="post" label="Nachbereitung" />
           </div>
           <Button
             type="button"

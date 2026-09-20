@@ -47,8 +47,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { CopyPreviousPlanButton } from "@/components/CopyPreviousPlanButton";
-import { ClearPlanAssignmentsButton } from "@/components/ClearPlanAssignmentsButton";
-import { ResetAreaButton } from "@/components/ResetAreaButton";
+import { PlanResetDialogButton } from "@/components/PlanResetDialogButton";
 import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 import {
   Popover,
@@ -1276,7 +1275,7 @@ export default function Plan() {
         className="flex w-full justify-end"
       >
         {canEditPlan && (
-          <div className="w-full shrink-0 min-[1280px]:w-[46rem]">
+          <div className="w-full shrink-0 min-[1280px]:w-[38rem]">
             <div
               data-plan-data-actions
               className="grid grid-cols-2 gap-2 sm:flex sm:flex-nowrap sm:items-center sm:justify-between sm:gap-2 sm:overflow-x-auto sm:pb-1 sm:whitespace-nowrap [&>[data-slot=button]]:h-9 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:whitespace-nowrap sm:[&>[data-slot=button]]:w-auto sm:[&>[data-slot=button]]:shrink-0"
@@ -1287,10 +1286,10 @@ export default function Plan() {
                 buttonLabel="Excel Import"
               />
               <CopyPreviousPlanButton />
-              <ClearPlanAssignmentsButton onCleared={() => setQ("")} />
-              <ResetAreaButton
+              <PlanResetDialogButton
                 area="shifts"
                 label="Einsatzplan"
+                onCompleted={() => setQ("")}
               />
             </div>
             <Button
@@ -1425,8 +1424,8 @@ export default function Plan() {
         </div>
       )}
 
-      <div className="space-y-2.5">
-        <div className="relative w-full lg:max-w-xl">
+      <div className="flex flex-col gap-2.5">
+        <div className="order-2 relative w-full md:order-1 lg:max-w-xl">
           <Search
             className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-700"
             aria-hidden="true"
@@ -1456,7 +1455,7 @@ export default function Plan() {
             </button>
           )}
         </div>
-        <div className="grid gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap">
+        <div className="order-1 grid gap-2 sm:grid-cols-2 md:order-2 lg:flex lg:flex-wrap">
           <Select value={day} onValueChange={setDay}>
             <SelectTrigger className="w-full lg:w-40">
               <SelectValue />
@@ -1669,7 +1668,7 @@ export default function Plan() {
         <CardContent className="w-full overflow-x-auto overscroll-x-contain p-0">
           <table
             data-slot="roster-table"
-            className="w-full min-w-[1565px] table-auto text-sm"
+            className="w-full min-w-[1600px] table-auto text-sm"
           >
             <thead className="bg-muted/60 sticky top-0">
               <tr className="text-left">
@@ -1685,12 +1684,15 @@ export default function Plan() {
                 <th className="min-w-[80px] whitespace-nowrap px-3 py-3 text-center">Doppelt</th>
                 <th className="min-w-[80px] whitespace-nowrap px-3 py-3 text-center">Ausfälle</th>
                 <th className="min-w-[320px] whitespace-nowrap px-3 py-3">Eingeteilte Helfer</th>
+                <th className="w-12 whitespace-nowrap px-2 py-3 text-center">
+                  <span className="sr-only">Schicht löschen</span>
+                </th>
               </tr>
             </thead>
             <tbody>
               {isLoading && (
                 <tr>
-                  <td className="p-4 text-muted-foreground" colSpan={12}>
+                  <td className="p-4 text-muted-foreground" colSpan={13}>
                     Lade …
                   </td>
                 </tr>
@@ -1714,29 +1716,25 @@ export default function Plan() {
                         className="mt-0.5"
                       />
                     </td>
-                    <td data-slot="roster-actions" className="min-w-[75px] px-3 py-2.5">
-                      {canEditPlan && (
-                        <div className="flex items-center justify-center gap-1 whitespace-nowrap">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            title="Schicht bearbeiten"
-                            onClick={() => openEdit(s)}
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            title="Löschen"
-                            onClick={() => setDeleteCandidate(s)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                          </Button>
-                        </div>
-                      )}
+                    <td data-slot="roster-actions" className="min-w-[40px] px-3 py-2.5">
+                      <div className="flex items-center justify-center whitespace-nowrap">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          title={
+                            canEditPlan
+                              ? "Schicht bearbeiten"
+                              : "Schichtbearbeitung ist nur für Administratoren möglich"
+                          }
+                          disabled={!canEditPlan}
+                          onClick={() => canEditPlan && openEdit(s)}
+                        >
+                          <Pencil
+                            className={`h-3.5 w-3.5 ${canEditPlan ? "text-slate-700" : "text-gray-400 opacity-50"}`}
+                          />
+                        </Button>
+                      </div>
                     </td>
                     <td className="min-w-[140px] px-3 py-2.5">
                       <span className="block max-w-[8rem] break-words [overflow-wrap:anywhere]">
@@ -1795,12 +1793,35 @@ export default function Plan() {
                         {renderShiftSlots(evalE)}
                       </div>
                     </td>
+                    <td
+                      data-slot="roster-delete-action"
+                      className="w-12 px-2 py-2.5 text-center align-top"
+                    >
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        title={
+                          canEditPlan
+                            ? "Schicht löschen"
+                            : "Schichtlöschen ist nur für Administratoren möglich"
+                        }
+                        aria-label={`Schicht ${s.area}: ${s.task} löschen`}
+                        disabled={!canEditPlan}
+                        onClick={() => canEditPlan && setDeleteCandidate(s)}
+                      >
+                        <Trash2
+                          className={`h-4 w-4 ${canEditPlan ? "text-red-600" : "text-gray-400 opacity-50"}`}
+                          aria-hidden="true"
+                        />
+                      </Button>
+                    </td>
                   </tr>
                 );
               })}
               {!isLoading && filtered.length === 0 && (
                 <tr>
-                  <td className="p-4 text-muted-foreground" colSpan={12}>
+                  <td className="p-4 text-muted-foreground" colSpan={13}>
                     {emptyMessage}
                   </td>
                 </tr>

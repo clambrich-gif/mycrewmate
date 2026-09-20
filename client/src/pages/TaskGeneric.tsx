@@ -1,6 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { ClearModuleAssignmentsButton } from "@/components/ClearModuleAssignmentsButton";
+import { PlanResetDialogButton } from "@/components/PlanResetDialogButton";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 import { PageTitle, type PageTitleIconKind } from "@/components/PageTitle";
@@ -418,19 +418,18 @@ export default function TaskGeneric({
                   buttonLabel={excelImportButtonLabel}
                 />
               )}
-              {clearAssignmentsArea && (
-                <ClearModuleAssignmentsButton
+              {clearAssignmentsArea ? (
+                <PlanResetDialogButton
                   area={clearAssignmentsArea}
                   label={title}
                 />
-              )}
-              {kind in resetAreaByKind && (
+              ) : kind in resetAreaByKind ? (
                 <ResetAreaButton
                   area={resetAreaByKind[kind as keyof typeof resetAreaByKind]}
                   label={title}
                   compact
                 />
-              )}
+              ) : null}
             </div>
             {createInDialog ? (
               <Button

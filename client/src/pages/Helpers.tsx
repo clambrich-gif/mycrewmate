@@ -913,8 +913,8 @@ export default function Helpers() {
         </div>
       </div>
 
-      <div className="space-y-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-        <div className="relative w-full md:max-w-[551px]">
+      <div className="flex flex-col gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+        <div className="order-2 relative w-full md:order-1 md:max-w-[551px]">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
           <Input
             placeholder="Suchen (Name, Telefon, Hinweise) …"
@@ -924,7 +924,7 @@ export default function Helpers() {
             aria-label="Helfer nach Name, Telefon oder Hinweis durchsuchen"
           />
         </div>
-        <div className="grid grid-cols-1 gap-2 md:flex md:flex-wrap">
+        <div className="order-1 grid grid-cols-1 gap-2 md:order-2 md:flex md:flex-wrap">
           <Select value={apFilter} onValueChange={setApFilter}>
             <SelectTrigger className="!h-10 w-full items-center border-slate-200 bg-white text-base md:w-[190px] md:text-sm">
               <SelectValue placeholder="Ansprechpartner" />

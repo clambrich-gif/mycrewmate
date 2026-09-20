@@ -43,7 +43,7 @@ export default function Materials() {
       createTriggerLabel="Neuer Artikel"
       createButtonClassName="border-rose-700 bg-rose-600 text-base font-semibold text-white shadow-xs hover:bg-rose-700 hover:text-white focus-visible:ring-rose-500"
       headerLayout="stacked"
-      stackedActionColumns={4}
+      stackedActionColumns={3}
       excelImportButtonLabel="Excel Import"
       clearAssignmentsArea="materials"
       filterConfig={{
