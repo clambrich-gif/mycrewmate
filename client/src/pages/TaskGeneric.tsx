@@ -148,7 +148,6 @@ export default function TaskGeneric({
     id: number;
     name: string;
   } | null>(null);
-  const [responsibleContactId, setResponsibleContactId] = useState<number | null>(null);
 
   const defaultStatus = statusOptions ?? [
     { v: "offen", l: "offen" },
@@ -331,7 +330,6 @@ export default function TaskGeneric({
     },
     onSuccess: () => {
       setDeleteTarget(null);
-      setResponsibleContactId(null);
       toast.success("Entfernt");
     },
     onError: (error: any, _input: any, context: any) => {
@@ -1071,24 +1069,13 @@ export default function TaskGeneric({
           onOpenChange={open => {
             if (!open) {
               setDeleteTarget(null);
-              setResponsibleContactId(null);
             }
           }}
           title={`${addLabel} löschen?`}
           description={`„${deleteTarget?.name ?? ""}“ wird aus ${title} im aktuellen Veranstaltungsjahr gelöscht.`}
           busy={remove.isPending}
-          contacts={deletionRequiresContact ? contacts : undefined}
-          responsibleContactId={responsibleContactId}
-          onResponsibleContactChange={
-            deletionRequiresContact ? setResponsibleContactId : undefined
-          }
           onConfirm={() => {
             if (!deleteTarget) return;
-            if (deletionRequiresContact) {
-              if (!responsibleContactId) return;
-              remove.mutate({ id: deleteTarget.id, responsibleContactId });
-              return;
-            }
             remove.mutate({ id: deleteTarget.id });
           }}
         />

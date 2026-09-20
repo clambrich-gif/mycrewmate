@@ -18,6 +18,7 @@ import {
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   appSettings,
+  activityLogs,
   approvals,
   assignments,
   backupRestoreLogs,
@@ -1597,6 +1598,55 @@ export type AuditActor = {
   responsibleContactName?: string | null;
 };
 
+export type ActivityLogAction =
+  | "created"
+  | "updated"
+  | "deleted"
+  | "reset"
+  | "imported"
+  | "copied";
+
+/** Schreibt eine erfolgreiche operative Aktion mit der serverseitigen Sitzungsidentität. */
+export async function recordActivityLog(input: {
+  actor: AuditActor;
+  module: string;
+  action: ActivityLogAction;
+  subject: string;
+}) {
+  const database = (await getDb()) as DB;
+  const selectedYear = year();
+  const selectedEventId = event();
+  let validEventId: number | null = null;
+  let eventName = `Veranstaltung ${selectedYear}`;
+  try {
+    const [selectedEvent] = await database
+      .select({ id: events.id, name: events.name })
+      .from(events)
+      .where(
+        and(eq(events.id, selectedEventId), eq(events.year, selectedYear))
+      )
+      .limit(1);
+    if (selectedEvent) {
+      validEventId = selectedEvent.id;
+      eventName = selectedEvent.name;
+    }
+  } catch {
+    // Bei Mock-Aufrufen ohne volles Event-Schema Fallback beibehalten
+  }
+  await database.insert(activityLogs).values({
+    year: selectedYear,
+    eventId: validEventId,
+    eventName,
+    module: input.module,
+    action: input.action,
+    subject: input.subject.slice(0, 500),
+    actorUserId: input.actor.userId > 0 ? input.actor.userId : null,
+    actorName: input.actor.name,
+    actorRole: input.actor.role,
+    actorLoginMethod: input.actor.loginMethod ?? null,
+  });
+}
+
 type AuditEntity = {
   entityType: "helper" | "cake" | "prep" | "post" | "material";
   entityId: number;
@@ -1782,6 +1832,26 @@ export async function listDeletionAuditLogs(filters?: {
     : query;
   return filteredQuery
     .orderBy(desc(deletionAuditLogs.createdAt), desc(deletionAuditLogs.id))
+    .limit(filters?.limit ?? 500);
+}
+
+export async function listActivityLogs(filters?: {
+  eventYear?: number;
+  eventId?: number;
+  limit?: number;
+}) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = [
+    ...(filters?.eventYear ? [eq(activityLogs.year, filters.eventYear)] : []),
+    ...(filters?.eventId ? [eq(activityLogs.eventId, filters.eventId)] : []),
+  ];
+  const query = db.select().from(activityLogs);
+  const filteredQuery = conditions.length
+    ? query.where(and(...conditions))
+    : query;
+  return filteredQuery
+    .orderBy(desc(activityLogs.createdAt), desc(activityLogs.id))
     .limit(filters?.limit ?? 500);
 }
 
@@ -2104,14 +2174,6 @@ export async function deleteHelper(
   id: number,
   options: { allowAssigned?: boolean; actor: AuditActor }
 ) {
-  if (
-    !options.actor.responsibleContactId ||
-    !options.actor.responsibleContactName
-  ) {
-    throw new Error(
-      "Für die Helferlöschung muss der ausführende Ansprechpartner ausgewählt werden"
-    );
-  }
   const db = (await getDb()) as DB;
   return db.transaction(async tx => {
     const [helper] = await tx
@@ -2968,17 +3030,23 @@ async function scopedContactValues(values: Record<string, unknown>) {
 }
 
 export const createPrep = async (v: any) => {
-  const { logEntry, logEntryAuthor, ...values } = v;
+  const { logEntry, logEntryAuthor, activityEntry, activityAuthor, ...values } = v;
+  const noteWithManualEntry = prependPreparationLogbookEntry(
+    logEntry,
+    values.note,
+    new Date(),
+    logEntryAuthor
+  );
   const valuesWithLogbook =
-    logEntry === undefined
+    logEntry === undefined && !activityEntry
       ? values
       : {
           ...values,
           note: prependPreparationLogbookEntry(
-            logEntry,
-            values.note,
+            activityEntry,
+            noteWithManualEntry,
             new Date(),
-            logEntryAuthor
+            activityAuthor ?? logEntryAuthor
           ),
         };
   return createYearRow(
@@ -2987,9 +3055,9 @@ export const createPrep = async (v: any) => {
   );
 };
 export const updatePrep = async (id: number, v: any) => {
-  const { logEntry, logEntryAuthor, ...values } = v;
+  const { logEntry, logEntryAuthor, activityEntry, activityAuthor, ...values } = v;
   const database = (await getDb()) as DB;
-  if (logEntry === undefined) {
+  if (logEntry === undefined && !activityEntry) {
     return database
       .update(prepTasks)
       .set(await scopedContactValues(await scopedLocationValues(values)))
@@ -3009,10 +3077,15 @@ export const updatePrep = async (id: number, v: any) => {
       await scopedContactValues(await scopedLocationValues({
         ...values,
         note: prependPreparationLogbookEntry(
-          logEntry,
-          existing[0].note,
+          activityEntry,
+          prependPreparationLogbookEntry(
+            logEntry,
+            existing[0].note,
+            new Date(),
+            logEntryAuthor
+          ),
           new Date(),
-          logEntryAuthor
+          activityAuthor ?? logEntryAuthor
         ),
       }))
     )
@@ -3244,17 +3317,23 @@ export async function clearModuleAssignments(area: ModuleAssignmentClearArea) {
   });
 }
 export const createPost = async (v: any) => {
-  const { logEntry, logEntryAuthor, ...values } = v;
+  const { logEntry, logEntryAuthor, activityEntry, activityAuthor, ...values } = v;
+  const noteWithManualEntry = prependPreparationLogbookEntry(
+    logEntry,
+    values.note,
+    new Date(),
+    logEntryAuthor
+  );
   const valuesWithLogbook =
-    logEntry === undefined
+    logEntry === undefined && !activityEntry
       ? values
       : {
           ...values,
           note: prependPreparationLogbookEntry(
-            logEntry,
-            values.note,
+            activityEntry,
+            noteWithManualEntry,
             new Date(),
-            logEntryAuthor
+            activityAuthor ?? logEntryAuthor
           ),
         };
   return createYearRow(
@@ -3263,9 +3342,9 @@ export const createPost = async (v: any) => {
   );
 };
 export const updatePost = async (id: number, v: any) => {
-  const { logEntry, logEntryAuthor, ...values } = v;
+  const { logEntry, logEntryAuthor, activityEntry, activityAuthor, ...values } = v;
   const database = (await getDb()) as DB;
-  if (logEntry === undefined) {
+  if (logEntry === undefined && !activityEntry) {
     return database
       .update(postTasks)
       .set(await scopedContactValues(await scopedLocationValues(values)))
@@ -3283,10 +3362,15 @@ export const updatePost = async (id: number, v: any) => {
       await scopedContactValues(await scopedLocationValues({
         ...values,
         note: prependPreparationLogbookEntry(
-          logEntry,
-          existing[0].note,
+          activityEntry,
+          prependPreparationLogbookEntry(
+            logEntry,
+            existing[0].note,
+            new Date(),
+            logEntryAuthor
+          ),
           new Date(),
-          logEntryAuthor
+          activityAuthor ?? logEntryAuthor
         ),
       }))
     )
@@ -3339,14 +3423,6 @@ export const updateMaterial = async (id: number, v: any) =>
     .set(await scopedContactValues(await scopedLocationValues(v)))
     .where(and(yearWhere(materials, id), eq(materials.deleted, false)));
 export async function deleteMaterial(id: number, options: { actor: AuditActor }) {
-  if (
-    !options.actor.responsibleContactId ||
-    !options.actor.responsibleContactName
-  ) {
-    throw new Error(
-      "Für die Materiallöschung muss der ausführende Ansprechpartner ausgewählt werden"
-    );
-  }
   const db = (await getDb()) as DB;
   return db.transaction(async tx => {
     const [material] = await tx

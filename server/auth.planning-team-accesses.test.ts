@@ -321,4 +321,80 @@ describe("Event-based Access Control für Planungsteam", () => {
       })
     ).rejects.toThrow("Administratorpasswort ist nicht korrekt");
   });
+
+  it("überträgt beim Helferlöschen die echte Sitzungsidentität automatisch an das Löschprotokoll", async () => {
+    const deleteHelperSpy = vi
+      .spyOn(db, "deleteHelper")
+      .mockResolvedValue({ affectedRows: 1 } as any);
+
+    const adminCaller = appRouter.createCaller({
+      user: {
+        id: 42,
+        openId: ADMIN_PASSWORD_OPEN_ID,
+        name: "Christian Lambrich",
+        email: null,
+        loginMethod: "password",
+        role: "admin",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastSignedIn: new Date(),
+      },
+      req: mockReq(),
+      res: { setHeader: vi.fn(), clearCookie: vi.fn(), cookie: vi.fn() } as any,
+    });
+
+    const result = await adminCaller.helpers.remove({ id: 99 });
+    expect(result).toBeDefined();
+    expect(deleteHelperSpy).toHaveBeenCalledWith(99, {
+      allowAssigned: true,
+      actor: {
+        userId: 42,
+        name: "Christian Lambrich",
+        role: "admin",
+        loginMethod: "password",
+      },
+    });
+  });
+
+  it("liefert das Aktivitätsprotokoll für Administratoren abfragebereit aus", async () => {
+    const listActivitiesSpy = vi
+      .spyOn(db, "listActivityLogs")
+      .mockResolvedValue([
+        {
+          id: 1,
+          year: 2027,
+          eventId: 10,
+          eventName: "MyEifelRide 2027",
+          module: "Helfer",
+          action: "created",
+          subject: "Helfer „Max Mustermann“ angelegt",
+          actorUserId: 42,
+          actorName: "Christian Lambrich",
+          actorRole: "admin",
+          actorLoginMethod: "password",
+          createdAt: new Date(),
+        },
+      ]);
+
+    const adminCaller = appRouter.createCaller({
+      user: {
+        id: 42,
+        openId: ADMIN_PASSWORD_OPEN_ID,
+        name: "Christian Lambrich",
+        email: null,
+        loginMethod: "password",
+        role: "admin",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastSignedIn: new Date(),
+      },
+      req: mockReq(),
+      res: { setHeader: vi.fn(), clearCookie: vi.fn(), cookie: vi.fn() } as any,
+    });
+
+    const activities = await adminCaller.audit.activities({});
+    expect(listActivitiesSpy).toHaveBeenCalled();
+    expect(activities).toHaveLength(1);
+    expect(activities[0].actorName).toBe("Christian Lambrich");
+  });
 });

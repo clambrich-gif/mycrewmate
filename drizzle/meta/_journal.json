@@ -351,6 +351,13 @@
       "when": 1789936899519,
       "tag": "0049_known_nova",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "5",
+      "when": 1789940855447,
+      "tag": "0050_amused_sleeper",
+      "breakpoints": true
     }
   ]
 }

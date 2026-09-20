@@ -297,7 +297,6 @@ export default function Preparation() {
   const [editingTask, setEditingTask] = useState<PrepTaskRow | null>(null);
   const [form, setForm] = useState<PrepForm>(EMPTY_FORM);
   const [deleteCandidate, setDeleteCandidate] = useState<PrepTaskRow | null>(null);
-  const [responsibleContactId, setResponsibleContactId] = useState<number | null>(null);
 
   const utils = trpc.useUtils();
   const { data: rawRows = [], isLoading } = trpc.prep.list.useQuery();
@@ -399,7 +398,6 @@ export default function Preparation() {
     },
     onSuccess: () => {
       setDeleteCandidate(null);
-      setResponsibleContactId(null);
       toast.success("Vorbereitungsaufgabe ins Löschprotokoll verschoben");
     },
     onError: (error: any, _input: any, context: any) => {
@@ -569,7 +567,6 @@ export default function Preparation() {
 
   const openDelete = (task: PrepTaskRow) => {
     setDeleteCandidate(task);
-    setResponsibleContactId(null);
   };
 
   const closeDialog = () => {
@@ -1143,21 +1140,15 @@ export default function Preparation() {
         onOpenChange={open => {
           if (!open && !remove.isPending) {
             setDeleteCandidate(null);
-            setResponsibleContactId(null);
           }
         }}
         title="Vorbereitungsaufgabe löschen?"
         description={`„${deleteCandidate?.task ?? ""}“ wird aus der aktiven Übersicht entfernt und ins Löschprotokoll verschoben.`}
         busy={remove.isPending}
-        contacts={contacts}
-        responsibleContactId={responsibleContactId}
-        onResponsibleContactChange={setResponsibleContactId}
         onConfirm={() =>
           deleteCandidate &&
-          responsibleContactId &&
           remove.mutate({
             id: deleteCandidate.id,
-            responsibleContactId,
           })
         }
       />

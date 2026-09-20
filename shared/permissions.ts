@@ -34,13 +34,13 @@ export const PERMISSION_MATRIX: readonly PermissionRow[] = [
     area: "Vorbereitung",
     planningTeam: "Vollzugriff mit Löschprotokoll",
     administrator: "Vollzugriff",
-    note: "Das Planungsteam kann Aufgaben anlegen, bearbeiten und mit Namenseingabe ins Löschprotokoll verschieben. Nur Administratoren können gelöschte Vorbereitungen wiederherstellen oder Resets ausführen.",
+    note: "Das Planungsteam kann Aufgaben anlegen, bearbeiten und löschen. Die reale angemeldete Sitzungsidentität wird automatisch im Löschprotokoll gespeichert. Nur Administratoren können gelöschte Vorbereitungen wiederherstellen oder Resets ausführen.",
   },
   {
     area: "Nachbereitung",
     planningTeam: "Vollzugriff mit Löschprotokoll",
     administrator: "Vollzugriff",
-    note: "Das Planungsteam kann Aufgaben anlegen, bearbeiten und mit Namenseingabe ins Löschprotokoll verschieben. Nur Administratoren können gelöschte Nachbereitungen wiederherstellen oder Resets ausführen.",
+    note: "Das Planungsteam kann Aufgaben anlegen, bearbeiten und löschen. Die reale angemeldete Sitzungsidentität wird automatisch im Löschprotokoll gespeichert. Nur Administratoren können gelöschte Nachbereitungen wiederherstellen oder Resets ausführen.",
   },
   {
     area: "Material, Marketing & Genehmigungen",

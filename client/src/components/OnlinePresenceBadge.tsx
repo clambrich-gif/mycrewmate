@@ -15,6 +15,8 @@ const ACTIVITY_HEARTBEAT_THROTTLE_MS = 30_000;
 type OnlinePresenceCounts = {
   planningTeam: number;
   administrators: number;
+  planningTeamNames: string[];
+  administratorNames: string[];
 };
 
 export function useOnlinePresence() {
@@ -170,16 +172,26 @@ export function OnlinePresenceBadge({
               {counts?.planningTeam ?? "–"} aktiv
             </strong>
           </div>
+          <p className="rounded-md border border-blue-100 bg-white px-3 py-2 text-xs leading-relaxed text-slate-700">
+            {counts?.planningTeamNames?.length
+              ? counts.planningTeamNames.join(" · ")
+              : "Zurzeit niemand aus dem Planungsteam aktiv."}
+          </p>
           <div className="flex items-center justify-between gap-4 rounded-md bg-violet-50 px-3 py-2">
             <span className="font-medium text-violet-900">Administratoren</span>
             <strong className="text-violet-950">
               {counts?.administrators ?? "–"} aktiv
             </strong>
           </div>
+          <p className="rounded-md border border-violet-100 bg-white px-3 py-2 text-xs leading-relaxed text-slate-700">
+            {counts?.administratorNames?.length
+              ? counts.administratorNames.join(" · ")
+              : "Zurzeit kein Administrator aktiv."}
+          </p>
         </div>
         <p className="text-xs leading-relaxed text-slate-500">
-          Die Anzeige nennt nur Anzahlen und keine Namen. Sitzungen ohne neue
-          Aktivität verschwinden automatisch aus dem Zähler.
+          Die Namen stammen aus der aktuellen, passwortgeschützten Sitzung.
+          Sitzungen ohne neue Aktivität verschwinden automatisch aus dem Zähler.
         </p>
         {onOpenChat && (
           <button

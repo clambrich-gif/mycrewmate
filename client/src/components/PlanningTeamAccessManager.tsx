@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -184,9 +185,14 @@ export function PlanningTeamAccessManager() {
               {accesses.data?.map(access => (
                 <li key={access.id} className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center">
                   <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-slate-900">
-                      {access.contactName ?? access.label}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-semibold text-slate-900">
+                        {access.contactName ?? access.label}
+                      </p>
+                      <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
+                        Passwort aktiv
+                      </Badge>
+                    </div>
                     <p className="mt-0.5 text-xs text-slate-500">
                       {access.contactName
                         ? "Ansprechpartner-Zugang"

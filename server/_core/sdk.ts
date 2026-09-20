@@ -360,7 +360,14 @@ class SDKServer {
       lastSignedIn: signedInAt,
     });
 
-    return user;
+    // Das Passwort-Administratorkonto verwendet technisch eine gemeinsame
+    // OpenID. Der im signierten Token hinterlegte Name bleibt deshalb die
+    // maßgebliche Identität dieser konkreten Sitzung – auch wenn zeitgleich
+    // eine weitere Administratorperson angemeldet ist.
+    return {
+      ...user,
+      name: session.name || user.name,
+    };
   }
 }
 

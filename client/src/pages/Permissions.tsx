@@ -117,6 +117,9 @@ export default function Permissions() {
   const [eventFilter, setEventFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [resetOpen, setResetOpen] = useState(false);
+  const [protocolView, setProtocolView] = useState<"deletions" | "activities">(
+    "deletions"
+  );
   const { data: years = [] } = trpc.years.list.useQuery();
   const { data: events = [] } = trpc.events.all.useQuery();
   const auditInput = useMemo(
@@ -132,6 +135,17 @@ export default function Permissions() {
     [eventFilter, typeFilter, yearFilter]
   );
   const audit = trpc.audit.deletions.useQuery(auditInput, {
+    enabled: isAdmin,
+  });
+  const activityInput = useMemo(
+    () => ({
+      eventYear: yearFilter === "all" ? undefined : Number(yearFilter),
+      eventId: eventFilter === "all" ? undefined : Number(eventFilter),
+      limit: 500,
+    }),
+    [eventFilter, yearFilter]
+  );
+  const activities = trpc.audit.activities.useQuery(activityInput, {
     enabled: isAdmin,
   });
   const utils = trpc.useUtils();
@@ -164,6 +178,25 @@ export default function Permissions() {
     },
     onError: error => toast.error(error.message),
   });
+
+  const activityActionBadge = (action: string) => {
+    switch (action) {
+      case "created":
+        return <Badge className="bg-emerald-100 text-emerald-800">Erstellt</Badge>;
+      case "updated":
+        return <Badge className="bg-blue-100 text-blue-800">Aktualisiert</Badge>;
+      case "deleted":
+        return <Badge className="bg-rose-100 text-rose-800">Gelöscht</Badge>;
+      case "reset":
+        return <Badge className="bg-amber-100 text-amber-800">Zurückgesetzt</Badge>;
+      case "imported":
+        return <Badge className="bg-indigo-100 text-indigo-800">Importiert</Badge>;
+      case "copied":
+        return <Badge className="bg-purple-100 text-purple-800">Kopiert</Badge>;
+      default:
+        return <Badge variant="outline">{action}</Badge>;
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -286,18 +319,52 @@ export default function Permissions() {
       </Card>
 
       <Card className="min-w-0 max-w-full overflow-hidden shadow-sm lg:mr-24">
-        <CardHeader className="gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <History className="h-5 w-5 text-primary" /> Löschprotokoll
+        <CardHeader className="gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-base">
+              <History className="h-5 w-5 text-primary" />
+              {protocolView === "deletions"
+                ? "Löschprotokoll & Wiederherstellung"
+                : "Aktivitätsprotokoll (Echtzeit-Verlauf)"}
             </CardTitle>
             <p className="mt-1 text-sm text-muted-foreground">
-              Nachvollziehbare Nachweise über gelöschte Helfer, Spenden, Material sowie
-              Vor- und Nachbereitungsaufgaben mit gezielter Wiederherstellung.
+              {protocolView === "deletions"
+                ? "Nachvollziehbare Nachweise über gelöschte Helfer, Spenden, Material sowie Vor- und Nachbereitungsaufgaben mit gezielter Wiederherstellung."
+                : "Alle operativen Aktionen werden serverseitig fälschungssicher mit der angemeldeten Sitzungsidentität protokolliert."}
             </p>
           </div>
           {isAdmin && (
-            <div className="flex flex-wrap gap-2">
+            <div className="inline-flex rounded-lg border bg-muted/50 p-1 text-xs">
+              <button
+                type="button"
+                className={cn(
+                  "rounded-md px-3 py-1.5 font-medium transition-colors",
+                  protocolView === "deletions"
+                    ? "bg-white text-slate-950 shadow-sm"
+                    : "text-muted-foreground hover:text-slate-900"
+                )}
+                onClick={() => setProtocolView("deletions")}
+              >
+                Löschungen ({audit.data?.length ?? 0})
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  "rounded-md px-3 py-1.5 font-medium transition-colors",
+                  protocolView === "activities"
+                    ? "bg-white text-slate-950 shadow-sm"
+                    : "text-muted-foreground hover:text-slate-900"
+                )}
+                onClick={() => setProtocolView("activities")}
+              >
+                Aktivitäten ({activities.data?.length ?? 0})
+              </button>
+            </div>
+          )}
+        </div>
+          {isAdmin && (
+            <div className="flex flex-wrap items-center gap-2">
               <Select value={yearFilter} onValueChange={setYearFilter}>
                 <SelectTrigger className="w-40 bg-background">
                   <SelectValue />
@@ -311,7 +378,8 @@ export default function Permissions() {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
+              {protocolView === "deletions" && (
+                <Select value={typeFilter} onValueChange={setTypeFilter}>
                 <SelectTrigger className="w-44 bg-background">
                   <SelectValue />
                 </SelectTrigger>
@@ -324,6 +392,7 @@ export default function Permissions() {
                   <SelectItem value="material">Nur Material</SelectItem>
                 </SelectContent>
               </Select>
+              )}
               <Select value={eventFilter} onValueChange={setEventFilter}>
                 <SelectTrigger className="w-52 bg-background">
                   <SelectValue />
@@ -342,13 +411,15 @@ export default function Permissions() {
                     ))}
                 </SelectContent>
               </Select>
-              <Button
+              {protocolView === "deletions" && (
+                <Button
                 variant="outline"
                 className="border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
                 onClick={() => setResetOpen(true)}
               >
                 <RotateCcw className="mr-2 h-4 w-4" /> Protokoll zurücksetzen
               </Button>
+              )}
             </div>
           )}
         </CardHeader>
@@ -360,9 +431,66 @@ export default function Permissions() {
         >
           {!isAdmin ? (
             <div className="rounded-lg border border-dashed bg-muted/30 p-6 text-center text-sm text-muted-foreground">
-              Das Löschprotokoll ist ausschließlich für Administratoren
+              Die Protokolle sind ausschließlich für Administratoren
               sichtbar.
             </div>
+          ) : protocolView === "activities" ? (
+            activities.isLoading ? (
+              <p className="p-5 text-sm text-muted-foreground">
+                Aktivitätsprotokoll wird geladen …
+              </p>
+            ) : activities.error ? (
+              <p className="p-5 text-sm text-destructive">
+                {activities.error.message}
+              </p>
+            ) : activities.data?.length ? (
+              <div className="w-full max-w-full overflow-hidden">
+                <table className="w-full max-w-full table-fixed text-sm">
+                  <thead className="bg-muted/60 text-left">
+                    <tr>
+                      <th className="w-[14%] p-3 text-left">Zeitpunkt</th>
+                      <th className="w-[16%] p-3 text-left">Veranstaltung</th>
+                      <th className="w-[14%] p-3 text-left">Bereich</th>
+                      <th className="w-[16%] p-3 text-left">Ausgeführt von</th>
+                      <th className="w-[40%] p-3 text-left">Aktion &amp; Gegenstand</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activities.data.map(entry => (
+                      <tr key={entry.id} className="border-t align-top">
+                        <td className="p-3 text-xs leading-relaxed text-slate-600">
+                          {new Date(entry.createdAt).toLocaleString("de-DE")}
+                        </td>
+                        <td className="p-3 text-xs font-medium text-slate-800">
+                          {entry.eventName}
+                        </td>
+                        <td className="p-3 text-xs text-slate-700">
+                          {entry.module}
+                        </td>
+                        <td className="p-3 text-xs leading-relaxed">
+                          <div className="font-semibold text-slate-900">
+                            {entry.actorName}
+                          </div>
+                          <div className="text-[11px] text-muted-foreground">
+                            {entry.actorRole === "admin"
+                              ? "Administrator"
+                              : "Planungsteam"}
+                          </div>
+                        </td>
+                        <td className="p-3 text-xs leading-relaxed">
+                          <div className="mb-1">{activityActionBadge(entry.action)}</div>
+                          <div className="text-slate-800">{entry.subject}</div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="p-8 text-center text-sm text-muted-foreground">
+                Für die gewählten Filter liegen noch keine Aktivitäten vor.
+              </div>
+            )
           ) : audit.isLoading ? (
             <p className="p-5 text-sm text-muted-foreground">
               Löschprotokoll wird geladen …
@@ -409,7 +537,7 @@ export default function Permissions() {
                           ? "Gelöscht von:"
                           : "Ausgeführt von:"}
                       </span>{" "}
-                      {entry.responsibleContactName ?? entry.actorName} (
+                      {entry.actorName} (
                       {entry.actorRole === "admin"
                         ? "Administrator"
                         : "Planungsteam"}
@@ -417,7 +545,7 @@ export default function Permissions() {
                     </div>
                     {entry.responsibleContactName && (
                       <div className="text-xs text-muted-foreground">
-                        Ausgelöst über Benutzerkonto: {entry.actorName}
+                        Historische Zusatzangabe: {entry.responsibleContactName}
                       </div>
                     )}
                     <div className="break-words whitespace-normal [overflow-wrap:anywhere] text-muted-foreground">
@@ -471,7 +599,7 @@ export default function Permissions() {
                         <td className="break-words whitespace-normal p-3 align-top leading-relaxed [overflow-wrap:anywhere]">
                           <div className="font-medium">{actionLabel[entry.action]}</div>
                           {entry.action === "single_delete" ? "Gelöscht von: " : ""}
-                          {entry.responsibleContactName ?? entry.actorName}
+                          {entry.actorName}
                           <div className="text-xs text-muted-foreground">
                             {entry.actorRole === "admin"
                               ? "Administrator"
@@ -479,7 +607,7 @@ export default function Permissions() {
                           </div>
                           {entry.responsibleContactName && (
                             <div className="mt-1 text-xs text-muted-foreground">
-                              Ausgelöst über Benutzerkonto: {entry.actorName}
+                              Historische Zusatzangabe: {entry.responsibleContactName}
                             </div>
                           )}
                         </td>

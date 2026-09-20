@@ -257,7 +257,6 @@ export default function PostProcessing() {
   const [editingTask, setEditingTask] = useState<PostTaskRow | null>(null);
   const [form, setForm] = useState<PostForm>(EMPTY_FORM);
   const [deleteCandidate, setDeleteCandidate] = useState<PostTaskRow | null>(null);
-  const [responsibleContactId, setResponsibleContactId] = useState<number | null>(null);
 
   const utils = trpc.useUtils();
   const { data: rawRows = [], isLoading } = trpc.post.list.useQuery();
@@ -359,7 +358,6 @@ export default function PostProcessing() {
     },
     onSuccess: () => {
       setDeleteCandidate(null);
-      setResponsibleContactId(null);
       toast.success("Nachbereitungsaufgabe ins Löschprotokoll verschoben");
     },
     onError: (error: any, _input: any, context: any) => {
@@ -527,7 +525,6 @@ export default function PostProcessing() {
 
   const openDelete = (task: PostTaskRow) => {
     setDeleteCandidate(task);
-    setResponsibleContactId(null);
   };
 
   const closeDialog = () => {
@@ -1073,21 +1070,15 @@ export default function PostProcessing() {
         onOpenChange={open => {
           if (!open && !remove.isPending) {
             setDeleteCandidate(null);
-            setResponsibleContactId(null);
           }
         }}
         title="Nachbereitungsaufgabe löschen?"
         description={`„${deleteCandidate?.task ?? ""}“ wird aus der aktiven Übersicht entfernt und ins Löschprotokoll verschoben.`}
         busy={remove.isPending}
-        contacts={contacts}
-        responsibleContactId={responsibleContactId}
-        onResponsibleContactChange={setResponsibleContactId}
         onConfirm={() =>
           deleteCandidate &&
-          responsibleContactId &&
           remove.mutate({
             id: deleteCandidate.id,
-            responsibleContactId,
           })
         }
       />

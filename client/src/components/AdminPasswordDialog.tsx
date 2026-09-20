@@ -9,13 +9,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -28,8 +21,6 @@ export function AdminPasswordDialog({
   confirmLabel,
   busy = false,
   destructive = true,
-  responsibleContacts,
-  requireResponsibleContact = false,
   onConfirm,
 }: {
   open: boolean;
@@ -39,34 +30,25 @@ export function AdminPasswordDialog({
   confirmLabel: string;
   busy?: boolean;
   destructive?: boolean;
-  responsibleContacts?: Array<{ id: number; name: string }>;
-  requireResponsibleContact?: boolean;
-  onConfirm: (adminPassword: string, responsibleContactId?: number) => void;
+  onConfirm: (adminPassword: string) => void;
 }) {
   const [password, setPassword] = useState("");
-  const [responsibleContactId, setResponsibleContactId] = useState<
-    number | null
-  >(null);
   const submitLocked = useRef(false);
   useEffect(() => {
     if (!open) {
       setPassword("");
-      setResponsibleContactId(null);
       submitLocked.current = false;
     }
   }, [open]);
   useEffect(() => {
     if (!busy) submitLocked.current = false;
   }, [busy]);
-  const canConfirm =
-    !busy &&
-    Boolean(password) &&
-    (!requireResponsibleContact || Boolean(responsibleContactId));
+  const canConfirm = !busy && Boolean(password);
 
   const confirm = () => {
     if (!canConfirm || submitLocked.current) return;
     submitLocked.current = true;
-    onConfirm(password, responsibleContactId ?? undefined);
+    onConfirm(password);
   };
 
   return (
@@ -109,30 +91,6 @@ export function AdminPasswordDialog({
             }}
           />
         </div>
-        {requireResponsibleContact && responsibleContacts && (
-          <div className="space-y-2">
-            <Label>Wer führt die Löschung durch?</Label>
-            <Select
-              value={responsibleContactId ? String(responsibleContactId) : ""}
-              disabled={busy}
-              onValueChange={value => setResponsibleContactId(Number(value))}
-            >
-              <SelectTrigger className="w-full bg-white dark:bg-slate-900">
-                <SelectValue placeholder="Ansprechpartner auswählen …" />
-              </SelectTrigger>
-              <SelectContent>
-                {responsibleContacts.map(contact => (
-                  <SelectItem key={contact.id} value={String(contact.id)}>
-                    {contact.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              Der Name wird für jede gelöschte Helferzeile protokolliert.
-            </p>
-          </div>
-        )}
         <DialogFooter className="sticky bottom-0 -mx-2 -mb-2 rounded-b-lg border-t bg-white px-2 pb-2 pt-4 dark:bg-slate-950">
           <Button
             type="button"

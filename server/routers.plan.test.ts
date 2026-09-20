@@ -35,6 +35,7 @@ const dbMocks = vi.hoisted(() => ({
   listCakes: vi.fn(),
   listMarketing: vi.fn(),
   listApprovals: vi.fn(),
+  recordActivityLog: vi.fn(),
   listDeletionAuditLogs: vi.fn(),
   clearDeletionAuditLogs: vi.fn(),
   restoreDeletionAuditLog: vi.fn(),
@@ -188,6 +189,7 @@ describe("Planungs-API", () => {
     dbMocks.listLocations.mockResolvedValue([]);
     dbMocks.listMarketing.mockResolvedValue([]);
     dbMocks.listApprovals.mockResolvedValue([]);
+    dbMocks.recordActivityLog.mockResolvedValue(undefined);
     dbMocks.assignHelper.mockResolvedValue({ insertId: 1 });
     dbMocks.updateShift.mockResolvedValue({ affectedRows: 1 });
     dbMocks.clearModuleAssignments.mockResolvedValue({
@@ -1597,6 +1599,8 @@ describe("Planungs-API", () => {
       status: "offen",
       statusWording: "aufgabe",
       logEntryAuthor: "Organisation",
+      activityEntry: "Vorbereitungsaufgabe angelegt",
+      activityAuthor: "Organisation",
     });
   });
 
@@ -1618,18 +1622,18 @@ describe("Planungs-API", () => {
       statusWording: "genehmigung",
       logEntry: "Rückfrage an Stadtverwaltung erforderlich",
       logEntryAuthor: "Organisation",
+      activityEntry: "Vorbereitungsaufgabe aktualisiert",
+      activityAuthor: "Organisation",
     });
   });
 
   it("erlaubt dem Planungsteam das Verschieben von Vorbereitungsaufgaben ins Löschprotokoll mit Ansprechpartnerauswahl", async () => {
     const caller = appRouter.createCaller(planningTeamCtx);
-    dbMocks.getContact.mockResolvedValue({ id: 5, name: "Christian Lambrich" });
     dbMocks.deletePrep.mockResolvedValue({ affectedRows: 1 });
 
     await expect(
       caller.prep.remove({
         id: 30,
-        responsibleContactId: 5,
       })
     ).resolves.toEqual({ affectedRows: 1 });
 
@@ -1639,33 +1643,17 @@ describe("Planungs-API", () => {
         name: "Organisation",
         role: "user",
         loginMethod: "manus",
-        responsibleContactId: 5,
-        responsibleContactName: "Christian Lambrich",
       },
     });
   });
 
-  it("weist Vorbereitungslöschungen mit unbekanntem Ansprechpartner ab", async () => {
-    const caller = appRouter.createCaller(planningTeamCtx);
-    dbMocks.getContact.mockResolvedValue(null);
-    await expect(
-      caller.prep.remove({
-        id: 30,
-        responsibleContactId: 999,
-      })
-    ).rejects.toThrow("Ansprechpartner");
-    expect(dbMocks.deletePrep).not.toHaveBeenCalled();
-  });
-
   it("erlaubt dem Planungsteam das Verschieben von Nachbereitungsaufgaben ins Löschprotokoll mit Ansprechpartnerauswahl", async () => {
     const caller = appRouter.createCaller(planningTeamCtx);
-    dbMocks.getContact.mockResolvedValue({ id: 5, name: "Christian Lambrich" });
     dbMocks.deletePost.mockResolvedValue({ affectedRows: 1 });
 
     await expect(
       caller.post.remove({
         id: 40,
-        responsibleContactId: 5,
       })
     ).resolves.toEqual({ affectedRows: 1 });
 
@@ -1675,8 +1663,6 @@ describe("Planungs-API", () => {
         name: "Organisation",
         role: "user",
         loginMethod: "manus",
-        responsibleContactId: 5,
-        responsibleContactName: "Christian Lambrich",
       },
     });
   });
@@ -1689,7 +1675,6 @@ describe("Planungs-API", () => {
     await expect(
       caller.materials.remove({
         id: 50,
-        responsibleContactId: 5,
       })
     ).resolves.toEqual({ affectedRows: 1 });
 
@@ -1699,8 +1684,6 @@ describe("Planungs-API", () => {
         name: "Organisation",
         role: "admin",
         loginMethod: "manus",
-        responsibleContactId: 5,
-        responsibleContactName: "Christian Lambrich",
       },
     });
   });
@@ -1778,7 +1761,7 @@ describe("Planungs-API", () => {
     const caller = appRouter.createCaller(planningTeamCtx);
 
     await expect(
-      caller.helpers.remove({ id: 20, responsibleContactId: 5 })
+      caller.helpers.remove({ id: 20 })
     ).resolves.toEqual({ affectedRows: 1 });
     await expect(caller.cakes.remove({ id: 30 })).resolves.toEqual({
       affectedRows: 1,
@@ -1790,8 +1773,6 @@ describe("Planungs-API", () => {
         name: "Organisation",
         role: "user",
         loginMethod: "manus",
-        responsibleContactId: 5,
-        responsibleContactName: "Chris Leitung",
       },
     });
     expect(dbMocks.deleteCake).toHaveBeenCalledWith(30, {
@@ -1865,7 +1846,7 @@ describe("Planungs-API", () => {
     dbMocks.deleteHelper.mockResolvedValue({ affectedRows: 1 });
     const caller = appRouter.createCaller(ctx);
 
-    await caller.helpers.remove({ id: 20, responsibleContactId: 5 });
+    await caller.helpers.remove({ id: 20 });
 
     expect(dbMocks.deleteHelper).toHaveBeenCalledWith(20, {
       allowAssigned: true,
@@ -1874,22 +1855,8 @@ describe("Planungs-API", () => {
         name: "Organisation",
         role: "admin",
         loginMethod: "manus",
-        responsibleContactId: 5,
-        responsibleContactName: "Chris Leitung",
       },
     });
-  });
-
-  it("verlangt bei jeder Helferlöschung einen gültigen Ansprechpartner", async () => {
-    const caller = appRouter.createCaller(ctx);
-    dbMocks.getContact.mockResolvedValueOnce(undefined);
-    await expect(
-      caller.helpers.remove({
-        id: 20,
-        responsibleContactId: 999,
-      })
-    ).rejects.toThrow("nicht gefunden");
-    expect(dbMocks.deleteHelper).not.toHaveBeenCalled();
   });
 
   it("lässt Bereichsansprechpartner nur durch Administratoren ändern", async () => {

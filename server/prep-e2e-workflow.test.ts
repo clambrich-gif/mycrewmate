@@ -5,7 +5,7 @@ import {
   deletePlanningTeamAccess,
   getDb,
 } from "./db";
-import { prepTasks, deletionAuditLogs } from "../drizzle/schema";
+import { activityLogs, prepTasks, deletionAuditLogs } from "../drizzle/schema";
 import { and, eq } from "drizzle-orm";
 import { hashPassword, planningTeamAccessOpenId } from "./password-auth";
 
@@ -98,12 +98,9 @@ describe("E2E Planungsteam-Rechte & Löschprotokoll-Workflow", () => {
       expect(updated?.status).toBe("inArbeit");
       expect(updated?.note).toContain("Mit Einsatzleitung DRK abgestimmt");
 
-      // 3. Planungsteam löscht die Aufgabe mit Auswahl des Ansprechpartners Christian Lambrich
-      const contacts = await teamCaller.contacts.list();
-      const contact = contacts[0] ?? { id: 101, name: "Christian Lambrich" };
+      // 3. Planungsteam löscht die Aufgabe – die Zuordnung erfolgt automatisch zur Sitzung
       await teamCaller.prep.remove({
         id: prepId,
-        responsibleContactId: contact.id,
       });
 
       // 4. Aufgabe ist für das Planungsteam aus der aktiven Liste verschwunden
@@ -125,7 +122,7 @@ describe("E2E Planungsteam-Rechte & Löschprotokoll-Workflow", () => {
 
       const auditEntry = auditLogs.find((entry: any) => entry.entityId === prepId);
       expect(auditEntry).toBeDefined();
-      expect(auditEntry?.responsibleContactName).toBe(contact.name);
+      expect(auditEntry?.actorName).toBe(TEAM_USER.name);
       expect(auditEntry?.entityType).toBe("prep");
       expect(auditEntry?.restoredAt).toBeNull();
       expect(auditEntry?.entityLabel).toContain("Sicherheitskonzept Rettungsdienst E2E (Final)");
@@ -154,6 +151,12 @@ describe("E2E Planungsteam-Rechte & Löschprotokoll-Workflow", () => {
       // Testdaten rückstandslos bereinigen
       await (db as any).delete(deletionAuditLogs).where(
         and(eq(deletionAuditLogs.entityType, "prep"), eq(deletionAuditLogs.entityId, prepId))
+      );
+      await (db as any).delete(activityLogs).where(
+        and(
+          eq(activityLogs.eventId, 1020001),
+          eq(activityLogs.actorUserId, TEAM_USER.id)
+        )
       );
       await (db as any).delete(prepTasks).where(eq(prepTasks.id, prepId));
       await deletePlanningTeamAccess(testAccess.id);

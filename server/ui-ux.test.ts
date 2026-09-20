@@ -1017,8 +1017,6 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(prep).toContain("Vorbereitungsaufgabe bearbeiten");
     expect(prep).toContain("ConfirmDeleteDialog");
     expect(prep).toContain("title=\"Vorbereitungsaufgabe löschen?\"");
-    expect(prep).toContain("responsibleContactId={responsibleContactId}");
-    expect(prep).toContain("onResponsibleContactChange={setResponsibleContactId}");
     expect(prep).toContain("DialogContent");
     expect(prep).toContain("DialogFooter");
     expect(prep).toContain("openCreate");
@@ -2565,22 +2563,20 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(permissions).toContain("utils.post.list.invalidate()");
     expect(permissions).toContain("utils.materials.list.invalidate()");
     expect(permissions).toContain("Gelöscht von:");
-    expect(permissions).toContain("entry.responsibleContactName ?? entry.actorName");
-    expect(permissions).toContain("Ausgelöst über Benutzerkonto:");
+    expect(permissions).toContain("entry.actorName");
+    expect(permissions).toContain("Historische Zusatzangabe:");
     expect(permissions).toContain("Wiederherstellen");
     expect(router).toContain("entityType: z.enum([\"helper\", \"cake\", \"prep\", \"post\", \"material\"])");
 
     const post = source("client/src/pages/PostProcessing.tsx");
     expect(post).toContain("ConfirmDeleteDialog");
     expect(post).toContain("title=\"Nachbereitungsaufgabe löschen?\"");
-    expect(post).toContain("responsibleContactId={responsibleContactId}");
 
     const materials = source("client/src/pages/Materials.tsx");
     expect(materials).toContain("deletionRequiresContact");
 
     const taskGeneric = source("client/src/pages/TaskGeneric.tsx");
     expect(taskGeneric).toContain("deletionRequiresContact = false");
-    expect(taskGeneric).toContain("responsibleContactId={responsibleContactId}");
   });
 
   it("stellt Nachbereitung spiegelgleich zur Vorbereitung mit Pastell-Rosa-Design und 3 Status bereit", () => {
@@ -2610,7 +2606,6 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(post).toContain("filteredRows.map(task");
     expect(post).toContain("ConfirmDeleteDialog");
     expect(post).toContain("title=\"Nachbereitungsaufgabe löschen?\"");
-    expect(post).toContain("onResponsibleContactChange={setResponsibleContactId}");
     expect(post).toContain('type PostStatus = "offen" | "inArbeit" | "erledigt"');
     expect(post).not.toContain('"abgelehnt"');
     expect(post).not.toContain('"beantragt"');
@@ -2622,6 +2617,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const manager = source("client/src/components/PlanningTeamAccessManager.tsx");
     const layout = source("client/src/components/Layout.tsx");
     const contacts = source("client/src/pages/Contacts.tsx");
+    const permissions = source("client/src/pages/Permissions.tsx");
 
     expect(security).toContain("<PlanningTeamAccessManager />");
     expect(manager).toContain("Planungsteam-Zugänge verwalten");
@@ -2638,5 +2634,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain("Schnellauswahl Ansprechpartner");
     expect(layout).toContain("Name (alternativ)");
     expect(layout).toContain("adminIdentityDialogOpen");
+    expect(layout).toContain("Angemeldet:");
+    expect(manager).toContain("Passwort aktiv");
+    expect(permissions).toContain("Aktivitätsprotokoll");
   });
 });

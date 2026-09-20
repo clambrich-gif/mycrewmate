@@ -656,9 +656,6 @@ export default function Helpers() {
     id: number;
     name: string;
   } | null>(null);
-  const [responsibleContactId, setResponsibleContactId] = useState<
-    number | null
-  >(null);
 
   const invalidate = () => {
     utils.helpers.list.invalidate();
@@ -719,7 +716,6 @@ export default function Helpers() {
     onSuccess: () => {
       invalidate();
       setDeleteTarget(null);
-      setResponsibleContactId(null);
       toast.success("Entfernt");
     },
     onError: error => toast.error(error.message),
@@ -1763,21 +1759,15 @@ export default function Helpers() {
         onOpenChange={open => {
           if (!open) {
             setDeleteTarget(null);
-            setResponsibleContactId(null);
           }
         }}
         title="Helfer löschen?"
         description={`„${deleteTarget?.name ?? ""}“ wird aus der Helferliste und allen Einsatzzuordnungen des aktuellen Jahres gelöscht.`}
         busy={remove.isPending}
-        contacts={contacts}
-        responsibleContactId={responsibleContactId}
-        onResponsibleContactChange={setResponsibleContactId}
         onConfirm={() =>
           deleteTarget &&
-          responsibleContactId &&
           remove.mutate({
             id: deleteTarget.id,
-            responsibleContactId,
           })
         }
       />

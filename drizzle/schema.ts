@@ -49,6 +49,10 @@ export const sessionPresences = mysqlTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     role: mysqlEnum("role", ["user", "admin"]).notNull(),
+    /** Sitzungsname aus dem signierten Login-Token für parallele Personen. */
+    sessionName: varchar("sessionName", { length: 200 })
+      .default("Unbekannt")
+      .notNull(),
     lastSeen: timestamp("lastSeen").defaultNow().notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
@@ -598,6 +602,39 @@ export const deletionAuditLogs = mysqlTable("deletion_audit_logs", {
   restoredByName: varchar("restoredByName", { length: 200 }),
 });
 export type DeletionAuditLog = typeof deletionAuditLogs.$inferSelect;
+
+/** Zentraler, unveränderlicher Verlauf aller operativen Planungsaktionen. */
+export const activityLogs = mysqlTable(
+  "activity_logs",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    year: int("year").notNull(),
+    eventId: int("eventId").references(() => events.id, {
+      onDelete: "set null",
+    }),
+    eventName: varchar("eventName", { length: 200 }).notNull(),
+    module: varchar("module", { length: 80 }).notNull(),
+    action: mysqlEnum("action", [
+      "created",
+      "updated",
+      "deleted",
+      "reset",
+      "imported",
+      "copied",
+    ]).notNull(),
+    subject: varchar("subject", { length: 500 }).notNull(),
+    actorUserId: int("actorUserId"),
+    actorName: varchar("actorName", { length: 200 }).notNull(),
+    actorRole: mysqlEnum("actorRole", ["user", "admin"]).notNull(),
+    actorLoginMethod: varchar("actorLoginMethod", { length: 64 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    index("activity_logs_event_created_idx").on(table.eventId, table.createdAt),
+    index("activity_logs_year_created_idx").on(table.year, table.createdAt),
+  ]
+);
+export type ActivityLog = typeof activityLogs.$inferSelect;
 
 export const backupRestoreLogs = mysqlTable("backup_restore_logs", {
   id: int("id").autoincrement().primaryKey(),

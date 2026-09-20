@@ -88,7 +88,7 @@ import {
 import { storageGetSignedUrl, storagePut } from "./storage";
 import { locationLogoUrl } from "./location-logo-routes";
 import {
-  getOnlinePresenceCounts,
+  getOnlinePresenceStatus,
   recordSessionPresence,
   removeSessionPresence,
   sessionPresenceKey,
@@ -329,13 +329,105 @@ const accountAdminProcedure = activeSessionProcedure.use(({ ctx, next }) => {
   return next({ ctx });
 });
 
+const ACTIVITY_MODULE_LABELS: Record<string, string> = {
+  contacts: "Ansprechpartner",
+  helpers: "Helfer",
+  shifts: "Einsatzplan",
+  plan: "Einsatzplan",
+  prep: "Vorbereitung",
+  post: "Nachbereitung",
+  materials: "Material",
+  marketing: "Marketing",
+  approvals: "Genehmigungen",
+  cakes: "Spenden",
+  finances: "Finanzen",
+  locations: "Orte & Standorte",
+  gpxTracks: "Strecken",
+  events: "Veranstaltungen",
+  years: "Veranstaltungsjahre",
+  reset: "Planung",
+  moduleAssignments: "Planung",
+  pdf: "PDF-Ausgabe",
+};
+
+function describeActivityMutation(path: string, input: unknown) {
+  const [moduleKey, operation = "Aktion"] = path.split(".");
+  const module = ACTIVITY_MODULE_LABELS[moduleKey];
+  if (!module) return null;
+
+  const values =
+    input && typeof input === "object"
+      ? (input as Record<string, unknown>)
+      : {};
+  const value = (...keys: string[]) => {
+    for (const key of keys) {
+      const candidate = values[key];
+      if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
+    }
+    return null;
+  };
+  const action = /^(create|add|assign|upsert)$/i.test(operation)
+    ? "created"
+    : /^(remove|delete|unassign|clear)$/i.test(operation)
+      ? "deleted"
+      : /^(reset)$/i.test(operation)
+        ? "reset"
+        : /^(import|load)$/i.test(operation)
+          ? "imported"
+          : /^(copy)$/i.test(operation)
+            ? "copied"
+            : "updated";
+
+  const subject =
+    value("task", "article", "name", "measure", "request", "donor", "category") ??
+    (typeof values.id === "number" ? `Eintrag #${values.id}` : operation);
+  const actionText: Record<typeof action, string> = {
+    created: "angelegt",
+    updated: "aktualisiert",
+    deleted: "gelöscht",
+    reset: "zurückgesetzt",
+    imported: "importiert",
+    copied: "übernommen",
+  };
+
+  return {
+    module,
+    action,
+    subject: `${module}: „${subject}“ ${actionText[action]}`,
+  } as const;
+}
+
+async function recordOperationalActivity(
+  ctx: {
+    user: {
+      id: number;
+      name: string | null;
+      role: "user" | "admin";
+      loginMethod: string | null;
+    };
+  },
+  path: string,
+  input: unknown
+) {
+  const activity = describeActivityMutation(path, input);
+  if (!activity) return;
+  try {
+    await db.recordActivityLog({
+      actor: auditActor(ctx.user),
+      ...activity,
+    });
+  } catch (error) {
+    console.warn("[ActivityLog] Konnte nicht aufgezeichnet werden:", error);
+  }
+}
+
 const scopedProtectedProcedure = activeSessionProcedure.use(async ({ ctx, next }) => {
   await requirePlanningTeamEventAccess(ctx.user, ctx.req);
   return withPlanningScope(requestedPlanningScope(ctx.req), () => next());
 });
 
 const protectedProcedure = scopedProtectedProcedure.use(
-  async ({ next, type }) => {
+  async ({ ctx, next, type, path, input }) => {
     if (!(await db.getEvent())) {
       throw new TRPCError({
         code: "BAD_REQUEST",
@@ -344,7 +436,11 @@ const protectedProcedure = scopedProtectedProcedure.use(
       });
     }
     if (type === "mutation") {
-      return db.withPlanningWriteLock(() => next());
+      return db.withPlanningWriteLock(async () => {
+        const result = await next();
+        await recordOperationalActivity(ctx, path, input);
+        return result;
+      });
     }
     return next();
   }
@@ -358,9 +454,13 @@ const scopeAdminAuthProcedure = scopedProtectedProcedure.use(
 );
 
 const scopeAdminProcedure = scopeAdminAuthProcedure.use(
-  async ({ next, type }) => {
+  async ({ ctx, next, type, path, input }) => {
     if (type === "mutation") {
-      return db.withPlanningWriteLock(() => next());
+      return db.withPlanningWriteLock(async () => {
+        const result = await next();
+        await recordOperationalActivity(ctx, path, input);
+        return result;
+      });
     }
     return next();
   }
@@ -655,24 +755,6 @@ function auditActor(user: {
   };
 }
 
-async function auditActorWithContact(
-  user: Parameters<typeof auditActor>[0],
-  responsibleContactId: number
-) {
-  const contact = await db.getContact(responsibleContactId);
-  if (!contact) {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: "Der ausgewählte Ansprechpartner wurde nicht gefunden",
-    });
-  }
-  return {
-    ...auditActor(user),
-    responsibleContactId: contact.id,
-    responsibleContactName: contact.name,
-  };
-}
-
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -964,7 +1046,7 @@ export const appRouter = router({
       await safelyRecordPresence(ctx.req, ctx.user);
       return { success: true } as const;
     }),
-    status: baseProtectedProcedure.query(() => getOnlinePresenceCounts()),
+    status: baseProtectedProcedure.query(() => getOnlinePresenceStatus()),
   }),
 
   years: router({
@@ -1410,19 +1492,11 @@ export const appRouter = router({
         return db.updateHelper(id, rest);
       }),
     remove: protectedProcedure
-      .input(
-        z.object({
-          id: z.number(),
-          responsibleContactId: z.number().int().positive(),
-        })
-      )
+      .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }) =>
         db.deleteHelper(input.id, {
           allowAssigned: ctx.user.role === "admin",
-          actor: await auditActorWithContact(
-            ctx.user,
-            input.responsibleContactId
-          ),
+          actor: auditActor(ctx.user),
         })
       ),
   }),
@@ -1961,6 +2035,8 @@ export const appRouter = router({
           status: "offen",
           statusWording: "aufgabe",
           logEntryAuthor: auditActor(ctx.user).name,
+          activityEntry: "Vorbereitungsaufgabe angelegt",
+          activityAuthor: auditActor(ctx.user).name,
         })
       ),
     update: protectedProcedure
@@ -1982,24 +2058,16 @@ export const appRouter = router({
         const { id, ...r } = input;
         return db.updatePrep(id, {
           ...r,
-          ...(r.logEntry === undefined
-            ? {}
-            : { logEntryAuthor: auditActor(ctx.user).name }),
+          logEntryAuthor: auditActor(ctx.user).name,
+          activityEntry: "Vorbereitungsaufgabe aktualisiert",
+          activityAuthor: auditActor(ctx.user).name,
         });
       }),
     remove: protectedProcedure
-      .input(
-        z.object({
-          id: z.number().int().positive(),
-          responsibleContactId: z.number().int().positive(),
-        })
-      )
+      .input(z.object({ id: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) =>
         db.deletePrep(input.id, {
-          actor: await auditActorWithContact(
-            ctx.user,
-            input.responsibleContactId
-          ),
+          actor: auditActor(ctx.user),
         })
       ),
   }),
@@ -2022,6 +2090,8 @@ export const appRouter = router({
           ...input,
           status: "offen",
           logEntryAuthor: auditActor(ctx.user).name,
+          activityEntry: "Nachbereitungsaufgabe angelegt",
+          activityAuthor: auditActor(ctx.user).name,
         })
       ),
     update: protectedProcedure
@@ -2042,24 +2112,16 @@ export const appRouter = router({
         const { id, ...r } = input;
         return db.updatePost(id, {
           ...r,
-          ...(r.logEntry === undefined
-            ? {}
-            : { logEntryAuthor: auditActor(ctx.user).name }),
+          logEntryAuthor: auditActor(ctx.user).name,
+          activityEntry: "Nachbereitungsaufgabe aktualisiert",
+          activityAuthor: auditActor(ctx.user).name,
         });
       }),
     remove: protectedProcedure
-      .input(
-        z.object({
-          id: z.number().int().positive(),
-          responsibleContactId: z.number().int().positive(),
-        })
-      )
+      .input(z.object({ id: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) =>
         db.deletePost(input.id, {
-          actor: await auditActorWithContact(
-            ctx.user,
-            input.responsibleContactId
-          ),
+          actor: auditActor(ctx.user),
         })
       ),
   }),
@@ -2111,18 +2173,10 @@ export const appRouter = router({
         return db.updateMaterial(id, r);
       }),
     remove: adminProcedure
-      .input(
-        z.object({
-          id: z.number().int().positive(),
-          responsibleContactId: z.number().int().positive(),
-        })
-      )
+      .input(z.object({ id: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) =>
         db.deleteMaterial(input.id, {
-          actor: await auditActorWithContact(
-            ctx.user,
-            input.responsibleContactId
-          ),
+          actor: auditActor(ctx.user),
         })
       ),
   }),
@@ -2288,6 +2342,17 @@ export const appRouter = router({
   }),
 
   audit: router({
+    activities: adminProcedure
+      .input(
+        z
+          .object({
+            eventYear: eventYearInput.optional(),
+            eventId: z.number().int().positive().optional(),
+            limit: z.number().int().min(1).max(1000).default(500),
+          })
+          .optional()
+      )
+      .query(({ input }) => db.listActivityLogs(input)),
     deletions: adminProcedure
       .input(
         z

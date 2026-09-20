@@ -1346,8 +1346,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
               : "w-full max-w-[1400px] p-3 sm:p-4 lg:p-6"
           }
         >
-          <div className="mb-5 inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
-            {selectedEvent?.name ?? "Veranstaltung"} · Planung {year}
+          <div className="mb-5 flex flex-wrap items-center gap-2">
+            <div className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
+              {selectedEvent?.name ?? "Veranstaltung"} · Planung {year}
+            </div>
+            {user?.name && (
+              <div className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 shadow-sm">
+                <span className="mr-1.5 h-2 w-2 rounded-full bg-emerald-500" />
+                Angemeldet: {user.name} ({user.role === "admin" ? "Administrator" : "Planungsteam"})
+              </div>
+            )}
           </div>
           {children}
         </div>
