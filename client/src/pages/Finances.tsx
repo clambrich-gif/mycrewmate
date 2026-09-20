@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { PageTitle } from "@/components/PageTitle";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 import { Button } from "@/components/ui/button";
@@ -135,7 +136,7 @@ export default function Finances() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Finanzen</h1>
+          <PageTitle icon="finances">Finanzen</PageTitle>
           <p className="text-muted-foreground">
             Einnahmen und Ausgaben pro Kategorie. Differenz und Saldo werden
             automatisch berechnet.

@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { PageTitle } from "@/components/PageTitle";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Collapsible,
@@ -373,7 +374,7 @@ export default function PdfExport() {
   return (
     <div className="space-y-6 max-w-5xl">
       <div>
-        <h1 className="text-2xl font-bold">PDF-Ausgabe</h1>
+        <PageTitle icon="pdf">PDF-Ausgabe</PageTitle>
         <p className="text-muted-foreground">
           Persönliche Aufgabenübersichten sowie frei filterbare Blanko- und
           ausgefüllte Einsatzpläne erzeugen.

@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { PageTitle } from "@/components/PageTitle";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -71,7 +72,7 @@ export default function Contacts() {
     <div className="space-y-6 max-w-3xl">
       <div className="flex items-end justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold">Ansprechpartner</h1>
+          <PageTitle icon="contacts">Ansprechpartner</PageTitle>
           <p className="text-muted-foreground">
             Name und Rufnummer werden den Helfern zugeordnet und auf deren
             Aufgaben-PDF ausgegeben.

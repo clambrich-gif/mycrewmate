@@ -2,6 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
+import { PageTitle, type PageTitleIconKind } from "@/components/PageTitle";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -56,6 +57,7 @@ interface Col {
 interface Props {
   kind: string;
   title: string;
+  titleIcon?: PageTitleIconKind;
   addLabel: string;
   nameKey: string;
   columns: Col[];
@@ -95,6 +97,7 @@ const temporaryId = () => -Date.now() - Math.floor(Math.random() * 1_000);
 export default function TaskGeneric({
   kind,
   title,
+  titleIcon = "materials",
   addLabel,
   nameKey,
   columns,
@@ -390,7 +393,7 @@ export default function TaskGeneric({
             : "flex flex-wrap items-end justify-between gap-3"
         }
       >
-        <h1 className="text-2xl font-bold">{title}</h1>
+        <PageTitle icon={titleIcon}>{title}</PageTitle>
         {headerLayout === "stacked" ? (
           <div
             className={`w-full space-y-2 xl:w-auto ${

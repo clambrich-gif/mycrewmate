@@ -1,6 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
 import { GroupedChangeList } from "@/components/ChangePreview";
+import { PageTitle } from "@/components/PageTitle";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -82,7 +83,7 @@ export default function ExcelPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Excel-Projektübersicht</h1>
+        <PageTitle icon="excel">Excel-Projektübersicht</PageTitle>
         <p className="text-muted-foreground">
           Der Excel-Export dient ausschließlich der Übersicht und Dokumentation.
           Für eine vollständige Datensicherung verwenden Sie links „Speichern“

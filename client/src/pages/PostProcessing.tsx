@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { LocationMapLink } from "@/components/LocationMapLink";
+import { PageTitle } from "@/components/PageTitle";
 import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
@@ -579,7 +580,9 @@ export default function PostProcessing() {
     <div className="space-y-5 rounded-2xl bg-rose-50/50 p-3 sm:p-5 border border-rose-100">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-950">Nachbereitung</h1>
+          <PageTitle icon="postprocessing" className="text-slate-950">
+            Nachbereitung
+          </PageTitle>
           <p className="text-muted-foreground text-sm">
             Aufgabenverwaltung für den Abbau, Rücktransporte, Abrechnungen und Nachbereitung des Festivals.
           </p>

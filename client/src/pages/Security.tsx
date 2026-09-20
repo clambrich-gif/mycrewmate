@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { PageTitle } from "@/components/PageTitle";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -152,7 +153,7 @@ export default function Security() {
   return (
     <div className="space-y-6 max-w-4xl">
       <div>
-        <h1 className="text-2xl font-bold">Zugangsschutz & Administration</h1>
+        <PageTitle icon="security">Zugangsschutz & Administration</PageTitle>
         <p className="text-muted-foreground">
           Getrennte Zugänge verwalten und Planungsdaten des gewählten Jahres
           absichern.

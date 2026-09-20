@@ -4,6 +4,7 @@ import { trpc } from "@/lib/trpc";
 import { downloadBase64File } from "@/lib/download";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { PageTitle } from "@/components/PageTitle";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -621,7 +622,9 @@ export default function Preparation() {
     <div className="space-y-5 rounded-2xl border border-sky-100 bg-sky-50/50 p-3 sm:p-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-950">Vorbereitung</h1>
+          <PageTitle icon="preparation" className="text-slate-950">
+            Vorbereitung
+          </PageTitle>
           <p className="text-muted-foreground text-sm">
             Aufgabenverwaltung für die Festival-Vorbereitung mit flexiblen Feldern,
             Status-Wortlaut und Filterleiste.

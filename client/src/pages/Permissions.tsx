@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
+import { PageTitle } from "@/components/PageTitle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -167,7 +168,7 @@ export default function Permissions() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Rollen & Berechtigungen</h1>
+        <PageTitle icon="permissions">Rollen & Berechtigungen</PageTitle>
         <p className="text-muted-foreground">
           Transparente Übersicht der Rechte für Planungsteam und
           Administratoren. Die Matrix entspricht den serverseitig erzwungenen

@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageTitle } from "@/components/PageTitle";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { downloadBase64File } from "@/lib/download";
@@ -350,9 +351,7 @@ export default function Help() {
               Hilfe von A bis Z
             </span>
           </div>
-          <h1 className="text-2xl font-bold">
-            Anleitung zu MyCrewMate
-          </h1>
+          <PageTitle icon="help">Anleitung zu MyCrewMate</PageTitle>
           <p className="max-w-3xl text-muted-foreground">
             Schnelle Hilfe für Planungsteam und Administratoren – mit
             Rollenhinweisen, Arbeitsschritten, Bildern und einer vollständigen

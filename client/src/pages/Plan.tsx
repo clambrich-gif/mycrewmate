@@ -1,5 +1,6 @@
 import { trpc } from "@/lib/trpc";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { PageTitle } from "@/components/PageTitle";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -1335,7 +1336,7 @@ export default function Plan() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-bold">Einsatzplan</h1>
+        <PageTitle icon="plan">Einsatzplan</PageTitle>
         <p className="text-muted-foreground">
           {canEditPlan
             ? "Nur verfügbare, aktive Helfer sind auswählbar. „Neu“ bedeutet noch keine Einteilung; die Tagessegmente richten sich nach den Eventtagen (Grün: aktuell frei, Gelb: dort eingeteilt, Rot: nicht verfügbar). Zeitgleich bereits eingeteilte Helfer bleiben gelb markiert und auswählbar. Absagen markieren Ausfälle (rot), Doppelbelegungen werden gewarnt (orange)."

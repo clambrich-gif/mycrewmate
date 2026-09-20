@@ -18,6 +18,7 @@ export default function Materials() {
     <TaskGeneric
       kind="materials"
       title="Material"
+      titleIcon="materials"
       addLabel="Artikel"
       nameKey="article"
       columns={[

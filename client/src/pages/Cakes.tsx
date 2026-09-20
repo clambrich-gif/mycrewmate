@@ -1,5 +1,6 @@
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
+import { PageTitle } from "@/components/PageTitle";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -32,7 +33,6 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import {
   ChevronDown,
   FilterX,
-  Gift,
   Pencil,
   Plus,
   Printer,
@@ -497,10 +497,7 @@ export default function Cakes() {
     <div className="space-y-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold">
-            <Gift className="h-6 w-6 text-rose-600" aria-hidden="true" />
-            Spenden
-          </h1>
+          <PageTitle icon="donations">Spenden</PageTitle>
           <p className="mt-1 text-sm text-slate-600">
             Verpflegungsspenden schnell erfassen und wichtige Hinweise sichtbar
             kennzeichnen.

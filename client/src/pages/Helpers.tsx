@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
+import { PageTitle } from "@/components/PageTitle";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -872,7 +873,7 @@ export default function Helpers() {
     <div className="space-y-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Helfer</h1>
+          <PageTitle icon="helpers">Helfer</PageTitle>
           <p className="text-muted-foreground">
             Helferdaten, Tagesverfügbarkeit, Hinweise und persönliche
             Aufgaben-PDFs.

@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LocationMapCard } from "@/components/LocationMapCard";
+import { PageTitle } from "@/components/PageTitle";
 import {
   dashboardTargetHref,
   type DashboardTarget,
@@ -1034,7 +1035,7 @@ export default function Dashboard() {
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Dashboard</h1>
+          <PageTitle icon="dashboard">Dashboard</PageTitle>
           <p className="text-muted-foreground">
             Die wichtigsten nächsten Schritte stehen zuerst; alle Kennzahlen werden automatisch aus den Planungsdaten berechnet.
           </p>

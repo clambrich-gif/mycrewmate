@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
+import { PageTitle } from "@/components/PageTitle";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -208,10 +209,7 @@ export default function Locations() {
     <div className="mx-auto max-w-5xl space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold">
-            <MapPin className="size-6 text-blue-700" aria-hidden="true" />
-            Orte & Standorte
-          </h1>
+          <PageTitle icon="locations">Orte & Standorte</PageTitle>
           <p className="text-muted-foreground">
             Zentral gepflegte Orte stehen in Schichten, Vorbereitungen und Material zur Auswahl und erscheinen auf der Live-Standortkarte.
           </p>

@@ -1921,6 +1921,49 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(filterOrder).toEqual([...filterOrder].sort((left, right) => left - right));
   });
 
+  it("kennzeichnet alle Hauptseiten mit konsistenten farbigen Markenicons", () => {
+    const pageTitle = source("client/src/components/PageTitle.tsx");
+    const pages: Array<[string, string]> = [
+      ["client/src/pages/Dashboard.tsx", "dashboard"],
+      ["client/src/pages/Contacts.tsx", "contacts"],
+      ["client/src/pages/Helpers.tsx", "helpers"],
+      ["client/src/pages/Plan.tsx", "plan"],
+      ["client/src/pages/Preparation.tsx", "preparation"],
+      ["client/src/pages/PostProcessing.tsx", "postprocessing"],
+      ["client/src/pages/Cakes.tsx", "donations"],
+      ["client/src/pages/Finances.tsx", "finances"],
+      ["client/src/pages/PdfExport.tsx", "pdf"],
+      ["client/src/pages/Excel.tsx", "excel"],
+      ["client/src/pages/Locations.tsx", "locations"],
+      ["client/src/pages/Permissions.tsx", "permissions"],
+      ["client/src/pages/Security.tsx", "security"],
+      ["client/src/pages/Help.tsx", "help"],
+    ];
+
+    expect(pageTitle).toContain('"flex items-center gap-3 text-2xl font-bold"');
+    expect(pageTitle).toContain("LayoutDashboard");
+    expect(pageTitle).toContain("text-blue-700");
+    expect(pageTitle).toContain("UserCheck");
+    expect(pageTitle).toContain("text-blue-900");
+    expect(pageTitle).toContain("text-orange-500");
+    expect(pageTitle).toContain("FileDown");
+    expect(pageTitle).toContain("text-red-600");
+    expect(pageTitle).toContain("FileSpreadsheet");
+    expect(pageTitle).toContain("text-emerald-600");
+
+    for (const [path, icon] of pages) {
+      const page = source(path);
+      expect(page).toContain('import { PageTitle } from "@/components/PageTitle"');
+      expect(page).toContain(`<PageTitle icon="${icon}"`);
+    }
+
+    const materials = source("client/src/pages/Materials.tsx");
+    const taskGeneric = source("client/src/pages/TaskGeneric.tsx");
+    expect(materials).toContain('titleIcon="materials"');
+    expect(taskGeneric).toContain("PageTitle, type PageTitleIconKind");
+    expect(taskGeneric).toContain("<PageTitle icon={titleIcon}>{title}</PageTitle>");
+  });
+
   it("bearbeitet Vorbereitungskarten mobil direkt und zeigt das Logbuch kompakt mit Verlauf an", () => {
     const prep = source("client/src/pages/Preparation.tsx");
     const logbook = source("shared/preparation-logbook.ts");
