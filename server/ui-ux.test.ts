@@ -554,19 +554,22 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).not.toContain("dark:text-red-400");
   });
 
-  it("grenzt die vier Planungsteam-Fokusbereiche in Desktop- und Mobilnavigation ab", () => {
+  it("blendet Verwaltungsbereiche für das Planungsteam aus und hält alle sichtbaren Navigationseinträge kräftig", () => {
     const layout = source("client/src/components/Layout.tsx");
     const navigation = source("client/src/lib/nav.ts");
 
+    expect(layout).toContain("visibleNavigationItems(user?.role)");
+    expect(layout.match(/visibleNavigationItems\(user\?\.role\)/g)).toHaveLength(2);
     expect(layout).toContain("navigationItemClasses(user?.role, href, active)");
     expect(layout.match(/navigationItemClasses\(user\?\.role, href, active\)/g)).toHaveLength(2);
-    expect(navigation).toContain('role !== "user"');
-    expect(navigation).toContain('"/helfer"');
-    expect(navigation).toContain('"/spenden"');
-    expect(navigation).toContain('"/pdf-export"');
-    expect(navigation).toContain('"/hilfe"');
-    expect(navigation).toContain("font-bold text-black opacity-100");
-    expect(navigation).toContain("font-normal text-gray-500");
+    expect(navigation).toContain("PLANNING_TEAM_HIDDEN_PATHS");
+    expect(navigation).toContain('"/ansprechpartner"');
+    expect(navigation).toContain('"/finanzen"');
+    expect(navigation).toContain('"/excel"');
+    expect(navigation).toContain('"/orte"');
+    expect(navigation).toContain("if (item.planningTeamHidden && role === \"user\") return false");
+    expect(navigation).toContain("font-semibold text-slate-800 hover:bg-accent");
+    expect(navigation).not.toContain("font-normal text-gray-500");
   });
 
   it("kennzeichnet und steuert PDF-Bilder veranstaltungsspezifisch", () => {
@@ -1549,6 +1552,17 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(pdfExport).toContain("Gedruckte [ ]-Checkliste");
     expect(pdfExport).toContain("includePostProcessing");
     expect(pdfExport).toContain("includeMaterials");
+  });
+
+  it("blendet die PDF-Vorlagenkonfiguration für das Planungsteam vollständig aus", () => {
+    const pdfExport = source("client/src/pages/PdfExport.tsx");
+
+    expect(pdfExport).toContain('const canManage = user?.role === "admin"');
+    expect(pdfExport).toContain("{canManage && (");
+    expect(pdfExport.indexOf("{canManage && (")).toBeLessThan(
+      pdfExport.indexOf('title="Vorlage frei konfigurieren"')
+    );
+    expect(pdfExport).toContain("PDF-Grundeinstellungen können nur von Administratoren geändert werden.");
   });
 
   it("ordnet Einsatzplanaktionen mobil zweispaltig und ab Tablet einzeilig an", () => {

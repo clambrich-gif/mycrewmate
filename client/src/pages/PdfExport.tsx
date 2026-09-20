@@ -783,6 +783,7 @@ export default function PdfExport() {
         </PdfSection>
       </div>
 
+      {canManage && (
       <PdfSection
         title="Vorlage frei konfigurieren"
         description="PDF-Titel, Logo, Zusatzspalten und Hinweise für die aktuelle Veranstaltung verwalten."
@@ -1050,6 +1051,7 @@ export default function PdfExport() {
             </>
           )}
       </PdfSection>
+      )}
     </div>
   );
 }

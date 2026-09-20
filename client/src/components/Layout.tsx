@@ -43,7 +43,7 @@ import {
 } from "@/components/ui/sheet";
 import { startLogin } from "@/const";
 import { useEventYear } from "@/contexts/YearContext";
-import { NAV, navigationItemClasses } from "@/lib/nav";
+import { navigationItemClasses, visibleNavigationItems } from "@/lib/nav";
 import { preloadRoute } from "@/lib/route-loaders";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
@@ -1088,7 +1088,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             )}
           </div>
           <nav className="flex-1 space-y-1 overflow-y-auto p-2">
-            {NAV.filter(item => !item.adminOnly || user?.role === "admin").map(
+            {visibleNavigationItems(user?.role).map(
               ({ href, label, icon: Icon }) => {
                 const active = location === href;
                 return (
@@ -1258,7 +1258,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-2 pb-2 pt-1.5 space-y-0.5">
-          {NAV.filter(item => !item.adminOnly || user?.role === "admin").map(
+          {visibleNavigationItems(user?.role).map(
             ({ href, label, icon: Icon }) => {
               const active = location === href;
               return (
