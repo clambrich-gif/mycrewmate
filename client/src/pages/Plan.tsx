@@ -279,27 +279,35 @@ function HelperDropdownFeedbackBadge({
       title={assignedTooltip}
       className="inline-flex shrink-0 cursor-help overflow-hidden rounded-full border border-slate-200 text-[10px] font-semibold leading-5 shadow-xs"
     >
-      {feedback.segments.map((segment, index) => (
-        <span
-          key={segment.day}
-          data-current-day={segment.isCurrentDay ? "true" : "false"}
-          className={`text-center transition-colors ${
-            segment.isCurrentDay
-              ? "min-w-8 px-1.5 text-[11px] font-extrabold leading-6 shadow-sm ring-1 ring-inset ring-white/80"
-              : "min-w-6 px-1 text-[9px] font-medium leading-5 opacity-80"
-          } ${
-            segment.state === "current"
-              ? "bg-emerald-500 text-white"
-              : segment.state === "assigned"
-                ? "bg-amber-200 text-amber-950"
-                : segment.state === "unavailable"
-                  ? "bg-slate-100 text-slate-400 line-through"
-                  : "bg-sky-100 text-sky-800"
-          } ${index ? "border-l border-white/70" : ""}`}
-        >
-          {segment.label}
-        </span>
-      ))}
+      {feedback.segments.map((segment, index) => {
+        const tone = segment.isCurrentDay
+          ? segment.state === "current"
+            ? "bg-emerald-500 text-white"
+            : segment.state === "assigned"
+              ? "bg-amber-200 text-amber-950"
+              : segment.state === "unavailable"
+                ? "bg-slate-100 text-slate-400 line-through"
+                : "bg-sky-100 text-sky-800"
+          : segment.state === "assigned"
+            ? "bg-amber-100 text-amber-800"
+            : segment.state === "unavailable"
+              ? "bg-red-100 text-red-700 line-through"
+              : "bg-emerald-100 text-emerald-800";
+
+        return (
+          <span
+            key={segment.day}
+            data-current-day={segment.isCurrentDay ? "true" : "false"}
+            className={`text-center transition-colors ${
+              segment.isCurrentDay
+                ? "min-w-8 px-1.5 text-[11px] font-extrabold leading-6 shadow-sm ring-1 ring-inset ring-white/80"
+                : "min-w-6 px-1 text-[9px] font-medium leading-5 opacity-80"
+            } ${tone} ${index ? "border-l border-white/70" : ""}`}
+          >
+            {segment.label}
+          </span>
+        );
+      })}
     </span>
   );
   return badge;
@@ -1330,7 +1338,7 @@ export default function Plan() {
         <h1 className="text-2xl font-bold">Einsatzplan</h1>
         <p className="text-muted-foreground">
           {canEditPlan
-            ? "Nur verfügbare, aktive Helfer sind auswählbar. „Neu“ bedeutet noch keine Einteilung; die Tagessegmente richten sich nach den Eventtagen (Grün: aktuell frei, Gelb: dort eingeteilt, Grau: nicht verfügbar). Zeitgleich bereits eingeteilte Helfer bleiben gelb markiert und auswählbar. Absagen markieren Ausfälle (rot), Doppelbelegungen werden gewarnt (orange)."
+            ? "Nur verfügbare, aktive Helfer sind auswählbar. „Neu“ bedeutet noch keine Einteilung; die Tagessegmente richten sich nach den Eventtagen (Grün: aktuell frei, Gelb: dort eingeteilt, Rot: nicht verfügbar). Zeitgleich bereits eingeteilte Helfer bleiben gelb markiert und auswählbar. Absagen markieren Ausfälle (rot), Doppelbelegungen werden gewarnt (orange)."
             : "Das Planungsteam kann den Einsatzplan vollständig ansehen und filtern. Änderungen und Helferzuweisungen sind Administratoren vorbehalten."}
         </p>
       </div>

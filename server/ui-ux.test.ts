@@ -2235,6 +2235,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("bereits belegt");
     expect(plan).toContain("font-extrabold");
     expect(plan).toContain("opacity-80");
+    expect(plan).toContain('segment.isCurrentDay\n          ? segment.state === "current"');
+    expect(plan).toContain('"bg-amber-100 text-amber-800"');
+    expect(plan).toContain('"bg-red-100 text-red-700 line-through"');
+    expect(plan).toContain('"bg-emerald-100 text-emerald-800"');
+    expect(plan).toContain("Rot: nicht verfügbar");
     expect(plan).toContain("helperDropdownAssignmentFeedback({");
     expect(plan).toContain("const sortedActives = actives");
     expect(plan).toContain("helperDropdownPriority(left.assignmentFeedback)");
