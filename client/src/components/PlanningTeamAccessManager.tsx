@@ -11,6 +11,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
 import { KeyRound, LoaderCircle, Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -18,6 +25,7 @@ import { toast } from "sonner";
 
 type FormState = {
   id: number | null;
+  contactId: number | null;
   label: string;
   password: string;
   confirmation: string;
@@ -27,6 +35,7 @@ type FormState = {
 
 const EMPTY_FORM: FormState = {
   id: null,
+  contactId: null,
   label: "",
   password: "",
   confirmation: "",
@@ -37,6 +46,7 @@ const EMPTY_FORM: FormState = {
 export function PlanningTeamAccessManager() {
   const utils = trpc.useUtils();
   const accesses = trpc.planningTeamAccesses.list.useQuery();
+  const availableContacts = trpc.planningTeamAccesses.availableContacts.useQuery();
   const availableEvents = trpc.planningTeamAccesses.availableEvents.useQuery();
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [deleteTarget, setDeleteTarget] = useState<{
@@ -52,10 +62,14 @@ export function PlanningTeamAccessManager() {
   const selectedEvents = form.eventIds
     .map(eventId => eventById.get(eventId))
     .filter((event): event is NonNullable<typeof event> => Boolean(event));
+  const selectedContact = (availableContacts.data ?? []).find(
+    contact => contact.id === form.contactId
+  );
   const passwordIsRequired = form.id === null;
   const passwordMatches = form.password === form.confirmation;
   const valid =
     form.label.trim().length >= 2 &&
+    (form.id !== null || form.contactId !== null) &&
     form.eventIds.length > 0 &&
     Boolean(form.currentAdminPassword) &&
     (!passwordIsRequired || form.password.length >= 10) &&
@@ -99,12 +113,18 @@ export function PlanningTeamAccessManager() {
     if (!valid) return;
     const input = {
       label: form.label.trim(),
+      contactId: form.contactId,
       eventIds: form.eventIds,
       currentAdminPassword: form.currentAdminPassword,
       ...(form.password ? { password: form.password } : {}),
     };
     if (form.id === null) {
-      createAccess.mutate({ ...input, password: form.password });
+      if (form.contactId === null) return;
+      createAccess.mutate({
+        ...input,
+        contactId: form.contactId,
+        password: form.password,
+      });
     } else {
       updateAccess.mutate({ ...input, id: form.id });
     }
@@ -122,6 +142,7 @@ export function PlanningTeamAccessManager() {
   const editAccess = (access: NonNullable<typeof accesses.data>[number]) => {
     setForm({
       id: access.id,
+      contactId: access.contactId,
       label: access.label,
       password: "",
       confirmation: "",
@@ -163,7 +184,14 @@ export function PlanningTeamAccessManager() {
               {accesses.data?.map(access => (
                 <li key={access.id} className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center">
                   <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-slate-900">{access.label}</p>
+                    <p className="font-semibold text-slate-900">
+                      {access.contactName ?? access.label}
+                    </p>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      {access.contactName
+                        ? "Ansprechpartner-Zugang"
+                        : "Übernommener Zugang ohne Ansprechpartner-Verknüpfung"}
+                    </p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {access.eventIds.length === 0
                         ? "Keine Freigaben"
@@ -216,15 +244,49 @@ export function PlanningTeamAccessManager() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-1.5 md:col-span-2">
-              <Label htmlFor="planning-access-label">Bezeichnung</Label>
-              <Input
-                id="planning-access-label"
-                value={form.label}
-                maxLength={120}
-                placeholder="z. B. EifelRide Team 2027"
-                disabled={busy}
-                onChange={event => setForm(current => ({ ...current, label: event.target.value }))}
-              />
+              <Label htmlFor="planning-access-contact">Ansprechpartner</Label>
+              <Select
+                value={form.contactId?.toString() ?? "unlinked"}
+                disabled={busy || availableContacts.isLoading}
+                onValueChange={value => {
+                  if (value === "unlinked") {
+                    setForm(current => ({ ...current, contactId: null }));
+                    return;
+                  }
+                  const contact = (availableContacts.data ?? []).find(
+                    item => item.id === Number(value)
+                  );
+                  if (!contact) return;
+                  setForm(current => ({
+                    ...current,
+                    contactId: contact.id,
+                    label: contact.name,
+                  }));
+                }}
+              >
+                <SelectTrigger id="planning-access-contact" className="bg-white">
+                  <SelectValue placeholder="Ansprechpartner auswählen" />
+                </SelectTrigger>
+                <SelectContent>
+                  {form.id !== null && (
+                    <SelectItem value="unlinked">
+                      Ohne Ansprechpartner-Verknüpfung (Altbestand)
+                    </SelectItem>
+                  )}
+                  {(availableContacts.data ?? []).map(contact => (
+                    <SelectItem key={contact.id} value={String(contact.id)}>
+                      {contact.name} · {contact.year} · {contact.eventName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-slate-600">
+                {selectedContact
+                  ? `Dieser Zugang wird als „${selectedContact.name}“ angemeldet.`
+                  : form.id === null
+                    ? "Für einen neuen Zugang bitte einen Ansprechpartner auswählen."
+                    : "Altbestand ohne Ansprechpartner-Verknüpfung."}
+              </p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="planning-access-password">

@@ -737,7 +737,8 @@ export const appRouter = router({
         await db.clearPlanningTeamLoginFailuresIfUnlocked();
 
         const accessOpenId = planningTeamAccessOpenId(matchingAccess.id);
-        const sessionName = `Planungsteam · ${matchingAccess.label}`;
+        const sessionName =
+          matchingAccess.contactName ?? `Planungsteam · ${matchingAccess.label}`;
         await db.upsertUser({
           openId: accessOpenId,
           name: sessionName,
@@ -757,7 +758,12 @@ export const appRouter = router({
         return { success: true } as const;
       }),
     adminPasswordLogin: publicProcedure
-      .input(z.object({ password: z.string().min(1).max(200) }))
+      .input(
+        z.object({
+          password: z.string().min(1).max(200),
+          administratorName: z.string().trim().min(2).max(120).optional(),
+        })
+      )
       .mutation(async ({ ctx, input }) => {
         const clientKey = `admin:${getClientKey(ctx.req)}`;
         if (isPasswordLoginBlocked(clientKey)) {
@@ -776,22 +782,28 @@ export const appRouter = router({
           });
         }
         clearPasswordLoginFailures(clientKey);
+        if (!input.administratorName) {
+          return {
+            requiresIdentity: true,
+            contacts: await db.listAllContactsForPlanningTeamAccess(),
+          } as const;
+        }
         await db.upsertUser({
           openId: ADMIN_PASSWORD_OPEN_ID,
-          name: "Administrator",
+          name: input.administratorName,
           loginMethod: "admin-password",
           role: "admin",
           lastSignedIn: new Date(),
         });
         const token = await sdk.createSessionToken(ADMIN_PASSWORD_OPEN_ID, {
-          name: "Administrator",
+          name: input.administratorName,
           expiresInMs: PASSWORD_SESSION_MS,
         });
         ctx.res.cookie(COOKIE_NAME, token, {
           ...getSessionCookieOptions(ctx.req),
           maxAge: PASSWORD_SESSION_MS,
         });
-        return { success: true } as const;
+        return { success: true, requiresIdentity: false } as const;
       }),
     resetAdminWithKey: publicProcedure
       .input(
@@ -884,6 +896,9 @@ export const appRouter = router({
 
   planningTeamAccesses: router({
     list: accountAdminProcedure.query(() => db.listPlanningTeamAccesses()),
+    availableContacts: accountAdminProcedure.query(() =>
+      db.listAllContactsForPlanningTeamAccess()
+    ),
     availableEvents: accountAdminProcedure.query(async () => {
       const years = await db.listEventYears();
       const grouped = await Promise.all(
@@ -895,6 +910,7 @@ export const appRouter = router({
       .input(
         z.object({
           label: z.string().trim().min(2).max(120),
+          contactId: z.number().int().positive(),
           password: passwordInput,
           eventIds: z.array(z.number().int().positive()).min(1).max(500),
           currentAdminPassword: z.string().min(1).max(200),
@@ -904,6 +920,7 @@ export const appRouter = router({
         await requireAdminPassword(input.currentAdminPassword, ctx);
         return db.createPlanningTeamAccess({
           label: input.label,
+          contactId: input.contactId,
           passwordHash: await hashPassword(input.password),
           eventIds: input.eventIds,
         });
@@ -913,6 +930,7 @@ export const appRouter = router({
         z.object({
           id: z.number().int().positive(),
           label: z.string().trim().min(2).max(120),
+          contactId: z.number().int().positive().nullable().optional(),
           password: passwordInput.optional(),
           eventIds: z.array(z.number().int().positive()).min(1).max(500),
           currentAdminPassword: z.string().min(1).max(200),
@@ -923,6 +941,7 @@ export const appRouter = router({
         return db.updatePlanningTeamAccess({
           id: input.id,
           label: input.label,
+          contactId: input.contactId,
           ...(input.password ? { passwordHash: await hashPassword(input.password) } : {}),
           eventIds: input.eventIds,
         });
@@ -1138,9 +1157,19 @@ export const appRouter = router({
           name: z.string().trim().min(1),
           phone: z.string().trim().max(64).optional(),
           note: z.string().optional(),
+          password: passwordInput.optional(),
         })
       )
-      .mutation(({ input }) => db.upsertContactByName(input)),
+      .mutation(async ({ input }) =>
+        db.upsertContactByName({
+          name: input.name,
+          phone: input.phone,
+          note: input.note,
+          ...(input.password
+            ? { passwordHash: await hashPassword(input.password) }
+            : {}),
+        })
+      ),
     update: protectedProcedure
       .input(
         z.object({
@@ -1148,11 +1177,16 @@ export const appRouter = router({
           name: z.string().min(1),
           phone: z.string().max(64).nullable().optional(),
           note: z.string().nullable().optional(),
+          password: passwordInput.optional(),
         })
       )
-      .mutation(({ input }) => {
+      .mutation(async ({ input }) => {
         const { id, ...r } = input;
-        return db.updateContact(id, r);
+        const { password, ...contact } = r;
+        return db.updateContact(id, {
+          ...contact,
+          ...(password ? { passwordHash: await hashPassword(password) } : {}),
+        });
       }),
     remove: adminProcedure
       .input(

@@ -61,6 +61,7 @@ import { prependPreparationLogbookEntry } from "../shared/preparation-logbook";
 import {
   ADMIN_PASSWORD_OPEN_ID,
   planningTeamAccessIdFromOpenId,
+  planningTeamAccessOpenId,
   SHARED_PASSWORD_OPEN_ID,
 } from "./password-auth";
 import { currentEventId, currentEventYear } from "./year-context";
@@ -296,6 +297,8 @@ export async function listEvents(eventYear = year()) {
 
 export type PlanningTeamAccessSummary = {
   id: number;
+  contactId: number | null;
+  contactName: string | null;
   label: string;
   eventIds: number[];
   createdAt: Date;
@@ -304,6 +307,7 @@ export type PlanningTeamAccessSummary = {
 
 type PlanningTeamAccessCredential = {
   id: number;
+  contactName: string | null;
   label: string;
   passwordHash: string;
   sessionVersion: number;
@@ -330,6 +334,22 @@ async function requireExistingEvents(tx: DBClient, eventIds: number[]) {
   return normalized;
 }
 
+async function requireExistingContactForPlanningTeamAccess(
+  tx: DBClient,
+  contactId: number
+) {
+  const [contact] = await tx
+    .select({ id: contacts.id, name: contacts.name })
+    .from(contacts)
+    .where(eq(contacts.id, contactId))
+    .limit(1)
+    .for("update");
+  if (!contact) {
+    throw new Error("Der ausgewählte Ansprechpartner wurde nicht gefunden");
+  }
+  return contact;
+}
+
 export async function listPlanningTeamAccesses(): Promise<
   PlanningTeamAccessSummary[]
 > {
@@ -338,12 +358,15 @@ export async function listPlanningTeamAccesses(): Promise<
   const rows = await database
     .select({
       id: planningTeamAccesses.id,
+      contactId: planningTeamAccesses.contactId,
+      contactName: contacts.name,
       label: planningTeamAccesses.label,
       createdAt: planningTeamAccesses.createdAt,
       updatedAt: planningTeamAccesses.updatedAt,
       eventId: planningTeamAccessEvents.eventId,
     })
     .from(planningTeamAccesses)
+    .leftJoin(contacts, eq(contacts.id, planningTeamAccesses.contactId))
     .leftJoin(
       planningTeamAccessEvents,
       eq(planningTeamAccessEvents.accessId, planningTeamAccesses.id)
@@ -354,6 +377,8 @@ export async function listPlanningTeamAccesses(): Promise<
   for (const row of rows) {
     const current = grouped.get(row.id) ?? {
       id: row.id,
+      contactId: row.contactId,
+      contactName: row.contactName,
       label: row.label,
       eventIds: [],
       createdAt: row.createdAt,
@@ -376,24 +401,31 @@ export async function listPlanningTeamAccessCredentials(): Promise<
   return database
     .select({
       id: planningTeamAccesses.id,
+      contactName: contacts.name,
       label: planningTeamAccesses.label,
       passwordHash: planningTeamAccesses.passwordHash,
       sessionVersion: planningTeamAccesses.sessionVersion,
     })
     .from(planningTeamAccesses)
+    .leftJoin(contacts, eq(contacts.id, planningTeamAccesses.contactId))
     .orderBy(planningTeamAccesses.id);
 }
 
 export async function createPlanningTeamAccess(input: {
   label: string;
+  contactId?: number | null;
   passwordHash: string;
   eventIds: number[];
 }) {
   const database = (await getDb()) as DB;
   return database.transaction(async tx => {
     const eventIds = await requireExistingEvents(tx, input.eventIds);
+    const contact = input.contactId
+      ? await requireExistingContactForPlanningTeamAccess(tx, input.contactId)
+      : null;
     const result: any = await tx.insert(planningTeamAccesses).values({
-      label: input.label.trim(),
+      contactId: contact?.id ?? null,
+      label: contact?.name ?? input.label.trim(),
       passwordHash: input.passwordHash,
       sessionVersion: 1,
     });
@@ -417,6 +449,7 @@ export async function createPlanningTeamAccess(input: {
 export async function updatePlanningTeamAccess(input: {
   id: number;
   label: string;
+  contactId?: number | null;
   passwordHash?: string;
   eventIds: number[];
 }) {
@@ -424,17 +457,27 @@ export async function updatePlanningTeamAccess(input: {
   return database.transaction(async tx => {
     const eventIds = await requireExistingEvents(tx, input.eventIds);
     const [existing] = await tx
-      .select({ id: planningTeamAccesses.id, sessionVersion: planningTeamAccesses.sessionVersion })
+      .select({
+        id: planningTeamAccesses.id,
+        contactId: planningTeamAccesses.contactId,
+        sessionVersion: planningTeamAccesses.sessionVersion,
+      })
       .from(planningTeamAccesses)
       .where(eq(planningTeamAccesses.id, input.id))
       .limit(1)
       .for("update");
     if (!existing) throw new Error("Planungsteam-Zugang wurde nicht gefunden");
+    const nextContactId =
+      input.contactId === undefined ? existing.contactId : input.contactId;
+    const contact = nextContactId
+      ? await requireExistingContactForPlanningTeamAccess(tx, nextContactId)
+      : null;
 
     await tx
       .update(planningTeamAccesses)
       .set({
-        label: input.label.trim(),
+        contactId: contact?.id ?? null,
+        label: contact?.name ?? input.label.trim(),
         ...(input.passwordHash ? { passwordHash: input.passwordHash } : {}),
         sessionVersion: existing.sessionVersion + 1,
       })
@@ -468,7 +511,7 @@ export async function deletePlanningTeamAccess(accessId: number) {
     await tx.delete(planningTeamAccesses).where(eq(planningTeamAccesses.id, accessId));
     await tx
       .delete(users)
-      .where(eq(users.openId, `planning-team-access-${accessId}`));
+      .where(eq(users.openId, planningTeamAccessOpenId(accessId)));
     return { deletedId: access.id, deletedLabel: access.label };
   });
 }
@@ -850,6 +893,23 @@ export async function listContacts() {
     .where(planningScope(contacts))
     .orderBy(contacts.sortOrder, contacts.name);
 }
+
+/** Für die Administratorverwaltung aller eventübergreifenden Zugänge. */
+export async function listAllContactsForPlanningTeamAccess() {
+  const database = await getDb();
+  if (!database) return [];
+  return database
+    .select({
+      id: contacts.id,
+      name: contacts.name,
+      year: contacts.year,
+      eventId: contacts.eventId,
+      eventName: events.name,
+    })
+    .from(contacts)
+    .innerJoin(events, eq(events.id, contacts.eventId))
+    .orderBy(contacts.name, contacts.year, events.name, contacts.id);
+}
 export async function listLocations() {
   const db = await getDb();
   if (!db) return [];
@@ -1168,12 +1228,14 @@ export async function createContact(v: {
   name: string;
   phone?: string;
   note?: string;
+  passwordHash?: string;
 }) {
   const db = (await getDb()) as DB;
   return db.transaction(async tx => {
+    const { passwordHash, ...contactValues } = v;
     const normalizedName = v.name.trim().replace(/\s+/g, " ");
     const result: any = await tx.insert(contacts).values({
-      ...v,
+      ...contactValues,
       name: normalizedName,
       year: year(),
       eventId: event(),
@@ -1184,12 +1246,37 @@ export async function createContact(v: {
       name: normalizedName,
       phone: v.phone ?? null,
     });
-    return { id, helperId: helper.id, helperCreated: helper.created };
+    if (passwordHash) {
+      const accessResult: any = await tx.insert(planningTeamAccesses).values({
+        contactId: id,
+        label: normalizedName,
+        passwordHash,
+        sessionVersion: 1,
+      });
+      const accessId = Number(
+        accessResult?.[0]?.insertId ?? accessResult?.insertId
+      );
+      await tx.insert(planningTeamAccessEvents).values({
+        accessId,
+        eventId: event(),
+      });
+    }
+    return {
+      id,
+      helperId: helper.id,
+      helperCreated: helper.created,
+      accessCreated: Boolean(passwordHash),
+    };
   });
 }
 export async function updateContact(
   id: number,
-  v: { name?: string; phone?: string | null; note?: string | null }
+  v: {
+    name?: string;
+    phone?: string | null;
+    note?: string | null;
+    passwordHash?: string;
+  }
 ) {
   const db = (await getDb()) as DB;
   return db.transaction(async tx => {
@@ -1199,9 +1286,12 @@ export async function updateContact(
       .where(and(eq(contacts.id, id), planningScope(contacts)))
       .limit(1);
     if (!before) throw new Error("Ansprechpartner wurde nicht gefunden");
+    const { passwordHash, ...contactFields } = v;
     const values = {
-      ...v,
-      ...(v.name ? { name: v.name.trim().replace(/\s+/g, " ") } : {}),
+      ...contactFields,
+      ...(contactFields.name
+        ? { name: contactFields.name.trim().replace(/\s+/g, " ") }
+        : {}),
     };
     const contact = { ...before, ...values };
     const result = await tx
@@ -1209,6 +1299,36 @@ export async function updateContact(
       .set(values)
       .where(and(eq(contacts.id, id), planningScope(contacts)));
     await syncContactToSelfHelperWithClient(tx, contact, before.name);
+    const [access] = await tx
+      .select({ id: planningTeamAccesses.id, sessionVersion: planningTeamAccesses.sessionVersion })
+      .from(planningTeamAccesses)
+      .where(eq(planningTeamAccesses.contactId, id))
+      .limit(1)
+      .for("update");
+    if (access) {
+      await tx
+        .update(planningTeamAccesses)
+        .set({
+          label: contact.name,
+          ...(passwordHash ? { passwordHash } : {}),
+          sessionVersion: access.sessionVersion + 1,
+        })
+        .where(eq(planningTeamAccesses.id, access.id));
+    } else if (passwordHash) {
+      const accessResult: any = await tx.insert(planningTeamAccesses).values({
+        contactId: id,
+        label: contact.name,
+        passwordHash,
+        sessionVersion: 1,
+      });
+      const accessId = Number(
+        accessResult?.[0]?.insertId ?? accessResult?.insertId
+      );
+      await tx.insert(planningTeamAccessEvents).values({
+        accessId,
+        eventId: before.eventId,
+      });
+    }
     return result;
   });
 }
@@ -1222,6 +1342,20 @@ export async function deleteContact(id: number, actor: AuditActor) {
       .limit(1)
       .for("update");
     if (!contact) throw new Error("Ansprechpartner wurde nicht gefunden");
+
+    const contactAccesses = await tx
+      .select({ id: planningTeamAccesses.id })
+      .from(planningTeamAccesses)
+      .where(eq(planningTeamAccesses.contactId, id))
+      .for("update");
+    if (contactAccesses.length) {
+      await tx.delete(users).where(
+        inArray(
+          users.openId,
+          contactAccesses.map(access => planningTeamAccessOpenId(access.id))
+        )
+      );
+    }
 
     const linkedHelpers = await tx
       .select()
@@ -1290,6 +1424,7 @@ export async function upsertContactByName(v: {
   name: string;
   phone?: string | null;
   note?: string | null;
+  passwordHash?: string;
 }) {
   const existing = (await listContacts()).find(
     item => normalizePersonName(item.name) === normalizePersonName(v.name)
@@ -1298,6 +1433,7 @@ export async function upsertContactByName(v: {
     const updates = {
       ...(v.phone ? { phone: v.phone } : {}),
       ...(v.note ? { note: v.note } : {}),
+      ...(v.passwordHash ? { passwordHash: v.passwordHash } : {}),
     };
     if (Object.keys(updates).length) await updateContact(existing.id, updates);
     const helper = await syncContactToSelfHelper({
@@ -1315,6 +1451,7 @@ export async function upsertContactByName(v: {
     name: v.name.trim().replace(/\s+/g, " "),
     phone: v.phone ?? undefined,
     note: v.note ?? undefined,
+    passwordHash: v.passwordHash,
   });
   return {
     id: result.id,

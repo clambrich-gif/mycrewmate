@@ -495,13 +495,26 @@ export const securitySettings = mysqlTable("security_settings", {
  */
 export const planningTeamAccesses = mysqlTable("planning_team_accesses", {
   id: int("id").autoincrement().primaryKey(),
+  /**
+   * Ein Ansprechpartner kann genau einen eigenen Planungsteam-Zugang erhalten.
+   * Ältere, aus der früheren globalen Passwortverwaltung übernommene Zugänge
+   * bleiben bewusst ohne Ansprechpartner-Verknüpfung lesbar und verwaltbar.
+   */
+  contactId: int("contactId"),
   label: varchar("label", { length: 120 }).notNull(),
   passwordHash: varchar("passwordHash", { length: 255 }).notNull(),
   /** Änderungen an Passwort oder Freigaben machen bestehende Sitzungen ungültig. */
   sessionVersion: int("sessionVersion").default(1).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
+}, table => [
+  foreignKey({
+    name: "pta_contact_fk",
+    columns: [table.contactId],
+    foreignColumns: [contacts.id],
+  }).onDelete("cascade"),
+  uniqueIndex("planning_team_access_contact_unique").on(table.contactId),
+]);
 export type PlanningTeamAccess = typeof planningTeamAccesses.$inferSelect;
 
 /** Die explizite Many-to-many-Freigabe eines Planungsteam-Zugangs für Events. */

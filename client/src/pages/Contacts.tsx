@@ -18,9 +18,11 @@ export default function Contacts() {
   const { data: contacts = [], isLoading } = trpc.contacts.list.useQuery();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
   const [editId, setEditId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
+  const [editPassword, setEditPassword] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{
     id: number;
     name: string;
@@ -28,6 +30,9 @@ export default function Contacts() {
 
   const invalidate = () => {
     utils.contacts.list.invalidate();
+    utils.planningTeamAccesses.list.invalidate();
+    utils.planningTeamAccesses.availableContacts.invalidate();
+    utils.auth.passwordStatus.invalidate();
     utils.helpers.list.invalidate();
     utils.plan.evaluate.invalidate();
     utils.dashboard.stats.invalidate();
@@ -38,6 +43,7 @@ export default function Contacts() {
       invalidate();
       setName("");
       setPhone("");
+      setPassword("");
       toast.success("Ansprechpartner hinzugefügt");
     },
     onError: error => toast.error(error.message),
@@ -58,6 +64,7 @@ export default function Contacts() {
     onSuccess: () => {
       invalidate();
       setEditId(null);
+      setEditPassword("");
       toast.success("Aktualisiert");
     },
     onError: error => toast.error(error.message),
@@ -65,7 +72,11 @@ export default function Contacts() {
 
   const addContact = () => {
     if (!name.trim()) return;
-    create.mutate({ name: name.trim(), phone: phone.trim() || undefined });
+    create.mutate({
+      name: name.trim(),
+      phone: phone.trim() || undefined,
+      ...(password ? { password } : {}),
+    });
   };
 
   return (
@@ -86,7 +97,7 @@ export default function Contacts() {
           <ResetAreaButton area="contacts" label="Ansprechpartner" />
         </div>
       </div>
-      <div className="grid gap-2 sm:grid-cols-[1fr_220px_auto] lg:hidden">
+      <div className="grid gap-2 sm:grid-cols-[1fr_220px_220px_auto] lg:hidden">
         <Input
           placeholder="Name des Ansprechpartners"
           value={name}
@@ -98,6 +109,14 @@ export default function Contacts() {
           placeholder="Rufnummer"
           value={phone}
           onChange={event => setPhone(event.target.value)}
+          onKeyDown={event => event.key === "Enter" && addContact()}
+        />
+        <Input
+          type="password"
+          autoComplete="new-password"
+          placeholder="Passwort / Zugangscode (optional)"
+          value={password}
+          onChange={event => setPassword(event.target.value)}
           onKeyDown={event => event.key === "Enter" && addContact()}
         />
         <Button
@@ -112,7 +131,7 @@ export default function Contacts() {
         </Button>
       </div>
       <Card className="hidden border-blue-200 bg-slate-50/80 shadow-sm lg:block">
-        <CardContent className="grid items-end gap-3 p-4 lg:grid-cols-[minmax(0,1fr)_220px_auto]">
+        <CardContent className="grid items-end gap-3 p-4 lg:grid-cols-[minmax(0,1fr)_220px_260px_auto]">
           <div className="space-y-1.5">
             <label htmlFor="new-contact-name" className="text-sm font-semibold text-slate-800">
               Neuanlage – Name des Ansprechpartners
@@ -136,6 +155,21 @@ export default function Contacts() {
               placeholder="z. B. 0170 1234567"
               value={phone}
               onChange={event => setPhone(event.target.value)}
+              onKeyDown={event => event.key === "Enter" && addContact()}
+              className="h-11 border-slate-300 bg-white text-base shadow-sm placeholder:text-slate-600"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="new-contact-password" className="text-sm font-semibold text-slate-800">
+              Passwort / Zugangscode <span className="font-normal text-slate-500">(optional)</span>
+            </label>
+            <Input
+              id="new-contact-password"
+              type="password"
+              autoComplete="new-password"
+              placeholder="Mindestens 10 Zeichen"
+              value={password}
+              onChange={event => setPassword(event.target.value)}
               onKeyDown={event => event.key === "Enter" && addContact()}
               className="h-11 border-slate-300 bg-white text-base shadow-sm placeholder:text-slate-600"
             />
@@ -167,7 +201,7 @@ export default function Contacts() {
                   className="flex items-center justify-between gap-4 py-3"
                 >
                   {editId === contact.id ? (
-                    <div className="grid flex-1 gap-2 sm:grid-cols-2">
+                    <div className="grid flex-1 gap-2 sm:grid-cols-3">
                       <Input
                         autoFocus
                         value={editName}
@@ -185,6 +219,25 @@ export default function Contacts() {
                               id: contact.id,
                               name: editName.trim(),
                               phone: editPhone.trim() || null,
+                              ...(editPassword ? { password: editPassword } : {}),
+                            });
+                          }
+                          if (event.key === "Escape") setEditId(null);
+                        }}
+                      />
+                      <Input
+                        type="password"
+                        autoComplete="new-password"
+                        value={editPassword}
+                        onChange={event => setEditPassword(event.target.value)}
+                        placeholder="Neues Passwort (optional)"
+                        onKeyDown={event => {
+                          if (event.key === "Enter" && editName.trim()) {
+                            update.mutate({
+                              id: contact.id,
+                              name: editName.trim(),
+                              phone: editPhone.trim() || null,
+                              ...(editPassword ? { password: editPassword } : {}),
                             });
                           }
                           if (event.key === "Escape") setEditId(null);
@@ -206,7 +259,10 @@ export default function Contacts() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setEditId(null)}
+                          onClick={() => {
+                            setEditId(null);
+                            setEditPassword("");
+                          }}
                         >
                           Abbrechen
                         </Button>
@@ -218,6 +274,7 @@ export default function Contacts() {
                               id: contact.id,
                               name: editName.trim(),
                               phone: editPhone.trim() || null,
+                              ...(editPassword ? { password: editPassword } : {}),
                             })
                           }
                         >
@@ -233,6 +290,7 @@ export default function Contacts() {
                           setEditId(contact.id);
                           setEditName(contact.name);
                           setEditPhone(contact.phone ?? "");
+                          setEditPassword("");
                         }}
                       >
                         <Pencil className="h-4 w-4" />

@@ -150,6 +150,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [capsLockOn, setCapsLockOn] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loginMode, setLoginMode] = useState<"user" | "admin">("user");
+  const [adminIdentityDialogOpen, setAdminIdentityDialogOpen] = useState(false);
+  const [adminLoginContacts, setAdminLoginContacts] = useState<
+    { id: number; name: string; year: number; eventName: string }[]
+  >([]);
+  const [selectedAdminContactId, setSelectedAdminContactId] = useState<string>("");
+  const [manualAdministratorName, setManualAdministratorName] = useState("");
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [recoveryKey, setRecoveryKey] = useState("");
   const [newAdminPassword, setNewAdminPassword] = useState("");
@@ -423,7 +429,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
   });
   const adminPasswordLogin = trpc.auth.adminPasswordLogin.useMutation({
     mutationKey: ["auth", "adminPasswordLogin"],
-    onSuccess: finishLogin,
+    onSuccess: async result => {
+      if (result.requiresIdentity) {
+        setAdminLoginContacts(result.contacts ?? []);
+        setSelectedAdminContactId("");
+        setManualAdministratorName("");
+        setAdminIdentityDialogOpen(true);
+        return;
+      }
+      await finishLogin();
+    },
     onError: error => setLoginError(error.message),
   });
   const resetAdminWithKey = trpc.auth.resetAdminWithKey.useMutation({
@@ -522,6 +537,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
     passwordLogin.isPending ||
     adminPasswordLogin.isPending ||
     resetAdminWithKey.isPending;
+  const selectedAdministratorName =
+    adminLoginContacts.find(contact => String(contact.id) === selectedAdminContactId)
+      ?.name ?? manualAdministratorName.trim();
 
   useEffect(() => {
     if (!planningTeamLocked) return;
@@ -1661,6 +1679,100 @@ export function Layout({ children }: { children: React.ReactNode }) {
           })
         }
       />
+
+      <Dialog
+        open={adminIdentityDialogOpen}
+        onOpenChange={open => {
+          if (!open && !adminPasswordLogin.isPending) {
+            setAdminIdentityDialogOpen(false);
+            setAdminLoginContacts([]);
+            setSelectedAdminContactId("");
+            setManualAdministratorName("");
+            setPassword("");
+          }
+        }}
+      >
+        <DialogContent className="bg-white text-slate-950 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Wer meldet sich als Administrator an?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-slate-600">
+            Wählen Sie einen hinterlegten Ansprechpartner aus oder tragen Sie
+            einen Namen ein. Diese Auswahl kennzeichnet die aktuelle Sitzung.
+          </p>
+          <div className="space-y-2">
+            <Label htmlFor="administrator-contact-select">
+              Schnellauswahl Ansprechpartner
+            </Label>
+            <Select
+              value={selectedAdminContactId || "manual"}
+              onValueChange={value => {
+                setSelectedAdminContactId(value === "manual" ? "" : value);
+                if (value !== "manual") setManualAdministratorName("");
+              }}
+              disabled={adminPasswordLogin.isPending}
+            >
+              <SelectTrigger id="administrator-contact-select">
+                <SelectValue placeholder="Ansprechpartner auswählen" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="manual">Freitext verwenden</SelectItem>
+                {adminLoginContacts.map(contact => (
+                  <SelectItem key={contact.id} value={String(contact.id)}>
+                    {contact.name} · {contact.year} · {contact.eventName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="administrator-manual-name">Name (alternativ)</Label>
+            <Input
+              id="administrator-manual-name"
+              value={manualAdministratorName}
+              onChange={event => {
+                setManualAdministratorName(event.target.value);
+                if (event.target.value) setSelectedAdminContactId("");
+              }}
+              placeholder="Name eingeben, falls die Person neu ist"
+              disabled={Boolean(selectedAdminContactId) || adminPasswordLogin.isPending}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={adminPasswordLogin.isPending}
+              onClick={() => {
+                setAdminIdentityDialogOpen(false);
+                setAdminLoginContacts([]);
+                setSelectedAdminContactId("");
+                setManualAdministratorName("");
+                setPassword("");
+              }}
+            >
+              Abbrechen
+            </Button>
+            <Button
+              type="button"
+              disabled={
+                selectedAdministratorName.trim().length < 2 ||
+                !password ||
+                adminPasswordLogin.isPending
+              }
+              onClick={() =>
+                adminPasswordLogin.mutate({
+                  password,
+                  administratorName: selectedAdministratorName.trim(),
+                })
+              }
+            >
+              <ShieldCheck className="mr-2 h-4 w-4" />
+              {adminPasswordLogin.isPending ? "Anmeldung läuft …" : "Anmelden"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ImpressumDialog open={impressumOpen} onOpenChange={setImpressumOpen} />
 

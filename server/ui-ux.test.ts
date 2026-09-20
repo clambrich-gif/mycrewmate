@@ -1758,7 +1758,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(contacts).toContain('className="hidden border-blue-200 bg-slate-50/80 shadow-sm lg:block"');
     expect(contacts).toContain("Neuanlage – Name des Ansprechpartners");
     expect(contacts).toContain("Neuanlage – Rufnummer");
-    expect(contacts).toContain('className="grid gap-2 sm:grid-cols-[1fr_220px_auto] lg:hidden"');
+    expect(contacts).toContain('className="grid gap-2 sm:grid-cols-[1fr_220px_220px_auto] lg:hidden"');
+    expect(contacts).toContain("Passwort / Zugangscode (optional)");
   });
 
   it("verwendet Mint für Übernahmen und Rose für Resets", () => {
@@ -2619,10 +2620,23 @@ describe("UI- und Mobile-UX-Regeln", () => {
   it("bindet im Zugangsschutz das Verwaltungsmodul für Planungsteam-Zugänge ein", () => {
     const security = source("client/src/pages/Security.tsx");
     const manager = source("client/src/components/PlanningTeamAccessManager.tsx");
+    const layout = source("client/src/components/Layout.tsx");
+    const contacts = source("client/src/pages/Contacts.tsx");
 
     expect(security).toContain("<PlanningTeamAccessManager />");
     expect(manager).toContain("Planungsteam-Zugänge verwalten");
     expect(manager).toContain("Freigegebene Veranstaltungen");
     expect(manager).toContain("Administratorpasswort");
+    expect(manager).toContain("Ansprechpartner");
+    expect(manager).toContain("availableContacts");
+    expect(manager).toContain("Ansprechpartner-Zugang");
+
+    expect(contacts).toContain("Passwort / Zugangscode (optional)");
+    expect(contacts).toContain("Neues Passwort (optional)");
+
+    expect(layout).toContain("Wer meldet sich als Administrator an?");
+    expect(layout).toContain("Schnellauswahl Ansprechpartner");
+    expect(layout).toContain("Name (alternativ)");
+    expect(layout).toContain("adminIdentityDialogOpen");
   });
 });

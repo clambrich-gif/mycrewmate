@@ -344,6 +344,13 @@
       "when": 1789934529265,
       "tag": "0048_planning_team_access_events",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "5",
+      "when": 1789936899519,
+      "tag": "0049_known_nova",
+      "breakpoints": true
     }
   ]
 }

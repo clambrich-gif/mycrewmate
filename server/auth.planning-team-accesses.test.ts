@@ -138,9 +138,186 @@ describe("Event-based Access Control für Planungsteam", () => {
     await expect(
       adminCaller.planningTeamAccesses.create({
         label: "Neues Team",
+        contactId: 1,
         password: "sicheres-passwort-123",
         eventIds: [10],
         currentAdminPassword: "falsch",
+      })
+    ).rejects.toThrow("Administratorpasswort ist nicht korrekt");
+  });
+
+  it("erlaubt optionales Passwort beim Erstellen von Ansprechpartnern und hasht es serverseitig", async () => {
+    vi.spyOn(db, "getEvent").mockResolvedValue({
+      id: 10,
+      year: 2027,
+      name: "MyEifelRide 2027",
+    } as any);
+    vi.spyOn(db, "withPlanningWriteLock").mockImplementation(async callback =>
+      callback()
+    );
+    const upsertContactSpy = vi.spyOn(db, "upsertContactByName").mockResolvedValue({
+      id: 55,
+      created: true,
+      helperId: 55,
+      helperCreated: true,
+    });
+    const hashSpy = vi.spyOn(passwordAuth, "hashPassword").mockResolvedValue("$2a$10$hashedContactPass");
+
+    const adminCaller = appRouter.createCaller({
+      user: {
+        id: 1,
+        openId: ADMIN_PASSWORD_OPEN_ID,
+        role: "admin",
+        name: "Admin",
+        email: null,
+        sessionVersion: 1,
+        avatarUrl: null,
+        accountBlocked: false,
+        lastSignedIn: new Date(),
+      },
+      req: mockReq({
+        "x-event-year": "2027",
+        "x-event-id": "10",
+      }),
+      res: { setHeader: vi.fn(), clearCookie: vi.fn() } as any,
+    });
+
+    const result = await adminCaller.contacts.create({
+      name: "Anne Veling",
+      phone: "0170 123456",
+      password: "sicheres-kontakt-passwort",
+    });
+
+    expect(result.id).toBe(55);
+    expect(hashSpy).toHaveBeenCalledWith("sicheres-kontakt-passwort");
+    expect(upsertContactSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Anne Veling",
+        phone: "0170 123456",
+        passwordHash: "$2a$10$hashedContactPass",
+      })
+    );
+  });
+
+  it("meldet Planungsteammitglieder fälschungssicher mit dem hinterlegten Ansprechpartnernamen an", async () => {
+    vi.spyOn(db, "getSecuritySettings").mockResolvedValue({
+      planningTeamLocked: false,
+    } as any);
+    vi.spyOn(db, "listPlanningTeamAccessCredentials").mockResolvedValue([
+      {
+        id: 7,
+        label: "Anne Veling",
+        contactName: "Anne Veling",
+        passwordHash: "$2a$10$hashedAnne",
+        sessionVersion: 2,
+      },
+    ]);
+    vi.spyOn(passwordAuth, "verifyPassword").mockResolvedValue(true);
+    const upsertUserSpy = vi.spyOn(db, "upsertUser").mockResolvedValue(undefined as any);
+    const clearFailuresSpy = vi
+      .spyOn(db, "clearPlanningTeamLoginFailuresIfUnlocked")
+      .mockResolvedValue(true);
+
+    const cookieMock = vi.fn();
+    const publicCaller = appRouter.createCaller({
+      user: null,
+      req: mockReq(),
+      res: { setHeader: vi.fn(), clearCookie: vi.fn(), cookie: cookieMock } as any,
+    });
+
+    const result = await publicCaller.auth.passwordLogin({
+      password: "korrektes-anne-passwort",
+    });
+
+    expect(result).toEqual({ success: true });
+    expect(clearFailuresSpy).toHaveBeenCalled();
+    expect(upsertUserSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        openId: planningTeamAccessOpenId(7),
+        name: "Anne Veling",
+        role: "user",
+      })
+    );
+    expect(cookieMock).toHaveBeenCalled();
+  });
+
+  it("fordert beim Admin-Login zunächst die Identitätsauswahl an und setzt erst mit Namen die Sitzung", async () => {
+    vi.spyOn(db, "getSecuritySettings").mockResolvedValue({
+      adminPasswordHash: "$2a$10$hashedAdmin",
+    } as any);
+    vi.spyOn(passwordAuth, "verifyPassword").mockResolvedValue(true);
+    vi.spyOn(db, "listAllContactsForPlanningTeamAccess").mockResolvedValue([
+      {
+        id: 1,
+        name: "Christian Lambrich",
+        year: 2027,
+        eventId: 10,
+        eventName: "MyEifelRide 2027",
+      },
+    ]);
+    const upsertUserSpy = vi.spyOn(db, "upsertUser").mockResolvedValue(undefined as any);
+
+    const cookieMock = vi.fn();
+    const publicCaller = appRouter.createCaller({
+      user: null,
+      req: mockReq(),
+      res: { setHeader: vi.fn(), clearCookie: vi.fn(), cookie: cookieMock } as any,
+    });
+
+    // Schritt 1: Nur Passwort übergeben -> Name wird angefordert
+    const step1 = await publicCaller.auth.adminPasswordLogin({
+      password: "admin-passwort-123",
+    });
+    expect(step1).toEqual({
+      requiresIdentity: true,
+      contacts: [
+        {
+          id: 1,
+          name: "Christian Lambrich",
+          year: 2027,
+          eventId: 10,
+          eventName: "MyEifelRide 2027",
+        },
+      ],
+    });
+    expect(cookieMock).not.toHaveBeenCalled();
+    expect(upsertUserSpy).not.toHaveBeenCalled();
+
+    // Schritt 2: Passwort + gewählter Name übergeben -> Admin-Sitzung mit Namen
+    const step2 = await publicCaller.auth.adminPasswordLogin({
+      password: "admin-passwort-123",
+      administratorName: "Christian Lambrich",
+    });
+    expect(step2).toEqual({
+      success: true,
+      requiresIdentity: false,
+    });
+    expect(upsertUserSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        openId: ADMIN_PASSWORD_OPEN_ID,
+        name: "Christian Lambrich",
+        role: "admin",
+      })
+    );
+    expect(cookieMock).toHaveBeenCalled();
+  });
+
+  it("blockiert falschen Admin-Login auch bei vorab übergebenem Namen", async () => {
+    vi.spyOn(db, "getSecuritySettings").mockResolvedValue({
+      adminPasswordHash: "$2a$10$hashedAdmin",
+    } as any);
+    vi.spyOn(passwordAuth, "verifyPassword").mockResolvedValue(false);
+
+    const publicCaller = appRouter.createCaller({
+      user: null,
+      req: mockReq(),
+      res: { setHeader: vi.fn(), clearCookie: vi.fn(), cookie: vi.fn() } as any,
+    });
+
+    await expect(
+      publicCaller.auth.adminPasswordLogin({
+        password: "falsches-admin-passwort",
+        administratorName: "Christian Lambrich",
       })
     ).rejects.toThrow("Administratorpasswort ist nicht korrekt");
   });
