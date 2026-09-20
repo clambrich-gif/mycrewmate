@@ -33,7 +33,7 @@ import {
 } from "@/lib/whatsappShare";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
-import { ChevronDown, Clock3, FileDown, Info, MessageCircle, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { ChevronDown, Clock3, FileDown, FilterX, Info, MessageCircle, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
@@ -869,6 +869,24 @@ export default function Helpers() {
     );
   };
 
+  const hasActiveHelperFilters =
+    Boolean(filter.trim()) ||
+    apFilter !== "alle" ||
+    companionFilter !== "alle" ||
+    confirmationFilter !== "alle" ||
+    helperScopeFilter !== "alle" ||
+    willHelpFilter !== "alle" ||
+    timedAvailabilityOnly;
+
+  const resetHelperFilters = () => {
+    setFilter("");
+    setApFilter("alle");
+    setCompanionFilter("alle");
+    setWillHelpFilter("alle");
+    setTimedAvailabilityOnly(false);
+    clearDashboardHelperFilter();
+  };
+
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -896,19 +914,19 @@ export default function Helpers() {
       </div>
 
       <div className="space-y-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-        <div className="relative w-full">
+        <div className="relative w-full md:max-w-[551px]">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
           <Input
             placeholder="Suchen (Name, Telefon, Hinweise) …"
             value={filter}
             onChange={event => setFilter(event.target.value)}
-            className="h-11 border-slate-200 bg-white pl-9 text-base sm:h-10 sm:text-sm"
+            className="h-10 border-2 border-slate-300 bg-white pl-9 text-base shadow-sm focus:border-blue-500 focus-visible:border-blue-500 focus-visible:ring-blue-200 md:text-sm"
             aria-label="Helfer nach Name, Telefon oder Hinweis durchsuchen"
           />
         </div>
         <div className="grid grid-cols-1 gap-2 md:flex md:flex-wrap">
           <Select value={apFilter} onValueChange={setApFilter}>
-            <SelectTrigger className="h-11 w-full border-slate-200 bg-white text-base md:h-10 md:w-[190px] md:text-sm">
+            <SelectTrigger className="!h-10 w-full items-center border-slate-200 bg-white text-base md:w-[190px] md:text-sm">
               <SelectValue placeholder="Ansprechpartner" />
             </SelectTrigger>
             <SelectContent>
@@ -932,7 +950,7 @@ export default function Helpers() {
               setCompanionFilter(value as "alle" | "mit" | "ohne")
             }
           >
-            <SelectTrigger className="h-11 w-full border-slate-200 bg-white text-base md:h-10 md:w-[170px] md:text-sm" aria-label="Begleitung filtern">
+            <SelectTrigger className="!h-10 w-full items-center border-slate-200 bg-white text-base md:w-[170px] md:text-sm" aria-label="Begleitung filtern">
               <SelectValue placeholder="Begleitung" />
             </SelectTrigger>
             <SelectContent>
@@ -947,7 +965,7 @@ export default function Helpers() {
               updateConfirmationFilter(value as "alle" | "ja" | "nein")
             }
           >
-            <SelectTrigger className="h-11 w-full border-slate-200 bg-white text-base md:h-10 md:w-[175px] md:text-sm" aria-label="Bestätigung filtern">
+            <SelectTrigger className="!h-10 w-full items-center border-slate-200 bg-white text-base md:w-[175px] md:text-sm" aria-label="Bestätigung filtern">
               <SelectValue placeholder="Bestätigung" />
             </SelectTrigger>
             <SelectContent>
@@ -964,7 +982,7 @@ export default function Helpers() {
               )
             }
           >
-            <SelectTrigger className="h-11 w-full border-slate-200 bg-white text-base md:h-10 md:w-[170px] md:text-sm" aria-label="Helferumfang filtern">
+            <SelectTrigger className="!h-10 w-full items-center border-slate-200 bg-white text-base md:w-[170px] md:text-sm" aria-label="Helferumfang filtern">
               <SelectValue placeholder="Nur Helfer mit ..." />
             </SelectTrigger>
             <SelectContent>
@@ -979,7 +997,7 @@ export default function Helpers() {
               setWillHelpFilter(value as "alle" | "ja" | "nein")
             }
           >
-            <SelectTrigger className="h-11 w-full border-slate-200 bg-white text-base md:h-10 md:w-[155px] md:text-sm" aria-label="Helfen filtern">
+            <SelectTrigger className="!h-10 w-full items-center border-slate-200 bg-white text-base md:w-[155px] md:text-sm" aria-label="Helfen filtern">
               <SelectValue placeholder="Helfen" />
             </SelectTrigger>
             <SelectContent>
@@ -994,7 +1012,7 @@ export default function Helpers() {
             aria-pressed={timedAvailabilityOnly}
             aria-label="Nur Helfer mit Zeitfenstern filtern"
             className={cn(
-              "h-11 w-full justify-start gap-2 border-slate-200 text-base md:h-10 md:w-auto md:justify-center md:text-sm",
+              "h-10 w-full justify-start gap-2 border-slate-200 text-base md:w-auto md:justify-center md:text-sm",
               timedAvailabilityOnly
                 ? "border-sky-300 bg-sky-50 text-sky-950 hover:bg-sky-100"
                 : "bg-white text-slate-700 hover:bg-slate-50"
@@ -1004,6 +1022,20 @@ export default function Helpers() {
             <Clock3 className="size-4 shrink-0" aria-hidden="true" />
             Nur Helfer mit Zeitfenstern
           </Button>
+          {hasActiveHelperFilters && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              data-helper-filter-reset
+              className="h-10 w-full px-2 text-base text-sky-700 hover:bg-sky-100/60 hover:text-sky-900 md:ml-1 md:w-auto md:text-sm"
+              onClick={resetHelperFilters}
+              aria-label="Alle Helferfilter zurücksetzen"
+            >
+              <FilterX className="mr-1 size-3.5" aria-hidden="true" />
+              Filter zurücksetzen
+            </Button>
+          )}
         </div>
       </div>
 
@@ -1272,6 +1304,7 @@ export default function Helpers() {
           >
             <colgroup>
               <col className="w-[140px]" />
+              <col className="w-[176px]" />
               <col className="w-[150px]" />
               <col className="w-[180px]" />
               <col className="w-[230px]" />
@@ -1281,7 +1314,6 @@ export default function Helpers() {
                 <col key={day} className="w-[56px]" />
               ))}
               <col className="w-[56px]" />
-              <col className="w-[176px]" />
             </colgroup>
             <thead className="helpers-desktop-sticky-head bg-muted/60">
               <tr className="text-left">
@@ -1291,6 +1323,7 @@ export default function Helpers() {
                 >
                   Name {sortAsc ? "▲" : "▼"}
                 </th>
+                <th className="p-2 text-center">Aktionen</th>
                 <th className="p-2">Ansprechpartner</th>
                 <th className="whitespace-nowrap p-2">Telefon Helfer</th>
                 <th className="p-2">Hinweis für PDF</th>
@@ -1316,7 +1349,6 @@ export default function Helpers() {
                     Bestätigt?
                   </span>
                 </th>
-                <th className="p-2 text-center">Aktionen</th>
               </tr>
             </thead>
             <tbody>
@@ -1324,7 +1356,7 @@ export default function Helpers() {
                 <tr>
                   <td
                     className="p-4 text-muted-foreground"
-                    colSpan={7 + activeDays.length}
+                    colSpan={8 + activeDays.length}
                   >
                     Lade …
                   </td>
@@ -1342,6 +1374,67 @@ export default function Helpers() {
                         eigener Ansprechpartner-Eintrag
                       </div>
                     )}
+                  </td>
+                  <td className="p-1">
+                    <div className="flex min-w-0 justify-center gap-3">
+                      <CakeDonationAction
+                        helperName={helper.name}
+                        count={cakeCountByDonor.get(personKey(helper.name)) ?? 0}
+                        onClick={() => openCakeDonation(helper.name)}
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Persönliche Aufgaben-PDF herunterladen"
+                        aria-label={`Persönliche Aufgaben-PDF von ${helper.name} herunterladen`}
+                        className={HELPER_ACTION_ICON_BUTTON_CLASS}
+                        disabled={exportingId === helper.id}
+                        onClick={() => {
+                          setExportingId(helper.id);
+                          exportPdf.mutate({ helperId: helper.id });
+                        }}
+                      >
+                        <FileDown className="size-5 text-blue-600" aria-hidden="true" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Aufgabenplan per WhatsApp an Helfer senden"
+                        aria-label={`Aufgabenplan von ${helper.name} per WhatsApp senden`}
+                        className={HELPER_ACTION_ICON_BUTTON_CLASS}
+                        disabled={sharingId !== null}
+                        onClick={() => shareHelperPdf(helper.id)}
+                      >
+                        <MessageCircle className="size-5 text-[#25D366]" aria-hidden="true" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title={
+                          selfHelperIds.has(helper.id)
+                            ? "Zum Löschen zuerst den Ansprechpartner entfernen"
+                            : user?.role !== "admin" &&
+                                assignedHelperIds.has(helper.id)
+                              ? "Eingeteilte Helfer können nur Administratoren löschen"
+                              : "Helfer entfernen"
+                        }
+                        aria-label={`Helfer ${helper.name} entfernen`}
+                        className={HELPER_ACTION_ICON_BUTTON_CLASS}
+                        disabled={
+                          selfHelperIds.has(helper.id) ||
+                          (user?.role !== "admin" &&
+                            assignedHelperIds.has(helper.id))
+                        }
+                        onClick={() =>
+                          setDeleteTarget({
+                            id: helper.id,
+                            name: helper.name,
+                          })
+                        }
+                      >
+                        <Trash2 className="size-5 text-red-600" aria-hidden="true" />
+                      </Button>
+                    </div>
                   </td>
                   <td className="p-2">
                     <Select
@@ -1471,74 +1564,13 @@ export default function Helpers() {
                       }
                     />
                   </td>
-                  <td className="p-1">
-                    <div className="flex min-w-0 justify-center gap-3">
-                      <CakeDonationAction
-                        helperName={helper.name}
-                        count={cakeCountByDonor.get(personKey(helper.name)) ?? 0}
-                        onClick={() => openCakeDonation(helper.name)}
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title="Persönliche Aufgaben-PDF herunterladen"
-                        aria-label={`Persönliche Aufgaben-PDF von ${helper.name} herunterladen`}
-                        className={HELPER_ACTION_ICON_BUTTON_CLASS}
-                        disabled={exportingId === helper.id}
-                        onClick={() => {
-                          setExportingId(helper.id);
-                          exportPdf.mutate({ helperId: helper.id });
-                        }}
-                      >
-                        <FileDown className="size-5 text-blue-600" aria-hidden="true" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title="Aufgabenplan per WhatsApp an Helfer senden"
-                        aria-label={`Aufgabenplan von ${helper.name} per WhatsApp senden`}
-                        className={HELPER_ACTION_ICON_BUTTON_CLASS}
-                        disabled={sharingId !== null}
-                        onClick={() => shareHelperPdf(helper.id)}
-                      >
-                        <MessageCircle className="size-5 text-[#25D366]" aria-hidden="true" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title={
-                          selfHelperIds.has(helper.id)
-                            ? "Zum Löschen zuerst den Ansprechpartner entfernen"
-                            : user?.role !== "admin" &&
-                                assignedHelperIds.has(helper.id)
-                              ? "Eingeteilte Helfer können nur Administratoren löschen"
-                              : "Helfer entfernen"
-                        }
-                        aria-label={`Helfer ${helper.name} entfernen`}
-                        className={HELPER_ACTION_ICON_BUTTON_CLASS}
-                        disabled={
-                          selfHelperIds.has(helper.id) ||
-                          (user?.role !== "admin" &&
-                            assignedHelperIds.has(helper.id))
-                        }
-                        onClick={() =>
-                          setDeleteTarget({
-                            id: helper.id,
-                            name: helper.name,
-                          })
-                        }
-                      >
-                        <Trash2 className="size-5 text-red-600" aria-hidden="true" />
-                      </Button>
-                    </div>
-                  </td>
                 </tr>
               ))}
               {!isLoading && filtered.length === 0 && (
                 <tr>
                   <td
                     className="p-4 text-muted-foreground"
-                    colSpan={7 + activeDays.length}
+                    colSpan={8 + activeDays.length}
                   >
                     Keine Helfer gefunden.
                   </td>

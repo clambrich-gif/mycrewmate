@@ -1581,6 +1581,48 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(taskGeneric).toContain('className="w-full lg:w-[240px]"');
   });
 
+  it("richtet Helfersuche, dynamischen Filterreset und Desktop-Aktionen kompakt aus", () => {
+    const helpers = source("client/src/pages/Helpers.tsx");
+    const desktopTable = helpers.slice(
+      helpers.indexOf('<Card className="hidden shadow-sm md:block">'),
+      helpers.indexOf("<ConfirmDeleteDialog")
+    );
+    const desktopHeader = desktopTable.slice(
+      desktopTable.indexOf("<thead"),
+      desktopTable.indexOf("</thead>")
+    );
+
+    expect(helpers).toContain('md:max-w-[551px]');
+    expect(helpers).toContain(
+      "h-10 border-2 border-slate-300 bg-white pl-9 text-base shadow-sm focus:border-blue-500"
+    );
+    expect(helpers).toContain("const hasActiveHelperFilters =");
+    expect(helpers).toContain("const resetHelperFilters = () => {");
+    expect(helpers).toContain("data-helper-filter-reset");
+    expect(helpers).toContain("Filter zurücksetzen");
+    expect(helpers).toContain("<FilterX");
+    expect(helpers).toContain('className="!h-10 w-full items-center border-slate-200 bg-white text-base md:w-[190px] md:text-sm"');
+    expect(helpers).toContain('className="!h-10 w-full items-center border-slate-200 bg-white text-base md:w-[170px] md:text-sm"');
+    expect(helpers).toContain('className="!h-10 w-full items-center border-slate-200 bg-white text-base md:w-[175px] md:text-sm"');
+
+    expect(desktopHeader.indexOf("Name {sortAsc")).toBeLessThan(
+      desktopHeader.indexOf("Aktionen")
+    );
+    expect(desktopHeader.indexOf("Aktionen")).toBeLessThan(
+      desktopHeader.indexOf("Ansprechpartner")
+    );
+    expect(desktopHeader.indexOf("Ansprechpartner")).toBeLessThan(
+      desktopHeader.indexOf("Telefon Helfer")
+    );
+    expect(desktopHeader.indexOf("Telefon Helfer")).toBeLessThan(
+      desktopHeader.indexOf("Hinweis für PDF")
+    );
+    expect(desktopHeader.indexOf("Hinweis für PDF")).toBeLessThan(
+      desktopHeader.indexOf("zusätzliche Begleitung")
+    );
+    expect(helpers).toContain("colSpan={8 + activeDays.length}");
+  });
+
   it("markiert historische Chatnachrichten als initial lautlos und erneuert fortlaufendes Typing gedrosselt", () => {
     const layout = source("client/src/components/Layout.tsx");
     const widget = source("client/src/components/LiveChatWidget.tsx");
