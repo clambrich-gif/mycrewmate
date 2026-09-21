@@ -1,9 +1,11 @@
 import {
+  getHelpAudienceForRole,
   HELP_AUDIENCE_FILTERS,
   HELP_CHAPTER_COUNT,
   HelpGuide,
   type HelpAudience,
 } from "@/components/HelpGuide";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { PageTitle } from "@/components/PageTitle";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,12 +14,15 @@ import { downloadBase64File } from "@/lib/download";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { BookOpen, Download, Search } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 export default function Help() {
+  const { user } = useAuth();
   const [query, setQuery] = useState("");
   const [audience, setAudience] = useState<HelpAudience>("all");
+  const [hasManualAudienceSelection, setHasManualAudienceSelection] =
+    useState(false);
   const guidePdf = trpc.help.guidePdf.useMutation({
     onSuccess: result => {
       downloadBase64File(result.base64, result.mimeType, result.filename);
@@ -25,6 +30,32 @@ export default function Help() {
     },
     onError: error => toast.error(error.message),
   });
+
+  useEffect(() => {
+    if (!hasManualAudienceSelection) {
+      setAudience(getHelpAudienceForRole(user?.role));
+    }
+  }, [hasManualAudienceSelection, user?.role]);
+
+  const handleQuickSearch = (
+    label: string,
+    targetAudience?: Exclude<HelpAudience, "all">
+  ) => {
+    if (targetAudience === "admin") {
+      setHasManualAudienceSelection(true);
+      setAudience("admin");
+    } else if (targetAudience === "planning" && audience !== "admin") {
+      setHasManualAudienceSelection(true);
+      setAudience("planning");
+    }
+    setQuery(label);
+    window.requestAnimationFrame(() => {
+      document.getElementById("help-results")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -81,7 +112,10 @@ export default function Help() {
                     variant="outline"
                     size="sm"
                     aria-pressed={active}
-                    onClick={() => setAudience(filter.id)}
+                    onClick={() => {
+                      setHasManualAudienceSelection(true);
+                      setAudience(filter.id);
+                    }}
                     className={cn(
                       "min-h-11 gap-1.5 border bg-white px-3 text-sm font-semibold text-slate-700 transition-[transform,background-color,border-color,box-shadow] duration-150 active:scale-[0.97]",
                       active && `${filter.activeClassName} ring-2 ring-offset-1 shadow-sm`
@@ -97,6 +131,7 @@ export default function Help() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
             <Input
+              id="help-search"
               value={query}
               onChange={event => setQuery(event.target.value)}
               className="h-11 border-slate-300 bg-white pl-9 text-base shadow-sm focus-visible:border-blue-500"
@@ -107,7 +142,14 @@ export default function Help() {
         </CardContent>
       </Card>
 
-      <HelpGuide audience={audience} query={query} />
+      <div id="help-results" className="scroll-mt-6">
+        <HelpGuide
+          audience={audience}
+          query={query}
+          isAdmin={user?.role === "admin"}
+          onQuickSearch={handleQuickSearch}
+        />
+      </div>
     </div>
   );
 }

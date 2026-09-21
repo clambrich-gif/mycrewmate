@@ -1349,16 +1349,27 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const guide = source("client/src/components/HelpGuide.tsx");
 
     expect(help).toContain('useState<HelpAudience>("all")');
+    expect(help).toContain("getHelpAudienceForRole(user?.role)");
+    expect(help).toContain("hasManualAudienceSelection");
     expect(help).toContain('aria-label="Hilfe-Center nach Zielgruppe filtern"');
     expect(guide).toContain("Für alle");
     expect(guide).toContain("Nur Planungsteam");
     expect(guide).toContain("Nur Admin-Team");
     expect(help).toContain("aria-pressed={active}");
-    expect(help).toContain("onClick={() => setAudience(filter.id)}");
+    expect(help).toContain("setHasManualAudienceSelection(true)");
     expect(guide).toContain("const matchesAudience");
     expect(guide).toContain('filter === "all"');
-    expect(guide).toContain("topic.audience.includes(filter)");
+    expect(guide).toContain('filter === "admin"');
+    expect(guide).toContain("topic.audience.includes(\"planning\")");
     expect(guide).toContain("normalizedQuery");
+    expect(guide).toContain("function WorkspaceLink");
+    expect(guide).toContain('workspace: { href: "/helfer", label: "Zur Helferkartei" }');
+    expect(guide).toContain('workspace: { href: "/sicherheit", label: "Zu Schutz & Protokoll", adminOnly: true }');
+    expect(guide).toContain("<Link");
+    expect(guide).toContain("Ein Stichwort antippen");
+    expect(guide).toContain("onSearchTerm(term)");
+    expect(help).toContain("handleQuickSearch");
+    expect(help).toContain('document.getElementById("help-results")');
   });
 
   it("stellt die Login-Rollen als zugänglichen Segmented-Control dar", () => {

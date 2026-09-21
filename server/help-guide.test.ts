@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { getVisibleHelpChapters } from "@/components/HelpGuide";
+import {
+  AZ_INDEX,
+  getHelpAudienceForRole,
+  getVisibleHelpChapters,
+} from "@/components/HelpGuide";
 
 describe("Hilfe-Center: Rollenfilter und Live-Suche", () => {
   it("zeigt im Standardfilter ausschließlich allgemein gültige Themen", () => {
@@ -32,6 +36,8 @@ describe("Hilfe-Center: Rollenfilter und Live-Suche", () => {
     expect(topicIds).toContain("excel-import");
     expect(topicIds).toContain("audit-log");
     expect(topicIds).toContain("live-chat");
+    expect(topicIds).toContain("helferkartei");
+    expect(topicIds).toContain("materialverwaltung");
   });
 
   it("filtert Themen über die Live-Suche", () => {
@@ -41,5 +47,21 @@ describe("Hilfe-Center: Rollenfilter und Live-Suche", () => {
     expect(topicIds).toContain("excel-export");
     expect(topicIds).toContain("excel-import");
     expect(topicIds).not.toContain("live-chat");
+  });
+
+  it("wählt den passenden Rollenfilter für die aktuelle Anmeldung vor", () => {
+    expect(getHelpAudienceForRole("user")).toBe("planning");
+    expect(getHelpAudienceForRole("admin")).toBe("admin");
+    expect(getHelpAudienceForRole(null)).toBe("all");
+  });
+
+  it("stellt A-Z-Schnellsuchen mit passenden Rollenhinweisen bereit", () => {
+    const eTerms = AZ_INDEX.find(([letter]) => letter === "E")?.[1] ?? [];
+    const material = AZ_INDEX.find(([letter]) => letter === "M")?.[1]
+      .find(term => term.label === "Material");
+
+    expect(eTerms.map(term => term.label)).toContain("Einsatzplan");
+    expect(eTerms.find(term => term.label === "Einsatzplan")?.audience).toBe("admin");
+    expect(material?.audience).toBe("planning");
   });
 });

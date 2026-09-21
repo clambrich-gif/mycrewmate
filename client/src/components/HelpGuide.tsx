@@ -11,6 +11,7 @@ import { PERMISSION_MATRIX } from "@shared/permissions";
 import type { LucideIcon } from "lucide-react";
 import {
   AlertTriangle,
+  ArrowUpRight,
   BookOpenCheck,
   CalendarDays,
   CheckCircle2,
@@ -36,6 +37,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import { useMemo } from "react";
+import { Link } from "wouter";
 
 export type HelpAudience = "all" | "planning" | "admin";
 
@@ -64,6 +66,11 @@ type HelpTopic = {
   screenshot?: { src: string; alt: string; caption: string };
   showPermissions?: boolean;
   showAzIndex?: boolean;
+  workspace?: {
+    href: string;
+    label: string;
+    adminOnly?: boolean;
+  };
 };
 
 type HelpChapter = {
@@ -75,6 +82,13 @@ type HelpChapter = {
   accent: string;
   topics: HelpTopic[];
 };
+
+type AzTerm = {
+  label: string;
+  audience?: Exclude<HelpAudience, "all">;
+};
+
+type AzIndexEntry = readonly [letter: string, terms: readonly AzTerm[]];
 
 export const HELP_AUDIENCE_FILTERS: Array<{
   id: HelpAudience;
@@ -101,6 +115,14 @@ export const HELP_AUDIENCE_FILTERS: Array<{
     activeClassName: "border-emerald-300 bg-emerald-50 text-emerald-950",
   },
 ];
+
+export function getHelpAudienceForRole(
+  role: "user" | "admin" | null | undefined
+): HelpAudience {
+  if (role === "admin") return "admin";
+  if (role === "user") return "planning";
+  return "all";
+}
 
 const audienceLabel: Record<HelpAudience, string> = {
   all: "Für alle",
@@ -161,6 +183,7 @@ const HELP_CHAPTERS: HelpChapter[] = [
           alt: "Dashboard von MyCrewMate mit zentralen Kennzahlen",
           caption: "Das Dashboard bündelt die nächsten Schritte für die aktuell gewählte Veranstaltung.",
         },
+        workspace: { href: "/", label: "Zum Dashboard" },
       },
       {
         id: "vorfreude-widget",
@@ -236,6 +259,7 @@ const HELP_CHAPTERS: HelpChapter[] = [
           icon: Map,
           items: ["Start und Ziel", "Versorgung und Material", "Treffpunkte und Parkflächen"],
         },
+        workspace: { href: "/orte", label: "Zu Orte & Standorte", adminOnly: true },
       },
       {
         id: "gpx-overlays",
@@ -250,6 +274,7 @@ const HELP_CHAPTERS: HelpChapter[] = [
           icon: Route,
           items: ["GPX-Datei dem aktiven Event zuordnen", "Karte auf Gefahrenpunkte prüfen", "Standorte entlang der Route abstimmen"],
         },
+        workspace: { href: "/orte", label: "Zur Streckenkarte", adminOnly: true },
       },
       {
         id: "ansprechpartner",
@@ -263,6 +288,7 @@ const HELP_CHAPTERS: HelpChapter[] = [
           title: "Zugangsdaten sind administrativ geschützt",
           text: "Einmal-Zugänge, Passwortresets und Eventfreigaben werden ausschließlich im Bereich Schutz & Protokoll durch Administratoren verwaltet.",
         },
+        workspace: { href: "/ansprechpartner", label: "Zu Ansprechpartnern", adminOnly: true },
       },
     ],
   },
@@ -291,6 +317,7 @@ const HELP_CHAPTERS: HelpChapter[] = [
           alt: "Helferkartei von MyCrewMate in mobiler Darstellung",
           caption: "Die Helferkartei hält Kontakt, Zuständigkeit und Verfügbarkeit in einer gemeinsamen Akte bereit.",
         },
+        workspace: { href: "/helfer", label: "Zur Helferkartei" },
       },
       {
         id: "verfuegbarkeiten",
@@ -305,6 +332,7 @@ const HELP_CHAPTERS: HelpChapter[] = [
           icon: CalendarDays,
           items: ["Tagesstatus erfassen", "Zeitfenster berücksichtigen", "Begleitungen sichtbar machen"],
         },
+        workspace: { href: "/helfer", label: "Verfügbarkeiten bearbeiten" },
       },
       {
         id: "einsatzplan",
@@ -323,6 +351,7 @@ const HELP_CHAPTERS: HelpChapter[] = [
           alt: "Einsatzplan mit Schichten und Zuständigkeiten",
           caption: "Im Einsatzplan sind Schichtbedarf, Zuweisungen und Konflikthinweise gemeinsam sichtbar.",
         },
+        workspace: { href: "/einsatzplan", label: "Zum Einsatzplan", adminOnly: true },
       },
       {
         id: "schnellfilter",
@@ -337,6 +366,7 @@ const HELP_CHAPTERS: HelpChapter[] = [
           icon: Search,
           items: ["Meine Aufgaben aktivieren", "Standardansicht anpinnen", "Filter bei Bedarf zurücksetzen"],
         },
+        workspace: { href: "/vorbereitung", label: "Schnellfilter öffnen" },
       },
     ],
   },
@@ -361,6 +391,7 @@ const HELP_CHAPTERS: HelpChapter[] = [
           icon: ClipboardCheck,
           items: ["Aufgabe und Kategorie anlegen", "Verantwortung und Frist setzen", "Status und Logbuch prüfen"],
         },
+        workspace: { href: "/vorbereitung", label: "Zur Vorbereitung" },
       },
       {
         id: "materialverwaltung",
@@ -380,6 +411,7 @@ const HELP_CHAPTERS: HelpChapter[] = [
           icon: PackageCheck,
           items: ["Artikel und Menge erfassen", "Standort verknüpfen", "Bestellstatus nachhalten"],
         },
+        workspace: { href: "/material", label: "Zur Materialverwaltung" },
       },
       {
         id: "spenden",
@@ -394,6 +426,7 @@ const HELP_CHAPTERS: HelpChapter[] = [
           icon: Gift,
           items: ["Kategorie und Spender wählen", "Allergene und Abgabe notieren", "Sollwerte je Kategorie vergleichen"],
         },
+        workspace: { href: "/spenden", label: "Zum Spenden-Modul" },
       },
       {
         id: "finanzen",
@@ -408,6 +441,7 @@ const HELP_CHAPTERS: HelpChapter[] = [
           icon: WalletCards,
           items: ["Kostenart festlegen", "Planwert erfassen", "Istwert nach dem Event ergänzen"],
         },
+        workspace: { href: "/finanzen", label: "Zu Finanzen", adminOnly: true },
       },
     ],
   },
@@ -492,6 +526,7 @@ const HELP_CHAPTERS: HelpChapter[] = [
           alt: "PDF-Ausgabe mit Helferübersichten und Einsatzplan",
           caption: "Die PDF-Ausgabe bündelt persönliche Helferunterlagen und gefilterte Arbeitsübersichten.",
         },
+        workspace: { href: "/pdf-export", label: "Zur PDF-Ausgabe" },
       },
     ],
   },
@@ -572,6 +607,7 @@ const HELP_CHAPTERS: HelpChapter[] = [
           icon: ShieldCheck,
           items: ["Sicherheit & Logins prüfen", "Löschverlauf nachvollziehen", "Datei- & Importhistorie einsehen"],
         },
+        workspace: { href: "/sicherheit", label: "Zu Schutz & Protokoll", adminOnly: true },
       },
       {
         id: "rechte-schreibschutz",
@@ -586,6 +622,7 @@ const HELP_CHAPTERS: HelpChapter[] = [
           title: "Keine Sicherheitsprüfung nur im Browser",
           text: "Die maßgeblichen Rollen- und Eventfreigaben werden serverseitig durchgesetzt. Eine sichtbare Schaltfläche allein verleiht keine Berechtigung.",
         },
+        workspace: { href: "/sicherheit", label: "Rechteverwaltung öffnen", adminOnly: true },
       },
     ],
   },
@@ -629,27 +666,31 @@ const HELP_CHAPTERS: HelpChapter[] = [
   },
 ];
 
-const AZ_INDEX = [
-  ["A", "Ansprechpartner · Anmeldung · Audit-Protokoll"],
-  ["B", "Backup · Bereich · Bestätigung"],
-  ["C", "Chat · Countdown · Cooldown"],
-  ["D", "Dashboard · Doppelbelegung · Download"],
-  ["E", "Einsatzplan · Excel · Event"],
-  ["F", "Filter · Finanzen · Freigabe"],
-  ["H", "Helfer · Hilfe · Historie"],
-  ["I", "Import · Inhaltsverzeichnis · Istwert"],
-  ["M", "Material · Meine Aufgaben · Mitteilung"],
-  ["N", "Nachbereitung · Notfall-Sperre · Notizen"],
-  ["P", "Passwort · PDF · Planungsteam · PWA"],
-  ["S", "Schicht · Sicherheit · Spenden · Standort"],
-  ["V", "Verfügbarkeit · Veranstaltung · Vorbereitung"],
-  ["Z", "Zugang · Zurücksetzen · Zuweisung"],
-] as const;
+export const AZ_INDEX: readonly AzIndexEntry[] = [
+  ["A", [{ label: "Ansprechpartner", audience: "admin" }, { label: "Anmeldung" }, { label: "Audit-Protokoll", audience: "admin" }]],
+  ["B", [{ label: "Backup" }, { label: "Bereich" }, { label: "Bestätigung", audience: "planning" }]],
+  ["C", [{ label: "Chat" }, { label: "Countdown" }, { label: "Cooldown" }]],
+  ["D", [{ label: "Dashboard" }, { label: "Doppelbelegung", audience: "admin" }, { label: "Download" }]],
+  ["E", [{ label: "Einsatzplan", audience: "admin" }, { label: "Excel" }, { label: "Event" }]],
+  ["F", [{ label: "Filter" }, { label: "Finanzen", audience: "admin" }, { label: "Freigabe", audience: "admin" }]],
+  ["H", [{ label: "Helfer", audience: "planning" }, { label: "Hilfe" }, { label: "Historie", audience: "admin" }]],
+  ["I", [{ label: "Import", audience: "admin" }, { label: "Inhaltsverzeichnis" }, { label: "Istwert", audience: "planning" }]],
+  ["M", [{ label: "Material", audience: "planning" }, { label: "Meine Aufgaben" }, { label: "Mitteilung" }]],
+  ["N", [{ label: "Nachbereitung", audience: "planning" }, { label: "Notfall-Sperre", audience: "admin" }, { label: "Notizen" }]],
+  ["P", [{ label: "Passwort", audience: "admin" }, { label: "PDF" }, { label: "Planungsteam" }, { label: "PWA" }]],
+  ["S", [{ label: "Schicht", audience: "admin" }, { label: "Sicherheit", audience: "admin" }, { label: "Spenden", audience: "planning" }, { label: "Standort", audience: "admin" }]],
+  ["V", [{ label: "Verfügbarkeit", audience: "planning" }, { label: "Veranstaltung" }, { label: "Vorbereitung", audience: "planning" }]],
+  ["Z", [{ label: "Zugang", audience: "admin" }, { label: "Zurücksetzen", audience: "admin" }, { label: "Zuweisung", audience: "admin" }]],
+];
 
 const matchesAudience = (topic: HelpTopic, filter: HelpAudience) =>
   filter === "all"
     ? topic.audience.includes("all")
-    : topic.audience.includes("all") || topic.audience.includes(filter);
+    : filter === "admin"
+      ? topic.audience.includes("all") ||
+        topic.audience.includes("planning") ||
+        topic.audience.includes("admin")
+      : topic.audience.includes("all") || topic.audience.includes("planning");
 
 export function getVisibleHelpChapters(audience: HelpAudience, query: string) {
   const normalizedQuery = query.trim().toLocaleLowerCase("de-DE");
@@ -730,6 +771,32 @@ function GuideCallout({ callout }: { callout: HelpCallout }) {
   );
 }
 
+function WorkspaceLink({
+  workspace,
+  isAdmin,
+}: {
+  workspace: NonNullable<HelpTopic["workspace"]>;
+  isAdmin: boolean;
+}) {
+  if (workspace.adminOnly && !isAdmin) {
+    return (
+      <aside className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs leading-5 text-slate-600">
+        Dieser Arbeitsbereich ist ausschließlich für das Admin-Team freigegeben.
+      </aside>
+    );
+  }
+
+  return (
+    <Link
+      href={workspace.href}
+      className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-blue-800 shadow-sm transition-[transform,background-color,border-color] duration-150 hover:border-blue-300 hover:bg-blue-50 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+    >
+      {workspace.label}
+      <ArrowUpRight className="h-4 w-4" />
+    </Link>
+  );
+}
+
 function PermissionMatrix() {
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200">
@@ -795,22 +862,45 @@ function PermissionMatrix() {
   );
 }
 
-function AzIndex({ query }: { query: string }) {
+function AzIndex({
+  query,
+  onSearchTerm,
+}: {
+  query: string;
+  onSearchTerm: (term: AzTerm) => void;
+}) {
   const normalizedQuery = query.trim().toLocaleLowerCase("de-DE");
   const matchingTerms = AZ_INDEX.filter(([letter, terms]) =>
-    `${letter} ${terms}`.toLocaleLowerCase("de-DE").includes(normalizedQuery)
+    !normalizedQuery ||
+    `${letter} ${terms.map(term => term.label).join(" ")}`
+      .toLocaleLowerCase("de-DE")
+      .includes(normalizedQuery)
   );
 
   return (
     <section aria-label="Alphabetisches Stichwortregister">
       <h4 className="text-sm font-semibold text-slate-900">Stichwortregister</h4>
+      <p className="mt-1 text-xs leading-5 text-slate-600">
+        Ein Stichwort antippen, um die Live-Suche sofort auf das passende Thema zu setzen.
+      </p>
       <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {matchingTerms.map(([letter, terms]) => (
           <div key={letter} className="flex gap-2 rounded-lg border border-slate-200 bg-white p-2.5 text-sm leading-5 text-slate-700">
             <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-blue-50 text-xs font-bold text-blue-800">
               {letter}
             </span>
-            <span>{terms}</span>
+            <div className="flex min-w-0 flex-wrap gap-1.5">
+              {terms.map(term => (
+                <button
+                  key={term.label}
+                  type="button"
+                  onClick={() => onSearchTerm(term)}
+                  className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-medium text-slate-700 transition-[transform,background-color,border-color] duration-150 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-800 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1"
+                >
+                  {term.label}
+                </button>
+              ))}
+            </div>
           </div>
         ))}
       </div>
@@ -818,7 +908,20 @@ function AzIndex({ query }: { query: string }) {
   );
 }
 
-export function HelpGuide({ audience, query }: { audience: HelpAudience; query: string }) {
+export function HelpGuide({
+  audience,
+  query,
+  isAdmin,
+  onQuickSearch,
+}: {
+  audience: HelpAudience;
+  query: string;
+  isAdmin: boolean;
+  onQuickSearch: (
+    label: string,
+    audience?: Exclude<HelpAudience, "all">
+  ) => void;
+}) {
   const chapters = useMemo(
     () => getVisibleHelpChapters(audience, query),
     [audience, query]
@@ -936,7 +1039,17 @@ export function HelpGuide({ audience, query }: { audience: HelpAudience; query: 
                               </figure>
                             )}
                             {topic.showPermissions && <PermissionMatrix />}
-                            {topic.showAzIndex && <AzIndex query={query} />}
+                            {topic.showAzIndex && (
+                              <AzIndex
+                                query={query}
+                                onSearchTerm={term =>
+                                  onQuickSearch(term.label, term.audience)
+                                }
+                              />
+                            )}
+                            {topic.workspace && (
+                              <WorkspaceLink workspace={topic.workspace} isAdmin={isAdmin} />
+                            )}
                           </div>
                         </AccordionContent>
                       </AccordionItem>
