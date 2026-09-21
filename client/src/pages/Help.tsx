@@ -10,14 +10,20 @@ import { cn } from "@/lib/utils";
 import {
   BookOpen,
   CheckCircle2,
+  ClipboardCheck,
   Clock3,
   Download,
+  Eye,
   FileDown,
+  FileSpreadsheet,
+  KeyRound,
   MessageCircle,
+  Pin,
   Search,
   Send,
   ShieldCheck,
   Smartphone,
+  ScrollText,
   UserRoundCog,
   Users,
 } from "lucide-react";
@@ -137,20 +143,6 @@ const SECTIONS: HelpSection[] = [
     },
   },
   {
-    id: "rollen",
-    title: "Rollen und Passwortschutz",
-    role: "alle",
-    keywords:
-      "rollen rechte berechtigung planungsteam administrator admin passwort ändern re-authentifizierung altes passwort zugangsschutz",
-    summary:
-      "Die Rollen sind bewusst getrennt. Das Planungsteam arbeitet im geschützten Lesemodus für die Gesamtstruktur und pflegt Helfer- sowie Kuchendaten. Administratoren haben den Vollzugriff auf Veranstaltungen, Schichten, Importe, Wiederherstellungen, Exporte, Zugänge und sensible Löschungen. Ein Administratorpasswort kann nur nach Eingabe des aktuellen Administratorpassworts geändert werden; diese erneute Bestätigung schützt vor unbeabsichtigten oder unbefugten Änderungen.",
-    steps: [
-      "Planungsteam: Helfer- und Kuchendaten pflegen, Verfügbarkeiten und Rückmeldungen erfassen sowie Einteilungen und Hilfen lesen.",
-      "Administratoren: zusätzlich Schichten und Zuweisungen bearbeiten, Projekte laden, Excel-Importe freigeben, Veranstaltungen konfigurieren und Zugangsschutz verwalten.",
-      "Passwörter und Wiederherstellungen niemals in Gruppen teilen. Bei einem Passwortwechsel ist immer das bisherige Administratorpasswort erforderlich.",
-    ],
-  },
-  {
     id: "helfer",
     title: "Helferkartei und Verfügbarkeiten",
     role: "planung",
@@ -199,9 +191,9 @@ const SECTIONS: HelpSection[] = [
     keywords:
       "chat notiz nachricht dringend wichtig warnton pulsieren tippt gerade 24 stunden ansprechpartner ungelesen",
     summary:
-      "Das schwebende Notiz-Widget rechts unten ist auf allen Seiten verfügbar. Nachrichten werden im kurzen Intervall aktualisiert. Wichtige Durchsagen erhalten eine Signalfarbe und können bei aktivem Ton einen Warnton sowie ein pulsierendes Symbol auslösen. Der Hinweis „… tippt gerade“ zeigt eine aktuelle Eingabe anderer Teilnehmer. Neue Nachrichten werden höchstens 24 Stunden aufbewahrt; Administratoren können den Verlauf für die gewählte Veranstaltung bereinigen.",
+      "Das schwebende Notiz-Widget rechts unten ist auf allen Seiten verfügbar. Nachrichten werden automatisch der angemeldeten Sitzungsidentität zugeordnet und im kurzen Intervall aktualisiert. Wichtige Durchsagen erhalten eine Signalfarbe und können bei aktivem Ton einen Warnton sowie ein pulsierendes Symbol auslösen. Der Hinweis „… tippt gerade“ zeigt eine aktuelle Eingabe anderer Teilnehmer. Ungelesene Nachrichten werden am Widget gezählt; beim Öffnen des Chats gelten sie als gelesen. Neue Nachrichten werden höchstens 24 Stunden aufbewahrt; Administratoren können den Verlauf für die gewählte Veranstaltung bereinigen.",
     steps: [
-      "Widget öffnen und beim ersten Einsatz den eigenen Ansprechpartner oder einen freien Namen auswählen.",
+      "Widget öffnen: Die Nachricht wird automatisch unter der aktuell angemeldeten Person gesendet.",
       "Nachricht schreiben; bei dringenden Informationen vor dem Senden „Wichtig“ aktivieren.",
       "Für Ruhephasen den sichtbaren Stummschalter nutzen. Der Verlauf wird danach automatisch zeitbegrenzt bereinigt.",
     ],
@@ -328,7 +320,7 @@ export default function Help() {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(320px,520px)] lg:items-start">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="mb-2 flex items-center gap-2 text-primary">
             <BookOpen className="h-6 w-6" />
@@ -343,45 +335,149 @@ export default function Help() {
             PDF-Anleitung.
           </p>
         </div>
-        <div className="min-w-0 space-y-3">
-          {user?.role === "user" && (
-            <Card className="border-amber-200 bg-amber-50/50 shadow-sm">
-              <CardHeader className="p-4 pb-2">
-                <CardTitle className="flex items-center gap-2 text-base text-amber-950">
-                  <CheckCircle2 className="h-5 w-5 text-amber-700" />
-                  Dein Ablauf in 6 Schritten
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-2 p-3 pt-1 sm:grid-cols-2 sm:p-4 sm:pt-1">
-                {PLANNING_TEAM_FLOW.map(({ icon: Icon, title, description }) => (
-                  <div
-                    key={title}
-                    className="flex min-w-0 gap-2 rounded-lg border border-amber-200 bg-white/80 p-2.5"
-                  >
-                    <Icon className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-slate-900">{title}</p>
-                      <p className="text-xs leading-5 text-slate-600">{description}</p>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
-          <Button
-            type="button"
-            size="lg"
-            className="w-full"
-            disabled={guidePdf.isPending}
-            onClick={() => guidePdf.mutate()}
-          >
-            <Download className="h-4 w-4" />
-            {guidePdf.isPending
-              ? "PDF wird vorbereitet …"
-              : "PDF-Handbuch herunterladen"}
-          </Button>
-        </div>
+        <Button
+          type="button"
+          size="lg"
+          className="w-full sm:w-auto"
+          disabled={guidePdf.isPending}
+          onClick={() => guidePdf.mutate()}
+        >
+          <Download className="h-4 w-4" />
+          {guidePdf.isPending
+            ? "PDF wird vorbereitet …"
+            : "PDF-Handbuch herunterladen"}
+        </Button>
       </div>
+
+      <section aria-labelledby="rollen-berechtigungen" className="scroll-mt-6">
+        <Card className="overflow-hidden border-primary/20 shadow-sm">
+          <CardHeader className="border-b bg-gradient-to-r from-sky-50 via-white to-emerald-50 p-5">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
+              <div>
+                <CardTitle id="rollen-berechtigungen" className="text-xl">
+                  Rollen- &amp; Berechtigungsübersicht
+                </CardTitle>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Der aktuelle Funktionsumfang von MyCrewMate auf einen Blick.
+                </p>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="grid gap-4 p-4 lg:grid-cols-2 lg:p-5">
+            <article className="rounded-xl border border-amber-200 bg-amber-50/60 p-4">
+              <div className="flex items-center gap-3">
+                <div className="grid h-10 w-10 place-items-center rounded-lg bg-amber-100 text-amber-800">
+                  <Users className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Sektion A</p>
+                  <h2 className="font-semibold text-amber-950">Planungsteam</h2>
+                  <p className="text-sm text-amber-800">Operativer Fokus</p>
+                </div>
+              </div>
+              <div className="mt-4 space-y-3">
+                <div className="rounded-lg border border-amber-200 bg-white/80 p-3">
+                  <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                    <ClipboardCheck className="h-4 w-4 text-amber-700" />
+                    Operative Arbeitsbereiche
+                  </h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-700">
+                    Helfer, Vorbereitung, Nachbereitung, Material und Spenden operativ bearbeiten sowie die PDF-Ausgabe nutzen. Schutzkritische Resets, Importe und Strukturänderungen bleiben administrativ geschützt.
+                  </p>
+                </div>
+                <div className="rounded-lg border border-amber-200 bg-white/80 p-3">
+                  <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                    <Eye className="h-4 w-4 text-amber-700" />
+                    Leseansichten
+                  </h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-700">
+                    Dashboard und Einsatzplan ansehen und filtern – ohne administrative Schicht-, Bereichs- oder Veranstaltungsänderungen.
+                  </p>
+                </div>
+                <div className="rounded-lg border border-amber-200 bg-white/80 p-3">
+                  <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                    <Pin className="h-4 w-4 text-amber-700" />
+                    Kommunikation &amp; Schnellfilter
+                  </h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-700">
+                    Live-Chat (Team-Notizen) verwenden und den persönlichen Schnellfilter „Meine Aufgaben“ als Standardansicht anpinnen.
+                  </p>
+                </div>
+              </div>
+            </article>
+
+            <article className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
+              <div className="flex items-center gap-3">
+                <div className="grid h-10 w-10 place-items-center rounded-lg bg-emerald-100 text-emerald-800">
+                  <ShieldCheck className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Sektion B</p>
+                  <h2 className="font-semibold text-emerald-950">Administrator</h2>
+                  <p className="text-sm text-emerald-800">Vollzugriff &amp; Systemsteuerung</p>
+                </div>
+              </div>
+              <div className="mt-4 space-y-3">
+                <div className="rounded-lg border border-emerald-200 bg-white/80 p-3">
+                  <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                    <FileSpreadsheet className="h-4 w-4 text-emerald-700" />
+                    Projekt- &amp; Datenverwaltung
+                  </h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-700">
+                    Projektstände speichern und laden, Excel-Importe prüfen und übernehmen sowie Pläne, Veranstaltungen und geschützte Bereiche zurücksetzen.
+                  </p>
+                </div>
+                <div className="rounded-lg border border-emerald-200 bg-white/80 p-3">
+                  <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                    <KeyRound className="h-4 w-4 text-emerald-700" />
+                    Zugangsschutz &amp; Notfall-Stopp
+                  </h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-700">
+                    Einmal-Zugänge vergeben und drucken, Passwörter gezielt zurücksetzen sowie die globale Notfall-Sperre für das Planungsteam aktivieren.
+                  </p>
+                </div>
+                <div className="rounded-lg border border-emerald-200 bg-white/80 p-3">
+                  <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                    <ScrollText className="h-4 w-4 text-emerald-700" />
+                    System-Protokoll
+                  </h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-700">
+                    Exklusive Einsicht in das Protokoll und Logbuch aller Systemaktionen, einschließlich sicherheitsrelevanter Vorgänge und Wiederherstellungen.
+                  </p>
+                </div>
+              </div>
+            </article>
+          </CardContent>
+        </Card>
+      </section>
+
+      {user?.role === "user" && (
+        <Card className="border-amber-200 bg-amber-50/50 shadow-sm">
+          <CardHeader className="p-4 pb-2">
+            <CardTitle className="flex items-center gap-2 text-base text-amber-950">
+              <CheckCircle2 className="h-5 w-5 text-amber-700" />
+              Dein Ablauf in 6 Schritten
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-2 p-3 pt-1 sm:grid-cols-2 sm:p-4 sm:pt-1">
+            {PLANNING_TEAM_FLOW.map(({ icon: Icon, title, description }) => (
+              <div
+                key={title}
+                className="flex min-w-0 gap-2 rounded-lg border border-amber-200 bg-white/80 p-2.5"
+              >
+                <Icon className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-900">{title}</p>
+                  <p className="text-xs leading-5 text-slate-600">{description}</p>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="border-primary/20 bg-primary/5 shadow-sm">
         <CardContent className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">

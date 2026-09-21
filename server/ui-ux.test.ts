@@ -1288,7 +1288,16 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(help).toContain("Progressive Web App (PWA)");
     expect(help).toContain("Zum Home-Bildschirm");
     expect(help).toContain("App installieren");
-    expect(help).toContain("Rollen und Passwortschutz");
+    expect(help).toContain("Rollen- &amp; Berechtigungsübersicht");
+    expect(help).toContain("Sektion A");
+    expect(help).toContain("Sektion B");
+    expect(help).toContain("Operativer Fokus");
+    expect(help).toContain("Vollzugriff &amp; Systemsteuerung");
+    expect(help).toContain("Zugangsschutz &amp; Notfall-Stopp");
+    expect(help).toContain("System-Protokoll");
+    expect(help.indexOf("Rollen- &amp; Berechtigungsübersicht")).toBeLessThan(
+      help.indexOf('aria-label="Hilfekapitel nach Rolle filtern"')
+    );
     expect(help).toContain("Helferkartei und Verfügbarkeiten");
     expect(help).toContain("Einsatzplan und intelligente Belegung");
     expect(help).toContain("Live-Chat und Notiz-Widget");
