@@ -4,7 +4,6 @@ import {
   ClipboardCheck,
   ClipboardList,
   FileDown,
-  FileSpreadsheet,
   Gift,
   CircleHelp,
   LayoutDashboard,
@@ -46,12 +45,6 @@ export const NAV: readonly NavItem[] = [
   },
   { href: "/pdf-export", label: "PDF-Ausgabe", icon: FileDown },
   {
-    href: "/excel",
-    label: "Excel-Projektübersicht",
-    icon: FileSpreadsheet,
-    planningTeamHidden: true,
-  },
-  {
     href: "/orte",
     label: "Orte & Standorte",
     icon: MapPin,
@@ -69,7 +62,6 @@ export const NAV: readonly NavItem[] = [
 export const PLANNING_TEAM_HIDDEN_PATHS = [
   "/ansprechpartner",
   "/finanzen",
-  "/excel",
   "/orte",
 ] as const;
 

@@ -42,8 +42,11 @@ import {
   verifyPreviewBinding,
 } from "./import-preview-binding";
 import {
+  applySelectedModuleExcelImport,
+  CENTRAL_MODULE_IMPORT_AREAS,
   applyModuleExcelImport,
   MODULE_IMPORT_AREAS,
+  previewSelectedModuleExcelImport,
   previewModuleExcelImport,
 } from "./module-excel-import";
 import { ENV } from "./_core/env";
@@ -3172,6 +3175,93 @@ export const appRouter = router({
         eventName: result.eventName,
       };
     }),
+    previewSelected: adminProcedure
+      .input(
+        z.object({
+          areas: z
+            .array(z.enum(CENTRAL_MODULE_IMPORT_AREAS))
+            .min(1)
+            .max(CENTRAL_MODULE_IMPORT_AREAS.length),
+          base64: z
+            .string()
+            .max(20_000_000, "Excel-Datei ist größer als 15 MB"),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const result = await withExcelOperationLimit(() =>
+          previewSelectedModuleExcelImport(input.base64, input.areas)
+        );
+        return {
+          ...result,
+          previewBinding: createPreviewBinding({
+            sourceDigest: result.sourceDigest,
+            currentDigest: result.currentDigest,
+            year: currentEventYear(),
+            eventId: currentEventId(),
+            operation: `modules:${result.areas.join(",")}`,
+            userId: ctx.user.id,
+          }),
+        };
+      }),
+    applySelected: scopeAdminProcedure
+      .input(
+        z.object({
+          areas: z
+            .array(z.enum(CENTRAL_MODULE_IMPORT_AREAS))
+            .min(1)
+            .max(CENTRAL_MODULE_IMPORT_AREAS.length),
+          base64: z
+            .string()
+            .max(20_000_000, "Excel-Datei ist größer als 15 MB"),
+          filename: z.string().trim().min(1).max(255),
+          currentDigest: z.string().regex(/^[a-f0-9]{64}$/),
+          previewBinding: z.string().min(20).max(2_000),
+          adminPassword: z.string().min(1).max(200),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await requireAdminPassword(input.adminPassword, ctx);
+        const orderedAreas = CENTRAL_MODULE_IMPORT_AREAS.filter(area =>
+          input.areas.includes(area)
+        );
+        verifyPreviewBinding(input.previewBinding, {
+          sourceDigest: uploadedFileDigest(input.base64),
+          currentDigest: input.currentDigest,
+          year: currentEventYear(),
+          eventId: currentEventId(),
+          operation: `modules:${orderedAreas.join(",")}`,
+          userId: ctx.user.id,
+        });
+        try {
+          return await withExcelOperationLimit(() =>
+            applySelectedModuleExcelImport(
+              input.base64,
+              orderedAreas,
+              input.filename,
+              input.currentDigest,
+              auditActor(ctx.user)
+            )
+          );
+        } catch (error) {
+          const detail =
+            error instanceof Error
+              ? error.message
+              : "Unbekannter Fehler bei der Datenübernahme";
+          console.error("[Zentraler Excel-Import] Atomare Übernahme abgebrochen", {
+            areas: orderedAreas,
+            filename: input.filename,
+            year: currentEventYear(),
+            eventId: currentEventId(),
+            userId: ctx.user.id,
+            detail,
+            error,
+          });
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Excel-Import wurde nicht übernommen: ${detail}`,
+          });
+        }
+      }),
     previewModule: adminProcedure
       .input(
         z.object({

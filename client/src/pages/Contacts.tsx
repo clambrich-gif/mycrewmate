@@ -1,6 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
-import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 import { PageTitle } from "@/components/PageTitle";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { Button } from "@/components/ui/button";
@@ -118,7 +117,6 @@ export default function Contacts() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <ModuleExcelImportButton area="ANSPRECHPARTNER" label="Ansprechpartner" />
           <ResetAreaButton area="contacts" label="Ansprechpartner" />
         </div>
       </div>

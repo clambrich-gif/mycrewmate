@@ -8,7 +8,10 @@ import { ENV } from "./_core/env";
 const PREVIEW_BINDING_TTL_MS = 15 * 60 * 1000;
 const ALGORITHM = "sha256";
 
-export type PreviewBindingOperation = "project-file" | `module:${string}`;
+export type PreviewBindingOperation =
+  | "project-file"
+  | `module:${string}`
+  | `modules:${string}`;
 
 type PreviewBindingClaims = {
   version: 1;

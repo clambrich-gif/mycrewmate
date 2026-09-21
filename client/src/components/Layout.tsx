@@ -108,9 +108,9 @@ type TeamNotesSnapshot = {
   typing: ActiveTyperItem[];
 };
 
-const ProjectStorageControls = lazy(() =>
-  import("@/components/ProjectStorageControls").then(module => ({
-    default: module.ProjectStorageControls,
+const SaveLoadControls = lazy(() =>
+  import("@/components/SaveLoadModal").then(module => ({
+    default: module.SaveLoadControls,
   }))
 );
 
@@ -121,7 +121,7 @@ const logoLoading = {
   draggable: false,
 };
 
-function ProjectStorageFallback() {
+function SaveLoadControlsFallback() {
   return (
     <div role="status" aria-label="Projektfunktionen werden geladen">
       <div className="grid grid-cols-2 gap-2" aria-hidden="true">
@@ -137,10 +137,10 @@ function ProjectStorageFallback() {
   );
 }
 
-function LazyProjectStorageControls() {
+function LazySaveLoadControls({ onAction }: { onAction?: () => void }) {
   return (
-    <Suspense fallback={<ProjectStorageFallback />}>
-      <ProjectStorageControls />
+    <Suspense fallback={<SaveLoadControlsFallback />}>
+      <SaveLoadControls onAction={onAction} />
     </Suspense>
   );
 }
@@ -1423,7 +1423,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <Label className="mb-1 block text-xs text-muted-foreground">
                 Projektstand
               </Label>
-              <LazyProjectStorageControls />
+              <LazySaveLoadControls onAction={() => setMobileMenuOpen(false)} />
             </div>
             {!pwaInstalled && (
               deferredInstallPrompt ? (
@@ -1634,7 +1634,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <Label className="mb-1 block text-xs text-muted-foreground">
               Projektstand
             </Label>
-            <LazyProjectStorageControls />
+            <LazySaveLoadControls />
           </div>
         </div>
 

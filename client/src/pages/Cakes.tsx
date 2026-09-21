@@ -1,5 +1,4 @@
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
-import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 import { PageTitle } from "@/components/PageTitle";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { Button } from "@/components/ui/button";
@@ -520,7 +519,6 @@ export default function Cakes() {
               <Printer className="mr-2 h-4 w-4 text-blue-700" />
               {donationOverviewPdf.isPending ? "PDF wird erstellt …" : "PDF drucken"}
             </Button>
-            <ModuleExcelImportButton area="KUCHEN" label="Spenden" />
             <ResetAreaButton
               area="cakes"
               label="Spenden"

@@ -79,6 +79,18 @@ const projectFileMocks = vi.hoisted(() => ({
   loadProjectFile: vi.fn(),
 }));
 const moduleImportMocks = vi.hoisted(() => ({
+  CENTRAL_MODULE_IMPORT_AREAS: [
+    "ANSPRECHPARTNER",
+    "HELFER",
+    "EINSATZPLAN",
+    "VORBEREITUNG",
+    "NACHBEREITUNG",
+    "MATERIAL",
+    "MARKETING",
+    "GENEHMIGUNGEN",
+    "KUCHEN",
+    "FINANZEN",
+  ],
   MODULE_IMPORT_AREAS: [
     "ANSPRECHPARTNER",
     "HELFER",
@@ -91,6 +103,8 @@ const moduleImportMocks = vi.hoisted(() => ({
     "KUCHEN",
     "FINANZEN",
   ],
+  previewSelectedModuleExcelImport: vi.fn(),
+  applySelectedModuleExcelImport: vi.fn(),
   previewModuleExcelImport: vi.fn(),
   applyModuleExcelImport: vi.fn(),
 }));
@@ -265,6 +279,23 @@ describe("Planungs-API", () => {
       warnings: [],
       changes: [],
       totals: { created: 0, updated: 0, deleted: 0 },
+    });
+    moduleImportMocks.previewSelectedModuleExcelImport.mockResolvedValue({
+      areas: ["HELFER", "EINSATZPLAN"],
+      areaNames: ["Helfer", "Einsatzplan"],
+      currentDigest: "a".repeat(64),
+      sourceDigest: "b".repeat(64),
+      warnings: [],
+      changes: [],
+      totals: { created: 0, updated: 0, deleted: 0 },
+      rowsChecked: 2,
+    });
+    moduleImportMocks.applySelectedModuleExcelImport.mockResolvedValue({
+      created: 1,
+      updated: 2,
+      deleted: 3,
+      warnings: [],
+      afterDigest: "c".repeat(64),
     });
     moduleImportMocks.applyModuleExcelImport.mockResolvedValue({
       created: 1,
@@ -1389,6 +1420,61 @@ describe("Planungs-API", () => {
         sourceDigest: "b".repeat(64),
         currentDigest: "a".repeat(64),
         operation: "module:HELFER",
+        userId: 1,
+      })
+    );
+  });
+
+  it("importiert ausgewählte Excel-Bereiche nur gemeinsam und passwortgeschützt", async () => {
+    await expect(
+      appRouter.createCaller(planningTeamCtx).excel.previewSelected({
+        areas: ["HELFER", "EINSATZPLAN"],
+        base64: "eA==",
+      })
+    ).rejects.toThrow();
+
+    await expect(
+      appRouter.createCaller(ctx).excel.previewSelected({
+        areas: ["EINSATZPLAN", "HELFER"],
+        base64: "eA==",
+      })
+    ).resolves.toMatchObject({
+      areas: ["HELFER", "EINSATZPLAN"],
+      areaNames: ["Helfer", "Einsatzplan"],
+    });
+
+    const input = {
+      areas: ["EINSATZPLAN", "HELFER"] as const,
+      base64: "eA==",
+      filename: "Projekt.xlsx",
+      currentDigest: "a".repeat(64),
+      previewBinding: "preview-binding-test-token",
+    };
+    await expect(
+      appRouter
+        .createCaller(ctx)
+        .excel.applySelected({ ...input, adminPassword: "falsch" })
+    ).rejects.toThrow("Administratorpasswort");
+    expect(moduleImportMocks.applySelectedModuleExcelImport).not.toHaveBeenCalled();
+
+    await expect(
+      appRouter
+        .createCaller(ctx)
+        .excel.applySelected({ ...input, adminPassword: ADMIN_PASSWORD })
+    ).resolves.toMatchObject({ created: 1, updated: 2, deleted: 3 });
+    expect(moduleImportMocks.applySelectedModuleExcelImport).toHaveBeenCalledWith(
+      "eA==",
+      ["HELFER", "EINSATZPLAN"],
+      "Projekt.xlsx",
+      "a".repeat(64),
+      expect.objectContaining({ userId: 1, role: "admin" })
+    );
+    expect(previewBindingMocks.verifyPreviewBinding).toHaveBeenCalledWith(
+      "preview-binding-test-token",
+      expect.objectContaining({
+        sourceDigest: "b".repeat(64),
+        currentDigest: "a".repeat(64),
+        operation: "modules:HELFER,EINSATZPLAN",
         userId: 1,
       })
     );

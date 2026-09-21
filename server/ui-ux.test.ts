@@ -44,12 +44,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     );
   });
 
-  it("zeigt beim verbindlichen Modulimport die konkrete Abbruchursache an", () => {
-    const importer = source("client/src/components/ModuleExcelImportButton.tsx");
+  it("zeigt beim zentralen verbindlichen Excelimport die konkrete Abbruchursache an", () => {
+    const importer = source("client/src/components/SaveLoadModal.tsx");
 
     expect(importer).toContain("Import wurde nicht übernommen");
     expect(importer).toContain("Unbekannte Importursache");
     expect(importer).toContain("duration: 10_000");
+    expect(importer).toContain("trpc.excel.applySelected.useMutation");
   });
 
   it("zeigt rollengetrennte Online-Sitzungen im Desktopkopf und Mobilmenü", () => {
@@ -664,7 +665,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(navigation).not.toContain('label: "ÜBERSICHT & INFO"');
     expect(navigation).toContain('"/ansprechpartner"');
     expect(navigation).toContain('"/finanzen"');
-    expect(navigation).toContain('"/excel"');
+    expect(navigation).not.toContain('"/excel"');
     expect(navigation).toContain('"/orte"');
     expect(navigation).not.toContain('"/berechtigungen"');
     expect(navigation).toContain('label: "Schutz & Protokoll"');
@@ -680,6 +681,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(app).toContain('if (user?.role !== "admin") return <Redirect to="/" />;');
     expect(app).toContain('<Route path="/berechtigungen" component={AdminOnlySecurityRedirect} />');
     expect(app).toContain('return <Redirect to="/sicherheit" />;');
+    expect(app).not.toContain('<Route path="/excel"');
   });
 
   it("kennzeichnet und steuert PDF-Bilder veranstaltungsspezifisch", () => {
@@ -742,15 +744,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
   });
 
   it("warnt Admins vor dem Laden eines datierten Projektstands", () => {
-    const storage = source(
-      "client/src/components/ProjectStorageControls.tsx"
-    );
+    const storage = source("client/src/components/SaveLoadModal.tsx");
 
     expect(storage).toContain("formatBackupTimestamp");
     expect(storage).toContain('day: "2-digit"');
     expect(storage).toContain('month: "2-digit"');
     expect(storage).toContain(
-      "preview.data?.metadata.exportedAt"
+      "jsonPreview.data?.metadata.exportedAt"
     );
     expect(storage).toContain("Speicherstand vom ${formatBackupTimestamp");
     expect(storage).toContain(
@@ -760,13 +760,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(storage).not.toContain(
       "Die Speicherdatei entspricht bereits dem aktuellen Stand"
     );
-    expect(storage).toContain("setPreviewOpen(true)");
+    expect(storage).toContain("setJsonPreviewOpen(true)");
     expect(storage).toContain("Speicherdatei erfolgreich geprüft:");
     expect(storage).toContain(
-      "Es sind keine Änderungen zu übernehmen."
+      "Dieser Projektstand entspricht bereits vollständig"
     );
-    expect(storage).toContain('{hasChanges ? "Abbrechen" : "Schließen"}');
-    expect(storage).toContain("previewBinding: preview.data.previewBinding");
+    expect(storage).toContain('{jsonHasChanges ? "Abbrechen" : "Schließen"}');
+    expect(storage).toContain("previewBinding: jsonPreview.data.previewBinding");
   });
 
   it("rendert Änderungseinträge auch bei alten doppelten Kennungen mit eindeutigen React-Schlüsseln", () => {
@@ -776,16 +776,16 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(preview).toContain("key={`${change.key}:${index}`}");
   });
 
-  it("zeigt beim Ansprechpartnerimport die Prüfung aller Excel-Zeilen", () => {
-    const moduleImport = source(
-      "client/src/components/ModuleExcelImportButton.tsx"
-    );
+  it("zeigt beim zentralen Excelimport die Prüfung aller ausgewählten Bereiche", () => {
+    const moduleImport = source("client/src/components/SaveLoadModal.tsx");
 
     expect(moduleImport).toContain("Vollständige Excel-Prüfung:");
-    expect(moduleImport).toContain("preview.data?.rowsChecked");
+    expect(moduleImport).toContain("excelPreview.data?.rowsChecked");
     expect(moduleImport).toContain(
-      "previewBinding: preview.data.previewBinding"
+      "previewBinding: excelPreview.data.previewBinding"
     );
+    expect(moduleImport).toContain("ANSPRECHPARTNER");
+    expect(moduleImport).toContain("NACHBEREITUNG");
   });
 
   it("zeigt keine überholten allgemeinen Kennzahlenkarten mehr im Dashboard", () => {
@@ -1029,7 +1029,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("utils.plan.evaluate.invalidate()");
     expect(plan).toContain("data-plan-action-header");
     expect(plan).toContain("flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between");
-    expect(plan).toContain("lg:min-w-[500px]");
+    expect(plan).toContain("lg:min-w-[344px]");
   });
 
   it("bietet im Schichtdialog bestehende Bereiche zur Auswahl und erlaubt neue Freitexteingaben", () => {
@@ -1254,11 +1254,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
 
   it("verdichtet den Projektstand ohne redundanten Hilfetext vor der Navigation", () => {
     const layout = source("client/src/components/Layout.tsx");
-    const storageControls = source("client/src/components/ProjectStorageControls.tsx");
+    const storageControls = source("client/src/components/SaveLoadModal.tsx");
 
     expect(storageControls).not.toContain(
       "Kompakte Projektdatei der aktuell gewählten Veranstaltung."
     );
+    expect(storageControls).toContain("Projektstand speichern");
+    expect(storageControls).toContain("Projektstand laden");
     expect(layout.match(/className="mt-2 border-t pt-2"/g)).toHaveLength(2);
     expect(layout.match(/className="mb-1 block text-xs text-muted-foreground"/g)).toHaveLength(2);
     expect(layout).toContain(
@@ -1493,7 +1495,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(passwordDialog).toContain('autoComplete="off"');
   });
 
-  it("ordnet die drei Modulaktionen und den gemeinsamen Resetdialog für Vorbereitung, Nachbereitung und Material", () => {
+  it("ordnet die bereinigten Modulaktionen und den gemeinsamen Resetdialog für Vorbereitung, Nachbereitung und Material", () => {
     const prep = source("client/src/pages/Preparation.tsx");
     const post = source("client/src/pages/PostProcessing.tsx");
     const materials = source("client/src/pages/Materials.tsx");
@@ -1503,26 +1505,23 @@ describe("UI- und Mobile-UX-Regeln", () => {
     );
 
     for (const module of [prep, post]) {
-      expect(module).toContain("lg:min-w-[500px]");
-      expect(module).toContain("grid grid-cols-2 gap-2 lg:grid-cols-3");
-      expect(module).toContain('buttonLabel="Excel Import"');
+      expect(module).toContain("lg:min-w-[344px]");
+      expect(module).toContain("grid grid-cols-2 gap-2");
+      expect(module).not.toContain("ModuleExcelImportButton");
       expect(module).toContain("<PlanResetDialogButton");
       expect(module.indexOf("PDF drucken")).toBeLessThan(
-        module.indexOf("buttonLabel=\"Excel Import\"")
-      );
-      expect(module.indexOf("buttonLabel=\"Excel Import\"")).toBeLessThan(
         module.indexOf("<PlanResetDialogButton")
       );
       expect(module).not.toContain("<ClearModuleAssignmentsButton");
       expect(module).not.toContain("<ResetAreaButton");
     }
 
-    expect(materials).toContain("stackedActionColumns={3}");
-    expect(materials).toContain('excelImportButtonLabel="Excel Import"');
+    expect(materials).toContain("stackedActionColumns={2}");
     expect(materials).toContain('clearAssignmentsArea="materials"');
     expect(taskGeneric).toContain("clearAssignmentsArea?: \"prep\" | \"post\" | \"materials\"");
-    expect(taskGeneric).toContain("lg:grid-cols-3");
+    expect(taskGeneric).toContain("stackedActionColumns === 2");
     expect(taskGeneric).toContain("<PlanResetDialogButton");
+    expect(taskGeneric).not.toContain("ModuleExcelImportButton");
     expect(taskGeneric).not.toContain("<ClearModuleAssignmentsButton");
     expect(resetDialog).toContain("Alle Verantwortlichen und Fristen werden geleert");
     expect(resetDialog).toContain("Stand sämtlicher Materialartikel auf „Offen“ zurückgesetzt");
@@ -1604,15 +1603,24 @@ describe("UI- und Mobile-UX-Regeln", () => {
     }
   });
 
-  it("verweist aus der Excel-Projektübersicht dezent auf die zentrale Import-Historie", () => {
-    const excel = source("client/src/pages/Excel.tsx");
+  it("zentralisiert Speichern, Laden und die Bereichsauswahl in Dialogen der Seitenleiste", () => {
+    const controls = source("client/src/components/SaveLoadModal.tsx");
+    const layout = source("client/src/components/Layout.tsx");
 
-    expect(excel).toContain("Import-Historie im");
-    expect(excel).toContain("System- &amp; Sicherheitsprotokoll");
-    expect(excel).toContain('href="/sicherheit"');
-    expect(excel).not.toContain("Lade- und Importprotokoll");
-    expect(excel).not.toContain("restoreLogs.useQuery");
-    expect(excel).not.toContain("clearRestoreLogs.useMutation");
+    expect(controls).toContain("JSON-Speicherstand herunterladen");
+    expect(controls).toContain("Komplette Excel-Projektübersicht exportieren");
+    expect(controls).toContain("JSON-Speicherstand laden");
+    expect(controls).toContain("Excel-Daten importieren");
+    expect(controls).toContain("rounded-xl");
+    expect(controls).toContain("ANSPRECHPARTNER");
+    expect(controls).toContain("EINSATZPLAN");
+    expect(controls).toContain("MARKETING");
+    expect(controls).toContain("GENEHMIGUNGEN");
+    expect(controls).toContain("FINANZEN");
+    expect(controls).toContain("trpc.excel.previewSelected.useMutation");
+    expect(controls).toContain("trpc.excel.applySelected.useMutation");
+    expect(layout).toContain("LazySaveLoadControls");
+    expect(layout).not.toContain("ProjectStorageControls");
   });
 
   it("bietet in der PDF-Ausgabe einen Ansprechpartnerfilter für Helferübersichten", () => {
@@ -1686,19 +1694,16 @@ describe("UI- und Mobile-UX-Regeln", () => {
       "client/src/components/PlanResetDialogButton.tsx"
     );
     const copyPlan = source("client/src/components/CopyPreviousPlanButton.tsx");
-    const excelImport = source(
-      "client/src/components/ModuleExcelImportButton.tsx"
-    );
 
     expect(plan).toContain("data-plan-data-actions");
-    expect(plan).toContain("grid grid-cols-2 gap-2 lg:grid-cols-3");
+    expect(plan).toContain("grid grid-cols-2 gap-2");
     expect(plan).toContain("[&>[data-slot=button]]:w-full");
     expect(plan).toContain('[&>[data-slot=button]]:whitespace-nowrap');
     expect(plan).not.toContain("min-[1280px]:w-[38rem]");
     expect(plan).toContain(
       'className="w-full border-blue-600 bg-blue-600 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus-visible:ring-blue-500"'
     );
-    expect(plan).toContain('buttonLabel="Excel Import"');
+    expect(plan).not.toContain("ModuleExcelImportButton");
     expect(plan).toContain("<CopyPreviousPlanButton />");
     expect(plan).toContain("<PlanResetDialogButton");
     expect(plan).not.toContain("<ClearPlanAssignmentsButton");
@@ -1707,13 +1712,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     );
     expect(resetDialog).toContain("px-3.5 py-1.5");
     expect(resetDialog).toContain("<RotateCcw");
-    for (const actionButton of [copyPlan, excelImport]) {
-      expect(actionButton).toContain("inline-flex items-center gap-2 whitespace-nowrap");
-      expect(actionButton).toContain("px-3 py-1.5");
-    }
-    expect(excelImport).toContain('buttonLabel = "Excel importieren"');
-    expect(excelImport).toContain("buttonLabel?: string");
-    expect(excelImport).toContain("{buttonLabel}");
+    expect(copyPlan).toContain("inline-flex items-center gap-2 whitespace-nowrap");
+    expect(copyPlan).toContain("px-3 py-1.5");
   });
 
   it("vereinheitlicht die mobilen Modulkopfbereiche bis 1024px mit Aktionsraster und Vollbreitenfeldern", () => {
@@ -1729,7 +1729,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
       expect(module).toContain("lg:[&>[data-slot=button]]:w-auto");
     }
 
-    expect(helpers).toContain("w-full space-y-2 lg:ml-auto lg:w-[23rem]");
+    expect(helpers).toContain("w-full space-y-2 lg:ml-auto lg:w-[11rem]");
     expect(helpers).toContain("grid grid-cols-2 gap-2");
     expect(helpers).toContain("[&>[data-slot=button]]:h-10");
     expect(helpers).toContain("w-full bg-blue-600 px-4 text-base font-medium text-white");
@@ -1892,13 +1892,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(contacts).not.toContain("sm:grid-cols-[minmax(240px,1fr)_220px]");
   });
 
-  it("verwendet Mint für Übernahmen und Rose für Resets", () => {
-    const importButton = source("client/src/components/ModuleExcelImportButton.tsx");
+  it("verwendet passende Akzentfarben für zentrale Datenaktionen und Resets", () => {
+    const importButton = source("client/src/components/SaveLoadModal.tsx");
     const copyButton = source("client/src/components/CopyPreviousPlanButton.tsx");
     const resetButton = source("client/src/components/ResetAreaButton.tsx");
     const clearButton = source("client/src/components/ClearPlanAssignmentsButton.tsx");
 
-    expect(importButton).toContain("border-emerald-200 bg-emerald-50 text-emerald-700");
+    expect(importButton).toContain("border-emerald-200 bg-emerald-50 text-emerald-950");
     expect(copyButton).toContain("border-emerald-200 bg-emerald-50 text-emerald-700");
     expect(resetButton).toContain("border-rose-200 bg-rose-50 text-rose-700");
     expect(clearButton).toContain("border-rose-200 bg-rose-50 text-rose-700");
@@ -2215,7 +2215,6 @@ describe("UI- und Mobile-UX-Regeln", () => {
       ["client/src/pages/Cakes.tsx", "donations"],
       ["client/src/pages/Finances.tsx", "finances"],
       ["client/src/pages/PdfExport.tsx", "pdf"],
-      ["client/src/pages/Excel.tsx", "excel"],
       ["client/src/pages/Locations.tsx", "locations"],
       ["client/src/pages/Security.tsx", "security"],
       ["client/src/pages/Help.tsx", "help"],
@@ -2338,7 +2337,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(materials).toContain('{ v: "bestellt", l: "🟡 Bestellt" }');
     expect(materials).toContain('{ v: "geliefert", l: "🟢 Geliefert" }');
     expect(materials).toContain('headerLayout="stacked"');
-    expect(materials).toContain("stackedActionColumns={3}");
+    expect(materials).toContain("stackedActionColumns={2}");
     expect(materials).toContain("createButtonClassName=\"border-rose-700 bg-rose-600");
     expect(materials).toContain("filterConfig={{");
     expect(materials).toContain('searchPlaceholder: "Suchen (Artikel/Kategorie/Verantwortlicher/Ort) …"');
@@ -2378,7 +2377,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(cakes).toContain("trpc.pdf.donationOverview.useMutation");
     expect(cakes).toContain("Spenden-PDF wurde heruntergeladen");
     expect(cakes).toContain("downloadDonationOverviewPdf");
-    expect(cakes).toContain('ModuleExcelImportButton area="KUCHEN" label="Spenden"');
+    expect(cakes).not.toContain("ModuleExcelImportButton");
     expect(cakes).toContain('<ResetAreaButton\n              area="cakes"');
     expect(cakes).toContain("alle erfassten Spenden und alle eingetragenen Sollwerte");
     expect(cakes).toContain('confirmLabel="Spenden & Sollwerte löschen"');
@@ -2727,8 +2726,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(post).toContain("Filter zurücksetzen");
     expect(post).not.toContain("Filter aufheben");
     expect(post).not.toContain("Nur offene Nachbereitungen");
-    expect(post).toContain("lg:min-w-[500px]");
-    expect(post).toContain("lg:grid-cols-3");
+    expect(post).toContain("lg:min-w-[344px]");
+    expect(post).toContain("grid grid-cols-2 gap-2");
     expect(post).toContain("className={`w-full ${CREATION_ACTION_BUTTON_CLASS}`}");
     expect(post).toContain("trpc.pdf.postTaskOverview.useMutation");
     expect(post).toContain("downloadBase64File");

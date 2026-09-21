@@ -37,7 +37,6 @@ import { ChevronDown, Clock3, FileDown, FilterX, Info, MessageCircle, Pencil, Pl
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { PlanResetDialogButton } from "@/components/PlanResetDialogButton";
-import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 import { MyTasksDefaultPin } from "@/components/MyTasksDefaultPin";
 import { useMyTasksDefault } from "@/hooks/useMyTasksDefault";
 import {
@@ -929,9 +928,8 @@ export default function Helpers() {
             Aufgaben-PDFs.
           </p>
         </div>
-        <div className="w-full space-y-2 lg:ml-auto lg:w-[23rem]">
+        <div className="w-full space-y-2 lg:ml-auto lg:w-[11rem]">
           <div className="grid grid-cols-2 gap-2 [&>[data-slot=button]]:h-10 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2">
-            <ModuleExcelImportButton area="HELFER" label="Helfer" />
             <PlanResetDialogButton
               area="helpers"
               label="Helfer"

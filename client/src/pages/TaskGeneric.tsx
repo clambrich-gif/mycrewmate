@@ -2,7 +2,6 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { PlanResetDialogButton } from "@/components/PlanResetDialogButton";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
-import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 import { MyTasksDefaultPin } from "@/components/MyTasksDefaultPin";
 import { PageTitle, type PageTitleIconKind } from "@/components/PageTitle";
 import { Button } from "@/components/ui/button";
@@ -51,13 +50,6 @@ const resetAreaByKind = {
   cakes: "cakes",
 } as const;
 
-const importAreaByKind = {
-  materials: "MATERIAL",
-  marketing: "MARKETING",
-  approvals: "GENEHMIGUNGEN",
-  cakes: "KUCHEN",
-} as const;
-
 interface Col {
   key: string;
   label: string;
@@ -90,8 +82,7 @@ interface Props {
     | ReactNode
     | ((context: { visibleRows: Array<Record<string, unknown>> }) => ReactNode);
   headerLayout?: "default" | "stacked";
-  stackedActionColumns?: 3 | 4;
-  excelImportButtonLabel?: string;
+  stackedActionColumns?: 2 | 3 | 4;
   clearAssignmentsArea?: "prep" | "post" | "materials";
   filterConfig?: {
     categoryKey: string;
@@ -126,7 +117,6 @@ export default function TaskGeneric({
   headerActions,
   headerLayout = "default",
   stackedActionColumns = 4,
-  excelImportButtonLabel,
   clearAssignmentsArea,
   filterConfig,
 }: Props) {
@@ -450,22 +440,23 @@ export default function TaskGeneric({
         {headerLayout === "stacked" ? (
           <div
             className={`w-full space-y-2 xl:w-auto ${
-              stackedActionColumns === 3 ? "xl:min-w-[500px]" : "xl:min-w-[660px]"
+              stackedActionColumns === 2
+                ? "xl:min-w-[344px]"
+                : stackedActionColumns === 3
+                  ? "xl:min-w-[500px]"
+                  : "xl:min-w-[660px]"
             }`}
           >
             <div
               className={`grid grid-cols-2 gap-2 [&>button]:w-full [&>button]:justify-center [&>button]:whitespace-nowrap [&>button]:px-2 lg:[&>button]:h-10 ${
-                stackedActionColumns === 3 ? "lg:grid-cols-3" : "lg:grid-cols-4"
+                stackedActionColumns === 2
+                  ? "lg:grid-cols-2"
+                  : stackedActionColumns === 3
+                    ? "lg:grid-cols-3"
+                    : "lg:grid-cols-4"
               }`}
             >
               {renderedHeaderActions}
-              {kind in importAreaByKind && (
-                <ModuleExcelImportButton
-                  area={importAreaByKind[kind as keyof typeof importAreaByKind]}
-                  label={title}
-                  buttonLabel={excelImportButtonLabel}
-                />
-              )}
               {clearAssignmentsArea ? (
                 <PlanResetDialogButton
                   area={clearAssignmentsArea}
@@ -504,12 +495,6 @@ export default function TaskGeneric({
           </div>
         ) : (
           <div className="grid w-full grid-cols-2 gap-2 lg:ml-auto lg:flex lg:w-auto lg:flex-wrap lg:justify-end [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 max-lg:[&>[data-slot=button]]:h-11 max-lg:[&>[data-slot=button]]:text-base lg:[&>[data-slot=button]]:w-auto lg:[&>[data-slot=button]]:px-4">
-            {kind in importAreaByKind && (
-              <ModuleExcelImportButton
-                area={importAreaByKind[kind as keyof typeof importAreaByKind]}
-                label={title}
-              />
-            )}
             {kind in resetAreaByKind && (
               <ResetAreaButton
                 area={resetAreaByKind[kind as keyof typeof resetAreaByKind]}

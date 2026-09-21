@@ -1,6 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
-import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -197,10 +196,6 @@ export default function TaskList({
           </p>
         </div>
         <div className="grid w-full grid-cols-2 gap-2 lg:ml-auto lg:flex lg:w-auto lg:flex-wrap lg:justify-end [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 max-lg:[&>[data-slot=button]]:h-11 max-lg:[&>[data-slot=button]]:text-base lg:[&>[data-slot=button]]:w-auto lg:[&>[data-slot=button]]:px-4">
-          <ModuleExcelImportButton
-            area={kind === "prep" ? "VORBEREITUNG" : "NACHBEREITUNG"}
-            label={title}
-          />
           <ResetAreaButton area={kind} label={title} compact />
           {isPrep ? (
             <>

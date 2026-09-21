@@ -17,7 +17,6 @@ const expectedRoutes = [
   "/kuchen",
   "/finanzen",
   "/pdf-export",
-  "/excel",
   "/orte",
   "/sicherheit",
   "/hilfe",

@@ -22,7 +22,6 @@ export const routeLoaders = {
   "/kuchen": donationsLoader,
   "/finanzen": () => import("@/pages/Finances"),
   "/pdf-export": () => import("@/pages/PdfExport"),
-  "/excel": () => import("@/pages/Excel"),
   "/orte": () => import("@/pages/Locations"),
   "/sicherheit": () => import("@/pages/Security"),
   "/hilfe": () => import("@/pages/Help"),

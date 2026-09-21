@@ -53,7 +53,6 @@ import {
 import { Label } from "@/components/ui/label";
 import { CopyPreviousPlanButton } from "@/components/CopyPreviousPlanButton";
 import { PlanResetDialogButton } from "@/components/PlanResetDialogButton";
-import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 import {
   Popover,
   PopoverContent,
@@ -1343,17 +1342,12 @@ export default function Plan() {
         {canEditPlan && (
           <div
             data-plan-action-header
-            className="w-full shrink-0 space-y-2 lg:w-auto lg:min-w-[500px]"
+            className="w-full shrink-0 space-y-2 lg:w-auto lg:min-w-[344px]"
           >
             <div
               data-plan-data-actions
-              className="grid grid-cols-2 gap-2 lg:grid-cols-3 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:whitespace-nowrap [&>[data-slot=button]]:px-2 lg:[&>[data-slot=button]]:h-10"
+              className="grid grid-cols-2 gap-2 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:whitespace-nowrap [&>[data-slot=button]]:px-2 lg:[&>[data-slot=button]]:h-10"
             >
-              <ModuleExcelImportButton
-                area="EINSATZPLAN"
-                label="Einsatzplan"
-                buttonLabel="Excel Import"
-              />
               <CopyPreviousPlanButton />
               <PlanResetDialogButton
                 area="shifts"

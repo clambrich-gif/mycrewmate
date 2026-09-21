@@ -31,7 +31,6 @@ describe("rollenabhängige Navigation", () => {
     expect(PLANNING_TEAM_HIDDEN_PATHS).toEqual([
       "/ansprechpartner",
       "/finanzen",
-      "/excel",
       "/orte",
     ]);
 
@@ -44,6 +43,8 @@ describe("rollenabhängige Navigation", () => {
     }
     expect(planningTeamPaths).not.toContain("/berechtigungen");
     expect(adminPaths).not.toContain("/berechtigungen");
+    expect(planningTeamPaths).not.toContain("/excel");
+    expect(adminPaths).not.toContain("/excel");
     expect(planningTeamPaths).toEqual([
       "/",
       "/helfer",

@@ -1,7 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { LocationMapLink } from "@/components/LocationMapLink";
 import { PageTitle } from "@/components/PageTitle";
-import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 import { MyTasksDefaultPin } from "@/components/MyTasksDefaultPin";
 import { PlanResetDialogButton } from "@/components/PlanResetDialogButton";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
@@ -635,8 +634,8 @@ export default function PostProcessing() {
             Aufgabenverwaltung für den Abbau, Rücktransporte, Abrechnungen und Nachbereitung des Festivals.
           </p>
         </div>
-        <div className="w-full space-y-2 lg:w-auto lg:min-w-[500px]">
-          <div className="grid grid-cols-2 gap-2 lg:grid-cols-3 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:whitespace-nowrap [&>[data-slot=button]]:px-2 lg:[&>[data-slot=button]]:h-10">
+        <div className="w-full space-y-2 lg:w-auto lg:min-w-[344px]">
+          <div className="grid grid-cols-2 gap-2 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:whitespace-nowrap [&>[data-slot=button]]:px-2 lg:[&>[data-slot=button]]:h-10">
             <Button
               type="button"
               variant="outline"
@@ -647,11 +646,6 @@ export default function PostProcessing() {
               <Printer className="mr-2 h-4 w-4 text-rose-700" />
               {taskOverviewPdf.isPending ? "PDF wird erstellt …" : "PDF drucken"}
             </Button>
-            <ModuleExcelImportButton
-              area="NACHBEREITUNG"
-              label="Nachbereitung"
-              buttonLabel="Excel Import"
-            />
             <PlanResetDialogButton area="post" label="Nachbereitung" />
           </div>
           <Button
