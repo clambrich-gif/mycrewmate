@@ -1472,7 +1472,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       onMouseEnter={() => preloadRoute(href)}
                       onTouchStart={() => preloadRoute(href)}
                       className={cn(
-                        "flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
+                        "flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-150",
                         navigationItemClasses(user?.role, href, active)
                       )}
                     >
@@ -1639,12 +1639,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   <Link
                     key={href}
                     href={href}
-                    onFocus={() => preloadRoute(href)}
-                    onMouseEnter={() => preloadRoute(href)}
-                    className={cn(
-                      "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
-                      navigationItemClasses(user?.role, href, active)
-                    )}
+                      onFocus={() => preloadRoute(href)}
+                      onMouseEnter={() => preloadRoute(href)}
+                      className={cn(
+                        "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all duration-150",
+                        navigationItemClasses(user?.role, href, active)
+                      )}
                   >
                     <Icon className="h-4 w-4" /> {label}
                   </Link>

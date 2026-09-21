@@ -658,9 +658,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(navigation).toContain('"/excel"');
     expect(navigation).toContain('"/orte"');
     expect(navigation).toContain("if (item.planningTeamHidden && role === \"user\") return false");
-    expect(navigation).toContain("font-semibold text-slate-800 hover:bg-accent");
-    expect(navigation).toContain("font-medium text-slate-900 hover:bg-accent");
-    expect(navigation).toContain("font-normal text-slate-500 hover:bg-accent hover:text-slate-800");
+    expect(navigation).toContain("font-semibold text-slate-800 hover:bg-slate-100 hover:text-slate-900");
+    expect(navigation).toContain("font-semibold text-slate-900 hover:bg-slate-100 hover:text-slate-900");
+    expect(navigation).toContain("font-normal text-slate-500 hover:bg-slate-100 hover:text-slate-900");
+    expect(layout.match(/rounded-lg px-3 py-2\.5 text-sm transition-all duration-150/g)).toHaveLength(1);
+    expect(layout.match(/rounded-lg px-3 py-2 text-sm transition-all duration-150/g)).toHaveLength(1);
     expect(navigation).not.toContain("Nur Lesen");
   });
 

@@ -125,12 +125,12 @@ export function navigationItemClasses(
   active: boolean
 ) {
   return active
-    ? "bg-primary font-semibold text-primary-foreground"
+    ? "bg-primary font-semibold text-primary-foreground hover:bg-primary/90"
     : role === "user" && PLANNING_TEAM_OVERVIEW_PATHS.includes(
           href as (typeof PLANNING_TEAM_OVERVIEW_PATHS)[number]
         )
-      ? "font-normal text-slate-500 hover:bg-accent hover:text-slate-800"
+      ? "font-normal text-slate-500 hover:bg-slate-100 hover:text-slate-900"
       : role === "user"
-        ? "font-medium text-slate-900 hover:bg-accent"
-    : "font-semibold text-slate-800 hover:bg-accent";
+        ? "font-semibold text-slate-900 hover:bg-slate-100 hover:text-slate-900"
+    : "font-semibold text-slate-800 hover:bg-slate-100 hover:text-slate-900";
 }

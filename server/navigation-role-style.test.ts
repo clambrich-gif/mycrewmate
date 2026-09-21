@@ -77,24 +77,27 @@ describe("rollenabhängige Navigation", () => {
 
     for (const path of PLANNING_TEAM_EDITING_PATHS) {
       const classes = navigationItemClasses("user", path, false);
-      expect(classes).toContain("font-medium");
+      expect(classes).toContain("font-semibold");
       expect(classes).toContain("text-slate-900");
-      expect(classes).toContain("hover:bg-accent");
+      expect(classes).toContain("hover:bg-slate-100");
+      expect(classes).toContain("hover:text-slate-900");
     }
     for (const path of PLANNING_TEAM_OVERVIEW_PATHS) {
       const classes = navigationItemClasses("user", path, false);
       expect(classes).toContain("font-normal");
       expect(classes).toContain("text-slate-500");
-      expect(classes).toContain("hover:text-slate-800");
+      expect(classes).toContain("hover:bg-slate-100");
+      expect(classes).toContain("hover:text-slate-900");
     }
   });
 
   it("erhält für alle aktiven Planungsteam-Ziele eine klare aktive Darstellung", () => {
     for (const item of visibleNavigationItems("user")) {
       const classes = navigationItemClasses("user", item.href, false);
-      expect(classes).toContain("hover:bg-accent");
+      expect(classes).toContain("hover:bg-slate-100");
       const activeClasses = navigationItemClasses("user", item.href, true);
       expect(activeClasses).toContain("bg-primary");
+      expect(activeClasses).toContain("hover:bg-primary/90");
       expect(activeClasses).toContain("font-semibold");
       expect(activeClasses).toContain("text-primary-foreground");
     }
@@ -106,10 +109,10 @@ describe("rollenabhängige Navigation", () => {
       { id: "default", label: null, items: NAV },
     ]);
     expect(navigationItemClasses("admin", "/helfer", false)).toBe(
-      "font-semibold text-slate-800 hover:bg-accent"
+      "font-semibold text-slate-800 hover:bg-slate-100 hover:text-slate-900"
     );
     expect(navigationItemClasses("admin", "/helfer", true)).toBe(
-      "bg-primary font-semibold text-primary-foreground"
+      "bg-primary font-semibold text-primary-foreground hover:bg-primary/90"
     );
   });
 });
