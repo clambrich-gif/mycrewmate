@@ -213,6 +213,48 @@ describe("Excel-Datensicherung", () => {
     );
   });
 
+  it("ignoriert beim isolierten Ansprechpartnerimport Dubletten aus einem fremden Materialblatt", async () => {
+    const exported = await exportBackupExcel();
+    const fallbackDocument = parseBackupWorkbook(exported.buffer.toString("base64"));
+    const mixedWorkbook = mutateWorkbook(exported.buffer, workbook => {
+      const contacts = XLSX.utils.sheet_to_json<any>(
+        workbook.Sheets.ANSPRECHPARTNER
+      );
+      contacts.push({
+        Name: "Dana Neu",
+        Rufnummer: "02651 999",
+        Bemerkung: "Importtest",
+        Reihenfolge: 1,
+      });
+      replaceSheet(workbook, "ANSPRECHPARTNER", contacts);
+      replaceSheet(workbook, "MATERIAL", [
+        { Artikel: "Bananen", Menge: "4" },
+        { Artikel: "Bananen", Menge: "8" },
+      ]);
+    });
+    const base64 = mixedWorkbook.toString("base64");
+
+    expect(() => parseBackupWorkbook(base64)).toThrow(
+      "MATERIAL: „Bananen“ ist doppelt vorhanden"
+    );
+
+    const isolated = parseBackupWorkbook(base64, {
+      isolatedAreas: ["ANSPRECHPARTNER", "HELFER"],
+      fallbackDocument,
+    });
+
+    expect(isolated.contacts.map(row => row.name)).toContain("Dana Neu");
+    expect(isolated.helpers.map(row => row.name)).toContain("Dana Neu");
+    expect(isolated.materials).toEqual(fallbackDocument.materials);
+
+    expect(() =>
+      parseBackupWorkbook(base64, {
+        isolatedAreas: ["MATERIAL"],
+        fallbackDocument,
+      })
+    ).toThrow("MATERIAL: „Bananen“ ist doppelt vorhanden");
+  });
+
   it("weist unvollständige oder kalenderungültige Veranstaltungszeiträume in Sicherungen zurück", async () => {
     const result = await exportBackupExcel();
     const incompleteRange = mutateWorkbook(result.buffer, workbook => {

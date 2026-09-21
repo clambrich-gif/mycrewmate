@@ -1196,43 +1196,67 @@ export function readUploadedExcelWorkbook(base64: string) {
   return workbook;
 }
 
-export function parseBackupWorkbook(base64: string): BackupDocument {
+type ParseBackupWorkbookOptions = {
+  /**
+   * Beim Modulimport werden ausschließlich diese Tabellenblätter fachlich
+   * interpretiert. Alle anderen Bereiche stammen unverändert aus dem
+   * bestehenden Projektdokument und werden nicht erneut validiert.
+   */
+  isolatedAreas?: readonly (typeof SHEETS)[number][];
+  fallbackDocument?: BackupDocument;
+};
+
+export function parseBackupWorkbook(
+  base64: string,
+  options: ParseBackupWorkbookOptions = {}
+): BackupDocument {
   const workbook = readUploadedExcelWorkbook(base64);
   const meta = metadata(workbook);
   for (const required of SHEETS)
     if (!workbook.Sheets[required])
       throw new Error(`Pflichtblatt „${required}“ fehlt`);
+  const isolatedAreas = new Set(options.isolatedAreas ?? []);
+  if (isolatedAreas.size && !options.fallbackDocument)
+    throw new Error("Isolierter Excel-Import benötigt einen bestehenden Projektstand");
+  const fallback = options.fallbackDocument
+    ? structuredClone(options.fallbackDocument)
+    : undefined;
+  const shouldParse = (area: (typeof SHEETS)[number]) =>
+    !isolatedAreas.size || isolatedAreas.has(area);
   const warnings: string[] = [];
 
-  const contactRows = sheetRows(workbook, "ANSPRECHPARTNER").filter(row =>
-    normalize(row.Name)
-  );
-  const parsedContacts: ContactRow[] = contactRows.map((row, index) => ({
-    sourceId: nullableId(row.ID, `ANSPRECHPARTNER Zeile ${index + 2}`),
-    name: text(row.Name, 200, `ANSPRECHPARTNER Zeile ${index + 2}: Name`, true),
-    phone: text(
-      row.Rufnummer,
-      64,
-      `ANSPRECHPARTNER Zeile ${index + 2}: Rufnummer`
-    ),
-    note: text(
-      row.Bemerkung,
-      10_000,
-      `ANSPRECHPARTNER Zeile ${index + 2}: Bemerkung`
-    ),
-    sortOrder: integer(
-      row.Reihenfolge || 0,
-      `ANSPRECHPARTNER Zeile ${index + 2}: Reihenfolge`,
-      0,
-      1_000_000
-    ),
-  }));
-  ensureUnique(
-    parsedContacts,
-    row => row.sourceId,
-    row => row.name,
-    "ANSPRECHPARTNER"
-  );
+  const contactRows = shouldParse("ANSPRECHPARTNER")
+    ? sheetRows(workbook, "ANSPRECHPARTNER").filter(row => normalize(row.Name))
+    : [];
+  const parsedContacts: ContactRow[] = shouldParse("ANSPRECHPARTNER")
+    ? contactRows.map((row, index) => ({
+        sourceId: nullableId(row.ID, `ANSPRECHPARTNER Zeile ${index + 2}`),
+        name: text(row.Name, 200, `ANSPRECHPARTNER Zeile ${index + 2}: Name`, true),
+        phone: text(
+          row.Rufnummer,
+          64,
+          `ANSPRECHPARTNER Zeile ${index + 2}: Rufnummer`
+        ),
+        note: text(
+          row.Bemerkung,
+          10_000,
+          `ANSPRECHPARTNER Zeile ${index + 2}: Bemerkung`
+        ),
+        sortOrder: integer(
+          row.Reihenfolge || 0,
+          `ANSPRECHPARTNER Zeile ${index + 2}: Reihenfolge`,
+          0,
+          1_000_000
+        ),
+      }))
+    : fallback!.contacts;
+  if (shouldParse("ANSPRECHPARTNER"))
+    ensureUnique(
+      parsedContacts,
+      row => row.sourceId,
+      row => row.name,
+      "ANSPRECHPARTNER"
+    );
   const contactIds = new Set(
     parsedContacts.flatMap(row => (row.sourceId ? [row.sourceId] : []))
   );
@@ -1256,36 +1280,39 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
     return null;
   };
 
-  const locationRows = workbook.Sheets.ORTE
+  const locationRows = !isolatedAreas.size && workbook.Sheets.ORTE
     ? sheetRows(workbook, "ORTE").filter(row => normalize(row.Ortsname))
     : [];
-  const parsedLocations: LocationRow[] = locationRows.map((row, index) => ({
-    sourceId: nullableId(row.ID, `ORTE Zeile ${index + 2}`),
-    name: text(row.Ortsname, 200, `ORTE Zeile ${index + 2}: Ortsname`, true),
-    latitude: coordinate(
-      row.Breitengrad,
-      `ORTE Zeile ${index + 2}: Breitengrad`,
-      -90,
-      90
-    ),
-    longitude: coordinate(
-      row.Längengrad,
-      `ORTE Zeile ${index + 2}: Längengrad`,
-      -180,
-      180
-    ),
-    logoKey:
-      text(row["Logo-Dateischlüssel"], 500, `ORTE Zeile ${index + 2}: Logo-Dateischlüssel`) ||
-      null,
-    logoUrl: text(row["Logo-URL"], 700, `ORTE Zeile ${index + 2}: Logo-URL`) || null,
-    sortOrder: integer(
-      row.Reihenfolge || 0,
-      `ORTE Zeile ${index + 2}: Reihenfolge`,
-      0,
-      1_000_000
-    ),
-  }));
-  ensureUnique(parsedLocations, row => row.sourceId, row => row.name, "ORTE");
+  const parsedLocations: LocationRow[] = isolatedAreas.size
+    ? fallback!.locations
+    : locationRows.map((row, index) => ({
+        sourceId: nullableId(row.ID, `ORTE Zeile ${index + 2}`),
+        name: text(row.Ortsname, 200, `ORTE Zeile ${index + 2}: Ortsname`, true),
+        latitude: coordinate(
+          row.Breitengrad,
+          `ORTE Zeile ${index + 2}: Breitengrad`,
+          -90,
+          90
+        ),
+        longitude: coordinate(
+          row.Längengrad,
+          `ORTE Zeile ${index + 2}: Längengrad`,
+          -180,
+          180
+        ),
+        logoKey:
+          text(row["Logo-Dateischlüssel"], 500, `ORTE Zeile ${index + 2}: Logo-Dateischlüssel`) ||
+          null,
+        logoUrl: text(row["Logo-URL"], 700, `ORTE Zeile ${index + 2}: Logo-URL`) || null,
+        sortOrder: integer(
+          row.Reihenfolge || 0,
+          `ORTE Zeile ${index + 2}: Reihenfolge`,
+          0,
+          1_000_000
+        ),
+      }));
+  if (!isolatedAreas.size)
+    ensureUnique(parsedLocations, row => row.sourceId, row => row.name, "ORTE");
   const locationIds = new Set(
     parsedLocations.flatMap(row => (row.sourceId ? [row.sourceId] : []))
   );
@@ -1303,13 +1330,16 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
     return null;
   };
 
-  const rawHelperRows = sheetRows(workbook, "HELFER");
+  const rawHelperRows = shouldParse("HELFER")
+    ? sheetRows(workbook, "HELFER")
+    : [];
   const helperHasColumn = (column: string) =>
     rawHelperRows.some(row =>
       Object.prototype.hasOwnProperty.call(row, column)
     );
   const helperRows = rawHelperRows.filter(row => normalize(row.Name));
-  const parsedHelpers: HelperRow[] = helperRows.map((row, index) => ({
+  const parsedHelpers: HelperRow[] = shouldParse("HELFER")
+    ? helperRows.map((row, index) => ({
     sourceId: nullableId(row.ID, `HELFER Zeile ${index + 2}`),
     contactSourceId: contactRef(
       row["Ansprechpartner-ID"],
@@ -1398,25 +1428,29 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
       `HELFER Zeile ${index + 2}: Bestätigt?`,
       "nein"
     ),
-  }));
-  ensureUnique(
-    parsedHelpers,
-    row => row.sourceId,
-    row => row.name,
-    "HELFER"
-  );
-  const selfHelperReconciliation = reconcileContactSelfHelpers(
-    parsedContacts,
-    parsedHelpers
-  );
-  if (selfHelperReconciliation.linked)
-    warnings.push(
-      `${selfHelperReconciliation.linked} eigene Ansprechpartner-Helfereinträge wurden automatisch korrekt zugeordnet.`
+      }))
+    : fallback!.helpers;
+  if (shouldParse("HELFER"))
+    ensureUnique(
+      parsedHelpers,
+      row => row.sourceId,
+      row => row.name,
+      "HELFER"
     );
-  if (selfHelperReconciliation.created)
-    warnings.push(
-      `${selfHelperReconciliation.created} fehlende eigene Ansprechpartner-Helfereinträge wurden automatisch ergänzt.`
+  if (shouldParse("ANSPRECHPARTNER") || shouldParse("HELFER")) {
+    const selfHelperReconciliation = reconcileContactSelfHelpers(
+      parsedContacts,
+      parsedHelpers
     );
+    if (selfHelperReconciliation.linked)
+      warnings.push(
+        `${selfHelperReconciliation.linked} eigene Ansprechpartner-Helfereinträge wurden automatisch korrekt zugeordnet.`
+      );
+    if (selfHelperReconciliation.created)
+      warnings.push(
+        `${selfHelperReconciliation.created} fehlende eigene Ansprechpartner-Helfereinträge wurden automatisch ergänzt.`
+      );
+  }
   const helperIds = new Set(
     parsedHelpers.flatMap(row => (row.sourceId ? [row.sourceId] : []))
   );
@@ -1437,10 +1471,11 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
     return null;
   };
 
-  const shiftRows = sheetRows(workbook, "EINSATZPLAN").filter(row =>
-    normalize(row.Aufgabe)
-  );
-  const parsedShifts: ShiftRow[] = shiftRows.map((row, index) => {
+  const shiftRows = shouldParse("EINSATZPLAN")
+    ? sheetRows(workbook, "EINSATZPLAN").filter(row => normalize(row.Aufgabe))
+    : [];
+  const parsedShifts: ShiftRow[] = shouldParse("EINSATZPLAN")
+    ? shiftRows.map((row, index) => {
     const day = enumValue(
       row.Tag,
       WEEKDAYS,
@@ -1547,13 +1582,15 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
       ),
       slots,
     };
-  });
-  ensureUnique(
-    parsedShifts,
-    row => row.sourceId,
-    row => `${row.day}|${row.area}|${row.task}|${row.startTime}|${row.endTime}`,
-    "EINSATZPLAN"
-  );
+      })
+    : fallback!.shifts;
+  if (shouldParse("EINSATZPLAN"))
+    ensureUnique(
+      parsedShifts,
+      row => row.sourceId,
+      row => `${row.day}|${row.area}|${row.task}|${row.startTime}|${row.endTime}`,
+      "EINSATZPLAN"
+    );
   const parsedContactById = new Map(
     parsedContacts.flatMap(row =>
       row.sourceId ? ([[row.sourceId, row]] as const) : []
@@ -1562,11 +1599,12 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
   const parsedContactByName = new Map(
     parsedContacts.map(row => [personKey(row.name), row])
   );
-  reconcileAreaContacts(parsedShifts, row =>
-    (row.areaContactSourceId
-      ? parsedContactById.get(row.areaContactSourceId)
-      : undefined) ?? parsedContactByName.get(personKey(row.areaContactName))
-  );
+  if (shouldParse("EINSATZPLAN"))
+    reconcileAreaContacts(parsedShifts, row =>
+      (row.areaContactSourceId
+        ? parsedContactById.get(row.areaContactSourceId)
+        : undefined) ?? parsedContactByName.get(personKey(row.areaContactName))
+    );
 
   const parseTaskRows = (sheet: "NACHBEREITUNG") =>
     sheetRows(workbook, sheet)
@@ -1627,7 +1665,8 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
           1_000_000
         ),
       }));
-  const parsedPrep: PrepRow[] = sheetRows(workbook, "VORBEREITUNG")
+  const parsedPrep: PrepRow[] = shouldParse("VORBEREITUNG")
+    ? sheetRows(workbook, "VORBEREITUNG")
     .filter(row => normalize(row.Aufgabe))
     .map((row, index) => ({
       sourceId: nullableId(row.ID, `VORBEREITUNG Zeile ${index + 2}`),
@@ -1690,22 +1729,28 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
         0,
         1_000_000
       ),
-    }));
-  const parsedPost = parseTaskRows("NACHBEREITUNG") as TaskRow[];
-  ensureUnique(
-    parsedPrep,
-    row => row.sourceId,
-    row => row.task,
-    "VORBEREITUNG"
-  );
-  ensureUnique(
-    parsedPost,
-    row => row.sourceId,
-    row => row.task,
-    "NACHBEREITUNG"
-  );
+      }))
+    : fallback!.prep;
+  const parsedPost: TaskRow[] = shouldParse("NACHBEREITUNG")
+    ? (parseTaskRows("NACHBEREITUNG") as TaskRow[])
+    : fallback!.post;
+  if (shouldParse("VORBEREITUNG"))
+    ensureUnique(
+      parsedPrep,
+      row => row.sourceId,
+      row => row.task,
+      "VORBEREITUNG"
+    );
+  if (shouldParse("NACHBEREITUNG"))
+    ensureUnique(
+      parsedPost,
+      row => row.sourceId,
+      row => row.task,
+      "NACHBEREITUNG"
+    );
 
-  const parsedMaterials: MaterialRow[] = sheetRows(workbook, "MATERIAL")
+  const parsedMaterials: MaterialRow[] = shouldParse("MATERIAL")
+    ? sheetRows(workbook, "MATERIAL")
     .filter(row => normalize(row.Artikel))
     .map((row, index) => ({
       sourceId: nullableId(row.ID, `MATERIAL Zeile ${index + 2}`),
@@ -1754,15 +1799,18 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
         0,
         1_000_000
       ),
-    }));
-  ensureUnique(
-    parsedMaterials,
-    row => row.sourceId,
-    row => row.article,
-    "MATERIAL"
-  );
+      }))
+    : fallback!.materials;
+  if (shouldParse("MATERIAL"))
+    ensureUnique(
+      parsedMaterials,
+      row => row.sourceId,
+      row => row.article,
+      "MATERIAL"
+    );
 
-  const parsedMarketing: MarketingRow[] = sheetRows(workbook, "MARKETING")
+  const parsedMarketing: MarketingRow[] = shouldParse("MARKETING")
+    ? sheetRows(workbook, "MARKETING")
     .filter(row => normalize(row.Maßnahme))
     .map((row, index) => ({
       sourceId: nullableId(row.ID, `MARKETING Zeile ${index + 2}`),
@@ -1800,15 +1848,18 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
         0,
         1_000_000
       ),
-    }));
-  ensureUnique(
-    parsedMarketing,
-    row => row.sourceId,
-    row => row.measure,
-    "MARKETING"
-  );
+      }))
+    : fallback!.marketing;
+  if (shouldParse("MARKETING"))
+    ensureUnique(
+      parsedMarketing,
+      row => row.sourceId,
+      row => row.measure,
+      "MARKETING"
+    );
 
-  const parsedApprovals: ApprovalRow[] = sheetRows(workbook, "GENEHMIGUNGEN")
+  const parsedApprovals: ApprovalRow[] = shouldParse("GENEHMIGUNGEN")
+    ? sheetRows(workbook, "GENEHMIGUNGEN")
     .filter(row => normalize(row.Antrag))
     .map((row, index) => ({
       sourceId: nullableId(row.ID, `GENEHMIGUNGEN Zeile ${index + 2}`),
@@ -1845,15 +1896,18 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
         0,
         1_000_000
       ),
-    }));
-  ensureUnique(
-    parsedApprovals,
-    row => row.sourceId,
-    row => row.request,
-    "GENEHMIGUNGEN"
-  );
+      }))
+    : fallback!.approvals;
+  if (shouldParse("GENEHMIGUNGEN"))
+    ensureUnique(
+      parsedApprovals,
+      row => row.sourceId,
+      row => row.request,
+      "GENEHMIGUNGEN"
+    );
 
-  const parsedCakes: CakeRow[] = sheetRows(workbook, "KUCHEN")
+  const parsedCakes: CakeRow[] = shouldParse("KUCHEN")
+    ? sheetRows(workbook, "KUCHEN")
     .filter(row => normalize(row.Spender))
     .map((row, index) => ({
       sourceId: nullableId(row.ID, `KUCHEN Zeile ${index + 2}`),
@@ -1912,15 +1966,18 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
         0,
         1_000_000
       ),
-    }));
-  ensureUnique(
-    parsedCakes,
-    row => row.sourceId,
-    row => `${row.donor}|${row.cake}`,
-    "KUCHEN"
-  );
+      }))
+    : fallback!.cakes;
+  if (shouldParse("KUCHEN"))
+    ensureUnique(
+      parsedCakes,
+      row => row.sourceId,
+      row => `${row.donor}|${row.cake}`,
+      "KUCHEN"
+    );
 
-  const parsedFinances: FinanceRow[] = sheetRows(workbook, "FINANZEN")
+  const parsedFinances: FinanceRow[] = shouldParse("FINANZEN")
+    ? sheetRows(workbook, "FINANZEN")
     .filter(row => normalize(row.Kategorie))
     .map((row, index) => ({
       sourceId: nullableId(row.ID, `FINANZEN Zeile ${index + 2}`),
@@ -1949,13 +2006,15 @@ export function parseBackupWorkbook(base64: string): BackupDocument {
         0,
         1_000_000
       ),
-    }));
-  ensureUnique(
-    parsedFinances,
-    row => row.sourceId,
-    row => row.category,
-    "FINANZEN"
-  );
+      }))
+    : fallback!.finances;
+  if (shouldParse("FINANZEN"))
+    ensureUnique(
+      parsedFinances,
+      row => row.sourceId,
+      row => row.category,
+      "FINANZEN"
+    );
 
   return repairImportedDocumentRelations({
     metadata: meta,

@@ -830,15 +830,10 @@ async function buildModuleTarget(
     sourceHeaders
   );
   const importedRows = hydrateExistingIds(area, rawImportedRows, currentRows);
+  // Die Arbeitsmappe enthält absichtlich nur leere Platzhalterblätter und das
+  // ausgewählte Zielblatt. So erreicht kein Wert aus einem fremden Excel-Blatt
+  // den Gesamtparser oder dessen Dubletten-/Formatprüfungen.
   const workbook = baseWorkbook(current);
-  for (const currentArea of MODULE_IMPORT_AREAS) {
-    const rows = rowsFromDocument(current, currentArea);
-    workbook.Sheets[currentArea] = rows.length
-      ? XLSX.utils.json_to_sheet(rows, {
-          header: PROJECT_EXCEL_HEADERS[currentArea],
-        })
-      : XLSX.utils.aoa_to_sheet([PROJECT_EXCEL_HEADERS[currentArea]]);
-  }
   workbook.Sheets[area] = importedRows.length
     ? XLSX.utils.json_to_sheet(importedRows, {
         header: PROJECT_EXCEL_HEADERS[area],
@@ -915,7 +910,16 @@ async function buildModuleTarget(
       compression: true,
     }) as Buffer
   ).toString("base64");
-  const imported = parseBackupWorkbook(mergedBase64);
+  // Der Gesamtparser erhält im Modulmodus ausschließlich das Zielblatt. Beim
+  // Ansprechpartnerimport wird der automatisch mitgeführte Selbsthelfer als
+  // einzige fachlich nötige Ausnahme ebenfalls verarbeitet. Alle übrigen
+  // Arbeitsblätter werden aus `current` übernommen, nicht erneut validiert.
+  const isolatedAreas: ModuleImportArea[] =
+    area === "ANSPRECHPARTNER" ? ["ANSPRECHPARTNER", "HELFER"] : [area];
+  const imported = parseBackupWorkbook(mergedBase64, {
+    isolatedAreas,
+    fallbackDocument: current,
+  });
   const allChanges = diffDocuments(current, imported);
   const allowedAreas = new Set<BackupArea>(
     area === "ANSPRECHPARTNER"
