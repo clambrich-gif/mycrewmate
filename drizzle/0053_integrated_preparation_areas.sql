@@ -1,4 +1,4 @@
-START TRANSACTION;
+START TRANSACTION;--> statement-breakpoint
 
 INSERT INTO `prep_tasks` (
   `year`,
@@ -37,7 +37,7 @@ SELECT
   END,
   false,
   `sortOrder`
-FROM `marketing`;
+FROM `marketing`;--> statement-breakpoint
 
 INSERT INTO `prep_tasks` (
   `year`,
@@ -70,9 +70,9 @@ SELECT
   `note`,
   false,
   `sortOrder`
-FROM `approvals`;
+FROM `approvals`;--> statement-breakpoint
 
-DELETE FROM `marketing`;
-DELETE FROM `approvals`;
+DELETE FROM `marketing`;--> statement-breakpoint
+DELETE FROM `approvals`;--> statement-breakpoint
 
 COMMIT;

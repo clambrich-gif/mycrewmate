@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import type { MigrationConnection, MigrationFile } from "./_core/migrate";
-import { applyProjectMigrations } from "./_core/migrate";
+import { applyProjectMigrations, readProjectMigrations } from "./_core/migrate";
 
 function migration(statements: string[]): MigrationFile {
   return {
@@ -126,5 +126,20 @@ describe("applyProjectMigrations", () => {
     expect(migrationSql).toContain(
       "CONVERT(CAST(`event`.`year` AS CHAR) USING BINARY) = CONVERT(`settings`.`eventYear` USING BINARY)"
     );
+  });
+
+  it("trennt die transaktionale Abschlussmigration in einzeln ausführbare Statements", () => {
+    const finalMigration = readProjectMigrations().find(
+      candidate => candidate.tag === "0053_integrated_preparation_areas"
+    );
+
+    expect(finalMigration?.sql).toEqual([
+      "START TRANSACTION;",
+      expect.stringContaining("FROM `marketing`;"),
+      expect.stringContaining("FROM `approvals`;"),
+      "DELETE FROM `marketing`;",
+      "DELETE FROM `approvals`;",
+      "COMMIT;",
+    ]);
   });
 });
