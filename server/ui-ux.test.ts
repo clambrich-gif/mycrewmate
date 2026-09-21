@@ -992,7 +992,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain('className="bg-slate-50 py-1 pr-1 sm:pr-2"');
   });
 
-  it("zeigt das Live-Countdown-Widget im Dashboardkopf und den Kalender-Trigger im Layout", () => {
+  it("zeigt das native Marken-Countdown-Widget im Dashboard und den Kalender-Trigger im Layout", () => {
     const dashboard = source("client/src/pages/Dashboard.tsx");
     const layout = source("client/src/components/Layout.tsx");
     const router = source("server/routers.ts");
@@ -1002,16 +1002,19 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain("EventCountdownWidget");
     expect(dashboard).toContain('data-slot="event-countdown"');
     expect(dashboard).toContain("eventCountdownState");
-    expect(dashboard).toContain("Eventstart in");
-    expect(dashboard).toContain("border-2 border-amber-400");
-    expect(dashboard).toContain("text-4xl font-black");
-    expect(dashboard).toContain("shrink-0 !min-w-[17.5rem]");
-    expect(dashboard).toContain("const isUrgent = state.days < 14");
+    expect(dashboard).toContain('src="/mycrewmate-logo.png"');
+    expect(dashboard).toContain("Vorfreude im Blick. Das Event im Griff.");
+    expect(dashboard).toContain("Bis zum nächsten Event");
+    expect(dashboard).toContain("Rocket");
+    expect(dashboard).toContain("text-6xl font-black");
+    expect(dashboard).toContain("bis <span className=\"text-blue-700\">{name}</span>");
+    expect(dashboard).toContain("const isUrgent = state.kind === \"upcoming\" && state.days <= 14");
     expect(dashboard).toContain('data-countdown-urgent={isUrgent ? "true" : "false"}');
-    expect(dashboard).toContain('" countdown-urgent"');
-    expect(dashboard).not.toContain("formatEventDate");
-    expect(dashboard).toContain("Event läuft!");
-    expect(dashboard).toContain("Veranstaltung abgeschlossen");
+    expect(dashboard).toContain('" countdown-urgent border-amber-300"');
+    expect(dashboard).toContain("formatEventDate");
+    expect(dashboard).toContain("Heute ist das Event!");
+    expect(dashboard).toContain("Event erfolgreich durchgeführt!");
+    expect(dashboard).toContain("eventName={currentEvent.name}");
 
     expect(layout).toContain('data-slot="event-dates-trigger"');
     expect(layout).toContain("openEventDateSettings");
@@ -1021,6 +1024,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(router).toContain("startDate");
     expect(router).toContain("endDate");
     expect(eventDates).toContain("eventCountdownState");
+    expect(eventDates).toContain("Math.ceil(remaining / DAY_MS)");
     expect(styles).toContain(".countdown-urgent::after");
     expect(styles).toContain("@keyframes countdown-urgent-glow");
     expect(styles).toContain("prefers-reduced-motion: no-preference");

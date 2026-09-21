@@ -40,9 +40,18 @@ describe("event-dates & countdown", () => {
     );
     expect(state).toMatchObject({
       kind: "upcoming",
-      days: 41,
+      days: 42,
       hours: 18,
     });
+  });
+
+  it("rundet angebrochene Tage bis zum Eventstart sichtbar auf", () => {
+    const state = eventCountdownState(
+      { startDate: "2027-06-18", endDate: "2027-06-20" },
+      new Date("2027-06-17T12:00:00")
+    );
+
+    expect(state).toEqual({ kind: "upcoming", days: 1, hours: 12 });
   });
 
   it("liefert für die visuelle 14-Tage-Schwelle einen präzisen Tageswert", () => {

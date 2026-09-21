@@ -81,7 +81,9 @@ export function eventCountdownState(
     const remaining = startsAt.getTime() - now.getTime();
     return {
       kind: "upcoming",
-      days: Math.floor(remaining / DAY_MS),
+      // Ein angebrochener Kalendertag zählt für die Planung als verbleibender
+      // Tag. Das entspricht der sichtbaren Formel ceil(Start - Heute).
+      days: Math.ceil(remaining / DAY_MS),
       hours: Math.floor((remaining % DAY_MS) / (60 * 60 * 1000)),
     };
   }
