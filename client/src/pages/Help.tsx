@@ -1,29 +1,30 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { PageTitle } from "@/components/PageTitle";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { downloadBase64File } from "@/lib/download";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { PERMISSION_MATRIX } from "@shared/permissions";
 import {
   BookOpen,
   CheckCircle2,
-  ClipboardCheck,
   Clock3,
   Download,
-  Eye,
   FileDown,
-  FileSpreadsheet,
-  KeyRound,
   MessageCircle,
-  Pin,
   Search,
   Send,
   ShieldCheck,
   Smartphone,
-  ScrollText,
   UserRoundCog,
   Users,
 } from "lucide-react";
@@ -53,6 +54,22 @@ const ROLE_FILTER_STYLE = {
   planung: "border-amber-300 bg-amber-50 text-amber-950 hover:bg-amber-100",
   admin: "border-emerald-300 bg-emerald-50 text-emerald-950 hover:bg-emerald-100",
 } as const;
+
+const planningPermissionColor = (value: string) => {
+  if (value === "Kein Zugriff") return "border-rose-300 bg-rose-50 text-rose-800";
+  if (
+    value.startsWith("Nur ") ||
+    value.startsWith("Ansehen") ||
+    value.includes("exportieren") ||
+    value === "Speichern"
+  ) {
+    return "border-sky-300 bg-sky-50 text-sky-800";
+  }
+  return "border-amber-300 bg-amber-50 text-amber-900";
+};
+
+const administratorPermissionColor =
+  "border-emerald-300 bg-emerald-50 text-emerald-800";
 
 const PLANNING_TEAM_FLOW = [
   {
@@ -351,106 +368,84 @@ export default function Help() {
 
       <section aria-labelledby="rollen-berechtigungen" className="scroll-mt-6">
         <Card className="overflow-hidden border-primary/20 shadow-sm">
-          <CardHeader className="border-b bg-gradient-to-r from-sky-50 via-white to-emerald-50 p-5">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm">
-                <ShieldCheck className="h-5 w-5" />
-              </div>
-              <div>
-                <CardTitle id="rollen-berechtigungen" className="text-xl">
-                  Rollen- &amp; Berechtigungsübersicht
-                </CardTitle>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Der aktuelle Funktionsumfang von MyCrewMate auf einen Blick.
-                </p>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="grid gap-4 p-4 lg:grid-cols-2 lg:p-5">
-            <article className="rounded-xl border border-amber-200 bg-amber-50/60 p-4">
-              <div className="flex items-center gap-3">
-                <div className="grid h-10 w-10 place-items-center rounded-lg bg-amber-100 text-amber-800">
-                  <Users className="h-5 w-5" />
+          <Accordion type="single" collapsible>
+            <AccordionItem value="berechtigungsmatrix" className="border-0">
+              <AccordionTrigger className="bg-gradient-to-r from-sky-50 via-white to-emerald-50 px-4 py-4 no-underline hover:no-underline sm:px-5">
+                <div className="flex items-center gap-3 text-left">
+                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+                    <ShieldCheck className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <CardTitle id="rollen-berechtigungen" className="text-base sm:text-xl">
+                      Berechtigungsmatrix &amp; Rollenverteilung
+                    </CardTitle>
+                    <p className="mt-1 text-sm font-normal text-muted-foreground">
+                      Rechte für Planungsteam und Administratoren auf einen Blick.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Sektion A</p>
-                  <h2 className="font-semibold text-amber-950">Planungsteam</h2>
-                  <p className="text-sm text-amber-800">Operativer Fokus</p>
-                </div>
-              </div>
-              <div className="mt-4 space-y-3">
-                <div className="rounded-lg border border-amber-200 bg-white/80 p-3">
-                  <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                    <ClipboardCheck className="h-4 w-4 text-amber-700" />
-                    Operative Arbeitsbereiche
-                  </h3>
-                  <p className="mt-1 text-sm leading-6 text-slate-700">
-                    Helfer, Vorbereitung, Nachbereitung, Material und Spenden operativ bearbeiten sowie die PDF-Ausgabe nutzen. Schutzkritische Resets, Importe und Strukturänderungen bleiben administrativ geschützt.
+              </AccordionTrigger>
+              <AccordionContent className="border-t bg-white p-0">
+                <div className="p-3 sm:p-5">
+                  <p className="mb-4 text-sm leading-6 text-muted-foreground">
+                    Die Berechtigungen entsprechen den serverseitig geschützten Funktionen. Einmal-Zugänge, Passwort-Resets, Notfall-Stopp und das Protokoll bleiben ausschließlich Administratoren vorbehalten.
                   </p>
+                  <div className="space-y-3 md:hidden">
+                    {PERMISSION_MATRIX.map(row => (
+                      <article key={row.area} className="rounded-lg border bg-slate-50/50 p-3">
+                        <h2 className="font-semibold text-slate-900">{row.area}</h2>
+                        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                          <div className="space-y-1">
+                            <p className="text-xs font-medium text-muted-foreground">Planungsteam</p>
+                            <Badge variant="outline" className={cn("whitespace-normal text-left", planningPermissionColor(row.planningTeam))}>
+                              {row.planningTeam}
+                            </Badge>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-xs font-medium text-muted-foreground">Administrator</p>
+                            <Badge variant="outline" className={cn("whitespace-normal text-left", administratorPermissionColor)}>
+                              {row.administrator}
+                            </Badge>
+                          </div>
+                        </div>
+                        <p className="mt-3 text-sm leading-6 text-muted-foreground">{row.note}</p>
+                      </article>
+                    ))}
+                  </div>
+                  <div className="hidden overflow-x-auto rounded-lg border md:block">
+                    <table className="w-full min-w-[980px] text-sm">
+                      <thead className="bg-slate-50 text-left text-slate-700">
+                        <tr>
+                          <th className="w-[20%] p-3 font-semibold">Bereich</th>
+                          <th className="w-[20%] p-3 font-semibold">Planungsteam</th>
+                          <th className="w-[20%] p-3 font-semibold">Administrator</th>
+                          <th className="w-[40%] p-3 font-semibold">Erläuterung</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {PERMISSION_MATRIX.map(row => (
+                          <tr key={row.area} className="border-t align-top">
+                            <td className="p-3 font-medium text-slate-900">{row.area}</td>
+                            <td className="p-3">
+                              <Badge variant="outline" className={cn("whitespace-normal text-left", planningPermissionColor(row.planningTeam))}>
+                                {row.planningTeam}
+                              </Badge>
+                            </td>
+                            <td className="p-3">
+                              <Badge variant="outline" className={cn("whitespace-normal text-left", administratorPermissionColor)}>
+                                {row.administrator}
+                              </Badge>
+                            </td>
+                            <td className="p-3 leading-6 text-muted-foreground">{row.note}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-                <div className="rounded-lg border border-amber-200 bg-white/80 p-3">
-                  <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                    <Eye className="h-4 w-4 text-amber-700" />
-                    Leseansichten
-                  </h3>
-                  <p className="mt-1 text-sm leading-6 text-slate-700">
-                    Dashboard und Einsatzplan ansehen und filtern – ohne administrative Schicht-, Bereichs- oder Veranstaltungsänderungen.
-                  </p>
-                </div>
-                <div className="rounded-lg border border-amber-200 bg-white/80 p-3">
-                  <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                    <Pin className="h-4 w-4 text-amber-700" />
-                    Kommunikation &amp; Schnellfilter
-                  </h3>
-                  <p className="mt-1 text-sm leading-6 text-slate-700">
-                    Live-Chat (Team-Notizen) verwenden und den persönlichen Schnellfilter „Meine Aufgaben“ als Standardansicht anpinnen.
-                  </p>
-                </div>
-              </div>
-            </article>
-
-            <article className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
-              <div className="flex items-center gap-3">
-                <div className="grid h-10 w-10 place-items-center rounded-lg bg-emerald-100 text-emerald-800">
-                  <ShieldCheck className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Sektion B</p>
-                  <h2 className="font-semibold text-emerald-950">Administrator</h2>
-                  <p className="text-sm text-emerald-800">Vollzugriff &amp; Systemsteuerung</p>
-                </div>
-              </div>
-              <div className="mt-4 space-y-3">
-                <div className="rounded-lg border border-emerald-200 bg-white/80 p-3">
-                  <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                    <FileSpreadsheet className="h-4 w-4 text-emerald-700" />
-                    Projekt- &amp; Datenverwaltung
-                  </h3>
-                  <p className="mt-1 text-sm leading-6 text-slate-700">
-                    Projektstände speichern und laden, Excel-Importe prüfen und übernehmen sowie Pläne, Veranstaltungen und geschützte Bereiche zurücksetzen.
-                  </p>
-                </div>
-                <div className="rounded-lg border border-emerald-200 bg-white/80 p-3">
-                  <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                    <KeyRound className="h-4 w-4 text-emerald-700" />
-                    Zugangsschutz &amp; Notfall-Stopp
-                  </h3>
-                  <p className="mt-1 text-sm leading-6 text-slate-700">
-                    Einmal-Zugänge vergeben und drucken, Passwörter gezielt zurücksetzen sowie die globale Notfall-Sperre für das Planungsteam aktivieren.
-                  </p>
-                </div>
-                <div className="rounded-lg border border-emerald-200 bg-white/80 p-3">
-                  <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                    <ScrollText className="h-4 w-4 text-emerald-700" />
-                    System-Protokoll
-                  </h3>
-                  <p className="mt-1 text-sm leading-6 text-slate-700">
-                    Exklusive Einsicht in das Protokoll und Logbuch aller Systemaktionen, einschließlich sicherheitsrelevanter Vorgänge und Wiederherstellungen.
-                  </p>
-                </div>
-              </div>
-            </article>
-          </CardContent>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </Card>
       </section>
 

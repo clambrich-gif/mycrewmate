@@ -13,20 +13,9 @@ import {
 } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { PERMISSION_MATRIX } from "@shared/permissions";
-import { History, RotateCcw, ShieldCheck, Users } from "lucide-react";
+import { History, RotateCcw } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-
-const permissionColor = (value: string) => {
-  if (value === "Kein Zugriff")
-    return "border-red-300 bg-red-50 text-red-800";
-  if (value.startsWith("Nur "))
-    return "border-sky-300 bg-sky-50 text-sky-800";
-  if (value === "Vollzugriff")
-    return "border-emerald-300 bg-emerald-50 text-emerald-800";
-  return "border-amber-300 bg-amber-50 text-amber-900";
-};
 
 const actionLabel = {
   single_delete: "Einzellöschung",
@@ -201,122 +190,12 @@ export default function Permissions() {
   return (
     <div className="space-y-6">
       <div>
-        <PageTitle icon="permissions">Rollen & Berechtigungen</PageTitle>
+        <PageTitle icon="permissions">Protokoll</PageTitle>
         <p className="text-muted-foreground">
-          Transparente Übersicht der Rechte für Planungsteam und
-          Administratoren. Die Matrix entspricht den serverseitig erzwungenen
-          Zugriffsregeln.
+          System-Logbuch mit Aktivitätsverlauf, Löschungen und gezielten
+          Wiederherstellungen für Administratoren.
         </p>
       </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card className="border-amber-200 bg-amber-50/60 shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Users className="h-5 w-5 text-amber-700" /> Planungsteam
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            Bearbeitet operative Listen. Der Einsatzplan bleibt sichtbar und
-            filterbar, aber vor Änderungen geschützt.
-          </CardContent>
-        </Card>
-        <Card className="border-emerald-200 bg-emerald-50/60 shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <ShieldCheck className="h-5 w-5 text-emerald-700" /> Administrator
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            Verwaltet Einsatzplan, Datensicherungen, Zugänge und sensible Lösch-
-            oder Resetvorgänge.
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card className="shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-base">Berechtigungsmatrix</CardTitle>
-        </CardHeader>
-        <CardContent className="p-3 md:p-0">
-          <div className="space-y-3 md:hidden">
-            {PERMISSION_MATRIX.map(row => (
-              <div key={row.area} className="space-y-3 rounded-lg border p-3">
-                <div className="font-semibold">{row.area}</div>
-                <div className="space-y-1">
-                  <div className="text-xs font-medium text-muted-foreground">
-                    Planungsteam
-                  </div>
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      "whitespace-normal",
-                      permissionColor(row.planningTeam)
-                    )}
-                  >
-                    {row.planningTeam}
-                  </Badge>
-                </div>
-                <div className="space-y-1">
-                  <div className="text-xs font-medium text-muted-foreground">
-                    Administrator
-                  </div>
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      "whitespace-normal",
-                      permissionColor(row.administrator)
-                    )}
-                  >
-                    {row.administrator}
-                  </Badge>
-                </div>
-                <p className="text-sm text-muted-foreground">{row.note}</p>
-              </div>
-            ))}
-          </div>
-          <table className="hidden w-full min-w-[850px] text-sm md:table">
-            <thead className="bg-muted/60 text-left">
-              <tr>
-                <th className="p-3">Bereich</th>
-                <th className="p-3">Planungsteam</th>
-                <th className="p-3">Administrator</th>
-                <th className="p-3">Erläuterung</th>
-              </tr>
-            </thead>
-            <tbody>
-              {PERMISSION_MATRIX.map(row => (
-                <tr key={row.area} className="border-t align-top">
-                  <td className="p-3 font-medium">{row.area}</td>
-                  <td className="p-3">
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "whitespace-normal",
-                        permissionColor(row.planningTeam)
-                      )}
-                    >
-                      {row.planningTeam}
-                    </Badge>
-                  </td>
-                  <td className="p-3">
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "whitespace-normal",
-                        permissionColor(row.administrator)
-                      )}
-                    >
-                      {row.administrator}
-                    </Badge>
-                  </td>
-                  <td className="p-3 text-muted-foreground">{row.note}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </CardContent>
-      </Card>
 
       <Card className="min-w-0 max-w-full overflow-hidden shadow-sm lg:mr-24">
         <CardHeader className="gap-3">

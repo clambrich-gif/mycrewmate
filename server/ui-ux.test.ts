@@ -1288,14 +1288,16 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(help).toContain("Progressive Web App (PWA)");
     expect(help).toContain("Zum Home-Bildschirm");
     expect(help).toContain("App installieren");
-    expect(help).toContain("Rollen- &amp; Berechtigungsübersicht");
-    expect(help).toContain("Sektion A");
-    expect(help).toContain("Sektion B");
-    expect(help).toContain("Operativer Fokus");
-    expect(help).toContain("Vollzugriff &amp; Systemsteuerung");
-    expect(help).toContain("Zugangsschutz &amp; Notfall-Stopp");
-    expect(help).toContain("System-Protokoll");
-    expect(help.indexOf("Rollen- &amp; Berechtigungsübersicht")).toBeLessThan(
+    expect(help).toContain("Berechtigungsmatrix &amp; Rollenverteilung");
+    expect(help).toContain('type="single" collapsible');
+    expect(help).toContain('value="berechtigungsmatrix"');
+    expect(help).toContain("PERMISSION_MATRIX.map(row");
+    expect(help).toContain("Bereich");
+    expect(help).toContain("Planungsteam");
+    expect(help).toContain("Administrator");
+    expect(help).toContain("Erläuterung");
+    expect(help).toContain("Einmal-Zugänge, Passwort-Resets, Notfall-Stopp");
+    expect(help.indexOf("Berechtigungsmatrix &amp; Rollenverteilung")).toBeLessThan(
       help.indexOf('aria-label="Hilfekapitel nach Rolle filtern"')
     );
     expect(help).toContain("Helferkartei und Verfügbarkeiten");
@@ -2829,6 +2831,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(manager).toContain("⏳ Initialcode offen");
     expect(manager).toContain("✓ Passwort eingerichtet");
     expect(permissions).toContain("Aktivitätsprotokoll");
+    expect(permissions).toContain("System-Logbuch mit Aktivitätsverlauf");
+    expect(permissions).not.toContain("PERMISSION_MATRIX");
+    expect(permissions).not.toContain("Berechtigungsmatrix");
+    expect(permissions).not.toContain("Rollen & Berechtigungen");
   });
 
   it("erzwingt bei Anmeldung mit Initialpasswort ein nicht schließbares Modal zur Passwort-Neuvergabe", () => {

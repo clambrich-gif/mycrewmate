@@ -49,7 +49,7 @@ export const PERMISSION_MATRIX: readonly PermissionRow[] = [
     note: "Einzellöschungen und Resets sind administrativ geschützt.",
   },
   {
-    area: "Kuchen",
+    area: "Kuchen / Spenden",
     planningTeam: "Vollzugriff",
     administrator: "Vollzugriff",
     note: "Einzellöschungen erfordern für beide Rollen eine ausdrückliche Ja/Nein-Bestätigung und werden protokolliert.",
@@ -79,15 +79,15 @@ export const PERMISSION_MATRIX: readonly PermissionRow[] = [
     note: "Excel dient der Übersicht. Im jeweiligen Bereich können Administratoren nur dessen Tabellenblatt prüfen und vollständig importieren; Neu-, Änderungs- und Löschfilter erleichtern die Vorschau.",
   },
   {
-    area: "Zugangsschutz & Resets",
+    area: "Zugangsschutz, Einmal-Zugänge & Resets",
     planningTeam: "Kein Zugriff",
     administrator: "Vollzugriff",
-    note: "Passwortänderungen und Bereichs- oder Jahresresets bleiben ausschließlich administrativ geschützt.",
+    note: "Administratoren erstellen und drucken Einmal-Zugänge, setzen Passwörter gezielt zurück und aktivieren bei Bedarf den globalen Notfall-Stopp für das gesamte Planungsteam. Passwortänderungen sowie Bereichs- oder Jahresresets bleiben administrativ geschützt.",
   },
   {
-    area: "Löschprotokoll",
+    area: "Protokoll & Wiederherstellung",
     planningTeam: "Kein Zugriff",
     administrator: "Ansehen, filtern, wiederherstellen und zurücksetzen",
-    note: "Einzellöschungen von Helfern, Kuchen sowie Vor- und Nachbereitungen können gezielt wiederhergestellt werden. Das vollständige Zurücksetzen des Protokolls erfordert das Administratorpasswort.",
+    note: "Der Menüpunkt Protokoll ist für das Planungsteam ausgeblendet und nicht aufrufbar. Administratoren können Einzellöschungen von Helfern, Spenden sowie Vor- und Nachbereitungen gezielt wiederherstellen; das Zurücksetzen erfordert das Administratorpasswort.",
   },
 ];
