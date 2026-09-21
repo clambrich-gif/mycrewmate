@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import type { MigrationConnection, MigrationFile } from "./_core/migrate";
 import { applyProjectMigrations } from "./_core/migrate";
@@ -110,5 +112,19 @@ describe("applyProjectMigrations", () => {
     await expect(
       applyProjectMigrations(connection, [migration(["UPDATE `events` SET `name` = `name`; "])])
     ).rejects.toThrow("Berechtigung verweigert");
+  });
+
+  it("gleicht die historischen Logo-Einstellungen ohne Kollationsabhängigkeit ab", () => {
+    const migrationSql = fs.readFileSync(
+      path.resolve(process.cwd(), "drizzle/0014_fat_dracula.sql"),
+      "utf8"
+    );
+
+    expect(migrationSql).toContain(
+      "CONVERT(`event`.`name` USING BINARY) = CONVERT(`settings`.`eventName` USING BINARY)"
+    );
+    expect(migrationSql).toContain(
+      "CONVERT(CAST(`event`.`year` AS CHAR) USING BINARY) = CONVERT(`settings`.`eventYear` USING BINARY)"
+    );
   });
 });
