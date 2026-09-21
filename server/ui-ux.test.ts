@@ -1762,6 +1762,20 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(contacts).not.toContain("Passwort / Zugangscode (optional)");
   });
 
+  it("bearbeitet Ansprechpartner in einem Modal statt innerhalb der Listenzeile", () => {
+    const contacts = source("client/src/pages/Contacts.tsx");
+
+    expect(contacts).toContain("const [editTarget, setEditTarget]");
+    expect(contacts).toContain("open={Boolean(editTarget)}");
+    expect(contacts).toContain("Ansprechpartner bearbeiten – {editTarget?.name}");
+    expect(contacts).toContain('id="edit-contact-name"');
+    expect(contacts).toContain('id="edit-contact-phone"');
+    expect(contacts).toContain("Zugangsdaten / Einmalpasswort generieren & drucken");
+    expect(contacts).toContain("setEditTarget({ id: contact.id, name: contact.name })");
+    expect(contacts).not.toContain("editId === contact.id");
+    expect(contacts).not.toContain("sm:grid-cols-[minmax(240px,1fr)_220px]");
+  });
+
   it("verwendet Mint für Übernahmen und Rose für Resets", () => {
     const importButton = source("client/src/components/ModuleExcelImportButton.tsx");
     const copyButton = source("client/src/components/CopyPreviousPlanButton.tsx");
@@ -2667,7 +2681,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(contacts).toContain("Hinzufügen & Zugangsblatt drucken");
     expect(contacts).toContain("createWithAccessSheet");
     expect(contacts).toContain("generateAccessSheet");
-    expect(contacts).toContain("Zugangsdaten / Einmalpasswort generieren &amp; drucken");
+    expect(contacts).toContain("Zugangsdaten / Einmalpasswort generieren & drucken");
     expect(contacts).not.toContain("Passwort / Zugangscode (optional)");
     expect(contacts).not.toContain("Neues Passwort (optional)");
 

@@ -5,6 +5,14 @@ import { PageTitle } from "@/components/PageTitle";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
 import { downloadBase64File } from "@/lib/download";
@@ -19,7 +27,10 @@ export default function Contacts() {
   const { data: contacts = [], isLoading } = trpc.contacts.list.useQuery();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [editId, setEditId] = useState<number | null>(null);
+  const [editTarget, setEditTarget] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{
@@ -70,7 +81,7 @@ export default function Contacts() {
   const update = trpc.contacts.update.useMutation({
     onSuccess: () => {
       invalidate();
-      setEditId(null);
+      setEditTarget(null);
       toast.success("Ansprechpartner aktualisiert");
     },
     onError: error => toast.error(error.message),
@@ -191,86 +202,27 @@ export default function Contacts() {
                   key={contact.id}
                   className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between"
                 >
-                  {editId === contact.id ? (
-                    <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-[minmax(240px,1fr)_220px]">
-                      <Input
-                        autoFocus
-                        value={editName}
-                        onChange={event => setEditName(event.target.value)}
-                        placeholder="Name des Ansprechpartners"
-                        onKeyDown={event => {
-                          if (event.key === "Enter") saveEdit(contact.id);
-                          if (event.key === "Escape") setEditId(null);
-                        }}
-                      />
-                      <Input
-                        type="tel"
-                        value={editPhone}
-                        onChange={event => setEditPhone(event.target.value)}
-                        placeholder="Rufnummer"
-                        onKeyDown={event => {
-                          if (event.key === "Enter") saveEdit(contact.id);
-                          if (event.key === "Escape") setEditId(null);
-                        }}
-                      />
+                  <div className="min-w-0">
+                    <div className="font-medium">{contact.name}</div>
+                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <Phone className="h-3.5 w-3.5" />
+                      {contact.phone || "Keine Rufnummer hinterlegt"}
                     </div>
-                  ) : (
-                    <div className="min-w-0">
-                      <div className="font-medium">{contact.name}</div>
-                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                        <Phone className="h-3.5 w-3.5" />
-                        {contact.phone || "Keine Rufnummer hinterlegt"}
-                      </div>
-                    </div>
-                  )}
+                  </div>
                   <span className="flex flex-wrap items-center gap-1.5">
-                    {editId === contact.id ? (
-                      <>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setEditId(null)}
-                        >
-                          Abbrechen
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          disabled={!editName.trim() || update.isPending}
-                          onClick={() => saveEdit(contact.id)}
-                        >
-                          Speichern
-                        </Button>
-                        {user?.role === "admin" && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="border-amber-200 text-amber-800 hover:bg-amber-50 hover:text-amber-900"
-                            disabled={generateAccessSheet.isPending}
-                            onClick={() => generateAccessSheet.mutate({ id: contact.id })}
-                          >
-                            <KeyRound className="mr-1.5 h-3.5 w-3.5" />
-                            Zugangsdaten / Einmalpasswort generieren &amp; drucken
-                          </Button>
-                        )}
-                      </>
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        title="Bearbeiten"
-                        onClick={() => {
-                          setEditId(contact.id);
-                          setEditName(contact.name);
-                          setEditPhone(contact.phone ?? "");
-                        }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                    )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      title="Bearbeiten"
+                      onClick={() => {
+                        setEditTarget({ id: contact.id, name: contact.name });
+                        setEditName(contact.name);
+                        setEditPhone(contact.phone ?? "");
+                      }}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
                     {user?.role === "admin" && (
                       <Button
                         type="button"
@@ -299,6 +251,89 @@ export default function Contacts() {
           )}
         </CardContent>
       </Card>
+      <Dialog
+        open={Boolean(editTarget)}
+        onOpenChange={open => {
+          if (!open && !update.isPending) setEditTarget(null);
+        }}
+      >
+        <DialogContent className="w-[calc(100%-2rem)] bg-white sm:max-w-lg">
+          <form
+            className="space-y-5"
+            onSubmit={event => {
+              event.preventDefault();
+              if (editTarget) saveEdit(editTarget.id);
+            }}
+          >
+            <DialogHeader>
+              <DialogTitle>
+                Ansprechpartner bearbeiten – {editTarget?.name}
+              </DialogTitle>
+              <DialogDescription>
+                Stammdaten ändern oder bei Bedarf einen neuen sicheren Einmalcode
+                samt Zugangsblatt erzeugen.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <label
+                htmlFor="edit-contact-name"
+                className="text-sm font-semibold text-slate-800"
+              >
+                Name des Ansprechpartners
+              </label>
+              <Input
+                id="edit-contact-name"
+                autoFocus
+                value={editName}
+                onChange={event => setEditName(event.target.value)}
+                placeholder="Name des Ansprechpartners"
+              />
+            </div>
+            <div className="space-y-2">
+              <label
+                htmlFor="edit-contact-phone"
+                className="text-sm font-semibold text-slate-800"
+              >
+                Rufnummer
+              </label>
+              <Input
+                id="edit-contact-phone"
+                type="tel"
+                value={editPhone}
+                onChange={event => setEditPhone(event.target.value)}
+                placeholder="z. B. 0170 1234567"
+              />
+            </div>
+            {user?.role === "admin" && editTarget && (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100 hover:text-amber-950"
+                disabled={generateAccessSheet.isPending}
+                onClick={() => generateAccessSheet.mutate({ id: editTarget.id })}
+              >
+                <KeyRound className="mr-2 h-4 w-4" />
+                {generateAccessSheet.isPending
+                  ? "Einmalpasswort wird erzeugt …"
+                  : "Zugangsdaten / Einmalpasswort generieren & drucken"}
+              </Button>
+            )}
+            <DialogFooter className="flex flex-row flex-nowrap items-center justify-between gap-3 sm:space-x-0">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={update.isPending}
+                onClick={() => setEditTarget(null)}
+              >
+                Abbrechen
+              </Button>
+              <Button type="submit" disabled={!editName.trim() || update.isPending}>
+                {update.isPending ? "Wird gespeichert …" : "Speichern"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
       <AdminPasswordDialog
         open={Boolean(deleteTarget)}
         onOpenChange={open => !open && setDeleteTarget(null)}
