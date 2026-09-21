@@ -42,7 +42,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { startLogin } from "@/const";
 import { useEventYear } from "@/contexts/YearContext";
 import { navigationItemClasses, visibleNavigationItems } from "@/lib/nav";
 import { preloadRoute } from "@/lib/route-loaders";
@@ -303,6 +302,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [capsLockOn, setCapsLockOn] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loginMode, setLoginMode] = useState<"user" | "admin">("user");
+  const [loginFailureCounts, setLoginFailureCounts] = useState({ user: 0, admin: 0 });
   const [forcePasswordChangeOpen, setForcePasswordChangeOpen] = useState(false);
   const [initialPassword, setInitialPassword] = useState("");
   const [initialPasswordConfirmation, setInitialPasswordConfirmation] = useState("");
@@ -362,6 +362,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
     () => uniqueAdminLoginContacts(adminLoginContacts),
     [adminLoginContacts]
   );
+  const currentLoginFailureCount = loginFailureCounts[loginMode];
+  const showCooldownHint = currentLoginFailureCount >= 2;
 
   useEffect(() => {
     const handleGlobalKeyboardShortcut = (event: KeyboardEvent) => {
@@ -634,6 +636,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const finishLogin = async () => {
     setPassword("");
     setLoginError(null);
+    setLoginFailureCounts({ user: 0, admin: 0 });
     setRecoveryOpen(false);
     setRecoveryKey("");
     setNewAdminPassword("");
@@ -644,6 +647,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const passwordLogin = trpc.auth.passwordLogin.useMutation({
     mutationKey: ["auth", "passwordLogin"],
     onSuccess: async result => {
+      setLoginFailureCounts(current => ({ ...current, user: 0 }));
       if (result.mustChangePassword) {
         setPassword("");
         setLoginError(null);
@@ -658,6 +662,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
     },
     onError: async error => {
       setLoginError(error.message);
+      if (error.data?.code === "BAD_REQUEST") {
+        setLoginFailureCounts(current => ({
+          ...current,
+          user: current.user + 1,
+        }));
+      }
       if (error.data?.code === "TOO_MANY_REQUESTS") {
         await utils.auth.passwordStatus.invalidate();
       }
@@ -682,6 +692,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const adminPasswordLogin = trpc.auth.adminPasswordLogin.useMutation({
     mutationKey: ["auth", "adminPasswordLogin"],
     onSuccess: async result => {
+      setLoginFailureCounts(current => ({ ...current, admin: 0 }));
       if (result.requiresIdentity) {
         const contacts = uniqueAdminLoginContacts(result.contacts ?? []);
         const lastAdministratorName = getLastAdministratorName();
@@ -703,7 +714,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
       rememberAdministratorName(selectedAdministratorName);
       await finishLogin();
     },
-    onError: error => setLoginError(error.message),
+    onError: error => {
+      setLoginError(error.message);
+      if (error.data?.code === "BAD_REQUEST") {
+        setLoginFailureCounts(current => ({
+          ...current,
+          admin: current.admin + 1,
+        }));
+      }
+    },
   });
   const resetAdminWithKey = trpc.auth.resetAdminWithKey.useMutation({
     mutationKey: ["auth", "resetAdminWithKey"],
@@ -890,7 +909,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated) {
     return (
       <div className="relative grid min-h-[100dvh] place-items-center bg-gradient-to-br from-[oklch(0.97_0.02_250)] to-[oklch(0.92_0.04_240)] px-4 py-5 sm:p-6">
-        <div className="w-full max-w-md rounded-2xl border border-white/80 bg-white/90 p-5 text-card-foreground shadow-xl backdrop-blur-sm sm:p-6">
+        <div className="w-full max-w-md rounded-2xl border border-white/80 bg-white/90 p-5 text-card-foreground shadow-xl backdrop-blur-sm transition-all duration-200 ease-in-out sm:p-6">
           <div className="mb-4 text-center">
             <h1 className="sr-only">MyCrewMate</h1>
             <img
@@ -1163,6 +1182,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <span>{loginError}</span>
               </div>
             )}
+            {showCooldownHint && !planningTeamLocked && (
+              <p
+                className="flex items-center justify-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-center text-xs text-amber-900"
+                role="status"
+                aria-live="polite"
+              >
+                <TriangleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                Nach 5 Fehlversuchen greift eine zeitbasierte Sperre (Cooldown).
+              </p>
+            )}
             {planningTeamLocked && (
               <div
                 ref={loginLockAlertRef}
@@ -1191,24 +1220,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             )}
           </form>
           )}
-
-          <div className="mt-2 border-t border-slate-200 pt-1 text-center">
-            <p className="text-[10px] leading-tight text-gray-400">
-              Nach 5 Fehlversuchen greift eine zeitbasierte Sperre (Cooldown).
-            </p>
-            <div className="mt-2 pb-1">
-              <p className="text-xs font-medium text-slate-500">Hauptadministrator</p>
-              <button
-                type="button"
-                className="mt-0.5 inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md px-2 text-xs font-medium text-slate-500 underline-offset-4 hover:text-slate-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-                onClick={() => startLogin()}
-              >
-                <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
-                Als Hauptadministrator via Manus anmelden
-              </button>
-            </div>
-          </div>
-            </div>
+        </div>
           <div className="absolute inset-x-4 bottom-3 text-center sm:bottom-4">
             <LegalFooterLinks onOpenImpressum={() => setImpressumOpen(true)} />
             <button

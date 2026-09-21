@@ -314,7 +314,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(alertDialog).toContain("overflow-y-auto overscroll-contain");
     expect(layout).toContain("Passwort vergessen / Recovery");
     expect(layout).toContain("Zurück zur Anmeldung");
-    expect(layout.match(/inline-flex min-h-11 items-center justify-center/g)).toHaveLength(3);
+    expect(layout.match(/inline-flex min-h-11 items-center justify-center/g)).toHaveLength(2);
   });
 
   it("zeigt und entsperrt den dauerhaften Planungsteam-Login ausschließlich im Adminbereich", () => {
@@ -1296,15 +1296,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain('className="h-12 pr-12 text-base"');
     expect(layout).toContain("rounded-lg bg-blue-600 py-2.5 text-base font-semibold text-white");
     expect(layout).toContain(': "Anmelden"');
-    expect(layout).toContain("Als Hauptadministrator via Manus anmelden");
+    expect(layout).not.toContain("Als Hauptadministrator via Manus anmelden");
+    expect(layout).not.toContain("Hauptadministrator</p>");
     expect(layout).toContain("VEREINS- &amp; EVENTPLANUNG");
     expect(layout).not.toContain("Geschützte Helfer-Planung für Organisatoren");
     expect(layout).toContain("Nach 5 Fehlversuchen greift eine zeitbasierte Sperre (Cooldown).");
-    expect(layout).toContain("mt-2 border-t border-slate-200 pt-1 text-center");
-    expect(layout).toContain("mt-2 pb-1");
-    expect(layout.indexOf("Nach 5 Fehlversuchen greift eine zeitbasierte Sperre (Cooldown).")).toBeLessThan(
-      layout.lastIndexOf("Hauptadministrator</p>")
-    );
+    expect(layout).toContain("showCooldownHint && !planningTeamLocked");
+    expect(layout).toContain("border-amber-200 bg-amber-50");
     expect(layout).toContain('event.getModifierState("CapsLock")');
     expect(layout).toContain('id="password-caps-lock-warning"');
     expect(layout).toContain("Feststelltaste ist aktiviert.");
@@ -2787,5 +2785,26 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(modal).toContain("showCloseButton={false}");
     expect(modal).toContain("onEscapeKeyDown={event => event.preventDefault()}");
     expect(modal).toContain("onPointerDownOutside={event => event.preventDefault()}");
+  });
+
+  it("hält die Loginansicht je Rolle minimal und zeigt den Cooldown erst nach wiederholten Fehlern", () => {
+    const layout = source("client/src/components/Layout.tsx");
+    const unauthenticatedLayout = layout.slice(
+      layout.indexOf("if (!isAuthenticated)"),
+      layout.indexOf("if (\n    events.isLoading")
+    );
+
+    expect(unauthenticatedLayout).toContain("transition-all duration-200 ease-in-out");
+    expect(unauthenticatedLayout).toContain('loginMode === "admin"');
+    expect(unauthenticatedLayout).toContain("Administratorpasswort");
+    expect(unauthenticatedLayout).toContain("Zugangspasswort");
+    expect(unauthenticatedLayout).toContain("Als Administrator anmelden");
+    expect(unauthenticatedLayout).toContain("Passwort vergessen / Recovery");
+    expect(layout).toContain("loginFailureCounts");
+    expect(layout).toContain("currentLoginFailureCount >= 2");
+    expect(unauthenticatedLayout).toContain("showCooldownHint && !planningTeamLocked");
+    expect(unauthenticatedLayout).toContain("border-amber-200 bg-amber-50");
+    expect(unauthenticatedLayout).not.toContain("Hauptadministrator");
+    expect(unauthenticatedLayout).not.toContain("via Manus");
   });
 });
