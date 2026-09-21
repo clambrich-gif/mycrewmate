@@ -1223,7 +1223,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   </p>
                   <p className="mt-1 text-sm leading-relaxed text-red-800">
                     Bitte kontaktieren Sie einen Administrator. Nur ein
-                    Administrator kann die Sperre im Bereich „Zugangsschutz“
+                    Administrator kann die Sperre im Bereich „Schutz &amp; Protokoll“
                     wieder aufheben.
                   </p>
                 </div>

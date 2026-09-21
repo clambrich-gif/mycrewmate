@@ -2,6 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { PageTitle } from "@/components/PageTitle";
 import { PlanningTeamAccessManager } from "@/components/PlanningTeamAccessManager";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
+import { ProtocolLog } from "@/pages/Permissions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -229,9 +230,9 @@ export default function Security() {
   return (
     <div className="max-w-4xl space-y-6">
       <div>
-        <PageTitle icon="security">Zugangsschutz &amp; Administration</PageTitle>
+        <PageTitle icon="security">Schutz &amp; Protokoll</PageTitle>
         <p className="text-muted-foreground">
-          Getrennte Zugänge, Passwörter und Notfallmaßnahmen sicher verwalten.
+          Zugänge, Passwörter, Notfallmaßnahmen und alle Systemprotokolle sicher verwalten.
         </p>
       </div>
 
@@ -355,10 +356,23 @@ export default function Security() {
             </p>
           )}
         </SecurityAccordion>
-      </div>
 
-      <Card className="border-destructive/30 shadow-sm">
-        <CardContent className="space-y-4 py-5">
+        <SecurityAccordion
+          title="Protokoll"
+          description="Aktivitätsverlauf, Löschungen und gezielte Wiederherstellungen aller Planungsbereiche."
+          icon={FileText}
+          tone="slate"
+        >
+          <ProtocolLog />
+        </SecurityAccordion>
+
+        <SecurityAccordion
+          title={`Gefahrenbereich (Planung ${year})`}
+          description="Unwiderrufliche Löschung aller Planungsdaten des aktuell gewählten Jahres."
+          icon={ShieldAlert}
+          tone="red"
+        >
+          <div className="space-y-4">
           <div className="flex items-center gap-2 font-semibold text-destructive">
             <ShieldAlert className="h-5 w-5" /> Gefahrenbereich – Planung {year}
           </div>
@@ -367,9 +381,10 @@ export default function Security() {
             Materialien, Kuchen- und Finanzdaten des aktuell gewählten Jahres.
             Andere Veranstaltungsjahre und die Passwörter bleiben erhalten.
           </p>
-          <ResetAreaButton area="all" label={`Alle Planungsdaten ${year}`} />
-        </CardContent>
-      </Card>
+            <ResetAreaButton area="all" label={`Alle Planungsdaten ${year}`} />
+          </div>
+        </SecurityAccordion>
+      </div>
 
       <div className="rounded-lg border bg-muted/40 p-4 text-sm text-muted-foreground">
         <ShieldCheck className="mr-2 inline h-4 w-4 text-primary" />

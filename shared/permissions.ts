@@ -85,9 +85,9 @@ export const PERMISSION_MATRIX: readonly PermissionRow[] = [
     note: "Administratoren erstellen und drucken Einmal-Zugänge, setzen Passwörter gezielt zurück und aktivieren bei Bedarf den globalen Notfall-Stopp für das gesamte Planungsteam. Passwortänderungen sowie Bereichs- oder Jahresresets bleiben administrativ geschützt.",
   },
   {
-    area: "Protokoll & Wiederherstellung",
+    area: "Schutz & Protokoll",
     planningTeam: "Kein Zugriff",
     administrator: "Ansehen, filtern, wiederherstellen und zurücksetzen",
-    note: "Der Menüpunkt Protokoll ist für das Planungsteam ausgeblendet und nicht aufrufbar. Administratoren können Einzellöschungen von Helfern, Spenden sowie Vor- und Nachbereitungen gezielt wiederherstellen; das Zurücksetzen erfordert das Administratorpasswort.",
+    note: "Der Bereich Schutz & Protokoll ist ausschließlich für Administratoren sichtbar. Dort können sie Einzellöschungen von Helfern, Spenden sowie Vor- und Nachbereitungen gezielt wiederherstellen; das Zurücksetzen erfordert das Administratorpasswort.",
   },
 ];

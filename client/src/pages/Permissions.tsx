@@ -1,6 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
-import { PageTitle } from "@/components/PageTitle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -99,7 +98,8 @@ function detailText(
   }
 }
 
-export default function Permissions() {
+/** Vollständiges Administratorprotokoll, eingebettet in Schutz & Protokoll. */
+export function ProtocolLog() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const [yearFilter, setYearFilter] = useState("all");
@@ -188,16 +188,8 @@ export default function Permissions() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <PageTitle icon="permissions">Protokoll</PageTitle>
-        <p className="text-muted-foreground">
-          System-Logbuch mit Aktivitätsverlauf, Löschungen und gezielten
-          Wiederherstellungen für Administratoren.
-        </p>
-      </div>
-
-      <Card className="min-w-0 max-w-full overflow-hidden shadow-sm lg:mr-24">
+    <div className="space-y-3">
+      <Card className="min-w-0 max-w-full overflow-hidden shadow-sm">
         <CardHeader className="gap-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -553,3 +545,5 @@ export default function Permissions() {
     </div>
   );
 }
+
+export default ProtocolLog;

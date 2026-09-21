@@ -11,7 +11,6 @@ import {
   LockKeyhole,
   MapPin,
   Package,
-  ShieldCheck,
   UserCheck,
   Users,
   Wallet,
@@ -59,14 +58,8 @@ export const NAV: readonly NavItem[] = [
     planningTeamHidden: true,
   },
   {
-    href: "/berechtigungen",
-    label: "Protokoll",
-    icon: ShieldCheck,
-    planningTeamHidden: true,
-  },
-  {
     href: "/sicherheit",
-    label: "Zugangsschutz",
+    label: "Schutz & Protokoll",
     icon: LockKeyhole,
     adminOnly: true,
   },
@@ -78,7 +71,6 @@ export const PLANNING_TEAM_HIDDEN_PATHS = [
   "/finanzen",
   "/excel",
   "/orte",
-  "/berechtigungen",
 ] as const;
 
 export const PLANNING_TEAM_EDITING_PATHS = [
@@ -127,7 +119,7 @@ export function navigationItemClasses(
 ) {
   return active
     ? "bg-primary font-semibold text-primary-foreground hover:bg-primary/90"
-    : href === "/berechtigungen"
+    : href === "/sicherheit"
       ? "font-normal text-slate-500 hover:bg-slate-100 hover:text-slate-900"
     : role === "user" && PLANNING_TEAM_OVERVIEW_PATHS.includes(
           href as (typeof PLANNING_TEAM_OVERVIEW_PATHS)[number]

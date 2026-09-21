@@ -620,7 +620,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const permissions = source("client/src/pages/Permissions.tsx");
     const chat = source("client/src/components/LiveChatWidget.tsx");
 
-    expect(permissions).toContain("min-w-0 max-w-full overflow-hidden shadow-sm lg:mr-24");
+    expect(permissions).toContain("min-w-0 max-w-full overflow-hidden shadow-sm");
     expect(permissions).toContain("w-full max-w-full table-fixed text-sm");
     expect(permissions).not.toContain('min-w-[900px]');
     expect(permissions).toContain("md:px-0 md:pt-0 md:pb-28");
@@ -666,9 +666,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(navigation).toContain('"/finanzen"');
     expect(navigation).toContain('"/excel"');
     expect(navigation).toContain('"/orte"');
-    expect(navigation).toContain('"/berechtigungen"');
-    expect(navigation).toContain('label: "Protokoll"');
-    expect(navigation).toContain("planningTeamHidden: true");
+    expect(navigation).not.toContain('"/berechtigungen"');
+    expect(navigation).toContain('label: "Schutz & Protokoll"');
+    expect(navigation).toContain("adminOnly: true");
     expect(navigation).toContain("if (item.planningTeamHidden && role === \"user\") return false");
     expect(navigation).toContain("font-semibold text-slate-800 hover:bg-slate-100 hover:text-slate-900");
     expect(navigation).toContain("font-semibold text-slate-900 hover:bg-slate-100 hover:text-slate-900");
@@ -676,9 +676,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout.match(/rounded-lg px-3 py-2\.5 text-sm transition-all duration-150/g)).toHaveLength(1);
     expect(layout.match(/rounded-lg px-3 py-2 text-sm transition-all duration-150/g)).toHaveLength(1);
     expect(navigation).not.toContain("Nur Lesen");
-    expect(app).toContain("function AdminOnlyPermissions");
+    expect(app).toContain("function AdminOnlySecurityRedirect");
     expect(app).toContain('if (user?.role !== "admin") return <Redirect to="/" />;');
-    expect(app).toContain('<Route path="/berechtigungen" component={AdminOnlyPermissions} />');
+    expect(app).toContain('<Route path="/berechtigungen" component={AdminOnlySecurityRedirect} />');
+    expect(app).toContain('return <Redirect to="/sicherheit" />;');
   });
 
   it("kennzeichnet und steuert PDF-Bilder veranstaltungsspezifisch", () => {
@@ -2215,7 +2216,6 @@ describe("UI- und Mobile-UX-Regeln", () => {
       ["client/src/pages/PdfExport.tsx", "pdf"],
       ["client/src/pages/Excel.tsx", "excel"],
       ["client/src/pages/Locations.tsx", "locations"],
-      ["client/src/pages/Permissions.tsx", "permissions"],
       ["client/src/pages/Security.tsx", "security"],
       ["client/src/pages/Help.tsx", "help"],
     ];
@@ -2747,13 +2747,32 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const manager = source("client/src/components/PlanningTeamAccessManager.tsx");
     const layout = source("client/src/components/Layout.tsx");
     const contacts = source("client/src/pages/Contacts.tsx");
-    const permissions = source("client/src/pages/Permissions.tsx");
+    const protocol = source("client/src/pages/Permissions.tsx");
 
     expect(security).toContain("<PlanningTeamAccessManager />");
     expect(security).toContain("Planungsteam-Zugänge verwalten");
     expect(security).toContain("Administratorpasswort neu vergeben");
     expect(security).toContain("Notfall-Sperrstatus Planungsteam (Global)");
     expect(security).toContain("Sicherheitsprotokoll / Logbuch");
+    expect(security).toContain("<ProtocolLog />");
+    expect(security).toContain('title="Protokoll"');
+    expect(security).toContain("Gefahrenbereich (Planung ${year})");
+    expect(security).toContain("Schutz &amp; Protokoll");
+    expect(security.indexOf("Administratorpasswort neu vergeben")).toBeLessThan(
+      security.indexOf("Planungsteam-Zugänge verwalten")
+    );
+    expect(security.indexOf("Planungsteam-Zugänge verwalten")).toBeLessThan(
+      security.indexOf("Notfall-Sperrstatus Planungsteam (Global)")
+    );
+    expect(security.indexOf("Notfall-Sperrstatus Planungsteam (Global)")).toBeLessThan(
+      security.indexOf("Sicherheitsprotokoll / Logbuch")
+    );
+    expect(security.indexOf("Sicherheitsprotokoll / Logbuch")).toBeLessThan(
+      security.indexOf('title="Protokoll"')
+    );
+    expect(security.indexOf('title="Protokoll"')).toBeLessThan(
+      security.indexOf("Gefahrenbereich (Planung ${year})")
+    );
     expect(manager).toContain("Vorhandene Zugänge &amp; Filter");
     expect(manager).toContain("Neuen Zugang anlegen");
     expect(manager).toContain('value="existing-accesses"');
@@ -2830,11 +2849,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain("Angemeldet:");
     expect(manager).toContain("⏳ Initialcode offen");
     expect(manager).toContain("✓ Passwort eingerichtet");
-    expect(permissions).toContain("Aktivitätsprotokoll");
-    expect(permissions).toContain("System-Logbuch mit Aktivitätsverlauf");
-    expect(permissions).not.toContain("PERMISSION_MATRIX");
-    expect(permissions).not.toContain("Berechtigungsmatrix");
-    expect(permissions).not.toContain("Rollen & Berechtigungen");
+    expect(protocol).toContain("export function ProtocolLog()");
+    expect(protocol).toContain("Aktivitätsprotokoll");
+    expect(protocol).toContain("Löschprotokoll & Wiederherstellung");
+    expect(protocol).not.toContain("PERMISSION_MATRIX");
+    expect(protocol).not.toContain("Berechtigungsmatrix");
+    expect(protocol).not.toContain("Rollen & Berechtigungen");
   });
 
   it("erzwingt bei Anmeldung mit Initialpasswort ein nicht schließbares Modal zur Passwort-Neuvergabe", () => {

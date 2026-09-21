@@ -33,7 +33,6 @@ describe("rollenabhängige Navigation", () => {
       "/finanzen",
       "/excel",
       "/orte",
-      "/berechtigungen",
     ]);
 
     const planningTeamPaths = visibleNavigationItems("user").map(item => item.href);
@@ -43,6 +42,8 @@ describe("rollenabhängige Navigation", () => {
       expect(planningTeamPaths).not.toContain(path);
       expect(adminPaths).toContain(path);
     }
+    expect(planningTeamPaths).not.toContain("/berechtigungen");
+    expect(adminPaths).not.toContain("/berechtigungen");
     expect(planningTeamPaths).toEqual([
       "/",
       "/helfer",
@@ -110,9 +111,13 @@ describe("rollenabhängige Navigation", () => {
     expect(navigationItemClasses("admin", "/helfer", false)).toBe(
       "font-semibold text-slate-800 hover:bg-slate-100 hover:text-slate-900"
     );
-    expect(navigationItemClasses("admin", "/berechtigungen", false)).toBe(
+    expect(navigationItemClasses("admin", "/sicherheit", false)).toBe(
       "font-normal text-slate-500 hover:bg-slate-100 hover:text-slate-900"
     );
+    expect(NAV.find(item => item.href === "/sicherheit")?.label).toBe(
+      "Schutz & Protokoll"
+    );
+    expect(NAV.map(item => item.label)).not.toContain("Protokoll");
     expect(navigationItemClasses("admin", "/helfer", true)).toBe(
       "bg-primary font-semibold text-primary-foreground hover:bg-primary/90"
     );

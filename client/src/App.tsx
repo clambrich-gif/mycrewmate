@@ -21,7 +21,6 @@ const Donations = lazy(routeLoaders["/spenden"]);
 const Finances = lazy(routeLoaders["/finanzen"]);
 const PdfExport = lazy(routeLoaders["/pdf-export"]);
 const Excel = lazy(routeLoaders["/excel"]);
-const Permissions = lazy(routeLoaders["/berechtigungen"]);
 const Security = lazy(routeLoaders["/sicherheit"]);
 const Help = lazy(routeLoaders["/hilfe"]);
 const NotFound = lazy(() => import("@/pages/NotFound"));
@@ -48,12 +47,12 @@ function RouteLoading() {
   );
 }
 
-function AdminOnlyPermissions() {
+function AdminOnlySecurityRedirect() {
   const { user, loading } = useAuth();
 
   if (loading) return <RouteLoading />;
   if (user?.role !== "admin") return <Redirect to="/" />;
-  return <Permissions />;
+  return <Redirect to="/sicherheit" />;
 }
 
 function Router() {
@@ -83,7 +82,7 @@ function Router() {
           <Route path="/finanzen" component={Finances} />
           <Route path="/pdf-export" component={PdfExport} />
           <Route path="/excel" component={Excel} />
-          <Route path="/berechtigungen" component={AdminOnlyPermissions} />
+          <Route path="/berechtigungen" component={AdminOnlySecurityRedirect} />
           <Route path="/sicherheit" component={Security} />
           <Route path="/hilfe" component={Help} />
           <Route component={NotFound} />

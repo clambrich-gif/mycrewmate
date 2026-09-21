@@ -24,7 +24,6 @@ export const routeLoaders = {
   "/pdf-export": () => import("@/pages/PdfExport"),
   "/excel": () => import("@/pages/Excel"),
   "/orte": () => import("@/pages/Locations"),
-  "/berechtigungen": () => import("@/pages/Permissions"),
   "/sicherheit": () => import("@/pages/Security"),
   "/hilfe": () => import("@/pages/Help"),
 } satisfies Record<string, RouteLoader>;

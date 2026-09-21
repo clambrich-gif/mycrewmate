@@ -19,7 +19,6 @@ const expectedRoutes = [
   "/pdf-export",
   "/excel",
   "/orte",
-  "/berechtigungen",
   "/sicherheit",
   "/hilfe",
 ] satisfies LazyRoutePath[];
@@ -40,9 +39,10 @@ describe("Lazy Routes", () => {
     expect(appSource).toContain("lazy(routeLoaders");
     expect(appSource).toContain("<Suspense");
     expect(appSource).toContain('<Redirect to="/vorbereitung" />');
-    expect(appSource).toContain("function AdminOnlyPermissions");
+    expect(appSource).toContain("function AdminOnlySecurityRedirect");
     expect(appSource).toContain('if (user?.role !== "admin") return <Redirect to="/" />;');
-    expect(appSource).toContain('<Route path="/berechtigungen" component={AdminOnlyPermissions} />');
+    expect(appSource).toContain('<Route path="/berechtigungen" component={AdminOnlySecurityRedirect} />');
+    expect(appSource).toContain('return <Redirect to="/sicherheit" />;');
     expect(appSource).not.toContain('routeLoaders["/marketing"]');
     expect(appSource).not.toContain('routeLoaders["/genehmigungen"]');
   });
