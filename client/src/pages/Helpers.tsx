@@ -38,6 +38,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { PlanResetDialogButton } from "@/components/PlanResetDialogButton";
 import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
+import { MyTasksDefaultPin } from "@/components/MyTasksDefaultPin";
+import { useMyTasksDefault } from "@/hooks/useMyTasksDefault";
 import {
   eventWeekdays,
   helperDayAvailability,
@@ -616,6 +618,11 @@ export default function Helpers() {
       : "alle";
   const utils = trpc.useUtils();
   const { user } = useAuth();
+  const {
+    isDefaultMyTasks,
+    setDefaultMyTasks,
+    canRememberMyTasksDefault,
+  } = useMyTasksDefault(user);
   const { data: helpers = [], isLoading } = trpc.helpers.list.useQuery();
   const { data: cakes = [] } = trpc.cakes.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
@@ -771,6 +778,16 @@ export default function Helpers() {
       ),
     [contacts, user?.name]
   );
+  useEffect(() => {
+    if (isDefaultMyTasks && user?.name?.trim()) {
+      setMyHelperRecordOnly(true);
+    }
+  }, [isDefaultMyTasks, user?.name]);
+  const updateMyTasksDefault = (enabled: boolean) => {
+    setDefaultMyTasks(enabled);
+    if (!enabled) setMyHelperRecordOnly(false);
+    else if (user?.name?.trim()) setMyHelperRecordOnly(true);
+  };
   const filtered = useMemo(
     () =>
       helpers
@@ -944,20 +961,28 @@ export default function Helpers() {
           />
         </div>
         <div className="order-1 flex flex-wrap gap-2 md:order-2" aria-label="Schnellfilter Helfer">
-          <Button
-            type="button"
-            size="sm"
-            variant={myHelperRecordOnly ? "default" : "outline"}
-            className={
-              myHelperRecordOnly
-                ? "bg-blue-700 text-white hover:bg-blue-800"
-                : "border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100"
-            }
-            disabled={!user?.name?.trim()}
-            onClick={() => setMyHelperRecordOnly(active => !active)}
-          >
-            👤 Meine Helferakte
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              size="sm"
+              variant={myHelperRecordOnly ? "default" : "outline"}
+              className={
+                myHelperRecordOnly
+                  ? "bg-blue-600 text-white hover:bg-blue-700"
+                  : "border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100"
+              }
+              disabled={!user?.name?.trim()}
+              onClick={() => setMyHelperRecordOnly(active => !active)}
+            >
+              👤 Meine Helferakte
+            </Button>
+            <MyTasksDefaultPin
+              label="Meine Helferakte"
+              pressed={isDefaultMyTasks}
+              disabled={!canRememberMyTasksDefault}
+              onPressedChange={updateMyTasksDefault}
+            />
+          </div>
         </div>
         <div className="order-1 grid grid-cols-1 gap-2 md:order-2 md:flex md:flex-wrap">
           <Select value={apFilter} onValueChange={setApFilter}>

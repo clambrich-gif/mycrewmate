@@ -2,6 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { LocationMapLink } from "@/components/LocationMapLink";
 import { PageTitle } from "@/components/PageTitle";
 import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
+import { MyTasksDefaultPin } from "@/components/MyTasksDefaultPin";
 import { PlanResetDialogButton } from "@/components/PlanResetDialogButton";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +37,7 @@ import {
   STICKY_TABLE_HEADER_CELL_CLASS,
 } from "@/lib/sticky-table";
 import { downloadBase64File } from "@/lib/download";
+import { useMyTasksDefault } from "@/hooks/useMyTasksDefault";
 import {
   formatPreparationLogbookForMobileDisplay,
   latestPreparationLogbookEntry,
@@ -271,6 +273,11 @@ export default function PostProcessing() {
   const rows = rawRows as PostTaskRow[];
 
   const { user } = useAuth();
+  const {
+    isDefaultMyTasks,
+    setDefaultMyTasks,
+    canRememberMyTasksDefault,
+  } = useMyTasksDefault(user);
   const logbookAuthor =
     user?.name?.trim() || (user?.role === "admin" ? "Administrator" : "Planungsteam");
   const refreshDashboard = () => void utils.dashboard.stats.invalidate();
@@ -398,6 +405,16 @@ export default function PostProcessing() {
       ),
     [contacts, currentUserName]
   );
+  useEffect(() => {
+    if (isDefaultMyTasks && ownContactIds.size > 0) {
+      setMyTasksOnly(true);
+    }
+  }, [isDefaultMyTasks, ownContactIds]);
+  const updateMyTasksDefault = (enabled: boolean) => {
+    setDefaultMyTasks(enabled);
+    if (!enabled) setMyTasksOnly(false);
+    else if (ownContactIds.size > 0) setMyTasksOnly(true);
+  };
   const locationMap = useMemo(
     () => new Map(locations.map(location => [location.id, location.name])),
     [locations]
@@ -672,25 +689,32 @@ export default function PostProcessing() {
         </div>
 
         <div className="flex flex-wrap gap-2" aria-label="Schnellfilter Nachbereitung">
-          <Button
-            type="button"
-            size="sm"
-            variant={myTasksOnly ? "default" : "outline"}
-            className={
-              myTasksOnly
-                ? "bg-blue-700 text-white hover:bg-blue-800"
-                : "border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100"
-            }
-            disabled={ownContactIds.size === 0}
-            title={
-              ownContactIds.size === 0
-                ? "Der aktuelle Sitzungsname ist keinem Ansprechpartner zugeordnet."
-                : undefined
-            }
-            onClick={() => setMyTasksOnly(active => !active)}
-          >
-            👤 Meine Aufgaben
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              size="sm"
+              variant={myTasksOnly ? "default" : "outline"}
+              className={
+                myTasksOnly
+                  ? "bg-blue-600 text-white hover:bg-blue-700"
+                  : "border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100"
+              }
+              disabled={ownContactIds.size === 0}
+              title={
+                ownContactIds.size === 0
+                  ? "Der aktuelle Sitzungsname ist keinem Ansprechpartner zugeordnet."
+                  : undefined
+              }
+              onClick={() => setMyTasksOnly(active => !active)}
+            >
+              👤 Meine Aufgaben
+            </Button>
+            <MyTasksDefaultPin
+              pressed={isDefaultMyTasks}
+              disabled={!canRememberMyTasksDefault}
+              onPressedChange={updateMyTasksDefault}
+            />
+          </div>
           <Button
             type="button"
             size="sm"

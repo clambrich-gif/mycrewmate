@@ -428,27 +428,45 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const postprocessing = source("client/src/pages/PostProcessing.tsx");
     const plan = source("client/src/pages/Plan.tsx");
     const genericTasks = source("client/src/pages/TaskGeneric.tsx");
+    const defaultHook = source("client/src/hooks/useMyTasksDefault.ts");
+    const defaultPin = source("client/src/components/MyTasksDefaultPin.tsx");
 
     expect(helpers).toContain("myHelperRecordOnly");
     expect(helpers).toContain("👤 Meine Helferakte");
+    expect(helpers).toContain("useMyTasksDefault(user)");
+    expect(helpers).toContain("<MyTasksDefaultPin");
     expect(preparation).toContain("myTasksOnly");
     expect(preparation).toContain("openOrUnassignedOnly");
     expect(preparation).toContain("👤 Meine Aufgaben");
     expect(preparation).toContain("⚠ Offen / unzugewiesen");
+    expect(preparation).toContain("useMyTasksDefault(user)");
+    expect(preparation).toContain("<MyTasksDefaultPin");
     expect(postprocessing).toContain('aria-label="Schnellfilter Nachbereitung"');
     expect(postprocessing).toContain("myTasksOnly");
     expect(postprocessing).toContain("openOrUnassignedOnly");
     expect(postprocessing).toContain("ownContactIds");
     expect(postprocessing).toContain("👤 Meine Aufgaben");
     expect(postprocessing).toContain("⚠ Offen / unzugewiesen");
+    expect(postprocessing).toContain("useMyTasksDefault(user)");
+    expect(postprocessing).toContain("<MyTasksDefaultPin");
     expect(plan).toContain("ownContactIds");
     expect(plan).toContain("ownHelperIds");
     expect(plan).toContain("👤 Meine Aufgaben");
     expect(plan).toContain("⚠ Nur offene / unbesetzte Schichten");
     expect(plan).toContain("e.assigned.length < e.shift.needed");
+    expect(plan).toContain("useMyTasksDefault(user)");
+    expect(plan).toContain("<MyTasksDefaultPin");
     expect(genericTasks).toContain("openOrUnassignedOnly");
     expect(genericTasks).toContain("👤 Meine Aufgaben");
     expect(genericTasks).toContain("⚠ Offen / unzugewiesen");
+    expect(genericTasks).toContain("useMyTasksDefault(user)");
+    expect(genericTasks).toContain("<MyTasksDefaultPin");
+    expect(defaultHook).toContain("MY_TASKS_DEFAULT_STORAGE_PREFIX");
+    expect(defaultHook).toContain("myTasksDefaultStorageKey");
+    expect(defaultHook).toContain("window.localStorage");
+    expect(defaultPin).toContain('data-slot="my-tasks-default-pin"');
+    expect(defaultPin).toContain("als Standard-Ansicht merken");
+    expect(defaultPin).toContain("bg-blue-600 text-white");
   });
 
   it("hält mobile Formulare und Aktionen bei 44px und 16px und macht Helferchips per Tastatur erreichbar", () => {

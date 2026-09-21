@@ -3,6 +3,7 @@ import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { PlanResetDialogButton } from "@/components/PlanResetDialogButton";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
+import { MyTasksDefaultPin } from "@/components/MyTasksDefaultPin";
 import { PageTitle, type PageTitleIconKind } from "@/components/PageTitle";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -29,6 +30,7 @@ import {
   STICKY_TABLE_HEADER_CELL_CLASS,
 } from "@/lib/sticky-table";
 import { trpc } from "@/lib/trpc";
+import { useMyTasksDefault } from "@/hooks/useMyTasksDefault";
 import {
   ArrowDownAZ,
   ArrowUpZA,
@@ -38,7 +40,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { LocationMapLink } from "@/components/LocationMapLink";
 
@@ -130,6 +132,11 @@ export default function TaskGeneric({
 }: Props) {
   const utils = trpc.useUtils();
   const { user } = useAuth();
+  const {
+    isDefaultMyTasks,
+    setDefaultMyTasks,
+    canRememberMyTasksDefault,
+  } = useMyTasksDefault(user);
   const api = (trpc as any)[kind];
   const listUtils = (utils as any)[kind].list;
   const { data: rows = [], isLoading } = api.list.useQuery();
@@ -175,6 +182,16 @@ export default function TaskGeneric({
       )?.id ?? null
     );
   }, [contacts, user?.name]);
+  useEffect(() => {
+    if (isDefaultMyTasks && ownContactId !== null) {
+      setMyTasksOnly(true);
+    }
+  }, [isDefaultMyTasks, ownContactId]);
+  const updateMyTasksDefault = (enabled: boolean) => {
+    setDefaultMyTasks(enabled);
+    if (!enabled) setMyTasksOnly(false);
+    else if (ownContactId !== null) setMyTasksOnly(true);
+  };
   const locationMap = useMemo(
     () => new Map(locations.map((location: any) => [location.id, location.name])),
     [locations]
@@ -573,25 +590,32 @@ export default function TaskGeneric({
           </div>
           <div className="flex flex-wrap gap-2" aria-label={`Schnellfilter ${title}`}>
             {!noContact && (
-              <Button
-                type="button"
-                size="sm"
-                variant={myTasksOnly ? "default" : "outline"}
-                className={
-                  myTasksOnly
-                    ? "bg-blue-700 text-white hover:bg-blue-800"
-                    : "border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100"
-                }
-                disabled={ownContactId === null}
-                title={
-                  ownContactId === null
-                    ? "Der aktuelle Sitzungsname ist keinem Ansprechpartner zugeordnet."
-                    : undefined
-                }
-                onClick={() => setMyTasksOnly(active => !active)}
-              >
-                👤 Meine Aufgaben
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={myTasksOnly ? "default" : "outline"}
+                  className={
+                    myTasksOnly
+                      ? "bg-blue-600 text-white hover:bg-blue-700"
+                      : "border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100"
+                  }
+                  disabled={ownContactId === null}
+                  title={
+                    ownContactId === null
+                      ? "Der aktuelle Sitzungsname ist keinem Ansprechpartner zugeordnet."
+                      : undefined
+                  }
+                  onClick={() => setMyTasksOnly(active => !active)}
+                >
+                  👤 Meine Aufgaben
+                </Button>
+                <MyTasksDefaultPin
+                  pressed={isDefaultMyTasks}
+                  disabled={!canRememberMyTasksDefault}
+                  onPressedChange={updateMyTasksDefault}
+                />
+              </div>
             )}
             <Button
               type="button"

@@ -96,6 +96,8 @@ import {
   helperDropdownPriority,
 } from "@/lib/helper-assignment-feedback";
 import { LocationMapLink } from "@/components/LocationMapLink";
+import { MyTasksDefaultPin } from "@/components/MyTasksDefaultPin";
+import { useMyTasksDefault } from "@/hooks/useMyTasksDefault";
 
 const formatTimeLabel = (shift: { startTime: string; endTime: string }) =>
   shift.startTime && shift.endTime
@@ -556,6 +558,11 @@ function AssignedHelperChip({
 export default function Plan() {
   const utils = trpc.useUtils();
   const { user } = useAuth();
+  const {
+    isDefaultMyTasks,
+    setDefaultMyTasks,
+    canRememberMyTasksDefault,
+  } = useMyTasksDefault(user);
   const [searchParams, setSearchParams] = useSearchParams();
   const warningFilter = parsePlanWarningFilter(
     searchParams.get(PLAN_WARNING_QUERY_KEY)
@@ -892,6 +899,21 @@ export default function Plan() {
       ),
     [helpers, currentUserName, ownContactIds]
   );
+  useEffect(() => {
+    if (
+      isDefaultMyTasks &&
+      (ownContactIds.size > 0 || ownHelperIds.size > 0)
+    ) {
+      setMyTasksOnly(true);
+    }
+  }, [isDefaultMyTasks, ownContactIds, ownHelperIds]);
+  const updateMyTasksDefault = (enabled: boolean) => {
+    setDefaultMyTasks(enabled);
+    if (!enabled) setMyTasksOnly(false);
+    else if (ownContactIds.size > 0 || ownHelperIds.size > 0) {
+      setMyTasksOnly(true);
+    }
+  };
   const dashboardHelper = dashboardHelperId
     ? helperById.get(dashboardHelperId)
     : null;
@@ -1505,25 +1527,32 @@ export default function Plan() {
           className="order-1 flex flex-wrap gap-2 md:order-2 lg:order-1"
           aria-label="Schnellfilter Einsatzplan"
         >
-          <Button
-            type="button"
-            size="sm"
-            variant={myTasksOnly ? "default" : "outline"}
-            className={
-              myTasksOnly
-                ? "bg-blue-700 text-white hover:bg-blue-800"
-                : "border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100"
-            }
-            disabled={ownContactIds.size === 0 && ownHelperIds.size === 0}
-            title={
-              ownContactIds.size === 0 && ownHelperIds.size === 0
-                ? "Der aktuelle Sitzungsname ist weder Ansprechpartner noch Helfer zugeordnet."
-                : undefined
-            }
-            onClick={() => setMyTasksOnly(active => !active)}
-          >
-            👤 Meine Aufgaben
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              size="sm"
+              variant={myTasksOnly ? "default" : "outline"}
+              className={
+                myTasksOnly
+                  ? "bg-blue-600 text-white hover:bg-blue-700"
+                  : "border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100"
+              }
+              disabled={ownContactIds.size === 0 && ownHelperIds.size === 0}
+              title={
+                ownContactIds.size === 0 && ownHelperIds.size === 0
+                  ? "Der aktuelle Sitzungsname ist weder Ansprechpartner noch Helfer zugeordnet."
+                  : undefined
+              }
+              onClick={() => setMyTasksOnly(active => !active)}
+            >
+              👤 Meine Aufgaben
+            </Button>
+            <MyTasksDefaultPin
+              pressed={isDefaultMyTasks}
+              disabled={!canRememberMyTasksDefault}
+              onPressedChange={updateMyTasksDefault}
+            />
+          </div>
           <Button
             type="button"
             size="sm"
