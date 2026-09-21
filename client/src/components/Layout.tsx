@@ -43,7 +43,10 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useEventYear } from "@/contexts/YearContext";
-import { navigationItemClasses, visibleNavigationItems } from "@/lib/nav";
+import {
+  navigationItemClasses,
+  visibleNavigationSections,
+} from "@/lib/nav";
 import { preloadRoute } from "@/lib/route-loaders";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
@@ -1456,27 +1459,34 @@ export function Layout({ children }: { children: React.ReactNode }) {
             )}
           </div>
           <nav className="flex-1 space-y-1 overflow-y-auto p-2">
-            {visibleNavigationItems(user?.role).map(
-              ({ href, label, icon: Icon }) => {
-                const active = location === href;
-                return (
-                <Link
-                  key={href}
-                  href={href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  onFocus={() => preloadRoute(href)}
-                  onMouseEnter={() => preloadRoute(href)}
-                  onTouchStart={() => preloadRoute(href)}
-                  className={cn(
-                    "flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
-                    navigationItemClasses(user?.role, href, active)
-                  )}
-                >
-                  <Icon className="h-5 w-5" /> {label}
-                </Link>
-                );
-              }
-            )}
+            {visibleNavigationSections(user?.role).map(section => (
+              <div key={section.id} className="space-y-1">
+                {section.label && (
+                  <p className="my-2 px-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                    {section.label}
+                  </p>
+                )}
+                {section.items.map(({ href, label, icon: Icon }) => {
+                  const active = location === href;
+                  return (
+                    <Link
+                      key={href}
+                      href={href}
+                      onClick={() => setMobileMenuOpen(false)}
+                      onFocus={() => preloadRoute(href)}
+                      onMouseEnter={() => preloadRoute(href)}
+                      onTouchStart={() => preloadRoute(href)}
+                      className={cn(
+                        "flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
+                        navigationItemClasses(user?.role, href, active)
+                      )}
+                    >
+                      <Icon className="h-5 w-5" /> {label}
+                    </Link>
+                  );
+                })}
+              </div>
+            ))}
           </nav>
           <div className="border-t px-3 py-2">
             <Button
@@ -1626,25 +1636,32 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-2 pb-2 pt-1.5 space-y-0.5">
-          {visibleNavigationItems(user?.role).map(
-            ({ href, label, icon: Icon }) => {
-              const active = location === href;
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  onFocus={() => preloadRoute(href)}
-                  onMouseEnter={() => preloadRoute(href)}
-                  className={cn(
-                    "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
-                    navigationItemClasses(user?.role, href, active)
-                  )}
-                >
-                  <Icon className="h-4 w-4" /> {label}
-                </Link>
-              );
-            }
-          )}
+          {visibleNavigationSections(user?.role).map(section => (
+            <div key={section.id} className="space-y-0.5">
+              {section.label && (
+                <p className="my-2 px-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  {section.label}
+                </p>
+              )}
+              {section.items.map(({ href, label, icon: Icon }) => {
+                const active = location === href;
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    onFocus={() => preloadRoute(href)}
+                    onMouseEnter={() => preloadRoute(href)}
+                    className={cn(
+                      "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
+                      navigationItemClasses(user?.role, href, active)
+                    )}
+                  >
+                    <Icon className="h-4 w-4" /> {label}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
         <div className="flex flex-col border-t border-slate-200/70 px-3 pt-0.5 pb-1 leading-none">
           <div className="flex items-center justify-between gap-2 leading-none">

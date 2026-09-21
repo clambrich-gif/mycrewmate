@@ -607,22 +607,29 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).not.toContain("dark:text-red-400");
   });
 
-  it("blendet Verwaltungsbereiche für das Planungsteam aus und hält alle sichtbaren Navigationseinträge kräftig", () => {
+  it("blendet Verwaltungsbereiche aus und gliedert die Planungsteam-Navigation in Bearbeitung und Übersicht", () => {
     const layout = source("client/src/components/Layout.tsx");
     const navigation = source("client/src/lib/nav.ts");
 
-    expect(layout).toContain("visibleNavigationItems(user?.role)");
-    expect(layout.match(/visibleNavigationItems\(user\?\.role\)/g)).toHaveLength(2);
+    expect(layout).toContain("visibleNavigationSections(user?.role)");
+    expect(layout.match(/visibleNavigationSections\(user\?\.role\)/g)).toHaveLength(2);
     expect(layout).toContain("navigationItemClasses(user?.role, href, active)");
     expect(layout.match(/navigationItemClasses\(user\?\.role, href, active\)/g)).toHaveLength(2);
+    expect(layout).toContain("my-2 px-3 text-xs font-semibold uppercase tracking-wider text-slate-400");
     expect(navigation).toContain("PLANNING_TEAM_HIDDEN_PATHS");
+    expect(navigation).toContain("PLANNING_TEAM_EDITING_PATHS");
+    expect(navigation).toContain("PLANNING_TEAM_OVERVIEW_PATHS");
+    expect(navigation).toContain('label: "BEARBEITUNG"');
+    expect(navigation).toContain('label: "ÜBERSICHT & INFO"');
     expect(navigation).toContain('"/ansprechpartner"');
     expect(navigation).toContain('"/finanzen"');
     expect(navigation).toContain('"/excel"');
     expect(navigation).toContain('"/orte"');
     expect(navigation).toContain("if (item.planningTeamHidden && role === \"user\") return false");
     expect(navigation).toContain("font-semibold text-slate-800 hover:bg-accent");
-    expect(navigation).not.toContain("font-normal text-gray-500");
+    expect(navigation).toContain("font-medium text-slate-900 hover:bg-accent");
+    expect(navigation).toContain("font-normal text-slate-500 hover:bg-accent hover:text-slate-800");
+    expect(navigation).not.toContain("Nur Lesen");
   });
 
   it("kennzeichnet und steuert PDF-Bilder veranstaltungsspezifisch", () => {

@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   NAV,
   navigationItemClasses,
+  PLANNING_TEAM_EDITING_PATHS,
   PLANNING_TEAM_HIDDEN_PATHS,
+  PLANNING_TEAM_OVERVIEW_PATHS,
   visibleNavigationItems,
+  visibleNavigationSections,
 } from "../client/src/lib/nav";
 
 describe("rollenabhängige Navigation", () => {
@@ -53,26 +56,68 @@ describe("rollenabhängige Navigation", () => {
     ]);
   });
 
-  it("formatiert jeden sichtbaren Navigationseintrag für das Planungsteam einheitlich kräftig", () => {
-    for (const item of visibleNavigationItems("user")) {
-      const classes = navigationItemClasses("user", item.href, false);
-      expect(classes).toContain("font-semibold");
-      expect(classes).toContain("text-slate-800");
+  it("gliedert das Planungsteam in Bearbeitung und Übersicht mit ruhiger Typografie", () => {
+    expect(PLANNING_TEAM_EDITING_PATHS).toEqual([
+      "/helfer",
+      "/vorbereitung",
+      "/nachbereitung",
+      "/material",
+      "/spenden",
+      "/pdf-export",
+    ]);
+    expect(PLANNING_TEAM_OVERVIEW_PATHS).toEqual([
+      "/",
+      "/einsatzplan",
+      "/berechtigungen",
+      "/hilfe",
+    ]);
+    expect(visibleNavigationSections("user")).toEqual([
+      {
+        id: "editing",
+        label: "BEARBEITUNG",
+        items: PLANNING_TEAM_EDITING_PATHS.map(path =>
+          visibleNavigationItems("user").find(item => item.href === path)
+        ),
+      },
+      {
+        id: "overview",
+        label: "ÜBERSICHT & INFO",
+        items: PLANNING_TEAM_OVERVIEW_PATHS.map(path =>
+          visibleNavigationItems("user").find(item => item.href === path)
+        ),
+      },
+    ]);
+
+    for (const path of PLANNING_TEAM_EDITING_PATHS) {
+      const classes = navigationItemClasses("user", path, false);
+      expect(classes).toContain("font-medium");
+      expect(classes).toContain("text-slate-900");
       expect(classes).toContain("hover:bg-accent");
+    }
+    for (const path of PLANNING_TEAM_OVERVIEW_PATHS) {
+      const classes = navigationItemClasses("user", path, false);
+      expect(classes).toContain("font-normal");
+      expect(classes).toContain("text-slate-500");
+      expect(classes).toContain("hover:text-slate-800");
     }
   });
 
-  it("erhält für alle aktiven Planungsteam-Ziele die Klickbarkeit und einen sichtbaren Fokus", () => {
+  it("erhält für alle aktiven Planungsteam-Ziele eine klare aktive Darstellung", () => {
     for (const item of visibleNavigationItems("user")) {
-      const classes = navigationItemClasses("user", item.href, true);
-      expect(classes).toContain("bg-primary");
-      expect(classes).toContain("font-semibold");
-      expect(classes).toContain("text-primary-foreground");
+      const classes = navigationItemClasses("user", item.href, false);
+      expect(classes).toContain("hover:bg-accent");
+      const activeClasses = navigationItemClasses("user", item.href, true);
+      expect(activeClasses).toContain("bg-primary");
+      expect(activeClasses).toContain("font-semibold");
+      expect(activeClasses).toContain("text-primary-foreground");
     }
   });
 
   it("gibt Administratoren weiterhin alle Navigationseinträge mit derselben klaren Typografie", () => {
     expect(visibleNavigationItems("admin")).toEqual(NAV);
+    expect(visibleNavigationSections("admin")).toEqual([
+      { id: "default", label: null, items: NAV },
+    ]);
     expect(navigationItemClasses("admin", "/helfer", false)).toBe(
       "font-semibold text-slate-800 hover:bg-accent"
     );
