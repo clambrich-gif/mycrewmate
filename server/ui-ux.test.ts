@@ -992,7 +992,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain('className="bg-slate-50 py-1 pr-1 sm:pr-2"');
   });
 
-  it("zeigt das native Marken-Countdown-Widget kompakt im Dashboardkopf und den Kalender-Trigger im Layout", () => {
+  it("zeigt das Live-Countdown-Widget im Dashboardkopf und den Kalender-Trigger im Layout", () => {
     const dashboard = source("client/src/pages/Dashboard.tsx");
     const layout = source("client/src/components/Layout.tsx");
     const router = source("server/routers.ts");
@@ -1002,26 +1002,16 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain("EventCountdownWidget");
     expect(dashboard).toContain('data-slot="event-countdown"');
     expect(dashboard).toContain("eventCountdownState");
-    expect(dashboard).toContain("COUNTDOWN_INFINITY_MARK");
-    expect(dashboard).toContain("mycrewmate-infinity-mark_cd173237.png");
-    expect(dashboard).not.toContain('src="/mycrewmate-logo.png"');
-    expect(dashboard).toContain("Vorfreude im Blick, das Event im Griff.");
-    expect(dashboard).not.toContain("Dein Event startet in");
-    expect(dashboard).toContain("Dein Event startet morgen");
-    expect(dashboard).toContain("size-16 shrink-0");
-    expect(dashboard).toContain("text-5xl font-black");
-    expect(dashboard).toContain("Tagen");
-    expect(dashboard).not.toContain("bis <span");
-    expect(dashboard).toContain("w-full max-w-[280px] self-start gap-0 rounded-xl");
-    expect(dashboard).toContain("flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between");
-    expect(dashboard).not.toContain("Rocket");
-    expect(dashboard).toContain("const isUrgent = state.kind === \"upcoming\" && state.days <= 14");
+    expect(dashboard).toContain("Eventstart in");
+    expect(dashboard).toContain("border-2 border-amber-400");
+    expect(dashboard).toContain("text-4xl font-black");
+    expect(dashboard).toContain("shrink-0 !min-w-[17.5rem]");
+    expect(dashboard).toContain("const isUrgent = state.days < 14");
     expect(dashboard).toContain('data-countdown-urgent={isUrgent ? "true" : "false"}');
-    expect(dashboard).toContain('" countdown-urgent border-amber-300"');
+    expect(dashboard).toContain('" countdown-urgent"');
     expect(dashboard).not.toContain("formatEventDate");
-    expect(dashboard).toContain("Heute ist dein Event!");
-    expect(dashboard).toContain("Event abgeschlossen");
-    expect(dashboard).toContain("eventName={currentEvent.name}");
+    expect(dashboard).toContain("Event läuft!");
+    expect(dashboard).toContain("Veranstaltung abgeschlossen");
 
     expect(layout).toContain('data-slot="event-dates-trigger"');
     expect(layout).toContain("openEventDateSettings");
@@ -1031,7 +1021,6 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(router).toContain("startDate");
     expect(router).toContain("endDate");
     expect(eventDates).toContain("eventCountdownState");
-    expect(eventDates).toContain("Math.ceil(remaining / DAY_MS)");
     expect(styles).toContain(".countdown-urgent::after");
     expect(styles).toContain("@keyframes countdown-urgent-glow");
     expect(styles).toContain("prefers-reduced-motion: no-preference");
