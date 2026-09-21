@@ -707,7 +707,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
   it("öffnet die Bereichsansprechpartner bedarfsgerecht und verdichtet sie auf bis zu fünf Spalten", () => {
     const plan = source("client/src/pages/Plan.tsx");
 
-    expect(plan).toContain('className="p-2 sm:p-2.5"');
+    expect(plan).toContain('className="px-2 py-1 sm:px-2.5 sm:py-1"');
+    expect(plan).toContain('className="flex h-9 w-full items-center justify-between');
+    expect(plan).toContain('className="flex min-w-0 items-center gap-2"');
     expect(plan).toContain("mt-1.5 gap-1.5 sm:grid-cols-2 md:grid-cols-3");
     expect(plan).toContain("rounded-md border bg-slate-50/80 p-1.5");
     expect(plan).toMatch(/<SelectTrigger\s+size="sm"\s+className=/);
@@ -1006,7 +1008,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).not.toContain("planStatusCounts");
     expect(plan).toContain("utils.plan.evaluate.invalidate()");
     expect(plan).toContain("data-plan-action-header");
-    expect(plan).toContain('className="flex w-full justify-end"');
+    expect(plan).toContain("flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between");
+    expect(plan).toContain("lg:min-w-[500px]");
   });
 
   it("bietet im Schichtdialog bestehende Bereiche zur Auswahl und erlaubt neue Freitexteingaben", () => {
@@ -1664,13 +1667,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     );
 
     expect(plan).toContain("data-plan-data-actions");
-    expect(plan).toContain("grid grid-cols-2 gap-2 sm:flex sm:flex-nowrap sm:items-center sm:justify-between");
+    expect(plan).toContain("grid grid-cols-2 gap-2 lg:grid-cols-3");
     expect(plan).toContain("[&>[data-slot=button]]:w-full");
-    expect(plan).toContain("sm:[&>[data-slot=button]]:w-auto");
     expect(plan).toContain('[&>[data-slot=button]]:whitespace-nowrap');
-    expect(plan).toContain("min-[1280px]:w-[38rem]");
+    expect(plan).not.toContain("min-[1280px]:w-[38rem]");
     expect(plan).toContain(
-      'className="mt-2 w-full bg-blue-600 px-4 font-semibold text-white shadow-sm hover:bg-blue-700 focus-visible:ring-blue-500"'
+      'className="w-full border-blue-600 bg-blue-600 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus-visible:ring-blue-500"'
     );
     expect(plan).toContain('buttonLabel="Excel Import"');
     expect(plan).toContain("<CopyPreviousPlanButton />");
@@ -2133,7 +2135,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(contacts).toContain('variant="outline"');
     expect(helpers).not.toContain("CREATION_ACTION_BUTTON_CLASS");
     expect(plan).not.toContain("CREATION_ACTION_BUTTON_CLASS");
-    expect(plan).toContain("bg-blue-600 px-4 font-semibold text-white");
+    expect(plan).toContain("bg-blue-600 text-base font-medium text-white");
     expect(preparation).not.toContain("CREATION_ACTION_BUTTON_CLASS");
     expect(preparation).toContain("bg-blue-600 text-base font-medium text-white");
     expect(helpers).toContain("grid grid-cols-2 gap-2");

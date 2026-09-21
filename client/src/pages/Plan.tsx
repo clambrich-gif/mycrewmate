@@ -1331,23 +1331,23 @@ export default function Plan() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <PageTitle icon="plan">Einsatzplan</PageTitle>
-        <p className="text-muted-foreground">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0 lg:pr-4">
+          <PageTitle icon="plan">Einsatzplan</PageTitle>
+          <p className="text-sm text-muted-foreground">
           {canEditPlan
             ? "Nur verfügbare, aktive Helfer sind auswählbar. „Neu“ bedeutet noch keine Einteilung; die Tagessegmente richten sich nach den Eventtagen (Grün: aktuell frei, Gelb: dort eingeteilt, Rot: nicht verfügbar). Zeitgleich bereits eingeteilte Helfer bleiben gelb markiert und auswählbar. Absagen markieren Ausfälle (rot), Doppelbelegungen werden gewarnt (orange)."
             : "Das Planungsteam kann den Einsatzplan vollständig ansehen und filtern. Änderungen und Helferzuweisungen sind Administratoren vorbehalten."}
-        </p>
-      </div>
-      <div
-        data-plan-action-header
-        className="flex w-full justify-end"
-      >
+          </p>
+        </div>
         {canEditPlan && (
-          <div className="w-full shrink-0 min-[1280px]:w-[38rem]">
+          <div
+            data-plan-action-header
+            className="w-full shrink-0 space-y-2 lg:w-auto lg:min-w-[500px]"
+          >
             <div
               data-plan-data-actions
-              className="grid grid-cols-2 gap-2 sm:flex sm:flex-nowrap sm:items-center sm:justify-between sm:gap-2 sm:overflow-x-auto sm:pb-1 sm:whitespace-nowrap [&>[data-slot=button]]:h-9 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:whitespace-nowrap sm:[&>[data-slot=button]]:w-auto sm:[&>[data-slot=button]]:shrink-0"
+              className="grid grid-cols-2 gap-2 lg:grid-cols-3 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:whitespace-nowrap [&>[data-slot=button]]:px-2 lg:[&>[data-slot=button]]:h-10"
             >
               <ModuleExcelImportButton
                 area="EINSATZPLAN"
@@ -1365,9 +1365,9 @@ export default function Plan() {
               type="button"
               onClick={openCreate}
               disabled={isEventLoading || !activeDays.length}
-              className="mt-2 w-full bg-blue-600 px-4 font-semibold text-white shadow-sm hover:bg-blue-700 focus-visible:ring-blue-500"
+              className="w-full border-blue-600 bg-blue-600 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus-visible:ring-blue-500"
             >
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="mr-2 h-4 w-4" />
               Neue Schicht
             </Button>
           </div>
@@ -1376,19 +1376,19 @@ export default function Plan() {
 
       {areas.length > 0 && (
         <Card className="border-slate-200 shadow-sm">
-          <CardContent className="p-2 sm:p-2.5">
+          <CardContent className="px-2 py-1 sm:px-2.5 sm:py-1">
             <button
               type="button"
-              className="flex h-11 w-full items-center justify-between gap-3 rounded-md px-1.5 text-left hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1"
+              className="flex h-9 w-full items-center justify-between gap-3 rounded-md px-1.5 text-left hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1"
               aria-expanded={areaContactsExpanded}
               aria-controls="area-contacts-grid"
               onClick={() => setAreaContactsExpanded(expanded => !expanded)}
             >
-              <span className="min-w-0">
-                <span className="block truncate text-sm font-semibold">
+              <span className="flex min-w-0 items-center gap-2">
+                <span className="truncate text-sm font-semibold">
                   Ansprechpartner je Bereich
                 </span>
-                <span className="block text-xs text-muted-foreground">
+                <span className="shrink-0 text-xs text-muted-foreground">
                   {areas.length} {areas.length === 1 ? "Bereich" : "Bereiche"}
                 </span>
               </span>
