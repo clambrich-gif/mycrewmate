@@ -1822,8 +1822,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain("Filter zurücksetzen");
     expect(helpers).toContain("<FilterX");
     expect(helpers).toContain('className="!h-10 w-full items-center border-slate-200 bg-white text-base md:w-[190px] md:text-sm"');
-    expect(helpers).toContain('className="!h-10 w-full items-center border-slate-200 bg-white text-base md:w-[170px] md:text-sm"');
-    expect(helpers).toContain('className="!h-10 w-full items-center border-slate-200 bg-white text-base md:w-[175px] md:text-sm"');
+    expect(helpers).toContain(
+      'md:w-[220px] md:text-sm" aria-label="Bestätigung filtern"'
+    );
+    expect(helpers).toContain(
+      'md:w-[220px] md:text-sm" aria-label="Helferumfang filtern"'
+    );
 
     expect(desktopHeader.indexOf("Name {sortAsc")).toBeLessThan(
       desktopHeader.indexOf("Aktionen")
@@ -2244,6 +2248,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain("Helfer nach Name, Telefon oder Hinweis durchsuchen");
     expect(helpers).toContain("helperScopeFilter");
     expect(helpers).toContain("willHelpFilter");
+    expect(helpers).toContain(
+      'md:w-[220px] md:text-sm" aria-label="Bestätigung filtern"'
+    );
+    expect(helpers).toContain(
+      'md:w-[220px] md:text-sm" aria-label="Helferumfang filtern"'
+    );
     const filterOrder = [
       "Alle Ansprechpartner",
       "Alle Begleitungen",

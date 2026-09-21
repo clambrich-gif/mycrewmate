@@ -1026,7 +1026,7 @@ export default function Helpers() {
               updateConfirmationFilter(value as "alle" | "ja" | "nein")
             }
           >
-            <SelectTrigger className="!h-10 w-full items-center border-slate-200 bg-white text-base md:w-[175px] md:text-sm" aria-label="Bestätigung filtern">
+            <SelectTrigger className="!h-10 w-full items-center border-slate-200 bg-white text-base md:w-[220px] md:text-sm" aria-label="Bestätigung filtern">
               <SelectValue placeholder="Bestätigung" />
             </SelectTrigger>
             <SelectContent>
@@ -1043,7 +1043,7 @@ export default function Helpers() {
               )
             }
           >
-            <SelectTrigger className="!h-10 w-full items-center border-slate-200 bg-white text-base md:w-[170px] md:text-sm" aria-label="Helferumfang filtern">
+            <SelectTrigger className="!h-10 w-full items-center border-slate-200 bg-white text-base md:w-[220px] md:text-sm" aria-label="Helferumfang filtern">
               <SelectValue placeholder="Nur Helfer mit ..." />
             </SelectTrigger>
             <SelectContent>
