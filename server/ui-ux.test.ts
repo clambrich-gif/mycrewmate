@@ -425,6 +425,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
   it("bietet kombinierbare Schnellfilter für eigene und offene Aufgaben", () => {
     const helpers = source("client/src/pages/Helpers.tsx");
     const preparation = source("client/src/pages/Preparation.tsx");
+    const postprocessing = source("client/src/pages/PostProcessing.tsx");
     const plan = source("client/src/pages/Plan.tsx");
     const genericTasks = source("client/src/pages/TaskGeneric.tsx");
 
@@ -434,6 +435,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(preparation).toContain("openOrUnassignedOnly");
     expect(preparation).toContain("👤 Meine Aufgaben");
     expect(preparation).toContain("⚠ Offen / unzugewiesen");
+    expect(postprocessing).toContain('aria-label="Schnellfilter Nachbereitung"');
+    expect(postprocessing).toContain("myTasksOnly");
+    expect(postprocessing).toContain("openOrUnassignedOnly");
+    expect(postprocessing).toContain("ownContactIds");
+    expect(postprocessing).toContain("👤 Meine Aufgaben");
+    expect(postprocessing).toContain("⚠ Offen / unzugewiesen");
     expect(plan).toContain("ownContactIds");
     expect(plan).toContain("ownHelperIds");
     expect(plan).toContain("👤 Meine Aufgaben");

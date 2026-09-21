@@ -113,6 +113,10 @@ function temporaryId() {
   return -Math.floor(Math.random() * 1_000_000 + 1);
 }
 
+function normalizedPersonName(name: string | null | undefined) {
+  return name?.trim().toLocaleLowerCase("de-DE") ?? "";
+}
+
 function getStatusLabel(status: PostStatus) {
   if (status === "offen") return "Offen";
   if (status === "inArbeit") return "In Arbeit";
@@ -250,6 +254,8 @@ export default function PostProcessing() {
   const [categoryFilter, setCategoryFilter] = useState<string>("alle");
   const [contactFilter, setContactFilter] = useState<string>("alle");
   const [searchTerm, setSearchTerm] = useState("");
+  const [myTasksOnly, setMyTasksOnly] = useState(false);
+  const [openOrUnassignedOnly, setOpenOrUnassignedOnly] = useState(false);
   const [dueSortDirection, setDueSortDirection] = useState<"asc" | "desc" | null>(
     null
   );
@@ -382,6 +388,16 @@ export default function PostProcessing() {
     () => new Map(contacts.map(contact => [contact.id, contact.name])),
     [contacts]
   );
+  const currentUserName = normalizedPersonName(user?.name);
+  const ownContactIds = useMemo(
+    () =>
+      new Set(
+        contacts
+          .filter(contact => normalizedPersonName(contact.name) === currentUserName)
+          .map(contact => contact.id)
+      ),
+    [contacts, currentUserName]
+  );
   const locationMap = useMemo(
     () => new Map(locations.map(location => [location.id, location.name])),
     [locations]
@@ -420,6 +436,12 @@ export default function PostProcessing() {
       ) {
         return false;
       }
+      if (myTasksOnly && (!task.contactId || !ownContactIds.has(task.contactId))) {
+        return false;
+      }
+      if (openOrUnassignedOnly && task.status !== "offen" && task.contactId) {
+        return false;
+      }
       if (!query) return true;
       const contactName = task.contactId ? contactMap.get(task.contactId) ?? "" : "";
       const locationName = task.locationId ? locationMap.get(task.locationId) ?? "" : "";
@@ -449,6 +471,9 @@ export default function PostProcessing() {
     locationFilter,
     categoryFilter,
     contactFilter,
+    myTasksOnly,
+    openOrUnassignedOnly,
+    ownContactIds,
     searchTerm,
     contactMap,
     locationMap,
@@ -460,6 +485,8 @@ export default function PostProcessing() {
     locationFilter !== null ||
     categoryFilter !== "alle" ||
     contactFilter !== "alle" ||
+    myTasksOnly ||
+    openOrUnassignedOnly ||
     searchTerm.trim().length > 0;
 
   const updateStatusFilter = (value: PostStatusFilter) => {
@@ -491,6 +518,8 @@ export default function PostProcessing() {
     setCategoryFilter("alle");
     setContactFilter("alle");
     setSearchTerm("");
+    setMyTasksOnly(false);
+    setOpenOrUnassignedOnly(false);
     setSearchParams(
       previous => {
         const next = new URLSearchParams(previous);
@@ -640,6 +669,41 @@ export default function PostProcessing() {
               <X className="size-4" />
             </button>
           )}
+        </div>
+
+        <div className="flex flex-wrap gap-2" aria-label="Schnellfilter Nachbereitung">
+          <Button
+            type="button"
+            size="sm"
+            variant={myTasksOnly ? "default" : "outline"}
+            className={
+              myTasksOnly
+                ? "bg-blue-700 text-white hover:bg-blue-800"
+                : "border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100"
+            }
+            disabled={ownContactIds.size === 0}
+            title={
+              ownContactIds.size === 0
+                ? "Der aktuelle Sitzungsname ist keinem Ansprechpartner zugeordnet."
+                : undefined
+            }
+            onClick={() => setMyTasksOnly(active => !active)}
+          >
+            👤 Meine Aufgaben
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={openOrUnassignedOnly ? "default" : "outline"}
+            className={
+              openOrUnassignedOnly
+                ? "bg-amber-600 text-white hover:bg-amber-700"
+                : "border-amber-200 bg-amber-50 text-amber-950 hover:bg-amber-100"
+            }
+            onClick={() => setOpenOrUnassignedOnly(active => !active)}
+          >
+            ⚠ Offen / unzugewiesen
+          </Button>
         </div>
 
         <div className="grid grid-cols-1 gap-2 md:flex md:flex-wrap">
