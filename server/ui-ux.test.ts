@@ -1825,9 +1825,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain(
       'md:w-[220px] md:text-sm" aria-label="Bestätigung filtern"'
     );
-    expect(helpers).toContain(
-      'md:w-[220px] md:text-sm" aria-label="Helferumfang filtern"'
-    );
+    expect(helpers).toContain("const feedbackFilter = firstContactOnly");
+    expect(helpers).toContain("const updateFeedbackFilter = (");
+    expect(helpers).toContain('value="erstkontakt-offen">Ohne Erstkontakt</SelectItem>');
+    expect(helpers).not.toContain('aria-label="Helferumfang filtern"');
 
     expect(desktopHeader.indexOf("Name {sortAsc")).toBeLessThan(
       desktopHeader.indexOf("Aktionen")
@@ -2246,19 +2247,18 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain("<Search");
     expect(helpers).toContain("Suchen (Name, Telefon, Hinweise) …");
     expect(helpers).toContain("Helfer nach Name, Telefon oder Hinweis durchsuchen");
-    expect(helpers).toContain("helperScopeFilter");
+    expect(helpers).toContain("feedbackFilter");
+    expect(helpers).toContain("updateFeedbackFilter");
     expect(helpers).toContain("willHelpFilter");
     expect(helpers).toContain(
       'md:w-[220px] md:text-sm" aria-label="Bestätigung filtern"'
     );
-    expect(helpers).toContain(
-      'md:w-[220px] md:text-sm" aria-label="Helferumfang filtern"'
-    );
+    expect(helpers).not.toContain('aria-label="Helferumfang filtern"');
+    expect(helpers).not.toContain("Nur Helfer mit ...");
     const filterOrder = [
       "Alle Ansprechpartner",
       "Alle Begleitungen",
       "Alle Rückmeldungen",
-      "Nur Helfer mit ...",
       "Helfen (Ja/Nein)",
       "Nur Helfer mit Zeitfenstern",
     ].map(label => helpers.indexOf(label));

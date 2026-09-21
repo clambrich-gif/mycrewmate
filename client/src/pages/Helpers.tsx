@@ -610,11 +610,9 @@ export default function Helpers() {
     searchParams.get(HELPER_FIRST_CONTACT_QUERY_KEY)
   );
   const firstContactOnly = firstContactFilter === "offen";
-  const helperScopeFilter = assignedOnly
-    ? "eingeteilt"
-    : firstContactOnly
-      ? "erstkontakt-offen"
-      : "alle";
+  const feedbackFilter = firstContactOnly
+    ? "erstkontakt-offen"
+    : confirmationFilter;
   const utils = trpc.useUtils();
   const { user } = useAuth();
   const {
@@ -856,29 +854,20 @@ export default function Helpers() {
     );
   }, [contacts, helpers]);
 
-  const updateConfirmationFilter = (value: "alle" | "ja" | "nein") => {
-    setSearchParams(
-      previous => {
-        const next = new URLSearchParams(previous);
-        if (value === "alle") next.delete(HELPER_CONFIRMATION_QUERY_KEY);
-        else next.set(HELPER_CONFIRMATION_QUERY_KEY, value);
-        return next;
-      },
-      { replace: true }
-    );
-  };
-
-  const updateHelperScopeFilter = (
-    value: "alle" | "eingeteilt" | "erstkontakt-offen"
+  const updateFeedbackFilter = (
+    value: "alle" | "ja" | "nein" | "erstkontakt-offen"
   ) => {
     setSearchParams(
       previous => {
         const next = new URLSearchParams(previous);
-        next.delete(HELPER_ASSIGNMENT_QUERY_KEY);
+        next.delete(HELPER_CONFIRMATION_QUERY_KEY);
         next.delete(HELPER_FIRST_CONTACT_QUERY_KEY);
-        if (value === "eingeteilt") next.set(HELPER_ASSIGNMENT_QUERY_KEY, "ja");
-        if (value === "erstkontakt-offen")
+        if (value === "ja" || value === "nein") {
+          next.set(HELPER_CONFIRMATION_QUERY_KEY, value);
+        }
+        if (value === "erstkontakt-offen") {
           next.set(HELPER_FIRST_CONTACT_QUERY_KEY, "offen");
+        }
         return next;
       },
       { replace: true }
@@ -903,7 +892,8 @@ export default function Helpers() {
     apFilter !== "alle" ||
     companionFilter !== "alle" ||
     confirmationFilter !== "alle" ||
-    helperScopeFilter !== "alle" ||
+    assignedOnly ||
+    firstContactOnly ||
     willHelpFilter !== "alle" ||
     myHelperRecordOnly ||
     timedAvailabilityOnly;
@@ -1021,9 +1011,11 @@ export default function Helpers() {
             </SelectContent>
           </Select>
           <Select
-            value={confirmationFilter}
+            value={feedbackFilter}
             onValueChange={value =>
-              updateConfirmationFilter(value as "alle" | "ja" | "nein")
+              updateFeedbackFilter(
+                value as "alle" | "ja" | "nein" | "erstkontakt-offen"
+              )
             }
           >
             <SelectTrigger className="!h-10 w-full items-center border-slate-200 bg-white text-base md:w-[220px] md:text-sm" aria-label="Bestätigung filtern">
@@ -1033,22 +1025,6 @@ export default function Helpers() {
               <SelectItem value="alle">Alle Rückmeldungen</SelectItem>
               <SelectItem value="ja">Bestätigt</SelectItem>
               <SelectItem value="nein">Noch nicht bestätigt</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select
-            value={helperScopeFilter}
-            onValueChange={value =>
-              updateHelperScopeFilter(
-                value as "alle" | "eingeteilt" | "erstkontakt-offen"
-              )
-            }
-          >
-            <SelectTrigger className="!h-10 w-full items-center border-slate-200 bg-white text-base md:w-[220px] md:text-sm" aria-label="Helferumfang filtern">
-              <SelectValue placeholder="Nur Helfer mit ..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="alle">Nur Helfer mit ...</SelectItem>
-              <SelectItem value="eingeteilt">Nur eingeteilt</SelectItem>
               <SelectItem value="erstkontakt-offen">Ohne Erstkontakt</SelectItem>
             </SelectContent>
           </Select>
