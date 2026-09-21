@@ -1238,14 +1238,17 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout.match(/alt="MyCrewMate"/g)).toHaveLength(3);
   });
 
-  it("zeigt unter der Wortmarke einen zentrierten Planungstitel ohne Vereinslogo", () => {
+  it("trennt Markenbereich und Online-Status in kompakte Sidebar-Panels", () => {
     const layout = source("client/src/components/Layout.tsx");
     const legalFooter = source("client/src/components/ImpressumDialog.tsx");
 
     expect(layout).toContain("VEREINS- &amp; EVENTPLANUNG");
     expect(layout).toContain("text-center text-[11px] font-medium");
     expect(layout).toContain("bg-transparent object-contain");
-    expect(layout).toContain("items-center border-b bg-white px-4 py-3");
+    expect(layout).toContain('SheetHeader className="items-center bg-white px-4 py-3 text-center"');
+    expect(layout.match(/className="flex min-h-10 items-center justify-center border-y border-slate-200 bg-slate-50 px-3 py-1.5"/g)).toHaveLength(2);
+    expect(layout.match(/className="min-h-7 max-w-full"/g)).toHaveLength(2);
+    expect(layout).not.toContain('className="mt-2 max-w-full"');
     expect(layout).toContain("flex flex-col border-t border-slate-200/70 px-3 pt-0.5 pb-1 leading-none");
     expect(layout).toContain('className="h-6 w-6 shrink-0"');
     expect(layout).toContain('className="mt-0.5 block w-full whitespace-nowrap rounded px-0 text-center text-[9px] leading-none text-gray-400');

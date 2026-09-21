@@ -1303,8 +1303,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
           overlayClassName="z-50"
           className="z-50 w-[88vw] max-w-xs gap-0 bg-white p-0 text-slate-950"
         >
-          <SheetHeader className="border-b text-left">
-            <SheetTitle>
+          <SheetHeader className="items-center bg-white px-4 py-3 text-center">
+            <SheetTitle className="flex justify-center">
               <img
                 {...logoLoading}
                 src={MYCREWMATE_WORDMARK}
@@ -1312,18 +1312,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 className="h-10 w-auto max-w-[190px] bg-transparent object-contain"
               />
             </SheetTitle>
-            <SheetDescription>
-              Planung {year} ·{" "}
-              {user?.role === "admin" ? "Administrator" : "Planungsteam"}
+            <SheetDescription className="mt-1 text-center text-[11px] font-medium tracking-[0.08em] text-slate-600">
+              VEREINS- &amp; EVENTPLANUNG
             </SheetDescription>
-            <div className="mt-1 flex items-center gap-2">
-              <OnlinePresenceBadge
-                counts={onlinePresence.counts}
-                onOpenChat={openChatWidget}
-                className="w-fit"
-              />
-            </div>
           </SheetHeader>
+          <div className="flex min-h-10 items-center justify-center border-y border-slate-200 bg-slate-50 px-3 py-1.5">
+            <OnlinePresenceBadge
+              counts={onlinePresence.counts}
+              onOpenChat={openChatWidget}
+              className="min-h-7 max-w-full"
+            />
+          </div>
           <div className="border-b p-3">
             <div className="mb-1.5 flex items-center justify-between">
               <Label className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -1519,7 +1518,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </Sheet>
 
       <aside className="hidden w-64 shrink-0 flex-col border-r bg-card lg:sticky lg:top-0 lg:flex lg:h-screen lg:self-start">
-        <div className="flex min-h-24 flex-col items-center border-b bg-white px-4 py-3 text-slate-950">
+        <div className="flex min-h-24 flex-col items-center bg-white px-4 py-3 text-slate-950">
           <img
             {...logoLoading}
             src={MYCREWMATE_WORDMARK}
@@ -1529,10 +1528,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="mt-1 w-full text-center text-[11px] font-medium tracking-[0.08em] text-slate-600">
             VEREINS- &amp; EVENTPLANUNG
           </div>
+        </div>
+        <div className="flex min-h-10 items-center justify-center border-y border-slate-200 bg-slate-50 px-3 py-1.5">
           <OnlinePresenceBadge
             counts={onlinePresence.counts}
             onOpenChat={openChatWidget}
-            className="mt-2 max-w-full"
+            className="min-h-7 max-w-full"
           />
         </div>
 
