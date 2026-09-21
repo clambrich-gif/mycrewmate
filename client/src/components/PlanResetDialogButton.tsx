@@ -104,10 +104,12 @@ export function PlanResetDialogButton({
   area,
   label,
   onCompleted,
+  triggerClassName = "",
 }: {
   area: ConsolidatedResetArea;
   label: string;
   onCompleted?: () => void;
+  triggerClassName?: string;
 }) {
   const { user } = useAuth();
   const utils = trpc.useUtils();
@@ -175,7 +177,7 @@ export function PlanResetDialogButton({
       <Button
         type="button"
         variant="outline"
-        className="inline-flex items-center gap-2 whitespace-nowrap border-rose-200 bg-rose-50 px-3.5 py-1.5 text-rose-700 shadow-xs has-[>svg]:px-3.5 hover:bg-rose-100"
+        className={`inline-flex items-center gap-2 whitespace-nowrap border-rose-200 bg-rose-50 px-3.5 py-1.5 text-rose-700 shadow-xs has-[>svg]:px-3.5 hover:bg-rose-100 ${triggerClassName}`}
         onClick={() => setChoiceDialogOpen(true)}
       >
         <RotateCcw className="h-4 w-4" aria-hidden="true" />

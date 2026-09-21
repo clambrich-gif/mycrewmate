@@ -113,7 +113,7 @@ describe("rollenabhängige Navigation", () => {
       "font-semibold text-slate-800 hover:bg-slate-100 hover:text-slate-900"
     );
     expect(navigationItemClasses("admin", "/sicherheit", false)).toBe(
-      "font-normal text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+      "font-medium text-slate-800 hover:bg-slate-100 hover:text-slate-900"
     );
     expect(NAV.find(item => item.href === "/sicherheit")?.label).toBe(
       "Schutz & Protokoll"

@@ -928,22 +928,23 @@ export default function Helpers() {
             Aufgaben-PDFs.
           </p>
         </div>
-        <div className="w-full space-y-2 lg:ml-auto lg:w-[11rem]">
-          <div className="grid grid-cols-2 gap-2 [&>[data-slot=button]]:h-10 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2">
+        <div className="w-full rounded-xl border border-slate-200 bg-white p-2 shadow-sm lg:ml-auto lg:w-[12rem]">
+          <div className="space-y-2">
             <PlanResetDialogButton
               area="helpers"
               label="Helfer"
               onCompleted={invalidate}
+              triggerClassName="h-10 w-full justify-center"
             />
+            <Button
+              type="button"
+              className="h-10 w-full bg-blue-600 px-4 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus-visible:ring-blue-500"
+              onClick={openNewHelperDialog}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Neuer Helfer
+            </Button>
           </div>
-          <Button
-            type="button"
-            className="w-full bg-blue-600 px-4 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus-visible:ring-blue-500"
-            onClick={openNewHelperDialog}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Neuer Helfer
-          </Button>
         </div>
       </div>
 

@@ -1747,10 +1747,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
       expect(module).toContain("lg:[&>[data-slot=button]]:w-auto");
     }
 
-    expect(helpers).toContain("w-full space-y-2 lg:ml-auto lg:w-[11rem]");
-    expect(helpers).toContain("grid grid-cols-2 gap-2");
-    expect(helpers).toContain("[&>[data-slot=button]]:h-10");
-    expect(helpers).toContain("w-full bg-blue-600 px-4 text-base font-medium text-white");
+    expect(helpers).toContain("w-full rounded-xl border border-slate-200 bg-white p-2 shadow-sm lg:ml-auto lg:w-[12rem]");
+    expect(helpers).toContain("triggerClassName=\"h-10 w-full justify-center\"");
+    expect(helpers).toContain("h-10 w-full bg-blue-600 px-4 text-base font-medium text-white");
     for (const module of [taskList, taskGeneric, finances]) {
       expect(module).toContain('className="col-span-2 shadow-xs lg:col-auto"');
     }
@@ -2442,6 +2441,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(cakes).toContain("donationTargetsOpen");
     expect(cakes).toContain("setDonationTargetsOpen(false)");
     expect(cakes).toContain("data-donation-targets-collapsible");
+    expect(cakes).toContain("lg:ml-auto lg:w-[25rem]");
+    expect(cakes).toContain("flex justify-end gap-2");
+    expect(cakes).toContain("[&>[data-slot=button]]:flex-1");
+    expect(cakes).toContain("border-rose-200 bg-rose-50/45 py-0 shadow-sm");
+    expect(cakes).toContain("CardContent className=\"p-1.5 sm:p-2\"");
+    expect(cakes).toContain("flex h-9 w-full items-center justify-between");
     expect(cakes).toContain("Spenden-Sollwerte festlegen");
     expect(cakes).toContain('aria-controls="donation-targets-content"');
     expect(cakes).toContain("data-[state=open]:animate-accordion-down");
@@ -2489,6 +2494,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(locations).toContain("Orte & Standorte");
     expect(locations).toContain("Breitengrad (Latitude)");
     expect(locations).toContain("Längengrad (Longitude)");
+    expect(locations).toContain("flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between");
+    expect(locations).toContain("border-slate-300 bg-white px-4 font-medium text-slate-800 shadow-sm");
+    expect(locations).toContain("mr-2 size-4");
 
     const materials = source("client/src/pages/Materials.tsx");
     const taskGeneric = source("client/src/pages/TaskGeneric.tsx");

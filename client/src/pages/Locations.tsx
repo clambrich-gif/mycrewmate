@@ -207,7 +207,7 @@ export default function Locations() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <PageTitle icon="locations">Orte & Standorte</PageTitle>
           <p className="text-muted-foreground">
@@ -215,8 +215,13 @@ export default function Locations() {
           </p>
         </div>
         {canManage && (
-          <Button type="button" className="min-h-11" onClick={openCreate}>
-            <Plus className="size-4" aria-hidden="true" /> Ort anlegen
+          <Button
+            type="button"
+            variant="outline"
+            className="h-10 border-slate-300 bg-white px-4 font-medium text-slate-800 shadow-sm hover:bg-slate-50 hover:text-slate-950 sm:ml-auto"
+            onClick={openCreate}
+          >
+            <Plus className="mr-2 size-4" aria-hidden="true" /> Ort anlegen
           </Button>
         )}
       </div>

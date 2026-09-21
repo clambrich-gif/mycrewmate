@@ -507,8 +507,8 @@ export default function Cakes() {
             kennzeichnen.
           </p>
         </div>
-        <div className="w-full space-y-2 lg:w-auto lg:min-w-[500px]">
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 sm:[&>[data-slot=button]]:h-10">
+        <div className="w-full space-y-2 lg:ml-auto lg:w-[25rem]">
+          <div className="flex justify-end gap-2 [&>[data-slot=button]]:h-10 [&>[data-slot=button]]:flex-1 [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2">
             <Button
               type="button"
               variant="outline"
@@ -659,15 +659,15 @@ export default function Cakes() {
           open={donationTargetsOpen}
           onOpenChange={setDonationTargetsOpen}
         >
-          <Card
-            data-donation-targets-collapsible
-            className="border-rose-200 bg-rose-50/45 shadow-sm"
-          >
-            <CardContent className="p-2 sm:p-2.5">
+            <Card
+              data-donation-targets-collapsible
+            className="border-rose-200 bg-rose-50/45 py-0 shadow-sm"
+            >
+            <CardContent className="p-1.5 sm:p-2">
               <CollapsibleTrigger asChild>
                 <button
                   type="button"
-                  className={`flex h-11 w-full items-center justify-between gap-3 rounded-lg px-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-600 focus-visible:ring-offset-1 ${
+                  className={`flex h-9 w-full items-center justify-between gap-3 rounded-lg px-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-600 focus-visible:ring-offset-1 ${
                     donationTargetsOpen
                       ? "bg-rose-100/70"
                       : "hover:bg-rose-100/60"

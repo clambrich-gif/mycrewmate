@@ -112,7 +112,7 @@ export function navigationItemClasses(
   return active
     ? "bg-primary font-semibold text-primary-foreground hover:bg-primary/90"
     : href === "/sicherheit"
-      ? "font-normal text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+      ? "font-medium text-slate-800 hover:bg-slate-100 hover:text-slate-900"
     : role === "user" && PLANNING_TEAM_OVERVIEW_PATHS.includes(
           href as (typeof PLANNING_TEAM_OVERVIEW_PATHS)[number]
         )
