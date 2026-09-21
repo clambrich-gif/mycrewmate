@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
+import { COOKIE_NAME } from "@shared/const";
 import { appRouter } from "./routers";
 import * as db from "./db";
 import * as passwordAuth from "./password-auth";
 import * as pdf from "./pdf";
 import {
   ADMIN_PASSWORD_OPEN_ID,
+  hashPassword,
   planningTeamAccessOpenId,
   SHARED_PASSWORD_OPEN_ID,
 } from "./password-auth";
@@ -462,6 +464,7 @@ describe("Event-based Access Control für Planungsteam", () => {
       expect.objectContaining({
         contactId: 4,
         eventIds: [10],
+        mustChangePassword: true,
         passwordHash: expect.stringMatching(/^\$2/),
       })
     );
@@ -491,6 +494,7 @@ describe("Event-based Access Control für Planungsteam", () => {
         contactName: "Christian Lambrich",
         label: "Christian Lambrich",
         eventIds: [10],
+        mustChangePassword: false,
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -530,5 +534,106 @@ describe("Event-based Access Control für Planungsteam", () => {
     const renderedSheet = accessSheetSpy.mock.calls[0][0][0];
     expect(renderedSheet.initialPassword).toBeUndefined();
     expect(result.base64).toBe(Buffer.from("%PDF-test").toString("base64"));
+  });
+
+  it("erkennt Einmalpasswörter beim Login und erzwingt das Setzen eines neuen Passworts", async () => {
+    const initialHash = await hashPassword("MCM-initial-code-123");
+    vi.spyOn(db, "listPlanningTeamAccessCredentials").mockResolvedValue([
+      {
+        id: 19,
+        contactName: "Toni Test",
+        label: "Toni Test",
+        passwordHash: initialHash,
+        mustChangePassword: true,
+        sessionVersion: 1,
+      },
+    ]);
+    const cookieSpy = vi.fn();
+    const caller = appRouter.createCaller({
+      user: null,
+      req: mockReq(),
+      res: { cookie: cookieSpy, setHeader: vi.fn(), clearCookie: vi.fn() } as any,
+    });
+
+    const loginResult = await caller.auth.passwordLogin({
+      password: "MCM-initial-code-123",
+    });
+
+    expect(loginResult).toEqual({
+      success: true,
+      mustChangePassword: true,
+    });
+    expect(cookieSpy).toHaveBeenCalledWith(
+      COOKIE_NAME,
+      expect.any(String),
+      expect.objectContaining({ maxAge: expect.any(Number) })
+    );
+
+    const changeSpy = vi
+      .spyOn(db, "completePlanningTeamInitialPasswordChange")
+      .mockResolvedValue({ id: 19, sessionVersion: 2 });
+    vi.spyOn(db, "isPlanningTeamAccessPasswordChangeRequired").mockResolvedValue(true);
+    const upsertUserSpy = vi.spyOn(db, "upsertUser").mockResolvedValue({} as any);
+
+    const authCaller = appRouter.createCaller({
+      user: {
+        id: 99,
+        openId: "planning-team-access-19",
+        role: "user",
+        name: "Toni Test",
+        email: null,
+        sessionVersion: 1,
+        avatarUrl: null,
+        accountBlocked: false,
+        lastSignedIn: new Date(),
+      },
+      req: mockReq(),
+      res: { cookie: cookieSpy, setHeader: vi.fn(), clearCookie: vi.fn() } as any,
+    });
+
+    const statusResult = await authCaller.auth.initialPasswordChangeStatus();
+    expect(statusResult).toEqual({ mustChangePassword: true });
+
+    const changeResult = await authCaller.auth.completeInitialPasswordChange({
+      password: "mein-neues-sicheres-passwort-123",
+      passwordConfirmation: "mein-neues-sicheres-passwort-123",
+    });
+
+    expect(changeResult).toEqual({
+      success: true,
+      mustChangePassword: false,
+    });
+    expect(changeSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accessId: 19,
+        passwordHash: expect.stringMatching(/^\$2/),
+      })
+    );
+    expect(upsertUserSpy).toHaveBeenCalled();
+  });
+
+  it("blockiert operative Planungsabfragen bei noch offenem Einmalpasswortwechsel", async () => {
+    vi.spyOn(db, "isPlanningTeamAccessAllowedForEvent").mockResolvedValue(true);
+    vi.spyOn(db, "isPlanningTeamAccessPasswordChangeRequired").mockResolvedValue(true);
+
+    const blockedCaller = appRouter.createCaller({
+      user: {
+        id: 99,
+        openId: "planning-team-access-19",
+        role: "user",
+        name: "Toni Test",
+        email: null,
+        sessionVersion: 1,
+        avatarUrl: null,
+        accountBlocked: false,
+        lastSignedIn: new Date(),
+      },
+      req: mockReq({ "x-planning-year": "2027", "x-planning-event-id": "10" }),
+      res: { setHeader: vi.fn(), clearCookie: vi.fn() } as any,
+    });
+
+    await expect(blockedCaller.notes.list({ offset: 0, limit: 10 })).rejects.toThrow(
+      "Bitte vergeben Sie zuerst Ihr persönliches Passwort"
+    );
   });
 });

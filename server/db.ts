@@ -302,6 +302,7 @@ export type PlanningTeamAccessSummary = {
   contactName: string | null;
   label: string;
   eventIds: number[];
+  mustChangePassword: boolean;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -311,6 +312,7 @@ type PlanningTeamAccessCredential = {
   contactName: string | null;
   label: string;
   passwordHash: string;
+  mustChangePassword: boolean;
   sessionVersion: number;
 };
 
@@ -362,6 +364,7 @@ export async function listPlanningTeamAccesses(): Promise<
       contactId: planningTeamAccesses.contactId,
       contactName: contacts.name,
       label: planningTeamAccesses.label,
+      mustChangePassword: planningTeamAccesses.mustChangePassword,
       createdAt: planningTeamAccesses.createdAt,
       updatedAt: planningTeamAccesses.updatedAt,
       eventId: planningTeamAccessEvents.eventId,
@@ -382,6 +385,7 @@ export async function listPlanningTeamAccesses(): Promise<
       contactName: row.contactName,
       label: row.label,
       eventIds: [],
+      mustChangePassword: row.mustChangePassword,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };
@@ -405,6 +409,7 @@ export async function listPlanningTeamAccessCredentials(): Promise<
       contactName: contacts.name,
       label: planningTeamAccesses.label,
       passwordHash: planningTeamAccesses.passwordHash,
+      mustChangePassword: planningTeamAccesses.mustChangePassword,
       sessionVersion: planningTeamAccesses.sessionVersion,
     })
     .from(planningTeamAccesses)
@@ -416,6 +421,7 @@ export async function createPlanningTeamAccess(input: {
   label: string;
   contactId?: number | null;
   passwordHash: string;
+  mustChangePassword?: boolean;
   eventIds: number[];
 }) {
   const database = (await getDb()) as DB;
@@ -428,6 +434,7 @@ export async function createPlanningTeamAccess(input: {
       contactId: contact?.id ?? null,
       label: contact?.name ?? input.label.trim(),
       passwordHash: input.passwordHash,
+      mustChangePassword: input.mustChangePassword ?? false,
       sessionVersion: 1,
     });
     const id = Number(result?.[0]?.insertId ?? result?.insertId);
@@ -452,6 +459,7 @@ export async function updatePlanningTeamAccess(input: {
   label: string;
   contactId?: number | null;
   passwordHash?: string;
+  mustChangePassword?: boolean;
   eventIds: number[];
 }) {
   const database = (await getDb()) as DB;
@@ -480,6 +488,9 @@ export async function updatePlanningTeamAccess(input: {
         contactId: contact?.id ?? null,
         label: contact?.name ?? input.label.trim(),
         ...(input.passwordHash ? { passwordHash: input.passwordHash } : {}),
+        ...(input.mustChangePassword !== undefined
+          ? { mustChangePassword: input.mustChangePassword }
+          : {}),
         sessionVersion: existing.sessionVersion + 1,
       })
       .where(eq(planningTeamAccesses.id, input.id));
@@ -496,6 +507,55 @@ export async function updatePlanningTeamAccess(input: {
       .limit(1);
     if (!access) throw new Error("Planungsteam-Zugang konnte nicht gelesen werden");
     return { ...access, eventIds };
+  });
+}
+
+export async function isPlanningTeamAccessPasswordChangeRequired(accessId: number) {
+  const database = await getDb();
+  if (!database) return false;
+  const [access] = await database
+    .select({ mustChangePassword: planningTeamAccesses.mustChangePassword })
+    .from(planningTeamAccesses)
+    .where(eq(planningTeamAccesses.id, accessId))
+    .limit(1);
+  return access?.mustChangePassword ?? false;
+}
+
+/**
+ * Ersetzt ausschließlich einen einmalig ausgegebenen Zugangscode. Die neue
+ * Sitzungsnummer entwertet alle bisherigen Sitzungstoken des Zugangs.
+ */
+export async function completePlanningTeamInitialPasswordChange(input: {
+  accessId: number;
+  passwordHash: string;
+}) {
+  const database = (await getDb()) as DB;
+  return database.transaction(async tx => {
+    const [access] = await tx
+      .select({
+        id: planningTeamAccesses.id,
+        sessionVersion: planningTeamAccesses.sessionVersion,
+        mustChangePassword: planningTeamAccesses.mustChangePassword,
+      })
+      .from(planningTeamAccesses)
+      .where(eq(planningTeamAccesses.id, input.accessId))
+      .limit(1)
+      .for("update");
+    if (!access) throw new Error("Planungsteam-Zugang wurde nicht gefunden");
+    if (!access.mustChangePassword) {
+      throw new Error("Für diesen Zugang ist kein Passwortwechsel erforderlich");
+    }
+
+    const sessionVersion = access.sessionVersion + 1;
+    await tx
+      .update(planningTeamAccesses)
+      .set({
+        passwordHash: input.passwordHash,
+        mustChangePassword: false,
+        sessionVersion,
+      })
+      .where(eq(planningTeamAccesses.id, input.accessId));
+    return { id: access.id, sessionVersion };
   });
 }
 

@@ -1,0 +1,1 @@
+ALTER TABLE `planning_team_accesses` ADD `mustChangePassword` boolean DEFAULT false NOT NULL;

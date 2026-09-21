@@ -2675,4 +2675,28 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(manager).toContain("Passwort aktiv");
     expect(permissions).toContain("Aktivitätsprotokoll");
   });
+
+  it("erzwingt bei Anmeldung mit Initialpasswort ein nicht schließbares Modal zur Passwort-Neuvergabe", () => {
+    const layout = source("client/src/components/Layout.tsx");
+    const modal = source("client/src/components/ForcePasswordChangeModal.tsx");
+
+    expect(layout).toContain("ForcePasswordChangeModal");
+    expect(layout).toContain("initialPasswordChangeStatus");
+    expect(layout).toContain("completeInitialPasswordChange");
+    expect(layout).toContain("forcePasswordChangeModal");
+
+    expect(modal).toContain("Willkommen bei MyCrewMate – Passwort ändern");
+    expect(modal).toContain(
+      "Du hast dich mit einem temporären Zugangs-Code angemeldet. Bitte"
+    );
+    expect(modal).toContain(
+      "vergib jetzt dein persönliches, dauerhaftes Passwort."
+    );
+    expect(modal).toContain("Neues Passwort");
+    expect(modal).toContain("Neues Passwort bestätigen");
+    expect(modal).toContain("Neues Passwort speichern & Fortfahren");
+    expect(modal).toContain("showCloseButton={false}");
+    expect(modal).toContain("onEscapeKeyDown={event => event.preventDefault()}");
+    expect(modal).toContain("onPointerDownOutside={event => event.preventDefault()}");
+  });
 });

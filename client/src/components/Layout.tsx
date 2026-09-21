@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
+import { ForcePasswordChangeModal } from "@/components/ForcePasswordChangeModal";
 import {
   ImpressumDialog,
   LegalFooterLinks,
@@ -280,6 +281,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [capsLockOn, setCapsLockOn] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loginMode, setLoginMode] = useState<"user" | "admin">("user");
+  const [forcePasswordChangeOpen, setForcePasswordChangeOpen] = useState(false);
+  const [initialPassword, setInitialPassword] = useState("");
+  const [initialPasswordConfirmation, setInitialPasswordConfirmation] = useState("");
+  const [initialPasswordError, setInitialPasswordError] = useState<string | null>(null);
   const [adminIdentityDialogOpen, setAdminIdentityDialogOpen] = useState(false);
   const [adminLoginContacts, setAdminLoginContacts] = useState<
     AdminLoginContact[]
@@ -390,6 +395,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
     retry: false,
     refetchOnWindowFocus: false,
   });
+  const initialPasswordStatus = trpc.auth.initialPasswordChangeStatus.useQuery(
+    undefined,
+    {
+      enabled: isAuthenticated,
+      retry: false,
+      refetchOnWindowFocus: false,
+    }
+  );
   const years = trpc.years.list.useQuery(undefined, {
     enabled: isAuthenticated,
   });
@@ -538,6 +551,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }, [isAuthenticated, selectYear, year, years.data]);
 
   useEffect(() => {
+    if (!initialPasswordStatus.data?.mustChangePassword) return;
+    setInitialPassword("");
+    setInitialPasswordConfirmation("");
+    setInitialPasswordError(null);
+    setForcePasswordChangeOpen(true);
+  }, [initialPasswordStatus.data?.mustChangePassword]);
+
+  useEffect(() => {
     if (!events.data?.length || selectedEvent) return;
     selectEvent(events.data[0].id);
   }, [events.data, selectEvent, selectedEvent]);
@@ -553,7 +574,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
   };
   const passwordLogin = trpc.auth.passwordLogin.useMutation({
     mutationKey: ["auth", "passwordLogin"],
-    onSuccess: finishLogin,
+    onSuccess: async result => {
+      if (result.mustChangePassword) {
+        setPassword("");
+        setLoginError(null);
+        setInitialPassword("");
+        setInitialPasswordConfirmation("");
+        setInitialPasswordError(null);
+        setForcePasswordChangeOpen(true);
+        await utils.auth.me.invalidate();
+        return;
+      }
+      await finishLogin();
+    },
     onError: async error => {
       setLoginError(error.message);
       if (error.data?.code === "TOO_MANY_REQUESTS") {
@@ -561,6 +594,22 @@ export function Layout({ children }: { children: React.ReactNode }) {
       }
     },
   });
+  const completeInitialPasswordChange =
+    trpc.auth.completeInitialPasswordChange.useMutation({
+      mutationKey: ["auth", "completeInitialPasswordChange"],
+      onSuccess: async () => {
+        setInitialPassword("");
+        setInitialPasswordConfirmation("");
+        setInitialPasswordError(null);
+        setForcePasswordChangeOpen(false);
+        await Promise.all([
+          utils.auth.me.invalidate(),
+          utils.auth.initialPasswordChangeStatus.invalidate(),
+        ]);
+        toast.success("Dein persönliches Passwort wurde gespeichert");
+      },
+      onError: error => setInitialPasswordError(error.message),
+    });
   const adminPasswordLogin = trpc.auth.adminPasswordLogin.useMutation({
     mutationKey: ["auth", "adminPasswordLogin"],
     onSuccess: async result => {
@@ -719,6 +768,36 @@ export function Layout({ children }: { children: React.ReactNode }) {
           administratorName: selectedAdministratorName.trim(),
         })
       }
+    />
+  );
+  const submitInitialPasswordChange = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setInitialPasswordError(null);
+    if (initialPassword !== initialPasswordConfirmation) {
+      setInitialPasswordError("Die Passwörter stimmen nicht überein.");
+      return;
+    }
+    completeInitialPasswordChange.mutate({
+      password: initialPassword,
+      passwordConfirmation: initialPasswordConfirmation,
+    });
+  };
+  const forcePasswordChangeModal = (
+    <ForcePasswordChangeModal
+      open={forcePasswordChangeOpen}
+      password={initialPassword}
+      passwordConfirmation={initialPasswordConfirmation}
+      busy={completeInitialPasswordChange.isPending}
+      error={initialPasswordError}
+      onPasswordChange={value => {
+        setInitialPassword(value);
+        if (initialPasswordError) setInitialPasswordError(null);
+      }}
+      onPasswordConfirmationChange={value => {
+        setInitialPasswordConfirmation(value);
+        if (initialPasswordError) setInitialPasswordError(null);
+      }}
+      onSubmit={submitInitialPasswordChange}
     />
   );
 
@@ -1871,6 +1950,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
       />
 
       <ImpressumDialog open={impressumOpen} onOpenChange={setImpressumOpen} />
+
+      {forcePasswordChangeModal}
 
       <Dialog open={pwaInstallDialogOpen} onOpenChange={setPwaInstallDialogOpen}>
         <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white text-slate-950 sm:max-w-md">

@@ -162,6 +162,25 @@ async function requirePlanningTeamEventAccess(
   }
 }
 
+/** Ein per Zugangsblatt ausgegebener Einmalcode erlaubt nur den Passwortwechsel. */
+async function requireCompletedPlanningTeamPasswordChange(user: {
+  openId: string;
+  role: "user" | "admin";
+  isCron?: boolean;
+}) {
+  const accessId = planningTeamAccessIdForUser(user);
+  if (
+    accessId !== null &&
+    (await db.isPlanningTeamAccessPasswordChangeRequired(accessId))
+  ) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message:
+        "Bitte vergeben Sie zuerst Ihr persönliches Passwort, um die Planung zu öffnen.",
+    });
+  }
+}
+
 async function readResponseBodyLimited(
   response: Response,
   maxBytes: number
@@ -313,6 +332,7 @@ const eventSelectionProcedure = activeSessionProcedure;
 const scopedReadProcedure = baseProtectedProcedure
   .use(async ({ ctx, next }) => {
     await requirePlanningTeamEventAccess(ctx.user, ctx.req);
+    await requireCompletedPlanningTeamPasswordChange(ctx.user);
     return withPlanningScope(requestedPlanningScope(ctx.req), () => next());
   })
   .use(async ({ next }) => {
@@ -425,6 +445,7 @@ async function recordOperationalActivity(
 
 const scopedProtectedProcedure = activeSessionProcedure.use(async ({ ctx, next }) => {
   await requirePlanningTeamEventAccess(ctx.user, ctx.req);
+  await requireCompletedPlanningTeamPasswordChange(ctx.user);
   return withPlanningScope(requestedPlanningScope(ctx.req), () => next());
 });
 
@@ -807,6 +828,14 @@ export const appRouter = router({
         planningTeamLocked: settings?.planningTeamLocked ?? false,
       };
     }),
+    initialPasswordChangeStatus: baseProtectedProcedure.query(async ({ ctx }) => {
+      const accessId = planningTeamAccessIdForUser(ctx.user);
+      return {
+        mustChangePassword:
+          accessId !== null &&
+          (await db.isPlanningTeamAccessPasswordChangeRequired(accessId)),
+      } as const;
+    }),
     passwordLogin: publicProcedure
       .input(z.object({ password: z.string().min(1).max(200) }))
       .mutation(async ({ ctx, input }) => {
@@ -875,7 +904,56 @@ export const appRouter = router({
           ...getSessionCookieOptions(ctx.req),
           maxAge: PASSWORD_SESSION_MS,
         });
-        return { success: true } as const;
+        return {
+          success: true,
+          mustChangePassword: matchingAccess.mustChangePassword,
+        } as const;
+      }),
+    completeInitialPasswordChange: baseProtectedProcedure
+      .input(
+        z
+          .object({
+            password: passwordInput,
+            passwordConfirmation: passwordInput,
+          })
+          .refine(input => input.password === input.passwordConfirmation, {
+            path: ["passwordConfirmation"],
+            message: "Die Passwörter stimmen nicht überein",
+          })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const accessId = planningTeamAccessIdForUser(ctx.user);
+        if (ctx.user.role !== "user" || accessId === null) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Diese Passwortänderung ist nur für Planungsteam-Zugänge verfügbar.",
+          });
+        }
+        const updated = await db.completePlanningTeamInitialPasswordChange({
+          accessId,
+          passwordHash: await hashPassword(input.password),
+        });
+        const sessionName = ctx.user.name ?? "Planungsteam";
+        await db.upsertUser({
+          openId: planningTeamAccessOpenId(updated.id),
+          name: sessionName,
+          loginMethod: "password",
+          role: "user",
+          lastSignedIn: new Date(),
+        });
+        const token = await sdk.createSessionToken(
+          planningTeamAccessOpenId(updated.id),
+          {
+            name: sessionName,
+            expiresInMs: PASSWORD_SESSION_MS,
+            sessionVersion: updated.sessionVersion,
+          }
+        );
+        ctx.res.cookie(COOKIE_NAME, token, {
+          ...getSessionCookieOptions(ctx.req),
+          maxAge: PASSWORD_SESSION_MS,
+        });
+        return { success: true, mustChangePassword: false } as const;
       }),
     adminPasswordLogin: publicProcedure
       .input(
@@ -1074,6 +1152,7 @@ export const appRouter = router({
           contactName: contact.name,
           label: contact.name,
           eventIds: input.eventIds,
+          mustChangePassword: true,
           createdAt: new Date(),
           updatedAt: new Date(),
         };
@@ -1085,6 +1164,7 @@ export const appRouter = router({
           label: input.label,
           contactId: input.contactId,
           passwordHash: await hashPassword(initialPassword),
+          mustChangePassword: true,
           eventIds: input.eventIds,
         });
         return {
@@ -1145,6 +1225,7 @@ export const appRouter = router({
           label: existing.label,
           contactId: existing.contactId,
           passwordHash: await hashPassword(initialPassword),
+          mustChangePassword: true,
           eventIds: existing.eventIds,
         });
         return {
