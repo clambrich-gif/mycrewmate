@@ -60,8 +60,9 @@ export const NAV: readonly NavItem[] = [
   },
   {
     href: "/berechtigungen",
-    label: "Rollen & Protokoll",
+    label: "Protokoll",
     icon: ShieldCheck,
+    planningTeamHidden: true,
   },
   {
     href: "/sicherheit",
@@ -77,6 +78,7 @@ export const PLANNING_TEAM_HIDDEN_PATHS = [
   "/finanzen",
   "/excel",
   "/orte",
+  "/berechtigungen",
 ] as const;
 
 export const PLANNING_TEAM_EDITING_PATHS = [
@@ -91,7 +93,6 @@ export const PLANNING_TEAM_EDITING_PATHS = [
 export const PLANNING_TEAM_OVERVIEW_PATHS = [
   "/",
   "/einsatzplan",
-  "/berechtigungen",
   "/hilfe",
 ] as const;
 
@@ -126,6 +127,8 @@ export function navigationItemClasses(
 ) {
   return active
     ? "bg-primary font-semibold text-primary-foreground hover:bg-primary/90"
+    : href === "/berechtigungen"
+      ? "font-normal text-slate-500 hover:bg-slate-100 hover:text-slate-900"
     : role === "user" && PLANNING_TEAM_OVERVIEW_PATHS.includes(
           href as (typeof PLANNING_TEAM_OVERVIEW_PATHS)[number]
         )

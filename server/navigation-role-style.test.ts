@@ -33,6 +33,7 @@ describe("rollenabhängige Navigation", () => {
       "/finanzen",
       "/excel",
       "/orte",
+      "/berechtigungen",
     ]);
 
     const planningTeamPaths = visibleNavigationItems("user").map(item => item.href);
@@ -51,7 +52,6 @@ describe("rollenabhängige Navigation", () => {
       "/material",
       "/spenden",
       "/pdf-export",
-      "/berechtigungen",
       "/hilfe",
     ]);
   });
@@ -68,7 +68,6 @@ describe("rollenabhängige Navigation", () => {
     expect(PLANNING_TEAM_OVERVIEW_PATHS).toEqual([
       "/",
       "/einsatzplan",
-      "/berechtigungen",
       "/hilfe",
     ]);
     expect(visibleNavigationSections("user")).toEqual([
@@ -110,6 +109,9 @@ describe("rollenabhängige Navigation", () => {
     ]);
     expect(navigationItemClasses("admin", "/helfer", false)).toBe(
       "font-semibold text-slate-800 hover:bg-slate-100 hover:text-slate-900"
+    );
+    expect(navigationItemClasses("admin", "/berechtigungen", false)).toBe(
+      "font-normal text-slate-500 hover:bg-slate-100 hover:text-slate-900"
     );
     expect(navigationItemClasses("admin", "/helfer", true)).toBe(
       "bg-primary font-semibold text-primary-foreground hover:bg-primary/90"

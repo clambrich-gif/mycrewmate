@@ -14,7 +14,6 @@ import {
   Download,
   FileDown,
   MessageCircle,
-  PlayCircle,
   Search,
   Send,
   ShieldCheck,
@@ -304,20 +303,6 @@ export default function Help() {
   const [roleFilter, setRoleFilter] =
     useState<keyof typeof ROLE_STYLE>("alle");
   const { user } = useAuth();
-  const helpVideo =
-    user?.role === "admin"
-      ? {
-          src: "/api/videos/admin",
-          poster: "/api/help/images/video-administratoren",
-          label: "Erweiterte Schulung für Administratoren",
-        }
-      : user?.role === "user"
-        ? {
-          src: "/api/videos/planungsteam",
-          poster: "/api/help/images/video-planungsteam",
-          label: "Schulung für das Planungsteam: Von A bis Z",
-          }
-        : null;
   const guidePdf = trpc.help.guidePdf.useMutation({
     onSuccess: result => {
       downloadBase64File(result.base64, result.mimeType, result.filename);
@@ -359,30 +344,6 @@ export default function Help() {
           </p>
         </div>
         <div className="min-w-0 space-y-3">
-          {helpVideo && (
-            <Card className="overflow-hidden border-primary/20 shadow-sm">
-              <CardHeader className="p-4 pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <PlayCircle className="h-5 w-5 text-primary" />
-                  {helpVideo.label}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-3 pt-0 sm:p-4 sm:pt-0">
-                <video
-                  key={helpVideo.src}
-                  controls
-                  playsInline
-                  preload="metadata"
-                  poster={helpVideo.poster}
-                  className="aspect-video w-full max-w-full rounded-lg bg-slate-950 object-contain shadow-inner"
-                  aria-label={helpVideo.label}
-                >
-                  <source src={helpVideo.src} type="video/mp4" />
-                  Ihr Browser unterstützt die Videowiedergabe nicht.
-                </video>
-              </CardContent>
-            </Card>
-          )}
           {user?.role === "user" && (
             <Card className="border-amber-200 bg-amber-50/50 shadow-sm">
               <CardHeader className="p-4 pb-2">

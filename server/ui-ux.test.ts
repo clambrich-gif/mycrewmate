@@ -650,6 +650,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
   it("blendet Verwaltungsbereiche aus und hält die Planungsteam-Navigation flach", () => {
     const layout = source("client/src/components/Layout.tsx");
     const navigation = source("client/src/lib/nav.ts");
+    const app = source("client/src/App.tsx");
 
     expect(layout).toContain("visibleNavigationSections(user?.role)");
     expect(layout.match(/visibleNavigationSections\(user\?\.role\)/g)).toHaveLength(2);
@@ -665,6 +666,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(navigation).toContain('"/finanzen"');
     expect(navigation).toContain('"/excel"');
     expect(navigation).toContain('"/orte"');
+    expect(navigation).toContain('"/berechtigungen"');
+    expect(navigation).toContain('label: "Protokoll"');
+    expect(navigation).toContain("planningTeamHidden: true");
     expect(navigation).toContain("if (item.planningTeamHidden && role === \"user\") return false");
     expect(navigation).toContain("font-semibold text-slate-800 hover:bg-slate-100 hover:text-slate-900");
     expect(navigation).toContain("font-semibold text-slate-900 hover:bg-slate-100 hover:text-slate-900");
@@ -672,6 +676,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout.match(/rounded-lg px-3 py-2\.5 text-sm transition-all duration-150/g)).toHaveLength(1);
     expect(layout.match(/rounded-lg px-3 py-2 text-sm transition-all duration-150/g)).toHaveLength(1);
     expect(navigation).not.toContain("Nur Lesen");
+    expect(app).toContain("function AdminOnlyPermissions");
+    expect(app).toContain('if (user?.role !== "admin") return <Redirect to="/" />;');
+    expect(app).toContain('<Route path="/berechtigungen" component={AdminOnlyPermissions} />');
   });
 
   it("kennzeichnet und steuert PDF-Bilder veranstaltungsspezifisch", () => {
@@ -1258,24 +1265,16 @@ describe("UI- und Mobile-UX-Regeln", () => {
     );
   });
 
-  it("zeigt in der Hilfe ausschließlich das Video der aktiven Rolle", () => {
+  it("entfernt Schulungsvideos und Videoplatzhalter vollständig aus der Hilfe", () => {
     const help = source("client/src/pages/Help.tsx");
 
-    expect(help).toContain('user?.role === "admin"');
-    expect(help).toContain('user?.role === "user"');
-    expect(help).toContain("Erweiterte Schulung für Administratoren");
-    expect(help).toContain("Schulung für das Planungsteam: Von A bis Z");
-    expect(help).toContain('src: "/api/videos/admin"');
-    expect(help).toContain('src: "/api/videos/planungsteam"');
-    expect(help).not.toContain(
-      "manus-storage/RSC-Helferplanung-Erklaervideo"
-    );
-    expect(help).toContain('poster: "/api/help/images/video-administratoren"');
-    expect(help).toContain('poster: "/api/help/images/video-planungsteam"');
-    expect(help.match(/<video/g)).toHaveLength(1);
-    expect(help).toContain("controls");
-    expect(help).toContain("playsInline");
-    expect(help).toContain("aspect-video w-full max-w-full");
+    expect(help).not.toContain("helpVideo");
+    expect(help).not.toContain("PlayCircle");
+    expect(help).not.toContain("/api/videos/");
+    expect(help).not.toContain("video-administratoren");
+    expect(help).not.toContain("video-planungsteam");
+    expect(help).not.toContain("<video");
+    expect(help).not.toContain("<source");
     expect(help).toContain("PLANNING_TEAM_FLOW");
     expect(help).toContain("Dein Ablauf in 6 Schritten");
     expect(help).toContain("Persönlichen PDF-Link per WhatsApp weitergeben.");

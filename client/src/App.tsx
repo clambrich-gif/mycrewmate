@@ -7,6 +7,7 @@ import { Layout } from "./components/Layout";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { YearProvider } from "./contexts/YearContext";
 import { routeLoaders } from "./lib/route-loaders";
+import { useAuth } from "./_core/hooks/useAuth";
 
 const Dashboard = lazy(routeLoaders["/"]);
 const Contacts = lazy(routeLoaders["/ansprechpartner"]);
@@ -47,6 +48,14 @@ function RouteLoading() {
   );
 }
 
+function AdminOnlyPermissions() {
+  const { user, loading } = useAuth();
+
+  if (loading) return <RouteLoading />;
+  if (user?.role !== "admin") return <Redirect to="/" />;
+  return <Permissions />;
+}
+
 function Router() {
   return (
     <Layout>
@@ -74,7 +83,7 @@ function Router() {
           <Route path="/finanzen" component={Finances} />
           <Route path="/pdf-export" component={PdfExport} />
           <Route path="/excel" component={Excel} />
-          <Route path="/berechtigungen" component={Permissions} />
+          <Route path="/berechtigungen" component={AdminOnlyPermissions} />
           <Route path="/sicherheit" component={Security} />
           <Route path="/hilfe" component={Help} />
           <Route component={NotFound} />
