@@ -95,9 +95,9 @@ export const PLANNING_TEAM_OVERVIEW_PATHS = [
   "/hilfe",
 ] as const;
 
-type PlanningTeamNavigationSection = {
-  id: "editing" | "overview";
-  label: "BEARBEITUNG" | "ÜBERSICHT & INFO";
+type NavigationSection = {
+  id: "default";
+  label: null;
   items: NavItem[];
 };
 
@@ -112,37 +112,11 @@ export function visibleNavigationItems(
   });
 }
 
-/**
- * Das Planungsteam erhält eine bewusst aufgabenorientierte Navigation.
- * Die Admin-Navigation bleibt in der historisch gewohnten Reihenfolge.
- */
+/** Alle Rollen behalten die gewohnte Reihenfolge der sichtbaren Menüpunkte. */
 export function visibleNavigationSections(
   role: "user" | "admin" | null | undefined
-): Array<PlanningTeamNavigationSection | { id: "default"; label: null; items: NavItem[] }> {
-  const visibleItems = visibleNavigationItems(role);
-  if (role !== "user") {
-    return [{ id: "default", label: null, items: visibleItems }];
-  }
-
-  const itemByPath = new Map(visibleItems.map(item => [item.href, item]));
-  const getItems = (paths: readonly string[]) =>
-    paths.flatMap(path => {
-      const item = itemByPath.get(path);
-      return item ? [item] : [];
-    });
-
-  return [
-    {
-      id: "editing",
-      label: "BEARBEITUNG",
-      items: getItems(PLANNING_TEAM_EDITING_PATHS),
-    },
-    {
-      id: "overview",
-      label: "ÜBERSICHT & INFO",
-      items: getItems(PLANNING_TEAM_OVERVIEW_PATHS),
-    },
-  ];
+): NavigationSection[] {
+  return [{ id: "default", label: null, items: visibleNavigationItems(role) }];
 }
 
 export function navigationItemClasses(

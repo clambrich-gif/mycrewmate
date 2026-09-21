@@ -1461,11 +1461,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <nav className="flex-1 space-y-1 overflow-y-auto p-2">
             {visibleNavigationSections(user?.role).map(section => (
               <div key={section.id} className="space-y-1">
-                {section.label && (
-                  <p className="my-2 px-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                    {section.label}
-                  </p>
-                )}
                 {section.items.map(({ href, label, icon: Icon }) => {
                   const active = location === href;
                   return (
@@ -1638,11 +1633,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <nav className="flex-1 overflow-y-auto px-2 pb-2 pt-1.5 space-y-0.5">
           {visibleNavigationSections(user?.role).map(section => (
             <div key={section.id} className="space-y-0.5">
-              {section.label && (
-                <p className="my-2 px-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  {section.label}
-                </p>
-              )}
               {section.items.map(({ href, label, icon: Icon }) => {
                 const active = location === href;
                 return (

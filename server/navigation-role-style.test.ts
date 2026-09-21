@@ -56,7 +56,7 @@ describe("rollenabhängige Navigation", () => {
     ]);
   });
 
-  it("gliedert das Planungsteam in Bearbeitung und Übersicht mit ruhiger Typografie", () => {
+  it("behält für das Planungsteam die gewohnte Reihenfolge und differenziert nur die Typografie", () => {
     expect(PLANNING_TEAM_EDITING_PATHS).toEqual([
       "/helfer",
       "/vorbereitung",
@@ -72,20 +72,7 @@ describe("rollenabhängige Navigation", () => {
       "/hilfe",
     ]);
     expect(visibleNavigationSections("user")).toEqual([
-      {
-        id: "editing",
-        label: "BEARBEITUNG",
-        items: PLANNING_TEAM_EDITING_PATHS.map(path =>
-          visibleNavigationItems("user").find(item => item.href === path)
-        ),
-      },
-      {
-        id: "overview",
-        label: "ÜBERSICHT & INFO",
-        items: PLANNING_TEAM_OVERVIEW_PATHS.map(path =>
-          visibleNavigationItems("user").find(item => item.href === path)
-        ),
-      },
+      { id: "default", label: null, items: visibleNavigationItems("user") },
     ]);
 
     for (const path of PLANNING_TEAM_EDITING_PATHS) {

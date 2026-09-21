@@ -639,7 +639,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).not.toContain("dark:text-red-400");
   });
 
-  it("blendet Verwaltungsbereiche aus und gliedert die Planungsteam-Navigation in Bearbeitung und Übersicht", () => {
+  it("blendet Verwaltungsbereiche aus und hält die Planungsteam-Navigation flach", () => {
     const layout = source("client/src/components/Layout.tsx");
     const navigation = source("client/src/lib/nav.ts");
 
@@ -647,12 +647,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout.match(/visibleNavigationSections\(user\?\.role\)/g)).toHaveLength(2);
     expect(layout).toContain("navigationItemClasses(user?.role, href, active)");
     expect(layout.match(/navigationItemClasses\(user\?\.role, href, active\)/g)).toHaveLength(2);
-    expect(layout).toContain("my-2 px-3 text-xs font-semibold uppercase tracking-wider text-slate-400");
+    expect(layout).not.toContain("uppercase tracking-wider text-slate-400");
     expect(navigation).toContain("PLANNING_TEAM_HIDDEN_PATHS");
     expect(navigation).toContain("PLANNING_TEAM_EDITING_PATHS");
     expect(navigation).toContain("PLANNING_TEAM_OVERVIEW_PATHS");
-    expect(navigation).toContain('label: "BEARBEITUNG"');
-    expect(navigation).toContain('label: "ÜBERSICHT & INFO"');
+    expect(navigation).not.toContain('label: "BEARBEITUNG"');
+    expect(navigation).not.toContain('label: "ÜBERSICHT & INFO"');
     expect(navigation).toContain('"/ansprechpartner"');
     expect(navigation).toContain('"/finanzen"');
     expect(navigation).toContain('"/excel"');
