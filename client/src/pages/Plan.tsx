@@ -1330,7 +1330,7 @@ export default function Plan() {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0 lg:pr-4">
           <PageTitle icon="plan">Einsatzplan</PageTitle>
@@ -1375,7 +1375,7 @@ export default function Plan() {
       </div>
 
       {areas.length > 0 && (
-        <Card className="border-slate-200 shadow-sm">
+        <Card className="gap-0 border-slate-200 py-0 shadow-sm">
           <CardContent className="px-2 py-1 sm:px-2.5 sm:py-1">
             <button
               type="button"

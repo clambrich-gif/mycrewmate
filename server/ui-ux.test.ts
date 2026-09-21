@@ -709,6 +709,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
   it("öffnet die Bereichsansprechpartner bedarfsgerecht und verdichtet sie auf bis zu fünf Spalten", () => {
     const plan = source("client/src/pages/Plan.tsx");
 
+    expect(plan).toContain('<div className="space-y-3">');
+    expect(plan).toContain('className="gap-0 border-slate-200 py-0 shadow-sm"');
     expect(plan).toContain('className="px-2 py-1 sm:px-2.5 sm:py-1"');
     expect(plan).toContain('className="flex h-9 w-full items-center justify-between');
     expect(plan).toContain('className="flex min-w-0 items-center gap-2"');
