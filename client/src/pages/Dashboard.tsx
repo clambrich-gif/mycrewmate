@@ -10,7 +10,6 @@ import { trpc } from "@/lib/trpc";
 import {
   AlertTriangle,
   ArrowRight,
-  Calendar,
   CalendarClock,
   CheckCircle2,
   ClipboardList,
@@ -755,6 +754,9 @@ function DailyReadinessCard({
   );
 }
 
+const COUNTDOWN_INFINITY_MARK =
+  "/manus-storage/mycrewmate-infinity-mark_cd173237.png";
+
 function EventCountdownWidget({
   eventName,
   startDate,
@@ -780,11 +782,8 @@ function EventCountdownWidget({
 
   if (state.kind === "unconfigured") {
     content = (
-      <div
-        className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-center text-slate-700"
-      >
-        <Calendar className="mx-auto mb-1 size-5 text-slate-500" aria-hidden="true" />
-        <p className="font-semibold text-slate-900">Eventdatum noch festlegen</p>
+      <div className="rounded-lg bg-slate-50 px-3 py-2.5 text-center text-slate-700">
+        <p className="text-sm font-semibold text-slate-900">Eventdatum noch festlegen</p>
         <p className="mt-1 text-xs leading-4 text-slate-600">
           Der Countdown erscheint automatisch, sobald Start- und Enddatum hinterlegt sind.
         </p>
@@ -792,40 +791,52 @@ function EventCountdownWidget({
     );
   } else if (state.kind === "upcoming") {
     content = (
-      <div
-        className="rounded-lg border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-orange-50 px-4 py-3 text-center"
-      >
-        <div className="flex items-end justify-center gap-2">
-          <span className="bg-gradient-to-br from-blue-700 via-blue-600 to-blue-800 bg-clip-text text-5xl font-black leading-none tracking-tight text-transparent tabular-nums">
-            {state.days}
-          </span>
-          <span className="pb-0.5 text-xl font-extrabold leading-none text-orange-500">
-            {state.days === 1 ? "Tag" : "Tage"}
-          </span>
-        </div>
+      <div className="rounded-lg border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-orange-50 px-3 py-3 text-center">
+        {state.days === 1 ? (
+          <p className="text-base font-extrabold text-blue-700">
+            Dein Event startet morgen
+          </p>
+        ) : (
+          <>
+            <p className="text-[10px] font-bold tracking-[0.14em] text-slate-500 uppercase">
+              Dein Event startet in
+            </p>
+            <div className="mt-1.5 flex items-center justify-center gap-2">
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-blue-100 bg-white p-1 shadow-sm">
+                <img
+                  src={COUNTDOWN_INFINITY_MARK}
+                  alt="MyCrewMate-Unendlichkeitslogo"
+                  className="size-full object-contain"
+                />
+              </span>
+              <div className="flex items-end gap-1.5">
+                <span className="text-4xl font-black leading-none tracking-tight text-blue-600 tabular-nums">
+                  {state.days}
+                </span>
+                <span className="pb-0.5 text-lg font-extrabold leading-none text-orange-500">
+                  Tagen
+                </span>
+              </div>
+            </div>
+          </>
+        )}
         <p className="mt-2 truncate text-sm font-semibold text-slate-900" title={name}>
-          bis <span className="text-blue-700">{name}</span>
+          {name}
         </p>
       </div>
     );
   } else if (state.kind === "live") {
     content = (
-      <div
-        className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3 text-center text-emerald-950"
-      >
-        <p className="text-base font-extrabold">Heute ist das Event!</p>
-        <p className="mt-1 text-xs text-emerald-800">
-          {name} · Tag {state.day} von {state.totalDays}
-        </p>
+      <div className="rounded-lg bg-blue-50 px-3 py-2.5 text-center text-blue-950">
+        <p className="text-base font-extrabold">Heute ist dein Event!</p>
+        <p className="mt-1 truncate text-xs text-blue-800" title={name}>{name}</p>
       </div>
     );
   } else {
     content = (
-      <div
-        className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-center text-slate-800"
-      >
-        <p className="text-base font-extrabold">Event erfolgreich durchgeführt!</p>
-        <p className="mt-1 text-xs text-slate-600">{name} ist abgeschlossen.</p>
+      <div className="rounded-lg bg-slate-50 px-3 py-2.5 text-center text-slate-800">
+        <p className="text-base font-extrabold">Event abgeschlossen</p>
+        <p className="mt-1 truncate text-xs text-slate-600" title={name}>{name}</p>
       </div>
     );
   }
@@ -838,13 +849,6 @@ function EventCountdownWidget({
       className={`relative isolate w-full max-w-xs self-start gap-0 rounded-xl border border-slate-200 bg-white py-0 text-slate-950 shadow-sm${isUrgent ? " countdown-urgent border-amber-300" : ""}`}
     >
       <CardContent className="relative z-10 p-4">
-        <div className="mb-3 flex justify-center">
-          <img
-            src="/mycrewmate-logo.png"
-            alt="MyCrewMate"
-            className="h-7 w-auto"
-          />
-        </div>
         {content}
         <p className="mt-3 border-t border-slate-100 pt-2 text-center text-[11px] font-medium leading-4 text-slate-500">
           Vorfreude im Blick. Das Event im Griff.

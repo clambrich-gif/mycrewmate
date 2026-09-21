@@ -1002,10 +1002,15 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain("EventCountdownWidget");
     expect(dashboard).toContain('data-slot="event-countdown"');
     expect(dashboard).toContain("eventCountdownState");
-    expect(dashboard).toContain('src="/mycrewmate-logo.png"');
+    expect(dashboard).toContain("COUNTDOWN_INFINITY_MARK");
+    expect(dashboard).toContain("mycrewmate-infinity-mark_cd173237.png");
+    expect(dashboard).not.toContain('src="/mycrewmate-logo.png"');
     expect(dashboard).toContain("Vorfreude im Blick. Das Event im Griff.");
-    expect(dashboard).toContain("text-5xl font-black");
-    expect(dashboard).toContain("bis <span className=\"text-blue-700\">{name}</span>");
+    expect(dashboard).toContain("Dein Event startet in");
+    expect(dashboard).toContain("Dein Event startet morgen");
+    expect(dashboard).toContain("text-4xl font-black");
+    expect(dashboard).toContain("Tagen");
+    expect(dashboard).not.toContain("bis <span");
     expect(dashboard).toContain("w-full max-w-xs self-start gap-0 rounded-xl");
     expect(dashboard).toContain("flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between");
     expect(dashboard).not.toContain("Rocket");
@@ -1013,8 +1018,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain('data-countdown-urgent={isUrgent ? "true" : "false"}');
     expect(dashboard).toContain('" countdown-urgent border-amber-300"');
     expect(dashboard).not.toContain("formatEventDate");
-    expect(dashboard).toContain("Heute ist das Event!");
-    expect(dashboard).toContain("Event erfolgreich durchgeführt!");
+    expect(dashboard).toContain("Heute ist dein Event!");
+    expect(dashboard).toContain("Event abgeschlossen");
     expect(dashboard).toContain("eventName={currentEvent.name}");
 
     expect(layout).toContain('data-slot="event-dates-trigger"');
