@@ -321,16 +321,20 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout.match(/inline-flex min-h-11 items-center justify-center/g)).toHaveLength(2);
   });
 
-  it("zeigt und entsperrt den dauerhaften Planungsteam-Login ausschließlich im Adminbereich", () => {
+  it("zeigt und entsperrt den globalen Planungsteam-Notfall-Stopp ausschließlich im Adminbereich", () => {
     const security = source("client/src/pages/Security.tsx");
     const layout = source("client/src/components/Layout.tsx");
     const css = source("client/src/index.css");
 
-    expect(security).toContain("Sperrstatus Planungsteam");
+    expect(security).toContain("Notfall-Sperrstatus Planungsteam (Global)");
+    expect(security).toContain("Globaler Notfall-Stopp: Alle Planungsteam-Zugänge sperren");
+    expect(security).toContain("Globalen Notfall-Stopp aufheben");
     expect(security).toContain("status?.planningTeamLocked");
     expect(security).toContain("trpc.auth.unlockPlanningTeamLock.useMutation");
-    expect(security).toContain("Sperre für Planungsteam aufheben");
-    expect(security).toContain('user?.role !== "admin"');
+    expect(security).toContain("trpc.auth.lockPlanningTeam.useMutation");
+    expect(security).toContain("Sicherheitsprotokoll / Logbuch");
+    expect(security).toContain("data-security-accordions");
+    expect(security).toContain("if (!isAdmin)");
     expect(layout).toContain("passwordStatus.data?.planningTeamLocked");
     expect(layout).toContain("Nach 5 Fehlversuchen greift eine zeitbasierte Sperre (Cooldown).");
     expect(layout).toContain("Zugang für das Planungsteam gesperrt");
@@ -1819,7 +1823,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const router = source("server/routers.ts");
 
     expect(security).toContain("Aktuelles Administratorpasswort");
-    expect(security).toContain("Die Eingabe ist vor jeder Passwortänderung zwingend erforderlich.");
+    expect(security).toContain("aktuelle Eingabe ist als Sicherheitsbestätigung erforderlich");
     expect(security).toContain("disabled={!currentAdminPassword || saving}");
     expect(security).toContain("onSave({ password, currentAdminPassword })");
     expect(router).toContain("currentAdminPassword: z.string().min(1).max(200)");
@@ -2736,7 +2740,14 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const permissions = source("client/src/pages/Permissions.tsx");
 
     expect(security).toContain("<PlanningTeamAccessManager />");
-    expect(manager).toContain("Planungsteam-Zugänge verwalten");
+    expect(security).toContain("Planungsteam-Zugänge verwalten");
+    expect(security).toContain("Administratorpasswort neu vergeben");
+    expect(security).toContain("Notfall-Sperrstatus Planungsteam (Global)");
+    expect(security).toContain("Sicherheitsprotokoll / Logbuch");
+    expect(manager).toContain("Vorhandene Zugänge &amp; Filter");
+    expect(manager).toContain("Neuen Zugang anlegen");
+    expect(manager).toContain('value="existing-accesses"');
+    expect(manager).toContain('value="create-access"');
     expect(manager).toContain("Freigegebene Veranstaltungen");
     expect(manager).toContain("Administratorpasswort");
     expect(manager).toContain("Ansprechpartner");

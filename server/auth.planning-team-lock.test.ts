@@ -7,6 +7,7 @@ const dbMocks = vi.hoisted(() => ({
   clearPlanningTeamLoginFailuresIfUnlocked: vi.fn(),
   unlockPlanningTeamLogin: vi.fn(),
   lockPlanningTeamLogin: vi.fn(),
+  recordActivityLog: vi.fn(),
   listPlanningTeamAccessCredentials: vi.fn(),
   upsertUser: vi.fn(),
 }));
@@ -82,6 +83,7 @@ describe("DoS-Schutz und manuelle Sperre für das Planungsteam", () => {
     dbMocks.lockPlanningTeamLogin.mockResolvedValue({
       locked: true,
     });
+    dbMocks.recordActivityLog.mockResolvedValue(undefined);
     dbMocks.listPlanningTeamAccessCredentials.mockResolvedValue([
       { id: 1, label: "Team", passwordHash, sessionVersion: 1 },
     ]);
@@ -160,9 +162,16 @@ describe("DoS-Schutz und manuelle Sperre für das Planungsteam", () => {
       success: true,
     });
     expect(dbMocks.unlockPlanningTeamLogin).toHaveBeenCalledTimes(1);
+    expect(dbMocks.recordActivityLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        module: "Zugangsschutz",
+        subject: expect.stringContaining("aufgehoben"),
+      })
+    );
 
     dbMocks.unlockPlanningTeamLogin.mockClear();
     dbMocks.lockPlanningTeamLogin.mockClear();
+    dbMocks.recordActivityLog.mockClear();
     const planningCaller = appRouter.createCaller(context("user"));
     await expect(
       planningCaller.auth.unlockPlanningTeamLock()
@@ -172,5 +181,6 @@ describe("DoS-Schutz und manuelle Sperre für das Planungsteam", () => {
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(dbMocks.unlockPlanningTeamLogin).not.toHaveBeenCalled();
     expect(dbMocks.lockPlanningTeamLogin).not.toHaveBeenCalled();
+    expect(dbMocks.recordActivityLog).not.toHaveBeenCalled();
   });
 });

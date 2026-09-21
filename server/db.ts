@@ -2973,13 +2973,20 @@ export async function getExpectedSessionVersion(openId: string) {
   if (planningTeamAccessId !== null) {
     const database = await getDb();
     if (!database) return Number.MAX_SAFE_INTEGER;
-    const [access] = await database
-      .select({ sessionVersion: planningTeamAccesses.sessionVersion })
-      .from(planningTeamAccesses)
-      .where(eq(planningTeamAccesses.id, planningTeamAccessId))
-      .limit(1);
+    const [settings, access] = await Promise.all([
+      getSecuritySettings(),
+      database
+        .select({ sessionVersion: planningTeamAccesses.sessionVersion })
+        .from(planningTeamAccesses)
+        .where(eq(planningTeamAccesses.id, planningTeamAccessId))
+        .limit(1),
+    ]);
+    // Der globale Notfall-Stopp muss auch bereits angemeldete
+    // Planungsteam-Sitzungen sofort abschneiden – nicht nur neue Logins.
+    if (settings?.planningTeamLocked) return Number.MAX_SAFE_INTEGER;
+    const accessRow = access[0];
     // Ein gelöschter Zugang soll unmittelbar sämtliche offenen Sitzungen verlieren.
-    return access?.sessionVersion ?? Number.MAX_SAFE_INTEGER;
+    return accessRow?.sessionVersion ?? Number.MAX_SAFE_INTEGER;
   }
   if (
     openId !== SHARED_PASSWORD_OPEN_ID &&

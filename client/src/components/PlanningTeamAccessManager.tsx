@@ -1,6 +1,11 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -98,6 +103,7 @@ export function PlanningTeamAccessManager() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [filterYear, setFilterYear] = useState(ALL_YEARS);
   const [filterEventId, setFilterEventId] = useState(ALL_EVENTS);
+  const [openSections, setOpenSections] = useState<string[]>([]);
   const [printDialogOpen, setPrintDialogOpen] = useState(false);
   const [selectedPrintAccessIds, setSelectedPrintAccessIds] = useState<number[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<{
@@ -288,6 +294,7 @@ export function PlanningTeamAccessManager() {
       eventIds: access.eventIds,
       currentAdminPassword: "",
     });
+    setOpenSections(["create-access"]);
   };
   const formatEvents = (access: AccessSummary) =>
     access.eventIds
@@ -300,19 +307,30 @@ export function PlanningTeamAccessManager() {
     createAccess.isPending || updateAccess.isPending || resetAndPrint.isPending;
 
   return (
-    <Card className="border-blue-200 shadow-sm" data-planning-team-access-manager>
-      <CardHeader className="space-y-1">
-        <CardTitle className="flex items-center gap-2 text-base text-blue-950">
-          <ShieldCheck className="h-5 w-5 text-blue-700" />
-          Planungsteam-Zugänge verwalten
-        </CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Jeder Zugang erhält ein eigenes Passwort und darf nur die hier markierten
-          Veranstaltungen sehen und bearbeiten. Die Freigabe wird zusätzlich auf
-          dem Server geprüft.
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-5">
+    <div className="space-y-3" data-planning-team-access-manager>
+      <p className="text-sm text-muted-foreground">
+        Jeder Zugang erhält ein eigenes Passwort und darf nur die hier markierten
+        Veranstaltungen sehen und bearbeiten. Die Freigabe wird zusätzlich auf
+        dem Server geprüft.
+      </p>
+      <Accordion
+        type="multiple"
+        value={openSections}
+        onValueChange={setOpenSections}
+        className="space-y-3"
+      >
+        <AccordionItem
+          value="existing-accesses"
+          className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
+        >
+          <AccordionTrigger className="px-4 py-3 text-base font-semibold text-slate-900 hover:no-underline">
+            <span className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-blue-700" />
+              Vorhandene Zugänge &amp; Filter
+            </span>
+          </AccordionTrigger>
+          <AccordionContent className="border-t border-slate-100 px-4 pb-4">
+            <div className="space-y-5 pt-4">
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
           <p className="max-w-2xl text-xs text-slate-600">
             Der reguläre Nachdruck enthält aus Sicherheitsgründen keine Zugangscodes.
@@ -458,7 +476,22 @@ export function PlanningTeamAccessManager() {
           )}
         </div>
 
-        <div className="rounded-lg border border-blue-100 bg-blue-50/40 p-4">
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem
+          value="create-access"
+          className="overflow-hidden rounded-lg border border-blue-200 bg-blue-50/30 shadow-sm"
+        >
+          <AccordionTrigger className="px-4 py-3 text-base font-semibold text-blue-950 hover:no-underline">
+            <span className="flex items-center gap-2">
+              <Plus className="h-4 w-4 text-blue-700" />
+              Neuen Zugang anlegen
+            </span>
+          </AccordionTrigger>
+          <AccordionContent className="border-t border-blue-100 px-4 pb-4">
+            <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50/40 p-4">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h3 className="font-semibold text-blue-950">
@@ -564,8 +597,10 @@ export function PlanningTeamAccessManager() {
             {busy ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
             {form.id === null ? "Zugang anlegen" : "Zugang speichern"}
           </Button>
-        </div>
-      </CardContent>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
 
       <Dialog open={printDialogOpen} onOpenChange={setPrintDialogOpen}>
         <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white sm:max-w-lg">
@@ -726,6 +761,6 @@ export function PlanningTeamAccessManager() {
           </form>
         </DialogContent>
       </Dialog>
-    </Card>
+    </div>
   );
 }

@@ -1160,12 +1160,32 @@ export const appRouter = router({
         await db.setAdminPasswordHash(await hashPassword(input.password));
         return { success: true } as const;
       }),
-    unlockPlanningTeamLock: accountAdminProcedure.mutation(async () => {
+    unlockPlanningTeamLock: accountAdminProcedure.mutation(async ({ ctx }) => {
       await db.unlockPlanningTeamLogin();
+      try {
+        await db.recordActivityLog({
+          actor: auditActor(ctx.user),
+          module: "Zugangsschutz",
+          action: "updated",
+          subject: "Globaler Notfall-Stopp für alle Planungsteam-Zugänge aufgehoben",
+        });
+      } catch (error) {
+        console.warn("[Security] Freigabe konnte nicht protokolliert werden", error);
+      }
       return { success: true } as const;
     }),
-    lockPlanningTeam: accountAdminProcedure.mutation(async () => {
+    lockPlanningTeam: accountAdminProcedure.mutation(async ({ ctx }) => {
       await db.lockPlanningTeamLogin();
+      try {
+        await db.recordActivityLog({
+          actor: auditActor(ctx.user),
+          module: "Zugangsschutz",
+          action: "updated",
+          subject: "Globaler Notfall-Stopp für alle Planungsteam-Zugänge aktiviert",
+        });
+      } catch (error) {
+        console.warn("[Security] Notfall-Stopp konnte nicht protokolliert werden", error);
+      }
       return { success: true } as const;
     }),
     logout: publicProcedure.mutation(async ({ ctx }) => {
