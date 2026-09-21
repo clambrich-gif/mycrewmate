@@ -18,8 +18,6 @@ import {
   Gift,
   GitCompareArrows,
   ListTodo,
-  Rocket,
-  Sparkles,
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
@@ -33,7 +31,6 @@ import {
 } from "@shared/weekdays";
 import {
   eventCountdownState,
-  formatEventDate,
   type EventCountdownState,
 } from "@shared/event-dates";
 
@@ -778,88 +775,57 @@ function EventCountdownWidget({
     now
   );
   const name = eventName?.trim() || "diesem Event";
-  const startLabel = formatEventDate(startDate);
   const isUrgent = state.kind === "upcoming" && state.days <= 14;
   let content: ReactNode;
 
   if (state.kind === "unconfigured") {
     content = (
       <div
-        className="flex min-w-0 items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-700"
+        className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-center text-slate-700"
       >
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-600">
-          <Calendar className="size-5" aria-hidden="true" />
-        </span>
-        <div className="min-w-0">
-          <p className="font-semibold text-slate-900">Eventdatum noch festlegen</p>
-          <p className="text-sm text-slate-600">
-            Der Countdown erscheint automatisch, sobald Start- und Enddatum hinterlegt sind.
-          </p>
-        </div>
+        <Calendar className="mx-auto mb-1 size-5 text-slate-500" aria-hidden="true" />
+        <p className="font-semibold text-slate-900">Eventdatum noch festlegen</p>
+        <p className="mt-1 text-xs leading-4 text-slate-600">
+          Der Countdown erscheint automatisch, sobald Start- und Enddatum hinterlegt sind.
+        </p>
       </div>
     );
   } else if (state.kind === "upcoming") {
     content = (
       <div
-        className="grid gap-5 rounded-lg border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-orange-50 p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end sm:p-5"
+        className="rounded-lg border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-orange-50 px-4 py-3 text-center"
       >
-        <div className="min-w-0">
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-700">
-            Bis zum nächsten Event
-          </p>
-          <div className="mt-1.5 flex flex-wrap items-end gap-x-3 gap-y-1">
-            <span className="bg-gradient-to-br from-blue-700 via-blue-600 to-blue-800 bg-clip-text text-6xl font-black leading-none tracking-tight text-transparent tabular-nums sm:text-7xl">
-              {state.days}
-            </span>
-            <span className="pb-1 text-2xl font-extrabold leading-none text-orange-500 sm:text-3xl">
-              {state.days === 1 ? "Tag" : "Tage"}
-            </span>
-          </div>
-          <p className="mt-2 text-base font-semibold text-slate-900 sm:text-lg">
-            bis <span className="text-blue-700">{name}</span>
-          </p>
-          <p className="mt-1 text-sm text-slate-600">
-            {startLabel ? `Start: ${startLabel}` : "Startdatum wird geladen"}
-            {state.hours > 0 ? ` · noch ${state.hours} Std.` : ""}
-          </p>
+        <div className="flex items-end justify-center gap-2">
+          <span className="bg-gradient-to-br from-blue-700 via-blue-600 to-blue-800 bg-clip-text text-5xl font-black leading-none tracking-tight text-transparent tabular-nums">
+            {state.days}
+          </span>
+          <span className="pb-0.5 text-xl font-extrabold leading-none text-orange-500">
+            {state.days === 1 ? "Tag" : "Tage"}
+          </span>
         </div>
-        <span
-          className="relative flex size-20 shrink-0 items-center justify-center self-center rounded-2xl bg-orange-500 text-white shadow-lg shadow-orange-200 sm:size-24"
-          aria-hidden="true"
-        >
-          <Rocket className="size-11 sm:size-13" strokeWidth={2.2} />
-          <Sparkles className="absolute -right-2 -top-2 size-6 text-amber-300" fill="currentColor" />
-        </span>
+        <p className="mt-2 truncate text-sm font-semibold text-slate-900" title={name}>
+          bis <span className="text-blue-700">{name}</span>
+        </p>
       </div>
     );
   } else if (state.kind === "live") {
     content = (
       <div
-        className="flex min-w-0 items-center gap-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-4 text-emerald-950"
+        className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3 text-center text-emerald-950"
       >
-        <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-emerald-500 text-white shadow-sm" aria-hidden="true">
-          <Sparkles className="size-6" />
-        </span>
-        <div className="min-w-0">
-          <p className="text-lg font-extrabold">Heute ist das Event!</p>
-          <p className="text-sm text-emerald-800">
-            {name} · Tag {state.day} von {state.totalDays}
-          </p>
-        </div>
+        <p className="text-base font-extrabold">Heute ist das Event!</p>
+        <p className="mt-1 text-xs text-emerald-800">
+          {name} · Tag {state.day} von {state.totalDays}
+        </p>
       </div>
     );
   } else {
     content = (
       <div
-        className="flex min-w-0 items-center gap-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-4 text-slate-800"
+        className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-center text-slate-800"
       >
-        <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-slate-700 text-white shadow-sm" aria-hidden="true">
-          <CheckCircle2 className="size-6" />
-        </span>
-        <div className="min-w-0">
-          <p className="text-lg font-extrabold">Event erfolgreich durchgeführt!</p>
-          <p className="text-sm text-slate-600">{name} ist abgeschlossen.</p>
-        </div>
+        <p className="text-base font-extrabold">Event erfolgreich durchgeführt!</p>
+        <p className="mt-1 text-xs text-slate-600">{name} ist abgeschlossen.</p>
       </div>
     );
   }
@@ -869,25 +835,20 @@ function EventCountdownWidget({
       data-slot="event-countdown"
       data-countdown-state={state.kind}
       data-countdown-urgent={isUrgent ? "true" : "false"}
-      className={`relative isolate rounded-xl border border-slate-200 bg-white text-slate-950 shadow-sm${isUrgent ? " countdown-urgent border-amber-300" : ""}`}
+      className={`relative isolate w-full max-w-xs self-start gap-0 rounded-xl border border-slate-200 bg-white py-0 text-slate-950 shadow-sm${isUrgent ? " countdown-urgent border-amber-300" : ""}`}
     >
-      <CardContent className="relative z-10 p-4 sm:p-6">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <img
-              src="/mycrewmate-logo.png"
-              alt="MyCrewMate"
-              className="h-9 w-auto shrink-0 sm:h-10"
-            />
-            <p className="max-w-xl text-sm font-semibold leading-5 text-slate-800 sm:text-base">
-              Vorfreude im Blick. Das Event im Griff.
-            </p>
-          </div>
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-orange-50 text-orange-500" aria-hidden="true">
-            <Sparkles className="size-5" />
-          </span>
+      <CardContent className="relative z-10 p-4">
+        <div className="mb-3 flex justify-center">
+          <img
+            src="/mycrewmate-logo.png"
+            alt="MyCrewMate"
+            className="h-7 w-auto"
+          />
         </div>
         {content}
+        <p className="mt-3 border-t border-slate-100 pt-2 text-center text-[11px] font-medium leading-4 text-slate-500">
+          Vorfreude im Blick. Das Event im Griff.
+        </p>
       </CardContent>
     </Card>
   );
@@ -1082,18 +1043,20 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <PageTitle icon="dashboard">Dashboard</PageTitle>
-        <p className="text-muted-foreground">
-          Die wichtigsten nächsten Schritte stehen zuerst; alle Kennzahlen werden automatisch aus den Planungsdaten berechnet.
-        </p>
-      </div>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <PageTitle icon="dashboard">Dashboard</PageTitle>
+          <p className="text-muted-foreground">
+            Die wichtigsten nächsten Schritte stehen zuerst; alle Kennzahlen werden automatisch aus den Planungsdaten berechnet.
+          </p>
+        </div>
 
-      <EventCountdownWidget
-        eventName={currentEvent.name}
-        startDate={currentEvent.startDate}
-        endDate={currentEvent.endDate}
-      />
+        <EventCountdownWidget
+          eventName={currentEvent.name}
+          startDate={currentEvent.startDate}
+          endDate={currentEvent.endDate}
+        />
+      </div>
 
       <section
         data-dashboard-section="Heute priorisieren"
