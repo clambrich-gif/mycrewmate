@@ -20,13 +20,15 @@ describe("Produktions-Laufzeitabhängigkeiten", () => {
     expect(viteIntegration).toContain("import(viteConfigPath)");
   });
 
-  it("startet das Container-Image ohne pnpm und begrenzt nur den Build-Heap", () => {
+  it("startet das Container-Image ohne pnpm oder Drizzle Kit und begrenzt nur den Build-Heap", () => {
     const dockerfile = source("Dockerfile");
 
     expect(dockerfile).toContain("ENV NODE_OPTIONS=--max-old-space-size=512");
     expect(dockerfile).toContain("RUN pnpm build && pnpm prune --prod");
     expect(dockerfile).toContain(
-      'CMD ["sh", "-c", "node ./node_modules/drizzle-kit/bin.cjs migrate && exec node dist/index.js"]'
+      'CMD ["sh", "-c", "node dist/migrate.js && exec node dist/index.js"]'
     );
+    expect(dockerfile).not.toContain("drizzle-kit/bin.cjs");
+    expect(source("package.json")).toContain("server/_core/migrate.ts");
   });
 });

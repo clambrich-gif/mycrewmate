@@ -26,17 +26,17 @@ ENV NODE_ENV=production \
 
 RUN mkdir -p /app/data/uploads
 
-# Drizzle Kit bleibt als Produktionsabhängigkeit erhalten: Jeder Start wendet
-# nur noch nicht eingespielte, versionierte Migrationen an.
+# Der eigene Runner ist in dist/migrate.js gebündelt. Er benötigt weder pnpm
+# noch Drizzle Kit im Runtime-Image und behandelt ausschließlich nachgewiesene
+# historische Doppelspalten kompatibel.
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/drizzle ./drizzle
-COPY --from=build /app/drizzle.config.ts ./drizzle.config.ts
 COPY --from=build /app/client/public ./client/public
 
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD node -e 'fetch("http://127.0.0.1:3000/healthz").then(response => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))'
 
-CMD ["sh", "-c", "node ./node_modules/drizzle-kit/bin.cjs migrate && exec node dist/index.js"]
+CMD ["sh", "-c", "node dist/migrate.js && exec node dist/index.js"]

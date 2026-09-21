@@ -27,7 +27,7 @@ Wählen Sie in Coolify dann als Quelle **Docker Image** und tragen Sie diese Ima
 
 ### 1. Anwendung
 
-Für den empfohlenen Weg legen Sie eine Anwendung mit der Quelle **Docker Image** an und verwenden `ghcr.io/clambrich-gif/mycrewmate:latest`. Es ist kein Build- oder Startbefehl erforderlich. Das Image startet automatisch die ausstehenden Drizzle-Migrationen und anschließend den Server.
+Für den empfohlenen Weg legen Sie eine Anwendung mit der Quelle **Docker Image** an und verwenden `ghcr.io/clambrich-gif/mycrewmate:latest`. Es ist kein Build- oder Startbefehl erforderlich. Das Image startet automatisch den integrierten, Drizzle-kompatiblen Migrationsrunner und anschließend den Server.
 
 Die lokale Alternative bleibt möglich: Legen Sie eine Anwendung aus dem GitHub-Repository an und wählen Sie **Dockerfile**. Das Dockerfile begrenzt dabei den Build-Heap auf 512 MB und entfernt nach dem Build Entwicklungsabhängigkeiten.
 
@@ -55,7 +55,9 @@ Nicht erforderlich sind `VITE_APP_ID`, `OAUTH_SERVER_URL`, `VITE_OAUTH_PORTAL_UR
 
 ### 3. Datenbank und Migrationen
 
-Der Container führt vor dem Webstart `drizzle-kit migrate` aus. Dadurch werden die eingecheckten Dateien unter `drizzle/` in ihrer Journal-Reihenfolge angewendet. Der Befehl ist wiederholbar: bereits angewendete Migrationen werden übersprungen.
+Der Container führt vor dem Webstart den integrierten Migrationsrunner aus. Dadurch werden die eingecheckten Dateien unter `drizzle/` in ihrer Journal-Reihenfolge angewendet und im Standardjournal `__drizzle_migrations` vermerkt. Der Vorgang ist wiederholbar: bereits angewendete Migrationen werden übersprungen.
+
+Für ältere MyCrewMate-Datenbanken mit unvollständigem Drizzle-Journal prüft der Runner vor jedem `ALTER TABLE … ADD` ausschließlich die konkrete Zielspalte. Existiert **genau diese Spalte** bereits, wird sie als kompatibel übernommen und die zugehörige Migration korrekt im Journal nachgetragen. Alle anderen Fehler — etwa fehlende Rechte, fehlerhafte SQL-Anweisungen, abweichende Tabellen oder doppelte Indizes — brechen den Start weiterhin ab. Eine MySQL-Advisory-Lock verhindert parallele Migrationen während eines Rolling Updates.
 
 Vor einem produktiven Erststart empfiehlt sich eine leere Datenbank, die ausschließlich MyCrewMate gehört. Geben Sie dem Datenbankkonto Rechte für Tabellen, Indizes und die Drizzle-Migrationstabelle. MyCrewMate startet in Produktion absichtlich nicht, wenn `DATABASE_URL` oder `JWT_SECRET` fehlen.
 
@@ -78,7 +80,7 @@ Bestehende, früher in Manus Storage gespeicherte Uploads werden nicht automatis
 | Oberfläche lädt, Eingaben/API reagieren nicht            | Coolify-Logs und `/healthz` prüfen; `DATABASE_URL` kontrollieren | Datenbankdienst und Netzwerkverbindung herstellen; Container neu deployen.                                                                        |
 | Anmeldung hält nicht                                     | Browser-DevTools auf Cookie prüfen; HTTPS/Domain prüfen          | `JWT_SECRET` setzen und Domain ausschließlich über HTTPS betreiben.                                                                               |
 | Logo oder GPX fehlt                                      | Volume-Mount und Dateischlüssel prüfen                           | `/app/data` dauerhaft mounten; Datei erneut hochladen oder Altbestand übertragen.                                                                 |
-| Migration schlägt fehl                                   | Containerlogs mit `drizzle-kit migrate` prüfen                   | Datenbankrechte/URL korrigieren; keine alten Migrationen umbenennen oder löschen.                                                                 |
+| Migration schlägt fehl                                   | Containerlogs mit `[Migration]` prüfen                           | Datenbankrechte/URL korrigieren. Bereits vorhandene historische Spalten werden gezielt übernommen; andere Fehler nicht pauschal ignorieren.         |
 | Nach Update fehlen Dateien                               | Volume prüfen                                                    | `/app/data` als persistenten Mount verwenden, nicht als temporären Containerpfad.                                                                 |
 | Build bleibt nach „Building docker image started“ stehen | Server auf CPU-, RAM- und OOM-Ereignisse prüfen                  | Den externen GitHub-Image-Build verwenden; für lokale Builds zusätzlich ausreichend RAM oder Swap bereitstellen.                                  |
 | `Cannot find matching keyid` bei Corepack                | Buildlog auf die Corepack-Signaturmeldung prüfen                 | Mit diesem Repositorystand behoben: Das Dockerfile installiert die gepinnte pnpm-Version direkt und umgeht die veraltete Corepack-Schlüsselliste. |

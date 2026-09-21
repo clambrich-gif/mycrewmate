@@ -9,7 +9,7 @@ MyCrewMate ist eine passwortgeschützte Webanwendung zur Helfer-, Schicht- und E
 3. In Coolify die in [`docs/COOLIFY.md`](docs/COOLIFY.md) dokumentierten Variablen setzen. Erforderlich sind mindestens `DATABASE_URL` und ein langer, zufällig erzeugter `JWT_SECRET`.
 4. Ein **persistentes Volume** mit Zielpfad `/app/data` einrichten. Dort liegen hochgeladene Vereins-, Standort- und PDF-Logos sowie GPX-Dateien. Ohne Volume gehen neue Uploads bei einem Container-Neustart verloren.
 5. Port `3000` und als Health-Check `/healthz` konfigurieren. Die Anwendung hört auf `0.0.0.0:$PORT`.
-6. Deploy starten. Der Startbefehl `pnpm start:coolify` führt zuerst `pnpm db:migrate` mit allen versionierten Drizzle-Migrationen aus und startet danach die Anwendung.
+6. Deploy starten. Im Docker-Image führt der integrierte Runner `dist/migrate.js` zuerst die versionierten Drizzle-Migrationen aus und startet danach die Anwendung. **Keinen zusätzlichen Startbefehl** in Coolify hinterlegen.
 
 Eine detaillierte Anleitung mit Diagnose- und Updateablauf befindet sich in [`docs/COOLIFY.md`](docs/COOLIFY.md).
 
@@ -41,7 +41,7 @@ pnpm db:generate
 pnpm db:migrate
 ```
 
-`db:push` kombiniert beide Befehle für die Entwicklung. Im produktiven Container werden **nur die bereits eingecheckten Migrationen** mit `db:migrate` angewendet.
+`db:push` kombiniert beide Befehle für die Entwicklung. Im produktiven Container werden **nur die bereits eingecheckten Migrationen** durch den integrierten Runner angewendet. Bei einer älteren Datenbank mit einem unvollständigen Drizzle-Journal kann er ausschließlich nachgewiesen bereits vorhandene `ALTER TABLE … ADD`-Spalten kompatibel übernehmen; andere Datenbankfehler bleiben absichtlich blockierend.
 
 ## Dateispeicher und Logos
 
