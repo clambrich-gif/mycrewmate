@@ -798,11 +798,8 @@ function EventCountdownWidget({
           </p>
         ) : (
           <>
-            <p className="text-[10px] font-bold tracking-[0.14em] text-slate-500 uppercase">
-              Dein Event startet in
-            </p>
-            <div className="mt-1.5 flex items-center justify-center gap-2">
-              <span className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-blue-100 bg-white p-1 shadow-sm">
+            <div className="flex items-center justify-center gap-2.5">
+              <span className="flex size-16 shrink-0 items-center justify-center rounded-xl border border-blue-100 bg-white p-1.5 shadow-sm">
                 <img
                   src={COUNTDOWN_INFINITY_MARK}
                   alt="MyCrewMate-Unendlichkeitslogo"
@@ -810,7 +807,7 @@ function EventCountdownWidget({
                 />
               </span>
               <div className="flex items-end gap-1.5">
-                <span className="text-4xl font-black leading-none tracking-tight text-blue-600 tabular-nums">
+                <span className="text-5xl font-black leading-none tracking-tight text-blue-600 tabular-nums">
                   {state.days}
                 </span>
                 <span className="pb-0.5 text-lg font-extrabold leading-none text-orange-500">
@@ -820,7 +817,7 @@ function EventCountdownWidget({
             </div>
           </>
         )}
-        <p className="mt-2 truncate text-sm font-semibold text-slate-900" title={name}>
+        <p className="mt-1.5 truncate text-sm font-semibold text-slate-900" title={name}>
           {name}
         </p>
       </div>
@@ -846,13 +843,13 @@ function EventCountdownWidget({
       data-slot="event-countdown"
       data-countdown-state={state.kind}
       data-countdown-urgent={isUrgent ? "true" : "false"}
-      className={`relative isolate w-full max-w-xs self-start gap-0 rounded-xl border border-slate-200 bg-white py-0 text-slate-950 shadow-sm${isUrgent ? " countdown-urgent border-amber-300" : ""}`}
+      className={`relative isolate w-full max-w-[280px] self-start gap-0 rounded-xl border border-slate-200 bg-white py-0 text-slate-950 shadow-sm${isUrgent ? " countdown-urgent border-amber-300" : ""}`}
     >
-      <CardContent className="relative z-10 p-4">
-        {content}
-        <p className="mt-3 border-t border-slate-100 pt-2 text-center text-[11px] font-medium leading-4 text-slate-500">
-          Vorfreude im Blick. Das Event im Griff.
+      <CardContent className="relative z-10 p-3">
+        <p className="mb-2 text-right text-[10px] font-semibold tracking-[0.04em] text-slate-500">
+          Vorfreude im Blick, das Event im Griff.
         </p>
+        {content}
       </CardContent>
     </Card>
   );

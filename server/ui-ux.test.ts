@@ -1005,13 +1005,14 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain("COUNTDOWN_INFINITY_MARK");
     expect(dashboard).toContain("mycrewmate-infinity-mark_cd173237.png");
     expect(dashboard).not.toContain('src="/mycrewmate-logo.png"');
-    expect(dashboard).toContain("Vorfreude im Blick. Das Event im Griff.");
-    expect(dashboard).toContain("Dein Event startet in");
+    expect(dashboard).toContain("Vorfreude im Blick, das Event im Griff.");
+    expect(dashboard).not.toContain("Dein Event startet in");
     expect(dashboard).toContain("Dein Event startet morgen");
-    expect(dashboard).toContain("text-4xl font-black");
+    expect(dashboard).toContain("size-16 shrink-0");
+    expect(dashboard).toContain("text-5xl font-black");
     expect(dashboard).toContain("Tagen");
     expect(dashboard).not.toContain("bis <span");
-    expect(dashboard).toContain("w-full max-w-xs self-start gap-0 rounded-xl");
+    expect(dashboard).toContain("w-full max-w-[280px] self-start gap-0 rounded-xl");
     expect(dashboard).toContain("flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between");
     expect(dashboard).not.toContain("Rocket");
     expect(dashboard).toContain("const isUrgent = state.kind === \"upcoming\" && state.days <= 14");
