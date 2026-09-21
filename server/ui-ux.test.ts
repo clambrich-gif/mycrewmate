@@ -164,13 +164,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(manifest.background_color).toBe("#f8fafc");
     expect(manifest.icons).toEqual([
       {
-        src: "/manus-storage/mycrewmate-pwa-icon-192_9fe74598.png",
+        src: "/icons/mycrewmate-pwa-192.png",
         sizes: "192x192",
         type: "image/png",
         purpose: "any maskable",
       },
       {
-        src: "/manus-storage/mycrewmate-pwa-icon-512_b16ae84c.png",
+        src: "/icons/mycrewmate-pwa-512.png",
         sizes: "512x512",
         type: "image/png",
         purpose: "any maskable",
@@ -181,11 +181,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(html).toContain('name="apple-mobile-web-app-title" content="MyCrewMate"');
     expect(html).toContain("<title>MyCrewMate · Helferplanung</title>");
     expect(html).toContain('<link rel="icon" href="/favicon.ico" sizes="any" />');
-    expect(html).toContain('sizes="180x180" href="/manus-storage/mycrewmate-apple-touch-icon-180_52e02d0f.png"');
+    expect(html).toContain('sizes="180x180" href="/icons/mycrewmate-pwa-192.png"');
     expect(readFileSync(new URL("../client/public/favicon.ico", import.meta.url)).subarray(0, 4).toString("hex")).toBe("00000100");
     expect(main).toContain('navigator.serviceWorker.register("/service-worker.js")');
-    expect(serviceWorker).toContain('const STATIC_CACHE = "mycrewmate-pwa-v2"');
-    expect(serviceWorker).toContain('/manus-storage/mycrewmate-pwa-icon-512_b16ae84c.png');
+    expect(serviceWorker).toContain('const STATIC_CACHE = "mycrewmate-pwa-v3"');
+    expect(serviceWorker).toContain('/icons/mycrewmate-pwa-512.png');
     expect(serviceWorker).toContain('/favicon.ico');
     expect(serviceWorker).not.toContain("/api/");
     expect(layout).toContain("beforeinstallprompt");
@@ -1231,12 +1231,15 @@ describe("UI- und Mobile-UX-Regeln", () => {
 
   it("verwendet die transparente MyCrewMate-Wortmarke und das App-Icon browserstabil", () => {
     const layout = source("client/src/components/Layout.tsx");
-    const brandAssets = source("server/brand-assets.ts");
+    const brandAssets = source("server/brand-asset-routes.ts");
 
-    expect(layout).toContain('const MYCREWMATE_WORDMARK = "/mycrewmate-logo.png"');
-    expect(layout).toContain('const MYCREWMATE_ICON = "/manus-storage/mycrewmate-pwa-icon-512_b16ae84c.png"');
-    expect(brandAssets).toContain("mycrewmate-transparent-wordmark-v2_1282b566.png");
-    expect(brandAssets).not.toContain("RSC_BRAND_LOGO");
+    expect(layout).toContain('const MYCREWMATE_WORDMARK = "/brand/mycrewmate-wordmark.png"');
+    expect(layout).toContain('const MYCREWMATE_ICON = "/icons/mycrewmate-pwa-512.png"');
+    expect(brandAssets).toContain('filename: "mycrewmate-wordmark.png"');
+    expect(brandAssets).toContain('filename: "mycrewmate-infinity-mark.png"');
+    expect(brandAssets).toContain(
+      'path.resolve(process.cwd(), "client", "public", "brand")'
+    );
     expect(layout.match(/src=\{MYCREWMATE_WORDMARK\}/g)).toHaveLength(3);
     expect(layout.match(/src=\{MYCREWMATE_ICON\}/g)).toHaveLength(2);
     expect(layout.match(/alt="MyCrewMate"/g)).toHaveLength(3);
@@ -2735,11 +2738,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(feedback).toContain("assignedDays.has(day)");
     expect(feedback).toContain("day === selectedDay");
 
-    const storageProxy = source("server/_core/storageProxy.ts");
-    expect(storageProxy).toContain('const INLINE_LOCATION_LOGO_PREFIX = "location-logos/"');
-    expect(storageProxy).toContain("Standortlogos müssen in Dialogvorschau und Leaflet-divIcon");
-    expect(storageProxy).toContain('"Content-Disposition": "inline"');
-    expect(storageProxy).toContain("locationLogoContentType(key)");
+    const localStorage = source("server/storage.ts");
+    const locationLogoRoute = source("server/location-logo-routes.ts");
+    expect(localStorage).toContain("LOCAL_STORAGE_PATH");
+    expect(localStorage).toContain('app.get("/uploads/*"');
+    expect(locationLogoRoute).toContain('"Content-Disposition": "inline"');
+    expect(locationLogoRoute).toContain("locationLogoContentType(storageKey)");
   });
   it("erweitert das Löschprotokoll um Vor- und Nachbereitungen und deren Wiederherstellung", () => {
     const permissions = source("client/src/pages/Permissions.tsx");

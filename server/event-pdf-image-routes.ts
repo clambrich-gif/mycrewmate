@@ -7,7 +7,7 @@ import {
   resolveEventPdfLogoKey,
   type EventPdfImageSettings,
 } from "./event-pdf-image";
-import { storageGetSignedUrl } from "./storage";
+import { storageRead } from "./storage";
 
 const MAX_EVENT_IMAGE_BYTES = 3_000_000;
 
@@ -17,8 +17,7 @@ type EventPdfImageRouteDependencies = {
     year: number,
     eventId: number
   ) => Promise<EventPdfImageSettings | null>;
-  getSignedUrl: (storageKey: string) => Promise<string>;
-  fetchImpl: typeof fetch;
+  readFile: (storageKey: string) => Promise<Buffer>;
 };
 
 const defaultDependencies: EventPdfImageRouteDependencies = {
@@ -27,16 +26,13 @@ const defaultDependencies: EventPdfImageRouteDependencies = {
     const db = await getDb();
     if (!db) return null;
     const [event] = await db
-      .select({
-        pdfLogoKey: events.pdfLogoKey,
-      })
+      .select({ pdfLogoKey: events.pdfLogoKey })
       .from(events)
       .where(and(eq(events.id, eventId), eq(events.year, year)))
       .limit(1);
     return event ?? null;
   },
-  getSignedUrl: storageGetSignedUrl,
-  fetchImpl: fetch,
+  readFile: storageRead,
 };
 
 function positiveInteger(value: string) {
@@ -88,55 +84,30 @@ async function serveEventPdfImage(
     return;
   }
 
-  const contentType = imageContentType(storageKey);
-  setImageHeaders(res, contentType);
-  const abortController = new AbortController();
-  res.once("close", () => {
-    if (!res.writableEnded) abortController.abort();
-  });
-
   try {
-    const signedUrl = await dependencies.getSignedUrl(storageKey);
-    const upstream = await dependencies.fetchImpl(signedUrl, {
-      signal: abortController.signal,
-    });
-    if (!upstream.ok) {
-      await upstream.body?.cancel();
-      res.status(upstream.status === 404 ? 404 : 502).end();
+    const bytes = await dependencies.readFile(storageKey);
+    if (!bytes.length || bytes.length > MAX_EVENT_IMAGE_BYTES) {
+      res.status(422).send("PDF-Bild ist leer oder überschreitet die Größenbegrenzung");
       return;
     }
-    const declaredLength = Number(upstream.headers.get("content-length"));
-    if (
-      Number.isFinite(declaredLength) &&
-      declaredLength > MAX_EVENT_IMAGE_BYTES
-    ) {
-      await upstream.body?.cancel();
-      res.status(502).send("PDF-Bild überschreitet die Größenbegrenzung");
-      return;
-    }
+    setImageHeaders(res, imageContentType(storageKey));
+    res.set("Content-Length", String(bytes.length));
     if (headOnly) {
-      if (Number.isFinite(declaredLength)) {
-        res.set("Content-Length", String(declaredLength));
-      }
-      await upstream.body?.cancel();
       res.status(200).end();
       return;
     }
-    const bytes = Buffer.from(await upstream.arrayBuffer());
-    if (!bytes.length || bytes.length > MAX_EVENT_IMAGE_BYTES) {
-      res.status(502).send("PDF-Bild ist leer oder zu groß");
+    res.status(200).send(bytes);
+  } catch (error: unknown) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      res.status(404).send("PDF-Bilddatei nicht gefunden");
       return;
     }
-    res.set("Content-Length", String(bytes.length));
-    res.status(200).send(bytes);
-  } catch (error) {
-    if (abortController.signal.aborted) return;
-    console.error("[EventPdfImage] delivery failed:", error);
-    if (!res.headersSent) res.status(502).end();
-    else res.destroy();
+    console.error("[EventPdfImage] Lokales Bild konnte nicht geladen werden:", error);
+    res.status(500).end();
   }
 }
 
+/** Liefert das Eventbild aus dem persistenten lokalen Uploadvolume aus. */
 export function registerEventPdfImageRoutes(
   app: Express,
   dependencies: EventPdfImageRouteDependencies = defaultDependencies

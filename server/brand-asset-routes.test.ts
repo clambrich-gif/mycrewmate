@@ -1,28 +1,13 @@
 import express from "express";
 import type { Server } from "node:http";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { registerBrandAssetRoutes } from "./brand-asset-routes";
 
 const servers: Server[] = [];
 
 async function startTestServer() {
   const app = express();
-  const getSignedUrl = vi.fn(async () => "https://storage.test/logo.png");
-  const logo = Uint8Array.from([
-    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x01, 0x02,
-  ]);
-  const fetchImpl = vi.fn(async () =>
-    new Response(logo, {
-      status: 200,
-      headers: {
-        "Content-Length": String(logo.byteLength),
-        ETag: '"logo-etag"',
-        "Last-Modified": "Sat, 12 Sep 2026 20:00:00 GMT",
-      },
-    })
-  ) as unknown as typeof fetch;
-
-  registerBrandAssetRoutes(app, { getSignedUrl, fetchImpl });
+  registerBrandAssetRoutes(app);
   const server = await new Promise<Server>(resolve => {
     const instance = app.listen(0, "127.0.0.1", () => resolve(instance));
   });
@@ -31,11 +16,7 @@ async function startTestServer() {
   if (!address || typeof address === "string") {
     throw new Error("Testserver konnte nicht gestartet werden");
   }
-  return {
-    baseUrl: `http://127.0.0.1:${address.port}`,
-    getSignedUrl,
-    fetchImpl,
-  };
+  return `http://127.0.0.1:${address.port}`;
 }
 
 afterEach(async () => {
@@ -50,9 +31,9 @@ afterEach(async () => {
 });
 
 describe("Öffentliche MyCrewMate-Logoauslieferung", () => {
-  it("liefert das PNG direkt ohne Storage-Redirect aus", async () => {
-    const testServer = await startTestServer();
-    const response = await fetch(`${testServer.baseUrl}/mycrewmate-logo.png`, {
+  it("liefert die gebündelte Wortmarke direkt ohne externe Storage-URL aus", async () => {
+    const baseUrl = await startTestServer();
+    const response = await fetch(`${baseUrl}/api/brand/wordmark`, {
       redirect: "manual",
     });
     const bytes = new Uint8Array(await response.arrayBuffer());
@@ -60,44 +41,30 @@ describe("Öffentliche MyCrewMate-Logoauslieferung", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("location")).toBeNull();
     expect(response.headers.get("content-type")).toBe("image/png");
-    expect(response.headers.get("content-length")).toBe("10");
-    expect(response.headers.get("access-control-allow-origin")).toBe("*");
+    expect(Number(response.headers.get("content-length"))).toBeGreaterThan(1_000);
     expect(response.headers.get("cache-control")).toContain("max-age=86400");
+    expect(response.headers.get("cross-origin-resource-policy")).toBe("same-origin");
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");
     expect(Array.from(bytes.slice(0, 8))).toEqual([
       0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
     ]);
-    expect(testServer.getSignedUrl).toHaveBeenCalledWith(
-      "mycrewmate-transparent-wordmark-v2_1282b566.png"
-    );
   });
 
   it("liefert HEAD-Metadaten ohne Bildinhalt", async () => {
-    const testServer = await startTestServer();
-    const response = await fetch(`${testServer.baseUrl}/mycrewmate-logo.png`, {
+    const baseUrl = await startTestServer();
+    const response = await fetch(`${baseUrl}/api/brand/infinity`, {
       method: "HEAD",
     });
 
     expect(response.status).toBe(200);
     expect(await response.text()).toBe("");
     expect(response.headers.get("content-type")).toBe("image/png");
-    expect(response.headers.get("content-length")).toBe("10");
-    expect(response.headers.get("etag")).toBe('"logo-etag"');
+    expect(Number(response.headers.get("content-length"))).toBeGreaterThan(1_000);
   });
 
-  it("beantwortet öffentlichen CORS-Preflight ohne Storagezugriff", async () => {
-    const testServer = await startTestServer();
-    const response = await fetch(`${testServer.baseUrl}/mycrewmate-logo.png`, {
-      method: "OPTIONS",
-      headers: { Origin: "https://example.org" },
-    });
-
-    expect(response.status).toBe(204);
-    expect(response.headers.get("access-control-allow-origin")).toBe("*");
-    expect(response.headers.get("access-control-allow-methods")).toContain(
-      "GET"
-    );
-    expect(testServer.getSignedUrl).not.toHaveBeenCalled();
-    expect(testServer.fetchImpl).not.toHaveBeenCalled();
+  it("weist unbekannte Markenassets ohne Dateizugriff ab", async () => {
+    const baseUrl = await startTestServer();
+    const response = await fetch(`${baseUrl}/api/brand/unbekannt`);
+    expect(response.status).toBe(404);
   });
 });

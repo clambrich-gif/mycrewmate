@@ -87,7 +87,7 @@ import {
   requestedPlanningScope,
   withPlanningScope,
 } from "./year-context";
-import { storageGetSignedUrl, storagePut } from "./storage";
+import { storagePut, storageRead } from "./storage";
 import { locationLogoUrl } from "./location-logo-routes";
 import {
   getOnlinePresenceStatus,
@@ -181,43 +181,6 @@ async function requireCompletedPlanningTeamPasswordChange(user: {
   }
 }
 
-async function readResponseBodyLimited(
-  response: Response,
-  maxBytes: number
-): Promise<Buffer> {
-  const contentLength = response.headers.get("content-length");
-  if (contentLength) {
-    const declaredBytes = Number(contentLength);
-    if (
-      !Number.isSafeInteger(declaredBytes) ||
-      declaredBytes < 0 ||
-      declaredBytes > maxBytes
-    ) {
-      throw new Error("Datei überschreitet die Größenbegrenzung");
-    }
-  }
-  if (!response.body) throw new Error("Datei hat keinen Inhalt");
-
-  const reader = response.body.getReader();
-  const chunks: Buffer[] = [];
-  let totalBytes = 0;
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      totalBytes += value.byteLength;
-      if (totalBytes > maxBytes) {
-        void reader.cancel("Datei überschreitet die Größenbegrenzung");
-        throw new Error("Datei überschreitet die Größenbegrenzung");
-      }
-      chunks.push(Buffer.from(value));
-    }
-  } finally {
-    reader.releaseLock();
-  }
-  return Buffer.concat(chunks, totalBytes);
-}
-
 type GpxMapTrack = {
   id: number;
   name: string;
@@ -300,12 +263,11 @@ async function loadGpxMapTrack(track: {
   fileKey: string;
   color: string;
 }): Promise<GpxMapTrack> {
-  const signedUrl = await storageGetSignedUrl(track.fileKey);
-  const response = await fetch(signedUrl);
-  if (!response.ok) {
-    throw new Error(`GPX-Datei konnte nicht geladen werden (${response.status})`);
+  const bytes = await storageRead(track.fileKey);
+  if (bytes.length > 6_000_000) {
+    throw new Error("GPX-Datei überschreitet die Größenbegrenzung");
   }
-  const xml = (await readResponseBodyLimited(response, 6_000_000)).toString("utf8");
+  const xml = bytes.toString("utf8");
   return {
     id: track.id,
     name: track.name,
@@ -2093,16 +2055,10 @@ export const appRouter = router({
   help: router({
     guidePdf: baseProtectedProcedure.mutation(async () => {
       try {
-        const signedUrl = await storageGetSignedUrl(GUIDE_PDF_KEY);
-        const response = await fetch(signedUrl, {
-          redirect: "follow",
-          signal: AbortSignal.timeout(15_000),
-        });
-        if (!response.ok) throw new Error(`Storage HTTP ${response.status}`);
-        const pdf = await readResponseBodyLimited(
-          response,
-          GUIDE_PDF_MAX_BYTES
-        );
+        const pdf = await storageRead(GUIDE_PDF_KEY);
+        if (pdf.length > GUIDE_PDF_MAX_BYTES) {
+          throw new Error("PDF-Datei überschreitet die Größenbegrenzung");
+        }
         if (!pdf.length || pdf.subarray(0, 5).toString("ascii") !== "%PDF-") {
           throw new Error("Ungültige PDF-Datei");
         }

@@ -1,57 +1,36 @@
+import { promises as fs } from "node:fs";
+import path from "node:path";
 import type { Express, Request, Response } from "express";
-import { storageGetSignedUrl } from "./storage";
+
+const HELP_ASSET_ROOT = path.resolve(process.cwd(), "client", "public", "help");
 
 const HELP_IMAGES = {
-  dashboard: {
-    storageKey: "dashboard-current_8a026d64.png",
-    filename: "hilfe-dashboard.png",
-  },
-  helpers: {
-    storageKey: "helpers-mobile-current_12ee73cd.png",
-    filename: "hilfe-helfer-mobil.png",
-  },
-  plan: {
-    storageKey: "plan-current_62afa870.png",
-    filename: "hilfe-einsatzplan.png",
-  },
-  chat: {
-    storageKey: "chat-current_1677525e.png",
-    filename: "hilfe-live-chat.png",
-  },
-  pdf: {
-    storageKey: "pdf-export-current_5a3894fb.png",
-    filename: "hilfe-pdf-ausgabe.png",
-  },
+  dashboard: { filename: "dashboard.png", downloadName: "hilfe-dashboard.png" },
+  helpers: { filename: "helpers.png", downloadName: "hilfe-helfer-mobil.png" },
+  plan: { filename: "plan.png", downloadName: "hilfe-einsatzplan.png" },
+  chat: { filename: "chat.png", downloadName: "hilfe-live-chat.png" },
+  pdf: { filename: "pdf.png", downloadName: "hilfe-pdf-ausgabe.png" },
   "app-speichern": {
-    storageKey: "pwa-app-speichern-telefon_075d3868.png",
-    filename: "hilfe-rsc-als-app-speichern.png",
+    filename: "app-speichern.png",
+    downloadName: "hilfe-rsc-als-app-speichern.png",
   },
   "video-planungsteam": {
-    storageKey: "planungsteam-poster_411f8a0e.png",
-    filename: "schulung-planungsteam.png",
+    filename: "video-planungsteam.png",
+    downloadName: "schulung-planungsteam.png",
   },
   "video-administratoren": {
-    storageKey: "admin-security-highlight_740eaaef.png",
-    filename: "schulung-administratoren.png",
+    filename: "video-administratoren.png",
+    downloadName: "schulung-administratoren.png",
   },
 } as const;
 
 type HelpImageName = keyof typeof HELP_IMAGES;
-type HelpImageRouteDependencies = {
-  getSignedUrl: (storageKey: string) => Promise<string>;
-  fetchImpl: typeof fetch;
-};
-
-const defaultDependencies: HelpImageRouteDependencies = {
-  getSignedUrl: storageGetSignedUrl,
-  fetchImpl: fetch,
-};
 
 function getHelpImage(name: string) {
   return HELP_IMAGES[name as HelpImageName] ?? null;
 }
 
-function setImageHeaders(res: Response, filename: string) {
+function setImageHeaders(res: Response, filename: string, size?: number) {
   res.set({
     "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
     "Content-Disposition": `inline; filename="${filename}"`,
@@ -59,61 +38,41 @@ function setImageHeaders(res: Response, filename: string) {
     "Cross-Origin-Resource-Policy": "same-origin",
     "X-Content-Type-Options": "nosniff",
   });
+  if (size !== undefined) res.set("Content-Length", String(size));
 }
 
-async function serveHelpImage(
-  req: Request,
-  res: Response,
-  dependencies: HelpImageRouteDependencies,
-  headOnly: boolean
-) {
+async function serveHelpImage(req: Request, res: Response, headOnly: boolean) {
   const image = getHelpImage(req.params.image);
   if (!image) {
     res.status(404).send("Hilfebild nicht gefunden");
     return;
   }
 
-  setImageHeaders(res, image.filename);
-
   try {
-    const signedUrl = await dependencies.getSignedUrl(image.storageKey);
-    const upstream = await dependencies.fetchImpl(signedUrl);
-
-    if (!upstream.ok) {
-      await upstream.body?.cancel();
-      console.error(`[HelpImage] storage response ${upstream.status}`);
-      res.status(upstream.status === 404 ? 404 : 502).end();
-      return;
-    }
-
-    for (const header of ["content-length", "etag", "last-modified"] as const) {
-      const value = upstream.headers.get(header);
-      if (value) res.set(header, value);
-    }
-
+    const assetPath = path.join(HELP_ASSET_ROOT, image.filename);
+    const info = await fs.stat(assetPath);
+    setImageHeaders(res, image.downloadName, info.size);
     if (headOnly) {
-      await upstream.body?.cancel();
       res.status(200).end();
       return;
     }
-
-    const bytes = Buffer.from(await upstream.arrayBuffer());
-    res.status(200).send(bytes);
-  } catch (error) {
-    console.error("[HelpImage] delivery failed:", error);
-    if (!res.headersSent) res.status(502).end();
-    else res.destroy();
+    res.status(200).send(await fs.readFile(assetPath));
+  } catch (error: unknown) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      res.status(404).send("Hilfebild nicht gefunden");
+      return;
+    }
+    console.error("[HelpImage] Lokales Hilfebild konnte nicht geladen werden:", error);
+    res.status(500).end();
   }
 }
 
-export function registerHelpImageRoutes(
-  app: Express,
-  dependencies: HelpImageRouteDependencies = defaultDependencies
-) {
+/** Liefert die dokumentierten Hilfebilder lokal aus dem Repository aus. */
+export function registerHelpImageRoutes(app: Express) {
   app.head("/api/help/images/:image", (req, res) => {
-    void serveHelpImage(req, res, dependencies, true);
+    void serveHelpImage(req, res, true);
   });
   app.get("/api/help/images/:image", (req, res) => {
-    void serveHelpImage(req, res, dependencies, false);
+    void serveHelpImage(req, res, false);
   });
 }

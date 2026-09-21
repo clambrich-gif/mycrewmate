@@ -1170,7 +1170,7 @@ describe("Excel-Datensicherung", () => {
       latitude: 50.3271,
       longitude: 7.2215,
       logoKey: "location-logos/events/2026/1/viehmarkt.png",
-      logoUrl: "/manus-storage/location-logos/events/2026/1/viehmarkt.png",
+      logoUrl: "/uploads/location-logos/events/2026/1/viehmarkt.png",
       sortOrder: 0,
     });
 
@@ -1180,14 +1180,14 @@ describe("Excel-Datensicherung", () => {
     expect(orteRows[0]).toMatchObject({
       Ortsname: "Mayen / Viehmarkt",
       "Logo-Dateischlüssel": "location-logos/events/2026/1/viehmarkt.png",
-      "Logo-URL": "/manus-storage/location-logos/events/2026/1/viehmarkt.png",
+      "Logo-URL": "/uploads/location-logos/events/2026/1/viehmarkt.png",
     });
 
     const parsed = parseBackupWorkbook(exported.buffer.toString("base64"));
     expect(parsed.locations[0]).toMatchObject({
       name: "Mayen / Viehmarkt",
       logoKey: "location-logos/events/2026/1/viehmarkt.png",
-      logoUrl: "/manus-storage/location-logos/events/2026/1/viehmarkt.png",
+      logoUrl: "/uploads/location-logos/events/2026/1/viehmarkt.png",
     });
   });
 

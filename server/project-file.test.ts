@@ -35,7 +35,7 @@ const data = {
       startDate: "2026-06-19",
       endDate: "2026-06-21",
       pdfLogoKey: "pdf-logos/events/2026/1/logo.png",
-      pdfLogoUrl: "/manus-storage/pdf-logos/events/2026/1/logo.png",
+      pdfLogoUrl: "/uploads/pdf-logos/events/2026/1/logo.png",
       pdfLogoFallback: "none",
     },
   ],
@@ -224,7 +224,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
       donationTargetSnack: 0,
       donationTargetSonstiges: 0,
       pdfLogoKey: "pdf-logos/events/2026/1/logo.png",
-      pdfLogoUrl: "/manus-storage/pdf-logos/events/2026/1/logo.png",
+      pdfLogoUrl: "/uploads/pdf-logos/events/2026/1/logo.png",
       pdfLogoFallback: "none",
     });
     expect(parsed.document.helpers).toHaveLength(2);
@@ -1051,7 +1051,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
       latitude: 50.3271,
       longitude: 7.2215,
       logoKey: "location-logos/events/2026/1/viehmarkt.png",
-      logoUrl: "/manus-storage/location-logos/events/2026/1/viehmarkt.png",
+      logoUrl: "/uploads/location-logos/events/2026/1/viehmarkt.png",
       sortOrder: 0,
     });
 
@@ -1059,7 +1059,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const current = parseProjectFile(exported.buffer.toString("base64")).document;
     expect(current.locations[0]).toMatchObject({
       logoKey: "location-logos/events/2026/1/viehmarkt.png",
-      logoUrl: "/manus-storage/location-logos/events/2026/1/viehmarkt.png",
+      logoUrl: "/uploads/location-logos/events/2026/1/viehmarkt.png",
     });
 
     const legacyV9 = structuredClone(current);

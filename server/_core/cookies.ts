@@ -42,7 +42,10 @@ export function getSessionCookieOptions(
   return {
     httpOnly: true,
     path: "/",
-    sameSite: "none",
+    // MyCrewMate läuft auf einer eigenen Domain als Same-Origin-App. Lax
+    // funktioniert über Coolifys Reverse Proxy auch lokal zuverlässig und
+    // benötigt im Gegensatz zu SameSite=None kein zwingendes Secure-Cookie.
+    sameSite: "lax",
     secure: isSecureRequest(req),
   };
 }

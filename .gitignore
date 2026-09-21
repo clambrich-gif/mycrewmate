@@ -40,6 +40,8 @@ pnpm-debug.log*
 lerna-debug.log*
 
 # Runtime data
+data/
+.manus-logs/
 pids
 *.pid
 *.seed

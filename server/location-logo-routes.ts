@@ -3,7 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { locations } from "../drizzle/schema";
 import { sdk } from "./_core/sdk";
 import { getDb } from "./db";
-import { storageGetSignedUrl } from "./storage";
+import { storageRead } from "./storage";
 
 const MAX_LOCATION_LOGO_BYTES = 3_000_000;
 
@@ -14,8 +14,7 @@ type LocationLogoRouteDependencies = {
     eventId: number,
     locationId: number
   ) => Promise<{ logoKey: string | null } | null>;
-  getSignedUrl: (storageKey: string) => Promise<string>;
-  fetchImpl: typeof fetch;
+  readFile: (storageKey: string) => Promise<Buffer>;
 };
 
 const defaultDependencies: LocationLogoRouteDependencies = {
@@ -36,8 +35,7 @@ const defaultDependencies: LocationLogoRouteDependencies = {
       .limit(1);
     return location ?? null;
   },
-  getSignedUrl: storageGetSignedUrl,
-  fetchImpl: fetch,
+  readFile: storageRead,
 };
 
 function positiveInteger(value: string) {
@@ -61,10 +59,11 @@ function locationLogoContentType(storageKey: string) {
   return "image/png";
 }
 
-function setLocationLogoHeaders(res: Response, storageKey: string) {
+function setLocationLogoHeaders(res: Response, storageKey: string, size: number) {
   res.set({
     "Cache-Control": "private, no-store",
     "Content-Disposition": "inline",
+    "Content-Length": String(size),
     "Content-Type": locationLogoContentType(storageKey),
     "Cross-Origin-Resource-Policy": "same-origin",
     Vary: "Cookie, Authorization",
@@ -99,54 +98,29 @@ async function serveLocationLogo(
     return;
   }
 
-  setLocationLogoHeaders(res, location.logoKey);
-  const abortController = new AbortController();
-  res.once("close", () => {
-    if (!res.writableEnded) abortController.abort();
-  });
-
   try {
-    const signedUrl = await dependencies.getSignedUrl(location.logoKey);
-    const upstream = await dependencies.fetchImpl(signedUrl, {
-      signal: abortController.signal,
-    });
-    if (!upstream.ok) {
-      await upstream.body?.cancel();
-      res.status(upstream.status === 404 ? 404 : 502).end();
+    const bytes = await dependencies.readFile(location.logoKey);
+    if (!bytes.length || bytes.length > MAX_LOCATION_LOGO_BYTES) {
+      res.status(422).send("Standortlogo ist leer oder überschreitet die Größenbegrenzung");
       return;
     }
-    const declaredLength = Number(upstream.headers.get("content-length"));
-    if (
-      Number.isFinite(declaredLength) &&
-      declaredLength > MAX_LOCATION_LOGO_BYTES
-    ) {
-      await upstream.body?.cancel();
-      res.status(502).send("Standortlogo überschreitet die Größenbegrenzung");
-      return;
-    }
+    setLocationLogoHeaders(res, location.logoKey, bytes.length);
     if (headOnly) {
-      if (Number.isFinite(declaredLength)) {
-        res.set("Content-Length", String(declaredLength));
-      }
-      await upstream.body?.cancel();
       res.status(200).end();
       return;
     }
-    const bytes = Buffer.from(await upstream.arrayBuffer());
-    if (!bytes.length || bytes.length > MAX_LOCATION_LOGO_BYTES) {
-      res.status(502).send("Standortlogo ist leer oder zu groß");
+    res.status(200).send(bytes);
+  } catch (error: unknown) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      res.status(404).send("Standortlogodatei nicht gefunden");
       return;
     }
-    res.set("Content-Length", String(bytes.length));
-    res.status(200).send(bytes);
-  } catch (error) {
-    if (abortController.signal.aborted) return;
-    console.error("[LocationLogo] delivery failed:", error);
-    if (!res.headersSent) res.status(502).end();
-    else res.destroy();
+    console.error("[LocationLogo] Lokales Standortlogo konnte nicht geladen werden:", error);
+    res.status(500).end();
   }
 }
 
+/** Liefert das geschützte Standortlogo aus dem persistierten Coolify-Volume aus. */
 export function registerLocationLogoRoutes(
   app: Express,
   dependencies: LocationLogoRouteDependencies = defaultDependencies

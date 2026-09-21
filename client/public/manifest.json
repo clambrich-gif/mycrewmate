@@ -16,53 +16,25 @@
       "short_name": "Einsatzplan",
       "description": "Direkt zum Einsatzplan wechseln",
       "url": "/einsatzplan",
-      "icons": [
-        {
-          "src": "/icons/shortcut-einsatzplan-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
+      "icons": [{ "src": "/icons/shortcut-einsatzplan-192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
       "name": "Helferkartei",
       "short_name": "Helfer",
       "description": "Direkt zur Helferkartei wechseln",
       "url": "/helfer",
-      "icons": [
-        {
-          "src": "/icons/shortcut-helferkartei-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
+      "icons": [{ "src": "/icons/shortcut-helferkartei-192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
       "name": "Orga-Chat",
       "short_name": "Orga-Chat",
       "description": "Dashboard öffnen und Orga-Chat anzeigen",
       "url": "/dashboard?chat=open",
-      "icons": [
-        {
-          "src": "/icons/shortcut-orga-chat-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
+      "icons": [{ "src": "/icons/shortcut-orga-chat-192.png", "sizes": "192x192", "type": "image/png" }]
     }
   ],
   "icons": [
-    {
-      "src": "/manus-storage/mycrewmate-pwa-icon-192_9fe74598.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/manus-storage/mycrewmate-pwa-icon-512_b16ae84c.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
+    { "src": "/icons/mycrewmate-pwa-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/mycrewmate-pwa-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ]
 }

@@ -18,12 +18,12 @@ import type {
 import * as db from "./db";
 import { DAYS, evaluateShifts, toMinutes, type Day } from "./logic";
 import { currentEventYear } from "./year-context";
-import { storageGetSignedUrl } from "./storage";
+import { storageRead } from "./storage";
 import { resolveEventPdfLogoKey } from "./event-pdf-image";
 import { helperAvailabilityWindow } from "../shared/weekdays";
 import { latestPreparationLogbookEntry } from "../shared/preparation-logbook";
 import { COPYRIGHT_NOTICE } from "../shared/branding";
-import { MYCREWMATE_WORDMARK } from "./brand-assets";
+import { loadBrandAsset } from "./brand-asset-routes";
 
 const require = createRequire(import.meta.url);
 const { ZipArchive } = require("archiver") as {
@@ -2027,9 +2027,7 @@ async function loadPlanningData(): Promise<PlanningData> {
     : null;
   if (logoStorageKey) {
     try {
-      const signedUrl = await storageGetSignedUrl(logoStorageKey);
-      const response = await fetch(signedUrl);
-      if (response.ok) logoBuffer = Buffer.from(await response.arrayBuffer());
+      logoBuffer = await storageRead(logoStorageKey);
     } catch (error) {
       console.warn("[PDF] Logo konnte nicht geladen werden:", error);
     }
@@ -2087,10 +2085,7 @@ export async function createPostTaskOverviewPdf(taskIds: number[]) {
 
 async function loadMyCrewMateWordmarkBuffer() {
   try {
-    const signedUrl = await storageGetSignedUrl(MYCREWMATE_WORDMARK.storageKey);
-    const response = await fetch(signedUrl);
-    if (!response.ok) return undefined;
-    return Buffer.from(await response.arrayBuffer());
+    return await loadBrandAsset("wordmark");
   } catch (error) {
     console.warn("[PDF] MyCrewMate-Logo konnte nicht geladen werden:", error);
     return undefined;

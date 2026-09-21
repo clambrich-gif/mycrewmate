@@ -63,7 +63,7 @@ const dbMocks = vi.hoisted(() => ({
   updateLocation: vi.fn(),
 }));
 const storageMocks = vi.hoisted(() => ({
-  storageGetSignedUrl: vi.fn(),
+  storageRead: vi.fn(),
   storagePut: vi.fn(),
 }));
 const backupMocks = vi.hoisted(() => ({
@@ -214,12 +214,12 @@ describe("Planungs-API", () => {
     dbMocks.setPasswordHash.mockResolvedValue({ affectedRows: 1 });
     dbMocks.setAdminPasswordHash.mockResolvedValue({ affectedRows: 1 });
     dbMocks.withPlanningWriteLock.mockImplementation(callback => callback());
-    storageMocks.storageGetSignedUrl.mockResolvedValue(
-      "https://storage.example.test/guide.pdf"
+    storageMocks.storageRead.mockResolvedValue(
+      Buffer.from("%PDF-1.7\nTestanleitung")
     );
     storageMocks.storagePut.mockResolvedValue({
       key: "pdf-logos/events/2026/1/pdf-logo_test.png",
-      url: "/manus-storage/pdf-logos/events/2026/1/pdf-logo_test.png",
+      url: "/uploads/pdf-logos/events/2026/1/pdf-logo_test.png",
     });
     backupMocks.exportProjectExcel.mockResolvedValue({
       buffer: Buffer.from("xlsx"),
@@ -805,7 +805,7 @@ describe("Planungs-API", () => {
     expect(dbMocks.updateCurrentEventPdfImage).toHaveBeenCalledWith({
       pdfLogoKey: "pdf-logos/events/2026/1/pdf-logo_test.png",
       pdfLogoUrl:
-        "/manus-storage/pdf-logos/events/2026/1/pdf-logo_test.png",
+        "/uploads/pdf-logos/events/2026/1/pdf-logo_test.png",
     });
   });
 
@@ -901,95 +901,47 @@ describe("Planungs-API", () => {
 
   it("liefert die PDF-Anleitung für Administratoren und Planungsteam als Download", async () => {
     const pdf = Buffer.from("%PDF-1.7\nTestanleitung");
-    const fetchMock = vi
-      .spyOn(globalThis, "fetch")
-      .mockImplementation(async () => new Response(pdf, { status: 200 }));
+    storageMocks.storageRead.mockResolvedValue(pdf);
 
-    try {
-      for (const callerContext of [ctx, planningTeamCtx]) {
-        const result = await appRouter
-          .createCaller(callerContext)
-          .help.guidePdf();
-        expect(result.filename).toBe("Handbuch_RSC_Helferplanung.pdf");
-        expect(result.mimeType).toBe("application/pdf");
-        expect(Buffer.from(result.base64, "base64")).toEqual(pdf);
-      }
-      expect(storageMocks.storageGetSignedUrl).toHaveBeenCalledWith(
-        "Handbuch_RSC_Helferplanung_742fcb04.pdf"
-      );
-    } finally {
-      fetchMock.mockRestore();
+    for (const callerContext of [ctx, planningTeamCtx]) {
+      const result = await appRouter
+        .createCaller(callerContext)
+        .help.guidePdf();
+      expect(result.filename).toBe("Handbuch_RSC_Helferplanung.pdf");
+      expect(result.mimeType).toBe("application/pdf");
+      expect(Buffer.from(result.base64, "base64")).toEqual(pdf);
     }
+    expect(storageMocks.storageRead).toHaveBeenCalledWith(
+      "Handbuch_RSC_Helferplanung_742fcb04.pdf"
+    );
   });
 
   it("meldet einen verständlichen Fehler, wenn die Anleitung nicht geladen werden kann", async () => {
     const consoleError = vi
       .spyOn(console, "error")
       .mockImplementation(() => undefined);
-    const fetchMock = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue(new Response("nicht gefunden", { status: 404 }));
+    storageMocks.storageRead.mockRejectedValue(new Error("Datei nicht gefunden"));
 
     try {
       await expect(
         appRouter.createCaller(planningTeamCtx).help.guidePdf()
       ).rejects.toThrow("PDF-Anleitung konnte nicht geladen werden");
     } finally {
-      fetchMock.mockRestore();
       consoleError.mockRestore();
     }
   });
 
-  it("weist eine laut Header zu große Anleitung vor dem Einlesen zurück", async () => {
+  it("weist eine zu große lokale Anleitung vor der Ausgabe zurück", async () => {
     const consoleError = vi
       .spyOn(console, "error")
       .mockImplementation(() => undefined);
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response("%PDF-", {
-        status: 200,
-        headers: { "content-length": "5000001" },
-      })
-    );
+    storageMocks.storageRead.mockResolvedValue(Buffer.alloc(5_000_001));
 
     try {
       await expect(appRouter.createCaller(ctx).help.guidePdf()).rejects.toThrow(
         "PDF-Anleitung konnte nicht geladen werden"
       );
     } finally {
-      fetchMock.mockRestore();
-      consoleError.mockRestore();
-    }
-  });
-
-  it("bricht eine unbekannt große Anleitung während des Streams oberhalb von fünf MB ab", async () => {
-    let cancelled = false;
-    let chunkIndex = 0;
-    const stream = new ReadableStream<Uint8Array>({
-      pull(controller) {
-        controller.enqueue(
-          chunkIndex++ === 0
-            ? Buffer.alloc(3_000_000, 65)
-            : Buffer.alloc(2_100_000, 66)
-        );
-      },
-      cancel() {
-        cancelled = true;
-      },
-    });
-    const consoleError = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => undefined);
-    const fetchMock = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue(new Response(stream, { status: 200 }));
-
-    try {
-      await expect(
-        appRouter.createCaller(planningTeamCtx).help.guidePdf()
-      ).rejects.toThrow("PDF-Anleitung konnte nicht geladen werden");
-      await vi.waitFor(() => expect(cancelled).toBe(true));
-    } finally {
-      fetchMock.mockRestore();
       consoleError.mockRestore();
     }
   });
@@ -2037,7 +1989,7 @@ describe("Planungs-API", () => {
     dbMocks.updateLocation.mockResolvedValue({ affectedRows: 1 });
     storageMocks.storagePut.mockResolvedValue({
       key: "location-logos/events/2026/1/55-Mayen_Viehmarkt.png",
-      url: "/manus-storage/location-logos/events/2026/1/55-Mayen_Viehmarkt.png",
+      url: "/uploads/location-logos/events/2026/1/55-Mayen_Viehmarkt.png",
     });
 
     const png = Buffer.from(
@@ -2054,7 +2006,7 @@ describe("Planungs-API", () => {
 
     expect(result).toMatchObject({
       key: "location-logos/events/2026/1/55-Mayen_Viehmarkt.png",
-      url: "/manus-storage/location-logos/events/2026/1/55-Mayen_Viehmarkt.png",
+      url: "/uploads/location-logos/events/2026/1/55-Mayen_Viehmarkt.png",
     });
     expect(storageMocks.storagePut).toHaveBeenCalledWith(
       "location-logos/events/2026/1/55-Mayen_Viehmarkt.png",
@@ -2063,7 +2015,7 @@ describe("Planungs-API", () => {
     );
     expect(dbMocks.updateLocation).toHaveBeenCalledWith(55, {
       logoKey: "location-logos/events/2026/1/55-Mayen_Viehmarkt.png",
-      logoUrl: "/manus-storage/location-logos/events/2026/1/55-Mayen_Viehmarkt.png",
+      logoUrl: "/uploads/location-logos/events/2026/1/55-Mayen_Viehmarkt.png",
     });
   });
 

@@ -7,9 +7,8 @@ const servers: Server[] = [];
 
 async function startTestServer(options?: {
   authenticated?: boolean;
-  event?: {
-    pdfLogoKey: string | null;
-  } | null;
+  event?: { pdfLogoKey: string | null } | null;
+  readError?: NodeJS.ErrnoException | Error;
 }) {
   const app = express();
   const authenticateRequest = vi.fn(async () => {
@@ -19,26 +18,20 @@ async function startTestServer(options?: {
   const findEvent = vi.fn(async () =>
     options && "event" in options
       ? (options.event ?? null)
-      : {
-          pdfLogoKey: "pdf-logos/events/2027/77/weihnachtsbaum.png",
-        }
+      : { pdfLogoKey: "pdf-logos/events/2027/77/weihnachtsbaum.png" }
   );
-  const getSignedUrl = vi.fn(async () => "https://storage.test/event-image.png");
-  const image = Uint8Array.from([
+  const image = Buffer.from([
     0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x01,
   ]);
-  const fetchImpl = vi.fn(async () =>
-    new Response(image, {
-      status: 200,
-      headers: { "Content-Length": String(image.byteLength) },
-    })
-  ) as unknown as typeof fetch;
+  const readFile = vi.fn(async () => {
+    if (options?.readError) throw options.readError;
+    return image;
+  });
 
   registerEventPdfImageRoutes(app, {
     authenticateRequest,
     findEvent,
-    getSignedUrl,
-    fetchImpl,
+    readFile,
   });
   const server = await new Promise<Server>(resolve => {
     const instance = app.listen(0, "127.0.0.1", () => resolve(instance));
@@ -52,8 +45,7 @@ async function startTestServer(options?: {
     baseUrl: `http://127.0.0.1:${address.port}`,
     authenticateRequest,
     findEvent,
-    getSignedUrl,
-    fetchImpl,
+    readFile,
   };
 }
 
@@ -69,7 +61,7 @@ afterEach(async () => {
 });
 
 describe("Veranstaltungsspezifische PDF-Bildauslieferung", () => {
-  it("liefert ausschließlich das Bild der angeforderten Event-ID direkt aus", async () => {
+  it("liefert ausschließlich das lokal gespeicherte Bild der angeforderten Event-ID aus", async () => {
     const testServer = await startTestServer();
     const response = await fetch(
       `${testServer.baseUrl}/api/pdf/event-image/2027/77`,
@@ -83,20 +75,18 @@ describe("Veranstaltungsspezifische PDF-Bildauslieferung", () => {
     expect(response.headers.get("vary")).toContain("Cookie");
     expect(response.headers.get("vary")).toContain("Authorization");
     expect(testServer.findEvent).toHaveBeenCalledWith(2027, 77);
-    expect(testServer.getSignedUrl).toHaveBeenCalledWith(
+    expect(testServer.readFile).toHaveBeenCalledWith(
       "pdf-logos/events/2027/77/weihnachtsbaum.png"
     );
   });
 
   it("liefert ohne individuelles Bild keinen Markenfallback", async () => {
-    const withoutImage = await startTestServer({
-      event: { pdfLogoKey: null },
-    });
+    const withoutImage = await startTestServer({ event: { pdfLogoKey: null } });
     const emptyResponse = await fetch(
       `${withoutImage.baseUrl}/api/pdf/event-image/2027/78`
     );
     expect(emptyResponse.status).toBe(404);
-    expect(withoutImage.getSignedUrl).not.toHaveBeenCalled();
+    expect(withoutImage.readFile).not.toHaveBeenCalled();
   });
 
   it("liefert ohne gültige Sitzung kein Eventbild aus", async () => {
@@ -107,6 +97,15 @@ describe("Veranstaltungsspezifische PDF-Bildauslieferung", () => {
 
     expect(response.status).toBe(401);
     expect(testServer.findEvent).not.toHaveBeenCalled();
-    expect(testServer.getSignedUrl).not.toHaveBeenCalled();
+    expect(testServer.readFile).not.toHaveBeenCalled();
+  });
+
+  it("meldet eine im persistenten Volume fehlende Datei als 404", async () => {
+    const error = Object.assign(new Error("not found"), { code: "ENOENT" });
+    const testServer = await startTestServer({ readError: error });
+    const response = await fetch(
+      `${testServer.baseUrl}/api/pdf/event-image/2027/77`
+    );
+    expect(response.status).toBe(404);
   });
 });

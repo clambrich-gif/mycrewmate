@@ -84,8 +84,8 @@ import {
 import { toast } from "sonner";
 import { Link, useLocation } from "wouter";
 
-const MYCREWMATE_WORDMARK = "/mycrewmate-logo.png";
-const MYCREWMATE_ICON = "/manus-storage/mycrewmate-pwa-icon-512_b16ae84c.png";
+const MYCREWMATE_WORDMARK = "/brand/mycrewmate-wordmark.png";
+const MYCREWMATE_ICON = "/icons/mycrewmate-pwa-512.png";
 const CHAT_SNAPSHOT_POLL_MS = 5_000;
 const LAST_ADMINISTRATOR_NAME_STORAGE_KEY = "mycrewmate:last-administrator-name";
 

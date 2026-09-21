@@ -1,57 +1,58 @@
 import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
-import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerBrandAssetRoutes } from "../brand-asset-routes";
-import { registerOAuthRoutes } from "./oauth";
-import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { registerHelpImageRoutes } from "../help-image-routes";
-import { registerHelpVideoRoutes } from "../help-video-routes";
 import { registerEventPdfImageRoutes } from "../event-pdf-image-routes";
 import { registerPublicHelperPdfRoutes } from "../public-helper-pdf-routes";
 import { registerLocationLogoRoutes } from "../location-logo-routes";
 import { registerTenantLogoRoutes } from "../tenant-logo-routes";
 import { handleTeamNotesCleanupHeartbeat } from "../chat-cleanup-heartbeat";
+import { registerLocalStorageRoutes } from "../storage";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 
-function isPortAvailable(port: number): Promise<boolean> {
-  return new Promise(resolve => {
-    const server = net.createServer();
-    server.listen(port, () => {
-      server.close(() => resolve(true));
-    });
-    server.on("error", () => resolve(false));
-  });
-}
+function assertProductionConfiguration() {
+  if (process.env.NODE_ENV !== "production") return;
 
-async function findAvailablePort(startPort: number = 3000): Promise<number> {
-  for (let port = startPort; port < startPort + 20; port++) {
-    if (await isPortAvailable(port)) {
-      return port;
-    }
+  const missing = ["DATABASE_URL", "JWT_SECRET"].filter(
+    name => !process.env[name]?.trim()
+  );
+  if (missing.length > 0) {
+    throw new Error(
+      `MyCrewMate kann nicht sicher starten: fehlende Umgebungsvariable(n) ${missing.join(", ")}`
+    );
   }
-  throw new Error(`No available port found starting from ${startPort}`);
 }
 
 async function startServer() {
+  assertProductionConfiguration();
+
   const app = express();
+  // Coolify terminiert HTTPS vor dem Container und übergibt X-Forwarded-Proto.
+  // Das Vertrauen in genau einen vorgeschalteten Proxy ist für sichere Cookies nötig.
+  app.set("trust proxy", 1);
   const server = createServer(app);
+
   // Projekt- und Excel-Dateien plus Base64-/JSON-Overhead; größere Requests werden früh abgewiesen.
   app.use(express.json({ limit: "25mb" }));
   app.use(express.urlencoded({ limit: "25mb", extended: true }));
+
+  app.get("/healthz", (_req, res) => {
+    res.status(200).json({ status: "ok" });
+  });
+
   registerBrandAssetRoutes(app);
   registerHelpImageRoutes(app);
-  registerHelpVideoRoutes(app);
   registerEventPdfImageRoutes(app);
   registerPublicHelperPdfRoutes(app);
   registerLocationLogoRoutes(app);
   registerTenantLogoRoutes(app);
-  registerStorageProxy(app);
-  registerOAuthRoutes(app);
+  registerLocalStorageRoutes(app);
   app.post("/api/scheduled/team-notes-cleanup", handleTeamNotesCleanupHeartbeat);
+
   // tRPC API
   app.use(
     "/api/trpc",
@@ -60,23 +61,25 @@ async function startServer() {
       createContext,
     })
   );
-  // development mode uses Vite, production mode uses static files
+
+  // Development uses Vite; production serves the immutable build artefact.
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
-  const preferredPort = parseInt(process.env.PORT || "3000");
-  const port = await findAvailablePort(preferredPort);
-
-  if (port !== preferredPort) {
-    console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
+  const port = Number.parseInt(process.env.PORT || "3000", 10);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error("PORT muss eine gültige TCP-Portnummer sein");
   }
 
-  server.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}/`);
+  server.listen(port, "0.0.0.0", () => {
+    console.log(`MyCrewMate läuft auf http://0.0.0.0:${port}/`);
   });
 }
 
-startServer().catch(console.error);
+startServer().catch(error => {
+  console.error("[Startup] MyCrewMate konnte nicht gestartet werden", error);
+  process.exitCode = 1;
+});

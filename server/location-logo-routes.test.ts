@@ -22,22 +22,15 @@ async function startTestServer(options?: {
       ? (options.location ?? null)
       : { logoKey: "location-logos/events/2027/77/viehmarkt.png" }
   );
-  const getSignedUrl = vi.fn(async () => "https://storage.test/location-logo.png");
-  const image = Uint8Array.from([
+  const image = Buffer.from([
     0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x01,
   ]);
-  const fetchImpl = vi.fn(async () =>
-    new Response(image, {
-      status: 200,
-      headers: { "Content-Length": String(image.byteLength) },
-    })
-  ) as unknown as typeof fetch;
+  const readFile = vi.fn(async () => image);
 
   registerLocationLogoRoutes(app, {
     authenticateRequest,
     findLocationLogo,
-    getSignedUrl,
-    fetchImpl,
+    readFile,
   });
   const server = await new Promise<Server>(resolve => {
     const instance = app.listen(0, "127.0.0.1", () => resolve(instance));
@@ -51,8 +44,7 @@ async function startTestServer(options?: {
     baseUrl: `http://127.0.0.1:${address.port}`,
     authenticateRequest,
     findLocationLogo,
-    getSignedUrl,
-    fetchImpl,
+    readFile,
   };
 }
 
@@ -68,7 +60,7 @@ afterEach(async () => {
 });
 
 describe("Stabile Standortlogo-Anwendungsroute", () => {
-  it("liefert das Event- und Standort-gebundene Bild direkt als Same-Origin-Antwort", async () => {
+  it("liefert das Event- und Standort-gebundene Bild aus dem lokalen Volume", async () => {
     const testServer = await startTestServer();
     const response = await fetch(
       `${testServer.baseUrl}/api/location-logo/2027/77/12`,
@@ -82,7 +74,7 @@ describe("Stabile Standortlogo-Anwendungsroute", () => {
     expect(response.headers.get("vary")).toContain("Cookie");
     expect(response.headers.get("vary")).toContain("Authorization");
     expect(testServer.findLocationLogo).toHaveBeenCalledWith(2027, 77, 12);
-    expect(testServer.getSignedUrl).toHaveBeenCalledWith(
+    expect(testServer.readFile).toHaveBeenCalledWith(
       "location-logos/events/2027/77/viehmarkt.png"
     );
   });
@@ -104,10 +96,10 @@ describe("Stabile Standortlogo-Anwendungsroute", () => {
     );
 
     expect(response.status).toBe(404);
-    expect(testServer.getSignedUrl).not.toHaveBeenCalled();
+    expect(testServer.readFile).not.toHaveBeenCalled();
   });
 
-  it("erstellt nur bei vorhandenem Storage-Key eine stabile Anwendungs-URL", () => {
+  it("erstellt nur bei vorhandenem Dateischlüssel eine stabile Anwendungs-URL", () => {
     expect(
       locationLogoUrl({
         id: 12,
