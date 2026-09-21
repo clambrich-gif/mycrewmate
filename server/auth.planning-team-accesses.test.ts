@@ -796,4 +796,60 @@ describe("Event-based Access Control für Planungsteam", () => {
       "Bitte vergeben Sie zuerst Ihr persönliches Passwort"
     );
   });
+
+  it("bindet Chatnachrichten und Tippstatus fälschungssicher an den Sitzungsnamen", async () => {
+    vi.spyOn(db, "getEvent").mockResolvedValue({
+      id: 10,
+      year: 2027,
+      name: "MyEifelRide",
+    } as any);
+    vi.spyOn(db, "withPlanningWriteLock").mockImplementation(async callback =>
+      callback()
+    );
+    const createNoteSpy = vi.spyOn(db, "createTeamNote").mockResolvedValue({
+      id: 1,
+      senderName: "Anne Veling",
+      senderRole: "user",
+      message: "Streckenposten sind besetzt",
+    } as any);
+    const typingSpy = vi.spyOn(db, "setTeamNoteTyping").mockResolvedValue(true);
+
+    const caller = appRouter.createCaller({
+      user: {
+        id: 0,
+        openId: ADMIN_PASSWORD_OPEN_ID,
+        role: "admin",
+        name: "Anne Veling",
+        email: null,
+        sessionVersion: 1,
+        avatarUrl: null,
+        accountBlocked: false,
+        lastSignedIn: new Date(),
+      },
+      req: mockReq({
+        "x-event-year": "2027",
+        "x-event-id": "10",
+        cookie: `${COOKIE_NAME}=team-chat-session`,
+      }),
+      res: { setHeader: vi.fn(), clearCookie: vi.fn() } as any,
+    });
+
+    await caller.notes.send({ message: "Streckenposten sind besetzt" });
+    await caller.notes.typing({ isTyping: true });
+
+    expect(createNoteSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        senderUserId: null,
+        senderName: "Anne Veling",
+        senderRole: "admin",
+      })
+    );
+    expect(typingSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        senderUserId: null,
+        senderName: "Anne Veling",
+        senderRole: "admin",
+      })
+    );
+  });
 });

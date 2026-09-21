@@ -142,6 +142,8 @@ export default function TaskGeneric({
   const [locationFilter, setLocationFilter] = useState("alle");
   const [fieldFilter, setFieldFilter] = useState("alle");
   const [searchTerm, setSearchTerm] = useState("");
+  const [myTasksOnly, setMyTasksOnly] = useState(false);
+  const [openOrUnassignedOnly, setOpenOrUnassignedOnly] = useState(false);
   const [sortAsc, setSortAsc] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{
@@ -163,6 +165,16 @@ export default function TaskGeneric({
     () => new Map(contacts.map((contact: any) => [contact.id, contact.name])),
     [contacts]
   );
+  const ownContactId = useMemo(() => {
+    const currentName = user?.name?.trim().toLocaleLowerCase("de-DE");
+    if (!currentName) return null;
+    return (
+      contacts.find(
+        (contact: any) =>
+          String(contact.name ?? "").trim().toLocaleLowerCase("de-DE") === currentName
+      )?.id ?? null
+    );
+  }, [contacts, user?.name]);
   const locationMap = useMemo(
     () => new Map(locations.map((location: any) => [location.id, location.name])),
     [locations]
@@ -190,6 +202,14 @@ export default function TaskGeneric({
             ) {
               return false;
             }
+          }
+          if (myTasksOnly && row.contactId !== ownContactId) return false;
+          if (
+            openOrUnassignedOnly &&
+            row.contactId &&
+            (!filterStatusKey || String(row[filterStatusKey] ?? "") !== "offen")
+          ) {
+            return false;
           }
 
           if (!filterConfig) return true;
@@ -242,6 +262,9 @@ export default function TaskGeneric({
       sortableAndFilterable,
       filterConfig,
       contactFilter,
+      myTasksOnly,
+      openOrUnassignedOnly,
+      ownContactId,
       categoryFilter,
       locationFilter,
       fieldFilter,
@@ -384,13 +407,17 @@ export default function TaskGeneric({
     categoryFilter !== "alle" ||
     locationFilter !== "alle" ||
     contactFilter !== "alle" ||
-    fieldFilter !== "alle";
+    fieldFilter !== "alle" ||
+    myTasksOnly ||
+    openOrUnassignedOnly;
   const resetAllFilters = () => {
     setSearchTerm("");
     setCategoryFilter("alle");
     setLocationFilter("alle");
     setContactFilter("alle");
     setFieldFilter("alle");
+    setMyTasksOnly(false);
+    setOpenOrUnassignedOnly(false);
   };
 
   return (
@@ -543,6 +570,42 @@ export default function TaskGeneric({
                 <X className="size-4" />
               </button>
             )}
+          </div>
+          <div className="flex flex-wrap gap-2" aria-label={`Schnellfilter ${title}`}>
+            {!noContact && (
+              <Button
+                type="button"
+                size="sm"
+                variant={myTasksOnly ? "default" : "outline"}
+                className={
+                  myTasksOnly
+                    ? "bg-blue-700 text-white hover:bg-blue-800"
+                    : "border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100"
+                }
+                disabled={ownContactId === null}
+                title={
+                  ownContactId === null
+                    ? "Der aktuelle Sitzungsname ist keinem Ansprechpartner zugeordnet."
+                    : undefined
+                }
+                onClick={() => setMyTasksOnly(active => !active)}
+              >
+                👤 Meine Aufgaben
+              </Button>
+            )}
+            <Button
+              type="button"
+              size="sm"
+              variant={openOrUnassignedOnly ? "default" : "outline"}
+              className={
+                openOrUnassignedOnly
+                  ? "bg-amber-600 text-white hover:bg-amber-700"
+                  : "border-amber-200 bg-amber-50 text-amber-950 hover:bg-amber-100"
+              }
+              onClick={() => setOpenOrUnassignedOnly(active => !active)}
+            >
+              ⚠ Offen / unzugewiesen
+            </Button>
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-[repeat(4,minmax(0,1fr))_auto]">
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>

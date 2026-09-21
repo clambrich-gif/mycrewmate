@@ -182,6 +182,28 @@ function rememberAdministratorName(name: string) {
   }
 }
 
+function isEditableShortcutTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) return false;
+  return (
+    target.isContentEditable ||
+    target.tagName === "INPUT" ||
+    target.tagName === "TEXTAREA" ||
+    target.tagName === "SELECT"
+  );
+}
+
+function focusCurrentPageSearch() {
+  const searchTarget = Array.from(
+    document.querySelectorAll<HTMLInputElement>(
+      'input[data-global-search="true"], input[type="search"], input[placeholder*="Suchen"], input[aria-label*="durchsuchen"]'
+    )
+  ).find(input => !input.disabled && input.offsetParent !== null);
+  if (!searchTarget) return false;
+  searchTarget.focus();
+  searchTarget.select();
+  return true;
+}
+
 function AdminIdentityDialog({
   open,
   contacts,
@@ -340,6 +362,53 @@ export function Layout({ children }: { children: React.ReactNode }) {
     () => uniqueAdminLoginContacts(adminLoginContacts),
     [adminLoginContacts]
   );
+
+  useEffect(() => {
+    const handleGlobalKeyboardShortcut = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.isComposing) return;
+
+      if (event.key === "Escape") {
+        // Der verpflichtende Initialpasswortwechsel bleibt aus Sicherheitsgründen
+        // die einzige Ausnahme: Der Einmalcode darf keine normale Sitzung öffnen.
+        if (forcePasswordChangeOpen) return;
+        const closers = Array.from(
+          document.querySelectorAll<HTMLElement>(
+            '[data-slot="dialog-close"], [data-slot="alert-dialog-cancel"], [data-slot="sheet-close"]'
+          )
+        ).filter(button => button.offsetParent !== null && !button.hasAttribute("disabled"));
+        const closeTopmost = closers.at(-1);
+        if (closeTopmost) {
+          event.preventDefault();
+          closeTopmost.click();
+          return;
+        }
+        if (mobileMenuOpen) {
+          event.preventDefault();
+          setMobileMenuOpen(false);
+          return;
+        }
+        if (chatState !== "closed") {
+          event.preventDefault();
+          setChatState("closed");
+        }
+        return;
+      }
+
+      const isFindShortcut =
+        (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "f";
+      const isSlashShortcut =
+        event.key === "/" && !event.ctrlKey && !event.metaKey && !event.altKey;
+      if (!isFindShortcut && !isSlashShortcut) return;
+      if (isSlashShortcut && isEditableShortcutTarget(event.target)) return;
+      if (document.querySelector('[data-slot="dialog-content"][data-state="open"]')) {
+        return;
+      }
+      if (focusCurrentPageSearch()) event.preventDefault();
+    };
+
+    window.addEventListener("keydown", handleGlobalKeyboardShortcut);
+    return () => window.removeEventListener("keydown", handleGlobalKeyboardShortcut);
+  }, [chatState, forcePasswordChangeOpen, mobileMenuOpen]);
 
   useEffect(() => {
     const displayMode = window.matchMedia("(display-mode: standalone)");

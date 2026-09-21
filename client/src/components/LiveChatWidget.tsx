@@ -4,15 +4,6 @@ import {
   Badge,
 } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useEventYear } from "@/contexts/YearContext";
 import { trpc } from "@/lib/trpc";
@@ -27,11 +18,9 @@ import {
   Minus,
   Send,
   Trash2,
-  UserCheck,
   X,
 } from "lucide-react";
 import {
-  FormEvent,
   KeyboardEvent,
   useCallback,
   useEffect,
@@ -41,9 +30,7 @@ import {
 } from "react";
 import { toast } from "sonner";
 
-const SESSION_NAME_STORAGE_PREFIX = "rsc-live-notes-sender-name-";
 const SOUND_ENABLED_STORAGE_PREFIX = "rsc-live-notes-important-sound-";
-const CUSTOM_NAME_VALUE = "__custom_name__";
 const TYPING_IDLE_MS = 3_500;
 
 export type LiveChatWidgetState = "closed" | "minimized" | "open";
@@ -113,9 +100,6 @@ export function LiveChatWidget({
   const [message, setMessage] = useState("");
   const [isImportant, setIsImportant] = useState(false);
   const [importantSoundEnabled, setImportantSoundEnabled] = useState(false);
-  const [selectedContactValue, setSelectedContactValue] = useState("");
-  const [customName, setCustomName] = useState("");
-  const [confirmedName, setConfirmedName] = useState<string | null>(null);
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
   const typingMutation = trpc.notes.typing.useMutation();
 
@@ -128,39 +112,13 @@ export function LiveChatWidget({
   const isTypingReportedRef = useRef(false);
   const typingLastRenewedAtRef = useRef(0);
 
-  const storageKey = useMemo(
-    () => `${SESSION_NAME_STORAGE_PREFIX}${year}-${eventId}`,
-    [year, eventId]
-  );
   const soundStorageKey = useMemo(
     () => `${SOUND_ENABLED_STORAGE_PREFIX}${year}-${eventId}`,
     [year, eventId]
   );
 
-  const contactsQuery = trpc.contacts.list.useQuery(undefined, {
-    enabled: isAuthenticated,
-    staleTime: 60_000,
-  });
-
-  const contacts = useMemo(
-    () => contactsQuery.data ?? [],
-    [contactsQuery.data]
-  );
-
-  useEffect(() => {
-    try {
-      const stored = sessionStorage.getItem(storageKey);
-      if (stored && stored.trim().length >= 2) {
-        setConfirmedName(stored.trim());
-      } else {
-        setConfirmedName(null);
-        setSelectedContactValue("");
-        setCustomName("");
-      }
-    } catch {
-      setConfirmedName(null);
-    }
-  }, [storageKey]);
+  const confirmedName =
+    user?.name?.trim() || (user?.role === "admin" ? "Administrator" : "Planungsteam");
 
   useEffect(() => {
     try {
@@ -243,7 +201,6 @@ export function LiveChatWidget({
       isTypingReportedRef.current = typingState;
       typingLastRenewedAtRef.current = typingState ? Date.now() : 0;
       typingMutateRef.current({
-        senderName: confirmedName,
         isTyping: typingState,
       });
     },
@@ -306,26 +263,6 @@ export function LiveChatWidget({
     },
   });
 
-  const saveIdentity = (e: FormEvent) => {
-    e.preventDefault();
-    const finalName =
-      selectedContactValue === CUSTOM_NAME_VALUE
-        ? customName.trim()
-        : selectedContactValue.trim();
-
-    if (finalName.length < 2) {
-      toast.error("Bitte wähle deinen Namen aus oder trage einen Namen ein");
-      return;
-    }
-
-    try {
-      sessionStorage.setItem(storageKey, finalName);
-    } catch {
-      // SessionStorage evtl. restriktiv
-    }
-    setConfirmedName(finalName);
-  };
-
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -339,7 +276,6 @@ export function LiveChatWidget({
     if (!cleanText || sendMutation.isPending) return;
 
     sendMutation.mutate({
-      senderName: confirmedName,
       message: cleanText,
       important: isImportant,
     });
@@ -393,7 +329,7 @@ export function LiveChatWidget({
       }
       if (isTypingReportedRef.current && confirmedName) {
         isTypingReportedRef.current = false;
-        typingMutateRef.current({ senderName: confirmedName, isTyping: false });
+        typingMutateRef.current({ isTyping: false });
       }
     };
   }, [confirmedName]);
@@ -599,107 +535,14 @@ export function LiveChatWidget({
           </div>
         </div>
 
-        {/* STEP 1: Name auswählen (falls in dieser Sitzung noch nicht gesetzt) */}
-        {!confirmedName ? (
-          <div className="flex flex-1 flex-col justify-center p-4">
-            <div className="mx-auto w-full max-w-xs space-y-4 rounded-lg border border-blue-100 bg-blue-50/60 p-4 text-center">
-              <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-700">
-                <UserCheck className="h-5 w-5" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-sm font-bold text-slate-900">
-                  Wer schreibt hier?
-                </h3>
-                <p className="text-xs leading-relaxed text-slate-600">
-                  Wähle deinen Namen aus den Ansprechpartnern dieser Veranstaltung
-                  oder trage dich frei ein.
-                </p>
-              </div>
+        {/* Absender ist ausschließlich die vom Server bestätigte Sitzungsidentität. */}
+        <div className="flex items-center border-b border-slate-100 bg-white px-3 py-1.5 text-[11px] text-slate-500">
+          <span className="truncate">
+            Angemeldet als: <strong className="text-slate-800">{confirmedName}</strong> (
+            {roleBadgeText(user?.role ?? "user")})
+          </span>
+        </div>
 
-              <form onSubmit={saveIdentity} className="space-y-3 text-left">
-                <div className="space-y-1.5">
-                  <Label htmlFor="chat-contact-select" className="text-xs">
-                    Name auswählen
-                  </Label>
-                  <Select
-                    value={selectedContactValue}
-                    onValueChange={setSelectedContactValue}
-                  >
-                    <SelectTrigger
-                      id="chat-contact-select"
-                      className="h-11 w-full bg-white text-base md:h-10 md:text-xs"
-                    >
-                      <SelectValue placeholder="Ansprechpartner wählen …" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-56">
-                      {contacts.map(c => (
-                        <SelectItem key={c.id} value={c.name} className="text-xs">
-                          {c.name}
-                        </SelectItem>
-                      ))}
-                      <SelectItem value={CUSTOM_NAME_VALUE} className="text-xs font-semibold text-blue-700">
-                        + Andere Person / Freie Eingabe
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {selectedContactValue === CUSTOM_NAME_VALUE && (
-                  <div className="space-y-1.5">
-                    <Label htmlFor="chat-custom-name" className="text-xs">
-                      Dein Name
-                    </Label>
-                    <Input
-                      id="chat-custom-name"
-                      placeholder="z. B. Max Mustermann"
-                      value={customName}
-                      onChange={e => setCustomName(e.target.value)}
-                      className="h-11 bg-white text-base md:h-9 md:text-xs"
-                      autoFocus
-                    />
-                  </div>
-                )}
-
-                <Button
-                  type="submit"
-                  size="sm"
-                  className="w-full bg-blue-600 text-white hover:bg-blue-700"
-                  disabled={
-                    selectedContactValue === CUSTOM_NAME_VALUE
-                      ? customName.trim().length < 2
-                      : !selectedContactValue
-                  }
-                >
-                  Bestätigen & Beitreten
-                </Button>
-              </form>
-            </div>
-          </div>
-        ) : (
-          /* STEP 2: Chat-Verlauf und Eingabezeile */
-          <>
-            {/* Kopfzeile mit aktuellem Absendernamen */}
-            <div className="flex items-center justify-between border-b border-slate-100 bg-white px-3 py-1.5 text-[11px] text-slate-500">
-              <span className="truncate">
-                Angemeldet als:{" "}
-                <strong className="text-slate-800">{confirmedName}</strong> (
-                {roleBadgeText(user?.role ?? "user")})
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setConfirmedName(null);
-                  try {
-                    sessionStorage.removeItem(storageKey);
-                  } catch {}
-                }}
-                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md px-2 text-base text-blue-700 hover:bg-blue-50 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 md:min-h-0 md:min-w-0 md:px-0 md:text-xs"
-              >
-                Ändern
-              </button>
-            </div>
-
-            {/* Scrollbarer Nachrichtenbereich */}
             <div
               ref={scrollContainerRef}
               className="flex-1 space-y-2.5 overflow-y-auto p-3 text-sm sm:text-xs"
@@ -716,8 +559,7 @@ export function LiveChatWidget({
               ) : (
                 snapshot.notes.map(note => {
                   const isOwn =
-                    note.senderName.trim().toLowerCase() ===
-                    confirmedName.trim().toLowerCase();
+                    note.senderUserId !== null && note.senderUserId === user?.id;
                   return (
                     <div
                       key={note.id}
@@ -840,8 +682,6 @@ export function LiveChatWidget({
                 </Button>
               </div>
             </div>
-          </>
-        )}
       </div>
 
       {/* Admin-Reset mit Passwort-Reauthentifizierung */}

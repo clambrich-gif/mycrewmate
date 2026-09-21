@@ -3186,17 +3186,17 @@ export const appRouter = router({
     typing: protectedProcedure
       .input(
         z.object({
-          senderName: z.string().trim().min(2).max(120),
           isTyping: z.boolean(),
         })
       )
       .mutation(async ({ ctx, input }) => {
         const sessionKey = sessionPresenceKey(ctx.req);
         if (!sessionKey) return false;
+        const actor = auditActor(ctx.user);
         return db.setTeamNoteTyping({
           sessionKey,
           senderUserId: ctx.user.id > 0 ? ctx.user.id : null,
-          senderName: input.senderName,
+          senderName: actor.name,
           senderRole: ctx.user.role,
           isTyping: input.isTyping,
         });
@@ -3204,16 +3204,16 @@ export const appRouter = router({
     send: protectedProcedure
       .input(
         z.object({
-          senderName: z.string().trim().min(2).max(120),
           message: z.string().trim().min(1).max(2000),
           important: z.boolean().optional(),
         })
       )
       .mutation(({ ctx, input }) => {
         const sessionKey = sessionPresenceKey(ctx.req);
+        const actor = auditActor(ctx.user);
         return db.createTeamNote({
           senderUserId: ctx.user.id > 0 ? ctx.user.id : null,
-          senderName: input.senderName,
+          senderName: actor.name,
           senderRole: ctx.user.role,
           message: input.message,
           important: input.important,

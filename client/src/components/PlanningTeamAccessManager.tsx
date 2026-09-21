@@ -65,6 +65,7 @@ type AccessSummary = {
   contactName: string | null;
   label: string;
   eventIds: number[];
+  mustChangePassword: boolean;
 };
 
 function normalizedContactName(name: string) {
@@ -410,9 +411,15 @@ export function PlanningTeamAccessManager() {
                       <p className="font-semibold text-slate-900">
                         {access.contactName ?? access.label}
                       </p>
-                      <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
-                        Passwort aktiv
-                      </Badge>
+                      {access.mustChangePassword ? (
+                        <Badge className="border border-amber-200 bg-amber-100 text-amber-900 hover:bg-amber-100">
+                          ⏳ Initialcode offen
+                        </Badge>
+                      ) : (
+                        <Badge className="border border-emerald-200 bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
+                          ✓ Passwort eingerichtet
+                        </Badge>
+                      )}
                     </div>
                     <p className="mt-0.5 text-xs text-slate-500">Ansprechpartner-Zugang</p>
                     <p className="mt-1 text-xs text-muted-foreground">

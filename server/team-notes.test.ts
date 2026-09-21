@@ -193,7 +193,7 @@ describe("Live-Teamnotizen Backend & Ephemeral Storage", () => {
       user: {
         id: 2,
         openId: "user-id",
-        name: "Planungsteam",
+        name: "Anne Veling",
         email: null,
         loginMethod: "password",
         role: "user",
@@ -204,7 +204,6 @@ describe("Live-Teamnotizen Backend & Ephemeral Storage", () => {
     });
 
     const note = await caller.notes.send({
-      senderName: "Anne Veling",
       message: "Kuchenspenden sind vollständig eingetragen.",
       important: true,
     });

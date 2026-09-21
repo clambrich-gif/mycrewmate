@@ -245,10 +245,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
 
     expect(widget).toContain("env(safe-area-inset-bottom)+0.75rem");
     expect(widget).toContain("env(safe-area-inset-bottom)+0.5rem");
-    expect(widget).toContain("sessionStorage.getItem(storageKey)");
-    expect(widget).toContain("sessionStorage.setItem(storageKey, finalName)");
-    expect(widget).toContain("trpc.contacts.list.useQuery");
-    expect(widget).toContain("+ Andere Person / Freie Eingabe");
+    expect(widget).toContain("Absender ist ausschließlich die vom Server bestätigte Sitzungsidentität");
+    expect(widget).toContain("const confirmedName =");
+    expect(widget).toContain("user?.name?.trim()");
+    expect(widget).not.toContain("Wer schreibt hier?");
+    expect(widget).not.toContain("Bestätigen & Beitreten");
+    expect(widget).not.toContain("trpc.contacts.list.useQuery");
+    expect(widget).not.toContain("+ Andere Person / Freie Eingabe");
     expect(widget).not.toContain("SHORT_POLL_INTERVAL_MS");
     expect(widget).not.toContain("utils.client.notes.list.query");
     expect(widget).toContain("snapshot: TeamNotesSnapshot");
@@ -398,6 +401,49 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain('isYes ? "translate-x-7" : "translate-x-0"');
   });
 
+  it("bietet globale Shortcuts für schließbare Dialoge und die Seitensuche", () => {
+    const layout = source("client/src/components/Layout.tsx");
+    const alertDialog = source("client/src/components/ui/alert-dialog.tsx");
+    const sheet = source("client/src/components/ui/sheet.tsx");
+    const forcePasswordModal = source(
+      "client/src/components/ForcePasswordChangeModal.tsx"
+    );
+
+    expect(layout).toContain("function focusCurrentPageSearch()");
+    expect(layout).toContain('input[data-global-search="true"]');
+    expect(layout).toContain('input[placeholder*="Suchen"]');
+    expect(layout).toContain("event.key === \"Escape\"");
+    expect(layout).toContain("event.key.toLowerCase() === \"f\"");
+    expect(layout).toContain('event.key === "/"');
+    expect(layout).toContain('[data-slot="dialog-close"], [data-slot="alert-dialog-cancel"], [data-slot="sheet-close"]');
+    expect(layout).toContain("if (forcePasswordChangeOpen) return;");
+    expect(alertDialog).toContain('data-slot="alert-dialog-cancel"');
+    expect(sheet).toContain('data-slot="sheet-close"');
+    expect(forcePasswordModal).toContain("onEscapeKeyDown={event => event.preventDefault()}");
+  });
+
+  it("bietet kombinierbare Schnellfilter für eigene und offene Aufgaben", () => {
+    const helpers = source("client/src/pages/Helpers.tsx");
+    const preparation = source("client/src/pages/Preparation.tsx");
+    const plan = source("client/src/pages/Plan.tsx");
+    const genericTasks = source("client/src/pages/TaskGeneric.tsx");
+
+    expect(helpers).toContain("myHelperRecordOnly");
+    expect(helpers).toContain("👤 Meine Helferakte");
+    expect(preparation).toContain("myTasksOnly");
+    expect(preparation).toContain("openOrUnassignedOnly");
+    expect(preparation).toContain("👤 Meine Aufgaben");
+    expect(preparation).toContain("⚠ Offen / unzugewiesen");
+    expect(plan).toContain("ownContactIds");
+    expect(plan).toContain("ownHelperIds");
+    expect(plan).toContain("👤 Meine Aufgaben");
+    expect(plan).toContain("⚠ Nur offene / unbesetzte Schichten");
+    expect(plan).toContain("e.assigned.length < e.shift.needed");
+    expect(genericTasks).toContain("openOrUnassignedOnly");
+    expect(genericTasks).toContain("👤 Meine Aufgaben");
+    expect(genericTasks).toContain("⚠ Offen / unzugewiesen");
+  });
+
   it("hält mobile Formulare und Aktionen bei 44px und 16px und macht Helferchips per Tastatur erreichbar", () => {
     const input = source("client/src/components/ui/input.tsx");
     const button = source("client/src/components/ui/button.tsx");
@@ -426,9 +472,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("aria-label={`Details zu ${helper.name} anzeigen`}");
     expect(plan).toContain("<PopoverTrigger asChild>");
     expect(plan).toContain("min-h-11 min-w-0 flex-1 truncate text-left");
-    expect(widget).toContain("h-11 w-full bg-white text-base md:h-10 md:text-xs");
-    expect(widget).toContain("h-11 bg-white text-base md:h-9 md:text-xs");
-    expect(widget).toContain("inline-flex min-h-11 min-w-11 items-center");
+    expect(widget).toContain("min-h-12 min-w-0 flex-1 max-h-28 resize-none bg-white text-base");
+    expect(widget).not.toContain("chat-contact-select");
+    expect(widget).toContain("h-11 w-11 text-slate-600 hover:text-red-600");
     expect(presence).toContain("flex min-h-11 w-full items-center");
     expect(help).toContain("flex min-h-11 items-center rounded-md");
     expect(widget).toContain("h-11 w-11 text-slate-600 hover:text-slate-900 md:h-7 md:w-7");
@@ -2642,6 +2688,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(manager).toContain("Ansprechpartner");
     expect(manager).toContain("availableContacts");
     expect(manager).toContain("Ansprechpartner-Zugang");
+    expect(manager).toContain("mustChangePassword: boolean");
+    expect(manager).toContain("⏳ Initialcode offen");
+    expect(manager).toContain("✓ Passwort eingerichtet");
+    expect(manager).toContain("bg-amber-100 text-amber-900");
+    expect(manager).toContain("bg-emerald-100 text-emerald-800");
     expect(manager).toContain("function uniqueContactChoices");
     expect(manager).toContain("normalizedContactName");
     expect(manager).toContain("contactChoices.map(contact");
@@ -2702,7 +2753,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     );
     expect(unauthenticatedLayout).toContain("{adminIdentityDialog}");
     expect(layout).toContain("Angemeldet:");
-    expect(manager).toContain("Passwort aktiv");
+    expect(manager).toContain("⏳ Initialcode offen");
+    expect(manager).toContain("✓ Passwort eingerichtet");
     expect(permissions).toContain("Aktivitätsprotokoll");
   });
 

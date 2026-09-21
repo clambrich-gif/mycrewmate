@@ -102,6 +102,9 @@ const formatTimeLabel = (shift: { startTime: string; endTime: string }) =>
     ? `${shift.startTime}–${shift.endTime}`
     : "ganztägig";
 
+const normalizedPersonName = (name: string | null | undefined) =>
+  name?.trim().toLocaleLowerCase("de-DE") ?? "";
+
 const FlexibleTimeNote = ({
   flexible,
 }: {
@@ -583,6 +586,8 @@ export default function Plan() {
   const [flexibleAssignmentFilter, setFlexibleAssignmentFilter] = useState<
     "alle" | "flexibel"
   >("alle");
+  const [myTasksOnly, setMyTasksOnly] = useState(false);
+  const [openOrUnassignedOnly, setOpenOrUnassignedOnly] = useState(false);
   const [q, setQ] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [areaContactsExpanded, setAreaContactsExpanded] = useState(false);
@@ -639,6 +644,8 @@ export default function Plan() {
     setArea("alle");
     setApFilter("alle");
     setFlexibleAssignmentFilter("alle");
+    setMyTasksOnly(false);
+    setOpenOrUnassignedOnly(false);
     setQ("");
     setSearchParams(
       previous => {
@@ -661,6 +668,8 @@ export default function Plan() {
     warningFilter !== "alle" ||
     apFilter !== "alle" ||
     flexibleAssignmentFilter !== "alle" ||
+    myTasksOnly ||
+    openOrUnassignedOnly ||
     Boolean(locationFilter);
 
   useEffect(() => {
@@ -860,6 +869,29 @@ export default function Plan() {
     () => new Map(helpers.map(helper => [helper.id, helper])),
     [helpers]
   );
+  const currentUserName = normalizedPersonName(user?.name);
+  const ownContactIds = useMemo(
+    () =>
+      new Set(
+        contacts
+          .filter(contact => normalizedPersonName(contact.name) === currentUserName)
+          .map(contact => contact.id)
+      ),
+    [contacts, currentUserName]
+  );
+  const ownHelperIds = useMemo(
+    () =>
+      new Set(
+        helpers
+          .filter(
+            helper =>
+              normalizedPersonName(helper.name) === currentUserName ||
+              (helper.contactId !== null && ownContactIds.has(helper.contactId))
+          )
+          .map(helper => helper.id)
+      ),
+    [helpers, currentUserName, ownContactIds]
+  );
   const dashboardHelper = dashboardHelperId
     ? helperById.get(dashboardHelperId)
     : null;
@@ -1040,7 +1072,12 @@ export default function Plan() {
             (flexibleAssignmentFilter === "alle" ||
               e.shift.allowFlexibleAssignment) &&
             (apFilter === "alle" ||
-              String(areaContactMap.get(e.shift.area) ?? "") === apFilter)
+              String(areaContactMap.get(e.shift.area) ?? "") === apFilter) &&
+            (!myTasksOnly ||
+              ownContactIds.has(areaContactMap.get(e.shift.area) ?? -1) ||
+              e.assigned.some(assignment => ownHelperIds.has(assignment.helperId))) &&
+            (!openOrUnassignedOnly ||
+              e.status === "OFFEN" || e.assigned.length < e.shift.needed)
         )
         .sort(
           (left, right) =>
@@ -1061,8 +1098,12 @@ export default function Plan() {
       q,
       apFilter,
       flexibleAssignmentFilter,
+      myTasksOnly,
+      openOrUnassignedOnly,
       areaContactMap,
       helperNameById,
+      ownContactIds,
+      ownHelperIds,
     ]
   );
 
@@ -1459,6 +1500,43 @@ export default function Plan() {
               <X className="h-5 w-5" aria-hidden="true" />
             </button>
           )}
+        </div>
+        <div
+          className="order-1 flex flex-wrap gap-2 md:order-2 lg:order-1"
+          aria-label="Schnellfilter Einsatzplan"
+        >
+          <Button
+            type="button"
+            size="sm"
+            variant={myTasksOnly ? "default" : "outline"}
+            className={
+              myTasksOnly
+                ? "bg-blue-700 text-white hover:bg-blue-800"
+                : "border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100"
+            }
+            disabled={ownContactIds.size === 0 && ownHelperIds.size === 0}
+            title={
+              ownContactIds.size === 0 && ownHelperIds.size === 0
+                ? "Der aktuelle Sitzungsname ist weder Ansprechpartner noch Helfer zugeordnet."
+                : undefined
+            }
+            onClick={() => setMyTasksOnly(active => !active)}
+          >
+            👤 Meine Aufgaben
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={openOrUnassignedOnly ? "default" : "outline"}
+            className={
+              openOrUnassignedOnly
+                ? "bg-amber-600 text-white hover:bg-amber-700"
+                : "border-amber-200 bg-amber-50 text-amber-950 hover:bg-amber-100"
+            }
+            onClick={() => setOpenOrUnassignedOnly(active => !active)}
+          >
+            ⚠ Nur offene / unbesetzte Schichten
+          </Button>
         </div>
         <div className="order-1 grid gap-2 sm:grid-cols-2 md:order-2 lg:flex lg:flex-wrap">
           <Select value={day} onValueChange={setDay}>

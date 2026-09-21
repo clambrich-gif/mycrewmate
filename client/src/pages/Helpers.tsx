@@ -649,6 +649,7 @@ export default function Helpers() {
     "alle"
   );
   const [timedAvailabilityOnly, setTimedAvailabilityOnly] = useState(false);
+  const [myHelperRecordOnly, setMyHelperRecordOnly] = useState(false);
   const [sortAsc, setSortAsc] = useState(true);
   const [exportingId, setExportingId] = useState<number | null>(null);
   const [sharingId, setSharingId] = useState<number | null>(null);
@@ -761,6 +762,15 @@ export default function Helpers() {
       new Set((plan ?? []).flatMap(item => item.assigned.map(a => a.helperId))),
     [plan]
   );
+  const ownContactIds = useMemo(
+    () =>
+      new Set(
+        contacts
+          .filter(contact => personKey(contact.name) === personKey(user?.name ?? ""))
+          .map(contact => contact.id)
+      ),
+    [contacts, user?.name]
+  );
   const filtered = useMemo(
     () =>
       helpers
@@ -777,6 +787,10 @@ export default function Helpers() {
             (confirmationFilter === "alle" ||
               helper.confirmed === confirmationFilter) &&
             (willHelpFilter === "alle" || helper.willHelp === willHelpFilter) &&
+            (!myHelperRecordOnly ||
+              personKey(helper.name) === personKey(user?.name ?? "") ||
+              (typeof helper.contactId === "number" &&
+                ownContactIds.has(helper.contactId))) &&
             (!assignedOnly || assignedHelperIds.has(helper.id)) &&
             (!firstContactOnly ||
               isHelperWithoutFirstContact(helper, activeDays)) &&
@@ -799,6 +813,9 @@ export default function Helpers() {
       filter,
       confirmationFilter,
       willHelpFilter,
+      myHelperRecordOnly,
+      ownContactIds,
+      user?.name,
       assignedOnly,
       firstContactOnly,
       assignedHelperIds,
@@ -872,6 +889,7 @@ export default function Helpers() {
     confirmationFilter !== "alle" ||
     helperScopeFilter !== "alle" ||
     willHelpFilter !== "alle" ||
+    myHelperRecordOnly ||
     timedAvailabilityOnly;
 
   const resetHelperFilters = () => {
@@ -880,6 +898,7 @@ export default function Helpers() {
     setCompanionFilter("alle");
     setWillHelpFilter("alle");
     setTimedAvailabilityOnly(false);
+    setMyHelperRecordOnly(false);
     clearDashboardHelperFilter();
   };
 
@@ -923,6 +942,22 @@ export default function Helpers() {
             className="h-10 border-2 border-slate-300 bg-white pl-9 text-base shadow-sm focus:border-blue-500 focus-visible:border-blue-500 focus-visible:ring-blue-200 md:text-sm"
             aria-label="Helfer nach Name, Telefon oder Hinweis durchsuchen"
           />
+        </div>
+        <div className="order-1 flex flex-wrap gap-2 md:order-2" aria-label="Schnellfilter Helfer">
+          <Button
+            type="button"
+            size="sm"
+            variant={myHelperRecordOnly ? "default" : "outline"}
+            className={
+              myHelperRecordOnly
+                ? "bg-blue-700 text-white hover:bg-blue-800"
+                : "border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100"
+            }
+            disabled={!user?.name?.trim()}
+            onClick={() => setMyHelperRecordOnly(active => !active)}
+          >
+            👤 Meine Helferakte
+          </Button>
         </div>
         <div className="order-1 grid grid-cols-1 gap-2 md:order-2 md:flex md:flex-wrap">
           <Select value={apFilter} onValueChange={setApFilter}>
