@@ -10,8 +10,7 @@ const ALGORITHM = "sha256";
 
 export type PreviewBindingOperation =
   | "project-file"
-  | `module:${string}`
-  | `modules:${string}`;
+  | `module:${string}`;
 
 type PreviewBindingClaims = {
   version: 1;

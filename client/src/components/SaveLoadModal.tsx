@@ -6,7 +6,6 @@ import {
   type ChangeFilter,
 } from "@/components/ChangePreview";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { downloadBase64File, safeDownloadName } from "@/lib/download";
 import { trpc } from "@/lib/trpc";
 import {
@@ -35,8 +35,6 @@ const IMPORT_AREAS = [
   { id: "VORBEREITUNG", label: "Vorbereitung" },
   { id: "NACHBEREITUNG", label: "Nachbereitung" },
   { id: "MATERIAL", label: "Material" },
-  { id: "MARKETING", label: "Marketing" },
-  { id: "GENEHMIGUNGEN", label: "Genehmigungen" },
   { id: "KUCHEN", label: "Spenden" },
   { id: "FINANZEN", label: "Finanzen" },
 ] as const;
@@ -137,13 +135,13 @@ export function SaveLoadControls({
   const [excelFile, setExcelFile] = useState<{
     name: string;
     base64: string;
-    areas: ImportArea[];
+    area: ImportArea;
   } | null>(null);
   const [jsonPreviewOpen, setJsonPreviewOpen] = useState(false);
   const [excelPreviewOpen, setExcelPreviewOpen] = useState(false);
   const [jsonPasswordOpen, setJsonPasswordOpen] = useState(false);
   const [excelPasswordOpen, setExcelPasswordOpen] = useState(false);
-  const [selectedImportAreas, setSelectedImportAreas] = useState<ImportArea[]>([]);
+  const [selectedImportArea, setSelectedImportArea] = useState<ImportArea | null>(null);
   const [filter, setFilter] = useState<ChangeFilter>("all");
 
   const jsonSave = trpc.projectFile.save.useQuery(undefined, {
@@ -172,10 +170,10 @@ export function SaveLoadControls({
     },
     onError: error => toast.error(error.message),
   });
-  const excelPreview = trpc.excel.previewSelected.useMutation({
+  const excelPreview = trpc.excel.previewModule.useMutation({
     onSuccess: result => {
       if (!result.changes.length) {
-        toast.info("Für die gewählten Bereiche wurden keine Änderungen erkannt");
+        toast.info("Für den ausgewählten Bereich wurden keine Änderungen erkannt");
         return;
       }
       setFilter("all");
@@ -183,7 +181,7 @@ export function SaveLoadControls({
     },
     onError: error => toast.error(error.message),
   });
-  const excelLoad = trpc.excel.applySelected.useMutation({
+  const excelLoad = trpc.excel.applyModule.useMutation({
     onSuccess: result => {
       setExcelPasswordOpen(false);
       setExcelPreviewOpen(false);
@@ -194,7 +192,7 @@ export function SaveLoadControls({
     },
     onError: error => {
       const detail = error.message || "Unbekannte Importursache";
-      console.error(`[Zentraler Excel-Import] Übernahme abgebrochen: ${detail}`);
+      console.error(`[Isolierter Excel-Import] Übernahme abgebrochen: ${detail}`);
       toast.error(`Import wurde nicht übernommen: ${detail}`, { duration: 10_000 });
     },
   });
@@ -256,8 +254,8 @@ export function SaveLoadControls({
       toast.error("Nur Administratoren dürfen Excel-Daten importieren");
       return;
     }
-    if (!selectedImportAreas.length) {
-      toast.error("Bitte mindestens einen Bereich für den Excel-Import auswählen");
+    if (!selectedImportArea) {
+      toast.error("Bitte genau einen Bereich für den Excel-Import auswählen");
       return;
     }
     excelInputRef.current?.click();
@@ -300,10 +298,11 @@ export function SaveLoadControls({
     }
     try {
       const base64 = await readBase64(selected, "Excel-Datei konnte nicht gelesen werden");
-      const areas = [...selectedImportAreas];
-      setExcelFile({ name: selected.name, base64, areas });
+      if (!selectedImportArea) return;
+      const area = selectedImportArea;
+      setExcelFile({ name: selected.name, base64, area });
       setLoadDialogOpen(false);
-      excelPreview.mutate({ base64, areas });
+      excelPreview.mutate({ base64, area });
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Excel-Datei konnte nicht gelesen werden"
@@ -311,12 +310,6 @@ export function SaveLoadControls({
     } finally {
       if (excelInputRef.current) excelInputRef.current.value = "";
     }
-  };
-
-  const toggleImportArea = (area: ImportArea, checked: boolean) => {
-    setSelectedImportAreas(current =>
-      checked ? [...current, area] : current.filter(item => item !== area)
-    );
   };
 
   return (
@@ -421,33 +414,37 @@ export function SaveLoadControls({
                 <div>
                   <p className="font-semibold leading-5">Excel-Daten importieren</p>
                   <p className="mt-1 text-sm leading-5 text-amber-950/80">
-                    Nur die unten markierten Bereiche werden geprüft und übernommen.
+                    Pro Import wird genau ein Bereich isoliert geprüft und übernommen.
                   </p>
                 </div>
               </div>
-              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              <RadioGroup
+                value={selectedImportArea ?? undefined}
+                onValueChange={value => setSelectedImportArea(value as ImportArea)}
+                aria-label="Excel-Importbereich auswählen"
+                className="mt-4 grid gap-2 sm:grid-cols-2"
+              >
                 {IMPORT_AREAS.map(area => {
-                  const checked = selectedImportAreas.includes(area.id);
+                  const selected = selectedImportArea === area.id;
                   return (
                     <label
                       key={area.id}
                       htmlFor={`central-import-${area.id}`}
-                      className="flex min-h-10 cursor-pointer items-center gap-2 rounded-md border border-amber-200 bg-white/80 px-2.5 py-2 text-sm font-medium transition-colors hover:bg-white"
+                      className={`flex min-h-10 cursor-pointer items-center gap-2 rounded-md border px-2.5 py-2 text-sm font-medium transition-colors ${selected ? "border-amber-400 bg-amber-100 shadow-sm" : "border-amber-200 bg-white/80 hover:bg-white"}`}
                     >
-                      <Checkbox
+                      <RadioGroupItem
                         id={`central-import-${area.id}`}
-                        checked={checked}
-                        onCheckedChange={value => toggleImportArea(area.id, value === true)}
+                        value={area.id}
                       />
                       <span>{area.label}</span>
                     </label>
                   );
                 })}
-              </div>
+              </RadioGroup>
               <Button
                 type="button"
                 className="mt-4 w-full border border-amber-300 bg-amber-600 text-white shadow-sm hover:bg-amber-700 hover:text-white"
-                disabled={!selectedImportAreas.length || excelPreview.isPending}
+                disabled={!selectedImportArea || excelPreview.isPending}
                 onClick={chooseExcelFile}
               >
                 {excelPreview.isPending ? (
@@ -498,10 +495,10 @@ export function SaveLoadControls({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><FileSpreadsheet className="h-5 w-5" /> Excel-Daten importieren</DialogTitle>
             <DialogDescription>
-              Datei: {excelFile?.name}. Geprüft werden nur: {excelPreview.data?.areaNames.join(", ") ?? "die gewählten Bereiche"}.
+              Datei: {excelFile?.name}. Geprüft wird nur: {excelPreview.data?.areaName ?? "der ausgewählte Bereich"}.
             </DialogDescription>
           </DialogHeader>
-          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-950"><strong>Gezielter Import:</strong> Nur die ausgewählten Bereiche werden übernommen. Abhängige Einsatzzuweisungen werden weiterhin sicher geprüft.<div className="mt-1 font-semibold">Vollständige Excel-Prüfung: {excelPreview.data?.rowsChecked ?? 0} Datenzeilen geprüft.</div></div>
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-950"><strong>Isolierter Import:</strong> Nur der ausgewählte Bereich wird übernommen. Abhängige Einsatzzuweisungen werden weiterhin sicher geprüft.<div className="mt-1 font-semibold">Vollständige Excel-Prüfung: {excelPreview.data?.rowsChecked ?? 0} Datenzeilen geprüft.</div></div>
           <div className="grid gap-2 sm:grid-cols-3">
             <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-emerald-900"><div className="text-2xl font-bold">{excelTotals.created}</div><div className="text-xs font-medium">Neue Einträge</div></div>
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900"><div className="text-2xl font-bold">{excelTotals.updated}</div><div className="text-xs font-medium">Geänderte Einträge</div></div>
@@ -534,13 +531,13 @@ export function SaveLoadControls({
         open={excelPasswordOpen}
         onOpenChange={setExcelPasswordOpen}
         title="Excel-Daten verbindlich importieren"
-        description="Alle geprüften Änderungen der gewählten Bereiche werden gemeinsam und atomar übernommen sowie protokolliert."
+        description="Alle geprüften Änderungen des ausgewählten Bereichs werden atomar übernommen sowie protokolliert."
         confirmLabel="Import übernehmen"
         destructive={false}
         busy={excelLoad.isPending}
         onConfirm={adminPassword => {
           if (!excelFile || !excelPreview.data) return;
-          excelLoad.mutate({ areas: excelFile.areas, base64: excelFile.base64, filename: excelFile.name, currentDigest: excelPreview.data.currentDigest, previewBinding: excelPreview.data.previewBinding, adminPassword });
+          excelLoad.mutate({ area: excelFile.area, base64: excelFile.base64, filename: excelFile.name, currentDigest: excelPreview.data.currentDigest, previewBinding: excelPreview.data.previewBinding, adminPassword });
         }}
       />
     </>

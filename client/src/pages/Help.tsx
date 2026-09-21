@@ -237,10 +237,10 @@ const SECTIONS: HelpSection[] = [
     keywords:
       "excel import vorschau spalten leerzeichen anti data drop json speichern laden projektdatei restore wiederherstellung sicherung löschprotokoll id zeit iso ansprechpartner helfer",
     summary:
-      "Die Seitenleiste bündelt Speichern und Laden für das aktuell gewählte Event. „Speichern“ erzeugt wahlweise eine vollständige JSON-Sicherung oder eine komplette Excel-Projektübersicht. Beim administrativen Laden wird eine JSON-Sicherung vollständig oder eine Excel-Datei nur für die vorher markierten Bereiche geprüft und anschließend atomar übernommen. Die Vorschau zeigt neue, geänderte und gelöschte Zeilen. Überschriften werden bereinigt, technische IDs gegen Jahr und Event geprüft und Zeitwerte wie Excel- oder ISO-Uhrzeiten vereinheitlicht. So verhindern Vorschau, Scope-Prüfung und die Behandlung leerer Spalten Datenverluste.",
+      "Die Seitenleiste bündelt Speichern und Laden für das aktuell gewählte Event. „Speichern“ erzeugt wahlweise eine vollständige JSON-Sicherung oder eine komplette Excel-Projektübersicht. Beim administrativen Laden wird eine JSON-Sicherung vollständig oder eine Excel-Datei für genau einen gewählten Bereich geprüft und anschließend atomar übernommen. Die Vorschau zeigt neue, geänderte und gelöschte Zeilen. Überschriften werden bereinigt, technische IDs gegen Jahr und Event geprüft und Zeitwerte wie Excel- oder ISO-Uhrzeiten vereinheitlicht. So verhindern Vorschau, Scope-Prüfung und die Behandlung leerer Spalten Datenverluste.",
     steps: [
       "Vor jeder Wiederherstellung zunächst eine aktuelle JSON-Sicherung speichern.",
-      "In der Seitenleiste „Laden“ wählen, für den Excel-Import die benötigten Bereiche markieren und anschließend die Datei auswählen.",
+      "In der Seitenleiste „Laden“ wählen, für den Excel-Import genau einen Bereich auswählen und anschließend die Datei prüfen.",
       "Nur als Administrator die geprüfte Vorschau freigeben. Bei einer zwischenzeitlichen Änderung muss die Vorschau erneut erstellt werden.",
       "Sensible Löschungen und Ladevorgänge im Löschprotokoll nachvollziehen; einzelne protokollierte Helfer- oder Kuchenlöschungen können wiederhergestellt werden.",
     ],

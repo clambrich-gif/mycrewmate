@@ -44,13 +44,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     );
   });
 
-  it("zeigt beim zentralen verbindlichen Excelimport die konkrete Abbruchursache an", () => {
+  it("zeigt beim isolierten verbindlichen Excelimport die konkrete Abbruchursache an", () => {
     const importer = source("client/src/components/SaveLoadModal.tsx");
 
     expect(importer).toContain("Import wurde nicht übernommen");
     expect(importer).toContain("Unbekannte Importursache");
     expect(importer).toContain("duration: 10_000");
-    expect(importer).toContain("trpc.excel.applySelected.useMutation");
+    expect(importer).toContain("trpc.excel.applyModule.useMutation");
   });
 
   it("zeigt rollengetrennte Online-Sitzungen im Desktopkopf und Mobilmenü", () => {
@@ -776,7 +776,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(preview).toContain("key={`${change.key}:${index}`}");
   });
 
-  it("zeigt beim zentralen Excelimport die Prüfung aller ausgewählten Bereiche", () => {
+  it("zeigt beim zentralen Excelimport die isolierte Prüfung eines ausgewählten Bereichs", () => {
     const moduleImport = source("client/src/components/SaveLoadModal.tsx");
 
     expect(moduleImport).toContain("Vollständige Excel-Prüfung:");
@@ -784,6 +784,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(moduleImport).toContain(
       "previewBinding: excelPreview.data.previewBinding"
     );
+    expect(moduleImport).toContain("Isolierter Import:");
+    expect(moduleImport).toContain("excelPreview.data?.areaName");
+    expect(moduleImport).toContain("area: excelFile.area");
     expect(moduleImport).toContain("ANSPRECHPARTNER");
     expect(moduleImport).toContain("NACHBEREITUNG");
   });
@@ -1603,7 +1606,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     }
   });
 
-  it("zentralisiert Speichern, Laden und die Bereichsauswahl in Dialogen der Seitenleiste", () => {
+  it("zentralisiert Speichern, Laden und die isolierte Bereichsauswahl in Dialogen der Seitenleiste", () => {
     const controls = source("client/src/components/SaveLoadModal.tsx");
     const layout = source("client/src/components/Layout.tsx");
 
@@ -1612,13 +1615,23 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(controls).toContain("JSON-Speicherstand laden");
     expect(controls).toContain("Excel-Daten importieren");
     expect(controls).toContain("rounded-xl");
+    expect(controls).toContain("RadioGroup");
+    expect(controls).toContain("RadioGroupItem");
+    expect(controls).not.toContain("Checkbox");
+    expect(controls).toContain("selectedImportArea");
+    expect(controls).not.toContain("selectedImportAreas");
     expect(controls).toContain("ANSPRECHPARTNER");
+    expect(controls).toContain("HELFER");
     expect(controls).toContain("EINSATZPLAN");
-    expect(controls).toContain("MARKETING");
-    expect(controls).toContain("GENEHMIGUNGEN");
+    expect(controls).toContain("VORBEREITUNG");
+    expect(controls).toContain("NACHBEREITUNG");
+    expect(controls).toContain("MATERIAL");
+    expect(controls).toContain("KUCHEN");
     expect(controls).toContain("FINANZEN");
-    expect(controls).toContain("trpc.excel.previewSelected.useMutation");
-    expect(controls).toContain("trpc.excel.applySelected.useMutation");
+    expect(controls).not.toContain("MARKETING");
+    expect(controls).not.toContain("GENEHMIGUNGEN");
+    expect(controls).toContain("trpc.excel.previewModule.useMutation");
+    expect(controls).toContain("trpc.excel.applyModule.useMutation");
     expect(layout).toContain("LazySaveLoadControls");
     expect(layout).not.toContain("ProjectStorageControls");
   });
