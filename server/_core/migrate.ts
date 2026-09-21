@@ -34,7 +34,7 @@ type AdvisoryLockRow = RowDataPacket & {
   acquired?: number | string | null;
 };
 
-export type MigrationConnection = Pick<Connection, "execute" | "end">;
+export type MigrationConnection = Pick<Connection, "execute" | "query" | "end">;
 
 function migrationDirectory() {
   return path.resolve(process.cwd(), "drizzle");
@@ -181,7 +181,11 @@ export async function applyProjectMigrations(
         }
 
         try {
-          await connection.execute(statement);
+          // Migrationsdateien sind versioniert und Teil des Container-Images,
+          // enthalten also keine Nutzereingaben. Das Textprotokoll ist hier
+          // erforderlich, weil MySQL Transaktionsbefehle wie START TRANSACTION
+          // nicht über das Prepared-Statement-Protokoll ausführen kann.
+          await connection.query(statement);
         } catch (error) {
           // Nur ein nachgewiesen vorhandenes Ziel einer ALTER ... ADD-Operation
           // darf übernommen werden. Jeder andere SQL-Fehler bleibt absichtlich

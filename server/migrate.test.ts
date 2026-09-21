@@ -30,7 +30,10 @@ function createConnection(options?: {
           : [],
       ];
     }
-    if (options?.duplicateOnAlter && query.startsWith("ALTER TABLE")) {
+    return [[]];
+  });
+  const query = vi.fn(async (statement: string) => {
+    if (options?.duplicateOnAlter && statement.startsWith("ALTER TABLE")) {
       const error = Object.assign(new Error("Duplicate column name 'pdfLogoKey'"), {
         code: "ER_DUP_FIELDNAME",
       });
@@ -39,8 +42,9 @@ function createConnection(options?: {
     return [[]];
   });
 
-  return { execute, end: vi.fn() } as unknown as MigrationConnection & {
+  return { execute, query, end: vi.fn() } as unknown as MigrationConnection & {
     execute: ReturnType<typeof vi.fn>;
+    query: ReturnType<typeof vi.fn>;
   };
 }
 
@@ -60,7 +64,7 @@ describe("applyProjectMigrations", () => {
     expect(connection.execute).not.toHaveBeenCalledWith(
       "ALTER TABLE `events` ADD `pdfLogoKey` varchar(500);"
     );
-    expect(connection.execute).toHaveBeenCalledWith(
+    expect(connection.query).toHaveBeenCalledWith(
       "UPDATE `events` SET `pdfLogoKey` = NULL;"
     );
     expect(connection.execute).toHaveBeenCalledWith(
@@ -100,18 +104,27 @@ describe("applyProjectMigrations", () => {
 
   it("blockiert andere Datenbankfehler weiterhin", async () => {
     const connection = createConnection();
-    connection.execute.mockImplementation(async (query: string) => {
-      if (query.includes("GET_LOCK")) return [[{ acquired: 1 }]];
-      if (query.includes("RELEASE_LOCK")) return [[{ released: 1 }]];
-      if (query.includes("SELECT created_at")) return [[]];
-      if (query.includes("information_schema.COLUMNS")) return [];
-      if (query.startsWith("UPDATE")) throw new Error("Berechtigung verweigert");
+    connection.query.mockImplementation(async (statement: string) => {
+      if (statement.startsWith("UPDATE")) throw new Error("Berechtigung verweigert");
       return [[]];
     });
 
     await expect(
       applyProjectMigrations(connection, [migration(["UPDATE `events` SET `name` = `name`; "])])
     ).rejects.toThrow("Berechtigung verweigert");
+  });
+
+  it("führt Transaktionsbefehle über das Textprotokoll statt Prepared Statements aus", async () => {
+    const connection = createConnection();
+
+    await applyProjectMigrations(
+      connection,
+      [migration(["START TRANSACTION;", "COMMIT;"])]
+    );
+
+    expect(connection.query).toHaveBeenCalledWith("START TRANSACTION;");
+    expect(connection.query).toHaveBeenCalledWith("COMMIT;");
+    expect(connection.execute).not.toHaveBeenCalledWith("START TRANSACTION;");
   });
 
   it("gleicht die historischen Logo-Einstellungen ohne Kollationsabhängigkeit ab", () => {
