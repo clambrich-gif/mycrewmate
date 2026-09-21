@@ -515,6 +515,31 @@ const personKey = (value: unknown) =>
   normalize(value).toLocaleLowerCase("de-DE");
 
 /**
+ * Material darf an mehreren Ständen oder bei unterschiedlichen Verantwortlichen
+ * parallel geführt werden. Der Artikelname allein ist daher keine eindeutige
+ * Kennung – nur dieselbe Kombination darf innerhalb eines Projekts nicht
+ * doppelt vorkommen.
+ */
+export function materialIdentity(
+  row: Pick<
+    MaterialRow,
+    | "article"
+    | "locationSourceId"
+    | "locationName"
+    | "contactSourceId"
+    | "contactName"
+  >
+) {
+  const location = row.locationSourceId
+    ? `id:${row.locationSourceId}`
+    : `name:${personKey(row.locationName)}`;
+  const contact = row.contactSourceId
+    ? `id:${row.contactSourceId}`
+    : `name:${personKey(row.contactName)}`;
+  return `${personKey(row.article)}|${location}|${contact}`;
+}
+
+/**
  * Excel speichert Uhrzeiten je nach Vorlage als Tagesbruchteil, Datum/Zeitwert
  * oder ISO-Text. Für den Einsatzplan wird daraus stets die interne Form HH:MM.
  * Ein nicht interpretierbarer Rest bleibt höchstens 16 Zeichen lang und wird
@@ -1029,7 +1054,8 @@ function ensureUnique<T>(
   rows: T[],
   getId: (row: T) => number | null,
   getLabel: (row: T) => string,
-  sheet: string
+  sheet: string,
+  getErrorLabel: (row: T) => string = getLabel
 ) {
   const ids = new Set<number>();
   const labels = new Set<string>();
@@ -1040,7 +1066,7 @@ function ensureUnique<T>(
     if (id !== null) ids.add(id);
     const label = personKey(getLabel(row));
     if (labels.has(label))
-      throw new Error(`${sheet}: „${getLabel(row)}“ ist doppelt vorhanden`);
+      throw new Error(`${sheet}: „${getErrorLabel(row)}“ ist doppelt vorhanden`);
     labels.add(label);
   }
 }
@@ -1805,8 +1831,9 @@ export function parseBackupWorkbook(
     ensureUnique(
       parsedMaterials,
       row => row.sourceId,
-      row => row.article,
-      "MATERIAL"
+      row => materialIdentity(row),
+      "MATERIAL",
+      row => row.article
     );
 
   const parsedMarketing: MarketingRow[] = shouldParse("MARKETING")
@@ -2483,6 +2510,8 @@ const documentRowIdentity = (
   personKey(
     area === "EINSATZPLAN"
       ? `${row.day ?? ""}|${row.area ?? ""}|${row.task ?? ""}|${row.startTime ?? ""}|${row.endTime ?? ""}`
+      : area === "MATERIAL"
+        ? materialIdentity(row as MaterialRow)
       : row[labelField]
   );
 const diffFieldEqual = (

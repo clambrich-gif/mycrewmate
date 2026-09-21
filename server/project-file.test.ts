@@ -244,6 +244,148 @@ describe("Projektdatei und modularer Excel-Import", () => {
     });
   });
 
+  it("akzeptiert denselben Materialartikel an unterschiedlichen Ständen im JSON-Snapshot", async () => {
+    const exported = await exportProjectFile();
+    const document = JSON.parse(exported.buffer.toString("utf8"));
+    document.locations.push(
+      {
+        sourceId: 101,
+        name: "Stand A",
+        latitude: 50.1,
+        longitude: 7.1,
+        logoKey: null,
+        logoUrl: null,
+        sortOrder: 1,
+      },
+      {
+        sourceId: 102,
+        name: "Stand B",
+        latitude: 50.2,
+        longitude: 7.2,
+        logoKey: null,
+        logoUrl: null,
+        sortOrder: 2,
+      }
+    );
+    document.materials.push(
+      {
+        sourceId: 201,
+        article: "Bananen",
+        category: "Catering",
+        quantity: "100",
+        unit: "Stück",
+        locationSourceId: 101,
+        locationName: "Stand A",
+        contactSourceId: null,
+        contactName: "",
+        status: "offen",
+        note: "",
+        sortOrder: 1,
+      },
+      {
+        sourceId: 202,
+        article: "Bananen",
+        category: "Catering",
+        quantity: "50",
+        unit: "Stück",
+        locationSourceId: 102,
+        locationName: "Stand B",
+        contactSourceId: null,
+        contactName: "",
+        status: "offen",
+        note: "",
+        sortOrder: 2,
+      }
+    );
+    const base64 = Buffer.from(JSON.stringify(document)).toString("base64");
+
+    const parsed = parseProjectFile(base64).document;
+    const preview = await previewProjectFile(base64);
+
+    expect(parsed.materials).toHaveLength(2);
+    expect(parsed.materials.map(row => row.locationName)).toEqual([
+      "Stand A",
+      "Stand B",
+    ]);
+    expect(
+      preview.changes.filter(
+        change => change.area === "MATERIAL" && change.action === "create"
+      )
+    ).toHaveLength(2);
+
+    const duplicateAtSameStand = structuredClone(document);
+    duplicateAtSameStand.materials[1].locationSourceId = 101;
+    duplicateAtSameStand.materials[1].locationName = "Stand A";
+    expect(() =>
+      parseProjectFile(
+        Buffer.from(JSON.stringify(duplicateAtSameStand)).toString("base64")
+      )
+    ).toThrow("Material");
+  });
+
+  it("prüft einen JSON-Speicherstand unabhängig von gleichnamigem Altmaterial als vollständigen Ersatz", async () => {
+    const existingMaterial = {
+      id: 301,
+      year: 2026,
+      eventId: 1,
+      article: "Bananen",
+      category: "Altbestand",
+      quantity: "20",
+      unit: "Stück",
+      locationId: null,
+      contactId: null,
+      status: "geliefert",
+      note: "Vorheriger Stand",
+      sortOrder: 1,
+    };
+    (data.materials as any[]).push(existingMaterial);
+    try {
+      const exported = await exportProjectFile();
+      const document = JSON.parse(exported.buffer.toString("utf8"));
+      document.locations.push({
+        sourceId: 401,
+        name: "Stand Nord",
+        latitude: 50.1,
+        longitude: 7.1,
+        logoKey: null,
+        logoUrl: null,
+        sortOrder: 1,
+      });
+      document.materials = [
+        {
+          sourceId: 302,
+          article: "Bananen",
+          category: "Catering",
+          quantity: "100",
+          unit: "Stück",
+          locationSourceId: 401,
+          locationName: "Stand Nord",
+          contactSourceId: null,
+          contactName: "",
+          status: "offen",
+          note: "Neuer Snapshot",
+          sortOrder: 1,
+        },
+      ];
+
+      const preview = await previewProjectFile(
+        Buffer.from(JSON.stringify(document)).toString("base64")
+      );
+      const materialChanges = preview.changes.filter(
+        change => change.area === "MATERIAL"
+      );
+
+      expect(materialChanges).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ action: "create", label: "Bananen" }),
+          expect.objectContaining({ action: "delete", label: "Bananen" }),
+        ])
+      );
+    } finally {
+      data.materials.splice(data.materials.indexOf(existingMaterial as never), 1);
+    }
+  });
+
   it("normalisiert die frühere Spendenkategorie Deftiges zu Sonstiges", async () => {
     const legacyDonation = {
       id: 90,
@@ -749,6 +891,50 @@ describe("Projektdatei und modularer Excel-Import", () => {
       );
     }
   );
+
+  it("importiert gleichnamiges Material getrennt für unterschiedliche Standorte", async () => {
+    const standNord = {
+      id: 501,
+      year: 2026,
+      eventId: 1,
+      name: "Stand Nord",
+      latitude: 50.1,
+      longitude: 7.1,
+      logoKey: null,
+      logoUrl: null,
+      sortOrder: 1,
+    };
+    const standSued = {
+      id: 502,
+      year: 2026,
+      eventId: 1,
+      name: "Stand Süd",
+      latitude: 50.2,
+      longitude: 7.2,
+      logoKey: null,
+      logoUrl: null,
+      sortOrder: 2,
+    };
+    (data.locations as any[]).push(standNord, standSued);
+    try {
+      const preview = await previewModuleExcelImport(
+        moduleSheet("MATERIAL", [
+          { Artikel: "Bananen", "Ort-ID": 501, "Ort / Zielstandort": "Stand Nord" },
+          { Artikel: "Bananen", "Ort-ID": 502, "Ort / Zielstandort": "Stand Süd" },
+        ]),
+        "MATERIAL"
+      );
+
+      expect(
+        preview.changes.filter(
+          change => change.area === "MATERIAL" && change.action === "create"
+        )
+      ).toHaveLength(2);
+    } finally {
+      data.locations.splice(data.locations.indexOf(standNord as never), 1);
+      data.locations.splice(data.locations.indexOf(standSued as never), 1);
+    }
+  });
 
   it("erhält neue Vorbereitungsfelder und ergänzt Defaults für alte Projektdateien", async () => {
     (data.prep_tasks as any[]).push({

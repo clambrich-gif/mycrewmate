@@ -208,7 +208,10 @@ function rowIdentity(area: ModuleImportArea, row: Record<string, unknown>) {
     );
   if (area === "VORBEREITUNG" || area === "NACHBEREITUNG")
     return normalized(row.Aufgabe);
-  if (area === "MATERIAL") return normalized(row.Artikel);
+  if (area === "MATERIAL")
+    return normalized(
+      `${row.Artikel}|${row["Ort-ID"] || row["Ort / Zielstandort"] || ""}|${row["Verantwortlich-ID"] || row.Verantwortlich || ""}`
+    );
   if (area === "MARKETING") return normalized(row.Maßnahme);
   if (area === "GENEHMIGUNGEN") return normalized(row.Antrag);
   if (area === "KUCHEN")
@@ -306,6 +309,8 @@ const OPTIONAL_MODULE_COLUMNS: Record<ModuleImportArea, string[]> = {
     "Kategorie",
     "Menge",
     "Einheit",
+    "Ort-ID",
+    "Ort / Zielstandort",
     "Verantwortlich-ID",
     "Verantwortlich",
     "Stand",

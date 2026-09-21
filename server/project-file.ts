@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { AuditActor } from "./db";
 import {
   createCurrentProjectDocument,
+  materialIdentity,
   previewProjectDocument,
   repairImportedDocumentRelations,
   restoreProjectDocument,
@@ -314,7 +315,7 @@ function validateRelations(document: BackupDocument) {
   for (const [rows, label, name] of [
     [document.prep, "Vorbereitung", (row: any) => row.task],
     [document.post, "Nachbereitung", (row: any) => row.task],
-    [document.materials, "Material", (row: any) => row.article],
+    [document.materials, "Material", (row: any) => materialIdentity(row)],
     [document.marketing, "Marketing", (row: any) => row.measure],
     [document.approvals, "Genehmigungen", (row: any) => row.request],
     [document.cakes, "Kuchen", (row: any) => `${row.donor}|${row.cake}`],
