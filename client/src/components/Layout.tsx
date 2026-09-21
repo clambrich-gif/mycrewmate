@@ -524,6 +524,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
           const notesList = (snapshot.notes ?? []) as TeamNoteItem[];
           const typing = (snapshot.typing ?? []) as ActiveTyperItem[];
+          const serverUnreadCount = Number(snapshot.unreadCount ?? 0);
+          const serverHasImportantUnread = Boolean(snapshot.hasImportantUnread);
           const orderedNotes = [...notesList].sort((a, b) => a.id - b.id);
           setChatSnapshot({ notes: orderedNotes, typing });
           // Erst ein bestätigter Server-Snapshot darf als Initialhistorie gelten.
@@ -539,19 +541,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
           }
 
           const newestNoteId = orderedNotes[orderedNotes.length - 1].id;
-          if (!hasLoadedChatSnapshotRef.current) {
-            // Beim Eintritt ist die 24h-Historie sichtbar, aber keine neue
-            // Benachrichtigung. Erst spätere Server-Snapshots zählen als ungelesen.
-            hasLoadedChatSnapshotRef.current = true;
+          if (chatStateRef.current === "open") {
             lastSeenChatNoteIdRef.current = newestNoteId;
             setUnreadNotesCount(0);
             setHasImportantUnread(false);
             continue;
           }
-          if (chatStateRef.current === "open") {
+
+          if (!hasLoadedChatSnapshotRef.current) {
+            // Beim Neu-Login bzw. Erstladen bestimmt der serverseitig persistierte
+            // Abwesenheits-Lesestatus den roten Nachrichtenzähler.
+            hasLoadedChatSnapshotRef.current = true;
             lastSeenChatNoteIdRef.current = newestNoteId;
-            setUnreadNotesCount(0);
-            setHasImportantUnread(false);
+            setUnreadNotesCount(serverUnreadCount);
+            setHasImportantUnread(serverHasImportantUnread);
             continue;
           }
 
@@ -564,6 +567,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
             setHasImportantUnread(previous =>
               previous || newNotes.some(note => Boolean(note.important))
             );
+          } else if (serverUnreadCount === 0 && !serverHasImportantUnread) {
+            // Falls ein paralleler Tab oder Aufruf bereits als gelesen markiert hat.
+            setUnreadNotesCount(0);
+            setHasImportantUnread(false);
           }
         } catch {
           // Ein einzelner Pollingfehler bleibt leise und der nächste Tick lädt erneut.
@@ -596,6 +603,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     setChatState("open");
     setUnreadNotesCount(0);
     setHasImportantUnread(false);
+    void utils.client.notes.markRead.mutate().catch(() => {});
     void refreshChatSnapshot();
   };
 

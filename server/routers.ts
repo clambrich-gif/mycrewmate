@@ -879,6 +879,37 @@ function auditActor(user: {
   };
 }
 
+/**
+ * Der Lesestatus folgt der fachlichen Person, nicht dem einzelnen Browser-Token.
+ * Planungsteamzugänge besitzen eine eigene Access-ID; beim gemeinsamen
+ * Administrator-OpenID trennt der im Token bestätigte Anmeldename die Personen.
+ */
+function teamNoteReadIdentity(user: {
+  id: number;
+  openId: string;
+  name: string | null;
+  role: "user" | "admin";
+}) : db.TeamNoteReadIdentity {
+  const sessionName =
+    user.name?.trim() || (user.role === "admin" ? "Administrator" : "Planungsteam");
+  const accessId = user.role === "user" ? planningTeamAccessIdForUser(user) : null;
+  const normalizeKeyPart = (value: string) =>
+    value.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase("de-DE");
+  const identityKey =
+    accessId !== null
+      ? `planning-access:${accessId}`
+      : user.role === "admin" && user.openId === ADMIN_PASSWORD_OPEN_ID
+        ? `admin-session:${normalizeKeyPart(sessionName)}`
+        : `open-id:${user.openId}`;
+
+  return {
+    identityKey,
+    userId: user.id > 0 ? user.id : null,
+    sessionName,
+    role: user.role,
+  };
+}
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -3174,15 +3205,20 @@ export const appRouter = router({
       )
       .query(async ({ ctx, input }) => {
         const sessionKey = sessionPresenceKey(ctx.req);
-        const [notes, typing] = await Promise.all([
+        const identity = teamNoteReadIdentity(ctx.user);
+        const [notes, typing, unread] = await Promise.all([
           db.listTeamNotes({
             sinceId: input?.sinceId,
             limit: input?.limit,
           }),
           db.listActiveTypers({ excludeSessionKey: sessionKey }),
+          db.getTeamNoteUnreadStatus(identity),
         ]);
-        return { notes, typing };
+        return { notes, typing, ...unread };
       }),
+    markRead: scopedReadProcedure.mutation(async ({ ctx }) =>
+      db.markTeamNotesRead(teamNoteReadIdentity(ctx.user))
+    ),
     typing: protectedProcedure
       .input(
         z.object({

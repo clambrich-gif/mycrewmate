@@ -111,6 +111,41 @@ export const teamNotes = mysqlTable(
 );
 export type TeamNote = typeof teamNotes.$inferSelect;
 
+/**
+ * Persistierter Lesestatus pro Person und Veranstaltung. Die identityKey trennt
+ * insbesondere parallel angemeldete Administratoren, obwohl diese technisch
+ * dieselbe Passwort-OpenID verwenden können.
+ */
+export const teamNoteReadStates = mysqlTable(
+  "team_note_read_states",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    year: int("year").notNull(),
+    eventId: int("eventId").notNull(),
+    identityKey: varchar("identityKey", { length: 260 }).notNull(),
+    userId: int("userId").references(() => users.id, { onDelete: "set null" }),
+    sessionName: varchar("sessionName", { length: 200 }).notNull(),
+    role: mysqlEnum("role", ["user", "admin"]).notNull(),
+    lastReadAt: timestamp("lastReadAt").defaultNow().notNull(),
+  },
+  table => [
+    foreignKey({
+      name: "team_note_read_states_event_year_fk",
+      columns: [table.eventId, table.year],
+      foreignColumns: [events.id, events.year],
+    }).onDelete("cascade"),
+    uniqueIndex("team_note_read_states_event_identity_unique").on(
+      table.eventId,
+      table.identityKey
+    ),
+    index("team_note_read_states_event_read_idx").on(
+      table.eventId,
+      table.lastReadAt
+    ),
+  ]
+);
+export type TeamNoteReadState = typeof teamNoteReadStates.$inferSelect;
+
 export const teamNoteTypings = mysqlTable(
   "team_note_typings",
   {

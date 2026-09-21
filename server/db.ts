@@ -45,6 +45,7 @@ import {
   shifts,
   teamNotes,
   teamNoteAuditLogs,
+  teamNoteReadStates,
   teamNoteTypings,
   users,
 } from "../drizzle/schema";
@@ -3972,6 +3973,83 @@ export async function listTeamNotes(options?: {
     .limit(Math.min(options?.limit ?? 150, 300));
 }
 
+export type TeamNoteReadIdentity = {
+  identityKey: string;
+  userId?: number | null;
+  sessionName: string;
+  role: "user" | "admin";
+};
+
+/** Liefert die serverseitig persistierte Anzahl seit dem letzten Öffnen des Chats. */
+export async function getTeamNoteUnreadStatus(
+  identity: TeamNoteReadIdentity,
+  now = new Date()
+) {
+  const database = await getDb();
+  if (!database) return { unreadCount: 0, hasImportantUnread: false } as const;
+
+  await cleanupExpiredTeamNotes(now);
+  const [readState] = await database
+    .select({ lastReadAt: teamNoteReadStates.lastReadAt })
+    .from(teamNoteReadStates)
+    .where(
+      and(
+        planningScope(teamNoteReadStates),
+        eq(teamNoteReadStates.identityKey, identity.identityKey)
+      )
+    )
+    .limit(1);
+
+  const cutoff = new Date(now.getTime() - TEAM_NOTES_TTL_MS);
+  const conditions = [
+    planningScope(teamNotes),
+    gte(teamNotes.createdAt, cutoff),
+    ...(readState ? [gt(teamNotes.createdAt, readState.lastReadAt)] : []),
+  ];
+  const [countRow] = await database
+    .select({ count: sql<number>`count(*)` })
+    .from(teamNotes)
+    .where(and(...conditions));
+  const [importantRow] = await database
+    .select({ id: teamNotes.id })
+    .from(teamNotes)
+    .where(and(...conditions, eq(teamNotes.important, true)))
+    .limit(1);
+
+  return {
+    unreadCount: Number(countRow?.count ?? 0),
+    hasImportantUnread: Boolean(importantRow),
+  } as const;
+}
+
+/** Markiert alle bis zu diesem Zeitpunkt sichtbaren Notizen als gelesen. */
+export async function markTeamNotesRead(
+  identity: TeamNoteReadIdentity,
+  readAt = new Date()
+) {
+  const database = (await getDb()) as DB;
+  await database
+    .insert(teamNoteReadStates)
+    .values({
+      year: year(),
+      eventId: event(),
+      identityKey: identity.identityKey,
+      userId: identity.userId ?? null,
+      sessionName: identity.sessionName,
+      role: identity.role,
+      lastReadAt: readAt,
+    })
+    .onDuplicateKeyUpdate({
+      set: {
+        userId: identity.userId ?? null,
+        sessionName: identity.sessionName,
+        role: identity.role,
+        lastReadAt: readAt,
+      },
+    });
+  return { lastReadAt: readAt } as const;
+}
+
 export async function setTeamNoteTyping(params: {
   sessionKey: string;
   senderUserId?: number | null;
@@ -4109,7 +4187,12 @@ export async function clearTeamNotes(
       throw new Error("Veranstaltung für Chat-Löschung nicht gefunden");
     }
 
-    const eventScopeConditions = <TTable extends typeof teamNotes | typeof teamNoteTypings>(
+    const eventScopeConditions = <
+      TTable extends
+        | typeof teamNotes
+        | typeof teamNoteTypings
+        | typeof teamNoteReadStates
+    >(
       table: TTable
     ) => and(eq(table.year, selectedYear), eq(table.eventId, selectedEventId));
 
@@ -4119,6 +4202,9 @@ export async function clearTeamNotes(
     await tx
       .delete(teamNoteTypings)
       .where(eventScopeConditions(teamNoteTypings));
+    await tx
+      .delete(teamNoteReadStates)
+      .where(eventScopeConditions(teamNoteReadStates));
 
     const deletedCount = affectedRows(result);
     if (actor) {

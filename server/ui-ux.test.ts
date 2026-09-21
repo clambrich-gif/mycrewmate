@@ -237,6 +237,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain("utils.client.notes.list.query({ limit: 150 })");
     expect(layout).toContain("if (orderedNotes.length === 0)");
     expect(layout).toContain("setUnreadNotesCount(0)");
+    expect(layout).toContain("setUnreadNotesCount(serverUnreadCount)");
+    expect(layout).toContain("utils.client.notes.markRead.mutate()");
     expect(layout).toContain("setUnreadNotesCount(previous => previous + newNotes.length)");
 
     expect(presence).toContain("Live-Notizen & Chat öffnen");
@@ -257,6 +259,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(widget).toContain("snapshot: TeamNotesSnapshot");
     expect(widget).toContain("onRequestSnapshotRefresh: () => Promise<void>");
     expect(widget).toContain("void onRequestSnapshotRefresh()");
+    expect(widget).toContain("unreadCount > 99 ? \"99+\" : unreadCount");
+    expect(widget).toContain("hasImportantUnread ? \"bg-red-700 ring-yellow-200\" : \"bg-red-600\"");
     expect(widget).toContain("typingDebounceTimerRef.current = null");
     expect(widget).toContain("typingMutateRef.current");
     expect(widget).toContain("Beim Schließen/Minimieren und beim vollständigen Unmount");

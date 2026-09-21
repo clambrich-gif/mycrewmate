@@ -45,6 +45,8 @@ describe("Live-Teamnotizen Backend & Ephemeral Storage", () => {
     await expect(caller.notes.list({ limit: 150 })).resolves.toEqual({
       notes: [],
       typing: [],
+      unreadCount: 0,
+      hasImportantUnread: false,
     });
     expect(notesSpy).toHaveBeenCalledWith({ sinceId: undefined, limit: 150 });
     expect(typingSpy).toHaveBeenCalledOnce();
