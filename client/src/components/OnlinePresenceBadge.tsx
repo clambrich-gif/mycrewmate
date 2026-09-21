@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from "react";
 
 const PRESENCE_POLL_MS = 60_000;
 const ACTIVITY_HEARTBEAT_THROTTLE_MS = 30_000;
+const LIVE_ACTIVITY_HIGHLIGHT_MS = 10_000;
 
 type OnlinePresenceCounts = {
   planningTeam: number;
@@ -96,24 +97,38 @@ export function OnlinePresenceBadge({
   className?: string;
 }) {
   const previousCounts = useRef<OnlinePresenceCounts | null>(null);
-  const [countsChanged, setCountsChanged] = useState(false);
+  const [isLiveActivityHighlighting, setIsLiveActivityHighlighting] =
+    useState(false);
+  const planningTeamNamesKey = counts?.planningTeamNames.join("|");
+  const administratorNamesKey = counts?.administratorNames.join("|");
 
   useEffect(() => {
     if (!counts) return;
     const previous = previousCounts.current;
     previousCounts.current = counts;
-    if (
+    const presenceChanged =
       !previous ||
-      (previous.planningTeam === counts.planningTeam &&
-        previous.administrators === counts.administrators)
-    ) {
+      previous.planningTeam !== counts.planningTeam ||
+      previous.administrators !== counts.administrators ||
+      previous.planningTeamNames.join("|") !== counts.planningTeamNames.join("|") ||
+      previous.administratorNames.join("|") !== counts.administratorNames.join("|");
+
+    if (!previous || !presenceChanged) {
       return;
     }
 
-    setCountsChanged(true);
-    const timeout = window.setTimeout(() => setCountsChanged(false), 650);
+    setIsLiveActivityHighlighting(true);
+    const timeout = window.setTimeout(
+      () => setIsLiveActivityHighlighting(false),
+      LIVE_ACTIVITY_HIGHLIGHT_MS
+    );
     return () => window.clearTimeout(timeout);
-  }, [counts?.administrators, counts?.planningTeam]);
+  }, [
+    counts?.administrators,
+    counts?.planningTeam,
+    planningTeamNamesKey,
+    administratorNamesKey,
+  ]);
 
   return (
     <Popover>
@@ -122,8 +137,6 @@ export function OnlinePresenceBadge({
           type="button"
           className={cn(
             "inline-flex min-h-11 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-medium leading-none text-slate-700 shadow-xs transition-[transform,box-shadow,border-color] duration-200 [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] hover:border-emerald-300 hover:bg-emerald-100/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 lg:min-h-7",
-            countsChanged &&
-              "scale-[1.04] border-emerald-400 shadow-md shadow-emerald-100 ring-2 ring-emerald-200 motion-reduce:scale-100 motion-reduce:shadow-xs motion-reduce:ring-0",
             className
           )}
           aria-label="Online-Status und Erklärung anzeigen"
@@ -132,7 +145,8 @@ export function OnlinePresenceBadge({
           <span
             className={cn(
               "size-2 shrink-0 rounded-full bg-emerald-500 ring-2 ring-emerald-100",
-              countsChanged && "motion-safe:animate-pulse"
+              isLiveActivityHighlighting &&
+                "bg-red-500 ring-red-200 motion-safe:animate-pulse"
             )}
             aria-hidden="true"
           />

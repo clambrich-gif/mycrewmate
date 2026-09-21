@@ -72,9 +72,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(presence).toContain("Wer wird als online gezählt?");
     expect(presence).toContain("innerhalb der letzten");
     expect(presence).toContain("10 Minuten");
-    expect(presence).toContain("countsChanged");
-    expect(presence).toContain("scale-[1.04]");
-    expect(presence).toContain("motion-reduce:scale-100");
+    expect(presence).toContain("LIVE_ACTIVITY_HIGHLIGHT_MS = 10_000");
+    expect(presence).toContain("isLiveActivityHighlighting");
+    expect(presence).toContain("bg-red-500 ring-red-200 motion-safe:animate-pulse");
+    expect(presence).toContain("planningTeamNames.join");
+    expect(presence).toContain("administratorNames.join");
+    expect(presence).toContain("planningTeamNamesKey");
+    expect(presence).toContain("administratorNamesKey");
   });
 
   it("zeigt den zentralen Copyright-Vermerk in Anmeldung, Navigation und PDFs", () => {
@@ -531,7 +535,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(widget).not.toContain("chat-contact-select");
     expect(widget).toContain("h-11 w-11 text-slate-600 hover:text-red-600");
     expect(presence).toContain("flex min-h-11 w-full items-center");
-    expect(help).toContain("flex min-h-11 items-center rounded-md");
+    expect(help).toContain("min-h-11 gap-1.5 border bg-white");
     expect(widget).toContain("h-11 w-11 text-slate-600 hover:text-slate-900 md:h-7 md:w-7");
     expect(widget).toContain("ungelesene Notizen");
   });
@@ -1282,7 +1286,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
   });
 
   it("entfernt Schulungsvideos und Videoplatzhalter vollständig aus der Hilfe", () => {
-    const help = source("client/src/pages/Help.tsx");
+    const help = [
+      source("client/src/pages/Help.tsx"),
+      source("client/src/components/HelpGuide.tsx"),
+    ].join("\n");
 
     expect(help).not.toContain("helpVideo");
     expect(help).not.toContain("PlayCircle");
@@ -1291,39 +1298,43 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(help).not.toContain("video-planungsteam");
     expect(help).not.toContain("<video");
     expect(help).not.toContain("<source");
-    expect(help).toContain("PLANNING_TEAM_FLOW");
-    expect(help).toContain("Dein Ablauf in 6 Schritten");
-    expect(help).toContain("Persönlichen PDF-Link per WhatsApp weitergeben.");
+    expect(help).toContain("HelpGuide");
+    expect(help).toContain("Live-Chat, Notizen & Kollaboration");
+    expect(help).toContain("Personalisierte Helfer-PDFs");
   });
 
-  it("bietet eine durchsuchbare, rollenmarkierte Hilfe für alle Handbuchbereiche", () => {
-    const help = source("client/src/pages/Help.tsx");
+  it("bietet ein durchsuchbares, rollenbasiertes Hilfe-Center mit neun Kapiteln", () => {
+    const help = [
+      source("client/src/pages/Help.tsx"),
+      source("client/src/components/HelpGuide.tsx"),
+    ].join("\n");
 
-    expect(help).toContain("Schnellstart und Orientierung");
-    expect(help).toContain("MyCrewMate als App auf dem Handy speichern");
+    expect(help).toContain("Schnellstart, Orientierung & PWA-Installation");
+    expect(help).toContain("Stammdaten & Infrastruktur");
+    expect(help).toContain("Helferkartei, Verfügbarkeiten & Einsatzplan");
+    expect(help).toContain("Fachbereiche & Detail-Planung");
+    expect(help).toContain("Live-Chat, Notizen & Kollaboration");
+    expect(help).toContain("PDF-Ausgabe, Versand & Druck");
+    expect(help).toContain("Datenverwaltung: Speichern, Laden & Backup-Sicherheit");
+    expect(help).toContain("Schutz & Protokoll");
+    expect(help).toContain("A–Z Stichwortregister & FAQ");
+    expect(help).toContain("HELP_CHAPTER_COUNT = HELP_CHAPTERS.length");
+    expect(help).toContain("xl:sticky");
     expect(help).toContain("Progressive Web App (PWA)");
     expect(help).toContain("Zum Home-Bildschirm");
     expect(help).toContain("App installieren");
-    expect(help).toContain("Berechtigungsmatrix &amp; Rollenverteilung");
-    expect(help).toContain('type="single" collapsible');
-    expect(help).toContain('value="berechtigungsmatrix"');
+    expect(help).toContain("Berechtigungsmatrix");
+    expect(help).toContain('type="multiple"');
     expect(help).toContain("PERMISSION_MATRIX.map(row");
     expect(help).toContain("Bereich");
     expect(help).toContain("Planungsteam");
     expect(help).toContain("Administrator");
     expect(help).toContain("Erläuterung");
-    expect(help).toContain("Einmal-Zugänge, Passwort-Resets, Notfall-Stopp");
-    expect(help.indexOf("Berechtigungsmatrix &amp; Rollenverteilung")).toBeLessThan(
-      help.indexOf('aria-label="Hilfekapitel nach Rolle filtern"')
-    );
-    expect(help).toContain("Helferkartei und Verfügbarkeiten");
-    expect(help).toContain("Einsatzplan und intelligente Belegung");
-    expect(help).toContain("Live-Chat und Notiz-Widget");
-    expect(help).toContain("Fachbereiche und Aufgaben");
-    expect(help).toContain("Import, Wiederherstellung und Datensicherheit");
-    expect(help).toContain("PDF-Ausgabe und Versand");
+    expect(help).toContain("Einmal-Zugänge, Passwortresets und Eventfreigaben");
+    expect(help).toContain("Atomarer Modul-Import");
+    expect(help).toContain("Vorfreude im Blick. Das Event im Griff.");
     expect(help).toContain("PDF-Handbuch herunterladen");
-    expect(help).toContain('placeholder="A–Z-Suche: z. B. Helfer, PDF, Bestätigung oder Excel"');
+    expect(help).toContain('placeholder="Live-Suche: z. B. Helfer, Einsatzplan, Material, PDF, Excel oder Passwort"');
     expect(help).toContain('src: "/api/help/images/dashboard"');
     expect(help).toContain('src: "/api/help/images/helpers"');
     expect(help).toContain('src: "/api/help/images/plan"');
@@ -1335,16 +1346,19 @@ describe("UI- und Mobile-UX-Regeln", () => {
 
   it("filtert Hilfekapitel über zugängliche Schnellfilter nach Rolle", () => {
     const help = source("client/src/pages/Help.tsx");
+    const guide = source("client/src/components/HelpGuide.tsx");
 
-    expect(help).toContain('useState<keyof typeof ROLE_STYLE>("alle")');
-    expect(help).toContain('aria-label="Hilfekapitel nach Rolle filtern"');
-    expect(help).toContain("Alle Kapitel");
-    expect(help).toContain("Nur Planungsteam");
-    expect(help).toContain("Nur Administratoren");
+    expect(help).toContain('useState<HelpAudience>("all")');
+    expect(help).toContain('aria-label="Hilfe-Center nach Zielgruppe filtern"');
+    expect(guide).toContain("Für alle");
+    expect(guide).toContain("Nur Planungsteam");
+    expect(guide).toContain("Nur Admin-Team");
     expect(help).toContain("aria-pressed={active}");
-    expect(help).toContain("onClick={() => setRoleFilter(role)}");
-    expect(help).toContain('section.role === "alle"');
-    expect(help).toContain("section.role === roleFilter");
+    expect(help).toContain("onClick={() => setAudience(filter.id)}");
+    expect(guide).toContain("const matchesAudience");
+    expect(guide).toContain('filter === "all"');
+    expect(guide).toContain("topic.audience.includes(filter)");
+    expect(guide).toContain("normalizedQuery");
   });
 
   it("stellt die Login-Rollen als zugänglichen Segmented-Control dar", () => {
