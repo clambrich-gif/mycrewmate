@@ -6,13 +6,24 @@ const HELP_ASSET_ROOT = path.resolve(process.cwd(), "client", "public", "help");
 
 const HELP_IMAGES = {
   dashboard: { filename: "dashboard.png", downloadName: "hilfe-dashboard.png" },
-  helpers: { filename: "helpers.png", downloadName: "hilfe-helfer-mobil.png" },
+  locations: { filename: "locations.png", downloadName: "hilfe-orte-und-standorte.png" },
+  helpers: { filename: "helpers.png", downloadName: "hilfe-helfer.png" },
   plan: { filename: "plan.png", downloadName: "hilfe-einsatzplan.png" },
+  preparation: { filename: "preparation.png", downloadName: "hilfe-vorbereitung.png" },
+  materials: { filename: "materials.png", downloadName: "hilfe-material.png" },
+  donations: { filename: "donations.png", downloadName: "hilfe-spenden.png" },
+  finances: { filename: "finances.png", downloadName: "hilfe-finanzen.png" },
   chat: { filename: "chat.png", downloadName: "hilfe-live-chat.png" },
   pdf: { filename: "pdf.png", downloadName: "hilfe-pdf-ausgabe.png" },
+  "data-management": {
+    filename: "data-management.png",
+    downloadName: "hilfe-projektstand-speichern.png",
+  },
+  security: { filename: "security.png", downloadName: "hilfe-schutz-und-protokoll.png" },
+  "help-center": { filename: "help-center.png", downloadName: "hilfe-center.png" },
   "app-speichern": {
     filename: "app-speichern.png",
-    downloadName: "hilfe-rsc-als-app-speichern.png",
+    downloadName: "hilfe-mycrewmate-als-app-speichern.png",
   },
   "video-planungsteam": {
     filename: "video-planungsteam.png",

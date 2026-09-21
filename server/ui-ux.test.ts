@@ -1344,6 +1344,15 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(help).toContain('src: "/api/help/images/chat"');
     expect(help).toContain('src: "/api/help/images/pdf"');
     expect(help).toContain('src: "/api/help/images/app-speichern"');
+    expect(help).toContain('src: "/api/help/images/locations"');
+    expect(help).toContain('src: "/api/help/images/preparation"');
+    expect(help).toContain('src: "/api/help/images/materials"');
+    expect(help).toContain('src: "/api/help/images/donations"');
+    expect(help).toContain('src: "/api/help/images/finances"');
+    expect(help).toContain('src: "/api/help/images/data-management"');
+    expect(help).toContain('src: "/api/help/images/security"');
+    expect(help).toContain('src: "/api/help/images/help-center"');
+    expect(help).toContain('rounded-lg border border-slate-200 bg-white shadow-sm');
     expect(help).not.toContain("dashboard-current_8a026d64.png");
   });
 

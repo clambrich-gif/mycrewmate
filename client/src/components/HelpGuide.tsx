@@ -259,6 +259,11 @@ const HELP_CHAPTERS: HelpChapter[] = [
           icon: Map,
           items: ["Start und Ziel", "Versorgung und Material", "Treffpunkte und Parkflächen"],
         },
+        screenshot: {
+          src: "/api/help/images/locations",
+          alt: "Aktuelle MyCrewMate-Ansicht Orte und Standorte mit Karten- und Standortverwaltung",
+          caption: "Orte & Standorte bündeln die aktuelle Standortverwaltung und die Grundlage für Karten- sowie GPX-Ansichten.",
+        },
         workspace: { href: "/orte", label: "Zu Orte & Standorte", adminOnly: true },
       },
       {
@@ -391,6 +396,11 @@ const HELP_CHAPTERS: HelpChapter[] = [
           icon: ClipboardCheck,
           items: ["Aufgabe und Kategorie anlegen", "Verantwortung und Frist setzen", "Status und Logbuch prüfen"],
         },
+        screenshot: {
+          src: "/api/help/images/preparation",
+          alt: "Aktuelle MyCrewMate-Ansicht Vorbereitung mit Aufgabenfiltern und Aktionsleiste",
+          caption: "Vorbereitung und Nachbereitung verwenden die aktuelle kompakte Aufgabenansicht mit Suche, Schnellfiltern und klaren Aktionen.",
+        },
         workspace: { href: "/vorbereitung", label: "Zur Vorbereitung" },
       },
       {
@@ -411,6 +421,11 @@ const HELP_CHAPTERS: HelpChapter[] = [
           icon: PackageCheck,
           items: ["Artikel und Menge erfassen", "Standort verknüpfen", "Bestellstatus nachhalten"],
         },
+        screenshot: {
+          src: "/api/help/images/materials",
+          alt: "Aktuelle MyCrewMate-Materialverwaltung mit stabiler Filterleiste",
+          caption: "Die Materialverwaltung zeigt die aktuellen Schnellfilter und den kompakten Aktionsbereich für Beschaffung und Logistik.",
+        },
         workspace: { href: "/material", label: "Zur Materialverwaltung" },
       },
       {
@@ -426,6 +441,11 @@ const HELP_CHAPTERS: HelpChapter[] = [
           icon: Gift,
           items: ["Kategorie und Spender wählen", "Allergene und Abgabe notieren", "Sollwerte je Kategorie vergleichen"],
         },
+        screenshot: {
+          src: "/api/help/images/donations",
+          alt: "Aktuelle MyCrewMate-Spendenverwaltung mit Sollwerten und Filterleiste",
+          caption: "Im Spenden-Modul sind heutige Filter, Sollwerte und Erfassungsaktionen für Verpflegungsspenden zusammengeführt.",
+        },
         workspace: { href: "/spenden", label: "Zum Spenden-Modul" },
       },
       {
@@ -440,6 +460,11 @@ const HELP_CHAPTERS: HelpChapter[] = [
           title: "Plan- und Istwerte strukturiert vergleichen",
           icon: WalletCards,
           items: ["Kostenart festlegen", "Planwert erfassen", "Istwert nach dem Event ergänzen"],
+        },
+        screenshot: {
+          src: "/api/help/images/finances",
+          alt: "Aktuelle MyCrewMate-Finanzen mit Saldo und Tabellenkopf",
+          caption: "Die Finanzübersicht zeigt Einnahmen, Ausgaben und Saldo in der heutigen kompakten Tabellenansicht.",
         },
         workspace: { href: "/finanzen", label: "Zu Finanzen", adminOnly: true },
       },
@@ -556,6 +581,11 @@ const HELP_CHAPTERS: HelpChapter[] = [
           icon: DatabaseBackup,
           items: ["Sicherung herunterladen", "Datei im Ladedialog prüfen", "Admin-Vorschau bewusst übernehmen"],
         },
+        screenshot: {
+          src: "/api/help/images/data-management",
+          alt: "Aktueller MyCrewMate-Dialog zum Speichern eines Projektstands",
+          caption: "Der aktuelle Projektstand-Dialog trennt JSON-Sicherung und Excel-Projektübersicht klar voneinander.",
+        },
       },
       {
         id: "excel-export",
@@ -606,6 +636,11 @@ const HELP_CHAPTERS: HelpChapter[] = [
           title: "Sicherheits- und Änderungsverlauf nachvollziehen",
           icon: ShieldCheck,
           items: ["Sicherheit & Logins prüfen", "Löschverlauf nachvollziehen", "Datei- & Importhistorie einsehen"],
+        },
+        screenshot: {
+          src: "/api/help/images/security",
+          alt: "Aktuelle MyCrewMate-Ansicht Schutz und Protokoll mit Sicherheits-Akkordeons",
+          caption: "Schutz & Protokoll fasst die aktuelle Zugangsverwaltung, Notfall-Sperre und das zentrale Logbuch zusammen.",
         },
         workspace: { href: "/sicherheit", label: "Zu Schutz & Protokoll", adminOnly: true },
       },
@@ -660,6 +695,11 @@ const HELP_CHAPTERS: HelpChapter[] = [
           title: "Ein Begriff genügt",
           icon: Search,
           items: ["Modulnamen suchen", "Funktionen und Fachbegriffe finden", "Rollenfilter bei Bedarf kombinieren"],
+        },
+        screenshot: {
+          src: "/api/help/images/help-center",
+          alt: "Aktuelles MyCrewMate Hilfe-Center mit Suche, Rollenfiltern und Kapitelübersicht",
+          caption: "Das aktuelle Hilfe-Center bündelt neun Kapitel, Rollenfilter, Live-Suche und das alphabetische Stichwortregister.",
         },
       },
     ],
@@ -1026,7 +1066,7 @@ export function HelpGuide({
                             {topic.callout && <GuideCallout callout={topic.callout} />}
                             {topic.visual && <GuideVisual visual={topic.visual} />}
                             {topic.screenshot && (
-                              <figure className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                              <figure className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
                                 <img
                                   src={topic.screenshot.src}
                                   alt={topic.screenshot.alt}

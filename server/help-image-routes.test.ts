@@ -76,6 +76,33 @@ describe("Same-Origin-Hilfebilder", () => {
     expect(response.headers.get("content-type")).toBe("image/png");
   });
 
+  it("liefert die vollständige aktuelle MyCrewMate-Bildserie lokal aus", async () => {
+    const baseUrl = await startTestServer();
+    const imageNames = [
+      "locations",
+      "helpers",
+      "plan",
+      "preparation",
+      "materials",
+      "donations",
+      "finances",
+      "chat",
+      "pdf",
+      "data-management",
+      "security",
+      "help-center",
+    ];
+
+    const responses = await Promise.all(
+      imageNames.map(name => fetch(`${baseUrl}/api/help/images/${name}`))
+    );
+    for (const response of responses) {
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe("image/png");
+      expect(Number(response.headers.get("content-length"))).toBeGreaterThan(1_000);
+    }
+  });
+
   it("weist unbekannte Bildnamen ab", async () => {
     const baseUrl = await startTestServer();
     const response = await fetch(`${baseUrl}/api/help/images/unbekannt`);
