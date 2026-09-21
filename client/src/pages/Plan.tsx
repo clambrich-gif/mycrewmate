@@ -95,6 +95,11 @@ import {
   helperDropdownAssignmentFeedback,
   helperDropdownPriority,
 } from "@/lib/helper-assignment-feedback";
+import {
+  deriveOwnAssignedHelperIds,
+  matchesMyScheduleAssignment,
+  normalizeSchedulePersonName,
+} from "@/lib/plan-my-tasks";
 import { LocationMapLink } from "@/components/LocationMapLink";
 import { MyTasksDefaultPin } from "@/components/MyTasksDefaultPin";
 import { useMyTasksDefault } from "@/hooks/useMyTasksDefault";
@@ -103,9 +108,6 @@ const formatTimeLabel = (shift: { startTime: string; endTime: string }) =>
   shift.startTime && shift.endTime
     ? `${shift.startTime}–${shift.endTime}`
     : "ganztägig";
-
-const normalizedPersonName = (name: string | null | undefined) =>
-  name?.trim().toLocaleLowerCase("de-DE") ?? "";
 
 const FlexibleTimeNote = ({
   flexible,
@@ -876,28 +878,22 @@ export default function Plan() {
     () => new Map(helpers.map(helper => [helper.id, helper])),
     [helpers]
   );
-  const currentUserName = normalizedPersonName(user?.name);
+  const currentUserName = normalizeSchedulePersonName(user?.name);
   const ownContactIds = useMemo(
     () =>
       new Set(
         contacts
-          .filter(contact => normalizedPersonName(contact.name) === currentUserName)
+          .filter(
+            contact =>
+              normalizeSchedulePersonName(contact.name) === currentUserName
+          )
           .map(contact => contact.id)
       ),
     [contacts, currentUserName]
   );
   const ownHelperIds = useMemo(
-    () =>
-      new Set(
-        helpers
-          .filter(
-            helper =>
-              normalizedPersonName(helper.name) === currentUserName ||
-              (helper.contactId !== null && ownContactIds.has(helper.contactId))
-          )
-          .map(helper => helper.id)
-      ),
-    [helpers, currentUserName, ownContactIds]
+    () => deriveOwnAssignedHelperIds(helpers, user?.name),
+    [helpers, user?.name]
   );
   useEffect(() => {
     if (
@@ -1096,8 +1092,13 @@ export default function Plan() {
             (apFilter === "alle" ||
               String(areaContactMap.get(e.shift.area) ?? "") === apFilter) &&
             (!myTasksOnly ||
-              ownContactIds.has(areaContactMap.get(e.shift.area) ?? -1) ||
-              e.assigned.some(assignment => ownHelperIds.has(assignment.helperId))) &&
+              matchesMyScheduleAssignment({
+                area: e.shift.area,
+                areaContactMap,
+                ownContactIds,
+                assigned: e.assigned,
+                ownHelperIds,
+              })) &&
             (!openOrUnassignedOnly ||
               e.status === "OFFEN" || e.assigned.length < e.shift.needed)
         )

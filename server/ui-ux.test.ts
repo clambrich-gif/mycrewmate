@@ -451,6 +451,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(postprocessing).toContain("<MyTasksDefaultPin");
     expect(plan).toContain("ownContactIds");
     expect(plan).toContain("ownHelperIds");
+    expect(plan).toContain("deriveOwnAssignedHelperIds");
+    expect(plan).toContain("matchesMyScheduleAssignment");
+    expect(plan).not.toContain("ownContactIds.has(helper.contactId)");
     expect(plan).toContain("👤 Meine Aufgaben");
     expect(plan).toContain("⚠ Nur offene / unbesetzte Schichten");
     expect(plan).toContain("e.assigned.length < e.shift.needed");
@@ -467,6 +470,17 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(defaultPin).toContain('data-slot="my-tasks-default-pin"');
     expect(defaultPin).toContain("als Standard-Ansicht merken");
     expect(defaultPin).toContain("bg-blue-600 text-white");
+  });
+
+  it("grenzt eigene Einsatzplanaufgaben strikt von Helfer-Ansprechpartnerzusätzen ab", () => {
+    const plan = source("client/src/pages/Plan.tsx");
+    const myTasksFilter = source("client/src/lib/plan-my-tasks.ts");
+
+    expect(myTasksFilter).toContain("Ansprechpartner-Verknüpfung des");
+    expect(myTasksFilter).toContain("zählt ausdrücklich nicht als eigene Helferzuweisung");
+    expect(myTasksFilter).toContain("assigned.some");
+    expect(myTasksFilter).toContain("areaContactMap.get(area)");
+    expect(plan).toContain("matchesMyScheduleAssignment({");
   });
 
   it("hält mobile Formulare und Aktionen bei 44px und 16px und macht Helferchips per Tastatur erreichbar", () => {
