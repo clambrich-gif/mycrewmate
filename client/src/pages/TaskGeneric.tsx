@@ -573,17 +573,20 @@ export default function TaskGeneric({
               </button>
             )}
           </div>
-          <div className="flex flex-wrap gap-2" aria-label={`Schnellfilter ${title}`}>
+          <div
+            className="flex min-w-0 flex-nowrap gap-2 overflow-x-auto pb-1 md:flex-wrap md:overflow-visible md:pb-0"
+            aria-label={`Schnellfilter ${title}`}
+          >
             {!noContact && (
-              <div className="flex items-center gap-1">
+              <div className="flex shrink-0 items-center gap-1">
                 <Button
                   type="button"
                   size="sm"
                   variant={myTasksOnly ? "default" : "outline"}
                   className={
                     myTasksOnly
-                      ? "bg-blue-600 text-white hover:bg-blue-700"
-                      : "border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100"
+                      ? "shrink-0 bg-blue-600 text-white hover:bg-blue-700"
+                      : "shrink-0 border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100"
                   }
                   disabled={ownContactId === null}
                   title={
@@ -608,8 +611,8 @@ export default function TaskGeneric({
               variant={openOrUnassignedOnly ? "default" : "outline"}
               className={
                 openOrUnassignedOnly
-                  ? "bg-amber-600 text-white hover:bg-amber-700"
-                  : "border-amber-200 bg-amber-50 text-amber-950 hover:bg-amber-100"
+                  ? "shrink-0 bg-amber-600 text-white hover:bg-amber-700"
+                  : "shrink-0 border-amber-200 bg-amber-50 text-amber-950 hover:bg-amber-100"
               }
               onClick={() => setOpenOrUnassignedOnly(active => !active)}
             >

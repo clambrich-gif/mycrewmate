@@ -475,6 +475,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(genericTasks).toContain("⚠ Offen / unzugewiesen");
     expect(genericTasks).toContain("useMyTasksDefault(user)");
     expect(genericTasks).toContain("<MyTasksDefaultPin");
+    expect(genericTasks).toContain(
+      "flex min-w-0 flex-nowrap gap-2 overflow-x-auto pb-1 md:flex-wrap md:overflow-visible md:pb-0"
+    );
+    expect(genericTasks).toContain("flex shrink-0 items-center gap-1");
+    expect(genericTasks).toContain("shrink-0 bg-amber-600 text-white");
     expect(defaultHook).toContain("MY_TASKS_DEFAULT_STORAGE_PREFIX");
     expect(defaultHook).toContain("myTasksDefaultStorageKey");
     expect(defaultHook).toContain("window.localStorage");
@@ -1539,7 +1544,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
       "client/src/components/PlanResetDialogButton.tsx"
     );
 
-    expect(helpers).toContain('<PlanResetDialogButton\n              area="helpers"');
+    expect(helpers).toContain("<PlanResetDialogButton");
+    expect(helpers).toContain('area="helpers"');
     expect(helpers).not.toContain('<ResetAreaButton area="helpers"');
     expect(resetDialog).toContain('| "helpers"');
     expect(resetDialog).toContain('helpers: {');
@@ -1748,7 +1754,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     }
 
     expect(helpers).toContain("w-full rounded-xl border border-slate-200 bg-white p-2 shadow-sm lg:ml-auto lg:w-[12rem]");
-    expect(helpers).toContain("triggerClassName=\"h-10 w-full justify-center\"");
+    expect(helpers).toContain('<div className="w-full">');
+    expect(helpers).toContain("triggerClassName=\"h-10 !w-full justify-center\"");
     expect(helpers).toContain("h-10 w-full bg-blue-600 px-4 text-base font-medium text-white");
     for (const module of [taskList, taskGeneric, finances]) {
       expect(module).toContain('className="col-span-2 shadow-xs lg:col-auto"');

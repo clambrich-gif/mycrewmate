@@ -930,12 +930,14 @@ export default function Helpers() {
         </div>
         <div className="w-full rounded-xl border border-slate-200 bg-white p-2 shadow-sm lg:ml-auto lg:w-[12rem]">
           <div className="space-y-2">
-            <PlanResetDialogButton
-              area="helpers"
-              label="Helfer"
-              onCompleted={invalidate}
-              triggerClassName="h-10 w-full justify-center"
-            />
+            <div className="w-full">
+              <PlanResetDialogButton
+                area="helpers"
+                label="Helfer"
+                onCompleted={invalidate}
+                triggerClassName="h-10 !w-full justify-center"
+              />
+            </div>
             <Button
               type="button"
               className="h-10 w-full bg-blue-600 px-4 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus-visible:ring-blue-500"
