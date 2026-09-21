@@ -1,5 +1,10 @@
 import { createHash } from "node:crypto";
 import * as XLSX from "xlsx";
+import {
+  ACTIVE_EXCEL_IMPORT_AREAS,
+  ACTIVE_EXCEL_SHEET_NAME,
+  type ActiveExcelImportArea,
+} from "../shared/excel-import-areas";
 import type { AuditActor } from "./db";
 import {
   buildSelectedDocument,
@@ -16,72 +21,59 @@ import {
   type BackupDocument,
 } from "./excel-backup";
 
-export const MODULE_IMPORT_AREAS = [
-  "ANSPRECHPARTNER",
-  "HELFER",
-  "EINSATZPLAN",
-  "VORBEREITUNG",
-  "NACHBEREITUNG",
-  "MATERIAL",
-  "MARKETING",
-  "GENEHMIGUNGEN",
-  "KUCHEN",
-  "FINANZEN",
-] as const;
-export type ModuleImportArea = (typeof MODULE_IMPORT_AREAS)[number];
+export const MODULE_IMPORT_AREAS = ACTIVE_EXCEL_IMPORT_AREAS.map(
+  ({ id }) => id
+) as unknown as readonly [
+  ActiveExcelImportArea,
+  ...ActiveExcelImportArea[],
+];
+export type ModuleImportArea = ActiveExcelImportArea;
 
 const MODULE_COLLECTION: Record<
   ModuleImportArea,
   keyof Pick<
     BackupDocument,
     | "contacts"
+    | "locations"
     | "helpers"
     | "shifts"
     | "prep"
     | "post"
     | "materials"
-    | "marketing"
-    | "approvals"
     | "cakes"
     | "finances"
   >
 > = {
+  ORTE: "locations",
   ANSPRECHPARTNER: "contacts",
   HELFER: "helpers",
   EINSATZPLAN: "shifts",
   VORBEREITUNG: "prep",
   NACHBEREITUNG: "post",
   MATERIAL: "materials",
-  MARKETING: "marketing",
-  GENEHMIGUNGEN: "approvals",
   KUCHEN: "cakes",
   FINANZEN: "finances",
 };
 
-const areaName: Record<ModuleImportArea, string> = {
-  ANSPRECHPARTNER: "Ansprechpartner",
-  HELFER: "Helfer",
-  EINSATZPLAN: "Einsatzplan",
-  VORBEREITUNG: "Vorbereitung",
-  NACHBEREITUNG: "Nachbereitung",
-  MATERIAL: "Material",
-  MARKETING: "Marketing",
-  GENEHMIGUNGEN: "Genehmigungen",
-  KUCHEN: "Kuchen",
-  FINANZEN: "Finanzen",
-};
+const areaName = Object.fromEntries(
+  ACTIVE_EXCEL_IMPORT_AREAS.map(({ id, label }) => [id, label])
+) as Record<ModuleImportArea, string>;
 
 const digest = (base64: string) =>
   createHash("sha256").update(Buffer.from(base64, "base64")).digest("hex");
 
 function importedSheet(workbook: XLSX.WorkBook, area: ModuleImportArea) {
+  const publicSheetName = ACTIVE_EXCEL_SHEET_NAME[area];
+  if (workbook.Sheets[publicSheetName]) return workbook.Sheets[publicSheetName];
+  // Ältere Exporte nutzten die technischen Namen; sie bleiben nur für einen
+  // kontrollierten Einzelimport kompatibel.
   if (workbook.Sheets[area]) return workbook.Sheets[area];
   const visibleNames = workbook.SheetNames.filter(
-    name => name !== "SICHERUNG_INFO"
+    name => !["SICHERUNG_INFO", "PROJEKT_INFO", "MARKETING", "GENEHMIGUNGEN"].includes(name)
   );
   if (visibleNames.length === 1) return workbook.Sheets[visibleNames[0]];
   throw new Error(
-    `Die Excel-Datei enthält kein Blatt „${area}“. Verwenden Sie den Projekt-Export oder eine Datei mit genau einem Datenblatt.`
+    `Die Excel-Datei enthält kein Blatt „${publicSheetName}“. Verwenden Sie den Projekt-Export oder eine Datei mit genau einem Datenblatt.`
   );
 }
 
@@ -136,14 +128,13 @@ export function readNormalizedModuleImportRows(sheet: XLSX.WorkSheet) {
 
 function assertHeaders(headers: Set<string>, area: ModuleImportArea) {
   const required: Record<ModuleImportArea, string[]> = {
+    ORTE: ["Ortsname", "Breitengrad", "Längengrad"],
     ANSPRECHPARTNER: ["Name"],
     HELFER: ["Name"],
     EINSATZPLAN: ["Tag", "Bereich", "Aufgabe", "Bedarf"],
     VORBEREITUNG: ["Aufgabe"],
     NACHBEREITUNG: ["Aufgabe"],
     MATERIAL: ["Artikel"],
-    MARKETING: ["Maßnahme"],
-    GENEHMIGUNGEN: ["Antrag"],
     KUCHEN: ["Spender"],
     FINANZEN: ["Kategorie"],
   };
@@ -200,20 +191,20 @@ export function normalizeModuleSheetRange(
 }
 
 function rowIdentity(area: ModuleImportArea, row: Record<string, unknown>) {
+  if (area === "ORTE") return normalized(row.Ortsname);
   if (area === "ANSPRECHPARTNER" || area === "HELFER")
     return normalized(row.Name);
   if (area === "EINSATZPLAN")
     return normalized(
       `${row.Tag}|${row.Bereich}|${row.Aufgabe}|${row.Beginn}|${row.Ende}`
     );
-  if (area === "VORBEREITUNG" || area === "NACHBEREITUNG")
-    return normalized(row.Aufgabe);
+  if (area === "VORBEREITUNG")
+    return normalized(`${row.Kategorie || ""}|${row.Aufgabe}`);
+  if (area === "NACHBEREITUNG") return normalized(row.Aufgabe);
   if (area === "MATERIAL")
     return normalized(
       `${row.Artikel}|${row["Ort-ID"] || row["Ort / Zielstandort"] || ""}|${row["Verantwortlich-ID"] || row.Verantwortlich || ""}`
     );
-  if (area === "MARKETING") return normalized(row.Maßnahme);
-  if (area === "GENEHMIGUNGEN") return normalized(row.Antrag);
   if (area === "KUCHEN")
     return normalized(`${row.Spender}|${row.Spende || row.Kuchen || row.Bemerkung}`);
   return normalized(`${row.Kategorie}|${row.Bemerkung || row.Reihenfolge}`);
@@ -237,6 +228,7 @@ function hydrateExistingIds(
 }
 
 const OPTIONAL_MODULE_COLUMNS: Record<ModuleImportArea, string[]> = {
+  ORTE: ["Logo-Dateischlüssel", "Logo-URL", "Reihenfolge"],
   ANSPRECHPARTNER: ["Rufnummer", "Bemerkung", "Reihenfolge"],
   HELFER: [
     "Ansprechpartner-ID",
@@ -314,21 +306,6 @@ const OPTIONAL_MODULE_COLUMNS: Record<ModuleImportArea, string[]> = {
     "Verantwortlich-ID",
     "Verantwortlich",
     "Stand",
-    "Bemerkung",
-    "Reihenfolge",
-  ],
-  MARKETING: [
-    "Kanal",
-    "Verantwortlich-ID",
-    "Verantwortlich",
-    "Status",
-    "Bemerkung",
-    "Reihenfolge",
-  ],
-  GENEHMIGUNGEN: [
-    "Verantwortlich-ID",
-    "Verantwortlich",
-    "Status",
     "Bemerkung",
     "Reihenfolge",
   ],
@@ -595,6 +572,16 @@ function baseWorkbook(document: BackupDocument) {
 }
 
 function rowsFromDocument(document: BackupDocument, area: ModuleImportArea) {
+  if (area === "ORTE")
+    return document.locations.map(row => ({
+      ID: row.sourceId,
+      Ortsname: row.name,
+      Breitengrad: row.latitude,
+      Längengrad: row.longitude,
+      "Logo-Dateischlüssel": row.logoKey ?? "",
+      "Logo-URL": row.logoUrl ?? "",
+      Reihenfolge: row.sortOrder,
+    }));
   if (area === "ANSPRECHPARTNER")
     return document.contacts.map(row => ({
       ID: row.sourceId,
@@ -704,27 +691,6 @@ function rowsFromDocument(document: BackupDocument, area: ModuleImportArea) {
       "Verantwortlich-ID": row.contactSourceId ?? "",
       Verantwortlich: row.contactName,
       Stand: row.status,
-      Bemerkung: row.note,
-      Reihenfolge: row.sortOrder,
-    }));
-  if (area === "MARKETING")
-    return document.marketing.map(row => ({
-      ID: row.sourceId,
-      Maßnahme: row.measure,
-      Kanal: row.channel,
-      "Verantwortlich-ID": row.contactSourceId ?? "",
-      Verantwortlich: row.contactName,
-      Status: row.status,
-      Bemerkung: row.note,
-      Reihenfolge: row.sortOrder,
-    }));
-  if (area === "GENEHMIGUNGEN")
-    return document.approvals.map(row => ({
-      ID: row.sourceId,
-      Antrag: row.request,
-      "Verantwortlich-ID": row.contactSourceId ?? "",
-      Verantwortlich: row.contactName,
-      Status: row.status,
       Bemerkung: row.note,
       Reihenfolge: row.sortOrder,
     }));

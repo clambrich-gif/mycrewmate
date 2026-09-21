@@ -27,17 +27,9 @@ import {
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
+import { ACTIVE_EXCEL_IMPORT_AREAS } from "@shared/excel-import-areas";
 
-const IMPORT_AREAS = [
-  { id: "ANSPRECHPARTNER", label: "Ansprechpartner" },
-  { id: "HELFER", label: "Helfer" },
-  { id: "EINSATZPLAN", label: "Einsatzplan" },
-  { id: "VORBEREITUNG", label: "Vorbereitung" },
-  { id: "NACHBEREITUNG", label: "Nachbereitung" },
-  { id: "MATERIAL", label: "Material" },
-  { id: "KUCHEN", label: "Spenden" },
-  { id: "FINANZEN", label: "Finanzen" },
-] as const;
+const IMPORT_AREAS = ACTIVE_EXCEL_IMPORT_AREAS;
 
 type ImportArea = (typeof IMPORT_AREAS)[number]["id"];
 
@@ -498,7 +490,7 @@ export function SaveLoadControls({
               Datei: {excelFile?.name}. Geprüft wird nur: {excelPreview.data?.areaName ?? "der ausgewählte Bereich"}.
             </DialogDescription>
           </DialogHeader>
-          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-950"><strong>Isolierter Import:</strong> Nur der ausgewählte Bereich wird übernommen. Abhängige Einsatzzuweisungen werden weiterhin sicher geprüft.<div className="mt-1 font-semibold">Vollständige Excel-Prüfung: {excelPreview.data?.rowsChecked ?? 0} Datenzeilen geprüft.</div></div>
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-950"><strong>Isolierter Import:</strong> Nur der ausgewählte Bereich wird übernommen. Abhängige Einsatzzuweisungen werden weiterhin sicher geprüft.<div className="mt-1 font-semibold">Bereichsprüfung: {excelPreview.data?.rowsChecked ?? 0} Datenzeilen geprüft.</div></div>
           <div className="grid gap-2 sm:grid-cols-3">
             <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-emerald-900"><div className="text-2xl font-bold">{excelTotals.created}</div><div className="text-xs font-medium">Neue Einträge</div></div>
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900"><div className="text-2xl font-bold">{excelTotals.updated}</div><div className="text-xs font-medium">Geänderte Einträge</div></div>

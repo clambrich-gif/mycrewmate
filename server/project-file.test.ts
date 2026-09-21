@@ -783,6 +783,11 @@ describe("Projektdatei und modularer Excel-Import", () => {
     expectedArea: string;
   }>([
     {
+      area: "ORTE",
+      row: { Ortsname: "Startgelände", Breitengrad: 50.33, Längengrad: 7.22 },
+      expectedArea: "ORTE",
+    },
+    {
       area: "ANSPRECHPARTNER",
       row: { Name: "Dana Leitung", Rufnummer: "0999" },
       expectedArea: "ANSPRECHPARTNER",
@@ -815,16 +820,6 @@ describe("Projektdatei und modularer Excel-Import", () => {
       expectedArea: "MATERIAL",
     },
     {
-      area: "MARKETING",
-      row: { Maßnahme: "Pressemitteilung", Kanal: "Zeitung" },
-      expectedArea: "MARKETING",
-    },
-    {
-      area: "GENEHMIGUNGEN",
-      row: { Antrag: "Straßensperrung" },
-      expectedArea: "GENEHMIGUNGEN",
-    },
-    {
       area: "KUCHEN",
       row: { Spender: "Beispiel Person", Kuchen: "Apfelkuchen" },
       expectedArea: "KUCHEN",
@@ -854,8 +849,6 @@ describe("Projektdatei und modularer Excel-Import", () => {
                 "VORBEREITUNG",
                 "NACHBEREITUNG",
                 "MATERIAL",
-                "MARKETING",
-                "GENEHMIGUNGEN",
                 "ZUORDNUNGEN",
               ].includes(change.area)
             : area === "EINSATZPLAN"

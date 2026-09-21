@@ -20,6 +20,8 @@ import {
   comparableProjectContent,
   diffDocuments,
   exportBackupExcel,
+  exportProjectExcel,
+  migrateLegacyPreparationAreas,
   normalizeImportedTime,
   parseBackupWorkbook,
   previewBackupRestore,
@@ -170,10 +172,10 @@ describe("Excel-Datensicherung", () => {
       "VORBEREITUNG",
       "NACHBEREITUNG",
       "MATERIAL",
-      "MARKETING",
-      "GENEHMIGUNGEN",
       "KUCHEN",
       "FINANZEN",
+      "MARKETING",
+      "GENEHMIGUNGEN",
     ]);
     expect(workbook.Sheets.VORBEREITUNG.A1.v).toBe("ID");
     expect(workbook.Sheets.HELFER["!cols"]?.[0]?.hidden).toBe(true);
@@ -209,6 +211,74 @@ describe("Excel-Datensicherung", () => {
       expect.arrayContaining([
         { Schlüssel: "Startdatum", Wert: "2026-06-19" },
         { Schlüssel: "Enddatum", Wert: "2026-06-21" },
+      ])
+    );
+  });
+
+  it("exportiert genau die neun sichtbaren Arbeitsbereiche mit lesbaren Blattnamen", async () => {
+    const result = await exportProjectExcel();
+    const workbook = XLSX.read(result.buffer, { type: "buffer", cellStyles: true });
+
+    expect(workbook.SheetNames.slice(0, 10)).toEqual([
+      "PROJEKT_INFO",
+      "Orte & Standorte",
+      "Ansprechpartner",
+      "Helfer",
+      "Einsatzplan",
+      "Vorbereitung",
+      "Nachbereitung",
+      "Material",
+      "Spenden",
+      "Finanzen",
+    ]);
+    expect(workbook.Sheets.Vorbereitung.A1.v).toBe("ID");
+    const hidden = workbook.Workbook?.Sheets ?? [];
+    expect(hidden[workbook.SheetNames.indexOf("MARKETING")]?.Hidden).toBe(1);
+    expect(hidden[workbook.SheetNames.indexOf("GENEHMIGUNGEN")]?.Hidden).toBe(1);
+  });
+
+  it("überführt historische Marketing- und Genehmigungseinträge verlustfrei in Vorbereitung", async () => {
+    const document = parseBackupWorkbook(
+      (await exportBackupExcel()).buffer.toString("base64")
+    );
+    document.marketing = [{
+      sourceId: 701,
+      measure: "Streckenposter veröffentlichen",
+      channel: "Instagram",
+      contactSourceId: 10,
+      contactName: "Chris Leitung",
+      status: "inArbeit",
+      note: "Freigabe abwarten",
+      sortOrder: 2,
+    }];
+    document.approvals = [{
+      sourceId: 702,
+      request: "Verkehrsrechtliche Anordnung",
+      contactSourceId: 10,
+      contactName: "Chris Leitung",
+      status: "genehmigt",
+      note: "Bescheid liegt vor",
+      sortOrder: 3,
+    }];
+
+    migrateLegacyPreparationAreas(document);
+
+    expect(document.marketing).toEqual([]);
+    expect(document.approvals).toEqual([]);
+    expect(document.prep).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          category: "Marketing",
+          task: "Streckenposter veröffentlichen",
+          status: "inArbeit",
+          note: "Kanal: Instagram\nFreigabe abwarten",
+        }),
+        expect.objectContaining({
+          category: "Genehmigungen",
+          task: "Verkehrsrechtliche Anordnung",
+          status: "erledigt",
+          statusWording: "genehmigung",
+        }),
       ])
     );
   });

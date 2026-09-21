@@ -31,6 +31,11 @@ import {
 } from "../shared/weekdays";
 import { normalizeMaterialStatus } from "../shared/material-status";
 import { eventDateRangeError } from "../shared/event-dates";
+import {
+  ACTIVE_EXCEL_IMPORT_AREAS,
+  ACTIVE_EXCEL_SHEET_NAME,
+  type ActiveExcelImportArea,
+} from "../shared/excel-import-areas";
 import { overlaps, toMinutes } from "./logic";
 import { currentEventId, currentEventYear } from "./year-context";
 import { getDb, type AuditActor } from "./db";
@@ -47,6 +52,7 @@ export const BACKUP_RESTORE_LOG_RETENTION_DAYS = 90;
 export const MAX_BACKUP_RESTORE_LOGS_PER_SCOPE = 100;
 let activeExcelOperations = 0;
 const SHEETS = [
+  "ORTE",
   "ANSPRECHPARTNER",
   "HELFER",
   "EINSATZPLAN",
@@ -58,6 +64,10 @@ const SHEETS = [
   "KUCHEN",
   "FINANZEN",
 ] as const;
+
+export { ACTIVE_EXCEL_IMPORT_AREAS, ACTIVE_EXCEL_SHEET_NAME };
+
+const LEGACY_HIDDEN_PROJECT_SHEETS = ["MARKETING", "GENEHMIGUNGEN"] as const;
 export const PROJECT_EXCEL_HEADERS: Record<string, string[]> = {
   ORTE: [
     "ID",
@@ -631,6 +641,63 @@ export function reconcileContactSelfHelpers(
   return { linked, created };
 }
 
+const approvalStatusToPreparationStatus = (
+  status: ApprovalRow["status"]
+): PrepRow["status"] =>
+  status === "beantragt"
+    ? "inArbeit"
+    : status === "genehmigt"
+      ? "erledigt"
+      : status;
+
+/**
+ * Marketing und Genehmigungen sind seit der Modulkonsolidierung fachlich
+ * Vorbereitungsaufgaben. Alte JSON- oder Excel-Sicherungen dürfen deshalb
+ * nicht wieder isolierte Altbereiche erzeugen. Die Ursprungs-ID wird bewusst
+ * nicht übernommen, weil sie aus einer anderen Tabelle stammt.
+ */
+export function migrateLegacyPreparationAreas(document: BackupDocument) {
+  const migrated: PrepRow[] = [
+    ...document.marketing.map(row => ({
+      sourceId: null,
+      category: "Marketing",
+      task: row.measure,
+      dueText: "",
+      locationSourceId: null,
+      locationName: "",
+      contactSourceId: row.contactSourceId,
+      contactName: row.contactName,
+      status: row.status,
+      statusWording: "aufgabe" as const,
+      note: row.channel
+        ? `Kanal: ${row.channel}${row.note ? `\n${row.note}` : ""}`
+        : row.note,
+      sortOrder: row.sortOrder,
+    })),
+    ...document.approvals.map(row => ({
+      sourceId: null,
+      category: "Genehmigungen",
+      task: row.request,
+      dueText: "",
+      locationSourceId: null,
+      locationName: "",
+      contactSourceId: row.contactSourceId,
+      contactName: row.contactName,
+      status: approvalStatusToPreparationStatus(row.status),
+      statusWording: "genehmigung" as const,
+      note: row.note,
+      sortOrder: row.sortOrder,
+    })),
+  ];
+  if (!migrated.length) return document;
+  document.prep.push(...migrated);
+  document.marketing = [];
+  document.approvals = [];
+  const message = `${migrated.length} historische ${migrated.length === 1 ? "Planungseintrag wurde" : "Planungseinträge wurden"} in „Vorbereitung“ überführt.`;
+  if (!document.warnings.includes(message)) document.warnings.push(message);
+  return document;
+}
+
 /**
  * Ein Import beschreibt stets den gewünschten Zielstand. Diese Bereinigung
  * läuft deshalb vor Vorschau, Diff und Transaktion: Verwaiste Ansprechpartner
@@ -643,6 +710,7 @@ export function repairImportedDocumentRelations(document: BackupDocument) {
     if (!document.warnings.includes(message) && document.warnings.length < 1_000)
       document.warnings.push(message);
   };
+  migrateLegacyPreparationAreas(document);
   const contactBySourceId = new Map(
     document.contacts.flatMap(row =>
       row.sourceId ? ([[row.sourceId, row]] as const) : []
@@ -1238,10 +1306,13 @@ export function parseBackupWorkbook(
 ): BackupDocument {
   const workbook = readUploadedExcelWorkbook(base64);
   const meta = metadata(workbook);
-  for (const required of SHEETS)
+  const isolatedAreas = new Set(options.isolatedAreas ?? []);
+  const requiredSheets = isolatedAreas.size
+    ? (["SICHERUNG_INFO", ...Array.from(isolatedAreas)] as const)
+    : (["SICHERUNG_INFO", ...SHEETS] as const);
+  for (const required of requiredSheets)
     if (!workbook.Sheets[required])
       throw new Error(`Pflichtblatt „${required}“ fehlt`);
-  const isolatedAreas = new Set(options.isolatedAreas ?? []);
   if (isolatedAreas.size && !options.fallbackDocument)
     throw new Error("Isolierter Excel-Import benötigt einen bestehenden Projektstand");
   const fallback = options.fallbackDocument
@@ -1306,12 +1377,11 @@ export function parseBackupWorkbook(
     return null;
   };
 
-  const locationRows = !isolatedAreas.size && workbook.Sheets.ORTE
+  const locationRows = shouldParse("ORTE") && workbook.Sheets.ORTE
     ? sheetRows(workbook, "ORTE").filter(row => normalize(row.Ortsname))
     : [];
-  const parsedLocations: LocationRow[] = isolatedAreas.size
-    ? fallback!.locations
-    : locationRows.map((row, index) => ({
+  const parsedLocations: LocationRow[] = shouldParse("ORTE")
+    ? locationRows.map((row, index) => ({
         sourceId: nullableId(row.ID, `ORTE Zeile ${index + 2}`),
         name: text(row.Ortsname, 200, `ORTE Zeile ${index + 2}: Ortsname`, true),
         latitude: coordinate(
@@ -1336,8 +1406,9 @@ export function parseBackupWorkbook(
           0,
           1_000_000
         ),
-      }));
-  if (!isolatedAreas.size)
+      }))
+    : fallback!.locations;
+  if (shouldParse("ORTE"))
     ensureUnique(parsedLocations, row => row.sourceId, row => row.name, "ORTE");
   const locationIds = new Set(
     parsedLocations.flatMap(row => (row.sourceId ? [row.sourceId] : []))
@@ -2459,7 +2530,7 @@ export async function createCurrentProjectDocument(): Promise<BackupDocument> {
     BackupDocument,
     "metadata" | "warnings"
   >;
-  return {
+  return migrateLegacyPreparationAreas({
     metadata: {
       format: BACKUP_FORMAT,
       version: BACKUP_VERSION,
@@ -2480,7 +2551,7 @@ export async function createCurrentProjectDocument(): Promise<BackupDocument> {
     },
     ...current,
     warnings: [],
-  };
+  });
 }
 
 const AREA_CONFIG = [
@@ -3955,16 +4026,17 @@ export async function exportProjectExcel(): Promise<{
   exportedAt: string;
   eventName: string;
 }> {
-  const snapshot = await loadSnapshot();
-  const current: any = comparableCurrent(snapshot);
-  const exportedAt = new Date().toISOString();
+  const current = await createCurrentProjectDocument();
+  const exportedAt = current.metadata.exportedAt;
   const workbook = XLSX.utils.book_new();
   const append = (
     name: string,
     rows: Record<string, unknown>[],
-    widths?: number[]
+    widths?: number[],
+    headerKey = name
   ) => {
-    const headers = PROJECT_EXCEL_HEADERS[name] ?? Object.keys(rows[0] ?? {});
+    const headers =
+      PROJECT_EXCEL_HEADERS[headerKey] ?? Object.keys(rows[0] ?? {});
     const sheet = rows.length
       ? XLSX.utils.json_to_sheet(rows, { header: headers })
       : XLSX.utils.aoa_to_sheet([headers]);
@@ -3986,37 +4058,41 @@ export async function exportProjectExcel(): Promise<{
     );
     XLSX.utils.book_append_sheet(workbook, sheet, name);
   };
+  const appendActive = (
+    area: ActiveExcelImportArea,
+    rows: Record<string, unknown>[]
+  ) => append(ACTIVE_EXCEL_SHEET_NAME[area], rows, undefined, area);
   append(
     "PROJEKT_INFO",
     [
       { Schlüssel: "Format", Wert: "RSC-HELFERPLANUNG-PROJEKTUEBERSICHT" },
       { Schlüssel: "Version", Wert: BACKUP_VERSION },
       { Schlüssel: "Veranstaltungs-ID", Wert: currentEventId() },
-      { Schlüssel: "Veranstaltung", Wert: snapshot.eventName },
-      { Schlüssel: "Jahr", Wert: currentEventYear() },
+      { Schlüssel: "Veranstaltung", Wert: current.metadata.eventName },
+      { Schlüssel: "Jahr", Wert: current.metadata.year },
       {
         Schlüssel: "Veranstaltungstage",
-        Wert: snapshot.activeDays.join(", "),
+        Wert: current.metadata.activeDays.join(", "),
       },
-      { Schlüssel: "Spenden-Soll Kuchen / Gebäck", Wert: snapshot.donationTargetKuchen },
-      { Schlüssel: "Spenden-Soll Salat", Wert: snapshot.donationTargetSalat },
-      { Schlüssel: "Spenden-Soll Dessert", Wert: snapshot.donationTargetSnack },
-      { Schlüssel: "Spenden-Soll Sonstiges", Wert: snapshot.donationTargetSonstiges },
+      { Schlüssel: "Spenden-Soll Kuchen / Gebäck", Wert: current.metadata.donationTargetKuchen },
+      { Schlüssel: "Spenden-Soll Salat", Wert: current.metadata.donationTargetSalat },
+      { Schlüssel: "Spenden-Soll Dessert", Wert: current.metadata.donationTargetSnack },
+      { Schlüssel: "Spenden-Soll Sonstiges", Wert: current.metadata.donationTargetSonstiges },
       {
         Schlüssel: "Individuelles PDF-Bild",
-        Wert: snapshot.pdfLogoKey ? "Hinterlegt" : "Nicht hinterlegt",
+        Wert: current.metadata.pdfLogoKey ? "Hinterlegt" : "Nicht hinterlegt",
       },
       {
         Schlüssel: "PDF-Bild-Fallback",
         Wert:
-          snapshot.pdfLogoFallback === "brand"
+          current.metadata.pdfLogoFallback === "brand"
             ? "RSC-Vereinslogo"
             : "Kein Bild",
       },
       { Schlüssel: "Exportiert am (UTC)", Wert: exportedAt },
       {
         Schlüssel: "Verwendung",
-        Wert: "Diese Excel-Datei dient ausschließlich der Übersicht und Dokumentation. Sie ist keine vollständige Speicherdatei. Einzelne Tabellenblätter können im jeweiligen Programmbereich gezielt importiert werden.",
+        Wert: "Diese Excel-Datei dient der Übersicht und dem gezielten Einzelimport. Für den Re-Import ausschließlich die neun sichtbaren Arbeitsblätter und die ausgeblendeten ID-Spalten unverändert lassen.",
       },
       {
         Schlüssel: "Wichtig",
@@ -4025,7 +4101,7 @@ export async function exportProjectExcel(): Promise<{
     ],
     [28, 100]
   );
-  append(
+  appendActive(
     "ORTE",
     current.locations.map((row: any) => ({
       ID: row.sourceId,
@@ -4037,7 +4113,7 @@ export async function exportProjectExcel(): Promise<{
       Reihenfolge: row.sortOrder,
     }))
   );
-  append(
+  appendActive(
     "ANSPRECHPARTNER",
     current.contacts.map((row: any) => ({
       ID: row.sourceId,
@@ -4047,7 +4123,7 @@ export async function exportProjectExcel(): Promise<{
       Reihenfolge: row.sortOrder,
     }))
   );
-  append(
+  appendActive(
     "HELFER",
     current.helpers.map((row: any) => ({
       ID: row.sourceId,
@@ -4083,7 +4159,7 @@ export async function exportProjectExcel(): Promise<{
       "Bestätigt?": row.confirmed,
     }))
   );
-  append(
+  appendActive(
     "EINSATZPLAN",
     current.shifts.map((row: any) => ({
       ID: row.sourceId,
@@ -4134,9 +4210,9 @@ export async function exportProjectExcel(): Promise<{
       Bemerkung: row.note,
       Reihenfolge: row.sortOrder,
     }));
-  append("VORBEREITUNG", taskRows(current.prep, true, true));
-  append("NACHBEREITUNG", taskRows(current.post, true));
-  append(
+  appendActive("VORBEREITUNG", taskRows(current.prep, true, true));
+  appendActive("NACHBEREITUNG", taskRows(current.post, true));
+  appendActive(
     "MATERIAL",
     current.materials.map((row: any) => ({
       ID: row.sourceId,
@@ -4153,32 +4229,7 @@ export async function exportProjectExcel(): Promise<{
       Reihenfolge: row.sortOrder,
     }))
   );
-  append(
-    "MARKETING",
-    current.marketing.map((row: any) => ({
-      ID: row.sourceId,
-      Maßnahme: row.measure,
-      Kanal: row.channel,
-      "Verantwortlich-ID": row.contactSourceId ?? "",
-      Verantwortlich: row.contactName,
-      Status: row.status,
-      Bemerkung: row.note,
-      Reihenfolge: row.sortOrder,
-    }))
-  );
-  append(
-    "GENEHMIGUNGEN",
-    current.approvals.map((row: any) => ({
-      ID: row.sourceId,
-      Antrag: row.request,
-      "Verantwortlich-ID": row.contactSourceId ?? "",
-      Verantwortlich: row.contactName,
-      Status: row.status,
-      Bemerkung: row.note,
-      Reihenfolge: row.sortOrder,
-    }))
-  );
-  append(
+  appendActive(
     "KUCHEN",
     current.cakes.map((row: any) => ({
       ID: row.sourceId,
@@ -4199,7 +4250,7 @@ export async function exportProjectExcel(): Promise<{
       Reihenfolge: row.sortOrder,
     }))
   );
-  append(
+  appendActive(
     "FINANZEN",
     current.finances.map((row: any) => ({
       ID: row.sourceId,
@@ -4210,6 +4261,21 @@ export async function exportProjectExcel(): Promise<{
       Reihenfolge: row.sortOrder,
     }))
   );
+  for (const legacyName of LEGACY_HIDDEN_PROJECT_SHEETS) {
+    append(
+      legacyName,
+      [
+        {
+          Hinweis:
+            "Historisches Kompatibilitätsblatt. Aktive Einträge befinden sich im sichtbaren Blatt „Vorbereitung“.",
+        },
+      ]
+    );
+    const index = workbook.SheetNames.indexOf(legacyName);
+    const book = (workbook.Workbook ??= { Sheets: [] });
+    book.Sheets ??= [];
+    book.Sheets[index] = { ...(book.Sheets[index] ?? {}), Hidden: 1 };
+  }
   return {
     buffer: XLSX.write(workbook, {
       type: "buffer",
@@ -4217,7 +4283,7 @@ export async function exportProjectExcel(): Promise<{
       compression: true,
     }),
     exportedAt,
-    eventName: snapshot.eventName,
+    eventName: current.metadata.eventName,
   };
 }
 
@@ -4229,6 +4295,13 @@ export async function exportBackupExcel() {
     type: "buffer",
     cellStyles: true,
   });
+  for (const { id: area, sheetName } of ACTIVE_EXCEL_IMPORT_AREAS) {
+    const index = workbook.SheetNames.indexOf(sheetName);
+    if (index < 0) continue;
+    workbook.SheetNames[index] = area;
+    workbook.Sheets[area] = workbook.Sheets[sheetName];
+    delete workbook.Sheets[sheetName];
+  }
   workbook.SheetNames[0] = "SICHERUNG_INFO";
   delete workbook.Sheets.PROJEKT_INFO;
   const sheet = XLSX.utils.json_to_sheet([

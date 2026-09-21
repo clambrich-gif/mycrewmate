@@ -124,18 +124,18 @@ describe("modularer Ansprechpartner-Excel-Import", () => {
   it("verwirft scope-fremde technische IDs bei Ansprechpartnern, Helfern, Schichten und Fachlisten", () => {
     const examples: Array<{
       area:
+        | "ORTE"
         | "ANSPRECHPARTNER"
         | "HELFER"
         | "EINSATZPLAN"
         | "VORBEREITUNG"
         | "NACHBEREITUNG"
         | "MATERIAL"
-        | "MARKETING"
-        | "GENEHMIGUNGEN"
         | "KUCHEN"
         | "FINANZEN";
       row: Record<string, unknown>;
     }> = [
+      { area: "ORTE", row: { ID: 999, Ortsname: "Fremder Ort" } },
       { area: "ANSPRECHPARTNER", row: { ID: 999, Name: "Fremder Kontakt" } },
       { area: "HELFER", row: { ID: 999, Name: "Fremder Helfer" } },
       {
@@ -152,8 +152,6 @@ describe("modularer Ansprechpartner-Excel-Import", () => {
       { area: "VORBEREITUNG", row: { ID: 999, Aufgabe: "Fremde Vorbereitung" } },
       { area: "NACHBEREITUNG", row: { ID: 999, Aufgabe: "Fremde Nachbereitung" } },
       { area: "MATERIAL", row: { ID: 999, Artikel: "Fremdes Material" } },
-      { area: "MARKETING", row: { ID: 999, Maßnahme: "Fremdes Marketing" } },
-      { area: "GENEHMIGUNGEN", row: { ID: 999, Antrag: "Fremder Antrag" } },
       { area: "KUCHEN", row: { ID: 999, Spender: "Fremd", Kuchen: "Kuchen" } },
       { area: "FINANZEN", row: { ID: 999, Kategorie: "Fremde Finanzen" } },
     ];

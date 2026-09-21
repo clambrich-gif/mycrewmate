@@ -778,8 +778,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
 
   it("zeigt beim zentralen Excelimport die isolierte Prüfung eines ausgewählten Bereichs", () => {
     const moduleImport = source("client/src/components/SaveLoadModal.tsx");
+    const areas = source("shared/excel-import-areas.ts");
 
-    expect(moduleImport).toContain("Vollständige Excel-Prüfung:");
+    expect(moduleImport).toContain("Bereichsprüfung:");
     expect(moduleImport).toContain("excelPreview.data?.rowsChecked");
     expect(moduleImport).toContain(
       "previewBinding: excelPreview.data.previewBinding"
@@ -787,8 +788,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(moduleImport).toContain("Isolierter Import:");
     expect(moduleImport).toContain("excelPreview.data?.areaName");
     expect(moduleImport).toContain("area: excelFile.area");
-    expect(moduleImport).toContain("ANSPRECHPARTNER");
-    expect(moduleImport).toContain("NACHBEREITUNG");
+    expect(moduleImport).toContain("ACTIVE_EXCEL_IMPORT_AREAS");
+    expect(areas).toContain('id: "ANSPRECHPARTNER"');
+    expect(areas).toContain('id: "NACHBEREITUNG"');
   });
 
   it("zeigt keine überholten allgemeinen Kennzahlenkarten mehr im Dashboard", () => {
@@ -1609,6 +1611,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
   it("zentralisiert Speichern, Laden und die isolierte Bereichsauswahl in Dialogen der Seitenleiste", () => {
     const controls = source("client/src/components/SaveLoadModal.tsx");
     const layout = source("client/src/components/Layout.tsx");
+    const areas = source("shared/excel-import-areas.ts");
 
     expect(controls).toContain("JSON-Speicherstand herunterladen");
     expect(controls).toContain("Komplette Excel-Projektübersicht exportieren");
@@ -1620,16 +1623,18 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(controls).not.toContain("Checkbox");
     expect(controls).toContain("selectedImportArea");
     expect(controls).not.toContain("selectedImportAreas");
-    expect(controls).toContain("ANSPRECHPARTNER");
-    expect(controls).toContain("HELFER");
-    expect(controls).toContain("EINSATZPLAN");
-    expect(controls).toContain("VORBEREITUNG");
-    expect(controls).toContain("NACHBEREITUNG");
-    expect(controls).toContain("MATERIAL");
-    expect(controls).toContain("KUCHEN");
-    expect(controls).toContain("FINANZEN");
-    expect(controls).not.toContain("MARKETING");
-    expect(controls).not.toContain("GENEHMIGUNGEN");
+    expect(controls).toContain("ACTIVE_EXCEL_IMPORT_AREAS");
+    expect(areas).toContain('id: "ORTE"');
+    expect(areas).toContain('id: "ANSPRECHPARTNER"');
+    expect(areas).toContain('id: "HELFER"');
+    expect(areas).toContain('id: "EINSATZPLAN"');
+    expect(areas).toContain('id: "VORBEREITUNG"');
+    expect(areas).toContain('id: "NACHBEREITUNG"');
+    expect(areas).toContain('id: "MATERIAL"');
+    expect(areas).toContain('id: "KUCHEN"');
+    expect(areas).toContain('id: "FINANZEN"');
+    expect(areas).not.toContain('id: "MARKETING"');
+    expect(areas).not.toContain('id: "GENEHMIGUNGEN"');
     expect(controls).toContain("trpc.excel.previewModule.useMutation");
     expect(controls).toContain("trpc.excel.applyModule.useMutation");
     expect(layout).toContain("LazySaveLoadControls");
