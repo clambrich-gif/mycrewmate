@@ -21,8 +21,19 @@ import {
 } from "@/components/ui/select";
 import { downloadBase64File } from "@/lib/download";
 import { trpc } from "@/lib/trpc";
-import { FileDown, LoaderCircle, Pencil, Plus, Printer, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
-import { type FormEvent, useMemo, useState } from "react";
+import {
+  CheckSquare,
+  FileDown,
+  Filter,
+  LoaderCircle,
+  Pencil,
+  Plus,
+  Printer,
+  RefreshCw,
+  ShieldCheck,
+  Trash2,
+} from "lucide-react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 type FormState = {
@@ -40,10 +51,20 @@ const EMPTY_FORM: FormState = {
   eventIds: [],
   currentAdminPassword: "",
 };
+const ALL_YEARS = "all-years";
+const ALL_EVENTS = "all-events";
 
 type ContactChoice = {
   id: number;
   name: string;
+};
+
+type AccessSummary = {
+  id: number;
+  contactId: number | null;
+  contactName: string | null;
+  label: string;
+  eventIds: number[];
 };
 
 function normalizedContactName(name: string) {
@@ -63,7 +84,9 @@ function uniqueContactChoices<T extends ContactChoice>(
       choicesByName.set(normalizedName, contact);
     }
   }
-  return Array.from(choicesByName.values());
+  return Array.from(choicesByName.values()).sort((left, right) =>
+    left.name.localeCompare(right.name, "de")
+  );
 }
 
 export function PlanningTeamAccessManager() {
@@ -72,6 +95,10 @@ export function PlanningTeamAccessManager() {
   const availableContacts = trpc.planningTeamAccesses.availableContacts.useQuery();
   const availableEvents = trpc.planningTeamAccesses.availableEvents.useQuery();
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [filterYear, setFilterYear] = useState(ALL_YEARS);
+  const [filterEventId, setFilterEventId] = useState(ALL_EVENTS);
+  const [printDialogOpen, setPrintDialogOpen] = useState(false);
+  const [selectedPrintAccessIds, setSelectedPrintAccessIds] = useState<number[]>([]);
   const [deleteTarget, setDeleteTarget] = useState<{
     id: number;
     label: string;
@@ -87,6 +114,34 @@ export function PlanningTeamAccessManager() {
     () => new Map((availableEvents.data ?? []).map(event => [event.id, event])),
     [availableEvents.data]
   );
+  const years = useMemo(
+    () =>
+      Array.from(new Set((availableEvents.data ?? []).map(event => event.year))).sort(
+        (left, right) => right - left
+      ),
+    [availableEvents.data]
+  );
+  const filteredEventChoices = useMemo(
+    () =>
+      (availableEvents.data ?? []).filter(
+        event => filterYear === ALL_YEARS || String(event.year) === filterYear
+      ),
+    [availableEvents.data, filterYear]
+  );
+  const filteredAccesses = useMemo(() => {
+    return (accesses.data ?? []).filter(access => {
+      if (!access.contactId || !access.contactName) return false;
+      if (filterEventId !== ALL_EVENTS) {
+        return access.eventIds.includes(Number(filterEventId));
+      }
+      if (filterYear !== ALL_YEARS) {
+        return access.eventIds.some(
+          eventId => String(eventById.get(eventId)?.year) === filterYear
+        );
+      }
+      return true;
+    });
+  }, [accesses.data, eventById, filterEventId, filterYear]);
   const selectedEvents = form.eventIds
     .map(eventId => eventById.get(eventId))
     .filter((event): event is NonNullable<typeof event> => Boolean(event));
@@ -102,10 +157,23 @@ export function PlanningTeamAccessManager() {
     (form.id !== null || form.contactId !== null) &&
     form.eventIds.length > 0 &&
     Boolean(form.currentAdminPassword);
+  const allPrintTargetsSelected =
+    filteredAccesses.length > 0 &&
+    filteredAccesses.every(access => selectedPrintAccessIds.includes(access.id));
+
+  useEffect(() => {
+    if (
+      filterEventId !== ALL_EVENTS &&
+      !filteredEventChoices.some(event => event.id === Number(filterEventId))
+    ) {
+      setFilterEventId(ALL_EVENTS);
+    }
+  }, [filterEventId, filteredEventChoices]);
 
   const invalidate = async () => {
     await Promise.all([
       utils.planningTeamAccesses.list.invalidate(),
+      utils.planningTeamAccesses.availableContacts.invalidate(),
       utils.auth.passwordStatus.invalidate(),
     ]);
   };
@@ -149,7 +217,8 @@ export function PlanningTeamAccessManager() {
   const accessSheets = trpc.planningTeamAccesses.accessSheets.useMutation({
     onSuccess: result => {
       downloadBase64File(result.base64, result.mimeType, result.filename);
-      toast.success("Zugangsblätter ohne Passwörter werden heruntergeladen");
+      setPrintDialogOpen(false);
+      toast.success("Ausgewählte Zugangsblätter ohne Passwörter werden heruntergeladen");
     },
     onError: error => toast.error(error.message),
   });
@@ -162,7 +231,6 @@ export function PlanningTeamAccessManager() {
       currentAdminPassword: deletePassword,
     });
   };
-
   const submitReset = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!resetTarget || !resetPassword || resetAndPrint.isPending) return;
@@ -170,6 +238,11 @@ export function PlanningTeamAccessManager() {
       id: resetTarget.id,
       currentAdminPassword: resetPassword,
     });
+  };
+  const submitPrintSelection = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selectedPrintAccessIds.length || accessSheets.isPending) return;
+    accessSheets.mutate({ accessIds: selectedPrintAccessIds });
   };
 
   const save = () => {
@@ -182,15 +255,11 @@ export function PlanningTeamAccessManager() {
     };
     if (form.id === null) {
       if (form.contactId === null) return;
-      createAccess.mutate({
-        ...input,
-        contactId: form.contactId,
-      });
+      createAccess.mutate({ ...input, contactId: form.contactId });
     } else {
       updateAccess.mutate({ ...input, id: form.id });
     }
   };
-
   const toggleEvent = (eventId: number, checked: boolean) => {
     setForm(current => ({
       ...current,
@@ -199,8 +268,18 @@ export function PlanningTeamAccessManager() {
         : current.eventIds.filter(id => id !== eventId),
     }));
   };
-
-  const editAccess = (access: NonNullable<typeof accesses.data>[number]) => {
+  const togglePrintAccess = (accessId: number, checked: boolean) => {
+    setSelectedPrintAccessIds(current =>
+      checked
+        ? Array.from(new Set([...current, accessId]))
+        : current.filter(id => id !== accessId)
+    );
+  };
+  const openPrintSelection = () => {
+    setSelectedPrintAccessIds(filteredAccesses.map(access => access.id));
+    setPrintDialogOpen(true);
+  };
+  const editAccess = (access: AccessSummary) => {
     setForm({
       id: access.id,
       contactId: access.contactId,
@@ -209,7 +288,13 @@ export function PlanningTeamAccessManager() {
       currentAdminPassword: "",
     });
   };
-
+  const formatEvents = (access: AccessSummary) =>
+    access.eventIds
+      .map(eventId => {
+        const event = eventById.get(eventId);
+        return event ? `${event.year} · ${event.name}` : `Event #${eventId}`;
+      })
+      .join(" · ");
   const busy =
     createAccess.isPending || updateAccess.isPending || resetAndPrint.isPending;
 
@@ -229,19 +314,81 @@ export function PlanningTeamAccessManager() {
       <CardContent className="space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
           <p className="max-w-2xl text-xs text-slate-600">
-            Der reguläre Nachdruck enthält aus Sicherheitsgründen keine Zugangscodes. Für einen neuen Code bitte den Zugang gezielt zurücksetzen.
+            Der reguläre Nachdruck enthält aus Sicherheitsgründen keine Zugangscodes.
+            Für einen neuen Code bitte den Zugang gezielt zurücksetzen.
           </p>
           <Button
             type="button"
             variant="outline"
             className="shrink-0 border-blue-200 bg-white text-blue-800 hover:bg-blue-50"
-            disabled={accessSheets.isPending || (accesses.data ?? []).filter(access => access.contactId && access.contactName).length === 0}
-            onClick={() => accessSheets.mutate()}
+            disabled={filteredAccesses.length === 0}
+            onClick={openPrintSelection}
           >
-            {accessSheets.isPending ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2 h-4 w-4" />}
+            <Printer className="mr-2 h-4 w-4" />
             Zugangsblätter drucken (PDF)
           </Button>
         </div>
+
+        <div className="rounded-lg border border-slate-200 bg-white p-3">
+          <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-800">
+            <Filter className="h-4 w-4 text-blue-700" />
+            Sortieren &amp; Filtern
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="planning-access-filter-year">Jahr</Label>
+              <Select
+                value={filterYear}
+                onValueChange={value => {
+                  setFilterYear(value);
+                  setFilterEventId(ALL_EVENTS);
+                }}
+              >
+                <SelectTrigger id="planning-access-filter-year" className="bg-white">
+                  <SelectValue placeholder="Alle Jahre" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_YEARS}>Alle Jahre</SelectItem>
+                  {years.map(year => (
+                    <SelectItem key={year} value={String(year)}>
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="planning-access-filter-event">Veranstaltung</Label>
+              <Select
+                value={filterEventId}
+                onValueChange={value => {
+                  setFilterEventId(value);
+                  if (value !== ALL_EVENTS) {
+                    const selected = eventById.get(Number(value));
+                    if (selected) setFilterYear(String(selected.year));
+                  }
+                }}
+              >
+                <SelectTrigger id="planning-access-filter-event" className="bg-white">
+                  <SelectValue placeholder="Alle Veranstaltungen" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_EVENTS}>Alle Veranstaltungen</SelectItem>
+                  {filteredEventChoices.map(event => (
+                    <SelectItem key={event.id} value={String(event.id)}>
+                      {event.year} · {event.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <p className="mt-3 text-xs text-slate-600">
+            {filteredAccesses.length} Ansprechpartnerzugang
+            {filteredAccesses.length === 1 ? "" : "e"} sichtbar
+          </p>
+        </div>
+
         <div className="overflow-hidden rounded-lg border border-slate-200">
           <div className="border-b bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
             Vorhandene Zugänge
@@ -250,13 +397,13 @@ export function PlanningTeamAccessManager() {
             <div className="flex items-center gap-2 px-3 py-4 text-sm text-muted-foreground">
               <LoaderCircle className="h-4 w-4 animate-spin" /> Zugänge werden geladen …
             </div>
-          ) : (accesses.data?.length ?? 0) === 0 ? (
+          ) : filteredAccesses.length === 0 ? (
             <p className="px-3 py-4 text-sm text-muted-foreground">
-              Noch kein Planungsteam-Zugang angelegt.
+              Für die gewählte Filterkombination sind keine Ansprechpartnerzugänge vorhanden.
             </p>
           ) : (
             <ul className="divide-y">
-              {accesses.data?.map(access => (
+              {filteredAccesses.map(access => (
                 <li key={access.id} className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
@@ -267,20 +414,9 @@ export function PlanningTeamAccessManager() {
                         Passwort aktiv
                       </Badge>
                     </div>
-                    <p className="mt-0.5 text-xs text-slate-500">
-                      {access.contactName
-                        ? "Ansprechpartner-Zugang"
-                        : "Übernommener Zugang ohne Ansprechpartner-Verknüpfung"}
-                    </p>
+                    <p className="mt-0.5 text-xs text-slate-500">Ansprechpartner-Zugang</p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {access.eventIds.length === 0
-                        ? "Keine Freigaben"
-                        : access.eventIds
-                            .map(eventId => {
-                              const event = eventById.get(eventId);
-                              return event ? `${event.year} · ${event.name}` : `Event #${eventId}`;
-                            })
-                            .join(" · ")}
+                      {formatEvents(access) || "Keine Freigaben"}
                     </p>
                   </div>
                   <div className="flex shrink-0 flex-wrap gap-2">
@@ -345,9 +481,7 @@ export function PlanningTeamAccessManager() {
                     setForm(current => ({ ...current, contactId: null }));
                     return;
                   }
-                  const contact = contactChoices.find(
-                    item => item.id === Number(value)
-                  );
+                  const contact = contactChoices.find(item => item.id === Number(value));
                   if (!contact) return;
                   setForm(current => ({
                     ...current,
@@ -426,6 +560,63 @@ export function PlanningTeamAccessManager() {
         </div>
       </CardContent>
 
+      <Dialog open={printDialogOpen} onOpenChange={setPrintDialogOpen}>
+        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white sm:max-w-lg">
+          <form className="space-y-4" onSubmit={submitPrintSelection}>
+            <DialogHeader>
+              <DialogTitle>Zugangsblätter drucken – Personenauswahl</DialogTitle>
+              <DialogDescription>
+                Wählen Sie die Ansprechpartner aus, deren reguläres Zugangsblatt ohne Klartextpasswort gedruckt werden soll.
+              </DialogDescription>
+            </DialogHeader>
+            <label className="flex cursor-pointer items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-950">
+              <Checkbox
+                checked={allPrintTargetsSelected}
+                onCheckedChange={checked =>
+                  setSelectedPrintAccessIds(
+                    checked === true ? filteredAccesses.map(access => access.id) : []
+                  )
+                }
+              />
+              <CheckSquare className="h-4 w-4 text-blue-700" />
+              Alle auswählen ({filteredAccesses.length})
+            </label>
+            <div className="max-h-72 divide-y overflow-y-auto rounded-md border border-slate-200">
+              {filteredAccesses.map(access => (
+                <label
+                  key={access.id}
+                  className="flex cursor-pointer items-start gap-3 px-3 py-3 text-sm hover:bg-slate-50"
+                >
+                  <Checkbox
+                    className="mt-0.5"
+                    checked={selectedPrintAccessIds.includes(access.id)}
+                    onCheckedChange={checked => togglePrintAccess(access.id, checked === true)}
+                  />
+                  <span className="min-w-0">
+                    <span className="block font-semibold text-slate-900">
+                      {access.contactName ?? access.label}
+                    </span>
+                    <span className="mt-0.5 block text-xs text-slate-600">
+                      {formatEvents(access)}
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            <DialogFooter className="flex flex-row flex-wrap justify-end gap-3 sm:space-x-0">
+              <Button type="button" variant="outline" onClick={() => setPrintDialogOpen(false)} disabled={accessSheets.isPending}>
+                Abbrechen
+              </Button>
+              <Button type="submit" disabled={accessSheets.isPending || selectedPrintAccessIds.length === 0}>
+                {accessSheets.isPending ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Printer className="mr-2 h-4 w-4" />}
+                {selectedPrintAccessIds.length} Zugangsblatt
+                {selectedPrintAccessIds.length === 1 ? "" : "blätter"} drucken
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       <Dialog
         open={Boolean(deleteTarget)}
         onOpenChange={open => {
@@ -478,6 +669,7 @@ export function PlanningTeamAccessManager() {
           </form>
         </DialogContent>
       </Dialog>
+
       <Dialog
         open={Boolean(resetTarget)}
         onOpenChange={open => {

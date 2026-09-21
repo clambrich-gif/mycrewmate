@@ -1753,11 +1753,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
       "w-full bg-blue-600 px-4 text-base font-medium text-white"
     );
 
-    expect(contacts).toContain('className="hidden border-blue-200 bg-slate-50/80 shadow-sm lg:block"');
-    expect(contacts).toContain("Neuanlage – Name des Ansprechpartners");
-    expect(contacts).toContain("Neuanlage – Rufnummer");
-    expect(contacts).toContain('className="grid gap-2 sm:grid-cols-[1fr_220px_220px_auto] lg:hidden"');
-    expect(contacts).toContain("Passwort / Zugangscode (optional)");
+    expect(contacts).toContain("Neuanlage");
+    expect(contacts).toContain('className="flex flex-col gap-3 sm:flex-row sm:items-end"');
+    expect(contacts).toContain("Name des Ansprechpartners");
+    expect(contacts).toContain("Rufnummer");
+    expect(contacts).toContain("sm:min-w-[280px]");
+    expect(contacts).toContain("Hinzufügen & Zugangsblatt drucken");
+    expect(contacts).not.toContain("Passwort / Zugangscode (optional)");
   });
 
   it("verwendet Mint für Übernahmen und Rose für Resets", () => {
@@ -2646,14 +2648,28 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(manager).toContain("Zugangsblätter drucken (PDF)");
     expect(manager).toContain("createWithAccessSheet");
     expect(manager).toContain("resetAndPrint");
+    expect(manager).toContain("Sortieren &amp; Filtern");
+    expect(manager).toContain("planning-access-filter-year");
+    expect(manager).toContain("planning-access-filter-event");
+    expect(manager).toContain("filteredAccesses");
+    expect(manager).toContain("Zugangsblätter drucken – Personenauswahl");
+    expect(manager).toContain("Alle auswählen");
+    expect(manager).toContain("selectedPrintAccessIds");
+    expect(manager).toContain("accessSheets.mutate({ accessIds: selectedPrintAccessIds })");
     expect(manager).toContain("Passwort zurücksetzen &amp; Zugangsblatt drucken");
     expect(manager).toContain("Der reguläre Nachdruck enthält aus Sicherheitsgründen keine Zugangscodes");
     expect(manager).toContain("Der Klartextcode erscheint nur im direkt heruntergeladenen PDF");
     expect(manager).toContain("downloadBase64File(result.base64, result.mimeType, result.filename)");
     expect(manager).not.toContain("planning-access-password-confirmation");
 
-    expect(contacts).toContain("Passwort / Zugangscode (optional)");
-    expect(contacts).toContain("Neues Passwort (optional)");
+    expect(contacts).toContain("Neuanlage");
+    expect(contacts).toContain("Name des Ansprechpartners");
+    expect(contacts).toContain("Hinzufügen & Zugangsblatt drucken");
+    expect(contacts).toContain("createWithAccessSheet");
+    expect(contacts).toContain("generateAccessSheet");
+    expect(contacts).toContain("Zugangsdaten / Einmalpasswort generieren &amp; drucken");
+    expect(contacts).not.toContain("Passwort / Zugangscode (optional)");
+    expect(contacts).not.toContain("Neues Passwort (optional)");
 
     expect(layout).toContain("Wer meldet sich als Administrator an?");
     expect(layout).toContain("Schnellauswahl Ansprechpartner");

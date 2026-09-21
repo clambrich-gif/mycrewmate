@@ -498,6 +498,16 @@ describe("Event-based Access Control für Planungsteam", () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       },
+      {
+        id: 9,
+        contactId: 3,
+        contactName: "Anne Veling",
+        label: "Anne Veling",
+        eventIds: [10],
+        mustChangePassword: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
     ]);
     vi.spyOn(db, "listEventYears").mockResolvedValue([
       { year: 2027, label: "2027" },
@@ -525,7 +535,9 @@ describe("Event-based Access Control für Planungsteam", () => {
       res: { setHeader: vi.fn(), clearCookie: vi.fn() } as any,
     });
 
-    const result = await adminCaller.planningTeamAccesses.accessSheets();
+    const result = await adminCaller.planningTeamAccesses.accessSheets({
+      accessIds: [8],
+    });
     expect(accessSheetSpy).toHaveBeenCalledWith([
       expect.objectContaining({
         contactName: "Christian Lambrich",
@@ -533,7 +545,155 @@ describe("Event-based Access Control für Planungsteam", () => {
     ]);
     const renderedSheet = accessSheetSpy.mock.calls[0][0][0];
     expect(renderedSheet.initialPassword).toBeUndefined();
+    expect(accessSheetSpy.mock.calls[0][0]).toHaveLength(1);
+    expect(renderedSheet.contactName).toBe("Christian Lambrich");
     expect(result.base64).toBe(Buffer.from("%PDF-test").toString("base64"));
+  });
+
+  it("legt Ansprechpartner mit einem sicheren Einmal-Zugangsblatt an", async () => {
+    vi.spyOn(db, "getEvent").mockResolvedValue({
+      id: 10,
+      year: 2027,
+      name: "MyEifelRide",
+    } as any);
+    vi.spyOn(db, "withPlanningWriteLock").mockImplementation(async callback =>
+      callback()
+    );
+    vi.spyOn(db, "upsertContactByName").mockResolvedValue({
+      id: 55,
+      created: true,
+      helperId: 55,
+      helperCreated: true,
+    });
+    vi.spyOn(db, "listContacts").mockResolvedValue([
+      { id: 55, name: "Anne Veling", phone: "0170 123456" },
+    ] as any);
+    vi.spyOn(db, "listPlanningTeamAccesses").mockResolvedValue([]);
+    vi.spyOn(db, "listEventYears").mockResolvedValue([
+      { year: 2027, label: "2027" },
+    ] as any);
+    vi.spyOn(db, "listEvents").mockResolvedValue([
+      { id: 10, year: 2027, name: "MyEifelRide" },
+    ] as any);
+    const createAccessSpy = vi.spyOn(db, "createPlanningTeamAccess").mockResolvedValue({
+      id: 19,
+      label: "Anne Veling",
+      eventIds: [10],
+    } as any);
+    const accessSheetSpy = vi
+      .spyOn(pdf, "createPlanningTeamAccessSheetsPdf")
+      .mockResolvedValue(Buffer.from("%PDF-contact"));
+
+    const adminCaller = appRouter.createCaller({
+      user: {
+        id: 1,
+        openId: ADMIN_PASSWORD_OPEN_ID,
+        role: "admin",
+        name: "Admin",
+        email: null,
+        sessionVersion: 1,
+        avatarUrl: null,
+        accountBlocked: false,
+        lastSignedIn: new Date(),
+      },
+      req: mockReq({ "x-event-year": "2027", "x-event-id": "10" }),
+      res: { setHeader: vi.fn(), clearCookie: vi.fn() } as any,
+    });
+
+    const result = await adminCaller.contacts.createWithAccessSheet({
+      name: "Anne Veling",
+      phone: "0170 123456",
+    });
+
+    expect(createAccessSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contactId: 55,
+        eventIds: [10],
+        mustChangePassword: true,
+        passwordHash: expect.stringMatching(/^\$2/),
+      })
+    );
+    expect(accessSheetSpy).toHaveBeenCalledWith([
+      expect.objectContaining({
+        contactName: "Anne Veling",
+        initialPassword: expect.stringMatching(/^MCM-/),
+      }),
+    ]);
+    expect(result).toEqual(
+      expect.objectContaining({
+        id: 55,
+        accessId: 19,
+        filename: "Zugangsblatt_Anne_Veling.pdf",
+      })
+    );
+  });
+
+  it("erneuert für importierte Ansprechpartner den Zugang und erhält ihre bisherigen Eventfreigaben", async () => {
+    vi.spyOn(db, "getEvent").mockResolvedValue({
+      id: 10,
+      year: 2027,
+      name: "MyEifelRide",
+    } as any);
+    vi.spyOn(db, "withPlanningWriteLock").mockImplementation(async callback =>
+      callback()
+    );
+    vi.spyOn(db, "listContacts").mockResolvedValue([
+      { id: 55, name: "Anne Veling", phone: "0170 123456" },
+    ] as any);
+    vi.spyOn(db, "listPlanningTeamAccesses").mockResolvedValue([
+      {
+        id: 19,
+        contactId: 55,
+        contactName: "Anne Veling",
+        label: "Anne Veling",
+        eventIds: [10, 11],
+        mustChangePassword: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
+    vi.spyOn(db, "listEventYears").mockResolvedValue([
+      { year: 2027, label: "2027" },
+    ] as any);
+    vi.spyOn(db, "listEvents").mockResolvedValue([
+      { id: 10, year: 2027, name: "MyEifelRide" },
+      { id: 11, year: 2027, name: "Sommerfest" },
+    ] as any);
+    const updateAccessSpy = vi.spyOn(db, "updatePlanningTeamAccess").mockResolvedValue({
+      id: 19,
+      label: "Anne Veling",
+      eventIds: [10, 11],
+    } as any);
+    vi.spyOn(pdf, "createPlanningTeamAccessSheetsPdf").mockResolvedValue(
+      Buffer.from("%PDF-reset")
+    );
+
+    const adminCaller = appRouter.createCaller({
+      user: {
+        id: 1,
+        openId: ADMIN_PASSWORD_OPEN_ID,
+        role: "admin",
+        name: "Admin",
+        email: null,
+        sessionVersion: 1,
+        avatarUrl: null,
+        accountBlocked: false,
+        lastSignedIn: new Date(),
+      },
+      req: mockReq({ "x-event-year": "2027", "x-event-id": "10" }),
+      res: { setHeader: vi.fn(), clearCookie: vi.fn() } as any,
+    });
+
+    await adminCaller.contacts.generateAccessSheet({ id: 55 });
+
+    expect(updateAccessSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 19,
+        eventIds: [10, 11],
+        mustChangePassword: true,
+        passwordHash: expect.stringMatching(/^\$2/),
+      })
+    );
   });
 
   it("erkennt Einmalpasswörter beim Login und erzwingt das Setzen eines neuen Passworts", async () => {

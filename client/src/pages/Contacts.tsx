@@ -1,16 +1,17 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
+import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 import { PageTitle } from "@/components/PageTitle";
+import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
+import { downloadBase64File } from "@/lib/download";
 import { trpc } from "@/lib/trpc";
-import { Pencil, Phone, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { FileDown, KeyRound, Pencil, Phone, Plus, Trash2 } from "lucide-react";
+import { type FormEvent, useState } from "react";
 import { toast } from "sonner";
-import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
-import { ResetAreaButton } from "@/components/ResetAreaButton";
-import { ModuleExcelImportButton } from "@/components/ModuleExcelImportButton";
 
 export default function Contacts() {
   const utils = trpc.useUtils();
@@ -18,11 +19,9 @@ export default function Contacts() {
   const { data: contacts = [], isLoading } = trpc.contacts.list.useQuery();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [password, setPassword] = useState("");
   const [editId, setEditId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
-  const [editPassword, setEditPassword] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{
     id: number;
     name: string;
@@ -38,13 +37,21 @@ export default function Contacts() {
     utils.dashboard.stats.invalidate();
     utils.pdf.settings.invalidate();
   };
-  const create = trpc.contacts.create.useMutation({
-    onSuccess: () => {
+  const createWithAccessSheet = trpc.contacts.createWithAccessSheet.useMutation({
+    onSuccess: result => {
+      downloadBase64File(result.base64, result.mimeType, result.filename);
       invalidate();
       setName("");
       setPhone("");
-      setPassword("");
-      toast.success("Ansprechpartner hinzugefügt");
+      toast.success("Ansprechpartner angelegt; Einmal-Zugangsblatt wird heruntergeladen");
+    },
+    onError: error => toast.error(error.message),
+  });
+  const generateAccessSheet = trpc.contacts.generateAccessSheet.useMutation({
+    onSuccess: result => {
+      downloadBase64File(result.base64, result.mimeType, result.filename);
+      invalidate();
+      toast.success("Neues Einmalpasswort erzeugt; Zugangsblatt wird heruntergeladen");
     },
     onError: error => toast.error(error.message),
   });
@@ -64,128 +71,112 @@ export default function Contacts() {
     onSuccess: () => {
       invalidate();
       setEditId(null);
-      setEditPassword("");
-      toast.success("Aktualisiert");
+      toast.success("Ansprechpartner aktualisiert");
     },
     onError: error => toast.error(error.message),
   });
 
   const addContact = () => {
-    if (!name.trim()) return;
-    create.mutate({
+    if (!name.trim() || createWithAccessSheet.isPending) return;
+    createWithAccessSheet.mutate({
       name: name.trim(),
       phone: phone.trim() || undefined,
-      ...(password ? { password } : {}),
+    });
+  };
+  const submitNewContact = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    addContact();
+  };
+  const saveEdit = (contactId: number) => {
+    if (!editName.trim() || update.isPending) return;
+    update.mutate({
+      id: contactId,
+      name: editName.trim(),
+      phone: editPhone.trim() || null,
     });
   };
 
   return (
-    <div className="space-y-6 max-w-3xl">
-      <div className="flex items-end justify-between gap-3 flex-wrap">
+    <div className="max-w-5xl space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <PageTitle icon="contacts">Ansprechpartner</PageTitle>
           <p className="text-muted-foreground">
-            Name und Rufnummer werden den Helfern zugeordnet und auf deren
-            Aufgaben-PDF ausgegeben.
+            Ansprechpartner können einen persönlichen Planungsteam-Zugang mit
+            Einmal-Zugangsblatt erhalten.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <ModuleExcelImportButton
-            area="ANSPRECHPARTNER"
-            label="Ansprechpartner"
-          />
+          <ModuleExcelImportButton area="ANSPRECHPARTNER" label="Ansprechpartner" />
           <ResetAreaButton area="contacts" label="Ansprechpartner" />
         </div>
       </div>
-      <div className="grid gap-2 sm:grid-cols-[1fr_220px_220px_auto] lg:hidden">
-        <Input
-          placeholder="Name des Ansprechpartners"
-          value={name}
-          onChange={event => setName(event.target.value)}
-          onKeyDown={event => event.key === "Enter" && addContact()}
-        />
-        <Input
-          type="tel"
-          placeholder="Rufnummer"
-          value={phone}
-          onChange={event => setPhone(event.target.value)}
-          onKeyDown={event => event.key === "Enter" && addContact()}
-        />
-        <Input
-          type="password"
-          autoComplete="new-password"
-          placeholder="Passwort / Zugangscode (optional)"
-          value={password}
-          onChange={event => setPassword(event.target.value)}
-          onKeyDown={event => event.key === "Enter" && addContact()}
-        />
-        <Button
-          type="button"
-          variant="outline"
-          className={CREATION_ACTION_BUTTON_CLASS}
-          onClick={addContact}
-          disabled={create.isPending || !name.trim()}
-        >
-          <Plus className="h-4 w-4" />
-          Hinzufügen
-        </Button>
-      </div>
-      <Card className="hidden border-blue-200 bg-slate-50/80 shadow-sm lg:block">
-        <CardContent className="grid items-end gap-3 p-4 lg:grid-cols-[minmax(0,1fr)_220px_260px_auto]">
-          <div className="space-y-1.5">
-            <label htmlFor="new-contact-name" className="text-sm font-semibold text-slate-800">
-              Neuanlage – Name des Ansprechpartners
-            </label>
-            <Input
-              id="new-contact-name"
-              placeholder="Name des neuen Ansprechpartners eingeben"
-              value={name}
-              onChange={event => setName(event.target.value)}
-              onKeyDown={event => event.key === "Enter" && addContact()}
-              className="h-11 border-slate-300 bg-white text-base shadow-sm placeholder:text-slate-600"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label htmlFor="new-contact-phone" className="text-sm font-semibold text-slate-800">
-              Neuanlage – Rufnummer
-            </label>
-            <Input
-              id="new-contact-phone"
-              type="tel"
-              placeholder="z. B. 0170 1234567"
-              value={phone}
-              onChange={event => setPhone(event.target.value)}
-              onKeyDown={event => event.key === "Enter" && addContact()}
-              className="h-11 border-slate-300 bg-white text-base shadow-sm placeholder:text-slate-600"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label htmlFor="new-contact-password" className="text-sm font-semibold text-slate-800">
-              Passwort / Zugangscode <span className="font-normal text-slate-500">(optional)</span>
-            </label>
-            <Input
-              id="new-contact-password"
-              type="password"
-              autoComplete="new-password"
-              placeholder="Mindestens 10 Zeichen"
-              value={password}
-              onChange={event => setPassword(event.target.value)}
-              onKeyDown={event => event.key === "Enter" && addContact()}
-              className="h-11 border-slate-300 bg-white text-base shadow-sm placeholder:text-slate-600"
-            />
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            className={`h-11 px-5 ${CREATION_ACTION_BUTTON_CLASS}`}
-            onClick={addContact}
-            disabled={create.isPending || !name.trim()}
-          >
-            <Plus className="h-5 w-5" />
-            {create.isPending ? "Speichert …" : "Hinzufügen"}
-          </Button>
-        </CardContent>
-      </Card>
+
+      {user?.role === "admin" && (
+        <Card className="border-blue-200 bg-slate-50/80 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base text-blue-950">Neuanlage</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form
+              className="flex flex-col gap-3 sm:flex-row sm:items-end"
+              onSubmit={submitNewContact}
+            >
+              <div className="min-w-0 flex-1 sm:min-w-[280px]">
+                <label
+                  htmlFor="new-contact-name"
+                  className="mb-1.5 block text-sm font-semibold text-slate-800"
+                >
+                  Name des Ansprechpartners
+                </label>
+                <Input
+                  id="new-contact-name"
+                  placeholder="Name des neuen Ansprechpartners eingeben"
+                  value={name}
+                  onChange={event => setName(event.target.value)}
+                  className="h-11 border-slate-300 bg-white text-base shadow-sm placeholder:text-slate-600"
+                />
+              </div>
+              <div className="min-w-0 sm:w-56">
+                <label
+                  htmlFor="new-contact-phone"
+                  className="mb-1.5 block text-sm font-semibold text-slate-800"
+                >
+                  Rufnummer
+                </label>
+                <Input
+                  id="new-contact-phone"
+                  type="tel"
+                  placeholder="z. B. 0170 1234567"
+                  value={phone}
+                  onChange={event => setPhone(event.target.value)}
+                  className="h-11 border-slate-300 bg-white text-base shadow-sm placeholder:text-slate-600"
+                />
+              </div>
+              <Button
+                type="submit"
+                variant="outline"
+                className={`h-11 shrink-0 px-5 ${CREATION_ACTION_BUTTON_CLASS}`}
+                disabled={createWithAccessSheet.isPending || !name.trim()}
+              >
+                {createWithAccessSheet.isPending ? (
+                  <FileDown className="h-5 w-5 animate-pulse" />
+                ) : (
+                  <Plus className="h-5 w-5" />
+                )}
+                {createWithAccessSheet.isPending
+                  ? "Erstellt & druckt …"
+                  : "Hinzufügen & Zugangsblatt drucken"}
+              </Button>
+            </form>
+            <p className="mt-3 text-xs text-slate-600">
+              Für die neue Person wird automatisch ein sicherer Einmalcode erzeugt.
+              Er erscheint ausschließlich auf dem sofort heruntergeladenen PDF.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="shadow-sm">
         <CardHeader>
           <CardTitle className="text-base">Liste ({contacts.length})</CardTitle>
@@ -198,15 +189,19 @@ export default function Contacts() {
               {contacts.map(contact => (
                 <li
                   key={contact.id}
-                  className="flex items-center justify-between gap-4 py-3"
+                  className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between"
                 >
                   {editId === contact.id ? (
-                    <div className="grid flex-1 gap-2 sm:grid-cols-3">
+                    <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-[minmax(240px,1fr)_220px]">
                       <Input
                         autoFocus
                         value={editName}
                         onChange={event => setEditName(event.target.value)}
-                        placeholder="Name"
+                        placeholder="Name des Ansprechpartners"
+                        onKeyDown={event => {
+                          if (event.key === "Enter") saveEdit(contact.id);
+                          if (event.key === "Escape") setEditId(null);
+                        }}
                       />
                       <Input
                         type="tel"
@@ -214,32 +209,7 @@ export default function Contacts() {
                         onChange={event => setEditPhone(event.target.value)}
                         placeholder="Rufnummer"
                         onKeyDown={event => {
-                          if (event.key === "Enter" && editName.trim()) {
-                            update.mutate({
-                              id: contact.id,
-                              name: editName.trim(),
-                              phone: editPhone.trim() || null,
-                              ...(editPassword ? { password: editPassword } : {}),
-                            });
-                          }
-                          if (event.key === "Escape") setEditId(null);
-                        }}
-                      />
-                      <Input
-                        type="password"
-                        autoComplete="new-password"
-                        value={editPassword}
-                        onChange={event => setEditPassword(event.target.value)}
-                        placeholder="Neues Passwort (optional)"
-                        onKeyDown={event => {
-                          if (event.key === "Enter" && editName.trim()) {
-                            update.mutate({
-                              id: contact.id,
-                              name: editName.trim(),
-                              phone: editPhone.trim() || null,
-                              ...(editPassword ? { password: editPassword } : {}),
-                            });
-                          }
+                          if (event.key === "Enter") saveEdit(contact.id);
                           if (event.key === "Escape") setEditId(null);
                         }}
                       />
@@ -253,36 +223,42 @@ export default function Contacts() {
                       </div>
                     </div>
                   )}
-                  <span className="flex items-center gap-1">
+                  <span className="flex flex-wrap items-center gap-1.5">
                     {editId === contact.id ? (
                       <>
                         <Button
+                          type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => {
-                            setEditId(null);
-                            setEditPassword("");
-                          }}
+                          onClick={() => setEditId(null)}
                         >
                           Abbrechen
                         </Button>
                         <Button
+                          type="button"
                           size="sm"
                           disabled={!editName.trim() || update.isPending}
-                          onClick={() =>
-                            update.mutate({
-                              id: contact.id,
-                              name: editName.trim(),
-                              phone: editPhone.trim() || null,
-                              ...(editPassword ? { password: editPassword } : {}),
-                            })
-                          }
+                          onClick={() => saveEdit(contact.id)}
                         >
                           Speichern
                         </Button>
+                        {user?.role === "admin" && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="border-amber-200 text-amber-800 hover:bg-amber-50 hover:text-amber-900"
+                            disabled={generateAccessSheet.isPending}
+                            onClick={() => generateAccessSheet.mutate({ id: contact.id })}
+                          >
+                            <KeyRound className="mr-1.5 h-3.5 w-3.5" />
+                            Zugangsdaten / Einmalpasswort generieren &amp; drucken
+                          </Button>
+                        )}
                       </>
                     ) : (
                       <Button
+                        type="button"
                         variant="ghost"
                         size="icon"
                         title="Bearbeiten"
@@ -290,7 +266,6 @@ export default function Contacts() {
                           setEditId(contact.id);
                           setEditName(contact.name);
                           setEditPhone(contact.phone ?? "");
-                          setEditPassword("");
                         }}
                       >
                         <Pencil className="h-4 w-4" />
@@ -298,6 +273,7 @@ export default function Contacts() {
                     )}
                     {user?.role === "admin" && (
                       <Button
+                        type="button"
                         variant="ghost"
                         size="icon"
                         title="Löschen"

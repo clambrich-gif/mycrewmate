@@ -553,6 +553,71 @@ async function createPlanningTeamAccessSheetsFile(
   }
   return createPlanningTeamAccessSheetsPdf(sheets);
 }
+
+/**
+ * Erstellt oder erneuert den einzelnen Zugang eines Ansprechpartners. Der
+ * Klartextcode existiert ausschließlich bis zur sofortigen PDF-Erzeugung.
+ */
+async function createContactInitialAccessSheet(input: {
+  contactId: number;
+  contactName: string;
+}) {
+  const selectedEvent = await db.getEvent();
+  if (!selectedEvent) {
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Die aktuell gewählte Veranstaltung wurde nicht gefunden",
+    });
+  }
+
+  const existingAccess = (await db.listPlanningTeamAccesses()).find(
+    access => access.contactId === input.contactId
+  );
+  const eventIds = Array.from(
+    new Set([...(existingAccess?.eventIds ?? []), selectedEvent.id])
+  );
+  const initialPassword = generatePlanningTeamAccessPassword();
+  const printableAccess: db.PlanningTeamAccessSummary = {
+    id: existingAccess?.id ?? input.contactId,
+    contactId: input.contactId,
+    contactName: input.contactName,
+    label: input.contactName,
+    eventIds,
+    mustChangePassword: true,
+    createdAt: existingAccess?.createdAt ?? new Date(),
+    updatedAt: new Date(),
+  };
+
+  // Der Druck erfolgt bewusst vor der Datenänderung. So wird nie ein unbekannter
+  // Einmalcode gespeichert, falls die PDF-Erzeugung fehlschlägt.
+  const pdf = await createPlanningTeamAccessSheetsFile(
+    [printableAccess],
+    new Map([[printableAccess.id, initialPassword]])
+  );
+  const access = existingAccess
+    ? await db.updatePlanningTeamAccess({
+        id: existingAccess.id,
+        label: input.contactName,
+        contactId: input.contactId,
+        passwordHash: await hashPassword(initialPassword),
+        mustChangePassword: true,
+        eventIds,
+      })
+    : await db.createPlanningTeamAccess({
+        label: input.contactName,
+        contactId: input.contactId,
+        passwordHash: await hashPassword(initialPassword),
+        mustChangePassword: true,
+        eventIds,
+      });
+
+  return {
+    accessId: access.id,
+    filename: `Zugangsblatt_${safeExportName(input.contactName)}.pdf`,
+    mimeType: "application/pdf",
+    base64: pdf.toString("base64"),
+  };
+}
 const resetAreaInput = z.enum([
   "contacts",
   "helpers",
@@ -1235,17 +1300,33 @@ export const appRouter = router({
           base64: pdf.toString("base64"),
         };
       }),
-    accessSheets: accountAdminProcedure.mutation(async () => {
-      const accesses = (await db.listPlanningTeamAccesses()).filter(
-        access => Boolean(access.contactId && access.contactName)
-      );
-      const pdf = await createPlanningTeamAccessSheetsFile(accesses);
-      return {
-        filename: "Zugangsblätter_Planungsteam.pdf",
-        mimeType: "application/pdf",
-        base64: pdf.toString("base64"),
-      };
-    }),
+    accessSheets: accountAdminProcedure
+      .input(
+        z.object({
+          accessIds: z.array(z.number().int().positive()).min(1).max(500),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const requestedIds = Array.from(new Set(input.accessIds));
+        const accesses = (await db.listPlanningTeamAccesses()).filter(
+          access =>
+            requestedIds.includes(access.id) &&
+            Boolean(access.contactId && access.contactName)
+        );
+        if (accesses.length !== requestedIds.length) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message:
+              "Mindestens ein ausgewählter Ansprechpartnerzugang wurde nicht gefunden",
+          });
+        }
+        const pdf = await createPlanningTeamAccessSheetsFile(accesses);
+        return {
+          filename: "Zugangsblätter_Planungsteam.pdf",
+          mimeType: "application/pdf",
+          base64: pdf.toString("base64"),
+        };
+      }),
     remove: accountAdminProcedure
       .input(
         z.object({
@@ -1470,6 +1551,35 @@ export const appRouter = router({
             : {}),
         })
       ),
+    createWithAccessSheet: adminProcedure
+      .input(
+        z.object({
+          name: z.string().trim().min(1).max(160),
+          phone: z.string().trim().max(64).optional(),
+          note: z.string().optional(),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const contactResult = await db.upsertContactByName({
+          name: input.name,
+          phone: input.phone,
+          note: input.note,
+        });
+        const contact = (await db.listContacts()).find(
+          item => item.id === contactResult.id
+        );
+        if (!contact) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Der neue Ansprechpartner wurde nicht gefunden",
+          });
+        }
+        const accessSheet = await createContactInitialAccessSheet({
+          contactId: contact.id,
+          contactName: contact.name,
+        });
+        return { ...contactResult, ...accessSheet };
+      }),
     update: protectedProcedure
       .input(
         z.object({
@@ -1486,6 +1596,21 @@ export const appRouter = router({
         return db.updateContact(id, {
           ...contact,
           ...(password ? { passwordHash: await hashPassword(password) } : {}),
+        });
+      }),
+    generateAccessSheet: adminProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        const contact = (await db.listContacts()).find(item => item.id === input.id);
+        if (!contact) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Der Ansprechpartner wurde nicht gefunden",
+          });
+        }
+        return createContactInitialAccessSheet({
+          contactId: contact.id,
+          contactName: contact.name,
         });
       }),
     remove: adminProcedure
