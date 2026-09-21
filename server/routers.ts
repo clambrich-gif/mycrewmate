@@ -443,6 +443,24 @@ async function recordOperationalActivity(
   }
 }
 
+/** Sicherheitsereignisse dürfen weder Login noch Passwortwechsel blockieren. */
+async function recordSecurityActivity(
+  actor: db.AuditActor,
+  subject: string,
+  action: db.ActivityLogAction = "updated"
+) {
+  try {
+    await db.recordActivityLog({
+      actor,
+      module: "Zugangsschutz",
+      action,
+      subject,
+    });
+  } catch (error) {
+    console.warn("[Security] Sicherheitsereignis konnte nicht protokolliert werden", error);
+  }
+}
+
 const scopedProtectedProcedure = activeSessionProcedure.use(async ({ ctx, next }) => {
   await requirePlanningTeamEventAccess(ctx.user, ctx.req);
   await requireCompletedPlanningTeamPasswordChange(ctx.user);
@@ -1089,6 +1107,16 @@ export const appRouter = router({
           role: "admin",
           lastSignedIn: new Date(),
         });
+        await recordSecurityActivity(
+          {
+            userId: 0,
+            name: input.administratorName,
+            role: "admin",
+            loginMethod: "admin-password",
+          },
+          "Administrator-Anmeldung erfolgreich",
+          "created"
+        );
         const token = await sdk.createSessionToken(ADMIN_PASSWORD_OPEN_ID, {
           name: input.administratorName,
           expiresInMs: PASSWORD_SESSION_MS,
@@ -1129,6 +1157,15 @@ export const appRouter = router({
         // Neues Passwort hashen und in der Datenbank speichern (erhöht gleichzeitig adminSessionVersion)
         const newHash = await hashPassword(input.newPassword);
         await db.setAdminPasswordHash(newHash);
+        await recordSecurityActivity(
+          {
+            userId: 0,
+            name: "Administrator",
+            role: "admin",
+            loginMethod: "admin-password",
+          },
+          "Administratorpasswort über Recovery-Key zurückgesetzt"
+        );
 
         // Admin-Benutzer aktualisieren / erstellen und direkt einloggen
         await db.upsertUser({
@@ -1158,34 +1195,26 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         await requireAdminPassword(input.currentAdminPassword, ctx);
         await db.setAdminPasswordHash(await hashPassword(input.password));
+        await recordSecurityActivity(
+          auditActor(ctx.user),
+          "Administratorpasswort neu vergeben"
+        );
         return { success: true } as const;
       }),
     unlockPlanningTeamLock: accountAdminProcedure.mutation(async ({ ctx }) => {
       await db.unlockPlanningTeamLogin();
-      try {
-        await db.recordActivityLog({
-          actor: auditActor(ctx.user),
-          module: "Zugangsschutz",
-          action: "updated",
-          subject: "Globaler Notfall-Stopp für alle Planungsteam-Zugänge aufgehoben",
-        });
-      } catch (error) {
-        console.warn("[Security] Freigabe konnte nicht protokolliert werden", error);
-      }
+      await recordSecurityActivity(
+        auditActor(ctx.user),
+        "Globaler Notfall-Stopp für alle Planungsteam-Zugänge aufgehoben"
+      );
       return { success: true } as const;
     }),
     lockPlanningTeam: accountAdminProcedure.mutation(async ({ ctx }) => {
       await db.lockPlanningTeamLogin();
-      try {
-        await db.recordActivityLog({
-          actor: auditActor(ctx.user),
-          module: "Zugangsschutz",
-          action: "updated",
-          subject: "Globaler Notfall-Stopp für alle Planungsteam-Zugänge aktiviert",
-        });
-      } catch (error) {
-        console.warn("[Security] Notfall-Stopp konnte nicht protokolliert werden", error);
-      }
+      await recordSecurityActivity(
+        auditActor(ctx.user),
+        "Globaler Notfall-Stopp für alle Planungsteam-Zugänge aktiviert"
+      );
       return { success: true } as const;
     }),
     logout: publicProcedure.mutation(async ({ ctx }) => {
@@ -1283,6 +1312,11 @@ export const appRouter = router({
           mustChangePassword: true,
           eventIds: input.eventIds,
         });
+        await recordSecurityActivity(
+          auditActor(ctx.user),
+          `Einmal-Zugang für „${access.label}“ erstellt und Zugangsblatt gedruckt`,
+          "created"
+        );
         return {
           accessId: access.id,
           filename: `Zugangsblatt_${safeExportName(access.label)}.pdf`,
@@ -1344,6 +1378,11 @@ export const appRouter = router({
           mustChangePassword: true,
           eventIds: existing.eventIds,
         });
+        await recordSecurityActivity(
+          auditActor(ctx.user),
+          `Initialcode für Planungsteam-Zugang „${updated.label}“ zurückgesetzt und Zugangsblatt gedruckt`,
+          "reset"
+        );
         return {
           accessId: updated.id,
           filename: `Zugangsblatt_${safeExportName(updated.label)}.pdf`,

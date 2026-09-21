@@ -1,67 +1,22 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
-import { GroupedChangeList } from "@/components/ChangePreview";
 import { PageTitle } from "@/components/PageTitle";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { useEventYear } from "@/contexts/YearContext";
 import { downloadBase64File, safeDownloadName } from "@/lib/download";
 import { trpc } from "@/lib/trpc";
-import {
-  ArchiveRestore,
-  FileDown,
-  FileSpreadsheet,
-  Info,
-  Loader2,
-  Trash2,
-} from "lucide-react";
-import { useState } from "react";
+import { FileDown, FileSpreadsheet, Info, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-
-const dateTime = (value: Date | string | number) =>
-  new Date(value).toLocaleString("de-DE", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+import { Link } from "wouter";
 
 export default function ExcelPage() {
   const { user } = useAuth();
   const { year } = useEventYear();
   const isAdmin = user?.role === "admin";
-  const [selectedLogId, setSelectedLogId] = useState<number | null>(null);
-  const [clearLogsOpen, setClearLogsOpen] = useState(false);
-  const utils = trpc.useUtils();
 
   const exportQuery = trpc.excel.exportFile.useQuery(undefined, {
     enabled: false,
     retry: false,
-  });
-  const logs = trpc.projectFile.restoreLogs.useQuery(undefined, {
-    enabled: isAdmin,
-  });
-  const logDetail = trpc.projectFile.restoreLog.useQuery(
-    { id: selectedLogId ?? 0 },
-    { enabled: isAdmin && selectedLogId !== null }
-  );
-  const clearLogs = trpc.projectFile.clearRestoreLogs.useMutation({
-    onSuccess: async result => {
-      setClearLogsOpen(false);
-      setSelectedLogId(null);
-      await utils.projectFile.restoreLogs.invalidate();
-      toast.success(
-        result.deleted === 1
-          ? "1 Protokolleintrag wurde endgültig gelöscht"
-          : `${result.deleted} Protokolleinträge wurden endgültig gelöscht`
-      );
-    },
-    onError: error => toast.error(error.message),
   });
 
   const exportExcel = async () => {
@@ -147,103 +102,21 @@ export default function ExcelPage() {
               Sicherheitsgründen Administratoren vorbehalten.
             </p>
           )}
+          {isAdmin && (
+            <p className="flex flex-wrap items-center gap-x-1 gap-y-1 pt-1 text-xs text-muted-foreground">
+              <Info className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+              <span>Import-Historie im</span>
+              <Link
+                href="/sicherheit"
+                className="font-medium text-blue-700 underline-offset-2 hover:underline"
+              >
+                System- &amp; Sicherheitsprotokoll
+              </Link>
+              <span>einsehen.</span>
+            </p>
+          )}
         </CardContent>
       </Card>
-
-      {isAdmin && (
-        <Card className="shadow-sm">
-          <CardHeader className="gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-1">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <ArchiveRestore className="h-5 w-5" /> Lade- und Importprotokoll
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Automatisch bereinigt: maximal 100 Einträge je Veranstaltung und
-                zusätzlich höchstens 90 Tage Aufbewahrung.
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 sm:w-auto"
-              disabled={!logs.data?.length || clearLogs.isPending}
-              onClick={() => setClearLogsOpen(true)}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Protokoll leeren
-            </Button>
-          </CardHeader>
-          <CardContent>
-            {logs.isLoading ? (
-              <p className="text-sm text-muted-foreground">
-                Protokoll wird geladen …
-              </p>
-            ) : !logs.data?.length ? (
-              <p className="text-sm text-muted-foreground">
-                Noch keine Projektdatei oder Modultabelle geladen.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {logs.data.map(entry => (
-                  <button
-                    key={entry.id}
-                    type="button"
-                    className="grid w-full gap-2 rounded-lg border bg-white p-3 text-left transition-colors hover:bg-accent sm:grid-cols-[1fr_auto] dark:bg-slate-950"
-                    onClick={() => setSelectedLogId(entry.id)}
-                  >
-                    <span>
-                      <span className="block font-semibold">
-                        {entry.sourceFilename}
-                      </span>
-                      <span className="block text-xs text-muted-foreground">
-                        {dateTime(entry.createdAt)} · {entry.actorName}
-                      </span>
-                    </span>
-                    <span className="text-xs font-medium text-muted-foreground sm:text-right">
-                      {entry.createdCount} neu · {entry.updatedCount} geändert ·{" "}
-                      {entry.deletedCount} gelöscht
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      <AdminPasswordDialog
-        open={clearLogsOpen}
-        onOpenChange={setClearLogsOpen}
-        title="Lade- und Importprotokoll leeren?"
-        description="Alle Lade- und Importprotokolle der aktuell gewählten Veranstaltung und des gewählten Jahres werden dauerhaft gelöscht. Die Planungsdaten selbst bleiben unverändert."
-        confirmLabel="Protokoll endgültig leeren"
-        busy={clearLogs.isPending}
-        onConfirm={adminPassword =>
-          clearLogs.mutate({ adminPassword })
-        }
-      />
-
-      <Dialog
-        open={selectedLogId !== null}
-        onOpenChange={open => !open && setSelectedLogId(null)}
-      >
-        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-4xl overflow-y-auto bg-white text-slate-950 dark:bg-slate-950 dark:text-slate-50">
-          <DialogHeader>
-            <DialogTitle>Protokolldetails</DialogTitle>
-            <DialogDescription>
-              Jede tatsächlich übernommene Einzeländerung des ausgewählten
-              Vorgangs.
-            </DialogDescription>
-          </DialogHeader>
-          {logDetail.isLoading ? (
-            <p className="text-sm text-muted-foreground">
-              Details werden geladen …
-            </p>
-          ) : (
-            <GroupedChangeList changes={logDetail.data?.changes ?? []} />
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

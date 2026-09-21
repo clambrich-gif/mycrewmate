@@ -2,7 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { PageTitle } from "@/components/PageTitle";
 import { PlanningTeamAccessManager } from "@/components/PlanningTeamAccessManager";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
-import { ProtocolLog } from "@/pages/Permissions";
+import { AuditCenter } from "@/pages/Permissions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -17,7 +17,6 @@ import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import {
   ChevronDown,
-  FileText,
   KeyRound,
   LoaderCircle,
   LockKeyhole,
@@ -180,10 +179,6 @@ export default function Security() {
       refetchInterval: 30_000,
       refetchIntervalInBackground: false,
     });
-  const securityActivities = trpc.audit.activities.useQuery(
-    { limit: 100 },
-    { enabled: isAdmin }
-  );
   const setAdminPassword = trpc.auth.setAdminPassword.useMutation({
     onSuccess: async () => {
       await utils.auth.passwordStatus.invalidate();
@@ -211,10 +206,6 @@ export default function Security() {
     },
     onError: error => toast.error(error.message),
   });
-  const securityLogEntries = (securityActivities.data ?? []).filter(
-    entry => entry.module === "Zugangsschutz"
-  );
-
   if (!isAdmin) {
     return (
       <Card className="max-w-xl">
@@ -320,50 +311,12 @@ export default function Security() {
         </SecurityAccordion>
 
         <SecurityAccordion
-          title="Sicherheitsprotokoll / Logbuch"
-          description="Nachvollziehbarer Verlauf der aktivierten und aufgehobenen globalen Notfall-Sperren."
-          icon={FileText}
+          title="System- & Sicherheitsprotokoll (Logbuch)"
+          description="Sicherheitsereignisse, Aktivitäts- und Löschverlauf sowie Datei- und Import-Historie zentral prüfen."
+          icon={ShieldCheck}
           tone="slate"
         >
-          {securityActivities.isLoading ? (
-            <p className="text-sm text-muted-foreground">Sicherheitsprotokoll wird geladen …</p>
-          ) : securityActivities.error ? (
-            <p className="text-sm text-destructive">{securityActivities.error.message}</p>
-          ) : securityLogEntries.length ? (
-            <div className="overflow-hidden rounded-lg border border-slate-200">
-              <div className="divide-y">
-                {securityLogEntries.map(entry => (
-                  <div
-                    key={entry.id}
-                    className="flex flex-col gap-1 px-3 py-3 text-sm sm:flex-row sm:items-start sm:justify-between sm:gap-4"
-                  >
-                    <div className="min-w-0">
-                      <p className="font-medium text-slate-900">{entry.subject}</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        Ausgeführt von {entry.actorName} · {entry.actorRole === "admin" ? "Administrator" : "Planungsteam"}
-                      </p>
-                    </div>
-                    <time className="shrink-0 text-xs text-muted-foreground">
-                      {new Date(entry.createdAt).toLocaleString("de-DE")}
-                    </time>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-              Es wurden noch keine globalen Notfall-Sperren protokolliert.
-            </p>
-          )}
-        </SecurityAccordion>
-
-        <SecurityAccordion
-          title="Protokoll"
-          description="Aktivitätsverlauf, Löschungen und gezielte Wiederherstellungen aller Planungsbereiche."
-          icon={FileText}
-          tone="slate"
-        >
-          <ProtocolLog />
+          <AuditCenter />
         </SecurityAccordion>
 
         <SecurityAccordion

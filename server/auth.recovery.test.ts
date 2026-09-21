@@ -7,6 +7,7 @@ const dbMocks = vi.hoisted(() => ({
   getSecuritySettings: vi.fn(),
   setAdminPasswordHash: vi.fn(),
   upsertUser: vi.fn(),
+  recordActivityLog: vi.fn(),
   getEvent: vi.fn(),
   withPlanningWriteLock: vi.fn((callback: () => unknown) => callback()),
 }));
@@ -49,6 +50,7 @@ describe("auth.resetAdminWithKey (Master Recovery Key)", () => {
     vi.clearAllMocks();
     dbMocks.setAdminPasswordHash.mockResolvedValue({ affectedRows: 1 });
     dbMocks.upsertUser.mockResolvedValue(undefined);
+    dbMocks.recordActivityLog.mockResolvedValue(undefined);
     sdkMocks.createSessionToken.mockResolvedValue("test-admin-session-token");
   });
 
@@ -90,6 +92,12 @@ describe("auth.resetAdminWithKey (Master Recovery Key)", () => {
       expect.objectContaining({
         openId: "shared-password-admin",
         role: "admin",
+      })
+    );
+    expect(dbMocks.recordActivityLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        module: "Zugangsschutz",
+        subject: "Administratorpasswort über Recovery-Key zurückgesetzt",
       })
     );
     expect(sdkMocks.createSessionToken).toHaveBeenCalledWith(

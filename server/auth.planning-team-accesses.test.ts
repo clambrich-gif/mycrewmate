@@ -259,6 +259,9 @@ describe("Event-based Access Control für Planungsteam", () => {
       },
     ]);
     const upsertUserSpy = vi.spyOn(db, "upsertUser").mockResolvedValue(undefined as any);
+    const securityActivitySpy = vi
+      .spyOn(db, "recordActivityLog")
+      .mockResolvedValue(undefined as any);
 
     const cookieMock = vi.fn();
     const publicCaller = appRouter.createCaller({
@@ -303,6 +306,13 @@ describe("Event-based Access Control für Planungsteam", () => {
       })
     );
     expect(cookieMock).toHaveBeenCalled();
+    expect(securityActivitySpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        module: "Zugangsschutz",
+        action: "created",
+        subject: "Administrator-Anmeldung erfolgreich",
+      })
+    );
   });
 
   it("blockiert falschen Admin-Login auch bei vorab übergebenem Namen", async () => {
@@ -418,6 +428,9 @@ describe("Event-based Access Control für Planungsteam", () => {
         updatedAt: new Date(),
         eventIds: [10],
       } as any);
+    const securityActivitySpy = vi
+      .spyOn(db, "recordActivityLog")
+      .mockResolvedValue(undefined as any);
     vi.spyOn(db, "listAllContactsForPlanningTeamAccess").mockResolvedValue([
       {
         id: 4,
@@ -484,6 +497,12 @@ describe("Event-based Access Control für Planungsteam", () => {
       })
     );
     expect(result).not.toHaveProperty("initialPassword");
+    expect(securityActivitySpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        module: "Zugangsschutz",
+        subject: expect.stringContaining("Einmal-Zugang für „Anne Veling“ erstellt"),
+      })
+    );
   });
 
   it("druckt bestehende Zugangsblätter ohne gespeicherte Klartextpasswörter nach", async () => {

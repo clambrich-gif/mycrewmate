@@ -332,7 +332,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(security).toContain("status?.planningTeamLocked");
     expect(security).toContain("trpc.auth.unlockPlanningTeamLock.useMutation");
     expect(security).toContain("trpc.auth.lockPlanningTeam.useMutation");
-    expect(security).toContain("Sicherheitsprotokoll / Logbuch");
+    expect(security).toContain("System- & Sicherheitsprotokoll (Logbuch)");
+    expect(security).toContain("<AuditCenter />");
+    expect(security).not.toContain("Sicherheitsprotokoll / Logbuch");
     expect(security).toContain("data-security-accordions");
     expect(security).toContain("if (!isAdmin)");
     expect(layout).toContain("passwordStatus.data?.planningTeamLocked");
@@ -616,20 +618,18 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(permissions).not.toContain("dark:");
   });
 
-  it("hält die Löschprotokolltabelle innerhalb der Karte und bricht lange Details um", () => {
+  it("hält den Löschverlauf im Audit-Center responsiv und bricht lange Details um", () => {
     const permissions = source("client/src/pages/Permissions.tsx");
     const chat = source("client/src/components/LiveChatWidget.tsx");
 
-    expect(permissions).toContain("min-w-0 max-w-full overflow-hidden shadow-sm");
-    expect(permissions).toContain("w-full max-w-full table-fixed text-sm");
-    expect(permissions).not.toContain('min-w-[900px]');
-    expect(permissions).toContain("md:px-0 md:pt-0 md:pb-28");
-    expect(permissions).toContain("w-[30%] break-words p-3 text-left");
-    expect(permissions).toContain("w-[15%] break-words p-3 text-left");
-    expect(permissions).toContain("w-full min-w-0 justify-center whitespace-nowrap px-2");
+    expect(permissions).toContain('value="activity"');
+    expect(permissions).toContain('activityView === "deletions"');
+    expect(permissions).toContain("space-y-3 md:hidden");
+    expect(permissions).toContain("hidden overflow-x-auto rounded-xl border border-slate-200 bg-white md:block");
+    expect(permissions).toContain("min-w-[960px] w-full text-sm");
+    expect(permissions).toContain("break-words text-muted-foreground");
     expect(permissions).toContain("Vorgang &amp; ausgeführt von");
-    expect(permissions).toContain("[overflow-wrap:anywhere]");
-    expect(permissions).toContain("p-3 align-top leading-relaxed");
+    expect(permissions).toContain("Wiederherstellen");
     expect(chat).toContain("md:bottom-8 md:right-8 md:h-20");
   });
 
@@ -1604,14 +1604,15 @@ describe("UI- und Mobile-UX-Regeln", () => {
     }
   });
 
-  it("bietet Administratoren eine passwortgeschützte Bereinigung des Importprotokolls", () => {
+  it("verweist aus der Excel-Projektübersicht dezent auf die zentrale Import-Historie", () => {
     const excel = source("client/src/pages/Excel.tsx");
 
-    expect(excel).toContain("Automatisch bereinigt: maximal 100 Einträge je Veranstaltung");
-    expect(excel).toContain("Protokoll leeren");
-    expect(excel).toContain("Lade- und Importprotokoll leeren?");
-    expect(excel).toContain("clearLogs.mutate({ adminPassword })");
-    expect(excel).toContain("utils.projectFile.restoreLogs.invalidate()");
+    expect(excel).toContain("Import-Historie im");
+    expect(excel).toContain("System- &amp; Sicherheitsprotokoll");
+    expect(excel).toContain('href="/sicherheit"');
+    expect(excel).not.toContain("Lade- und Importprotokoll");
+    expect(excel).not.toContain("restoreLogs.useQuery");
+    expect(excel).not.toContain("clearRestoreLogs.useMutation");
   });
 
   it("bietet in der PDF-Ausgabe einen Ansprechpartnerfilter für Helferübersichten", () => {
@@ -2692,9 +2693,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(permissions).toContain("utils.prep.list.invalidate()");
     expect(permissions).toContain("utils.post.list.invalidate()");
     expect(permissions).toContain("utils.materials.list.invalidate()");
-    expect(permissions).toContain("Gelöscht von:");
+    expect(permissions).toContain("Ausgeführt von:");
     expect(permissions).toContain("entry.actorName");
-    expect(permissions).toContain("Historische Zusatzangabe:");
+    expect(permissions).toContain("detailText(entry.entityType, entry.details)");
     expect(permissions).toContain("Wiederherstellen");
     expect(router).toContain("entityType: z.enum([\"helper\", \"cake\", \"prep\", \"post\", \"material\"])");
 
@@ -2753,9 +2754,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(security).toContain("Planungsteam-Zugänge verwalten");
     expect(security).toContain("Administratorpasswort neu vergeben");
     expect(security).toContain("Notfall-Sperrstatus Planungsteam (Global)");
-    expect(security).toContain("Sicherheitsprotokoll / Logbuch");
-    expect(security).toContain("<ProtocolLog />");
-    expect(security).toContain('title="Protokoll"');
+    expect(security).toContain("System- & Sicherheitsprotokoll (Logbuch)");
+    expect(security).toContain("<AuditCenter />");
+    expect(security).not.toContain("Sicherheitsprotokoll / Logbuch");
+    expect(security).not.toContain('title="Protokoll"');
     expect(security).toContain("Gefahrenbereich (Planung ${year})");
     expect(security).toContain("Schutz &amp; Protokoll");
     expect(security.indexOf("Administratorpasswort neu vergeben")).toBeLessThan(
@@ -2765,12 +2767,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
       security.indexOf("Notfall-Sperrstatus Planungsteam (Global)")
     );
     expect(security.indexOf("Notfall-Sperrstatus Planungsteam (Global)")).toBeLessThan(
-      security.indexOf("Sicherheitsprotokoll / Logbuch")
+      security.indexOf("System- & Sicherheitsprotokoll (Logbuch)")
     );
-    expect(security.indexOf("Sicherheitsprotokoll / Logbuch")).toBeLessThan(
-      security.indexOf('title="Protokoll"')
-    );
-    expect(security.indexOf('title="Protokoll"')).toBeLessThan(
+    expect(security.indexOf("System- & Sicherheitsprotokoll (Logbuch)")).toBeLessThan(
       security.indexOf("Gefahrenbereich (Planung ${year})")
     );
     expect(manager).toContain("Vorhandene Zugänge &amp; Filter");
@@ -2849,9 +2848,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain("Angemeldet:");
     expect(manager).toContain("⏳ Initialcode offen");
     expect(manager).toContain("✓ Passwort eingerichtet");
-    expect(protocol).toContain("export function ProtocolLog()");
-    expect(protocol).toContain("Aktivitätsprotokoll");
-    expect(protocol).toContain("Löschprotokoll & Wiederherstellung");
+    expect(protocol).toContain("export function AuditCenter()");
+    expect(protocol).toContain("🛡️ Sicherheit &amp; Logins");
+    expect(protocol).toContain("🗑️ Aktivitäts- &amp; Löschverlauf");
+    expect(protocol).toContain("📁 Datei- &amp; Import-Historie");
+    expect(protocol).toContain("trpc.projectFile.restoreLogs.useQuery");
+    expect(protocol).toContain("trpc.projectFile.clearRestoreLogs.useMutation");
+    expect(protocol).toContain("export const ProtocolLog = AuditCenter");
     expect(protocol).not.toContain("PERMISSION_MATRIX");
     expect(protocol).not.toContain("Berechtigungsmatrix");
     expect(protocol).not.toContain("Rollen & Berechtigungen");
