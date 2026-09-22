@@ -226,13 +226,13 @@ export default function Locations() {
         )}
       </div>
       <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
-        <div className="grid grid-cols-[minmax(0,1fr)_120px_120px_auto] gap-3 border-b bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">
+        <div className="hidden grid-cols-[minmax(0,1fr)_120px_120px_auto] gap-3 border-b bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 sm:grid">
           <span>Ort / Standort</span><span>Breitengrad</span><span>Längengrad</span><span className="text-right">Aktionen</span>
         </div>
         {isLoading ? <p className="p-4 text-muted-foreground">Lade Orte …</p> : locations.length === 0 ? (
           <p className="p-6 text-sm text-muted-foreground">Noch keine Orte angelegt. Erfasse zuerst einen Standort mit Koordinaten.</p>
         ) : locations.map(location => (
-          <div key={location.id} className="grid grid-cols-[minmax(0,1fr)_120px_120px_auto] items-center gap-3 border-b px-4 py-3 last:border-0">
+          <div key={location.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1.5 border-b px-4 py-3 last:border-0 sm:grid-cols-[minmax(0,1fr)_120px_120px_auto] sm:items-center sm:gap-3">
             <span className="flex min-w-0 items-center gap-2">
               {location.logoUrl && (
                 <img
@@ -243,11 +243,15 @@ export default function Locations() {
                   className="size-7 shrink-0 rounded-full border-2 border-slate-300 bg-white object-cover shadow-sm"
                 />
               )}
-              <span className="min-w-0 truncate font-medium text-slate-900" title={location.name}>{location.name}</span>
+              <span className="min-w-0 break-words font-medium text-slate-900 sm:truncate" title={location.name}>{location.name}</span>
             </span>
-            <span className="tabular-nums text-sm text-slate-700">{location.latitude.toFixed(5)}</span>
-            <span className="tabular-nums text-sm text-slate-700">{location.longitude.toFixed(5)}</span>
-            <span className="flex justify-end gap-1">
+            <span className="col-span-2 flex flex-wrap gap-x-4 gap-y-0.5 text-sm text-slate-700 sm:hidden">
+              <span><span className="text-slate-500">Breitengrad: </span><span className="tabular-nums">{location.latitude.toFixed(5)}</span></span>
+              <span><span className="text-slate-500">Längengrad: </span><span className="tabular-nums">{location.longitude.toFixed(5)}</span></span>
+            </span>
+            <span className="hidden tabular-nums text-sm text-slate-700 sm:block">{location.latitude.toFixed(5)}</span>
+            <span className="hidden tabular-nums text-sm text-slate-700 sm:block">{location.longitude.toFixed(5)}</span>
+            <span className="col-start-2 row-start-1 flex shrink-0 justify-end gap-1 sm:col-auto sm:row-auto">
               {canManage && <Button variant="ghost" size="icon" aria-label={`${location.name} bearbeiten`} onClick={() => openEdit(location)}><Pencil className="size-4" /></Button>}
               {canManage && <Button variant="ghost" size="icon" className="text-red-700 hover:text-red-800" aria-label={`${location.name} löschen`} onClick={() => setDeleteTarget(location)}><Trash2 className="size-4" /></Button>}
             </span>

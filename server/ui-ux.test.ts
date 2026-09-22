@@ -2557,6 +2557,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(locations).toContain("flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between");
     expect(locations).toContain("border-slate-300 bg-white px-4 font-medium text-slate-800 shadow-sm");
     expect(locations).toContain("mr-2 size-4");
+    expect(locations).toContain('hidden grid-cols-[minmax(0,1fr)_120px_120px_auto]');
+    expect(locations).toContain('grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1.5');
+    expect(locations).toContain('col-span-2 flex flex-wrap gap-x-4 gap-y-0.5 text-sm text-slate-700 sm:hidden');
+    expect(locations).toContain('<span className="text-slate-500">Breitengrad: </span>');
+    expect(locations).toContain('<span className="text-slate-500">Längengrad: </span>');
+    expect(locations).toContain('min-w-0 break-words font-medium text-slate-900 sm:truncate');
 
     const materials = source("client/src/pages/Materials.tsx");
     const taskGeneric = source("client/src/pages/TaskGeneric.tsx");
