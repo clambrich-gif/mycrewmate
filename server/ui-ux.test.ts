@@ -696,8 +696,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
   it("kennzeichnet und steuert PDF-Bilder veranstaltungsspezifisch", () => {
     const pdfExport = source("client/src/pages/PdfExport.tsx");
 
-    expect(pdfExport).toContain("PDF-Bild für {currentEvent?.name");
+    expect(pdfExport).toContain("Eventlogo für {currentEvent?.name");
     expect(pdfExport).toContain("aktuell ausgewählten Veranstaltung");
+    expect(pdfExport).toContain("Dashboard-Zähler");
     expect(pdfExport).toContain("trpc.pdf.clearLogo.useMutation");
     expect(pdfExport).toContain("Verhalten ohne individuelles Bild");
     expect(pdfExport).toContain('<Select value="none" disabled>');
@@ -996,26 +997,33 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain('className="bg-slate-50 py-1 pr-1 sm:pr-2"');
   });
 
-  it("zeigt das Live-Countdown-Widget im Dashboardkopf und den Kalender-Trigger im Layout", () => {
+  it("zeigt den kompakten Event-Zähler mit Tagesimpuls, austauschbarem Logo und Kalender-Trigger", () => {
     const dashboard = source("client/src/pages/Dashboard.tsx");
     const layout = source("client/src/components/Layout.tsx");
     const router = source("server/routers.ts");
     const eventDates = source("shared/event-dates.ts");
     const styles = source("client/src/index.css");
+    const quotes = source("client/src/lib/daily-dashboard-quotes.ts");
 
     expect(dashboard).toContain("EventCountdownWidget");
     expect(dashboard).toContain('data-slot="event-countdown"');
     expect(dashboard).toContain("eventCountdownState");
-    expect(dashboard).toContain("Eventstart in");
-    expect(dashboard).toContain("border-2 border-amber-400");
-    expect(dashboard).toContain("text-4xl font-black");
-    expect(dashboard).toContain("shrink-0 !min-w-[17.5rem]");
-    expect(dashboard).toContain("const isUrgent = state.days < 14");
+    expect(dashboard).toContain("dashboardDailyQuote");
+    expect(dashboard).toContain("DEFAULT_DASHBOARD_COUNTER_LOGO");
+    expect(dashboard).toContain("pdf.uploadLogo.useMutation");
+    expect(dashboard).toContain('accept="image/png,image/jpeg"');
+    expect(dashboard).toContain("Eventlogo für Dashboard und PDFs ändern");
+    expect(dashboard).toContain("dashboard-event-countdown");
+    expect(dashboard).toContain("nur noch");
+    expect(dashboard).toContain("dashboard-daily-quote-track");
+    expect(dashboard).not.toContain("Eventstart in");
+    expect(dashboard).not.toContain("Vorfreude im Blick");
+    expect(dashboard).toContain("const isUrgent = state.kind === \"upcoming\" && state.days < 14");
     expect(dashboard).toContain('data-countdown-urgent={isUrgent ? "true" : "false"}');
     expect(dashboard).toContain('" countdown-urgent"');
     expect(dashboard).not.toContain("formatEventDate");
-    expect(dashboard).toContain("Event läuft!");
-    expect(dashboard).toContain("Veranstaltung abgeschlossen");
+    expect(dashboard).toContain("Event läuft · Tag");
+    expect(dashboard).toContain("Event abgeschlossen");
 
     expect(layout).toContain('data-slot="event-dates-trigger"');
     expect(layout).toContain("openEventDateSettings");
@@ -1027,8 +1035,14 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(eventDates).toContain("eventCountdownState");
     expect(styles).toContain(".countdown-urgent::after");
     expect(styles).toContain("@keyframes countdown-urgent-glow");
+    expect(styles).toContain(".dashboard-daily-quote-track");
+    expect(styles).toContain(".dashboard-event-countdown");
+    expect(styles).toContain("width: 18.25rem !important");
+    expect(styles).toContain("@keyframes dashboard-daily-quote-marquee");
     expect(styles).toContain("prefers-reduced-motion: no-preference");
     expect(styles).toContain("will-change: opacity, transform");
+    expect(quotes).toContain("DAILY_DASHBOARD_QUOTES.length !== 365");
+    expect(quotes).toContain("YEARLY_SHIFT = 137");
   });
 
   it("zeigt im Einsatzplankopf keine Statusbadges mehr", () => {

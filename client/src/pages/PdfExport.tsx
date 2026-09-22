@@ -228,7 +228,7 @@ export default function PdfExport() {
     onSuccess: async () => {
       await utils.pdf.settings.invalidate();
       toast.success(
-        `PDF-Bild für ${currentEvent?.name ?? "die Veranstaltung"} gespeichert`
+        `Eventlogo für ${currentEvent?.name ?? "die Veranstaltung"} gespeichert`
       );
     },
     onError: error => toast.error(error.message),
@@ -237,7 +237,7 @@ export default function PdfExport() {
     onSuccess: async () => {
       await utils.pdf.settings.invalidate();
       toast.success(
-        `PDF-Bild für ${currentEvent?.name ?? "die Veranstaltung"} entfernt`
+        `Eventlogo für ${currentEvent?.name ?? "die Veranstaltung"} entfernt`
       );
     },
     onError: error => toast.error(error.message),
@@ -786,7 +786,7 @@ export default function PdfExport() {
       {canManage && (
       <PdfSection
         title="Vorlage frei konfigurieren"
-        description="PDF-Titel, Logo, Zusatzspalten und Hinweise für die aktuelle Veranstaltung verwalten."
+        description="PDF-Titel, Eventlogo, Zusatzspalten und Hinweise für die aktuelle Veranstaltung verwalten."
         icon={ClipboardCheck}
       >
           {isLoading ? (
@@ -801,7 +801,7 @@ export default function PdfExport() {
                     {effectiveLogoUrl ? (
                       <img
                         src={effectiveLogoUrl}
-                        alt="Aktuelles PDF-Bild dieser Veranstaltung"
+                        alt="Aktuelles Eventlogo dieser Veranstaltung"
                         className="h-full w-full object-contain p-1"
                       />
                     ) : (
@@ -811,12 +811,12 @@ export default function PdfExport() {
                   <div className="min-w-0 flex-1 space-y-2">
                     <div>
                       <Label htmlFor="pdf-logo">
-                        PDF-Bild für {currentEvent?.name ?? "diese Veranstaltung"}
+                        Eventlogo für {currentEvent?.name ?? "diese Veranstaltung"}
                       </Label>
                       <p className="text-xs text-muted-foreground">
-                        PNG oder JPEG bis 3 MB. Das Bild wird ausschließlich in
-                        den PDF-Ausgaben der aktuell ausgewählten Veranstaltung
-                        verwendet. Ohne eigenes Bild wird kein Bild gedruckt.
+                        PNG oder JPEG bis 3 MB. Das Bild erscheint im Dashboard-Zähler
+                        und in den PDF-Ausgaben der aktuell ausgewählten Veranstaltung.
+                        Ohne eigenes Bild wird im Dashboard das Standardlogo verwendet.
                       </p>
                     </div>
                     {canManage && (

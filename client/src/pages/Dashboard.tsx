@@ -1,6 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LocationMapCard } from "@/components/LocationMapCard";
 import { PageTitle } from "@/components/PageTitle";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { dashboardDailyQuote } from "@/lib/daily-dashboard-quotes";
 import {
   dashboardTargetHref,
   type DashboardTarget,
@@ -17,11 +19,13 @@ import {
   CircleX,
   Gift,
   GitCompareArrows,
+  ImageUp,
   ListTodo,
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { useLocation } from "wouter";
 import {
   eventWeekdays,
@@ -755,92 +759,157 @@ function DailyReadinessCard({
   );
 }
 
+const DEFAULT_DASHBOARD_COUNTER_LOGO =
+  "/brand/dashboard-counter-default-logo.png";
+const MAX_EVENT_LOGO_BYTES = 3_000_000;
+
 function EventCountdownWidget({
-  startDate,
-  endDate,
+  event,
 }: {
-  startDate?: string | null;
-  endDate?: string | null;
+  event: {
+    id: number;
+    year: number;
+    name: string;
+    startDate?: string | null;
+    endDate?: string | null;
+    pdfLogoKey?: string | null;
+  };
 }) {
+  const { user } = useAuth();
+  const canManageLogo = user?.role === "admin";
+  const utils = trpc.useUtils();
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const [now, setNow] = useState(() => new Date());
+  const [logoLoadFailed, setLogoLoadFailed] = useState(false);
   useEffect(() => {
     const interval = window.setInterval(() => setNow(new Date()), 60_000);
     return () => window.clearInterval(interval);
   }, []);
+  useEffect(() => {
+    setLogoLoadFailed(false);
+  }, [event.pdfLogoKey]);
 
   const state: EventCountdownState = eventCountdownState(
-    { startDate, endDate },
+    { startDate: event.startDate, endDate: event.endDate },
     now
   );
-  if (state.kind === "unconfigured") {
-    return (
-      <div
-        data-slot="event-countdown"
-        data-countdown-state="unconfigured"
-        className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3.5 py-2 text-xs text-slate-500 shadow-sm"
-      >
-        <Calendar className="h-4 w-4 text-slate-400" />
-        <span>Zeitraum konfigurierbar über 📅 in der Seitenleiste</span>
-      </div>
-    );
-  }
+  const uploadLogo = trpc.pdf.uploadLogo.useMutation({
+    onSuccess: async () => {
+      await Promise.all([
+        utils.events.current.invalidate(),
+        utils.pdf.settings.invalidate(),
+      ]);
+      toast.success("Eventlogo für Dashboard und PDFs gespeichert");
+    },
+    onError: error => toast.error(error.message),
+  });
+  const showEventLogo = Boolean(event.pdfLogoKey) && !logoLoadFailed;
+  const logoSrc = showEventLogo
+    ? `/api/pdf/event-image/${event.year}/${event.id}`
+    : DEFAULT_DASHBOARD_COUNTER_LOGO;
+  const quote = dashboardDailyQuote(now);
+  const isUrgent = state.kind === "upcoming" && state.days < 14;
 
-  if (state.kind === "upcoming") {
-    const isUrgent = state.days < 14;
-    return (
-      <div
-        data-slot="event-countdown"
-        data-countdown-state="upcoming"
-        data-countdown-urgent={isUrgent ? "true" : "false"}
-        className={`flex shrink-0 !min-w-[17.5rem] items-center gap-3 rounded-2xl border-2 border-amber-400 bg-gradient-to-r from-amber-100 via-yellow-50 to-orange-100 px-4 py-3 text-slate-950 shadow-md shadow-amber-200/80 ring-1 ring-amber-200 sm:!min-w-[19rem] sm:px-5${isUrgent ? " countdown-urgent" : ""}`}
-      >
-        <span className="relative z-10 flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-lg shadow-sm shadow-amber-300" aria-hidden="true">
-          ⏳
-        </span>
-        <div className="relative z-10 min-w-0">
-          <div className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-amber-900">
-            Eventstart in
-          </div>
-          <div className="mt-0.5 flex items-baseline gap-1.5 font-bold">
-            <span className="text-4xl font-black leading-none tabular-nums text-amber-950 sm:text-[2.65rem]">
-              {state.days}
-            </span>
-            <span className="text-sm font-extrabold text-amber-950 sm:text-base">
-              {state.days === 1 ? "Tag" : "Tagen"}
-            </span>
-            <span className="text-xs font-bold text-amber-900 sm:text-sm">
-              · {state.hours} Std.
-            </span>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const selectLogo = () => {
+    if (!canManageLogo || uploadLogo.isPending) return;
+    logoInputRef.current?.click();
+  };
+  const onLogoSelected = (file?: File) => {
+    if (!file) return;
+    if (!(file.type === "image/png" || file.type === "image/jpeg")) {
+      toast.error("Bitte ein PNG- oder JPEG-Logo auswählen");
+      return;
+    }
+    if (file.size > MAX_EVENT_LOGO_BYTES) {
+      toast.error("Das Eventlogo darf höchstens 3 MB groß sein");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result ?? "");
+      const base64 = dataUrl.split(",", 2)[1];
+      if (!base64) {
+        toast.error("Das Eventlogo konnte nicht gelesen werden");
+        return;
+      }
+      uploadLogo.mutate({
+        base64,
+        mimeType: file.type as "image/png" | "image/jpeg",
+      });
+    };
+    reader.onerror = () => toast.error("Das Eventlogo konnte nicht gelesen werden");
+    reader.readAsDataURL(file);
+  };
 
-  if (state.kind === "live") {
+  const counterContent = (() => {
+    if (state.kind === "upcoming") {
+      return (
+        <p className="flex items-baseline justify-center gap-1.5 whitespace-nowrap font-black tracking-[-0.055em]">
+          <span className="text-sm font-extrabold tracking-[-0.035em] text-slate-950">nur noch</span>
+          <span className="text-[2.45rem] leading-none tabular-nums text-blue-600 sm:text-[2.55rem]">{state.days}</span>
+          <span className="text-lg font-black text-orange-500">{state.days === 1 ? "Tag" : "Tage"}</span>
+        </p>
+      );
+    }
+    if (state.kind === "live") {
+      return <p className="text-center text-base font-black tracking-[-0.035em] text-emerald-800">Event läuft · Tag {state.day}/{state.totalDays}</p>;
+    }
+    if (state.kind === "completed") {
+      return <p className="text-center text-base font-black tracking-[-0.035em] text-slate-600">Event abgeschlossen</p>;
+    }
     return (
-      <div
-        data-slot="event-countdown"
-        data-countdown-state="live"
-        className="flex items-center gap-2 rounded-2xl border border-emerald-300 bg-gradient-to-r from-emerald-50 to-teal-50 px-4 py-2.5 text-emerald-950 shadow-sm"
-      >
-        <span className="text-base">🚀</span>
-        <span className="text-sm font-bold">
-          Event läuft! (Tag {state.day} von {state.totalDays})
-        </span>
-      </div>
+      <p className="flex items-center justify-center gap-1.5 text-center text-sm font-bold leading-snug text-slate-600">
+        <Calendar className="size-4 shrink-0 text-slate-400" aria-hidden="true" />
+        Zeitraum im Event einstellen
+      </p>
     );
-  }
+  })();
 
   return (
-    <div
+    <section
       data-slot="event-countdown"
-      data-countdown-state="completed"
-      className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-100 px-4 py-2 text-xs font-medium text-slate-600 shadow-sm"
+      data-countdown-state={state.kind}
+      data-countdown-urgent={isUrgent ? "true" : "false"}
+      className={`dashboard-event-countdown w-full shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-md shadow-slate-200/70${isUrgent ? " countdown-urgent" : ""}`}
+      aria-label="Event-Zähler mit Tagesimpuls"
     >
-      <span className="text-base">🏁</span>
-      <span>Veranstaltung abgeschlossen</span>
-    </div>
+      <div className="grid min-h-[3.95rem] grid-cols-[4.55rem_minmax(0,1fr)] items-center gap-1.5 bg-gradient-to-r from-sky-50 via-white to-orange-50 px-2.5 py-1.5">
+        <input
+          ref={logoInputRef}
+          type="file"
+          accept="image/png,image/jpeg"
+          className="sr-only"
+          onChange={event => {
+            onLogoSelected(event.target.files?.[0]);
+            event.target.value = "";
+          }}
+        />
+        <button
+          type="button"
+          className="group relative mx-auto grid size-[3.4rem] place-items-center overflow-hidden rounded-full border border-dashed border-blue-300 bg-white shadow-sm ring-4 ring-blue-50 transition-transform duration-150 hover:scale-[1.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-default disabled:hover:scale-100"
+          onClick={selectLogo}
+          disabled={!canManageLogo || uploadLogo.isPending}
+          title={canManageLogo ? "Eventlogo für Dashboard und PDFs ändern" : "Eventlogo dieser Veranstaltung"}
+          aria-label={canManageLogo ? "Eventlogo für Dashboard und PDFs ändern" : "Eventlogo dieser Veranstaltung"}
+        >
+          <img
+            src={logoSrc}
+            alt="Eventlogo"
+            className="size-[3.05rem] object-contain"
+            onError={() => setLogoLoadFailed(true)}
+          />
+          {canManageLogo && (
+            <span className="absolute inset-0 grid place-items-center bg-blue-950/45 text-white opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100">
+              <ImageUp className="size-4" aria-hidden="true" />
+            </span>
+          )}
+        </button>
+        <div className="min-w-0">{counterContent}</div>
+      </div>
+      <div className="relative flex h-[1.4rem] items-center overflow-hidden border-t border-slate-200 bg-slate-50 text-[0.67rem] text-slate-600">
+        <span className="dashboard-daily-quote-track inline-block min-w-max whitespace-nowrap font-semibold">{quote}</span>
+      </div>
+    </section>
   );
 }
 
@@ -1040,10 +1109,7 @@ export default function Dashboard() {
             Die wichtigsten nächsten Schritte stehen zuerst; alle Kennzahlen werden automatisch aus den Planungsdaten berechnet.
           </p>
         </div>
-        <EventCountdownWidget
-          startDate={currentEvent.startDate}
-          endDate={currentEvent.endDate}
-        />
+        <EventCountdownWidget event={currentEvent} />
       </div>
 
       <section

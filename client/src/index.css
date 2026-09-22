@@ -161,6 +161,35 @@
   .countdown-urgent::after { animation: none; }
 }
 
+/* Der Tagesimpuls im kompakten Dashboard-Zähler bleibt bewusst langsam und
+   zurückhaltend. Bei reduzierter Bewegung bleibt der aktuelle Spruch statisch
+   lesbar, statt als Laufband zu animieren. */
+.dashboard-daily-quote-track {
+  animation: dashboard-daily-quote-marquee 40s linear infinite;
+  will-change: transform;
+}
+
+@media (min-width: 640px) {
+  .dashboard-event-countdown {
+    width: 18.25rem !important;
+  }
+}
+
+@keyframes dashboard-daily-quote-marquee {
+  from { transform: translateX(105%); }
+  to { transform: translateX(-104%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-daily-quote-track {
+    max-width: 100%;
+    padding-inline: .65rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    animation: none;
+  }
+}
+
 .helpers-table-scroll {
   overflow-x: auto;
 }
