@@ -21,6 +21,11 @@ function isSecureRequest(req: Request) {
   return protoList.some(proto => proto.trim().toLowerCase() === "https");
 }
 
+export function isEmbeddedManusPreview(req: Request) {
+  const hostname = req.hostname?.trim().toLowerCase() ?? "";
+  return hostname.endsWith(".manus.computer");
+}
+
 export function getSessionCookieOptions(
   req: Request
 ): Pick<CookieOptions, "domain" | "httpOnly" | "path" | "sameSite" | "secure"> {
@@ -39,13 +44,16 @@ export function getSessionCookieOptions(
   //       ? hostname
   //       : undefined;
 
+  const embeddedPreview = isEmbeddedManusPreview(req);
+
   return {
     httpOnly: true,
     path: "/",
-    // MyCrewMate läuft auf einer eigenen Domain als Same-Origin-App. Lax
-    // funktioniert über Coolifys Reverse Proxy auch lokal zuverlässig und
-    // benötigt im Gegensatz zu SameSite=None kein zwingendes Secure-Cookie.
-    sameSite: "lax",
-    secure: isSecureRequest(req),
+    // MyCrewMate läuft auf der eigenen Domain als Same-Origin-App. Die lokale
+    // Manus-Vorschau wird jedoch eingebettet dargestellt und benötigt dort ein
+    // Secure SameSite=None-Cookie, damit die Sitzung nach dem Login zurück an
+    // die Vorschau gesendet werden kann.
+    sameSite: embeddedPreview ? "none" : "lax",
+    secure: embeddedPreview || isSecureRequest(req),
   };
 }

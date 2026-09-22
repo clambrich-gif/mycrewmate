@@ -7,7 +7,10 @@ import {
   isHelperWithoutFirstContact,
   WEEKDAYS,
 } from "@shared/weekdays";
-import { getSessionCookieOptions } from "./_core/cookies";
+import {
+  getSessionCookieOptions,
+  isEmbeddedManusPreview,
+} from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import {
   protectedProcedure as baseProtectedProcedure,
@@ -983,6 +986,7 @@ export const appRouter = router({
         return {
           success: true,
           mustChangePassword: matchingAccess.mustChangePassword,
+          ...(isEmbeddedManusPreview(ctx.req) ? { previewSessionToken: token } : {}),
         } as const;
       }),
     completeInitialPasswordChange: baseProtectedProcedure
@@ -1029,7 +1033,11 @@ export const appRouter = router({
           ...getSessionCookieOptions(ctx.req),
           maxAge: PASSWORD_SESSION_MS,
         });
-        return { success: true, mustChangePassword: false } as const;
+        return {
+          success: true,
+          mustChangePassword: false,
+          ...(isEmbeddedManusPreview(ctx.req) ? { previewSessionToken: token } : {}),
+        } as const;
       }),
     adminPasswordLogin: publicProcedure
       .input(
@@ -1087,7 +1095,11 @@ export const appRouter = router({
           ...getSessionCookieOptions(ctx.req),
           maxAge: PASSWORD_SESSION_MS,
         });
-        return { success: true, requiresIdentity: false } as const;
+        return {
+          success: true,
+          requiresIdentity: false,
+          ...(isEmbeddedManusPreview(ctx.req) ? { previewSessionToken: token } : {}),
+        } as const;
       }),
     resetAdminWithKey: publicProcedure
       .input(
@@ -1145,7 +1157,10 @@ export const appRouter = router({
           ...getSessionCookieOptions(ctx.req),
           maxAge: PASSWORD_SESSION_MS,
         });
-        return { success: true } as const;
+        return {
+          success: true,
+          ...(isEmbeddedManusPreview(ctx.req) ? { previewSessionToken: token } : {}),
+        } as const;
       }),
     setAdminPassword: accountAdminProcedure
       .input(

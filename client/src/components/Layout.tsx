@@ -50,6 +50,7 @@ import {
 import { preloadRoute } from "@/lib/route-loaders";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { storePreviewSessionToken } from "@/lib/preview-session";
 import { WEEKDAYS, type Weekday } from "@shared/weekdays";
 import { COPYRIGHT_NOTICE } from "@shared/branding";
 import {
@@ -647,7 +648,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
     if (!events.data?.length || selectedEvent) return;
     selectEvent(events.data[0].id);
   }, [events.data, selectEvent, selectedEvent]);
-  const finishLogin = async () => {
+  const finishLogin = async (previewSessionToken?: string) => {
+    storePreviewSessionToken(previewSessionToken);
     setPassword("");
     setLoginError(null);
     setLoginFailureCounts({ user: 0, admin: 0 });
@@ -662,6 +664,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     mutationKey: ["auth", "passwordLogin"],
     onSuccess: async result => {
       setLoginFailureCounts(current => ({ ...current, user: 0 }));
+      storePreviewSessionToken(result.previewSessionToken);
       if (result.mustChangePassword) {
         setPassword("");
         setLoginError(null);
@@ -672,7 +675,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         await utils.auth.me.invalidate();
         return;
       }
-      await finishLogin();
+      await finishLogin(result.previewSessionToken);
     },
     onError: async error => {
       setLoginError(error.message);
@@ -690,7 +693,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const completeInitialPasswordChange =
     trpc.auth.completeInitialPasswordChange.useMutation({
       mutationKey: ["auth", "completeInitialPasswordChange"],
-      onSuccess: async () => {
+      onSuccess: async result => {
+        storePreviewSessionToken(result.previewSessionToken);
         setInitialPassword("");
         setInitialPasswordConfirmation("");
         setInitialPasswordError(null);
@@ -726,7 +730,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         return;
       }
       rememberAdministratorName(selectedAdministratorName);
-      await finishLogin();
+      await finishLogin(result.previewSessionToken);
     },
     onError: error => {
       setLoginError(error.message);
@@ -740,7 +744,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   });
   const resetAdminWithKey = trpc.auth.resetAdminWithKey.useMutation({
     mutationKey: ["auth", "resetAdminWithKey"],
-    onSuccess: finishLogin,
+    onSuccess: async result => finishLogin(result.previewSessionToken),
     onError: error => setRecoveryError(error.message),
   });
   const createYear = trpc.years.create.useMutation({

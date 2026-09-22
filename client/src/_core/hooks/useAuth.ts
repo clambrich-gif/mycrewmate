@@ -1,4 +1,5 @@
 import { trpc } from "@/lib/trpc";
+import { clearPreviewSessionToken } from "@/lib/preview-session";
 import { TRPCClientError } from "@trpc/client";
 import { useCallback, useEffect, useMemo } from "react";
 
@@ -39,9 +40,7 @@ export function useAuth(options?: UseAuthOptions) {
       // Clear the Preview auto-login token mirrored into sessionStorage, so
       // header-based sessions (Safari ITP / WebView) are logged out too. The
       // backend cookie is cleared by the logout mutation.
-      try {
-        sessionStorage.removeItem("manus-cookie");
-      } catch {}
+      clearPreviewSessionToken();
       utils.auth.me.setData(undefined, null);
       await utils.auth.me.invalidate();
     }

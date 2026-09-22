@@ -244,6 +244,53 @@ describe("Event-based Access Control für Planungsteam", () => {
     expect(cookieMock).toHaveBeenCalled();
   });
 
+  it("spiegelt die Sitzung ausschließlich für die eingebettete Manus-Vorschau", async () => {
+    vi.spyOn(db, "getSecuritySettings").mockResolvedValue({
+      planningTeamLocked: false,
+    } as any);
+    vi.spyOn(db, "listPlanningTeamAccessCredentials").mockResolvedValue([
+      {
+        id: 8,
+        label: "Vorschau Team",
+        contactName: "Vorschau Team",
+        passwordHash: "$2a$10$hashedPreview",
+        mustChangePassword: false,
+        sessionVersion: 1,
+      },
+    ]);
+    vi.spyOn(passwordAuth, "verifyPassword").mockResolvedValue(true);
+    vi.spyOn(db, "upsertUser").mockResolvedValue(undefined as any);
+    vi.spyOn(db, "clearPlanningTeamLoginFailuresIfUnlocked").mockResolvedValue(true);
+
+    const cookieMock = vi.fn();
+    const previewCaller = appRouter.createCaller({
+      user: null,
+      req: {
+        ...mockReq(),
+        hostname: "3000-i3grg6r1ftlulshgj6h98-09e2c58f.us1.manus.computer",
+        protocol: "https",
+      },
+      res: { setHeader: vi.fn(), clearCookie: vi.fn(), cookie: cookieMock } as any,
+    });
+
+    const result = await previewCaller.auth.passwordLogin({
+      password: "korrektes-vorschau-passwort",
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        success: true,
+        mustChangePassword: false,
+        previewSessionToken: expect.any(String),
+      })
+    );
+    expect(cookieMock).toHaveBeenCalledWith(
+      COOKIE_NAME,
+      expect.any(String),
+      expect.objectContaining({ sameSite: "none", secure: true })
+    );
+  });
+
   it("fordert beim Admin-Login zunächst die Identitätsauswahl an und setzt erst mit Namen die Sitzung", async () => {
     vi.spyOn(db, "getSecuritySettings").mockResolvedValue({
       adminPasswordHash: "$2a$10$hashedAdmin",

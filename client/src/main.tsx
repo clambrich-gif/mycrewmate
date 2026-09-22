@@ -7,6 +7,7 @@ import App from "./App";
 import "./index.css";
 import { storedEventId, storedEventYear } from "./contexts/YearContext";
 import { installMobileFocusViewportGuard } from "./lib/mobileFocusViewport";
+import { getPreviewSessionToken } from "./lib/preview-session";
 
 const queryClient = new QueryClient();
 
@@ -53,9 +54,13 @@ const trpcClient = trpc.createClient({
       url: "/api/trpc",
       transformer: superjson,
       headers() {
+        const previewSessionToken = getPreviewSessionToken();
         return {
           "x-event-year": String(storedEventYear()),
           "x-event-id": String(storedEventId()),
+          ...(previewSessionToken
+            ? { Authorization: `Bearer ${previewSessionToken}` }
+            : {}),
         };
       },
       fetch(input, init) {
