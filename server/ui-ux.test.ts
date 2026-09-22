@@ -1518,6 +1518,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain("lg:h-screen lg:overflow-y-auto");
     expect(layout).toContain("bg-[radial-gradient(ellipse_at_center,_#ffffff_20%,_#f0f9ff_66%,_#dbeafe_100%)]");
     expect(layout).toContain('"min-h-screen bg-[radial-gradient(ellipse_at_center,_#ffffff_20%,_#f0f9ff_66%,_#dbeafe_100%)] flex flex-col');
+    expect(layout).toContain('min-h-[100dvh] place-items-center bg-[radial-gradient(ellipse_at_center,_#ffffff_20%,_#f0f9ff_66%,_#dbeafe_100%)]');
     expect(layout).toContain('className="flex min-h-24 flex-col items-center px-4 py-3 text-slate-950"');
     expect(layout).toContain("bg-white/35 px-3 py-1.5");
   });

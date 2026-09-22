@@ -968,7 +968,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }
   if (!isAuthenticated) {
     return (
-      <div className="relative grid min-h-[100dvh] place-items-center bg-gradient-to-br from-[oklch(0.97_0.02_250)] to-[oklch(0.92_0.04_240)] px-4 py-5 sm:p-6">
+      <div className="relative grid min-h-[100dvh] place-items-center bg-[radial-gradient(ellipse_at_center,_#ffffff_20%,_#f0f9ff_66%,_#dbeafe_100%)] px-4 py-5 sm:p-6">
         <div className="w-full max-w-md rounded-2xl border border-white/80 bg-white/90 p-5 text-card-foreground shadow-xl backdrop-blur-sm transition-all duration-200 ease-in-out sm:p-6">
           <div className="mb-4 text-center">
             <h1 className="sr-only">MyCrewMate</h1>
