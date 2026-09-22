@@ -22,6 +22,7 @@ const Finances = lazy(routeLoaders["/finanzen"]);
 const PdfExport = lazy(routeLoaders["/pdf-export"]);
 const Security = lazy(routeLoaders["/sicherheit"]);
 const Help = lazy(routeLoaders["/hilfe"]);
+const OfferDemo = lazy(() => import("@/pages/OfferDemo"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 function RouteLoading() {
@@ -56,8 +57,15 @@ function AdminOnlySecurityRedirect() {
 
 function Router() {
   return (
-    <Layout>
-      <Suspense fallback={<RouteLoading />}>
+    <Switch>
+      <Route path="/angebot-demo">
+        <Suspense fallback={<RouteLoading />}>
+          <OfferDemo />
+        </Suspense>
+      </Route>
+      <Route>
+        <Layout>
+          <Suspense fallback={<RouteLoading />}>
         <Switch>
           <Route path="/dashboard" component={Dashboard} />
           <Route path="/" component={Dashboard} />
@@ -85,8 +93,10 @@ function Router() {
           <Route path="/hilfe" component={Help} />
           <Route component={NotFound} />
         </Switch>
-      </Suspense>
-    </Layout>
+          </Suspense>
+        </Layout>
+      </Route>
+    </Switch>
   );
 }
 
