@@ -1400,7 +1400,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(help).toContain("Vorfreude im Blick. Das Event im Griff.");
     expect(help).not.toContain("PDF-Handbuch herunterladen");
     expect(help).toContain('placeholder="Live-Suche: z. B. Helfer, Einsatzplan, Material, PDF, Excel oder Passwort"');
-    expect(help).toContain('src: "/api/help/images/dashboard"');
+    expect(help).toContain('src: "/api/help/images/dashboard?v=20260922"');
     expect(help).toContain('src: "/api/help/images/helpers"');
     expect(help).toContain('src: "/api/help/images/plan"');
     expect(help).toContain('src: "/api/help/images/chat"');

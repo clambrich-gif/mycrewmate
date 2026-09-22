@@ -42,7 +42,9 @@ describe("Same-Origin-Hilfebilder", () => {
     expect(response.headers.get("location")).toBeNull();
     expect(response.headers.get("content-type")).toBe("image/png");
     expect(Number(response.headers.get("content-length"))).toBeGreaterThan(1_000);
-    expect(response.headers.get("cache-control")).toContain("max-age=86400");
+    expect(response.headers.get("cache-control")).toBe(
+      "private, no-store, max-age=0"
+    );
     expect(response.headers.get("cross-origin-resource-policy")).toBe(
       "same-origin"
     );

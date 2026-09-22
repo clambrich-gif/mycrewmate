@@ -184,7 +184,7 @@ const HELP_CHAPTERS: HelpChapter[] = [
           items: ["Aktives Jahr und Event prüfen", "Prioritäten oben bearbeiten", "Kennzahlen als Überblick nutzen"],
         },
         screenshot: {
-          src: "/api/help/images/dashboard",
+          src: "/api/help/images/dashboard?v=20260922",
           alt: "Aktuelles MyCrewMate-Dashboard mit Prioritäten, Fristen und kompaktem Event-Zähler",
           caption: "Das aktuelle Dashboard bündelt Prioritäten, Fristen und Kennzahlen für die gewählte Veranstaltung.",
         },

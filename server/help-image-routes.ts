@@ -43,7 +43,7 @@ function getHelpImage(name: string) {
 
 function setImageHeaders(res: Response, filename: string, size?: number) {
   res.set({
-    "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
+    "Cache-Control": "private, no-store, max-age=0",
     "Content-Disposition": `inline; filename="${filename}"`,
     "Content-Type": "image/png",
     "Cross-Origin-Resource-Policy": "same-origin",
