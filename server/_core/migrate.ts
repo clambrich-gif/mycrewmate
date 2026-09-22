@@ -5,6 +5,8 @@ import mysql, { type Connection, type RowDataPacket } from "mysql2/promise";
 
 const MIGRATIONS_TABLE = "__drizzle_migrations";
 const MIGRATION_LOCK_NAME = "mycrewmate_schema_migrations";
+const COMPLETE_SCHEMA_SNAPSHOT = "0052_snapshot.json";
+const COMPLETE_SCHEMA_FINAL_MIGRATION = "0053_integrated_preparation_areas";
 
 export type MigrationFile = {
   folderMillis: number;
@@ -24,6 +26,26 @@ type MigrationJournal = {
 
 type ColumnExistsRow = RowDataPacket & {
   columnType?: string;
+};
+
+type TableExistsRow = RowDataPacket & {
+  tableName?: string;
+};
+
+type SchemaColumnRow = RowDataPacket & {
+  tableName?: string;
+  columnName?: string;
+  columnType?: string;
+};
+
+type DrizzleSnapshot = {
+  tables: Record<
+    string,
+    {
+      name: string;
+      columns: Record<string, { name: string; type: string }>;
+    }
+  >;
 };
 
 type LastMigrationRow = RowDataPacket & {
@@ -78,6 +100,36 @@ function parseAddColumnStatement(statement: string) {
     : null;
 }
 
+type CreateTableStatement = {
+  tableName: string;
+  columns: Array<{ columnName: string; expectedType: string }>;
+};
+
+function parseCreateTableStatement(statement: string): CreateTableStatement | null {
+  const match = statement.match(
+    /^CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?`?([A-Za-z0-9_]+)`?\s*\(([\s\S]+)\)\s*;?$/i
+  );
+  if (!match) return null;
+
+  const columns = match[2]
+    .split("\n")
+    .map(definition => definition.trim().replace(/,$/, ""))
+    .map(definition => {
+      const column = definition.match(/^`([A-Za-z0-9_]+)`\s+(.+)$/);
+      return column
+        ? {
+            columnName: column[1],
+            expectedType: column[2].trim().split(/\s+/)[0].toLowerCase(),
+          }
+        : null;
+    })
+    .filter((column): column is { columnName: string; expectedType: string } =>
+      Boolean(column)
+    );
+
+  return columns.length > 0 ? { tableName: match[1], columns } : null;
+}
+
 function normalizeColumnType(type: string) {
   const normalized = type.toLowerCase().replace(/\s+/g, "");
   return normalized === "boolean" ? "tinyint(1)" : normalized;
@@ -100,6 +152,33 @@ async function compatibleColumnExists(
   );
 
   return normalizeColumnType(rows[0]?.columnType ?? "") === normalizeColumnType(expectedType);
+}
+
+async function compatibleTableExists(
+  connection: MigrationConnection,
+  createTable: CreateTableStatement
+) {
+  const [rows] = await connection.execute<TableExistsRow[]>(
+    `SELECT TABLE_NAME AS tableName
+     FROM information_schema.TABLES
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = ?
+     LIMIT 1`,
+    [createTable.tableName]
+  );
+  if (!rows[0]?.tableName) return false;
+
+  const compatibility = await Promise.all(
+    createTable.columns.map(column =>
+      compatibleColumnExists(
+        connection,
+        createTable.tableName,
+        column.columnName,
+        column.expectedType
+      )
+    )
+  );
+  return compatibility.every(Boolean);
 }
 
 function isDuplicateColumnError(error: unknown) {
@@ -132,6 +211,69 @@ async function lastMigrationTimestamp(connection: MigrationConnection) {
   return Number(rows[0]?.created_at ?? 0);
 }
 
+async function bootstrapCompleteLegacySchema(
+  connection: MigrationConnection,
+  migrations: MigrationFile[],
+  lastAppliedAt: number
+) {
+  const finalMigration = migrations.at(-1);
+  if (
+    finalMigration?.tag !== COMPLETE_SCHEMA_FINAL_MIGRATION ||
+    lastAppliedAt >= finalMigration.folderMillis
+  ) {
+    return false;
+  }
+
+  const snapshotPath = path.join(migrationDirectory(), "meta", COMPLETE_SCHEMA_SNAPSHOT);
+  const snapshot = JSON.parse(fs.readFileSync(snapshotPath, "utf8")) as DrizzleSnapshot;
+  const [rows] = await connection.execute<SchemaColumnRow[]>(
+    `SELECT TABLE_NAME AS tableName, COLUMN_NAME AS columnName, COLUMN_TYPE AS columnType
+     FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+     ORDER BY TABLE_NAME, ORDINAL_POSITION`
+  );
+  const actualColumns = new Map<string, Map<string, string>>();
+  for (const row of rows) {
+    if (!row.tableName || !row.columnName || !row.columnType) continue;
+    const tableColumns = actualColumns.get(row.tableName) ?? new Map<string, string>();
+    tableColumns.set(row.columnName, row.columnType);
+    actualColumns.set(row.tableName, tableColumns);
+  }
+
+  const schemaMatchesSnapshot = Object.values(snapshot.tables).every(table =>
+    Object.values(table.columns).every(column => {
+      const actualType = actualColumns.get(table.name)?.get(column.name);
+      return actualType && normalizeColumnType(actualType) === normalizeColumnType(column.type);
+    })
+  );
+  if (!schemaMatchesSnapshot) return false;
+
+  // 0053 verschiebt die beiden ehemaligen Fachbereiche atomar in die
+  // Vorbereitung. Nur ein bereits leerer Altbestand beweist daher, dass die
+  // Datenübernahme früher vollständig erfolgt ist und das Journal fehlt.
+  const [legacyRows] = await connection.execute<RowDataPacket[]>(
+    `SELECT (
+       (SELECT COUNT(*) FROM \`marketing\`) +
+       (SELECT COUNT(*) FROM \`approvals\`)
+     ) AS remainingRows`
+  );
+  if (Number(legacyRows[0]?.remainingRows ?? -1) !== 0) return false;
+
+  const missingLedgerEntries = migrations.filter(
+    migration => migration.folderMillis > lastAppliedAt
+  );
+  for (const migration of missingLedgerEntries) {
+    await connection.execute(
+      `INSERT INTO \`${MIGRATIONS_TABLE}\` (\`hash\`, \`created_at\`) VALUES (?, ?)`,
+      [migration.hash, migration.folderMillis]
+    );
+  }
+  console.info(
+    `[Migration] Vollständig kompatibles Legacy-Schema erkannt; ${missingLedgerEntries.length} fehlende Journal-Einträge sicher ergänzt.`
+  );
+  return true;
+}
+
 async function acquireMigrationLock(connection: MigrationConnection) {
   const [rows] = await connection.execute<AdvisoryLockRow[]>(
     "SELECT GET_LOCK(?, 60) AS acquired",
@@ -156,14 +298,30 @@ export async function applyProjectMigrations(
   try {
     await ensureMigrationLedger(connection);
     const lastAppliedAt = await lastMigrationTimestamp(connection);
+    const bootstrappedLegacySchema = await bootstrapCompleteLegacySchema(
+      connection,
+      migrations,
+      lastAppliedAt
+    );
     const pendingMigrations = migrations.filter(
-      migration => migration.folderMillis > lastAppliedAt
+      migration =>
+        migration.folderMillis >
+        (bootstrappedLegacySchema ? migrations.at(-1)?.folderMillis ?? 0 : lastAppliedAt)
     );
     let compatibleColumnsSkipped = 0;
+    let compatibleTablesSkipped = 0;
 
     for (const migration of pendingMigrations) {
       for (const statement of migration.sql) {
         const addedColumn = parseAddColumnStatement(statement);
+        const createdTable = parseCreateTableStatement(statement);
+        if (createdTable && (await compatibleTableExists(connection, createdTable))) {
+          compatibleTablesSkipped += 1;
+          console.info(
+            `[Migration] ${migration.tag}: vorhandene Tabelle ${createdTable.tableName} mit bestätigtem Basisschema übernommen.`
+          );
+          continue;
+        }
         if (
           addedColumn &&
           (await compatibleColumnExists(
@@ -220,6 +378,7 @@ export async function applyProjectMigrations(
     return {
       appliedMigrations: pendingMigrations.length,
       compatibleColumnsSkipped,
+      compatibleTablesSkipped,
     };
   } finally {
     await releaseMigrationLock(connection);
@@ -239,7 +398,7 @@ export async function runProjectMigrations() {
       readProjectMigrations()
     );
     console.info(
-      `[Migration] Abgeschlossen: ${result.appliedMigrations} Migration(en), ${result.compatibleColumnsSkipped} kompatible Spalte(n) übernommen.`
+      `[Migration] Abgeschlossen: ${result.appliedMigrations} Migration(en), ${result.compatibleColumnsSkipped} kompatible Spalte(n) und ${result.compatibleTablesSkipped} kompatible Tabelle(n) übernommen.`
     );
   } finally {
     await connection.end();

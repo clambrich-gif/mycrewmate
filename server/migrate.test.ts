@@ -16,17 +16,43 @@ function migration(statements: string[]): MigrationFile {
 function createConnection(options?: {
   columnExists?: boolean[];
   columnType?: string;
+  columnTypes?: string[];
+  tableExists?: boolean;
+  snapshotCompatible?: boolean;
+  legacyRows?: number;
   duplicateOnAlter?: boolean;
 }) {
   const columnExists = [...(options?.columnExists ?? [])];
+  const columnTypes = [...(options?.columnTypes ?? [])];
   const execute = vi.fn(async (query: string) => {
     if (query.includes("GET_LOCK")) return [[{ acquired: 1 }]];
     if (query.includes("RELEASE_LOCK")) return [[{ released: 1 }]];
     if (query.includes("SELECT created_at")) return [[]];
+    if (query.includes("information_schema.TABLES")) {
+      return options?.tableExists ? [[{ tableName: "approvals" }]] : [[]];
+    }
+    if (query.includes("TABLE_NAME AS tableName")) {
+      if (!options?.snapshotCompatible) return [[]];
+      const snapshot = JSON.parse(
+        fs.readFileSync(path.resolve(process.cwd(), "drizzle/meta/0052_snapshot.json"), "utf8")
+      );
+      return [
+        Object.values(snapshot.tables).flatMap((table: any) =>
+          Object.values(table.columns).map((column: any) => ({
+            tableName: table.name,
+            columnName: column.name,
+            columnType: column.type,
+          }))
+        ),
+      ];
+    }
+    if (query.includes("remainingRows")) {
+      return [[{ remainingRows: options?.legacyRows ?? 0 }]];
+    }
     if (query.includes("information_schema.COLUMNS")) {
       return [
         columnExists.shift()
-          ? [{ columnType: options?.columnType ?? "varchar(500)" }]
+          ? [{ columnType: columnTypes.shift() ?? options?.columnType ?? "varchar(500)" }]
           : [],
       ];
     }
@@ -60,7 +86,11 @@ describe("applyProjectMigrations", () => {
       ])]
     );
 
-    expect(result).toEqual({ appliedMigrations: 1, compatibleColumnsSkipped: 1 });
+    expect(result).toEqual({
+      appliedMigrations: 1,
+      compatibleColumnsSkipped: 1,
+      compatibleTablesSkipped: 0,
+    });
     expect(connection.execute).not.toHaveBeenCalledWith(
       "ALTER TABLE `events` ADD `pdfLogoKey` varchar(500);"
     );
@@ -84,7 +114,11 @@ describe("applyProjectMigrations", () => {
       [migration(["ALTER TABLE `events` ADD `pdfLogoKey` varchar(500);"])]
     );
 
-    expect(result).toEqual({ appliedMigrations: 1, compatibleColumnsSkipped: 1 });
+    expect(result).toEqual({
+      appliedMigrations: 1,
+      compatibleColumnsSkipped: 1,
+      compatibleTablesSkipped: 0,
+    });
   });
 
   it("akzeptiert keine gleichnamige Spalte mit abweichendem Typ", async () => {
@@ -100,6 +134,93 @@ describe("applyProjectMigrations", () => {
         [migration(["ALTER TABLE `events` ADD `pdfLogoKey` varchar(500);"])]
       )
     ).rejects.toThrow("Duplicate column name");
+  });
+
+  it("übernimmt eine vorbestehende historische Tabelle nur bei bestätigtem Basisschema", async () => {
+    const connection = createConnection({
+      tableExists: true,
+      columnExists: [true, true],
+      columnTypes: ["int", "varchar(300)"],
+    });
+
+    const result = await applyProjectMigrations(
+      connection,
+      [
+        migration([
+          "CREATE TABLE `approvals` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `request` varchar(300) NOT NULL,\n  CONSTRAINT `approvals_id` PRIMARY KEY(`id`)\n);",
+        ])
+      ]
+    );
+
+    expect(result).toEqual({
+      appliedMigrations: 1,
+      compatibleColumnsSkipped: 0,
+      compatibleTablesSkipped: 1,
+    });
+    expect(connection.query).not.toHaveBeenCalledWith(
+      expect.stringContaining("CREATE TABLE `approvals`")
+    );
+  });
+
+  it("blockiert eine vorbestehende Tabelle mit abweichendem Basisschema", async () => {
+    const connection = createConnection({
+      tableExists: true,
+      columnExists: [true, true],
+      columnTypes: ["int", "varchar(200)"],
+    });
+    const existingTableError = Object.assign(
+      new Error("Table 'approvals' already exists"),
+      { code: "ER_TABLE_EXISTS_ERROR" }
+    );
+    connection.query.mockRejectedValue(existingTableError);
+
+    await expect(
+      applyProjectMigrations(
+        connection,
+        [
+          migration([
+            "CREATE TABLE `approvals` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `request` varchar(300) NOT NULL,\n  CONSTRAINT `approvals_id` PRIMARY KEY(`id`)\n);",
+          ])
+        ]
+      )
+    ).rejects.toThrow("already exists");
+  });
+
+  it("ergänzt fehlende Journal-Einträge nur für ein vollständig aktuelles Legacy-Schema", async () => {
+    const connection = createConnection({ snapshotCompatible: true, legacyRows: 0 });
+    const migrations = readProjectMigrations();
+
+    const result = await applyProjectMigrations(connection, migrations);
+
+    expect(result).toEqual({
+      appliedMigrations: 0,
+      compatibleColumnsSkipped: 0,
+      compatibleTablesSkipped: 0,
+    });
+    expect(
+      connection.execute.mock.calls.filter(([query]) =>
+        String(query).includes("INSERT INTO `__drizzle_migrations`")
+      )
+    ).toHaveLength(migrations.length);
+    expect(connection.query).not.toHaveBeenCalled();
+  });
+
+  it("verweigert den Legacy-Bootstrap bei noch nicht übertragenen Altdaten", async () => {
+    const connection = createConnection({ snapshotCompatible: true, legacyRows: 1 });
+    connection.query.mockRejectedValue(
+      Object.assign(new Error("Table 'users' already exists"), {
+        code: "ER_TABLE_EXISTS_ERROR",
+      })
+    );
+
+    await expect(
+      applyProjectMigrations(connection, readProjectMigrations())
+    ).rejects.toThrow("already exists");
+    expect(
+      connection.execute.mock.calls.filter(([query]) =>
+        String(query).includes("INSERT INTO `__drizzle_migrations`")
+      )
+    ).toHaveLength(0);
   });
 
   it("blockiert andere Datenbankfehler weiterhin", async () => {
