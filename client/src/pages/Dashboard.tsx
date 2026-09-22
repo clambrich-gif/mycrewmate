@@ -844,7 +844,7 @@ function EventCountdownWidget({
   const counterContent = (() => {
     if (state.kind === "upcoming") {
       return (
-        <p className="flex items-baseline justify-center gap-1.5 whitespace-nowrap font-black tracking-[-0.055em]">
+        <p className="flex items-baseline justify-start gap-1.5 whitespace-nowrap font-black tracking-[-0.055em]">
           <span className="text-sm font-extrabold tracking-[-0.035em] text-slate-950">nur noch</span>
           <span className="text-[2.45rem] leading-none tabular-nums text-blue-600 sm:text-[2.55rem]">{state.days}</span>
           <span className="text-lg font-black text-orange-500">{state.days === 1 ? "Tag" : "Tage"}</span>
@@ -873,7 +873,7 @@ function EventCountdownWidget({
       className={`dashboard-event-countdown w-full shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-md shadow-slate-200/70${isUrgent ? " countdown-urgent" : ""}`}
       aria-label="Event-Zähler mit Tagesimpuls"
     >
-      <div className="grid min-h-[3.95rem] grid-cols-[4.55rem_minmax(0,1fr)] items-center gap-1.5 bg-gradient-to-r from-sky-50 via-white to-orange-50 px-2.5 py-1.5">
+      <div className="grid min-h-[3.95rem] grid-cols-[3.75rem_minmax(0,1fr)] items-center gap-1 bg-gradient-to-r from-sky-50 via-white to-orange-50 px-2 py-1.5">
         <input
           ref={logoInputRef}
           type="file"
@@ -886,7 +886,7 @@ function EventCountdownWidget({
         />
         <button
           type="button"
-          className="group relative mx-auto grid size-[3.4rem] place-items-center overflow-hidden rounded-full border border-dashed border-blue-300 bg-white shadow-sm ring-4 ring-blue-50 transition-transform duration-150 hover:scale-[1.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-default disabled:hover:scale-100"
+          className="group relative mx-auto grid size-[3.4rem] place-items-center overflow-hidden rounded-full border border-black/35 bg-white shadow-sm transition-transform duration-150 hover:scale-[1.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-default disabled:hover:scale-100"
           onClick={selectLogo}
           disabled={!canManageLogo || uploadLogo.isPending}
           title={canManageLogo ? "Eventlogo für Dashboard und PDFs ändern" : "Eventlogo dieser Veranstaltung"}

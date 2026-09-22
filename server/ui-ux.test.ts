@@ -1014,6 +1014,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain('accept="image/png,image/jpeg"');
     expect(dashboard).toContain("Eventlogo für Dashboard und PDFs ändern");
     expect(dashboard).toContain("dashboard-event-countdown");
+    expect(dashboard).toContain("grid-cols-[3.75rem_minmax(0,1fr)]");
+    expect(dashboard).toContain("justify-start");
+    expect(dashboard).toContain("border-black/35");
+    expect(dashboard).not.toContain("border-dashed");
     expect(dashboard).toContain("nur noch");
     expect(dashboard).toContain("dashboard-daily-quote-track");
     expect(dashboard).not.toContain("Eventstart in");
@@ -1037,7 +1041,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(styles).toContain("@keyframes countdown-urgent-glow");
     expect(styles).toContain(".dashboard-daily-quote-track");
     expect(styles).toContain(".dashboard-event-countdown");
-    expect(styles).toContain("width: 18.25rem !important");
+    expect(styles).toContain("width: 16rem !important");
     expect(styles).toContain("@keyframes dashboard-daily-quote-marquee");
     expect(styles).toContain("prefers-reduced-motion: no-preference");
     expect(styles).toContain("will-change: opacity, transform");
