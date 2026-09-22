@@ -1515,6 +1515,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain("lg:grid-cols-[16rem_minmax(0,1fr)]");
     expect(layout).toContain("lg:sticky lg:top-0 lg:flex lg:h-screen");
     expect(layout).toContain("lg:h-screen lg:overflow-y-auto");
+    expect(layout).toContain("bg-gradient-to-br from-sky-50 via-white to-orange-50");
   });
 
   it("erlaubt auf mobilen Geräten manuelles Heranzoomen", () => {

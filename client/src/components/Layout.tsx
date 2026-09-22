@@ -1789,7 +1789,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           {isSidebarOpen ? "Seitenleiste einklappen" : "Seitenleiste ausklappen"}
         </TooltipContent>
       </Tooltip>
-      <main className="min-w-0 lg:h-screen lg:overflow-y-auto">
+      <main className="min-w-0 bg-gradient-to-br from-sky-50 via-white to-orange-50 lg:h-screen lg:overflow-y-auto">
         <div
           className={cn(
             location === "/helfer" || location === "/einsatzplan"
