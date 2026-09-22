@@ -640,7 +640,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(permissions).toContain("break-words text-muted-foreground");
     expect(permissions).toContain("Vorgang &amp; ausgeführt von");
     expect(permissions).toContain("Wiederherstellen");
-    expect(chat).toContain("md:bottom-8 md:right-8 md:h-20");
+    expect(chat).toContain("md:bottom-8 md:right-8");
+    expect(chat).toContain("md:h-20 md:w-20");
   });
 
   it("hält Dashboard-Statusfarben im erzwungenen Light-Theme gut lesbar", () => {
@@ -846,6 +847,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain("UpcomingDeadlinesCard");
     expect(dashboard).toContain('data-dashboard-section="Nächste Fristen"');
     expect(dashboard).toContain("Datierte Vorbereitungsaufgaben");
+    expect(dashboard).toContain("gap-0 border-blue-200 bg-white py-3");
+    expect(dashboard).toContain("px-3 py-1.5 sm:px-4 sm:py-2");
+    expect(dashboard).toContain("px-3 pb-0 pt-1 sm:px-4 sm:pb-0 sm:pt-1");
+    expect(dashboard).toContain("min-h-24");
     expect(dashboard).toContain("deadlineTimingLabel");
     expect(dashboard).toContain("deadlineToneClass");
     expect(dashboard).toContain("upcomingDeadlines.length > 0");
@@ -968,7 +973,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain('data-dashboard-level="Fristen"');
     expect(dashboard).toContain('className="w-full"');
     expect(dashboard).toContain('grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-4');
-    expect(dashboard).toContain('min-h-28 min-w-0 flex-col');
+    expect(dashboard).toContain('min-h-24 min-w-0 flex-col');
     expect(dashboard).toContain("deadlineTimingLabel(deadline.daysUntil)");
     expect(dashboard).toContain("Datierte Vorbereitungsaufgaben");
   });
@@ -1393,7 +1398,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(help).toContain("Einmal-Zugänge, Passwortresets und Eventfreigaben");
     expect(help).toContain("Atomarer Modul-Import");
     expect(help).toContain("Vorfreude im Blick. Das Event im Griff.");
-    expect(help).toContain("PDF-Handbuch herunterladen");
+    expect(help).not.toContain("PDF-Handbuch herunterladen");
     expect(help).toContain('placeholder="Live-Suche: z. B. Helfer, Einsatzplan, Material, PDF, Excel oder Passwort"');
     expect(help).toContain('src: "/api/help/images/dashboard"');
     expect(help).toContain('src: "/api/help/images/helpers"');
@@ -1401,6 +1406,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(help).toContain('src: "/api/help/images/chat"');
     expect(help).toContain('src: "/api/help/images/pdf"');
     expect(help).toContain('src: "/api/help/images/app-speichern"');
+    expect(help).toContain('display: "mobile"');
+    expect(help).toContain('"mx-auto max-w-xs"');
+    expect(help).toContain('"max-h-64 w-auto mx-auto"');
     expect(help).toContain('src: "/api/help/images/locations"');
     expect(help).toContain('src: "/api/help/images/preparation"');
     expect(help).toContain('src: "/api/help/images/materials"');
@@ -1948,7 +1956,16 @@ describe("UI- und Mobile-UX-Regeln", () => {
 
     expect(layout).toContain('overlayClassName="z-50"');
     expect(layout).toContain('className="z-50 w-[88vw] max-w-xs');
-    expect(widget).toContain("right-6 z-40 flex h-16");
+    expect(widget).toContain("fixed z-40 flex h-16");
+    expect(widget).toContain("mycrewmate:live-chat-button-position");
+    expect(widget).toContain("CHAT_BUTTON_DRAG_THRESHOLD");
+    expect(widget).toContain("data-live-chat-launcher=\"true\"");
+    expect(widget).toContain("onPointerDown={handleChatButtonPointerDown}");
+    expect(widget).toContain("onPointerMove={handleChatButtonPointerMove}");
+    expect(widget).toContain("onPointerUp={finishChatButtonDrag}");
+    expect(widget).toContain("onPointerCancel={finishChatButtonDrag}");
+    expect(widget).toContain("suppressChatButtonClickRef");
+    expect(widget).toContain("localStorage.setItem(CHAT_BUTTON_POSITION_STORAGE_KEY");
     expect(widget).toContain("right-4 z-40 flex items-center");
     expect(widget).toContain('"fixed z-40 flex w-full');
     expect(map).toContain('"relative z-0 isolate h-[500px] w-full"');
@@ -2667,6 +2684,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(mapClient).toContain("window.setTimeout(reportFocusedLocationReady, 360)");
     expect(mapClient).toContain('data-map-layer-switcher="top-right"');
     expect(mapClient).toContain("right-3 top-3");
+    expect(mapClient).toContain("mapToolbarOpen");
+    expect(mapClient).toContain('data-map-layer-toggle="top-right"');
+    expect(mapClient).toContain("Kartensteuerung einblenden");
+    expect(mapClient).toContain("Kartensteuerung ausblenden");
 
     expect(materials).toContain("trpc.pdf.materialPacklist.useMutation");
     expect(materials).toContain('"PDF drucken"');
@@ -2674,9 +2695,16 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(source("server/pdf.ts")).toContain("width: 138");
     expect(locations).toContain("GPX-Streckenoverlays");
     expect(locations).toContain("GPX hochladen");
+    expect(locations).toContain("trpc.gpxTracks.rename.useMutation");
+    expect(locations).toContain("Name der GPX-Strecke bearbeiten");
+    expect(locations).toContain("umbenennen");
+    expect(source("server/routers.ts")).toContain("updateGpxTrackName");
     expect(mapCard).toContain("trpc.gpxTracks.mapData.useQuery()");
     expect(mapClient).toContain("Polyline");
     expect(mapClient).toContain("data-gpx-layer-control=\"bottom-left\"");
+    expect(mapClient).toContain('data-gpx-layer-toggle="bottom-left"');
+    expect(mapClient).toContain("trackControlOpen");
+    expect(mapClient).toContain("aria-expanded={trackControlOpen}");
     expect(mapClient).toContain("Strecken einblenden");
     expect(mapClient).toContain("Strecken werden bewusst nicht automatisch eingeblendet");
     expect(mapClient).toContain("() => new Set()");

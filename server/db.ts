@@ -1050,6 +1050,15 @@ export async function createGpxTrack(
     eventId: event(),
   });
 }
+export async function updateGpxTrackName(id: number, name: string) {
+  const db = (await getDb()) as DB;
+  const result = await db
+    .update(gpxTracks)
+    .set({ name })
+    .where(and(eq(gpxTracks.id, id), planningScope(gpxTracks)));
+  requireDeletedRows(result, 1);
+  return { success: true } as const;
+}
 export async function deleteGpxTrack(id: number) {
   const db = (await getDb()) as DB;
   const result = await db

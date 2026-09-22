@@ -178,9 +178,9 @@ function UpcomingDeadlinesCard({
   return (
     <Card
       data-dashboard-section="Nächste Fristen"
-      className="border-blue-200 bg-white text-slate-950 shadow-sm"
+      className="gap-0 border-blue-200 bg-white py-3 text-slate-950 shadow-sm"
     >
-      <CardHeader className="flex flex-row flex-wrap items-baseline justify-between gap-2 p-3 pb-2 sm:p-4 sm:pb-2">
+      <CardHeader className="flex flex-row flex-wrap items-baseline justify-between gap-2 px-3 py-1.5 sm:px-4 sm:py-2">
         <CardTitle className="flex items-center gap-2 text-base text-slate-900">
           <CalendarClock className="size-5 text-blue-700" aria-hidden="true" />
           Nächste Fristen
@@ -189,13 +189,13 @@ function UpcomingDeadlinesCard({
           Datierte Vorbereitungsaufgaben
         </span>
       </CardHeader>
-      <CardContent className="p-3 pt-0 sm:p-4 sm:pt-0">
+      <CardContent className="px-3 pb-0 pt-1 sm:px-4 sm:pb-0 sm:pt-1">
         <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-4">
           {deadlines.map(deadline => (
             <button
               key={deadline.taskId}
               type="button"
-              className="group flex min-h-28 min-w-0 flex-col items-stretch justify-between rounded-xl border border-slate-200 bg-slate-50 p-3 text-left transition-[border-color,box-shadow,transform] duration-150 hover:border-blue-300 hover:shadow-sm active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              className="group flex min-h-24 min-w-0 flex-col items-stretch justify-between rounded-xl border border-slate-200 bg-slate-50 p-3 text-left transition-[border-color,box-shadow,transform] duration-150 hover:border-blue-300 hover:shadow-sm active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
               aria-label={`${deadline.dueText}: ${deadline.task}. ${deadlineTimingLabel(deadline.daysUntil)}. Vorbereitung öffnen`}
               onPointerEnter={() => preloadRoute(target.path)}
               onFocus={() => preloadRoute(target.path)}

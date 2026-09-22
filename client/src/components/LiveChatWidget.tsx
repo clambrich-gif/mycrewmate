@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import {
   KeyboardEvent,
+  PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -32,6 +33,35 @@ import { toast } from "sonner";
 
 const SOUND_ENABLED_STORAGE_PREFIX = "rsc-live-notes-important-sound-";
 const TYPING_IDLE_MS = 3_500;
+const CHAT_BUTTON_POSITION_STORAGE_KEY = "mycrewmate:live-chat-button-position";
+const CHAT_BUTTON_EDGE_GAP = 12;
+const CHAT_BUTTON_DRAG_THRESHOLD = 6;
+
+type ChatButtonPosition = { left: number; top: number };
+type ChatButtonDrag = {
+  pointerId: number;
+  originLeft: number;
+  originTop: number;
+  pointerStartX: number;
+  pointerStartY: number;
+  width: number;
+  height: number;
+  moved: boolean;
+};
+
+function clampChatButtonPosition(
+  left: number,
+  top: number,
+  width: number,
+  height: number
+): ChatButtonPosition {
+  const maxLeft = Math.max(CHAT_BUTTON_EDGE_GAP, window.innerWidth - width - CHAT_BUTTON_EDGE_GAP);
+  const maxTop = Math.max(CHAT_BUTTON_EDGE_GAP, window.innerHeight - height - CHAT_BUTTON_EDGE_GAP);
+  return {
+    left: Math.min(Math.max(CHAT_BUTTON_EDGE_GAP, left), maxLeft),
+    top: Math.min(Math.max(CHAT_BUTTON_EDGE_GAP, top), maxTop),
+  };
+}
 
 export type LiveChatWidgetState = "closed" | "minimized" | "open";
 
@@ -101,10 +131,16 @@ export function LiveChatWidget({
   const [isImportant, setIsImportant] = useState(false);
   const [importantSoundEnabled, setImportantSoundEnabled] = useState(false);
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
+  const [chatButtonPosition, setChatButtonPosition] =
+    useState<ChatButtonPosition | null>(null);
   const typingMutation = trpc.notes.typing.useMutation();
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const chatButtonRef = useRef<HTMLButtonElement>(null);
+  const chatButtonPositionRef = useRef<ChatButtonPosition | null>(null);
+  const chatButtonDragRef = useRef<ChatButtonDrag | null>(null);
+  const suppressChatButtonClickRef = useRef(false);
   const playedImportantNoteIdsRef = useRef<Set<number>>(new Set());
   const receivedInitialSnapshotRef = useRef(false);
   const typingDebounceTimerRef = useRef<number | null>(null);
@@ -116,6 +152,51 @@ export function LiveChatWidget({
     () => `${SOUND_ENABLED_STORAGE_PREFIX}${year}-${eventId}`,
     [year, eventId]
   );
+
+  const setStoredChatButtonPosition = useCallback((position: ChatButtonPosition) => {
+    chatButtonPositionRef.current = position;
+    setChatButtonPosition(position);
+  }, []);
+
+  const persistChatButtonPosition = useCallback((position: ChatButtonPosition) => {
+    try {
+      localStorage.setItem(CHAT_BUTTON_POSITION_STORAGE_KEY, JSON.stringify(position));
+    } catch {
+      // Ein gesperrter lokaler Speicher darf die Chatbedienung nicht beeinträchtigen.
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(CHAT_BUTTON_POSITION_STORAGE_KEY);
+      if (!stored) return;
+      const parsed = JSON.parse(stored) as Partial<ChatButtonPosition>;
+      if (!Number.isFinite(parsed.left) || !Number.isFinite(parsed.top)) return;
+      setStoredChatButtonPosition({ left: Number(parsed.left), top: Number(parsed.top) });
+    } catch {
+      // Bei fehlerhaftem oder gesperrtem Speicher bleibt die Standardposition aktiv.
+    }
+  }, [setStoredChatButtonPosition]);
+
+  useEffect(() => {
+    const keepChatButtonInViewport = () => {
+      const position = chatButtonPositionRef.current;
+      const button = chatButtonRef.current;
+      if (!position || !button) return;
+      const rect = button.getBoundingClientRect();
+      const clamped = clampChatButtonPosition(
+        position.left,
+        position.top,
+        rect.width,
+        rect.height
+      );
+      if (clamped.left === position.left && clamped.top === position.top) return;
+      setStoredChatButtonPosition(clamped);
+      persistChatButtonPosition(clamped);
+    };
+    window.addEventListener("resize", keepChatButtonInViewport);
+    return () => window.removeEventListener("resize", keepChatButtonInViewport);
+  }, [persistChatButtonPosition, setStoredChatButtonPosition]);
 
   const confirmedName =
     user?.name?.trim() || (user?.role === "admin" ? "Administrator" : "Planungsteam");
@@ -281,6 +362,69 @@ export function LiveChatWidget({
     });
   };
 
+  const handleChatButtonPointerDown = (
+    event: ReactPointerEvent<HTMLButtonElement>
+  ) => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    chatButtonDragRef.current = {
+      pointerId: event.pointerId,
+      originLeft: rect.left,
+      originTop: rect.top,
+      pointerStartX: event.clientX,
+      pointerStartY: event.clientY,
+      width: rect.width,
+      height: rect.height,
+      moved: false,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handleChatButtonPointerMove = (
+    event: ReactPointerEvent<HTMLButtonElement>
+  ) => {
+    const drag = chatButtonDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const deltaX = event.clientX - drag.pointerStartX;
+    const deltaY = event.clientY - drag.pointerStartY;
+    if (
+      !drag.moved &&
+      Math.hypot(deltaX, deltaY) < CHAT_BUTTON_DRAG_THRESHOLD
+    ) {
+      return;
+    }
+    drag.moved = true;
+    event.preventDefault();
+    setStoredChatButtonPosition(
+      clampChatButtonPosition(
+        drag.originLeft + deltaX,
+        drag.originTop + deltaY,
+        drag.width,
+        drag.height
+      )
+    );
+  };
+
+  const finishChatButtonDrag = (
+    event: ReactPointerEvent<HTMLButtonElement>
+  ) => {
+    const drag = chatButtonDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    chatButtonDragRef.current = null;
+    if (!drag.moved) return;
+    suppressChatButtonClickRef.current = true;
+    const position = chatButtonPositionRef.current;
+    if (position) persistChatButtonPosition(position);
+  };
+
+  const handleChatButtonClick = () => {
+    if (suppressChatButtonClickRef.current) {
+      suppressChatButtonClickRef.current = false;
+      return;
+    }
+    onOpen();
+  };
+
   const isExpanded = state === "open";
   const isMinimized = state === "minimized";
 
@@ -351,10 +495,27 @@ export function LiveChatWidget({
     return (
       <aside aria-label="Live-Notizen und Team-Chat">
         <Button
+          ref={chatButtonRef}
           type="button"
-          onClick={onOpen}
+          data-live-chat-launcher="true"
+          onClick={handleChatButtonClick}
+          onPointerDown={handleChatButtonPointerDown}
+          onPointerMove={handleChatButtonPointerMove}
+          onPointerUp={finishChatButtonDrag}
+          onPointerCancel={finishChatButtonDrag}
+          style={
+            chatButtonPosition
+              ? {
+                  left: `${chatButtonPosition.left}px`,
+                  top: `${chatButtonPosition.top}px`,
+                }
+              : undefined
+          }
           className={cn(
-            "fixed bottom-[max(1.5rem,calc(env(safe-area-inset-bottom)+0.75rem))] right-6 z-40 flex h-16 w-16 min-h-16 min-w-16 items-center justify-center rounded-full border-2 border-white p-0 text-white shadow-2xl transition-[background-color,transform,box-shadow] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-offset-2 motion-safe:hover:scale-105 md:bottom-8 md:right-8 md:h-20 md:w-20 md:min-h-20 md:min-w-20 md:border-[3px] md:shadow-[0_12px_28px_rgba(37,99,235,0.38)]",
+            "fixed z-40 flex h-16 w-16 min-h-16 min-w-16 touch-none select-none items-center justify-center rounded-full border-2 border-white p-0 text-white shadow-2xl transition-[background-color,transform,box-shadow] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-offset-2 motion-safe:hover:scale-105 md:h-20 md:w-20 md:min-h-20 md:min-w-20 md:border-[3px] md:shadow-[0_12px_28px_rgba(37,99,235,0.38)]",
+            chatButtonPosition
+              ? "cursor-grab active:cursor-grabbing"
+              : "bottom-[max(1.5rem,calc(env(safe-area-inset-bottom)+0.75rem))] right-6 cursor-grab active:cursor-grabbing md:bottom-8 md:right-8",
             hasUnread
               ? hasImportantUnread
                 ? "animate-pulse bg-red-600 ring-4 ring-red-400 hover:bg-red-700 focus-visible:ring-red-400"

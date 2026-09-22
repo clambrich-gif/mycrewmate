@@ -3,7 +3,7 @@ import type {
   CircleMarker as LeafletCircleMarker,
   Marker as LeafletMarker,
 } from "leaflet";
-import { ChevronLeft, ChevronRight, Maximize2, Minimize2, RotateCcw, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Maximize2, Minimize2, RotateCcw, X } from "lucide-react";
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useIsMobile } from "@/hooks/useMobile";
 import {
@@ -290,6 +290,8 @@ export default function LocationMapClient({
   const [resetKey, setResetKey] = useState(0);
   const [nativeFullscreen, setNativeFullscreen] = useState(false);
   const [cssFullscreen, setCssFullscreen] = useState(false);
+  const [mapToolbarOpen, setMapToolbarOpen] = useState(true);
+  const [trackControlOpen, setTrackControlOpen] = useState(true);
   const fullscreen = nativeFullscreen || cssFullscreen;
   const isMobile = useIsMobile();
   const [mobileLocationDetails, setMobileLocationDetails] = useState<{
@@ -333,6 +335,12 @@ export default function LocationMapClient({
     document.addEventListener("fullscreenchange", syncFullscreen);
     return () => document.removeEventListener("fullscreenchange", syncFullscreen);
   }, []);
+
+  useEffect(() => {
+    if (!isMobile) return;
+    setMapToolbarOpen(false);
+    setTrackControlOpen(false);
+  }, [isMobile]);
 
   useEffect(() => {
     if (!cssFullscreen) return;
@@ -512,44 +520,71 @@ export default function LocationMapClient({
         ))}
       </MapContainer>
 
-      <div
-        data-map-layer-switcher="top-right"
-        className="absolute right-3 top-3 z-[1000] flex max-w-[calc(100%-1.5rem)] flex-wrap justify-end gap-1 rounded-md border border-slate-300 bg-white/95 p-1 shadow-md backdrop-blur-sm"
-      >
-        {(Object.keys(MAP_LAYERS) as MapLayerKey[]).map(key => (
+      <div className="absolute right-3 top-3 z-[1000] flex max-w-[calc(100%-1.5rem)] flex-col items-end gap-1">
+        {isMobile && !mapToolbarOpen ? (
           <button
-            key={key}
             type="button"
-            onClick={() => setLayer(key)}
-            className={`min-h-9 rounded px-3 text-xs font-semibold transition-colors ${
-              layer === key
-                ? "bg-blue-700 text-white"
-                : "text-slate-700 hover:bg-slate-100"
-            }`}
-            aria-pressed={layer === key}
+            data-map-layer-toggle="top-right"
+            onClick={() => setMapToolbarOpen(true)}
+            className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md border border-slate-300 bg-white/95 text-slate-700 shadow-md backdrop-blur-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+            aria-label="Kartensteuerung einblenden"
+            title="Kartensteuerung einblenden"
           >
-            {MAP_LAYERS[key].label}
+            <Maximize2 className="size-4" aria-hidden="true" />
           </button>
-        ))}
-        <button
-          type="button"
-          onClick={() => setResetKey(value => value + 1)}
-          className="inline-flex min-h-9 items-center gap-1 rounded px-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
-          title="Ansicht auf alle sichtbaren Standorte und Strecken zurücksetzen"
-          aria-label="Kartenansicht zurücksetzen"
-        >
-          <RotateCcw className="size-3.5" aria-hidden="true" />
-          Reset
-        </button>
-        <button
-          type="button"
-          onClick={toggleFullscreen}
-          className="inline-flex min-h-9 items-center rounded px-2 text-slate-700 hover:bg-slate-100"
-          title={fullscreen ? "Vollbild verlassen" : "Karte im Vollbild öffnen"}
-          aria-label={fullscreen ? "Vollbild verlassen" : "Karte im Vollbild öffnen"}
-        >
-          {fullscreen ? <Minimize2 className="size-4" aria-hidden="true" /> : <Maximize2 className="size-4" aria-hidden="true" />}
-        </button>
+        ) : null}
+        {(!isMobile || mapToolbarOpen) && (
+          <div
+            data-map-layer-switcher="top-right"
+            className="flex max-w-full flex-wrap justify-end gap-1 rounded-md border border-slate-300 bg-white/95 p-1 shadow-md backdrop-blur-sm"
+          >
+            {(Object.keys(MAP_LAYERS) as MapLayerKey[]).map(key => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setLayer(key)}
+                className={`min-h-9 rounded px-3 text-xs font-semibold transition-colors ${
+                  layer === key
+                    ? "bg-blue-700 text-white"
+                    : "text-slate-700 hover:bg-slate-100"
+                }`}
+                aria-pressed={layer === key}
+              >
+                {MAP_LAYERS[key].label}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setResetKey(value => value + 1)}
+              className="inline-flex min-h-9 items-center gap-1 rounded px-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+              title="Ansicht auf alle sichtbaren Standorte und Strecken zurücksetzen"
+              aria-label="Kartenansicht zurücksetzen"
+            >
+              <RotateCcw className="size-3.5" aria-hidden="true" />
+              Reset
+            </button>
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              className="inline-flex min-h-9 items-center rounded px-2 text-slate-700 hover:bg-slate-100"
+              title={fullscreen ? "Vollbild verlassen" : "Karte im Vollbild öffnen"}
+              aria-label={fullscreen ? "Vollbild verlassen" : "Karte im Vollbild öffnen"}
+            >
+              {fullscreen ? <Minimize2 className="size-4" aria-hidden="true" /> : <Maximize2 className="size-4" aria-hidden="true" />}
+            </button>
+            {isMobile && (
+              <button
+                type="button"
+                onClick={() => setMapToolbarOpen(false)}
+                className="inline-flex min-h-9 items-center rounded px-2 text-slate-700 hover:bg-slate-100"
+                aria-label="Kartensteuerung ausblenden"
+                title="Kartensteuerung ausblenden"
+              >
+                <ChevronUp className="size-4" aria-hidden="true" />
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {desktopLocationDetails && !isMobile ? (
@@ -570,26 +605,38 @@ export default function LocationMapClient({
       ) : null}
 
       {gpxTracks.length ? (
-        <fieldset
+        <section
           data-gpx-layer-control="bottom-left"
-          className="absolute bottom-7 left-3 z-[1000] max-w-[min(20rem,calc(100%-1.5rem))] rounded-md border border-slate-300 bg-white/90 p-2 shadow-md backdrop-blur-sm"
+          className="absolute bottom-7 left-3 z-[1000] max-w-[min(20rem,calc(100%-1.5rem))] overflow-hidden rounded-md border border-slate-300 bg-white/90 shadow-md backdrop-blur-sm"
+          aria-label="GPX-Streckensteuerung"
         >
-          <legend className="px-1 text-xs font-semibold text-slate-700">Strecken einblenden</legend>
-          <div className="space-y-1">
-            {gpxTracks.map(track => (
-              <label key={track.id} className="flex min-h-8 cursor-pointer items-center gap-2 rounded px-1 text-xs text-slate-800 hover:bg-slate-100">
-                <input
-                  type="checkbox"
-                  checked={visibleTrackIds.has(track.id)}
-                  onChange={() => toggleTrack(track.id)}
-                  className="size-4 accent-blue-700"
-                />
-                <span className="size-2.5 shrink-0 rounded-full border border-white shadow-sm" style={{ backgroundColor: track.color }} aria-hidden="true" />
-                <span className="truncate">{track.name}</span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
+          <button
+            type="button"
+            data-gpx-layer-toggle="bottom-left"
+            onClick={() => setTrackControlOpen(open => !open)}
+            className="flex min-h-10 w-full items-center justify-between gap-3 px-3 text-left text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600"
+            aria-expanded={trackControlOpen}
+          >
+            <span>Strecken einblenden</span>
+            <ChevronDown className={`size-4 transition-transform ${trackControlOpen ? "rotate-180" : ""}`} aria-hidden="true" />
+          </button>
+          {trackControlOpen && (
+            <div className="space-y-1 border-t border-slate-200 p-2">
+              {gpxTracks.map(track => (
+                <label key={track.id} className="flex min-h-8 cursor-pointer items-center gap-2 rounded px-1 text-xs text-slate-800 hover:bg-slate-100">
+                  <input
+                    type="checkbox"
+                    checked={visibleTrackIds.has(track.id)}
+                    onChange={() => toggleTrack(track.id)}
+                    className="size-4 accent-blue-700"
+                  />
+                  <span className="size-2.5 shrink-0 rounded-full border border-white shadow-sm" style={{ backgroundColor: track.color }} aria-hidden="true" />
+                  <span className="truncate">{track.name}</span>
+                </label>
+              ))}
+            </div>
+          )}
+        </section>
       ) : null}
 
       <Sheet

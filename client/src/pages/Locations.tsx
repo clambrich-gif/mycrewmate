@@ -48,6 +48,8 @@ export default function Locations() {
   const [trackName, setTrackName] = useState("");
   const [trackColor, setTrackColor] = useState("#2563eb");
   const [selectedTrackFile, setSelectedTrackFile] = useState<File | null>(null);
+  const [editingTrackId, setEditingTrackId] = useState<number | null>(null);
+  const [editingTrackName, setEditingTrackName] = useState("");
   const trackInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const canManage = user?.role === "admin";
@@ -87,6 +89,15 @@ export default function Locations() {
       invalidate();
       setTrackDeleteTarget(null);
       toast.success("GPX-Strecke wurde aus der Karte entfernt");
+    },
+    onError: error => toast.error(error.message),
+  });
+  const renameTrack = trpc.gpxTracks.rename.useMutation({
+    onSuccess: () => {
+      invalidate();
+      setEditingTrackId(null);
+      setEditingTrackName("");
+      toast.success("GPX-Strecke umbenannt");
     },
     onError: error => toast.error(error.message),
   });
@@ -204,6 +215,22 @@ export default function Locations() {
       toast.error(error instanceof Error ? error.message : "GPX-Datei konnte nicht gelesen werden");
     }
   };
+  const startTrackEdit = (track: (typeof gpxTracks)[number]) => {
+    setEditingTrackId(track.id);
+    setEditingTrackName(track.name);
+  };
+  const cancelTrackEdit = () => {
+    setEditingTrackId(null);
+    setEditingTrackName("");
+  };
+  const saveTrackName = (trackId: number) => {
+    const name = editingTrackName.trim();
+    if (!name) {
+      toast.error("Bitte eine Bezeichnung für die Strecke eingeben.");
+      return;
+    }
+    renameTrack.mutate({ id: trackId, name });
+  };
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -287,12 +314,48 @@ export default function Locations() {
         <div className="mt-4 divide-y rounded-lg border bg-white">
           {tracksLoading ? <p className="p-3 text-sm text-muted-foreground">Lade Strecken …</p> : gpxTracks.length === 0 ? (
             <p className="p-3 text-sm text-muted-foreground">Noch keine GPX-Strecke hinterlegt.</p>
-          ) : gpxTracks.map(track => (
-            <div key={track.id} className="flex min-h-12 items-center justify-between gap-3 px-3 py-2.5">
-              <span className="flex min-w-0 items-center gap-2 font-medium text-slate-900"><span className="size-3 shrink-0 rounded-full" style={{ backgroundColor: track.color }} />{track.name}</span>
-              {canManage && <Button variant="ghost" size="icon" className="shrink-0 text-red-700 hover:text-red-800" aria-label={`${track.name} löschen`} onClick={() => setTrackDeleteTarget(track)}><Trash2 className="size-4" /></Button>}
-            </div>
-          ))}
+          ) : gpxTracks.map(track => {
+            const isEditing = editingTrackId === track.id;
+            return (
+              <div key={track.id} className="flex min-h-12 items-center justify-between gap-3 px-3 py-2.5">
+                <span className="flex min-w-0 flex-1 items-center gap-2 font-medium text-slate-900">
+                  <span className="size-3 shrink-0 rounded-full" style={{ backgroundColor: track.color }} />
+                  {isEditing ? (
+                    <Input
+                      autoFocus
+                      value={editingTrackName}
+                      aria-label="Name der GPX-Strecke bearbeiten"
+                      className="h-9 min-w-0"
+                      onChange={event => setEditingTrackName(event.target.value)}
+                      onKeyDown={event => {
+                        if (event.key === "Enter") saveTrackName(track.id);
+                        if (event.key === "Escape") cancelTrackEdit();
+                      }}
+                    />
+                  ) : (
+                    <span className="min-w-0 truncate" title={track.name}>{track.name}</span>
+                  )}
+                </span>
+                {canManage && (
+                  <span className="flex shrink-0 items-center gap-1">
+                    {isEditing ? (
+                      <>
+                        <Button variant="outline" size="sm" className="min-h-9" disabled={renameTrack.isPending} onClick={() => saveTrackName(track.id)}>
+                          {renameTrack.isPending ? "Speichert …" : "Speichern"}
+                        </Button>
+                        <Button variant="ghost" size="sm" className="min-h-9" disabled={renameTrack.isPending} onClick={cancelTrackEdit}>
+                          Abbrechen
+                        </Button>
+                      </>
+                    ) : (
+                      <Button variant="ghost" size="icon" aria-label={`${track.name} umbenennen`} onClick={() => startTrackEdit(track)}><Pencil className="size-4" /></Button>
+                    )}
+                    <Button variant="ghost" size="icon" className="text-red-700 hover:text-red-800" aria-label={`${track.name} löschen`} onClick={() => setTrackDeleteTarget(track)}><Trash2 className="size-4" /></Button>
+                  </span>
+                )}
+              </div>
+            );
+          })}
         </div>
       </section>
 

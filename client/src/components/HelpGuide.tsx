@@ -63,7 +63,12 @@ type HelpTopic = {
   steps?: string[];
   visual?: HelpVisual;
   callout?: HelpCallout;
-  screenshot?: { src: string; alt: string; caption: string };
+  screenshot?: {
+    src: string;
+    alt: string;
+    caption: string;
+    display?: "standard" | "mobile";
+  };
   showPermissions?: boolean;
   showAzIndex?: boolean;
   workspace?: {
@@ -180,8 +185,8 @@ const HELP_CHAPTERS: HelpChapter[] = [
         },
         screenshot: {
           src: "/api/help/images/dashboard",
-          alt: "Dashboard von MyCrewMate mit zentralen Kennzahlen",
-          caption: "Das Dashboard bündelt die nächsten Schritte für die aktuell gewählte Veranstaltung.",
+          alt: "Aktuelles MyCrewMate-Dashboard mit Prioritäten, Fristen und kompaktem Event-Zähler",
+          caption: "Das aktuelle Dashboard bündelt Prioritäten, Fristen und Kennzahlen für die gewählte Veranstaltung.",
         },
         workspace: { href: "/", label: "Zum Dashboard" },
       },
@@ -215,6 +220,7 @@ const HELP_CHAPTERS: HelpChapter[] = [
           src: "/api/help/images/app-speichern",
           alt: "Mobiles Seitenmenü mit dem PWA-Speicherbutton",
           caption: "Der PWA-Button befindet sich im mobilen Seitenmenü unter dem Projektstand.",
+          display: "mobile",
         },
       },
       {
@@ -1066,11 +1072,21 @@ export function HelpGuide({
                             {topic.callout && <GuideCallout callout={topic.callout} />}
                             {topic.visual && <GuideVisual visual={topic.visual} />}
                             {topic.screenshot && (
-                              <figure className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+                              <figure
+                                className={cn(
+                                  "overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm",
+                                  topic.screenshot.display === "mobile" &&
+                                    "mx-auto max-w-xs"
+                                )}
+                              >
                                 <img
                                   src={topic.screenshot.src}
                                   alt={topic.screenshot.alt}
-                                  className="h-auto w-full object-contain"
+                                  className={cn(
+                                    "h-auto w-full object-contain",
+                                    topic.screenshot.display === "mobile" &&
+                                      "max-h-64 w-auto mx-auto"
+                                  )}
                                   loading="lazy"
                                 />
                                 <figcaption className="border-t border-slate-100 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">

@@ -1853,6 +1853,14 @@ export const appRouter = router({
         });
         return { ...result, fileUrl: uploaded.url };
       }),
+    rename: adminProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          name: z.string().trim().min(1).max(200),
+        })
+      )
+      .mutation(({ input }) => db.updateGpxTrackName(input.id, input.name)),
     remove: adminProcedure
       .input(
         z.object({
