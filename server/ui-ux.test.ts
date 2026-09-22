@@ -1302,6 +1302,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain("inert={!isSidebarOpen}");
     expect(layout).toContain('isSidebarOpen ? "left-[calc(16rem-1px)]" : "left-0"');
     expect(layout).toContain('aria-label={isSidebarOpen ? "Seitenleiste einklappen" : "Seitenleiste ausklappen"}');
+    expect(layout).toContain('import {\n  Tooltip,\n  TooltipContent,\n  TooltipTrigger,\n} from "@/components/ui/tooltip"');
+    expect(layout).toContain("<TooltipTrigger asChild>");
+    expect(layout).toContain('<TooltipContent side="right" sideOffset={8}');
+    expect(layout).toContain('{isSidebarOpen ? "Seitenleiste einklappen" : "Seitenleiste ausklappen"}');
     expect(layout).toContain("<ChevronLeft");
     expect(layout).toContain("<ChevronRight");
     expect(layout).toContain("transition-[grid-template-columns]");

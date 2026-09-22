@@ -42,6 +42,11 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useEventYear } from "@/contexts/YearContext";
 import {
   navigationItemClasses,
@@ -1733,23 +1738,30 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
         </div>
       </aside>
-      <button
-        type="button"
-        className={cn(
-          "fixed top-1/2 z-40 hidden h-12 w-7 -translate-y-1/2 place-items-center rounded-r-xl border border-l-0 border-slate-300 bg-white text-slate-600 shadow-md transition-[left,transform] duration-300 ease-in-out hover:bg-slate-50 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 lg:grid",
-          isSidebarOpen ? "left-[calc(16rem-1px)]" : "left-0"
-        )}
-        aria-label={isSidebarOpen ? "Seitenleiste einklappen" : "Seitenleiste ausklappen"}
-        aria-pressed={isSidebarOpen}
-        title={isSidebarOpen ? "Seitenleiste einklappen" : "Seitenleiste ausklappen"}
-        onClick={() => setIsSidebarOpen(open => !open)}
-      >
-        {isSidebarOpen ? (
-          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-        ) : (
-          <ChevronRight className="h-4 w-4" aria-hidden="true" />
-        )}
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            className={cn(
+              "fixed top-1/2 z-40 hidden h-12 w-7 -translate-y-1/2 place-items-center rounded-r-xl border border-l-0 border-slate-300 bg-white text-slate-600 shadow-md transition-[left,transform] duration-300 ease-in-out hover:bg-slate-50 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 lg:grid",
+              isSidebarOpen ? "left-[calc(16rem-1px)]" : "left-0"
+            )}
+            aria-label={isSidebarOpen ? "Seitenleiste einklappen" : "Seitenleiste ausklappen"}
+            aria-pressed={isSidebarOpen}
+            title={isSidebarOpen ? "Seitenleiste einklappen" : "Seitenleiste ausklappen"}
+            onClick={() => setIsSidebarOpen(open => !open)}
+          >
+            {isSidebarOpen ? (
+              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <ChevronRight className="h-4 w-4" aria-hidden="true" />
+            )}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="right" sideOffset={8} className="px-2 py-1 text-[11px] shadow-sm">
+          {isSidebarOpen ? "Seitenleiste einklappen" : "Seitenleiste ausklappen"}
+        </TooltipContent>
+      </Tooltip>
       <main className="min-w-0 lg:h-screen lg:overflow-y-auto">
         <div
           className={cn(
