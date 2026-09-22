@@ -876,8 +876,8 @@ describe("Planungs-API", () => {
     expect(dbMocks.getHelper).toHaveBeenCalledWith(helper.id);
     expect(dbMocks.ensureHelperPdfShareCode).toHaveBeenCalledWith(helper.id);
     expect(result.path).toBe("/p/Ab3dE9F_");
-    expect(result.url).toBe(`https://mycrewmate.de${result.path}`);
-    expect(result.url).toBe("https://mycrewmate.de/p/Ab3dE9F_");
+    expect(result.url).toBe(`https://app.mycrewmate.de${result.path}`);
+    expect(result.url).toBe("https://app.mycrewmate.de/p/Ab3dE9F_");
     expect(result.expiresAt).toBeGreaterThan(
       Date.now() + 89 * 24 * 60 * 60 * 1000
     );

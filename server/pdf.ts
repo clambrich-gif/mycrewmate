@@ -74,7 +74,7 @@ const pageWidth = 595.28;
 const pageHeight = 841.89;
 const margin = 42;
 const contentWidth = pageWidth - margin * 2;
-const MYCREWMATE_ACCESS_URL = "https://mycrewmate.de";
+const MYCREWMATE_ACCESS_URL = "https://app.mycrewmate.de";
 
 /** Ein Zugangsblatt enthält nur beim initialen Erstellen bzw. Zurücksetzen einen Klartextcode. */
 export type PlanningTeamAccessSheet = {

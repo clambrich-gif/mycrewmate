@@ -26,6 +26,7 @@ import {
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
+import { APP_LOGIN_URL } from "@/lib/site-host";
 import { useState } from "react";
 
 const WORDMARK = "/brand/mycrewmate-wordmark.png";
@@ -233,9 +234,16 @@ export default function OfferDemo() {
               Auf einen Blick
             </a>
           </nav>
-          <Button type="button" className="rounded-xl bg-blue-600 px-4 text-white hover:bg-blue-700" onClick={scrollToPackages}>
-            Pakete ansehen <ArrowRight className="size-4" aria-hidden="true" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <a href={APP_LOGIN_URL}>
+              <Button type="button" variant="outline" className="rounded-xl border-slate-300 bg-white text-slate-800 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700">
+                Zum Login
+              </Button>
+            </a>
+            <Button type="button" className="hidden rounded-xl bg-blue-600 px-4 text-white hover:bg-blue-700 sm:inline-flex" onClick={scrollToPackages}>
+              Pakete ansehen <ArrowRight className="size-4" aria-hidden="true" />
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -369,7 +377,11 @@ export default function OfferDemo() {
       <footer className="border-t border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-7 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
           <div className="flex items-center gap-3"><img src={WORDMARK} alt="MyCrewMate" className="h-6 w-auto" /><span>© 2026 MyCrewMate · Angebotsdemo</span></div>
-          <p className="max-w-xl text-xs leading-5 sm:text-right">Lokale Musterseite: kein Live-Angebot, keine Zahlungsabwicklung und keine Datenübertragung.</p>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs leading-5 sm:justify-end">
+            <p className="max-w-xl">Öffentliche Musterdemo: kein Live-Angebot, keine Zahlungsabwicklung und keine Datenübertragung.</p>
+            <a className="font-semibold text-slate-600 underline-offset-2 hover:text-blue-700 hover:underline" href="/impressum">Impressum</a>
+            <a className="font-semibold text-slate-600 underline-offset-2 hover:text-blue-700 hover:underline" href="/datenschutz">Datenschutz</a>
+          </div>
         </div>
       </footer>
 

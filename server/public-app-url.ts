@@ -5,7 +5,7 @@
  * Browser-Sitzung. Daher dürfen Messenger-Links nie aus einem temporären
  * Entwicklungs-, Vorschau- oder früheren Manus-Host aufgebaut werden.
  */
-const DEFAULT_PUBLIC_APP_ORIGIN = "https://mycrewmate.de";
+const DEFAULT_PUBLIC_APP_ORIGIN = "https://app.mycrewmate.de";
 
 function normalizePublicOrigin(value: string | undefined) {
   const candidate = value?.trim() || DEFAULT_PUBLIC_APP_ORIGIN;

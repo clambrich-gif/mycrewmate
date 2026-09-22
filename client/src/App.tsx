@@ -1,6 +1,7 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { lazy, Suspense } from "react";
+import { appUrlForCurrentLocation, isMarketingSite } from "@/lib/site-host";
+import { lazy, Suspense, useEffect } from "react";
 import { Redirect, Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { Layout } from "./components/Layout";
@@ -23,6 +24,7 @@ const PdfExport = lazy(routeLoaders["/pdf-export"]);
 const Security = lazy(routeLoaders["/sicherheit"]);
 const Help = lazy(routeLoaders["/hilfe"]);
 const OfferDemo = lazy(() => import("@/pages/OfferDemo"));
+const PublicLegalPage = lazy(() => import("@/pages/PublicLegal"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 function RouteLoading() {
@@ -53,6 +55,36 @@ function AdminOnlySecurityRedirect() {
   if (loading) return <RouteLoading />;
   if (user?.role !== "admin") return <Redirect to="/" />;
   return <Redirect to="/sicherheit" />;
+}
+
+/**
+ * Die öffentliche Hauptdomain zeigt ausschließlich die Angebotsseite.
+ * Unbekannte Pfade werden auf die gleichlautende, geschützte App-Subdomain
+ * geleitet, damit historische App-Links weiterhin eine sichere Zieladresse haben.
+ */
+function PublicAppRedirect() {
+  useEffect(() => {
+    window.location.replace(appUrlForCurrentLocation());
+  }, []);
+
+  return <RouteLoading />;
+}
+
+function PublicSiteRouter() {
+  return (
+    <Suspense fallback={<RouteLoading />}>
+      <Switch>
+        <Route path="/" component={OfferDemo} />
+        <Route path="/impressum">
+          <PublicLegalPage kind="impressum" />
+        </Route>
+        <Route path="/datenschutz">
+          <PublicLegalPage kind="datenschutz" />
+        </Route>
+        <Route component={PublicAppRedirect} />
+      </Switch>
+    </Suspense>
+  );
 }
 
 function Router() {
@@ -101,14 +133,20 @@ function Router() {
 }
 
 function App() {
+  const marketingSite = isMarketingSite();
+
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light" forcedTheme="light">
         <TooltipProvider>
           <Toaster />
-          <YearProvider>
-            <Router />
-          </YearProvider>
+          {marketingSite ? (
+            <PublicSiteRouter />
+          ) : (
+            <YearProvider>
+              <Router />
+            </YearProvider>
+          )}
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>
