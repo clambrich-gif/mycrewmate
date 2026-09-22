@@ -1276,7 +1276,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain("text-center text-[11px] font-medium");
     expect(layout).toContain("bg-transparent object-contain");
     expect(layout).toContain('SheetHeader className="items-center bg-white px-4 py-3 text-center"');
-    expect(layout.match(/className="flex min-h-10 items-center justify-center border-y border-slate-200 bg-slate-50 px-3 py-1.5"/g)).toHaveLength(2);
+    expect(layout.match(/className="flex min-h-10 items-center justify-center border-y border-slate-200 bg-slate-50 px-3 py-1.5"/g)).toHaveLength(1);
+    expect(layout).toContain("bg-white/35 px-3 py-1.5");
     expect(layout.match(/className="min-h-7 max-w-full"/g)).toHaveLength(2);
     expect(layout).not.toContain('className="mt-2 max-w-full"');
     expect(layout).toContain("flex flex-col border-t border-slate-200/70 px-3 pt-0.5 pb-1 leading-none");
@@ -1516,6 +1517,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain("lg:sticky lg:top-0 lg:flex lg:h-screen");
     expect(layout).toContain("lg:h-screen lg:overflow-y-auto");
     expect(layout).toContain("bg-gradient-to-br from-sky-50 via-white to-orange-50");
+    expect(layout).toContain('"min-h-screen bg-gradient-to-br from-sky-50 via-white to-orange-50 flex flex-col');
+    expect(layout).toContain('className="flex min-h-24 flex-col items-center px-4 py-3 text-slate-950"');
+    expect(layout).toContain("bg-white/35 px-3 py-1.5");
   });
 
   it("erlaubt auf mobilen Geräten manuelles Heranzoomen", () => {

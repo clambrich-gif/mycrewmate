@@ -1310,7 +1310,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div
       className={cn(
-        "min-h-screen flex flex-col lg:h-screen lg:overflow-hidden lg:transition-[grid-template-columns] lg:duration-300 lg:ease-in-out lg:grid",
+        "min-h-screen bg-gradient-to-br from-sky-50 via-white to-orange-50 flex flex-col lg:h-screen lg:overflow-hidden lg:transition-[grid-template-columns] lg:duration-300 lg:ease-in-out lg:grid",
         isSidebarOpen
           ? "lg:grid-cols-[16rem_minmax(0,1fr)]"
           : "lg:grid-cols-[0px_minmax(0,1fr)]"
@@ -1576,7 +1576,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </Sheet>
 
       <aside
-        className="hidden min-w-0 overflow-hidden border-r bg-card lg:sticky lg:top-0 lg:flex lg:h-screen lg:self-start"
+        className="hidden min-w-0 overflow-hidden border-r lg:sticky lg:top-0 lg:flex lg:h-screen lg:self-start"
         aria-hidden={!isSidebarOpen}
         inert={!isSidebarOpen}
       >
@@ -1586,7 +1586,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             !isSidebarOpen && "-translate-x-full"
           )}
         >
-        <div className="flex min-h-24 flex-col items-center bg-white px-4 py-3 text-slate-950">
+        <div className="flex min-h-24 flex-col items-center px-4 py-3 text-slate-950">
           <img
             {...logoLoading}
             src={MYCREWMATE_WORDMARK}
@@ -1597,7 +1597,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             VEREINS- &amp; EVENTPLANUNG
           </div>
         </div>
-        <div className="flex min-h-10 items-center justify-center border-y border-slate-200 bg-slate-50 px-3 py-1.5">
+        <div className="flex min-h-10 items-center justify-center border-y border-slate-200 bg-white/35 px-3 py-1.5">
           <OnlinePresenceBadge
             counts={onlinePresence.counts}
             onOpenChat={openChatWidget}
@@ -1789,7 +1789,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           {isSidebarOpen ? "Seitenleiste einklappen" : "Seitenleiste ausklappen"}
         </TooltipContent>
       </Tooltip>
-      <main className="min-w-0 bg-gradient-to-br from-sky-50 via-white to-orange-50 lg:h-screen lg:overflow-y-auto">
+      <main className="min-w-0 lg:h-screen lg:overflow-y-auto">
         <div
           className={cn(
             location === "/helfer" || location === "/einsatzplan"
