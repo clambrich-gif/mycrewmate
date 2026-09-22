@@ -96,6 +96,7 @@ const MYCREWMATE_WORDMARK = "/brand/mycrewmate-wordmark.png";
 const MYCREWMATE_ICON = "/icons/mycrewmate-pwa-512.png";
 const CHAT_SNAPSHOT_POLL_MS = 5_000;
 const LAST_ADMINISTRATOR_NAME_STORAGE_KEY = "mycrewmate:last-administrator-name";
+const DESKTOP_SIDEBAR_OPEN_STORAGE_KEY = "mycrewmate:desktop-sidebar-open";
 
 type DeferredInstallPrompt = Event & {
   prompt: () => Promise<void>;
@@ -189,6 +190,25 @@ function rememberAdministratorName(name: string) {
     window.localStorage.setItem(LAST_ADMINISTRATOR_NAME_STORAGE_KEY, name.trim());
   } catch {
     // Die Anmeldung bleibt auch bei deaktiviertem LocalStorage vollständig nutzbar.
+  }
+}
+
+function getDesktopSidebarOpenPreference() {
+  if (typeof window === "undefined") return true;
+  try {
+    return window.localStorage.getItem(DESKTOP_SIDEBAR_OPEN_STORAGE_KEY) !== "false";
+  } catch {
+    // Ohne lokalen Speicher bleibt die offene Sidebar die sichere Standardansicht.
+    return true;
+  }
+}
+
+function rememberDesktopSidebarOpenPreference(isOpen: boolean) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(DESKTOP_SIDEBAR_OPEN_STORAGE_KEY, String(isOpen));
+  } catch {
+    // Der Fokusmodus bleibt auch bei deaktiviertem LocalStorage in der Sitzung nutzbar.
   }
 }
 
@@ -333,7 +353,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
   const [eventManagerOpen, setEventManagerOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(getDesktopSidebarOpenPreference);
   const [newYear, setNewYear] = useState(year + 1);
   const [newEventName, setNewEventName] = useState("");
   const [newEventDays, setNewEventDays] = useState<Weekday[]>([
@@ -376,6 +396,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
   const currentLoginFailureCount = loginFailureCounts[loginMode];
   const showCooldownHint = currentLoginFailureCount >= 2;
+  const toggleDesktopSidebar = useCallback(() => {
+    setIsSidebarOpen(isOpen => {
+      const nextIsOpen = !isOpen;
+      rememberDesktopSidebarOpenPreference(nextIsOpen);
+      return nextIsOpen;
+    });
+  }, []);
 
   useEffect(() => {
     const handleGlobalKeyboardShortcut = (event: KeyboardEvent) => {
@@ -1749,7 +1776,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             aria-label={isSidebarOpen ? "Seitenleiste einklappen" : "Seitenleiste ausklappen"}
             aria-pressed={isSidebarOpen}
             title={isSidebarOpen ? "Seitenleiste einklappen" : "Seitenleiste ausklappen"}
-            onClick={() => setIsSidebarOpen(open => !open)}
+            onClick={toggleDesktopSidebar}
           >
             {isSidebarOpen ? (
               <ChevronLeft className="h-4 w-4" aria-hidden="true" />

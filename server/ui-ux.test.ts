@@ -1293,7 +1293,23 @@ describe("UI- und Mobile-UX-Regeln", () => {
   it("bietet in der lokalen Vorschau eine einklappbare Desktop-Sidebar mit echter Fokusarbeitsbreite", () => {
     const layout = source("client/src/components/Layout.tsx");
 
-    expect(layout).toContain('const [isSidebarOpen, setIsSidebarOpen] = useState(true)');
+    expect(layout).toContain(
+      'const DESKTOP_SIDEBAR_OPEN_STORAGE_KEY = "mycrewmate:desktop-sidebar-open"'
+    );
+    expect(layout).toContain("function getDesktopSidebarOpenPreference()");
+    expect(layout).toContain(
+      'window.localStorage.getItem(DESKTOP_SIDEBAR_OPEN_STORAGE_KEY) !== "false"'
+    );
+    expect(layout).toContain("function rememberDesktopSidebarOpenPreference(isOpen: boolean)");
+    expect(layout).toContain(
+      "window.localStorage.setItem(DESKTOP_SIDEBAR_OPEN_STORAGE_KEY, String(isOpen))"
+    );
+    expect(layout).toContain(
+      "const [isSidebarOpen, setIsSidebarOpen] = useState(getDesktopSidebarOpenPreference)"
+    );
+    expect(layout).toContain("const toggleDesktopSidebar = useCallback(() => {");
+    expect(layout).toContain("rememberDesktopSidebarOpenPreference(nextIsOpen)");
+    expect(layout).toContain("onClick={toggleDesktopSidebar}");
     expect(layout).toContain('data-sidebar-open={isSidebarOpen ? "true" : "false"}');
     expect(layout).toContain('data-workspace-mode={isSidebarOpen ? "standard" : "focus"}');
     expect(layout).toContain('lg:grid-cols-[16rem_minmax(0,1fr)]');
