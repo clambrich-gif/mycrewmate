@@ -1310,7 +1310,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <div
       className={cn(
-        "min-h-screen bg-gradient-to-br from-sky-50 via-white to-orange-100/80 flex flex-col lg:h-screen lg:overflow-hidden lg:transition-[grid-template-columns] lg:duration-300 lg:ease-in-out lg:grid",
+        "min-h-screen bg-[radial-gradient(ellipse_at_center,_#ffffff_20%,_#f0f9ff_66%,_#dbeafe_100%)] flex flex-col lg:h-screen lg:overflow-hidden lg:transition-[grid-template-columns] lg:duration-300 lg:ease-in-out lg:grid",
         isSidebarOpen
           ? "lg:grid-cols-[16rem_minmax(0,1fr)]"
           : "lg:grid-cols-[0px_minmax(0,1fr)]"
