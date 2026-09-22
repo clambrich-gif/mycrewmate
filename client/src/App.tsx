@@ -99,6 +99,11 @@ function Router() {
         <Layout>
           <Suspense fallback={<RouteLoading />}>
         <Switch>
+          {/* Das Passwortformular wird vom Layout für nicht angemeldete Personen angezeigt.
+              Nach einer erfolgreichen Anmeldung darf /login jedoch nicht in die 404 fallen. */}
+          <Route path="/login">
+            <Redirect to="/" />
+          </Route>
           <Route path="/dashboard" component={Dashboard} />
           <Route path="/" component={Dashboard} />
           <Route path="/ansprechpartner" component={Contacts} />

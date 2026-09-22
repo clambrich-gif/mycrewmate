@@ -25,6 +25,12 @@ describe("Trennung von Angebotsseite und geschützter MyCrewMate-Anwendung", () 
     );
   });
 
+  it("behandelt den direkten Loginpfad nach der Anmeldung als Dashboard-Einstieg", () => {
+    const app = source("client/src/App.tsx");
+    expect(app).toContain('<Route path="/login">');
+    expect(app).toContain('<Redirect to="/" />');
+  });
+
   it("rendert die Landingpage ohne geschützte App-Kontexte und leitet alte App-Pfade sicher weiter", () => {
     const app = source("client/src/App.tsx");
     expect(app).toContain('import { appUrlForCurrentLocation, isMarketingSite } from "@/lib/site-host";');
