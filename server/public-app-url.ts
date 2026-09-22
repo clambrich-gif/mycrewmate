@@ -1,11 +1,11 @@
 /**
- * Kanonische, veröffentlichte Adresse der RSC Helferplanung.
+ * Kanonische, veröffentlichte Adresse von MyCrewMate.
  *
  * Externe Empfänger öffnen PDF-Freigaben außerhalb der aktuell angemeldeten
  * Browser-Sitzung. Daher dürfen Messenger-Links nie aus einem temporären
- * Entwicklungs- oder Vorschau-Host aufgebaut werden.
+ * Entwicklungs-, Vorschau- oder früheren Manus-Host aufgebaut werden.
  */
-const DEFAULT_PUBLIC_APP_ORIGIN = "https://eifelride-jq8ejdus.manus.space";
+const DEFAULT_PUBLIC_APP_ORIGIN = "https://mycrewmate.de";
 
 function normalizePublicOrigin(value: string | undefined) {
   const candidate = value?.trim() || DEFAULT_PUBLIC_APP_ORIGIN;
@@ -20,7 +20,7 @@ function normalizePublicOrigin(value: string | undefined) {
 
 /**
  * Kann bei einem späteren Domainwechsel per PUBLIC_APP_ORIGIN überschrieben
- * werden; ohne Konfiguration bleibt die veröffentlichte Manus-Domain aktiv.
+ * werden; ohne Konfiguration bleibt die offizielle MyCrewMate-Domain aktiv.
  */
 export const PUBLIC_APP_ORIGIN = normalizePublicOrigin(
   process.env.PUBLIC_APP_ORIGIN

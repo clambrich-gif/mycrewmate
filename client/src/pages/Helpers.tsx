@@ -624,7 +624,6 @@ export default function Helpers() {
   const { data: cakes = [] } = trpc.cakes.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: currentEvent } = trpc.events.current.useQuery();
-  const { data: pdfSettings } = trpc.pdf.settings.useQuery();
   const { data: plan } = trpc.plan.evaluate.useQuery();
   const activeDays = currentEvent ? eventWeekdays(currentEvent.activeDays) : [];
   const cakeCountByDonor = useMemo(() => {
@@ -741,24 +740,38 @@ export default function Helpers() {
     },
   });
   const sharePdfViaWhatsApp = trpc.pdf.publicShare.useMutation({
-    onSuccess: result => {
-      const message = renderWhatsAppMessage(
-        pdfSettings?.whatsAppMessageTemplate,
-        currentEvent?.name ?? pdfSettings?.eventName,
-        result.url
-      );
-      setSharingId(null);
-      window.location.assign(buildWhatsAppShareUrl(message));
+    onSuccess: async (result, variables) => {
+      const helper = helpers.find(item => item.id === variables.helperId);
+      try {
+        // Die Vorlage wird bewusst unmittelbar vor dem Öffnen von WhatsApp
+        // geladen: Änderungen unter „PDF-Ausgabe“ gelten somit ohne Neuladen
+        // der Helferansicht auf Desktop und iPhone.
+        const settings = await utils.pdf.settings.fetch();
+        const message = renderWhatsAppMessage(
+          settings.whatsAppMessageTemplate,
+          currentEvent?.name ?? settings.eventName,
+          result.url
+        );
+        window.location.assign(buildWhatsAppShareUrl(message, helper?.phone));
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Die WhatsApp-Nachricht konnte nicht vorbereitet werden"
+        );
+      } finally {
+        setSharingId(null);
+      }
     },
     onError: error => {
       setSharingId(null);
       toast.error(error.message);
     },
   });
-  const shareHelperPdf = (helperId: number) => {
+  const shareHelperPdf = (helper: { id: number }) => {
     if (sharingId !== null) return;
-    setSharingId(helperId);
-    sharePdfViaWhatsApp.mutate({ helperId });
+    setSharingId(helper.id);
+    sharePdfViaWhatsApp.mutate({ helperId: helper.id });
   };
 
   const assignedHelperIds = useMemo(
@@ -1152,7 +1165,7 @@ export default function Helpers() {
                       "h-11 min-h-11 w-11 min-w-11"
                     )}
                     disabled={sharingId !== null}
-                    onClick={() => shareHelperPdf(helper.id)}
+                    onClick={() => shareHelperPdf(helper)}
                   >
                     <MessageCircle className="size-5 text-[#25D366]" aria-hidden="true" />
                   </Button>
@@ -1450,7 +1463,7 @@ export default function Helpers() {
                         aria-label={`Aufgabenplan von ${helper.name} per WhatsApp senden`}
                         className={HELPER_ACTION_ICON_BUTTON_CLASS}
                         disabled={sharingId !== null}
-                        onClick={() => shareHelperPdf(helper.id)}
+                        onClick={() => shareHelperPdf(helper)}
                       >
                         <MessageCircle className="size-5 text-[#25D366]" aria-hidden="true" />
                       </Button>

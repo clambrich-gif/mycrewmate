@@ -1705,8 +1705,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain("result.url");
     expect(helpers).not.toContain("window.location.origin");
     expect(helpers).not.toContain("/api/public/pdf/");
-    expect(helpers).toContain("buildWhatsAppShareUrl(message)");
-    expect(helpers).toContain("window.location.assign(buildWhatsAppShareUrl(message))");
+    expect(helpers).toContain("utils.pdf.settings.fetch()");
+    expect(helpers).toContain("buildWhatsAppShareUrl(message, helper?.phone)");
+    expect(helpers).toContain(
+      "window.location.assign(buildWhatsAppShareUrl(message, helper?.phone))"
+    );
     expect(helpers).not.toContain("shareWindowRef");
     expect(helpers).not.toContain("copyWhatsAppMessage");
     expect(helpers).not.toContain("buildWhatsAppLaunchUrl");

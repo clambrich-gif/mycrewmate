@@ -52,7 +52,33 @@ export function renderWhatsAppMessage(
     .replaceAll("{PDF_LINK}", pdfLink);
 }
 
-/** WhatsApp-Universal-Link mit vollständig vorbereitetem Text und PDF-Freigabe. */
-export function buildWhatsAppShareUrl(message: string) {
-  return `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+/**
+ * Bereinigt deutsche und internationale Rufnummern für WhatsApps Click-to-Chat.
+ * Die Nummer wird ausschließlich in den Client-Link übernommen und nicht
+ * serverseitig an einen externen Dienst übertragen.
+ */
+export function normalizeWhatsAppPhone(phone: string | null | undefined) {
+  const compact = phone?.trim().replace(/[\s()./-]/g, "") ?? "";
+  if (!compact) return null;
+  if (compact.startsWith("00")) return compact.slice(2).replace(/\D/g, "") || null;
+  if (compact.startsWith("+")) return compact.slice(1).replace(/\D/g, "") || null;
+  if (compact.startsWith("0")) return `49${compact.slice(1).replace(/\D/g, "")}` || null;
+  const digits = compact.replace(/\D/g, "");
+  return digits || null;
+}
+
+/**
+ * Öffnet einen WhatsApp-Chat mit einem vollständig vorbereiteten Text.
+ * Mit Helfernummer wird der Zielchat direkt adressiert; ohne Nummer ist der
+ * allgemeine WhatsApp-Teilen-Dialog ein bewusster, transparenter Fallback.
+ */
+export function buildWhatsAppShareUrl(
+  message: string,
+  helperPhone?: string | null
+) {
+  const text = encodeURIComponent(message);
+  const phone = normalizeWhatsAppPhone(helperPhone);
+  return phone
+    ? `https://wa.me/${phone}?text=${text}`
+    : `https://wa.me/?text=${text}`;
 }

@@ -5,9 +5,9 @@ describe("öffentliche Anwendungsadresse", () => {
   it("erzeugt ausschließlich absolute HTTPS-Freigabelinks auf der veröffentlichten Domain", () => {
     const url = publicAppUrl("/api/public/pdf/signierter-token");
 
-    expect(PUBLIC_APP_ORIGIN).toBe("https://eifelride-jq8ejdus.manus.space");
+    expect(PUBLIC_APP_ORIGIN).toBe("https://mycrewmate.de");
     expect(url).toBe(
-      "https://eifelride-jq8ejdus.manus.space/api/public/pdf/signierter-token"
+      "https://mycrewmate.de/api/public/pdf/signierter-token"
     );
     expect(new URL(url).protocol).toBe("https:");
   });

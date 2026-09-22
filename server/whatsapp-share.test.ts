@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildWhatsAppShareUrl,
   DEFAULT_WHATSAPP_MESSAGE_TEMPLATE,
+  normalizeWhatsAppPhone,
   renderWhatsAppMessage,
   resolveWhatsAppMessageTemplate,
 } from "../client/src/lib/whatsappShare";
@@ -38,18 +39,30 @@ Dein RSC-Orga-Team 🏆`);
     );
   });
 
-  it("erzeugt einen direkten WhatsApp-Universal-Link mit komplett kodiertem Nachrichtentext", () => {
+  it("erzeugt einen direkt adressierten WhatsApp-Chat mit komplett kodiertem Nachrichtentext", () => {
     const message = renderWhatsAppMessage(
       DEFAULT_WHATSAPP_MESSAGE_TEMPLATE,
       "MyEifelRide",
       PDF_LINK
     );
-    const url = buildWhatsAppShareUrl(message);
+    const url = buildWhatsAppShareUrl(message, "0171 123 45 67");
 
-    expect(url).toBe(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`);
+    expect(url).toBe(`https://wa.me/491711234567?text=${encodeURIComponent(message)}`);
     expect(decodeURIComponent(url.split("text=")[1])).toBe(message);
     expect(url).toContain(encodeURIComponent(PDF_LINK));
     expect(url).not.toContain("blob:");
+  });
+
+  it("bereinigt Helfernummern und öffnet ohne Nummer bewusst den Teilen-Dialog", () => {
+    expect(normalizeWhatsAppPhone("+49 (171) 123-45-67")).toBe(
+      "491711234567"
+    );
+    expect(normalizeWhatsAppPhone("0049 171 123 45 67")).toBe(
+      "491711234567"
+    );
+    expect(buildWhatsAppShareUrl("Nachricht")).toBe(
+      "https://wa.me/?text=Nachricht"
+    );
   });
 
   it("ersetzt die bisherigen Standardtexte automatisch durch die Linkvorlage", () => {
