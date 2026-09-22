@@ -1492,6 +1492,21 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain('role="status"');
     expect(layout).toContain("min-h-12 min-w-12");
     expect(layout).toContain("min-h-[100dvh]");
+    expect(layout).toContain("login-page-background");
+    expect(layout).toContain("relative z-10 w-full max-w-md");
+    expect(layout).toContain('<Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none"');
+    expect(layout).toContain('role="status" aria-live="polite">Wird geprüft');
+    expect(layout).toContain("hover:shadow-blue-600/25 sm:hover:-translate-y-0.5");
+    expect(layout).toContain("active:translate-y-0 active:scale-[0.98]");
+  });
+
+  it("animiert die Loginfläche langsam und respektiert reduzierte Bewegung", () => {
+    const css = source("client/src/index.css");
+
+    expect(css).toContain(".login-page-background::before");
+    expect(css).toContain("@keyframes login-background-drift");
+    expect(css).toContain("18s cubic-bezier(0.77, 0, 0.175, 1) infinite alternate");
+    expect(css).toContain(".login-page-background::before { animation: none; }");
   });
 
   it("verwendet für Schichtlöschungen ein internes dynamisches Modal", () => {

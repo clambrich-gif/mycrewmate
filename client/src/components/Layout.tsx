@@ -69,6 +69,7 @@ import {
   EyeOff,
   FileImage,
   KeyRound,
+  Loader2,
   LogOut,
   Menu,
   Pencil,
@@ -968,8 +969,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }
   if (!isAuthenticated) {
     return (
-      <div className="relative grid min-h-[100dvh] place-items-center bg-[radial-gradient(ellipse_at_center,_#ffffff_20%,_#f0f9ff_66%,_#dbeafe_100%)] px-4 py-5 sm:p-6">
-        <div className="w-full max-w-md rounded-2xl border border-white/80 bg-white/90 p-5 text-card-foreground shadow-xl backdrop-blur-sm transition-all duration-200 ease-in-out sm:p-6">
+      <div className="login-page-background relative grid min-h-[100dvh] place-items-center bg-[radial-gradient(ellipse_at_center,_#ffffff_20%,_#f0f9ff_66%,_#dbeafe_100%)] px-4 py-5 sm:p-6">
+        <div className="relative z-10 w-full max-w-md rounded-2xl border border-white/80 bg-white/90 p-5 text-card-foreground shadow-xl backdrop-blur-sm transition-all duration-200 ease-in-out sm:p-6">
           <div className="mb-4 text-center">
             <h1 className="sr-only">MyCrewMate</h1>
             <img
@@ -1182,7 +1183,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </p>
             )}
             <Button
-              className="h-12 w-full rounded-lg bg-blue-600 py-2.5 text-base font-semibold text-white shadow-sm hover:bg-blue-700 hover:text-white focus-visible:ring-blue-500"
+              className="h-12 w-full rounded-lg bg-blue-600 py-2.5 text-base font-semibold text-white shadow-sm transition-[background-color,box-shadow,transform] duration-200 ease-out hover:bg-blue-700 hover:text-white hover:shadow-lg hover:shadow-blue-600/25 sm:hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] focus-visible:ring-blue-500 disabled:transform-none disabled:shadow-sm"
               size="lg"
               type="submit"
               disabled={!password || !loginAvailable || loginPending}
@@ -1195,16 +1196,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   .join(" ") || undefined
               }
             >
-              {loginMode === "admin" ? (
-                <ShieldCheck className="mr-2 h-4 w-4" />
-              ) : (
-                <KeyRound className="mr-2 h-4 w-4" />
-              )}
               {loginPending
-                ? "Wird geprüft …"
+                ? <><Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /><span role="status" aria-live="polite">Wird geprüft …</span></>
                 : loginMode === "admin"
-                  ? "Als Administrator anmelden"
-                  : "Anmelden"}
+                  ? <><ShieldCheck className="mr-2 h-4 w-4" aria-hidden="true" />Als Administrator anmelden</>
+                  : <><KeyRound className="mr-2 h-4 w-4" aria-hidden="true" />Anmelden</>}
             </Button>
             {loginMode === "admin" && (
               <div className="pt-1 text-center">
