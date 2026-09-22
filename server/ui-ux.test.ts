@@ -1290,6 +1290,20 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).not.toContain("Vereinslogo ändern");
   });
 
+  it("bietet in der lokalen Vorschau eine einklappbare Desktop-Sidebar mit verbleibender Lasche", () => {
+    const layout = source("client/src/components/Layout.tsx");
+
+    expect(layout).toContain('const [isSidebarOpen, setIsSidebarOpen] = useState(true)');
+    expect(layout).toContain('data-sidebar-open={isSidebarOpen ? "true" : "false"}');
+    expect(layout).toContain('!isSidebarOpen && "-ml-64"');
+    expect(layout).toContain("inert={!isSidebarOpen}");
+    expect(layout).toContain('isSidebarOpen ? "left-[15.25rem]" : "left-0"');
+    expect(layout).toContain('aria-label={isSidebarOpen ? "Seitenleiste einklappen" : "Seitenleiste ausklappen"}');
+    expect(layout).toContain("<ChevronLeft");
+    expect(layout).toContain("<ChevronRight");
+    expect(layout).toContain("transition-[margin-left] duration-300 ease-in-out");
+  });
+
   it("verdichtet den Projektstand ohne redundanten Hilfetext vor der Navigation", () => {
     const layout = source("client/src/components/Layout.tsx");
     const storageControls = source("client/src/components/SaveLoadModal.tsx");

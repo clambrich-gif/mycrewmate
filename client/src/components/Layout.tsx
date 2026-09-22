@@ -56,6 +56,8 @@ import {
   Bike,
   Calendar,
   CalendarRange,
+  ChevronLeft,
+  ChevronRight,
   Download,
   Eye,
   EyeOff,
@@ -325,6 +327,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
   const [eventManagerOpen, setEventManagerOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [newYear, setNewYear] = useState(year + 1);
   const [newEventName, setNewEventName] = useState("");
   const [newEventDays, setNewEventDays] = useState<Weekday[]>([
@@ -1259,7 +1262,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col lg:h-screen lg:flex-row lg:overflow-hidden">
+    <div
+      className="min-h-screen flex flex-col lg:h-screen lg:flex-row lg:overflow-hidden"
+      data-sidebar-open={isSidebarOpen ? "true" : "false"}
+    >
       <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b bg-white px-3 text-slate-950 shadow-sm lg:hidden">
         <Button
           variant="outline"
@@ -1517,7 +1523,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </SheetContent>
       </Sheet>
 
-      <aside className="hidden w-64 shrink-0 flex-col border-r bg-card lg:sticky lg:top-0 lg:flex lg:h-screen lg:self-start">
+      <aside
+        className={cn(
+          "hidden w-64 shrink-0 flex-col border-r bg-card transition-[margin-left] duration-300 ease-in-out lg:sticky lg:top-0 lg:flex lg:h-screen lg:self-start",
+          !isSidebarOpen && "-ml-64"
+        )}
+        aria-hidden={!isSidebarOpen}
+        inert={!isSidebarOpen}
+      >
         <div className="flex min-h-24 flex-col items-center bg-white px-4 py-3 text-slate-950">
           <img
             {...logoLoading}
@@ -1696,6 +1709,23 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </button>
         </div>
       </aside>
+      <button
+        type="button"
+        className={cn(
+          "fixed top-1/2 z-40 hidden h-12 w-7 -translate-y-1/2 place-items-center rounded-r-xl border border-l-0 border-slate-300 bg-white text-slate-600 shadow-md transition-all duration-300 ease-in-out hover:bg-slate-50 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 lg:grid",
+          isSidebarOpen ? "left-[15.25rem]" : "left-0"
+        )}
+        aria-label={isSidebarOpen ? "Seitenleiste einklappen" : "Seitenleiste ausklappen"}
+        aria-pressed={isSidebarOpen}
+        title={isSidebarOpen ? "Seitenleiste einklappen" : "Seitenleiste ausklappen"}
+        onClick={() => setIsSidebarOpen(open => !open)}
+      >
+        {isSidebarOpen ? (
+          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+        ) : (
+          <ChevronRight className="h-4 w-4" aria-hidden="true" />
+        )}
+      </button>
       <main className="min-w-0 flex-1 lg:h-screen lg:overflow-y-auto">
         <div
           className={
