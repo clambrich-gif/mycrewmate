@@ -1290,18 +1290,23 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).not.toContain("Vereinslogo ändern");
   });
 
-  it("bietet in der lokalen Vorschau eine einklappbare Desktop-Sidebar mit verbleibender Lasche", () => {
+  it("bietet in der lokalen Vorschau eine einklappbare Desktop-Sidebar mit echter Fokusarbeitsbreite", () => {
     const layout = source("client/src/components/Layout.tsx");
 
     expect(layout).toContain('const [isSidebarOpen, setIsSidebarOpen] = useState(true)');
     expect(layout).toContain('data-sidebar-open={isSidebarOpen ? "true" : "false"}');
-    expect(layout).toContain('!isSidebarOpen && "-ml-64"');
+    expect(layout).toContain('data-workspace-mode={isSidebarOpen ? "standard" : "focus"}');
+    expect(layout).toContain('lg:grid-cols-[16rem_minmax(0,1fr)]');
+    expect(layout).toContain('lg:grid-cols-[0px_minmax(0,1fr)]');
+    expect(layout).toContain('!isSidebarOpen && "-translate-x-full"');
     expect(layout).toContain("inert={!isSidebarOpen}");
-    expect(layout).toContain('isSidebarOpen ? "left-[15.25rem]" : "left-0"');
+    expect(layout).toContain('isSidebarOpen ? "left-[calc(16rem-1px)]" : "left-0"');
     expect(layout).toContain('aria-label={isSidebarOpen ? "Seitenleiste einklappen" : "Seitenleiste ausklappen"}');
     expect(layout).toContain("<ChevronLeft");
     expect(layout).toContain("<ChevronRight");
-    expect(layout).toContain("transition-[margin-left] duration-300 ease-in-out");
+    expect(layout).toContain("transition-[grid-template-columns]");
+    expect(layout).toContain('!isSidebarOpen && "lg:max-w-none"');
+    expect(layout).toContain('window.dispatchEvent(new Event("resize"))');
   });
 
   it("verdichtet den Projektstand ohne redundanten Hilfetext vor der Navigation", () => {
@@ -1478,7 +1483,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
   it("hält die Desktop-Navigation viewportfest und den Inhalt separat scrollbar", () => {
     const layout = source("client/src/components/Layout.tsx");
 
-    expect(layout).toContain("lg:h-screen lg:flex-row lg:overflow-hidden");
+    expect(layout).toContain("lg:h-screen lg:overflow-hidden lg:transition-[grid-template-columns]");
+    expect(layout).toContain("lg:grid-cols-[16rem_minmax(0,1fr)]");
     expect(layout).toContain("lg:sticky lg:top-0 lg:flex lg:h-screen");
     expect(layout).toContain("lg:h-screen lg:overflow-y-auto");
   });

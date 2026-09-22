@@ -449,6 +449,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  useEffect(() => {
+    // Leaflet und vergleichbare flächenabhängige Komponenten reagieren auf ein
+    // Resize-Ereignis. Nach Abschluss der Grid-Animation erhalten sie damit
+    // zuverlässig die neue echte Arbeitsbreite des Fokusmodus.
+    const refreshWorkspaceSize = () => window.dispatchEvent(new Event("resize"));
+    refreshWorkspaceSize();
+    const animationEnd = window.setTimeout(refreshWorkspaceSize, 320);
+    return () => window.clearTimeout(animationEnd);
+  }, [isSidebarOpen]);
+
   const installPwa = useCallback(async () => {
     if (!deferredInstallPrompt) return;
     await deferredInstallPrompt.prompt();
@@ -1267,8 +1277,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className="min-h-screen flex flex-col lg:h-screen lg:flex-row lg:overflow-hidden"
+      className={cn(
+        "min-h-screen flex flex-col lg:h-screen lg:overflow-hidden lg:transition-[grid-template-columns] lg:duration-300 lg:ease-in-out lg:grid",
+        isSidebarOpen
+          ? "lg:grid-cols-[16rem_minmax(0,1fr)]"
+          : "lg:grid-cols-[0px_minmax(0,1fr)]"
+      )}
       data-sidebar-open={isSidebarOpen ? "true" : "false"}
+      data-workspace-mode={isSidebarOpen ? "standard" : "focus"}
     >
       <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b bg-white px-3 text-slate-950 shadow-sm lg:hidden">
         <Button
@@ -1528,13 +1544,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </Sheet>
 
       <aside
-        className={cn(
-          "hidden w-64 shrink-0 flex-col border-r bg-card transition-[margin-left] duration-300 ease-in-out lg:sticky lg:top-0 lg:flex lg:h-screen lg:self-start",
-          !isSidebarOpen && "-ml-64"
-        )}
+        className="hidden min-w-0 overflow-hidden border-r bg-card lg:sticky lg:top-0 lg:flex lg:h-screen lg:self-start"
         aria-hidden={!isSidebarOpen}
         inert={!isSidebarOpen}
       >
+        <div
+          className={cn(
+            "flex h-full w-64 shrink-0 flex-col transition-transform duration-300 ease-in-out",
+            !isSidebarOpen && "-translate-x-full"
+          )}
+        >
         <div className="flex min-h-24 flex-col items-center bg-white px-4 py-3 text-slate-950">
           <img
             {...logoLoading}
@@ -1712,12 +1731,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
             {SIDEBAR_COPYRIGHT_NOTICE}
           </button>
         </div>
+        </div>
       </aside>
       <button
         type="button"
         className={cn(
-          "fixed top-1/2 z-40 hidden h-12 w-7 -translate-y-1/2 place-items-center rounded-r-xl border border-l-0 border-slate-300 bg-white text-slate-600 shadow-md transition-all duration-300 ease-in-out hover:bg-slate-50 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 lg:grid",
-          isSidebarOpen ? "left-[15.25rem]" : "left-0"
+          "fixed top-1/2 z-40 hidden h-12 w-7 -translate-y-1/2 place-items-center rounded-r-xl border border-l-0 border-slate-300 bg-white text-slate-600 shadow-md transition-[left,transform] duration-300 ease-in-out hover:bg-slate-50 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 lg:grid",
+          isSidebarOpen ? "left-[calc(16rem-1px)]" : "left-0"
         )}
         aria-label={isSidebarOpen ? "Seitenleiste einklappen" : "Seitenleiste ausklappen"}
         aria-pressed={isSidebarOpen}
@@ -1730,13 +1750,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <ChevronRight className="h-4 w-4" aria-hidden="true" />
         )}
       </button>
-      <main className="min-w-0 flex-1 lg:h-screen lg:overflow-y-auto">
+      <main className="min-w-0 lg:h-screen lg:overflow-y-auto">
         <div
-          className={
+          className={cn(
             location === "/helfer" || location === "/einsatzplan"
               ? "w-full p-3 sm:p-4 xl:p-6"
-              : "w-full max-w-[1400px] p-3 sm:p-4 lg:p-6"
-          }
+              : "w-full max-w-[1400px] p-3 sm:p-4 lg:p-6",
+            !isSidebarOpen && "lg:max-w-none"
+          )}
         >
           <div className="mb-5 flex flex-wrap items-center gap-2">
             <div className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
