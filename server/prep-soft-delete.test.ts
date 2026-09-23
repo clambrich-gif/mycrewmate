@@ -15,7 +15,11 @@ describe("Vorbereitungs-Softdelete und Löschprotokoll", () => {
     const testEventYear = 2027;
     const testEventId = 1020001; // MyEifelRide 2027
 
-    await withPlanningScope({ year: testEventYear, eventId: testEventId }, async () => {
+    await withPlanningScope({
+      tenantId: "rsc-eifelland-mayen",
+      year: testEventYear,
+      eventId: testEventId,
+    }, async () => {
       // Aufgabe für den Test anlegen
       const created: any = await createPrep({
         task: "Test-Genehmigung VP8 Softdelete",

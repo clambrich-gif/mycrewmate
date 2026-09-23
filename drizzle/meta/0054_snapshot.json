@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "0e17ea6f-8a4b-404d-965e-cbde42f20c51",
+  "id": "ec0a8a2e-a9c1-447d-8333-02dfdcf364d0",
   "prevId": "195a500e-7d13-419d-a164-f9195270e9ea",
   "tables": {
     "activity_logs": {
@@ -1305,6 +1305,13 @@
         }
       },
       "indexes": {
+        "events_year_fk_idx": {
+          "name": "events_year_fk_idx",
+          "columns": [
+            "year"
+          ],
+          "isUnique": false
+        },
         "events_tenant_year_name_unique": {
           "name": "events_tenant_year_name_unique",
           "columns": [

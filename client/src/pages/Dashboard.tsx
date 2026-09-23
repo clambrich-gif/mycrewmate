@@ -40,7 +40,6 @@ import {
   eventCountdownState,
   type EventCountdownState,
 } from "@shared/event-dates";
-import { ACTIVE_PILOT_TENANT } from "@shared/tenant";
 
 type PriorityAction = {
   id: string;
@@ -917,8 +916,13 @@ function EventCountdownWidget({
   );
 }
 
-function PilotTenantInfoCard() {
-  const tenant = ACTIVE_PILOT_TENANT;
+function PilotTenantInfoCard({
+  tenant,
+  eventName,
+}: {
+  tenant: { name: string; contactEmail: string; supportEmail: string };
+  eventName: string;
+}) {
   return (
     <section
       data-dashboard-section="Pilotbetrieb"
@@ -939,18 +943,18 @@ function PilotTenantInfoCard() {
             Gemeinsam testen. Sicher weiterentwickeln.
           </h2>
           <p className="mt-1.5 max-w-3xl text-sm leading-6 text-slate-700">
-            Der RSC Eifelland Mayen e. V. nutzt MyCrewMate als geschlossenen Pilotverein.
-            Die aktuelle Veranstaltung <strong>{tenant.defaultEventName}</strong> dient als Test- und Demoplanung;
+            {tenant.name} nutzt MyCrewMate als geschlossenen Pilotverein.
+            Die aktuelle Veranstaltung <strong>{eventName}</strong> dient als Test- und Demoplanung;
             es gibt keine offenen Zugänge, keine Abrechnung und keine öffentliche Buchungsfunktion.
           </p>
         </div>
         <div className="grid gap-2 sm:grid-cols-2 lg:w-[22rem] lg:grid-cols-1">
           <a
-            href={`mailto:${tenant.contactEmail}`}
+            href={`mailto:${tenant.supportEmail}`}
             className="flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 transition-colors hover:border-blue-300 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             <Mail className="size-4 shrink-0 text-blue-700" aria-hidden="true" />
-            <span className="min-w-0 truncate">Pilot-Support: {tenant.contactEmail}</span>
+            <span className="min-w-0 truncate">Pilot-Support: {tenant.supportEmail}</span>
           </a>
           <div className="flex min-h-11 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
             <ShieldCheck className="size-4 shrink-0 text-emerald-700" aria-hidden="true" />
@@ -973,13 +977,23 @@ export default function Dashboard() {
     trpc.helpers.list.useQuery();
   const { data: currentEvent, isLoading: isEventLoading } =
     trpc.events.current.useQuery();
+  const { data: currentTenant, isLoading: isTenantLoading } =
+    trpc.tenants.current.useQuery();
   const activeDays = currentEvent ? eventWeekdays(currentEvent.activeDays) : [];
   const helperByName = new Map(helpers.map(helper => [helper.name, helper]));
   const zeroAvailability = (helperName: string, day: Weekday) => {
     const helper = helperByName.get(helperName);
     return helper?.[WEEKDAY_AVAILABILITY_FIELDS[day]];
   };
-  if (isLoading || isEventLoading || areHelpersLoading || !s || !currentEvent)
+  if (
+    isLoading ||
+    isEventLoading ||
+    isTenantLoading ||
+    areHelpersLoading ||
+    !s ||
+    !currentEvent ||
+    !currentTenant
+  )
     return <div className="text-muted-foreground">Lade Dashboard …</div>;
 
   const openHelperWorkload = (helperName: string, day?: Weekday) => {
@@ -1161,7 +1175,9 @@ export default function Dashboard() {
         <EventCountdownWidget event={currentEvent} />
       </div>
 
-      <PilotTenantInfoCard />
+      {currentTenant.status === "pilot" && (
+        <PilotTenantInfoCard tenant={currentTenant} eventName={currentEvent.name} />
+      )}
 
       <section
         data-dashboard-section="Heute priorisieren"

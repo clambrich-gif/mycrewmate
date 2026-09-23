@@ -61,6 +61,7 @@ import { COPYRIGHT_NOTICE } from "@shared/branding";
 import { ACTIVE_PILOT_TENANT } from "@shared/tenant";
 import {
   Bike,
+  Building2,
   Calendar,
   CalendarRange,
   ChevronLeft,
@@ -328,7 +329,8 @@ function AdminIdentityDialog({
 export function Layout({ children }: { children: React.ReactNode }) {
   const { user, loading, isAuthenticated, logout } = useAuth();
   const onlinePresence = useOnlinePresence();
-  const { year, eventId, selectYear, selectEvent } = useEventYear();
+  const { tenantId, year, eventId, selectTenant, selectYear, selectEvent } =
+    useEventYear();
   const [location] = useLocation();
   const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
@@ -528,10 +530,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const years = trpc.years.list.useQuery(undefined, {
     enabled: isAuthenticated,
   });
+  const tenants = trpc.tenants.list.useQuery(undefined, {
+    enabled: isAuthenticated && user?.role === "admin",
+  });
   const events = trpc.events.list.useQuery(undefined, {
     enabled: isAuthenticated,
   });
   const selectedEvent = events.data?.find(item => item.id === eventId);
+  const selectedTenantRecord = tenants.data?.find(item => item.id === tenantId);
+  const activeTenantName =
+    selectedTenantRecord?.name ?? ACTIVE_PILOT_TENANT.name;
+  const activeTenantBadge =
+    selectedTenantRecord?.status === "sample" ? "Muster" : "Pilot";
 
   useEffect(() => {
     chatSnapshotEpochRef.current += 1;
@@ -1342,7 +1352,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <SelectContent>
             {(years.data?.length
               ? years.data
-              : [{ year, label: `MyEifelRide ${year}` }]
+              : [{ year, label: `Veranstaltungsjahr ${year}` }]
             ).map(item => (
               <SelectItem key={item.year} value={String(item.year)}>
                 {item.year}
@@ -1371,9 +1381,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
               VEREINS- &amp; EVENTPLANUNG
             </SheetDescription>
             <div className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50/90 px-2.5 py-0.5 text-[10px] font-semibold text-blue-900 shadow-xs">
-              <span className="truncate">{ACTIVE_PILOT_TENANT.name}</span>
+              <span className="truncate">{activeTenantName}</span>
               <span className="rounded bg-blue-600/15 px-1 py-0.2 text-[9px] font-bold uppercase tracking-wider text-blue-800">
-                Pilot
+                {activeTenantBadge}
               </span>
             </div>
           </SheetHeader>
@@ -1385,6 +1395,28 @@ export function Layout({ children }: { children: React.ReactNode }) {
             />
           </div>
           <div className="border-b p-3">
+            {user?.role === "admin" && tenants.data && (
+              <div className="mb-3 rounded-xl border border-blue-200 bg-blue-50/70 p-2.5">
+                <Label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-blue-950">
+                  <Building2 className="h-3.5 w-3.5" /> Testmandant
+                </Label>
+                <Select value={tenantId} onValueChange={selectTenant}>
+                  <SelectTrigger className="w-full bg-white text-sm font-semibold text-slate-950">
+                    <SelectValue placeholder="Verein wählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tenants.data.map(item => (
+                      <SelectItem key={item.id} value={item.id}>
+                        {item.name} · {item.status === "pilot" ? "Pilot" : "Muster"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="mt-1.5 text-[11px] leading-4 text-blue-800">
+                  Nur für interne Tests – keine offenen Vereinszugänge.
+                </p>
+              </div>
+            )}
             <div className="mb-1.5 flex items-center justify-between">
               <Label className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <CalendarRange className="h-3.5 w-3.5" /> Veranstaltungsjahr
@@ -1417,7 +1449,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <SelectContent>
                 {(years.data?.length
                   ? years.data
-                  : [{ year, label: `MyEifelRide ${year}` }]
+                  : [{ year, label: `Veranstaltungsjahr ${year}` }]
                 ).map(item => (
                   <SelectItem key={item.year} value={String(item.year)}>
                     {item.year}
@@ -1604,9 +1636,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
             VEREINS- &amp; EVENTPLANUNG
           </div>
           <div className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50/90 px-2.5 py-0.5 text-[10px] font-semibold text-blue-900 shadow-xs">
-            <span className="truncate">{ACTIVE_PILOT_TENANT.name}</span>
+            <span className="truncate">{activeTenantName}</span>
             <span className="rounded bg-blue-600/15 px-1 py-0.2 text-[9px] font-bold uppercase tracking-wider text-blue-800">
-              Pilot
+              {activeTenantBadge}
             </span>
           </div>
         </div>
@@ -1619,6 +1651,28 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className="border-b p-3">
+          {user?.role === "admin" && tenants.data && (
+            <div className="mb-3 rounded-xl border border-blue-200 bg-blue-50/70 p-2.5">
+              <Label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-blue-950">
+                <Building2 className="h-3.5 w-3.5" /> Testmandant
+              </Label>
+              <Select value={tenantId} onValueChange={selectTenant}>
+                <SelectTrigger className="w-full bg-white text-sm font-semibold text-slate-950">
+                  <SelectValue placeholder="Verein wählen" />
+                </SelectTrigger>
+                <SelectContent>
+                  {tenants.data.map(item => (
+                    <SelectItem key={item.id} value={item.id}>
+                      {item.name} · {item.status === "pilot" ? "Pilot" : "Muster"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="mt-1.5 text-[11px] leading-4 text-blue-800">
+                Nur für interne Tests – keine offenen Vereinszugänge.
+              </p>
+            </div>
+          )}
           <div className="mb-1.5 flex items-center justify-between">
             <Label className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <CalendarRange className="h-3.5 w-3.5" /> Veranstaltungsjahr
@@ -1645,7 +1699,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <SelectContent>
               {(years.data?.length
                 ? years.data
-                : [{ year, label: `MyEifelRide ${year}` }]
+                : [{ year, label: `Veranstaltungsjahr ${year}` }]
               ).map(item => (
                 <SelectItem key={item.year} value={String(item.year)}>
                   {item.year}

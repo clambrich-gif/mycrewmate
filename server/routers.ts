@@ -1415,6 +1415,16 @@ export const appRouter = router({
     status: baseProtectedProcedure.query(() => getOnlinePresenceStatus()),
   }),
 
+  tenants: router({
+    list: activeSessionProcedure.query(({ ctx }) => {
+      if (ctx.user.role !== "admin") {
+        throw new TRPCError({ code: "FORBIDDEN" });
+      }
+      return db.listTenants();
+    }),
+    current: scopedProtectedProcedure.query(() => db.getTenant()),
+  }),
+
   years: router({
     list: eventSelectionProcedure.query(({ ctx }) => {
       const accessId = planningTeamAccessIdForUser(ctx.user);

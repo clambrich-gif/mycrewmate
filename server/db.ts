@@ -47,6 +47,7 @@ import {
   teamNoteAuditLogs,
   teamNoteReadStates,
   teamNoteTypings,
+  tenants,
   users,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
@@ -66,7 +67,11 @@ import {
   planningTeamAccessOpenId,
   SHARED_PASSWORD_OPEN_ID,
 } from "./password-auth";
-import { currentEventId, currentEventYear } from "./year-context";
+import {
+  currentEventId,
+  currentEventYear,
+  currentTenantId,
+} from "./year-context";
 import { overlaps } from "./logic";
 import {
   normalizedAssignedSlotUpdates,
@@ -246,6 +251,7 @@ export async function getUserByOpenId(openId: string) {
 
 const year = () => currentEventYear();
 const event = () => currentEventId();
+const tenant = () => currentTenantId();
 
 function planningScope(table: { year: any; eventId: any }) {
   return and(eq(table.year, year()), eq(table.eventId, event()));
@@ -271,15 +277,41 @@ export function normalizePersonName(value: string) {
 export async function listEventYears() {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(eventYears).orderBy(eventYears.year);
+  return db
+    .selectDistinct({ year: eventYears.year, label: eventYears.label, createdAt: eventYears.createdAt })
+    .from(events)
+    .innerJoin(eventYears, eq(eventYears.year, events.year))
+    .where(eq(events.tenantId, tenant()))
+    .orderBy(eventYears.year);
+}
+
+export async function listTenants() {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(tenants)
+    .orderBy(tenants.status, tenants.name);
+}
+
+export async function getTenant(id = tenant()) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const [selected] = await db
+    .select()
+    .from(tenants)
+    .where(eq(tenants.id, id))
+    .limit(1);
+  return selected;
 }
 
 export async function ensureEventYear(eventYear = year()) {
   const db = (await getDb()) as DB;
+  const label = `Veranstaltungsjahr ${eventYear}`;
   await db
     .insert(eventYears)
-    .values({ year: eventYear, label: `MyEifelRide ${eventYear}` })
-    .onDuplicateKeyUpdate({ set: { label: `MyEifelRide ${eventYear}` } });
+    .values({ year: eventYear, label })
+    .onDuplicateKeyUpdate({ set: { label } });
   return eventYear;
 }
 
@@ -289,7 +321,7 @@ export async function listEvents(eventYear = year()) {
   const rows = await db
     .select()
     .from(events)
-    .where(eq(events.year, eventYear))
+    .where(and(eq(events.tenantId, tenant()), eq(events.year, eventYear)))
     .orderBy(events.sortOrder, events.name, events.id);
   return rows.map(row => ({
     ...row,
@@ -330,7 +362,7 @@ async function requireExistingEvents(tx: DBClient, eventIds: number[]) {
   const rows = await tx
     .select({ id: events.id })
     .from(events)
-    .where(inArray(events.id, normalized))
+    .where(and(inArray(events.id, normalized), eq(events.tenantId, tenant())))
     .for("update");
   if (rows.length !== normalized.length) {
     throw new Error("Mindestens eine ausgewählte Veranstaltung wurde nicht gefunden");
@@ -605,7 +637,12 @@ export async function listEventYearsForPlanningTeamAccess(accessId: number) {
     .from(planningTeamAccessEvents)
     .innerJoin(events, eq(events.id, planningTeamAccessEvents.eventId))
     .innerJoin(eventYears, eq(eventYears.year, events.year))
-    .where(eq(planningTeamAccessEvents.accessId, accessId))
+    .where(
+      and(
+        eq(planningTeamAccessEvents.accessId, accessId),
+        eq(events.tenantId, tenant())
+      )
+    )
     .orderBy(eventYears.year);
 }
 
@@ -622,6 +659,7 @@ export async function listEventsForPlanningTeamAccess(
     .where(
       and(
         eq(planningTeamAccessEvents.accessId, accessId),
+        eq(events.tenantId, tenant()),
         eq(events.year, eventYear)
       )
     )
@@ -709,7 +747,13 @@ export async function getEvent(id = event()) {
   const [selected] = await db
     .select()
     .from(events)
-    .where(and(eq(events.id, id), eq(events.year, year())))
+    .where(
+      and(
+        eq(events.id, id),
+        eq(events.tenantId, tenant()),
+        eq(events.year, year())
+      )
+    )
     .limit(1);
   return selected
     ? { ...selected, activeDays: eventWeekdays(selected.activeDays) }
@@ -725,13 +769,25 @@ export async function updateCurrentEventPdfImage(values: {
   const [selectedEvent] = await db
     .select({ id: events.id })
     .from(events)
-    .where(and(eq(events.id, event()), eq(events.year, year())))
+    .where(
+      and(
+        eq(events.id, event()),
+        eq(events.tenantId, tenant()),
+        eq(events.year, year())
+      )
+    )
     .limit(1);
   if (!selectedEvent) throw new Error("Veranstaltung wurde nicht gefunden");
   await db
     .update(events)
     .set(values)
-    .where(and(eq(events.id, event()), eq(events.year, year())));
+    .where(
+      and(
+        eq(events.id, event()),
+        eq(events.tenantId, tenant()),
+        eq(events.year, year())
+      )
+    );
   return values;
 }
 
@@ -753,7 +809,11 @@ export async function withPlanningWriteLock<T>(callback: () => Promise<T>) {
       .select({ id: events.id })
       .from(events)
       .where(
-        and(eq(events.id, selectedEventId), eq(events.year, selectedYear))
+        and(
+          eq(events.id, selectedEventId),
+          eq(events.tenantId, tenant()),
+          eq(events.year, selectedYear)
+        )
       )
       .limit(1)
       .for("update");
@@ -784,11 +844,18 @@ export async function updateEventDetails(
 ) {
   const db = (await getDb()) as DB;
   const selectedYear = year();
+  const selectedTenant = tenant();
   return db.transaction(async tx => {
     const [selected] = await tx
       .select()
       .from(events)
-      .where(and(eq(events.id, id), eq(events.year, selectedYear)))
+      .where(
+        and(
+          eq(events.id, id),
+          eq(events.tenantId, selectedTenant),
+          eq(events.year, selectedYear)
+        )
+      )
       .limit(1)
       .for("update");
     if (!selected) throw new Error("Veranstaltung wurde nicht gefunden");
@@ -801,7 +868,11 @@ export async function updateEventDetails(
         .select({ id: events.id })
         .from(events)
         .where(
-          and(eq(events.year, selectedYear), eq(events.name, nextName))
+          and(
+            eq(events.tenantId, selectedTenant),
+            eq(events.year, selectedYear),
+            eq(events.name, nextName)
+          )
         )
         .limit(1);
       if (duplicate && duplicate.id !== id) {
@@ -837,7 +908,13 @@ export async function updateEventDetails(
         donationTargetSnack,
         donationTargetSonstiges,
       })
-      .where(and(eq(events.id, id), eq(events.year, selectedYear)));
+      .where(
+        and(
+          eq(events.id, id),
+          eq(events.tenantId, selectedTenant),
+          eq(events.year, selectedYear)
+        )
+      );
 
     return {
       ...selected,
@@ -860,10 +937,17 @@ export async function createEvent(
   const db = (await getDb()) as DB;
   await ensureEventYear(eventYear);
   const normalizedName = normalizeEventName(name);
+  const selectedTenant = tenant();
   const [existing] = await db
     .select()
     .from(events)
-    .where(and(eq(events.year, eventYear), eq(events.name, normalizedName)))
+    .where(
+      and(
+        eq(events.tenantId, selectedTenant),
+        eq(events.year, eventYear),
+        eq(events.name, normalizedName)
+      )
+    )
     .limit(1);
   if (existing)
     return {
@@ -873,10 +957,16 @@ export async function createEvent(
     };
   const result: any = await db
     .insert(events)
-    .values({ year: eventYear, name: normalizedName, activeDays });
+    .values({
+      tenantId: selectedTenant,
+      year: eventYear,
+      name: normalizedName,
+      activeDays,
+    });
   const id = Number(result?.[0]?.insertId ?? result?.insertId);
   return {
     id,
+    tenantId: selectedTenant,
     year: eventYear,
     name: normalizedName,
     activeDays,
@@ -894,11 +984,14 @@ export async function createEvent(
 export async function deleteEvent(id: number) {
   const db = (await getDb()) as DB;
   const selectedYear = year();
+  const selectedTenant = tenant();
   return db.transaction(async tx => {
     const yearEvents = await tx
       .select()
       .from(events)
-      .where(eq(events.year, selectedYear))
+      .where(
+        and(eq(events.tenantId, selectedTenant), eq(events.year, selectedYear))
+      )
       .orderBy(events.sortOrder, events.name, events.id)
       .for("update");
     const selected = yearEvents.find(item => item.id === id);
@@ -934,7 +1027,13 @@ export async function deleteEvent(id: number) {
     await tx.delete(contacts).where(scope(contacts));
     const result = await tx
       .delete(events)
-      .where(and(eq(events.id, id), eq(events.year, selectedYear)));
+      .where(
+        and(
+          eq(events.id, id),
+          eq(events.tenantId, selectedTenant),
+          eq(events.year, selectedYear)
+        )
+      );
     requireDeletedRows(result, 1);
 
     const nextEvent = yearEvents.find(item => item.id !== id)!;
@@ -4196,7 +4295,13 @@ export async function clearTeamNotes(
     const [selectedEvent] = await tx
       .select({ name: events.name })
       .from(events)
-      .where(and(eq(events.id, selectedEventId), eq(events.year, selectedYear)))
+      .where(
+        and(
+          eq(events.id, selectedEventId),
+          eq(events.tenantId, tenant()),
+          eq(events.year, selectedYear)
+        )
+      )
       .limit(1)
       .for("update");
     if (!selectedEvent) {
@@ -4251,12 +4356,16 @@ export async function copyPlanFromEvent(
     const [sourceEvent] = await tx
       .select()
       .from(events)
-      .where(eq(events.id, sourceEventId))
+      .where(
+        and(eq(events.id, sourceEventId), eq(events.tenantId, tenant()))
+      )
       .limit(1);
     const [targetEvent] = await tx
       .select()
       .from(events)
-      .where(eq(events.id, targetEventId))
+      .where(
+        and(eq(events.id, targetEventId), eq(events.tenantId, tenant()))
+      )
       .limit(1);
     if (!sourceEvent || !targetEvent)
       throw new Error("Quell- oder Zielveranstaltung wurde nicht gefunden");

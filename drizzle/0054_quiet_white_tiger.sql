@@ -25,8 +25,16 @@ INSERT INTO `tenants` (
 ) VALUES
 	('rsc-eifelland-mayen', 'RSC Eifelland Mayen e. V.', 'Radsportclub Eifelland Mayen e. V.', 'pilot', 'Pilotbetrieb', 'info@mycrewmate.de', 'support@mycrewmate.de'),
 	('kirmesverein-musterstadt', 'Kirmesverein Musterstadt e. V.', 'Kirmesverein Musterstadt e. V.', 'sample', 'Musterverein', 'info@mycrewmate.de', 'support@mycrewmate.de'),
-	('schuetzenverein-musterhausen', 'Schützenverein Musterhausen e. V.', 'Schützenverein Musterhausen e. V.', 'sample', 'Musterverein', 'info@mycrewmate.de', 'support@mycrewmate.de');
+	('schuetzenverein-musterhausen', 'Schützenverein Musterhausen e. V.', 'Schützenverein Musterhausen e. V.', 'sample', 'Musterverein', 'info@mycrewmate.de', 'support@mycrewmate.de')
+ON DUPLICATE KEY UPDATE
+	`name` = VALUES(`name`),
+	`legalName` = VALUES(`legalName`),
+	`status` = VALUES(`status`),
+	`planName` = VALUES(`planName`),
+	`contactEmail` = VALUES(`contactEmail`),
+	`supportEmail` = VALUES(`supportEmail`);
 --> statement-breakpoint
+CREATE INDEX `events_year_fk_idx` ON `events` (`year`);--> statement-breakpoint
 ALTER TABLE `events` DROP INDEX `events_year_name_unique`;--> statement-breakpoint
 ALTER TABLE `events` ADD `tenantId` varchar(96) DEFAULT 'rsc-eifelland-mayen' NOT NULL;--> statement-breakpoint
 ALTER TABLE `events` ADD CONSTRAINT `events_tenant_year_name_unique` UNIQUE(`tenantId`,`year`,`name`);--> statement-breakpoint

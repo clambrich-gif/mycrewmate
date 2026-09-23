@@ -6,7 +6,10 @@ import mysql, { type Connection, type RowDataPacket } from "mysql2/promise";
 const MIGRATIONS_TABLE = "__drizzle_migrations";
 const MIGRATION_LOCK_NAME = "mycrewmate_schema_migrations";
 const COMPLETE_SCHEMA_SNAPSHOT = "0052_snapshot.json";
-const COMPLETE_SCHEMA_FINAL_MIGRATION = "0053_integrated_preparation_areas";
+// Ein historisch vollständiges Schema kann bis einschließlich 0053 ohne
+// Drizzle-Journal vorliegen. Neuere Migrationen (wie die Mandantentrennung)
+// müssen danach regulär und sichtbar ausgeführt werden.
+const COMPLETE_LEGACY_SCHEMA_FINAL_MIGRATION = "0053_integrated_preparation_areas";
 
 export type MigrationFile = {
   folderMillis: number;
@@ -216,12 +219,14 @@ async function bootstrapCompleteLegacySchema(
   migrations: MigrationFile[],
   lastAppliedAt: number
 ) {
-  const finalMigration = migrations.at(-1);
+  const finalMigration = migrations.find(
+    migration => migration.tag === COMPLETE_LEGACY_SCHEMA_FINAL_MIGRATION
+  );
   if (
-    finalMigration?.tag !== COMPLETE_SCHEMA_FINAL_MIGRATION ||
+    !finalMigration ||
     lastAppliedAt >= finalMigration.folderMillis
   ) {
-    return false;
+    return null;
   }
 
   const snapshotPath = path.join(migrationDirectory(), "meta", COMPLETE_SCHEMA_SNAPSHOT);
@@ -246,7 +251,7 @@ async function bootstrapCompleteLegacySchema(
       return actualType && normalizeColumnType(actualType) === normalizeColumnType(column.type);
     })
   );
-  if (!schemaMatchesSnapshot) return false;
+  if (!schemaMatchesSnapshot) return null;
 
   // 0053 verschiebt die beiden ehemaligen Fachbereiche atomar in die
   // Vorbereitung. Nur ein bereits leerer Altbestand beweist daher, dass die
@@ -257,10 +262,12 @@ async function bootstrapCompleteLegacySchema(
        (SELECT COUNT(*) FROM \`approvals\`)
      ) AS remainingRows`
   );
-  if (Number(legacyRows[0]?.remainingRows ?? -1) !== 0) return false;
+  if (Number(legacyRows[0]?.remainingRows ?? -1) !== 0) return null;
 
   const missingLedgerEntries = migrations.filter(
-    migration => migration.folderMillis > lastAppliedAt
+    migration =>
+      migration.folderMillis > lastAppliedAt &&
+      migration.folderMillis <= finalMigration.folderMillis
   );
   for (const migration of missingLedgerEntries) {
     await connection.execute(
@@ -271,7 +278,7 @@ async function bootstrapCompleteLegacySchema(
   console.info(
     `[Migration] Vollständig kompatibles Legacy-Schema erkannt; ${missingLedgerEntries.length} fehlende Journal-Einträge sicher ergänzt.`
   );
-  return true;
+  return finalMigration.folderMillis;
 }
 
 async function acquireMigrationLock(connection: MigrationConnection) {
@@ -298,7 +305,7 @@ export async function applyProjectMigrations(
   try {
     await ensureMigrationLedger(connection);
     const lastAppliedAt = await lastMigrationTimestamp(connection);
-    const bootstrappedLegacySchema = await bootstrapCompleteLegacySchema(
+    const legacyBootstrapThrough = await bootstrapCompleteLegacySchema(
       connection,
       migrations,
       lastAppliedAt
@@ -306,7 +313,7 @@ export async function applyProjectMigrations(
     const pendingMigrations = migrations.filter(
       migration =>
         migration.folderMillis >
-        (bootstrappedLegacySchema ? migrations.at(-1)?.folderMillis ?? 0 : lastAppliedAt)
+        (legacyBootstrapThrough ?? lastAppliedAt)
     );
     let compatibleColumnsSkipped = 0;
     let compatibleTablesSkipped = 0;

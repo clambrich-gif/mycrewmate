@@ -22,7 +22,11 @@ describe("Material-Softdelete und Löschprotokoll", () => {
     const testEventYear = 2027;
     const testEventId = 1020001; // MyEifelRide 2027
 
-    await withPlanningScope({ year: testEventYear, eventId: testEventId }, async () => {
+    await withPlanningScope({
+      tenantId: "rsc-eifelland-mayen",
+      year: testEventYear,
+      eventId: testEventId,
+    }, async () => {
       // 1. Artikel anlegen
       const created: any = await createMaterial({
         article: "Biertischgarnituren (Test-Softdelete)",

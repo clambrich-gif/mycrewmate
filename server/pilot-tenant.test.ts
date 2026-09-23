@@ -31,7 +31,41 @@ describe("RSC-Pilot-Grundlage", () => {
     expect(migrationSource).toContain("'rsc-eifelland-mayen'");
     expect(migrationSource).toContain("'kirmesverein-musterstadt'");
     expect(migrationSource).toContain("'schuetzenverein-musterhausen'");
+    expect(migrationSource).toContain("CREATE INDEX `events_year_fk_idx`");
     expect(migrationSource).not.toMatch(/\bDROP\s+TABLE\b/i);
+  });
+
+  it("leitet den Mandanten getrennt über Browser, API und Eventabfragen weiter", () => {
+    const contextSource = fs.readFileSync(
+      path.resolve(__dirname, "../client/src/contexts/YearContext.tsx"),
+      "utf-8"
+    );
+    const clientSource = fs.readFileSync(
+      path.resolve(__dirname, "../client/src/main.tsx"),
+      "utf-8"
+    );
+    const dbSource = fs.readFileSync(
+      path.resolve(__dirname, "../server/db.ts"),
+      "utf-8"
+    );
+    expect(contextSource).toContain("mycrewmate:tenant-id");
+    expect(clientSource).toContain('"x-tenant-id"');
+    expect(dbSource).toContain("eq(events.tenantId, tenant())");
+  });
+
+  it("beschränkt den Mandantenwechsler auf Administratoren", () => {
+    const routerSource = fs.readFileSync(
+      path.resolve(__dirname, "../server/routers.ts"),
+      "utf-8"
+    );
+    const layoutSource = fs.readFileSync(
+      path.resolve(__dirname, "../client/src/components/Layout.tsx"),
+      "utf-8"
+    );
+    expect(routerSource).toContain("tenants: router");
+    expect(routerSource).toContain('ctx.user.role !== "admin"');
+    expect(layoutSource).toContain("Testmandant");
+    expect(layoutSource).toContain("selectTenant");
   });
 
   it("zeigt das Pilot-Badge im Anwendungs-Layout an", () => {

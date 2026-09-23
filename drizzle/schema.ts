@@ -254,6 +254,10 @@ export const events = mysqlTable(
       columns: [table.year],
       foreignColumns: [eventYears.year],
     }).onDelete("cascade"),
+    // Der einzelne Jahresindex erhält die bestehende Fremdschlüsselbeziehung
+    // zu event_years, wenn der frühere Index (year, name) mandantenfähig
+    // durch (tenantId, year, name) ersetzt wird.
+    index("events_year_fk_idx").on(table.year),
     uniqueIndex("events_tenant_year_name_unique").on(
       table.tenantId,
       table.year,

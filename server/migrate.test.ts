@@ -186,14 +186,14 @@ describe("applyProjectMigrations", () => {
     ).rejects.toThrow("already exists");
   });
 
-  it("ergänzt fehlende Journal-Einträge nur für ein vollständig aktuelles Legacy-Schema", async () => {
+  it("ergänzt Legacy-Journal-Einträge und führt spätere Mandantenmigrationen regulär aus", async () => {
     const connection = createConnection({ snapshotCompatible: true, legacyRows: 0 });
     const migrations = readProjectMigrations();
 
     const result = await applyProjectMigrations(connection, migrations);
 
     expect(result).toEqual({
-      appliedMigrations: 0,
+      appliedMigrations: 1,
       compatibleColumnsSkipped: 0,
       compatibleTablesSkipped: 0,
     });
@@ -202,7 +202,9 @@ describe("applyProjectMigrations", () => {
         String(query).includes("INSERT INTO `__drizzle_migrations`")
       )
     ).toHaveLength(migrations.length);
-    expect(connection.query).not.toHaveBeenCalled();
+    expect(connection.query).toHaveBeenCalledWith(
+      expect.stringContaining("CREATE TABLE `tenants`")
+    );
   });
 
   it("verweigert den Legacy-Bootstrap bei noch nicht übertragenen Altdaten", async () => {

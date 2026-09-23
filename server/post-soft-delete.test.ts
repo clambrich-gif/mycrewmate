@@ -22,7 +22,11 @@ describe("Nachbereitungs-Softdelete und Löschprotokoll", () => {
     const testEventYear = 2027;
     const testEventId = 1020001; // MyEifelRide 2027
 
-    await withPlanningScope({ year: testEventYear, eventId: testEventId }, async () => {
+    await withPlanningScope({
+      tenantId: "rsc-eifelland-mayen",
+      year: testEventYear,
+      eventId: testEventId,
+    }, async () => {
       // 1. Aufgabe anlegen mit Bereich, Frist und Notiz
       const created: any = await createPost({
         task: "Kühlwagen reinigen und zurückgeben (Test-Softdelete)",

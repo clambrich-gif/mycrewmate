@@ -5,7 +5,11 @@ import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
 import "./index.css";
-import { storedEventId, storedEventYear } from "./contexts/YearContext";
+import {
+  storedEventId,
+  storedEventYear,
+  storedTenantId,
+} from "./contexts/YearContext";
 import { installMobileFocusViewportGuard } from "./lib/mobileFocusViewport";
 import { getPreviewSessionToken } from "./lib/preview-session";
 
@@ -55,9 +59,11 @@ const trpcClient = trpc.createClient({
       transformer: superjson,
       headers() {
         const previewSessionToken = getPreviewSessionToken();
+        const tenantId = storedTenantId();
         return {
+          "x-tenant-id": tenantId,
           "x-event-year": String(storedEventYear()),
-          "x-event-id": String(storedEventId()),
+          "x-event-id": String(storedEventId(storedEventYear(), tenantId)),
           ...(previewSessionToken
             ? { Authorization: `Bearer ${previewSessionToken}` }
             : {}),
