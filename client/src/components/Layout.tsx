@@ -390,17 +390,27 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [editEventName, setEditEventName] = useState("");
   const [editEventStartDate, setEditEventStartDate] = useState("");
   const [editEventEndDate, setEditEventEndDate] = useState("");
+  // Ein verbrauchter oder abgelaufener Einmal-Link darf keinesfalls erneut
+  // ausgelöst werden: Die Mutation würde sonst nach jedem Rendern wiederholen.
+  const attemptedHandoffTokenRef = useRef<string | null>(null);
+  const removeHandoffFromAddress = () => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("handoff");
+    window.history.replaceState({}, "", url.toString());
+  };
   const consumeHandoff = trpc.auth.consumeHandoffToken.useMutation({
     onSuccess: async result => {
       storePreviewSessionToken(result.previewSessionToken);
       selectTenant(result.tenantId);
       await utils.auth.me.invalidate();
       toast.success("Wechsel in Vereinsansicht erfolgreich");
-      const url = new URL(window.location.href);
-      url.searchParams.delete("handoff");
-      window.history.replaceState({}, "", url.toString());
+      removeHandoffFromAddress();
     },
     onError: err => {
+      // Nach genau einem fehlgeschlagenen Abruf den Einmal-Link aus der URL
+      // entfernen, damit weder Schleife noch erneuter Tokenabruf entstehen.
+      removeHandoffFromAddress();
       toast.error(err.message);
     },
   });
@@ -408,7 +418,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const token = new URLSearchParams(window.location.search).get("handoff");
-    if (token && token.length >= 10 && !consumeHandoff.isPending && !consumeHandoff.isSuccess) {
+    if (
+      token &&
+      token.length >= 10 &&
+      attemptedHandoffTokenRef.current !== token &&
+      !consumeHandoff.isPending
+    ) {
+      attemptedHandoffTokenRef.current = token;
       consumeHandoff.mutate({ token });
     }
   }, [consumeHandoff]);

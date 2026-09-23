@@ -48,4 +48,11 @@ describe("Vereinsadmin-Verwaltung, Marktstart-Sperre & Handoff", () => {
     expect(portalSource).toContain('appUrl("/", `?handoff=${encodeURIComponent(result.handoffToken)}`)');
     expect(portalSource).not.toContain("window.location.origin}/?handoff=");
   });
+
+  it("prüft einen fehlerhaften Einmal-Wechsel-Link nur einmal und entfernt ihn danach aus der Adresse", () => {
+    expect(layoutSource).toContain("const attemptedHandoffTokenRef = useRef<string | null>(null);");
+    expect(layoutSource).toContain("attemptedHandoffTokenRef.current !== token");
+    expect(layoutSource).toContain("attemptedHandoffTokenRef.current = token;");
+    expect(layoutSource).toContain("removeHandoffFromAddress();");
+  });
 });
