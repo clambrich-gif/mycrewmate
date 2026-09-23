@@ -407,6 +407,8 @@ export const contacts = mysqlTable(
     year: int("year").default(2026).notNull(),
     eventId: int("eventId").notNull(),
     name: varchar("name", { length: 200 }).notNull(),
+    /** Persönliche Kontaktadresse; sie wird beim Anlegen eines Zugangs vorgeschlagen. */
+    email: varchar("email", { length: 320 }),
     phone: varchar("phone", { length: 64 }),
     note: text("note"),
     sortOrder: int("sortOrder").default(0).notNull(),
@@ -769,6 +771,40 @@ export const planningTeamAccessEvents = mysqlTable(
       table.eventId
     ),
     index("planning_team_access_events_event_idx").on(table.eventId),
+  ]
+);
+
+/**
+ * Einmalige Aktivierungslinks für individuelle Planungsteam-Zugänge.
+ * Es wird ausschließlich der SHA-256-Hash des zufälligen Links gespeichert.
+ */
+export const planningTeamInvitations = mysqlTable(
+  "planning_team_invitations",
+  {
+    tokenHash: varchar("tokenHash", { length: 64 }).primaryKey(),
+    accessId: int("accessId").notNull(),
+    tenantId: varchar("tenantId", { length: 96 }).notNull(),
+    expiresAt: timestamp("expiresAt").notNull(),
+    usedAt: timestamp("usedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    foreignKey({
+      name: "planning_team_invitations_access_id_planning_team_accesses_id_fk",
+      columns: [table.accessId],
+      foreignColumns: [planningTeamAccesses.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "planning_team_invitations_tenant_id_tenants_id_fk",
+      columns: [table.tenantId],
+      foreignColumns: [tenants.id],
+    }).onDelete("cascade"),
+    index("planning_team_invitations_access_tenant_expiry_idx").on(
+      table.accessId,
+      table.tenantId,
+      table.expiresAt
+    ),
+    index("planning_team_invitations_expiry_idx").on(table.expiresAt),
   ]
 );
 

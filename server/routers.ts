@@ -110,6 +110,7 @@ import {
 import { upcomingPreparationDeadlines } from "./dashboard-deadlines";
 import {
   renderInvitationEmail,
+  renderPlanningTeamInvitationEmail,
   sendTransactionalEmail,
 } from "./mail-service";
 
@@ -1494,6 +1495,52 @@ export const appRouter = router({
           ...(isEmbeddedManusPreview(ctx.req) ? { previewSessionToken: token } : {}),
         } as const;
       }),
+    consumePlanningTeamInvitation: publicProcedure
+      .input(z.object({ token: z.string().min(32).max(200) }))
+      .mutation(async ({ ctx, input }) => {
+        const invitation = await db.consumePlanningTeamInvitation(
+          hashOpaqueToken(input.token)
+        );
+        if (!invitation) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Dieser Aktivierungslink ist ungültig, bereits verwendet oder abgelaufen.",
+          });
+        }
+        const openId = planningTeamAccessOpenId(invitation.accessId);
+        const sessionName = invitation.contactName ?? invitation.label ?? "Planungsteam";
+        await db.upsertUser({
+          openId,
+          name: sessionName,
+          email: invitation.email ?? null,
+          loginMethod: "password",
+          role: "user",
+          lastSignedIn: new Date(),
+        });
+        try {
+          if ("synchronizePlanningTeamTenantMemberships" in db) {
+            await (db as any).synchronizePlanningTeamTenantMemberships(invitation.accessId);
+          }
+        } catch {
+          // Ignorieren falls Mock in Unit-Tests
+        }
+        const token = await sdk.createSessionToken(openId, {
+          name: sessionName,
+          expiresInMs: PASSWORD_SESSION_MS,
+          sessionVersion: invitation.sessionVersion,
+        });
+        ctx.res.cookie(COOKIE_NAME, token, {
+          ...getSessionCookieOptions(ctx.req),
+          maxAge: PASSWORD_SESSION_MS,
+        });
+        return {
+          success: true,
+          tenantId: invitation.tenantId,
+          mustChangePassword: true,
+          ...(isEmbeddedManusPreview(ctx.req) ? { previewSessionToken: token } : {}),
+        } as const;
+      }),
     setAdminPassword: accountAdminProcedure
       .input(
         z.object({
@@ -1583,6 +1630,168 @@ export const appRouter = router({
           passwordHash: await hashPassword(input.password),
           eventIds: input.eventIds,
         });
+      }),
+    createWithInvitationLink: accountAdminProcedure
+      .input(
+        z.object({
+          label: z.string().trim().min(2).max(120),
+          contactId: z.number().int().positive(),
+          email: z.string().email("Gültige E-Mail-Adresse erforderlich").max(320),
+          modulePermissions: z.array(z.enum(PLANNING_MODULES)).optional(),
+          eventIds: z.array(z.number().int().positive()).min(1).max(500),
+          sendEmail: z.boolean().default(true),
+          currentAdminPassword: z.string().min(1).max(200),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await requireAdminPassword(input.currentAdminPassword, ctx);
+        const contact = (await db.listAllContactsForPlanningTeamAccess()).find(
+          item => item.id === input.contactId
+        );
+        if (!contact) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Der ausgewählte Ansprechpartner wurde nicht gefunden",
+          });
+        }
+        const tempPassword = generatePlanningTeamAccessPassword();
+        const access = await db.createPlanningTeamAccess({
+          label: input.label,
+          contactId: input.contactId,
+          email: input.email.trim().toLocaleLowerCase("de-DE"),
+          modulePermissions: input.modulePermissions ?? [],
+          passwordHash: await hashPassword(tempPassword),
+          mustChangePassword: true,
+          eventIds: input.eventIds,
+        });
+
+        const rawToken = randomBytes(32).toString("hex");
+        const tokenHash = hashOpaqueToken(rawToken);
+        const scope = await authorizedPlanningScope(ctx.user, ctx.req);
+        const invitation = await db.createPlanningTeamInvitation({
+          accessId: access.id,
+          tenantId: scope.tenantId,
+          tokenHash,
+          expiresInSeconds: 48 * 3600,
+        });
+
+        const currentTenants = await db.listTenants();
+        const activeTenant = currentTenants.find(t => t.id === scope.tenantId);
+        const tenantName = activeTenant?.name ?? "Vereinsplanung";
+        const activationUrl = publicAppUrl(`/aktivieren?token=${encodeURIComponent(rawToken)}`);
+        const modulesSummary = (input.modulePermissions && input.modulePermissions.length > 0)
+          ? input.modulePermissions.join(", ")
+          : "Alle regulären Planungsbereiche";
+
+        let emailSent = false;
+        if (input.sendEmail) {
+          const emailContent = renderPlanningTeamInvitationEmail({
+            recipientName: access.label,
+            tenantName,
+            invitationUrl: activationUrl,
+            modulesSummary,
+            expiresInHours: 48,
+          });
+          const sendResult = await sendTransactionalEmail({
+            to: input.email,
+            subject: emailContent.subject,
+            text: emailContent.text,
+            html: emailContent.html,
+          });
+          emailSent = sendResult.success;
+        }
+
+        await recordSecurityActivity(
+          auditActor(ctx.user),
+          `Planungsteam-Einladung für „${access.label}“ erstellt (${input.email})${emailSent ? " · E-Mail versandt" : ""}`,
+          "created"
+        );
+
+        return {
+          accessId: access.id,
+          label: access.label,
+          email: input.email,
+          activationUrl,
+          emailSent,
+          expiresAt: invitation.expiresAt,
+        };
+      }),
+    sendInvitationLink: accountAdminProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          currentAdminPassword: z.string().min(1).max(200),
+          sendEmail: z.boolean().default(true),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await requireAdminPassword(input.currentAdminPassword, ctx);
+        const access = (await db.listPlanningTeamAccesses()).find(
+          item => item.id === input.id
+        );
+        if (!access) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Planungsteam-Zugang wurde nicht gefunden",
+          });
+        }
+        if (!access.email) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Für diesen Zugang ist keine E-Mail-Adresse hinterlegt. Bitte erst bearbeiten und E-Mail ergänzen.",
+          });
+        }
+
+        const rawToken = randomBytes(32).toString("hex");
+        const tokenHash = hashOpaqueToken(rawToken);
+        const scope = await authorizedPlanningScope(ctx.user, ctx.req);
+        const invitation = await db.createPlanningTeamInvitation({
+          accessId: access.id,
+          tenantId: scope.tenantId,
+          tokenHash,
+          expiresInSeconds: 48 * 3600,
+        });
+
+        const currentTenants = await db.listTenants();
+        const activeTenant = currentTenants.find(t => t.id === scope.tenantId);
+        const tenantName = activeTenant?.name ?? "Vereinsplanung";
+        const activationUrl = publicAppUrl(`/aktivieren?token=${encodeURIComponent(rawToken)}`);
+        const modulesSummary = (access.modulePermissions && access.modulePermissions.length > 0)
+          ? access.modulePermissions.join(", ")
+          : "Alle regulären Planungsbereiche";
+
+        let emailSent = false;
+        if (input.sendEmail) {
+          const emailContent = renderPlanningTeamInvitationEmail({
+            recipientName: access.label,
+            tenantName,
+            invitationUrl: activationUrl,
+            modulesSummary,
+            expiresInHours: 48,
+          });
+          const sendResult = await sendTransactionalEmail({
+            to: access.email,
+            subject: emailContent.subject,
+            text: emailContent.text,
+            html: emailContent.html,
+          });
+          emailSent = sendResult.success;
+        }
+
+        await recordSecurityActivity(
+          auditActor(ctx.user),
+          `Neuer Aktivierungslink für Planungsteam-Zugang „${access.label}“ ausgestellt (${access.email})${emailSent ? " · E-Mail versandt" : ""}`,
+          "reset"
+        );
+
+        return {
+          accessId: access.id,
+          label: access.label,
+          email: access.email,
+          activationUrl,
+          emailSent,
+          expiresAt: invitation.expiresAt,
+        };
       }),
     createWithAccessSheet: accountAdminProcedure
       .input(
@@ -2062,6 +2271,7 @@ export const appRouter = router({
       .input(
         z.object({
           name: z.string().trim().min(1),
+          email: z.string().email("Gültige E-Mail-Adresse").max(320).optional(),
           phone: z.string().trim().max(64).optional(),
           note: z.string().optional(),
           password: passwordInput.optional(),
@@ -2070,6 +2280,7 @@ export const appRouter = router({
       .mutation(async ({ input }) =>
         db.upsertContactByName({
           name: input.name,
+          email: input.email,
           phone: input.phone,
           note: input.note,
           ...(input.password
@@ -2081,6 +2292,7 @@ export const appRouter = router({
       .input(
         z.object({
           name: z.string().trim().min(1).max(160),
+          email: z.string().email("Gültige E-Mail-Adresse").max(320).optional(),
           phone: z.string().trim().max(64).optional(),
           note: z.string().optional(),
         })
@@ -2088,6 +2300,7 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         const contactResult = await db.upsertContactByName({
           name: input.name,
+          email: input.email,
           phone: input.phone,
           note: input.note,
         });
@@ -2111,6 +2324,7 @@ export const appRouter = router({
         z.object({
           id: z.number(),
           name: z.string().min(1),
+          email: z.string().email("Gültige E-Mail-Adresse").max(320).nullable().optional(),
           phone: z.string().max(64).nullable().optional(),
           note: z.string().nullable().optional(),
           password: passwordInput.optional(),

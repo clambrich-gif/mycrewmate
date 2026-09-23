@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
 import { downloadBase64File } from "@/lib/download";
 import { trpc } from "@/lib/trpc";
-import { FileDown, KeyRound, Pencil, Phone, Plus, Trash2 } from "lucide-react";
+import { FileDown, KeyRound, Mail, Pencil, Phone, Plus, Trash2 } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { toast } from "sonner";
 
@@ -25,12 +25,14 @@ export default function Contacts() {
   const { user } = useAuth();
   const { data: contacts = [], isLoading } = trpc.contacts.list.useQuery();
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [editTarget, setEditTarget] = useState<{
     id: number;
     name: string;
   } | null>(null);
   const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<{
     id: number;
@@ -52,6 +54,7 @@ export default function Contacts() {
       downloadBase64File(result.base64, result.mimeType, result.filename);
       invalidate();
       setName("");
+      setEmail("");
       setPhone("");
       toast.success("Ansprechpartner angelegt; Einmal-Zugangsblatt wird heruntergeladen");
     },
@@ -90,6 +93,7 @@ export default function Contacts() {
     if (!name.trim() || createWithAccessSheet.isPending) return;
     createWithAccessSheet.mutate({
       name: name.trim(),
+      email: email.trim() || undefined,
       phone: phone.trim() || undefined,
     });
   };
@@ -102,6 +106,7 @@ export default function Contacts() {
     update.mutate({
       id: contactId,
       name: editName.trim(),
+      email: editEmail.trim() || null,
       phone: editPhone.trim() || null,
     });
   };
@@ -143,6 +148,22 @@ export default function Contacts() {
                   placeholder="Name des neuen Ansprechpartners eingeben"
                   value={name}
                   onChange={event => setName(event.target.value)}
+                  className="h-11 border-slate-300 bg-white text-base shadow-sm placeholder:text-slate-600"
+                />
+              </div>
+              <div className="min-w-0 flex-1 sm:min-w-[240px]">
+                <label
+                  htmlFor="new-contact-email"
+                  className="mb-1.5 block text-sm font-semibold text-slate-800"
+                >
+                  E-Mail-Adresse
+                </label>
+                <Input
+                  id="new-contact-email"
+                  type="email"
+                  placeholder="z. B. vorname.nachname@verein.de"
+                  value={email}
+                  onChange={event => setEmail(event.target.value)}
                   className="h-11 border-slate-300 bg-white text-base shadow-sm placeholder:text-slate-600"
                 />
               </div>
@@ -202,9 +223,15 @@ export default function Contacts() {
                 >
                   <div className="min-w-0">
                     <div className="font-medium">{contact.name}</div>
-                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                      <Phone className="h-3.5 w-3.5" />
-                      {contact.phone || "Keine Rufnummer hinterlegt"}
+                    <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1.5">
+                        <Phone className="h-3.5 w-3.5" />
+                        {contact.phone || "Keine Rufnummer"}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <Mail className="h-3.5 w-3.5" />
+                        {contact.email || "Keine E-Mail hinterlegt"}
+                      </span>
                     </div>
                   </div>
                   <span className="flex flex-wrap items-center gap-1.5">
@@ -216,6 +243,7 @@ export default function Contacts() {
                       onClick={() => {
                         setEditTarget({ id: contact.id, name: contact.name });
                         setEditName(contact.name);
+                        setEditEmail(contact.email ?? "");
                         setEditPhone(contact.phone ?? "");
                       }}
                     >
@@ -285,6 +313,21 @@ export default function Contacts() {
                 value={editName}
                 onChange={event => setEditName(event.target.value)}
                 placeholder="Name des Ansprechpartners"
+              />
+            </div>
+            <div className="space-y-2">
+              <label
+                htmlFor="edit-contact-email"
+                className="text-sm font-semibold text-slate-800"
+              >
+                E-Mail-Adresse
+              </label>
+              <Input
+                id="edit-contact-email"
+                type="email"
+                value={editEmail}
+                onChange={event => setEditEmail(event.target.value)}
+                placeholder="z. B. vorname.nachname@verein.de"
               />
             </div>
             <div className="space-y-2">

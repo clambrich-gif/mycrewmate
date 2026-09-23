@@ -37,6 +37,7 @@ import {
   locations,
   planningTeamAccesses,
   planningTeamAccessEvents,
+  planningTeamInvitations,
   platformLaunchSettings,
   platformTenantHandoffs,
   postTasks,
@@ -975,6 +976,122 @@ export async function isPlanningTeamAccessPasswordChangeRequired(accessId: numbe
 }
 
 /**
+ * Stellt einen neuen, zeitlich begrenzten Aktivierungslink aus. Der bisherige
+ * Link desselben Vereins wird gleichzeitig unbrauchbar. Sitzungen werden erst
+ * bei tatsächlicher Linkeinlösung entwertet, damit ein SMTP-Fehler keinen
+ * bestehenden Zugang unbeabsichtigt sperrt.
+ */
+export async function createPlanningTeamInvitation(input: {
+  accessId: number;
+  tenantId: string;
+  tokenHash: string;
+  expiresInSeconds?: number;
+}) {
+  const database = (await getDb()) as DB;
+  const now = new Date();
+  const expiresAt = new Date(
+    now.getTime() + (input.expiresInSeconds ?? 48 * 60 * 60) * 1000
+  );
+  return database.transaction(async tx => {
+    const [access] = await tx
+      .select({ id: planningTeamAccesses.id })
+      .from(planningTeamAccesses)
+      .where(eq(planningTeamAccesses.id, input.accessId))
+      .limit(1)
+      .for("update");
+    if (!access) throw new Error("Planungsteam-Zugang wurde nicht gefunden");
+
+    const [allowedEvent] = await tx
+      .select({ eventId: planningTeamAccessEvents.eventId })
+      .from(planningTeamAccessEvents)
+      .innerJoin(events, eq(events.id, planningTeamAccessEvents.eventId))
+      .where(
+        and(
+          eq(planningTeamAccessEvents.accessId, input.accessId),
+          eq(events.tenantId, input.tenantId)
+        )
+      )
+      .limit(1)
+      .for("update");
+    if (!allowedEvent) {
+      throw new Error("Der Planungsteam-Zugang ist für diesen Verein nicht freigegeben");
+    }
+
+    await tx
+      .update(planningTeamInvitations)
+      .set({ usedAt: now })
+      .where(
+        and(
+          eq(planningTeamInvitations.accessId, input.accessId),
+          eq(planningTeamInvitations.tenantId, input.tenantId),
+          isNull(planningTeamInvitations.usedAt)
+        )
+      );
+    await tx.insert(planningTeamInvitations).values({
+      tokenHash: input.tokenHash,
+      accessId: input.accessId,
+      tenantId: input.tenantId,
+      expiresAt,
+    });
+    return { expiresAt } as const;
+  });
+}
+
+/** Löst einen Planungsteam-Aktivierungslink atomar genau einmal ein. */
+export async function consumePlanningTeamInvitation(tokenHash: string) {
+  const database = (await getDb()) as DB;
+  return database.transaction(async tx => {
+    const now = new Date();
+    const [row] = await tx
+      .select({
+        accessId: planningTeamInvitations.accessId,
+        tenantId: planningTeamInvitations.tenantId,
+        label: planningTeamAccesses.label,
+        email: planningTeamAccesses.email,
+        contactName: contacts.name,
+        sessionVersion: planningTeamAccesses.sessionVersion,
+      })
+      .from(planningTeamInvitations)
+      .innerJoin(
+        planningTeamAccesses,
+        eq(planningTeamAccesses.id, planningTeamInvitations.accessId)
+      )
+      .leftJoin(contacts, eq(contacts.id, planningTeamAccesses.contactId))
+      .innerJoin(
+        planningTeamAccessEvents,
+        eq(planningTeamAccessEvents.accessId, planningTeamAccesses.id)
+      )
+      .innerJoin(
+        events,
+        and(
+          eq(events.id, planningTeamAccessEvents.eventId),
+          eq(events.tenantId, planningTeamInvitations.tenantId)
+        )
+      )
+      .where(
+        and(
+          eq(planningTeamInvitations.tokenHash, tokenHash),
+          isNull(planningTeamInvitations.usedAt),
+          gt(planningTeamInvitations.expiresAt, now)
+        )
+      )
+      .limit(1)
+      .for("update");
+    if (!row) return null;
+    await tx
+      .update(planningTeamInvitations)
+      .set({ usedAt: now })
+      .where(eq(planningTeamInvitations.tokenHash, tokenHash));
+    const sessionVersion = row.sessionVersion + 1;
+    await tx
+      .update(planningTeamAccesses)
+      .set({ mustChangePassword: true, sessionVersion })
+      .where(eq(planningTeamAccesses.id, row.accessId));
+    return { ...row, sessionVersion };
+  });
+}
+
+/**
  * Ersetzt ausschließlich einen einmalig ausgegebenen Zugangscode. Die neue
  * Sitzungsnummer entwertet alle bisherigen Sitzungstoken des Zugangs.
  */
@@ -1483,6 +1600,7 @@ export async function listAllContactsForPlanningTeamAccess() {
     .select({
       id: contacts.id,
       name: contacts.name,
+      email: contacts.email,
       year: contacts.year,
       eventId: contacts.eventId,
       eventName: events.name,
@@ -1816,6 +1934,7 @@ export async function lockPlanningTeamLogin() {
 
 export async function createContact(v: {
   name: string;
+  email?: string;
   phone?: string;
   note?: string;
   passwordHash?: string;
@@ -1840,6 +1959,7 @@ export async function createContact(v: {
       const accessResult: any = await tx.insert(planningTeamAccesses).values({
         contactId: id,
         label: normalizedName,
+        email: v.email?.trim().toLocaleLowerCase("de-DE") || null,
         passwordHash,
         sessionVersion: 1,
       });
@@ -1863,6 +1983,7 @@ export async function updateContact(
   id: number,
   v: {
     name?: string;
+    email?: string | null;
     phone?: string | null;
     note?: string | null;
     passwordHash?: string;
@@ -2012,6 +2133,7 @@ export async function deleteContact(id: number, actor: AuditActor) {
 
 export async function upsertContactByName(v: {
   name: string;
+  email?: string | null;
   phone?: string | null;
   note?: string | null;
   passwordHash?: string;
@@ -2021,6 +2143,7 @@ export async function upsertContactByName(v: {
   );
   if (existing) {
     const updates = {
+      ...(v.email ? { email: v.email.trim().toLocaleLowerCase("de-DE") } : {}),
       ...(v.phone ? { phone: v.phone } : {}),
       ...(v.note ? { note: v.note } : {}),
       ...(v.passwordHash ? { passwordHash: v.passwordHash } : {}),
@@ -2039,6 +2162,7 @@ export async function upsertContactByName(v: {
   }
   const result = await createContact({
     name: v.name.trim().replace(/\s+/g, " "),
+    email: v.email ?? undefined,
     phone: v.phone ?? undefined,
     note: v.note ?? undefined,
     passwordHash: v.passwordHash,

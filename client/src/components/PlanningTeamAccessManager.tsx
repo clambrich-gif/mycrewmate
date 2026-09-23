@@ -28,13 +28,17 @@ import { downloadBase64File } from "@/lib/download";
 import { trpc } from "@/lib/trpc";
 import {
   CheckSquare,
+  Copy,
   FileDown,
   Filter,
+  Link2,
   LoaderCircle,
+  Mail,
   Pencil,
   Plus,
   Printer,
   RefreshCw,
+  Send,
   ShieldCheck,
   Trash2,
 } from "lucide-react";
@@ -127,6 +131,15 @@ export function PlanningTeamAccessManager() {
     label: string;
   } | null>(null);
   const [resetPassword, setResetPassword] = useState("");
+  const [sendEmailInvite, setSendEmailInvite] = useState(true);
+  const [issuedInvitation, setIssuedInvitation] = useState<{
+    label: string;
+    email: string;
+    activationUrl: string;
+    emailSent: boolean;
+  } | null>(null);
+  const [sendLinkTarget, setSendLinkTarget] = useState<AccessSummary | null>(null);
+  const [sendLinkPassword, setSendLinkPassword] = useState("");
 
   const eventById = useMemo(
     () => new Map((availableEvents.data ?? []).map(event => [event.id, event])),
@@ -195,6 +208,43 @@ export function PlanningTeamAccessManager() {
       utils.auth.passwordStatus.invalidate(),
     ]);
   };
+  const createWithInvitationLink = trpc.planningTeamAccesses.createWithInvitationLink.useMutation({
+    onSuccess: async result => {
+      await invalidate();
+      setForm(EMPTY_FORM);
+      setIssuedInvitation({
+        label: result.label,
+        email: result.email,
+        activationUrl: result.activationUrl,
+        emailSent: result.emailSent,
+      });
+      toast.success(
+        result.emailSent
+          ? "Planungsteam-Einladung erstellt und per E-Mail versandt"
+          : "Planungsteam-Einladungslink erstellt (E-Mail nicht versandt oder SMTP nicht aktiv)"
+      );
+    },
+    onError: error => toast.error(error.message),
+  });
+  const sendInvitationLink = trpc.planningTeamAccesses.sendInvitationLink.useMutation({
+    onSuccess: async result => {
+      await invalidate();
+      setSendLinkTarget(null);
+      setSendLinkPassword("");
+      setIssuedInvitation({
+        label: result.label,
+        email: result.email,
+        activationUrl: result.activationUrl,
+        emailSent: result.emailSent,
+      });
+      toast.success(
+        result.emailSent
+          ? `Aktivierungslink an ${result.email} gesendet`
+          : "Neuer Aktivierungslink erstellt (E-Mail nicht versandt oder SMTP nicht aktiv)"
+      );
+    },
+    onError: error => toast.error(error.message),
+  });
   const createAccess = trpc.planningTeamAccesses.createWithAccessSheet.useMutation({
     onSuccess: async result => {
       downloadBase64File(result.base64, result.mimeType, result.filename);
@@ -475,14 +525,28 @@ export function PlanningTeamAccessManager() {
                       {formatEvents(access) || "Keine Freigaben"}
                     </p>
                   </div>
-                  <div className="flex shrink-0 flex-wrap gap-2">
-                    <Button type="button" variant="outline" size="sm" onClick={() => editAccess(access)}>
-                      <Pencil className="mr-1.5 h-3.5 w-3.5" /> Bearbeiten
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                      <Button type="button" variant="outline" size="sm" onClick={() => editAccess(access)}>
+                        <Pencil className="mr-1.5 h-3.5 w-3.5" /> Bearbeiten
+                      </Button>
+                      {access.email && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="border-blue-200 text-blue-800 hover:bg-blue-50 hover:text-blue-900"
+                          onClick={() => {
+                            setSendLinkTarget(access);
+                            setSendLinkPassword("");
+                          }}
+                        >
+                          <Send className="mr-1.5 h-3.5 w-3.5" /> Aktivierungslink senden
+                        </Button>
+                      )}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
                       className="border-amber-200 text-amber-800 hover:bg-amber-50 hover:text-amber-900"
                       onClick={() => {
                         setResetTarget({ id: access.id, label: access.contactName ?? access.label });
@@ -558,6 +622,7 @@ export function PlanningTeamAccessManager() {
                     ...current,
                     contactId: contact.id,
                     label: contact.name,
+                    email: contact.email ? contact.email : current.email,
                   }));
                 }}
               >
@@ -683,10 +748,63 @@ export function PlanningTeamAccessManager() {
               onChange={event => setForm(current => ({ ...current, currentAdminPassword: event.target.value }))}
             />
           </div>
-          <Button type="button" className="mt-4" disabled={!valid || busy} onClick={save}>
-            {busy ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-            {form.id === null ? "Zugang anlegen" : "Zugang speichern"}
-          </Button>
+          {form.id === null && form.email.trim() && (
+            <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+              <Checkbox
+                checked={sendEmailInvite}
+                onCheckedChange={checked => setSendEmailInvite(checked === true)}
+              />
+              <span>Aktivierungs-E-Mail direkt automatisch an <strong>{form.email.trim()}</strong> senden</span>
+            </label>
+          )}
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            {form.id === null ? (
+              <>
+                <Button
+                  type="button"
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  disabled={!valid || !form.email.trim() || busy || createWithInvitationLink.isPending}
+                  onClick={() => {
+                    if (!valid || !form.contactId || !form.email.trim()) return;
+                    createWithInvitationLink.mutate({
+                      label: form.label.trim(),
+                      contactId: form.contactId,
+                      email: form.email.trim(),
+                      modulePermissions: form.modulePermissions,
+                      eventIds: form.eventIds,
+                      sendEmail: sendEmailInvite,
+                      currentAdminPassword: form.currentAdminPassword,
+                    });
+                  }}
+                >
+                  {createWithInvitationLink.isPending ? (
+                    <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="mr-2 h-4 w-4" />
+                  )}
+                  Zugang anlegen &amp; Aktivierungslink {sendEmailInvite ? "senden" : "erzeugen"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!valid || busy}
+                  onClick={save}
+                >
+                  {createAccess.isPending ? (
+                    <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Printer className="mr-2 h-4 w-4" />
+                  )}
+                  Zugang anlegen &amp; Zugangsblatt drucken (Offline-Weg)
+                </Button>
+              </>
+            ) : (
+              <Button type="button" disabled={!valid || busy} onClick={save}>
+                {busy ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                Zugang speichern
+              </Button>
+            )}
+          </div>
             </div>
           </AccordionContent>
         </AccordionItem>
@@ -849,6 +967,109 @@ export function PlanningTeamAccessManager() {
               >
                 {resetAndPrint.isPending ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
                 Neues Passwort &amp; PDF erzeugen
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(issuedInvitation)} onOpenChange={open => !open && setIssuedInvitation(null)}>
+        <DialogContent className="max-w-lg bg-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-blue-900">
+              <Link2 className="h-5 w-5 text-blue-600" />
+              Aktivierungslink für {issuedInvitation?.label}
+            </DialogTitle>
+            <DialogDescription>
+              {issuedInvitation?.emailSent
+                ? `Die Einladung wurde erfolgreich per E-Mail an ${issuedInvitation?.email} versandt.`
+                : `Der Einladungslink wurde erstellt. Sie können ihn kopieren und direkt an ${issuedInvitation?.email} weiterleiten.`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 pt-2">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs font-semibold text-slate-700">Persönlicher Aktivierungslink (48 Stunden gültig):</p>
+              <p className="mt-1 break-all font-mono text-xs text-blue-900 select-all">
+                {issuedInvitation?.activationUrl}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                if (issuedInvitation?.activationUrl) {
+                  navigator.clipboard.writeText(issuedInvitation.activationUrl);
+                  toast.success("Aktivierungslink in die Zwischenablage kopiert");
+                }
+              }}
+            >
+              <Copy className="mr-2 h-4 w-4" /> Link kopieren
+            </Button>
+          </div>
+          <DialogFooter>
+            <Button type="button" onClick={() => setIssuedInvitation(null)}>
+              Schließen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(sendLinkTarget)} onOpenChange={open => !open && setSendLinkTarget(null)}>
+        <DialogContent className="max-w-md bg-white">
+          <form
+            onSubmit={e => {
+              e.preventDefault();
+              if (!sendLinkTarget || !sendLinkPassword || sendInvitationLink.isPending) return;
+              sendInvitationLink.mutate({
+                id: sendLinkTarget.id,
+                currentAdminPassword: sendLinkPassword,
+                sendEmail: true,
+              });
+            }}
+            className="space-y-4"
+          >
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-blue-900">
+                <Send className="h-5 w-5 text-blue-600" />
+                Aktivierungslink senden
+              </DialogTitle>
+              <DialogDescription>
+                Einen neuen 48-Stunden-Aktivierungslink an <strong>{sendLinkTarget?.email}</strong> ausstellen. Bisherige Einladungslinks werden ungültig.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-1.5">
+              <Label htmlFor="send-link-admin-password">Administratorpasswort bestätigen</Label>
+              <Input
+                id="send-link-admin-password"
+                type="password"
+                autoComplete="current-password"
+                value={sendLinkPassword}
+                placeholder="Passwort eingeben"
+                disabled={sendInvitationLink.isPending}
+                onChange={e => setSendLinkPassword(e.target.value)}
+              />
+            </div>
+            <DialogFooter className="flex flex-row justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setSendLinkTarget(null)}
+                disabled={sendInvitationLink.isPending}
+              >
+                Abbrechen
+              </Button>
+              <Button
+                type="submit"
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+                disabled={!sendLinkPassword || sendInvitationLink.isPending}
+              >
+                {sendInvitationLink.isPending ? (
+                  <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="mr-2 h-4 w-4" />
+                )}
+                Link per E-Mail senden
               </Button>
             </DialogFooter>
           </form>
