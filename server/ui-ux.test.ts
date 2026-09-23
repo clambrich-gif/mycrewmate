@@ -2045,7 +2045,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(contacts).toContain("Name des Ansprechpartners");
     expect(contacts).toContain("Rufnummer");
     expect(contacts).toContain("sm:min-w-[280px]");
-    expect(contacts).toContain("Hinzufügen & Zugangsblatt drucken");
+    expect(contacts).toContain("Wird hinzugefügt …");
+    expect(contacts).toContain("Hinzufügen");
+    expect(contacts).toContain("Die Anlage erzeugt keinen Zugang und keine Zugangsdaten.");
+    expect(contacts).not.toContain("Hinzufügen & Zugangsblatt drucken");
     expect(contacts).not.toContain("Passwort / Zugangscode (optional)");
   });
 
@@ -2057,7 +2060,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(contacts).toContain("Ansprechpartner bearbeiten – {editTarget?.name}");
     expect(contacts).toContain('id="edit-contact-name"');
     expect(contacts).toContain('id="edit-contact-phone"');
-    expect(contacts).toContain("Zugangsdaten / Einmalpasswort generieren & drucken");
+    expect(contacts).toContain("Persönliche Zugänge werden");
+    expect(contacts).toContain("getrennt unter Schutz &amp; Protokoll verwaltet.");
+    expect(contacts).not.toContain("Zugangsdaten / Einmalpasswort generieren & drucken");
     expect(contacts).toContain("setEditTarget({ id: contact.id, name: contact.name })");
     expect(contacts).not.toContain("editId === contact.id");
     expect(contacts).not.toContain("sm:grid-cols-[minmax(240px,1fr)_220px]");
@@ -3026,10 +3031,14 @@ describe("UI- und Mobile-UX-Regeln", () => {
 
     expect(contacts).toContain("Neuanlage");
     expect(contacts).toContain("Name des Ansprechpartners");
-    expect(contacts).toContain("Hinzufügen & Zugangsblatt drucken");
-    expect(contacts).toContain("createWithAccessSheet");
-    expect(contacts).toContain("generateAccessSheet");
-    expect(contacts).toContain("Zugangsdaten / Einmalpasswort generieren & drucken");
+    expect(contacts).toContain("Hinzufügen");
+    expect(contacts).toContain("trpc.contacts.create.useMutation");
+    expect(contacts).toContain("Persönliche Planungsteam-Zugänge");
+    expect(contacts).toContain("unter Schutz &amp; Protokoll angelegt.");
+    expect(contacts).toContain("Die Anlage erzeugt keinen Zugang und keine Zugangsdaten.");
+    expect(contacts).not.toContain("createWithAccessSheet");
+    expect(contacts).not.toContain("generateAccessSheet");
+    expect(contacts).not.toContain("Zugangsdaten / Einmalpasswort generieren & drucken");
     expect(contacts).not.toContain("Passwort / Zugangscode (optional)");
     expect(contacts).not.toContain("Neues Passwort (optional)");
 

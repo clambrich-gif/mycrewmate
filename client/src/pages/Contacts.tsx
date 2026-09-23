@@ -14,9 +14,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
-import { downloadBase64File } from "@/lib/download";
 import { trpc } from "@/lib/trpc";
-import { FileDown, KeyRound, Mail, Pencil, Phone, Plus, Trash2 } from "lucide-react";
+import { Mail, Pencil, Phone, Plus, Trash2 } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { toast } from "sonner";
 
@@ -49,22 +48,13 @@ export default function Contacts() {
     utils.dashboard.stats.invalidate();
     utils.pdf.settings.invalidate();
   };
-  const createWithAccessSheet = trpc.contacts.createWithAccessSheet.useMutation({
-    onSuccess: result => {
-      downloadBase64File(result.base64, result.mimeType, result.filename);
+  const create = trpc.contacts.create.useMutation({
+    onSuccess: () => {
       invalidate();
       setName("");
       setEmail("");
       setPhone("");
-      toast.success("Ansprechpartner angelegt; Einmal-Zugangsblatt wird heruntergeladen");
-    },
-    onError: error => toast.error(error.message),
-  });
-  const generateAccessSheet = trpc.contacts.generateAccessSheet.useMutation({
-    onSuccess: result => {
-      downloadBase64File(result.base64, result.mimeType, result.filename);
-      invalidate();
-      toast.success("Neues Einmalpasswort erzeugt; Zugangsblatt wird heruntergeladen");
+      toast.success("Ansprechpartner angelegt");
     },
     onError: error => toast.error(error.message),
   });
@@ -90,8 +80,8 @@ export default function Contacts() {
   });
 
   const addContact = () => {
-    if (!name.trim() || createWithAccessSheet.isPending) return;
-    createWithAccessSheet.mutate({
+    if (!name.trim() || create.isPending) return;
+    create.mutate({
       name: name.trim(),
       email: email.trim() || undefined,
       phone: phone.trim() || undefined,
@@ -117,8 +107,8 @@ export default function Contacts() {
         <div>
           <PageTitle icon="contacts">Ansprechpartner</PageTitle>
           <p className="text-muted-foreground">
-            Ansprechpartner können einen persönlichen Planungsteam-Zugang mit
-            Einmal-Zugangsblatt erhalten.
+            Ansprechpartner werden hier als Stammdaten erfasst. Persönliche Planungsteam-Zugänge
+            werden separat unter Schutz &amp; Protokoll angelegt.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -187,21 +177,19 @@ export default function Contacts() {
                 type="submit"
                 variant="outline"
                 className={`h-11 shrink-0 px-5 ${CREATION_ACTION_BUTTON_CLASS}`}
-                disabled={createWithAccessSheet.isPending || !name.trim()}
+                disabled={create.isPending || !name.trim()}
               >
-                {createWithAccessSheet.isPending ? (
-                  <FileDown className="h-5 w-5 animate-pulse" />
+                {create.isPending ? (
+                  <Plus className="h-5 w-5 animate-pulse" />
                 ) : (
                   <Plus className="h-5 w-5" />
                 )}
-                {createWithAccessSheet.isPending
-                  ? "Erstellt & druckt …"
-                  : "Hinzufügen & Zugangsblatt drucken"}
+                {create.isPending ? "Wird hinzugefügt …" : "Hinzufügen"}
               </Button>
             </form>
             <p className="mt-3 text-xs text-slate-600">
-              Für die neue Person wird automatisch ein sicherer Einmalcode erzeugt.
-              Er erscheint ausschließlich auf dem sofort heruntergeladenen PDF.
+              Die Anlage erzeugt keinen Zugang und keine Zugangsdaten. Einen persönlichen Zugang
+              können Sie bei Bedarf später unter Schutz &amp; Protokoll gezielt anlegen und verteilen.
             </p>
           </CardContent>
         </Card>
@@ -296,8 +284,8 @@ export default function Contacts() {
                 Ansprechpartner bearbeiten – {editTarget?.name}
               </DialogTitle>
               <DialogDescription>
-                Stammdaten ändern oder bei Bedarf einen neuen sicheren Einmalcode
-                samt Zugangsblatt erzeugen.
+                Stammdaten des Ansprechpartners ändern. Persönliche Zugänge werden
+                getrennt unter Schutz &amp; Protokoll verwaltet.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-2">
@@ -345,20 +333,6 @@ export default function Contacts() {
                 placeholder="z. B. 0170 1234567"
               />
             </div>
-            {user?.role === "admin" && editTarget && (
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100 hover:text-amber-950"
-                disabled={generateAccessSheet.isPending}
-                onClick={() => generateAccessSheet.mutate({ id: editTarget.id })}
-              >
-                <KeyRound className="mr-2 h-4 w-4" />
-                {generateAccessSheet.isPending
-                  ? "Einmalpasswort wird erzeugt …"
-                  : "Zugangsdaten / Einmalpasswort generieren & drucken"}
-              </Button>
-            )}
             <DialogFooter className="flex flex-row flex-nowrap items-center justify-between gap-3 sm:space-x-0">
               <Button
                 type="button"
