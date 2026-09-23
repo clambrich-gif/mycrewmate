@@ -1483,7 +1483,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <Button
                   type="button"
                   variant="outline"
-                  className="mt-3 min-h-11 w-full justify-start border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100"
+                  className="mt-3 flex min-h-11 w-full min-w-0 items-center justify-start overflow-hidden border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100"
                   onClick={() => void installPwa()}
                 >
                   <img
@@ -1491,16 +1491,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     src={MYCREWMATE_ICON}
                     alt=""
                     aria-hidden="true"
-                    className="mr-2 h-10 w-10 rounded-xl shadow-md bg-white p-1.5 object-contain"
+                    className="mr-2 h-10 w-10 shrink-0 rounded-xl bg-white p-1.5 object-contain shadow-md"
                   />
-                  <Download className="mr-1.5 h-4 w-4" aria-hidden="true" />
-                  <span>📱 Als App auf Handy speichern</span>
+                  <Download className="mr-1.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                  <span className="min-w-0 flex-1 whitespace-normal text-left text-sm leading-tight">
+                    Als App speichern
+                  </span>
                 </Button>
               ) : (
                 <Button
                   type="button"
                   variant="outline"
-                  className="mt-3 min-h-11 w-full justify-start border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100"
+                  className="mt-3 flex min-h-11 w-full min-w-0 items-center justify-start overflow-hidden border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100"
                   onClick={() => {
                     setMobileMenuOpen(false);
                     setPwaInstallDialogOpen(true);
@@ -1511,10 +1513,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     src={MYCREWMATE_ICON}
                     alt=""
                     aria-hidden="true"
-                    className="mr-2 h-10 w-10 rounded-xl shadow-md bg-white p-1.5 object-contain"
+                    className="mr-2 h-10 w-10 shrink-0 rounded-xl bg-white p-1.5 object-contain shadow-md"
                   />
-                  <Download className="mr-1.5 h-4 w-4" aria-hidden="true" />
-                  <span>📱 Als App auf Handy speichern</span>
+                  <Download className="mr-1.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                  <span className="min-w-0 flex-1 whitespace-normal text-left text-sm leading-tight">
+                    Als App speichern
+                  </span>
                 </Button>
               )
             )}

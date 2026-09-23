@@ -668,11 +668,13 @@ export function PlanningTeamAccessManager() {
           }
         }}
       >
-        <DialogContent className="w-[calc(100%-2rem)] max-w-md !overflow-visible">
-          <form className="space-y-4" onSubmit={submitDelete}>
+        <DialogContent className="max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md !overflow-x-hidden overflow-y-auto bg-white">
+          <form className="min-w-0 space-y-4" onSubmit={submitDelete}>
             <DialogHeader>
-              <DialogTitle>Planungsteam-Zugang löschen</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="min-w-0 break-words pr-8">
+                Planungsteam-Zugang löschen
+              </DialogTitle>
+              <DialogDescription className="break-words">
                 Der Zugang „{deleteTarget?.label}“ wird dauerhaft entfernt. Alle dazugehörigen Sitzungen verlieren sofort ihren Zugriff.
               </DialogDescription>
             </DialogHeader>
@@ -683,15 +685,16 @@ export function PlanningTeamAccessManager() {
                 type="password"
                 autoComplete="current-password"
                 value={deletePassword}
+                className="w-full max-w-full"
                 disabled={deleteAccess.isPending}
                 onChange={event => setDeletePassword(event.target.value)}
               />
             </div>
-            <DialogFooter className="!mt-4 !flex !flex-row !flex-nowrap !items-center !justify-end !gap-3 sm:space-x-0">
+            <DialogFooter className="!mt-4 !flex !flex-col-reverse !gap-3 sm:!flex-row sm:!items-center sm:!justify-end sm:space-x-0">
               <Button
                 type="button"
                 variant="outline"
-                className="shrink-0 whitespace-nowrap border-slate-300 bg-white text-slate-900 shadow-sm"
+                className="w-full shrink-0 whitespace-nowrap border-slate-300 bg-white text-slate-900 shadow-sm sm:w-auto"
                 disabled={deleteAccess.isPending}
                 onClick={() => setDeleteTarget(null)}
               >
@@ -699,13 +702,13 @@ export function PlanningTeamAccessManager() {
               </Button>
               <button
                 type="submit"
-                className="inline-flex h-9 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm opacity-100 visible transition-colors hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+                className="inline-flex h-9 w-full shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm opacity-100 transition-colors hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 sm:w-auto"
                 disabled={!deleteTarget || !deletePassword || deleteAccess.isPending}
               >
                 <Trash2 className="h-4 w-4" />
                 {deleteAccess.isPending
                   ? "Wird gelöscht …"
-                  : "Zugangsdaten dauerhaft löschen"}
+                  : "Zugangsdaten löschen"}
               </button>
             </DialogFooter>
           </form>
