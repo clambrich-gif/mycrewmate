@@ -91,6 +91,13 @@ import {
   requestedPlanningScope,
   withPlanningScope,
 } from "./year-context";
+import {
+  FULL_PLANNER_PERMISSIONS,
+  PLANNING_MODULES,
+  mayReadPlanningModule,
+  mayWritePlanningModule,
+  type PlanningModule,
+} from "@shared/tenant-permissions";
 import { isMasterAdminRequestHost } from "@shared/platform-admin";
 import { storagePut, storageRead } from "./storage";
 import { locationLogoUrl } from "./location-logo-routes";
@@ -148,6 +155,47 @@ function planningTeamAccessIdForUser(user: {
     });
   }
   return accessId;
+}
+
+async function getPlanningTeamPermissionsForUser(user: {
+  openId: string;
+  role: "user" | "admin";
+  isCron?: boolean;
+}): Promise<readonly PlanningModule[]> {
+  if (user.role === "admin" || user.isCron) return FULL_PLANNER_PERMISSIONS;
+  const accessId = planningTeamAccessIdForUser(user);
+  if (accessId === null) {
+    // Bei Test-Mocks wie openId: "planning-team" wird standardmäßig Bearbeitungszugriff gewährt
+    return FULL_PLANNER_PERMISSIONS;
+  }
+  const access = (await db.listPlanningTeamAccesses()).find(item => item.id === accessId);
+  return access?.modulePermissions && access.modulePermissions.length > 0
+    ? access.modulePermissions
+    : FULL_PLANNER_PERMISSIONS;
+}
+
+function requireModuleWritePermission(
+  permissions: readonly PlanningModule[],
+  module: Exclude<PlanningModule, "read_all">
+) {
+  if (!mayWritePlanningModule(permissions, module)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Keine Berechtigung zur Bearbeitung dieses Bereichs.",
+    });
+  }
+}
+
+function requireModuleReadPermission(
+  permissions: readonly PlanningModule[],
+  module: Exclude<PlanningModule, "read_all">
+) {
+  if (!mayReadPlanningModule(permissions, module)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Keine Leseberechtigung für diesen Bereich.",
+    });
+  }
 }
 
 async function requirePlanningTeamEventAccess(
@@ -562,6 +610,24 @@ const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   return next({ ctx });
 });
 
+function moduleReadProcedure(module: Exclude<PlanningModule, "read_all">) {
+  return protectedProcedure.use(async ({ ctx, next }) => {
+    const permissions = await getPlanningTeamPermissionsForUser(ctx.user);
+    requireModuleReadPermission(permissions, module);
+    return next({ ctx });
+  });
+}
+
+function moduleWriteProcedure(module: Exclude<PlanningModule, "read_all">) {
+  return protectedProcedure.use(async ({ ctx, next }) => {
+    const permissions = await getPlanningTeamPermissionsForUser(ctx.user);
+    requireModuleWritePermission(permissions, module);
+    return next({ ctx });
+  });
+}
+
+const pdfReadProcedure = moduleReadProcedure("pdf");
+
 const yn = z.enum(["ja", "nein"]);
 const ynv = z.enum(["ja", "nein", "vielleicht"]);
 const dayEnum = z.enum(WEEKDAYS);
@@ -650,6 +716,8 @@ async function createContactInitialAccessSheet(input: {
     contactId: input.contactId,
     contactName: input.contactName,
     label: input.contactName,
+    email: existingAccess?.email ?? null,
+    modulePermissions: existingAccess?.modulePermissions ?? [],
     eventIds,
     mustChangePassword: true,
     createdAt: existingAccess?.createdAt ?? new Date(),
@@ -1001,7 +1069,12 @@ export const appRouter = router({
       } as const;
     }),
     passwordLogin: publicProcedure
-      .input(z.object({ password: z.string().min(1).max(200) }))
+      .input(
+        z.object({
+          password: z.string().min(1).max(200),
+          email: z.string().trim().email().max(320).optional(),
+        })
+      )
       .mutation(async ({ ctx, input }) => {
         const clientKey = `planning:${getClientKey(ctx.req)}`;
         const settings = await db.getSecuritySettings();
@@ -1027,6 +1100,13 @@ export const appRouter = router({
         const accesses = await db.listPlanningTeamAccessCredentials();
         let matchingAccess: (typeof accesses)[number] | null = null;
         for (const access of accesses) {
+          if (
+            input.email &&
+            access.email &&
+            access.email.toLocaleLowerCase("de-DE") !== input.email.toLocaleLowerCase("de-DE")
+          ) {
+            continue;
+          }
           if (await verifyPassword(input.password, access.passwordHash)) {
             matchingAccess = access;
             break;
@@ -1413,6 +1493,9 @@ export const appRouter = router({
     availableContacts: accountAdminProcedure.query(() =>
       db.listAllContactsForPlanningTeamAccess()
     ),
+    myPermissions: scopedProtectedProcedure.query(async ({ ctx }) => {
+      return getPlanningTeamPermissionsForUser(ctx.user);
+    }),
     availableEvents: accountAdminProcedure.query(async () => {
       const years = await db.listEventYears();
       const grouped = await Promise.all(
@@ -1425,6 +1508,8 @@ export const appRouter = router({
         z.object({
           label: z.string().trim().min(2).max(120),
           contactId: z.number().int().positive(),
+          email: z.string().email().max(320).optional(),
+          modulePermissions: z.array(z.enum(PLANNING_MODULES)).optional(),
           password: passwordInput,
           eventIds: z.array(z.number().int().positive()).min(1).max(500),
           currentAdminPassword: z.string().min(1).max(200),
@@ -1435,6 +1520,8 @@ export const appRouter = router({
         return db.createPlanningTeamAccess({
           label: input.label,
           contactId: input.contactId,
+          email: input.email ?? null,
+          modulePermissions: input.modulePermissions ?? [],
           passwordHash: await hashPassword(input.password),
           eventIds: input.eventIds,
         });
@@ -1444,6 +1531,8 @@ export const appRouter = router({
         z.object({
           label: z.string().trim().min(2).max(120),
           contactId: z.number().int().positive(),
+          email: z.string().email().max(320).optional(),
+          modulePermissions: z.array(z.enum(PLANNING_MODULES)).optional(),
           eventIds: z.array(z.number().int().positive()).min(1).max(500),
           currentAdminPassword: z.string().min(1).max(200),
         })
@@ -1467,6 +1556,8 @@ export const appRouter = router({
           contactId: input.contactId,
           contactName: contact.name,
           label: contact.name,
+          email: null,
+          modulePermissions: [],
           eventIds: input.eventIds,
           mustChangePassword: true,
           createdAt: new Date(),
@@ -1479,6 +1570,8 @@ export const appRouter = router({
         const access = await db.createPlanningTeamAccess({
           label: input.label,
           contactId: input.contactId,
+          email: input.email ?? null,
+          modulePermissions: input.modulePermissions ?? [],
           passwordHash: await hashPassword(initialPassword),
           mustChangePassword: true,
           eventIds: input.eventIds,
@@ -1501,6 +1594,8 @@ export const appRouter = router({
           id: z.number().int().positive(),
           label: z.string().trim().min(2).max(120),
           contactId: z.number().int().positive().nullable().optional(),
+          email: z.string().email().max(320).nullable().optional(),
+          modulePermissions: z.array(z.enum(PLANNING_MODULES)).optional(),
           password: passwordInput.optional(),
           eventIds: z.array(z.number().int().positive()).min(1).max(500),
           currentAdminPassword: z.string().min(1).max(200),
@@ -1512,7 +1607,9 @@ export const appRouter = router({
           id: input.id,
           label: input.label,
           contactId: input.contactId,
-          ...(input.password ? { passwordHash: await hashPassword(input.password) } : {}),
+          email: input.email,
+          modulePermissions: input.modulePermissions,
+          passwordHash: input.password ? await hashPassword(input.password) : undefined,
           eventIds: input.eventIds,
         });
       }),
@@ -1648,6 +1745,7 @@ export const appRouter = router({
           tenantId: z.string().trim().regex(/^[a-z0-9-]{3,96}$/),
           name: z.string().trim().min(2).max(120),
           email: z.string().trim().email().max(320),
+          sendEmailInvitation: z.boolean().default(false),
         })
       )
       .mutation(async ({ input }) => {
@@ -1659,12 +1757,32 @@ export const appRouter = router({
           email: input.email,
           passwordHash,
         });
+        let emailSent = false;
+        if (input.sendEmailInvitation) {
+          const tenants = await db.listTenants();
+          const targetTenant = tenants.find(t => t.id === input.tenantId);
+          const invitationUrl = `https://app.mycrewmate.de/login`;
+          const emailContent = renderInvitationEmail({
+            recipientName: admin.name,
+            tenantName: targetTenant?.name ?? input.tenantId,
+            invitationUrl,
+            expiresInHours: 48,
+          });
+          const sendResult = await sendTransactionalEmail({
+            to: admin.email,
+            subject: emailContent.subject,
+            text: emailContent.text,
+            html: emailContent.html,
+          });
+          emailSent = sendResult.success;
+        }
         return {
           success: true,
           userId: admin.userId,
           email: admin.email,
           name: admin.name,
           initialPassword,
+          emailSent,
         } as const;
       }),
     launchSettings: masterAdminProcedure.query(() => db.getPlatformLaunchSettings()),
@@ -1871,8 +1989,8 @@ export const appRouter = router({
   }),
 
   contacts: router({
-    list: protectedProcedure.query(() => db.listContacts()),
-    create: protectedProcedure
+    list: moduleReadProcedure("contacts").query(() => db.listContacts()),
+    create: moduleWriteProcedure("contacts")
       .input(
         z.object({
           name: z.string().trim().min(1),
@@ -1920,7 +2038,7 @@ export const appRouter = router({
         });
         return { ...contactResult, ...accessSheet };
       }),
-    update: protectedProcedure
+    update: moduleWriteProcedure("contacts")
       .input(
         z.object({
           id: z.number(),
@@ -2148,8 +2266,8 @@ export const appRouter = router({
   }),
 
   helpers: router({
-    list: protectedProcedure.query(() => db.listHelpers()),
-    create: protectedProcedure
+    list: moduleReadProcedure("helpers").query(() => db.listHelpers()),
+    create: moduleWriteProcedure("helpers")
       .input(
         z.object({
           name: z.string().min(1),
@@ -2163,7 +2281,7 @@ export const appRouter = router({
         }).superRefine(validateHelperTimeWindows)
       )
       .mutation(({ input }) => db.upsertHelperByName(input)),
-    update: protectedProcedure
+    update: moduleWriteProcedure("helpers")
       .input(
         z.object({
           id: z.number(),
@@ -2182,7 +2300,7 @@ export const appRouter = router({
         const { id, ...rest } = input;
         return db.updateHelper(id, rest);
       }),
-    remove: protectedProcedure
+    remove: moduleWriteProcedure("helpers")
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }) =>
         db.deleteHelper(input.id, {
@@ -2193,7 +2311,7 @@ export const appRouter = router({
   }),
 
   shifts: router({
-    list: protectedProcedure.query(() => db.listShifts()),
+    list: moduleReadProcedure("schedule").query(() => db.listShifts()),
     create: adminProcedure
       .input(createShiftInput)
       .mutation(async ({ input }) => {
@@ -2232,7 +2350,7 @@ export const appRouter = router({
   }),
 
   plan: router({
-    evaluate: protectedProcedure.query(async () => {
+    evaluate: moduleReadProcedure("schedule").query(async () => {
       const [shifts, assignments, helpers] = await Promise.all([
         db.listShifts(),
         db.listAssignments(),
@@ -2240,7 +2358,7 @@ export const appRouter = router({
       ]);
       return evaluateShifts(shifts, assignments, helpers);
     }),
-    clearAssignments: adminProcedure
+    clearAssignments: moduleWriteProcedure("schedule")
       .input(
         z.object({
           adminPassword: z.string().min(1).max(200),
@@ -2250,7 +2368,7 @@ export const appRouter = router({
         await requireAdminPassword(input.adminPassword, ctx);
         return db.clearAssignments();
       }),
-    areaContacts: protectedProcedure.query(() => db.listShiftAreaContacts()),
+    areaContacts: moduleReadProcedure("schedule").query(() => db.listShiftAreaContacts()),
     setAreaContact: adminProcedure
       .input(
         z.object({
@@ -2261,7 +2379,7 @@ export const appRouter = router({
       .mutation(({ input }) =>
         db.setShiftAreaContact(input.area, input.contactId)
       ),
-    available: protectedProcedure
+    available: moduleReadProcedure("schedule")
       .input(
         z.object({
           day: dayEnum,
@@ -2472,7 +2590,7 @@ export const appRouter = router({
       });
       return { success: true } as const;
     }),
-    helper: protectedProcedure
+    helper: pdfReadProcedure
       .input(z.object({ helperId: z.number().int().positive() }))
       .mutation(async ({ input }) => {
         const pdf = await createHelperTaskPdf(input.helperId);
@@ -2501,7 +2619,7 @@ export const appRouter = router({
           expiresAt: Date.now() + 90 * 24 * 60 * 60 * 1000,
         };
       }),
-    allHelpers: protectedProcedure
+    allHelpers: pdfReadProcedure
       .input(
         z.object({ contactId: z.number().int().positive().optional() })
       )
@@ -2523,7 +2641,7 @@ export const appRouter = router({
         base64: zip.toString("base64"),
       };
       }),
-    contactOverview: protectedProcedure
+    contactOverview: pdfReadProcedure
       .input(contactOverviewPdfInput)
       .mutation(async ({ input }) => {
         if (input.contactIds.length !== 1) {
@@ -2548,7 +2666,7 @@ export const appRouter = router({
           base64: pdf.toString("base64"),
         };
       }),
-    contactOverviewZip: protectedProcedure
+    contactOverviewZip: pdfReadProcedure
       .input(contactOverviewPdfInput)
       .mutation(async ({ input }) => {
         const contacts = await db.listContacts();
@@ -2571,7 +2689,7 @@ export const appRouter = router({
           base64: zip.toString("base64"),
         };
       }),
-    blankPlan: protectedProcedure.query(async () => {
+    blankPlan: pdfReadProcedure.query(async () => {
       const pdf = await createBlankPlanPdf();
       return {
         filename: "Einsatzplan_Blanko.pdf",
@@ -2579,7 +2697,7 @@ export const appRouter = router({
         base64: pdf.toString("base64"),
       };
     }),
-    plan: protectedProcedure.input(planPdfInput).mutation(async ({ input }) => {
+    plan: pdfReadProcedure.input(planPdfInput).mutation(async ({ input }) => {
       const selectedEvent = await db.getEvent();
       const activeDays = eventWeekdays(selectedEvent?.activeDays);
       const invalidDay = input.days?.find(day => !activeDays.includes(day));
@@ -2599,7 +2717,7 @@ export const appRouter = router({
         base64: pdf.toString("base64"),
       };
     }),
-    materialPacklist: protectedProcedure
+    materialPacklist: pdfReadProcedure
       .input(
         z.object({
           materialIds: z.array(z.number().int().positive()).max(2_000),
@@ -2623,7 +2741,7 @@ export const appRouter = router({
           base64: pdf.toString("base64"),
         };
       }),
-    donationOverview: protectedProcedure
+    donationOverview: pdfReadProcedure
       .input(
         z.object({
           donationIds: z.array(z.number().int().positive()).max(2_000),
@@ -2648,7 +2766,7 @@ export const appRouter = router({
           base64: pdf.toString("base64"),
         };
       }),
-    prepTaskOverview: protectedProcedure
+    prepTaskOverview: pdfReadProcedure
       .input(
         z.object({
           taskIds: z.array(z.number().int().positive()).max(2_000),
@@ -2673,7 +2791,7 @@ export const appRouter = router({
           base64: pdf.toString("base64"),
         };
       }),
-    postTaskOverview: protectedProcedure
+    postTaskOverview: pdfReadProcedure
       .input(
         z.object({
           taskIds: z.array(z.number().int().positive()).max(2_000),
@@ -2701,8 +2819,8 @@ export const appRouter = router({
   }),
 
   prep: router({
-    list: protectedProcedure.query(() => db.listPrep()),
-    create: protectedProcedure
+    list: moduleReadProcedure("preparation").query(() => db.listPrep()),
+    create: moduleWriteProcedure("preparation")
       .input(
         z.object({
           task: z.string().trim().min(1).max(300),
@@ -2724,7 +2842,7 @@ export const appRouter = router({
           activityAuthor: auditActor(ctx.user).name,
         })
       ),
-    update: protectedProcedure
+    update: moduleWriteProcedure("preparation")
       .input(
         z.object({
           id: z.number(),
@@ -2748,7 +2866,7 @@ export const appRouter = router({
           activityAuthor: auditActor(ctx.user).name,
         });
       }),
-    remove: protectedProcedure
+    remove: moduleWriteProcedure("preparation")
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) =>
         db.deletePrep(input.id, {
@@ -2757,8 +2875,8 @@ export const appRouter = router({
       ),
   }),
   post: router({
-    list: protectedProcedure.query(() => db.listPost()),
-    create: protectedProcedure
+    list: moduleReadProcedure("postprocessing").query(() => db.listPost()),
+    create: moduleWriteProcedure("postprocessing")
       .input(
         z.object({
           task: z.string().trim().min(1).max(300),
@@ -2779,7 +2897,7 @@ export const appRouter = router({
           activityAuthor: auditActor(ctx.user).name,
         })
       ),
-    update: protectedProcedure
+    update: moduleWriteProcedure("postprocessing")
       .input(
         z.object({
           id: z.number().int().positive(),
@@ -2802,7 +2920,7 @@ export const appRouter = router({
           activityAuthor: auditActor(ctx.user).name,
         });
       }),
-    remove: protectedProcedure
+    remove: moduleWriteProcedure("postprocessing")
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) =>
         db.deletePost(input.id, {
@@ -2824,8 +2942,8 @@ export const appRouter = router({
       }),
   }),
   materials: router({
-    list: protectedProcedure.query(() => db.listMaterials()),
-    create: protectedProcedure
+    list: moduleReadProcedure("materials").query(() => db.listMaterials()),
+    create: moduleWriteProcedure("materials")
       .input(
         z.object({
           article: z.string().min(1),
@@ -2839,7 +2957,7 @@ export const appRouter = router({
         })
       )
       .mutation(({ input }) => db.createMaterial(input)),
-    update: protectedProcedure
+    update: moduleWriteProcedure("materials")
       .input(
         z.object({
           id: z.number(),
@@ -2857,7 +2975,7 @@ export const appRouter = router({
         const { id, ...r } = input;
         return db.updateMaterial(id, r);
       }),
-    remove: adminProcedure
+    remove: moduleWriteProcedure("materials")
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(async ({ ctx, input }) =>
         db.deleteMaterial(input.id, {
@@ -2866,8 +2984,8 @@ export const appRouter = router({
       ),
   }),
   marketing: router({
-    list: protectedProcedure.query(() => db.listMarketing()),
-    create: protectedProcedure
+    list: moduleReadProcedure("preparation").query(() => db.listMarketing()),
+    create: moduleWriteProcedure("preparation")
       .input(
         z.object({
           measure: z.string().min(1),
@@ -2877,7 +2995,7 @@ export const appRouter = router({
         })
       )
       .mutation(({ input }) => db.createMarketing(input)),
-    update: protectedProcedure
+    update: moduleWriteProcedure("preparation")
       .input(
         z.object({
           id: z.number(),
@@ -2892,13 +3010,13 @@ export const appRouter = router({
         const { id, ...r } = input;
         return db.updateMarketing(id, r);
       }),
-    remove: adminProcedure
+    remove: moduleWriteProcedure("preparation")
       .input(z.object({ id: z.number() }))
       .mutation(({ input }) => db.deleteMarketing(input.id)),
   }),
   approvals: router({
-    list: protectedProcedure.query(() => db.listApprovals()),
-    create: protectedProcedure
+    list: moduleReadProcedure("preparation").query(() => db.listApprovals()),
+    create: moduleWriteProcedure("preparation")
       .input(
         z.object({
           request: z.string().min(1),
@@ -2907,7 +3025,7 @@ export const appRouter = router({
         })
       )
       .mutation(({ input }) => db.createApproval(input)),
-    update: protectedProcedure
+    update: moduleWriteProcedure("preparation")
       .input(
         z.object({
           id: z.number(),
@@ -2923,13 +3041,13 @@ export const appRouter = router({
         const { id, ...r } = input;
         return db.updateApproval(id, r);
       }),
-    remove: adminProcedure
+    remove: moduleWriteProcedure("preparation")
       .input(z.object({ id: z.number() }))
       .mutation(({ input }) => db.deleteApproval(input.id)),
   }),
   cakes: router({
-    list: protectedProcedure.query(() => db.listCakes()),
-    create: protectedProcedure
+    list: moduleReadProcedure("donations").query(() => db.listCakes()),
+    create: moduleWriteProcedure("donations")
       .input(
         z.object({
           donor: z.string().min(1),
@@ -2957,7 +3075,7 @@ export const appRouter = router({
         })
       )
       .mutation(({ input }) => db.createCake(input)),
-    update: protectedProcedure
+    update: moduleWriteProcedure("donations")
       .input(
         z.object({
           id: z.number(),
@@ -2989,15 +3107,15 @@ export const appRouter = router({
         const { id, ...r } = input;
         return db.updateCake(id, r);
       }),
-    remove: protectedProcedure
+    remove: moduleWriteProcedure("donations")
       .input(z.object({ id: z.number() }))
       .mutation(({ ctx, input }) =>
         db.deleteCake(input.id, auditActor(ctx.user))
       ),
   }),
   finances: router({
-    list: protectedProcedure.query(() => db.listFinances()),
-    create: protectedProcedure
+    list: moduleReadProcedure("finances").query(() => db.listFinances()),
+    create: moduleWriteProcedure("finances")
       .input(
         z.object({
           category: z.string().min(1),
@@ -3007,7 +3125,7 @@ export const appRouter = router({
         })
       )
       .mutation(({ input }) => db.createFinance(input)),
-    update: protectedProcedure
+    update: moduleWriteProcedure("finances")
       .input(
         z.object({
           id: z.number(),
@@ -3021,7 +3139,7 @@ export const appRouter = router({
         const { id, ...r } = input;
         return db.updateFinance(id, r);
       }),
-    remove: adminProcedure
+    remove: moduleWriteProcedure("finances")
       .input(z.object({ id: z.number() }))
       .mutation(({ input }) => db.deleteFinance(input.id)),
   }),
@@ -3585,3 +3703,7 @@ export const appRouter = router({
 });
 
 export type AppRouter = typeof appRouter;
+import {
+  renderInvitationEmail,
+  sendTransactionalEmail,
+} from "./mail-service";

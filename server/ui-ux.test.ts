@@ -666,8 +666,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const navigation = source("client/src/lib/nav.ts");
     const app = source("client/src/App.tsx");
 
-    expect(layout).toContain("visibleNavigationSections(user?.role)");
-    expect(layout.match(/visibleNavigationSections\(user\?\.role\)/g)).toHaveLength(2);
+    expect(layout).toContain("visibleNavigationSections(user?.role");
+    expect(layout.match(/visibleNavigationSections\(user\?\.role/g)).toHaveLength(2);
     expect(layout).toContain("navigationItemClasses(user?.role, href, active)");
     expect(layout.match(/navigationItemClasses\(user\?\.role, href, active\)/g)).toHaveLength(2);
     expect(layout).not.toContain("uppercase tracking-wider text-slate-400");

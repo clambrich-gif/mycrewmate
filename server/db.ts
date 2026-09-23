@@ -724,6 +724,8 @@ export type PlanningTeamAccessSummary = {
   contactId: number | null;
   contactName: string | null;
   label: string;
+  email: string | null;
+  modulePermissions: import("../shared/tenant-permissions").PlanningModule[];
   eventIds: number[];
   mustChangePassword: boolean;
   createdAt: Date;
@@ -734,6 +736,8 @@ type PlanningTeamAccessCredential = {
   id: number;
   contactName: string | null;
   label: string;
+  email: string | null;
+  modulePermissions: import("../shared/tenant-permissions").PlanningModule[];
   passwordHash: string;
   mustChangePassword: boolean;
   sessionVersion: number;
@@ -787,6 +791,8 @@ export async function listPlanningTeamAccesses(): Promise<
       contactId: planningTeamAccesses.contactId,
       contactName: contacts.name,
       label: planningTeamAccesses.label,
+      email: planningTeamAccesses.email,
+      modulePermissions: planningTeamAccesses.modulePermissions,
       mustChangePassword: planningTeamAccesses.mustChangePassword,
       createdAt: planningTeamAccesses.createdAt,
       updatedAt: planningTeamAccesses.updatedAt,
@@ -807,6 +813,8 @@ export async function listPlanningTeamAccesses(): Promise<
       contactId: row.contactId,
       contactName: row.contactName,
       label: row.label,
+      email: row.email ?? null,
+      modulePermissions: Array.isArray(row.modulePermissions) ? row.modulePermissions : [],
       eventIds: [],
       mustChangePassword: row.mustChangePassword,
       createdAt: row.createdAt,
@@ -831,6 +839,8 @@ export async function listPlanningTeamAccessCredentials(): Promise<
       id: planningTeamAccesses.id,
       contactName: contacts.name,
       label: planningTeamAccesses.label,
+      email: planningTeamAccesses.email,
+      modulePermissions: sql<import("../shared/tenant-permissions").PlanningModule[]>`COALESCE(${planningTeamAccesses.modulePermissions}, JSON_ARRAY())`,
       passwordHash: planningTeamAccesses.passwordHash,
       mustChangePassword: planningTeamAccesses.mustChangePassword,
       sessionVersion: planningTeamAccesses.sessionVersion,
@@ -843,6 +853,8 @@ export async function listPlanningTeamAccessCredentials(): Promise<
 export async function createPlanningTeamAccess(input: {
   label: string;
   contactId?: number | null;
+  email?: string | null;
+  modulePermissions?: import("../shared/tenant-permissions").PlanningModule[];
   passwordHash: string;
   mustChangePassword?: boolean;
   eventIds: number[];
@@ -853,9 +865,12 @@ export async function createPlanningTeamAccess(input: {
     const contact = input.contactId
       ? await requireExistingContactForPlanningTeamAccess(tx, input.contactId)
       : null;
+    const normalizedEmail = input.email?.trim().toLocaleLowerCase("de-DE") || null;
     const result: any = await tx.insert(planningTeamAccesses).values({
       contactId: contact?.id ?? null,
       label: contact?.name ?? input.label.trim(),
+      email: normalizedEmail,
+      modulePermissions: input.modulePermissions ?? [],
       passwordHash: input.passwordHash,
       mustChangePassword: input.mustChangePassword ?? false,
       sessionVersion: 1,
@@ -881,6 +896,8 @@ export async function updatePlanningTeamAccess(input: {
   id: number;
   label: string;
   contactId?: number | null;
+  email?: string | null;
+  modulePermissions?: import("../shared/tenant-permissions").PlanningModule[];
   passwordHash?: string;
   mustChangePassword?: boolean;
   eventIds: number[];
@@ -892,6 +909,8 @@ export async function updatePlanningTeamAccess(input: {
       .select({
         id: planningTeamAccesses.id,
         contactId: planningTeamAccesses.contactId,
+        email: planningTeamAccesses.email,
+        modulePermissions: planningTeamAccesses.modulePermissions,
         sessionVersion: planningTeamAccesses.sessionVersion,
       })
       .from(planningTeamAccesses)
@@ -904,12 +923,22 @@ export async function updatePlanningTeamAccess(input: {
     const contact = nextContactId
       ? await requireExistingContactForPlanningTeamAccess(tx, nextContactId)
       : null;
+    const nextEmail =
+      input.email === undefined
+        ? existing.email
+        : input.email?.trim().toLocaleLowerCase("de-DE") || null;
+    const nextPermissions =
+      input.modulePermissions === undefined
+        ? existing.modulePermissions
+        : input.modulePermissions;
 
     await tx
       .update(planningTeamAccesses)
       .set({
         contactId: contact?.id ?? null,
         label: contact?.name ?? input.label.trim(),
+        email: nextEmail,
+        modulePermissions: nextPermissions ?? [],
         ...(input.passwordHash ? { passwordHash: input.passwordHash } : {}),
         ...(input.mustChangePassword !== undefined
           ? { mustChangePassword: input.mustChangePassword }

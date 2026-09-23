@@ -33,7 +33,7 @@ describe("Vereinsadmin-Verwaltung, Marktstart-Sperre & Handoff", () => {
     expect(routersSource).toContain("email: z.string().trim().email().max(320).optional()");
     expect(routersSource).toContain("getTenantAdminCredentialsByEmail(input.email)");
     expect(layoutSource).toContain("adminEmail");
-    expect(layoutSource).toContain("E-Mail-Adresse (für persönliche Vereins-Administratoren)");
+    expect(layoutSource).toContain("E-Mail-Adresse (für persönliche Vereins-Administratoren");
   });
 
   it("stellt im Master-Portal Bedienelemente für Handoff und Vereinsadmin-Erstellung bereit", () => {

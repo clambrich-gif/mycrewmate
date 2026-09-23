@@ -40,11 +40,18 @@ import {
 } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import {
+  EDITABLE_PLANNING_MODULES,
+  PLANNING_MODULE_META,
+  type PlanningModule,
+} from "@shared/tenant-permissions";
 
 type FormState = {
   id: number | null;
   contactId: number | null;
   label: string;
+  email: string;
+  modulePermissions: PlanningModule[];
   eventIds: number[];
   currentAdminPassword: string;
 };
@@ -53,6 +60,8 @@ const EMPTY_FORM: FormState = {
   id: null,
   contactId: null,
   label: "",
+  email: "",
+  modulePermissions: [...EDITABLE_PLANNING_MODULES],
   eventIds: [],
   currentAdminPassword: "",
 };
@@ -69,6 +78,8 @@ type AccessSummary = {
   contactId: number | null;
   contactName: string | null;
   label: string;
+  email?: string | null;
+  modulePermissions?: PlanningModule[];
   eventIds: number[];
   mustChangePassword: boolean;
 };
@@ -257,6 +268,8 @@ export function PlanningTeamAccessManager() {
     const input = {
       label: form.label.trim(),
       contactId: form.contactId,
+      email: form.email.trim() ? form.email.trim() : undefined,
+      modulePermissions: form.modulePermissions,
       eventIds: form.eventIds,
       currentAdminPassword: form.currentAdminPassword,
     };
@@ -291,6 +304,10 @@ export function PlanningTeamAccessManager() {
       id: access.id,
       contactId: access.contactId,
       label: access.label,
+      email: access.email ?? "",
+      modulePermissions: access.modulePermissions && access.modulePermissions.length > 0
+        ? access.modulePermissions
+        : [...EDITABLE_PLANNING_MODULES],
       eventIds: access.eventIds,
       currentAdminPassword: "",
     });
@@ -429,6 +446,11 @@ export function PlanningTeamAccessManager() {
                       <p className="font-semibold text-slate-900">
                         {access.contactName ?? access.label}
                       </p>
+                      {access.email && (
+                        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-700">
+                          ✉ {access.email}
+                        </span>
+                      )}
                       {access.mustChangePassword ? (
                         <Badge className="border border-amber-200 bg-amber-100 text-amber-900 hover:bg-amber-100">
                           ⏳ Initialcode offen
@@ -440,6 +462,15 @@ export function PlanningTeamAccessManager() {
                       )}
                     </div>
                     <p className="mt-0.5 text-xs text-slate-500">Ansprechpartner-Zugang</p>
+                    {access.modulePermissions && access.modulePermissions.length > 0 && (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {access.modulePermissions.map(m => (
+                          <span key={m} className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
+                            {PLANNING_MODULE_META[m]?.label ?? m}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     <p className="mt-1 text-xs text-muted-foreground">
                       {formatEvents(access) || "Keine Freigaben"}
                     </p>
@@ -554,7 +585,66 @@ export function PlanningTeamAccessManager() {
                     : "Altbestand ohne Ansprechpartner-Verknüpfung."}
               </p>
             </div>
+
+            <div className="space-y-1.5 md:col-span-2">
+              <Label htmlFor="planning-access-email">
+                Persönliche E-Mail-Adresse (für individuellen Login, optional)
+              </Label>
+              <Input
+                id="planning-access-email"
+                type="email"
+                placeholder="z. B. vorname.nachname@verein.de"
+                value={form.email}
+                disabled={busy}
+                onChange={e => setForm(curr => ({ ...curr, email: e.target.value }))}
+                className="bg-white"
+              />
+              <p className="text-xs text-slate-600">
+                Ermöglicht dem Ansprechpartner die persönliche Anmeldung mit E-Mail und individuellem Passwort.
+              </p>
+            </div>
           </div>
+
+          <fieldset className="mt-4 space-y-2">
+            <legend className="text-sm font-medium text-slate-900">
+              Zulässige Fachbereiche (Berechtigungen)
+            </legend>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {EDITABLE_PLANNING_MODULES.map(module => {
+                const meta = PLANNING_MODULE_META[module];
+                const isChecked = form.modulePermissions.includes(module);
+                return (
+                  <label
+                    key={module}
+                    className="flex cursor-pointer items-start gap-2.5 rounded-md border border-white bg-white px-3 py-2 text-sm text-slate-800 shadow-sm transition-colors hover:border-blue-300"
+                  >
+                    <Checkbox
+                      checked={isChecked}
+                      disabled={busy}
+                      onCheckedChange={checked => {
+                        setForm(curr => ({
+                          ...curr,
+                          modulePermissions: checked === true
+                            ? Array.from(new Set([...curr.modulePermissions, module]))
+                            : curr.modulePermissions.filter(m => m !== module),
+                        }));
+                      }}
+                      className="mt-0.5"
+                    />
+                    <div className="min-w-0">
+                      <span className="font-medium text-slate-900">{meta.label}</span>
+                      <p className="text-xs text-slate-500">{meta.description}</p>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+            {form.modulePermissions.length === 0 && (
+              <p className="text-xs text-amber-700">
+                Hinweis: Ohne ausgewählte Bereiche hat dieser Zugang reine Leseansichten.
+              </p>
+            )}
+          </fieldset>
 
           <fieldset className="mt-4 space-y-2">
             <legend className="text-sm font-medium text-slate-900">Freigegebene Veranstaltungen</legend>

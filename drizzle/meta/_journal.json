@@ -400,6 +400,13 @@
       "when": 1790172932404,
       "tag": "0056_broken_captain_america",
       "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "5",
+      "when": 1790175406899,
+      "tag": "0057_glossy_the_captain",
+      "breakpoints": true
     }
   ]
 }

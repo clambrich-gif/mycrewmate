@@ -97,11 +97,46 @@ export function visibleNavigationItems(
   });
 }
 
+const PATH_TO_MODULE_MAP: Record<string, import("@shared/tenant-permissions").PlanningModule> = {
+  "/ansprechpartner": "contacts",
+  "/helfer": "helpers",
+  "/einsatzplan": "schedule",
+  "/vorbereitung": "preparation",
+  "/nachbereitung": "postprocessing",
+  "/material": "materials",
+  "/spenden": "donations",
+  "/finanzen": "finances",
+  "/pdf-export": "pdf",
+};
+
+export function visibleNavigationItemsWithPermissions(
+  role: "user" | "admin" | null | undefined,
+  permissions?: readonly import("@shared/tenant-permissions").PlanningModule[] | null
+) {
+  return NAV.filter(item => {
+    if (item.adminOnly && role !== "admin") return false;
+    if (item.planningTeamHidden && role === "user") return false;
+    if (
+      role === "user" &&
+      permissions &&
+      permissions.length > 0 &&
+      !permissions.includes("read_all")
+    ) {
+      const requiredModule = PATH_TO_MODULE_MAP[item.href];
+      if (requiredModule && !permissions.includes(requiredModule)) {
+        return false;
+      }
+    }
+    return true;
+  });
+}
+
 /** Alle Rollen behalten die gewohnte Reihenfolge der sichtbaren Menüpunkte. */
 export function visibleNavigationSections(
-  role: "user" | "admin" | null | undefined
+  role: "user" | "admin" | null | undefined,
+  permissions?: readonly import("@shared/tenant-permissions").PlanningModule[] | null
 ): NavigationSection[] {
-  return [{ id: "default", label: null, items: visibleNavigationItems(role) }];
+  return [{ id: "default", label: null, items: visibleNavigationItemsWithPermissions(role, permissions) }];
 }
 
 export function navigationItemClasses(

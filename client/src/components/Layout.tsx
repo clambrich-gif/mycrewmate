@@ -349,6 +349,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
   } =
     useEventYear();
   const [location] = useLocation();
+  const myPermissions = trpc.planningTeamAccesses.myPermissions.useQuery(undefined, {
+    enabled: isAuthenticated && user?.role === "user",
+  });
   const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [capsLockOn, setCapsLockOn] = useState(false);
@@ -945,8 +948,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
         password,
         ...(adminEmail.trim() ? { email: adminEmail.trim() } : {}),
       });
+    } else {
+      passwordLogin.mutate({
+        password,
+        ...(adminEmail.trim() ? { email: adminEmail.trim() } : {}),
+      });
     }
-    else passwordLogin.mutate({ password });
   };
   const loginEnabled =
     loginMode === "admin"
@@ -1203,16 +1210,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </form>
           ) : (
           <form className="space-y-4" onSubmit={submitPassword}>
-            {loginMode === "admin" && (
+            {(
               <div className="space-y-1.5">
                 <Label htmlFor="admin-email" className="text-xs font-medium text-slate-700">
-                  E-Mail-Adresse (für persönliche Vereins-Administratoren)
+                  {loginMode === "admin"
+                    ? "E-Mail-Adresse (für persönliche Vereins-Administratoren, optional)"
+                    : "E-Mail-Adresse (für persönliche Planungsteam-Anmeldung, optional)"}
                 </Label>
                 <Input
                   id="admin-email"
                   type="email"
                   autoComplete="email"
-                  placeholder="admin@meinverein.de (optional bei Master-Login)"
+                  placeholder={loginMode === "admin" ? "admin@meinverein.de (optional)" : "vorname.nachname@verein.de (optional)"}
                   value={adminEmail}
                   onChange={e => {
                     setAdminEmail(e.target.value);
@@ -1384,18 +1393,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
             >
               {COPYRIGHT_NOTICE}
             </button>
-            {typeof window !== "undefined" &&
-              (window.location.hostname.includes("manus.computer") ||
-                window.location.hostname === "localhost") && (
-                <div className="pt-2">
-                  <a
-                    href="/master-admin?demo=true"
-                    className="text-[11px] font-medium text-blue-600 hover:underline"
-                  >
-                    👉 Master-Admin-Portal Vorschau öffnen
-                  </a>
-                </div>
-              )}
           </div>
           {adminIdentityDialog}
           <ImpressumDialog open={impressumOpen} onOpenChange={setImpressumOpen} />
@@ -1662,7 +1659,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             )}
           </div>
           <nav className="flex-1 space-y-1 overflow-y-auto p-2">
-            {visibleNavigationSections(user?.role).map(section => (
+            {visibleNavigationSections(user?.role, myPermissions.data).map(section => (
               <div key={section.id} className="space-y-1">
                 {section.items.map(({ href, label, icon: Icon }) => {
                   const active = location === href;
@@ -1874,7 +1871,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-2 pb-2 pt-1.5 space-y-0.5">
-          {visibleNavigationSections(user?.role).map(section => (
+          {visibleNavigationSections(user?.role, myPermissions.data).map(section => (
             <div key={section.id} className="space-y-0.5">
               {section.items.map(({ href, label, icon: Icon }) => {
                 const active = location === href;

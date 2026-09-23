@@ -228,11 +228,13 @@ export default function MasterAdminPortal() {
   const [adminModalTenant, setAdminModalTenant] = useState<{ id: string; name: string } | null>(null);
   const [adminName, setAdminName] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
+  const [sendInvitationEmail, setSendInvitationEmail] = useState(true);
   const [issuedAdminSheet, setIssuedAdminSheet] = useState<{
     tenantName: string;
     adminName: string;
     email: string;
     initialPassword: string;
+    emailSent?: boolean;
   } | null>(null);
 
   const createTenantAdmin = trpc.platformAdmin.createTenantAdmin.useMutation({
@@ -243,6 +245,7 @@ export default function MasterAdminPortal() {
           adminName: result.name,
           email: result.email,
           initialPassword: result.initialPassword,
+          emailSent: result.emailSent,
         });
       }
       setAdminModalTenant(null);
@@ -316,7 +319,8 @@ export default function MasterAdminPortal() {
     typeof window !== "undefined" &&
     (window.location.hostname.includes("manus.computer") ||
       window.location.hostname === "localhost" ||
-      window.location.hostname === "127.0.0.1");
+      window.location.hostname === "127.0.0.1") &&
+    new URLSearchParams(window.location.search).get("demo") === "true";
 
   if (loading) return <PortalLoading />;
   if (!isAuthenticated && !isVisualPreview) return <MasterLogin />;
@@ -737,6 +741,7 @@ export default function MasterAdminPortal() {
                 tenantId: adminModalTenant.id,
                 name: adminName.trim(),
                 email: adminEmail.trim(),
+                sendEmailInvitation: sendInvitationEmail,
               });
             }}
           >
@@ -759,6 +764,17 @@ export default function MasterAdminPortal() {
                 required
               />
             </div>
+            <label className="flex items-center gap-2 cursor-pointer pt-1">
+              <input
+                type="checkbox"
+                checked={sendInvitationEmail}
+                onChange={e => setSendInvitationEmail(e.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-xs text-slate-700">
+                Einladungs-E-Mail direkt per SMTP versenden
+              </span>
+            </label>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setAdminModalTenant(null)}>
                 Abbrechen
@@ -795,6 +811,11 @@ export default function MasterAdminPortal() {
               <span className="text-xs font-semibold text-slate-500">Einmaliges Startpasswort</span>
               <p className="font-mono text-base font-bold text-emerald-900">{issuedAdminSheet?.initialPassword}</p>
             </div>
+            {issuedAdminSheet?.emailSent && (
+              <div className="rounded-lg bg-emerald-100 p-2.5 text-xs text-emerald-900 font-medium">
+                ✓ Einladungs-E-Mail wurde erfolgreich an {issuedAdminSheet.email} versendet.
+              </div>
+            )}
             <p className="text-xs text-slate-500">
               Beim ersten Login wird der Administrator aufgefordert, sein persönliches Passwort zu vergeben.
             </p>

@@ -15,6 +15,7 @@ import {
   date,
 } from "drizzle-orm/mysql-core";
 import { WEEKDAYS, type Weekday } from "../shared/weekdays";
+import type { PlanningModule } from "../shared/tenant-permissions";
 
 /**
  * Core user table backing auth flow.
@@ -688,7 +689,11 @@ export const planningTeamAccesses = mysqlTable("planning_team_accesses", {
    */
   contactId: int("contactId"),
   label: varchar("label", { length: 120 }).notNull(),
+  /** Persönliche E-Mail für den individuellen Login; Altbestände dürfen leer bleiben. */
+  email: varchar("email", { length: 320 }),
   passwordHash: varchar("passwordHash", { length: 255 }).notNull(),
+  /** Ausschließlich die hier vergebenen Fachbereiche dürfen bearbeitet werden. */
+  modulePermissions: json("modulePermissions").$type<PlanningModule[]>(),
   /** Ein einmalig ausgegebener Zugangscode muss nach der ersten Anmeldung ersetzt werden. */
   mustChangePassword: boolean("mustChangePassword").default(false).notNull(),
   /** Änderungen an Passwort oder Freigaben machen bestehende Sitzungen ungültig. */
@@ -702,6 +707,7 @@ export const planningTeamAccesses = mysqlTable("planning_team_accesses", {
     foreignColumns: [contacts.id],
   }).onDelete("cascade"),
   uniqueIndex("planning_team_access_contact_unique").on(table.contactId),
+  uniqueIndex("planning_team_access_email_unique").on(table.email),
 ]);
 export type PlanningTeamAccess = typeof planningTeamAccesses.$inferSelect;
 

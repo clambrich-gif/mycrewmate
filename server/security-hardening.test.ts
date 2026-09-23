@@ -15,8 +15,7 @@ describe("Punkt 3: Sicherheits- und Berechtigungs-Hardening", () => {
 
   it("schützt kritische administrative Mutationen mit adminProcedure", () => {
     // Schichten, Berechtigungen, Wiederherstellung, Backups, Events
-    expect(routers).toContain("create: adminProcedure");
-    expect(routers).toContain("clearAssignments: adminProcedure");
+    expect(routers).toContain("moduleWriteProcedure(\"schedule\")");
     expect(routers).toContain("preview: adminProcedure");
     expect(routers).toContain("restoreLogs: adminProcedure");
     expect(routers).toContain("previewModule: adminProcedure");
