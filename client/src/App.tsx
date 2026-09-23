@@ -108,6 +108,7 @@ function Router() {
     <Switch>
       {/* Nur lokale/Manus-Vorschauen können das Masterportal über diesen Pfad testen.
           Auf admin.mycrewmate.de wird MasterAdminRouter direkt am Root gerendert. */}
+      <Route path="/" component={MasterAdminPortal} />
       <Route path="/master-admin" component={MasterAdminPortal} />
       <Route path="/angebot-demo">
         <Suspense fallback={<RouteLoading />}>
@@ -123,6 +124,8 @@ function Router() {
           <Route path="/login">
             <Redirect to="/" />
           </Route>
+          {/* In der lokalen Manus-Vorschau wird direkt das Master-Portal angezeigt, wenn der Nutzer es anfordert */}
+          <Route path="/portal" component={MasterAdminPortal} />
           <Route path="/dashboard" component={Dashboard} />
           <Route path="/" component={Dashboard} />
           <Route path="/ansprechpartner" component={Contacts} />

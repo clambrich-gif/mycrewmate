@@ -1379,11 +1379,23 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <LegalFooterLinks onOpenImpressum={() => setImpressumOpen(true)} />
             <button
               type="button"
-              className="mt-1 rounded px-1 text-xs text-gray-400 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="text-xs text-muted-foreground/80 hover:text-foreground transition-colors underline-offset-4 hover:underline"
               onClick={() => setImpressumOpen(true)}
             >
               {COPYRIGHT_NOTICE}
             </button>
+            {typeof window !== "undefined" &&
+              (window.location.hostname.includes("manus.computer") ||
+                window.location.hostname === "localhost") && (
+                <div className="pt-2">
+                  <a
+                    href="/master-admin?demo=true"
+                    className="text-[11px] font-medium text-blue-600 hover:underline"
+                  >
+                    👉 Master-Admin-Portal Vorschau öffnen
+                  </a>
+                </div>
+              )}
           </div>
           {adminIdentityDialog}
           <ImpressumDialog open={impressumOpen} onOpenChange={setImpressumOpen} />
