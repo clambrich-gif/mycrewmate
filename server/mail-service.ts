@@ -83,7 +83,7 @@ export async function sendTransactionalEmail(options: SendMailOptions): Promise<
     console.info(
       `[MailService:Simuliert] E-Mail an ${options.to} mit Betreff "${options.subject}" aufgezeichnet (SMTP nicht konfiguriert).`
     );
-    return { success: true, simulated: true };
+    return { success: false, simulated: true };
   }
 
   const info = await transporter.sendMail({
@@ -95,8 +95,15 @@ export async function sendTransactionalEmail(options: SendMailOptions): Promise<
     html: options.html,
   });
 
+  const normalizedRecipient = options.to.trim().toLocaleLowerCase("de-DE");
+  const acceptedBySmtp = (info.accepted ?? []).some(
+    address => address.trim().toLocaleLowerCase("de-DE") === normalizedRecipient
+  );
+
   return {
-    success: true,
+    // Der SMTP-Server bestätigt damit nur die Annahme. Die endgültige
+    // Zustellung im Zielpostfach (z. B. Spamfilter) liegt außerhalb der App.
+    success: acceptedBySmtp,
     messageId: info.messageId,
     simulated: false,
   };

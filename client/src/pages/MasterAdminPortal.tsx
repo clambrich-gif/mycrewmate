@@ -923,7 +923,12 @@ export default function MasterAdminPortal() {
             </div>
             {issuedAdminSheet?.emailSent && (
               <div className="rounded-lg bg-emerald-100 p-2.5 text-xs text-emerald-900 font-medium">
-                ✓ Einladungs-E-Mail wurde erfolgreich an {issuedAdminSheet.email} versendet.
+                ✓ Einladungs-E-Mail wurde vom Mailserver für {issuedAdminSheet.email} angenommen.
+              </div>
+            )}
+            {!issuedAdminSheet?.emailSent && (
+              <div className="rounded-lg bg-amber-50 p-2.5 text-xs text-amber-900">
+                Die E-Mail konnte nicht an den Mailserver übergeben werden. Kopieren Sie den Aktivierungslink und geben Sie ihn sicher manuell weiter.
               </div>
             )}
             <p className="text-xs text-slate-500">

@@ -24,7 +24,7 @@ describe("Mail-Service (Hetzner SMTP & Transactional)", () => {
       text: "Test-Text",
     });
 
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
     expect(result.simulated).toBe(true);
   });
 

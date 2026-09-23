@@ -220,8 +220,8 @@ export function PlanningTeamAccessManager() {
       });
       toast.success(
         result.emailSent
-          ? "Planungsteam-Einladung erstellt und per E-Mail versandt"
-          : "Planungsteam-Einladungslink erstellt (E-Mail nicht versandt oder SMTP nicht aktiv)"
+          ? "Planungsteam-Einladung erstellt und an den Mailserver übergeben"
+          : "Planungsteam-Einladungslink erstellt; E-Mail-Übergabe fehlgeschlagen – Link bitte manuell weitergeben"
       );
     },
     onError: error => toast.error(error.message),
@@ -239,8 +239,8 @@ export function PlanningTeamAccessManager() {
       });
       toast.success(
         result.emailSent
-          ? `Aktivierungslink an ${result.email} gesendet`
-          : "Neuer Aktivierungslink erstellt (E-Mail nicht versandt oder SMTP nicht aktiv)"
+          ? `Aktivierungslink an den Mailserver für ${result.email} übergeben`
+          : "Neuer Aktivierungslink erstellt; E-Mail-Übergabe fehlgeschlagen – Link bitte manuell weitergeben"
       );
     },
     onError: error => toast.error(error.message),
@@ -988,8 +988,8 @@ export function PlanningTeamAccessManager() {
             </DialogTitle>
             <DialogDescription>
               {issuedInvitation?.emailSent
-                ? `Die Einladung wurde erfolgreich per E-Mail an ${issuedInvitation?.email} versandt.`
-                : `Der Einladungslink wurde erstellt. Sie können ihn kopieren und direkt an ${issuedInvitation?.email} weiterleiten.`}
+                ? `Die Einladung wurde vom Mailserver für ${issuedInvitation?.email} angenommen. Bitte bei Bedarf auch den Spam-Ordner prüfen.`
+                : `Der Einladungslink wurde erstellt, aber nicht an den Mailserver übergeben. Sie können ihn kopieren und direkt an ${issuedInvitation?.email} weiterleiten.`}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 pt-2">

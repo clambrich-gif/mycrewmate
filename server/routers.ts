@@ -113,6 +113,7 @@ import {
   renderInvitationEmail,
   renderPlanningTeamInvitationEmail,
   sendTransactionalEmail,
+  type SendMailOptions,
 } from "./mail-service";
 
 const GUIDE_PDF_KEY = "Handbuch_RSC_Helferplanung_742fcb04.pdf";
@@ -142,6 +143,28 @@ function planningModuleSummary(modules: readonly PlanningModule[] | null | undef
     .filter(module => module !== "read_all")
     .map(module => PLANNING_MODULE_META[module].label)
     .join(", ");
+}
+
+/**
+ * Die Zugangs- und Linkerstellung bleibt nutzbar, wenn der SMTP-Dienst gerade
+ * nicht annimmt. Der Link wird anschließend im Dialog angezeigt und kann sicher
+ * manuell übermittelt werden.
+ */
+async function safelySubmitInvitationEmail(options: SendMailOptions) {
+  try {
+    const result = await sendTransactionalEmail(options);
+    if (!result.success) {
+      console.warn(
+        result.simulated
+          ? "[Mail] Einladung nicht gesendet: SMTP ist nicht konfiguriert."
+          : "[Mail] Einladung wurde vom SMTP-Server nicht angenommen."
+      );
+    }
+    return result.success;
+  } catch {
+    console.warn("[Mail] Einladung konnte nicht an den SMTP-Server übergeben werden.");
+    return false;
+  }
 }
 
 function planningTeamAccessIdForUser(user: {
@@ -1700,18 +1723,17 @@ export const appRouter = router({
             modulesSummary,
             expiresInHours: 48,
           });
-          const sendResult = await sendTransactionalEmail({
+          emailSent = await safelySubmitInvitationEmail({
             to: input.email,
             subject: emailContent.subject,
             text: emailContent.text,
             html: emailContent.html,
           });
-          emailSent = sendResult.success;
         }
 
         await recordSecurityActivity(
           auditActor(ctx.user),
-          `Planungsteam-Einladung für „${access.label}“ erstellt (${input.email})${emailSent ? " · E-Mail versandt" : ""}`,
+          `Planungsteam-Einladung für „${access.label}“ erstellt (${input.email})${emailSent ? " · an SMTP-Server übergeben" : " · E-Mail-Übergabe fehlgeschlagen"}`,
           "created"
         );
 
@@ -1775,18 +1797,17 @@ export const appRouter = router({
             modulesSummary,
             expiresInHours: 48,
           });
-          const sendResult = await sendTransactionalEmail({
+          emailSent = await safelySubmitInvitationEmail({
             to: access.email,
             subject: emailContent.subject,
             text: emailContent.text,
             html: emailContent.html,
           });
-          emailSent = sendResult.success;
         }
 
         await recordSecurityActivity(
           auditActor(ctx.user),
-          `Neuer Aktivierungslink für Planungsteam-Zugang „${access.label}“ ausgestellt (${access.email})${emailSent ? " · E-Mail versandt" : ""}`,
+          `Neuer Aktivierungslink für Planungsteam-Zugang „${access.label}“ ausgestellt (${access.email})${emailSent ? " · an SMTP-Server übergeben" : " · E-Mail-Übergabe fehlgeschlagen"}`,
           "reset"
         );
 
@@ -2050,13 +2071,12 @@ export const appRouter = router({
             invitationUrl,
             expiresInHours: 48,
           });
-          const sendResult = await sendTransactionalEmail({
+          emailSent = await safelySubmitInvitationEmail({
             to: admin.email,
             subject: emailContent.subject,
             text: emailContent.text,
             html: emailContent.html,
           });
-          emailSent = sendResult.success;
         }
         return {
           success: true,
