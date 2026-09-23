@@ -1,4 +1,9 @@
-export type TenantStatus = "pilot" | "active" | "suspended" | "archived";
+export type TenantStatus =
+  | "pilot"
+  | "sample"
+  | "active"
+  | "suspended"
+  | "archived";
 
 export interface TenantBranding {
   platformName: string;
@@ -39,5 +44,49 @@ export const RSC_MAYEN_PILOT_TENANT: TenantConfig = {
     logoUrl: null,
   },
 };
+
+export const KIRMESVEREIN_SAMPLE_TENANT: TenantConfig = {
+  id: "kirmesverein-musterstadt",
+  slug: "kirmesverein-musterstadt",
+  name: "Kirmesverein Musterstadt e. V.",
+  legalName: "Kirmesverein Musterstadt e. V.",
+  status: "sample",
+  planName: "Musterverein",
+  defaultEventName: "Musterstädter Kirmes 2027",
+  supportEmail: "support@mycrewmate.de",
+  contactEmail: "info@mycrewmate.de",
+  branding: {
+    platformName: "MyCrewMate",
+    organizationName: "Kirmesverein Musterstadt e. V.",
+    organizationSubtitle: "KIRMES- & EVENTPLANUNG",
+    badgeLabel: "Musterverein",
+    logoUrl: null,
+  },
+};
+
+export const SCHUETZENVEREIN_SAMPLE_TENANT: TenantConfig = {
+  id: "schuetzenverein-musterhausen",
+  slug: "schuetzenverein-musterhausen",
+  name: "Schützenverein Musterhausen e. V.",
+  legalName: "Schützenverein Musterhausen e. V.",
+  status: "sample",
+  planName: "Musterverein",
+  defaultEventName: "Schützenfest Musterhausen 2027",
+  supportEmail: "support@mycrewmate.de",
+  contactEmail: "info@mycrewmate.de",
+  branding: {
+    platformName: "MyCrewMate",
+    organizationName: "Schützenverein Musterhausen e. V.",
+    organizationSubtitle: "SCHÜTZENFEST- & EVENTPLANUNG",
+    badgeLabel: "Musterverein",
+    logoUrl: null,
+  },
+};
+
+export const TENANT_CATALOG: readonly TenantConfig[] = [
+  RSC_MAYEN_PILOT_TENANT,
+  KIRMESVEREIN_SAMPLE_TENANT,
+  SCHUETZENVEREIN_SAMPLE_TENANT,
+];
 
 export const ACTIVE_PILOT_TENANT = RSC_MAYEN_PILOT_TENANT;

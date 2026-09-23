@@ -12,6 +12,7 @@ import { trpc } from "@/lib/trpc";
 import {
   AlertTriangle,
   ArrowRight,
+  Building2,
   Calendar,
   CalendarClock,
   CheckCircle2,
@@ -21,6 +22,8 @@ import {
   GitCompareArrows,
   ImageUp,
   ListTodo,
+  Mail,
+  ShieldCheck,
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
@@ -37,6 +40,7 @@ import {
   eventCountdownState,
   type EventCountdownState,
 } from "@shared/event-dates";
+import { ACTIVE_PILOT_TENANT } from "@shared/tenant";
 
 type PriorityAction = {
   id: string;
@@ -913,6 +917,51 @@ function EventCountdownWidget({
   );
 }
 
+function PilotTenantInfoCard() {
+  const tenant = ACTIVE_PILOT_TENANT;
+  return (
+    <section
+      data-dashboard-section="Pilotbetrieb"
+      className="overflow-hidden rounded-2xl border border-blue-200 bg-white text-slate-950 shadow-sm"
+    >
+      <div className="grid gap-4 bg-gradient-to-br from-blue-50 via-white to-sky-50 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-100/80 px-2.5 py-1 text-xs font-bold text-blue-900">
+              <Building2 className="size-3.5" aria-hidden="true" />
+              {tenant.name}
+            </span>
+            <span className="rounded-full bg-blue-600 px-2.5 py-1 text-xs font-bold text-white">
+              Pilotbetrieb
+            </span>
+          </div>
+          <h2 className="mt-3 text-lg font-bold tracking-tight text-slate-950 sm:text-xl">
+            Gemeinsam testen. Sicher weiterentwickeln.
+          </h2>
+          <p className="mt-1.5 max-w-3xl text-sm leading-6 text-slate-700">
+            Der RSC Eifelland Mayen e. V. nutzt MyCrewMate als geschlossenen Pilotverein.
+            Die aktuelle Veranstaltung <strong>{tenant.defaultEventName}</strong> dient als Test- und Demoplanung;
+            es gibt keine offenen Zugänge, keine Abrechnung und keine öffentliche Buchungsfunktion.
+          </p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2 lg:w-[22rem] lg:grid-cols-1">
+          <a
+            href={`mailto:${tenant.contactEmail}`}
+            className="flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 transition-colors hover:border-blue-300 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          >
+            <Mail className="size-4 shrink-0 text-blue-700" aria-hidden="true" />
+            <span className="min-w-0 truncate">Pilot-Support: {tenant.contactEmail}</span>
+          </a>
+          <div className="flex min-h-11 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+            <ShieldCheck className="size-4 shrink-0 text-emerald-700" aria-hidden="true" />
+            <span>Keine Bezahl- oder Freischaltfunktion aktiv</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function Dashboard() {
   const [, navigate] = useLocation();
   const [workloadFilter, setWorkloadFilter] = useState<{
@@ -1111,6 +1160,8 @@ export default function Dashboard() {
         </div>
         <EventCountdownWidget event={currentEvent} />
       </div>
+
+      <PilotTenantInfoCard />
 
       <section
         data-dashboard-section="Heute priorisieren"

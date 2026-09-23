@@ -173,7 +173,42 @@ export const teamNoteTypings = mysqlTable(
 );
 export type TeamNoteTyping = typeof teamNoteTypings.$inferSelect;
 
-// ---------- MyEifelRide Planungsplattform ----------
+// ---------- MyCrewMate Mandanten- und Planungsplattform ----------
+
+/**
+ * Ein Mandant repräsentiert einen eigenständig getrennten Verein oder Veranstalter.
+ * Fachliche Planungsdaten bleiben über die Veranstaltung mit diesem Mandanten verbunden.
+ */
+export const tenants = mysqlTable(
+  "tenants",
+  {
+    id: varchar("id", { length: 96 }).primaryKey(),
+    name: varchar("name", { length: 200 }).notNull(),
+    legalName: varchar("legalName", { length: 240 }).notNull(),
+    status: mysqlEnum("status", [
+      "pilot",
+      "sample",
+      "active",
+      "suspended",
+      "archived",
+    ])
+      .default("sample")
+      .notNull(),
+    planName: varchar("planName", { length: 120 }).notNull(),
+    contactEmail: varchar("contactEmail", { length: 320 }).notNull(),
+    supportEmail: varchar("supportEmail", { length: 320 }).notNull(),
+    logoKey: varchar("logoKey", { length: 500 }),
+    logoUrl: varchar("logoUrl", { length: 700 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    index("tenants_status_idx").on(table.status),
+    uniqueIndex("tenants_name_unique").on(table.name),
+  ]
+);
+export type Tenant = typeof tenants.$inferSelect;
+export type InsertTenant = typeof tenants.$inferInsert;
 
 export const eventYears = mysqlTable("event_years", {
   year: int("year").primaryKey(),
@@ -186,6 +221,9 @@ export const events = mysqlTable(
   "events",
   {
     id: int("id").autoincrement().primaryKey(),
+    tenantId: varchar("tenantId", { length: 96 })
+      .default("rsc-eifelland-mayen")
+      .notNull(),
     year: int("year").notNull(),
     name: varchar("name", { length: 200 }).notNull(),
     activeDays: json("activeDays").$type<Weekday[]>().notNull(),
@@ -207,11 +245,20 @@ export const events = mysqlTable(
   },
   table => [
     foreignKey({
+      name: "events_tenant_id_tenants_id_fk",
+      columns: [table.tenantId],
+      foreignColumns: [tenants.id],
+    }).onDelete("restrict"),
+    foreignKey({
       name: "events_year_fk",
       columns: [table.year],
       foreignColumns: [eventYears.year],
     }).onDelete("cascade"),
-    uniqueIndex("events_year_name_unique").on(table.year, table.name),
+    uniqueIndex("events_tenant_year_name_unique").on(
+      table.tenantId,
+      table.year,
+      table.name
+    ),
     uniqueIndex("events_id_year_unique").on(table.id, table.year),
   ]
 );

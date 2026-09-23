@@ -11,6 +11,27 @@ describe("RSC-Pilot-Grundlage", () => {
     expect(tenantSource).toContain("RSC Eifelland Mayen e. V.");
     expect(tenantSource).toContain('"pilot"');
     expect(tenantSource).toContain("MyEifelRide 2027");
+    expect(tenantSource).toContain("Kirmesverein Musterstadt e. V.");
+    expect(tenantSource).toContain("Schützenverein Musterhausen e. V.");
+    expect(tenantSource).toContain("TENANT_CATALOG");
+  });
+
+  it("ordnet Veranstaltungen in einer nicht-destruktiven Migration einem Mandanten zu", () => {
+    const schemaSource = fs.readFileSync(
+      path.resolve(__dirname, "../drizzle/schema.ts"),
+      "utf-8"
+    );
+    const migrationSource = fs.readFileSync(
+      path.resolve(__dirname, "../drizzle/0054_quiet_white_tiger.sql"),
+      "utf-8"
+    );
+    expect(schemaSource).toContain('export const tenants = mysqlTable');
+    expect(schemaSource).toContain('tenantId: varchar("tenantId"');
+    expect(migrationSource).toContain('CREATE TABLE `tenants`');
+    expect(migrationSource).toContain("'rsc-eifelland-mayen'");
+    expect(migrationSource).toContain("'kirmesverein-musterstadt'");
+    expect(migrationSource).toContain("'schuetzenverein-musterhausen'");
+    expect(migrationSource).not.toMatch(/\bDROP\s+TABLE\b/i);
   });
 
   it("zeigt das Pilot-Badge im Anwendungs-Layout an", () => {
@@ -20,6 +41,16 @@ describe("RSC-Pilot-Grundlage", () => {
     );
     expect(layoutSource).toContain("ACTIVE_PILOT_TENANT");
     expect(layoutSource).toContain("Pilot");
+  });
+
+  it("zeigt den geschlossenen RSC-Pilotbetrieb im Dashboard transparent an", () => {
+    const dashboardSource = fs.readFileSync(
+      path.resolve(__dirname, "../client/src/pages/Dashboard.tsx"),
+      "utf-8"
+    );
+    expect(dashboardSource).toContain("PilotTenantInfoCard");
+    expect(dashboardSource).toContain("Keine Bezahl- oder Freischaltfunktion aktiv");
+    expect(dashboardSource).toContain("Pilot-Support");
   });
 
   it("zeigt Enterprise auf der Angebotsseite mit ab 449 Euro pro Jahr an", () => {
