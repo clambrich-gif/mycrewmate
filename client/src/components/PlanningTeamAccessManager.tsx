@@ -490,8 +490,8 @@ export function PlanningTeamAccessManager() {
           ) : (
             <ul className="divide-y">
               {filteredAccesses.map(access => (
-                <li key={access.id} className="flex flex-col gap-3 p-3 sm:flex-row sm:items-center">
-                  <div className="min-w-0 flex-1">
+                <li key={access.id} className="grid gap-3 p-3">
+                  <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-semibold text-slate-900">
                         {access.contactName ?? access.label}
@@ -525,16 +525,22 @@ export function PlanningTeamAccessManager() {
                       {formatEvents(access) || "Keine Freigaben"}
                     </p>
                   </div>
-                    <div className="flex shrink-0 flex-wrap gap-2">
-                      <Button type="button" variant="outline" size="sm" onClick={() => editAccess(access)}>
-                        <Pencil className="mr-1.5 h-3.5 w-3.5" /> Bearbeiten
-                      </Button>
-                      {access.email && (
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-auto min-h-9 w-full justify-start whitespace-normal px-3 py-2 text-left leading-4"
+                      onClick={() => editAccess(access)}
+                    >
+                      <Pencil className="mr-1.5 h-3.5 w-3.5" /> Bearbeiten
+                    </Button>
+                    {access.email && (
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
-                          className="border-blue-200 text-blue-800 hover:bg-blue-50 hover:text-blue-900"
+                          className="h-auto min-h-9 w-full justify-start whitespace-normal border-blue-200 px-3 py-2 text-left leading-4 text-blue-800 hover:bg-blue-50 hover:text-blue-900"
                           onClick={() => {
                             setSendLinkTarget(access);
                             setSendLinkPassword("");
@@ -547,7 +553,7 @@ export function PlanningTeamAccessManager() {
                         type="button"
                         variant="outline"
                         size="sm"
-                      className="border-amber-200 text-amber-800 hover:bg-amber-50 hover:text-amber-900"
+                      className="h-auto min-h-9 w-full justify-start whitespace-normal border-amber-200 px-3 py-2 text-left leading-4 text-amber-800 hover:bg-amber-50 hover:text-amber-900"
                       onClick={() => {
                         setResetTarget({ id: access.id, label: access.contactName ?? access.label });
                         setResetPassword("");
@@ -559,7 +565,7 @@ export function PlanningTeamAccessManager() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
+                      className="h-auto min-h-9 w-full justify-start whitespace-normal border-red-200 px-3 py-2 text-left leading-4 text-red-700 hover:bg-red-50 hover:text-red-800"
                       onClick={() => setDeleteTarget({ id: access.id, label: access.label })}
                     >
                       <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Löschen

@@ -135,7 +135,7 @@ export default function Contacts() {
                 </label>
                 <Input
                   id="new-contact-name"
-                  placeholder="Name des neuen Ansprechpartners eingeben"
+                  placeholder="Name"
                   value={name}
                   onChange={event => setName(event.target.value)}
                   className="h-11 border-slate-300 bg-white text-base shadow-sm placeholder:text-slate-600"
@@ -151,7 +151,7 @@ export default function Contacts() {
                 <Input
                   id="new-contact-email"
                   type="email"
-                  placeholder="z. B. vorname.nachname@verein.de"
+                  placeholder="beispiel@verein.de"
                   value={email}
                   onChange={event => setEmail(event.target.value)}
                   className="h-11 border-slate-300 bg-white text-base shadow-sm placeholder:text-slate-600"

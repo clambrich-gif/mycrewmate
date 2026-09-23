@@ -3024,6 +3024,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(manager).toContain("selectedPrintAccessIds");
     expect(manager).toContain("accessSheets.mutate({ accessIds: selectedPrintAccessIds })");
     expect(manager).toContain("Passwort zurücksetzen &amp; Zugangsblatt drucken");
+    expect(manager).toContain('className="grid grid-cols-1 gap-2 sm:grid-cols-2"');
+    expect(manager).toContain("h-auto min-h-9 w-full justify-start whitespace-normal");
     expect(manager).toContain("Der reguläre Nachdruck enthält aus Sicherheitsgründen keine Zugangscodes");
     expect(manager).toContain("Der Klartextcode erscheint nur im direkt heruntergeladenen PDF");
     expect(manager).toContain("downloadBase64File(result.base64, result.mimeType, result.filename)");
@@ -3031,6 +3033,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
 
     expect(contacts).toContain("Neuanlage");
     expect(contacts).toContain("Name des Ansprechpartners");
+    expect(contacts).toContain('id="new-contact-name"');
+    expect(contacts).toContain('placeholder="Name"');
+    expect(contacts).toContain('id="new-contact-email"');
+    expect(contacts).toContain('placeholder="beispiel@verein.de"');
+    expect(contacts).not.toContain('placeholder="Name des neuen Ansprechpartners eingeben"');
     expect(contacts).toContain("Hinzufügen");
     expect(contacts).toContain("trpc.contacts.create.useMutation");
     expect(contacts).toContain("Persönliche Planungsteam-Zugänge");
