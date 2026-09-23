@@ -93,6 +93,7 @@ import {
 } from "./year-context";
 import {
   FULL_PLANNER_PERMISSIONS,
+  PLANNING_MODULE_META,
   PLANNING_MODULES,
   mayReadPlanningModule,
   mayWritePlanningModule,
@@ -132,6 +133,15 @@ async function safelyRecordPresence(
 /** Speichert zufällige Einmal-Token ausschließlich als deterministischen Hash. */
 function hashOpaqueToken(rawToken: string) {
   return createHash("sha256").update(rawToken).digest("hex");
+}
+
+/** Übersetzt interne Rechtekennungen für Einladungen in verständliche Bereichsnamen. */
+function planningModuleSummary(modules: readonly PlanningModule[] | null | undefined) {
+  const effectiveModules = modules && modules.length > 0 ? modules : FULL_PLANNER_PERMISSIONS;
+  return effectiveModules
+    .filter(module => module !== "read_all")
+    .map(module => PLANNING_MODULE_META[module].label)
+    .join(", ");
 }
 
 function planningTeamAccessIdForUser(user: {
@@ -1679,9 +1689,7 @@ export const appRouter = router({
         const activeTenant = currentTenants.find(t => t.id === scope.tenantId);
         const tenantName = activeTenant?.name ?? "Vereinsplanung";
         const activationUrl = publicAppUrl(`/aktivieren?token=${encodeURIComponent(rawToken)}`);
-        const modulesSummary = (input.modulePermissions && input.modulePermissions.length > 0)
-          ? input.modulePermissions.join(", ")
-          : "Alle regulären Planungsbereiche";
+        const modulesSummary = planningModuleSummary(input.modulePermissions);
 
         let emailSent = false;
         if (input.sendEmail) {
@@ -1756,9 +1764,7 @@ export const appRouter = router({
         const activeTenant = currentTenants.find(t => t.id === scope.tenantId);
         const tenantName = activeTenant?.name ?? "Vereinsplanung";
         const activationUrl = publicAppUrl(`/aktivieren?token=${encodeURIComponent(rawToken)}`);
-        const modulesSummary = (access.modulePermissions && access.modulePermissions.length > 0)
-          ? access.modulePermissions.join(", ")
-          : "Alle regulären Planungsbereiche";
+        const modulesSummary = planningModuleSummary(access.modulePermissions);
 
         let emailSent = false;
         if (input.sendEmail) {

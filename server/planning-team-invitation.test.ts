@@ -23,6 +23,8 @@ describe("Planungsteam-Einladungen und Ansprechpartner-E-Mails", () => {
     expect(routers).toContain("sendInvitationLink: accountAdminProcedure");
     expect(routers).toContain("consumePlanningTeamInvitation: publicProcedure");
     expect(routers).toContain("renderPlanningTeamInvitationEmail");
+    expect(routers).toContain("planningModuleSummary");
+    expect(routers).toContain("PLANNING_MODULE_META[module].label");
   });
 
   it("bietet in Contacts.tsx die Eingabe und Bearbeitung von E-Mail-Adressen an", () => {
