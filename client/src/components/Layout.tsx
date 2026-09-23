@@ -354,6 +354,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [capsLockOn, setCapsLockOn] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loginMode, setLoginMode] = useState<"user" | "admin">("user");
+  const [adminEmail, setAdminEmail] = useState("");
   const [loginFailureCounts, setLoginFailureCounts] = useState({ user: 0, admin: 0 });
   const [forcePasswordChangeOpen, setForcePasswordChangeOpen] = useState(false);
   const [initialPassword, setInitialPassword] = useState("");
@@ -386,6 +387,28 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [editEventName, setEditEventName] = useState("");
   const [editEventStartDate, setEditEventStartDate] = useState("");
   const [editEventEndDate, setEditEventEndDate] = useState("");
+  const consumeHandoff = trpc.auth.consumeHandoffToken.useMutation({
+    onSuccess: async result => {
+      storePreviewSessionToken(result.previewSessionToken);
+      selectTenant(result.tenantId);
+      await utils.auth.me.invalidate();
+      toast.success("Wechsel in Vereinsansicht erfolgreich");
+      const url = new URL(window.location.href);
+      url.searchParams.delete("handoff");
+      window.history.replaceState({}, "", url.toString());
+    },
+    onError: err => {
+      toast.error(err.message);
+    },
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const token = new URLSearchParams(window.location.search).get("handoff");
+    if (token && token.length >= 10 && !consumeHandoff.isPending && !consumeHandoff.isSuccess) {
+      consumeHandoff.mutate({ token });
+    }
+  }, [consumeHandoff]);
   const [deleteEventTarget, setDeleteEventTarget] = useState<{
     id: number;
     name: string;
@@ -917,7 +940,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const submitPassword = (event: FormEvent) => {
     event.preventDefault();
     if (!password) return;
-    if (loginMode === "admin") adminPasswordLogin.mutate({ password });
+    if (loginMode === "admin") {
+      adminPasswordLogin.mutate({
+        password,
+        ...(adminEmail.trim() ? { email: adminEmail.trim() } : {}),
+      });
+    }
     else passwordLogin.mutate({ password });
   };
   const loginEnabled =
@@ -1175,6 +1203,25 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </form>
           ) : (
           <form className="space-y-4" onSubmit={submitPassword}>
+            {loginMode === "admin" && (
+              <div className="space-y-1.5">
+                <Label htmlFor="admin-email" className="text-xs font-medium text-slate-700">
+                  E-Mail-Adresse (für persönliche Vereins-Administratoren)
+                </Label>
+                <Input
+                  id="admin-email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="admin@meinverein.de (optional bei Master-Login)"
+                  value={adminEmail}
+                  onChange={e => {
+                    setAdminEmail(e.target.value);
+                    if (loginError) setLoginError(null);
+                  }}
+                  disabled={loginPending}
+                />
+              </div>
+            )}
             <Label htmlFor="planning-password" className="text-sm font-semibold">
               {loginMode === "admin"
                 ? "Administratorpasswort"

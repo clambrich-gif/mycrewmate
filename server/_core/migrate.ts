@@ -193,6 +193,19 @@ function isDuplicateColumnError(error: unknown) {
   );
 }
 
+function isDuplicateConstraintOrIndexError(error: unknown) {
+  if (typeof error !== "object" || error === null || !("code" in error)) return false;
+  const code = String((error as { code?: unknown }).code);
+  return code === "ER_FK_DUP_NAME" || code === "ER_DUP_KEYNAME";
+}
+
+function isConstraintOrIndexStatement(statement: string) {
+  return (
+    /^ALTER\s+TABLE\s+`?[A-Za-z0-9_]+`?\s+ADD\s+CONSTRAINT\s+/i.test(statement) ||
+    /^CREATE\s+(?:UNIQUE\s+)?INDEX\s+/i.test(statement)
+  );
+}
+
 async function ensureMigrationLedger(connection: MigrationConnection) {
   await connection.execute(
     `CREATE TABLE IF NOT EXISTS \`${MIGRATIONS_TABLE}\` (
@@ -352,6 +365,13 @@ export async function applyProjectMigrations(
           // nicht über das Prepared-Statement-Protokoll ausführen kann.
           await connection.query(statement);
         } catch (error) {
+          if (isConstraintOrIndexStatement(statement) && isDuplicateConstraintOrIndexError(error)) {
+            console.info(
+              `[Migration] ${migration.tag}: Constraint/Index bereits vorhanden, sicher übersprungen.`
+            );
+            continue;
+          }
+
           // Nur ein nachgewiesen vorhandenes Ziel einer ALTER ... ADD-Operation
           // darf übernommen werden. Jeder andere SQL-Fehler bleibt absichtlich
           // ein harter Startabbruch, um Datenverlust oder Teilschemata zu vermeiden.

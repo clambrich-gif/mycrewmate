@@ -260,6 +260,52 @@ export const userTenantMemberships = mysqlTable(
 export type UserTenantMembership = typeof userTenantMemberships.$inferSelect;
 export type InsertUserTenantMembership = typeof userTenantMemberships.$inferInsert;
 
+/** Persönliche Zugangsdaten für Vereinsadmins; ein Konto kann mehreren Vereinen angehören. */
+export const tenantAdminCredentials = mysqlTable(
+  "tenant_admin_credentials",
+  {
+    userId: int("userId").primaryKey(),
+    email: varchar("email", { length: 320 }).notNull(),
+    passwordHash: varchar("passwordHash", { length: 255 }).notNull(),
+    mustChangePassword: boolean("mustChangePassword").default(true).notNull(),
+    sessionVersion: int("sessionVersion").default(1).notNull(),
+    status: mysqlEnum("status", ["active", "suspended"]).default("active").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    foreignKey({ name: "tenant_admin_credentials_user_id_users_id_fk", columns: [table.userId], foreignColumns: [users.id] }).onDelete("cascade"),
+    uniqueIndex("tenant_admin_credentials_email_unique").on(table.email),
+  ]
+);
+
+/** Einmalige, fünf Minuten gültige Übergabe vom Master-Portal in die Vereinsansicht. */
+export const platformTenantHandoffs = mysqlTable(
+  "platform_tenant_handoffs",
+  {
+    tokenHash: varchar("tokenHash", { length: 64 }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 96 }).notNull(),
+    createdByOpenId: varchar("createdByOpenId", { length: 64 }).notNull(),
+    expiresAt: timestamp("expiresAt").notNull(),
+    usedAt: timestamp("usedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    foreignKey({ name: "platform_tenant_handoffs_tenant_id_tenants_id_fk", columns: [table.tenantId], foreignColumns: [tenants.id] }).onDelete("cascade"),
+    index("platform_tenant_handoffs_expiry_idx").on(table.expiresAt),
+  ]
+);
+
+/** Marktstart-Schalter: bis zum ausdrücklichen Go-live bleiben alle Verkaufswege aus. */
+export const platformLaunchSettings = mysqlTable("platform_launch_settings", {
+  id: int("id").primaryKey().default(1),
+  paymentsEnabled: boolean("paymentsEnabled").default(false).notNull(),
+  publicSelfServiceEnabled: boolean("publicSelfServiceEnabled").default(false).notNull(),
+  paymentProvider: mysqlEnum("paymentProvider", ["none", "stripe"]).default("none").notNull(),
+  invoiceWorkflow: mysqlEnum("invoiceWorkflow", ["manual", "automated"]).default("manual").notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 export const eventYears = mysqlTable("event_years", {
   year: int("year").primaryKey(),
   label: varchar("label", { length: 120 }).notNull(),

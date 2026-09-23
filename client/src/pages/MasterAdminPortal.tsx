@@ -225,6 +225,42 @@ export default function MasterAdminPortal() {
   const [createForm, setCreateForm] = useState<CreateTenantForm>(
     defaultCreateTenantForm
   );
+  const [adminModalTenant, setAdminModalTenant] = useState<{ id: string; name: string } | null>(null);
+  const [adminName, setAdminName] = useState("");
+  const [adminEmail, setAdminEmail] = useState("");
+  const [issuedAdminSheet, setIssuedAdminSheet] = useState<{
+    tenantName: string;
+    adminName: string;
+    email: string;
+    initialPassword: string;
+  } | null>(null);
+
+  const createTenantAdmin = trpc.platformAdmin.createTenantAdmin.useMutation({
+    onSuccess: result => {
+      if (adminModalTenant) {
+        setIssuedAdminSheet({
+          tenantName: adminModalTenant.name,
+          adminName: result.name,
+          email: result.email,
+          initialPassword: result.initialPassword,
+        });
+      }
+      setAdminModalTenant(null);
+      setAdminName("");
+      setAdminEmail("");
+      toast.success("Vereins-Administrator erfolgreich angelegt");
+    },
+    onError: err => toast.error(err.message),
+  });
+
+  const createHandoff = trpc.platformAdmin.createHandoffLink.useMutation({
+    onSuccess: result => {
+      const targetUrl = `${window.location.origin}/?handoff=${encodeURIComponent(result.handoffToken)}`;
+      window.open(targetUrl, "_blank");
+      toast.success("Vereinsansicht in neuem Tab geöffnet (5 Min. gültig)");
+    },
+    onError: err => toast.error(err.message),
+  });
   const overview = trpc.platformAdmin.tenantOverview.useQuery(undefined, {
     enabled: isAuthenticated && user?.role === "admin",
     retry: false,
@@ -391,16 +427,40 @@ export default function MasterAdminPortal() {
                         <p className="mt-0.5 text-xs text-slate-500">{tenant.nextEvent ? formatDate(tenant.nextEvent.startDate) : "Termin offen"}</p>
                       </div>
                       {(tenant.status === "pilot" || tenant.status === "sample") && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="w-full border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100"
-                          disabled={updateLifecycle.isPending}
-                          onClick={() => updateLifecycle.mutate({ tenantId: tenant.id, status: "suspended" })}
-                        >
-                          {updateLifecycle.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <PauseCircle className="size-3.5" />}
-                          Pilot pausieren
-                        </Button>
+                        <div className="flex flex-col gap-1.5">
+                          <Button
+                            size="sm"
+                            variant="default"
+                            className="w-full bg-blue-600 text-white hover:bg-blue-700"
+                            disabled={createHandoff.isPending}
+                            onClick={() => createHandoff.mutate({ tenantId: tenant.id })}
+                          >
+                            {createHandoff.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <UsersRound className="size-3.5" />}
+                            In Vereinsansicht wechseln
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-full"
+                            onClick={() => {
+                              setAdminModalTenant({ id: tenant.id, name: tenant.name });
+                              setAdminName("");
+                              setAdminEmail(tenant.contactEmail);
+                            }}
+                          >
+                            <KeyRound className="size-3.5" /> Admin-Zugang anlegen
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-full border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100"
+                            disabled={updateLifecycle.isPending}
+                            onClick={() => updateLifecycle.mutate({ tenantId: tenant.id, status: "suspended" })}
+                          >
+                            {updateLifecycle.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <PauseCircle className="size-3.5" />}
+                            Pilot pausieren
+                          </Button>
+                        </div>
                       )}
                       {tenant.status === "suspended" && (
                         <Button
@@ -600,6 +660,91 @@ export default function MasterAdminPortal() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(adminModalTenant)} onOpenChange={open => !open && setAdminModalTenant(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Vereins-Administrator anlegen</DialogTitle>
+            <DialogDescription>
+              Erstellt einen persönlichen Zugang für {adminModalTenant?.name}. Der Administrator erhält ein Einmalpasswort zur Erstanmeldung.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            className="space-y-4"
+            onSubmit={e => {
+              e.preventDefault();
+              if (!adminModalTenant || !adminName.trim() || !adminEmail.trim()) return;
+              createTenantAdmin.mutate({
+                tenantId: adminModalTenant.id,
+                name: adminName.trim(),
+                email: adminEmail.trim(),
+              });
+            }}
+          >
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700">Name des Administrators</label>
+              <Input
+                placeholder="z. B. Max Mustermann"
+                value={adminName}
+                onChange={e => setAdminName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700">E-Mail-Adresse</label>
+              <Input
+                type="email"
+                placeholder="admin@verein.de"
+                value={adminEmail}
+                onChange={e => setAdminEmail(e.target.value)}
+                required
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setAdminModalTenant(null)}>
+                Abbrechen
+              </Button>
+              <Button type="submit" disabled={createTenantAdmin.isPending}>
+                {createTenantAdmin.isPending ? <Loader2 className="size-4 animate-spin" /> : <KeyRound className="size-4" />}
+                Zugang mit Einmalpasswort erstellen
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(issuedAdminSheet)} onOpenChange={open => !open && setIssuedAdminSheet(null)}>
+        <DialogContent className="max-w-md border-emerald-200 bg-white">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-emerald-800">
+              <CheckCircle2 className="size-5" /> Vereins-Zugang erstellt
+            </DialogTitle>
+            <DialogDescription>
+              Zugangsdaten für {issuedAdminSheet?.tenantName}. Bitte geben Sie diesen Einmalcode sicher an den Vereinsadministrator weiter.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 text-sm">
+            <div>
+              <span className="text-xs font-semibold text-slate-500">Name</span>
+              <p className="font-medium text-slate-900">{issuedAdminSheet?.adminName}</p>
+            </div>
+            <div>
+              <span className="text-xs font-semibold text-slate-500">E-Mail</span>
+              <p className="font-medium text-slate-900">{issuedAdminSheet?.email}</p>
+            </div>
+            <div>
+              <span className="text-xs font-semibold text-slate-500">Einmaliges Startpasswort</span>
+              <p className="font-mono text-base font-bold text-emerald-900">{issuedAdminSheet?.initialPassword}</p>
+            </div>
+            <p className="text-xs text-slate-500">
+              Beim ersten Login wird der Administrator aufgefordert, sein persönliches Passwort zu vergeben.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setIssuedAdminSheet(null)}>Verstanden &amp; Schließen</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </main>

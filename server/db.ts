@@ -37,6 +37,8 @@ import {
   locations,
   planningTeamAccesses,
   planningTeamAccessEvents,
+  platformLaunchSettings,
+  platformTenantHandoffs,
   postTasks,
   prepTasks,
   revokedSessions,
@@ -47,6 +49,7 @@ import {
   teamNoteAuditLogs,
   teamNoteReadStates,
   teamNoteTypings,
+  tenantAdminCredentials,
   tenants,
   userTenantMemberships,
   users,
@@ -4986,5 +4989,219 @@ export async function copyPlanFromEvent(
       assignmentsCreated,
       areaContactsCreated,
     };
+  });
+}
+
+export function tenantAdminOpenId(userId: number) {
+  return `tenant-admin-${userId}`;
+}
+
+export async function getTenantAdminCredentialsByEmail(email: string) {
+  const database = await getDb();
+  if (!database) return undefined;
+  const normalizedEmail = email.trim().toLocaleLowerCase("de-DE");
+  const [row] = await database
+    .select({
+      userId: tenantAdminCredentials.userId,
+      email: tenantAdminCredentials.email,
+      passwordHash: tenantAdminCredentials.passwordHash,
+      mustChangePassword: tenantAdminCredentials.mustChangePassword,
+      sessionVersion: tenantAdminCredentials.sessionVersion,
+      status: tenantAdminCredentials.status,
+      userName: users.name,
+      userOpenId: users.openId,
+    })
+    .from(tenantAdminCredentials)
+    .innerJoin(users, eq(users.id, tenantAdminCredentials.userId))
+    .where(and(eq(tenantAdminCredentials.email, normalizedEmail), eq(tenantAdminCredentials.status, "active")))
+    .limit(1);
+  return row;
+}
+
+export async function createOrUpdateTenantAdminForPlatformAdmin(input: {
+  tenantId: string;
+  name: string;
+  email: string;
+  passwordHash: string;
+}) {
+  const database = (await getDb()) as DB;
+  return database.transaction(async tx => {
+    const normalizedEmail = input.email.trim().toLocaleLowerCase("de-DE");
+    const name = input.name.trim();
+    if (!name || !normalizedEmail) {
+      throw new Error("Name und E-Mail des Vereinsadministrators sind erforderlich");
+    }
+
+    let [existingUser] = await tx
+      .select({ id: users.id, openId: users.openId })
+      .from(users)
+      .where(or(eq(users.email, normalizedEmail), eq(users.openId, `tenant-admin:${normalizedEmail}`)))
+      .limit(1)
+      .for("update");
+
+    if (!existingUser) {
+      const tempOpenId = `tenant-admin:${normalizedEmail}`;
+      await tx.insert(users).values({
+        openId: tempOpenId,
+        name,
+        email: normalizedEmail,
+        role: "admin",
+        loginMethod: "password",
+        lastSignedIn: new Date(),
+      });
+      const [created] = await tx
+        .select({ id: users.id, openId: users.openId })
+        .from(users)
+        .where(eq(users.openId, tempOpenId))
+        .limit(1)
+        .for("update");
+      if (!created) throw new Error("Benutzerkonto konnte nicht angelegt werden");
+      existingUser = created;
+    } else {
+      await tx
+        .update(users)
+        .set({ name, email: normalizedEmail, role: "admin", loginMethod: "password" })
+        .where(eq(users.id, existingUser.id));
+    }
+
+    await tx
+      .insert(tenantAdminCredentials)
+      .values({
+        userId: existingUser.id,
+        email: normalizedEmail,
+        passwordHash: input.passwordHash,
+        mustChangePassword: true,
+        sessionVersion: 1,
+        status: "active",
+      })
+      .onDuplicateKeyUpdate({
+        set: {
+          passwordHash: input.passwordHash,
+          mustChangePassword: true,
+          sessionVersion: sql`${tenantAdminCredentials.sessionVersion} + 1`,
+          status: "active",
+        },
+      });
+
+    await tx
+      .insert(userTenantMemberships)
+      .values({
+        userId: existingUser.id,
+        tenantId: input.tenantId,
+        role: "tenant_admin",
+        status: "active",
+        isDefault: true,
+      })
+      .onDuplicateKeyUpdate({
+        set: {
+          role: "tenant_admin",
+          status: "active",
+          isDefault: true,
+        },
+      });
+
+    return { userId: existingUser.id, email: normalizedEmail, name } as const;
+  });
+}
+
+export async function completeTenantAdminInitialPasswordChange(input: {
+  userId: number;
+  passwordHash: string;
+}) {
+  const database = (await getDb()) as DB;
+  return database.transaction(async tx => {
+    await tx
+      .update(tenantAdminCredentials)
+      .set({
+        passwordHash: input.passwordHash,
+        mustChangePassword: false,
+        sessionVersion: sql`${tenantAdminCredentials.sessionVersion} + 1`,
+      })
+      .where(eq(tenantAdminCredentials.userId, input.userId));
+
+    const [row] = await tx
+      .select({
+        userId: tenantAdminCredentials.userId,
+        sessionVersion: tenantAdminCredentials.sessionVersion,
+        userName: users.name,
+        userOpenId: users.openId,
+      })
+      .from(tenantAdminCredentials)
+      .innerJoin(users, eq(users.id, tenantAdminCredentials.userId))
+      .where(eq(tenantAdminCredentials.userId, input.userId))
+      .limit(1);
+    if (!row) throw new Error("Zugangsdaten nicht gefunden");
+    return row;
+  });
+}
+
+export async function getPlatformLaunchSettings() {
+  const database = await getDb();
+  if (!database) {
+    return {
+      paymentsEnabled: false,
+      publicSelfServiceEnabled: false,
+      paymentProvider: "none" as const,
+      invoiceWorkflow: "manual" as const,
+    };
+  }
+  const [row] = await database
+    .select()
+    .from(platformLaunchSettings)
+    .where(eq(platformLaunchSettings.id, 1))
+    .limit(1);
+  if (!row) {
+    await database.insert(platformLaunchSettings).values({ id: 1 }).onDuplicateKeyUpdate({ set: { id: 1 } });
+    return {
+      paymentsEnabled: false,
+      publicSelfServiceEnabled: false,
+      paymentProvider: "none" as const,
+      invoiceWorkflow: "manual" as const,
+    };
+  }
+  return {
+    paymentsEnabled: row.paymentsEnabled,
+    publicSelfServiceEnabled: row.publicSelfServiceEnabled,
+    paymentProvider: row.paymentProvider,
+    invoiceWorkflow: row.invoiceWorkflow,
+  };
+}
+
+export async function createPlatformTenantHandoff(input: {
+  tenantId: string;
+  createdByOpenId: string;
+  tokenHash: string;
+  expiresInSeconds?: number;
+}) {
+  const database = (await getDb()) as DB;
+  const expiresAt = new Date(Date.now() + (input.expiresInSeconds ?? 300) * 1000);
+  await database.insert(platformTenantHandoffs).values({
+    tokenHash: input.tokenHash,
+    tenantId: input.tenantId,
+    createdByOpenId: input.createdByOpenId,
+    expiresAt,
+  });
+  return { tenantId: input.tenantId, expiresAt } as const;
+}
+
+export async function consumePlatformTenantHandoff(tokenHash: string) {
+  const database = (await getDb()) as DB;
+  return database.transaction(async tx => {
+    const now = new Date();
+    const [row] = await tx
+      .select()
+      .from(platformTenantHandoffs)
+      .where(and(eq(platformTenantHandoffs.tokenHash, tokenHash), isNull(platformTenantHandoffs.usedAt), gt(platformTenantHandoffs.expiresAt, now)))
+      .limit(1)
+      .for("update");
+    if (!row) return null;
+    await tx
+      .update(platformTenantHandoffs)
+      .set({ usedAt: now })
+      .where(eq(platformTenantHandoffs.tokenHash, tokenHash));
+    return {
+      tenantId: row.tenantId,
+      createdByOpenId: row.createdByOpenId,
+    } as const;
   });
 }

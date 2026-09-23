@@ -189,9 +189,12 @@ describe("applyProjectMigrations", () => {
   it("ergänzt Legacy-Journal-Einträge und führt spätere Mandantenmigrationen regulär aus", async () => {
     const connection = createConnection({ snapshotCompatible: true, legacyRows: 0 });
     const migrations = readProjectMigrations();
-    // Nach dem historischen Stand 0053 folgen regulär die Mandantenmigration 0054 und die Mitgliedschaftsmigration 0055
+    // Nach dem historischen Stand 0053 folgen regulär die Mandantenmigrationen 0054, 0055 und 0056
     const expectedNewMigrations = migrations.filter(
-      m => m.tag === "0054_quiet_white_tiger" || m.tag === "0055_outstanding_silver_fox"
+      m =>
+        m.tag === "0054_quiet_white_tiger" ||
+        m.tag === "0055_outstanding_silver_fox" ||
+        m.tag === "0056_broken_captain_america"
     ).length;
 
     const result = await applyProjectMigrations(connection, migrations);

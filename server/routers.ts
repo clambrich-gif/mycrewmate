@@ -1143,6 +1143,7 @@ export const appRouter = router({
         z.object({
           password: z.string().min(1).max(200),
           administratorName: z.string().trim().min(2).max(120).optional(),
+          email: z.string().trim().email().max(320).optional(),
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -1154,6 +1155,36 @@ export const appRouter = router({
               "Zu viele Fehlversuche. Bitte in 15 Minuten erneut versuchen.",
           });
         }
+
+        // Wenn eine E-Mail angegeben ist, handelt es sich um einen persönlichen Vereinsadmin-Login
+        if (input.email) {
+          const adminCreds = await db.getTenantAdminCredentialsByEmail(input.email);
+          if (!adminCreds || !(await verifyPassword(input.password, adminCreds.passwordHash))) {
+            recordFailedPasswordLogin(clientKey);
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "E-Mail oder Passwort ist nicht korrekt",
+            });
+          }
+          clearPasswordLoginFailures(clientKey);
+          const sessionName = adminCreds.userName ?? input.email;
+          const token = await sdk.createSessionToken(adminCreds.userOpenId, {
+            name: sessionName,
+            expiresInMs: PASSWORD_SESSION_MS,
+            sessionVersion: adminCreds.sessionVersion,
+          });
+          ctx.res.cookie(COOKIE_NAME, token, {
+            ...getSessionCookieOptions(ctx.req),
+            maxAge: PASSWORD_SESSION_MS,
+          });
+          return {
+            success: true,
+            requiresIdentity: false,
+            mustChangePassword: adminCreds.mustChangePassword,
+            ...(isEmbeddedManusPreview(ctx.req) ? { previewSessionToken: token } : {}),
+          } as const;
+        }
+
         const hash = (await db.getSecuritySettings())?.adminPasswordHash;
         if (!hash || !(await verifyPassword(input.password, hash))) {
           recordFailedPasswordLogin(clientKey);
@@ -1253,6 +1284,68 @@ export const appRouter = router({
         const token = await sdk.createSessionToken(ADMIN_PASSWORD_OPEN_ID, {
           name: "Administrator",
           expiresInMs: PASSWORD_SESSION_MS,
+        });
+        ctx.res.cookie(COOKIE_NAME, token, {
+          ...getSessionCookieOptions(ctx.req),
+          maxAge: PASSWORD_SESSION_MS,
+        });
+        return {
+          success: true,
+          ...(isEmbeddedManusPreview(ctx.req) ? { previewSessionToken: token } : {}),
+        } as const;
+      }),
+    consumeHandoffToken: publicProcedure
+      .input(z.object({ token: z.string().min(10).max(200) }))
+      .mutation(async ({ ctx, input }) => {
+        const tokenHash = await hashPassword(input.token);
+        const handoff = await db.consumePlatformTenantHandoff(tokenHash);
+        if (!handoff) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Der Einmal-Wechsel-Link ist ungültig oder abgelaufen.",
+          });
+        }
+        const token = await sdk.createSessionToken(ADMIN_PASSWORD_OPEN_ID, {
+          name: "Plattform-Administrator",
+          expiresInMs: PASSWORD_SESSION_MS,
+        });
+        ctx.res.cookie(COOKIE_NAME, token, {
+          ...getSessionCookieOptions(ctx.req),
+          maxAge: PASSWORD_SESSION_MS,
+        });
+        return {
+          success: true,
+          tenantId: handoff.tenantId,
+          ...(isEmbeddedManusPreview(ctx.req) ? { previewSessionToken: token } : {}),
+        } as const;
+      }),
+    completeTenantAdminInitialPasswordChange: baseProtectedProcedure
+      .input(
+        z
+          .object({
+            password: passwordInput,
+            passwordConfirmation: passwordInput,
+          })
+          .refine(input => input.password === input.passwordConfirmation, {
+            path: ["passwordConfirmation"],
+            message: "Die Passwörter stimmen nicht überein",
+          })
+      )
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.role !== "admin" || ctx.user.id <= 0) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Nur persönliche Vereins-Administratoren können dieses Passwort setzen.",
+          });
+        }
+        const updated = await db.completeTenantAdminInitialPasswordChange({
+          userId: ctx.user.id,
+          passwordHash: await hashPassword(input.password),
+        });
+        const token = await sdk.createSessionToken(updated.userOpenId, {
+          name: updated.userName ?? ctx.user.name ?? "Administrator",
+          expiresInMs: PASSWORD_SESSION_MS,
+          sessionVersion: updated.sessionVersion,
         });
         ctx.res.cookie(COOKIE_NAME, token, {
           ...getSessionCookieOptions(ctx.req),
@@ -1549,6 +1642,50 @@ export const appRouter = router({
         })
       )
       .mutation(({ input }) => db.updateTenantLifecycleForPlatformAdmin(input)),
+    createTenantAdmin: masterAdminProcedure
+      .input(
+        z.object({
+          tenantId: z.string().trim().regex(/^[a-z0-9-]{3,96}$/),
+          name: z.string().trim().min(2).max(120),
+          email: z.string().trim().email().max(320),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const initialPassword = generatePlanningTeamAccessPassword();
+        const passwordHash = await hashPassword(initialPassword);
+        const admin = await db.createOrUpdateTenantAdminForPlatformAdmin({
+          tenantId: input.tenantId,
+          name: input.name,
+          email: input.email,
+          passwordHash,
+        });
+        return {
+          success: true,
+          userId: admin.userId,
+          email: admin.email,
+          name: admin.name,
+          initialPassword,
+        } as const;
+      }),
+    launchSettings: masterAdminProcedure.query(() => db.getPlatformLaunchSettings()),
+    createHandoffLink: masterAdminProcedure
+      .input(z.object({ tenantId: z.string().trim().regex(/^[a-z0-9-]{3,96}$/) }))
+      .mutation(async ({ ctx, input }) => {
+        const rawToken = randomBytes(24).toString("base64url");
+        const tokenHash = await hashPassword(rawToken);
+        await db.createPlatformTenantHandoff({
+          tenantId: input.tenantId,
+          createdByOpenId: ctx.user.openId,
+          tokenHash,
+          expiresInSeconds: 300,
+        });
+        return {
+          success: true,
+          tenantId: input.tenantId,
+          handoffToken: rawToken,
+          expiresInSeconds: 300,
+        } as const;
+      }),
   }),
 
   years: router({
