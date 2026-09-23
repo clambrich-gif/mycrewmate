@@ -422,7 +422,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       ]);
       toast.success("Zugang bestätigt – bitte jetzt ein eigenes Passwort festlegen.");
       // Der Token darf weder im Verlauf noch bei einem späteren Reload verbleiben.
-      window.location.replace("/");
+      window.history.replaceState({}, "", "/");
     },
     onError: err => {
       toast.error(err.message);
@@ -858,6 +858,23 @@ export function Layout({ children }: { children: React.ReactNode }) {
       },
       onError: error => setInitialPasswordError(error.message),
     });
+  const completeTenantAdminInitialPasswordChange =
+    trpc.auth.completeTenantAdminInitialPasswordChange.useMutation({
+      mutationKey: ["auth", "completeTenantAdminInitialPasswordChange"],
+      onSuccess: async result => {
+        storePreviewSessionToken(result.previewSessionToken);
+        setInitialPassword("");
+        setInitialPasswordConfirmation("");
+        setInitialPasswordError(null);
+        setForcePasswordChangeOpen(false);
+        await Promise.all([
+          utils.auth.me.invalidate(),
+          utils.auth.initialPasswordChangeStatus.invalidate(),
+        ]);
+        toast.success("Dein persönliches Passwort wurde gespeichert");
+      },
+      onError: error => setInitialPasswordError(error.message),
+    });
   const adminPasswordLogin = trpc.auth.adminPasswordLogin.useMutation({
     mutationKey: ["auth", "adminPasswordLogin"],
     onSuccess: async result => {
@@ -1043,17 +1060,28 @@ export function Layout({ children }: { children: React.ReactNode }) {
       setInitialPasswordError("Die Passwörter stimmen nicht überein.");
       return;
     }
-    completeInitialPasswordChange.mutate({
+    const payload = {
       password: initialPassword,
       passwordConfirmation: initialPasswordConfirmation,
-    });
+    };
+    if (
+      user?.role === "admin" &&
+      user.openId.startsWith("tenant-admin:")
+    ) {
+      completeTenantAdminInitialPasswordChange.mutate(payload);
+      return;
+    }
+    completeInitialPasswordChange.mutate(payload);
   };
   const forcePasswordChangeModal = (
     <ForcePasswordChangeModal
       open={forcePasswordChangeOpen}
       password={initialPassword}
       passwordConfirmation={initialPasswordConfirmation}
-      busy={completeInitialPasswordChange.isPending}
+      busy={
+        completeInitialPasswordChange.isPending ||
+        completeTenantAdminInitialPasswordChange.isPending
+      }
       error={initialPasswordError}
       onPasswordChange={value => {
         setInitialPassword(value);

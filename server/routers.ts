@@ -284,6 +284,7 @@ async function ensurePilotMembershipForMasterAdmin() {
 
 /** Ein per Zugangsblatt ausgegebener Einmalcode erlaubt nur den Passwortwechsel. */
 async function requireCompletedPlanningTeamPasswordChange(user: {
+  id: number;
   openId: string;
   role: "user" | "admin";
   isCron?: boolean;
@@ -292,6 +293,17 @@ async function requireCompletedPlanningTeamPasswordChange(user: {
   if (
     accessId !== null &&
     (await db.isPlanningTeamAccessPasswordChangeRequired(accessId))
+  ) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message:
+        "Bitte vergeben Sie zuerst Ihr persönliches Passwort, um die Planung zu öffnen.",
+    });
+  }
+  if (
+    user.role === "admin" &&
+    user.openId.startsWith("tenant-admin:") &&
+    (await db.isTenantAdminPasswordChangeRequired(user.id))
   ) {
     throw new TRPCError({
       code: "FORBIDDEN",
@@ -1073,8 +1085,11 @@ export const appRouter = router({
       const accessId = planningTeamAccessIdForUser(ctx.user);
       return {
         mustChangePassword:
-          accessId !== null &&
-          (await db.isPlanningTeamAccessPasswordChangeRequired(accessId)),
+          (accessId !== null &&
+            (await db.isPlanningTeamAccessPasswordChangeRequired(accessId))) ||
+          (ctx.user.role === "admin" &&
+            ctx.user.openId.startsWith("tenant-admin:") &&
+            (await db.isTenantAdminPasswordChangeRequired(ctx.user.id))),
       } as const;
     }),
     passwordLogin: publicProcedure
@@ -1217,6 +1232,48 @@ export const appRouter = router({
             sessionVersion: updated.sessionVersion,
           }
         );
+        ctx.res.cookie(COOKIE_NAME, token, {
+          ...getSessionCookieOptions(ctx.req),
+          maxAge: PASSWORD_SESSION_MS,
+        });
+        return {
+          success: true,
+          mustChangePassword: false,
+          ...(isEmbeddedManusPreview(ctx.req) ? { previewSessionToken: token } : {}),
+        } as const;
+      }),
+    completeTenantAdminInitialPasswordChange: baseProtectedProcedure
+      .input(
+        z
+          .object({
+            password: passwordInput,
+            passwordConfirmation: passwordInput,
+          })
+          .refine(input => input.password === input.passwordConfirmation, {
+            path: ["passwordConfirmation"],
+            message: "Die Passwörter stimmen nicht überein",
+          })
+      )
+      .mutation(async ({ ctx, input }) => {
+        if (
+          ctx.user.role !== "admin" ||
+          !ctx.user.openId.startsWith("tenant-admin:") ||
+          ctx.user.id <= 0
+        ) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Diese Passwortänderung ist nur für persönliche Vereins-Administratoren verfügbar.",
+          });
+        }
+        const updated = await db.completeTenantAdminInitialPasswordChange({
+          userId: ctx.user.id,
+          passwordHash: await hashPassword(input.password),
+        });
+        const token = await sdk.createSessionToken(updated.userOpenId, {
+          name: updated.userName ?? ctx.user.name ?? "Administrator",
+          expiresInMs: PASSWORD_SESSION_MS,
+          sessionVersion: updated.sessionVersion,
+        });
         ctx.res.cookie(COOKIE_NAME, token, {
           ...getSessionCookieOptions(ctx.req),
           maxAge: PASSWORD_SESSION_MS,
@@ -1434,43 +1491,6 @@ export const appRouter = router({
           success: true,
           tenantId: invitation.tenantId,
           mustChangePassword: true,
-          ...(isEmbeddedManusPreview(ctx.req) ? { previewSessionToken: token } : {}),
-        } as const;
-      }),
-    completeTenantAdminInitialPasswordChange: baseProtectedProcedure
-      .input(
-        z
-          .object({
-            password: passwordInput,
-            passwordConfirmation: passwordInput,
-          })
-          .refine(input => input.password === input.passwordConfirmation, {
-            path: ["passwordConfirmation"],
-            message: "Die Passwörter stimmen nicht überein",
-          })
-      )
-      .mutation(async ({ ctx, input }) => {
-        if (ctx.user.role !== "admin" || ctx.user.id <= 0) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "Nur persönliche Vereins-Administratoren können dieses Passwort setzen.",
-          });
-        }
-        const updated = await db.completeTenantAdminInitialPasswordChange({
-          userId: ctx.user.id,
-          passwordHash: await hashPassword(input.password),
-        });
-        const token = await sdk.createSessionToken(updated.userOpenId, {
-          name: updated.userName ?? ctx.user.name ?? "Administrator",
-          expiresInMs: PASSWORD_SESSION_MS,
-          sessionVersion: updated.sessionVersion,
-        });
-        ctx.res.cookie(COOKIE_NAME, token, {
-          ...getSessionCookieOptions(ctx.req),
-          maxAge: PASSWORD_SESSION_MS,
-        });
-        return {
-          success: true,
           ...(isEmbeddedManusPreview(ctx.req) ? { previewSessionToken: token } : {}),
         } as const;
       }),

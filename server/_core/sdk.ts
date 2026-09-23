@@ -10,6 +10,7 @@ import * as db from "../db";
 import {
   ADMIN_PASSWORD_OPEN_ID,
   isPlanningTeamPasswordOpenId,
+  isTenantAdminPasswordOpenId,
   SHARED_PASSWORD_OPEN_ID,
 } from "../password-auth";
 import { sessionPresenceKey } from "../session-presence";
@@ -334,6 +335,7 @@ class SDKServer {
     const signedInAt = new Date();
     const isPasswordSession =
       isPlanningTeamPasswordOpenId(sessionUserId) ||
+      isTenantAdminPasswordOpenId(sessionUserId) ||
       sessionUserId === ADMIN_PASSWORD_OPEN_ID;
     if (!isPasswordSession && !(await db.isAuthorizedOAuthOwner(sessionUserId))) {
       throw ForbiddenError("OAuth session identity is not authorized");

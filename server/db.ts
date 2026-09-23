@@ -3516,6 +3516,23 @@ export async function getExpectedSessionVersion(openId: string) {
     // Ein gelöschter Zugang soll unmittelbar sämtliche offenen Sitzungen verlieren.
     return accessRow?.sessionVersion ?? Number.MAX_SAFE_INTEGER;
   }
+  if (openId.startsWith("tenant-admin:")) {
+    const database = await getDb();
+    if (!database) return Number.MAX_SAFE_INTEGER;
+    const [credential] = await database
+      .select({
+        sessionVersion: tenantAdminCredentials.sessionVersion,
+        status: tenantAdminCredentials.status,
+      })
+      .from(tenantAdminCredentials)
+      .innerJoin(users, eq(users.id, tenantAdminCredentials.userId))
+      .where(eq(users.openId, openId))
+      .limit(1);
+    // Ein gelöschter oder pausierter Vereinsadmin verliert seine Sitzung sofort.
+    return credential?.status === "active"
+      ? credential.sessionVersion
+      : Number.MAX_SAFE_INTEGER;
+  }
   if (
     openId !== SHARED_PASSWORD_OPEN_ID &&
     openId !== ADMIN_PASSWORD_OPEN_ID
@@ -5046,6 +5063,21 @@ export async function getTenantAdminCredentialsByEmail(email: string) {
     .where(and(eq(tenantAdminCredentials.email, normalizedEmail), eq(tenantAdminCredentials.status, "active")))
     .limit(1);
   return row;
+}
+
+/** Liefert, ob ein persönlicher Vereinsadmin noch seinen Einmalcode ersetzen muss. */
+export async function isTenantAdminPasswordChangeRequired(userId: number) {
+  const database = await getDb();
+  if (!database) return false;
+  const [credential] = await database
+    .select({
+      mustChangePassword: tenantAdminCredentials.mustChangePassword,
+      status: tenantAdminCredentials.status,
+    })
+    .from(tenantAdminCredentials)
+    .where(eq(tenantAdminCredentials.userId, userId))
+    .limit(1);
+  return credential?.status === "active" && credential.mustChangePassword;
 }
 
 export async function createOrUpdateTenantAdminForPlatformAdmin(input: {

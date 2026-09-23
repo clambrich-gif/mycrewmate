@@ -8,6 +8,8 @@ export const PASSWORD_SESSION_MS = 1000 * 60 * 60 * 12;
 export const PLANNING_TEAM_MAX_ATTEMPTS = 5;
 
 const PLANNING_TEAM_ACCESS_OPEN_ID_PREFIX = "planning-team-access-";
+/** Persönliche Vereinsadministratoren verwenden eine eigene, nicht teilbare Passwortidentität. */
+export const TENANT_ADMIN_OPEN_ID_PREFIX = "tenant-admin:";
 
 const ADMIN_MAX_ATTEMPTS = 5;
 const WINDOW_MS = 15 * 60 * 1000;
@@ -54,6 +56,10 @@ export function isPlanningTeamPasswordOpenId(openId: string) {
     openId === SHARED_PASSWORD_OPEN_ID ||
     planningTeamAccessIdFromOpenId(openId) !== null
   );
+}
+
+export function isTenantAdminPasswordOpenId(openId: string) {
+  return openId.startsWith(TENANT_ADMIN_OPEN_ID_PREFIX);
 }
 
 function currentEntry(key: string) {
