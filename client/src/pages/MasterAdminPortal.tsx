@@ -1,4 +1,14 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,6 +38,7 @@ import { trpc } from "@/lib/trpc";
 import { storePreviewSessionToken } from "@/lib/preview-session";
 import { appUrl } from "@/lib/site-host";
 import {
+  Archive,
   Building2,
   CalendarDays,
   CheckCircle2,
@@ -239,6 +250,10 @@ export default function MasterAdminPortal() {
     expiresAt: Date;
     emailSent?: boolean;
   } | null>(null);
+  const [archiveModalTenant, setArchiveModalTenant] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   const createTenantAdmin = trpc.platformAdmin.createTenantAdmin.useMutation({
     onSuccess: result => {
@@ -405,9 +420,11 @@ export default function MasterAdminPortal() {
             },
           },
         ];
-  const activeTenantsList = tenants.length > 0 ? tenants : displayTenants;
-  const pilotCount = activeTenantsList.filter(tenant => tenant.status === "pilot").length;
-  const eventCount = activeTenantsList.reduce((sum, tenant) => sum + tenant.eventCount, 0);
+  const allTenants = tenants.length > 0 ? tenants : displayTenants;
+  const activeTenants = allTenants.filter(tenant => tenant.status !== "archived");
+  const archivedTenants = allTenants.filter(tenant => tenant.status === "archived");
+  const pilotCount = activeTenants.filter(tenant => tenant.status === "pilot").length;
+  const eventCount = allTenants.reduce((sum, tenant) => sum + tenant.eventCount, 0);
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_5%_4%,rgba(219,234,254,0.95),transparent_32%),radial-gradient(circle_at_98%_96%,rgba(224,242,254,0.82),transparent_30%),#f8fafc] p-4 text-slate-950 sm:p-6 lg:p-10">
@@ -448,7 +465,7 @@ export default function MasterAdminPortal() {
           <Card className="border-blue-200 bg-white/95 py-0 shadow-sm">
             <CardContent className="flex items-center gap-3 p-4">
               <span className="flex size-11 items-center justify-center rounded-xl bg-blue-100 text-blue-700"><Building2 className="size-5" /></span>
-              <div><p className="text-2xl font-bold leading-none">{activeTenantsList.length}</p><p className="mt-1 text-sm text-slate-600">Vereine angelegt</p></div>
+              <div><p className="text-2xl font-bold leading-none">{allTenants.length}</p><p className="mt-1 text-sm text-slate-600">Vereine angelegt</p></div>
             </CardContent>
           </Card>
           <Card className="border-sky-200 bg-white/95 py-0 shadow-sm">
@@ -469,10 +486,13 @@ export default function MasterAdminPortal() {
           <Card className="border-slate-200 bg-white/95 py-0 shadow-sm">
             <CardHeader className="border-b border-slate-100 px-5 py-4 sm:px-6">
               <CardTitle className="flex items-center gap-2 text-base"><Building2 className="size-5 text-blue-700" /> Vereine &amp; Pilotprojekte</CardTitle>
-              <CardDescription>Interne Pilot- und Mustervereine sicher anlegen, pausieren oder reaktivieren. Eine öffentliche Freischaltung bleibt gesperrt.</CardDescription>
+              <CardDescription>Aktive, pausierte sowie interne Pilot- und Mustervereine sicher verwalten. Archivierte Vereine werden getrennt geführt; eine öffentliche Freischaltung bleibt gesperrt.</CardDescription>
             </CardHeader>
             <CardContent className="divide-y divide-slate-100 px-5 sm:px-6">
-              {activeTenantsList.map(tenant => {
+              {activeTenants.length === 0 && (
+                <p className="py-6 text-sm text-slate-500">Aktuell befinden sich keine Vereine in der laufenden Verwaltung.</p>
+              )}
+              {activeTenants.map(tenant => {
                 const status = STATUS_META[tenant.status as TenantStatus];
                 return (
                   <article key={tenant.id} className="grid gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
@@ -527,19 +547,39 @@ export default function MasterAdminPortal() {
                             {updateLifecycle.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <PauseCircle className="size-3.5" />}
                             Pilot pausieren
                           </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-full border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+                            disabled={updateLifecycle.isPending}
+                            onClick={() => setArchiveModalTenant({ id: tenant.id, name: tenant.name })}
+                          >
+                            <Archive className="size-3.5" /> Verein archivieren
+                          </Button>
                         </div>
                       )}
                       {tenant.status === "suspended" && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="w-full border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100"
-                          disabled={updateLifecycle.isPending}
-                          onClick={() => updateLifecycle.mutate({ tenantId: tenant.id, status: "pilot" })}
-                        >
-                          {updateLifecycle.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />}
-                          Als Pilot reaktivieren
-                        </Button>
+                        <div className="flex flex-col gap-1.5">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-full border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100"
+                            disabled={updateLifecycle.isPending}
+                            onClick={() => updateLifecycle.mutate({ tenantId: tenant.id, status: "pilot" })}
+                          >
+                            {updateLifecycle.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />}
+                            Als Pilot reaktivieren
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-full border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+                            disabled={updateLifecycle.isPending}
+                            onClick={() => setArchiveModalTenant({ id: tenant.id, name: tenant.name })}
+                          >
+                            <Archive className="size-3.5" /> Verein archivieren
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </article>
@@ -569,6 +609,52 @@ export default function MasterAdminPortal() {
               </CardContent>
             </Card>
           </div>
+        </section>
+
+        <section aria-labelledby="archivierte-vereine">
+          <Card className="border-slate-300 bg-slate-50/90 py-0 shadow-sm">
+            <CardHeader className="border-b border-slate-200 px-5 py-4 sm:px-6">
+              <CardTitle id="archivierte-vereine" className="flex items-center gap-2 text-base text-slate-800">
+                <Archive className="size-5 text-slate-600" /> Archivierte Vereine
+              </CardTitle>
+              <CardDescription>
+                Archivierte Vereine sind vollständig vom Vereinszugang ausgeschlossen. Alle Vereins-, Veranstaltungs- und Zugangsdaten bleiben für den historischen Nachweis erhalten und werden nicht gelöscht.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="divide-y divide-slate-200 px-5 sm:px-6">
+              {archivedTenants.length === 0 ? (
+                <p className="py-5 text-sm text-slate-500">Keine archivierten Vereine vorhanden.</p>
+              ) : (
+                archivedTenants.map(tenant => (
+                  <article key={tenant.id} className="grid gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="truncate font-semibold text-slate-800">{tenant.name}</h2>
+                        <Badge variant="outline" className={STATUS_META.archived.className}>{STATUS_META.archived.label}</Badge>
+                      </div>
+                      <p className="mt-1 truncate text-sm text-slate-500">{tenant.legalName}</p>
+                      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
+                        <span className="inline-flex items-center gap-1"><CalendarDays className="size-3.5 text-slate-400" /> {tenant.eventCount} Veranstaltung{tenant.eventCount === 1 ? "" : "en"}</span>
+                        <span className="inline-flex items-center gap-1"><Mail className="size-3.5 text-slate-400" /> {tenant.contactEmail}</span>
+                      </div>
+                    </div>
+                    <div className="sm:min-w-48">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100"
+                        disabled={updateLifecycle.isPending}
+                        onClick={() => updateLifecycle.mutate({ tenantId: tenant.id, status: "pilot" })}
+                      >
+                        {updateLifecycle.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />}
+                        Als Pilot reaktivieren
+                      </Button>
+                    </div>
+                  </article>
+                ))
+              )}
+            </CardContent>
+          </Card>
         </section>
       </div>
 
@@ -849,6 +935,42 @@ export default function MasterAdminPortal() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={Boolean(archiveModalTenant)}
+        onOpenChange={open => {
+          if (!open && !updateLifecycle.isPending) setArchiveModalTenant(null);
+        }}
+      >
+        <AlertDialogContent className="border-slate-300 bg-white text-slate-950">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-slate-900">
+              <Archive className="size-5 text-slate-700" /> Verein archivieren?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="leading-5 text-slate-600">
+              Der Vereinszugang für <strong className="font-semibold text-slate-800">{archiveModalTenant?.name}</strong> wird sofort gesperrt. Planungsdaten, Veranstaltungen und angelegte Zugänge werden nicht gelöscht und bleiben ausschließlich im Archiv für den historischen Nachweis erhalten.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm leading-5 text-slate-700">
+            Eine spätere Reaktivierung ist nur bewusst durch den Plattform-Inhaber möglich und führt den Verein als geschlossenen Pilotbetrieb fort.
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={updateLifecycle.isPending}>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!archiveModalTenant || updateLifecycle.isPending}
+              className="bg-slate-800 text-white hover:bg-slate-900"
+              onClick={() => {
+                if (!archiveModalTenant) return;
+                updateLifecycle.mutate({ tenantId: archiveModalTenant.id, status: "archived" });
+                setArchiveModalTenant(null);
+              }}
+            >
+              {updateLifecycle.isPending ? <Loader2 className="size-4 animate-spin" /> : <Archive className="size-4" />}
+              Verein archivieren
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 }

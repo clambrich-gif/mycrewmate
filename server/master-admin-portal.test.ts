@@ -66,6 +66,21 @@ describe("Master-Admin-Portal", () => {
     expect(page).toContain("Der Status <strong>Aktiv</strong> ist vor dem Marktstart bewusst nicht verfügbar.");
   });
 
+  it("trennt archivierte Vereine von der laufenden Verwaltung und erlaubt nur eine bewusste Reaktivierung", () => {
+    const db = source("server/db.ts");
+    const page = source("client/src/pages/MasterAdminPortal.tsx");
+
+    expect(db).toContain('notEq(tenants.status, "archived")');
+    expect(page).toContain('const activeTenants = allTenants.filter(tenant => tenant.status !== "archived")');
+    expect(page).toContain('const archivedTenants = allTenants.filter(tenant => tenant.status === "archived")');
+    expect(page).toContain("Archivierte Vereine");
+    expect(page).toContain("Verein archivieren?");
+    expect(page).toContain('status: "archived"');
+    expect(page).toContain('status: "pilot"');
+    expect(page).toContain("Als Pilot reaktivieren");
+    expect(page).toContain("historischen Nachweis");
+  });
+
   it("erstellt neue Vereine mit Startveranstaltung und eindeutiger serverseitiger Kennung", () => {
     const db = source("server/db.ts");
     expect(db).toContain("function tenantSlugFromName");
