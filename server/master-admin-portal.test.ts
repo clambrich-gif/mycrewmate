@@ -81,6 +81,15 @@ describe("Master-Admin-Portal", () => {
     expect(page).toContain("historischen Nachweis");
   });
 
+  it("trennt laufende Kennzahlen klar von archivierten Vereinen und deren Veranstaltungen", () => {
+    const page = source("client/src/pages/MasterAdminPortal.tsx");
+    expect(page).toContain("const managedEventCount = activeTenants.reduce");
+    expect(page).toContain("Vereine in Verwaltung");
+    expect(page).toContain("Veranstaltungen in Verwaltung");
+    expect(page).toContain("Vereine im Archiv");
+    expect(page).toContain("xl:grid-cols-4");
+  });
+
   it("erstellt neue Vereine mit Startveranstaltung und eindeutiger serverseitiger Kennung", () => {
     const db = source("server/db.ts");
     expect(db).toContain("function tenantSlugFromName");

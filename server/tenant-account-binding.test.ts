@@ -27,10 +27,14 @@ describe("Konto-Mandanten-Bindung (Schritt 3)", () => {
 
   it("löst den gültigen Verein serverseitig auf und weist fremde Browserangaben ab", () => {
     const db = source("server/db.ts");
+    const routers = source("server/routers.ts");
     expect(db).toContain("export async function listActiveTenantMembershipsForUser");
     expect(db).toContain("export async function resolveTenantForUser");
     expect(db).toContain("export async function synchronizePlanningTeamTenantMemberships");
     expect(db).toContain("memberships.find(\n      membership => membership.tenantId === input.preferredTenantId\n    ) ?? memberships.find(membership => membership.isDefault) ?? memberships[0]");
+    expect(db).toContain("input.userOpenId === ADMIN_PASSWORD_OPEN_ID && preferredTenantId");
+    expect(db).toContain('notEq(tenants.status, "archived")');
+    expect(routers).toContain("userOpenId: user.openId");
   });
 
   it("erzwingt vor jeder Planungsabfrage den serverseitig autorisierten Verein", () => {

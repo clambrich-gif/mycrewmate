@@ -49,6 +49,13 @@ describe("Vereinsadmin-Verwaltung, Marktstart-Sperre & Handoff", () => {
     expect(portalSource).not.toContain("window.location.origin}/?handoff=");
   });
 
+  it("erlaubt dem Plattform-Inhaber nach einem Handoff nur die ausgewählte laufende Vereinsansicht", () => {
+    expect(dbSource).toContain("input.userOpenId === ADMIN_PASSWORD_OPEN_ID && preferredTenantId");
+    expect(dbSource).toContain('notEq(tenants.status, "suspended")');
+    expect(dbSource).toContain('notEq(tenants.status, "archived")');
+    expect(routersSource).toContain("userOpenId: user.openId");
+  });
+
   it("prüft einen fehlerhaften Einmal-Wechsel-Link nur einmal und entfernt ihn danach aus der Adresse", () => {
     expect(layoutSource).toContain("const attemptedHandoffTokenRef = useRef<string | null>(null);");
     expect(layoutSource).toContain("attemptedHandoffTokenRef.current !== token");

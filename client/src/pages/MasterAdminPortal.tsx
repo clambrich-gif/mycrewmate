@@ -424,7 +424,7 @@ export default function MasterAdminPortal() {
   const activeTenants = allTenants.filter(tenant => tenant.status !== "archived");
   const archivedTenants = allTenants.filter(tenant => tenant.status === "archived");
   const pilotCount = activeTenants.filter(tenant => tenant.status === "pilot").length;
-  const eventCount = allTenants.reduce((sum, tenant) => sum + tenant.eventCount, 0);
+  const managedEventCount = activeTenants.reduce((sum, tenant) => sum + tenant.eventCount, 0);
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_5%_4%,rgba(219,234,254,0.95),transparent_32%),radial-gradient(circle_at_98%_96%,rgba(224,242,254,0.82),transparent_30%),#f8fafc] p-4 text-slate-950 sm:p-6 lg:p-10">
@@ -461,11 +461,11 @@ export default function MasterAdminPortal() {
           </div>
         </header>
 
-        <section className="grid gap-4 sm:grid-cols-3" aria-label="Plattformkennzahlen">
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Plattformkennzahlen">
           <Card className="border-blue-200 bg-white/95 py-0 shadow-sm">
             <CardContent className="flex items-center gap-3 p-4">
               <span className="flex size-11 items-center justify-center rounded-xl bg-blue-100 text-blue-700"><Building2 className="size-5" /></span>
-              <div><p className="text-2xl font-bold leading-none">{allTenants.length}</p><p className="mt-1 text-sm text-slate-600">Vereine angelegt</p></div>
+              <div><p className="text-2xl font-bold leading-none">{activeTenants.length}</p><p className="mt-1 text-sm text-slate-600">Vereine in Verwaltung</p></div>
             </CardContent>
           </Card>
           <Card className="border-sky-200 bg-white/95 py-0 shadow-sm">
@@ -477,7 +477,13 @@ export default function MasterAdminPortal() {
           <Card className="border-indigo-200 bg-white/95 py-0 shadow-sm">
             <CardContent className="flex items-center gap-3 p-4">
               <span className="flex size-11 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700"><CalendarDays className="size-5" /></span>
-              <div><p className="text-2xl font-bold leading-none">{eventCount}</p><p className="mt-1 text-sm text-slate-600">Veranstaltungen angelegt</p></div>
+              <div><p className="text-2xl font-bold leading-none">{managedEventCount}</p><p className="mt-1 text-sm text-slate-600">Veranstaltungen in Verwaltung</p></div>
+            </CardContent>
+          </Card>
+          <Card className="border-slate-300 bg-slate-50/95 py-0 shadow-sm">
+            <CardContent className="flex items-center gap-3 p-4">
+              <span className="flex size-11 items-center justify-center rounded-xl bg-slate-200 text-slate-700"><Archive className="size-5" /></span>
+              <div><p className="text-2xl font-bold leading-none">{archivedTenants.length}</p><p className="mt-1 text-sm text-slate-600">Vereine im Archiv</p></div>
             </CardContent>
           </Card>
         </section>

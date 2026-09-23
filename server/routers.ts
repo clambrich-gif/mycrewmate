@@ -263,7 +263,7 @@ async function requirePlanningTeamEventAccess(
  * abgeleitet; ein manipuliertes x-tenant-id kann keinen Fremdzugriff erzeugen.
  */
 async function authorizedPlanningScope(
-  user: { id: number },
+  user: { id: number; openId: string },
   req: Parameters<typeof requestedPlanningScope>[0]
 ) {
   const requested = requestedPlanningScope(req);
@@ -272,6 +272,7 @@ async function authorizedPlanningScope(
     if ("resolveTenantForUser" in db) {
       membership = await (db as any).resolveTenantForUser({
         userId: user.id,
+        userOpenId: user.openId,
         preferredTenantId: requested.tenantId,
       });
     }

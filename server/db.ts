@@ -297,8 +297,45 @@ export async function listActiveTenantMembershipsForUser(
  */
 export async function resolveTenantForUser(input: {
   userId: number;
+  userOpenId?: string | null;
   preferredTenantId?: string | null;
 }): Promise<ActiveTenantMembership | undefined> {
+  const preferredTenantId = input.preferredTenantId?.trim();
+
+  // Der Plattform-Inhaber darf nach einem Master-Handoff einen nicht
+  // archivierten bzw. nicht pausierten Verein in der Vereinsansicht öffnen.
+  // Für alle regulären Vereinskonten bleibt die serverseitige Mitgliedschaft
+  // die einzige Berechtigungsquelle.
+  if (input.userOpenId === ADMIN_PASSWORD_OPEN_ID && preferredTenantId) {
+    const database = await getDb();
+    if (database) {
+      const [selectedTenant] = await database
+        .select({
+          id: tenants.id,
+          name: tenants.name,
+          status: tenants.status,
+        })
+        .from(tenants)
+        .where(
+          and(
+            eq(tenants.id, preferredTenantId),
+            notEq(tenants.status, "suspended"),
+            notEq(tenants.status, "archived")
+          )
+        )
+        .limit(1);
+      if (selectedTenant) {
+        return {
+          tenantId: selectedTenant.id,
+          role: "tenant_admin",
+          isDefault: false,
+          tenantName: selectedTenant.name,
+          tenantStatus: selectedTenant.status,
+        };
+      }
+    }
+  }
+
   const memberships = await listActiveTenantMembershipsForUser(input.userId);
   if (!memberships.length) {
     // Solange während der Pilotphase noch Altsitzungen oder Mock-Benutzer ohne
