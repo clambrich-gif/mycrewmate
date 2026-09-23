@@ -77,6 +77,9 @@ const documentSchema = z
         z.object({
           sourceId: id,
           name: short(200).min(1),
+          // Ältere Sicherungen enthielten bei Ansprechpartnern noch keine
+          // E-Mail-Spalte und bleiben mit einem leeren Wert kompatibel.
+          email: short(320).default(""),
           phone: short(64),
           note: short(10_000),
           sortOrder: z.number().int().min(0).max(1_000_000),

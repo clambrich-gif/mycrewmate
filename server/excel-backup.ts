@@ -78,7 +78,14 @@ export const PROJECT_EXCEL_HEADERS: Record<string, string[]> = {
     "Logo-URL",
     "Reihenfolge",
   ],
-  ANSPRECHPARTNER: ["ID", "Name", "Rufnummer", "Bemerkung", "Reihenfolge"],
+  ANSPRECHPARTNER: [
+    "ID",
+    "Name",
+    "E-Mail",
+    "Rufnummer",
+    "Bemerkung",
+    "Reihenfolge",
+  ],
   HELFER: [
     "ID",
     "Ansprechpartner-ID",
@@ -300,6 +307,7 @@ export async function withExcelOperationLimit<T>(
 type ContactRow = {
   sourceId: number | null;
   name: string;
+  email: string;
   phone: string;
   note: string;
   sortOrder: number;
@@ -1329,6 +1337,7 @@ export function parseBackupWorkbook(
     ? contactRows.map((row, index) => ({
         sourceId: nullableId(row.ID, `ANSPRECHPARTNER Zeile ${index + 2}`),
         name: text(row.Name, 200, `ANSPRECHPARTNER Zeile ${index + 2}: Name`, true),
+        email: text(row["E-Mail"], 320, `ANSPRECHPARTNER Zeile ${index + 2}: E-Mail`),
         phone: text(
           row.Rufnummer,
           64,
@@ -2247,7 +2256,7 @@ function comparableCurrent(snapshot: CurrentSnapshot) {
   return {
     contacts: [...snapshot.contacts].sort(byId).map(row => ({
       sourceId: row.id,
-      ...clean(row, ["name", "phone", "note", "sortOrder"]),
+      ...clean(row, ["name", "email", "phone", "note", "sortOrder"]),
     })),
     helpers: [...snapshot.helpers].sort(byId).map(row => ({
       sourceId: row.id,
@@ -3547,6 +3556,7 @@ export async function restoreProjectDocument(
           year,
           eventId,
           name: row.name,
+          email: row.email || null,
           phone: row.phone || null,
           note: row.note || null,
           sortOrder: row.sortOrder,
@@ -4118,6 +4128,7 @@ export async function exportProjectExcel(): Promise<{
     current.contacts.map((row: any) => ({
       ID: row.sourceId,
       Name: row.name,
+      "E-Mail": row.email,
       Rufnummer: row.phone,
       Bemerkung: row.note,
       Reihenfolge: row.sortOrder,

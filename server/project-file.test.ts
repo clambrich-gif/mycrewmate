@@ -45,6 +45,7 @@ const data = {
       year: 2026,
       eventId: 1,
       name: "Chris Leitung",
+      email: "chris.leitung@example.test",
       phone: "0123",
       note: null,
       sortOrder: 0,
@@ -597,6 +598,21 @@ describe("Projektdatei und modularer Excel-Import", () => {
       created: 0,
       updated: 0,
       deleted: 0,
+    });
+  });
+
+  it("erhält Ansprechpartner-E-Mail-Adressen beim Speichern und Laden einer JSON-Projektdatei", async () => {
+    const exported = await exportProjectFile();
+    const saved = JSON.parse(exported.buffer.toString("utf8"));
+    expect(saved.contacts[0]).toMatchObject({
+      name: "Chris Leitung",
+      email: "chris.leitung@example.test",
+    });
+
+    const restored = parseProjectFile(exported.buffer.toString("base64"));
+    expect(restored.document.contacts[0]).toMatchObject({
+      name: "Chris Leitung",
+      email: "chris.leitung@example.test",
     });
   });
 

@@ -47,6 +47,7 @@ const data = {
       year: 2026,
       eventId: 1,
       name: "Chris Leitung",
+      email: "chris.leitung@example.test",
       phone: "0123",
       note: null,
       sortOrder: 0,
@@ -212,6 +213,29 @@ describe("Excel-Datensicherung", () => {
         { Schlüssel: "Startdatum", Wert: "2026-06-19" },
         { Schlüssel: "Enddatum", Wert: "2026-06-21" },
       ])
+    );
+  });
+
+  it("übernimmt Ansprechpartner-E-Mail-Adressen vollständig in Excel-Sicherung und Wiederherstellung", async () => {
+    const exported = await exportBackupExcel();
+    const workbook = XLSX.read(exported.buffer, { type: "buffer" });
+    const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(
+      workbook.Sheets.ANSPRECHPARTNER,
+      { defval: "" }
+    );
+
+    expect(workbook.Sheets.ANSPRECHPARTNER.C1.v).toBe("E-Mail");
+    expect(rows[0]).toMatchObject({
+      Name: "Chris Leitung",
+      "E-Mail": "chris.leitung@example.test",
+    });
+
+    const restored = parseBackupWorkbook(exported.buffer.toString("base64"));
+    expect(restored.contacts).toContainEqual(
+      expect.objectContaining({
+        name: "Chris Leitung",
+        email: "chris.leitung@example.test",
+      })
     );
   });
 
