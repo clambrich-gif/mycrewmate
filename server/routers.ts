@@ -84,12 +84,12 @@ import {
   DEFAULT_PDF_SETTINGS,
 } from "./pdf";
 import { publicAppUrl } from "./public-app-url";
-import {
-  currentEventId,
+import { currentEventId,
   currentEventYear,
   requestedPlanningScope,
   withPlanningScope,
 } from "./year-context";
+import { isMasterAdminRequestHost } from "@shared/platform-admin";
 import { storagePut, storageRead } from "./storage";
 import { locationLogoUrl } from "./location-logo-routes";
 import {
@@ -313,6 +313,27 @@ const scopedReadProcedure = baseProtectedProcedure
 
 const accountAdminProcedure = activeSessionProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+  return next({ ctx });
+});
+
+/**
+ * Abgeschottete Plattformverwaltung: Der bisherige globale Administrator ist
+ * während der Pilotphase der einzige Master-Admin. Künftige Vereinsadmins
+ * erhalten andere OpenIDs und bestehen diese explizite Prüfung nicht.
+ */
+const masterAdminProcedure = activeSessionProcedure.use(({ ctx, next }) => {
+  const allowedHost = isMasterAdminRequestHost(
+    ctx.req.hostname,
+    process.env.NODE_ENV
+  );
+  const isMasterIdentity =
+    ctx.user.role === "admin" && ctx.user.openId === ADMIN_PASSWORD_OPEN_ID;
+  if (!allowedHost || !isMasterIdentity) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Dieser Bereich ist ausschließlich für die Plattformverwaltung vorgesehen.",
+    });
+  }
   return next({ ctx });
 });
 
@@ -1423,6 +1444,12 @@ export const appRouter = router({
       return db.listTenants();
     }),
     current: scopedProtectedProcedure.query(() => db.getTenant()),
+  }),
+
+  platformAdmin: router({
+    tenantOverview: masterAdminProcedure.query(() =>
+      db.listTenantOverviewsForPlatformAdmin()
+    ),
   }),
 
   years: router({

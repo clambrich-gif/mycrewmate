@@ -294,6 +294,59 @@ export async function listTenants() {
     .orderBy(tenants.status, tenants.name);
 }
 
+/**
+ * Plattformweite, ausschließlich lesende Übersicht für das Master-Admin-Portal.
+ * Sie enthält bewusst keine Planungs-, Helfer- oder Anmeldedaten einzelner Vereine.
+ */
+export async function listTenantOverviewsForPlatformAdmin() {
+  const db = await getDb();
+  if (!db) return [];
+  const [tenantRows, eventRows] = await Promise.all([
+    db.select().from(tenants).orderBy(tenants.status, tenants.name),
+    db
+      .select({
+        id: events.id,
+        tenantId: events.tenantId,
+        year: events.year,
+        name: events.name,
+        startDate: events.startDate,
+        endDate: events.endDate,
+      })
+      .from(events)
+      .orderBy(events.tenantId, events.startDate, events.year, events.id),
+  ]);
+
+  const today = new Date().toISOString().slice(0, 10);
+  return tenantRows.map(tenantRow => {
+    const tenantEvents = eventRows.filter(eventRow => eventRow.tenantId === tenantRow.id);
+    const nextEvent =
+      tenantEvents.find(eventRow => eventRow.startDate !== null && eventRow.startDate >= today) ??
+      tenantEvents.find(eventRow => eventRow.startDate !== null) ??
+      tenantEvents[0] ??
+      null;
+    return {
+      id: tenantRow.id,
+      name: tenantRow.name,
+      legalName: tenantRow.legalName,
+      status: tenantRow.status,
+      planName: tenantRow.planName,
+      contactEmail: tenantRow.contactEmail,
+      supportEmail: tenantRow.supportEmail,
+      createdAt: tenantRow.createdAt,
+      eventCount: tenantEvents.length,
+      nextEvent: nextEvent
+        ? {
+            id: nextEvent.id,
+            name: nextEvent.name,
+            year: nextEvent.year,
+            startDate: nextEvent.startDate,
+            endDate: nextEvent.endDate,
+          }
+        : null,
+    };
+  });
+}
+
 export async function getTenant(id = tenant()) {
   const db = await getDb();
   if (!db) return undefined;

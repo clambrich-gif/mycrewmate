@@ -1,6 +1,10 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { appUrlForCurrentLocation, isMarketingSite } from "@/lib/site-host";
+import {
+  appUrlForCurrentLocation,
+  isMarketingSite,
+  isMasterAdminSite,
+} from "@/lib/site-host";
 import { lazy, Suspense, useEffect } from "react";
 import { Redirect, Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -25,6 +29,7 @@ const Security = lazy(routeLoaders["/sicherheit"]);
 const Help = lazy(routeLoaders["/hilfe"]);
 const OfferDemo = lazy(() => import("@/pages/OfferDemo"));
 const PublicLegalPage = lazy(() => import("@/pages/PublicLegal"));
+const MasterAdminPortal = lazy(() => import("@/pages/MasterAdminPortal"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 function RouteLoading() {
@@ -87,9 +92,23 @@ function PublicSiteRouter() {
   );
 }
 
+/** Die spätere Master-Domain besitzt bewusst keine Vereinsnavigation. */
+function MasterAdminRouter() {
+  return (
+    <Suspense fallback={<RouteLoading />}>
+      <Switch>
+        <Route path="/" component={MasterAdminPortal} />
+      </Switch>
+    </Suspense>
+  );
+}
+
 function Router() {
   return (
     <Switch>
+      {/* Nur lokale/Manus-Vorschauen können das Masterportal über diesen Pfad testen.
+          Auf admin.mycrewmate.de wird MasterAdminRouter direkt am Root gerendert. */}
+      <Route path="/master-admin" component={MasterAdminPortal} />
       <Route path="/angebot-demo">
         <Suspense fallback={<RouteLoading />}>
           <OfferDemo />
@@ -139,13 +158,16 @@ function Router() {
 
 function App() {
   const marketingSite = isMarketingSite();
+  const masterAdminSite = isMasterAdminSite();
 
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light" forcedTheme="light">
         <TooltipProvider>
           <Toaster />
-          {marketingSite ? (
+          {masterAdminSite ? (
+            <MasterAdminRouter />
+          ) : marketingSite ? (
             <PublicSiteRouter />
           ) : (
             <YearProvider>

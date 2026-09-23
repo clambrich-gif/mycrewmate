@@ -33,7 +33,8 @@ describe("Trennung von Angebotsseite und geschützter MyCrewMate-Anwendung", () 
 
   it("rendert die Landingpage ohne geschützte App-Kontexte und leitet alte App-Pfade sicher weiter", () => {
     const app = source("client/src/App.tsx");
-    expect(app).toContain('import { appUrlForCurrentLocation, isMarketingSite } from "@/lib/site-host";');
+    expect(app).toContain("appUrlForCurrentLocation");
+    expect(app).toContain("isMarketingSite");
     expect(app).toContain("function PublicSiteRouter()");
     expect(app).toContain('window.location.replace(appUrlForCurrentLocation());');
     expect(app).toContain('<Route path="/impressum">');
