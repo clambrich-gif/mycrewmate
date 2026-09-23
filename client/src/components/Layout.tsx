@@ -338,7 +338,15 @@ function AdminIdentityDialog({
 export function Layout({ children }: { children: React.ReactNode }) {
   const { user, loading, isAuthenticated, logout } = useAuth();
   const onlinePresence = useOnlinePresence();
-  const { tenantId, year, eventId, selectTenant, selectYear, selectEvent } =
+  const {
+    tenantId,
+    year,
+    eventId,
+    selectTenant,
+    synchronizeTenant,
+    selectYear,
+    selectEvent,
+  } =
     useEventYear();
   const [location] = useLocation();
   const [password, setPassword] = useState("");
@@ -569,6 +577,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
           : activeTenantStatus === "archived"
             ? "Archiv"
             : "Pilot";
+
+  useEffect(() => {
+    const authorizedTenantId = currentTenant.data?.id;
+    if (authorizedTenantId) synchronizeTenant(authorizedTenantId);
+  }, [currentTenant.data?.id, synchronizeTenant]);
 
   useEffect(() => {
     chatSnapshotEpochRef.current += 1;

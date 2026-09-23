@@ -61,6 +61,7 @@ const dbMocks = vi.hoisted(() => ({
   getLocation: vi.fn(),
   createLocation: vi.fn(),
   updateLocation: vi.fn(),
+  resolveTenantForUser: vi.fn(),
 }));
 const storageMocks = vi.hoisted(() => ({
   storageRead: vi.fn(),
@@ -178,6 +179,13 @@ describe("Planungs-API", () => {
     );
     previewBindingMocks.uploadedFileDigest.mockReturnValue("b".repeat(64));
     previewBindingMocks.verifyPreviewBinding.mockImplementation(() => undefined);
+    dbMocks.resolveTenantForUser.mockResolvedValue({
+      tenantId: "rsc-eifelland-mayen",
+      role: "tenant_admin",
+      isDefault: true,
+      tenantName: "RSC Eifelland Mayen e. V.",
+      tenantStatus: "pilot",
+    });
     dbMocks.listShifts.mockResolvedValue([shift]);
     dbMocks.listHelpers.mockResolvedValue([helper]);
     dbMocks.listAssignments.mockResolvedValue([]);

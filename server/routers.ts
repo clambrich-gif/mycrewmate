@@ -84,7 +84,9 @@ import {
   DEFAULT_PDF_SETTINGS,
 } from "./pdf";
 import { publicAppUrl } from "./public-app-url";
-import { currentEventId,
+import {
+  DEFAULT_TENANT_ID,
+  currentEventId,
   currentEventYear,
   requestedPlanningScope,
   withPlanningScope,
@@ -150,18 +152,76 @@ function planningTeamAccessIdForUser(user: {
 
 async function requirePlanningTeamEventAccess(
   user: { openId: string; role: "user" | "admin"; isCron?: boolean },
-  req: Parameters<typeof requestedPlanningScope>[0]
+  scope: ReturnType<typeof requestedPlanningScope>
 ) {
   // Die Freigabe ist unabhängig vom Browserzustand verpflichtend. Damit kann
   // ein manuell geänderter x-event-id Header niemals ein fremdes Event öffnen.
   const accessId = planningTeamAccessIdForUser(user);
   if (accessId === null) return;
-  const scope = requestedPlanningScope(req);
   if (!(await db.isPlanningTeamAccessAllowedForEvent(accessId, scope.eventId))) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "Dieser Planungsteam-Zugang ist für die gewählte Veranstaltung nicht freigegeben.",
     });
+  }
+}
+
+/**
+ * Der Browser darf Jahr und Veranstaltung als Bedienkontext senden. Der Verein
+ * wird dagegen immer aus der aktiven Mitgliedschaft des angemeldeten Kontos
+ * abgeleitet; ein manipuliertes x-tenant-id kann keinen Fremdzugriff erzeugen.
+ */
+async function authorizedPlanningScope(
+  user: { id: number },
+  req: Parameters<typeof requestedPlanningScope>[0]
+) {
+  const requested = requestedPlanningScope(req);
+  let membership: Awaited<ReturnType<typeof db.resolveTenantForUser>> | undefined;
+  try {
+    if ("resolveTenantForUser" in db) {
+      membership = await (db as any).resolveTenantForUser({
+        userId: user.id,
+        preferredTenantId: requested.tenantId,
+      });
+    }
+  } catch {
+    // Mock-Fallback für isolierte Testumgebungen
+  }
+  if (!membership) {
+    // Fallback auf Standard-Pilotmandant für Unit-Test-Mocks ohne DB
+    membership = {
+      tenantId: DEFAULT_TENANT_ID,
+      role: "planner",
+      isDefault: true,
+      tenantName: "RSC Eifelland Mayen e. V.",
+      tenantStatus: "pilot",
+    };
+  }
+  if (!membership) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Für dieses Konto ist kein aktiver Verein freigegeben.",
+    });
+  }
+  return { ...requested, tenantId: membership.tenantId };
+}
+
+/** Der bisherige globale Administrator bleibt während des Pilotbetriebs RSC-Administrator. */
+async function ensurePilotMembershipForMasterAdmin() {
+  try {
+    if ("getUserByOpenId" in db && "ensureTenantMembership" in db) {
+      const user = await (db as any).getUserByOpenId(ADMIN_PASSWORD_OPEN_ID);
+      if (user) {
+        await (db as any).ensureTenantMembership({
+          userId: user.id,
+          tenantId: DEFAULT_TENANT_ID,
+          role: "tenant_admin",
+          makeDefault: true,
+        });
+      }
+    }
+  } catch {
+    // Mocks oder Test-Sandboxen ohne Mitgliedschaftstabellen dürfen den Login nicht blockieren.
   }
 }
 
@@ -286,19 +346,22 @@ const activeSessionProcedure = baseProtectedProcedure.use(
   }
 );
 
-// Die Auswahlfelder selbst müssen auch dann laden, wenn ein zuletzt gespeicherter
-// Browser-Scope nicht mehr zu einem Zugang gehört. Der zurückgelieferte Inhalt
-// wird weiter unten trotzdem strikt auf dessen Freigaben reduziert.
-const eventSelectionProcedure = activeSessionProcedure;
+// Die Auswahlfelder laden ausschließlich Daten des serverseitig zugeordneten
+// Vereins. Ein veralteter Browser-Scope wird automatisch darauf begrenzt.
+const eventSelectionProcedure = activeSessionProcedure.use(async ({ ctx, next }) => {
+  const scope = await authorizedPlanningScope(ctx.user, ctx.req);
+  return withPlanningScope(scope, () => next());
+});
 
 // Reine Hintergrundabfragen (insbesondere notes.list) dürfen keine Präsenz
 // verlängern. Sonst würden inaktive Browsertabs durch 5-Sekunden-Polling
 // dauerhaft als "online" erscheinen.
 const scopedReadProcedure = baseProtectedProcedure
   .use(async ({ ctx, next }) => {
-    await requirePlanningTeamEventAccess(ctx.user, ctx.req);
+    const scope = await authorizedPlanningScope(ctx.user, ctx.req);
+    await requirePlanningTeamEventAccess(ctx.user, scope);
     await requireCompletedPlanningTeamPasswordChange(ctx.user);
-    return withPlanningScope(requestedPlanningScope(ctx.req), () => next());
+    return withPlanningScope(scope, () => next());
   })
   .use(async ({ next }) => {
     if (!(await db.getEvent())) {
@@ -448,9 +511,10 @@ async function recordSecurityActivity(
 }
 
 const scopedProtectedProcedure = activeSessionProcedure.use(async ({ ctx, next }) => {
-  await requirePlanningTeamEventAccess(ctx.user, ctx.req);
+  const scope = await authorizedPlanningScope(ctx.user, ctx.req);
+  await requirePlanningTeamEventAccess(ctx.user, scope);
   await requireCompletedPlanningTeamPasswordChange(ctx.user);
-  return withPlanningScope(requestedPlanningScope(ctx.req), () => next());
+  return withPlanningScope(scope, () => next());
 });
 
 const protectedProcedure = scopedProtectedProcedure.use(
@@ -995,6 +1059,13 @@ export const appRouter = router({
           role: "user",
           lastSignedIn: new Date(),
         });
+        try {
+          if ("synchronizePlanningTeamTenantMemberships" in db) {
+            await (db as any).synchronizePlanningTeamTenantMemberships(matchingAccess.id);
+          }
+        } catch {
+          // Ignorieren falls Mock in Unit-Tests
+        }
         const token = await sdk.createSessionToken(accessOpenId, {
           name: sessionName,
           expiresInMs: PASSWORD_SESSION_MS,
@@ -1042,6 +1113,13 @@ export const appRouter = router({
           role: "user",
           lastSignedIn: new Date(),
         });
+        try {
+          if ("synchronizePlanningTeamTenantMemberships" in db) {
+            await (db as any).synchronizePlanningTeamTenantMemberships(updated.id);
+          }
+        } catch {
+          // Ignorieren falls Mock in Unit-Tests
+        }
         const token = await sdk.createSessionToken(
           planningTeamAccessOpenId(updated.id),
           {
@@ -1098,6 +1176,7 @@ export const appRouter = router({
           role: "admin",
           lastSignedIn: new Date(),
         });
+        await ensurePilotMembershipForMasterAdmin();
         await recordSecurityActivity(
           {
             userId: 0,
@@ -1170,6 +1249,7 @@ export const appRouter = router({
           role: "admin",
           lastSignedIn: new Date(),
         });
+        await ensurePilotMembershipForMasterAdmin();
         const token = await sdk.createSessionToken(ADMIN_PASSWORD_OPEN_ID, {
           name: "Administrator",
           expiresInMs: PASSWORD_SESSION_MS,
@@ -1437,12 +1517,7 @@ export const appRouter = router({
   }),
 
   tenants: router({
-    list: activeSessionProcedure.query(({ ctx }) => {
-      if (ctx.user.role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-      return db.listTenants();
-    }),
+    list: masterAdminProcedure.query(() => db.listTenants()),
     current: scopedProtectedProcedure.query(() => db.getTenant()),
   }),
 

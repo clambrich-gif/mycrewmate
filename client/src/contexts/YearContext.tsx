@@ -13,6 +13,7 @@ type PlanningScopeContextValue = {
   year: number;
   eventId: number;
   selectTenant: (tenantId: string) => void;
+  synchronizeTenant: (tenantId: string) => void;
   selectYear: (year: number) => void;
   selectEvent: (eventId: number) => void;
 };
@@ -52,9 +53,9 @@ export function storedEventId(
 }
 
 export function YearProvider({ children }: { children: React.ReactNode }) {
-  const [tenantId] = useState(storedTenantId);
+  const [tenantId, setTenantId] = useState(storedTenantId);
   const [year] = useState(storedEventYear);
-  const [eventId] = useState(() => storedEventId(year, tenantId));
+  const [eventId, setEventId] = useState(() => storedEventId(year, tenantId));
   const value = useMemo<PlanningScopeContextValue>(
     () => ({
       tenantId,
@@ -70,6 +71,16 @@ export function YearProvider({ children }: { children: React.ReactNode }) {
           `${EVENT_STORAGE_PREFIX}${nextTenantId}-2027`
         );
         window.location.reload();
+      },
+      synchronizeTenant(nextTenantId) {
+        if (!/^[a-z0-9-]{3,96}$/.test(nextTenantId) || nextTenantId === tenantId) {
+          return;
+        }
+        // Die Serverantwort ist maßgeblich. Dadurch kann ein veralteter oder
+        // manuell veränderter LocalStorage-Wert keinen fremden Verein festhalten.
+        window.localStorage.setItem(TENANT_STORAGE_KEY, nextTenantId);
+        setTenantId(nextTenantId);
+        setEventId(storedEventId(year, nextTenantId));
       },
       selectYear(nextYear) {
         window.localStorage.setItem(YEAR_STORAGE_KEY, String(nextYear));

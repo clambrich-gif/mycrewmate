@@ -210,6 +210,56 @@ export const tenants = mysqlTable(
 export type Tenant = typeof tenants.$inferSelect;
 export type InsertTenant = typeof tenants.$inferInsert;
 
+/**
+ * Ein Benutzerkonto kann mehreren Vereinen angehören. Die Zuordnung ist die
+ * serverseitige Sicherheitsgrenze für alle Planungsdaten; der Browser wählt
+ * niemals eigenständig einen fremden Mandanten aus.
+ */
+export const userTenantMemberships = mysqlTable(
+  "user_tenant_memberships",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull(),
+    tenantId: varchar("tenantId", { length: 96 }).notNull(),
+    role: mysqlEnum("role", ["tenant_admin", "planner"])
+      .default("planner")
+      .notNull(),
+    status: mysqlEnum("status", ["active", "suspended"])
+      .default("active")
+      .notNull(),
+    isDefault: boolean("isDefault").default(false).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    foreignKey({
+      name: "user_tenant_memberships_user_id_users_id_fk",
+      columns: [table.userId],
+      foreignColumns: [users.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "user_tenant_memberships_tenant_id_tenants_id_fk",
+      columns: [table.tenantId],
+      foreignColumns: [tenants.id],
+    }).onDelete("cascade"),
+    uniqueIndex("user_tenant_memberships_user_tenant_unique").on(
+      table.userId,
+      table.tenantId
+    ),
+    index("user_tenant_memberships_user_status_idx").on(
+      table.userId,
+      table.status,
+      table.isDefault
+    ),
+    index("user_tenant_memberships_tenant_status_idx").on(
+      table.tenantId,
+      table.status
+    ),
+  ]
+);
+export type UserTenantMembership = typeof userTenantMemberships.$inferSelect;
+export type InsertUserTenantMembership = typeof userTenantMemberships.$inferInsert;
+
 export const eventYears = mysqlTable("event_years", {
   year: int("year").primaryKey(),
   label: varchar("label", { length: 120 }).notNull(),

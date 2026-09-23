@@ -48,6 +48,7 @@ import {
   teamNoteReadStates,
   teamNoteTypings,
   tenants,
+  userTenantMemberships,
   users,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
@@ -68,6 +69,7 @@ import {
   SHARED_PASSWORD_OPEN_ID,
 } from "./password-auth";
 import {
+  DEFAULT_TENANT_ID,
   currentEventId,
   currentEventYear,
   currentTenantId,
@@ -247,6 +249,212 @@ export async function getUserByOpenId(openId: string) {
     .where(eq(users.openId, openId))
     .limit(1);
   return result[0];
+}
+
+export type ActiveTenantMembership = {
+  tenantId: string;
+  role: "tenant_admin" | "planner";
+  isDefault: boolean;
+  tenantName: string;
+  tenantStatus: "pilot" | "sample" | "active" | "suspended" | "archived";
+};
+
+/** Liefert nur aktiv freigeschaltete Vereinszuordnungen eines Kontos. */
+export async function listActiveTenantMembershipsForUser(
+  userId: number
+): Promise<ActiveTenantMembership[]> {
+  const database = await getDb();
+  if (!database) return [];
+  return database
+    .select({
+      tenantId: userTenantMemberships.tenantId,
+      role: userTenantMemberships.role,
+      isDefault: userTenantMemberships.isDefault,
+      tenantName: tenants.name,
+      tenantStatus: tenants.status,
+    })
+    .from(userTenantMemberships)
+    .innerJoin(tenants, eq(tenants.id, userTenantMemberships.tenantId))
+    .where(
+      and(
+        eq(userTenantMemberships.userId, userId),
+        eq(userTenantMemberships.status, "active"),
+        notEq(tenants.status, "suspended"),
+        notEq(tenants.status, "archived")
+      )
+    )
+    .orderBy(desc(userTenantMemberships.isDefault), asc(tenants.name));
+}
+
+/**
+ * Bestimmt den serverseitig gültigen Verein eines Kontos. Eine Browserangabe
+ * wird nur verwendet, wenn das Konto genau diesem Verein aktiv angehört.
+ */
+export async function resolveTenantForUser(input: {
+  userId: number;
+  preferredTenantId?: string | null;
+}): Promise<ActiveTenantMembership | undefined> {
+  const memberships = await listActiveTenantMembershipsForUser(input.userId);
+  if (!memberships.length) {
+    // Solange während der Pilotphase noch Altsitzungen oder Mock-Benutzer ohne
+    // explizite Mitgliedschaft existieren, greift der sichere Pilotmandant
+    // als Fallback, damit bestehende Abläufe nicht unvermittelt abbrechen.
+    const [pilotRecord] = await (await getDb())!
+      .select({
+        id: tenants.id,
+        name: tenants.name,
+        status: tenants.status,
+      })
+      .from(tenants)
+      .where(eq(tenants.id, DEFAULT_TENANT_ID))
+      .limit(1);
+    return pilotRecord
+      ? {
+          tenantId: pilotRecord.id,
+          role: "planner",
+          isDefault: true,
+          tenantName: pilotRecord.name,
+          tenantStatus: pilotRecord.status,
+        }
+      : undefined;
+  }
+  return (
+    memberships.find(
+      membership => membership.tenantId === input.preferredTenantId
+    ) ?? memberships.find(membership => membership.isDefault) ?? memberships[0]
+  );
+}
+
+async function makeTenantMembershipDefault(
+  tx: DBClient,
+  userId: number,
+  tenantId: string
+) {
+  await tx
+    .update(userTenantMemberships)
+    .set({ isDefault: false })
+    .where(eq(userTenantMemberships.userId, userId));
+  await tx
+    .update(userTenantMemberships)
+    .set({ isDefault: true })
+    .where(
+      and(
+        eq(userTenantMemberships.userId, userId),
+        eq(userTenantMemberships.tenantId, tenantId)
+      )
+    );
+}
+
+export async function ensureTenantMembership(input: {
+  userId: number;
+  tenantId: string;
+  role: "tenant_admin" | "planner";
+  makeDefault?: boolean;
+}) {
+  const database = (await getDb()) as DB;
+  return database.transaction(async tx => {
+    const [tenantRecord] = await tx
+      .select({ id: tenants.id })
+      .from(tenants)
+      .where(eq(tenants.id, input.tenantId))
+      .limit(1)
+      .for("update");
+    if (!tenantRecord) throw new Error("Der zugeordnete Verein wurde nicht gefunden");
+
+    await tx
+      .insert(userTenantMemberships)
+      .values({
+        userId: input.userId,
+        tenantId: input.tenantId,
+        role: input.role,
+        status: "active",
+        isDefault: false,
+      })
+      .onDuplicateKeyUpdate({
+        set: {
+          role: input.role,
+          status: "active",
+        },
+      });
+
+    const [defaultMembership] = await tx
+      .select({ id: userTenantMemberships.id })
+      .from(userTenantMemberships)
+      .where(
+        and(
+          eq(userTenantMemberships.userId, input.userId),
+          eq(userTenantMemberships.isDefault, true)
+        )
+      )
+      .limit(1)
+      .for("update");
+    if (input.makeDefault || !defaultMembership) {
+      await makeTenantMembershipDefault(tx, input.userId, input.tenantId);
+    }
+  });
+}
+
+/**
+ * Ein Planungsteamzugang erhält ausschließlich Mitgliedschaften an Vereinen,
+ * für die ihm mindestens eine Veranstaltung freigegeben wurde. Die erste
+ * freigegebene Zuordnung wird beim erfolgreichen Login zum sicheren Standard.
+ */
+export async function synchronizePlanningTeamTenantMemberships(accessId: number) {
+  const database = (await getDb()) as DB;
+  return database.transaction(async tx => {
+    const openId = planningTeamAccessOpenId(accessId);
+    let [user] = await tx
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.openId, openId))
+      .limit(1)
+      .for("update");
+    if (!user) {
+      await tx.insert(users).values({
+        openId,
+        name: "Planungsteam",
+        loginMethod: "password",
+        role: "user",
+        lastSignedIn: new Date(),
+      });
+      const [created] = await tx
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.openId, openId))
+        .limit(1)
+        .for("update");
+      if (!created) throw new Error("Planungsteamkonto konnte nicht angelegt werden");
+      user = created;
+    }
+
+    const rows = await tx
+      .selectDistinct({ tenantId: events.tenantId })
+      .from(planningTeamAccessEvents)
+      .innerJoin(events, eq(events.id, planningTeamAccessEvents.eventId))
+      .where(eq(planningTeamAccessEvents.accessId, accessId))
+      .orderBy(events.tenantId);
+    if (!rows.length) {
+      // Falls einem Testzugang noch kein Event zugewiesen ist, greift der sichere Pilotmandant
+      rows.push({ tenantId: DEFAULT_TENANT_ID });
+    }
+
+    for (const row of rows) {
+      await tx
+        .insert(userTenantMemberships)
+        .values({
+          userId: user.id,
+          tenantId: row.tenantId,
+          role: "planner",
+          status: "active",
+          isDefault: false,
+        })
+        .onDuplicateKeyUpdate({
+          set: { role: "planner", status: "active" },
+        });
+    }
+    await makeTenantMembershipDefault(tx, user.id, rows[0].tenantId);
+    return rows.map(row => row.tenantId);
+  });
 }
 
 const year = () => currentEventYear();
