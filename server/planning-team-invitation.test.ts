@@ -19,8 +19,8 @@ describe("Planungsteam-Einladungen und Ansprechpartner-E-Mails", () => {
       path.resolve(__dirname, "routers.ts"),
       "utf8"
     );
-    expect(routers).toContain("createWithInvitationLink: accountAdminProcedure");
-    expect(routers).toContain("sendInvitationLink: accountAdminProcedure");
+    expect(routers).toContain("createWithInvitationLink: tenantAccessAdminProcedure");
+    expect(routers).toContain("sendInvitationLink: tenantAccessAdminProcedure");
     expect(routers).toContain("consumePlanningTeamInvitation: publicProcedure");
     expect(routers).toContain("renderPlanningTeamInvitationEmail");
     expect(routers).toContain("planningModuleSummary");

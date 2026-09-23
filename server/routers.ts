@@ -661,6 +661,59 @@ const scopeAdminProcedure = scopeAdminAuthProcedure.use(
   }
 );
 
+/**
+ * Die Zugangsverwaltung ist an den Verein, aber nicht an eine einzelne gerade
+ * ausgewählte Veranstaltung gebunden. Dieser Pfad übernimmt deshalb den
+ * serverbestätigten Mandantenkontext, ohne eine leere oder gerade gewechselte
+ * Veranstaltung vor der Passwortprüfung zum Fehler werden zu lassen.
+ */
+const tenantAccessAdminProcedure = activeSessionProcedure.use(
+  async ({ ctx, next }) => {
+    if (ctx.user.role !== "admin") {
+      throw new TRPCError({ code: "FORBIDDEN" });
+    }
+    const scope = await authorizedPlanningScope(ctx.user, ctx.req);
+    await requireCompletedPlanningTeamPasswordChange(ctx.user);
+    return withPlanningScope(scope, () => next({ ctx }));
+  }
+);
+
+/**
+ * Doppelte Sicherheitsgrenze für die Zugangsverwaltung: Neben den
+ * mandantengefilterten Datenbankfunktionen validiert der Router jede vom
+ * Browser übermittelte Kontakt- und Veranstaltungs-ID gegen die aktuell
+ * serverseitig bestätigte Vereinssicht.
+ */
+async function assertPlanningTeamAccessReferencesInScope(input: {
+  contactId?: number | null;
+  eventIds: number[];
+}) {
+  if (input.contactId !== null && input.contactId !== undefined) {
+    const contact = (await db.listAllContactsForPlanningTeamAccess()).find(
+      item => item.id === input.contactId
+    );
+    if (!contact) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Der ausgewählte Ansprechpartner gehört nicht zum aktuellen Verein.",
+      });
+    }
+  }
+
+  const years = await db.listEventYears();
+  const eventsById = new Set(
+    (
+      await Promise.all(years.map(item => db.listEvents(item.year)))
+    ).flatMap(events => events.map(event => event.id))
+  );
+  if (input.eventIds.some(eventId => !eventsById.has(eventId))) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Mindestens eine ausgewählte Veranstaltung gehört nicht zum aktuellen Verein.",
+    });
+  }
+}
+
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
   return next({ ctx });
@@ -1638,21 +1691,24 @@ export const appRouter = router({
   }),
 
   planningTeamAccesses: router({
-    list: accountAdminProcedure.query(() => db.listPlanningTeamAccesses()),
-    availableContacts: accountAdminProcedure.query(() =>
+    // Zugangsverwaltung ist eine Vereinsfunktion. Sie muss deshalb exakt
+    // denselben serverseitig bestätigten Mandantenkontext verwenden wie alle
+    // Fachmodule; ein bloßer Browserfilter wäre keine Sicherheitsgrenze.
+    list: tenantAccessAdminProcedure.query(() => db.listPlanningTeamAccesses()),
+    availableContacts: tenantAccessAdminProcedure.query(() =>
       db.listAllContactsForPlanningTeamAccess()
     ),
     myPermissions: scopedProtectedProcedure.query(async ({ ctx }) => {
       return getPlanningTeamPermissionsForUser(ctx.user);
     }),
-    availableEvents: accountAdminProcedure.query(async () => {
+    availableEvents: tenantAccessAdminProcedure.query(async () => {
       const years = await db.listEventYears();
       const grouped = await Promise.all(
         years.map(async item => db.listEvents(item.year))
       );
       return grouped.flat();
     }),
-    create: accountAdminProcedure
+    create: tenantAccessAdminProcedure
       .input(
         z.object({
           label: z.string().trim().min(2).max(120),
@@ -1666,6 +1722,7 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         await requireAdminPassword(input.currentAdminPassword, ctx);
+        await assertPlanningTeamAccessReferencesInScope(input);
         return db.createPlanningTeamAccess({
           label: input.label,
           contactId: input.contactId,
@@ -1675,7 +1732,7 @@ export const appRouter = router({
           eventIds: input.eventIds,
         });
       }),
-    createWithInvitationLink: accountAdminProcedure
+    createWithInvitationLink: tenantAccessAdminProcedure
       .input(
         z.object({
           label: z.string().trim().min(2).max(120),
@@ -1689,6 +1746,7 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         await requireAdminPassword(input.currentAdminPassword, ctx);
+        await assertPlanningTeamAccessReferencesInScope(input);
         const contact = (await db.listAllContactsForPlanningTeamAccess()).find(
           item => item.id === input.contactId
         );
@@ -1757,7 +1815,7 @@ export const appRouter = router({
           expiresAt: invitation.expiresAt,
         };
       }),
-    sendInvitationLink: accountAdminProcedure
+    sendInvitationLink: tenantAccessAdminProcedure
       .input(
         z.object({
           id: z.number().int().positive(),
@@ -1831,7 +1889,7 @@ export const appRouter = router({
           expiresAt: invitation.expiresAt,
         };
       }),
-    createWithAccessSheet: accountAdminProcedure
+    createWithAccessSheet: tenantAccessAdminProcedure
       .input(
         z.object({
           label: z.string().trim().min(2).max(120),
@@ -1844,6 +1902,7 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         await requireAdminPassword(input.currentAdminPassword, ctx);
+        await assertPlanningTeamAccessReferencesInScope(input);
         const initialPassword = generatePlanningTeamAccessPassword();
         const contact = (await db.listAllContactsForPlanningTeamAccess()).find(
           item => item.id === input.contactId
@@ -1893,7 +1952,7 @@ export const appRouter = router({
           base64: pdf.toString("base64"),
         };
       }),
-    update: accountAdminProcedure
+    update: tenantAccessAdminProcedure
       .input(
         z.object({
           id: z.number().int().positive(),
@@ -1908,6 +1967,7 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         await requireAdminPassword(input.currentAdminPassword, ctx);
+        await assertPlanningTeamAccessReferencesInScope(input);
         return db.updatePlanningTeamAccess({
           id: input.id,
           label: input.label,
@@ -1918,7 +1978,7 @@ export const appRouter = router({
           eventIds: input.eventIds,
         });
       }),
-    resetAndPrint: accountAdminProcedure
+    resetAndPrint: tenantAccessAdminProcedure
       .input(
         z.object({
           id: z.number().int().positive(),
@@ -1963,7 +2023,7 @@ export const appRouter = router({
           base64: pdf.toString("base64"),
         };
       }),
-    accessSheets: accountAdminProcedure
+    accessSheets: tenantAccessAdminProcedure
       .input(
         z.object({
           accessIds: z.array(z.number().int().positive()).min(1).max(500),
@@ -1990,7 +2050,7 @@ export const appRouter = router({
           base64: pdf.toString("base64"),
         };
       }),
-    remove: accountAdminProcedure
+    remove: tenantAccessAdminProcedure
       .input(
         z.object({
           id: z.number().int().positive(),
@@ -2063,6 +2123,21 @@ export const appRouter = router({
         })
       )
       .mutation(({ input }) => db.updateTenantLifecycleForPlatformAdmin(input)),
+    deleteInternalTestTenant: masterAdminProcedure
+      .input(
+        z.object({
+          tenantId: z.string().trim().regex(/^[a-z0-9-]{3,96}$/),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const deleted = await db.deleteInternalTestTenantForPlatformAdmin(input.tenantId);
+        await recordSecurityActivity(
+          auditActor(ctx.user),
+          `Interner Testverein „${deleted.tenantName}“ einschließlich ${deleted.removedEventCount} Veranstaltung(en) endgültig entfernt`,
+          "deleted"
+        );
+        return { success: true, ...deleted } as const;
+      }),
     createTenantAdmin: masterAdminProcedure
       .input(
         z.object({

@@ -475,9 +475,10 @@ export async function synchronizePlanningTeamTenantMemberships(accessId: number)
       .innerJoin(events, eq(events.id, planningTeamAccessEvents.eventId))
       .where(eq(planningTeamAccessEvents.accessId, accessId))
       .orderBy(events.tenantId);
-    if (!rows.length) {
-      // Falls einem Testzugang noch kein Event zugewiesen ist, greift der sichere Pilotmandant
-      rows.push({ tenantId: DEFAULT_TENANT_ID });
+    if (rows.length !== 1) {
+      throw new Error(
+        "Ein Planungsteam-Zugang muss genau einem Verein zugeordnet sein. Bitte den Zugang im richtigen Verein neu anlegen."
+      );
     }
 
     for (const row of rows) {
@@ -902,6 +903,99 @@ export async function updateTenantLifecycleForPlatformAdmin(input: {
   return { tenantId: input.tenantId, status: input.status } as const;
 }
 
+/**
+ * Entfernt ausschließlich einen internen Testverein inklusive seiner
+ * Veranstaltungen und der daran gekoppelten Planungs- und Testzugangsdaten.
+ * Der echte Pilotmandant ist absichtlich nicht löschbar. Für reguläre
+ * Vertragsenden bleibt der reversible Archivstatus der vorgesehene Weg.
+ */
+export async function deleteInternalTestTenantForPlatformAdmin(tenantId: string) {
+  if (tenantId === DEFAULT_TENANT_ID) {
+    throw new Error("Der geschützte Pilotverein kann nicht endgültig entfernt werden");
+  }
+  const database = (await getDb()) as DB;
+  return database.transaction(async tx => {
+    const [target] = await tx
+      .select({ id: tenants.id, name: tenants.name, status: tenants.status })
+      .from(tenants)
+      .where(eq(tenants.id, tenantId))
+      .limit(1)
+      .for("update");
+    if (!target) throw new Error("Der Verein wurde nicht gefunden");
+    if (target.status === "active") {
+      throw new Error("Aktive Vereine dürfen nicht über die Testbereinigung entfernt werden");
+    }
+
+    const [eventRows, adminRows, planningAccessRows] = await Promise.all([
+      tx
+        .select({ id: events.id })
+        .from(events)
+        .where(eq(events.tenantId, tenantId))
+        .for("update"),
+      tx
+        .selectDistinct({ userId: userTenantMemberships.userId })
+        .from(userTenantMemberships)
+        .where(
+          and(
+            eq(userTenantMemberships.tenantId, tenantId),
+            eq(userTenantMemberships.role, "tenant_admin")
+          )
+        )
+        .for("update"),
+      tx
+        .selectDistinct({ accessId: planningTeamAccessEvents.accessId })
+        .from(planningTeamAccessEvents)
+        .innerJoin(events, eq(events.id, planningTeamAccessEvents.eventId))
+        .where(eq(events.tenantId, tenantId))
+        .for("update"),
+    ]);
+
+    const planningAccessIds = planningAccessRows.map(row => row.accessId);
+    if (planningAccessIds.length) {
+      await tx
+        .delete(planningTeamAccesses)
+        .where(inArray(planningTeamAccesses.id, planningAccessIds));
+      await tx
+        .delete(users)
+        .where(
+          inArray(
+            users.openId,
+            planningAccessIds.map(accessId => planningTeamAccessOpenId(accessId))
+          )
+        );
+    }
+
+    // Alle fachlichen Tabellen referenzieren die Veranstaltung mit Kaskaden.
+    // Das explizite Löschen der Events stellt daher sicher, dass keine
+    // Planungsdaten des entfernten Testvereins zurückbleiben.
+    await tx.delete(events).where(eq(events.tenantId, tenantId));
+    await tx.delete(tenants).where(eq(tenants.id, tenantId));
+
+    const candidateAdminIds = adminRows.map(row => row.userId);
+    let removedAdminAccounts = 0;
+    for (const userId of candidateAdminIds) {
+      const [remainingMembership] = await tx
+        .select({ id: userTenantMemberships.id })
+        .from(userTenantMemberships)
+        .where(eq(userTenantMemberships.userId, userId))
+        .limit(1)
+        .for("update");
+      if (!remainingMembership) {
+        await tx.delete(users).where(eq(users.id, userId));
+        removedAdminAccounts += 1;
+      }
+    }
+
+    return {
+      tenantId,
+      tenantName: target.name,
+      removedEventCount: eventRows.length,
+      removedPlanningAccessCount: planningAccessIds.length,
+      removedAdminAccountCount: removedAdminAccounts,
+    } as const;
+  });
+}
+
 export async function getTenant(id = tenant()) {
   const db = await getDb();
   if (!db) return undefined;
@@ -989,13 +1083,47 @@ async function requireExistingContactForPlanningTeamAccess(
   const [contact] = await tx
     .select({ id: contacts.id, name: contacts.name })
     .from(contacts)
-    .where(eq(contacts.id, contactId))
+    .innerJoin(events, eq(events.id, contacts.eventId))
+    .where(
+      and(
+        eq(contacts.id, contactId),
+        eq(events.tenantId, tenant())
+      )
+    )
     .limit(1)
     .for("update");
   if (!contact) {
     throw new Error("Der ausgewählte Ansprechpartner wurde nicht gefunden");
   }
   return contact;
+}
+
+/**
+ * Planungsteam-Zugänge sind bewusst nicht mandantenübergreifend. Auch ein
+ * historisch fehlerhaft verknüpfter Zugang wird deshalb nicht stillschweigend
+ * in einem zweiten Verein weiterverwendet, sondern für Verwaltungsaktionen
+ * sicher abgewiesen.
+ */
+async function requirePlanningTeamAccessForTenant(
+  tx: DBClient,
+  accessId: number,
+  expectedTenantId = tenant()
+) {
+  const rows = await tx
+    .select({ tenantId: events.tenantId })
+    .from(planningTeamAccessEvents)
+    .innerJoin(events, eq(events.id, planningTeamAccessEvents.eventId))
+    .where(eq(planningTeamAccessEvents.accessId, accessId))
+    .for("update");
+  const tenantIds = new Set(rows.map(row => row.tenantId));
+  if (!tenantIds.size || !tenantIds.has(expectedTenantId)) {
+    throw new Error("Der Planungsteam-Zugang gehört nicht zum aktuellen Verein");
+  }
+  if (tenantIds.size !== 1) {
+    throw new Error(
+      "Der Planungsteam-Zugang ist historisch mehreren Vereinen zugeordnet und wurde aus Sicherheitsgründen gesperrt. Bitte einen neuen Zugang im richtigen Verein anlegen."
+    );
+  }
 }
 
 export async function listPlanningTeamAccesses(): Promise<
@@ -1015,36 +1143,50 @@ export async function listPlanningTeamAccesses(): Promise<
       createdAt: planningTeamAccesses.createdAt,
       updatedAt: planningTeamAccesses.updatedAt,
       eventId: planningTeamAccessEvents.eventId,
+      tenantId: events.tenantId,
     })
     .from(planningTeamAccesses)
     .leftJoin(contacts, eq(contacts.id, planningTeamAccesses.contactId))
-    .leftJoin(
+    .innerJoin(
       planningTeamAccessEvents,
       eq(planningTeamAccessEvents.accessId, planningTeamAccesses.id)
     )
+    .innerJoin(events, eq(events.id, planningTeamAccessEvents.eventId))
     .orderBy(planningTeamAccesses.label, planningTeamAccesses.id);
 
-  const grouped = new Map<number, PlanningTeamAccessSummary>();
+  const grouped = new Map<
+    number,
+    { access: PlanningTeamAccessSummary; tenantIds: Set<string> }
+  >();
   for (const row of rows) {
     const current = grouped.get(row.id) ?? {
-      id: row.id,
-      contactId: row.contactId,
-      contactName: row.contactName,
-      label: row.label,
-      email: row.email ?? null,
-      modulePermissions: Array.isArray(row.modulePermissions) ? row.modulePermissions : [],
-      eventIds: [],
-      mustChangePassword: row.mustChangePassword,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
+      access: {
+        id: row.id,
+        contactId: row.contactId,
+        contactName: row.contactName,
+        label: row.label,
+        email: row.email ?? null,
+        modulePermissions: Array.isArray(row.modulePermissions) ? row.modulePermissions : [],
+        eventIds: [],
+        mustChangePassword: row.mustChangePassword,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      },
+      tenantIds: new Set<string>(),
     };
-    if (row.eventId !== null) current.eventIds.push(row.eventId);
+    current.tenantIds.add(row.tenantId);
+    current.access.eventIds.push(row.eventId);
     grouped.set(row.id, current);
   }
-  return Array.from(grouped.values()).map(access => ({
-    ...access,
-    eventIds: access.eventIds.sort((a, b) => a - b),
-  }));
+  return Array.from(grouped.values())
+    .filter(
+      entry =>
+        entry.tenantIds.size === 1 && entry.tenantIds.has(tenant())
+    )
+    .map(({ access }) => ({
+      ...access,
+      eventIds: access.eventIds.sort((a, b) => a - b),
+    }));
 }
 
 export async function listPlanningTeamAccessCredentials(): Promise<
@@ -1114,6 +1256,31 @@ async function assertNoActiveTenantAdminEmailConflict(
   }
 }
 
+async function assertNoPlanningTeamEmailConflict(
+  tx: any,
+  normalizedEmail: string | null,
+  excludedAccessId?: number
+) {
+  if (!normalizedEmail) return;
+  const emailCondition = excludedAccessId === undefined
+    ? eq(planningTeamAccesses.email, normalizedEmail)
+    : and(
+        eq(planningTeamAccesses.email, normalizedEmail),
+        notEq(planningTeamAccesses.id, excludedAccessId)
+      );
+  const [existing] = await tx
+    .select({ id: planningTeamAccesses.id })
+    .from(planningTeamAccesses)
+    .where(emailCondition)
+    .limit(1)
+    .for("update");
+  if (existing) {
+    throw new Error(
+      "Diese E-Mail-Adresse ist bereits für einen persönlichen Planungsteam-Zugang vergeben. Bitte eine andere E-Mail-Adresse verwenden."
+    );
+  }
+}
+
 export async function createPlanningTeamAccess(input: {
   label: string;
   contactId?: number | null;
@@ -1131,6 +1298,7 @@ export async function createPlanningTeamAccess(input: {
       : null;
     const normalizedEmail = input.email?.trim().toLocaleLowerCase("de-DE") || null;
     await assertNoActiveTenantAdminEmailConflict(tx, normalizedEmail);
+    await assertNoPlanningTeamEmailConflict(tx, normalizedEmail);
     const result: any = await tx.insert(planningTeamAccesses).values({
       contactId: contact?.id ?? null,
       label: contact?.name ?? input.label.trim(),
@@ -1169,6 +1337,7 @@ export async function updatePlanningTeamAccess(input: {
 }) {
   const database = (await getDb()) as DB;
   return database.transaction(async tx => {
+    await requirePlanningTeamAccessForTenant(tx, input.id);
     const eventIds = await requireExistingEvents(tx, input.eventIds);
     const [existing] = await tx
       .select({
@@ -1197,6 +1366,7 @@ export async function updatePlanningTeamAccess(input: {
         ? existing.modulePermissions
         : input.modulePermissions;
     await assertNoActiveTenantAdminEmailConflict(tx, nextEmail);
+    await assertNoPlanningTeamEmailConflict(tx, nextEmail, input.id);
 
     await tx
       .update(planningTeamAccesses)
@@ -1257,6 +1427,7 @@ export async function createPlanningTeamInvitation(input: {
     now.getTime() + (input.expiresInSeconds ?? 48 * 60 * 60) * 1000
   );
   return database.transaction(async tx => {
+    await requirePlanningTeamAccessForTenant(tx, input.accessId, input.tenantId);
     const [access] = await tx
       .select({ id: planningTeamAccesses.id })
       .from(planningTeamAccesses)
@@ -1396,6 +1567,7 @@ export async function completePlanningTeamInitialPasswordChange(input: {
 export async function deletePlanningTeamAccess(accessId: number) {
   const database = (await getDb()) as DB;
   return database.transaction(async tx => {
+    await requirePlanningTeamAccessForTenant(tx, accessId);
     const [access] = await tx
       .select({ id: planningTeamAccesses.id, label: planningTeamAccesses.label })
       .from(planningTeamAccesses)
@@ -1420,10 +1592,12 @@ export async function isPlanningTeamAccessAllowedForEvent(
   const [access] = await database
     .select({ accessId: planningTeamAccessEvents.accessId })
     .from(planningTeamAccessEvents)
+    .innerJoin(events, eq(events.id, planningTeamAccessEvents.eventId))
     .where(
       and(
         eq(planningTeamAccessEvents.accessId, accessId),
-        eq(planningTeamAccessEvents.eventId, eventId)
+        eq(planningTeamAccessEvents.eventId, eventId),
+        eq(events.tenantId, tenant())
       )
     )
     .limit(1);
@@ -1871,6 +2045,7 @@ export async function listAllContactsForPlanningTeamAccess() {
     })
     .from(contacts)
     .innerJoin(events, eq(events.id, contacts.eventId))
+    .where(eq(events.tenantId, tenant()))
     .orderBy(contacts.name, contacts.year, events.name, contacts.id);
 }
 export async function listLocations() {

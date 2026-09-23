@@ -120,6 +120,12 @@ describe("Event-based Access Control für Planungsteam", () => {
     vi.spyOn(db, "getSecuritySettings").mockResolvedValue({
       adminPasswordHash: "$2a$10$hashedadminpassword",
     } as any);
+    vi.spyOn(db, "getEvent").mockResolvedValue({
+      id: 1,
+      tenantId: "rsc-eifelland-mayen",
+      year: 2026,
+      name: "MyEifelRide",
+    } as any);
     vi.spyOn(passwordAuth, "verifyPassword").mockResolvedValue(false);
 
     const adminCaller = appRouter.createCaller({

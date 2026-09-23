@@ -273,6 +273,10 @@ export default function MasterAdminPortal() {
     id: string;
     name: string;
   } | null>(null);
+  const [testTenantToDelete, setTestTenantToDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [accessToDelete, setAccessToDelete] = useState<PlatformAccessInventoryItem | null>(null);
 
   const createTenantAdmin = trpc.platformAdmin.createTenantAdmin.useMutation({
@@ -336,6 +340,17 @@ export default function MasterAdminPortal() {
     onSuccess: async result => {
       await utils.platformAdmin.tenantOverview.invalidate();
       toast.success(`Vereinsstatus wurde auf „${STATUS_META[result.status].label}“ gesetzt.`);
+    },
+    onError: error => toast.error(error.message),
+  });
+  const deleteInternalTestTenant = trpc.platformAdmin.deleteInternalTestTenant.useMutation({
+    onSuccess: async result => {
+      await Promise.all([
+        utils.platformAdmin.tenantOverview.invalidate(),
+        utils.platformAdmin.accessInventory.invalidate(),
+      ]);
+      setTestTenantToDelete(null);
+      toast.success(`Testverein „${result.tenantName}“ wurde einschließlich seiner Testdaten entfernt.`);
     },
     onError: error => toast.error(error.message),
   });
@@ -692,6 +707,18 @@ export default function MasterAdminPortal() {
                             <Archive className="size-3.5" /> Verein archivieren
                           </Button>
                         </div>
+                      )}
+                      {tenant.id !== "rsc-eifelland-mayen" && tenant.status !== "active" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full border-red-200 bg-white text-red-700 hover:bg-red-50 hover:text-red-800"
+                          disabled={deleteInternalTestTenant.isPending}
+                          onClick={() => setTestTenantToDelete({ id: tenant.id, name: tenant.name })}
+                        >
+                          {deleteInternalTestTenant.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+                          Testverein endgültig entfernen
+                        </Button>
                       )}
                     </div>
                   </article>
@@ -1123,6 +1150,41 @@ export default function MasterAdminPortal() {
             >
               {updateLifecycle.isPending ? <Loader2 className="size-4 animate-spin" /> : <Archive className="size-4" />}
               Verein archivieren
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={Boolean(testTenantToDelete)}
+        onOpenChange={open => {
+          if (!open && !deleteInternalTestTenant.isPending) setTestTenantToDelete(null);
+        }}
+      >
+        <AlertDialogContent className="border-red-200 bg-white text-slate-950">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-800">
+              <Trash2 className="size-5" /> Testverein endgültig entfernen?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="leading-5 text-slate-600">
+              <strong className="font-semibold text-slate-800">{testTenantToDelete?.name}</strong> wird mit seinen Veranstaltungen, Planungsdaten und zugehörigen Testzugängen dauerhaft entfernt. Dieser Weg ist ausschließlich für interne Testvereine bestimmt und kann nicht rückgängig gemacht werden.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-5 text-amber-900">
+            Für tatsächliche Vertrags- oder Pilotverläufe verwenden Sie bitte weiterhin die Archivierung. Der geschützte RSC-Pilotverein kann über diese Funktion nicht entfernt werden.
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteInternalTestTenant.isPending}>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!testTenantToDelete || deleteInternalTestTenant.isPending}
+              className="bg-red-700 text-white hover:bg-red-800"
+              onClick={() => {
+                if (!testTenantToDelete) return;
+                deleteInternalTestTenant.mutate({ tenantId: testTenantToDelete.id });
+              }}
+            >
+              {deleteInternalTestTenant.isPending ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+              Testverein endgültig entfernen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
