@@ -950,6 +950,13 @@ function PilotTenantInfoCard({
         </div>
         <div className="grid gap-2 sm:grid-cols-2 lg:w-[22rem] lg:grid-cols-1">
           <a
+            href={`mailto:${tenant.contactEmail}`}
+            className="flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 transition-colors hover:border-blue-300 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          >
+            <Building2 className="size-4 shrink-0 text-blue-700" aria-hidden="true" />
+            <span className="min-w-0 truncate">Pilotkontakt: {tenant.contactEmail}</span>
+          </a>
+          <a
             href={`mailto:${tenant.supportEmail}`}
             className="flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 transition-colors hover:border-blue-300 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >

@@ -8,6 +8,22 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
 import { storePreviewSessionToken } from "@/lib/preview-session";
 import {
@@ -15,16 +31,21 @@ import {
   CalendarDays,
   CheckCircle2,
   CircleAlert,
+  CirclePause,
   CreditCard,
   KeyRound,
   Loader2,
   LockKeyhole,
   LogOut,
   Mail,
+  PauseCircle,
+  Plus,
+  RotateCcw,
   ShieldCheck,
   UsersRound,
 } from "lucide-react";
 import { FormEvent, useState } from "react";
+import { toast } from "sonner";
 
 type TenantStatus = "pilot" | "sample" | "active" | "suspended" | "archived";
 
@@ -38,6 +59,43 @@ const STATUS_META: Record<
   suspended: { label: "Pausiert", className: "border-amber-200 bg-amber-50 text-amber-800" },
   archived: { label: "Archiv", className: "border-slate-200 bg-slate-100 text-slate-600" },
 };
+
+const INITIAL_EVENT_DAYS = ["Freitag", "Samstag", "Sonntag"] as const;
+const EVENT_DAYS = [
+  "Montag",
+  "Dienstag",
+  "Mittwoch",
+  "Donnerstag",
+  "Freitag",
+  "Samstag",
+  "Sonntag",
+] as const;
+
+type CreateTenantForm = {
+  name: string;
+  legalName: string;
+  contactEmail: string;
+  supportEmail: string;
+  status: "pilot" | "sample";
+  planName: string;
+  initialEventName: string;
+  initialEventYear: string;
+  activeDays: string[];
+};
+
+function defaultCreateTenantForm(): CreateTenantForm {
+  return {
+    name: "",
+    legalName: "",
+    contactEmail: "",
+    supportEmail: "support@mycrewmate.de",
+    status: "pilot",
+    planName: "Pilotbetrieb",
+    initialEventName: "",
+    initialEventYear: "2027",
+    activeDays: [...INITIAL_EVENT_DAYS],
+  };
+}
 
 function formatDate(value: string | null) {
   if (!value) return "Termin offen";
@@ -162,11 +220,61 @@ function AccessDenied({ onLogout }: { onLogout: () => Promise<void> }) {
 
 export default function MasterAdminPortal() {
   const { user, loading, isAuthenticated, logout } = useAuth();
+  const utils = trpc.useUtils();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState<CreateTenantForm>(
+    defaultCreateTenantForm
+  );
   const overview = trpc.platformAdmin.tenantOverview.useQuery(undefined, {
     enabled: isAuthenticated && user?.role === "admin",
     retry: false,
     refetchOnWindowFocus: false,
   });
+  const createTenant = trpc.platformAdmin.createTenant.useMutation({
+    onSuccess: async result => {
+      await utils.platformAdmin.tenantOverview.invalidate();
+      setCreateOpen(false);
+      setCreateForm(defaultCreateTenantForm());
+      toast.success(`„${result.tenantId}“ wurde als interner Verein angelegt.`);
+    },
+    onError: error => toast.error(error.message),
+  });
+  const updateLifecycle = trpc.platformAdmin.updateTenantLifecycle.useMutation({
+    onSuccess: async result => {
+      await utils.platformAdmin.tenantOverview.invalidate();
+      toast.success(`Vereinsstatus wurde auf „${STATUS_META[result.status].label}“ gesetzt.`);
+    },
+    onError: error => toast.error(error.message),
+  });
+
+  const toggleEventDay = (day: string) => {
+    setCreateForm(current => ({
+      ...current,
+      activeDays: current.activeDays.includes(day)
+        ? current.activeDays.filter(value => value !== day)
+        : [...current.activeDays, day],
+    }));
+  };
+
+  const submitCreateTenant = (event: FormEvent) => {
+    event.preventDefault();
+    const initialEventYear = Number(createForm.initialEventYear);
+    if (!Number.isInteger(initialEventYear) || initialEventYear < 2020 || initialEventYear > 2100) {
+      toast.error("Bitte geben Sie ein gültiges Veranstaltungsjahr ein.");
+      return;
+    }
+    if (!createForm.activeDays.length) {
+      toast.error("Bitte wählen Sie mindestens einen Veranstaltungstag.");
+      return;
+    }
+    createTenant.mutate({
+      ...createForm,
+      initialEventYear,
+      activeDays: createForm.activeDays as Array<
+        "Montag" | "Dienstag" | "Mittwoch" | "Donnerstag" | "Freitag" | "Samstag" | "Sonntag"
+      >,
+    });
+  };
 
   if (loading) return <PortalLoading />;
   if (!isAuthenticated) return <MasterLogin />;
@@ -219,11 +327,14 @@ export default function MasterAdminPortal() {
               Zentrale, vereinsübergreifende Übersicht für den Plattform-Inhaber. Vereinsdaten und Zugänge bleiben voneinander getrennt.
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <span className="hidden text-right text-xs text-slate-500 sm:block">
               Angemeldet als<br />
               <strong className="font-semibold text-slate-700">{user?.name ?? "Plattform-Inhaber"}</strong>
             </span>
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="size-4" /> Verein anlegen
+            </Button>
             <Button variant="outline" onClick={() => void logout()}>
               <LogOut className="size-4" /> Abmelden
             </Button>
@@ -255,7 +366,7 @@ export default function MasterAdminPortal() {
           <Card className="border-slate-200 bg-white/95 py-0 shadow-sm">
             <CardHeader className="border-b border-slate-100 px-5 py-4 sm:px-6">
               <CardTitle className="flex items-center gap-2 text-base"><Building2 className="size-5 text-blue-700" /> Vereine &amp; Pilotprojekte</CardTitle>
-              <CardDescription>Lesende Übersicht – Änderungen folgen erst in den nächsten, separat abgesicherten Ausbauschritten.</CardDescription>
+              <CardDescription>Interne Pilot- und Mustervereine sicher anlegen, pausieren oder reaktivieren. Eine öffentliche Freischaltung bleibt gesperrt.</CardDescription>
             </CardHeader>
             <CardContent className="divide-y divide-slate-100 px-5 sm:px-6">
               {tenants.map(tenant => {
@@ -273,10 +384,36 @@ export default function MasterAdminPortal() {
                         <span className="inline-flex items-center gap-1"><Mail className="size-3.5 text-slate-400" /> {tenant.contactEmail}</span>
                       </div>
                     </div>
-                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-left sm:min-w-48 sm:text-right">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Nächste Veranstaltung</p>
-                      <p className="mt-0.5 text-sm font-semibold text-slate-800">{tenant.nextEvent?.name ?? "Noch nicht angelegt"}</p>
-                      <p className="mt-0.5 text-xs text-slate-500">{tenant.nextEvent ? formatDate(tenant.nextEvent.startDate) : "Termin offen"}</p>
+                    <div className="space-y-2 sm:min-w-48">
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-left sm:text-right">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Nächste Veranstaltung</p>
+                        <p className="mt-0.5 text-sm font-semibold text-slate-800">{tenant.nextEvent?.name ?? "Noch nicht angelegt"}</p>
+                        <p className="mt-0.5 text-xs text-slate-500">{tenant.nextEvent ? formatDate(tenant.nextEvent.startDate) : "Termin offen"}</p>
+                      </div>
+                      {(tenant.status === "pilot" || tenant.status === "sample") && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100"
+                          disabled={updateLifecycle.isPending}
+                          onClick={() => updateLifecycle.mutate({ tenantId: tenant.id, status: "suspended" })}
+                        >
+                          {updateLifecycle.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <PauseCircle className="size-3.5" />}
+                          Pilot pausieren
+                        </Button>
+                      )}
+                      {tenant.status === "suspended" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100"
+                          disabled={updateLifecycle.isPending}
+                          onClick={() => updateLifecycle.mutate({ tenantId: tenant.id, status: "pilot" })}
+                        >
+                          {updateLifecycle.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />}
+                          Als Pilot reaktivieren
+                        </Button>
+                      )}
                     </div>
                   </article>
                 );
@@ -292,7 +429,7 @@ export default function MasterAdminPortal() {
               <CardContent className="space-y-3 px-5 pb-5 text-sm leading-5 text-blue-900">
                 <p>Mandanten, Veranstaltungen und Planungsdaten sind serverseitig getrennt.</p>
                 <p>Die Vereinsansicht enthält keine Vereinsauswahl und bleibt auf den eigenen Mandanten beschränkt.</p>
-                <p>Dieses Portal ist lesend; keine versehentliche Bearbeitung oder Freischaltung möglich.</p>
+                <p>Neue Vereine starten ausschließlich intern als Pilot oder Musterverein – mit einer ersten Veranstaltung, aber ohne öffentliche Kundenfunktion.</p>
               </CardContent>
             </Card>
             <Card className="border-amber-200 bg-amber-50/70 py-0 shadow-sm">
@@ -307,6 +444,164 @@ export default function MasterAdminPortal() {
           </div>
         </section>
       </div>
+
+      <Dialog
+        open={createOpen}
+        onOpenChange={open => {
+          if (!createTenant.isPending) setCreateOpen(open);
+        }}
+      >
+        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white text-slate-950 sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Building2 className="size-5 text-blue-700" /> Neuen internen Verein anlegen
+            </DialogTitle>
+            <DialogDescription>
+              Der Verein wird nur als Pilot- oder Musterverein angelegt. Es entstehen weder ein öffentlicher Zugang noch eine Zahlungs- oder Buchungsfunktion.
+            </DialogDescription>
+          </DialogHeader>
+          <form className="space-y-5" onSubmit={submitCreateTenant}>
+            <fieldset className="grid gap-4 sm:grid-cols-2">
+              <legend className="sr-only">Vereinsangaben</legend>
+              <label className="space-y-1.5">
+                <span className="text-sm font-semibold text-slate-800">Vereinsname</span>
+                <Input
+                  value={createForm.name}
+                  onChange={event => setCreateForm(current => ({ ...current, name: event.target.value }))}
+                  placeholder="z. B. SV Musterstadt e. V."
+                  required
+                  maxLength={200}
+                />
+              </label>
+              <label className="space-y-1.5">
+                <span className="text-sm font-semibold text-slate-800">Rechtliche Bezeichnung</span>
+                <Input
+                  value={createForm.legalName}
+                  onChange={event => setCreateForm(current => ({ ...current, legalName: event.target.value }))}
+                  placeholder="Vollständiger Vereinsname"
+                  required
+                  maxLength={240}
+                />
+              </label>
+              <label className="space-y-1.5">
+                <span className="text-sm font-semibold text-slate-800">Vereinskontakt</span>
+                <Input
+                  type="email"
+                  value={createForm.contactEmail}
+                  onChange={event => setCreateForm(current => ({ ...current, contactEmail: event.target.value }))}
+                  placeholder="kontakt@verein.de"
+                  required
+                  maxLength={320}
+                />
+              </label>
+              <label className="space-y-1.5">
+                <span className="text-sm font-semibold text-slate-800">Supportkontakt</span>
+                <Input
+                  type="email"
+                  value={createForm.supportEmail}
+                  onChange={event => setCreateForm(current => ({ ...current, supportEmail: event.target.value }))}
+                  required
+                  maxLength={320}
+                />
+              </label>
+            </fieldset>
+
+            <fieldset className="grid gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2">
+              <legend className="sr-only">Interner Status und Plan</legend>
+              <label className="space-y-1.5">
+                <span className="text-sm font-semibold text-slate-800">Interner Status</span>
+                <Select
+                  value={createForm.status}
+                  onValueChange={(status: "pilot" | "sample") =>
+                    setCreateForm(current => ({
+                      ...current,
+                      status,
+                      planName: status === "pilot" ? "Pilotbetrieb" : "Musterverein",
+                    }))
+                  }
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pilot">Pilotverein – geschlossener Test</SelectItem>
+                    <SelectItem value="sample">Musterverein – interne Demo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </label>
+              <label className="space-y-1.5">
+                <span className="text-sm font-semibold text-slate-800">Planbezeichnung</span>
+                <Input
+                  value={createForm.planName}
+                  onChange={event => setCreateForm(current => ({ ...current, planName: event.target.value }))}
+                  required
+                  maxLength={120}
+                />
+              </label>
+              <p className="sm:col-span-2 text-xs leading-5 text-slate-600">
+                <CirclePause className="mr-1 inline size-3.5 text-amber-700" />
+                Der Status <strong>Aktiv</strong> ist vor dem Marktstart bewusst nicht verfügbar.
+              </p>
+            </fieldset>
+
+            <fieldset className="space-y-3">
+              <legend className="text-sm font-semibold text-slate-800">Erste Veranstaltung</legend>
+              <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_10rem]">
+                <label className="space-y-1.5">
+                  <span className="text-sm text-slate-600">Bezeichnung</span>
+                  <Input
+                    value={createForm.initialEventName}
+                    onChange={event => setCreateForm(current => ({ ...current, initialEventName: event.target.value }))}
+                    placeholder="z. B. Vereinsfest 2027"
+                    required
+                    maxLength={200}
+                  />
+                </label>
+                <label className="space-y-1.5">
+                  <span className="text-sm text-slate-600">Jahr</span>
+                  <Input
+                    type="number"
+                    min="2020"
+                    max="2100"
+                    value={createForm.initialEventYear}
+                    onChange={event => setCreateForm(current => ({ ...current, initialEventYear: event.target.value }))}
+                    required
+                  />
+                </label>
+              </div>
+              <div>
+                <p className="mb-2 text-sm text-slate-600">Veranstaltungstage</p>
+                <div className="flex flex-wrap gap-2">
+                  {EVENT_DAYS.map(day => {
+                    const selected = createForm.activeDays.includes(day);
+                    return (
+                      <Button
+                        key={day}
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        aria-pressed={selected}
+                        className={selected ? "border-blue-300 bg-blue-600 text-white hover:bg-blue-700" : "bg-white"}
+                        onClick={() => toggleEventDay(day)}
+                      >
+                        {day}
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+            </fieldset>
+
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button type="button" variant="outline" onClick={() => setCreateOpen(false)} disabled={createTenant.isPending}>
+                Abbrechen
+              </Button>
+              <Button type="submit" disabled={createTenant.isPending}>
+                {createTenant.isPending ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
+                Internen Verein anlegen
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

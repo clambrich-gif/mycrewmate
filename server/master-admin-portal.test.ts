@@ -47,7 +47,32 @@ describe("Master-Admin-Portal", () => {
     expect(app).toContain("MasterAdminRouter");
     expect(app).toContain('path="/master-admin"');
     expect(page).toContain("platformAdmin.tenantOverview.useQuery");
-    expect(page).toContain("Lesende Übersicht");
+    expect(page).toContain("Verein anlegen");
     expect(page).toContain("Keine öffentliche Registrierung, kein Checkout und keine Zahlungsanbindung.");
+  });
+
+  it("erlaubt Masteraktionen nur für interne Pilot- und Mustervereine", () => {
+    const routers = source("server/routers.ts");
+    const db = source("server/db.ts");
+    const page = source("client/src/pages/MasterAdminPortal.tsx");
+
+    expect(routers).toContain("createTenant: masterAdminProcedure");
+    expect(routers).toContain('status: z.enum(["pilot", "sample"])');
+    expect(routers).toContain("updateTenantLifecycle: masterAdminProcedure");
+    expect(routers).toContain('z.enum(["pilot", "sample", "suspended", "archived"])');
+    expect(db).toContain("export async function createTenantForPlatformAdmin");
+    expect(db).toContain("export async function updateTenantLifecycleForPlatformAdmin");
+    expect(db).toContain('"active" ist absichtlich nicht möglich');
+    expect(page).toContain("Der Status <strong>Aktiv</strong> ist vor dem Marktstart bewusst nicht verfügbar.");
+  });
+
+  it("erstellt neue Vereine mit Startveranstaltung und eindeutiger serverseitiger Kennung", () => {
+    const db = source("server/db.ts");
+    expect(db).toContain("function tenantSlugFromName");
+    expect(db).toContain("async function nextAvailableTenantId");
+    expect(db).toContain("const tenantId = await nextAvailableTenantId(tx, name)");
+    expect(db).toContain("Ein Verein mit diesem Namen ist bereits angelegt");
+    expect(db).toContain("await tx.insert(events).values");
+    expect(db).toContain("initialEventYear");
   });
 });

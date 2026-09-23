@@ -1525,6 +1525,30 @@ export const appRouter = router({
     tenantOverview: masterAdminProcedure.query(() =>
       db.listTenantOverviewsForPlatformAdmin()
     ),
+    createTenant: masterAdminProcedure
+      .input(
+        z.object({
+          name: z.string().trim().min(3).max(200),
+          legalName: z.string().trim().min(3).max(240),
+          contactEmail: z.string().trim().email().max(320),
+          supportEmail: z.string().trim().email().max(320),
+          status: z.enum(["pilot", "sample"]),
+          planName: z.string().trim().min(3).max(120),
+          initialEventName: z.string().trim().min(2).max(200),
+          initialEventYear: eventYearInput,
+          activeDays: activeDaysInput,
+        })
+      )
+      .mutation(({ input }) => db.createTenantForPlatformAdmin(input)),
+    updateTenantLifecycle: masterAdminProcedure
+      .input(
+        z.object({
+          tenantId: z.string().trim().regex(/^[a-z0-9-]{3,96}$/),
+          // "active" ist absichtlich ausgeschlossen: Marktfreigabe erfolgt später separat.
+          status: z.enum(["pilot", "sample", "suspended", "archived"]),
+        })
+      )
+      .mutation(({ input }) => db.updateTenantLifecycleForPlatformAdmin(input)),
   }),
 
   years: router({

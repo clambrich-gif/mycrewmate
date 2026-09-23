@@ -555,6 +555,132 @@ export async function listTenantOverviewsForPlatformAdmin() {
   });
 }
 
+export type PlatformTenantSetupStatus = "pilot" | "sample";
+export type PlatformTenantLifecycleStatus =
+  | "pilot"
+  | "sample"
+  | "suspended"
+  | "archived";
+
+function tenantSlugFromName(value: string) {
+  const base = value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ß/g, "ss")
+    .toLocaleLowerCase("de-DE")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 84);
+  return base.length >= 3 ? base : "verein";
+}
+
+async function nextAvailableTenantId(tx: DBClient, name: string) {
+  const base = tenantSlugFromName(name);
+  for (let sequence = 0; sequence < 500; sequence++) {
+    const suffix = sequence === 0 ? "" : `-${sequence + 1}`;
+    const candidate = `${base.slice(0, 96 - suffix.length)}${suffix}`;
+    const [existing] = await tx
+      .select({ id: tenants.id })
+      .from(tenants)
+      .where(eq(tenants.id, candidate))
+      .limit(1);
+    if (!existing) return candidate;
+  }
+  throw new Error("Für diesen Vereinsnamen konnte keine eindeutige Kennung erzeugt werden");
+}
+
+/**
+ * Legt ausschließlich einen internen Pilot- oder Musterverein an. Ein Status
+ * "active" ist absichtlich nicht möglich: öffentliche Freischaltung bleibt ein
+ * späterer, gesondert abgesicherter Marktstartschritt.
+ */
+export async function createTenantForPlatformAdmin(input: {
+  name: string;
+  legalName: string;
+  contactEmail: string;
+  supportEmail: string;
+  status: PlatformTenantSetupStatus;
+  planName: string;
+  initialEventName: string;
+  initialEventYear: number;
+  activeDays: Weekday[];
+}) {
+  const database = (await getDb()) as DB;
+  return database.transaction(async tx => {
+    const name = input.name.trim();
+    const legalName = input.legalName.trim();
+    const contactEmail = input.contactEmail.trim().toLocaleLowerCase("de-DE");
+    const supportEmail = input.supportEmail.trim().toLocaleLowerCase("de-DE");
+    const planName = input.planName.trim();
+    const initialEventName = normalizeEventName(input.initialEventName);
+    if (!name || !legalName || !contactEmail || !supportEmail || !planName || !initialEventName) {
+      throw new Error("Die Vereins- und Startangaben sind unvollständig");
+    }
+    if (!input.activeDays.length) {
+      throw new Error("Für die Startveranstaltung muss mindestens ein Veranstaltungstag gewählt sein");
+    }
+    const [sameName] = await tx
+      .select({ id: tenants.id })
+      .from(tenants)
+      .where(eq(tenants.name, name))
+      .limit(1)
+      .for("update");
+    if (sameName) {
+      throw new Error("Ein Verein mit diesem Namen ist bereits angelegt");
+    }
+    const tenantId = await nextAvailableTenantId(tx, name);
+    const [yearRecord] = await tx
+      .select({ year: eventYears.year })
+      .from(eventYears)
+      .where(eq(eventYears.year, input.initialEventYear))
+      .limit(1)
+      .for("update");
+    if (!yearRecord) {
+      await tx.insert(eventYears).values({
+        year: input.initialEventYear,
+        label: `Veranstaltungsjahr ${input.initialEventYear}`,
+      });
+    }
+
+    await tx.insert(tenants).values({
+      id: tenantId,
+      name,
+      legalName,
+      status: input.status,
+      planName,
+      contactEmail,
+      supportEmail,
+    });
+    const eventResult: any = await tx.insert(events).values({
+      tenantId,
+      year: input.initialEventYear,
+      name: initialEventName,
+      activeDays: input.activeDays,
+      sortOrder: 0,
+    });
+    const eventId = Number(eventResult?.[0]?.insertId ?? eventResult?.insertId);
+    if (!Number.isInteger(eventId) || eventId <= 0) {
+      throw new Error("Die Startveranstaltung konnte nicht angelegt werden");
+    }
+    return { tenantId, eventId, status: input.status } as const;
+  });
+}
+
+/** Beschränkt Statusänderungen vor dem Marktstart auf interne Lebenszykluswerte. */
+export async function updateTenantLifecycleForPlatformAdmin(input: {
+  tenantId: string;
+  status: PlatformTenantLifecycleStatus;
+}) {
+  const database = (await getDb()) as DB;
+  const result: any = await database
+    .update(tenants)
+    .set({ status: input.status })
+    .where(eq(tenants.id, input.tenantId));
+  const affected = Number(result?.[0]?.affectedRows ?? result?.affectedRows ?? 0);
+  if (!affected) throw new Error("Der Verein wurde nicht gefunden");
+  return { tenantId: input.tenantId, status: input.status } as const;
+}
+
 export async function getTenant(id = tenant()) {
   const db = await getDb();
   if (!db) return undefined;
