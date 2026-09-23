@@ -50,6 +50,7 @@ import {
   teamNoteReadStates,
   teamNoteTypings,
   tenantAdminCredentials,
+  tenantAdminInvitations,
   tenants,
   userTenantMemberships,
   users,
@@ -5130,6 +5131,90 @@ export async function createOrUpdateTenantAdminForPlatformAdmin(input: {
       });
 
     return { userId: existingUser.id, email: normalizedEmail, name } as const;
+  });
+}
+
+/** Ersetzt eventuell noch offene Einladungen desselben Vereinsadmin-Kontos. */
+export async function createTenantAdminInvitation(input: {
+  userId: number;
+  tenantId: string;
+  tokenHash: string;
+  expiresInSeconds?: number;
+}) {
+  const database = (await getDb()) as DB;
+  const now = new Date();
+  const expiresAt = new Date(
+    now.getTime() + (input.expiresInSeconds ?? 48 * 60 * 60) * 1000
+  );
+
+  return database.transaction(async tx => {
+    // Bei einer erneuten Einladung darf ausschließlich der jüngste Link gelten.
+    await tx
+      .update(tenantAdminInvitations)
+      .set({ usedAt: now })
+      .where(
+        and(
+          eq(tenantAdminInvitations.userId, input.userId),
+          eq(tenantAdminInvitations.tenantId, input.tenantId),
+          isNull(tenantAdminInvitations.usedAt)
+        )
+      );
+
+    await tx.insert(tenantAdminInvitations).values({
+      tokenHash: input.tokenHash,
+      userId: input.userId,
+      tenantId: input.tenantId,
+      expiresAt,
+    });
+
+    return { expiresAt } as const;
+  });
+}
+
+/** Löst einen Aktivierungslink atomar genau einmal ein. */
+export async function consumeTenantAdminInvitation(tokenHash: string) {
+  const database = (await getDb()) as DB;
+  return database.transaction(async tx => {
+    const now = new Date();
+    const [row] = await tx
+      .select({
+        userId: tenantAdminInvitations.userId,
+        tenantId: tenantAdminInvitations.tenantId,
+        userOpenId: users.openId,
+        userName: users.name,
+        sessionVersion: tenantAdminCredentials.sessionVersion,
+      })
+      .from(tenantAdminInvitations)
+      .innerJoin(users, eq(users.id, tenantAdminInvitations.userId))
+      .innerJoin(
+        tenantAdminCredentials,
+        eq(tenantAdminCredentials.userId, tenantAdminInvitations.userId)
+      )
+      .innerJoin(
+        userTenantMemberships,
+        and(
+          eq(userTenantMemberships.userId, tenantAdminInvitations.userId),
+          eq(userTenantMemberships.tenantId, tenantAdminInvitations.tenantId)
+        )
+      )
+      .where(
+        and(
+          eq(tenantAdminInvitations.tokenHash, tokenHash),
+          isNull(tenantAdminInvitations.usedAt),
+          gt(tenantAdminInvitations.expiresAt, now),
+          eq(tenantAdminCredentials.status, "active"),
+          eq(userTenantMemberships.status, "active")
+        )
+      )
+      .limit(1)
+      .for("update");
+
+    if (!row) return null;
+    await tx
+      .update(tenantAdminInvitations)
+      .set({ usedAt: now })
+      .where(eq(tenantAdminInvitations.tokenHash, tokenHash));
+    return row;
   });
 }
 

@@ -280,6 +280,41 @@ export const tenantAdminCredentials = mysqlTable(
   ]
 );
 
+/**
+ * Einmalige Aktivierungslinks für persönliche Vereinsadministratoren.
+ * Der Link enthält ausschließlich einen zufälligen Token; gespeichert wird nur
+ * dessen SHA-256-Hash. Nach der Verwendung oder nach Ablauf kann er nicht mehr
+ * zur Kontoübernahme eingesetzt werden.
+ */
+export const tenantAdminInvitations = mysqlTable(
+  "tenant_admin_invitations",
+  {
+    tokenHash: varchar("tokenHash", { length: 64 }).primaryKey(),
+    userId: int("userId").notNull(),
+    tenantId: varchar("tenantId", { length: 96 }).notNull(),
+    expiresAt: timestamp("expiresAt").notNull(),
+    usedAt: timestamp("usedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    foreignKey({
+      name: "tenant_admin_invitations_user_id_users_id_fk",
+      columns: [table.userId],
+      foreignColumns: [users.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "tenant_admin_invitations_tenant_id_tenants_id_fk",
+      columns: [table.tenantId],
+      foreignColumns: [tenants.id],
+    }).onDelete("cascade"),
+    index("tenant_admin_invitations_user_expiry_idx").on(
+      table.userId,
+      table.expiresAt
+    ),
+    index("tenant_admin_invitations_expiry_idx").on(table.expiresAt),
+  ]
+);
+
 /** Einmalige, fünf Minuten gültige Übergabe vom Master-Portal in die Vereinsansicht. */
 export const platformTenantHandoffs = mysqlTable(
   "platform_tenant_handoffs",

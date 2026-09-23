@@ -1,5 +1,5 @@
 import { COOKIE_NAME } from "@shared/const";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import {
   eventWeekdays,
   helperEligibleForShift,
@@ -108,6 +108,10 @@ import {
   sessionPresenceKey,
 } from "./session-presence";
 import { upcomingPreparationDeadlines } from "./dashboard-deadlines";
+import {
+  renderInvitationEmail,
+  sendTransactionalEmail,
+} from "./mail-service";
 
 const GUIDE_PDF_KEY = "Handbuch_RSC_Helferplanung_742fcb04.pdf";
 const GUIDE_PDF_FILENAME = "Handbuch_RSC_Helferplanung.pdf";
@@ -122,6 +126,11 @@ async function safelyRecordPresence(
   } catch (error) {
     console.warn("[Presence] Aktivitätszeit konnte nicht gespeichert werden", error);
   }
+}
+
+/** Speichert zufällige Einmal-Token ausschließlich als deterministischen Hash. */
+function hashOpaqueToken(rawToken: string) {
+  return createHash("sha256").update(rawToken).digest("hex");
 }
 
 function planningTeamAccessIdForUser(user: {
@@ -1377,7 +1386,7 @@ export const appRouter = router({
     consumeHandoffToken: publicProcedure
       .input(z.object({ token: z.string().min(10).max(200) }))
       .mutation(async ({ ctx, input }) => {
-        const tokenHash = await hashPassword(input.token);
+        const tokenHash = hashOpaqueToken(input.token);
         const handoff = await db.consumePlatformTenantHandoff(tokenHash);
         if (!handoff) {
           throw new TRPCError({
@@ -1396,6 +1405,35 @@ export const appRouter = router({
         return {
           success: true,
           tenantId: handoff.tenantId,
+          ...(isEmbeddedManusPreview(ctx.req) ? { previewSessionToken: token } : {}),
+        } as const;
+      }),
+    consumeTenantAdminInvitation: publicProcedure
+      .input(z.object({ token: z.string().min(32).max(200) }))
+      .mutation(async ({ ctx, input }) => {
+        const invitation = await db.consumeTenantAdminInvitation(
+          hashOpaqueToken(input.token)
+        );
+        if (!invitation) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Dieser Aktivierungslink ist ungültig, bereits verwendet oder abgelaufen.",
+          });
+        }
+        const token = await sdk.createSessionToken(invitation.userOpenId, {
+          name: invitation.userName ?? "Vereinsadministrator",
+          expiresInMs: PASSWORD_SESSION_MS,
+          sessionVersion: invitation.sessionVersion,
+        });
+        ctx.res.cookie(COOKIE_NAME, token, {
+          ...getSessionCookieOptions(ctx.req),
+          maxAge: PASSWORD_SESSION_MS,
+        });
+        return {
+          success: true,
+          tenantId: invitation.tenantId,
+          mustChangePassword: true,
           ...(isEmbeddedManusPreview(ctx.req) ? { previewSessionToken: token } : {}),
         } as const;
       }),
@@ -1749,6 +1787,8 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ input }) => {
+        // Das Zufallspasswort ist absichtlich nicht zur Weitergabe bestimmt:
+        // der Administrator setzt sein eigenes Passwort nach Link-Einlösung.
         const initialPassword = generatePlanningTeamAccessPassword();
         const passwordHash = await hashPassword(initialPassword);
         const admin = await db.createOrUpdateTenantAdminForPlatformAdmin({
@@ -1757,11 +1797,18 @@ export const appRouter = router({
           email: input.email,
           passwordHash,
         });
+        const rawInvitationToken = randomBytes(32).toString("base64url");
+        const invitation = await db.createTenantAdminInvitation({
+          userId: admin.userId,
+          tenantId: input.tenantId,
+          tokenHash: hashOpaqueToken(rawInvitationToken),
+          expiresInSeconds: 48 * 60 * 60,
+        });
+        const invitationUrl = `https://app.mycrewmate.de/aktivieren?token=${encodeURIComponent(rawInvitationToken)}`;
         let emailSent = false;
         if (input.sendEmailInvitation) {
           const tenants = await db.listTenants();
           const targetTenant = tenants.find(t => t.id === input.tenantId);
-          const invitationUrl = `https://app.mycrewmate.de/login`;
           const emailContent = renderInvitationEmail({
             recipientName: admin.name,
             tenantName: targetTenant?.name ?? input.tenantId,
@@ -1781,7 +1828,8 @@ export const appRouter = router({
           userId: admin.userId,
           email: admin.email,
           name: admin.name,
-          initialPassword,
+          invitationUrl,
+          expiresAt: invitation.expiresAt,
           emailSent,
         } as const;
       }),
@@ -1790,7 +1838,7 @@ export const appRouter = router({
       .input(z.object({ tenantId: z.string().trim().regex(/^[a-z0-9-]{3,96}$/) }))
       .mutation(async ({ ctx, input }) => {
         const rawToken = randomBytes(24).toString("base64url");
-        const tokenHash = await hashPassword(rawToken);
+        const tokenHash = hashOpaqueToken(rawToken);
         await db.createPlatformTenantHandoff({
           tenantId: input.tenantId,
           createdByOpenId: ctx.user.openId,
@@ -3703,7 +3751,3 @@ export const appRouter = router({
 });
 
 export type AppRouter = typeof appRouter;
-import {
-  renderInvitationEmail,
-  sendTransactionalEmail,
-} from "./mail-service";

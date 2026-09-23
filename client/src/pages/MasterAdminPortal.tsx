@@ -32,6 +32,7 @@ import {
   CheckCircle2,
   CircleAlert,
   CirclePause,
+  Copy,
   CreditCard,
   KeyRound,
   Loader2,
@@ -233,7 +234,8 @@ export default function MasterAdminPortal() {
     tenantName: string;
     adminName: string;
     email: string;
-    initialPassword: string;
+    invitationUrl: string;
+    expiresAt: Date;
     emailSent?: boolean;
   } | null>(null);
 
@@ -244,7 +246,8 @@ export default function MasterAdminPortal() {
           tenantName: adminModalTenant.name,
           adminName: result.name,
           email: result.email,
-          initialPassword: result.initialPassword,
+          invitationUrl: result.invitationUrl,
+          expiresAt: result.expiresAt,
           emailSent: result.emailSent,
         });
       }
@@ -729,7 +732,7 @@ export default function MasterAdminPortal() {
           <DialogHeader>
             <DialogTitle>Vereins-Administrator anlegen</DialogTitle>
             <DialogDescription>
-              Erstellt einen persönlichen Zugang für {adminModalTenant?.name}. Der Administrator erhält ein Einmalpasswort zur Erstanmeldung.
+              Erstellt einen persönlichen Zugang für {adminModalTenant?.name}. Der Administrator setzt sein Passwort über einen einmaligen Aktivierungslink selbst.
             </DialogDescription>
           </DialogHeader>
           <form
@@ -781,7 +784,7 @@ export default function MasterAdminPortal() {
               </Button>
               <Button type="submit" disabled={createTenantAdmin.isPending}>
                 {createTenantAdmin.isPending ? <Loader2 className="size-4 animate-spin" /> : <KeyRound className="size-4" />}
-                Zugang mit Einmalpasswort erstellen
+                Aktivierungslink erstellen
               </Button>
             </DialogFooter>
           </form>
@@ -795,7 +798,7 @@ export default function MasterAdminPortal() {
               <CheckCircle2 className="size-5" /> Vereins-Zugang erstellt
             </DialogTitle>
             <DialogDescription>
-              Zugangsdaten für {issuedAdminSheet?.tenantName}. Bitte geben Sie diesen Einmalcode sicher an den Vereinsadministrator weiter.
+              Aktivierungslink für {issuedAdminSheet?.tenantName}. Er ist nur einmal nutzbar und führt direkt zur eigenen Passwortvergabe.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 text-sm">
@@ -807,9 +810,27 @@ export default function MasterAdminPortal() {
               <span className="text-xs font-semibold text-slate-500">E-Mail</span>
               <p className="font-medium text-slate-900">{issuedAdminSheet?.email}</p>
             </div>
-            <div>
-              <span className="text-xs font-semibold text-slate-500">Einmaliges Startpasswort</span>
-              <p className="font-mono text-base font-bold text-emerald-900">{issuedAdminSheet?.initialPassword}</p>
+            <div className="space-y-1.5">
+              <span className="text-xs font-semibold text-slate-500">Einmaliger Aktivierungslink</span>
+              <div className="flex items-start gap-2">
+                <code className="min-w-0 flex-1 break-all rounded-lg border border-emerald-200 bg-white px-2.5 py-2 text-xs text-slate-800">
+                  {issuedAdminSheet?.invitationUrl}
+                </code>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  className="shrink-0"
+                  aria-label="Aktivierungslink kopieren"
+                  onClick={async () => {
+                    if (!issuedAdminSheet?.invitationUrl) return;
+                    await navigator.clipboard.writeText(issuedAdminSheet.invitationUrl);
+                    toast.success("Aktivierungslink kopiert");
+                  }}
+                >
+                  <Copy className="size-4" />
+                </Button>
+              </div>
             </div>
             {issuedAdminSheet?.emailSent && (
               <div className="rounded-lg bg-emerald-100 p-2.5 text-xs text-emerald-900 font-medium">
@@ -817,7 +838,7 @@ export default function MasterAdminPortal() {
               </div>
             )}
             <p className="text-xs text-slate-500">
-              Beim ersten Login wird der Administrator aufgefordert, sein persönliches Passwort zu vergeben.
+              Gültig bis {issuedAdminSheet?.expiresAt.toLocaleString("de-DE")}. Nach der Nutzung ist der Link automatisch ungültig.
             </p>
           </div>
           <DialogFooter>

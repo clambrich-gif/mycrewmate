@@ -407,6 +407,13 @@
       "when": 1790175406899,
       "tag": "0057_glossy_the_captain",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "5",
+      "when": 1790177805656,
+      "tag": "0058_open_chat",
+      "breakpoints": true
     }
   ]
 }

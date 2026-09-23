@@ -412,6 +412,37 @@ export function Layout({ children }: { children: React.ReactNode }) {
       consumeHandoff.mutate({ token });
     }
   }, [consumeHandoff]);
+  const consumeTenantInvitation = trpc.auth.consumeTenantAdminInvitation.useMutation({
+    onSuccess: async result => {
+      storePreviewSessionToken(result.previewSessionToken);
+      selectTenant(result.tenantId);
+      await Promise.all([
+        utils.auth.me.invalidate(),
+        utils.auth.initialPasswordChangeStatus.invalidate(),
+      ]);
+      toast.success("Zugang bestätigt – bitte jetzt ein eigenes Passwort festlegen.");
+      // Der Token darf weder im Verlauf noch bei einem späteren Reload verbleiben.
+      window.location.replace("/");
+    },
+    onError: err => {
+      toast.error(err.message);
+      window.history.replaceState({}, "", "/login");
+    },
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.pathname !== "/aktivieren") return;
+    const token = new URLSearchParams(window.location.search).get("token");
+    if (
+      token &&
+      token.length >= 32 &&
+      !consumeTenantInvitation.isPending &&
+      !consumeTenantInvitation.isSuccess
+    ) {
+      consumeTenantInvitation.mutate({ token });
+    }
+  }, [consumeTenantInvitation]);
   const [deleteEventTarget, setDeleteEventTarget] = useState<{
     id: number;
     name: string;
