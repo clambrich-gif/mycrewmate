@@ -90,6 +90,23 @@ describe("Master-Admin-Portal", () => {
     expect(page).toContain("xl:grid-cols-4");
   });
 
+  it("stellt persönliche Zugänge nur im geschützten Masterportal bereit und entfernt Testzugänge kontrolliert", () => {
+    const routers = source("server/routers.ts");
+    const db = source("server/db.ts");
+    const page = source("client/src/pages/MasterAdminPortal.tsx");
+
+    expect(routers).toContain("accessInventory: masterAdminProcedure");
+    expect(routers).toContain("deleteTestAccess: masterAdminProcedure");
+    expect(db).toContain("export async function listPlatformAccessInventoryForPlatformAdmin");
+    expect(db).toContain("export async function deletePlatformAccessForMasterAdmin");
+    expect(db).toContain("Passworthashes\n * sowie Einladungs-Token bleiben dabei konsequent außerhalb der Antwort");
+    expect(db).toContain("Dieser Zugang ist kein löschbarer persönlicher Vereinsadmin-Testzugang");
+    expect(page).toContain("Zugänge &amp; Testbereinigung");
+    expect(page).toContain("E-Mail-Dublette");
+    expect(page).toContain("Testzugang endgültig entfernen?");
+    expect(page).toContain("Ansprechpartner, Helfer, Aufgaben und Veranstaltungsdaten bleiben unverändert erhalten.");
+  });
+
   it("erstellt neue Vereine mit Startveranstaltung und eindeutiger serverseitiger Kennung", () => {
     const db = source("server/db.ts");
     expect(db).toContain("function tenantSlugFromName");

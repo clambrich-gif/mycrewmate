@@ -2020,6 +2020,25 @@ export const appRouter = router({
     tenantOverview: masterAdminProcedure.query(() =>
       db.listTenantOverviewsForPlatformAdmin()
     ),
+    accessInventory: masterAdminProcedure.query(() =>
+      db.listPlatformAccessInventoryForPlatformAdmin()
+    ),
+    deleteTestAccess: masterAdminProcedure
+      .input(
+        z.object({
+          type: z.enum(["tenant_admin", "planning_team"]),
+          accessId: z.number().int().positive(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const deleted = await db.deletePlatformAccessForMasterAdmin(input);
+        await recordSecurityActivity(
+          auditActor(ctx.user),
+          `Testzugang „${deleted.name}“ (${input.type === "tenant_admin" ? "Vereinsadmin" : "Planungsteam"}) entfernt`,
+          "deleted"
+        );
+        return { success: true, ...deleted } as const;
+      }),
     createTenant: masterAdminProcedure
       .input(
         z.object({

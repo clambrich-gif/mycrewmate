@@ -55,6 +55,8 @@ import {
   Plus,
   RotateCcw,
   ShieldCheck,
+  Trash2,
+  UserRoundX,
   UsersRound,
 } from "lucide-react";
 import { FormEvent, useState } from "react";
@@ -96,6 +98,17 @@ type CreateTenantForm = {
   activeDays: string[];
 };
 
+type PlatformAccessInventoryItem = {
+  type: "tenant_admin" | "planning_team";
+  accessId: number;
+  name: string;
+  email: string | null;
+  status: "active" | "suspended" | "legacy";
+  tenantNames: string[];
+  createdAt: Date;
+  hasDuplicateEmail: boolean;
+};
+
 function defaultCreateTenantForm(): CreateTenantForm {
   return {
     name: "",
@@ -114,6 +127,12 @@ function formatDate(value: string | null) {
   if (!value) return "Termin offen";
   const [year, month, day] = value.slice(0, 10).split("-");
   return year && month && day ? `${day}.${month}.${year}` : value;
+}
+
+function formatAccessCreatedAt(value: Date) {
+  return new Intl.DateTimeFormat("de-DE", { dateStyle: "medium" }).format(
+    new Date(value)
+  );
 }
 
 function PortalLoading() {
@@ -254,6 +273,7 @@ export default function MasterAdminPortal() {
     id: string;
     name: string;
   } | null>(null);
+  const [accessToDelete, setAccessToDelete] = useState<PlatformAccessInventoryItem | null>(null);
 
   const createTenantAdmin = trpc.platformAdmin.createTenantAdmin.useMutation({
     onSuccess: result => {
@@ -289,6 +309,19 @@ export default function MasterAdminPortal() {
     enabled: isAuthenticated && user?.role === "admin",
     retry: false,
     refetchOnWindowFocus: false,
+  });
+  const accessInventory = trpc.platformAdmin.accessInventory.useQuery(undefined, {
+    enabled: isAuthenticated && user?.role === "admin",
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+  const deleteTestAccess = trpc.platformAdmin.deleteTestAccess.useMutation({
+    onSuccess: async result => {
+      await accessInventory.refetch();
+      setAccessToDelete(null);
+      toast.success(`Testzugang „${result.name}“ wurde entfernt.`);
+    },
+    onError: error => toast.error(error.message),
   });
   const createTenant = trpc.platformAdmin.createTenant.useMutation({
     onSuccess: async result => {
@@ -425,6 +458,8 @@ export default function MasterAdminPortal() {
   const archivedTenants = allTenants.filter(tenant => tenant.status === "archived");
   const pilotCount = activeTenants.filter(tenant => tenant.status === "pilot").length;
   const managedEventCount = activeTenants.reduce((sum, tenant) => sum + tenant.eventCount, 0);
+  const personalAccesses = (accessInventory.data ?? []) as PlatformAccessInventoryItem[];
+  const duplicateEmailCount = personalAccesses.filter(access => access.hasDuplicateEmail).length;
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_5%_4%,rgba(219,234,254,0.95),transparent_32%),radial-gradient(circle_at_98%_96%,rgba(224,242,254,0.82),transparent_30%),#f8fafc] p-4 text-slate-950 sm:p-6 lg:p-10">
@@ -484,6 +519,77 @@ export default function MasterAdminPortal() {
             <CardContent className="flex items-center gap-3 p-4">
               <span className="flex size-11 items-center justify-center rounded-xl bg-slate-200 text-slate-700"><Archive className="size-5" /></span>
               <div><p className="text-2xl font-bold leading-none">{archivedTenants.length}</p><p className="mt-1 text-sm text-slate-600">Vereine im Archiv</p></div>
+            </CardContent>
+          </Card>
+        </section>
+
+        <section aria-labelledby="zugangsinventar">
+          <Card className="border-slate-200 bg-white/95 py-0 shadow-sm">
+            <CardHeader className="border-b border-slate-100 px-5 py-4 sm:px-6">
+              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+                <div>
+                  <CardTitle id="zugangsinventar" className="flex items-center gap-2 text-base">
+                    <UserRoundX className="size-5 text-blue-700" /> Zugänge &amp; Testbereinigung
+                  </CardTitle>
+                  <CardDescription className="mt-1 max-w-3xl">
+                    Persönliche Vereinsadmin- und Planungsteamzugänge werden mandantenübergreifend geprüft. Das Entfernen beendet Anmeldungen und offene Einladungen; Ansprechpartner- und Planungsdaten bleiben erhalten.
+                  </CardDescription>
+                </div>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-700">
+                    {personalAccesses.length} persönliche Zugänge
+                  </Badge>
+                  {duplicateEmailCount > 0 && (
+                    <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-900">
+                      {duplicateEmailCount} E-Mail-Dublette{duplicateEmailCount === 1 ? "" : "n"}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="px-5 py-4 sm:px-6">
+              {accessInventory.isLoading ? (
+                <p className="text-sm text-slate-500">Zugangsinventar wird geprüft …</p>
+              ) : personalAccesses.length === 0 ? (
+                <p className="text-sm text-slate-500">Keine persönlichen Vereins- oder Planungsteamzugänge vorhanden.</p>
+              ) : (
+                <div className="grid gap-3 lg:grid-cols-2">
+                  {personalAccesses.map(access => (
+                    <article
+                      key={`${access.type}-${access.accessId}`}
+                      className="flex min-w-0 flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-4 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="min-w-0 space-y-1.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="truncate font-semibold text-slate-900">{access.name}</p>
+                          <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-800">
+                            {access.type === "tenant_admin" ? "Vereinsadmin" : "Planungsteam"}
+                          </Badge>
+                          {access.hasDuplicateEmail && (
+                            <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-900">E-Mail-Dublette</Badge>
+                          )}
+                          {access.status === "legacy" && (
+                            <Badge variant="outline" className="border-slate-200 bg-white text-slate-600">ohne E-Mail</Badge>
+                          )}
+                        </div>
+                        <p className="truncate text-sm text-slate-700">{access.email ?? "Keine persönliche E-Mail hinterlegt"}</p>
+                        <p className="text-xs leading-5 text-slate-500">
+                          {access.tenantNames.length ? access.tenantNames.join(" · ") : "Keinem Verein zugeordnet"} · angelegt am {formatAccessCreatedAt(access.createdAt)}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="shrink-0 border-red-200 bg-white text-red-700 hover:bg-red-50 hover:text-red-800"
+                        disabled={deleteTestAccess.isPending}
+                        onClick={() => setAccessToDelete(access)}
+                      >
+                        <Trash2 className="size-3.5" /> Testzugang entfernen
+                      </Button>
+                    </article>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </section>
@@ -946,6 +1052,45 @@ export default function MasterAdminPortal() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={Boolean(accessToDelete)}
+        onOpenChange={open => {
+          if (!open && !deleteTestAccess.isPending) setAccessToDelete(null);
+        }}
+      >
+        <AlertDialogContent className="border-red-200 bg-white text-slate-950">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-900">
+              <UserRoundX className="size-5 text-red-700" /> Testzugang endgültig entfernen?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="leading-5 text-slate-600">
+              Der persönliche Zugang von <strong className="font-semibold text-slate-800">{accessToDelete?.name}</strong>{" "}
+              ({accessToDelete?.email ?? "ohne E-Mail"}) kann sich danach nicht mehr anmelden. Offene Aktivierungslinks und bestehende Sitzungen werden ungültig.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-5 text-amber-950">
+            Ansprechpartner, Helfer, Aufgaben und Veranstaltungsdaten bleiben unverändert erhalten. Diese Aktion entfernt ausschließlich die Zugangsdaten und deren Zuordnung.
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteTestAccess.isPending}>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!accessToDelete || deleteTestAccess.isPending}
+              className="bg-red-700 text-white hover:bg-red-800"
+              onClick={() => {
+                if (!accessToDelete) return;
+                deleteTestAccess.mutate({
+                  type: accessToDelete.type,
+                  accessId: accessToDelete.accessId,
+                });
+              }}
+            >
+              {deleteTestAccess.isPending ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+              Zugang endgültig entfernen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={Boolean(archiveModalTenant)}

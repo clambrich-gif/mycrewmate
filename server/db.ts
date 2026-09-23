@@ -597,6 +597,185 @@ export async function listTenantOverviewsForPlatformAdmin() {
   });
 }
 
+/**
+ * Ausschließlich für das geschützte Master-Portal: liefert die tatsächlich
+ * anmeldefähigen persönlichen Zugänge mit ihrem Mandantenbezug. Passworthashes
+ * sowie Einladungs-Token bleiben dabei konsequent außerhalb der Antwort.
+ */
+export type PlatformAccessInventoryItem = {
+  type: "tenant_admin" | "planning_team";
+  accessId: number;
+  name: string;
+  email: string | null;
+  status: "active" | "suspended" | "legacy";
+  tenantNames: string[];
+  createdAt: Date;
+  hasDuplicateEmail: boolean;
+};
+
+export async function listPlatformAccessInventoryForPlatformAdmin(): Promise<
+  PlatformAccessInventoryItem[]
+> {
+  const database = await getDb();
+  if (!database) return [];
+
+  const [tenantAdminRows, membershipRows, planningRows, planningEventRows] =
+    await Promise.all([
+      database
+        .select({
+          accessId: tenantAdminCredentials.userId,
+          name: users.name,
+          email: tenantAdminCredentials.email,
+          status: tenantAdminCredentials.status,
+          createdAt: tenantAdminCredentials.createdAt,
+        })
+        .from(tenantAdminCredentials)
+        .innerJoin(users, eq(users.id, tenantAdminCredentials.userId))
+        .orderBy(asc(tenantAdminCredentials.email)),
+      database
+        .select({
+          userId: userTenantMemberships.userId,
+          tenantName: tenants.name,
+        })
+        .from(userTenantMemberships)
+        .innerJoin(tenants, eq(tenants.id, userTenantMemberships.tenantId))
+        .where(eq(userTenantMemberships.role, "tenant_admin")),
+      database
+        .select({
+          accessId: planningTeamAccesses.id,
+          label: planningTeamAccesses.label,
+          email: planningTeamAccesses.email,
+          createdAt: planningTeamAccesses.createdAt,
+        })
+        .from(planningTeamAccesses)
+        .orderBy(asc(planningTeamAccesses.label), asc(planningTeamAccesses.id)),
+      database
+        .select({
+          accessId: planningTeamAccessEvents.accessId,
+          tenantName: tenants.name,
+        })
+        .from(planningTeamAccessEvents)
+        .innerJoin(events, eq(events.id, planningTeamAccessEvents.eventId))
+        .innerJoin(tenants, eq(tenants.id, events.tenantId)),
+    ]);
+
+  const tenantNamesByUser = new Map<number, string[]>();
+  for (const row of membershipRows) {
+    const current = tenantNamesByUser.get(row.userId) ?? [];
+    if (!current.includes(row.tenantName)) current.push(row.tenantName);
+    tenantNamesByUser.set(row.userId, current);
+  }
+  const tenantNamesByPlanningAccess = new Map<number, string[]>();
+  for (const row of planningEventRows) {
+    const current = tenantNamesByPlanningAccess.get(row.accessId) ?? [];
+    if (!current.includes(row.tenantName)) current.push(row.tenantName);
+    tenantNamesByPlanningAccess.set(row.accessId, current);
+  }
+
+  const items: PlatformAccessInventoryItem[] = [
+    ...tenantAdminRows.map(row => ({
+      type: "tenant_admin" as const,
+      accessId: row.accessId,
+      name: row.name?.trim() || "Unbenannter Vereinsadministrator",
+      email: row.email,
+      status: row.status,
+      tenantNames: tenantNamesByUser.get(row.accessId) ?? [],
+      createdAt: row.createdAt,
+      hasDuplicateEmail: false,
+    })),
+    ...planningRows.map(row => ({
+      type: "planning_team" as const,
+      accessId: row.accessId,
+      name: row.label,
+      email: row.email,
+      status: row.email ? ("active" as const) : ("legacy" as const),
+      tenantNames: tenantNamesByPlanningAccess.get(row.accessId) ?? [],
+      createdAt: row.createdAt,
+      hasDuplicateEmail: false,
+    })),
+  ];
+
+  const emailCounts = new Map<string, number>();
+  for (const item of items) {
+    const email = item.email?.trim().toLocaleLowerCase("de-DE");
+    if (email) emailCounts.set(email, (emailCounts.get(email) ?? 0) + 1);
+  }
+  return items.map(item => ({
+    ...item,
+    hasDuplicateEmail:
+      Boolean(item.email) &&
+      (emailCounts.get(item.email!.trim().toLocaleLowerCase("de-DE")) ?? 0) > 1,
+  }));
+}
+
+/**
+ * Entfernt ausschließlich anmeldefähige Testzugänge. Planungs- und
+ * Ansprechpartnerdaten bleiben ausdrücklich erhalten. Ein Vereinsadmin kann
+ * mehreren Mandanten angehören; seine Löschung entzieht daher bewusst alle
+ * persönlichen Vereinsadmin-Mitgliedschaften dieses Testkontos.
+ */
+export async function deletePlatformAccessForMasterAdmin(input: {
+  type: "tenant_admin" | "planning_team";
+  accessId: number;
+}) {
+  const database = (await getDb()) as DB;
+  return database.transaction(async tx => {
+    if (input.type === "planning_team") {
+      const [access] = await tx
+        .select({ id: planningTeamAccesses.id, label: planningTeamAccesses.label })
+        .from(planningTeamAccesses)
+        .where(eq(planningTeamAccesses.id, input.accessId))
+        .limit(1)
+        .for("update");
+      if (!access) throw new Error("Planungsteam-Zugang wurde nicht gefunden");
+
+      // Die abhängigen Einladungen und Eventfreigaben werden über Datenbank-
+      // Fremdschlüssel entfernt; der zugehörige Login-Benutzer wird danach
+      // gelöscht und damit jede bestehende Sitzung ungültig.
+      await tx.delete(planningTeamAccesses).where(eq(planningTeamAccesses.id, access.id));
+      await tx
+        .delete(users)
+        .where(eq(users.openId, planningTeamAccessOpenId(access.id)));
+      return {
+        type: input.type,
+        name: access.label,
+        removedTenantCount: 0,
+      } as const;
+    }
+
+    const [admin] = await tx
+      .select({
+        userId: tenantAdminCredentials.userId,
+        email: tenantAdminCredentials.email,
+        name: users.name,
+        openId: users.openId,
+      })
+      .from(tenantAdminCredentials)
+      .innerJoin(users, eq(users.id, tenantAdminCredentials.userId))
+      .where(eq(tenantAdminCredentials.userId, input.accessId))
+      .limit(1)
+      .for("update");
+    if (!admin) throw new Error("Vereinsadmin-Zugang wurde nicht gefunden");
+    if (!admin.openId.startsWith("tenant-admin:")) {
+      throw new Error("Dieser Zugang ist kein löschbarer persönlicher Vereinsadmin-Testzugang");
+    }
+
+    const memberships = await tx
+      .select({ id: userTenantMemberships.id })
+      .from(userTenantMemberships)
+      .where(eq(userTenantMemberships.userId, admin.userId))
+      .for("update");
+    // Durch die Kaskaden werden Credentials, Einladungen, Mitgliedschaften und
+    // Anwesenheit dieses privaten Login-Kontos atomar aufgehoben.
+    await tx.delete(users).where(eq(users.id, admin.userId));
+    return {
+      type: input.type,
+      name: admin.name?.trim() || admin.email,
+      removedTenantCount: memberships.length,
+    } as const;
+  });
+}
+
 export type PlatformTenantSetupStatus = "pilot" | "sample";
 export type PlatformTenantLifecycleStatus =
   | "pilot"
