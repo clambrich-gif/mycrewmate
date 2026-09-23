@@ -38,6 +38,7 @@ type Offer = {
   name: string;
   eyebrow: string;
   price: number;
+  pricePrefix?: string;
   audience: string;
   description: string;
   highlights: string[];
@@ -96,6 +97,7 @@ const OFFERS: Offer[] = [
     name: "Enterprise",
     eyebrow: "Für eure eigene Lösung",
     price: 449,
+    pricePrefix: "ab",
     audience: "Für Großevents, Verbände & individuelle Abläufe",
     description: "Der Rahmen für Teams, die MyCrewMate auf ihren Verein zuschneiden lassen möchten.",
     highlights: [
@@ -160,7 +162,10 @@ function OfferCard({
       <p className="mt-5 text-sm leading-6 text-slate-600">{offer.audience}</p>
       <p className="mt-3 min-h-12 text-base font-semibold leading-6 text-slate-900">{offer.description}</p>
       <div className="mt-7 border-y border-slate-200/80 py-4">
-        <span className="text-4xl font-black tracking-tight text-slate-950">{offer.price} €</span>
+        <span className="text-4xl font-black tracking-tight text-slate-950">
+          {offer.pricePrefix ? `${offer.pricePrefix} ` : ""}
+          {offer.price} €
+        </span>
         <span className="ml-2 text-sm font-semibold text-slate-500">pro Jahr*</span>
       </div>
       <ul className="mt-5 space-y-3 text-sm text-slate-700">

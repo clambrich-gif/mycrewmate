@@ -58,6 +58,7 @@ import { cn } from "@/lib/utils";
 import { storePreviewSessionToken } from "@/lib/preview-session";
 import { WEEKDAYS, type Weekday } from "@shared/weekdays";
 import { COPYRIGHT_NOTICE } from "@shared/branding";
+import { ACTIVE_PILOT_TENANT } from "@shared/tenant";
 import {
   Bike,
   Calendar,
@@ -1369,6 +1370,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <SheetDescription className="mt-1 text-center text-[11px] font-medium tracking-[0.08em] text-slate-600">
               VEREINS- &amp; EVENTPLANUNG
             </SheetDescription>
+            <div className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50/90 px-2.5 py-0.5 text-[10px] font-semibold text-blue-900 shadow-xs">
+              <span className="truncate">{ACTIVE_PILOT_TENANT.name}</span>
+              <span className="rounded bg-blue-600/15 px-1 py-0.2 text-[9px] font-bold uppercase tracking-wider text-blue-800">
+                Pilot
+              </span>
+            </div>
           </SheetHeader>
           <div className="flex min-h-10 items-center justify-center border-y border-slate-200 bg-slate-50 px-3 py-1.5">
             <OnlinePresenceBadge
@@ -1595,6 +1602,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
           />
           <div className="mt-1 w-full text-center text-[11px] font-medium tracking-[0.08em] text-slate-600">
             VEREINS- &amp; EVENTPLANUNG
+          </div>
+          <div className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50/90 px-2.5 py-0.5 text-[10px] font-semibold text-blue-900 shadow-xs">
+            <span className="truncate">{ACTIVE_PILOT_TENANT.name}</span>
+            <span className="rounded bg-blue-600/15 px-1 py-0.2 text-[9px] font-bold uppercase tracking-wider text-blue-800">
+              Pilot
+            </span>
           </div>
         </div>
         <div className="flex min-h-10 items-center justify-center border-y border-slate-200 bg-white/35 px-3 py-1.5">
