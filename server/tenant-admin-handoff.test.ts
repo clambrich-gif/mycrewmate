@@ -42,4 +42,10 @@ describe("Vereinsadmin-Verwaltung, Marktstart-Sperre & Handoff", () => {
     expect(portalSource).toContain("createTenantAdmin.mutate");
     expect(portalSource).toContain("createHandoff.mutate");
   });
+
+  it("leitet einen Master-Handoff stets auf die geschützte Vereins-App statt erneut ins Master-Portal", () => {
+    expect(portalSource).toContain('import { appUrl } from "@/lib/site-host";');
+    expect(portalSource).toContain('appUrl("/", `?handoff=${encodeURIComponent(result.handoffToken)}`)');
+    expect(portalSource).not.toContain("window.location.origin}/?handoff=");
+  });
 });

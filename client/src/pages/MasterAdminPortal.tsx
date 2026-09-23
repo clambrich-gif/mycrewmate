@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
 import { storePreviewSessionToken } from "@/lib/preview-session";
+import { appUrl } from "@/lib/site-host";
 import {
   Building2,
   CalendarDays,
@@ -261,7 +262,9 @@ export default function MasterAdminPortal() {
 
   const createHandoff = trpc.platformAdmin.createHandoffLink.useMutation({
     onSuccess: result => {
-      const targetUrl = `${window.location.origin}/?handoff=${encodeURIComponent(result.handoffToken)}`;
+      // Der Handoff darf nie auf der aktuellen Master-Domain landen: Die
+      // Vereinsansicht lebt ausschließlich unter app.mycrewmate.de.
+      const targetUrl = appUrl("/", `?handoff=${encodeURIComponent(result.handoffToken)}`);
       window.open(targetUrl, "_blank");
       toast.success("Vereinsansicht in neuem Tab geöffnet (5 Min. gültig)");
     },
