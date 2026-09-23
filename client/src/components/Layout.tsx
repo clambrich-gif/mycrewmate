@@ -100,6 +100,15 @@ const MYCREWMATE_ICON = "/icons/mycrewmate-pwa-512.png";
 const CHAT_SNAPSHOT_POLL_MS = 5_000;
 const LAST_ADMINISTRATOR_NAME_STORAGE_KEY = "mycrewmate:last-administrator-name";
 const DESKTOP_SIDEBAR_OPEN_STORAGE_KEY = "mycrewmate:desktop-sidebar-open";
+// Der Wechsler dient nur der lokalen Entwicklungs- und Isolationserprobung.
+// Für Vereinszugänge und die veröffentlichte App wird der Mandant später
+// ausschließlich serverseitig aus der Konto-Zuordnung bestimmt.
+const LOCAL_TENANT_SWITCHER_ENABLED =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1" ||
+    window.location.hostname.endsWith(".manus.computer") ||
+    window.location.hostname.endsWith(".manus.space"));
 
 type DeferredInstallPrompt = Event & {
   prompt: () => Promise<void>;
@@ -531,7 +540,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
     enabled: isAuthenticated,
   });
   const tenants = trpc.tenants.list.useQuery(undefined, {
-    enabled: isAuthenticated && user?.role === "admin",
+    enabled:
+      LOCAL_TENANT_SWITCHER_ENABLED &&
+      isAuthenticated &&
+      user?.role === "admin",
+  });
+  const currentTenant = trpc.tenants.current.useQuery(undefined, {
+    enabled: isAuthenticated,
   });
   const events = trpc.events.list.useQuery(undefined, {
     enabled: isAuthenticated,
@@ -539,9 +554,21 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const selectedEvent = events.data?.find(item => item.id === eventId);
   const selectedTenantRecord = tenants.data?.find(item => item.id === tenantId);
   const activeTenantName =
-    selectedTenantRecord?.name ?? ACTIVE_PILOT_TENANT.name;
+    selectedTenantRecord?.name ??
+    currentTenant.data?.name ??
+    ACTIVE_PILOT_TENANT.name;
+  const activeTenantStatus =
+    selectedTenantRecord?.status ?? currentTenant.data?.status ?? "pilot";
   const activeTenantBadge =
-    selectedTenantRecord?.status === "sample" ? "Muster" : "Pilot";
+    activeTenantStatus === "sample"
+      ? "Muster"
+      : activeTenantStatus === "active"
+        ? "Aktiv"
+        : activeTenantStatus === "suspended"
+          ? "Pausiert"
+          : activeTenantStatus === "archived"
+            ? "Archiv"
+            : "Pilot";
 
   useEffect(() => {
     chatSnapshotEpochRef.current += 1;
@@ -1395,7 +1422,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             />
           </div>
           <div className="border-b p-3">
-            {user?.role === "admin" && tenants.data && (
+            {LOCAL_TENANT_SWITCHER_ENABLED && user?.role === "admin" && tenants.data && (
               <div className="mb-3 rounded-xl border border-blue-200 bg-blue-50/70 p-2.5">
                 <Label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-blue-950">
                   <Building2 className="h-3.5 w-3.5" /> Testmandant
@@ -1651,7 +1678,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className="border-b p-3">
-          {user?.role === "admin" && tenants.data && (
+          {LOCAL_TENANT_SWITCHER_ENABLED && user?.role === "admin" && tenants.data && (
             <div className="mb-3 rounded-xl border border-blue-200 bg-blue-50/70 p-2.5">
               <Label className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-blue-950">
                 <Building2 className="h-3.5 w-3.5" /> Testmandant

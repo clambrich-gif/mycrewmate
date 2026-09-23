@@ -53,7 +53,7 @@ describe("RSC-Pilot-Grundlage", () => {
     expect(dbSource).toContain("eq(events.tenantId, tenant())");
   });
 
-  it("beschränkt den Mandantenwechsler auf Administratoren", () => {
+  it("beschränkt den Testmandanten-Wechsler auf lokale Administrator-Sitzungen", () => {
     const routerSource = fs.readFileSync(
       path.resolve(__dirname, "../server/routers.ts"),
       "utf-8"
@@ -66,6 +66,10 @@ describe("RSC-Pilot-Grundlage", () => {
     expect(routerSource).toContain('ctx.user.role !== "admin"');
     expect(layoutSource).toContain("Testmandant");
     expect(layoutSource).toContain("selectTenant");
+    expect(layoutSource).toContain("LOCAL_TENANT_SWITCHER_ENABLED");
+    expect(layoutSource).toContain('window.location.hostname === "localhost"');
+    expect(layoutSource).toContain('window.location.hostname.endsWith(".manus.computer")');
+    expect(layoutSource).not.toContain('hostname.endsWith(".mycrewmate.de")');
   });
 
   it("zeigt das Pilot-Badge im Anwendungs-Layout an", () => {
