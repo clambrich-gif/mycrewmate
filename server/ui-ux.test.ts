@@ -315,7 +315,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(widget).toContain("[-webkit-text-size-adjust:100%]");
   });
 
-  it("sichert Dialoge und Recovery-Links für mobile Tastatur und Touchbedienung ab", () => {
+  it("sichert Dialoge und die vereinheitlichte Anmeldung für mobile Tastatur und Touchbedienung ab", () => {
     const dialog = source("client/src/components/ui/dialog.tsx");
     const alertDialog = source("client/src/components/ui/alert-dialog.tsx");
     const layout = source("client/src/components/Layout.tsx");
@@ -324,9 +324,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dialog).toContain("overflow-y-auto overscroll-contain");
     expect(alertDialog).toContain("max-h-[calc(100dvh-2rem)]");
     expect(alertDialog).toContain("overflow-y-auto overscroll-contain");
-    expect(layout).toContain("Passwort vergessen / Recovery");
-    expect(layout).toContain("Zurück zur Anmeldung");
-    expect(layout.match(/inline-flex min-h-11 items-center justify-center/g)).toHaveLength(2);
+    expect(layout).toContain('id="personal-login-email"');
+    expect(layout).toContain('id="personal-login-password"');
+    expect(layout).toContain("Ihre Berechtigungen erkennt MyCrewMate automatisch.");
+    expect(layout).not.toContain("Passwort vergessen / Recovery");
   });
 
   it("zeigt und entsperrt den globalen Planungsteam-Notfall-Stopp ausschließlich im Adminbereich", () => {
@@ -347,14 +348,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(security).toContain("if (!isAdmin)");
     expect(layout).toContain("passwordStatus.data?.planningTeamLocked");
     expect(layout).toContain("Nach 5 Fehlversuchen greift eine zeitbasierte Sperre (Cooldown).");
-    expect(layout).toContain("Zugang für das Planungsteam gesperrt");
-    expect(layout).toContain("Bitte kontaktieren Sie einen Administrator.");
-    expect(layout).toContain("login-lock-alert");
-    expect(layout).toContain('aria-live="assertive"');
-    expect(layout).toContain("loginLockAlertRef.current?.focus");
-    expect(layout).toContain('id="planning-team-lock-message"');
-    expect(layout).toContain("tabIndex={-1}");
-    expect(layout.match(/planning-team-lock-message/g)).toHaveLength(3);
+    expect(layout).toContain("Planungsteam-Zugänge sind derzeit gesperrt.");
+    expect(layout).toContain("Persönliche Vereins-Administratoren können sich weiterhin anmelden.");
+    expect(layout).not.toContain("login-lock-alert");
+    expect(layout).not.toContain("loginLockAlertRef.current?.focus");
     expect(css).toContain("@keyframes login-lock-shake");
     expect(css).toContain("animation: login-lock-shake 280ms");
     expect(css).toContain("@media (prefers-reduced-motion: reduce)");
@@ -367,7 +364,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
 
     expect(layout).toContain('const [loginError, setLoginError]');
     expect(layout).toContain('mutationKey: ["auth", "passwordLogin"]');
-    expect(layout).toContain('mutationKey: ["auth", "adminPasswordLogin"]');
+    expect(layout).not.toContain('mutationKey: ["auth", "adminPasswordLogin"]');
     expect(layout).toContain('id="password-login-error"');
     expect(layout).toContain('role="alert"');
     expect(layout).toContain("loginErrorRef.current?.focus");
@@ -1453,20 +1450,15 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(help).toContain('document.getElementById("help-results")');
   });
 
-  it("stellt die Login-Rollen als zugänglichen Segmented-Control dar", () => {
+  it("stellt eine rollenunabhängige persönliche E-Mail-Anmeldung dar", () => {
     const layout = source("client/src/components/Layout.tsx");
 
-    expect(layout).toContain('role="group"');
-    expect(layout).toContain("aria-pressed={loginMode === \"user\"}");
-    expect(layout).toContain("aria-pressed={loginMode === \"admin\"}");
-    expect(layout).toContain(
-      "bg-white font-semibold text-blue-600 shadow-sm"
-    );
-    expect(layout).toContain(
-      "cursor-pointer bg-transparent text-gray-500 hover:bg-white/60 hover:text-gray-900"
-    );
-    expect(layout).toContain("bg-transparent text-gray-500");
-    expect(layout).toContain("bg-white font-semibold text-blue-600 shadow-sm");
+    expect(layout).toContain('const [loginEmail, setLoginEmail] = useState("")');
+    expect(layout).toContain('id="personal-login-email"');
+    expect(layout).toContain('type="email"');
+    expect(layout).toContain("Ihre Berechtigungen erkennt MyCrewMate automatisch.");
+    expect(layout).not.toContain('aria-pressed={loginMode === "user"}');
+    expect(layout).not.toContain('aria-pressed={loginMode === "admin"}');
   });
 
   it("bietet auf der mobilen Anmeldung eine gut erreichbare Passwortanzeige", () => {
@@ -1481,13 +1473,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain("<Eye className=\"h-5 w-5\"");
     expect(layout).toContain('className="h-12 pr-12 text-base"');
     expect(layout).toContain("rounded-lg bg-blue-600 py-2.5 text-base font-semibold text-white");
-    expect(layout).toContain(': "Anmelden"');
+    expect(layout).toContain('>Anmelden</>');
     expect(layout).not.toContain("Als Hauptadministrator via Manus anmelden");
     expect(layout).not.toContain("Hauptadministrator</p>");
     expect(layout).toContain("VEREINS- &amp; EVENTPLANUNG");
     expect(layout).not.toContain("Geschützte Helfer-Planung für Organisatoren");
     expect(layout).toContain("Nach 5 Fehlversuchen greift eine zeitbasierte Sperre (Cooldown).");
-    expect(layout).toContain("showCooldownHint && !planningTeamLocked");
+    expect(layout).toContain("showCooldownHint && (");
     expect(layout).toContain("border-amber-200 bg-amber-50");
     expect(layout).toContain('event.getModifierState("CapsLock")');
     expect(layout).toContain('id="password-caps-lock-warning"');
@@ -3049,22 +3041,16 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(contacts).not.toContain("Passwort / Zugangscode (optional)");
     expect(contacts).not.toContain("Neues Passwort (optional)");
 
-    expect(layout).toContain("Wer meldet sich als Administrator an?");
-    expect(layout).toContain("Schnellauswahl Ansprechpartner");
-    expect(layout).toContain("Name (alternativ)");
-    expect(layout).toContain("adminIdentityDialogOpen");
-    expect(layout).toContain("function AdminIdentityDialog");
-    expect(layout).toContain("function uniqueAdminLoginContacts");
-    expect(layout).toContain("LAST_ADMINISTRATOR_NAME_STORAGE_KEY");
-    expect(layout).toContain("getLastAdministratorName()");
-    expect(layout).toContain("rememberAdministratorName(selectedAdministratorName)");
-    expect(layout).toContain("{contact.name}");
-    expect(layout).not.toContain("{contact.name} · {contact.year} · {contact.eventName}");
+    expect(layout).toContain('id="personal-login-email"');
+    expect(layout).toContain("Ihre Berechtigungen erkennt MyCrewMate automatisch.");
+    expect(layout).not.toContain("Wer meldet sich als Administrator an?");
+    expect(layout).not.toContain("function AdminIdentityDialog");
+    expect(layout).not.toContain("LAST_ADMINISTRATOR_NAME_STORAGE_KEY");
     const unauthenticatedLayout = layout.slice(
       layout.indexOf("if (!isAuthenticated)"),
       layout.indexOf("if (\n    events.isLoading")
     );
-    expect(unauthenticatedLayout).toContain("{adminIdentityDialog}");
+    expect(unauthenticatedLayout).not.toContain("{adminIdentityDialog}");
     expect(layout).toContain("Angemeldet:");
     expect(manager).toContain("⏳ Initialcode offen");
     expect(manager).toContain("✓ Passwort eingerichtet");
@@ -3104,7 +3090,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(modal).toContain("onPointerDownOutside={event => event.preventDefault()}");
   });
 
-  it("hält die Loginansicht je Rolle minimal und zeigt den Cooldown erst nach wiederholten Fehlern", () => {
+  it("hält die einheitliche Loginansicht minimal und zeigt den Cooldown erst nach wiederholten Fehlern", () => {
     const layout = source("client/src/components/Layout.tsx");
     const unauthenticatedLayout = layout.slice(
       layout.indexOf("if (!isAuthenticated)"),
@@ -3112,14 +3098,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     );
 
     expect(unauthenticatedLayout).toContain("transition-all duration-200 ease-in-out");
-    expect(unauthenticatedLayout).toContain('loginMode === "admin"');
-    expect(unauthenticatedLayout).toContain("Administratorpasswort");
-    expect(unauthenticatedLayout).toContain("Zugangspasswort");
-    expect(unauthenticatedLayout).toContain("Als Administrator anmelden");
-    expect(unauthenticatedLayout).toContain("Passwort vergessen / Recovery");
-    expect(layout).toContain("loginFailureCounts");
-    expect(layout).toContain("currentLoginFailureCount >= 2");
-    expect(unauthenticatedLayout).toContain("showCooldownHint && !planningTeamLocked");
+    expect(unauthenticatedLayout).toContain("Melden Sie sich mit Ihrer persönlichen E-Mail-Adresse");
+    expect(unauthenticatedLayout).toContain("Ihre Berechtigungen erkennt MyCrewMate automatisch.");
+    expect(unauthenticatedLayout).toContain('id="personal-login-email"');
+    expect(unauthenticatedLayout).toContain('id="personal-login-password"');
+    expect(unauthenticatedLayout).not.toContain("Passwort vergessen / Recovery");
+    expect(layout).toContain("loginFailureCount >= 2");
+    expect(unauthenticatedLayout).toContain("showCooldownHint && (");
     expect(unauthenticatedLayout).toContain("border-amber-200 bg-amber-50");
     expect(unauthenticatedLayout).not.toContain("Hauptadministrator");
     expect(unauthenticatedLayout).not.toContain("via Manus");

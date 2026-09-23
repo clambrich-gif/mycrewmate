@@ -889,6 +889,52 @@ export async function listPlanningTeamAccessCredentials(): Promise<
     .orderBy(planningTeamAccesses.id);
 }
 
+/** Liefert einen persönlichen Planungsteam-Zugang ausschließlich über seine E-Mail-Adresse. */
+export async function getPlanningTeamAccessCredentialByEmail(email: string) {
+  const database = await getDb();
+  if (!database) return undefined;
+  const normalizedEmail = email.trim().toLocaleLowerCase("de-DE");
+  const [row] = await database
+    .select({
+      id: planningTeamAccesses.id,
+      contactName: contacts.name,
+      label: planningTeamAccesses.label,
+      email: planningTeamAccesses.email,
+      modulePermissions: sql<import("../shared/tenant-permissions").PlanningModule[]>`COALESCE(${planningTeamAccesses.modulePermissions}, JSON_ARRAY())`,
+      passwordHash: planningTeamAccesses.passwordHash,
+      mustChangePassword: planningTeamAccesses.mustChangePassword,
+      sessionVersion: planningTeamAccesses.sessionVersion,
+    })
+    .from(planningTeamAccesses)
+    .leftJoin(contacts, eq(contacts.id, planningTeamAccesses.contactId))
+    .where(eq(planningTeamAccesses.email, normalizedEmail))
+    .limit(1);
+  return row;
+}
+
+async function assertNoActiveTenantAdminEmailConflict(
+  tx: any,
+  normalizedEmail: string | null
+) {
+  if (!normalizedEmail) return;
+  const [tenantAdmin] = await tx
+    .select({ userId: tenantAdminCredentials.userId })
+    .from(tenantAdminCredentials)
+    .where(
+      and(
+        eq(tenantAdminCredentials.email, normalizedEmail),
+        eq(tenantAdminCredentials.status, "active")
+      )
+    )
+    .limit(1)
+    .for("update");
+  if (tenantAdmin) {
+    throw new Error(
+      "Diese E-Mail-Adresse ist bereits einem aktiven Vereinsadministrator zugeordnet. Bitte für den Planungsteam-Zugang eine andere E-Mail-Adresse verwenden."
+    );
+  }
+}
+
 export async function createPlanningTeamAccess(input: {
   label: string;
   contactId?: number | null;
@@ -905,6 +951,7 @@ export async function createPlanningTeamAccess(input: {
       ? await requireExistingContactForPlanningTeamAccess(tx, input.contactId)
       : null;
     const normalizedEmail = input.email?.trim().toLocaleLowerCase("de-DE") || null;
+    await assertNoActiveTenantAdminEmailConflict(tx, normalizedEmail);
     const result: any = await tx.insert(planningTeamAccesses).values({
       contactId: contact?.id ?? null,
       label: contact?.name ?? input.label.trim(),
@@ -970,6 +1017,7 @@ export async function updatePlanningTeamAccess(input: {
       input.modulePermissions === undefined
         ? existing.modulePermissions
         : input.modulePermissions;
+    await assertNoActiveTenantAdminEmailConflict(tx, nextEmail);
 
     await tx
       .update(planningTeamAccesses)
@@ -5253,6 +5301,18 @@ export async function createOrUpdateTenantAdminForPlatformAdmin(input: {
     const name = input.name.trim();
     if (!name || !normalizedEmail) {
       throw new Error("Name und E-Mail des Vereinsadministrators sind erforderlich");
+    }
+
+    const [planningAccessWithSameEmail] = await tx
+      .select({ id: planningTeamAccesses.id })
+      .from(planningTeamAccesses)
+      .where(eq(planningTeamAccesses.email, normalizedEmail))
+      .limit(1)
+      .for("update");
+    if (planningAccessWithSameEmail) {
+      throw new Error(
+        "Diese E-Mail-Adresse ist bereits einem Planungsteam-Zugang zugeordnet. Bitte zunächst den Testzugang entfernen oder eine andere E-Mail-Adresse verwenden."
+      );
     }
 
     let [existingUser] = await tx

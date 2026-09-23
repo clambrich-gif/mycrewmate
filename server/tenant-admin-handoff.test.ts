@@ -30,10 +30,17 @@ describe("Vereinsadmin-Verwaltung, Marktstart-Sperre & Handoff", () => {
   });
 
   it("erlaubt Vereinsadmins die Anmeldung per E-Mail und Passwort", () => {
-    expect(routersSource).toContain("email: z.string().trim().email().max(320).optional()");
+    expect(routersSource).toContain('email: z.string().trim().email("Bitte E-Mail-Adresse eingeben").max(320)');
     expect(routersSource).toContain("getTenantAdminCredentialsByEmail(input.email)");
-    expect(layoutSource).toContain("adminEmail");
-    expect(layoutSource).toContain("E-Mail-Adresse (für persönliche Vereins-Administratoren");
+    expect(routersSource).toContain("getPlanningTeamAccessCredentialByEmail(input.email)");
+    expect(layoutSource).toContain("loginEmail");
+    expect(layoutSource).toContain("Ihre Berechtigungen erkennt MyCrewMate automatisch.");
+  });
+
+  it("verhindert neue doppelte E-Mail-Zugänge zwischen Vereinsadmin und Planungsteam", () => {
+    expect(dbSource).toContain("assertNoActiveTenantAdminEmailConflict");
+    expect(dbSource).toContain("bereits einem aktiven Vereinsadministrator zugeordnet");
+    expect(dbSource).toContain("bereits einem Planungsteam-Zugang zugeordnet");
   });
 
   it("stellt im Master-Portal Bedienelemente für Handoff und Vereinsadmin-Erstellung bereit", () => {

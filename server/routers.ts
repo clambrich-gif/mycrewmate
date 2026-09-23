@@ -1131,14 +1131,46 @@ export const appRouter = router({
       .input(
         z.object({
           password: z.string().min(1).max(200),
-          email: z.string().trim().email().max(320).optional(),
+          email: z.string().trim().email("Bitte E-Mail-Adresse eingeben").max(320),
         })
       )
       .mutation(async ({ ctx, input }) => {
-        const clientKey = `planning:${getClientKey(ctx.req)}`;
+        const clientKey = `personal:${getClientKey(ctx.req)}`;
         const settings = await db.getSecuritySettings();
+        if (isPasswordLoginBlocked(clientKey)) {
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message: "Zu viele Fehlversuche. Bitte in 15 Minuten erneut versuchen.",
+          });
+        }
 
-        // 1. Gezielte manuelle Sperre durch Administratoren (bleibt unberührt)
+        const adminCreds = await db.getTenantAdminCredentialsByEmail(input.email);
+        if (adminCreds) {
+          if (!(await verifyPassword(input.password, adminCreds.passwordHash))) {
+            recordFailedPasswordLogin(clientKey);
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "E-Mail oder Passwort ist nicht korrekt",
+            });
+          }
+          clearPasswordLoginFailures(clientKey);
+          const sessionName = adminCreds.userName ?? input.email;
+          const token = await sdk.createSessionToken(adminCreds.userOpenId, {
+            name: sessionName,
+            expiresInMs: PASSWORD_SESSION_MS,
+            sessionVersion: adminCreds.sessionVersion,
+          });
+          ctx.res.cookie(COOKIE_NAME, token, {
+            ...getSessionCookieOptions(ctx.req),
+            maxAge: PASSWORD_SESSION_MS,
+          });
+          return {
+            success: true,
+            mustChangePassword: adminCreds.mustChangePassword,
+            ...(isEmbeddedManusPreview(ctx.req) ? { previewSessionToken: token } : {}),
+          } as const;
+        }
+
         if (settings?.planningTeamLocked) {
           throw new TRPCError({
             code: "TOO_MANY_REQUESTS",
@@ -1147,45 +1179,23 @@ export const appRouter = router({
           });
         }
 
-        // 2. Zeitbasierter Rate-Limiter (TTL) mit progressiver Verzögerung (DoS-Schutz)
-        const rateLimit = getPlanningTeamRateLimitStatus(clientKey);
-        if (rateLimit.isBlocked) {
-          throw new TRPCError({
-            code: "TOO_MANY_REQUESTS",
-            message: `Zu viele Fehlversuche für diesen Anschluss. Bitte warten Sie ${rateLimit.retryAfterSeconds} Sekunden.`,
-          });
-        }
-
-        const accesses = await db.listPlanningTeamAccessCredentials();
-        let matchingAccess: (typeof accesses)[number] | null = null;
-        for (const access of accesses) {
-          if (
-            input.email &&
-            access.email &&
-            access.email.toLocaleLowerCase("de-DE") !== input.email.toLocaleLowerCase("de-DE")
-          ) {
-            continue;
-          }
-          if (await verifyPassword(input.password, access.passwordHash)) {
-            matchingAccess = access;
-            break;
-          }
-        }
+        const matchingAccess = await db.getPlanningTeamAccessCredentialByEmail(input.email);
         if (!matchingAccess) {
-          const failedStatus = recordFailedPlanningTeamLogin(clientKey);
-          if (failedStatus.isBlocked) {
-            throw new TRPCError({
-              code: "TOO_MANY_REQUESTS",
-              message: `Zu viele Fehlversuche. Bitte warten Sie ${failedStatus.retryAfterSeconds} Sekunden, bevor Sie es erneut versuchen.`,
-            });
-          }
+          recordFailedPasswordLogin(clientKey);
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: "Passwort ist nicht korrekt",
+            message: "E-Mail oder Passwort ist nicht korrekt",
+          });
+        }
+        if (!(await verifyPassword(input.password, matchingAccess.passwordHash))) {
+          recordFailedPasswordLogin(clientKey);
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "E-Mail oder Passwort ist nicht korrekt",
           });
         }
 
-        clearPlanningTeamFailures(clientKey);
+        clearPasswordLoginFailures(clientKey);
         await db.clearPlanningTeamLoginFailuresIfUnlocked();
 
         const accessOpenId = planningTeamAccessOpenId(matchingAccess.id);

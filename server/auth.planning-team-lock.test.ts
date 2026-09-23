@@ -8,7 +8,8 @@ const dbMocks = vi.hoisted(() => ({
   unlockPlanningTeamLogin: vi.fn(),
   lockPlanningTeamLogin: vi.fn(),
   recordActivityLog: vi.fn(),
-  listPlanningTeamAccessCredentials: vi.fn(),
+  getTenantAdminCredentialsByEmail: vi.fn(),
+  getPlanningTeamAccessCredentialByEmail: vi.fn(),
   upsertUser: vi.fn(),
 }));
 const presenceMocks = vi.hoisted(() => ({
@@ -26,7 +27,7 @@ vi.mock("./_core/sdk", () => ({ sdk: sdkMocks }));
 
 import { appRouter } from "./routers";
 import {
-  clearPlanningTeamFailures,
+  clearPasswordLoginFailures,
   hashPassword,
   PLANNING_TEAM_MAX_ATTEMPTS,
 } from "./password-auth";
@@ -70,9 +71,9 @@ describe("DoS-Schutz und manuelle Sperre für das Planungsteam", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    clearPlanningTeamFailures("planning:127.0.0.50");
-    clearPlanningTeamFailures("planning:127.0.0.99");
-    clearPlanningTeamFailures("planning:10.0.0.1");
+    clearPasswordLoginFailures("personal:127.0.0.50");
+    clearPasswordLoginFailures("personal:127.0.0.99");
+    clearPasswordLoginFailures("personal:10.0.0.1");
     sdkMocks.createSessionToken.mockResolvedValue("signed-session");
     presenceMocks.recordSessionPresence.mockResolvedValue(true);
     dbMocks.upsertUser.mockResolvedValue(undefined);
@@ -84,9 +85,14 @@ describe("DoS-Schutz und manuelle Sperre für das Planungsteam", () => {
       locked: true,
     });
     dbMocks.recordActivityLog.mockResolvedValue(undefined);
-    dbMocks.listPlanningTeamAccessCredentials.mockResolvedValue([
-      { id: 1, label: "Team", passwordHash, sessionVersion: 1 },
-    ]);
+    dbMocks.getTenantAdminCredentialsByEmail.mockResolvedValue(undefined);
+    dbMocks.getPlanningTeamAccessCredentialByEmail.mockResolvedValue({
+      id: 1,
+      label: "Team",
+      email: "team@example.invalid",
+      passwordHash,
+      sessionVersion: 1,
+    });
   });
 
   it("aktiviert nach 5 Fehlversuchen eine zeitbasierte Abklingzeit (Cooldown) pro Client-Anschluss", async () => {
@@ -97,34 +103,42 @@ describe("DoS-Schutz und manuelle Sperre für das Planungsteam", () => {
     });
 
     const attackerCaller = appRouter.createCaller(context(null, "127.0.0.50"));
-    for (let attempt = 1; attempt < PLANNING_TEAM_MAX_ATTEMPTS; attempt++) {
+    for (let attempt = 1; attempt <= PLANNING_TEAM_MAX_ATTEMPTS; attempt++) {
       await expect(
-        attackerCaller.auth.passwordLogin({ password: `falsch-${attempt}` })
+        attackerCaller.auth.passwordLogin({
+          email: "team@example.invalid",
+          password: `falsch-${attempt}`,
+        })
       ).rejects.toMatchObject({ code: "BAD_REQUEST" });
     }
 
-    // 5. Versuch löst Cooldown aus
+    // Der nächste Versuch löst den gemeinsamen 15-Minuten-Cooldown aus.
     await expect(
-      attackerCaller.auth.passwordLogin({ password: "falsch-5" })
+      attackerCaller.auth.passwordLogin({
+        email: "team@example.invalid",
+        password: "falsch-6",
+      })
     ).rejects.toMatchObject({
       code: "TOO_MANY_REQUESTS",
-      message: expect.stringContaining("Zu viele Fehlversuche. Bitte warten Sie"),
+      message: expect.stringContaining("Zu viele Fehlversuche"),
     });
 
     // Weiterer Versuch vom selben Angreifer wird während der Abklingzeit abgewiesen
     await expect(
       attackerCaller.auth.passwordLogin({
+        email: "team@example.invalid",
         password: "Richtiges-Planungsteam-Passwort!",
       })
     ).rejects.toMatchObject({
       code: "TOO_MANY_REQUESTS",
-      message: expect.stringContaining("Bitte warten Sie"),
+      message: expect.stringContaining("Zu viele Fehlversuche"),
     });
 
     // WICHTIGER DoS-SCHUTZ: Ein legitimer Nutzer von einem anderen Anschluss kann sich weiterhin einloggen!
     const legitimateCaller = appRouter.createCaller(context(null, "10.0.0.1"));
     await expect(
       legitimateCaller.auth.passwordLogin({
+        email: "team@example.invalid",
         password: "Richtiges-Planungsteam-Passwort!",
       })
     ).resolves.toEqual({ success: true });
@@ -142,6 +156,7 @@ describe("DoS-Schutz und manuelle Sperre für das Planungsteam", () => {
     const caller = appRouter.createCaller(context(null, "10.0.0.1"));
     await expect(
       caller.auth.passwordLogin({
+        email: "team@example.invalid",
         password: "Richtiges-Planungsteam-Passwort!",
       })
     ).rejects.toMatchObject({

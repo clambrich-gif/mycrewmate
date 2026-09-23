@@ -78,7 +78,6 @@ import {
   Plus,
   Settings2,
   Share,
-  ShieldCheck,
   Trash2,
   TriangleAlert,
 } from "lucide-react";
@@ -98,7 +97,6 @@ import { Link, useLocation } from "wouter";
 const MYCREWMATE_WORDMARK = "/brand/mycrewmate-wordmark.png";
 const MYCREWMATE_ICON = "/icons/mycrewmate-pwa-512.png";
 const CHAT_SNAPSHOT_POLL_MS = 5_000;
-const LAST_ADMINISTRATOR_NAME_STORAGE_KEY = "mycrewmate:last-administrator-name";
 const DESKTOP_SIDEBAR_OPEN_STORAGE_KEY = "mycrewmate:desktop-sidebar-open";
 // Der Wechsler dient nur der lokalen Entwicklungs- und Isolationserprobung.
 // Für Vereinszugänge und die veröffentlichte App wird der Mandant später
@@ -166,45 +164,6 @@ function LazySaveLoadControls({ onAction }: { onAction?: () => void }) {
   );
 }
 
-type AdminLoginContact = {
-  id: number;
-  name: string;
-  year: number;
-  eventName: string;
-};
-
-function normalizeAdministratorName(name: string) {
-  return name.trim().toLocaleLowerCase("de-DE");
-}
-
-function uniqueAdminLoginContacts(contacts: AdminLoginContact[]) {
-  const seenNames = new Set<string>();
-  return contacts.filter(contact => {
-    const normalizedName = normalizeAdministratorName(contact.name);
-    if (!normalizedName || seenNames.has(normalizedName)) return false;
-    seenNames.add(normalizedName);
-    return true;
-  });
-}
-
-function getLastAdministratorName() {
-  if (typeof window === "undefined") return "";
-  try {
-    return window.localStorage.getItem(LAST_ADMINISTRATOR_NAME_STORAGE_KEY)?.trim() ?? "";
-  } catch {
-    return "";
-  }
-}
-
-function rememberAdministratorName(name: string) {
-  if (typeof window === "undefined" || !name.trim()) return;
-  try {
-    window.localStorage.setItem(LAST_ADMINISTRATOR_NAME_STORAGE_KEY, name.trim());
-  } catch {
-    // Die Anmeldung bleibt auch bei deaktiviertem LocalStorage vollständig nutzbar.
-  }
-}
-
 function getDesktopSidebarOpenPreference() {
   if (typeof window === "undefined") return true;
   try {
@@ -246,95 +205,6 @@ function focusCurrentPageSearch() {
   return true;
 }
 
-function AdminIdentityDialog({
-  open,
-  contacts,
-  selectedContactId,
-  manualName,
-  selectedName,
-  busy,
-  onOpenChange,
-  onContactChange,
-  onManualNameChange,
-  onCancel,
-  onConfirm,
-}: {
-  open: boolean;
-  contacts: AdminLoginContact[];
-  selectedContactId: string;
-  manualName: string;
-  selectedName: string;
-  busy: boolean;
-  onOpenChange: (open: boolean) => void;
-  onContactChange: (value: string) => void;
-  onManualNameChange: (value: string) => void;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-white text-slate-950 sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Wer meldet sich als Administrator an?</DialogTitle>
-        </DialogHeader>
-        <p className="text-sm text-slate-600">
-          Wählen Sie einen hinterlegten Ansprechpartner aus oder tragen Sie
-          einen Namen ein. Diese Auswahl kennzeichnet die aktuelle Sitzung.
-        </p>
-        <div className="space-y-2">
-          <Label htmlFor="administrator-contact-select">
-            Schnellauswahl Ansprechpartner
-          </Label>
-          <Select
-            value={selectedContactId || "manual"}
-            onValueChange={onContactChange}
-            disabled={busy}
-          >
-            <SelectTrigger id="administrator-contact-select">
-              <SelectValue placeholder="Ansprechpartner auswählen" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="manual">
-                {manualName
-                  ? `Freitext verwenden: ${manualName}`
-                  : "Freitext verwenden"}
-              </SelectItem>
-              {contacts.map(contact => (
-                <SelectItem key={contact.id} value={String(contact.id)}>
-                  {contact.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="administrator-manual-name">Name (alternativ)</Label>
-          <Input
-            id="administrator-manual-name"
-            value={manualName}
-            onChange={event => onManualNameChange(event.target.value)}
-            placeholder="Name eingeben, falls die Person neu ist"
-            disabled={Boolean(selectedContactId) || busy}
-          />
-        </div>
-        <DialogFooter>
-          <Button type="button" variant="outline" disabled={busy} onClick={onCancel}>
-            Abbrechen
-          </Button>
-          <Button
-            type="button"
-            disabled={selectedName.trim().length < 2 || busy}
-            onClick={onConfirm}
-          >
-            <ShieldCheck className="mr-2 h-4 w-4" />
-            {busy ? "Anmeldung läuft …" : "Anmelden"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 export function Layout({ children }: { children: React.ReactNode }) {
   const { user, loading, isAuthenticated, logout } = useAuth();
   const onlinePresence = useOnlinePresence();
@@ -356,23 +226,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [capsLockOn, setCapsLockOn] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
-  const [loginMode, setLoginMode] = useState<"user" | "admin">("user");
-  const [adminEmail, setAdminEmail] = useState("");
-  const [loginFailureCounts, setLoginFailureCounts] = useState({ user: 0, admin: 0 });
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginFailureCount, setLoginFailureCount] = useState(0);
   const [forcePasswordChangeOpen, setForcePasswordChangeOpen] = useState(false);
   const [initialPassword, setInitialPassword] = useState("");
   const [initialPasswordConfirmation, setInitialPasswordConfirmation] = useState("");
   const [initialPasswordError, setInitialPasswordError] = useState<string | null>(null);
-  const [adminIdentityDialogOpen, setAdminIdentityDialogOpen] = useState(false);
-  const [adminLoginContacts, setAdminLoginContacts] = useState<
-    AdminLoginContact[]
-  >([]);
-  const [selectedAdminContactId, setSelectedAdminContactId] = useState<string>("");
-  const [manualAdministratorName, setManualAdministratorName] = useState("");
-  const [recoveryOpen, setRecoveryOpen] = useState(false);
-  const [recoveryKey, setRecoveryKey] = useState("");
-  const [newAdminPassword, setNewAdminPassword] = useState("");
-  const [recoveryError, setRecoveryError] = useState<string | null>(null);
   const [impressumOpen, setImpressumOpen] = useState(false);
   const [yearDialogOpen, setYearDialogOpen] = useState(false);
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
@@ -481,15 +340,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const chatSnapshotEpochRef = useRef(0);
   const chatSnapshotPollInFlightRef = useRef<Promise<void> | null>(null);
   const chatSnapshotPollQueuedRef = useRef(false);
-  const loginLockAlertRef = useRef<HTMLDivElement>(null);
   const loginErrorRef = useRef<HTMLDivElement>(null);
   const utils = trpc.useUtils();
-  const uniqueAdminContacts = useMemo(
-    () => uniqueAdminLoginContacts(adminLoginContacts),
-    [adminLoginContacts]
-  );
-  const currentLoginFailureCount = loginFailureCounts[loginMode];
-  const showCooldownHint = currentLoginFailureCount >= 2;
+  const showCooldownHint = loginFailureCount >= 2;
   const toggleDesktopSidebar = useCallback(() => {
     setIsSidebarOpen(isOpen => {
       const nextIsOpen = !isOpen;
@@ -819,18 +672,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
     storePreviewSessionToken(previewSessionToken);
     setPassword("");
     setLoginError(null);
-    setLoginFailureCounts({ user: 0, admin: 0 });
-    setRecoveryOpen(false);
-    setRecoveryKey("");
-    setNewAdminPassword("");
-    setRecoveryError(null);
+    setLoginFailureCount(0);
     await utils.auth.me.invalidate();
     toast.success("Anmeldung erfolgreich");
   };
   const passwordLogin = trpc.auth.passwordLogin.useMutation({
     mutationKey: ["auth", "passwordLogin"],
     onSuccess: async result => {
-      setLoginFailureCounts(current => ({ ...current, user: 0 }));
+      setLoginFailureCount(0);
       storePreviewSessionToken(result.previewSessionToken);
       if (result.mustChangePassword) {
         setPassword("");
@@ -847,10 +696,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     onError: async error => {
       setLoginError(error.message);
       if (error.data?.code === "BAD_REQUEST") {
-        setLoginFailureCounts(current => ({
-          ...current,
-          user: current.user + 1,
-        }));
+        setLoginFailureCount(current => current + 1);
       }
       if (error.data?.code === "TOO_MANY_REQUESTS") {
         await utils.auth.passwordStatus.invalidate();
@@ -891,46 +737,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
       },
       onError: error => setInitialPasswordError(error.message),
     });
-  const adminPasswordLogin = trpc.auth.adminPasswordLogin.useMutation({
-    mutationKey: ["auth", "adminPasswordLogin"],
-    onSuccess: async result => {
-      setLoginFailureCounts(current => ({ ...current, admin: 0 }));
-      if (result.requiresIdentity) {
-        const contacts = uniqueAdminLoginContacts(result.contacts ?? []);
-        const lastAdministratorName = getLastAdministratorName();
-        const previouslySelectedContact = contacts.find(
-          contact =>
-            normalizeAdministratorName(contact.name) ===
-            normalizeAdministratorName(lastAdministratorName)
-        );
-        setAdminLoginContacts(contacts);
-        setSelectedAdminContactId(
-          previouslySelectedContact ? String(previouslySelectedContact.id) : ""
-        );
-        setManualAdministratorName(
-          previouslySelectedContact ? "" : lastAdministratorName
-        );
-        setAdminIdentityDialogOpen(true);
-        return;
-      }
-      rememberAdministratorName(selectedAdministratorName);
-      await finishLogin(result.previewSessionToken);
-    },
-    onError: error => {
-      setLoginError(error.message);
-      if (error.data?.code === "BAD_REQUEST") {
-        setLoginFailureCounts(current => ({
-          ...current,
-          admin: current.admin + 1,
-        }));
-      }
-    },
-  });
-  const resetAdminWithKey = trpc.auth.resetAdminWithKey.useMutation({
-    mutationKey: ["auth", "resetAdminWithKey"],
-    onSuccess: async result => finishLogin(result.previewSessionToken),
-    onError: error => setRecoveryError(error.message),
-  });
   const createYear = trpc.years.create.useMutation({
     onSuccess: async () => {
       await utils.years.list.invalidate();
@@ -1006,69 +812,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   const submitPassword = (event: FormEvent) => {
     event.preventDefault();
-    if (!password) return;
-    if (loginMode === "admin") {
-      adminPasswordLogin.mutate({
-        password,
-        ...(adminEmail.trim() ? { email: adminEmail.trim() } : {}),
-      });
-    } else {
-      passwordLogin.mutate({
-        password,
-        ...(adminEmail.trim() ? { email: adminEmail.trim() } : {}),
-      });
-    }
+    if (!password || !loginEmail.trim()) return;
+    passwordLogin.mutate({ password, email: loginEmail.trim() });
   };
-  const loginEnabled =
-    loginMode === "admin"
-      ? passwordStatus.data?.adminEnabled
-      : passwordStatus.data?.enabled;
-  const planningTeamLocked = Boolean(
-    loginMode === "user" && passwordStatus.data?.planningTeamLocked
-  );
-  const loginAvailable = Boolean(loginEnabled && !planningTeamLocked);
-  const loginPending =
-    passwordLogin.isPending ||
-    adminPasswordLogin.isPending ||
-    resetAdminWithKey.isPending;
-  const selectedAdministratorName =
-    uniqueAdminContacts.find(contact => String(contact.id) === selectedAdminContactId)
-      ?.name ?? manualAdministratorName.trim();
-  const closeAdminIdentityDialog = () => {
-    setAdminIdentityDialogOpen(false);
-    setAdminLoginContacts([]);
-    setSelectedAdminContactId("");
-    setManualAdministratorName("");
-    setPassword("");
-  };
-  const adminIdentityDialog = (
-    <AdminIdentityDialog
-      open={adminIdentityDialogOpen}
-      contacts={uniqueAdminContacts}
-      selectedContactId={selectedAdminContactId}
-      manualName={manualAdministratorName}
-      selectedName={selectedAdministratorName}
-      busy={adminPasswordLogin.isPending}
-      onOpenChange={open => {
-        if (!open && !adminPasswordLogin.isPending) closeAdminIdentityDialog();
-      }}
-      onContactChange={value => {
-        setSelectedAdminContactId(value === "manual" ? "" : value);
-        if (value !== "manual") setManualAdministratorName("");
-      }}
-      onManualNameChange={value => {
-        setManualAdministratorName(value);
-        if (value) setSelectedAdminContactId("");
-      }}
-      onCancel={closeAdminIdentityDialog}
-      onConfirm={() =>
-        adminPasswordLogin.mutate({
-          password,
-          administratorName: selectedAdministratorName.trim(),
-        })
-      }
-    />
-  );
+  const planningTeamLocked = Boolean(passwordStatus.data?.planningTeamLocked);
+  const loginPending = passwordLogin.isPending;
   const submitInitialPasswordChange = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setInitialPasswordError(null);
@@ -1112,11 +860,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 
   useEffect(() => {
-    if (!planningTeamLocked) return;
-    loginLockAlertRef.current?.focus({ preventScroll: true });
-  }, [planningTeamLocked]);
-
-  useEffect(() => {
     if (!loginError) return;
     loginErrorRef.current?.focus({ preventScroll: true });
   }, [loginError]);
@@ -1145,213 +888,75 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </p>
           </div>
 
-          <div
-            className="mb-4 grid grid-cols-2 overflow-hidden rounded-xl border border-gray-300 bg-gray-100 p-1"
-            role="group"
-            aria-label="Anmelderolle auswählen"
-          >
-            <button
-              type="button"
-              aria-pressed={loginMode === "user"}
-              className={cn(
-                "min-h-11 rounded-lg px-3 py-2 text-sm transition-[color,background-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1",
-                loginMode === "user"
-                  ? "bg-white font-semibold text-blue-600 shadow-sm"
-                  : "cursor-pointer bg-transparent text-gray-500 hover:bg-white/60 hover:text-gray-900"
-              )}
-              onClick={() => {
-                setLoginMode("user");
-                setPassword("");
-                setPasswordVisible(false);
-                setCapsLockOn(false);
-                setLoginError(null);
-                setRecoveryOpen(false);
-              }}
-            >
-              Planungsteam
-            </button>
-            <button
-              type="button"
-              aria-pressed={loginMode === "admin"}
-              className={cn(
-                "min-h-11 rounded-lg px-3 py-2 text-sm transition-[color,background-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1",
-                loginMode === "admin"
-                  ? "bg-white font-semibold text-blue-600 shadow-sm"
-                  : "cursor-pointer bg-transparent text-gray-500 hover:bg-white/60 hover:text-gray-900"
-              )}
-              onClick={() => {
-                setLoginMode("admin");
-                setPassword("");
-                setPasswordVisible(false);
-                setCapsLockOn(false);
-                setLoginError(null);
-              }}
-            >
-              Administrator
-            </button>
-          </div>
-
-          {loginMode === "admin" && recoveryOpen ? (
-            <form
-              className="space-y-3 rounded-xl border border-blue-200 bg-blue-50/60 p-4"
-              onSubmit={event => {
-                event.preventDefault();
-                setRecoveryError(null);
-                if (!recoveryKey.trim() || !newAdminPassword) return;
-                resetAdminWithKey.mutate({
-                  recoveryKey: recoveryKey.trim(),
-                  newPassword: newAdminPassword,
-                });
-              }}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-blue-950 flex items-center gap-1.5">
-                  <ShieldCheck className="h-4 w-4 text-blue-600" />
-                  Notfall-Wiederherstellung
-                </span>
-                <button
-                  type="button"
-                  className="inline-flex min-h-11 items-center justify-center rounded px-2 text-xs text-muted-foreground underline hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                  onClick={() => {
-                    setRecoveryOpen(false);
-                    setRecoveryError(null);
-                  }}
-                >
-                  Zurück zur Anmeldung
-                </button>
-              </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Geben Sie den Master Recovery Key aus der Server-Konfiguration
-                ein, um ein neues Administratorpasswort zu vergeben.
-              </p>
-              <div className="space-y-1.5">
-                <Label htmlFor="master-recovery-key" className="text-xs font-medium">
-                  Master Recovery Key
-                </Label>
-                <Input
-                  id="master-recovery-key"
-                  type="text"
-                  autoComplete="off"
-                  spellCheck={false}
-                  placeholder="z. B. 16-stelliger Schlüssel"
-                  value={recoveryKey}
-                  onChange={e => {
-                    setRecoveryKey(e.target.value);
-                    if (recoveryError) setRecoveryError(null);
-                  }}
-                  disabled={resetAdminWithKey.isPending}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="new-admin-password" className="text-xs font-medium">
-                  Neues Administratorpasswort
-                </Label>
-                <Input
-                  id="new-admin-password"
-                  type="password"
-                  autoComplete="new-password"
-                  placeholder="Mindestens 10 Zeichen"
-                  value={newAdminPassword}
-                  onChange={e => {
-                    setNewAdminPassword(e.target.value);
-                    if (recoveryError) setRecoveryError(null);
-                  }}
-                  disabled={resetAdminWithKey.isPending}
-                />
-              </div>
-              {recoveryError && (
-                <div
-                  className="flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 p-2.5 text-xs text-red-900 shadow-sm"
-                  role="alert"
-                >
-                  <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-700" />
-                  <span>{recoveryError}</span>
-                </div>
-              )}
-              <Button
-                className="w-full mt-2"
-                size="default"
-                type="submit"
-                disabled={
-                  !recoveryKey.trim() ||
-                  newAdminPassword.length < 10 ||
-                  resetAdminWithKey.isPending
-                }
-              >
-                {resetAdminWithKey.isPending
-                  ? "Wiederherstellung läuft …"
-                  : "Passwort neu setzen & anmelden"}
-              </Button>
-            </form>
-          ) : (
           <form className="space-y-4" onSubmit={submitPassword}>
-            {(
-              <div className="space-y-1.5">
-                <Label htmlFor="admin-email" className="text-xs font-medium text-slate-700">
-                  {loginMode === "admin"
-                    ? "E-Mail-Adresse (für persönliche Vereins-Administratoren, optional)"
-                    : "E-Mail-Adresse (für persönliche Planungsteam-Anmeldung, optional)"}
-                </Label>
-                <Input
-                  id="admin-email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder={loginMode === "admin" ? "admin@meinverein.de (optional)" : "vorname.nachname@verein.de (optional)"}
-                  value={adminEmail}
-                  onChange={e => {
-                    setAdminEmail(e.target.value);
-                    if (loginError) setLoginError(null);
-                  }}
-                  disabled={loginPending}
-                />
-              </div>
-            )}
-            <Label htmlFor="planning-password" className="text-sm font-semibold">
-              {loginMode === "admin"
-                ? "Administratorpasswort"
-                : "Zugangspasswort"}
-            </Label>
-            <div className="relative">
+            <p className="rounded-lg border border-blue-100 bg-blue-50/70 px-3 py-2.5 text-center text-xs leading-5 text-slate-700">
+              Melden Sie sich mit Ihrer persönlichen E-Mail-Adresse und Ihrem Passwort an.
+              Ihre Berechtigungen erkennt MyCrewMate automatisch.
+            </p>
+            <div className="space-y-1.5">
+              <Label htmlFor="personal-login-email" className="text-sm font-semibold text-slate-800">
+                E-Mail-Adresse
+              </Label>
               <Input
-                id="planning-password"
-                className="h-12 pr-12 text-base"
-                type={passwordVisible ? "text" : "password"}
-                autoComplete="current-password"
-                placeholder="Passwort eingeben"
-                value={password}
+                id="personal-login-email"
+                type="email"
+                autoComplete="username"
+                placeholder="beispiel@verein.de"
+                value={loginEmail}
                 onChange={event => {
-                  setPassword(event.target.value);
+                  setLoginEmail(event.target.value);
                   if (loginError) setLoginError(null);
                 }}
-                onKeyDown={event => setCapsLockOn(event.getModifierState("CapsLock"))}
-                onKeyUp={event => setCapsLockOn(event.getModifierState("CapsLock"))}
-                onBlur={() => setCapsLockOn(false)}
-                disabled={!loginAvailable || loginPending}
-                aria-describedby={
-                  [
-                    planningTeamLocked ? "planning-team-lock-message" : "",
-                    loginError ? "password-login-error" : "",
-                    capsLockOn ? "password-caps-lock-warning" : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ") || undefined
-                }
+                disabled={loginPending}
+                required
               />
-              <button
-                type="button"
-                className="absolute inset-y-0 right-0 flex min-h-12 min-w-12 items-center justify-center rounded-r-md text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50"
-                aria-label={passwordVisible ? "Passwort verbergen" : "Passwort anzeigen"}
-                aria-pressed={passwordVisible}
-                title={passwordVisible ? "Passwort verbergen" : "Passwort anzeigen"}
-                disabled={!loginAvailable || loginPending}
-                onClick={() => setPasswordVisible(visible => !visible)}
-              >
-                {passwordVisible ? (
-                  <EyeOff className="h-5 w-5" aria-hidden="true" />
-                ) : (
-                  <Eye className="h-5 w-5" aria-hidden="true" />
-                )}
-              </button>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="personal-login-password" className="text-sm font-semibold text-slate-800">
+                Passwort
+              </Label>
+              <div className="relative">
+                <Input
+                  id="personal-login-password"
+                  className="h-12 pr-12 text-base"
+                  type={passwordVisible ? "text" : "password"}
+                  autoComplete="current-password"
+                  placeholder="Passwort eingeben"
+                  value={password}
+                  onChange={event => {
+                    setPassword(event.target.value);
+                    if (loginError) setLoginError(null);
+                  }}
+                  onKeyDown={event => setCapsLockOn(event.getModifierState("CapsLock"))}
+                  onKeyUp={event => setCapsLockOn(event.getModifierState("CapsLock"))}
+                  onBlur={() => setCapsLockOn(false)}
+                  disabled={loginPending}
+                  aria-describedby={
+                    [
+                      loginError ? "password-login-error" : "",
+                      capsLockOn ? "password-caps-lock-warning" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ") || undefined
+                  }
+                  required
+                />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 flex min-h-12 min-w-12 items-center justify-center rounded-r-md text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset disabled:pointer-events-none disabled:opacity-50"
+                  aria-label={passwordVisible ? "Passwort verbergen" : "Passwort anzeigen"}
+                  aria-pressed={passwordVisible}
+                  title={passwordVisible ? "Passwort verbergen" : "Passwort anzeigen"}
+                  disabled={loginPending}
+                  onClick={() => setPasswordVisible(visible => !visible)}
+                >
+                  {passwordVisible ? (
+                    <EyeOff className="h-5 w-5" aria-hidden="true" />
+                  ) : (
+                    <Eye className="h-5 w-5" aria-hidden="true" />
+                  )}
+                </button>
+              </div>
             </div>
             {capsLockOn && (
               <p
@@ -1368,42 +973,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
               className="h-12 w-full rounded-lg bg-blue-600 py-2.5 text-base font-semibold text-white shadow-sm transition-[background-color,box-shadow,transform] duration-200 ease-out hover:bg-blue-700 hover:text-white hover:shadow-lg hover:shadow-blue-600/25 sm:hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] focus-visible:ring-blue-500 disabled:transform-none disabled:shadow-sm"
               size="lg"
               type="submit"
-              disabled={!password || !loginAvailable || loginPending}
-              aria-describedby={
-                [
-                  planningTeamLocked ? "planning-team-lock-message" : "",
-                  loginError ? "password-login-error" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ") || undefined
-              }
+              disabled={!password || !loginEmail.trim() || loginPending}
+              aria-describedby={loginError ? "password-login-error" : undefined}
             >
-              {loginPending
-                ? <><Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /><span role="status" aria-live="polite">Wird geprüft …</span></>
-                : loginMode === "admin"
-                  ? <><ShieldCheck className="mr-2 h-4 w-4" aria-hidden="true" />Als Administrator anmelden</>
-                  : <><KeyRound className="mr-2 h-4 w-4" aria-hidden="true" />Anmelden</>}
+              {loginPending ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /><span role="status" aria-live="polite">Wird geprüft …</span></>
+              ) : (
+                <><KeyRound className="mr-2 h-4 w-4" aria-hidden="true" />Anmelden</>
+              )}
             </Button>
-            {loginMode === "admin" && (
-              <div className="pt-1 text-center">
-                <button
-                  type="button"
-                  className="inline-flex min-h-11 items-center justify-center rounded px-2 text-xs text-muted-foreground underline hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                  onClick={() => {
-                    setRecoveryOpen(true);
-                    setLoginError(null);
-                    setRecoveryError(null);
-                  }}
-                >
-                  Passwort vergessen / Recovery
-                </button>
-              </div>
-            )}
-            {passwordStatus.data && !loginEnabled && (
-              <p className="text-xs text-destructive">
-                Dieser Passwortzugang ist noch nicht eingerichtet.
-              </p>
-            )}
             {loginError && (
               <div
                 ref={loginErrorRef}
@@ -1413,14 +991,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 aria-live="assertive"
                 tabIndex={-1}
               >
-                <TriangleAlert
-                  className="mt-0.5 h-4 w-4 shrink-0 text-red-700"
-                  aria-hidden="true"
-                />
+                <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-red-700" aria-hidden="true" />
                 <span>{loginError}</span>
               </div>
             )}
-            {showCooldownHint && !planningTeamLocked && (
+            {showCooldownHint && (
               <p
                 className="flex items-center justify-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-center text-xs text-amber-900"
                 role="status"
@@ -1431,33 +1006,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </p>
             )}
             {planningTeamLocked && (
-              <div
-                ref={loginLockAlertRef}
-                id="planning-team-lock-message"
-                className="login-lock-alert flex items-start gap-2.5 rounded-lg border border-red-300 bg-red-50 p-3 text-red-900 shadow-sm"
-                role="alert"
-                aria-live="assertive"
-                aria-atomic="true"
-                tabIndex={-1}
-              >
-                <TriangleAlert
-                  className="mt-0.5 h-5 w-5 shrink-0 text-red-700"
-                  aria-hidden="true"
-                />
-                <div>
-                  <p className="text-sm font-bold">
-                    Zugang für das Planungsteam gesperrt
-                  </p>
-                  <p className="mt-1 text-sm leading-relaxed text-red-800">
-                    Bitte kontaktieren Sie einen Administrator. Nur ein
-                    Administrator kann die Sperre im Bereich „Schutz &amp; Protokoll“
-                    wieder aufheben.
-                  </p>
-                </div>
-              </div>
+              <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-center text-xs leading-5 text-amber-950">
+                Planungsteam-Zugänge sind derzeit gesperrt. Persönliche Vereins-Administratoren können sich weiterhin anmelden.
+              </p>
             )}
           </form>
-          )}
         </div>
           <div className="absolute inset-x-4 bottom-3 text-center sm:bottom-4">
             <LegalFooterLinks onOpenImpressum={() => setImpressumOpen(true)} />
@@ -1469,7 +1022,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
               {COPYRIGHT_NOTICE}
             </button>
           </div>
-          {adminIdentityDialog}
           <ImpressumDialog open={impressumOpen} onOpenChange={setImpressumOpen} />
         </div>
     );

@@ -206,15 +206,15 @@ describe("Event-based Access Control für Planungsteam", () => {
     vi.spyOn(db, "getSecuritySettings").mockResolvedValue({
       planningTeamLocked: false,
     } as any);
-    vi.spyOn(db, "listPlanningTeamAccessCredentials").mockResolvedValue([
-      {
-        id: 7,
-        label: "Anne Veling",
-        contactName: "Anne Veling",
-        passwordHash: "$2a$10$hashedAnne",
-        sessionVersion: 2,
-      },
-    ]);
+    vi.spyOn(db, "getTenantAdminCredentialsByEmail").mockResolvedValue(undefined);
+    vi.spyOn(db, "getPlanningTeamAccessCredentialByEmail").mockResolvedValue({
+      id: 7,
+      label: "Anne Veling",
+      contactName: "Anne Veling",
+      email: "anne@example.invalid",
+      passwordHash: "$2a$10$hashedAnne",
+      sessionVersion: 2,
+    } as any);
     vi.spyOn(passwordAuth, "verifyPassword").mockResolvedValue(true);
     const upsertUserSpy = vi.spyOn(db, "upsertUser").mockResolvedValue(undefined as any);
     const clearFailuresSpy = vi
@@ -229,6 +229,7 @@ describe("Event-based Access Control für Planungsteam", () => {
     });
 
     const result = await publicCaller.auth.passwordLogin({
+      email: "anne@example.invalid",
       password: "korrektes-anne-passwort",
     });
 
@@ -244,20 +245,55 @@ describe("Event-based Access Control für Planungsteam", () => {
     expect(cookieMock).toHaveBeenCalled();
   });
 
+  it("erkennt persönliche Vereinsadministratoren ohne separaten Rollenumschalter", async () => {
+    vi.spyOn(db, "getSecuritySettings").mockResolvedValue({
+      planningTeamLocked: false,
+    } as any);
+    vi.spyOn(db, "getTenantAdminCredentialsByEmail").mockResolvedValue({
+      userId: 17,
+      userOpenId: "tenant-admin:admin@example.invalid",
+      userName: "Vereins-Administration",
+      passwordHash: "$2a$10$hashedAdmin",
+      sessionVersion: 3,
+      mustChangePassword: true,
+      status: "active",
+    } as any);
+    const planningLookupSpy = vi
+      .spyOn(db, "getPlanningTeamAccessCredentialByEmail")
+      .mockResolvedValue(undefined);
+    vi.spyOn(passwordAuth, "verifyPassword").mockResolvedValue(true);
+
+    const cookieMock = vi.fn();
+    const publicCaller = appRouter.createCaller({
+      user: null,
+      req: mockReq(),
+      res: { setHeader: vi.fn(), clearCookie: vi.fn(), cookie: cookieMock } as any,
+    });
+
+    await expect(
+      publicCaller.auth.passwordLogin({
+        email: "admin@example.invalid",
+        password: "persoenliches-admin-passwort",
+      })
+    ).resolves.toEqual({ success: true, mustChangePassword: true });
+    expect(planningLookupSpy).not.toHaveBeenCalled();
+    expect(cookieMock).toHaveBeenCalled();
+  });
+
   it("spiegelt die Sitzung ausschließlich für die eingebettete Manus-Vorschau", async () => {
     vi.spyOn(db, "getSecuritySettings").mockResolvedValue({
       planningTeamLocked: false,
     } as any);
-    vi.spyOn(db, "listPlanningTeamAccessCredentials").mockResolvedValue([
-      {
-        id: 8,
-        label: "Vorschau Team",
-        contactName: "Vorschau Team",
-        passwordHash: "$2a$10$hashedPreview",
-        mustChangePassword: false,
-        sessionVersion: 1,
-      },
-    ]);
+    vi.spyOn(db, "getTenantAdminCredentialsByEmail").mockResolvedValue(undefined);
+    vi.spyOn(db, "getPlanningTeamAccessCredentialByEmail").mockResolvedValue({
+      id: 8,
+      label: "Vorschau Team",
+      contactName: "Vorschau Team",
+      email: "vorschau@example.invalid",
+      passwordHash: "$2a$10$hashedPreview",
+      mustChangePassword: false,
+      sessionVersion: 1,
+    } as any);
     vi.spyOn(passwordAuth, "verifyPassword").mockResolvedValue(true);
     vi.spyOn(db, "upsertUser").mockResolvedValue(undefined as any);
     vi.spyOn(db, "clearPlanningTeamLoginFailuresIfUnlocked").mockResolvedValue(true);
@@ -274,6 +310,7 @@ describe("Event-based Access Control für Planungsteam", () => {
     });
 
     const result = await previewCaller.auth.passwordLogin({
+      email: "vorschau@example.invalid",
       password: "korrektes-vorschau-passwort",
     });
 
@@ -764,16 +801,16 @@ describe("Event-based Access Control für Planungsteam", () => {
 
   it("erkennt Einmalpasswörter beim Login und erzwingt das Setzen eines neuen Passworts", async () => {
     const initialHash = await hashPassword("MCM-initial-code-123");
-    vi.spyOn(db, "listPlanningTeamAccessCredentials").mockResolvedValue([
-      {
-        id: 19,
-        contactName: "Toni Test",
-        label: "Toni Test",
-        passwordHash: initialHash,
-        mustChangePassword: true,
-        sessionVersion: 1,
-      },
-    ]);
+    vi.spyOn(db, "getTenantAdminCredentialsByEmail").mockResolvedValue(undefined);
+    vi.spyOn(db, "getPlanningTeamAccessCredentialByEmail").mockResolvedValue({
+      id: 19,
+      contactName: "Toni Test",
+      label: "Toni Test",
+      email: "toni@example.invalid",
+      passwordHash: initialHash,
+      mustChangePassword: true,
+      sessionVersion: 1,
+    } as any);
     const cookieSpy = vi.fn();
     const caller = appRouter.createCaller({
       user: null,
@@ -782,6 +819,7 @@ describe("Event-based Access Control für Planungsteam", () => {
     });
 
     const loginResult = await caller.auth.passwordLogin({
+      email: "toni@example.invalid",
       password: "MCM-initial-code-123",
     });
 
