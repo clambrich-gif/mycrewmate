@@ -15,6 +15,9 @@ import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import { BookOpen, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 
+const HELPER_TRAINING_VIDEO_URL =
+  "https://files.manuscdn.com/user_upload_by_module/session_file/310519663150240576/WZnXHeiEiCYpKqQM.mp4";
+
 export default function Help() {
   const { user } = useAuth();
   const { isTenantAdmin } = useTenantAdministration();
@@ -65,6 +68,27 @@ export default function Help() {
           </p>
         </div>
       </header>
+
+      <Card className="overflow-hidden border-blue-200 bg-white shadow-sm">
+        <CardContent className="p-0">
+          <div className="border-b border-blue-100 bg-gradient-to-r from-blue-50 via-white to-orange-50 px-4 py-4 sm:px-5">
+            <h2 className="text-base font-semibold text-slate-950 sm:text-lg">
+              Helfer sicher anlegen und koordinieren
+            </h2>
+          </div>
+          <div className="bg-slate-950 p-2 sm:p-3">
+            <video
+              controls
+              preload="metadata"
+              className="aspect-video w-full rounded-lg bg-slate-950 shadow-sm"
+              aria-label="MyCrewMate-Schulung zum Anlegen und Koordinieren von Helfern"
+            >
+              <source src={HELPER_TRAINING_VIDEO_URL} type="video/mp4" />
+              Ihr Browser unterstützt die Wiedergabe dieses Schulungsvideos nicht.
+            </video>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card className="border-blue-200 bg-gradient-to-br from-blue-50 via-white to-slate-50 shadow-sm">
         <CardContent className="space-y-4 p-4 sm:p-5">

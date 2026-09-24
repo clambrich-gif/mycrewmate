@@ -1357,7 +1357,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     );
   });
 
-  it("entfernt Schulungsvideos und Videoplatzhalter vollständig aus der Hilfe", () => {
+  it("bindet die geprüfte Helferschulung klar und ohne Videoplatzhalter in die Hilfe ein", () => {
     const help = [
       source("client/src/pages/Help.tsx"),
       source("client/src/components/HelpGuide.tsx"),
@@ -1366,10 +1366,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(help).not.toContain("helpVideo");
     expect(help).not.toContain("PlayCircle");
     expect(help).not.toContain("/api/videos/");
-    expect(help).not.toContain("video-administratoren");
-    expect(help).not.toContain("video-planungsteam");
-    expect(help).not.toContain("<video");
-    expect(help).not.toContain("<source");
+    expect(help).toContain("Helfer sicher anlegen und koordinieren");
+    expect(help).toContain("<video");
+    expect(help).toContain("<source");
+    expect(help).toContain("WZnXHeiEiCYpKqQM.mp4");
     expect(help).toContain("HelpGuide");
     expect(help).toContain("Live-Chat, Notizen & Kollaboration");
     expect(help).toContain("Personalisierte Helfer-PDFs");
