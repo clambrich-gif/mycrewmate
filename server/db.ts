@@ -44,6 +44,7 @@ import {
   prepTasks,
   revokedSessions,
   securitySettings,
+  sessionPresences,
   shiftAreaContacts,
   shifts,
   teamNotes,
@@ -919,13 +920,14 @@ export async function createTenantForPlatformAdmin(input: {
 }
 
 /**
- * Archivierte Vereine behalten ihre fachlichen Planungsdaten, aber keine
- * verwendbaren persönlichen Zugänge. Dadurch können alte E-Mail-Adressen für
- * einen neuen oder laufenden Verein sofort wieder verwendet werden.
+ * Archivierte Vereine behalten ausschließlich ihre fachlichen Planungsdaten.
+ * Alle persönlichen Zugänge, Einladungen, Mitgliedschaften und Sitzungen werden
+ * atomar entfernt. Eine spätere Reaktivierung beginnt bewusst ohne ehemalige
+ * Vereinsadmins oder Planungsteamrechte.
  */
 async function revokeArchivedTenantAccesses(tx: DBClient, tenantId: string) {
   const now = new Date();
-  const [planningAccessRows, tenantAdminRows] = await Promise.all([
+  const [planningAccessRows, tenantAdminRows, presenceRows] = await Promise.all([
     tx
       .selectDistinct({ accessId: planningTeamAccessEvents.accessId })
       .from(planningTeamAccessEvents)
@@ -933,8 +935,12 @@ async function revokeArchivedTenantAccesses(tx: DBClient, tenantId: string) {
       .where(eq(events.tenantId, tenantId))
       .for("update"),
     tx
-      .selectDistinct({ userId: userTenantMemberships.userId })
-      .from(userTenantMemberships)
+      .selectDistinct({ userId: tenantAdminCredentials.userId })
+      .from(tenantAdminCredentials)
+      .innerJoin(
+        userTenantMemberships,
+        eq(userTenantMemberships.userId, tenantAdminCredentials.userId)
+      )
       .where(
         and(
           eq(userTenantMemberships.tenantId, tenantId),
@@ -942,63 +948,107 @@ async function revokeArchivedTenantAccesses(tx: DBClient, tenantId: string) {
         )
       )
       .for("update"),
+    tx
+      .select({ sessionKey: sessionPresences.sessionKey })
+      .from(sessionPresences)
+      .where(eq(sessionPresences.tenantId, tenantId))
+      .for("update"),
   ]);
 
   const planningAccessIds = planningAccessRows.map(row => row.accessId);
-  if (planningAccessIds.length) {
+  const archivedSessionKeys = presenceRows.map(row => row.sessionKey);
+
+  // Bereits geöffnete Sitzungen dürfen nach der Archivierung nicht weiter
+  // verwendet werden, auch wenn die Person zusätzlich zu einem anderen Verein
+  // gehören sollte. Die Auswertung im SDK prüft diese Schlüssel vor jedem RPC.
+  if (archivedSessionKeys.length) {
     await tx
-      .update(planningTeamInvitations)
-      .set({ usedAt: now })
+      .insert(revokedSessions)
+      .values(
+        archivedSessionKeys.map(sessionKey => ({
+          sessionKey,
+          reason: "security_reset" as const,
+          revokedAt: now,
+        }))
+      )
+      .onDuplicateKeyUpdate({
+        set: { reason: "security_reset", revokedAt: now },
+      });
+    await tx
+      .delete(sessionPresences)
+      .where(inArray(sessionPresences.sessionKey, archivedSessionKeys));
+  }
+
+  // Kein alter Handoff darf nach einer Archivierung noch in die Vereinsansicht
+  // führen. Diese Tokens gehören ausschließlich zum archivierten Verein.
+  await tx
+    .delete(platformTenantHandoffs)
+    .where(eq(platformTenantHandoffs.tenantId, tenantId));
+
+  // Offene Einladungen erhalten keine Sonderbehandlung oder Restlaufzeit:
+  // sie werden zusammen mit jedem dazugehörigen Zugang vollständig entfernt.
+  await tx
+    .delete(planningTeamInvitations)
+    .where(eq(planningTeamInvitations.tenantId, tenantId));
+
+  if (planningAccessIds.length) {
+    // Ein Planungsteamzugang gehört technisch genau zu einem Verein. Beim
+    // Archivieren wird daher die Zugangszeile selbst entfernt; FK-Kaskaden
+    // bereinigen Freigaben und Einladungsreste. Das zugehörige Passwortkonto
+    // wird unmittelbar danach gelöscht und kann nicht weiter angemeldet bleiben.
+    await tx
+      .delete(planningTeamAccesses)
+      .where(inArray(planningTeamAccesses.id, planningAccessIds));
+    await tx
+      .delete(users)
       .where(
-        and(
-          eq(planningTeamInvitations.tenantId, tenantId),
-          isNull(planningTeamInvitations.usedAt)
+        inArray(
+          users.openId,
+          planningAccessIds.map(accessId => planningTeamAccessOpenId(accessId))
         )
       );
-    await tx
-      .update(planningTeamAccesses)
-      .set({
-        email: null,
-        mustChangePassword: true,
-        sessionVersion: sql`${planningTeamAccesses.sessionVersion} + 1`,
-      })
-      .where(inArray(planningTeamAccesses.id, planningAccessIds));
   }
 
   await tx
-    .update(tenantAdminInvitations)
-    .set({ usedAt: now })
-    .where(
-      and(
-        eq(tenantAdminInvitations.tenantId, tenantId),
-        isNull(tenantAdminInvitations.usedAt)
-      )
-    );
+    .delete(tenantAdminInvitations)
+    .where(eq(tenantAdminInvitations.tenantId, tenantId));
 
-  // Die Mitgliedschaften sperren auch bereits geöffnete Sitzungen für diesen
-  // Verein. Eine weitere aktive Vereinsadmin-Zuordnung bleibt davon unberührt.
+  // Die Mitgliedschaft ist die zentrale Mandantenberechtigung und muss beim
+  // Archivieren physisch verschwinden. Reaktivierung erstellt sie nie erneut.
   await tx
-    .update(userTenantMemberships)
-    .set({ status: "suspended", isDefault: false })
+    .delete(userTenantMemberships)
     .where(eq(userTenantMemberships.tenantId, tenantId));
 
   for (const { userId } of tenantAdminRows) {
-    const [stillActiveElsewhere] = await tx
-      .select({ id: userTenantMemberships.id })
+    const remainingMemberships = await tx
+      .select({
+        tenantId: userTenantMemberships.tenantId,
+        role: userTenantMemberships.role,
+        status: userTenantMemberships.status,
+        tenantStatus: tenants.status,
+        isDefault: userTenantMemberships.isDefault,
+      })
       .from(userTenantMemberships)
       .innerJoin(tenants, eq(tenants.id, userTenantMemberships.tenantId))
       .where(
-        and(
-          eq(userTenantMemberships.userId, userId),
-          eq(userTenantMemberships.role, "tenant_admin"),
-          eq(userTenantMemberships.status, "active"),
-          notEq(tenants.status, "suspended"),
-          notEq(tenants.status, "archived")
-        )
+        eq(userTenantMemberships.userId, userId)
       )
-      .limit(1)
       .for("update");
 
+    if (remainingMemberships.length === 0) {
+      // Der persönliche Vereinsadmin hat keine andere Vereinszuordnung mehr.
+      // Das Entfernen des Kontos widerruft auch Passwortdaten und Einladungen.
+      await tx.delete(users).where(eq(users.id, userId));
+      continue;
+    }
+
+    const stillActiveElsewhere = remainingMemberships.some(
+      membership =>
+        membership.role === "tenant_admin" &&
+        membership.status === "active" &&
+        membership.tenantStatus !== "suspended" &&
+        membership.tenantStatus !== "archived"
+    );
     if (!stillActiveElsewhere) {
       await tx
         .update(tenantAdminCredentials)
@@ -1011,6 +1061,12 @@ async function revokeArchivedTenantAccesses(tx: DBClient, tenantId: string) {
           sessionVersion: sql`${tenantAdminCredentials.sessionVersion} + 1`,
         })
         .where(eq(tenantAdminCredentials.userId, userId));
+    }
+
+    // Falls der archivierte Verein bisher der Standard war, erhält ein noch
+    // vorhandener Verein deterministisch die Standardmarkierung.
+    if (!remainingMemberships.some(membership => membership.isDefault)) {
+      await makeTenantMembershipDefault(tx, userId, remainingMemberships[0].tenantId);
     }
   }
 }

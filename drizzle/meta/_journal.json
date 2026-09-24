@@ -456,6 +456,13 @@
       "when": 1790267291530,
       "tag": "0064_first_login_onboarding",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "5",
+      "when": 1790271800000,
+      "tag": "0065_remove_archived_tenant_accesses",
+      "breakpoints": true
     }
   ]
 }

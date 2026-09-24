@@ -1143,11 +1143,11 @@ export default function MasterAdminPortal() {
               <Archive className="size-5 text-slate-700" /> Verein archivieren?
             </AlertDialogTitle>
             <AlertDialogDescription className="leading-5 text-slate-600">
-              Der Vereinszugang für <strong className="font-semibold text-slate-800">{archiveModalTenant?.name}</strong> wird sofort gesperrt. Planungsdaten, Veranstaltungen und angelegte Zugänge werden nicht gelöscht und bleiben ausschließlich im Archiv für den historischen Nachweis erhalten.
+              Die Planungsdaten und Veranstaltungen von <strong className="font-semibold text-slate-800">{archiveModalTenant?.name}</strong> bleiben ausschließlich für den historischen Nachweis im Archiv erhalten.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm leading-5 text-slate-700">
-            Eine spätere Reaktivierung ist nur bewusst durch den Plattform-Inhaber möglich und führt den Verein als geschlossenen Pilotbetrieb fort.
+          <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm leading-5 text-red-900">
+            <strong>Alle Vereinsberechtigungen werden endgültig entfernt:</strong> persönliche Vereinsadmin- und Co-Admin-Zugänge, Planungsteamzugänge, Aktivierungslinks, Sitzungen und Mandantenverknüpfungen. Bei einer späteren Reaktivierung müssen sämtliche Zugänge bewusst neu vergeben werden.
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={updateLifecycle.isPending}>Abbrechen</AlertDialogCancel>
