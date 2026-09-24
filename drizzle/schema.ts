@@ -756,6 +756,12 @@ export const planningTeamAccesses = mysqlTable("planning_team_accesses", {
   isTenantAdmin: boolean("isTenantAdmin").default(false).notNull(),
   /** Ein einmalig ausgegebener Zugangscode muss nach der ersten Anmeldung ersetzt werden. */
   mustChangePassword: boolean("mustChangePassword").default(false).notNull(),
+  /**
+   * Ausschließlich neu per Aktivierungslink angelegte persönliche Zugänge
+   * erhalten nach der ersten regulären Anmeldung eine einmalige Einführung.
+   * Bestehende Zugänge bleiben dadurch unverändert.
+   */
+  onboardingPending: boolean("onboardingPending").default(false).notNull(),
   /** Änderungen an Passwort oder Freigaben machen bestehende Sitzungen ungültig. */
   sessionVersion: int("sessionVersion").default(1).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

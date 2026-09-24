@@ -1,6 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
 import { ForcePasswordChangeModal } from "@/components/ForcePasswordChangeModal";
+import { FirstLoginOnboarding } from "@/components/FirstLoginOnboarding";
 import {
   ImpressumDialog,
   LegalFooterLinks,
@@ -293,6 +294,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
     isTenantActivationRoute ||
     forcePasswordChangeOpen ||
     activationTenantId !== null;
+  const firstLoginOnboarding = trpc.auth.firstLoginOnboardingStatus.useQuery(
+    undefined,
+    {
+      enabled: isAuthenticated && !isCredentialBootstrapPending,
+      staleTime: 0,
+    }
+  );
   const [impressumOpen, setImpressumOpen] = useState(false);
   const [yearDialogOpen, setYearDialogOpen] = useState(false);
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
@@ -812,6 +820,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
       },
       onError: error => setInitialPasswordError(error.message),
     });
+  const completeFirstLoginOnboarding =
+    trpc.auth.completeFirstLoginOnboarding.useMutation({
+      onSuccess: async () => {
+        await firstLoginOnboarding.refetch();
+      },
+      onError: error => toast.error(error.message),
+  });
+  const finishFirstLoginOnboarding = useCallback(() => {
+    completeFirstLoginOnboarding.mutate();
+  }, [completeFirstLoginOnboarding.mutate]);
   const createYear = trpc.years.create.useMutation({
     onSuccess: async () => {
       await utils.years.list.invalidate();
@@ -1168,6 +1186,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
       data-sidebar-open={isSidebarOpen ? "true" : "false"}
       data-workspace-mode={isSidebarOpen ? "standard" : "focus"}
     >
+      <FirstLoginOnboarding
+        open={firstLoginOnboarding.data?.pending === true}
+        name={firstLoginOnboarding.data?.name ?? user?.name ?? "Planungsteam"}
+        isCoAdmin={firstLoginOnboarding.data?.isCoAdmin === true}
+        completing={completeFirstLoginOnboarding.isPending}
+        onComplete={finishFirstLoginOnboarding}
+      />
       <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b bg-white px-3 text-slate-950 shadow-sm lg:hidden">
         <Button
           variant="outline"

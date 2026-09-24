@@ -449,6 +449,13 @@
       "when": 1790252894549,
       "tag": "0063_tenant_scoped_coadmin_presence",
       "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "5",
+      "when": 1790267291530,
+      "tag": "0064_first_login_onboarding",
+      "breakpoints": true
     }
   ]
 }

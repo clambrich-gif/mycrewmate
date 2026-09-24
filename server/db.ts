@@ -1192,6 +1192,7 @@ type PlanningTeamAccessCredential = {
   isTenantAdmin: boolean;
   passwordHash: string;
   mustChangePassword: boolean;
+  onboardingPending: boolean;
   sessionVersion: number;
 };
 
@@ -1346,6 +1347,7 @@ export async function listPlanningTeamAccessCredentials(): Promise<
       isTenantAdmin: planningTeamAccesses.isTenantAdmin,
       passwordHash: planningTeamAccesses.passwordHash,
       mustChangePassword: planningTeamAccesses.mustChangePassword,
+      onboardingPending: planningTeamAccesses.onboardingPending,
       sessionVersion: planningTeamAccesses.sessionVersion,
     })
     .from(planningTeamAccesses)
@@ -1368,6 +1370,7 @@ export async function getPlanningTeamAccessCredentialByEmail(email: string) {
       isTenantAdmin: planningTeamAccesses.isTenantAdmin,
       passwordHash: planningTeamAccesses.passwordHash,
       mustChangePassword: planningTeamAccesses.mustChangePassword,
+      onboardingPending: planningTeamAccesses.onboardingPending,
       sessionVersion: planningTeamAccesses.sessionVersion,
     })
     .from(planningTeamAccesses)
@@ -1410,6 +1413,7 @@ export async function getPlanningTeamAccessCredentialForCurrentTenant(
       isTenantAdmin: planningTeamAccesses.isTenantAdmin,
       passwordHash: planningTeamAccesses.passwordHash,
       mustChangePassword: planningTeamAccesses.mustChangePassword,
+      onboardingPending: planningTeamAccesses.onboardingPending,
       sessionVersion: planningTeamAccesses.sessionVersion,
     })
     .from(planningTeamAccesses)
@@ -1506,6 +1510,7 @@ export async function createPlanningTeamAccess(input: {
   isTenantAdmin?: boolean;
   passwordHash: string;
   mustChangePassword?: boolean;
+  onboardingPending?: boolean;
   eventIds: number[];
 }) {
   const database = (await getDb()) as DB;
@@ -1525,6 +1530,7 @@ export async function createPlanningTeamAccess(input: {
       isTenantAdmin: input.isTenantAdmin ?? false,
       passwordHash: input.passwordHash,
       mustChangePassword: input.mustChangePassword ?? false,
+      onboardingPending: input.onboardingPending ?? false,
       sessionVersion: 1,
     });
     const id = Number(result?.[0]?.insertId ?? result?.insertId);
@@ -1787,6 +1793,38 @@ export async function completePlanningTeamInitialPasswordChange(input: {
       })
       .where(eq(planningTeamAccesses.id, input.accessId));
     return { id: access.id, sessionVersion };
+  });
+}
+
+/**
+ * Schließt die einmalige Einführung eines neu per Aktivierungslink angelegten
+ * persönlichen Zugangs ab. Die Vereinsbindung wird auch beim Abschluss erneut
+ * geprüft, damit ein fremder Verein den Hinweis nie bestätigen kann.
+ */
+export async function completePlanningTeamOnboarding(
+  accessId: number,
+  targetTenantId = tenant()
+) {
+  const database = (await getDb()) as DB;
+  return database.transaction(async tx => {
+    await requirePlanningTeamAccessForTenant(tx, accessId, targetTenantId);
+    const [access] = await tx
+      .select({
+        id: planningTeamAccesses.id,
+        onboardingPending: planningTeamAccesses.onboardingPending,
+      })
+      .from(planningTeamAccesses)
+      .where(eq(planningTeamAccesses.id, accessId))
+      .limit(1)
+      .for("update");
+    if (!access) throw new Error("Planungsteam-Zugang wurde nicht gefunden");
+    if (!access.onboardingPending) return { completed: false } as const;
+
+    await tx
+      .update(planningTeamAccesses)
+      .set({ onboardingPending: false })
+      .where(eq(planningTeamAccesses.id, accessId));
+    return { completed: true } as const;
   });
 }
 

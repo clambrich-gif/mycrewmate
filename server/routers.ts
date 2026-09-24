@@ -1335,6 +1335,39 @@ export const appRouter = router({
             (await db.isTenantAdminPasswordChangeRequired(ctx.user.id))),
       } as const;
     }),
+    firstLoginOnboardingStatus: baseProtectedProcedure.query(async ({ ctx }) => {
+      const accessId = planningTeamAccessIdForUser(ctx.user);
+      if (accessId === null) {
+        return {
+          pending: false,
+          isCoAdmin: false,
+          name: ctx.user.name ?? "Planungsteam",
+        } as const;
+      }
+      const scope = await authorizedPlanningScope(ctx.user, ctx.req);
+      const access = await withPlanningScope(scope, () =>
+        db.getPlanningTeamAccessCredentialForCurrentTenant(accessId, scope.tenantId)
+      );
+      return {
+        pending: access?.onboardingPending === true,
+        isCoAdmin: access?.isTenantAdmin === true,
+        name: access?.contactName ?? access?.label ?? ctx.user.name ?? "Planungsteam",
+      } as const;
+    }),
+    completeFirstLoginOnboarding: baseProtectedProcedure.mutation(async ({ ctx }) => {
+      const accessId = planningTeamAccessIdForUser(ctx.user);
+      if (accessId === null) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Diese Einführung ist nur für persönliche Planungsteam-Zugänge verfügbar.",
+        });
+      }
+      const scope = await authorizedPlanningScope(ctx.user, ctx.req);
+      await withPlanningScope(scope, () =>
+        db.completePlanningTeamOnboarding(accessId, scope.tenantId)
+      );
+      return { success: true };
+    }),
     passwordLogin: publicProcedure
       .input(
         z.object({
@@ -2086,6 +2119,7 @@ export const appRouter = router({
           isTenantAdmin: input.isTenantAdmin,
           passwordHash: await hashPassword(tempPassword),
           mustChangePassword: true,
+          onboardingPending: true,
           eventIds: input.eventIds,
         });
 
