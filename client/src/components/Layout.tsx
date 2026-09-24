@@ -349,7 +349,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       consumeHandoff.mutate({ token });
     }
   }, [consumeHandoff]);
-  const consumeTenantInvitation = trpc.auth.consumeTenantAdminInvitation.useMutation({
+  const consumeActivationInvitation = trpc.auth.consumeActivationInvitation.useMutation({
     onSuccess: async result => {
       storePreviewSessionToken(result.previewSessionToken);
       rememberActivationTenantId(result.tenantId);
@@ -380,12 +380,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
     if (
       token &&
       token.length >= 32 &&
-      !consumeTenantInvitation.isPending &&
-      !consumeTenantInvitation.isSuccess
+      !consumeActivationInvitation.isPending &&
+      !consumeActivationInvitation.isSuccess
     ) {
-      consumeTenantInvitation.mutate({ token });
+      consumeActivationInvitation.mutate({ token });
     }
-  }, [consumeTenantInvitation]);
+  }, [consumeActivationInvitation]);
   const [deleteEventTarget, setDeleteEventTarget] = useState<{
     id: number;
     name: string;
@@ -902,6 +902,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         completeTenantAdminInitialPasswordChange.isPending
       }
       error={initialPasswordError}
+      identityName={user?.name ?? null}
       onPasswordChange={value => {
         setInitialPassword(value);
         if (initialPasswordError) setInitialPasswordError(null);

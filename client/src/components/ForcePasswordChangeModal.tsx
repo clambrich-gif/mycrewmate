@@ -14,6 +14,7 @@ import type { FormEvent } from "react";
 
 type ForcePasswordChangeModalProps = {
   open: boolean;
+  identityName?: string | null;
   password: string;
   passwordConfirmation: string;
   busy: boolean;
@@ -30,6 +31,7 @@ type ForcePasswordChangeModalProps = {
  */
 export function ForcePasswordChangeModal({
   open,
+  identityName,
   password,
   passwordConfirmation,
   busy,
@@ -61,6 +63,11 @@ export function ForcePasswordChangeModal({
           </div>
           <DialogTitle>Willkommen bei MyCrewMate – Passwort ändern</DialogTitle>
           <DialogDescription className="leading-relaxed text-slate-600">
+            {identityName ? (
+              <span className="block font-medium text-slate-800">
+                Zugang für {identityName}
+              </span>
+            ) : null}
             Du hast dich mit einem temporären Zugangs-Code angemeldet. Bitte
             vergib jetzt dein persönliches, dauerhaftes Passwort.
           </DialogDescription>

@@ -1782,6 +1782,84 @@ export const appRouter = router({
           ...(isEmbeddedManusPreview(ctx.req) ? { previewSessionToken: token } : {}),
         } as const;
       }),
+    /**
+     * Ein Aktivierungslink darf eine bestehende Sitzung immer vollständig
+     * ersetzen. Die Linkadresse bleibt bewusst für beide Zugangstypen gleich;
+     * die serverseitig gespeicherte Einladung entscheidet sicher über die
+     * Zielidentität und den Zielverein.
+     */
+    consumeActivationInvitation: publicProcedure
+      .input(z.object({ token: z.string().min(32).max(200) }))
+      .mutation(async ({ ctx, input }) => {
+        const tokenHash = hashOpaqueToken(input.token);
+        const planningInvitation = await db.consumePlanningTeamInvitation(tokenHash);
+        if (planningInvitation) {
+          const openId = planningTeamAccessOpenId(planningInvitation.accessId);
+          const sessionName =
+            planningInvitation.contactName ?? planningInvitation.label ?? "Planungsteam";
+          await db.upsertUser({
+            openId,
+            name: sessionName,
+            email: planningInvitation.email ?? null,
+            loginMethod: "password",
+            role: "user",
+            lastSignedIn: new Date(),
+          });
+          try {
+            if ("synchronizePlanningTeamTenantMemberships" in db) {
+              await (db as any).synchronizePlanningTeamTenantMemberships(
+                planningInvitation.accessId
+              );
+            }
+          } catch {
+            // Unit-Test-Mocks ohne Mitgliedschaftstabellen dürfen die
+            // Aktivierung nicht unterbrechen.
+          }
+          const token = await sdk.createSessionToken(openId, {
+            name: sessionName,
+            expiresInMs: PASSWORD_SESSION_MS,
+            sessionVersion: planningInvitation.sessionVersion,
+          });
+          ctx.res.cookie(COOKIE_NAME, token, {
+            ...getSessionCookieOptions(ctx.req),
+            maxAge: PASSWORD_SESSION_MS,
+          });
+          return {
+            success: true,
+            tenantId: planningInvitation.tenantId,
+            mustChangePassword: true,
+            activationKind: "planning_team" as const,
+            activationName: sessionName,
+            ...(isEmbeddedManusPreview(ctx.req) ? { previewSessionToken: token } : {}),
+          };
+        }
+
+        const tenantAdminInvitation = await db.consumeTenantAdminInvitation(tokenHash);
+        if (!tenantAdminInvitation) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Dieser Aktivierungslink ist ungültig, bereits verwendet oder abgelaufen.",
+          });
+        }
+        const token = await sdk.createSessionToken(tenantAdminInvitation.userOpenId, {
+          name: tenantAdminInvitation.userName ?? "Vereinsadministrator",
+          expiresInMs: PASSWORD_SESSION_MS,
+          sessionVersion: tenantAdminInvitation.sessionVersion,
+        });
+        ctx.res.cookie(COOKIE_NAME, token, {
+          ...getSessionCookieOptions(ctx.req),
+          maxAge: PASSWORD_SESSION_MS,
+        });
+        return {
+          success: true,
+          tenantId: tenantAdminInvitation.tenantId,
+          mustChangePassword: true,
+          activationKind: "tenant_admin" as const,
+          activationName: tenantAdminInvitation.userName ?? "Vereinsadministrator",
+          ...(isEmbeddedManusPreview(ctx.req) ? { previewSessionToken: token } : {}),
+        };
+      }),
     consumeTenantAdminInvitation: publicProcedure
       .input(z.object({ token: z.string().min(32).max(200) }))
       .mutation(async ({ ctx, input }) => {

@@ -57,6 +57,54 @@ describe("Aktivierung persönlicher Vereinsadmins", () => {
     );
   });
 
+  it("ersetzt eine alte Vereinsadminsitzung beim Planungsteam-Aktivierungslink durch die eingeladene Person", async () => {
+    vi.spyOn(db, "consumePlanningTeamInvitation").mockResolvedValue({
+      accessId: 912,
+      tenantId: "rsv-musterstadt",
+      label: "Peter Planung",
+      contactName: "Peter Planung",
+      email: "peter.planung@example.invalid",
+      sessionVersion: 4,
+    } as any);
+    const upsertUser = vi.spyOn(db, "upsertUser").mockResolvedValue({} as any);
+    const synchronizeMemberships = vi
+      .spyOn(db, "synchronizePlanningTeamTenantMemberships")
+      .mockResolvedValue(["rsv-musterstadt"]);
+    const tenantFallback = vi.spyOn(db, "consumeTenantAdminInvitation");
+    const cookieSpy = vi.fn();
+    const caller = appRouter.createCaller({
+      // Eine noch vorhandene alte Sitzung im Browser darf das Linkziel nicht
+      // beeinflussen: Der öffentliche Aktivierungspfad setzt ein neues Cookie.
+      user: tenantAdminUser,
+      req: mockReq({ "x-tenant-id": "rsc-eifelland-mayen" }),
+      res: { cookie: cookieSpy, setHeader: vi.fn(), clearCookie: vi.fn() } as any,
+    });
+
+    await expect(
+      caller.auth.consumeActivationInvitation({ token: "p".repeat(48) })
+    ).resolves.toEqual({
+      success: true,
+      tenantId: "rsv-musterstadt",
+      mustChangePassword: true,
+      activationKind: "planning_team",
+      activationName: "Peter Planung",
+    });
+    expect(upsertUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        openId: "planning-team-access-912",
+        name: "Peter Planung",
+        role: "user",
+      })
+    );
+    expect(synchronizeMemberships).toHaveBeenCalledWith(912);
+    expect(tenantFallback).not.toHaveBeenCalled();
+    expect(cookieSpy).toHaveBeenCalledWith(
+      COOKIE_NAME,
+      expect.any(String),
+      expect.objectContaining({ maxAge: expect.any(Number) })
+    );
+  });
+
   it("blendet während der Aktivierung den alten Vereinsbildschirm vollständig aus", () => {
     const layout = readFileSync(
       path.resolve(__dirname, "../client/src/components/Layout.tsx"),
@@ -68,8 +116,10 @@ describe("Aktivierung persönlicher Vereinsadmins", () => {
     expect(layout).toContain('"mycrewmate:activation-tenant"');
     expect(layout).toContain("rememberActivationTenantId(result.tenantId)");
     expect(layout).toContain("clearRememberedActivationTenantId()");
+    expect(layout).toContain("consumeActivationInvitation");
+    expect(layout).toContain("identityName={user?.name ?? null}");
     const invitationFlow = layout.slice(
-      layout.indexOf("const consumeTenantInvitation")
+      layout.indexOf("const consumeActivationInvitation")
     );
     expect(invitationFlow.indexOf('window.history.replaceState({}, "", "/");')).toBeLessThan(
       invitationFlow.indexOf("selectTenant(result.tenantId);")

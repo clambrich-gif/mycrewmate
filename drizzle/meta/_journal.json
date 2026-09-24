@@ -435,6 +435,13 @@
       "when": 1790245506950,
       "tag": "0061_tenant_scoped_audit_logs",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "5",
+      "when": 1790246028000,
+      "tag": "0062_release_archived_access_emails",
+      "breakpoints": true
     }
   ]
 }

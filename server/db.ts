@@ -900,19 +900,127 @@ export async function createTenantForPlatformAdmin(input: {
   });
 }
 
+/**
+ * Archivierte Vereine behalten ihre fachlichen Planungsdaten, aber keine
+ * verwendbaren persönlichen Zugänge. Dadurch können alte E-Mail-Adressen für
+ * einen neuen oder laufenden Verein sofort wieder verwendet werden.
+ */
+async function revokeArchivedTenantAccesses(tx: DBClient, tenantId: string) {
+  const now = new Date();
+  const [planningAccessRows, tenantAdminRows] = await Promise.all([
+    tx
+      .selectDistinct({ accessId: planningTeamAccessEvents.accessId })
+      .from(planningTeamAccessEvents)
+      .innerJoin(events, eq(events.id, planningTeamAccessEvents.eventId))
+      .where(eq(events.tenantId, tenantId))
+      .for("update"),
+    tx
+      .selectDistinct({ userId: userTenantMemberships.userId })
+      .from(userTenantMemberships)
+      .where(
+        and(
+          eq(userTenantMemberships.tenantId, tenantId),
+          eq(userTenantMemberships.role, "tenant_admin")
+        )
+      )
+      .for("update"),
+  ]);
+
+  const planningAccessIds = planningAccessRows.map(row => row.accessId);
+  if (planningAccessIds.length) {
+    await tx
+      .update(planningTeamInvitations)
+      .set({ usedAt: now })
+      .where(
+        and(
+          eq(planningTeamInvitations.tenantId, tenantId),
+          isNull(planningTeamInvitations.usedAt)
+        )
+      );
+    await tx
+      .update(planningTeamAccesses)
+      .set({
+        email: null,
+        mustChangePassword: true,
+        sessionVersion: sql`${planningTeamAccesses.sessionVersion} + 1`,
+      })
+      .where(inArray(planningTeamAccesses.id, planningAccessIds));
+  }
+
+  await tx
+    .update(tenantAdminInvitations)
+    .set({ usedAt: now })
+    .where(
+      and(
+        eq(tenantAdminInvitations.tenantId, tenantId),
+        isNull(tenantAdminInvitations.usedAt)
+      )
+    );
+
+  // Die Mitgliedschaften sperren auch bereits geöffnete Sitzungen für diesen
+  // Verein. Eine weitere aktive Vereinsadmin-Zuordnung bleibt davon unberührt.
+  await tx
+    .update(userTenantMemberships)
+    .set({ status: "suspended", isDefault: false })
+    .where(eq(userTenantMemberships.tenantId, tenantId));
+
+  for (const { userId } of tenantAdminRows) {
+    const [stillActiveElsewhere] = await tx
+      .select({ id: userTenantMemberships.id })
+      .from(userTenantMemberships)
+      .innerJoin(tenants, eq(tenants.id, userTenantMemberships.tenantId))
+      .where(
+        and(
+          eq(userTenantMemberships.userId, userId),
+          eq(userTenantMemberships.role, "tenant_admin"),
+          eq(userTenantMemberships.status, "active"),
+          notEq(tenants.status, "suspended"),
+          notEq(tenants.status, "archived")
+        )
+      )
+      .limit(1)
+      .for("update");
+
+    if (!stillActiveElsewhere) {
+      await tx
+        .update(tenantAdminCredentials)
+        .set({
+          // Die deterministische technische Adresse erfüllt den globalen
+          // Eindeutigkeitsindex, ohne die frühere echte Adresse zu blockieren.
+          email: `archivierter-zugang-${userId}@invalid.local`,
+          status: "suspended",
+          mustChangePassword: true,
+          sessionVersion: sql`${tenantAdminCredentials.sessionVersion} + 1`,
+        })
+        .where(eq(tenantAdminCredentials.userId, userId));
+    }
+  }
+}
+
 /** Beschränkt Statusänderungen vor dem Marktstart auf interne Lebenszykluswerte. */
 export async function updateTenantLifecycleForPlatformAdmin(input: {
   tenantId: string;
   status: PlatformTenantLifecycleStatus;
 }) {
   const database = (await getDb()) as DB;
-  const result: any = await database
-    .update(tenants)
-    .set({ status: input.status })
-    .where(eq(tenants.id, input.tenantId));
-  const affected = Number(result?.[0]?.affectedRows ?? result?.affectedRows ?? 0);
-  if (!affected) throw new Error("Der Verein wurde nicht gefunden");
-  return { tenantId: input.tenantId, status: input.status } as const;
+  return database.transaction(async tx => {
+    const [target] = await tx
+      .select({ id: tenants.id })
+      .from(tenants)
+      .where(eq(tenants.id, input.tenantId))
+      .limit(1)
+      .for("update");
+    if (!target) throw new Error("Der Verein wurde nicht gefunden");
+
+    await tx
+      .update(tenants)
+      .set({ status: input.status })
+      .where(eq(tenants.id, input.tenantId));
+    if (input.status === "archived") {
+      await revokeArchivedTenantAccesses(tx, input.tenantId);
+    }
+    return { tenantId: input.tenantId, status: input.status } as const;
+  });
 }
 
 /**
@@ -1246,7 +1354,19 @@ export async function getPlanningTeamAccessCredentialByEmail(email: string) {
     })
     .from(planningTeamAccesses)
     .leftJoin(contacts, eq(contacts.id, planningTeamAccesses.contactId))
-    .where(eq(planningTeamAccesses.email, normalizedEmail))
+    .innerJoin(
+      planningTeamAccessEvents,
+      eq(planningTeamAccessEvents.accessId, planningTeamAccesses.id)
+    )
+    .innerJoin(events, eq(events.id, planningTeamAccessEvents.eventId))
+    .innerJoin(tenants, eq(tenants.id, events.tenantId))
+    .where(
+      and(
+        eq(planningTeamAccesses.email, normalizedEmail),
+        notEq(tenants.status, "suspended"),
+        notEq(tenants.status, "archived")
+      )
+    )
     .limit(1);
   return row;
 }
@@ -1296,10 +1416,19 @@ async function assertNoActiveTenantAdminEmailConflict(
   const [tenantAdmin] = await tx
     .select({ userId: tenantAdminCredentials.userId })
     .from(tenantAdminCredentials)
+    .innerJoin(
+      userTenantMemberships,
+      eq(userTenantMemberships.userId, tenantAdminCredentials.userId)
+    )
+    .innerJoin(tenants, eq(tenants.id, userTenantMemberships.tenantId))
     .where(
       and(
         eq(tenantAdminCredentials.email, normalizedEmail),
-        eq(tenantAdminCredentials.status, "active")
+        eq(tenantAdminCredentials.status, "active"),
+        eq(userTenantMemberships.role, "tenant_admin"),
+        eq(userTenantMemberships.status, "active"),
+        notEq(tenants.status, "suspended"),
+        notEq(tenants.status, "archived")
       )
     )
     .limit(1)
@@ -1326,12 +1455,24 @@ async function assertNoPlanningTeamEmailConflict(
   const [existing] = await tx
     .select({ id: planningTeamAccesses.id })
     .from(planningTeamAccesses)
-    .where(emailCondition)
+    .innerJoin(
+      planningTeamAccessEvents,
+      eq(planningTeamAccessEvents.accessId, planningTeamAccesses.id)
+    )
+    .innerJoin(events, eq(events.id, planningTeamAccessEvents.eventId))
+    .innerJoin(tenants, eq(tenants.id, events.tenantId))
+    .where(
+      and(
+        emailCondition,
+        notEq(tenants.status, "suspended"),
+        notEq(tenants.status, "archived")
+      )
+    )
     .limit(1)
     .for("update");
   if (existing) {
     throw new Error(
-      "Diese E-Mail-Adresse ist bereits für einen persönlichen Planungsteam-Zugang vergeben. Bitte eine andere E-Mail-Adresse verwenden."
+      "Diese E-Mail-Adresse ist bereits einem Planungsteam-Zugang zugeordnet. Bitte zunächst den Testzugang entfernen oder eine andere E-Mail-Adresse verwenden."
     );
   }
 }
@@ -5723,7 +5864,21 @@ export async function getTenantAdminCredentialsByEmail(email: string) {
     })
     .from(tenantAdminCredentials)
     .innerJoin(users, eq(users.id, tenantAdminCredentials.userId))
-    .where(and(eq(tenantAdminCredentials.email, normalizedEmail), eq(tenantAdminCredentials.status, "active")))
+    .innerJoin(
+      userTenantMemberships,
+      eq(userTenantMemberships.userId, tenantAdminCredentials.userId)
+    )
+    .innerJoin(tenants, eq(tenants.id, userTenantMemberships.tenantId))
+    .where(
+      and(
+        eq(tenantAdminCredentials.email, normalizedEmail),
+        eq(tenantAdminCredentials.status, "active"),
+        eq(userTenantMemberships.role, "tenant_admin"),
+        eq(userTenantMemberships.status, "active"),
+        notEq(tenants.status, "suspended"),
+        notEq(tenants.status, "archived")
+      )
+    )
     .limit(1);
   return row;
 }
@@ -5773,17 +5928,7 @@ export async function createOrUpdateTenantAdminForPlatformAdmin(input: {
       throw new Error("Name und E-Mail des Vereinsadministrators sind erforderlich");
     }
 
-    const [planningAccessWithSameEmail] = await tx
-      .select({ id: planningTeamAccesses.id })
-      .from(planningTeamAccesses)
-      .where(eq(planningTeamAccesses.email, normalizedEmail))
-      .limit(1)
-      .for("update");
-    if (planningAccessWithSameEmail) {
-      throw new Error(
-        "Diese E-Mail-Adresse ist bereits einem Planungsteam-Zugang zugeordnet. Bitte zunächst den Testzugang entfernen oder eine andere E-Mail-Adresse verwenden."
-      );
-    }
+    await assertNoPlanningTeamEmailConflict(tx, normalizedEmail);
 
     let [existingUser] = await tx
       .select({ id: users.id, openId: users.openId })
