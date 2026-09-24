@@ -10,6 +10,7 @@ import {
 import { cn } from "@/lib/utils";
 import {
   ArrowRight,
+  CalendarCheck2,
   Check,
   ChevronRight,
   CircleCheckBig,
@@ -32,7 +33,7 @@ import { useState } from "react";
 
 const WORDMARK = "/brand/mycrewmate-wordmark.png";
 
-type OfferId = "light" | "pro" | "enterprise";
+type OfferId = "event-pass" | "light" | "pro" | "enterprise";
 
 type Offer = {
   id: OfferId;
@@ -40,23 +41,54 @@ type Offer = {
   eyebrow: string;
   price: number;
   pricePrefix?: string;
+  priceUnit: string;
   audience: string;
   description: string;
   highlights: string[];
+  notIncluded?: string[];
   detailTitle: string;
   detailText: string;
   accent: string;
   buttonClass: string;
   icon: LucideIcon;
   featured?: boolean;
+  featuredLabel?: string;
 };
 
 const OFFERS: Offer[] = [
+  {
+    id: "event-pass",
+    name: "Event Pass",
+    eyebrow: "Der unverbindliche Testlauf",
+    price: 69,
+    priceUnit: "einmalig pro Veranstaltung*",
+    audience: "Für ein konkretes Fest, Rennen oder Vereinswochenende",
+    description: "Ein gemeinsamer Plan für genau eine Veranstaltung – ohne Laufzeit, Abo oder Folgeverpflichtung.",
+    highlights: [
+      "Ein gemeinsamer Orga- und Massenzugang",
+      "Festes Helferkontingent als anonyme Planeinträge",
+      "Schichten, Orte, Material & PDF-Listen",
+      "Für Vorbereitung, Event und Nachbereitung",
+    ],
+    notIncluded: [
+      "Kein Live-Chat",
+      "Keine individuellen Helfer-Logins",
+    ],
+    detailTitle: "Ein Event. Ein Preis. Kein Abo.",
+    detailText:
+      "Der Event Pass ist der unkomplizierte Weg, MyCrewMate bei einer einzelnen Veranstaltung kennenzulernen. Ein gemeinsamer Orga- und Massenzugang bündelt die Planung; Helfer bleiben anonyme Planeinträge und benötigen keinen eigenen Login. Nach dem Event entscheidet ihr ganz in Ruhe, ob Light oder Pro zu eurem Verein passt.",
+    accent: "border-orange-400 bg-gradient-to-b from-orange-50 via-white to-white shadow-[0_24px_60px_-26px_rgba(249,115,22,0.38)]",
+    buttonClass: "bg-orange-500 text-white hover:bg-orange-600",
+    icon: CalendarCheck2,
+    featured: true,
+    featuredLabel: "EINMALIG · KEIN ABO",
+  },
   {
     id: "light",
     name: "Light",
     eyebrow: "Der klare Start",
     price: 149,
+    priceUnit: "pro Jahr*",
     audience: "Für kleine Vereine & überschaubare Events",
     description: "Alles Wesentliche für einen sauberen Plan – einfach starten, gemeinsam organisieren.",
     highlights: [
@@ -77,6 +109,7 @@ const OFFERS: Offer[] = [
     name: "Pro",
     eyebrow: "Die beliebteste Wahl",
     price: 299,
+    priceUnit: "pro Jahr*",
     audience: "Für aktive Teams, die gemeinsam mehr bewegen",
     description: "Die volle Planungstiefe für Veranstaltungen, bei denen Übersicht und Kommunikation zählen.",
     highlights: [
@@ -91,7 +124,6 @@ const OFFERS: Offer[] = [
     accent: "border-blue-500 bg-gradient-to-b from-blue-50 to-white shadow-[0_24px_60px_-26px_rgba(37,99,235,0.45)]",
     buttonClass: "bg-blue-600 text-white hover:bg-blue-700",
     icon: Sparkles,
-    featured: true,
   },
   {
     id: "enterprise",
@@ -99,6 +131,7 @@ const OFFERS: Offer[] = [
     eyebrow: "Für eure eigene Lösung",
     price: 449,
     pricePrefix: "ab",
+    priceUnit: "pro Jahr*",
     audience: "Für Großevents, Verbände & individuelle Abläufe",
     description: "Der Rahmen für Teams, die MyCrewMate auf ihren Verein zuschneiden lassen möchten.",
     highlights: [
@@ -147,8 +180,8 @@ function OfferCard({
       data-offer-card={offer.id}
     >
       {offer.featured && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-blue-600 px-4 py-1 text-xs font-bold tracking-wide text-white shadow-sm">
-          BELIEBTESTE WAHL
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-orange-500 px-4 py-1 text-xs font-bold tracking-wide text-white shadow-sm">
+          {offer.featuredLabel ?? "EMPFOHLEN"}
         </div>
       )}
       <div className="flex items-start justify-between gap-4">
@@ -167,7 +200,7 @@ function OfferCard({
           {offer.pricePrefix ? `${offer.pricePrefix} ` : ""}
           {offer.price} €
         </span>
-        <span className="ml-2 text-sm font-semibold text-slate-500">pro Jahr*</span>
+        <span className="ml-2 text-sm font-semibold text-slate-500">{offer.priceUnit}</span>
       </div>
       <ul className="mt-5 space-y-3 text-sm text-slate-700">
         {offer.highlights.map(highlight => (
@@ -177,6 +210,12 @@ function OfferCard({
           </li>
         ))}
       </ul>
+      {offer.notIncluded && (
+        <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50/80 p-3">
+          <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">Bewusst schlank</p>
+          <p className="mt-1.5 text-xs leading-5 text-slate-600">{offer.notIncluded.join(" · ")}</p>
+        </div>
+      )}
       <div className="mt-auto grid gap-2 pt-7">
         <Button
           type="button"
@@ -337,6 +376,34 @@ export default function OfferDemo() {
         </div>
       </section>
 
+      <section id="event-pass" className="border-b border-orange-100 bg-gradient-to-r from-orange-50 via-white to-sky-50">
+        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:px-8 lg:py-12">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-orange-800 shadow-sm">
+              <CalendarCheck2 className="size-3.5" aria-hidden="true" />
+              Neu: Einmalpaket
+            </div>
+            <h2 className="mt-4 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Ein Event. Ein Preis. <span className="text-orange-600">Kein Abo.</span></h2>
+            <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600 sm:text-lg">
+              Der Event Pass ist für Vereine, die MyCrewMate ohne Verbindlichkeit bei einer einzelnen Veranstaltung erleben möchten. Gemeinsam planen, entspannt durchführen – und erst danach entscheiden, ob Light oder Pro passt.
+            </p>
+            <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold text-slate-700">
+              <span className="inline-flex items-center gap-2"><Check className="size-4 text-emerald-600" aria-hidden="true" /> 1 gemeinsamer Orga- und Massenzugang</span>
+              <span className="inline-flex items-center gap-2"><Check className="size-4 text-emerald-600" aria-hidden="true" /> Keine Abo-Falle</span>
+              <span className="inline-flex items-center gap-2"><Check className="size-4 text-emerald-600" aria-hidden="true" /> Ohne persönliche Helfer-Logins</span>
+            </div>
+          </div>
+          <div className="rounded-3xl border border-orange-200 bg-white p-6 text-center shadow-[0_20px_45px_-28px_rgba(249,115,22,0.65)] sm:min-w-72">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-orange-700">Einmalig pro Veranstaltung</p>
+            <p className="mt-2 text-5xl font-black tracking-tight text-slate-950">69 €</p>
+            <p className="mt-2 text-sm leading-5 text-slate-500">Für Vorbereitung, Event und Nachbereitung.</p>
+            <Button type="button" className="mt-5 w-full rounded-xl bg-orange-500 text-white hover:bg-orange-600" onClick={() => setDetailsOffer(OFFERS[0])}>
+              Einmalpaket ansehen <ArrowRight className="size-4" aria-hidden="true" />
+            </Button>
+          </div>
+        </div>
+      </section>
+
       <section id="so-einfach" className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
         <div className="mx-auto max-w-2xl text-center">
           <p className="text-sm font-bold uppercase tracking-[0.16em] text-orange-600">Weniger Reibung. Mehr Teamgeist.</p>
@@ -362,12 +429,12 @@ export default function OfferDemo() {
           <div className="mx-auto max-w-2xl text-center">
             <p className="text-sm font-bold uppercase tracking-[0.16em] text-blue-700">Fiktive Musterangebote</p>
             <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Wählt, was zu eurem Team passt.</h2>
-            <p className="mt-4 text-base leading-7 text-slate-600">Ein klarer Jahrespreis. Keine versteckten Schritte. Und immer ein gemeinsamer Plan, auf den sich euer Team verlassen kann.</p>
+            <p className="mt-4 text-base leading-7 text-slate-600">Einmalig starten oder dauerhaft organisieren: klare Preise, keine versteckten Schritte und immer ein gemeinsamer Plan, auf den sich euer Team verlassen kann.</p>
           </div>
-          <div className="mx-auto mt-12 grid max-w-6xl gap-5 lg:grid-cols-3 lg:items-stretch">
+          <div className="mx-auto mt-12 grid max-w-7xl gap-5 lg:grid-cols-4 lg:items-stretch">
             {OFFERS.map(offer => <OfferCard key={offer.id} offer={offer} onDetails={setDetailsOffer} onAdd={addToCart} />)}
           </div>
-          <p className="mt-7 text-center text-xs text-slate-500">* Fiktive Preisdarstellung dieser Musterdemo. Umfang, Preis und Bedingungen werden in einem echten Angebot verbindlich abgestimmt.</p>
+          <p className="mt-7 text-center text-xs text-slate-500">* Fiktive Preisdarstellung dieser Musterdemo. Umfang, Kontingente, Preis und Bedingungen werden in einem echten Angebot verbindlich abgestimmt.</p>
         </div>
       </section>
 
@@ -439,7 +506,7 @@ export default function OfferDemo() {
                 <DialogDescription>{detailsOffer.audience}</DialogDescription>
               </DialogHeader>
               <p className="leading-7 text-slate-700">{detailsOffer.detailText}</p>
-              <div className="rounded-xl bg-slate-50 p-4"><p className="text-sm font-bold text-slate-900">{detailsOffer.price} € pro Jahr*</p><p className="mt-1 text-xs leading-5 text-slate-500">Fiktiver Musterpreis dieser lokalen Demo.</p></div>
+              <div className="rounded-xl bg-slate-50 p-4"><p className="text-sm font-bold text-slate-900">{detailsOffer.pricePrefix ? `${detailsOffer.pricePrefix} ` : ""}{detailsOffer.price} € {detailsOffer.priceUnit}</p><p className="mt-1 text-xs leading-5 text-slate-500">Fiktiver Musterpreis dieser lokalen Demo.</p></div>
               <DialogFooter>
                 <Button type="button" className={cn("rounded-xl", detailsOffer.buttonClass)} onClick={() => { addToCart(detailsOffer); setDetailsOffer(null); }}>
                   <ShoppingBag className="size-4" aria-hidden="true" /> Simuliert in den Warenkorb
@@ -457,12 +524,12 @@ export default function OfferDemo() {
             <DialogDescription>Dies ist eine Demo. Es wird keine Bestellung gespeichert oder übertragen.</DialogDescription>
           </DialogHeader>
           {cartOffer ? (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <div className="flex items-center justify-between gap-4"><div><p className="font-black text-slate-950">MyCrewMate {cartOffer.name}</p><p className="mt-1 text-sm text-slate-600">{cartOffer.audience}</p></div><strong className="text-xl text-slate-950">{cartOffer.price} €</strong></div>
-              <p className="mt-3 text-xs text-slate-500">Fiktiver Jahrespreis · kein Zahlungsprozess</p>
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center"><ShoppingBag className="mx-auto size-6 text-slate-400" /><p className="mt-3 font-bold text-slate-700">Noch kein Paket ausgewählt.</p><p className="mt-1 text-sm text-slate-500">Wähle eines der drei Musterangebote aus.</p></div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center justify-between gap-4"><div><p className="font-black text-slate-950">MyCrewMate {cartOffer.name}</p><p className="mt-1 text-sm text-slate-600">{cartOffer.audience}</p></div><strong className="text-xl text-slate-950">{cartOffer.price} €</strong></div>
+              <p className="mt-3 text-xs text-slate-500">Fiktiver {cartOffer.priceUnit.replace("*", "")} · kein Zahlungsprozess</p>
+              </div>
+            ) : (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center"><ShoppingBag className="mx-auto size-6 text-slate-400" /><p className="mt-3 font-bold text-slate-700">Noch kein Paket ausgewählt.</p><p className="mt-1 text-sm text-slate-500">Wähle eines der vier Musterangebote aus.</p></div>
           )}
           <DialogFooter className="sm:justify-between">
             {cartOffer && <Button type="button" variant="ghost" className="text-slate-600" onClick={() => setCartOffer(null)}>Warenkorb leeren</Button>}

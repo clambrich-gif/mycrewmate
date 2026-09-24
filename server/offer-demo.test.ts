@@ -5,15 +5,24 @@ const source = (relativePath: string) =>
   readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
 describe("lokale MyCrewMate-Angebotsdemo", () => {
-  it("stellt drei fiktive Pakete mit sicher markiertem Musterwarenkorb bereit", () => {
+  it("stellt den einmaligen Event Pass und drei Jahrespakete mit sicher markiertem Musterwarenkorb bereit", () => {
     const offerDemo = source("client/src/pages/OfferDemo.tsx");
 
+    expect(offerDemo).toContain('id: "event-pass"');
     expect(offerDemo).toContain('id: "light"');
     expect(offerDemo).toContain('id: "pro"');
     expect(offerDemo).toContain('id: "enterprise"');
+    expect(offerDemo).toContain("price: 69");
     expect(offerDemo).toContain("price: 149");
     expect(offerDemo).toContain("price: 299");
     expect(offerDemo).toContain("price: 449");
+    expect(offerDemo).toContain("Ein Event. Ein Preis. Kein Abo.");
+    expect(offerDemo).toContain("Keine Abo-Falle");
+    expect(offerDemo).toContain("gemeinsamer Orga- und Massenzugang");
+    expect(offerDemo).toContain("anonyme Planeinträge");
+    expect(offerDemo).toContain("Keine individuellen Helfer-Logins");
+    expect(offerDemo).toContain("Kein Live-Chat");
+    expect(offerDemo).toContain('priceUnit: "einmalig pro Veranstaltung*"');
     expect(offerDemo).toContain("Musterdemo · Preise, Warenkorb und Checkout sind fiktiv");
     expect(offerDemo).toContain("Simuliert in den Warenkorb");
     expect(offerDemo).toContain("Fiktiver Muster-Checkout");
