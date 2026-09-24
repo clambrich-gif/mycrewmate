@@ -1055,6 +1055,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain("ResizeObserver");
     expect(dashboard).toContain("viewport.clientWidth + text.scrollWidth");
     expect(dashboard).toContain("--dashboard-daily-quote-distance");
+    expect(dashboard).toContain('"--dashboard-daily-quote-duration": "19s"');
+    expect(dashboard).toContain("dashboard-daily-quote-viewport");
+    expect(dashboard).not.toContain('{quote} <span aria-hidden="true">·</span>');
     expect(dashboard).toContain('aria-hidden="true"');
     expect(dashboard).toContain('h-8 items-center overflow-hidden');
     expect(dashboard).toContain('text-base text-slate-600');
@@ -1087,6 +1090,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(styles).toContain("left: 100%");
     expect(styles).toContain("--dashboard-daily-quote-duration");
     expect(styles).toContain("--dashboard-daily-quote-distance");
+    expect(styles).toContain("dashboard-daily-quote-viewport::after");
+    expect(styles).toContain("width: 1.8rem");
+    expect(styles).toContain("linear-gradient(to left");
+    expect(styles).toContain("--dashboard-daily-quote-duration, 19s");
     expect(styles).toContain("position: absolute");
     expect(styles).toContain("prefers-reduced-motion: no-preference");
     expect(styles).toContain("will-change: opacity, transform");

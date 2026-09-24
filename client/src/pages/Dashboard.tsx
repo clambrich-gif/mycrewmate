@@ -786,7 +786,7 @@ function EventCountdownWidget({
   const quoteTextRef = useRef<HTMLSpanElement>(null);
   const [now, setNow] = useState(() => new Date());
   const [logoLoadFailed, setLogoLoadFailed] = useState(false);
-  const [quoteMotion, setQuoteMotion] = useState({ distance: 0, duration: 10 });
+  const [quoteDistance, setQuoteDistance] = useState(0);
   useEffect(() => {
     const interval = window.setInterval(() => setNow(new Date()), 60_000);
     return () => window.clearInterval(interval);
@@ -823,14 +823,7 @@ function EventCountdownWidget({
 
     const updateQuoteMotion = () => {
       const distance = Math.ceil(viewport.clientWidth + text.scrollWidth);
-      // Rund 60 Pixel pro Sekunde: schnell genug für einen prägnanten Tagesimpuls,
-      // aber stets mit einer vollständigen, gleichmäßigen Durchlaufstrecke.
-      const duration = Math.max(5, Math.round((distance / 60) * 10) / 10);
-      setQuoteMotion(current =>
-        current.distance === distance && current.duration === duration
-          ? current
-          : { distance, duration }
-      );
+      setQuoteDistance(current => current === distance ? current : distance);
     };
 
     updateQuoteMotion();
@@ -841,8 +834,8 @@ function EventCountdownWidget({
   }, [quote]);
 
   const quoteTrackStyle = {
-    "--dashboard-daily-quote-distance": `-${quoteMotion.distance}px`,
-    "--dashboard-daily-quote-duration": `${quoteMotion.duration}s`,
+    "--dashboard-daily-quote-distance": `-${quoteDistance}px`,
+    "--dashboard-daily-quote-duration": "19s",
   } as CSSProperties;
 
   const selectLogo = () => {
@@ -941,10 +934,10 @@ function EventCountdownWidget({
         </button>
         <div className="min-w-0">{counterContent}</div>
       </div>
-      <div ref={quoteViewportRef} className="relative flex h-8 items-center overflow-hidden border-t border-slate-200 bg-slate-50 text-base text-slate-600">
+      <div ref={quoteViewportRef} className="dashboard-daily-quote-viewport relative flex h-8 items-center overflow-hidden border-t border-slate-200 bg-slate-50 text-base text-slate-600">
         <div style={quoteTrackStyle} className="dashboard-daily-quote-track flex min-w-max items-center whitespace-nowrap font-medium leading-none">
           <span ref={quoteTextRef} className="dashboard-daily-quote-segment">
-            {quote} <span aria-hidden="true">·</span>
+            {quote}
           </span>
         </div>
       </div>
