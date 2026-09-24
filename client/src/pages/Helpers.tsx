@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { PageTitle } from "@/components/PageTitle";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -615,6 +616,7 @@ export default function Helpers() {
     : confirmationFilter;
   const utils = trpc.useUtils();
   const { user } = useAuth();
+  const { isTenantAdmin } = useTenantAdministration();
   const {
     isDefaultMyTasks,
     setDefaultMyTasks,
@@ -1180,7 +1182,7 @@ export default function Helpers() {
                     )}
                     disabled={
                       selfHelperIds.has(helper.id) ||
-                      (user?.role !== "admin" &&
+                      (!isTenantAdmin &&
                         assignedHelperIds.has(helper.id))
                     }
                     onClick={() =>
@@ -1421,7 +1423,7 @@ export default function Helpers() {
               {filtered.map(helper => {
                 const helperDeleteDisabled =
                   selfHelperIds.has(helper.id) ||
-                  (user?.role !== "admin" && assignedHelperIds.has(helper.id));
+                  (!isTenantAdmin && assignedHelperIds.has(helper.id));
                 return (
                   <tr
                   key={helper.id}
@@ -1604,7 +1606,7 @@ export default function Helpers() {
                       title={
                         selfHelperIds.has(helper.id)
                           ? "Zum Löschen zuerst den Ansprechpartner entfernen"
-                          : user?.role !== "admin" &&
+                          : !isTenantAdmin &&
                               assignedHelperIds.has(helper.id)
                             ? "Eingeteilte Helfer können nur Administratoren löschen"
                             : "Helfer entfernen"

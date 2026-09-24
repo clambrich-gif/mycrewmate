@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
 import { GroupedChangeList } from "@/components/ChangePreview";
 import { Badge } from "@/components/ui/badge";
@@ -151,8 +152,7 @@ function importKind(filename: string) {
  * tatsächlich übernommene JSON- und Excel-Dateivorgänge ohne Datenmigration.
  */
 export function AuditCenter() {
-  const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const { isTenantAdmin: isAdmin } = useTenantAdministration();
   const [yearFilter, setYearFilter] = useState("all");
   const [eventFilter, setEventFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");

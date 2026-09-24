@@ -8,6 +8,7 @@ import {
 } from "@/lib/sticky-table";
 import { downloadBase64File } from "@/lib/download";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import { Button } from "@/components/ui/button";
 import { PageTitle } from "@/components/PageTitle";
 import { Input } from "@/components/ui/input";
@@ -312,12 +313,13 @@ export default function Preparation() {
   const rows = rawRows as PrepTaskRow[];
 
   const { user } = useAuth();
+  const { isTenantAdmin } = useTenantAdministration();
   const {
     isDefaultMyTasks,
     setDefaultMyTasks,
     canRememberMyTasksDefault,
   } = useMyTasksDefault(user);
-  const logbookAuthor = user?.name?.trim() || (user?.role === "admin" ? "Administrator" : "Planungsteam");
+  const logbookAuthor = user?.name?.trim() || (isTenantAdmin ? "Administrator" : "Planungsteam");
   const refreshDashboard = () => void utils.dashboard.stats.invalidate();
 
   const create = trpc.prep.create.useMutation({

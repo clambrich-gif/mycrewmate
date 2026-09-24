@@ -688,7 +688,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout.match(/rounded-lg px-3 py-2 text-sm transition-all duration-150/g)).toHaveLength(1);
     expect(navigation).not.toContain("Nur Lesen");
     expect(app).toContain("function AdminOnlySecurityRedirect");
-    expect(app).toContain('if (user?.role !== "admin") return <Redirect to="/" />;');
+    expect(app).toContain('if (!isTenantAdmin) return <Redirect to="/" />;');
     expect(app).toContain('<Route path="/berechtigungen" component={AdminOnlySecurityRedirect} />');
     expect(app).toContain('return <Redirect to="/sicherheit" />;');
     expect(app).not.toContain('<Route path="/excel"');
@@ -1835,7 +1835,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
   it("blendet die PDF-Vorlagenkonfiguration für das Planungsteam vollständig aus", () => {
     const pdfExport = source("client/src/pages/PdfExport.tsx");
 
-    expect(pdfExport).toContain('const canManage = user?.role === "admin"');
+    expect(pdfExport).toContain("const { isTenantAdmin: canManage } = useTenantAdministration()");
     expect(pdfExport).toContain("{canManage && (");
     expect(pdfExport.indexOf("{canManage && (")).toBeLessThan(
       pdfExport.indexOf('title="Vorlage frei konfigurieren"')

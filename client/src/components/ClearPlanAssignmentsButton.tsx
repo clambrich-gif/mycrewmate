@@ -1,6 +1,6 @@
-import { useAuth } from "@/_core/hooks/useAuth";
 import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
 import { Button } from "@/components/ui/button";
+import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import { trpc } from "@/lib/trpc";
 import { UserMinus } from "lucide-react";
 import { useState } from "react";
@@ -11,7 +11,7 @@ import { toast } from "sonner";
  * Schichten, Bereiche und Bereichsansprechpartner bleiben unverändert erhalten.
  */
 export function ClearPlanAssignmentsButton({ onCleared }: { onCleared: () => void }) {
-  const { user } = useAuth();
+  const { isTenantAdmin } = useTenantAdministration();
   const utils = trpc.useUtils();
   const [open, setOpen] = useState(false);
   const clearAssignments = trpc.plan.clearAssignments.useMutation({
@@ -31,7 +31,7 @@ export function ClearPlanAssignmentsButton({ onCleared }: { onCleared: () => voi
     onError: error => toast.error(error.message),
   });
 
-  if (user?.role !== "admin") return null;
+  if (!isTenantAdmin) return null;
 
   return (
     <>

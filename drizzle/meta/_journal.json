@@ -442,6 +442,13 @@
       "when": 1790246028000,
       "tag": "0062_release_archived_access_emails",
       "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "5",
+      "when": 1790252894549,
+      "tag": "0063_tenant_scoped_coadmin_presence",
+      "breakpoints": true
     }
   ]
 }

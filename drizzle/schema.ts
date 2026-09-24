@@ -49,7 +49,20 @@ export const sessionPresences = mysqlTable(
     userId: int("userId")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    /** Präsenzdaten sind ausschließlich im aktuell serverbestätigten Verein sichtbar. */
+    tenantId: varchar("tenantId", { length: 96 }).notNull(),
     role: mysqlEnum("role", ["user", "admin"]).notNull(),
+    /**
+     * Die technische Loginrolle reicht für Co-Admins nicht aus. Diese explizite,
+     * serverseitig ermittelte Präsenzrolle steuert ausschließlich die Anzeige.
+     */
+    presenceRole: mysqlEnum("presenceRole", [
+      "planner",
+      "primary_admin",
+      "co_admin",
+    ])
+      .default("planner")
+      .notNull(),
     /** Sitzungsname aus dem signierten Login-Token für parallele Personen. */
     sessionName: varchar("sessionName", { length: 200 })
       .default("Unbekannt")
@@ -61,6 +74,11 @@ export const sessionPresences = mysqlTable(
     index("session_presences_last_seen_idx").on(table.lastSeen),
     index("session_presences_role_last_seen_idx").on(
       table.role,
+      table.lastSeen
+    ),
+    index("session_presences_tenant_role_last_seen_idx").on(
+      table.tenantId,
+      table.presenceRole,
       table.lastSeen
     ),
   ]

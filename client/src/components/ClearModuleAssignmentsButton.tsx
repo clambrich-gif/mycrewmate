@@ -1,6 +1,6 @@
-import { useAuth } from "@/_core/hooks/useAuth";
 import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
 import { Button } from "@/components/ui/button";
+import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import { trpc } from "@/lib/trpc";
 import { UserMinus } from "lucide-react";
 import { useState } from "react";
@@ -43,7 +43,7 @@ export function ClearModuleAssignmentsButton({
   area: ModuleAssignmentArea;
   label: string;
 }) {
-  const { user } = useAuth();
+  const { isTenantAdmin } = useTenantAdministration();
   const utils = trpc.useUtils();
   const [open, setOpen] = useState(false);
   const details = RESET_DETAILS[area];
@@ -64,7 +64,7 @@ export function ClearModuleAssignmentsButton({
     onError: error => toast.error(error.message),
   });
 
-  if (user?.role !== "admin") return null;
+  if (!isTenantAdmin) return null;
 
   return (
     <>

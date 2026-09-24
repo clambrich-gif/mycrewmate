@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
+import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import { trpc } from "@/lib/trpc";
 import { Mail, Pencil, Phone, Plus, Trash2 } from "lucide-react";
 import { type FormEvent, useState } from "react";
@@ -21,7 +22,7 @@ import { toast } from "sonner";
 
 export default function Contacts() {
   const utils = trpc.useUtils();
-  const { user } = useAuth();
+  const { isTenantAdmin } = useTenantAdministration();
   const { data: contacts = [], isLoading } = trpc.contacts.list.useQuery();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -116,7 +117,7 @@ export default function Contacts() {
         </div>
       </div>
 
-      {user?.role === "admin" && (
+      {isTenantAdmin && (
         <Card className="border-blue-200 bg-slate-50/80 shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-base text-blue-950">Neuanlage</CardTitle>
@@ -237,7 +238,7 @@ export default function Contacts() {
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    {user?.role === "admin" && (
+                    {isTenantAdmin && (
                       <Button
                         type="button"
                         variant="ghost"

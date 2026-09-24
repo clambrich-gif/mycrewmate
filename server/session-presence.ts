@@ -35,7 +35,11 @@ export function sessionPresenceKey(req: Request) {
 
 export async function recordSessionPresence(
   req: Request,
-  user: Pick<User, "id" | "role" | "name">
+  user: Pick<User, "id" | "role" | "name">,
+  context: {
+    tenantId: string;
+    presenceRole: "planner" | "primary_admin" | "co_admin";
+  }
 ) {
   if (user.id <= 0) return false;
   const sessionKey = sessionPresenceKey(req);
@@ -50,7 +54,9 @@ export async function recordSessionPresence(
     .values({
       sessionKey,
       userId: user.id,
+      tenantId: context.tenantId,
       role: user.role,
+      presenceRole: context.presenceRole,
       sessionName:
         user.name?.trim() ||
         (user.role === "admin" ? "Administrator" : "Planungsteam"),
@@ -59,7 +65,9 @@ export async function recordSessionPresence(
     .onDuplicateKeyUpdate({
       set: {
         userId: user.id,
+        tenantId: context.tenantId,
         role: user.role,
+        presenceRole: context.presenceRole,
         sessionName:
           user.name?.trim() ||
           (user.role === "admin" ? "Administrator" : "Planungsteam"),
@@ -82,7 +90,10 @@ export async function removeSessionPresence(req: Request) {
   return true;
 }
 
-export async function getOnlinePresenceCounts(now = new Date()) {
+export async function getOnlinePresenceCounts(
+  tenantId: string,
+  now = new Date()
+) {
   const db = await getDb();
   if (!db) return { planningTeam: 0, administrators: 0 } as const;
 
@@ -93,7 +104,12 @@ export async function getOnlinePresenceCounts(now = new Date()) {
       total: count(),
     })
     .from(sessionPresences)
-    .where(gte(sessionPresences.lastSeen, activeSince))
+    .where(
+      and(
+        eq(sessionPresences.tenantId, tenantId),
+        gte(sessionPresences.lastSeen, activeSince)
+      )
+    )
     .groupBy(sessionPresences.role);
 
   const byRole = new Map(rows.map(row => [row.role, Number(row.total)]));
@@ -103,7 +119,10 @@ export async function getOnlinePresenceCounts(now = new Date()) {
   } as const;
 }
 
-export async function getOnlinePresenceStatus(now = new Date()) {
+export async function getOnlinePresenceStatus(
+  tenantId: string,
+  now = new Date()
+) {
   const db = await getDb();
   if (!db) {
     return {
@@ -118,24 +137,42 @@ export async function getOnlinePresenceStatus(now = new Date()) {
   const sessions = await db
     .select({
       role: sessionPresences.role,
+      presenceRole: sessionPresences.presenceRole,
       sessionName: sessionPresences.sessionName,
     })
     .from(sessionPresences)
-    .where(gte(sessionPresences.lastSeen, activeSince))
+    .where(
+      and(
+        eq(sessionPresences.tenantId, tenantId),
+        gte(sessionPresences.lastSeen, activeSince)
+      )
+    )
     .orderBy(asc(sessionPresences.sessionName));
 
   const planningTeamCount = sessions.filter(
-    session => session.role === "user"
+    session => session.presenceRole === "planner"
   ).length;
   const adminCount = sessions.filter(
-    session => session.role === "admin"
+    session =>
+      session.presenceRole === "primary_admin" ||
+      session.presenceRole === "co_admin"
   ).length;
-  const namesForRole = (role: "user" | "admin") =>
+  const namesForPresenceRole = (
+    roles: readonly ("planner" | "primary_admin" | "co_admin")[]
+  ) =>
     Array.from(
       new Set(
         sessions
-          .filter(session => session.role === role)
-          .map(session => session.sessionName.trim())
+          .filter(session => roles.includes(session.presenceRole))
+          .map(session => {
+            const roleLabel =
+              session.presenceRole === "primary_admin"
+                ? "Hauptadministrator"
+                : session.presenceRole === "co_admin"
+                  ? "Co-Admin"
+                  : null;
+            return `${session.sessionName.trim()}${roleLabel ? ` (${roleLabel})` : ""}`;
+          })
           .filter(Boolean)
       )
     );
@@ -143,8 +180,8 @@ export async function getOnlinePresenceStatus(now = new Date()) {
   return {
     planningTeam: planningTeamCount,
     administrators: adminCount,
-    planningTeamNames: namesForRole("user"),
-    administratorNames: namesForRole("admin"),
+    planningTeamNames: namesForPresenceRole(["planner"]),
+    administratorNames: namesForPresenceRole(["primary_admin", "co_admin"]),
   };
 }
 

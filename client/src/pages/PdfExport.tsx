@@ -36,6 +36,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import {
   ChangeEvent,
   useEffect,
@@ -120,8 +121,7 @@ function PdfSection({
 }
 
 export default function PdfExport() {
-  const { user } = useAuth();
-  const canManage = user?.role === "admin";
+  const { isTenantAdmin: canManage } = useTenantAdministration();
   const utils = trpc.useUtils();
   const { data: settings, isLoading } = trpc.pdf.settings.useQuery();
   const { data: plan = [] } = trpc.plan.evaluate.useQuery();

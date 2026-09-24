@@ -33,6 +33,7 @@ import {
   X,
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import {
   Dialog,
   DialogContent,
@@ -559,6 +560,7 @@ function AssignedHelperChip({
 export default function Plan() {
   const utils = trpc.useUtils();
   const { user } = useAuth();
+  const { isTenantAdmin: canEditPlan } = useTenantAdministration();
   const {
     isDefaultMyTasks,
     setDefaultMyTasks,
@@ -576,7 +578,6 @@ export default function Plan() {
     searchParams.get(PLAN_DAY_QUERY_KEY)
   );
   const locationFilter = Number(searchParams.get("location")) || null;
-  const canEditPlan = user?.role === "admin";
   const { data: evals = [], isLoading } = trpc.plan.evaluate.useQuery();
   const { data: helpers = [] } = trpc.helpers.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();

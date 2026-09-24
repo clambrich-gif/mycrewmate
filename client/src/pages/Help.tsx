@@ -11,11 +11,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import { BookOpen, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export default function Help() {
   const { user } = useAuth();
+  const { isTenantAdmin } = useTenantAdministration();
   const [query, setQuery] = useState("");
   const [audience, setAudience] = useState<HelpAudience>("all");
   const [hasManualAudienceSelection, setHasManualAudienceSelection] =
@@ -124,7 +126,7 @@ export default function Help() {
         <HelpGuide
           audience={audience}
           query={query}
-          isAdmin={user?.role === "admin"}
+          isAdmin={isTenantAdmin}
           onQuickSearch={handleQuickSearch}
         />
       </div>

@@ -49,15 +49,16 @@ describe("Session-Presence", () => {
     expect(ONLINE_WINDOW_MS).toBe(10 * 60 * 1000);
   });
 
-  it("liefert aktive Rollenzähler zusammen mit den Namen der angemeldeten Personen", async () => {
+  it("liefert pro Verein aktive Rollenzähler mit Haupt- und Co-Admin-Kennzeichnung", async () => {
     const activeDate = new Date();
     const selectMock = vi.fn().mockReturnValue({
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue({
           orderBy: vi.fn().mockResolvedValue([
-            { role: "user", sessionName: "Anne Veling" },
-            { role: "admin", sessionName: "Christian Lambrich" },
-            { role: "admin", sessionName: "Christian Lambrich" },
+            { role: "user", presenceRole: "planner", sessionName: "Anne Veling" },
+            { role: "admin", presenceRole: "primary_admin", sessionName: "Holger Fischer" },
+            { role: "user", presenceRole: "co_admin", sessionName: "Peter Lustig" },
+            { role: "user", presenceRole: "co_admin", sessionName: "Peter Lustig" },
           ]),
         }),
       }),
@@ -66,8 +67,13 @@ describe("Session-Presence", () => {
       select: selectMock,
     } as any);
 
-    const status = await getOnlinePresenceStatus(activeDate);
+    const status = await getOnlinePresenceStatus("rsv-musterstadt", activeDate);
     expect(status.planningTeamNames).toEqual(["Anne Veling"]);
-    expect(status.administratorNames).toEqual(["Christian Lambrich"]);
+    expect(status.administrators).toBe(3);
+    expect(status.administratorNames).toEqual([
+      "Holger Fischer (Hauptadministrator)",
+      "Peter Lustig (Co-Admin)",
+    ]);
+    expect(selectMock).toHaveBeenCalledTimes(1);
   });
 });

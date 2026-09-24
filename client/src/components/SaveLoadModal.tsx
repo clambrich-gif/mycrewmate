@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
+import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import {
   ChangeFilterBar,
   GroupedChangeList,
@@ -118,7 +119,7 @@ export function SaveLoadControls({
   onAction?: () => void;
 }) {
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const { isTenantAdmin: isAdmin } = useTenantAdministration();
   const jsonInputRef = useRef<HTMLInputElement>(null);
   const excelInputRef = useRef<HTMLInputElement>(null);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);

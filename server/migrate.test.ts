@@ -200,7 +200,8 @@ describe("applyProjectMigrations", () => {
         m.tag === "0059_puzzling_swordsman" ||
         m.tag === "0060_powerful_mister_sinister" ||
         m.tag === "0061_tenant_scoped_audit_logs" ||
-        m.tag === "0062_release_archived_access_emails"
+        m.tag === "0062_release_archived_access_emails" ||
+        m.tag === "0063_tenant_scoped_coadmin_presence"
     ).length;
 
     const result = await applyProjectMigrations(connection, migrations);

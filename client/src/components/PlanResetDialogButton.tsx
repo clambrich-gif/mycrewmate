@@ -1,6 +1,6 @@
-import { useAuth } from "@/_core/hooks/useAuth";
 import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
 import { Button } from "@/components/ui/button";
+import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import {
   Dialog,
   DialogContent,
@@ -111,7 +111,7 @@ export function PlanResetDialogButton({
   onCompleted?: () => void;
   triggerClassName?: string;
 }) {
-  const { user } = useAuth();
+  const { isTenantAdmin } = useTenantAdministration();
   const utils = trpc.useUtils();
   const [choiceDialogOpen, setChoiceDialogOpen] = useState(false);
   const [selectedChoice, setSelectedChoice] = useState<ResetChoice | null>(
@@ -145,7 +145,7 @@ export function PlanResetDialogButton({
     onError: error => toast.error(error.message),
   });
 
-  if (user?.role !== "admin") return null;
+  if (!isTenantAdmin) return null;
 
   const busy =
     clearPlanAssignments.isPending ||

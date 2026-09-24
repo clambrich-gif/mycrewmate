@@ -1,6 +1,6 @@
-import { useAuth } from "@/_core/hooks/useAuth";
 import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
 import { Button } from "@/components/ui/button";
+import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import { trpc } from "@/lib/trpc";
 import { RotateCcw } from "lucide-react";
 import { useState } from "react";
@@ -38,7 +38,7 @@ export function ResetAreaButton({
   confirmLabel?: string;
   successMessage?: string;
 }) {
-  const { user } = useAuth();
+  const { isTenantAdmin } = useTenantAdministration();
   const utils = trpc.useUtils();
   const [open, setOpen] = useState(false);
   const reset = trpc.reset.area.useMutation({
@@ -53,7 +53,7 @@ export function ResetAreaButton({
     onError: error => toast.error(error.message),
   });
 
-  if (user?.role !== "admin") return null;
+  if (!isTenantAdmin) return null;
   return (
     <>
       <Button

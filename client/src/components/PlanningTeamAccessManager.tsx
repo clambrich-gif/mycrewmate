@@ -774,12 +774,12 @@ export function PlanningTeamAccessManager() {
               <div className="min-w-0">
                 <span className="flex items-center gap-1.5 font-semibold text-red-900">
                   <ShieldAlert className="h-4 w-4" />
-                  Vereinsadministrator-Stellvertretung
+                  Co-Admin
                 </span>
                 <p className="mt-1 text-xs leading-5 text-red-800">
                   Volle Rechte innerhalb dieses Vereins – einschließlich Löschen,
                   Ansprechpartnern und Fachrechten. Keine Plattform- oder Masterrechte;
-                  weitere Stellvertretungen dürfen nicht vergeben, geändert oder gelöscht werden.
+                  weitere Co-Admins dürfen nicht vergeben, geändert oder gelöscht werden.
                 </p>
               </div>
             </label>
@@ -810,7 +810,7 @@ export function PlanningTeamAccessManager() {
             )}
             {form.isTenantAdmin && (
               <p className="text-xs font-medium text-red-800">
-                Als Stellvertretung gelten alle vorhandenen und künftig angelegten Veranstaltungen dieses Vereins.
+                Als Co-Admin gelten alle vorhandenen und künftig angelegten Veranstaltungen dieses Vereins.
               </p>
             )}
           </fieldset>

@@ -1,5 +1,5 @@
-import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import {
   Dialog,
   DialogContent,
@@ -24,7 +24,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 export function CopyPreviousPlanButton() {
-  const { user } = useAuth();
+  const { isTenantAdmin } = useTenantAdministration();
   const { year, eventId } = useEventYear();
   const utils = trpc.useUtils();
   const { data: allEvents = [] } = trpc.events.all.useQuery();
@@ -61,7 +61,7 @@ export function CopyPreviousPlanButton() {
     onError: error => toast.error(error.message),
   });
 
-  if (user?.role !== "admin") return null;
+  if (!isTenantAdmin) return null;
   return (
     <>
       <Button

@@ -1,4 +1,3 @@
-import { useAuth } from "@/_core/hooks/useAuth";
 import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
 import { PageTitle } from "@/components/PageTitle";
 import { Button } from "@/components/ui/button";
@@ -13,6 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
+import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import {
   locationLogoMimeType,
   MAX_LOCATION_LOGO_BYTES,
@@ -33,7 +33,7 @@ function baseName(filename: string) {
 }
 
 export default function Locations() {
-  const { user } = useAuth();
+  const { isTenantAdmin: canManage } = useTenantAdministration();
   const utils = trpc.useUtils();
   const { data: locations = [], isLoading } = trpc.locations.list.useQuery();
   const { data: gpxTracks = [], isLoading: tracksLoading } = trpc.gpxTracks.list.useQuery();
@@ -52,7 +52,6 @@ export default function Locations() {
   const [editingTrackName, setEditingTrackName] = useState("");
   const trackInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
-  const canManage = user?.role === "admin";
   const invalidate = () => {
     void utils.locations.list.invalidate();
     void utils.gpxTracks.list.invalidate();

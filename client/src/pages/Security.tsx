@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useEventYear } from "@/contexts/YearContext";
+import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import {
@@ -173,23 +174,12 @@ export default function Security() {
   const { user } = useAuth();
   const { year } = useEventYear();
   const utils = trpc.useUtils();
-  const administrativeContext =
-    trpc.planningTeamAccesses.administrativeContext.useQuery(undefined, {
-      enabled: Boolean(user),
-    });
-  // Eine Stellvertretung bleibt auch mit voller Vereinsverwaltung technisch ein
-  // Planungsteamzugang. Die Identität ist eine zweite, bewusst konservative
-  // UI-Grenze, falls ein Browser noch einen älteren Kontextwert vorhält.
-  const isPlanningTeamIdentity =
-    user?.openId.startsWith("planning-team-access-") === true;
-  const isDelegatedTenantAdmin =
-    administrativeContext.data?.isDelegatedTenantAdmin === true ||
-    isPlanningTeamIdentity;
-  const isPrimaryTenantAdmin =
-    administrativeContext.data?.isPrimaryTenantAdmin === true &&
-    !isDelegatedTenantAdmin;
-  const isAdmin =
-    isPrimaryTenantAdmin || administrativeContext.data?.isTenantAdmin === true;
+  const {
+    isCoAdmin,
+    isPrimaryTenantAdmin,
+    isTenantAdmin: isAdmin,
+    administrativeContext,
+  } = useTenantAdministration();
   const { data: status, isLoading: statusLoading } =
     trpc.auth.passwordStatus.useQuery(undefined, {
       refetchInterval: 30_000,
@@ -222,6 +212,9 @@ export default function Security() {
     },
     onError: error => toast.error(error.message),
   });
+  if (administrativeContext.isLoading && user?.role === "user") {
+    return <div className="text-sm text-muted-foreground">Berechtigungen werden geprüft …</div>;
+  }
   if (!isAdmin) {
     return (
       <Card className="max-w-xl">

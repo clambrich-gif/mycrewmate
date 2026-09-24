@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import { LocationMapLink } from "@/components/LocationMapLink";
 import { PageTitle } from "@/components/PageTitle";
 import { MyTasksDefaultPin } from "@/components/MyTasksDefaultPin";
@@ -272,13 +273,14 @@ export default function PostProcessing() {
   const rows = rawRows as PostTaskRow[];
 
   const { user } = useAuth();
+  const { isTenantAdmin } = useTenantAdministration();
   const {
     isDefaultMyTasks,
     setDefaultMyTasks,
     canRememberMyTasksDefault,
   } = useMyTasksDefault(user);
   const logbookAuthor =
-    user?.name?.trim() || (user?.role === "admin" ? "Administrator" : "Planungsteam");
+    user?.name?.trim() || (isTenantAdmin ? "Administrator" : "Planungsteam");
   const refreshDashboard = () => void utils.dashboard.stats.invalidate();
 
   const create = trpc.post.create.useMutation({

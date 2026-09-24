@@ -39,7 +39,7 @@ describe("Lazy Routes", () => {
     expect(appSource).toContain("<Suspense");
     expect(appSource).toContain('<Redirect to="/vorbereitung" />');
     expect(appSource).toContain("function AdminOnlySecurityRedirect");
-    expect(appSource).toContain('if (user?.role !== "admin") return <Redirect to="/" />;');
+    expect(appSource).toContain('if (!isTenantAdmin) return <Redirect to="/" />;');
     expect(appSource).toContain('<Route path="/berechtigungen" component={AdminOnlySecurityRedirect} />');
     expect(appSource).toContain('return <Redirect to="/sicherheit" />;');
     expect(appSource).not.toContain('routeLoaders["/marketing"]');

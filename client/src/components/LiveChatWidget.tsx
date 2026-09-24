@@ -6,6 +6,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useEventYear } from "@/contexts/YearContext";
+import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { shouldRenewTypingStatus } from "./live-chat-logic";
@@ -125,6 +126,7 @@ export function LiveChatWidget({
   onRequestSnapshotRefresh: () => Promise<void>;
 }) {
   const { user, isAuthenticated } = useAuth();
+  const { isTenantAdmin } = useTenantAdministration();
   const { year, eventId } = useEventYear();
 
   const [message, setMessage] = useState("");
@@ -658,7 +660,7 @@ export function LiveChatWidget({
                 <BellOff className="h-4 w-4" />
               )}
             </Button>
-            {user?.role === "admin" && (
+            {isTenantAdmin && (
               <Button
                 type="button"
                 variant="ghost"

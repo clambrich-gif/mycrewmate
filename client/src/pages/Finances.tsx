@@ -1,4 +1,3 @@
-import { useAuth } from "@/_core/hooks/useAuth";
 import { PageTitle } from "@/components/PageTitle";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,7 @@ import {
 } from "@/lib/sticky-table";
 import { useEventYear } from "@/contexts/YearContext";
 import { trpc } from "@/lib/trpc";
+import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -20,7 +20,7 @@ const temporaryId = () => -Date.now() - Math.floor(Math.random() * 1_000);
 export default function Finances() {
   const utils = trpc.useUtils();
   const listUtils = utils.finances.list;
-  const { user } = useAuth();
+  const { isTenantAdmin } = useTenantAdministration();
   const { year, eventId } = useEventYear();
   const { data: rows = [], isLoading } = trpc.finances.list.useQuery();
   const [category, setCategory] = useState("");
@@ -209,7 +209,7 @@ export default function Finances() {
                     {eur(difference)}
                   </strong>
                 </div>
-                {user?.role === "admin" && row.id > 0 && (
+                {isTenantAdmin && row.id > 0 && (
                   <Button
                     variant="outline"
                     className="w-full border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
@@ -297,7 +297,7 @@ export default function Finances() {
                       {eur(difference)}
                     </td>
                     <td className="p-2">
-                      {user?.role === "admin" && row.id > 0 && (
+                      {isTenantAdmin && row.id > 0 && (
                         <Button
                           variant="ghost"
                           size="icon"

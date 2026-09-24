@@ -41,22 +41,45 @@ describe("Vereinsadministrator-Stellvertretung", () => {
     const manager = source("client/src/components/PlanningTeamAccessManager.tsx");
     const security = source("client/src/pages/Security.tsx");
     const layout = source("client/src/components/Layout.tsx");
+    const tenantAdminHook = source("client/src/hooks/useTenantAdministration.ts");
 
-    expect(manager).toContain("Vereinsadministrator-Stellvertretung");
+    expect(manager).toContain("Co-Admin");
     expect(manager).toContain("border-2 border-red-500 bg-red-50");
     expect(manager).toContain("disabled={access.isTenantAdmin && !isPrimaryTenantAdmin}");
     expect(manager).toContain("Alle Veranstaltungen dieses Vereins");
     expect(manager).toContain('user?.openId.startsWith("planning-team-access-")');
-    expect(security).toContain("administrativeContext.data?.isTenantAdmin === true");
-    expect(security).toContain(
+    expect(tenantAdminHook).toContain("administrativeContext.data?.isTenantAdmin === true");
+    expect(tenantAdminHook).toContain(
       "administrativeContext.data?.isPrimaryTenantAdmin === true"
     );
-    expect(security).toContain("administrativeContext.data?.isDelegatedTenantAdmin === true");
-    expect(security).toContain('user?.openId.startsWith("planning-team-access-")');
+    expect(tenantAdminHook).toContain("administrativeContext.data?.isDelegatedTenantAdmin === true");
+    expect(security).toContain("useTenantAdministration");
     expect(security).toContain("{isPrimaryTenantAdmin && (");
-    expect(layout).toContain("Vereinsadministrator-Stellvertretung");
-    expect(layout).toContain("Hauptvereinsadministrator");
-    expect(layout).toContain("administrativeContext.data?.isDelegatedTenantAdmin === true");
+    expect(layout).toContain("useTenantAdministration");
+    expect(layout).toContain("tenantRoleLabel");
     expect(layout).toContain("visibleNavigationSections(effectiveNavigationRole");
+  });
+
+  it("zeigt Co-Admins vereinsintern als vollwertige Administration und trennt ihre Präsenz", () => {
+    const manager = source("client/src/components/PlanningTeamAccessManager.tsx");
+    const schema = source("drizzle/schema.ts");
+    const presence = source("server/session-presence.ts");
+    const router = source("server/routers.ts");
+    const layout = source("client/src/components/Layout.tsx");
+    const tenantAdminHook = source("client/src/hooks/useTenantAdministration.ts");
+    const badge = source("client/src/components/OnlinePresenceBadge.tsx");
+
+    expect(manager).toContain("Co-Admin");
+    expect(schema).toContain('presenceRole: mysqlEnum("presenceRole"');
+    expect(schema).toContain('tenantId: varchar("tenantId", { length: 96 }).notNull()');
+    expect(presence).toContain('eq(sessionPresences.tenantId, tenantId)');
+    expect(presence).toContain('"Hauptadministrator"');
+    expect(presence).toContain('"Co-Admin"');
+    expect(router).toContain('presenceRole: isCoAdmin');
+    expect(router).toContain('getOnlinePresenceStatus(scope.tenantId)');
+    expect(layout).toContain("tenantRoleLabel");
+    expect(tenantAdminHook).toContain('if (input.isCoAdmin) return "Co-Admin"');
+    expect(badge).toContain("Online: <strong>{counts.planningTeam}</strong> Planer");
+    expect(badge).toContain("<strong>{counts.administrators}</strong> Admins");
   });
 });

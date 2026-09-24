@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
+import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -40,7 +41,7 @@ export default function TaskList({
   title: string;
 }) {
   const utils = trpc.useUtils();
-  const { user } = useAuth();
+  const { isTenantAdmin } = useTenantAdministration();
   const [searchParams, setSearchParams] = useSearchParams();
   const statusFilter = parseTaskStatusFilter(
     searchParams.get(TASK_STATUS_QUERY_KEY)
@@ -404,7 +405,7 @@ export default function TaskList({
                   </div>
                 )}
               </div>
-              {user?.role === "admin" && row.id > 0 && (
+              {isTenantAdmin && row.id > 0 && (
                 <Button
                   variant="outline"
                   className="w-full border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
@@ -525,7 +526,7 @@ export default function TaskList({
                     </td>
                   )}
                   <td className="p-2">
-                    {user?.role === "admin" && row.id > 0 && (
+                    {isTenantAdmin && row.id > 0 && (
                       <Button
                         variant="ghost"
                         size="icon"

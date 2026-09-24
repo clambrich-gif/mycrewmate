@@ -30,6 +30,7 @@ import {
 } from "@/lib/sticky-table";
 import { trpc } from "@/lib/trpc";
 import { useMyTasksDefault } from "@/hooks/useMyTasksDefault";
+import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import {
   ArrowDownAZ,
   ArrowUpZA,
@@ -122,6 +123,7 @@ export default function TaskGeneric({
 }: Props) {
   const utils = trpc.useUtils();
   const { user } = useAuth();
+  const { isTenantAdmin } = useTenantAdministration();
   const {
     isDefaultMyTasks,
     setDefaultMyTasks,
@@ -888,7 +890,7 @@ export default function TaskGeneric({
                   </div>
                 )}
               </div>
-              {(user?.role === "admin" || teamCanDelete) && row.id > 0 && (
+              {(isTenantAdmin || teamCanDelete) && row.id > 0 && (
                 <Button
                   variant="outline"
                   className="w-full border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100"
@@ -1098,7 +1100,7 @@ export default function TaskGeneric({
                     </td>
                   )}
                   <td className="p-2">
-                    {(user?.role === "admin" || teamCanDelete) &&
+                    {(isTenantAdmin || teamCanDelete) &&
                       row.id > 0 && (
                         <Button
                           variant="ghost"

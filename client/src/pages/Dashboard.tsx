@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LocationMapCard } from "@/components/LocationMapCard";
 import { PageTitle } from "@/components/PageTitle";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import { dashboardDailyQuote } from "@/lib/daily-dashboard-quotes";
 import {
   dashboardTargetHref,
@@ -778,8 +779,7 @@ function EventCountdownWidget({
     pdfLogoKey?: string | null;
   };
 }) {
-  const { user } = useAuth();
-  const canManageLogo = user?.role === "admin";
+  const { isTenantAdmin: canManageLogo } = useTenantAdministration();
   const utils = trpc.useUtils();
   const logoInputRef = useRef<HTMLInputElement>(null);
   const [now, setNow] = useState(() => new Date());

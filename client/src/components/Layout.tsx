@@ -55,6 +55,10 @@ import {
 import { preloadRoute } from "@/lib/route-loaders";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import {
+  tenantRoleLabel,
+  useTenantAdministration,
+} from "@/hooks/useTenantAdministration";
 import { storePreviewSessionToken } from "@/lib/preview-session";
 import { WEEKDAYS, type Weekday } from "@shared/weekdays";
 import { COPYRIGHT_NOTICE } from "@shared/branding";
@@ -236,6 +240,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { user, loading, isAuthenticated, logout } = useAuth();
   const onlinePresence = useOnlinePresence();
   const {
+    isCoAdmin,
+    isPrimaryTenantAdmin,
+    isTenantAdmin,
+  } = useTenantAdministration();
+  const {
     tenantId,
     year,
     eventId,
@@ -252,27 +261,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
       user?.role === "user" &&
       location !== "/aktivieren",
   });
-  const administrativeContext =
-    trpc.planningTeamAccesses.administrativeContext.useQuery(undefined, {
-      enabled:
-        isAuthenticated &&
-        user?.role === "user" &&
-        location !== "/aktivieren",
-    });
-  const isDelegatedTenantAdmin =
-    administrativeContext.data?.isDelegatedTenantAdmin === true;
-  const hasTenantAdministration =
-    administrativeContext.data?.isTenantAdmin === true;
-  const effectiveNavigationRole = hasTenantAdministration
-    ? "admin"
-    : user?.role;
-  const effectiveRoleLabel = isDelegatedTenantAdmin
-    ? "Vereinsadministrator-Stellvertretung"
-    : hasTenantAdministration
-      ? "Hauptvereinsadministrator"
-    : user?.role === "admin"
-      ? "Administrator"
-      : "Planungsteam";
+  const effectiveNavigationRole = isTenantAdmin ? "admin" : user?.role;
+  const effectiveRoleLabel = tenantRoleLabel({
+    isTenantAdmin,
+    isPrimaryTenantAdmin,
+    isCoAdmin,
+  });
   const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [capsLockOn, setCapsLockOn] = useState(false);

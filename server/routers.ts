@@ -124,10 +124,21 @@ const GUIDE_PDF_MAX_BYTES = 5_000_000;
 
 async function safelyRecordPresence(
   req: Parameters<typeof recordSessionPresence>[0],
-  user: Parameters<typeof recordSessionPresence>[1]
+  user: Parameters<typeof recordSessionPresence>[1] & { openId: string }
 ) {
   try {
-    await recordSessionPresence(req, user);
+    const scope = await authorizedPlanningScope(user, req);
+    const isCoAdmin = await withPlanningScope(scope, () =>
+      isDelegatedTenantAdministrator(user)
+    );
+    await recordSessionPresence(req, user, {
+      tenantId: scope.tenantId,
+      presenceRole: isCoAdmin
+        ? "co_admin"
+        : isPrimaryTenantAdministrator(user)
+          ? "primary_admin"
+          : "planner",
+    });
   } catch (error) {
     console.warn("[Presence] Aktivitätszeit konnte nicht gespeichert werden", error);
   }
@@ -2438,7 +2449,10 @@ export const appRouter = router({
       await safelyRecordPresence(ctx.req, ctx.user);
       return { success: true } as const;
     }),
-    status: baseProtectedProcedure.query(() => getOnlinePresenceStatus()),
+    status: baseProtectedProcedure.query(async ({ ctx }) => {
+      const scope = await authorizedPlanningScope(ctx.user, ctx.req);
+      return getOnlinePresenceStatus(scope.tenantId);
+    }),
   }),
 
   tenants: router({

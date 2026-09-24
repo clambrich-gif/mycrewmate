@@ -34,6 +34,7 @@ import {
 } from "@/lib/sticky-table";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import {
   ChevronDown,
   FilterX,
@@ -226,6 +227,7 @@ function TraitTags({ row }: { row: DonationRow }) {
 export default function Cakes() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
+  const { isTenantAdmin } = useTenantAdministration();
   const requestedDonor = searchParams.get("donor")?.trim() ?? "";
   const utils = trpc.useUtils();
   const { data: rows = [], isLoading } = trpc.cakes.list.useQuery();
@@ -654,7 +656,7 @@ export default function Cakes() {
         </div>
       </div>
 
-      {user?.role === "admin" && selectedEvent && (
+      {isTenantAdmin && selectedEvent && (
         <Collapsible
           open={donationTargetsOpen}
           onOpenChange={setDonationTargetsOpen}

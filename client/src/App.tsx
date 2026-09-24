@@ -14,6 +14,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { YearProvider } from "./contexts/YearContext";
 import { routeLoaders } from "./lib/route-loaders";
 import { useAuth } from "./_core/hooks/useAuth";
+import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 
 const Dashboard = lazy(routeLoaders["/"]);
 const Contacts = lazy(routeLoaders["/ansprechpartner"]);
@@ -56,10 +57,11 @@ function RouteLoading() {
 }
 
 function AdminOnlySecurityRedirect() {
-  const { user, loading } = useAuth();
+  const { loading } = useAuth();
+  const { isTenantAdmin, administrativeContext } = useTenantAdministration();
 
-  if (loading) return <RouteLoading />;
-  if (user?.role !== "admin") return <Redirect to="/" />;
+  if (loading || administrativeContext.isLoading) return <RouteLoading />;
+  if (!isTenantAdmin) return <Redirect to="/" />;
   return <Redirect to="/sicherheit" />;
 }
 
