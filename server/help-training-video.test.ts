@@ -20,10 +20,10 @@ describe("Schulungsvideo im Hilfe-Center", () => {
     expect(help).toContain("MyCrewMate-Schulung zum Anlegen und Koordinieren von Helfern");
   });
 
-  it("verwendet die bereitgestellte MP4-Datei als MP4-Quelle", () => {
+  it("verwendet die same-origin Streamingroute als MP4-Quelle", () => {
     const help = source("client/src/pages/Help.tsx");
 
-    expect(help).toContain("WZnXHeiEiCYpKqQM.mp4");
+    expect(help).toContain('"/api/help/training-video"');
     expect(help).toContain('type="video/mp4"');
   });
 });

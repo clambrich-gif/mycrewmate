@@ -1369,7 +1369,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(help).toContain("Helfer sicher anlegen und koordinieren");
     expect(help).toContain("<video");
     expect(help).toContain("<source");
-    expect(help).toContain("WZnXHeiEiCYpKqQM.mp4");
+    expect(help).toContain("/api/help/training-video");
     expect(help).toContain("HelpGuide");
     expect(help).toContain("Live-Chat, Notizen & Kollaboration");
     expect(help).toContain("Personalisierte Helfer-PDFs");

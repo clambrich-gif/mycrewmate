@@ -15,8 +15,7 @@ import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import { BookOpen, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 
-const HELPER_TRAINING_VIDEO_URL =
-  "https://files.manuscdn.com/user_upload_by_module/session_file/310519663150240576/WZnXHeiEiCYpKqQM.mp4";
+const HELPER_TRAINING_VIDEO_URL = "/api/help/training-video";
 
 export default function Help() {
   const { user } = useAuth();

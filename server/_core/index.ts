@@ -5,6 +5,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerBrandAssetRoutes } from "../brand-asset-routes";
 import { appRouter } from "../routers";
 import { registerHelpImageRoutes } from "../help-image-routes";
+import { registerHelpTrainingVideoRoutes } from "../help-training-video-routes";
 import { registerEventPdfImageRoutes } from "../event-pdf-image-routes";
 import { registerPublicHelperPdfRoutes } from "../public-helper-pdf-routes";
 import { registerLocationLogoRoutes } from "../location-logo-routes";
@@ -46,6 +47,7 @@ async function startServer() {
 
   registerBrandAssetRoutes(app);
   registerHelpImageRoutes(app);
+  registerHelpTrainingVideoRoutes(app);
   registerEventPdfImageRoutes(app);
   registerPublicHelperPdfRoutes(app);
   registerLocationLogoRoutes(app);
