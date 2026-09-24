@@ -19,9 +19,9 @@ const delegatedUser = {
   lastSignedIn: new Date(),
 };
 
-function delegatedCaller() {
+function delegatedCaller(user = delegatedUser) {
   return appRouter.createCaller({
-    user: delegatedUser,
+    user,
     req: req({
       "x-event-year": "2026",
       "x-event-id": "701",
@@ -73,6 +73,20 @@ describe("funktionale Rechtegrenzen einer Vereinsadministrator-Stellvertretung",
       ])
     );
     await expect(caller.planningTeamAccesses.administrativeContext()).resolves.toEqual({
+      isTenantAdmin: true,
+      isPrimaryTenantAdmin: false,
+    });
+  });
+
+  it("leitet den Hauptadministratorstatus nie allein aus der generischen Nutzerrolle ab", async () => {
+    const technicallyAdminRoleDelegate = {
+      ...delegatedUser,
+      role: "admin" as const,
+    };
+
+    await expect(
+      delegatedCaller(technicallyAdminRoleDelegate).planningTeamAccesses.administrativeContext()
+    ).resolves.toEqual({
       isTenantAdmin: true,
       isPrimaryTenantAdmin: false,
     });

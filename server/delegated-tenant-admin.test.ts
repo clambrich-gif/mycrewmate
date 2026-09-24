@@ -30,6 +30,9 @@ describe("Vereinsadministrator-Stellvertretung", () => {
     expect(router).toContain("Nur der Vereinsadministrator darf eine administrative Stellvertretung vergeben oder ändern.");
     expect(router).toContain("isDelegatedTenantAdministrator(existing)");
     expect(router).toContain("requirePrimaryTenantAdministrator(ctx.user)");
+    expect(router).toContain("function isPrimaryTenantAdministrator");
+    expect(router).toContain("user.openId.startsWith(\"tenant-admin:\")");
+    expect(router).toContain("isPrimaryTenantAdmin: isPrimaryTenantAdministrator(ctx.user)");
   });
 
   it("kennzeichnet die Rolle rot und sperrt ihre Verwaltung für andere Stellvertretungen", () => {

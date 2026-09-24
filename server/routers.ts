@@ -775,9 +775,30 @@ async function assertPlanningTeamAccessReferencesInScope(input: {
   }
 }
 
+/**
+ * Hauptvereinsadministratoren und Stellvertretungen verwenden beide fachliche
+ * Vollrechte. Die generische Sessionrolle ist daher keine ausreichende
+ * Sicherheitsgrenze: Entscheidend ist die serverseitig vergebene Login-Identität.
+ */
+function isPrimaryTenantAdministrator(user: {
+  openId: string;
+  role: "user" | "admin";
+  isCron?: boolean;
+}) {
+  if (user.isCron || user.role !== "admin") return false;
+  return (
+    user.openId === ADMIN_PASSWORD_OPEN_ID ||
+    user.openId.startsWith("tenant-admin:")
+  );
+}
+
 /** Nur ein echter Vereinsadministrator darf Stellvertretungen ernennen oder ändern. */
-function requirePrimaryTenantAdministrator(user: { role: "user" | "admin" }) {
-  if (user.role !== "admin") {
+function requirePrimaryTenantAdministrator(user: {
+  openId: string;
+  role: "user" | "admin";
+  isCron?: boolean;
+}) {
+  if (!isPrimaryTenantAdministrator(user)) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message:
@@ -1844,7 +1865,7 @@ export const appRouter = router({
     }),
     administrativeContext: scopedProtectedProcedure.query(async ({ ctx }) => ({
       isTenantAdmin: await isTenantAdministrator(ctx.user),
-      isPrimaryTenantAdmin: ctx.user.role === "admin",
+      isPrimaryTenantAdmin: isPrimaryTenantAdministrator(ctx.user),
     })),
     availableEvents: tenantAccessAdminProcedure.query(async () => {
       const years = await db.listEventYears();
