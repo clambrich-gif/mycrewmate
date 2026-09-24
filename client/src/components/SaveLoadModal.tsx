@@ -18,6 +18,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { downloadBase64File, safeDownloadName } from "@/lib/download";
 import { trpc } from "@/lib/trpc";
 import {
+  CheckCircle2,
   FileJson2,
   FileSpreadsheet,
   FolderOpen,
@@ -32,6 +33,7 @@ import { ACTIVE_EXCEL_IMPORT_AREAS } from "@shared/excel-import-areas";
 const IMPORT_AREAS = ACTIVE_EXCEL_IMPORT_AREAS;
 
 type ImportArea = (typeof IMPORT_AREAS)[number]["id"];
+type ExcelImportSelection = ImportArea | "FULL";
 
 const readBase64 = (file: File, errorMessage: string) =>
   new Promise<string>((resolve, reject) => {
@@ -127,13 +129,14 @@ export function SaveLoadControls({
   const [excelFile, setExcelFile] = useState<{
     name: string;
     base64: string;
-    area: ImportArea;
+    selection: ExcelImportSelection;
   } | null>(null);
   const [jsonPreviewOpen, setJsonPreviewOpen] = useState(false);
   const [excelPreviewOpen, setExcelPreviewOpen] = useState(false);
   const [jsonPasswordOpen, setJsonPasswordOpen] = useState(false);
   const [excelPasswordOpen, setExcelPasswordOpen] = useState(false);
-  const [selectedImportArea, setSelectedImportArea] = useState<ImportArea | null>(null);
+  const [selectedImportArea, setSelectedImportArea] =
+    useState<ExcelImportSelection | null>(null);
   const [filter, setFilter] = useState<ChangeFilter>("all");
 
   const jsonSave = trpc.projectFile.save.useQuery(undefined, {
@@ -173,6 +176,17 @@ export function SaveLoadControls({
     },
     onError: error => toast.error(error.message),
   });
+  const fullExcelPreview = trpc.excel.previewFull.useMutation({
+    onSuccess: result => {
+      if (!result.changes.length) {
+        toast.info("Die vollständige Excel-Datei enthält keine Änderungen");
+        return;
+      }
+      setFilter("all");
+      setExcelPreviewOpen(true);
+    },
+    onError: error => toast.error(error.message, { duration: 10_000 }),
+  });
   const excelLoad = trpc.excel.applyModule.useMutation({
     onSuccess: result => {
       setExcelPasswordOpen(false);
@@ -188,6 +202,23 @@ export function SaveLoadControls({
       toast.error(`Import wurde nicht übernommen: ${detail}`, { duration: 10_000 });
     },
   });
+  const fullExcelLoad = trpc.excel.applyFull.useMutation({
+    onSuccess: result => {
+      setExcelPasswordOpen(false);
+      setExcelPreviewOpen(false);
+      toast.success(
+        `Vollständiger Excel-Import abgeschlossen: ${result.created} neu, ${result.updated} geändert, ${result.deleted} gelöscht`
+      );
+      window.setTimeout(() => window.location.reload(), 500);
+    },
+    onError: error => {
+      const detail = error.message || "Unbekannte Importursache";
+      console.error(`[Vollständiger Excel-Import] Übernahme abgebrochen: ${detail}`);
+      toast.error(`Vollständiger Import wurde nicht übernommen: ${detail}`, {
+        duration: 10_000,
+      });
+    },
+  });
 
   const totals = jsonPreview.data?.totals ?? {
     created: 0,
@@ -199,6 +230,12 @@ export function SaveLoadControls({
     updated: 0,
     deleted: 0,
   };
+  const fullExcelTotals = fullExcelPreview.data?.totals ?? {
+    created: 0,
+    updated: 0,
+    deleted: 0,
+  };
+  const isFullExcelImport = excelFile?.selection === "FULL";
   const jsonHasChanges = Boolean(jsonPreview.data?.changes.length);
 
   const downloadJson = async () => {
@@ -247,7 +284,7 @@ export function SaveLoadControls({
       return;
     }
     if (!selectedImportArea) {
-      toast.error("Bitte genau einen Bereich für den Excel-Import auswählen");
+      toast.error("Bitte einen Einzelbereich oder „Vollständig“ auswählen");
       return;
     }
     excelInputRef.current?.click();
@@ -291,10 +328,14 @@ export function SaveLoadControls({
     try {
       const base64 = await readBase64(selected, "Excel-Datei konnte nicht gelesen werden");
       if (!selectedImportArea) return;
-      const area = selectedImportArea;
-      setExcelFile({ name: selected.name, base64, area });
+      const selection = selectedImportArea;
+      setExcelFile({ name: selected.name, base64, selection });
       setLoadDialogOpen(false);
-      excelPreview.mutate({ base64, area });
+      if (selection === "FULL") {
+        fullExcelPreview.mutate({ base64 });
+      } else {
+        excelPreview.mutate({ base64, area: selection });
+      }
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Excel-Datei konnte nicht gelesen werden"
@@ -406,13 +447,15 @@ export function SaveLoadControls({
                 <div>
                   <p className="font-semibold leading-5">Excel-Daten importieren</p>
                   <p className="mt-1 text-sm leading-5 text-amber-950/80">
-                    Pro Import wird genau ein Bereich isoliert geprüft und übernommen.
+                    Einzelne Bereiche gezielt oder die vollständige Excel-Datei kontrolliert übernehmen.
                   </p>
                 </div>
               </div>
               <RadioGroup
                 value={selectedImportArea ?? undefined}
-                onValueChange={value => setSelectedImportArea(value as ImportArea)}
+                onValueChange={value =>
+                  setSelectedImportArea(value as ExcelImportSelection)
+                }
                 aria-label="Excel-Importbereich auswählen"
                 className="mt-4 grid gap-2 sm:grid-cols-2"
               >
@@ -432,14 +475,26 @@ export function SaveLoadControls({
                     </label>
                   );
                 })}
+                <label
+                  htmlFor="central-import-full"
+                  title="Alle Bereiche werden nach erfolgreicher Gesamtprüfung automatisch importiert."
+                  className={`flex min-h-10 cursor-pointer items-center gap-2 rounded-md border-2 px-2.5 py-2 text-sm font-semibold transition-colors ${selectedImportArea === "FULL" ? "border-red-600 bg-red-50 text-red-950 shadow-sm" : "border-red-400 bg-white/90 text-red-950 hover:bg-red-50"}`}
+                >
+                  <RadioGroupItem id="central-import-full" value="FULL" />
+                  <span>Vollständig</span>
+                </label>
               </RadioGroup>
               <Button
                 type="button"
                 className="mt-4 w-full border border-amber-300 bg-amber-600 text-white shadow-sm hover:bg-amber-700 hover:text-white"
-                disabled={!selectedImportArea || excelPreview.isPending}
+                disabled={
+                  !selectedImportArea ||
+                  excelPreview.isPending ||
+                  fullExcelPreview.isPending
+                }
                 onClick={chooseExcelFile}
               >
-                {excelPreview.isPending ? (
+                {excelPreview.isPending || fullExcelPreview.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   <Upload className="mr-2 h-4 w-4" />
@@ -487,21 +542,39 @@ export function SaveLoadControls({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><FileSpreadsheet className="h-5 w-5" /> Excel-Daten importieren</DialogTitle>
             <DialogDescription>
-              Datei: {excelFile?.name}. Geprüft wird nur: {excelPreview.data?.areaName ?? "der ausgewählte Bereich"}.
+              Datei: {excelFile?.name}. {isFullExcelImport ? "Alle Bereiche wurden gemeinsam geprüft." : `Geprüft wird nur: ${excelPreview.data?.areaName ?? "der ausgewählte Bereich"}.`}
             </DialogDescription>
           </DialogHeader>
-          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-950"><strong>Isolierter Import:</strong> Nur der ausgewählte Bereich wird übernommen. Abhängige Einsatzzuweisungen werden weiterhin sicher geprüft.<div className="mt-1 font-semibold">Bereichsprüfung: {excelPreview.data?.rowsChecked ?? 0} Datenzeilen geprüft.</div></div>
+          {isFullExcelImport ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-950">
+              <strong>Vollständiger Import:</strong> Alle Bereiche werden sequenziell und gemeinsam atomar übernommen. Bei einem Fehler bleibt der bisherige Projektstand vollständig erhalten.
+              <div className="mt-3 grid gap-1.5 sm:grid-cols-2">
+                {fullExcelPreview.data?.steps.map(step => (
+                  <div key={step.area} className="flex items-center justify-between gap-2 rounded-md border border-red-100 bg-white/80 px-2.5 py-1.5">
+                    <span className="flex items-center gap-1.5 font-medium"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />{step.label}</span>
+                    <span className="text-xs text-slate-600">{step.changes} Änderung{step.changes === 1 ? "" : "en"} geprüft</span>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between gap-2 rounded-md border border-red-100 bg-white/80 px-2.5 py-1.5 sm:col-span-2">
+                  <span className="flex items-center gap-1.5 font-medium"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />Abschließende Einsatzplanprüfung</span>
+                  <span className="text-xs text-slate-600">Referenzen werden vor der Übernahme geprüft</span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-950"><strong>Isolierter Import:</strong> Nur der ausgewählte Bereich wird übernommen. Abhängige Einsatzzuweisungen werden weiterhin sicher geprüft.<div className="mt-1 font-semibold">Bereichsprüfung: {excelPreview.data?.rowsChecked ?? 0} Datenzeilen geprüft.</div></div>
+          )}
           <div className="grid gap-2 sm:grid-cols-3">
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-emerald-900"><div className="text-2xl font-bold">{excelTotals.created}</div><div className="text-xs font-medium">Neue Einträge</div></div>
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900"><div className="text-2xl font-bold">{excelTotals.updated}</div><div className="text-xs font-medium">Geänderte Einträge</div></div>
-            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-red-900"><div className="text-2xl font-bold">{excelTotals.deleted}</div><div className="text-xs font-medium">Gelöschte Einträge</div></div>
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-emerald-900"><div className="text-2xl font-bold">{isFullExcelImport ? fullExcelTotals.created : excelTotals.created}</div><div className="text-xs font-medium">Neue Einträge</div></div>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900"><div className="text-2xl font-bold">{isFullExcelImport ? fullExcelTotals.updated : excelTotals.updated}</div><div className="text-xs font-medium">Geänderte Einträge</div></div>
+            <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-red-900"><div className="text-2xl font-bold">{isFullExcelImport ? fullExcelTotals.deleted : excelTotals.deleted}</div><div className="text-xs font-medium">Gelöschte Einträge</div></div>
           </div>
-          <ChangeFilterBar value={filter} onChange={setFilter} counts={excelTotals} createLabel="Nur neue Daten" />
-          {!!excelPreview.data?.warnings.length && <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950"><strong>Hinweise vor dem Import:</strong><ul className="mt-1 list-disc space-y-1 pl-5">{excelPreview.data.warnings.map(warning => <li key={warning}>{warning}</li>)}</ul></div>}
-          <GroupedChangeList changes={excelPreview.data?.changes ?? []} filter={filter} />
+          <ChangeFilterBar value={filter} onChange={setFilter} counts={isFullExcelImport ? fullExcelTotals : excelTotals} createLabel="Nur neue Daten" />
+          {!!(isFullExcelImport ? fullExcelPreview.data?.warnings : excelPreview.data?.warnings)?.length && <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950"><strong>Hinweise vor dem Import:</strong><ul className="mt-1 list-disc space-y-1 pl-5">{(isFullExcelImport ? fullExcelPreview.data?.warnings : excelPreview.data?.warnings)?.map(warning => <li key={warning}>{warning}</li>)}</ul></div>}
+          <GroupedChangeList changes={isFullExcelImport ? fullExcelPreview.data?.changes ?? [] : excelPreview.data?.changes ?? []} filter={filter} />
           <DialogFooter className="sticky bottom-0 -mx-2 -mb-2 border-t bg-white px-2 pb-2 pt-4">
             <Button variant="outline" onClick={() => setExcelPreviewOpen(false)}>Abbrechen</Button>
-            <Button className="border border-emerald-300 !bg-emerald-700 !text-white shadow-md hover:!bg-emerald-800" onClick={() => setExcelPasswordOpen(true)}><Upload className="mr-2 h-4 w-4" />Alle {excelTotals.created + excelTotals.updated + excelTotals.deleted} Änderungen übernehmen</Button>
+            <Button className="border border-emerald-300 !bg-emerald-700 !text-white shadow-md hover:!bg-emerald-800" onClick={() => setExcelPasswordOpen(true)}><Upload className="mr-2 h-4 w-4" />Alle {(isFullExcelImport ? fullExcelTotals : excelTotals).created + (isFullExcelImport ? fullExcelTotals : excelTotals).updated + (isFullExcelImport ? fullExcelTotals : excelTotals).deleted} Änderungen übernehmen</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -522,14 +595,20 @@ export function SaveLoadControls({
       <AdminPasswordDialog
         open={excelPasswordOpen}
         onOpenChange={setExcelPasswordOpen}
-        title="Excel-Daten verbindlich importieren"
-        description="Alle geprüften Änderungen des ausgewählten Bereichs werden atomar übernommen sowie protokolliert."
+        title={isFullExcelImport ? "Vollständigen Excel-Import verbindlich übernehmen" : "Excel-Daten verbindlich importieren"}
+        description={isFullExcelImport ? "Alle vollständig geprüften Bereiche werden automatisch in fester Reihenfolge und als eine atomare Übernahme importiert sowie protokolliert." : "Alle geprüften Änderungen des ausgewählten Bereichs werden atomar übernommen sowie protokolliert."}
         confirmLabel="Import übernehmen"
         destructive={false}
-        busy={excelLoad.isPending}
+        busy={excelLoad.isPending || fullExcelLoad.isPending}
         onConfirm={adminPassword => {
-          if (!excelFile || !excelPreview.data) return;
-          excelLoad.mutate({ area: excelFile.area, base64: excelFile.base64, filename: excelFile.name, currentDigest: excelPreview.data.currentDigest, previewBinding: excelPreview.data.previewBinding, adminPassword });
+          if (!excelFile) return;
+          if (excelFile.selection === "FULL") {
+            if (!fullExcelPreview.data) return;
+            fullExcelLoad.mutate({ base64: excelFile.base64, filename: excelFile.name, currentDigest: fullExcelPreview.data.currentDigest, previewBinding: fullExcelPreview.data.previewBinding, adminPassword });
+            return;
+          }
+          if (!excelPreview.data) return;
+          excelLoad.mutate({ area: excelFile.selection, base64: excelFile.base64, filename: excelFile.name, currentDigest: excelPreview.data.currentDigest, previewBinding: excelPreview.data.previewBinding, adminPassword });
         }}
       />
     </>

@@ -29,6 +29,22 @@ export const MODULE_IMPORT_AREAS = ACTIVE_EXCEL_IMPORT_AREAS.map(
 ];
 export type ModuleImportArea = ActiveExcelImportArea;
 
+/**
+ * Fachliche Vollimport-Reihenfolge. Die Daten werden in einem einzigen
+ * Datenbankvorgang übernommen, damit ein Fehler keinen Teilstand hinterlässt.
+ */
+export const FULL_EXCEL_IMPORT_SEQUENCE = [
+  "ANSPRECHPARTNER",
+  "HELFER",
+  "ORTE",
+  "EINSATZPLAN",
+  "VORBEREITUNG",
+  "NACHBEREITUNG",
+  "MATERIAL",
+  "KUCHEN",
+  "FINANZEN",
+] as const satisfies readonly ModuleImportArea[];
+
 const MODULE_COLLECTION: Record<
   ModuleImportArea,
   keyof Pick<
@@ -571,6 +587,176 @@ function baseWorkbook(document: BackupDocument) {
   return workbook;
 }
 
+/**
+ * Baut aus einer sichtbaren Projektübersicht oder einer älteren technischen
+ * Sicherung eine kanonische Arbeitsmappe. Die Metadaten stammen absichtlich
+ * aus dem aktuell gewählten Zielprojekt: Ein Vollimport darf Inhalte aus einer
+ * anderen Veranstaltung übernehmen, aber niemals deren Event-Identität,
+ * Zeitraum oder Logo mitbringen.
+ */
+function canonicalFullImportWorkbook(
+  base64: string,
+  targetProject: BackupDocument
+) {
+  const uploaded = readUploadedExcelWorkbook(base64);
+  const workbook = XLSX.utils.book_new();
+  const metadataRows = [
+    { Schlüssel: "Format", Wert: "RSC-HELFERPLANUNG-SICHERUNG" },
+    { Schlüssel: "Version", Wert: 1 },
+    { Schlüssel: "Veranstaltungs-ID", Wert: targetProject.metadata.eventId },
+    { Schlüssel: "Veranstaltung", Wert: targetProject.metadata.eventName },
+    { Schlüssel: "Jahr", Wert: targetProject.metadata.year },
+    {
+      Schlüssel: "Veranstaltungstage",
+      Wert: targetProject.metadata.activeDays.join(", "),
+    },
+    { Schlüssel: "Startdatum", Wert: targetProject.metadata.startDate ?? "" },
+    { Schlüssel: "Enddatum", Wert: targetProject.metadata.endDate ?? "" },
+    {
+      Schlüssel: "Spenden-Soll Kuchen / Gebäck",
+      Wert: targetProject.metadata.donationTargetKuchen,
+    },
+    {
+      Schlüssel: "Spenden-Soll Salat",
+      Wert: targetProject.metadata.donationTargetSalat,
+    },
+    {
+      Schlüssel: "Spenden-Soll Dessert",
+      Wert: targetProject.metadata.donationTargetSnack,
+    },
+    {
+      Schlüssel: "Spenden-Soll Sonstiges",
+      Wert: targetProject.metadata.donationTargetSonstiges,
+    },
+    {
+      Schlüssel: "PDF-Bild-Schlüssel",
+      Wert: targetProject.metadata.pdfLogoKey ?? "",
+    },
+    {
+      Schlüssel: "PDF-Bild-URL",
+      Wert: targetProject.metadata.pdfLogoUrl ?? "",
+    },
+    {
+      Schlüssel: "PDF-Bild-Fallback",
+      Wert: targetProject.metadata.pdfLogoFallback,
+    },
+    {
+      Schlüssel: "Exportiert am (UTC)",
+      Wert: new Date().toISOString(),
+    },
+  ];
+  XLSX.utils.book_append_sheet(
+    workbook,
+    XLSX.utils.json_to_sheet(metadataRows),
+    "SICHERUNG_INFO"
+  );
+
+  for (const { id: area, sheetName } of ACTIVE_EXCEL_IMPORT_AREAS) {
+    const source = uploaded.Sheets[sheetName] ?? uploaded.Sheets[area];
+    if (!source)
+      throw new Error(
+        `Vollständiger Import: Pflichtblatt „${sheetName}“ fehlt`
+      );
+    normalizeModuleSheetRange(source, area);
+    const { headers } = readNormalizedModuleImportRows(source);
+    assertHeaders(headers, area);
+    XLSX.utils.book_append_sheet(workbook, source, area);
+  }
+
+  // Diese beiden historischen Blätter gehören nicht zum sichtbaren
+  // Vollimport. Leere Kompatibilitätsblätter bewahren den bestehenden
+  // Marketing-/Genehmigungsbestand aus dem Zielprojekt.
+  for (const legacyArea of ["MARKETING", "GENEHMIGUNGEN"] as const) {
+    XLSX.utils.book_append_sheet(
+      workbook,
+      XLSX.utils.aoa_to_sheet([PROJECT_EXCEL_HEADERS[legacyArea] ?? []]),
+      legacyArea
+    );
+  }
+  return (
+    XLSX.write(workbook, {
+      type: "buffer",
+      bookType: "xlsx",
+      compression: true,
+    }) as Buffer
+  ).toString("base64");
+}
+
+function rejectUnresolvedFullImportReferences(warnings: string[]) {
+  const unresolved = warnings.find(warning =>
+    /fehlende .*referenz|unbekannter ort|gelöschter oder unbekannter ort/i.test(
+      warning
+    )
+  );
+  if (unresolved)
+    throw new Error(
+      `Vollständiger Import ist nicht möglich: ${unresolved}`
+    );
+}
+
+/**
+ * IDs aus anderen Veranstaltungen oder Vereinen sind nur technische Hinweise,
+ * niemals eine Zugriffs- oder Zuordnungsberechtigung. Nach der Parserprüfung
+ * werden sie deshalb entfernt; alle Beziehungen werden ausschließlich über
+ * eindeutige fachliche Namen im Zielprojekt neu hergestellt.
+ */
+export function clearForeignFullImportIds(document: BackupDocument): BackupDocument {
+  const copy = structuredClone(document);
+  copy.contacts = copy.contacts.map(row => ({ ...row, sourceId: null }));
+  copy.locations = copy.locations.map(row => ({ ...row, sourceId: null }));
+  copy.helpers = copy.helpers.map(row => ({
+    ...row,
+    sourceId: null,
+    contactSourceId: null,
+  }));
+  copy.shifts = copy.shifts.map(row => ({
+    ...row,
+    sourceId: null,
+    locationSourceId: null,
+    areaContactSourceId: null,
+    slots: row.slots.map(slot => ({ ...slot, helperSourceId: null })),
+  }));
+  copy.prep = copy.prep.map(row => ({
+    ...row,
+    sourceId: null,
+    locationSourceId: null,
+    contactSourceId: null,
+  }));
+  copy.post = copy.post.map(row => ({
+    ...row,
+    sourceId: null,
+    locationSourceId: null,
+    contactSourceId: null,
+  }));
+  copy.materials = copy.materials.map(row => ({
+    ...row,
+    sourceId: null,
+    locationSourceId: null,
+    contactSourceId: null,
+  }));
+  copy.cakes = copy.cakes.map(row => ({
+    ...row,
+    sourceId: null,
+    locationSourceId: null,
+  }));
+  return copy;
+}
+
+async function buildFullExcelTarget(base64: string) {
+  const current = await createCurrentProjectDocument();
+  const canonicalBase64 = canonicalFullImportWorkbook(base64, current);
+  const parsed = parseBackupWorkbook(canonicalBase64);
+  rejectUnresolvedFullImportReferences(parsed.warnings);
+  const imported = clearForeignFullImportIds({
+    ...parsed,
+    // Nicht sichtbare historische Fachbereiche werden nicht verändert.
+    marketing: current.marketing,
+    approvals: current.approvals,
+  });
+  const changes = diffDocuments(current, imported);
+  return { current, imported, changes };
+}
+
 function rowsFromDocument(document: BackupDocument, area: ModuleImportArea) {
   if (area === "ORTE")
     return document.locations.map(row => ({
@@ -987,6 +1173,63 @@ export async function applyModuleExcelImport(
     target,
     digest(base64),
     `${areaName[area]} · ${filename}`,
+    expectedCurrentDigest,
+    actor
+  );
+}
+
+const summarizeFullImportSteps = (changes: BackupChange[]) =>
+  FULL_EXCEL_IMPORT_SEQUENCE.map(area => {
+    const areaChanges = changes.filter(change => change.area === area);
+    return {
+      area,
+      label: areaName[area],
+      totals: summarize(areaChanges),
+      changes: areaChanges.length,
+    };
+  });
+
+/**
+ * Prüft alle sichtbaren Bereiche als ein gemeinsames Importpaket. Die
+ * Reihenfolge wird an die Oberfläche zurückgegeben und die Daten bleiben bis
+ * zur einmaligen Passwortbestätigung vollständig unverändert.
+ */
+export async function previewFullExcelImport(base64: string) {
+  const { imported, changes } = await buildFullExcelTarget(base64);
+  const preview = await previewProjectDocument(imported, digest(base64));
+  return {
+    currentDigest: preview.currentDigest,
+    sourceDigest: preview.workbookDigest,
+    warnings: preview.warnings,
+    changes,
+    totals: summarize(changes),
+    steps: summarizeFullImportSteps(changes),
+  };
+}
+
+export type FullExcelImportPreview = Awaited<
+  ReturnType<typeof previewFullExcelImport>
+>;
+
+/**
+ * Übernimmt den vollständig geprüften Import als eine Datenbanktransaktion.
+ * Die darunterliegende Wiederherstellung schreibt Kontakte, Helfer, Standorte,
+ * Einsatzplan und Fachbereiche nacheinander; jeder Fehler rollt alle Schritte
+ * gemeinsam zurück.
+ */
+export async function applyFullExcelImport(
+  base64: string,
+  filename: string,
+  expectedCurrentDigest: string,
+  actor: AuditActor
+) {
+  const { imported, changes } = await buildFullExcelTarget(base64);
+  if (!changes.length)
+    throw new Error("Die Excel-Datei enthält keine übernehmbaren Änderungen");
+  return restoreProjectDocument(
+    imported,
+    digest(base64),
+    `Vollständiger Excel-Import · ${filename}`,
     expectedCurrentDigest,
     actor
   );

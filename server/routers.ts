@@ -45,8 +45,10 @@ import {
   verifyPreviewBinding,
 } from "./import-preview-binding";
 import {
+  applyFullExcelImport,
   applyModuleExcelImport,
   MODULE_IMPORT_AREAS,
+  previewFullExcelImport,
   previewModuleExcelImport,
 } from "./module-excel-import";
 import { ENV } from "./_core/env";
@@ -4274,6 +4276,30 @@ export const appRouter = router({
           }),
         };
       }),
+    previewFull: adminProcedure
+      .input(
+        z.object({
+          base64: z
+            .string()
+            .max(20_000_000, "Excel-Datei ist größer als 15 MB"),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const result = await withExcelOperationLimit(() =>
+          previewFullExcelImport(input.base64)
+        );
+        return {
+          ...result,
+          previewBinding: createPreviewBinding({
+            sourceDigest: result.sourceDigest,
+            currentDigest: result.currentDigest,
+            year: currentEventYear(),
+            eventId: currentEventId(),
+            operation: "full-excel",
+            userId: ctx.user.id,
+          }),
+        };
+      }),
     applyModule: scopeAdminProcedure
       .input(
         z.object({
@@ -4324,6 +4350,56 @@ export const appRouter = router({
           throw new TRPCError({
             code: "BAD_REQUEST",
             message: `Excel-Import (${input.area}) wurde nicht übernommen: ${detail}`,
+          });
+        }
+      }),
+    applyFull: scopeAdminProcedure
+      .input(
+        z.object({
+          base64: z
+            .string()
+            .max(20_000_000, "Excel-Datei ist größer als 15 MB"),
+          filename: z.string().trim().min(1).max(255),
+          currentDigest: z.string().regex(/^[a-f0-9]{64}$/),
+          previewBinding: z.string().min(20).max(2_000),
+          adminPassword: z.string().min(1).max(200),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        await requireAdminPassword(input.adminPassword, ctx);
+        verifyPreviewBinding(input.previewBinding, {
+          sourceDigest: uploadedFileDigest(input.base64),
+          currentDigest: input.currentDigest,
+          year: currentEventYear(),
+          eventId: currentEventId(),
+          operation: "full-excel",
+          userId: ctx.user.id,
+        });
+        try {
+          return await withExcelOperationLimit(() =>
+            applyFullExcelImport(
+              input.base64,
+              input.filename,
+              input.currentDigest,
+              auditActor(ctx.user)
+            )
+          );
+        } catch (error) {
+          const detail =
+            error instanceof Error
+              ? error.message
+              : "Unbekannter Fehler bei der Datenwiederherstellung";
+          console.error("[Excel-Vollimport] Atomare Übernahme abgebrochen", {
+            filename: input.filename,
+            year: currentEventYear(),
+            eventId: currentEventId(),
+            userId: ctx.user.id,
+            detail,
+            error,
+          });
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Vollständiger Excel-Import wurde nicht übernommen: ${detail}`,
           });
         }
       }),

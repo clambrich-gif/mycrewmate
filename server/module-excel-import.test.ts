@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import * as XLSX from "xlsx";
 import {
+  clearForeignFullImportIds,
+  FULL_EXCEL_IMPORT_SEQUENCE,
   findContactSelfHelperRow,
   normalizeModuleSheetRange,
   normalizeModuleImportedShiftTimes,
@@ -9,6 +11,76 @@ import {
   readNormalizedModuleImportRows,
   removeCopiedModuleIds,
 } from "./module-excel-import";
+
+describe("vollständiger Excel-Import", () => {
+  it("verwendet die feste fachliche Übernahmereihenfolge", () => {
+    expect(FULL_EXCEL_IMPORT_SEQUENCE).toEqual([
+      "ANSPRECHPARTNER",
+      "HELFER",
+      "ORTE",
+      "EINSATZPLAN",
+      "VORBEREITUNG",
+      "NACHBEREITUNG",
+      "MATERIAL",
+      "KUCHEN",
+      "FINANZEN",
+    ]);
+  });
+
+  it("entfernt fremde technische IDs und erhält fachliche Namen für die Neuverknüpfung", () => {
+    const sanitized = clearForeignFullImportIds({
+      metadata: {} as any,
+      contacts: [{ sourceId: 101, name: "Klara Kontakt" }],
+      locations: [{ sourceId: 201, name: "Sporthalle" }],
+      helpers: [
+        {
+          sourceId: 301,
+          contactSourceId: 101,
+          contactName: "Klara Kontakt",
+          name: "Hugo Helfer",
+        },
+      ],
+      shifts: [
+        {
+          sourceId: 401,
+          locationSourceId: 201,
+          locationName: "Sporthalle",
+          areaContactSourceId: 101,
+          areaContactName: "Klara Kontakt",
+          slots: [{ slot: 0, helperSourceId: 301, helperName: "Hugo Helfer" }],
+        },
+      ],
+      prep: [],
+      post: [],
+      materials: [],
+      marketing: [],
+      approvals: [],
+      cakes: [],
+      finances: [],
+      warnings: [],
+    } as any);
+
+    expect(sanitized.contacts[0]).toMatchObject({ sourceId: null, name: "Klara Kontakt" });
+    expect(sanitized.locations[0]).toMatchObject({ sourceId: null, name: "Sporthalle" });
+    expect(sanitized.helpers[0]).toMatchObject({
+      sourceId: null,
+      contactSourceId: null,
+      contactName: "Klara Kontakt",
+    });
+    expect(sanitized.shifts[0]).toMatchObject({
+      sourceId: null,
+      locationSourceId: null,
+      areaContactSourceId: null,
+      locationName: "Sporthalle",
+      areaContactName: "Klara Kontakt",
+    });
+    expect(sanitized.shifts[0]?.slots[0]).toEqual({
+      slot: 0,
+      helperSourceId: null,
+      helperName: "Hugo Helfer",
+    });
+  });
+});
 
 describe("modularer Ansprechpartner-Excel-Import", () => {
   it("normalisiert Excel-Spaltenüberschriften vor der Schlüsselzuordnung", () => {

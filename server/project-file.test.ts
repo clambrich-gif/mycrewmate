@@ -20,6 +20,7 @@ import {
 } from "./project-file";
 import { comparableProjectContent, exportProjectExcel } from "./excel-backup";
 import {
+  previewFullExcelImport,
   previewModuleExcelImport,
   type ModuleImportArea,
 } from "./module-excel-import";
@@ -714,6 +715,26 @@ describe("Projektdatei und modularer Excel-Import", () => {
     );
     expect(preview.totals).toMatchObject({ created: 1, deleted: 2 });
     expect(preview.warnings.join(" ")).toContain("Umbenennung ohne ID");
+  });
+
+  it("prüft eine sichtbare Projektübersicht als vollständigen Import unabhängig von technischen IDs", async () => {
+    const exported = await exportProjectExcel();
+    const preview = await previewFullExcelImport(
+      exported.buffer.toString("base64")
+    );
+
+    expect(preview.steps.map(step => step.area)).toEqual([
+      "ANSPRECHPARTNER",
+      "HELFER",
+      "ORTE",
+      "EINSATZPLAN",
+      "VORBEREITUNG",
+      "NACHBEREITUNG",
+      "MATERIAL",
+      "KUCHEN",
+      "FINANZEN",
+    ]);
+    expect(preview.changes.length).toBeGreaterThan(0);
   });
 
   it("bereinigt beim Ansprechpartnerimport eine nicht verfügbare Altzuweisung statt abzubrechen", async () => {

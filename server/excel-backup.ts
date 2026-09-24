@@ -3571,35 +3571,6 @@ export async function restoreProjectDocument(
         contactIdByName.get(personKey(name)) ??
         null;
 
-      const currentLocationIds = new Set(snapshot.locations.map(row => row.id));
-      const locationIdBySource = new Map<number, number>();
-      const locationIdByName = new Map<string, number>();
-      for (const row of desired.locations) {
-        const preservedId =
-          row.sourceId && currentLocationIds.has(row.sourceId)
-            ? row.sourceId
-            : undefined;
-        const result: any = await tx.insert(locations).values({
-          ...(preservedId ? { id: preservedId } : {}),
-          year,
-          eventId,
-          name: row.name,
-          latitude: row.latitude,
-          longitude: row.longitude,
-          logoKey: row.logoKey,
-          logoUrl: row.logoUrl,
-          sortOrder: row.sortOrder,
-        });
-        const actualId =
-          preservedId ?? Number(result?.[0]?.insertId ?? result?.insertId);
-        if (row.sourceId) locationIdBySource.set(row.sourceId, actualId);
-        locationIdByName.set(personKey(row.name), actualId);
-      }
-      const resolveLocation = (sourceId: number | null, name: string) =>
-        (sourceId ? locationIdBySource.get(sourceId) : undefined) ??
-        locationIdByName.get(personKey(name)) ??
-        null;
-
       const currentHelperIds = new Set(snapshot.helpers.map(row => row.id));
       const helperIdBySource = new Map<number, number>();
       const helperIdByName = new Map<string, number>();
@@ -3650,6 +3621,35 @@ export async function restoreProjectDocument(
       const resolveHelper = (sourceId: number | null, name: string) =>
         (sourceId ? helperIdBySource.get(sourceId) : undefined) ??
         helperIdByName.get(personKey(name));
+
+      const currentLocationIds = new Set(snapshot.locations.map(row => row.id));
+      const locationIdBySource = new Map<number, number>();
+      const locationIdByName = new Map<string, number>();
+      for (const row of desired.locations) {
+        const preservedId =
+          row.sourceId && currentLocationIds.has(row.sourceId)
+            ? row.sourceId
+            : undefined;
+        const result: any = await tx.insert(locations).values({
+          ...(preservedId ? { id: preservedId } : {}),
+          year,
+          eventId,
+          name: row.name,
+          latitude: row.latitude,
+          longitude: row.longitude,
+          logoKey: row.logoKey,
+          logoUrl: row.logoUrl,
+          sortOrder: row.sortOrder,
+        });
+        const actualId =
+          preservedId ?? Number(result?.[0]?.insertId ?? result?.insertId);
+        if (row.sourceId) locationIdBySource.set(row.sourceId, actualId);
+        locationIdByName.set(personKey(row.name), actualId);
+      }
+      const resolveLocation = (sourceId: number | null, name: string) =>
+        (sourceId ? locationIdBySource.get(sourceId) : undefined) ??
+        locationIdByName.get(personKey(name)) ??
+        null;
 
       const currentShiftIds = new Set(snapshot.shifts.map(row => row.id));
       const shiftIdBySource = new Map<number, number>();
@@ -4102,11 +4102,11 @@ export async function exportProjectExcel(): Promise<{
       { Schlüssel: "Exportiert am (UTC)", Wert: exportedAt },
       {
         Schlüssel: "Verwendung",
-        Wert: "Diese Excel-Datei dient der Übersicht und dem gezielten Einzelimport. Für den Re-Import ausschließlich die neun sichtbaren Arbeitsblätter und die ausgeblendeten ID-Spalten unverändert lassen.",
+        Wert: "Diese Excel-Datei dient der Übersicht, dem gezielten Einzelimport und dem vollständigen Import aller neun sichtbaren Arbeitsblätter.",
       },
       {
         Schlüssel: "Wichtig",
-        Wert: "Für einen späteren Modulimport Blattnamen und ausgeblendete ID-Spalten nicht verändern. Neue Zeilen erhalten eine leere ID.",
+        Wert: "Für einen späteren Import Blattnamen und Spaltenüberschriften nicht verändern. Beim vollständigen Import aus anderen Veranstaltungen werden technische IDs sicher neu zugeordnet.",
       },
     ],
     [28, 100]

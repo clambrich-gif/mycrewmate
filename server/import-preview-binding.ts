@@ -10,6 +10,7 @@ const ALGORITHM = "sha256";
 
 export type PreviewBindingOperation =
   | "project-file"
+  | "full-excel"
   | `module:${string}`;
 
 type PreviewBindingClaims = {

@@ -787,7 +787,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(preview).toContain("key={`${change.key}:${index}`}");
   });
 
-  it("zeigt beim zentralen Excelimport die isolierte Prüfung eines ausgewählten Bereichs", () => {
+  it("zeigt beim zentralen Excelimport Einzelbereiche und den atomaren Vollimport", () => {
     const moduleImport = source("client/src/components/SaveLoadModal.tsx");
     const areas = source("shared/excel-import-areas.ts");
 
@@ -798,7 +798,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
     );
     expect(moduleImport).toContain("Isolierter Import:");
     expect(moduleImport).toContain("excelPreview.data?.areaName");
-    expect(moduleImport).toContain("area: excelFile.area");
+    expect(moduleImport).toContain("excelFile.selection");
+    expect(moduleImport).toContain('value="FULL"');
+    expect(moduleImport).toContain("Vollständiger Import:");
+    expect(moduleImport).toContain("fullExcelPreview.data?.steps");
+    expect(moduleImport).toContain("applyFull");
     expect(moduleImport).toContain("ACTIVE_EXCEL_IMPORT_AREAS");
     expect(areas).toContain('id: "ANSPRECHPARTNER"');
     expect(areas).toContain('id: "NACHBEREITUNG"');

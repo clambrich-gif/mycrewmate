@@ -81,6 +81,7 @@ const projectFileMocks = vi.hoisted(() => ({
 }));
 const moduleImportMocks = vi.hoisted(() => ({
   MODULE_IMPORT_AREAS: [
+    "ORTE",
     "ANSPRECHPARTNER",
     "HELFER",
     "EINSATZPLAN",
@@ -94,6 +95,8 @@ const moduleImportMocks = vi.hoisted(() => ({
   ],
   previewModuleExcelImport: vi.fn(),
   applyModuleExcelImport: vi.fn(),
+  previewFullExcelImport: vi.fn(),
+  applyFullExcelImport: vi.fn(),
 }));
 const previewBindingMocks = vi.hoisted(() => ({
   createPreviewBinding: vi.fn(() => "preview-binding-test-token"),
@@ -278,6 +281,21 @@ describe("Planungs-API", () => {
       created: 1,
       updated: 2,
       deleted: 3,
+      warnings: [],
+      afterDigest: "c".repeat(64),
+    });
+    moduleImportMocks.previewFullExcelImport.mockResolvedValue({
+      currentDigest: "a".repeat(64),
+      sourceDigest: "b".repeat(64),
+      warnings: [],
+      changes: [{ area: "ANSPRECHPARTNER", action: "create" }],
+      totals: { created: 1, updated: 0, deleted: 0 },
+      steps: [],
+    });
+    moduleImportMocks.applyFullExcelImport.mockResolvedValue({
+      created: 4,
+      updated: 5,
+      deleted: 6,
       warnings: [],
       afterDigest: "c".repeat(64),
     });
@@ -1351,6 +1369,37 @@ describe("Planungs-API", () => {
         operation: "module:HELFER",
         userId: 1,
       })
+    );
+  });
+
+  it("prüft und übernimmt den vollständigen Excelimport nur mit gebundener Freigabe", async () => {
+    const caller = appRouter.createCaller(ctx);
+    await expect(caller.excel.previewFull({ base64: "eA==" })).resolves.toMatchObject({
+      totals: { created: 1 },
+    });
+
+    const input = {
+      base64: "eA==",
+      filename: "Fremde-Veranstaltung.xlsx",
+      currentDigest: "a".repeat(64),
+      previewBinding: "preview-binding-test-token",
+    };
+    await expect(
+      caller.excel.applyFull({ ...input, adminPassword: "falsch" })
+    ).rejects.toThrow("Administratorpasswort");
+    await expect(
+      caller.excel.applyFull({ ...input, adminPassword: ADMIN_PASSWORD })
+    ).resolves.toMatchObject({ created: 4, updated: 5, deleted: 6 });
+
+    expect(moduleImportMocks.applyFullExcelImport).toHaveBeenCalledWith(
+      "eA==",
+      "Fremde-Veranstaltung.xlsx",
+      "a".repeat(64),
+      expect.objectContaining({ userId: 1, role: "admin" })
+    );
+    expect(previewBindingMocks.verifyPreviewBinding).toHaveBeenCalledWith(
+      "preview-binding-test-token",
+      expect.objectContaining({ operation: "full-excel", userId: 1 })
     );
   });
 
