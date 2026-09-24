@@ -71,6 +71,7 @@ import {
   Building2,
   Calendar,
   CalendarRange,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Download,
@@ -996,13 +997,21 @@ export function Layout({ children }: { children: React.ReactNode }) {
               Ihre Berechtigungen erkennt MyCrewMate automatisch.
             </p>
             {loginNotice && (
-              <p
-                className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-center text-xs leading-5 text-emerald-900"
+              <div
+                className="rounded-xl border border-emerald-300 bg-emerald-50/95 px-4 py-3 text-left text-sm leading-5 text-emerald-950 shadow-sm"
                 role="status"
                 aria-live="polite"
               >
-                {loginNotice}
-              </p>
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" aria-hidden="true" />
+                  <div className="space-y-1">
+                    <p className="font-semibold">Passwort erfolgreich gespeichert.</p>
+                    <p className="text-xs leading-5 text-emerald-900">
+                      {loginNotice} Nutzen Sie dafür Ihre persönliche E-Mail-Adresse und das gerade vergebene neue Passwort.
+                    </p>
+                  </div>
+                </div>
+              </div>
             )}
             <div className="space-y-1.5">
               <Label htmlFor="personal-login-email" className="text-sm font-semibold text-slate-800">

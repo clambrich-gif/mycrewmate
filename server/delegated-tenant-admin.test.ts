@@ -45,6 +45,11 @@ describe("Vereinsadministrator-Stellvertretung", () => {
 
     expect(manager).toContain("Co-Admin");
     expect(manager).toContain("border-2 border-red-500 bg-red-50");
+    expect(manager).toContain('aria-label="Unterschiede zwischen Hauptadministrator und Co-Admin erklären"');
+    expect(manager).toContain("Rollen im eigenen Verein");
+    expect(manager).toContain("Hauptadministrator:");
+    expect(manager).toContain("Co-Admin:");
+    expect(manager).toContain("keine Verwaltung anderer Co-Admins");
     expect(manager).toContain("disabled={access.isTenantAdmin && !isPrimaryTenantAdmin}");
     expect(manager).toContain("Alle Veranstaltungen dieses Vereins");
     expect(manager).toContain('user?.openId.startsWith("planning-team-access-")');
@@ -58,6 +63,8 @@ describe("Vereinsadministrator-Stellvertretung", () => {
     expect(layout).toContain("useTenantAdministration");
     expect(layout).toContain("tenantRoleLabel");
     expect(layout).toContain("visibleNavigationSections(effectiveNavigationRole");
+    expect(layout).toContain("Passwort erfolgreich gespeichert.");
+    expect(layout).toContain("Nutzen Sie dafür Ihre persönliche E-Mail-Adresse");
   });
 
   it("zeigt Co-Admins vereinsintern als vollwertige Administration und trennt ihre Präsenz", () => {

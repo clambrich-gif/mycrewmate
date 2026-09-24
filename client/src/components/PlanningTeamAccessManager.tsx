@@ -24,6 +24,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { downloadBase64File } from "@/lib/download";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -32,6 +37,7 @@ import {
   Copy,
   FileDown,
   Filter,
+  Info,
   Link2,
   LoaderCircle,
   Mail,
@@ -755,37 +761,61 @@ export function PlanningTeamAccessManager() {
           </fieldset>
 
           {isPrimaryTenantAdmin && (
-            <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-lg border-2 border-red-500 bg-red-50 px-3 py-3 text-sm text-red-950 shadow-sm transition-colors hover:bg-red-100">
-              <Checkbox
-                checked={form.isTenantAdmin}
-                disabled={busy}
-                onCheckedChange={checked => {
-                  const isTenantAdmin = checked === true;
-                  setForm(current => ({
-                    ...current,
-                    isTenantAdmin,
-                    modulePermissions: isTenantAdmin
-                      ? [...EDITABLE_PLANNING_MODULES]
-                      : current.modulePermissions,
-                    eventIds: isTenantAdmin
-                      ? (availableEvents.data ?? []).map(event => event.id)
-                      : current.eventIds,
-                  }));
-                }}
-                className="mt-0.5 border-red-500 data-[state=checked]:bg-red-600"
-              />
-              <div className="min-w-0">
-                <span className="flex items-center gap-1.5 font-semibold text-red-900">
-                  <ShieldAlert className="h-4 w-4" />
-                  Co-Admin
-                </span>
-                <p className="mt-1 text-xs leading-5 text-red-800">
-                  Volle Rechte innerhalb dieses Vereins – einschließlich Löschen,
-                  Ansprechpartnern und Fachrechten. Keine Plattform- oder Masterrechte;
-                  weitere Co-Admins dürfen nicht vergeben, geändert oder gelöscht werden.
-                </p>
+            <div className="mt-4 rounded-lg border-2 border-red-500 bg-red-50 p-3 text-sm text-red-950 shadow-sm">
+              <div className="flex items-start gap-2">
+                <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-3 transition-colors hover:text-red-950">
+                  <Checkbox
+                    checked={form.isTenantAdmin}
+                    disabled={busy}
+                    onCheckedChange={checked => {
+                      const isTenantAdmin = checked === true;
+                      setForm(current => ({
+                        ...current,
+                        isTenantAdmin,
+                        modulePermissions: isTenantAdmin
+                          ? [...EDITABLE_PLANNING_MODULES]
+                          : current.modulePermissions,
+                        eventIds: isTenantAdmin
+                          ? (availableEvents.data ?? []).map(event => event.id)
+                          : current.eventIds,
+                      }));
+                    }}
+                    className="mt-0.5 border-red-500 data-[state=checked]:bg-red-600"
+                  />
+                  <div className="min-w-0">
+                    <span className="flex items-center gap-1.5 font-semibold text-red-900">
+                      <ShieldAlert className="h-4 w-4" />
+                      Co-Admin
+                    </span>
+                    <p className="mt-1 text-xs leading-5 text-red-800">
+                      Volle Rechte innerhalb dieses Vereins – einschließlich Löschen,
+                      Ansprechpartnern und Fachrechten. Keine Plattform- oder Masterrechte;
+                      weitere Co-Admins dürfen nicht vergeben, geändert oder gelöscht werden.
+                    </p>
+                  </div>
+                </label>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="Unterschiede zwischen Hauptadministrator und Co-Admin erklären"
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-red-300 bg-white text-red-700 transition-colors hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-2"
+                    >
+                      <Info className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={8} className="max-w-sm bg-slate-950 px-3 py-3 text-left text-xs leading-5 text-white">
+                    <p className="font-semibold text-white">Rollen im eigenen Verein</p>
+                    <p className="mt-1 text-slate-200">
+                      <strong>Hauptadministrator:</strong> volle Vereinsverwaltung sowie Co-Admins ernennen, ändern, zurücksetzen und entziehen. Globale Schutz- und Systemfunktionen bleiben ausschließlich hier.
+                    </p>
+                    <p className="mt-2 text-slate-200">
+                      <strong>Co-Admin:</strong> volle Arbeit an Vereinsdaten, Fachbereichen und normalen Planungsteamzugängen. Keine Masterportal-, Plattform- oder globalen Schutzrechte und keine Verwaltung anderer Co-Admins.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
               </div>
-            </label>
+            </div>
           )}
 
           <fieldset className="mt-4 space-y-2">
