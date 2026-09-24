@@ -1049,6 +1049,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).not.toContain("border-dashed");
     expect(dashboard).toContain("nur noch");
     expect(dashboard).toContain("dashboard-daily-quote-track");
+    expect(dashboard).toContain("dashboard-daily-quote-segment");
+    expect(dashboard).toContain('aria-hidden="true"');
+    expect(dashboard).toContain('h-9 items-center overflow-hidden');
+    expect(dashboard).toContain('text-xl text-slate-700');
     expect(dashboard).not.toContain("Eventstart in");
     expect(dashboard).not.toContain("Vorfreude im Blick");
     expect(dashboard).toContain("const isUrgent = state.kind === \"upcoming\" && state.days < 14");
@@ -1069,9 +1073,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(styles).toContain(".countdown-urgent::after");
     expect(styles).toContain("@keyframes countdown-urgent-glow");
     expect(styles).toContain(".dashboard-daily-quote-track");
+    expect(styles).toContain(".dashboard-daily-quote-segment");
+    expect(styles).toContain("flex: 0 0 auto");
     expect(styles).toContain(".dashboard-event-countdown");
     expect(styles).toContain("width: 16rem !important");
     expect(styles).toContain("@keyframes dashboard-daily-quote-marquee");
+    expect(styles).toContain("translateX(-50%)");
+    expect(styles).toContain(".dashboard-daily-quote-segment:nth-child(n + 2)");
     expect(styles).toContain("prefers-reduced-motion: no-preference");
     expect(styles).toContain("will-change: opacity, transform");
     expect(quotes).toContain("DAILY_DASHBOARD_QUOTES.length !== 365");

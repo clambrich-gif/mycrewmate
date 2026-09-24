@@ -202,12 +202,19 @@
   .countdown-urgent::after { animation: none; }
 }
 
-/* Der Tagesimpuls im kompakten Dashboard-Zähler bleibt bewusst langsam und
-   zurückhaltend. Bei reduzierter Bewegung bleibt der aktuelle Spruch statisch
-   lesbar, statt als Laufband zu animieren. */
+/* Der Tagesimpuls im kompakten Dashboard-Zähler nutzt zwei identische,
+   versetzt laufende Textsegmente. Beim Verlassen des ersten Spruchs ist der
+   zweite bereits sichtbar; dadurch entsteht keine leere Laufpause. */
 .dashboard-daily-quote-track {
+  display: flex;
+  align-items: center;
   animation: dashboard-daily-quote-marquee 40s linear infinite;
   will-change: transform;
+}
+
+.dashboard-daily-quote-segment {
+  display: inline-block;
+  flex: 0 0 auto;
 }
 
 @media (min-width: 640px) {
@@ -217,8 +224,8 @@
 }
 
 @keyframes dashboard-daily-quote-marquee {
-  from { transform: translateX(105%); }
-  to { transform: translateX(-104%); }
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -228,6 +235,10 @@
     overflow: hidden;
     text-overflow: ellipsis;
     animation: none;
+  }
+
+  .dashboard-daily-quote-segment:nth-child(n + 2) {
+    display: none;
   }
 }
 
