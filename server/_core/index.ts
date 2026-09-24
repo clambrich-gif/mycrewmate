@@ -9,6 +9,7 @@ import { registerHelpTrainingVideoRoutes } from "../help-training-video-routes";
 import { registerEventPdfImageRoutes } from "../event-pdf-image-routes";
 import { registerPublicHelperPdfRoutes } from "../public-helper-pdf-routes";
 import { registerLocationLogoRoutes } from "../location-logo-routes";
+import { registerMarketingVideoRoutes } from "../marketing-video-routes";
 import { registerTenantLogoRoutes } from "../tenant-logo-routes";
 import { handleTeamNotesCleanupHeartbeat } from "../chat-cleanup-heartbeat";
 import { registerLocalStorageRoutes } from "../storage";
@@ -53,6 +54,7 @@ async function startServer() {
   registerLocationLogoRoutes(app);
   registerTenantLogoRoutes(app);
   registerLocalStorageRoutes(app);
+  registerMarketingVideoRoutes(app);
   app.post("/api/scheduled/team-notes-cleanup", handleTeamNotesCleanupHeartbeat);
 
   // tRPC API

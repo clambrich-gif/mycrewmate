@@ -19,6 +19,7 @@ import {
   HeartHandshake,
   LayoutDashboard,
   MapPinned,
+  Play,
   Route,
   ShieldCheck,
   ShoppingBag,
@@ -204,6 +205,7 @@ export default function OfferDemo() {
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [checkoutComplete, setCheckoutComplete] = useState(false);
+  const [promoVideoOpen, setPromoVideoOpen] = useState(false);
 
   const addToCart = (offer: Offer) => {
     setCartOffer(offer);
@@ -272,9 +274,15 @@ export default function OfferDemo() {
               <Button type="button" size="lg" className="rounded-xl bg-orange-500 px-6 text-white shadow-lg shadow-orange-200 hover:bg-orange-600" onClick={scrollToPackages}>
                 Angebot entdecken <ArrowRight className="size-4" aria-hidden="true" />
               </Button>
-              <a href="#so-einfach" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white/80 px-5 text-sm font-semibold text-slate-700 transition-colors hover:border-blue-300 hover:text-blue-700">
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11 rounded-xl border-slate-300 bg-white/80 px-5 text-slate-700 hover:border-blue-300 hover:bg-white hover:text-blue-700"
+                onClick={() => setPromoVideoOpen(true)}
+              >
+                <Play className="size-4" aria-hidden="true" />
                 So einfach funktioniert&apos;s
-              </a>
+              </Button>
             </div>
             <div className="mt-9 flex flex-wrap gap-x-6 gap-y-3 text-sm font-semibold text-slate-600">
               <span className="inline-flex items-center gap-2"><CircleCheckBig className="size-4 text-emerald-600" /> Sofort im Browser</span>
@@ -399,6 +407,28 @@ export default function OfferDemo() {
         <ShoppingBag className="size-4" aria-hidden="true" />
         Warenkorb {cartOffer ? "· 1" : "· 0"}
       </button>
+
+      <Dialog open={promoVideoOpen} onOpenChange={setPromoVideoOpen}>
+        <DialogContent className="max-w-5xl overflow-hidden border-slate-700 !gap-0 !bg-slate-950 !p-0 !text-white">
+          <DialogHeader className="sr-only">
+            <DialogTitle>MyCrewMate im Überblick</DialogTitle>
+            <DialogDescription>
+              Werbefilm zur Vereins- und Eventplanung mit MyCrewMate.
+            </DialogDescription>
+          </DialogHeader>
+          <video
+            className="aspect-video w-full bg-black"
+            controls
+            autoPlay
+            playsInline
+            preload="metadata"
+            aria-label="Werbefilm: MyCrewMate im Überblick"
+          >
+            <source src="/api/marketing/promo-video" type="video/mp4" />
+            Ihr Browser unterstützt keine HTML5-Videowiedergabe.
+          </video>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={detailsOffer !== null} onOpenChange={open => !open && setDetailsOffer(null)}>
         <DialogContent className="max-w-xl rounded-2xl">
