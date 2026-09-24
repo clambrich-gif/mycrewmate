@@ -211,10 +211,34 @@ async function getPlanningTeamPermissionsForUser(user: {
     // Bei Test-Mocks wie openId: "planning-team" wird standardmäßig Bearbeitungszugriff gewährt
     return FULL_PLANNER_PERMISSIONS;
   }
-  const access = (await db.listPlanningTeamAccesses()).find(item => item.id === accessId);
-  return access?.modulePermissions && access.modulePermissions.length > 0
+  const access = await db.getPlanningTeamAccessCredentialForCurrentTenant(accessId);
+  if (!access) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Dieser Planungsteam-Zugang gehört nicht zum aktuell angemeldeten Verein.",
+    });
+  }
+  if (access.isTenantAdmin) return FULL_PLANNER_PERMISSIONS;
+  return access.modulePermissions && access.modulePermissions.length > 0
     ? access.modulePermissions
     : FULL_PLANNER_PERMISSIONS;
+}
+
+/**
+ * Eine Stellvertretung bleibt technisch ein Planungsteamkonto. Der zusätzliche
+ * Status erweitert die Rechte ausschließlich im aktuell serverseitig gebundenen
+ * Verein; weder Browserangaben noch andere Vereine können ihn verleihen.
+ */
+async function isTenantAdministrator(user: {
+  openId: string;
+  role: "user" | "admin";
+  isCron?: boolean;
+}) {
+  if (user.role === "admin" || user.isCron) return true;
+  const accessId = planningTeamAccessIdForUser(user);
+  if (accessId === null) return false;
+  const access = await db.getPlanningTeamAccessCredentialForCurrentTenant(accessId);
+  return Boolean(access?.isTenantAdmin);
 }
 
 function requireModuleWritePermission(
@@ -249,6 +273,7 @@ async function requirePlanningTeamEventAccess(
   // ein manuell geänderter x-event-id Header niemals ein fremdes Event öffnen.
   const accessId = planningTeamAccessIdForUser(user);
   if (accessId === null) return;
+  if (await isTenantAdministrator(user)) return;
   if (!(await db.isPlanningTeamAccessAllowedForEvent(accessId, scope.eventId))) {
     throw new TRPCError({
       code: "FORBIDDEN",
@@ -505,7 +530,12 @@ const scopedReadProcedure = baseProtectedProcedure
   });
 
 const accountAdminProcedure = activeSessionProcedure.use(({ ctx, next }) => {
-  if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+  if (
+    ctx.user.role !== "admin" ||
+    ctx.user.openId !== ADMIN_PASSWORD_OPEN_ID
+  ) {
+    throw new TRPCError({ code: "FORBIDDEN" });
+  }
   return next({ ctx });
 });
 
@@ -668,8 +698,10 @@ const protectedProcedure = scopedProtectedProcedure.use(
 );
 
 const scopeAdminAuthProcedure = scopedProtectedProcedure.use(
-  ({ ctx, next }) => {
-    if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
+  async ({ ctx, next }) => {
+    if (!(await isTenantAdministrator(ctx.user))) {
+      throw new TRPCError({ code: "FORBIDDEN" });
+    }
     return next({ ctx });
   }
 );
@@ -695,10 +727,13 @@ const scopeAdminProcedure = scopeAdminAuthProcedure.use(
  */
 const tenantAccessAdminProcedure = activeSessionProcedure.use(
   async ({ ctx, next }) => {
-    if (ctx.user.role !== "admin") {
+    const scope = await authorizedPlanningScope(ctx.user, ctx.req);
+    const allowed = await withPlanningScope(scope, () =>
+      isTenantAdministrator(ctx.user)
+    );
+    if (!allowed) {
       throw new TRPCError({ code: "FORBIDDEN" });
     }
-    const scope = await authorizedPlanningScope(ctx.user, ctx.req);
     await requireCompletedPlanningTeamPasswordChange(ctx.user);
     return withPlanningScope(scope, () => next({ ctx }));
   }
@@ -740,9 +775,26 @@ async function assertPlanningTeamAccessReferencesInScope(input: {
   }
 }
 
+/** Nur ein echter Vereinsadministrator darf Stellvertretungen ernennen oder ändern. */
+function requirePrimaryTenantAdministrator(user: { role: "user" | "admin" }) {
+  if (user.role !== "admin") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message:
+        "Nur der Vereinsadministrator darf eine administrative Stellvertretung vergeben oder ändern.",
+    });
+  }
+}
+
+function isDelegatedTenantAdministrator(access: { isTenantAdmin: boolean }) {
+  return access.isTenantAdmin;
+}
+
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
-  if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
-  return next({ ctx });
+  return isTenantAdministrator(ctx.user).then(allowed => {
+    if (!allowed) throw new TRPCError({ code: "FORBIDDEN" });
+    return next({ ctx });
+  });
 });
 
 function moduleReadProcedure(module: Exclude<PlanningModule, "read_all">) {
@@ -853,6 +905,7 @@ async function createContactInitialAccessSheet(input: {
     label: input.contactName,
     email: existingAccess?.email ?? null,
     modulePermissions: existingAccess?.modulePermissions ?? [],
+    isTenantAdmin: existingAccess?.isTenantAdmin ?? false,
     eventIds,
     mustChangePassword: true,
     createdAt: existingAccess?.createdAt ?? new Date(),
@@ -1114,7 +1167,7 @@ const updateShiftInput = z
 
 async function requireAdminPassword(
   password: string,
-  ctx: { req: any; user: { openId: string } }
+  ctx: { req: any; user: { id: number; openId: string; role: "user" | "admin" } }
 ) {
   const clientKey = `admin-confirm:${ctx.user.openId}:${getClientKey(ctx.req)}`;
   if (isPasswordLoginBlocked(clientKey)) {
@@ -1124,7 +1177,28 @@ async function requireAdminPassword(
         "Zu viele falsche Passwortversuche. Bitte versuchen Sie es in 15 Minuten erneut.",
     });
   }
-  const hash = (await db.getSecuritySettings())?.adminPasswordHash;
+
+  let hash: string | null | undefined;
+  if (
+    ctx.user.role === "admin" &&
+    ctx.user.openId.startsWith("tenant-admin:")
+  ) {
+    const credentials = await db.getTenantAdminCredentialsByUserId(ctx.user.id);
+    hash = credentials?.status === "active" ? credentials.passwordHash : null;
+  } else if (ctx.user.role === "admin") {
+    // Der Plattform-Inhaber (sowie bestehende lokale Pilot-Sitzungen) bestätigt
+    // mit dem geschützten Vereinsadministrationspasswort. Persönliche
+    // Vereinsadministratoren tragen dagegen immer die tenant-admin-Kennung.
+    hash = (await db.getSecuritySettings())?.adminPasswordHash;
+  } else {
+    const accessId = planningTeamAccessIdForUser(ctx.user);
+    const credentials =
+      accessId === null
+        ? undefined
+        : await db.getPlanningTeamAccessCredentialForCurrentTenant(accessId);
+    hash = credentials?.isTenantAdmin ? credentials.passwordHash : null;
+  }
+
   if (!hash || !(await verifyPassword(password, hash))) {
     recordFailedPasswordLogin(clientKey);
     throw new TRPCError({
@@ -1768,6 +1842,10 @@ export const appRouter = router({
     myPermissions: scopedProtectedProcedure.query(async ({ ctx }) => {
       return getPlanningTeamPermissionsForUser(ctx.user);
     }),
+    administrativeContext: scopedProtectedProcedure.query(async ({ ctx }) => ({
+      isTenantAdmin: await isTenantAdministrator(ctx.user),
+      isPrimaryTenantAdmin: ctx.user.role === "admin",
+    })),
     availableEvents: tenantAccessAdminProcedure.query(async () => {
       const years = await db.listEventYears();
       const grouped = await Promise.all(
@@ -1782,6 +1860,7 @@ export const appRouter = router({
           contactId: z.number().int().positive(),
           email: z.string().email().max(320).optional(),
           modulePermissions: z.array(z.enum(PLANNING_MODULES)).optional(),
+          isTenantAdmin: z.boolean().default(false),
           password: passwordInput,
           eventIds: z.array(z.number().int().positive()).min(1).max(500),
           currentAdminPassword: z.string().min(1).max(200),
@@ -1789,12 +1868,16 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         await requireAdminPassword(input.currentAdminPassword, ctx);
+        if (input.isTenantAdmin) requirePrimaryTenantAdministrator(ctx.user);
         await assertPlanningTeamAccessReferencesInScope(input);
         return db.createPlanningTeamAccess({
           label: input.label,
           contactId: input.contactId,
           email: input.email ?? null,
-          modulePermissions: input.modulePermissions ?? [],
+          modulePermissions: input.isTenantAdmin
+            ? [...FULL_PLANNER_PERMISSIONS]
+            : input.modulePermissions ?? [],
+          isTenantAdmin: input.isTenantAdmin,
           passwordHash: await hashPassword(input.password),
           eventIds: input.eventIds,
         });
@@ -1806,6 +1889,7 @@ export const appRouter = router({
           contactId: z.number().int().positive(),
           email: z.string().email("Gültige E-Mail-Adresse erforderlich").max(320),
           modulePermissions: z.array(z.enum(PLANNING_MODULES)).optional(),
+          isTenantAdmin: z.boolean().default(false),
           eventIds: z.array(z.number().int().positive()).min(1).max(500),
           sendEmail: z.boolean().default(true),
           currentAdminPassword: z.string().min(1).max(200),
@@ -1813,6 +1897,7 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         await requireAdminPassword(input.currentAdminPassword, ctx);
+        if (input.isTenantAdmin) requirePrimaryTenantAdministrator(ctx.user);
         await assertPlanningTeamAccessReferencesInScope(input);
         const contact = (await db.listAllContactsForPlanningTeamAccess()).find(
           item => item.id === input.contactId
@@ -1828,7 +1913,10 @@ export const appRouter = router({
           label: input.label,
           contactId: input.contactId,
           email: input.email.trim().toLocaleLowerCase("de-DE"),
-          modulePermissions: input.modulePermissions ?? [],
+          modulePermissions: input.isTenantAdmin
+            ? [...FULL_PLANNER_PERMISSIONS]
+            : input.modulePermissions ?? [],
+          isTenantAdmin: input.isTenantAdmin,
           passwordHash: await hashPassword(tempPassword),
           mustChangePassword: true,
           eventIds: input.eventIds,
@@ -1848,7 +1936,9 @@ export const appRouter = router({
         const activeTenant = currentTenants.find(t => t.id === scope.tenantId);
         const tenantName = activeTenant?.name ?? "Vereinsplanung";
         const activationUrl = publicAppUrl(`/aktivieren?token=${encodeURIComponent(rawToken)}`);
-        const modulesSummary = planningModuleSummary(input.modulePermissions);
+        const modulesSummary = input.isTenantAdmin
+          ? "Alle Fachbereiche als Vereinsadministrator-Stellvertretung"
+          : planningModuleSummary(input.modulePermissions);
 
         let emailSent = false;
         if (input.sendEmail) {
@@ -1900,6 +1990,9 @@ export const appRouter = router({
             code: "NOT_FOUND",
             message: "Planungsteam-Zugang wurde nicht gefunden",
           });
+        }
+        if (isDelegatedTenantAdministrator(access)) {
+          requirePrimaryTenantAdministrator(ctx.user);
         }
         if (!access.email) {
           throw new TRPCError({
@@ -1963,12 +2056,14 @@ export const appRouter = router({
           contactId: z.number().int().positive(),
           email: z.string().email().max(320).optional(),
           modulePermissions: z.array(z.enum(PLANNING_MODULES)).optional(),
+          isTenantAdmin: z.boolean().default(false),
           eventIds: z.array(z.number().int().positive()).min(1).max(500),
           currentAdminPassword: z.string().min(1).max(200),
         })
       )
       .mutation(async ({ ctx, input }) => {
         await requireAdminPassword(input.currentAdminPassword, ctx);
+        if (input.isTenantAdmin) requirePrimaryTenantAdministrator(ctx.user);
         await assertPlanningTeamAccessReferencesInScope(input);
         const initialPassword = generatePlanningTeamAccessPassword();
         const contact = (await db.listAllContactsForPlanningTeamAccess()).find(
@@ -1988,7 +2083,8 @@ export const appRouter = router({
           contactName: contact.name,
           label: contact.name,
           email: null,
-          modulePermissions: [],
+          modulePermissions: input.isTenantAdmin ? [...FULL_PLANNER_PERMISSIONS] : [],
+          isTenantAdmin: input.isTenantAdmin,
           eventIds: input.eventIds,
           mustChangePassword: true,
           createdAt: new Date(),
@@ -2002,7 +2098,10 @@ export const appRouter = router({
           label: input.label,
           contactId: input.contactId,
           email: input.email ?? null,
-          modulePermissions: input.modulePermissions ?? [],
+          modulePermissions: input.isTenantAdmin
+            ? [...FULL_PLANNER_PERMISSIONS]
+            : input.modulePermissions ?? [],
+          isTenantAdmin: input.isTenantAdmin,
           passwordHash: await hashPassword(initialPassword),
           mustChangePassword: true,
           eventIds: input.eventIds,
@@ -2027,6 +2126,7 @@ export const appRouter = router({
           contactId: z.number().int().positive().nullable().optional(),
           email: z.string().email().max(320).nullable().optional(),
           modulePermissions: z.array(z.enum(PLANNING_MODULES)).optional(),
+          isTenantAdmin: z.boolean().optional(),
           password: passwordInput.optional(),
           eventIds: z.array(z.number().int().positive()).min(1).max(500),
           currentAdminPassword: z.string().min(1).max(200),
@@ -2034,13 +2134,32 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         await requireAdminPassword(input.currentAdminPassword, ctx);
+        const existing = (await db.listPlanningTeamAccesses()).find(
+          access => access.id === input.id
+        );
+        if (!existing) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Planungsteam-Zugang wurde nicht gefunden",
+          });
+        }
+        if (
+          isDelegatedTenantAdministrator(existing) ||
+          input.isTenantAdmin === true
+        ) {
+          requirePrimaryTenantAdministrator(ctx.user);
+        }
         await assertPlanningTeamAccessReferencesInScope(input);
         return db.updatePlanningTeamAccess({
           id: input.id,
           label: input.label,
           contactId: input.contactId,
           email: input.email,
-          modulePermissions: input.modulePermissions,
+          modulePermissions:
+            input.isTenantAdmin === true
+              ? [...FULL_PLANNER_PERMISSIONS]
+              : input.modulePermissions,
+          isTenantAdmin: input.isTenantAdmin,
           passwordHash: input.password ? await hashPassword(input.password) : undefined,
           eventIds: input.eventIds,
         });
@@ -2062,6 +2181,9 @@ export const appRouter = router({
             code: "NOT_FOUND",
             message: "Planungsteam-Zugang wurde nicht gefunden",
           });
+        }
+        if (isDelegatedTenantAdministrator(existing)) {
+          requirePrimaryTenantAdministrator(ctx.user);
         }
         const initialPassword = generatePlanningTeamAccessPassword();
         // Auch beim Reset wird das PDF vor dem Passwortwechsel erzeugt, damit
@@ -2096,7 +2218,7 @@ export const appRouter = router({
           accessIds: z.array(z.number().int().positive()).min(1).max(500),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
         const requestedIds = Array.from(new Set(input.accessIds));
         const accesses = (await db.listPlanningTeamAccesses()).filter(
           access =>
@@ -2109,6 +2231,12 @@ export const appRouter = router({
             message:
               "Mindestens ein ausgewählter Ansprechpartnerzugang wurde nicht gefunden",
           });
+        }
+        if (
+          accesses.some(isDelegatedTenantAdministrator) &&
+          ctx.user.role !== "admin"
+        ) {
+          requirePrimaryTenantAdministrator(ctx.user);
         }
         const pdf = await createPlanningTeamAccessSheetsFile(accesses);
         return {
@@ -2126,6 +2254,18 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         await requireAdminPassword(input.currentAdminPassword, ctx);
+        const existing = (await db.listPlanningTeamAccesses()).find(
+          access => access.id === input.id
+        );
+        if (!existing) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Planungsteam-Zugang wurde nicht gefunden",
+          });
+        }
+        if (isDelegatedTenantAdministrator(existing)) {
+          requirePrimaryTenantAdministrator(ctx.user);
+        }
         return db.deletePlanningTeamAccess(input.id);
       }),
   }),
@@ -2282,9 +2422,9 @@ export const appRouter = router({
   }),
 
   years: router({
-    list: eventSelectionProcedure.query(({ ctx }) => {
+    list: eventSelectionProcedure.query(async ({ ctx }) => {
       const accessId = planningTeamAccessIdForUser(ctx.user);
-      return accessId === null
+      return accessId === null || (await isTenantAdministrator(ctx.user))
         ? db.listEventYears()
         : db.listEventYearsForPlanningTeamAccess(accessId);
     }),
@@ -2309,9 +2449,9 @@ export const appRouter = router({
   }),
 
   events: router({
-    list: eventSelectionProcedure.query(({ ctx }) => {
+    list: eventSelectionProcedure.query(async ({ ctx }) => {
       const accessId = planningTeamAccessIdForUser(ctx.user);
-      return accessId === null
+      return accessId === null || (await isTenantAdministrator(ctx.user))
         ? db.listEvents(requestedPlanningScope(ctx.req).year)
         : db.listEventsForPlanningTeamAccess(
             accessId,
@@ -2379,7 +2519,9 @@ export const appRouter = router({
       }),
     all: eventSelectionProcedure.query(async ({ ctx }) => {
       const accessId = planningTeamAccessIdForUser(ctx.user);
-      if (accessId !== null) return db.listAllEventsForPlanningTeamAccess(accessId);
+      if (accessId !== null && !(await isTenantAdministrator(ctx.user))) {
+        return db.listAllEventsForPlanningTeamAccess(accessId);
+      }
       const years = await db.listEventYears();
       const grouped = await Promise.all(
         years.map(async item => ({
@@ -2399,7 +2541,7 @@ export const appRouter = router({
         tenantLogoUrl: settings?.tenantLogoKey ? "/api/tenant-logo" : null,
       };
     }),
-    uploadTenantLogo: accountAdminProcedure
+    uploadTenantLogo: tenantAccessAdminProcedure
       .input(
         z.object({
           base64: z.string().max(4_000_000, "Vereinslogo ist größer als 3 MB"),
@@ -2442,7 +2584,7 @@ export const appRouter = router({
         });
         return { ...uploaded, tenantLogoUrl: "/api/tenant-logo" };
       }),
-    clearTenantLogo: accountAdminProcedure.mutation(async () => {
+    clearTenantLogo: tenantAccessAdminProcedure.mutation(async () => {
       await db.updateTenantLogo({ tenantLogoKey: null, tenantLogoUrl: null });
       return { success: true } as const;
     }),

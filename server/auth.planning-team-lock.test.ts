@@ -29,6 +29,7 @@ vi.mock("./_core/sdk", () => ({ sdk: sdkMocks }));
 
 import { appRouter } from "./routers";
 import {
+  ADMIN_PASSWORD_OPEN_ID,
   clearPasswordLoginFailures,
   hashPassword,
   PLANNING_TEAM_MAX_ATTEMPTS,
@@ -43,7 +44,7 @@ function context(
   const user = role
     ? {
         id: role === "admin" ? 1 : 2,
-        openId: `${role}-test`,
+        openId: role === "admin" ? ADMIN_PASSWORD_OPEN_ID : `${role}-test`,
         name: role === "admin" ? "Administrator" : "Planungsteam",
         email: null,
         loginMethod: "test",

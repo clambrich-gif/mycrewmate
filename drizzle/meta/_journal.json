@@ -421,6 +421,13 @@
       "when": 1790184296554,
       "tag": "0059_puzzling_swordsman",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "5",
+      "when": 1790239582548,
+      "tag": "0060_powerful_mister_sinister",
+      "breakpoints": true
     }
   ]
 }

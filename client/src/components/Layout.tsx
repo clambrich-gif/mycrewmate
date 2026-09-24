@@ -252,6 +252,23 @@ export function Layout({ children }: { children: React.ReactNode }) {
       user?.role === "user" &&
       location !== "/aktivieren",
   });
+  const administrativeContext =
+    trpc.planningTeamAccesses.administrativeContext.useQuery(undefined, {
+      enabled:
+        isAuthenticated &&
+        user?.role === "user" &&
+        location !== "/aktivieren",
+    });
+  const isDelegatedTenantAdmin =
+    administrativeContext.data?.isTenantAdmin === true;
+  const effectiveNavigationRole = isDelegatedTenantAdmin
+    ? "admin"
+    : user?.role;
+  const effectiveRoleLabel = isDelegatedTenantAdmin
+    ? "Vereinsadministrator-Stellvertretung"
+    : user?.role === "admin"
+      ? "Administrator"
+      : "Planungsteam";
   const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [capsLockOn, setCapsLockOn] = useState(false);
@@ -1205,7 +1222,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <Label className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <CalendarRange className="h-3.5 w-3.5" /> Veranstaltungsjahr
               </Label>
-              {user?.role === "admin" && (
+              {effectiveNavigationRole === "admin" && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -1245,7 +1262,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <Label className="text-xs text-muted-foreground">
                 Veranstaltung
               </Label>
-              {user?.role === "admin" && (
+              {effectiveNavigationRole === "admin" && (
                 <span className="flex items-center gap-0.5">
                   <Button
                     variant="ghost"
@@ -1347,7 +1364,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             )}
           </div>
           <nav className="flex-1 space-y-1 overflow-y-auto p-2">
-            {visibleNavigationSections(user?.role, myPermissions.data).map(section => (
+            {visibleNavigationSections(effectiveNavigationRole, myPermissions.data).map(section => (
               <div key={section.id} className="space-y-1">
                 {section.items.map(({ href, label, icon: Icon }) => {
                   const active = location === href;
@@ -1361,7 +1378,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       onTouchStart={() => preloadRoute(href)}
                       className={cn(
                         "flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-150",
-                        navigationItemClasses(user?.role, href, active)
+                        navigationItemClasses(effectiveNavigationRole, href, active)
                       )}
                     >
                       <Icon className="h-5 w-5" /> {label}
@@ -1461,7 +1478,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <Label className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <CalendarRange className="h-3.5 w-3.5" /> Veranstaltungsjahr
             </Label>
-            {user?.role === "admin" && (
+            {effectiveNavigationRole === "admin" && (
               <Button
                 variant="ghost"
                 size="icon"
@@ -1495,7 +1512,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <Label className="text-xs text-muted-foreground">
               Veranstaltung
             </Label>
-            {user?.role === "admin" && (
+            {effectiveNavigationRole === "admin" && (
               <span className="flex items-center gap-0.5">
                 <Button
                   variant="ghost"
@@ -1559,7 +1576,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-2 pb-2 pt-1.5 space-y-0.5">
-          {visibleNavigationSections(user?.role, myPermissions.data).map(section => (
+          {visibleNavigationSections(effectiveNavigationRole, myPermissions.data).map(section => (
             <div key={section.id} className="space-y-0.5">
               {section.items.map(({ href, label, icon: Icon }) => {
                 const active = location === href;
@@ -1571,7 +1588,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       onMouseEnter={() => preloadRoute(href)}
                       className={cn(
                         "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all duration-150",
-                        navigationItemClasses(user?.role, href, active)
+                        navigationItemClasses(effectiveNavigationRole, href, active)
                       )}
                   >
                     <Icon className="h-4 w-4" /> {label}
@@ -1588,7 +1605,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 {user?.name}
               </div>
               <div className="text-[10px] leading-none text-muted-foreground">
-                {user?.role === "admin" ? "Administrator" : "Planungsteam"}
+                {effectiveRoleLabel}
               </div>
             </div>
             <Button
@@ -1656,7 +1673,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             {user?.name && (
               <div className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 shadow-sm">
                 <span className="mr-1.5 h-2 w-2 rounded-full bg-emerald-500" />
-                Angemeldet: {user.name} ({user.role === "admin" ? "Administrator" : "Planungsteam"})
+                Angemeldet: {user.name} ({effectiveRoleLabel})
               </div>
             )}
           </div>

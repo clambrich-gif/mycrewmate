@@ -40,6 +40,7 @@ import {
   RefreshCw,
   Send,
   ShieldCheck,
+  ShieldAlert,
   Trash2,
 } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
@@ -56,6 +57,7 @@ type FormState = {
   label: string;
   email: string;
   modulePermissions: PlanningModule[];
+  isTenantAdmin: boolean;
   eventIds: number[];
   currentAdminPassword: string;
 };
@@ -66,6 +68,7 @@ const EMPTY_FORM: FormState = {
   label: "",
   email: "",
   modulePermissions: [...EDITABLE_PLANNING_MODULES],
+  isTenantAdmin: false,
   eventIds: [],
   currentAdminPassword: "",
 };
@@ -84,6 +87,7 @@ type AccessSummary = {
   label: string;
   email?: string | null;
   modulePermissions?: PlanningModule[];
+  isTenantAdmin: boolean;
   eventIds: number[];
   mustChangePassword: boolean;
 };
@@ -115,6 +119,10 @@ export function PlanningTeamAccessManager() {
   const accesses = trpc.planningTeamAccesses.list.useQuery();
   const availableContacts = trpc.planningTeamAccesses.availableContacts.useQuery();
   const availableEvents = trpc.planningTeamAccesses.availableEvents.useQuery();
+  const administrativeContext =
+    trpc.planningTeamAccesses.administrativeContext.useQuery();
+  const isPrimaryTenantAdmin =
+    administrativeContext.data?.isPrimaryTenantAdmin === true;
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [filterYear, setFilterYear] = useState(ALL_YEARS);
   const [filterEventId, setFilterEventId] = useState(ALL_EVENTS);
@@ -320,6 +328,7 @@ export function PlanningTeamAccessManager() {
       contactId: form.contactId,
       email: form.email.trim() ? form.email.trim() : undefined,
       modulePermissions: form.modulePermissions,
+      isTenantAdmin: form.isTenantAdmin,
       eventIds: form.eventIds,
       currentAdminPassword: form.currentAdminPassword,
     };
@@ -358,13 +367,16 @@ export function PlanningTeamAccessManager() {
       modulePermissions: access.modulePermissions && access.modulePermissions.length > 0
         ? access.modulePermissions
         : [...EDITABLE_PLANNING_MODULES],
+      isTenantAdmin: access.isTenantAdmin,
       eventIds: access.eventIds,
       currentAdminPassword: "",
     });
     setOpenSections(["create-access"]);
   };
   const formatEvents = (access: AccessSummary) =>
-    access.eventIds
+    access.isTenantAdmin
+      ? "Alle Veranstaltungen dieses Vereins"
+      : access.eventIds
       .map(eventId => {
         const event = eventById.get(eventId);
         return event ? `${event.year} · ${event.name}` : `Event #${eventId}`;
@@ -376,9 +388,9 @@ export function PlanningTeamAccessManager() {
   return (
     <div className="space-y-3" data-planning-team-access-manager>
       <p className="text-sm text-muted-foreground">
-        Jeder Zugang erhält ein eigenes Passwort und darf nur die hier markierten
-        Veranstaltungen sehen und bearbeiten. Die Freigabe wird zusätzlich auf
-        dem Server geprüft.
+        Jeder Zugang erhält ein eigenes Passwort. Fachrechte und Veranstaltungsfreigaben
+        werden zusätzlich auf dem Server geprüft. Eine rot markierte Stellvertretung
+        erhält volle Rechte ausschließlich im eigenen Verein.
       </p>
       <Accordion
         type="multiple"
@@ -510,8 +522,18 @@ export function PlanningTeamAccessManager() {
                           ✓ Passwort eingerichtet
                         </Badge>
                       )}
+                      {access.isTenantAdmin && (
+                        <Badge className="border-2 border-red-500 bg-red-50 font-semibold text-red-900 hover:bg-red-50">
+                          <ShieldAlert className="mr-1 h-3.5 w-3.5" />
+                          Vereinsadministrator-Stellvertretung
+                        </Badge>
+                      )}
                     </div>
-                    <p className="mt-0.5 text-xs text-slate-500">Ansprechpartner-Zugang</p>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      {access.isTenantAdmin
+                        ? "Volle Verwaltungsrechte im eigenen Verein · keine Masterrechte"
+                        : "Ansprechpartner-Zugang"}
+                    </p>
                     {access.modulePermissions && access.modulePermissions.length > 0 && (
                       <div className="mt-1 flex flex-wrap gap-1">
                         {access.modulePermissions.map(m => (
@@ -531,6 +553,7 @@ export function PlanningTeamAccessManager() {
                       variant="outline"
                       size="sm"
                       className="h-auto min-h-9 w-full justify-start whitespace-normal px-3 py-2 text-left leading-4"
+                      disabled={access.isTenantAdmin && !isPrimaryTenantAdmin}
                       onClick={() => editAccess(access)}
                     >
                       <Pencil className="mr-1.5 h-3.5 w-3.5" /> Bearbeiten
@@ -541,6 +564,7 @@ export function PlanningTeamAccessManager() {
                           variant="outline"
                           size="sm"
                           className="h-auto min-h-9 w-full justify-start whitespace-normal border-blue-200 px-3 py-2 text-left leading-4 text-blue-800 hover:bg-blue-50 hover:text-blue-900"
+                          disabled={access.isTenantAdmin && !isPrimaryTenantAdmin}
                           onClick={() => {
                             setSendLinkTarget(access);
                             setSendLinkPassword("");
@@ -554,6 +578,7 @@ export function PlanningTeamAccessManager() {
                         variant="outline"
                         size="sm"
                       className="h-auto min-h-9 w-full justify-start whitespace-normal border-amber-200 px-3 py-2 text-left leading-4 text-amber-800 hover:bg-amber-50 hover:text-amber-900"
+                      disabled={access.isTenantAdmin && !isPrimaryTenantAdmin}
                       onClick={() => {
                         setResetTarget({ id: access.id, label: access.contactName ?? access.label });
                         setResetPassword("");
@@ -566,6 +591,7 @@ export function PlanningTeamAccessManager() {
                       variant="outline"
                       size="sm"
                       className="h-auto min-h-9 w-full justify-start whitespace-normal border-red-200 px-3 py-2 text-left leading-4 text-red-700 hover:bg-red-50 hover:text-red-800"
+                      disabled={access.isTenantAdmin && !isPrimaryTenantAdmin}
                       onClick={() => setDeleteTarget({ id: access.id, label: access.label })}
                     >
                       <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Löschen
@@ -691,7 +717,7 @@ export function PlanningTeamAccessManager() {
                   >
                     <Checkbox
                       checked={isChecked}
-                      disabled={busy}
+                      disabled={busy || form.isTenantAdmin}
                       onCheckedChange={checked => {
                         setForm(curr => ({
                           ...curr,
@@ -717,6 +743,40 @@ export function PlanningTeamAccessManager() {
             )}
           </fieldset>
 
+          {isPrimaryTenantAdmin && (
+            <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-lg border-2 border-red-500 bg-red-50 px-3 py-3 text-sm text-red-950 shadow-sm transition-colors hover:bg-red-100">
+              <Checkbox
+                checked={form.isTenantAdmin}
+                disabled={busy}
+                onCheckedChange={checked => {
+                  const isTenantAdmin = checked === true;
+                  setForm(current => ({
+                    ...current,
+                    isTenantAdmin,
+                    modulePermissions: isTenantAdmin
+                      ? [...EDITABLE_PLANNING_MODULES]
+                      : current.modulePermissions,
+                    eventIds: isTenantAdmin
+                      ? (availableEvents.data ?? []).map(event => event.id)
+                      : current.eventIds,
+                  }));
+                }}
+                className="mt-0.5 border-red-500 data-[state=checked]:bg-red-600"
+              />
+              <div className="min-w-0">
+                <span className="flex items-center gap-1.5 font-semibold text-red-900">
+                  <ShieldAlert className="h-4 w-4" />
+                  Vereinsadministrator-Stellvertretung
+                </span>
+                <p className="mt-1 text-xs leading-5 text-red-800">
+                  Volle Rechte innerhalb dieses Vereins – einschließlich Löschen,
+                  Ansprechpartnern und Fachrechten. Keine Plattform- oder Masterrechte;
+                  weitere Stellvertretungen dürfen nicht vergeben, geändert oder gelöscht werden.
+                </p>
+              </div>
+            </label>
+          )}
+
           <fieldset className="mt-4 space-y-2">
             <legend className="text-sm font-medium text-slate-900">Freigegebene Veranstaltungen</legend>
             <div className="grid gap-2 sm:grid-cols-2">
@@ -729,7 +789,7 @@ export function PlanningTeamAccessManager() {
                     key={event.id}
                     className="flex cursor-pointer items-center gap-2 rounded-md border border-white bg-white px-3 py-2 text-sm text-slate-800 shadow-sm transition-colors hover:border-blue-300"
                   >
-                    <Checkbox checked={checked} disabled={busy} onCheckedChange={value => toggleEvent(event.id, value === true)} />
+                    <Checkbox checked={checked} disabled={busy || form.isTenantAdmin} onCheckedChange={value => toggleEvent(event.id, value === true)} />
                     <span className="min-w-0">
                       <span className="font-medium">{event.year}</span> · {event.name}
                     </span>
@@ -739,6 +799,11 @@ export function PlanningTeamAccessManager() {
             </div>
             {selectedEvents.length === 0 && (
               <p className="text-xs text-red-700">Bitte mindestens eine Veranstaltung freigeben.</p>
+            )}
+            {form.isTenantAdmin && (
+              <p className="text-xs font-medium text-red-800">
+                Als Stellvertretung gelten alle vorhandenen und künftig angelegten Veranstaltungen dieses Vereins.
+              </p>
             )}
           </fieldset>
 
@@ -777,6 +842,7 @@ export function PlanningTeamAccessManager() {
                       contactId: form.contactId,
                       email: form.email.trim(),
                       modulePermissions: form.modulePermissions,
+                      isTenantAdmin: form.isTenantAdmin,
                       eventIds: form.eventIds,
                       sendEmail: sendEmailInvite,
                       currentAdminPassword: form.currentAdminPassword,

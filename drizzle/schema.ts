@@ -731,6 +731,11 @@ export const planningTeamAccesses = mysqlTable("planning_team_accesses", {
   passwordHash: varchar("passwordHash", { length: 255 }).notNull(),
   /** Ausschließlich die hier vergebenen Fachbereiche dürfen bearbeitet werden. */
   modulePermissions: json("modulePermissions").$type<PlanningModule[]>(),
+  /**
+   * Vereinsinterne Stellvertretung: erhält volle Rechte nur im eigenen Verein,
+   * darf aber keine weiteren Stellvertretungen ernennen oder verwalten.
+   */
+  isTenantAdmin: boolean("isTenantAdmin").default(false).notNull(),
   /** Ein einmalig ausgegebener Zugangscode muss nach der ersten Anmeldung ersetzt werden. */
   mustChangePassword: boolean("mustChangePassword").default(false).notNull(),
   /** Änderungen an Passwort oder Freigaben machen bestehende Sitzungen ungültig. */

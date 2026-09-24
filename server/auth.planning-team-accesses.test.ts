@@ -29,6 +29,9 @@ beforeEach(() => {
     id: 990,
     openId,
   }) as any);
+  vi.spyOn(db, "getPlanningTeamAccessCredentialForCurrentTenant").mockResolvedValue(
+    undefined
+  );
 });
 
 describe("Event-based Access Control für Planungsteam", () => {

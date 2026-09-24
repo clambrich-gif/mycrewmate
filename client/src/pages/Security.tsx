@@ -173,7 +173,13 @@ export default function Security() {
   const { user } = useAuth();
   const { year } = useEventYear();
   const utils = trpc.useUtils();
-  const isAdmin = user?.role === "admin";
+  const administrativeContext =
+    trpc.planningTeamAccesses.administrativeContext.useQuery(undefined, {
+      enabled: Boolean(user),
+    });
+  const isPrimaryTenantAdmin = user?.role === "admin";
+  const isAdmin =
+    isPrimaryTenantAdmin || administrativeContext.data?.isTenantAdmin === true;
   const { data: status, isLoading: statusLoading } =
     trpc.auth.passwordStatus.useQuery(undefined, {
       refetchInterval: 30_000,
@@ -228,18 +234,20 @@ export default function Security() {
       </div>
 
       <div className="space-y-4" data-security-accordions>
-        <SecurityAccordion
-          title="Administratorpasswort neu vergeben"
-          description="Administratorpasswort einrichten oder sicher ändern."
-          icon={KeyRound}
-          tone="amber"
-        >
-          <PasswordEditor
-            enabled={Boolean(status?.adminEnabled)}
-            saving={setAdminPassword.isPending}
-            onSave={input => setAdminPassword.mutate(input)}
-          />
-        </SecurityAccordion>
+        {isPrimaryTenantAdmin && (
+          <SecurityAccordion
+            title="Administratorpasswort neu vergeben"
+            description="Administratorpasswort einrichten oder sicher ändern."
+            icon={KeyRound}
+            tone="amber"
+          >
+            <PasswordEditor
+              enabled={Boolean(status?.adminEnabled)}
+              saving={setAdminPassword.isPending}
+              onSave={input => setAdminPassword.mutate(input)}
+            />
+          </SecurityAccordion>
+        )}
 
         <SecurityAccordion
           title="Planungsteam-Zugänge verwalten"
@@ -250,6 +258,7 @@ export default function Security() {
           <PlanningTeamAccessManager />
         </SecurityAccordion>
 
+        {isPrimaryTenantAdmin && (
         <SecurityAccordion
           title="Notfall-Sperrstatus Planungsteam (Global)"
           description="Sperrt bei einem Sicherheitsvorfall sofort alle Planungsteam-Logins und offenen Sitzungen."
@@ -309,6 +318,7 @@ export default function Security() {
             </Button>
           </div>
         </SecurityAccordion>
+        )}
 
         <SecurityAccordion
           title="System- & Sicherheitsprotokoll (Logbuch)"

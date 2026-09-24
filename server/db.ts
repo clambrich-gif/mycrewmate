@@ -1050,6 +1050,7 @@ export type PlanningTeamAccessSummary = {
   label: string;
   email: string | null;
   modulePermissions: import("../shared/tenant-permissions").PlanningModule[];
+  isTenantAdmin: boolean;
   eventIds: number[];
   mustChangePassword: boolean;
   createdAt: Date;
@@ -1062,6 +1063,7 @@ type PlanningTeamAccessCredential = {
   label: string;
   email: string | null;
   modulePermissions: import("../shared/tenant-permissions").PlanningModule[];
+  isTenantAdmin: boolean;
   passwordHash: string;
   mustChangePassword: boolean;
   sessionVersion: number;
@@ -1151,6 +1153,7 @@ export async function listPlanningTeamAccesses(): Promise<
       label: planningTeamAccesses.label,
       email: planningTeamAccesses.email,
       modulePermissions: planningTeamAccesses.modulePermissions,
+      isTenantAdmin: planningTeamAccesses.isTenantAdmin,
       mustChangePassword: planningTeamAccesses.mustChangePassword,
       createdAt: planningTeamAccesses.createdAt,
       updatedAt: planningTeamAccesses.updatedAt,
@@ -1179,6 +1182,7 @@ export async function listPlanningTeamAccesses(): Promise<
         label: row.label,
         email: row.email ?? null,
         modulePermissions: Array.isArray(row.modulePermissions) ? row.modulePermissions : [],
+        isTenantAdmin: row.isTenantAdmin,
         eventIds: [],
         mustChangePassword: row.mustChangePassword,
         createdAt: row.createdAt,
@@ -1213,6 +1217,7 @@ export async function listPlanningTeamAccessCredentials(): Promise<
       label: planningTeamAccesses.label,
       email: planningTeamAccesses.email,
       modulePermissions: sql<import("../shared/tenant-permissions").PlanningModule[]>`COALESCE(${planningTeamAccesses.modulePermissions}, JSON_ARRAY())`,
+      isTenantAdmin: planningTeamAccesses.isTenantAdmin,
       passwordHash: planningTeamAccesses.passwordHash,
       mustChangePassword: planningTeamAccesses.mustChangePassword,
       sessionVersion: planningTeamAccesses.sessionVersion,
@@ -1234,6 +1239,7 @@ export async function getPlanningTeamAccessCredentialByEmail(email: string) {
       label: planningTeamAccesses.label,
       email: planningTeamAccesses.email,
       modulePermissions: sql<import("../shared/tenant-permissions").PlanningModule[]>`COALESCE(${planningTeamAccesses.modulePermissions}, JSON_ARRAY())`,
+      isTenantAdmin: planningTeamAccesses.isTenantAdmin,
       passwordHash: planningTeamAccesses.passwordHash,
       mustChangePassword: planningTeamAccesses.mustChangePassword,
       sessionVersion: planningTeamAccesses.sessionVersion,
@@ -1241,6 +1247,43 @@ export async function getPlanningTeamAccessCredentialByEmail(email: string) {
     .from(planningTeamAccesses)
     .leftJoin(contacts, eq(contacts.id, planningTeamAccesses.contactId))
     .where(eq(planningTeamAccesses.email, normalizedEmail))
+    .limit(1);
+  return row;
+}
+
+/**
+ * Liefert ausschließlich den Zugang, der dem aktiven Verein zugeordnet ist.
+ * Die Prüfung wird für die Passwortbestätigung einer Stellvertretung benötigt
+ * und darf nie einen Zugang aus einem anderen Verein lesen.
+ */
+export async function getPlanningTeamAccessCredentialForCurrentTenant(accessId: number) {
+  const database = await getDb();
+  if (!database) return undefined;
+  const [row] = await database
+    .select({
+      id: planningTeamAccesses.id,
+      contactName: contacts.name,
+      label: planningTeamAccesses.label,
+      email: planningTeamAccesses.email,
+      modulePermissions: sql<import("../shared/tenant-permissions").PlanningModule[]>`COALESCE(${planningTeamAccesses.modulePermissions}, JSON_ARRAY())`,
+      isTenantAdmin: planningTeamAccesses.isTenantAdmin,
+      passwordHash: planningTeamAccesses.passwordHash,
+      mustChangePassword: planningTeamAccesses.mustChangePassword,
+      sessionVersion: planningTeamAccesses.sessionVersion,
+    })
+    .from(planningTeamAccesses)
+    .leftJoin(contacts, eq(contacts.id, planningTeamAccesses.contactId))
+    .innerJoin(
+      planningTeamAccessEvents,
+      eq(planningTeamAccessEvents.accessId, planningTeamAccesses.id)
+    )
+    .innerJoin(events, eq(events.id, planningTeamAccessEvents.eventId))
+    .where(
+      and(
+        eq(planningTeamAccesses.id, accessId),
+        eq(events.tenantId, tenant())
+      )
+    )
     .limit(1);
   return row;
 }
@@ -1298,6 +1341,7 @@ export async function createPlanningTeamAccess(input: {
   contactId?: number | null;
   email?: string | null;
   modulePermissions?: import("../shared/tenant-permissions").PlanningModule[];
+  isTenantAdmin?: boolean;
   passwordHash: string;
   mustChangePassword?: boolean;
   eventIds: number[];
@@ -1316,6 +1360,7 @@ export async function createPlanningTeamAccess(input: {
       label: contact?.name ?? input.label.trim(),
       email: normalizedEmail,
       modulePermissions: input.modulePermissions ?? [],
+      isTenantAdmin: input.isTenantAdmin ?? false,
       passwordHash: input.passwordHash,
       mustChangePassword: input.mustChangePassword ?? false,
       sessionVersion: 1,
@@ -1343,6 +1388,7 @@ export async function updatePlanningTeamAccess(input: {
   contactId?: number | null;
   email?: string | null;
   modulePermissions?: import("../shared/tenant-permissions").PlanningModule[];
+  isTenantAdmin?: boolean;
   passwordHash?: string;
   mustChangePassword?: boolean;
   eventIds: number[];
@@ -1357,6 +1403,7 @@ export async function updatePlanningTeamAccess(input: {
         contactId: planningTeamAccesses.contactId,
         email: planningTeamAccesses.email,
         modulePermissions: planningTeamAccesses.modulePermissions,
+        isTenantAdmin: planningTeamAccesses.isTenantAdmin,
         sessionVersion: planningTeamAccesses.sessionVersion,
       })
       .from(planningTeamAccesses)
@@ -1377,6 +1424,10 @@ export async function updatePlanningTeamAccess(input: {
       input.modulePermissions === undefined
         ? existing.modulePermissions
         : input.modulePermissions;
+    const nextIsTenantAdmin =
+      input.isTenantAdmin === undefined
+        ? existing.isTenantAdmin
+        : input.isTenantAdmin;
     await assertNoActiveTenantAdminEmailConflict(tx, nextEmail);
     await assertNoPlanningTeamEmailConflict(tx, nextEmail, input.id);
 
@@ -1387,6 +1438,7 @@ export async function updatePlanningTeamAccess(input: {
         label: contact?.name ?? input.label.trim(),
         email: nextEmail,
         modulePermissions: nextPermissions ?? [],
+        isTenantAdmin: nextIsTenantAdmin,
         ...(input.passwordHash ? { passwordHash: input.passwordHash } : {}),
         ...(input.mustChangePassword !== undefined
           ? { mustChangePassword: input.mustChangePassword }
@@ -5636,6 +5688,22 @@ export async function getTenantAdminCredentialsByEmail(email: string) {
     .from(tenantAdminCredentials)
     .innerJoin(users, eq(users.id, tenantAdminCredentials.userId))
     .where(and(eq(tenantAdminCredentials.email, normalizedEmail), eq(tenantAdminCredentials.status, "active")))
+    .limit(1);
+  return row;
+}
+
+/** Passwortbestätigung eines bereits angemeldeten persönlichen Vereinsadmins. */
+export async function getTenantAdminCredentialsByUserId(userId: number) {
+  const database = await getDb();
+  if (!database) return undefined;
+  const [row] = await database
+    .select({
+      userId: tenantAdminCredentials.userId,
+      passwordHash: tenantAdminCredentials.passwordHash,
+      status: tenantAdminCredentials.status,
+    })
+    .from(tenantAdminCredentials)
+    .where(eq(tenantAdminCredentials.userId, userId))
     .limit(1);
   return row;
 }

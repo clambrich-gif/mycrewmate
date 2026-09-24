@@ -109,7 +109,7 @@ vi.mock("./module-excel-import", () => moduleImportMocks);
 vi.mock("./import-preview-binding", () => previewBindingMocks);
 
 import { appRouter } from "./routers";
-import { hashPassword } from "./password-auth";
+import { ADMIN_PASSWORD_OPEN_ID, hashPassword } from "./password-auth";
 import { ShiftUpdateValidationError } from "./shift-update-validation";
 
 const ADMIN_PASSWORD = "Test-Administrator-2026!";
@@ -145,7 +145,7 @@ const helper: Helper = {
 const ctx = {
   user: {
     id: 1,
-    openId: "organizer",
+    openId: ADMIN_PASSWORD_OPEN_ID,
     name: "Organisation",
     email: null,
     loginMethod: "manus",

@@ -179,12 +179,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(html).toContain('<link rel="manifest" href="/manifest.json" />');
     expect(html).toContain('name="apple-mobile-web-app-capable" content="yes"');
     expect(html).toContain('name="apple-mobile-web-app-title" content="MyCrewMate"');
-    expect(html).toContain("<title>MyCrewMate · Helferplanung</title>");
-    expect(html).toContain('<link rel="icon" href="/favicon.ico" sizes="any" />');
+    expect(html).toContain("<title>MyCrewMate</title>");
+    expect(html).toContain('<link rel="icon" type="image/png" href="/icons/mycrewmate-pwa-192.png" />');
     expect(html).toContain('sizes="180x180" href="/icons/mycrewmate-pwa-192.png"');
     expect(readFileSync(new URL("../client/public/favicon.ico", import.meta.url)).subarray(0, 4).toString("hex")).toBe("00000100");
     expect(main).toContain('navigator.serviceWorker.register("/service-worker.js")');
-    expect(serviceWorker).toContain('const STATIC_CACHE = "mycrewmate-pwa-v3"');
+    expect(serviceWorker).toContain('const STATIC_CACHE = "mycrewmate-pwa-v4"');
     expect(serviceWorker).toContain('/icons/mycrewmate-pwa-512.png');
     expect(serviceWorker).toContain('/favicon.ico');
     expect(serviceWorker).not.toContain("/api/");
@@ -663,10 +663,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const navigation = source("client/src/lib/nav.ts");
     const app = source("client/src/App.tsx");
 
-    expect(layout).toContain("visibleNavigationSections(user?.role");
-    expect(layout.match(/visibleNavigationSections\(user\?\.role/g)).toHaveLength(2);
-    expect(layout).toContain("navigationItemClasses(user?.role, href, active)");
-    expect(layout.match(/navigationItemClasses\(user\?\.role, href, active\)/g)).toHaveLength(2);
+    expect(layout).toContain("visibleNavigationSections(effectiveNavigationRole");
+    expect(layout.match(/visibleNavigationSections\(effectiveNavigationRole/g)).toHaveLength(2);
+    expect(layout).toContain("navigationItemClasses(effectiveNavigationRole, href, active)");
+    expect(layout.match(/navigationItemClasses\(effectiveNavigationRole, href, active\)/g)).toHaveLength(2);
     expect(layout).not.toContain("uppercase tracking-wider text-slate-400");
     expect(navigation).toContain("PLANNING_TEAM_HIDDEN_PATHS");
     expect(navigation).toContain("PLANNING_TEAM_EDITING_PATHS");
