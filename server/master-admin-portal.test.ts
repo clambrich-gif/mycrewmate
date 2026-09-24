@@ -130,5 +130,7 @@ describe("Master-Admin-Portal", () => {
     expect(page).toContain("Testverein endgültig entfernen");
     expect(page).toContain("kann nicht rückgängig gemacht werden");
     expect(page).toContain("Der geschützte RSC-Pilotverein kann über diese Funktion nicht entfernt werden");
+    expect(page).toContain("archivedTenants.map(tenant => (");
+    expect(page).toContain("tenant.id !== \"rsc-eifelland-mayen\"");
   });
 });

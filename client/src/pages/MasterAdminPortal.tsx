@@ -777,7 +777,7 @@ export default function MasterAdminPortal() {
                         <span className="inline-flex items-center gap-1"><Mail className="size-3.5 text-slate-400" /> {tenant.contactEmail}</span>
                       </div>
                     </div>
-                    <div className="sm:min-w-48">
+                    <div className="space-y-2 sm:min-w-48">
                       <Button
                         size="sm"
                         variant="outline"
@@ -788,6 +788,18 @@ export default function MasterAdminPortal() {
                         {updateLifecycle.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />}
                         Als Pilot reaktivieren
                       </Button>
+                      {tenant.id !== "rsc-eifelland-mayen" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full border-red-200 bg-white text-red-700 hover:bg-red-50 hover:text-red-800"
+                          disabled={deleteInternalTestTenant.isPending}
+                          onClick={() => setTestTenantToDelete({ id: tenant.id, name: tenant.name })}
+                        >
+                          {deleteInternalTestTenant.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+                          Testverein endgültig entfernen
+                        </Button>
+                      )}
                     </div>
                   </article>
                 ))
