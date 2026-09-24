@@ -34,6 +34,8 @@ describe("Konto-Mandanten-Bindung (Schritt 3)", () => {
     expect(db).toContain("memberships.find(\n      membership => membership.tenantId === input.preferredTenantId\n    ) ?? memberships.find(membership => membership.isDefault) ?? memberships[0]");
     expect(db).toContain("input.userOpenId === ADMIN_PASSWORD_OPEN_ID && preferredTenantId");
     expect(db).toContain('notEq(tenants.status, "archived")');
+    expect(db).toContain("desc(userTenantMemberships.updatedAt)");
+    expect(db).toContain("await makeTenantMembershipDefault(tx, existingUser.id, input.tenantId);");
     expect(routers).toContain("userOpenId: user.openId");
   });
 
@@ -41,6 +43,8 @@ describe("Konto-Mandanten-Bindung (Schritt 3)", () => {
     const routers = source("server/routers.ts");
     expect(routers).toContain("async function authorizedPlanningScope");
     expect(routers).toContain("db.resolveTenantForUser");
+    expect(routers).toContain("user.openId === ADMIN_PASSWORD_OPEN_ID");
+    expect(routers).toContain(": undefined,");
     expect(routers).toContain("Für dieses Konto ist kein aktiver Verein freigegeben.");
     expect(routers).toContain("const eventSelectionProcedure = activeSessionProcedure.use(async ({ ctx, next }) => {");
     expect(routers).toContain("const scopedReadProcedure = baseProtectedProcedure");
@@ -50,9 +54,13 @@ describe("Konto-Mandanten-Bindung (Schritt 3)", () => {
   it("synchronisiert den Browserkontext automatisch mit dem vom Server bestätigten Verein", () => {
     const context = source("client/src/contexts/YearContext.tsx");
     const layout = source("client/src/components/Layout.tsx");
+    const routers = source("server/routers.ts");
     expect(context).toContain("synchronizeTenant(nextTenantId)");
     expect(context).toContain("Die Serverantwort ist maßgeblich.");
     expect(layout).toContain("const authorizedTenantId = currentTenant.data?.id;");
     expect(layout).toContain("if (authorizedTenantId) synchronizeTenant(authorizedTenantId);");
+    expect(layout).toContain("selectTenant(result.tenantId);");
+    expect(routers).toContain("async function tenantIdForFreshPersonalLogin");
+    expect(routers).toContain("allowPilotFallback: false");
   });
 });

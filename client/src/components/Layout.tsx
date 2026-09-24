@@ -668,30 +668,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
     if (!events.data?.length || selectedEvent) return;
     selectEvent(events.data[0].id);
   }, [events.data, selectEvent, selectedEvent]);
-  const finishLogin = async (previewSessionToken?: string) => {
-    storePreviewSessionToken(previewSessionToken);
-    setPassword("");
-    setLoginError(null);
-    setLoginFailureCount(0);
-    await utils.auth.me.invalidate();
-    toast.success("Anmeldung erfolgreich");
-  };
   const passwordLogin = trpc.auth.passwordLogin.useMutation({
     mutationKey: ["auth", "passwordLogin"],
-    onSuccess: async result => {
+    onSuccess: result => {
       setLoginFailureCount(0);
       storePreviewSessionToken(result.previewSessionToken);
-      if (result.mustChangePassword) {
-        setPassword("");
-        setLoginError(null);
-        setInitialPassword("");
-        setInitialPasswordConfirmation("");
-        setInitialPasswordError(null);
-        setForcePasswordChangeOpen(true);
-        await utils.auth.me.invalidate();
-        return;
-      }
-      await finishLogin(result.previewSessionToken);
+      // Der Loginserver bestimmt den Verein. Dadurch kann ein RSC-Wert aus
+      // LocalStorage niemals die frisch angemeldete Vereinsadministration
+      // in eine fremde Planung umleiten.
+      selectTenant(result.tenantId);
     },
     onError: async error => {
       setLoginError(error.message);
@@ -723,17 +708,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const completeTenantAdminInitialPasswordChange =
     trpc.auth.completeTenantAdminInitialPasswordChange.useMutation({
       mutationKey: ["auth", "completeTenantAdminInitialPasswordChange"],
-      onSuccess: async result => {
+      onSuccess: result => {
         storePreviewSessionToken(result.previewSessionToken);
-        setInitialPassword("");
-        setInitialPasswordConfirmation("");
-        setInitialPasswordError(null);
-        setForcePasswordChangeOpen(false);
-        await Promise.all([
-          utils.auth.me.invalidate(),
-          utils.auth.initialPasswordChangeStatus.invalidate(),
-        ]);
-        toast.success("Dein persönliches Passwort wurde gespeichert");
+        selectTenant(result.tenantId);
       },
       onError: error => setInitialPasswordError(error.message),
     });

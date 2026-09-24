@@ -273,7 +273,13 @@ async function authorizedPlanningScope(
       membership = await (db as any).resolveTenantForUser({
         userId: user.id,
         userOpenId: user.openId,
-        preferredTenantId: requested.tenantId,
+        // Nur der Plattform-Inhaber darf über den Handoff gezielt einen
+        // Verein wählen. Für persönliche Vereinsadmins und Planungsteams wäre
+        // ein Browserwert ein unzulässiger Wechsel in einen Fremdmandanten.
+        preferredTenantId:
+          user.openId === ADMIN_PASSWORD_OPEN_ID
+            ? requested.tenantId
+            : undefined,
       });
     }
   } catch {
@@ -287,6 +293,7 @@ async function authorizedPlanningScope(
       isDefault: true,
       tenantName: "RSC Eifelland Mayen e. V.",
       tenantStatus: "pilot",
+      updatedAt: new Date(0),
     };
   }
   if (!membership) {
@@ -296,6 +303,25 @@ async function authorizedPlanningScope(
     });
   }
   return { ...requested, tenantId: membership.tenantId };
+}
+
+/** Eine frische persönliche Anmeldung darf nie einen alten Browsermandanten übernehmen. */
+async function tenantIdForFreshPersonalLogin(user: {
+  id: number;
+  openId: string;
+}) {
+  const membership = await db.resolveTenantForUser({
+    userId: user.id,
+    userOpenId: user.openId,
+    allowPilotFallback: false,
+  });
+  if (!membership) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Für dieses persönliche Konto ist kein aktiver Verein freigegeben.",
+    });
+  }
+  return membership.tenantId;
 }
 
 /** Der bisherige globale Administrator bleibt während des Pilotbetriebs RSC-Administrator. */
@@ -1207,6 +1233,10 @@ export const appRouter = router({
             });
           }
           clearPasswordLoginFailures(clientKey);
+          const tenantId = await tenantIdForFreshPersonalLogin({
+            id: adminCreds.userId,
+            openId: adminCreds.userOpenId,
+          });
           const sessionName = adminCreds.userName ?? input.email;
           const token = await sdk.createSessionToken(adminCreds.userOpenId, {
             name: sessionName,
@@ -1220,6 +1250,7 @@ export const appRouter = router({
           return {
             success: true,
             mustChangePassword: adminCreds.mustChangePassword,
+            tenantId,
             ...(isEmbeddedManusPreview(ctx.req) ? { previewSessionToken: token } : {}),
           } as const;
         }
@@ -1268,6 +1299,17 @@ export const appRouter = router({
         } catch {
           // Ignorieren falls Mock in Unit-Tests
         }
+        const planningUser = await db.getUserByOpenId(accessOpenId);
+        if (!planningUser) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Persönlicher Planungsteamzugang konnte nicht geladen werden.",
+          });
+        }
+        const tenantId = await tenantIdForFreshPersonalLogin({
+          id: planningUser.id,
+          openId: accessOpenId,
+        });
         const token = await sdk.createSessionToken(accessOpenId, {
           name: sessionName,
           expiresInMs: PASSWORD_SESSION_MS,
@@ -1280,6 +1322,7 @@ export const appRouter = router({
         return {
           success: true,
           mustChangePassword: matchingAccess.mustChangePassword,
+          tenantId,
           ...(isEmbeddedManusPreview(ctx.req) ? { previewSessionToken: token } : {}),
         } as const;
       }),
@@ -1322,6 +1365,19 @@ export const appRouter = router({
         } catch {
           // Ignorieren falls Mock in Unit-Tests
         }
+        const planningUser = await db.getUserByOpenId(
+          planningTeamAccessOpenId(updated.id)
+        );
+        if (!planningUser) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Persönlicher Planungsteamzugang konnte nicht geladen werden.",
+          });
+        }
+        const tenantId = await tenantIdForFreshPersonalLogin({
+          id: planningUser.id,
+          openId: planningUser.openId,
+        });
         const token = await sdk.createSessionToken(
           planningTeamAccessOpenId(updated.id),
           {
@@ -1337,6 +1393,7 @@ export const appRouter = router({
         return {
           success: true,
           mustChangePassword: false,
+          tenantId,
           ...(isEmbeddedManusPreview(ctx.req) ? { previewSessionToken: token } : {}),
         } as const;
       }),
@@ -1367,6 +1424,10 @@ export const appRouter = router({
           userId: ctx.user.id,
           passwordHash: await hashPassword(input.password),
         });
+        const tenantId = await tenantIdForFreshPersonalLogin({
+          id: updated.userId,
+          openId: updated.userOpenId,
+        });
         const token = await sdk.createSessionToken(updated.userOpenId, {
           name: updated.userName ?? ctx.user.name ?? "Administrator",
           expiresInMs: PASSWORD_SESSION_MS,
@@ -1379,6 +1440,7 @@ export const appRouter = router({
         return {
           success: true,
           mustChangePassword: false,
+          tenantId,
           ...(isEmbeddedManusPreview(ctx.req) ? { previewSessionToken: token } : {}),
         } as const;
       }),
@@ -1411,6 +1473,10 @@ export const appRouter = router({
             });
           }
           clearPasswordLoginFailures(clientKey);
+          const tenantId = await tenantIdForFreshPersonalLogin({
+            id: adminCreds.userId,
+            openId: adminCreds.userOpenId,
+          });
           const sessionName = adminCreds.userName ?? input.email;
           const token = await sdk.createSessionToken(adminCreds.userOpenId, {
             name: sessionName,
@@ -1425,6 +1491,7 @@ export const appRouter = router({
             success: true,
             requiresIdentity: false,
             mustChangePassword: adminCreds.mustChangePassword,
+            tenantId,
             ...(isEmbeddedManusPreview(ctx.req) ? { previewSessionToken: token } : {}),
           } as const;
         }

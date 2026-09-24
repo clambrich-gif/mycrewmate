@@ -262,6 +262,7 @@ export type ActiveTenantMembership = {
   isDefault: boolean;
   tenantName: string;
   tenantStatus: "pilot" | "sample" | "active" | "suspended" | "archived";
+  updatedAt: Date;
 };
 
 /** Liefert nur aktiv freigeschaltete Vereinszuordnungen eines Kontos. */
@@ -277,6 +278,7 @@ export async function listActiveTenantMembershipsForUser(
       isDefault: userTenantMemberships.isDefault,
       tenantName: tenants.name,
       tenantStatus: tenants.status,
+      updatedAt: userTenantMemberships.updatedAt,
     })
     .from(userTenantMemberships)
     .innerJoin(tenants, eq(tenants.id, userTenantMemberships.tenantId))
@@ -288,7 +290,14 @@ export async function listActiveTenantMembershipsForUser(
         notEq(tenants.status, "archived")
       )
     )
-    .orderBy(desc(userTenantMemberships.isDefault), asc(tenants.name));
+    // Historische Testdaten können aus einer früheren Version mehrere als
+    // Standard markierte Mitgliedschaften enthalten. Die zuletzt angelegte
+    // bzw. aktualisierte Zuordnung gewinnt dann deterministisch.
+    .orderBy(
+      desc(userTenantMemberships.isDefault),
+      desc(userTenantMemberships.updatedAt),
+      asc(tenants.name)
+    );
 }
 
 /**
@@ -299,6 +308,7 @@ export async function resolveTenantForUser(input: {
   userId: number;
   userOpenId?: string | null;
   preferredTenantId?: string | null;
+  allowPilotFallback?: boolean;
 }): Promise<ActiveTenantMembership | undefined> {
   const preferredTenantId = input.preferredTenantId?.trim();
 
@@ -331,13 +341,14 @@ export async function resolveTenantForUser(input: {
           isDefault: false,
           tenantName: selectedTenant.name,
           tenantStatus: selectedTenant.status,
+          updatedAt: new Date(0),
         };
       }
     }
   }
 
   const memberships = await listActiveTenantMembershipsForUser(input.userId);
-  if (!memberships.length) {
+  if (!memberships.length && input.allowPilotFallback !== false) {
     // Solange während der Pilotphase noch Altsitzungen oder Mock-Benutzer ohne
     // explizite Mitgliedschaft existieren, greift der sichere Pilotmandant
     // als Fallback, damit bestehende Abläufe nicht unvermittelt abbrechen.
@@ -357,6 +368,7 @@ export async function resolveTenantForUser(input: {
           isDefault: true,
           tenantName: pilotRecord.name,
           tenantStatus: pilotRecord.status,
+          updatedAt: new Date(0),
         }
       : undefined;
   }
@@ -5727,15 +5739,19 @@ export async function createOrUpdateTenantAdminForPlatformAdmin(input: {
         tenantId: input.tenantId,
         role: "tenant_admin",
         status: "active",
-        isDefault: true,
+        isDefault: false,
       })
       .onDuplicateKeyUpdate({
         set: {
           role: "tenant_admin",
           status: "active",
-          isDefault: true,
         },
       });
+
+    // Eine persönliche Anmeldung darf nur einen eindeutigen Zielverein haben.
+    // Der neu vergebene bzw. aktualisierte Adminzugang wird deshalb atomar zum
+    // Standardmandanten; alte Testzuordnungen können ihn nicht übersteuern.
+    await makeTenantMembershipDefault(tx, existingUser.id, input.tenantId);
 
     return { userId: existingUser.id, email: normalizedEmail, name } as const;
   });

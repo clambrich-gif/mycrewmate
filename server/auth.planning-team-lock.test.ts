@@ -11,6 +11,8 @@ const dbMocks = vi.hoisted(() => ({
   getTenantAdminCredentialsByEmail: vi.fn(),
   getPlanningTeamAccessCredentialByEmail: vi.fn(),
   upsertUser: vi.fn(),
+  getUserByOpenId: vi.fn(),
+  resolveTenantForUser: vi.fn(),
 }));
 const presenceMocks = vi.hoisted(() => ({
   getOnlinePresenceCounts: vi.fn(),
@@ -93,6 +95,17 @@ describe("DoS-Schutz und manuelle Sperre für das Planungsteam", () => {
       passwordHash,
       sessionVersion: 1,
     });
+    dbMocks.getUserByOpenId.mockImplementation(async (openId: string) => ({
+      id: 11,
+      openId,
+    }));
+    dbMocks.resolveTenantForUser.mockResolvedValue({
+      tenantId: "rsc-eifelland-mayen",
+      role: "planner",
+      isDefault: true,
+      tenantName: "RSC Eifelland Mayen e. V.",
+      tenantStatus: "pilot",
+    });
   });
 
   it("aktiviert nach 5 Fehlversuchen eine zeitbasierte Abklingzeit (Cooldown) pro Client-Anschluss", async () => {
@@ -141,7 +154,10 @@ describe("DoS-Schutz und manuelle Sperre für das Planungsteam", () => {
         email: "team@example.invalid",
         password: "Richtiges-Planungsteam-Passwort!",
       })
-    ).resolves.toEqual({ success: true });
+    ).resolves.toEqual({
+      success: true,
+      tenantId: "rsc-eifelland-mayen",
+    });
 
     expect(sdkMocks.createSessionToken).toHaveBeenCalledTimes(1);
   });

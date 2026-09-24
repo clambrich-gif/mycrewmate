@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { COOKIE_NAME } from "@shared/const";
 import { appRouter } from "./routers";
 import * as db from "./db";
@@ -16,6 +16,20 @@ const mockReq = (headers: Record<string, string> = {}) =>
     headers,
     socket: { remoteAddress: "127.0.0.1" },
   }) as any;
+
+beforeEach(() => {
+  vi.spyOn(db, "resolveTenantForUser").mockResolvedValue({
+    tenantId: "rsc-eifelland-mayen",
+    role: "planner",
+    isDefault: true,
+    tenantName: "RSC Eifelland Mayen e. V.",
+    tenantStatus: "pilot",
+  });
+  vi.spyOn(db, "getUserByOpenId").mockImplementation(async openId => ({
+    id: 990,
+    openId,
+  }) as any);
+});
 
 describe("Event-based Access Control für Planungsteam", () => {
   it("filtert Veranstaltungen für Administratoren uneingeschränkt und für Planungsteam strikt nach Freigaben", async () => {
@@ -239,7 +253,10 @@ describe("Event-based Access Control für Planungsteam", () => {
       password: "korrektes-anne-passwort",
     });
 
-    expect(result).toEqual({ success: true });
+    expect(result).toEqual({
+      success: true,
+      tenantId: "rsc-eifelland-mayen",
+    });
     expect(clearFailuresSpy).toHaveBeenCalled();
     expect(upsertUserSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -281,7 +298,11 @@ describe("Event-based Access Control für Planungsteam", () => {
         email: "admin@example.invalid",
         password: "persoenliches-admin-passwort",
       })
-    ).resolves.toEqual({ success: true, mustChangePassword: true });
+    ).resolves.toEqual({
+      success: true,
+      mustChangePassword: true,
+      tenantId: "rsc-eifelland-mayen",
+    });
     expect(planningLookupSpy).not.toHaveBeenCalled();
     expect(cookieMock).toHaveBeenCalled();
   });
@@ -324,6 +345,7 @@ describe("Event-based Access Control für Planungsteam", () => {
       expect.objectContaining({
         success: true,
         mustChangePassword: false,
+        tenantId: "rsc-eifelland-mayen",
         previewSessionToken: expect.any(String),
       })
     );
@@ -832,6 +854,7 @@ describe("Event-based Access Control für Planungsteam", () => {
     expect(loginResult).toEqual({
       success: true,
       mustChangePassword: true,
+      tenantId: "rsc-eifelland-mayen",
     });
     expect(cookieSpy).toHaveBeenCalledWith(
       COOKIE_NAME,
@@ -872,6 +895,7 @@ describe("Event-based Access Control für Planungsteam", () => {
     expect(changeResult).toEqual({
       success: true,
       mustChangePassword: false,
+      tenantId: "rsc-eifelland-mayen",
     });
     expect(changeSpy).toHaveBeenCalledWith(
       expect.objectContaining({

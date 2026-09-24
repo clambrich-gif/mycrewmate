@@ -34,6 +34,13 @@ describe("Aktivierung persönlicher Vereinsadmins", () => {
         userName: tenantAdminUser.name,
         sessionVersion: 2,
       });
+    vi.spyOn(db, "resolveTenantForUser").mockResolvedValue({
+      tenantId: "bunefix",
+      role: "tenant_admin",
+      isDefault: true,
+      tenantName: "Bunefix",
+      tenantStatus: "pilot",
+    });
     const cookieSpy = vi.fn();
     const caller = appRouter.createCaller({
       user: tenantAdminUser,
@@ -50,7 +57,11 @@ describe("Aktivierung persönlicher Vereinsadmins", () => {
         password: "ein-neues-sicheres-passwort-123",
         passwordConfirmation: "ein-neues-sicheres-passwort-123",
       })
-    ).resolves.toEqual({ success: true, mustChangePassword: false });
+    ).resolves.toEqual({
+      success: true,
+      mustChangePassword: false,
+      tenantId: "bunefix",
+    });
 
     expect(requiredSpy).toHaveBeenCalledWith(tenantAdminUser.id);
     expect(completeSpy).toHaveBeenCalledWith(
