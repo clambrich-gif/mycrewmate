@@ -1,6 +1,3 @@
--- Frühere Präsenzdaten waren global und nur zehn Minuten relevant. Sie bleiben
--- technisch erhalten, erhalten aber bewusst keinen Vereinsbezug und können
--- deshalb in keinem Vereinszähler auftauchen.
 ALTER TABLE `session_presences` ADD `tenantId` varchar(96);--> statement-breakpoint
 UPDATE `session_presences` SET `tenantId` = '__legacy_unscoped__' WHERE `tenantId` IS NULL;--> statement-breakpoint
 ALTER TABLE `session_presences` MODIFY COLUMN `tenantId` varchar(96) NOT NULL;--> statement-breakpoint
