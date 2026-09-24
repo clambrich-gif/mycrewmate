@@ -98,6 +98,7 @@ const MYCREWMATE_WORDMARK = "/brand/mycrewmate-wordmark.png";
 const MYCREWMATE_ICON = "/icons/mycrewmate-pwa-512.png";
 const CHAT_SNAPSHOT_POLL_MS = 5_000;
 const DESKTOP_SIDEBAR_OPEN_STORAGE_KEY = "mycrewmate:desktop-sidebar-open";
+const ACTIVATION_TENANT_STORAGE_KEY = "mycrewmate:activation-tenant";
 // Der Wechsler dient nur der lokalen Entwicklungs- und Isolationserprobung.
 // Für Vereinszugänge und die veröffentlichte App wird der Mandant später
 // ausschließlich serverseitig aus der Konto-Zuordnung bestimmt.
@@ -183,6 +184,32 @@ function rememberDesktopSidebarOpenPreference(isOpen: boolean) {
   }
 }
 
+function storedActivationTenantId() {
+  if (typeof window === "undefined") return null;
+  try {
+    const value = window.sessionStorage.getItem(ACTIVATION_TENANT_STORAGE_KEY)?.trim();
+    return value && /^[a-z0-9-]{3,96}$/.test(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function rememberActivationTenantId(tenantId: string) {
+  try {
+    window.sessionStorage.setItem(ACTIVATION_TENANT_STORAGE_KEY, tenantId);
+  } catch {
+    // Der Speicher ist nur eine Darstellungs-Sicherung, niemals eine Berechtigung.
+  }
+}
+
+function clearRememberedActivationTenantId() {
+  try {
+    window.sessionStorage.removeItem(ACTIVATION_TENANT_STORAGE_KEY);
+  } catch {
+    // Ohne SessionStorage wird der Benutzer nach dem Passwortwechsel trotzdem korrekt geladen.
+  }
+}
+
 function isEditableShortcutTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false;
   return (
@@ -220,7 +247,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
     useEventYear();
   const [location] = useLocation();
   const myPermissions = trpc.planningTeamAccesses.myPermissions.useQuery(undefined, {
-    enabled: isAuthenticated && user?.role === "user",
+    enabled:
+      isAuthenticated &&
+      user?.role === "user" &&
+      location !== "/aktivieren",
   });
   const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
@@ -232,6 +262,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [initialPassword, setInitialPassword] = useState("");
   const [initialPasswordConfirmation, setInitialPasswordConfirmation] = useState("");
   const [initialPasswordError, setInitialPasswordError] = useState<string | null>(null);
+  const [activationTenantId, setActivationTenantId] = useState(
+    storedActivationTenantId
+  );
+  // Ein Aktivierungslink übernimmt eine neue persönliche Sitzung. Bis der
+  // Zielverein nach dem Passwortwechsel vollständig geladen ist, bleibt die
+  // alte Vereinsansicht bewusst unsichtbar.
+  const isTenantActivationRoute = location === "/aktivieren";
+  const isCredentialBootstrapPending =
+    isTenantActivationRoute ||
+    forcePasswordChangeOpen ||
+    activationTenantId !== null;
   const [impressumOpen, setImpressumOpen] = useState(false);
   const [yearDialogOpen, setYearDialogOpen] = useState(false);
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
@@ -290,16 +331,22 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const consumeTenantInvitation = trpc.auth.consumeTenantAdminInvitation.useMutation({
     onSuccess: async result => {
       storePreviewSessionToken(result.previewSessionToken);
+      rememberActivationTenantId(result.tenantId);
+      setActivationTenantId(result.tenantId);
+      // Den Einmal-Link vor dem bewusst vollständigen Kontextwechsel aus der
+      // Adresse entfernen. Der nachfolgende Reload darf nur Bunefix (bzw. den
+      // jeweiligen Zielverein) laden und nie den noch sichtbaren Altverein.
+      window.history.replaceState({}, "", "/");
       selectTenant(result.tenantId);
       await Promise.all([
         utils.auth.me.invalidate(),
         utils.auth.initialPasswordChangeStatus.invalidate(),
       ]);
       toast.success("Zugang bestätigt – bitte jetzt ein eigenes Passwort festlegen.");
-      // Der Token darf weder im Verlauf noch bei einem späteren Reload verbleiben.
-      window.history.replaceState({}, "", "/");
     },
     onError: err => {
+      clearRememberedActivationTenantId();
+      setActivationTenantId(null);
       toast.error(err.message);
       window.history.replaceState({}, "", "/login");
     },
@@ -471,7 +518,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     }
   );
   const years = trpc.years.list.useQuery(undefined, {
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && !isCredentialBootstrapPending,
   });
   const tenants = trpc.tenants.list.useQuery(undefined, {
     enabled:
@@ -480,10 +527,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
       user?.role === "admin",
   });
   const currentTenant = trpc.tenants.current.useQuery(undefined, {
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && !isCredentialBootstrapPending,
   });
   const events = trpc.events.list.useQuery(undefined, {
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && !isCredentialBootstrapPending,
   });
   const selectedEvent = events.data?.find(item => item.id === eventId);
   const selectedTenantRecord = tenants.data?.find(item => item.id === tenantId);
@@ -610,7 +657,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }, [utils.client.notes.list]);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || isCredentialBootstrapPending) return;
     void refreshChatSnapshot();
     const timer = window.setInterval(refreshChatSnapshot, CHAT_SNAPSHOT_POLL_MS);
     return () => {
@@ -620,7 +667,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
       chatSnapshotPollQueuedRef.current = false;
       window.clearInterval(timer);
     };
-  }, [isAuthenticated, refreshChatSnapshot, year, eventId]);
+  }, [
+    isAuthenticated,
+    isCredentialBootstrapPending,
+    refreshChatSnapshot,
+    year,
+    eventId,
+  ]);
 
   const openChatWidget = () => {
     chatStateRef.current = "open";
@@ -693,6 +746,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
       mutationKey: ["auth", "completeInitialPasswordChange"],
       onSuccess: async result => {
         storePreviewSessionToken(result.previewSessionToken);
+        clearRememberedActivationTenantId();
+        setActivationTenantId(null);
         setInitialPassword("");
         setInitialPasswordConfirmation("");
         setInitialPasswordError(null);
@@ -710,6 +765,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
       mutationKey: ["auth", "completeTenantAdminInitialPasswordChange"],
       onSuccess: result => {
         storePreviewSessionToken(result.previewSessionToken);
+        clearRememberedActivationTenantId();
+        setActivationTenantId(null);
         selectTenant(result.tenantId);
       },
       onError: error => setInitialPasswordError(error.message),
@@ -836,6 +893,27 @@ export function Layout({ children }: { children: React.ReactNode }) {
     />
   );
 
+  const credentialBootstrapScreen = (
+    <div className="login-page-background relative grid min-h-[100dvh] place-items-center bg-[radial-gradient(ellipse_at_center,_#ffffff_20%,_#f0f9ff_66%,_#dbeafe_100%)] px-4 py-5 sm:p-6">
+      <div className="w-full max-w-md rounded-2xl border border-white/80 bg-white/90 p-6 text-center text-card-foreground shadow-xl backdrop-blur-sm">
+        <img
+          {...logoLoading}
+          src={MYCREWMATE_WORDMARK}
+          alt="MyCrewMate"
+          className="mx-auto h-10 w-auto max-w-full bg-transparent object-contain sm:h-12"
+        />
+        <p className="mt-2 text-[11px] font-medium tracking-[0.08em] text-slate-600">
+          VEREINS- &amp; EVENTPLANUNG
+        </p>
+        <div className="mt-6 flex items-center justify-center gap-2 text-sm text-slate-700" role="status">
+          <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none text-blue-700" aria-hidden="true" />
+          Persönlicher Zugang wird sicher eingerichtet …
+        </div>
+      </div>
+      {forcePasswordChangeModal}
+    </div>
+  );
+
   useEffect(() => {
     if (!loginError) return;
     loginErrorRef.current?.focus({ preventScroll: true });
@@ -847,6 +925,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
         Lade …
       </div>
     );
+  }
+  // Weder ein zuvor offener RSC-Tab noch dessen Jahr oder Veranstaltung dürfen
+  // unter dem Aktivierungsdialog sichtbar werden. Erst nach dem erfolgreichen
+  // Passwortwechsel wird die serverseitig bestätigte Vereinsansicht geladen.
+  if (isCredentialBootstrapPending) {
+    return credentialBootstrapScreen;
   }
   if (!isAuthenticated) {
     return (

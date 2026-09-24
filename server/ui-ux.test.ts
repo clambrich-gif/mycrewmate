@@ -1263,9 +1263,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(brandAssets).toContain(
       'path.resolve(process.cwd(), "client", "public", "brand")'
     );
-    expect(layout.match(/src=\{MYCREWMATE_WORDMARK\}/g)).toHaveLength(3);
+    // Zusätzlich zur Anmeldung, Sidebar und mobilen Kopfzeile verwendet die
+    // isolierte Passwort-Aktivierung die Wortmarke auf neutralem Hintergrund.
+    expect(layout.match(/src=\{MYCREWMATE_WORDMARK\}/g)).toHaveLength(4);
     expect(layout.match(/src=\{MYCREWMATE_ICON\}/g)).toHaveLength(2);
-    expect(layout.match(/alt="MyCrewMate"/g)).toHaveLength(3);
+    expect(layout.match(/alt="MyCrewMate"/g)).toHaveLength(4);
   });
 
   it("trennt Markenbereich und Online-Status in kompakte Sidebar-Panels", () => {
