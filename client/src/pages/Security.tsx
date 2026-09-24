@@ -182,9 +182,12 @@ export default function Security() {
   // UI-Grenze, falls ein Browser noch einen älteren Kontextwert vorhält.
   const isPlanningTeamIdentity =
     user?.openId.startsWith("planning-team-access-") === true;
+  const isDelegatedTenantAdmin =
+    administrativeContext.data?.isDelegatedTenantAdmin === true ||
+    isPlanningTeamIdentity;
   const isPrimaryTenantAdmin =
     administrativeContext.data?.isPrimaryTenantAdmin === true &&
-    !isPlanningTeamIdentity;
+    !isDelegatedTenantAdmin;
   const isAdmin =
     isPrimaryTenantAdmin || administrativeContext.data?.isTenantAdmin === true;
   const { data: status, isLoading: statusLoading } =

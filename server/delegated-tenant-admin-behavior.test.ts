@@ -75,6 +75,7 @@ describe("funktionale Rechtegrenzen einer Vereinsadministrator-Stellvertretung",
     await expect(caller.planningTeamAccesses.administrativeContext()).resolves.toEqual({
       isTenantAdmin: true,
       isPrimaryTenantAdmin: false,
+      isDelegatedTenantAdmin: true,
     });
   });
 
@@ -89,6 +90,7 @@ describe("funktionale Rechtegrenzen einer Vereinsadministrator-Stellvertretung",
     ).resolves.toEqual({
       isTenantAdmin: true,
       isPrimaryTenantAdmin: false,
+      isDelegatedTenantAdmin: true,
     });
   });
 

@@ -260,12 +260,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
         location !== "/aktivieren",
     });
   const isDelegatedTenantAdmin =
+    administrativeContext.data?.isDelegatedTenantAdmin === true;
+  const hasTenantAdministration =
     administrativeContext.data?.isTenantAdmin === true;
-  const effectiveNavigationRole = isDelegatedTenantAdmin
+  const effectiveNavigationRole = hasTenantAdministration
     ? "admin"
     : user?.role;
   const effectiveRoleLabel = isDelegatedTenantAdmin
     ? "Vereinsadministrator-Stellvertretung"
+    : hasTenantAdministration
+      ? "Vereinsadministrator"
     : user?.role === "admin"
       ? "Administrator"
       : "Planungsteam";

@@ -28,11 +28,13 @@ describe("Vereinsadministrator-Stellvertretung", () => {
     expect(router).toContain("const masterAdminProcedure");
     expect(router).toContain("ctx.user.openId === ADMIN_PASSWORD_OPEN_ID");
     expect(router).toContain("Nur der Vereinsadministrator darf eine administrative Stellvertretung vergeben oder ändern.");
-    expect(router).toContain("isDelegatedTenantAdministrator(existing)");
+    expect(router).toContain("isDelegatedTenantAdministratorAccess(existing)");
     expect(router).toContain("requirePrimaryTenantAdministrator(ctx.user)");
     expect(router).toContain("function isPrimaryTenantAdministrator");
+    expect(router).toContain("async function isDelegatedTenantAdministrator");
     expect(router).toContain("user.openId.startsWith(\"tenant-admin:\")");
     expect(router).toContain("isPrimaryTenantAdmin: isPrimaryTenantAdministrator(ctx.user)");
+    expect(router).toContain("isDelegatedTenantAdmin: await isDelegatedTenantAdministrator(ctx.user)");
   });
 
   it("kennzeichnet die Rolle rot und sperrt ihre Verwaltung für andere Stellvertretungen", () => {
@@ -49,9 +51,11 @@ describe("Vereinsadministrator-Stellvertretung", () => {
     expect(security).toContain(
       "administrativeContext.data?.isPrimaryTenantAdmin === true"
     );
+    expect(security).toContain("administrativeContext.data?.isDelegatedTenantAdmin === true");
     expect(security).toContain('user?.openId.startsWith("planning-team-access-")');
     expect(security).toContain("{isPrimaryTenantAdmin && (");
     expect(layout).toContain("Vereinsadministrator-Stellvertretung");
+    expect(layout).toContain("administrativeContext.data?.isDelegatedTenantAdmin === true");
     expect(layout).toContain("visibleNavigationSections(effectiveNavigationRole");
   });
 });

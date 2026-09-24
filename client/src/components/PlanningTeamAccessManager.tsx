@@ -125,9 +125,12 @@ export function PlanningTeamAccessManager() {
     trpc.planningTeamAccesses.administrativeContext.useQuery();
   const isPlanningTeamIdentity =
     user?.openId.startsWith("planning-team-access-") === true;
+  const isDelegatedTenantAdmin =
+    administrativeContext.data?.isDelegatedTenantAdmin === true ||
+    isPlanningTeamIdentity;
   const isPrimaryTenantAdmin =
     administrativeContext.data?.isPrimaryTenantAdmin === true &&
-    !isPlanningTeamIdentity;
+    !isDelegatedTenantAdmin;
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [filterYear, setFilterYear] = useState(ALL_YEARS);
   const [filterEventId, setFilterEventId] = useState(ALL_EVENTS);

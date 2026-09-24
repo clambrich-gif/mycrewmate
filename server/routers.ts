@@ -792,6 +792,23 @@ function isPrimaryTenantAdministrator(user: {
   );
 }
 
+/**
+ * Nur ein persönlicher Planungsteamzugang kann Stellvertretung sein. Diese
+ * Identitätsprüfung ist bewusst unabhängig von der technischen Sessionrolle,
+ * damit Hauptzugänge und Stellvertretungen eindeutig auseinandergehalten werden.
+ */
+async function isDelegatedTenantAdministrator(user: {
+  openId: string;
+  role: "user" | "admin";
+  isCron?: boolean;
+}) {
+  if (user.isCron) return false;
+  const accessId = planningTeamAccessIdFromOpenId(user.openId);
+  if (accessId === null) return false;
+  const access = await db.getPlanningTeamAccessCredentialForCurrentTenant(accessId);
+  return Boolean(access?.isTenantAdmin);
+}
+
 /** Nur ein echter Vereinsadministrator darf Stellvertretungen ernennen oder ändern. */
 function requirePrimaryTenantAdministrator(user: {
   openId: string;
@@ -807,7 +824,7 @@ function requirePrimaryTenantAdministrator(user: {
   }
 }
 
-function isDelegatedTenantAdministrator(access: { isTenantAdmin: boolean }) {
+function isDelegatedTenantAdministratorAccess(access: { isTenantAdmin: boolean }) {
   return access.isTenantAdmin;
 }
 
@@ -1866,6 +1883,7 @@ export const appRouter = router({
     administrativeContext: scopedProtectedProcedure.query(async ({ ctx }) => ({
       isTenantAdmin: await isTenantAdministrator(ctx.user),
       isPrimaryTenantAdmin: isPrimaryTenantAdministrator(ctx.user),
+      isDelegatedTenantAdmin: await isDelegatedTenantAdministrator(ctx.user),
     })),
     availableEvents: tenantAccessAdminProcedure.query(async () => {
       const years = await db.listEventYears();
@@ -2012,7 +2030,7 @@ export const appRouter = router({
             message: "Planungsteam-Zugang wurde nicht gefunden",
           });
         }
-        if (isDelegatedTenantAdministrator(access)) {
+        if (isDelegatedTenantAdministratorAccess(access)) {
           requirePrimaryTenantAdministrator(ctx.user);
         }
         if (!access.email) {
@@ -2165,7 +2183,7 @@ export const appRouter = router({
           });
         }
         if (
-          isDelegatedTenantAdministrator(existing) ||
+          isDelegatedTenantAdministratorAccess(existing) ||
           input.isTenantAdmin === true
         ) {
           requirePrimaryTenantAdministrator(ctx.user);
@@ -2203,7 +2221,7 @@ export const appRouter = router({
             message: "Planungsteam-Zugang wurde nicht gefunden",
           });
         }
-        if (isDelegatedTenantAdministrator(existing)) {
+        if (isDelegatedTenantAdministratorAccess(existing)) {
           requirePrimaryTenantAdministrator(ctx.user);
         }
         const initialPassword = generatePlanningTeamAccessPassword();
@@ -2254,7 +2272,7 @@ export const appRouter = router({
           });
         }
         if (
-          accesses.some(isDelegatedTenantAdministrator) &&
+          accesses.some(isDelegatedTenantAdministratorAccess) &&
           ctx.user.role !== "admin"
         ) {
           requirePrimaryTenantAdministrator(ctx.user);
@@ -2284,7 +2302,7 @@ export const appRouter = router({
             message: "Planungsteam-Zugang wurde nicht gefunden",
           });
         }
-        if (isDelegatedTenantAdministrator(existing)) {
+        if (isDelegatedTenantAdministratorAccess(existing)) {
           requirePrimaryTenantAdministrator(ctx.user);
         }
         return db.deletePlanningTeamAccess(input.id);
