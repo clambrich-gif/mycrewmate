@@ -81,6 +81,26 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(presence).toContain("administratorNamesKey");
   });
 
+  it("fordert beim neuen Veranstaltungsjahr eine individuelle erste Veranstaltung ohne Vorbelegung", () => {
+    const layout = source("client/src/components/Layout.tsx");
+    const router = source("server/routers.ts");
+    const yearContext = source("client/src/contexts/YearContext.tsx");
+
+    expect(layout).toContain('const [newYearInitialEventName, setNewYearInitialEventName] = useState("")');
+    expect(layout).toContain("const [newYearInitialEventDays, setNewYearInitialEventDays] = useState<Weekday[]>([])");
+    expect(layout).toContain("Erste Veranstaltung");
+    expect(layout).toContain("Name der Veranstaltung eingeben");
+    expect(layout).toContain("initialEventName: newYearInitialEventName");
+    expect(layout).toContain("activeDays: newYearInitialEventDays");
+    expect(layout).toContain("selectYear(result.event.year, result.event.id)");
+    expect(layout).toContain("Das Jahr wird ausschließlich mit Ihren Angaben angelegt.");
+    expect(router).toContain("initialEventName: z.string().trim().min(2).max(200)");
+    expect(router).toContain("db.createEvent(\n          input.initialEventName,");
+    expect(router).not.toContain('db.createEvent("MyEifelRide", input.year)');
+    expect(yearContext).toContain("preferredEventId?: number");
+    expect(yearContext).toContain("${EVENT_STORAGE_PREFIX}${tenantId}-${nextYear}");
+  });
+
   it("zeigt den zentralen Copyright-Vermerk in Anmeldung, Navigation und PDFs", () => {
     const branding = source("shared/branding.ts");
     const layout = source("client/src/components/Layout.tsx");

@@ -2635,10 +2635,20 @@ export const appRouter = router({
         : db.listEventYearsForPlanningTeamAccess(accessId);
     }),
     create: scopeAdminAuthProcedure
-      .input(z.object({ year: eventYearInput }))
+      .input(
+        z.object({
+          year: eventYearInput,
+          initialEventName: z.string().trim().min(2).max(200),
+          activeDays: activeDaysInput,
+        })
+      )
       .mutation(async ({ input }) => {
         await db.ensureEventYear(input.year);
-        const event = await db.createEvent("MyEifelRide", input.year);
+        const event = await db.createEvent(
+          input.initialEventName,
+          input.year,
+          input.activeDays
+        );
         return { success: true, event } as const;
       }),
     copyPlan: adminProcedure

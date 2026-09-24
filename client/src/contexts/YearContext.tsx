@@ -14,7 +14,7 @@ type PlanningScopeContextValue = {
   eventId: number;
   selectTenant: (tenantId: string) => void;
   synchronizeTenant: (tenantId: string) => void;
-  selectYear: (year: number) => void;
+  selectYear: (year: number, preferredEventId?: number) => void;
   selectEvent: (eventId: number) => void;
 };
 
@@ -82,8 +82,14 @@ export function YearProvider({ children }: { children: React.ReactNode }) {
         setTenantId(nextTenantId);
         setEventId(storedEventId(year, nextTenantId));
       },
-      selectYear(nextYear) {
+      selectYear(nextYear, preferredEventId) {
         window.localStorage.setItem(YEAR_STORAGE_KEY, String(nextYear));
+        if (preferredEventId && preferredEventId > 0) {
+          window.localStorage.setItem(
+            `${EVENT_STORAGE_PREFIX}${tenantId}-${nextYear}`,
+            String(preferredEventId)
+          );
+        }
         window.location.reload();
       },
       selectEvent(nextEventId) {

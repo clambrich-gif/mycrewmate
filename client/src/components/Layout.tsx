@@ -308,6 +308,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(getDesktopSidebarOpenPreference);
   const [newYear, setNewYear] = useState(year + 1);
+  const [newYearInitialEventName, setNewYearInitialEventName] = useState("");
+  const [newYearInitialEventDays, setNewYearInitialEventDays] = useState<Weekday[]>([]);
   const [newEventName, setNewEventName] = useState("");
   const [newEventDays, setNewEventDays] = useState<Weekday[]>([
     "Freitag",
@@ -831,10 +833,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
     completeFirstLoginOnboarding.mutate();
   }, [completeFirstLoginOnboarding.mutate]);
   const createYear = trpc.years.create.useMutation({
-    onSuccess: async () => {
-      await utils.years.list.invalidate();
+    onSuccess: async result => {
+      await Promise.all([
+        utils.years.list.invalidate(),
+        utils.events.list.invalidate(),
+      ]);
       setYearDialogOpen(false);
-      selectYear(newYear);
+      setNewYearInitialEventName("");
+      setNewYearInitialEventDays([]);
+      selectYear(result.event.year, result.event.id);
     },
     onError: error => toast.error(error.message),
   });
@@ -887,6 +894,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
     setEditEventStartDate("");
     setEditEventEndDate("");
     setEventManagerOpen(true);
+  };
+
+  const openYearDialog = () => {
+    setMobileMenuOpen(false);
+    setNewYear(year + 1);
+    setNewYearInitialEventName("");
+    setNewYearInitialEventDays([]);
+    setYearDialogOpen(true);
   };
 
   const openEventDateSettings = (targetEventId?: number) => {
@@ -1295,10 +1310,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   size="icon"
                   className="h-8 w-8"
                   title="Weiteres Jahr anlegen"
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    setYearDialogOpen(true);
-                  }}
+                  onClick={openYearDialog}
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
@@ -1551,7 +1563,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 size="icon"
                 className="h-7 w-7"
                 title="Weiteres Jahr anlegen"
-                onClick={() => setYearDialogOpen(true)}
+                onClick={openYearDialog}
               >
                 <Plus className="h-4 w-4" />
               </Button>
@@ -1748,24 +1760,82 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </main>
 
-      <Dialog open={yearDialogOpen} onOpenChange={setYearDialogOpen}>
+      <Dialog
+        open={yearDialogOpen}
+        onOpenChange={open => {
+          setYearDialogOpen(open);
+          if (!open) {
+            setNewYearInitialEventName("");
+            setNewYearInitialEventDays([]);
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Weiteres Veranstaltungsjahr anlegen</DialogTitle>
           </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="new-event-year">Jahr</Label>
-            <Input
-              id="new-event-year"
-              type="number"
-              min={2020}
-              max={2100}
-              value={newYear}
-              onChange={event => setNewYear(Number(event.target.value))}
-            />
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-event-year">Jahr</Label>
+              <Input
+                id="new-event-year"
+                type="number"
+                min={2020}
+                max={2100}
+                value={newYear}
+                onChange={event => setNewYear(Number(event.target.value))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-year-initial-event-name">
+                Erste Veranstaltung
+              </Label>
+              <Input
+                id="new-year-initial-event-name"
+                value={newYearInitialEventName}
+                placeholder="Name der Veranstaltung eingeben"
+                onChange={event => setNewYearInitialEventName(event.target.value)}
+              />
+            </div>
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium">
+                Aktive Veranstaltungstage
+              </legend>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {WEEKDAYS.map(day => {
+                  const checked = newYearInitialEventDays.includes(day);
+                  return (
+                    <label
+                      key={day}
+                      className="flex cursor-pointer items-center gap-2 rounded-md border bg-white px-3 py-2 text-sm text-slate-950"
+                    >
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={value =>
+                          setNewYearInitialEventDays(current =>
+                            value
+                              ? WEEKDAYS.filter(item =>
+                                  new Set([...current, day]).has(item)
+                                )
+                              : current.filter(item => item !== day)
+                          )
+                        }
+                      />
+                      {day}
+                    </label>
+                  );
+                })}
+              </div>
+              {newYearInitialEventDays.length === 0 && (
+                <p className="text-sm font-medium text-red-700">
+                  Bitte mindestens einen Veranstaltungstag auswählen.
+                </p>
+              )}
+            </fieldset>
             <p className="text-sm text-muted-foreground">
-              Das neue Jahr startet leer. Den Einsatzplan können Sie
-              anschließend aus einem Vorjahr übernehmen.
+              Das Jahr wird ausschließlich mit Ihren Angaben angelegt. Weitere
+              Veranstaltungen oder den Einsatzplan können Sie anschließend
+              ergänzen oder aus einem Vorjahr übernehmen.
             </p>
           </div>
           <DialogFooter>
@@ -1774,9 +1844,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </Button>
             <Button
               disabled={
-                !Number.isInteger(newYear) || newYear < 2020 || newYear > 2100
+                !Number.isInteger(newYear) ||
+                newYear < 2020 ||
+                newYear > 2100 ||
+                newYearInitialEventName.trim().length < 2 ||
+                newYearInitialEventDays.length === 0 ||
+                createYear.isPending
               }
-              onClick={() => createYear.mutate({ year: newYear })}
+              onClick={() =>
+                createYear.mutate({
+                  year: newYear,
+                  initialEventName: newYearInitialEventName,
+                  activeDays: newYearInitialEventDays,
+                })
+              }
             >
               Jahr anlegen
             </Button>

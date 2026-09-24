@@ -47,6 +47,7 @@ const dbMocks = vi.hoisted(() => ({
   updateTenantLogo: vi.fn(),
   getEvent: vi.fn(),
   updateCurrentEventPdfImage: vi.fn(),
+  ensureEventYear: vi.fn(),
   createEvent: vi.fn(),
   updateEventDetails: vi.fn(),
   deleteEvent: vi.fn(),
@@ -1033,6 +1034,42 @@ describe("Planungs-API", () => {
     ).rejects.toThrow("Mindestens ein Veranstaltungstag");
   });
 
+  it("legt ein neues Jahr nur mit der ausdrücklich erfassten ersten Veranstaltung an", async () => {
+    dbMocks.createEvent.mockResolvedValue({
+      id: 42,
+      year: 2028,
+      name: "Vereinsfest am See",
+      activeDays: ["Freitag", "Samstag"],
+      created: true,
+    });
+
+    await expect(
+      appRouter.createCaller(ctx).years.create({
+        year: 2028,
+        initialEventName: "Vereinsfest am See",
+        activeDays: ["Freitag", "Samstag"],
+      })
+    ).resolves.toMatchObject({
+      success: true,
+      event: { id: 42, name: "Vereinsfest am See" },
+    });
+
+    expect(dbMocks.ensureEventYear).toHaveBeenCalledWith(2028);
+    expect(dbMocks.createEvent).toHaveBeenCalledWith(
+      "Vereinsfest am See",
+      2028,
+      ["Freitag", "Samstag"]
+    );
+
+    await expect(
+      appRouter.createCaller(ctx).years.create({
+        year: 2029,
+        initialEventName: "Nur ein Zeichen ist nicht ausreichend",
+        activeDays: [],
+      })
+    ).rejects.toThrow("Mindestens ein Veranstaltungstag");
+  });
+
   it("löscht Veranstaltungen nur mit korrektem Administratorpasswort", async () => {
     dbMocks.deleteEvent.mockResolvedValue({
       deletedId: 2,
@@ -1956,9 +1993,13 @@ describe("Planungs-API", () => {
   it("verweigert dem Planungsteam jede Einsatzplanänderung", async () => {
     const caller = appRouter.createCaller(planningTeamCtx);
 
-    await expect(caller.years.create({ year: 2028 })).rejects.toMatchObject({
-      code: "FORBIDDEN",
-    });
+    await expect(
+      caller.years.create({
+        year: 2028,
+        initialEventName: "Planungs-Team-Test",
+        activeDays: ["Samstag"],
+      })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
     await expect(
       caller.shifts.create({
         day: "Freitag",
