@@ -338,7 +338,13 @@ export default function MasterAdminPortal() {
   });
   const updateLifecycle = trpc.platformAdmin.updateTenantLifecycle.useMutation({
     onSuccess: async result => {
-      await utils.platformAdmin.tenantOverview.invalidate();
+      // Archivierungen entfernen persönliche Zugänge vollständig. Beide
+      // Übersichten werden daher gemeinsam aktualisiert, damit auch ohne
+      // Seitenneuladen niemals ein alter Zugang in der Inventarliste steht.
+      await Promise.all([
+        utils.platformAdmin.tenantOverview.invalidate(),
+        utils.platformAdmin.accessInventory.invalidate(),
+      ]);
       toast.success(`Vereinsstatus wurde auf „${STATUS_META[result.status].label}“ gesetzt.`);
     },
     onError: error => toast.error(error.message),

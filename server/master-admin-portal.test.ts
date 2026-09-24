@@ -81,6 +81,7 @@ describe("Master-Admin-Portal", () => {
     expect(page).toContain("historischen Nachweis");
     expect(page).toContain("Alle Vereinsberechtigungen werden endgültig entfernt");
     expect(page).toContain("müssen sämtliche Zugänge bewusst neu vergeben werden");
+    expect(page).toContain("utils.platformAdmin.accessInventory.invalidate()");
   });
 
   it("trennt laufende Kennzahlen klar von archivierten Vereinen und deren Veranstaltungen", () => {
