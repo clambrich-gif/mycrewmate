@@ -199,10 +199,13 @@ export function PlanningTeamAccessManager() {
     () => uniqueContactChoices(availableContacts.data ?? [], form.contactId),
     [availableContacts.data, form.contactId]
   );
+  const effectiveEventIds = form.isTenantAdmin
+    ? (availableEvents.data ?? []).map(event => event.id)
+    : form.eventIds;
   const valid =
     form.label.trim().length >= 2 &&
     (form.id !== null || form.contactId !== null) &&
-    form.eventIds.length > 0 &&
+    effectiveEventIds.length > 0 &&
     Boolean(form.currentAdminPassword);
   const allPrintTargetsSelected =
     filteredAccesses.length > 0 &&
@@ -337,7 +340,7 @@ export function PlanningTeamAccessManager() {
       email: form.email.trim() ? form.email.trim() : undefined,
       modulePermissions: form.modulePermissions,
       isTenantAdmin: form.isTenantAdmin,
-      eventIds: form.eventIds,
+      eventIds: effectiveEventIds,
       currentAdminPassword: form.currentAdminPassword,
     };
     if (form.id === null) {
@@ -851,7 +854,7 @@ export function PlanningTeamAccessManager() {
                       email: form.email.trim(),
                       modulePermissions: form.modulePermissions,
                       isTenantAdmin: form.isTenantAdmin,
-                      eventIds: form.eventIds,
+                      eventIds: effectiveEventIds,
                       sendEmail: sendEmailInvite,
                       currentAdminPassword: form.currentAdminPassword,
                     });

@@ -189,4 +189,47 @@ describe("funktionale Rechtegrenzen einer Vereinsadministrator-Stellvertretung",
       "Nur der Vereinsadministrator darf eine administrative Stellvertretung vergeben oder ändern."
     );
   });
+
+  it("erlaubt Co-Admins den administrativen Kontext und Veranstaltungsdaten auch bei dynamischer Vereinsbindung", async () => {
+    vi.spyOn(db, "resolveTenantForUser").mockResolvedValue({
+      tenantId: "auditverein-nord-2026",
+      source: "membership",
+      isDefault: true,
+    } as any);
+    vi.spyOn(db, "getPlanningTeamAccessCredentialForCurrentTenant").mockResolvedValue({
+      id: 77,
+      label: "Stellvertretung Testverein",
+      contactName: "Stellvertretung Testverein",
+      email: "stellvertretung@testverein.invalid",
+      modulePermissions: ["helpers"],
+      isTenantAdmin: true,
+      passwordHash: "hash",
+      mustChangePassword: false,
+      sessionVersion: 1,
+    } as any);
+    vi.spyOn(db, "getEvent").mockResolvedValue({
+      id: 701,
+      year: 2026,
+      name: "Nordfest",
+      tenantId: "auditverein-nord-2026",
+    } as any);
+
+    const caller = appRouter.createCaller({
+      user: delegatedUser,
+      req: req({
+        "x-tenant-id": "auditverein-nord-2026",
+        "x-event-year": "2026",
+        "x-event-id": "701",
+      }),
+      res: { setHeader: vi.fn(), clearCookie: vi.fn(), cookie: vi.fn() } as any,
+    });
+
+    const ctx = await caller.planningTeamAccesses.administrativeContext();
+    expect(ctx.isTenantAdmin).toBe(true);
+    expect(ctx.isDelegatedTenantAdmin).toBe(true);
+    expect(ctx.isPrimaryTenantAdmin).toBe(false);
+
+    const event = await caller.events.current();
+    expect(event.name).toBe("Nordfest");
+  });
 });

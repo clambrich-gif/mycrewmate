@@ -1376,7 +1376,10 @@ export async function getPlanningTeamAccessCredentialByEmail(email: string) {
  * Die Prüfung wird für die Passwortbestätigung einer Stellvertretung benötigt
  * und darf nie einen Zugang aus einem anderen Verein lesen.
  */
-export async function getPlanningTeamAccessCredentialForCurrentTenant(accessId: number) {
+export async function getPlanningTeamAccessCredentialForCurrentTenant(
+  accessId: number,
+  targetTenantId: string = tenant()
+) {
   const database = await getDb();
   if (!database) return undefined;
   const [row] = await database
@@ -1401,7 +1404,7 @@ export async function getPlanningTeamAccessCredentialForCurrentTenant(accessId: 
     .where(
       and(
         eq(planningTeamAccesses.id, accessId),
-        eq(events.tenantId, tenant())
+        eq(events.tenantId, targetTenantId)
       )
     )
     .limit(1);

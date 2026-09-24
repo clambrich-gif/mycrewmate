@@ -246,11 +246,11 @@ async function isTenantAdministrator(user: {
   openId: string;
   role: "user" | "admin";
   isCron?: boolean;
-}) {
+}, targetTenantId?: string) {
   if (user.role === "admin" || user.isCron) return true;
   const accessId = planningTeamAccessIdForUser(user);
   if (accessId === null) return false;
-  const access = await db.getPlanningTeamAccessCredentialForCurrentTenant(accessId);
+  const access = await db.getPlanningTeamAccessCredentialForCurrentTenant(accessId, targetTenantId);
   return Boolean(access?.isTenantAdmin);
 }
 
@@ -286,7 +286,7 @@ async function requirePlanningTeamEventAccess(
   // ein manuell geänderter x-event-id Header niemals ein fremdes Event öffnen.
   const accessId = planningTeamAccessIdForUser(user);
   if (accessId === null) return;
-  if (await isTenantAdministrator(user)) return;
+  if (await isTenantAdministrator(user, scope.tenantId)) return;
   if (!(await db.isPlanningTeamAccessAllowedForEvent(accessId, scope.eventId))) {
     throw new TRPCError({
       code: "FORBIDDEN",
@@ -687,9 +687,11 @@ async function recordSecurityActivity(
 
 const scopedProtectedProcedure = activeSessionProcedure.use(async ({ ctx, next }) => {
   const scope = await authorizedPlanningScope(ctx.user, ctx.req);
-  await requirePlanningTeamEventAccess(ctx.user, scope);
-  await requireCompletedPlanningTeamPasswordChange(ctx.user);
-  return withPlanningScope(scope, () => next());
+  return withPlanningScope(scope, async () => {
+    await requirePlanningTeamEventAccess(ctx.user, scope);
+    await requireCompletedPlanningTeamPasswordChange(ctx.user);
+    return next();
+  });
 });
 
 const protectedProcedure = scopedProtectedProcedure.use(
@@ -816,11 +818,11 @@ async function isDelegatedTenantAdministrator(user: {
   openId: string;
   role: "user" | "admin";
   isCron?: boolean;
-}) {
+}, targetTenantId?: string) {
   if (user.isCron) return false;
   const accessId = planningTeamAccessIdFromOpenId(user.openId);
   if (accessId === null) return false;
-  const access = await db.getPlanningTeamAccessCredentialForCurrentTenant(accessId);
+  const access = await db.getPlanningTeamAccessCredentialForCurrentTenant(accessId, targetTenantId);
   return Boolean(access?.isTenantAdmin);
 }
 
@@ -2015,7 +2017,7 @@ export const appRouter = router({
     myPermissions: scopedProtectedProcedure.query(async ({ ctx }) => {
       return getPlanningTeamPermissionsForUser(ctx.user);
     }),
-    administrativeContext: scopedProtectedProcedure.query(async ({ ctx }) => ({
+    administrativeContext: eventSelectionProcedure.query(async ({ ctx }) => ({
       isTenantAdmin: await isTenantAdministrator(ctx.user),
       isPrimaryTenantAdmin: isPrimaryTenantAdministrator(ctx.user),
       isDelegatedTenantAdmin: await isDelegatedTenantAdministrator(ctx.user),
