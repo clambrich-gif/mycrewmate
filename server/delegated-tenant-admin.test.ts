@@ -44,10 +44,12 @@ describe("Vereinsadministrator-Stellvertretung", () => {
     expect(manager).toContain("border-2 border-red-500 bg-red-50");
     expect(manager).toContain("disabled={access.isTenantAdmin && !isPrimaryTenantAdmin}");
     expect(manager).toContain("Alle Veranstaltungen dieses Vereins");
+    expect(manager).toContain('user?.openId.startsWith("planning-team-access-")');
     expect(security).toContain("administrativeContext.data?.isTenantAdmin === true");
     expect(security).toContain(
       "administrativeContext.data?.isPrimaryTenantAdmin === true"
     );
+    expect(security).toContain('user?.openId.startsWith("planning-team-access-")');
     expect(security).toContain("{isPrimaryTenantAdmin && (");
     expect(layout).toContain("Vereinsadministrator-Stellvertretung");
     expect(layout).toContain("visibleNavigationSections(effectiveNavigationRole");

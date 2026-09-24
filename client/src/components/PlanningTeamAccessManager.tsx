@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { downloadBase64File } from "@/lib/download";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 import {
   CheckSquare,
   Copy,
@@ -115,14 +116,18 @@ function uniqueContactChoices<T extends ContactChoice>(
 }
 
 export function PlanningTeamAccessManager() {
+  const { user } = useAuth();
   const utils = trpc.useUtils();
   const accesses = trpc.planningTeamAccesses.list.useQuery();
   const availableContacts = trpc.planningTeamAccesses.availableContacts.useQuery();
   const availableEvents = trpc.planningTeamAccesses.availableEvents.useQuery();
   const administrativeContext =
     trpc.planningTeamAccesses.administrativeContext.useQuery();
+  const isPlanningTeamIdentity =
+    user?.openId.startsWith("planning-team-access-") === true;
   const isPrimaryTenantAdmin =
-    administrativeContext.data?.isPrimaryTenantAdmin === true;
+    administrativeContext.data?.isPrimaryTenantAdmin === true &&
+    !isPlanningTeamIdentity;
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [filterYear, setFilterYear] = useState(ALL_YEARS);
   const [filterEventId, setFilterEventId] = useState(ALL_EVENTS);

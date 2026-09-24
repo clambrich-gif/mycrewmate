@@ -177,8 +177,14 @@ export default function Security() {
     trpc.planningTeamAccesses.administrativeContext.useQuery(undefined, {
       enabled: Boolean(user),
     });
+  // Eine Stellvertretung bleibt auch mit voller Vereinsverwaltung technisch ein
+  // Planungsteamzugang. Die Identität ist eine zweite, bewusst konservative
+  // UI-Grenze, falls ein Browser noch einen älteren Kontextwert vorhält.
+  const isPlanningTeamIdentity =
+    user?.openId.startsWith("planning-team-access-") === true;
   const isPrimaryTenantAdmin =
-    administrativeContext.data?.isPrimaryTenantAdmin === true;
+    administrativeContext.data?.isPrimaryTenantAdmin === true &&
+    !isPlanningTeamIdentity;
   const isAdmin =
     isPrimaryTenantAdmin || administrativeContext.data?.isTenantAdmin === true;
   const { data: status, isLoading: statusLoading } =
