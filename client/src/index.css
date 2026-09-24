@@ -208,7 +208,7 @@
 .dashboard-daily-quote-track {
   display: flex;
   align-items: center;
-  animation: dashboard-daily-quote-marquee 20s linear infinite;
+  animation: dashboard-daily-quote-marquee 10s linear infinite;
   will-change: transform;
 }
 
