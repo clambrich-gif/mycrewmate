@@ -177,7 +177,8 @@ export default function Security() {
     trpc.planningTeamAccesses.administrativeContext.useQuery(undefined, {
       enabled: Boolean(user),
     });
-  const isPrimaryTenantAdmin = user?.role === "admin";
+  const isPrimaryTenantAdmin =
+    administrativeContext.data?.isPrimaryTenantAdmin === true;
   const isAdmin =
     isPrimaryTenantAdmin || administrativeContext.data?.isTenantAdmin === true;
   const { data: status, isLoading: statusLoading } =

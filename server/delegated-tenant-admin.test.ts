@@ -42,6 +42,9 @@ describe("Vereinsadministrator-Stellvertretung", () => {
     expect(manager).toContain("disabled={access.isTenantAdmin && !isPrimaryTenantAdmin}");
     expect(manager).toContain("Alle Veranstaltungen dieses Vereins");
     expect(security).toContain("administrativeContext.data?.isTenantAdmin === true");
+    expect(security).toContain(
+      "administrativeContext.data?.isPrimaryTenantAdmin === true"
+    );
     expect(security).toContain("{isPrimaryTenantAdmin && (");
     expect(layout).toContain("Vereinsadministrator-Stellvertretung");
     expect(layout).toContain("visibleNavigationSections(effectiveNavigationRole");
