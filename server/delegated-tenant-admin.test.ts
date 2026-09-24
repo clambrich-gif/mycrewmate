@@ -55,6 +55,7 @@ describe("Vereinsadministrator-Stellvertretung", () => {
     expect(security).toContain('user?.openId.startsWith("planning-team-access-")');
     expect(security).toContain("{isPrimaryTenantAdmin && (");
     expect(layout).toContain("Vereinsadministrator-Stellvertretung");
+    expect(layout).toContain("Hauptvereinsadministrator");
     expect(layout).toContain("administrativeContext.data?.isDelegatedTenantAdmin === true");
     expect(layout).toContain("visibleNavigationSections(effectiveNavigationRole");
   });

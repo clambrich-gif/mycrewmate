@@ -269,7 +269,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const effectiveRoleLabel = isDelegatedTenantAdmin
     ? "Vereinsadministrator-Stellvertretung"
     : hasTenantAdministration
-      ? "Vereinsadministrator"
+      ? "Hauptvereinsadministrator"
     : user?.role === "admin"
       ? "Administrator"
       : "Planungsteam";
