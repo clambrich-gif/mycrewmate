@@ -456,6 +456,24 @@ export async function ensureTenantMembership(input: {
 export async function synchronizePlanningTeamTenantMemberships(accessId: number) {
   const database = (await getDb()) as DB;
   return database.transaction(async tx => {
+    const [access] = await tx
+      .select({
+        id: planningTeamAccesses.id,
+        isTenantAdmin: planningTeamAccesses.isTenantAdmin,
+      })
+      .from(planningTeamAccesses)
+      .where(eq(planningTeamAccesses.id, accessId))
+      .limit(1)
+      .for("update");
+    if (!access) {
+      throw new Error("Planungsteam-Zugang konnte nicht für die Vereinszuordnung geladen werden");
+    }
+
+    // Die Mitgliedschaft ist neben dem Zugang selbst eine serverseitige
+    // Rollenquelle. Ein Co-Admin darf dort deshalb nie als bloßer Planer
+    // synchronisiert werden – ansonsten kann ein späterer Kontextwechsel
+    // seine vollständige Vereinsansicht verlieren.
+    const membershipRole = access.isTenantAdmin ? "tenant_admin" : "planner";
     const openId = planningTeamAccessOpenId(accessId);
     let [user] = await tx
       .select({ id: users.id })
@@ -499,12 +517,12 @@ export async function synchronizePlanningTeamTenantMemberships(accessId: number)
         .values({
           userId: user.id,
           tenantId: row.tenantId,
-          role: "planner",
+          role: membershipRole,
           status: "active",
           isDefault: false,
         })
         .onDuplicateKeyUpdate({
-          set: { role: "planner", status: "active" },
+          set: { role: membershipRole, status: "active" },
         });
     }
     await makeTenantMembershipDefault(tx, user.id, rows[0].tenantId);

@@ -871,6 +871,7 @@ describe("Event-based Access Control für Planungsteam", () => {
     vi.spyOn(db, "isPlanningTeamAccessPasswordChangeRequired").mockResolvedValue(true);
     const upsertUserSpy = vi.spyOn(db, "upsertUser").mockResolvedValue({} as any);
 
+    const clearCookieSpy = vi.fn();
     const authCaller = appRouter.createCaller({
       user: {
         id: 99,
@@ -884,7 +885,7 @@ describe("Event-based Access Control für Planungsteam", () => {
         lastSignedIn: new Date(),
       },
       req: mockReq(),
-      res: { cookie: cookieSpy, setHeader: vi.fn(), clearCookie: vi.fn() } as any,
+      res: { cookie: cookieSpy, setHeader: vi.fn(), clearCookie: clearCookieSpy } as any,
     });
 
     const statusResult = await authCaller.auth.initialPasswordChangeStatus();
@@ -898,7 +899,7 @@ describe("Event-based Access Control für Planungsteam", () => {
     expect(changeResult).toEqual({
       success: true,
       mustChangePassword: false,
-      tenantId: "rsc-eifelland-mayen",
+      requiresLogin: true,
     });
     expect(changeSpy).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -907,6 +908,10 @@ describe("Event-based Access Control für Planungsteam", () => {
       })
     );
     expect(upsertUserSpy).toHaveBeenCalled();
+    expect(clearCookieSpy).toHaveBeenCalledWith(
+      COOKIE_NAME,
+      expect.objectContaining({ maxAge: -1 })
+    );
   });
 
   it("blockiert operative Planungsabfragen bei noch offenem Einmalpasswortwechsel", async () => {

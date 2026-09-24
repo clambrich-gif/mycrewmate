@@ -82,4 +82,17 @@ describe("Vereinsadministrator-Stellvertretung", () => {
     expect(badge).toContain("Online: <strong>{counts.planningTeam}</strong> Planer");
     expect(badge).toContain("<strong>{counts.administrators}</strong> Admins");
   });
+
+  it("synchronisiert Co-Admins auch in der Mandantenmitgliedschaft nicht als Planer", () => {
+    const database = source("server/db.ts");
+    const sync = database.slice(
+      database.indexOf("export async function synchronizePlanningTeamTenantMemberships"),
+      database.indexOf("const year = ()")
+    );
+
+    expect(sync).toContain("isTenantAdmin: planningTeamAccesses.isTenantAdmin");
+    expect(sync).toContain('const membershipRole = access.isTenantAdmin ? "tenant_admin" : "planner"');
+    expect(sync).toContain("role: membershipRole");
+    expect(sync).toContain("set: { role: membershipRole, status: \"active\" }");
+  });
 });

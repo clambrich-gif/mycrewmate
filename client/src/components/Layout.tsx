@@ -59,7 +59,10 @@ import {
   tenantRoleLabel,
   useTenantAdministration,
 } from "@/hooks/useTenantAdministration";
-import { storePreviewSessionToken } from "@/lib/preview-session";
+import {
+  clearPreviewSessionToken,
+  storePreviewSessionToken,
+} from "@/lib/preview-session";
 import { WEEKDAYS, type Weekday } from "@shared/weekdays";
 import { COPYRIGHT_NOTICE } from "@shared/branding";
 import { ACTIVE_PILOT_TENANT } from "@shared/tenant";
@@ -271,6 +274,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [capsLockOn, setCapsLockOn] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [loginNotice, setLoginNotice] = useState<string | null>(null);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginFailureCount, setLoginFailureCount] = useState(0);
   const [forcePasswordChangeOpen, setForcePasswordChangeOpen] = useState(false);
@@ -740,6 +744,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     mutationKey: ["auth", "passwordLogin"],
     onSuccess: result => {
       setLoginFailureCount(0);
+      setLoginNotice(null);
       storePreviewSessionToken(result.previewSessionToken);
       // Der Loginserver bestimmt den Verein. Dadurch kann ein RSC-Wert aus
       // LocalStorage niemals die frisch angemeldete Vereinsadministration
@@ -760,29 +765,49 @@ export function Layout({ children }: { children: React.ReactNode }) {
     trpc.auth.completeInitialPasswordChange.useMutation({
       mutationKey: ["auth", "completeInitialPasswordChange"],
       onSuccess: async result => {
-        storePreviewSessionToken(result.previewSessionToken);
+        clearPreviewSessionToken();
         clearRememberedActivationTenantId();
         setActivationTenantId(null);
         setInitialPassword("");
         setInitialPasswordConfirmation("");
         setInitialPasswordError(null);
         setForcePasswordChangeOpen(false);
+        setPassword("");
+        setLoginEmail("");
+        setLoginNotice(
+          "Passwort gespeichert. Bitte melden Sie sich jetzt einmal regulär mit Ihrer E-Mail-Adresse und dem neuen Passwort an."
+        );
+        utils.auth.me.setData(undefined, null);
         await Promise.all([
           utils.auth.me.invalidate(),
           utils.auth.initialPasswordChangeStatus.invalidate(),
         ]);
-        toast.success("Dein persönliches Passwort wurde gespeichert");
+        toast.success("Passwort gespeichert – bitte jetzt regulär anmelden");
       },
       onError: error => setInitialPasswordError(error.message),
     });
   const completeTenantAdminInitialPasswordChange =
     trpc.auth.completeTenantAdminInitialPasswordChange.useMutation({
       mutationKey: ["auth", "completeTenantAdminInitialPasswordChange"],
-      onSuccess: result => {
-        storePreviewSessionToken(result.previewSessionToken);
+      onSuccess: async () => {
+        clearPreviewSessionToken();
         clearRememberedActivationTenantId();
         setActivationTenantId(null);
-        selectTenant(result.tenantId);
+        setInitialPassword("");
+        setInitialPasswordConfirmation("");
+        setInitialPasswordError(null);
+        setForcePasswordChangeOpen(false);
+        setPassword("");
+        setLoginEmail("");
+        setLoginNotice(
+          "Passwort gespeichert. Bitte melden Sie sich jetzt einmal regulär mit Ihrer E-Mail-Adresse und dem neuen Passwort an."
+        );
+        utils.auth.me.setData(undefined, null);
+        await Promise.all([
+          utils.auth.me.invalidate(),
+          utils.auth.initialPasswordChangeStatus.invalidate(),
+        ]);
+        toast.success("Passwort gespeichert – bitte jetzt regulär anmelden");
       },
       onError: error => setInitialPasswordError(error.message),
     });
@@ -970,6 +995,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
               Melden Sie sich mit Ihrer persönlichen E-Mail-Adresse und Ihrem Passwort an.
               Ihre Berechtigungen erkennt MyCrewMate automatisch.
             </p>
+            {loginNotice && (
+              <p
+                className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-center text-xs leading-5 text-emerald-900"
+                role="status"
+                aria-live="polite"
+              >
+                {loginNotice}
+              </p>
+            )}
             <div className="space-y-1.5">
               <Label htmlFor="personal-login-email" className="text-sm font-semibold text-slate-800">
                 E-Mail-Adresse

@@ -126,7 +126,7 @@ describe("Aktivierung persönlicher Vereinsadmins", () => {
     );
   });
 
-  it("erkennt den erzwungenen Passwortwechsel und setzt danach eine neue persönliche Sitzung", async () => {
+  it("erkennt den erzwungenen Passwortwechsel und verlangt danach eine reguläre neue Anmeldung", async () => {
     const requiredSpy = vi
       .spyOn(db, "isTenantAdminPasswordChangeRequired")
       .mockResolvedValue(true);
@@ -145,11 +145,11 @@ describe("Aktivierung persönlicher Vereinsadmins", () => {
       tenantName: "Bunefix",
       tenantStatus: "pilot",
     });
-    const cookieSpy = vi.fn();
+    const clearCookieSpy = vi.fn();
     const caller = appRouter.createCaller({
       user: tenantAdminUser,
       req: mockReq(),
-      res: { cookie: cookieSpy, setHeader: vi.fn(), clearCookie: vi.fn() } as any,
+      res: { cookie: vi.fn(), setHeader: vi.fn(), clearCookie: clearCookieSpy } as any,
     });
 
     await expect(caller.auth.initialPasswordChangeStatus()).resolves.toEqual({
@@ -164,7 +164,7 @@ describe("Aktivierung persönlicher Vereinsadmins", () => {
     ).resolves.toEqual({
       success: true,
       mustChangePassword: false,
-      tenantId: "bunefix",
+      requiresLogin: true,
     });
 
     expect(requiredSpy).toHaveBeenCalledWith(tenantAdminUser.id);
@@ -174,10 +174,9 @@ describe("Aktivierung persönlicher Vereinsadmins", () => {
         passwordHash: expect.stringMatching(/^\$2/),
       })
     );
-    expect(cookieSpy).toHaveBeenCalledWith(
+    expect(clearCookieSpy).toHaveBeenCalledWith(
       COOKIE_NAME,
-      expect.any(String),
-      expect.objectContaining({ maxAge: expect.any(Number) })
+      expect.objectContaining({ maxAge: -1 })
     );
   });
 

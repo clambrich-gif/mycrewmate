@@ -400,7 +400,7 @@ export function PlanningTeamAccessManager() {
     <div className="space-y-3" data-planning-team-access-manager>
       <p className="text-sm text-muted-foreground">
         Jeder Zugang erhält ein eigenes Passwort. Fachrechte und Veranstaltungsfreigaben
-        werden zusätzlich auf dem Server geprüft. Eine rot markierte Stellvertretung
+        werden zusätzlich auf dem Server geprüft. Ein rot markierter Co-Admin
         erhält volle Rechte ausschließlich im eigenen Verein.
       </p>
       <Accordion
@@ -536,7 +536,7 @@ export function PlanningTeamAccessManager() {
                       {access.isTenantAdmin && (
                         <Badge className="border-2 border-red-500 bg-red-50 font-semibold text-red-900 hover:bg-red-50">
                           <ShieldAlert className="mr-1 h-3.5 w-3.5" />
-                          Vereinsadministrator-Stellvertretung
+                          Co-Admin
                         </Badge>
                       )}
                     </div>

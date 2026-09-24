@@ -1525,27 +1525,22 @@ export const appRouter = router({
             message: "Persönlicher Planungsteamzugang konnte nicht geladen werden.",
           });
         }
-        const tenantId = await tenantIdForFreshPersonalLogin({
-          id: planningUser.id,
-          openId: planningUser.openId,
-        });
-        const token = await sdk.createSessionToken(
-          planningTeamAccessOpenId(updated.id),
-          {
-            name: sessionName,
-            expiresInMs: PASSWORD_SESSION_MS,
-            sessionVersion: updated.sessionVersion,
-          }
+        // Das Einmalpasswort wird nur zum sicheren Setzen des persönlichen
+        // Passworts verwendet. Danach folgt bewusst eine reguläre, neue
+        // Anmeldung – so arbeiten weder ein Aktivierungs-Token noch ein
+        // veralteter Browserkontext mit der fertigen Vereinsrolle weiter.
+        await removeSessionPresence(ctx.req).catch(() => {});
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+        await recordSecurityActivity(
+          auditActor(ctx.user),
+          `Persönliches Passwort für „${planningUser.name ?? sessionName}“ festgelegt; erneute Anmeldung erforderlich`,
+          "updated"
         );
-        ctx.res.cookie(COOKIE_NAME, token, {
-          ...getSessionCookieOptions(ctx.req),
-          maxAge: PASSWORD_SESSION_MS,
-        });
         return {
           success: true,
           mustChangePassword: false,
-          tenantId,
-          ...(isEmbeddedManusPreview(ctx.req) ? { previewSessionToken: token } : {}),
+          requiresLogin: true,
         } as const;
       }),
     completeTenantAdminInitialPasswordChange: baseProtectedProcedure
@@ -1575,24 +1570,20 @@ export const appRouter = router({
           userId: ctx.user.id,
           passwordHash: await hashPassword(input.password),
         });
-        const tenantId = await tenantIdForFreshPersonalLogin({
-          id: updated.userId,
-          openId: updated.userOpenId,
-        });
-        const token = await sdk.createSessionToken(updated.userOpenId, {
-          name: updated.userName ?? ctx.user.name ?? "Administrator",
-          expiresInMs: PASSWORD_SESSION_MS,
-          sessionVersion: updated.sessionVersion,
-        });
-        ctx.res.cookie(COOKIE_NAME, token, {
-          ...getSessionCookieOptions(ctx.req),
-          maxAge: PASSWORD_SESSION_MS,
-        });
+        // Auch persönliche Vereinsadmins melden sich nach der Ersteinrichtung
+        // einmal regulär mit dem gerade gewählten Passwort an.
+        await removeSessionPresence(ctx.req).catch(() => {});
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+        await recordSecurityActivity(
+          auditActor(ctx.user),
+          `Persönliches Passwort für „${updated.userName ?? ctx.user.name ?? "Administrator"}“ festgelegt; erneute Anmeldung erforderlich`,
+          "updated"
+        );
         return {
           success: true,
           mustChangePassword: false,
-          tenantId,
-          ...(isEmbeddedManusPreview(ctx.req) ? { previewSessionToken: token } : {}),
+          requiresLogin: true,
         } as const;
       }),
     adminPasswordLogin: publicProcedure
@@ -2113,7 +2104,7 @@ export const appRouter = router({
         const tenantName = activeTenant?.name ?? "Vereinsplanung";
         const activationUrl = publicAppUrl(`/aktivieren?token=${encodeURIComponent(rawToken)}`);
         const modulesSummary = input.isTenantAdmin
-          ? "Alle Fachbereiche als Vereinsadministrator-Stellvertretung"
+          ? "Alle Fachbereiche als Co-Admin"
           : planningModuleSummary(input.modulePermissions);
 
         let emailSent = false;
