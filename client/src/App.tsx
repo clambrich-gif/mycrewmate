@@ -1,5 +1,6 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { applyBrowserBranding } from "@/lib/browser-branding";
 import {
   appUrlForCurrentLocation,
   isMarketingSite,
@@ -159,6 +160,10 @@ function Router() {
 function App() {
   const marketingSite = isMarketingSite();
   const masterAdminSite = isMasterAdminSite();
+
+  useEffect(() => {
+    applyBrowserBranding();
+  }, []);
 
   return (
     <ErrorBoundary>

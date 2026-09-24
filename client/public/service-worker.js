@@ -1,9 +1,11 @@
-const STATIC_CACHE = "mycrewmate-pwa-v3";
+const STATIC_CACHE = "mycrewmate-pwa-v4";
 const PWA_ASSETS = [
   "/manifest.json",
   "/favicon.ico",
   "/icons/mycrewmate-pwa-192.png",
   "/icons/mycrewmate-pwa-512.png",
+  "/icons/mycrewmate-admin-192.png",
+  "/icons/mycrewmate-admin-512.png",
   "/icons/shortcut-einsatzplan-192.png",
   "/icons/shortcut-helferkartei-192.png",
   "/icons/shortcut-orga-chat-192.png",
