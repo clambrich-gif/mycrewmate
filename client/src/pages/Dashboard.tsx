@@ -28,7 +28,7 @@ import {
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import {
@@ -782,8 +782,11 @@ function EventCountdownWidget({
   const { isTenantAdmin: canManageLogo } = useTenantAdministration();
   const utils = trpc.useUtils();
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const quoteViewportRef = useRef<HTMLDivElement>(null);
+  const quoteTextRef = useRef<HTMLSpanElement>(null);
   const [now, setNow] = useState(() => new Date());
   const [logoLoadFailed, setLogoLoadFailed] = useState(false);
+  const [quoteMotion, setQuoteMotion] = useState({ distance: 0, duration: 10 });
   useEffect(() => {
     const interval = window.setInterval(() => setNow(new Date()), 60_000);
     return () => window.clearInterval(interval);
@@ -812,6 +815,35 @@ function EventCountdownWidget({
     : DEFAULT_DASHBOARD_COUNTER_LOGO;
   const quote = dashboardDailyQuote(now);
   const isUrgent = state.kind === "upcoming" && state.days < 14;
+
+  useLayoutEffect(() => {
+    const viewport = quoteViewportRef.current;
+    const text = quoteTextRef.current;
+    if (!viewport || !text) return;
+
+    const updateQuoteMotion = () => {
+      const distance = Math.ceil(viewport.clientWidth + text.scrollWidth);
+      // Rund 60 Pixel pro Sekunde: schnell genug für einen prägnanten Tagesimpuls,
+      // aber stets mit einer vollständigen, gleichmäßigen Durchlaufstrecke.
+      const duration = Math.max(5, Math.round((distance / 60) * 10) / 10);
+      setQuoteMotion(current =>
+        current.distance === distance && current.duration === duration
+          ? current
+          : { distance, duration }
+      );
+    };
+
+    updateQuoteMotion();
+    const observer = new ResizeObserver(updateQuoteMotion);
+    observer.observe(viewport);
+    observer.observe(text);
+    return () => observer.disconnect();
+  }, [quote]);
+
+  const quoteTrackStyle = {
+    "--dashboard-daily-quote-distance": `-${quoteMotion.distance}px`,
+    "--dashboard-daily-quote-duration": `${quoteMotion.duration}s`,
+  } as CSSProperties;
 
   const selectLogo = () => {
     if (!canManageLogo || uploadLogo.isPending) return;
@@ -909,13 +941,10 @@ function EventCountdownWidget({
         </button>
         <div className="min-w-0">{counterContent}</div>
       </div>
-      <div className="relative flex h-8 items-center overflow-hidden border-t border-slate-200 bg-slate-50 text-base text-slate-600">
-        <div className="dashboard-daily-quote-track flex min-w-max items-center whitespace-nowrap font-medium leading-none">
-          <span className="dashboard-daily-quote-segment">
+      <div ref={quoteViewportRef} className="relative flex h-8 items-center overflow-hidden border-t border-slate-200 bg-slate-50 text-base text-slate-600">
+        <div style={quoteTrackStyle} className="dashboard-daily-quote-track flex min-w-max items-center whitespace-nowrap font-medium leading-none">
+          <span ref={quoteTextRef} className="dashboard-daily-quote-segment">
             {quote} <span aria-hidden="true">·</span>
-          </span>
-          <span className="dashboard-daily-quote-segment" aria-hidden="true">
-            {quote} ·
           </span>
         </div>
       </div>

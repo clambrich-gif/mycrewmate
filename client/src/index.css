@@ -202,13 +202,15 @@
   .countdown-urgent::after { animation: none; }
 }
 
-/* Der Tagesimpuls im kompakten Dashboard-Zähler nutzt zwei identische,
-   versetzt laufende Textsegmente. Beim Verlassen des ersten Spruchs ist der
-   zweite bereits sichtbar; dadurch entsteht keine leere Laufpause. */
+/* Der Tagesimpuls startet rechts außerhalb des sichtbaren Bereichs und läuft
+   vollständig nach links heraus. Die exakte Strecke (Satzbreite + Sichtfeld)
+   wird gemessen, damit kein Satz vorzeitig zurückspringt. */
 .dashboard-daily-quote-track {
+  position: absolute;
+  left: 100%;
   display: flex;
   align-items: center;
-  animation: dashboard-daily-quote-marquee 10s linear infinite;
+  animation: dashboard-daily-quote-marquee var(--dashboard-daily-quote-duration, 10s) linear infinite;
   will-change: transform;
 }
 
@@ -225,11 +227,12 @@
 
 @keyframes dashboard-daily-quote-marquee {
   from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
+  to { transform: translateX(var(--dashboard-daily-quote-distance, -600px)); }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .dashboard-daily-quote-track {
+    position: static;
     max-width: 100%;
     padding-inline: .65rem;
     overflow: hidden;

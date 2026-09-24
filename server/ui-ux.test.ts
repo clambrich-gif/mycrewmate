@@ -1050,6 +1050,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain("nur noch");
     expect(dashboard).toContain("dashboard-daily-quote-track");
     expect(dashboard).toContain("dashboard-daily-quote-segment");
+    expect(dashboard).toContain("quoteViewportRef");
+    expect(dashboard).toContain("quoteTextRef");
+    expect(dashboard).toContain("ResizeObserver");
+    expect(dashboard).toContain("viewport.clientWidth + text.scrollWidth");
+    expect(dashboard).toContain("--dashboard-daily-quote-distance");
     expect(dashboard).toContain('aria-hidden="true"');
     expect(dashboard).toContain('h-8 items-center overflow-hidden');
     expect(dashboard).toContain('text-base text-slate-600');
@@ -1079,9 +1084,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(styles).toContain(".dashboard-event-countdown");
     expect(styles).toContain("width: 16rem !important");
     expect(styles).toContain("@keyframes dashboard-daily-quote-marquee");
-    expect(styles).toContain("translateX(-50%)");
-    expect(styles).toContain("dashboard-daily-quote-marquee 10s linear infinite");
-    expect(styles).toContain(".dashboard-daily-quote-segment:nth-child(n + 2)");
+    expect(styles).toContain("left: 100%");
+    expect(styles).toContain("--dashboard-daily-quote-duration");
+    expect(styles).toContain("--dashboard-daily-quote-distance");
+    expect(styles).toContain("position: absolute");
     expect(styles).toContain("prefers-reduced-motion: no-preference");
     expect(styles).toContain("will-change: opacity, transform");
     expect(quotes).toContain("DAILY_DASHBOARD_QUOTES.length !== 365");
