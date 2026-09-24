@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { appRouter } from "./routers";
 import * as db from "./db";
@@ -22,6 +24,16 @@ describe("Erst-Login-Onboarding", () => {
       id: 990,
       openId,
     }) as any);
+  });
+
+  it("lässt den Willkommenshinweis automatisch erst nach 15 Sekunden weiterlaufen", () => {
+    const component = readFileSync(
+      path.resolve(process.cwd(), "client/src/components/FirstLoginOnboarding.tsx"),
+      "utf8"
+    );
+
+    expect(component).toContain("const WELCOME_DURATION_MS = 15_000;");
+    expect(component).toContain("elapsed >= WELCOME_DURATION_MS");
   });
 
   it("liefert pending true für ein neues Planungsteam-Konto mit ausstehendem Onboarding", async () => {

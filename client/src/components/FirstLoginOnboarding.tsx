@@ -19,7 +19,7 @@ import {
 import { useCallback, useEffect, useState } from "react";
 
 const MYCREWMATE_WORDMARK = "/brand/mycrewmate-wordmark.png";
-const WELCOME_DURATION_MS = 8_000;
+const WELCOME_DURATION_MS = 15_000;
 
 type FirstLoginOnboardingProps = {
   open: boolean;
