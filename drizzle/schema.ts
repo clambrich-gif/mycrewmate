@@ -842,6 +842,10 @@ export type TeamNoteAuditLog = typeof teamNoteAuditLogs.$inferSelect;
 
 export const deletionAuditLogs = mysqlTable("deletion_audit_logs", {
   id: int("id").autoincrement().primaryKey(),
+  /** Vereinssicht des Protokolleintrags; null kennzeichnet ein reines Plattformereignis. */
+  tenantId: varchar("tenantId", { length: 96 }).references(() => tenants.id, {
+    onDelete: "cascade",
+  }),
   year: int("year").notNull(),
   eventId: int("eventId").references(() => events.id, {
     onDelete: "set null",
@@ -866,7 +870,17 @@ export const deletionAuditLogs = mysqlTable("deletion_audit_logs", {
   restoredAt: timestamp("restoredAt"),
   restoredByUserId: int("restoredByUserId"),
   restoredByName: varchar("restoredByName", { length: 200 }),
-});
+}, table => [
+  index("deletion_audit_logs_tenant_created_idx").on(
+    table.tenantId,
+    table.createdAt
+  ),
+  index("deletion_audit_logs_tenant_event_created_idx").on(
+    table.tenantId,
+    table.eventId,
+    table.createdAt
+  ),
+]);
 export type DeletionAuditLog = typeof deletionAuditLogs.$inferSelect;
 
 /** Zentraler, unveränderlicher Verlauf aller operativen Planungsaktionen. */
@@ -874,6 +888,10 @@ export const activityLogs = mysqlTable(
   "activity_logs",
   {
     id: int("id").autoincrement().primaryKey(),
+    /** Vereinssicht des Protokolleintrags; null kennzeichnet ein reines Plattformereignis. */
+    tenantId: varchar("tenantId", { length: 96 }).references(() => tenants.id, {
+      onDelete: "cascade",
+    }),
     year: int("year").notNull(),
     eventId: int("eventId").references(() => events.id, {
       onDelete: "set null",
@@ -896,6 +914,12 @@ export const activityLogs = mysqlTable(
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   table => [
+    index("activity_logs_tenant_created_idx").on(table.tenantId, table.createdAt),
+    index("activity_logs_tenant_event_created_idx").on(
+      table.tenantId,
+      table.eventId,
+      table.createdAt
+    ),
     index("activity_logs_event_created_idx").on(table.eventId, table.createdAt),
     index("activity_logs_year_created_idx").on(table.year, table.createdAt),
   ]

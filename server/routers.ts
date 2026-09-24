@@ -656,7 +656,8 @@ async function recordOperationalActivity(
 async function recordSecurityActivity(
   actor: db.AuditActor,
   subject: string,
-  action: db.ActivityLogAction = "updated"
+  action: db.ActivityLogAction = "updated",
+  tenantId?: string | null
 ) {
   try {
     await db.recordActivityLog({
@@ -664,6 +665,7 @@ async function recordSecurityActivity(
       module: "Zugangsschutz",
       action,
       subject,
+      ...(tenantId === undefined ? {} : { tenantId }),
     });
   } catch (error) {
     console.warn("[Security] Sicherheitsereignis konnte nicht protokolliert werden", error);
@@ -1350,6 +1352,17 @@ export const appRouter = router({
             openId: adminCreds.userOpenId,
           });
           const sessionName = adminCreds.userName ?? input.email;
+          await recordSecurityActivity(
+            {
+              userId: adminCreds.userId,
+              name: sessionName,
+              role: "admin",
+              loginMethod: "password",
+            },
+            "Vereinsadministrator-Anmeldung erfolgreich",
+            "created",
+            tenantId
+          );
           const token = await sdk.createSessionToken(adminCreds.userOpenId, {
             name: sessionName,
             expiresInMs: PASSWORD_SESSION_MS,
@@ -1422,6 +1435,17 @@ export const appRouter = router({
           id: planningUser.id,
           openId: accessOpenId,
         });
+        await recordSecurityActivity(
+          {
+            userId: planningUser.id,
+            name: sessionName,
+            role: "user",
+            loginMethod: "password",
+          },
+          "Planungsteam-Anmeldung erfolgreich",
+          "created",
+          tenantId
+        );
         const token = await sdk.createSessionToken(accessOpenId, {
           name: sessionName,
           expiresInMs: PASSWORD_SESSION_MS,
@@ -1590,6 +1614,17 @@ export const appRouter = router({
             openId: adminCreds.userOpenId,
           });
           const sessionName = adminCreds.userName ?? input.email;
+          await recordSecurityActivity(
+            {
+              userId: adminCreds.userId,
+              name: sessionName,
+              role: "admin",
+              loginMethod: "password",
+            },
+            "Vereinsadministrator-Anmeldung erfolgreich",
+            "created",
+            tenantId
+          );
           const token = await sdk.createSessionToken(adminCreds.userOpenId, {
             name: sessionName,
             expiresInMs: PASSWORD_SESSION_MS,
@@ -1639,7 +1674,8 @@ export const appRouter = router({
             loginMethod: "admin-password",
           },
           "Administrator-Anmeldung erfolgreich",
-          "created"
+          "created",
+          null
         );
         const token = await sdk.createSessionToken(ADMIN_PASSWORD_OPEN_ID, {
           name: input.administratorName,
@@ -1692,7 +1728,9 @@ export const appRouter = router({
             role: "admin",
             loginMethod: "admin-password",
           },
-          "Administratorpasswort über Recovery-Key zurückgesetzt"
+          "Administratorpasswort über Recovery-Key zurückgesetzt",
+          "updated",
+          null
         );
 
         // Admin-Benutzer aktualisieren / erstellen und direkt einloggen
@@ -1829,7 +1867,9 @@ export const appRouter = router({
         await db.setAdminPasswordHash(await hashPassword(input.password));
         await recordSecurityActivity(
           auditActor(ctx.user),
-          "Administratorpasswort neu vergeben"
+          "Administratorpasswort neu vergeben",
+          "updated",
+          null
         );
         return { success: true } as const;
       }),
@@ -1837,7 +1877,9 @@ export const appRouter = router({
       await db.unlockPlanningTeamLogin();
       await recordSecurityActivity(
         auditActor(ctx.user),
-        "Globaler Notfall-Stopp für alle Planungsteam-Zugänge aufgehoben"
+        "Globaler Notfall-Stopp für alle Planungsteam-Zugänge aufgehoben",
+        "updated",
+        null
       );
       return { success: true } as const;
     }),
@@ -1845,7 +1887,9 @@ export const appRouter = router({
       await db.lockPlanningTeamLogin();
       await recordSecurityActivity(
         auditActor(ctx.user),
-        "Globaler Notfall-Stopp für alle Planungsteam-Zugänge aktiviert"
+        "Globaler Notfall-Stopp für alle Planungsteam-Zugänge aktiviert",
+        "updated",
+        null
       );
       return { success: true } as const;
     }),
@@ -2341,7 +2385,8 @@ export const appRouter = router({
         await recordSecurityActivity(
           auditActor(ctx.user),
           `Testzugang „${deleted.name}“ (${input.type === "tenant_admin" ? "Vereinsadmin" : "Planungsteam"}) entfernt`,
-          "deleted"
+          "deleted",
+          null
         );
         return { success: true, ...deleted } as const;
       }),
@@ -2380,7 +2425,8 @@ export const appRouter = router({
         await recordSecurityActivity(
           auditActor(ctx.user),
           `Interner Testverein „${deleted.tenantName}“ einschließlich ${deleted.removedEventCount} Veranstaltung(en) endgültig entfernt`,
-          "deleted"
+          "deleted",
+          null
         );
         return { success: true, ...deleted } as const;
       }),

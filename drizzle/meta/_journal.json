@@ -428,6 +428,13 @@
       "when": 1790239582548,
       "tag": "0060_powerful_mister_sinister",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "5",
+      "when": 1790245506950,
+      "tag": "0061_tenant_scoped_audit_logs",
+      "breakpoints": true
     }
   ]
 }

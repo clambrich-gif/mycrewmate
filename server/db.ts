@@ -2828,18 +2828,43 @@ export async function recordActivityLog(input: {
   module: string;
   action: ActivityLogAction;
   subject: string;
+  /** Undefined übernimmt den aktuellen Verein; null kennzeichnet Plattformereignisse. */
+  tenantId?: string | null;
 }) {
   const database = (await getDb()) as DB;
   const selectedYear = year();
   const selectedEventId = event();
+  const selectedTenantId =
+    "tenantId" in input ? input.tenantId ?? null : tenant();
   let validEventId: number | null = null;
   let eventName = `Veranstaltung ${selectedYear}`;
+  let validTenantId: string | null = null;
+  if (selectedTenantId) {
+    try {
+      const [tenantRow] = await database
+        .select({ id: tenants.id })
+        .from(tenants)
+        .where(eq(tenants.id, selectedTenantId))
+        .limit(1);
+      if (tenantRow) {
+        validTenantId = tenantRow.id;
+      }
+    } catch {
+      // Mock-Szenarien ohne Tabelle ignorieren
+    }
+  }
   try {
     const [selectedEvent] = await database
       .select({ id: events.id, name: events.name })
       .from(events)
       .where(
-        and(eq(events.id, selectedEventId), eq(events.year, selectedYear))
+        and(
+          eq(events.id, selectedEventId),
+          eq(events.year, selectedYear),
+          validTenantId === null
+            ? sql`false`
+            : eq(events.tenantId, validTenantId)
+        )
       )
       .limit(1);
     if (selectedEvent) {
@@ -2850,6 +2875,7 @@ export async function recordActivityLog(input: {
     // Bei Mock-Aufrufen ohne volles Event-Schema Fallback beibehalten
   }
   await database.insert(activityLogs).values({
+    tenantId: validTenantId,
     year: selectedYear,
     eventId: validEventId,
     eventName,
@@ -2883,7 +2909,11 @@ async function recordDeletionAudit(
     .select({ name: events.name })
     .from(events)
     .where(
-      and(eq(events.id, selectedEventId), eq(events.year, selectedYear))
+      and(
+        eq(events.id, selectedEventId),
+        eq(events.year, selectedYear),
+        eq(events.tenantId, tenant())
+      )
     )
     .limit(1);
   if (!selectedEvent) {
@@ -2893,6 +2923,7 @@ async function recordDeletionAudit(
   }
   await client.insert(deletionAuditLogs).values(
     entries.map(entry => ({
+      tenantId: tenant(),
       year: selectedYear,
       eventId: selectedEventId,
       eventName: selectedEvent.name,
@@ -3032,6 +3063,7 @@ export async function listDeletionAuditLogs(filters?: {
   const db = await getDb();
   if (!db) return [];
   const conditions = [
+    eq(deletionAuditLogs.tenantId, tenant()),
     ...(filters?.eventYear
       ? [eq(deletionAuditLogs.year, filters.eventYear)]
       : []),
@@ -3059,6 +3091,7 @@ export async function listActivityLogs(filters?: {
   const db = await getDb();
   if (!db) return [];
   const conditions = [
+    eq(activityLogs.tenantId, tenant()),
     ...(filters?.eventYear ? [eq(activityLogs.year, filters.eventYear)] : []),
     ...(filters?.eventId ? [eq(activityLogs.eventId, filters.eventId)] : []),
   ];
@@ -3077,6 +3110,7 @@ export async function clearDeletionAuditLogs(filters?: {
 }) {
   const db = (await getDb()) as DB;
   const conditions = [
+    eq(deletionAuditLogs.tenantId, tenant()),
     ...(filters?.eventYear
       ? [eq(deletionAuditLogs.year, filters.eventYear)]
       : []),
@@ -3102,6 +3136,7 @@ export async function restoreDeletionAuditLog(
       .where(
         and(
           eq(deletionAuditLogs.id, id),
+          eq(deletionAuditLogs.tenantId, tenant()),
           eq(deletionAuditLogs.year, selectedYear),
           eq(deletionAuditLogs.eventId, selectedEventId)
         )
@@ -3367,6 +3402,7 @@ export async function restoreDeletionAuditLog(
       .where(
         and(
           eq(deletionAuditLogs.id, id),
+          eq(deletionAuditLogs.tenantId, tenant()),
           eq(deletionAuditLogs.year, selectedYear),
           eq(deletionAuditLogs.eventId, selectedEventId),
           isNull(deletionAuditLogs.restoredAt)

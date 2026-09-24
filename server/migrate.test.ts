@@ -198,7 +198,8 @@ describe("applyProjectMigrations", () => {
         m.tag === "0057_glossy_the_captain" ||
         m.tag === "0058_open_chat" ||
         m.tag === "0059_puzzling_swordsman" ||
-        m.tag === "0060_powerful_mister_sinister"
+        m.tag === "0060_powerful_mister_sinister" ||
+        m.tag === "0061_tenant_scoped_audit_logs"
     ).length;
 
     const result = await applyProjectMigrations(connection, migrations);
