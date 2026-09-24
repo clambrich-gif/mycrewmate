@@ -1,0 +1,173 @@
+{
+  "platform_metrics": {
+    "mandanten_gesamt": 3,
+    "mandanten_aktiv_pilot": 3,
+    "mandanten_segmente": {
+      "radsport_ausdauer": 1,
+      "schuetzen_tradition": 1,
+      "kirmes_volksfest": 1
+    },
+    "events_gesamt": 10,
+    "events_jahr_2025": 4,
+    "events_jahr_2026": 1,
+    "events_jahr_2027": 5,
+    "durchschnitt_events_pro_mandant": 3.33,
+    "helfer_gesamt": 302,
+    "durchschnitt_helfer_pro_event": 75.5,
+    "helferspanne_min": 65,
+    "helferspanne_max": 87,
+    "schichten_gesamt": 47,
+    "durchschnitt_schichten_pro_event": 11.75,
+    "max_schichten_pro_event": 21,
+    "aktive_zugewiesene_helfer": 84,
+    "zuordnungen_gesamt": 125,
+    "kontakte_ansprechpartner": 49
+  },
+  "market_segments": {
+    "schuetzen_tradition": {
+      "label": "Schützen- & Traditionsvereine",
+      "tam_events": 24000,
+      "sam_events": 8500,
+      "primary_product": "Pro-Abo & Single Event",
+      "rationale": "13.600 DSB-Vereine in DE, ca. 2.600 in CH, ca. 1.200 in AT/LU; rund 24.000 relevante Königsschießen/Schützenfeste/Traditionstage."
+    },
+    "kirmes_stadtfeste": {
+      "label": "Stadtfeste, Kirmessen & Volksfeste",
+      "tam_events": 23500,
+      "sam_events": 9200,
+      "primary_product": "Single Event Pass & Pro-Abo",
+      "rationale": "9.750 größere Volksfeste/Jahrmärkte in DE plus ca. 14.000 lokale Kirmessen, Kirchweihen, Dorffeste und Vereinsfeste in AT/CH/DE."
+    },
+    "radsport_ausdauer": {
+      "label": "Radsport- & Ausdauersportveranstaltungen",
+      "tam_events": 3800,
+      "sam_events": 2600,
+      "primary_product": "Pro-Abo & Single Event",
+      "rationale": "BDR (2.400 Vereine in DE), Swiss Cycling, Cycling Austria; RTF, Radmarathons, Jedermannrennen, Lauf-/Triathlonveranstaltungen."
+    },
+    "weitere_vereins_events": {
+      "label": "Weitere Vereins- & Breitensportevents",
+      "tam_events": 68700,
+      "sam_events": 16700,
+      "primary_product": "Single Event & Verbandslizenz",
+      "rationale": "Über 615.000 Vereine in DE, 125.000 in AT, 90.000 in CH. Turniere, Feuerwehr- und Musikfeste mit ehrenamtlicher Koordination."
+    }
+  },
+  "tam_total": 120000,
+  "sam_total": 37000,
+  "base_model": [
+    {
+      "year": 1,
+      "phase_title": "Jahr 1: Markteintritt & Validierung (Piloten & Bezirke)",
+      "single_pass_units": 120,
+      "pro_new": 45,
+      "pro_renewed": 0,
+      "pro_total": 45,
+      "enterprise_new": 2,
+      "enterprise_renewed": 0,
+      "enterprise_total": 2,
+      "sam_events_covered": 229,
+      "sam_penetration_pct": 0.62,
+      "rev_single": 8280.0,
+      "rev_pro": 6705.0,
+      "rev_enterprise": 1980.0,
+      "rev_total": 16965.0,
+      "growth_rate_pct": 0.0
+    },
+    {
+      "year": 2,
+      "phase_title": "Jahr 2: Multiplikatoren & erste Verbandsrahmenverträge",
+      "single_pass_units": 340,
+      "pro_new": 130,
+      "pro_renewed": 40,
+      "pro_total": 170,
+      "enterprise_new": 8,
+      "enterprise_renewed": 2,
+      "enterprise_total": 10,
+      "sam_events_covered": 786,
+      "sam_penetration_pct": 2.12,
+      "rev_single": 23460.0,
+      "rev_pro": 25330.0,
+      "rev_enterprise": 9900.0,
+      "rev_total": 58690.0,
+      "growth_rate_pct": 245.9
+    },
+    {
+      "year": 3,
+      "phase_title": "Jahr 3: DACH-L Durchdringung (CH, AT, LU & Bundesländer)",
+      "single_pass_units": 780,
+      "pro_new": 310,
+      "pro_renewed": 150,
+      "pro_total": 460,
+      "enterprise_new": 22,
+      "enterprise_renewed": 10,
+      "enterprise_total": 32,
+      "sam_events_covered": 2056,
+      "sam_penetration_pct": 5.56,
+      "rev_single": 53820.0,
+      "rev_pro": 68540.0,
+      "rev_enterprise": 31680.0,
+      "rev_total": 154040.0,
+      "growth_rate_pct": 162.5
+    },
+    {
+      "year": 4,
+      "phase_title": "Jahr 4: Branchenstandard & Verbandsökosystem",
+      "single_pass_units": 1420,
+      "pro_new": 590,
+      "pro_renewed": 405,
+      "pro_total": 995,
+      "enterprise_new": 42,
+      "enterprise_renewed": 30,
+      "enterprise_total": 72,
+      "sam_events_covered": 4219,
+      "sam_penetration_pct": 11.4,
+      "rev_single": 97980.0,
+      "rev_pro": 148255.0,
+      "rev_enterprise": 71280.0,
+      "rev_total": 317515.0,
+      "growth_rate_pct": 106.1
+    },
+    {
+      "year": 5,
+      "phase_title": "Jahr 5: Plattform-Dominanz, Konsolidierung & Skaleneffekt",
+      "single_pass_units": 2150,
+      "pro_new": 880,
+      "pro_renewed": 876,
+      "pro_total": 1756,
+      "enterprise_new": 65,
+      "enterprise_renewed": 68,
+      "enterprise_total": 133,
+      "sam_events_covered": 7172,
+      "sam_penetration_pct": 19.38,
+      "rev_single": 148350.0,
+      "rev_pro": 261644.0,
+      "rev_enterprise": 131670.0,
+      "rev_total": 541664.0,
+      "growth_rate_pct": 70.6
+    }
+  ],
+  "scenarios": {
+    "Konservativ (-25% Adoption, 18% Churn)": [
+      12415.0,
+      43001.0,
+      111613.0,
+      230063.0,
+      390496.0
+    ],
+    "Base Case (Kernmodell)": [
+      16965.0,
+      58690.0,
+      154040.0,
+      317515.0,
+      541664.0
+    ],
+    "Optimistisch (+30% Adoption, 8% Churn)": [
+      22605.0,
+      77745.0,
+      202703.0,
+      420862.0,
+      723838.0
+    ]
+  }
+}

@@ -909,7 +909,7 @@ function EventCountdownWidget({
         </button>
         <div className="min-w-0">{counterContent}</div>
       </div>
-      <div className="relative flex h-9 items-center overflow-hidden border-t border-slate-200 bg-slate-50 text-xl text-slate-700">
+      <div className="relative flex h-8 items-center overflow-hidden border-t border-slate-200 bg-slate-50 text-lg text-slate-600">
         <div className="dashboard-daily-quote-track flex min-w-max items-center whitespace-nowrap font-semibold leading-none">
           <span className="dashboard-daily-quote-segment">
             {quote} <span aria-hidden="true">·</span>

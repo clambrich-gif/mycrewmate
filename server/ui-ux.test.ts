@@ -1051,8 +1051,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain("dashboard-daily-quote-track");
     expect(dashboard).toContain("dashboard-daily-quote-segment");
     expect(dashboard).toContain('aria-hidden="true"');
-    expect(dashboard).toContain('h-9 items-center overflow-hidden');
-    expect(dashboard).toContain('text-xl text-slate-700');
+    expect(dashboard).toContain('h-8 items-center overflow-hidden');
+    expect(dashboard).toContain('text-lg text-slate-600');
     expect(dashboard).not.toContain("Eventstart in");
     expect(dashboard).not.toContain("Vorfreude im Blick");
     expect(dashboard).toContain("const isUrgent = state.kind === \"upcoming\" && state.days < 14");
@@ -1079,6 +1079,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(styles).toContain("width: 16rem !important");
     expect(styles).toContain("@keyframes dashboard-daily-quote-marquee");
     expect(styles).toContain("translateX(-50%)");
+    expect(styles).toContain("dashboard-daily-quote-marquee 20s linear infinite");
     expect(styles).toContain(".dashboard-daily-quote-segment:nth-child(n + 2)");
     expect(styles).toContain("prefers-reduced-motion: no-preference");
     expect(styles).toContain("will-change: opacity, transform");
