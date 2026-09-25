@@ -68,6 +68,10 @@ import { WEEKDAYS, type Weekday } from "@shared/weekdays";
 import { COPYRIGHT_NOTICE } from "@shared/branding";
 import { ACTIVE_PILOT_TENANT } from "@shared/tenant";
 import {
+  eventStartSelectionSessionKey,
+  nearestUpcomingEvent,
+} from "@shared/event-start-selection";
+import {
   Bike,
   Building2,
   Calendar,
@@ -562,6 +566,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const events = trpc.events.list.useQuery(undefined, {
     enabled: isAuthenticated && !isCredentialBootstrapPending,
   });
+  // Die Route liefert für Vereinsadmins alle und für Planungsteamzugänge nur
+  // die tatsächlich freigegebenen Veranstaltungen über sämtliche Jahre.
+  // Sie dient ausschließlich der Startauswahl und verändert keine Rechte.
+  const accessibleEvents = trpc.events.all.useQuery(undefined, {
+    enabled: isAuthenticated && !isCredentialBootstrapPending,
+  });
   const selectedEvent = events.data?.find(item => item.id === eventId);
   const selectedTenantRecord = tenants.data?.find(item => item.id === tenantId);
   const activeTenantName =
@@ -738,6 +748,41 @@ export function Layout({ children }: { children: React.ReactNode }) {
     // veralteter LocalStorage-Wert darf dann nicht zu einer leeren Ansicht führen.
     selectYear(years.data[0].year);
   }, [isAuthenticated, selectYear, year, years.data]);
+
+  useEffect(() => {
+    if (
+      !isAuthenticated ||
+      isCredentialBootstrapPending ||
+      !accessibleEvents.data
+    ) {
+      return;
+    }
+
+    // Nach einem App-Start wird genau einmal die nächste bevorstehende,
+    // für diesen Zugang erlaubte Veranstaltung gewählt. Das Merkmal bleibt
+    // bis zum Schließen des Tabs bestehen, damit eine danach manuell gewählte
+    // Veranstaltung nicht durch Refetches oder Seitenwechsel überschrieben wird.
+    const selectionKey = eventStartSelectionSessionKey(tenantId);
+    if (window.sessionStorage.getItem(selectionKey)) return;
+    window.sessionStorage.setItem(selectionKey, "done");
+
+    const nearestEvent = nearestUpcomingEvent(accessibleEvents.data);
+    if (!nearestEvent) return;
+    if (nearestEvent.year !== year) {
+      selectYear(nearestEvent.year, nearestEvent.id);
+      return;
+    }
+    if (nearestEvent.id !== eventId) selectEvent(nearestEvent.id);
+  }, [
+    accessibleEvents.data,
+    eventId,
+    isAuthenticated,
+    isCredentialBootstrapPending,
+    selectEvent,
+    selectYear,
+    tenantId,
+    year,
+  ]);
 
   useEffect(() => {
     if (!initialPasswordStatus.data?.mustChangePassword) return;

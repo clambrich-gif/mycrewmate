@@ -101,6 +101,23 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(yearContext).toContain("${EVENT_STORAGE_PREFIX}${tenantId}-${nextYear}");
   });
 
+  it("startet je frischer Vereinssitzung mit der nächsten zugänglichen zukünftigen Veranstaltung", () => {
+    const layout = source("client/src/components/Layout.tsx");
+    const yearContext = source("client/src/contexts/YearContext.tsx");
+    const startSelection = source("shared/event-start-selection.ts");
+
+    expect(layout).toContain("trpc.events.all.useQuery");
+    expect(layout).toContain("nearestUpcomingEvent(accessibleEvents.data)");
+    expect(layout).toContain("eventStartSelectionSessionKey(tenantId)");
+    expect(layout).toContain("window.sessionStorage.setItem(selectionKey, \"done\")");
+    expect(layout).toContain("selectYear(nearestEvent.year, nearestEvent.id)");
+    expect(layout).toContain("if (nearestEvent.id !== eventId) selectEvent(nearestEvent.id)");
+    expect(yearContext).toContain("window.sessionStorage.removeItem(");
+    expect(yearContext).toContain("eventStartSelectionSessionKey(nextTenantId)");
+    expect(startSelection).toContain("event.startDate >= calendarToday");
+    expect(startSelection).toContain("isIsoCalendarDate(event.startDate)");
+  });
+
   it("zeigt den zentralen Copyright-Vermerk in Anmeldung, Navigation und PDFs", () => {
     const branding = source("shared/branding.ts");
     const layout = source("client/src/components/Layout.tsx");

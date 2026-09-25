@@ -1,4 +1,5 @@
 import { createContext, useContext, useMemo, useState } from "react";
+import { eventStartSelectionSessionKey } from "@shared/event-start-selection";
 
 const YEAR_STORAGE_KEY = "rsc-helper-event-year";
 const LEGACY_YEAR_STORAGE_KEY = "myeifelride-event-year";
@@ -63,6 +64,12 @@ export function YearProvider({ children }: { children: React.ReactNode }) {
       eventId,
       selectTenant(nextTenantId) {
         window.localStorage.setItem(TENANT_STORAGE_KEY, nextTenantId);
+        // Ein frischer Login bzw. Handoff in einen Verein soll die nächste
+        // bevorstehende Veranstaltung einmalig neu bestimmen. Manuelle
+        // Eventwechsel innerhalb derselben Sitzung bleiben davon unberührt.
+        window.sessionStorage.removeItem(
+          eventStartSelectionSessionKey(nextTenantId)
+        );
         // Alle drei internen Testmandanten besitzen eine getrennte Musterveranstaltung
         // im gemeinsamen Testjahr. Dadurch wird nach dem Wechsel sofort eine gültige
         // Veranstaltung ausgewählt und kein alter Event-Schlüssel weiterverwendet.
