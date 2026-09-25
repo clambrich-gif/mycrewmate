@@ -703,6 +703,7 @@ export const appSettings = mysqlTable("app_settings", {
     .default("Ansprechpartner")
     .notNull(),
   footerText: varchar("footerText", { length: 300 }).default("").notNull(),
+  whatsAppHelperRequestTemplate: mediumtext("whatsAppHelperRequestTemplate"),
   whatsAppMessageTemplate: mediumtext("whatsAppMessageTemplate"),
   tenantLogoKey: varchar("tenantLogoKey", { length: 500 }),
   tenantLogoUrl: varchar("tenantLogoUrl", { length: 700 }),

@@ -53,6 +53,25 @@ export function formatEventDate(value: string | null | undefined) {
   }).format(new Date(year, month - 1, day));
 }
 
+/** Formatiert einen Eventzeitraum kurz und lesbar für Nachrichten und Hinweise. */
+export function formatEventDuration({ startDate, endDate }: EventDateRange) {
+  const error = eventDateRangeError({ startDate, endDate });
+  if (error || !startDate || !endDate) return "an den Veranstaltungstagen";
+  if (startDate === endDate) return formatEventDate(startDate);
+
+  const start = parts(startDate);
+  const end = parts(endDate);
+  const twoDigits = (value: number) => String(value).padStart(2, "0");
+
+  if (start.year === end.year && start.month === end.month) {
+    return `${twoDigits(start.day)}.–${twoDigits(end.day)}.${twoDigits(end.month)}.${end.year}`;
+  }
+  if (start.year === end.year) {
+    return `${twoDigits(start.day)}.${twoDigits(start.month)}.–${twoDigits(end.day)}.${twoDigits(end.month)}.${end.year}`;
+  }
+  return `${formatEventDate(startDate)}–${formatEventDate(endDate)}`;
+}
+
 function localStartOfDate(value: string) {
   const { year, month, day } = parts(value);
   return new Date(year, month - 1, day);

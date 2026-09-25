@@ -19,7 +19,9 @@ import {
 import { downloadBase64File } from "@/lib/download";
 import { trpc } from "@/lib/trpc";
 import {
+  DEFAULT_WHATSAPP_HELPER_REQUEST_TEMPLATE,
   DEFAULT_WHATSAPP_MESSAGE_TEMPLATE,
+  resolveWhatsAppHelperRequestTemplate,
   resolveWhatsAppMessageTemplate,
 } from "@/lib/whatsappShare";
 import { eventWeekdays, type Weekday } from "@shared/weekdays";
@@ -54,6 +56,7 @@ type SettingsForm = {
   blankPlanTitle: string;
   contactLabel: string;
   footerText: string;
+  whatsAppHelperRequestTemplate: string;
   whatsAppMessageTemplate: string;
   extraColumns: string[];
   blankRowsPerShift: number;
@@ -66,6 +69,7 @@ const EMPTY_FORM: SettingsForm = {
   blankPlanTitle: "Einsatzplan – Blanko",
   contactLabel: "Ansprechpartner",
   footerText: "",
+  whatsAppHelperRequestTemplate: DEFAULT_WHATSAPP_HELPER_REQUEST_TEMPLATE,
   whatsAppMessageTemplate: DEFAULT_WHATSAPP_MESSAGE_TEMPLATE,
   extraColumns: [],
   blankRowsPerShift: 0,
@@ -179,6 +183,9 @@ export default function PdfExport() {
       blankPlanTitle: settings.blankPlanTitle,
       contactLabel: settings.contactLabel,
       footerText: settings.footerText,
+      whatsAppHelperRequestTemplate: resolveWhatsAppHelperRequestTemplate(
+        settings.whatsAppHelperRequestTemplate
+      ),
       whatsAppMessageTemplate: resolveWhatsAppMessageTemplate(
         settings.whatsAppMessageTemplate
       ),
@@ -1009,25 +1016,76 @@ export default function PdfExport() {
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="whatsapp-message-template">
-                  WhatsApp-Nachricht beim PDF-Teilen
-                </Label>
-                <textarea
-                  id="whatsapp-message-template"
-                  value={form.whatsAppMessageTemplate}
-                  onChange={event =>
-                    updateField("whatsAppMessageTemplate", event.target.value)
-                  }
-                  className="min-h-52 w-full rounded-md border border-input bg-white px-3 py-2 text-base text-slate-950 shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                  placeholder={DEFAULT_WHATSAPP_MESSAGE_TEMPLATE}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Der Platzhalter <code>{"{EVENT_NAME}"}</code> wird beim Teilen
-                  automatisch durch die aktuell ausgewählte Veranstaltung ersetzt.
-                  Der Platzhalter <code>{"{PDF_LINK}"}</code> wird durch den
-                  persönlichen, 90 Tage gültigen PDF-Link ersetzt.
-                </p>
+              <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                <div>
+                  <Label className="text-base font-semibold text-slate-950">
+                    WhatsApp-Vorlagen für Helfer
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Beide Vorlagen können unabhängig voneinander angepasst werden. Klappen Sie die gewünschte Nachricht auf, um Text und Platzhalter zu bearbeiten.
+                  </p>
+                </div>
+
+                <details className="group rounded-lg border border-slate-200 bg-white p-3.5 shadow-xs open:ring-1 open:ring-blue-100">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    <span className="flex items-center gap-2">
+                      <span>Nachricht 1 · Allgemeine Helferanfrage</span>
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                        Ohne PDF
+                      </span>
+                    </span>
+                    <ChevronDown className="h-4 w-4 text-slate-500 transition-transform duration-200 group-open:rotate-180" />
+                  </summary>
+                  <div className="mt-3.5 space-y-2 border-t border-slate-100 pt-3">
+                    <Label htmlFor="whatsapp-helper-request-template">
+                      Nachrichtentext
+                    </Label>
+                    <textarea
+                      id="whatsapp-helper-request-template"
+                      value={form.whatsAppHelperRequestTemplate}
+                      onChange={event =>
+                        updateField(
+                          "whatsAppHelperRequestTemplate",
+                          event.target.value
+                        )
+                      }
+                      className="min-h-52 w-full rounded-md border border-input bg-white px-3 py-2 text-base text-slate-950 shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                      placeholder={DEFAULT_WHATSAPP_HELPER_REQUEST_TEMPLATE}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Verfügbare Platzhalter: <code>{"{EVENT_NAME}"}</code> (Name der Veranstaltung) und <code>{"{EVENT_DAUER}"}</code> (Start- und Enddatum bzw. Einzeltag).
+                    </p>
+                  </div>
+                </details>
+
+                <details className="group rounded-lg border border-slate-200 bg-white p-3.5 shadow-xs open:ring-1 open:ring-blue-100">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    <span className="flex items-center gap-2">
+                      <span>Nachricht 2 · Schichtzuteilung / Einsatzplan</span>
+                      <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">
+                        Inkl. PDF-Link
+                      </span>
+                    </span>
+                    <ChevronDown className="h-4 w-4 text-slate-500 transition-transform duration-200 group-open:rotate-180" />
+                  </summary>
+                  <div className="mt-3.5 space-y-2 border-t border-slate-100 pt-3">
+                    <Label htmlFor="whatsapp-message-template">
+                      Nachrichtentext
+                    </Label>
+                    <textarea
+                      id="whatsapp-message-template"
+                      value={form.whatsAppMessageTemplate}
+                      onChange={event =>
+                        updateField("whatsAppMessageTemplate", event.target.value)
+                      }
+                      className="min-h-52 w-full rounded-md border border-input bg-white px-3 py-2 text-base text-slate-950 shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                      placeholder={DEFAULT_WHATSAPP_MESSAGE_TEMPLATE}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Verfügbare Platzhalter: <code>{"{EVENT_NAME}"}</code> und <code>{"{PDF_LINK}"}</code> (persönlicher, 90 Tage gültiger Abruflink für den Einsatzplan).
+                    </p>
+                  </div>
+                </details>
               </div>
 
               {canManage ? (
@@ -1037,6 +1095,7 @@ export default function PdfExport() {
                   save.isPending ||
                   !form.eventName.trim() ||
                   !form.blankPlanTitle.trim() ||
+                  !form.whatsAppHelperRequestTemplate.trim() ||
                   !form.whatsAppMessageTemplate.trim()
                 }
               >

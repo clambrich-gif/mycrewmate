@@ -203,7 +203,8 @@ describe("applyProjectMigrations", () => {
         m.tag === "0062_release_archived_access_emails" ||
         m.tag === "0063_tenant_scoped_coadmin_presence" ||
         m.tag === "0064_first_login_onboarding" ||
-        m.tag === "0065_remove_archived_tenant_accesses"
+        m.tag === "0065_remove_archived_tenant_accesses" ||
+        m.tag === "0066_military_scarlet_witch"
     ).length;
 
     const result = await applyProjectMigrations(connection, migrations);

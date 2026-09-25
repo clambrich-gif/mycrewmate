@@ -1023,6 +1023,7 @@ const pdfSettingsInput = z.object({
   blankPlanTitle: z.string().trim().min(1).max(200),
   contactLabel: z.string().trim().min(1).max(120),
   footerText: z.string().trim().max(300),
+  whatsAppHelperRequestTemplate: z.string().trim().min(1).max(4_000),
   whatsAppMessageTemplate: z.string().trim().min(1).max(4_000),
   extraColumns: z.array(z.string().trim().min(1).max(50)).max(5),
   blankRowsPerShift: z.number().int().min(0).max(20),
@@ -3496,6 +3497,8 @@ export const appRouter = router({
             ? `/api/pdf/event-image/${selectedEvent.year}/${selectedEvent.id}`
             : null,
         logoFallback: "none" as const,
+        whatsAppHelperRequestTemplate:
+          settings.whatsAppHelperRequestTemplate ?? null,
         whatsAppMessageTemplate: settings.whatsAppMessageTemplate ?? null,
         extraColumns,
       };

@@ -4546,6 +4546,7 @@ export async function updateAppSettings(
       blankPlanTitle: "Einsatzplan – Blanko",
       contactLabel: "Ansprechpartner",
       footerText: "",
+      whatsAppHelperRequestTemplate: null,
       whatsAppMessageTemplate: null,
       tenantLogoKey: null,
       tenantLogoUrl: null,

@@ -33,9 +33,10 @@ import {
   buildWhatsAppShareUrl,
   renderWhatsAppMessage,
 } from "@/lib/whatsappShare";
+import { formatEventDuration } from "@shared/event-dates";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
-import { ChevronDown, Clock3, FileDown, FilterX, Info, MessageCircle, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { CalendarDays, CheckCircle2, ChevronDown, Clock3, FileDown, FileText, FilterX, Info, MessageCircle, Pencil, Plus, Search, Send, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { PlanResetDialogButton } from "@/components/PlanResetDialogButton";
@@ -705,6 +706,23 @@ export default function Helpers() {
   const [newHelperDonation, setNewHelperDonation] = useState<NewHelperDonation>(
     EMPTY_NEW_HELPER_DONATION
   );
+  const [whatsAppTargetHelper, setWhatsAppTargetHelper] = useState<{
+    id: number;
+    name: string;
+    phone?: string | null;
+  } | null>(null);
+  const [selectedWhatsAppTemplateKind, setSelectedWhatsAppTemplateKind] = useState<
+    "general" | "schedule"
+  >("general");
+  const [isPreparingWhatsApp, setIsPreparingWhatsApp] = useState(false);
+  const eventDurationLabel = useMemo(
+    () =>
+      formatEventDuration({
+        startDate: currentEvent?.startDate ?? null,
+        endDate: currentEvent?.endDate ?? null,
+      }),
+    [currentEvent?.startDate, currentEvent?.endDate]
+  );
   const [newHelperDialogOpen, setNewHelperDialogOpen] = useState(false);
   const [filter, setFilter] = useState("");
   const [apFilter, setApFilter] = useState("alle");
@@ -814,39 +832,60 @@ export default function Helpers() {
       toast.error(error.message);
     },
   });
-  const sharePdfViaWhatsApp = trpc.pdf.publicShare.useMutation({
-    onSuccess: async (result, variables) => {
-      const helper = helpers.find(item => item.id === variables.helperId);
-      try {
-        // Die Vorlage wird bewusst unmittelbar vor dem Öffnen von WhatsApp
-        // geladen: Änderungen unter „PDF-Ausgabe“ gelten somit ohne Neuladen
-        // der Helferansicht auf Desktop und iPhone.
-        const settings = await utils.pdf.settings.fetch();
+  const requestHelperPdfShare = trpc.pdf.publicShare.useMutation();
+
+  const sendWhatsAppMessage = async (templateKind: "general" | "schedule") => {
+    if (!whatsAppTargetHelper || isPreparingWhatsApp) return;
+    setIsPreparingWhatsApp(true);
+    try {
+      const settings = await utils.pdf.settings.fetch();
+      const eventName = currentEvent?.name ?? settings.eventName;
+
+      if (templateKind === "general") {
         const message = renderWhatsAppMessage(
-          settings.whatsAppMessageTemplate,
-          currentEvent?.name ?? settings.eventName,
-          result.url
+          settings.whatsAppHelperRequestTemplate,
+          {
+            eventName,
+            eventDuration: eventDurationLabel,
+          }
         );
-        window.location.assign(buildWhatsAppShareUrl(message, helper?.phone));
-      } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : "Die WhatsApp-Nachricht konnte nicht vorbereitet werden"
+        window.location.assign(
+          buildWhatsAppShareUrl(message, whatsAppTargetHelper.phone)
         );
-      } finally {
-        setSharingId(null);
+        setWhatsAppTargetHelper(null);
+        return;
       }
-    },
-    onError: error => {
-      setSharingId(null);
-      toast.error(error.message);
-    },
-  });
-  const shareHelperPdf = (helper: { id: number }) => {
-    if (sharingId !== null) return;
-    setSharingId(helper.id);
-    sharePdfViaWhatsApp.mutate({ helperId: helper.id });
+
+      const share = await requestHelperPdfShare.mutateAsync({
+        helperId: whatsAppTargetHelper.id,
+      });
+      const message = renderWhatsAppMessage(settings.whatsAppMessageTemplate, {
+        eventName,
+        eventDuration: eventDurationLabel,
+        pdfLink: share.url,
+      });
+      window.location.assign(
+        buildWhatsAppShareUrl(message, whatsAppTargetHelper.phone)
+      );
+      setWhatsAppTargetHelper(null);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Die WhatsApp-Nachricht konnte nicht vorbereitet werden"
+      );
+    } finally {
+      setIsPreparingWhatsApp(false);
+    }
+  };
+
+  const openWhatsAppDialog = (helper: {
+    id: number;
+    name: string;
+    phone?: string | null;
+  }) => {
+    setWhatsAppTargetHelper(helper);
+    setSelectedWhatsAppTemplateKind("general");
   };
 
   const assignedHelperIds = useMemo(
@@ -1244,8 +1283,8 @@ export default function Helpers() {
                       HELPER_ACTION_ICON_BUTTON_CLASS,
                       "h-11 min-h-11 w-11 min-w-11"
                     )}
-                    disabled={sharingId !== null}
-                    onClick={() => shareHelperPdf(helper)}
+                    disabled={isPreparingWhatsApp}
+                    onClick={() => openWhatsAppDialog(helper)}
                   >
                     <MessageCircle className="size-5 text-[#25D366]" aria-hidden="true" />
                   </Button>
@@ -1542,8 +1581,8 @@ export default function Helpers() {
                         title="Aufgabenplan per WhatsApp an Helfer senden"
                         aria-label={`Aufgabenplan von ${helper.name} per WhatsApp senden`}
                         className={HELPER_ACTION_ICON_BUTTON_CLASS}
-                        disabled={sharingId !== null}
-                        onClick={() => shareHelperPdf(helper)}
+                        disabled={isPreparingWhatsApp}
+                        onClick={() => openWhatsAppDialog(helper)}
                       >
                         <MessageCircle className="size-5 text-[#25D366]" aria-hidden="true" />
                       </Button>
@@ -1799,8 +1838,8 @@ export default function Helpers() {
                           className="h-8 w-8 text-slate-600 hover:text-green-700"
                           title="Aufgabenplan per WhatsApp an Helfer senden"
                           aria-label={`Aufgabenplan von ${helper.name} per WhatsApp senden`}
-                          disabled={sharingId !== null}
-                          onClick={() => shareHelperPdf(helper)}
+                          disabled={isPreparingWhatsApp}
+                          onClick={() => openWhatsAppDialog(helper)}
                         >
                           <MessageCircle className="size-4 text-[#25D366]" />
                         </Button>
@@ -2199,6 +2238,123 @@ export default function Helpers() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={Boolean(whatsAppTargetHelper)}
+        onOpenChange={open => {
+          if (!open && !isPreparingWhatsApp) {
+            setWhatsAppTargetHelper(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-xl bg-white text-slate-950 sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-slate-950">
+              WhatsApp-Nachricht vorbereiten
+            </DialogTitle>
+            <p className="pt-1 text-sm text-slate-500">
+              Wählen Sie die passende Vorlage für {whatsAppTargetHelper?.name}. Der Link öffnet WhatsApp direkt mit dem vorbereiteten Text.
+            </p>
+          </DialogHeader>
+
+          <div className="grid gap-3 py-2 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => setSelectedWhatsAppTemplateKind("general")}
+              className={cn(
+                "flex h-full flex-col justify-between rounded-xl border p-4 text-left transition-all",
+                selectedWhatsAppTemplateKind === "general"
+                  ? "border-emerald-500 bg-emerald-50/50 shadow-xs ring-2 ring-emerald-500/20"
+                  : "border-slate-200 bg-slate-50/40 hover:border-slate-300 hover:bg-slate-50"
+              )}
+            >
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="inline-flex rounded-lg bg-emerald-100 p-2 text-emerald-800">
+                    <MessageCircle className="h-5 w-5" />
+                  </div>
+                  {selectedWhatsAppTemplateKind === "general" && (
+                    <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                  )}
+                </div>
+                <h4 className="font-semibold text-slate-950">
+                  Muster 1: Allgemeine Helferanfrage
+                </h4>
+                <p className="text-xs leading-relaxed text-slate-600">
+                  Fragt die generelle Bereitschaft, verfügbare Tage/Zeiten und optionale Kuchen-/Salatspenden für {currentEvent?.name ?? "die Veranstaltung"} ab.
+                </p>
+              </div>
+              <div className="mt-4 flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
+                <CalendarDays className="h-3.5 w-3.5 text-slate-400" />
+                <span>Zeitraum: {eventDurationLabel}</span>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedWhatsAppTemplateKind("schedule")}
+              className={cn(
+                "flex h-full flex-col justify-between rounded-xl border p-4 text-left transition-all",
+                selectedWhatsAppTemplateKind === "schedule"
+                  ? "border-blue-500 bg-blue-50/50 shadow-xs ring-2 ring-blue-500/20"
+                  : "border-slate-200 bg-slate-50/40 hover:border-slate-300 hover:bg-slate-50"
+              )}
+            >
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="inline-flex rounded-lg bg-blue-100 p-2 text-blue-800">
+                    <FileText className="h-5 w-5" />
+                  </div>
+                  {selectedWhatsAppTemplateKind === "schedule" && (
+                    <CheckCircle2 className="h-5 w-5 text-blue-600" />
+                  )}
+                </div>
+                <h4 className="font-semibold text-slate-950">
+                  Muster 2: Schichtzuteilung / Einsatzplan
+                </h4>
+                <p className="text-xs leading-relaxed text-slate-600">
+                  Sendet den persönlichen Einsatzplan inklusive 90 Tage gültigem PDF-Link zur Prüfung und Rückmeldung.
+                </p>
+              </div>
+              <div className="mt-4 flex items-center gap-1.5 text-[11px] font-medium text-blue-700">
+                <Send className="h-3.5 w-3.5" />
+                <span>Erzeugt persönlichen PDF-Link</span>
+              </div>
+            </button>
+          </div>
+
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+            {selectedWhatsAppTemplateKind === "general" ? (
+              <p>
+                <strong>Muster 1 aktiv:</strong> Sendet eine freundliche Voranfrage ohne PDF-Link. Der Veranstaltungszeitraum ({eventDurationLabel}) wird automatisch eingesetzt.
+              </p>
+            ) : (
+              <p>
+                <strong>Muster 2 aktiv:</strong> Erzeugt erst bei Klick auf „In WhatsApp öffnen“ den persönlichen PDF-Abruflink für {whatsAppTargetHelper?.name}.
+              </p>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isPreparingWhatsApp}
+              onClick={() => setWhatsAppTargetHelper(null)}
+            >
+              Abbrechen
+            </Button>
+            <Button
+              type="button"
+              className="bg-[#25D366] text-white hover:bg-[#20bd5a]"
+              disabled={isPreparingWhatsApp}
+              onClick={() => sendWhatsAppMessage(selectedWhatsAppTemplateKind)}
+            >
+              <MessageCircle className="mr-2 h-4 w-4" />
+              {isPreparingWhatsApp ? "Bereite vor …" : "In WhatsApp öffnen"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
       <ConfirmDeleteDialog

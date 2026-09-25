@@ -865,6 +865,8 @@ describe("Planungs-API", () => {
       blankPlanTitle: "Einsatzplan – Blanko",
       contactLabel: "Ansprechpartner",
       footerText: "",
+      whatsAppHelperRequestTemplate:
+        "Hallo! Event {EVENT_NAME} im Zeitraum {EVENT_DAUER} braucht Hilfe.",
       whatsAppMessageTemplate: "Hallo! Dein Plan für {EVENT_NAME} ist da. 🚴💨",
       logoKey: null,
       logoUrl: null,
@@ -875,6 +877,9 @@ describe("Planungs-API", () => {
     dbMocks.updateAppSettings.mockResolvedValue({ affectedRows: 1 });
 
     const settings = await caller.pdf.settings();
+    expect(settings.whatsAppHelperRequestTemplate).toBe(
+      "Hallo! Event {EVENT_NAME} im Zeitraum {EVENT_DAUER} braucht Hilfe."
+    );
     expect(settings.whatsAppMessageTemplate).toBe(
       "Hallo! Dein Plan für {EVENT_NAME} ist da. 🚴💨"
     );
@@ -887,6 +892,8 @@ describe("Planungs-API", () => {
         blankPlanTitle: "Einsatzplan – Blanko",
         contactLabel: "Ansprechpartner",
         footerText: "Hinweis",
+        whatsAppHelperRequestTemplate:
+          "Neuer Fragetext für {EVENT_NAME} ({EVENT_DAUER})",
         whatsAppMessageTemplate:
           "Individueller Text für {EVENT_NAME}. Bitte zeitnah melden! ⏳",
         extraColumns: [],
@@ -895,6 +902,8 @@ describe("Planungs-API", () => {
     ).resolves.toEqual({ success: true });
     expect(dbMocks.updateAppSettings).toHaveBeenCalledWith(
       expect.objectContaining({
+        whatsAppHelperRequestTemplate:
+          "Neuer Fragetext für {EVENT_NAME} ({EVENT_DAUER})",
         whatsAppMessageTemplate:
           "Individueller Text für {EVENT_NAME}. Bitte zeitnah melden! ⏳",
       })

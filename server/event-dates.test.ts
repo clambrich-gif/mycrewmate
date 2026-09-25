@@ -3,6 +3,7 @@ import {
   eventCountdownState,
   eventDateRangeError,
   formatEventDate,
+  formatEventDuration,
   isIsoCalendarDate,
 } from "../shared/event-dates";
 
@@ -30,6 +31,29 @@ describe("event-dates & countdown", () => {
   it("formatiert Datumsangaben im deutschen Format", () => {
     expect(formatEventDate("2027-06-18")).toBe("18.06.2027");
     expect(formatEventDate(null)).toBe("");
+  });
+
+  it("formatiert Zeiträume lesbar für ein- und mehrtägige Events", () => {
+    expect(
+      formatEventDuration({
+        startDate: "2026-06-19",
+        endDate: "2026-06-21",
+      })
+    ).toBe("19.–21.06.2026");
+
+    expect(
+      formatEventDuration({
+        startDate: "2026-06-19",
+        endDate: "2026-06-19",
+      })
+    ).toBe("19.06.2026");
+
+    expect(
+      formatEventDuration({
+        startDate: null,
+        endDate: null,
+      })
+    ).toBe("an den Veranstaltungstagen");
   });
 
   it("ermittelt verbleibende Tage und Stunden vor dem Eventstart", () => {

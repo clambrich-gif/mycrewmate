@@ -1875,18 +1875,20 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(pdfExport).toContain("PDFs für ${selectedHelperContact.name} herunterladen");
     expect(pdfExport).toContain("contactId: selectedHelperContactId");
     expect(pdfExport).toContain("whatsapp-message-template");
-    expect(pdfExport).toContain("WhatsApp-Nachricht beim PDF-Teilen");
+    expect(pdfExport).toContain("WhatsApp-Vorlagen für Helfer");
     expect(pdfExport).toContain("{PDF_LINK}");
     expect(helpers).not.toContain("bg-emerald-500 text-white hover:bg-emerald-600");
     expect(helpers).toContain("trpc.pdf.publicShare.useMutation");
     expect(helpers).toContain("Aufgabenplan per WhatsApp an Helfer senden");
-    expect(helpers).toContain("result.url");
+    expect(helpers).toContain("share.url");
     expect(helpers).not.toContain("window.location.origin");
     expect(helpers).not.toContain("/api/public/pdf/");
     expect(helpers).toContain("utils.pdf.settings.fetch()");
-    expect(helpers).toContain("buildWhatsAppShareUrl(message, helper?.phone)");
     expect(helpers).toContain(
-      "window.location.assign(buildWhatsAppShareUrl(message, helper?.phone))"
+      "buildWhatsAppShareUrl(message, whatsAppTargetHelper.phone)"
+    );
+    expect(helpers).toContain(
+      "window.location.assign(\n        buildWhatsAppShareUrl(message, whatsAppTargetHelper.phone)\n      )"
     );
     expect(helpers).not.toContain("shareWindowRef");
     expect(helpers).not.toContain("copyWhatsAppMessage");
@@ -1894,7 +1896,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).not.toContain('window.open(whatsappUrl, "_blank", "noopener,noreferrer")');
     expect(helpers).not.toContain("navigator.share");
     expect(helpers).not.toContain("buildWhatsAppDeepLink(");
-    expect(helpers.match(/shareHelperPdf/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
+    expect(helpers.match(/openWhatsAppDialog/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
   });
 
   it("strukturiert die PDF-Ausgabe als geschlossene Accordions mit Ansprechpartner-Arbeitsmappen an zweiter Stelle", () => {
@@ -3213,5 +3215,22 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(unauthenticatedLayout).toContain("border-amber-200 bg-amber-50");
     expect(unauthenticatedLayout).not.toContain("Hauptadministrator");
     expect(unauthenticatedLayout).not.toContain("via Manus");
+  });
+
+  it("schaltet beim WhatsApp-Klick eine Vorlagenauswahl vor und bietet in der PDF-Ausgabe aufklappbare Vorlagen", () => {
+    const helpers = source("client/src/pages/Helpers.tsx");
+    const pdfExport = source("client/src/pages/PdfExport.tsx");
+
+    expect(helpers).toContain("WhatsApp-Nachricht vorbereiten");
+    expect(helpers).toContain("Muster 1: Allgemeine Helferanfrage");
+    expect(helpers).toContain("Muster 2: Schichtzuteilung / Einsatzplan");
+    expect(helpers).toContain("openWhatsAppDialog");
+    expect(helpers).toContain("sendWhatsAppMessage(selectedWhatsAppTemplateKind)");
+
+    expect(pdfExport).toContain("WhatsApp-Vorlagen für Helfer");
+    expect(pdfExport).toContain("Nachricht 1 · Allgemeine Helferanfrage");
+    expect(pdfExport).toContain("Nachricht 2 · Schichtzuteilung / Einsatzplan");
+    expect(pdfExport).toContain('id="whatsapp-helper-request-template"');
+    expect(pdfExport).toContain('id="whatsapp-message-template"');
   });
 });

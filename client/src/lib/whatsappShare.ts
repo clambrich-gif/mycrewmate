@@ -1,3 +1,19 @@
+export const DEFAULT_WHATSAPP_HELPER_REQUEST_TEMPLATE = `Hallo! 👋
+Wir stecken mitten in den Vorbereitungen für unser Event {EVENT_NAME} 🚴💨
+📅 Veranstaltungszeitraum: {EVENT_DAUER}
+
+Damit unser Event ein voller Erfolg wird, brauchen wir wieder deine fantastische Unterstützung! 🥳🙌
+
+Bist du dabei?
+Falls ja, gib uns bitte kurze Rückmeldung zu folgenden Punkten:
+1️⃣ Zeiten: Wann und an welchen Tagen passt es dir am besten zu helfen? ⏰
+2️⃣ Spenden: Möchtest du uns zusätzlich mit einer Kuchen- oder Salatspende unterstützen? 🍰🥗
+
+⚠️ Bitte gib uns kurz Rückmeldung, damit wir in die detaillierte Schichtplanung gehen können. ⏳👍
+
+Vielen Dank schon vorab für deinen Einsatz! 🏆
+Dein RSC-Orga-Team`;
+
 export const DEFAULT_WHATSAPP_MESSAGE_TEMPLATE = `Hallo! 👋
 Hier ist dein persönlicher Einsatzplan für unser Event {EVENT_NAME} 🚴💨
 📄 Deinen genauen Plan findest du direkt unter folgendem Link:
@@ -24,6 +40,12 @@ Vielen Dank für deine fantastische Unterstützung! 🥳
 Dein RSC-Orga-Team 🏆`,
 ]);
 
+export function resolveWhatsAppHelperRequestTemplate(
+  template: string | null | undefined
+) {
+  return template?.trim() || DEFAULT_WHATSAPP_HELPER_REQUEST_TEMPLATE;
+}
+
 export function resolveWhatsAppMessageTemplate(
   template: string | null | undefined
 ) {
@@ -33,23 +55,35 @@ export function resolveWhatsAppMessageTemplate(
     : DEFAULT_WHATSAPP_MESSAGE_TEMPLATE;
 }
 
+type WhatsAppMessageVariables = {
+  eventName?: string | null;
+  eventDuration?: string | null;
+  pdfLink?: string | null;
+};
+
 /**
- * Ersetzt Event und persönlichen Freigabelink. Individuelle ältere Vorlagen
- * ohne {PDF_LINK} bleiben nutzbar und erhalten den Link automatisch am Ende.
+ * Ersetzt die freigegebenen dynamischen Platzhalter einer Nachrichtenvorlage.
+ * Ein PDF-Link wird nur für die Einsatzplanvorlage ergänzt, nie bei der allgemeinen Anfrage.
  */
 export function renderWhatsAppMessage(
   template: string | null | undefined,
-  eventName: string | null | undefined,
-  pdfLink: string
+  { eventName, eventDuration, pdfLink }: WhatsAppMessageVariables
 ) {
-  const configuredTemplate = resolveWhatsAppMessageTemplate(template);
   const safeEventName = eventName?.trim() || "unser Event";
-  const withLink = configuredTemplate.includes("{PDF_LINK}")
-    ? configuredTemplate
-    : `${configuredTemplate}\n\n📄 Dein persönlicher Einsatzplan:\n{PDF_LINK}`;
+  const safeEventDuration = eventDuration?.trim() || "an den Veranstaltungstagen";
+  const configuredTemplate = pdfLink
+    ? resolveWhatsAppMessageTemplate(template)
+    : resolveWhatsAppHelperRequestTemplate(template);
+  const withLink = pdfLink
+    ? configuredTemplate.includes("{PDF_LINK}")
+      ? configuredTemplate
+      : `${configuredTemplate}\n\n📄 Dein persönlicher Einsatzplan:\n{PDF_LINK}`
+    : configuredTemplate;
+
   return withLink
     .replaceAll("{EVENT_NAME}", safeEventName)
-    .replaceAll("{PDF_LINK}", pdfLink);
+    .replaceAll("{EVENT_DAUER}", safeEventDuration)
+    .replaceAll("{PDF_LINK}", pdfLink?.trim() || "");
 }
 
 /**

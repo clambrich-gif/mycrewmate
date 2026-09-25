@@ -38,6 +38,7 @@ export const DEFAULT_PDF_SETTINGS = {
   blankPlanTitle: "Einsatzplan – Blanko",
   contactLabel: "Ansprechpartner",
   footerText: "",
+  whatsAppHelperRequestTemplate: null,
   whatsAppMessageTemplate: null,
   tenantLogoKey: null,
   tenantLogoUrl: null,
