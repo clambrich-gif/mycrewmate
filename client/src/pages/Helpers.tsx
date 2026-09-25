@@ -28,6 +28,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { downloadBase64File, safeDownloadName } from "@/lib/download";
 import {
   buildWhatsAppShareUrl,
@@ -229,6 +234,15 @@ function DayAvailabilityControl({
   const [customEnd, setCustomEnd] = useState(
     (helper[fields.end] as string | null | undefined) ?? ""
   );
+  const isTimedAvailability = availability === "ja" && timed;
+  const availabilityButtonClass =
+    availability === "ja"
+      ? isTimedAvailability
+        ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+        : "border-emerald-400 bg-emerald-100 text-emerald-950 hover:bg-emerald-200"
+      : availability === "nein"
+        ? "border-rose-300 bg-rose-50 text-rose-800 hover:bg-rose-100"
+        : "border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100";
 
   useEffect(() => {
     if (!availabilityPickerOpen) return;
@@ -256,6 +270,24 @@ function DayAvailabilityControl({
     setCustomOpen(false);
   };
 
+  const triggerButton = (
+    <button
+      type="button"
+      disabled={disabled}
+      data-slot="day-availability-trigger"
+      aria-label={`${day}: Verfügbarkeit bearbeiten${availability === "ja" ? ` (${label})` : ""}`}
+      title={availability === "ja" ? label : `${day}: Verfügbarkeit wählen`}
+      className={cn(
+        "flex h-11 w-full items-center justify-center gap-1 rounded-full border px-3 text-base font-semibold shadow-xs transition-colors active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 md:h-8 md:text-sm",
+        compactOnDesktop && "md:w-[52px] md:min-w-[52px] md:gap-0.5 md:px-1.5 md:text-xs",
+        availabilityButtonClass
+      )}
+    >
+      <span>{availability === "ja" ? "Ja" : availability === "nein" ? "Nein" : "?"}</span>
+      {isTimedAvailability && <Clock3 className="size-3.5 shrink-0" aria-hidden="true" />}
+    </button>
+  );
+
   return (
     <Popover
       open={availabilityPickerOpen}
@@ -265,31 +297,22 @@ function DayAvailabilityControl({
       }}
     >
       <div className={cn("w-full", compactOnDesktop && "flex items-center justify-center")}>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            disabled={disabled}
-            data-slot="day-availability-trigger"
-            aria-label={`${day}: Verfügbarkeit bearbeiten${availability === "ja" ? ` (${label})` : ""}`}
-            title={availability === "ja" ? label : `${day}: Verfügbarkeit wählen`}
-            className={cn(
-              "flex h-11 w-full items-center justify-center gap-1 rounded-full border px-3 text-base font-medium shadow-xs transition-colors active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 md:h-8 md:text-sm",
-              compactOnDesktop && "md:w-[52px] md:min-w-[52px] md:gap-0.5 md:px-1.5 md:text-xs",
-              valueColor(availability)
-            )}
-          >
-            <span>
-              {availability === "vielleicht"
-                ? "?"
-                : availability === "ja" && timed
-                  ? "🕒"
-                  : availability === "ja"
-                    ? "✓"
-                    : "✕"}
-            </span>
-            <ChevronDown className="size-3 shrink-0 opacity-40" aria-hidden="true" />
-          </button>
-        </PopoverTrigger>
+        {isTimedAvailability ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <PopoverTrigger asChild>{triggerButton}</PopoverTrigger>
+            </TooltipTrigger>
+            <TooltipContent
+              data-slot="day-availability-time-tooltip"
+              side="top"
+              sideOffset={8}
+            >
+              {label}
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+          <PopoverTrigger asChild>{triggerButton}</PopoverTrigger>
+        )}
       </div>
       <PopoverContent
         className="z-50 w-[min(20rem,calc(100vw-1.5rem))] space-y-3 border bg-white p-3 text-slate-950 shadow-lg"
@@ -302,18 +325,19 @@ function DayAvailabilityControl({
           <Button
             type="button"
             variant="outline"
-            className="min-h-11"
+            className="min-h-11 border-emerald-400 bg-emerald-100 font-semibold text-emerald-950 hover:bg-emerald-200"
             onClick={() => commitWindow(null, null)}
           >
-            Ja (Ganztägig)
+            Ja
           </Button>
           <Button
             type="button"
             variant="outline"
-            className="min-h-11"
+            className="min-h-11 border-emerald-200 bg-emerald-50 font-semibold text-emerald-800 hover:bg-emerald-100"
             onClick={() => setCustomOpen(open => !open)}
           >
-            Ja (Zeit anpassen ...)
+            <span>Ja</span>
+            <Clock3 className="ml-1.5 size-4" aria-hidden="true" />
           </Button>
         </div>
         {customOpen && (
@@ -657,7 +681,7 @@ function CakeDonationAction({
         mobile
           ? "h-11 w-11 text-xl"
           : compact
-            ? "h-7 w-7 text-base md:h-8 md:w-8 md:text-[20px]"
+            ? "h-9 w-9 text-[18px]"
             : "h-8 w-8 text-[20px]"
       )}
     >
@@ -2065,9 +2089,9 @@ export default function Helpers() {
                     helper.confirmed === "ja" && "border-l-4 border-l-emerald-600"
                   )}
                 >
-                  <CardContent className="space-y-4 p-4 md:p-5">
+                  <CardContent className="space-y-4 px-4 pb-4 pt-3 md:px-5 md:pb-5 md:pt-4">
                     <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
+                      <div className="min-w-0 flex-1 pt-0.5">
                         <div className="flex items-center gap-2">
                           <h3 className="break-words text-base font-bold leading-5 text-slate-950 md:truncate">
                             {helper.name}
@@ -2078,9 +2102,8 @@ export default function Helpers() {
                             </span>
                           )}
                         </div>
-                        <p className="mt-1 text-xs text-slate-500">
-                          <span className="md:hidden">(</span>
-                          <span className="hidden md:inline">Ansprechpartner: </span>
+                        <p className="mt-0.5 text-xs text-slate-500">
+                          <span>(</span>
                           <span
                             className={cn(
                               "font-medium",
@@ -2089,11 +2112,12 @@ export default function Helpers() {
                           >
                             {contactName ?? "Kein Ansprechpartner"}
                           </span>
-                          <span className="md:hidden">)</span>
+                          <span>)</span>
                         </p>
-                      </div>
-                      <div className="flex w-[9.5rem] shrink-0 flex-col items-end gap-1 md:w-auto">
-                        <div className="flex items-center justify-end gap-0.5">
+                        <div
+                          data-slot="helper-card-actions"
+                          className="mt-2 flex min-h-11 items-center gap-2 sm:gap-3"
+                        >
                           <CakeDonationAction
                             helperName={helper.name}
                             count={cakeCount}
@@ -2104,7 +2128,7 @@ export default function Helpers() {
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7 text-slate-600 hover:text-green-700 md:h-8 md:w-8"
+                            className="h-9 w-9 text-slate-600 hover:text-green-700"
                             title="Aufgabenplan per WhatsApp an Helfer senden"
                             aria-label={`Aufgabenplan von ${helper.name} per WhatsApp senden`}
                             disabled={isPreparingWhatsApp}
@@ -2116,7 +2140,7 @@ export default function Helpers() {
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7 text-slate-600 hover:text-blue-700 md:h-8 md:w-8"
+                            className="h-9 w-9 text-slate-600 hover:text-blue-700"
                             title="Einsatz-PDF herunterladen"
                             aria-label={`Einsatz-PDF von ${helper.name} herunterladen`}
                             disabled={exportingId === helper.id}
@@ -2127,44 +2151,46 @@ export default function Helpers() {
                           >
                             <FileDown className="size-4 text-blue-600" />
                           </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-slate-600 hover:text-blue-700 md:hidden"
-                          title="Helfer bearbeiten"
-                          aria-label={`Helfer ${helper.name} bearbeiten`}
-                          disabled={update.isPending}
-                          onClick={() => openMobileHelperEdit(helper)}
-                        >
-                          <Pencil className="size-4" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-slate-600 hover:text-red-700 md:h-8 md:w-8"
-                          title={
-                            helperDeleteDisabled
-                              ? "Helfer kann aktuell nicht gelöscht werden"
-                              : "Helfer löschen"
-                          }
-                          disabled={helperDeleteDisabled}
-                          onClick={() =>
-                            setDeleteTarget({
-                              id: helper.id,
-                              name: helper.name,
-                            })
-                          }
-                        >
-                          <Trash2 className="size-4 text-red-600" />
-                        </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9 text-slate-600 hover:text-blue-700"
+                            title="Helfer bearbeiten"
+                            aria-label={`Helfer ${helper.name} bearbeiten`}
+                            disabled={update.isPending}
+                            onClick={() => openMobileHelperEdit(helper)}
+                          >
+                            <Pencil className="size-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9 text-slate-600 hover:text-red-700"
+                            title={
+                              helperDeleteDisabled
+                                ? "Helfer kann aktuell nicht gelöscht werden"
+                                : "Helfer löschen"
+                            }
+                            disabled={helperDeleteDisabled}
+                            onClick={() =>
+                              setDeleteTarget({
+                                id: helper.id,
+                                name: helper.name,
+                              })
+                            }
+                          >
+                            <Trash2 className="size-4 text-red-600" />
+                          </Button>
                         </div>
+                      </div>
+                      <div className="flex shrink-0 flex-col items-end pt-0.5">
                         {helper.phone?.trim() ? (
                           <a
                             href={`tel:${helper.phone.replace(/[^\d+]/g, "")}`}
                             data-slot="mobile-helper-phone-call"
-                            className="max-w-full truncate text-xs font-medium text-blue-700 underline decoration-blue-200 underline-offset-2 focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 md:hidden"
+                            className="max-w-[9.5rem] truncate text-xs font-medium text-blue-700 underline decoration-blue-200 underline-offset-2 focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
                             title={`${helper.phone.trim()} anrufen`}
                             aria-label={`${helper.phone.trim()} anrufen`}
                           >
@@ -2174,7 +2200,7 @@ export default function Helpers() {
                           <button
                             type="button"
                             data-slot="mobile-helper-phone-edit"
-                            className="max-w-full truncate text-xs font-medium text-blue-700 underline decoration-blue-200 underline-offset-2 focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 md:hidden"
+                            className="max-w-[9.5rem] truncate text-xs font-medium text-blue-700 underline decoration-blue-200 underline-offset-2 focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
                             title="Telefonnummer hinzufügen"
                             aria-label={`Telefonnummer von ${helper.name} hinzufügen`}
                             disabled={update.isPending}
@@ -2218,18 +2244,6 @@ export default function Helpers() {
                             }
                           />
                         </div>
-                      </div>
-                      <div className="hidden md:block">
-                        <span className="text-slate-500">Telefon</span>
-                        <p className="mt-1 truncate font-medium text-slate-800">
-                          {helper.phone?.trim() ? helper.phone : "–"}
-                        </p>
-                      </div>
-                      <div className="hidden md:block">
-                        <span className="text-slate-500">Hinweis</span>
-                        <p className="mt-1 truncate font-medium text-slate-800">
-                          {helper.note?.trim() ? "Vorhanden" : "–"}
-                        </p>
                       </div>
                     </div>
 

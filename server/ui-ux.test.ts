@@ -420,8 +420,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
       helpers.indexOf('<Card className="hidden shadow-sm md:block">')
     );
 
-    expect(helpers).toContain('availability === "vielleicht"');
-    expect(helpers).toContain('? "?"');
+    expect(helpers).toContain('availability === "ja" ? "Ja" : availability === "nein" ? "Nein" : "?"');
+    expect(helpers).toContain('isTimedAvailability && <Clock3');
     expect(helpers).toContain('? (Unklar)');
     expect(helpers).not.toContain('l: "Vielleicht"');
     expect(helpers).toContain('className="w-full table-fixed text-xs xl:text-sm"');
@@ -433,8 +433,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain("md:w-[52px] md:min-w-[52px]");
     expect(helpers).toContain("rounded-full border px-3");
     expect(helpers).toContain('availability === "ja" && timed');
-    expect(helpers).toContain('? "🕒"');
-    expect(helpers).toContain('className="size-3 shrink-0 opacity-40"');
+    expect(helpers).toContain('<Clock3 className="size-3.5 shrink-0"');
+    expect(helpers).toContain('data-slot="day-availability-time-tooltip"');
     expect(helpers).toContain(
       "inline-flex h-11 min-h-11 w-[92px] items-center justify-center rounded-full"
     );
@@ -2184,7 +2184,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain("border-emerald-200 bg-emerald-50 text-emerald-800");
     expect(helpers).toContain("border-rose-200 bg-rose-50 text-rose-800");
     expect(helpers).toContain('isYes ? "✓" : "✕"');
-    expect(helpers).toContain('availability === "ja"\n                    ? "✓"\n                    : "✕"');
+    expect(helpers).toContain('availability === "ja" ? "Ja" : availability === "nein" ? "Nein" : "?"');
     expect(helpers).toContain("Helfen auf");
     expect(helpers).toContain("Bestätigung auf");
     expect(helpers.match(/<YesNoToggle/g)).toHaveLength(2);
@@ -2200,8 +2200,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain('data-slot="day-availability-trigger"');
     expect(helpers).toContain("<PopoverTrigger asChild>");
     expect(helpers).toContain("availabilityPickerOpen");
-    expect(helpers).toContain("Ja (Ganztägig)");
-    expect(helpers).toContain("Ja (Zeit anpassen ...)");
+    expect(helpers).toContain('data-slot="day-availability-time-tooltip"');
+    expect(helpers).toContain("isTimedAvailability");
+    expect(helpers).toContain("border-emerald-400 bg-emerald-100 text-emerald-950");
+    expect(helpers).toContain("border-emerald-200 bg-emerald-50 text-emerald-800");
+    expect(helpers).toContain("<span>Ja</span>");
     expect(helpers).toContain('? (Unklar)');
     expect(helpers).toContain('commitAvailability("nein")');
     expect(helpers).toContain("commitWindow(null, null)");
@@ -3261,7 +3264,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain("mobileWillHelpFilters");
     expect(helpers).toContain("Telefonnummer hinzufügen");
     expect(helpers).toContain("href={`tel:${helper.phone.replace");
-    expect(helpers).toContain('<span className="md:hidden">(</span>');
+    expect(helpers).toContain('<span>(</span>');
+    expect(helpers).toContain('data-slot="helper-card-actions"');
+    expect(helpers).toContain('className="space-y-4 px-4 pb-4 pt-3 md:px-5 md:pb-5 md:pt-4"');
+    expect(helpers).toContain('className="mt-2 flex min-h-11 items-center gap-2 sm:gap-3"');
+    expect(helpers).toContain('className="h-9 w-9 text-slate-600 hover:text-blue-700"');
+    expect(helpers).toContain('max-w-[9.5rem] truncate text-xs font-medium text-blue-700');
 
     expect(plan).toContain('data-slot="mobile-plan-filter-toggle"');
     expect(plan).toContain('data-slot="mobile-plan-filter-panel"');
