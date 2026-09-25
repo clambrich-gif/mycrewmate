@@ -754,16 +754,14 @@ export function getVisibleHelpChapters(audience: HelpAudience, query: string) {
   }).filter(chapter => chapter.topics.length > 0);
 }
 
-const planningPermissionColor = (value: string) => {
+const permissionCellColor = (value: string, role: "primaryAdmin" | "coAdmin" | "planner" | "readOnly") => {
   if (value === "Kein Zugriff") return "border-rose-300 bg-rose-50 text-rose-800";
-  if (
-    value.startsWith("Nur ") ||
-    value.startsWith("Ansehen") ||
-    value.includes("exportieren") ||
-    value === "Speichern"
-  ) {
+  if (value.includes("keine Änderungen") || value.includes("Keine Änderungen")) {
     return "border-sky-300 bg-sky-50 text-sky-800";
   }
+  if (role === "primaryAdmin") return "border-orange-300 bg-orange-50 text-orange-900";
+  if (role === "coAdmin") return "border-emerald-300 bg-emerald-50 text-emerald-800";
+  if (role === "readOnly") return "border-sky-300 bg-sky-50 text-sky-800";
   return "border-amber-300 bg-amber-50 text-amber-900";
 };
 
@@ -844,12 +842,19 @@ function WorkspaceLink({
 }
 
 function PermissionMatrix() {
+  const roles = [
+    { key: "primaryAdmin" as const, label: "Hauptadmin" },
+    { key: "coAdmin" as const, label: "Co-Admin" },
+    { key: "planner" as const, label: "Planer" },
+    { key: "readOnly" as const, label: "Lesezugriff" },
+  ];
+
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200">
       <div className="border-b bg-slate-50 px-3 py-2.5">
-        <h4 className="text-sm font-semibold text-slate-900">Berechtigungsmatrix</h4>
+        <h4 className="text-sm font-semibold text-slate-900">Berechtigungsmatrix: Rollen im Verein</h4>
         <p className="mt-0.5 text-xs leading-5 text-slate-600">
-          Die Darstellung erklärt die Rechte. Maßgeblich bleibt die serverseitige Prüfung der angemeldeten Sitzung.
+          Hauptadmin, Co-Admin, Planer und Lesezugriff im direkten Vergleich. Maßgeblich bleibt stets die serverseitige Prüfung der angemeldeten Sitzung.
         </p>
       </div>
       <div className="divide-y divide-slate-100 md:hidden">
@@ -857,47 +862,42 @@ function PermissionMatrix() {
           <article key={row.area} className="space-y-2 p-3">
             <h5 className="text-sm font-semibold text-slate-900">{row.area}</h5>
             <div className="grid gap-2 sm:grid-cols-2">
-              <div>
-                <p className="text-xs text-slate-500">Planungsteam</p>
-                <Badge variant="outline" className={cn("mt-1 whitespace-normal text-left", planningPermissionColor(row.planningTeam))}>
-                  {row.planningTeam}
-                </Badge>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500">Administrator</p>
-                <Badge variant="outline" className="mt-1 whitespace-normal border-emerald-300 bg-emerald-50 text-left text-emerald-800">
-                  {row.administrator}
-                </Badge>
-              </div>
+              {roles.map(role => (
+                <div key={role.key}>
+                  <p className="text-xs text-slate-500">{role.label}</p>
+                  <Badge variant="outline" className={cn("mt-1 whitespace-normal text-left", permissionCellColor(row[role.key], role.key))}>
+                    {row[role.key]}
+                  </Badge>
+                </div>
+              ))}
             </div>
             <p className="text-xs leading-5 text-slate-600">{row.note}</p>
           </article>
         ))}
       </div>
       <div className="hidden overflow-x-auto md:block">
-        <table className="w-full min-w-[840px] text-left text-sm">
+        <table className="w-full min-w-[1120px] text-left text-sm">
           <thead className="bg-slate-50 text-slate-700">
             <tr>
-              <th className="w-[23%] px-3 py-2.5 font-semibold">Bereich</th>
-              <th className="w-[19%] px-3 py-2.5 font-semibold">Planungsteam</th>
-              <th className="w-[19%] px-3 py-2.5 font-semibold">Administrator</th>
-              <th className="w-[39%] px-3 py-2.5 font-semibold">Erläuterung</th>
+              <th className="w-[18%] px-3 py-2.5 font-semibold">Bereich</th>
+              <th className="w-[15%] px-3 py-2.5 font-semibold">Hauptadmin</th>
+              <th className="w-[15%] px-3 py-2.5 font-semibold">Co-Admin</th>
+              <th className="w-[17%] px-3 py-2.5 font-semibold">Planer</th>
+              <th className="w-[15%] px-3 py-2.5 font-semibold">Lesezugriff</th>
+              <th className="w-[20%] px-3 py-2.5 font-semibold">Erläuterung</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {PERMISSION_MATRIX.map(row => (
               <tr key={row.area} className="align-top">
                 <td className="px-3 py-3 font-medium text-slate-900">{row.area}</td>
-                <td className="px-3 py-3">
-                  <Badge variant="outline" className={cn("whitespace-normal text-left", planningPermissionColor(row.planningTeam))}>
-                    {row.planningTeam}
-                  </Badge>
-                </td>
-                <td className="px-3 py-3">
-                  <Badge variant="outline" className="whitespace-normal border-emerald-300 bg-emerald-50 text-left text-emerald-800">
-                    {row.administrator}
-                  </Badge>
-                </td>
+                {roles.map(role => (
+                  <td key={role.key} className="px-3 py-3">
+                    <Badge variant="outline" className={cn("whitespace-normal text-left", permissionCellColor(row[role.key], role.key))}>
+                      {row[role.key]}
+                    </Badge>
+                  </td>
+                ))}
                 <td className="px-3 py-3 text-xs leading-5 text-slate-600">{row.note}</td>
               </tr>
             ))}

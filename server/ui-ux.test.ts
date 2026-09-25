@@ -3318,4 +3318,30 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(chat).toContain("Chat wird noch synchronisiert.");
     expect(chat).toContain("Live-Chat · ${eventName} · 24h Speicher");
   });
+
+  it("erklärt die vier Vereinsrollen und weist reine Lesezugänge freundlich aus", () => {
+    const help = source("client/src/components/HelpGuide.tsx");
+    const layout = source("client/src/components/Layout.tsx");
+    const accessManager = source("client/src/components/PlanningTeamAccessManager.tsx");
+    const router = source("server/routers.ts");
+    const matrix = source("shared/permissions.ts");
+
+    expect(help).toContain("Berechtigungsmatrix: Rollen im Verein");
+    expect(help).toContain('label: "Hauptadmin"');
+    expect(help).toContain('label: "Co-Admin"');
+    expect(help).toContain('label: "Planer"');
+    expect(help).toContain('label: "Lesezugriff"');
+    expect(help).toContain("primaryAdmin");
+    expect(help).toContain("readOnly");
+    expect(matrix).toContain("Team-Chat & Live-Notizen");
+    expect(matrix).toContain("Nur Hauptadmin und Co-Admin dürfen den Verlauf leeren.");
+
+    expect(layout).toContain('data-slot="readonly-access-notice"');
+    expect(layout).toContain("Lesezugriff aktiv");
+    expect(layout).toContain("Änderungen an Planungsdaten, Einstellungen oder Zugängen");
+    expect(accessManager).toContain('data-slot="readonly-access-explanation"');
+    expect(accessManager).toContain("Ohne Auswahl: reiner Lesezugriff");
+    expect(accessManager).toContain("im Team-Chat lesen sowie schreiben");
+    expect(router).toContain("Lesezugriff aktiv: Sie können diesen Bereich ansehen, aber keine Daten ändern.");
+  });
 });

@@ -761,10 +761,16 @@ export function PlanningTeamAccessManager() {
                 );
               })}
             </div>
-            {form.modulePermissions.length === 0 && (
-              <p className="text-xs text-amber-700">
-                Hinweis: Ohne ausgewählte Bereiche hat dieser Zugang reine Leseansichten.
-              </p>
+            {form.modulePermissions.length === 0 && !form.isTenantAdmin && (
+              <aside
+                data-slot="readonly-access-explanation"
+                className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2.5 text-xs leading-5 text-sky-900"
+              >
+                <p className="font-semibold">Ohne Auswahl: reiner Lesezugriff</p>
+                <p className="mt-0.5">
+                  Dieser Zugang kann die freigegebene Veranstaltung vollständig ansehen und im Team-Chat lesen sowie schreiben, darf aber keine Planungsdaten, Einstellungen oder Zugänge bearbeiten.
+                </p>
+              </aside>
             )}
           </fieldset>
 

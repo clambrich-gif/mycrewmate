@@ -1,93 +1,72 @@
 export type PermissionRow = {
   area: string;
-  planningTeam: string;
-  administrator: string;
+  primaryAdmin: string;
+  coAdmin: string;
+  planner: string;
+  readOnly: string;
   note: string;
 };
 
+/**
+ * Die Rollenmatrix erklärt die effektiven Vereinsrechte in verständlicher Form.
+ * Die serverseitige Prüfung bleibt immer maßgeblich; sie verhindert Änderungen
+ * auch dann, wenn eine Seite noch geöffnet war, bevor Rechte geändert wurden.
+ */
 export const PERMISSION_MATRIX: readonly PermissionRow[] = [
   {
-    area: "Dashboard, Jahre & Veranstaltungen",
-    planningTeam: "Ansehen und auswählen",
-    administrator: "Vollzugriff",
-    note: "Neue Jahre, das Anlegen von Veranstaltungen mit aktiven Wochentagen, Umbenennen, passwortgeschütztes Löschen sowie die Planübernahme sind administrativ geschützt.",
+    area: "Veranstaltungen & Planungsansichten",
+    primaryAdmin: "Alle Vereinsveranstaltungen verwalten",
+    coAdmin: "Alle Vereinsveranstaltungen verwalten",
+    planner: "Nur freigegebene Veranstaltungen ansehen",
+    readOnly: "Freigegebene Veranstaltung ansehen",
+    note: "Die Eventfreigabe begrenzt persönliche Planungsteam- und Lesezugänge immer auf die ausgewählten Veranstaltungen.",
   },
   {
-    area: "Ansprechpartner",
-    planningTeam: "Anlegen und bearbeiten",
-    administrator: "Vollzugriff",
-    note: "Die Einzellöschung erfordert eine Administratorsitzung und das Administratorpasswort. Der eigene gleichnamige Helfereintrag wird automatisch ohne weitere Personenauswahl mitgelöscht.",
+    area: "Fachbereiche & Planungsdaten",
+    primaryAdmin: "Vollzugriff",
+    coAdmin: "Vollzugriff im eigenen Verein",
+    planner: "Nur ausgewählte Fachbereiche bearbeiten",
+    readOnly: "Ansehen – keine Änderungen",
+    note: "Beim Planer werden die Fachbereiche einzeln vergeben. Ohne Auswahl bleibt der vollständige Plan lesbar, aber sämtliche Änderungen sind gesperrt.",
   },
   {
-    area: "Helfer",
-    planningTeam: "Anlegen, bearbeiten und eingeschränkt löschen",
-    administrator: "Vollzugriff",
-    note: "Eingeteilte Helfer kann nur ein Administrator löschen. Eigene Helfereinträge von Ansprechpartnern werden automatisch über die Ansprechpartnerlöschung entfernt.",
+    area: "Team-Chat & Live-Notizen",
+    primaryAdmin: "Lesen, schreiben und Verlauf leeren",
+    coAdmin: "Lesen, schreiben und Verlauf leeren",
+    planner: "Lesen und schreiben",
+    readOnly: "Lesen und schreiben",
+    note: "Der Team-Chat gehört zur freigegebenen Veranstaltung und funktioniert bewusst unabhängig von einzelnen Fachbereichsrechten. Nur Hauptadmin und Co-Admin dürfen den Verlauf leeren.",
   },
   {
-    area: "Einsatzplan",
-    planningTeam: "Nur ansehen und filtern",
-    administrator: "Vollzugriff",
-    note: "Schichten, Besetzungen, Kopien und Planimporte können ausschließlich Administratoren ändern.",
+    area: "Ansprechpartner & persönliche Zugänge",
+    primaryAdmin: "Vollzugriff einschließlich Co-Admins",
+    coAdmin: "Planungsteamzugänge verwalten",
+    planner: "Kein Zugriff",
+    readOnly: "Kein Zugriff",
+    note: "Nur der Hauptadmin kann Co-Admins ernennen, ändern oder entfernen. Co-Admins verwalten ausschließlich normale Planungsteamzugänge.",
   },
   {
-    area: "Vorbereitung",
-    planningTeam: "Vollzugriff mit Löschprotokoll",
-    administrator: "Vollzugriff",
-    note: "Das Planungsteam kann Aufgaben anlegen, bearbeiten und löschen. Die reale angemeldete Sitzungsidentität wird automatisch im Löschprotokoll gespeichert. Nur Administratoren können gelöschte Vorbereitungen wiederherstellen oder Resets ausführen.",
+    area: "Jahre, Veranstaltungen, Importe & Projektstände",
+    primaryAdmin: "Vollzugriff",
+    coAdmin: "Vollzugriff im eigenen Verein",
+    planner: "Nur freigegebene Ausgaben",
+    readOnly: "Planungsstand ansehen",
+    note: "Neue Veranstaltungsjahre, Veranstaltungen, Importe, Übernahmen und Wiederherstellungen sind administrativ geschützt.",
   },
   {
-    area: "Nachbereitung",
-    planningTeam: "Vollzugriff mit Löschprotokoll",
-    administrator: "Vollzugriff",
-    note: "Das Planungsteam kann Aufgaben anlegen, bearbeiten und löschen. Die reale angemeldete Sitzungsidentität wird automatisch im Löschprotokoll gespeichert. Nur Administratoren können gelöschte Nachbereitungen wiederherstellen oder Resets ausführen.",
+    area: "Löschen, Schutz & Protokoll",
+    primaryAdmin: "Vollzugriff mit Passwortschutz",
+    coAdmin: "Vollzugriff im eigenen Verein",
+    planner: "Nur soweit Fachbereich freigegeben",
+    readOnly: "Kein Löschen oder Zurücksetzen",
+    note: "Kritische Aktionen verlangen zusätzlich die bestätigte Administratorsitzung und werden im Protokoll nachvollziehbar festgehalten.",
   },
   {
-    area: "Material, Marketing & Genehmigungen",
-    planningTeam: "Anlegen und bearbeiten",
-    administrator: "Vollzugriff",
-    note: "Einzellöschungen und Resets sind administrativ geschützt.",
-  },
-  {
-    area: "Kuchen / Spenden",
-    planningTeam: "Vollzugriff",
-    administrator: "Vollzugriff",
-    note: "Einzellöschungen erfordern für beide Rollen eine ausdrückliche Ja/Nein-Bestätigung und werden protokolliert.",
-  },
-  {
-    area: "Finanzen",
-    planningTeam: "Anlegen und bearbeiten",
-    administrator: "Vollzugriff",
-    note: "Einzellöschungen und Resets sind administrativ geschützt.",
-  },
-  {
-    area: "PDF-Ausgabe",
-    planningTeam: "Vollzugriff",
-    administrator: "Vollzugriff",
-    note: "Beide Rollen können Einzel-, Sammel- sowie gefilterte Blanko- und ausgefüllte Einsatzpläne erzeugen.",
-  },
-  {
-    area: "Projektdatei: Speichern & Laden",
-    planningTeam: "Speichern",
-    administrator: "Speichern, prüfen und laden",
-    note: "Die kompakte JSON-Projektdatei enthält den vollständigen Stand der gewählten Veranstaltung. Das Laden ist passwortgeschützt, atomar und vollständig protokolliert.",
-  },
-  {
-    area: "Excel-Projektübersicht & Modulimporte",
-    planningTeam: "Projektübersicht exportieren",
-    administrator: "Export und modulare Importe",
-    note: "Excel dient der Übersicht. Im jeweiligen Bereich können Administratoren nur dessen Tabellenblatt prüfen und vollständig importieren; Neu-, Änderungs- und Löschfilter erleichtern die Vorschau.",
-  },
-  {
-    area: "Zugangsschutz, Einmal-Zugänge & Resets",
-    planningTeam: "Kein Zugriff",
-    administrator: "Vollzugriff",
-    note: "Administratoren erstellen und drucken Einmal-Zugänge, setzen Passwörter gezielt zurück und aktivieren bei Bedarf den globalen Notfall-Stopp für das gesamte Planungsteam. Passwortänderungen sowie Bereichs- oder Jahresresets bleiben administrativ geschützt.",
-  },
-  {
-    area: "Schutz & Protokoll",
-    planningTeam: "Kein Zugriff",
-    administrator: "Ansehen, filtern, wiederherstellen und zurücksetzen",
-    note: "Der Bereich Schutz & Protokoll ist ausschließlich für Administratoren sichtbar. Dort können sie Einzellöschungen von Helfern, Spenden sowie Vor- und Nachbereitungen gezielt wiederherstellen; das Zurücksetzen erfordert das Administratorpasswort.",
+    area: "Masterportal & globale Plattformrechte",
+    primaryAdmin: "Keine Plattformrechte automatisch",
+    coAdmin: "Kein Zugriff",
+    planner: "Kein Zugriff",
+    readOnly: "Kein Zugriff",
+    note: "Das Masterportal und globale Schutzfunktionen bleiben ausschließlich dem Plattform-Inhaber vorbehalten und sind keine Vereinsrolle.",
   },
 ];

@@ -122,21 +122,21 @@ describe("Vereins- und Bereichsrechte-Modell", () => {
     // Versuch Vorbereitung anzulegen muss scheitern
     await expect(
       caller.prep.create({ task: "Nicht erlaubt" })
-    ).rejects.toThrow("Keine Berechtigung zur Bearbeitung dieses Bereichs.");
+    ).rejects.toThrow("Lesezugriff aktiv: Sie können diesen Bereich ansehen, aber keine Daten ändern.");
 
     // Versuch Material anzulegen muss scheitern
     await expect(
       caller.materials.create({ item: "Nicht erlaubt" })
-    ).rejects.toThrow("Keine Berechtigung zur Bearbeitung dieses Bereichs.");
+    ).rejects.toThrow("Lesezugriff aktiv: Sie können diesen Bereich ansehen, aber keine Daten ändern.");
 
     // Versuch Nachbereitung anzulegen muss scheitern
     await expect(
       caller.post.create({ task: "Nicht erlaubt" })
-    ).rejects.toThrow("Keine Berechtigung zur Bearbeitung dieses Bereichs.");
+    ).rejects.toThrow("Lesezugriff aktiv: Sie können diesen Bereich ansehen, aber keine Daten ändern.");
 
     // Versuch Helfer anzulegen muss scheitern
     await expect(
       caller.helpers.create({ name: "Nicht erlaubt" })
-    ).rejects.toThrow("Keine Berechtigung zur Bearbeitung dieses Bereichs.");
+    ).rejects.toThrow("Lesezugriff aktiv: Sie können diesen Bereich ansehen, aber keine Daten ändern.");
   });
 });

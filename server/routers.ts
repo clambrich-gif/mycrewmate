@@ -262,9 +262,12 @@ function requireModuleWritePermission(
   module: Exclude<PlanningModule, "read_all">
 ) {
   if (!mayWritePlanningModule(permissions, module)) {
+    const isReadOnlyAccess = permissions.length === 0;
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: "Keine Berechtigung zur Bearbeitung dieses Bereichs.",
+      message: isReadOnlyAccess
+        ? "Lesezugriff aktiv: Sie können diesen Bereich ansehen, aber keine Daten ändern. Bitte wenden Sie sich bei Bedarf an das Admin-Team."
+        : "Keine Berechtigung zur Bearbeitung dieses Bereichs.",
     });
   }
 }

@@ -284,6 +284,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
     isPrimaryTenantAdmin,
     isCoAdmin,
   });
+  const isReadOnlyPlanningAccess =
+    user?.role === "user" &&
+    !isTenantAdmin &&
+    Array.isArray(myPermissions.data) &&
+    myPermissions.data.length === 0;
   const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [capsLockOn, setCapsLockOn] = useState(false);
@@ -1823,6 +1828,21 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </div>
             )}
           </div>
+          {isReadOnlyPlanningAccess && (
+            <aside
+              data-slot="readonly-access-notice"
+              role="status"
+              className="mb-5 flex items-start gap-3 rounded-xl border border-sky-200 bg-sky-50/80 px-3 py-3 text-sm text-sky-950 shadow-sm"
+            >
+              <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0 text-sky-700" aria-hidden="true" />
+              <div>
+                <p className="font-semibold">Lesezugriff aktiv</p>
+                <p className="mt-0.5 text-xs leading-5 text-sky-800">
+                  Sie können die freigegebene Veranstaltung und den Team-Chat nutzen. Änderungen an Planungsdaten, Einstellungen oder Zugängen sind für diesen Zugang gesperrt.
+                </p>
+              </div>
+            </aside>
+          )}
           {children}
         </div>
       </main>
