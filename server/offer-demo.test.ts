@@ -5,7 +5,7 @@ const source = (relativePath: string) =>
   readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
 describe("lokale MyCrewMate-Angebotsdemo", () => {
-  it("stellt den einmaligen Event Pass und drei Jahrespakete mit sicher markiertem Musterwarenkorb bereit", () => {
+  it("stellt den wieder wählbaren Event Pass und drei frei entscheidbare Jahresmodelle mit sicher markiertem Musterwarenkorb bereit", () => {
     const offerDemo = source("client/src/pages/OfferDemo.tsx");
 
     expect(offerDemo).toContain('id: "event-pass"');
@@ -16,8 +16,11 @@ describe("lokale MyCrewMate-Angebotsdemo", () => {
     expect(offerDemo).toContain("price: 149");
     expect(offerDemo).toContain("price: 299");
     expect(offerDemo).toContain("price: 449");
-    expect(offerDemo).toContain("Ein Event. Ein Preis. Kein Abo.");
-    expect(offerDemo).toContain("Keine Abo-Falle");
+    expect(offerDemo).toContain("Ein Event. Ein Preis. Frei entscheiden.");
+    expect(offerDemo).toContain("Jedes Jahr frei neu entscheiden");
+    expect(offerDemo).toContain("kann der Event Pass jederzeit erneut gewählt werden");
+    expect(offerDemo).toContain("ohne automatische Verlängerung");
+    expect(offerDemo).toContain("regelmäßigen Veranstaltungen");
     expect(offerDemo).toContain("gemeinsamer Orga- und Massenzugang");
     expect(offerDemo).toContain("anonyme Planeinträge");
     expect(offerDemo).toContain("Keine individuellen Helfer-Logins");
@@ -27,6 +30,8 @@ describe("lokale MyCrewMate-Angebotsdemo", () => {
     expect(offerDemo).toContain("Simuliert in den Warenkorb");
     expect(offerDemo).toContain("Fiktiver Muster-Checkout");
     expect(offerDemo).toContain("keine Bestellung gespeichert oder übertragen");
+    expect(offerDemo).not.toContain("Abo");
+    expect(offerDemo).not.toContain("Abo-Falle");
     expect(offerDemo).not.toContain("trpc.");
   });
 

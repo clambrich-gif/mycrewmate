@@ -59,11 +59,11 @@ const OFFERS: Offer[] = [
   {
     id: "event-pass",
     name: "Event Pass",
-    eyebrow: "Der unverbindliche Testlauf",
+    eyebrow: "Die flexible Einzelveranstaltung",
     price: 69,
     priceUnit: "einmalig pro Veranstaltung*",
     audience: "Für ein konkretes Fest, Rennen oder Vereinswochenende",
-    description: "Ein gemeinsamer Plan für genau eine Veranstaltung – ohne Laufzeit, Abo oder Folgeverpflichtung.",
+    description: "Ein gemeinsamer Plan für genau eine Veranstaltung – einmalig wählbar und bei Bedarf jedes Jahr erneut nutzbar.",
     highlights: [
       "Ein gemeinsamer Orga- und Massenzugang",
       "Festes Helferkontingent als anonyme Planeinträge",
@@ -74,32 +74,32 @@ const OFFERS: Offer[] = [
       "Kein Live-Chat",
       "Keine individuellen Helfer-Logins",
     ],
-    detailTitle: "Ein Event. Ein Preis. Kein Abo.",
+    detailTitle: "Ein Event. Ein Preis. Frei entscheiden.",
     detailText:
-      "Der Event Pass ist der unkomplizierte Weg, MyCrewMate bei einer einzelnen Veranstaltung kennenzulernen. Ein gemeinsamer Orga- und Massenzugang bündelt die Planung; Helfer bleiben anonyme Planeinträge und benötigen keinen eigenen Login. Nach dem Event entscheidet ihr ganz in Ruhe, ob Light oder Pro zu eurem Verein passt.",
+      "Der Event Pass bündelt die Planung einer einzelnen Veranstaltung über einen gemeinsamen Orga- und Massenzugang; Helfer bleiben anonyme Planeinträge und benötigen keinen eigenen Login. Für dieselbe jährliche Veranstaltung kann der Event Pass jederzeit erneut gewählt werden. Light und Pro bleiben zusätzliche Optionen für Vereine, die regelmäßige Veranstaltungen mit mehr Funktionsumfang organisieren möchten.",
     accent: "border-orange-400 bg-gradient-to-b from-orange-50 via-white to-white shadow-[0_24px_60px_-26px_rgba(249,115,22,0.38)]",
     buttonClass: "bg-orange-500 text-white hover:bg-orange-600",
     icon: CalendarCheck2,
     featured: true,
-    featuredLabel: "EINMALIG · KEIN ABO",
+    featuredLabel: "FLEXIBEL · JEDES JAHR NEU",
   },
   {
     id: "light",
     name: "Light",
     eyebrow: "Der klare Start",
     price: 149,
-    priceUnit: "pro Jahr*",
-    audience: "Für kleine Vereine & überschaubare Events",
-    description: "Alles Wesentliche für einen sauberen Plan – einfach starten, gemeinsam organisieren.",
+    priceUnit: "für ein Veranstaltungsjahr*",
+    audience: "Für Vereine mit einer regelmäßigen Veranstaltung",
+    description: "Alles Wesentliche für einen sauberen Plan – mit jährlich freier Entscheidung über die weitere Nutzung.",
     highlights: [
       "Ein gemeinsamer Teamzugang",
       "Helfer- & Schichtplanung",
       "Orte, Material & PDF-Listen",
-      "Unbegrenzte Helfer im Muster",
+      "Jährlich neu wählbar – ohne automatische Verlängerung",
     ],
     detailTitle: "Weniger Abstimmung. Mehr Überblick.",
     detailText:
-      "Light bündelt die Grundlagen an einem aufgeräumten Ort: Helfer erfassen, Schichten planen und Listen ausgeben. Ideal, wenn ein Verein den ersten Schritt aus der Zettelwirtschaft machen möchte.",
+      "Light bündelt die Grundlagen an einem aufgeräumten Ort: Helfer erfassen, Schichten planen und Listen ausgeben. Ideal für Vereine, die ihre regelmäßige Veranstaltung zuverlässig organisieren möchten und nach jedem Veranstaltungsjahr frei entscheiden wollen, ob sie weitermachen.",
     accent: "border-slate-200 bg-white",
     buttonClass: "bg-slate-900 text-white hover:bg-slate-800",
     icon: ClipboardCheck,
@@ -109,18 +109,18 @@ const OFFERS: Offer[] = [
     name: "Pro",
     eyebrow: "Die beliebteste Wahl",
     price: 299,
-    priceUnit: "pro Jahr*",
-    audience: "Für aktive Teams, die gemeinsam mehr bewegen",
-    description: "Die volle Planungstiefe für Veranstaltungen, bei denen Übersicht und Kommunikation zählen.",
+    priceUnit: "für ein Veranstaltungsjahr*",
+    audience: "Für Vereine mit regelmäßigen Veranstaltungen und aktiven Teams",
+    description: "Die volle Planungstiefe für Veranstaltungen, bei denen Übersicht, Kommunikation und Teamzugänge zählen.",
     highlights: [
       "Personalisierte Teamzugänge",
       "GPX-Strecken & Standortkarte",
       "Live-Chat, Material & Spenden",
-      "PDF-Ausgabe & Rollenübersicht",
+      "Jährlich neu wählbar – ohne automatische Verlängerung",
     ],
     detailTitle: "Planen, das sich leicht anfühlt.",
     detailText:
-      "Pro bringt Helfer, Schichten, Strecken, Material und die Kommunikation des Orga-Teams in einen gemeinsamen Arbeitsbereich. Damit bleibt bei der Planung mehr Raum für das, was Freude macht: ein gelungenes Event.",
+      "Pro bringt Helfer, Schichten, Strecken, Material und die Kommunikation des Orga-Teams in einen gemeinsamen Arbeitsbereich. Es lohnt sich besonders für Vereine mit regelmäßigen Veranstaltungen, wenn mehr Funktionsumfang und persönliche Teamzugänge den Ablauf spürbar erleichtern. Auch hier wird jedes Veranstaltungsjahr frei neu entschieden.",
     accent: "border-blue-500 bg-gradient-to-b from-blue-50 to-white shadow-[0_24px_60px_-26px_rgba(37,99,235,0.45)]",
     buttonClass: "bg-blue-600 text-white hover:bg-blue-700",
     icon: Sparkles,
@@ -131,18 +131,18 @@ const OFFERS: Offer[] = [
     eyebrow: "Für eure eigene Lösung",
     price: 449,
     pricePrefix: "ab",
-    priceUnit: "pro Jahr*",
+    priceUnit: "für ein Veranstaltungsjahr*",
     audience: "Für Großevents, Verbände & individuelle Abläufe",
     description: "Der Rahmen für Teams, die MyCrewMate auf ihren Verein zuschneiden lassen möchten.",
     highlights: [
       "Mehrere Veranstaltungen im Blick",
       "Erweiterte Schutz- & Protokollfunktionen",
       "Priorisierte Begleitung im Muster",
-      "Individuelle Erweiterungen nach Absprache",
+      "Jährlich neu abgestimmt – ohne automatische Verlängerung",
     ],
     detailTitle: "Euer Ablauf. Eure Oberfläche.",
     detailText:
-      "Enterprise ist für Vereine gedacht, die über den Standard hinausgehen möchten: zusätzliche Spendenarten, angepasste Nachbereitungen oder eine Oberfläche, die den eigenen Ablauf exakt aufnimmt. Umfang und Umsetzung werden transparent gemeinsam vereinbart.",
+      "Enterprise ist für Vereine gedacht, die über den Standard hinausgehen möchten: zusätzliche Spendenarten, angepasste Nachbereitungen oder eine Oberfläche, die den eigenen Ablauf exakt aufnimmt. Umfang, Preis und die Entscheidung für das nächste Veranstaltungsjahr werden transparent gemeinsam vereinbart.",
     accent: "border-orange-200 bg-gradient-to-b from-orange-50 to-white",
     buttonClass: "bg-orange-500 text-white hover:bg-orange-600",
     icon: Gem,
@@ -383,20 +383,20 @@ export default function OfferDemo() {
               <CalendarCheck2 className="size-3.5" aria-hidden="true" />
               Neu: Einmalpaket
             </div>
-            <h2 className="mt-4 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Ein Event. Ein Preis. <span className="text-orange-600">Kein Abo.</span></h2>
+            <h2 className="mt-4 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Ein Event. Ein Preis. <span className="text-orange-600">Frei entscheiden.</span></h2>
             <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600 sm:text-lg">
-              Der Event Pass ist für Vereine, die MyCrewMate ohne Verbindlichkeit bei einer einzelnen Veranstaltung erleben möchten. Gemeinsam planen, entspannt durchführen – und erst danach entscheiden, ob Light oder Pro passt.
+              Der Event Pass ist für Vereine, die eine einzelne Veranstaltung flexibel organisieren möchten. Er kann für dieselbe jährliche Veranstaltung jederzeit erneut gewählt werden. Light und Pro bieten zusätzliche Leistung für Vereine mit regelmäßigen Veranstaltungen.
             </p>
             <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold text-slate-700">
               <span className="inline-flex items-center gap-2"><Check className="size-4 text-emerald-600" aria-hidden="true" /> 1 gemeinsamer Orga- und Massenzugang</span>
-              <span className="inline-flex items-center gap-2"><Check className="size-4 text-emerald-600" aria-hidden="true" /> Keine Abo-Falle</span>
+              <span className="inline-flex items-center gap-2"><Check className="size-4 text-emerald-600" aria-hidden="true" /> Jedes Jahr frei neu entscheiden</span>
               <span className="inline-flex items-center gap-2"><Check className="size-4 text-emerald-600" aria-hidden="true" /> Ohne persönliche Helfer-Logins</span>
             </div>
           </div>
           <div className="rounded-3xl border border-orange-200 bg-white p-6 text-center shadow-[0_20px_45px_-28px_rgba(249,115,22,0.65)] sm:min-w-72">
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-orange-700">Einmalig pro Veranstaltung</p>
             <p className="mt-2 text-5xl font-black tracking-tight text-slate-950">69 €</p>
-            <p className="mt-2 text-sm leading-5 text-slate-500">Für Vorbereitung, Event und Nachbereitung.</p>
+            <p className="mt-2 text-sm leading-5 text-slate-500">Für Vorbereitung, Event und Nachbereitung – jederzeit erneut wählbar.</p>
             <Button type="button" className="mt-5 w-full rounded-xl bg-orange-500 text-white hover:bg-orange-600" onClick={() => setDetailsOffer(OFFERS[0])}>
               Einmalpaket ansehen <ArrowRight className="size-4" aria-hidden="true" />
             </Button>
@@ -429,12 +429,12 @@ export default function OfferDemo() {
           <div className="mx-auto max-w-2xl text-center">
             <p className="text-sm font-bold uppercase tracking-[0.16em] text-blue-700">Fiktive Musterangebote</p>
             <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Wählt, was zu eurem Team passt.</h2>
-            <p className="mt-4 text-base leading-7 text-slate-600">Einmalig starten oder dauerhaft organisieren: klare Preise, keine versteckten Schritte und immer ein gemeinsamer Plan, auf den sich euer Team verlassen kann.</p>
+            <p className="mt-4 text-base leading-7 text-slate-600">Einmalig oder für ein Veranstaltungsjahr: klare Preise, keine automatische Verlängerung und jedes Jahr eine freie Entscheidung für euer Team.</p>
           </div>
           <div className="mx-auto mt-12 grid max-w-7xl gap-5 lg:grid-cols-4 lg:items-stretch">
             {OFFERS.map(offer => <OfferCard key={offer.id} offer={offer} onDetails={setDetailsOffer} onAdd={addToCart} />)}
           </div>
-          <p className="mt-7 text-center text-xs text-slate-500">* Fiktive Preisdarstellung dieser Musterdemo. Umfang, Kontingente, Preis und Bedingungen werden in einem echten Angebot verbindlich abgestimmt.</p>
+          <p className="mt-7 text-center text-xs text-slate-500">* Fiktive Preisdarstellung dieser Musterdemo. Die Nutzung wird nicht automatisch verlängert; Umfang, Kontingente, Preis und Bedingungen werden für jedes Veranstaltungsjahr transparent abgestimmt.</p>
         </div>
       </section>
 
