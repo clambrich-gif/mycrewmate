@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   eventStartSelectionSessionKey,
+  initialAccessibleEvent,
   nearestUpcomingEvent,
 } from "../shared/event-start-selection";
 
@@ -79,5 +80,14 @@ describe("Startauswahl der nächsten Veranstaltung", () => {
     expect(eventStartSelectionSessionKey("rsc-eifelland-mayen")).toBe(
       "mycrewmate:event-start-selection:rsc-eifelland-mayen"
     );
+  });
+
+  it("wählt für einen eingeladenen Zugang auch ohne eingetragenes Startdatum stabil ein freigegebenes Event", () => {
+    expect(
+      initialAccessibleEvent([
+        { id: 33, year: 2027, name: "MyEifelRide 2027", startDate: null },
+        { id: 32, year: 2027, name: "Helferfest", startDate: null },
+      ])
+    ).toMatchObject({ id: 32, name: "Helferfest" });
   });
 });

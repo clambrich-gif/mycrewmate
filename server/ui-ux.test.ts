@@ -107,11 +107,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const startSelection = source("shared/event-start-selection.ts");
 
     expect(layout).toContain("trpc.events.all.useQuery");
-    expect(layout).toContain("nearestUpcomingEvent(accessibleEvents.data)");
+    expect(layout).toContain("initialAccessibleEvent(accessibleEvents.data)");
     expect(layout).toContain("eventStartSelectionSessionKey(tenantId)");
     expect(layout).toContain("window.sessionStorage.setItem(selectionKey, \"done\")");
-    expect(layout).toContain("selectYear(nearestEvent.year, nearestEvent.id)");
-    expect(layout).toContain("if (nearestEvent.id !== eventId) selectEvent(nearestEvent.id)");
+    expect(layout).toContain("selectYear(initialEvent.year, initialEvent.id)");
+    expect(layout).toContain("if (initialEvent.id !== eventId) selectEvent(initialEvent.id)");
     expect(yearContext).toContain("window.sessionStorage.removeItem(");
     expect(yearContext).toContain("eventStartSelectionSessionKey(nextTenantId)");
     expect(yearContext).toContain("window.localStorage.removeItem(YEAR_STORAGE_KEY)");

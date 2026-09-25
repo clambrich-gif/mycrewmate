@@ -77,7 +77,7 @@ import { COPYRIGHT_NOTICE } from "@shared/branding";
 import { ACTIVE_PILOT_TENANT } from "@shared/tenant";
 import {
   eventStartSelectionSessionKey,
-  nearestUpcomingEvent,
+  initialAccessibleEvent,
 } from "@shared/event-start-selection";
 import {
   Bike,
@@ -784,15 +784,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
     // Veranstaltung nicht durch Refetches oder Seitenwechsel überschrieben wird.
     const selectionKey = eventStartSelectionSessionKey(tenantId);
     if (window.sessionStorage.getItem(selectionKey)) return;
-    window.sessionStorage.setItem(selectionKey, "done");
 
-    const nearestEvent = nearestUpcomingEvent(accessibleEvents.data);
-    if (!nearestEvent) return;
-    if (nearestEvent.year !== year) {
-      selectYear(nearestEvent.year, nearestEvent.id);
+    const initialEvent = initialAccessibleEvent(accessibleEvents.data);
+    if (!initialEvent) return;
+    window.sessionStorage.setItem(selectionKey, "done");
+    if (initialEvent.year !== year) {
+      selectYear(initialEvent.year, initialEvent.id);
       return;
     }
-    if (nearestEvent.id !== eventId) selectEvent(nearestEvent.id);
+    if (initialEvent.id !== eventId) selectEvent(initialEvent.id);
   }, [
     accessibleEvents.data,
     eventId,

@@ -1053,4 +1053,67 @@ describe("Event-based Access Control für Planungsteam", () => {
     });
     expect(notesSpy).toHaveBeenCalledTimes(2);
   });
+
+  it("erlaubt den Event-Chat auch ohne einzelne Fachmodulfreigabe, aber niemals für ein fremdes Event", async () => {
+    vi.spyOn(db, "getEvent").mockResolvedValue({
+      id: 10,
+      year: 2027,
+      name: "MyEifelRide 2027",
+    } as any);
+    vi.spyOn(db, "getPlanningTeamAccessCredentialForCurrentTenant").mockResolvedValue({
+      id: 81,
+      isTenantAdmin: false,
+      modulePermissions: [],
+    } as any);
+    const accessAllowedSpy = vi
+      .spyOn(db, "isPlanningTeamAccessAllowedForEvent")
+      .mockResolvedValue(true);
+    vi.spyOn(db, "isPlanningTeamAccessPasswordChangeRequired").mockResolvedValue(false);
+    vi.spyOn(db, "listTeamNotes").mockResolvedValue([]);
+    vi.spyOn(db, "listActiveTypers").mockResolvedValue([]);
+    vi.spyOn(db, "getTeamNoteUnreadStatus").mockResolvedValue({
+      unreadCount: 0,
+      hasImportantUnread: false,
+    });
+    const createSpy = vi.spyOn(db, "createTeamNote").mockResolvedValue({
+      id: 9,
+      year: 2027,
+      eventId: 10,
+      senderName: "Reiner Leser",
+      senderRole: "user",
+      message: "Ich bin dabei.",
+      createdAt: new Date(),
+    } as any);
+    vi.spyOn(db, "withPlanningWriteLock").mockImplementation(async callback => callback());
+
+    const caller = appRouter.createCaller({
+      user: {
+        id: 81,
+        openId: planningTeamAccessOpenId(81),
+        role: "user",
+        name: "Reiner Leser",
+        email: null,
+        sessionVersion: 1,
+        avatarUrl: null,
+        accountBlocked: false,
+        lastSignedIn: new Date(),
+      },
+      req: mockReq({ "x-event-year": "2027", "x-event-id": "10" }),
+      res: { setHeader: vi.fn(), clearCookie: vi.fn() } as any,
+    });
+
+    await expect(caller.notes.list()).resolves.toMatchObject({ notes: [] });
+    await expect(
+      caller.notes.send({ message: "Ich bin dabei.", important: false })
+    ).resolves.toMatchObject({ id: 9 });
+    expect(createSpy).toHaveBeenCalledOnce();
+
+    accessAllowedSpy.mockResolvedValue(false);
+    await expect(caller.notes.list()).rejects.toThrow(
+      "Dieser Planungsteam-Zugang ist für die gewählte Veranstaltung nicht freigegeben."
+    );
+    await expect(
+      caller.notes.send({ message: "Nicht senden", important: false })
+    ).rejects.toThrow("Dieser Planungsteam-Zugang ist für die gewählte Veranstaltung nicht freigegeben.");
+  });
 });

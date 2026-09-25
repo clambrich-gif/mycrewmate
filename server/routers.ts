@@ -542,6 +542,38 @@ const scopedReadProcedure = baseProtectedProcedure
     return next();
   });
 
+/**
+ * Der Team-Chat gehört zur Zusammenarbeit einer konkreten Veranstaltung und
+ * nicht zu einem Fachmodul. Deshalb darf jede aktiv angemeldete Person mit
+ * Eventfreigabe den Verlauf lesen, schreiben und den Tippstatus teilen – auch
+ * bei einem reinen Lesezugang ohne einzelne Modulfreigaben. Die Berechtigung
+ * zum Leeren bleibt davon bewusst ausgenommen und liegt beim Adminverfahren.
+ *
+ * Der Lesepfad verwendet keine Präsenzaktualisierung, damit ein inaktiver Tab
+ * nicht allein durch das Chat-Polling als online gezählt wird.
+ */
+const eventChatReadProcedure = baseProtectedProcedure
+  .use(async ({ ctx, next }) => {
+    const scope = await authorizedPlanningScope(ctx.user, ctx.req);
+    await requirePlanningTeamEventAccess(ctx.user, scope);
+    await requireCompletedPlanningTeamPasswordChange(ctx.user);
+    return withPlanningScope(scope, () => next());
+  })
+  .use(async ({ next }) => {
+    if (!(await db.getEvent())) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message:
+          "Die gewählte Veranstaltung gehört nicht zum gewählten Veranstaltungsjahr",
+      });
+    }
+    return next();
+  });
+
+const eventChatWriteProcedure = eventChatReadProcedure.use(
+  async ({ next }) => db.withPlanningWriteLock(() => next())
+);
+
 const accountAdminProcedure = activeSessionProcedure.use(({ ctx, next }) => {
   if (
     ctx.user.role !== "admin" ||
@@ -4704,7 +4736,7 @@ export const appRouter = router({
   }),
 
   notes: router({
-    list: scopedReadProcedure
+    list: eventChatReadProcedure
       .input(
         z
           .object({
@@ -4726,10 +4758,10 @@ export const appRouter = router({
         ]);
         return { notes, typing, ...unread };
       }),
-    markRead: scopedReadProcedure.mutation(async ({ ctx }) =>
+    markRead: eventChatReadProcedure.mutation(async ({ ctx }) =>
       db.markTeamNotesRead(teamNoteReadIdentity(ctx.user))
     ),
-    typing: protectedProcedure
+    typing: eventChatWriteProcedure
       .input(
         z.object({
           isTyping: z.boolean(),
@@ -4747,7 +4779,7 @@ export const appRouter = router({
           isTyping: input.isTyping,
         });
       }),
-    send: protectedProcedure
+    send: eventChatWriteProcedure
       .input(
         z.object({
           message: z.string().trim().min(1).max(2000),

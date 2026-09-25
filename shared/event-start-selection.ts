@@ -47,3 +47,25 @@ export function nearestUpcomingEvent<T extends StartSelectableEvent>(
       left.id - right.id
   )[0];
 }
+
+/**
+ * Legt beim ersten Start eines persönlichen Zugangs immer einen gültigen
+ * Veranstaltungs-Kontext fest. Gibt es keine datierte Zukunftsveranstaltung
+ * (typisch bei frisch angelegten oder undatierten Testevents), wird stabil die
+ * erste tatsächlich freigegebene Veranstaltung gewählt. Dadurch bleibt der
+ * veranstaltungsgebundene Team-Chat nie auf einem alten Browser-Event stehen.
+ */
+export function initialAccessibleEvent<T extends StartSelectableEvent>(
+  events: readonly T[],
+  today = new Date()
+): T | null {
+  const upcoming = nearestUpcomingEvent(events, today);
+  if (upcoming) return upcoming;
+  if (events.length === 0) return null;
+  return [...events].sort(
+    (left, right) =>
+      left.year - right.year ||
+      left.name.localeCompare(right.name, "de") ||
+      left.id - right.id
+  )[0];
+}
