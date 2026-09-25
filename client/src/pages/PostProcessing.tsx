@@ -5,6 +5,7 @@ import { PageTitle } from "@/components/PageTitle";
 import { MyTasksDefaultPin } from "@/components/MyTasksDefaultPin";
 import { PlanResetDialogButton } from "@/components/PlanResetDialogButton";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
+import { ViewModeToggle } from "@/components/ViewModeToggle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -38,6 +39,7 @@ import {
 } from "@/lib/sticky-table";
 import { downloadBase64File } from "@/lib/download";
 import { useMyTasksDefault } from "@/hooks/useMyTasksDefault";
+import { useViewMode } from "@/hooks/useViewMode";
 import {
   formatPreparationLogbookForMobileDisplay,
   latestPreparationLogbookEntry,
@@ -265,6 +267,7 @@ export default function PostProcessing() {
   const [editingTask, setEditingTask] = useState<PostTaskRow | null>(null);
   const [form, setForm] = useState<PostForm>(EMPTY_FORM);
   const [deleteCandidate, setDeleteCandidate] = useState<PostTaskRow | null>(null);
+  const [viewMode, setViewMode] = useViewMode("postprocessing", "liste");
 
   const utils = trpc.useUtils();
   const { data: rawRows = [], isLoading } = trpc.post.list.useQuery();
@@ -636,7 +639,9 @@ export default function PostProcessing() {
             Aufgabenverwaltung für den Abbau, Rücktransporte, Abrechnungen und Nachbereitung des Festivals.
           </p>
         </div>
-        <div className="w-full space-y-2 lg:w-auto lg:min-w-[344px]">
+        <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-start lg:w-auto lg:min-w-[344px]">
+          <ViewModeToggle mode={viewMode} onChange={setViewMode} className="shrink-0" />
+          <div className="w-full space-y-2">
           <div className="grid grid-cols-2 gap-2 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:whitespace-nowrap [&>[data-slot=button]]:px-2 lg:[&>[data-slot=button]]:h-10">
             <Button
               type="button"
@@ -659,6 +664,7 @@ export default function PostProcessing() {
             <Plus className="mr-2 h-4 w-4" />
             Neue Nachbereitungsaufgabe
           </Button>
+          </div>
         </div>
       </div>
 
@@ -816,7 +822,9 @@ export default function PostProcessing() {
       ) : (
         <>
           <div
-            className={`hidden rounded-xl border border-rose-200 bg-white shadow-sm lg:block ${STICKY_TABLE_CONTAINER_CLASS}`}
+            className={`${
+              viewMode === "liste" ? "hidden lg:block" : "hidden"
+            } rounded-xl border border-rose-200 bg-white shadow-sm ${STICKY_TABLE_CONTAINER_CLASS}`}
           >
             <table className="w-full text-sm">
               <thead
@@ -994,7 +1002,12 @@ export default function PostProcessing() {
             </table>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 lg:hidden">
+          <div
+            data-slot="postprocessing-cards-view"
+            className={`grid grid-cols-1 gap-4 ${
+              viewMode === "liste" ? "lg:hidden" : "md:grid-cols-2 xl:grid-cols-3"
+            }`}
+          >
             {filteredRows.map(task => {
               const dueDate = parseDueDate(task.dueText);
               return (
@@ -1005,7 +1018,7 @@ export default function PostProcessing() {
                   <CardContent className="space-y-4 p-4">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 space-y-1">
-                        <h2 className="break-words text-[24px] leading-tight font-black tracking-tight text-slate-900">
+                        <h2 className="break-words text-base leading-tight font-bold text-slate-950">
                           {task.task}
                         </h2>
                         <div className="flex flex-wrap gap-1.5">
@@ -1168,14 +1181,17 @@ export default function PostProcessing() {
       />
 
       <Dialog open={dialogOpen} onOpenChange={open => (open ? setDialogOpen(true) : closeDialog())}>
-        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))] !bg-white !text-slate-950 opacity-100 shadow-2xl">
+        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))] !bg-white !text-slate-950 opacity-100 shadow-2xl sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>
               {editingTask ? "Nachbereitungsaufgabe bearbeiten" : "Neue Nachbereitungsaufgabe"}
             </DialogTitle>
           </DialogHeader>
-          <div className="grid gap-3 py-2">
-            <div>
+          <div className="grid gap-4 py-2">
+            <div className="rounded-xl border border-rose-100 bg-rose-50/60 p-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-rose-800">Aufgabe einordnen</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
               <Label htmlFor="post-category">Bereich</Label>
               <Input
                 id="post-category"
@@ -1190,7 +1206,7 @@ export default function PostProcessing() {
                 ))}
               </datalist>
             </div>
-            <div>
+            <div className="space-y-1.5">
               <Label>Ort / Standort</Label>
               <Select
                 value={form.locationId}
@@ -1207,7 +1223,11 @@ export default function PostProcessing() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
+              </div>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-600">Was ist zu erledigen?</p>
+            <div className="space-y-1.5">
               <Label htmlFor="post-task">Aufgabe / Bezeichnung *</Label>
               <Input
                 id="post-task"
@@ -1219,8 +1239,11 @@ export default function PostProcessing() {
                 }}
               />
             </div>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-600">Verantwortung & Termin</p>
             <div className="grid gap-3 sm:grid-cols-2">
-              <div>
+              <div className="space-y-1.5">
                 <Label>Verantwortlicher</Label>
                 <Select
                   value={form.contactId}
@@ -1239,7 +1262,7 @@ export default function PostProcessing() {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
+              <div className="space-y-1.5">
                 <Label htmlFor="post-due">Frist / Abgabedatum</Label>
                 <Input
                   id="post-due"
@@ -1263,7 +1286,10 @@ export default function PostProcessing() {
                 </p>
               </div>
             </div>
-            <div>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-600">Aktueller Stand</p>
+            <div className="space-y-1.5">
               <Label htmlFor="post-log-entry">Logbuch-Eintrag / Aktueller Stand</Label>
               <Textarea
                 id="post-log-entry"
@@ -1293,6 +1319,7 @@ export default function PostProcessing() {
                   </p>
                 </div>
               )}
+            </div>
             </div>
           </div>
           <DialogFooter>

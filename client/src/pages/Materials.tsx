@@ -45,6 +45,7 @@ export default function Materials() {
       headerLayout="stacked"
       stackedActionColumns={2}
       clearAssignmentsArea="materials"
+      viewModeStorageKey="materials"
       filterConfig={{
         categoryKey: "category",
         categoryLabel: "Kategorien",

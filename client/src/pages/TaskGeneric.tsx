@@ -3,6 +3,7 @@ import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { PlanResetDialogButton } from "@/components/PlanResetDialogButton";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { MyTasksDefaultPin } from "@/components/MyTasksDefaultPin";
+import { ViewModeToggle } from "@/components/ViewModeToggle";
 import { PageTitle, type PageTitleIconKind } from "@/components/PageTitle";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,6 +32,7 @@ import {
 import { trpc } from "@/lib/trpc";
 import { useMyTasksDefault } from "@/hooks/useMyTasksDefault";
 import { useTenantAdministration } from "@/hooks/useTenantAdministration";
+import { useViewMode } from "@/hooks/useViewMode";
 import {
   ArrowDownAZ,
   ArrowUpZA,
@@ -85,6 +87,7 @@ interface Props {
   headerLayout?: "default" | "stacked";
   stackedActionColumns?: 2 | 3 | 4;
   clearAssignmentsArea?: "prep" | "post" | "materials";
+  viewModeStorageKey?: string;
   filterConfig?: {
     categoryKey: string;
     categoryLabel: string;
@@ -119,6 +122,7 @@ export default function TaskGeneric({
   headerLayout = "default",
   stackedActionColumns = 4,
   clearAssignmentsArea,
+  viewModeStorageKey,
   filterConfig,
 }: Props) {
   const utils = trpc.useUtils();
@@ -134,6 +138,7 @@ export default function TaskGeneric({
   const { data: rows = [], isLoading } = api.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: locations = [] } = trpc.locations.list.useQuery();
+  const [viewMode, setViewMode] = useViewMode(viewModeStorageKey ?? kind, "liste");
   const [name, setName] = useState("");
   const [extras, setExtras] = useState<Record<string, string>>({});
   const [contactFilter, setContactFilter] = useState("alle");
@@ -449,6 +454,11 @@ export default function TaskGeneric({
                   : "xl:min-w-[660px]"
             }`}
           >
+            {viewModeStorageKey && (
+              <div className="flex justify-end">
+                <ViewModeToggle mode={viewMode} onChange={setViewMode} />
+              </div>
+            )}
             <div
               className={`grid grid-cols-2 gap-2 [&>button]:w-full [&>button]:justify-center [&>button]:whitespace-nowrap [&>button]:px-2 lg:[&>button]:h-10 ${
                 stackedActionColumns === 2
@@ -730,6 +740,8 @@ export default function TaskGeneric({
           </span>
         </div>
       )}
+      {viewMode === "liste" ? (
+        <>
       <div className="space-y-3 md:hidden">
         {isLoading && (
           <Card className="shadow-sm">
@@ -1140,6 +1152,157 @@ export default function TaskGeneric({
           </table>
         </CardContent>
       </Card>
+        </>
+      ) : (
+        <div
+          className="space-y-4"
+          data-slot={`${kind}-cards-view`}
+        >
+          {isLoading ? (
+            <Card className="shadow-sm">
+              <CardContent className="p-5 text-sm text-muted-foreground">Lade …</CardContent>
+            </Card>
+          ) : visibleRows.length === 0 ? (
+            <Card className="border-dashed shadow-sm">
+              <CardContent className="p-8 text-center text-sm text-muted-foreground">
+                {rows.length === 0
+                  ? "Noch keine Einträge."
+                  : "Keine Einträge für die aktuelle Filterauswahl."}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {visibleRows.map((row: any) => (
+                <Card
+                  key={row.id}
+                  className="border-slate-200 bg-white shadow-sm transition-all hover:border-slate-300 hover:shadow-md"
+                >
+                  <CardContent className="space-y-4 p-5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <p className="text-xs font-medium text-slate-500">{addLabel}</p>
+                        <Input
+                          className="h-9 border-transparent bg-transparent px-0 text-base font-bold text-slate-950 shadow-none hover:border-slate-200 hover:bg-slate-50 focus-visible:border-blue-500 focus-visible:bg-white focus-visible:px-2"
+                          defaultValue={row[nameKey] ?? ""}
+                          aria-label={`${addLabel} bearbeiten`}
+                          onBlur={event => {
+                            if (event.target.value !== (row[nameKey] ?? "")) {
+                              update.mutate({ id: row.id, [nameKey]: event.target.value });
+                            }
+                          }}
+                        />
+                      </div>
+                      {extraField && (
+                        <Select
+                          value={row[extraField.key] ?? extraField.options[0]?.v ?? ""}
+                          onValueChange={value =>
+                            update.mutate({ id: row.id, [extraField.key]: value })
+                          }
+                        >
+                          <SelectTrigger className="h-8 w-[116px] border-slate-200 bg-slate-50 text-xs font-medium">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {extraField.options.map(option => (
+                              <SelectItem key={option.v} value={option.v}>
+                                {option.l}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-50 p-3">
+                      {columns.map(column => (
+                        <div key={column.key} className="min-w-0">
+                          <p className="text-[11px] font-medium text-slate-500">{column.label}</p>
+                          <Input
+                            className="mt-1 h-8 min-w-0 border-transparent bg-white px-2 text-sm font-medium shadow-none hover:border-slate-200 focus-visible:border-blue-500"
+                            defaultValue={row[column.key] ?? ""}
+                            aria-label={`${column.label} für ${row[nameKey] ?? addLabel} bearbeiten`}
+                            onBlur={event => {
+                              if (event.target.value !== (row[column.key] ?? "")) {
+                                update.mutate({ id: row.id, [column.key]: event.target.value });
+                              }
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {!noContact && (
+                        <div className="space-y-1.5">
+                          <p className="text-xs font-medium text-slate-500">Verantwortlich</p>
+                          <Select
+                            value={row.contactId ? String(row.contactId) : "none"}
+                            onValueChange={value =>
+                              update.mutate({
+                                id: row.id,
+                                contactId: value === "none" ? null : Number(value),
+                              })
+                            }
+                          >
+                            <SelectTrigger className="h-9 w-full"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Nicht zugewiesen</SelectItem>
+                              {contacts.map((contact: any) => (
+                                <SelectItem key={contact.id} value={String(contact.id)}>{contact.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                      {locationField && (
+                        <div className="space-y-1.5">
+                          <p className="text-xs font-medium text-slate-500">Ort / Zielstandort</p>
+                          <div className="flex items-center gap-1.5">
+                            <Select
+                              value={row.locationId ? String(row.locationId) : "none"}
+                              onValueChange={value =>
+                                update.mutate({
+                                  id: row.id,
+                                  locationId: value === "none" ? null : Number(value),
+                                })
+                              }
+                            >
+                              <SelectTrigger className="h-9 min-w-0 flex-1"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Kein Ort</SelectItem>
+                                {locations.map((location: any) => (
+                                  <SelectItem key={location.id} value={String(location.id)}>{location.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <LocationMapLink locationId={row.locationId} locations={locations} className="shrink-0" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {(isTenantAdmin || teamCanDelete) && row.id > 0 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="h-9 w-full justify-center text-sm text-rose-700 hover:bg-rose-50 hover:text-rose-800"
+                        disabled={remove.isPending}
+                        onClick={() =>
+                          (teamCanDelete || deletionRequiresContact)
+                            ? setDeleteTarget({ id: row.id, name: String(row[nameKey] ?? "") })
+                            : remove.mutate({ id: row.id })
+                        }
+                      >
+                        <Trash2 className="mr-1.5 size-4" /> {addLabel} löschen
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       {(teamCanDelete || deletionRequiresContact) && (
         <ConfirmDeleteDialog
           open={Boolean(deleteTarget)}
@@ -1167,17 +1330,23 @@ export default function TaskGeneric({
             }
           }}
         >
-          <DialogContent className="w-[calc(100vw-2rem)] min-w-0 max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))] !bg-white !text-slate-950 shadow-2xl sm:max-w-lg">
+          <DialogContent className="w-[calc(100vw-2rem)] min-w-0 max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))] !bg-white !text-slate-950 shadow-2xl sm:max-w-xl">
             <DialogHeader>
               <DialogTitle>{createDialogTitle}</DialogTitle>
             </DialogHeader>
             <form
-              className="grid min-w-0 gap-3 py-2"
+              className="grid min-w-0 gap-4 py-2"
               onSubmit={event => {
                 event.preventDefault();
                 submitCreate();
               }}
             >
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                {isMaterialTable && (
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                    Materialposition
+                  </p>
+                )}
               <div className="space-y-1.5">
                 <Label htmlFor={`${kind}-create-name`}>
                   {addLabel} <span aria-hidden="true">*</span>
@@ -1191,7 +1360,14 @@ export default function TaskGeneric({
                   onChange={event => setName(event.target.value)}
                 />
               </div>
+              </div>
               {columns.length > 0 && (
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                  {isMaterialTable && (
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                      Menge & Einordnung
+                    </p>
+                  )}
                 <div className="grid gap-3 sm:grid-cols-2">
                   {columns.map(column => (
                     <div key={column.key} className="space-y-1.5">
@@ -1211,7 +1387,10 @@ export default function TaskGeneric({
                     </div>
                   ))}
                 </div>
+                </div>
               )}
+              {(locationField || extraField) && (
+                <div className="grid gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2">
               {locationField && (
                 <div className="space-y-1.5">
                   <Label htmlFor={`${kind}-create-location`}>Ort / Zielstandort (optional)</Label>
@@ -1262,6 +1441,8 @@ export default function TaskGeneric({
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+              )}
                 </div>
               )}
               <DialogFooter className="mt-1 w-full min-w-0 flex-col gap-3 border-t pt-3 sm:flex-col sm:items-stretch">
