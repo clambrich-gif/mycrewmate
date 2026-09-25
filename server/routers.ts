@@ -151,8 +151,11 @@ function hashOpaqueToken(rawToken: string) {
 
 /** Übersetzt interne Rechtekennungen für Einladungen in verständliche Bereichsnamen. */
 function planningModuleSummary(modules: readonly PlanningModule[] | null | undefined) {
-  const effectiveModules = modules && modules.length > 0 ? modules : FULL_PLANNER_PERMISSIONS;
-  return effectiveModules
+  const rawModules = modules ?? [];
+  if (rawModules.length === 0 || rawModules.includes("read_all")) {
+    return "Reine Leseansicht aller Planungsbereiche";
+  }
+  return rawModules
     .filter(module => module !== "read_all")
     .map(module => PLANNING_MODULE_META[module].label)
     .join(", ");
@@ -232,9 +235,9 @@ async function getPlanningTeamPermissionsForUser(user: {
     });
   }
   if (access.isTenantAdmin) return FULL_PLANNER_PERMISSIONS;
-  return access.modulePermissions && access.modulePermissions.length > 0
+  return Array.isArray(access.modulePermissions)
     ? access.modulePermissions
-    : FULL_PLANNER_PERMISSIONS;
+    : [];
 }
 
 /**

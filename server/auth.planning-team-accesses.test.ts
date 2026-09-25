@@ -1116,4 +1116,60 @@ describe("Event-based Access Control für Planungsteam", () => {
       caller.notes.send({ message: "Nicht senden", important: false })
     ).rejects.toThrow("Dieser Planungsteam-Zugang ist für die gewählte Veranstaltung nicht freigegeben.");
   });
+  it("erlaubt einem Benutzer mit leerem Rechte-Array vollen Lese- und Schreibzugriff auf den Teamchat", async () => {
+    vi.spyOn(db, "getEvent").mockResolvedValue({
+      id: 10,
+      year: 2027,
+      name: "MyEifelRide 2027",
+    } as any);
+    vi.spyOn(db, "getPlanningTeamAccessCredentialForCurrentTenant").mockResolvedValue({
+      id: 888,
+      isTenantAdmin: false,
+      modulePermissions: [],
+    } as any);
+    vi.spyOn(db, "isPlanningTeamAccessAllowedForEvent").mockResolvedValue(true);
+    vi.spyOn(db, "isPlanningTeamAccessPasswordChangeRequired").mockResolvedValue(false);
+    vi.spyOn(db, "listTeamNotes").mockResolvedValue([
+      {
+        id: 1,
+        message: "Hallo vom Admin",
+        senderName: "Hauptadmin",
+        createdAt: new Date(),
+      },
+    ] as any);
+    vi.spyOn(db, "createTeamNote").mockResolvedValue({
+      id: 2,
+      message: "Hallo von Peter Lustig (reiner Leser)",
+      senderName: "Peter Lustig",
+      createdAt: new Date(),
+    } as any);
+
+    const caller = appRouter.createCaller({
+      user: {
+        id: 888,
+        openId: "planning-team-access-888",
+        role: "user",
+        name: "Peter Lustig",
+        email: "peter@lustig.invalid",
+        sessionVersion: 1,
+        avatarUrl: null,
+        accountBlocked: false,
+        lastSignedIn: new Date(),
+      },
+      req: {
+        headers: { "x-event-year": "2027", "x-event-id": "10", "x-tenant-id": "test-tenant" },
+        socket: { remoteAddress: "127.0.0.1" },
+      } as any,
+      res: { setHeader: vi.fn(), clearCookie: vi.fn(), cookie: vi.fn() } as any,
+    });
+
+    // Chat abrufen
+    const result = await caller.notes.list();
+    expect(result.notes.length).toBe(1);
+    expect(result.notes[0].message).toBe("Hallo vom Admin");
+
+    // Chat schreiben
+    const sent = await caller.notes.send({ message: "Hallo von Peter Lustig (reiner Leser)" });
+    expect(sent.message).toBe("Hallo von Peter Lustig (reiner Leser)");
+  });
 });

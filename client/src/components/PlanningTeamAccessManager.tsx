@@ -74,7 +74,7 @@ const EMPTY_FORM: FormState = {
   contactId: null,
   label: "",
   email: "",
-  modulePermissions: [...EDITABLE_PLANNING_MODULES],
+  modulePermissions: [],
   isTenantAdmin: false,
   eventIds: [],
   currentAdminPassword: "",
@@ -381,9 +381,9 @@ export function PlanningTeamAccessManager() {
       contactId: access.contactId,
       label: access.label,
       email: access.email ?? "",
-      modulePermissions: access.modulePermissions && access.modulePermissions.length > 0
+      modulePermissions: Array.isArray(access.modulePermissions)
         ? access.modulePermissions
-        : [...EDITABLE_PLANNING_MODULES],
+        : [],
       isTenantAdmin: access.isTenantAdmin,
       eventIds: access.eventIds,
       currentAdminPassword: "",
@@ -551,14 +551,22 @@ export function PlanningTeamAccessManager() {
                         ? "Volle Verwaltungsrechte im eigenen Verein · keine Masterrechte"
                         : "Ansprechpartner-Zugang"}
                     </p>
-                    {access.modulePermissions && access.modulePermissions.length > 0 && (
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {access.modulePermissions.map(m => (
-                          <span key={m} className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
-                            {PLANNING_MODULE_META[m]?.label ?? m}
-                          </span>
-                        ))}
+                    {!access.isTenantAdmin && (!access.modulePermissions || access.modulePermissions.length === 0) ? (
+                      <div className="mt-1">
+                        <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 border border-amber-200">
+                          Nur lesen (keine Bearbeitungsrechte)
+                        </span>
                       </div>
+                    ) : (
+                      access.modulePermissions && access.modulePermissions.length > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {access.modulePermissions.map(m => (
+                            <span key={m} className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
+                              {PLANNING_MODULE_META[m]?.label ?? m}
+                            </span>
+                          ))}
+                        </div>
+                      )
                     )}
                     <p className="mt-1 text-xs text-muted-foreground">
                       {formatEvents(access) || "Keine Freigaben"}

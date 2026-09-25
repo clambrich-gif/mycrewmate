@@ -127,6 +127,8 @@ export function visibleNavigationItemsWithPermissions(
         return false;
       }
     }
+    // Wenn permissions ein leeres Array ist (reiner Lesezugang), bleiben alle
+    // Planungsmodule lesend sichtbar; nur administrative Punkte bleiben gefiltert.
     return true;
   });
 }

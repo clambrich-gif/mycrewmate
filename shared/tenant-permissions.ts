@@ -30,6 +30,8 @@ export const FULL_PLANNER_PERMISSIONS: readonly PlanningModule[] = [
   "read_all",
 ];
 
+export const READONLY_PLANNER_PERMISSIONS: readonly PlanningModule[] = ["read_all"];
+
 export const PLANNING_MODULE_META: Record<PlanningModule, { label: string; description: string }> = {
   contacts: {
     label: "Ansprechpartner & Helfer",
@@ -89,7 +91,11 @@ export function mayReadPlanningModule(
   permissions: readonly PlanningModule[],
   module: Exclude<PlanningModule, "read_all">
 ) {
-  return permissions.includes("read_all") || permissions.includes(module);
+  return (
+    permissions.length === 0 ||
+    permissions.includes("read_all") ||
+    permissions.includes(module)
+  );
 }
 
 export function mayWritePlanningModule(

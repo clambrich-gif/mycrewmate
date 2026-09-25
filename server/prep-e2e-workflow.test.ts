@@ -57,6 +57,7 @@ describe("E2E Planungsteam-Rechte & Löschprotokoll-Workflow", () => {
     const testAccess = await createPlanningTeamAccess({
       label: `E2E-Planungsteam-${Date.now()}`,
       passwordHash: await hashPassword("E2E-Planungsteam-Passwort!"),
+      modulePermissions: ["preparation"],
       eventIds: [1020001],
     });
     const teamCaller = appRouter.createCaller(

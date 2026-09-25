@@ -73,4 +73,70 @@ describe("Vereins- und Bereichsrechte-Modell", () => {
     expect(routerSource).toContain("function moduleReadProcedure(");
     expect(routerSource).toContain("myPermissions: scopedProtectedProcedure.query(");
   });
+  it("behandelt ein leeres Rechtearray als reinen Lesezugriff ohne jegliche Schreibrechte", () => {
+    const emptyPermissions: PlanningModule[] = [];
+    for (const mod of EDITABLE_PLANNING_MODULES) {
+      expect(mayReadPlanningModule(emptyPermissions, mod)).toBe(true);
+      expect(mayWritePlanningModule(emptyPermissions, mod)).toBe(false);
+    }
+  });
+
+  it("verwehrt einem Benutzer mit leerem Rechtearray jegliche Schreibmutationen im Router", async () => {
+    const { appRouter } = await import("./routers");
+    const db = await import("./db");
+    const { vi } = await import("vitest");
+
+    vi.spyOn(db, "getEvent").mockResolvedValue({
+      id: 10,
+      year: 2027,
+      name: "MyEifelRide 2027",
+    } as any);
+    vi.spyOn(db, "withPlanningWriteLock").mockImplementation(async (cb: any) => cb());
+    vi.spyOn(db, "getPlanningTeamAccessCredentialForCurrentTenant").mockResolvedValue({
+      id: 999,
+      isTenantAdmin: false,
+      modulePermissions: [],
+    } as any);
+    vi.spyOn(db, "isPlanningTeamAccessAllowedForEvent").mockResolvedValue(true);
+    vi.spyOn(db, "isPlanningTeamAccessPasswordChangeRequired").mockResolvedValue(false);
+
+    const caller = appRouter.createCaller({
+      user: {
+        id: 999,
+        openId: "planning-team-access-999",
+        role: "user",
+        name: "Reiner Leser",
+        email: "leser@verein.invalid",
+        sessionVersion: 1,
+        avatarUrl: null,
+        accountBlocked: false,
+        lastSignedIn: new Date(),
+      },
+      req: {
+        headers: { "x-event-year": "2027", "x-event-id": "10", "x-tenant-id": "test-tenant" },
+        socket: { remoteAddress: "127.0.0.1" },
+      } as any,
+      res: { setHeader: vi.fn(), clearCookie: vi.fn(), cookie: vi.fn() } as any,
+    });
+
+    // Versuch Vorbereitung anzulegen muss scheitern
+    await expect(
+      caller.prep.create({ task: "Nicht erlaubt" })
+    ).rejects.toThrow("Keine Berechtigung zur Bearbeitung dieses Bereichs.");
+
+    // Versuch Material anzulegen muss scheitern
+    await expect(
+      caller.materials.create({ item: "Nicht erlaubt" })
+    ).rejects.toThrow("Keine Berechtigung zur Bearbeitung dieses Bereichs.");
+
+    // Versuch Nachbereitung anzulegen muss scheitern
+    await expect(
+      caller.post.create({ task: "Nicht erlaubt" })
+    ).rejects.toThrow("Keine Berechtigung zur Bearbeitung dieses Bereichs.");
+
+    // Versuch Helfer anzulegen muss scheitern
+    await expect(
+      caller.helpers.create({ name: "Nicht erlaubt" })
+    ).rejects.toThrow("Keine Berechtigung zur Bearbeitung dieses Bereichs.");
+  });
 });

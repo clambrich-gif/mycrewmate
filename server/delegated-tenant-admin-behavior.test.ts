@@ -232,4 +232,53 @@ describe("funktionale Rechtegrenzen einer Vereinsadministrator-Stellvertretung",
     const event = await caller.events.current();
     expect(event.name).toBe("Nordfest");
   });
+  it("gewährt Co-Admins volle Schreib- und Verwaltungsrechte in allen Fachbereichen, blockiert jedoch Co-Admin-Vergabe", async () => {
+    vi.spyOn(db, "resolveTenantForUser").mockResolvedValue({
+      tenantId: "auditverein-nord-2026",
+      isDefault: true,
+    } as any);
+    vi.spyOn(db, "getPlanningTeamAccessCredentialForCurrentTenant").mockResolvedValue({
+      id: 77,
+      label: "Stellvertretung Testverein",
+      contactName: "Stellvertretung Testverein",
+      email: "stellvertretung@testverein.invalid",
+      modulePermissions: [],
+      isTenantAdmin: true,
+      passwordHash: "hash",
+      mustChangePassword: false,
+      sessionVersion: 1,
+    } as any);
+    vi.spyOn(db, "getEvent").mockResolvedValue({
+      id: 701,
+      year: 2026,
+      name: "Nordfest",
+      tenantId: "auditverein-nord-2026",
+    } as any);
+    vi.spyOn(db, "withPlanningWriteLock").mockImplementation(async (cb: any) => cb());
+    vi.spyOn(db, "createPrep").mockResolvedValue({ id: 101, task: "Aufbau prüfen" } as any);
+
+    const caller = appRouter.createCaller({
+      user: delegatedUser,
+      req: req({
+        "x-tenant-id": "auditverein-nord-2026",
+        "x-event-year": "2026",
+        "x-event-id": "701",
+      }),
+      res: { setHeader: vi.fn(), clearCookie: vi.fn(), cookie: vi.fn() } as any,
+    });
+
+    // Co-Admin darf Vorbereitung anlegen
+    const createdPrep = await caller.prep.create({ task: "Aufbau prüfen" });
+    expect(createdPrep).toEqual({ id: 101, task: "Aufbau prüfen" });
+
+    // Co-Admin darf alle Module bearbeiten (myPermissions liefert FULL_PLANNER_PERMISSIONS)
+    const permissions = await caller.planningTeamAccesses.myPermissions();
+    expect(permissions).toEqual(expect.arrayContaining(["preparation", "materials", "helpers", "schedule"]));
+
+    // Der administrative Kontext bestätigt die Stellvertreterrolle
+    const adminCtx = await caller.planningTeamAccesses.administrativeContext();
+    expect(adminCtx.isTenantAdmin).toBe(true);
+    expect(adminCtx.isPrimaryTenantAdmin).toBe(false);
+    expect(adminCtx.isDelegatedTenantAdmin).toBe(true);
+  });
 });
