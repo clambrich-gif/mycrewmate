@@ -302,11 +302,11 @@ async function isTenantAdministrator(user: {
 }
 
 function requireModuleWritePermission(
-  permissions: readonly PlanningModule[],
-  module: Exclude<PlanningModule, "read_all">
+  moduleAccess: PlanningModuleAccess,
+  module: EditablePlanningModule
 ) {
-  if (!mayWritePlanningModule(permissions, module)) {
-    const isReadOnlyAccess = permissions.length === 0;
+  if (!mayWritePlanningModule(moduleAccess, module)) {
+    const isReadOnlyAccess = mayReadPlanningModule(moduleAccess, module);
     throw new TRPCError({
       code: "FORBIDDEN",
       message: isReadOnlyAccess
@@ -317,10 +317,10 @@ function requireModuleWritePermission(
 }
 
 function requireModuleReadPermission(
-  permissions: readonly PlanningModule[],
-  module: Exclude<PlanningModule, "read_all">
+  moduleAccess: PlanningModuleAccess,
+  module: EditablePlanningModule
 ) {
-  if (!mayReadPlanningModule(permissions, module)) {
+  if (!mayReadPlanningModule(moduleAccess, module)) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "Keine Leseberechtigung für diesen Bereich.",
@@ -936,16 +936,16 @@ const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
 
 function moduleReadProcedure(module: Exclude<PlanningModule, "read_all">) {
   return protectedProcedure.use(async ({ ctx, next }) => {
-    const permissions = await getPlanningTeamPermissionsForUser(ctx.user);
-    requireModuleReadPermission(permissions, module);
+    const moduleAccess = await getPlanningTeamModuleAccessForUser(ctx.user);
+    requireModuleReadPermission(moduleAccess, module);
     return next({ ctx });
   });
 }
 
 function moduleWriteProcedure(module: Exclude<PlanningModule, "read_all">) {
   return protectedProcedure.use(async ({ ctx, next }) => {
-    const permissions = await getPlanningTeamPermissionsForUser(ctx.user);
-    requireModuleWritePermission(permissions, module);
+    const moduleAccess = await getPlanningTeamModuleAccessForUser(ctx.user);
+    requireModuleWritePermission(moduleAccess, module);
     return next({ ctx });
   });
 }
@@ -3281,9 +3281,9 @@ export const appRouter = router({
       .mutation(({ input }) => db.upsertHelperByName(input)),
     createWithDonation: protectedProcedure
       .use(async ({ ctx, next }) => {
-        const permissions = await getPlanningTeamPermissionsForUser(ctx.user);
-        requireModuleWritePermission(permissions, "helpers");
-        requireModuleWritePermission(permissions, "donations");
+        const moduleAccess = await getPlanningTeamModuleAccessForUser(ctx.user);
+        requireModuleWritePermission(moduleAccess, "helpers");
+        requireModuleWritePermission(moduleAccess, "donations");
         return next({ ctx });
       })
       .input(

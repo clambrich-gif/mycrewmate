@@ -43,8 +43,8 @@ describe("Helfer und Spenden: optionale Kachel- und Listenansicht", () => {
     expect(helpersSource).toContain("createWithDonation.mutate");
 
     expect(routerSource).toContain("createWithDonation: protectedProcedure");
-    expect(routerSource).toContain('requireModuleWritePermission(permissions, "helpers")');
-    expect(routerSource).toContain('requireModuleWritePermission(permissions, "donations")');
+    expect(routerSource).toContain('requireModuleWritePermission(moduleAccess, "helpers")');
+    expect(routerSource).toContain('requireModuleWritePermission(moduleAccess, "donations")');
     expect(routerSource).toContain("db.createHelperWithDonation(input)");
     expect(dbSource).toContain("export async function createHelperWithDonation");
     expect(dbSource).toContain("return database.transaction(async tx =>");

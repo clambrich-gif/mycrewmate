@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import {
@@ -156,5 +156,59 @@ describe("Vereins- und Bereichsrechte-Modell", () => {
 
     expect(mayReadPlanningModule(access, "materials")).toBe(false);
     expect(mayWritePlanningModule(access, "materials")).toBe(false);
+  });
+
+  it("wendet Lesen, Schreiben und Aus auch in den serverseitigen Fachrouten exakt an", async () => {
+    const { appRouter } = await import("./routers");
+    const db = await import("./db");
+
+    vi.spyOn(db, "getEvent").mockResolvedValue({
+      id: 10,
+      tenantId: "rsc-eifelland-mayen",
+      year: 2027,
+      name: "MyEifelRide",
+    } as any);
+    vi.spyOn(db, "isPlanningTeamAccessAllowedForEvent").mockResolvedValue(true);
+    vi.spyOn(db, "isPlanningTeamAccessPasswordChangeRequired").mockResolvedValue(false);
+    vi.spyOn(db, "getPlanningTeamAccessCredentialForCurrentTenant").mockResolvedValue({
+      id: 777,
+      isTenantAdmin: false,
+      modulePermissions: ["preparation"],
+      moduleAccess: {
+        helpers: "read",
+        preparation: "write",
+        materials: "off",
+      },
+    } as any);
+    vi.spyOn(db, "listHelpers").mockResolvedValue([]);
+    vi.spyOn(db, "listPrep").mockResolvedValue([]);
+
+    const caller = appRouter.createCaller({
+      user: {
+        id: 777,
+        openId: "planning-team-access-777",
+        role: "user",
+        name: "Dreistufen-Test",
+        email: "dreistufen@test.invalid",
+        sessionVersion: 1,
+        avatarUrl: null,
+        accountBlocked: false,
+        lastSignedIn: new Date(),
+      },
+      req: {
+        headers: { "x-event-year": "2027", "x-event-id": "10" },
+        socket: { remoteAddress: "127.0.0.1" },
+      } as any,
+      res: { setHeader: vi.fn(), clearCookie: vi.fn(), cookie: vi.fn() } as any,
+    });
+
+    await expect(caller.helpers.list()).resolves.toEqual([]);
+    await expect(caller.prep.list()).resolves.toEqual([]);
+    await expect(caller.helpers.create({ name: "Nicht schreiben" })).rejects.toThrow(
+      "Lesezugriff aktiv: Sie können diesen Bereich ansehen, aber keine Daten ändern."
+    );
+    await expect(caller.materials.list()).rejects.toThrow(
+      "Keine Leseberechtigung für diesen Bereich."
+    );
   });
 });
