@@ -302,6 +302,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
       user?.role === "user" &&
       location !== "/aktivieren",
   });
+  const myModuleAccess = trpc.planningTeamAccesses.myModuleAccess.useQuery(undefined, {
+    enabled:
+      isAuthenticated &&
+      user?.role === "user" &&
+      location !== "/aktivieren",
+  });
   const effectiveNavigationRole = isTenantAdmin ? "admin" : user?.role;
   const effectiveRoleLabel = tenantRoleLabel({
     isTenantAdmin,
@@ -845,6 +851,46 @@ export function Layout({ children }: { children: React.ReactNode }) {
     if (!events.data?.length || selectedEvent) return;
     selectEvent(events.data[0].id);
   }, [events.data, selectEvent, selectedEvent]);
+
+  // Wenn der Benutzer ein Planungsteam-Mitglied ist und accessibleEvents geladen
+  // sind, aber die aktuell im Browser aktive eventId nicht darin vorkommt, korrigieren
+  // wir sofort automatisch auf ein gültiges, freigegebenes Event, damit der Chat
+  // und die Fachbereiche ohne störende Kontext-Fehlermeldung laden.
+  useEffect(() => {
+    if (
+      !isAuthenticated ||
+      isCredentialBootstrapPending ||
+      user?.role !== "user" ||
+      isTenantAdmin ||
+      !accessibleEvents.data ||
+      accessibleEvents.data.length === 0
+    ) {
+      return;
+    }
+    const hasValidEventSelected = accessibleEvents.data.some(
+      e => e.id === eventId
+    );
+    if (!hasValidEventSelected) {
+      const targetEvent = initialAccessibleEvent(accessibleEvents.data) ?? accessibleEvents.data[0];
+      if (targetEvent) {
+        if (targetEvent.year !== year) {
+          selectYear(targetEvent.year, targetEvent.id);
+        } else {
+          selectEvent(targetEvent.id);
+        }
+      }
+    }
+  }, [
+    accessibleEvents.data,
+    eventId,
+    isAuthenticated,
+    isCredentialBootstrapPending,
+    isTenantAdmin,
+    selectEvent,
+    selectYear,
+    user?.role,
+    year,
+  ]);
   const passwordLogin = trpc.auth.passwordLogin.useMutation({
     mutationKey: ["auth", "passwordLogin"],
     onSuccess: result => {
@@ -1539,7 +1585,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             )}
           </div>
           <nav className="flex-1 space-y-1 overflow-y-auto p-2">
-            {visibleNavigationSections(effectiveNavigationRole, myPermissions.data).map(section => (
+            {visibleNavigationSections(effectiveNavigationRole, myPermissions.data, myModuleAccess.data).map(section => (
               <div key={section.id} className="space-y-1">
                 {section.items.map(({ href, label, icon: Icon }) => {
                   const active = location === href;
@@ -1760,7 +1806,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-2 pb-2 pt-1.5 space-y-0.5">
-          {visibleNavigationSections(effectiveNavigationRole, myPermissions.data).map(section => (
+          {visibleNavigationSections(effectiveNavigationRole, myPermissions.data, myModuleAccess.data).map(section => (
             <div key={section.id} className="space-y-0.5">
               {section.items.map(({ href, label, icon: Icon }) => {
                 const active = location === href;

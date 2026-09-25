@@ -8,6 +8,7 @@ import {
   mayWritePlanningModule,
   normalizePlanningModules,
   type PlanningModule,
+  type PlanningModuleAccess,
 } from "@shared/tenant-permissions";
 import { visibleNavigationItemsWithPermissions } from "../client/src/lib/nav";
 
@@ -138,5 +139,22 @@ describe("Vereins- und Bereichsrechte-Modell", () => {
     await expect(
       caller.helpers.create({ name: "Nicht erlaubt" })
     ).rejects.toThrow("Lesezugriff aktiv: Sie können diesen Bereich ansehen, aber keine Daten ändern.");
+  });
+
+  it("schaltet Fachbereiche dreistufig (off, read, write) und prüft Lese- und Schreibrechte", () => {
+    const access: PlanningModuleAccess = {
+      helpers: "read",
+      preparation: "write",
+      materials: "off",
+    };
+
+    expect(mayReadPlanningModule(access, "helpers")).toBe(true);
+    expect(mayWritePlanningModule(access, "helpers")).toBe(false);
+
+    expect(mayReadPlanningModule(access, "preparation")).toBe(true);
+    expect(mayWritePlanningModule(access, "preparation")).toBe(true);
+
+    expect(mayReadPlanningModule(access, "materials")).toBe(false);
+    expect(mayWritePlanningModule(access, "materials")).toBe(false);
   });
 });

@@ -110,7 +110,7 @@ export function visibleNavigationItems(
   });
 }
 
-const PATH_TO_MODULE_MAP: Record<string, import("@shared/tenant-permissions").PlanningModule> = {
+const PATH_TO_MODULE_MAP: Record<string, import("@shared/tenant-permissions").EditablePlanningModule> = {
   "/ansprechpartner": "contacts",
   "/helfer": "helpers",
   "/einsatzplan": "schedule",
@@ -124,10 +124,24 @@ const PATH_TO_MODULE_MAP: Record<string, import("@shared/tenant-permissions").Pl
 
 export function visibleNavigationItemsWithPermissions(
   role: "user" | "admin" | null | undefined,
-  permissions?: readonly import("@shared/tenant-permissions").PlanningModule[] | null
+  permissions?: readonly import("@shared/tenant-permissions").PlanningModule[] | null,
+  moduleAccess?: import("@shared/tenant-permissions").PlanningModuleAccess | null
 ) {
   return NAV.filter(item => {
     if (item.adminOnly && role !== "admin") return false;
+    if (role === "admin") return true;
+
+    const requiredModule = PATH_TO_MODULE_MAP[item.href];
+    if (!requiredModule) {
+      if (item.planningTeamHidden && role === "user") return false;
+      return true;
+    }
+
+    if (moduleAccess && typeof moduleAccess === "object") {
+      const level = moduleAccess[requiredModule] ?? "off";
+      return level !== "off";
+    }
+
     if (item.planningTeamHidden && role === "user") return false;
     if (
       role === "user" &&
@@ -135,7 +149,6 @@ export function visibleNavigationItemsWithPermissions(
       permissions.length > 0 &&
       !permissions.includes("read_all")
     ) {
-      const requiredModule = PATH_TO_MODULE_MAP[item.href];
       if (requiredModule && !permissions.includes(requiredModule)) {
         return false;
       }
@@ -149,9 +162,10 @@ export function visibleNavigationItemsWithPermissions(
 /** Alle Rollen behalten die gewohnte Reihenfolge der sichtbaren Menüpunkte. */
 export function visibleNavigationSections(
   role: "user" | "admin" | null | undefined,
-  permissions?: readonly import("@shared/tenant-permissions").PlanningModule[] | null
+  permissions?: readonly import("@shared/tenant-permissions").PlanningModule[] | null,
+  moduleAccess?: import("@shared/tenant-permissions").PlanningModuleAccess | null
 ): NavigationSection[] {
-  return [{ id: "default", label: null, items: visibleNavigationItemsWithPermissions(role, permissions) }];
+  return [{ id: "default", label: null, items: visibleNavigationItemsWithPermissions(role, permissions, moduleAccess) }];
 }
 
 export function navigationItemClasses(

@@ -1235,6 +1235,7 @@ export type PlanningTeamAccessSummary = {
   label: string;
   email: string | null;
   modulePermissions: import("../shared/tenant-permissions").PlanningModule[];
+  moduleAccess: import("../shared/tenant-permissions").PlanningModuleAccess;
   isTenantAdmin: boolean;
   eventIds: number[];
   mustChangePassword: boolean;
@@ -1248,6 +1249,7 @@ type PlanningTeamAccessCredential = {
   label: string;
   email: string | null;
   modulePermissions: import("../shared/tenant-permissions").PlanningModule[];
+  moduleAccess: import("../shared/tenant-permissions").PlanningModuleAccess;
   isTenantAdmin: boolean;
   passwordHash: string;
   mustChangePassword: boolean;
@@ -1339,6 +1341,7 @@ export async function listPlanningTeamAccesses(): Promise<
       label: planningTeamAccesses.label,
       email: planningTeamAccesses.email,
       modulePermissions: planningTeamAccesses.modulePermissions,
+      moduleAccess: planningTeamAccesses.moduleAccess,
       isTenantAdmin: planningTeamAccesses.isTenantAdmin,
       mustChangePassword: planningTeamAccesses.mustChangePassword,
       createdAt: planningTeamAccesses.createdAt,
@@ -1368,8 +1371,14 @@ export async function listPlanningTeamAccesses(): Promise<
         label: row.label,
         email: row.email ?? null,
         modulePermissions: Array.isArray(row.modulePermissions) ? row.modulePermissions : [],
+        moduleAccess:
+          row.moduleAccess && typeof row.moduleAccess === "object"
+            ? (row.moduleAccess as import("../shared/tenant-permissions").PlanningModuleAccess)
+            : Object.fromEntries(
+                (Array.isArray(row.modulePermissions) ? row.modulePermissions : []).map(m => [m, "write"])
+              ),
         isTenantAdmin: row.isTenantAdmin,
-        eventIds: [],
+        eventIds: [] as number[],
         mustChangePassword: row.mustChangePassword,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
@@ -1396,13 +1405,14 @@ export async function listPlanningTeamAccessCredentials(): Promise<
 > {
   const database = await getDb();
   if (!database) return [];
-  return database
+  const rawRows = await database
     .select({
       id: planningTeamAccesses.id,
       contactName: contacts.name,
       label: planningTeamAccesses.label,
       email: planningTeamAccesses.email,
       modulePermissions: sql<import("../shared/tenant-permissions").PlanningModule[]>`COALESCE(${planningTeamAccesses.modulePermissions}, JSON_ARRAY())`,
+      moduleAccess: planningTeamAccesses.moduleAccess,
       isTenantAdmin: planningTeamAccesses.isTenantAdmin,
       passwordHash: planningTeamAccesses.passwordHash,
       mustChangePassword: planningTeamAccesses.mustChangePassword,
@@ -1411,7 +1421,13 @@ export async function listPlanningTeamAccessCredentials(): Promise<
     })
     .from(planningTeamAccesses)
     .leftJoin(contacts, eq(contacts.id, planningTeamAccesses.contactId))
-    .orderBy(planningTeamAccesses.id);
+    .orderBy(planningTeamAccesses.label, planningTeamAccesses.id);
+  return rawRows.map(row => ({
+    ...row,
+    moduleAccess: (row.moduleAccess && typeof row.moduleAccess === "object"
+      ? row.moduleAccess
+      : {}) as import("../shared/tenant-permissions").PlanningModuleAccess,
+  }));
 }
 
 /** Liefert einen persönlichen Planungsteam-Zugang ausschließlich über seine E-Mail-Adresse. */
@@ -1426,6 +1442,7 @@ export async function getPlanningTeamAccessCredentialByEmail(email: string) {
       label: planningTeamAccesses.label,
       email: planningTeamAccesses.email,
       modulePermissions: sql<import("../shared/tenant-permissions").PlanningModule[]>`COALESCE(${planningTeamAccesses.modulePermissions}, JSON_ARRAY())`,
+      moduleAccess: planningTeamAccesses.moduleAccess,
       isTenantAdmin: planningTeamAccesses.isTenantAdmin,
       passwordHash: planningTeamAccesses.passwordHash,
       mustChangePassword: planningTeamAccesses.mustChangePassword,
@@ -1469,6 +1486,7 @@ export async function getPlanningTeamAccessCredentialForCurrentTenant(
       label: planningTeamAccesses.label,
       email: planningTeamAccesses.email,
       modulePermissions: sql<import("../shared/tenant-permissions").PlanningModule[]>`COALESCE(${planningTeamAccesses.modulePermissions}, JSON_ARRAY())`,
+      moduleAccess: planningTeamAccesses.moduleAccess,
       isTenantAdmin: planningTeamAccesses.isTenantAdmin,
       passwordHash: planningTeamAccesses.passwordHash,
       mustChangePassword: planningTeamAccesses.mustChangePassword,
@@ -1566,6 +1584,7 @@ export async function createPlanningTeamAccess(input: {
   contactId?: number | null;
   email?: string | null;
   modulePermissions?: import("../shared/tenant-permissions").PlanningModule[];
+  moduleAccess?: import("../shared/tenant-permissions").PlanningModuleAccess;
   isTenantAdmin?: boolean;
   passwordHash: string;
   mustChangePassword?: boolean;
@@ -1586,6 +1605,7 @@ export async function createPlanningTeamAccess(input: {
       label: contact?.name ?? input.label.trim(),
       email: normalizedEmail,
       modulePermissions: input.modulePermissions ?? [],
+      moduleAccess: input.moduleAccess ?? null,
       isTenantAdmin: input.isTenantAdmin ?? false,
       passwordHash: input.passwordHash,
       mustChangePassword: input.mustChangePassword ?? false,
@@ -1615,6 +1635,7 @@ export async function updatePlanningTeamAccess(input: {
   contactId?: number | null;
   email?: string | null;
   modulePermissions?: import("../shared/tenant-permissions").PlanningModule[];
+  moduleAccess?: import("../shared/tenant-permissions").PlanningModuleAccess;
   isTenantAdmin?: boolean;
   passwordHash?: string;
   mustChangePassword?: boolean;
@@ -1630,6 +1651,7 @@ export async function updatePlanningTeamAccess(input: {
         contactId: planningTeamAccesses.contactId,
         email: planningTeamAccesses.email,
         modulePermissions: planningTeamAccesses.modulePermissions,
+        moduleAccess: planningTeamAccesses.moduleAccess,
         isTenantAdmin: planningTeamAccesses.isTenantAdmin,
         sessionVersion: planningTeamAccesses.sessionVersion,
       })
@@ -1651,6 +1673,10 @@ export async function updatePlanningTeamAccess(input: {
       input.modulePermissions === undefined
         ? existing.modulePermissions
         : input.modulePermissions;
+    const nextModuleAccess =
+      input.moduleAccess === undefined
+        ? existing.moduleAccess
+        : input.moduleAccess;
     const nextIsTenantAdmin =
       input.isTenantAdmin === undefined
         ? existing.isTenantAdmin
@@ -1665,6 +1691,7 @@ export async function updatePlanningTeamAccess(input: {
         label: contact?.name ?? input.label.trim(),
         email: nextEmail,
         modulePermissions: nextPermissions ?? [],
+        moduleAccess: nextModuleAccess ?? null,
         isTenantAdmin: nextIsTenantAdmin,
         ...(input.passwordHash ? { passwordHash: input.passwordHash } : {}),
         ...(input.mustChangePassword !== undefined

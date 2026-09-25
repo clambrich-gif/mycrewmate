@@ -97,9 +97,12 @@ import {
   FULL_PLANNER_PERMISSIONS,
   PLANNING_MODULE_META,
   PLANNING_MODULES,
+  EDITABLE_PLANNING_MODULES,
   mayReadPlanningModule,
   mayWritePlanningModule,
   type PlanningModule,
+  type EditablePlanningModule,
+  type PlanningModuleAccess,
 } from "@shared/tenant-permissions";
 import { isMasterAdminRequestHost } from "@shared/platform-admin";
 import { storagePut, storageRead } from "./storage";
@@ -235,9 +238,50 @@ async function getPlanningTeamPermissionsForUser(user: {
     });
   }
   if (access.isTenantAdmin) return FULL_PLANNER_PERMISSIONS;
+  if (access.moduleAccess && typeof access.moduleAccess === "object") {
+    const explicitAccess = access.moduleAccess as PlanningModuleAccess;
+    return EDITABLE_PLANNING_MODULES.filter(m => explicitAccess[m] === "write");
+  }
   return Array.isArray(access.modulePermissions)
     ? access.modulePermissions
     : [];
+}
+
+async function getPlanningTeamModuleAccessForUser(user: {
+  openId: string;
+  role: "user" | "admin";
+  isCron?: boolean;
+}): Promise<PlanningModuleAccess> {
+  if (user.role === "admin" || user.isCron) {
+    return Object.fromEntries(PLANNING_MODULES.map(m => [m, "write"]));
+  }
+  const accessId = planningTeamAccessIdForUser(user);
+  if (accessId === null) {
+    return Object.fromEntries(PLANNING_MODULES.map(m => [m, "write"]));
+  }
+  const access = await db.getPlanningTeamAccessCredentialForCurrentTenant(accessId);
+  if (!access) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Dieser Planungsteam-Zugang gehört nicht zum aktuell angemeldeten Verein.",
+    });
+  }
+  if (access.isTenantAdmin) {
+    return Object.fromEntries(EDITABLE_PLANNING_MODULES.map(m => [m, "write"]));
+  }
+  if (access.moduleAccess && typeof access.moduleAccess === "object") {
+    const raw = access.moduleAccess as PlanningModuleAccess;
+    return Object.fromEntries(
+      EDITABLE_PLANNING_MODULES.map(m => [m, raw[m] ?? "off"])
+    );
+  }
+  const permissions = Array.isArray(access.modulePermissions) ? access.modulePermissions : [];
+  if (permissions.length === 0 || permissions.includes("read_all")) {
+    return Object.fromEntries(EDITABLE_PLANNING_MODULES.map(m => [m, "read"]));
+  }
+  return Object.fromEntries(
+    EDITABLE_PLANNING_MODULES.map(m => [m, permissions.includes(m) ? "write" : "off"])
+  );
 }
 
 /**
@@ -923,6 +967,11 @@ const statusPrep = z.enum(["offen", "inArbeit", "erledigt", "abgelehnt"]);
 const materialStatus = z.enum(["offen", "bestellt", "geliefert"]);
 const prepStatusWording = z.enum(["aufgabe", "genehmigung"]);
 const passwordInput = z.string().min(10).max(200);
+const moduleAccessLevelSchema = z.enum(["off", "read", "write"]);
+const moduleAccessSchema = z.record(
+  z.string(),
+  moduleAccessLevelSchema
+);
 const eventYearInput = z.number().int().min(2020).max(2100);
 const safeExportName = (value: string) =>
   value
@@ -998,6 +1047,9 @@ async function createContactInitialAccessSheet(input: {
     label: input.contactName,
     email: existingAccess?.email ?? null,
     modulePermissions: existingAccess?.modulePermissions ?? [],
+    moduleAccess: (existingAccess?.moduleAccess && typeof existingAccess.moduleAccess === "object"
+      ? existingAccess.moduleAccess
+      : {}) as import("@shared/tenant-permissions").PlanningModuleAccess,
     isTenantAdmin: existingAccess?.isTenantAdmin ?? false,
     eventIds,
     mustChangePassword: true,
@@ -2095,6 +2147,9 @@ export const appRouter = router({
     myPermissions: scopedProtectedProcedure.query(async ({ ctx }) => {
       return getPlanningTeamPermissionsForUser(ctx.user);
     }),
+    myModuleAccess: scopedProtectedProcedure.query(async ({ ctx }) => {
+      return getPlanningTeamModuleAccessForUser(ctx.user);
+    }),
     administrativeContext: eventSelectionProcedure.query(async ({ ctx }) => ({
       isTenantAdmin: await isTenantAdministrator(ctx.user),
       isPrimaryTenantAdmin: isPrimaryTenantAdministrator(ctx.user),
@@ -2114,6 +2169,7 @@ export const appRouter = router({
           contactId: z.number().int().positive(),
           email: z.string().email().max(320).optional(),
           modulePermissions: z.array(z.enum(PLANNING_MODULES)).optional(),
+          moduleAccess: moduleAccessSchema.optional(),
           isTenantAdmin: z.boolean().default(false),
           password: passwordInput,
           eventIds: z.array(z.number().int().positive()).min(1).max(500),
@@ -2124,13 +2180,19 @@ export const appRouter = router({
         await requireAdminPassword(input.currentAdminPassword, ctx);
         if (input.isTenantAdmin) requirePrimaryTenantAdministrator(ctx.user);
         await assertPlanningTeamAccessReferencesInScope(input);
+        const derivedModulePermissions = input.moduleAccess
+          ? PLANNING_MODULES.filter(m => input.moduleAccess?.[m] === "write")
+          : input.modulePermissions;
         return db.createPlanningTeamAccess({
           label: input.label,
           contactId: input.contactId,
           email: input.email ?? null,
           modulePermissions: input.isTenantAdmin
             ? [...FULL_PLANNER_PERMISSIONS]
-            : input.modulePermissions ?? [],
+            : derivedModulePermissions ?? [],
+          moduleAccess: input.isTenantAdmin
+            ? Object.fromEntries(EDITABLE_PLANNING_MODULES.map(m => [m, "write"]))
+            : input.moduleAccess ?? undefined,
           isTenantAdmin: input.isTenantAdmin,
           passwordHash: await hashPassword(input.password),
           eventIds: input.eventIds,
@@ -2143,6 +2205,7 @@ export const appRouter = router({
           contactId: z.number().int().positive(),
           email: z.string().email("Gültige E-Mail-Adresse erforderlich").max(320),
           modulePermissions: z.array(z.enum(PLANNING_MODULES)).optional(),
+          moduleAccess: moduleAccessSchema.optional(),
           isTenantAdmin: z.boolean().default(false),
           eventIds: z.array(z.number().int().positive()).min(1).max(500),
           sendEmail: z.boolean().default(true),
@@ -2163,13 +2226,19 @@ export const appRouter = router({
           });
         }
         const tempPassword = generatePlanningTeamAccessPassword();
+        const derivedModulePermissions = input.moduleAccess
+          ? EDITABLE_PLANNING_MODULES.filter(m => input.moduleAccess?.[m] === "write")
+          : input.modulePermissions;
         const access = await db.createPlanningTeamAccess({
           label: input.label,
           contactId: input.contactId,
           email: input.email.trim().toLocaleLowerCase("de-DE"),
           modulePermissions: input.isTenantAdmin
             ? [...FULL_PLANNER_PERMISSIONS]
-            : input.modulePermissions ?? [],
+            : derivedModulePermissions ?? [],
+          moduleAccess: input.isTenantAdmin
+            ? Object.fromEntries(EDITABLE_PLANNING_MODULES.map(m => [m, "write"]))
+            : input.moduleAccess ?? undefined,
           isTenantAdmin: input.isTenantAdmin,
           passwordHash: await hashPassword(tempPassword),
           mustChangePassword: true,
@@ -2339,6 +2408,9 @@ export const appRouter = router({
           label: contact.name,
           email: null,
           modulePermissions: input.isTenantAdmin ? [...FULL_PLANNER_PERMISSIONS] : [],
+          moduleAccess: Object.fromEntries(
+            EDITABLE_PLANNING_MODULES.map(m => [m, input.isTenantAdmin ? "write" : "off"])
+          ),
           isTenantAdmin: input.isTenantAdmin,
           eventIds: input.eventIds,
           mustChangePassword: true,
@@ -2381,6 +2453,7 @@ export const appRouter = router({
           contactId: z.number().int().positive().nullable().optional(),
           email: z.string().email().max(320).nullable().optional(),
           modulePermissions: z.array(z.enum(PLANNING_MODULES)).optional(),
+          moduleAccess: moduleAccessSchema.optional(),
           isTenantAdmin: z.boolean().optional(),
           password: passwordInput.optional(),
           eventIds: z.array(z.number().int().positive()).min(1).max(500),
@@ -2405,6 +2478,9 @@ export const appRouter = router({
           requirePrimaryTenantAdministrator(ctx.user);
         }
         await assertPlanningTeamAccessReferencesInScope(input);
+        const derivedModulePermissions = input.moduleAccess
+          ? EDITABLE_PLANNING_MODULES.filter(m => input.moduleAccess?.[m] === "write")
+          : input.modulePermissions;
         return db.updatePlanningTeamAccess({
           id: input.id,
           label: input.label,
@@ -2413,7 +2489,11 @@ export const appRouter = router({
           modulePermissions:
             input.isTenantAdmin === true
               ? [...FULL_PLANNER_PERMISSIONS]
-              : input.modulePermissions,
+              : derivedModulePermissions,
+          moduleAccess:
+            input.isTenantAdmin === true
+              ? Object.fromEntries(EDITABLE_PLANNING_MODULES.map(m => [m, "write"]))
+              : input.moduleAccess ?? undefined,
           isTenantAdmin: input.isTenantAdmin,
           passwordHash: input.password ? await hashPassword(input.password) : undefined,
           eventIds: input.eventIds,

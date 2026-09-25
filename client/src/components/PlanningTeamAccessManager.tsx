@@ -56,6 +56,8 @@ import {
   EDITABLE_PLANNING_MODULES,
   PLANNING_MODULE_META,
   type PlanningModule,
+  type PlanningModuleAccess,
+  type PlanningModuleAccessLevel,
 } from "@shared/tenant-permissions";
 
 type FormState = {
@@ -64,10 +66,15 @@ type FormState = {
   label: string;
   email: string;
   modulePermissions: PlanningModule[];
+  moduleAccess: PlanningModuleAccess;
   isTenantAdmin: boolean;
   eventIds: number[];
   currentAdminPassword: string;
 };
+
+const DEFAULT_MODULE_ACCESS: PlanningModuleAccess = Object.fromEntries(
+  EDITABLE_PLANNING_MODULES.map(module => [module, "off"])
+);
 
 const EMPTY_FORM: FormState = {
   id: null,
@@ -75,6 +82,7 @@ const EMPTY_FORM: FormState = {
   label: "",
   email: "",
   modulePermissions: [],
+  moduleAccess: { ...DEFAULT_MODULE_ACCESS },
   isTenantAdmin: false,
   eventIds: [],
   currentAdminPassword: "",
@@ -94,6 +102,7 @@ type AccessSummary = {
   label: string;
   email?: string | null;
   modulePermissions?: PlanningModule[];
+  moduleAccess?: PlanningModuleAccess;
   isTenantAdmin: boolean;
   eventIds: number[];
   mustChangePassword: boolean;
@@ -345,6 +354,7 @@ export function PlanningTeamAccessManager() {
       contactId: form.contactId,
       email: form.email.trim() ? form.email.trim() : undefined,
       modulePermissions: form.modulePermissions,
+      moduleAccess: form.moduleAccess,
       isTenantAdmin: form.isTenantAdmin,
       eventIds: effectiveEventIds,
       currentAdminPassword: form.currentAdminPassword,
@@ -376,14 +386,25 @@ export function PlanningTeamAccessManager() {
     setPrintDialogOpen(true);
   };
   const editAccess = (access: AccessSummary) => {
+    const existingPermissions = Array.isArray(access.modulePermissions)
+      ? access.modulePermissions
+      : [];
+    const initialAccess: PlanningModuleAccess =
+      access.moduleAccess && typeof access.moduleAccess === "object"
+        ? { ...DEFAULT_MODULE_ACCESS, ...access.moduleAccess }
+        : Object.fromEntries(
+            EDITABLE_PLANNING_MODULES.map(m => [
+              m,
+              existingPermissions.includes(m) ? "write" : "off",
+            ])
+          );
     setForm({
       id: access.id,
       contactId: access.contactId,
       label: access.label,
       email: access.email ?? "",
-      modulePermissions: Array.isArray(access.modulePermissions)
-        ? access.modulePermissions
-        : [],
+      modulePermissions: existingPermissions,
+      moduleAccess: initialAccess,
       isTenantAdmin: access.isTenantAdmin,
       eventIds: access.eventIds,
       currentAdminPassword: "",
@@ -551,20 +572,31 @@ export function PlanningTeamAccessManager() {
                         ? "Volle Verwaltungsrechte im eigenen Verein · keine Masterrechte"
                         : "Ansprechpartner-Zugang"}
                     </p>
-                    {!access.isTenantAdmin && (!access.modulePermissions || access.modulePermissions.length === 0) ? (
+                    {!access.isTenantAdmin && (!access.modulePermissions || access.modulePermissions.length === 0) && (!access.moduleAccess || Object.values(access.moduleAccess).every(v => v === "off")) ? (
                       <div className="mt-1">
-                        <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 border border-amber-200">
-                          Nur lesen (keine Bearbeitungsrechte)
+                        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 border border-slate-200">
+                          Keine Fachbereiche freigegeben
                         </span>
                       </div>
                     ) : (
-                      access.modulePermissions && access.modulePermissions.length > 0 && (
+                      !access.isTenantAdmin && (
                         <div className="mt-1 flex flex-wrap gap-1">
-                          {access.modulePermissions.map(m => (
-                            <span key={m} className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
-                              {PLANNING_MODULE_META[m]?.label ?? m}
-                            </span>
-                          ))}
+                          {EDITABLE_PLANNING_MODULES.map(m => {
+                            const level = access.moduleAccess?.[m] ?? (access.modulePermissions?.includes(m) ? "write" : "off");
+                            if (level === "off") return null;
+                            return (
+                              <span
+                                key={m}
+                                className={
+                                  level === "write"
+                                    ? "rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-800 border border-emerald-200"
+                                    : "rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-800 border border-blue-200"
+                                }
+                              >
+                                {PLANNING_MODULE_META[m]?.label ?? m} ({level === "write" ? "Schreiben" : "Lesen"})
+                              </span>
+                            );
+                          })}
                         </div>
                       )
                     )}
@@ -727,48 +759,120 @@ export function PlanningTeamAccessManager() {
             </div>
           </div>
 
-          <fieldset className="mt-4 space-y-2">
-            <legend className="text-sm font-medium text-slate-900">
-              Zulässige Fachbereiche (Berechtigungen)
-            </legend>
-            <div className="grid gap-2 sm:grid-cols-2">
+          <fieldset className="mt-4 space-y-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <legend className="text-sm font-medium text-slate-900">
+                Zulässige Fachbereiche (Dreistufiger Schalter: Aus / Lesen / Schreiben)
+              </legend>
+              <span className="text-xs text-slate-500">
+                Aus = Modul ausgeblendet · Lesen = nur Ansicht · Schreiben = volle Bearbeitung
+              </span>
+            </div>
+            <div className="grid gap-2.5 sm:grid-cols-2">
               {EDITABLE_PLANNING_MODULES.map(module => {
                 const meta = PLANNING_MODULE_META[module];
-                const isChecked = form.modulePermissions.includes(module);
+                const currentLevel: PlanningModuleAccessLevel = form.isTenantAdmin
+                  ? "write"
+                  : (form.moduleAccess[module] ?? "off");
+                const setModuleLevel = (level: PlanningModuleAccessLevel) => {
+                  setForm(curr => {
+                    const nextAccess: PlanningModuleAccess = {
+                      ...curr.moduleAccess,
+                      [module]: level,
+                    };
+                    const nextPermissions = EDITABLE_PLANNING_MODULES.filter(
+                      m => nextAccess[m] === "write"
+                    );
+                    return {
+                      ...curr,
+                      moduleAccess: nextAccess,
+                      modulePermissions: nextPermissions,
+                    };
+                  });
+                };
+
                 return (
-                  <label
+                  <div
                     key={module}
-                    className="flex cursor-pointer items-start gap-2.5 rounded-md border border-white bg-white px-3 py-2 text-sm text-slate-800 shadow-sm transition-colors hover:border-blue-300"
+                    className="flex flex-col justify-between gap-2 rounded-lg border border-slate-200 bg-white p-3 shadow-xs transition-colors hover:border-blue-300"
                   >
-                    <Checkbox
-                      checked={isChecked}
-                      disabled={busy || form.isTenantAdmin}
-                      onCheckedChange={checked => {
-                        setForm(curr => ({
-                          ...curr,
-                          modulePermissions: checked === true
-                            ? Array.from(new Set([...curr.modulePermissions, module]))
-                            : curr.modulePermissions.filter(m => m !== module),
-                        }));
-                      }}
-                      className="mt-0.5"
-                    />
                     <div className="min-w-0">
-                      <span className="font-medium text-slate-900">{meta.label}</span>
-                      <p className="text-xs text-slate-500">{meta.description}</p>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold text-slate-900 text-sm">
+                          {meta.label}
+                        </span>
+                        <span
+                          className={
+                            currentLevel === "write"
+                              ? "rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800"
+                              : currentLevel === "read"
+                                ? "rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-800"
+                                : "rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600"
+                          }
+                        >
+                          {currentLevel === "write"
+                            ? "Schreiben"
+                            : currentLevel === "read"
+                              ? "Lesen"
+                              : "Aus"}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 text-xs text-slate-500">{meta.description}</p>
                     </div>
-                  </label>
+                    <div
+                      role="group"
+                      aria-label={`Berechtigungsstufe für ${meta.label}`}
+                      className="inline-flex w-full items-center rounded-md border border-slate-200 bg-slate-50 p-0.5 text-xs font-medium"
+                    >
+                      <button
+                        type="button"
+                        disabled={busy || form.isTenantAdmin}
+                        onClick={() => setModuleLevel("off")}
+                        className={
+                          currentLevel === "off"
+                            ? "flex-1 rounded py-1 font-semibold text-slate-800 bg-white shadow-xs"
+                            : "flex-1 py-1 text-slate-500 hover:text-slate-900"
+                        }
+                      >
+                        Aus
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy || form.isTenantAdmin}
+                        onClick={() => setModuleLevel("read")}
+                        className={
+                          currentLevel === "read"
+                            ? "flex-1 rounded py-1 font-semibold text-blue-800 bg-blue-100/70 shadow-xs"
+                            : "flex-1 py-1 text-slate-500 hover:text-slate-900"
+                        }
+                      >
+                        Lesen
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy || form.isTenantAdmin}
+                        onClick={() => setModuleLevel("write")}
+                        className={
+                          currentLevel === "write"
+                            ? "flex-1 rounded py-1 font-semibold text-emerald-800 bg-emerald-100 shadow-xs"
+                            : "flex-1 py-1 text-slate-500 hover:text-slate-900"
+                        }
+                      >
+                        Schreiben
+                      </button>
+                    </div>
+                  </div>
                 );
               })}
             </div>
-            {form.modulePermissions.length === 0 && !form.isTenantAdmin && (
+            {Object.values(form.moduleAccess).every(v => v === "off") && !form.isTenantAdmin && (
               <aside
                 data-slot="readonly-access-explanation"
                 className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2.5 text-xs leading-5 text-sky-900"
               >
                 <p className="font-semibold">Ohne Auswahl: reiner Lesezugriff</p>
                 <p className="mt-0.5">
-                  Dieser Zugang kann die freigegebene Veranstaltung vollständig ansehen und im Team-Chat lesen sowie schreiben, darf aber keine Planungsdaten, Einstellungen oder Zugänge bearbeiten.
+                  Sind Fachbereiche auf „Aus“, werden sie im Menü ausgeblendet. Auf „Lesen“ geschaltete Bereiche können eingesehen werden. Der Zugang kann die freigegebene Veranstaltung nutzen und im Team-Chat lesen sowie schreiben, darf aber ohne „Schreiben“ keine Planungsdaten, Einstellungen oder Zugänge bearbeiten.
                 </p>
               </aside>
             )}
@@ -897,6 +1001,7 @@ export function PlanningTeamAccessManager() {
                       contactId: form.contactId,
                       email: form.email.trim(),
                       modulePermissions: form.modulePermissions,
+                      moduleAccess: form.moduleAccess,
                       isTenantAdmin: form.isTenantAdmin,
                       eventIds: effectiveEventIds,
                       sendEmail: sendEmailInvite,

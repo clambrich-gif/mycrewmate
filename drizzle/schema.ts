@@ -15,7 +15,10 @@ import {
   date,
 } from "drizzle-orm/mysql-core";
 import { WEEKDAYS, type Weekday } from "../shared/weekdays";
-import type { PlanningModule } from "../shared/tenant-permissions";
+import type {
+  PlanningModule,
+  PlanningModuleAccess,
+} from "../shared/tenant-permissions";
 
 /**
  * Core user table backing auth flow.
@@ -751,8 +754,16 @@ export const planningTeamAccesses = mysqlTable("planning_team_accesses", {
   /** Persönliche E-Mail für den individuellen Login; Altbestände dürfen leer bleiben. */
   email: varchar("email", { length: 320 }),
   passwordHash: varchar("passwordHash", { length: 255 }).notNull(),
-  /** Ausschließlich die hier vergebenen Fachbereiche dürfen bearbeitet werden. */
+  /**
+   * Historisches Schreibrechte-Array. Es bleibt für ältere Zugänge erhalten;
+   * neue und bearbeitete Zugänge verwenden `moduleAccess`.
+   */
   modulePermissions: json("modulePermissions").$type<PlanningModule[]>(),
+  /**
+   * Explizite Fachbereichsstufe: aus, lesen oder schreiben. NULL bedeutet
+   * Altbestand und wird serverseitig verlustfrei aus modulePermissions abgeleitet.
+   */
+  moduleAccess: json("moduleAccess").$type<PlanningModuleAccess>(),
   /**
    * Vereinsinterne Stellvertretung: erhält volle Rechte nur im eigenen Verein,
    * darf aber keine weiteren Stellvertretungen ernennen oder verwalten.
