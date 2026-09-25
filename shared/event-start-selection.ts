@@ -16,8 +16,9 @@ export type StartSelectableEvent = {
 
 /**
  * Ermittelt aus den für einen Zugang freigegebenen Veranstaltungen die nächste
- * Veranstaltung mit gültigem Startdatum. Der heutige Kalendertag zählt als
- * bevorstehender Starttag, vergangene oder undatierte Einträge nicht.
+ * Veranstaltung mit gültigem, zum Veranstaltungsjahr passendem Startdatum.
+ * Der heutige Kalendertag zählt als bevorstehender Starttag, vergangene,
+ * undatierte oder jahrfremd datierte Einträge nicht.
  */
 export function nearestUpcomingEvent<T extends StartSelectableEvent>(
   events: readonly T[],
@@ -33,6 +34,7 @@ export function nearestUpcomingEvent<T extends StartSelectableEvent>(
     event =>
       typeof event.startDate === "string" &&
       isIsoCalendarDate(event.startDate) &&
+      event.startDate.startsWith(String(event.year)) &&
       event.startDate >= calendarToday
   );
 

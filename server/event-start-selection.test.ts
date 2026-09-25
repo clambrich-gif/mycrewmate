@@ -25,6 +25,12 @@ describe("Startauswahl der nächsten Veranstaltung", () => {
       startDate: "2027-06-18",
     },
     {
+      id: 15,
+      year: 2027,
+      name: "Altimport mit falschem Jahr",
+      startDate: "2026-10-20",
+    },
+    {
       id: 14,
       year: 2028,
       name: "Ohne Termin",
@@ -49,6 +55,12 @@ describe("Startauswahl der nächsten Veranstaltung", () => {
     expect(
       nearestUpcomingEvent(events, new Date("2027-07-01T10:00:00"))
     ).toBeNull();
+  });
+
+  it("ignoriert ein Startdatum, das nicht zum Veranstaltungsjahr gehört", () => {
+    expect(
+      nearestUpcomingEvent(events, new Date("2026-09-25T10:00:00"))
+    ).toMatchObject({ id: 12, year: 2026 });
   });
 
   it("ordnet gleich datierte Einträge stabil nach Namen und ID", () => {

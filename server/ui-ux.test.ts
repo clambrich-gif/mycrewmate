@@ -116,6 +116,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(yearContext).toContain("eventStartSelectionSessionKey(nextTenantId)");
     expect(startSelection).toContain("event.startDate >= calendarToday");
     expect(startSelection).toContain("isIsoCalendarDate(event.startDate)");
+    expect(startSelection).toContain("event.startDate.startsWith(String(event.year))");
   });
 
   it("zeigt den zentralen Copyright-Vermerk in Anmeldung, Navigation und PDFs", () => {
