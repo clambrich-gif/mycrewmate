@@ -2517,13 +2517,16 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(taskGeneric).toContain("<PageTitle icon={titleIcon}>{title}</PageTitle>");
   });
 
-  it("bearbeitet Vorbereitungskarten mobil direkt und zeigt das Logbuch kompakt mit Verlauf an", () => {
+  it("bearbeitet Vorbereitungskarten direkt und zeigt den einheitlich strukturierten Logbuchverlauf an", () => {
     const prep = source("client/src/pages/Preparation.tsx");
+    const post = source("client/src/pages/PostProcessing.tsx");
     const logbook = source("shared/preparation-logbook.ts");
+    const logbookHistory = source("client/src/components/TaskLogbookHistory.tsx");
     const css = source("client/src/index.css");
 
     expect(prep).toContain("function MobilePreparationLogbookField");
-    expect(prep).toContain("formatPreparationLogbookForMobileDisplay");
+    expect(prep).toContain("TaskLogbookHistory");
+    expect(post).toContain("TaskLogbookHistory");
     expect(prep).toContain("mobile-prep-contact-${task.id}");
     expect(prep).toContain("mobile-prep-due-${task.id}");
     expect(prep).toContain('type="date"');
@@ -2544,8 +2547,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(prep).toContain("setEntry(\"\")");
     expect(prep).toContain("onCommit={logEntry => update.mutate({ id: task.id, logEntry })}");
     expect(prep).toContain("Neue Einträge werden oben im Verlauf ergänzt.");
-    expect(logbook).toContain("formatPreparationLogbookForMobileDisplay");
-    expect(logbook).toContain('"$1:"');
+    expect(logbook).toContain("parsePreparationLogbookEntries");
+    expect(logbook).toContain("describeTaskLogbookChanges");
+    expect(logbookHistory).toContain('data-slot="task-logbook-history"');
+    expect(logbookHistory).toContain("von ${entry.author}");
+    expect(logbookHistory).toContain("font-bold tracking-tight text-blue-950");
   });
 
   it("öffnet lange mobile Hinweise und Bemerkungen in komfortablen Mehrzeileneditoren", () => {

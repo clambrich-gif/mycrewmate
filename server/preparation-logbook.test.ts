@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  formatPreparationLogbookForMobileDisplay,
+  describeTaskLogbookChanges,
   latestPreparationLogbookEntry,
+  parsePreparationLogbookEntries,
   preparationLogbookEntryCount,
   preparationLogbookNeedsDetail,
   prependPreparationLogbookEntry,
@@ -46,12 +47,46 @@ describe("Vorbereitungslogbuch", () => {
     expect(preparationLogbookNeedsDetail(logbook, 20)).toBe(true);
   });
 
-  it("zeigt mobile Logbuchverläufe ohne Rollen- oder Namensklammer", () => {
+  it("gliedert den Verlauf für Liste und Kachelansicht mit Zeit und Autor", () => {
     const logbook =
       "17.09.2026 08:30 Uhr (Christian Lambrich): Rückmeldung erfolgt am Freitag\n16.09.2026 16:45 Uhr (Planungsteam): Unterlagen angefordert";
 
-    expect(formatPreparationLogbookForMobileDisplay(logbook)).toBe(
-      "17.09.2026 08:30 Uhr: Rückmeldung erfolgt am Freitag\n16.09.2026 16:45 Uhr: Unterlagen angefordert"
+    expect(parsePreparationLogbookEntries(logbook)).toEqual([
+      expect.objectContaining({
+        timestampLabel: "17.09.2026 · 08:30 Uhr",
+        author: "Christian Lambrich",
+        text: "Rückmeldung erfolgt am Freitag",
+      }),
+      expect.objectContaining({
+        timestampLabel: "16.09.2026 · 16:45 Uhr",
+        author: "Planungsteam",
+        text: "Unterlagen angefordert",
+      }),
+    ]);
+  });
+
+  it("beschreibt Status- und Verantwortungsänderungen nachvollziehbar", () => {
+    const entry = describeTaskLogbookChanges(
+      "preparation",
+      {
+        task: "Platz buchen",
+        category: "Organisation",
+        dueText: "20.09.2026",
+        locationId: 4,
+        contactId: 7,
+        status: "inArbeit",
+        statusWording: "genehmigung",
+      },
+      {
+        status: "erledigt",
+        statusWording: "genehmigung",
+        contactId: 8,
+      },
+      { contacts: new Map([[7, "Paolo Ferrara"], [8, "Herr Müller"]]) }
+    );
+
+    expect(entry).toBe(
+      "Verantwortlicher geändert: Paolo Ferrara → Herr Müller · Status geändert: Beantragt → Genehmigt"
     );
   });
 });

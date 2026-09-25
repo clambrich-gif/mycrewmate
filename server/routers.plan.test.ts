@@ -1743,7 +1743,6 @@ describe("Planungs-API", () => {
       statusWording: "genehmigung",
       logEntry: "Rückfrage an Stadtverwaltung erforderlich",
       logEntryAuthor: "Organisation",
-      activityEntry: "Vorbereitungsaufgabe aktualisiert",
       activityAuthor: "Organisation",
     });
   });

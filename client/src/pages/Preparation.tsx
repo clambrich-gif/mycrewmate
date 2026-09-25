@@ -54,6 +54,7 @@ import { toast } from "sonner";
 import { MyTasksDefaultPin } from "@/components/MyTasksDefaultPin";
 import { PlanResetDialogButton } from "@/components/PlanResetDialogButton";
 import { ViewModeToggle } from "@/components/ViewModeToggle";
+import { TaskLogbookHistory } from "@/components/TaskLogbookHistory";
 import { useMyTasksDefault } from "@/hooks/useMyTasksDefault";
 import { useViewMode } from "@/hooks/useViewMode";
 import { LocationMapLink } from "@/components/LocationMapLink";
@@ -63,7 +64,6 @@ import {
   type TaskStatusFilter,
 } from "@/lib/dashboard-target-filter";
 import {
-  formatPreparationLogbookForMobileDisplay,
   latestPreparationLogbookEntry,
   preparationLogbookEntryCount,
   preparationLogbookNeedsDetail,
@@ -226,7 +226,6 @@ function MobilePreparationLogbookField({
   onCommit: (entry: string) => void;
 }) {
   const [entry, setEntry] = useState("");
-  const compactHistory = formatPreparationLogbookForMobileDisplay(task.note);
   const entryCount = preparationLogbookEntryCount(task.note);
 
   useEffect(() => {
@@ -281,9 +280,7 @@ function MobilePreparationLogbookField({
         className="z-50 w-[min(20rem,calc(100vw-1.5rem))] max-w-none border border-gray-200 bg-white p-3 text-left text-gray-900 shadow-lg"
       >
         <p className="mb-1 text-xs font-medium text-slate-500">Logbuch – Verlauf</p>
-        <p className="max-h-64 overflow-y-auto whitespace-pre-wrap break-words text-sm leading-5">
-          {compactHistory || "Noch kein Logbucheintrag vorhanden."}
-        </p>
+        <TaskLogbookHistory logbook={task.note} />
       </PopoverContent>
     </Popover>
   );
@@ -1016,9 +1013,7 @@ export default function Preparation() {
                                   <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
                                     Logbuch – Verlauf
                                   </p>
-                                  <p className="max-h-64 overflow-y-auto whitespace-pre-wrap break-words text-sm leading-5">
-                                    {task.note}
-                                  </p>
+                                  <TaskLogbookHistory logbook={task.note} />
                                 </PopoverContent>
                               </Popover>
                             )}

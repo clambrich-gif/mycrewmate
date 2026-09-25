@@ -67,7 +67,10 @@ import {
   type Weekday,
 } from "../shared/weekdays";
 import { eventDateRangeError } from "../shared/event-dates";
-import { prependPreparationLogbookEntry } from "../shared/preparation-logbook";
+import {
+  describeTaskLogbookChanges,
+  prependPreparationLogbookEntry,
+} from "../shared/preparation-logbook";
 import {
   ADMIN_PASSWORD_OPEN_ID,
   planningTeamAccessIdFromOpenId,
@@ -4727,6 +4730,57 @@ async function scopedContactValues(values: Record<string, unknown>) {
   return values;
 }
 
+type LogbookTaskRow = {
+  task: string;
+  category: string;
+  dueText: string;
+  locationId: number | null;
+  contactId: number | null;
+  status: string;
+  statusWording?: string | null;
+};
+
+async function taskLogbookReferenceLabels(
+  database: DB,
+  previous: LogbookTaskRow,
+  values: Record<string, unknown>
+) {
+  const referenceIds = (field: "contactId" | "locationId") =>
+    Array.from(new Set([previous[field], values[field]]))
+      .map(value => Number(value))
+      .filter(value => Number.isSafeInteger(value) && value > 0);
+  const contactIds = referenceIds("contactId");
+  const locationIds = referenceIds("locationId");
+  const [contactRows, locationRows] = await Promise.all([
+    contactIds.length
+      ? database
+          .select({ id: contacts.id, name: contacts.name })
+          .from(contacts)
+          .where(and(inArray(contacts.id, contactIds), planningScope(contacts)))
+      : Promise.resolve([]),
+    locationIds.length
+      ? database
+          .select({ id: locations.id, name: locations.name })
+          .from(locations)
+          .where(and(inArray(locations.id, locationIds), planningScope(locations)))
+      : Promise.resolve([]),
+  ]);
+  return {
+    contacts: new Map(contactRows.map(row => [row.id, row.name])),
+    locations: new Map(locationRows.map(row => [row.id, row.name])),
+  };
+}
+
+async function taskLogbookChangeEntry(
+  kind: "preparation" | "postprocessing",
+  database: DB,
+  previous: LogbookTaskRow,
+  values: Record<string, unknown>
+) {
+  const labels = await taskLogbookReferenceLabels(database, previous, values);
+  return describeTaskLogbookChanges(kind, previous, values, labels);
+}
+
 export const createPrep = async (v: any) => {
   const { logEntry, logEntryAuthor, activityEntry, activityAuthor, ...values } = v;
   const noteWithManualEntry = prependPreparationLogbookEntry(
@@ -4755,27 +4809,40 @@ export const createPrep = async (v: any) => {
 export const updatePrep = async (id: number, v: any) => {
   const { logEntry, logEntryAuthor, activityEntry, activityAuthor, ...values } = v;
   const database = (await getDb()) as DB;
-  if (logEntry === undefined && !activityEntry) {
-    return database
-      .update(prepTasks)
-      .set(await scopedContactValues(await scopedLocationValues(values)))
-      .where(and(yearWhere(prepTasks, id), eq(prepTasks.deleted, false)));
-  }
-
   const existing = await database
-    .select({ note: prepTasks.note })
+    .select({
+      note: prepTasks.note,
+      task: prepTasks.task,
+      category: prepTasks.category,
+      dueText: prepTasks.dueText,
+      locationId: prepTasks.locationId,
+      contactId: prepTasks.contactId,
+      status: prepTasks.status,
+      statusWording: prepTasks.statusWording,
+    })
     .from(prepTasks)
     .where(and(yearWhere(prepTasks, id), eq(prepTasks.deleted, false)))
     .limit(1);
   if (!existing[0]) throw new Error("Vorbereitungsaufgabe wurde nicht gefunden");
 
+  const generatedActivityEntry =
+    activityEntry ??
+    (await taskLogbookChangeEntry("preparation", database, existing[0], values));
+  const { note: _ignoredNote, ...writableValues } = values;
+  if (logEntry === undefined && !generatedActivityEntry) {
+    return database
+      .update(prepTasks)
+      .set(await scopedContactValues(await scopedLocationValues(writableValues)))
+      .where(and(yearWhere(prepTasks, id), eq(prepTasks.deleted, false)));
+  }
+
   return database
     .update(prepTasks)
     .set(
       await scopedContactValues(await scopedLocationValues({
-        ...values,
+        ...writableValues,
         note: prependPreparationLogbookEntry(
-          activityEntry,
+          generatedActivityEntry,
           prependPreparationLogbookEntry(
             logEntry,
             existing[0].note,
@@ -5042,25 +5109,39 @@ export const createPost = async (v: any) => {
 export const updatePost = async (id: number, v: any) => {
   const { logEntry, logEntryAuthor, activityEntry, activityAuthor, ...values } = v;
   const database = (await getDb()) as DB;
-  if (logEntry === undefined && !activityEntry) {
-    return database
-      .update(postTasks)
-      .set(await scopedContactValues(await scopedLocationValues(values)))
-      .where(and(yearWhere(postTasks, id), eq(postTasks.deleted, false)));
-  }
   const existing = await database
-    .select({ note: postTasks.note })
+    .select({
+      note: postTasks.note,
+      task: postTasks.task,
+      category: postTasks.category,
+      dueText: postTasks.dueText,
+      locationId: postTasks.locationId,
+      contactId: postTasks.contactId,
+      status: postTasks.status,
+    })
     .from(postTasks)
     .where(and(yearWhere(postTasks, id), eq(postTasks.deleted, false)))
     .limit(1);
   if (!existing[0]) throw new Error("Nachbereitungsaufgabe wurde nicht gefunden");
+
+  const generatedActivityEntry =
+    activityEntry ??
+    (await taskLogbookChangeEntry("postprocessing", database, existing[0], values));
+  const { note: _ignoredNote, ...writableValues } = values;
+  if (logEntry === undefined && !generatedActivityEntry) {
+    return database
+      .update(postTasks)
+      .set(await scopedContactValues(await scopedLocationValues(writableValues)))
+      .where(and(yearWhere(postTasks, id), eq(postTasks.deleted, false)));
+  }
+
   return database
     .update(postTasks)
     .set(
       await scopedContactValues(await scopedLocationValues({
-        ...values,
+        ...writableValues,
         note: prependPreparationLogbookEntry(
-          activityEntry,
+          generatedActivityEntry,
           prependPreparationLogbookEntry(
             logEntry,
             existing[0].note,

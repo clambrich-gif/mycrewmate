@@ -3839,7 +3839,6 @@ export const appRouter = router({
         return db.updatePrep(id, {
           ...r,
           logEntryAuthor: auditActor(ctx.user).name,
-          activityEntry: "Vorbereitungsaufgabe aktualisiert",
           activityAuthor: auditActor(ctx.user).name,
         });
       }),
@@ -3893,7 +3892,6 @@ export const appRouter = router({
         return db.updatePost(id, {
           ...r,
           logEntryAuthor: auditActor(ctx.user).name,
-          activityEntry: "Nachbereitungsaufgabe aktualisiert",
           activityAuthor: auditActor(ctx.user).name,
         });
       }),

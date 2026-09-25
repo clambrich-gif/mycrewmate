@@ -5,6 +5,7 @@ import { PageTitle } from "@/components/PageTitle";
 import { MyTasksDefaultPin } from "@/components/MyTasksDefaultPin";
 import { PlanResetDialogButton } from "@/components/PlanResetDialogButton";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
+import { TaskLogbookHistory } from "@/components/TaskLogbookHistory";
 import { ViewModeToggle } from "@/components/ViewModeToggle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -41,7 +42,6 @@ import { downloadBase64File } from "@/lib/download";
 import { useMyTasksDefault } from "@/hooks/useMyTasksDefault";
 import { useViewMode } from "@/hooks/useViewMode";
 import {
-  formatPreparationLogbookForMobileDisplay,
   latestPreparationLogbookEntry,
   preparationLogbookEntryCount,
   prependPreparationLogbookEntry,
@@ -186,7 +186,6 @@ function MobilePostProcessingLogbookField({
   onCommit: (entry: string) => void;
 }) {
   const [entry, setEntry] = useState("");
-  const compactHistory = formatPreparationLogbookForMobileDisplay(task.note);
   const entryCount = preparationLogbookEntryCount(task.note);
 
   useEffect(() => {
@@ -241,9 +240,7 @@ function MobilePostProcessingLogbookField({
         className="z-50 w-[min(20rem,calc(100vw-1.5rem))] max-w-none border border-rose-200 bg-white p-3 text-left text-gray-900 shadow-lg"
       >
         <p className="mb-1 text-xs font-medium text-slate-500">Logbuch – Verlauf</p>
-        <p className="max-h-64 overflow-y-auto whitespace-pre-wrap break-words text-sm leading-5">
-          {compactHistory || "Noch kein Logbucheintrag vorhanden."}
-        </p>
+        <TaskLogbookHistory logbook={task.note} />
       </PopoverContent>
     </Popover>
   );
@@ -962,9 +959,7 @@ export default function PostProcessing() {
                               <p className="mb-1 text-xs font-semibold text-slate-500 uppercase tracking-wide">
                                 Logbuch – Chronologischer Verlauf
                               </p>
-                              <p className="max-h-60 overflow-y-auto whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-700">
-                                {task.note?.trim() || "Noch kein Eintrag vorhanden."}
-                              </p>
+                              <TaskLogbookHistory logbook={task.note} />
                             </PopoverContent>
                           </Popover>
                         </div>
