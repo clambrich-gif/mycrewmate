@@ -126,6 +126,8 @@ describe("rollenabhängige Navigation", () => {
 
   it("zeigt im aktiven Punkt nur dann einen Stift, wenn der Bereich tatsächlich bearbeitbar ist", () => {
     expect(activeNavigationAccess("admin", "/einsatzplan", [])).toBe("edit");
+    expect(activeNavigationAccess("admin", "/hilfe", [])).toBe("read");
+    expect(activeNavigationAccess("admin", "/", [])).toBe("read");
     expect(activeNavigationAccess("user", "/einsatzplan", ["schedule"])).toBe("read");
     expect(activeNavigationAccess("user", "/helfer", ["helpers"])).toBe("edit");
     expect(activeNavigationAccess("user", "/vorbereitung", ["read_all"])).toBe("read");

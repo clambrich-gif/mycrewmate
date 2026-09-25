@@ -79,6 +79,20 @@ export const PLANNING_TEAM_OVERVIEW_PATHS = [
   "/hilfe",
 ] as const;
 
+const ADMIN_EDITING_PATHS = [
+  "/ansprechpartner",
+  "/helfer",
+  "/einsatzplan",
+  "/vorbereitung",
+  "/nachbereitung",
+  "/material",
+  "/spenden",
+  "/finanzen",
+  "/pdf-export",
+  "/orte",
+  "/sicherheit",
+] as const;
+
 type NavigationSection = {
   id: "default";
   label: null;
@@ -162,7 +176,13 @@ export function activeNavigationAccess(
   href: string,
   permissions: readonly import("@shared/tenant-permissions").PlanningModule[] | null | undefined
 ): ActiveNavigationAccess {
-  if (role === "admin") return "edit";
+  if (role === "admin") {
+    return ADMIN_EDITING_PATHS.includes(
+      href as (typeof ADMIN_EDITING_PATHS)[number]
+    )
+      ? "edit"
+      : "read";
+  }
   if (role !== "user") return "read";
 
   if (!PLANNING_TEAM_EDITING_PATHS.includes(
