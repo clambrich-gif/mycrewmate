@@ -3119,6 +3119,53 @@ export const appRouter = router({
         }).superRefine(validateHelperTimeWindows)
       )
       .mutation(({ input }) => db.upsertHelperByName(input)),
+    createWithDonation: protectedProcedure
+      .use(async ({ ctx, next }) => {
+        const permissions = await getPlanningTeamPermissionsForUser(ctx.user);
+        requireModuleWritePermission(permissions, "helpers");
+        requireModuleWritePermission(permissions, "donations");
+        return next({ ctx });
+      })
+      .input(
+        z.object({
+          helper: z
+            .object({
+              name: z.string().min(1),
+              contactId: z.number().nullable().optional(),
+              phone: z.string().trim().max(64).optional(),
+              note: z.string().trim().max(500).optional(),
+              willHelp: yn.default("ja"),
+              ...helperCreationAvailabilityInput,
+              confirmed: yn.default("nein"),
+              companion: z.string().trim().max(500).optional(),
+            })
+            .superRefine(validateHelperTimeWindows),
+          donation: z.object({
+            cake: z.string().trim().max(200).optional(),
+            donationCategory: z
+              .enum(["kuchen", "salat", "snack", "sonstiges"])
+              .default("kuchen"),
+            locationId: z.number().int().positive().nullable().optional(),
+            dropoffDate: z
+              .string()
+              .regex(/^\d{4}-\d{2}-\d{2}$/, "Ungültiges Abgabedatum")
+              .or(z.literal(""))
+              .optional(),
+            dropoffTime: z
+              .string()
+              .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Ungültige Abgabe-Uhrzeit")
+              .or(z.literal(""))
+              .optional(),
+            vegan: z.boolean().default(false),
+            glutenFree: z.boolean().default(false),
+            lactoseFree: z.boolean().default(false),
+            containsNuts: z.boolean().default(false),
+            meat: z.boolean().default(false),
+            note: z.string().trim().max(1000).optional(),
+          }),
+        })
+      )
+      .mutation(({ input }) => db.createHelperWithDonation(input)),
     update: moduleWriteProcedure("helpers")
       .input(
         z.object({

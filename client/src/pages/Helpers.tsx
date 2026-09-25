@@ -82,6 +82,61 @@ const personKey = (value: string) =>
 const HELPER_ACTION_ICON_BUTTON_CLASS =
   "h-8 min-h-8 w-8 min-w-8 rounded-md bg-transparent p-1 text-slate-700 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1";
 
+type NewHelperDonationCategory = "kuchen" | "salat" | "snack" | "sonstiges";
+
+type NewHelperDonation = {
+  cake: string;
+  donationCategory: NewHelperDonationCategory;
+  locationId: number | null;
+  dropoffDate: string;
+  dropoffTime: string;
+  vegan: boolean;
+  glutenFree: boolean;
+  lactoseFree: boolean;
+  containsNuts: boolean;
+  meat: boolean;
+  note: string;
+};
+
+const EMPTY_NEW_HELPER_DONATION: NewHelperDonation = {
+  cake: "",
+  donationCategory: "kuchen",
+  locationId: null,
+  dropoffDate: "",
+  dropoffTime: "",
+  vegan: false,
+  glutenFree: false,
+  lactoseFree: false,
+  containsNuts: false,
+  meat: false,
+  note: "",
+};
+
+const newHelperDonationCategories: Array<{
+  value: NewHelperDonationCategory;
+  label: string;
+}> = [
+  { value: "kuchen", label: "Kuchen / Gebäck" },
+  { value: "salat", label: "Salat" },
+  { value: "snack", label: "Dessert / Snack" },
+  { value: "sonstiges", label: "Sonstiges" },
+];
+
+const newHelperDonationTraits: Array<{
+  key: keyof Pick<
+    NewHelperDonation,
+    "vegan" | "glutenFree" | "lactoseFree" | "containsNuts" | "meat"
+  >;
+  label: string;
+  activeClass: string;
+}> = [
+  { key: "vegan", label: "Vegan", activeClass: "border-emerald-400 bg-emerald-100 text-emerald-950" },
+  { key: "glutenFree", label: "Glutenfrei", activeClass: "border-amber-400 bg-amber-100 text-amber-950" },
+  { key: "lactoseFree", label: "Laktosefrei", activeClass: "border-sky-400 bg-sky-100 text-sky-950" },
+  { key: "containsNuts", label: "Enthält Nüsse", activeClass: "border-orange-400 bg-orange-100 text-orange-950" },
+  { key: "meat", label: "Fleischhaltig", activeClass: "border-rose-400 bg-rose-100 text-rose-950" },
+];
+
 function Sel({
   value,
   onChange,
@@ -628,6 +683,7 @@ export default function Helpers() {
   const { data: helpers = [], isLoading } = trpc.helpers.list.useQuery();
   const { data: cakes = [] } = trpc.cakes.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
+  const { data: locations = [] } = trpc.locations.list.useQuery();
   const { data: currentEvent } = trpc.events.current.useQuery();
   const { data: plan } = trpc.plan.evaluate.useQuery();
   const activeDays = currentEvent ? eventWeekdays(currentEvent.activeDays) : [];
@@ -646,8 +702,10 @@ export default function Helpers() {
   const [newHelperPhone, setNewHelperPhone] = useState("");
   const [newHelperNote, setNewHelperNote] = useState("");
   const [newHelperBringsCake, setNewHelperBringsCake] = useState(false);
+  const [newHelperDonation, setNewHelperDonation] = useState<NewHelperDonation>(
+    EMPTY_NEW_HELPER_DONATION
+  );
   const [newHelperDialogOpen, setNewHelperDialogOpen] = useState(false);
-  const cakeWorkflowDonorRef = useRef<string | null>(null);
   const [filter, setFilter] = useState("");
   const [apFilter, setApFilter] = useState("alle");
   const [companionFilter, setCompanionFilter] = useState<
@@ -668,6 +726,7 @@ export default function Helpers() {
 
   const invalidate = () => {
     utils.helpers.list.invalidate();
+    utils.cakes.list.invalidate();
     utils.plan.evaluate.invalidate();
     utils.dashboard.stats.invalidate();
   };
@@ -678,6 +737,7 @@ export default function Helpers() {
     setNewHelperPhone("");
     setNewHelperNote("");
     setNewHelperBringsCake(false);
+    setNewHelperDonation(EMPTY_NEW_HELPER_DONATION);
   };
   const openNewHelperDialog = () => {
     resetNewHelperForm();
@@ -687,22 +747,21 @@ export default function Helpers() {
     setLocation(`/spenden?donor=${encodeURIComponent(helperName)}`);
   const create = trpc.helpers.create.useMutation({
     onSuccess: () => {
-      const cakeWorkflowDonor = cakeWorkflowDonorRef.current;
-      cakeWorkflowDonorRef.current = null;
       invalidate();
       resetNewHelperForm();
       setNewHelperDialogOpen(false);
-      if (cakeWorkflowDonor) {
-        toast.success("Helfer hinzugefügt – Spende ergänzen");
-        setLocation(`/spenden?donor=${encodeURIComponent(cakeWorkflowDonor)}`);
-      } else {
-        toast.success("Helfer hinzugefügt");
-      }
+      toast.success("Helfer hinzugefügt");
     },
-    onError: error => {
-      cakeWorkflowDonorRef.current = null;
-      toast.error(error.message);
+    onError: error => toast.error(error.message),
+  });
+  const createWithDonation = trpc.helpers.createWithDonation.useMutation({
+    onSuccess: () => {
+      invalidate();
+      resetNewHelperForm();
+      setNewHelperDialogOpen(false);
+      toast.success("Helfer und Spende hinzugefügt");
     },
+    onError: error => toast.error(error.message),
   });
   const update = trpc.helpers.update.useMutation({
     onSuccess: invalidate,
@@ -711,15 +770,26 @@ export default function Helpers() {
   const createNewHelper = () => {
     const trimmedName = name.trim();
     if (!trimmedName) return;
-    cakeWorkflowDonorRef.current = newHelperBringsCake ? trimmedName : null;
-    create.mutate({
+    const helper = {
       name: trimmedName,
       contactId:
         newHelperContactId === "none" ? null : Number(newHelperContactId),
       phone: newHelperPhone.trim() || undefined,
       note: newHelperNote.trim() || undefined,
       companion: newHelperCompanion.trim() || undefined,
-    });
+    };
+    if (newHelperBringsCake) {
+      createWithDonation.mutate({
+        helper,
+        donation: {
+          ...newHelperDonation,
+          cake: newHelperDonation.cake.trim(),
+          note: newHelperDonation.note.trim() || undefined,
+        },
+      });
+      return;
+    }
+    create.mutate(helper);
   };
   const remove = trpc.helpers.remove.useMutation({
     onSuccess: () => {
@@ -1903,125 +1973,208 @@ export default function Helpers() {
           if (!open) resetNewHelperForm();
         }}
       >
-        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-xl">
+        <DialogContent className="max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto overscroll-contain bg-white sm:max-w-5xl">
           <DialogHeader>
             <DialogTitle>Neuer Helfer anlegen</DialogTitle>
+            <p className="pt-1 text-sm text-slate-500">
+              Angaben zuerst zur Person erfassen – eine zugesagte Spende wird bei Bedarf direkt gemeinsam ergänzt.
+            </p>
           </DialogHeader>
           <form
-            className="space-y-4"
+            className="space-y-5"
             onSubmit={event => {
               event.preventDefault();
               createNewHelper();
             }}
           >
-            <div className="space-y-1.5">
-              <label
-                htmlFor="new-helper-dialog-name"
-                className="text-sm font-medium"
-              >
-                Name des Helfers <span className="text-destructive">*</span>
-              </label>
-              <Input
-                id="new-helper-dialog-name"
-                autoFocus
-                value={name}
-                onChange={event => setName(event.target.value)}
-                placeholder="z. B. Axel Muster"
-                className="h-11 text-base"
-                required
-              />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <label
-                  htmlFor="new-helper-dialog-contact"
-                  className="text-sm font-medium"
-                >
-                  Ansprechpartner
-                </label>
-                <Select
-                  value={newHelperContactId}
-                  onValueChange={setNewHelperContactId}
-                >
-                  <SelectTrigger
-                    id="new-helper-dialog-contact"
-                    className="h-11 w-full text-base"
-                  >
-                    <SelectValue placeholder="Ansprechpartner auswählen" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Kein Ansprechpartner</SelectItem>
-                    {contacts.map(contact => (
-                      <SelectItem key={contact.id} value={String(contact.id)}>
-                        {contact.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <label
-                  htmlFor="new-helper-dialog-phone"
-                  className="text-sm font-medium"
-                >
-                  Telefon Helfer
-                </label>
-                <Input
-                  id="new-helper-dialog-phone"
-                  type="tel"
-                  value={newHelperPhone}
-                  onChange={event => setNewHelperPhone(event.target.value)}
-                  placeholder="optional"
-                  className="h-11 text-base"
-                />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <label
-                htmlFor="new-helper-dialog-note"
-                className="text-sm font-medium"
-              >
-                Hinweis für PDF
-              </label>
-              <Input
-                id="new-helper-dialog-note"
-                value={newHelperNote}
-                onChange={event => setNewHelperNote(event.target.value)}
-                placeholder="Verfügbarkeit / Bemerkung (optional)"
-                className="h-11 text-base"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label
-                htmlFor="new-helper-dialog-companion"
-                className="text-sm font-medium"
-              >
-                Zusätzliche Begleitung (für Einsatzplan)
-              </label>
-              <Input
-                id="new-helper-dialog-companion"
-                value={newHelperCompanion}
-                onChange={event => setNewHelperCompanion(event.target.value)}
-                placeholder="z. B. + Frau Muster, + Kind"
-                className="h-11 text-base"
-              />
-            </div>
-            <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">
-              Neue Helfer starten aktiv. Die Tagesverfügbarkeiten stehen zunächst
-              auf „?“ und werden anschließend direkt in der Helfertabelle gepflegt.
-            </p>
-            <div className="flex min-h-11 items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3">
-              <Checkbox
-                id="new-helper-dialog-brings-cake"
-                checked={newHelperBringsCake}
-                onCheckedChange={checked => setNewHelperBringsCake(checked === true)}
-              />
-              <label
-                htmlFor="new-helper-dialog-brings-cake"
-                className="cursor-pointer text-sm font-medium text-slate-800"
-              >
-                Ich unterstütze mit einer Spende
-              </label>
+            <div
+              className={cn(
+                "grid gap-5",
+                newHelperBringsCake && "lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]"
+              )}
+            >
+              <section className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 sm:p-5">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-950">Person & Einsatz</h3>
+                  <p className="mt-1 text-xs text-slate-500">Die wichtigsten Angaben für Helferliste und Einsatzplan.</p>
+                </div>
+                <div className="space-y-1.5">
+                  <label htmlFor="new-helper-dialog-name" className="text-sm font-medium">
+                    Name des Helfers <span className="text-destructive">*</span>
+                  </label>
+                  <Input
+                    id="new-helper-dialog-name"
+                    autoFocus
+                    value={name}
+                    onChange={event => setName(event.target.value)}
+                    placeholder="z. B. Axel Muster"
+                    className="h-11 bg-white text-base"
+                    required
+                  />
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <label htmlFor="new-helper-dialog-contact" className="text-sm font-medium">Ansprechpartner</label>
+                    <Select value={newHelperContactId} onValueChange={setNewHelperContactId}>
+                      <SelectTrigger id="new-helper-dialog-contact" className="h-11 w-full bg-white text-base">
+                        <SelectValue placeholder="Ansprechpartner auswählen" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Kein Ansprechpartner</SelectItem>
+                        {contacts.map(contact => (
+                          <SelectItem key={contact.id} value={String(contact.id)}>{contact.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label htmlFor="new-helper-dialog-phone" className="text-sm font-medium">Telefon Helfer</label>
+                    <Input
+                      id="new-helper-dialog-phone"
+                      type="tel"
+                      value={newHelperPhone}
+                      onChange={event => setNewHelperPhone(event.target.value)}
+                      placeholder="optional"
+                      className="h-11 bg-white text-base"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <label htmlFor="new-helper-dialog-note" className="text-sm font-medium">Hinweis für PDF</label>
+                  <Input
+                    id="new-helper-dialog-note"
+                    value={newHelperNote}
+                    onChange={event => setNewHelperNote(event.target.value)}
+                    placeholder="Verfügbarkeit / Bemerkung (optional)"
+                    className="h-11 bg-white text-base"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label htmlFor="new-helper-dialog-companion" className="text-sm font-medium">Zusätzliche Begleitung (für Einsatzplan)</label>
+                  <Input
+                    id="new-helper-dialog-companion"
+                    value={newHelperCompanion}
+                    onChange={event => setNewHelperCompanion(event.target.value)}
+                    placeholder="z. B. + Frau Muster, + Kind"
+                    className="h-11 bg-white text-base"
+                  />
+                  <p className="text-xs text-slate-500">Wird nur für den Einsatzplan genutzt.</p>
+                </div>
+                <p className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900">
+                  Neue Helfer starten aktiv. Die Tagesverfügbarkeiten stehen zunächst auf „?“ und lassen sich danach direkt in der Helferliste präzisieren.
+                </p>
+                <div className={cn("flex min-h-12 items-center gap-3 rounded-xl border px-3.5 transition-colors", newHelperBringsCake ? "border-indigo-200 bg-indigo-50" : "border-slate-200 bg-white")}>
+                  <Checkbox
+                    id="new-helper-dialog-brings-cake"
+                    checked={newHelperBringsCake}
+                    onCheckedChange={checked => setNewHelperBringsCake(checked === true)}
+                  />
+                  <label htmlFor="new-helper-dialog-brings-cake" className="cursor-pointer text-sm font-semibold text-slate-900">
+                    Ich unterstütze mit einer Spende
+                    <span className="mt-0.5 block text-xs font-normal text-slate-500">Kuchen, Salat, Snack oder eine andere Spende direkt mit erfassen</span>
+                  </label>
+                </div>
+              </section>
+
+              {newHelperBringsCake && (
+                <section className="space-y-4 rounded-2xl border border-indigo-200 bg-indigo-50/50 p-4 shadow-sm sm:p-5" data-slot="new-helper-donation-form">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="text-sm font-semibold text-indigo-950">Spende hinzufügen</h3>
+                      <p className="mt-1 text-xs text-indigo-800/80">Die Spende wird zusammen mit dem Helfer in einem Schritt gespeichert.</p>
+                    </div>
+                    <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-indigo-700 shadow-sm">Optional</span>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <label htmlFor="new-helper-donation-name" className="text-sm font-medium text-slate-900">Spende</label>
+                      <Input
+                        id="new-helper-donation-name"
+                        value={newHelperDonation.cake}
+                        placeholder="z. B. Apfelkuchen, Nudelsalat"
+                        className="h-11 bg-white text-base"
+                        onChange={event => setNewHelperDonation(current => ({ ...current, cake: event.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label htmlFor="new-helper-donation-category" className="text-sm font-medium text-slate-900">Kategorie</label>
+                      <Select
+                        value={newHelperDonation.donationCategory}
+                        onValueChange={value => setNewHelperDonation(current => ({ ...current, donationCategory: value as NewHelperDonationCategory }))}
+                      >
+                        <SelectTrigger id="new-helper-donation-category" className="h-11 bg-white text-base"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {newHelperDonationCategories.map(category => (
+                            <SelectItem key={category.value} value={category.value}>{category.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <fieldset className="space-y-2">
+                    <legend className="text-sm font-medium text-slate-900">Eigenschaften & Allergene</legend>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {newHelperDonationTraits.map(trait => {
+                        const active = newHelperDonation[trait.key];
+                        return (
+                          <Button
+                            key={trait.key}
+                            type="button"
+                            variant="outline"
+                            aria-pressed={active}
+                            onClick={() => setNewHelperDonation(current => ({ ...current, [trait.key]: !current[trait.key] }))}
+                            className={cn("h-10 justify-start border bg-white text-sm shadow-none", active ? trait.activeClass : "border-slate-200 text-slate-700 hover:bg-slate-50")}
+                          >
+                            <span className="mr-2 inline-flex size-4 items-center justify-center rounded border border-current text-[10px]" aria-hidden="true">{active ? "✓" : ""}</span>
+                            {trait.label}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  </fieldset>
+
+                  <details className="rounded-xl border border-indigo-100 bg-white/80 p-3">
+                    <summary className="cursor-pointer text-sm font-medium text-indigo-900">Abgabeort, Zeitpunkt und Hinweis ergänzen</summary>
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <label htmlFor="new-helper-donation-location" className="text-sm font-medium text-slate-900">Abgabeort / Standort</label>
+                        <Select
+                          value={newHelperDonation.locationId === null ? "none" : String(newHelperDonation.locationId)}
+                          onValueChange={value => setNewHelperDonation(current => ({ ...current, locationId: value === "none" ? null : Number(value) }))}
+                        >
+                          <SelectTrigger id="new-helper-donation-location" className="h-11 bg-white text-base"><SelectValue placeholder="Kein Ort" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Kein Ort</SelectItem>
+                            {locations.map(location => <SelectItem key={location.id} value={String(location.id)}>{location.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <label htmlFor="new-helper-donation-date" className="text-sm font-medium text-slate-900">Abgabetag</label>
+                          <Input id="new-helper-donation-date" type="date" min={currentEvent?.startDate ?? undefined} max={currentEvent?.endDate ?? undefined} value={newHelperDonation.dropoffDate} className="h-11 bg-white" onChange={event => setNewHelperDonation(current => ({ ...current, dropoffDate: event.target.value }))} />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label htmlFor="new-helper-donation-time" className="text-sm font-medium text-slate-900">Uhrzeit</label>
+                          <Input id="new-helper-donation-time" type="time" step="60" value={newHelperDonation.dropoffTime} className="h-11 bg-white" onChange={event => setNewHelperDonation(current => ({ ...current, dropoffTime: event.target.value }))} />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-4 space-y-1.5">
+                      <label htmlFor="new-helper-donation-note" className="text-sm font-medium text-slate-900">Hinweise zur Spende</label>
+                      <Textarea id="new-helper-donation-note" rows={3} value={newHelperDonation.note} placeholder="z. B. Zutaten, Alkohol oder Absprachen" className="bg-white" onChange={event => setNewHelperDonation(current => ({ ...current, note: event.target.value }))} />
+                    </div>
+                  </details>
+
+                  <p className="rounded-xl border border-indigo-100 bg-white/80 px-3 py-2 text-xs leading-relaxed text-indigo-900" aria-live="polite">
+                    {newHelperDonation.cake.trim()
+                      ? `Bereit zum Speichern: ${newHelperDonation.cake.trim()} als ${newHelperDonationCategories.find(category => category.value === newHelperDonation.donationCategory)?.label ?? "Spende"}${newHelperDonationTraits.some(trait => newHelperDonation[trait.key]) ? " mit ausgewählten Kennzeichnungen." : "."}`
+                      : "Alle Eigenschaften bleiben verfügbar. Die genaue Spendenbezeichnung kann jetzt oder später ergänzt werden."}
+                  </p>
+                </section>
+              )}
             </div>
             <DialogFooter className="gap-2 sm:gap-0">
               <Button
@@ -2035,10 +2188,14 @@ export default function Helpers() {
               <Button
                 type="submit"
                 className="min-h-11 bg-indigo-700 text-base hover:bg-indigo-800"
-                disabled={!name.trim() || create.isPending}
+                disabled={!name.trim() || create.isPending || createWithDonation.isPending}
               >
                 <Plus className="mr-1.5 h-4 w-4" />
-                {create.isPending ? "Speichert …" : "Helfer anlegen"}
+                {create.isPending || createWithDonation.isPending
+                  ? "Speichert …"
+                  : newHelperBringsCake
+                    ? "Helfer & Spende anlegen"
+                    : "Helfer anlegen"}
               </Button>
             </DialogFooter>
           </form>

@@ -27,6 +27,29 @@ describe("Helfer und Spenden: optionale Kachel- und Listenansicht", () => {
     expect(helpersSource).toContain("setDeleteTarget");
   });
 
+  it("erfasst eine zugesagte Spende direkt innerhalb der Helferanlage mit allen bisherigen Kuchenmerkmalen", async () => {
+    const helpersSource = await loadSource("client/src/pages/Helpers.tsx");
+    const routerSource = await loadSource("server/routers.ts");
+    const dbSource = await loadSource("server/db.ts");
+
+    expect(helpersSource).toContain('data-slot="new-helper-donation-form"');
+    expect(helpersSource).toContain("newHelperDonationCategories");
+    expect(helpersSource).toContain("newHelperDonationTraits");
+    expect(helpersSource).toContain("vegan");
+    expect(helpersSource).toContain("glutenFree");
+    expect(helpersSource).toContain("lactoseFree");
+    expect(helpersSource).toContain("containsNuts");
+    expect(helpersSource).toContain("meat");
+    expect(helpersSource).toContain("createWithDonation.mutate");
+
+    expect(routerSource).toContain("createWithDonation: protectedProcedure");
+    expect(routerSource).toContain('requireModuleWritePermission(permissions, "helpers")');
+    expect(routerSource).toContain('requireModuleWritePermission(permissions, "donations")');
+    expect(routerSource).toContain("db.createHelperWithDonation(input)");
+    expect(dbSource).toContain("export async function createHelperWithDonation");
+    expect(dbSource).toContain("return database.transaction(async tx =>");
+  });
+
   it("bietet in Cakes.tsx den Umschalter auf Kacheln an und behält alle Spenden- und Allergie-Eigenschaften bei", async () => {
     const cakesSource = await loadSource("client/src/pages/Cakes.tsx");
 

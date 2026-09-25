@@ -3759,6 +3759,107 @@ export async function upsertHelperByName(
   };
 }
 
+/**
+ * Erfasst einen Helfer und seine beim Anlegen zugesagte Spende gemeinsam.
+ * Beide Datensätze teilen sich immer denselben aktuellen Veranstaltungs-Scope;
+ * schlägt eine der Prüfungen oder das Speichern fehl, wird nichts übernommen.
+ */
+export async function createHelperWithDonation(input: {
+  helper: Partial<typeof helpers.$inferInsert> & { name: string };
+  donation: Omit<Partial<typeof cakes.$inferInsert>, "donor" | "year" | "eventId">;
+}) {
+  const database = (await getDb()) as DB;
+  const selectedYear = year();
+  const selectedEventId = event();
+  const helperName = input.helper.name.trim().replace(/\s+/g, " ");
+
+  if (!helperName) throw new Error("Der Name des Helfers ist erforderlich");
+
+  return database.transaction(async tx => {
+    if (input.helper.contactId !== undefined && input.helper.contactId !== null) {
+      const [contact] = await tx
+        .select({ id: contacts.id })
+        .from(contacts)
+        .where(
+          and(
+            eq(contacts.id, input.helper.contactId),
+            planningScopeFor(contacts, selectedYear, selectedEventId)
+          )
+        )
+        .limit(1);
+      if (!contact) {
+        throw new Error(
+          "Der Ansprechpartner gehört nicht zur ausgewählten Veranstaltung"
+        );
+      }
+    }
+
+    if (input.donation.locationId !== undefined && input.donation.locationId !== null) {
+      const [location] = await tx
+        .select({ id: locations.id })
+        .from(locations)
+        .where(
+          and(
+            eq(locations.id, input.donation.locationId),
+            planningScopeFor(locations, selectedYear, selectedEventId)
+          )
+        )
+        .limit(1);
+      if (!location)
+        throw new Error("Der Ort gehört nicht zur ausgewählten Veranstaltung");
+    }
+
+    const scopedHelpers = await tx
+      .select({ id: helpers.id, name: helpers.name })
+      .from(helpers)
+      .where(planningScopeFor(helpers, selectedYear, selectedEventId))
+      .for("update");
+    const existingHelper = scopedHelpers.find(
+      row => normalizePersonName(row.name) === normalizePersonName(helperName)
+    );
+
+    let helperId: number;
+    let helperCreated: boolean;
+    if (existingHelper) {
+      const { name: ignoredName, year: ignoredYear, eventId: ignoredEventId, ...updates } = input.helper;
+      await tx
+        .update(helpers)
+        .set(updates)
+        .where(
+          and(
+            eq(helpers.id, existingHelper.id),
+            planningScopeFor(helpers, selectedYear, selectedEventId)
+          )
+        );
+      helperId = existingHelper.id;
+      helperCreated = false;
+    } else {
+      const result: any = await tx.insert(helpers).values({
+        ...input.helper,
+        name: helperName,
+        year: selectedYear,
+        eventId: selectedEventId,
+      } as typeof helpers.$inferInsert);
+      helperId = Number(result?.[0]?.insertId ?? result?.insertId);
+      helperCreated = true;
+    }
+
+    const donationResult: any = await tx.insert(cakes).values({
+      ...input.donation,
+      donor: helperName,
+      year: selectedYear,
+      eventId: selectedEventId,
+    } as typeof cakes.$inferInsert);
+
+    return {
+      helper: { id: helperId, created: helperCreated },
+      donation: {
+        id: Number(donationResult?.[0]?.insertId ?? donationResult?.insertId),
+      },
+    };
+  });
+}
+
 export function selfHelperValues(contact: {
   id: number;
   name: string;

@@ -15,6 +15,7 @@ const dbMocks = vi.hoisted(() => ({
   updateShift: vi.fn(),
   deleteShift: vi.fn(),
   upsertHelperByName: vi.fn(),
+  createHelperWithDonation: vi.fn(),
   updateHelper: vi.fn(),
   deleteHelper: vi.fn(),
   createCake: vi.fn(),
@@ -1797,6 +1798,60 @@ describe("Planungs-API", () => {
         availSat: "vielleicht",
         availSun: "vielleicht",
         confirmed: "nein",
+      })
+    );
+  });
+
+  it("erfasst Helfer und zugesagte Spende gemeinsam mit allen Lebensmittelkennzeichnungen", async () => {
+    dbMocks.createHelperWithDonation.mockResolvedValue({
+      helper: { id: 45, created: true },
+      donation: { id: 89 },
+    });
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.helpers.createWithDonation({
+        helper: {
+          name: "Mara Muster",
+          contactId: 5,
+          phone: "0174 7654321",
+        },
+        donation: {
+          cake: "Veganer Apfelkuchen",
+          donationCategory: "kuchen",
+          locationId: 5,
+          dropoffDate: "2026-06-20",
+          dropoffTime: "11:30",
+          vegan: true,
+          glutenFree: true,
+          lactoseFree: true,
+          containsNuts: false,
+          meat: false,
+          note: "Ohne Zuckerzusatz",
+        },
+      })
+    ).resolves.toEqual({
+      helper: { id: 45, created: true },
+      donation: { id: 89 },
+    });
+
+    expect(dbMocks.createHelperWithDonation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        helper: expect.objectContaining({
+          name: "Mara Muster",
+          willHelp: "ja",
+          confirmed: "nein",
+          availFri: "vielleicht",
+        }),
+        donation: expect.objectContaining({
+          cake: "Veganer Apfelkuchen",
+          donationCategory: "kuchen",
+          vegan: true,
+          glutenFree: true,
+          lactoseFree: true,
+          containsNuts: false,
+          meat: false,
+        }),
       })
     );
   });

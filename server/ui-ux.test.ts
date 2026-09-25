@@ -2646,9 +2646,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(cakes).toContain('<th className={STICKY_TABLE_HEADER_CELL_CLASS}>Ort</th>');
     expect(cakes).not.toContain("LocationMapLink");
     expect(helpers).toContain("newHelperBringsCake");
-    expect(helpers).toContain("cakeWorkflowDonorRef");
     expect(helpers).toContain('Ich unterstütze mit einer Spende');
-    expect(helpers).toContain('setLocation(`/spenden?donor=${encodeURIComponent(cakeWorkflowDonor)}`)');
+    expect(helpers).toContain('data-slot="new-helper-donation-form"');
+    expect(helpers).toContain("createWithDonation");
+    expect(helpers).toContain("newHelperDonationTraits");
+    expect(helpers).toContain("Abgabeort, Zeitpunkt und Hinweis ergänzen");
+    expect(helpers).toContain("Helfer & Spende anlegen");
     expect(cakes).toContain('searchParams.get("donor")?.trim() ?? ""');
     expect(cakes).toContain('setForm({ ...EMPTY_DONATION_FORM, donor: requestedDonor })');
     expect(cakes).toContain('next.delete("donor")');
