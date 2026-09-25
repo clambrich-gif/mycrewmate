@@ -1957,7 +1957,8 @@ export async function deletePlanningTeamAccess(accessId: number) {
 
 export async function isPlanningTeamAccessAllowedForEvent(
   accessId: number,
-  eventId: number
+  eventId: number,
+  expectedTenantId = tenant()
 ) {
   const database = await getDb();
   if (!database) return false;
@@ -1969,7 +1970,9 @@ export async function isPlanningTeamAccessAllowedForEvent(
       and(
         eq(planningTeamAccessEvents.accessId, accessId),
         eq(planningTeamAccessEvents.eventId, eventId),
-        eq(events.tenantId, tenant())
+        // Der vom Router bestätigte Verein ist die Sicherheitsquelle. Der
+        // implizite AsyncLocalStorage-Wert bleibt nur Rückfall für interne Aufrufe.
+        eq(events.tenantId, expectedTenantId)
       )
     )
     .limit(1);

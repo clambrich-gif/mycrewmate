@@ -1185,6 +1185,54 @@ describe("Event-based Access Control für Planungsteam", () => {
       caller.notes.send({ message: "Nicht senden", important: false })
     ).rejects.toThrow("Dieser Planungsteam-Zugang ist für die gewählte Veranstaltung nicht freigegeben.");
   });
+
+  it("prüft die Chatfreigabe im serverbestätigten Verein statt mit einem impliziten Kontextrest", async () => {
+    vi.spyOn(db, "getEvent").mockResolvedValue({
+      id: 73,
+      tenantId: "rsc-eifelland-mayen",
+      year: 2027,
+      name: "MyEifelRide",
+    } as any);
+    vi.spyOn(db, "getPlanningTeamAccessCredentialForCurrentTenant").mockResolvedValue({
+      id: 73,
+      isTenantAdmin: false,
+      modulePermissions: [],
+    } as any);
+    vi.spyOn(db, "isPlanningTeamAccessPasswordChangeRequired").mockResolvedValue(false);
+    const accessSpy = vi
+      .spyOn(db, "isPlanningTeamAccessAllowedForEvent")
+      .mockResolvedValue(true);
+    vi.spyOn(db, "listTeamNotes").mockResolvedValue([]);
+    vi.spyOn(db, "listActiveTypers").mockResolvedValue([]);
+    vi.spyOn(db, "getTeamNoteUnreadStatus").mockResolvedValue({
+      unreadCount: 0,
+      hasImportantUnread: false,
+    });
+
+    const caller = appRouter.createCaller({
+      user: {
+        id: 73,
+        openId: planningTeamAccessOpenId(73),
+        role: "user",
+        name: "Neuer Planer",
+        email: "neu@verein.invalid",
+        sessionVersion: 1,
+        avatarUrl: null,
+        accountBlocked: false,
+        lastSignedIn: new Date(),
+      },
+      req: mockReq({
+        "x-tenant-id": "altbestand-testverein",
+        "x-event-year": "2027",
+        "x-event-id": "73",
+      }),
+      res: { setHeader: vi.fn(), clearCookie: vi.fn() } as any,
+    });
+
+    await expect(caller.notes.list()).resolves.toMatchObject({ notes: [] });
+    expect(accessSpy).toHaveBeenCalledWith(73, 73, "rsc-eifelland-mayen");
+  });
+
   it("erlaubt einem Benutzer mit leerem Rechte-Array vollen Lese- und Schreibzugriff auf den Teamchat", async () => {
     vi.spyOn(db, "getEvent").mockResolvedValue({
       id: 10,

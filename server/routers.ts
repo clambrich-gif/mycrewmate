@@ -338,7 +338,13 @@ async function requirePlanningTeamEventAccess(
   const accessId = planningTeamAccessIdForUser(user);
   if (accessId === null) return;
   if (await isTenantAdministrator(user, scope.tenantId)) return;
-  if (!(await db.isPlanningTeamAccessAllowedForEvent(accessId, scope.eventId))) {
+  if (
+    !(await db.isPlanningTeamAccessAllowedForEvent(
+      accessId,
+      scope.eventId,
+      scope.tenantId
+    ))
+  ) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "Dieser Planungsteam-Zugang ist für die gewählte Veranstaltung nicht freigegeben.",
@@ -609,9 +615,11 @@ const eventSelectionProcedure = activeSessionProcedure.use(async ({ ctx, next })
 const scopedReadProcedure = baseProtectedProcedure
   .use(async ({ ctx, next }) => {
     const scope = await authorizedPlanningScope(ctx.user, ctx.req);
-    await requirePlanningTeamEventAccess(ctx.user, scope);
-    await requireCompletedPlanningTeamPasswordChange(ctx.user);
-    return withPlanningScope(scope, () => next());
+    return withPlanningScope(scope, async () => {
+      await requirePlanningTeamEventAccess(ctx.user, scope);
+      await requireCompletedPlanningTeamPasswordChange(ctx.user);
+      return next();
+    });
   })
   .use(async ({ next }) => {
     if (!(await db.getEvent())) {
@@ -637,9 +645,14 @@ const scopedReadProcedure = baseProtectedProcedure
 const eventChatReadProcedure = baseProtectedProcedure
   .use(async ({ ctx, next }) => {
     const scope = await authorizedPlanningScope(ctx.user, ctx.req);
-    await requirePlanningTeamEventAccess(ctx.user, scope);
-    await requireCompletedPlanningTeamPasswordChange(ctx.user);
-    return withPlanningScope(scope, () => next());
+    // Erst innerhalb des serverbestätigten Scope prüfen, dann den Chat starten.
+    // Ein alter Browserwert kann damit weder Zugriff erhalten noch eine gültige
+    // Freigabe verfälschen.
+    return withPlanningScope(scope, async () => {
+      await requirePlanningTeamEventAccess(ctx.user, scope);
+      await requireCompletedPlanningTeamPasswordChange(ctx.user);
+      return next();
+    });
   })
   .use(async ({ next }) => {
     if (!(await db.getEvent())) {
