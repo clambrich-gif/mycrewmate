@@ -1093,9 +1093,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain("openEventDateSettings");
     expect(layout).toContain("Startdatum");
     expect(layout).toContain("Enddatum");
+    expect(layout).toContain('data-slot="event-date-range-clear"');
+    expect(layout).toContain("Zeitraum wirklich löschen?");
+    expect(layout).toContain("clearDateRange: true");
 
     expect(router).toContain("startDate");
     expect(router).toContain("endDate");
+    expect(router).toContain("Die Löschung eines gespeicherten Veranstaltungszeitraums muss ausdrücklich bestätigt werden.");
     expect(eventDates).toContain("eventCountdownState");
     expect(styles).toContain(".countdown-urgent::after");
     expect(styles).toContain("@keyframes countdown-urgent-glow");

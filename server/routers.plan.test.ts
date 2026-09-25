@@ -1013,6 +1013,39 @@ describe("Planungs-API", () => {
     ).rejects.toThrow();
   });
 
+  it("schützt gespeicherte Veranstaltungszeiträume vor unbeabsichtigtem Löschen", async () => {
+    const caller = appRouter.createCaller(ctx);
+    dbMocks.updateEventDetails.mockResolvedValue({
+      id: 1,
+      year: 2026,
+      name: "RSC Sommerfest",
+      startDate: null,
+      endDate: null,
+    });
+
+    await expect(
+      caller.events.update({
+        id: 1,
+        startDate: null,
+        endDate: null,
+      })
+    ).rejects.toThrow("muss ausdrücklich bestätigt werden");
+    expect(dbMocks.updateEventDetails).not.toHaveBeenCalled();
+
+    await expect(
+      caller.events.update({
+        id: 1,
+        startDate: null,
+        endDate: null,
+        clearDateRange: true,
+      })
+    ).resolves.toMatchObject({ startDate: null, endDate: null });
+    expect(dbMocks.updateEventDetails).toHaveBeenCalledWith(1, {
+      startDate: null,
+      endDate: null,
+    });
+  });
+
   it("legt Veranstaltungen nur mit mindestens einem ausgewählten Wochentag an", async () => {
     dbMocks.createEvent.mockResolvedValue({
       id: 3,

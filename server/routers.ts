@@ -2687,41 +2687,67 @@ export const appRouter = router({
       ),
     update: adminProcedure
       .input(
-        z.object({
-          id: z.number().int().positive(),
-          name: z.string().trim().min(2).max(200).optional(),
-          startDate: z
-            .string()
-            .regex(/^\d{4}-\d{2}-\d{2}$/, "Ungültiges Startdatum")
-            .nullable()
-            .optional(),
-          endDate: z
-            .string()
-            .regex(/^\d{4}-\d{2}-\d{2}$/, "Ungültiges Enddatum")
-            .nullable()
-            .optional(),
-          donationTargetKuchen: z.number().int().min(0).max(10_000).optional(),
-          donationTargetSalat: z.number().int().min(0).max(10_000).optional(),
-          donationTargetSnack: z.number().int().min(0).max(10_000).optional(),
-          donationTargetSonstiges: z
-            .number()
-            .int()
-            .min(0)
-            .max(10_000)
-            .optional(),
-        })
+        z
+          .object({
+            id: z.number().int().positive(),
+            name: z.string().trim().min(2).max(200).optional(),
+            startDate: z
+              .string()
+              .regex(/^\d{4}-\d{2}-\d{2}$/, "Ungültiges Startdatum")
+              .nullable()
+              .optional(),
+            endDate: z
+              .string()
+              .regex(/^\d{4}-\d{2}-\d{2}$/, "Ungültiges Enddatum")
+              .nullable()
+              .optional(),
+            clearDateRange: z.boolean().optional(),
+            donationTargetKuchen: z.number().int().min(0).max(10_000).optional(),
+            donationTargetSalat: z.number().int().min(0).max(10_000).optional(),
+            donationTargetSnack: z.number().int().min(0).max(10_000).optional(),
+            donationTargetSonstiges: z
+              .number()
+              .int()
+              .min(0)
+              .max(10_000)
+              .optional(),
+          })
+          .superRefine((input, context) => {
+            const changesStartDate = input.startDate !== undefined;
+            const changesEndDate = input.endDate !== undefined;
+            if (!changesStartDate && !changesEndDate) return;
+
+            if (input.clearDateRange) {
+              if (input.startDate !== null || input.endDate !== null) {
+                context.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  path: ["clearDateRange"],
+                  message:
+                    "Beim Löschen des Zeitraums müssen Start- und Enddatum gemeinsam geleert werden.",
+                });
+              }
+              return;
+            }
+
+            if (
+              !changesStartDate ||
+              !changesEndDate ||
+              input.startDate === null ||
+              input.endDate === null
+            ) {
+              context.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ["clearDateRange"],
+                message:
+                  "Die Löschung eines gespeicherten Veranstaltungszeitraums muss ausdrücklich bestätigt werden.",
+              });
+            }
+          })
       )
-      .mutation(({ input }) =>
-        db.updateEventDetails(input.id, {
-          name: input.name,
-          startDate: input.startDate,
-          endDate: input.endDate,
-          donationTargetKuchen: input.donationTargetKuchen,
-          donationTargetSalat: input.donationTargetSalat,
-          donationTargetSnack: input.donationTargetSnack,
-          donationTargetSonstiges: input.donationTargetSonstiges,
-        })
-      ),
+      .mutation(({ input }) => {
+        const { id, clearDateRange: _clearDateRange, ...changes } = input;
+        return db.updateEventDetails(id, changes);
+      }),
     remove: adminProcedure
       .input(
         z.object({

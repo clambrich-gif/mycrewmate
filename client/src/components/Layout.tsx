@@ -3,6 +3,14 @@ import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
 import { ForcePasswordChangeModal } from "@/components/ForcePasswordChangeModal";
 import { FirstLoginOnboarding } from "@/components/FirstLoginOnboarding";
 import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   ImpressumDialog,
   LegalFooterLinks,
   SIDEBAR_COPYRIGHT_NOTICE,
@@ -324,6 +332,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [editEventName, setEditEventName] = useState("");
   const [editEventStartDate, setEditEventStartDate] = useState("");
   const [editEventEndDate, setEditEventEndDate] = useState("");
+  const [clearEventDatesTarget, setClearEventDatesTarget] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
   // Ein verbrauchter oder abgelaufener Einmal-Link darf keinesfalls erneut
   // ausgelöst werden: Die Mutation würde sonst nach jedem Rendern wiederholen.
   const attemptedHandoffTokenRef = useRef<string | null>(null);
@@ -911,6 +923,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       setEditEventName("");
       setEditEventStartDate("");
       setEditEventEndDate("");
+      setClearEventDatesTarget(null);
       toast.success("Veranstaltung gespeichert");
     },
     onError: error => toast.error(error.message),
@@ -2061,6 +2074,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
                         Bitte Start- und Enddatum gemeinsam eintragen oder beide leeren.
                       </p>
                     )}
+                    {item.startDate && item.endDate && (
+                      <p className="text-xs text-muted-foreground">
+                        Zum Entfernen des gespeicherten Zeitraums bitte die separate Löschaktion verwenden.
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <div className="min-w-0 flex-1">
@@ -2093,6 +2111,24 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       >
                         Abbrechen
                       </Button>
+                      {item.startDate && item.endDate && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          data-slot="event-date-range-clear"
+                          className="w-full border-red-200 text-red-700 hover:border-red-300 hover:bg-red-50 hover:text-red-800 sm:w-auto"
+                          disabled={updateEvent.isPending}
+                          onClick={() =>
+                            setClearEventDatesTarget({
+                              id: item.id,
+                              name: item.name,
+                            })
+                          }
+                        >
+                          Zeitraum löschen
+                        </Button>
+                      )}
                       <Button
                         type="button"
                         size="sm"
@@ -2179,6 +2215,48 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={Boolean(clearEventDatesTarget)}
+        onOpenChange={open => {
+          if (!open && !updateEvent.isPending) setClearEventDatesTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Zeitraum wirklich löschen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Der gespeicherte Zeitraum von „{clearEventDatesTarget?.name ?? ""}“ wird entfernt. Andere Veranstaltungsdaten bleiben unverändert erhalten.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={updateEvent.isPending}
+              onClick={() => setClearEventDatesTarget(null)}
+            >
+              Abbrechen
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={!clearEventDatesTarget || updateEvent.isPending}
+              onClick={() =>
+                clearEventDatesTarget &&
+                updateEvent.mutate({
+                  id: clearEventDatesTarget.id,
+                  startDate: null,
+                  endDate: null,
+                  clearDateRange: true,
+                })
+              }
+            >
+              Zeitraum löschen
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AdminPasswordDialog
         open={Boolean(deleteEventTarget)}
