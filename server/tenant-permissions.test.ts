@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import {
@@ -11,6 +11,11 @@ import {
   type PlanningModuleAccess,
 } from "@shared/tenant-permissions";
 import { visibleNavigationItemsWithPermissions } from "../client/src/lib/nav";
+
+beforeEach(async () => {
+  const db = await import("./db");
+  vi.spyOn(db, "getPlanningTeamAccessTenantId").mockResolvedValue("test-tenant");
+});
 
 describe("Vereins- und Bereichsrechte-Modell", () => {
   it("erlaubt Admins und Vollberechtigten alle Module", () => {

@@ -40,6 +40,9 @@ beforeEach(() => {
     tenantStatus: "pilot",
     updatedAt: new Date(),
   });
+  vi.spyOn(db, "getPlanningTeamAccessTenantId").mockResolvedValue(
+    "testverein-nord"
+  );
   vi.spyOn(db, "isPlanningTeamAccessPasswordChangeRequired").mockResolvedValue(false);
   vi.spyOn(db, "getPlanningTeamAccessCredentialForCurrentTenant").mockResolvedValue({
     id: 77,

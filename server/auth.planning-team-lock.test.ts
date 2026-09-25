@@ -13,6 +13,7 @@ const dbMocks = vi.hoisted(() => ({
   upsertUser: vi.fn(),
   getUserByOpenId: vi.fn(),
   resolveTenantForUser: vi.fn(),
+  getPlanningTeamAccessTenantId: vi.fn(),
 }));
 const presenceMocks = vi.hoisted(() => ({
   getOnlinePresenceCounts: vi.fn(),
@@ -89,6 +90,7 @@ describe("DoS-Schutz und manuelle Sperre für das Planungsteam", () => {
     });
     dbMocks.recordActivityLog.mockResolvedValue(undefined);
     dbMocks.getTenantAdminCredentialsByEmail.mockResolvedValue(undefined);
+    dbMocks.getPlanningTeamAccessTenantId.mockResolvedValue("rsc-eifelland-mayen");
     dbMocks.listPlanningTeamAccessCredentialsByEmail.mockResolvedValue([{
       id: 1,
       label: "Team",

@@ -20,6 +20,9 @@ describe("Erst-Login-Onboarding", () => {
       tenantName: "RSC Eifelland Mayen e. V.",
       tenantStatus: "pilot",
     });
+    vi.spyOn(db, "getPlanningTeamAccessTenantId").mockResolvedValue(
+      "rsc-eifelland-mayen"
+    );
     vi.spyOn(db, "getUserByOpenId").mockImplementation(async openId => ({
       id: 990,
       openId,

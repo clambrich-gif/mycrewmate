@@ -32,6 +32,9 @@ beforeEach(() => {
   vi.spyOn(db, "getPlanningTeamAccessCredentialForCurrentTenant").mockResolvedValue(
     undefined
   );
+  vi.spyOn(db, "getPlanningTeamAccessTenantId").mockResolvedValue(
+    "rsc-eifelland-mayen"
+  );
 });
 
 describe("Event-based Access Control für Planungsteam", () => {
@@ -1187,6 +1190,16 @@ describe("Event-based Access Control für Planungsteam", () => {
   });
 
   it("prüft die Chatfreigabe im serverbestätigten Verein statt mit einem impliziten Kontextrest", async () => {
+    vi.spyOn(db, "getPlanningTeamAccessTenantId").mockResolvedValue(
+      "rsc-eifelland-mayen"
+    );
+    const membershipSpy = vi.spyOn(db, "resolveTenantForUser").mockResolvedValue({
+      tenantId: "alter-testverein",
+      role: "planner",
+      isDefault: true,
+      tenantName: "Alter Testverein",
+      tenantStatus: "pilot",
+    });
     vi.spyOn(db, "getEvent").mockResolvedValue({
       id: 73,
       tenantId: "rsc-eifelland-mayen",
@@ -1231,6 +1244,7 @@ describe("Event-based Access Control für Planungsteam", () => {
 
     await expect(caller.notes.list()).resolves.toMatchObject({ notes: [] });
     expect(accessSpy).toHaveBeenCalledWith(73, 73, "rsc-eifelland-mayen");
+    expect(membershipSpy).not.toHaveBeenCalled();
   });
 
   it("erlaubt einem Benutzer mit leerem Rechte-Array vollen Lese- und Schreibzugriff auf den Teamchat", async () => {

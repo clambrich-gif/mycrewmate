@@ -1979,6 +1979,30 @@ export async function isPlanningTeamAccessAllowedForEvent(
   return Boolean(access);
 }
 
+/**
+ * Die Eventfreigaben sind die verbindliche Quelle für den Verein eines
+ * persönlichen Planungsteamzugangs. Eine Mitgliedschaft ist ein zusätzliches
+ * Verwaltungsabbild, darf aber weder Dashboard noch Chat blockieren, falls
+ * ihre Synchronisierung verzögert ist oder ein Altbestand fehlt.
+ */
+export async function getPlanningTeamAccessTenantId(accessId: number) {
+  const database = await getDb();
+  if (!database) return null;
+  const rows = await database
+    .selectDistinct({ tenantId: events.tenantId })
+    .from(planningTeamAccessEvents)
+    .innerJoin(events, eq(events.id, planningTeamAccessEvents.eventId))
+    .where(eq(planningTeamAccessEvents.accessId, accessId))
+    .orderBy(events.tenantId);
+  if (rows.length === 0) return null;
+  if (rows.length !== 1) {
+    throw new Error(
+      "Planungsteam-Zugang ist mehreren Vereinen zugeordnet und wurde aus Sicherheitsgründen gesperrt."
+    );
+  }
+  return rows[0].tenantId;
+}
+
 export async function listEventYearsForPlanningTeamAccess(accessId: number) {
   const database = await getDb();
   if (!database) return [];

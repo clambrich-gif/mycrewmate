@@ -72,6 +72,9 @@ describe("Team-Notizen ungelesene Nachrichten & Abwesenheits-Tracking", () => {
     const accessAllowedSpy = vi
       .spyOn(db, "isPlanningTeamAccessAllowedForEvent")
       .mockResolvedValue(true);
+    const accessTenantSpy = vi
+      .spyOn(db, "getPlanningTeamAccessTenantId")
+      .mockResolvedValue("rsc-eifelland-mayen");
     const passwordChangeReqSpy = vi
       .spyOn(db, "isPlanningTeamAccessPasswordChangeRequired")
       .mockResolvedValue(false);
@@ -129,6 +132,7 @@ describe("Team-Notizen ungelesene Nachrichten & Abwesenheits-Tracking", () => {
     listTypingSpy.mockRestore();
     getEventSpy.mockRestore();
     accessAllowedSpy.mockRestore();
+    accessTenantSpy.mockRestore();
     passwordChangeReqSpy.mockRestore();
     getUnreadSpy.mockRestore();
     markReadSpy.mockRestore();

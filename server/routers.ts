@@ -358,10 +358,24 @@ async function requirePlanningTeamEventAccess(
  * abgeleitet; ein manipuliertes x-tenant-id kann keinen Fremdzugriff erzeugen.
  */
 async function authorizedPlanningScope(
-  user: { id: number; openId: string },
+  user: { id: number; openId: string; role: "user" | "admin"; isCron?: boolean },
   req: Parameters<typeof requestedPlanningScope>[0]
 ) {
   const requested = requestedPlanningScope(req);
+  const planningAccessId = planningTeamAccessIdForUser(user);
+  if (planningAccessId !== null) {
+    const tenantId = await db.getPlanningTeamAccessTenantId(planningAccessId);
+    if (!tenantId) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Für diesen Planungsteam-Zugang ist keine Veranstaltung freigegeben.",
+      });
+    }
+    // Der Zugang leitet seinen Verein direkt aus der eigenen Eventfreigabe ab.
+    // Die parallele Mitgliedschaftssynchronisation bleibt für die Verwaltung
+    // bestehen, kann den operativen Zugriff aber nicht mehr fälschlich blockieren.
+    return { ...requested, tenantId };
+  }
   let membership: Awaited<ReturnType<typeof db.resolveTenantForUser>> | undefined;
   try {
     if ("resolveTenantForUser" in db) {
@@ -1641,10 +1655,13 @@ export const appRouter = router({
             message: "Persönlicher Planungsteamzugang konnte nicht geladen werden.",
           });
         }
-        const tenantId = await tenantIdForFreshPersonalLogin({
-          id: planningUser.id,
-          openId: accessOpenId,
-        });
+        const tenantId = await db.getPlanningTeamAccessTenantId(matchingAccess.id);
+        if (!tenantId) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Für diesen Planungsteam-Zugang ist keine Veranstaltung freigegeben.",
+          });
+        }
         const startEvent = await startEventForFreshPlanningTeamLogin(
           matchingAccess.id,
           tenantId
