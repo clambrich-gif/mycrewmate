@@ -1044,6 +1044,34 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain('className="bg-slate-50 py-1 pr-1 sm:pr-2"');
   });
 
+  it("bietet eine persönliche Übersicht neben der vollständigen Dashboard-Detailansicht", () => {
+    const dashboard = source("client/src/pages/Dashboard.tsx");
+    const toggle = source("client/src/components/DashboardViewToggle.tsx");
+    const hook = source("client/src/hooks/useDashboardView.ts");
+
+    expect(dashboard).toContain('useDashboardView("details")');
+    expect(dashboard).toContain("<DashboardViewToggle");
+    expect(dashboard).toContain('dashboardView === "overview"');
+    expect(dashboard).toContain("<DashboardOverview");
+    expect(dashboard).toContain('data-slot="dashboard-overview"');
+    expect(dashboard).toContain("Ein klarer Blick. Ein guter nächster Schritt.");
+    expect(dashboard).toContain('data-dashboard-section="Einsatzbereitschaft kompakt"');
+    expect(dashboard).toContain('data-dashboard-section="Nächste Fristen kompakt"');
+    expect(dashboard).toContain('data-dashboard-section="Kernkennzahlen kompakt"');
+    expect(dashboard).toContain("onPotentialFilter(day.day, \"ungenutzt\")");
+    expect(dashboard).toContain("onPotentialFilter(day.day, \"teilzeit\")");
+    expect(dashboard).toContain("onOpenDonations");
+    expect(dashboard).toContain("onOpenDetails={() => setDashboardView(\"details\")}");
+    expect(dashboard).toContain("<LocationMapCard />");
+
+    expect(toggle).toContain("Übersicht");
+    expect(toggle).toContain("Details");
+    expect(toggle).toContain('aria-label="Dashboard-Ansicht wählen"');
+    expect(hook).toContain('mycrewmate_dashboard_view');
+    expect(hook).toContain("window.localStorage.getItem");
+    expect(hook).toContain("window.localStorage.setItem");
+  });
+
   it("zeigt den kompakten Event-Zähler mit Tagesimpuls, austauschbarem Logo und Kalender-Trigger", () => {
     const dashboard = source("client/src/pages/Dashboard.tsx");
     const layout = source("client/src/components/Layout.tsx");

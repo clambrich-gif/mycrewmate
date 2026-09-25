@@ -1,8 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LocationMapCard } from "@/components/LocationMapCard";
 import { PageTitle } from "@/components/PageTitle";
+import { DashboardViewToggle } from "@/components/DashboardViewToggle";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useTenantAdministration } from "@/hooks/useTenantAdministration";
+import { useDashboardView } from "@/hooks/useDashboardView";
 import { dashboardDailyQuote } from "@/lib/daily-dashboard-quotes";
 import {
   dashboardTargetHref,
@@ -1002,8 +1004,265 @@ function PilotTenantInfoCard({
   );
 }
 
+/**
+ * Die Übersicht bündelt ausschließlich vorhandene Live-Kennzahlen in einer
+ * ruhigeren Arbeitsansicht. Jede Karte führt in die bereits vorhandene,
+ * detaillierte Fachansicht – Daten und Rechtepfade bleiben unverändert.
+ */
+function DashboardOverview({
+  event,
+  priorityActions,
+  deadlines,
+  readiness,
+  helperStats,
+  donations,
+  openTarget,
+  onOpenDonations,
+  onPotentialFilter,
+  onOpenDetails,
+}: {
+  event: {
+    id: number;
+    year: number;
+    name: string;
+    startDate?: string | null;
+    endDate?: string | null;
+    pdfLogoKey?: string | null;
+  };
+  priorityActions: PriorityAction[];
+  deadlines: DashboardDeadline[];
+  readiness: DailyReadiness[];
+  helperStats: {
+    assigned: number;
+    confirmed: number;
+    feedbackOutstanding: number;
+    contacted: number;
+    contactOutstanding: number;
+    total: number;
+    preparationOpen: number;
+    preparationInProgress: number;
+    preparationTotal: number;
+  };
+  donations: DonationDashboardStats;
+  openTarget: (target: DashboardTarget) => void;
+  onOpenDonations: () => void;
+  onPotentialFilter: (
+    day: DailyReadiness["day"],
+    kind: "ungenutzt" | "teilzeit"
+  ) => void;
+  onOpenDetails: () => void;
+}) {
+  const totalNeed = readiness.reduce((sum, day) => sum + day.bedarf, 0);
+  const totalAssigned = readiness.reduce((sum, day) => sum + day.besetzt, 0);
+  const readinessRate = totalNeed === 0
+    ? 0
+    : Math.min(100, Math.round((totalAssigned / totalNeed) * 100));
+  const donationTargets = donations.kategorien.filter(category => category.id !== "sonstiges");
+  const donationTarget = donationTargets.reduce((sum, category) => sum + category.target, 0);
+  const donationCurrent = donationTargets.reduce((sum, category) => sum + category.ist, 0);
+  const visiblePriorities = priorityActions.slice(0, 3);
+
+  return (
+    <div data-slot="dashboard-overview" className="space-y-6">
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(17rem,0.55fr)]">
+        <div className="min-w-0">
+          <p className="text-xs font-bold tracking-[0.16em] text-blue-700 uppercase">
+            Veranstaltungsübersicht
+          </p>
+          <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
+            Ein klarer Blick. Ein guter nächster Schritt.
+          </h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 sm:text-base">
+            Das Wichtigste zuerst: Handlungsbedarf, Besetzung und Fristen. Alle Detaildaten bleiben jederzeit in der Detailansicht erreichbar.
+          </p>
+          <button
+            type="button"
+            onClick={onOpenDetails}
+            className="mt-4 inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          >
+            Alle Detaildaten öffnen
+            <ArrowRight className="size-4" aria-hidden="true" />
+          </button>
+        </div>
+        <EventCountdownWidget event={event} />
+      </section>
+
+      <section
+        data-dashboard-section="Heute priorisieren"
+        className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3 shadow-sm sm:p-4"
+      >
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+          <div>
+            <h2 className="text-base font-bold text-slate-950">Heute priorisieren</h2>
+            <p className="mt-0.5 text-sm text-slate-600">Bis zu drei Entscheidungen mit direktem Handlungsbedarf.</p>
+          </div>
+          <button
+            type="button"
+            onClick={onOpenDetails}
+            className="text-sm font-semibold text-blue-700 underline-offset-2 hover:text-blue-900 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          >
+            Details
+          </button>
+        </div>
+        {visiblePriorities.length > 0 ? (
+          <div className="grid gap-3 md:grid-cols-3">
+            {visiblePriorities.map(action => (
+              <PriorityActionCard key={action.id} action={action} openTarget={openTarget} />
+            ))}
+          </div>
+        ) : (
+          <div className="flex min-h-24 items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-emerald-950">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+              <CheckCircle2 className="size-5" aria-hidden="true" />
+            </span>
+            <div>
+              <p className="font-semibold">Alles im grünen Bereich</p>
+              <p className="text-sm text-emerald-800">Für die aktuelle Planung liegen keine dringenden Warnungen vor.</p>
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+        <Card data-dashboard-section="Einsatzbereitschaft kompakt" className="border-slate-200 bg-white py-4 text-slate-950 shadow-sm">
+          <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 px-4 py-1 sm:px-5">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-base text-slate-900">
+                <UsersRound className="size-5 text-emerald-700" aria-hidden="true" />
+                Einsatzbereitschaft
+              </CardTitle>
+              <p className="mt-1 text-sm text-slate-600">Besetzung und verfügbare Reserve je Festivaltag.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => openTarget({ path: "/einsatzplan" })}
+              onPointerEnter={() => preloadRoute("/einsatzplan")}
+              onFocus={() => preloadRoute("/einsatzplan")}
+              className="rounded-lg px-2 py-1 text-sm font-semibold text-blue-700 hover:bg-blue-50 hover:text-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            >
+              Einsatzplan <ArrowRight className="inline size-4" aria-hidden="true" />
+            </button>
+          </CardHeader>
+          <CardContent className="px-4 pb-1 pt-4 sm:px-5">
+            <div className="grid gap-4 sm:grid-cols-[minmax(10rem,0.7fr)_minmax(0,1fr)] sm:items-center">
+              <div className="rounded-2xl bg-slate-50 p-4">
+                <div className="flex items-center gap-3">
+                  <span
+                    className="relative flex size-16 shrink-0 items-center justify-center rounded-full"
+                    style={{ background: `conic-gradient(#2563eb ${readinessRate}%, #e2e8f0 ${readinessRate}% 100%)` }}
+                    aria-label={`${readinessRate} Prozent der Helferplätze besetzt`}
+                  >
+                    <span className="flex size-12 items-center justify-center rounded-full bg-white text-base font-bold text-slate-950">{readinessRate}%</span>
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-900">Gesamtbesetzung</p>
+                    <p className="mt-0.5 text-xs leading-5 text-slate-600">{totalAssigned} von {totalNeed} Helferplätzen passend besetzt</p>
+                  </div>
+                </div>
+              </div>
+              <div className="divide-y divide-slate-100 border-t border-slate-100 sm:border-t-0">
+                {readiness.map(day => {
+                  const tone = readinessTone(day);
+                  return (
+                    <div key={day.day} className="px-1 py-2.5 first:pt-0 last:pb-0">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="text-sm font-semibold text-slate-800">{day.day}</span>
+                        <span className="text-sm font-bold tabular-nums text-slate-950">{day.besetzt} / {day.bedarf}</span>
+                      </div>
+                      <div className={`mt-1.5 h-1.5 overflow-hidden rounded-full ${tone.track}`} role="progressbar" aria-label={`${day.day}: ${day.besetzt} von ${day.bedarf} Helferplätzen besetzt`} aria-valuemin={0} aria-valuemax={Math.max(day.bedarf, 1)} aria-valuenow={Math.min(day.besetzt, Math.max(day.bedarf, 1))}>
+                        <div className={`h-full rounded-full ${tone.fill}`} style={{ width: `${day.quote}%` }} />
+                      </div>
+                      <div className="mt-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs">
+                        <span className={`font-semibold ${tone.text}`}>{tone.label}</span>
+                        <span className="flex gap-2">
+                          <button type="button" disabled={day.ungenutzteHelfer === 0} onClick={() => onPotentialFilter(day.day, "ungenutzt")} className="font-medium text-violet-800 underline-offset-2 hover:underline disabled:text-slate-400 disabled:no-underline">{day.ungenutzteHelfer} frei</button>
+                          <button type="button" disabled={day.teilzeitReserve === 0} onClick={() => onPotentialFilter(day.day, "teilzeit")} className="font-medium text-blue-800 underline-offset-2 hover:underline disabled:text-slate-400 disabled:no-underline">{day.teilzeitReserve} Reserve</button>
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card data-dashboard-section="Nächste Fristen kompakt" className="border-slate-200 bg-white py-4 text-slate-950 shadow-sm">
+          <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 px-4 py-1 sm:px-5">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-base text-slate-900">
+                <CalendarClock className="size-5 text-blue-700" aria-hidden="true" />
+                Nächste Fristen
+              </CardTitle>
+              <p className="mt-1 text-sm text-slate-600">Zeitkritische Aufgaben mit direkter Zuständigkeit.</p>
+            </div>
+            <button type="button" onClick={() => openTarget({ path: "/vorbereitung" })} className="rounded-lg px-2 py-1 text-sm font-semibold text-blue-700 hover:bg-blue-50 hover:text-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">Vorbereitung <ArrowRight className="inline size-4" aria-hidden="true" /></button>
+          </CardHeader>
+          <CardContent className="space-y-1 px-4 pb-1 pt-4 sm:px-5">
+            {deadlines.slice(0, 3).map(deadline => (
+              <button
+                type="button"
+                key={deadline.taskId}
+                onPointerEnter={() => preloadRoute("/vorbereitung")}
+                onFocus={() => preloadRoute("/vorbereitung")}
+                onClick={() => openTarget({ path: "/vorbereitung" })}
+                className="group flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              >
+                <span className={`shrink-0 rounded-lg border px-2 py-1 text-center text-xs font-bold ${deadlineToneClass(deadline)}`}>{deadline.dueText}</span>
+                <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-slate-900">{deadline.task}</span><span className="mt-0.5 block truncate text-xs text-slate-500">{[deadline.category, deadline.contactName].filter(Boolean).join(" · ") || "Ohne Bereich und Verantwortlichen"}</span></span>
+                <ArrowRight className="size-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+              </button>
+            ))}
+            {deadlines.length === 0 && <p className="rounded-xl bg-emerald-50 px-3 py-5 text-sm text-emerald-800">Keine datierten Vorbereitungsfristen offen.</p>}
+          </CardContent>
+        </Card>
+      </section>
+
+      <section data-dashboard-section="Kernkennzahlen kompakt" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <DashboardOverviewMetric icon={UsersRound} value={`${helperStats.confirmed} / ${helperStats.assigned}`} title="Rückmeldungen" detail={helperStats.feedbackOutstanding > 0 ? `${helperStats.feedbackOutstanding} eingeteilte Helfer noch offen` : "Alle eingeteilten Helfer bestätigt"} onClick={() => openTarget({ path: "/helfer", confirmed: "nein", assigned: true })} />
+        <DashboardOverviewMetric icon={UsersRound} value={`${helperStats.contacted} / ${helperStats.total}`} title="Erstkontakte" detail={helperStats.contactOutstanding > 0 ? `${helperStats.contactOutstanding} Helfer benötigen noch eine Ansprache` : "Alle Helfer erstkontaktiert"} onClick={() => openTarget({ path: "/helfer", firstContact: "offen" })} />
+        <DashboardOverviewMetric icon={Gift} value={donationTarget > 0 ? `${donationCurrent} / ${donationTarget}` : String(donations.gesamt)} title="Verpflegung" detail={donationTarget > 0 ? "Kuchen, Salate und Snacks im Zielbild" : "Spenden und Eigenschaften verwalten"} onClick={onOpenDonations} />
+        <DashboardOverviewMetric icon={ClipboardList} value={`${helperStats.preparationOpen + helperStats.preparationInProgress} / ${helperStats.preparationTotal}`} title="Vorbereitung" detail={helperStats.preparationOpen > 0 ? `${helperStats.preparationOpen} Aufgaben noch offen` : "Keine offene Vorbereitung"} onClick={() => openTarget({ path: "/vorbereitung", status: "offen" })} />
+      </section>
+
+      <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
+        <span>Verantwortlichkeiten, Helferauslastung und Standortkarte sind in der Detailansicht weiterhin vollständig verfügbar.</span>
+        <button type="button" onClick={onOpenDetails} className="shrink-0 font-semibold text-blue-700 underline-offset-2 hover:text-blue-900 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">Details öffnen</button>
+      </section>
+    </div>
+  );
+}
+
+function DashboardOverviewMetric({
+  icon: Icon,
+  value,
+  title,
+  detail,
+  onClick,
+}: {
+  icon: LucideIcon;
+  value: string;
+  title: string;
+  detail: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group min-h-36 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-[box-shadow,transform] duration-150 hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+    >
+      <span className="flex items-center justify-between"><span className="grid size-9 place-items-center rounded-xl bg-slate-100 text-slate-600"><Icon className="size-4" aria-hidden="true" /></span><ArrowRight className="size-4 text-slate-300 transition-transform group-hover:translate-x-0.5" aria-hidden="true" /></span>
+      <strong className="mt-4 block text-2xl tracking-tight text-slate-950">{value}</strong>
+      <span className="mt-1 block text-sm font-semibold text-slate-900">{title}</span>
+      <span className="mt-1 block text-xs leading-5 text-slate-500">{detail}</span>
+    </button>
+  );
+}
+
 export default function Dashboard() {
   const [, navigate] = useLocation();
+  const [dashboardView, setDashboardView] = useDashboardView("details");
   const [workloadFilter, setWorkloadFilter] = useState<{
     day: DailyReadiness["day"];
     kind: "ungenutzt" | "teilzeit";
@@ -1205,15 +1464,46 @@ export default function Dashboard() {
         <div>
           <PageTitle icon="dashboard">Dashboard</PageTitle>
           <p className="text-muted-foreground">
-            Die wichtigsten nächsten Schritte stehen zuerst; alle Kennzahlen werden automatisch aus den Planungsdaten berechnet.
+            {dashboardView === "overview"
+              ? "Die wichtigsten nächsten Schritte in einer reduzierten, persönlichen Übersicht."
+              : "Die wichtigsten nächsten Schritte stehen zuerst; alle Kennzahlen werden automatisch aus den Planungsdaten berechnet."}
           </p>
         </div>
-        <EventCountdownWidget event={currentEvent} />
+        <div className="flex w-full flex-col items-stretch gap-3 sm:w-auto sm:items-end">
+          <DashboardViewToggle view={dashboardView} onChange={setDashboardView} />
+          {dashboardView === "details" && <EventCountdownWidget event={currentEvent} />}
+        </div>
       </div>
 
       {currentTenant.status === "pilot" && (
         <PilotTenantInfoCard tenant={currentTenant} eventName={currentEvent.name} />
       )}
+
+      {dashboardView === "overview" ? (
+        <DashboardOverview
+          event={currentEvent}
+          priorityActions={priorityActions}
+          deadlines={upcomingDeadlines}
+          readiness={dailyReadiness}
+          helperStats={{
+            assigned: s.helferEingeteilt,
+            confirmed: s.helferEingeteiltBestaetigt,
+            feedbackOutstanding: s.helferEingeteiltUnbestaetigt,
+            contacted: s.helferKontaktiert,
+            contactOutstanding: s.helferOhneErstkontakt,
+            total: s.helferGesamt,
+            preparationOpen: s.offeneVorbereitung,
+            preparationInProgress: s.vorbereitungInBearbeitung,
+            preparationTotal: s.vorbereitungGesamt,
+          }}
+          donations={s.spenden as DonationDashboardStats}
+          openTarget={target => navigate(dashboardTargetHref(target))}
+          onOpenDonations={() => navigate("/spenden")}
+          onPotentialFilter={showPotentialInWorkload}
+          onOpenDetails={() => setDashboardView("details")}
+        />
+      ) : (
+        <>
 
       <section
         data-dashboard-section="Heute priorisieren"
@@ -1507,6 +1797,8 @@ export default function Dashboard() {
       <section data-dashboard-level="Live-Standortkarte" className="w-full">
         <LocationMapCard />
       </section>
+        </>
+      )}
     </div>
   );
 }
