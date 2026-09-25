@@ -97,10 +97,10 @@ describe("rollenabhängige Navigation", () => {
       const classes = navigationItemClasses("user", item.href, false);
       expect(classes).toContain("hover:bg-slate-100");
       const activeClasses = navigationItemClasses("user", item.href, true);
-      expect(activeClasses).toContain("bg-primary");
-      expect(activeClasses).toContain("hover:bg-primary/90");
+      expect(activeClasses).toContain("bg-orange-500");
+      expect(activeClasses).toContain("hover:bg-orange-600");
       expect(activeClasses).toContain("font-semibold");
-      expect(activeClasses).toContain("text-primary-foreground");
+      expect(activeClasses).toContain("text-white");
     }
   });
 
@@ -120,7 +120,7 @@ describe("rollenabhängige Navigation", () => {
     );
     expect(NAV.map(item => item.label)).not.toContain("Protokoll");
     expect(navigationItemClasses("admin", "/helfer", true)).toBe(
-      "bg-primary font-semibold text-primary-foreground hover:bg-primary/90"
+      "bg-orange-500 font-semibold text-white shadow-sm hover:bg-orange-600 focus-visible:ring-orange-500"
     );
   });
 });

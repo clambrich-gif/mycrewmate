@@ -6291,6 +6291,7 @@ export async function getTenantAdminCredentialsByUserId(userId: number) {
   const [row] = await database
     .select({
       userId: tenantAdminCredentials.userId,
+      email: tenantAdminCredentials.email,
       passwordHash: tenantAdminCredentials.passwordHash,
       status: tenantAdminCredentials.status,
     })

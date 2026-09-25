@@ -1327,14 +1327,29 @@ export const appRouter = router({
     }),
     initialPasswordChangeStatus: baseProtectedProcedure.query(async ({ ctx }) => {
       const accessId = planningTeamAccessIdForUser(ctx.user);
-      return {
-        mustChangePassword:
-          (accessId !== null &&
-            (await db.isPlanningTeamAccessPasswordChangeRequired(accessId))) ||
-          (ctx.user.role === "admin" &&
-            ctx.user.openId.startsWith("tenant-admin:") &&
-            (await db.isTenantAdminPasswordChangeRequired(ctx.user.id))),
-      } as const;
+      const isPlanningTeamAccess = accessId !== null;
+      const isPersonalTenantAdmin =
+        ctx.user.role === "admin" && ctx.user.openId.startsWith("tenant-admin:");
+      const mustChangePassword =
+        (isPlanningTeamAccess &&
+          (await db.isPlanningTeamAccessPasswordChangeRequired(accessId!))) ||
+        (isPersonalTenantAdmin &&
+          (await db.isTenantAdminPasswordChangeRequired(ctx.user.id)));
+
+      let invitationEmail: string | null = null;
+      if (isPlanningTeamAccess) {
+        const scope = await authorizedPlanningScope(ctx.user, ctx.req);
+        const access = await withPlanningScope(scope, () =>
+          db.getPlanningTeamAccessCredentialForCurrentTenant(accessId!, scope.tenantId)
+        );
+        invitationEmail = access?.email?.trim() || null;
+      } else if (isPersonalTenantAdmin) {
+        invitationEmail =
+          (await db.getTenantAdminCredentialsByUserId(ctx.user.id))?.email?.trim() ||
+          null;
+      }
+
+      return { mustChangePassword: Boolean(mustChangePassword), invitationEmail } as const;
     }),
     firstLoginOnboardingStatus: baseProtectedProcedure.query(async ({ ctx }) => {
       const accessId = planningTeamAccessIdForUser(ctx.user);

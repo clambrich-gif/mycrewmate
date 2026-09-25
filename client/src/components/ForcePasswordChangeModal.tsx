@@ -15,6 +15,7 @@ import type { FormEvent } from "react";
 type ForcePasswordChangeModalProps = {
   open: boolean;
   identityName?: string | null;
+  invitationEmail?: string | null;
   password: string;
   passwordConfirmation: string;
   busy: boolean;
@@ -32,6 +33,7 @@ type ForcePasswordChangeModalProps = {
 export function ForcePasswordChangeModal({
   open,
   identityName,
+  invitationEmail,
   password,
   passwordConfirmation,
   busy,
@@ -42,6 +44,7 @@ export function ForcePasswordChangeModal({
 }: ForcePasswordChangeModalProps) {
   const passwordsMatch =
     passwordConfirmation.length === 0 || password === passwordConfirmation;
+  const passwordCharactersMissing = Math.max(0, 10 - password.length);
   const canSubmit =
     password.length >= 10 &&
     passwordConfirmation.length >= 10 &&
@@ -68,6 +71,11 @@ export function ForcePasswordChangeModal({
                 Zugang für {identityName}
               </span>
             ) : null}
+            {invitationEmail ? (
+              <span className="mt-1 block text-xs text-slate-600">
+                E-Mail-Adresse für die spätere Anmeldung: {invitationEmail}
+              </span>
+            ) : null}
             Du hast dich mit einem temporären Zugangs-Code angemeldet. Bitte
             vergib jetzt dein persönliches, dauerhaftes Passwort.
           </DialogDescription>
@@ -75,7 +83,9 @@ export function ForcePasswordChangeModal({
 
         <form className="space-y-4" onSubmit={onSubmit}>
           <div className="space-y-2">
-            <Label htmlFor="initial-password-new">Neues Passwort</Label>
+            <Label htmlFor="initial-password-new">
+              Neues Passwort <span className="font-normal text-slate-500">(mindestens 10 Zeichen)</span>
+            </Label>
             <Input
               id="initial-password-new"
               type="password"
@@ -85,7 +95,13 @@ export function ForcePasswordChangeModal({
               onChange={event => onPasswordChange(event.target.value)}
               disabled={busy}
               autoFocus
+              aria-describedby="initial-password-requirements"
             />
+            <p id="initial-password-requirements" className="text-xs leading-5 text-slate-600">
+              {passwordCharactersMissing > 0
+                ? `Noch ${passwordCharactersMissing} Zeichen bis zur Mindestlänge von 10 Zeichen.`
+                : "Mindestlänge erreicht – bitte das Passwort unten bestätigen."}
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="initial-password-confirmation">
@@ -110,6 +126,9 @@ export function ForcePasswordChangeModal({
               </p>
             )}
           </div>
+          <p className="-mt-1 text-xs leading-5 text-slate-600">
+            Der Button wird aktiv, sobald beide Passwörter mindestens 10 Zeichen lang und identisch sind.
+          </p>
           {error && (
             <div
               className="flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-900"

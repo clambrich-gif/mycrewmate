@@ -425,6 +425,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     typing: [],
   });
   const [chatSnapshotInitialized, setChatSnapshotInitialized] = useState(false);
+  const [chatSnapshotError, setChatSnapshotError] = useState<string | null>(null);
   const [unreadNotesCount, setUnreadNotesCount] = useState(0);
   const [hasImportantUnread, setHasImportantUnread] = useState(false);
   const lastSeenChatNoteIdRef = useRef<number>(0);
@@ -613,6 +614,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     chatSnapshotPollQueuedRef.current = true;
     setChatSnapshot({ notes: [], typing: [] });
     setChatSnapshotInitialized(false);
+    setChatSnapshotError(null);
     lastSeenChatNoteIdRef.current = 0;
     hasLoadedChatSnapshotRef.current = false;
     setUnreadNotesCount(0);
@@ -651,6 +653,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           const serverHasImportantUnread = Boolean(snapshot.hasImportantUnread);
           const orderedNotes = [...notesList].sort((a, b) => a.id - b.id);
           setChatSnapshot({ notes: orderedNotes, typing });
+          setChatSnapshotError(null);
           // Erst ein bestätigter Server-Snapshot darf als Initialhistorie gelten.
           // Die anfängliche leere React-Ansicht löst daher nie einen Warnton aus.
           setChatSnapshotInitialized(true);
@@ -695,8 +698,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
             setUnreadNotesCount(0);
             setHasImportantUnread(false);
           }
-        } catch {
-          // Ein einzelner Pollingfehler bleibt leise und der nächste Tick lädt erneut.
+        } catch (error) {
+          // Der Verlauf darf für eingeladene Planer nie scheinbar leer bleiben,
+          // wenn der Browser noch auf einen nicht freigegebenen Eventkontext
+          // zeigt. Die konkrete, servergeprüfte Ursache wird stattdessen im
+          // Chat sichtbar und der nächste Tick versucht die Synchronisierung erneut.
+          const message = error instanceof Error ? error.message : "Chat konnte nicht aktualisiert werden.";
+          setChatSnapshotError(message);
         }
       } while (chatSnapshotPollQueuedRef.current);
     };
@@ -1014,6 +1022,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       }
       error={initialPasswordError}
       identityName={user?.name ?? null}
+      invitationEmail={initialPasswordStatus.data?.invitationEmail ?? null}
       onPasswordChange={value => {
         setInitialPassword(value);
         if (initialPasswordError) setInitialPasswordError(null);
@@ -2374,9 +2383,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {isAuthenticated && (
         <LiveChatWidget
           state={chatState}
-          snapshot={chatSnapshot}
-          snapshotInitialized={chatSnapshotInitialized}
-          unreadCount={unreadNotesCount}
+        snapshot={chatSnapshot}
+        snapshotInitialized={chatSnapshotInitialized}
+        snapshotError={chatSnapshotError}
+        eventName={selectedEvent?.name ?? null}
+        unreadCount={unreadNotesCount}
           hasImportantUnread={hasImportantUnread}
           onOpen={openChatWidget}
           onMinimize={minimizeChatWidget}

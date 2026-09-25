@@ -889,7 +889,10 @@ describe("Event-based Access Control für Planungsteam", () => {
     });
 
     const statusResult = await authCaller.auth.initialPasswordChangeStatus();
-    expect(statusResult).toEqual({ mustChangePassword: true });
+    expect(statusResult).toEqual({
+      mustChangePassword: true,
+      invitationEmail: null,
+    });
 
     const changeResult = await authCaller.auth.completeInitialPasswordChange({
       password: "mein-neues-sicheres-passwort-123",
@@ -993,5 +996,61 @@ describe("Event-based Access Control für Planungsteam", () => {
         senderRole: "admin",
       })
     );
+  });
+
+  it("liefert den gemeinsamen Event-Chat für zwei freigegebene Planungsteamzugänge", async () => {
+    vi.spyOn(db, "getEvent").mockResolvedValue({
+      id: 10,
+      year: 2026,
+      name: "Weihnachtsfeier",
+    } as any);
+    vi.spyOn(db, "isPlanningTeamAccessAllowedForEvent").mockResolvedValue(true);
+    vi.spyOn(db, "isPlanningTeamAccessPasswordChangeRequired").mockResolvedValue(false);
+    const notesSpy = vi.spyOn(db, "listTeamNotes").mockResolvedValue([
+      {
+        id: 1,
+        year: 2026,
+        eventId: 10,
+        senderName: "Holger Fischer",
+        senderRole: "admin",
+        message: "Die Anmeldung ist geöffnet.",
+        important: false,
+        createdAt: new Date(),
+      },
+    ] as any);
+    vi.spyOn(db, "listActiveTypers").mockResolvedValue([]);
+    vi.spyOn(db, "getTeamNoteUnreadStatus").mockResolvedValue({
+      unreadCount: 0,
+      hasImportantUnread: false,
+    });
+
+    const buildPlannerCaller = (accessId: number, name: string) =>
+      appRouter.createCaller({
+        user: {
+          id: accessId,
+          openId: planningTeamAccessOpenId(accessId),
+          role: "user",
+          name,
+          email: null,
+          sessionVersion: 1,
+          avatarUrl: null,
+          accountBlocked: false,
+          lastSignedIn: new Date(),
+        },
+        req: mockReq({ "x-event-year": "2026", "x-event-id": "10" }),
+        res: { setHeader: vi.fn(), clearCookie: vi.fn() } as any,
+      });
+
+    const [firstSnapshot, secondSnapshot] = await Promise.all([
+      buildPlannerCaller(71, "Paula Planung").notes.list(),
+      buildPlannerCaller(72, "Peter Planung").notes.list(),
+    ]);
+
+    expect(firstSnapshot.notes).toEqual(secondSnapshot.notes);
+    expect(firstSnapshot.notes[0]).toMatchObject({
+      eventId: 10,
+      message: "Die Anmeldung ist geöffnet.",
+    });
+    expect(notesSpy).toHaveBeenCalledTimes(2);
   });
 });

@@ -7,7 +7,9 @@ import {
   isMasterAdminSite,
 } from "@/lib/site-host";
 import { lazy, Suspense, useEffect } from "react";
+import { useRef } from "react";
 import { Redirect, Route, Switch } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { Layout } from "./components/Layout";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -15,6 +17,55 @@ import { YearProvider } from "./contexts/YearContext";
 import { routeLoaders } from "./lib/route-loaders";
 import { useAuth } from "./_core/hooks/useAuth";
 import { useTenantAdministration } from "@/hooks/useTenantAdministration";
+import { useEventYear } from "./contexts/YearContext";
+
+/**
+ * Aktive Arbeitsansichten werden bewusst im kurzen, aber ressourcenschonenden
+ * Takt abgeglichen. Lokale Mutationen bleiben sofort sichtbar; parallel
+ * geöffnete Bildschirme erhalten ihre Änderungen spätestens nach acht Sekunden.
+ */
+export const PLANNING_DATA_SYNC_INTERVAL_MS = 8_000;
+
+function PlanningDataSynchronizer({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useAuth();
+  const { tenantId, year, eventId } = useEventYear();
+  const queryClient = useQueryClient();
+  const syncInFlightRef = useRef(false);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const refreshVisiblePlanningData = async () => {
+      if (syncInFlightRef.current) return;
+      syncInFlightRef.current = true;
+      try {
+        // Ausschließlich gerade sichtbare Abfragen werden neu geladen. Dadurch
+        // bleiben nicht geöffnete Bereiche vollständig inaktiv.
+        await queryClient.refetchQueries({ type: "active" });
+      } finally {
+        syncInFlightRef.current = false;
+      }
+    };
+
+    const timer = window.setInterval(
+      refreshVisiblePlanningData,
+      PLANNING_DATA_SYNC_INTERVAL_MS
+    );
+    const refreshOnReturn = () => {
+      if (document.visibilityState === "visible") {
+        void refreshVisiblePlanningData();
+      }
+    };
+    document.addEventListener("visibilitychange", refreshOnReturn);
+
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refreshOnReturn);
+    };
+  }, [eventId, isAuthenticated, queryClient, tenantId, year]);
+
+  return <>{children}</>;
+}
 
 const Dashboard = lazy(routeLoaders["/"]);
 const Contacts = lazy(routeLoaders["/ansprechpartner"]);
@@ -178,7 +229,9 @@ function App() {
             <PublicSiteRouter />
           ) : (
             <YearProvider>
-              <Router />
+              <PlanningDataSynchronizer>
+                <Router />
+              </PlanningDataSynchronizer>
             </YearProvider>
           )}
         </TooltipProvider>

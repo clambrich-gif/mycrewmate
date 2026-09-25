@@ -154,6 +154,7 @@ describe("Aktivierung persönlicher Vereinsadmins", () => {
 
     await expect(caller.auth.initialPasswordChangeStatus()).resolves.toEqual({
       mustChangePassword: true,
+      invitationEmail: null,
     });
 
     await expect(

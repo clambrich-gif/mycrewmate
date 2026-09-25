@@ -70,13 +70,19 @@ export function YearProvider({ children }: { children: React.ReactNode }) {
         window.sessionStorage.removeItem(
           eventStartSelectionSessionKey(nextTenantId)
         );
-        // Alle drei internen Testmandanten besitzen eine getrennte Musterveranstaltung
-        // im gemeinsamen Testjahr. Dadurch wird nach dem Wechsel sofort eine gültige
-        // Veranstaltung ausgewählt und kein alter Event-Schlüssel weiterverwendet.
-        window.localStorage.setItem(YEAR_STORAGE_KEY, "2027");
-        window.localStorage.removeItem(
-          `${EVENT_STORAGE_PREFIX}${nextTenantId}-2027`
-        );
+        // Ein alter Browserwert darf die gemeinsame Arbeitsansicht nicht auf
+        // eine andere Veranstaltung festlegen. Nach dem Reload startet die
+        // bestehende automatische Auswahl deshalb im neutralen Standardjahr
+        // und ermittelt aus den wirklich freigegebenen Events den zeitlich
+        // nächsten Termin.
+        window.localStorage.removeItem(YEAR_STORAGE_KEY);
+        window.localStorage.removeItem(LEGACY_YEAR_STORAGE_KEY);
+        for (let index = window.localStorage.length - 1; index >= 0; index -= 1) {
+          const key = window.localStorage.key(index);
+          if (key?.startsWith(`${EVENT_STORAGE_PREFIX}${nextTenantId}-`)) {
+            window.localStorage.removeItem(key);
+          }
+        }
         window.location.reload();
       },
       synchronizeTenant(nextTenantId) {

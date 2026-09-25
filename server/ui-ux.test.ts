@@ -114,6 +114,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain("if (nearestEvent.id !== eventId) selectEvent(nearestEvent.id)");
     expect(yearContext).toContain("window.sessionStorage.removeItem(");
     expect(yearContext).toContain("eventStartSelectionSessionKey(nextTenantId)");
+    expect(yearContext).toContain("window.localStorage.removeItem(YEAR_STORAGE_KEY)");
+    expect(yearContext).not.toContain('window.localStorage.setItem(YEAR_STORAGE_KEY, "2027")');
     expect(startSelection).toContain("event.startDate >= calendarToday");
     expect(startSelection).toContain("isIsoCalendarDate(event.startDate)");
     expect(startSelection).toContain("event.startDate.startsWith(String(event.year))");
@@ -3288,5 +3290,32 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain('data-slot="mobile-helper-details-dialog"');
     expect(plan).toContain("interactive={isMobileView}");
     expect(plan).toContain('data-slot="mobile-helper-day-details-trigger"');
+  });
+
+  it("gleicht sichtbare Planungsdaten in kurzen Abständen ab und hebt den aktiven Bereich orange hervor", () => {
+    const app = source("client/src/App.tsx");
+    const navigation = source("client/src/lib/nav.ts");
+
+    expect(app).toContain("PLANNING_DATA_SYNC_INTERVAL_MS = 8_000");
+    expect(app).toContain('queryClient.refetchQueries({ type: "active" })');
+    expect(app).toContain('document.addEventListener("visibilitychange", refreshOnReturn)');
+    expect(app).toContain("<PlanningDataSynchronizer>");
+    expect(navigation).toContain("bg-orange-500 font-semibold text-white");
+    expect(navigation).toContain("hover:bg-orange-600");
+  });
+
+  it("macht Einladungs-E-Mail, Mindestlänge und Chat-Kontext beim Erstzugang nachvollziehbar", () => {
+    const layout = source("client/src/components/Layout.tsx");
+    const modal = source("client/src/components/ForcePasswordChangeModal.tsx");
+    const chat = source("client/src/components/LiveChatWidget.tsx");
+
+    expect(layout).toContain("invitationEmail={initialPasswordStatus.data?.invitationEmail ?? null}");
+    expect(layout).toContain("setChatSnapshotError(message)");
+    expect(layout).toContain("eventName={selectedEvent?.name ?? null}");
+    expect(modal).toContain("E-Mail-Adresse für die spätere Anmeldung:");
+    expect(modal).toContain("mindestens 10 Zeichen");
+    expect(modal).toContain("Der Button wird aktiv, sobald beide Passwörter");
+    expect(chat).toContain("Chat wird noch synchronisiert.");
+    expect(chat).toContain("Live-Chat · ${eventName} · 24h Speicher");
   });
 });

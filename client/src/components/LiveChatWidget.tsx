@@ -107,6 +107,8 @@ export function LiveChatWidget({
   state,
   snapshot,
   snapshotInitialized,
+  snapshotError = null,
+  eventName = null,
   unreadCount,
   hasImportantUnread = false,
   onOpen,
@@ -118,6 +120,10 @@ export function LiveChatWidget({
   snapshot: TeamNotesSnapshot;
   /** True erst nach dem ersten bestätigten Server-Snapshot des aktuellen Scopes. */
   snapshotInitialized: boolean;
+  /** Servergeprüfter Hinweis, falls der aktuelle Eventkontext nicht geladen werden kann. */
+  snapshotError?: string | null;
+  /** Der gemeinsame Verlauf ist stets an die hier sichtbare Veranstaltung gebunden. */
+  eventName?: string | null;
   unreadCount: number;
   hasImportantUnread?: boolean;
   onOpen: () => void;
@@ -626,7 +632,7 @@ export function LiveChatWidget({
                 Team-Notizen
               </h2>
               <p className="truncate text-[10px] text-slate-500">
-                Live-Chat · 24h Speicher
+                {eventName ? `Live-Chat · ${eventName} · 24h Speicher` : "Live-Chat · 24h Speicher"}
               </p>
             </div>
           </div>
@@ -710,6 +716,14 @@ export function LiveChatWidget({
               ref={scrollContainerRef}
               className="flex-1 space-y-2.5 overflow-y-auto p-3 text-sm sm:text-xs"
             >
+              {snapshotError && (
+                <div
+                  role="alert"
+                  className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950"
+                >
+                  <strong>Chat wird noch synchronisiert.</strong> {snapshotError}
+                </div>
+              )}
               {snapshot.notes.length === 0 ? (
                 <div className="flex h-full flex-col items-center justify-center p-4 text-center text-slate-400">
                   <MessageSquare className="mb-2 h-8 w-8 opacity-40" />
