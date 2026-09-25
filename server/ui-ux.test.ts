@@ -2470,8 +2470,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     ].map(label => helpers.indexOf(label));
     expect(filterOrder.every(index => index >= 0)).toBe(true);
     expect(filterOrder).toEqual([...filterOrder].sort((left, right) => left - right));
-    expect(plan).toContain('className="order-2 relative w-full md:order-1 lg:max-w-xl"');
-    expect(plan).toContain('className="order-1 grid gap-2 sm:grid-cols-2 md:order-2 lg:flex lg:flex-wrap"');
+    expect(plan).toContain('className="order-1 relative w-full lg:max-w-xl"');
+    expect(plan).toContain('data-slot="mobile-plan-filter-toggle"');
+    expect(plan).toContain('className="order-1 hidden gap-2 sm:grid-cols-2 md:order-2 md:grid lg:flex lg:flex-wrap"');
   });
 
   it("kennzeichnet Hauptseiten mit ruhigen einfarbigen Titelicons", () => {
@@ -3232,5 +3233,35 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(pdfExport).toContain("Nachricht 2 · Schichtzuteilung / Einsatzplan");
     expect(pdfExport).toContain('id="whatsapp-helper-request-template"');
     expect(pdfExport).toContain('id="whatsapp-message-template"');
+  });
+
+  it("erzwingt mobil Kacheln und hält Helfer- sowie Einsatzplanaktionen direkt bedienbar", () => {
+    const viewMode = source("client/src/hooks/useViewMode.ts");
+    const viewToggle = source("client/src/components/ViewModeToggle.tsx");
+    const helpers = source("client/src/pages/Helpers.tsx");
+    const plan = source("client/src/pages/Plan.tsx");
+
+    expect(viewMode).toContain('MOBILE_VIEW_MODE_QUERY = "(max-width: 767px)"');
+    expect(viewMode).toContain("effectiveViewMode(mode, mobile)");
+    expect(viewToggle).toContain("hidden items-center");
+    expect(viewToggle).toContain("md:inline-flex");
+
+    expect(helpers).toContain('data-slot="mobile-helper-phone-edit"');
+    expect(helpers).toContain('data-slot="mobile-helper-edit-dialog"');
+    expect(helpers).toContain("openMobileHelperEdit");
+    expect(helpers).toContain("phone: mobileHelperEditForm.phone.trim() || null");
+    expect(helpers).toContain("Helfer aktualisiert");
+
+    expect(plan).toContain('data-slot="mobile-plan-filter-toggle"');
+    expect(plan).toContain('data-slot="mobile-plan-filter-panel"');
+    expect(plan).toContain("mobileDays");
+    expect(plan).toContain("mobileAreas");
+    expect(plan).toContain("mobileStatuses");
+    expect(plan).toContain("mobileWarnings");
+    expect(plan).toContain('data-slot="shift-card-helper-candidate"');
+    expect(plan).toContain('data-slot="mobile-helper-details-trigger"');
+    expect(plan).toContain('data-slot="mobile-helper-details-dialog"');
+    expect(plan).toContain("interactive={isMobileView}");
+    expect(plan).toContain('data-slot="mobile-helper-day-details-trigger"');
   });
 });

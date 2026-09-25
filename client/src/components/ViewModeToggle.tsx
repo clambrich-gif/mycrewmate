@@ -13,7 +13,7 @@ export function ViewModeToggle({
 }) {
   return (
     <div
-      className={`inline-flex items-center rounded-xl border border-slate-200 bg-white p-1 shadow-xs ${className}`}
+      className={`hidden items-center rounded-xl border border-slate-200 bg-white p-1 shadow-xs md:inline-flex ${className}`}
       aria-label="Ansicht wählen"
     >
       <button

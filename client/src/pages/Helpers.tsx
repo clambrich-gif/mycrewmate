@@ -99,6 +99,14 @@ type NewHelperDonation = {
   note: string;
 };
 
+type MobileHelperEditForm = {
+  name: string;
+  contactId: string;
+  phone: string;
+  note: string;
+  companion: string;
+};
+
 const EMPTY_NEW_HELPER_DONATION: NewHelperDonation = {
   cake: "",
   donationCategory: "kuchen",
@@ -741,6 +749,14 @@ export default function Helpers() {
     id: number;
     name: string;
   } | null>(null);
+  const [mobileHelperEditTarget, setMobileHelperEditTarget] = useState<any | null>(null);
+  const [mobileHelperEditForm, setMobileHelperEditForm] = useState<MobileHelperEditForm>({
+    name: "",
+    contactId: "none",
+    phone: "",
+    note: "",
+    companion: "",
+  });
 
   const invalidate = () => {
     utils.helpers.list.invalidate();
@@ -763,6 +779,16 @@ export default function Helpers() {
   };
   const openCakeDonation = (helperName: string) =>
     setLocation(`/spenden?donor=${encodeURIComponent(helperName)}`);
+  const openMobileHelperEdit = (helper: any) => {
+    setMobileHelperEditTarget(helper);
+    setMobileHelperEditForm({
+      name: helper.name ?? "",
+      contactId: helper.contactId ? String(helper.contactId) : "none",
+      phone: helper.phone ?? "",
+      note: helper.note ?? "",
+      companion: helper.companion ?? "",
+    });
+  };
   const create = trpc.helpers.create.useMutation({
     onSuccess: () => {
       invalidate();
@@ -785,6 +811,34 @@ export default function Helpers() {
     onSuccess: invalidate,
     onError: error => toast.error(error.message),
   });
+  const saveMobileHelperEdit = () => {
+    if (!mobileHelperEditTarget || update.isPending) return;
+    const name = mobileHelperEditForm.name.trim();
+    if (!name) {
+      toast.error("Bitte einen Namen für den Helfer eingeben");
+      return;
+    }
+    update.mutate(
+      {
+        id: mobileHelperEditTarget.id,
+        name,
+        contactId:
+          mobileHelperEditForm.contactId === "none"
+            ? null
+            : Number(mobileHelperEditForm.contactId),
+        phone: mobileHelperEditForm.phone.trim() || null,
+        note: mobileHelperEditForm.note.trim() || null,
+        companion: mobileHelperEditForm.companion.trim() || null,
+      },
+      {
+        onSuccess: () => {
+          invalidate();
+          setMobileHelperEditTarget(null);
+          toast.success("Helfer aktualisiert");
+        },
+      }
+    );
+  };
   const createNewHelper = () => {
     const trimmedName = name.trim();
     if (!trimmedName) return;
@@ -1826,6 +1880,18 @@ export default function Helpers() {
                         </p>
                       </div>
                       <div className="flex shrink-0 items-center gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-11 w-11 text-slate-600 hover:text-blue-700 md:hidden"
+                          title="Helfer bearbeiten"
+                          aria-label={`Helfer ${helper.name} bearbeiten`}
+                          disabled={update.isPending}
+                          onClick={() => openMobileHelperEdit(helper)}
+                        >
+                          <Pencil className="size-4" />
+                        </Button>
                         <CakeDonationAction
                           helperName={helper.name}
                           count={cakeCount}
@@ -1915,7 +1981,18 @@ export default function Helpers() {
                       </div>
                       <div>
                         <span className="text-slate-500">Telefon</span>
-                        <p className="mt-1 truncate font-medium text-slate-800">
+                        <button
+                          type="button"
+                          data-slot="mobile-helper-phone-edit"
+                          className="mt-1 block w-full truncate text-left font-medium text-blue-700 underline decoration-blue-200 underline-offset-2 focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 md:hidden"
+                          title="Telefonnummer bearbeiten oder entfernen"
+                          aria-label={`Telefonnummer von ${helper.name} bearbeiten oder entfernen`}
+                          disabled={update.isPending}
+                          onClick={() => openMobileHelperEdit(helper)}
+                        >
+                          {helper.phone?.trim() ? helper.phone : "Telefon hinzufügen"}
+                        </button>
+                        <p className="mt-1 hidden truncate font-medium text-slate-800 md:block">
                           {helper.phone?.trim() ? helper.phone : "–"}
                         </p>
                       </div>
@@ -2238,6 +2315,131 @@ export default function Helpers() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={Boolean(mobileHelperEditTarget)}
+        onOpenChange={open => {
+          if (!open && !update.isPending) setMobileHelperEditTarget(null);
+        }}
+      >
+        <DialogContent
+          data-slot="mobile-helper-edit-dialog"
+          className="max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] overflow-y-auto bg-white text-slate-950 sm:max-w-lg"
+        >
+          <DialogHeader>
+            <DialogTitle>Helfer bearbeiten</DialogTitle>
+            <p className="text-sm text-slate-500">
+              Angaben direkt in der Helferkarte aktualisieren. Leere Felder entfernen bestehende Angaben.
+            </p>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <label htmlFor="mobile-helper-edit-name" className="text-sm font-medium">
+                Name
+              </label>
+              <Input
+                id="mobile-helper-edit-name"
+                value={mobileHelperEditForm.name}
+                onChange={event =>
+                  setMobileHelperEditForm(current => ({
+                    ...current,
+                    name: event.target.value,
+                  }))
+                }
+                className="h-11 text-base"
+                autoFocus
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="mobile-helper-edit-contact" className="text-sm font-medium">
+                Ansprechpartner
+              </label>
+              <Select
+                value={mobileHelperEditForm.contactId}
+                onValueChange={contactId =>
+                  setMobileHelperEditForm(current => ({ ...current, contactId }))
+                }
+              >
+                <SelectTrigger id="mobile-helper-edit-contact" className="h-11 text-base">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Kein Ansprechpartner</SelectItem>
+                  {contacts.map(contact => (
+                    <SelectItem key={contact.id} value={String(contact.id)}>
+                      {contact.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="mobile-helper-edit-phone" className="text-sm font-medium">
+                Telefon Helfer
+              </label>
+              <Input
+                id="mobile-helper-edit-phone"
+                type="tel"
+                value={mobileHelperEditForm.phone}
+                onChange={event =>
+                  setMobileHelperEditForm(current => ({
+                    ...current,
+                    phone: event.target.value,
+                  }))
+                }
+                placeholder="Leer lassen, um die Nummer zu entfernen"
+                className="h-11 text-base"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="mobile-helper-edit-note" className="text-sm font-medium">
+                Hinweis für PDF
+              </label>
+              <Textarea
+                id="mobile-helper-edit-note"
+                rows={3}
+                value={mobileHelperEditForm.note}
+                onChange={event =>
+                  setMobileHelperEditForm(current => ({
+                    ...current,
+                    note: event.target.value,
+                  }))
+                }
+                placeholder="z. B. Kabeltrommel kann mitbringen"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="mobile-helper-edit-companion" className="text-sm font-medium">
+                Zusätzliche Begleitung
+              </label>
+              <Input
+                id="mobile-helper-edit-companion"
+                value={mobileHelperEditForm.companion}
+                onChange={event =>
+                  setMobileHelperEditForm(current => ({
+                    ...current,
+                    companion: event.target.value,
+                  }))
+                }
+                placeholder="z. B. + Frau Muster, + Kind"
+                className="h-11 text-base"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={update.isPending}
+              onClick={() => setMobileHelperEditTarget(null)}
+            >
+              Abbrechen
+            </Button>
+            <Button type="button" disabled={update.isPending} onClick={saveMobileHelperEdit}>
+              {update.isPending ? "Speichert …" : "Änderungen speichern"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
       <Dialog

@@ -29,6 +29,7 @@ import {
   Pencil,
   Plus,
   Search,
+  SlidersHorizontal,
   Trash2,
   X,
 } from "lucide-react";
@@ -104,7 +105,7 @@ import { LocationMapLink } from "@/components/LocationMapLink";
 import { MyTasksDefaultPin } from "@/components/MyTasksDefaultPin";
 import { useMyTasksDefault } from "@/hooks/useMyTasksDefault";
 import { ViewModeToggle } from "@/components/ViewModeToggle";
-import { useViewMode } from "@/hooks/useViewMode";
+import { useMobileViewMode, useViewMode } from "@/hooks/useViewMode";
 
 const formatTimeLabel = (shift: { startTime: string; endTime: string }) =>
   shift.startTime && shift.endTime
@@ -146,6 +147,7 @@ type DropdownShift = ShiftTimeLike & {
 
 type AvailabilityField = (typeof WEEKDAY_AVAILABILITY_FIELDS)[Weekday];
 type HelperTooltipData = {
+  id: number;
   name: string;
   phone: string | null;
   note: string | null;
@@ -220,10 +222,12 @@ function HelperDropdownFeedbackBadge({
   feedback,
   assignments = [],
   compact = false,
+  interactive = false,
 }: {
   feedback: ReturnType<typeof helperDropdownAssignmentFeedback>;
   assignments?: Array<{ day: string; label?: string; time?: string }>;
   compact?: boolean;
+  interactive?: boolean;
 }) {
   if (!feedback) return null;
   if (feedback.kind === "already-assigned") {
@@ -323,7 +327,66 @@ function HelperDropdownFeedbackBadge({
       })}
     </span>
   );
-  return badge;
+  if (!interactive) return badge;
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          data-slot="mobile-helper-day-details-trigger"
+          className="rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+          aria-label="Einsatz- und Tagesdetails anzeigen"
+          title="Einsatz- und Tagesdetails anzeigen"
+        >
+          {badge}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        side="top"
+        sideOffset={8}
+        className="z-50 w-[min(20rem,calc(100vw-1.5rem))] max-w-none space-y-2 border border-slate-200 bg-white p-3 text-slate-950 shadow-lg"
+      >
+        <p className="text-sm font-semibold">Einsatzübersicht</p>
+        <div className="space-y-1.5 text-xs text-slate-700">
+          {feedback.segments.map(segment => {
+            const dayAssignments = assignments.filter(
+              assignment => normalizeWeekday(assignment.day) === segment.day
+            );
+            const stateLabel =
+              segment.state === "assigned"
+                ? "bereits eingeteilt"
+                : segment.state === "current"
+                  ? "für diese Schicht verfügbar"
+                  : segment.state === "unavailable"
+                    ? "nicht verfügbar"
+                    : "verfügbar, noch nicht eingeteilt";
+            return (
+              <div
+                key={segment.day}
+                className="rounded-md border border-slate-100 bg-slate-50 px-2 py-1.5"
+              >
+                <span className="font-semibold text-slate-900">{segment.label}:</span>{" "}
+                {stateLabel}
+                {dayAssignments.map(assignment => (
+                  <span key={`${assignment.label}-${assignment.time}`} className="mt-1 block text-slate-600">
+                    {assignment.label} · {assignment.time}
+                  </span>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function toggleMultiSelection<T>(values: T[], value: T) {
+  return values.includes(value)
+    ? values.filter(item => item !== value)
+    : [...values, value];
 }
 
 function HighlightedText({ text, query }: { text: string; query: string }) {
@@ -595,6 +658,7 @@ export default function Plan() {
   const { data: currentEvent, isLoading: isEventLoading } =
     trpc.events.current.useQuery();
   const { data: areaContactRows = [] } = trpc.plan.areaContacts.useQuery();
+  const isMobileView = useMobileViewMode();
   const activeDays = useMemo(
     () => (currentEvent ? eventWeekdays(currentEvent.activeDays) : []),
     [currentEvent?.activeDays]
@@ -609,6 +673,20 @@ export default function Plan() {
   const [openOrUnassignedOnly, setOpenOrUnassignedOnly] = useState(false);
   const [q, setQ] = useState("");
   const [viewMode, setViewMode] = useViewMode("einsatzplan");
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [mobileDays, setMobileDays] = useState<string[]>(() =>
+    dashboardDayFilter ? [dashboardDayFilter] : []
+  );
+  const [mobileAreas, setMobileAreas] = useState<string[]>([]);
+  const [mobileStatuses, setMobileStatuses] = useState<PlanStatusFilter[]>(() =>
+    status === "alle" ? [] : [status]
+  );
+  const [mobileWarnings, setMobileWarnings] = useState<PlanWarningSelection[]>(() =>
+    warningFilter === "alle" ? [] : [warningFilter]
+  );
+  const [mobileContactIds, setMobileContactIds] = useState<string[]>([]);
+  const [mobileFlexibleOnly, setMobileFlexibleOnly] = useState(false);
+  const [mobileOpenOrUnassignedOnly, setMobileOpenOrUnassignedOnly] = useState(false);
   const [selectedHelperIdsByShift, setSelectedHelperIdsByShift] = useState<
     Record<number, number[]>
   >({});
@@ -620,6 +698,10 @@ export default function Plan() {
   const [mobileNoteShift, setMobileNoteShift] =
     useState<DropdownShift | null>(null);
   const [mobileNoteValue, setMobileNoteValue] = useState("");
+  const [mobileHelperDetails, setMobileHelperDetails] = useState<{
+    helper: HelperTooltipData;
+    shift: DropdownShift;
+  } | null>(null);
   const pendingTimeOverlapNotice = useRef<string[]>([]);
   const emptyMessage =
     warningFilter === "konflikte"
@@ -669,6 +751,13 @@ export default function Plan() {
     setFlexibleAssignmentFilter("alle");
     setMyTasksOnly(false);
     setOpenOrUnassignedOnly(false);
+    setMobileDays([]);
+    setMobileAreas([]);
+    setMobileStatuses([]);
+    setMobileWarnings([]);
+    setMobileContactIds([]);
+    setMobileFlexibleOnly(false);
+    setMobileOpenOrUnassignedOnly(false);
     setQ("");
     setSearchParams(
       previous => {
@@ -685,15 +774,32 @@ export default function Plan() {
   };
 
   const hasActiveDropdownFilters =
-    day !== "alle" ||
-    area !== "alle" ||
-    status !== "alle" ||
-    warningFilter !== "alle" ||
-    apFilter !== "alle" ||
-    flexibleAssignmentFilter !== "alle" ||
-    myTasksOnly ||
-    openOrUnassignedOnly ||
-    Boolean(locationFilter);
+    isMobileView
+      ? mobileDays.length > 0 ||
+        mobileAreas.length > 0 ||
+        mobileStatuses.length > 0 ||
+        mobileWarnings.length > 0 ||
+        mobileContactIds.length > 0 ||
+        mobileFlexibleOnly ||
+        mobileOpenOrUnassignedOnly ||
+        Boolean(locationFilter)
+      : day !== "alle" ||
+        area !== "alle" ||
+        status !== "alle" ||
+        warningFilter !== "alle" ||
+        apFilter !== "alle" ||
+        flexibleAssignmentFilter !== "alle" ||
+        myTasksOnly ||
+        openOrUnassignedOnly ||
+        Boolean(locationFilter);
+  const mobileFilterCount =
+    mobileDays.length +
+    mobileAreas.length +
+    mobileStatuses.length +
+    mobileWarnings.length +
+    mobileContactIds.length +
+    Number(mobileFlexibleOnly) +
+    Number(mobileOpenOrUnassignedOnly);
 
   useEffect(() => {
     if (day !== "alle" && !activeDays.includes(day as Weekday)) setDay("alle");
@@ -701,6 +807,9 @@ export default function Plan() {
 
   useEffect(() => {
     if (dashboardDayFilter) setDay(dashboardDayFilter);
+  }, [dashboardDayFilter]);
+  useEffect(() => {
+    if (dashboardDayFilter) setMobileDays([dashboardDayFilter]);
   }, [dashboardDayFilter]);
 
   const invalidate = () => {
@@ -1095,28 +1204,58 @@ export default function Plan() {
       evals
         .filter(
           e =>
-            (day === "alle" || e.shift.day === day) &&
-            (area === "alle" || e.shift.area === area) &&
+            (isMobileView
+              ? mobileDays.length === 0 || mobileDays.includes(e.shift.day)
+              : day === "alle" || e.shift.day === day) &&
+            (isMobileView
+              ? mobileAreas.length === 0 || mobileAreas.includes(e.shift.area)
+              : area === "alle" || e.shift.area === area) &&
             (!locationFilter || e.shift.locationId === locationFilter) &&
-            planStatusMatchesFilter(
-              status,
-              e.status,
-              Boolean(
-                e.shift.manualOkConfirmed ||
-                  e.shift.manualDoubleConflictAccepted
-              )
-            ) &&
-            (warningFilter !== "konflikte" || e.doppelCount > 0) &&
-            (warningFilter !== "ausfaelle" || e.ausfallCount > 0) &&
+            (isMobileView
+              ? mobileStatuses.length === 0 ||
+                mobileStatuses.some(selectedStatus =>
+                  planStatusMatchesFilter(
+                    selectedStatus,
+                    e.status,
+                    Boolean(
+                      e.shift.manualOkConfirmed ||
+                        e.shift.manualDoubleConflictAccepted
+                    )
+                  )
+                )
+              : planStatusMatchesFilter(
+                  status,
+                  e.status,
+                  Boolean(
+                    e.shift.manualOkConfirmed ||
+                      e.shift.manualDoubleConflictAccepted
+                  )
+                )) &&
+            (isMobileView
+              ? mobileWarnings.length === 0 ||
+                mobileWarnings.some(
+                  warning =>
+                    (warning === "konflikte" && e.doppelCount > 0) ||
+                    (warning === "ausfaelle" && e.ausfallCount > 0)
+                )
+              : (warningFilter !== "konflikte" || e.doppelCount > 0) &&
+                (warningFilter !== "ausfaelle" || e.ausfallCount > 0)) &&
             (!dashboardHelperId ||
               e.assigned.some(
                 assignment => assignment.helperId === dashboardHelperId
               )) &&
             planEvaluationMatchesSearch(e, q, helperNameById) &&
-            (flexibleAssignmentFilter === "alle" ||
-              e.shift.allowFlexibleAssignment) &&
-            (apFilter === "alle" ||
-              String(areaContactMap.get(e.shift.area) ?? "") === apFilter) &&
+            (isMobileView
+              ? !mobileFlexibleOnly || e.shift.allowFlexibleAssignment
+              : flexibleAssignmentFilter === "alle" ||
+                e.shift.allowFlexibleAssignment) &&
+            (isMobileView
+              ? mobileContactIds.length === 0 ||
+                mobileContactIds.includes(
+                  String(areaContactMap.get(e.shift.area) ?? "")
+                )
+              : apFilter === "alle" ||
+                String(areaContactMap.get(e.shift.area) ?? "") === apFilter) &&
             (!myTasksOnly ||
               matchesMyScheduleAssignment({
                 area: e.shift.area,
@@ -1125,7 +1264,7 @@ export default function Plan() {
                 assigned: e.assigned,
                 ownHelperIds,
               })) &&
-            (!openOrUnassignedOnly ||
+            (!(isMobileView ? mobileOpenOrUnassignedOnly : openOrUnassignedOnly) ||
               e.status === "OFFEN" || e.assigned.length < e.shift.needed)
         )
         .sort(
@@ -1138,8 +1277,16 @@ export default function Plan() {
         ),
     [
       evals,
+      isMobileView,
       day,
       area,
+      mobileDays,
+      mobileAreas,
+      mobileStatuses,
+      mobileWarnings,
+      mobileContactIds,
+      mobileFlexibleOnly,
+      mobileOpenOrUnassignedOnly,
       locationFilter,
       status,
       warningFilter,
@@ -1546,27 +1693,48 @@ export default function Plan() {
                         .map(other => `${other.area}: ${other.task} (${formatTimeLabel(other)})`)
                         .join(", ");
                       return (
-                        <label
+                        <div
                           key={helper.id}
-                          className={`flex cursor-pointer items-center gap-2 rounded-lg border px-2 py-1.5 text-[13px] leading-4 transition-colors ${selected ? "border-blue-300 bg-white shadow-sm" : "border-transparent hover:border-blue-200 hover:bg-white/80"} ${selectionFull ? "cursor-not-allowed opacity-50" : ""}`}
+                          data-slot="shift-card-helper-candidate"
+                          className={`flex items-center gap-2 rounded-lg border px-2 py-1.5 text-[13px] leading-4 transition-colors ${selected ? "border-blue-300 bg-white shadow-sm" : "border-transparent hover:border-blue-200 hover:bg-white/80"} ${selectionFull ? "cursor-not-allowed opacity-50" : "md:cursor-pointer"}`}
                           title={conflictTitle || availabilityLabel || undefined}
+                          onClick={() => {
+                            if (!isMobileView && !selectionFull && !assignMany.isPending) {
+                              toggleSelectedHelper(shift.id, helper.id);
+                            }
+                          }}
                         >
                           <Checkbox
                             checked={selected}
                             disabled={assignMany.isPending || selectionFull}
+                            onClick={event => event.stopPropagation()}
                             onCheckedChange={() => toggleSelectedHelper(shift.id, helper.id)}
                             aria-label={`${label(helper)} auswählen`}
                           />
                           <span className="min-w-0 flex-1 truncate font-medium text-slate-800" title={label(helper)}>
                             {helper.companion?.trim() && <span aria-hidden="true">👪 </span>}
-                            {helper.name}
+                            <button
+                              type="button"
+                              data-slot="mobile-helper-details-trigger"
+                              className="max-w-full truncate text-left font-medium text-slate-800 underline decoration-slate-200 underline-offset-2 md:pointer-events-none md:no-underline"
+                              aria-label={`Hinweise und Einsatzdetails von ${helper.name} anzeigen`}
+                              onClick={event => {
+                                event.stopPropagation();
+                                if (isMobileView) {
+                                  setMobileHelperDetails({ helper, shift });
+                                }
+                              }}
+                            >
+                              {helper.name}
+                            </button>
                           </span>
                           <HelperDropdownFeedbackBadge
                             feedback={assignmentFeedback}
                             assignments={assignmentDisplayByHelper.get(helper.id) ?? []}
                             compact
+                            interactive={isMobileView}
                           />
-                        </label>
+                        </div>
                       );
                     })}
                     {!candidateHelpers.length && (
@@ -1779,7 +1947,7 @@ export default function Plan() {
       )}
 
       <div className="flex flex-col gap-2.5">
-        <div className="order-2 relative w-full md:order-1 lg:max-w-xl">
+        <div className="order-1 relative w-full lg:max-w-xl">
           <Search
             className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-700"
             aria-hidden="true"
@@ -1809,8 +1977,178 @@ export default function Plan() {
             </button>
           )}
         </div>
+
+        <div className="order-2 flex items-center gap-1 md:hidden" aria-label="Persönlicher Einsatzfilter">
+          <Button
+            type="button"
+            size="sm"
+            variant={myTasksOnly ? "default" : "outline"}
+            className={
+              myTasksOnly
+                ? "bg-blue-600 text-white hover:bg-blue-700"
+                : "border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100"
+            }
+            disabled={ownContactIds.size === 0 && ownHelperIds.size === 0}
+            title={
+              ownContactIds.size === 0 && ownHelperIds.size === 0
+                ? "Der aktuelle Sitzungsname ist weder Ansprechpartner noch Helfer zugeordnet."
+                : undefined
+            }
+            onClick={() => setMyTasksOnly(active => !active)}
+          >
+            👤 Meine Aufgaben
+          </Button>
+          <MyTasksDefaultPin
+            pressed={isDefaultMyTasks}
+            disabled={!canRememberMyTasksDefault}
+            onPressedChange={updateMyTasksDefault}
+          />
+        </div>
+
+        <div className="order-3 md:hidden">
+          <button
+            type="button"
+            data-slot="mobile-plan-filter-toggle"
+            aria-expanded={mobileFiltersOpen}
+            aria-controls="mobile-plan-filter-panel"
+            onClick={() => setMobileFiltersOpen(open => !open)}
+            className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 text-left text-sm font-semibold text-slate-800 shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+          >
+            <span className="flex min-w-0 items-center gap-2">
+              <SlidersHorizontal className="size-4 shrink-0 text-slate-600" aria-hidden="true" />
+              <span>Filter & Auswahl</span>
+              {mobileFilterCount > 0 && (
+                <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-900">
+                  {mobileFilterCount} aktiv
+                </span>
+              )}
+            </span>
+            <ChevronDown
+              className={`size-5 shrink-0 text-slate-600 transition-transform duration-200 ${mobileFiltersOpen ? "rotate-180" : ""}`}
+              aria-hidden="true"
+            />
+          </button>
+          {mobileFiltersOpen && (
+            <div
+              id="mobile-plan-filter-panel"
+              data-slot="mobile-plan-filter-panel"
+              className="mt-2 space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-3"
+            >
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-semibold text-slate-900">Tage</legend>
+                <div className="grid grid-cols-2 gap-2">
+                  {activeDays.map(option => (
+                    <label key={option} className="flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-800">
+                      <Checkbox
+                        checked={mobileDays.includes(option)}
+                        onCheckedChange={() => setMobileDays(values => toggleMultiSelection(values, option))}
+                      />
+                      {option}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-semibold text-slate-900">Bereiche</legend>
+                <div className="max-h-40 space-y-1 overflow-y-auto pr-1">
+                  {areas.map(option => (
+                    <label key={option} className="flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-800">
+                      <Checkbox
+                        checked={mobileAreas.includes(option)}
+                        onCheckedChange={() => setMobileAreas(values => toggleMultiSelection(values, option))}
+                      />
+                      <span className="min-w-0 break-words">{option}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-semibold text-slate-900">Status</legend>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    ["OFFEN", "Offen"],
+                    ["KNAPP", "Knapp"],
+                    ["OK", "OK"],
+                    ["OK_MANUELL", "OK (manuell)"],
+                  ] as const).map(([value, label]) => (
+                    <label key={value} className="flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-800">
+                      <Checkbox
+                        checked={mobileStatuses.includes(value)}
+                        onCheckedChange={() => setMobileStatuses(values => toggleMultiSelection(values, value))}
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-semibold text-slate-900">Warnungen</legend>
+                <div className="grid grid-cols-1 gap-2">
+                  {([
+                    ["konflikte", "Doppelbelegungen"],
+                    ["ausfaelle", "Ausfälle"],
+                  ] as const).map(([value, label]) => (
+                    <label key={value} className="flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-800">
+                      <Checkbox
+                        checked={mobileWarnings.includes(value)}
+                        onCheckedChange={() => setMobileWarnings(values => toggleMultiSelection(values, value))}
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-semibold text-slate-900">Ansprechpartner</legend>
+                <div className="max-h-40 space-y-1 overflow-y-auto pr-1">
+                  {contacts.map(contact => (
+                    <label key={contact.id} className="flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-800">
+                      <Checkbox
+                        checked={mobileContactIds.includes(String(contact.id))}
+                        onCheckedChange={() =>
+                          setMobileContactIds(values =>
+                            toggleMultiSelection(values, String(contact.id))
+                          )
+                        }
+                      />
+                      <span className="min-w-0 break-words">{contact.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-semibold text-slate-900">Weitere Auswahl</legend>
+                <label className="flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-800">
+                  <Checkbox
+                    checked={mobileOpenOrUnassignedOnly}
+                    onCheckedChange={checked => setMobileOpenOrUnassignedOnly(checked === true)}
+                  />
+                  Nur offene / unbesetzte Schichten
+                </label>
+                <label className="flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-800">
+                  <Checkbox
+                    checked={mobileFlexibleOnly}
+                    onCheckedChange={checked => setMobileFlexibleOnly(checked === true)}
+                  />
+                  Nur flexible Belegung
+                </label>
+              </fieldset>
+              {hasActiveDropdownFilters && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-10 w-full border-sky-200 bg-white text-sky-800 hover:bg-sky-50"
+                  onClick={resetPlanFilters}
+                >
+                  <FilterX className="mr-2 size-4" aria-hidden="true" />
+                  Filter zurücksetzen
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
         <div
-          className="order-1 flex flex-wrap gap-2 md:order-2 lg:order-1"
+          className="order-2 hidden flex-wrap gap-2 md:order-2 md:flex lg:order-1"
           aria-label="Schnellfilter Einsatzplan"
         >
           <div className="flex items-center gap-1">
@@ -1853,7 +2191,7 @@ export default function Plan() {
             ⚠ Nur offene / unbesetzte Schichten
           </Button>
         </div>
-        <div className="order-1 grid gap-2 sm:grid-cols-2 md:order-2 lg:flex lg:flex-wrap">
+        <div className="order-1 hidden gap-2 sm:grid-cols-2 md:order-2 md:grid lg:flex lg:flex-wrap">
           <Select value={day} onValueChange={setDay}>
             <SelectTrigger className="w-full lg:w-40">
               <SelectValue />
@@ -2336,6 +2674,109 @@ export default function Plan() {
             </Button>
             <Button type="button" disabled={updateShift.isPending} onClick={saveMobileNote}>
               {updateShift.isPending ? "Speichert …" : "Speichern"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(mobileHelperDetails)}
+        onOpenChange={open => {
+          if (!open) setMobileHelperDetails(null);
+        }}
+      >
+        <DialogContent
+          data-slot="mobile-helper-details-dialog"
+          className="max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] overflow-y-auto bg-white text-slate-950 sm:max-w-lg"
+        >
+          <DialogHeader>
+            <DialogTitle>{mobileHelperDetails?.helper.name ?? "Helfer"}</DialogTitle>
+            <p className="text-sm text-slate-500">
+              Hinweise, Verfügbarkeit und Einsätze im Überblick.
+            </p>
+          </DialogHeader>
+          {mobileHelperDetails && (
+            <div className="space-y-4 py-2 text-sm">
+              <section className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <p>
+                  <span className="font-medium">Telefon:</span>{" "}
+                  {mobileHelperDetails.helper.phone?.trim() ? (
+                    <a
+                      href={`tel:${mobileHelperDetails.helper.phone.replace(/[^\d+]/g, "")}`}
+                      className="text-blue-700 underline decoration-blue-300 underline-offset-2"
+                    >
+                      {mobileHelperDetails.helper.phone.trim()}
+                    </a>
+                  ) : (
+                    "nicht hinterlegt"
+                  )}
+                </p>
+                <p className="whitespace-pre-wrap break-words">
+                  <span className="font-medium">Hinweis für PDF:</span>{" "}
+                  {mobileHelperDetails.helper.note?.trim() || "–"}
+                </p>
+                {mobileHelperDetails.helper.companion?.trim() && (
+                  <p>
+                    <span className="font-medium">Zusätzliche Begleitung:</span>{" "}
+                    {mobileHelperDetails.helper.companion.trim()}
+                  </p>
+                )}
+              </section>
+              <section className="space-y-2">
+                <h3 className="text-sm font-semibold text-slate-950">Tage & Einsätze</h3>
+                <div className="space-y-2">
+                  {activeDays.map(day => {
+                    const availability = helperDayAvailability(
+                      mobileHelperDetails.helper,
+                      day
+                    ).value;
+                    const timeWindow = helperHasTimedAvailability(
+                      mobileHelperDetails.helper,
+                      day
+                    )
+                      ? helperAvailabilityWindowLabel(mobileHelperDetails.helper, day)
+                      : null;
+                    const assignments = (
+                      assignmentDisplayByHelper.get(mobileHelperDetails.helper.id) ?? []
+                    ).filter(assignment => normalizeWeekday(assignment.day) === day);
+                    return (
+                      <div
+                        key={day}
+                        className="rounded-xl border border-slate-200 bg-white p-3"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="font-semibold text-slate-900">{day}</span>
+                          <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${AVAILABILITY_PILL_CLASS[availability]}`}>
+                            {availability}
+                          </span>
+                        </div>
+                        {timeWindow && (
+                          <p className="mt-1 text-xs text-slate-600">
+                            Verfügbar: {timeWindow}
+                          </p>
+                        )}
+                        {assignments.length ? (
+                          <div className="mt-2 space-y-1 text-xs text-slate-700">
+                            {assignments.map(assignment => (
+                              <p key={`${assignment.label}-${assignment.time}`}>
+                                <span className="font-medium">Eingeteilt:</span>{" "}
+                                {assignment.label} · {assignment.time}
+                              </p>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="mt-2 text-xs text-slate-500">Noch nicht eingeteilt</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            </div>
+          )}
+          <DialogFooter>
+            <Button type="button" onClick={() => setMobileHelperDetails(null)}>
+              Schließen
             </Button>
           </DialogFooter>
         </DialogContent>
