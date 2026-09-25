@@ -1384,7 +1384,7 @@ export default function Helpers() {
             </div>
           )}
         </div>
-        <div className="order-2 hidden grid-cols-1 gap-2 md:grid md:flex md:flex-wrap">
+        <div className="order-2 hidden gap-2 md:flex md:flex-wrap">
           <Select value={apFilter} onValueChange={setApFilter}>
             <SelectTrigger className="!h-10 w-full items-center border-slate-200 bg-white text-base md:w-[190px] md:text-sm">
               <SelectValue placeholder="Ansprechpartner" />

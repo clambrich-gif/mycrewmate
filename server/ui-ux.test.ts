@@ -2454,7 +2454,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain('className="order-3 relative w-full md:max-w-[551px]"');
     expect(helpers).toContain('data-slot="mobile-helper-filter-toggle"');
     expect(helpers).toContain('data-slot="mobile-helper-filter-panel"');
-    expect(helpers).toContain('className="order-2 hidden grid-cols-1 gap-2 md:grid md:flex md:flex-wrap"');
+    expect(helpers).toContain('className="order-2 hidden gap-2 md:flex md:flex-wrap"');
     expect(helpers).toContain("<Search");
     expect(helpers).toContain("Suchen (Name, Telefon, Hinweise) …");
     expect(helpers).toContain("Helfer nach Name, Telefon oder Hinweis durchsuchen");
