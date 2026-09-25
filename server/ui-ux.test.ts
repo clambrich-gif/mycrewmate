@@ -2451,10 +2451,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain(
       'className="flex flex-col gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm"'
     );
-    expect(helpers).toContain('className="order-1 relative w-full md:max-w-[551px]"');
+    expect(helpers).toContain('className="order-3 relative w-full md:max-w-[551px]"');
     expect(helpers).toContain('data-slot="mobile-helper-filter-toggle"');
     expect(helpers).toContain('data-slot="mobile-helper-filter-panel"');
-    expect(helpers).toContain('className="order-3 hidden grid-cols-1 gap-2 md:grid md:flex md:flex-wrap"');
+    expect(helpers).toContain('className="order-2 hidden grid-cols-1 gap-2 md:grid md:flex md:flex-wrap"');
     expect(helpers).toContain("<Search");
     expect(helpers).toContain("Suchen (Name, Telefon, Hinweise) …");
     expect(helpers).toContain("Helfer nach Name, Telefon oder Hinweis durchsuchen");
@@ -2474,9 +2474,15 @@ describe("UI- und Mobile-UX-Regeln", () => {
       "Nur Helfer mit Zeitfenstern",
     ].map(label => helpers.indexOf(label));
     expect(filterOrder.every(index => index >= 0)).toBe(true);
-    expect(plan).toContain('className="order-1 relative w-full lg:max-w-xl"');
+    expect(
+      helpers.indexOf("Suchen (Name, Telefon, Hinweise) …")
+    ).toBeGreaterThan(helpers.indexOf("Nur Helfer mit Zeitfenstern"));
+    expect(plan).toContain('className="order-3 relative w-full lg:max-w-xl"');
     expect(plan).toContain('data-slot="mobile-plan-filter-toggle"');
-    expect(plan).toContain('className="order-1 hidden gap-2 sm:grid-cols-2 md:order-2 md:grid lg:flex lg:flex-wrap"');
+    expect(plan).toContain('className="order-2 hidden gap-2 sm:grid-cols-2 md:grid lg:flex lg:flex-wrap"');
+    expect(plan.indexOf('name="plan-search-query"')).toBeGreaterThan(
+      plan.indexOf("Alle Belegungsarten")
+    );
   });
 
   it("kennzeichnet Hauptseiten mit ruhigen einfarbigen Titelicons", () => {

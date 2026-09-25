@@ -709,27 +709,6 @@ export default function Preparation() {
       </div>
 
       <div className="space-y-3 rounded-xl border border-sky-200/80 bg-white/90 p-3 shadow-sm sm:p-4">
-        <div className="relative w-full max-w-2xl">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-          <Input
-            value={searchTerm}
-            onChange={event => setSearchTerm(event.target.value)}
-            placeholder="Suchen (Aufgabe/Bereich/Verantwortlicher/Ort/Frist) …"
-            className="h-11 border-sky-200 bg-white pl-9 pr-8 text-base sm:h-10 sm:text-sm"
-            aria-label="Vorbereitungsaufgaben durchsuchen"
-          />
-          {searchTerm && (
-            <button
-              type="button"
-              onClick={() => setSearchTerm("")}
-              className="absolute right-2.5 top-1/2 inline-flex min-h-11 min-w-11 -translate-y-1/2 items-center justify-center text-slate-400 hover:text-slate-700 sm:min-h-0 sm:min-w-0"
-              aria-label="Suche leeren"
-            >
-              <X className="size-4" />
-            </button>
-          )}
-        </div>
-
         <div className="flex flex-wrap gap-2" aria-label="Schnellfilter Vorbereitung">
           <div className="flex items-center gap-1">
             <Button
@@ -846,6 +825,27 @@ export default function Preparation() {
               <FilterX className="mr-1 size-3.5" />
               Filter zurücksetzen
             </Button>
+          )}
+        </div>
+
+        <div className="relative w-full max-w-2xl">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            value={searchTerm}
+            onChange={event => setSearchTerm(event.target.value)}
+            placeholder="Suchen (Aufgabe/Bereich/Verantwortlicher/Ort/Frist) …"
+            className="h-11 border-sky-200 bg-white pl-9 pr-8 text-base sm:h-10 sm:text-sm"
+            aria-label="Vorbereitungsaufgaben durchsuchen"
+          />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm("")}
+              className="absolute right-2.5 top-1/2 inline-flex min-h-11 min-w-11 -translate-y-1/2 items-center justify-center text-slate-400 hover:text-slate-700 sm:min-h-0 sm:min-w-0"
+              aria-label="Suche leeren"
+            >
+              <X className="size-4" />
+            </button>
           )}
         </div>
       </div>

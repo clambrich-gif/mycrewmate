@@ -1947,38 +1947,7 @@ export default function Plan() {
       )}
 
       <div className="flex flex-col gap-2.5">
-        <div className="order-1 relative w-full lg:max-w-xl">
-          <Search
-            className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-700"
-            aria-hidden="true"
-          />
-          <Input
-            ref={searchInputRef}
-            name="plan-search-query"
-            autoComplete="off"
-            placeholder="Suchen (Aufgabe/Bereich/Helfer) …"
-            aria-label="Einsatzplan nach Aufgabe, Bereich oder Helfer durchsuchen"
-            value={q}
-            onChange={e => setQ(e.target.value)}
-            className="h-12 w-full border-2 border-slate-400 bg-white pl-11 pr-12 text-base font-medium text-slate-950 shadow-sm placeholder:text-slate-600 focus-visible:border-blue-600 focus-visible:ring-blue-200 md:h-11 md:pr-10"
-          />
-          {q && (
-            <button
-              type="button"
-              aria-label="Suche löschen"
-              title="Suche löschen"
-              className="absolute right-0.5 top-1/2 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 md:right-1 md:h-8 md:w-8"
-              onClick={() => {
-                setQ("");
-                searchInputRef.current?.focus();
-              }}
-            >
-              <X className="h-5 w-5" aria-hidden="true" />
-            </button>
-          )}
-        </div>
-
-        <div className="order-2 flex items-center gap-1 md:hidden" aria-label="Persönlicher Einsatzfilter">
+        <div className="order-1 flex items-center gap-1 md:hidden" aria-label="Persönlicher Einsatzfilter">
           <Button
             type="button"
             size="sm"
@@ -2005,7 +1974,7 @@ export default function Plan() {
           />
         </div>
 
-        <div className="order-3 md:hidden">
+        <div className="order-2 md:hidden">
           <button
             type="button"
             data-slot="mobile-plan-filter-toggle"
@@ -2148,7 +2117,7 @@ export default function Plan() {
           )}
         </div>
         <div
-          className="order-2 hidden flex-wrap gap-2 md:order-2 md:flex lg:order-1"
+          className="order-1 hidden flex-wrap gap-2 md:flex"
           aria-label="Schnellfilter Einsatzplan"
         >
           <div className="flex items-center gap-1">
@@ -2191,7 +2160,7 @@ export default function Plan() {
             ⚠ Nur offene / unbesetzte Schichten
           </Button>
         </div>
-        <div className="order-1 hidden gap-2 sm:grid-cols-2 md:order-2 md:grid lg:flex lg:flex-wrap">
+        <div className="order-2 hidden gap-2 sm:grid-cols-2 md:grid lg:flex lg:flex-wrap">
           <Select value={day} onValueChange={setDay}>
             <SelectTrigger className="w-full lg:w-40">
               <SelectValue />
@@ -2298,6 +2267,37 @@ export default function Plan() {
               <FilterX className="mr-1 size-3.5" aria-hidden="true" />
               Filter zurücksetzen
             </Button>
+          )}
+        </div>
+
+        <div className="order-3 relative w-full lg:max-w-xl">
+          <Search
+            className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-700"
+            aria-hidden="true"
+          />
+          <Input
+            ref={searchInputRef}
+            name="plan-search-query"
+            autoComplete="off"
+            placeholder="Suchen (Aufgabe/Bereich/Helfer) …"
+            aria-label="Einsatzplan nach Aufgabe, Bereich oder Helfer durchsuchen"
+            value={q}
+            onChange={e => setQ(e.target.value)}
+            className="h-12 w-full border-2 border-slate-400 bg-white pl-11 pr-12 text-base font-medium text-slate-950 shadow-sm placeholder:text-slate-600 focus-visible:border-blue-600 focus-visible:ring-blue-200 md:h-11 md:pr-10"
+          />
+          {q && (
+            <button
+              type="button"
+              aria-label="Suche löschen"
+              title="Suche löschen"
+              className="absolute right-0.5 top-1/2 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 hover:text-slate-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 md:right-1 md:h-8 md:w-8"
+              onClick={() => {
+                setQ("");
+                searchInputRef.current?.focus();
+              }}
+            >
+              <X className="h-5 w-5" aria-hidden="true" />
+            </button>
           )}
         </div>
       </div>

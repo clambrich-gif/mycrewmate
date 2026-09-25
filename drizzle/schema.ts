@@ -387,6 +387,9 @@ export const events = mysqlTable(
       .default(0),
     pdfLogoKey: varchar("pdfLogoKey", { length: 500 }),
     pdfLogoUrl: varchar("pdfLogoUrl", { length: 700 }),
+    /** Je Veranstaltung getrennte WhatsApp-Texte; globale Altwerte dienen nur als Rückfall. */
+    whatsAppHelperRequestTemplate: mediumtext("whatsAppHelperRequestTemplate"),
+    whatsAppMessageTemplate: mediumtext("whatsAppMessageTemplate"),
     pdfLogoFallback: mysqlEnum("pdfLogoFallback", ["none", "brand"])
       .default("none")
       .notNull(),

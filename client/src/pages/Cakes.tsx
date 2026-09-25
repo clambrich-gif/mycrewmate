@@ -550,26 +550,6 @@ export default function Cakes() {
       </div>
 
       <div className="space-y-3 rounded-xl border bg-slate-50/70 p-3 sm:p-4">
-        <div className="relative w-full max-w-2xl">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-          <Input
-            value={searchTerm}
-            onChange={event => setSearchTerm(event.target.value)}
-            placeholder="Suchen (Spender/Spende/Hinweise/Ort) …"
-            className="h-11 bg-white pl-9 pr-8 text-base sm:h-10 sm:text-sm"
-            aria-label="Spenden durchsuchen"
-          />
-          {searchTerm && (
-            <button
-              type="button"
-              onClick={() => setSearchTerm("")}
-              className="absolute right-2.5 top-1/2 inline-flex min-h-11 min-w-11 -translate-y-1/2 items-center justify-center text-slate-400 hover:text-slate-700 sm:min-h-0 sm:min-w-0"
-              aria-label="Suche leeren"
-            >
-              <X className="size-4" />
-            </button>
-          )}
-        </div>
         <div
           className={`grid grid-cols-1 gap-2 sm:grid-cols-2 lg:items-center ${
             hasActiveFilters
@@ -659,6 +639,26 @@ export default function Cakes() {
           >
             {filteredDonations.length} von {donations.length} Spenden sichtbar
           </span>
+        </div>
+        <div className="relative w-full max-w-2xl">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            value={searchTerm}
+            onChange={event => setSearchTerm(event.target.value)}
+            placeholder="Suchen (Spender/Spende/Hinweise/Ort) …"
+            className="h-11 bg-white pl-9 pr-8 text-base sm:h-10 sm:text-sm"
+            aria-label="Spenden durchsuchen"
+          />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm("")}
+              className="absolute right-2.5 top-1/2 inline-flex min-h-11 min-w-11 -translate-y-1/2 items-center justify-center text-slate-400 hover:text-slate-700 sm:min-h-0 sm:min-w-0"
+              aria-label="Suche leeren"
+            >
+              <X className="size-4" />
+            </button>
+          )}
         </div>
       </div>
 

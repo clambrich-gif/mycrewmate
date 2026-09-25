@@ -1222,17 +1222,7 @@ export default function Helpers() {
       </div>
 
       <div className="flex flex-col gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-        <div className="order-1 relative w-full md:max-w-[551px]">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-          <Input
-            placeholder="Suchen (Name, Telefon, Hinweise) …"
-            value={filter}
-            onChange={event => setFilter(event.target.value)}
-            className="h-10 border-2 border-slate-300 bg-white pl-9 text-base shadow-sm focus:border-blue-500 focus-visible:border-blue-500 focus-visible:ring-blue-200 md:text-sm"
-            aria-label="Helfer nach Name, Telefon oder Hinweis durchsuchen"
-          />
-        </div>
-        <div className="order-2 flex flex-wrap gap-2" aria-label="Schnellfilter Helfer">
+        <div className="order-1 flex flex-wrap gap-2" aria-label="Schnellfilter Helfer">
           <div className="flex items-center gap-1">
             <Button
               type="button"
@@ -1256,7 +1246,7 @@ export default function Helpers() {
             />
           </div>
         </div>
-        <div className="order-3 md:hidden">
+        <div className="order-2 md:hidden">
           <button
             type="button"
             data-slot="mobile-helper-filter-toggle"
@@ -1394,7 +1384,7 @@ export default function Helpers() {
             </div>
           )}
         </div>
-        <div className="order-3 hidden grid-cols-1 gap-2 md:grid md:flex md:flex-wrap">
+        <div className="order-2 hidden grid-cols-1 gap-2 md:grid md:flex md:flex-wrap">
           <Select value={apFilter} onValueChange={setApFilter}>
             <SelectTrigger className="!h-10 w-full items-center border-slate-200 bg-white text-base md:w-[190px] md:text-sm">
               <SelectValue placeholder="Ansprechpartner" />
@@ -1492,6 +1482,16 @@ export default function Helpers() {
               Filter zurücksetzen
             </Button>
           )}
+        </div>
+        <div className="order-3 relative w-full md:max-w-[551px]">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            placeholder="Suchen (Name, Telefon, Hinweise) …"
+            value={filter}
+            onChange={event => setFilter(event.target.value)}
+            className="h-10 border-2 border-slate-300 bg-white pl-9 text-base shadow-sm focus:border-blue-500 focus-visible:border-blue-500 focus-visible:ring-blue-200 md:text-sm"
+            aria-label="Helfer nach Name, Telefon oder Hinweis durchsuchen"
+          />
         </div>
       </div>
 

@@ -19,6 +19,17 @@ describe("öffentliche Helfer-PDF-Freigaben", () => {
     });
   });
 
+  it("bindet neue Freigaben zusätzlich an den jeweiligen Verein", () => {
+    const tenantScope = { ...scope, tenantId: "rsv-musterstadt" };
+    const token = createPublicHelperPdfToken(tenantScope, issuedAt);
+
+    expect(verifyPublicHelperPdfToken(token, issuedAt + 1)).toEqual({
+      version: 1,
+      ...tenantScope,
+      expiresAt: issuedAt + PUBLIC_HELPER_PDF_LINK_TTL_MS,
+    });
+  });
+
   it("weist manipulierte, abgelaufene und unvollständige Tokens zurück", () => {
     const token = createPublicHelperPdfToken(scope, issuedAt);
     const [claims, signature] = token.split(".");

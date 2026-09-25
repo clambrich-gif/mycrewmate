@@ -3498,18 +3498,32 @@ export const appRouter = router({
             : null,
         logoFallback: "none" as const,
         whatsAppHelperRequestTemplate:
-          settings.whatsAppHelperRequestTemplate ?? null,
-        whatsAppMessageTemplate: settings.whatsAppMessageTemplate ?? null,
+          selectedEvent?.whatsAppHelperRequestTemplate ??
+          settings.whatsAppHelperRequestTemplate ??
+          null,
+        whatsAppMessageTemplate:
+          selectedEvent?.whatsAppMessageTemplate ??
+          settings.whatsAppMessageTemplate ??
+          null,
         extraColumns,
       };
     }),
     updateSettings: adminProcedure
       .input(pdfSettingsInput)
       .mutation(async ({ input }) => {
-        const { extraColumns, ...rest } = input;
+        const {
+          extraColumns,
+          whatsAppHelperRequestTemplate,
+          whatsAppMessageTemplate,
+          ...rest
+        } = input;
         await db.updateAppSettings({
           ...rest,
           extraColumns: JSON.stringify(extraColumns),
+        });
+        await db.updateCurrentEventWhatsAppTemplates({
+          whatsAppHelperRequestTemplate,
+          whatsAppMessageTemplate,
         });
         return { success: true } as const;
       }),

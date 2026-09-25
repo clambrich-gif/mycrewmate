@@ -1990,12 +1990,26 @@ export async function getHelper(helperId: number) {
 export async function getHelperByPdfShareCode(shareCode: string) {
   const db = await getDb();
   if (!db) return undefined;
-  const [helper] = await db
-    .select()
+  const [row] = await db
+    .select({
+      helper: helpers,
+      tenantId: events.tenantId,
+    })
     .from(helpers)
+    .innerJoin(
+      events,
+      and(
+        eq(events.id, helpers.eventId),
+        eq(events.year, helpers.year)
+      )
+    )
     .where(eq(helpers.pdfShareCode, shareCode))
     .limit(1);
-  return helper;
+  if (!row) return undefined;
+  return {
+    ...row.helper,
+    tenantId: row.tenantId,
+  };
 }
 
 function createPdfShareCode() {
@@ -2086,6 +2100,28 @@ export async function updateCurrentEventPdfImage(values: {
         eq(events.year, year())
       )
     );
+  return values;
+}
+
+/** Speichert die beiden Helfer-WhatsApp-Texte ausschließlich am aktuell gewählten Event. */
+export async function updateCurrentEventWhatsAppTemplates(values: {
+  whatsAppHelperRequestTemplate: string;
+  whatsAppMessageTemplate: string;
+}) {
+  const database = (await getDb()) as DB;
+  const result = await database
+    .update(events)
+    .set(values)
+    .where(
+      and(
+        eq(events.id, event()),
+        eq(events.tenantId, tenant()),
+        eq(events.year, year())
+      )
+    );
+  if (Number((result as { affectedRows?: number }).affectedRows ?? 0) !== 1) {
+    throw new Error("Die gewählte Veranstaltung wurde nicht gefunden");
+  }
   return values;
 }
 
@@ -2270,6 +2306,8 @@ export async function createEvent(
     activeDays,
     pdfLogoKey: null,
     pdfLogoUrl: null,
+    whatsAppHelperRequestTemplate: null,
+    whatsAppMessageTemplate: null,
     pdfLogoFallback: "none" as const,
     donationTargetKuchen: 0,
     donationTargetSalat: 0,

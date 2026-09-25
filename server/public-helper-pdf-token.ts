@@ -6,6 +6,7 @@ export const PUBLIC_HELPER_PDF_LINK_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 
 type PublicHelperPdfClaims = {
   version: typeof TOKEN_VERSION;
+  tenantId?: string;
   year: number;
   eventId: number;
   helperId: number;
@@ -15,7 +16,9 @@ type PublicHelperPdfClaims = {
 export type PublicHelperPdfScope = Pick<
   PublicHelperPdfClaims,
   "year" | "eventId" | "helperId"
->;
+> & {
+  tenantId?: string;
+};
 
 const base64url = (value: Buffer | string) =>
   Buffer.from(value).toString("base64url");
@@ -53,6 +56,7 @@ export function createPublicHelperPdfToken(
 ) {
   const claims: PublicHelperPdfClaims = {
     version: TOKEN_VERSION,
+    ...(scope.tenantId ? { tenantId: scope.tenantId } : {}),
     year: scope.year,
     eventId: scope.eventId,
     helperId: scope.helperId,
@@ -87,7 +91,7 @@ export function verifyPublicHelperPdfToken(
   if (!value || typeof value !== "object") return null;
 
   const claims = value as Partial<PublicHelperPdfClaims>;
-  const { version, year, eventId, helperId, expiresAt } = claims;
+  const { version, tenantId, year, eventId, helperId, expiresAt } = claims;
   if (
     version !== TOKEN_VERSION ||
     typeof year !== "number" ||
@@ -107,5 +111,16 @@ export function verifyPublicHelperPdfToken(
     return null;
   }
 
-  return { version: TOKEN_VERSION, year, eventId, helperId, expiresAt };
+  if (tenantId !== undefined && !/^[a-z0-9-]{3,96}$/.test(tenantId)) {
+    return null;
+  }
+
+  return {
+    version: TOKEN_VERSION,
+    ...(tenantId ? { tenantId } : {}),
+    year,
+    eventId,
+    helperId,
+    expiresAt,
+  };
 }

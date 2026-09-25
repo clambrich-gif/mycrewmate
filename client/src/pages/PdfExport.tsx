@@ -1022,7 +1022,7 @@ export default function PdfExport() {
                     WhatsApp-Vorlagen für Helfer
                   </Label>
                   <p className="text-xs text-muted-foreground">
-                    Beide Vorlagen können unabhängig voneinander angepasst werden. Klappen Sie die gewünschte Nachricht auf, um Text und Platzhalter zu bearbeiten.
+                    Beide Vorlagen gelten nur für die aktuell gewählte Veranstaltung und können unabhängig voneinander angepasst werden. Klappen Sie die gewünschte Nachricht auf, um Text und Platzhalter zu bearbeiten.
                   </p>
                 </div>
 

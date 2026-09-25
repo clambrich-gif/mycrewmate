@@ -19,7 +19,7 @@ async function startTestServer(options: {
     if (options.createPdfError) throw options.createPdfError;
     return options.pdf ?? PDF;
   });
-  const withScope = vi.fn(async (_year, _eventId, callback) => callback());
+  const withScope = vi.fn(async (_scope, callback) => callback());
   registerPublicHelperPdfRoutes(app, {
     verifyToken,
     findHelperByShortCode,
@@ -73,8 +73,11 @@ describe("öffentliche Helfer-PDF-Route", () => {
     expect(response.headers.get("x-robots-tag")).toContain("noindex");
     expect(server.verifyToken).toHaveBeenCalledWith("freigabe-token");
     expect(server.withScope).toHaveBeenCalledWith(
-      2027,
-      1020001,
+      expect.objectContaining({
+        year: 2027,
+        eventId: 1020001,
+        helperId: 44,
+      }),
       expect.any(Function)
     );
     expect(server.createPdf).toHaveBeenCalledWith(44);

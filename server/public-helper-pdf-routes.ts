@@ -5,7 +5,7 @@ import {
   verifyPublicHelperPdfToken,
   type PublicHelperPdfScope,
 } from "./public-helper-pdf-token";
-import { withEventScope } from "./year-context";
+import { DEFAULT_TENANT_ID, withPlanningScope } from "./year-context";
 
 const MAX_PUBLIC_HELPER_PDF_BYTES = 5_000_000;
 const SHORT_PDF_CODE = /^[A-Za-z0-9_-]{8,12}$/;
@@ -16,11 +16,7 @@ type PublicHelperPdfRouteDependencies = {
     shortCode: string
   ) => Promise<PublicHelperPdfScope | null | undefined>;
   createPdf: (helperId: number) => Promise<Buffer>;
-  withScope: <T>(
-    year: number,
-    eventId: number,
-    callback: () => Promise<T>
-  ) => Promise<T>;
+  withScope: <T>(scope: PublicHelperPdfScope, callback: () => Promise<T>) => Promise<T>;
 };
 
 const defaultDependencies: PublicHelperPdfRouteDependencies = {
@@ -28,11 +24,24 @@ const defaultDependencies: PublicHelperPdfRouteDependencies = {
   findHelperByShortCode: async shortCode => {
     const helper = await getHelperByPdfShareCode(shortCode);
     return helper
-      ? { year: helper.year, eventId: helper.eventId, helperId: helper.id }
+      ? {
+          tenantId: helper.tenantId,
+          year: helper.year,
+          eventId: helper.eventId,
+          helperId: helper.id,
+        }
       : null;
   },
   createPdf: createHelperTaskPdf,
-  withScope: (year, eventId, callback) => withEventScope(year, eventId, callback),
+  withScope: (scope, callback) =>
+    withPlanningScope(
+      {
+        tenantId: scope.tenantId ?? DEFAULT_TENANT_ID,
+        year: scope.year,
+        eventId: scope.eventId,
+      },
+      callback
+    ),
 };
 
 function setPublicPdfCorsHeaders(res: Response) {
@@ -85,7 +94,7 @@ async function servePdfForScope(
   logContext: Record<string, unknown>
 ) {
   try {
-    const pdf = await dependencies.withScope(scope.year, scope.eventId, () =>
+    const pdf = await dependencies.withScope(scope, () =>
       dependencies.createPdf(scope.helperId)
     );
     if (!isValidPdf(pdf)) throw new Error("Ungültige Helfer-PDF");

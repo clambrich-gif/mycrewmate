@@ -49,6 +49,7 @@ const dbMocks = vi.hoisted(() => ({
   updateTenantLogo: vi.fn(),
   getEvent: vi.fn(),
   updateCurrentEventPdfImage: vi.fn(),
+  updateCurrentEventWhatsAppTemplates: vi.fn(),
   ensureEventYear: vi.fn(),
   createEvent: vi.fn(),
   updateEventDetails: vi.fn(),
@@ -857,6 +858,13 @@ describe("Planungs-API", () => {
 
   it("speichert und liefert die konfigurierbare WhatsApp-Nachrichtenvorlage in den PDF-Einstellungen", async () => {
     const caller = appRouter.createCaller(ctx);
+    dbMocks.getEvent.mockResolvedValue({
+      id: 1,
+      name: "MyEifelRide",
+      whatsAppHelperRequestTemplate:
+        "Hallo! Event {EVENT_NAME} im Zeitraum {EVENT_DAUER} braucht Hilfe.",
+      whatsAppMessageTemplate: "Hallo! Dein Plan für {EVENT_NAME} ist da. 🚴💨",
+    });
     dbMocks.getAppSettings.mockResolvedValue({
       id: 1,
       eventName: "MyEifelRide",
@@ -875,6 +883,12 @@ describe("Planungs-API", () => {
       updatedAt: new Date(),
     });
     dbMocks.updateAppSettings.mockResolvedValue({ affectedRows: 1 });
+    dbMocks.updateCurrentEventWhatsAppTemplates.mockResolvedValue({
+      whatsAppHelperRequestTemplate:
+        "Neuer Fragetext für {EVENT_NAME} ({EVENT_DAUER})",
+      whatsAppMessageTemplate:
+        "Individueller Text für {EVENT_NAME}. Bitte zeitnah melden! ⏳",
+    });
 
     const settings = await caller.pdf.settings();
     expect(settings.whatsAppHelperRequestTemplate).toBe(
@@ -902,12 +916,15 @@ describe("Planungs-API", () => {
     ).resolves.toEqual({ success: true });
     expect(dbMocks.updateAppSettings).toHaveBeenCalledWith(
       expect.objectContaining({
-        whatsAppHelperRequestTemplate:
-          "Neuer Fragetext für {EVENT_NAME} ({EVENT_DAUER})",
-        whatsAppMessageTemplate:
-          "Individueller Text für {EVENT_NAME}. Bitte zeitnah melden! ⏳",
+        contactLabel: "Ansprechpartner",
       })
     );
+    expect(dbMocks.updateCurrentEventWhatsAppTemplates).toHaveBeenCalledWith({
+      whatsAppHelperRequestTemplate:
+        "Neuer Fragetext für {EVENT_NAME} ({EVENT_DAUER})",
+      whatsAppMessageTemplate:
+        "Individueller Text für {EVENT_NAME}. Bitte zeitnah melden! ⏳",
+    });
   });
 
   it("erstellt nur für Helfer im aktuellen Scope einen kurzen nicht erratbaren PDF-Link", async () => {
