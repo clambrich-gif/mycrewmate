@@ -1,6 +1,7 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
+import { ViewModeToggle } from "@/components/ViewModeToggle";
 import { PageTitle } from "@/components/PageTitle";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,7 @@ import { toast } from "sonner";
 import { PlanResetDialogButton } from "@/components/PlanResetDialogButton";
 import { MyTasksDefaultPin } from "@/components/MyTasksDefaultPin";
 import { useMyTasksDefault } from "@/hooks/useMyTasksDefault";
+import { useViewMode } from "@/hooks/useViewMode";
 import {
   eventWeekdays,
   helperDayAvailability,
@@ -617,6 +619,7 @@ export default function Helpers() {
   const utils = trpc.useUtils();
   const { user } = useAuth();
   const { isTenantAdmin } = useTenantAdministration();
+  const [viewMode, setViewMode] = useViewMode("helpers", "liste");
   const {
     isDefaultMyTasks,
     setDefaultMyTasks,
@@ -933,24 +936,27 @@ export default function Helpers() {
             Aufgaben-PDFs.
           </p>
         </div>
-        <div className="w-full rounded-xl border border-slate-200 bg-white p-2 shadow-sm lg:ml-auto lg:w-[12rem]">
-          <div className="space-y-2">
-            <div className="w-full">
-              <PlanResetDialogButton
-                area="helpers"
-                label="Helfer"
-                onCompleted={invalidate}
-                triggerClassName="h-10 !w-full justify-center"
-              />
+        <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-end lg:ml-auto lg:w-auto">
+          <ViewModeToggle mode={viewMode} onChange={setViewMode} />
+          <div className="w-full rounded-xl border border-slate-200 bg-white p-2 shadow-sm sm:w-[12rem]">
+            <div className="space-y-2">
+              <div className="w-full">
+                <PlanResetDialogButton
+                  area="helpers"
+                  label="Helfer"
+                  onCompleted={invalidate}
+                  triggerClassName="h-10 !w-full justify-center"
+                />
+              </div>
+              <Button
+                type="button"
+                className="h-10 w-full bg-blue-600 px-4 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus-visible:ring-blue-500"
+                onClick={openNewHelperDialog}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Neuer Helfer
+              </Button>
             </div>
-            <Button
-              type="button"
-              className="h-10 w-full bg-blue-600 px-4 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus-visible:ring-blue-500"
-              onClick={openNewHelperDialog}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Neuer Helfer
-            </Button>
           </div>
         </div>
       </div>
@@ -1118,6 +1124,8 @@ export default function Helpers() {
         </div>
       )}
 
+      {viewMode === "liste" ? (
+        <>
       <div className="space-y-3 md:hidden">
         {filtered.map(helper => (
           <Card key={helper.id} className="shadow-sm">
@@ -1658,6 +1666,236 @@ export default function Helpers() {
         <StatusBadge status="nein" />
         abgesagt/nicht verfügbar
       </p>
+        </>
+      ) : (
+        <div className="space-y-4" data-slot="helpers-cards-view">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {filtered.map(helper => {
+              const helperDeleteDisabled =
+                selfHelperIds.has(helper.id) ||
+                (!isTenantAdmin && assignedHelperIds.has(helper.id));
+              const cakeCount = cakeCountByDonor.get(personKey(helper.name)) ?? 0;
+              const donorCakes = cakes.filter(
+                cake => personKey(cake.donor) === personKey(helper.name)
+              );
+              const helperContacts = contacts.filter(
+                contact => contact.id === helper.contactId
+              );
+              const contactName = helperContacts[0]?.name ?? null;
+
+              return (
+                <Card
+                  key={helper.id}
+                  className={cn(
+                    "border-slate-200 bg-white shadow-sm transition-all hover:border-slate-300 hover:shadow-md",
+                    helper.confirmed === "ja" && "border-l-4 border-l-emerald-600"
+                  )}
+                >
+                  <CardContent className="space-y-4 p-5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="truncate text-base font-bold text-slate-950">
+                            {helper.name}
+                          </h3>
+                          {selfHelperIds.has(helper.id) && (
+                            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-900">
+                              Du
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
+                          <span>Ansprechpartner:</span>
+                          <span
+                            className={cn(
+                              "font-medium",
+                              contactName ? "text-slate-700" : "text-amber-700"
+                            )}
+                          >
+                            {contactName ?? "Kein Ansprechpartner"}
+                          </span>
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <CakeDonationAction
+                          helperName={helper.name}
+                          count={cakeCount}
+                          onClick={() => openCakeDonation(helper.name)}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-slate-600 hover:text-green-700"
+                          title="Aufgabenplan per WhatsApp an Helfer senden"
+                          aria-label={`Aufgabenplan von ${helper.name} per WhatsApp senden`}
+                          disabled={sharingId !== null}
+                          onClick={() => shareHelperPdf(helper)}
+                        >
+                          <MessageCircle className="size-4 text-[#25D366]" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-slate-600 hover:text-blue-700"
+                          title="Einsatz-PDF herunterladen"
+                          disabled={exportingId === helper.id}
+                          onClick={() => {
+                            setExportingId(helper.id);
+                            exportPdf.mutate({ helperId: helper.id });
+                          }}
+                        >
+                          <FileDown className="size-4 text-blue-600" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-slate-600 hover:text-red-700"
+                          title={
+                            helperDeleteDisabled
+                              ? "Helfer kann aktuell nicht gelöscht werden"
+                              : "Helfer löschen"
+                          }
+                          disabled={helperDeleteDisabled}
+                          onClick={() =>
+                            setDeleteTarget({
+                              id: helper.id,
+                              name: helper.name,
+                            })
+                          }
+                        >
+                          <Trash2 className="size-4 text-red-600" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-50 p-2.5 text-xs">
+                      <div>
+                        <span className="text-slate-500">Helfen?</span>
+                        <div className="mt-1">
+                          <MobileStatusSwitch
+                            value={helper.willHelp}
+                            ariaLabel={`${helper.name}: Helfen auf ${helper.willHelp === "ja" ? "Nein" : "Ja"} setzen`}
+                            disabled={update.isPending}
+                            onChange={willHelp =>
+                              update.mutate({
+                                id: helper.id,
+                                willHelp,
+                              })
+                            }
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Bestätigt?</span>
+                        <div className="mt-1">
+                          <MobileStatusSwitch
+                            value={helper.confirmed}
+                            ariaLabel={`${helper.name}: Bestätigung auf ${helper.confirmed === "ja" ? "Nein" : "Ja"} setzen`}
+                            disabled={update.isPending}
+                            onChange={confirmed =>
+                              update.mutate({
+                                id: helper.id,
+                                confirmed,
+                              })
+                            }
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Telefon</span>
+                        <p className="mt-1 truncate font-medium text-slate-800">
+                          {helper.phone?.trim() ? helper.phone : "–"}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Hinweis</span>
+                        <p className="mt-1 truncate font-medium text-slate-800">
+                          {helper.note?.trim() ? "Vorhanden" : "–"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {Boolean(helper.companion?.trim()) && (
+                      <div className="rounded-lg border border-slate-200 bg-white p-2 text-xs text-slate-700">
+                        <span className="font-semibold text-slate-900">Begleitung:</span>{" "}
+                        {helper.companion}
+                      </div>
+                    )}
+
+                    {Boolean(helper.note?.trim()) && (
+                      <div className="rounded-lg border border-amber-200 bg-amber-50/70 p-2 text-xs text-amber-950">
+                        <span className="font-semibold">Hinweis für PDF:</span> {helper.note}
+                      </div>
+                    )}
+
+                    {donorCakes.length > 0 && (
+                      <div className="space-y-1.5 rounded-lg border border-emerald-200 bg-emerald-50/50 p-2.5 text-xs text-emerald-950">
+                        <div className="flex items-center justify-between font-semibold">
+                          <span>🎁 {donorCakes.length} Spende(n) hinterlegt</span>
+                        </div>
+                        <div className="space-y-1">
+                          {donorCakes.map(cake => {
+                            const tags: string[] = [];
+                            if (cake.vegan) tags.push("Vegan");
+                            if (cake.glutenFree) tags.push("Glutenfrei");
+                            if (cake.lactoseFree) tags.push("Laktosefrei");
+                            if (cake.containsNuts) tags.push("Nüsse");
+                            if (cake.meat) tags.push("Fleisch");
+                            return (
+                              <div key={cake.id} className="flex flex-wrap items-center gap-1.5">
+                                <span className="font-medium text-slate-900">{cake.cake}</span>
+                                {tags.map(tag => (
+                                  <span
+                                    key={tag}
+                                    className="rounded-full border border-emerald-300 bg-white px-2 py-0.5 text-[10px] font-semibold text-emerald-800"
+                                  >
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-2 border-t border-slate-100 pt-3">
+                      <div className="text-xs font-semibold text-slate-700">
+                        Tages-Verfügbarkeiten & Zeitfenster
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        {activeDays.map(day => (
+                          <div key={day} className="space-y-1">
+                            <div className="text-center text-[11px] font-medium text-slate-600">
+                              {WEEKDAY_SHORT_LABELS[day]}
+                            </div>
+                            <DayAvailabilityControl
+                              helper={helper}
+                              day={day}
+                              disabled={update.isPending}
+                              onCommit={values =>
+                                update.mutate({ id: helper.id, ...values } as any)
+                              }
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+          {!isLoading && filtered.length === 0 && (
+            <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+              Keine Helfer gefunden.
+            </div>
+          )}
+        </div>
+      )}
       <Dialog
         open={newHelperDialogOpen}
         onOpenChange={open => {

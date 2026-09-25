@@ -1945,7 +1945,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
       expect(module).toContain("lg:[&>[data-slot=button]]:w-auto");
     }
 
-    expect(helpers).toContain("w-full rounded-xl border border-slate-200 bg-white p-2 shadow-sm lg:ml-auto lg:w-[12rem]");
+    expect(helpers).toContain("w-full rounded-xl border border-slate-200 bg-white p-2 shadow-sm sm:w-[12rem]");
     expect(helpers).toContain('<div className="w-full">');
     expect(helpers).toContain("triggerClassName=\"h-10 !w-full justify-center\"");
     expect(helpers).toContain("h-10 w-full bg-blue-600 px-4 text-base font-medium text-white");
@@ -2157,7 +2157,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain("Helfen auf");
     expect(helpers).toContain("Bestätigung auf");
     expect(helpers.match(/<YesNoToggle/g)).toHaveLength(2);
-    expect(helpers.match(/<MobileStatusSwitch/g)).toHaveLength(2);
+    expect(helpers.match(/<MobileStatusSwitch/g)).toHaveLength(4);
   });
 
   it("erfasst Zeitfenster über ein schlankes Tages-Popover und filtert sie im Einsatzplan hart", () => {
@@ -2664,7 +2664,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(cakes).toContain("donationTargetsOpen");
     expect(cakes).toContain("setDonationTargetsOpen(false)");
     expect(cakes).toContain("data-donation-targets-collapsible");
-    expect(cakes).toContain("lg:ml-auto lg:w-[25rem]");
+    expect(cakes).toContain("w-full space-y-2 sm:w-[25rem]");
     expect(cakes).toContain("flex justify-end gap-2");
     expect(cakes).toContain("[&>[data-slot=button]]:flex-1");
     expect(cakes).toContain("border-rose-200 bg-rose-50/45 py-0 shadow-sm");

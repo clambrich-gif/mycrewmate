@@ -1,4 +1,5 @@
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
+import { ViewModeToggle } from "@/components/ViewModeToggle";
 import { PageTitle } from "@/components/PageTitle";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,7 @@ import {
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useTenantAdministration } from "@/hooks/useTenantAdministration";
+import { useViewMode } from "@/hooks/useViewMode";
 import {
   ChevronDown,
   FilterX,
@@ -228,6 +230,7 @@ export default function Cakes() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { isTenantAdmin } = useTenantAdministration();
+  const [viewMode, setViewMode] = useViewMode("donations", "liste");
   const requestedDonor = searchParams.get("donor")?.trim() ?? "";
   const utils = trpc.useUtils();
   const { data: rows = [], isLoading } = trpc.cakes.list.useQuery();
@@ -509,8 +512,10 @@ export default function Cakes() {
             kennzeichnen.
           </p>
         </div>
-        <div className="w-full space-y-2 lg:ml-auto lg:w-[25rem]">
-          <div className="flex justify-end gap-2 [&>[data-slot=button]]:h-10 [&>[data-slot=button]]:flex-1 [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2">
+        <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-end lg:ml-auto lg:w-auto">
+          <ViewModeToggle mode={viewMode} onChange={setViewMode} />
+          <div className="w-full space-y-2 sm:w-[25rem]">
+            <div className="flex justify-end gap-2 [&>[data-slot=button]]:h-10 [&>[data-slot=button]]:flex-1 [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2">
             <Button
               type="button"
               variant="outline"
@@ -540,6 +545,7 @@ export default function Cakes() {
             <Plus className="mr-1.5 h-4 w-4" />
             Spende erfassen
           </Button>
+        </div>
         </div>
       </div>
 
@@ -761,6 +767,8 @@ export default function Cakes() {
         </Collapsible>
       )}
 
+      {viewMode === "liste" ? (
+        <>
       <div className="space-y-3 md:hidden">
         {isLoading && (
           <Card className="shadow-sm">
@@ -928,6 +936,88 @@ export default function Cakes() {
           </table>
         </CardContent>
       </Card>
+        </>
+      ) : (
+        <div className="space-y-4" data-slot="donations-cards-view">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {filteredDonations.map(row => {
+              const locationName = row.locationId
+                ? locationNames.get(row.locationId) ?? "–"
+                : "–";
+              return (
+                <Card
+                  key={row.id}
+                  className="border-slate-200 bg-white shadow-sm transition-all hover:border-slate-300 hover:shadow-md"
+                >
+                  <CardContent className="space-y-4 p-5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="truncate text-base font-bold text-slate-950">
+                          {row.donor}
+                        </h3>
+                        <p className="mt-1 text-sm font-medium text-slate-800">
+                          {row.cake || "–"}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-slate-600 hover:text-blue-700"
+                          aria-label={`${row.donor} bearbeiten`}
+                          onClick={() => openEdit(row)}
+                        >
+                          <Pencil className="size-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-slate-600 hover:text-red-700"
+                          aria-label={`${row.donor} löschen`}
+                          disabled={deleteDonation.isPending}
+                          onClick={() => setDeleteTarget(row)}
+                        >
+                          <Trash2 className="size-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <CategoryBadge category={row.donationCategory ?? "kuchen"} />
+                      <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                        Ort: {locationName}
+                      </span>
+                      <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                        Abgabe: {formatDropoffTime(row)}
+                      </span>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3">
+                      <p className="text-xs font-semibold text-slate-500">
+                        Eigenschaften & Hinweise
+                      </p>
+                      <div className="mt-2">
+                        <TraitTags row={row} />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+          {!isLoading && filteredDonations.length === 0 && (
+            <Card className="shadow-sm">
+              <CardContent className="p-4 text-sm text-muted-foreground">
+                {hasActiveFilters
+                  ? "Keine Spenden entsprechen den aktuellen Filterkriterien."
+                  : "Noch keine Spenden erfasst."}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       <Dialog
         open={dialogOpen}
