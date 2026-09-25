@@ -9,7 +9,7 @@ const dbMocks = vi.hoisted(() => ({
   lockPlanningTeamLogin: vi.fn(),
   recordActivityLog: vi.fn(),
   getTenantAdminCredentialsByEmail: vi.fn(),
-  getPlanningTeamAccessCredentialByEmail: vi.fn(),
+  listPlanningTeamAccessCredentialsByEmail: vi.fn(),
   upsertUser: vi.fn(),
   getUserByOpenId: vi.fn(),
   resolveTenantForUser: vi.fn(),
@@ -89,13 +89,13 @@ describe("DoS-Schutz und manuelle Sperre für das Planungsteam", () => {
     });
     dbMocks.recordActivityLog.mockResolvedValue(undefined);
     dbMocks.getTenantAdminCredentialsByEmail.mockResolvedValue(undefined);
-    dbMocks.getPlanningTeamAccessCredentialByEmail.mockResolvedValue({
+    dbMocks.listPlanningTeamAccessCredentialsByEmail.mockResolvedValue([{
       id: 1,
       label: "Team",
       email: "team@example.invalid",
       passwordHash,
       sessionVersion: 1,
-    });
+    }]);
     dbMocks.getUserByOpenId.mockImplementation(async (openId: string) => ({
       id: 11,
       openId,

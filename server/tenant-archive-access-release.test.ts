@@ -36,7 +36,7 @@ describe("Archivierte Vereinszugänge geben E-Mail-Adressen frei", () => {
   it("ignoriert archivierte oder pausierte Zugänge bei Login- und Konfliktprüfungen", () => {
     expect(database).toContain("notEq(tenants.status, \"archived\")");
     expect(database).toContain("notEq(tenants.status, \"suspended\")");
-    expect(database).toContain("getPlanningTeamAccessCredentialByEmail");
+    expect(database).toContain("listPlanningTeamAccessCredentialsByEmail");
     expect(database).toContain("getTenantAdminCredentialsByEmail");
     expect(database).toContain("assertNoPlanningTeamEmailConflict");
   });

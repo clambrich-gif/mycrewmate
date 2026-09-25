@@ -1574,15 +1574,26 @@ export const appRouter = router({
           });
         }
 
-        const matchingAccess = await db.getPlanningTeamAccessCredentialByEmail(input.email);
+        // Eine E-Mail-Adresse darf in mehreren aktiven Vereinen vorkommen.
+        // Der Verein wird daher nicht über eine zufällige erste Datenbankzeile,
+        // sondern ausschließlich über das passende persönliche Passwort bestimmt.
+        const matchingAccesses = await db.listPlanningTeamAccessCredentialsByEmail(
+          input.email
+        );
+        const passwordMatches = (
+          await Promise.all(
+            matchingAccesses.map(async access =>
+              (await verifyPassword(input.password, access.passwordHash))
+                ? access
+                : null
+            )
+          )
+        ).filter(
+          (access): access is NonNullable<typeof access> => access !== null
+        );
+        const matchingAccess =
+          passwordMatches.length === 1 ? passwordMatches[0] : null;
         if (!matchingAccess) {
-          recordFailedPasswordLogin(clientKey);
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "E-Mail oder Passwort ist nicht korrekt",
-          });
-        }
-        if (!(await verifyPassword(input.password, matchingAccess.passwordHash))) {
           recordFailedPasswordLogin(clientKey);
           throw new TRPCError({
             code: "BAD_REQUEST",

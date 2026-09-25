@@ -1430,13 +1430,19 @@ export async function listPlanningTeamAccessCredentials(): Promise<
   }));
 }
 
-/** Liefert einen persönlichen Planungsteam-Zugang ausschließlich über seine E-Mail-Adresse. */
-export async function getPlanningTeamAccessCredentialByEmail(email: string) {
+/**
+ * Liefert alle aktiven persönlichen Planungsteam-Zugänge zu einer E-Mail-Adresse.
+ * Dieselbe Adresse darf bewusst bei mehreren Vereinen verwendet werden. Erst die
+ * Passwortprüfung im Login bestimmt deshalb eindeutig, welcher Zugang gemeint ist.
+ */
+export async function listPlanningTeamAccessCredentialsByEmail(email: string): Promise<
+  PlanningTeamAccessCredential[]
+> {
   const database = await getDb();
-  if (!database) return undefined;
+  if (!database) return [];
   const normalizedEmail = email.trim().toLocaleLowerCase("de-DE");
-  const [row] = await database
-    .select({
+  const rows = await database
+    .selectDistinct({
       id: planningTeamAccesses.id,
       contactName: contacts.name,
       label: planningTeamAccesses.label,
@@ -1464,8 +1470,24 @@ export async function getPlanningTeamAccessCredentialByEmail(email: string) {
         notEq(tenants.status, "archived")
       )
     )
-    .limit(1);
-  return row;
+    // Pro Zugang kann es mehrere Eventfreigaben geben. DISTINCT stellt sicher,
+    // dass jeder Zugang exakt einmal in die Passwortprüfung gelangt.
+    .orderBy(planningTeamAccesses.id);
+  return rows.map(row => ({
+    ...row,
+    moduleAccess: (row.moduleAccess && typeof row.moduleAccess === "object"
+      ? row.moduleAccess
+      : {}) as import("../shared/tenant-permissions").PlanningModuleAccess,
+  }));
+}
+
+/**
+ * Kompatibilität für bestehende interne Aufrufer. Der Login selbst verwendet
+ * ausschließlich die vollständige Liste, damit gleichartige E-Mail-Adressen
+ * verschiedener Vereine nicht versehentlich auf den ersten Datensatz fallen.
+ */
+export async function getPlanningTeamAccessCredentialByEmail(email: string) {
+  return (await listPlanningTeamAccessCredentialsByEmail(email))[0];
 }
 
 /**
