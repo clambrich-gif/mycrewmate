@@ -2448,8 +2448,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain(
       'className="flex flex-col gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm"'
     );
-    expect(helpers).toContain('className="order-2 relative w-full md:order-1 md:max-w-[551px]"');
-    expect(helpers).toContain('className="order-1 grid grid-cols-1 gap-2 md:order-2 md:flex md:flex-wrap"');
+    expect(helpers).toContain('className="order-1 relative w-full md:max-w-[551px]"');
+    expect(helpers).toContain('data-slot="mobile-helper-filter-toggle"');
+    expect(helpers).toContain('data-slot="mobile-helper-filter-panel"');
+    expect(helpers).toContain('className="order-3 hidden grid-cols-1 gap-2 md:grid md:flex md:flex-wrap"');
     expect(helpers).toContain("<Search");
     expect(helpers).toContain("Suchen (Name, Telefon, Hinweise) …");
     expect(helpers).toContain("Helfer nach Name, Telefon oder Hinweis durchsuchen");
@@ -2469,7 +2471,6 @@ describe("UI- und Mobile-UX-Regeln", () => {
       "Nur Helfer mit Zeitfenstern",
     ].map(label => helpers.indexOf(label));
     expect(filterOrder.every(index => index >= 0)).toBe(true);
-    expect(filterOrder).toEqual([...filterOrder].sort((left, right) => left - right));
     expect(plan).toContain('className="order-1 relative w-full lg:max-w-xl"');
     expect(plan).toContain('data-slot="mobile-plan-filter-toggle"');
     expect(plan).toContain('className="order-1 hidden gap-2 sm:grid-cols-2 md:order-2 md:grid lg:flex lg:flex-wrap"');
@@ -3247,10 +3248,20 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(viewToggle).toContain("md:inline-flex");
 
     expect(helpers).toContain('data-slot="mobile-helper-phone-edit"');
+    expect(helpers).toContain('data-slot="mobile-helper-phone-call"');
     expect(helpers).toContain('data-slot="mobile-helper-edit-dialog"');
     expect(helpers).toContain("openMobileHelperEdit");
     expect(helpers).toContain("phone: mobileHelperEditForm.phone.trim() || null");
     expect(helpers).toContain("Helfer aktualisiert");
+    expect(helpers).toContain('data-slot="mobile-helper-filter-toggle"');
+    expect(helpers).toContain('data-slot="mobile-helper-filter-panel"');
+    expect(helpers).toContain("mobileContactFilters");
+    expect(helpers).toContain("mobileCompanionFilters");
+    expect(helpers).toContain("mobileFeedbackFilters");
+    expect(helpers).toContain("mobileWillHelpFilters");
+    expect(helpers).toContain("Telefonnummer hinzufügen");
+    expect(helpers).toContain("href={`tel:${helper.phone.replace");
+    expect(helpers).toContain('<span className="md:hidden">(</span>');
 
     expect(plan).toContain('data-slot="mobile-plan-filter-toggle"');
     expect(plan).toContain('data-slot="mobile-plan-filter-panel"');

@@ -36,13 +36,13 @@ import {
 import { formatEventDuration } from "@shared/event-dates";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
-import { CalendarDays, CheckCircle2, ChevronDown, Clock3, FileDown, FileText, FilterX, Info, MessageCircle, Pencil, Plus, Search, Send, Trash2 } from "lucide-react";
+import { CalendarDays, CheckCircle2, ChevronDown, Clock3, FileDown, FileText, FilterX, Info, MessageCircle, Pencil, Plus, Search, Send, SlidersHorizontal, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { PlanResetDialogButton } from "@/components/PlanResetDialogButton";
 import { MyTasksDefaultPin } from "@/components/MyTasksDefaultPin";
 import { useMyTasksDefault } from "@/hooks/useMyTasksDefault";
-import { useViewMode } from "@/hooks/useViewMode";
+import { useMobileViewMode, useViewMode } from "@/hooks/useViewMode";
 import {
   eventWeekdays,
   helperDayAvailability,
@@ -79,6 +79,12 @@ const valueColor = (value: string) => {
 
 const personKey = (value: string) =>
   value.trim().replace(/\s+/g, " ").toLocaleLowerCase("de-DE");
+
+function toggleMultiSelection<T>(values: T[], value: T) {
+  return values.includes(value)
+    ? values.filter(item => item !== value)
+    : [...values, value];
+}
 
 const HELPER_ACTION_ICON_BUTTON_CLASS =
   "h-8 min-h-8 w-8 min-w-8 rounded-md bg-transparent p-1 text-slate-700 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1";
@@ -627,11 +633,13 @@ function CakeDonationAction({
   count,
   onClick,
   mobile = false,
+  compact = false,
 }: {
   helperName: string;
   count: number;
   onClick: () => void;
   mobile?: boolean;
+  compact?: boolean;
 }) {
   const hasCakes = count > 0;
   const description = hasCakes
@@ -646,7 +654,11 @@ function CakeDonationAction({
       onClick={onClick}
       className={cn(
         "relative inline-flex shrink-0 items-center justify-center bg-transparent p-0 leading-none transition-transform duration-150 ease-out hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 active:scale-95",
-        mobile ? "h-11 w-11 text-xl" : "h-8 w-8 text-[20px]"
+        mobile
+          ? "h-11 w-11 text-xl"
+          : compact
+            ? "h-7 w-7 text-base md:h-8 md:w-8 md:text-[20px]"
+            : "h-8 w-8 text-[20px]"
       )}
     >
       <span
@@ -683,6 +695,7 @@ export default function Helpers() {
   const utils = trpc.useUtils();
   const { user } = useAuth();
   const { isTenantAdmin } = useTenantAdministration();
+  const isMobileView = useMobileViewMode();
   const [viewMode, setViewMode] = useViewMode("helpers", "liste");
   const {
     isDefaultMyTasks,
@@ -742,6 +755,14 @@ export default function Helpers() {
   );
   const [timedAvailabilityOnly, setTimedAvailabilityOnly] = useState(false);
   const [myHelperRecordOnly, setMyHelperRecordOnly] = useState(false);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [mobileContactFilters, setMobileContactFilters] = useState<string[]>([]);
+  const [mobileCompanionFilters, setMobileCompanionFilters] = useState<Array<"mit" | "ohne">>([]);
+  const [mobileFeedbackFilters, setMobileFeedbackFilters] = useState<Array<"ja" | "nein" | "erstkontakt-offen">>(
+    () => (feedbackFilter === "alle" ? [] : [feedbackFilter])
+  );
+  const [mobileWillHelpFilters, setMobileWillHelpFilters] = useState<Array<"ja" | "nein">>([]);
+  const [mobileTimedAvailabilityOnly, setMobileTimedAvailabilityOnly] = useState(false);
   const [sortAsc, setSortAsc] = useState(true);
   const [exportingId, setExportingId] = useState<number | null>(null);
   const [sharingId, setSharingId] = useState<number | null>(null);
@@ -961,6 +982,9 @@ export default function Helpers() {
       setMyHelperRecordOnly(true);
     }
   }, [isDefaultMyTasks, user?.name]);
+  useEffect(() => {
+    setMobileFeedbackFilters(feedbackFilter === "alle" ? [] : [feedbackFilter]);
+  }, [feedbackFilter]);
   const updateMyTasksDefault = (enabled: boolean) => {
     setDefaultMyTasks(enabled);
     if (!enabled) setMyHelperRecordOnly(false);
@@ -979,9 +1003,21 @@ export default function Helpers() {
                     filter.toLocaleLowerCase("de-DE")
                   )
                 )) &&
-            (confirmationFilter === "alle" ||
-              helper.confirmed === confirmationFilter) &&
-            (willHelpFilter === "alle" || helper.willHelp === willHelpFilter) &&
+            (isMobileView
+              ? mobileFeedbackFilters.length === 0 ||
+                mobileFeedbackFilters.some(
+                  selected =>
+                    (selected === "erstkontakt-offen" &&
+                      isHelperWithoutFirstContact(helper, activeDays)) ||
+                    (selected !== "erstkontakt-offen" &&
+                      helper.confirmed === selected)
+                )
+              : confirmationFilter === "alle" ||
+                helper.confirmed === confirmationFilter) &&
+            (isMobileView
+              ? mobileWillHelpFilters.length === 0 ||
+                mobileWillHelpFilters.includes(helper.willHelp)
+              : willHelpFilter === "alle" || helper.willHelp === willHelpFilter) &&
             (!myHelperRecordOnly ||
               personKey(helper.name) === personKey(user?.name ?? "") ||
               (typeof helper.contactId === "number" &&
@@ -989,15 +1025,28 @@ export default function Helpers() {
             (!assignedOnly || assignedHelperIds.has(helper.id)) &&
             (!firstContactOnly ||
               isHelperWithoutFirstContact(helper, activeDays)) &&
-            (apFilter === "alle" ||
-              (apFilter === "ohne"
-                ? !helper.contactId
-                : String(helper.contactId ?? "") === apFilter)) &&
-            (companionFilter === "alle" ||
-              (companionFilter === "mit"
-                ? Boolean(helper.companion?.trim())
-                : !helper.companion?.trim())) &&
-            (!timedAvailabilityOnly ||
+            (isMobileView
+              ? mobileContactFilters.length === 0 ||
+                mobileContactFilters.includes(
+                  helper.contactId ? String(helper.contactId) : "ohne"
+                )
+              : apFilter === "alle" ||
+                (apFilter === "ohne"
+                  ? !helper.contactId
+                  : String(helper.contactId ?? "") === apFilter)) &&
+            (isMobileView
+              ? mobileCompanionFilters.length === 0 ||
+                mobileCompanionFilters.some(
+                  selected =>
+                    selected === "mit"
+                      ? Boolean(helper.companion?.trim())
+                      : !helper.companion?.trim()
+                )
+              : companionFilter === "alle" ||
+                (companionFilter === "mit"
+                  ? Boolean(helper.companion?.trim())
+                  : !helper.companion?.trim())) &&
+            (!(isMobileView ? mobileTimedAvailabilityOnly : timedAvailabilityOnly) ||
               activeDays.some(day => helperHasTimedAvailability(helper, day)))
         )
         .sort((a, b) =>
@@ -1008,6 +1057,12 @@ export default function Helpers() {
       filter,
       confirmationFilter,
       willHelpFilter,
+      isMobileView,
+      mobileContactFilters,
+      mobileCompanionFilters,
+      mobileFeedbackFilters,
+      mobileWillHelpFilters,
+      mobileTimedAvailabilityOnly,
       myHelperRecordOnly,
       ownContactIds,
       user?.name,
@@ -1070,14 +1125,27 @@ export default function Helpers() {
 
   const hasActiveHelperFilters =
     Boolean(filter.trim()) ||
-    apFilter !== "alle" ||
-    companionFilter !== "alle" ||
-    confirmationFilter !== "alle" ||
-    assignedOnly ||
-    firstContactOnly ||
-    willHelpFilter !== "alle" ||
-    myHelperRecordOnly ||
-    timedAvailabilityOnly;
+    (isMobileView
+      ? mobileContactFilters.length > 0 ||
+        mobileCompanionFilters.length > 0 ||
+        mobileFeedbackFilters.length > 0 ||
+        mobileWillHelpFilters.length > 0 ||
+        mobileTimedAvailabilityOnly ||
+        myHelperRecordOnly
+      : apFilter !== "alle" ||
+        companionFilter !== "alle" ||
+        confirmationFilter !== "alle" ||
+        assignedOnly ||
+        firstContactOnly ||
+        willHelpFilter !== "alle" ||
+        myHelperRecordOnly ||
+        timedAvailabilityOnly);
+  const mobileFilterCount =
+    mobileContactFilters.length +
+    mobileCompanionFilters.length +
+    mobileFeedbackFilters.length +
+    mobileWillHelpFilters.length +
+    Number(mobileTimedAvailabilityOnly);
 
   const resetHelperFilters = () => {
     setFilter("");
@@ -1086,6 +1154,11 @@ export default function Helpers() {
     setWillHelpFilter("alle");
     setTimedAvailabilityOnly(false);
     setMyHelperRecordOnly(false);
+    setMobileContactFilters([]);
+    setMobileCompanionFilters([]);
+    setMobileFeedbackFilters([]);
+    setMobileWillHelpFilters([]);
+    setMobileTimedAvailabilityOnly(false);
     clearDashboardHelperFilter();
   };
 
@@ -1125,7 +1198,7 @@ export default function Helpers() {
       </div>
 
       <div className="flex flex-col gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-        <div className="order-2 relative w-full md:order-1 md:max-w-[551px]">
+        <div className="order-1 relative w-full md:max-w-[551px]">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
           <Input
             placeholder="Suchen (Name, Telefon, Hinweise) …"
@@ -1135,7 +1208,7 @@ export default function Helpers() {
             aria-label="Helfer nach Name, Telefon oder Hinweis durchsuchen"
           />
         </div>
-        <div className="order-1 flex flex-wrap gap-2 md:order-2" aria-label="Schnellfilter Helfer">
+        <div className="order-2 flex flex-wrap gap-2" aria-label="Schnellfilter Helfer">
           <div className="flex items-center gap-1">
             <Button
               type="button"
@@ -1159,7 +1232,145 @@ export default function Helpers() {
             />
           </div>
         </div>
-        <div className="order-1 grid grid-cols-1 gap-2 md:order-2 md:flex md:flex-wrap">
+        <div className="order-3 md:hidden">
+          <button
+            type="button"
+            data-slot="mobile-helper-filter-toggle"
+            aria-expanded={mobileFiltersOpen}
+            aria-controls="mobile-helper-filter-panel"
+            onClick={() => setMobileFiltersOpen(open => !open)}
+            className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 text-left text-sm font-semibold text-slate-800 shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+          >
+            <span className="flex min-w-0 items-center gap-2">
+              <SlidersHorizontal className="size-4 shrink-0 text-slate-600" aria-hidden="true" />
+              <span>Filter & Auswahl</span>
+              {mobileFilterCount > 0 && (
+                <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-900">
+                  {mobileFilterCount} aktiv
+                </span>
+              )}
+            </span>
+            <ChevronDown
+              className={cn(
+                "size-5 shrink-0 text-slate-600 transition-transform duration-200",
+                mobileFiltersOpen && "rotate-180"
+              )}
+              aria-hidden="true"
+            />
+          </button>
+          {mobileFiltersOpen && (
+            <div
+              id="mobile-helper-filter-panel"
+              data-slot="mobile-helper-filter-panel"
+              className="mt-2 space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-3"
+            >
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-semibold text-slate-900">Ansprechpartner</legend>
+                <div className="max-h-44 space-y-1 overflow-y-auto pr-1">
+                  <label className="flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-800">
+                    <Checkbox
+                      checked={mobileContactFilters.includes("ohne")}
+                      onCheckedChange={() =>
+                        setMobileContactFilters(values => toggleMultiSelection(values, "ohne"))
+                      }
+                    />
+                    Ohne Ansprechpartner
+                  </label>
+                  {contacts.map(contact => (
+                    <label key={contact.id} className="flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-800">
+                      <Checkbox
+                        checked={mobileContactFilters.includes(String(contact.id))}
+                        onCheckedChange={() =>
+                          setMobileContactFilters(values =>
+                            toggleMultiSelection(values, String(contact.id))
+                          )
+                        }
+                      />
+                      <span className="min-w-0 break-words">{contact.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-semibold text-slate-900">Begleitung</legend>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    ["mit", "Mit Begleitung"],
+                    ["ohne", "Ohne Begleitung"],
+                  ] as const).map(([value, label]) => (
+                    <label key={value} className="flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-800">
+                      <Checkbox
+                        checked={mobileCompanionFilters.includes(value)}
+                        onCheckedChange={() =>
+                          setMobileCompanionFilters(values => toggleMultiSelection(values, value))
+                        }
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-semibold text-slate-900">Rückmeldung</legend>
+                <div className="grid grid-cols-1 gap-2">
+                  {([
+                    ["ja", "Bestätigt"],
+                    ["nein", "Noch nicht bestätigt"],
+                    ["erstkontakt-offen", "Ohne Erstkontakt"],
+                  ] as const).map(([value, label]) => (
+                    <label key={value} className="flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-800">
+                      <Checkbox
+                        checked={mobileFeedbackFilters.includes(value)}
+                        onCheckedChange={() =>
+                          setMobileFeedbackFilters(values => toggleMultiSelection(values, value))
+                        }
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-semibold text-slate-900">Helfen</legend>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    ["ja", "Helfen: Ja"],
+                    ["nein", "Helfen: Nein"],
+                  ] as const).map(([value, label]) => (
+                    <label key={value} className="flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-800">
+                      <Checkbox
+                        checked={mobileWillHelpFilters.includes(value)}
+                        onCheckedChange={() =>
+                          setMobileWillHelpFilters(values => toggleMultiSelection(values, value))
+                        }
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              <label className="flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-800">
+                <Checkbox
+                  checked={mobileTimedAvailabilityOnly}
+                  onCheckedChange={checked => setMobileTimedAvailabilityOnly(checked === true)}
+                />
+                Nur Helfer mit Zeitfenstern
+              </label>
+              {hasActiveHelperFilters && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-10 w-full border-sky-200 bg-white text-sky-800 hover:bg-sky-50"
+                  onClick={resetHelperFilters}
+                >
+                  <FilterX className="mr-2 size-4" aria-hidden="true" />
+                  Filter zurücksetzen
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+        <div className="order-3 hidden grid-cols-1 gap-2 md:grid md:flex md:flex-wrap">
           <Select value={apFilter} onValueChange={setApFilter}>
             <SelectTrigger className="!h-10 w-full items-center border-slate-200 bg-white text-base md:w-[190px] md:text-sm">
               <SelectValue placeholder="Ansprechpartner" />
@@ -1854,11 +2065,11 @@ export default function Helpers() {
                     helper.confirmed === "ja" && "border-l-4 border-l-emerald-600"
                   )}
                 >
-                  <CardContent className="space-y-4 p-5">
+                  <CardContent className="space-y-4 p-4 md:p-5">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <h3 className="truncate text-base font-bold text-slate-950">
+                          <h3 className="break-words text-base font-bold leading-5 text-slate-950 md:truncate">
                             {helper.name}
                           </h3>
                           {selfHelperIds.has(helper.id) && (
@@ -1867,8 +2078,9 @@ export default function Helpers() {
                             </span>
                           )}
                         </div>
-                        <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
-                          <span>Ansprechpartner:</span>
+                        <p className="mt-1 text-xs text-slate-500">
+                          <span className="md:hidden">(</span>
+                          <span className="hidden md:inline">Ansprechpartner: </span>
                           <span
                             className={cn(
                               "font-medium",
@@ -1877,14 +2089,49 @@ export default function Helpers() {
                           >
                             {contactName ?? "Kein Ansprechpartner"}
                           </span>
+                          <span className="md:hidden">)</span>
                         </p>
                       </div>
-                      <div className="flex shrink-0 items-center gap-1">
+                      <div className="flex w-[9.5rem] shrink-0 flex-col items-end gap-1 md:w-auto">
+                        <div className="flex items-center justify-end gap-0.5">
+                          <CakeDonationAction
+                            helperName={helper.name}
+                            count={cakeCount}
+                            compact
+                            onClick={() => openCakeDonation(helper.name)}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-slate-600 hover:text-green-700 md:h-8 md:w-8"
+                            title="Aufgabenplan per WhatsApp an Helfer senden"
+                            aria-label={`Aufgabenplan von ${helper.name} per WhatsApp senden`}
+                            disabled={isPreparingWhatsApp}
+                            onClick={() => openWhatsAppDialog(helper)}
+                          >
+                            <MessageCircle className="size-4 text-[#25D366]" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-slate-600 hover:text-blue-700 md:h-8 md:w-8"
+                            title="Einsatz-PDF herunterladen"
+                            aria-label={`Einsatz-PDF von ${helper.name} herunterladen`}
+                            disabled={exportingId === helper.id}
+                            onClick={() => {
+                              setExportingId(helper.id);
+                              exportPdf.mutate({ helperId: helper.id });
+                            }}
+                          >
+                            <FileDown className="size-4 text-blue-600" />
+                          </Button>
                         <Button
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="h-11 w-11 text-slate-600 hover:text-blue-700 md:hidden"
+                          className="h-7 w-7 text-slate-600 hover:text-blue-700 md:hidden"
                           title="Helfer bearbeiten"
                           aria-label={`Helfer ${helper.name} bearbeiten`}
                           disabled={update.isPending}
@@ -1892,42 +2139,11 @@ export default function Helpers() {
                         >
                           <Pencil className="size-4" />
                         </Button>
-                        <CakeDonationAction
-                          helperName={helper.name}
-                          count={cakeCount}
-                          onClick={() => openCakeDonation(helper.name)}
-                        />
                         <Button
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-slate-600 hover:text-green-700"
-                          title="Aufgabenplan per WhatsApp an Helfer senden"
-                          aria-label={`Aufgabenplan von ${helper.name} per WhatsApp senden`}
-                          disabled={isPreparingWhatsApp}
-                          onClick={() => openWhatsAppDialog(helper)}
-                        >
-                          <MessageCircle className="size-4 text-[#25D366]" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-slate-600 hover:text-blue-700"
-                          title="Einsatz-PDF herunterladen"
-                          disabled={exportingId === helper.id}
-                          onClick={() => {
-                            setExportingId(helper.id);
-                            exportPdf.mutate({ helperId: helper.id });
-                          }}
-                        >
-                          <FileDown className="size-4 text-blue-600" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-slate-600 hover:text-red-700"
+                          className="h-7 w-7 text-slate-600 hover:text-red-700 md:h-8 md:w-8"
                           title={
                             helperDeleteDisabled
                               ? "Helfer kann aktuell nicht gelöscht werden"
@@ -1943,6 +2159,30 @@ export default function Helpers() {
                         >
                           <Trash2 className="size-4 text-red-600" />
                         </Button>
+                        </div>
+                        {helper.phone?.trim() ? (
+                          <a
+                            href={`tel:${helper.phone.replace(/[^\d+]/g, "")}`}
+                            data-slot="mobile-helper-phone-call"
+                            className="max-w-full truncate text-xs font-medium text-blue-700 underline decoration-blue-200 underline-offset-2 focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 md:hidden"
+                            title={`${helper.phone.trim()} anrufen`}
+                            aria-label={`${helper.phone.trim()} anrufen`}
+                          >
+                            {helper.phone.trim()}
+                          </a>
+                        ) : (
+                          <button
+                            type="button"
+                            data-slot="mobile-helper-phone-edit"
+                            className="max-w-full truncate text-xs font-medium text-blue-700 underline decoration-blue-200 underline-offset-2 focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 md:hidden"
+                            title="Telefonnummer hinzufügen"
+                            aria-label={`Telefonnummer von ${helper.name} hinzufügen`}
+                            disabled={update.isPending}
+                            onClick={() => openMobileHelperEdit(helper)}
+                          >
+                            Telefonnummer hinzufügen
+                          </button>
+                        )}
                       </div>
                     </div>
 
@@ -1979,24 +2219,13 @@ export default function Helpers() {
                           />
                         </div>
                       </div>
-                      <div>
+                      <div className="hidden md:block">
                         <span className="text-slate-500">Telefon</span>
-                        <button
-                          type="button"
-                          data-slot="mobile-helper-phone-edit"
-                          className="mt-1 block w-full truncate text-left font-medium text-blue-700 underline decoration-blue-200 underline-offset-2 focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 md:hidden"
-                          title="Telefonnummer bearbeiten oder entfernen"
-                          aria-label={`Telefonnummer von ${helper.name} bearbeiten oder entfernen`}
-                          disabled={update.isPending}
-                          onClick={() => openMobileHelperEdit(helper)}
-                        >
-                          {helper.phone?.trim() ? helper.phone : "Telefon hinzufügen"}
-                        </button>
-                        <p className="mt-1 hidden truncate font-medium text-slate-800 md:block">
+                        <p className="mt-1 truncate font-medium text-slate-800">
                           {helper.phone?.trim() ? helper.phone : "–"}
                         </p>
                       </div>
-                      <div>
+                      <div className="hidden md:block">
                         <span className="text-slate-500">Hinweis</span>
                         <p className="mt-1 truncate font-medium text-slate-800">
                           {helper.note?.trim() ? "Vorhanden" : "–"}
