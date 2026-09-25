@@ -568,7 +568,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain('type="button"');
     expect(plan).toContain("aria-label={`Details zu ${helper.name} anzeigen`}");
     expect(plan).toContain("<PopoverTrigger asChild>");
-    expect(plan).toContain("min-h-11 min-w-0 flex-1 truncate text-left");
+    expect(plan).toContain('compact ? "min-h-8" : "min-h-11 md:min-h-0"');
     expect(widget).toContain("min-h-12 min-w-0 flex-1 max-h-28 resize-none bg-white text-base");
     expect(widget).not.toContain("chat-contact-select");
     expect(widget).toContain("h-11 w-11 text-slate-600 hover:text-red-600");
@@ -1764,7 +1764,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain('data-slot="roster-delete-action"');
     expect(plan).toContain('canEditPlan ? "text-red-600" : "text-gray-400 opacity-50"');
     expect(plan).toContain('grid max-w-full grid-cols-2 items-start gap-1');
-    expect(plan).toContain('w-full min-w-0 max-w-none min-h-11');
+    expect(plan).toContain('inline-flex w-full min-w-0 max-w-none items-center gap-1');
     expect(plan).toContain('Besetzt / Bedarf');
     expect(plan).toContain('{e.besetzt} / {s.needed}');
     expect(plan).toContain("STICKY_TABLE_HEADER_CELL_CLASS");
@@ -1787,6 +1787,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain('data-slot="shift-dialog-location"');
     expect(plan).toContain('data-slot="shift-dialog-task"');
     expect(plan).toContain('data-slot="shift-dialog-time"');
+    expect(plan).toContain('displayLabel={helper.name}');
+    expect(plan).toContain('title={label(helper)}');
+    expect(plan).toContain('<HighlightedText text={displayLabel} query={searchQuery} />');
+    expect(plan).toContain('compact = false');
+    expect(plan).toContain('<HelperDropdownFeedbackBadge');
+    expect(plan).toContain('assignments={assignmentDisplayByHelper.get(helper.id) ?? []}');
+    expect(plan).toContain('compact');
   });
 
   it("fixiert die Haupttabellen mit deckend weißen, kompakten Kopfzeilen im jeweiligen Scrollrahmen", () => {
@@ -2319,7 +2326,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("Besetzt / Bedarf");
     expect(plan).toContain("{e.besetzt} / {s.needed}");
     expect(plan).toContain("grid max-w-full grid-cols-2 items-start gap-1");
-    expect(plan).toContain("w-full min-w-0 max-w-none min-h-11");
+    expect(plan).toContain("inline-flex w-full min-w-0 max-w-none items-center gap-1");
     expect(plan).toContain("const resetPlanFilters = () =>");
     expect(plan).toContain("setFlexibleAssignmentFilter(\"alle\")");
     expect(plan).toContain("next.delete(PLAN_WARNING_QUERY_KEY)");

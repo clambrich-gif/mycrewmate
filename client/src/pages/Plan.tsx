@@ -219,9 +219,11 @@ function MobileShiftNote({
 function HelperDropdownFeedbackBadge({
   feedback,
   assignments = [],
+  compact = false,
 }: {
   feedback: ReturnType<typeof helperDropdownAssignmentFeedback>;
   assignments?: Array<{ day: string; label?: string; time?: string }>;
+  compact?: boolean;
 }) {
   if (!feedback) return null;
   if (feedback.kind === "already-assigned") {
@@ -229,7 +231,7 @@ function HelperDropdownFeedbackBadge({
       <span
         data-slot="helper-dropdown-feedback"
         data-feedback-kind="already-assigned"
-        className="shrink-0 rounded-full border border-amber-500 bg-amber-200 px-2 py-0.5 text-[11px] font-semibold text-amber-950 dark:bg-amber-800 dark:text-amber-50"
+        className={`shrink-0 rounded-full border border-amber-500 bg-amber-200 font-semibold text-amber-950 dark:bg-amber-800 dark:text-amber-50 ${compact ? "px-1.5 py-0 text-[9px] leading-4" : "px-2 py-0.5 text-[11px]"}`}
       >
         bereits belegt
       </span>
@@ -240,7 +242,7 @@ function HelperDropdownFeedbackBadge({
       <span
         data-slot="helper-dropdown-feedback"
         data-feedback-kind="new"
-        className="shrink-0 rounded-full border border-emerald-200 bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800"
+        className={`shrink-0 rounded-full border border-emerald-200 bg-emerald-100 font-semibold text-emerald-800 ${compact ? "px-1.5 py-0 text-[9px] leading-4" : "px-2 py-0.5 text-[11px]"}`}
       >
         Neu
       </span>
@@ -284,7 +286,7 @@ function HelperDropdownFeedbackBadge({
       data-feedback-kind="day-segments"
       aria-label={assignedTooltip}
       title={assignedTooltip}
-      className="inline-flex shrink-0 cursor-help overflow-hidden rounded-full border border-slate-200 text-[10px] font-semibold leading-5 shadow-xs"
+      className={`inline-flex shrink-0 cursor-help overflow-hidden rounded-full border border-slate-200 font-semibold shadow-xs ${compact ? "text-[8px] leading-4" : "text-[10px] leading-5"}`}
     >
       {feedback.segments.map((segment, index) => {
         const tone = segment.isCurrentDay
@@ -307,8 +309,12 @@ function HelperDropdownFeedbackBadge({
             data-current-day={segment.isCurrentDay ? "true" : "false"}
             className={`text-center transition-colors ${
               segment.isCurrentDay
-                ? "min-w-8 px-1.5 text-[11px] font-extrabold leading-6 shadow-sm ring-1 ring-inset ring-white/80"
-                : "min-w-6 px-1 text-[9px] font-medium leading-5 opacity-80"
+                ? compact
+                  ? "min-w-5 px-1 text-[9px] font-extrabold leading-4 shadow-sm ring-1 ring-inset ring-white/80"
+                  : "min-w-8 px-1.5 text-[11px] font-extrabold leading-6 shadow-sm ring-1 ring-inset ring-white/80"
+                : compact
+                  ? "min-w-4 px-0.5 text-[8px] font-medium leading-4 opacity-80"
+                  : "min-w-6 px-1 text-[9px] font-medium leading-5 opacity-80"
             } ${tone} ${index ? "border-l border-white/70" : ""}`}
           >
             {segment.label}
@@ -363,6 +369,7 @@ function AssignedHelperChip({
   shiftDay,
   canRemove,
   onRemove,
+  compact = false,
 }: {
   helper: HelperTooltipData;
   displayLabel: string;
@@ -372,6 +379,7 @@ function AssignedHelperChip({
   shiftDay: Weekday;
   canRemove: boolean;
   onRemove: () => void;
+  compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const openTimer = useRef<number | null>(null);
@@ -415,14 +423,14 @@ function AssignedHelperChip({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <div
-        className={`slot ${className} inline-flex w-full min-w-0 max-w-none min-h-11 items-center gap-1 text-base md:min-h-0 md:text-sm xl:!px-2 xl:!py-0.5`}
+        className={`slot ${className} inline-flex w-full min-w-0 max-w-none items-center gap-1 ${compact ? "min-h-8 px-2 py-1 text-[13px] leading-4" : "min-h-11 text-base md:min-h-0 md:text-sm xl:!px-2 xl:!py-0.5"}`}
         onPointerEnter={event => openAfterDelay(event.pointerType)}
         onPointerLeave={event => closeAfterLeave(event.pointerType)}
       >
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="min-h-11 min-w-0 flex-1 truncate text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 md:min-h-0"
+            className={`min-w-0 flex-1 truncate text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${compact ? "min-h-8" : "min-h-11 md:min-h-0"}`}
             aria-label={`Details zu ${helper.name} anzeigen`}
           >
             <span className="inline-flex max-w-full items-center gap-1 truncate">
@@ -444,7 +452,7 @@ function AssignedHelperChip({
                   <Clock3 className="size-3.5" aria-hidden="true" />
                 </span>
               )}
-              <span className="truncate">
+              <span className="truncate" title={helper.name}>
                 <HighlightedText text={displayLabel} query={searchQuery} />
               </span>
             </span>
@@ -1492,13 +1500,14 @@ export default function Plan() {
                       <AssignedHelperChip
                         key={assignment.id}
                         helper={helper}
-                        displayLabel={label(helper)}
+                        displayLabel={helper.name}
                         searchQuery={q}
                         className={isAusfall ? "slot-ausfall" : isDoppel ? "slot-doppel" : "slot-ok"}
                         activeDays={activeDays}
                         shiftDay={shift.day as Weekday}
                         canRemove={canEditPlan}
                         onRemove={() => unassign.mutate({ id: assignment.id })}
+                        compact
                       />
                     );
                   })
@@ -1539,7 +1548,7 @@ export default function Plan() {
                       return (
                         <label
                           key={helper.id}
-                          className={`flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-2 text-sm transition-colors ${selected ? "border-blue-300 bg-white shadow-sm" : "border-transparent hover:border-blue-200 hover:bg-white/80"} ${selectionFull ? "cursor-not-allowed opacity-50" : ""}`}
+                          className={`flex cursor-pointer items-center gap-2 rounded-lg border px-2 py-1.5 text-[13px] leading-4 transition-colors ${selected ? "border-blue-300 bg-white shadow-sm" : "border-transparent hover:border-blue-200 hover:bg-white/80"} ${selectionFull ? "cursor-not-allowed opacity-50" : ""}`}
                           title={conflictTitle || availabilityLabel || undefined}
                         >
                           <Checkbox
@@ -1548,13 +1557,14 @@ export default function Plan() {
                             onCheckedChange={() => toggleSelectedHelper(shift.id, helper.id)}
                             aria-label={`${label(helper)} auswählen`}
                           />
-                          <span className="min-w-0 flex-1 truncate font-medium text-slate-800">
+                          <span className="min-w-0 flex-1 truncate font-medium text-slate-800" title={label(helper)}>
                             {helper.companion?.trim() && <span aria-hidden="true">👪 </span>}
-                            {label(helper)}
+                            {helper.name}
                           </span>
                           <HelperDropdownFeedbackBadge
                             feedback={assignmentFeedback}
                             assignments={assignmentDisplayByHelper.get(helper.id) ?? []}
+                            compact
                           />
                         </label>
                       );
