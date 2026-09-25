@@ -3346,6 +3346,72 @@ export const appRouter = router({
           });
         }
       }),
+    assignMany: adminProcedure
+      .input(
+        z.object({
+          shiftId: z.number().int().positive(),
+          helperIds: z.array(z.number().int().positive()).min(1).max(20),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const helperIds = Array.from(new Set(input.helperIds));
+        const [shifts, helpers, assignments] = await Promise.all([
+          db.listShifts(),
+          db.listHelpers(),
+          db.listAssignments(),
+        ]);
+        const shift = shifts.find(item => item.id === input.shiftId);
+        if (!shift)
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Schicht wurde nicht gefunden",
+          });
+        const selectedHelpers = helperIds.map(helperId =>
+          helpers.find(helper => helper.id === helperId)
+        );
+        if (selectedHelpers.some(helper => !helper)) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Mindestens ein ausgewählter Helfer wurde nicht gefunden",
+          });
+        }
+        const invalidHelper = selectedHelpers.find(
+          helper => helper && !helperEligibleForShift(helper, shift)
+        );
+        if (invalidHelper) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `${invalidHelper.name} ist für diese Schichtzeit nicht verfügbar`,
+          });
+        }
+        const currentAssignments = assignments.filter(
+          assignment => assignment.shiftId === shift.id
+        );
+        if (currentAssignments.some(assignment => helperIds.includes(assignment.helperId))) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Mindestens ein Helfer ist dieser Schicht bereits zugewiesen",
+          });
+        }
+        if (shift.needed - currentAssignments.length < helperIds.length) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message: "Für die Auswahl sind nicht genügend freie Helferplätze vorhanden",
+          });
+        }
+        try {
+          return await db.assignHelpersToOpenSlots({ shiftId: shift.id, helperIds });
+        } catch (error) {
+          if (error instanceof Error && error.message.includes("nicht verfügbar")) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+          }
+          throw new TRPCError({
+            code: "CONFLICT",
+            message:
+              "Die Mehrfachzuweisung konnte wegen einer gleichzeitigen Änderung nicht gespeichert werden",
+          });
+        }
+      }),
     unassign: adminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(({ input }) => db.unassignHelper(input.id)),

@@ -8,6 +8,7 @@ const dbMocks = vi.hoisted(() => ({
   listHelpers: vi.fn(),
   listAssignments: vi.fn(),
   assignHelper: vi.fn(),
+  assignHelpersToOpenSlots: vi.fn(),
   unassignHelper: vi.fn(),
   clearAssignments: vi.fn(),
   clearModuleAssignments: vi.fn(),
@@ -204,6 +205,10 @@ describe("Planungs-API", () => {
     dbMocks.listApprovals.mockResolvedValue([]);
     dbMocks.recordActivityLog.mockResolvedValue(undefined);
     dbMocks.assignHelper.mockResolvedValue({ insertId: 1 });
+    dbMocks.assignHelpersToOpenSlots.mockResolvedValue({
+      success: true,
+      assignedCount: 1,
+    });
     dbMocks.updateShift.mockResolvedValue({ affectedRows: 1 });
     dbMocks.clearModuleAssignments.mockResolvedValue({
       area: "prep",
@@ -1623,6 +1628,42 @@ describe("Planungs-API", () => {
       slot: 0,
     });
     expect(dbMocks.withPlanningWriteLock).toHaveBeenCalledTimes(1);
+  });
+
+  it("speichert eine gültige Mehrfachzuweisung als zusammenhängende Auswahl", async () => {
+    const secondHelper = { ...helper, id: 21, name: "Bea" };
+    dbMocks.listHelpers.mockResolvedValue([helper, secondHelper]);
+    dbMocks.assignHelpersToOpenSlots.mockResolvedValue({
+      success: true,
+      assignedCount: 2,
+    });
+
+    await expect(
+      appRouter.createCaller(ctx).plan.assignMany({
+        shiftId: 10,
+        helperIds: [20, 21],
+      })
+    ).resolves.toEqual({ success: true, assignedCount: 2 });
+    expect(dbMocks.assignHelpersToOpenSlots).toHaveBeenCalledWith({
+      shiftId: 10,
+      helperIds: [20, 21],
+    });
+  });
+
+  it("lehnt eine Mehrfachauswahl ab, die nicht in die freien Plätze passt", async () => {
+    dbMocks.listHelpers.mockResolvedValue([
+      helper,
+      { ...helper, id: 21, name: "Bea" },
+      { ...helper, id: 22, name: "Chris" },
+    ]);
+
+    await expect(
+      appRouter.createCaller(ctx).plan.assignMany({
+        shiftId: 10,
+        helperIds: [20, 21, 22],
+      })
+    ).rejects.toThrow("nicht genügend freie Helferplätze");
+    expect(dbMocks.assignHelpersToOpenSlots).not.toHaveBeenCalled();
   });
 
   it("initialisiert neue Vorbereitungsaufgaben serverseitig immer mit Offen", async () => {

@@ -1750,7 +1750,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
 
     expect(layout).toContain('location === "/helfer" || location === "/einsatzplan"');
     expect(layout).toContain('"w-full p-3 sm:p-4 xl:p-6"');
-    expect(plan).toContain('<Card className="hidden w-full shadow-sm md:block">');
+    expect(plan).toContain('viewMode === "liste" ? "hidden w-full shadow-sm md:block" : "hidden"');
     expect(plan).toContain("STICKY_TABLE_CONTAINER_CLASS");
     expect(plan).toContain('data-sticky-table-header="plan"');
     expect(plan).toContain('data-slot="roster-table"');
@@ -1769,6 +1769,24 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain('{e.besetzt} / {s.needed}');
     expect(plan).toContain("STICKY_TABLE_HEADER_CELL_CLASS");
     expect(plan).toContain('min-w-[320px] whitespace-nowrap ${STICKY_TABLE_HEADER_CELL_CLASS}');
+  });
+
+  it("bietet im Einsatzplan eine gespeicherte Kachelansicht mit Mehrfachzuweisung", () => {
+    const plan = source("client/src/pages/Plan.tsx");
+
+    expect(plan).toContain('useViewMode("einsatzplan")');
+    expect(plan).toContain("<ViewModeToggle mode={viewMode} onChange={setViewMode} />");
+    expect(plan).toContain('data-slot="shift-card-grid"');
+    expect(plan).toContain('data-slot="shift-card-batch-selection"');
+    expect(plan).toContain("assignMany.mutate");
+    expect(plan).toContain("Helfer auswählen");
+    expect(plan).toContain("Helfer zuordnen");
+    expect(plan).toContain('aria-label={`${assigned.length} von ${shift.needed} Helfern eingeteilt`}');
+    expect(plan).toContain('data-slot="shift-dialog-basics"');
+    expect(plan).toContain('data-slot="shift-dialog-area"');
+    expect(plan).toContain('data-slot="shift-dialog-location"');
+    expect(plan).toContain('data-slot="shift-dialog-task"');
+    expect(plan).toContain('data-slot="shift-dialog-time"');
   });
 
   it("fixiert die Haupttabellen mit deckend weißen, kompakten Kopfzeilen im jeweiligen Scrollrahmen", () => {

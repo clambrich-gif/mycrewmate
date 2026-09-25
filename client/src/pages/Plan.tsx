@@ -103,6 +103,8 @@ import {
 import { LocationMapLink } from "@/components/LocationMapLink";
 import { MyTasksDefaultPin } from "@/components/MyTasksDefaultPin";
 import { useMyTasksDefault } from "@/hooks/useMyTasksDefault";
+import { ViewModeToggle } from "@/components/ViewModeToggle";
+import { useViewMode } from "@/hooks/useViewMode";
 
 const formatTimeLabel = (shift: { startTime: string; endTime: string }) =>
   shift.startTime && shift.endTime
@@ -598,6 +600,10 @@ export default function Plan() {
   const [myTasksOnly, setMyTasksOnly] = useState(false);
   const [openOrUnassignedOnly, setOpenOrUnassignedOnly] = useState(false);
   const [q, setQ] = useState("");
+  const [viewMode, setViewMode] = useViewMode("einsatzplan");
+  const [selectedHelperIdsByShift, setSelectedHelperIdsByShift] = useState<
+    Record<number, number[]>
+  >({});
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [areaContactsExpanded, setAreaContactsExpanded] = useState(false);
   const [deleteCandidate, setDeleteCandidate] = useState<DropdownShift | null>(
@@ -695,6 +701,18 @@ export default function Plan() {
   };
   const assign = trpc.plan.assign.useMutation({
     onSuccess: invalidate,
+    onError: e => toast.error(e.message),
+  });
+  const assignMany = trpc.plan.assignMany.useMutation({
+    onSuccess: result => {
+      setSelectedHelperIdsByShift({});
+      invalidate();
+      toast.success(
+        result.assignedCount === 1
+          ? "Helfer zugeordnet"
+          : `${result.assignedCount} Helfer zugeordnet`
+      );
+    },
     onError: e => toast.error(e.message),
   });
   const unassign = trpc.plan.unassign.useMutation({
@@ -1329,6 +1347,265 @@ export default function Plan() {
     );
   };
 
+  const toggleSelectedHelper = (shiftId: number, helperId: number) => {
+    setSelectedHelperIdsByShift(previous => {
+      const selected = previous[shiftId] ?? [];
+      return {
+        ...previous,
+        [shiftId]: selected.includes(helperId)
+          ? selected.filter(id => id !== helperId)
+          : [...selected, helperId],
+      };
+    });
+  };
+
+  const renderShiftCard = (evalE: any) => {
+    const shift = evalE.shift as DropdownShift & { needed: number; note?: string | null };
+    const assigned = evalE.assigned as AssignmentT[];
+    const freeSlots = Math.max(shift.needed - assigned.length, 0);
+    const selectedHelperIds = selectedHelperIdsByShift[shift.id] ?? [];
+    const candidateHelpers = activeHelpers(shift)
+      .filter(helper => !assigned.some(assignment => assignment.helperId === helper.id))
+      .map(helper => {
+        const conflicts = overlappingAssignments(helper.id, shift);
+        const assignmentFeedback = helperDropdownAssignmentFeedback({
+          assignments: assignedDaysByHelper.get(helper.id) ?? [],
+          activeDays,
+          availabilityByDay: activeDays.map(day => ({
+            day,
+            available: helperDayAvailability(helper, day).available,
+          })),
+          currentDay: shift.day as Weekday,
+          hasTimeConflict: conflicts.length > 0,
+        });
+        return { helper, conflicts, assignmentFeedback };
+      })
+      .sort(
+        (left, right) =>
+          helperDropdownPriority(left.assignmentFeedback) -
+            helperDropdownPriority(right.assignmentFeedback) ||
+          left.helper.name.localeCompare(right.helper.name, "de")
+      );
+    const percent = shift.needed > 0 ? Math.min(100, Math.round((assigned.length / shift.needed) * 100)) : 100;
+    const progressClass =
+      evalE.status === "OK"
+        ? "bg-emerald-500"
+        : evalE.status === "KNAPP"
+          ? "bg-amber-500"
+          : "bg-blue-600";
+
+    return (
+      <Card
+        key={shift.id}
+        data-slot="shift-card"
+        className="overflow-hidden border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md"
+      >
+        <CardContent className="space-y-4 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                  {shift.day}
+                </span>
+                <StatusBadge
+                  status={evalE.status}
+                  timeUndercoverage={evalE.timeUndercoverage}
+                  manuallyConfirmed={shift.manualOkConfirmed}
+                  doubleConflictAccepted={shift.manualDoubleConflictAccepted}
+                />
+              </div>
+              <h2 className="break-words text-lg font-semibold tracking-tight text-slate-950">
+                <HighlightedText text={shift.task} query={q} />
+              </h2>
+              <p className="text-sm text-slate-600">
+                <HighlightedText text={shift.area} query={q} /> · {formatTimeLabel(shift)}
+                <FlexibleTimeNote flexible={shift.allowFlexibleAssignment} />
+              </p>
+              <LocationMapLink
+                locationId={shift.locationId}
+                locations={locations}
+                className="mt-1"
+              />
+            </div>
+            {canEditPlan && (
+              <div className="flex shrink-0 gap-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  title="Schicht bearbeiten"
+                  aria-label={`Schicht ${shift.area}: ${shift.task} bearbeiten`}
+                  onClick={() => openEdit(shift)}
+                >
+                  <Pencil className="size-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  title="Schicht löschen"
+                  aria-label={`Schicht ${shift.area}: ${shift.task} löschen`}
+                  onClick={() => setDeleteCandidate(shift)}
+                >
+                  <Trash2 className="size-4 text-red-600" />
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3">
+            <div className="mb-2 flex items-center justify-between gap-3 text-sm">
+              <span className="font-medium text-slate-700">Besetzung</span>
+              <span className="font-semibold text-slate-950">
+                {assigned.length} von {shift.needed} Helfern
+              </span>
+            </div>
+            <div
+              className="h-2.5 overflow-hidden rounded-full bg-slate-200"
+              aria-label={`${assigned.length} von ${shift.needed} Helfern eingeteilt`}
+            >
+              <div
+                className={`h-full rounded-full transition-[width] duration-300 ${progressClass}`}
+                style={{ width: `${percent}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-3 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+            <section className="rounded-xl border border-slate-200 bg-white p-3">
+              <p className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                Eingeteilt
+              </p>
+              <div className="flex min-h-10 flex-wrap content-start gap-1.5">
+                {assigned.length ? (
+                  assigned.map(assignment => {
+                    const helper =
+                      evalE.validHelpers.find((item: any) => item.id === assignment.helperId) ??
+                      evalE.ausfallHelpers.find((item: any) => item.id === assignment.helperId);
+                    const isAusfall = evalE.ausfallHelpers.some(
+                      (item: any) => item.id === assignment.helperId
+                    );
+                    const isDoppel =
+                      !isAusfall &&
+                      !shift.manualDoubleConflictAccepted &&
+                      (evalE.doppelIds as Set<number>).has(assignment.helperId);
+                    if (!helper) return null;
+                    return (
+                      <AssignedHelperChip
+                        key={assignment.id}
+                        helper={helper}
+                        displayLabel={label(helper)}
+                        searchQuery={q}
+                        className={isAusfall ? "slot-ausfall" : isDoppel ? "slot-doppel" : "slot-ok"}
+                        activeDays={activeDays}
+                        shiftDay={shift.day as Weekday}
+                        canRemove={canEditPlan}
+                        onRemove={() => unassign.mutate({ id: assignment.id })}
+                      />
+                    );
+                  })
+                ) : (
+                  <span className="text-sm text-muted-foreground">Noch niemand eingeteilt</span>
+                )}
+              </div>
+            </section>
+
+            <section
+              data-slot="shift-card-batch-selection"
+              className="rounded-xl border border-blue-100 bg-blue-50/40 p-3"
+            >
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="text-xs font-semibold tracking-wide text-slate-600 uppercase">
+                  Helfer auswählen
+                </p>
+                <span className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-slate-600">
+                  {freeSlots} {freeSlots === 1 ? "Platz frei" : "Plätze frei"}
+                </span>
+              </div>
+              {canEditPlan ? (
+                <>
+                  <div className="max-h-52 space-y-1 overflow-y-auto pr-1" role="group" aria-label={`Helfer für ${shift.task} auswählen`}>
+                    {candidateHelpers.map(({ helper, conflicts, assignmentFeedback }) => {
+                      const selected = selectedHelperIds.includes(helper.id);
+                      const selectionFull = !selected && selectedHelperIds.length >= freeSlots;
+                      const timeRestricted = helperHasTimedAvailability(
+                        helper,
+                        shift.day as Weekday
+                      );
+                      const availabilityLabel = timeRestricted
+                        ? helperAvailabilityWindowLabel(helper, shift.day as Weekday)
+                        : "";
+                      const conflictTitle = conflicts
+                        .map(other => `${other.area}: ${other.task} (${formatTimeLabel(other)})`)
+                        .join(", ");
+                      return (
+                        <label
+                          key={helper.id}
+                          className={`flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-2 text-sm transition-colors ${selected ? "border-blue-300 bg-white shadow-sm" : "border-transparent hover:border-blue-200 hover:bg-white/80"} ${selectionFull ? "cursor-not-allowed opacity-50" : ""}`}
+                          title={conflictTitle || availabilityLabel || undefined}
+                        >
+                          <Checkbox
+                            checked={selected}
+                            disabled={assignMany.isPending || selectionFull}
+                            onCheckedChange={() => toggleSelectedHelper(shift.id, helper.id)}
+                            aria-label={`${label(helper)} auswählen`}
+                          />
+                          <span className="min-w-0 flex-1 truncate font-medium text-slate-800">
+                            {helper.companion?.trim() && <span aria-hidden="true">👪 </span>}
+                            {label(helper)}
+                          </span>
+                          <HelperDropdownFeedbackBadge
+                            feedback={assignmentFeedback}
+                            assignments={assignmentDisplayByHelper.get(helper.id) ?? []}
+                          />
+                        </label>
+                      );
+                    })}
+                    {!candidateHelpers.length && (
+                      <p className="py-2 text-sm text-muted-foreground">
+                        Keine weiteren verfügbaren Helfer.
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="mt-3 w-full bg-blue-600 text-white hover:bg-blue-700"
+                    disabled={!selectedHelperIds.length || assignMany.isPending}
+                    onClick={() => assignMany.mutate({ shiftId: shift.id, helperIds: selectedHelperIds })}
+                  >
+                    {assignMany.isPending
+                      ? "Zuordnung wird gespeichert …"
+                      : selectedHelperIds.length === 1
+                        ? "1 Helfer zuordnen"
+                        : `${selectedHelperIds.length} Helfer zuordnen`}
+                  </Button>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Helferzuweisungen sind nur für Administratoren möglich.
+                </p>
+              )}
+            </section>
+          </div>
+
+          <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="text-xs text-muted-foreground">Ansprechpartner</dt>
+              <dd className="font-medium">
+                {contactName(areaContactMap.get(shift.area) ?? null) || "nicht zugeordnet"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Bemerkung</dt>
+              <dd className="line-clamp-2 font-medium text-slate-700">
+                {shift.note?.trim() || "Keine Bemerkung"}
+              </dd>
+            </div>
+          </dl>
+        </CardContent>
+      </Card>
+    );
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
@@ -1340,33 +1617,36 @@ export default function Plan() {
             : "Das Planungsteam kann den Einsatzplan vollständig ansehen und filtern. Änderungen und Helferzuweisungen sind Administratoren vorbehalten."}
           </p>
         </div>
-        {canEditPlan && (
-          <div
-            data-plan-action-header
-            className="w-full shrink-0 space-y-2 lg:w-auto lg:min-w-[344px]"
-          >
+        <div className="flex w-full shrink-0 flex-col items-start gap-2 lg:w-auto lg:min-w-[344px] lg:items-end">
+          <ViewModeToggle mode={viewMode} onChange={setViewMode} />
+          {canEditPlan && (
             <div
-              data-plan-data-actions
-              className="grid grid-cols-2 gap-2 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:whitespace-nowrap [&>[data-slot=button]]:px-2 lg:[&>[data-slot=button]]:h-10"
+              data-plan-action-header
+              className="w-full space-y-2"
             >
-              <CopyPreviousPlanButton />
-              <PlanResetDialogButton
-                area="shifts"
-                label="Einsatzplan"
-                onCompleted={() => setQ("")}
-              />
+              <div
+                data-plan-data-actions
+                className="grid grid-cols-2 gap-2 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:whitespace-nowrap [&>[data-slot=button]]:px-2 lg:[&>[data-slot=button]]:h-10"
+              >
+                <CopyPreviousPlanButton />
+                <PlanResetDialogButton
+                  area="shifts"
+                  label="Einsatzplan"
+                  onCompleted={() => setQ("")}
+                />
+              </div>
+              <Button
+                type="button"
+                onClick={openCreate}
+                disabled={isEventLoading || !activeDays.length}
+                className="w-full border-blue-600 bg-blue-600 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus-visible:ring-blue-500"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Neue Schicht
+              </Button>
             </div>
-            <Button
-              type="button"
-              onClick={openCreate}
-              disabled={isEventLoading || !activeDays.length}
-              className="w-full border-blue-600 bg-blue-600 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus-visible:ring-blue-500"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Neue Schicht
-            </Button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {areas.length > 0 && (
@@ -1674,7 +1954,21 @@ export default function Plan() {
         </div>
       </div>
 
-      <div className="space-y-3 md:hidden">
+      {viewMode === "kacheln" && (
+        <div
+          data-slot="shift-card-grid"
+          className="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3"
+        >
+          {filtered.map(renderShiftCard)}
+          {!isLoading && filtered.length === 0 && (
+            <div className="col-span-full rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+              {emptyMessage}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className={viewMode === "liste" ? "space-y-3 md:hidden" : "hidden"}>
         {filtered.map(e => {
           const shift = e.shift;
           return (
@@ -1772,7 +2066,7 @@ export default function Plan() {
         )}
       </div>
 
-      <Card className="hidden w-full shadow-sm md:block">
+      <Card className={viewMode === "liste" ? "hidden w-full shadow-sm md:block" : "hidden"}>
         <CardContent className={`w-full ${STICKY_TABLE_CONTAINER_CLASS} p-0`}>
           <table
             data-slot="roster-table"
@@ -2038,14 +2332,17 @@ export default function Plan() {
       </Dialog>
 
       <Dialog open={dlgOpen} onOpenChange={setDlgOpen}>
-        <DialogContent className="w-[calc(100vw-2rem)] min-w-0 max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))] !bg-white !text-slate-950 opacity-100 shadow-2xl sm:max-w-xl dark:!bg-slate-950 dark:!text-slate-50 [&_[data-slot=input]]:!bg-white [&_[data-slot=input]]:dark:!bg-slate-900 [&_[data-slot=select-trigger]]:!bg-white [&_[data-slot=select-trigger]]:dark:!bg-slate-900">
+        <DialogContent className="w-[calc(100vw-2rem)] min-w-0 max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))] !bg-white !text-slate-950 opacity-100 shadow-2xl sm:max-w-2xl dark:!bg-slate-950 dark:!text-slate-50 [&_[data-slot=input]]:!bg-white [&_[data-slot=input]]:dark:!bg-slate-900 [&_[data-slot=select-trigger]]:!bg-white [&_[data-slot=select-trigger]]:dark:!bg-slate-900">
           <DialogHeader>
             <DialogTitle>
               {editShift ? "Schicht bearbeiten" : "Neue Schicht"}
             </DialogTitle>
+            <p className="text-sm font-normal text-muted-foreground">
+              In klaren Schritten zu einer planbaren Schicht.
+            </p>
           </DialogHeader>
-          <div className="grid min-w-0 gap-3 py-2">
-            <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid min-w-0 gap-4 py-2">
+            <div data-slot="shift-dialog-basics" className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 sm:grid-cols-2">
               <div>
                 <Label>Tag</Label>
                 <Select
@@ -2083,7 +2380,7 @@ export default function Plan() {
                 />
               </div>
             </div>
-            <div>
+            <div data-slot="shift-dialog-area" className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm">
               <Label htmlFor="shift-area">Bereich</Label>
               <Input
                 id="shift-area"
@@ -2098,7 +2395,7 @@ export default function Plan() {
                 ))}
               </datalist>
             </div>
-            <div>
+            <div data-slot="shift-dialog-location" className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm">
               <Label htmlFor="shift-location">Ort / Standort</Label>
               <Select
                 value={form.locationId ? String(form.locationId) : "none"}
@@ -2116,7 +2413,7 @@ export default function Plan() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
+            <div data-slot="shift-dialog-task" className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm">
               <Label>Aufgabe / Schicht</Label>
               <Input
                 value={form.task}
@@ -2124,7 +2421,7 @@ export default function Plan() {
                 placeholder="z. B. Grill & Pommes Tag"
               />
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div data-slot="shift-dialog-time" className="grid gap-3 rounded-xl border border-sky-100 bg-sky-50/40 p-3.5 sm:grid-cols-2">
               <div>
                 <Label>Beginn</Label>
                 <Input

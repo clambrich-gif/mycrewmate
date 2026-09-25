@@ -4301,6 +4301,71 @@ export async function assignHelper(v: {
     return { success: true } as const;
   });
 }
+
+/**
+ * Ordnet mehrere ausgewählte Helfer atomar den nächsten freien Plätzen einer
+ * Schicht zu. Bei einer nicht verfügbaren Person, einer Doppelzuweisung oder
+ * zu wenig freien Plätzen wird die gesamte Auswahl zurückgerollt.
+ */
+export async function assignHelpersToOpenSlots(v: {
+  shiftId: number;
+  helperIds: number[];
+}) {
+  const uniqueHelperIds = Array.from(new Set(v.helperIds));
+  if (!uniqueHelperIds.length) throw new Error("Es wurden keine Helfer ausgewählt");
+  const db = (await getDb()) as DB;
+  return db.transaction(async tx => {
+    const [shift] = await tx
+      .select()
+      .from(shifts)
+      .where(and(eq(shifts.id, v.shiftId), planningScope(shifts)))
+      .limit(1)
+      .for("update");
+    if (!shift) throw new Error("Schicht wurde nicht gefunden");
+
+    const currentAssignments = await tx
+      .select({ helperId: assignments.helperId, slot: assignments.slot })
+      .from(assignments)
+      .where(eq(assignments.shiftId, shift.id))
+      .for("update");
+    const currentHelperIds = new Set(currentAssignments.map(item => item.helperId));
+    if (uniqueHelperIds.some(helperId => currentHelperIds.has(helperId))) {
+      throw new Error("Mindestens ein Helfer ist dieser Schicht bereits zugewiesen");
+    }
+
+    const freeSlots = Array.from({ length: Math.max(shift.needed, 0) }, (_, slot) => slot)
+      .filter(slot => !currentAssignments.some(assignment => assignment.slot === slot));
+    if (freeSlots.length < uniqueHelperIds.length) {
+      throw new Error("Für die Auswahl sind nicht genügend freie Helferplätze vorhanden");
+    }
+
+    const selectedHelpers = await tx
+      .select()
+      .from(helpers)
+      .where(and(planningScope(helpers), inArray(helpers.id, uniqueHelperIds)))
+      .for("update");
+    if (selectedHelpers.length !== uniqueHelperIds.length) {
+      throw new Error("Mindestens ein ausgewählter Helfer wurde nicht gefunden");
+    }
+    const invalidHelper = selectedHelpers.find(helper => !helperEligibleForShift(helper, shift));
+    if (invalidHelper) {
+      throw new Error(`${invalidHelper.name} ist für diese Schichtzeit nicht verfügbar`);
+    }
+
+    await tx.insert(assignments).values(
+      uniqueHelperIds.map((helperId, index) => ({
+        shiftId: shift.id,
+        helperId,
+        slot: freeSlots[index],
+        year: shift.year,
+        eventId: shift.eventId,
+      }))
+    );
+    await resetManualShiftConfirmationsForHelpers(tx, uniqueHelperIds, [shift.id]);
+    return { success: true, assignedCount: uniqueHelperIds.length } as const;
+  });
+}
+
 export async function replaceShiftAssignment(v: {
   shiftId: number;
   helperId: number;
