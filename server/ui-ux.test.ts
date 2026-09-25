@@ -105,6 +105,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const layout = source("client/src/components/Layout.tsx");
     const yearContext = source("client/src/contexts/YearContext.tsx");
     const startSelection = source("shared/event-start-selection.ts");
+    const router = source("server/routers.ts");
 
     expect(layout).toContain("trpc.events.all.useQuery");
     expect(layout).toContain("initialAccessibleEvent(accessibleEvents.data)");
@@ -115,7 +116,14 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(yearContext).toContain("window.sessionStorage.removeItem(");
     expect(yearContext).toContain("eventStartSelectionSessionKey(nextTenantId)");
     expect(yearContext).toContain("window.localStorage.removeItem(YEAR_STORAGE_KEY)");
+    expect(yearContext).toContain("initialEvent?: { year: number; eventId: number } | null");
+    expect(yearContext).toContain("window.localStorage.setItem(YEAR_STORAGE_KEY, String(initialEvent.year))");
     expect(yearContext).not.toContain('window.localStorage.setItem(YEAR_STORAGE_KEY, "2027")');
+    expect(layout).toContain("isPlanningTeamEventScopeResolving");
+    expect(layout).toContain("Freigegebene Veranstaltung wird geöffnet");
+    expect(layout).toContain("isPlanningTeamEventScopeResolving\n    ) {");
+    expect(router).toContain("startEventForFreshPlanningTeamLogin");
+    expect(router).toContain("...(startEvent ? { startEvent } : {})");
     expect(startSelection).toContain("event.startDate >= calendarToday");
     expect(startSelection).toContain("isIsoCalendarDate(event.startDate)");
     expect(startSelection).toContain("event.startDate.startsWith(String(event.year))");
@@ -1339,11 +1347,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(brandAssets).toContain(
       'path.resolve(process.cwd(), "client", "public", "brand")'
     );
-    // Zusätzlich zur Anmeldung, Sidebar und mobilen Kopfzeile verwendet die
-    // isolierte Passwort-Aktivierung die Wortmarke auf neutralem Hintergrund.
-    expect(layout.match(/src=\{MYCREWMATE_WORDMARK\}/g)).toHaveLength(4);
+    // Zusätzlich zur Anmeldung, Sidebar und mobilen Kopfzeile verwenden die
+    // Passwort-Aktivierung und die sichere Eventstartansicht die Wortmarke auf
+    // neutralem Hintergrund.
+    expect(layout.match(/src=\{MYCREWMATE_WORDMARK\}/g)).toHaveLength(5);
     expect(layout.match(/src=\{MYCREWMATE_ICON\}/g)).toHaveLength(2);
-    expect(layout.match(/alt="MyCrewMate"/g)).toHaveLength(4);
+    expect(layout.match(/alt="MyCrewMate"/g)).toHaveLength(5);
   });
 
   it("trennt Markenbereich und Online-Status in kompakte Sidebar-Panels", () => {

@@ -13,7 +13,10 @@ type PlanningScopeContextValue = {
   tenantId: string;
   year: number;
   eventId: number;
-  selectTenant: (tenantId: string) => void;
+  selectTenant: (
+    tenantId: string,
+    initialEvent?: { year: number; eventId: number } | null
+  ) => void;
   synchronizeTenant: (tenantId: string) => void;
   selectYear: (year: number, preferredEventId?: number) => void;
   selectEvent: (eventId: number) => void;
@@ -62,7 +65,7 @@ export function YearProvider({ children }: { children: React.ReactNode }) {
       tenantId,
       year,
       eventId,
-      selectTenant(nextTenantId) {
+      selectTenant(nextTenantId, initialEvent) {
         window.localStorage.setItem(TENANT_STORAGE_KEY, nextTenantId);
         // Ein frischer Login bzw. Handoff in einen Verein soll die nächste
         // bevorstehende Veranstaltung einmalig neu bestimmen. Manuelle
@@ -82,6 +85,26 @@ export function YearProvider({ children }: { children: React.ReactNode }) {
           if (key?.startsWith(`${EVENT_STORAGE_PREFIX}${nextTenantId}-`)) {
             window.localStorage.removeItem(key);
           }
+          // Frühere Produktstände speicherten eine Event-ID ohne Vereinskennung.
+          // Ein solcher Altwert darf nach einem persönlichen Login nie wieder den
+          // neuen Zugang auf eine nicht freigegebene Veranstaltung lenken.
+          if (key && new RegExp(`^${EVENT_STORAGE_PREFIX}\\d{4}$`).test(key)) {
+            window.localStorage.removeItem(key);
+          }
+        }
+        if (
+          initialEvent &&
+          Number.isInteger(initialEvent.year) &&
+          initialEvent.year >= 2020 &&
+          initialEvent.year <= 2100 &&
+          Number.isInteger(initialEvent.eventId) &&
+          initialEvent.eventId > 0
+        ) {
+          window.localStorage.setItem(YEAR_STORAGE_KEY, String(initialEvent.year));
+          window.localStorage.setItem(
+            `${EVENT_STORAGE_PREFIX}${nextTenantId}-${initialEvent.year}`,
+            String(initialEvent.eventId)
+          );
         }
         window.location.reload();
       },

@@ -620,6 +620,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const accessibleEvents = trpc.events.all.useQuery(undefined, {
     enabled: isAuthenticated && !isCredentialBootstrapPending,
   });
+  // Ein persönlicher Planungsteamzugang darf keine Fachseite und keinen Chat
+  // mit einer vom Browser geerbten, noch nicht freigegebenen Event-ID starten.
+  // Erst die serverseitig gefilterte Eventliste bestätigt den Arbeitskontext.
+  const isPlanningTeamEventScopeResolving =
+    isAuthenticated &&
+    user?.role === "user" &&
+    !isTenantAdmin &&
+    (accessibleEvents.isPending ||
+      (accessibleEvents.isSuccess &&
+        accessibleEvents.data.length > 0 &&
+        !accessibleEvents.data.some(event => event.id === eventId)));
   const selectedEvent = events.data?.find(item => item.id === eventId);
   const selectedTenantRecord = tenants.data?.find(item => item.id === tenantId);
   const activeTenantName =
@@ -752,7 +763,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }, [utils.client.notes.list]);
 
   useEffect(() => {
-    if (!isAuthenticated || isCredentialBootstrapPending) return;
+    if (
+      !isAuthenticated ||
+      isCredentialBootstrapPending ||
+      isPlanningTeamEventScopeResolving
+    ) {
+      return;
+    }
     void refreshChatSnapshot();
     const timer = window.setInterval(refreshChatSnapshot, CHAT_SNAPSHOT_POLL_MS);
     return () => {
@@ -765,6 +782,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }, [
     isAuthenticated,
     isCredentialBootstrapPending,
+    isPlanningTeamEventScopeResolving,
     refreshChatSnapshot,
     year,
     eventId,
@@ -900,7 +918,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
       // Der Loginserver bestimmt den Verein. Dadurch kann ein RSC-Wert aus
       // LocalStorage niemals die frisch angemeldete Vereinsadministration
       // in eine fremde Planung umleiten.
-      selectTenant(result.tenantId);
+      selectTenant(
+        result.tenantId,
+        "startEvent" in result ? result.startEvent : null
+      );
     },
     onError: async error => {
       setLoginError(error.message);
@@ -1131,6 +1152,27 @@ export function Layout({ children }: { children: React.ReactNode }) {
     </div>
   );
 
+  const eventScopeBootstrapScreen = (
+    <div className="login-page-background relative grid min-h-[100dvh] place-items-center bg-[radial-gradient(ellipse_at_center,_#ffffff_20%,_#f0f9ff_66%,_#dbeafe_100%)] px-4 py-5 sm:p-6">
+      <div className="w-full max-w-md rounded-2xl border border-white/80 bg-white/90 p-6 text-center text-card-foreground shadow-xl backdrop-blur-sm">
+        <img
+          {...logoLoading}
+          src={MYCREWMATE_WORDMARK}
+          alt="MyCrewMate"
+          className="mx-auto h-10 w-auto max-w-full bg-transparent object-contain sm:h-12"
+        />
+        <p className="mt-2 text-[11px] font-medium tracking-[0.08em] text-slate-600">
+          VEREINS- &amp; EVENTPLANUNG
+        </p>
+        <div className="mt-6 flex items-center justify-center gap-2 text-sm text-slate-700" role="status">
+          <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none text-blue-700" aria-hidden="true" />
+          Freigegebene Veranstaltung wird geöffnet …
+        </div>
+      </div>
+      {forcePasswordChangeModal}
+    </div>
+  );
+
   useEffect(() => {
     if (!loginError) return;
     loginErrorRef.current?.focus({ preventScroll: true });
@@ -1148,6 +1190,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
   // Passwortwechsel wird die serverseitig bestätigte Vereinsansicht geladen.
   if (isCredentialBootstrapPending) {
     return credentialBootstrapScreen;
+  }
+  if (isPlanningTeamEventScopeResolving) {
+    return eventScopeBootstrapScreen;
   }
   if (!isAuthenticated) {
     return (

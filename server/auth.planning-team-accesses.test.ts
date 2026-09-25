@@ -237,7 +237,16 @@ describe("Event-based Access Control für Planungsteam", () => {
       email: "anne@example.invalid",
       passwordHash: "$2a$10$hashedAnne",
       sessionVersion: 2,
+      mustChangePassword: false,
     } as any);
+    vi.spyOn(db, "listAllEventsForPlanningTeamAccess").mockResolvedValue([
+      {
+        id: 73,
+        year: 2027,
+        name: "MyEifelRide 2027",
+        startDate: "2027-06-18",
+      },
+    ] as any);
     vi.spyOn(passwordAuth, "verifyPassword").mockResolvedValue(true);
     const upsertUserSpy = vi.spyOn(db, "upsertUser").mockResolvedValue(undefined as any);
     const clearFailuresSpy = vi
@@ -259,6 +268,8 @@ describe("Event-based Access Control für Planungsteam", () => {
     expect(result).toEqual({
       success: true,
       tenantId: "rsc-eifelland-mayen",
+      mustChangePassword: false,
+      startEvent: { year: 2027, eventId: 73 },
     });
     expect(clearFailuresSpy).toHaveBeenCalled();
     expect(upsertUserSpy).toHaveBeenCalledWith(
@@ -854,7 +865,7 @@ describe("Event-based Access Control für Planungsteam", () => {
       password: "MCM-initial-code-123",
     });
 
-    expect(loginResult).toEqual({
+    expect(loginResult).toMatchObject({
       success: true,
       mustChangePassword: true,
       tenantId: "rsc-eifelland-mayen",

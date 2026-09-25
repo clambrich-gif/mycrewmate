@@ -93,6 +93,7 @@ import {
   requestedPlanningScope,
   withPlanningScope,
 } from "./year-context";
+import { initialAccessibleEvent } from "@shared/event-start-selection";
 import {
   FULL_PLANNER_PERMISSIONS,
   PLANNING_MODULE_META,
@@ -410,6 +411,37 @@ async function tenantIdForFreshPersonalLogin(user: {
     });
   }
   return membership.tenantId;
+}
+
+/**
+ * Legt den ersten Veranstaltungskontext noch vor dem Browser-Reload fest.
+ * Dadurch kann ein frisch angemeldeter Planungsteam-Zugang nicht einmal für
+ * einen Renderzyklus mit einer alten lokalen Event-ID starten. Insbesondere der
+ * veranstaltungsgebundene Teamchat erhält so unmittelbar den freigegebenen
+ * Scope statt einer vermeintlichen Synchronisierungsstörung.
+ */
+async function startEventForFreshPlanningTeamLogin(
+  accessId: number,
+  tenantId: string
+) {
+  try {
+    return await withPlanningScope(
+      { tenantId, year: new Date().getFullYear(), eventId: 1 },
+      async () => {
+        const allowedEvents = await db.listAllEventsForPlanningTeamAccess(accessId);
+        const startEvent = initialAccessibleEvent(allowedEvents);
+        return startEvent
+          ? { year: startEvent.year, eventId: startEvent.id }
+          : null;
+      }
+    );
+  } catch {
+    // Eine Anmeldung darf nicht scheitern, wenn die Komfortauswahl gerade nicht
+    // beantwortet werden kann. Der Client hält die App dann zunächst in der
+    // sicheren Startansicht und ermittelt über events.all ausschließlich die
+    // tatsächlich freigegebenen Veranstaltungen.
+    return null;
+  }
 }
 
 /** Der bisherige globale Administrator bleibt während des Pilotbetriebs RSC-Administrator. */
@@ -1589,6 +1621,10 @@ export const appRouter = router({
           id: planningUser.id,
           openId: accessOpenId,
         });
+        const startEvent = await startEventForFreshPlanningTeamLogin(
+          matchingAccess.id,
+          tenantId
+        );
         await recordSecurityActivity(
           {
             userId: planningUser.id,
@@ -1613,6 +1649,7 @@ export const appRouter = router({
           success: true,
           mustChangePassword: matchingAccess.mustChangePassword,
           tenantId,
+          ...(startEvent ? { startEvent } : {}),
           ...(isEmbeddedManusPreview(ctx.req) ? { previewSessionToken: token } : {}),
         } as const;
       }),
