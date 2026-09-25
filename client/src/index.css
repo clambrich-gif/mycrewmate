@@ -26,6 +26,10 @@
   --ring: oklch(0.42 0.12 250);
   --radius: 0.6rem;
 
+  /* Dominanter Orangeton aus der geschützten MyCrewMate-Wortmarke. */
+  --mycrewmate-orange: #f3794a;
+  --mycrewmate-orange-hover: #d96037;
+
   --ok: #166534;
   --ok-bg: #dcfce7;
   --warn: #92400e;

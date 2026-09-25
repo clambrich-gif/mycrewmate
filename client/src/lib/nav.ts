@@ -71,7 +71,6 @@ export const PLANNING_TEAM_EDITING_PATHS = [
   "/nachbereitung",
   "/material",
   "/spenden",
-  "/pdf-export",
 ] as const;
 
 export const PLANNING_TEAM_OVERVIEW_PATHS = [
@@ -142,19 +141,36 @@ export function visibleNavigationSections(
 }
 
 export function navigationItemClasses(
-  role: "user" | "admin" | null | undefined,
+  _role: "user" | "admin" | null | undefined,
   href: string,
   active: boolean
 ) {
   return active
-    ? "bg-orange-500 font-semibold text-white shadow-sm hover:bg-orange-600 focus-visible:ring-orange-500"
-    : href === "/sicherheit"
-      ? "font-medium text-slate-800 hover:bg-slate-100 hover:text-slate-900"
-      : role === "user" && PLANNING_TEAM_OVERVIEW_PATHS.includes(
-          href as (typeof PLANNING_TEAM_OVERVIEW_PATHS)[number]
-        )
-      ? "font-normal text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-      : role === "user"
-        ? "font-semibold text-slate-900 hover:bg-slate-100 hover:text-slate-900"
-    : "font-semibold text-slate-800 hover:bg-slate-100 hover:text-slate-900";
+    ? "bg-[var(--mycrewmate-orange)] font-semibold text-white shadow-sm hover:bg-[var(--mycrewmate-orange-hover)] focus-visible:ring-[var(--mycrewmate-orange)]"
+    : "font-medium text-slate-800 hover:bg-slate-100 hover:text-slate-900";
+}
+
+export type ActiveNavigationAccess = "edit" | "read";
+
+/**
+ * Der rechte Statusindikator erscheint ausschließlich im aktuell geöffneten
+ * Navigationspunkt. Er beschreibt nur die tatsächliche Bearbeitungsmöglichkeit
+ * dieser Seite; alle übrigen Zeilen bleiben bewusst ruhig und gleich lesbar.
+ */
+export function activeNavigationAccess(
+  role: "user" | "admin" | null | undefined,
+  href: string,
+  permissions: readonly import("@shared/tenant-permissions").PlanningModule[] | null | undefined
+): ActiveNavigationAccess {
+  if (role === "admin") return "edit";
+  if (role !== "user") return "read";
+
+  if (!PLANNING_TEAM_EDITING_PATHS.includes(
+    href as (typeof PLANNING_TEAM_EDITING_PATHS)[number]
+  )) {
+    return "read";
+  }
+
+  const requiredModule = PATH_TO_MODULE_MAP[href];
+  return requiredModule && permissions?.includes(requiredModule) ? "edit" : "read";
 }

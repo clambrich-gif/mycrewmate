@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  activeNavigationAccess,
   NAV,
   navigationItemClasses,
   PLANNING_TEAM_EDITING_PATHS,
@@ -58,14 +59,13 @@ describe("rollenabhängige Navigation", () => {
     ]);
   });
 
-  it("behält für das Planungsteam die gewohnte Reihenfolge und differenziert nur die Typografie", () => {
+  it("behält für das Planungsteam die gewohnte Reihenfolge und hält alle verfügbaren Ziele gleich lesbar", () => {
     expect(PLANNING_TEAM_EDITING_PATHS).toEqual([
       "/helfer",
       "/vorbereitung",
       "/nachbereitung",
       "/material",
       "/spenden",
-      "/pdf-export",
     ]);
     expect(PLANNING_TEAM_OVERVIEW_PATHS).toEqual([
       "/",
@@ -78,15 +78,15 @@ describe("rollenabhängige Navigation", () => {
 
     for (const path of PLANNING_TEAM_EDITING_PATHS) {
       const classes = navigationItemClasses("user", path, false);
-      expect(classes).toContain("font-semibold");
-      expect(classes).toContain("text-slate-900");
+      expect(classes).toContain("font-medium");
+      expect(classes).toContain("text-slate-800");
       expect(classes).toContain("hover:bg-slate-100");
       expect(classes).toContain("hover:text-slate-900");
     }
     for (const path of PLANNING_TEAM_OVERVIEW_PATHS) {
       const classes = navigationItemClasses("user", path, false);
-      expect(classes).toContain("font-normal");
-      expect(classes).toContain("text-slate-500");
+      expect(classes).toContain("font-medium");
+      expect(classes).toContain("text-slate-800");
       expect(classes).toContain("hover:bg-slate-100");
       expect(classes).toContain("hover:text-slate-900");
     }
@@ -97,8 +97,8 @@ describe("rollenabhängige Navigation", () => {
       const classes = navigationItemClasses("user", item.href, false);
       expect(classes).toContain("hover:bg-slate-100");
       const activeClasses = navigationItemClasses("user", item.href, true);
-      expect(activeClasses).toContain("bg-orange-500");
-      expect(activeClasses).toContain("hover:bg-orange-600");
+      expect(activeClasses).toContain("bg-[var(--mycrewmate-orange)]");
+      expect(activeClasses).toContain("hover:bg-[var(--mycrewmate-orange-hover)]");
       expect(activeClasses).toContain("font-semibold");
       expect(activeClasses).toContain("text-white");
     }
@@ -110,7 +110,7 @@ describe("rollenabhängige Navigation", () => {
       { id: "default", label: null, items: NAV },
     ]);
     expect(navigationItemClasses("admin", "/helfer", false)).toBe(
-      "font-semibold text-slate-800 hover:bg-slate-100 hover:text-slate-900"
+      "font-medium text-slate-800 hover:bg-slate-100 hover:text-slate-900"
     );
     expect(navigationItemClasses("admin", "/sicherheit", false)).toBe(
       "font-medium text-slate-800 hover:bg-slate-100 hover:text-slate-900"
@@ -120,7 +120,15 @@ describe("rollenabhängige Navigation", () => {
     );
     expect(NAV.map(item => item.label)).not.toContain("Protokoll");
     expect(navigationItemClasses("admin", "/helfer", true)).toBe(
-      "bg-orange-500 font-semibold text-white shadow-sm hover:bg-orange-600 focus-visible:ring-orange-500"
+      "bg-[var(--mycrewmate-orange)] font-semibold text-white shadow-sm hover:bg-[var(--mycrewmate-orange-hover)] focus-visible:ring-[var(--mycrewmate-orange)]"
     );
+  });
+
+  it("zeigt im aktiven Punkt nur dann einen Stift, wenn der Bereich tatsächlich bearbeitbar ist", () => {
+    expect(activeNavigationAccess("admin", "/einsatzplan", [])).toBe("edit");
+    expect(activeNavigationAccess("user", "/einsatzplan", ["schedule"])).toBe("read");
+    expect(activeNavigationAccess("user", "/helfer", ["helpers"])).toBe("edit");
+    expect(activeNavigationAccess("user", "/vorbereitung", ["read_all"])).toBe("read");
+    expect(activeNavigationAccess("user", "/material", [])).toBe("read");
   });
 });

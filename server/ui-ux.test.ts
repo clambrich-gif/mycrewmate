@@ -701,6 +701,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
   it("blendet Verwaltungsbereiche aus und hält die Planungsteam-Navigation flach", () => {
     const layout = source("client/src/components/Layout.tsx");
     const navigation = source("client/src/lib/nav.ts");
+    const css = source("client/src/index.css");
     const app = source("client/src/App.tsx");
 
     expect(layout).toContain("visibleNavigationSections(effectiveNavigationRole");
@@ -721,9 +722,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(navigation).toContain('label: "Schutz & Protokoll"');
     expect(navigation).toContain("adminOnly: true");
     expect(navigation).toContain("if (item.planningTeamHidden && role === \"user\") return false");
-    expect(navigation).toContain("font-semibold text-slate-800 hover:bg-slate-100 hover:text-slate-900");
-    expect(navigation).toContain("font-semibold text-slate-900 hover:bg-slate-100 hover:text-slate-900");
-    expect(navigation).toContain("font-normal text-slate-500 hover:bg-slate-100 hover:text-slate-900");
+    expect(navigation).toContain("font-medium text-slate-800 hover:bg-slate-100 hover:text-slate-900");
+    expect(navigation).toContain("activeNavigationAccess");
+    expect(navigation).toContain("bg-[var(--mycrewmate-orange)]");
+    expect(css).toContain("--mycrewmate-orange: #f3794a");
+    expect(layout).toContain('data-slot="active-navigation-access"');
+    expect(layout).toContain('data-access={access}');
+    expect(layout).toContain('aria-label={label}');
     expect(layout.match(/rounded-lg px-3 py-2\.5 text-sm transition-all duration-150/g)).toHaveLength(1);
     expect(layout.match(/rounded-lg px-3 py-2 text-sm transition-all duration-150/g)).toHaveLength(1);
     expect(navigation).not.toContain("Nur Lesen");
@@ -3300,8 +3305,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(app).toContain('queryClient.refetchQueries({ type: "active" })');
     expect(app).toContain('document.addEventListener("visibilitychange", refreshOnReturn)');
     expect(app).toContain("<PlanningDataSynchronizer>");
-    expect(navigation).toContain("bg-orange-500 font-semibold text-white");
-    expect(navigation).toContain("hover:bg-orange-600");
+    expect(navigation).toContain("bg-[var(--mycrewmate-orange)] font-semibold text-white");
+    expect(navigation).toContain("hover:bg-[var(--mycrewmate-orange-hover)]");
   });
 
   it("macht Einladungs-E-Mail, Mindestlänge und Chat-Kontext beim Erstzugang nachvollziehbar", () => {

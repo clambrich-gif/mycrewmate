@@ -58,6 +58,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useEventYear } from "@/contexts/YearContext";
 import {
+  activeNavigationAccess,
   navigationItemClasses,
   visibleNavigationSections,
 } from "@/lib/nav";
@@ -161,6 +162,29 @@ const logoLoading = {
   fetchPriority: "high" as const,
   draggable: false,
 };
+
+function ActiveNavigationAccessIndicator({
+  access,
+}: {
+  access: "edit" | "read";
+}) {
+  const canEdit = access === "edit";
+  const label = canEdit ? "Bearbeiten erlaubt" : "Nur lesen";
+  const AccessIcon = canEdit ? Pencil : Eye;
+
+  return (
+    <span
+      data-slot="active-navigation-access"
+      data-access={access}
+      role="img"
+      aria-label={label}
+      title={label}
+      className="ml-auto inline-flex shrink-0 items-center justify-center"
+    >
+      <AccessIcon className="h-4 w-4" aria-hidden="true" />
+    </span>
+  );
+}
 
 function SaveLoadControlsFallback() {
   return (
@@ -1519,6 +1543,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <div key={section.id} className="space-y-1">
                 {section.items.map(({ href, label, icon: Icon }) => {
                   const active = location === href;
+                  const access = active
+                    ? activeNavigationAccess(
+                        effectiveNavigationRole,
+                        href,
+                        myPermissions.data
+                      )
+                    : null;
                   return (
                     <Link
                       key={href}
@@ -1532,7 +1563,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
                         navigationItemClasses(effectiveNavigationRole, href, active)
                       )}
                     >
-                      <Icon className="h-5 w-5" /> {label}
+                      <Icon className="h-5 w-5 shrink-0" />
+                      <span className="min-w-0 flex-1">{label}</span>
+                      {access && <ActiveNavigationAccessIndicator access={access} />}
                     </Link>
                   );
                 })}
@@ -1731,6 +1764,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <div key={section.id} className="space-y-0.5">
               {section.items.map(({ href, label, icon: Icon }) => {
                 const active = location === href;
+                const access = active
+                  ? activeNavigationAccess(
+                      effectiveNavigationRole,
+                      href,
+                      myPermissions.data
+                    )
+                  : null;
                 return (
                   <Link
                     key={href}
@@ -1742,7 +1782,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
                         navigationItemClasses(effectiveNavigationRole, href, active)
                       )}
                   >
-                    <Icon className="h-4 w-4" /> {label}
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className="min-w-0 flex-1">{label}</span>
+                    {access && <ActiveNavigationAccessIndicator access={access} />}
                   </Link>
                 );
               })}
