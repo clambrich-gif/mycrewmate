@@ -106,6 +106,20 @@ function MapViewport({
   onFocusedLocationReady?: (locationId: number) => void;
 }) {
   const map = useMap();
+  const locationViewportKey = locations
+    .map(location => `${location.id}:${location.latitude}:${location.longitude}`)
+    .join("|");
+  const visibleTrackViewportKey = tracks
+    .filter(track => visibleTrackIds.has(track.id))
+    .map(track => `${track.id}:${track.points.map(point => point.join(",")).join(";")}`)
+    .join("|");
+  const focusLocationViewportKey =
+    focusLocationId === null
+      ? null
+      : locations
+          .filter(location => location.id === focusLocationId)
+          .map(location => `${location.id}:${location.latitude}:${location.longitude}`)
+          .join("|");
 
   useLayoutEffect(() => {
     // Der Browser verschiebt das Element beim Wechsel in die Fullscreen-Top-Layer
@@ -151,13 +165,13 @@ function MapViewport({
     }
   }, [
     focusLocationId,
+    focusLocationViewportKey,
     fullscreen,
-    locations,
+    locationViewportKey,
     map,
     onFocusedLocationReady,
     resetKey,
-    tracks,
-    visibleTrackIds,
+    visibleTrackViewportKey,
   ]);
 
   return null;
@@ -190,19 +204,13 @@ function escapeHtmlAttribute(value: string) {
 const LocationMarker = memo(function LocationMarker({
   location,
   entries,
-  focused,
   zoom,
   onLocationDetailsOpen,
 }: {
   location: MapLocation;
   entries: MapEntry[];
-  focused: boolean;
   zoom: number;
-  onLocationDetailsOpen: (
-    location: MapLocation,
-    entries: MapEntry[],
-    source: "marker" | "focus"
-  ) => void;
+  onLocationDetailsOpen: (location: MapLocation) => void;
 }) {
   const circleMarkerRef = useRef<LeafletCircleMarker | null>(null);
   const logoMarkerRef = useRef<LeafletMarker | null>(null);
@@ -223,16 +231,8 @@ const LocationMarker = memo(function LocationMarker({
     });
   }, [color, location.logoUrl, size]);
 
-  useEffect(() => {
-    if (!focused) return;
-    const timeout = window.setTimeout(() => {
-      onLocationDetailsOpen(location, entries, "focus");
-    }, 120);
-    return () => window.clearTimeout(timeout);
-  }, [entries, focused, location, onLocationDetailsOpen]);
-
   const markerEvents = {
-    click: () => onLocationDetailsOpen(location, entries, "marker"),
+    click: () => onLocationDetailsOpen(location),
   };
 
   if (logoIcon)
@@ -294,16 +294,28 @@ export default function LocationMapClient({
   const [trackControlOpen, setTrackControlOpen] = useState(true);
   const fullscreen = nativeFullscreen || cssFullscreen;
   const isMobile = useIsMobile();
-  const [mobileLocationDetails, setMobileLocationDetails] = useState<{
-    location: MapLocation;
-    entries: MapEntry[];
-  } | null>(null);
-  const [desktopLocationDetails, setDesktopLocationDetails] = useState<{
-    location: MapLocation;
-    entries: MapEntry[];
-  } | null>(null);
+  // Es wird ausschließlich die Standort-ID gespeichert. Dadurch bleiben der
+  // geöffnete Standort und sein Reiter stabil, während Inhalte im Hintergrund
+  // neu geladen werden.
+  const [mobileLocationId, setMobileLocationId] = useState<number | null>(null);
+  const [desktopLocationId, setDesktopLocationId] = useState<number | null>(null);
   const dismissedMobileFocusRef = useRef(new Set<number>());
+  const openedFocusLocationIdRef = useRef<number | null>(null);
   const activeLayer = MAP_LAYERS[layer];
+  const detailsForLocation = useCallback(
+    (locationId: number | null) => {
+      if (locationId === null) return null;
+      const location = locations.find(candidate => candidate.id === locationId);
+      if (!location) return null;
+      return {
+        location,
+        entries: entriesByLocation.get(locationId) ?? [],
+      };
+    },
+    [entriesByLocation, locations]
+  );
+  const mobileLocationDetails = detailsForLocation(mobileLocationId);
+  const desktopLocationDetails = detailsForLocation(desktopLocationId);
   const mobileNavigationLocations = useMemo(
     () => [...locations].sort((left, right) => left.name.localeCompare(right.name, "de")),
     [locations]
@@ -322,8 +334,8 @@ export default function LocationMapClient({
       ? mobileNavigationLocations[mobileLocationIndex + 1]
       : null;
   const activeLocationId =
-    mobileLocationDetails?.location.id ??
-    desktopLocationDetails?.location.id ??
+    mobileLocationId ??
+    desktopLocationId ??
     focusLocationId;
 
   useEffect(() => {
@@ -412,45 +424,56 @@ export default function LocationMapClient({
 
   const closeMobileDetails = useCallback(() => {
     if (focusLocationId !== null) dismissedMobileFocusRef.current.add(focusLocationId);
-    if (mobileLocationDetails) dismissedMobileFocusRef.current.add(mobileLocationDetails.location.id);
-    setMobileLocationDetails(null);
-  }, [focusLocationId, mobileLocationDetails]);
+    if (mobileLocationId !== null) dismissedMobileFocusRef.current.add(mobileLocationId);
+    setMobileLocationId(null);
+  }, [focusLocationId, mobileLocationId]);
 
   const openMobileDetails = useCallback((
     location: MapLocation,
-    entries: MapEntry[],
     source: "marker" | "focus"
   ) => {
     if (!isMobile) return;
     if (source === "focus" && dismissedMobileFocusRef.current.has(location.id)) return;
     if (source === "marker") dismissedMobileFocusRef.current.delete(location.id);
-    setMobileLocationDetails({ location, entries });
+    setMobileLocationId(location.id);
   }, [isMobile]);
 
   const openLocationDetails = useCallback((
     location: MapLocation,
-    entries: MapEntry[],
     source: "marker" | "focus"
   ) => {
     if (isMobile) {
-      openMobileDetails(location, entries, source);
+      openMobileDetails(location, source);
       return;
     }
-    setDesktopLocationDetails({ location, entries });
+    setDesktopLocationId(location.id);
   }, [isMobile, openMobileDetails]);
 
   const closeDesktopDetails = useCallback(() => {
-    setDesktopLocationDetails(null);
+    setDesktopLocationId(null);
   }, []);
 
   const navigateMobileLocation = useCallback((location: MapLocation | null) => {
     if (!location) return;
     dismissedMobileFocusRef.current.delete(location.id);
-    setMobileLocationDetails({
-      location,
-      entries: entriesByLocation.get(location.id) ?? [],
-    });
-  }, [entriesByLocation]);
+    setMobileLocationId(location.id);
+  }, []);
+
+  useEffect(() => {
+    if (focusLocationId === null) {
+      openedFocusLocationIdRef.current = null;
+      return;
+    }
+    if (openedFocusLocationIdRef.current === focusLocationId) return;
+
+    const location = locations.find(candidate => candidate.id === focusLocationId);
+    if (!location) return;
+
+    // Ein Link zu einem Standort öffnet dessen Details genau einmal. Spätere
+    // Datenabgleiche verändern weder die Auswahl noch den aktiven Detailreiter.
+    openedFocusLocationIdRef.current = focusLocationId;
+    openLocationDetails(location, "focus");
+  }, [focusLocationId, locations, openLocationDetails]);
 
   return (
     <div
@@ -513,9 +536,10 @@ export default function LocationMapClient({
             key={location.id}
             location={location}
             entries={entriesByLocation.get(location.id) ?? []}
-            focused={activeLocationId === location.id}
             zoom={markerZoom}
-            onLocationDetailsOpen={openLocationDetails}
+            onLocationDetailsOpen={location =>
+              openLocationDetails(location, "marker")
+            }
           />
         ))}
       </MapContainer>

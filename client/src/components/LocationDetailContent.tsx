@@ -102,8 +102,11 @@ export function LocationDetailContent({
   );
 
   useEffect(() => {
+    // Neue Live-Daten können bei der Hintergrundaktualisierung jederzeit
+    // eintreffen. Der bewusst gewählte Reiter bleibt dabei erhalten; nur beim
+    // Wechsel zu einem anderen Standort wird ein sinnvoller Startreiter gewählt.
     setActiveTab(firstAvailableTab(entries));
-  }, [location.id, entries]);
+  }, [location.id]);
 
   return (
     <div

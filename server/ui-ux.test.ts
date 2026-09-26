@@ -2908,8 +2908,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(mapClient).toContain('data-location-mobile-next="true"');
     expect(mapClient).toContain("Standort {mobileLocationIndex + 1} von {mobileNavigationLocations.length}");
     expect(mapClient).toContain("const activeLocationId =");
-    expect(mapClient).toContain("mobileLocationDetails?.location.id");
-    expect(mapClient).toContain("desktopLocationDetails?.location.id");
+    expect(mapClient).toContain("const [mobileLocationId, setMobileLocationId]");
+    expect(mapClient).toContain("const [desktopLocationId, setDesktopLocationId]");
     expect(mapClient).toContain("focusLocationId={activeLocationId}");
     expect(locationDetails).toContain('data-location-detail-content={mobile ? "mobile-sheet" : "desktop-panel"}');
     expect(locationDetails).toContain('data-location-detail-tabs="true"');
@@ -2918,6 +2918,14 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(locationDetails).toContain('label: "Material"');
     expect(locationDetails).toContain('data-location-detail-panel-close="true"');
     expect(locationDetails).toContain("Karte weiter nutzen");
+    expect(locationDetails).toContain("Der bewusst gewählte Reiter bleibt dabei erhalten");
+    expect(locationDetails).toContain("}, [location.id]);");
+    expect(locationDetails).not.toContain("}, [location.id, entries]);");
+    expect(mapClient).toContain("Es wird ausschließlich die Standort-ID gespeichert");
+    expect(mapClient).toContain("openedFocusLocationIdRef");
+    expect(mapClient).toContain("Datenabgleiche verändern weder die Auswahl noch den aktiven Detailreiter");
+    expect(mapClient).toContain("locationViewportKey");
+    expect(mapClient).toContain("visibleTrackViewportKey");
     expect(sheet).toContain("overlayClassName");
     expect(sheet).toContain("showClose = true");
 
