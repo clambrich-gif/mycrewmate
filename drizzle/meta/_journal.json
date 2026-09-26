@@ -484,6 +484,13 @@
       "when": 1790371136803,
       "tag": "0068_sharp_marvel_boy",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "5",
+      "when": 1790414742171,
+      "tag": "0069_common_arachne",
+      "breakpoints": true
     }
   ]
 }

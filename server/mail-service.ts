@@ -169,6 +169,47 @@ Ihr MyCrewMate-Team`;
   return { subject, text, html };
 }
 
+/** Ein neutraler, nur einmal nutzbarer Link für den Masterzugang. */
+export function renderMasterPasswordResetEmail(params: {
+  resetUrl: string;
+  expiresInMinutes: number;
+}): { subject: string; text: string; html: string } {
+  const subject = "Master-Passwort zurücksetzen · MyCrewMate";
+  const text = `Hallo,
+
+für das MyCrewMate-Masterportal wurde ein Passwort-Reset angefordert.
+
+Über diesen einmal gültigen Link können Sie ein neues Master-Passwort festlegen:
+${params.resetUrl}
+
+Der Link ist ${params.expiresInMinutes} Minuten gültig. Nach dem erfolgreichen Reset werden aus Sicherheitsgründen alle bestehenden MyCrewMate-Sitzungen abgemeldet.
+
+Falls Sie den Reset nicht angefordert haben, verwenden Sie den Link nicht und informieren Sie bitte umgehend support@mycrewmate.de.
+
+MyCrewMate · Vereins- & Eventplanung`;
+
+  const html = `<!DOCTYPE html>
+<html lang="de">
+<head><meta charset="utf-8"><title>${subject}</title></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#1e293b;background:#f8fafc;margin:0;padding:24px;">
+  <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:32px;box-shadow:0 1px 3px rgba(15,23,42,.08);">
+    <h1 style="font-size:20px;color:#0f172a;margin:0 0 6px;">MyCrewMate</h1>
+    <p style="font-size:13px;color:#64748b;margin:0 0 24px;">Sicherheitsmeldung zum Masterportal</p>
+    <p>Für das Masterportal wurde ein Passwort-Reset angefordert.</p>
+    <p style="text-align:center;margin:28px 0;">
+      <a href="${params.resetUrl}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600;">Neues Master-Passwort festlegen</a>
+    </p>
+    <p style="font-size:13px;color:#475569;">Dieser Link ist <strong>${params.expiresInMinutes} Minuten</strong> gültig und kann nur einmal verwendet werden. Nach dem Reset werden alle bestehenden MyCrewMate-Sitzungen sicher abgemeldet.</p>
+    <p style="font-size:12px;color:#64748b;word-break:break-all;">Falls der Button nicht funktioniert:<br><a href="${params.resetUrl}" style="color:#2563eb;">${params.resetUrl}</a></p>
+    <hr style="border:0;border-top:1px solid #e2e8f0;margin:24px 0;">
+    <p style="font-size:12px;color:#64748b;margin:0;">War diese Anfrage nicht von Ihnen? Verwenden Sie den Link nicht und informieren Sie bitte <a href="mailto:support@mycrewmate.de" style="color:#2563eb;">support@mycrewmate.de</a>.</p>
+  </div>
+</body>
+</html>`;
+
+  return { subject, text, html };
+}
+
 export function renderPlanningTeamInvitationEmail(params: {
   recipientName: string;
   tenantName: string;

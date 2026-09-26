@@ -2710,6 +2710,148 @@ export async function getSecuritySettings() {
   return result[0];
 }
 
+export type AdminMasterLoginProtection = {
+  failedAttempts: number;
+  locked: boolean;
+};
+
+/**
+ * Zählt Fehlversuche des einzigen Master-Passworts global und atomar. Die
+ * Sperre wird bewusst nicht durch Zeitablauf aufgehoben: ein Reset-Link an die
+ * hinterlegte Inhaberadresse ist der kontrollierte Wiederherstellungsweg.
+ */
+export async function recordFailedAdminPasswordLogin(
+  maxAttempts = 5
+): Promise<AdminMasterLoginProtection> {
+  const database = (await getDb()) as DB;
+  return database.transaction(async tx => {
+    await tx
+      .insert(securitySettings)
+      .values({ id: 1 })
+      .onDuplicateKeyUpdate({ set: { id: 1 } });
+    const [settings] = await tx
+      .select({
+        failedAttempts: securitySettings.adminFailedAttempts,
+        locked: securitySettings.adminLocked,
+      })
+      .from(securitySettings)
+      .where(eq(securitySettings.id, 1))
+      .limit(1)
+      .for("update");
+    if (settings.locked) return settings;
+
+    const failedAttempts = Math.min(settings.failedAttempts + 1, maxAttempts);
+    const locked = failedAttempts >= maxAttempts;
+    await tx
+      .update(securitySettings)
+      .set({ adminFailedAttempts: failedAttempts, adminLocked: locked })
+      .where(eq(securitySettings.id, 1));
+    return { failedAttempts, locked };
+  });
+}
+
+export async function clearAdminPasswordLoginFailures() {
+  const database = (await getDb()) as DB;
+  await database
+    .insert(securitySettings)
+    .values({ id: 1 })
+    .onDuplicateKeyUpdate({ set: { id: 1 } });
+  await database
+    .update(securitySettings)
+    .set({ adminFailedAttempts: 0, adminLocked: false })
+    .where(eq(securitySettings.id, 1));
+}
+
+/** Ersetzt einen eventuell noch offenen Link vollständig durch einen neuen Hash. */
+export async function createAdminPasswordResetRequest(input: {
+  tokenHash: string;
+  expiresInSeconds: number;
+}) {
+  const database = (await getDb()) as DB;
+  return database.transaction(async tx => {
+    const requestedAt = new Date();
+    const expiresAt = new Date(requestedAt.getTime() + input.expiresInSeconds * 1000);
+    await tx
+      .insert(securitySettings)
+      .values({
+        id: 1,
+        adminPasswordResetTokenHash: input.tokenHash,
+        adminPasswordResetExpiresAt: expiresAt,
+        adminPasswordResetRequestedAt: requestedAt,
+      })
+      .onDuplicateKeyUpdate({
+        set: {
+          adminPasswordResetTokenHash: input.tokenHash,
+          adminPasswordResetExpiresAt: expiresAt,
+          adminPasswordResetRequestedAt: requestedAt,
+        },
+      });
+    return { expiresAt } as const;
+  });
+}
+
+/**
+ * Ein erfolgreicher Master-Reset setzt einen klaren Sicherheitsschnitt:
+ * Master-, Vereinsadmin- und Planungsteamsitzungen verlieren ihre
+ * Versionsbindung und müssen sich erneut authentifizieren.
+ */
+export async function resetAdminPasswordWithEmailToken(input: {
+  tokenHash: string;
+  passwordHash: string;
+}) {
+  const database = (await getDb()) as DB;
+  return database.transaction(async tx => {
+    const now = new Date();
+    await tx
+      .insert(securitySettings)
+      .values({ id: 1 })
+      .onDuplicateKeyUpdate({ set: { id: 1 } });
+    const [settings] = await tx
+      .select({
+        tokenHash: securitySettings.adminPasswordResetTokenHash,
+        expiresAt: securitySettings.adminPasswordResetExpiresAt,
+        adminSessionVersion: securitySettings.adminSessionVersion,
+      })
+      .from(securitySettings)
+      .where(eq(securitySettings.id, 1))
+      .limit(1)
+      .for("update");
+
+    if (
+      !settings?.tokenHash ||
+      settings.tokenHash !== input.tokenHash ||
+      !settings.expiresAt ||
+      settings.expiresAt.getTime() <= now.getTime()
+    ) {
+      return null;
+    }
+
+    await tx
+      .update(securitySettings)
+      .set({
+        adminPasswordHash: input.passwordHash,
+        adminSessionVersion: (settings.adminSessionVersion ?? 1) + 1,
+        adminFailedAttempts: 0,
+        adminLocked: false,
+        adminPasswordResetTokenHash: null,
+        adminPasswordResetExpiresAt: null,
+        adminPasswordResetRequestedAt: null,
+      })
+      .where(eq(securitySettings.id, 1));
+
+    await Promise.all([
+      tx
+        .update(planningTeamAccesses)
+        .set({ sessionVersion: sql`${planningTeamAccesses.sessionVersion} + 1` }),
+      tx
+        .update(tenantAdminCredentials)
+        .set({ sessionVersion: sql`${tenantAdminCredentials.sessionVersion} + 1` }),
+    ]);
+
+    return { resetAt: now } as const;
+  });
+}
+
 export type PlanningTeamLoginProtection = {
   failedAttempts: number;
   locked: boolean;

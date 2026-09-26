@@ -154,6 +154,7 @@ function MasterLogin() {
   const utils = trpc.useUtils();
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [resetNotice, setResetNotice] = useState<string | null>(null);
   const login = trpc.auth.adminPasswordLogin.useMutation({
     mutationKey: ["auth", "adminPasswordLogin", "master-portal"],
     onSuccess: async result => {
@@ -167,6 +168,19 @@ function MasterLogin() {
       await utils.auth.me.invalidate();
     },
     onError: mutationError => setError(mutationError.message),
+  });
+  const requestReset = trpc.auth.requestAdminPasswordReset.useMutation({
+    onSuccess: () => {
+      setError(null);
+      setResetNotice(
+        "Falls ein Masterzugang eingerichtet ist, wurde ein einmaliger Reset-Link an die hinterlegte Sicherheitsadresse gesendet."
+      );
+    },
+    onError: () => {
+      setResetNotice(
+        "Falls ein Masterzugang eingerichtet ist, wurde ein einmaliger Reset-Link an die hinterlegte Sicherheitsadresse gesendet."
+      );
+    },
   });
 
   const submit = (event: FormEvent) => {
@@ -213,14 +227,120 @@ function MasterLogin() {
                 {error}
               </p>
             )}
+            {resetNotice && (
+              <p className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm leading-5 text-blue-900" role="status">
+                {resetNotice}
+              </p>
+            )}
             <Button className="h-11 w-full" type="submit" disabled={!password || login.isPending}>
               {login.isPending ? <Loader2 className="size-4 animate-spin" /> : <LockKeyhole className="size-4" />}
               Master-Portal öffnen
             </Button>
           </form>
+          <div className="mt-3 text-center">
+            <Button
+              type="button"
+              variant="link"
+              className="h-auto px-1 text-sm text-blue-700"
+              onClick={() => requestReset.mutate()}
+              disabled={requestReset.isPending}
+            >
+              {requestReset.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Mail className="size-3.5" />}
+              Master-Passwort vergessen?
+            </Button>
+          </div>
           <p className="mt-5 text-center text-xs leading-5 text-slate-500">
-            Vorab-Betrieb: Vereine, Zahlungsabläufe und öffentliche Zugänge sind noch nicht freigeschaltet.
+            Nach fünf Fehlversuchen wird der Zugang gesperrt. Die Wiederherstellung erfolgt ausschließlich über einen zeitlich begrenzten E-Mail-Link.
           </p>
+        </CardContent>
+      </Card>
+    </main>
+  );
+}
+
+function MasterPasswordReset({
+  token,
+  onCompleted,
+}: {
+  token: string;
+  onCompleted: () => void;
+}) {
+  const [password, setPassword] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const reset = trpc.auth.resetAdminPasswordWithEmailToken.useMutation({
+    onSuccess: () => {
+      setPassword("");
+      setConfirmation("");
+      setError(null);
+      onCompleted();
+      toast.success("Master-Passwort wurde geändert. Bitte melden Sie sich jetzt neu an.");
+    },
+    onError: mutationError => setError(mutationError.message),
+  });
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    if (password !== confirmation) {
+      setError("Die beiden Passwortangaben stimmen nicht überein.");
+      return;
+    }
+    reset.mutate({ token, newPassword: password });
+  };
+
+  return (
+    <main className="grid min-h-screen place-items-center bg-[radial-gradient(circle_at_8%_7%,rgba(219,234,254,0.92),transparent_34%),radial-gradient(circle_at_96%_94%,rgba(224,242,254,0.76),transparent_32%),#f8fafc] p-4">
+      <Card className="w-full max-w-md border-slate-200 bg-white/95 py-0 text-slate-950 shadow-xl shadow-blue-100/60">
+        <CardHeader className="border-b border-slate-100 px-6 py-6 text-center sm:px-8">
+          <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-sm shadow-blue-200">
+            <KeyRound className="size-6" aria-hidden="true" />
+          </div>
+          <CardTitle className="mt-3 text-xl">Neues Master-Passwort</CardTitle>
+          <CardDescription className="leading-5">
+            Nach dem Speichern werden alle bestehenden MyCrewMate-Sitzungen sicher abgemeldet.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="px-6 py-6 sm:px-8">
+          <form className="space-y-4" onSubmit={submit}>
+            <label className="block space-y-1.5" htmlFor="master-reset-password">
+              <span className="text-sm font-semibold text-slate-800">Neues Master-Passwort</span>
+              <Input
+                id="master-reset-password"
+                type="password"
+                autoComplete="new-password"
+                minLength={10}
+                value={password}
+                onChange={event => setPassword(event.target.value)}
+                disabled={reset.isPending}
+                placeholder="Mindestens 10 Zeichen"
+              />
+            </label>
+            <label className="block space-y-1.5" htmlFor="master-reset-password-confirmation">
+              <span className="text-sm font-semibold text-slate-800">Passwort wiederholen</span>
+              <Input
+                id="master-reset-password-confirmation"
+                type="password"
+                autoComplete="new-password"
+                minLength={10}
+                value={confirmation}
+                onChange={event => setConfirmation(event.target.value)}
+                disabled={reset.isPending}
+                placeholder="Passwort wiederholen"
+              />
+            </label>
+            {error && (
+              <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
+                {error}
+              </p>
+            )}
+            <Button
+              className="h-11 w-full"
+              type="submit"
+              disabled={password.length < 10 || confirmation.length < 10 || reset.isPending}
+            >
+              {reset.isPending ? <Loader2 className="size-4 animate-spin" /> : <ShieldCheck className="size-4" />}
+              Passwort sicher speichern
+            </Button>
+          </form>
         </CardContent>
       </Card>
     </main>
@@ -278,6 +398,7 @@ export default function MasterAdminPortal() {
     name: string;
   } | null>(null);
   const [accessToDelete, setAccessToDelete] = useState<PlatformAccessInventoryItem | null>(null);
+  const resetToken = new URLSearchParams(window.location.search).get("reset");
 
   const createTenantAdmin = trpc.platformAdmin.createTenantAdmin.useMutation({
     onSuccess: result => {
@@ -398,6 +519,14 @@ export default function MasterAdminPortal() {
     new URLSearchParams(window.location.search).get("demo") === "true";
 
   if (loading) return <PortalLoading />;
+  if (!isAuthenticated && !isVisualPreview && resetToken) {
+    return (
+      <MasterPasswordReset
+        token={resetToken}
+        onCompleted={() => window.history.replaceState({}, "", window.location.pathname)}
+      />
+    );
+  }
   if (!isAuthenticated && !isVisualPreview) return <MasterLogin />;
   if (!isVisualPreview && (user?.role !== "admin" || overview.error?.data?.code === "FORBIDDEN")) {
     return <AccessDenied onLogout={logout} />;

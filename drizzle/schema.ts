@@ -726,6 +726,15 @@ export const securitySettings = mysqlTable("security_settings", {
   passwordHash: varchar("passwordHash", { length: 255 }),
   adminPasswordHash: varchar("adminPasswordHash", { length: 255 }),
   oauthOwnerOpenId: varchar("oauthOwnerOpenId", { length: 64 }),
+  /** Globale Sperre für das Masterportal nach fünf Fehlversuchen. */
+  adminFailedAttempts: int("adminFailedAttempts").default(0).notNull(),
+  adminLocked: boolean("adminLocked").default(false).notNull(),
+  /** Ausschließlich der SHA-256-Hash eines zeitlich kurzen Reset-Links. */
+  adminPasswordResetTokenHash: varchar("adminPasswordResetTokenHash", {
+    length: 64,
+  }),
+  adminPasswordResetExpiresAt: timestamp("adminPasswordResetExpiresAt"),
+  adminPasswordResetRequestedAt: timestamp("adminPasswordResetRequestedAt"),
   planningTeamFailedAttempts: int("planningTeamFailedAttempts")
     .default(0)
     .notNull(),

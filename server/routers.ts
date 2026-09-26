@@ -105,7 +105,7 @@ import {
   type EditablePlanningModule,
   type PlanningModuleAccess,
 } from "@shared/tenant-permissions";
-import { isMasterAdminRequestHost } from "@shared/platform-admin";
+import { MASTER_ADMIN_ORIGIN, isMasterAdminRequestHost } from "@shared/platform-admin";
 import { storagePut, storageRead } from "./storage";
 import { locationLogoUrl } from "./location-logo-routes";
 import {
@@ -117,14 +117,19 @@ import {
 import { upcomingPreparationDeadlines } from "./dashboard-deadlines";
 import {
   renderInvitationEmail,
+  renderMasterPasswordResetEmail,
   renderPlanningTeamInvitationEmail,
   sendTransactionalEmail,
   type SendMailOptions,
 } from "./mail-service";
-
 const GUIDE_PDF_KEY = "Handbuch_RSC_Helferplanung_742fcb04.pdf";
 const GUIDE_PDF_FILENAME = "Handbuch_RSC_Helferplanung.pdf";
 const GUIDE_PDF_MAX_BYTES = 5_000_000;
+const MASTER_RESET_EMAIL = "info@mycrewmate.de";
+const MASTER_RESET_TTL_MINUTES = 30;
+const MASTER_RESET_REQUEST_WINDOW_MS = 15 * 60 * 1000;
+const MASTER_RESET_REQUEST_LIMIT = 3;
+const masterResetRequestAttempts = new Map<string, { count: number; resetAt: number }>();
 
 async function safelyRecordPresence(
   req: Parameters<typeof recordSessionPresence>[0],
@@ -185,6 +190,22 @@ async function safelySubmitInvitationEmail(options: SendMailOptions) {
     console.warn("[Mail] Einladung konnte nicht an den SMTP-Server übergeben werden.");
     return false;
   }
+}
+
+/** Begrenzt anonyme Reset-Anfragen, ohne die Inhaberadresse preiszugeben. */
+function allowMasterResetRequest(clientKey: string) {
+  const now = Date.now();
+  const current = masterResetRequestAttempts.get(clientKey);
+  if (!current || current.resetAt <= now) {
+    masterResetRequestAttempts.set(clientKey, {
+      count: 1,
+      resetAt: now + MASTER_RESET_REQUEST_WINDOW_MS,
+    });
+    return true;
+  }
+  if (current.count >= MASTER_RESET_REQUEST_LIMIT) return false;
+  current.count += 1;
+  return true;
 }
 
 function planningTeamAccessIdForUser(user: {
@@ -1821,6 +1842,17 @@ export const appRouter = router({
           });
         }
 
+        // Der Masterzugang ist unabhängig von der IP zusätzlich global
+        // geschützt. Nach fünf Fehlversuchen ist ausschließlich der
+        // E-Mail-Reset an die hinterlegte Inhaberadresse zulässig.
+        if (!input.email && (await db.getSecuritySettings())?.adminLocked) {
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message:
+              "Der Masterzugang ist nach mehreren Fehlversuchen gesperrt. Bitte verwenden Sie „Master-Passwort vergessen?“.",
+          });
+        }
+
         // Wenn eine E-Mail angegeben ist, handelt es sich um einen persönlichen Vereinsadmin-Login
         if (input.email) {
           const adminCreds = await db.getTenantAdminCredentialsByEmail(input.email);
@@ -1869,12 +1901,16 @@ export const appRouter = router({
         const hash = (await db.getSecuritySettings())?.adminPasswordHash;
         if (!hash || !(await verifyPassword(input.password, hash))) {
           recordFailedPasswordLogin(clientKey);
+          const protection = await db.recordFailedAdminPasswordLogin(5);
           throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Administratorpasswort ist nicht korrekt",
+            code: protection.locked ? "TOO_MANY_REQUESTS" : "BAD_REQUEST",
+            message: protection.locked
+              ? "Der Masterzugang ist nach fünf Fehlversuchen gesperrt. Bitte verwenden Sie „Master-Passwort vergessen?“."
+              : "Administratorpasswort ist nicht korrekt",
           });
         }
         clearPasswordLoginFailures(clientKey);
+        await db.clearAdminPasswordLoginFailures();
         if (!input.administratorName) {
           return {
             requiresIdentity: true,
@@ -1913,6 +1949,75 @@ export const appRouter = router({
           requiresIdentity: false,
           ...(isEmbeddedManusPreview(ctx.req) ? { previewSessionToken: token } : {}),
         } as const;
+      }),
+    requestAdminPasswordReset: publicProcedure.mutation(async ({ ctx }) => {
+      const clientKey = `admin-reset-request:${getClientKey(ctx.req)}`;
+      // Die Antwort bleibt absichtlich gleich, damit der geschützte
+      // Wiederherstellungsweg keine internen Zustände preisgibt.
+      if (!allowMasterResetRequest(clientKey)) {
+        return { accepted: true } as const;
+      }
+
+      const rawToken = randomBytes(32).toString("base64url");
+      const request = await db.createAdminPasswordResetRequest({
+        tokenHash: hashOpaqueToken(rawToken),
+        expiresInSeconds: MASTER_RESET_TTL_MINUTES * 60,
+      });
+      const resetUrl = `${MASTER_ADMIN_ORIGIN}/?reset=${encodeURIComponent(rawToken)}`;
+      const emailContent = renderMasterPasswordResetEmail({
+        resetUrl,
+        expiresInMinutes: MASTER_RESET_TTL_MINUTES,
+      });
+      await safelySubmitInvitationEmail({
+        to: MASTER_RESET_EMAIL,
+        ...emailContent,
+      });
+      await recordSecurityActivity(
+        {
+          userId: 0,
+          name: "Masterportal",
+          role: "admin",
+          loginMethod: "password",
+        },
+        `Masterpasswort-Reset angefordert; Link gültig bis ${request.expiresAt.toISOString()}`,
+        "created",
+        null
+      );
+      return { accepted: true } as const;
+    }),
+    resetAdminPasswordWithEmailToken: publicProcedure
+      .input(
+        z.object({
+          token: z.string().min(32).max(200),
+          newPassword: passwordInput,
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const reset = await db.resetAdminPasswordWithEmailToken({
+          tokenHash: hashOpaqueToken(input.token),
+          passwordHash: await hashPassword(input.newPassword),
+        });
+        if (!reset) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Dieser Reset-Link ist ungültig, abgelaufen oder wurde bereits verwendet.",
+          });
+        }
+        const cookieOptions = getSessionCookieOptions(ctx.req);
+        ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+        await recordSecurityActivity(
+          {
+            userId: 0,
+            name: "Masterportal",
+            role: "admin",
+            loginMethod: "password",
+          },
+          "Masterpasswort per E-Mail-Reset zurückgesetzt; alle Passwortsitzungen ungültig gemacht",
+          "updated",
+          null
+        );
+        return { success: true, requiresLogin: true } as const;
       }),
     resetAdminWithKey: publicProcedure
       .input(

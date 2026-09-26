@@ -206,7 +206,8 @@ describe("applyProjectMigrations", () => {
         m.tag === "0065_remove_archived_tenant_accesses" ||
         m.tag === "0066_military_scarlet_witch" ||
         m.tag === "0067_broad_infant_terrible" ||
-        m.tag === "0068_sharp_marvel_boy"
+        m.tag === "0068_sharp_marvel_boy" ||
+        m.tag === "0069_common_arachne"
     ).length;
 
     const result = await applyProjectMigrations(connection, migrations);
