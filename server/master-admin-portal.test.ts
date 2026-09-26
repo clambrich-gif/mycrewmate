@@ -51,6 +51,19 @@ describe("Master-Admin-Portal", () => {
     expect(page).toContain("Keine öffentliche Registrierung, kein Checkout und keine Zahlungsanbindung.");
   });
 
+  it("erhält offene Master-Dialoge bei einem späteren Übersichts-Refetchfehler", () => {
+    const page = source("client/src/pages/MasterAdminPortal.tsx");
+
+    // Die Vollseiten-Fehleransicht ist ausschließlich für den ersten Abruf
+    // ohne bereits geladene Daten erlaubt. Ein späterer Fehler bleibt als
+    // Hinweis im bestehenden Portalbaum, sodass Formulardialoge gemountet bleiben.
+    expect(page).toContain("if (overview.error && !overview.data && !isVisualPreview)");
+    expect(page).toContain('data-slot="master-overview-refresh-error"');
+    expect(page).toContain("Bereits geladene Daten und offene Eingaben bleiben erhalten.");
+    expect(page).toContain("disabled={overview.isFetching}");
+    expect(page).toContain("onClick={() => void overview.refetch()}");
+  });
+
   it("erlaubt Masteraktionen nur für interne Pilot- und Mustervereine", () => {
     const routers = source("server/routers.ts");
     const db = source("server/db.ts");

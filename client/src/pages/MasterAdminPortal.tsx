@@ -403,7 +403,11 @@ export default function MasterAdminPortal() {
     return <AccessDenied onLogout={logout} />;
   }
   if (overview.isLoading) return <PortalLoading />;
-  if (overview.error && !isVisualPreview) {
+  // Beim allerersten Laden ohne Daten bleibt eine sichere Fehlerseite sinnvoll.
+  // Bei einem späteren Refetch liegen hingegen bereits Daten und möglicherweise
+  // offene Dialoge vor. In diesem Fall darf ein temporärer Netzwerkfehler weder
+  // den Portalbaum noch einen laufenden Entwurf entfernen.
+  if (overview.error && !overview.data && !isVisualPreview) {
     return (
       <main className="grid min-h-screen place-items-center bg-slate-50 p-4">
         <Card className="w-full max-w-lg border-red-200 bg-white py-0 text-slate-950 shadow-sm">
@@ -516,6 +520,33 @@ export default function MasterAdminPortal() {
             </Button>
           </div>
         </header>
+
+        {overview.error && !isVisualPreview && (
+          <section
+            data-slot="master-overview-refresh-error"
+            role="status"
+            aria-live="polite"
+            className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div className="flex min-w-0 items-start gap-2">
+              <CircleAlert className="mt-0.5 size-4 shrink-0 text-amber-700" aria-hidden="true" />
+              <p className="leading-5">
+                <strong>Übersicht vorübergehend nicht aktualisiert.</strong>{" "}
+                Bereits geladene Daten und offene Eingaben bleiben erhalten. {overview.error.message}
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="shrink-0 border-amber-300 bg-white text-amber-950 hover:bg-amber-100"
+              disabled={overview.isFetching}
+              onClick={() => void overview.refetch()}
+            >
+              {overview.isFetching ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />}
+              Erneut versuchen
+            </Button>
+          </section>
+        )}
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Plattformkennzahlen">
           <Card className="border-blue-200 bg-white/95 py-0 shadow-sm">
