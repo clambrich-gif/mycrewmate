@@ -392,10 +392,29 @@ async function authorizedPlanningScope(
         message: "Für diesen Planungsteam-Zugang ist keine Veranstaltung freigegeben.",
       });
     }
-    // Der Zugang leitet seinen Verein direkt aus der eigenen Eventfreigabe ab.
-    // Die parallele Mitgliedschaftssynchronisation bleibt für die Verwaltung
-    // bestehen, kann den operativen Zugriff aber nicht mehr fälschlich blockieren.
-    return { ...requested, tenantId };
+    const requestedScope = { ...requested, tenantId };
+    const requestedEventIsAllowed = await db.isPlanningTeamAccessAllowedForEvent(
+      planningAccessId,
+      requestedScope.eventId,
+      tenantId
+    );
+    if (requestedEventIsAllowed) return requestedScope;
+
+    // Ein frischer Zugang kann noch einen alten oder leeren Browserwert erben.
+    // Statt dadurch Dashboard und Chat zu blockieren, wird ausschließlich auf
+    // eine tatsächlich freigegebene Veranstaltung desselben Zugangs gesetzt.
+    // Kein fremdes Event wird übernommen; ohne Freigabe bleibt der Zugriff gesperrt.
+    const allowedEvents = await withPlanningScope(requestedScope, () =>
+      db.listAllEventsForPlanningTeamAccess(planningAccessId)
+    );
+    const fallbackEvent = initialAccessibleEvent(allowedEvents);
+    if (!fallbackEvent) return requestedScope;
+
+    return {
+      tenantId,
+      year: fallbackEvent.year,
+      eventId: fallbackEvent.id,
+    };
   }
   let membership: Awaited<ReturnType<typeof db.resolveTenantForUser>> | undefined;
   try {

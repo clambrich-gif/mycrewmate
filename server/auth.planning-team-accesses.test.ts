@@ -1247,6 +1247,63 @@ describe("Event-based Access Control für Planungsteam", () => {
     expect(membershipSpy).not.toHaveBeenCalled();
   });
 
+  it("stellt Chat und Dashboard auf die einzige Freigabe zurück, wenn ein alter Browserwert ein fremdes Event anfragt", async () => {
+    vi.spyOn(db, "getPlanningTeamAccessTenantId").mockResolvedValue(
+      "rsc-eifelland-mayen"
+    );
+    const accessSpy = vi
+      .spyOn(db, "isPlanningTeamAccessAllowedForEvent")
+      .mockImplementation(async (_accessId, eventId) => eventId === 1020001);
+    vi.spyOn(db, "listAllEventsForPlanningTeamAccess").mockResolvedValue([
+      {
+        id: 1020001,
+        year: 2027,
+        name: "MyEifelRide",
+        startDate: "2027-06-11",
+      },
+    ] as any);
+    vi.spyOn(db, "getEvent").mockResolvedValue({
+      id: 1020001,
+      tenantId: "rsc-eifelland-mayen",
+      year: 2027,
+      name: "MyEifelRide",
+    } as any);
+    vi.spyOn(db, "isPlanningTeamAccessPasswordChangeRequired").mockResolvedValue(false);
+    vi.spyOn(db, "listTeamNotes").mockResolvedValue([]);
+    vi.spyOn(db, "listActiveTypers").mockResolvedValue([]);
+    vi.spyOn(db, "getTeamNoteUnreadStatus").mockResolvedValue({
+      unreadCount: 0,
+      hasImportantUnread: false,
+    });
+
+    const caller = appRouter.createCaller({
+      user: {
+        id: 91,
+        openId: planningTeamAccessOpenId(91),
+        role: "user",
+        name: "Klaus Lustig",
+        email: null,
+        sessionVersion: 1,
+        avatarUrl: null,
+        accountBlocked: false,
+        lastSignedIn: new Date(),
+      },
+      // Ein älterer Tab kann noch auf die Standard-ID 1 zeigen, obwohl die
+      // einzig erlaubte Veranstaltung die produktive MyEifelRide-ID trägt.
+      req: mockReq({ "x-event-year": "2027", "x-event-id": "1" }),
+      res: { setHeader: vi.fn(), clearCookie: vi.fn() } as any,
+    });
+
+    await expect(caller.notes.list()).resolves.toMatchObject({ notes: [] });
+    await expect(caller.events.current()).resolves.toMatchObject({
+      id: 1020001,
+      year: 2027,
+      name: "MyEifelRide",
+    });
+    expect(accessSpy).toHaveBeenCalledWith(91, 1, "rsc-eifelland-mayen");
+    expect(accessSpy).toHaveBeenCalledWith(91, 1020001, "rsc-eifelland-mayen");
+  });
+
   it("erlaubt einem Benutzer mit leerem Rechte-Array vollen Lese- und Schreibzugriff auf den Teamchat", async () => {
     vi.spyOn(db, "getEvent").mockResolvedValue({
       id: 10,
