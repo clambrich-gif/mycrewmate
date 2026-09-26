@@ -46,6 +46,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { PlanResetDialogButton } from "@/components/PlanResetDialogButton";
 import { MyTasksDefaultPin } from "@/components/MyTasksDefaultPin";
+import { KlemmiHelperGuide } from "@/components/KlemmiHelperGuide";
 import { useMyTasksDefault } from "@/hooks/useMyTasksDefault";
 import { useMobileViewMode, useViewMode } from "@/hooks/useViewMode";
 import {
@@ -1237,6 +1238,13 @@ export default function Helpers() {
           <ViewModeToggle mode={viewMode} onChange={setViewMode} />
           <div className="w-full rounded-xl border border-slate-200 bg-white p-2 shadow-sm sm:w-[12rem]">
             <div className="space-y-2">
+              <KlemmiHelperGuide
+                helperDialogOpen={newHelperDialogOpen}
+                donationOpen={newHelperBringsCake}
+                onOpenHelperDialog={openNewHelperDialog}
+                onSetDonationOpen={setNewHelperBringsCake}
+                onCloseHelperDialog={() => setNewHelperDialogOpen(false)}
+              />
               <div className="w-full">
                 <PlanResetDialogButton
                   area="helpers"
@@ -1247,6 +1255,7 @@ export default function Helpers() {
               </div>
               <Button
                 type="button"
+                data-klemmi-target="new-helper"
                 className="h-10 w-full bg-blue-600 px-4 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus-visible:ring-blue-500"
                 onClick={openNewHelperDialog}
               >
@@ -1757,6 +1766,7 @@ export default function Helpers() {
 
               <section
                 data-slot="mobile-helper-availability-section"
+                data-klemmi-target="helper-availability"
                 aria-label="Tages-Verfügbarkeiten"
                 className="space-y-2 rounded-xl border border-slate-200 bg-white p-3"
               >
@@ -2015,7 +2025,7 @@ export default function Helpers() {
                   </td>
                   {activeDays.map(day => {
                     return (
-                      <td key={day} className="p-1 text-center align-middle">
+                      <td key={day} data-klemmi-target="helper-availability" className="p-1 text-center align-middle">
                         <DayAvailabilityControl
                           helper={helper}
                           day={day}
@@ -2328,7 +2338,7 @@ export default function Helpers() {
                       </div>
                     )}
 
-                    <div className="space-y-2 border-t border-slate-100 pt-3">
+                    <div data-klemmi-target="helper-availability" className="space-y-2 border-t border-slate-100 pt-3">
                       <div className="text-xs font-semibold text-slate-700">
                         Tages-Verfügbarkeiten & Zeitfenster
                       </div>
@@ -2459,7 +2469,7 @@ export default function Helpers() {
                 <p className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900">
                   Neue Helfer starten aktiv. Die Tagesverfügbarkeiten stehen zunächst auf „?“ und lassen sich danach direkt in der Helferliste präzisieren.
                 </p>
-                <div className={cn("flex min-h-12 items-center gap-3 rounded-xl border px-3.5 transition-colors", newHelperBringsCake ? "border-indigo-200 bg-indigo-50" : "border-slate-200 bg-white")}>
+                <div data-klemmi-target="new-helper-donation" className={cn("flex min-h-12 items-center gap-3 rounded-xl border px-3.5 transition-colors", newHelperBringsCake ? "border-indigo-200 bg-indigo-50" : "border-slate-200 bg-white")}>
                   <Checkbox
                     id="new-helper-dialog-brings-cake"
                     checked={newHelperBringsCake}

@@ -5,6 +5,27 @@ const source = (relativePath: string) =>
   readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
 describe("UI- und Mobile-UX-Regeln", () => {
+  it("führt mit Klemmi direkt über die echte Helferoberfläche ohne Eingabesperre", () => {
+    const helpers = source("client/src/pages/Helpers.tsx");
+    const guide = source("client/src/components/KlemmiHelperGuide.tsx");
+
+    expect(helpers).toContain('import { KlemmiHelperGuide } from "@/components/KlemmiHelperGuide"');
+    expect(helpers).toContain("<KlemmiHelperGuide");
+    expect(helpers).toContain('data-klemmi-target="new-helper"');
+    expect(helpers).toContain('data-klemmi-target="new-helper-donation"');
+    expect(helpers).toContain('data-klemmi-target="helper-availability"');
+    expect(guide).toContain('const KLEMMI_IMAGE_URL = "/manus-storage/02-klemmbrett-konzept_0290bce1.png"');
+    expect(guide).toContain('data-klemmi-trigger');
+    expect(guide).toContain('data-klemmi-guide');
+    expect(guide).toContain('pointer-events-none fixed inset-0');
+    expect(guide).toContain('pointer-events-auto fixed');
+    expect(guide).toContain("Neuer Helfer");
+    expect(guide).toContain("Kuchen oder Spende direkt mit aufnehmen");
+    expect(guide).toContain("Zeitfenster nach dem Anlegen festlegen");
+    expect(guide).toContain("scrollIntoView");
+    expect(guide).toContain("resolveVisibleTarget");
+  });
+
   it("zeigt PDF-Hinweise bearbeitbar per Desktop-Hover und Touch-Popover vollständig an", () => {
     const helpers = source("client/src/pages/Helpers.tsx");
 
