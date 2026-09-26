@@ -24,7 +24,11 @@ import {
   useMapEvents,
 } from "react-leaflet";
 import type { MapEntry, MapLocation } from "./LocationMapCard";
-import { LocationDetailContent } from "./LocationDetailContent";
+import {
+  firstAvailableLocationDetailTab,
+  LocationDetailContent,
+  type LocationDetailTab,
+} from "./LocationDetailContent";
 import "leaflet/dist/leaflet.css";
 
 const MAP_MARKER_COLORS = {
@@ -53,6 +57,7 @@ const MAP_LAYERS = {
 } as const;
 
 type MapLayerKey = keyof typeof MAP_LAYERS;
+const LOCATION_DETAIL_TAB_STORAGE_PREFIX = "mycrewmate.location-detail-tab";
 export type GpxMapTrack = {
   id: number;
   name: string;
@@ -73,6 +78,19 @@ function statusText(entries: MapEntry[]) {
   if (severity === "critical") return "Handlungsbedarf";
   if (severity === "warning") return "In Arbeit oder zeitlich knapp";
   return severity === "complete" ? "Vollständig geprüft" : "Information hinterlegt";
+}
+
+function storedLocationDetailTab(locationId: number): LocationDetailTab | null {
+  try {
+    const stored = window.sessionStorage.getItem(
+      `${LOCATION_DETAIL_TAB_STORAGE_PREFIX}:${locationId}`
+    );
+    return stored === "preparation" || stored === "shifts" || stored === "materials"
+      ? stored
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 function mapBoundsPoints(
@@ -299,6 +317,9 @@ export default function LocationMapClient({
   // neu geladen werden.
   const [mobileLocationId, setMobileLocationId] = useState<number | null>(null);
   const [desktopLocationId, setDesktopLocationId] = useState<number | null>(null);
+  const [detailTabsByLocationId, setDetailTabsByLocationId] = useState<
+    Record<number, LocationDetailTab>
+  >({});
   const dismissedMobileFocusRef = useRef(new Set<number>());
   const openedFocusLocationIdRef = useRef<number | null>(null);
   const activeLayer = MAP_LAYERS[layer];
@@ -316,6 +337,29 @@ export default function LocationMapClient({
   );
   const mobileLocationDetails = detailsForLocation(mobileLocationId);
   const desktopLocationDetails = detailsForLocation(desktopLocationId);
+  const activeTabForLocation = useCallback(
+    (locationId: number, entries: MapEntry[]) =>
+      detailTabsByLocationId[locationId] ??
+      storedLocationDetailTab(locationId) ??
+      firstAvailableLocationDetailTab(entries),
+    [detailTabsByLocationId]
+  );
+  const rememberLocationDetailTab = useCallback(
+    (locationId: number, tab: LocationDetailTab) => {
+      setDetailTabsByLocationId(current =>
+        current[locationId] === tab ? current : { ...current, [locationId]: tab }
+      );
+      try {
+        window.sessionStorage.setItem(
+          `${LOCATION_DETAIL_TAB_STORAGE_PREFIX}:${locationId}`,
+          tab
+        );
+      } catch {
+        // Die Sitzung bleibt auch ohne Web Storage stabil, solange die Karte geöffnet ist.
+      }
+    },
+    []
+  );
   const mobileNavigationLocations = useMemo(
     () => [...locations].sort((left, right) => left.name.localeCompare(right.name, "de")),
     [locations]
@@ -622,6 +666,13 @@ export default function LocationMapClient({
               location={desktopLocationDetails.location}
               entries={desktopLocationDetails.entries}
               statusText={statusText(desktopLocationDetails.entries)}
+              activeTab={activeTabForLocation(
+                desktopLocationDetails.location.id,
+                desktopLocationDetails.entries
+              )}
+              onActiveTabChange={tab =>
+                rememberLocationDetailTab(desktopLocationDetails.location.id, tab)
+              }
               onClose={closeDesktopDetails}
             />
           </div>
@@ -742,6 +793,13 @@ export default function LocationMapClient({
                   location={mobileLocationDetails.location}
                   entries={mobileLocationDetails.entries}
                   statusText={statusText(mobileLocationDetails.entries)}
+                  activeTab={activeTabForLocation(
+                    mobileLocationDetails.location.id,
+                    mobileLocationDetails.entries
+                  )}
+                  onActiveTabChange={tab =>
+                    rememberLocationDetailTab(mobileLocationDetails.location.id, tab)
+                  }
                   mobile
                   showHeading={false}
                   onClose={closeMobileDetails}

@@ -6,19 +6,21 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { ClipboardList, Package, UsersRound, X, type LucideIcon } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { MapEntry, MapLocation } from "./LocationMapCard";
 
 type LocationDetailContentProps = {
   location: MapLocation;
   entries: MapEntry[];
   statusText: string;
+  activeTab: LocationDetailTab;
+  onActiveTabChange: (tab: LocationDetailTab) => void;
   mobile?: boolean;
   showHeading?: boolean;
   onClose?: () => void;
 };
 
-type LocationDetailTab = "preparation" | "shifts" | "materials";
+export type LocationDetailTab = "preparation" | "shifts" | "materials";
 
 type DetailTabDefinition = {
   value: LocationDetailTab;
@@ -70,7 +72,7 @@ const ENTRY_TONE: Record<
   },
 };
 
-function firstAvailableTab(entries: MapEntry[]): LocationDetailTab {
+export function firstAvailableLocationDetailTab(entries: MapEntry[]): LocationDetailTab {
   return (
     DETAIL_TABS.find(tab =>
       entries.some(entry => entry.section === tab.value)
@@ -83,13 +85,12 @@ export function LocationDetailContent({
   location,
   entries,
   statusText,
+  activeTab,
+  onActiveTabChange,
   mobile = false,
   showHeading = true,
   onClose,
 }: LocationDetailContentProps) {
-  const [activeTab, setActiveTab] = useState<LocationDetailTab>(() =>
-    firstAvailableTab(entries)
-  );
   const entriesByTab = useMemo(
     () =>
       new Map<LocationDetailTab, MapEntry[]>(
@@ -100,13 +101,6 @@ export function LocationDetailContent({
       ),
     [entries]
   );
-
-  useEffect(() => {
-    // Neue Live-Daten können bei der Hintergrundaktualisierung jederzeit
-    // eintreffen. Der bewusst gewählte Reiter bleibt dabei erhalten; nur beim
-    // Wechsel zu einem anderen Standort wird ein sinnvoller Startreiter gewählt.
-    setActiveTab(firstAvailableTab(entries));
-  }, [location.id]);
 
   return (
     <div
@@ -137,7 +131,7 @@ export function LocationDetailContent({
 
       <Tabs
         value={activeTab}
-        onValueChange={value => setActiveTab(value as LocationDetailTab)}
+        onValueChange={value => onActiveTabChange(value as LocationDetailTab)}
         className="mt-3 gap-0"
       >
         <TabsList
