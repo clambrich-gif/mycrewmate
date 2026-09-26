@@ -2379,7 +2379,17 @@ export default function Helpers() {
           if (!open) resetNewHelperForm();
         }}
       >
-        <DialogContent className="max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto overscroll-contain bg-white sm:max-w-5xl">
+        <DialogContent
+          className="max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto overscroll-contain bg-white sm:max-w-5xl"
+          onInteractOutside={event => {
+            // Klemmi lebt bewusst als nicht-modaler Begleiter in einem Portal
+            // außerhalb des Dialog-DOMs. Seine Steuerelemente dürfen den
+            // echten Helferdialog deshalb nicht versehentlich schließen.
+            if (event.target instanceof Element && event.target.closest("[data-klemmi-guide]")) {
+              event.preventDefault();
+            }
+          }}
+        >
           <DialogHeader>
             <DialogTitle>Neuer Helfer anlegen</DialogTitle>
             <p className="pt-1 text-sm text-slate-500">

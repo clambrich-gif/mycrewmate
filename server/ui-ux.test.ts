@@ -14,6 +14,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain('data-klemmi-target="new-helper"');
     expect(helpers).toContain('data-klemmi-target="new-helper-donation"');
     expect(helpers).toContain('data-klemmi-target="helper-availability"');
+    expect(helpers).toContain('onInteractOutside={event => {');
+    expect(helpers).toContain('event.target.closest("[data-klemmi-guide]")');
+    expect(helpers).toContain('event.preventDefault();');
     expect(guide).toContain('const KLEMMI_IMAGE_URL = "/api/klemmi/mascot"');
     expect(guide).toContain('data-klemmi-trigger');
     expect(guide).toContain('data-klemmi-guide');
