@@ -10,7 +10,9 @@ import { lazy, Suspense, useEffect } from "react";
 import { useRef } from "react";
 import { Redirect, Route, Switch } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import ErrorBoundary from "./components/ErrorBoundary";
+import ErrorBoundary, {
+  clearLazyRouteReloadAttempt,
+} from "./components/ErrorBoundary";
 import { Layout } from "./components/Layout";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { YearProvider } from "./contexts/YearContext";
@@ -216,6 +218,10 @@ function App() {
 
   useEffect(() => {
     applyBrowserBranding();
+    // Ein vollständig gestarteter App-Entry bestätigt die aktuelle
+    // Asset-Version und macht die einmalige Chunk-Recovery für einen späteren
+    // Deploymentwechsel wieder verfügbar.
+    clearLazyRouteReloadAttempt();
   }, []);
 
   return (

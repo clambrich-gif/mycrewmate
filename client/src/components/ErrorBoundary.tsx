@@ -11,6 +11,48 @@ interface State {
   error: Error | null;
 }
 
+// Nach einem Deployment kann ein bereits offener Tab noch auf einen durch den
+// neuen Build ersetzten, gehashten Lazy-Route-Chunk verweisen. Ein einmaliges
+// Neuladen holt den aktuellen Einstiegspunkt. Der Schlüssel bleibt bis zu
+// einem erfolgreichen App-Start bestehen und verhindert damit Reload-Schleifen.
+const LAZY_ROUTE_RELOAD_KEY = "mycrewmate:lazy-route-reload";
+
+export function isLazyRouteChunkError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return /failed to fetch dynamically imported module|importing a module script failed|loading chunk [\w-]+ failed/i.test(
+    message
+  );
+}
+
+function reloadOnceForLazyRouteChunk(error: unknown) {
+  if (typeof window === "undefined" || !isLazyRouteChunkError(error)) return false;
+
+  const currentUrl = window.location.href;
+  try {
+    if (window.sessionStorage.getItem(LAZY_ROUTE_RELOAD_KEY) === currentUrl) {
+      return false;
+    }
+    window.sessionStorage.setItem(LAZY_ROUTE_RELOAD_KEY, currentUrl);
+  } catch {
+    // Wenn Session Storage durch eine Browserrichtlinie blockiert ist, bleibt
+    // die reguläre Fehleransicht sichtbar statt unkontrolliert neu zu laden.
+    return false;
+  }
+
+  window.location.reload();
+  return true;
+}
+
+/** Wird nach einem erfolgreichen Rendern aufgerufen und erlaubt spätere Deployments. */
+export function clearLazyRouteReloadAttempt() {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.removeItem(LAZY_ROUTE_RELOAD_KEY);
+  } catch {
+    // Nicht kritisch: Die Fehlergrenze bleibt weiterhin vollständig nutzbar.
+  }
+}
+
 class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
@@ -19,6 +61,10 @@ class ErrorBoundary extends Component<Props, State> {
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error) {
+    reloadOnceForLazyRouteChunk(error);
   }
 
   render() {

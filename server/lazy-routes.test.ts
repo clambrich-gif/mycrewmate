@@ -46,6 +46,25 @@ describe("Lazy Routes", () => {
     expect(appSource).not.toContain('routeLoaders["/genehmigungen"]');
   });
 
+  it("aktualisiert veraltete Lazy-Route-Chunks nach einem Deployment höchstens einmal automatisch", () => {
+    const appSource = readFileSync(
+      new URL("../client/src/App.tsx", import.meta.url),
+      "utf8"
+    );
+    const boundarySource = readFileSync(
+      new URL("../client/src/components/ErrorBoundary.tsx", import.meta.url),
+      "utf8"
+    );
+
+    expect(boundarySource).toContain("LAZY_ROUTE_RELOAD_KEY");
+    expect(boundarySource).toContain("failed to fetch dynamically imported module");
+    expect(boundarySource).toContain("componentDidCatch(error: Error)");
+    expect(boundarySource).toContain("reloadOnceForLazyRouteChunk(error)");
+    expect(boundarySource).toContain("window.location.reload()");
+    expect(boundarySource).toContain("clearLazyRouteReloadAttempt");
+    expect(appSource).toContain("clearLazyRouteReloadAttempt();");
+  });
+
   it("lädt jedes Routemodul mit gültigem Default-Export", async () => {
     const modules = await Promise.all(
       expectedRoutes.map(path => routeLoaders[path]())
