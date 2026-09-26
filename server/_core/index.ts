@@ -3,6 +3,7 @@ import express from "express";
 import { createServer } from "http";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerBrandAssetRoutes } from "../brand-asset-routes";
+import { registerKlemmiAssetRoutes } from "../klemmi-asset-routes";
 import { appRouter } from "../routers";
 import { registerHelpImageRoutes } from "../help-image-routes";
 import { registerHelpTrainingVideoRoutes } from "../help-training-video-routes";
@@ -47,6 +48,7 @@ async function startServer() {
   });
 
   registerBrandAssetRoutes(app);
+  registerKlemmiAssetRoutes(app);
   registerHelpImageRoutes(app);
   registerHelpTrainingVideoRoutes(app);
   registerEventPdfImageRoutes(app);

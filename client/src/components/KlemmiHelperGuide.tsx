@@ -12,7 +12,7 @@ import {
 import { useEffect, useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
-const KLEMMI_IMAGE_URL = "/manus-storage/02-klemmbrett-konzept_0290bce1.png";
+const KLEMMI_IMAGE_URL = "/api/klemmi/mascot";
 
 type GuideStepKey = "welcome" | "person" | "donation" | "availability";
 

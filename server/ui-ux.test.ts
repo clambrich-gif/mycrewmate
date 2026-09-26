@@ -14,7 +14,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain('data-klemmi-target="new-helper"');
     expect(helpers).toContain('data-klemmi-target="new-helper-donation"');
     expect(helpers).toContain('data-klemmi-target="helper-availability"');
-    expect(guide).toContain('const KLEMMI_IMAGE_URL = "/manus-storage/02-klemmbrett-konzept_0290bce1.png"');
+    expect(guide).toContain('const KLEMMI_IMAGE_URL = "/api/klemmi/mascot"');
     expect(guide).toContain('data-klemmi-trigger');
     expect(guide).toContain('data-klemmi-guide');
     expect(guide).toContain('pointer-events-none fixed inset-0');
