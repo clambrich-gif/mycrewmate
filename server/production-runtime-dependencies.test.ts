@@ -28,6 +28,9 @@ describe("Produktions-Laufzeitabhängigkeiten", () => {
     expect(dockerfile).toContain(
       'CMD ["sh", "-c", "node dist/migrate.js && exec node dist/index.js"]'
     );
+    expect(dockerfile).toContain(
+      "COPY --from=build /app/server/assets ./server/assets"
+    );
     expect(dockerfile).not.toContain("drizzle-kit/bin.cjs");
     expect(source("package.json")).toContain("server/_core/migrate.ts");
   });
