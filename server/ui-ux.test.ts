@@ -2216,6 +2216,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain('data-slot="day-availability-trigger"');
     expect(helpers).toContain("<PopoverTrigger asChild>");
     expect(helpers).toContain("availabilityPickerOpen");
+    expect(helpers).toContain("const loadDraftFromHelper = () => {");
+    expect(helpers).toContain("if (open) loadDraftFromHelper()");
+    expect(helpers).toContain(
+      "Refetches liefern neue helper-Objekte, dürfen einen"
+    );
+    expect(helpers).toContain("await onCommit(values)");
+    expect(helpers).toContain("update.mutateAsync({ id: helper.id, ...values } as any)");
     expect(helpers).toContain('data-slot="day-availability-time-tooltip"');
     expect(helpers).toContain("isTimedAvailability");
     expect(helpers).toContain("border-emerald-400 bg-emerald-100 text-emerald-950");

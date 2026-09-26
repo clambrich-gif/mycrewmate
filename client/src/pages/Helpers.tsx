@@ -219,10 +219,11 @@ function DayAvailabilityControl({
   day: Weekday;
   compactOnDesktop?: boolean;
   disabled?: boolean;
-  onCommit: (values: Record<string, string | null>) => void;
+  onCommit: (values: Record<string, string | null>) => Promise<unknown>;
 }) {
   const [availabilityPickerOpen, setAvailabilityPickerOpen] = useState(false);
   const [customOpen, setCustomOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const fields = WEEKDAY_AVAILABILITY_TIME_FIELDS[day];
   const availabilityField = WEEKDAY_AVAILABILITY_FIELDS[day];
   const availability = helperDayAvailability(helper, day).value;
@@ -244,36 +245,48 @@ function DayAvailabilityControl({
         ? "border-rose-300 bg-rose-50 text-rose-800 hover:bg-rose-100"
         : "border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100";
 
-  useEffect(() => {
-    if (!availabilityPickerOpen) return;
+  const loadDraftFromHelper = () => {
     setCustomStart((helper[fields.start] as string | null | undefined) ?? "");
     setCustomEnd((helper[fields.end] as string | null | undefined) ?? "");
-  }, [availabilityPickerOpen, fields.end, fields.start, helper]);
+  };
 
-  const commitWindow = (start: string | null, end: string | null) => {
-    onCommit({
+  const commitChanges = async (values: Record<string, string | null>) => {
+    if (isSaving) return;
+    setIsSaving(true);
+    try {
+      // Der Entwurf bleibt bis zur Serverbestätigung geöffnet. So kann weder
+      // die Acht-Sekunden-Synchronisierung noch ein Fehler lokale Eingaben
+      // aus einem offenen Zeitfenster überschreiben.
+      await onCommit(values);
+      setAvailabilityPickerOpen(false);
+      setCustomOpen(false);
+    } catch {
+      // Die Mutation meldet den konkreten Fehler bereits per Toast. Der
+      // Entwurf bleibt absichtlich geöffnet und unverändert editierbar.
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const commitWindow = (start: string | null, end: string | null) =>
+    void commitChanges({
       [availabilityField]: "ja",
       [fields.start]: start,
       [fields.end]: end,
     });
-    setAvailabilityPickerOpen(false);
-    setCustomOpen(false);
-  };
 
   const commitAvailability = (value: "nein" | "vielleicht") => {
-    onCommit({
+    void commitChanges({
       [availabilityField]: value,
       [fields.start]: null,
       [fields.end]: null,
     });
-    setAvailabilityPickerOpen(false);
-    setCustomOpen(false);
   };
 
   const triggerButton = (
     <button
       type="button"
-      disabled={disabled}
+      disabled={disabled || isSaving}
       data-slot="day-availability-trigger"
       aria-label={`${day}: Verfügbarkeit bearbeiten${availability === "ja" ? ` (${label})` : ""}`}
       title={availability === "ja" ? label : `${day}: Verfügbarkeit wählen`}
@@ -292,6 +305,11 @@ function DayAvailabilityControl({
     <Popover
       open={availabilityPickerOpen}
       onOpenChange={open => {
+        if (isSaving && !open) return;
+        // Nur das bewusste Öffnen lädt den aktuellen Serverstand in den
+        // lokalen Entwurf. Refetches liefern neue helper-Objekte, dürfen einen
+        // bereits geöffneten, noch nicht gespeicherten Entwurf aber nie leeren.
+        if (open) loadDraftFromHelper();
         setAvailabilityPickerOpen(open);
         if (!open) setCustomOpen(false);
       }}
@@ -326,6 +344,7 @@ function DayAvailabilityControl({
             type="button"
             variant="outline"
             className="min-h-11 border-emerald-400 bg-emerald-100 font-semibold text-emerald-950 hover:bg-emerald-200"
+            disabled={isSaving}
             onClick={() => commitWindow(null, null)}
           >
             Ja
@@ -334,6 +353,7 @@ function DayAvailabilityControl({
             type="button"
             variant="outline"
             className="min-h-11 border-emerald-200 bg-emerald-50 font-semibold text-emerald-800 hover:bg-emerald-100"
+            disabled={isSaving}
             onClick={() => setCustomOpen(open => !open)}
           >
             <span>Ja</span>
@@ -345,17 +365,32 @@ function DayAvailabilityControl({
             <div className="grid grid-cols-2 gap-2">
               <label className="space-y-1 text-xs font-medium">
                 Von
-                <Input type="time" value={customStart} onChange={event => setCustomStart(event.target.value)} />
+                <Input
+                  type="time"
+                  value={customStart}
+                  disabled={isSaving}
+                  onChange={event => setCustomStart(event.target.value)}
+                />
               </label>
               <label className="space-y-1 text-xs font-medium">
                 Bis
-                <Input type="time" value={customEnd} onChange={event => setCustomEnd(event.target.value)} />
+                <Input
+                  type="time"
+                  value={customEnd}
+                  disabled={isSaving}
+                  onChange={event => setCustomEnd(event.target.value)}
+                />
               </label>
             </div>
             <Button
               type="button"
               className="w-full"
-              disabled={!customStart || !customEnd || customEnd <= customStart}
+              disabled={
+                isSaving ||
+                !customStart ||
+                !customEnd ||
+                customEnd <= customStart
+              }
               onClick={() => commitWindow(customStart, customEnd)}
             >
               Zeitfenster speichern
@@ -367,6 +402,7 @@ function DayAvailabilityControl({
             type="button"
             variant="outline"
             className="border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100"
+            disabled={isSaving}
             onClick={() => commitAvailability("nein")}
           >
             Nein
@@ -375,6 +411,7 @@ function DayAvailabilityControl({
             type="button"
             variant="outline"
             className="border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100"
+            disabled={isSaving}
             onClick={() => commitAvailability("vielleicht")}
           >
             ? (Unklar)
@@ -1737,7 +1774,7 @@ export default function Helpers() {
                         day={day}
                         disabled={update.isPending}
                         onCommit={values =>
-                          update.mutate({ id: helper.id, ...values } as any)
+                          update.mutateAsync({ id: helper.id, ...values } as any)
                         }
                       />
                     </div>
@@ -1985,7 +2022,7 @@ export default function Helpers() {
                           compactOnDesktop
                           disabled={update.isPending}
                           onCommit={values =>
-                            update.mutate({ id: helper.id, ...values } as any)
+                            update.mutateAsync({ id: helper.id, ...values } as any)
                           }
                         />
                       </td>
@@ -2306,7 +2343,7 @@ export default function Helpers() {
                               day={day}
                               disabled={update.isPending}
                               onCommit={values =>
-                                update.mutate({ id: helper.id, ...values } as any)
+                                update.mutateAsync({ id: helper.id, ...values } as any)
                               }
                             />
                           </div>
