@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { KlemmiTriggerMascot, KLEMMI_IMAGE_URL } from "@/components/KlemmiMascot";
 import { KlemmiVoiceControl } from "@/components/KlemmiVoiceControl";
 import { useKlemmiVoice } from "@/hooks/useKlemmiVoice";
+import { isKlemmiAudioId } from "@/lib/klemmiAudio";
 import { cn } from "@/lib/utils";
 import {
   CheckCircle2,
@@ -120,6 +121,14 @@ export function KlemmiHelperGuide({
     []
   );
   const saveButtonLabel = donationOpen ? "Helfer & Spende anlegen" : "Helfer anlegen";
+  const audioCandidate = celebrating
+    ? "helpers-complete"
+    : step.key === "save"
+      ? donationOpen
+        ? "helpers-save-donation"
+        : "helpers-save-helper"
+      : `helpers-${step.key}`;
+  const audioClipId = isKlemmiAudioId(audioCandidate) ? audioCandidate : undefined;
   const selector =
     step.key === "availability" && createdHelperId !== null
       ? `[data-klemmi-target="helper-availability"][data-klemmi-helper-id="${createdHelperId}"]`
@@ -150,9 +159,9 @@ export function KlemmiHelperGuide({
       : step.key === "save"
         ? `Klicke jetzt unten rechts auf ${saveButtonLabel}. ${step.text}`
         : `${step.title}. ${step.text}`;
-    const timeout = window.setTimeout(() => speak(text), 160);
+    const timeout = window.setTimeout(() => speak(text, audioClipId), 160);
     return () => window.clearTimeout(timeout);
-  }, [celebrating, open, saveButtonLabel, speak, step.key, step.text, step.title]);
+  }, [audioClipId, celebrating, open, saveButtonLabel, speak, step.key, step.text, step.title]);
 
   useLayoutEffect(() => {
     if (!open || celebrating || typeof window === "undefined") return;

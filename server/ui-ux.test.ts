@@ -10,6 +10,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const guide = source("client/src/components/KlemmiHelperGuide.tsx");
     const mascot = source("client/src/components/KlemmiMascot.tsx");
     const voice = source("client/src/hooks/useKlemmiVoice.ts");
+    const audio = source("client/src/lib/klemmiAudio.ts");
+    const assetRoute = source("server/klemmi-asset-routes.ts");
     const voiceControl = source("client/src/components/KlemmiVoiceControl.tsx");
 
     expect(helpers).toContain('import { KlemmiHelperGuide } from "@/components/KlemmiHelperGuide"');
@@ -33,9 +35,22 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(guide).toContain("KlemmiTriggerMascot");
     expect(guide).toContain("useKlemmiVoice");
     expect(guide).toContain("KlemmiVoiceControl");
-    expect(voice).toContain("window.speechSynthesis");
-    expect(voice).toContain('utterance.lang = "de-DE"');
-    expect(voice).toContain("utterance.pitch = 1.28");
+    expect(voice).toContain("new Audio(klemmiAudioUrl(clipId))");
+    expect(voice).toContain("Spielt ausschließlich vorproduzierte Klemmi-Clips");
+    expect(voice).toContain("bleibt Klemmi stumm, statt auf eine fremde Systemstimme zu wechseln");
+    expect(voice).not.toContain("speechSynthesis");
+    expect(audio).toContain('export const KLEMMI_AUDIO_ROUTE = "/api/klemmi/audio"');
+    expect(audio).toContain('voice: "Achird"');
+    expect(audio).toContain("Klemmi – warm und organisatorisch");
+    expect(audio).toContain('"helpers-intro"');
+    expect(audio).toContain('"plan-intro"');
+    expect(audio).toContain('"preparation-intro"');
+    expect(audio).toContain('"postprocessing-intro"');
+    expect(audio).toContain('"materials-intro"');
+    expect(audio).toContain('"locations-intro"');
+    expect(assetRoute).toContain('"/api/klemmi/audio/:clipId"');
+    expect(assetRoute).toContain('contentType: "audio/mpeg"');
+    expect(assetRoute).toContain('klemmiVoiceAssetPath');
     expect(voiceControl).toContain("Klemmi-Stimme stummschalten");
     expect(guide).toContain('data-klemmi-trigger');
     expect(guide).toContain('data-klemmi-guide');
@@ -107,9 +122,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(styles).toContain("@keyframes klemmi-trigger-shift-and-wave");
     expect(styles).toContain("@keyframes klemmi-trigger-hand-wave");
     expect(styles).toContain("20s cubic-bezier");
-    expect(genericTasks.indexOf("<KlemmiSurfaceGuide")).toBeLessThan(
-      genericTasks.indexOf("grid grid-cols-2 gap-2 [&>button]")
-    );
+    expect(genericTasks).toContain("<KlemmiActionPanel");
+    expect(genericTasks).toContain("secondaryActions=");
   });
 
   it("zeigt PDF-Hinweise bearbeitbar per Desktop-Hover und Touch-Popover vollständig an", () => {
@@ -1255,9 +1269,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).not.toContain("PlanStatusCounts");
     expect(plan).not.toContain("planStatusCounts");
     expect(plan).toContain("utils.plan.evaluate.invalidate()");
-    expect(plan).toContain("data-plan-action-header");
+    expect(plan).toContain("<KlemmiActionPanel");
     expect(plan).toContain("flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between");
-    expect(plan).toContain("lg:min-w-[344px]");
+    expect(plan).toContain("viewControl={<ViewModeToggle");
   });
 
   it("bietet im Schichtdialog bestehende Bereiche zur Auswahl und erlaubt neue Freitexteingaben", () => {
@@ -1406,7 +1420,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(prep).not.toContain("Aufgaben angezeigt");
     expect(prep).toContain("bg-sky-50/50");
     expect(prep).toContain("border-sky-100");
-    expect(prep).toContain("bg-blue-600 text-base font-medium text-white");
+    expect(prep).toContain("h-10 border-blue-600 bg-blue-600 px-4 text-base font-medium text-white");
     expect(prep).toContain('w-[15%] ${STICKY_TABLE_HEADER_CELL_CLASS}');
     expect(prep).toContain("border-sky-200 bg-sky-50 px-2 py-0.5");
     expect(prep).toContain("h-8 w-32 border text-xs font-medium");
@@ -1831,8 +1845,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     );
 
     for (const module of [prep, post]) {
-      expect(module).toContain("lg:min-w-[344px]");
-      expect(module).toContain("grid grid-cols-2 gap-2");
+      expect(module).toContain("<KlemmiActionPanel");
+      expect(module).toContain("secondaryActions=");
       expect(module).not.toContain("ModuleExcelImportButton");
       expect(module).toContain("<PlanResetDialogButton");
       expect(module.indexOf("PDF drucken")).toBeLessThan(
@@ -1842,10 +1856,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
       expect(module).not.toContain("<ResetAreaButton");
     }
 
-    expect(materials).toContain("stackedActionColumns={2}");
     expect(materials).toContain('clearAssignmentsArea="materials"');
     expect(taskGeneric).toContain("clearAssignmentsArea?: \"prep\" | \"post\" | \"materials\"");
-    expect(taskGeneric).toContain("stackedActionColumns === 2");
+    expect(taskGeneric).toContain("<KlemmiActionPanel");
+    expect(taskGeneric).toContain("secondaryActions=");
     expect(taskGeneric).toContain("<PlanResetDialogButton");
     expect(taskGeneric).not.toContain("ModuleExcelImportButton");
     expect(taskGeneric).not.toContain("<ClearModuleAssignmentsButton");
@@ -2066,12 +2080,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const copyPlan = source("client/src/components/CopyPreviousPlanButton.tsx");
 
     expect(plan).toContain("data-plan-data-actions");
-    expect(plan).toContain("grid grid-cols-2 gap-2");
-    expect(plan).toContain("[&>[data-slot=button]]:w-full");
+    expect(plan).toContain("flex flex-wrap items-center gap-2");
     expect(plan).toContain('[&>[data-slot=button]]:whitespace-nowrap');
     expect(plan).not.toContain("min-[1280px]:w-[38rem]");
     expect(plan).toContain(
-      'className="w-full border-blue-600 bg-blue-600 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus-visible:ring-blue-500"'
+      'className="h-10 border-blue-600 bg-blue-600 px-4 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus-visible:ring-blue-500"'
     );
     expect(plan).not.toContain("ModuleExcelImportButton");
     expect(plan).toContain("<CopyPreviousPlanButton />");
@@ -2102,9 +2115,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
 
     expect(helpers).toContain("<KlemmiActionPanel");
     expect(klemmiActionPanel).toContain("data-klemmi-action-panel");
-    expect(klemmiActionPanel).toContain("sm:w-[14rem]");
-    expect(helpers).toContain("triggerClassName=\"h-10 !w-full justify-center\"");
-    expect(helpers).toContain("h-10 w-full bg-blue-600 px-4 text-base font-medium text-white");
+    expect(klemmiActionPanel).toContain("min-[440px]:grid-cols-[max-content_minmax(0,1fr)]");
+    expect(klemmiActionPanel).toContain("min-[440px]:col-start-1 min-[440px]:row-start-2");
+    expect(helpers).toContain('triggerClassName="h-10 px-3"');
+    expect(helpers).toContain("h-10 bg-blue-600 px-4 text-base font-medium text-white");
     for (const module of [taskList, taskGeneric, finances]) {
       expect(module).toContain('className="col-span-2 shadow-xs lg:col-auto"');
     }
@@ -2252,7 +2266,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain("createNewHelper()");
     expect(helpers).toContain("Helfer anlegen");
     expect(helpers).toContain(
-      "w-full bg-blue-600 px-4 text-base font-medium text-white"
+      "h-10 bg-blue-600 px-4 text-base font-medium text-white"
     );
 
     expect(contacts).toContain("Neuanlage");
@@ -2560,11 +2574,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(contacts).toContain('variant="outline"');
     expect(helpers).not.toContain("CREATION_ACTION_BUTTON_CLASS");
     expect(plan).not.toContain("CREATION_ACTION_BUTTON_CLASS");
-    expect(plan).toContain("bg-blue-600 text-base font-medium text-white");
+    expect(plan).toContain("bg-blue-600 px-4 text-base font-medium text-white");
     expect(preparation).not.toContain("CREATION_ACTION_BUTTON_CLASS");
-    expect(preparation).toContain("bg-blue-600 text-base font-medium text-white");
+    expect(preparation).toContain("bg-blue-600 px-4 text-base font-medium text-white");
     expect(helpers).toContain("grid grid-cols-2 gap-2");
-    expect(helpers).toContain("w-full bg-blue-600 px-4 text-base font-medium text-white");
+    expect(helpers).toContain("h-10 bg-blue-600 px-4 text-base font-medium text-white");
     expect(helperHeaderActions).not.toContain("bg-indigo-700");
     expect(contacts).not.toContain("bg-indigo-700");
     expect(helpers).toContain("companionFilter");
@@ -2757,7 +2771,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(materials).toContain('{ v: "bestellt", l: "🟡 Bestellt" }');
     expect(materials).toContain('{ v: "geliefert", l: "🟢 Geliefert" }');
     expect(materials).toContain('headerLayout="stacked"');
-    expect(materials).toContain("stackedActionColumns={2}");
+    expect(materials).toContain('clearAssignmentsArea="materials"');
     expect(materials).toContain("createButtonClassName=\"border-rose-700 bg-rose-600");
     expect(materials).toContain("filterConfig={{");
     expect(materials).toContain('searchPlaceholder: "Suchen (Artikel/Kategorie/Verantwortlicher/Ort) …"');
@@ -3191,9 +3205,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(post).toContain("Filter zurücksetzen");
     expect(post).not.toContain("Filter aufheben");
     expect(post).not.toContain("Nur offene Nachbereitungen");
-    expect(post).toContain("lg:min-w-[344px]");
-    expect(post).toContain("grid grid-cols-2 gap-2");
-    expect(post).toContain("className={`w-full ${CREATION_ACTION_BUTTON_CLASS}`}");
+    expect(post).toContain("<KlemmiActionPanel");
+    expect(post).toContain("secondaryActions=");
+    expect(post).toContain("className={`h-10 px-4 ${CREATION_ACTION_BUTTON_CLASS}`}");
     expect(post).toContain("trpc.pdf.postTaskOverview.useMutation");
     expect(post).toContain("downloadBase64File");
     expect(post).toContain("Nachbereitungs-PDF wurde heruntergeladen");

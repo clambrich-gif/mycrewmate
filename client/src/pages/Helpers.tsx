@@ -1292,14 +1292,14 @@ export default function Helpers() {
               area="helpers"
               label="Helfer"
               onCompleted={invalidate}
-              triggerClassName="h-10 !w-full justify-center"
+              triggerClassName="h-10 px-3"
             />
           }
           primaryAction={
             <Button
               type="button"
               data-klemmi-target="new-helper"
-              className="h-10 w-full bg-blue-600 px-4 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus-visible:ring-blue-500"
+              className="h-10 bg-blue-600 px-4 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus-visible:ring-blue-500"
               onClick={openNewHelperDialog}
             >
               <Plus className="mr-2 h-4 w-4" />

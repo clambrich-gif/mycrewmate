@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
+import { KlemmiActionPanel } from "@/components/KlemmiActionPanel";
 import { PlanResetDialogButton } from "@/components/PlanResetDialogButton";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { MyTasksDefaultPin } from "@/components/MyTasksDefaultPin";
@@ -89,7 +90,6 @@ interface Props {
     | ReactNode
     | ((context: { visibleRows: Array<Record<string, unknown>> }) => ReactNode);
   headerLayout?: "default" | "stacked";
-  stackedActionColumns?: 2 | 3 | 4;
   clearAssignmentsArea?: "prep" | "post" | "materials";
   viewModeStorageKey?: string;
   filterConfig?: {
@@ -132,7 +132,6 @@ export default function TaskGeneric({
   locationField = false,
   headerActions,
   headerLayout = "default",
-  stackedActionColumns = 4,
   clearAssignmentsArea,
   viewModeStorageKey,
   filterConfig,
@@ -461,14 +460,13 @@ export default function TaskGeneric({
       >
         <PageTitle icon={titleIcon}>{title}</PageTitle>
         {headerLayout === "stacked" ? (
-          <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-start xl:w-auto">
-            {viewModeStorageKey && (
-              <div className="shrink-0">
-                <ViewModeToggle mode={viewMode} onChange={setViewMode} />
-              </div>
-            )}
-            <div className="w-full space-y-2 rounded-xl border border-slate-200 bg-white p-2 shadow-sm sm:w-[14rem]">
-              {createInDialog && klemmiGuide && (
+          <KlemmiActionPanel
+            className="xl:ml-auto"
+            viewControl={
+              viewModeStorageKey ? <ViewModeToggle mode={viewMode} onChange={setViewMode} /> : undefined
+            }
+            guide={
+              createInDialog && klemmiGuide ? (
                 <KlemmiSurfaceGuide
                   {...klemmiGuide}
                   successSignal={klemmiCreationSignal}
@@ -477,16 +475,12 @@ export default function TaskGeneric({
                     if (stepKey === "intro") openCreateDialog();
                   }}
                 />
-              )}
-              <div
-                className={`grid grid-cols-2 gap-2 [&>button]:w-full [&>button]:justify-center [&>button]:whitespace-nowrap [&>button]:px-2 [&>button]:text-sm lg:[&>button]:h-10 ${
-                  stackedActionColumns === 2
-                    ? "lg:grid-cols-2"
-                    : stackedActionColumns === 3
-                      ? "lg:grid-cols-3"
-                      : "lg:grid-cols-4"
-                }`}
-              >
+              ) : (
+                <span aria-hidden="true" />
+              )
+            }
+            secondaryActions={
+              <>
                 {renderedHeaderActions}
                 {clearAssignmentsArea ? (
                   <PlanResetDialogButton
@@ -500,23 +494,23 @@ export default function TaskGeneric({
                     compact
                   />
                 ) : null}
-              </div>
-              {createInDialog ? (
-                <>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    data-klemmi-target={klemmiGuide ? `${klemmiGuide.guideId}-new` : undefined}
-                    className={`w-full shadow-xs ${createButtonClassName}`}
-                    onClick={openCreateDialog}
-                  >
-                    <Plus className="mr-1.5 h-4 w-4" />
-                    <span>{createTriggerLabel}</span>
-                  </Button>
-                </>
+              </>
+            }
+            primaryAction={
+              createInDialog ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  data-klemmi-target={klemmiGuide ? `${klemmiGuide.guideId}-new` : undefined}
+                  className={`h-10 px-4 shadow-xs ${createButtonClassName}`}
+                  onClick={openCreateDialog}
+                >
+                  <Plus className="mr-1.5 h-4 w-4" />
+                  <span>{createTriggerLabel}</span>
+                </Button>
               ) : (
                 <Button
-                  className="w-full shadow-xs"
+                  className="h-10 px-4 shadow-xs"
                   onClick={submitCreate}
                   disabled={!name.trim() || create.isPending}
                 >
@@ -525,9 +519,9 @@ export default function TaskGeneric({
                     {create.isPending ? "Speichert …" : `Neu: ${addLabel}`}
                   </span>
                 </Button>
-              )}
-            </div>
-          </div>
+              )
+            }
+          />
         ) : (
           <div className="grid w-full grid-cols-2 gap-2 lg:ml-auto lg:flex lg:w-auto lg:flex-wrap lg:justify-end [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 max-lg:[&>[data-slot=button]]:h-11 max-lg:[&>[data-slot=button]]:text-base lg:[&>[data-slot=button]]:w-auto lg:[&>[data-slot=button]]:px-4">
             {kind in resetAreaByKind && (

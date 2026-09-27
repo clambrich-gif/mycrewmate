@@ -53,6 +53,7 @@ import {
 import { toast } from "sonner";
 import { MyTasksDefaultPin } from "@/components/MyTasksDefaultPin";
 import { KlemmiSurfaceGuide } from "@/components/KlemmiSurfaceGuide";
+import { KlemmiActionPanel } from "@/components/KlemmiActionPanel";
 import { PlanResetDialogButton } from "@/components/PlanResetDialogButton";
 import { ViewModeToggle } from "@/components/ViewModeToggle";
 import { TaskLogbookHistory } from "@/components/TaskLogbookHistory";
@@ -683,10 +684,11 @@ export default function Preparation() {
             Status-Wortlaut und Filterleiste.
           </p>
         </div>
-        <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-start lg:w-auto lg:min-w-[344px]">
-          <ViewModeToggle mode={viewMode} onChange={setViewMode} className="shrink-0" />
-          <div className="w-full space-y-2 rounded-xl border border-slate-200 bg-white p-2 shadow-sm sm:w-[14rem]">
-          <KlemmiSurfaceGuide
+        <KlemmiActionPanel
+          className="lg:ml-auto"
+          viewControl={<ViewModeToggle mode={viewMode} onChange={setViewMode} />}
+          guide={
+            <KlemmiSurfaceGuide
             guideId="preparation"
             title="Vorbereitungsaufgaben sicher planen"
             introText="Ich zeige dir die echte Aufgabenanlage: Aufgabe formulieren, Zuständigkeit und Termin festlegen und den ersten Stand sauber festhalten."
@@ -740,32 +742,36 @@ export default function Preparation() {
                 completeOnSuccess: true,
               },
             ]}
-          />
-          <div className="grid grid-cols-2 gap-2 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:whitespace-nowrap [&>[data-slot=button]]:px-2 lg:[&>[data-slot=button]]:h-10">
-            <Button
+            />
+          }
+          secondaryActions={
+            <>
+              <Button
               type="button"
               variant="outline"
-              className="border-blue-200 bg-white text-slate-800 hover:bg-blue-50 hover:text-blue-900"
+              className="h-10 border-blue-200 bg-white px-3 text-slate-800 hover:bg-blue-50 hover:text-blue-900"
               disabled={taskOverviewPdf.isPending}
               onClick={downloadTaskOverviewPdf}
             >
               <Printer className="mr-2 h-4 w-4 text-blue-700" />
               {taskOverviewPdf.isPending ? "PDF wird erstellt …" : "PDF drucken"}
-            </Button>
-            <PlanResetDialogButton area="prep" label="Vorbereitung" />
-          </div>
-          <Button
+              </Button>
+              <PlanResetDialogButton area="prep" label="Vorbereitung" />
+            </>
+          }
+          primaryAction={
+            <Button
             type="button"
             variant="outline"
             data-klemmi-target="preparation-new"
-            className="w-full border-blue-600 bg-blue-600 text-base font-medium text-white shadow-sm hover:bg-blue-700 hover:text-white focus-visible:ring-blue-500"
+            className="h-10 border-blue-600 bg-blue-600 px-4 text-base font-medium text-white shadow-sm hover:bg-blue-700 hover:text-white focus-visible:ring-blue-500"
             onClick={openCreate}
           >
             <Plus className="mr-2 h-4 w-4" />
             Neue Vorbereitungsaufgabe
-          </Button>
-          </div>
-        </div>
+            </Button>
+          }
+        />
       </div>
 
       <div className="space-y-3 rounded-xl border border-sky-200/80 bg-white/90 p-3 shadow-sm sm:p-4">

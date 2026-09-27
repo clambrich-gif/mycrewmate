@@ -1,54 +1,47 @@
+import { klemmiAudioUrl, type KlemmiAudioId } from "@/lib/klemmiAudio";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
- * Spricht den jeweils sichtbaren Klemmi-Hinweis lokal über die
- * Browser-Sprachausgabe. Es werden keine Texte oder Nutzerdaten an einen
- * externen Sprachdienst übertragen.
+ * Spielt ausschließlich vorproduzierte Klemmi-Clips aus lokalen Produktassets
+ * ab. So bleibt Klemmi überall dieselbe warme, organisatorische Cartoon-Stimme
+ * und der Browser weicht nicht auf eine uneinheitliche Systemstimme aus.
  */
 export function useKlemmiVoice() {
   const [muted, setMuted] = useState(false);
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const cancel = useCallback(() => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-    utteranceRef.current = null;
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
+    }
   }, []);
 
   const speak = useCallback(
-    (text: string) => {
-      if (
-        muted ||
-        !text.trim() ||
-        typeof window === "undefined" ||
-        !("speechSynthesis" in window) ||
-        typeof SpeechSynthesisUtterance === "undefined"
-      ) {
+    (text: string, clipId?: KlemmiAudioId) => {
+      if (muted || !text.trim() || typeof window === "undefined" || !clipId || typeof Audio === "undefined") {
         return;
       }
-
       cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = "de-DE";
-      // Leicht höhere Tonlage und etwas flotteres Tempo geben Klemmi eine
-      // freundliche, zeichentrickhafte Wirkung, ohne die Verständlichkeit zu verlieren.
-      utterance.pitch = 1.28;
-      utterance.rate = 1.08;
-      utterance.volume = 0.9;
 
-      const germanVoice = window.speechSynthesis
-        .getVoices()
-        .find(voice => voice.lang.toLowerCase().startsWith("de"));
-      if (germanVoice) utterance.voice = germanVoice;
-
-      utterance.onend = () => {
-        if (utteranceRef.current === utterance) utteranceRef.current = null;
+      const audio = new Audio(klemmiAudioUrl(clipId));
+      audio.preload = "auto";
+      audio.volume = 0.9;
+      audioRef.current = audio;
+      const release = () => {
+        if (audioRef.current === audio) audioRef.current = null;
       };
-      utterance.onerror = () => {
-        if (utteranceRef.current === utterance) utteranceRef.current = null;
+      audio.onended = release;
+      audio.onerror = () => {
+        console.warn(`[KlemmiVoice] Markenclip „${clipId}“ konnte nicht geladen werden.`);
+        release();
       };
-      utteranceRef.current = utterance;
-      window.speechSynthesis.speak(utterance);
+      void audio.play().catch(() => {
+        // Browser dürfen Audio ohne direkte Nutzeraktion blockieren. In diesem
+        // Fall bleibt Klemmi stumm, statt auf eine fremde Systemstimme zu wechseln.
+        release();
+      });
     },
     [cancel, muted]
   );

@@ -4,6 +4,7 @@ import { LocationMapLink } from "@/components/LocationMapLink";
 import { PageTitle } from "@/components/PageTitle";
 import { MyTasksDefaultPin } from "@/components/MyTasksDefaultPin";
 import { KlemmiSurfaceGuide } from "@/components/KlemmiSurfaceGuide";
+import { KlemmiActionPanel } from "@/components/KlemmiActionPanel";
 import { PlanResetDialogButton } from "@/components/PlanResetDialogButton";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { TaskLogbookHistory } from "@/components/TaskLogbookHistory";
@@ -640,10 +641,11 @@ export default function PostProcessing() {
             Aufgabenverwaltung für den Abbau, Rücktransporte, Abrechnungen und Nachbereitung des Festivals.
           </p>
         </div>
-        <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-start lg:w-auto lg:min-w-[344px]">
-          <ViewModeToggle mode={viewMode} onChange={setViewMode} className="shrink-0" />
-          <div className="w-full space-y-2 rounded-xl border border-slate-200 bg-white p-2 shadow-sm sm:w-[14rem]">
-          <KlemmiSurfaceGuide
+        <KlemmiActionPanel
+          className="lg:ml-auto"
+          viewControl={<ViewModeToggle mode={viewMode} onChange={setViewMode} />}
+          guide={
+            <KlemmiSurfaceGuide
             guideId="postprocessing"
             title="Nachbereitung verbindlich festhalten"
             introText="Ich zeige dir die echte Nachbereitungsanlage: Aufgabe benennen, Verantwortliche und Termin einordnen und Übergaben dokumentieren."
@@ -697,32 +699,36 @@ export default function PostProcessing() {
                 completeOnSuccess: true,
               },
             ]}
-          />
-          <div className="grid grid-cols-2 gap-2 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:whitespace-nowrap [&>[data-slot=button]]:px-2 lg:[&>[data-slot=button]]:h-10">
-            <Button
+            />
+          }
+          secondaryActions={
+            <>
+              <Button
               type="button"
               variant="outline"
-              className="border-rose-200 bg-white text-slate-800 hover:bg-rose-50 hover:text-rose-900"
+              className="h-10 border-rose-200 bg-white px-3 text-slate-800 hover:bg-rose-50 hover:text-rose-900"
               disabled={taskOverviewPdf.isPending}
               onClick={downloadTaskOverviewPdf}
             >
               <Printer className="mr-2 h-4 w-4 text-rose-700" />
               {taskOverviewPdf.isPending ? "PDF wird erstellt …" : "PDF drucken"}
-            </Button>
-            <PlanResetDialogButton area="post" label="Nachbereitung" />
-          </div>
-          <Button
+              </Button>
+              <PlanResetDialogButton area="post" label="Nachbereitung" />
+            </>
+          }
+          primaryAction={
+            <Button
             type="button"
             variant="outline"
             data-klemmi-target="postprocessing-new"
-            className={`w-full ${CREATION_ACTION_BUTTON_CLASS}`}
+            className={`h-10 px-4 ${CREATION_ACTION_BUTTON_CLASS}`}
             onClick={openCreate}
           >
             <Plus className="mr-2 h-4 w-4" />
             Neue Nachbereitungsaufgabe
-          </Button>
-          </div>
-        </div>
+            </Button>
+          }
+        />
       </div>
 
       <div className="space-y-3 rounded-xl border border-rose-200/80 bg-white/90 p-3 shadow-sm sm:p-4">

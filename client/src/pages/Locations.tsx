@@ -1,4 +1,5 @@
 import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
+import { KlemmiActionPanel } from "@/components/KlemmiActionPanel";
 import { KlemmiSurfaceGuide } from "@/components/KlemmiSurfaceGuide";
 import { PageTitle } from "@/components/PageTitle";
 import { Button } from "@/components/ui/button";
@@ -245,8 +246,10 @@ export default function Locations() {
           </p>
         </div>
         {canManage && (
-          <div className="w-full space-y-2 rounded-xl border border-slate-200 bg-white p-2 shadow-sm sm:ml-auto sm:w-[14rem]">
-            <KlemmiSurfaceGuide
+          <KlemmiActionPanel
+            className="sm:ml-auto"
+            guide={
+              <KlemmiSurfaceGuide
               guideId="locations"
               title="Orte und Standorte sauber anlegen"
               introText="Ich zeige dir die echte Standortanlage: Namen vergeben, Koordinaten eintragen und den Ort anschließend in Schichten, Material und Vorbereitung verwenden."
@@ -292,8 +295,10 @@ export default function Locations() {
                   completeOnSuccess: true,
                 },
               ]}
-            />
-            <Button
+              />
+            }
+            primaryAction={
+              <Button
               type="button"
               variant="outline"
               data-klemmi-target="locations-new"
@@ -301,8 +306,9 @@ export default function Locations() {
               onClick={openCreate}
             >
               <Plus className="mr-2 size-4" aria-hidden="true" /> Ort anlegen
-            </Button>
-          </div>
+              </Button>
+            }
+          />
         )}
       </div>
       <div className="overflow-hidden rounded-xl border bg-card shadow-sm">

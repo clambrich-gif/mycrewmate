@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { KlemmiTriggerMascot, KLEMMI_IMAGE_URL } from "@/components/KlemmiMascot";
 import { KlemmiVoiceControl } from "@/components/KlemmiVoiceControl";
 import { useKlemmiVoice } from "@/hooks/useKlemmiVoice";
+import { isKlemmiAudioId } from "@/lib/klemmiAudio";
 import { cn } from "@/lib/utils";
 import {
   CheckCircle2,
@@ -74,6 +75,10 @@ export function KlemmiSurfaceGuide({
   const step = steps[stepIndex];
   const workflowSteps = useMemo(() => steps.filter(item => item.key !== "intro"), [steps]);
   const isIntro = step?.key === "intro";
+  const audioCandidate = celebrating
+    ? `${guideId}-complete`
+    : `${guideId}-${isIntro ? "intro" : step?.key ?? "intro"}`;
+  const audioClipId = isKlemmiAudioId(audioCandidate) ? audioCandidate : undefined;
 
   const closeGuide = () => {
     cancel();
@@ -102,9 +107,9 @@ export function KlemmiSurfaceGuide({
       : isIntro
         ? `${title}. ${introText}`
         : `${step.title}. ${step.text}`;
-    const timeout = window.setTimeout(() => speak(text), 160);
+    const timeout = window.setTimeout(() => speak(text, audioClipId), 160);
     return () => window.clearTimeout(timeout);
-  }, [celebrating, completionText, completionTitle, introText, isIntro, open, speak, step.key, step.text, step.title, title]);
+  }, [audioClipId, celebrating, completionText, completionTitle, introText, isIntro, open, speak, step.key, step.text, step.title, title]);
 
   useLayoutEffect(() => {
     if (!open || celebrating || !step?.selector || typeof window === "undefined") return;

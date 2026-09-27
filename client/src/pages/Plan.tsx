@@ -54,6 +54,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { CopyPreviousPlanButton } from "@/components/CopyPreviousPlanButton";
+import { KlemmiActionPanel } from "@/components/KlemmiActionPanel";
 import { PlanResetDialogButton } from "@/components/PlanResetDialogButton";
 import {
   Popover,
@@ -1799,14 +1800,13 @@ export default function Plan() {
             : "Das Planungsteam kann den Einsatzplan vollständig ansehen und filtern. Änderungen und Helferzuweisungen sind Administratoren vorbehalten."}
           </p>
         </div>
-        <div className="flex w-full shrink-0 flex-col items-start gap-2 sm:flex-row sm:items-start lg:w-auto lg:min-w-[344px] lg:items-start">
-          <ViewModeToggle mode={viewMode} onChange={setViewMode} />
-          {canEditPlan && (
-            <div
-              data-plan-action-header
-              className="w-full space-y-2 rounded-xl border border-slate-200 bg-white p-2 shadow-sm sm:w-[14rem]"
-            >
-              <KlemmiSurfaceGuide
+        <div className="w-full lg:w-auto">
+          {canEditPlan ? (
+            <KlemmiActionPanel
+              className="lg:ml-auto"
+              viewControl={<ViewModeToggle mode={viewMode} onChange={setViewMode} />}
+              guide={
+                <KlemmiSurfaceGuide
                 guideId="plan"
                 title="Schichten Schritt für Schritt anlegen"
                 introText="Ich zeige dir die echte Schichtanlage: Bedarf festlegen, Bereich und Aufgabe beschreiben, Zeit eintragen und die Schicht speichern."
@@ -1860,29 +1860,38 @@ export default function Plan() {
                     completeOnSuccess: true,
                   },
                 ]}
-              />
-              <div
-                data-plan-data-actions
-                className="grid grid-cols-2 gap-2 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:whitespace-nowrap [&>[data-slot=button]]:px-2 lg:[&>[data-slot=button]]:h-10"
-              >
-                <CopyPreviousPlanButton />
-                <PlanResetDialogButton
-                  area="shifts"
-                  label="Einsatzplan"
-                  onCompleted={() => setQ("")}
                 />
-              </div>
-              <Button
+              }
+              secondaryActions={
+                <>
+                  <div
+                data-plan-data-actions
+                    className="flex flex-wrap items-center gap-2 [&>[data-slot=button]]:w-auto [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:whitespace-nowrap [&>[data-slot=button]]:px-2"
+                  >
+                    <CopyPreviousPlanButton />
+                    <PlanResetDialogButton
+                      area="shifts"
+                      label="Einsatzplan"
+                      onCompleted={() => setQ("")}
+                    />
+                  </div>
+                </>
+              }
+              primaryAction={
+                <Button
                 type="button"
                 data-klemmi-target="plan-new"
                 onClick={openCreate}
                 disabled={isEventLoading || !activeDays.length}
-                className="w-full border-blue-600 bg-blue-600 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus-visible:ring-blue-500"
+                className="h-10 border-blue-600 bg-blue-600 px-4 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus-visible:ring-blue-500"
               >
                 <Plus className="mr-2 h-4 w-4" />
                 Neue Schicht
-              </Button>
-            </div>
+                </Button>
+              }
+            />
+          ) : (
+            <ViewModeToggle mode={viewMode} onChange={setViewMode} />
           )}
         </div>
       </div>

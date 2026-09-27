@@ -9,8 +9,12 @@ type KlemmiActionPanelProps = {
 };
 
 /**
- * Einheitliche Kopf-Aktionsleiste: Ansichtsumschalter links und die Klemmi-
- * Kachel rechts mit Anleitung, optionalen Nebenaktionen und der Hauptanlage.
+ * Einheitliche, kompakte Kopf-Aktionsleiste.
+ *
+ * Desktop: Oben liegen Ansicht und Nebenaktionen nebeneinander; darunter
+ * Klemmi und die Hauptanlage. Die Controls behalten ihre natürliche Breite.
+ * Schmale Mobilgeräte wechseln kontrolliert in eine Spalte, damit keine
+ * Schaltfläche abgeschnitten oder zu klein wird.
  */
 export function KlemmiActionPanel({
   viewControl,
@@ -20,21 +24,23 @@ export function KlemmiActionPanel({
   className = "",
 }: KlemmiActionPanelProps) {
   return (
-    <div className={`flex w-full flex-col gap-2 sm:flex-row sm:items-start ${className}`}>
-      {viewControl ? <div className="shrink-0">{viewControl}</div> : null}
-      <div
-        data-klemmi-action-panel
-        className="w-full rounded-xl border border-slate-200 bg-white p-2 shadow-sm sm:w-[14rem]"
-      >
-        <div className="space-y-2">
-          {guide}
-          {secondaryActions ? (
-            <div className="grid grid-cols-1 gap-2 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:whitespace-nowrap [&>[data-slot=button]]:px-2 [&>[data-slot=button]]:text-sm">
-              {secondaryActions}
-            </div>
-          ) : null}
-          {primaryAction}
+    <div
+      data-klemmi-action-panel
+      className={`grid w-fit max-w-full grid-cols-1 gap-x-2 gap-y-2 min-[440px]:grid-cols-[max-content_minmax(0,1fr)] ${className}`}
+    >
+      {viewControl ? (
+        <div className="min-w-0 min-[440px]:col-start-1 min-[440px]:row-start-1">
+          {viewControl}
         </div>
+      ) : null}
+      {secondaryActions ? (
+        <div className="flex min-w-0 flex-wrap items-center gap-2 min-[440px]:col-start-2 min-[440px]:row-start-1">
+          {secondaryActions}
+        </div>
+      ) : null}
+      <div className="min-w-0 min-[440px]:col-start-1 min-[440px]:row-start-2">{guide}</div>
+      <div className="flex min-w-0 items-start min-[440px]:col-start-2 min-[440px]:row-start-2">
+        {primaryAction}
       </div>
     </div>
   );
