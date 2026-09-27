@@ -84,7 +84,7 @@ describe("Erst-Login-Onboarding", () => {
     expect(intro).toContain('"[data-klemmi-trigger]"');
     expect(intro).toContain("data-klemmi-first-login-highlight");
     expect(intro).toContain("Verstanden – danke, Klemmi!");
-    expect(intro).toContain("KlemmiMascot isSpeaking={isSpeaking} decorative");
+    expect(intro).toContain("KlemmiMascot isSpeaking={isSpeaking || externalSpeaking} decorative");
     expect(intro).toContain("klemmi-first-login-question");
     expect(intro).toContain("overflow-visible");
     expect(mascot).toContain("klemmi-face-eye");
@@ -105,6 +105,8 @@ describe("Erst-Login-Onboarding", () => {
     expect(preview).toContain("Co-Admin-Hinweis mit Ton starten");
     expect(preview).toContain("new Audio(klemmiAudioUrl(clipId))");
     expect(preview).toContain("autoSpeak={false}");
+    expect(preview).toContain("audio.onplay = () => setPreviewSpeaking(true)");
+    expect(preview).toContain("externalSpeaking={previewSpeaking}");
   });
 
   it("liefert pending true für ein neues Planungsteam-Konto mit ausstehendem Onboarding", async () => {

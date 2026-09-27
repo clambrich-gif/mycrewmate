@@ -1,9 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { FirstLoginKlemmiIntro } from "@/components/FirstLoginKlemmiIntro";
 import { KlemmiTriggerMascot } from "@/components/KlemmiMascot";
-import { klemmiAudioUrl, KLEMMI_AUDIO_SCRIPTS } from "@/lib/klemmiAudio";
+import { klemmiAudioUrl } from "@/lib/klemmiAudio";
 import { CalendarDays, CheckCircle2, ClipboardList, UsersRound } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * Ausschließlich lokale Staging-Vorschau. Die Seite enthält keine Konten,
@@ -12,6 +12,7 @@ import { useRef, useState } from "react";
 export default function KlemmiFirstLoginPreview() {
   const [introOpen, setIntroOpen] = useState(true);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [previewSpeaking, setPreviewSpeaking] = useState(false);
   const [isCoAdmin, setIsCoAdmin] = useState(
     () => new URLSearchParams(window.location.search).get("coAdmin") === "1"
   );
@@ -19,17 +20,28 @@ export default function KlemmiFirstLoginPreview() {
   const restartPreview = (nextIsCoAdmin = isCoAdmin) => {
     const clipId = nextIsCoAdmin ? "first-login-co-admin" : "first-login-intro";
     previewAudioRef.current?.pause();
+    setPreviewSpeaking(false);
     const audio = new Audio(klemmiAudioUrl(clipId));
     audio.preload = "auto";
     audio.volume = 0.9;
     previewAudioRef.current = audio;
+    const release = () => {
+      if (previewAudioRef.current !== audio) return;
+      previewAudioRef.current = null;
+      setPreviewSpeaking(false);
+    };
+    audio.onplay = () => setPreviewSpeaking(true);
+    audio.onended = release;
+    audio.onerror = release;
     // Direkter Klick startet die Vorschau zuverlässig mit Ton; die reguläre
     // Produktansicht versucht ihren Clip weiterhin nach dem Willkommensfenster.
-    void audio.play().catch(() => undefined);
+    void audio.play().catch(release);
     setIsCoAdmin(nextIsCoAdmin);
     setIntroOpen(false);
     window.requestAnimationFrame(() => setIntroOpen(true));
   };
+
+  useEffect(() => () => previewAudioRef.current?.pause(), []);
 
   return (
     <main className="min-h-dvh bg-slate-50 p-4 text-slate-950 sm:p-8">
@@ -105,6 +117,7 @@ export default function KlemmiFirstLoginPreview() {
         open={introOpen}
         isCoAdmin={isCoAdmin}
         autoSpeak={false}
+        externalSpeaking={previewSpeaking}
         onComplete={() => setIntroOpen(false)}
       />
     </main>

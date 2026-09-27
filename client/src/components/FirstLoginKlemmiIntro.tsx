@@ -32,6 +32,7 @@ export function FirstLoginKlemmiIntro({
   open,
   isCoAdmin = false,
   autoSpeak = true,
+  externalSpeaking = false,
   completing = false,
   onComplete,
 }: {
@@ -39,6 +40,8 @@ export function FirstLoginKlemmiIntro({
   isCoAdmin?: boolean;
   /** Die Staging-Demo startet Audio unmittelbar über ihren Testbutton. */
   autoSpeak?: boolean;
+  /** Synchronisiert die Gesichtsanimation mit extern ausgelöstem Demo-Audio. */
+  externalSpeaking?: boolean;
   completing?: boolean;
   onComplete: () => void;
 }) {
@@ -154,7 +157,7 @@ export function FirstLoginKlemmiIntro({
           className="klemmi-first-login-mascot"
           data-leaving={leaving ? "true" : "false"}
         >
-          <KlemmiMascot isSpeaking={isSpeaking} decorative />
+          <KlemmiMascot isSpeaking={isSpeaking || externalSpeaking} decorative />
           <span className="klemmi-first-login-question" aria-hidden="true">?</span>
         </div>
         <div className="flex items-start gap-3">
