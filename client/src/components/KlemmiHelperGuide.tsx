@@ -10,13 +10,17 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleHelp,
+  FileDown,
   Gift,
+  MessageCircle,
   PartyPopper,
+  Pencil,
   Save,
   Sparkles,
+  Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 type GuideStepKey =
@@ -26,7 +30,12 @@ type GuideStepKey =
   | "details"
   | "donation"
   | "save"
-  | "availability";
+  | "availability"
+  | "action-donation"
+  | "action-whatsapp"
+  | "action-pdf"
+  | "action-edit"
+  | "action-delete";
 
 type HighlightRect = {
   top: number;
@@ -41,8 +50,10 @@ type KlemmiHelperGuideProps = {
   createdHelperId: number | null;
   availabilityTargetReady: boolean;
   nameError: string | null;
+  viewMode: "liste" | "kacheln";
   onOpenHelperDialog: () => void;
   onGuideOpenChange: (open: boolean) => void;
+  onViewModeChange: (mode: "liste" | "kacheln") => void;
 };
 
 const guideSteps: Array<{
@@ -115,9 +126,57 @@ const guideSteps: Array<{
     eyebrow: "Schritt 6 von 6",
     title: "Zeitfenster des neuen Helfers festlegen",
     text: "Hier legst du für den gerade angelegten Helfer direkt fest, ob und wann er verfügbar ist. Tippe auf einen Tag und wähle „Ja“, „Nein“ oder ein Zeitfenster von–bis.",
+    action: "Weiter zu den Symbolen",
+  },
+  {
+    key: "action-donation",
+    selector: '[data-klemmi-target="helper-action-donation"]',
+    eyebrow: "Symbole am Helfer",
+    title: "Geschenk: Spenden erfassen",
+    text: "Ganz links öffnet das Geschenk die Spenden für genau diesen Helfer. Dort erfasst du zum Beispiel Kuchen, Salat oder Snacks samt Eigenschaften und Hinweis.",
+    action: "WhatsApp zeigen",
+  },
+  {
+    key: "action-whatsapp",
+    selector: '[data-klemmi-target="helper-action-whatsapp"]',
+    eyebrow: "Symbole am Helfer",
+    title: "WhatsApp-Nachricht vorbereiten",
+    text: "Das grüne WhatsApp-Zeichen öffnet zuerst die Vorlagenauswahl. Dort wählst du entweder die allgemeine Helferanfrage oder den Einsatzplan mit persönlichem PDF-Link – erst danach wird WhatsApp geöffnet.",
+    action: "PDF zeigen",
+  },
+  {
+    key: "action-pdf",
+    selector: '[data-klemmi-target="helper-action-pdf"]',
+    eyebrow: "Symbole am Helfer",
+    title: "Persönliches Aufgaben-PDF",
+    text: "Mit diesem blauen Symbol lädst du die persönliche Aufgaben-PDF dieses Helfers herunter. Sie bündelt seine Einsätze, Hinweise und Verfügbarkeiten. In dieser Erklärung wird nichts heruntergeladen.",
+    action: "Bearbeiten zeigen",
+  },
+  {
+    key: "action-edit",
+    selector: '[data-klemmi-target="helper-action-edit"]',
+    eyebrow: "Symbole am Helfer",
+    title: "Daten nachträglich bearbeiten",
+    text: "Der Stift öffnet die Bearbeitung. Hier kannst du Telefonnummer, Ansprechpartner, Hinweise, Begleitung und Verfügbarkeiten später jederzeit sauber ergänzen oder ändern.",
+    action: "Löschen erklären",
+  },
+  {
+    key: "action-delete",
+    selector: '[data-klemmi-target="helper-action-delete"]',
+    eyebrow: "Symbole am Helfer",
+    title: "Löschen nur bewusst und erlaubt",
+    text: "Der Papierkorb wird nur rot und anklickbar angezeigt, wenn dieser Helfer gelöscht werden darf. Bei geschützten oder eingeteilten Personen bleibt er grau – so kann nichts versehentlich verloren gehen.",
     action: "Fertig",
   },
 ];
+
+const ACTION_STEP_KEYS = new Set<GuideStepKey>([
+  "action-donation",
+  "action-whatsapp",
+  "action-pdf",
+  "action-edit",
+  "action-delete",
+]);
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -133,15 +192,18 @@ export function KlemmiHelperGuide({
   createdHelperId,
   availabilityTargetReady,
   nameError,
+  viewMode,
   onOpenHelperDialog,
   onGuideOpenChange,
+  onViewModeChange,
 }: KlemmiHelperGuideProps) {
   const [open, setOpen] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [highlightRect, setHighlightRect] = useState<HighlightRect>(null);
-  const [celebrating, setCelebrating] = useState(false);
+  const [completionStage, setCompletionStage] = useState<"none" | "offer" | "success">("none");
   const [openingPending, setOpeningPending] = useState(false);
   const [narrationComplete, setNarrationComplete] = useState(false);
+  const returnViewModeRef = useRef<"liste" | "kacheln" | null>(null);
   const { muted, isSpeaking, speak, playOpening, toggleMuted, cancel } = useKlemmiVoice();
   const step = guideSteps[stepIndex];
   const workflowSteps = useMemo(
@@ -149,8 +211,10 @@ export function KlemmiHelperGuide({
     []
   );
   const saveButtonLabel = donationOpen ? "Helfer & Spende anlegen" : "Helfer anlegen";
-  const audioCandidate = celebrating
-    ? "helpers-complete"
+  const audioCandidate = completionStage === "offer"
+    ? "helpers-symbols-offer"
+    : completionStage === "success"
+      ? "helpers-complete"
     : step.key === "save"
       ? donationOpen
         ? "helpers-save-donation"
@@ -160,21 +224,41 @@ export function KlemmiHelperGuide({
   const selector =
     step.key === "availability" && createdHelperId !== null
       ? `[data-klemmi-target="helper-availability"][data-klemmi-helper-id="${createdHelperId}"]`
-      : step.selector;
-  const targetReady = step.key !== "availability" || availabilityTargetReady;
+      : ACTION_STEP_KEYS.has(step.key) && createdHelperId !== null
+        ? `${step.selector}[data-klemmi-helper-id="${createdHelperId}"]`
+        : step.selector;
+  const targetReady =
+    step.key !== "availability" && !ACTION_STEP_KEYS.has(step.key)
+      ? true
+      : availabilityTargetReady;
+
+  const startSymbolTour = () => {
+    if (returnViewModeRef.current === null) returnViewModeRef.current = viewMode;
+    if (viewMode !== "kacheln") onViewModeChange("kacheln");
+    setCompletionStage("none");
+    setStepIndex(guideSteps.findIndex(item => item.key === "action-donation"));
+  };
 
   const closeGuide = () => {
     cancel();
     setOpen(false);
-    setCelebrating(false);
+    setCompletionStage("none");
     setNarrationComplete(false);
     setHighlightRect(null);
+    if (returnViewModeRef.current && returnViewModeRef.current !== viewMode) {
+      onViewModeChange(returnViewModeRef.current);
+    }
+    returnViewModeRef.current = null;
     onGuideOpenChange(false);
   };
 
   useEffect(() => {
     if (!open) return;
-    if (createdHelperId !== null && step.key !== "availability") {
+    if (
+      createdHelperId !== null &&
+      step.key !== "availability" &&
+      !ACTION_STEP_KEYS.has(step.key)
+    ) {
       setStepIndex(6);
       return;
     }
@@ -185,8 +269,10 @@ export function KlemmiHelperGuide({
     if (!open || openingPending) return;
     let active = true;
     setNarrationComplete(false);
-    const text = celebrating
-      ? "Geschafft! Du hast einen Helfer angelegt und kennst nun auch die Verfügbarkeit."
+    const text = completionStage === "offer"
+      ? "Geschafft! Du hast einen Helfer angelegt und die Verfügbarkeit kennengelernt. Soll ich dir auch noch die Symbole direkt an diesem Helfer erklären?"
+      : completionStage === "success"
+        ? "Geschafft! Du hast einen Helfer angelegt und kennst nun auch die Verfügbarkeit."
       : step.key === "save"
         ? `Klicke jetzt unten rechts auf ${saveButtonLabel}. ${step.text}`
         : `${step.title}. ${step.text}`;
@@ -199,10 +285,10 @@ export function KlemmiHelperGuide({
       active = false;
       window.clearTimeout(timeout);
     };
-  }, [audioClipId, celebrating, open, openingPending, saveButtonLabel, speak, step.key, step.text, step.title]);
+  }, [audioClipId, completionStage, open, openingPending, saveButtonLabel, speak, step.key, step.text, step.title]);
 
   useLayoutEffect(() => {
-    if (!open || celebrating || typeof window === "undefined") return;
+    if (!open || completionStage !== "none" || typeof window === "undefined") return;
 
     let frame = 0;
     const resolveVisibleTarget = () =>
@@ -249,7 +335,7 @@ export function KlemmiHelperGuide({
       window.removeEventListener("scroll", scheduleSync, true);
       resizeObserver?.disconnect();
     };
-  }, [open, selector, targetReady, celebrating]);
+  }, [open, selector, targetReady, completionStage, viewMode]);
 
   const showPrevious = () => {
     if (step.key === "person") {
@@ -270,6 +356,26 @@ export function KlemmiHelperGuide({
     }
     if (step.key === "save") {
       setStepIndex(4);
+      return;
+    }
+    if (step.key === "action-donation") {
+      setCompletionStage("offer");
+      return;
+    }
+    if (step.key === "action-whatsapp") {
+      setStepIndex(7);
+      return;
+    }
+    if (step.key === "action-pdf") {
+      setStepIndex(8);
+      return;
+    }
+    if (step.key === "action-edit") {
+      setStepIndex(9);
+      return;
+    }
+    if (step.key === "action-delete") {
+      setStepIndex(10);
       return;
     }
     closeGuide();
@@ -297,7 +403,12 @@ export function KlemmiHelperGuide({
       setStepIndex(5);
       return;
     }
-    if (step.key === "availability") setCelebrating(true);
+    if (step.key === "availability") setCompletionStage("offer");
+    if (step.key === "action-donation") setStepIndex(8);
+    if (step.key === "action-whatsapp") setStepIndex(9);
+    if (step.key === "action-pdf") setStepIndex(10);
+    if (step.key === "action-edit") setStepIndex(11);
+    if (step.key === "action-delete") setCompletionStage("success");
   };
 
   const canGoBack = step.key !== "intro" && step.key !== "availability";
@@ -326,7 +437,7 @@ export function KlemmiHelperGuide({
         typeof document !== "undefined" &&
         createPortal(
           <div data-klemmi-guide className="pointer-events-none fixed inset-0 z-[70]">
-            {highlightRect && !celebrating && (
+            {highlightRect && completionStage === "none" && (
               <div
                 aria-hidden="true"
                 data-klemmi-highlight
@@ -335,7 +446,42 @@ export function KlemmiHelperGuide({
               />
             )}
             <KlemmiGuideCard>
-              {celebrating ? (
+              {completionStage === "offer" ? (
+                <div className="text-center" data-klemmi-symbol-offer data-klemmi-narration-complete={narrationComplete ? "true" : "false"}>
+                  <KlemmiMascot isSpeaking={isSpeaking} decorative className="klemmi-guide-mascot" />
+                  <div className="mx-auto mb-2 flex size-16 items-center justify-center rounded-2xl bg-blue-100 text-blue-700">
+                    <CircleHelp className="size-8" aria-hidden="true" />
+                  </div>
+                  <p className="text-xs font-bold tracking-wide text-[#e86117] uppercase">
+                    Klemmi fragt nach
+                  </p>
+                  <h2 className="mt-0.5 text-lg font-bold text-slate-950">Soll ich dir noch die Symbole zeigen?</h2>
+                  <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
+                    Ich erkläre sie direkt am gerade angelegten Helfer. Dabei wird nichts verschickt, heruntergeladen, verändert oder gelöscht.
+                  </p>
+                  <p data-klemmi-mobile-caption>Symbole am neuen Helfer erklären?</p>
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                    <Button
+                      type="button"
+                      data-klemmi-symbols-accept
+                      className="min-h-10 bg-[#ff7a2f] text-white hover:bg-[#e86117] focus-visible:ring-[#ff7a2f]"
+                      onClick={startSymbolTour}
+                    >
+                      <Sparkles className="mr-1.5 size-4" aria-hidden="true" />
+                      Ja, Symbole zeigen
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      data-klemmi-symbols-skip
+                      className="min-h-10 border-slate-300 text-slate-800"
+                      onClick={closeGuide}
+                    >
+                      Nein, danke
+                    </Button>
+                  </div>
+                </div>
+              ) : completionStage === "success" ? (
                 <div className="klemmi-celebration text-center" data-klemmi-success data-klemmi-narration-complete={narrationComplete ? "true" : "false"}>
                   <KlemmiMascot isSpeaking={isSpeaking} decorative className="klemmi-guide-mascot" />
                   <div className="klemmi-celebration-icon mx-auto mb-2 flex size-16 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
@@ -346,9 +492,9 @@ export function KlemmiHelperGuide({
                   </p>
                   <h2 className="mt-0.5 text-lg font-bold text-slate-950">Geschafft!</h2>
                   <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
-                    Du hast einen Helfer angelegt und kennst nun auch die Verfügbarkeit. So wird aus einer Zusage direkt eine planbare Unterstützung.
+                    Du hast einen Helfer angelegt und kennst jetzt auch Verfügbarkeit sowie die wichtigsten Aktionen direkt in der Helferkarte.
                   </p>
-                  <p data-klemmi-mobile-caption>Geschafft – der neue Helfer ist angelegt.</p>
+                  <p data-klemmi-mobile-caption>Geschafft – Anlage und Symbole sind erklärt.</p>
                   <Button
                     type="button"
                     data-klemmi-finish-control

@@ -70,6 +70,12 @@ export const KLEMMI_AUDIO_SCRIPTS = {
   "helpers-save-helper": "Helfer jetzt speichern. Klicke jetzt unten rechts auf Helfer anlegen. Klicke jetzt unten rechts auf den markierten Speichern-Button. Klemmi wartet auf die erfolgreiche Anlage und zeigt danach genau diesen neuen Helfer.",
   "helpers-save-donation": "Helfer jetzt speichern. Klicke jetzt unten rechts auf Helfer und Spende anlegen. Klicke jetzt unten rechts auf den markierten Speichern-Button. Klemmi wartet auf die erfolgreiche Anlage und zeigt danach genau diesen neuen Helfer.",
   "helpers-availability": "Zeitfenster des neuen Helfers festlegen. Hier legst du für den gerade angelegten Helfer direkt fest, ob und wann er verfügbar ist. Tippe auf einen Tag und wähle Ja, Nein oder ein Zeitfenster von bis.",
+  "helpers-symbols-offer": "Geschafft! Du hast einen Helfer angelegt und die Verfügbarkeit kennengelernt. Soll ich dir auch noch die Symbole direkt an diesem Helfer erklären?",
+  "helpers-action-donation": "Ganz links öffnet das Geschenk die Spenden für genau diesen Helfer. Dort erfasst du zum Beispiel Kuchen, Salat oder Snacks samt Eigenschaften und Hinweis.",
+  "helpers-action-whatsapp": "Das grüne WhatsApp-Zeichen öffnet zuerst die Vorlagenauswahl. Dort wählst du entweder die allgemeine Helferanfrage oder den Einsatzplan mit persönlichem PDF-Link. Erst danach wird WhatsApp geöffnet.",
+  "helpers-action-pdf": "Mit diesem blauen Symbol lädst du die persönliche Aufgaben-PDF dieses Helfers herunter. Sie bündelt seine Einsätze, Hinweise und Verfügbarkeiten. In dieser Erklärung wird nichts heruntergeladen.",
+  "helpers-action-edit": "Der Stift öffnet die Bearbeitung. Hier kannst du Telefonnummer, Ansprechpartner, Hinweise, Begleitung und Verfügbarkeiten später jederzeit sauber ergänzen oder ändern.",
+  "helpers-action-delete": "Der Papierkorb wird nur rot und anklickbar angezeigt, wenn dieser Helfer gelöscht werden darf. Bei geschützten oder eingeteilten Personen bleibt er grau. So kann nichts versehentlich verloren gehen.",
   "helpers-complete": "Geschafft! Du hast einen Helfer angelegt und kennst nun auch die Verfügbarkeit.",
 
   "contacts-intro": "Ansprechpartner von Anfang an pflegen. Ansprechpartner sind deine verlässlichen Kontaktpersonen für Teams, Helfer und PDFs. Ich führe dich kurz durch die Stammdatenanlage.",
@@ -192,6 +198,12 @@ export const KLEMMI_OPENING_AUDIO_IDS = [
  */
 const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
   "helpers-person": "20260927-detailed-guide-v1",
+  "helpers-symbols-offer": "20260927-helper-actions-v1",
+  "helpers-action-donation": "20260927-helper-actions-v1",
+  "helpers-action-whatsapp": "20260927-helper-actions-v1",
+  "helpers-action-pdf": "20260927-helper-actions-v1",
+  "helpers-action-edit": "20260927-helper-actions-v1",
+  "helpers-action-delete": "20260927-helper-actions-v1",
   "first-login-intro": "20260927-joke-v2",
   "first-login-co-admin": "20260927-joke-v2",
   "dashboard-intro": "20260927-dashboard-tour-v1",

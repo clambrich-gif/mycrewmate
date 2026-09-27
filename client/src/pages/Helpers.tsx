@@ -697,12 +697,16 @@ function CakeDonationAction({
   onClick,
   mobile = false,
   compact = false,
+  klemmiTarget,
+  klemmiHelperId,
 }: {
   helperName: string;
   count: number;
   onClick: () => void;
   mobile?: boolean;
   compact?: boolean;
+  klemmiTarget?: string;
+  klemmiHelperId?: number;
 }) {
   const hasCakes = count > 0;
   const description = hasCakes
@@ -712,6 +716,8 @@ function CakeDonationAction({
   return (
     <button
       type="button"
+      data-klemmi-target={klemmiTarget}
+      data-klemmi-helper-id={klemmiHelperId}
       title={description}
       aria-label={`${description}: ${helperName}`}
       onClick={onClick}
@@ -1283,8 +1289,10 @@ export default function Helpers() {
                 helpers.some(helper => helper.id === klemmiCreatedHelperId)
               }
               nameError={newHelperNameError}
+              viewMode={viewMode}
               onOpenHelperDialog={openNewHelperDialog}
-              onGuideOpenChange={setKlemmiGuideOpen}
+              onGuideOpenChange={setKlemmiGuideActive}
+              onViewModeChange={setViewMode}
             />
           }
           secondaryActions={
@@ -2217,6 +2225,8 @@ export default function Helpers() {
                             helperName={helper.name}
                             count={cakeCount}
                             compact
+                            klemmiTarget="helper-action-donation"
+                            klemmiHelperId={helper.id}
                             onClick={() => openCakeDonation(helper.name)}
                           />
                           <Button
@@ -2224,6 +2234,8 @@ export default function Helpers() {
                             variant="ghost"
                             size="icon"
                             className="h-9 w-9 text-slate-600 hover:text-green-700"
+                            data-klemmi-target="helper-action-whatsapp"
+                            data-klemmi-helper-id={helper.id}
                             title="Aufgabenplan per WhatsApp an Helfer senden"
                             aria-label={`Aufgabenplan von ${helper.name} per WhatsApp senden`}
                             disabled={isPreparingWhatsApp}
@@ -2236,6 +2248,8 @@ export default function Helpers() {
                             variant="ghost"
                             size="icon"
                             className="h-9 w-9 text-slate-600 hover:text-blue-700"
+                            data-klemmi-target="helper-action-pdf"
+                            data-klemmi-helper-id={helper.id}
                             title="Einsatz-PDF herunterladen"
                             aria-label={`Einsatz-PDF von ${helper.name} herunterladen`}
                             disabled={exportingId === helper.id}
@@ -2251,6 +2265,8 @@ export default function Helpers() {
                             variant="ghost"
                             size="icon"
                             className="h-9 w-9 text-slate-600 hover:text-blue-700"
+                            data-klemmi-target="helper-action-edit"
+                            data-klemmi-helper-id={helper.id}
                             title="Helfer bearbeiten"
                             aria-label={`Helfer ${helper.name} bearbeiten`}
                             disabled={update.isPending}
@@ -2263,6 +2279,8 @@ export default function Helpers() {
                             variant="ghost"
                             size="icon"
                             className="h-9 w-9 text-slate-600 hover:text-red-700"
+                            data-klemmi-target="helper-action-delete"
+                            data-klemmi-helper-id={helper.id}
                             title={
                               helperDeleteDisabled
                                 ? "Helfer kann aktuell nicht gelöscht werden"
@@ -2276,7 +2294,14 @@ export default function Helpers() {
                               })
                             }
                           >
-                            <Trash2 className="size-4 text-red-600" />
+                            <Trash2
+                              className={cn(
+                                "size-4",
+                                helperDeleteDisabled
+                                  ? "text-slate-400 opacity-50"
+                                  : "text-red-600"
+                              )}
+                            />
                           </Button>
                         </div>
                       </div>
