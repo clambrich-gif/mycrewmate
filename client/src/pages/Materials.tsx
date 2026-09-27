@@ -21,6 +21,50 @@ export default function Materials() {
       titleIcon="materials"
       addLabel="Artikel"
       nameKey="article"
+      klemmiGuide={{
+        guideId: "materials",
+        title: "Material schnell und sauber erfassen",
+        introText:
+          "Ich zeige dir die echte Materialanlage: Artikel benennen, Menge eintragen und Beschaffung oder Einsatzort eindeutig festhalten.",
+        completionTitle: "Materialposition angelegt!",
+        completionText:
+          "Der Artikel ist jetzt im Materialplan. Status, Verantwortliche und Ort kannst du später jederzeit ergänzen oder anpassen.",
+        steps: [
+          {
+            key: "intro",
+            selector: '[data-klemmi-target="materials-new"]',
+            eyebrow: "Klemmi zeigt’s",
+            title: "Material schnell und sauber erfassen",
+            text: "Ich führe dich direkt durch die echte Anlage.",
+            action: "Artikel anlegen",
+          },
+          {
+            key: "name",
+            selector: '[data-klemmi-target="materials-name"]',
+            eyebrow: "Schritt 1 von 3",
+            title: "Artikel klar benennen",
+            text: "Trage zuerst ein, was benötigt wird – zum Beispiel Bierzeltgarnitur, Kabeltrommel oder Kaffeebecher.",
+            action: "Menge ergänzen",
+          },
+          {
+            key: "details",
+            selector: '[data-klemmi-target="materials-details"]',
+            eyebrow: "Schritt 2 von 3",
+            title: "Menge und Einordnung festhalten",
+            text: "Menge, Einheit und Kategorie machen den Bedarf nachvollziehbar. Ort und Beschaffungsstand kannst du bei Bedarf direkt ergänzen.",
+            action: "Speichern zeigen",
+          },
+          {
+            key: "save",
+            selector: '[data-klemmi-target="materials-save"]',
+            eyebrow: "Schritt 3 von 3",
+            title: "Materialposition speichern",
+            text: "Klicke auf den markierten Speichern-Button. Erst dein Klick legt den Artikel tatsächlich im Materialplan an.",
+            waitsForSuccess: true,
+            completeOnSuccess: true,
+          },
+        ],
+      }}
       columns={[
         { key: "category", label: "Kategorie" },
         { key: "quantity", label: "Menge" },

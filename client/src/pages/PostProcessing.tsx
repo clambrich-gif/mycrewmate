@@ -3,6 +3,7 @@ import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import { LocationMapLink } from "@/components/LocationMapLink";
 import { PageTitle } from "@/components/PageTitle";
 import { MyTasksDefaultPin } from "@/components/MyTasksDefaultPin";
+import { KlemmiSurfaceGuide } from "@/components/KlemmiSurfaceGuide";
 import { PlanResetDialogButton } from "@/components/PlanResetDialogButton";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { TaskLogbookHistory } from "@/components/TaskLogbookHistory";
@@ -265,6 +266,8 @@ export default function PostProcessing() {
   const [form, setForm] = useState<PostForm>(EMPTY_FORM);
   const [deleteCandidate, setDeleteCandidate] = useState<PostTaskRow | null>(null);
   const [viewMode, setViewMode] = useViewMode("postprocessing", "liste");
+  const [klemmiGuideOpen, setKlemmiGuideOpen] = useState(false);
+  const [klemmiCreationSignal, setKlemmiCreationSignal] = useState<number | null>(null);
 
   const utils = trpc.useUtils();
   const { data: rawRows = [], isLoading } = trpc.post.list.useQuery();
@@ -314,6 +317,7 @@ export default function PostProcessing() {
       );
       setDialogOpen(false);
       setForm(EMPTY_FORM);
+      setKlemmiCreationSignal(Date.now());
       toast.success("Nachbereitungsaufgabe angelegt");
     },
     onError: (error: any, _input: any, context: any) => {
@@ -639,6 +643,61 @@ export default function PostProcessing() {
         <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-start lg:w-auto lg:min-w-[344px]">
           <ViewModeToggle mode={viewMode} onChange={setViewMode} className="shrink-0" />
           <div className="w-full space-y-2">
+          <KlemmiSurfaceGuide
+            guideId="postprocessing"
+            title="Nachbereitung verbindlich festhalten"
+            introText="Ich zeige dir die echte Nachbereitungsanlage: Aufgabe benennen, Verantwortliche und Termin einordnen und Übergaben dokumentieren."
+            successSignal={klemmiCreationSignal}
+            onOpenChange={setKlemmiGuideOpen}
+            onStepAction={stepKey => {
+              if (stepKey === "intro") openCreate();
+            }}
+            completionTitle="Nachbereitungsaufgabe angelegt!"
+            completionText="Die Aufgabe steht jetzt in der Nachbereitung. So bleiben Abbau, Rückgaben und offene Punkte für das Team sichtbar."
+            steps={[
+              {
+                key: "intro",
+                selector: '[data-klemmi-target="postprocessing-new"]',
+                eyebrow: "Klemmi zeigt’s",
+                title: "Nachbereitung verbindlich festhalten",
+                text: "Ich führe dich direkt durch die echte Anlage.",
+                action: "Aufgabe anlegen",
+              },
+              {
+                key: "task",
+                selector: '[data-klemmi-target="postprocessing-task"]',
+                eyebrow: "Schritt 1 von 4",
+                title: "Aufgabe konkret benennen",
+                text: "Schreibe kurz und eindeutig, was nach dem Event erledigt werden muss – zum Beispiel Rückgabe, Abbau oder Abrechnung.",
+                action: "Zuständigkeit festlegen",
+              },
+              {
+                key: "details",
+                selector: '[data-klemmi-target="postprocessing-details"]',
+                eyebrow: "Schritt 2 von 4",
+                title: "Verantwortung und Termin setzen",
+                text: "Ordne die Aufgabe bei Bedarf einer Person zu und lege eine Frist fest. Beides darf später angepasst werden.",
+                action: "Übergabe notieren",
+              },
+              {
+                key: "logbook",
+                selector: '[data-klemmi-target="postprocessing-logbook"]',
+                eyebrow: "Schritt 3 von 4",
+                title: "Übergabe und Hinweise dokumentieren",
+                text: "Im Logbuch kommen wichtige Hinweise, Ergebnisse und nächste Schritte. So bleibt der Abschluss nachvollziehbar.",
+                action: "Speichern zeigen",
+              },
+              {
+                key: "save",
+                selector: '[data-klemmi-target="postprocessing-save"]',
+                eyebrow: "Schritt 4 von 4",
+                title: "Aufgabe speichern",
+                text: "Klicke auf den markierten Speichern-Button. Erst dein Klick legt die Nachbereitungsaufgabe an.",
+                waitsForSuccess: true,
+                completeOnSuccess: true,
+              },
+            ]}
+          />
           <div className="grid grid-cols-2 gap-2 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:whitespace-nowrap [&>[data-slot=button]]:px-2 lg:[&>[data-slot=button]]:h-10">
             <Button
               type="button"
@@ -655,6 +714,7 @@ export default function PostProcessing() {
           <Button
             type="button"
             variant="outline"
+            data-klemmi-target="postprocessing-new"
             className={`w-full ${CREATION_ACTION_BUTTON_CLASS}`}
             onClick={openCreate}
           >
@@ -1176,7 +1236,18 @@ export default function PostProcessing() {
       />
 
       <Dialog open={dialogOpen} onOpenChange={open => (open ? setDialogOpen(true) : closeDialog())}>
-        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))] !bg-white !text-slate-950 opacity-100 shadow-2xl sm:max-w-2xl">
+        <DialogContent
+          className="max-h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))] !bg-white !text-slate-950 opacity-100 shadow-2xl sm:max-w-2xl"
+          onInteractOutside={event => {
+            if (
+              klemmiGuideOpen &&
+              event.target instanceof HTMLElement &&
+              event.target.closest("[data-klemmi-guide]")
+            ) {
+              event.preventDefault();
+            }
+          }}
+        >
           <DialogHeader>
             <DialogTitle>
               {editingTask ? "Nachbereitungsaufgabe bearbeiten" : "Neue Nachbereitungsaufgabe"}
@@ -1220,7 +1291,7 @@ export default function PostProcessing() {
             </div>
               </div>
             </div>
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div data-klemmi-target="postprocessing-task" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
               <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-600">Was ist zu erledigen?</p>
             <div className="space-y-1.5">
               <Label htmlFor="post-task">Aufgabe / Bezeichnung *</Label>
@@ -1235,7 +1306,7 @@ export default function PostProcessing() {
               />
             </div>
             </div>
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div data-klemmi-target="postprocessing-details" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
               <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-600">Verantwortung & Termin</p>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
@@ -1282,7 +1353,7 @@ export default function PostProcessing() {
               </div>
             </div>
             </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+            <div data-klemmi-target="postprocessing-logbook" className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
               <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-600">Aktueller Stand</p>
             <div className="space-y-1.5">
               <Label htmlFor="post-log-entry">Logbuch-Eintrag / Aktueller Stand</Label>
@@ -1324,6 +1395,7 @@ export default function PostProcessing() {
             </Button>
             <Button
               type="button"
+              data-klemmi-target="postprocessing-save"
               className={CREATION_ACTION_BUTTON_CLASS}
               onClick={saveTask}
               disabled={pending || !form.task.trim()}

@@ -103,6 +103,7 @@ import {
 } from "@/lib/plan-my-tasks";
 import { LocationMapLink } from "@/components/LocationMapLink";
 import { MyTasksDefaultPin } from "@/components/MyTasksDefaultPin";
+import { KlemmiSurfaceGuide } from "@/components/KlemmiSurfaceGuide";
 import { useMyTasksDefault } from "@/hooks/useMyTasksDefault";
 import { ViewModeToggle } from "@/components/ViewModeToggle";
 import { useMobileViewMode, useViewMode } from "@/hooks/useViewMode";
@@ -698,6 +699,8 @@ export default function Plan() {
   const [mobileNoteShift, setMobileNoteShift] =
     useState<DropdownShift | null>(null);
   const [mobileNoteValue, setMobileNoteValue] = useState("");
+  const [klemmiGuideOpen, setKlemmiGuideOpen] = useState(false);
+  const [klemmiCreationSignal, setKlemmiCreationSignal] = useState<number | null>(null);
   const [mobileHelperDetails, setMobileHelperDetails] = useState<{
     helper: HelperTooltipData;
     shift: DropdownShift;
@@ -840,6 +843,7 @@ export default function Plan() {
     onSuccess: () => {
       invalidate();
       setDlgOpen(false);
+      setKlemmiCreationSignal(Date.now());
       toast.success("Schicht angelegt");
     },
     onError: e => toast.error(e.message),
@@ -1802,6 +1806,61 @@ export default function Plan() {
               data-plan-action-header
               className="w-full space-y-2"
             >
+              <KlemmiSurfaceGuide
+                guideId="plan"
+                title="Schichten Schritt für Schritt anlegen"
+                introText="Ich zeige dir die echte Schichtanlage: Bedarf festlegen, Bereich und Aufgabe beschreiben, Zeit eintragen und die Schicht speichern."
+                successSignal={klemmiCreationSignal}
+                onOpenChange={setKlemmiGuideOpen}
+                onStepAction={stepKey => {
+                  if (stepKey === "intro") openCreate();
+                }}
+                completionTitle="Schicht angelegt!"
+                completionText="Die Schicht erscheint jetzt im Einsatzplan. Als Nächstes kannst du passende Helfer auswählen und einteilen."
+                steps={[
+                  {
+                    key: "intro",
+                    selector: '[data-klemmi-target="plan-new"]',
+                    eyebrow: "Klemmi zeigt’s",
+                    title: "Schichten Schritt für Schritt anlegen",
+                    text: "Ich führe dich direkt durch die echte Schichtanlage.",
+                    action: "Neue Schicht öffnen",
+                  },
+                  {
+                    key: "basics",
+                    selector: '[data-klemmi-target="plan-basics"]',
+                    eyebrow: "Schritt 1 von 4",
+                    title: "Tag und Personalbedarf festlegen",
+                    text: "Wähle den passenden Eventtag und die Zahl der benötigten Helferplätze. So wird Unterbesetzung später sofort sichtbar.",
+                    action: "Bereich beschreiben",
+                  },
+                  {
+                    key: "task",
+                    selector: '[data-klemmi-target="plan-task"]',
+                    eyebrow: "Schritt 2 von 4",
+                    title: "Bereich und Aufgabe benennen",
+                    text: "Ein klarer Bereich und eine konkrete Aufgabe helfen dem Team, die Schicht in der Liste und auf dem Gelände sofort einzuordnen.",
+                    action: "Zeit ergänzen",
+                  },
+                  {
+                    key: "time",
+                    selector: '[data-klemmi-target="plan-time"]',
+                    eyebrow: "Schritt 3 von 4",
+                    title: "Zeitfenster und Besonderheiten ergänzen",
+                    text: "Trage Beginn und Ende ein, wenn die Schicht zeitgebunden ist. Ort, Hinweise und flexible Belegung kannst du nach Bedarf ergänzen.",
+                    action: "Speichern zeigen",
+                  },
+                  {
+                    key: "save",
+                    selector: '[data-klemmi-target="plan-save"]',
+                    eyebrow: "Schritt 4 von 4",
+                    title: "Schicht speichern",
+                    text: "Klicke auf den markierten Speichern-Button. Erst dein Klick legt die Schicht im Einsatzplan an.",
+                    waitsForSuccess: true,
+                    completeOnSuccess: true,
+                  },
+                ]}
+              />
               <div
                 data-plan-data-actions
                 className="grid grid-cols-2 gap-2 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:whitespace-nowrap [&>[data-slot=button]]:px-2 lg:[&>[data-slot=button]]:h-10"
@@ -1815,6 +1874,7 @@ export default function Plan() {
               </div>
               <Button
                 type="button"
+                data-klemmi-target="plan-new"
                 onClick={openCreate}
                 disabled={isEventLoading || !activeDays.length}
                 className="w-full border-blue-600 bg-blue-600 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus-visible:ring-blue-500"
@@ -2783,7 +2843,18 @@ export default function Plan() {
       </Dialog>
 
       <Dialog open={dlgOpen} onOpenChange={setDlgOpen}>
-        <DialogContent className="w-[calc(100vw-2rem)] min-w-0 max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))] !bg-white !text-slate-950 opacity-100 shadow-2xl sm:max-w-2xl dark:!bg-slate-950 dark:!text-slate-50 [&_[data-slot=input]]:!bg-white [&_[data-slot=input]]:dark:!bg-slate-900 [&_[data-slot=select-trigger]]:!bg-white [&_[data-slot=select-trigger]]:dark:!bg-slate-900">
+        <DialogContent
+          className="w-[calc(100vw-2rem)] min-w-0 max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))] !bg-white !text-slate-950 opacity-100 shadow-2xl sm:max-w-2xl dark:!bg-slate-950 dark:!text-slate-50 [&_[data-slot=input]]:!bg-white [&_[data-slot=input]]:dark:!bg-slate-900 [&_[data-slot=select-trigger]]:!bg-white [&_[data-slot=select-trigger]]:dark:!bg-slate-900"
+          onInteractOutside={event => {
+            if (
+              klemmiGuideOpen &&
+              event.target instanceof HTMLElement &&
+              event.target.closest("[data-klemmi-guide]")
+            ) {
+              event.preventDefault();
+            }
+          }}
+        >
           <DialogHeader>
             <DialogTitle>
               {editShift ? "Schicht bearbeiten" : "Neue Schicht"}
@@ -2793,7 +2864,7 @@ export default function Plan() {
             </p>
           </DialogHeader>
           <div className="grid min-w-0 gap-4 py-2">
-            <div data-slot="shift-dialog-basics" className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 sm:grid-cols-2">
+            <div data-slot="shift-dialog-basics" data-klemmi-target="plan-basics" className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 sm:grid-cols-2">
               <div>
                 <Label>Tag</Label>
                 <Select
@@ -2831,7 +2902,7 @@ export default function Plan() {
                 />
               </div>
             </div>
-            <div data-slot="shift-dialog-area" className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm">
+            <div data-slot="shift-dialog-area" data-klemmi-target="plan-task" className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm">
               <Label htmlFor="shift-area">Bereich</Label>
               <Input
                 id="shift-area"
@@ -2872,7 +2943,7 @@ export default function Plan() {
                 placeholder="z. B. Grill & Pommes Tag"
               />
             </div>
-            <div data-slot="shift-dialog-time" className="grid gap-3 rounded-xl border border-sky-100 bg-sky-50/40 p-3.5 sm:grid-cols-2">
+            <div data-slot="shift-dialog-time" data-klemmi-target="plan-time" className="grid gap-3 rounded-xl border border-sky-100 bg-sky-50/40 p-3.5 sm:grid-cols-2">
               <div>
                 <Label>Beginn</Label>
                 <Input
@@ -3046,6 +3117,7 @@ export default function Plan() {
                 Abbrechen
               </Button>
               <Button
+                data-klemmi-target="plan-save"
                 onClick={saveShift}
                 disabled={createShift.isPending || updateShift.isPending}
               >

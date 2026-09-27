@@ -3,6 +3,10 @@ import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { PlanResetDialogButton } from "@/components/PlanResetDialogButton";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { MyTasksDefaultPin } from "@/components/MyTasksDefaultPin";
+import {
+  KlemmiSurfaceGuide,
+  type KlemmiSurfaceStep,
+} from "@/components/KlemmiSurfaceGuide";
 import { ViewModeToggle } from "@/components/ViewModeToggle";
 import { PageTitle, type PageTitleIconKind } from "@/components/PageTitle";
 import { Button } from "@/components/ui/button";
@@ -95,6 +99,14 @@ interface Props {
     statusLabel?: string;
     searchPlaceholder?: string;
   };
+  klemmiGuide?: {
+    guideId: string;
+    title: string;
+    introText: string;
+    steps: KlemmiSurfaceStep[];
+    completionTitle?: string;
+    completionText?: string;
+  };
 }
 
 const temporaryId = () => -Date.now() - Math.floor(Math.random() * 1_000);
@@ -124,6 +136,7 @@ export default function TaskGeneric({
   clearAssignmentsArea,
   viewModeStorageKey,
   filterConfig,
+  klemmiGuide,
 }: Props) {
   const utils = trpc.useUtils();
   const { user } = useAuth();
@@ -150,6 +163,8 @@ export default function TaskGeneric({
   const [openOrUnassignedOnly, setOpenOrUnassignedOnly] = useState(false);
   const [sortAsc, setSortAsc] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [klemmiGuideOpen, setKlemmiGuideOpen] = useState(false);
+  const [klemmiCreationSignal, setKlemmiCreationSignal] = useState<number | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{
     id: number;
     name: string;
@@ -331,6 +346,7 @@ export default function TaskGeneric({
       setName("");
       setExtras({});
       setCreateDialogOpen(false);
+      if (klemmiGuide) setKlemmiCreationSignal(Date.now());
       toast.success("Hinzugefügt");
     },
     onError: (error: any, _input: any, context: any) => {
@@ -483,15 +499,28 @@ export default function TaskGeneric({
               ) : null}
             </div>
             {createInDialog ? (
-              <Button
-                type="button"
-                variant="outline"
-                className={`w-full shadow-xs ${createButtonClassName}`}
-                onClick={openCreateDialog}
-              >
-                <Plus className="mr-1.5 h-4 w-4" />
-                <span>{createTriggerLabel}</span>
-              </Button>
+              <>
+                {klemmiGuide && (
+                  <KlemmiSurfaceGuide
+                    {...klemmiGuide}
+                    successSignal={klemmiCreationSignal}
+                    onOpenChange={setKlemmiGuideOpen}
+                    onStepAction={stepKey => {
+                      if (stepKey === "intro") openCreateDialog();
+                    }}
+                  />
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  data-klemmi-target={klemmiGuide ? `${klemmiGuide.guideId}-new` : undefined}
+                  className={`w-full shadow-xs ${createButtonClassName}`}
+                  onClick={openCreateDialog}
+                >
+                  <Plus className="mr-1.5 h-4 w-4" />
+                  <span>{createTriggerLabel}</span>
+                </Button>
+              </>
             ) : (
               <Button
                 className="w-full shadow-xs"
@@ -516,15 +545,28 @@ export default function TaskGeneric({
             )}
             {renderedHeaderActions}
             {createInDialog ? (
-              <Button
-                type="button"
-                variant="outline"
-                className={`col-span-2 shadow-xs lg:col-auto ${createButtonClassName}`}
-                onClick={openCreateDialog}
-              >
-                <Plus className="mr-1.5 h-4 w-4" />
-                <span>{createTriggerLabel}</span>
-              </Button>
+              <>
+                {klemmiGuide && (
+                  <KlemmiSurfaceGuide
+                    {...klemmiGuide}
+                    successSignal={klemmiCreationSignal}
+                    onOpenChange={setKlemmiGuideOpen}
+                    onStepAction={stepKey => {
+                      if (stepKey === "intro") openCreateDialog();
+                    }}
+                  />
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  data-klemmi-target={klemmiGuide ? `${klemmiGuide.guideId}-new` : undefined}
+                  className={`col-span-2 shadow-xs lg:col-auto ${createButtonClassName}`}
+                  onClick={openCreateDialog}
+                >
+                  <Plus className="mr-1.5 h-4 w-4" />
+                  <span>{createTriggerLabel}</span>
+                </Button>
+              </>
             ) : (
               <>
                 <Input
@@ -1330,7 +1372,18 @@ export default function TaskGeneric({
             }
           }}
         >
-          <DialogContent className="w-[calc(100vw-2rem)] min-w-0 max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))] !bg-white !text-slate-950 shadow-2xl sm:max-w-xl">
+          <DialogContent
+            className="w-[calc(100vw-2rem)] min-w-0 max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))] !bg-white !text-slate-950 shadow-2xl sm:max-w-xl"
+            onInteractOutside={event => {
+              if (
+                klemmiGuideOpen &&
+                event.target instanceof HTMLElement &&
+                event.target.closest("[data-klemmi-guide]")
+              ) {
+                event.preventDefault();
+              }
+            }}
+          >
             <DialogHeader>
               <DialogTitle>{createDialogTitle}</DialogTitle>
             </DialogHeader>
@@ -1341,7 +1394,10 @@ export default function TaskGeneric({
                 submitCreate();
               }}
             >
-              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div
+                data-klemmi-target={klemmiGuide ? `${klemmiGuide.guideId}-name` : undefined}
+                className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+              >
                 {isMaterialTable && (
                   <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-600">
                     Materialposition
@@ -1362,7 +1418,10 @@ export default function TaskGeneric({
               </div>
               </div>
               {columns.length > 0 && (
-                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                <div
+                  data-klemmi-target={klemmiGuide ? `${klemmiGuide.guideId}-details` : undefined}
+                  className="rounded-xl border border-slate-200 bg-slate-50/70 p-4"
+                >
                   {isMaterialTable && (
                     <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-600">
                       Menge & Einordnung
@@ -1460,6 +1519,7 @@ export default function TaskGeneric({
                   </Button>
                   <Button
                     type="submit"
+                    data-klemmi-target={klemmiGuide ? `${klemmiGuide.guideId}-save` : undefined}
                     disabled={!name.trim() || create.isPending}
                   >
                     {create.isPending ? "Speichert …" : "Speichern"}

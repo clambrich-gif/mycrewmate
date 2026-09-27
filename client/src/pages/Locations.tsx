@@ -1,4 +1,5 @@
 import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
+import { KlemmiSurfaceGuide } from "@/components/KlemmiSurfaceGuide";
 import { PageTitle } from "@/components/PageTitle";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,6 +48,8 @@ export default function Locations() {
   const [trackDeleteTarget, setTrackDeleteTarget] = useState<{ id: number; name: string } | null>(null);
   const [trackName, setTrackName] = useState("");
   const [trackColor, setTrackColor] = useState("#2563eb");
+  const [klemmiGuideOpen, setKlemmiGuideOpen] = useState(false);
+  const [klemmiCreationSignal, setKlemmiCreationSignal] = useState<number | null>(null);
   const [selectedTrackFile, setSelectedTrackFile] = useState<File | null>(null);
   const [editingTrackId, setEditingTrackId] = useState<number | null>(null);
   const [editingTrackName, setEditingTrackName] = useState("");
@@ -177,6 +180,7 @@ export default function Locations() {
       }
       invalidate();
       setOpen(false);
+      if (created) setKlemmiCreationSignal(Date.now());
       toast.success(editingId ? "Ort aktualisiert" : "Ort angelegt");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Ort konnte nicht gespeichert werden");
@@ -241,14 +245,64 @@ export default function Locations() {
           </p>
         </div>
         {canManage && (
-          <Button
-            type="button"
-            variant="outline"
-            className="h-10 border-slate-300 bg-white px-4 font-medium text-slate-800 shadow-sm hover:bg-slate-50 hover:text-slate-950 sm:ml-auto"
-            onClick={openCreate}
-          >
-            <Plus className="mr-2 size-4" aria-hidden="true" /> Ort anlegen
-          </Button>
+          <div className="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:items-end">
+            <KlemmiSurfaceGuide
+              guideId="locations"
+              title="Orte und Standorte sauber anlegen"
+              introText="Ich zeige dir die echte Standortanlage: Namen vergeben, Koordinaten eintragen und den Ort anschließend in Schichten, Material und Vorbereitung verwenden."
+              successSignal={klemmiCreationSignal}
+              onOpenChange={setKlemmiGuideOpen}
+              onStepAction={stepKey => {
+                if (stepKey === "intro") openCreate();
+              }}
+              completionTitle="Standort angelegt!"
+              completionText="Der Ort steht jetzt in Schichten, Vorbereitung und Material zur Auswahl und erscheint auf der Live-Standortkarte."
+              steps={[
+                {
+                  key: "intro",
+                  selector: '[data-klemmi-target="locations-new"]',
+                  eyebrow: "Klemmi zeigt’s",
+                  title: "Orte und Standorte sauber anlegen",
+                  text: "Ich führe dich direkt durch die echte Standortanlage.",
+                  action: "Ort anlegen",
+                },
+                {
+                  key: "name",
+                  selector: '[data-klemmi-target="locations-name"]',
+                  eyebrow: "Schritt 1 von 3",
+                  title: "Ort eindeutig benennen",
+                  text: "Gib dem Standort einen Namen, den das Team auf Anhieb versteht – zum Beispiel „VP8 – Pumptrack“ oder „Kuchenstand“.",
+                  action: "Koordinaten eintragen",
+                },
+                {
+                  key: "coordinates",
+                  selector: '[data-klemmi-target="locations-coordinates"]',
+                  eyebrow: "Schritt 2 von 3",
+                  title: "Position auf der Karte festlegen",
+                  text: "Breiten- und Längengrad positionieren den Standort auf der Live-Karte. Ein Marker-Logo darunter ist optional.",
+                  action: "Speichern zeigen",
+                },
+                {
+                  key: "save",
+                  selector: '[data-klemmi-target="locations-save"]',
+                  eyebrow: "Schritt 3 von 3",
+                  title: "Standort speichern",
+                  text: "Klicke auf den markierten Button. Erst dein Klick legt den Standort wirklich an.",
+                  waitsForSuccess: true,
+                  completeOnSuccess: true,
+                },
+              ]}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              data-klemmi-target="locations-new"
+              className="h-10 border-slate-300 bg-white px-4 font-medium text-slate-800 shadow-sm hover:bg-slate-50 hover:text-slate-950"
+              onClick={openCreate}
+            >
+              <Plus className="mr-2 size-4" aria-hidden="true" /> Ort anlegen
+            </Button>
+          </div>
         )}
       </div>
       <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
@@ -359,16 +413,27 @@ export default function Locations() {
       </section>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-lg overflow-x-hidden overflow-y-auto">
+        <DialogContent
+          className="max-h-[calc(100dvh-2rem)] max-w-lg overflow-x-hidden overflow-y-auto"
+          onInteractOutside={event => {
+            if (
+              klemmiGuideOpen &&
+              event.target instanceof HTMLElement &&
+              event.target.closest("[data-klemmi-guide]")
+            ) {
+              event.preventDefault();
+            }
+          }}
+        >
           <DialogHeader>
             <DialogTitle>{editingId ? "Ort bearbeiten" : "Neuen Ort anlegen"}</DialogTitle>
             <DialogDescription>Koordinaten im Dezimalformat eingeben, zum Beispiel 50.3569 und 6.9458.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
-            <label className="grid gap-1.5 text-sm font-medium">Ortsname
+            <label data-klemmi-target="locations-name" className="grid gap-1.5 text-sm font-medium">Ortsname
               <Input autoFocus value={form.name} placeholder="z. B. VP8 – Pumptrack" onChange={event => setForm(current => ({ ...current, name: event.target.value }))} />
             </label>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div data-klemmi-target="locations-coordinates" className="grid gap-4 sm:grid-cols-2">
               <label className="grid gap-1.5 text-sm font-medium">Breitengrad (Latitude)
                 <Input inputMode="decimal" value={form.latitude} placeholder="50.3569" onChange={event => setForm(current => ({ ...current, latitude: event.target.value }))} />
               </label>
@@ -405,7 +470,7 @@ export default function Locations() {
           </div>
           <DialogFooter className="flex-wrap gap-2 sm:justify-end">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>Abbrechen</Button>
-            <Button type="button" onClick={submit} disabled={create.isPending || update.isPending || uploadLogo.isPending || clearLogo.isPending}>{editingId ? "Speichern" : "Ort anlegen"}</Button>
+            <Button type="button" data-klemmi-target="locations-save" onClick={submit} disabled={create.isPending || update.isPending || uploadLogo.isPending || clearLogo.isPending}>{editingId ? "Speichern" : "Ort anlegen"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

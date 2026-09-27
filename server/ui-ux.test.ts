@@ -41,8 +41,52 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(guide).toContain("data-klemmi-save-wait");
     expect(guide).toContain("createdHelperId");
     expect(guide).toContain("Zeitfenster des neuen Helfers festlegen");
+    expect(guide).toContain("data-klemmi-success");
+    expect(guide).toContain("Klemmi freut sich mit dir");
+    expect(guide).toContain("PartyPopper");
     expect(guide).toContain("scrollIntoView");
     expect(guide).toContain("resolveVisibleTarget");
+  });
+
+  it("führt mit Klemmi über Einsatzplan, Aufgaben, Material und Standorte mit echten Speicheraktionen", () => {
+    const surfaceGuide = source("client/src/components/KlemmiSurfaceGuide.tsx");
+    const plan = source("client/src/pages/Plan.tsx");
+    const preparation = source("client/src/pages/Preparation.tsx");
+    const postprocessing = source("client/src/pages/PostProcessing.tsx");
+    const materials = source("client/src/pages/Materials.tsx");
+    const genericTasks = source("client/src/pages/TaskGeneric.tsx");
+    const locations = source("client/src/pages/Locations.tsx");
+    const styles = source("client/src/index.css");
+
+    expect(surfaceGuide).toContain("export function KlemmiSurfaceGuide");
+    expect(surfaceGuide).toContain('const KLEMMI_IMAGE_URL = "/api/klemmi/mascot"');
+    expect(surfaceGuide).toContain("waitsForSuccess");
+    expect(surfaceGuide).toContain("data-klemmi-success");
+    expect(surfaceGuide).toContain("Klemmi wartet auf deinen Klick");
+
+    expect(plan).toContain('<KlemmiSurfaceGuide');
+    expect(plan).toContain('data-klemmi-target="plan-new"');
+    expect(plan).toContain('data-klemmi-target="plan-basics"');
+    expect(plan).toContain('data-klemmi-target="plan-save"');
+    expect(plan).toContain("setKlemmiCreationSignal(Date.now())");
+
+    expect(preparation).toContain('<KlemmiSurfaceGuide');
+    expect(preparation).toContain('data-klemmi-target="preparation-new"');
+    expect(preparation).toContain('data-klemmi-target="preparation-save"');
+    expect(postprocessing).toContain('<KlemmiSurfaceGuide');
+    expect(postprocessing).toContain('data-klemmi-target="postprocessing-new"');
+    expect(postprocessing).toContain('data-klemmi-target="postprocessing-save"');
+
+    expect(materials).toContain("klemmiGuide={{");
+    expect(genericTasks).toContain("KlemmiSurfaceGuide");
+    expect(genericTasks).toContain("klemmiCreationSignal");
+    expect(genericTasks).toContain('`${klemmiGuide.guideId}-save`');
+    expect(genericTasks).toContain('event.target.closest("[data-klemmi-guide]")');
+    expect(locations).toContain('<KlemmiSurfaceGuide');
+    expect(locations).toContain('data-klemmi-target="locations-new"');
+    expect(locations).toContain('data-klemmi-target="locations-save"');
+    expect(styles).toContain("@keyframes klemmi-celebrate-in");
+    expect(styles).toContain(".klemmi-celebration");
   });
 
   it("zeigt PDF-Hinweise bearbeitbar per Desktop-Hover und Touch-Popover vollständig an", () => {

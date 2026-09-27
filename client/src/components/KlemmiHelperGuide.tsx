@@ -6,6 +6,7 @@ import {
   ChevronRight,
   CircleHelp,
   Gift,
+  PartyPopper,
   Save,
   Sparkles,
   X,
@@ -110,6 +111,7 @@ export function KlemmiHelperGuide({
   const [open, setOpen] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [highlightRect, setHighlightRect] = useState<HighlightRect>(null);
+  const [celebrating, setCelebrating] = useState(false);
   const step = guideSteps[stepIndex];
   const workflowSteps = useMemo(
     () => guideSteps.filter(item => item.workflowStep !== undefined),
@@ -124,6 +126,7 @@ export function KlemmiHelperGuide({
 
   const closeGuide = () => {
     setOpen(false);
+    setCelebrating(false);
     setHighlightRect(null);
     onGuideOpenChange(false);
   };
@@ -138,7 +141,7 @@ export function KlemmiHelperGuide({
   }, [createdHelperId, helperDialogOpen, open, step.key]);
 
   useLayoutEffect(() => {
-    if (!open || typeof window === "undefined") return;
+    if (!open || celebrating || typeof window === "undefined") return;
 
     let frame = 0;
     const resolveVisibleTarget = () =>
@@ -185,7 +188,7 @@ export function KlemmiHelperGuide({
       window.removeEventListener("scroll", scheduleSync, true);
       resizeObserver?.disconnect();
     };
-  }, [open, selector, targetReady]);
+  }, [open, selector, targetReady, celebrating]);
 
   const showPrevious = () => {
     if (step.key === "person") {
@@ -217,7 +220,7 @@ export function KlemmiHelperGuide({
       setStepIndex(3);
       return;
     }
-    if (step.key === "availability") closeGuide();
+    if (step.key === "availability") setCelebrating(true);
   };
 
   const canGoBack = step.key !== "intro" && step.key !== "availability";
@@ -248,7 +251,7 @@ export function KlemmiHelperGuide({
         typeof document !== "undefined" &&
         createPortal(
           <div data-klemmi-guide className="pointer-events-none fixed inset-0 z-[70]">
-            {highlightRect && (
+            {highlightRect && !celebrating && (
               <div
                 aria-hidden="true"
                 data-klemmi-highlight
@@ -261,6 +264,29 @@ export function KlemmiHelperGuide({
               aria-label="Klemmi Schritt-für-Schritt-Anleitung"
               className="pointer-events-auto fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] overflow-hidden rounded-2xl border border-blue-200 bg-white p-3 text-slate-950 shadow-2xl sm:inset-x-auto sm:bottom-5 sm:right-5 sm:w-[min(25rem,calc(100vw-2.5rem))] sm:p-4"
             >
+              {celebrating ? (
+                <div className="klemmi-celebration text-center" data-klemmi-success>
+                  <div className="klemmi-celebration-icon mx-auto mb-2 flex size-16 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
+                    <PartyPopper className="size-8" aria-hidden="true" />
+                  </div>
+                  <p className="text-xs font-bold tracking-wide text-[#e86117] uppercase">
+                    Klemmi freut sich mit dir
+                  </p>
+                  <h2 className="mt-0.5 text-lg font-bold text-slate-950">Geschafft!</h2>
+                  <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
+                    Du hast einen Helfer angelegt und kennst nun auch die Verfügbarkeit. So wird aus einer Zusage direkt eine planbare Unterstützung.
+                  </p>
+                  <Button
+                    type="button"
+                    className="mt-4 min-h-10 bg-[#ff7a2f] text-white hover:bg-[#e86117] focus-visible:ring-[#ff7a2f]"
+                    onClick={closeGuide}
+                  >
+                    <CheckCircle2 className="mr-1.5 size-4" aria-hidden="true" />
+                    Fertig
+                  </Button>
+                </div>
+              ) : (
+              <>
               <div className="flex items-start gap-3">
                 <img
                   src={KLEMMI_IMAGE_URL}
@@ -357,6 +383,8 @@ export function KlemmiHelperGuide({
                   )}
                 </div>
               </div>
+              </>
+              )}
             </section>
           </div>,
           document.body

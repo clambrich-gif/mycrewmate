@@ -52,6 +52,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { MyTasksDefaultPin } from "@/components/MyTasksDefaultPin";
+import { KlemmiSurfaceGuide } from "@/components/KlemmiSurfaceGuide";
 import { PlanResetDialogButton } from "@/components/PlanResetDialogButton";
 import { ViewModeToggle } from "@/components/ViewModeToggle";
 import { TaskLogbookHistory } from "@/components/TaskLogbookHistory";
@@ -305,6 +306,8 @@ export default function Preparation() {
   const [form, setForm] = useState<PrepForm>(EMPTY_FORM);
   const [deleteCandidate, setDeleteCandidate] = useState<PrepTaskRow | null>(null);
   const [viewMode, setViewMode] = useViewMode("preparation", "liste");
+  const [klemmiGuideOpen, setKlemmiGuideOpen] = useState(false);
+  const [klemmiCreationSignal, setKlemmiCreationSignal] = useState<number | null>(null);
 
   const utils = trpc.useUtils();
   const { data: rawRows = [], isLoading } = trpc.prep.list.useQuery();
@@ -354,6 +357,7 @@ export default function Preparation() {
       );
       setDialogOpen(false);
       setForm(EMPTY_FORM);
+      setKlemmiCreationSignal(Date.now());
       toast.success("Vorbereitungsaufgabe angelegt");
     },
     onError: (error: any, _input: any, context: any) => {
@@ -682,6 +686,61 @@ export default function Preparation() {
         <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-start lg:w-auto lg:min-w-[344px]">
           <ViewModeToggle mode={viewMode} onChange={setViewMode} className="shrink-0" />
           <div className="w-full space-y-2">
+          <KlemmiSurfaceGuide
+            guideId="preparation"
+            title="Vorbereitungsaufgaben sicher planen"
+            introText="Ich zeige dir die echte Aufgabenanlage: Aufgabe formulieren, Zuständigkeit und Termin festlegen und den ersten Stand sauber festhalten."
+            successSignal={klemmiCreationSignal}
+            onOpenChange={setKlemmiGuideOpen}
+            onStepAction={stepKey => {
+              if (stepKey === "intro") openCreate();
+            }}
+            completionTitle="Vorbereitungsaufgabe angelegt!"
+            completionText="Die Aufgabe steht jetzt in der Vorbereitung. Zuständige, Frist und Logbuch kannst du jederzeit weiterführen."
+            steps={[
+              {
+                key: "intro",
+                selector: '[data-klemmi-target="preparation-new"]',
+                eyebrow: "Klemmi zeigt’s",
+                title: "Vorbereitungsaufgaben sicher planen",
+                text: "Ich führe dich direkt durch die echte Anlage.",
+                action: "Aufgabe anlegen",
+              },
+              {
+                key: "task",
+                selector: '[data-klemmi-target="preparation-task"]',
+                eyebrow: "Schritt 1 von 4",
+                title: "Aufgabe klar formulieren",
+                text: "Beschreibe konkret, was erledigt werden soll. Bereich und Ort helfen, die Aufgabe später schnell wiederzufinden.",
+                action: "Zuständigkeit festlegen",
+              },
+              {
+                key: "details",
+                selector: '[data-klemmi-target="preparation-details"]',
+                eyebrow: "Schritt 2 von 4",
+                title: "Verantwortung und Frist zuordnen",
+                text: "Wähle bei Bedarf eine verantwortliche Person und einen Termin. Beides kann später jederzeit angepasst werden.",
+                action: "Stand dokumentieren",
+              },
+              {
+                key: "logbook",
+                selector: '[data-klemmi-target="preparation-logbook"]',
+                eyebrow: "Schritt 3 von 4",
+                title: "Ersten Stand notieren",
+                text: "Im Logbuch gehören wichtige Hinweise, Absprachen und nächste Schritte. Der Eintrag bleibt nachvollziehbar gespeichert.",
+                action: "Speichern zeigen",
+              },
+              {
+                key: "save",
+                selector: '[data-klemmi-target="preparation-save"]',
+                eyebrow: "Schritt 4 von 4",
+                title: "Aufgabe speichern",
+                text: "Klicke auf den markierten Speichern-Button. Erst dein Klick legt die Vorbereitungsaufgabe an.",
+                waitsForSuccess: true,
+                completeOnSuccess: true,
+              },
+            ]}
+          />
           <div className="grid grid-cols-2 gap-2 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:whitespace-nowrap [&>[data-slot=button]]:px-2 lg:[&>[data-slot=button]]:h-10">
             <Button
               type="button"
@@ -698,6 +757,7 @@ export default function Preparation() {
           <Button
             type="button"
             variant="outline"
+            data-klemmi-target="preparation-new"
             className="w-full border-blue-600 bg-blue-600 text-base font-medium text-white shadow-sm hover:bg-blue-700 hover:text-white focus-visible:ring-blue-500"
             onClick={openCreate}
           >
@@ -1246,7 +1306,18 @@ export default function Preparation() {
       />
 
       <Dialog open={dialogOpen} onOpenChange={open => (open ? setDialogOpen(true) : closeDialog())}>
-        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))] !bg-white !text-slate-950 opacity-100 shadow-2xl sm:max-w-2xl dark:!bg-slate-950 dark:!text-slate-50 [&_[data-slot=input]]:!bg-white [&_[data-slot=select-trigger]]:!bg-white [&_[data-slot=textarea]]:!bg-white dark:[&_[data-slot=input]]:!bg-slate-900 dark:[&_[data-slot=select-trigger]]:!bg-slate-900 dark:[&_[data-slot=textarea]]:!bg-slate-900">
+        <DialogContent
+          className="max-h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))] !bg-white !text-slate-950 opacity-100 shadow-2xl sm:max-w-2xl dark:!bg-slate-950 dark:!text-slate-50 [&_[data-slot=input]]:!bg-white [&_[data-slot=select-trigger]]:!bg-white [&_[data-slot=textarea]]:!bg-white dark:[&_[data-slot=input]]:!bg-slate-900 dark:[&_[data-slot=select-trigger]]:!bg-slate-900 dark:[&_[data-slot=textarea]]:!bg-slate-900"
+          onInteractOutside={event => {
+            if (
+              klemmiGuideOpen &&
+              event.target instanceof HTMLElement &&
+              event.target.closest("[data-klemmi-guide]")
+            ) {
+              event.preventDefault();
+            }
+          }}
+        >
           <DialogHeader>
             <DialogTitle>
               {editingTask ? "Vorbereitungsaufgabe bearbeiten" : "Neue Vorbereitungsaufgabe"}
@@ -1286,7 +1357,7 @@ export default function Preparation() {
             </div>
               </div>
             </div>
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div data-klemmi-target="preparation-task" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
               <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-600">Was ist zu erledigen?</p>
             <div className="space-y-1.5">
               <Label htmlFor="prep-task">Aufgabe / Bezeichnung *</Label>
@@ -1301,7 +1372,7 @@ export default function Preparation() {
               />
             </div>
             </div>
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div data-klemmi-target="preparation-details" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
               <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-600">Verantwortung & Termin</p>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
@@ -1348,7 +1419,7 @@ export default function Preparation() {
               </div>
             </div>
             </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+            <div data-klemmi-target="preparation-logbook" className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
               <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-600">Aktueller Stand</p>
             <div className="space-y-1.5">
               <Label htmlFor="prep-log-entry">Logbuch-Eintrag / Aktueller Stand</Label>
@@ -1388,7 +1459,7 @@ export default function Preparation() {
               <X className="mr-1 h-4 w-4" />
               Abbrechen
             </Button>
-            <Button type="button" onClick={saveTask} disabled={pending || !form.task.trim()}>
+            <Button type="button" data-klemmi-target="preparation-save" onClick={saveTask} disabled={pending || !form.task.trim()}>
               {pending ? "Speichert …" : "Speichern"}
             </Button>
           </DialogFooter>
