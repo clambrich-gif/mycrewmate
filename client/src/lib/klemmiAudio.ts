@@ -109,12 +109,15 @@ export const KLEMMI_AUDIO_SCRIPTS = {
   "help-chapters": "Kapitel öffnen und direkt weiterarbeiten. Öffne das passende Kapitel, lies die kompakten Schritte und nutze die Links direkt zum jeweiligen Arbeitsbereich. Klemmi bleibt auch dort wieder für dich erreichbar.",
   "help-complete": "Geschafft! Jetzt weißt du, wie du in der Hilfe schnell zur passenden Antwort und direkt weiter zur Arbeit kommst.",
 
-  "plan-intro": "Schichten Schritt für Schritt anlegen. Ich zeige dir die echte Schichtanlage: Bedarf festlegen, Bereich und Aufgabe beschreiben, Zeit eintragen und die Schicht speichern.",
+  "plan-intro": "Schichten anlegen und Besetzung füllen. Ich begleite dich zuerst durch die Schichtanlage und zeige dir danach direkt an der neuen Kachel, wie du passende Helfer sicher einteilst.",
   "plan-basics": "Tag und Personalbedarf festlegen. Wähle den passenden Eventtag und die Zahl der benötigten Helferplätze. So wird Unterbesetzung später sofort sichtbar.",
   "plan-task": "Bereich und Aufgabe benennen. Ein klarer Bereich und eine konkrete Aufgabe helfen dem Team, die Schicht in der Liste und auf dem Gelände sofort einzuordnen.",
   "plan-time": "Zeitfenster und Besonderheiten ergänzen. Trage Beginn und Ende ein, wenn die Schicht zeitgebunden ist. Ort, Hinweise und flexible Belegung kannst du nach Bedarf ergänzen.",
   "plan-save": "Schicht speichern. Klicke auf den markierten Speichern-Button. Erst dein Klick legt die Schicht im Einsatzplan an.",
-  "plan-complete": "Schicht angelegt! Die Schicht erscheint jetzt im Einsatzplan. Als Nächstes kannst du passende Helfer auswählen und einteilen.",
+  "plan-created": "Neue Schicht in der Kachel finden. Die neue Schicht erscheint als Kachel mit Bedarf und Fortschrittsbalken. Links stehen die Eingeteilten, rechts wählst du passende Helfer aus.",
+  "plan-candidates": "Statuszeichen vor dem Namen lesen. Neu heißt: noch in keiner Schicht eingeteilt. Die Tagessegmente zeigen Grün für frei, Gelb für an diesem Tag schon belegt und Rot für nicht verfügbar. Die Uhr steht für ein Zeitfenster; das Familiensymbol bedeutet, dass eine Begleitung mitkommt.",
+  "plan-assign": "Passende Helfer gesammelt zuordnen. Setze vorne bei allen passenden Personen ein Häkchen und übernimm die Auswahl gesammelt. Ein Klick auf den Namen öffnet Hinweise, Verfügbarkeit und bisherige Einsätze.",
+  "plan-complete": "Besetzung im Griff! Du erkennst jetzt neue Helfer, Tagesstatus, Begleitungen und bestehende Einsätze – und kannst freie Plätze gesammelt füllen.",
 
   "preparation-intro": "Vorbereitungsaufgaben sicher planen. Ich zeige dir die echte Aufgabenanlage: Aufgabe formulieren, Zuständigkeit und Termin festlegen und den ersten Stand sauber festhalten.",
   "preparation-task": "Aufgabe klar formulieren. Beschreibe konkret, was erledigt werden soll. Bereich und Ort helfen, die Aufgabe später schnell wiederzufinden.",
@@ -193,6 +196,11 @@ const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
   "first-login-co-admin": "20260927-joke-v2",
   "dashboard-intro": "20260927-dashboard-tour-v1",
   "dashboard-complete": "20260927-dashboard-tour-v1",
+  "plan-intro": "20260927-assignment-guide-v1",
+  "plan-created": "20260927-assignment-guide-v1",
+  "plan-candidates": "20260927-assignment-guide-v1",
+  "plan-assign": "20260927-assignment-guide-v1",
+  "plan-complete": "20260927-assignment-guide-v1",
 };
 
 export function isKlemmiAudioId(value: string): value is KlemmiAudioId {

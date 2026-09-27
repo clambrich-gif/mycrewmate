@@ -454,14 +454,16 @@ export default function TaskGeneric({
       <div
         className={
           headerLayout === "stacked"
-            ? "flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between"
+            ? "flex flex-col gap-3 lg:flex-row lg:items-start lg:gap-5"
             : "flex flex-wrap items-end justify-between gap-3"
         }
       >
-        <PageTitle icon={titleIcon}>{title}</PageTitle>
+        <div className={headerLayout === "stacked" ? "min-w-0 flex-1 lg:pt-1" : undefined}>
+          <PageTitle icon={titleIcon}>{title}</PageTitle>
+        </div>
         {headerLayout === "stacked" ? (
           <KlemmiActionPanel
-            className="xl:ml-auto"
+            className="lg:ml-auto"
             viewControl={
               viewModeStorageKey ? <ViewModeToggle mode={viewMode} onChange={setViewMode} /> : undefined
             }

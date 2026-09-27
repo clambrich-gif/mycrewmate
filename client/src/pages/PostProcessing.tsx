@@ -632,8 +632,8 @@ export default function PostProcessing() {
 
   return (
     <div className="space-y-5 rounded-2xl bg-rose-50/50 p-3 sm:p-5 border border-rose-100">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:gap-5">
+        <div className="min-w-0 flex-1 lg:pt-1">
           <PageTitle icon="postprocessing" className="text-slate-950">
             Nachbereitung
           </PageTitle>

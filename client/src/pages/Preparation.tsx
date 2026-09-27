@@ -674,8 +674,8 @@ export default function Preparation() {
 
   return (
     <div className="space-y-5 rounded-2xl border border-sky-100 bg-sky-50/50 p-3 sm:p-5">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:gap-5">
+        <div className="min-w-0 flex-1 lg:pt-1">
           <PageTitle icon="preparation" className="text-slate-950">
             Vorbereitung
           </PageTitle>

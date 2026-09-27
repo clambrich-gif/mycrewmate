@@ -106,7 +106,7 @@ import { LocationMapLink } from "@/components/LocationMapLink";
 import { MyTasksDefaultPin } from "@/components/MyTasksDefaultPin";
 import { KlemmiSurfaceGuide } from "@/components/KlemmiSurfaceGuide";
 import { useMyTasksDefault } from "@/hooks/useMyTasksDefault";
-import { ViewModeToggle } from "@/components/ViewModeToggle";
+import { ViewModeToggle, type ViewMode } from "@/components/ViewModeToggle";
 import { useMobileViewMode, useViewMode } from "@/hooks/useViewMode";
 
 const formatTimeLabel = (shift: { startTime: string; endTime: string }) =>
@@ -225,11 +225,13 @@ function HelperDropdownFeedbackBadge({
   assignments = [],
   compact = false,
   interactive = false,
+  guideTarget = false,
 }: {
   feedback: ReturnType<typeof helperDropdownAssignmentFeedback>;
   assignments?: Array<{ day: string; label?: string; time?: string }>;
   compact?: boolean;
   interactive?: boolean;
+  guideTarget?: boolean;
 }) {
   if (!feedback) return null;
   if (feedback.kind === "already-assigned") {
@@ -290,6 +292,7 @@ function HelperDropdownFeedbackBadge({
     <span
       data-slot="helper-dropdown-feedback"
       data-feedback-kind="day-segments"
+      data-klemmi-target={guideTarget ? "plan-helper-status" : undefined}
       aria-label={assignedTooltip}
       title={assignedTooltip}
       className={`inline-flex shrink-0 cursor-help overflow-hidden rounded-full border border-slate-200 font-semibold shadow-xs ${compact ? "text-[8px] leading-4" : "text-[10px] leading-5"}`}
@@ -675,6 +678,7 @@ export default function Plan() {
   const [openOrUnassignedOnly, setOpenOrUnassignedOnly] = useState(false);
   const [q, setQ] = useState("");
   const [viewMode, setViewMode] = useViewMode("einsatzplan");
+  const [viewTransitionKey, setViewTransitionKey] = useState(0);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [mobileDays, setMobileDays] = useState<string[]>(() =>
     dashboardDayFilter ? [dashboardDayFilter] : []
@@ -702,11 +706,18 @@ export default function Plan() {
   const [mobileNoteValue, setMobileNoteValue] = useState("");
   const [klemmiGuideOpen, setKlemmiGuideOpen] = useState(false);
   const [klemmiCreationSignal, setKlemmiCreationSignal] = useState<number | null>(null);
+  const [klemmiCreatedShiftId, setKlemmiCreatedShiftId] = useState<number | null>(null);
   const [mobileHelperDetails, setMobileHelperDetails] = useState<{
     helper: HelperTooltipData;
     shift: DropdownShift;
   } | null>(null);
   const pendingTimeOverlapNotice = useRef<string[]>([]);
+  const klemmiCreatedShiftReady = useMemo(
+    () =>
+      klemmiCreatedShiftId !== null &&
+      evals.some(entry => entry.shift.id === klemmiCreatedShiftId),
+    [evals, klemmiCreatedShiftId]
+  );
   const emptyMessage =
     warningFilter === "konflikte"
       ? "Keine Schichten mit Doppelbelegungen gefunden."
@@ -777,6 +788,15 @@ export default function Plan() {
     );
   };
 
+  const changeViewMode = useCallback(
+    (nextMode: ViewMode) => {
+      if (nextMode === viewMode) return;
+      setViewTransitionKey(current => current + 1);
+      setViewMode(nextMode);
+    },
+    [setViewMode, viewMode]
+  );
+
   const hasActiveDropdownFilters =
     isMobileView
       ? mobileDays.length > 0 ||
@@ -841,9 +861,17 @@ export default function Plan() {
     onError: e => toast.error(e.message),
   });
   const createShift = trpc.shifts.create.useMutation({
-    onSuccess: () => {
+    onSuccess: result => {
+      const createdShiftId = Number(
+        (result as { insertId?: number } | undefined)?.insertId
+      );
       invalidate();
       setDlgOpen(false);
+      setKlemmiCreatedShiftId(
+        Number.isSafeInteger(createdShiftId) && createdShiftId > 0
+          ? createdShiftId
+          : null
+      );
       setKlemmiCreationSignal(Date.now());
       toast.success("Schicht angelegt");
     },
@@ -1558,6 +1586,10 @@ export default function Plan() {
       <Card
         key={shift.id}
         data-slot="shift-card"
+        data-klemmi-target={
+          klemmiCreatedShiftId === shift.id ? "plan-created-shift" : undefined
+        }
+        data-klemmi-shift-id={shift.id}
         className="overflow-hidden border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md"
       >
         <CardContent className="space-y-4 p-4">
@@ -1738,6 +1770,7 @@ export default function Plan() {
                             assignments={assignmentDisplayByHelper.get(helper.id) ?? []}
                             compact
                             interactive={isMobileView}
+                            guideTarget={klemmiCreatedShiftId === shift.id}
                           />
                         </div>
                       );
@@ -1751,6 +1784,9 @@ export default function Plan() {
                   <Button
                     type="button"
                     size="sm"
+                    data-klemmi-target={
+                      klemmiCreatedShiftId === shift.id ? "plan-batch-assign" : undefined
+                    }
                     className="mt-3 w-full bg-blue-600 text-white hover:bg-blue-700"
                     disabled={!selectedHelperIds.length || assignMany.isPending}
                     onClick={() => assignMany.mutate({ shiftId: shift.id, helperIds: selectedHelperIds })}
@@ -1804,32 +1840,32 @@ export default function Plan() {
           {canEditPlan ? (
             <KlemmiActionPanel
               className="lg:ml-auto"
-              viewControl={<ViewModeToggle mode={viewMode} onChange={setViewMode} />}
+              viewControl={<ViewModeToggle mode={viewMode} onChange={changeViewMode} />}
               guide={
                 <KlemmiSurfaceGuide
                 guideId="plan"
-                title="Schichten Schritt für Schritt anlegen"
-                introText="Ich zeige dir die echte Schichtanlage: Bedarf festlegen, Bereich und Aufgabe beschreiben, Zeit eintragen und die Schicht speichern."
+                title="Schichten anlegen und Besetzung füllen"
+                introText="Ich begleite dich zuerst durch die Schichtanlage und zeige dir danach direkt an der neuen Kachel, wie du passende Helfer sicher einteilst."
                 successSignal={klemmiCreationSignal}
                 onOpenChange={setKlemmiGuideOpen}
                 onStepAction={stepKey => {
                   if (stepKey === "intro") openCreate();
                 }}
-                completionTitle="Schicht angelegt!"
-                completionText="Die Schicht erscheint jetzt im Einsatzplan. Als Nächstes kannst du passende Helfer auswählen und einteilen."
+                completionTitle="Besetzung im Griff!"
+                completionText="Du erkennst jetzt neue Helfer, Tagesstatus, Begleitungen und bestehende Einsätze – und kannst freie Plätze gesammelt füllen."
                 steps={[
                   {
                     key: "intro",
                     selector: '[data-klemmi-target="plan-new"]',
                     eyebrow: "Klemmi zeigt’s",
-                    title: "Schichten Schritt für Schritt anlegen",
-                    text: "Ich führe dich direkt durch die echte Schichtanlage.",
+                    title: "Schichten anlegen und Besetzung füllen",
+                    text: "Ich führe dich durch die echte Schichtanlage und anschließend direkt in die Besetzung der neuen Kachel.",
                     action: "Neue Schicht öffnen",
                   },
                   {
                     key: "basics",
                     selector: '[data-klemmi-target="plan-basics"]',
-                    eyebrow: "Schritt 1 von 4",
+                    eyebrow: "Schritt 1 von 7",
                     title: "Tag und Personalbedarf festlegen",
                     text: "Wähle den passenden Eventtag und die Zahl der benötigten Helferplätze. So wird Unterbesetzung später sofort sichtbar.",
                     action: "Bereich beschreiben",
@@ -1837,7 +1873,7 @@ export default function Plan() {
                   {
                     key: "task",
                     selector: '[data-klemmi-target="plan-task"]',
-                    eyebrow: "Schritt 2 von 4",
+                    eyebrow: "Schritt 2 von 7",
                     title: "Bereich und Aufgabe benennen",
                     text: "Ein klarer Bereich und eine konkrete Aufgabe helfen dem Team, die Schicht in der Liste und auf dem Gelände sofort einzuordnen.",
                     action: "Zeit ergänzen",
@@ -1845,7 +1881,7 @@ export default function Plan() {
                   {
                     key: "time",
                     selector: '[data-klemmi-target="plan-time"]',
-                    eyebrow: "Schritt 3 von 4",
+                    eyebrow: "Schritt 3 von 7",
                     title: "Zeitfenster und Besonderheiten ergänzen",
                     text: "Trage Beginn und Ende ein, wenn die Schicht zeitgebunden ist. Ort, Hinweise und flexible Belegung kannst du nach Bedarf ergänzen.",
                     action: "Speichern zeigen",
@@ -1853,11 +1889,36 @@ export default function Plan() {
                   {
                     key: "save",
                     selector: '[data-klemmi-target="plan-save"]',
-                    eyebrow: "Schritt 4 von 4",
+                    eyebrow: "Schritt 4 von 7",
                     title: "Schicht speichern",
                     text: "Klicke auf den markierten Speichern-Button. Erst dein Klick legt die Schicht im Einsatzplan an.",
                     waitsForSuccess: true,
-                    completeOnSuccess: true,
+                  },
+                  {
+                    key: "created",
+                    selector: klemmiCreatedShiftReady
+                      ? `[data-klemmi-target="plan-created-shift"][data-klemmi-shift-id="${klemmiCreatedShiftId}"]`
+                      : '[data-slot="shift-card"]',
+                    eyebrow: "Schritt 5 von 7",
+                    title: "Neue Schicht in der Kachel finden",
+                    text: "Die neue Schicht erscheint als Kachel mit Bedarf und Fortschrittsbalken. Links stehen die Eingeteilten, rechts wählst du passende Helfer aus.",
+                    action: "Helferstatus verstehen",
+                  },
+                  {
+                    key: "candidates",
+                    selector: '[data-klemmi-target="plan-helper-status"]',
+                    eyebrow: "Schritt 6 von 7",
+                    title: "Statuszeichen vor dem Namen lesen",
+                    text: "„Neu“ heißt: noch in keiner Schicht eingeteilt. Die Tagessegmente zeigen Grün für frei, Gelb für an diesem Tag schon belegt und Rot für nicht verfügbar. Die Uhr steht für ein Zeitfenster; 👪 bedeutet, dass eine Begleitung mitkommt.",
+                    action: "Mehrere Helfer wählen",
+                  },
+                  {
+                    key: "assign",
+                    selector: '[data-klemmi-target="plan-batch-assign"]',
+                    eyebrow: "Schritt 7 von 7",
+                    title: "Passende Helfer gesammelt zuordnen",
+                    text: "Setze vorne bei allen passenden Personen ein Häkchen und übernimm die Auswahl gesammelt. Ein Klick auf den Namen öffnet Hinweise, Verfügbarkeit und bisherige Einsätze.",
+                    action: "Fertig",
                   },
                 ]}
                 />
@@ -1886,7 +1947,7 @@ export default function Plan() {
               }
             />
           ) : (
-            <ViewModeToggle mode={viewMode} onChange={setViewMode} />
+            <ViewModeToggle mode={viewMode} onChange={changeViewMode} />
           )}
         </div>
       </div>
@@ -2366,6 +2427,12 @@ export default function Plan() {
         </div>
       </div>
 
+      <section
+        key={`${viewMode}-${viewTransitionKey}`}
+        data-slot="plan-view-transition"
+        data-view-mode={viewMode}
+        className="plan-view-transition"
+      >
       {viewMode === "kacheln" && (
         <div
           data-slot="shift-card-grid"
@@ -2655,6 +2722,7 @@ export default function Plan() {
         <span className="slot slot-doppel inline-block">Doppelbelegung</span>{" "}
         <span className="slot slot-ausfall inline-block">Ausfall</span>
       </p>
+      </section>
 
       <AlertDialog
         open={Boolean(deleteCandidate)}

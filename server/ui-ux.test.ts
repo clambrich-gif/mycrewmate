@@ -118,6 +118,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const locations = source("client/src/pages/Locations.tsx");
     const styles = source("client/src/index.css");
     const mascot = source("client/src/components/KlemmiMascot.tsx");
+    const audio = source("client/src/lib/klemmiAudio.ts");
 
     expect(surfaceGuide).toContain("export function KlemmiSurfaceGuide");
     expect(surfaceGuide).toContain("KlemmiTriggerMascot");
@@ -136,6 +137,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain('data-klemmi-target="plan-new"');
     expect(plan).toContain('data-klemmi-target="plan-basics"');
     expect(plan).toContain('data-klemmi-target="plan-save"');
+    expect(plan).toContain('data-klemmi-target="plan-created-shift"');
+    expect(plan).toContain('data-klemmi-target="plan-helper-status"');
+    expect(plan).toContain('data-klemmi-target="plan-batch-assign"');
+    expect(plan).toContain("klemmiCreatedShiftId");
+    expect(plan).toContain("changeViewMode");
+    expect(plan).toContain('data-slot="plan-view-transition"');
     expect(plan).toContain("setKlemmiCreationSignal(Date.now())");
 
     expect(preparation).toContain('<KlemmiSurfaceGuide');
@@ -163,12 +170,24 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(styles).toContain("@keyframes klemmi-trigger-shift-and-wave");
     expect(styles).toContain("@keyframes klemmi-eye-glance");
     expect(styles).toContain("@keyframes klemmi-speaking-mouth");
+    expect(styles).toContain("@keyframes plan-view-enter");
+    expect(styles).toContain(".plan-view-transition");
     expect(styles).toContain("halbtransparenten Untertitelstreifen");
     expect(styles).toContain("[data-klemmi-next-control][data-klemmi-narration-complete=\"false\"]");
     expect(styles).toContain("background: rgb(255 255 255 / 74%)");
     expect(styles).toContain("20s cubic-bezier");
     expect(genericTasks).toContain("<KlemmiActionPanel");
     expect(genericTasks).toContain("secondaryActions=");
+    expect(genericTasks).toContain("lg:flex-row lg:items-start lg:gap-5");
+    expect(genericTasks).toContain('className="lg:ml-auto"');
+    expect(preparation).toContain("lg:flex-row lg:items-start lg:gap-5");
+    expect(preparation).toContain('className="lg:ml-auto"');
+    expect(postprocessing).toContain("lg:flex-row lg:items-start lg:gap-5");
+    expect(postprocessing).toContain('className="lg:ml-auto"');
+    expect(audio).toContain('"plan-created"');
+    expect(audio).toContain('"plan-candidates"');
+    expect(audio).toContain('"plan-assign"');
+    expect(audio).toContain('"plan-complete"');
   });
 
   it("führt durch Ansprechpartner, Spenden, Finanzen, PDF, Schutz und Hilfe über reale Ziele", () => {
@@ -2025,7 +2044,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const plan = source("client/src/pages/Plan.tsx");
 
     expect(plan).toContain('useViewMode("einsatzplan")');
-    expect(plan).toContain("<ViewModeToggle mode={viewMode} onChange={setViewMode} />");
+    expect(plan).toContain("<ViewModeToggle mode={viewMode} onChange={changeViewMode} />");
+    expect(plan).toContain("const changeViewMode = useCallback");
+    expect(plan).toContain("setViewTransitionKey");
+    expect(plan).toContain('data-slot="plan-view-transition"');
     expect(plan).toContain('data-slot="shift-card-grid"');
     expect(plan).toContain('data-slot="shift-card-batch-selection"');
     expect(plan).toContain("assignMany.mutate");
