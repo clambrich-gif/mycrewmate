@@ -15,6 +15,8 @@ type HighlightRect = {
 
 const KLEMMI_INTRO_TEXT =
   "Hallo! Ich bin Klemmi. Ich bin immer genau dann da, wenn es mal klemmt! Du kannst mich jederzeit aufrufen – du findest mich in jedem Menüpunkt ganz oben im Bildschirm!";
+const KLEMMI_CO_ADMIN_TEXT =
+  "Und noch ein Tipp für dich als Co-Admin: Im nächsten Schritt siehst du deine wichtigsten Rechte. Die vollständige Rechte-Matrix findest du später jederzeit im Hilfe-Bereich.";
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -28,10 +30,12 @@ function clamp(value: number, min: number, max: number) {
  */
 export function FirstLoginKlemmiIntro({
   open,
+  isCoAdmin = false,
   completing = false,
   onComplete,
 }: {
   open: boolean;
+  isCoAdmin?: boolean;
   completing?: boolean;
   onComplete: () => void;
 }) {
@@ -51,9 +55,14 @@ export function FirstLoginKlemmiIntro({
     // Der Audiostart wird versucht, sobald der Einstieg sichtbar ist. Browser,
     // die das nach der Willkommenszeit unterbinden, erhalten die klar sichtbare
     // Wiederholen-Schaltfläche – nie eine fremde Systemstimme als Ersatz.
-    const timer = window.setTimeout(() => speak(KLEMMI_INTRO_TEXT, "first-login-intro"), 360);
+    const timer = window.setTimeout(() => {
+      speak(
+        isCoAdmin ? `${KLEMMI_INTRO_TEXT} ${KLEMMI_CO_ADMIN_TEXT}` : KLEMMI_INTRO_TEXT,
+        isCoAdmin ? "first-login-co-admin" : "first-login-intro"
+      );
+    }, 360);
     return () => window.clearTimeout(timer);
-  }, [cancel, open, speak]);
+  }, [cancel, isCoAdmin, open, speak]);
 
   useLayoutEffect(() => {
     if (!open || typeof window === "undefined") return;
@@ -158,6 +167,11 @@ export function FirstLoginKlemmiIntro({
           </div>
         </div>
         <p className="mt-3 text-sm leading-relaxed text-slate-700">{KLEMMI_INTRO_TEXT}</p>
+        {isCoAdmin && (
+          <p className="mt-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm leading-relaxed text-blue-950">
+            <span className="font-semibold">Co-Admin-Tipp:</span> {KLEMMI_CO_ADMIN_TEXT.replace("Und noch ein Tipp für dich als Co-Admin: ", "")}
+          </p>
+        )}
         <p className="mt-2 text-xs leading-5 text-slate-500">
           Der orange Rahmen zeigt dir den echten Hilfeauslöser auf dieser Seite.
         </p>
@@ -166,7 +180,12 @@ export function FirstLoginKlemmiIntro({
             type="button"
             variant="outline"
             className="min-h-11 border-blue-200 text-blue-900 hover:bg-blue-50"
-            onClick={() => speak(KLEMMI_INTRO_TEXT, "first-login-intro")}
+            onClick={() =>
+              speak(
+                isCoAdmin ? `${KLEMMI_INTRO_TEXT} ${KLEMMI_CO_ADMIN_TEXT}` : KLEMMI_INTRO_TEXT,
+                isCoAdmin ? "first-login-co-admin" : "first-login-intro"
+              )
+            }
             disabled={muted || completing || leaving}
           >
             <Volume2 className="mr-1.5 size-4" aria-hidden="true" />

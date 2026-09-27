@@ -10,6 +10,15 @@ import { useState } from "react";
  */
 export default function KlemmiFirstLoginPreview() {
   const [introOpen, setIntroOpen] = useState(true);
+  const [isCoAdmin, setIsCoAdmin] = useState(
+    () => new URLSearchParams(window.location.search).get("coAdmin") === "1"
+  );
+
+  const restartPreview = (nextIsCoAdmin = isCoAdmin) => {
+    setIsCoAdmin(nextIsCoAdmin);
+    setIntroOpen(false);
+    window.requestAnimationFrame(() => setIntroOpen(true));
+  };
 
   return (
     <main className="min-h-dvh bg-slate-50 p-4 text-slate-950 sm:p-8">
@@ -20,14 +29,24 @@ export default function KlemmiFirstLoginPreview() {
             <h1 className="mt-0.5 text-xl font-bold">Klemmi nach dem Erst-Login</h1>
             <p className="mt-1 text-sm text-slate-600">Die Vorschau startet nach dem 15-Sekunden-Willkommensfenster.</p>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            className="min-h-11 border-amber-300 bg-white text-amber-950 hover:bg-amber-100"
-            onClick={() => setIntroOpen(true)}
-          >
-            Vorschau erneut starten
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-11 border-amber-300 bg-white text-amber-950 hover:bg-amber-100"
+              onClick={() => restartPreview(false)}
+            >
+              Standardansicht starten
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-11 border-blue-200 bg-blue-50 text-blue-950 hover:bg-blue-100"
+              onClick={() => restartPreview(true)}
+            >
+              Co-Admin-Hinweis starten
+            </Button>
+          </div>
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
@@ -73,6 +92,7 @@ export default function KlemmiFirstLoginPreview() {
 
       <FirstLoginKlemmiIntro
         open={introOpen}
+        isCoAdmin={isCoAdmin}
         onComplete={() => setIntroOpen(false)}
       />
     </main>

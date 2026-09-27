@@ -52,8 +52,11 @@ describe("Erst-Login-Onboarding", () => {
     expect(onboarding).toContain('"welcome" | "klemmi" | "co_admin"');
     expect(onboarding).toContain('setStep("klemmi")');
     expect(onboarding).toContain("open={open && step === \"klemmi\"}");
+    expect(onboarding).toContain("isCoAdmin={isCoAdmin}");
     expect(onboarding).toContain("onComplete={finishKlemmiIntro}");
-    expect(intro).toContain('speak(KLEMMI_INTRO_TEXT, "first-login-intro")');
+    expect(intro).toContain('"first-login-co-admin"');
+    expect(intro).toContain("KLEMMI_CO_ADMIN_TEXT");
+    expect(intro).toContain("Co-Admin-Tipp:");
     expect(intro).toContain("window.setTimeout(onComplete, 360)");
   });
 
@@ -77,7 +80,8 @@ describe("Erst-Login-Onboarding", () => {
     expect(css).toContain("@media (max-width: 639px)");
     expect(css).toContain("prefers-reduced-motion: reduce");
     expect(preview).toContain('data-klemmi-trigger="staging-preview"');
-    expect(preview).toContain("Vorschau erneut starten");
+    expect(preview).toContain("Standardansicht starten");
+    expect(preview).toContain("Co-Admin-Hinweis starten");
   });
 
   it("liefert pending true für ein neues Planungsteam-Konto mit ausstehendem Onboarding", async () => {

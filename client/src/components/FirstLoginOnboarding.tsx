@@ -211,6 +211,7 @@ export function FirstLoginOnboarding({
       </Dialog>
       <FirstLoginKlemmiIntro
         open={open && step === "klemmi"}
+        isCoAdmin={isCoAdmin}
         completing={completing}
         onComplete={finishKlemmiIntro}
       />
