@@ -83,6 +83,7 @@ const PdfExport = lazy(routeLoaders["/pdf-export"]);
 const Security = lazy(routeLoaders["/sicherheit"]);
 const Help = lazy(routeLoaders["/hilfe"]);
 const KlemmiFirstLoginPreview = lazy(() => import("@/pages/KlemmiFirstLoginPreview"));
+const KlemmiDashboardPreview = lazy(() => import("@/pages/KlemmiDashboardPreview"));
 const OfferDemo = lazy(() => import("@/pages/OfferDemo"));
 const PublicLegalPage = lazy(() => import("@/pages/PublicLegal"));
 const MasterAdminPortal = lazy(() => import("@/pages/MasterAdminPortal"));
@@ -167,6 +168,13 @@ function Router() {
         <Route path="/_staging/klemmi-erst-login">
           <Suspense fallback={<RouteLoading />}>
             <KlemmiFirstLoginPreview />
+          </Suspense>
+        </Route>
+      )}
+      {import.meta.env.DEV && (
+        <Route path="/_staging/klemmi-dashboard">
+          <Suspense fallback={<RouteLoading />}>
+            <KlemmiDashboardPreview />
           </Suspense>
         </Route>
       )}

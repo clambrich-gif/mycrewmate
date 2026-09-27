@@ -17,8 +17,19 @@ export const KLEMMI_VOICE_PROFILE = {
 export const KLEMMI_AUDIO_SCRIPTS = {
   "first-login-intro": "Hallo! Ich bin Klemmi. Und nein – nicht weil ich verklemmt bin. [laughing] Sondern weil ich immer genau dann zur Stelle bin, wenn es irgendwo klemmt, oder halt, wenn du das erste Mal hier bist! Egal ob Schichten, Helfer oder Event-Planung: Wenn du mal nicht weiterweißt, klick mich einfach an! Du findest mich ab jetzt auf jeder Seite ganz oben im Menü.",
   "first-login-co-admin": "Hallo! Ich bin Klemmi. Und nein – nicht weil ich verklemmt bin. [laughing] Sondern weil ich immer genau dann zur Stelle bin, wenn es irgendwo klemmt, oder halt, wenn du das erste Mal hier bist! Egal ob Schichten, Helfer oder Event-Planung: Wenn du mal nicht weiterweißt, klick mich einfach an! Du findest mich ab jetzt auf jeder Seite ganz oben im Menü. Und noch ein Tipp für dich als Co-Admin: Im nächsten Schritt siehst du deine wichtigsten Rechte. Die vollständige Rechte-Matrix findest du später jederzeit im Hilfe-Bereich.",
-  "dashboard-intro": "Dein Überblick im Dashboard. Hier siehst du die wichtigsten nächsten Schritte, Fristen und Kennzahlen. Klicke einfach auf eine Karte, um direkt in den passenden Planungsbereich zu wechseln.",
-  "dashboard-complete": "Alles im Blick! Klemmi bleibt oben in jedem Bereich für dich erreichbar.",
+  "dashboard-intro": "Dein Dashboard auf einen Blick. Hier laufen die Informationen aus deiner Planung zusammen. Ich zeige dir jetzt nur die Bereiche, die auf diesem Dashboard wirklich sichtbar sind.",
+  "dashboard-countdown-dated": "Countdown bis zum Event. Hier siehst du den Zeitraum der aktuellen Veranstaltung und den Countdown. Das Datum kommt direkt aus den Eventdaten und aktualisiert sich automatisch.",
+  "dashboard-countdown-empty": "Zeitraum für den Countdown festlegen. Hier erscheint der Countdown, sobald du in den Eventdaten einen Start- und bei mehrtägigen Veranstaltungen auch einen Endtermin speicherst.",
+  "dashboard-priorities-attention": "Was jetzt Aufmerksamkeit braucht. Diese Karten zeigen nur konkrete Warnungen oder offene Punkte, zum Beispiel unbesetzte Schichten, Ausfälle oder offene Vorbereitungen. Ein Klick führt direkt in den passenden Bereich.",
+  "dashboard-priorities-clear": "Keine dringenden Punkte. Hier werden später nur Punkte eingeblendet, die unmittelbar Aufmerksamkeit brauchen. Sobald es offene Schichten, Konflikte oder Aufgaben gibt, erscheinen sie automatisch an dieser Stelle.",
+  "dashboard-deadlines": "Datierte Vorbereitungsaufgaben. Diese Übersicht erscheint, wenn Vorbereitungsaufgaben ein Fälligkeitsdatum haben. Du siehst die nächsten Termine zuerst und öffnest per Klick direkt die zugehörige Aufgabe.",
+  "dashboard-helpers-active": "Helferstatus je Festivaltag. Hier erkennst du pro Veranstaltungstag Besetzung und Bedarf, Rückmeldungen, Erstkontakte und Verpflegungsspenden. Klickbare Werte führen in die bereits passend gefilterte Helfer- oder Einsatzplanansicht.",
+  "dashboard-helpers-empty": "Helferstatus entsteht mit deiner Planung. Sobald du Helfer anlegst und Schichten mit Bedarf planst, erscheinen hier Besetzung, Rückmeldungen und Erstkontakte. Erfasste Kuchen- und Salatspenden werden daneben automatisch zusammengefasst.",
+  "dashboard-details-active": "Wer macht was – und wer ist frei? Links siehst du Verantwortlichkeiten nach Ansprechpartnern. Rechts zeigt die Helferauslastung alle eingeteilten Schichten je Tag. Ein Klick auf einen Namen oder Wert öffnet die passende gefilterte Einsatzplanung.",
+  "dashboard-details-empty": "Details wachsen mit den Einträgen. Hier entstehen zwei Übersichten, sobald Ansprechpartner, Helfer und Schichten gepflegt sind: Zuständigkeiten auf der linken Seite und die tägliche Helferauslastung auf der rechten Seite.",
+  "dashboard-map-active": "Live-Standortkarte nutzen. Diese Karte verbindet Orte mit Vorbereitung, Schichten und Material. Die Farben zeigen den jeweiligen Stand, und ein Klick auf einen Marker filtert den passenden Planungsbereich.",
+  "dashboard-map-empty": "Standortkarte später aktivieren. Sobald du unter Orte und Standorte mindestens einen Standort mit Koordinaten anlegst, wird hier unten automatisch die Live-Standortkarte mit den zugehörigen Planungsinformationen eingeblendet.",
+  "dashboard-complete": "Alles im Blick! Du weißt jetzt, wo das Dashboard den aktuellen Planungsstand zeigt – und welche Eingaben die einzelnen Übersichten füllen.",
 
   "helpers-intro": "Neue Helfer sicher anlegen. Ich führe dich direkt auf der echten Oberfläche durch die Anlage – vom Namen bis zum passenden Zeitfenster.",
   "helpers-person": "Person erfassen. Der Name ist die einzige Pflichtangabe. Ansprechpartner, Telefonnummer und Hinweis kannst du ergänzen, wenn du sie schon kennst.",
@@ -71,6 +82,8 @@ export type KlemmiAudioId = keyof typeof KLEMMI_AUDIO_SCRIPTS;
 const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
   "first-login-intro": "20260927-joke-v2",
   "first-login-co-admin": "20260927-joke-v2",
+  "dashboard-intro": "20260927-dashboard-tour-v1",
+  "dashboard-complete": "20260927-dashboard-tour-v1",
 };
 
 export function isKlemmiAudioId(value: string): value is KlemmiAudioId {

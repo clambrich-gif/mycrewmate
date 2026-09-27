@@ -131,6 +131,43 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(genericTasks).toContain("secondaryActions=");
   });
 
+  it("erklärt das Dashboard datenabhängig und erläutert leere Karten- sowie Kennzahlenbereiche korrekt", () => {
+    const dashboard = source("client/src/pages/Dashboard.tsx");
+    const tour = source("client/src/lib/dashboard-klemmi-tour.ts");
+    const preview = source("client/src/pages/KlemmiDashboardPreview.tsx");
+    const app = source("client/src/App.tsx");
+    const audio = source("client/src/lib/klemmiAudio.ts");
+
+    expect(dashboard).toContain("createDashboardKlemmiSteps");
+    expect(dashboard).toContain("hasMappableLocations");
+    expect(dashboard).toContain("trpc.locations.list.useQuery");
+    expect(dashboard).toContain("steps={dashboardKlemmiSteps}");
+    expect(tour).toContain("hasMappableLocations");
+    expect(tour).toContain("hasEventPeriod");
+    expect(tour).toContain("hasPriorityActions");
+    expect(tour).toContain("hasDeadlines");
+    expect(tour).toContain("hasHelpers");
+    expect(tour).toContain("hasAssignments");
+    expect(tour).toContain("hasContacts");
+    expect(tour).toContain("Standortkarte später aktivieren");
+    expect(tour).toContain("mindestens einen Standort mit Koordinaten");
+    expect(tour).toContain('"map-empty"');
+    expect(tour).toContain('"map-active"');
+    expect(tour).toContain('"helpers-empty"');
+    expect(tour).toContain('"details-empty"');
+    expect(audio).toContain('"dashboard-countdown-dated"');
+    expect(audio).toContain('"dashboard-countdown-empty"');
+    expect(audio).toContain('"dashboard-priorities-attention"');
+    expect(audio).toContain('"dashboard-priorities-clear"');
+    expect(audio).toContain('"dashboard-helpers-active"');
+    expect(audio).toContain('"dashboard-map-empty"');
+    expect(audio).toContain("20260927-dashboard-tour-v1");
+    expect(app).toContain('path="/_staging/klemmi-dashboard"');
+    expect(preview).toContain("Gefülltes Dashboard");
+    expect(preview).toContain("Leerer Startzustand");
+    expect(preview).toContain("KlemmiSurfaceGuide");
+  });
+
   it("zeigt PDF-Hinweise bearbeitbar per Desktop-Hover und Touch-Popover vollständig an", () => {
     const helpers = source("client/src/pages/Helpers.tsx");
 

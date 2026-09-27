@@ -5,6 +5,7 @@ import { PageTitle } from "@/components/PageTitle";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import { dashboardDailyQuote } from "@/lib/daily-dashboard-quotes";
+import { createDashboardKlemmiSteps } from "@/lib/dashboard-klemmi-tour";
 import {
   dashboardTargetHref,
   type DashboardTarget,
@@ -1016,6 +1017,7 @@ export default function Dashboard() {
     trpc.events.current.useQuery();
   const { data: currentTenant, isLoading: isTenantLoading } =
     trpc.tenants.current.useQuery();
+  const { data: dashboardLocations = [] } = trpc.locations.list.useQuery();
   const activeDays = currentEvent ? eventWeekdays(currentEvent.activeDays) : [];
   const helperByName = new Map(helpers.map(helper => [helper.name, helper]));
   const zeroAvailability = (helperName: string, day: Weekday) => {
@@ -1164,6 +1166,19 @@ export default function Dashboard() {
 
   const upcomingDeadlines = s.naechsteVorbereitungsfristen as DashboardDeadline[];
   const dailyReadiness = s.taeglicheEinsatzbereitschaft as DailyReadiness[];
+  const hasMappableLocations = dashboardLocations.some(location => {
+    const candidate = location as { latitude?: number | null; longitude?: number | null };
+    return Number.isFinite(candidate.latitude) && Number.isFinite(candidate.longitude);
+  });
+  const dashboardKlemmiSteps = createDashboardKlemmiSteps({
+    hasEventPeriod: Boolean(currentEvent.startDate),
+    hasPriorityActions: priorityActions.length > 0,
+    hasDeadlines: upcomingDeadlines.length > 0,
+    hasHelpers: helpers.length > 0,
+    hasAssignments: s.schichtenGesamt > 0,
+    hasContacts: s.verantwortlichkeiten.length > 0,
+    hasMappableLocations,
+  });
   const activePotentialDay = workloadFilter
     ? dailyReadiness.find(day => day.day === workloadFilter.day)
     : undefined;
@@ -1212,21 +1227,12 @@ export default function Dashboard() {
         <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:items-end">
           <KlemmiSurfaceGuide
             guideId="dashboard"
-            title="Dein Überblick im Dashboard"
-            introText="Hier siehst du die wichtigsten nächsten Schritte, Fristen und Kennzahlen. Klicke einfach auf eine Karte, um direkt in den passenden Planungsbereich zu wechseln."
+            title="Dein Dashboard auf einen Blick"
+            introText="Hier laufen die Informationen aus deiner Planung zusammen. Ich zeige dir jetzt nur die Bereiche, die auf diesem Dashboard wirklich sichtbar sind."
+            steps={dashboardKlemmiSteps}
             successSignal={null}
             completionTitle="Alles im Blick!"
-            completionText="Klemmi bleibt oben in jedem Bereich für dich erreichbar."
-            steps={[
-              {
-                key: "intro",
-                selector: '[data-klemmi-trigger="dashboard"]',
-                eyebrow: "Klemmi zeigt’s",
-                title: "Dein Überblick im Dashboard",
-                text: "Ich zeige dir, wo du jederzeit Hilfe findest.",
-                action: "Verstanden",
-              },
-            ]}
+            completionText="Du weißt jetzt, wo das Dashboard den aktuellen Planungsstand zeigt – und welche Eingaben die einzelnen Übersichten füllen."
           />
           <EventCountdownWidget event={currentEvent} />
         </div>
