@@ -18,7 +18,14 @@ import {
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
-type GuideStepKey = "intro" | "person" | "donation" | "save" | "availability";
+type GuideStepKey =
+  | "intro"
+  | "person"
+  | "contact"
+  | "details"
+  | "donation"
+  | "save"
+  | "availability";
 
 type HighlightRect = {
   top: number;
@@ -59,16 +66,34 @@ const guideSteps: Array<{
     key: "person",
     selector: '[data-klemmi-target="new-helper-name"]',
     workflowStep: 1,
-    eyebrow: "Schritt 1 von 4",
-    title: "Person erfassen",
-    text: "Der Name ist die einzige Pflichtangabe. Ansprechpartner, Telefonnummer und Hinweis kannst du ergänzen, wenn du sie schon kennst.",
+    eyebrow: "Schritt 1 von 6",
+    title: "Name des Helfers",
+    text: "Starte mit dem Namen. Nur dieses Feld ist Pflicht – so erscheint die Person eindeutig in der Helferliste und später im Einsatzplan.",
+    action: "Kontaktdaten zeigen",
+  },
+  {
+    key: "contact",
+    selector: '[data-klemmi-target="new-helper-contact"]',
+    workflowStep: 2,
+    eyebrow: "Schritt 2 von 6",
+    title: "Ansprechpartner und Telefonnummer",
+    text: "Wähle im nächsten Feld den Ansprechpartner aus und ergänze, falls vorhanden, die Telefonnummer des Helfers. Beides ist optional und lässt sich später noch ändern.",
+    action: "Hinweise zeigen",
+  },
+  {
+    key: "details",
+    selector: '[data-klemmi-target="new-helper-details"]',
+    workflowStep: 3,
+    eyebrow: "Schritt 3 von 6",
+    title: "Hinweise und Begleitung",
+    text: "Notiere Besonderheiten für die persönliche Helfer-PDF oder eine zusätzliche Begleitung. Das ist praktisch für Absprachen und die spätere Einsatzplanung.",
     action: "Spende zeigen",
   },
   {
     key: "donation",
     selector: '[data-klemmi-target="new-helper-donation"]',
-    workflowStep: 2,
-    eyebrow: "Schritt 2 von 4",
+    workflowStep: 4,
+    eyebrow: "Schritt 4 von 6",
     title: "Spende bei Bedarf ergänzen",
     text: "Die Spende ist optional: Setze nur dann das Häkchen, wenn Kuchen, Salat, Snack oder eine andere Spende direkt mit erfasst werden soll.",
     action: "Speichern zeigen",
@@ -76,8 +101,8 @@ const guideSteps: Array<{
   {
     key: "save",
     selector: '[data-klemmi-target="new-helper-submit"]',
-    workflowStep: 3,
-    eyebrow: "Schritt 3 von 4",
+    workflowStep: 5,
+    eyebrow: "Schritt 5 von 6",
     title: "Helfer jetzt speichern",
     text: "Klicke jetzt unten rechts auf den markierten Speichern-Button. Klemmi wartet auf die erfolgreiche Anlage und zeigt danach genau diesen neuen Helfer.",
     waitsForSave: true,
@@ -85,8 +110,8 @@ const guideSteps: Array<{
   {
     key: "availability",
     selector: '[data-klemmi-target="helper-availability"]',
-    workflowStep: 4,
-    eyebrow: "Schritt 4 von 4",
+    workflowStep: 6,
+    eyebrow: "Schritt 6 von 6",
     title: "Zeitfenster des neuen Helfers festlegen",
     text: "Hier legst du für den gerade angelegten Helfer direkt fest, ob und wann er verfügbar ist. Tippe auf einen Tag und wähle „Ja“, „Nein“ oder ein Zeitfenster von–bis.",
     action: "Fertig",
@@ -147,7 +172,7 @@ export function KlemmiHelperGuide({
   useEffect(() => {
     if (!open) return;
     if (createdHelperId !== null && step.key !== "availability") {
-      setStepIndex(4);
+      setStepIndex(6);
       return;
     }
     if (step.key === "intro" && helperDialogOpen) setStepIndex(1);
@@ -219,12 +244,20 @@ export function KlemmiHelperGuide({
       setStepIndex(0);
       return;
     }
-    if (step.key === "donation") {
+    if (step.key === "contact") {
       setStepIndex(1);
       return;
     }
-    if (step.key === "save") {
+    if (step.key === "details") {
       setStepIndex(2);
+      return;
+    }
+    if (step.key === "donation") {
+      setStepIndex(3);
+      return;
+    }
+    if (step.key === "save") {
+      setStepIndex(4);
       return;
     }
     closeGuide();
@@ -240,8 +273,16 @@ export function KlemmiHelperGuide({
       setStepIndex(2);
       return;
     }
-    if (step.key === "donation") {
+    if (step.key === "contact") {
       setStepIndex(3);
+      return;
+    }
+    if (step.key === "details") {
+      setStepIndex(4);
+      return;
+    }
+    if (step.key === "donation") {
+      setStepIndex(5);
       return;
     }
     if (step.key === "availability") setCelebrating(true);
@@ -397,7 +438,7 @@ export function KlemmiHelperGuide({
                         <CheckCircle2 className="mr-1.5 size-4 shrink-0" aria-hidden="true" />
                       ) : step.key === "donation" ? (
                         <Save className="mr-1.5 size-4 shrink-0" aria-hidden="true" />
-                      ) : step.key === "person" ? (
+                      ) : step.key === "person" || step.key === "contact" || step.key === "details" ? (
                         <Gift className="mr-1.5 size-4 shrink-0" aria-hidden="true" />
                       ) : (
                         <Sparkles className="mr-1.5 size-4 shrink-0" aria-hidden="true" />

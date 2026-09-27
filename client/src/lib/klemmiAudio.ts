@@ -63,12 +63,51 @@ export const KLEMMI_AUDIO_SCRIPTS = {
   "dashboard-complete": "Alles im Blick! Du weißt jetzt, wo das Dashboard den aktuellen Planungsstand zeigt – und welche Eingaben die einzelnen Übersichten füllen.",
 
   "helpers-intro": "Neue Helfer sicher anlegen. Ich führe dich direkt auf der echten Oberfläche durch die Anlage – vom Namen bis zum passenden Zeitfenster.",
-  "helpers-person": "Person erfassen. Der Name ist die einzige Pflichtangabe. Ansprechpartner, Telefonnummer und Hinweis kannst du ergänzen, wenn du sie schon kennst.",
+  "helpers-person": "Name des Helfers. Starte mit dem Namen. Nur dieses Feld ist Pflicht – so erscheint die Person eindeutig in der Helferliste und später im Einsatzplan.",
+  "helpers-contact": "Ansprechpartner und Telefonnummer. Wähle im nächsten Feld den Ansprechpartner aus und ergänze, falls vorhanden, die Telefonnummer des Helfers. Beides ist optional und lässt sich später noch ändern.",
+  "helpers-details": "Hinweise und Begleitung. Notiere Besonderheiten für die persönliche Helfer-PDF oder eine zusätzliche Begleitung. Das ist praktisch für Absprachen und die spätere Einsatzplanung.",
   "helpers-donation": "Spende bei Bedarf ergänzen. Die Spende ist optional: Setze nur dann das Häkchen, wenn Kuchen, Salat, Snack oder eine andere Spende direkt mit erfasst werden soll.",
   "helpers-save-helper": "Helfer jetzt speichern. Klicke jetzt unten rechts auf Helfer anlegen. Klicke jetzt unten rechts auf den markierten Speichern-Button. Klemmi wartet auf die erfolgreiche Anlage und zeigt danach genau diesen neuen Helfer.",
   "helpers-save-donation": "Helfer jetzt speichern. Klicke jetzt unten rechts auf Helfer und Spende anlegen. Klicke jetzt unten rechts auf den markierten Speichern-Button. Klemmi wartet auf die erfolgreiche Anlage und zeigt danach genau diesen neuen Helfer.",
   "helpers-availability": "Zeitfenster des neuen Helfers festlegen. Hier legst du für den gerade angelegten Helfer direkt fest, ob und wann er verfügbar ist. Tippe auf einen Tag und wähle Ja, Nein oder ein Zeitfenster von bis.",
   "helpers-complete": "Geschafft! Du hast einen Helfer angelegt und kennst nun auch die Verfügbarkeit.",
+
+  "contacts-intro": "Ansprechpartner von Anfang an pflegen. Ansprechpartner sind deine verlässlichen Kontaktpersonen für Teams, Helfer und PDFs. Ich führe dich kurz durch die Stammdatenanlage.",
+  "contacts-name": "Name eindeutig eintragen. Trage zuerst den Namen ein. Diese Angabe ist erforderlich und erscheint später bei Zuordnungen, in Listen und in persönlichen Unterlagen.",
+  "contacts-details": "E-Mail und Rufnummer ergänzen. E-Mail-Adresse und Rufnummer sind optional, aber für Rückfragen besonders hilfreich. Ein persönlicher Zugang wird bewusst getrennt unter Schutz und Protokoll eingerichtet.",
+  "contacts-save": "Ansprechpartner hinzufügen. Klicke auf den markierten Button. Danach steht die Person direkt für Helfer, Aufgaben und Zuständigkeiten zur Auswahl bereit.",
+  "contacts-complete": "Geschafft! Der Ansprechpartner ist angelegt und kann jetzt überall in der Planung zugeordnet werden.",
+
+  "donations-intro": "Spenden übersichtlich erfassen. Kuchen, Salate und andere Verpflegungsspenden werden hier sauber mit Spender, Eigenschaften und Abgabe organisiert.",
+  "donations-donor": "Spender zuordnen. Wähle einen bestehenden Helfer aus oder trage einen Namen frei ein. So bleibt nachvollziehbar, von wem die Spende kommt.",
+  "donations-item": "Spende und Kategorie festlegen. Beschreibe kurz, was mitgebracht wird, und wähle die passende Kategorie. So bleibt der Überblick über Kuchen, Salate, Desserts und Sonstiges erhalten.",
+  "donations-traits": "Allergene, Abgabe und Hinweise. Kennzeichne bei Bedarf vegan, glutenfrei, laktosefrei, Nüsse oder fleischhaltig. Abgabeort, Zeitpunkt und ein freier Hinweis helfen der Verpflegung am Veranstaltungstag.",
+  "donations-save": "Spende speichern. Mit dem markierten Speichern-Button wird die Spende in die Übersicht übernommen und zählt automatisch für die aktuelle Veranstaltung.",
+  "donations-complete": "Prima! Die Spende ist erfasst und bleibt für Verpflegung und Helferteam transparent sichtbar.",
+
+  "finances-intro": "Finanzen einfach im Blick behalten. Hier werden Einnahmen und Ausgaben nach Kategorien getrennt geführt. Der Saldo wird für dich automatisch berechnet.",
+  "finances-category": "Kostenart anlegen. Trage eine klare Kategorie ein, zum Beispiel Startgelder, Catering, Technik oder Sponsoring. Mit dem Button daneben wird die neue Zeile angelegt.",
+  "finances-values": "Einnahmen und Ausgaben eintragen. In jeder Kategorie gibst du Einnahmen und Ausgaben ein. Die Werte werden beim Verlassen des Feldes gespeichert; die Differenz zeigt sofort den aktuellen Stand.",
+  "finances-balance": "Saldo gemeinsam prüfen. Ganz unten fasst der Saldo alle Kategorien zusammen. So erkennst du schnell, ob deine Veranstaltung finanziell im Plan liegt.",
+  "finances-complete": "Alles klar! Du weißt jetzt, wo Kategorien, Einzelwerte und der gesamte Saldo zusammenkommen.",
+
+  "pdf-intro": "Passende PDFs gezielt erstellen. In der PDF-Ausgabe erzeugst du persönliche Helferunterlagen, Ansprechpartnerübersichten und gefilterte Einsatzpläne aus den realen Planungsdaten.",
+  "pdf-helpers": "Helfer-PDFs bündeln. Wähle bei Bedarf einen Ansprechpartner aus. Anschließend erzeugst du entweder alle Helfer-PDFs als ZIP oder nur die passenden Unterlagen für diese Person.",
+  "pdf-plan": "Einsatzplan filtern und drucken. Für den Einsatzplan wählst du Tag, Bereiche, Status und bei Bedarf Ansprechpartner. Das PDF enthält nur die Auswahl, die du wirklich brauchst.",
+  "pdf-config": "Vorlage pro Veranstaltung pflegen. Administratoren können hier Logo, Titel, Zusatzspalten, Fußzeilen und WhatsApp-Vorlagen für die aktuell gewählte Veranstaltung konfigurieren. Andere sehen die fertigen PDFs weiterhin unverändert.",
+  "pdf-complete": "Fertig! Damit kannst du genau die Unterlagen erzeugen, die dein Team gerade braucht.",
+
+  "security-intro": "Schutz und Protokoll sicher nutzen. Dieser Bereich ist für Administratoren. Hier werden Zugänge, Notfallmaßnahmen und nachvollziehbare Protokolle getrennt und sicher verwaltet.",
+  "security-accesses": "Planungsteam-Zugänge verwalten. Hier legst du gezielt Zugänge, Eventfreigaben und Bereichsrechte an. Ein Zugang ist erst nach der passenden Freigabe in der aktuellen Veranstaltung wirksam.",
+  "security-audit": "Änderungen nachvollziehen. Das Logbuch trennt Sicherheitsereignisse, Aktivitäten sowie Datei- und Importvorgänge. So lässt sich jederzeit nachvollziehen, was wann passiert ist.",
+  "security-emergency": "Notfallmaßnahmen bewusst einsetzen. Der globale Notfall-Stopp sperrt alle Planungsteam-Zugänge sofort. Der Gefahrenbereich löscht Planungsdaten des gewählten Jahres – nutze beides nur bewusst und nach Prüfung.",
+  "security-complete": "Gut! Du weißt jetzt, wo du Zugänge sicher verwaltest und den Verlauf kontrollierst.",
+
+  "help-intro": "Im Hilfe-Center schnell zurechtfinden. Hier findest du kurze Anleitungen für die gesamte Planung – von der ersten Orientierung bis zu PDFs, Rechten und Sicherungen.",
+  "help-search": "Direkt nach einem Begriff suchen. Tippe einfach ein Stichwort wie Helfer, Einsatzplan, Material, PDF oder Passwort ein. Die sichtbaren Kapitel passen sich sofort an.",
+  "help-filters": "Hilfe nach Rolle filtern. Mit den Rollenfiltern blendest du Inhalte für alle, für das Planungsteam oder für Administratoren ein. So bleibt die Anleitung passend zu deinen Rechten.",
+  "help-chapters": "Kapitel öffnen und direkt weiterarbeiten. Öffne das passende Kapitel, lies die kompakten Schritte und nutze die Links direkt zum jeweiligen Arbeitsbereich. Klemmi bleibt auch dort wieder für dich erreichbar.",
+  "help-complete": "Geschafft! Jetzt weißt du, wie du in der Hilfe schnell zur passenden Antwort und direkt weiter zur Arbeit kommst.",
 
   "plan-intro": "Schichten Schritt für Schritt anlegen. Ich zeige dir die echte Schichtanlage: Bedarf festlegen, Bereich und Aufgabe beschreiben, Zeit eintragen und die Schicht speichern.",
   "plan-basics": "Tag und Personalbedarf festlegen. Wähle den passenden Eventtag und die Zahl der benötigten Helferplätze. So wird Unterbesetzung später sofort sichtbar.",
@@ -149,6 +188,7 @@ export const KLEMMI_OPENING_AUDIO_IDS = [
  * trotz langer Cache-Zeit versehentlich eine vorherige Klemmi-Aufnahme spielen.
  */
 const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
+  "helpers-person": "20260927-detailed-guide-v1",
   "first-login-intro": "20260927-joke-v2",
   "first-login-co-admin": "20260927-joke-v2",
   "dashboard-intro": "20260927-dashboard-tour-v1",

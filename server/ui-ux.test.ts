@@ -13,11 +13,14 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const audio = source("client/src/lib/klemmiAudio.ts");
     const assetRoute = source("server/klemmi-asset-routes.ts");
     const voiceControl = source("client/src/components/KlemmiVoiceControl.tsx");
+    const areaTours = source("client/src/lib/klemmi-area-tours.ts");
 
     expect(helpers).toContain('import { KlemmiHelperGuide } from "@/components/KlemmiHelperGuide"');
     expect(helpers).toContain("<KlemmiHelperGuide");
     expect(helpers).toContain('data-klemmi-target="new-helper"');
     expect(helpers).toContain('data-klemmi-target="new-helper-name"');
+    expect(helpers).toContain('data-klemmi-target="new-helper-contact"');
+    expect(helpers).toContain('data-klemmi-target="new-helper-details"');
     expect(helpers).toContain('data-klemmi-target="new-helper-donation"');
     expect(helpers).toContain('data-klemmi-target="new-helper-submit"');
     expect(helpers).toContain('data-klemmi-target="helper-availability"');
@@ -68,7 +71,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(guide).toContain("Neue Helfer sicher anlegen");
     expect(guide).toContain("Spende bei Bedarf ergänzen");
     expect(guide).toContain('key: "save"');
-    expect(guide).toContain("Schritt 4 von 4");
+    expect(guide).toContain("Schritt 6 von 6");
+    expect(guide).toContain("Ansprechpartner und Telefonnummer");
+    expect(guide).toContain("Hinweise und Begleitung");
     expect(guide).toContain("Helfer jetzt speichern");
     expect(guide).toContain("Klemmi wartet auf deinen Klick");
     expect(guide).toContain("Klemmi-Hinweis:");
@@ -83,6 +88,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain("KlemmiActionPanel");
     expect(helpers).toContain("border-2 border-[#f3794a]");
     expect(helpers).toContain("bg-white text-base font-semibold text-slate-950");
+    expect(areaTours).toContain("CONTACTS_KLEMMI_STEPS");
+    expect(areaTours).toContain("DONATIONS_KLEMMI_STEPS");
+    expect(areaTours).toContain("FINANCES_KLEMMI_STEPS");
+    expect(areaTours).toContain("PDF_KLEMMI_STEPS");
+    expect(areaTours).toContain("SECURITY_KLEMMI_STEPS");
+    expect(areaTours).toContain("HELP_KLEMMI_STEPS");
   });
 
   it("führt mit Klemmi über Einsatzplan, Aufgaben, Material und Standorte mit echten Speicheraktionen", () => {
@@ -140,6 +151,32 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(styles).toContain("20s cubic-bezier");
     expect(genericTasks).toContain("<KlemmiActionPanel");
     expect(genericTasks).toContain("secondaryActions=");
+  });
+
+  it("führt durch Ansprechpartner, Spenden, Finanzen, PDF, Schutz und Hilfe über reale Ziele", () => {
+    const contacts = source("client/src/pages/Contacts.tsx");
+    const donations = source("client/src/pages/Cakes.tsx");
+    const finances = source("client/src/pages/Finances.tsx");
+    const pdf = source("client/src/pages/PdfExport.tsx");
+    const security = source("client/src/pages/Security.tsx");
+    const help = source("client/src/pages/Help.tsx");
+    const audio = source("client/src/lib/klemmiAudio.ts");
+
+    for (const page of [contacts, donations, finances, pdf, security, help]) {
+      expect(page).toContain("KlemmiSurfaceGuide");
+    }
+    expect(contacts).toContain('data-klemmi-target="contacts-save"');
+    expect(donations).toContain('data-klemmi-target="donation-save"');
+    expect(finances).toContain('data-klemmi-target="finances-balance"');
+    expect(pdf).toContain('klemmiTarget="pdf-plan"');
+    expect(security).toContain('klemmiTarget="security-audit"');
+    expect(help).toContain('data-klemmi-target="help-chapters"');
+    expect(audio).toContain('"contacts-intro"');
+    expect(audio).toContain('"donations-intro"');
+    expect(audio).toContain('"finances-intro"');
+    expect(audio).toContain('"pdf-intro"');
+    expect(audio).toContain('"security-intro"');
+    expect(audio).toContain('"help-intro"');
   });
 
   it("erklärt das Dashboard datenabhängig und erläutert leere Karten- sowie Kennzahlenbereiche korrekt", () => {

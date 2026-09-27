@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageTitle } from "@/components/PageTitle";
+import { KlemmiSurfaceGuide } from "@/components/KlemmiSurfaceGuide";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Collapsible,
@@ -17,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { downloadBase64File } from "@/lib/download";
+import { PDF_KLEMMI_STEPS, PDF_KLEMMI_STEPS_READONLY } from "@/lib/klemmi-area-tours";
 import { trpc } from "@/lib/trpc";
 import {
   DEFAULT_WHATSAPP_HELPER_REQUEST_TEMPLATE,
@@ -80,6 +82,7 @@ type PdfSectionProps = {
   description: string;
   icon: ComponentType<{ className?: string }>;
   children: ReactNode;
+  klemmiTarget?: string;
 };
 
 /** Ein ruhiges Accordion hält die PDF-Ausgabe bei vielen Exportoptionen übersichtlich. */
@@ -88,12 +91,13 @@ function PdfSection({
   description,
   icon: Icon,
   children,
+  klemmiTarget,
 }: PdfSectionProps) {
   const [open, setOpen] = useState(false);
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <Card className="overflow-hidden shadow-sm">
+      <Card data-klemmi-target={klemmiTarget} className="overflow-hidden shadow-sm">
         <CollapsibleTrigger asChild>
           <button
             type="button"
@@ -386,10 +390,20 @@ export default function PdfExport() {
           Persönliche Aufgabenübersichten sowie frei filterbare Blanko- und
           ausgefüllte Einsatzpläne erzeugen.
         </p>
+        <div className="mt-3">
+          <KlemmiSurfaceGuide
+            guideId="pdf"
+            title="PDF-Ausgabe verstehen"
+            introText="Ich zeige dir, welche PDFs du erzeugen kannst und welche Einstellungen nur für die aktuelle Veranstaltung gelten."
+            steps={canManage ? PDF_KLEMMI_STEPS : PDF_KLEMMI_STEPS_READONLY}
+            successSignal={null}
+          />
+        </div>
       </div>
 
       <div className="space-y-4">
         <PdfSection
+          klemmiTarget="pdf-helper-overviews"
           title="Alle Helferübersichten"
           description="Persönliche Aufgaben-PDFs nach Ansprechpartnern herunterladen."
           icon={FileArchive}
@@ -599,6 +613,7 @@ export default function PdfExport() {
         </PdfSection>
 
         <PdfSection
+          klemmiTarget="pdf-plan"
           title="Einsatzplan als PDF"
           description="Blanko- oder ausgefüllten Einsatzplan nach Tagen, Bereichen und Status filtern."
           icon={ListFilter}
@@ -792,6 +807,7 @@ export default function PdfExport() {
 
       {canManage && (
       <PdfSection
+        klemmiTarget="pdf-config"
         title="Vorlage frei konfigurieren"
         description="PDF-Titel, Eventlogo, Zusatzspalten und Hinweise für die aktuelle Veranstaltung verwalten."
         icon={ClipboardCheck}

@@ -7,10 +7,12 @@ import {
 } from "@/components/HelpGuide";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { PageTitle } from "@/components/PageTitle";
+import { KlemmiSurfaceGuide } from "@/components/KlemmiSurfaceGuide";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { HELP_KLEMMI_STEPS } from "@/lib/klemmi-area-tours";
 import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import { BookOpen, Search } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -65,6 +67,15 @@ export default function Help() {
           <p className="mt-2 leading-6 text-slate-600">
             Durchsuchen Sie die wichtigsten Abläufe von der ersten Orientierung bis zu Schutz, Import und Abschluss. Die Rollenfilter zeigen die passenden Arbeitsschritte für Planungsteam und Administration.
           </p>
+          <div className="mt-3">
+            <KlemmiSurfaceGuide
+              guideId="help"
+              title="Hilfe-Center verstehen"
+              introText="Ich zeige dir, wie du die passende Anleitung findest, nach deiner Rolle filterst und direkt in den jeweiligen Bereich weitergehst."
+              steps={HELP_KLEMMI_STEPS}
+              successSignal={null}
+            />
+          </div>
         </div>
       </header>
 
@@ -101,6 +112,7 @@ export default function Help() {
               </p>
             </div>
             <div
+              data-klemmi-target="help-filters"
               className="flex flex-wrap gap-2"
               role="group"
               aria-label="Hilfe-Center nach Zielgruppe filtern"
@@ -131,7 +143,7 @@ export default function Help() {
               })}
             </div>
           </div>
-          <div className="relative">
+          <div data-klemmi-target="help-search" className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
             <Input
               id="help-search"
@@ -145,7 +157,7 @@ export default function Help() {
         </CardContent>
       </Card>
 
-      <div id="help-results" className="scroll-mt-6">
+      <div id="help-results" data-klemmi-target="help-chapters" className="scroll-mt-6">
         <HelpGuide
           audience={audience}
           query={query}

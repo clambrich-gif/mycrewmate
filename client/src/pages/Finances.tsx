@@ -1,4 +1,5 @@
 import { PageTitle } from "@/components/PageTitle";
+import { KlemmiSurfaceGuide } from "@/components/KlemmiSurfaceGuide";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,6 +12,7 @@ import {
 import { useEventYear } from "@/contexts/YearContext";
 import { trpc } from "@/lib/trpc";
 import { useTenantAdministration } from "@/hooks/useTenantAdministration";
+import { FINANCES_KLEMMI_STEPS } from "@/lib/klemmi-area-tours";
 import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -147,14 +149,23 @@ export default function Finances() {
           </p>
         </div>
         <div className="grid w-full grid-cols-2 gap-2 lg:ml-auto lg:flex lg:w-auto lg:flex-wrap lg:justify-end [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 max-lg:[&>[data-slot=button]]:h-11 max-lg:[&>[data-slot=button]]:text-base lg:[&>[data-slot=button]]:w-auto lg:[&>[data-slot=button]]:px-4">
-          <ResetAreaButton area="finances" label="Finanzen" compact />
-          <Input
-            placeholder="Kategorie"
-            value={category}
-            onChange={event => setCategory(event.target.value)}
-            className="col-span-2 w-full lg:order-last lg:w-64"
-            onKeyDown={event => event.key === "Enter" && submitCreate()}
+          <KlemmiSurfaceGuide
+            guideId="finances"
+            title="Finanzen verstehen"
+            introText="Ich zeige dir, wie Kategorien, Einnahmen, Ausgaben und der Saldo zusammenhängen."
+            steps={FINANCES_KLEMMI_STEPS}
+            successSignal={null}
           />
+          <ResetAreaButton area="finances" label="Finanzen" compact />
+          <div data-klemmi-target="finances-category" className="col-span-2 w-full lg:order-last lg:w-64">
+            <Input
+              placeholder="Kategorie"
+              value={category}
+              onChange={event => setCategory(event.target.value)}
+              className="w-full"
+              onKeyDown={event => event.key === "Enter" && submitCreate()}
+            />
+          </div>
           <Button
             className="col-span-2 shadow-xs lg:col-auto"
             onClick={submitCreate}
@@ -165,7 +176,7 @@ export default function Finances() {
           </Button>
         </div>
       </div>
-      <div className="space-y-3 md:hidden">
+      <div data-klemmi-target="finances-values" className="space-y-3 md:hidden">
         {isLoading && (
           <Card className="shadow-sm">
             <CardContent className="p-4 text-sm text-muted-foreground">
@@ -223,7 +234,7 @@ export default function Finances() {
             </Card>
           );
         })}
-        <Card className="border-primary/20 bg-primary/5 shadow-sm">
+        <Card data-klemmi-target="finances-balance" className="border-primary/20 bg-primary/5 shadow-sm">
           <CardContent className="space-y-2 p-4 text-sm">
             <div className="font-bold">Saldo</div>
             <div className="flex justify-between">
@@ -247,7 +258,7 @@ export default function Finances() {
           </CardContent>
         </Card>
       </div>
-      <Card className="hidden shadow-sm md:block">
+      <Card data-klemmi-target="finances-values" className="hidden shadow-sm md:block">
         <CardContent className={`${STICKY_TABLE_CONTAINER_CLASS} p-0`}>
           <table className="w-full text-sm">
             <thead
@@ -312,7 +323,7 @@ export default function Finances() {
                   </tr>
                 );
               })}
-              <tr className="border-t-2 font-bold">
+              <tr data-klemmi-target="finances-balance" className="border-t-2 font-bold">
                 <td className="p-3">Saldo</td>
                 <td className="p-3 text-right">{eur(sumIn)}</td>
                 <td className="p-3 text-right">{eur(sumOut)}</td>

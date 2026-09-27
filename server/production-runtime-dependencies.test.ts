@@ -52,4 +52,20 @@ describe("Produktions-Laufzeitabhängigkeiten", () => {
       expect(fs.existsSync(path.join(projectRoot, "server", "assets", "klemmi-voice", `${id}.mp3`))).toBe(true);
     }
   });
+
+  it("liefert die festen Clips der ausführlichen Klemmi-Führungen aus dem Produktimage aus", () => {
+    const clipIds = [
+      "helpers-contact", "helpers-details",
+      "contacts-intro", "contacts-name", "contacts-details", "contacts-save", "contacts-complete",
+      "donations-intro", "donations-donor", "donations-item", "donations-traits", "donations-save", "donations-complete",
+      "finances-intro", "finances-category", "finances-values", "finances-balance", "finances-complete",
+      "pdf-intro", "pdf-helpers", "pdf-plan", "pdf-config", "pdf-complete",
+      "security-intro", "security-accesses", "security-audit", "security-emergency", "security-complete",
+      "help-intro", "help-search", "help-filters", "help-chapters", "help-complete",
+    ];
+
+    for (const id of clipIds) {
+      expect(fs.existsSync(path.join(projectRoot, "server", "assets", "klemmi-voice", `${id}.mp3`))).toBe(true);
+    }
+  });
 });

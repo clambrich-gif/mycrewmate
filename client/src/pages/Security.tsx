@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { PageTitle } from "@/components/PageTitle";
+import { KlemmiSurfaceGuide } from "@/components/KlemmiSurfaceGuide";
 import { PlanningTeamAccessManager } from "@/components/PlanningTeamAccessManager";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { AuditCenter } from "@/pages/Permissions";
@@ -16,6 +17,7 @@ import { useEventYear } from "@/contexts/YearContext";
 import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { SECURITY_KLEMMI_STEPS } from "@/lib/klemmi-area-tours";
 import {
   ChevronDown,
   KeyRound,
@@ -35,12 +37,14 @@ function SecurityAccordion({
   icon: Icon,
   tone = "slate",
   children,
+  klemmiTarget,
 }: {
   title: string;
   description: string;
   icon: typeof KeyRound;
   tone?: "slate" | "blue" | "red" | "amber";
   children: ReactNode;
+  klemmiTarget?: string;
 }) {
   const [open, setOpen] = useState(false);
   const toneClasses = {
@@ -58,7 +62,7 @@ function SecurityAccordion({
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <Card className={cn("overflow-hidden shadow-sm", toneClasses)}>
+      <Card data-klemmi-target={klemmiTarget} className={cn("overflow-hidden shadow-sm", toneClasses)}>
         <CollapsibleTrigger asChild>
           <button
             type="button"
@@ -234,6 +238,15 @@ export default function Security() {
         <p className="text-muted-foreground">
           Zugänge, Passwörter, Notfallmaßnahmen und alle Systemprotokolle sicher verwalten.
         </p>
+        <div className="mt-3">
+          <KlemmiSurfaceGuide
+            guideId="security"
+            title="Schutz und Protokoll verstehen"
+            introText="Ich zeige dir, wo Zugänge, Protokolle und bewusst geschützte Notfallmaßnahmen getrennt verwaltet werden."
+            steps={SECURITY_KLEMMI_STEPS}
+            successSignal={null}
+          />
+        </div>
       </div>
 
       <div className="space-y-4" data-security-accordions>
@@ -253,6 +266,7 @@ export default function Security() {
         )}
 
         <SecurityAccordion
+          klemmiTarget="security-accesses"
           title="Planungsteam-Zugänge verwalten"
           description="Ansprechpartnerzugänge, Eventfreigaben, Initialcodes und Zugangsblätter verwalten."
           icon={UsersRound}
@@ -263,6 +277,7 @@ export default function Security() {
 
         {isPrimaryTenantAdmin && (
         <SecurityAccordion
+          klemmiTarget="security-emergency"
           title="Notfall-Sperrstatus Planungsteam (Global)"
           description="Sperrt bei einem Sicherheitsvorfall sofort alle Planungsteam-Logins und offenen Sitzungen."
           icon={ShieldAlert}
@@ -324,6 +339,7 @@ export default function Security() {
         )}
 
         <SecurityAccordion
+          klemmiTarget="security-audit"
           title="System- & Sicherheitsprotokoll (Logbuch)"
           description="Sicherheitsereignisse, Aktivitäts- und Löschverlauf sowie Datei- und Import-Historie zentral prüfen."
           icon={ShieldCheck}
@@ -333,6 +349,7 @@ export default function Security() {
         </SecurityAccordion>
 
         <SecurityAccordion
+          klemmiTarget="security-emergency"
           title={`Gefahrenbereich (Planung ${year})`}
           description="Unwiderrufliche Löschung aller Planungsdaten des aktuell gewählten Jahres."
           icon={ShieldAlert}

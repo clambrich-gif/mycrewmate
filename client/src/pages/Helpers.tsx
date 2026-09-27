@@ -2496,7 +2496,10 @@ export default function Helpers() {
                     </p>
                   )}
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div
+                  data-klemmi-target="new-helper-contact"
+                  className="grid gap-4 rounded-xl sm:grid-cols-2"
+                >
                   <div className="space-y-1.5">
                     <label htmlFor="new-helper-dialog-contact" className="text-sm font-medium">Ansprechpartner</label>
                     <Select value={newHelperContactId} onValueChange={setNewHelperContactId}>
@@ -2523,7 +2526,10 @@ export default function Helpers() {
                     />
                   </div>
                 </div>
-                <div className="space-y-1.5">
+                <div
+                  data-klemmi-target="new-helper-details"
+                  className="space-y-1.5 rounded-xl"
+                >
                   <label htmlFor="new-helper-dialog-note" className="text-sm font-medium">Hinweis für PDF</label>
                   <Input
                     id="new-helper-dialog-note"

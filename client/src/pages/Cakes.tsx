@@ -1,4 +1,5 @@
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
+import { KlemmiSurfaceGuide } from "@/components/KlemmiSurfaceGuide";
 import { ViewModeToggle } from "@/components/ViewModeToggle";
 import { PageTitle } from "@/components/PageTitle";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
@@ -27,6 +28,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
+import { DONATIONS_KLEMMI_STEPS } from "@/lib/klemmi-area-tours";
 import { downloadBase64File } from "@/lib/download";
 import {
   STICKY_TABLE_CONTAINER_CLASS,
@@ -238,6 +240,7 @@ export default function Cakes() {
   const { data: locations = [] } = trpc.locations.list.useQuery();
   const { data: selectedEvent } = trpc.events.current.useQuery();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [klemmiSuccessSignal, setKlemmiSuccessSignal] = useState<number | null>(null);
   const [editingDonation, setEditingDonation] = useState<DonationRow | null>(null);
   const [form, setForm] = useState<DonationForm>(EMPTY_DONATION_FORM);
   const [deleteTarget, setDeleteTarget] = useState<DonationRow | null>(null);
@@ -327,6 +330,7 @@ export default function Cakes() {
       toast.success("Spende erfasst");
       setDialogOpen(false);
       setForm(EMPTY_DONATION_FORM);
+      setKlemmiSuccessSignal(Date.now());
       refresh();
     },
     onError: error => toast.error(error.message),
@@ -516,6 +520,16 @@ export default function Cakes() {
           <ViewModeToggle mode={viewMode} onChange={setViewMode} />
           <div className="w-full space-y-2 sm:w-[25rem]">
             <div className="flex justify-end gap-2 [&>[data-slot=button]]:h-10 [&>[data-slot=button]]:flex-1 [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2">
+            <KlemmiSurfaceGuide
+              guideId="donations"
+              title="Spenden erfassen"
+              introText="Ich führe dich durch die echte Spendenanlage – vom Spender bis zu Allergenen, Abgabe und Speichern."
+              steps={DONATIONS_KLEMMI_STEPS}
+              successSignal={klemmiSuccessSignal}
+              onStepAction={stepKey => {
+                if (stepKey === "intro") openCreate();
+              }}
+            />
             <Button
               type="button"
               variant="outline"
@@ -536,10 +550,11 @@ export default function Cakes() {
               successMessage="Alle Spenden und Sollwerte wurden gelöscht"
             />
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            className={`w-full ${CREATION_ACTION_BUTTON_CLASS}`}
+            <Button
+              type="button"
+              variant="outline"
+              data-klemmi-target="donations-create"
+              className={`w-full ${CREATION_ACTION_BUTTON_CLASS}`}
             onClick={openCreate}
           >
             <Plus className="mr-1.5 h-4 w-4" />
@@ -1036,7 +1051,7 @@ export default function Cakes() {
               submit();
             }}
           >
-            <div className="space-y-1.5">
+            <div data-klemmi-target="donation-donor" className="space-y-1.5">
               <Label htmlFor="donation-donor">
                 Spender <span aria-hidden="true">*</span>
               </Label>
@@ -1062,7 +1077,7 @@ export default function Cakes() {
               </p>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div data-klemmi-target="donation-item" className="grid gap-3 rounded-xl sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="donation-name">Spende</Label>
                 <Input
@@ -1150,7 +1165,7 @@ export default function Cakes() {
               </div>
             </div>
 
-            <fieldset className="space-y-2">
+            <fieldset data-klemmi-target="donation-traits" className="space-y-2 rounded-xl">
               <legend className="text-sm font-medium text-slate-900">
                 Eigenschaften (optional)
               </legend>
@@ -1179,7 +1194,7 @@ export default function Cakes() {
               </div>
             </fieldset>
 
-            <div className="space-y-1.5">
+            <div data-klemmi-target="donation-traits" className="space-y-1.5 rounded-xl">
               <Label htmlFor="donation-note">Hinweise zur Spende (optional)</Label>
               <Textarea
                 id="donation-note"
@@ -1196,7 +1211,7 @@ export default function Cakes() {
               <Button type="button" variant="outline" onClick={closeDialog} disabled={busy}>
                 Abbrechen
               </Button>
-              <Button type="submit" disabled={!form.donor.trim() || busy}>
+              <Button data-klemmi-target="donation-save" type="submit" disabled={!form.donor.trim() || busy}>
                 {busy ? "Speichert …" : "Speichern"}
               </Button>
             </DialogFooter>

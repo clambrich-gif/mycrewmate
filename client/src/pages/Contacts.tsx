@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
+import { KlemmiSurfaceGuide } from "@/components/KlemmiSurfaceGuide";
 import { PageTitle } from "@/components/PageTitle";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
+import { CONTACTS_KLEMMI_STEPS } from "@/lib/klemmi-area-tours";
 import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import { trpc } from "@/lib/trpc";
 import { Mail, Pencil, Phone, Plus, Trash2 } from "lucide-react";
@@ -38,6 +40,7 @@ export default function Contacts() {
     id: number;
     name: string;
   } | null>(null);
+  const [klemmiSuccessSignal, setKlemmiSuccessSignal] = useState<number | null>(null);
 
   const invalidate = () => {
     utils.contacts.list.invalidate();
@@ -55,6 +58,7 @@ export default function Contacts() {
       setName("");
       setEmail("");
       setPhone("");
+      setKlemmiSuccessSignal(Date.now());
       toast.success("Ansprechpartner angelegt");
     },
     onError: error => toast.error(error.message),
@@ -113,6 +117,13 @@ export default function Contacts() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <KlemmiSurfaceGuide
+            guideId="contacts"
+            title="Ansprechpartner anlegen"
+            introText="Ich zeige dir die echten Stammdatenfelder – vom Namen bis zur sicheren Anlage ohne versehentlichen Zugang."
+            steps={CONTACTS_KLEMMI_STEPS}
+            successSignal={klemmiSuccessSignal}
+          />
           <ResetAreaButton area="contacts" label="Ansprechpartner" />
         </div>
       </div>
@@ -124,10 +135,11 @@ export default function Contacts() {
           </CardHeader>
           <CardContent>
             <form
+              data-klemmi-target="contacts-new"
               className="flex flex-col gap-3 sm:flex-row sm:items-end"
               onSubmit={submitNewContact}
             >
-              <div className="min-w-0 flex-1 sm:min-w-[280px]">
+              <div data-klemmi-target="contacts-name" className="min-w-0 flex-1 sm:min-w-[280px]">
                 <label
                   htmlFor="new-contact-name"
                   className="mb-1.5 block text-sm font-semibold text-slate-800"
@@ -142,7 +154,7 @@ export default function Contacts() {
                   className="h-11 border-slate-300 bg-white text-base shadow-sm placeholder:text-slate-600"
                 />
               </div>
-              <div className="min-w-0 flex-1 sm:min-w-[240px]">
+              <div data-klemmi-target="contacts-details" className="min-w-0 flex-1 sm:min-w-[240px]">
                 <label
                   htmlFor="new-contact-email"
                   className="mb-1.5 block text-sm font-semibold text-slate-800"
@@ -158,7 +170,7 @@ export default function Contacts() {
                   className="h-11 border-slate-300 bg-white text-base shadow-sm placeholder:text-slate-600"
                 />
               </div>
-              <div className="min-w-0 sm:w-56">
+              <div data-klemmi-target="contacts-details" className="min-w-0 sm:w-56">
                 <label
                   htmlFor="new-contact-phone"
                   className="mb-1.5 block text-sm font-semibold text-slate-800"
@@ -176,6 +188,7 @@ export default function Contacts() {
               </div>
               <Button
                 type="submit"
+                data-klemmi-target="contacts-save"
                 variant="outline"
                 className={`h-11 shrink-0 px-5 ${CREATION_ACTION_BUTTON_CLASS}`}
                 disabled={create.isPending || !name.trim()}
