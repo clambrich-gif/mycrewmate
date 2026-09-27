@@ -600,6 +600,32 @@
    unterschiedlich langen Hinweisen auf Desktop und Mobil automatisch mit. */
 .klemmi-guide-card {
   z-index: 3;
+  will-change: transform;
+}
+
+/* Der Greifpunkt verschiebt ausschließlich die Sprechblase. Er hält den
+   Hintergrund frei, damit die von Klemmi markierten Eingabefelder sichtbar
+   und weiter bedienbar bleiben. */
+.klemmi-guide-drag-handle {
+  display: flex;
+  height: 1.35rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  margin: -0.15rem 0 0.35rem;
+  color: rgb(71 85 105 / 78%);
+  cursor: grab;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+.klemmi-guide-drag-handle:active,
+[data-klemmi-dragging="true"] .klemmi-guide-drag-handle {
+  cursor: grabbing;
 }
 
 .klemmi-guide-mascot {
@@ -707,6 +733,12 @@
     box-shadow: 0 4px 16px rgb(15 23 42 / 14%);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
+  }
+
+  .klemmi-guide-drag-handle {
+    height: 1rem;
+    margin: -0.1rem 0 0.1rem;
+    font-size: 0.56rem;
   }
 
   .klemmi-guide-highlight,

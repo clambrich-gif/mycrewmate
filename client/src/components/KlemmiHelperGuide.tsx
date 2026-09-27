@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { KlemmiGuideCard } from "@/components/KlemmiGuideCard";
 import { KlemmiMascot, KlemmiTriggerMascot } from "@/components/KlemmiMascot";
 import { KlemmiVoiceControl } from "@/components/KlemmiVoiceControl";
 import { useKlemmiVoice } from "@/hooks/useKlemmiVoice";
@@ -333,11 +334,7 @@ export function KlemmiHelperGuide({
                 style={highlightRect}
               />
             )}
-            <section
-              aria-live="polite"
-              aria-label="Klemmi Schritt-für-Schritt-Anleitung"
-              className="klemmi-guide-card pointer-events-auto fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] overflow-visible rounded-2xl border border-blue-200 bg-white p-3 text-slate-950 shadow-2xl sm:inset-x-auto sm:bottom-5 sm:right-5 sm:w-[min(25rem,calc(100vw-2.5rem))] sm:p-4"
-            >
+            <KlemmiGuideCard>
               {celebrating ? (
                 <div className="klemmi-celebration text-center" data-klemmi-success data-klemmi-narration-complete={narrationComplete ? "true" : "false"}>
                   <KlemmiMascot isSpeaking={isSpeaking} decorative className="klemmi-guide-mascot" />
@@ -472,7 +469,7 @@ export function KlemmiHelperGuide({
               </div>
               </>
               )}
-            </section>
+            </KlemmiGuideCard>
           </div>,
           document.body
         )}

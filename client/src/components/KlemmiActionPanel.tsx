@@ -11,10 +11,9 @@ type KlemmiActionPanelProps = {
 /**
  * Einheitliche, kompakte Kopf-Aktionsleiste.
  *
- * Desktop: Oben liegen Ansicht und Nebenaktionen nebeneinander; darunter
- * Klemmi und die Hauptanlage. Die Controls behalten ihre natürliche Breite.
- * Schmale Mobilgeräte wechseln kontrolliert in eine Spalte, damit keine
- * Schaltfläche abgeschnitten oder zu klein wird.
+ * Oben liegen Ansicht und Nebenaktionen nebeneinander; darunter Klemmi und
+ * die Hauptanlage. Das Raster bleibt auch auf dem Smartphone so kompakt wie
+ * möglich nebeneinander und bricht erst bei echtem Platzmangel kontrolliert.
  */
 export function KlemmiActionPanel({
   viewControl,
@@ -26,21 +25,23 @@ export function KlemmiActionPanel({
   return (
     <div
       data-klemmi-action-panel
-      className={`grid w-fit max-w-full grid-cols-1 gap-x-2 gap-y-2 min-[440px]:grid-cols-[max-content_minmax(0,1fr)] ${className}`}
+      className={`flex w-full max-w-full flex-col gap-2 sm:grid sm:w-fit sm:grid-cols-[max-content_minmax(0,1fr)] ${className}`}
     >
       {viewControl ? (
-        <div className="min-w-0 min-[440px]:col-start-1 min-[440px]:row-start-1">
+        <div className="hidden sm:block sm:col-start-1 sm:row-start-1">
           {viewControl}
         </div>
       ) : null}
       {secondaryActions ? (
-        <div className="flex min-w-0 flex-wrap items-center gap-2 min-[440px]:col-start-2 min-[440px]:row-start-1">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:min-w-0 sm:gap-2 sm:col-start-2 sm:row-start-1 [&>[data-slot=button]]:min-w-0 [&>[data-slot=button]]:flex-1 [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 sm:[&>[data-slot=button]]:flex-none sm:[&>[data-slot=button]]:w-auto">
           {secondaryActions}
         </div>
       ) : null}
-      <div className="min-w-0 min-[440px]:col-start-1 min-[440px]:row-start-2">{guide}</div>
-      <div className="flex min-w-0 items-start min-[440px]:col-start-2 min-[440px]:row-start-2">
-        {primaryAction}
+      <div className="flex w-full items-center gap-2 sm:contents">
+        <div className="min-w-0 flex-1 sm:flex-none sm:col-start-1 sm:row-start-2 [&>[data-klemmi-trigger]]:w-full [&>[data-klemmi-trigger]]:justify-center sm:[&>[data-klemmi-trigger]]:w-auto">{guide}</div>
+        <div className="flex min-w-0 flex-1 items-center sm:flex-none sm:col-start-2 sm:row-start-2 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 sm:[&>[data-slot=button]]:w-auto">
+          {primaryAction}
+        </div>
       </div>
     </div>
   );

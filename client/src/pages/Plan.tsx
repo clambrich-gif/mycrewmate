@@ -1791,8 +1791,8 @@ export default function Plan() {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div className="min-w-0 lg:pr-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:gap-5">
+        <div className="min-w-0 max-w-4xl lg:pt-1">
           <PageTitle icon="plan">Einsatzplan</PageTitle>
           <p className="text-sm text-muted-foreground">
           {canEditPlan
@@ -1800,10 +1800,10 @@ export default function Plan() {
             : "Das Planungsteam kann den Einsatzplan vollständig ansehen und filtern. Änderungen und Helferzuweisungen sind Administratoren vorbehalten."}
           </p>
         </div>
-        <div className="w-full lg:w-auto">
+        <div className="w-full lg:w-auto lg:shrink-0">
           {canEditPlan ? (
             <KlemmiActionPanel
-              className="lg:ml-auto"
+              className="lg:ml-0"
               viewControl={<ViewModeToggle mode={viewMode} onChange={setViewMode} />}
               guide={
                 <KlemmiSurfaceGuide
@@ -1864,17 +1864,12 @@ export default function Plan() {
               }
               secondaryActions={
                 <>
-                  <div
-                data-plan-data-actions
-                    className="flex flex-wrap items-center gap-2 [&>[data-slot=button]]:w-auto [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:whitespace-nowrap [&>[data-slot=button]]:px-2"
-                  >
                     <CopyPreviousPlanButton />
                     <PlanResetDialogButton
                       area="shifts"
                       label="Einsatzplan"
                       onCompleted={() => setQ("")}
                     />
-                  </div>
                 </>
               }
               primaryAction={

@@ -13,6 +13,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const audio = source("client/src/lib/klemmiAudio.ts");
     const assetRoute = source("server/klemmi-asset-routes.ts");
     const voiceControl = source("client/src/components/KlemmiVoiceControl.tsx");
+    const draggableCard = source("client/src/components/KlemmiGuideCard.tsx");
     const areaTours = source("client/src/lib/klemmi-area-tours.ts");
 
     expect(helpers).toContain('import { KlemmiHelperGuide } from "@/components/KlemmiHelperGuide"');
@@ -69,7 +70,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(guide).toContain("playOpening().finally");
     expect(guide).toContain('data-klemmi-guide');
     expect(guide).toContain('pointer-events-none fixed inset-0');
-    expect(guide).toContain('pointer-events-auto fixed');
+    expect(guide).toContain("KlemmiGuideCard");
+    expect(draggableCard).toContain('data-klemmi-draggable-card');
+    expect(draggableCard).toContain('data-klemmi-drag-handle');
+    expect(draggableCard).toContain("setPointerCapture");
+    expect(draggableCard).toContain("releasePointerCapture");
+    expect(draggableCard).toContain("minX");
     expect(guide).toContain("Neue Helfer sicher anlegen");
     expect(guide).toContain("Spende bei Bedarf ergänzen");
     expect(guide).toContain('key: "save"');
@@ -1372,7 +1378,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).not.toContain("planStatusCounts");
     expect(plan).toContain("utils.plan.evaluate.invalidate()");
     expect(plan).toContain("<KlemmiActionPanel");
-    expect(plan).toContain("flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between");
+    expect(plan).toContain("flex flex-col gap-3 lg:flex-row lg:items-start lg:gap-5");
+    expect(plan).toContain('className="lg:ml-0"');
     expect(plan).toContain("viewControl={<ViewModeToggle");
   });
 
@@ -2176,14 +2183,15 @@ describe("UI- und Mobile-UX-Regeln", () => {
 
   it("ordnet Einsatzplanaktionen mobil zweispaltig und ab Tablet einzeilig an", () => {
     const plan = source("client/src/pages/Plan.tsx");
+    const panel = source("client/src/components/KlemmiActionPanel.tsx");
     const resetDialog = source(
       "client/src/components/PlanResetDialogButton.tsx"
     );
     const copyPlan = source("client/src/components/CopyPreviousPlanButton.tsx");
 
-    expect(plan).toContain("data-plan-data-actions");
-    expect(plan).toContain("flex flex-wrap items-center gap-2");
-    expect(plan).toContain('[&>[data-slot=button]]:whitespace-nowrap');
+    expect(plan).toContain("<KlemmiActionPanel");
+    expect(panel).toContain("data-klemmi-action-panel");
+    expect(panel).toContain("sm:grid-cols-[max-content_minmax(0,1fr)]");
     expect(plan).not.toContain("min-[1280px]:w-[38rem]");
     expect(plan).toContain(
       'className="h-10 border-blue-600 bg-blue-600 px-4 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus-visible:ring-blue-500"'
@@ -2217,8 +2225,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
 
     expect(helpers).toContain("<KlemmiActionPanel");
     expect(klemmiActionPanel).toContain("data-klemmi-action-panel");
-    expect(klemmiActionPanel).toContain("min-[440px]:grid-cols-[max-content_minmax(0,1fr)]");
-    expect(klemmiActionPanel).toContain("min-[440px]:col-start-1 min-[440px]:row-start-2");
+    expect(klemmiActionPanel).toContain("sm:grid-cols-[max-content_minmax(0,1fr)]");
+    expect(klemmiActionPanel).toContain("sm:col-start-1 sm:row-start-2");
     expect(helpers).toContain('triggerClassName="h-10 px-3"');
     expect(helpers).toContain("h-10 bg-blue-600 px-4 text-base font-medium text-white");
     for (const module of [taskList, taskGeneric, finances]) {
