@@ -13,6 +13,7 @@ export default function KlemmiFirstLoginPreview() {
   const [introOpen, setIntroOpen] = useState(true);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   const [previewSpeaking, setPreviewSpeaking] = useState(false);
+  const [previewNarrationComplete, setPreviewNarrationComplete] = useState(false);
   const [isCoAdmin, setIsCoAdmin] = useState(
     () => new URLSearchParams(window.location.search).get("coAdmin") === "1"
   );
@@ -21,6 +22,7 @@ export default function KlemmiFirstLoginPreview() {
     const clipId = nextIsCoAdmin ? "first-login-co-admin" : "first-login-intro";
     previewAudioRef.current?.pause();
     setPreviewSpeaking(false);
+    setPreviewNarrationComplete(false);
     const audio = new Audio(klemmiAudioUrl(clipId));
     audio.preload = "auto";
     audio.volume = 0.9;
@@ -29,6 +31,7 @@ export default function KlemmiFirstLoginPreview() {
       if (previewAudioRef.current !== audio) return;
       previewAudioRef.current = null;
       setPreviewSpeaking(false);
+      setPreviewNarrationComplete(true);
     };
     audio.onplay = () => setPreviewSpeaking(true);
     audio.onended = release;
@@ -118,6 +121,7 @@ export default function KlemmiFirstLoginPreview() {
         isCoAdmin={isCoAdmin}
         autoSpeak={false}
         externalSpeaking={previewSpeaking}
+        externalNarrationComplete={previewNarrationComplete}
         onComplete={() => setIntroOpen(false)}
       />
     </main>

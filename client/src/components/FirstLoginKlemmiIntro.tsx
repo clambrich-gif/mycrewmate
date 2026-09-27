@@ -33,6 +33,7 @@ export function FirstLoginKlemmiIntro({
   isCoAdmin = false,
   autoSpeak = true,
   externalSpeaking = false,
+  externalNarrationComplete = false,
   completing = false,
   onComplete,
 }: {
@@ -42,11 +43,14 @@ export function FirstLoginKlemmiIntro({
   autoSpeak?: boolean;
   /** Synchronisiert die Gesichtsanimation mit extern ausgelöstem Demo-Audio. */
   externalSpeaking?: boolean;
+  /** Meldet der Staging-Vorschau das Ende eines direkt ausgelösten Audio-Clips. */
+  externalNarrationComplete?: boolean;
   completing?: boolean;
   onComplete: () => void;
 }) {
   const [highlightRect, setHighlightRect] = useState<HighlightRect>(null);
   const [leaving, setLeaving] = useState(false);
+  const [narrationComplete, setNarrationComplete] = useState(false);
   const { muted, isSpeaking, speak, toggleMuted, cancel } = useKlemmiVoice();
 
   useEffect(() => {
@@ -58,18 +62,23 @@ export function FirstLoginKlemmiIntro({
     }
 
     setLeaving(false);
+    setNarrationComplete(false);
     if (!autoSpeak) return;
     // Der Audiostart wird versucht, sobald der Einstieg sichtbar ist. Browser,
     // die das nach der Willkommenszeit unterbinden, erhalten die klar sichtbare
     // Wiederholen-Schaltfläche – nie eine fremde Systemstimme als Ersatz.
     const timer = window.setTimeout(() => {
-      speak(
+      void speak(
         isCoAdmin ? `${KLEMMI_INTRO_TEXT} ${KLEMMI_CO_ADMIN_TEXT}` : KLEMMI_INTRO_TEXT,
         isCoAdmin ? "first-login-co-admin" : "first-login-intro"
-      );
+      ).finally(() => setNarrationComplete(true));
     }, 360);
     return () => window.clearTimeout(timer);
   }, [autoSpeak, cancel, isCoAdmin, open, speak]);
+
+  useEffect(() => {
+    if (externalNarrationComplete) setNarrationComplete(true);
+  }, [externalNarrationComplete]);
 
   useLayoutEffect(() => {
     if (!open || typeof window === "undefined") return;
@@ -160,7 +169,7 @@ export function FirstLoginKlemmiIntro({
           <KlemmiMascot isSpeaking={isSpeaking || externalSpeaking} decorative />
           <span className="klemmi-first-login-question" aria-hidden="true">?</span>
         </div>
-        <div className="flex items-start gap-3">
+        <div className="flex items-start gap-3" data-klemmi-narration>
           <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-[#e86117] shadow-sm">
             <Sparkles className="size-5" aria-hidden="true" />
           </div>
@@ -172,19 +181,21 @@ export function FirstLoginKlemmiIntro({
             <KlemmiVoiceControl muted={muted} onToggle={toggleMuted} />
           </div>
         </div>
-        <p className="mt-3 text-sm leading-relaxed text-slate-700">{KLEMMI_INTRO_TEXT}</p>
+        <p data-klemmi-desktop-copy className="mt-3 text-sm leading-relaxed text-slate-700">{KLEMMI_INTRO_TEXT}</p>
+        <p data-klemmi-mobile-caption>Ich zeige dir, wo du jederzeit Hilfe findest.</p>
         {isCoAdmin && (
-          <p className="mt-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm leading-relaxed text-blue-950">
+          <p data-klemmi-desktop-copy className="mt-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm leading-relaxed text-blue-950">
             <span className="font-semibold">Co-Admin-Tipp:</span> {KLEMMI_CO_ADMIN_TEXT.replace("Und noch ein Tipp für dich als Co-Admin: ", "")}
           </p>
         )}
-        <p className="mt-2 text-xs leading-5 text-slate-500">
+        <p data-klemmi-desktop-copy className="mt-2 text-xs leading-5 text-slate-500">
           Der orange Rahmen zeigt dir den echten Hilfeauslöser auf dieser Seite.
         </p>
-        <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end" data-klemmi-navigation>
           <Button
             type="button"
             variant="outline"
+            data-klemmi-repeat-control
             className="min-h-11 border-blue-200 text-blue-900 hover:bg-blue-50"
             onClick={() =>
               speak(
@@ -199,6 +210,8 @@ export function FirstLoginKlemmiIntro({
           </Button>
           <Button
             type="button"
+            data-klemmi-finish-control
+            data-klemmi-narration-complete={narrationComplete ? "true" : "false"}
             className="min-h-11 bg-[#ff7a2f] text-white hover:bg-[#e86117] focus-visible:ring-[#ff7a2f]"
             onClick={finish}
             disabled={completing || leaving}

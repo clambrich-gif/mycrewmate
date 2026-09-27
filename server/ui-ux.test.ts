@@ -45,6 +45,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(voice).toContain("chooseOpeningClip");
     expect(voice).toContain("Der zuletzt verwendete Einstieg wird nie direkt");
     expect(voice).toContain("playOpening");
+    expect(voice).toContain("releaseAudioRef");
+    expect(voice).toContain("return playClip(clipId)");
     expect(voice).not.toContain("speechSynthesis");
     expect(audio).toContain('export const KLEMMI_AUDIO_ROUTE = "/api/klemmi/audio"');
     expect(audio).toContain('voice: "Achird"');
@@ -83,6 +85,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(guide).toContain("data-klemmi-success");
     expect(guide).toContain("Klemmi freut sich mit dir");
     expect(guide).toContain("PartyPopper");
+    expect(guide).toContain("data-klemmi-mobile-caption");
+    expect(guide).toContain("data-klemmi-next-control");
+    expect(guide).toContain("data-klemmi-narration-complete");
+    expect(guide).toContain("setNarrationComplete(false)");
     expect(guide).toContain("scrollIntoView");
     expect(guide).toContain("resolveVisibleTarget");
     expect(helpers).toContain("KlemmiActionPanel");
@@ -115,6 +121,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(surfaceGuide).toContain("playOpening().finally");
     expect(surfaceGuide).toContain("waitsForSuccess");
     expect(surfaceGuide).toContain("data-klemmi-success");
+    expect(surfaceGuide).toContain("data-klemmi-mobile-caption");
+    expect(surfaceGuide).toContain("data-klemmi-next-control");
+    expect(surfaceGuide).toContain("data-klemmi-narration-complete");
     expect(surfaceGuide).toContain("Klemmi wartet auf deinen Klick");
 
     expect(plan).toContain('<KlemmiSurfaceGuide');
@@ -148,6 +157,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(styles).toContain("@keyframes klemmi-trigger-shift-and-wave");
     expect(styles).toContain("@keyframes klemmi-eye-glance");
     expect(styles).toContain("@keyframes klemmi-speaking-mouth");
+    expect(styles).toContain("halbtransparenten Untertitelstreifen");
+    expect(styles).toContain("[data-klemmi-next-control][data-klemmi-narration-complete=\"false\"]");
+    expect(styles).toContain("background: rgb(255 255 255 / 74%)");
     expect(styles).toContain("20s cubic-bezier");
     expect(genericTasks).toContain("<KlemmiActionPanel");
     expect(genericTasks).toContain("secondaryActions=");

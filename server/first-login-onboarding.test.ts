@@ -86,6 +86,10 @@ describe("Erst-Login-Onboarding", () => {
     expect(intro).toContain("Verstanden – danke, Klemmi!");
     expect(intro).toContain("KlemmiMascot isSpeaking={isSpeaking || externalSpeaking} decorative");
     expect(intro).toContain("klemmi-first-login-question");
+    expect(intro).toContain("externalNarrationComplete");
+    expect(intro).toContain("data-klemmi-finish-control");
+    expect(intro).toContain("data-klemmi-mobile-caption");
+    expect(intro).toContain("setNarrationComplete(true)");
     expect(intro).toContain("overflow-visible");
     expect(mascot).toContain("klemmi-face-eye");
     expect(mascot).toContain("klemmi-face-mouth");
@@ -99,6 +103,8 @@ describe("Erst-Login-Onboarding", () => {
     expect(css).toContain(".klemmi-guide-mascot");
     expect(css).toContain("bottom: calc(100% - 0.65rem)");
     expect(css).toContain("@media (max-width: 639px)");
+    expect(css).toContain(".klemmi-first-login-question {\n    display: none;");
+    expect(css).toContain("[data-klemmi-finish-control][data-klemmi-narration-complete=\"false\"]");
     expect(css).toContain("prefers-reduced-motion: reduce");
     expect(preview).toContain('data-klemmi-trigger="staging-preview"');
     expect(preview).toContain("Standardansicht mit Ton starten");
@@ -107,6 +113,7 @@ describe("Erst-Login-Onboarding", () => {
     expect(preview).toContain("autoSpeak={false}");
     expect(preview).toContain("audio.onplay = () => setPreviewSpeaking(true)");
     expect(preview).toContain("externalSpeaking={previewSpeaking}");
+    expect(preview).toContain("externalNarrationComplete={previewNarrationComplete}");
   });
 
   it("liefert pending true für ein neues Planungsteam-Konto mit ausstehendem Onboarding", async () => {

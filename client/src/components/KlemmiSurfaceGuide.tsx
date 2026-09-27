@@ -71,6 +71,7 @@ export function KlemmiSurfaceGuide({
   const [highlightRect, setHighlightRect] = useState<HighlightRect>(null);
   const [celebrating, setCelebrating] = useState(false);
   const [openingPending, setOpeningPending] = useState(false);
+  const [narrationComplete, setNarrationComplete] = useState(false);
   const acceptedSuccessSignal = useRef<number | null>(null);
   const { muted, isSpeaking, speak, playOpening, toggleMuted, cancel } = useKlemmiVoice();
   const step = steps[stepIndex];
@@ -85,6 +86,7 @@ export function KlemmiSurfaceGuide({
     cancel();
     setOpen(false);
     setCelebrating(false);
+    setNarrationComplete(false);
     setHighlightRect(null);
     onOpenChange?.(false);
   };
@@ -103,13 +105,22 @@ export function KlemmiSurfaceGuide({
 
   useEffect(() => {
     if (!open || !step || openingPending) return;
+    let active = true;
+    setNarrationComplete(false);
     const text = celebrating
       ? `${completionTitle} ${completionText}`
       : isIntro
         ? `${title}. ${introText}`
         : `${step.title}. ${step.text}`;
-    const timeout = window.setTimeout(() => speak(text, audioClipId), 160);
-    return () => window.clearTimeout(timeout);
+    const timeout = window.setTimeout(() => {
+      void speak(text, audioClipId).finally(() => {
+        if (active) setNarrationComplete(true);
+      });
+    }, 160);
+    return () => {
+      active = false;
+      window.clearTimeout(timeout);
+    };
   }, [audioClipId, celebrating, completionText, completionTitle, introText, isIntro, open, openingPending, speak, step.key, step.text, step.title, title]);
 
   useLayoutEffect(() => {
@@ -208,7 +219,7 @@ export function KlemmiSurfaceGuide({
               <div
                 aria-hidden="true"
                 data-klemmi-highlight
-                className="absolute rounded-xl border-[3px] border-[#ff7a2f] bg-[#ff7a2f]/10 shadow-[0_0_0_9999px_rgba(15,23,42,0.12),0_0_0_6px_rgba(255,122,47,0.18)] transition-[top,left,width,height] duration-200 ease-out motion-reduce:transition-none"
+                className="klemmi-guide-highlight absolute rounded-xl border-[3px] border-[#ff7a2f] bg-[#ff7a2f]/10 shadow-[0_0_0_9999px_rgba(15,23,42,0.12),0_0_0_6px_rgba(255,122,47,0.18)] transition-[top,left,width,height] duration-200 ease-out motion-reduce:transition-none"
                 style={highlightRect}
               />
             )}
@@ -218,15 +229,18 @@ export function KlemmiSurfaceGuide({
               className="klemmi-guide-card pointer-events-auto fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] overflow-visible rounded-2xl border border-blue-200 bg-white p-3 text-slate-950 shadow-2xl sm:inset-x-auto sm:bottom-5 sm:right-5 sm:w-[min(25rem,calc(100vw-2.5rem))] sm:p-4"
             >
               {celebrating ? (
-                <div className="klemmi-celebration text-center" data-klemmi-success>
+                <div className="klemmi-celebration text-center" data-klemmi-success data-klemmi-narration-complete={narrationComplete ? "true" : "false"}>
+                  <KlemmiMascot isSpeaking={isSpeaking} decorative className="klemmi-guide-mascot" />
                   <div className="klemmi-celebration-icon mx-auto mb-2 flex size-16 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
                     <PartyPopper className="size-8" aria-hidden="true" />
                   </div>
                   <p className="text-xs font-bold tracking-wide text-[#e86117] uppercase">Klemmi freut sich mit dir</p>
                   <h2 className="mt-0.5 text-lg font-bold text-slate-950">{completionTitle}</h2>
                   <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{completionText}</p>
+                  <p data-klemmi-mobile-caption>{completionTitle}</p>
                   <Button
                     type="button"
+                    data-klemmi-finish-control
                     className="mt-4 min-h-10 bg-[#ff7a2f] text-white hover:bg-[#e86117] focus-visible:ring-[#ff7a2f]"
                     onClick={closeGuide}
                   >
@@ -241,7 +255,7 @@ export function KlemmiSurfaceGuide({
                     decorative
                     className="klemmi-guide-mascot"
                   />
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-start gap-3" data-klemmi-narration>
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-bold tracking-wide text-[#e86117] uppercase">
                         {isIntro ? "Klemmi zeigt&apos;s" : step.eyebrow}
@@ -252,11 +266,15 @@ export function KlemmiSurfaceGuide({
                       <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
                         {isIntro ? introText : step.text}
                       </p>
+                      <p data-klemmi-mobile-caption>
+                        {isIntro ? title : step.title}
+                      </p>
                     </div>
                     <div className="-mr-1 -mt-1 flex shrink-0 items-center">
                       <KlemmiVoiceControl muted={muted} onToggle={toggleMuted} />
                       <button
                         type="button"
+                        data-klemmi-close-control
                         className="inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 sm:size-9"
                         aria-label="Klemmi-Anleitung schließen"
                         title="Anleitung schließen"
@@ -267,7 +285,7 @@ export function KlemmiSurfaceGuide({
                     </div>
                   </div>
 
-                  <div className="mt-3 border-t border-slate-100 pt-3">
+                  <div className="mt-3 border-t border-slate-100 pt-3" data-klemmi-navigation>
                     <div className="flex items-center gap-1" aria-label={isIntro ? "Einführung" : step.eyebrow}>
                       {workflowSteps.map(item => (
                         <span
@@ -285,6 +303,7 @@ export function KlemmiSurfaceGuide({
                           type="button"
                           variant="ghost"
                           size="sm"
+                          data-klemmi-back-control
                           className="min-h-10 shrink-0 px-2 text-slate-700"
                           onClick={showPrevious}
                         >
@@ -303,6 +322,8 @@ export function KlemmiSurfaceGuide({
                         <Button
                           type="button"
                           size="sm"
+                          data-klemmi-next-control
+                          data-klemmi-narration-complete={narrationComplete ? "true" : "false"}
                           className="min-h-10 min-w-0 max-w-full whitespace-normal bg-[#ff7a2f] px-3 text-right text-white hover:bg-[#e86117] focus-visible:ring-[#ff7a2f]"
                           onClick={showNext}
                         >

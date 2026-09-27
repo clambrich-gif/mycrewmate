@@ -19,14 +19,18 @@ export function useKlemmiVoice() {
   const [muted, setMuted] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const releaseAudioRef = useRef<(() => void) | null>(null);
   const lastOpeningClipRef = useRef<KlemmiAudioId | null>(null);
 
   const cancel = useCallback(() => {
+    const release = releaseAudioRef.current;
+    releaseAudioRef.current = null;
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
       audioRef.current = null;
     }
+    release?.();
     setIsSpeaking(false);
   }, []);
 
@@ -47,9 +51,11 @@ export function useKlemmiVoice() {
           if (released) return;
           released = true;
           if (audioRef.current === audio) audioRef.current = null;
+          if (releaseAudioRef.current === release) releaseAudioRef.current = null;
           setIsSpeaking(false);
           resolve();
         };
+        releaseAudioRef.current = release;
         audio.onplay = () => setIsSpeaking(true);
         audio.onended = release;
         audio.onerror = () => {
@@ -80,8 +86,8 @@ export function useKlemmiVoice() {
 
   const speak = useCallback(
     (text: string, clipId?: KlemmiAudioId) => {
-      if (!text.trim() || !clipId) return;
-      void playClip(clipId);
+      if (!text.trim() || !clipId) return Promise.resolve();
+      return playClip(clipId);
     },
     [playClip]
   );
