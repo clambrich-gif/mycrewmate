@@ -44,7 +44,7 @@ export default function KlemmiPlanLayoutPreview() {
 
         <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:gap-5">
-            <div className="min-w-0 max-w-4xl lg:pt-1">
+            <div className="min-w-0 flex-1 lg:pt-1">
               <p className="text-xs font-bold tracking-wide text-blue-700 uppercase">MyCrewMate</p>
               <h2 className="mt-1 text-2xl font-bold tracking-tight">Einsatzplan</h2>
               <p className="mt-1 max-w-4xl text-sm text-muted-foreground">
@@ -52,9 +52,9 @@ export default function KlemmiPlanLayoutPreview() {
               </p>
             </div>
 
-            <div className="w-full lg:w-auto lg:shrink-0">
+            <div className="w-full lg:w-auto lg:shrink-0 lg:ml-auto">
               <KlemmiActionPanel
-                className="lg:ml-0"
+                className="lg:ml-auto"
                 viewControl={<ViewModeToggle mode={viewMode} onChange={setViewMode} />}
                 guide={
                   <KlemmiSurfaceGuide

@@ -1803,7 +1803,7 @@ export default function Plan() {
         <div className="w-full lg:w-auto lg:shrink-0">
           {canEditPlan ? (
             <KlemmiActionPanel
-              className="lg:ml-0"
+              className="lg:ml-auto"
               viewControl={<ViewModeToggle mode={viewMode} onChange={setViewMode} />}
               guide={
                 <KlemmiSurfaceGuide

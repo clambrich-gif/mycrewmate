@@ -1379,7 +1379,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("utils.plan.evaluate.invalidate()");
     expect(plan).toContain("<KlemmiActionPanel");
     expect(plan).toContain("flex flex-col gap-3 lg:flex-row lg:items-start lg:gap-5");
-    expect(plan).toContain('className="lg:ml-0"');
+    expect(plan).toContain('className="lg:ml-auto"');
     expect(plan).toContain("viewControl={<ViewModeToggle");
   });
 
@@ -2191,7 +2191,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
 
     expect(plan).toContain("<KlemmiActionPanel");
     expect(panel).toContain("data-klemmi-action-panel");
-    expect(panel).toContain("sm:grid-cols-[max-content_minmax(0,1fr)]");
+    expect(panel).toContain("sm:grid-cols-[max-content_auto]");
     expect(plan).not.toContain("min-[1280px]:w-[38rem]");
     expect(plan).toContain(
       'className="h-10 border-blue-600 bg-blue-600 px-4 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus-visible:ring-blue-500"'
@@ -2225,7 +2225,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
 
     expect(helpers).toContain("<KlemmiActionPanel");
     expect(klemmiActionPanel).toContain("data-klemmi-action-panel");
-    expect(klemmiActionPanel).toContain("sm:grid-cols-[max-content_minmax(0,1fr)]");
+    expect(klemmiActionPanel).toContain("sm:grid-cols-[max-content_auto]");
     expect(klemmiActionPanel).toContain("sm:col-start-1 sm:row-start-2");
     expect(helpers).toContain('triggerClassName="h-10 px-3"');
     expect(helpers).toContain("h-10 bg-blue-600 px-4 text-base font-medium text-white");

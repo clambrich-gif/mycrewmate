@@ -308,7 +308,7 @@ export function KlemmiHelperGuide({
         type="button"
         variant="outline"
         data-klemmi-trigger
-        className="min-h-11 gap-2 border-blue-200 bg-blue-50 px-3 text-blue-950 shadow-sm hover:border-blue-300 hover:bg-blue-100"
+        className="min-h-11 min-w-0 gap-2 border-blue-200 bg-blue-50 px-3 text-blue-950 shadow-sm hover:border-blue-300 hover:bg-blue-100 max-sm:gap-1 max-sm:px-1.5 max-sm:text-xs max-sm:[&_.klemmi-trigger-mascot]:size-5 max-sm:[&_.klemmi-trigger-mascot_img]:size-5 max-sm:[&>svg]:size-3"
         onClick={() => {
           setStepIndex(0);
           setOpeningPending(true);

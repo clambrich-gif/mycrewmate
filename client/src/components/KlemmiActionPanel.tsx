@@ -11,9 +11,9 @@ type KlemmiActionPanelProps = {
 /**
  * Einheitliche, kompakte Kopf-Aktionsleiste.
  *
- * Oben liegen Ansicht und Nebenaktionen nebeneinander; darunter Klemmi und
- * die Hauptanlage. Das Raster bleibt auch auf dem Smartphone so kompakt wie
- * möglich nebeneinander und bricht erst bei echtem Platzmangel kontrolliert.
+ * Desktop: links Ansicht und Klemmi, rechts die Nebenaktionen; die Hauptanlage
+ * spannt exakt über die gemeinsame Breite der Nebenaktionen. Mobil: zwei
+ * gleich breite, vollständig sichtbare Buttons pro Zeile ohne Überstände.
  */
 export function KlemmiActionPanel({
   viewControl,
@@ -25,23 +25,28 @@ export function KlemmiActionPanel({
   return (
     <div
       data-klemmi-action-panel
-      className={`flex w-full max-w-full flex-col gap-2 sm:grid sm:w-fit sm:grid-cols-[max-content_minmax(0,1fr)] ${className}`}
+      className={`grid w-full max-w-full grid-cols-2 gap-2 sm:w-fit sm:grid-cols-[max-content_auto] ${className}`}
     >
       {viewControl ? (
-        <div className="hidden sm:block sm:col-start-1 sm:row-start-1">
+        <div className="hidden sm:col-start-1 sm:row-start-1 sm:block">
           {viewControl}
         </div>
       ) : null}
+
       {secondaryActions ? (
-        <div className="flex w-full flex-wrap items-center gap-2 sm:min-w-0 sm:gap-2 sm:col-start-2 sm:row-start-1 [&>[data-slot=button]]:min-w-0 [&>[data-slot=button]]:flex-1 [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 sm:[&>[data-slot=button]]:flex-none sm:[&>[data-slot=button]]:w-auto">
+        <div
+          data-klemmi-secondary-actions
+          className="col-span-2 grid min-w-0 grid-cols-2 gap-2 sm:col-span-1 sm:col-start-2 sm:row-start-1 sm:w-fit sm:grid-flow-col sm:auto-cols-max [&>[data-slot=button]]:min-w-0 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 [&>[data-slot=button]]:text-xs [&>[data-slot=button]>svg]:shrink-0 sm:[&>[data-slot=button]]:w-auto sm:[&>[data-slot=button]]:px-3 sm:[&>[data-slot=button]]:text-sm"
+        >
           {secondaryActions}
         </div>
       ) : null}
-      <div className="flex w-full items-center gap-2 sm:contents">
-        <div className="min-w-0 flex-1 sm:flex-none sm:col-start-1 sm:row-start-2 [&>[data-klemmi-trigger]]:w-full [&>[data-klemmi-trigger]]:justify-center sm:[&>[data-klemmi-trigger]]:w-auto">{guide}</div>
-        <div className="flex min-w-0 flex-1 items-center sm:flex-none sm:col-start-2 sm:row-start-2 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 sm:[&>[data-slot=button]]:w-auto">
-          {primaryAction}
-        </div>
+
+      <div className="min-w-0 sm:col-start-1 sm:row-start-2 [&>[data-klemmi-trigger]]:w-full [&>[data-klemmi-trigger]]:min-w-0 [&>[data-klemmi-trigger]]:justify-center sm:[&>[data-klemmi-trigger]]:w-auto">
+        {guide}
+      </div>
+      <div className="min-w-0 sm:col-start-2 sm:row-start-2 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:min-w-0 [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 [&>[data-slot=button]]:text-sm sm:[&>[data-slot=button]]:px-4">
+        {primaryAction}
       </div>
     </div>
   );
