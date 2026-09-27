@@ -8,6 +8,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
   it("führt mit Klemmi direkt über die echte Helferoberfläche ohne Eingabesperre", () => {
     const helpers = source("client/src/pages/Helpers.tsx");
     const guide = source("client/src/components/KlemmiHelperGuide.tsx");
+    const mascot = source("client/src/components/KlemmiMascot.tsx");
+    const voice = source("client/src/hooks/useKlemmiVoice.ts");
+    const voiceControl = source("client/src/components/KlemmiVoiceControl.tsx");
 
     expect(helpers).toContain('import { KlemmiHelperGuide } from "@/components/KlemmiHelperGuide"');
     expect(helpers).toContain("<KlemmiHelperGuide");
@@ -26,7 +29,14 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain('onInteractOutside={event => {');
     expect(helpers).toContain('event.target.closest("[data-klemmi-guide]")');
     expect(helpers).toContain('event.preventDefault();');
-    expect(guide).toContain('const KLEMMI_IMAGE_URL = "/api/klemmi/mascot"');
+    expect(mascot).toContain('export const KLEMMI_IMAGE_URL = "/api/klemmi/mascot"');
+    expect(guide).toContain("KlemmiTriggerMascot");
+    expect(guide).toContain("useKlemmiVoice");
+    expect(guide).toContain("KlemmiVoiceControl");
+    expect(voice).toContain("window.speechSynthesis");
+    expect(voice).toContain('utterance.lang = "de-DE"');
+    expect(voice).toContain("utterance.pitch = 1.28");
+    expect(voiceControl).toContain("Klemmi-Stimme stummschalten");
     expect(guide).toContain('data-klemmi-trigger');
     expect(guide).toContain('data-klemmi-guide');
     expect(guide).toContain('pointer-events-none fixed inset-0');
@@ -46,6 +56,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(guide).toContain("PartyPopper");
     expect(guide).toContain("scrollIntoView");
     expect(guide).toContain("resolveVisibleTarget");
+    expect(helpers).toContain("KlemmiActionPanel");
+    expect(helpers).toContain("border-2 border-[#f3794a]");
+    expect(helpers).toContain("bg-white text-base font-semibold text-slate-950");
   });
 
   it("führt mit Klemmi über Einsatzplan, Aufgaben, Material und Standorte mit echten Speicheraktionen", () => {
@@ -57,9 +70,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const genericTasks = source("client/src/pages/TaskGeneric.tsx");
     const locations = source("client/src/pages/Locations.tsx");
     const styles = source("client/src/index.css");
+    const mascot = source("client/src/components/KlemmiMascot.tsx");
 
     expect(surfaceGuide).toContain("export function KlemmiSurfaceGuide");
-    expect(surfaceGuide).toContain('const KLEMMI_IMAGE_URL = "/api/klemmi/mascot"');
+    expect(surfaceGuide).toContain("KlemmiTriggerMascot");
+    expect(surfaceGuide).toContain("useKlemmiVoice");
+    expect(surfaceGuide).toContain("KlemmiVoiceControl");
     expect(surfaceGuide).toContain("waitsForSuccess");
     expect(surfaceGuide).toContain("data-klemmi-success");
     expect(surfaceGuide).toContain("Klemmi wartet auf deinen Klick");
@@ -87,6 +103,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(locations).toContain('data-klemmi-target="locations-save"');
     expect(styles).toContain("@keyframes klemmi-celebrate-in");
     expect(styles).toContain(".klemmi-celebration");
+    expect(mascot).toContain("klemmi-trigger-mascot");
+    expect(styles).toContain("@keyframes klemmi-trigger-shift-and-wave");
+    expect(styles).toContain("@keyframes klemmi-trigger-hand-wave");
+    expect(styles).toContain("20s cubic-bezier");
+    expect(genericTasks.indexOf("<KlemmiSurfaceGuide")).toBeLessThan(
+      genericTasks.indexOf("grid grid-cols-2 gap-2 [&>button]")
+    );
   });
 
   it("zeigt PDF-Hinweise bearbeitbar per Desktop-Hover und Touch-Popover vollständig an", () => {
@@ -2068,6 +2091,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const taskList = source("client/src/pages/TaskList.tsx");
     const taskGeneric = source("client/src/pages/TaskGeneric.tsx");
     const finances = source("client/src/pages/Finances.tsx");
+    const klemmiActionPanel = source("client/src/components/KlemmiActionPanel.tsx");
 
     for (const module of [taskList, taskGeneric, finances]) {
       expect(module).toContain("grid w-full grid-cols-2 gap-2");
@@ -2076,8 +2100,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
       expect(module).toContain("lg:[&>[data-slot=button]]:w-auto");
     }
 
-    expect(helpers).toContain("w-full rounded-xl border border-slate-200 bg-white p-2 shadow-sm sm:w-[12rem]");
-    expect(helpers).toContain('<div className="w-full">');
+    expect(helpers).toContain("<KlemmiActionPanel");
+    expect(klemmiActionPanel).toContain("data-klemmi-action-panel");
+    expect(klemmiActionPanel).toContain("sm:w-[14rem]");
     expect(helpers).toContain("triggerClassName=\"h-10 !w-full justify-center\"");
     expect(helpers).toContain("h-10 w-full bg-blue-600 px-4 text-base font-medium text-white");
     for (const module of [taskList, taskGeneric, finances]) {

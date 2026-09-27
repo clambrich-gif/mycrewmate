@@ -45,6 +45,7 @@ import { CalendarDays, CheckCircle2, ChevronDown, Clock3, FileDown, FileText, Fi
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { PlanResetDialogButton } from "@/components/PlanResetDialogButton";
+import { KlemmiActionPanel } from "@/components/KlemmiActionPanel";
 import { MyTasksDefaultPin } from "@/components/MyTasksDefaultPin";
 import { KlemmiHelperGuide } from "@/components/KlemmiHelperGuide";
 import { useMyTasksDefault } from "@/hooks/useMyTasksDefault";
@@ -385,7 +386,7 @@ function DayAvailabilityControl({
             </div>
             <Button
               type="button"
-              className="w-full"
+              className="w-full border-2 border-[#f3794a] bg-white font-semibold text-slate-950 shadow-sm hover:bg-orange-50 hover:text-slate-950 focus-visible:ring-[#f3794a]"
               disabled={
                 isSaving ||
                 !customStart ||
@@ -1269,42 +1270,43 @@ export default function Helpers() {
             Aufgaben-PDFs.
           </p>
         </div>
-        <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-end lg:ml-auto lg:w-auto">
-          <ViewModeToggle mode={viewMode} onChange={setViewMode} />
-          <div className="w-full rounded-xl border border-slate-200 bg-white p-2 shadow-sm sm:w-[12rem]">
-            <div className="space-y-2">
-              <KlemmiHelperGuide
-                helperDialogOpen={newHelperDialogOpen}
-                donationOpen={newHelperBringsCake}
-                createdHelperId={klemmiCreatedHelperId}
-                availabilityTargetReady={
-                  klemmiCreatedHelperId === null ||
-                  helpers.some(helper => helper.id === klemmiCreatedHelperId)
-                }
-                nameError={newHelperNameError}
-                onOpenHelperDialog={openNewHelperDialog}
-                onGuideOpenChange={setKlemmiGuideOpen}
-              />
-              <div className="w-full">
-                <PlanResetDialogButton
-                  area="helpers"
-                  label="Helfer"
-                  onCompleted={invalidate}
-                  triggerClassName="h-10 !w-full justify-center"
-                />
-              </div>
-              <Button
-                type="button"
-                data-klemmi-target="new-helper"
-                className="h-10 w-full bg-blue-600 px-4 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus-visible:ring-blue-500"
-                onClick={openNewHelperDialog}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Neuer Helfer
-              </Button>
-            </div>
-          </div>
-        </div>
+        <KlemmiActionPanel
+          className="lg:ml-auto lg:w-auto"
+          viewControl={<ViewModeToggle mode={viewMode} onChange={setViewMode} />}
+          guide={
+            <KlemmiHelperGuide
+              helperDialogOpen={newHelperDialogOpen}
+              donationOpen={newHelperBringsCake}
+              createdHelperId={klemmiCreatedHelperId}
+              availabilityTargetReady={
+                klemmiCreatedHelperId === null ||
+                helpers.some(helper => helper.id === klemmiCreatedHelperId)
+              }
+              nameError={newHelperNameError}
+              onOpenHelperDialog={openNewHelperDialog}
+              onGuideOpenChange={setKlemmiGuideOpen}
+            />
+          }
+          secondaryActions={
+            <PlanResetDialogButton
+              area="helpers"
+              label="Helfer"
+              onCompleted={invalidate}
+              triggerClassName="h-10 !w-full justify-center"
+            />
+          }
+          primaryAction={
+            <Button
+              type="button"
+              data-klemmi-target="new-helper"
+              className="h-10 w-full bg-blue-600 px-4 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus-visible:ring-blue-500"
+              onClick={openNewHelperDialog}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Neuer Helfer
+            </Button>
+          }
+        />
       </div>
 
       <div className="flex flex-col gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
@@ -2670,7 +2672,8 @@ export default function Helpers() {
               <Button
                 type="submit"
                 data-klemmi-target="new-helper-submit"
-                className="min-h-11 bg-indigo-700 text-base hover:bg-indigo-800"
+                variant="outline"
+                className="min-h-11 border-slate-300 bg-white text-base font-semibold text-slate-950 shadow-sm hover:bg-slate-50 hover:text-slate-950 focus-visible:ring-slate-500"
                 disabled={create.isPending || createWithDonation.isPending}
               >
                 <Plus className="mr-1.5 h-4 w-4" />

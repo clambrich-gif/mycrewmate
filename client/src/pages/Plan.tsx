@@ -1799,12 +1799,12 @@ export default function Plan() {
             : "Das Planungsteam kann den Einsatzplan vollständig ansehen und filtern. Änderungen und Helferzuweisungen sind Administratoren vorbehalten."}
           </p>
         </div>
-        <div className="flex w-full shrink-0 flex-col items-start gap-2 lg:w-auto lg:min-w-[344px] lg:items-end">
+        <div className="flex w-full shrink-0 flex-col items-start gap-2 sm:flex-row sm:items-start lg:w-auto lg:min-w-[344px] lg:items-start">
           <ViewModeToggle mode={viewMode} onChange={setViewMode} />
           {canEditPlan && (
             <div
               data-plan-action-header
-              className="w-full space-y-2"
+              className="w-full space-y-2 rounded-xl border border-slate-200 bg-white p-2 shadow-sm sm:w-[14rem]"
             >
               <KlemmiSurfaceGuide
                 guideId="plan"

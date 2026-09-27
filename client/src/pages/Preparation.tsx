@@ -685,7 +685,7 @@ export default function Preparation() {
         </div>
         <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-start lg:w-auto lg:min-w-[344px]">
           <ViewModeToggle mode={viewMode} onChange={setViewMode} className="shrink-0" />
-          <div className="w-full space-y-2">
+          <div className="w-full space-y-2 rounded-xl border border-slate-200 bg-white p-2 shadow-sm sm:w-[14rem]">
           <KlemmiSurfaceGuide
             guideId="preparation"
             title="Vorbereitungsaufgaben sicher planen"

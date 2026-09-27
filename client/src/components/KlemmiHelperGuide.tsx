@@ -1,4 +1,7 @@
 import { Button } from "@/components/ui/button";
+import { KlemmiTriggerMascot, KLEMMI_IMAGE_URL } from "@/components/KlemmiMascot";
+import { KlemmiVoiceControl } from "@/components/KlemmiVoiceControl";
+import { useKlemmiVoice } from "@/hooks/useKlemmiVoice";
 import { cn } from "@/lib/utils";
 import {
   CheckCircle2,
@@ -13,8 +16,6 @@ import {
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-
-const KLEMMI_IMAGE_URL = "/api/klemmi/mascot";
 
 type GuideStepKey = "intro" | "person" | "donation" | "save" | "availability";
 
@@ -112,6 +113,7 @@ export function KlemmiHelperGuide({
   const [stepIndex, setStepIndex] = useState(0);
   const [highlightRect, setHighlightRect] = useState<HighlightRect>(null);
   const [celebrating, setCelebrating] = useState(false);
+  const { muted, speak, toggleMuted, cancel } = useKlemmiVoice();
   const step = guideSteps[stepIndex];
   const workflowSteps = useMemo(
     () => guideSteps.filter(item => item.workflowStep !== undefined),
@@ -125,6 +127,7 @@ export function KlemmiHelperGuide({
   const targetReady = step.key !== "availability" || availabilityTargetReady;
 
   const closeGuide = () => {
+    cancel();
     setOpen(false);
     setCelebrating(false);
     setHighlightRect(null);
@@ -139,6 +142,17 @@ export function KlemmiHelperGuide({
     }
     if (step.key === "intro" && helperDialogOpen) setStepIndex(1);
   }, [createdHelperId, helperDialogOpen, open, step.key]);
+
+  useEffect(() => {
+    if (!open) return;
+    const text = celebrating
+      ? "Geschafft! Du hast einen Helfer angelegt und kennst nun auch die Verfügbarkeit."
+      : step.key === "save"
+        ? `Klicke jetzt unten rechts auf ${saveButtonLabel}. ${step.text}`
+        : `${step.title}. ${step.text}`;
+    const timeout = window.setTimeout(() => speak(text), 160);
+    return () => window.clearTimeout(timeout);
+  }, [celebrating, open, saveButtonLabel, speak, step.key, step.text, step.title]);
 
   useLayoutEffect(() => {
     if (!open || celebrating || typeof window === "undefined") return;
@@ -238,11 +252,7 @@ export function KlemmiHelperGuide({
           onGuideOpenChange(true);
         }}
       >
-        <img
-          src={KLEMMI_IMAGE_URL}
-          alt="Klemmi"
-          className="size-7 rounded-md object-contain"
-        />
+        <KlemmiTriggerMascot />
         <span className="font-semibold">Klemmi zeigt&apos;s</span>
         <CircleHelp className="size-4" aria-hidden="true" />
       </Button>
@@ -306,15 +316,18 @@ export function KlemmiHelperGuide({
                       : step.text}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  className="-mr-1 -mt-1 inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 sm:size-9"
-                  aria-label="Klemmi-Anleitung schließen"
-                  title="Anleitung schließen"
-                  onClick={closeGuide}
-                >
-                  <X className="size-4" aria-hidden="true" />
-                </button>
+                <div className="-mr-1 -mt-1 flex shrink-0 items-center">
+                  <KlemmiVoiceControl muted={muted} onToggle={toggleMuted} />
+                  <button
+                    type="button"
+                    className="inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 sm:size-9"
+                    aria-label="Klemmi-Anleitung schließen"
+                    title="Anleitung schließen"
+                    onClick={closeGuide}
+                  >
+                    <X className="size-4" aria-hidden="true" />
+                  </button>
+                </div>
               </div>
 
               {nameError && step.key !== "availability" && (

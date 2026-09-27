@@ -1,4 +1,7 @@
 import { Button } from "@/components/ui/button";
+import { KlemmiTriggerMascot, KLEMMI_IMAGE_URL } from "@/components/KlemmiMascot";
+import { KlemmiVoiceControl } from "@/components/KlemmiVoiceControl";
+import { useKlemmiVoice } from "@/hooks/useKlemmiVoice";
 import { cn } from "@/lib/utils";
 import {
   CheckCircle2,
@@ -11,8 +14,6 @@ import {
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-
-const KLEMMI_IMAGE_URL = "/api/klemmi/mascot";
 
 type HighlightRect = {
   top: number;
@@ -69,11 +70,13 @@ export function KlemmiSurfaceGuide({
   const [highlightRect, setHighlightRect] = useState<HighlightRect>(null);
   const [celebrating, setCelebrating] = useState(false);
   const acceptedSuccessSignal = useRef<number | null>(null);
+  const { muted, speak, toggleMuted, cancel } = useKlemmiVoice();
   const step = steps[stepIndex];
   const workflowSteps = useMemo(() => steps.filter(item => item.key !== "intro"), [steps]);
   const isIntro = step?.key === "intro";
 
   const closeGuide = () => {
+    cancel();
     setOpen(false);
     setCelebrating(false);
     setHighlightRect(null);
@@ -91,6 +94,17 @@ export function KlemmiSurfaceGuide({
     }
     setStepIndex(current => Math.min(current + 1, steps.length - 1));
   }, [open, step?.waitsForSuccess, step?.completeOnSuccess, stepIndex, steps.length, successSignal]);
+
+  useEffect(() => {
+    if (!open || !step) return;
+    const text = celebrating
+      ? `${completionTitle} ${completionText}`
+      : isIntro
+        ? `${title}. ${introText}`
+        : `${step.title}. ${step.text}`;
+    const timeout = window.setTimeout(() => speak(text), 160);
+    return () => window.clearTimeout(timeout);
+  }, [celebrating, completionText, completionTitle, introText, isIntro, open, speak, step.key, step.text, step.title, title]);
 
   useLayoutEffect(() => {
     if (!open || celebrating || !step?.selector || typeof window === "undefined") return;
@@ -173,7 +187,7 @@ export function KlemmiSurfaceGuide({
           onOpenChange?.(true);
         }}
       >
-        <img src={KLEMMI_IMAGE_URL} alt="Klemmi" className="size-7 rounded-md object-contain" />
+        <KlemmiTriggerMascot />
         <span className="font-semibold">Klemmi zeigt&apos;s</span>
         <CircleHelp className="size-4" aria-hidden="true" />
       </Button>
@@ -231,15 +245,18 @@ export function KlemmiSurfaceGuide({
                         {isIntro ? introText : step.text}
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      className="-mr-1 -mt-1 inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 sm:size-9"
-                      aria-label="Klemmi-Anleitung schließen"
-                      title="Anleitung schließen"
-                      onClick={closeGuide}
-                    >
-                      <X className="size-4" aria-hidden="true" />
-                    </button>
+                    <div className="-mr-1 -mt-1 flex shrink-0 items-center">
+                      <KlemmiVoiceControl muted={muted} onToggle={toggleMuted} />
+                      <button
+                        type="button"
+                        className="inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 sm:size-9"
+                        aria-label="Klemmi-Anleitung schließen"
+                        title="Anleitung schließen"
+                        onClick={closeGuide}
+                      >
+                        <X className="size-4" aria-hidden="true" />
+                      </button>
+                    </div>
                   </div>
 
                   <div className="mt-3 border-t border-slate-100 pt-3">

@@ -461,78 +461,72 @@ export default function TaskGeneric({
       >
         <PageTitle icon={titleIcon}>{title}</PageTitle>
         {headerLayout === "stacked" ? (
-          <div
-            className={`w-full space-y-2 xl:w-auto ${
-              stackedActionColumns === 2
-                ? "xl:min-w-[344px]"
-                : stackedActionColumns === 3
-                  ? "xl:min-w-[500px]"
-                  : "xl:min-w-[660px]"
-            }`}
-          >
+          <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-start xl:w-auto">
             {viewModeStorageKey && (
-              <div className="flex justify-end">
+              <div className="shrink-0">
                 <ViewModeToggle mode={viewMode} onChange={setViewMode} />
               </div>
             )}
-            <div
-              className={`grid grid-cols-2 gap-2 [&>button]:w-full [&>button]:justify-center [&>button]:whitespace-nowrap [&>button]:px-2 lg:[&>button]:h-10 ${
-                stackedActionColumns === 2
-                  ? "lg:grid-cols-2"
-                  : stackedActionColumns === 3
-                    ? "lg:grid-cols-3"
-                    : "lg:grid-cols-4"
-              }`}
-            >
-              {renderedHeaderActions}
-              {clearAssignmentsArea ? (
-                <PlanResetDialogButton
-                  area={clearAssignmentsArea}
-                  label={title}
+            <div className="w-full space-y-2 rounded-xl border border-slate-200 bg-white p-2 shadow-sm sm:w-[14rem]">
+              {createInDialog && klemmiGuide && (
+                <KlemmiSurfaceGuide
+                  {...klemmiGuide}
+                  successSignal={klemmiCreationSignal}
+                  onOpenChange={setKlemmiGuideOpen}
+                  onStepAction={stepKey => {
+                    if (stepKey === "intro") openCreateDialog();
+                  }}
                 />
-              ) : kind in resetAreaByKind ? (
-                <ResetAreaButton
-                  area={resetAreaByKind[kind as keyof typeof resetAreaByKind]}
-                  label={title}
-                  compact
-                />
-              ) : null}
-            </div>
-            {createInDialog ? (
-              <>
-                {klemmiGuide && (
-                  <KlemmiSurfaceGuide
-                    {...klemmiGuide}
-                    successSignal={klemmiCreationSignal}
-                    onOpenChange={setKlemmiGuideOpen}
-                    onStepAction={stepKey => {
-                      if (stepKey === "intro") openCreateDialog();
-                    }}
+              )}
+              <div
+                className={`grid grid-cols-2 gap-2 [&>button]:w-full [&>button]:justify-center [&>button]:whitespace-nowrap [&>button]:px-2 [&>button]:text-sm lg:[&>button]:h-10 ${
+                  stackedActionColumns === 2
+                    ? "lg:grid-cols-2"
+                    : stackedActionColumns === 3
+                      ? "lg:grid-cols-3"
+                      : "lg:grid-cols-4"
+                }`}
+              >
+                {renderedHeaderActions}
+                {clearAssignmentsArea ? (
+                  <PlanResetDialogButton
+                    area={clearAssignmentsArea}
+                    label={title}
                   />
-                )}
+                ) : kind in resetAreaByKind ? (
+                  <ResetAreaButton
+                    area={resetAreaByKind[kind as keyof typeof resetAreaByKind]}
+                    label={title}
+                    compact
+                  />
+                ) : null}
+              </div>
+              {createInDialog ? (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    data-klemmi-target={klemmiGuide ? `${klemmiGuide.guideId}-new` : undefined}
+                    className={`w-full shadow-xs ${createButtonClassName}`}
+                    onClick={openCreateDialog}
+                  >
+                    <Plus className="mr-1.5 h-4 w-4" />
+                    <span>{createTriggerLabel}</span>
+                  </Button>
+                </>
+              ) : (
                 <Button
-                  type="button"
-                  variant="outline"
-                  data-klemmi-target={klemmiGuide ? `${klemmiGuide.guideId}-new` : undefined}
-                  className={`w-full shadow-xs ${createButtonClassName}`}
-                  onClick={openCreateDialog}
+                  className="w-full shadow-xs"
+                  onClick={submitCreate}
+                  disabled={!name.trim() || create.isPending}
                 >
                   <Plus className="mr-1.5 h-4 w-4" />
-                  <span>{createTriggerLabel}</span>
+                  <span>
+                    {create.isPending ? "Speichert …" : `Neu: ${addLabel}`}
+                  </span>
                 </Button>
-              </>
-            ) : (
-              <Button
-                className="w-full shadow-xs"
-                onClick={submitCreate}
-                disabled={!name.trim() || create.isPending}
-              >
-                <Plus className="mr-1.5 h-4 w-4" />
-                <span>
-                  {create.isPending ? "Speichert …" : `Neu: ${addLabel}`}
-                </span>
-              </Button>
-            )}
+              )}
+            </div>
           </div>
         ) : (
           <div className="grid w-full grid-cols-2 gap-2 lg:ml-auto lg:flex lg:w-auto lg:flex-wrap lg:justify-end [&>[data-slot=button]]:w-full [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 max-lg:[&>[data-slot=button]]:h-11 max-lg:[&>[data-slot=button]]:text-base lg:[&>[data-slot=button]]:w-auto lg:[&>[data-slot=button]]:px-4">

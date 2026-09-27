@@ -245,7 +245,7 @@ export default function Locations() {
           </p>
         </div>
         {canManage && (
-          <div className="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:items-end">
+          <div className="w-full space-y-2 rounded-xl border border-slate-200 bg-white p-2 shadow-sm sm:ml-auto sm:w-[14rem]">
             <KlemmiSurfaceGuide
               guideId="locations"
               title="Orte und Standorte sauber anlegen"
