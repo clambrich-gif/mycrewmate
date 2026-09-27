@@ -6,15 +6,16 @@ import {
   ChevronRight,
   CircleHelp,
   Gift,
+  Save,
   Sparkles,
   X,
 } from "lucide-react";
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
 const KLEMMI_IMAGE_URL = "/api/klemmi/mascot";
 
-type GuideStepKey = "welcome" | "person" | "donation" | "availability";
+type GuideStepKey = "intro" | "person" | "donation" | "save" | "availability";
 
 type HighlightRect = {
   top: number;
@@ -26,49 +27,65 @@ type HighlightRect = {
 type KlemmiHelperGuideProps = {
   helperDialogOpen: boolean;
   donationOpen: boolean;
+  createdHelperId: number | null;
+  availabilityTargetReady: boolean;
+  nameError: string | null;
   onOpenHelperDialog: () => void;
-  onSetDonationOpen: (open: boolean) => void;
-  onCloseHelperDialog: () => void;
+  onGuideOpenChange: (open: boolean) => void;
 };
 
 const guideSteps: Array<{
   key: GuideStepKey;
   selector: string;
+  workflowStep?: number;
   eyebrow: string;
   title: string;
   text: string;
-  action: string;
+  action?: string;
+  waitsForSave?: boolean;
 }> = [
   {
-    key: "welcome",
+    key: "intro",
     selector: '[data-klemmi-target="new-helper"]',
     eyebrow: "Klemmi zeigt's",
-    title: "In wenigen Schritten zum neuen Helfer",
-    text: "Klicke auf „Neuer Helfer“. Ich bleibe bei dir und zeige dir die wichtigsten Eingaben direkt auf der echten Oberfläche.",
-    action: "Zum Formular",
+    title: "Neue Helfer sicher anlegen",
+    text: "Ich führe dich direkt auf der echten Oberfläche durch die Anlage – vom Namen bis zum passenden Zeitfenster.",
+    action: "Helferformular öffnen",
   },
   {
     key: "person",
-    selector: '#new-helper-dialog-name',
-    eyebrow: "Schritt 1 von 3",
-    title: "Person und Ansprechpartner erfassen",
-    text: "Trage zuerst den Namen ein. Den passenden Ansprechpartner und eine Telefonnummer kannst du direkt daneben ergänzen – alles Weitere bleibt optional.",
+    selector: '[data-klemmi-target="new-helper-name"]',
+    workflowStep: 1,
+    eyebrow: "Schritt 1 von 4",
+    title: "Person erfassen",
+    text: "Der Name ist die einzige Pflichtangabe. Ansprechpartner, Telefonnummer und Hinweis kannst du ergänzen, wenn du sie schon kennst.",
     action: "Spende zeigen",
   },
   {
     key: "donation",
     selector: '[data-klemmi-target="new-helper-donation"]',
-    eyebrow: "Schritt 2 von 3",
-    title: "Kuchen oder Spende direkt mit aufnehmen",
-    text: "Ein Häkchen genügt: Danach kannst du Kuchen, Salat oder eine andere Spende samt Allergenen sofort gemeinsam mit dem Helfer speichern.",
-    action: "Verfügbarkeit zeigen",
+    workflowStep: 2,
+    eyebrow: "Schritt 2 von 4",
+    title: "Spende bei Bedarf ergänzen",
+    text: "Die Spende ist optional: Setze nur dann das Häkchen, wenn Kuchen, Salat, Snack oder eine andere Spende direkt mit erfasst werden soll.",
+    action: "Speichern zeigen",
+  },
+  {
+    key: "save",
+    selector: '[data-klemmi-target="new-helper-submit"]',
+    workflowStep: 3,
+    eyebrow: "Schritt 3 von 4",
+    title: "Helfer jetzt speichern",
+    text: "Klicke jetzt unten rechts auf den markierten Speichern-Button. Klemmi wartet auf die erfolgreiche Anlage und zeigt danach genau diesen neuen Helfer.",
+    waitsForSave: true,
   },
   {
     key: "availability",
     selector: '[data-klemmi-target="helper-availability"]',
-    eyebrow: "Schritt 3 von 3",
-    title: "Zeitfenster nach dem Anlegen festlegen",
-    text: "Nach dem Speichern findest du die Tages-Verfügbarkeiten direkt in der Helferkarte. Tippe auf einen Tag und wähle „Ja“, „Nein“ oder ein Zeitfenster von–bis.",
+    workflowStep: 4,
+    eyebrow: "Schritt 4 von 4",
+    title: "Zeitfenster des neuen Helfers festlegen",
+    text: "Hier legst du für den gerade angelegten Helfer direkt fest, ob und wann er verfügbar ist. Tippe auf einen Tag und wähle „Ja“, „Nein“ oder ein Zeitfenster von–bis.",
     action: "Fertig",
   },
 ];
@@ -84,37 +101,51 @@ function clamp(value: number, min: number, max: number) {
 export function KlemmiHelperGuide({
   helperDialogOpen,
   donationOpen,
+  createdHelperId,
+  availabilityTargetReady,
+  nameError,
   onOpenHelperDialog,
-  onSetDonationOpen,
-  onCloseHelperDialog,
+  onGuideOpenChange,
 }: KlemmiHelperGuideProps) {
   const [open, setOpen] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [highlightRect, setHighlightRect] = useState<HighlightRect>(null);
   const step = guideSteps[stepIndex];
+  const workflowSteps = useMemo(
+    () => guideSteps.filter(item => item.workflowStep !== undefined),
+    []
+  );
+  const saveButtonLabel = donationOpen ? "Helfer & Spende anlegen" : "Helfer anlegen";
+  const selector =
+    step.key === "availability" && createdHelperId !== null
+      ? `[data-klemmi-target="helper-availability"][data-klemmi-helper-id="${createdHelperId}"]`
+      : step.selector;
+  const targetReady = step.key !== "availability" || availabilityTargetReady;
 
   const closeGuide = () => {
     setOpen(false);
     setHighlightRect(null);
+    onGuideOpenChange(false);
   };
 
   useEffect(() => {
     if (!open) return;
-    if (step.key === "welcome" && helperDialogOpen) setStepIndex(1);
-    if (step.key === "person" && donationOpen) setStepIndex(2);
-  }, [donationOpen, helperDialogOpen, open, step.key]);
+    if (createdHelperId !== null && step.key !== "availability") {
+      setStepIndex(4);
+      return;
+    }
+    if (step.key === "intro" && helperDialogOpen) setStepIndex(1);
+  }, [createdHelperId, helperDialogOpen, open, step.key]);
 
   useLayoutEffect(() => {
     if (!open || typeof window === "undefined") return;
 
     let frame = 0;
     const resolveVisibleTarget = () =>
-      Array.from(document.querySelectorAll<HTMLElement>(step.selector)).find(
-        element => {
-          const rect = element.getBoundingClientRect();
-          return rect.width > 0 && rect.height > 0;
-        }
-      ) ?? null;
+      Array.from(document.querySelectorAll<HTMLElement>(selector)).find(element => {
+        const rect = element.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      }) ?? null;
     const target = resolveVisibleTarget();
     const syncPosition = () => {
       const element = resolveVisibleTarget();
@@ -123,11 +154,13 @@ export function KlemmiHelperGuide({
         return;
       }
       const rect = element.getBoundingClientRect();
+      const left = clamp(rect.left - 8, 8, Math.max(8, window.innerWidth - 20));
+      const top = clamp(rect.top - 8, 8, Math.max(8, window.innerHeight - 20));
       setHighlightRect({
-        top: clamp(rect.top - 8, 8, Math.max(8, window.innerHeight - 20)),
-        left: clamp(rect.left - 8, 8, Math.max(8, window.innerWidth - 20)),
-        width: Math.max(0, rect.width + 16),
-        height: Math.max(0, rect.height + 16),
+        top,
+        left,
+        width: Math.max(0, Math.min(rect.width + 16, window.innerWidth - left - 8)),
+        height: Math.max(0, Math.min(rect.height + 16, window.innerHeight - top - 8)),
       });
     };
     const scheduleSync = () => {
@@ -139,7 +172,7 @@ export function KlemmiHelperGuide({
       const element = resolveVisibleTarget();
       element?.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
       scheduleSync();
-    }, 90);
+    }, targetReady ? 90 : 0);
     window.addEventListener("resize", scheduleSync);
     window.addEventListener("scroll", scheduleSync, true);
     const resizeObserver = target ? new ResizeObserver(scheduleSync) : null;
@@ -152,17 +185,18 @@ export function KlemmiHelperGuide({
       window.removeEventListener("scroll", scheduleSync, true);
       resizeObserver?.disconnect();
     };
-  }, [open, step.selector]);
+  }, [open, selector, targetReady]);
 
   const showPrevious = () => {
+    if (step.key === "person") {
+      setStepIndex(0);
+      return;
+    }
     if (step.key === "donation") {
-      onSetDonationOpen(false);
       setStepIndex(1);
       return;
     }
-    if (step.key === "availability") {
-      onOpenHelperDialog();
-      onSetDonationOpen(true);
+    if (step.key === "save") {
       setStepIndex(2);
       return;
     }
@@ -170,23 +204,23 @@ export function KlemmiHelperGuide({
   };
 
   const showNext = () => {
-    if (step.key === "welcome") {
+    if (step.key === "intro") {
       onOpenHelperDialog();
       setStepIndex(1);
       return;
     }
     if (step.key === "person") {
-      onSetDonationOpen(true);
       setStepIndex(2);
       return;
     }
     if (step.key === "donation") {
-      onCloseHelperDialog();
       setStepIndex(3);
       return;
     }
-    closeGuide();
+    if (step.key === "availability") closeGuide();
   };
+
+  const canGoBack = step.key !== "intro" && step.key !== "availability";
 
   return (
     <>
@@ -198,6 +232,7 @@ export function KlemmiHelperGuide({
         onClick={() => {
           setStepIndex(0);
           setOpen(true);
+          onGuideOpenChange(true);
         }}
       >
         <img
@@ -224,7 +259,7 @@ export function KlemmiHelperGuide({
             <section
               aria-live="polite"
               aria-label="Klemmi Schritt-für-Schritt-Anleitung"
-              className="pointer-events-auto fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] rounded-2xl border border-blue-200 bg-white p-3 text-slate-950 shadow-2xl sm:inset-x-auto sm:bottom-5 sm:right-5 sm:w-[min(25rem,calc(100vw-2.5rem))] sm:p-4"
+              className="pointer-events-auto fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] overflow-hidden rounded-2xl border border-blue-200 bg-white p-3 text-slate-950 shadow-2xl sm:inset-x-auto sm:bottom-5 sm:right-5 sm:w-[min(25rem,calc(100vw-2.5rem))] sm:p-4"
             >
               <div className="flex items-start gap-3">
                 <img
@@ -232,14 +267,18 @@ export function KlemmiHelperGuide({
                   alt="Klemmi, der digitale Helfer"
                   className="size-[76px] shrink-0 rounded-xl object-contain sm:size-[92px]"
                 />
-                <div className="min-w-0 flex-1 pr-7">
+                <div className="min-w-0 flex-1">
                   <p className="text-xs font-bold tracking-wide text-[#e86117] uppercase">
                     {step.eyebrow}
                   </p>
                   <h2 className="mt-0.5 text-base font-bold leading-snug text-slate-950 sm:text-lg">
                     {step.title}
                   </h2>
-                  <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{step.text}</p>
+                  <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
+                    {step.key === "save"
+                      ? `Klicke jetzt unten rechts auf „${saveButtonLabel}“. ${step.text}`
+                      : step.text}
+                  </p>
                 </div>
                 <button
                   type="button"
@@ -251,41 +290,71 @@ export function KlemmiHelperGuide({
                   <X className="size-4" aria-hidden="true" />
                 </button>
               </div>
-              <div className="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3">
-                <div className="flex gap-1" aria-label={`Schritt ${stepIndex + 1} von ${guideSteps.length}`}>
-                  {guideSteps.map((item, index) => (
+
+              {nameError && step.key !== "availability" && (
+                <p
+                  data-klemmi-name-warning
+                  role="alert"
+                  className="mt-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm leading-snug text-amber-950"
+                >
+                  <strong>Klemmi-Hinweis:</strong> {nameError}
+                </p>
+              )}
+
+              <div className="mt-3 border-t border-slate-100 pt-3">
+                <div className="flex items-center gap-1" aria-label={step.workflowStep ? `Schritt ${step.workflowStep} von ${workflowSteps.length}` : "Einführung"}>
+                  {workflowSteps.map(item => (
                     <span
                       key={item.key}
                       className={cn(
                         "h-1.5 w-5 rounded-full transition-colors",
-                        index === stepIndex ? "bg-[#ff7a2f]" : "bg-slate-200"
+                        item.workflowStep === step.workflowStep ? "bg-[#ff7a2f]" : "bg-slate-200"
                       )}
                     />
                   ))}
                 </div>
-                <div className="ml-auto flex items-center gap-2">
-                  {stepIndex > 1 && (
-                    <Button type="button" variant="ghost" size="sm" className="min-h-10 px-2 text-slate-700" onClick={showPrevious}>
+
+                <div className="mt-2 flex min-w-0 flex-wrap items-center justify-end gap-2">
+                  {canGoBack && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="min-h-10 shrink-0 px-2 text-slate-700"
+                      onClick={showPrevious}
+                    >
                       <ChevronLeft className="mr-1 size-4" aria-hidden="true" />
                       Zurück
                     </Button>
                   )}
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="min-h-10 bg-[#ff7a2f] px-3 text-white hover:bg-[#e86117] focus-visible:ring-[#ff7a2f]"
-                    onClick={showNext}
-                  >
-                    {step.key === "availability" ? (
-                      <CheckCircle2 className="mr-1.5 size-4" aria-hidden="true" />
-                    ) : step.key === "donation" ? (
-                      <Sparkles className="mr-1.5 size-4" aria-hidden="true" />
-                    ) : step.key === "person" ? (
-                      <Gift className="mr-1.5 size-4" aria-hidden="true" />
-                    ) : null}
-                    {step.action}
-                    {step.key !== "availability" && <ChevronRight className="ml-1 size-4" aria-hidden="true" />}
-                  </Button>
+
+                  {step.waitsForSave ? (
+                    <p
+                      data-klemmi-save-wait
+                      className="min-w-0 flex-1 rounded-lg bg-slate-50 px-3 py-2 text-right text-xs leading-snug text-slate-600"
+                    >
+                      Klemmi wartet auf deinen Klick auf den markierten Speichern-Button.
+                    </p>
+                  ) : (
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="min-h-10 min-w-0 max-w-full whitespace-normal bg-[#ff7a2f] px-3 text-right text-white hover:bg-[#e86117] focus-visible:ring-[#ff7a2f]"
+                      onClick={showNext}
+                    >
+                      {step.key === "availability" ? (
+                        <CheckCircle2 className="mr-1.5 size-4 shrink-0" aria-hidden="true" />
+                      ) : step.key === "donation" ? (
+                        <Save className="mr-1.5 size-4 shrink-0" aria-hidden="true" />
+                      ) : step.key === "person" ? (
+                        <Gift className="mr-1.5 size-4 shrink-0" aria-hidden="true" />
+                      ) : (
+                        <Sparkles className="mr-1.5 size-4 shrink-0" aria-hidden="true" />
+                      )}
+                      <span className="min-w-0">{step.action}</span>
+                      {step.key !== "availability" && <ChevronRight className="ml-1 size-4 shrink-0" aria-hidden="true" />}
+                    </Button>
+                  )}
                 </div>
               </div>
             </section>

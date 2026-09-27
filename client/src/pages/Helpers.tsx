@@ -789,6 +789,9 @@ export default function Helpers() {
   const [newHelperDonation, setNewHelperDonation] = useState<NewHelperDonation>(
     EMPTY_NEW_HELPER_DONATION
   );
+  const [klemmiGuideActive, setKlemmiGuideActive] = useState(false);
+  const [klemmiCreatedHelperId, setKlemmiCreatedHelperId] = useState<number | null>(null);
+  const [newHelperNameError, setNewHelperNameError] = useState<string | null>(null);
   const [whatsAppTargetHelper, setWhatsAppTargetHelper] = useState<{
     id: number;
     name: string;
@@ -855,10 +858,25 @@ export default function Helpers() {
     setNewHelperNote("");
     setNewHelperBringsCake(false);
     setNewHelperDonation(EMPTY_NEW_HELPER_DONATION);
+    setNewHelperNameError(null);
   };
   const openNewHelperDialog = () => {
     resetNewHelperForm();
     setNewHelperDialogOpen(true);
+  };
+  const setKlemmiGuideOpen = (open: boolean) => {
+    setKlemmiGuideActive(open);
+    if (!open) {
+      setKlemmiCreatedHelperId(null);
+      setNewHelperNameError(null);
+    }
+  };
+  const finishNewHelperCreation = (helperId: number, message: string) => {
+    invalidate();
+    resetNewHelperForm();
+    setNewHelperDialogOpen(false);
+    if (klemmiGuideActive) setKlemmiCreatedHelperId(helperId);
+    toast.success(message);
   };
   const openCakeDonation = (helperName: string) =>
     setLocation(`/spenden?donor=${encodeURIComponent(helperName)}`);
@@ -873,20 +891,14 @@ export default function Helpers() {
     });
   };
   const create = trpc.helpers.create.useMutation({
-    onSuccess: () => {
-      invalidate();
-      resetNewHelperForm();
-      setNewHelperDialogOpen(false);
-      toast.success("Helfer hinzugefügt");
+    onSuccess: result => {
+      finishNewHelperCreation(result.id, "Helfer hinzugefügt");
     },
     onError: error => toast.error(error.message),
   });
   const createWithDonation = trpc.helpers.createWithDonation.useMutation({
-    onSuccess: () => {
-      invalidate();
-      resetNewHelperForm();
-      setNewHelperDialogOpen(false);
-      toast.success("Helfer und Spende hinzugefügt");
+    onSuccess: result => {
+      finishNewHelperCreation(result.helper.id, "Helfer und Spende hinzugefügt");
     },
     onError: error => toast.error(error.message),
   });
@@ -924,7 +936,16 @@ export default function Helpers() {
   };
   const createNewHelper = () => {
     const trimmedName = name.trim();
-    if (!trimmedName) return;
+    if (!trimmedName) {
+      setNewHelperNameError("Bitte trage zuerst den Namen des Helfers ein. Danach kannst du ihn speichern.");
+      window.requestAnimationFrame(() => {
+        document
+          .querySelector<HTMLInputElement>('[data-klemmi-target="new-helper-name"]')
+          ?.focus();
+      });
+      return;
+    }
+    setNewHelperNameError(null);
     const helper = {
       name: trimmedName,
       contactId:
@@ -1138,6 +1159,20 @@ export default function Helpers() {
       activeDays,
     ]
   );
+  // Ein gerade von Klemmi angelegter Helfer bleibt für den letzten
+  // Führungsschritt sichtbar, auch wenn eine vorher gewählte Filteransicht ihn
+  // normalerweise ausblenden würde. Beim Schließen der Führung bleibt die
+  // persönliche Filterauswahl unverändert bestehen.
+  const displayedHelpers = useMemo(() => {
+    if (klemmiCreatedHelperId === null) return filtered;
+    const createdHelper = helpers.find(helper => helper.id === klemmiCreatedHelperId);
+    if (!createdHelper || filtered.some(helper => helper.id === createdHelper.id)) {
+      return filtered;
+    }
+    return [...filtered, createdHelper].sort((a, b) =>
+      sortAsc ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)
+    );
+  }, [filtered, helpers, klemmiCreatedHelperId, sortAsc]);
   const selfHelperIds = useMemo(() => {
     const contactById = new Map(contacts.map(contact => [contact.id, contact]));
     return new Set(
@@ -1241,9 +1276,14 @@ export default function Helpers() {
               <KlemmiHelperGuide
                 helperDialogOpen={newHelperDialogOpen}
                 donationOpen={newHelperBringsCake}
+                createdHelperId={klemmiCreatedHelperId}
+                availabilityTargetReady={
+                  klemmiCreatedHelperId === null ||
+                  helpers.some(helper => helper.id === klemmiCreatedHelperId)
+                }
+                nameError={newHelperNameError}
                 onOpenHelperDialog={openNewHelperDialog}
-                onSetDonationOpen={setNewHelperBringsCake}
-                onCloseHelperDialog={() => setNewHelperDialogOpen(false)}
+                onGuideOpenChange={setKlemmiGuideOpen}
               />
               <div className="w-full">
                 <PlanResetDialogButton
@@ -1571,7 +1611,7 @@ export default function Helpers() {
       {viewMode === "liste" ? (
         <>
       <div className="space-y-3 md:hidden">
-        {filtered.map(helper => (
+        {displayedHelpers.map(helper => (
           <Card key={helper.id} className="shadow-sm">
             <CardContent className="space-y-4 p-4">
               <div className="flex items-start justify-between gap-2">
@@ -1767,6 +1807,7 @@ export default function Helpers() {
               <section
                 data-slot="mobile-helper-availability-section"
                 data-klemmi-target="helper-availability"
+                data-klemmi-helper-id={helper.id}
                 aria-label="Tages-Verfügbarkeiten"
                 className="space-y-2 rounded-xl border border-slate-200 bg-white p-3"
               >
@@ -1794,7 +1835,7 @@ export default function Helpers() {
             </CardContent>
           </Card>
         ))}
-        {!isLoading && filtered.length === 0 && (
+        {!isLoading && displayedHelpers.length === 0 && (
           <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
             Keine Helfer gefunden.
           </div>
@@ -1873,7 +1914,7 @@ export default function Helpers() {
                   </td>
                 </tr>
               )}
-              {filtered.map(helper => {
+              {displayedHelpers.map(helper => {
                 const helperDeleteDisabled =
                   selfHelperIds.has(helper.id) ||
                   (!isTenantAdmin && assignedHelperIds.has(helper.id));
@@ -2025,7 +2066,12 @@ export default function Helpers() {
                   </td>
                   {activeDays.map(day => {
                     return (
-                      <td key={day} data-klemmi-target="helper-availability" className="p-1 text-center align-middle">
+                      <td
+                        key={day}
+                        data-klemmi-target="helper-availability"
+                        data-klemmi-helper-id={helper.id}
+                        className="p-1 text-center align-middle"
+                      >
                         <DayAvailabilityControl
                           helper={helper}
                           day={day}
@@ -2091,7 +2137,7 @@ export default function Helpers() {
                 </tr>
                 );
               })}
-              {!isLoading && filtered.length === 0 && (
+              {!isLoading && displayedHelpers.length === 0 && (
                 <tr>
                   <td
                     className="p-4 text-muted-foreground"
@@ -2115,7 +2161,7 @@ export default function Helpers() {
       ) : (
         <div className="space-y-4" data-slot="helpers-cards-view">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {filtered.map(helper => {
+            {displayedHelpers.map(helper => {
               const helperDeleteDisabled =
                 selfHelperIds.has(helper.id) ||
                 (!isTenantAdmin && assignedHelperIds.has(helper.id));
@@ -2338,7 +2384,11 @@ export default function Helpers() {
                       </div>
                     )}
 
-                    <div data-klemmi-target="helper-availability" className="space-y-2 border-t border-slate-100 pt-3">
+                    <div
+                      data-klemmi-target="helper-availability"
+                      data-klemmi-helper-id={helper.id}
+                      className="space-y-2 border-t border-slate-100 pt-3"
+                    >
                       <div className="text-xs font-semibold text-slate-700">
                         Tages-Verfügbarkeiten & Zeitfenster
                       </div>
@@ -2365,7 +2415,7 @@ export default function Helpers() {
               );
             })}
           </div>
-          {!isLoading && filtered.length === 0 && (
+          {!isLoading && displayedHelpers.length === 0 && (
             <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
               Keine Helfer gefunden.
             </div>
@@ -2398,6 +2448,7 @@ export default function Helpers() {
           </DialogHeader>
           <form
             className="space-y-5"
+            noValidate
             onSubmit={event => {
               event.preventDefault();
               createNewHelper();
@@ -2420,13 +2471,28 @@ export default function Helpers() {
                   </label>
                   <Input
                     id="new-helper-dialog-name"
+                    data-klemmi-target="new-helper-name"
                     autoFocus
                     value={name}
-                    onChange={event => setName(event.target.value)}
+                    onChange={event => {
+                      setName(event.target.value);
+                      if (newHelperNameError) setNewHelperNameError(null);
+                    }}
                     placeholder="z. B. Axel Muster"
                     className="h-11 bg-white text-base"
+                    aria-invalid={Boolean(newHelperNameError)}
+                    aria-describedby={newHelperNameError ? "new-helper-name-error" : undefined}
                     required
                   />
+                  {newHelperNameError && (
+                    <p
+                      id="new-helper-name-error"
+                      role="alert"
+                      className="text-sm font-medium text-amber-800"
+                    >
+                      {newHelperNameError}
+                    </p>
+                  )}
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
@@ -2603,8 +2669,9 @@ export default function Helpers() {
               </Button>
               <Button
                 type="submit"
+                data-klemmi-target="new-helper-submit"
                 className="min-h-11 bg-indigo-700 text-base hover:bg-indigo-800"
-                disabled={!name.trim() || create.isPending || createWithDonation.isPending}
+                disabled={create.isPending || createWithDonation.isPending}
               >
                 <Plus className="mr-1.5 h-4 w-4" />
                 {create.isPending || createWithDonation.isPending
