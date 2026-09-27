@@ -1,4 +1,5 @@
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
+import { KlemmiActionPanel } from "@/components/KlemmiActionPanel";
 import { KlemmiSurfaceGuide } from "@/components/KlemmiSurfaceGuide";
 import { ViewModeToggle } from "@/components/ViewModeToggle";
 import { PageTitle } from "@/components/PageTitle";
@@ -516,10 +517,11 @@ export default function Cakes() {
             kennzeichnen.
           </p>
         </div>
-        <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-end lg:ml-auto lg:w-auto">
-          <ViewModeToggle mode={viewMode} onChange={setViewMode} />
-          <div className="w-full space-y-2 sm:w-[25rem]">
-            <div className="flex justify-end gap-2 [&>[data-slot=button]]:h-10 [&>[data-slot=button]]:flex-1 [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2">
+        <KlemmiActionPanel
+          layout="guide-first"
+          className="lg:ml-auto"
+          viewControl={<ViewModeToggle mode={viewMode} onChange={setViewMode} />}
+          guide={
             <KlemmiSurfaceGuide
               guideId="donations"
               title="Spenden erfassen"
@@ -530,38 +532,43 @@ export default function Cakes() {
                 if (stepKey === "intro") openCreate();
               }}
             />
-            <Button
-              type="button"
-              variant="outline"
-              className="border-blue-200 bg-white text-slate-800 hover:bg-blue-50 hover:text-blue-900"
-              disabled={donationOverviewPdf.isPending}
-              onClick={downloadDonationOverviewPdf}
-            >
-              <Printer className="mr-2 h-4 w-4 text-blue-700" />
-              {donationOverviewPdf.isPending ? "PDF wird erstellt …" : "PDF drucken"}
-            </Button>
-            <ResetAreaButton
-              area="cakes"
-              label="Spenden"
-              compact
-              onReset={resetFilters}
-              description="Achtung: Möchtest du wirklich alle erfassten Spenden und alle eingetragenen Sollwerte unwiderruflich löschen? Diese Aktion gilt ausschließlich für die aktuell gewählte Veranstaltung und kann nicht rückgängig gemacht werden."
-              confirmLabel="Spenden & Sollwerte löschen"
-              successMessage="Alle Spenden und Sollwerte wurden gelöscht"
-            />
-          </div>
+          }
+          secondaryActions={
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                className="border-blue-200 bg-white text-slate-800 hover:bg-blue-50 hover:text-blue-900"
+                disabled={donationOverviewPdf.isPending}
+                onClick={downloadDonationOverviewPdf}
+              >
+                <Printer className="mr-2 h-4 text-blue-700" />
+                {donationOverviewPdf.isPending ? "PDF wird erstellt …" : "PDF drucken"}
+              </Button>
+              <ResetAreaButton
+                area="cakes"
+                label="Spenden"
+                compact
+                onReset={resetFilters}
+                description="Achtung: Möchtest du wirklich alle erfassten Spenden und alle eingetragenen Sollwerte unwiderruflich löschen? Diese Aktion gilt ausschließlich für die aktuell gewählte Veranstaltung und kann nicht rückgängig gemacht werden."
+                confirmLabel="Spenden & Sollwerte löschen"
+                successMessage="Alle Spenden und Sollwerte wurden gelöscht"
+              />
+            </>
+          }
+          primaryAction={
             <Button
               type="button"
               variant="outline"
               data-klemmi-target="donations-create"
-              className={`w-full ${CREATION_ACTION_BUTTON_CLASS}`}
-            onClick={openCreate}
-          >
-            <Plus className="mr-1.5 h-4 w-4" />
-            Spende erfassen
-          </Button>
-        </div>
-        </div>
+              className={CREATION_ACTION_BUTTON_CLASS}
+              onClick={openCreate}
+            >
+              <Plus className="mr-1.5 h-4 shrink-0" />
+              <span className="min-w-0">Spende erfassen</span>
+            </Button>
+          }
+        />
       </div>
 
       <div className="space-y-3 rounded-xl border bg-slate-50/70 p-3 sm:p-4">
@@ -1038,7 +1045,17 @@ export default function Cakes() {
         open={dialogOpen}
         onOpenChange={open => (open ? setDialogOpen(true) : closeDialog())}
       >
-        <DialogContent className="w-[calc(100vw-2rem)] min-w-0 max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))] !bg-white !text-slate-950 shadow-2xl sm:max-w-lg">
+        <DialogContent
+          className="w-[calc(100vw-2rem)] min-w-0 max-w-[calc(100vw-2rem)] overflow-x-hidden overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))] !bg-white !text-slate-950 shadow-2xl sm:max-w-lg"
+          onInteractOutside={event => {
+            // Klemmi ist bewusst als frei verschiebbare, nicht-modale Karte in
+            // einem Portal außerhalb des Dialog-DOMs gerendert. Ein Klick auf
+            // „Weiter“ darf die echte Spendenanlage daher nicht schließen.
+            if (event.target instanceof Element && event.target.closest("[data-klemmi-guide]")) {
+              event.preventDefault();
+            }
+          }}
+        >
           <DialogHeader>
             <DialogTitle>
               {editingDonation ? "Spende bearbeiten" : "Spende erfassen"}

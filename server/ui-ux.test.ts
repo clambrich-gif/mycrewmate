@@ -151,6 +151,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(surfaceGuide).toContain("data-klemmi-next-control");
     expect(surfaceGuide).toContain("data-klemmi-narration-complete");
     expect(surfaceGuide).toContain("Klemmi wartet auf deinen Klick");
+    expect(surfaceGuide).toContain("const [targetReady, setTargetReady] = useState(false)");
+    expect(surfaceGuide).toContain("if (!celebrating && !targetReady) return");
+    expect(surfaceGuide).toContain("MutationObserver");
+    expect(surfaceGuide).toContain("cancel();");
 
     expect(plan).toContain('<KlemmiSurfaceGuide');
     expect(plan).toContain('data-klemmi-target="plan-new"');
@@ -179,6 +183,16 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(locations).toContain('<KlemmiSurfaceGuide');
     expect(locations).toContain('data-klemmi-target="locations-new"');
     expect(locations).toContain('data-klemmi-target="locations-save"');
+    const cakes = source("client/src/pages/Cakes.tsx");
+    const actionPanel = source("client/src/components/KlemmiActionPanel.tsx");
+    expect(cakes).toContain('layout="guide-first"');
+    expect(cakes).toContain("KlemmiActionPanel");
+    expect(cakes).toContain('data-klemmi-target="donations-create"');
+    expect(cakes).toContain('event.target.closest("[data-klemmi-guide]")');
+    expect(cakes).toContain("event.preventDefault();");
+    expect(actionPanel).toContain('layout?: "view-first" | "guide-first"');
+    expect(actionPanel).toContain("const guideFirst = layout === \"guide-first\"");
+    expect(actionPanel).toContain('data-klemmi-view-control');
     expect(styles).toContain("@keyframes klemmi-celebrate-in");
     expect(styles).toContain(".klemmi-celebration");
     expect(mascot).toContain("klemmi-trigger-mascot");
@@ -2963,7 +2977,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(cakes).toContain("Spenden-PDF wurde heruntergeladen");
     expect(cakes).toContain("downloadDonationOverviewPdf");
     expect(cakes).not.toContain("ModuleExcelImportButton");
-    expect(cakes).toContain('<ResetAreaButton\n              area="cakes"');
+    expect(cakes).toContain('<ResetAreaButton\n                area="cakes"');
     expect(cakes).toContain("alle erfassten Spenden und alle eingetragenen Sollwerte");
     expect(cakes).toContain('confirmLabel="Spenden & Sollwerte löschen"');
     expect(cakes).toContain('successMessage="Alle Spenden und Sollwerte wurden gelöscht"');
@@ -3012,9 +3026,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(cakes).toContain("donationTargetsOpen");
     expect(cakes).toContain("setDonationTargetsOpen(false)");
     expect(cakes).toContain("data-donation-targets-collapsible");
-    expect(cakes).toContain("w-full space-y-2 sm:w-[25rem]");
-    expect(cakes).toContain("flex justify-end gap-2");
-    expect(cakes).toContain("[&>[data-slot=button]]:flex-1");
+    expect(cakes).toContain("KlemmiActionPanel");
+    expect(cakes).toContain('layout="guide-first"');
+    expect(cakes).toContain("secondaryActions=");
+    expect(cakes).toContain("primaryAction=");
     expect(cakes).toContain("border-rose-200 bg-rose-50/45 py-0 shadow-sm");
     expect(cakes).toContain("CardContent className=\"p-1.5 sm:p-2\"");
     expect(cakes).toContain("flex h-9 w-full items-center justify-between");

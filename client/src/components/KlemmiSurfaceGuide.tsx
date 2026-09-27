@@ -70,6 +70,7 @@ export function KlemmiSurfaceGuide({
   const [open, setOpen] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [highlightRect, setHighlightRect] = useState<HighlightRect>(null);
+  const [targetReady, setTargetReady] = useState(false);
   const [celebrating, setCelebrating] = useState(false);
   const [openingPending, setOpeningPending] = useState(false);
   const [narrationComplete, setNarrationComplete] = useState(false);
@@ -89,6 +90,7 @@ export function KlemmiSurfaceGuide({
     setCelebrating(false);
     setNarrationComplete(false);
     setHighlightRect(null);
+    setTargetReady(false);
     onOpenChange?.(false);
   };
 
@@ -106,8 +108,13 @@ export function KlemmiSurfaceGuide({
 
   useEffect(() => {
     if (!open || !step || openingPending) return;
-    let active = true;
+    cancel();
     setNarrationComplete(false);
+    // Ein Schritt mit echtem Ziel beginnt erst, wenn etwa ein Dialog oder eine
+    // Kachel sichtbar im DOM steht. So läuft Klemmi nie einer noch unsichtbaren
+    // Spendenanlage voraus.
+    if (!celebrating && !targetReady) return;
+    let active = true;
     const text = celebrating
       ? `${completionTitle} ${completionText}`
       : isIntro
@@ -121,13 +128,15 @@ export function KlemmiSurfaceGuide({
     return () => {
       active = false;
       window.clearTimeout(timeout);
+      cancel();
     };
-  }, [audioClipId, celebrating, completionText, completionTitle, introText, isIntro, open, openingPending, speak, step.key, step.text, step.title, title]);
+  }, [audioClipId, cancel, celebrating, completionText, completionTitle, introText, isIntro, open, openingPending, speak, step.key, step.text, step.title, targetReady, title]);
 
   useLayoutEffect(() => {
     if (!open || celebrating || !step?.selector || typeof window === "undefined") return;
 
     let frame = 0;
+    setTargetReady(false);
     const resolveVisibleTarget = () =>
       Array.from(document.querySelectorAll<HTMLElement>(step.selector)).find(element => {
         const rect = element.getBoundingClientRect();
@@ -136,6 +145,10 @@ export function KlemmiSurfaceGuide({
     const target = resolveVisibleTarget();
     const syncPosition = () => {
       const element = resolveVisibleTarget();
+      setTargetReady(current => {
+        const next = Boolean(element);
+        return current === next ? current : next;
+      });
       if (!element) {
         setHighlightRect(null);
         return;
@@ -163,6 +176,13 @@ export function KlemmiSurfaceGuide({
     window.addEventListener("scroll", scheduleSync, true);
     const resizeObserver = target ? new ResizeObserver(scheduleSync) : null;
     if (target && resizeObserver) resizeObserver.observe(target);
+    const mutationObserver = new MutationObserver(scheduleSync);
+    mutationObserver.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["class", "style", "hidden", "aria-hidden", "data-state"],
+    });
     scheduleSync();
 
     return () => {
@@ -170,6 +190,7 @@ export function KlemmiSurfaceGuide({
       window.removeEventListener("resize", scheduleSync);
       window.removeEventListener("scroll", scheduleSync, true);
       resizeObserver?.disconnect();
+      mutationObserver.disconnect();
     };
   }, [open, celebrating, step?.selector]);
 

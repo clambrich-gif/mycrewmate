@@ -5,6 +5,7 @@ type KlemmiActionPanelProps = {
   guide: ReactNode;
   secondaryActions?: ReactNode;
   primaryAction: ReactNode;
+  layout?: "view-first" | "guide-first";
   className?: string;
 };
 
@@ -20,15 +21,25 @@ export function KlemmiActionPanel({
   guide,
   secondaryActions,
   primaryAction,
+  layout = "view-first",
   className = "",
 }: KlemmiActionPanelProps) {
+  const guideFirst = layout === "guide-first";
+
   return (
     <div
       data-klemmi-action-panel
       className={`grid w-full max-w-full grid-cols-2 gap-2 sm:w-fit sm:grid-cols-[max-content_auto] ${className}`}
     >
       {viewControl ? (
-        <div className="hidden sm:col-start-1 sm:row-start-1 sm:block">
+        <div
+          data-klemmi-view-control
+          className={
+            guideFirst
+              ? "col-span-2 hidden min-w-0 sm:col-span-1 sm:col-start-1 sm:row-start-2 sm:block"
+              : "hidden sm:col-start-1 sm:row-start-1 sm:block"
+          }
+        >
           {viewControl}
         </div>
       ) : null}
@@ -42,7 +53,13 @@ export function KlemmiActionPanel({
         </div>
       ) : null}
 
-      <div className="min-w-0 sm:col-start-1 sm:row-start-2 [&>[data-klemmi-trigger]]:w-full [&>[data-klemmi-trigger]]:min-w-0 [&>[data-klemmi-trigger]]:justify-center sm:[&>[data-klemmi-trigger]]:w-auto">
+      <div
+        className={
+          guideFirst
+            ? "min-w-0 sm:col-start-1 sm:row-start-1 [&>[data-klemmi-trigger]]:w-full [&>[data-klemmi-trigger]]:min-w-0 [&>[data-klemmi-trigger]]:justify-center sm:[&>[data-klemmi-trigger]]:w-auto"
+            : "min-w-0 sm:col-start-1 sm:row-start-2 [&>[data-klemmi-trigger]]:w-full [&>[data-klemmi-trigger]]:min-w-0 [&>[data-klemmi-trigger]]:justify-center sm:[&>[data-klemmi-trigger]]:w-auto"
+        }
+      >
         {guide}
       </div>
       <div className="min-w-0 sm:col-start-2 sm:row-start-2 [&>[data-slot=button]]:w-full [&>[data-slot=button]]:min-w-0 [&>[data-slot=button]]:justify-center [&>[data-slot=button]]:px-2 [&>[data-slot=button]]:text-sm sm:[&>[data-slot=button]]:px-4">
