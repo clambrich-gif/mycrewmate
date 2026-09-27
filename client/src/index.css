@@ -413,10 +413,13 @@
 
 .klemmi-face-mouth {
   position: absolute;
-  top: 40.2%;
-  left: 44.4%;
-  width: 12.1%;
-  height: 7.8%;
+  /* Der bewegte Mund überdeckt das vorhandene Lächeln vollständig statt
+     darunter zu liegen. Dadurch bleibt während der Sprachausgabe genau ein
+     klarer, freundlicher Mund sichtbar. */
+  top: 36.9%;
+  left: 42.8%;
+  width: 14.8%;
+  height: 10.2%;
   overflow: hidden;
   border: 1px solid rgb(20 58 112 / 18%);
   border-radius: 48% 48% 58% 58%;
@@ -575,10 +578,10 @@
 }
 
 .klemmi-first-login-mascot {
-  position: fixed;
-  right: clamp(1.25rem, 7vw, 7rem);
-  bottom: clamp(14rem, 20vh, 18rem);
-  z-index: 2;
+  position: absolute;
+  right: clamp(2.5rem, 24%, 7rem);
+  bottom: calc(100% - 0.65rem);
+  z-index: 4;
   width: clamp(8rem, 16vw, 13rem);
   height: clamp(8rem, 16vw, 13rem);
   pointer-events: none;
@@ -590,6 +593,24 @@
 .klemmi-first-login-card {
   z-index: 3;
   transform-origin: bottom right;
+}
+
+/* Klemmi steht mit seinen sichtbaren Füßen auf dem oberen Rand der jeweiligen
+   Sprechblase. Weil die Figur Teil der Karte ist, passt die Position auch bei
+   unterschiedlich langen Hinweisen auf Desktop und Mobil automatisch mit. */
+.klemmi-guide-card {
+  z-index: 3;
+}
+
+.klemmi-guide-mascot {
+  position: absolute;
+  right: clamp(2rem, 24%, 5.5rem);
+  bottom: calc(100% - 0.45rem);
+  z-index: 4;
+  width: clamp(5.25rem, 11vw, 7.25rem);
+  height: clamp(5.25rem, 11vw, 7.25rem);
+  pointer-events: none;
+  filter: drop-shadow(0 11px 12px rgb(15 23 42 / 20%));
 }
 
 .klemmi-first-login-highlight {
@@ -646,15 +667,26 @@
    Viewportbereich und alle Kontrollflächen behalten mindestens 44px Höhe. */
 @media (max-width: 639px) {
   .klemmi-first-login-mascot {
-    right: 0.75rem;
-    bottom: max(16.5rem, env(safe-area-inset-bottom));
-    width: min(34vw, 10rem);
-    height: min(34vw, 10rem);
+    right: 1.25rem;
+    bottom: calc(100% - 0.35rem);
+    width: min(31vw, 7.8rem);
+    height: min(31vw, 7.8rem);
+  }
+
+  .klemmi-first-login-card {
+    margin-top: 8rem;
+  }
+
+  .klemmi-guide-mascot {
+    right: 2rem;
+    bottom: calc(100% - 0.35rem);
+    width: min(29vw, 6.7rem);
+    height: min(29vw, 6.7rem);
   }
 
   .klemmi-first-login-card {
     max-height: min(48dvh, 29rem);
-    overflow-y: auto;
+    overflow: visible;
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
 }

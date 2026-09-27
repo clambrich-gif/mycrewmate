@@ -84,6 +84,7 @@ describe("Erst-Login-Onboarding", () => {
     expect(intro).toContain("Verstanden – danke, Klemmi!");
     expect(intro).toContain("KlemmiMascot isSpeaking={isSpeaking} decorative");
     expect(intro).toContain("klemmi-first-login-question");
+    expect(intro).toContain("overflow-visible");
     expect(mascot).toContain("klemmi-face-eye");
     expect(mascot).toContain("klemmi-face-mouth");
     expect(mascot).not.toContain("<Hand");
@@ -92,6 +93,9 @@ describe("Erst-Login-Onboarding", () => {
     expect(css).toContain("@keyframes klemmi-first-login-enter");
     expect(css).toContain("@keyframes klemmi-first-login-question-float");
     expect(css).toContain("@keyframes klemmi-speaking-mouth");
+    expect(css).toContain("Der bewegte Mund überdeckt das vorhandene Lächeln vollständig");
+    expect(css).toContain(".klemmi-guide-mascot");
+    expect(css).toContain("bottom: calc(100% - 0.65rem)");
     expect(css).toContain("@media (max-width: 639px)");
     expect(css).toContain("prefers-reduced-motion: reduce");
     expect(preview).toContain('data-klemmi-trigger="staging-preview"');

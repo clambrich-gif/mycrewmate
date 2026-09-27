@@ -281,7 +281,7 @@ export function KlemmiHelperGuide({
             <section
               aria-live="polite"
               aria-label="Klemmi Schritt-für-Schritt-Anleitung"
-              className="pointer-events-auto fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] overflow-hidden rounded-2xl border border-blue-200 bg-white p-3 text-slate-950 shadow-2xl sm:inset-x-auto sm:bottom-5 sm:right-5 sm:w-[min(25rem,calc(100vw-2.5rem))] sm:p-4"
+              className="klemmi-guide-card pointer-events-auto fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] overflow-visible rounded-2xl border border-blue-200 bg-white p-3 text-slate-950 shadow-2xl sm:inset-x-auto sm:bottom-5 sm:right-5 sm:w-[min(25rem,calc(100vw-2.5rem))] sm:p-4"
             >
               {celebrating ? (
                 <div className="klemmi-celebration text-center" data-klemmi-success>
@@ -306,11 +306,12 @@ export function KlemmiHelperGuide({
                 </div>
               ) : (
               <>
+              <KlemmiMascot
+                isSpeaking={isSpeaking}
+                decorative
+                className="klemmi-guide-mascot"
+              />
               <div className="flex items-start gap-3">
-                <KlemmiMascot
-                  isSpeaking={isSpeaking}
-                  className="size-[76px] shrink-0 rounded-xl sm:size-[92px]"
-                />
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-bold tracking-wide text-[#e86117] uppercase">
                     {step.eyebrow}

@@ -138,22 +138,21 @@ export function FirstLoginKlemmiIntro({
         />
       )}
 
-      <div
-        aria-hidden="true"
-        className="klemmi-first-login-mascot"
-        data-leaving={leaving ? "true" : "false"}
-      >
-        <KlemmiMascot isSpeaking={isSpeaking} decorative />
-        <span className="klemmi-first-login-question" aria-hidden="true">?</span>
-      </div>
-
       <section
         role="dialog"
         aria-modal="false"
         aria-label="Klemmis kurze Einführung"
-        className="klemmi-first-login-card pointer-events-auto fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] overflow-hidden rounded-2xl border border-blue-200 bg-white p-4 text-slate-950 shadow-2xl sm:inset-x-auto sm:bottom-5 sm:right-5 sm:w-[min(29rem,calc(100vw-2.5rem))] sm:p-5"
+        className="klemmi-first-login-card pointer-events-auto fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] overflow-visible rounded-2xl border border-blue-200 bg-white p-4 text-slate-950 shadow-2xl sm:inset-x-auto sm:bottom-5 sm:right-5 sm:w-[min(29rem,calc(100vw-2.5rem))] sm:p-5"
         data-leaving={leaving ? "true" : "false"}
       >
+        <div
+          aria-hidden="true"
+          className="klemmi-first-login-mascot"
+          data-leaving={leaving ? "true" : "false"}
+        >
+          <KlemmiMascot isSpeaking={isSpeaking} decorative />
+          <span className="klemmi-first-login-question" aria-hidden="true">?</span>
+        </div>
         <div className="flex items-start gap-3">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-[#e86117] shadow-sm">
             <Sparkles className="size-5" aria-hidden="true" />
