@@ -14,7 +14,8 @@ type HighlightRect = {
 } | null;
 
 const KLEMMI_INTRO_TEXT =
-  "Hallo! Ich bin Klemmi. Ich bin immer genau dann da, wenn es mal klemmt! Du kannst mich jederzeit aufrufen – du findest mich in jedem Menüpunkt ganz oben im Bildschirm!";
+  "Hallo! Ich bin Klemmi. Und nein – nicht weil ich verklemmt bin, sondern weil ich immer genau dann zur Stelle bin, wenn es irgendwo klemmt, oder halt, wenn du das erste Mal hier bist! Egal ob Schichten, Helfer oder Event-Planung: Wenn du mal nicht weiterweißt, klick mich einfach an! Du findest mich ab jetzt auf jeder Seite ganz oben im Menü.";
+const KLEMMI_JOKE_NOTE = "Klemmi lacht über seinen eigenen Witz.";
 const KLEMMI_CO_ADMIN_TEXT =
   "Und noch ein Tipp für dich als Co-Admin: Im nächsten Schritt siehst du deine wichtigsten Rechte. Die vollständige Rechte-Matrix findest du später jederzeit im Hilfe-Bereich.";
 
@@ -165,7 +166,10 @@ export function FirstLoginKlemmiIntro({
             <KlemmiVoiceControl muted={muted} onToggle={toggleMuted} />
           </div>
         </div>
-        <p className="mt-3 text-sm leading-relaxed text-slate-700">{KLEMMI_INTRO_TEXT}</p>
+        <p className="mt-3 text-sm leading-relaxed text-slate-700">
+          {KLEMMI_INTRO_TEXT}
+          <span className="ml-1 whitespace-nowrap text-xs font-medium text-[#e86117]">({KLEMMI_JOKE_NOTE})</span>
+        </p>
         {isCoAdmin && (
           <p className="mt-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm leading-relaxed text-blue-950">
             <span className="font-semibold">Co-Admin-Tipp:</span> {KLEMMI_CO_ADMIN_TEXT.replace("Und noch ein Tipp für dich als Co-Admin: ", "")}

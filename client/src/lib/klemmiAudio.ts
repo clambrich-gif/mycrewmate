@@ -15,8 +15,8 @@ export const KLEMMI_VOICE_PROFILE = {
  * einen Sprachdienst übertragen.
  */
 export const KLEMMI_AUDIO_SCRIPTS = {
-  "first-login-intro": "Hallo! Ich bin Klemmi. Ich bin immer genau dann da, wenn es mal klemmt! Du kannst mich jederzeit aufrufen – du findest mich in jedem Menüpunkt ganz oben im Bildschirm!",
-  "first-login-co-admin": "Hallo! Ich bin Klemmi. Ich bin immer genau dann da, wenn es mal klemmt! Du kannst mich jederzeit aufrufen – du findest mich in jedem Menüpunkt ganz oben im Bildschirm! Und noch ein Tipp für dich als Co-Admin: Im nächsten Schritt siehst du deine wichtigsten Rechte. Die vollständige Rechte-Matrix findest du später jederzeit im Hilfe-Bereich.",
+  "first-login-intro": "Hallo! Ich bin Klemmi. Und nein – nicht weil ich verklemmt bin. [laughing] Sondern weil ich immer genau dann zur Stelle bin, wenn es irgendwo klemmt, oder halt, wenn du das erste Mal hier bist! Egal ob Schichten, Helfer oder Event-Planung: Wenn du mal nicht weiterweißt, klick mich einfach an! Du findest mich ab jetzt auf jeder Seite ganz oben im Menü.",
+  "first-login-co-admin": "Hallo! Ich bin Klemmi. Und nein – nicht weil ich verklemmt bin. [laughing] Sondern weil ich immer genau dann zur Stelle bin, wenn es irgendwo klemmt, oder halt, wenn du das erste Mal hier bist! Egal ob Schichten, Helfer oder Event-Planung: Wenn du mal nicht weiterweißt, klick mich einfach an! Du findest mich ab jetzt auf jeder Seite ganz oben im Menü. Und noch ein Tipp für dich als Co-Admin: Im nächsten Schritt siehst du deine wichtigsten Rechte. Die vollständige Rechte-Matrix findest du später jederzeit im Hilfe-Bereich.",
   "dashboard-intro": "Dein Überblick im Dashboard. Hier siehst du die wichtigsten nächsten Schritte, Fristen und Kennzahlen. Klicke einfach auf eine Karte, um direkt in den passenden Planungsbereich zu wechseln.",
   "dashboard-complete": "Alles im Blick! Klemmi bleibt oben in jedem Bereich für dich erreichbar.",
 

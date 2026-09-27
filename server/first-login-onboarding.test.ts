@@ -56,6 +56,8 @@ describe("Erst-Login-Onboarding", () => {
     expect(onboarding).toContain("onComplete={finishKlemmiIntro}");
     expect(intro).toContain('"first-login-co-admin"');
     expect(intro).toContain("KLEMMI_CO_ADMIN_TEXT");
+    expect(intro).toContain("Und nein – nicht weil ich verklemmt bin");
+    expect(intro).toContain("Klemmi lacht über seinen eigenen Witz.");
     expect(intro).toContain("Co-Admin-Tipp:");
     expect(intro).toContain("window.setTimeout(onComplete, 360)");
   });
