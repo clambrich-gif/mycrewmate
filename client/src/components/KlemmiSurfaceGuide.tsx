@@ -70,8 +70,9 @@ export function KlemmiSurfaceGuide({
   const [stepIndex, setStepIndex] = useState(0);
   const [highlightRect, setHighlightRect] = useState<HighlightRect>(null);
   const [celebrating, setCelebrating] = useState(false);
+  const [openingPending, setOpeningPending] = useState(false);
   const acceptedSuccessSignal = useRef<number | null>(null);
-  const { muted, isSpeaking, speak, toggleMuted, cancel } = useKlemmiVoice();
+  const { muted, isSpeaking, speak, playOpening, toggleMuted, cancel } = useKlemmiVoice();
   const step = steps[stepIndex];
   const workflowSteps = useMemo(() => steps.filter(item => item.key !== "intro"), [steps]);
   const isIntro = step?.key === "intro";
@@ -101,7 +102,7 @@ export function KlemmiSurfaceGuide({
   }, [open, step?.waitsForSuccess, step?.completeOnSuccess, stepIndex, steps.length, successSignal]);
 
   useEffect(() => {
-    if (!open || !step) return;
+    if (!open || !step || openingPending) return;
     const text = celebrating
       ? `${completionTitle} ${completionText}`
       : isIntro
@@ -109,7 +110,7 @@ export function KlemmiSurfaceGuide({
         : `${step.title}. ${step.text}`;
     const timeout = window.setTimeout(() => speak(text, audioClipId), 160);
     return () => window.clearTimeout(timeout);
-  }, [audioClipId, celebrating, completionText, completionTitle, introText, isIntro, open, speak, step.key, step.text, step.title, title]);
+  }, [audioClipId, celebrating, completionText, completionTitle, introText, isIntro, open, openingPending, speak, step.key, step.text, step.title, title]);
 
   useLayoutEffect(() => {
     if (!open || celebrating || !step?.selector || typeof window === "undefined") return;
@@ -188,8 +189,10 @@ export function KlemmiSurfaceGuide({
           acceptedSuccessSignal.current = successSignal;
           setStepIndex(0);
           setCelebrating(false);
+          setOpeningPending(true);
           setOpen(true);
           onOpenChange?.(true);
+          void playOpening().finally(() => setOpeningPending(false));
         }}
       >
         <KlemmiTriggerMascot />

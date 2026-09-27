@@ -38,6 +38,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(voice).toContain("new Audio(klemmiAudioUrl(clipId))");
     expect(voice).toContain("Spielt ausschließlich vorproduzierte Klemmi-Clips");
     expect(voice).toContain("bleibt Klemmi stumm, statt auf eine fremde Systemstimme zu wechseln");
+    expect(voice).toContain("KLEMMI_OPENING_AUDIO_IDS");
+    expect(voice).toContain("chooseOpeningClip");
+    expect(voice).toContain("Der zuletzt verwendete Einstieg wird nie direkt");
+    expect(voice).toContain("playOpening");
     expect(voice).not.toContain("speechSynthesis");
     expect(audio).toContain('export const KLEMMI_AUDIO_ROUTE = "/api/klemmi/audio"');
     expect(audio).toContain('voice: "Achird"');
@@ -48,11 +52,16 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(audio).toContain('"postprocessing-intro"');
     expect(audio).toContain('"materials-intro"');
     expect(audio).toContain('"locations-intro"');
+    expect(audio).toContain("KLEMMI_OPENING_AUDIO_IDS");
+    expect(audio).toContain('"opening-clears-throat"');
+    expect(audio).toContain('"opening-wunderbar"');
     expect(assetRoute).toContain('"/api/klemmi/audio/:clipId"');
     expect(assetRoute).toContain('contentType: "audio/mpeg"');
     expect(assetRoute).toContain('klemmiVoiceAssetPath');
     expect(voiceControl).toContain("Klemmi-Stimme stummschalten");
     expect(guide).toContain('data-klemmi-trigger');
+    expect(guide).toContain("setOpeningPending(true)");
+    expect(guide).toContain("playOpening().finally");
     expect(guide).toContain('data-klemmi-guide');
     expect(guide).toContain('pointer-events-none fixed inset-0');
     expect(guide).toContain('pointer-events-auto fixed');
@@ -91,6 +100,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(surfaceGuide).toContain("KlemmiTriggerMascot");
     expect(surfaceGuide).toContain("useKlemmiVoice");
     expect(surfaceGuide).toContain("KlemmiVoiceControl");
+    expect(surfaceGuide).toContain("setOpeningPending(true)");
+    expect(surfaceGuide).toContain("playOpening().finally");
     expect(surfaceGuide).toContain("waitsForSuccess");
     expect(surfaceGuide).toContain("data-klemmi-success");
     expect(surfaceGuide).toContain("Klemmi wartet auf deinen Klick");

@@ -114,7 +114,8 @@ export function KlemmiHelperGuide({
   const [stepIndex, setStepIndex] = useState(0);
   const [highlightRect, setHighlightRect] = useState<HighlightRect>(null);
   const [celebrating, setCelebrating] = useState(false);
-  const { muted, isSpeaking, speak, toggleMuted, cancel } = useKlemmiVoice();
+  const [openingPending, setOpeningPending] = useState(false);
+  const { muted, isSpeaking, speak, playOpening, toggleMuted, cancel } = useKlemmiVoice();
   const step = guideSteps[stepIndex];
   const workflowSteps = useMemo(
     () => guideSteps.filter(item => item.workflowStep !== undefined),
@@ -153,7 +154,7 @@ export function KlemmiHelperGuide({
   }, [createdHelperId, helperDialogOpen, open, step.key]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || openingPending) return;
     const text = celebrating
       ? "Geschafft! Du hast einen Helfer angelegt und kennst nun auch die Verfügbarkeit."
       : step.key === "save"
@@ -161,7 +162,7 @@ export function KlemmiHelperGuide({
         : `${step.title}. ${step.text}`;
     const timeout = window.setTimeout(() => speak(text, audioClipId), 160);
     return () => window.clearTimeout(timeout);
-  }, [audioClipId, celebrating, open, saveButtonLabel, speak, step.key, step.text, step.title]);
+  }, [audioClipId, celebrating, open, openingPending, saveButtonLabel, speak, step.key, step.text, step.title]);
 
   useLayoutEffect(() => {
     if (!open || celebrating || typeof window === "undefined") return;
@@ -257,8 +258,10 @@ export function KlemmiHelperGuide({
         className="min-h-11 gap-2 border-blue-200 bg-blue-50 px-3 text-blue-950 shadow-sm hover:border-blue-300 hover:bg-blue-100"
         onClick={() => {
           setStepIndex(0);
+          setOpeningPending(true);
           setOpen(true);
           onGuideOpenChange(true);
+          void playOpening().finally(() => setOpeningPending(false));
         }}
       >
         <KlemmiTriggerMascot />

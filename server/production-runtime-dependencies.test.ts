@@ -34,4 +34,22 @@ describe("Produktions-Laufzeitabhängigkeiten", () => {
     expect(dockerfile).not.toContain("drizzle-kit/bin.cjs");
     expect(source("package.json")).toContain("server/_core/migrate.ts");
   });
+
+  it("liefert 30 vorproduzierte Klemmi-Zufallseinstiege aus dem Produktimage aus", () => {
+    const audioCatalog = source("client/src/lib/klemmiAudio.ts");
+    const voiceHook = source("client/src/hooks/useKlemmiVoice.ts");
+    const route = source("server/klemmi-asset-routes.ts");
+    const ids = [...audioCatalog.matchAll(/^\s*"(opening-[a-z-]+)":/gm)].map(match => match[1]);
+
+    expect(ids).toHaveLength(30);
+    expect(new Set(ids).size).toBe(30);
+    expect(audioCatalog).toContain("KLEMMI_OPENING_AUDIO_IDS");
+    expect(voiceHook).toContain("chooseOpeningClip");
+    expect(voiceHook).toContain("lastOpeningClipRef");
+    expect(voiceHook).toContain("playOpening");
+    expect(route).toContain('"/api/klemmi/audio/:clipId"');
+    for (const id of ids) {
+      expect(fs.existsSync(path.join(projectRoot, "server", "assets", "klemmi-voice", `${id}.mp3`))).toBe(true);
+    }
+  });
 });

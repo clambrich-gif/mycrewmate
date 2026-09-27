@@ -15,6 +15,37 @@ export const KLEMMI_VOICE_PROFILE = {
  * einen Sprachdienst übertragen.
  */
 export const KLEMMI_AUDIO_SCRIPTS = {
+  "opening-clears-throat": "[clears throat] So, los geht's!",
+  "opening-cough": "[cough] Hups, kurz sortiert. Jetzt aber!",
+  "opening-sniff": "[sniffs] Alles klar, ich bin bereit!",
+  "opening-ach-herrje": "Ach herrje, da bin ich ja!",
+  "opening-servus": "Servus, Klemmi ist da!",
+  "opening-gruess-gott": "Grüß Gott, schauen wir gemeinsam drauf!",
+  "opening-hallo": "Hallo, ich helfe dir gern!",
+  "opening-na-dann": "Na dann, legen wir los!",
+  "opening-auf-gehts": "Auf geht's, ich bin dabei!",
+  "opening-moin": "Moin, Klemmi ist startklar!",
+  "opening-halloechen": "Hallöchen, schön, dass du da bist!",
+  "opening-tadaa": "Tadaa, dein Klemmi ist da!",
+  "opening-na-schau-an": "Na, schau an, dann gucken wir mal!",
+  "opening-guten-tag": "Guten Tag, worum kümmern wir uns?",
+  "opening-klingeling": "Klingeling, Klemmi meldet sich!",
+  "opening-hmm": "Hmm, schauen wir mal.",
+  "opening-jawohl": "Jawohl, ich bin zur Stelle!",
+  "opening-aha": "Aha, das kriegen wir hin!",
+  "opening-hey-ho": "Hey ho, Klemmi übernimmt!",
+  "opening-na-endlich": "Na endlich, los geht's!",
+  "opening-hoi": "Hoi, ich bin schon da!",
+  "opening-bitte-sehr": "Bitte sehr, deine Hilfe ist da!",
+  "opening-wir-packen-das": "Keine Sorge, wir packen das!",
+  "opening-einen-moment": "Einen kleinen Moment, ich bin ganz Ohr!",
+  "opening-hopp-hopp": "Hopp hopp, schauen wir rein!",
+  "opening-zack": "Zack, Klemmi ist bereit!",
+  "opening-lass-uns-schauen": "Lass uns gemeinsam schauen!",
+  "opening-alles-klar": "Alles klar, ich zeig's dir!",
+  "opening-ganz-entspannt": "Ganz entspannt, wir gehen das zusammen an!",
+  "opening-wunderbar": "Wunderbar, dann starten wir!",
+
   "first-login-intro": "Hallo! Ich bin Klemmi. Und nein – nicht weil ich verklemmt bin. [laughing] Sondern weil ich immer genau dann zur Stelle bin, wenn es irgendwo klemmt, oder halt, wenn du das erste Mal hier bist! Egal ob Schichten, Helfer oder Event-Planung: Wenn du mal nicht weiterweißt, klick mich einfach an! Du findest mich ab jetzt auf jeder Seite ganz oben im Menü.",
   "first-login-co-admin": "Hallo! Ich bin Klemmi. Und nein – nicht weil ich verklemmt bin. [laughing] Sondern weil ich immer genau dann zur Stelle bin, wenn es irgendwo klemmt, oder halt, wenn du das erste Mal hier bist! Egal ob Schichten, Helfer oder Event-Planung: Wenn du mal nicht weiterweißt, klick mich einfach an! Du findest mich ab jetzt auf jeder Seite ganz oben im Menü. Und noch ein Tipp für dich als Co-Admin: Im nächsten Schritt siehst du deine wichtigsten Rechte. Die vollständige Rechte-Matrix findest du später jederzeit im Hilfe-Bereich.",
   "dashboard-intro": "Dein Dashboard auf einen Blick. Hier laufen die Informationen aus deiner Planung zusammen. Ich zeige dir jetzt nur die Bereiche, die auf diesem Dashboard wirklich sichtbar sind.",
@@ -74,6 +105,44 @@ export const KLEMMI_AUDIO_SCRIPTS = {
 } as const;
 
 export type KlemmiAudioId = keyof typeof KLEMMI_AUDIO_SCRIPTS;
+
+/**
+ * Beim bewussten Öffnen einer Klemmi-Tour wählt der Browser genau einen dieser
+ * kurzen Einstiege. Der letzte Clip wird ausgeschlossen, damit sich kein
+ * Einstieg unmittelbar wiederholt.
+ */
+export const KLEMMI_OPENING_AUDIO_IDS = [
+  "opening-clears-throat",
+  "opening-cough",
+  "opening-sniff",
+  "opening-ach-herrje",
+  "opening-servus",
+  "opening-gruess-gott",
+  "opening-hallo",
+  "opening-na-dann",
+  "opening-auf-gehts",
+  "opening-moin",
+  "opening-halloechen",
+  "opening-tadaa",
+  "opening-na-schau-an",
+  "opening-guten-tag",
+  "opening-klingeling",
+  "opening-hmm",
+  "opening-jawohl",
+  "opening-aha",
+  "opening-hey-ho",
+  "opening-na-endlich",
+  "opening-hoi",
+  "opening-bitte-sehr",
+  "opening-wir-packen-das",
+  "opening-einen-moment",
+  "opening-hopp-hopp",
+  "opening-zack",
+  "opening-lass-uns-schauen",
+  "opening-alles-klar",
+  "opening-ganz-entspannt",
+  "opening-wunderbar",
+] as const satisfies readonly KlemmiAudioId[];
 
 /**
  * Neue Sprachfassungen erhalten eine eigene URL. Dadurch kann kein Browser
