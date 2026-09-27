@@ -889,3 +889,75 @@
     background: #fff;
   }
 }
+
+/* Kurze tägliche Begrüßung: Klemmi läuft dezent rechts herein, bleibt höchstens
+   fünf Sekunden sichtbar und verschwindet ohne eine Bedienung zu blockieren. */
+@keyframes klemmi-login-greeting-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(120%, 10%, 0) rotate(6deg) scale(0.94);
+  }
+  72% {
+    opacity: 1;
+    transform: translate3d(-2%, 0, 0) rotate(-1.5deg) scale(1.01);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(0) scale(1);
+  }
+}
+
+@keyframes klemmi-login-greeting-exit {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(116%, -8%, 0) rotate(7deg) scale(0.95);
+  }
+}
+
+.klemmi-login-greeting {
+  will-change: transform, opacity;
+}
+
+.klemmi-login-greeting-mascot {
+  filter: drop-shadow(0 12px 14px rgb(15 23 42 / 23%));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .klemmi-login-greeting {
+    animation:
+      klemmi-login-greeting-enter 520ms cubic-bezier(0.23, 1, 0.32, 1) both,
+      klemmi-login-greeting-exit 360ms cubic-bezier(0.77, 0, 0.175, 1) 4.55s both;
+  }
+}
+
+@media (max-width: 639px) {
+  .klemmi-login-greeting {
+    bottom: max(0.55rem, env(safe-area-inset-bottom));
+    right: 0.5rem;
+    width: min(17.5rem, calc(100vw - 1rem));
+  }
+
+  .klemmi-login-greeting-copy {
+    min-height: 2.1rem;
+    padding-top: 0.45rem;
+    padding-bottom: 0.45rem;
+    font-size: 0.7rem;
+    line-height: 1rem;
+  }
+
+  .klemmi-login-greeting-mascot {
+    top: -2.5rem;
+    width: 4rem;
+    height: 4rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .klemmi-login-greeting {
+    animation: none;
+  }
+}

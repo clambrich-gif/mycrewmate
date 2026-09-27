@@ -144,6 +144,49 @@ export async function upsertUser(user: InsertUser): Promise<void> {
 }
 
 /**
+ * Beansprucht die kurze Begrüßung genau einmal je Benutzer und UTC-Kalendertag.
+ * Das bedingte Update bleibt auch bei parallelen Browserfenstern atomar.
+ */
+export async function claimDailyKlemmiGreeting(
+  userId: number,
+  day: string,
+  clipIds: readonly string[]
+) {
+  const database = await getDb();
+  if (!database || !Number.isSafeInteger(userId) || userId <= 0 || !clipIds.length) {
+    return null;
+  }
+  const [user] = await database
+    .select({
+      greetingDate: users.klemmiGreetingDate,
+      greetingClip: users.klemmiGreetingClip,
+    })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  if (!user || user.greetingDate === day) return null;
+
+  const candidates = clipIds.filter(clip => clip !== user.greetingClip);
+  const clipId = (candidates.length ? candidates : clipIds)[
+    Math.floor(Math.random() * (candidates.length ? candidates.length : clipIds.length))
+  ];
+  if (!clipId) return null;
+
+  const result = await database
+    .update(users)
+    .set({ klemmiGreetingDate: day, klemmiGreetingClip: clipId })
+    .where(
+      and(
+        eq(users.id, userId),
+        or(isNull(users.klemmiGreetingDate), notEq(users.klemmiGreetingDate, day))
+      )
+    );
+  return Number((result as { affectedRows?: number }).affectedRows ?? 0) === 1
+    ? clipId
+    : null;
+}
+
+/**
  * OAuth dient ausschließlich dem fest konfigurierten Eigentümerkonto. Andere
  * Nutzer verwenden die getrennten Passwortzugänge und dürfen nie durch einen
  * OAuth-Callback als Planungsteam angelegt werden.

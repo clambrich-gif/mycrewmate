@@ -1,4 +1,5 @@
 import { COOKIE_NAME } from "@shared/const";
+import { KLEMMI_LOGIN_AUDIO_IDS } from "@shared/klemmi-reactions";
 import { createHash, randomBytes } from "node:crypto";
 import {
   eventWeekdays,
@@ -1558,6 +1559,16 @@ export const appRouter = router({
         isCoAdmin: access?.isTenantAdmin === true,
         name: access?.contactName ?? access?.label ?? ctx.user.name ?? "Planungsteam",
       } as const;
+    }),
+    claimDailyKlemmiGreeting: baseProtectedProcedure.mutation(async ({ ctx }) => {
+      const day = new Date().toISOString().slice(0, 10);
+      const clipId = await db.claimDailyKlemmiGreeting(
+        ctx.user.id,
+        day,
+        KLEMMI_LOGIN_AUDIO_IDS
+      );
+      if (!clipId) return { show: false, clipId: null } as const;
+      return { show: true, clipId } as const;
     }),
     completeFirstLoginOnboarding: baseProtectedProcedure.mutation(async ({ ctx }) => {
       const accessId = planningTeamAccessIdForUser(ctx.user);

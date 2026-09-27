@@ -48,6 +48,7 @@ import { PlanResetDialogButton } from "@/components/PlanResetDialogButton";
 import { KlemmiActionPanel } from "@/components/KlemmiActionPanel";
 import { MyTasksDefaultPin } from "@/components/MyTasksDefaultPin";
 import { KlemmiHelperGuide } from "@/components/KlemmiHelperGuide";
+import { triggerKlemmiReaction } from "@/lib/klemmi-reactions";
 import { useMyTasksDefault } from "@/hooks/useMyTasksDefault";
 import { useMobileViewMode, useViewMode } from "@/hooks/useViewMode";
 import {
@@ -917,6 +918,7 @@ export default function Helpers() {
     if (!mobileHelperEditTarget || update.isPending) return;
     const name = mobileHelperEditForm.name.trim();
     if (!name) {
+      triggerKlemmiReaction("error");
       toast.error("Bitte einen Namen für den Helfer eingeben");
       return;
     }
@@ -944,6 +946,7 @@ export default function Helpers() {
   const createNewHelper = () => {
     const trimmedName = name.trim();
     if (!trimmedName) {
+      triggerKlemmiReaction("error");
       setNewHelperNameError("Bitte trage zuerst den Namen des Helfers ein. Danach kannst du ihn speichern.");
       window.requestAnimationFrame(() => {
         document

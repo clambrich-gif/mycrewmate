@@ -127,6 +127,41 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(areaTours).toContain("HELP_KLEMMI_STEPS");
   });
 
+  it("begrüßt jeden Zugang täglich mit einem kurzen Klemmi-Satz und bleibt bei Ruhe oder Fehlern zurückhaltend", () => {
+    const layout = source("client/src/components/Layout.tsx");
+    const greeting = source("client/src/components/KlemmiLoginGreeting.tsx");
+    const reactions = source("client/src/lib/klemmi-reactions.ts");
+    const reactionCatalog = source("shared/klemmi-reactions.ts");
+    const audio = source("client/src/lib/klemmiAudio.ts");
+    const plan = source("client/src/pages/Plan.tsx");
+    const helpers = source("client/src/pages/Helpers.tsx");
+    const styles = source("client/src/index.css");
+
+    expect(layout).toContain("KlemmiLoginGreeting");
+    expect(layout).toContain("firstLoginOnboarding.isSuccess");
+    expect(greeting).toContain("claimDailyKlemmiGreeting");
+    expect(greeting).toContain("INACTIVITY_DELAY_MS = 120_000");
+    expect(greeting).toContain("MAX_IDLE_HINTS_PER_SESSION = 2");
+    expect(greeting).toContain("GREETING_VISIBLE_MS = 5_000");
+    expect(greeting).toContain("data-klemmi-login-greeting");
+    expect(greeting).toContain("onClick={dismiss}");
+    expect(greeting).toContain("aDialogIsOpen");
+    expect(reactions).toContain("mycrewmate:klemmi-reaction");
+    expect(reactionCatalog).toContain("KLEMMI_LOGIN_AUDIO_IDS");
+    expect(reactionCatalog).toContain("KLEMMI_IDLE_AUDIO_IDS");
+    expect(reactionCatalog).toContain("KLEMMI_ERROR_AUDIO_IDS");
+    expect(reactionCatalog).toContain("KLEMMI_SHIFT_SUCCESS_AUDIO_IDS");
+    expect(audio).toContain('"login-warmgelaufen"');
+    expect(audio).toContain('"idle-vorstehhund"');
+    expect(audio).toContain('"error-halt-stopp"');
+    expect(audio).toContain('"success-zack"');
+    expect(plan).toContain('triggerKlemmiReaction("shift-success")');
+    expect(plan).toContain('triggerKlemmiReaction("error")');
+    expect(helpers).toContain('triggerKlemmiReaction("error")');
+    expect(styles).toContain("@keyframes klemmi-login-greeting-enter");
+    expect(styles).toContain("@keyframes klemmi-login-greeting-exit");
+  });
+
   it("führt mit Klemmi über Einsatzplan, Aufgaben, Material und Standorte mit echten Speicheraktionen", () => {
     const surfaceGuide = source("client/src/components/KlemmiSurfaceGuide.tsx");
     const plan = source("client/src/pages/Plan.tsx");

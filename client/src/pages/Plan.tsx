@@ -55,6 +55,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { CopyPreviousPlanButton } from "@/components/CopyPreviousPlanButton";
 import { KlemmiActionPanel } from "@/components/KlemmiActionPanel";
+import { triggerKlemmiReaction } from "@/lib/klemmi-reactions";
 import { PlanResetDialogButton } from "@/components/PlanResetDialogButton";
 import {
   Popover,
@@ -848,6 +849,7 @@ export default function Plan() {
     onSuccess: result => {
       setSelectedHelperIdsByShift({});
       invalidate();
+      if (result.assignedCount > 0) triggerKlemmiReaction("shift-success");
       toast.success(
         result.assignedCount === 1
           ? "Helfer zugeordnet"
@@ -873,6 +875,7 @@ export default function Plan() {
           : null
       );
       setKlemmiCreationSignal(Date.now());
+      triggerKlemmiReaction("shift-success");
       toast.success("Schicht angelegt");
     },
     onError: e => toast.error(e.message),
@@ -992,6 +995,7 @@ export default function Plan() {
   const saveShift = () => {
     if (!canEditPlan) return;
     if (!form.task.trim() || !form.area.trim()) {
+      triggerKlemmiReaction("error");
       toast.error("Bereich und Aufgabe sind Pflicht");
       return;
     }
@@ -999,10 +1003,12 @@ export default function Plan() {
       (!form.startTime && form.endTime) ||
       (form.startTime && !form.endTime)
     ) {
+      triggerKlemmiReaction("error");
       toast.error("Beginn und Ende müssen gemeinsam angegeben werden");
       return;
     }
     if (form.startTime && form.endTime && form.endTime <= form.startTime) {
+      triggerKlemmiReaction("error");
       toast.error("Das Ende muss nach dem Beginn liegen");
       return;
     }

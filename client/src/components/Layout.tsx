@@ -2,6 +2,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
 import { ForcePasswordChangeModal } from "@/components/ForcePasswordChangeModal";
 import { FirstLoginOnboarding } from "@/components/FirstLoginOnboarding";
+import { KlemmiLoginGreeting } from "@/components/KlemmiLoginGreeting";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -1406,6 +1407,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
         startAtKlemmi={isKlemmiIntroPreview}
         completing={completeFirstLoginOnboarding.isPending}
         onComplete={isKlemmiIntroPreview ? finishKlemmiIntroPreview : finishFirstLoginOnboarding}
+      />
+      <KlemmiLoginGreeting
+        enabled={
+          isAuthenticated &&
+          !isCredentialBootstrapPending &&
+          firstLoginOnboarding.isSuccess &&
+          firstLoginOnboarding.data?.pending !== true
+        }
       />
       <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b bg-white px-3 text-slate-950 shadow-sm lg:hidden">
         <Button
