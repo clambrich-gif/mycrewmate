@@ -15,6 +15,10 @@ export const KLEMMI_VOICE_PROFILE = {
  * einen Sprachdienst übertragen.
  */
 export const KLEMMI_AUDIO_SCRIPTS = {
+  "first-login-intro": "Hallo! Ich bin Klemmi. Ich bin immer genau dann da, wenn es mal klemmt! Du kannst mich jederzeit aufrufen – du findest mich in jedem Menüpunkt ganz oben im Bildschirm!",
+  "dashboard-intro": "Dein Überblick im Dashboard. Hier siehst du die wichtigsten nächsten Schritte, Fristen und Kennzahlen. Klicke einfach auf eine Karte, um direkt in den passenden Planungsbereich zu wechseln.",
+  "dashboard-complete": "Alles im Blick! Klemmi bleibt oben in jedem Bereich für dich erreichbar.",
+
   "helpers-intro": "Neue Helfer sicher anlegen. Ich führe dich direkt auf der echten Oberfläche durch die Anlage – vom Namen bis zum passenden Zeitfenster.",
   "helpers-person": "Person erfassen. Der Name ist die einzige Pflichtangabe. Ansprechpartner, Telefonnummer und Hinweis kannst du ergänzen, wenn du sie schon kennst.",
   "helpers-donation": "Spende bei Bedarf ergänzen. Die Spende ist optional: Setze nur dann das Häkchen, wenn Kuchen, Salat, Snack oder eine andere Spende direkt mit erfasst werden soll.",

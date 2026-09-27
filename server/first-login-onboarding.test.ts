@@ -39,6 +39,47 @@ describe("Erst-Login-Onboarding", () => {
     expect(component).toContain("elapsed >= WELCOME_DURATION_MS");
   });
 
+  it("zeigt die Klemmi-Begrüßung vor dem dauerhaften Abschluss und behält den Status bis dahin", () => {
+    const onboarding = readFileSync(
+      path.resolve(process.cwd(), "client/src/components/FirstLoginOnboarding.tsx"),
+      "utf8"
+    );
+    const intro = readFileSync(
+      path.resolve(process.cwd(), "client/src/components/FirstLoginKlemmiIntro.tsx"),
+      "utf8"
+    );
+
+    expect(onboarding).toContain('"welcome" | "klemmi" | "co_admin"');
+    expect(onboarding).toContain('setStep("klemmi")');
+    expect(onboarding).toContain("open={open && step === \"klemmi\"}");
+    expect(onboarding).toContain("onComplete={finishKlemmiIntro}");
+    expect(intro).toContain('speak(KLEMMI_INTRO_TEXT, "first-login-intro")');
+    expect(intro).toContain("window.setTimeout(onComplete, 360)");
+  });
+
+  it("richtet Klemmis Einstieg dynamisch am echten Hilfeschalter aus und schützt die Mobilansicht", () => {
+    const intro = readFileSync(
+      path.resolve(process.cwd(), "client/src/components/FirstLoginKlemmiIntro.tsx"),
+      "utf8"
+    );
+    const css = readFileSync(path.resolve(process.cwd(), "client/src/index.css"), "utf8");
+    const preview = readFileSync(
+      path.resolve(process.cwd(), "client/src/pages/KlemmiFirstLoginPreview.tsx"),
+      "utf8"
+    );
+
+    expect(intro).toContain('"[data-klemmi-trigger]"');
+    expect(intro).toContain("data-klemmi-first-login-highlight");
+    expect(intro).toContain("Verstanden – danke, Klemmi!");
+    expect(intro).toContain("KlemmiPointingFinger");
+    expect(css).toContain("@keyframes klemmi-first-login-enter");
+    expect(css).toContain("@keyframes klemmi-first-login-goodbye-wave");
+    expect(css).toContain("@media (max-width: 639px)");
+    expect(css).toContain("prefers-reduced-motion: reduce");
+    expect(preview).toContain('data-klemmi-trigger="staging-preview"');
+    expect(preview).toContain("Vorschau erneut starten");
+  });
+
   it("liefert pending true für ein neues Planungsteam-Konto mit ausstehendem Onboarding", async () => {
     vi.spyOn(db, "getPlanningTeamAccessCredentialForCurrentTenant").mockResolvedValue({
       id: 42,

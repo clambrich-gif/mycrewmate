@@ -296,6 +296,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
   } =
     useEventYear();
   const [location] = useLocation();
+  const [klemmiIntroPreviewOpen, setKlemmiIntroPreviewOpen] = useState(() =>
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("klemmiIntroPreview") === "1"
+  );
   const myPermissions = trpc.planningTeamAccesses.myPermissions.useQuery(undefined, {
     enabled:
       isAuthenticated &&
@@ -993,6 +997,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const finishFirstLoginOnboarding = useCallback(() => {
     completeFirstLoginOnboarding.mutate();
   }, [completeFirstLoginOnboarding.mutate]);
+  const isKlemmiIntroPreview =
+    klemmiIntroPreviewOpen &&
+    firstLoginOnboarding.isSuccess &&
+    firstLoginOnboarding.data?.pending !== true;
+  const finishKlemmiIntroPreview = useCallback(() => {
+    setKlemmiIntroPreviewOpen(false);
+  }, []);
   const createYear = trpc.years.create.useMutation({
     onSuccess: async result => {
       await Promise.all([
@@ -1389,11 +1400,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
       data-workspace-mode={isSidebarOpen ? "standard" : "focus"}
     >
       <FirstLoginOnboarding
-        open={firstLoginOnboarding.data?.pending === true}
+        open={isKlemmiIntroPreview || firstLoginOnboarding.data?.pending === true}
         name={firstLoginOnboarding.data?.name ?? user?.name ?? "Planungsteam"}
         isCoAdmin={firstLoginOnboarding.data?.isCoAdmin === true}
+        startAtKlemmi={isKlemmiIntroPreview}
         completing={completeFirstLoginOnboarding.isPending}
-        onComplete={finishFirstLoginOnboarding}
+        onComplete={isKlemmiIntroPreview ? finishKlemmiIntroPreview : finishFirstLoginOnboarding}
       />
       <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b bg-white px-3 text-slate-950 shadow-sm lg:hidden">
         <Button

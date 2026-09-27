@@ -460,6 +460,157 @@
   }
 }
 
+/* Einmalige Erst-Login-Begrüßung: Klemmi kommt von rechts, zeigt auf den
+   realen Hilfeauslöser und verabschiedet sich nach der bewussten Bestätigung.
+   Der Ablauf verwendet ausschließlich Transform und Opacity, damit er auf
+   Desktop, Tablet und Mobilgeräten flüssig bleibt. */
+@keyframes klemmi-first-login-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(130%, 18%, 0) rotate(7deg) scale(0.94);
+  }
+  72% {
+    opacity: 1;
+    transform: translate3d(-3%, -2%, 0) rotate(-2deg) scale(1.02);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+}
+
+@keyframes klemmi-first-login-exit {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(115%, -8%, 0) rotate(8deg) scale(0.94);
+  }
+}
+
+@keyframes klemmi-first-login-point {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(-7px, -9px, 0) scale(1.1);
+  }
+}
+
+@keyframes klemmi-first-login-goodbye-wave {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(-12deg) scale(1);
+  }
+  28% {
+    transform: translate3d(3px, -3px, 0) rotate(22deg) scale(1.06);
+  }
+  58% {
+    transform: translate3d(1px, -5px, 0) rotate(-28deg) scale(1.06);
+  }
+  82% {
+    transform: translate3d(4px, -3px, 0) rotate(20deg) scale(1.03);
+  }
+}
+
+@keyframes klemmi-first-login-glow {
+  0%,
+  100% {
+    opacity: 0.62;
+    transform: scale(0.99);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.025);
+  }
+}
+
+.klemmi-first-login-mascot {
+  position: fixed;
+  right: clamp(1.25rem, 7vw, 7rem);
+  bottom: clamp(14rem, 20vh, 18rem);
+  z-index: 2;
+  width: clamp(8rem, 16vw, 13rem);
+  height: clamp(8rem, 16vw, 13rem);
+  pointer-events: none;
+  transform-origin: bottom right;
+  filter: drop-shadow(0 16px 18px rgb(15 23 42 / 22%));
+  will-change: transform, opacity;
+}
+
+.klemmi-first-login-card {
+  z-index: 3;
+  transform-origin: bottom right;
+}
+
+.klemmi-first-login-highlight {
+  z-index: 1;
+  pointer-events: none;
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+
+.klemmi-first-login-point {
+  transform-origin: bottom right;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .klemmi-first-login-mascot {
+    animation: klemmi-first-login-enter 620ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  }
+
+  .klemmi-first-login-mascot[data-leaving="true"] {
+    animation: klemmi-first-login-exit 340ms cubic-bezier(0.77, 0, 0.175, 1) both;
+  }
+
+  .klemmi-first-login-mascot[data-leaving="true"] .klemmi-first-login-point {
+    animation: klemmi-first-login-goodbye-wave 340ms cubic-bezier(0.77, 0, 0.175, 1) both;
+  }
+
+  .klemmi-first-login-point {
+    animation: klemmi-first-login-point 1.15s cubic-bezier(0.77, 0, 0.175, 1) 700ms infinite;
+  }
+
+  .klemmi-first-login-highlight {
+    animation: klemmi-first-login-glow 1.55s cubic-bezier(0.77, 0, 0.175, 1) infinite;
+  }
+
+  .klemmi-first-login-card[data-leaving="true"] {
+    animation: klemmi-first-login-exit 300ms cubic-bezier(0.77, 0, 0.175, 1) both;
+  }
+}
+
+/* Auf Smartphones bleibt der obere Bereich mit Navigation frei. Klemmi steht
+   unterhalb des Highlights, die Sprechblase bleibt über dem sicheren unteren
+   Viewportbereich und alle Kontrollflächen behalten mindestens 44px Höhe. */
+@media (max-width: 639px) {
+  .klemmi-first-login-mascot {
+    right: 0.75rem;
+    bottom: max(16.5rem, env(safe-area-inset-bottom));
+    width: min(34vw, 10rem);
+    height: min(34vw, 10rem);
+  }
+
+  .klemmi-first-login-card {
+    max-height: min(48dvh, 29rem);
+    overflow-y: auto;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .klemmi-first-login-mascot,
+  .klemmi-first-login-point,
+  .klemmi-first-login-highlight,
+  .klemmi-first-login-card[data-leaving="true"] {
+    animation: none;
+  }
+}
+
 /* Helfertabelle: Sticky-Kopf nur dann aktivieren, wenn die breite Tabelle
    neben der Navigation vollständig Platz hat. Darunter bleibt sie horizontal
    scrollbar, damit die Status- und Aktionsspalten erreichbar bleiben. */

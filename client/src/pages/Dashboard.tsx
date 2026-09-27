@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { KlemmiSurfaceGuide } from "@/components/KlemmiSurfaceGuide";
 import { LocationMapCard } from "@/components/LocationMapCard";
 import { PageTitle } from "@/components/PageTitle";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -1208,7 +1209,27 @@ export default function Dashboard() {
             Die wichtigsten nächsten Schritte stehen zuerst; alle Kennzahlen werden automatisch aus den Planungsdaten berechnet.
           </p>
         </div>
-        <EventCountdownWidget event={currentEvent} />
+        <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:items-end">
+          <KlemmiSurfaceGuide
+            guideId="dashboard"
+            title="Dein Überblick im Dashboard"
+            introText="Hier siehst du die wichtigsten nächsten Schritte, Fristen und Kennzahlen. Klicke einfach auf eine Karte, um direkt in den passenden Planungsbereich zu wechseln."
+            successSignal={null}
+            completionTitle="Alles im Blick!"
+            completionText="Klemmi bleibt oben in jedem Bereich für dich erreichbar."
+            steps={[
+              {
+                key: "intro",
+                selector: '[data-klemmi-trigger="dashboard"]',
+                eyebrow: "Klemmi zeigt’s",
+                title: "Dein Überblick im Dashboard",
+                text: "Ich zeige dir, wo du jederzeit Hilfe findest.",
+                action: "Verstanden",
+              },
+            ]}
+          />
+          <EventCountdownWidget event={currentEvent} />
+        </div>
       </div>
 
       {currentTenant.status === "pilot" && (

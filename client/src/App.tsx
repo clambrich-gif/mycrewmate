@@ -82,6 +82,7 @@ const Finances = lazy(routeLoaders["/finanzen"]);
 const PdfExport = lazy(routeLoaders["/pdf-export"]);
 const Security = lazy(routeLoaders["/sicherheit"]);
 const Help = lazy(routeLoaders["/hilfe"]);
+const KlemmiFirstLoginPreview = lazy(() => import("@/pages/KlemmiFirstLoginPreview"));
 const OfferDemo = lazy(() => import("@/pages/OfferDemo"));
 const PublicLegalPage = lazy(() => import("@/pages/PublicLegal"));
 const MasterAdminPortal = lazy(() => import("@/pages/MasterAdminPortal"));
@@ -162,6 +163,13 @@ function MasterAdminRouter() {
 function Router() {
   return (
     <Switch>
+      {import.meta.env.DEV && (
+        <Route path="/_staging/klemmi-erst-login">
+          <Suspense fallback={<RouteLoading />}>
+            <KlemmiFirstLoginPreview />
+          </Suspense>
+        </Route>
+      )}
       {/* Nur lokale/Manus-Vorschauen können das Masterportal über diesen Pfad testen.
           Auf admin.mycrewmate.de wird MasterAdminRouter direkt am Root gerendert. */}
       <Route path="/master-admin" component={MasterAdminPortal} />

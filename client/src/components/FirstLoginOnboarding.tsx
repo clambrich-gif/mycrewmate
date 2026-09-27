@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { FirstLoginKlemmiIntro } from "@/components/FirstLoginKlemmiIntro";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +26,8 @@ type FirstLoginOnboardingProps = {
   open: boolean;
   name: string;
   isCoAdmin: boolean;
+  /** Nur für die lokale Staging-Ansicht: überspringt den bereits bekannten Willkommensteil. */
+  startAtKlemmi?: boolean;
   completing?: boolean;
   onComplete: () => void;
 };
@@ -38,13 +41,20 @@ export function FirstLoginOnboarding({
   open,
   name,
   isCoAdmin,
+  startAtKlemmi = false,
   completing = false,
   onComplete,
 }: FirstLoginOnboardingProps) {
-  const [step, setStep] = useState<"welcome" | "co_admin">("welcome");
+  const [step, setStep] = useState<"welcome" | "klemmi" | "co_admin">(
+    startAtKlemmi ? "klemmi" : "welcome"
+  );
   const [progress, setProgress] = useState(0);
 
   const finishWelcome = useCallback(() => {
+    setStep("klemmi");
+  }, []);
+
+  const finishKlemmiIntro = useCallback(() => {
     if (isCoAdmin) {
       setStep("co_admin");
       return;
@@ -54,7 +64,7 @@ export function FirstLoginOnboarding({
 
   useEffect(() => {
     if (!open) {
-      setStep("welcome");
+      setStep(startAtKlemmi ? "klemmi" : "welcome");
       setProgress(0);
       return;
     }
@@ -69,31 +79,32 @@ export function FirstLoginOnboarding({
     updateProgress();
     const interval = window.setInterval(updateProgress, 100);
     return () => window.clearInterval(interval);
-  }, [open, step, finishWelcome]);
+  }, [open, startAtKlemmi, step, finishWelcome]);
 
   const isWelcomeStep = step === "welcome";
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={nextOpen => {
-        if (!nextOpen && isWelcomeStep) finishWelcome();
-      }}
-    >
-      <DialogContent
-        showCloseButton={false}
-        className="overflow-hidden border-slate-200 bg-white p-0 text-slate-950 sm:max-w-lg"
-        onEscapeKeyDown={event => {
-          if (!isWelcomeStep) event.preventDefault();
-        }}
-        onPointerDownOutside={event => {
-          if (!isWelcomeStep) event.preventDefault();
-        }}
-        onInteractOutside={event => {
-          if (!isWelcomeStep) event.preventDefault();
+    <>
+      <Dialog
+        open={open && step !== "klemmi"}
+        onOpenChange={nextOpen => {
+          if (!nextOpen && isWelcomeStep) finishWelcome();
         }}
       >
-        {isWelcomeStep ? (
+        <DialogContent
+          showCloseButton={false}
+          className="overflow-hidden border-slate-200 bg-white p-0 text-slate-950 sm:max-w-lg"
+          onEscapeKeyDown={event => {
+            if (!isWelcomeStep) event.preventDefault();
+          }}
+          onPointerDownOutside={event => {
+            if (!isWelcomeStep) event.preventDefault();
+          }}
+          onInteractOutside={event => {
+            if (!isWelcomeStep) event.preventDefault();
+          }}
+        >
+          {isWelcomeStep ? (
           <div className="relative px-6 pb-6 pt-7 text-center sm:px-8 sm:pb-7">
             <Button
               type="button"
@@ -134,7 +145,7 @@ export function FirstLoginOnboarding({
               aria-label="Willkommenshinweis wird abgeschlossen"
             />
           </div>
-        ) : (
+          ) : (
           <div className="px-6 py-7 sm:px-8 sm:py-8">
             <img
               src={MYCREWMATE_WORDMARK}
@@ -195,8 +206,14 @@ export function FirstLoginOnboarding({
               <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" />
             </Button>
           </div>
-        )}
-      </DialogContent>
-    </Dialog>
+          )}
+        </DialogContent>
+      </Dialog>
+      <FirstLoginKlemmiIntro
+        open={open && step === "klemmi"}
+        completing={completing}
+        onComplete={finishKlemmiIntro}
+      />
+    </>
   );
 }
