@@ -15,7 +15,6 @@ type HighlightRect = {
 
 const KLEMMI_INTRO_TEXT =
   "Hallo! Ich bin Klemmi. Und nein – nicht weil ich verklemmt bin, sondern weil ich immer genau dann zur Stelle bin, wenn es irgendwo klemmt, oder halt, wenn du das erste Mal hier bist! Egal ob Schichten, Helfer oder Event-Planung: Wenn du mal nicht weiterweißt, klick mich einfach an! Du findest mich ab jetzt auf jeder Seite ganz oben im Menü.";
-const KLEMMI_JOKE_NOTE = "Klemmi lacht über seinen eigenen Witz.";
 const KLEMMI_CO_ADMIN_TEXT =
   "Und noch ein Tipp für dich als Co-Admin: Im nächsten Schritt siehst du deine wichtigsten Rechte. Die vollständige Rechte-Matrix findest du später jederzeit im Hilfe-Bereich.";
 
@@ -32,11 +31,14 @@ function clamp(value: number, min: number, max: number) {
 export function FirstLoginKlemmiIntro({
   open,
   isCoAdmin = false,
+  autoSpeak = true,
   completing = false,
   onComplete,
 }: {
   open: boolean;
   isCoAdmin?: boolean;
+  /** Die Staging-Demo startet Audio unmittelbar über ihren Testbutton. */
+  autoSpeak?: boolean;
   completing?: boolean;
   onComplete: () => void;
 }) {
@@ -53,6 +55,7 @@ export function FirstLoginKlemmiIntro({
     }
 
     setLeaving(false);
+    if (!autoSpeak) return;
     // Der Audiostart wird versucht, sobald der Einstieg sichtbar ist. Browser,
     // die das nach der Willkommenszeit unterbinden, erhalten die klar sichtbare
     // Wiederholen-Schaltfläche – nie eine fremde Systemstimme als Ersatz.
@@ -63,7 +66,7 @@ export function FirstLoginKlemmiIntro({
       );
     }, 360);
     return () => window.clearTimeout(timer);
-  }, [cancel, isCoAdmin, open, speak]);
+  }, [autoSpeak, cancel, isCoAdmin, open, speak]);
 
   useLayoutEffect(() => {
     if (!open || typeof window === "undefined") return;
@@ -166,10 +169,7 @@ export function FirstLoginKlemmiIntro({
             <KlemmiVoiceControl muted={muted} onToggle={toggleMuted} />
           </div>
         </div>
-        <p className="mt-3 text-sm leading-relaxed text-slate-700">
-          {KLEMMI_INTRO_TEXT}
-          <span className="ml-1 whitespace-nowrap text-xs font-medium text-[#e86117]">({KLEMMI_JOKE_NOTE})</span>
-        </p>
+        <p className="mt-3 text-sm leading-relaxed text-slate-700">{KLEMMI_INTRO_TEXT}</p>
         {isCoAdmin && (
           <p className="mt-2 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm leading-relaxed text-blue-950">
             <span className="font-semibold">Co-Admin-Tipp:</span> {KLEMMI_CO_ADMIN_TEXT.replace("Und noch ein Tipp für dich als Co-Admin: ", "")}

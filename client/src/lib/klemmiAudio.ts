@@ -64,10 +64,20 @@ export const KLEMMI_AUDIO_SCRIPTS = {
 
 export type KlemmiAudioId = keyof typeof KLEMMI_AUDIO_SCRIPTS;
 
+/**
+ * Neue Sprachfassungen erhalten eine eigene URL. Dadurch kann kein Browser
+ * trotz langer Cache-Zeit versehentlich eine vorherige Klemmi-Aufnahme spielen.
+ */
+const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
+  "first-login-intro": "20260927-joke-v2",
+  "first-login-co-admin": "20260927-joke-v2",
+};
+
 export function isKlemmiAudioId(value: string): value is KlemmiAudioId {
   return value in KLEMMI_AUDIO_SCRIPTS;
 }
 
 export function klemmiAudioUrl(id: KlemmiAudioId) {
-  return `${KLEMMI_AUDIO_ROUTE}/${id}`;
+  const revision = KLEMMI_AUDIO_REVISIONS[id];
+  return revision ? `${KLEMMI_AUDIO_ROUTE}/${id}?v=${revision}` : `${KLEMMI_AUDIO_ROUTE}/${id}`;
 }

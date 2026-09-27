@@ -1,8 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { FirstLoginKlemmiIntro } from "@/components/FirstLoginKlemmiIntro";
 import { KlemmiTriggerMascot } from "@/components/KlemmiMascot";
+import { klemmiAudioUrl, KLEMMI_AUDIO_SCRIPTS } from "@/lib/klemmiAudio";
 import { CalendarDays, CheckCircle2, ClipboardList, UsersRound } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 /**
  * Ausschließlich lokale Staging-Vorschau. Die Seite enthält keine Konten,
@@ -10,11 +11,21 @@ import { useState } from "react";
  */
 export default function KlemmiFirstLoginPreview() {
   const [introOpen, setIntroOpen] = useState(true);
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   const [isCoAdmin, setIsCoAdmin] = useState(
     () => new URLSearchParams(window.location.search).get("coAdmin") === "1"
   );
 
   const restartPreview = (nextIsCoAdmin = isCoAdmin) => {
+    const clipId = nextIsCoAdmin ? "first-login-co-admin" : "first-login-intro";
+    previewAudioRef.current?.pause();
+    const audio = new Audio(klemmiAudioUrl(clipId));
+    audio.preload = "auto";
+    audio.volume = 0.9;
+    previewAudioRef.current = audio;
+    // Direkter Klick startet die Vorschau zuverlässig mit Ton; die reguläre
+    // Produktansicht versucht ihren Clip weiterhin nach dem Willkommensfenster.
+    void audio.play().catch(() => undefined);
     setIsCoAdmin(nextIsCoAdmin);
     setIntroOpen(false);
     window.requestAnimationFrame(() => setIntroOpen(true));
@@ -36,7 +47,7 @@ export default function KlemmiFirstLoginPreview() {
               className="min-h-11 border-amber-300 bg-white text-amber-950 hover:bg-amber-100"
               onClick={() => restartPreview(false)}
             >
-              Standardansicht starten
+              Standardansicht mit Ton starten
             </Button>
             <Button
               type="button"
@@ -44,7 +55,7 @@ export default function KlemmiFirstLoginPreview() {
               className="min-h-11 border-blue-200 bg-blue-50 text-blue-950 hover:bg-blue-100"
               onClick={() => restartPreview(true)}
             >
-              Co-Admin-Hinweis starten
+              Co-Admin-Hinweis mit Ton starten
             </Button>
           </div>
         </div>
@@ -93,6 +104,7 @@ export default function KlemmiFirstLoginPreview() {
       <FirstLoginKlemmiIntro
         open={introOpen}
         isCoAdmin={isCoAdmin}
+        autoSpeak={false}
         onComplete={() => setIntroOpen(false)}
       />
     </main>
