@@ -66,6 +66,14 @@ describe("Erst-Login-Onboarding", () => {
       "utf8"
     );
     const css = readFileSync(path.resolve(process.cwd(), "client/src/index.css"), "utf8");
+    const mascot = readFileSync(
+      path.resolve(process.cwd(), "client/src/components/KlemmiMascot.tsx"),
+      "utf8"
+    );
+    const voice = readFileSync(
+      path.resolve(process.cwd(), "client/src/hooks/useKlemmiVoice.ts"),
+      "utf8"
+    );
     const preview = readFileSync(
       path.resolve(process.cwd(), "client/src/pages/KlemmiFirstLoginPreview.tsx"),
       "utf8"
@@ -74,9 +82,16 @@ describe("Erst-Login-Onboarding", () => {
     expect(intro).toContain('"[data-klemmi-trigger]"');
     expect(intro).toContain("data-klemmi-first-login-highlight");
     expect(intro).toContain("Verstanden – danke, Klemmi!");
-    expect(intro).toContain("KlemmiPointingFinger");
+    expect(intro).toContain("KlemmiMascot isSpeaking={isSpeaking} decorative");
+    expect(intro).toContain("klemmi-first-login-question");
+    expect(mascot).toContain("klemmi-face-eye");
+    expect(mascot).toContain("klemmi-face-mouth");
+    expect(mascot).not.toContain("<Hand");
+    expect(voice).toContain("const [isSpeaking, setIsSpeaking] = useState(false)");
+    expect(voice).toContain("audio.onplay = () => setIsSpeaking(true)");
     expect(css).toContain("@keyframes klemmi-first-login-enter");
-    expect(css).toContain("@keyframes klemmi-first-login-goodbye-wave");
+    expect(css).toContain("@keyframes klemmi-first-login-question-float");
+    expect(css).toContain("@keyframes klemmi-speaking-mouth");
     expect(css).toContain("@media (max-width: 639px)");
     expect(css).toContain("prefers-reduced-motion: reduce");
     expect(preview).toContain('data-klemmi-trigger="staging-preview"');

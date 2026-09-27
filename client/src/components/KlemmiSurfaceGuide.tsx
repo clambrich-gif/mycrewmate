@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { KlemmiTriggerMascot, KLEMMI_IMAGE_URL } from "@/components/KlemmiMascot";
+import { KlemmiMascot, KlemmiTriggerMascot } from "@/components/KlemmiMascot";
 import { KlemmiVoiceControl } from "@/components/KlemmiVoiceControl";
 import { useKlemmiVoice } from "@/hooks/useKlemmiVoice";
 import { isKlemmiAudioId } from "@/lib/klemmiAudio";
@@ -71,7 +71,7 @@ export function KlemmiSurfaceGuide({
   const [highlightRect, setHighlightRect] = useState<HighlightRect>(null);
   const [celebrating, setCelebrating] = useState(false);
   const acceptedSuccessSignal = useRef<number | null>(null);
-  const { muted, speak, toggleMuted, cancel } = useKlemmiVoice();
+  const { muted, isSpeaking, speak, toggleMuted, cancel } = useKlemmiVoice();
   const step = steps[stepIndex];
   const workflowSteps = useMemo(() => steps.filter(item => item.key !== "intro"), [steps]);
   const isIntro = step?.key === "intro";
@@ -234,10 +234,9 @@ export function KlemmiSurfaceGuide({
               ) : (
                 <>
                   <div className="flex items-start gap-3">
-                    <img
-                      src={KLEMMI_IMAGE_URL}
-                      alt="Klemmi, der digitale Helfer"
-                      className="size-[76px] shrink-0 rounded-xl object-contain sm:size-[92px]"
+                    <KlemmiMascot
+                      isSpeaking={isSpeaking}
+                      className="size-[76px] shrink-0 rounded-xl sm:size-[92px]"
                     />
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-bold tracking-wide text-[#e86117] uppercase">

@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { KLEMMI_IMAGE_URL } from "@/components/KlemmiMascot";
+import { KlemmiMascot } from "@/components/KlemmiMascot";
 import { KlemmiVoiceControl } from "@/components/KlemmiVoiceControl";
 import { useKlemmiVoice } from "@/hooks/useKlemmiVoice";
 import { CheckCircle2, Sparkles, Volume2 } from "lucide-react";
@@ -41,7 +41,7 @@ export function FirstLoginKlemmiIntro({
 }) {
   const [highlightRect, setHighlightRect] = useState<HighlightRect>(null);
   const [leaving, setLeaving] = useState(false);
-  const { muted, speak, toggleMuted, cancel } = useKlemmiVoice();
+  const { muted, isSpeaking, speak, toggleMuted, cancel } = useKlemmiVoice();
 
   useEffect(() => {
     if (!open) {
@@ -143,8 +143,8 @@ export function FirstLoginKlemmiIntro({
         className="klemmi-first-login-mascot"
         data-leaving={leaving ? "true" : "false"}
       >
-        <img src={KLEMMI_IMAGE_URL} alt="" className="size-full object-contain" />
-        <KlemmiPointingFinger className="klemmi-first-login-point absolute -left-7 -top-4 size-12 drop-shadow-md" />
+        <KlemmiMascot isSpeaking={isSpeaking} decorative />
+        <span className="klemmi-first-login-question" aria-hidden="true">?</span>
       </div>
 
       <section
@@ -204,31 +204,5 @@ export function FirstLoginKlemmiIntro({
       </section>
     </div>,
     document.body
-  );
-}
-function KlemmiPointingFinger({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 48 48"
-      fill="none"
-      aria-hidden="true"
-      className={className}
-    >
-      {/* Handfläche und Zeigefinger, der natürlich nach oben links auf das Highlight zeigt */}
-      <path
-        d="M28 36c-2.5 3-7 4-11 2-4-2-6-6-4.5-10.5l4-11.5c.8-2.3 3.3-3.6 5.6-2.8 2.3.8 3.6 3.3 2.8 5.6l-2.6 7.4 3.7-2c1.8-1 4.1-.3 5.1 1.5 1 1.8.3 4.1-1.5 5.1l-2.6 1.4"
-        fill="#f97316"
-        stroke="#ea580c"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M17 14L8 5"
-        stroke="#ea580c"
-        strokeWidth="3"
-        strokeLinecap="round"
-      />
-    </svg>
   );
 }

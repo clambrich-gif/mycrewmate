@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
  */
 export function useKlemmiVoice() {
   const [muted, setMuted] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const cancel = useCallback(() => {
@@ -16,6 +17,7 @@ export function useKlemmiVoice() {
       audioRef.current.currentTime = 0;
       audioRef.current = null;
     }
+    setIsSpeaking(false);
   }, []);
 
   const speak = useCallback(
@@ -31,7 +33,9 @@ export function useKlemmiVoice() {
       audioRef.current = audio;
       const release = () => {
         if (audioRef.current === audio) audioRef.current = null;
+        setIsSpeaking(false);
       };
+      audio.onplay = () => setIsSpeaking(true);
       audio.onended = release;
       audio.onerror = () => {
         console.warn(`[KlemmiVoice] Markenclip „${clipId}“ konnte nicht geladen werden.`);
@@ -56,5 +60,5 @@ export function useKlemmiVoice() {
 
   useEffect(() => cancel, [cancel]);
 
-  return { muted, speak, toggleMuted, cancel };
+  return { muted, isSpeaking, speak, toggleMuted, cancel };
 }

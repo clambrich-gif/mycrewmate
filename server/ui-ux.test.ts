@@ -119,8 +119,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(styles).toContain("@keyframes klemmi-celebrate-in");
     expect(styles).toContain(".klemmi-celebration");
     expect(mascot).toContain("klemmi-trigger-mascot");
+    expect(mascot).toContain("export function KlemmiMascot");
+    expect(mascot).toContain("klemmi-face-eye");
+    expect(mascot).toContain("klemmi-face-mouth");
+    expect(mascot).not.toContain("<Hand");
     expect(styles).toContain("@keyframes klemmi-trigger-shift-and-wave");
-    expect(styles).toContain("@keyframes klemmi-trigger-hand-wave");
+    expect(styles).toContain("@keyframes klemmi-eye-glance");
+    expect(styles).toContain("@keyframes klemmi-speaking-mouth");
     expect(styles).toContain("20s cubic-bezier");
     expect(genericTasks).toContain("<KlemmiActionPanel");
     expect(genericTasks).toContain("secondaryActions=");

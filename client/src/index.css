@@ -360,8 +360,8 @@
 }
 
 /* Klemmi macht nur ungefähr alle zwanzig Sekunden eine kurze, freundliche
-   Aufmerksamkeitsgeste. Die Figur verlagert dabei leicht das Gewicht und die
-   kleine Hand winkt einmal. Dazwischen bleibt der Auslöser vollkommen ruhig. */
+   Aufmerksamkeitsgeste. Die frühere Hand wurde bewusst entfernt: Der Auslöser
+   bleibt als kompakte Figur ruhig und verlagert nur minimal sein Gewicht. */
 @keyframes klemmi-trigger-shift-and-wave {
   0%,
   88%,
@@ -379,33 +379,84 @@
   }
 }
 
-@keyframes klemmi-trigger-hand-wave {
-  0%,
-  88%,
-  100% {
-    opacity: 0;
-    transform: translate3d(0, 2px, 0) rotate(0deg) scale(0.8);
-  }
-  90% {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) rotate(-16deg) scale(1);
-  }
-  93% {
-    opacity: 1;
-    transform: translate3d(1px, -1px, 0) rotate(18deg) scale(1.06);
-  }
-  96% {
-    opacity: 1;
-    transform: translate3d(0, 0, 0) rotate(-10deg) scale(1);
-  }
-  98% {
-    opacity: 0.9;
-    transform: translate3d(0, 1px, 0) rotate(0deg) scale(0.92);
-  }
+/* Die Gesichtsebene sitzt passgenau über dem unveränderten Klemmbrett-Bild.
+   Glanzpunkte erzeugen den Blickwechsel; der Mund öffnet sich nur während
+   einer wirklich laufenden lokalen Klemmi-Audioansage. */
+.klemmi-animated-mascot {
+  overflow: visible;
 }
 
-.klemmi-trigger-mascot,
-.klemmi-trigger-wave {
+.klemmi-face-eye {
+  position: absolute;
+  top: 28.2%;
+  width: 9.2%;
+  height: 12.8%;
+  overflow: hidden;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.klemmi-face-eye--left { left: 36.7%; }
+.klemmi-face-eye--right { left: 54.1%; }
+
+.klemmi-face-pupil {
+  position: absolute;
+  top: 27%;
+  left: 26%;
+  width: 31%;
+  height: 25%;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 95%);
+  box-shadow: 0 0 1px rgb(255 255 255 / 85%);
+  will-change: transform;
+}
+
+.klemmi-face-mouth {
+  position: absolute;
+  top: 40.2%;
+  left: 44.4%;
+  width: 12.1%;
+  height: 7.8%;
+  overflow: hidden;
+  border: 1px solid rgb(20 58 112 / 18%);
+  border-radius: 48% 48% 58% 58%;
+  background: #123d78;
+  opacity: 0;
+  pointer-events: none;
+  transform: scaleY(0.18);
+  transform-origin: top center;
+  will-change: transform, opacity;
+}
+
+.klemmi-face-tongue {
+  position: absolute;
+  right: 18%;
+  bottom: -34%;
+  left: 18%;
+  height: 62%;
+  border-radius: 999px 999px 0 0;
+  background: #f37a5d;
+}
+
+@keyframes klemmi-eye-glance {
+  0%, 18%, 100% { transform: translate3d(0, 0, 0); }
+  25%, 38% { transform: translate3d(22%, -3%, 0); }
+  48%, 62% { transform: translate3d(-18%, 2%, 0); }
+  72% { transform: translate3d(8%, 0, 0); }
+}
+
+@keyframes klemmi-speaking-eyes {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  35% { transform: translate3d(13%, -4%, 0); }
+  68% { transform: translate3d(-10%, 1%, 0); }
+}
+
+@keyframes klemmi-speaking-mouth {
+  0%, 100% { opacity: 0.88; transform: scaleY(0.42) scaleX(0.92); }
+  50% { opacity: 1; transform: scaleY(1) scaleX(1.04); }
+}
+
+.klemmi-trigger-mascot {
   transform-origin: bottom center;
   will-change: transform, opacity;
 }
@@ -415,14 +466,23 @@
     animation: klemmi-trigger-shift-and-wave 20s cubic-bezier(0.77, 0, 0.175, 1) infinite;
   }
 
-  .klemmi-trigger-wave {
-    animation: klemmi-trigger-hand-wave 20s cubic-bezier(0.77, 0, 0.175, 1) infinite;
+  .klemmi-face-pupil {
+    animation: klemmi-eye-glance 6.2s cubic-bezier(0.77, 0, 0.175, 1) infinite;
+  }
+
+  .klemmi-animated-mascot[data-klemmi-speaking="true"] .klemmi-face-pupil {
+    animation: klemmi-speaking-eyes 1.25s cubic-bezier(0.77, 0, 0.175, 1) infinite;
+  }
+
+  .klemmi-animated-mascot[data-klemmi-speaking="true"] .klemmi-face-mouth {
+    animation: klemmi-speaking-mouth 270ms cubic-bezier(0.77, 0, 0.175, 1) infinite;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .klemmi-trigger-mascot,
-  .klemmi-trigger-wave {
+  .klemmi-face-pupil,
+  .klemmi-face-mouth {
     animation: none;
   }
 }
@@ -490,29 +550,15 @@
   }
 }
 
-@keyframes klemmi-first-login-point {
+@keyframes klemmi-first-login-question-float {
   0%,
   100% {
-    transform: translate3d(0, 0, 0) scale(1);
+    transform: translate3d(0, 0, 0) rotate(-4deg) scale(1);
+    box-shadow: 0 5px 12px rgb(194 65 12 / 22%);
   }
   50% {
-    transform: translate3d(-7px, -9px, 0) scale(1.1);
-  }
-}
-
-@keyframes klemmi-first-login-goodbye-wave {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) rotate(-12deg) scale(1);
-  }
-  28% {
-    transform: translate3d(3px, -3px, 0) rotate(22deg) scale(1.06);
-  }
-  58% {
-    transform: translate3d(1px, -5px, 0) rotate(-28deg) scale(1.06);
-  }
-  82% {
-    transform: translate3d(4px, -3px, 0) rotate(20deg) scale(1.03);
+    transform: translate3d(-3px, -11px, 0) rotate(4deg) scale(1.12);
+    box-shadow: 0 10px 18px rgb(194 65 12 / 32%);
   }
 }
 
@@ -553,9 +599,24 @@
   will-change: transform, opacity;
 }
 
-.klemmi-first-login-point {
-  transform-origin: bottom right;
-  will-change: transform;
+.klemmi-first-login-question {
+  position: absolute;
+  top: 0.9rem;
+  left: -0.55rem;
+  display: grid;
+  width: clamp(2rem, 4vw, 2.8rem);
+  height: clamp(2rem, 4vw, 2.8rem);
+  place-items: center;
+  border: 2px solid #ea580c;
+  border-radius: 999px;
+  background: #fb923c;
+  color: #fff;
+  font-size: clamp(1.25rem, 2.4vw, 1.75rem);
+  font-weight: 800;
+  line-height: 1;
+  pointer-events: none;
+  transform-origin: bottom center;
+  will-change: transform, box-shadow;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -567,12 +628,8 @@
     animation: klemmi-first-login-exit 340ms cubic-bezier(0.77, 0, 0.175, 1) both;
   }
 
-  .klemmi-first-login-mascot[data-leaving="true"] .klemmi-first-login-point {
-    animation: klemmi-first-login-goodbye-wave 340ms cubic-bezier(0.77, 0, 0.175, 1) both;
-  }
-
-  .klemmi-first-login-point {
-    animation: klemmi-first-login-point 1.15s cubic-bezier(0.77, 0, 0.175, 1) 700ms infinite;
+  .klemmi-first-login-question {
+    animation: klemmi-first-login-question-float 1.5s cubic-bezier(0.77, 0, 0.175, 1) 700ms infinite;
   }
 
   .klemmi-first-login-highlight {
@@ -604,7 +661,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .klemmi-first-login-mascot,
-  .klemmi-first-login-point,
+  .klemmi-first-login-question,
   .klemmi-first-login-highlight,
   .klemmi-first-login-card[data-leaving="true"] {
     animation: none;
