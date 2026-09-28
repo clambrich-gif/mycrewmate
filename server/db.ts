@@ -4590,6 +4590,11 @@ export async function assignHelper(v: {
       .for("update");
     if (existing)
       throw new Error("Helferplatz oder Helfer ist bereits belegt");
+    const currentAssignments = await tx
+      .select({ id: assignments.id })
+      .from(assignments)
+      .where(eq(assignments.shiftId, shift.id));
+    const currentAssignmentCount = currentAssignments.length;
     await tx.insert(assignments).values({
       ...v,
       year: shift.year,
@@ -4600,7 +4605,12 @@ export async function assignHelper(v: {
       [v.helperId],
       [shift.id]
     );
-    return { success: true } as const;
+    return {
+      success: true,
+      assignedCount: 1,
+      shiftJustCompleted:
+        shift.needed > 0 && currentAssignmentCount < shift.needed && currentAssignmentCount + 1 >= shift.needed,
+    } as const;
   });
 }
 
@@ -4664,7 +4674,14 @@ export async function assignHelpersToOpenSlots(v: {
       }))
     );
     await resetManualShiftConfirmationsForHelpers(tx, uniqueHelperIds, [shift.id]);
-    return { success: true, assignedCount: uniqueHelperIds.length } as const;
+    return {
+      success: true,
+      assignedCount: uniqueHelperIds.length,
+      shiftJustCompleted:
+        shift.needed > 0 &&
+        currentAssignments.length < shift.needed &&
+        currentAssignments.length + uniqueHelperIds.length >= shift.needed,
+    } as const;
   });
 }
 

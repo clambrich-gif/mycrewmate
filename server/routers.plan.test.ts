@@ -205,10 +205,15 @@ describe("Planungs-API", () => {
     dbMocks.listMarketing.mockResolvedValue([]);
     dbMocks.listApprovals.mockResolvedValue([]);
     dbMocks.recordActivityLog.mockResolvedValue(undefined);
-    dbMocks.assignHelper.mockResolvedValue({ insertId: 1 });
+    dbMocks.assignHelper.mockResolvedValue({
+      success: true,
+      assignedCount: 1,
+      shiftJustCompleted: false,
+    });
     dbMocks.assignHelpersToOpenSlots.mockResolvedValue({
       success: true,
       assignedCount: 1,
+      shiftJustCompleted: false,
     });
     dbMocks.updateShift.mockResolvedValue({ affectedRows: 1 });
     dbMocks.clearModuleAssignments.mockResolvedValue({
@@ -1672,7 +1677,11 @@ describe("Planungs-API", () => {
     ]);
     await expect(
       appRouter.createCaller(ctx).plan.assign({ shiftId: 10, helperId: 20, slot: 0 })
-    ).resolves.toEqual({ insertId: 1 });
+    ).resolves.toEqual({
+      success: true,
+      assignedCount: 1,
+      shiftJustCompleted: false,
+    });
   });
 
   it("speichert eine gültige Zuweisung", async () => {
@@ -1680,7 +1689,11 @@ describe("Planungs-API", () => {
 
     await expect(
       caller.plan.assign({ shiftId: 10, helperId: 20, slot: 0 })
-    ).resolves.toEqual({ insertId: 1 });
+    ).resolves.toEqual({
+      success: true,
+      assignedCount: 1,
+      shiftJustCompleted: false,
+    });
     expect(dbMocks.assignHelper).toHaveBeenCalledWith({
       shiftId: 10,
       helperId: 20,
@@ -1695,6 +1708,7 @@ describe("Planungs-API", () => {
     dbMocks.assignHelpersToOpenSlots.mockResolvedValue({
       success: true,
       assignedCount: 2,
+      shiftJustCompleted: true,
     });
 
     await expect(
@@ -1702,7 +1716,11 @@ describe("Planungs-API", () => {
         shiftId: 10,
         helperIds: [20, 21],
       })
-    ).resolves.toEqual({ success: true, assignedCount: 2 });
+    ).resolves.toEqual({
+      success: true,
+      assignedCount: 2,
+      shiftJustCompleted: true,
+    });
     expect(dbMocks.assignHelpersToOpenSlots).toHaveBeenCalledWith({
       shiftId: 10,
       helperIds: [20, 21],

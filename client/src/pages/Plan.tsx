@@ -842,14 +842,17 @@ export default function Plan() {
     utils.dashboard.stats.invalidate();
   };
   const assign = trpc.plan.assign.useMutation({
-    onSuccess: invalidate,
+    onSuccess: result => {
+      invalidate();
+      if (result.shiftJustCompleted) triggerKlemmiReaction("shift-success");
+    },
     onError: e => toast.error(e.message),
   });
   const assignMany = trpc.plan.assignMany.useMutation({
     onSuccess: result => {
       setSelectedHelperIdsByShift({});
       invalidate();
-      if (result.assignedCount > 0) triggerKlemmiReaction("shift-success");
+      if (result.shiftJustCompleted) triggerKlemmiReaction("shift-success");
       toast.success(
         result.assignedCount === 1
           ? "Helfer zugeordnet"
@@ -875,7 +878,6 @@ export default function Plan() {
           : null
       );
       setKlemmiCreationSignal(Date.now());
-      triggerKlemmiReaction("shift-success");
       toast.success("Schicht angelegt");
     },
     onError: e => toast.error(e.message),

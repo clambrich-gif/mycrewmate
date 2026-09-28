@@ -797,8 +797,6 @@ export default function Helpers() {
   const [newHelperDonation, setNewHelperDonation] = useState<NewHelperDonation>(
     EMPTY_NEW_HELPER_DONATION
   );
-  const [klemmiGuideActive, setKlemmiGuideActive] = useState(false);
-  const [klemmiCreatedHelperId, setKlemmiCreatedHelperId] = useState<number | null>(null);
   const [newHelperNameError, setNewHelperNameError] = useState<string | null>(null);
   const [whatsAppTargetHelper, setWhatsAppTargetHelper] = useState<{
     id: number;
@@ -872,18 +870,10 @@ export default function Helpers() {
     resetNewHelperForm();
     setNewHelperDialogOpen(true);
   };
-  const setKlemmiGuideOpen = (open: boolean) => {
-    setKlemmiGuideActive(open);
-    if (!open) {
-      setKlemmiCreatedHelperId(null);
-      setNewHelperNameError(null);
-    }
-  };
-  const finishNewHelperCreation = (helperId: number, message: string) => {
+  const finishNewHelperCreation = (message: string) => {
     invalidate();
     resetNewHelperForm();
     setNewHelperDialogOpen(false);
-    if (klemmiGuideActive) setKlemmiCreatedHelperId(helperId);
     toast.success(message);
   };
   const openCakeDonation = (helperName: string) =>
@@ -899,14 +889,14 @@ export default function Helpers() {
     });
   };
   const create = trpc.helpers.create.useMutation({
-    onSuccess: result => {
-      finishNewHelperCreation(result.id, "Helfer hinzugefügt");
+    onSuccess: () => {
+      finishNewHelperCreation("Helfer hinzugefügt");
     },
     onError: error => toast.error(error.message),
   });
   const createWithDonation = trpc.helpers.createWithDonation.useMutation({
-    onSuccess: result => {
-      finishNewHelperCreation(result.helper.id, "Helfer und Spende hinzugefügt");
+    onSuccess: () => {
+      finishNewHelperCreation("Helfer und Spende hinzugefügt");
     },
     onError: error => toast.error(error.message),
   });
@@ -1173,16 +1163,7 @@ export default function Helpers() {
   // Führungsschritt sichtbar, auch wenn eine vorher gewählte Filteransicht ihn
   // normalerweise ausblenden würde. Beim Schließen der Führung bleibt die
   // persönliche Filterauswahl unverändert bestehen.
-  const displayedHelpers = useMemo(() => {
-    if (klemmiCreatedHelperId === null) return filtered;
-    const createdHelper = helpers.find(helper => helper.id === klemmiCreatedHelperId);
-    if (!createdHelper || filtered.some(helper => helper.id === createdHelper.id)) {
-      return filtered;
-    }
-    return [...filtered, createdHelper].sort((a, b) =>
-      sortAsc ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)
-    );
-  }, [filtered, helpers, klemmiCreatedHelperId, sortAsc]);
+  const displayedHelpers = filtered;
   const selfHelperIds = useMemo(() => {
     const contactById = new Map(contacts.map(contact => [contact.id, contact]));
     return new Set(
@@ -1285,16 +1266,11 @@ export default function Helpers() {
           guide={
             <KlemmiHelperGuide
               helperDialogOpen={newHelperDialogOpen}
-              donationOpen={newHelperBringsCake}
-              createdHelperId={klemmiCreatedHelperId}
-              availabilityTargetReady={
-                klemmiCreatedHelperId === null ||
-                helpers.some(helper => helper.id === klemmiCreatedHelperId)
-              }
-              nameError={newHelperNameError}
+              guideHelperId={displayedHelpers[0]?.id ?? null}
               viewMode={viewMode}
               onOpenHelperDialog={openNewHelperDialog}
-              onGuideOpenChange={setKlemmiGuideActive}
+              onCloseHelperDialog={() => setNewHelperDialogOpen(false)}
+              onGuideOpenChange={() => undefined}
               onViewModeChange={setViewMode}
             />
           }
@@ -2190,6 +2166,8 @@ export default function Helpers() {
               return (
                 <Card
                   key={helper.id}
+                  data-klemmi-target="helper-plan-context"
+                  data-klemmi-helper-id={helper.id}
                   className={cn(
                     "border-slate-200 bg-white shadow-sm transition-all hover:border-slate-300 hover:shadow-md",
                     helper.confirmed === "ja" && "border-l-4 border-l-emerald-600"
@@ -2335,7 +2313,11 @@ export default function Helpers() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-50 p-2.5 text-xs">
+                    <div
+                      data-klemmi-target="helper-feedback"
+                      data-klemmi-helper-id={helper.id}
+                      className="grid grid-cols-2 gap-2 rounded-xl bg-slate-50 p-2.5 text-xs"
+                    >
                       <div>
                         <span className="text-slate-500">Helfen?</span>
                         <div className="mt-1">
