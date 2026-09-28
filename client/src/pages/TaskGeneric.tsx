@@ -164,6 +164,7 @@ export default function TaskGeneric({
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [klemmiGuideOpen, setKlemmiGuideOpen] = useState(false);
   const [klemmiCreationSignal, setKlemmiCreationSignal] = useState<number | null>(null);
+  const [klemmiGuideStartedEmpty, setKlemmiGuideStartedEmpty] = useState<boolean | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{
     id: number;
     name: string;
@@ -178,6 +179,39 @@ export default function TaskGeneric({
   const filterStatusKey = filterConfig?.statusKey;
   const filterStatusOptions = extraField?.options ?? defaultStatus;
   const isMaterialTable = kind === "materials";
+  // Der Zustand wird beim Öffnen eingefroren. Speichert jemand eine
+  // Übungsanlage, kann Klemmi danach verlässlich die neue Übersicht zeigen.
+  const klemmiGuideNeedsSample =
+    klemmiGuideStartedEmpty ?? (!isLoading && rows.length === 0);
+  const klemmiGuideSteps: KlemmiSurfaceStep[] = klemmiGuide
+    ? [
+        ...klemmiGuide.steps.map(step =>
+          step.key === "save"
+            ? {
+                ...step,
+                text: klemmiGuideNeedsSample
+                  ? step.text
+                  : `Der markierte Button legt einen neuen ${addLabel.toLocaleLowerCase("de-DE")} an. Für diese Erklärung klickst du nicht darauf – gleich zeige ich dir die vorhandenen Einträge in der Übersicht.`,
+                action: klemmiGuideNeedsSample ? step.action : "Übersicht zeigen",
+                waitsForSuccess: klemmiGuideNeedsSample,
+                completeOnSuccess: false,
+                audioKey: klemmiGuideNeedsSample ? step.audioKey : "overview-save",
+              }
+            : step
+        ),
+        {
+          key: "overview",
+          selector: `[data-klemmi-target="${klemmiGuide.guideId}-overview"]`,
+          eyebrow: `Schritt ${klemmiGuide.steps.length + 1} von ${klemmiGuide.steps.length + 1}`,
+          title: `${title} in der Übersicht verstehen`,
+          text: klemmiGuideNeedsSample
+            ? `Dein Muster ist jetzt in der Übersicht sichtbar. Wenn es nur zum Üben gedacht war, kannst du es später über das rote Löschen-Symbol wieder entfernen. Passt es schon zu deiner Planung, bleibt es einfach stehen.`
+            : `Hier siehst du die bereits angelegten Einträge. Du kannst sie direkt ergänzen, filtern, bearbeiten oder bei Bedarf über das rote Löschen-Symbol entfernen – ohne für diese Tour etwas neu anzulegen.`,
+          audioKey: "complete",
+          action: "Fertig",
+        },
+      ]
+    : [];
 
   const contactMap = useMemo(
     () => new Map(contacts.map((contact: any) => [contact.id, contact.name])),
@@ -471,11 +505,38 @@ export default function TaskGeneric({
               createInDialog && klemmiGuide ? (
                 <KlemmiSurfaceGuide
                   {...klemmiGuide}
+                  introText={
+                    klemmiGuideNeedsSample
+                      ? `In ${title} ist noch kein Eintrag vorhanden. Wir legen gemeinsam ein echtes Muster an, das du danach behalten oder wieder löschen kannst.`
+                      : klemmiGuide.introText
+                  }
+                  steps={klemmiGuideSteps}
                   successSignal={klemmiCreationSignal}
-                  onOpenChange={setKlemmiGuideOpen}
+                  onOpenChange={open => {
+                    setKlemmiGuideOpen(open);
+                    if (open) setKlemmiGuideStartedEmpty(!isLoading && rows.length === 0);
+                    else {
+                      setCreateDialogOpen(false);
+                      setKlemmiGuideStartedEmpty(null);
+                    }
+                  }}
                   onStepAction={stepKey => {
                     if (stepKey === "intro") openCreateDialog();
+                    if (stepKey === "save" && !klemmiGuideNeedsSample) {
+                      setCreateDialogOpen(false);
+                    }
                   }}
+                  completionTitle={
+                    klemmiGuideNeedsSample
+                      ? klemmiGuide.completionTitle
+                      : `${title} im Überblick`
+                  }
+                  completionText={
+                    klemmiGuideNeedsSample
+                      ? klemmiGuide.completionText
+                      : `Du kennst jetzt die vorhandenen ${title.toLocaleLowerCase("de-DE")}-Einträge und kannst sie jederzeit filtern, bearbeiten oder bei Bedarf entfernen.`
+                  }
+                  completionAudioKey={klemmiGuideNeedsSample ? "complete" : "overview"}
                 />
               ) : (
                 <span aria-hidden="true" />
@@ -539,11 +600,35 @@ export default function TaskGeneric({
                 {klemmiGuide && (
                   <KlemmiSurfaceGuide
                     {...klemmiGuide}
+                    introText={
+                      klemmiGuideNeedsSample
+                        ? `In ${title} ist noch kein Eintrag vorhanden. Lege jetzt gemeinsam mit Klemmi ein Muster an, das du danach behalten oder wieder löschen kannst.`
+                        : klemmiGuide.introText
+                    }
+                    steps={klemmiGuideSteps}
                     successSignal={klemmiCreationSignal}
-                    onOpenChange={setKlemmiGuideOpen}
+                    onOpenChange={open => {
+                      setKlemmiGuideOpen(open);
+                      if (open) setKlemmiGuideStartedEmpty(!isLoading && rows.length === 0);
+                      else setKlemmiGuideStartedEmpty(null);
+                    }}
                     onStepAction={stepKey => {
                       if (stepKey === "intro") openCreateDialog();
+                      if (stepKey === "save" && !klemmiGuideNeedsSample) {
+                        setCreateDialogOpen(false);
+                      }
                     }}
+                    completionTitle={
+                      klemmiGuideNeedsSample
+                        ? klemmiGuide.completionTitle
+                        : `${title} im Überblick`
+                    }
+                    completionText={
+                      klemmiGuideNeedsSample
+                        ? klemmiGuide.completionText
+                        : `Du kennst jetzt die vorhandenen ${title.toLocaleLowerCase("de-DE")}-Einträge und kannst sie jederzeit filtern, bearbeiten oder bei Bedarf entfernen.`
+                    }
+                    completionAudioKey={klemmiGuideNeedsSample ? "complete" : "overview"}
                   />
                 )}
                 <Button
@@ -772,6 +857,7 @@ export default function TaskGeneric({
           </span>
         </div>
       )}
+      <div data-klemmi-target={klemmiGuide ? `${klemmiGuide.guideId}-overview` : undefined}>
       {viewMode === "liste" ? (
         <>
       <div className="space-y-3 md:hidden">
@@ -1335,6 +1421,7 @@ export default function TaskGeneric({
           )}
         </div>
       )}
+      </div>
       {(teamCanDelete || deletionRequiresContact) && (
         <ConfirmDeleteDialog
           open={Boolean(deleteTarget)}

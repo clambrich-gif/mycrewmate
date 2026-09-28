@@ -269,6 +269,7 @@ export default function PostProcessing() {
   const [viewMode, setViewMode] = useViewMode("postprocessing", "liste");
   const [klemmiGuideOpen, setKlemmiGuideOpen] = useState(false);
   const [klemmiCreationSignal, setKlemmiCreationSignal] = useState<number | null>(null);
+  const [klemmiGuideStartedEmpty, setKlemmiGuideStartedEmpty] = useState<boolean | null>(null);
 
   const utils = trpc.useUtils();
   const { data: rawRows = [], isLoading } = trpc.post.list.useQuery();
@@ -629,6 +630,67 @@ export default function PostProcessing() {
   };
 
   const pending = create.isPending || update.isPending;
+  const klemmiGuideNeedsSample =
+    klemmiGuideStartedEmpty ?? (!isLoading && rows.length === 0);
+  const postprocessingGuideSteps = [
+    {
+      key: "intro",
+      selector: '[data-klemmi-target="postprocessing-new"]',
+      eyebrow: "Klemmi zeigt’s",
+      title: "Nachbereitung verbindlich festhalten",
+      text: klemmiGuideNeedsSample
+        ? "Hier ist noch keine Nachbereitungsaufgabe vorhanden. Wir legen gemeinsam ein echtes Muster an, das du danach behalten oder wieder löschen kannst."
+        : "Ich zeige dir die vorhandene Nachbereitung und die echte Aufgabenanlage. Dafür wird nichts neu gespeichert.",
+      action: "Aufgabe anlegen",
+    },
+    {
+      key: "task",
+      selector: '[data-klemmi-target="postprocessing-task"]',
+      eyebrow: "Schritt 1 von 5",
+      title: "Aufgabe konkret benennen",
+      text: "Schreibe kurz und eindeutig, was nach dem Event erledigt werden muss – zum Beispiel Rückgabe, Abbau oder Abrechnung.",
+      action: "Zuständigkeit festlegen",
+    },
+    {
+      key: "details",
+      selector: '[data-klemmi-target="postprocessing-details"]',
+      eyebrow: "Schritt 2 von 5",
+      title: "Verantwortung und Termin setzen",
+      text: "Ordne die Aufgabe bei Bedarf einer Person zu und lege eine Frist fest. Beides darf später angepasst werden.",
+      action: "Übergabe notieren",
+    },
+    {
+      key: "logbook",
+      selector: '[data-klemmi-target="postprocessing-logbook"]',
+      eyebrow: "Schritt 3 von 5",
+      title: "Übergabe und Hinweise dokumentieren",
+      text: "Im Logbuch kommen wichtige Hinweise, Ergebnisse und nächste Schritte. So bleibt der Abschluss nachvollziehbar.",
+      action: "Speichern zeigen",
+    },
+    {
+      key: "save",
+      selector: '[data-klemmi-target="postprocessing-save"]',
+      eyebrow: "Schritt 4 von 5",
+      title: "Aufgabe speichern",
+      text: klemmiGuideNeedsSample
+        ? "Klicke auf den markierten Speichern-Button. Erst dein Klick legt die Nachbereitungsaufgabe an."
+        : "Der markierte Button legt eine neue Aufgabe an. Für diese Erklärung klickst du nicht darauf – ich zeige dir gleich die bestehende Übersicht.",
+      action: klemmiGuideNeedsSample ? undefined : "Übersicht zeigen",
+      waitsForSuccess: klemmiGuideNeedsSample,
+      audioKey: klemmiGuideNeedsSample ? "save" : "overview-save",
+    },
+    {
+      key: "overview",
+      selector: '[data-klemmi-target="postprocessing-overview"]',
+      eyebrow: "Schritt 5 von 5",
+      title: "Nachbereitungsübersicht nutzen",
+      text: klemmiGuideNeedsSample
+        ? "Deine Musteraufgabe ist jetzt sichtbar. Sie darf als echte Aufgabe stehen bleiben oder kann über das rote Löschen-Symbol wieder entfernt werden."
+        : "Hier siehst du deine bereits angelegten Aufgaben. Filter, Status, Zuständigkeit und Logbuch helfen dir, den Abschluss ohne neue Anlage zu organisieren.",
+      audioKey: "complete",
+      action: "Fertig",
+    },
+  ];
 
   return (
     <div className="space-y-5 rounded-2xl bg-rose-50/50 p-3 sm:p-5 border border-rose-100">
@@ -650,55 +712,22 @@ export default function PostProcessing() {
             title="Nachbereitung verbindlich festhalten"
             introText="Ich zeige dir die echte Nachbereitungsanlage: Aufgabe benennen, Verantwortliche und Termin einordnen und Übergaben dokumentieren."
             successSignal={klemmiCreationSignal}
-            onOpenChange={setKlemmiGuideOpen}
+            onOpenChange={open => {
+              setKlemmiGuideOpen(open);
+              if (open) setKlemmiGuideStartedEmpty(!isLoading && rows.length === 0);
+              else {
+                setDialogOpen(false);
+                setKlemmiGuideStartedEmpty(null);
+              }
+            }}
             onStepAction={stepKey => {
               if (stepKey === "intro") openCreate();
+              if (stepKey === "save" && !klemmiGuideNeedsSample) setDialogOpen(false);
             }}
             completionTitle="Nachbereitungsaufgabe angelegt!"
             completionText="Die Aufgabe steht jetzt in der Nachbereitung. So bleiben Abbau, Rückgaben und offene Punkte für das Team sichtbar."
-            steps={[
-              {
-                key: "intro",
-                selector: '[data-klemmi-target="postprocessing-new"]',
-                eyebrow: "Klemmi zeigt’s",
-                title: "Nachbereitung verbindlich festhalten",
-                text: "Ich führe dich direkt durch die echte Anlage.",
-                action: "Aufgabe anlegen",
-              },
-              {
-                key: "task",
-                selector: '[data-klemmi-target="postprocessing-task"]',
-                eyebrow: "Schritt 1 von 4",
-                title: "Aufgabe konkret benennen",
-                text: "Schreibe kurz und eindeutig, was nach dem Event erledigt werden muss – zum Beispiel Rückgabe, Abbau oder Abrechnung.",
-                action: "Zuständigkeit festlegen",
-              },
-              {
-                key: "details",
-                selector: '[data-klemmi-target="postprocessing-details"]',
-                eyebrow: "Schritt 2 von 4",
-                title: "Verantwortung und Termin setzen",
-                text: "Ordne die Aufgabe bei Bedarf einer Person zu und lege eine Frist fest. Beides darf später angepasst werden.",
-                action: "Übergabe notieren",
-              },
-              {
-                key: "logbook",
-                selector: '[data-klemmi-target="postprocessing-logbook"]',
-                eyebrow: "Schritt 3 von 4",
-                title: "Übergabe und Hinweise dokumentieren",
-                text: "Im Logbuch kommen wichtige Hinweise, Ergebnisse und nächste Schritte. So bleibt der Abschluss nachvollziehbar.",
-                action: "Speichern zeigen",
-              },
-              {
-                key: "save",
-                selector: '[data-klemmi-target="postprocessing-save"]',
-                eyebrow: "Schritt 4 von 4",
-                title: "Aufgabe speichern",
-                text: "Klicke auf den markierten Speichern-Button. Erst dein Klick legt die Nachbereitungsaufgabe an.",
-                waitsForSuccess: true,
-                completeOnSuccess: true,
-              },
-            ]}
+            completionAudioKey={klemmiGuideNeedsSample ? "complete" : "overview"}
+            steps={postprocessingGuideSteps}
             />
           }
           secondaryActions={
@@ -731,7 +760,7 @@ export default function PostProcessing() {
         />
       </div>
 
-      <div className="space-y-3 rounded-xl border border-rose-200/80 bg-white/90 p-3 shadow-sm sm:p-4">
+      <div data-klemmi-target="postprocessing-overview" className="space-y-3 rounded-xl border border-rose-200/80 bg-white/90 p-3 shadow-sm sm:p-4">
         <div className="flex flex-wrap gap-2" aria-label="Schnellfilter Nachbereitung">
           <div className="flex items-center gap-1">
             <Button

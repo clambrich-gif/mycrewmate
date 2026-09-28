@@ -242,6 +242,7 @@ export default function Cakes() {
   const { data: selectedEvent } = trpc.events.current.useQuery();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [klemmiSuccessSignal, setKlemmiSuccessSignal] = useState<number | null>(null);
+  const [klemmiGuideStartedEmpty, setKlemmiGuideStartedEmpty] = useState<boolean | null>(null);
   const [editingDonation, setEditingDonation] = useState<DonationRow | null>(null);
   const [form, setForm] = useState<DonationForm>(EMPTY_DONATION_FORM);
   const [deleteTarget, setDeleteTarget] = useState<DonationRow | null>(null);
@@ -291,6 +292,36 @@ export default function Cakes() {
       )
     );
   }, [rows, selectedEvent?.activeDays]);
+  const klemmiGuideNeedsSample =
+    klemmiGuideStartedEmpty ?? (!isLoading && rows.length === 0);
+  const donationGuideSteps = DONATIONS_KLEMMI_STEPS.map(step =>
+    step.key === "intro"
+      ? {
+          ...step,
+          text: klemmiGuideNeedsSample
+            ? "Hier ist noch keine Spende vorhanden. Wir erfassen gemeinsam eine echte Muster-Spende, die du danach behalten oder wieder löschen kannst."
+            : "Ich zeige dir die vorhandene Spendenübersicht und die echte Erfassung. Dafür wird nichts neu gespeichert.",
+        }
+      : step.key === "save"
+        ? {
+            ...step,
+            text: klemmiGuideNeedsSample
+              ? "Klicke auf Speichern, um die Muster-Spende wirklich anzulegen. Danach zeige ich dir, wo sie in der Übersicht erscheint und wie du sie bei Bedarf wieder entfernst."
+              : "Der markierte Button speichert eine neue Spende. Für diese Erklärung klickst du nicht darauf – gleich zeige ich dir die vorhandene Übersicht.",
+            action: klemmiGuideNeedsSample ? undefined : "Übersicht zeigen",
+            waitsForSuccess: klemmiGuideNeedsSample,
+            completeOnSuccess: false,
+            audioKey: klemmiGuideNeedsSample ? step.audioKey : "overview-save",
+          }
+        : step.key === "overview"
+          ? {
+              ...step,
+              text: klemmiGuideNeedsSample
+                ? "Deine Muster-Spende ist jetzt in der Übersicht sichtbar. Passt sie zur Planung, lässt du sie stehen; war sie nur zum Üben, entfernst du sie später über das rote Löschen-Symbol."
+                : "Hier siehst du alle bereits erfassten Spenden mit Spender, Kategorie, Eigenschaften, Abgabeort und Zeitpunkt – ganz ohne eine neue Spende anzulegen.",
+            }
+          : step
+  );
 
   useEffect(() => {
     if (!requestedDonor) return;
@@ -526,14 +557,19 @@ export default function Cakes() {
               guideId="donations"
               title="Spenden erfassen"
               introText="Ich führe dich durch die echte Spendenanlage – vom Spender bis zu Allergenen, Abgabe und Speichern."
-              steps={DONATIONS_KLEMMI_STEPS}
-              successSignal={klemmiSuccessSignal}
-              onOpenChange={open => {
-                if (!open) closeDialog();
+               steps={donationGuideSteps}
+               successSignal={klemmiSuccessSignal}
+               completionAudioKey={klemmiGuideNeedsSample ? "complete" : "overview-summary"}
+               onOpenChange={open => {
+                if (open) setKlemmiGuideStartedEmpty(!isLoading && rows.length === 0);
+                else {
+                  closeDialog();
+                  setKlemmiGuideStartedEmpty(null);
+                }
               }}
               onStepAction={stepKey => {
                 if (stepKey === "intro") openCreate();
-                if (stepKey === "save") closeDialog();
+                if (stepKey === "save" && !klemmiGuideNeedsSample) closeDialog();
               }}
             />
           }

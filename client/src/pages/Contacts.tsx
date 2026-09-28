@@ -41,6 +41,43 @@ export default function Contacts() {
     name: string;
   } | null>(null);
   const [klemmiSuccessSignal, setKlemmiSuccessSignal] = useState<number | null>(null);
+  const [klemmiGuideStartedEmpty, setKlemmiGuideStartedEmpty] = useState<boolean | null>(null);
+  const klemmiGuideNeedsSample =
+    klemmiGuideStartedEmpty ?? (!isLoading && contacts.length === 0);
+  const contactGuideSteps = [
+    ...CONTACTS_KLEMMI_STEPS.map(step =>
+      step.key === "intro"
+        ? {
+            ...step,
+            text: klemmiGuideNeedsSample
+              ? "Hier ist noch kein Ansprechpartner vorhanden. Lege jetzt gemeinsam mit Klemmi eine echte Musterperson an; sie kann danach stehen bleiben oder wieder gelöscht werden."
+              : "Ich zeige dir die vorhandenen Ansprechpartner und die sichtbaren Stammdatenfelder. Dafür wird nichts neu angelegt.",
+          }
+        : step.key === "save"
+          ? {
+              ...step,
+              text: klemmiGuideNeedsSample
+                ? "Klicke auf den markierten Button, damit die Musterperson wirklich angelegt wird. Danach zeige ich dir die Ansprechpartnerübersicht."
+                : "Der markierte Button legt einen neuen Ansprechpartner an. Für diese Erklärung klickst du nicht darauf – gleich zeige ich dir die vorhandenen Stammdaten.",
+              action: klemmiGuideNeedsSample ? undefined : "Übersicht zeigen",
+              waitsForSuccess: klemmiGuideNeedsSample,
+              completeOnSuccess: false,
+              audioKey: klemmiGuideNeedsSample ? step.audioKey : "overview-save",
+            }
+          : step
+    ),
+    {
+      key: "overview",
+      selector: '[data-klemmi-target="contacts-overview"]',
+      eyebrow: "Schritt 4 von 4",
+      title: "Ansprechpartnerübersicht nutzen",
+      text: klemmiGuideNeedsSample
+        ? "Die Musterperson steht jetzt in der Liste. Passt sie zur Planung, lässt du sie stehen; sonst entfernst du sie über den roten Papierkorb."
+        : "Hier sind die bereits angelegten Ansprechpartner. Über den Stift ergänzt du Stammdaten, über den roten Papierkorb entfernst du nur nicht mehr benötigte Personen.",
+      audioKey: "complete",
+      action: "Fertig",
+    },
+  ];
 
   const invalidate = () => {
     utils.contacts.list.invalidate();
@@ -121,8 +158,13 @@ export default function Contacts() {
             guideId="contacts"
             title="Ansprechpartner anlegen"
             introText="Ich zeige dir die echten Stammdatenfelder – vom Namen bis zur sicheren Anlage ohne versehentlichen Zugang."
-            steps={CONTACTS_KLEMMI_STEPS}
+            steps={contactGuideSteps}
             successSignal={klemmiSuccessSignal}
+            completionAudioKey={klemmiGuideNeedsSample ? "complete" : "overview"}
+            onOpenChange={open => {
+              if (open) setKlemmiGuideStartedEmpty(!isLoading && contacts.length === 0);
+              else setKlemmiGuideStartedEmpty(null);
+            }}
           />
           <ResetAreaButton area="contacts" label="Ansprechpartner" />
         </div>
@@ -209,7 +251,7 @@ export default function Contacts() {
         </Card>
       )}
 
-      <Card className="shadow-sm">
+      <Card data-klemmi-target="contacts-overview" className="shadow-sm">
         <CardHeader>
           <CardTitle className="text-base">Liste ({contacts.length})</CardTitle>
         </CardHeader>

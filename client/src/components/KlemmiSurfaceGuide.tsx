@@ -51,6 +51,8 @@ type KlemmiSurfaceGuideProps = {
   onOpenChange?: (open: boolean) => void;
   completionTitle?: string;
   completionText?: string;
+  /** Optionaler eigener Abschlussclip für reine Übersichtstouren. */
+  completionAudioKey?: string;
 };
 
 function clamp(value: number, min: number, max: number) {
@@ -93,6 +95,7 @@ export function KlemmiSurfaceGuide({
   onOpenChange,
   completionTitle = "Geschafft!",
   completionText = "Du kennst jetzt die wichtigsten Schritte. Klemmi bleibt jederzeit über „Klemmi zeigt’s“ für dich da.",
+  completionAudioKey = "complete",
 }: KlemmiSurfaceGuideProps) {
   const [open, setOpen] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
@@ -107,7 +110,7 @@ export function KlemmiSurfaceGuide({
   const workflowSteps = useMemo(() => steps.filter(item => item.key !== "intro"), [steps]);
   const isIntro = step?.key === "intro";
   const audioSuffix = step?.audioKey ?? (isIntro ? "intro" : step?.key ?? "intro");
-  const audioCandidate = celebrating ? `${guideId}-complete` : `${guideId}-${audioSuffix}`;
+  const audioCandidate = celebrating ? `${guideId}-${completionAudioKey}` : `${guideId}-${audioSuffix}`;
   const audioClipId = isKlemmiAudioId(audioCandidate) ? audioCandidate : undefined;
   const displayTitle = readableKlemmiCopy(title);
   const displayIntroText = readableKlemmiCopy(introText);

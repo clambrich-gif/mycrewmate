@@ -12,7 +12,6 @@ import {
 import { useEventYear } from "@/contexts/YearContext";
 import { trpc } from "@/lib/trpc";
 import { useTenantAdministration } from "@/hooks/useTenantAdministration";
-import { FINANCES_KLEMMI_STEPS } from "@/lib/klemmi-area-tours";
 import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -26,6 +25,8 @@ export default function Finances() {
   const { year, eventId } = useEventYear();
   const { data: rows = [], isLoading } = trpc.finances.list.useQuery();
   const [category, setCategory] = useState("");
+  const [klemmiCreationSignal, setKlemmiCreationSignal] = useState<number | null>(null);
+  const [klemmiGuideStartedEmpty, setKlemmiGuideStartedEmpty] = useState<boolean | null>(null);
 
   const refreshDashboard = () => void utils.dashboard.stats.invalidate();
 
@@ -56,6 +57,7 @@ export default function Finances() {
         )
       );
       setCategory("");
+      setKlemmiCreationSignal(Date.now());
       toast.success("Hinzugefügt");
     },
     onError: (error, _input, context) => {
@@ -116,6 +118,59 @@ export default function Finances() {
     });
   const sumIn = rows.reduce((sum, row) => sum + row.income, 0);
   const sumOut = rows.reduce((sum, row) => sum + row.expense, 0);
+  const klemmiGuideNeedsSample =
+    klemmiGuideStartedEmpty ?? (!isLoading && rows.length === 0);
+  const financeGuideSteps = [
+    {
+      key: "intro",
+      selector: '[data-klemmi-target="finances-category"]',
+      eyebrow: "Klemmi zeigt’s",
+      title: "Finanzen einfach im Blick behalten",
+      text: klemmiGuideNeedsSample
+        ? "Hier ist noch keine Kategorie vorhanden. Lege gemeinsam mit Klemmi eine echte Musterkategorie an; sie kann danach stehen bleiben oder wieder gelöscht werden."
+        : "Ich zeige dir die vorhandenen Kategorien, Werte und den Saldo. Dafür wird nichts neu angelegt.",
+      action: "Kategorie zeigen",
+    },
+    {
+      key: "category",
+      selector: '[data-klemmi-target="finances-category"]',
+      eyebrow: "Schritt 1 von 4",
+      title: "Kostenart anlegen",
+      text: "Trage eine klare Kategorie ein, zum Beispiel Startgelder, Catering, Technik oder Sponsoring.",
+      action: "Speichern zeigen",
+    },
+    {
+      key: "save",
+      selector: '[data-klemmi-target="finances-save"]',
+      eyebrow: "Schritt 2 von 4",
+      title: "Kategorie übernehmen",
+      text: klemmiGuideNeedsSample
+        ? "Klicke auf den markierten Button. Erst dann wird die Musterkategorie wirklich angelegt und du kannst Einnahmen und Ausgaben eintragen."
+        : "Der markierte Button legt eine neue Kategorie an. Für diese Erklärung klickst du nicht darauf – gleich zeige ich dir die bereits gepflegten Werte.",
+      action: klemmiGuideNeedsSample ? undefined : "Werte zeigen",
+      waitsForSuccess: klemmiGuideNeedsSample,
+      audioKey: klemmiGuideNeedsSample ? "save" : "overview-save",
+    },
+    {
+      key: "values",
+      selector: '[data-klemmi-target="finances-values"]',
+      eyebrow: "Schritt 3 von 4",
+      title: "Einnahmen und Ausgaben eintragen",
+      text: "In jeder Kategorie gibst du Einnahmen und Ausgaben ein. Die Werte werden beim Verlassen des Feldes gespeichert; die Differenz zeigt sofort den aktuellen Stand.",
+      action: "Saldo zeigen",
+    },
+    {
+      key: "balance",
+      selector: '[data-klemmi-target="finances-balance"]',
+      eyebrow: "Schritt 4 von 4",
+      title: "Saldo gemeinsam prüfen",
+      text: klemmiGuideNeedsSample
+        ? "Die Musterkategorie steht jetzt in der Übersicht. Wenn sie nur zum Üben gedacht war, kannst du sie über das rote Löschen-Symbol wieder entfernen."
+        : "Ganz unten fasst der Saldo alle Kategorien zusammen. So erkennst du schnell, ob deine Veranstaltung finanziell im Plan liegt.",
+      audioKey: "complete",
+      action: "Fertig",
+    },
+  ];
 
   const NumInput = ({
     value,
@@ -153,8 +208,13 @@ export default function Finances() {
             guideId="finances"
             title="Finanzen verstehen"
             introText="Ich zeige dir, wie Kategorien, Einnahmen, Ausgaben und der Saldo zusammenhängen."
-            steps={FINANCES_KLEMMI_STEPS}
-            successSignal={null}
+            steps={financeGuideSteps}
+            successSignal={klemmiCreationSignal}
+            completionAudioKey={klemmiGuideNeedsSample ? "complete" : "overview"}
+            onOpenChange={open => {
+              if (open) setKlemmiGuideStartedEmpty(!isLoading && rows.length === 0);
+              else setKlemmiGuideStartedEmpty(null);
+            }}
           />
           <ResetAreaButton area="finances" label="Finanzen" compact />
           <div data-klemmi-target="finances-category" className="col-span-2 w-full lg:order-last lg:w-64">
@@ -167,6 +227,7 @@ export default function Finances() {
             />
           </div>
           <Button
+            data-klemmi-target="finances-save"
             className="col-span-2 shadow-xs lg:col-auto"
             onClick={submitCreate}
             disabled={!category.trim() || create.isPending}

@@ -51,6 +51,7 @@ export default function Locations() {
   const [trackColor, setTrackColor] = useState("#2563eb");
   const [klemmiGuideOpen, setKlemmiGuideOpen] = useState(false);
   const [klemmiCreationSignal, setKlemmiCreationSignal] = useState<number | null>(null);
+  const [klemmiGuideStartedEmpty, setKlemmiGuideStartedEmpty] = useState<boolean | null>(null);
   const [selectedTrackFile, setSelectedTrackFile] = useState<File | null>(null);
   const [editingTrackId, setEditingTrackId] = useState<number | null>(null);
   const [editingTrackName, setEditingTrackName] = useState("");
@@ -235,6 +236,59 @@ export default function Locations() {
     }
     renameTrack.mutate({ id: trackId, name });
   };
+  const klemmiGuideNeedsSample =
+    klemmiGuideStartedEmpty ?? (!isLoading && locations.length === 0);
+  const locationGuideSteps = [
+    {
+      key: "intro",
+      selector: '[data-klemmi-target="locations-new"]',
+      eyebrow: "Klemmi zeigt’s",
+      title: "Orte und Standorte sauber anlegen",
+      text: klemmiGuideNeedsSample
+        ? "Hier ist noch kein Standort vorhanden. Wir legen gemeinsam einen echten Musterort an, den du danach behalten oder wieder löschen kannst."
+        : "Ich zeige dir die vorhandenen Standorte und die echte Standortanlage. Dafür wird nichts neu gespeichert.",
+      action: "Ort anlegen",
+    },
+    {
+      key: "name",
+      selector: '[data-klemmi-target="locations-name"]',
+      eyebrow: "Schritt 1 von 4",
+      title: "Ort eindeutig benennen",
+      text: "Gib dem Standort einen Namen, den das Team auf Anhieb versteht – zum Beispiel „VP8 – Pumptrack“ oder „Kuchenstand“.",
+      action: "Koordinaten eintragen",
+    },
+    {
+      key: "coordinates",
+      selector: '[data-klemmi-target="locations-coordinates"]',
+      eyebrow: "Schritt 2 von 4",
+      title: "Position auf der Karte festlegen",
+      text: "Breiten- und Längengrad positionieren den Standort auf der Live-Karte. Ein Marker-Logo darunter ist optional.",
+      action: "Speichern zeigen",
+    },
+    {
+      key: "save",
+      selector: '[data-klemmi-target="locations-save"]',
+      eyebrow: "Schritt 3 von 4",
+      title: "Standort speichern",
+      text: klemmiGuideNeedsSample
+        ? "Klicke auf den markierten Button. Erst dein Klick legt den Musterort wirklich an."
+        : "Der markierte Button legt einen neuen Standort an. Für diese Erklärung klickst du nicht darauf – gleich zeige ich dir die vorhandenen Orte.",
+      action: klemmiGuideNeedsSample ? undefined : "Übersicht zeigen",
+      waitsForSuccess: klemmiGuideNeedsSample,
+      audioKey: klemmiGuideNeedsSample ? "save" : "overview-save",
+    },
+    {
+      key: "overview",
+      selector: '[data-klemmi-target="locations-overview"]',
+      eyebrow: "Schritt 4 von 4",
+      title: "Standortübersicht nutzen",
+      text: klemmiGuideNeedsSample
+        ? "Dein Musterort ist jetzt sichtbar. Passt er zur Planung, lässt du ihn stehen; sonst entfernst du ihn später über das rote Löschen-Symbol."
+        : "Hier stehen alle bereits angelegten Orte. Der Stift passt Name oder Koordinaten an; der rote Papierkorb entfernt nur Standorte, die nicht mehr gebraucht werden.",
+      audioKey: "complete",
+      action: "Fertig",
+    },
+  ];
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -254,47 +308,22 @@ export default function Locations() {
               title="Orte und Standorte sauber anlegen"
               introText="Ich zeige dir die echte Standortanlage: Namen vergeben, Koordinaten eintragen und den Ort anschließend in Schichten, Material und Vorbereitung verwenden."
               successSignal={klemmiCreationSignal}
-              onOpenChange={setKlemmiGuideOpen}
+              onOpenChange={isOpen => {
+                setKlemmiGuideOpen(isOpen);
+                if (isOpen) setKlemmiGuideStartedEmpty(!isLoading && locations.length === 0);
+                else {
+                  setOpen(false);
+                  setKlemmiGuideStartedEmpty(null);
+                }
+              }}
               onStepAction={stepKey => {
                 if (stepKey === "intro") openCreate();
+                if (stepKey === "save" && !klemmiGuideNeedsSample) setOpen(false);
               }}
               completionTitle="Standort angelegt!"
               completionText="Der Ort steht jetzt in Schichten, Vorbereitung und Material zur Auswahl und erscheint auf der Live-Standortkarte."
-              steps={[
-                {
-                  key: "intro",
-                  selector: '[data-klemmi-target="locations-new"]',
-                  eyebrow: "Klemmi zeigt’s",
-                  title: "Orte und Standorte sauber anlegen",
-                  text: "Ich führe dich direkt durch die echte Standortanlage.",
-                  action: "Ort anlegen",
-                },
-                {
-                  key: "name",
-                  selector: '[data-klemmi-target="locations-name"]',
-                  eyebrow: "Schritt 1 von 3",
-                  title: "Ort eindeutig benennen",
-                  text: "Gib dem Standort einen Namen, den das Team auf Anhieb versteht – zum Beispiel „VP8 – Pumptrack“ oder „Kuchenstand“.",
-                  action: "Koordinaten eintragen",
-                },
-                {
-                  key: "coordinates",
-                  selector: '[data-klemmi-target="locations-coordinates"]',
-                  eyebrow: "Schritt 2 von 3",
-                  title: "Position auf der Karte festlegen",
-                  text: "Breiten- und Längengrad positionieren den Standort auf der Live-Karte. Ein Marker-Logo darunter ist optional.",
-                  action: "Speichern zeigen",
-                },
-                {
-                  key: "save",
-                  selector: '[data-klemmi-target="locations-save"]',
-                  eyebrow: "Schritt 3 von 3",
-                  title: "Standort speichern",
-                  text: "Klicke auf den markierten Button. Erst dein Klick legt den Standort wirklich an.",
-                  waitsForSuccess: true,
-                  completeOnSuccess: true,
-                },
-              ]}
+              completionAudioKey={klemmiGuideNeedsSample ? "complete" : "overview"}
+              steps={locationGuideSteps}
               />
             }
             primaryAction={
@@ -311,7 +340,7 @@ export default function Locations() {
           />
         )}
       </div>
-      <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+      <div data-klemmi-target="locations-overview" className="overflow-hidden rounded-xl border bg-card shadow-sm">
         <div className="hidden grid-cols-[minmax(0,1fr)_120px_120px_auto] gap-3 border-b bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700 sm:grid">
           <span>Ort / Standort</span><span>Breitengrad</span><span>Längengrad</span><span className="text-right">Aktionen</span>
         </div>
