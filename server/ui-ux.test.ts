@@ -210,8 +210,16 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain('data-klemmi-target="plan-candidates"');
     expect(plan).toContain("data-klemmi-status-area");
     expect(plan).toContain("selector: '[data-klemmi-status-area]'");
+    expect(plan).toContain('data-slot="shift-card-helper-candidate"');
+    expect(plan).toContain("helperDetailsTitle");
+    expect(plan).toContain("Zeitfenster:");
+    expect(plan).toContain("Begleitung:");
+    expect(plan).toContain("Hinweis für PDF:");
+    expect(plan).toContain("<UsersRound");
+    expect(plan).toContain('<Clock3 className="size-3.5"');
     expect(plan).toContain("Falls vor einem Namen eine Uhr steht");
-    expect(plan).toContain("Falls ein Familiensymbol erscheint");
+    expect(plan).toContain("Ein Familiensymbol bedeutet eine zusätzliche Begleitung");
+    expect(plan).toContain("Die orange Umrandung zeigt dir genau die Helferliste");
     expect(plan).toContain('data-klemmi-target="plan-batch-assign"');
     expect(plan).toContain('data-klemmi-target="plan-filters"');
     expect(plan).toContain('data-klemmi-target="plan-search"');
@@ -289,11 +297,22 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(audio).toContain('"plan-candidates"');
     expect(audio).toContain('"plan-signals"');
     expect(audio).toContain("Falls vor einem Namen eine Uhr steht");
+    expect(audio).toContain("Fahre mit der Maus über Uhr oder Namen");
     expect(audio).toContain('"plan-assign"');
     expect(audio).toContain('"plan-filters"');
     expect(audio).toContain('"plan-search"');
     expect(audio).toContain('"plan-view"');
     expect(audio).toContain('"plan-complete"');
+  });
+
+  it("zeigt Klemmi-Überschriften in allen Touren immer als lesbaren Klartext", () => {
+    const surfaceGuide = source("client/src/components/KlemmiSurfaceGuide.tsx");
+
+    expect(surfaceGuide).toContain("function readableKlemmiCopy");
+    expect(surfaceGuide).toContain('"&apos;": "’"');
+    expect(surfaceGuide).toContain("displayStepEyebrow");
+    expect(surfaceGuide).toContain("Klemmi zeigt’s");
+    expect(surfaceGuide).not.toContain('isIntro ? "Klemmi zeigt&apos;s"');
   });
 
   it("führt durch Ansprechpartner, Spenden, Finanzen, PDF, Schutz und Hilfe über reale Ziele", () => {
@@ -2166,7 +2185,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain('data-slot="shift-dialog-task"');
     expect(plan).toContain('data-slot="shift-dialog-time"');
     expect(plan).toContain('displayLabel={helper.name}');
-    expect(plan).toContain('title={label(helper)}');
+    expect(plan).toContain('title={helperDetailsTitle || label(helper)}');
     expect(plan).toContain('<HighlightedText text={displayLabel} query={searchQuery} />');
     expect(plan).toContain('compact = false');
     expect(plan).toContain('<HelperDropdownFeedbackBadge');

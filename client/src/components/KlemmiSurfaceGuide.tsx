@@ -58,6 +58,27 @@ function clamp(value: number, min: number, max: number) {
 }
 
 /**
+ * Klemmi-Touren werden teils als reine Textdaten zusammengesetzt. Damit eine
+ * versehentlich übernommene HTML-Entität niemals als technischer Text wie
+ * „&apos;“ erscheint, werden die wenigen relevanten Entitäten vor Anzeige und
+ * Vorlesen konsequent in Klartext übertragen.
+ */
+function readableKlemmiCopy(value: string) {
+  const entities: Record<string, string> = {
+    "&apos;": "’",
+    "&#39;": "’",
+    "&quot;": '"',
+    "&#34;": '"',
+    "&amp;": "&",
+    "&lt;": "<",
+    "&gt;": ">",
+  };
+  return value.replace(/&(apos|quot|amp|lt|gt|#39|#34);/gi, entity =>
+    entities[entity.toLowerCase()] ?? entity
+  );
+}
+
+/**
  * Nicht-modale Klemmi-Führung für echte Bereiche der Anwendung.
  * Die Zielseiten übergeben nur reale DOM-Anker und echte Aktionen; Klemmi
  * sperrt weder Eingaben noch speichert oder verändert Daten eigenständig.
@@ -88,6 +109,13 @@ export function KlemmiSurfaceGuide({
   const audioSuffix = step?.audioKey ?? (isIntro ? "intro" : step?.key ?? "intro");
   const audioCandidate = celebrating ? `${guideId}-complete` : `${guideId}-${audioSuffix}`;
   const audioClipId = isKlemmiAudioId(audioCandidate) ? audioCandidate : undefined;
+  const displayTitle = readableKlemmiCopy(title);
+  const displayIntroText = readableKlemmiCopy(introText);
+  const displayCompletionTitle = readableKlemmiCopy(completionTitle);
+  const displayCompletionText = readableKlemmiCopy(completionText);
+  const displayStepEyebrow = readableKlemmiCopy(step?.eyebrow ?? "");
+  const displayStepTitle = readableKlemmiCopy(step?.title ?? "");
+  const displayStepText = readableKlemmiCopy(step?.text ?? "");
 
   const closeGuide = () => {
     cancel();
@@ -122,10 +150,10 @@ export function KlemmiSurfaceGuide({
     if (!celebrating && !targetReady) return;
     let active = true;
     const text = celebrating
-      ? `${completionTitle} ${completionText}`
+      ? `${displayCompletionTitle} ${displayCompletionText}`
       : isIntro
-        ? `${title}. ${introText}`
-        : `${step.title}. ${step.text}`;
+        ? `${displayTitle}. ${displayIntroText}`
+        : `${displayStepTitle}. ${displayStepText}`;
     const timeout = window.setTimeout(() => {
       void speak(text, audioClipId).finally(() => {
         if (active) setNarrationComplete(true);
@@ -136,7 +164,7 @@ export function KlemmiSurfaceGuide({
       window.clearTimeout(timeout);
       cancel();
     };
-  }, [audioClipId, cancel, celebrating, completionText, completionTitle, introText, isIntro, open, openingPending, speak, step.key, step.text, step.title, targetReady, title]);
+  }, [audioClipId, cancel, celebrating, displayCompletionText, displayCompletionTitle, displayIntroText, displayStepText, displayStepTitle, displayTitle, isIntro, open, openingPending, speak, step.key, targetReady]);
 
   useLayoutEffect(() => {
     if (!open || celebrating || !step?.selector || typeof window === "undefined") return;
@@ -238,7 +266,7 @@ export function KlemmiSurfaceGuide({
         }}
       >
         <KlemmiTriggerMascot />
-        <span className="font-semibold">Klemmi zeigt&apos;s</span>
+        <span className="font-semibold">Klemmi zeigt’s</span>
         <CircleHelp className="size-4" aria-hidden="true" />
       </Button>
 
@@ -262,9 +290,9 @@ export function KlemmiSurfaceGuide({
                     <PartyPopper className="size-8" aria-hidden="true" />
                   </div>
                   <p className="text-xs font-bold tracking-wide text-[#e86117] uppercase">Klemmi freut sich mit dir</p>
-                  <h2 className="mt-0.5 text-lg font-bold text-slate-950">{completionTitle}</h2>
-                  <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{completionText}</p>
-                  <p data-klemmi-mobile-caption>{completionTitle}</p>
+                  <h2 className="mt-0.5 text-lg font-bold text-slate-950">{displayCompletionTitle}</h2>
+                  <p className="mt-1.5 text-sm leading-relaxed text-slate-600">{displayCompletionText}</p>
+                  <p data-klemmi-mobile-caption>{displayCompletionTitle}</p>
                   <Button
                     type="button"
                     data-klemmi-finish-control
@@ -285,16 +313,16 @@ export function KlemmiSurfaceGuide({
                   <div className="flex items-start gap-3" data-klemmi-narration>
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-bold tracking-wide text-[#e86117] uppercase">
-                        {isIntro ? "Klemmi zeigt&apos;s" : step.eyebrow}
+                        {isIntro ? "Klemmi zeigt’s" : displayStepEyebrow}
                       </p>
                       <h2 className="mt-0.5 text-base font-bold leading-snug text-slate-950 sm:text-lg">
-                        {isIntro ? title : step.title}
+                        {isIntro ? displayTitle : displayStepTitle}
                       </h2>
                       <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
-                        {isIntro ? introText : step.text}
+                        {isIntro ? displayIntroText : displayStepText}
                       </p>
                       <p data-klemmi-mobile-caption>
-                        {isIntro ? title : step.title}
+                        {isIntro ? displayTitle : displayStepTitle}
                       </p>
                     </div>
                     <div className="-mr-1 -mt-1 flex shrink-0 items-center">
@@ -313,7 +341,7 @@ export function KlemmiSurfaceGuide({
                   </div>
 
                   <div className="mt-3 border-t border-slate-100 pt-3" data-klemmi-navigation>
-                    <div className="flex items-center gap-1" aria-label={isIntro ? "Einführung" : step.eyebrow}>
+                    <div className="flex items-center gap-1" aria-label={isIntro ? "Einführung" : displayStepEyebrow}>
                       {workflowSteps.map(item => (
                         <span
                           key={item.key}

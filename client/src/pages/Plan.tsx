@@ -31,6 +31,7 @@ import {
   Search,
   SlidersHorizontal,
   Trash2,
+  UsersRound,
   X,
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -1740,12 +1741,22 @@ export default function Plan() {
                       const conflictTitle = conflicts
                         .map(other => `${other.area}: ${other.task} (${formatTimeLabel(other)})`)
                         .join(", ");
+                      const companion = helper.companion?.trim() ?? "";
+                      const note = helper.note?.trim() ?? "";
+                      const helperDetailsTitle = [
+                        timeRestricted ? `Zeitfenster: ${availabilityLabel}` : "",
+                        companion ? `Begleitung: ${companion}` : "",
+                        note ? `Hinweis für PDF: ${note}` : "",
+                        conflictTitle ? `Zeitgleich eingeteilt: ${conflictTitle}` : "",
+                      ]
+                        .filter(Boolean)
+                        .join("\n");
                       return (
                         <div
                           key={helper.id}
                           data-slot="shift-card-helper-candidate"
                           className={`flex items-center gap-2 rounded-lg border px-2 py-1.5 text-[13px] leading-4 transition-colors ${selected ? "border-blue-300 bg-white shadow-sm" : "border-transparent hover:border-blue-200 hover:bg-white/80"} ${selectionFull ? "cursor-not-allowed opacity-50" : "md:cursor-pointer"}`}
-                          title={conflictTitle || availabilityLabel || undefined}
+                          title={helperDetailsTitle || undefined}
                           onClick={() => {
                             if (!isMobileView && !selectionFull && !assignMany.isPending) {
                               toggleSelectedHelper(shift.id, helper.id);
@@ -1759,22 +1770,45 @@ export default function Plan() {
                             onCheckedChange={() => toggleSelectedHelper(shift.id, helper.id)}
                             aria-label={`${label(helper)} auswählen`}
                           />
-                          <span className="min-w-0 flex-1 truncate font-medium text-slate-800" title={label(helper)}>
-                            {helper.companion?.trim() && <span aria-hidden="true">👪 </span>}
-                            <button
-                              type="button"
-                              data-slot="mobile-helper-details-trigger"
-                              className="max-w-full truncate text-left font-medium text-slate-800 underline decoration-slate-200 underline-offset-2 md:pointer-events-none md:no-underline"
-                              aria-label={`Hinweise und Einsatzdetails von ${helper.name} anzeigen`}
-                              onClick={event => {
-                                event.stopPropagation();
-                                if (isMobileView) {
-                                  setMobileHelperDetails({ helper, shift });
-                                }
-                              }}
-                            >
-                              {helper.name}
-                            </button>
+                          <span
+                            className="min-w-0 flex-1 truncate font-medium text-slate-800"
+                            title={helperDetailsTitle || label(helper)}
+                          >
+                            <span className="inline-flex max-w-full items-center gap-1 truncate">
+                              {timeRestricted && (
+                                <span
+                                  className="shrink-0 text-slate-700"
+                                  title={`Zeitfenster: ${availabilityLabel}`}
+                                  aria-label={`Zeitfenster: ${availabilityLabel}`}
+                                >
+                                  <Clock3 className="size-3.5" aria-hidden="true" />
+                                </span>
+                              )}
+                              {companion && (
+                                <span
+                                  className="shrink-0 text-slate-700"
+                                  title={`Begleitung: ${companion}`}
+                                  aria-label={`Begleitung: ${companion}`}
+                                >
+                                  <UsersRound className="size-3.5" aria-hidden="true" />
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                data-slot="mobile-helper-details-trigger"
+                                className="max-w-full truncate text-left font-medium text-slate-800 underline decoration-slate-200 underline-offset-2 md:pointer-events-none md:no-underline"
+                                aria-label={helperDetailsTitle || `Hinweise und Einsatzdetails von ${helper.name} anzeigen`}
+                                title={helperDetailsTitle || undefined}
+                                onClick={event => {
+                                  event.stopPropagation();
+                                  if (isMobileView) {
+                                    setMobileHelperDetails({ helper, shift });
+                                  }
+                                }}
+                              >
+                                {helper.name}
+                              </button>
+                            </span>
                           </span>
                           <HelperDropdownFeedbackBadge
                             feedback={assignmentFeedback}
@@ -1973,7 +2007,7 @@ export default function Plan() {
                     allowMissingTarget: true,
                     eyebrow: planGuideEyebrow(8, 8),
                     title: "Tageszeichen, Zeitfenster und Begleitung lesen",
-                    text: "Hier im Auswahlbereich erscheinen die Verfügbarkeiten und Hinweise zu jedem Helfer. Falls vor einem Namen eine Uhr steht, kann die Person nur in einem bestimmten Zeitfenster helfen – die genauen Zeiten siehst du in den Details. Falls ein Familiensymbol erscheint, bringt die Person eine zusätzliche Begleitung mit. Die Tagesfarben zeigen zusätzlich: Grün ist frei, Gelb schon eingeteilt, Rot nicht verfügbar; „Neu“ heißt noch in keiner Schicht eingeteilt.",
+                    text: "Die orange Umrandung zeigt dir genau die Helferliste. Falls vor einem Namen eine Uhr steht, kann die Person nur in einem bestimmten Zeitfenster helfen – fahre mit der Maus über Uhr oder Namen, dann siehst du die genauen Zeiten. Ein Familiensymbol bedeutet eine zusätzliche Begleitung; auch deren Hinweis siehst du beim Darüberfahren. Über dem Namen erscheinen außerdem Hinweise für die persönliche PDF. Die Tagesfarben zeigen: Grün ist frei, Gelb schon eingeteilt, Rot nicht verfügbar; „Neu“ heißt noch in keiner Schicht eingeteilt.",
                     action: "Sammelzuordnung zeigen",
                   },
                   {
@@ -1982,7 +2016,7 @@ export default function Plan() {
                     allowMissingTarget: true,
                     eyebrow: planGuideEyebrow(9, 9),
                     title: "Passende Helfer gesammelt zuordnen",
-                    text: "Setze vorne bei allen passenden Personen ein Häkchen und übernimm die Auswahl gesammelt. Ein Klick auf den Namen zeigt Hinweise, Verfügbarkeit und bisherige Einsätze. Danach kontrollierst du erneut den Besetzungsbalken.",
+                    text: "Setze vorne bei allen passenden Personen ein Häkchen und übernimm die Auswahl gesammelt. Mit Maus über Name, Uhr oder Familiensymbol siehst du Zeitfenster, Begleitung und PDF-Hinweise sofort; auf dem Smartphone öffnest du die Details über den Namen. Danach kontrollierst du erneut den Besetzungsbalken.",
                     action: "Filter zeigen",
                   },
                   {
