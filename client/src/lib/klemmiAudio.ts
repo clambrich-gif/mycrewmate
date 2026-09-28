@@ -103,6 +103,7 @@ export const KLEMMI_AUDIO_SCRIPTS = {
   "dashboard-complete": "Alles im Blick! Du weißt jetzt, wo das Dashboard den aktuellen Planungsstand zeigt – und welche Eingaben die einzelnen Übersichten füllen.",
 
   "helpers-intro": "Neue Helfer sicher anlegen. Ich führe dich direkt auf der echten Oberfläche durch die Anlage – vom Namen bis zum passenden Zeitfenster.",
+  "helpers-overview": "Hier beginnt ein neuer Helfer. Du startest immer in der Helferübersicht. Über den markierten Button Neuer Helfer öffnest du die Anlage für eine neue Person. Ich zeige dir jetzt zuerst den Weg dorthin und öffne anschließend nur eine leere Eingabe – gespeichert wird dabei nichts.",
   "helpers-person": "Mit einem eindeutigen Namen beginnen. Der Name ist die einzige Pflichtangabe und sorgt dafür, dass das Planungsteam die Person in Helferliste, Einsatzplan und persönlicher PDF eindeutig wiederfindet. Diese Führung öffnet nur die leere Anlage – sie speichert nichts.",
   "helpers-contact": "Kontaktwege für Rückfragen ergänzen. Ansprechpartner und Telefonnummer sind optional, aber sehr hilfreich: Das Team weiß, wer zuständig ist und kann den Helfer bei einer Rückfrage oder kurzfristigen Änderung direkt erreichen.",
   "helpers-details": "Hinweise und Begleitung festhalten. Besondere Hinweise erscheinen später in der persönlichen Helfer-PDF. Eine Begleitung wird im Einsatzplan sichtbar, damit das Team bei der Schichtplanung genau weiß, wer zusätzlich mitkommt.",
@@ -170,7 +171,7 @@ export const KLEMMI_AUDIO_SCRIPTS = {
   "plan-practice-cleanup": "Super, jetzt siehst du deine erste Schicht. Wenn sie nur zum Üben war, kannst du sie später mit dem roten Löschen-Symbol wieder entfernen. Wenn sie schon passt, bleibt sie einfach stehen.",
   "plan-coverage": "Offene Plätze sofort erkennen. Die Anzeige zum Personalbedarf sagt zum Beispiel zwei von vier Helfern. Erst wenn die erforderliche Zahl erreicht ist, gilt die Schicht als vollständig besetzt. Darum lohnt sich der Blick auf den Balken bei jeder Änderung.",
   "plan-candidates": "Passende Helfer auswählen. Rechts in der Kachel stehen nur Helfer, die für die Schicht grundsätzlich in Frage kommen. Die Kästchen vorne dienen der Mehrfachauswahl. So füllst du mehrere freie Plätze in einem Schritt statt jede Person einzeln anzulegen.",
-  "plan-signals": "Tageszeichen, Zeitfenster und Begleitung lesen. Neu bedeutet: noch in keiner Schicht eingeteilt. Grün steht für frei, Gelb für eine Belegung an diesem Tag und Rot für nicht verfügbar. Die Uhr zeigt ein Zeitfenster. Das Familiensymbol vor einem Namen bedeutet, dass eine Begleitung mitkommt. So vermeidest du falsche oder doppelte Einteilungen.",
+  "plan-signals": "Tageszeichen, Zeitfenster und Begleitung lesen. Hier im Auswahlbereich erscheinen die Verfügbarkeiten und Hinweise zu jedem Helfer. Falls vor einem Namen eine Uhr steht, kann die Person nur in einem bestimmten Zeitfenster helfen – die genauen Zeiten siehst du in den Details. Falls ein Familiensymbol erscheint, bringt die Person eine zusätzliche Begleitung mit. Die Tagesfarben zeigen zusätzlich: Grün ist frei, Gelb schon eingeteilt, Rot nicht verfügbar; Neu heißt noch in keiner Schicht eingeteilt.",
   "plan-assign": "Passende Helfer gesammelt zuordnen. Setze vorne bei allen passenden Personen ein Häkchen und übernimm die Auswahl gesammelt. Ein Klick auf den Namen zeigt Hinweise, Verfügbarkeit und bisherige Einsätze. Danach kontrollierst du erneut den Besetzungsbalken.",
   "plan-filters": "Viele Schichten schnell eingrenzen. Mit Meine Aufgaben, Tagen, Bereichen, Status und Warnungen reduzierst du die Ansicht auf genau den Teil des Plans, den du gerade prüfen willst. So bleiben auch mehrtägige Veranstaltungen übersichtlich.",
   "plan-search": "Nach Aufgabe, Bereich oder Helfer suchen. Die Suche findet sofort passende Schichten und Namen. Das hilft zum Beispiel bei einer Rückfrage eines Helfers, wenn du nur seinen Namen oder einen Bereich kennst.",
@@ -249,6 +250,7 @@ export const KLEMMI_OPENING_AUDIO_IDS = [
  * trotz langer Cache-Zeit versehentlich eine vorherige Klemmi-Aufnahme spielen.
  */
 const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
+  "helpers-overview": "20260928-helper-overview-v1",
   "helpers-person": "20260928-informational-tour-v1",
   "helpers-contact": "20260928-informational-tour-v1",
   "helpers-details": "20260928-informational-tour-v1",
@@ -317,11 +319,11 @@ const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
   "plan-time": "20260928-information-tour-v1",
   "plan-save": "20260928-information-tour-v1",
   "plan-practice-save": "20260928-empty-plan-tour-v1",
-  "plan-overview": "20260928-information-tour-v1",
+  "plan-overview": "20260928-male-voice-v2",
   "plan-practice-cleanup": "20260928-empty-plan-tour-v1",
   "plan-coverage": "20260928-information-tour-v1",
   "plan-candidates": "20260928-information-tour-v1",
-  "plan-signals": "20260928-information-tour-v1",
+  "plan-signals": "20260928-hypothetical-signals-v2",
   "plan-assign": "20260928-information-tour-v1",
   "plan-filters": "20260928-information-tour-v1",
   "plan-search": "20260928-information-tour-v1",

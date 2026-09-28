@@ -1713,6 +1713,7 @@ export default function Plan() {
             <section
               data-slot="shift-card-batch-selection"
               data-klemmi-target="plan-candidates"
+              data-klemmi-status-area
               className="rounded-xl border border-blue-100 bg-blue-50/40 p-3"
             >
               <div className="mb-2 flex items-center justify-between gap-2">
@@ -1968,11 +1969,11 @@ export default function Plan() {
                   },
                   {
                     key: "signals",
-                    selector: '[data-klemmi-target="plan-helper-status"]',
+                    selector: '[data-klemmi-status-area]',
                     allowMissingTarget: true,
                     eyebrow: planGuideEyebrow(8, 8),
                     title: "Tageszeichen, Zeitfenster und Begleitung lesen",
-                    text: "Neu bedeutet: noch in keiner Schicht eingeteilt. Grün steht für frei, Gelb für eine Belegung an diesem Tag und Rot für nicht verfügbar. Die Uhr zeigt ein Zeitfenster. Das Familiensymbol vor einem Namen bedeutet, dass eine Begleitung mitkommt. So vermeidest du falsche oder doppelte Einteilungen.",
+                    text: "Hier im Auswahlbereich erscheinen die Verfügbarkeiten und Hinweise zu jedem Helfer. Falls vor einem Namen eine Uhr steht, kann die Person nur in einem bestimmten Zeitfenster helfen – die genauen Zeiten siehst du in den Details. Falls ein Familiensymbol erscheint, bringt die Person eine zusätzliche Begleitung mit. Die Tagesfarben zeigen zusätzlich: Grün ist frei, Gelb schon eingeteilt, Rot nicht verfügbar; „Neu“ heißt noch in keiner Schicht eingeteilt.",
                     action: "Sammelzuordnung zeigen",
                   },
                   {

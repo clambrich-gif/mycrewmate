@@ -24,6 +24,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 type GuideStepKey =
+  | "overview"
   | "person"
   | "contact"
   | "details"
@@ -68,9 +69,17 @@ type GuideStep = {
 
 const guideSteps: GuideStep[] = [
   {
+    key: "overview",
+    selector: '[data-klemmi-target="new-helper"]',
+    eyebrow: "1 · Helferübersicht",
+    title: "Hier beginnt ein neuer Helfer",
+    text: "Du startest immer in der Helferübersicht. Über den markierten Button „Neuer Helfer“ öffnest du die Anlage für eine neue Person. Ich zeige dir jetzt zuerst den Weg dorthin und öffne anschließend nur eine leere Eingabe – gespeichert wird dabei nichts.",
+    action: "Anlage öffnen",
+  },
+  {
     key: "person",
     selector: '[data-klemmi-target="new-helper-name"]',
-    eyebrow: "1 · Helfer anlegen",
+    eyebrow: "2 · Helfer anlegen",
     title: "Mit einem eindeutigen Namen beginnen",
     text: "Hier startet jeder Helfer. Der Name ist die einzige Pflichtangabe und sorgt dafür, dass das Planungsteam die Person in Helferliste, Einsatzplan und persönlicher PDF eindeutig wiederfindet. Diese Führung öffnet nur die leere Anlage – sie speichert nichts.",
     action: "Kontaktdaten zeigen",
@@ -78,7 +87,7 @@ const guideSteps: GuideStep[] = [
   {
     key: "contact",
     selector: '[data-klemmi-target="new-helper-contact"]',
-    eyebrow: "2 · Helfer anlegen",
+    eyebrow: "3 · Helfer anlegen",
     title: "Kontaktwege für Rückfragen ergänzen",
     text: "Ansprechpartner und Telefonnummer sind optional, aber sehr hilfreich: Das Team weiß, wer zuständig ist und kann den Helfer bei einer Rückfrage oder kurzfristigen Änderung direkt erreichen.",
     action: "Hinweise zeigen",
@@ -86,7 +95,7 @@ const guideSteps: GuideStep[] = [
   {
     key: "details",
     selector: '[data-klemmi-target="new-helper-details"]',
-    eyebrow: "3 · Helfer anlegen",
+    eyebrow: "4 · Helfer anlegen",
     title: "Hinweise und Begleitung festhalten",
     text: "Besondere Hinweise erscheinen später in der persönlichen Helfer-PDF. Eine Begleitung wird im Einsatzplan sichtbar, damit das Team bei der Schichtplanung genau weiß, wer zusätzlich mitkommt.",
     action: "Spende zeigen",
@@ -94,7 +103,7 @@ const guideSteps: GuideStep[] = [
   {
     key: "donation",
     selector: '[data-klemmi-target="new-helper-donation"]',
-    eyebrow: "4 · Helfer anlegen",
+    eyebrow: "5 · Helfer anlegen",
     title: "Spende direkt mit erfassen",
     text: "Wenn jemand Kuchen, Salat, Snacks oder eine andere Spende zusagt, öffnet dieses Feld die vollständige Spendenerfassung. So bleiben Verpflegung, Eigenschaften und Absprachen von Anfang an beim richtigen Helfer nachvollziehbar.",
     action: "Speichern erklären",
@@ -102,7 +111,7 @@ const guideSteps: GuideStep[] = [
   {
     key: "save",
     selector: '[data-klemmi-target="new-helper-submit"]',
-    eyebrow: "5 · Helfer vollständig speichern",
+    eyebrow: "6 · Helfer vollständig speichern",
     title: "Erst speichern – dann kann das Team planen",
     text: "Mit „Helfer anlegen“ oder „Helfer & Spende anlegen“ wird die Person vollständig übernommen. Erst danach steht sie dem Planungsteam im Einsatzplan zur Auswahl. Für diese Erklärung musst du den Button nicht drücken.",
     action: "Verfügbarkeit zeigen",
@@ -112,7 +121,7 @@ const guideSteps: GuideStep[] = [
     selector: '[data-klemmi-target="helper-availability"]',
     helperScoped: true,
     showHelperCard: true,
-    eyebrow: "6 · Verfügbarkeit",
+    eyebrow: "7 · Verfügbarkeit",
     title: "Tage und Zeitfenster realistisch festlegen",
     text: "An einem bereits angelegten Helfer siehst du die Tagesverfügbarkeiten. „Ja“ bedeutet: an diesem Tag grundsätzlich planbar. „Nein“ schützt vor einer falschen Einteilung. Mit einem Zeitfenster gibst du an, wann die Person wirklich kann – damit der Einsatzplan verlässlich bleibt.",
     action: "Planungsablauf zeigen",
@@ -122,7 +131,7 @@ const guideSteps: GuideStep[] = [
     selector: '[data-klemmi-target="helper-plan-context"]',
     helperScoped: true,
     showHelperCard: true,
-    eyebrow: "7 · Einsatzplan füllen",
+    eyebrow: "8 · Einsatzplan füllen",
     title: "Das Team füllt danach die passenden Schichten",
     text: "Sobald Helfer gespeichert und Verfügbarkeiten gepflegt sind, teilt das Planungsteam sie im Einsatzplan den offenen Schichten zu. Die Tageszeichen, Zeitfenster, Begleitungen und bereits belegten Einsätze helfen dabei, Überlappungen zu vermeiden und jede Schicht passend zu füllen.",
     action: "WhatsApp erklären",
@@ -132,7 +141,7 @@ const guideSteps: GuideStep[] = [
     selector: '[data-klemmi-target="helper-action-whatsapp"]',
     helperScoped: true,
     showHelperCard: true,
-    eyebrow: "8 · Helferplan senden",
+    eyebrow: "9 · Helferplan senden",
     title: "Nach vollständiger Planung per WhatsApp anfragen",
     text: "Ist der Einsatzplan für diesen Helfer fertig, öffnet das grüne Symbol die passende WhatsApp-Vorlage. Die Nachricht kann den persönlichen Helferplan mit PDF-Link enthalten und bittet verbindlich um Rückmeldung. In dieser Tour wird nichts versendet.",
     action: "Rückmeldung erklären",
@@ -142,7 +151,7 @@ const guideSteps: GuideStep[] = [
     selector: '[data-klemmi-target="helper-feedback"]',
     helperScoped: true,
     showHelperCard: true,
-    eyebrow: "9 · Rückmeldung übernehmen",
+    eyebrow: "10 · Rückmeldung übernehmen",
     title: "Erst die Antwort macht die Besetzung verbindlich",
     text: "Antwortet der Helfer, trägt das Team „Helfen: Ja“ oder „Nein“ ein und setzt die Bestätigung passend zur Rückmeldung. Das ist wichtig: Nur bestätigte Zusagen machen sichtbar, welche Schichten wirklich sicher sind und wo noch Ersatz gebraucht wird.",
     action: "Spendenzeichen zeigen",
@@ -222,6 +231,7 @@ export function KlemmiHelperGuide({
   const [highlightRect, setHighlightRect] = useState<HighlightRect>(null);
   const [celebrating, setCelebrating] = useState(false);
   const [openingPending, setOpeningPending] = useState(false);
+  const [openingHelperForm, setOpeningHelperForm] = useState(false);
   const [narrationComplete, setNarrationComplete] = useState(false);
   const dialogOpenedByGuideRef = useRef(false);
   const returnViewModeRef = useRef<"liste" | "kacheln" | null>(null);
@@ -245,6 +255,7 @@ export function KlemmiHelperGuide({
     setOpen(false);
     setCelebrating(false);
     setNarrationComplete(false);
+    setOpeningHelperForm(false);
     setHighlightRect(null);
     if (returnViewModeRef.current && returnViewModeRef.current !== viewMode) {
       onViewModeChange(returnViewModeRef.current);
@@ -259,6 +270,12 @@ export function KlemmiHelperGuide({
     if (returnViewModeRef.current === null) returnViewModeRef.current = viewMode;
     if (viewMode !== "kacheln") onViewModeChange("kacheln");
   }, [helperDialogOpen, onCloseHelperDialog, onViewModeChange, open, step.showHelperCard, viewMode]);
+
+  useEffect(() => {
+    if (!open || !openingHelperForm || !helperDialogOpen) return;
+    setOpeningHelperForm(false);
+    setStepIndex(current => (current === 0 ? 1 : current));
+  }, [helperDialogOpen, open, openingHelperForm]);
 
   useEffect(() => {
     if (!open || openingPending) return;
@@ -341,6 +358,12 @@ export function KlemmiHelperGuide({
   };
 
   const showNext = () => {
+    if (step.key === "overview") {
+      dialogOpenedByGuideRef.current = true;
+      setOpeningHelperForm(true);
+      onOpenHelperDialog();
+      return;
+    }
     if (stepIndex === guideSteps.length - 1) {
       setCelebrating(true);
       return;
@@ -356,10 +379,11 @@ export function KlemmiHelperGuide({
         data-klemmi-trigger
         className="min-h-11 min-w-0 gap-2 border-blue-200 bg-blue-50 px-3 text-blue-950 shadow-sm hover:border-blue-300 hover:bg-blue-100 max-sm:gap-1 max-sm:px-1.5 max-sm:text-xs max-sm:[&_.klemmi-trigger-mascot]:size-5 max-sm:[&_.klemmi-trigger-mascot_img]:size-5 max-sm:[&>svg]:size-3"
         onClick={() => {
-          dialogOpenedByGuideRef.current = !helperDialogOpen;
-          if (!helperDialogOpen) onOpenHelperDialog();
+          if (helperDialogOpen) onCloseHelperDialog();
+          dialogOpenedByGuideRef.current = false;
           setStepIndex(0);
           setCelebrating(false);
+          setOpeningHelperForm(false);
           setOpeningPending(true);
           setOpen(true);
           onGuideOpenChange(true);

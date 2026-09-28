@@ -85,6 +85,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(draggableCard).toContain("minX");
     expect(guide).toContain("Rein erklärende, nicht-modale Tour über die echte Helferoberfläche");
     expect(guide).toContain('data-klemmi-tour-mode="informational"');
+    expect(guide).toContain('key: "overview"');
+    expect(guide).toContain('selector: \'[data-klemmi-target="new-helper"]\'');
+    expect(guide).toContain("Anlage öffnen");
+    expect(guide).toContain("setOpeningHelperForm(true)");
     expect(guide).toContain("Diese Führung öffnet nur die leere Anlage – sie speichert nichts.");
     expect(guide).toContain("Spende direkt mit erfassen");
     expect(guide).toContain('key: "save"');
@@ -108,6 +112,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(guide).toContain("In dieser Erklärung wird nichts heruntergeladen");
     expect(guide).toContain("So gehen keine wichtigen Planungsdaten versehentlich verloren");
     expect(audio).toContain('"helpers-plan-fill"');
+    expect(audio).toContain('"helpers-overview"');
     expect(audio).toContain('"helpers-feedback"');
     expect(audio).toContain('"helpers-action-whatsapp"');
     expect(audio).toContain('"helpers-action-delete"');
@@ -203,7 +208,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain('data-klemmi-target="plan-overview"');
     expect(plan).toContain('data-klemmi-target="plan-coverage"');
     expect(plan).toContain('data-klemmi-target="plan-candidates"');
-    expect(plan).toContain('data-klemmi-target="plan-helper-status"');
+    expect(plan).toContain("data-klemmi-status-area");
+    expect(plan).toContain("selector: '[data-klemmi-status-area]'");
+    expect(plan).toContain("Falls vor einem Namen eine Uhr steht");
+    expect(plan).toContain("Falls ein Familiensymbol erscheint");
     expect(plan).toContain('data-klemmi-target="plan-batch-assign"');
     expect(plan).toContain('data-klemmi-target="plan-filters"');
     expect(plan).toContain('data-klemmi-target="plan-search"');
@@ -280,6 +288,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(audio).toContain('"plan-coverage"');
     expect(audio).toContain('"plan-candidates"');
     expect(audio).toContain('"plan-signals"');
+    expect(audio).toContain("Falls vor einem Namen eine Uhr steht");
     expect(audio).toContain('"plan-assign"');
     expect(audio).toContain('"plan-filters"');
     expect(audio).toContain('"plan-search"');
