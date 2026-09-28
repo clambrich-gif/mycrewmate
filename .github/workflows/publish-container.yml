@@ -61,3 +61,17 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: false
           sbom: false
+
+      - name: Neue Version sicher in Coolify bereitstellen
+        env:
+          COOLIFY_DEPLOY_WEBHOOK_URL: ${{ secrets.COOLIFY_DEPLOY_WEBHOOK_URL }}
+          COOLIFY_DEPLOY_TOKEN: ${{ secrets.COOLIFY_DEPLOY_TOKEN }}
+        run: |
+          test -n "$COOLIFY_DEPLOY_WEBHOOK_URL"
+          test -n "$COOLIFY_DEPLOY_TOKEN"
+          curl --fail --silent --show-error \
+            --retry 3 --retry-all-errors --retry-delay 5 \
+            --connect-timeout 10 --max-time 60 \
+            --request GET \
+            --header "Authorization: Bearer $COOLIFY_DEPLOY_TOKEN" \
+            "$COOLIFY_DEPLOY_WEBHOOK_URL"
