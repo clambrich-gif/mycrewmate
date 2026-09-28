@@ -60,6 +60,10 @@ import {
   WEEKDAY_AVAILABILITY_FIELDS,
   WEEKDAY_AVAILABILITY_TIME_FIELDS,
   WEEKDAY_SHORT_LABELS,
+  WEEKDAYS,
+  type AvailabilityField,
+  type AvailabilityTimeField,
+  type AvailabilityValue,
   type Weekday,
 } from "@shared/weekdays";
 import {
@@ -113,6 +117,17 @@ type NewHelperDonation = {
   note: string;
 };
 
+type NewHelperDayAvailability = {
+  value: AvailabilityValue;
+  withTime: boolean;
+  start: string;
+  end: string;
+};
+
+type NewHelperAvailability = Record<Weekday, NewHelperDayAvailability>;
+type NewHelperAvailabilityInput = Partial<Record<AvailabilityField, AvailabilityValue>> &
+  Partial<Record<AvailabilityTimeField, string | null>>;
+
 type MobileHelperEditForm = {
   name: string;
   contactId: string;
@@ -134,6 +149,14 @@ const EMPTY_NEW_HELPER_DONATION: NewHelperDonation = {
   meat: false,
   note: "",
 };
+
+const createEmptyNewHelperAvailability = (): NewHelperAvailability =>
+  Object.fromEntries(
+    WEEKDAYS.map(day => [
+      day,
+      { value: "vielleicht", withTime: false, start: "", end: "" },
+    ])
+  ) as NewHelperAvailability;
 
 const newHelperDonationCategories: Array<{
   value: NewHelperDonationCategory;
@@ -794,6 +817,11 @@ export default function Helpers() {
   const [newHelperPhone, setNewHelperPhone] = useState("");
   const [newHelperNote, setNewHelperNote] = useState("");
   const [newHelperBringsCake, setNewHelperBringsCake] = useState(false);
+  const [newHelperAvailabilityEnabled, setNewHelperAvailabilityEnabled] = useState(false);
+  const [newHelperAvailability, setNewHelperAvailability] = useState<NewHelperAvailability>(
+    createEmptyNewHelperAvailability
+  );
+  const [newHelperAvailabilityError, setNewHelperAvailabilityError] = useState<string | null>(null);
   const [newHelperDonation, setNewHelperDonation] = useState<NewHelperDonation>(
     EMPTY_NEW_HELPER_DONATION
   );
@@ -863,6 +891,9 @@ export default function Helpers() {
     setNewHelperPhone("");
     setNewHelperNote("");
     setNewHelperBringsCake(false);
+    setNewHelperAvailabilityEnabled(false);
+    setNewHelperAvailability(createEmptyNewHelperAvailability());
+    setNewHelperAvailabilityError(null);
     setNewHelperDonation(EMPTY_NEW_HELPER_DONATION);
     setNewHelperNameError(null);
   };
@@ -946,6 +977,31 @@ export default function Helpers() {
       return;
     }
     setNewHelperNameError(null);
+    const availabilityInput: NewHelperAvailabilityInput = {};
+    if (newHelperAvailabilityEnabled) {
+      for (const day of activeDays) {
+        const choice = newHelperAvailability[day];
+        const availabilityField = WEEKDAY_AVAILABILITY_FIELDS[day];
+        const timeFields = WEEKDAY_AVAILABILITY_TIME_FIELDS[day];
+        const hasValidTimeWindow =
+          choice.withTime &&
+          choice.start.length > 0 &&
+          choice.end.length > 0 &&
+          choice.end > choice.start;
+
+        if (choice.withTime && !hasValidTimeWindow) {
+          setNewHelperAvailabilityError(
+            `${day}: Bitte trage für „Ja mit Uhr“ eine gültige Uhrzeit von und bis ein.`
+          );
+          return;
+        }
+
+        availabilityInput[availabilityField] = choice.value;
+        availabilityInput[timeFields.start] = hasValidTimeWindow ? choice.start : null;
+        availabilityInput[timeFields.end] = hasValidTimeWindow ? choice.end : null;
+      }
+    }
+    setNewHelperAvailabilityError(null);
     const helper = {
       name: trimmedName,
       contactId:
@@ -953,6 +1009,7 @@ export default function Helpers() {
       phone: newHelperPhone.trim() || undefined,
       note: newHelperNote.trim() || undefined,
       companion: newHelperCompanion.trim() || undefined,
+      ...availabilityInput,
     };
     if (newHelperBringsCake) {
       createWithDonation.mutate({
@@ -2560,9 +2617,183 @@ export default function Helpers() {
                   />
                   <p className="text-xs text-slate-500">Wird nur für den Einsatzplan genutzt.</p>
                 </div>
-                <p className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900">
-                  Neue Helfer starten aktiv. Die Tagesverfügbarkeiten stehen zunächst auf „?“ und lassen sich danach direkt in der Helferliste präzisieren.
-                </p>
+                <section
+                  data-klemmi-target="new-helper-availability"
+                  className={cn(
+                    "rounded-xl border p-3.5 transition-colors",
+                    newHelperAvailabilityEnabled
+                      ? "border-emerald-200 bg-emerald-50/60"
+                      : "border-amber-100 bg-amber-50/70"
+                  )}
+                >
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      id="new-helper-dialog-availability"
+                      checked={newHelperAvailabilityEnabled}
+                      onCheckedChange={checked => {
+                        setNewHelperAvailabilityEnabled(checked === true);
+                        setNewHelperAvailabilityError(null);
+                      }}
+                    />
+                    <label
+                      htmlFor="new-helper-dialog-availability"
+                      className="cursor-pointer text-sm font-semibold text-slate-900"
+                    >
+                      Verfügbarkeit jetzt erfassen
+                      <span className="mt-0.5 block text-xs font-normal text-slate-600">
+                        Optional – die Angaben stehen dem Einsatzplan sofort zur Verfügung.
+                      </span>
+                    </label>
+                  </div>
+
+                  {newHelperAvailabilityEnabled ? (
+                    <div className="mt-4 space-y-3">
+                      <p className="text-xs leading-relaxed text-emerald-950">
+                        <strong>Ja</strong> bedeutet ganztägig planbar. <strong>Ja mit Uhr</strong> öffnet ein begrenztes Zeitfenster. <strong>Nein</strong> schließt eine Einteilung aus; <strong>Unklar</strong> wartet auf Rückmeldung.
+                      </p>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {activeDays.map(day => {
+                          const choice = newHelperAvailability[day];
+                          const timed = choice.value === "ja" && choice.withTime;
+                          return (
+                            <fieldset
+                              key={day}
+                              className="rounded-lg border border-emerald-100 bg-white p-3"
+                            >
+                              <legend className="px-1 text-sm font-semibold text-slate-900">
+                                {day}
+                              </legend>
+                              <div className="grid grid-cols-2 gap-2">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  aria-pressed={choice.value === "ja" && !choice.withTime}
+                                  className={cn(
+                                    "min-h-10 border text-xs font-semibold",
+                                    choice.value === "ja" && !choice.withTime
+                                      ? "border-emerald-400 bg-emerald-100 text-emerald-950 hover:bg-emerald-200"
+                                      : "border-slate-200 bg-white text-slate-700 hover:bg-emerald-50"
+                                  )}
+                                  onClick={() =>
+                                    setNewHelperAvailability(current => ({
+                                      ...current,
+                                      [day]: { value: "ja", withTime: false, start: "", end: "" },
+                                    }))
+                                  }
+                                >
+                                  Ja
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  aria-pressed={timed}
+                                  className={cn(
+                                    "min-h-10 border text-xs font-semibold",
+                                    timed
+                                      ? "border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
+                                      : "border-slate-200 bg-white text-slate-700 hover:bg-emerald-50"
+                                  )}
+                                  onClick={() =>
+                                    setNewHelperAvailability(current => ({
+                                      ...current,
+                                      [day]: {
+                                        ...current[day],
+                                        value: "ja",
+                                        withTime: true,
+                                      },
+                                    }))
+                                  }
+                                >
+                                  <Clock3 className="mr-1 size-3.5" aria-hidden="true" />
+                                  Ja mit Uhr
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  aria-pressed={choice.value === "nein"}
+                                  className={cn(
+                                    "min-h-10 border text-xs font-semibold",
+                                    choice.value === "nein"
+                                      ? "border-rose-300 bg-rose-50 text-rose-800 hover:bg-rose-100"
+                                      : "border-slate-200 bg-white text-slate-700 hover:bg-rose-50"
+                                  )}
+                                  onClick={() =>
+                                    setNewHelperAvailability(current => ({
+                                      ...current,
+                                      [day]: { value: "nein", withTime: false, start: "", end: "" },
+                                    }))
+                                  }
+                                >
+                                  Nein
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  aria-pressed={choice.value === "vielleicht"}
+                                  className={cn(
+                                    "min-h-10 border text-xs font-semibold",
+                                    choice.value === "vielleicht"
+                                      ? "border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100"
+                                      : "border-slate-200 bg-white text-slate-700 hover:bg-amber-50"
+                                  )}
+                                  onClick={() =>
+                                    setNewHelperAvailability(current => ({
+                                      ...current,
+                                      [day]: { value: "vielleicht", withTime: false, start: "", end: "" },
+                                    }))
+                                  }
+                                >
+                                  Unklar
+                                </Button>
+                              </div>
+                              {timed && (
+                                <div className="mt-3 grid grid-cols-2 gap-2 rounded-md border border-emerald-100 bg-emerald-50/70 p-2">
+                                  <label className="space-y-1 text-xs font-medium text-slate-800">
+                                    Von
+                                    <Input
+                                      type="time"
+                                      value={choice.start}
+                                      className="h-10 bg-white"
+                                      onChange={event =>
+                                        setNewHelperAvailability(current => ({
+                                          ...current,
+                                          [day]: { ...current[day], start: event.target.value },
+                                        }))
+                                      }
+                                    />
+                                  </label>
+                                  <label className="space-y-1 text-xs font-medium text-slate-800">
+                                    Bis
+                                    <Input
+                                      type="time"
+                                      value={choice.end}
+                                      className="h-10 bg-white"
+                                      onChange={event =>
+                                        setNewHelperAvailability(current => ({
+                                          ...current,
+                                          [day]: { ...current[day], end: event.target.value },
+                                        }))
+                                      }
+                                    />
+                                  </label>
+                                </div>
+                              )}
+                            </fieldset>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-xs leading-relaxed text-amber-900">
+                      Ohne Auswahl bleibt jeder aktive Veranstaltungstag zunächst auf <strong>Unklar</strong>. Die Verfügbarkeit kann jederzeit später an der Helferkarte ergänzt werden.
+                    </p>
+                  )}
+                  {newHelperAvailabilityError && (
+                    <p role="alert" className="mt-3 text-sm font-medium text-rose-700">
+                      {newHelperAvailabilityError}
+                    </p>
+                  )}
+                </section>
                 <div data-klemmi-target="new-helper-donation" className={cn("flex min-h-12 items-center gap-3 rounded-xl border px-3.5 transition-colors", newHelperBringsCake ? "border-indigo-200 bg-indigo-50" : "border-slate-200 bg-white")}>
                   <Checkbox
                     id="new-helper-dialog-brings-cake"

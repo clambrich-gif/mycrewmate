@@ -22,6 +22,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain('data-klemmi-target="new-helper-name"');
     expect(helpers).toContain('data-klemmi-target="new-helper-contact"');
     expect(helpers).toContain('data-klemmi-target="new-helper-details"');
+    expect(helpers).toContain('data-klemmi-target="new-helper-availability"');
     expect(helpers).toContain('data-klemmi-target="new-helper-donation"');
     expect(helpers).toContain('data-klemmi-target="new-helper-submit"');
     expect(helpers).toContain('data-klemmi-target="helper-availability"');
@@ -91,6 +92,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(guide).toContain("setOpeningHelperForm(true)");
     expect(guide).toContain("Diese Führung öffnet nur die leere Anlage – sie speichert nichts.");
     expect(guide).toContain("Spende direkt mit erfassen");
+    expect(guide).toContain('key: "availability-entry"');
+    expect(guide).toContain("Verfügbarkeit direkt erfassen");
+    expect(guide).toContain("Ja mit Uhr");
+    expect(guide).toContain("Ohne Auswahl bleibt jeder aktive Tag zunächst auf Unklar");
     expect(guide).toContain('key: "save"');
     expect(guide).toContain('key: "plan-fill"');
     expect(guide).toContain('key: "feedback"');
@@ -113,6 +118,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(guide).toContain("So gehen keine wichtigen Planungsdaten versehentlich verloren");
     expect(audio).toContain('"helpers-plan-fill"');
     expect(audio).toContain('"helpers-overview"');
+    expect(audio).toContain('"helpers-availability-entry"');
     expect(audio).toContain('"helpers-feedback"');
     expect(audio).toContain('"helpers-action-whatsapp"');
     expect(audio).toContain('"helpers-action-delete"');
@@ -2517,8 +2523,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helperDialog).toContain("Telefon Helfer");
     expect(helperDialog).toContain("Hinweis für PDF");
     expect(helperDialog).toContain("Zusätzliche Begleitung (für Einsatzplan)");
-    expect(helperDialog).toContain("Tagesverfügbarkeiten stehen zunächst");
-    expect(helperDialog).not.toContain("activeDays.map");
+    expect(helperDialog).toContain("Verfügbarkeit jetzt erfassen");
+    expect(helperDialog).toContain("Optional – die Angaben stehen dem Einsatzplan sofort zur Verfügung.");
+    expect(helperDialog).toContain("Ja mit Uhr");
+    expect(helperDialog).toContain("activeDays.map");
     expect(helperDialog).not.toContain("YesNoToggle");
     expect(helpers).toContain("createNewHelper()");
     expect(helpers).toContain("Helfer anlegen");

@@ -1919,6 +1919,33 @@ describe("Planungs-API", () => {
     );
   });
 
+  it("speichert optionale Tagesverfügbarkeiten und ein Zeitfenster bereits bei der Helferanlage", async () => {
+    dbMocks.upsertHelperByName.mockResolvedValue({ id: 46, created: true });
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.helpers.create({
+        name: "Mia Verfuegbar",
+        availFri: "ja",
+        availFriStart: "14:00",
+        availFriEnd: "18:00",
+        availSat: "nein",
+        availSun: "vielleicht",
+      })
+    ).resolves.toEqual({ id: 46, created: true });
+
+    expect(dbMocks.upsertHelperByName).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Mia Verfuegbar",
+        availFri: "ja",
+        availFriStart: "14:00",
+        availFriEnd: "18:00",
+        availSat: "nein",
+        availSun: "vielleicht",
+      })
+    );
+  });
+
   it("erfasst Helfer und zugesagte Spende gemeinsam mit allen Lebensmittelkennzeichnungen", async () => {
     dbMocks.createHelperWithDonation.mockResolvedValue({
       helper: { id: 45, created: true },

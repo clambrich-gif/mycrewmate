@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleHelp,
+  Clock3,
   FileDown,
   Gift,
   MessageCircle,
@@ -28,6 +29,7 @@ type GuideStepKey =
   | "person"
   | "contact"
   | "details"
+  | "availability-entry"
   | "donation"
   | "save"
   | "availability"
@@ -101,9 +103,17 @@ const guideSteps: GuideStep[] = [
     action: "Spende zeigen",
   },
   {
+    key: "availability-entry",
+    selector: '[data-klemmi-target="new-helper-availability"]',
+    eyebrow: "5 · Verfügbarkeit direkt erfassen",
+    title: "Pro Tag schon beim Anlegen klar planen",
+    text: "Dieser Abschnitt ist optional. „Ja“ bedeutet: an diesem Tag ganztägig planbar. „Ja mit Uhr“ öffnet ein Zeitfenster von bis. „Nein“ schützt vor einer falschen Einteilung. „Unklar“ bedeutet: Die Rückmeldung fehlt noch, also bitte noch nicht verbindlich einplanen. Ohne Auswahl bleibt jeder aktive Tag zunächst auf Unklar.",
+    action: "Spende zeigen",
+  },
+  {
     key: "donation",
     selector: '[data-klemmi-target="new-helper-donation"]',
-    eyebrow: "5 · Helfer anlegen",
+    eyebrow: "6 · Helfer anlegen",
     title: "Spende direkt mit erfassen",
     text: "Wenn jemand Kuchen, Salat, Snacks oder eine andere Spende zusagt, öffnet dieses Feld die vollständige Spendenerfassung. So bleiben Verpflegung, Eigenschaften und Absprachen von Anfang an beim richtigen Helfer nachvollziehbar.",
     action: "Speichern erklären",
@@ -111,7 +121,7 @@ const guideSteps: GuideStep[] = [
   {
     key: "save",
     selector: '[data-klemmi-target="new-helper-submit"]',
-    eyebrow: "6 · Helfer vollständig speichern",
+    eyebrow: "7 · Helfer vollständig speichern",
     title: "Erst speichern – dann kann das Team planen",
     text: "Mit „Helfer anlegen“ oder „Helfer & Spende anlegen“ wird die Person vollständig übernommen. Erst danach steht sie dem Planungsteam im Einsatzplan zur Auswahl. Für diese Erklärung musst du den Button nicht drücken.",
     action: "Verfügbarkeit zeigen",
@@ -121,9 +131,9 @@ const guideSteps: GuideStep[] = [
     selector: '[data-klemmi-target="helper-availability"]',
     helperScoped: true,
     showHelperCard: true,
-    eyebrow: "7 · Verfügbarkeit",
+    eyebrow: "8 · Verfügbarkeit später nachpflegen",
     title: "Tage und Zeitfenster realistisch festlegen",
-    text: "An einem bereits angelegten Helfer siehst du die Tagesverfügbarkeiten. „Ja“ bedeutet: an diesem Tag grundsätzlich planbar. „Nein“ schützt vor einer falschen Einteilung. Mit einem Zeitfenster gibst du an, wann die Person wirklich kann – damit der Einsatzplan verlässlich bleibt.",
+    text: "Nach dem Speichern bleiben dieselben Tagesverfügbarkeiten direkt an der Helferkarte bearbeitbar. „Ja“ bedeutet ganztägig planbar; die Uhr zeigt ein begrenztes Zeitfenster. „Nein“ schützt vor einer falschen Einteilung, „Unklar“ wartet auf Rückmeldung. So kann das Team Angaben jederzeit sauber nachpflegen.",
     action: "Planungsablauf zeigen",
   },
   {
@@ -131,7 +141,7 @@ const guideSteps: GuideStep[] = [
     selector: '[data-klemmi-target="helper-plan-context"]',
     helperScoped: true,
     showHelperCard: true,
-    eyebrow: "8 · Einsatzplan füllen",
+    eyebrow: "9 · Einsatzplan füllen",
     title: "Das Team füllt danach die passenden Schichten",
     text: "Sobald Helfer gespeichert und Verfügbarkeiten gepflegt sind, teilt das Planungsteam sie im Einsatzplan den offenen Schichten zu. Die Tageszeichen, Zeitfenster, Begleitungen und bereits belegten Einsätze helfen dabei, Überlappungen zu vermeiden und jede Schicht passend zu füllen.",
     action: "WhatsApp erklären",
@@ -141,7 +151,7 @@ const guideSteps: GuideStep[] = [
     selector: '[data-klemmi-target="helper-action-whatsapp"]',
     helperScoped: true,
     showHelperCard: true,
-    eyebrow: "9 · Helferplan senden",
+    eyebrow: "10 · Helferplan senden",
     title: "Nach vollständiger Planung per WhatsApp anfragen",
     text: "Ist der Einsatzplan für diesen Helfer fertig, öffnet das grüne Symbol die passende WhatsApp-Vorlage. Die Nachricht kann den persönlichen Helferplan mit PDF-Link enthalten und bittet verbindlich um Rückmeldung. In dieser Tour wird nichts versendet.",
     action: "Rückmeldung erklären",
@@ -151,7 +161,7 @@ const guideSteps: GuideStep[] = [
     selector: '[data-klemmi-target="helper-feedback"]',
     helperScoped: true,
     showHelperCard: true,
-    eyebrow: "10 · Rückmeldung übernehmen",
+    eyebrow: "11 · Rückmeldung übernehmen",
     title: "Erst die Antwort macht die Besetzung verbindlich",
     text: "Antwortet der Helfer, trägt das Team „Helfen: Ja“ oder „Nein“ ein und setzt die Bestätigung passend zur Rückmeldung. Das ist wichtig: Nur bestätigte Zusagen machen sichtbar, welche Schichten wirklich sicher sind und wo noch Ersatz gebraucht wird.",
     action: "Spendenzeichen zeigen",
@@ -204,6 +214,7 @@ function clamp(value: number, min: number, max: number) {
 
 function stepIcon(key: GuideStepKey) {
   if (key === "save") return Save;
+  if (key === "availability-entry" || key === "availability") return Clock3;
   if (key === "donation" || key === "action-donation") return Gift;
   if (key === "action-whatsapp") return MessageCircle;
   if (key === "action-pdf") return FileDown;
