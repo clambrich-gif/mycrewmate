@@ -1,4 +1,5 @@
 import type { KlemmiSurfaceStep } from "@/components/KlemmiSurfaceGuide";
+import type { DashboardDetailsLayout } from "@/hooks/useDashboardDetailsLayout";
 
 export type DashboardKlemmiTourState = {
   hasEventPeriod: boolean;
@@ -8,6 +9,7 @@ export type DashboardKlemmiTourState = {
   hasAssignments: boolean;
   hasContacts: boolean;
   hasMappableLocations: boolean;
+  detailsLayout: DashboardDetailsLayout;
 };
 
 /**
@@ -18,6 +20,7 @@ export type DashboardKlemmiTourState = {
 export function createDashboardKlemmiSteps(
   state: DashboardKlemmiTourState
 ): KlemmiSurfaceStep[] {
+  const detailsAreStacked = state.detailsLayout === "stacked";
   const steps: KlemmiSurfaceStep[] = [
     {
       key: "intro",
@@ -76,9 +79,20 @@ export function createDashboardKlemmiSteps(
       selector: '[data-dashboard-level="Tabellendetails"]',
       eyebrow: "5 · Zuständigkeiten und Auslastung",
       title: state.hasContacts || state.hasAssignments ? "Wer macht was – und wer ist frei?" : "Details wachsen mit den Einträgen",
+      audioKey: state.hasContacts || state.hasAssignments
+        ? detailsAreStacked
+          ? "details-active-stacked"
+          : "details-active"
+        : detailsAreStacked
+          ? "details-empty-stacked"
+          : "details-empty",
       text: state.hasContacts || state.hasAssignments
-        ? "Links siehst du Verantwortlichkeiten nach Ansprechpartnern. Rechts zeigt die Helferauslastung alle eingeteilten Schichten je Tag. Ein Klick auf einen Namen oder Wert öffnet die passende gefilterte Einsatzplanung."
-        : "Hier entstehen zwei Übersichten, sobald Ansprechpartner, Helfer und Schichten gepflegt sind: Zuständigkeiten auf der linken Seite und die tägliche Helferauslastung auf der rechten Seite.",
+        ? detailsAreStacked
+          ? "Oben siehst du Verantwortlichkeiten nach Ansprechpartnern. Darunter zeigt die Helferauslastung alle eingeteilten Schichten je Tag. Ein Klick auf einen Namen oder Wert öffnet die passende gefilterte Einsatzplanung."
+          : "Links siehst du Verantwortlichkeiten nach Ansprechpartnern. Rechts zeigt die Helferauslastung alle eingeteilten Schichten je Tag. Ein Klick auf einen Namen oder Wert öffnet die passende gefilterte Einsatzplanung."
+        : detailsAreStacked
+          ? "Hier entstehen zwei Übersichten, sobald Ansprechpartner, Helfer und Schichten gepflegt sind: Zuerst die Zuständigkeiten nach Ansprechpartnern und direkt darunter die tägliche Helferauslastung."
+          : "Hier entstehen zwei Übersichten, sobald Ansprechpartner, Helfer und Schichten gepflegt sind: Zuständigkeiten auf der linken Seite und die tägliche Helferauslastung auf der rechten Seite.",
       action: "Weiter zur Standortkarte",
     },
     {

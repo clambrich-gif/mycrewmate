@@ -4,6 +4,7 @@ import { LocationMapCard } from "@/components/LocationMapCard";
 import { PageTitle } from "@/components/PageTitle";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useTenantAdministration } from "@/hooks/useTenantAdministration";
+import { useDashboardDetailsLayout } from "@/hooks/useDashboardDetailsLayout";
 import { dashboardDailyQuote } from "@/lib/daily-dashboard-quotes";
 import { createDashboardKlemmiSteps } from "@/lib/dashboard-klemmi-tour";
 import {
@@ -1006,6 +1007,7 @@ function PilotTenantInfoCard({
 
 export default function Dashboard() {
   const [, navigate] = useLocation();
+  const detailsLayout = useDashboardDetailsLayout();
   const [workloadFilter, setWorkloadFilter] = useState<{
     day: DailyReadiness["day"];
     kind: "ungenutzt" | "teilzeit";
@@ -1178,6 +1180,7 @@ export default function Dashboard() {
     hasAssignments: s.schichtenGesamt > 0,
     hasContacts: s.verantwortlichkeiten.length > 0,
     hasMappableLocations,
+    detailsLayout,
   });
   const activePotentialDay = workloadFilter
     ? dailyReadiness.find(day => day.day === workloadFilter.day)

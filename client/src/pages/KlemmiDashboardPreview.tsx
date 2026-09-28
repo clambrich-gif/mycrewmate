@@ -1,6 +1,7 @@
 import { KlemmiSurfaceGuide } from "@/components/KlemmiSurfaceGuide";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useDashboardDetailsLayout } from "@/hooks/useDashboardDetailsLayout";
 import { createDashboardKlemmiSteps } from "@/lib/dashboard-klemmi-tour";
 import {
   CalendarClock,
@@ -18,6 +19,7 @@ export default function KlemmiDashboardPreview() {
   const [emptyState, setEmptyState] = useState(
     () => new URLSearchParams(window.location.search).get("leer") === "1"
   );
+  const detailsLayout = useDashboardDetailsLayout();
   const steps = useMemo(
     () =>
       createDashboardKlemmiSteps({
@@ -28,8 +30,9 @@ export default function KlemmiDashboardPreview() {
         hasAssignments: !emptyState,
         hasContacts: !emptyState,
         hasMappableLocations: !emptyState,
+        detailsLayout,
       }),
-    [emptyState]
+    [detailsLayout, emptyState]
   );
 
   return (
