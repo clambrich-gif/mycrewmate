@@ -190,6 +190,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(surfaceGuide).toContain("data-klemmi-next-control");
     expect(surfaceGuide).toContain("data-klemmi-narration-complete");
     expect(surfaceGuide).toContain("Klemmi wartet auf deinen Klick");
+    expect(surfaceGuide).toContain("audioKey?: string");
     expect(surfaceGuide).toContain("const [targetReady, setTargetReady] = useState(false)");
     expect(surfaceGuide).toContain("if (!celebrating && !targetReady) return");
     expect(surfaceGuide).toContain("MutationObserver");
@@ -208,7 +209,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain('data-klemmi-target="plan-search"');
     expect(plan).toContain('data-klemmi-target="plan-view-mode"');
     expect(plan).toContain("allowMissingTarget: true");
-    expect(plan).toContain('successSignal={null}');
+    expect(plan).toContain("klemmiPlanTourStartedEmpty");
+    expect(plan).toContain("klemmiPracticeCreationSignal");
+    expect(plan).toContain("waitsForSuccess: planIsEmptyAtGuideStart");
+    expect(plan).toContain("Eine leere Planung gemeinsam starten");
+    expect(plan).toContain("Übungsschicht speichern");
+    expect(plan).toContain('data-klemmi-target="plan-delete"');
     expect(plan).toContain("changeViewMode");
     expect(plan).toContain('data-slot="plan-view-transition"');
     expect(plan).not.toContain("klemmiCreatedShiftId");
@@ -268,6 +274,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(postprocessing).toContain("lg:flex-row lg:items-start lg:gap-5");
     expect(postprocessing).toContain('className="lg:ml-auto"');
     expect(audio).toContain('"plan-overview"');
+    expect(audio).toContain('"plan-empty"');
+    expect(audio).toContain('"plan-practice-save"');
+    expect(audio).toContain('"plan-practice-cleanup"');
     expect(audio).toContain('"plan-coverage"');
     expect(audio).toContain('"plan-candidates"');
     expect(audio).toContain('"plan-signals"');

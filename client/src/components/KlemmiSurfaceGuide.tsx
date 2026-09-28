@@ -30,9 +30,13 @@ export type KlemmiSurfaceStep = {
   eyebrow: string;
   title: string;
   text: string;
+  /** Optionaler Audio-Suffix, wenn sich der gesprochene Text je nach Zustand unterscheidet. */
+  audioKey?: string;
   action?: string;
   /** Der erklärende Schritt bleibt auch bei einer noch leeren Übersicht nutzbar. */
   allowMissingTarget?: boolean;
+  /** Wechselt weiter, sobald die Seite einen echten, vom Nutzer ausgelösten Öffnungsschritt meldet. */
+  advancesOnSignal?: boolean;
   waitsForSuccess?: boolean;
   completeOnSuccess?: boolean;
 };
@@ -81,9 +85,8 @@ export function KlemmiSurfaceGuide({
   const step = steps[stepIndex];
   const workflowSteps = useMemo(() => steps.filter(item => item.key !== "intro"), [steps]);
   const isIntro = step?.key === "intro";
-  const audioCandidate = celebrating
-    ? `${guideId}-complete`
-    : `${guideId}-${isIntro ? "intro" : step?.key ?? "intro"}`;
+  const audioSuffix = step?.audioKey ?? (isIntro ? "intro" : step?.key ?? "intro");
+  const audioCandidate = celebrating ? `${guideId}-complete` : `${guideId}-${audioSuffix}`;
   const audioClipId = isKlemmiAudioId(audioCandidate) ? audioCandidate : undefined;
 
   const closeGuide = () => {
