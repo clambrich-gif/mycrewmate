@@ -199,13 +199,20 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain('data-klemmi-target="plan-new"');
     expect(plan).toContain('data-klemmi-target="plan-basics"');
     expect(plan).toContain('data-klemmi-target="plan-save"');
-    expect(plan).toContain('data-klemmi-target="plan-created-shift"');
+    expect(plan).toContain('data-klemmi-target="plan-overview"');
+    expect(plan).toContain('data-klemmi-target="plan-coverage"');
+    expect(plan).toContain('data-klemmi-target="plan-candidates"');
     expect(plan).toContain('data-klemmi-target="plan-helper-status"');
     expect(plan).toContain('data-klemmi-target="plan-batch-assign"');
-    expect(plan).toContain("klemmiCreatedShiftId");
+    expect(plan).toContain('data-klemmi-target="plan-filters"');
+    expect(plan).toContain('data-klemmi-target="plan-search"');
+    expect(plan).toContain('data-klemmi-target="plan-view-mode"');
+    expect(plan).toContain("allowMissingTarget: true");
+    expect(plan).toContain('successSignal={null}');
     expect(plan).toContain("changeViewMode");
     expect(plan).toContain('data-slot="plan-view-transition"');
-    expect(plan).toContain("setKlemmiCreationSignal(Date.now())");
+    expect(plan).not.toContain("klemmiCreatedShiftId");
+    expect(plan).not.toContain("setKlemmiCreationSignal(Date.now())");
 
     expect(preparation).toContain('<KlemmiSurfaceGuide');
     expect(preparation).toContain('data-klemmi-target="preparation-new"');
@@ -227,6 +234,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(cakes).toContain('layout="guide-first"');
     expect(cakes).toContain("KlemmiActionPanel");
     expect(cakes).toContain('data-klemmi-target="donations-create"');
+    expect(cakes).toContain('data-klemmi-target="donations-overview"');
+    expect(cakes).toContain('data-klemmi-target="donations-filters"');
+    expect(cakes).toContain('data-klemmi-target="donations-pdf"');
+    expect(cakes).toContain('if (stepKey === "save") closeDialog();');
     expect(cakes).toContain('event.target.closest("[data-klemmi-guide]")');
     expect(cakes).toContain("event.preventDefault();");
     expect(actionPanel).toContain('layout?: "view-first" | "guide-first"');
@@ -256,9 +267,14 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(preparation).toContain('className="lg:ml-auto"');
     expect(postprocessing).toContain("lg:flex-row lg:items-start lg:gap-5");
     expect(postprocessing).toContain('className="lg:ml-auto"');
-    expect(audio).toContain('"plan-created"');
+    expect(audio).toContain('"plan-overview"');
+    expect(audio).toContain('"plan-coverage"');
     expect(audio).toContain('"plan-candidates"');
+    expect(audio).toContain('"plan-signals"');
     expect(audio).toContain('"plan-assign"');
+    expect(audio).toContain('"plan-filters"');
+    expect(audio).toContain('"plan-search"');
+    expect(audio).toContain('"plan-view"');
     expect(audio).toContain('"plan-complete"');
   });
 
@@ -1471,7 +1487,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("<KlemmiActionPanel");
     expect(plan).toContain("flex flex-col gap-3 lg:flex-row lg:items-start lg:gap-5");
     expect(plan).toContain('className="lg:ml-auto"');
-    expect(plan).toContain("viewControl={<ViewModeToggle");
+    expect(plan).toContain('data-klemmi-target="plan-view-mode"');
   });
 
   it("bietet im Schichtdialog bestehende Bereiche zur Auswahl und erlaubt neue Freitexteingaben", () => {

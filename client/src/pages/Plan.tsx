@@ -706,19 +706,11 @@ export default function Plan() {
     useState<DropdownShift | null>(null);
   const [mobileNoteValue, setMobileNoteValue] = useState("");
   const [klemmiGuideOpen, setKlemmiGuideOpen] = useState(false);
-  const [klemmiCreationSignal, setKlemmiCreationSignal] = useState<number | null>(null);
-  const [klemmiCreatedShiftId, setKlemmiCreatedShiftId] = useState<number | null>(null);
   const [mobileHelperDetails, setMobileHelperDetails] = useState<{
     helper: HelperTooltipData;
     shift: DropdownShift;
   } | null>(null);
   const pendingTimeOverlapNotice = useRef<string[]>([]);
-  const klemmiCreatedShiftReady = useMemo(
-    () =>
-      klemmiCreatedShiftId !== null &&
-      evals.some(entry => entry.shift.id === klemmiCreatedShiftId),
-    [evals, klemmiCreatedShiftId]
-  );
   const emptyMessage =
     warningFilter === "konflikte"
       ? "Keine Schichten mit Doppelbelegungen gefunden."
@@ -867,17 +859,8 @@ export default function Plan() {
   });
   const createShift = trpc.shifts.create.useMutation({
     onSuccess: result => {
-      const createdShiftId = Number(
-        (result as { insertId?: number } | undefined)?.insertId
-      );
       invalidate();
       setDlgOpen(false);
-      setKlemmiCreatedShiftId(
-        Number.isSafeInteger(createdShiftId) && createdShiftId > 0
-          ? createdShiftId
-          : null
-      );
-      setKlemmiCreationSignal(Date.now());
       toast.success("Schicht angelegt");
     },
     onError: e => toast.error(e.message),
@@ -1594,9 +1577,7 @@ export default function Plan() {
       <Card
         key={shift.id}
         data-slot="shift-card"
-        data-klemmi-target={
-          klemmiCreatedShiftId === shift.id ? "plan-created-shift" : undefined
-        }
+        data-klemmi-target="plan-overview"
         data-klemmi-shift-id={shift.id}
         className="overflow-hidden border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md"
       >
@@ -1651,7 +1632,10 @@ export default function Plan() {
             )}
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3">
+          <div
+            data-klemmi-target="plan-coverage"
+            className="rounded-xl border border-slate-200 bg-slate-50/80 p-3"
+          >
             <div className="mb-2 flex items-center justify-between gap-3 text-sm">
               <span className="font-medium text-slate-700">Besetzung</span>
               <span className="font-semibold text-slate-950">
@@ -1670,7 +1654,10 @@ export default function Plan() {
           </div>
 
           <div className="grid gap-3 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-            <section className="rounded-xl border border-slate-200 bg-white p-3">
+            <section
+              data-klemmi-target="plan-assigned"
+              className="rounded-xl border border-slate-200 bg-white p-3"
+            >
               <p className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">
                 Eingeteilt
               </p>
@@ -1711,6 +1698,7 @@ export default function Plan() {
 
             <section
               data-slot="shift-card-batch-selection"
+              data-klemmi-target="plan-candidates"
               className="rounded-xl border border-blue-100 bg-blue-50/40 p-3"
             >
               <div className="mb-2 flex items-center justify-between gap-2">
@@ -1778,7 +1766,7 @@ export default function Plan() {
                             assignments={assignmentDisplayByHelper.get(helper.id) ?? []}
                             compact
                             interactive={isMobileView}
-                            guideTarget={klemmiCreatedShiftId === shift.id}
+                            guideTarget
                           />
                         </div>
                       );
@@ -1792,9 +1780,7 @@ export default function Plan() {
                   <Button
                     type="button"
                     size="sm"
-                    data-klemmi-target={
-                      klemmiCreatedShiftId === shift.id ? "plan-batch-assign" : undefined
-                    }
+                    data-klemmi-target="plan-batch-assign"
                     className="mt-3 w-full bg-blue-600 text-white hover:bg-blue-700"
                     disabled={!selectedHelperIds.length || assignMany.isPending}
                     onClick={() => assignMany.mutate({ shiftId: shift.id, helperIds: selectedHelperIds })}
@@ -1848,32 +1834,44 @@ export default function Plan() {
           {canEditPlan ? (
             <KlemmiActionPanel
               className="lg:ml-auto"
-              viewControl={<ViewModeToggle mode={viewMode} onChange={changeViewMode} />}
+              viewControl={
+                <span data-klemmi-target="plan-view-mode">
+                  <ViewModeToggle mode={viewMode} onChange={changeViewMode} />
+                </span>
+              }
               guide={
                 <KlemmiSurfaceGuide
                 guideId="plan"
-                title="Schichten anlegen und Besetzung füllen"
-                introText="Ich begleite dich zuerst durch die Schichtanlage und zeige dir danach direkt an der neuen Kachel, wie du passende Helfer sicher einteilst."
-                successSignal={klemmiCreationSignal}
-                onOpenChange={setKlemmiGuideOpen}
+                title="Den Einsatzplan von Anfang bis Ende verstehen"
+                introText="Ich zeige dir die komplette Planung – von der ersten Schicht bis zur sicheren Besetzung. Du musst dabei nichts anlegen, speichern oder zuordnen."
+                successSignal={null}
+                onOpenChange={open => {
+                  setKlemmiGuideOpen(open);
+                  if (!open) setDlgOpen(false);
+                }}
                 onStepAction={stepKey => {
                   if (stepKey === "intro") openCreate();
+                  if (stepKey === "save") {
+                    setDlgOpen(false);
+                    setEditShift(null);
+                    changeViewMode("kacheln");
+                  }
                 }}
-                completionTitle="Besetzung im Griff!"
-                completionText="Du erkennst jetzt neue Helfer, Tagesstatus, Begleitungen und bestehende Einsätze – und kannst freie Plätze gesammelt füllen."
+                completionTitle="Einsatzplan im Griff!"
+                completionText="Du kennst jetzt den Ablauf: Schichten sauber anlegen, Bedarf erkennen, passende Helfer anhand ihrer Verfügbarkeit auswählen, die Besetzung prüfen und anschließend die Zusagen zuverlässig nachhalten."
                 steps={[
                   {
                     key: "intro",
                     selector: '[data-klemmi-target="plan-new"]',
                     eyebrow: "Klemmi zeigt’s",
-                    title: "Schichten anlegen und Besetzung füllen",
-                    text: "Ich führe dich durch die echte Schichtanlage und anschließend direkt in die Besetzung der neuen Kachel.",
-                    action: "Neue Schicht öffnen",
+                    title: "So entsteht ein verlässlicher Einsatzplan",
+                    text: "Zuerst legen wir eine Schicht an. Danach zeige ich dir, wie du den Bedarf füllst, Helferzeichen richtig liest und den fertigen Plan kontrollierst.",
+                    action: "Schichtanlage zeigen",
                   },
                   {
                     key: "basics",
                     selector: '[data-klemmi-target="plan-basics"]',
-                    eyebrow: "Schritt 1 von 7",
+                    eyebrow: "Schritt 1 von 12",
                     title: "Tag und Personalbedarf festlegen",
                     text: "Wähle den passenden Eventtag und die Zahl der benötigten Helferplätze. So wird Unterbesetzung später sofort sichtbar.",
                     action: "Bereich beschreiben",
@@ -1881,7 +1879,7 @@ export default function Plan() {
                   {
                     key: "task",
                     selector: '[data-klemmi-target="plan-task"]',
-                    eyebrow: "Schritt 2 von 7",
+                    eyebrow: "Schritt 2 von 12",
                     title: "Bereich und Aufgabe benennen",
                     text: "Ein klarer Bereich und eine konkrete Aufgabe helfen dem Team, die Schicht in der Liste und auf dem Gelände sofort einzuordnen.",
                     action: "Zeit ergänzen",
@@ -1889,7 +1887,7 @@ export default function Plan() {
                   {
                     key: "time",
                     selector: '[data-klemmi-target="plan-time"]',
-                    eyebrow: "Schritt 3 von 7",
+                    eyebrow: "Schritt 3 von 12",
                     title: "Zeitfenster und Besonderheiten ergänzen",
                     text: "Trage Beginn und Ende ein, wenn die Schicht zeitgebunden ist. Ort, Hinweise und flexible Belegung kannst du nach Bedarf ergänzen.",
                     action: "Speichern zeigen",
@@ -1897,35 +1895,78 @@ export default function Plan() {
                   {
                     key: "save",
                     selector: '[data-klemmi-target="plan-save"]',
-                    eyebrow: "Schritt 4 von 7",
+                    eyebrow: "Schritt 4 von 12",
                     title: "Schicht speichern",
-                    text: "Klicke auf den markierten Speichern-Button. Erst dein Klick legt die Schicht im Einsatzplan an.",
-                    waitsForSuccess: true,
+                    text: "Erst der markierte Speichern-Button legt eine Schicht wirklich an. Für diese Erklärung klickst du nicht darauf – ich zeige dir jetzt direkt, wie die fertige Planung anschließend aussieht.",
+                    action: "Schichtkachel zeigen",
                   },
                   {
-                    key: "created",
-                    selector: klemmiCreatedShiftReady
-                      ? `[data-klemmi-target="plan-created-shift"][data-klemmi-shift-id="${klemmiCreatedShiftId}"]`
-                      : '[data-slot="shift-card"]',
-                    eyebrow: "Schritt 5 von 7",
-                    title: "Neue Schicht in der Kachel finden",
-                    text: "Die neue Schicht erscheint als Kachel mit Bedarf und Fortschrittsbalken. Links stehen die Eingeteilten, rechts wählst du passende Helfer aus.",
-                    action: "Helferstatus verstehen",
+                    key: "overview",
+                    selector: '[data-klemmi-target="plan-overview"]',
+                    allowMissingTarget: true,
+                    eyebrow: "Schritt 5 von 12",
+                    title: "Schichtkachel und Bedarf lesen",
+                    text: "Jede Schicht erscheint als eigene Kachel: oben stehen Tag, Bereich und Aufgabe. Der Balken darunter zeigt sofort, wie viele Plätze bereits besetzt sind. Bei einer leeren Planung bleibt dieser Schritt trotzdem verständlich – die erste angelegte Schicht sieht genau so aus.",
+                    action: "Besetzung erklären",
+                  },
+                  {
+                    key: "coverage",
+                    selector: '[data-klemmi-target="plan-coverage"]',
+                    allowMissingTarget: true,
+                    eyebrow: "Schritt 6 von 12",
+                    title: "Offene Plätze sofort erkennen",
+                    text: "Die Anzeige zum Personalbedarf sagt zum Beispiel zwei von vier Helfern. Erst wenn die erforderliche Zahl erreicht ist, gilt die Schicht als vollständig besetzt. Darum lohnt sich der Blick auf den Balken bei jeder Änderung.",
+                    action: "Auswahlbereich zeigen",
                   },
                   {
                     key: "candidates",
+                    selector: '[data-klemmi-target="plan-candidates"]',
+                    allowMissingTarget: true,
+                    eyebrow: "Schritt 7 von 12",
+                    title: "Passende Helfer auswählen",
+                    text: "Rechts in der Kachel stehen nur Helfer, die für die Schicht grundsätzlich in Frage kommen. Die Kästchen vorne dienen der Mehrfachauswahl – so füllst du mehrere freie Plätze in einem Schritt statt jede Person einzeln anzulegen.",
+                    action: "Statuszeichen erklären",
+                  },
+                  {
+                    key: "signals",
                     selector: '[data-klemmi-target="plan-helper-status"]',
-                    eyebrow: "Schritt 6 von 7",
-                    title: "Statuszeichen vor dem Namen lesen",
-                    text: "„Neu“ heißt: noch in keiner Schicht eingeteilt. Die Tagessegmente zeigen Grün für frei, Gelb für an diesem Tag schon belegt und Rot für nicht verfügbar. Die Uhr steht für ein Zeitfenster; 👪 bedeutet, dass eine Begleitung mitkommt.",
-                    action: "Mehrere Helfer wählen",
+                    allowMissingTarget: true,
+                    eyebrow: "Schritt 8 von 12",
+                    title: "Tageszeichen, Zeitfenster und Begleitung lesen",
+                    text: "Neu bedeutet: noch in keiner Schicht eingeteilt. Grün steht für frei, Gelb für eine Belegung an diesem Tag und Rot für nicht verfügbar. Die Uhr zeigt ein Zeitfenster. Das Familiensymbol vor einem Namen bedeutet, dass eine Begleitung mitkommt. So vermeidest du falsche oder doppelte Einteilungen.",
+                    action: "Sammelzuordnung zeigen",
                   },
                   {
                     key: "assign",
                     selector: '[data-klemmi-target="plan-batch-assign"]',
-                    eyebrow: "Schritt 7 von 7",
+                    allowMissingTarget: true,
+                    eyebrow: "Schritt 9 von 12",
                     title: "Passende Helfer gesammelt zuordnen",
-                    text: "Setze vorne bei allen passenden Personen ein Häkchen und übernimm die Auswahl gesammelt. Ein Klick auf den Namen öffnet Hinweise, Verfügbarkeit und bisherige Einsätze.",
+                    text: "Setze vorne bei allen passenden Personen ein Häkchen und übernimm die Auswahl gesammelt. Ein Klick auf den Namen zeigt Hinweise, Verfügbarkeit und bisherige Einsätze. Danach kontrollierst du erneut den Besetzungsbalken.",
+                    action: "Filter zeigen",
+                  },
+                  {
+                    key: "filters",
+                    selector: '[data-klemmi-target="plan-filters"]',
+                    eyebrow: "Schritt 10 von 12",
+                    title: "Viele Schichten schnell eingrenzen",
+                    text: "Mit Meine Aufgaben, Tagen, Bereichen, Status und Warnungen reduzierst du die Ansicht auf genau den Teil des Plans, den du gerade prüfen willst. So bleiben auch mehrtägige Veranstaltungen übersichtlich.",
+                    action: "Suche zeigen",
+                  },
+                  {
+                    key: "search",
+                    selector: '[data-klemmi-target="plan-search"]',
+                    eyebrow: "Schritt 11 von 12",
+                    title: "Nach Aufgabe, Bereich oder Helfer suchen",
+                    text: "Die Suche findet sofort passende Schichten und Namen. Das hilft zum Beispiel bei einer Rückfrage eines Helfers, wenn du nur seinen Namen oder einen Bereich kennst.",
+                    action: "Ansicht wählen",
+                  },
+                  {
+                    key: "view",
+                    selector: '[data-klemmi-target="plan-view-mode"]',
+                    eyebrow: "Schritt 12 von 12",
+                    title: "Liste oder Kacheln passend zur Aufgabe wählen",
+                    text: "Die Kachelansicht eignet sich besonders zum Besetzen, weil Helferlisten und Bedarf direkt nebeneinander stehen. Die Liste ist ideal für einen schnellen Gesamtüberblick. Beide Ansichten zeigen dieselben Planungsdaten.",
                     action: "Fertig",
                   },
                 ]}
@@ -2079,7 +2120,7 @@ export default function Plan() {
         </div>
       )}
 
-      <div className="flex flex-col gap-2.5">
+      <div data-klemmi-target="plan-filters" className="flex flex-col gap-2.5">
         <div className="order-1 flex items-center gap-1 md:hidden" aria-label="Persönlicher Einsatzfilter">
           <Button
             type="button"
@@ -2403,7 +2444,7 @@ export default function Plan() {
           )}
         </div>
 
-        <div className="order-3 relative w-full lg:max-w-xl">
+        <div data-klemmi-target="plan-search" className="order-3 relative w-full lg:max-w-xl">
           <Search
             className="pointer-events-none absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-700"
             aria-hidden="true"

@@ -926,6 +926,30 @@
   filter: drop-shadow(0 12px 14px rgb(15 23 42 / 23%));
 }
 
+/* Kurze Statusmeldungen bleiben auf Desktop zentriert und kommen von unten
+   ins Sichtfeld. So verdecken sie weder die seitliche Navigation noch Klemmi.
+   Auf Smartphones bleiben Erfolgs- und Infomeldungen bewusst unsichtbar: Dort
+   wäre der knappe Arbeitsbereich sonst durch jede Rückmeldung unterbrochen.
+   Fehler bleiben sichtbar, damit fehlende Eingaben oder Probleme nicht verloren
+   gehen. */
+.mycrewmate-status-toaster[data-sonner-toaster][data-x-position="center"] {
+  --offset-bottom: 1.5rem;
+}
+
+.mycrewmate-status-toaster [data-sonner-toast] {
+  transition-duration: 260ms;
+  transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@media (max-width: 767px) {
+  .mycrewmate-status-toaster [data-sonner-toast][data-type="success"],
+  .mycrewmate-status-toaster [data-sonner-toast][data-type="info"],
+  .mycrewmate-status-toaster [data-sonner-toast][data-type="warning"],
+  .mycrewmate-status-toaster [data-sonner-toast][data-type="default"] {
+    display: none;
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .klemmi-login-greeting {
     animation:

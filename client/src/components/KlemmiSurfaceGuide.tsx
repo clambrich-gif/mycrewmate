@@ -31,6 +31,8 @@ export type KlemmiSurfaceStep = {
   title: string;
   text: string;
   action?: string;
+  /** Der erklärende Schritt bleibt auch bei einer noch leeren Übersicht nutzbar. */
+  allowMissingTarget?: boolean;
   waitsForSuccess?: boolean;
   completeOnSuccess?: boolean;
 };
@@ -103,6 +105,7 @@ export function KlemmiSurfaceGuide({
       setCelebrating(true);
       return;
     }
+    setTargetReady(false);
     setStepIndex(current => Math.min(current + 1, steps.length - 1));
   }, [open, step?.waitsForSuccess, step?.completeOnSuccess, stepIndex, steps.length, successSignal]);
 
@@ -146,7 +149,7 @@ export function KlemmiSurfaceGuide({
     const syncPosition = () => {
       const element = resolveVisibleTarget();
       setTargetReady(current => {
-        const next = Boolean(element);
+        const next = Boolean(element) || Boolean(step.allowMissingTarget);
         return current === next ? current : next;
       });
       if (!element) {
@@ -192,10 +195,11 @@ export function KlemmiSurfaceGuide({
       resizeObserver?.disconnect();
       mutationObserver.disconnect();
     };
-  }, [open, celebrating, step?.selector]);
+  }, [open, celebrating, step?.allowMissingTarget, step?.selector]);
 
   const showPrevious = () => {
     if (stepIndex === 0) return;
+    setTargetReady(false);
     setStepIndex(current => Math.max(0, current - 1));
   };
 
@@ -206,6 +210,7 @@ export function KlemmiSurfaceGuide({
       setCelebrating(true);
       return;
     }
+    setTargetReady(false);
     setStepIndex(current => Math.min(current + 1, steps.length - 1));
   };
 
@@ -222,6 +227,7 @@ export function KlemmiSurfaceGuide({
           acceptedSuccessSignal.current = successSignal;
           setStepIndex(0);
           setCelebrating(false);
+          setTargetReady(false);
           setOpeningPending(true);
           setOpen(true);
           onOpenChange?.(true);

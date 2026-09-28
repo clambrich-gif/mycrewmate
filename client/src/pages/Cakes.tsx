@@ -528,8 +528,12 @@ export default function Cakes() {
               introText="Ich führe dich durch die echte Spendenanlage – vom Spender bis zu Allergenen, Abgabe und Speichern."
               steps={DONATIONS_KLEMMI_STEPS}
               successSignal={klemmiSuccessSignal}
+              onOpenChange={open => {
+                if (!open) closeDialog();
+              }}
               onStepAction={stepKey => {
                 if (stepKey === "intro") openCreate();
+                if (stepKey === "save") closeDialog();
               }}
             />
           }
@@ -538,6 +542,7 @@ export default function Cakes() {
               <Button
                 type="button"
                 variant="outline"
+                data-klemmi-target="donations-pdf"
                 className="border-blue-200 bg-white text-slate-800 hover:bg-blue-50 hover:text-blue-900"
                 disabled={donationOverviewPdf.isPending}
                 onClick={downloadDonationOverviewPdf}
@@ -571,7 +576,10 @@ export default function Cakes() {
         />
       </div>
 
-      <div className="space-y-3 rounded-xl border bg-slate-50/70 p-3 sm:p-4">
+      <div
+        data-klemmi-target="donations-filters"
+        className="space-y-3 rounded-xl border bg-slate-50/70 p-3 sm:p-4"
+      >
         <div
           className={`grid grid-cols-1 gap-2 sm:grid-cols-2 lg:items-center ${
             hasActiveFilters
@@ -789,6 +797,7 @@ export default function Cakes() {
         </Collapsible>
       )}
 
+      <div data-klemmi-target="donations-overview">
       {viewMode === "liste" ? (
         <>
       <div className="space-y-3 md:hidden">
@@ -1040,6 +1049,8 @@ export default function Cakes() {
           )}
         </div>
       )}
+
+      </div>
 
       <Dialog
         open={dialogOpen}

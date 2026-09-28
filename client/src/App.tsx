@@ -252,7 +252,12 @@ function App() {
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light" forcedTheme="light">
         <TooltipProvider>
-          <Toaster />
+          <Toaster
+            position="bottom-center"
+            visibleToasts={3}
+            className="mycrewmate-status-toaster"
+            toastOptions={{ duration: 3_600 }}
+          />
           {masterAdminSite ? (
             <MasterAdminRouter />
           ) : marketingSite ? (
