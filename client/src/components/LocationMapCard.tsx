@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import { trpc } from "@/lib/trpc";
 import { MapPin } from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -25,12 +26,16 @@ export type MapEntry = {
 };
 
 export function LocationMapCard() {
+  const { canReadModule } = useTenantAdministration();
+  const canReadLocations = canReadModule("locations");
   const [searchParams] = useSearchParams();
   const focusLocationId = Number(searchParams.get("location")) || null;
   const scrollToMap = searchParams.get("scroll") === "map";
   const mapScrollTargetRef = useRef<HTMLDivElement | null>(null);
   const consumedScrollFocusRef = useRef<string | null>(null);
-  const { data: rawLocations = [] } = trpc.locations.list.useQuery();
+  const { data: rawLocations = [] } = trpc.locations.list.useQuery(undefined, {
+    enabled: canReadLocations,
+  });
   const { data: evaluations = [] } = trpc.plan.evaluate.useQuery();
   const { data: preparation = [] } = trpc.prep.list.useQuery();
   const { data: materials = [] } = trpc.materials.list.useQuery();

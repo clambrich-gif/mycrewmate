@@ -1659,7 +1659,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     ? activeNavigationAccess(
                         effectiveNavigationRole,
                         href,
-                        myPermissions.data
+                        myPermissions.data,
+                        myModuleAccess.data
                       )
                     : null;
                   return (
@@ -1876,12 +1877,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <div key={section.id} className="space-y-0.5">
               {section.items.map(({ href, label, icon: Icon }) => {
                 const active = location === href;
-                const access = active
-                  ? activeNavigationAccess(
-                      effectiveNavigationRole,
-                      href,
-                      myPermissions.data
-                    )
+                  const access = active
+                    ? activeNavigationAccess(
+                        effectiveNavigationRole,
+                        href,
+                        myPermissions.data,
+                        myModuleAccess.data
+                      )
                   : null;
                 return (
                   <Link

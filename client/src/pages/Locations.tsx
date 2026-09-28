@@ -35,7 +35,8 @@ function baseName(filename: string) {
 }
 
 export default function Locations() {
-  const { isTenantAdmin: canManage } = useTenantAdministration();
+  const { isTenantAdmin: canDelete, canWriteModule } = useTenantAdministration();
+  const canManage = canWriteModule("locations");
   const utils = trpc.useUtils();
   const { data: locations = [], isLoading } = trpc.locations.list.useQuery();
   const { data: gpxTracks = [], isLoading: tracksLoading } = trpc.gpxTracks.list.useQuery();
@@ -368,7 +369,7 @@ export default function Locations() {
             <span className="hidden tabular-nums text-sm text-slate-700 sm:block">{location.longitude.toFixed(5)}</span>
             <span className="col-start-2 row-start-1 flex shrink-0 justify-end gap-1 sm:col-auto sm:row-auto">
               {canManage && <Button variant="ghost" size="icon" aria-label={`${location.name} bearbeiten`} onClick={() => openEdit(location)}><Pencil className="size-4" /></Button>}
-              {canManage && <Button variant="ghost" size="icon" className="text-red-700 hover:text-red-800" aria-label={`${location.name} löschen`} onClick={() => setDeleteTarget(location)}><Trash2 className="size-4" /></Button>}
+              {canDelete && <Button variant="ghost" size="icon" className="text-red-700 hover:text-red-800" aria-label={`${location.name} löschen`} onClick={() => setDeleteTarget(location)}><Trash2 className="size-4" /></Button>}
             </span>
           </div>
         ))}
@@ -438,7 +439,7 @@ export default function Locations() {
                     ) : (
                       <Button variant="ghost" size="icon" aria-label={`${track.name} umbenennen`} onClick={() => startTrackEdit(track)}><Pencil className="size-4" /></Button>
                     )}
-                    <Button variant="ghost" size="icon" className="text-red-700 hover:text-red-800" aria-label={`${track.name} löschen`} onClick={() => setTrackDeleteTarget(track)}><Trash2 className="size-4" /></Button>
+                    {canDelete && <Button variant="ghost" size="icon" className="text-red-700 hover:text-red-800" aria-label={`${track.name} löschen`} onClick={() => setTrackDeleteTarget(track)}><Trash2 className="size-4" /></Button>}
                   </span>
                 )}
               </div>

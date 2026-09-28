@@ -8,6 +8,7 @@ export const PLANNING_MODULES = [
   "donations",
   "finances",
   "pdf",
+  "locations",
   // Historischer Wert: bleibt ausschließlich für die verlustfreie Übernahme
   // älterer Zugänge erhalten. Neue Zugänge verwenden moduleAccess.
   "read_all",
@@ -46,6 +47,7 @@ export const FULL_PLANNER_PERMISSIONS: readonly PlanningModule[] = [
   "donations",
   "finances",
   "pdf",
+  "locations",
   "read_all",
 ];
 
@@ -104,6 +106,10 @@ export const PLANNING_MODULE_META: Record<PlanningModule, { label: string; descr
   pdf: {
     label: "PDF-Ausgabe",
     description: "PDF-Ausgaben ansehen oder konfigurieren und erzeugen.",
+  },
+  locations: {
+    label: "Orte & Standorte",
+    description: "Einsatzorte und GPX-Strecken ansehen oder verwalten.",
   },
   read_all: {
     label: "Nur lesen",

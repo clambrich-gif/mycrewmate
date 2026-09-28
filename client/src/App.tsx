@@ -85,6 +85,7 @@ const Help = lazy(routeLoaders["/hilfe"]);
 const KlemmiFirstLoginPreview = lazy(() => import("@/pages/KlemmiFirstLoginPreview"));
 const KlemmiDashboardPreview = lazy(() => import("@/pages/KlemmiDashboardPreview"));
 const KlemmiPlanLayoutPreview = lazy(() => import("@/pages/KlemmiPlanLayoutPreview"));
+const KlemmiAccessStagesPreview = lazy(() => import("@/pages/KlemmiAccessStagesPreview"));
 const OfferDemo = lazy(() => import("@/pages/OfferDemo"));
 const PublicLegalPage = lazy(() => import("@/pages/PublicLegal"));
 const MasterAdminPortal = lazy(() => import("@/pages/MasterAdminPortal"));
@@ -135,6 +136,15 @@ function PublicAppRedirect() {
 }
 
 function PublicSiteRouter() {
+  const isStaging = typeof window !== "undefined" && window.location.pathname.startsWith("/_staging/");
+  if (isStaging) {
+    return (
+      <Suspense fallback={<RouteLoading />}>
+        <Router />
+      </Suspense>
+    );
+  }
+
   return (
     <Suspense fallback={<RouteLoading />}>
       <Switch>
@@ -165,27 +175,26 @@ function MasterAdminRouter() {
 function Router() {
   return (
     <Switch>
-      {import.meta.env.DEV && (
         <Route path="/_staging/klemmi-erst-login">
           <Suspense fallback={<RouteLoading />}>
             <KlemmiFirstLoginPreview />
           </Suspense>
         </Route>
-      )}
-      {import.meta.env.DEV && (
         <Route path="/_staging/klemmi-dashboard">
           <Suspense fallback={<RouteLoading />}>
             <KlemmiDashboardPreview />
           </Suspense>
         </Route>
-      )}
-      {import.meta.env.DEV && (
         <Route path="/_staging/klemmi-einsatzplan">
           <Suspense fallback={<RouteLoading />}>
             <KlemmiPlanLayoutPreview />
           </Suspense>
         </Route>
-      )}
+        <Route path="/_staging/klemmi-access-stages">
+          <Suspense fallback={<RouteLoading />}>
+            <KlemmiAccessStagesPreview />
+          </Suspense>
+        </Route>
       {/* Nur lokale/Manus-Vorschauen können das Masterportal über diesen Pfad testen.
           Auf admin.mycrewmate.de wird MasterAdminRouter direkt am Root gerendert. */}
       <Route path="/master-admin" component={MasterAdminPortal} />

@@ -1008,6 +1008,8 @@ function PilotTenantInfoCard({
 export default function Dashboard() {
   const [, navigate] = useLocation();
   const detailsLayout = useDashboardDetailsLayout();
+  const { canReadModule } = useTenantAdministration();
+  const canReadLocations = canReadModule("locations");
   const [workloadFilter, setWorkloadFilter] = useState<{
     day: DailyReadiness["day"];
     kind: "ungenutzt" | "teilzeit";
@@ -1019,7 +1021,9 @@ export default function Dashboard() {
     trpc.events.current.useQuery();
   const { data: currentTenant, isLoading: isTenantLoading } =
     trpc.tenants.current.useQuery();
-  const { data: dashboardLocations = [] } = trpc.locations.list.useQuery();
+  const { data: dashboardLocations = [] } = trpc.locations.list.useQuery(undefined, {
+    enabled: canReadLocations,
+  });
   const activeDays = currentEvent ? eventWeekdays(currentEvent.activeDays) : [];
   const helperByName = new Map(helpers.map(helper => [helper.name, helper]));
   const zeroAvailability = (helperName: string, day: Weekday) => {

@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
+import type { EditablePlanningModule } from "@shared/tenant-permissions";
 
 /**
  * Liefert die serverbestätigte Verwaltungsrolle für die aktuelle Vereinsansicht.
@@ -17,6 +18,11 @@ export function useTenantAdministration() {
       retry: 1,
       staleTime: 30_000,
     });
+  const moduleAccess = trpc.planningTeamAccesses.myModuleAccess.useQuery(undefined, {
+    enabled: isAuthenticated && user?.role === "user",
+    retry: 1,
+    staleTime: 30_000,
+  });
 
   const isCoAdmin =
     user?.role === "user" &&
@@ -28,12 +34,21 @@ export function useTenantAdministration() {
     !isCoAdmin &&
     (user?.role === "admin" ||
       administrativeContext.data?.isPrimaryTenantAdmin === true);
+  const canReadModule = (module: EditablePlanningModule) =>
+    isTenantAdmin ||
+    moduleAccess.data?.[module] === "read" ||
+    moduleAccess.data?.[module] === "write";
+  const canWriteModule = (module: EditablePlanningModule) =>
+    isTenantAdmin || moduleAccess.data?.[module] === "write";
 
   return {
     isTenantAdmin,
     isPrimaryTenantAdmin,
     isCoAdmin,
     administrativeContext,
+    moduleAccess,
+    canReadModule,
+    canWriteModule,
   };
 }
 

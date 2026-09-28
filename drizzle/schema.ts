@@ -19,6 +19,7 @@ import type {
   PlanningModule,
   PlanningModuleAccess,
 } from "../shared/tenant-permissions";
+import type { PlanningAccessStageId } from "../shared/planning-access-stages";
 
 /**
  * Core user table backing auth flow.
@@ -777,6 +778,11 @@ export const planningTeamAccesses = mysqlTable("planning_team_accesses", {
    * Altbestand und wird serverseitig verlustfrei aus modulePermissions abgeleitet.
    */
   moduleAccess: json("moduleAccess").$type<PlanningModuleAccess>(),
+  /**
+   * Zuletzt gewählte Freigabestufe. Individuelle Ausnahmen bleiben weiterhin
+   * vollständig in moduleAccess gespeichert und können die Vorlage übersteuern.
+   */
+  accessStage: varchar("accessStage", { length: 32 }).$type<PlanningAccessStageId | null>(),
   /**
    * Vereinsinterne Stellvertretung: erhält volle Rechte nur im eigenen Verein,
    * darf aber keine weiteren Stellvertretungen ernennen oder verwalten.

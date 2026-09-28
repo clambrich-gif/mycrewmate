@@ -120,6 +120,7 @@ const PATH_TO_MODULE_MAP: Record<string, import("@shared/tenant-permissions").Ed
   "/spenden": "donations",
   "/finanzen": "finances",
   "/pdf-export": "pdf",
+  "/orte": "locations",
 };
 
 export function visibleNavigationItemsWithPermissions(
@@ -188,7 +189,8 @@ export type ActiveNavigationAccess = "edit" | "read";
 export function activeNavigationAccess(
   role: "user" | "admin" | null | undefined,
   href: string,
-  permissions: readonly import("@shared/tenant-permissions").PlanningModule[] | null | undefined
+  permissions: readonly import("@shared/tenant-permissions").PlanningModule[] | null | undefined,
+  moduleAccess?: import("@shared/tenant-permissions").PlanningModuleAccess | null
 ): ActiveNavigationAccess {
   if (role === "admin") {
     return ADMIN_EDITING_PATHS.includes(
@@ -199,12 +201,14 @@ export function activeNavigationAccess(
   }
   if (role !== "user") return "read";
 
+  const requiredModule = PATH_TO_MODULE_MAP[href];
+  if (requiredModule && moduleAccess && typeof moduleAccess === "object") {
+    return moduleAccess[requiredModule] === "write" ? "edit" : "read";
+  }
   if (!PLANNING_TEAM_EDITING_PATHS.includes(
     href as (typeof PLANNING_TEAM_EDITING_PATHS)[number]
   )) {
     return "read";
   }
-
-  const requiredModule = PATH_TO_MODULE_MAP[href];
   return requiredModule && permissions?.includes(requiredModule) ? "edit" : "read";
 }

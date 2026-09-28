@@ -24,7 +24,8 @@ import { toast } from "sonner";
 
 export default function Contacts() {
   const utils = trpc.useUtils();
-  const { isTenantAdmin } = useTenantAdministration();
+  const { isTenantAdmin: canDelete, canWriteModule } = useTenantAdministration();
+  const canManage = canWriteModule("contacts");
   const { data: contacts = [], isLoading } = trpc.contacts.list.useQuery();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -170,7 +171,7 @@ export default function Contacts() {
         </div>
       </div>
 
-      {isTenantAdmin && (
+      {canManage && (
         <Card className="border-blue-200 bg-slate-50/80 shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-base text-blue-950">Neuanlage</CardTitle>
@@ -279,7 +280,7 @@ export default function Contacts() {
                     </div>
                   </div>
                   <span className="flex flex-wrap items-center gap-1.5">
-                    <Button
+                    {canManage && <Button
                       type="button"
                       variant="ghost"
                       size="icon"
@@ -292,8 +293,8 @@ export default function Contacts() {
                       }}
                     >
                       <Pencil className="h-4 w-4" />
-                    </Button>
-                    {isTenantAdmin && (
+                    </Button>}
+                    {canDelete && (
                       <Button
                         type="button"
                         variant="ghost"
