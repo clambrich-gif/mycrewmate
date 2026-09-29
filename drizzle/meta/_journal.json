@@ -526,6 +526,13 @@
       "when": 1790677712190,
       "tag": "0074_medical_lord_hawal",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "5",
+      "when": 1790686168527,
+      "tag": "0075_tiny_mole_man",
+      "breakpoints": true
     }
   ]
 }

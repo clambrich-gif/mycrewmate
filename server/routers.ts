@@ -106,6 +106,10 @@ import {
   type EditablePlanningModule,
   type PlanningModuleAccess,
 } from "@shared/tenant-permissions";
+import {
+  PRODUCT_ASSIGNMENT_STATUSES,
+  PRODUCT_PACKAGE_IDS,
+} from "@shared/product-packages";
 import { MASTER_ADMIN_ORIGIN, isMasterAdminRequestHost } from "@shared/platform-admin";
 import { storagePut, storageRead } from "./storage";
 import { locationLogoUrl } from "./location-logo-routes";
@@ -2877,12 +2881,30 @@ export const appRouter = router({
           supportEmail: z.string().trim().email().max(320),
           status: z.enum(["pilot", "sample"]),
           planName: z.string().trim().min(3).max(120),
+          packageId: z.enum(PRODUCT_PACKAGE_IDS),
+          packageStatus: z.enum(PRODUCT_ASSIGNMENT_STATUSES).default("test"),
+          packageStartsOn: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+          packageEndsOn: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+          packageInternalNote: z.string().trim().max(2_000).nullable().optional(),
           initialEventName: z.string().trim().min(2).max(200),
           initialEventYear: eventYearInput,
           activeDays: activeDaysInput,
         })
       )
       .mutation(({ input }) => db.createTenantForPlatformAdmin(input)),
+    updateTenantProductAssignment: masterAdminProcedure
+      .input(
+        z.object({
+          tenantId: z.string().trim().regex(/^[a-z0-9-]{3,96}$/),
+          packageId: z.enum(PRODUCT_PACKAGE_IDS),
+          status: z.enum(PRODUCT_ASSIGNMENT_STATUSES),
+          startsOn: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+          endsOn: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+          eventId: z.number().int().positive().nullable().optional(),
+          internalNote: z.string().trim().max(2_000).nullable().optional(),
+        })
+      )
+      .mutation(({ input }) => db.updateTenantProductAssignmentForPlatformAdmin(input)),
     updateTenantLifecycle: masterAdminProcedure
       .input(
         z.object({

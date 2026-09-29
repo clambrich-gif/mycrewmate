@@ -212,7 +212,8 @@ describe("applyProjectMigrations", () => {
         m.tag === "0071_grey_scream" ||
         m.tag === "0072_material_rachel_grey" ||
         m.tag === "0073_nice_moonstone" ||
-        m.tag === "0074_medical_lord_hawal"
+        m.tag === "0074_medical_lord_hawal" ||
+        m.tag === "0075_tiny_mole_man"
     ).length;
 
     const result = await applyProjectMigrations(connection, migrations);

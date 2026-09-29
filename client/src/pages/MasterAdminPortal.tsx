@@ -38,6 +38,13 @@ import { trpc } from "@/lib/trpc";
 import { storePreviewSessionToken } from "@/lib/preview-session";
 import { appUrl } from "@/lib/site-host";
 import {
+  PRODUCT_ASSIGNMENT_STATUSES,
+  PRODUCT_PACKAGE_IDS,
+  PRODUCT_PACKAGE_META,
+  type ProductAssignmentStatus,
+  type ProductPackageId,
+} from "@shared/product-packages";
+import {
   Archive,
   Building2,
   CalendarDays,
@@ -93,9 +100,71 @@ type CreateTenantForm = {
   supportEmail: string;
   status: "pilot" | "sample";
   planName: string;
+  packageId: ProductPackageId;
+  packageStatus: ProductAssignmentStatus;
+  packageStartsOn: string;
+  packageEndsOn: string;
+  packageInternalNote: string;
   initialEventName: string;
   initialEventYear: string;
   activeDays: string[];
+};
+
+type TenantOverviewItem = {
+  id: string;
+  name: string;
+  legalName: string;
+  status: TenantStatus;
+  planName: string;
+  contactEmail: string;
+  supportEmail: string;
+  createdAt?: Date;
+  eventCount: number;
+  events: Array<{
+    id: number;
+    name: string;
+    year: number;
+    startDate: string | null;
+    endDate: string | null;
+  }>;
+  nextEvent: {
+    id?: number;
+    name: string;
+    year?: number;
+    startDate: string | null;
+    endDate: string | null;
+  } | null;
+  productAssignment: {
+    packageId: ProductPackageId;
+    status: ProductAssignmentStatus;
+    startsOn: string | null;
+    endsOn: string | null;
+    eventId: number | null;
+    internalNote: string | null;
+  };
+};
+
+type ProductAssignmentForm = {
+  packageId: ProductPackageId;
+  status: ProductAssignmentStatus;
+  startsOn: string;
+  endsOn: string;
+  eventId: string;
+  internalNote: string;
+};
+
+const PRODUCT_BADGE_CLASS: Record<ProductPackageId, string> = {
+  event_pass: "border-orange-200 bg-orange-50 text-orange-900",
+  light: "border-slate-200 bg-slate-50 text-slate-800",
+  pro: "border-blue-200 bg-blue-50 text-blue-800",
+  enterprise: "border-violet-200 bg-violet-50 text-violet-800",
+};
+
+const PRODUCT_ASSIGNMENT_STATUS_CLASS: Record<ProductAssignmentStatus, string> = {
+  test: "border-slate-200 bg-slate-50 text-slate-700",
+  active: "border-emerald-200 bg-emerald-50 text-emerald-800",
+  paused: "border-amber-200 bg-amber-50 text-amber-800",
+  expired: "border-red-200 bg-red-50 text-red-800",
 };
 
 type PlatformAccessInventoryItem = {
@@ -117,6 +186,11 @@ function defaultCreateTenantForm(): CreateTenantForm {
     supportEmail: "support@mycrewmate.de",
     status: "pilot",
     planName: "Pilotbetrieb",
+    packageId: "pro",
+    packageStatus: "test",
+    packageStartsOn: "",
+    packageEndsOn: "",
+    packageInternalNote: "",
     initialEventName: "",
     initialEventYear: "2027",
     activeDays: [...INITIAL_EVENT_DAYS],
@@ -127,6 +201,22 @@ function formatDate(value: string | null) {
   if (!value) return "Termin offen";
   const [year, month, day] = value.slice(0, 10).split("-");
   return year && month && day ? `${day}.${month}.${year}` : value;
+}
+
+function defaultProductAssignmentForm(
+  assignment: TenantOverviewItem["productAssignment"],
+  events: TenantOverviewItem["events"]
+): ProductAssignmentForm {
+  return {
+    packageId: assignment.packageId,
+    status: assignment.status,
+    startsOn: assignment.startsOn ?? "",
+    endsOn: assignment.endsOn ?? "",
+    eventId:
+      assignment.eventId?.toString() ??
+      (assignment.packageId === "event_pass" ? events[0]?.id.toString() ?? "" : ""),
+    internalNote: assignment.internalNote ?? "",
+  };
 }
 
 function formatAccessCreatedAt(value: Date) {
@@ -377,6 +467,8 @@ export default function MasterAdminPortal() {
   const [createForm, setCreateForm] = useState<CreateTenantForm>(
     defaultCreateTenantForm
   );
+  const [productModalTenant, setProductModalTenant] = useState<TenantOverviewItem | null>(null);
+  const [productAssignmentForm, setProductAssignmentForm] = useState<ProductAssignmentForm | null>(null);
   const [adminModalTenant, setAdminModalTenant] = useState<{ id: string; name: string } | null>(null);
   const [adminName, setAdminName] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
@@ -457,6 +549,15 @@ export default function MasterAdminPortal() {
     },
     onError: error => toast.error(error.message),
   });
+  const updateTenantProductAssignment = trpc.platformAdmin.updateTenantProductAssignment.useMutation({
+    onSuccess: async result => {
+      await utils.platformAdmin.tenantOverview.invalidate();
+      setProductModalTenant(null);
+      setProductAssignmentForm(null);
+      toast.success(`${PRODUCT_PACKAGE_META[result.packageId].name} wurde für den Verein gespeichert.`);
+    },
+    onError: error => toast.error(error.message),
+  });
   const updateLifecycle = trpc.platformAdmin.updateTenantLifecycle.useMutation({
     onSuccess: async result => {
       // Archivierungen entfernen persönliche Zugänge vollständig. Beide
@@ -505,6 +606,9 @@ export default function MasterAdminPortal() {
     createTenant.mutate({
       ...createForm,
       initialEventYear,
+      packageStartsOn: createForm.packageStartsOn || null,
+      packageEndsOn: createForm.packageEndsOn || null,
+      packageInternalNote: createForm.packageInternalNote || null,
       activeDays: createForm.activeDays as Array<
         "Montag" | "Dienstag" | "Mittwoch" | "Donnerstag" | "Freitag" | "Samstag" | "Sonntag"
       >,
@@ -569,8 +673,18 @@ export default function MasterAdminPortal() {
             supportEmail: "support@mycrewmate.de",
             status: "pilot",
             planName: "Pilotbetrieb",
+            productAssignment: {
+              packageId: "pro",
+              status: "test",
+              startsOn: null,
+              endsOn: null,
+              eventId: null,
+              internalNote: null,
+            },
             eventCount: 1,
+            events: [{ id: 1, name: "MyEifelRide 2027", year: 2027, startDate: "2027-06-11", endDate: "2027-06-13" }],
             nextEvent: {
+              id: 1,
               name: "MyEifelRide 2027",
               startDate: "2027-06-11",
               endDate: "2027-06-13",
@@ -584,8 +698,18 @@ export default function MasterAdminPortal() {
             supportEmail: "support@mycrewmate.de",
             status: "sample",
             planName: "Musterverein",
+            productAssignment: {
+              packageId: "pro",
+              status: "test",
+              startsOn: null,
+              endsOn: null,
+              eventId: null,
+              internalNote: null,
+            },
             eventCount: 1,
+            events: [{ id: 2, name: "Lukasmarkt 2027", year: 2027, startDate: "2027-10-15", endDate: "2027-10-17" }],
             nextEvent: {
+              id: 2,
               name: "Lukasmarkt 2027",
               startDate: "2027-10-15",
               endDate: "2027-10-17",
@@ -599,15 +723,25 @@ export default function MasterAdminPortal() {
             supportEmail: "support@mycrewmate.de",
             status: "sample",
             planName: "Musterverein",
+            productAssignment: {
+              packageId: "pro",
+              status: "test",
+              startsOn: null,
+              endsOn: null,
+              eventId: null,
+              internalNote: null,
+            },
             eventCount: 1,
+            events: [{ id: 3, name: "Schützenfest 2027", year: 2027, startDate: "2027-07-02", endDate: "2027-07-04" }],
             nextEvent: {
+              id: 3,
               name: "Schützenfest 2027",
               startDate: "2027-07-02",
               endDate: "2027-07-04",
             },
           },
         ];
-  const allTenants = tenants.length > 0 ? tenants : displayTenants;
+  const allTenants = (tenants.length > 0 ? tenants : displayTenants) as TenantOverviewItem[];
   const activeTenants = allTenants.filter(tenant => tenant.status !== "archived");
   const archivedTenants = allTenants.filter(tenant => tenant.status === "archived");
   const pilotCount = activeTenants.filter(tenant => tenant.status === "pilot").length;
@@ -793,6 +927,12 @@ export default function MasterAdminPortal() {
                       <div className="flex flex-wrap items-center gap-2">
                         <h2 className="truncate font-semibold text-slate-900">{tenant.name}</h2>
                         <Badge variant="outline" className={status.className}>{status.label}</Badge>
+                        <Badge variant="outline" className={PRODUCT_BADGE_CLASS[tenant.productAssignment.packageId]}>
+                          {PRODUCT_PACKAGE_META[tenant.productAssignment.packageId].name}
+                        </Badge>
+                        <Badge variant="outline" className={PRODUCT_ASSIGNMENT_STATUS_CLASS[tenant.productAssignment.status]}>
+                          {PRODUCT_PACKAGE_META[tenant.productAssignment.packageId].assignmentStatusLabel[tenant.productAssignment.status]}
+                        </Badge>
                       </div>
                       <p className="mt-1 truncate text-sm text-slate-500">{tenant.legalName}</p>
                       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
@@ -808,6 +948,19 @@ export default function MasterAdminPortal() {
                       </div>
                       {(tenant.status === "pilot" || tenant.status === "sample") && (
                         <div className="flex flex-col gap-1.5">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-full border-violet-200 bg-violet-50 text-violet-900 hover:bg-violet-100"
+                            onClick={() => {
+                              setProductModalTenant(tenant);
+                              setProductAssignmentForm(
+                                defaultProductAssignmentForm(tenant.productAssignment, tenant.events)
+                              );
+                            }}
+                          >
+                            <CreditCard className="size-3.5" /> Produkt verwalten
+                          </Button>
                           <Button
                             size="sm"
                             variant="default"
@@ -1072,6 +1225,69 @@ export default function MasterAdminPortal() {
               </p>
             </fieldset>
 
+            <fieldset className="grid gap-4 rounded-xl border border-violet-200 bg-violet-50/40 p-4 sm:grid-cols-2">
+              <legend className="sr-only">Produktzuordnung</legend>
+              <div className="sm:col-span-2">
+                <p className="text-sm font-semibold text-slate-800">Gebuchtes Produkt</p>
+                <p className="mt-1 text-xs leading-5 text-slate-600">
+                  Diese Zuordnung ist nur im Master-Admin sichtbar. Funktionsgrenzen werden schrittweise in den nächsten Paketen aktiviert.
+                </p>
+              </div>
+              <label className="space-y-1.5">
+                <span className="text-sm font-medium text-slate-800">Paket</span>
+                <Select
+                  value={createForm.packageId}
+                  onValueChange={(packageId: ProductPackageId) =>
+                    setCreateForm(current => ({ ...current, packageId }))
+                  }
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {PRODUCT_PACKAGE_IDS.map(packageId => (
+                      <SelectItem key={packageId} value={packageId}>
+                        {PRODUCT_PACKAGE_META[packageId].name} · {PRODUCT_PACKAGE_META[packageId].priceLabel}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-slate-600">{PRODUCT_PACKAGE_META[createForm.packageId].shortDescription}</p>
+              </label>
+              <label className="space-y-1.5">
+                <span className="text-sm font-medium text-slate-800">Paketstatus</span>
+                <Select
+                  value={createForm.packageStatus}
+                  onValueChange={(packageStatus: ProductAssignmentStatus) =>
+                    setCreateForm(current => ({ ...current, packageStatus }))
+                }
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {PRODUCT_ASSIGNMENT_STATUSES.map(status => (
+                      <SelectItem key={status} value={status}>
+                        {PRODUCT_PACKAGE_META[createForm.packageId].assignmentStatusLabel[status]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </label>
+              <label className="space-y-1.5">
+                <span className="text-sm font-medium text-slate-800">Beginn (optional)</span>
+                <Input
+                  type="date"
+                  value={createForm.packageStartsOn}
+                  onChange={event => setCreateForm(current => ({ ...current, packageStartsOn: event.target.value }))}
+                />
+              </label>
+              <label className="space-y-1.5">
+                <span className="text-sm font-medium text-slate-800">Ende (optional)</span>
+                <Input
+                  type="date"
+                  value={createForm.packageEndsOn}
+                  onChange={event => setCreateForm(current => ({ ...current, packageEndsOn: event.target.value }))}
+                />
+              </label>
+            </fieldset>
+
             <fieldset className="space-y-3">
               <legend className="text-sm font-semibold text-slate-800">Erste Veranstaltung</legend>
               <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_10rem]">
@@ -1130,6 +1346,161 @@ export default function MasterAdminPortal() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(productModalTenant && productAssignmentForm)}
+        onOpenChange={open => {
+          if (!open && !updateTenantProductAssignment.isPending) {
+            setProductModalTenant(null);
+            setProductAssignmentForm(null);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white text-slate-950 sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CreditCard className="size-5 text-violet-700" /> Produkt für {productModalTenant?.name} verwalten
+            </DialogTitle>
+            <DialogDescription>
+              Paket, Status und Laufzeit werden zentral im Master-Admin hinterlegt. Die persönliche Fachbereichsrechteverwaltung des Vereins bleibt davon getrennt.
+            </DialogDescription>
+          </DialogHeader>
+          {productModalTenant && productAssignmentForm && (
+            <form
+              className="space-y-4"
+              onSubmit={event => {
+                event.preventDefault();
+                const eventId = productAssignmentForm.eventId
+                  ? Number(productAssignmentForm.eventId)
+                  : null;
+                updateTenantProductAssignment.mutate({
+                  tenantId: productModalTenant.id,
+                  packageId: productAssignmentForm.packageId,
+                  status: productAssignmentForm.status,
+                  startsOn: productAssignmentForm.startsOn || null,
+                  endsOn: productAssignmentForm.endsOn || null,
+                  eventId,
+                  internalNote: productAssignmentForm.internalNote || null,
+                });
+              }}
+            >
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="space-y-1.5">
+                  <span className="text-sm font-semibold text-slate-800">Paket</span>
+                  <Select
+                    value={productAssignmentForm.packageId}
+                    onValueChange={(packageId: ProductPackageId) =>
+                      setProductAssignmentForm(current => current && ({
+                        ...current,
+                        packageId,
+                        eventId:
+                          packageId === "event_pass"
+                            ? current.eventId || productModalTenant.events[0]?.id.toString() || ""
+                            : "",
+                      }))
+                    }
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {PRODUCT_PACKAGE_IDS.map(packageId => (
+                        <SelectItem key={packageId} value={packageId}>
+                          {PRODUCT_PACKAGE_META[packageId].name} · {PRODUCT_PACKAGE_META[packageId].priceLabel}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </label>
+                <label className="space-y-1.5">
+                  <span className="text-sm font-semibold text-slate-800">Status</span>
+                  <Select
+                    value={productAssignmentForm.status}
+                    onValueChange={(status: ProductAssignmentStatus) =>
+                      setProductAssignmentForm(current => current && ({ ...current, status }))
+                    }
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {PRODUCT_ASSIGNMENT_STATUSES.map(status => (
+                        <SelectItem key={status} value={status}>
+                          {PRODUCT_PACKAGE_META[productAssignmentForm.packageId].assignmentStatusLabel[status]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </label>
+              </div>
+              <div className="rounded-xl border border-violet-100 bg-violet-50/60 px-3 py-2.5 text-sm text-violet-950">
+                <strong>{PRODUCT_PACKAGE_META[productAssignmentForm.packageId].name}:</strong>{" "}
+                {PRODUCT_PACKAGE_META[productAssignmentForm.packageId].shortDescription}
+                <span className="ml-1 text-violet-800">({PRODUCT_PACKAGE_META[productAssignmentForm.packageId].priceLabel})</span>
+              </div>
+              {productAssignmentForm.packageId === "event_pass" && (
+                <label className="space-y-1.5">
+                  <span className="text-sm font-semibold text-slate-800">Zugeordnete Einzelveranstaltung</span>
+                  <Select
+                    value={productAssignmentForm.eventId}
+                    onValueChange={eventId => setProductAssignmentForm(current => current && ({ ...current, eventId }))}
+                    disabled={productModalTenant.events.length === 0}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Veranstaltung wählen" /></SelectTrigger>
+                    <SelectContent>
+                      {productModalTenant.events.map(eventItem => (
+                        <SelectItem key={eventItem.id} value={eventItem.id.toString()}>
+                          {eventItem.name} · {eventItem.year}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs leading-5 text-slate-600">Der Event Pass wird in Paket 2 technisch auf diese einzelne Veranstaltung begrenzt.</p>
+                </label>
+              )}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="space-y-1.5">
+                  <span className="text-sm font-semibold text-slate-800">Beginn (optional)</span>
+                  <Input
+                    type="date"
+                    value={productAssignmentForm.startsOn}
+                    onChange={event => setProductAssignmentForm(current => current && ({ ...current, startsOn: event.target.value }))}
+                  />
+                </label>
+                <label className="space-y-1.5">
+                  <span className="text-sm font-semibold text-slate-800">Ende (optional)</span>
+                  <Input
+                    type="date"
+                    value={productAssignmentForm.endsOn}
+                    onChange={event => setProductAssignmentForm(current => current && ({ ...current, endsOn: event.target.value }))}
+                  />
+                </label>
+              </div>
+              <label className="space-y-1.5">
+                <span className="text-sm font-semibold text-slate-800">Interne Notiz (optional)</span>
+                <textarea
+                  className="flex min-h-20 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring"
+                  value={productAssignmentForm.internalNote}
+                  maxLength={2_000}
+                  placeholder="z. B. individuelle Enterprise-Erweiterung oder interner Vertragsvermerk"
+                  onChange={event => setProductAssignmentForm(current => current && ({ ...current, internalNote: event.target.value }))}
+                />
+              </label>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setProductModalTenant(null)} disabled={updateTenantProductAssignment.isPending}>
+                  Abbrechen
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={
+                    updateTenantProductAssignment.isPending ||
+                    (productAssignmentForm.packageId === "event_pass" && !productAssignmentForm.eventId)
+                  }
+                >
+                  {updateTenantProductAssignment.isPending ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
+                  Produkt speichern
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
 

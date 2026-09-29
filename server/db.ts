@@ -54,6 +54,7 @@ import {
   teamNoteTypings,
   tenantAdminCredentials,
   tenantAdminInvitations,
+  tenantProductAssignments,
   tenants,
   userTenantMemberships,
   users,
@@ -78,6 +79,10 @@ import {
   planningTeamAccessOpenId,
   SHARED_PASSWORD_OPEN_ID,
 } from "./password-auth";
+import {
+  type ProductAssignmentStatus,
+  type ProductPackageId,
+} from "../shared/product-packages";
 import {
   DEFAULT_TENANT_ID,
   currentEventId,
@@ -644,7 +649,7 @@ export async function listTenants() {
 export async function listTenantOverviewsForPlatformAdmin() {
   const db = await getDb();
   if (!db) return [];
-  const [tenantRows, eventRows] = await Promise.all([
+  const [tenantRows, eventRows, assignmentRows] = await Promise.all([
     db.select().from(tenants).orderBy(tenants.status, tenants.name),
     db
       .select({
@@ -657,11 +662,26 @@ export async function listTenantOverviewsForPlatformAdmin() {
       })
       .from(events)
       .orderBy(events.tenantId, events.startDate, events.year, events.id),
+    db
+      .select({
+        tenantId: tenantProductAssignments.tenantId,
+        packageId: tenantProductAssignments.packageId,
+        status: tenantProductAssignments.status,
+        startsOn: tenantProductAssignments.startsOn,
+        endsOn: tenantProductAssignments.endsOn,
+        eventId: tenantProductAssignments.eventId,
+        internalNote: tenantProductAssignments.internalNote,
+      })
+      .from(tenantProductAssignments),
   ]);
 
+  const assignmentByTenant = new Map(
+    assignmentRows.map(assignment => [assignment.tenantId, assignment])
+  );
   const today = new Date().toISOString().slice(0, 10);
   return tenantRows.map(tenantRow => {
     const tenantEvents = eventRows.filter(eventRow => eventRow.tenantId === tenantRow.id);
+    const assignment = assignmentByTenant.get(tenantRow.id);
     const nextEvent =
       tenantEvents.find(eventRow => eventRow.startDate !== null && eventRow.startDate >= today) ??
       tenantEvents.find(eventRow => eventRow.startDate !== null) ??
@@ -676,7 +696,24 @@ export async function listTenantOverviewsForPlatformAdmin() {
       contactEmail: tenantRow.contactEmail,
       supportEmail: tenantRow.supportEmail,
       createdAt: tenantRow.createdAt,
+      productAssignment: assignment ?? {
+        // Rückfall für Datenstände vor der Migration: bestehende Vereine
+        // behalten sicher ihren bisherigen vollständigen Umfang als Pro-Testzugang.
+        packageId: "pro" as const,
+        status: "test" as const,
+        startsOn: null,
+        endsOn: null,
+        eventId: null,
+        internalNote: null,
+      },
       eventCount: tenantEvents.length,
+      events: tenantEvents.map(eventRow => ({
+        id: eventRow.id,
+        name: eventRow.name,
+        year: eventRow.year,
+        startDate: eventRow.startDate,
+        endDate: eventRow.endDate,
+      })),
       nextEvent: nextEvent
         ? {
             id: nextEvent.id,
@@ -915,6 +952,11 @@ export async function createTenantForPlatformAdmin(input: {
   supportEmail: string;
   status: PlatformTenantSetupStatus;
   planName: string;
+  packageId: ProductPackageId;
+  packageStatus: ProductAssignmentStatus;
+  packageStartsOn?: string | null;
+  packageEndsOn?: string | null;
+  packageInternalNote?: string | null;
   initialEventName: string;
   initialEventYear: number;
   activeDays: Weekday[];
@@ -933,6 +975,7 @@ export async function createTenantForPlatformAdmin(input: {
     if (!input.activeDays.length) {
       throw new Error("Für die Startveranstaltung muss mindestens ein Veranstaltungstag gewählt sein");
     }
+    assertPackageAssignmentDates(input.packageStartsOn, input.packageEndsOn);
     const [sameName] = await tx
       .select({ id: tenants.id })
       .from(tenants)
@@ -976,7 +1019,97 @@ export async function createTenantForPlatformAdmin(input: {
     if (!Number.isInteger(eventId) || eventId <= 0) {
       throw new Error("Die Startveranstaltung konnte nicht angelegt werden");
     }
+    await tx.insert(tenantProductAssignments).values({
+      tenantId,
+      packageId: input.packageId,
+      status: input.packageStatus,
+      startsOn: normalizedPackageDate(input.packageStartsOn),
+      endsOn: normalizedPackageDate(input.packageEndsOn),
+      // Ein Event Pass ist immer genau an die beim Anlegen erzeugte Veranstaltung gebunden.
+      eventId: input.packageId === "event_pass" ? eventId : null,
+      internalNote: input.packageInternalNote?.trim() || null,
+    });
     return { tenantId, eventId, status: input.status } as const;
+  });
+}
+
+export function normalizedPackageDate(value?: string | null) {
+  const trimmed = value?.trim();
+  return trimmed || null;
+}
+
+export function assertPackageAssignmentDates(startsOn?: string | null, endsOn?: string | null) {
+  const start = normalizedPackageDate(startsOn);
+  const end = normalizedPackageDate(endsOn);
+  if (start && !/^\d{4}-\d{2}-\d{2}$/.test(start)) {
+    throw new Error("Der Paketbeginn muss ein gültiges Datum sein");
+  }
+  if (end && !/^\d{4}-\d{2}-\d{2}$/.test(end)) {
+    throw new Error("Das Paketende muss ein gültiges Datum sein");
+  }
+  if (start && end && start > end) {
+    throw new Error("Das Paketende darf nicht vor dem Paketbeginn liegen");
+  }
+}
+
+/** Speichert ausschließlich die produktseitige Einordnung eines Vereins. */
+export async function updateTenantProductAssignmentForPlatformAdmin(input: {
+  tenantId: string;
+  packageId: ProductPackageId;
+  status: ProductAssignmentStatus;
+  startsOn?: string | null;
+  endsOn?: string | null;
+  eventId?: number | null;
+  internalNote?: string | null;
+}) {
+  const database = (await getDb()) as DB;
+  return database.transaction(async tx => {
+    assertPackageAssignmentDates(input.startsOn, input.endsOn);
+    const [tenantRow] = await tx
+      .select({ id: tenants.id })
+      .from(tenants)
+      .where(eq(tenants.id, input.tenantId))
+      .limit(1)
+      .for("update");
+    if (!tenantRow) throw new Error("Verein wurde nicht gefunden");
+
+    const eventId = input.eventId ?? null;
+    if (input.packageId === "event_pass" && !eventId) {
+      throw new Error("Für den Event Pass muss eine konkrete Veranstaltung gewählt werden");
+    }
+    if (eventId) {
+      const [event] = await tx
+        .select({ id: events.id })
+        .from(events)
+        .where(and(eq(events.id, eventId), eq(events.tenantId, input.tenantId)))
+        .limit(1)
+        .for("update");
+      if (!event) throw new Error("Die gewählte Veranstaltung gehört nicht zu diesem Verein");
+    }
+
+    const values = {
+      tenantId: input.tenantId,
+      packageId: input.packageId,
+      status: input.status,
+      startsOn: normalizedPackageDate(input.startsOn),
+      endsOn: normalizedPackageDate(input.endsOn),
+      eventId,
+      internalNote: input.internalNote?.trim() || null,
+    };
+    await tx
+      .insert(tenantProductAssignments)
+      .values(values)
+      .onDuplicateKeyUpdate({
+        set: {
+          packageId: values.packageId,
+          status: values.status,
+          startsOn: values.startsOn,
+          endsOn: values.endsOn,
+          eventId: values.eventId,
+          internalNote: values.internalNote,
+        },
+      });
+    return values;
   });
 }
 

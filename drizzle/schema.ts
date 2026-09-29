@@ -19,6 +19,12 @@ import type {
   PlanningModule,
   PlanningModuleAccess,
 } from "../shared/tenant-permissions";
+import {
+  PRODUCT_ASSIGNMENT_STATUSES,
+  PRODUCT_PACKAGE_IDS,
+  type ProductAssignmentStatus,
+  type ProductPackageId,
+} from "../shared/product-packages";
 
 /**
  * Core user table backing auth flow.
@@ -453,6 +459,51 @@ export const events = mysqlTable(
   ]
 );
 export type Event = typeof events.$inferSelect;
+
+/**
+ * Die Produktzuordnung wird bewusst getrennt vom internen Mandantenstatus
+ * geführt: Ein Pilotverein kann z. B. das Pro-Paket im Testzugang nutzen.
+ * Erst in den nachfolgenden Produktpaketen werden daraus Modul- und Mengenlimits.
+ */
+export const tenantProductAssignments = mysqlTable(
+  "tenant_product_assignments",
+  {
+    tenantId: varchar("tenantId", { length: 96 }).primaryKey(),
+    packageId: mysqlEnum("packageId", PRODUCT_PACKAGE_IDS)
+      .$type<ProductPackageId>()
+      .default("pro")
+      .notNull(),
+    status: mysqlEnum("status", PRODUCT_ASSIGNMENT_STATUSES)
+      .$type<ProductAssignmentStatus>()
+      .default("test")
+      .notNull(),
+    startsOn: date("startsOn", { mode: "string" }),
+    endsOn: date("endsOn", { mode: "string" }),
+    /** Bei Event Pass bindet diese Referenz die einzelne zulässige Veranstaltung. */
+    eventId: int("eventId"),
+    /** Ausschließlich Master-Admin-Notiz, nie Teil der Vereinsansicht. */
+    internalNote: text("internalNote"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    foreignKey({
+      name: "tenant_product_assignments_tenant_id_tenants_id_fk",
+      columns: [table.tenantId],
+      foreignColumns: [tenants.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "tenant_product_assignments_event_id_events_id_fk",
+      columns: [table.eventId],
+      foreignColumns: [events.id],
+    }).onDelete("set null"),
+    index("tenant_product_assignments_package_status_idx").on(
+      table.packageId,
+      table.status
+    ),
+  ]
+);
+export type TenantProductAssignment = typeof tenantProductAssignments.$inferSelect;
 
 export const contacts = mysqlTable(
   "contacts",
