@@ -42,10 +42,16 @@ describe("Event-Pass Korrekturen und Verantwortlichkeiten", () => {
 
   it("Punkt 4: PDF-Ausgabe im Event Pass ohne Fehler & freundlicher Upgrade-Hinweis bei Ansprechpartnern", () => {
     const pdfPage = source("client/src/pages/PdfExport.tsx");
+    const helpers = source("client/src/pages/Helpers.tsx");
 
     expect(pdfPage).toContain("KlemmiUpgradeDialog");
     expect(pdfPage).toContain("allowsContacts");
     expect(pdfPage).toContain("downloadContactOverviews");
+    expect(pdfPage).toContain('productAllowsCapability(currentPackageId, "contacts")');
+    expect(pdfPage).not.toContain("tenantProduct?.entitlements.capabilities.contacts");
+    expect(helpers).toContain("allowsPersonalPdfShare");
+    expect(helpers).toContain('setUpgradeCapability("personal_accesses")');
+    expect(helpers).toContain("Persönliche PDF-Links und die Einsatzplan-Zuweisung stehen ab Light bereit.");
   });
 
   it("Punkt 5: Dashboard bereinigt – keine Verpflegungsspende und nur Hauptansprechpartner im Event Pass", () => {

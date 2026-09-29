@@ -43,6 +43,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import { KlemmiUpgradeDialog } from "@/components/KlemmiUpgradeDialog";
 import { LockKeyhole } from "lucide-react";
+import { productAllowsCapability } from "@shared/product-packages";
 import {
   ChangeEvent,
   useEffect,
@@ -142,7 +143,10 @@ export default function PdfExport() {
     staleTime: 60_000,
   });
   const currentPackageId = tenantProduct?.packageId ?? "pro";
-  const allowsContacts = tenantProduct?.entitlements.capabilities.contacts ?? true;
+  // Die UI leitet Rechte bewusst aus dem statischen Paketkatalog ab. Damit
+  // bleibt die PDF-Seite auch während einer Sitzungsaktualisierung stabil,
+  // wenn eine ältere Antwort noch keine verschachtelten Entitlements enthält.
+  const allowsContacts = productAllowsCapability(currentPackageId, "contacts");
   const [upgradeCapability, setUpgradeCapability] = useState<"contacts" | null>(null);
   const [form, setForm] = useState<SettingsForm>(EMPTY_FORM);
   const [planMode, setPlanMode] = useState<"blank" | "filled">("blank");

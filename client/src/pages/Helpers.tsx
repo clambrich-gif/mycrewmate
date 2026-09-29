@@ -67,6 +67,7 @@ import {
   type AvailabilityValue,
   type Weekday,
 } from "@shared/weekdays";
+import { productAllowsCapability } from "@shared/product-packages";
 import {
   HELPER_ASSIGNMENT_QUERY_KEY,
   HELPER_CONFIRMATION_QUERY_KEY,
@@ -815,8 +816,17 @@ export default function Helpers() {
     staleTime: 60_000,
   });
   const currentPackageId = tenantProduct?.packageId ?? "pro";
-  const allowsDonations = tenantProduct?.entitlements.capabilities.donations ?? true;
-  const [upgradeCapability, setUpgradeCapability] = useState<"donations" | null>(null);
+  // Rechte nie aus einer optionalen, verschachtelten API-Antwort lesen:
+  // während Cache-/Sitzungswechseln könnte sie sonst die gesamte Ansicht
+  // unterbrechen. Der Paketkatalog ist die zentrale, sichere Quelle.
+  const allowsDonations = productAllowsCapability(currentPackageId, "donations");
+  const allowsPersonalPdfShare = productAllowsCapability(
+    currentPackageId,
+    "personal_accesses"
+  );
+  const [upgradeCapability, setUpgradeCapability] = useState<
+    "donations" | "personal_accesses" | null
+  >(null);
   const { data: plan } = trpc.plan.evaluate.useQuery();
   const activeDays = currentEvent ? eventWeekdays(currentEvent.activeDays) : [];
   const cakeCountByDonor = useMemo(() => {
@@ -1078,6 +1088,10 @@ export default function Helpers() {
 
   const sendWhatsAppMessage = async (templateKind: "general" | "schedule") => {
     if (!whatsAppTargetHelper || isPreparingWhatsApp) return;
+    if (templateKind === "schedule" && !allowsPersonalPdfShare) {
+      setUpgradeCapability("personal_accesses");
+      return;
+    }
     setIsPreparingWhatsApp(true);
     try {
       const settings = await utils.pdf.settings.fetch();
@@ -3185,12 +3199,21 @@ export default function Helpers() {
 
             <button
               type="button"
-              onClick={() => setSelectedWhatsAppTemplateKind("schedule")}
+              aria-disabled={!allowsPersonalPdfShare}
+              onClick={() => {
+                if (!allowsPersonalPdfShare) {
+                  setUpgradeCapability("personal_accesses");
+                  return;
+                }
+                setSelectedWhatsAppTemplateKind("schedule");
+              }}
               className={cn(
                 "flex h-full flex-col justify-between rounded-xl border p-4 text-left transition-all",
                 selectedWhatsAppTemplateKind === "schedule"
                   ? "border-blue-500 bg-blue-50/50 shadow-xs ring-2 ring-blue-500/20"
-                  : "border-slate-200 bg-slate-50/40 hover:border-slate-300 hover:bg-slate-50"
+                  : allowsPersonalPdfShare
+                    ? "border-slate-200 bg-slate-50/40 hover:border-slate-300 hover:bg-slate-50"
+                    : "cursor-pointer border-slate-200 bg-slate-100/80 text-slate-500"
               )}
             >
               <div className="space-y-2">
@@ -3198,20 +3221,36 @@ export default function Helpers() {
                   <div className="inline-flex rounded-lg bg-blue-100 p-2 text-blue-800">
                     <FileText className="h-5 w-5" />
                   </div>
-                  {selectedWhatsAppTemplateKind === "schedule" && (
+                  {!allowsPersonalPdfShare ? (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-2 py-1 text-[10px] font-semibold text-slate-600">
+                      <LockKeyhole className="h-3 w-3" aria-hidden="true" />
+                      Ab Light
+                    </span>
+                  ) : selectedWhatsAppTemplateKind === "schedule" ? (
                     <CheckCircle2 className="h-5 w-5 text-blue-600" />
-                  )}
+                  ) : null}
                 </div>
                 <h4 className="font-semibold text-slate-950">
                   Muster 2: Schichtzuteilung / Einsatzplan
                 </h4>
                 <p className="text-xs leading-relaxed text-slate-600">
-                  Sendet den persönlichen Einsatzplan inklusive 90 Tage gültigem PDF-Link zur Prüfung und Rückmeldung.
+                  {allowsPersonalPdfShare
+                    ? "Sendet den persönlichen Einsatzplan inklusive 90 Tage gültigem PDF-Link zur Prüfung und Rückmeldung."
+                    : "Persönliche PDF-Links und die Einsatzplan-Zuweisung stehen ab Light bereit."}
                 </p>
               </div>
               <div className="mt-4 flex items-center gap-1.5 text-[11px] font-medium text-blue-700">
-                <Send className="h-3.5 w-3.5" />
-                <span>Erzeugt persönlichen PDF-Link</span>
+                {allowsPersonalPdfShare ? (
+                  <>
+                    <Send className="h-3.5 w-3.5" />
+                    <span>Erzeugt persönlichen PDF-Link</span>
+                  </>
+                ) : (
+                  <>
+                    <LockKeyhole className="h-3.5 w-3.5" />
+                    <span>Klemmi erklärt den Upgrade-Vorteil</span>
+                  </>
+                )}
               </div>
             </button>
           </div>

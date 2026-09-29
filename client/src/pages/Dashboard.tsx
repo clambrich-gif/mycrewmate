@@ -1057,8 +1057,10 @@ export default function Dashboard() {
     tenantProduct.isSuccess &&
     productAllowsCapability(tenantProduct.data?.packageId ?? "pro", "maps_gpx");
   const isEventPass = tenantProduct.data?.packageId === "event_pass";
-  const allowsDonations =
-    tenantProduct.data?.entitlements.capabilities.donations ?? true;
+  const allowsDonations = productAllowsCapability(
+    tenantProduct.data?.packageId ?? "pro",
+    "donations"
+  );
   const { data: dashboardLocations = [] } = trpc.locations.list.useQuery(undefined, {
     enabled: canReadLocations,
   });
