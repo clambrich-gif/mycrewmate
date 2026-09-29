@@ -352,12 +352,20 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(finances).toContain('data-klemmi-target="finances-balance"');
     expect(pdf).toContain('klemmiTarget="pdf-plan"');
     expect(security).toContain('klemmiTarget="security-audit"');
+    expect(security).toContain('klemmiTarget="security-password"');
+    expect(security).toContain('klemmiTarget="security-danger"');
+    expect(security).toContain("handleSecurityGuideStep");
+    expect(security).toContain("onStepChange={handleSecurityGuideStep}");
+    expect(security).toContain("<PlanningTeamAccessManager guideFocus={accessGuideFocus} />");
+    expect(security).toContain("<AuditCenter guideFocus={auditGuideFocus} />");
     expect(help).toContain('data-klemmi-target="help-chapters"');
     expect(audio).toContain('"contacts-intro"');
     expect(audio).toContain('"donations-intro"');
     expect(audio).toContain('"finances-intro"');
     expect(audio).toContain('"pdf-intro"');
     expect(audio).toContain('"security-intro"');
+    expect(audio).toContain('"security-accesses-rights"');
+    expect(audio).toContain('"security-audit-files"');
     expect(audio).toContain('"help-intro"');
   });
 
@@ -783,7 +791,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(security).toContain("trpc.auth.unlockPlanningTeamLock.useMutation");
     expect(security).toContain("trpc.auth.lockPlanningTeam.useMutation");
     expect(security).toContain("System- & Sicherheitsprotokoll (Logbuch)");
-    expect(security).toContain("<AuditCenter />");
+    expect(security).toContain("<AuditCenter guideFocus={auditGuideFocus} />");
     expect(security).not.toContain("Sicherheitsprotokoll / Logbuch");
     expect(security).toContain("data-security-accordions");
     expect(security).toContain("if (!isAdmin)");
@@ -3508,12 +3516,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const contacts = source("client/src/pages/Contacts.tsx");
     const protocol = source("client/src/pages/Permissions.tsx");
 
-    expect(security).toContain("<PlanningTeamAccessManager />");
+    expect(security).toContain("<PlanningTeamAccessManager guideFocus={accessGuideFocus} />");
     expect(security).toContain("Planungsteam-Zugänge verwalten");
     expect(security).toContain("Administratorpasswort neu vergeben");
     expect(security).toContain("Notfall-Sperrstatus Planungsteam (Global)");
     expect(security).toContain("System- & Sicherheitsprotokoll (Logbuch)");
-    expect(security).toContain("<AuditCenter />");
+    expect(security).toContain("<AuditCenter guideFocus={auditGuideFocus} />");
     expect(security).not.toContain("Sicherheitsprotokoll / Logbuch");
     expect(security).not.toContain('title="Protokoll"');
     expect(security).toContain("Gefahrenbereich (Planung ${year})");
@@ -3613,7 +3621,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain("Angemeldet:");
     expect(manager).toContain("⏳ Initialcode offen");
     expect(manager).toContain("✓ Passwort eingerichtet");
-    expect(protocol).toContain("export function AuditCenter()");
+    expect(protocol).toContain("export function AuditCenter({");
     expect(protocol).toContain("🛡️ Sicherheit &amp; Logins");
     expect(protocol).toContain("🗑️ Aktivitäts- &amp; Löschverlauf");
     expect(protocol).toContain("📁 Datei- &amp; Import-Historie");

@@ -111,6 +111,8 @@ type AccessSummary = {
   mustChangePassword: boolean;
 };
 
+export type PlanningTeamAccessGuideFocus = "existing" | "create";
+
 function normalizedContactName(name: string) {
   return name.trim().toLocaleLowerCase("de-DE");
 }
@@ -133,7 +135,12 @@ function uniqueContactChoices<T extends ContactChoice>(
   );
 }
 
-export function PlanningTeamAccessManager() {
+export function PlanningTeamAccessManager({
+  guideFocus,
+}: {
+  /** Öffnet in einer Klemmi-Tour ausschließlich die passende Ansicht, ohne Formulardaten zu verändern. */
+  guideFocus?: PlanningTeamAccessGuideFocus;
+}) {
   const { user } = useAuth();
   const utils = trpc.useUtils();
   const accesses = trpc.planningTeamAccesses.list.useQuery();
@@ -174,6 +181,14 @@ export function PlanningTeamAccessManager() {
   } | null>(null);
   const [sendLinkTarget, setSendLinkTarget] = useState<AccessSummary | null>(null);
   const [sendLinkPassword, setSendLinkPassword] = useState("");
+
+  useEffect(() => {
+    if (guideFocus === "existing") {
+      setOpenSections(["existing-accesses"]);
+    } else if (guideFocus === "create") {
+      setOpenSections(["create-access"]);
+    }
+  }, [guideFocus]);
 
   const eventById = useMemo(
     () => new Map((availableEvents.data ?? []).map(event => [event.id, event])),
@@ -440,6 +455,7 @@ export function PlanningTeamAccessManager() {
       >
         <AccordionItem
           value="existing-accesses"
+          data-klemmi-target="security-accesses-existing"
           className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
         >
           <AccordionTrigger className="px-4 py-3 text-base font-semibold text-slate-900 hover:no-underline">
@@ -467,7 +483,7 @@ export function PlanningTeamAccessManager() {
           </Button>
         </div>
 
-        <div className="rounded-lg border border-slate-200 bg-white p-3">
+        <div data-klemmi-target="security-accesses-filter" className="rounded-lg border border-slate-200 bg-white p-3">
           <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-800">
             <Filter className="h-4 w-4 text-blue-700" />
             Sortieren &amp; Filtern
@@ -527,7 +543,7 @@ export function PlanningTeamAccessManager() {
           </p>
         </div>
 
-        <div className="overflow-hidden rounded-lg border border-slate-200">
+        <div data-klemmi-target="security-accesses-list" className="overflow-hidden rounded-lg border border-slate-200">
           <div className="border-b bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600">
             Vorhandene Zugänge
           </div>
@@ -668,6 +684,7 @@ export function PlanningTeamAccessManager() {
 
         <AccordionItem
           value="create-access"
+          data-klemmi-target="security-accesses-create"
           className="overflow-hidden rounded-lg border border-blue-200 bg-blue-50/30 shadow-sm"
         >
           <AccordionTrigger className="px-4 py-3 text-base font-semibold text-blue-950 hover:no-underline">
@@ -696,7 +713,7 @@ export function PlanningTeamAccessManager() {
             )}
           </div>
 
-          <div className="grid gap-4">
+          <div data-klemmi-target="security-accesses-identity" className="grid gap-4">
             <div className="space-y-1.5 md:col-span-2">
               <Label htmlFor="planning-access-contact">Ansprechpartner</Label>
               <Select
@@ -763,6 +780,7 @@ export function PlanningTeamAccessManager() {
 
           <fieldset
             data-planning-access-rights
+            data-klemmi-target="security-accesses-rights"
             className="mt-4 space-y-3 rounded-lg border border-blue-200 bg-blue-50/35 p-3"
           >
             <div className="flex flex-wrap items-start justify-between gap-2">
@@ -896,7 +914,7 @@ export function PlanningTeamAccessManager() {
           </fieldset>
 
           {isPrimaryTenantAdmin && (
-            <div className="mt-4 rounded-lg border-2 border-red-500 bg-red-50 p-3 text-sm text-red-950 shadow-sm">
+            <div data-klemmi-target="security-accesses-coadmin" className="mt-4 rounded-lg border-2 border-red-500 bg-red-50 p-3 text-sm text-red-950 shadow-sm">
               <div className="flex items-start gap-2">
                 <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-3 transition-colors hover:text-red-950">
                   <Checkbox
@@ -953,7 +971,7 @@ export function PlanningTeamAccessManager() {
             </div>
           )}
 
-          <fieldset className="mt-4 space-y-2">
+          <fieldset data-klemmi-target="security-accesses-events" className="mt-4 space-y-2">
             <legend className="text-sm font-medium text-slate-900">Freigegebene Veranstaltungen</legend>
             <div className="grid gap-2 sm:grid-cols-2">
               {availableEvents.isLoading ? (

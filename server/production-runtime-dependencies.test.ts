@@ -60,7 +60,9 @@ describe("Produktions-Laufzeitabhängigkeiten", () => {
       "donations-intro", "donations-donor", "donations-item", "donations-traits", "donations-save", "donations-complete",
       "finances-intro", "finances-category", "finances-values", "finances-balance", "finances-complete",
       "pdf-intro", "pdf-helpers", "pdf-plan", "pdf-config", "pdf-complete",
-      "security-intro", "security-accesses", "security-audit", "security-emergency", "security-complete",
+      "security-intro", "security-password", "security-accesses-overview", "security-accesses-filter", "security-accesses-list",
+      "security-accesses-create", "security-accesses-identity", "security-accesses-rights", "security-accesses-coadmin", "security-accesses-events",
+      "security-emergency", "security-audit-logins", "security-audit-activity", "security-audit-files", "security-danger", "security-complete",
       "help-intro", "help-search", "help-filters", "help-chapters", "help-complete",
     ];
 

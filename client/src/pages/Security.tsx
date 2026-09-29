@@ -28,7 +28,7 @@ import {
   Unlock,
   UsersRound,
 } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useCallback, useState } from "react";
 import { toast } from "sonner";
 
 function SecurityAccordion({
@@ -38,6 +38,8 @@ function SecurityAccordion({
   tone = "slate",
   children,
   klemmiTarget,
+  open: controlledOpen,
+  onOpenChange: onControlledOpenChange,
 }: {
   title: string;
   description: string;
@@ -45,8 +47,11 @@ function SecurityAccordion({
   tone?: "slate" | "blue" | "red" | "amber";
   children: ReactNode;
   klemmiTarget?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
   const toneClasses = {
     slate: "border-slate-200 bg-white",
     blue: "border-blue-200 bg-blue-50/35",
@@ -61,7 +66,13 @@ function SecurityAccordion({
   }[tone];
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen}>
+    <Collapsible
+      open={open}
+      onOpenChange={nextOpen => {
+        if (controlledOpen === undefined) setUncontrolledOpen(nextOpen);
+        onControlledOpenChange?.(nextOpen);
+      }}
+    >
       <Card data-klemmi-target={klemmiTarget} className={cn("overflow-hidden shadow-sm", toneClasses)}>
         <CollapsibleTrigger asChild>
           <button
@@ -216,6 +227,65 @@ export default function Security() {
     },
     onError: error => toast.error(error.message),
   });
+  type SecurityGuidePanel = "password" | "accesses" | "emergency" | "audit" | "danger";
+  const [openGuidePanels, setOpenGuidePanels] = useState<SecurityGuidePanel[]>([]);
+  const [accessGuideFocus, setAccessGuideFocus] = useState<"existing" | "create">(
+    "existing"
+  );
+  const [auditGuideFocus, setAuditGuideFocus] = useState<"security" | "activity" | "files">(
+    "security"
+  );
+  const setGuidePanelOpen = useCallback(
+    (panel: SecurityGuidePanel, open: boolean) => {
+      setOpenGuidePanels(current =>
+        open ? Array.from(new Set([...current, panel])) : current.filter(item => item !== panel)
+      );
+    },
+    []
+  );
+  const focusGuidePanel = useCallback((panel: SecurityGuidePanel) => {
+    setOpenGuidePanels([panel]);
+  }, []);
+  const handleSecurityGuideStep = useCallback((stepKey: string) => {
+    switch (stepKey) {
+      case "intro":
+      case "password":
+        focusGuidePanel("password");
+        break;
+      case "accesses-overview":
+      case "accesses-filter":
+      case "accesses-list":
+        setAccessGuideFocus("existing");
+        focusGuidePanel("accesses");
+        break;
+      case "accesses-create":
+      case "accesses-identity":
+      case "accesses-rights":
+      case "accesses-coadmin":
+      case "accesses-events":
+        setAccessGuideFocus("create");
+        focusGuidePanel("accesses");
+        break;
+      case "emergency":
+        focusGuidePanel("emergency");
+        break;
+      case "audit-logins":
+        setAuditGuideFocus("security");
+        focusGuidePanel("audit");
+        break;
+      case "audit-activity":
+        setAuditGuideFocus("activity");
+        focusGuidePanel("audit");
+        break;
+      case "audit-files":
+        setAuditGuideFocus("files");
+        focusGuidePanel("audit");
+        break;
+      case "danger":
+        focusGuidePanel("danger");
+        break;
+    }
+  }, [focusGuidePanel]);
   if (administrativeContext.isLoading && user?.role === "user") {
     return <div className="text-sm text-muted-foreground">Berechtigungen werden geprüft …</div>;
   }
@@ -241,10 +311,14 @@ export default function Security() {
         <div className="mt-3">
           <KlemmiSurfaceGuide
             guideId="security"
-            title="Schutz und Protokoll verstehen"
-            introText="Ich zeige dir, wo Zugänge, Protokolle und bewusst geschützte Notfallmaßnahmen getrennt verwaltet werden."
+            title="Schutz und Protokoll für Administratoren"
+            introText="Ich führe dich jetzt ausführlich und ohne Änderungen durch Passwort, Zugänge, Rechte, Notfall-Stopp und die drei Protokollbereiche."
             steps={SECURITY_KLEMMI_STEPS}
             successSignal={null}
+            onStepChange={handleSecurityGuideStep}
+            onOpenChange={open => !open && setOpenGuidePanels([])}
+            completionTitle="Sicherheit nachvollziehbar verwaltet"
+            completionText="Du weißt jetzt, wie du Zugänge passend begrenzt, Ereignisse prüfst und geschützte Notfallfunktionen bewusst einsetzt."
           />
         </div>
       </div>
@@ -252,10 +326,13 @@ export default function Security() {
       <div className="space-y-4" data-security-accordions>
         {isPrimaryTenantAdmin && (
           <SecurityAccordion
+            klemmiTarget="security-password"
             title="Administratorpasswort neu vergeben"
             description="Administratorpasswort einrichten oder sicher ändern."
             icon={KeyRound}
             tone="amber"
+            open={openGuidePanels.includes("password")}
+            onOpenChange={open => setGuidePanelOpen("password", open)}
           >
             <PasswordEditor
               enabled={Boolean(status?.adminEnabled)}
@@ -271,8 +348,10 @@ export default function Security() {
           description="Ansprechpartnerzugänge, Eventfreigaben, Initialcodes und Zugangsblätter verwalten."
           icon={UsersRound}
           tone="blue"
+          open={openGuidePanels.includes("accesses")}
+          onOpenChange={open => setGuidePanelOpen("accesses", open)}
         >
-          <PlanningTeamAccessManager />
+          <PlanningTeamAccessManager guideFocus={accessGuideFocus} />
         </SecurityAccordion>
 
         {isPrimaryTenantAdmin && (
@@ -282,6 +361,8 @@ export default function Security() {
           description="Sperrt bei einem Sicherheitsvorfall sofort alle Planungsteam-Logins und offenen Sitzungen."
           icon={ShieldAlert}
           tone="red"
+          open={openGuidePanels.includes("emergency")}
+          onOpenChange={open => setGuidePanelOpen("emergency", open)}
         >
           <div className="space-y-4" aria-live="polite">
             <div
@@ -344,16 +425,20 @@ export default function Security() {
           description="Sicherheitsereignisse, Aktivitäts- und Löschverlauf sowie Datei- und Import-Historie zentral prüfen."
           icon={ShieldCheck}
           tone="slate"
+          open={openGuidePanels.includes("audit")}
+          onOpenChange={open => setGuidePanelOpen("audit", open)}
         >
-          <AuditCenter />
+          <AuditCenter guideFocus={auditGuideFocus} />
         </SecurityAccordion>
 
         <SecurityAccordion
-          klemmiTarget="security-emergency"
+          klemmiTarget="security-danger"
           title={`Gefahrenbereich (Planung ${year})`}
           description="Unwiderrufliche Löschung aller Planungsdaten des aktuell gewählten Jahres."
           icon={ShieldAlert}
           tone="red"
+          open={openGuidePanels.includes("danger")}
+          onOpenChange={open => setGuidePanelOpen("danger", open)}
         >
           <div className="space-y-4">
           <div className="flex items-center gap-2 font-semibold text-destructive">

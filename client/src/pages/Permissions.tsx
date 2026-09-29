@@ -29,7 +29,7 @@ import {
   RotateCcw,
   ShieldCheck,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 const actionLabel = {
@@ -151,7 +151,14 @@ function importKind(filename: string) {
  * Die drei Tabs bündeln Sicherheitsereignisse, operative Änderungen sowie
  * tatsächlich übernommene JSON- und Excel-Dateivorgänge ohne Datenmigration.
  */
-export function AuditCenter() {
+export type AuditGuideFocus = "security" | "activity" | "files";
+
+export function AuditCenter({
+  guideFocus,
+}: {
+  /** Klemmi wechselt nur die sichtbare Protokollansicht, ohne Daten zu verändern. */
+  guideFocus?: AuditGuideFocus;
+}) {
   const { isTenantAdmin: isAdmin } = useTenantAdministration();
   const [yearFilter, setYearFilter] = useState("all");
   const [eventFilter, setEventFilter] = useState("all");
@@ -162,6 +169,7 @@ export function AuditCenter() {
   const [resetDeletionOpen, setResetDeletionOpen] = useState(false);
   const [resetFileHistoryOpen, setResetFileHistoryOpen] = useState(false);
   const [selectedFileLogId, setSelectedFileLogId] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<AuditGuideFocus>("security");
   const { data: years = [] } = trpc.years.list.useQuery();
   const { data: events = [] } = trpc.events.all.useQuery();
   const utils = trpc.useUtils();
@@ -254,6 +262,10 @@ export function AuditCenter() {
       ? null
       : events.find(event => event.id === Number(eventFilter))?.name;
 
+  useEffect(() => {
+    if (guideFocus) setActiveTab(guideFocus);
+  }, [guideFocus]);
+
   if (!isAdmin) {
     return (
       <div className="rounded-lg border border-dashed bg-muted/30 p-6 text-center text-sm text-muted-foreground">
@@ -264,29 +276,32 @@ export function AuditCenter() {
 
   return (
     <>
-      <Tabs defaultValue="security" className="space-y-4">
-        <TabsList className="grid h-auto w-full grid-cols-1 gap-1 rounded-xl p-1 sm:grid-cols-3">
+      <Tabs value={activeTab} onValueChange={value => setActiveTab(value as AuditGuideFocus)} className="space-y-4">
+        <TabsList data-klemmi-target="security-audit-tabs" className="grid h-auto w-full grid-cols-1 gap-1 rounded-xl p-1 sm:grid-cols-3">
           <TabsTrigger
             value="security"
+            data-klemmi-target="security-audit-logins-tab"
             className="h-10 whitespace-normal px-3 text-left leading-tight"
           >
             🛡️ Sicherheit &amp; Logins
           </TabsTrigger>
           <TabsTrigger
             value="activity"
+            data-klemmi-target="security-audit-activity-tab"
             className="h-10 whitespace-normal px-3 text-left leading-tight"
           >
             🗑️ Aktivitäts- &amp; Löschverlauf
           </TabsTrigger>
           <TabsTrigger
             value="files"
+            data-klemmi-target="security-audit-files-tab"
             className="h-10 whitespace-normal px-3 text-left leading-tight"
           >
             📁 Datei- &amp; Import-Historie
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="security" className="space-y-4">
+        <TabsContent value="security" data-klemmi-target="security-audit-logins" className="space-y-4">
           <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-4">
             <div className="flex items-start gap-3">
               <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-blue-700" />
@@ -338,7 +353,7 @@ export function AuditCenter() {
           )}
         </TabsContent>
 
-        <TabsContent value="activity" className="space-y-4">
+        <TabsContent value="activity" data-klemmi-target="security-audit-activity" className="space-y-4">
           <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <h3 className="flex items-center gap-2 font-semibold text-slate-900">
@@ -610,7 +625,7 @@ export function AuditCenter() {
           )}
         </TabsContent>
 
-        <TabsContent value="files" className="space-y-4">
+        <TabsContent value="files" data-klemmi-target="security-audit-files" className="space-y-4">
           <div className="flex flex-col gap-3 rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex gap-3">
               <ArchiveRestore className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" />

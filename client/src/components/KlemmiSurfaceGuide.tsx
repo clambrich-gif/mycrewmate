@@ -48,6 +48,8 @@ type KlemmiSurfaceGuideProps = {
   steps: KlemmiSurfaceStep[];
   successSignal: number | null;
   onStepAction?: (stepKey: string) => void;
+  /** Reagiert auf Vor- und Zurückblättern, etwa um rein erklärend einen Bereich zu öffnen. */
+  onStepChange?: (stepKey: string) => void;
   onOpenChange?: (open: boolean) => void;
   completionTitle?: string;
   completionText?: string;
@@ -92,6 +94,7 @@ export function KlemmiSurfaceGuide({
   steps,
   successSignal,
   onStepAction,
+  onStepChange,
   onOpenChange,
   completionTitle = "Geschafft!",
   completionText = "Du kennst jetzt die wichtigsten Schritte. Klemmi bleibt jederzeit über „Klemmi zeigt’s“ für dich da.",
@@ -142,6 +145,11 @@ export function KlemmiSurfaceGuide({
     setTargetReady(false);
     setStepIndex(current => Math.min(current + 1, steps.length - 1));
   }, [open, step?.waitsForSuccess, step?.completeOnSuccess, stepIndex, steps.length, successSignal]);
+
+  useEffect(() => {
+    if (!open || celebrating || !step) return;
+    onStepChange?.(step.key);
+  }, [celebrating, onStepChange, open, step]);
 
   useEffect(() => {
     if (!open || !step || openingPending) return;
