@@ -367,6 +367,32 @@ export const platformLaunchSettings = mysqlTable("platform_launch_settings", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+/**
+ * Freiwillige, nicht personenbezogene Selbstauskunft auf der QR-Zielseite.
+ * Es werden weder Name, E-Mail, Gerätekennung noch IP-Adresse in dieser Tabelle
+ * gespeichert; der optionale Veranstaltungsname hilft nur bei der Auswertung
+ * physischer Auslageorte.
+ */
+export const publicDemoSourceSelections = mysqlTable(
+  "public_demo_source_selections",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    source: mysqlEnum("source", [
+      "cycling_event",
+      "club_event",
+      "recommendation",
+      "online",
+      "other",
+    ]).notNull(),
+    eventLabel: varchar("eventLabel", { length: 120 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    index("public_demo_source_created_idx").on(table.source, table.createdAt),
+  ]
+);
+export type PublicDemoSourceSelection = typeof publicDemoSourceSelections.$inferSelect;
+
 export const eventYears = mysqlTable("event_years", {
   year: int("year").primaryKey(),
   label: varchar("label", { length: 120 }).notNull(),

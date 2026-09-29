@@ -41,6 +41,7 @@ import {
   platformLaunchSettings,
   platformTenantHandoffs,
   postTasks,
+  publicDemoSourceSelections,
   prepTasks,
   revokedSessions,
   securitySettings,
@@ -109,6 +110,20 @@ export async function getDb(): Promise<DBClient | null> {
     }
   }
   return _db;
+}
+
+/** Speichert ausschließlich die freiwillige, nicht personenbezogene QR-Herkunft. */
+export async function recordPublicDemoSourceSelection(input: {
+  source: "cycling_event" | "club_event" | "recommendation" | "online" | "other";
+  eventLabel?: string;
+}) {
+  const database = await getDb();
+  if (!database) return { recorded: false } as const;
+  await database.insert(publicDemoSourceSelections).values({
+    source: input.source,
+    eventLabel: input.eventLabel?.trim() || null,
+  });
+  return { recorded: true } as const;
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {

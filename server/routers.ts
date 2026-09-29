@@ -4492,6 +4492,24 @@ export const appRouter = router({
       .mutation(({ input }) => db.deleteFinance(input.id)),
   }),
 
+  /** Öffentlicher, bewusst datensparsamer Endpunkt der QR-Zielseite. */
+  publicDemo: router({
+    recordSource: publicProcedure
+      .input(
+        z.object({
+          source: z.enum([
+            "cycling_event",
+            "club_event",
+            "recommendation",
+            "online",
+            "other",
+          ]),
+          eventLabel: z.string().trim().min(1).max(120).optional(),
+        })
+      )
+      .mutation(({ input }) => db.recordPublicDemoSourceSelection(input)),
+  }),
+
   audit: router({
     activities: adminProcedure
       .input(

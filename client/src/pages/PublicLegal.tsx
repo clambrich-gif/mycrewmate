@@ -102,6 +102,10 @@ export function PublicPrivacyPage() {
         <p className="mt-2">Diese öffentliche Musterseite dient ausschließlich der Produktinformation. Sie enthält keinen Newsletter, kein Kontaktformular, keine Zahlungsabwicklung und keine Analyse- oder Werbetracker. Der dargestellte Warenkorb und Checkout sind lokal simuliert; eingegebene Musterdaten werden nicht an einen Server übertragen und nicht gespeichert.</p>
       </section>
       <section>
+        <h2 className="text-base font-bold text-slate-950">2.1 Freiwillige Herkunftsangabe auf der Vereinsdemo</h2>
+        <p className="mt-2">Beim Aufruf über eine ausgelegte QR-Checkkarte kann freiwillig ausgewählt werden, ob die Karte bei einer Radsport- oder Vereinsveranstaltung, über eine Empfehlung, online oder an einem anderen Ort entdeckt wurde. Optional kann ein Veranstaltungsname angegeben werden. Für diese Auswertung speichern wir ausschließlich die gewählte Kategorie, den optionalen Veranstaltungsnamen und den Zeitpunkt. Name, E-Mail-Adresse, Gerätekennung oder IP-Adresse werden hierfür nicht in einer MyCrewMate-Auswertung gespeichert. Die Auswahl kann übersprungen werden.</p>
+      </section>
+      <section>
         <h2 className="text-base font-bold text-slate-950">3. Technische Zugriffe</h2>
         <p className="mt-2">Beim Aufruf einer Website verarbeitet der Hosting-Anbieter technisch erforderliche Verbindungsdaten in Serverprotokollen, insbesondere IP-Adresse, Zeitpunkt, angeforderte Seite und technische Browserinformationen. Die Verarbeitung erfolgt zur Bereitstellung und Sicherheit der Website auf Grundlage von Art. 6 Abs. 1 lit. f DSGVO.</p>
       </section>

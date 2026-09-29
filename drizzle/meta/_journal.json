@@ -519,6 +519,13 @@
       "when": 1790660862052,
       "tag": "0073_nice_moonstone",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "5",
+      "when": 1790677712190,
+      "tag": "0074_medical_lord_hawal",
+      "breakpoints": true
     }
   ]
 }

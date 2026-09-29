@@ -87,6 +87,7 @@ const KlemmiFirstLoginPreview = lazy(() => import("@/pages/KlemmiFirstLoginPrevi
 const KlemmiDashboardPreview = lazy(() => import("@/pages/KlemmiDashboardPreview"));
 const KlemmiPlanLayoutPreview = lazy(() => import("@/pages/KlemmiPlanLayoutPreview"));
 const OfferDemo = lazy(() => import("@/pages/OfferDemo"));
+const ClubDemoLanding = lazy(() => import("@/pages/ClubDemoLanding"));
 const PublicLegalPage = lazy(() => import("@/pages/PublicLegal"));
 const MasterAdminPortal = lazy(() => import("@/pages/MasterAdminPortal"));
 const GameRoot = lazy(() => import("@/pages/GameRoot"));
@@ -150,6 +151,7 @@ function PublicSiteRouter() {
     <Suspense fallback={<RouteLoading />}>
       <Switch>
         <Route path="/" component={OfferDemo} />
+        <Route path="/vereinsdemo" component={ClubDemoLanding} />
         <Route path="/game" component={GameRoot} />
         <Route path="/impressum">
           <PublicLegalPage kind="impressum" />
@@ -198,6 +200,11 @@ function Router() {
       <Route path="/angebot-demo">
         <Suspense fallback={<RouteLoading />}>
           <OfferDemo />
+        </Suspense>
+      </Route>
+      <Route path="/vereinsdemo">
+        <Suspense fallback={<RouteLoading />}>
+          <ClubDemoLanding />
         </Suspense>
       </Route>
       {/* Das Spiel ist immer öffentlich und benötigt keinen Vereinslogin */}
