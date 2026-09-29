@@ -3261,6 +3261,7 @@ export const appRouter = router({
             requestedPlanningScope(ctx.req).year
           );
     }),
+    manage: scopeAdminAuthProcedure.query(() => db.listEventsForManagement()),
     current: scopedProtectedProcedure.query(() => db.getEvent()),
     create: scopeAdminProcedure
       .input(
@@ -3335,6 +3336,20 @@ export const appRouter = router({
       .mutation(({ input }) => {
         const { id, clearDateRange: _clearDateRange, ...changes } = input;
         return db.updateEventDetails(id, changes);
+      }),
+    close: scopeAdminAuthProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await db.closeEvent(input.id);
+        await recordOperationalActivity(ctx, "events.close", input);
+        return result;
+      }),
+    reopen: scopeAdminAuthProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const result = await db.reopenEvent(input.id);
+        await recordOperationalActivity(ctx, "events.reopen", input);
+        return result;
       }),
     remove: adminProcedure
       .input(

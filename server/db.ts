@@ -678,6 +678,7 @@ export async function listEventYears() {
     .where(
       and(
         eq(events.tenantId, tenant()),
+        eq(events.status, "active"),
         entitlement.packageId === "event_pass" && entitlement.eventId
           ? eq(events.id, entitlement.eventId)
           : undefined
@@ -815,9 +816,14 @@ export async function getTenantProductUsage(
   };
   if (!database) return emptyUsage;
 
-  const [tenantEvents, tenantHelpers, personalAccesses] = await Promise.all([
+  const [tenantEvents, tenantHelpers, personalAccesses, coAdminAccesses] = await Promise.all([
     database
-      .select({ id: events.id, year: events.year, name: events.name })
+      .select({
+        id: events.id,
+        year: events.year,
+        name: events.name,
+        status: events.status,
+      })
       .from(events)
       .where(eq(events.tenantId, tenantId)),
     database
@@ -831,7 +837,7 @@ export async function getTenantProductUsage(
         events,
         and(eq(events.id, helpers.eventId), eq(events.year, helpers.year))
       )
-      .where(eq(events.tenantId, tenantId)),
+      .where(and(eq(events.tenantId, tenantId), eq(events.status, "active"))),
     database
       .selectDistinct({ id: planningTeamAccesses.id })
       .from(planningTeamAccesses)
@@ -848,13 +854,28 @@ export async function getTenantProductUsage(
           // der Anlage eines neuen Zugangs.
           entitlement.packageId === "pro"
             ? eq(planningTeamAccesses.isTenantAdmin, false)
-            : undefined
+          : undefined
+        )
+      ),
+    database
+      .selectDistinct({ id: planningTeamAccesses.id })
+      .from(planningTeamAccesses)
+      .innerJoin(
+        planningTeamAccessEvents,
+        eq(planningTeamAccessEvents.accessId, planningTeamAccesses.id)
+      )
+      .innerJoin(events, eq(events.id, planningTeamAccessEvents.eventId))
+      .where(
+        and(
+          eq(events.tenantId, tenantId),
+          eq(planningTeamAccesses.isTenantAdmin, true)
         )
       ),
   ]);
 
   const eventsByYear = new Map<number, number>();
   for (const eventRow of tenantEvents) {
+    if (eventRow.status !== "active") continue;
     eventsByYear.set(eventRow.year, (eventsByYear.get(eventRow.year) ?? 0) + 1);
   }
   const busiestEventYear = Array.from(eventsByYear.entries()).sort(
@@ -883,14 +904,16 @@ export async function getTenantProductUsage(
     eventsPerYear: productUsageMetric({
       used: busiestEventYear?.[1] ?? 0,
       limit: entitlement.entitlements.maxEventsPerYear,
-      context: busiestEventYear ? `Spitzenjahr ${busiestEventYear[0]}` : null,
+      context: busiestEventYear
+        ? `Aktiv im Jahr ${busiestEventYear[0]}: ${busiestEventYear[1]}`
+        : "Keine aktiven Veranstaltungen",
     }),
     helpersPerEvent: productUsageMetric({
       used: busiestHelperEvent?.count ?? 0,
       limit: entitlement.entitlements.maxHelpersPerEvent,
       context: busiestHelperEvent
-        ? `${busiestHelperEvent.name} ${busiestHelperEvent.year}`
-        : null,
+        ? `Aktiv: ${busiestHelperEvent.name} ${busiestHelperEvent.year}`
+        : "Keine aktiven Veranstaltungen",
     }),
     personalPlanningAccesses: productUsageMetric({
       used: personalAccesses.length,
@@ -898,7 +921,7 @@ export async function getTenantProductUsage(
       available: entitlement.entitlements.capabilities.personal_accesses,
       context:
         entitlement.packageId === "pro"
-          ? "Co-Admins zusätzlich"
+          ? `${coAdminAccesses.length} Co-Admin${coAdminAccesses.length === 1 ? "" : "s"} zusätzlich · ${personalAccesses.length + coAdminAccesses.length} Zugänge gesamt`
           : null,
     }),
   };
@@ -1092,6 +1115,8 @@ export async function listTenantOverviewsForPlatformAdmin() {
         name: events.name,
         startDate: events.startDate,
         endDate: events.endDate,
+        status: events.status,
+        closedAt: events.closedAt,
       })
       .from(events)
       .orderBy(events.tenantId, events.startDate, events.year, events.id),
@@ -1121,10 +1146,13 @@ export async function listTenantOverviewsForPlatformAdmin() {
   return tenantRows.map(tenantRow => {
     const tenantEvents = eventRows.filter(eventRow => eventRow.tenantId === tenantRow.id);
     const assignment = assignmentByTenant.get(tenantRow.id);
+    const activeTenantEvents = tenantEvents.filter(eventRow => eventRow.status === "active");
     const nextEvent =
-      tenantEvents.find(eventRow => eventRow.startDate !== null && eventRow.startDate >= today) ??
-      tenantEvents.find(eventRow => eventRow.startDate !== null) ??
-      tenantEvents[0] ??
+      activeTenantEvents.find(
+        eventRow => eventRow.startDate !== null && eventRow.startDate >= today
+      ) ??
+      activeTenantEvents.find(eventRow => eventRow.startDate !== null) ??
+      activeTenantEvents[0] ??
       null;
     return {
       id: tenantRow.id,
@@ -1153,6 +1181,8 @@ export async function listTenantOverviewsForPlatformAdmin() {
         year: eventRow.year,
         startDate: eventRow.startDate,
         endDate: eventRow.endDate,
+        status: eventRow.status,
+        closedAt: eventRow.closedAt,
       })),
       nextEvent: nextEvent
         ? {
@@ -1856,12 +1886,40 @@ export async function listEvents(eventYear = year()) {
       and(
         eq(events.tenantId, tenant()),
         eq(events.year, eventYear),
+        eq(events.status, "active"),
         entitlement.packageId === "event_pass" && entitlement.eventId
           ? eq(events.id, entitlement.eventId)
           : undefined
       )
     )
     .orderBy(events.sortOrder, events.name, events.id);
+  return rows.map(row => ({
+    ...row,
+    activeDays: eventWeekdays(row.activeDays),
+  }));
+}
+
+/**
+ * Liefert für die Verwaltungsansicht auch abgeschlossene Veranstaltungen.
+ * Dieser Pfad ist bewusst nicht Teil der normalen Auswahl- oder Startlogik.
+ */
+export async function listEventsForManagement(eventYear = year()) {
+  const db = await getDb();
+  if (!db) return [];
+  const entitlement = await getCurrentTenantProductEntitlement();
+  const rows = await db
+    .select()
+    .from(events)
+    .where(
+      and(
+        eq(events.tenantId, tenant()),
+        eq(events.year, eventYear),
+        entitlement.packageId === "event_pass" && entitlement.eventId
+          ? eq(events.id, entitlement.eventId)
+          : undefined
+      )
+    )
+    .orderBy(events.status, events.sortOrder, events.name, events.id);
   return rows.map(row => ({
     ...row,
     activeDays: eventWeekdays(row.activeDays),
@@ -2720,6 +2778,7 @@ export async function listEventYearsForPlanningTeamAccess(accessId: number) {
       and(
         eq(planningTeamAccessEvents.accessId, accessId),
         eq(events.tenantId, tenant()),
+        eq(events.status, "active"),
         entitlement.packageId === "event_pass" && entitlement.eventId
           ? eq(events.id, entitlement.eventId)
           : undefined
@@ -2744,6 +2803,7 @@ export async function listEventsForPlanningTeamAccess(
         eq(planningTeamAccessEvents.accessId, accessId),
         eq(events.tenantId, tenant()),
         eq(events.year, eventYear),
+        eq(events.status, "active"),
         entitlement.packageId === "event_pass" && entitlement.eventId
           ? eq(events.id, entitlement.eventId)
           : undefined
@@ -2851,7 +2911,8 @@ export async function getEvent(id = event()) {
       and(
         eq(events.id, id),
         eq(events.tenantId, tenant()),
-        eq(events.year, year())
+        eq(events.year, year()),
+        eq(events.status, "active")
       )
     )
     .limit(1);
@@ -2934,7 +2995,8 @@ export async function withPlanningWriteLock<T>(callback: () => Promise<T>) {
         and(
           eq(events.id, selectedEventId),
           eq(events.tenantId, tenant()),
-          eq(events.year, selectedYear)
+          eq(events.year, selectedYear),
+          eq(events.status, "active")
         )
       )
       .limit(1)
@@ -3063,7 +3125,13 @@ async function assertCurrentProductEventCapacity(database: DBClient, eventYear: 
   const existingEvents = await database
     .select({ id: events.id })
     .from(events)
-    .where(and(eq(events.tenantId, tenant()), eq(events.year, eventYear)))
+    .where(
+      and(
+        eq(events.tenantId, tenant()),
+        eq(events.year, eventYear),
+        eq(events.status, "active")
+      )
+    )
     .for("update");
   if (existingEvents.length >= limit) {
     const productLabel = PRODUCT_PACKAGE_META[entitlement.packageId].name;
@@ -3133,6 +3201,75 @@ export async function createEvent(
       donationTargetSonstiges: 0,
       created: true,
     };
+  });
+}
+
+/**
+ * Schließt eine Veranstaltung ohne Datenverlust. Ab diesem Zeitpunkt ist sie
+ * weder Teil der Tagesplanung noch des aktiven Jahreskontingents und bleibt
+ * trotzdem als vollständig nachvollziehbare Historie erhalten.
+ */
+export async function closeEvent(id: number) {
+  const database = (await getDb()) as DB;
+  const selectedYear = year();
+  const selectedTenant = tenant();
+  return database.transaction(async tx => {
+    const [selected] = await tx
+      .select({ id: events.id, name: events.name, status: events.status })
+      .from(events)
+      .where(
+        and(
+          eq(events.id, id),
+          eq(events.tenantId, selectedTenant),
+          eq(events.year, selectedYear)
+        )
+      )
+      .limit(1)
+      .for("update");
+    if (!selected) throw new Error("Veranstaltung wurde nicht gefunden");
+    if (selected.status === "closed") {
+      return { id: selected.id, name: selected.name, status: "closed" as const };
+    }
+    await tx
+      .update(events)
+      .set({ status: "closed", closedAt: new Date() })
+      .where(eq(events.id, id));
+    return { id: selected.id, name: selected.name, status: "closed" as const };
+  });
+}
+
+/**
+ * Öffnet eine historische Veranstaltung wieder. Die Paketgrenze wird dabei
+ * erneut gegen die anderen aktiven Veranstaltungen des betreffenden Jahres
+ * geprüft, sodass ein Reaktivieren kein Kontingent umgehen kann.
+ */
+export async function reopenEvent(id: number) {
+  const database = (await getDb()) as DB;
+  const selectedYear = year();
+  const selectedTenant = tenant();
+  return database.transaction(async tx => {
+    const [selected] = await tx
+      .select({ id: events.id, name: events.name, status: events.status })
+      .from(events)
+      .where(
+        and(
+          eq(events.id, id),
+          eq(events.tenantId, selectedTenant),
+          eq(events.year, selectedYear)
+        )
+      )
+      .limit(1)
+      .for("update");
+    if (!selected) throw new Error("Veranstaltung wurde nicht gefunden");
+    if (selected.status === "active") {
+      return { id: selected.id, name: selected.name, status: "active" as const };
+    }
+    await assertCurrentProductEventCapacity(tx, selectedYear);
+    await tx
+      .update(events)
+      .set({ status: "active", closedAt: null })
+      .where(eq(events.id, id));
+    return { id: selected.id, name: selected.name, status: "active" as const };
   });
 }
 

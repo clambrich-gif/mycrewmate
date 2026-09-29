@@ -126,6 +126,8 @@ type TenantOverviewItem = {
     year: number;
     startDate: string | null;
     endDate: string | null;
+    status: "active" | "closed";
+    closedAt: Date | null;
   }>;
   nextEvent: {
     id?: number;
@@ -223,10 +225,16 @@ function productUsageTone(metric: ProductLimitUsageMetric) {
   return { bar: "bg-emerald-500", text: "text-emerald-800" };
 }
 
-function TenantProductUsage({ usage }: { usage: TenantOverviewItem["productUsage"] }) {
+function TenantProductUsage({
+  usage,
+  events,
+}: {
+  usage: TenantOverviewItem["productUsage"];
+  events: TenantOverviewItem["events"];
+}) {
   const metrics = [
-    { id: "events", label: "Veranstaltungen/Jahr", metric: usage.eventsPerYear },
-    { id: "helpers", label: "Helfer/Event", metric: usage.helpersPerEvent },
+    { id: "events", label: "Aktive Events/Jahr", metric: usage.eventsPerYear },
+    { id: "helpers", label: "Helfer · aktivstes Event", metric: usage.helpersPerEvent },
     {
       id: "accesses",
       label: "persönliche Zugänge",
@@ -234,6 +242,8 @@ function TenantProductUsage({ usage }: { usage: TenantOverviewItem["productUsage
     },
   ];
   const enterprise = usage.packageId === "enterprise";
+  const activeEventCount = events.filter(event => event.status === "active").length;
+  const closedEventCount = events.length - activeEventCount;
 
   return (
     <section
@@ -246,9 +256,14 @@ function TenantProductUsage({ usage }: { usage: TenantOverviewItem["productUsage
           Paket-Auslastung
         </p>
         <p className="text-[11px] text-slate-500">
-          {enterprise ? "Enterprise · unbegrenzt" : "Höchster Stand je Paketgrenze"}
+          {enterprise ? "Enterprise · unbegrenzt" : "Nur aktive Events zählen"}
         </p>
       </div>
+      <p className="mt-1 text-[11px] text-slate-500">
+        Verein gesamt: {activeEventCount} aktiv
+        {closedEventCount > 0 ? ` · ${closedEventCount} abgeschlossen` : ""}
+        {" · "}{events.length} insgesamt
+      </p>
       <div className="mt-2.5 grid gap-2 sm:grid-cols-3">
         {metrics.map(({ id, label, metric }) => {
           const tone = productUsageTone(metric);
@@ -829,7 +844,7 @@ export default function MasterAdminPortal() {
             },
             productUsage: demoProductUsage(),
             eventCount: 1,
-            events: [{ id: 1, name: "MyEifelRide 2027", year: 2027, startDate: "2027-06-11", endDate: "2027-06-13" }],
+            events: [{ id: 1, name: "MyEifelRide 2027", year: 2027, startDate: "2027-06-11", endDate: "2027-06-13", status: "active", closedAt: null }],
             nextEvent: {
               id: 1,
               name: "MyEifelRide 2027",
@@ -855,7 +870,7 @@ export default function MasterAdminPortal() {
             },
             productUsage: demoProductUsage(),
             eventCount: 1,
-            events: [{ id: 2, name: "Lukasmarkt 2027", year: 2027, startDate: "2027-10-15", endDate: "2027-10-17" }],
+            events: [{ id: 2, name: "Lukasmarkt 2027", year: 2027, startDate: "2027-10-15", endDate: "2027-10-17", status: "active", closedAt: null }],
             nextEvent: {
               id: 2,
               name: "Lukasmarkt 2027",
@@ -881,7 +896,7 @@ export default function MasterAdminPortal() {
             },
             productUsage: demoProductUsage(),
             eventCount: 1,
-            events: [{ id: 3, name: "Schützenfest 2027", year: 2027, startDate: "2027-07-02", endDate: "2027-07-04" }],
+            events: [{ id: 3, name: "Schützenfest 2027", year: 2027, startDate: "2027-07-02", endDate: "2027-07-04", status: "active", closedAt: null }],
             nextEvent: {
               id: 3,
               name: "Schützenfest 2027",
@@ -1205,7 +1220,7 @@ export default function MasterAdminPortal() {
                         <span className="inline-flex items-center gap-1"><CalendarDays className="size-3.5 text-slate-400" /> {tenant.eventCount} Veranstaltung{tenant.eventCount === 1 ? "" : "en"}</span>
                         <span className="inline-flex items-center gap-1"><Mail className="size-3.5 text-slate-400" /> {tenant.contactEmail}</span>
                       </div>
-                      <TenantProductUsage usage={tenant.productUsage} />
+                      <TenantProductUsage usage={tenant.productUsage} events={tenant.events} />
                     </div>
                     <div className="space-y-2 sm:min-w-48">
                       <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-left sm:text-right">

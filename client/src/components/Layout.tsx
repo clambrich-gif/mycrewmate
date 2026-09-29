@@ -465,6 +465,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
     id: number;
     name: string;
   } | null>(null);
+  const [closeEventTarget, setCloseEventTarget] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
   const [deferredInstallPrompt, setDeferredInstallPrompt] =
     useState<DeferredInstallPrompt | null>(null);
   const [pwaInstallDialogOpen, setPwaInstallDialogOpen] = useState(false);
@@ -628,6 +632,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
   });
   const events = trpc.events.list.useQuery(undefined, {
     enabled: isAuthenticated && !isCredentialBootstrapPending,
+  });
+  const managedEvents = trpc.events.manage.useQuery(undefined, {
+    enabled: isAuthenticated && !isCredentialBootstrapPending && isTenantAdmin,
   });
   const tenantProduct = trpc.tenantProduct.current.useQuery(undefined, {
     enabled: isAuthenticated && !isCredentialBootstrapPending,
@@ -1093,6 +1100,41 @@ export function Layout({ children }: { children: React.ReactNode }) {
     },
     onError: error => toast.error(error.message),
   });
+  const closeEvent = trpc.events.close.useMutation({
+    onSuccess: async result => {
+      setCloseEventTarget(null);
+      const fallbackEvent = managedEvents.data?.find(
+        item => item.id !== result.id && item.status === "active"
+      );
+      await Promise.all([
+        utils.years.list.invalidate(),
+        utils.events.list.invalidate(),
+        utils.events.manage.invalidate(),
+        utils.events.current.invalidate(),
+        utils.events.all.invalidate(),
+      ]);
+      toast.success(`„${result.name}“ wurde abgeschlossen und bleibt als Historie erhalten.`);
+      if (result.id === eventId && fallbackEvent) {
+        selectEvent(fallbackEvent.id);
+        return;
+      }
+      setEventManagerOpen(true);
+    },
+    onError: error => toast.error(error.message),
+  });
+  const reopenEvent = trpc.events.reopen.useMutation({
+    onSuccess: async result => {
+      await Promise.all([
+        utils.years.list.invalidate(),
+        utils.events.list.invalidate(),
+        utils.events.manage.invalidate(),
+        utils.events.all.invalidate(),
+      ]);
+      toast.success(`„${result.name}“ ist wieder für die aktive Planung geöffnet.`);
+      setEventManagerOpen(true);
+    },
+    onError: error => toast.error(error.message),
+  });
   const removeEvent = trpc.events.remove.useMutation({
     onSuccess: async result => {
       setDeleteEventTarget(null);
@@ -1103,6 +1145,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       }
       await Promise.all([
         utils.events.list.invalidate(),
+        utils.events.manage.invalidate(),
         utils.events.all.invalidate(),
       ]);
       setEventManagerOpen(true);
@@ -2303,11 +2346,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <DialogTitle>Veranstaltungen {year} verwalten</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Namen können jederzeit geändert werden. Beim Löschen werden alle
-            Planungsdaten dieser Veranstaltung dauerhaft entfernt.
+            Aktive Veranstaltungen zählen für das Jahreskontingent. Mit
+            „Abschließen“ bleiben alle Daten als Historie erhalten, verschwinden
+            aber aus der täglichen Planung und können später wieder geöffnet werden.
+            Nur beim Löschen werden Planungsdaten dauerhaft entfernt.
           </p>
           <div className="divide-y rounded-lg border">
-            {events.data?.map(item => (
+            {managedEvents.data?.map(item => (
               <div
                 key={item.id}
                 className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center"
@@ -2376,6 +2421,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     <div className="text-xs text-muted-foreground">
                       {item.activeDays.join(", ")}
                     </div>
+                    {item.status === "closed" && (
+                      <div className="mt-1 inline-flex rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
+                        Abgeschlossen · nur Historie
+                      </div>
+                    )}
                     {item.id === eventId && (
                       <div className="text-xs text-primary">
                         Aktuell ausgewählt
@@ -2455,14 +2505,41 @@ export function Layout({ children }: { children: React.ReactNode }) {
                         <Pencil className="h-4 w-4" />
                         Bearbeiten
                       </Button>
+                      {item.status === "active" ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="w-full border-slate-300 bg-white text-slate-700 hover:bg-slate-100 sm:w-auto"
+                          disabled={closeEvent.isPending}
+                          onClick={() =>
+                            setCloseEventTarget({ id: item.id, name: item.name })
+                          }
+                        >
+                          <CheckCircle2 className="h-4 w-4" />
+                          Abschließen
+                        </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="w-full border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 sm:w-auto"
+                          disabled={reopenEvent.isPending}
+                          onClick={() => reopenEvent.mutate({ id: item.id })}
+                        >
+                          <CheckCircle2 className="h-4 w-4" />
+                          Wieder öffnen
+                        </Button>
+                      )}
                       <Button
                         type="button"
                         variant="destructive"
                         size="sm"
                         className="w-full border border-red-700 !bg-red-600 !text-white shadow-sm hover:!bg-red-700 disabled:!border-red-300 disabled:!bg-red-100 disabled:!text-red-800 disabled:opacity-100 sm:w-auto"
-                        disabled={(events.data?.length ?? 0) <= 1}
+                        disabled={(managedEvents.data?.length ?? 0) <= 1}
                         title={
-                          (events.data?.length ?? 0) <= 1
+                          (managedEvents.data?.length ?? 0) <= 1
                             ? "Die letzte Veranstaltung des Jahres kann nicht gelöscht werden"
                             : "Veranstaltung löschen"
                         }
@@ -2483,7 +2560,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </div>
             ))}
           </div>
-          {(events.data?.length ?? 0) <= 1 && (
+          {(managedEvents.data?.length ?? 0) <= 1 && (
             <p className="text-xs text-muted-foreground">
               Für jedes Veranstaltungsjahr muss mindestens eine Veranstaltung
               erhalten bleiben.
@@ -2538,6 +2615,44 @@ export function Layout({ children }: { children: React.ReactNode }) {
               }
             >
               Zeitraum löschen
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={Boolean(closeEventTarget)}
+        onOpenChange={open => {
+          if (!open && !closeEvent.isPending) setCloseEventTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Veranstaltung abschließen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              „{closeEventTarget?.name ?? ""}“ bleibt mit allen Helfer-, Einsatz- und
+              Planungsdaten als Historie erhalten. Sie erscheint danach nicht mehr in
+              der täglichen Auswahl und zählt nicht mehr zum aktiven Jahreskontingent.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={closeEvent.isPending}
+              onClick={() => setCloseEventTarget(null)}
+            >
+              Abbrechen
+            </Button>
+            <Button
+              type="button"
+              disabled={!closeEventTarget || closeEvent.isPending}
+              onClick={() =>
+                closeEventTarget && closeEvent.mutate({ id: closeEventTarget.id })
+              }
+            >
+              <CheckCircle2 className="mr-2 h-4 w-4" />
+              Veranstaltung abschließen
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

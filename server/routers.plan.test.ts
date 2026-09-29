@@ -53,6 +53,9 @@ const dbMocks = vi.hoisted(() => ({
   ensureEventYear: vi.fn(),
   createEvent: vi.fn(),
   updateEventDetails: vi.fn(),
+  listEventsForManagement: vi.fn(),
+  closeEvent: vi.fn(),
+  reopenEvent: vi.fn(),
   deleteEvent: vi.fn(),
   deleteContact: vi.fn(),
   getContact: vi.fn(),
@@ -1100,6 +1103,34 @@ describe("Planungs-API", () => {
       startDate: null,
       endDate: null,
     });
+  });
+
+  it("schließt und öffnet Veranstaltungen als reversible Administratoraktion", async () => {
+    dbMocks.closeEvent.mockResolvedValue({
+      id: 1,
+      name: "RSC Sommerfest",
+      status: "closed",
+    });
+    dbMocks.reopenEvent.mockResolvedValue({
+      id: 1,
+      name: "RSC Sommerfest",
+      status: "active",
+    });
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(caller.events.close({ id: 1 })).resolves.toMatchObject({
+      status: "closed",
+    });
+    expect(dbMocks.closeEvent).toHaveBeenCalledWith(1);
+
+    await expect(caller.events.reopen({ id: 1 })).resolves.toMatchObject({
+      status: "active",
+    });
+    expect(dbMocks.reopenEvent).toHaveBeenCalledWith(1);
+
+    await expect(
+      appRouter.createCaller(planningTeamCtx).events.close({ id: 1 })
+    ).rejects.toThrow();
   });
 
   it("legt Veranstaltungen nur mit mindestens einem ausgewählten Wochentag an", async () => {

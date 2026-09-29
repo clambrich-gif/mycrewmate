@@ -418,6 +418,13 @@ export const events = mysqlTable(
     activeDays: json("activeDays").$type<Weekday[]>().notNull(),
     startDate: date("startDate", { mode: "string" }),
     endDate: date("endDate", { mode: "string" }),
+    /**
+     * Abgeschlossene Veranstaltungen bleiben als Historie erhalten, werden aber
+     * nicht mehr als aktive Planung oder Paketkontingent gezählt. Sie können
+     * ausschließlich durch einen Vereinsadministrator wieder geöffnet werden.
+     */
+    status: mysqlEnum("status", ["active", "closed"]).default("active").notNull(),
+    closedAt: timestamp("closedAt"),
     donationTargetKuchen: int("donationTargetKuchen").notNull().default(0),
     donationTargetSalat: int("donationTargetSalat").notNull().default(0),
     donationTargetSnack: int("donationTargetSnack").notNull().default(0),

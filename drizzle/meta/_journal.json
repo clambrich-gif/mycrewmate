@@ -540,6 +540,13 @@
       "when": 1790710245183,
       "tag": "0076_moaning_songbird",
       "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "5",
+      "when": 1790711853150,
+      "tag": "0077_slimy_mole_man",
+      "breakpoints": true
     }
   ]
 }

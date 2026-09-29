@@ -46,7 +46,7 @@ describe("Paket 5: Enterprise und Auslastung", () => {
     expect(masterPortal).toContain('data-slot="tenant-product-usage"');
     expect(masterPortal).toContain("Paket-Auslastung");
     expect(masterPortal).toContain("Enterprise · unbegrenzt");
-    expect(masterPortal).toContain("<TenantProductUsage usage={tenant.productUsage} />");
+    expect(masterPortal).toContain("<TenantProductUsage usage={tenant.productUsage} events={tenant.events} />");
   });
 
   it("warnt Pro-Vereinsadmins bei 80 Prozent Helfer- oder Zugangsauslastung", () => {
