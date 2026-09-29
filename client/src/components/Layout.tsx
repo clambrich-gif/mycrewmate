@@ -1641,7 +1641,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <Label className="text-xs text-muted-foreground">
                 Veranstaltung
               </Label>
-              {effectiveNavigationRole === "admin" && !isEventPass && (
+              {effectiveNavigationRole === "admin" && (
                 <span className="flex items-center gap-0.5">
                   <Button
                     variant="ghost"
@@ -1653,19 +1653,21 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   >
                     <Settings2 className="h-4 w-4" />
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    title="Veranstaltung anlegen"
-                    aria-label="Veranstaltung anlegen"
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      setEventDialogOpen(true);
-                    }}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
+                  {!isEventPass && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      title="Veranstaltung anlegen"
+                      aria-label="Veranstaltung anlegen"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        setEventDialogOpen(true);
+                      }}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  )}
                 </span>
               )}
             </div>
@@ -1938,18 +1940,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 >
                   <Calendar className="h-4 w-4" />
                 </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  title="Veranstaltungen verwalten"
+                  aria-label="Veranstaltungen verwalten"
+                  onClick={openEventManager}
+                >
+                  <Settings2 className="h-4 w-4" />
+                </Button>
                 {!isEventPass && (
                   <>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      title="Veranstaltungen verwalten"
-                      aria-label="Veranstaltungen verwalten"
-                      onClick={openEventManager}
-                    >
-                      <Settings2 className="h-4 w-4" />
-                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"

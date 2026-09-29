@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { KlemmiEventClosureRecommendation } from "@/components/KlemmiEventClosureRecommendation";
 import { KlemmiProLimitNotice } from "@/components/KlemmiProLimitNotice";
 import { KlemmiSurfaceGuide } from "@/components/KlemmiSurfaceGuide";
 import { LocationMapCard } from "@/components/LocationMapCard";
@@ -1011,6 +1012,7 @@ export default function Dashboard() {
   const [, navigate] = useLocation();
   const detailsLayout = useDashboardDetailsLayout();
   const { canReadModule, isTenantAdmin } = useTenantAdministration();
+  const utils = trpc.useUtils();
   const canReadLocations = canReadModule("locations");
   const [workloadFilter, setWorkloadFilter] = useState<{
     day: DailyReadiness["day"];
@@ -1023,6 +1025,25 @@ export default function Dashboard() {
     trpc.events.current.useQuery();
   const { data: currentTenant, isLoading: isTenantLoading } =
     trpc.tenants.current.useQuery();
+  const closureRecommendations = trpc.events.closureRecommendations.useQuery(undefined, {
+    enabled: isTenantAdmin,
+    retry: false,
+  });
+  const closeEvent = trpc.events.close.useMutation({
+    onSuccess: async result => {
+      await Promise.all([
+        utils.events.closureRecommendations.invalidate(),
+        utils.events.list.invalidate(),
+        utils.events.manage.invalidate(),
+        utils.events.all.invalidate(),
+        utils.events.current.invalidate(),
+        utils.years.list.invalidate(),
+        utils.dashboard.stats.invalidate(),
+      ]);
+      toast.success(`„${result.name}“ wurde als Historie abgeschlossen.`);
+    },
+    onError: error => toast.error(error.message),
+  });
   const tenantProduct = trpc.tenantProduct.current.useQuery();
   const productUsage = trpc.tenantProduct.usage.useQuery(undefined, {
     enabled:
@@ -1260,6 +1281,14 @@ export default function Dashboard() {
 
       {currentTenant.status === "pilot" && (
         <PilotTenantInfoCard tenant={currentTenant} eventName={currentEvent.name} />
+      )}
+
+      {isTenantAdmin && closureRecommendations.data && (
+        <KlemmiEventClosureRecommendation
+          recommendations={closureRecommendations.data}
+          isClosing={closeEvent.isPending}
+          onCloseEvent={eventId => closeEvent.mutate({ id: eventId })}
+        />
       )}
 
       {tenantProduct.data?.packageId === "pro" && productUsage.data && (

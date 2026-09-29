@@ -54,6 +54,7 @@ const dbMocks = vi.hoisted(() => ({
   createEvent: vi.fn(),
   updateEventDetails: vi.fn(),
   listEventsForManagement: vi.fn(),
+  listEventClosureRecommendations: vi.fn(),
   closeEvent: vi.fn(),
   reopenEvent: vi.fn(),
   deleteEvent: vi.fn(),

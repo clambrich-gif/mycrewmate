@@ -3262,6 +3262,9 @@ export const appRouter = router({
           );
     }),
     manage: scopeAdminAuthProcedure.query(() => db.listEventsForManagement()),
+    closureRecommendations: scopeAdminAuthProcedure.query(() =>
+      db.listEventClosureRecommendations()
+    ),
     current: scopedProtectedProcedure.query(() => db.getEvent()),
     create: scopeAdminProcedure
       .input(

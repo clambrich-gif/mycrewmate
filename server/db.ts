@@ -9,6 +9,7 @@ import {
   gt,
   gte,
   inArray,
+  isNotNull,
   isNull,
   lt,
   ne as notEq,
@@ -1926,6 +1927,50 @@ export async function listEventsForManagement(eventYear = year()) {
   }));
 }
 
+/**
+ * Liefert ausschließlich aktive Veranstaltungen mit eindeutig abgelaufenem
+ * Enddatum. Ohne Enddatum gibt es bewusst keine automatische Empfehlung, damit
+ * frei geplante oder mehrteilige Veranstaltungen nicht voreilig geschlossen werden.
+ */
+export async function listEventClosureRecommendations() {
+  const db = await getDb();
+  if (!db) return [];
+  const entitlement = await getCurrentTenantProductEntitlement();
+  const today = new Date().toISOString().slice(0, 10);
+  const rows = await db
+    .select({
+      id: events.id,
+      name: events.name,
+      year: events.year,
+      startDate: events.startDate,
+      endDate: events.endDate,
+    })
+    .from(events)
+    .where(
+      and(
+        eq(events.tenantId, tenant()),
+        eq(events.status, "active"),
+        isNotNull(events.endDate),
+        lt(events.endDate, today),
+        entitlement.packageId === "event_pass" && entitlement.eventId
+          ? eq(events.id, entitlement.eventId)
+          : undefined
+      )
+    )
+    .orderBy(desc(events.endDate), events.id);
+
+  return rows.map(eventRow => {
+    const end = eventRow.endDate!;
+    const startOfToday = new Date(`${today}T00:00:00Z`).getTime();
+    const endOfEvent = new Date(`${end}T00:00:00Z`).getTime();
+    return {
+      ...eventRow,
+      endDate: end,
+      daysSinceEnd: Math.max(1, Math.floor((startOfToday - endOfEvent) / 86_400_000)),
+    };
+  });
+}
+
 /** Liest eine Veranstaltung ausschließlich innerhalb eines konkreten Vereins. */
 export async function getEventForTenantById(eventId: number, tenantId = tenant()) {
   const database = await getDb();
@@ -3211,17 +3256,23 @@ export async function createEvent(
  */
 export async function closeEvent(id: number) {
   const database = (await getDb()) as DB;
-  const selectedYear = year();
   const selectedTenant = tenant();
   return database.transaction(async tx => {
+    const entitlement = await getCurrentTenantProductEntitlement();
+    if (
+      entitlement.packageId === "event_pass" &&
+      entitlement.eventId !== null &&
+      entitlement.eventId !== id
+    ) {
+      throw new Error("Der Event Pass ist auf eine andere Veranstaltung begrenzt");
+    }
     const [selected] = await tx
-      .select({ id: events.id, name: events.name, status: events.status })
+      .select({ id: events.id, name: events.name, status: events.status, year: events.year })
       .from(events)
       .where(
         and(
           eq(events.id, id),
-          eq(events.tenantId, selectedTenant),
-          eq(events.year, selectedYear)
+          eq(events.tenantId, selectedTenant)
         )
       )
       .limit(1)
@@ -3245,17 +3296,23 @@ export async function closeEvent(id: number) {
  */
 export async function reopenEvent(id: number) {
   const database = (await getDb()) as DB;
-  const selectedYear = year();
   const selectedTenant = tenant();
   return database.transaction(async tx => {
+    const entitlement = await getCurrentTenantProductEntitlement();
+    if (
+      entitlement.packageId === "event_pass" &&
+      entitlement.eventId !== null &&
+      entitlement.eventId !== id
+    ) {
+      throw new Error("Der Event Pass ist auf eine andere Veranstaltung begrenzt");
+    }
     const [selected] = await tx
-      .select({ id: events.id, name: events.name, status: events.status })
+      .select({ id: events.id, name: events.name, status: events.status, year: events.year })
       .from(events)
       .where(
         and(
           eq(events.id, id),
-          eq(events.tenantId, selectedTenant),
-          eq(events.year, selectedYear)
+          eq(events.tenantId, selectedTenant)
         )
       )
       .limit(1)
@@ -3264,7 +3321,7 @@ export async function reopenEvent(id: number) {
     if (selected.status === "active") {
       return { id: selected.id, name: selected.name, status: "active" as const };
     }
-    await assertCurrentProductEventCapacity(tx, selectedYear);
+    await assertCurrentProductEventCapacity(tx, selected.year);
     await tx
       .update(events)
       .set({ status: "active", closedAt: null })

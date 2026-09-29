@@ -18,17 +18,22 @@ describe("Veranstaltungsabschluss und Paket-Auslastung", () => {
     const db = source("server/db.ts");
 
     expect(db).toContain('export async function listEventsForManagement');
+    expect(db).toContain('export async function listEventClosureRecommendations');
+    expect(db).toContain('lt(events.endDate, today)');
+    expect(db).toContain('isNotNull(events.endDate)');
     expect(db).toContain('eq(events.status, "active")');
     expect(db).toContain('async function assertCurrentProductEventCapacity');
     expect(db).toContain('export async function closeEvent');
     expect(db).toContain('export async function reopenEvent');
-    expect(db).toContain('await assertCurrentProductEventCapacity(tx, selectedYear)');
+    expect(db).toContain('await assertCurrentProductEventCapacity(tx, selected.year)');
   });
 
   it("stellt Abschluss und Wiederöffnung nur Vereinsadministratoren bereit", () => {
     const router = source("server/routers.ts");
 
     expect(router).toContain('manage: scopeAdminAuthProcedure.query(() => db.listEventsForManagement())');
+    expect(router).toContain('closureRecommendations: scopeAdminAuthProcedure.query(() =>');
+    expect(router).toContain('db.listEventClosureRecommendations()');
     expect(router).toContain('close: scopeAdminAuthProcedure');
     expect(router).toContain('reopen: scopeAdminAuthProcedure');
     expect(router).toContain('db.closeEvent(input.id)');
