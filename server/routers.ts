@@ -3095,9 +3095,42 @@ export const appRouter = router({
           initialEventName: z.string().trim().min(2).max(200),
           initialEventYear: eventYearInput,
           activeDays: activeDaysInput,
+          initialAdmin: z
+            .object({
+              name: z.string().trim().min(2).max(120),
+              email: z.string().trim().email().max(320),
+              password: passwordInput,
+              passwordConfirmation: passwordInput,
+            })
+            .refine(value => value.password === value.passwordConfirmation, {
+              path: ["passwordConfirmation"],
+              message: "Die beiden Initialpasswörter stimmen nicht überein",
+            })
+            .optional(),
         })
       )
-      .mutation(({ input }) => db.createTenantForPlatformAdmin(input)),
+      .mutation(async ({ ctx, input }) => {
+        const initialAdmin = input.initialAdmin;
+        const created = await db.createTenantForPlatformAdmin({
+          ...input,
+          initialAdmin: initialAdmin
+            ? {
+                name: initialAdmin.name,
+                email: initialAdmin.email,
+                passwordHash: await hashPassword(initialAdmin.password),
+              }
+            : undefined,
+        });
+        if (initialAdmin) {
+          await recordSecurityActivity(
+            auditActor(ctx.user),
+            `Vereinsadmin für „${created.tenantId}“ mit Initialpasswort angelegt; Passwortwechsel bei erster Anmeldung erforderlich`,
+            "created",
+            null
+          );
+        }
+        return created;
+      }),
     updateTenantProductAssignment: masterAdminProcedure
       .input(
         z.object({

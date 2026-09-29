@@ -108,6 +108,11 @@ type CreateTenantForm = {
   initialEventName: string;
   initialEventYear: string;
   activeDays: string[];
+  createInitialAdmin: boolean;
+  initialAdminName: string;
+  initialAdminEmail: string;
+  initialAdminPassword: string;
+  initialAdminPasswordConfirmation: string;
 };
 
 type TenantOverviewItem = {
@@ -149,6 +154,11 @@ type TenantOverviewItem = {
     eventsPerYear: ProductLimitUsageMetric;
     helpersPerEvent: ProductLimitUsageMetric;
     personalPlanningAccesses: ProductLimitUsageMetric;
+  };
+  adminActivation: {
+    total: number;
+    passwordConfigured: number;
+    initialSetupPending: number;
   };
 };
 
@@ -298,6 +308,46 @@ function TenantProductUsage({
   );
 }
 
+function TenantAdminActivationStatus({
+  activation,
+}: {
+  activation: TenantOverviewItem["adminActivation"];
+}) {
+  if (activation.total === 0) {
+    return (
+      <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950">
+        <KeyRound className="mt-0.5 size-3.5 shrink-0 text-amber-700" aria-hidden="true" />
+        <span><strong>Admin-Zugang noch nicht angelegt.</strong> Über „Admin-Zugang anlegen“ wird ein persönlicher Zugang eingerichtet.</span>
+      </div>
+    );
+  }
+
+  if (activation.passwordConfigured > 0) {
+    return (
+      <div className="mt-3 flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs leading-5 text-emerald-950" role="status">
+        <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-emerald-700" aria-hidden="true" />
+        <span>
+          <strong>
+            {activation.passwordConfigured === 1
+              ? "Vereinsadministrator hat sein Passwort eingerichtet."
+              : `${activation.passwordConfigured} Vereinsadministratoren haben ihr Passwort eingerichtet.`}
+          </strong>
+          {activation.initialSetupPending > 0
+            ? ` ${activation.initialSetupPending} weitere${activation.initialSetupPending === 1 ? " Ersteinrichtung ist" : " Ersteinrichtungen sind"} noch offen.`
+            : " Der persönliche Zugang ist einsatzbereit."}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs leading-5 text-blue-950" role="status">
+      <Loader2 className="mt-0.5 size-3.5 shrink-0 text-blue-700" aria-hidden="true" />
+      <span><strong>Ersteinrichtung offen.</strong> Der Vereinsadministrator muss sich einmal anmelden und das Initialpasswort durch ein eigenes Passwort ersetzen.</span>
+    </div>
+  );
+}
+
 function demoProductUsage(): TenantOverviewItem["productUsage"] {
   return {
     packageId: "pro",
@@ -352,6 +402,11 @@ function defaultCreateTenantForm(): CreateTenantForm {
     initialEventName: "",
     initialEventYear: "2027",
     activeDays: [...INITIAL_EVENT_DAYS],
+    createInitialAdmin: false,
+    initialAdminName: "",
+    initialAdminEmail: "",
+    initialAdminPassword: "",
+    initialAdminPasswordConfirmation: "",
   };
 }
 
@@ -654,7 +709,7 @@ export default function MasterAdminPortal() {
   const resetToken = new URLSearchParams(window.location.search).get("reset");
 
   const createTenantAdmin = trpc.platformAdmin.createTenantAdmin.useMutation({
-    onSuccess: result => {
+    onSuccess: async result => {
       if (adminModalTenant) {
         setIssuedAdminSheet({
           tenantName: adminModalTenant.name,
@@ -668,6 +723,10 @@ export default function MasterAdminPortal() {
       setAdminModalTenant(null);
       setAdminName("");
       setAdminEmail("");
+      await Promise.all([
+        utils.platformAdmin.tenantOverview.invalidate(),
+        utils.platformAdmin.accessInventory.invalidate(),
+      ]);
       toast.success("Vereins-Administrator erfolgreich angelegt");
     },
     onError: err => toast.error(err.message),
@@ -686,7 +745,8 @@ export default function MasterAdminPortal() {
   const overview = trpc.platformAdmin.tenantOverview.useQuery(undefined, {
     enabled: isAuthenticated && user?.role === "admin",
     retry: false,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
+    refetchInterval: 30_000,
   });
   const accessInventory = trpc.platformAdmin.accessInventory.useQuery(undefined, {
     enabled: isAuthenticated && user?.role === "admin",
@@ -706,7 +766,11 @@ export default function MasterAdminPortal() {
       await utils.platformAdmin.tenantOverview.invalidate();
       setCreateOpen(false);
       setCreateForm(defaultCreateTenantForm());
-      toast.success(`„${result.tenantId}“ wurde als interner Verein angelegt.`);
+      toast.success(
+        result.initialAdminCreated
+          ? `„${result.tenantId}“ und der persönliche Adminzugang wurden angelegt.`
+          : `„${result.tenantId}“ wurde als interner Verein angelegt.`
+      );
     },
     onError: error => toast.error(error.message),
   });
@@ -764,12 +828,42 @@ export default function MasterAdminPortal() {
       toast.error("Bitte wählen Sie mindestens einen Veranstaltungstag.");
       return;
     }
+    if (createForm.createInitialAdmin) {
+      if (
+        !createForm.initialAdminName.trim() ||
+        !createForm.initialAdminEmail.trim() ||
+        createForm.initialAdminPassword.length < 10
+      ) {
+        toast.error("Bitte vervollständigen Sie Name, E-Mail und ein Initialpasswort mit mindestens 10 Zeichen.");
+        return;
+      }
+      if (createForm.initialAdminPassword !== createForm.initialAdminPasswordConfirmation) {
+        toast.error("Die beiden Initialpasswörter stimmen nicht überein.");
+        return;
+      }
+    }
     createTenant.mutate({
-      ...createForm,
+      name: createForm.name,
+      legalName: createForm.legalName,
+      contactEmail: createForm.contactEmail,
+      supportEmail: createForm.supportEmail,
+      status: createForm.status,
+      planName: createForm.planName,
+      packageId: createForm.packageId,
+      packageStatus: createForm.packageStatus,
+      initialEventName: createForm.initialEventName,
       initialEventYear,
       packageStartsOn: createForm.packageStartsOn || null,
       packageEndsOn: createForm.packageEndsOn || null,
       packageInternalNote: createForm.packageInternalNote || null,
+      initialAdmin: createForm.createInitialAdmin
+        ? {
+            name: createForm.initialAdminName.trim(),
+            email: createForm.initialAdminEmail.trim(),
+            password: createForm.initialAdminPassword,
+            passwordConfirmation: createForm.initialAdminPasswordConfirmation,
+          }
+        : undefined,
       activeDays: createForm.activeDays as Array<
         "Montag" | "Dienstag" | "Mittwoch" | "Donnerstag" | "Freitag" | "Samstag" | "Sonntag"
       >,
@@ -843,6 +937,7 @@ export default function MasterAdminPortal() {
               internalNote: null,
             },
             productUsage: demoProductUsage(),
+            adminActivation: { total: 0, passwordConfigured: 0, initialSetupPending: 0 },
             eventCount: 1,
             events: [{ id: 1, name: "MyEifelRide 2027", year: 2027, startDate: "2027-06-11", endDate: "2027-06-13", status: "active", closedAt: null }],
             nextEvent: {
@@ -869,6 +964,7 @@ export default function MasterAdminPortal() {
               internalNote: null,
             },
             productUsage: demoProductUsage(),
+            adminActivation: { total: 0, passwordConfigured: 0, initialSetupPending: 0 },
             eventCount: 1,
             events: [{ id: 2, name: "Lukasmarkt 2027", year: 2027, startDate: "2027-10-15", endDate: "2027-10-17", status: "active", closedAt: null }],
             nextEvent: {
@@ -895,6 +991,7 @@ export default function MasterAdminPortal() {
               internalNote: null,
             },
             productUsage: demoProductUsage(),
+            adminActivation: { total: 0, passwordConfigured: 0, initialSetupPending: 0 },
             eventCount: 1,
             events: [{ id: 3, name: "Schützenfest 2027", year: 2027, startDate: "2027-07-02", endDate: "2027-07-04", status: "active", closedAt: null }],
             nextEvent: {
@@ -1221,6 +1318,7 @@ export default function MasterAdminPortal() {
                         <span className="inline-flex items-center gap-1"><Mail className="size-3.5 text-slate-400" /> {tenant.contactEmail}</span>
                       </div>
                       <TenantProductUsage usage={tenant.productUsage} events={tenant.events} />
+                      <TenantAdminActivationStatus activation={tenant.adminActivation} />
                     </div>
                     <div className="space-y-2 sm:min-w-48">
                       <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-left sm:text-right">
@@ -1620,6 +1718,80 @@ export default function MasterAdminPortal() {
                   })}
                 </div>
               </div>
+            </fieldset>
+
+            <fieldset className="space-y-3 rounded-xl border border-blue-200 bg-blue-50/50 p-4">
+              <legend className="px-1 text-sm font-semibold text-blue-950">Vereinsadministrator (optional)</legend>
+              <label className="flex cursor-pointer items-start gap-2.5">
+                <input
+                  type="checkbox"
+                  checked={createForm.createInitialAdmin}
+                  onChange={event =>
+                    setCreateForm(current => ({
+                      ...current,
+                      createInitialAdmin: event.target.checked,
+                      initialAdminEmail:
+                        event.target.checked && !current.initialAdminEmail
+                          ? current.contactEmail
+                          : current.initialAdminEmail,
+                    }))
+                  }
+                  className="mt-0.5 size-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm leading-5 text-slate-800">
+                  <strong>Admin direkt mit Initialpasswort einrichten</strong>
+                  <span className="mt-0.5 block text-xs text-slate-600">Ohne E-Mail-Link: Das Initialpasswort wird nur verschlüsselt gespeichert und muss beim ersten Login durch ein eigenes Passwort ersetzt werden.</span>
+                </span>
+              </label>
+              {createForm.createInitialAdmin && (
+                <div className="grid gap-4 border-t border-blue-100 pt-3 sm:grid-cols-2">
+                  <label className="space-y-1.5">
+                    <span className="text-sm font-medium text-slate-800">Name des Administrators</span>
+                    <Input
+                      value={createForm.initialAdminName}
+                      onChange={event => setCreateForm(current => ({ ...current, initialAdminName: event.target.value }))}
+                      placeholder="z. B. Max Mustermann"
+                      required
+                      maxLength={120}
+                    />
+                  </label>
+                  <label className="space-y-1.5">
+                    <span className="text-sm font-medium text-slate-800">E-Mail-Adresse</span>
+                    <Input
+                      type="email"
+                      value={createForm.initialAdminEmail}
+                      onChange={event => setCreateForm(current => ({ ...current, initialAdminEmail: event.target.value }))}
+                      placeholder="admin@verein.de"
+                      required
+                      maxLength={320}
+                    />
+                  </label>
+                  <label className="space-y-1.5">
+                    <span className="text-sm font-medium text-slate-800">Initialpasswort</span>
+                    <Input
+                      type="password"
+                      autoComplete="new-password"
+                      value={createForm.initialAdminPassword}
+                      onChange={event => setCreateForm(current => ({ ...current, initialAdminPassword: event.target.value }))}
+                      placeholder="Mindestens 10 Zeichen"
+                      minLength={10}
+                      required
+                    />
+                  </label>
+                  <label className="space-y-1.5">
+                    <span className="text-sm font-medium text-slate-800">Initialpasswort wiederholen</span>
+                    <Input
+                      type="password"
+                      autoComplete="new-password"
+                      value={createForm.initialAdminPasswordConfirmation}
+                      onChange={event => setCreateForm(current => ({ ...current, initialAdminPasswordConfirmation: event.target.value }))}
+                      placeholder="Passwort wiederholen"
+                      minLength={10}
+                      required
+                    />
+                  </label>
+                </div>
+              )}
             </fieldset>
 
             <DialogFooter className="gap-2 sm:gap-0">

@@ -139,6 +139,13 @@ export type TenantProductUsage = {
   personalPlanningAccesses: ProductLimitUsageMetric;
 };
 
+/** Kompakter, nicht sensibler Status der persönlichen Vereinsadministration. */
+export type TenantAdminActivationSummary = {
+  total: number;
+  passwordConfigured: number;
+  initialSetupPending: number;
+};
+
 export type TenantProductExpiryReminderCandidate = {
   tenantId: string;
   tenantName: string;
@@ -1106,7 +1113,7 @@ export async function currentProductAllowsPlanningModule(
 export async function listTenantOverviewsForPlatformAdmin() {
   const db = await getDb();
   if (!db) return [];
-  const [tenantRows, eventRows, assignmentRows] = await Promise.all([
+  const [tenantRows, eventRows, assignmentRows, adminCredentialRows] = await Promise.all([
     db.select().from(tenants).orderBy(tenants.status, tenants.name),
     db
       .select({
@@ -1132,6 +1139,23 @@ export async function listTenantOverviewsForPlatformAdmin() {
         internalNote: tenantProductAssignments.internalNote,
       })
       .from(tenantProductAssignments),
+    db
+      .select({
+        tenantId: userTenantMemberships.tenantId,
+        mustChangePassword: tenantAdminCredentials.mustChangePassword,
+      })
+      .from(tenantAdminCredentials)
+      .innerJoin(
+        userTenantMemberships,
+        eq(userTenantMemberships.userId, tenantAdminCredentials.userId)
+      )
+      .where(
+        and(
+          eq(tenantAdminCredentials.status, "active"),
+          eq(userTenantMemberships.role, "tenant_admin"),
+          eq(userTenantMemberships.status, "active")
+        )
+      ),
   ]);
 
   const assignmentByTenant = new Map(
@@ -1144,6 +1168,21 @@ export async function listTenantOverviewsForPlatformAdmin() {
   const usageByTenant = new Map(
     tenantRows.map((tenantRow, index) => [tenantRow.id, usageRows[index]!])
   );
+  const adminActivationByTenant = new Map<string, TenantAdminActivationSummary>();
+  for (const row of adminCredentialRows) {
+    const current = adminActivationByTenant.get(row.tenantId) ?? {
+      total: 0,
+      passwordConfigured: 0,
+      initialSetupPending: 0,
+    };
+    current.total += 1;
+    if (row.mustChangePassword) {
+      current.initialSetupPending += 1;
+    } else {
+      current.passwordConfigured += 1;
+    }
+    adminActivationByTenant.set(row.tenantId, current);
+  }
   return tenantRows.map(tenantRow => {
     const tenantEvents = eventRows.filter(eventRow => eventRow.tenantId === tenantRow.id);
     const assignment = assignmentByTenant.get(tenantRow.id);
@@ -1176,6 +1215,11 @@ export async function listTenantOverviewsForPlatformAdmin() {
       },
       eventCount: tenantEvents.length,
       productUsage: usageByTenant.get(tenantRow.id)!,
+      adminActivation: adminActivationByTenant.get(tenantRow.id) ?? {
+        total: 0,
+        passwordConfigured: 0,
+        initialSetupPending: 0,
+      },
       events: tenantEvents.map(eventRow => ({
         id: eventRow.id,
         name: eventRow.name,
@@ -1431,6 +1475,11 @@ export async function createTenantForPlatformAdmin(input: {
   initialEventName: string;
   initialEventYear: number;
   activeDays: Weekday[];
+  initialAdmin?: {
+    name: string;
+    email: string;
+    passwordHash: string;
+  };
 }) {
   const database = (await getDb()) as DB;
   return database.transaction(async tx => {
@@ -1500,7 +1549,21 @@ export async function createTenantForPlatformAdmin(input: {
       eventId: input.packageId === "event_pass" ? eventId : null,
       internalNote: input.packageInternalNote?.trim() || null,
     });
-    return { tenantId, eventId, status: input.status } as const;
+    if (input.initialAdmin) {
+      await upsertTenantAdminForPlatformAdmin(tx, {
+        tenantId,
+        name: input.initialAdmin.name,
+        email: input.initialAdmin.email,
+        passwordHash: input.initialAdmin.passwordHash,
+        mustChangePassword: true,
+      });
+    }
+    return {
+      tenantId,
+      eventId,
+      status: input.status,
+      initialAdminCreated: Boolean(input.initialAdmin),
+    } as const;
   });
 }
 
@@ -7519,14 +7582,16 @@ export async function isTenantAdminPasswordChangeRequired(userId: number) {
   return credential?.status === "active" && credential.mustChangePassword;
 }
 
-export async function createOrUpdateTenantAdminForPlatformAdmin(input: {
+async function upsertTenantAdminForPlatformAdmin(
+  tx: DBClient,
+  input: {
   tenantId: string;
   name: string;
   email: string;
   passwordHash: string;
-}) {
-  const database = (await getDb()) as DB;
-  return database.transaction(async tx => {
+  mustChangePassword?: boolean;
+}
+) {
     const normalizedEmail = input.email.trim().toLocaleLowerCase("de-DE");
     const name = input.name.trim();
     if (!name || !normalizedEmail) {
@@ -7573,14 +7638,14 @@ export async function createOrUpdateTenantAdminForPlatformAdmin(input: {
         userId: existingUser.id,
         email: normalizedEmail,
         passwordHash: input.passwordHash,
-        mustChangePassword: true,
+        mustChangePassword: input.mustChangePassword ?? true,
         sessionVersion: 1,
         status: "active",
       })
       .onDuplicateKeyUpdate({
         set: {
           passwordHash: input.passwordHash,
-          mustChangePassword: true,
+          mustChangePassword: input.mustChangePassword ?? true,
           sessionVersion: sql`${tenantAdminCredentials.sessionVersion} + 1`,
           status: "active",
         },
@@ -7608,7 +7673,17 @@ export async function createOrUpdateTenantAdminForPlatformAdmin(input: {
     await makeTenantMembershipDefault(tx, existingUser.id, input.tenantId);
 
     return { userId: existingUser.id, email: normalizedEmail, name } as const;
-  });
+}
+
+export async function createOrUpdateTenantAdminForPlatformAdmin(input: {
+  tenantId: string;
+  name: string;
+  email: string;
+  passwordHash: string;
+  mustChangePassword?: boolean;
+}) {
+  const database = (await getDb()) as DB;
+  return database.transaction(tx => upsertTenantAdminForPlatformAdmin(tx, input));
 }
 
 /** Ersetzt eventuell noch offene Einladungen desselben Vereinsadmin-Kontos. */
