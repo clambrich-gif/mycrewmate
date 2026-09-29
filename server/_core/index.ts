@@ -14,6 +14,7 @@ import { registerMarketingVideoRoutes } from "../marketing-video-routes";
 import { registerTenantLogoRoutes } from "../tenant-logo-routes";
 import { registerGameAssetRoutes } from "../game-asset-routes";
 import { handleTeamNotesCleanupHeartbeat } from "../chat-cleanup-heartbeat";
+import { handleProductExpiryReminderHeartbeat } from "../product-expiry-heartbeat";
 import { registerLocalStorageRoutes } from "../storage";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
@@ -60,6 +61,7 @@ async function startServer() {
   registerLocalStorageRoutes(app);
   registerMarketingVideoRoutes(app);
   app.post("/api/scheduled/team-notes-cleanup", handleTeamNotesCleanupHeartbeat);
+  app.post("/api/scheduled/product-expiry-reminders", handleProductExpiryReminderHeartbeat);
 
   // tRPC API
   app.use(

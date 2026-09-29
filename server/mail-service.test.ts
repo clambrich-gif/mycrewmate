@@ -3,6 +3,7 @@ import {
   getSmtpConfig,
   isMailDeliveryConfigured,
   renderInvitationEmail,
+  renderProductExpiryReminderEmail,
   sendTransactionalEmail,
 } from "./mail-service";
 
@@ -57,5 +58,24 @@ describe("Mail-Service (Hetzner SMTP & Transactional)", () => {
     expect(rendered.text).toContain("support@mycrewmate.de");
     expect(rendered.html).toContain("Zugang einrichten & Passwort wählen");
     expect(rendered.html).toContain("48 Stunden");
+  });
+
+  it("rendert eine klare Ablauf-Erinnerung mit Datumsangabe und Handlungsoption", () => {
+    const rendered = renderProductExpiryReminderEmail({
+      tenantName: "RSC Eifelland Mayen e. V.",
+      packageName: "Event Pass",
+      packageStatus: "test",
+      endsOn: "2026-10-06",
+      daysRemaining: 7,
+    });
+
+    expect(rendered.subject).toContain("Ihr Testzugang läuft in 7 Tagen ab");
+    expect(rendered.subject).toContain("MyCrewMate");
+    expect(rendered.text).toContain("RSC Eifelland Mayen e. V.");
+    expect(rendered.text).toContain("Event Pass");
+    expect(rendered.text).toContain("06.10.2026");
+    expect(rendered.text).toContain("Planungsdaten bleiben selbstverständlich erhalten");
+    expect(rendered.html).toContain("06.10.2026");
+    expect(rendered.html).toContain("Testzugang");
   });
 });

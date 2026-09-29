@@ -54,6 +54,7 @@ import {
   teamNoteTypings,
   tenantAdminCredentials,
   tenantAdminInvitations,
+  tenantProductExpiryNotifications,
   tenantProductAssignments,
   tenants,
   userTenantMemberships,
@@ -135,6 +136,16 @@ export type TenantProductUsage = {
   eventsPerYear: ProductLimitUsageMetric;
   helpersPerEvent: ProductLimitUsageMetric;
   personalPlanningAccesses: ProductLimitUsageMetric;
+};
+
+export type TenantProductExpiryReminderCandidate = {
+  tenantId: string;
+  tenantName: string;
+  contactEmail: string;
+  packageId: ProductPackageId;
+  status: "test" | "active";
+  endsOn: string;
+  daysRemaining: number;
 };
 
 export async function getDb(): Promise<DBClient | null> {
@@ -895,6 +906,161 @@ export async function getTenantProductUsage(
 
 export async function getCurrentTenantProductUsage() {
   return getTenantProductUsage(tenant());
+}
+
+function calendarDate(value: Date) {
+  return value.toISOString().slice(0, 10);
+}
+
+function addCalendarDays(value: Date, days: number) {
+  const result = new Date(value);
+  result.setUTCDate(result.getUTCDate() + days);
+  return result;
+}
+
+/**
+ * Liefert nur aktive oder testweise Produktzuordnungen, die innerhalb des
+ * Kalendertagesfensters auslaufen und noch keinen bestätigten Hinweis erhalten
+ * haben. Archivierte und gesperrte Vereine bleiben bewusst ausgeschlossen.
+ */
+export async function listTenantProductExpiryReminderCandidates(input: {
+  now?: Date;
+  withinDays?: number;
+} = {}): Promise<TenantProductExpiryReminderCandidate[]> {
+  const database = await getDb();
+  if (!database) return [];
+  const now = input.now ?? new Date();
+  const withinDays = input.withinDays ?? 7;
+  const today = calendarDate(now);
+  const lastEligibleDay = calendarDate(addCalendarDays(now, withinDays));
+  const [assignmentRows, deliveredRows] = await Promise.all([
+    database
+      .select({
+        tenantId: tenantProductAssignments.tenantId,
+        tenantName: tenants.name,
+        contactEmail: tenants.contactEmail,
+        packageId: tenantProductAssignments.packageId,
+        status: tenantProductAssignments.status,
+        endsOn: tenantProductAssignments.endsOn,
+      })
+      .from(tenantProductAssignments)
+      .innerJoin(tenants, eq(tenants.id, tenantProductAssignments.tenantId))
+      .where(
+        and(
+          inArray(tenantProductAssignments.status, ["test", "active"]),
+          inArray(tenants.status, ["pilot", "sample"]),
+          gte(tenantProductAssignments.endsOn, today),
+          sql`${tenantProductAssignments.endsOn} <= ${lastEligibleDay}`
+        )
+      )
+      .orderBy(asc(tenantProductAssignments.endsOn), asc(tenants.name)),
+    database
+      .select({
+        tenantId: tenantProductExpiryNotifications.tenantId,
+        endsOn: tenantProductExpiryNotifications.endsOn,
+      })
+      .from(tenantProductExpiryNotifications)
+      .where(
+        and(
+          sql`${tenantProductExpiryNotifications.sentAt} IS NOT NULL`,
+          gte(tenantProductExpiryNotifications.endsOn, today),
+          sql`${tenantProductExpiryNotifications.endsOn} <= ${lastEligibleDay}`
+        )
+      ),
+  ]);
+  const deliveredKeys = new Set(
+    deliveredRows.map(row => `${row.tenantId}:${row.endsOn}`)
+  );
+  return assignmentRows.flatMap(row => {
+    if (!row.endsOn || deliveredKeys.has(`${row.tenantId}:${row.endsOn}`)) return [];
+    const daysRemaining = Math.round(
+      (Date.parse(`${row.endsOn}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) /
+        (24 * 60 * 60 * 1000)
+    );
+    return [{
+      tenantId: row.tenantId,
+      tenantName: row.tenantName,
+      contactEmail: row.contactEmail,
+      packageId: row.packageId as ProductPackageId,
+      status: row.status as "test" | "active",
+      endsOn: row.endsOn,
+      daysRemaining,
+    }];
+  });
+}
+
+/**
+ * Reserviert atomar einen Versandversuch für Verein und Ablaufdatum. Der Lease
+ * läuft nach 15 Minuten ab, falls der SMTP-Versand oder der Container scheitert.
+ */
+export async function claimTenantProductExpiryReminder(input: {
+  tenantId: string;
+  endsOn: string;
+  now?: Date;
+}): Promise<boolean> {
+  const database = await getDb();
+  if (!database) return false;
+  const now = input.now ?? new Date();
+  const leaseUntil = new Date(now.getTime() + 15 * 60 * 1000);
+  await database
+    .insert(tenantProductExpiryNotifications)
+    .values({ tenantId: input.tenantId, endsOn: input.endsOn })
+    .onDuplicateKeyUpdate({ set: { tenantId: input.tenantId } });
+  const result = await database
+    .update(tenantProductExpiryNotifications)
+    .set({ lastAttemptedAt: now, leaseUntil })
+    .where(
+      and(
+        eq(tenantProductExpiryNotifications.tenantId, input.tenantId),
+        eq(tenantProductExpiryNotifications.endsOn, input.endsOn),
+        isNull(tenantProductExpiryNotifications.sentAt),
+        or(
+          isNull(tenantProductExpiryNotifications.leaseUntil),
+          lt(tenantProductExpiryNotifications.leaseUntil, now)
+        )
+      )
+    );
+  return affectedRows(result) === 1;
+}
+
+/** Markiert die erfolgreiche SMTP-Annahme dauerhaft als versendet. */
+export async function markTenantProductExpiryReminderSent(input: {
+  tenantId: string;
+  endsOn: string;
+  sentAt?: Date;
+}) {
+  const database = await getDb();
+  if (!database) return false;
+  const result = await database
+    .update(tenantProductExpiryNotifications)
+    .set({ sentAt: input.sentAt ?? new Date(), leaseUntil: null })
+    .where(
+      and(
+        eq(tenantProductExpiryNotifications.tenantId, input.tenantId),
+        eq(tenantProductExpiryNotifications.endsOn, input.endsOn),
+        isNull(tenantProductExpiryNotifications.sentAt)
+      )
+    );
+  return affectedRows(result) === 1;
+}
+
+/** Gibt einen fehlgeschlagenen Versandversuch für den nächsten Tageslauf frei. */
+export async function releaseTenantProductExpiryReminderClaim(input: {
+  tenantId: string;
+  endsOn: string;
+}) {
+  const database = await getDb();
+  if (!database) return;
+  await database
+    .update(tenantProductExpiryNotifications)
+    .set({ leaseUntil: null })
+    .where(
+      and(
+        eq(tenantProductExpiryNotifications.tenantId, input.tenantId),
+        eq(tenantProductExpiryNotifications.endsOn, input.endsOn),
+        isNull(tenantProductExpiryNotifications.sentAt)
+      )
+    );
 }
 
 export async function currentProductAllowsCapability(capability: ProductCapability) {

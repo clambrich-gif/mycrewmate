@@ -505,6 +505,43 @@ export const tenantProductAssignments = mysqlTable(
 );
 export type TenantProductAssignment = typeof tenantProductAssignments.$inferSelect;
 
+/**
+ * Minimaler, datensparsamer Versandnachweis für automatische Paketablaufhinweise.
+ * Der eindeutige Schlüssel je Verein und Ablaufdatum verhindert Doppelversand;
+ * es werden ausdrücklich weder Empfängeradresse noch E-Mail-Inhalt gespeichert.
+ */
+export const tenantProductExpiryNotifications = mysqlTable(
+  "tenant_product_expiry_notifications",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    tenantId: varchar("tenantId", { length: 96 }).notNull(),
+    endsOn: date("endsOn", { mode: "string" }).notNull(),
+    /** Kurzzeit-Lease schützt bei Heartbeat-Retries vor parallelem Doppelversand. */
+    leaseUntil: timestamp("leaseUntil"),
+    lastAttemptedAt: timestamp("lastAttemptedAt"),
+    sentAt: timestamp("sentAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    foreignKey({
+      name: "tenant_product_expiry_notifications_tenant_id_tenants_id_fk",
+      columns: [table.tenantId],
+      foreignColumns: [tenants.id],
+    }).onDelete("cascade"),
+    uniqueIndex("tenant_product_expiry_notifications_tenant_end_unique").on(
+      table.tenantId,
+      table.endsOn
+    ),
+    index("tenant_product_expiry_notifications_delivery_idx").on(
+      table.sentAt,
+      table.leaseUntil
+    ),
+  ]
+);
+export type TenantProductExpiryNotification =
+  typeof tenantProductExpiryNotifications.$inferSelect;
+
 export const contacts = mysqlTable(
   "contacts",
   {
