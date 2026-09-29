@@ -22,6 +22,7 @@ import {
   FileSpreadsheet,
   Gift,
   Globe2,
+  GraduationCap,
   KeyRound,
   LayoutDashboard,
   Lightbulb,
@@ -75,6 +76,11 @@ type HelpTopic = {
     href: string;
     label: string;
     adminOnly?: boolean;
+  };
+  video?: {
+    src: string;
+    ariaLabel: string;
+    caption: string;
   };
 };
 
@@ -669,7 +675,7 @@ const HELP_CHAPTERS: HelpChapter[] = [
   },
   {
     id: "faq-az",
-    number: 9,
+    number: 10,
     title: "A–Z Stichwortregister & FAQ",
     keywords: "faq fragen antworten stichwortregister suche az",
     icon: BookOpenCheck,
@@ -677,7 +683,7 @@ const HELP_CHAPTERS: HelpChapter[] = [
     topics: [
       {
         id: "faq",
-        title: "9.1 Häufig gestellte Fragen",
+        title: "10.1 Häufig gestellte Fragen",
         audience: ["all"],
         keywords: "faq frage antwort zugriff event wechseln hilfe",
         summary:
@@ -690,7 +696,7 @@ const HELP_CHAPTERS: HelpChapter[] = [
       },
       {
         id: "az-register",
-        title: "9.2 Alphabetisches Stichwortverzeichnis",
+        title: "10.2 Alphabetisches Stichwortverzeichnis",
         audience: ["all"],
         keywords: "a z register dashboard helfer import material pdf schicht",
         summary:
@@ -705,7 +711,50 @@ const HELP_CHAPTERS: HelpChapter[] = [
         screenshot: {
           src: "/api/help/images/help-center",
           alt: "Aktuelles MyCrewMate Hilfe-Center mit Suche, Rollenfiltern und Kapitelübersicht",
-          caption: "Das aktuelle Hilfe-Center bündelt neun Kapitel, Rollenfilter, Live-Suche und das alphabetische Stichwortregister.",
+          caption: "Das aktuelle Hilfe-Center bündelt zehn Kapitel, Rollenfilter, Live-Suche und das alphabetische Stichwortregister.",
+        },
+      },
+    ],
+  },
+  {
+    id: "administrator-schulung",
+    number: 9,
+    title: "Administrator-Schulung",
+    keywords:
+      "administrator schulung freigabestufen rechte zugang ansprechpartner aus lesen schreiben sicherheit",
+    icon: GraduationCap,
+    accent: "border-orange-200 bg-orange-50 text-orange-900",
+    topics: [
+      {
+        id: "freigabestufen-schulungsvideo",
+        title: "9.1 Schulungsvideo: Vier Freigabestufen sicher anwenden",
+        audience: ["admin"],
+        keywords:
+          "video stufe 1 stufe 2 stufe 3 stufe 4 aus lesen schreiben ausnahme wiederherstellen",
+        summary:
+          "Klemmi zeigt im Schulungsvideo den vollständigen Ablauf: Zugang öffnen, Freigabestufe wählen, individuelle Ausnahmen setzen und bei Bedarf den verlässlichen Stufenstandard wiederherstellen.",
+        steps: [
+          "Unter Schutz & Protokoll die Planungsteam-Zugänge öffnen.",
+          "Für den Ansprechpartner die passende Freigabestufe auswählen.",
+          "Nur bei Bedarf einzelne Fachbereiche mit Aus, Lesen oder Schreiben abweichend einstellen.",
+          "Mit „Stufe wiederherstellen“ jederzeit zum Standard der gewählten Stufe zurückkehren.",
+        ],
+        callout: {
+          tone: "security",
+          title: "Rechte bleiben nachvollziehbar",
+          text: "Die Stufe ist eine praxistaugliche Vorlage. Maßgeblich bleiben die gespeicherten, serverseitig geprüften Fachbereichsrechte.",
+        },
+        video: {
+          src: "/api/help/administrator-training-video",
+          ariaLabel:
+            "MyCrewMate Administrator-Schulung zu den vier Freigabestufen und individuellen Ausnahmen",
+          caption:
+            "Klemmi erklärt die vier Freigabestufen, einzelne Ausnahmen und das Wiederherstellen des sicheren Standards.",
+        },
+        workspace: {
+          href: "/sicherheit",
+          label: "Planungsteam-Zugänge öffnen",
+          adminOnly: true,
         },
       },
     ],
@@ -751,7 +800,9 @@ export function getVisibleHelpChapters(audience: HelpAudience, query: string) {
       return matchesAudience(topic, audience) && (!normalizedQuery || chapterMatches || matchesText);
     });
     return { ...chapter, topics };
-  }).filter(chapter => chapter.topics.length > 0);
+  })
+    .filter(chapter => chapter.topics.length > 0)
+    .sort((left, right) => left.number - right.number);
 }
 
 const permissionCellColor = (value: string, role: "primaryAdmin" | "coAdmin" | "planner" | "readOnly") => {
@@ -1091,6 +1142,22 @@ export function HelpGuide({
                                 />
                                 <figcaption className="border-t border-slate-100 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
                                   {topic.screenshot.caption}
+                                </figcaption>
+                              </figure>
+                            )}
+                            {topic.video && (
+                              <figure className="overflow-hidden rounded-lg border border-slate-200 bg-slate-950 shadow-sm">
+                                <video
+                                  controls
+                                  preload="metadata"
+                                  className="aspect-video w-full bg-slate-950"
+                                  aria-label={topic.video.ariaLabel}
+                                >
+                                  <source src={topic.video.src} type="video/mp4" />
+                                  Ihr Browser unterstützt die Wiedergabe dieses Schulungsvideos nicht.
+                                </video>
+                                <figcaption className="border-t border-slate-800 bg-slate-900 px-3 py-2 text-xs leading-5 text-slate-200">
+                                  {topic.video.caption}
                                 </figcaption>
                               </figure>
                             )}

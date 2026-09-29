@@ -26,4 +26,13 @@ describe("Schulungsvideo im Hilfe-Center", () => {
     expect(help).toContain('"/api/help/training-video"');
     expect(help).toContain('type="video/mp4"');
   });
+
+  it("führt die Administratorenschulung als eigenen Hilfe-Menüpunkt mit Videostream", () => {
+    const guide = source("client/src/components/HelpGuide.tsx");
+
+    expect(guide).toContain('title: "Administrator-Schulung"');
+    expect(guide).toContain("Schulungsvideo: Vier Freigabestufen sicher anwenden");
+    expect(guide).toContain('src: "/api/help/administrator-training-video"');
+    expect(guide).toContain('aria-label={topic.video.ariaLabel}');
+  });
 });

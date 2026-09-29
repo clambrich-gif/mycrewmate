@@ -839,6 +839,7 @@ export function PlanningTeamAccessManager() {
                     type="button"
                     disabled={busy || form.isTenantAdmin}
                     aria-pressed={active}
+                    aria-label={`${meta.title}: ${meta.description}`}
                     onClick={() => applyAccessStage(stage)}
                     className={
                       active
@@ -846,8 +847,22 @@ export function PlanningTeamAccessManager() {
                         : "rounded-md border border-orange-200 bg-white/70 p-3 text-left transition-colors hover:border-orange-400 hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
                     }
                   >
-                    <span className="block text-xs font-bold uppercase tracking-wide text-orange-700">
-                      Stufe {meta.number}
+                    <span className="flex items-center justify-between gap-2 text-xs font-bold uppercase tracking-wide text-orange-700">
+                      <span>Stufe {meta.number}</span>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span
+                            className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-orange-200 bg-orange-50 text-orange-700"
+                            aria-hidden="true"
+                          >
+                            <Info className="h-3.5 w-3.5" />
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-64 text-left leading-5">
+                          <p className="font-semibold">{meta.title}</p>
+                          <p className="mt-1 text-xs text-slate-200">{meta.description}</p>
+                        </TooltipContent>
+                      </Tooltip>
                     </span>
                     <span className="mt-1 block text-sm font-semibold text-slate-900">
                       {meta.shortTitle}

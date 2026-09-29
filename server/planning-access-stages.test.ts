@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   EDITABLE_PLANNING_MODULES,
@@ -113,5 +115,17 @@ describe("4-Stufen-Freigabemodell und individuelle Ausnahmen", () => {
         expect(["off", "read", "write"]).toContain(defaults[module]);
       }
     }
+  });
+
+  it("zeigt zu jeder Freigabestufe ein kompaktes Info-Tooltip mit Phasenzusammenfassung", () => {
+    const manager = readFileSync(
+      path.resolve(process.cwd(), "client/src/components/PlanningTeamAccessManager.tsx"),
+      "utf8"
+    );
+
+    expect(manager).toContain("<Tooltip>");
+    expect(manager).toContain("<Info className=\"h-3.5 w-3.5\" />");
+    expect(manager).toContain("{meta.description}");
+    expect(manager).toContain('aria-label={`${meta.title}: ${meta.description}`}');
   });
 });

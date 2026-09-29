@@ -92,4 +92,43 @@ describe("Same-Origin-Auslieferung des Helferschulungsvideos", () => {
       expect.objectContaining({ method: "HEAD" })
     );
   });
+
+  it("liefert die Administratorenschulung als separaten rangefähigen MP4-Stream", async () => {
+    const upstreamFetch = vi.fn().mockResolvedValue(
+      new Response(new Uint8Array([5, 6, 7, 8]), {
+        status: 206,
+        headers: {
+          "content-length": "4",
+          "content-range": "bytes 0-3/200",
+          "content-type": "video/mp4",
+        },
+      })
+    );
+    vi.stubGlobal("fetch", upstreamFetch);
+    const baseUrl = await startTestServer();
+
+    const response = await nativeFetch(
+      `${baseUrl}/api/help/administrator-training-video`,
+      { headers: { Range: "bytes=0-3" } }
+    );
+
+    expect(response.status).toBe(206);
+    expect(response.headers.get("content-type")).toBe("video/mp4");
+    expect(response.headers.get("content-disposition")).toContain(
+      "mycrewmate-administrator-schulung-4-stufen.mp4"
+    );
+    expect(Array.from(new Uint8Array(await response.arrayBuffer()))).toEqual([
+      5,
+      6,
+      7,
+      8,
+    ]);
+    expect(upstreamFetch).toHaveBeenCalledWith(
+      expect.stringContaining("SBQXEgvLHAANlHMy.mp4"),
+      expect.objectContaining({
+        headers: { Range: "bytes=0-3" },
+        method: "GET",
+      })
+    );
+  });
 });
