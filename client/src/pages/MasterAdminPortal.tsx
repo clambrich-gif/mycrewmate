@@ -159,6 +159,8 @@ type TenantOverviewItem = {
     total: number;
     passwordConfigured: number;
     initialSetupPending: number;
+    adminName: string | null;
+    adminEmail: string | null;
   };
 };
 
@@ -937,7 +939,7 @@ export default function MasterAdminPortal() {
               internalNote: null,
             },
             productUsage: demoProductUsage(),
-            adminActivation: { total: 0, passwordConfigured: 0, initialSetupPending: 0 },
+            adminActivation: { total: 0, passwordConfigured: 0, initialSetupPending: 0, adminName: null, adminEmail: null },
             eventCount: 1,
             events: [{ id: 1, name: "MyEifelRide 2027", year: 2027, startDate: "2027-06-11", endDate: "2027-06-13", status: "active", closedAt: null }],
             nextEvent: {
@@ -964,7 +966,7 @@ export default function MasterAdminPortal() {
               internalNote: null,
             },
             productUsage: demoProductUsage(),
-            adminActivation: { total: 0, passwordConfigured: 0, initialSetupPending: 0 },
+            adminActivation: { total: 0, passwordConfigured: 0, initialSetupPending: 0, adminName: null, adminEmail: null },
             eventCount: 1,
             events: [{ id: 2, name: "Lukasmarkt 2027", year: 2027, startDate: "2027-10-15", endDate: "2027-10-17", status: "active", closedAt: null }],
             nextEvent: {
@@ -991,7 +993,7 @@ export default function MasterAdminPortal() {
               internalNote: null,
             },
             productUsage: demoProductUsage(),
-            adminActivation: { total: 0, passwordConfigured: 0, initialSetupPending: 0 },
+            adminActivation: { total: 0, passwordConfigured: 0, initialSetupPending: 0, adminName: null, adminEmail: null },
             eventCount: 1,
             events: [{ id: 3, name: "Schützenfest 2027", year: 2027, startDate: "2027-07-02", endDate: "2027-07-04", status: "active", closedAt: null }],
             nextEvent: {
@@ -1316,6 +1318,14 @@ export default function MasterAdminPortal() {
                       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
                         <span className="inline-flex items-center gap-1"><CalendarDays className="size-3.5 text-slate-400" /> {tenant.eventCount} Veranstaltung{tenant.eventCount === 1 ? "" : "en"}</span>
                         <span className="inline-flex items-center gap-1"><Mail className="size-3.5 text-slate-400" /> {tenant.contactEmail}</span>
+                        {tenant.adminActivation.adminName && (
+                          <span className="inline-flex items-center gap-1 font-medium text-slate-700">
+                            <UsersRound className="size-3.5 text-slate-400" /> Admin: {tenant.adminActivation.adminName}
+                            {tenant.adminActivation.adminEmail && tenant.adminActivation.adminEmail !== tenant.contactEmail && (
+                              <span className="text-slate-400 font-normal">({tenant.adminActivation.adminEmail})</span>
+                            )}
+                          </span>
+                        )}
                       </div>
                       <TenantProductUsage usage={tenant.productUsage} events={tenant.events} />
                       <TenantAdminActivationStatus activation={tenant.adminActivation} />

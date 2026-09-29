@@ -314,6 +314,7 @@ export default function Preparation() {
   const utils = trpc.useUtils();
   const { data: rawRows = [], isLoading } = trpc.prep.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
+  const { data: helpers = [] } = trpc.helpers.list.useQuery();
   const { data: locations = [] } = trpc.locations.list.useQuery();
   const rows = rawRows as PrepTaskRow[];
 
@@ -442,6 +443,40 @@ export default function Preparation() {
     () => new Map(contacts.map(contact => [contact.id, contact.name])),
     [contacts]
   );
+
+  // Alle Helfer und Ansprechpartner als auswählbare Verantwortliche zusammenführen
+  const responsiblePersons = useMemo(() => {
+    const list: Array<{ id: string; name: string; contactId?: number; helperId?: number; isHelper: boolean }> = [];
+    const seenNames = new Set<string>();
+
+    // Zuerst Ansprechpartner (inkl. Admins)
+    for (const c of contacts) {
+      const normalized = c.name.trim().toLowerCase();
+      seenNames.add(normalized);
+      list.push({
+        id: `c-${c.id}`,
+        name: c.name,
+        contactId: c.id,
+        isHelper: false,
+      });
+    }
+
+    // Dann alle weiteren Helfer
+    for (const h of helpers) {
+      const normalized = h.name.trim().toLowerCase();
+      if (!seenNames.has(normalized)) {
+        seenNames.add(normalized);
+        list.push({
+          id: h.contactId ? `c-${h.contactId}` : `h-${h.id}`,
+          name: h.name,
+          contactId: h.contactId ?? undefined,
+          helperId: h.id,
+          isHelper: true,
+        });
+      }
+    }
+    return list.sort((a, b) => a.name.localeCompare(b.name, "de"));
+  }, [contacts, helpers]);
   const currentUserName = normalizedPersonName(user?.name);
   const ownContactIds = useMemo(
     () =>
@@ -645,7 +680,14 @@ export default function Preparation() {
       category: form.category.trim(),
       task,
       locationId: form.locationId === "none" ? null : Number(form.locationId),
-      contactId: form.contactId === "none" ? null : Number(form.contactId),
+      ...(form.contactId.startsWith("h-")
+        ? { helperId: Number(form.contactId.slice(2)), contactId: null }
+        : {
+            contactId:
+              form.contactId === "none"
+                ? null
+                : Number(form.contactId.replace(/^c-/, "")),
+          }),
       dueText,
     };
 
@@ -1413,17 +1455,23 @@ export default function Preparation() {
               <div className="space-y-1.5">
                 <Label>Verantwortlicher</Label>
                 <Select
-                  value={form.contactId}
+                  value={
+                    form.contactId.startsWith("c-") || form.contactId.startsWith("h-")
+                      ? form.contactId
+                      : form.contactId === "none"
+                        ? "none"
+                        : `c-${form.contactId}`
+                  }
                   onValueChange={value => setForm(current => ({ ...current, contactId: value }))}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Ansprechpartner wählen" />
+                    <SelectValue placeholder="Verantwortlichen wählen" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">— Keine Zuordnung —</SelectItem>
-                    {contacts.map(contact => (
-                      <SelectItem key={contact.id} value={String(contact.id)}>
-                        {contact.name}
+                    {responsiblePersons.map(person => (
+                      <SelectItem key={person.id} value={person.id}>
+                        {person.name} {person.isHelper ? "(Helfer)" : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>

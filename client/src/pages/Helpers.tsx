@@ -41,9 +41,10 @@ import {
 import { formatEventDuration } from "@shared/event-dates";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
-import { CalendarDays, CheckCircle2, ChevronDown, Clock3, FileDown, FileText, FilterX, Info, MessageCircle, Pencil, Plus, Search, Send, SlidersHorizontal, Trash2 } from "lucide-react";
+import { CalendarDays, CheckCircle2, ChevronDown, Clock3, FileDown, FileText, FilterX, Info, LockKeyhole, MessageCircle, Pencil, Plus, Search, Send, SlidersHorizontal, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { KlemmiUpgradeDialog } from "@/components/KlemmiUpgradeDialog";
 import { PlanResetDialogButton } from "@/components/PlanResetDialogButton";
 import { KlemmiActionPanel } from "@/components/KlemmiActionPanel";
 import { MyTasksDefaultPin } from "@/components/MyTasksDefaultPin";
@@ -721,6 +722,7 @@ function CakeDonationAction({
   onClick,
   mobile = false,
   compact = false,
+  disabled = false,
   klemmiTarget,
   klemmiHelperId,
 }: {
@@ -729,11 +731,14 @@ function CakeDonationAction({
   onClick: () => void;
   mobile?: boolean;
   compact?: boolean;
+  disabled?: boolean;
   klemmiTarget?: string;
   klemmiHelperId?: number;
 }) {
   const hasCakes = count > 0;
-  const description = hasCakes
+  const description = disabled
+    ? "Spendenverwaltung erst ab Paket Pro verfügbar (Klick für Info)"
+    : hasCakes
     ? `Bereits ${count} Spenden erfasst (Klick für weitere Spende)`
     : "Spende für diesen Helfer erfassen";
 
@@ -747,6 +752,7 @@ function CakeDonationAction({
       onClick={onClick}
       className={cn(
         "relative inline-flex shrink-0 items-center justify-center bg-transparent p-0 leading-none transition-transform duration-150 ease-out hover:scale-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 active:scale-95",
+        disabled && "opacity-55 hover:scale-100",
         mobile
           ? "h-11 w-11 text-xl"
           : compact
@@ -756,10 +762,15 @@ function CakeDonationAction({
     >
       <span
         aria-hidden="true"
-        className={cn("select-none", hasCakes && "grayscale opacity-45")}
+        className={cn("select-none", (hasCakes || disabled) && "grayscale opacity-45")}
       >
         🎁
       </span>
+      {disabled && (
+        <span className="absolute -bottom-1 -right-1 inline-flex size-3.5 items-center justify-center rounded-full bg-slate-700 text-white shadow-sm" aria-hidden="true">
+          <LockKeyhole className="size-2.5" />
+        </span>
+      )}
       {hasCakes && (
         <span className="absolute right-0 top-0 inline-flex min-w-4 -translate-y-0.5 translate-x-0.5 items-center justify-center rounded-full bg-slate-600 px-1 text-[10px] font-bold leading-4 text-white shadow-sm">
           {count}
@@ -800,6 +811,12 @@ export default function Helpers() {
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: locations = [] } = trpc.locations.list.useQuery();
   const { data: currentEvent } = trpc.events.current.useQuery();
+  const { data: tenantProduct } = trpc.tenantProduct.current.useQuery(undefined, {
+    staleTime: 60_000,
+  });
+  const currentPackageId = tenantProduct?.packageId ?? "pro";
+  const allowsDonations = tenantProduct?.entitlements.capabilities.donations ?? true;
+  const [upgradeCapability, setUpgradeCapability] = useState<"donations" | null>(null);
   const { data: plan } = trpc.plan.evaluate.useQuery();
   const activeDays = currentEvent ? eventWeekdays(currentEvent.activeDays) : [];
   const cakeCountByDonor = useMemo(() => {
@@ -887,7 +904,12 @@ export default function Helpers() {
   const resetNewHelperForm = () => {
     setName("");
     setNewHelperCompanion("");
-    setNewHelperContactId("none");
+    // Im Event Pass ist der Admin der einzige feste Ansprechpartner
+    const defaultContactId =
+      currentPackageId === "event_pass" && contacts.length > 0
+        ? String(contacts[0].id)
+        : "none";
+    setNewHelperContactId(defaultContactId);
     setNewHelperPhone("");
     setNewHelperNote("");
     setNewHelperBringsCake(false);
@@ -907,8 +929,13 @@ export default function Helpers() {
     setNewHelperDialogOpen(false);
     toast.success(message);
   };
-  const openCakeDonation = (helperName: string) =>
+  const openCakeDonation = (helperName: string) => {
+    if (!allowsDonations) {
+      setUpgradeCapability("donations");
+      return;
+    }
     setLocation(`/spenden?donor=${encodeURIComponent(helperName)}`);
+  };
   const openMobileHelperEdit = (helper: any) => {
     setMobileHelperEditTarget(helper);
     setMobileHelperEditForm({
@@ -1676,6 +1703,7 @@ export default function Helpers() {
                     helperName={helper.name}
                     count={cakeCountByDonor.get(personKey(helper.name)) ?? 0}
                     mobile
+                    disabled={!allowsDonations}
                     onClick={() => openCakeDonation(helper.name)}
                   />
                   <Button
@@ -1734,7 +1762,7 @@ export default function Helpers() {
               <div className="space-y-1.5">
                 <label className="text-xs font-medium">Ansprechpartner</label>
                 <Select
-                  disabled={selfHelperIds.has(helper.id)}
+                  disabled={selfHelperIds.has(helper.id) || currentPackageId === "event_pass"}
                   value={helper.contactId ? String(helper.contactId) : "none"}
                   onValueChange={value =>
                     update.mutate({
@@ -1982,6 +2010,7 @@ export default function Helpers() {
                       <CakeDonationAction
                         helperName={helper.name}
                         count={cakeCountByDonor.get(personKey(helper.name)) ?? 0}
+                        disabled={!allowsDonations}
                         onClick={() => openCakeDonation(helper.name)}
                       />
                       <Button
@@ -2013,7 +2042,7 @@ export default function Helpers() {
                   </td>
                   <td className="p-2">
                     <Select
-                      disabled={selfHelperIds.has(helper.id)}
+                      disabled={selfHelperIds.has(helper.id) || currentPackageId === "event_pass"}
                       value={
                         helper.contactId ? String(helper.contactId) : "none"
                       }
@@ -2263,6 +2292,7 @@ export default function Helpers() {
                             helperName={helper.name}
                             count={cakeCount}
                             compact
+                            disabled={!allowsDonations}
                             klemmiTarget="helper-action-donation"
                             klemmiHelperId={helper.id}
                             onClick={() => openCakeDonation(helper.name)}
@@ -2569,7 +2599,11 @@ export default function Helpers() {
                 >
                   <div className="space-y-1.5">
                     <label htmlFor="new-helper-dialog-contact" className="text-sm font-medium">Ansprechpartner</label>
-                    <Select value={newHelperContactId} onValueChange={setNewHelperContactId}>
+                    <Select
+                      disabled={currentPackageId === "event_pass" && contacts.length > 0}
+                      value={newHelperContactId}
+                      onValueChange={setNewHelperContactId}
+                    >
                       <SelectTrigger id="new-helper-dialog-contact" className="h-11 w-full bg-white text-base">
                         <SelectValue placeholder="Ansprechpartner auswählen" />
                       </SelectTrigger>
@@ -2580,6 +2614,11 @@ export default function Helpers() {
                         ))}
                       </SelectContent>
                     </Select>
+                    {currentPackageId === "event_pass" && (
+                      <p className="text-[11px] text-slate-500">
+                        Im Event Pass fest dem Vereinsadministrator zugeordnet (weitere Ansprechpartner ab Light).
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-1.5">
                     <label htmlFor="new-helper-dialog-phone" className="text-sm font-medium">Telefon Helfer</label>
@@ -2794,7 +2833,8 @@ export default function Helpers() {
                     </p>
                   )}
                 </section>
-                <div data-klemmi-target="new-helper-donation" className={cn("flex min-h-12 items-center gap-3 rounded-xl border px-3.5 transition-colors", newHelperBringsCake ? "border-indigo-200 bg-indigo-50" : "border-slate-200 bg-white")}>
+                {allowsDonations ? (
+                  <div data-klemmi-target="new-helper-donation" className={cn("flex min-h-12 items-center gap-3 rounded-xl border px-3.5 transition-colors", newHelperBringsCake ? "border-indigo-200 bg-indigo-50" : "border-slate-200 bg-white")}>
                   <Checkbox
                     id="new-helper-dialog-brings-cake"
                     checked={newHelperBringsCake}
@@ -2805,9 +2845,42 @@ export default function Helpers() {
                     <span className="mt-0.5 block text-xs font-normal text-slate-500">Kuchen, Salat, Snack oder eine andere Spende direkt mit erfassen</span>
                   </label>
                 </div>
+                ) : (
+                  <div
+                    data-klemmi-target="new-helper-donation"
+                    className="flex min-h-12 cursor-pointer items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/90 px-3.5 py-2.5 transition-colors hover:bg-slate-100"
+                    onClick={() => setUpgradeCapability("donations")}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={event => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setUpgradeCapability("donations");
+                      }
+                    }}
+                    title="Spendenverwaltung erst ab Paket Pro verfügbar (Klick für Info)"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex size-5 shrink-0 items-center justify-center rounded border border-slate-300 bg-slate-200 text-slate-500">
+                        <LockKeyhole className="size-3" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-700">
+                          Ich unterstütze mit einer Spende
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          Spendenverwaltung ist im aktuellen Paket nicht enthalten.
+                        </p>
+                      </div>
+                    </div>
+                    <span className="inline-flex shrink-0 items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
+                      ab Pro
+                    </span>
+                  </div>
+                )}
               </section>
 
-              {newHelperBringsCake && (
+              {allowsDonations && newHelperBringsCake && (
                 <section className="space-y-4 rounded-2xl border border-indigo-200 bg-indigo-50/50 p-4 shadow-sm sm:p-5" data-slot="new-helper-donation-form">
                   <div className="flex items-start justify-between gap-4">
                     <div>
@@ -3192,6 +3265,14 @@ export default function Helpers() {
             id: deleteTarget.id,
           })
         }
+      />
+      <KlemmiUpgradeDialog
+        open={Boolean(upgradeCapability)}
+        onOpenChange={open => {
+          if (!open) setUpgradeCapability(null);
+        }}
+        currentPackageId={currentPackageId}
+        capability={upgradeCapability}
       />
     </div>
   );

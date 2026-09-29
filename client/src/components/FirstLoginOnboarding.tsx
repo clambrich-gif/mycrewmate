@@ -137,7 +137,7 @@ export function FirstLoginOnboarding({
             <p className="mt-5 text-xs text-slate-500">
               {isCoAdmin
                 ? "Deine Einführung als Co-Admin startet gleich."
-                : "Deine Vereinsplanung ist jetzt für dich eingerichtet."}
+                : "Dein persönlicher Zugang wird eingerichtet – gleich zeigt dir Klemmi, wo du jederzeit Hilfe findest."}
             </p>
             <Progress
               value={progress}

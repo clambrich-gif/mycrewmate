@@ -300,6 +300,8 @@ export const tenantAdminCredentials = mysqlTable(
     email: varchar("email", { length: 320 }).notNull(),
     passwordHash: varchar("passwordHash", { length: 255 }).notNull(),
     mustChangePassword: boolean("mustChangePassword").default(true).notNull(),
+    /** Neue persönliche Vereinsadmins erhalten nach der Passwortvergabe einmal die Klemmi-Einführung. */
+    onboardingPending: boolean("onboardingPending").default(false).notNull(),
     sessionVersion: int("sessionVersion").default(1).notNull(),
     status: mysqlEnum("status", ["active", "suspended"]).default("active").notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),

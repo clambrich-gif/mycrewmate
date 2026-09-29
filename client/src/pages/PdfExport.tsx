@@ -41,6 +41,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useTenantAdministration } from "@/hooks/useTenantAdministration";
+import { KlemmiUpgradeDialog } from "@/components/KlemmiUpgradeDialog";
+import { LockKeyhole } from "lucide-react";
 import {
   ChangeEvent,
   useEffect,
@@ -136,6 +138,12 @@ export default function PdfExport() {
   const { data: currentEvent } = trpc.events.current.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: areaContacts = [] } = trpc.plan.areaContacts.useQuery();
+  const { data: tenantProduct } = trpc.tenantProduct.current.useQuery(undefined, {
+    staleTime: 60_000,
+  });
+  const currentPackageId = tenantProduct?.packageId ?? "pro";
+  const allowsContacts = tenantProduct?.entitlements.capabilities.contacts ?? true;
+  const [upgradeCapability, setUpgradeCapability] = useState<"contacts" | null>(null);
   const [form, setForm] = useState<SettingsForm>(EMPTY_FORM);
   const [planMode, setPlanMode] = useState<"blank" | "filled">("blank");
   const activeDays = useMemo(
@@ -318,6 +326,10 @@ export default function PdfExport() {
   };
 
   const downloadContactOverviews = () => {
+    if (!allowsContacts) {
+      setUpgradeCapability("contacts");
+      return;
+    }
     if (!selectedContactOverviewIds.length) {
       toast.error("Bitte mindestens einen Ansprechpartner auswählen");
       return;
@@ -457,9 +469,45 @@ export default function PdfExport() {
 
         <PdfSection
           title="Ansprechpartner-Übersichten"
-          description="Arbeitsmappen mit Bereichsverantwortung, Schichten und druckbaren Checklisten erstellen."
+          description={
+            allowsContacts
+              ? "Arbeitsmappen mit Bereichsverantwortung, Schichten und druckbaren Checklisten erstellen."
+              : "Arbeitsmappen für Ansprechpartner sind ab Paket Light verfügbar."
+          }
           icon={UsersRound}
         >
+          {!allowsContacts ? (
+            <div
+              className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-200 bg-slate-50/80 p-4 transition-colors hover:bg-slate-100"
+              onClick={() => setUpgradeCapability("contacts")}
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 shadow-xs">
+                  <LockKeyhole className="size-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">
+                    Ansprechpartner-Übersichten ab Light
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Der Event Pass umfasst alle Helferübersichten sowie konfigurierbare Einsatzpläne.
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="border-blue-200 bg-blue-50 text-blue-800 hover:bg-blue-100"
+                onClick={e => {
+                  e.stopPropagation();
+                  setUpgradeCapability("contacts");
+                }}
+              >
+                Info anzeigen
+              </Button>
+            </div>
+          ) : (
           <div className="grid gap-5 lg:grid-cols-2">
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
@@ -610,6 +658,7 @@ export default function PdfExport() {
               </Button>
             </div>
           </div>
+          )}
         </PdfSection>
 
         <PdfSection
@@ -1124,9 +1173,17 @@ export default function PdfExport() {
                 </p>
               )}
             </>
-          )}
-      </PdfSection>
-      )}
+            )}
+          </PdfSection>
+        )}
+      <KlemmiUpgradeDialog
+        open={Boolean(upgradeCapability)}
+        onOpenChange={open => {
+          if (!open) setUpgradeCapability(null);
+        }}
+        currentPackageId={currentPackageId}
+        capability={upgradeCapability}
+      />
     </div>
   );
 }

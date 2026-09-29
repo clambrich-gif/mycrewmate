@@ -144,6 +144,8 @@ export type TenantAdminActivationSummary = {
   total: number;
   passwordConfigured: number;
   initialSetupPending: number;
+  adminName: string | null;
+  adminEmail: string | null;
 };
 
 export type TenantProductExpiryReminderCandidate = {
@@ -1143,12 +1145,15 @@ export async function listTenantOverviewsForPlatformAdmin() {
       .select({
         tenantId: userTenantMemberships.tenantId,
         mustChangePassword: tenantAdminCredentials.mustChangePassword,
+        adminName: users.name,
+        adminEmail: users.email,
       })
       .from(tenantAdminCredentials)
       .innerJoin(
         userTenantMemberships,
         eq(userTenantMemberships.userId, tenantAdminCredentials.userId)
       )
+      .innerJoin(users, eq(users.id, tenantAdminCredentials.userId))
       .where(
         and(
           eq(tenantAdminCredentials.status, "active"),
@@ -1174,12 +1179,20 @@ export async function listTenantOverviewsForPlatformAdmin() {
       total: 0,
       passwordConfigured: 0,
       initialSetupPending: 0,
+      adminName: row.adminName?.trim() || null,
+      adminEmail: row.adminEmail?.trim() || null,
     };
     current.total += 1;
     if (row.mustChangePassword) {
       current.initialSetupPending += 1;
     } else {
       current.passwordConfigured += 1;
+    }
+    if (!current.adminName && row.adminName?.trim()) {
+      current.adminName = row.adminName.trim();
+    }
+    if (!current.adminEmail && row.adminEmail?.trim()) {
+      current.adminEmail = row.adminEmail.trim();
     }
     adminActivationByTenant.set(row.tenantId, current);
   }
@@ -1219,6 +1232,8 @@ export async function listTenantOverviewsForPlatformAdmin() {
         total: 0,
         passwordConfigured: 0,
         initialSetupPending: 0,
+        adminName: null,
+        adminEmail: null,
       },
       events: tenantEvents.map(eventRow => ({
         id: eventRow.id,
@@ -3460,11 +3475,78 @@ export async function deleteEvent(id: number) {
 export async function listContacts() {
   const db = await getDb();
   if (!db) return [];
+  await ensureEventPassPrimaryAdminContact(db);
   return db
     .select()
     .from(contacts)
     .where(planningScope(contacts))
     .orderBy(contacts.sortOrder, contacts.name);
+}
+
+/**
+ * Stellt sicher, dass ein Event-Pass-Verein den persönlichen Vereinsadministrator
+ * als automatischen Standard-Ansprechpartner besitzt.
+ */
+async function ensureEventPassPrimaryAdminContact(client: DBClient) {
+  const currentTenant = tenant();
+  const selectedYear = year();
+  const selectedEventId = event();
+  if (!currentTenant || !selectedEventId) return;
+
+  const entitlement = await getTenantProductEntitlement(currentTenant);
+  if (entitlement.packageId !== "event_pass") return;
+
+  // Prüfen, ob für diese Veranstaltung bereits mindestens ein Ansprechpartner existiert.
+  const existingContacts = await client
+    .select({ id: contacts.id })
+    .from(contacts)
+    .where(planningScopeFor(contacts, selectedYear, selectedEventId))
+    .limit(1);
+  if (existingContacts.length > 0) return;
+
+  // Den primären persönlichen Vereinsadmin ermitteln
+  const [primaryAdmin] = await client
+    .select({
+      name: users.name,
+      email: tenantAdminCredentials.email,
+    })
+    .from(tenantAdminCredentials)
+    .innerJoin(users, eq(users.id, tenantAdminCredentials.userId))
+    .innerJoin(
+      userTenantMemberships,
+      eq(userTenantMemberships.userId, tenantAdminCredentials.userId)
+    )
+    .where(
+      and(
+        eq(userTenantMemberships.tenantId, currentTenant),
+        eq(userTenantMemberships.role, "tenant_admin"),
+        eq(userTenantMemberships.status, "active"),
+        eq(tenantAdminCredentials.status, "active")
+      )
+    )
+    .orderBy(desc(userTenantMemberships.isDefault), asc(tenantAdminCredentials.createdAt))
+    .limit(1);
+
+  const adminName = primaryAdmin?.name?.trim();
+  if (!adminName) return;
+
+  const insertResult: any = await client.insert(contacts).values({
+    name: adminName,
+    email: primaryAdmin.email?.trim() || null,
+    year: selectedYear,
+    eventId: selectedEventId,
+    sortOrder: 1,
+  });
+  const contactId = Number(insertResult?.[0]?.insertId ?? insertResult?.insertId);
+  if (contactId) {
+    await syncContactToSelfHelperWithClient(
+      client,
+      { id: contactId, name: adminName, phone: null },
+      undefined,
+      selectedYear,
+      selectedEventId
+    );
+  }
 }
 
 /** Für die Administratorverwaltung aller eventübergreifenden Zugänge. */
@@ -4217,6 +4299,20 @@ export async function createHelper(
 ) {
   const database = (await getDb()) as DB;
   return database.transaction(async tx => {
+    let effectiveContactId = v.contactId;
+    if (effectiveContactId === undefined || effectiveContactId === null) {
+      const entitlement = await getTenantProductEntitlement(tenant());
+      if (entitlement.packageId === "event_pass") {
+        await ensureEventPassPrimaryAdminContact(tx);
+        const [primaryContact] = await tx
+          .select({ id: contacts.id })
+          .from(contacts)
+          .where(planningScope(contacts))
+          .limit(1);
+        if (primaryContact) effectiveContactId = primaryContact.id;
+      }
+    }
+
     if (v.contactId !== undefined && v.contactId !== null) {
       const [contact] = await tx
         .select({ id: contacts.id })
@@ -4233,6 +4329,7 @@ export async function createHelper(
     await assertCurrentProductHelperCapacity(tx);
     return tx.insert(helpers).values({
       ...v,
+      contactId: effectiveContactId,
       year: year(),
       eventId: event(),
     } as typeof helpers.$inferInsert);
@@ -6018,9 +6115,89 @@ async function createYearRow(table: any, values: Record<string, unknown>) {
   return created;
 }
 
+/**
+ * Stellt sicher, dass für einen Helfer ein Ansprechpartner-Datensatz existiert,
+ * sodass er als Verantwortlicher für Vor- und Nachbereitungsaufgaben gewählt werden kann.
+ */
+export async function ensureContactForHelperId(helperId: number): Promise<number | null> {
+  const db = (await getDb()) as DB;
+  if (!db) return null;
+  const [helper] = await db
+    .select({
+      id: helpers.id,
+      name: helpers.name,
+      phone: helpers.phone,
+      contactId: helpers.contactId,
+      year: helpers.year,
+      eventId: helpers.eventId,
+    })
+    .from(helpers)
+    .where(and(eq(helpers.id, helperId), planningScope(helpers)))
+    .limit(1);
+
+  if (!helper) return null;
+  if (helper.contactId) {
+    const [existingContact] = await db
+      .select({ id: contacts.id })
+      .from(contacts)
+      .where(and(eq(contacts.id, helper.contactId), planningScope(contacts)))
+      .limit(1);
+    if (existingContact) return existingContact.id;
+  }
+
+  // Prüfen, ob bereits ein Ansprechpartner gleichen Namens in der Veranstaltung existiert
+  const [sameNameContact] = await db
+    .select({ id: contacts.id })
+    .from(contacts)
+    .where(
+      and(
+        eq(contacts.eventId, helper.eventId),
+        eq(contacts.year, helper.year),
+        eq(contacts.name, helper.name)
+      )
+    )
+    .limit(1);
+
+  if (sameNameContact) {
+    await db
+      .update(helpers)
+      .set({ contactId: sameNameContact.id })
+      .where(eq(helpers.id, helper.id));
+    return sameNameContact.id;
+  }
+
+  // Neuen Ansprechpartner für diesen Helfer anlegen
+  const insertResult: any = await db.insert(contacts).values({
+    name: helper.name,
+    phone: helper.phone,
+    year: helper.year,
+    eventId: helper.eventId,
+    sortOrder: 100,
+  });
+  const newContactId = Number(insertResult?.[0]?.insertId ?? insertResult?.insertId);
+  if (newContactId) {
+    await db
+      .update(helpers)
+      .set({ contactId: newContactId })
+      .where(eq(helpers.id, helper.id));
+    return newContactId;
+  }
+  return null;
+}
+
 async function scopedContactValues(values: Record<string, unknown>) {
-  if (!("contactId" in values) || values.contactId === null) return values;
+  if (
+    !("contactId" in values) ||
+    values.contactId === null ||
+    values.contactId === undefined ||
+    values.contactId === ""
+  ) {
+    return { ...values, contactId: null };
+  }
   const contactId = Number(values.contactId);
+  if (!Number.isSafeInteger(contactId) || contactId <= 0) {
+    return { ...values, contactId: null };
+  }
   const db = (await getDb()) as DB;
   const [contact] = await db
     .select({ id: contacts.id })
@@ -7582,6 +7759,21 @@ export async function isTenantAdminPasswordChangeRequired(userId: number) {
   return credential?.status === "active" && credential.mustChangePassword;
 }
 
+/** Prüft den einmaligen Begrüßungsstatus eines persönlichen Vereinsadmins. */
+export async function isTenantAdminOnboardingPending(userId: number) {
+  const database = await getDb();
+  if (!database) return false;
+  const [credential] = await database
+    .select({
+      onboardingPending: tenantAdminCredentials.onboardingPending,
+      status: tenantAdminCredentials.status,
+    })
+    .from(tenantAdminCredentials)
+    .where(eq(tenantAdminCredentials.userId, userId))
+    .limit(1);
+  return credential?.status === "active" && credential.onboardingPending;
+}
+
 async function upsertTenantAdminForPlatformAdmin(
   tx: DBClient,
   input: {
@@ -7639,6 +7831,7 @@ async function upsertTenantAdminForPlatformAdmin(
         email: normalizedEmail,
         passwordHash: input.passwordHash,
         mustChangePassword: input.mustChangePassword ?? true,
+        onboardingPending: true,
         sessionVersion: 1,
         status: "active",
       })
@@ -7646,6 +7839,7 @@ async function upsertTenantAdminForPlatformAdmin(
         set: {
           passwordHash: input.passwordHash,
           mustChangePassword: input.mustChangePassword ?? true,
+          onboardingPending: true,
           sessionVersion: sql`${tenantAdminCredentials.sessionVersion} + 1`,
           status: "active",
         },
@@ -7798,6 +7992,33 @@ export async function completeTenantAdminInitialPasswordChange(input: {
       .limit(1);
     if (!row) throw new Error("Zugangsdaten nicht gefunden");
     return row;
+  });
+}
+
+/** Schließt die einmalige Klemmi-Begrüßung eines persönlichen Vereinsadmins ab. */
+export async function completeTenantAdminOnboarding(userId: number) {
+  const database = (await getDb()) as DB;
+  return database.transaction(async tx => {
+    const [credential] = await tx
+      .select({
+        userId: tenantAdminCredentials.userId,
+        onboardingPending: tenantAdminCredentials.onboardingPending,
+        status: tenantAdminCredentials.status,
+      })
+      .from(tenantAdminCredentials)
+      .where(eq(tenantAdminCredentials.userId, userId))
+      .limit(1)
+      .for("update");
+    if (!credential || credential.status !== "active") {
+      throw new Error("Vereinsadministrator-Zugang wurde nicht gefunden");
+    }
+    if (!credential.onboardingPending) return { completed: false } as const;
+
+    await tx
+      .update(tenantAdminCredentials)
+      .set({ onboardingPending: false })
+      .where(eq(tenantAdminCredentials.userId, userId));
+    return { completed: true } as const;
   });
 }
 

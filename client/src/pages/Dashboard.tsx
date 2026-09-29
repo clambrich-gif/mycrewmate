@@ -47,6 +47,7 @@ import {
   type EventCountdownState,
 } from "@shared/event-dates";
 import { productAllowsCapability } from "@shared/product-packages";
+import { cn } from "@/lib/utils";
 
 type PriorityAction = {
   id: string;
@@ -1055,6 +1056,9 @@ export default function Dashboard() {
   const canUseMapsGpx =
     tenantProduct.isSuccess &&
     productAllowsCapability(tenantProduct.data?.packageId ?? "pro", "maps_gpx");
+  const isEventPass = tenantProduct.data?.packageId === "event_pass";
+  const allowsDonations =
+    tenantProduct.data?.entitlements.capabilities.donations ?? true;
   const { data: dashboardLocations = [] } = trpc.locations.list.useQuery(undefined, {
     enabled: canReadLocations,
   });
@@ -1358,7 +1362,10 @@ export default function Dashboard() {
       <section
         data-dashboard-section="Helfer-Kennzahlen"
         data-dashboard-level="Helfer-Kennzahlen"
-        className="grid gap-4 md:grid-cols-3"
+        className={cn(
+          "grid gap-4",
+          allowsDonations ? "md:grid-cols-3" : "md:grid-cols-2"
+        )}
       >
         <DailyReadinessCard
           readiness={dailyReadiness}
@@ -1376,16 +1383,22 @@ export default function Dashboard() {
           contactRate={s.erstkontaktquote}
           openTarget={target => navigate(dashboardTargetHref(target))}
         />
-        <DonationSummaryCard
-          donations={s.spenden as DonationDashboardStats}
-          openDonations={() => navigate("/spenden")}
-        />
+        {allowsDonations && (
+          <DonationSummaryCard
+            donations={s.spenden as DonationDashboardStats}
+            openDonations={() => navigate("/spenden")}
+          />
+        )}
       </section>
 
       <div data-dashboard-level="Tabellendetails" className="grid gap-6 lg:grid-cols-2">
         <Card className="flex h-[250px] flex-col overflow-hidden shadow-sm gap-3 py-4">
           <CardHeader className="shrink-0">
-            <CardTitle>Verantwortlichkeiten pro Ansprechpartner</CardTitle>
+            <CardTitle>
+              {isEventPass
+                ? "Hauptansprechpartner (Vereinsadministrator)"
+                : "Verantwortlichkeiten pro Ansprechpartner"}
+            </CardTitle>
           </CardHeader>
           <CardContent className="min-h-0 flex-1 overflow-auto pt-0">
             <table className="w-full min-w-[420px] table-fixed text-sm">

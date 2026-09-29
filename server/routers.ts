@@ -1737,16 +1737,25 @@ export const appRouter = router({
     }),
     firstLoginOnboardingStatus: baseProtectedProcedure.query(async ({ ctx }) => {
       const accessId = planningTeamAccessIdForUser(ctx.user);
-      if (accessId === null) {
+      const isPersonalTenantAdmin =
+        ctx.user.role === "admin" && ctx.user.openId.startsWith("tenant-admin:");
+      if (accessId === null && !isPersonalTenantAdmin) {
         return {
           pending: false,
           isCoAdmin: false,
           name: ctx.user.name ?? "Planungsteam",
         } as const;
       }
+      if (isPersonalTenantAdmin) {
+        return {
+          pending: await db.isTenantAdminOnboardingPending(ctx.user.id),
+          isCoAdmin: false,
+          name: ctx.user.name ?? "Vereinsadministration",
+        } as const;
+      }
       const scope = await authorizedPlanningScope(ctx.user, ctx.req);
       const access = await withPlanningScope(scope, () =>
-        db.getPlanningTeamAccessCredentialForCurrentTenant(accessId, scope.tenantId)
+        db.getPlanningTeamAccessCredentialForCurrentTenant(accessId!, scope.tenantId)
       );
       return {
         pending: access?.onboardingPending === true,
@@ -1766,10 +1775,16 @@ export const appRouter = router({
     }),
     completeFirstLoginOnboarding: baseProtectedProcedure.mutation(async ({ ctx }) => {
       const accessId = planningTeamAccessIdForUser(ctx.user);
+      const isPersonalTenantAdmin =
+        ctx.user.role === "admin" && ctx.user.openId.startsWith("tenant-admin:");
+      if (isPersonalTenantAdmin) {
+        await db.completeTenantAdminOnboarding(ctx.user.id);
+        return { success: true };
+      }
       if (accessId === null) {
         throw new TRPCError({
           code: "FORBIDDEN",
-          message: "Diese Einführung ist nur für persönliche Planungsteam-Zugänge verfügbar.",
+          message: "Diese Einführung ist nur für persönliche Zugänge verfügbar.",
         });
       }
       const scope = await authorizedPlanningScope(ctx.user, ctx.req);
@@ -4469,20 +4484,28 @@ export const appRouter = router({
           dueText: z.string().max(200).optional(),
           locationId: z.number().int().positive().nullable().optional(),
           contactId: z.number().nullable().optional(),
+          helperId: z.number().int().positive().nullable().optional(),
           note: z.string().max(10_000).optional(),
           logEntry: z.string().max(10_000).optional(),
         })
       )
-      .mutation(({ ctx, input }) =>
-        db.createPrep({
-          ...input,
+      .mutation(async ({ ctx, input }) => {
+        const { helperId, ...rest } = input;
+        let effectiveContactId = rest.contactId;
+        if (helperId) {
+          const linkedContactId = await db.ensureContactForHelperId(helperId);
+          if (linkedContactId) effectiveContactId = linkedContactId;
+        }
+        return db.createPrep({
+          ...rest,
+          contactId: effectiveContactId,
           status: "offen",
           statusWording: "aufgabe",
           logEntryAuthor: auditActor(ctx.user).name,
           activityEntry: "Vorbereitungsaufgabe angelegt",
           activityAuthor: auditActor(ctx.user).name,
-        })
-      ),
+        });
+      }),
     update: moduleWriteProcedure("preparation")
       .input(
         z.object({
@@ -4492,16 +4515,23 @@ export const appRouter = router({
           dueText: z.string().max(200).optional(),
           locationId: z.number().int().positive().nullable().optional(),
           contactId: z.number().nullable().optional(),
+          helperId: z.number().int().positive().nullable().optional(),
           status: statusPrep.optional(),
           statusWording: prepStatusWording.optional(),
           note: z.string().max(10_000).nullable().optional(),
           logEntry: z.string().max(10_000).optional(),
         })
       )
-      .mutation(({ ctx, input }) => {
-        const { id, ...r } = input;
+      .mutation(async ({ ctx, input }) => {
+        const { id, helperId, ...r } = input;
+        let effectiveContactId = r.contactId;
+        if (helperId) {
+          const linkedContactId = await db.ensureContactForHelperId(helperId);
+          if (linkedContactId) effectiveContactId = linkedContactId;
+        }
         return db.updatePrep(id, {
           ...r,
+          ...(effectiveContactId !== undefined ? { contactId: effectiveContactId } : {}),
           logEntryAuthor: auditActor(ctx.user).name,
           activityAuthor: auditActor(ctx.user).name,
         });
@@ -4524,19 +4554,27 @@ export const appRouter = router({
           dueText: z.string().max(200).optional(),
           locationId: z.number().int().positive().nullable().optional(),
           contactId: z.number().nullable().optional(),
+          helperId: z.number().int().positive().nullable().optional(),
           note: z.string().optional(),
           logEntry: z.string().max(10_000).optional(),
         })
       )
-      .mutation(({ ctx, input }) =>
-        db.createPost({
-          ...input,
+      .mutation(async ({ ctx, input }) => {
+        const { helperId, ...rest } = input;
+        let effectiveContactId = rest.contactId;
+        if (helperId) {
+          const linkedContactId = await db.ensureContactForHelperId(helperId);
+          if (linkedContactId) effectiveContactId = linkedContactId;
+        }
+        return db.createPost({
+          ...rest,
+          contactId: effectiveContactId,
           status: "offen",
           logEntryAuthor: auditActor(ctx.user).name,
           activityEntry: "Nachbereitungsaufgabe angelegt",
           activityAuthor: auditActor(ctx.user).name,
-        })
-      ),
+        });
+      }),
     update: moduleWriteProcedure("postprocessing")
       .input(
         z.object({
@@ -4546,15 +4584,22 @@ export const appRouter = router({
           dueText: z.string().max(200).optional(),
           locationId: z.number().int().positive().nullable().optional(),
           contactId: z.number().nullable().optional(),
+          helperId: z.number().int().positive().nullable().optional(),
           status: statusTask.optional(),
           note: z.string().nullable().optional(),
           logEntry: z.string().max(10_000).optional(),
         })
       )
-      .mutation(({ ctx, input }) => {
-        const { id, ...r } = input;
+      .mutation(async ({ ctx, input }) => {
+        const { id, helperId, ...r } = input;
+        let effectiveContactId = r.contactId;
+        if (helperId) {
+          const linkedContactId = await db.ensureContactForHelperId(helperId);
+          if (linkedContactId) effectiveContactId = linkedContactId;
+        }
         return db.updatePost(id, {
           ...r,
+          ...(effectiveContactId !== undefined ? { contactId: effectiveContactId } : {}),
           logEntryAuthor: auditActor(ctx.user).name,
           activityAuthor: auditActor(ctx.user).name,
         });

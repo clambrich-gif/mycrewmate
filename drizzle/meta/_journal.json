@@ -547,6 +547,13 @@
       "when": 1790711853150,
       "tag": "0077_slimy_mole_man",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "5",
+      "when": 1790716734484,
+      "tag": "0078_fixed_the_anarchist",
+      "breakpoints": true
     }
   ]
 }

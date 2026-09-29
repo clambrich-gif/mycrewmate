@@ -239,4 +239,42 @@ describe("Erst-Login-Onboarding", () => {
       isCoAdmin: false,
     });
   });
+
+  it("unterstützt das Onboarding für persönliche Vereinsadmins", async () => {
+    const pendingSpy = vi
+      .spyOn(db, "isTenantAdminOnboardingPending")
+      .mockResolvedValue(true);
+    const completeSpy = vi
+      .spyOn(db, "completeTenantAdminOnboarding")
+      .mockResolvedValue({ completed: true } as any);
+
+    const caller = appRouter.createCaller({
+      user: {
+        id: 701,
+        openId: "tenant-admin:klaus@example.com",
+        role: "admin",
+        name: "Klaus Testverein",
+        email: "klaus@example.com",
+        sessionVersion: 1,
+        avatarUrl: null,
+        accountBlocked: false,
+        lastSignedIn: new Date(),
+      },
+      req: mockReq(),
+      res: { setHeader: vi.fn(), clearCookie: vi.fn() } as any,
+    });
+
+    const status = await caller.auth.firstLoginOnboardingStatus();
+    expect(status).toEqual({
+      pending: true,
+      name: "Klaus Testverein",
+      isCoAdmin: false,
+    });
+    expect(pendingSpy).toHaveBeenCalledWith(701);
+
+    await expect(caller.auth.completeFirstLoginOnboarding()).resolves.toEqual({
+      success: true,
+    });
+    expect(completeSpy).toHaveBeenCalledWith(701);
+  });
 });

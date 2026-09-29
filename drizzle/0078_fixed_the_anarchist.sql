@@ -1,0 +1,1 @@
+ALTER TABLE `tenant_admin_credentials` ADD `onboardingPending` boolean DEFAULT false NOT NULL;

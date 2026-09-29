@@ -1390,9 +1390,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("data-dashboard-helper-filter");
     expect(plan).toContain("Dashboardfilter:");
     expect(dashboard).toContain('data-dashboard-section="Helfer-Kennzahlen"');
-    expect(dashboard).toContain(
-      'className="grid gap-4 md:grid-cols-3"'
-    );
+    expect(dashboard).toContain('allowsDonations ? "md:grid-cols-3" : "md:grid-cols-2"');
     expect(dashboard).toContain("<LocationMapCard />");
     expect(dashboard).toContain('data-dashboard-level="Live-Standortkarte"');
     expect(source("client/src/components/LocationMapCard.tsx")).toContain(
