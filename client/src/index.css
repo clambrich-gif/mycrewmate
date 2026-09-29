@@ -95,6 +95,79 @@
 .container { margin-inline: auto; padding-inline: 1rem; max-width: 1400px; }
 .flex { min-width: 0; min-height: 0; }
 
+/* CrewMate Tycoon: sanfte, performante Bewegungen nur für die eigenständige
+   Spielwelt. Die reale Vereinsplanung bleibt davon vollständig unberührt. */
+.game-world {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 18% 5%, rgb(249 115 22 / 14%), transparent 24rem),
+    radial-gradient(circle at 85% 26%, rgb(14 165 233 / 11%), transparent 30rem),
+    #020617;
+}
+
+.game-world::before,
+.game-world::after {
+  content: "";
+  position: fixed;
+  pointer-events: none;
+  z-index: -1;
+  border-radius: 9999px;
+  filter: blur(2px);
+  opacity: .35;
+}
+
+.game-world::before {
+  width: 18rem;
+  height: 18rem;
+  top: 18%;
+  left: -8rem;
+  background: rgb(249 115 22 / 12%);
+  animation: game-float-orb 16s var(--ease-in-out, cubic-bezier(.77,0,.175,1)) infinite alternate;
+}
+
+.game-world::after {
+  width: 22rem;
+  height: 22rem;
+  bottom: -10rem;
+  right: -8rem;
+  background: rgb(14 165 233 / 10%);
+  animation: game-float-orb 20s var(--ease-in-out, cubic-bezier(.77,0,.175,1)) infinite alternate-reverse;
+}
+
+.game-world__klemmi {
+  animation: game-arrive .45s cubic-bezier(.23,1,.32,1) both;
+}
+
+.game-world__mascot {
+  animation: game-klemmi-idle 4.5s cubic-bezier(.77,0,.175,1) infinite;
+  transform-origin: center bottom;
+}
+
+@keyframes game-arrive {
+  from { opacity: 0; transform: translateY(12px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes game-klemmi-idle {
+  0%, 82%, 100% { transform: translateY(0) rotate(0deg); }
+  88% { transform: translateY(-4px) rotate(-2deg); }
+  94% { transform: translateY(-1px) rotate(2deg); }
+}
+
+@keyframes game-float-orb {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(3rem, -2rem, 0) scale(1.12); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-world::before,
+  .game-world::after,
+  .game-world__klemmi,
+  .game-world__mascot { animation: none; }
+}
+
 /* Ampel-Badges */
 .badge { display:inline-flex; align-items:center; gap:.3rem; padding:.15rem .55rem; border-radius:999px; font-size:.72rem; font-weight:600; line-height:1.4; white-space:nowrap; }
 .badge-ok { background:var(--ok-bg); border:1px solid #86efac; color:var(--ok); }

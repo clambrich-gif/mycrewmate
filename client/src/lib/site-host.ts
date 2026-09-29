@@ -12,6 +12,17 @@ export const MARKETING_HOSTS = new Set([
 export const APP_ORIGIN = "https://app.mycrewmate.de";
 export { MASTER_ADMIN_HOST, MASTER_ADMIN_ORIGIN };
 
+export const GAME_HOST = "game.mycrewmate.de";
+export const GAME_ORIGIN = `https://${GAME_HOST}`;
+
+export function isGameHost(hostname: string | undefined | null) {
+  return (hostname ?? "").trim().toLowerCase().replace(/\.$/, "") === GAME_HOST;
+}
+
+export function isGameSite() {
+  return typeof window !== "undefined" && isGameHost(window.location.hostname);
+}
+
 /**
  * Die beiden Hauptdomains zeigen ausschließlich den öffentlichen Produktauftritt.
  * Die geschützte Vereins- und Eventplanung lebt getrennt auf app.mycrewmate.de.

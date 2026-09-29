@@ -3,6 +3,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { applyBrowserBranding } from "@/lib/browser-branding";
 import {
   appUrlForCurrentLocation,
+  isGameSite,
   isMarketingSite,
   isMasterAdminSite,
 } from "@/lib/site-host";
@@ -88,6 +89,7 @@ const KlemmiPlanLayoutPreview = lazy(() => import("@/pages/KlemmiPlanLayoutPrevi
 const OfferDemo = lazy(() => import("@/pages/OfferDemo"));
 const PublicLegalPage = lazy(() => import("@/pages/PublicLegal"));
 const MasterAdminPortal = lazy(() => import("@/pages/MasterAdminPortal"));
+const GameRoot = lazy(() => import("@/pages/GameRoot"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 function RouteLoading() {
@@ -148,6 +150,7 @@ function PublicSiteRouter() {
     <Suspense fallback={<RouteLoading />}>
       <Switch>
         <Route path="/" component={OfferDemo} />
+        <Route path="/game" component={GameRoot} />
         <Route path="/impressum">
           <PublicLegalPage kind="impressum" />
         </Route>
@@ -197,6 +200,17 @@ function Router() {
           <OfferDemo />
         </Suspense>
       </Route>
+      {/* Das Spiel ist immer öffentlich und benötigt keinen Vereinslogin */}
+      <Route path="/game">
+        <Suspense fallback={<RouteLoading />}>
+          <GameRoot />
+        </Suspense>
+      </Route>
+      <Route path="/crewmate-tycoon">
+        <Suspense fallback={<RouteLoading />}>
+          <GameRoot />
+        </Suspense>
+      </Route>
       <Route>
         <Layout>
           <Suspense fallback={<RouteLoading />}>
@@ -240,6 +254,7 @@ function Router() {
 }
 
 function App() {
+  const gameSite = isGameSite();
   const marketingSite = isMarketingSite();
   const masterAdminSite = isMasterAdminSite();
 
@@ -263,6 +278,10 @@ function App() {
           />
           {masterAdminSite ? (
             <MasterAdminRouter />
+          ) : gameSite ? (
+            <Suspense fallback={<RouteLoading />}>
+              <GameRoot />
+            </Suspense>
           ) : marketingSite ? (
             <PublicSiteRouter />
           ) : (
