@@ -354,7 +354,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const isCredentialBootstrapPending =
     isTenantActivationRoute ||
     forcePasswordChangeOpen ||
-    activationTenantId !== null;
+    // Eine gespeicherte Aktivierung darf niemals ohne echte Sitzung den
+    // Ladebildschirm blockieren, etwa wenn ein Browser ein neues Cookie ablehnt.
+    // Mit gültiger Sitzung bleibt die alte Vereinsansicht weiterhin verborgen,
+    // bis der Passwortdialog sicher geöffnet wurde.
+    (activationTenantId !== null && isAuthenticated);
   const firstLoginOnboarding = trpc.auth.firstLoginOnboardingStatus.useQuery(
     undefined,
     {
@@ -430,9 +434,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
       rememberActivationTenantId(result.tenantId);
       setActivationTenantId(result.tenantId);
       // Den Einmal-Link vor dem bewusst vollständigen Kontextwechsel aus der
-      // Adresse entfernen. Der nachfolgende Reload darf nur Bunefix (bzw. den
-      // jeweiligen Zielverein) laden und nie den noch sichtbaren Altverein.
-      window.history.replaceState({}, "", "/");
+      // Adresse entfernen. Wichtig: Wouter muss dabei ebenfalls den neuen Pfad
+      // erhalten. Ein bloßes history.replaceState() ändert den sichtbaren URL,
+      // lässt aber den React-Routenstatus auf /aktivieren und hält den
+      // Bootstrap-Bildschirm dadurch dauerhaft offen.
+      setLocation("/", { replace: true });
       selectTenant(result.tenantId);
       await Promise.all([
         utils.auth.me.invalidate(),
@@ -444,7 +450,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
       clearRememberedActivationTenantId();
       setActivationTenantId(null);
       toast.error(err.message);
-      window.history.replaceState({}, "", "/login");
+      // Auch der Fehlerpfad muss den React-Router verlassen, damit die
+      // verständliche Anmeldeseite statt eines Ladebildschirms erscheint.
+      setLocation("/login", { replace: true });
     },
   });
 
@@ -925,6 +933,28 @@ export function Layout({ children }: { children: React.ReactNode }) {
     setInitialPasswordError(null);
     setForcePasswordChangeOpen(true);
   }, [initialPasswordStatus.data?.mustChangePassword]);
+
+  useEffect(() => {
+    if (
+      !activationTenantId ||
+      loading ||
+      isAuthenticated ||
+      isTenantActivationRoute
+    ) {
+      return;
+    }
+
+    // Falls der Browser die neue Sitzung trotz erfolgreich eingelöstem Link
+    // nicht übernimmt, endet der Bootstrap nachvollziehbar an der Anmeldung
+    // statt dauerhaft auf dem Ladescreen zu bleiben. Der Einmal-Link wurde
+    // dabei sicher verbraucht; der Hauptadmin kann anschließend einen neuen
+    // Einladungslink versenden.
+    clearRememberedActivationTenantId();
+    setActivationTenantId(null);
+    setLoginError(
+      "Die Aktivierung wurde bestätigt, aber die Sitzung konnte nicht eingerichtet werden. Bitte lassen Sie sich einen neuen Aktivierungslink senden."
+    );
+  }, [activationTenantId, isAuthenticated, isTenantActivationRoute, loading]);
 
   useEffect(() => {
     if (!events.data?.length || selectedEvent) return;

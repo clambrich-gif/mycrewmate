@@ -121,8 +121,13 @@ describe("Aktivierung persönlicher Vereinsadmins", () => {
     const invitationFlow = layout.slice(
       layout.indexOf("const consumeActivationInvitation")
     );
-    expect(invitationFlow.indexOf('window.history.replaceState({}, "", "/");')).toBeLessThan(
+    expect(invitationFlow.indexOf('setLocation("/", { replace: true });')).toBeLessThan(
       invitationFlow.indexOf("selectTenant(result.tenantId);")
+    );
+    expect(invitationFlow).toContain('setLocation("/login", { replace: true });');
+    expect(layout).toContain("activationTenantId !== null && isAuthenticated");
+    expect(layout).toContain(
+      "Die Aktivierung wurde bestätigt, aber die Sitzung konnte nicht eingerichtet werden."
     );
   });
 
