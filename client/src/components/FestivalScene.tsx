@@ -1,5 +1,4 @@
-import { CloudRain, MapPin, Sparkles, TentTree, Waves } from "lucide-react";
-import { KlemmiMascot } from "@/components/KlemmiMascot";
+import { CloudRain, MapPin, TentTree, Waves } from "lucide-react";
 import type { HelperCard, ShiftSlot } from "@/game/gameData";
 
 const STATIONS: Record<string, { label: string; className: string }> = {
@@ -30,14 +29,13 @@ type FestivalSceneProps = {
   shifts: ShiftSlot[];
   selectedHelperId: string | null;
   onSelectStation: (shiftId: string) => void;
+  recommendedStationId?: string | null;
   phase: SimulatorPhase;
   rainActive?: boolean;
-  klemmiMessage: string;
-  klemmiSpeaking: boolean;
   sceneLabel: string;
 };
 
-export function FestivalScene({ helpers, shifts, selectedHelperId, onSelectStation, phase, rainActive = false, klemmiMessage, klemmiSpeaking, sceneLabel }: FestivalSceneProps) {
+export function FestivalScene({ helpers, shifts, selectedHelperId, onSelectStation, recommendedStationId = null, phase, rainActive = false, sceneLabel }: FestivalSceneProps) {
   const selectedHelper = helpers.find(helper => helper.id === selectedHelperId);
   const isInteractive = phase === "puzzle" && !!selectedHelper;
   const showStations = phase === "puzzle" || phase === "event_day" || phase === "report";
@@ -68,7 +66,8 @@ export function FestivalScene({ helpers, shifts, selectedHelperId, onSelectStati
       {showStations && shifts.map(shift => {
         const station = STATIONS[shift.id];
         const full = shift.assignedHelperIds.length >= shift.requiredHelpers;
-        return <button type="button" key={shift.id} onClick={() => isInteractive && onSelectStation(shift.id)} className={`festival-station ${station.className} ${full ? "festival-station--full" : ""} ${isInteractive ? "festival-station--target" : ""}`} aria-label={`${station.label}, ${shift.timeWindow}: ${shift.assignedHelperIds.length} von ${shift.requiredHelpers} besetzt${isInteractive ? ", zum Zuweisen auswählen" : ""}`}><span className="festival-station__copy"><b>{station.label}</b><small>{shift.timeWindow}</small></span><span className={`festival-station__count ${full ? "festival-station__count--full" : ""}`}>{shift.assignedHelperIds.length}/{shift.requiredHelpers}</span></button>;
+        const recommended = recommendedStationId === shift.id;
+        return <button type="button" key={shift.id} onClick={() => isInteractive && onSelectStation(shift.id)} className={`festival-station ${station.className} ${full ? "festival-station--full" : ""} ${isInteractive ? "festival-station--target" : ""} ${recommended ? "festival-station--recommended" : ""}`} aria-label={`${station.label}, ${shift.timeWindow}: ${shift.assignedHelperIds.length} von ${shift.requiredHelpers} besetzt${recommended ? ", von Klemmi empfohlen" : ""}${isInteractive ? ", zum Zuweisen auswählen" : ""}`}><span className="festival-station__copy"><b>{station.label}</b><small>{shift.timeWindow}</small></span>{recommended && <span className="festival-station__recommendation">Klemmi</span>}<span className={`festival-station__count ${full ? "festival-station__count--full" : ""}`}>{shift.assignedHelperIds.length}/{shift.requiredHelpers}</span></button>;
       })}
 
       {showHelperTokens && helpers.map(helper => {
@@ -77,7 +76,6 @@ export function FestivalScene({ helpers, shifts, selectedHelperId, onSelectStati
         return <div key={helper.id} className={`festival-helper ${helper.assignedShiftId ? "festival-helper--walking" : "festival-helper--waiting"} ${selected ? "festival-helper--selected" : ""}`} data-destination={position.destination} style={{ left: position.left, top: position.top }} title={`${helper.name}${helper.assignedShiftId ? " ist eingeteilt" : " ist noch frei"}`}><span className="festival-helper__shadow" /><span className="festival-helper__avatar">{helper.initials}</span><span className="festival-helper__name">{helper.name.split(" ")[0]}</span></div>;
       })}
 
-      <div className="festival-klemmi" aria-live="polite"><div className="festival-klemmi__bubble"><span className="festival-klemmi__name"><Sparkles className="size-3" /> Klemmi erklärt</span><p>{klemmiMessage}</p></div><KlemmiMascot className="festival-klemmi__mascot" isSpeaking={klemmiSpeaking} decorative /></div>
       {selectedHelper && phase === "puzzle" && <div className="festival-scene__assignment-hint"><TentTree className="size-4" /><span><b>{selectedHelper.name}</b> ausgewählt. Wähle jetzt eine Station mit passendem Zeitfenster.</span></div>}
       {phase === "event_day" && !rainActive && <div className="festival-scene__live-chip"><Waves className="size-3.5" /> Veranstaltungstag läuft</div>}
     </section>

@@ -27,6 +27,7 @@ describe("CrewMate Tycoon Spielprototyp", () => {
   it("enthält die vollständige Planungsschleife von Vorbereitung bis Abschlussbericht", () => {
     const game = read("client/src/pages/GameRoot.tsx");
     const quests = read("client/src/game/questData.ts");
+    const scene = read("client/src/components/FestivalScene.tsx");
     expect(game).toContain('"scenario_select"');
     expect(game).toContain('"preparation"');
     expect(game).toContain('"helper_outreach"');
@@ -36,5 +37,11 @@ describe("CrewMate Tycoon Spielprototyp", () => {
     expect(game).toContain("Festival erfolgreich vorbereitet");
     expect(quests).toContain("110-km-Strecke genehmigen");
     expect(game).toContain("Achte auf die Zeitfenster direkt an jeder Station");
+    expect(game).toContain("KlemmiAdvisor");
+    expect(game).toContain("ShiftPlanningPreview");
+    expect(game).toContain("Zeitkonflikt:");
+    expect(game).toContain('"warning"');
+    expect(scene).toContain("recommendedStationId");
+    expect(scene).not.toContain("festival-klemmi");
   });
 });
