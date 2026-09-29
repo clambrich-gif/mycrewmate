@@ -160,6 +160,32 @@ const PRODUCT_BADGE_CLASS: Record<ProductPackageId, string> = {
   enterprise: "border-violet-200 bg-violet-50 text-violet-800",
 };
 
+const PRODUCT_DISTRIBUTION_STYLE: Record<
+  ProductPackageId,
+  { bar: string; icon: string; count: string }
+> = {
+  event_pass: {
+    bar: "bg-orange-500",
+    icon: "bg-orange-100 text-orange-800",
+    count: "text-orange-800",
+  },
+  light: {
+    bar: "bg-slate-500",
+    icon: "bg-slate-100 text-slate-800",
+    count: "text-slate-800",
+  },
+  pro: {
+    bar: "bg-blue-600",
+    icon: "bg-blue-100 text-blue-800",
+    count: "text-blue-800",
+  },
+  enterprise: {
+    bar: "bg-violet-600",
+    icon: "bg-violet-100 text-violet-800",
+    count: "text-violet-800",
+  },
+};
+
 const PRODUCT_ASSIGNMENT_STATUS_CLASS: Record<ProductAssignmentStatus, string> = {
   test: "border-slate-200 bg-slate-50 text-slate-700",
   active: "border-emerald-200 bg-emerald-50 text-emerald-800",
@@ -748,6 +774,26 @@ export default function MasterAdminPortal() {
   const managedEventCount = activeTenants.reduce((sum, tenant) => sum + tenant.eventCount, 0);
   const personalAccesses = (accessInventory.data ?? []) as PlatformAccessInventoryItem[];
   const duplicateEmailCount = personalAccesses.filter(access => access.hasDuplicateEmail).length;
+  const packageDistribution = PRODUCT_PACKAGE_IDS.map(packageId => {
+    const assignedTenants = activeTenants.filter(
+      tenant => tenant.productAssignment.packageId === packageId
+    );
+    return {
+      packageId,
+      count: assignedTenants.length,
+      testCount: assignedTenants.filter(
+        tenant => tenant.productAssignment.status === "test"
+      ).length,
+      pausedOrExpiredCount: assignedTenants.filter(
+        tenant =>
+          tenant.productAssignment.status === "paused" ||
+          tenant.productAssignment.status === "expired"
+      ).length,
+      share: activeTenants.length
+        ? Math.round((assignedTenants.length / activeTenants.length) * 100)
+        : 0,
+    };
+  });
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_5%_4%,rgba(219,234,254,0.95),transparent_32%),radial-gradient(circle_at_98%_96%,rgba(224,242,254,0.82),transparent_30%),#f8fafc] p-4 text-slate-950 sm:p-6 lg:p-10">
@@ -834,6 +880,68 @@ export default function MasterAdminPortal() {
             <CardContent className="flex items-center gap-3 p-4">
               <span className="flex size-11 items-center justify-center rounded-xl bg-slate-200 text-slate-700"><Archive className="size-5" /></span>
               <div><p className="text-2xl font-bold leading-none">{archivedTenants.length}</p><p className="mt-1 text-sm text-slate-600">Vereine im Archiv</p></div>
+            </CardContent>
+          </Card>
+        </section>
+
+        <section aria-labelledby="paketverteilung">
+          <Card className="border-slate-200 bg-white/95 py-0 shadow-sm">
+            <CardHeader className="border-b border-slate-100 px-5 py-4 sm:px-6">
+              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+                <div>
+                  <CardTitle id="paketverteilung" className="flex items-center gap-2 text-base">
+                    <CreditCard className="size-5 text-blue-700" /> Produktpakete im Überblick
+                  </CardTitle>
+                  <CardDescription className="mt-1 max-w-3xl">
+                    Aktuelle Zuordnung der gebuchten Pakete für Vereine in Verwaltung. Testzugänge bleiben bewusst in der Verteilung sichtbar.
+                  </CardDescription>
+                </div>
+                <Badge variant="outline" className="w-fit border-slate-200 bg-slate-50 text-slate-700">
+                  {activeTenants.length} zugeordnete{activeTenants.length === 1 ? "r Verein" : " Vereine"}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4 px-5 py-5 sm:px-6">
+              <div
+                className="flex h-3 overflow-hidden rounded-full bg-slate-100"
+                aria-label="Verteilung der gebuchten Produktpakete"
+              >
+                {packageDistribution.map(item =>
+                  item.count > 0 ? (
+                    <div
+                      key={item.packageId}
+                      className={`${PRODUCT_DISTRIBUTION_STYLE[item.packageId].bar} min-w-0 transition-[width] duration-300`}
+                      style={{ width: `${item.share}%` }}
+                      title={`${PRODUCT_PACKAGE_META[item.packageId].name}: ${item.count}`}
+                    />
+                  ) : null
+                )}
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {packageDistribution.map(item => {
+                  const meta = PRODUCT_PACKAGE_META[item.packageId];
+                  const style = PRODUCT_DISTRIBUTION_STYLE[item.packageId];
+                  return (
+                    <article key={item.packageId} className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5">
+                      <div className="flex items-start justify-between gap-3">
+                        <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${style.icon}`}>
+                          <CreditCard className="size-4" aria-hidden="true" />
+                        </span>
+                        <span className={`text-2xl font-bold leading-none ${style.count}`}>{item.count}</span>
+                      </div>
+                      <p className="mt-3 font-semibold text-slate-900">{meta.name}</p>
+                      <p className="mt-0.5 text-xs text-slate-500">{meta.priceLabel}</p>
+                      <p className="mt-2 text-xs text-slate-600">
+                        {item.share}% der aktiven Zuordnungen
+                        {item.testCount > 0 ? ` · ${item.testCount} Test` : ""}
+                        {item.pausedOrExpiredCount > 0
+                          ? ` · ${item.pausedOrExpiredCount} pausiert/abgelaufen`
+                          : ""}
+                      </p>
+                    </article>
+                  );
+                })}
+              </div>
             </CardContent>
           </Card>
         </section>

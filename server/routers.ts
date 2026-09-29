@@ -109,6 +109,7 @@ import {
 import {
   PRODUCT_ASSIGNMENT_STATUSES,
   PRODUCT_PACKAGE_IDS,
+  type ProductCapability,
 } from "@shared/product-packages";
 import { MASTER_ADMIN_ORIGIN, isMasterAdminRequestHost } from "@shared/platform-admin";
 import { storagePut, storageRead } from "./storage";
@@ -379,6 +380,90 @@ async function requirePlanningTeamEventAccess(
 }
 
 /**
+ * Bindet den Event Pass serverseitig an genau die vom Master-Admin gewählte
+ * Veranstaltung. Ein alter oder manipulierte Browser-Scope wird auf diese
+ * Veranstaltung korrigiert; eine fehlende oder pausierte Zuordnung bleibt
+ * vollständig gesperrt.
+ */
+async function enforceProductEventScope(
+  scope: ReturnType<typeof requestedPlanningScope>
+) {
+  return withPlanningScope(scope, async () => {
+    const entitlement = await db.getCurrentTenantProductEntitlement();
+    if (entitlement.packageId !== "event_pass") return scope;
+    if (!entitlement.isUsable) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message:
+          "Der Event Pass ist aktuell nicht aktiv. Bitte wenden Sie sich an die Plattformverwaltung.",
+      });
+    }
+    if (!entitlement.eventId) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message:
+          "Dem Event Pass ist noch keine Veranstaltung zugeordnet. Bitte wenden Sie sich an die Plattformverwaltung.",
+      });
+    }
+    if (scope.eventId === entitlement.eventId) return scope;
+    const assignedEvent = await db.getEventForTenantById(
+      entitlement.eventId,
+      scope.tenantId
+    );
+    if (!assignedEvent) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message:
+          "Die zum Event Pass gehörende Veranstaltung ist nicht mehr verfügbar. Bitte wenden Sie sich an die Plattformverwaltung.",
+      });
+    }
+    return {
+      tenantId: scope.tenantId,
+      year: assignedEvent.year,
+      eventId: assignedEvent.id,
+    };
+  });
+}
+
+async function requireCurrentProductCapability(capability: ProductCapability) {
+  const entitlement = await db.getCurrentTenantProductEntitlement();
+  if (entitlement.packageId === "event_pass" && !entitlement.isUsable) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message:
+        "Der Event Pass ist aktuell nicht aktiv. Bitte wenden Sie sich an die Plattformverwaltung.",
+    });
+  }
+  if (!db.currentProductAllowsCapability) return;
+  if (!(await db.currentProductAllowsCapability(capability))) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message:
+        "Diese Funktion ist im Event Pass nicht enthalten. Der Event Pass umfasst eine Veranstaltung mit bis zu 50 Helfern, Vorbereitung, Einsatzplan und Standard-PDF-Listen.",
+    });
+  }
+}
+
+async function requireCurrentProductModule(module: EditablePlanningModule) {
+  const entitlement = await db.getCurrentTenantProductEntitlement();
+  if (entitlement.packageId === "event_pass" && !entitlement.isUsable) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message:
+        "Der Event Pass ist aktuell nicht aktiv. Bitte wenden Sie sich an die Plattformverwaltung.",
+    });
+  }
+  if (!db.currentProductAllowsPlanningModule) return;
+  if (!(await db.currentProductAllowsPlanningModule(module))) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message:
+        "Dieser Bereich ist im Event Pass nicht enthalten. Bitte wenden Sie sich bei Bedarf an die Plattformverwaltung.",
+    });
+  }
+}
+
+/**
  * Der Browser darf Jahr und Veranstaltung als Bedienkontext senden. Der Verein
  * wird dagegen immer aus der aktiven Mitgliedschaft des angemeldeten Kontos
  * abgeleitet; ein manipuliertes x-tenant-id kann keinen Fremdzugriff erzeugen.
@@ -398,12 +483,22 @@ async function authorizedPlanningScope(
       });
     }
     const requestedScope = { ...requested, tenantId };
+    const entitlement = await withPlanningScope(requestedScope, () =>
+      db.getCurrentTenantProductEntitlement()
+    );
+    if (entitlement.packageId === "event_pass") {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message:
+          "Persönliche Planungsteamzugänge sind im Event Pass nicht enthalten. Bitte nutzen Sie den Vereinsadministrator-Zugang.",
+      });
+    }
     const requestedEventIsAllowed = await db.isPlanningTeamAccessAllowedForEvent(
       planningAccessId,
       requestedScope.eventId,
       tenantId
     );
-    if (requestedEventIsAllowed) return requestedScope;
+    if (requestedEventIsAllowed) return enforceProductEventScope(requestedScope);
 
     // Ein frischer Zugang kann noch einen alten oder leeren Browserwert erben.
     // Statt dadurch Dashboard und Chat zu blockieren, wird ausschließlich auf
@@ -413,13 +508,13 @@ async function authorizedPlanningScope(
       db.listAllEventsForPlanningTeamAccess(planningAccessId)
     );
     const fallbackEvent = initialAccessibleEvent(allowedEvents);
-    if (!fallbackEvent) return requestedScope;
+    if (!fallbackEvent) return enforceProductEventScope(requestedScope);
 
-    return {
+    return enforceProductEventScope({
       tenantId,
       year: fallbackEvent.year,
       eventId: fallbackEvent.id,
-    };
+    });
   }
   let membership: Awaited<ReturnType<typeof db.resolveTenantForUser>> | undefined;
   try {
@@ -456,7 +551,7 @@ async function authorizedPlanningScope(
       message: "Für dieses Konto ist kein aktiver Verein freigegeben.",
     });
   }
-  return { ...requested, tenantId: membership.tenantId };
+  return enforceProductEventScope({ ...requested, tenantId: membership.tenantId });
 }
 
 /** Eine frische persönliche Anmeldung darf nie einen alten Browsermandanten übernehmen. */
@@ -708,6 +803,7 @@ const eventChatReadProcedure = baseProtectedProcedure
     // Ein alter Browserwert kann damit weder Zugriff erhalten noch eine gültige
     // Freigabe verfälschen.
     return withPlanningScope(scope, async () => {
+      await requireCurrentProductCapability("chat");
       await requirePlanningTeamEventAccess(ctx.user, scope);
       await requireCompletedPlanningTeamPasswordChange(ctx.user);
       return next();
@@ -922,6 +1018,20 @@ const scopeAdminProcedure = scopeAdminAuthProcedure.use(
   }
 );
 
+function productScopeAdminAuthProcedure(capability: ProductCapability) {
+  return scopeAdminAuthProcedure.use(async ({ ctx, next }) => {
+    await requireCurrentProductCapability(capability);
+    return next({ ctx });
+  });
+}
+
+function productScopeAdminProcedure(capability: ProductCapability) {
+  return scopeAdminProcedure.use(async ({ ctx, next }) => {
+    await requireCurrentProductCapability(capability);
+    return next({ ctx });
+  });
+}
+
 /**
  * Die Zugangsverwaltung ist an den Verein, aber nicht an eine einzelne gerade
  * ausgewählte Veranstaltung gebunden. Dieser Pfad übernimmt deshalb den
@@ -939,6 +1049,13 @@ const tenantAccessAdminProcedure = activeSessionProcedure.use(
     }
     await requireCompletedPlanningTeamPasswordChange(ctx.user);
     return withPlanningScope(scope, () => next({ ctx }));
+  }
+);
+
+const personalAccessAdminProcedure = tenantAccessAdminProcedure.use(
+  async ({ ctx, next }) => {
+    await requireCurrentProductCapability("personal_accesses");
+    return next({ ctx });
   }
 );
 
@@ -1038,8 +1155,25 @@ const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   });
 });
 
+function productCapabilityProcedure(capability: ProductCapability) {
+  return protectedProcedure.use(async ({ ctx, next }) => {
+    await requireCurrentProductCapability(capability);
+    return next({ ctx });
+  });
+}
+
+function productCapabilityAdminProcedure(capability: ProductCapability) {
+  return adminProcedure.use(async ({ ctx, next }) => {
+    await requireCurrentProductCapability(capability);
+    return next({ ctx });
+  });
+}
+
+const scheduleAdminProcedure = productCapabilityAdminProcedure("schedule");
+
 function moduleReadProcedure(module: Exclude<PlanningModule, "read_all">) {
   return protectedProcedure.use(async ({ ctx, next }) => {
+    await requireCurrentProductModule(module);
     const moduleAccess = await getPlanningTeamModuleAccessForUser(ctx.user);
     requireModuleReadPermission(moduleAccess, module);
     return next({ ctx });
@@ -1048,6 +1182,7 @@ function moduleReadProcedure(module: Exclude<PlanningModule, "read_all">) {
 
 function moduleWriteProcedure(module: Exclude<PlanningModule, "read_all">) {
   return protectedProcedure.use(async ({ ctx, next }) => {
+    await requireCurrentProductModule(module);
     const moduleAccess = await getPlanningTeamModuleAccessForUser(ctx.user);
     requireModuleWritePermission(moduleAccess, module);
     return next({ ctx });
@@ -1055,6 +1190,38 @@ function moduleWriteProcedure(module: Exclude<PlanningModule, "read_all">) {
 }
 
 const pdfReadProcedure = moduleReadProcedure("pdf");
+
+function pdfCapabilityProcedure(capability: ProductCapability) {
+  return pdfReadProcedure.use(async ({ ctx, next }) => {
+    await requireCurrentProductCapability(capability);
+    return next({ ctx });
+  });
+}
+
+function productModuleReadProcedure(
+  module: Exclude<PlanningModule, "read_all">,
+  capability: ProductCapability
+) {
+  return moduleReadProcedure(module).use(async ({ ctx, next }) => {
+    await requireCurrentProductCapability(capability);
+    return next({ ctx });
+  });
+}
+
+function productModuleWriteProcedure(
+  module: Exclude<PlanningModule, "read_all">,
+  capability: ProductCapability
+) {
+  return moduleWriteProcedure(module).use(async ({ ctx, next }) => {
+    await requireCurrentProductCapability(capability);
+    return next({ ctx });
+  });
+}
+
+const marketingReadProcedure = productModuleReadProcedure("preparation", "marketing");
+const marketingWriteProcedure = productModuleWriteProcedure("preparation", "marketing");
+const approvalsReadProcedure = productModuleReadProcedure("preparation", "approvals");
+const approvalsWriteProcedure = productModuleWriteProcedure("preparation", "approvals");
 
 const yn = z.enum(["ja", "nein"]);
 const ynv = z.enum(["ja", "nein", "vielleicht"]);
@@ -1204,6 +1371,22 @@ const resetAreaInput = z.enum([
   "finances",
   "all",
 ]);
+
+const resetAreaProductCapability: Record<
+  Exclude<z.infer<typeof resetAreaInput>, "all">,
+  ProductCapability
+> = {
+  contacts: "contacts",
+  helpers: "helpers",
+  shifts: "schedule",
+  prep: "preparation",
+  post: "postprocessing",
+  materials: "materials",
+  marketing: "marketing",
+  approvals: "approvals",
+  cakes: "donations",
+  finances: "finances",
+};
 const moduleAssignmentClearArea = z.enum([
   "helpers",
   "prep",
@@ -2357,8 +2540,8 @@ export const appRouter = router({
     // Zugangsverwaltung ist eine Vereinsfunktion. Sie muss deshalb exakt
     // denselben serverseitig bestätigten Mandantenkontext verwenden wie alle
     // Fachmodule; ein bloßer Browserfilter wäre keine Sicherheitsgrenze.
-    list: tenantAccessAdminProcedure.query(() => db.listPlanningTeamAccesses()),
-    availableContacts: tenantAccessAdminProcedure.query(() =>
+    list: personalAccessAdminProcedure.query(() => db.listPlanningTeamAccesses()),
+    availableContacts: personalAccessAdminProcedure.query(() =>
       db.listAllContactsForPlanningTeamAccess()
     ),
     myPermissions: scopedProtectedProcedure.query(async ({ ctx }) => {
@@ -2372,14 +2555,14 @@ export const appRouter = router({
       isPrimaryTenantAdmin: isPrimaryTenantAdministrator(ctx.user),
       isDelegatedTenantAdmin: await isDelegatedTenantAdministrator(ctx.user),
     })),
-    availableEvents: tenantAccessAdminProcedure.query(async () => {
+    availableEvents: personalAccessAdminProcedure.query(async () => {
       const years = await db.listEventYears();
       const grouped = await Promise.all(
         years.map(async item => db.listEvents(item.year))
       );
       return grouped.flat();
     }),
-    create: tenantAccessAdminProcedure
+    create: personalAccessAdminProcedure
       .input(
         z.object({
           label: z.string().trim().min(2).max(120),
@@ -2415,7 +2598,7 @@ export const appRouter = router({
           eventIds: input.eventIds,
         });
       }),
-    createWithInvitationLink: tenantAccessAdminProcedure
+    createWithInvitationLink: personalAccessAdminProcedure
       .input(
         z.object({
           label: z.string().trim().min(2).max(120),
@@ -2513,7 +2696,7 @@ export const appRouter = router({
           expiresAt: invitation.expiresAt,
         };
       }),
-    sendInvitationLink: tenantAccessAdminProcedure
+    sendInvitationLink: personalAccessAdminProcedure
       .input(
         z.object({
           id: z.number().int().positive(),
@@ -2590,7 +2773,7 @@ export const appRouter = router({
           expiresAt: invitation.expiresAt,
         };
       }),
-    createWithAccessSheet: tenantAccessAdminProcedure
+    createWithAccessSheet: personalAccessAdminProcedure
       .input(
         z.object({
           label: z.string().trim().min(2).max(120),
@@ -2672,7 +2855,7 @@ export const appRouter = router({
           base64: pdf.toString("base64"),
         };
       }),
-    update: tenantAccessAdminProcedure
+    update: personalAccessAdminProcedure
       .input(
         z.object({
           id: z.number().int().positive(),
@@ -2726,7 +2909,7 @@ export const appRouter = router({
           eventIds: input.eventIds,
         });
       }),
-    resetAndPrint: tenantAccessAdminProcedure
+    resetAndPrint: personalAccessAdminProcedure
       .input(
         z.object({
           id: z.number().int().positive(),
@@ -2774,7 +2957,7 @@ export const appRouter = router({
           base64: pdf.toString("base64"),
         };
       }),
-    accessSheets: tenantAccessAdminProcedure
+    accessSheets: personalAccessAdminProcedure
       .input(
         z.object({
           accessIds: z.array(z.number().int().positive()).min(1).max(500),
@@ -2807,7 +2990,7 @@ export const appRouter = router({
           base64: pdf.toString("base64"),
         };
       }),
-    remove: tenantAccessAdminProcedure
+    remove: personalAccessAdminProcedure
       .input(
         z.object({
           id: z.number().int().positive(),
@@ -2846,6 +3029,21 @@ export const appRouter = router({
   tenants: router({
     list: masterAdminProcedure.query(() => db.listTenants()),
     current: scopedProtectedProcedure.query(() => db.getTenant()),
+  }),
+
+  tenantProduct: router({
+    current: scopedProtectedProcedure.query(async () => {
+      const entitlement = await db.getCurrentTenantProductEntitlement();
+      return {
+        packageId: entitlement.packageId,
+        status: entitlement.status,
+        startsOn: entitlement.startsOn,
+        endsOn: entitlement.endsOn,
+        eventId: entitlement.eventId,
+        isUsable: entitlement.isUsable,
+        entitlements: entitlement.entitlements,
+      };
+    }),
   }),
 
   platformAdmin: router({
@@ -3022,6 +3220,7 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ input }) => {
+        await requireCurrentProductCapability("event_years");
         await db.ensureEventYear(input.year);
         const event = await db.createEvent(
           input.initialEventName,
@@ -3038,6 +3237,7 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
+        await requireCurrentProductCapability("additional_events");
         await requireAdminPassword(input.adminPassword, ctx);
         return db.copyPlanFromEvent(input.sourceEventId);
       }),
@@ -3061,9 +3261,10 @@ export const appRouter = router({
           activeDays: activeDaysInput,
         })
       )
-      .mutation(({ input }) =>
-        db.createEvent(input.name, undefined, input.activeDays)
-      ),
+      .mutation(async ({ input }) => {
+        await requireCurrentProductCapability("additional_events");
+        return db.createEvent(input.name, undefined, input.activeDays);
+      }),
     update: adminProcedure
       .input(
         z
@@ -3135,6 +3336,7 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
+        await requireCurrentProductCapability("event_deletion");
         await requireAdminPassword(input.adminPassword, ctx);
         return db.deleteEvent(input.id);
       }),
@@ -3220,6 +3422,13 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
+        if (input.area === "all") {
+          // Ein kompletter Reset würde auch nicht enthaltene Fachbereiche
+          // verändern und ist im Event Pass daher bewusst nicht verfügbar.
+          await requireCurrentProductCapability("postprocessing");
+        } else {
+          await requireCurrentProductCapability(resetAreaProductCapability[input.area]);
+        }
         await requireAdminPassword(input.adminPassword, ctx);
         await db.resetArea(input.area, auditActor(ctx.user));
         return { success: true } as const;
@@ -3249,7 +3458,7 @@ export const appRouter = router({
             : {}),
         })
       ),
-    createWithAccessSheet: adminProcedure
+    createWithAccessSheet: productCapabilityAdminProcedure("contacts")
       .input(
         z.object({
           name: z.string().trim().min(1).max(160),
@@ -3299,7 +3508,7 @@ export const appRouter = router({
           ...(password ? { passwordHash: await hashPassword(password) } : {}),
         });
       }),
-    generateAccessSheet: adminProcedure
+    generateAccessSheet: productCapabilityAdminProcedure("contacts")
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(async ({ input }) => {
         const contact = (await db.listContacts()).find(item => item.id === input.id);
@@ -3314,7 +3523,7 @@ export const appRouter = router({
           contactName: contact.name,
         });
       }),
-    remove: adminProcedure
+    remove: productCapabilityAdminProcedure("contacts")
       .input(
         z.object({
           id: z.number(),
@@ -3359,7 +3568,7 @@ export const appRouter = router({
         const { id, ...value } = input;
         return db.updateLocation(id, value);
       }),
-    uploadLogo: adminProcedure
+    uploadLogo: productCapabilityAdminProcedure("locations")
       .input(
         z.object({
           id: z.number().int().positive(),
@@ -3399,7 +3608,7 @@ export const appRouter = router({
         });
         return uploaded;
       }),
-    clearLogo: adminProcedure
+    clearLogo: productCapabilityAdminProcedure("locations")
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(async ({ input }) => {
         const location = await db.getLocation(input.id);
@@ -3412,7 +3621,7 @@ export const appRouter = router({
         await db.updateLocation(location.id, { logoKey: null, logoUrl: null });
         return { success: true } as const;
       }),
-    remove: adminProcedure
+    remove: productCapabilityAdminProcedure("locations")
       .input(
         z.object({
           id: z.number().int().positive(),
@@ -3495,7 +3704,7 @@ export const appRouter = router({
         })
       )
       .mutation(({ input }) => db.updateGpxTrackName(input.id, input.name)),
-    remove: adminProcedure
+    remove: productCapabilityAdminProcedure("locations")
       .input(
         z.object({
           id: z.number().int().positive(),
@@ -3526,6 +3735,7 @@ export const appRouter = router({
       .mutation(({ input }) => db.upsertHelperByName(input)),
     createWithDonation: protectedProcedure
       .use(async ({ ctx, next }) => {
+        await requireCurrentProductCapability("donations");
         const moduleAccess = await getPlanningTeamModuleAccessForUser(ctx.user);
         requireModuleWritePermission(moduleAccess, "helpers");
         requireModuleWritePermission(moduleAccess, "donations");
@@ -3602,7 +3812,7 @@ export const appRouter = router({
 
   shifts: router({
     list: moduleReadProcedure("schedule").query(() => db.listShifts()),
-    create: adminProcedure
+    create: scheduleAdminProcedure
       .input(createShiftInput)
       .mutation(async ({ input }) => {
         const selectedEvent = await db.getEvent();
@@ -3613,7 +3823,7 @@ export const appRouter = router({
           });
         return db.createShift(input);
       }),
-    update: adminProcedure
+    update: scheduleAdminProcedure
       .input(updateShiftInput)
       .mutation(async ({ input }) => {
         if (input.day) {
@@ -3634,7 +3844,7 @@ export const appRouter = router({
           throw error;
         }
       }),
-    remove: adminProcedure
+    remove: scheduleAdminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(({ input }) => db.deleteShift(input.id)),
   }),
@@ -3659,7 +3869,7 @@ export const appRouter = router({
         return db.clearAssignments();
       }),
     areaContacts: moduleReadProcedure("schedule").query(() => db.listShiftAreaContacts()),
-    setAreaContact: adminProcedure
+    setAreaContact: scheduleAdminProcedure
       .input(
         z.object({
           area: z.string().trim().min(1).max(200),
@@ -3689,7 +3899,7 @@ export const appRouter = router({
           })
         );
       }),
-    assign: adminProcedure
+    assign: scheduleAdminProcedure
       .input(
         z.object({
           shiftId: z.number().int().positive(),
@@ -3751,7 +3961,7 @@ export const appRouter = router({
           });
         }
       }),
-    assignMany: adminProcedure
+    assignMany: scheduleAdminProcedure
       .input(
         z.object({
           shiftId: z.number().int().positive(),
@@ -3817,7 +4027,7 @@ export const appRouter = router({
           });
         }
       }),
-    unassign: adminProcedure
+    unassign: scheduleAdminProcedure
       .input(z.object({ id: z.number() }))
       .mutation(({ input }) => db.unassignHelper(input.id)),
   }),
@@ -3962,7 +4172,7 @@ export const appRouter = router({
       });
       return { success: true } as const;
     }),
-    helper: pdfReadProcedure
+    helper: pdfCapabilityProcedure("helpers")
       .input(z.object({ helperId: z.number().int().positive() }))
       .mutation(async ({ input }) => {
         const pdf = await createHelperTaskPdf(input.helperId);
@@ -3972,7 +4182,7 @@ export const appRouter = router({
           base64: pdf.toString("base64"),
         };
       }),
-    publicShare: protectedProcedure
+    publicShare: productCapabilityProcedure("personal_accesses")
       .input(z.object({ helperId: z.number().int().positive() }))
       .mutation(async ({ input }) => {
         const helper = await db.getHelper(input.helperId);
@@ -3991,7 +4201,7 @@ export const appRouter = router({
           expiresAt: Date.now() + 90 * 24 * 60 * 60 * 1000,
         };
       }),
-    allHelpers: pdfReadProcedure
+    allHelpers: pdfCapabilityProcedure("helpers")
       .input(
         z.object({ contactId: z.number().int().positive().optional() })
       )
@@ -4013,7 +4223,7 @@ export const appRouter = router({
         base64: zip.toString("base64"),
       };
       }),
-    contactOverview: pdfReadProcedure
+    contactOverview: pdfCapabilityProcedure("contacts")
       .input(contactOverviewPdfInput)
       .mutation(async ({ input }) => {
         if (input.contactIds.length !== 1) {
@@ -4038,7 +4248,7 @@ export const appRouter = router({
           base64: pdf.toString("base64"),
         };
       }),
-    contactOverviewZip: pdfReadProcedure
+    contactOverviewZip: pdfCapabilityProcedure("contacts")
       .input(contactOverviewPdfInput)
       .mutation(async ({ input }) => {
         const contacts = await db.listContacts();
@@ -4089,7 +4299,7 @@ export const appRouter = router({
         base64: pdf.toString("base64"),
       };
     }),
-    materialPacklist: pdfReadProcedure
+    materialPacklist: pdfCapabilityProcedure("materials")
       .input(
         z.object({
           materialIds: z.array(z.number().int().positive()).max(2_000),
@@ -4113,7 +4323,7 @@ export const appRouter = router({
           base64: pdf.toString("base64"),
         };
       }),
-    donationOverview: pdfReadProcedure
+    donationOverview: pdfCapabilityProcedure("donations")
       .input(
         z.object({
           donationIds: z.array(z.number().int().positive()).max(2_000),
@@ -4163,7 +4373,7 @@ export const appRouter = router({
           base64: pdf.toString("base64"),
         };
       }),
-    postTaskOverview: pdfReadProcedure
+    postTaskOverview: pdfCapabilityProcedure("postprocessing")
       .input(
         z.object({
           taskIds: z.array(z.number().int().positive()).max(2_000),
@@ -4307,6 +4517,13 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
+        const capabilityByArea: Record<z.infer<typeof moduleAssignmentClearArea>, ProductCapability> = {
+          helpers: "helpers",
+          prep: "preparation",
+          post: "postprocessing",
+          materials: "materials",
+        };
+        await requireCurrentProductCapability(capabilityByArea[input.area]);
         await requireAdminPassword(input.adminPassword, ctx);
         return db.clearModuleAssignments(input.area);
       }),
@@ -4354,8 +4571,8 @@ export const appRouter = router({
       ),
   }),
   marketing: router({
-    list: moduleReadProcedure("preparation").query(() => db.listMarketing()),
-    create: moduleWriteProcedure("preparation")
+    list: marketingReadProcedure.query(() => db.listMarketing()),
+    create: marketingWriteProcedure
       .input(
         z.object({
           measure: z.string().min(1),
@@ -4365,7 +4582,7 @@ export const appRouter = router({
         })
       )
       .mutation(({ input }) => db.createMarketing(input)),
-    update: moduleWriteProcedure("preparation")
+    update: marketingWriteProcedure
       .input(
         z.object({
           id: z.number(),
@@ -4380,13 +4597,13 @@ export const appRouter = router({
         const { id, ...r } = input;
         return db.updateMarketing(id, r);
       }),
-    remove: moduleWriteProcedure("preparation")
+    remove: marketingWriteProcedure
       .input(z.object({ id: z.number() }))
       .mutation(({ input }) => db.deleteMarketing(input.id)),
   }),
   approvals: router({
-    list: moduleReadProcedure("preparation").query(() => db.listApprovals()),
-    create: moduleWriteProcedure("preparation")
+    list: approvalsReadProcedure.query(() => db.listApprovals()),
+    create: approvalsWriteProcedure
       .input(
         z.object({
           request: z.string().min(1),
@@ -4395,7 +4612,7 @@ export const appRouter = router({
         })
       )
       .mutation(({ input }) => db.createApproval(input)),
-    update: moduleWriteProcedure("preparation")
+    update: approvalsWriteProcedure
       .input(
         z.object({
           id: z.number(),
@@ -4411,7 +4628,7 @@ export const appRouter = router({
         const { id, ...r } = input;
         return db.updateApproval(id, r);
       }),
-    remove: moduleWriteProcedure("preparation")
+    remove: approvalsWriteProcedure
       .input(z.object({ id: z.number() }))
       .mutation(({ input }) => db.deleteApproval(input.id)),
   }),
@@ -4544,7 +4761,7 @@ export const appRouter = router({
           .optional()
       )
       .query(({ input }) => db.listActivityLogs(input)),
-    deletions: adminProcedure
+    deletions: productCapabilityAdminProcedure("postprocessing")
       .input(
         z
           .object({
@@ -4556,7 +4773,7 @@ export const appRouter = router({
           .optional()
       )
       .query(({ input }) => db.listDeletionAuditLogs(input)),
-    clear: adminProcedure
+    clear: productCapabilityAdminProcedure("postprocessing")
       .input(
         z.object({
           eventYear: eventYearInput.optional(),
@@ -4572,7 +4789,7 @@ export const appRouter = router({
         });
         return { success: true } as const;
       }),
-    restore: adminProcedure
+    restore: productCapabilityAdminProcedure("postprocessing")
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(({ ctx, input }) =>
         db.restoreDeletionAuditLog(input.id, {
@@ -4584,6 +4801,8 @@ export const appRouter = router({
 
   dashboard: router({
     stats: protectedProcedure.query(async () => {
+      const entitlement = await db.getCurrentTenantProductEntitlement();
+      const eventPass = entitlement.packageId === "event_pass";
       const [
         shifts,
         assignments,
@@ -4599,9 +4818,9 @@ export const appRouter = router({
           db.listAssignments(),
           db.listHelpers(),
           db.listPrep(),
-          db.listPost(),
-          db.listContacts(),
-          db.listCakes(),
+          eventPass ? Promise.resolve([]) : db.listPost(),
+          eventPass ? Promise.resolve([]) : db.listContacts(),
+          eventPass ? Promise.resolve([]) : db.listCakes(),
           db.getEvent(),
         ]);
       const ev = evaluateShifts(shifts, assignments, helpers);
@@ -4774,6 +4993,7 @@ export const appRouter = router({
           },
         },
         verantwortlichkeiten: await (async () => {
+          if (eventPass) return [];
           const [materials, marketing, approvals] = await Promise.all([
             db.listMaterials(),
             db.listMarketing(),
@@ -4827,7 +5047,7 @@ export const appRouter = router({
   }),
 
   projectFile: router({
-    save: protectedProcedure.query(async () => {
+    save: productCapabilityProcedure("project_backup").query(async () => {
       const result = await withExcelOperationLimit(() => exportProjectFile());
       return {
         base64: result.buffer.toString("base64"),
@@ -4835,7 +5055,7 @@ export const appRouter = router({
         eventName: result.eventName,
       };
     }),
-    preview: adminProcedure
+    preview: productCapabilityAdminProcedure("project_backup")
       .input(
         z.object({
           base64: z
@@ -4859,7 +5079,7 @@ export const appRouter = router({
           }),
         };
       }),
-    load: scopeAdminAuthProcedure
+    load: productScopeAdminAuthProcedure("project_backup")
       .input(
         z.object({
           base64: z
@@ -4909,11 +5129,11 @@ export const appRouter = router({
           });
         }
       }),
-    restoreLogs: adminProcedure.query(() => listBackupRestoreLogs()),
-    restoreLog: adminProcedure
+    restoreLogs: productCapabilityAdminProcedure("project_backup").query(() => listBackupRestoreLogs()),
+    restoreLog: productCapabilityAdminProcedure("project_backup")
       .input(z.object({ id: z.number().int().positive() }))
       .query(({ input }) => getBackupRestoreLog(input.id)),
-    clearRestoreLogs: scopeAdminAuthProcedure
+    clearRestoreLogs: productScopeAdminAuthProcedure("project_backup")
       .input(z.object({ adminPassword: z.string().min(1).max(200) }))
       .mutation(async ({ ctx, input }) => {
         await requireAdminPassword(input.adminPassword, ctx);
@@ -4922,7 +5142,7 @@ export const appRouter = router({
   }),
 
   excel: router({
-    exportFile: protectedProcedure.query(async () => {
+    exportFile: productCapabilityProcedure("excel").query(async () => {
       const result = await withExcelOperationLimit(() => exportProjectExcel());
       return {
         base64: result.buffer.toString("base64"),
@@ -4930,7 +5150,7 @@ export const appRouter = router({
         eventName: result.eventName,
       };
     }),
-    previewModule: adminProcedure
+    previewModule: productCapabilityAdminProcedure("excel")
       .input(
         z.object({
           area: z.enum(MODULE_IMPORT_AREAS),
@@ -4955,7 +5175,7 @@ export const appRouter = router({
           }),
         };
       }),
-    previewFull: adminProcedure
+    previewFull: productCapabilityAdminProcedure("excel")
       .input(
         z.object({
           base64: z
@@ -4979,7 +5199,7 @@ export const appRouter = router({
           }),
         };
       }),
-    applyModule: scopeAdminProcedure
+    applyModule: productScopeAdminProcedure("excel")
       .input(
         z.object({
           area: z.enum(MODULE_IMPORT_AREAS),
@@ -5032,7 +5252,7 @@ export const appRouter = router({
           });
         }
       }),
-    applyFull: scopeAdminProcedure
+    applyFull: productScopeAdminProcedure("excel")
       .input(
         z.object({
           base64: z

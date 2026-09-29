@@ -80,9 +80,16 @@ import {
   SHARED_PASSWORD_OPEN_ID,
 } from "./password-auth";
 import {
+  DEFAULT_PRODUCT_ASSIGNMENT_STATUS,
+  DEFAULT_PRODUCT_PACKAGE_ID,
+  PRODUCT_PACKAGE_ENTITLEMENTS,
+  productAllowsCapability,
+  productAllowsPlanningModule,
   type ProductAssignmentStatus,
+  type ProductCapability,
   type ProductPackageId,
 } from "../shared/product-packages";
+import type { EditablePlanningModule } from "../shared/tenant-permissions";
 import {
   DEFAULT_TENANT_ID,
   currentEventId,
@@ -102,6 +109,17 @@ type Transaction = Parameters<Parameters<DB["transaction"]>[0]>[0];
 type DBClient = DB | Transaction;
 let _db: DB | null = null;
 const planningWriteClientStorage = new AsyncLocalStorage<DBClient>();
+
+export type TenantProductEntitlement = {
+  tenantId: string;
+  packageId: ProductPackageId;
+  status: ProductAssignmentStatus;
+  startsOn: string | null;
+  endsOn: string | null;
+  eventId: number | null;
+  isUsable: boolean;
+  entitlements: (typeof PRODUCT_PACKAGE_ENTITLEMENTS)[ProductPackageId];
+};
 
 export async function getDb(): Promise<DBClient | null> {
   const transactionClient = planningWriteClientStorage.getStore();
@@ -625,11 +643,19 @@ export function normalizePersonName(value: string) {
 export async function listEventYears() {
   const db = await getDb();
   if (!db) return [];
+  const entitlement = await getCurrentTenantProductEntitlement();
   return db
     .selectDistinct({ year: eventYears.year, label: eventYears.label, createdAt: eventYears.createdAt })
     .from(events)
     .innerJoin(eventYears, eq(eventYears.year, events.year))
-    .where(eq(events.tenantId, tenant()))
+    .where(
+      and(
+        eq(events.tenantId, tenant()),
+        entitlement.packageId === "event_pass" && entitlement.eventId
+          ? eq(events.id, entitlement.eventId)
+          : undefined
+      )
+    )
     .orderBy(eventYears.year);
 }
 
@@ -640,6 +666,88 @@ export async function listTenants() {
     .select()
     .from(tenants)
     .orderBy(tenants.status, tenants.name);
+}
+
+function productAssignmentIsUsable(assignment: {
+  status: ProductAssignmentStatus;
+  startsOn: string | null;
+  endsOn: string | null;
+}) {
+  if (assignment.status !== "test" && assignment.status !== "active") return false;
+  const today = new Date().toISOString().slice(0, 10);
+  return (
+    (!assignment.startsOn || assignment.startsOn <= today) &&
+    (!assignment.endsOn || assignment.endsOn >= today)
+  );
+}
+
+/**
+ * Löst die Produktzuordnung eines Vereins als serverseitig vertrauenswürdige
+ * Laufzeitberechtigung auf. Historische Vereine ohne Zuordnungszeile behalten
+ * ausdrücklich ihren bisherigen Pro-Testzugang und verlieren dadurch nie
+ * unbeabsichtigt Funktionen.
+ */
+export async function getTenantProductEntitlement(
+  tenantId = tenant()
+): Promise<TenantProductEntitlement> {
+  const database = await getDb();
+  const fallback = {
+    tenantId,
+    packageId: DEFAULT_PRODUCT_PACKAGE_ID,
+    status: DEFAULT_PRODUCT_ASSIGNMENT_STATUS,
+    startsOn: null,
+    endsOn: null,
+    eventId: null,
+  } as const;
+  if (!database) {
+    return {
+      ...fallback,
+      isUsable: true,
+      entitlements: PRODUCT_PACKAGE_ENTITLEMENTS[fallback.packageId],
+    };
+  }
+  const [assignment] = await database
+    .select({
+      packageId: tenantProductAssignments.packageId,
+      status: tenantProductAssignments.status,
+      startsOn: tenantProductAssignments.startsOn,
+      endsOn: tenantProductAssignments.endsOn,
+      eventId: tenantProductAssignments.eventId,
+    })
+    .from(tenantProductAssignments)
+    .where(eq(tenantProductAssignments.tenantId, tenantId))
+    .limit(1);
+  const resolved = assignment
+    ? {
+        tenantId,
+        packageId: assignment.packageId as ProductPackageId,
+        status: assignment.status as ProductAssignmentStatus,
+        startsOn: assignment.startsOn,
+        endsOn: assignment.endsOn,
+        eventId: assignment.eventId,
+      }
+    : fallback;
+  return {
+    ...resolved,
+    isUsable: productAssignmentIsUsable(resolved),
+    entitlements: PRODUCT_PACKAGE_ENTITLEMENTS[resolved.packageId],
+  };
+}
+
+export async function getCurrentTenantProductEntitlement() {
+  return getTenantProductEntitlement(tenant());
+}
+
+export async function currentProductAllowsCapability(capability: ProductCapability) {
+  const entitlement = await getCurrentTenantProductEntitlement();
+  return productAllowsCapability(entitlement.packageId, capability);
+}
+
+export async function currentProductAllowsPlanningModule(
+  module: EditablePlanningModule
+) {
+  const entitlement = await getCurrentTenantProductEntitlement();
+  return productAllowsPlanningModule(entitlement.packageId, module);
 }
 
 /**
@@ -1408,15 +1516,36 @@ export async function ensureEventYear(eventYear = year()) {
 export async function listEvents(eventYear = year()) {
   const db = await getDb();
   if (!db) return [];
+  const entitlement = await getCurrentTenantProductEntitlement();
   const rows = await db
     .select()
     .from(events)
-    .where(and(eq(events.tenantId, tenant()), eq(events.year, eventYear)))
+    .where(
+      and(
+        eq(events.tenantId, tenant()),
+        eq(events.year, eventYear),
+        entitlement.packageId === "event_pass" && entitlement.eventId
+          ? eq(events.id, entitlement.eventId)
+          : undefined
+      )
+    )
     .orderBy(events.sortOrder, events.name, events.id);
   return rows.map(row => ({
     ...row,
     activeDays: eventWeekdays(row.activeDays),
   }));
+}
+
+/** Liest eine Veranstaltung ausschließlich innerhalb eines konkreten Vereins. */
+export async function getEventForTenantById(eventId: number, tenantId = tenant()) {
+  const database = await getDb();
+  if (!database) return undefined;
+  const [row] = await database
+    .select()
+    .from(events)
+    .where(and(eq(events.id, eventId), eq(events.tenantId, tenantId)))
+    .limit(1);
+  return row ? { ...row, activeDays: eventWeekdays(row.activeDays) } : undefined;
 }
 
 export type PlanningTeamAccessSummary = {
@@ -2197,6 +2326,7 @@ export async function getPlanningTeamAccessTenantId(accessId: number) {
 export async function listEventYearsForPlanningTeamAccess(accessId: number) {
   const database = await getDb();
   if (!database) return [];
+  const entitlement = await getCurrentTenantProductEntitlement();
   return database
     .selectDistinct({ year: eventYears.year, label: eventYears.label })
     .from(planningTeamAccessEvents)
@@ -2205,7 +2335,10 @@ export async function listEventYearsForPlanningTeamAccess(accessId: number) {
     .where(
       and(
         eq(planningTeamAccessEvents.accessId, accessId),
-        eq(events.tenantId, tenant())
+        eq(events.tenantId, tenant()),
+        entitlement.packageId === "event_pass" && entitlement.eventId
+          ? eq(events.id, entitlement.eventId)
+          : undefined
       )
     )
     .orderBy(eventYears.year);
@@ -2217,6 +2350,7 @@ export async function listEventsForPlanningTeamAccess(
 ) {
   const database = await getDb();
   if (!database) return [];
+  const entitlement = await getCurrentTenantProductEntitlement();
   const rows = await database
     .select({ event: events })
     .from(planningTeamAccessEvents)
@@ -2225,7 +2359,10 @@ export async function listEventsForPlanningTeamAccess(
       and(
         eq(planningTeamAccessEvents.accessId, accessId),
         eq(events.tenantId, tenant()),
-        eq(events.year, eventYear)
+        eq(events.year, eventYear),
+        entitlement.packageId === "event_pass" && entitlement.eventId
+          ? eq(events.id, entitlement.eventId)
+          : undefined
       )
     )
     .orderBy(events.sortOrder, events.name, events.id);
@@ -3384,27 +3521,47 @@ export async function upsertContactByName(v: {
   };
 }
 
+async function assertCurrentProductHelperCapacity(database: DBClient) {
+  const entitlement = await getCurrentTenantProductEntitlement();
+  const limit = entitlement.entitlements.maxHelpersPerEvent;
+  if (limit === null) return;
+  const existingHelpers = await database
+    .select({ id: helpers.id })
+    .from(helpers)
+    .where(planningScope(helpers))
+    .for("update");
+  if (existingHelpers.length >= limit) {
+    throw new Error(
+      `Der Event Pass erlaubt maximal ${limit} Helfer pro Veranstaltung. Bitte reduzieren Sie die Helferliste oder wechseln Sie das Paket.`
+    );
+  }
+}
+
 export async function createHelper(
   v: Partial<typeof helpers.$inferInsert> & { name: string }
 ) {
-  const db = (await getDb()) as DB;
-  if (v.contactId !== undefined && v.contactId !== null) {
-    const [contact] = await db
-      .select({ id: contacts.id })
-      .from(contacts)
-      .where(and(eq(contacts.id, v.contactId), planningScope(contacts)))
-      .limit(1);
-    if (!contact) {
-      throw new Error(
-        "Der Ansprechpartner gehört nicht zur ausgewählten Veranstaltung"
-      );
+  const database = (await getDb()) as DB;
+  return database.transaction(async tx => {
+    if (v.contactId !== undefined && v.contactId !== null) {
+      const [contact] = await tx
+        .select({ id: contacts.id })
+        .from(contacts)
+        .where(and(eq(contacts.id, v.contactId), planningScope(contacts)))
+        .limit(1)
+        .for("update");
+      if (!contact) {
+        throw new Error(
+          "Der Ansprechpartner gehört nicht zur ausgewählten Veranstaltung"
+        );
+      }
     }
-  }
-  return db.insert(helpers).values({
-    ...v,
-    year: year(),
-    eventId: event(),
-  } as typeof helpers.$inferInsert);
+    await assertCurrentProductHelperCapacity(tx);
+    return tx.insert(helpers).values({
+      ...v,
+      year: year(),
+      eventId: event(),
+    } as typeof helpers.$inferInsert);
+  });
 }
 export async function updateHelper(
   id: number,
@@ -4284,6 +4441,13 @@ export async function createHelperWithDonation(input: {
       helperId = existingHelper.id;
       helperCreated = false;
     } else {
+      const entitlement = await getCurrentTenantProductEntitlement();
+      const limit = entitlement.entitlements.maxHelpersPerEvent;
+      if (limit !== null && scopedHelpers.length >= limit) {
+        throw new Error(
+          `Der Event Pass erlaubt maximal ${limit} Helfer pro Veranstaltung. Bitte reduzieren Sie die Helferliste oder wechseln Sie das Paket.`
+        );
+      }
       const result: any = await tx.insert(helpers).values({
         ...input.helper,
         name: helperName,

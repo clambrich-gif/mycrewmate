@@ -78,6 +78,10 @@ import { WEEKDAYS, type Weekday } from "@shared/weekdays";
 import { COPYRIGHT_NOTICE } from "@shared/branding";
 import { ACTIVE_PILOT_TENANT } from "@shared/tenant";
 import {
+  PRODUCT_PACKAGE_META,
+  productAllowsAppRoute,
+} from "@shared/product-packages";
+import {
   eventStartSelectionSessionKey,
   initialAccessibleEvent,
 } from "@shared/event-start-selection";
@@ -296,7 +300,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     selectEvent,
   } =
     useEventYear();
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const [klemmiIntroPreviewOpen, setKlemmiIntroPreviewOpen] = useState(() =>
     typeof window !== "undefined" &&
     new URLSearchParams(window.location.search).get("klemmiIntroPreview") === "1"
@@ -619,6 +623,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const events = trpc.events.list.useQuery(undefined, {
     enabled: isAuthenticated && !isCredentialBootstrapPending,
   });
+  const tenantProduct = trpc.tenantProduct.current.useQuery(undefined, {
+    enabled: isAuthenticated && !isCredentialBootstrapPending,
+    retry: false,
+  });
   // Die Route liefert für Vereinsadmins alle und für Planungsteamzugänge nur
   // die tatsächlich freigegebenen Veranstaltungen über sämtliche Jahre.
   // Sie dient ausschließlich der Startauswahl und verändert keine Rechte.
@@ -637,6 +645,47 @@ export function Layout({ children }: { children: React.ReactNode }) {
         accessibleEvents.data.length > 0 &&
         !accessibleEvents.data.some(event => event.id === eventId)));
   const selectedEvent = events.data?.find(item => item.id === eventId);
+  const productPackageId = tenantProduct.data?.packageId ?? "pro";
+  const isEventPass = productPackageId === "event_pass";
+  const eventPassUnavailable = isEventPass && tenantProduct.data?.isUsable === false;
+  const productName = PRODUCT_PACKAGE_META[productPackageId].name;
+  const productStatusLabel = tenantProduct.data
+    ? PRODUCT_PACKAGE_META[productPackageId].assignmentStatusLabel[
+        tenantProduct.data.status
+      ]
+    : null;
+  const navigationSections = useMemo(
+    () =>
+      visibleNavigationSections(
+        effectiveNavigationRole,
+        myPermissions.data,
+        myModuleAccess.data
+      )
+        .map(section => ({
+          ...section,
+          items: section.items.filter(item =>
+            productAllowsAppRoute(productPackageId, item.href)
+          ),
+        }))
+        .filter(section => section.items.length > 0),
+    [
+      effectiveNavigationRole,
+      myModuleAccess.data,
+      myPermissions.data,
+      productPackageId,
+    ]
+  );
+  useEffect(() => {
+    if (
+      tenantProduct.isSuccess &&
+      !productAllowsAppRoute(productPackageId, location)
+    ) {
+      toast.info(
+        "Dieser Bereich ist im Event Pass nicht enthalten. Du bist wieder in der enthaltenen Eventplanung."
+      );
+      setLocation("/");
+    }
+  }, [location, productPackageId, setLocation, tenantProduct.isSuccess]);
   const selectedTenantRecord = tenants.data?.find(item => item.id === tenantId);
   const activeTenantName =
     selectedTenantRecord?.name ??
@@ -775,6 +824,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     ) {
       return;
     }
+    if (isEventPass) return;
     void refreshChatSnapshot();
     const timer = window.setInterval(refreshChatSnapshot, CHAT_SNAPSHOT_POLL_MS);
     return () => {
@@ -787,6 +837,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }, [
     isAuthenticated,
     isCredentialBootstrapPending,
+    isEventPass,
     isPlanningTeamEventScopeResolving,
     refreshChatSnapshot,
     year,
@@ -813,11 +864,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    if (!isAuthenticated || !location.startsWith("/dashboard")) return;
+    if (!isAuthenticated || isEventPass || !location.startsWith("/dashboard")) return;
     if (new URLSearchParams(window.location.search).get("chat") === "open") {
       openChatWidget();
     }
-  }, [isAuthenticated, location]);
+  }, [isAuthenticated, isEventPass, location]);
 
   useEffect(() => {
     if (!isAuthenticated || !years.data?.length) return;
@@ -1512,7 +1563,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <Label className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <CalendarRange className="h-3.5 w-3.5" /> Veranstaltungsjahr
               </Label>
-              {effectiveNavigationRole === "admin" && (
+              {effectiveNavigationRole === "admin" && !isEventPass && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -1549,7 +1600,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <Label className="text-xs text-muted-foreground">
                 Veranstaltung
               </Label>
-              {effectiveNavigationRole === "admin" && (
+              {effectiveNavigationRole === "admin" && !isEventPass && (
                 <span className="flex items-center gap-0.5">
                   <Button
                     variant="ghost"
@@ -1599,12 +1650,25 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 ))}
               </SelectContent>
             </Select>
-            <div className="mt-2 border-t pt-2">
-              <Label className="mb-1 block text-xs text-muted-foreground">
-                Projektstand
-              </Label>
-              <LazySaveLoadControls onAction={() => setMobileMenuOpen(false)} />
-            </div>
+            {isEventPass && (
+              <div className="mt-2 rounded-lg border border-orange-200 bg-orange-50 px-2.5 py-2 text-xs leading-4 text-orange-950">
+                <span className="font-semibold">{productName}</span>
+                {productStatusLabel ? ` · ${productStatusLabel}` : ""}
+                <span className="block text-orange-800">
+                  {eventPassUnavailable
+                    ? "Der Zugang ist derzeit pausiert oder abgelaufen."
+                    : "Eine Veranstaltung · bis 50 Helfer"}
+                </span>
+              </div>
+            )}
+            {!isEventPass && (
+              <div className="mt-2 border-t pt-2">
+                <Label className="mb-1 block text-xs text-muted-foreground">
+                  Projektstand
+                </Label>
+                <LazySaveLoadControls onAction={() => setMobileMenuOpen(false)} />
+              </div>
+            )}
             {!pwaInstalled && (
               deferredInstallPrompt ? (
                 <Button
@@ -1651,7 +1715,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
             )}
           </div>
           <nav className="flex-1 space-y-1 overflow-y-auto p-2">
-            {visibleNavigationSections(effectiveNavigationRole, myPermissions.data, myModuleAccess.data).map(section => (
+            {visibleNavigationSections(effectiveNavigationRole, myPermissions.data, myModuleAccess.data)
+              .map(section => ({
+                ...section,
+                items: section.items.filter(item =>
+                  productAllowsAppRoute(productPackageId, item.href)
+                ),
+              }))
+              .filter(section => section.items.length > 0)
+              .map(section => (
               <div key={section.id} className="space-y-1">
                 {section.items.map(({ href, label, icon: Icon }) => {
                   const active = location === href;
@@ -1775,7 +1847,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <Label className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <CalendarRange className="h-3.5 w-3.5" /> Veranstaltungsjahr
             </Label>
-            {effectiveNavigationRole === "admin" && (
+            {effectiveNavigationRole === "admin" && !isEventPass && (
               <Button
                 variant="ghost"
                 size="icon"
@@ -1822,26 +1894,30 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 >
                   <Calendar className="h-4 w-4" />
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  title="Veranstaltungen verwalten"
-                  aria-label="Veranstaltungen verwalten"
-                  onClick={openEventManager}
-                >
-                  <Settings2 className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  title="Veranstaltung anlegen"
-                  aria-label="Veranstaltung anlegen"
-                  onClick={() => setEventDialogOpen(true)}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
+                {!isEventPass && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      title="Veranstaltungen verwalten"
+                      aria-label="Veranstaltungen verwalten"
+                      onClick={openEventManager}
+                    >
+                      <Settings2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      title="Veranstaltung anlegen"
+                      aria-label="Veranstaltung anlegen"
+                      onClick={() => setEventDialogOpen(true)}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
               </span>
             )}
           </div>
@@ -1864,16 +1940,37 @@ export function Layout({ children }: { children: React.ReactNode }) {
               ))}
             </SelectContent>
           </Select>
-          <div className="mt-2 border-t pt-2">
-            <Label className="mb-1 block text-xs text-muted-foreground">
-              Projektstand
-            </Label>
-            <LazySaveLoadControls />
-          </div>
+          {isEventPass && (
+            <div className="mt-2 rounded-lg border border-orange-200 bg-orange-50 px-2.5 py-2 text-xs leading-4 text-orange-950">
+              <span className="font-semibold">{productName}</span>
+              {productStatusLabel ? ` · ${productStatusLabel}` : ""}
+              <span className="block text-orange-800">
+                {eventPassUnavailable
+                  ? "Der Zugang ist derzeit pausiert oder abgelaufen."
+                  : "Eine Veranstaltung · bis 50 Helfer"}
+              </span>
+            </div>
+          )}
+          {!isEventPass && (
+            <div className="mt-2 border-t pt-2">
+              <Label className="mb-1 block text-xs text-muted-foreground">
+                Projektstand
+              </Label>
+              <LazySaveLoadControls />
+            </div>
+          )}
         </div>
 
         <nav className="flex-1 overflow-y-auto px-2 pb-2 pt-1.5 space-y-0.5">
-          {visibleNavigationSections(effectiveNavigationRole, myPermissions.data, myModuleAccess.data).map(section => (
+          {visibleNavigationSections(effectiveNavigationRole, myPermissions.data, myModuleAccess.data)
+            .map(section => ({
+              ...section,
+              items: section.items.filter(item =>
+                productAllowsAppRoute(productPackageId, item.href)
+              ),
+            }))
+            .filter(section => section.items.length > 0)
+            .map(section => (
             <div key={section.id} className="space-y-0.5">
               {section.items.map(({ href, label, icon: Icon }) => {
                 const active = location === href;
@@ -2556,7 +2653,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </DialogContent>
       </Dialog>
 
-      {isAuthenticated && (
+      {isAuthenticated && !isEventPass && (
         <LiveChatWidget
           state={chatState}
         snapshot={chatSnapshot}

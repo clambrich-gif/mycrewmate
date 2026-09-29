@@ -66,6 +66,31 @@ const dbMocks = vi.hoisted(() => ({
   createLocation: vi.fn(),
   updateLocation: vi.fn(),
   resolveTenantForUser: vi.fn(),
+  getCurrentTenantProductEntitlement: vi.fn(() =>
+    Promise.resolve({
+      tenantId: "default",
+      packageId: "pro",
+      status: "test",
+      startsOn: null,
+      endsOn: null,
+      eventId: 1,
+      isUsable: true,
+      entitlements: {
+        packageId: "pro",
+        name: "Pro",
+        priceLabel: "299 € / Eventjahr",
+        maxEventsPerTenant: null,
+        maxHelpersPerEvent: null,
+        maxPersonalPlanningAccesses: null,
+        includedCapabilities: [],
+        includedPlanningModules: [],
+        features: [],
+      },
+    })
+  ),
+  getEventForTenantById: vi.fn(),
+  currentProductAllowsCapability: vi.fn(() => Promise.resolve(true)),
+  currentProductAllowsPlanningModule: vi.fn(() => Promise.resolve(true)),
 }));
 const storageMocks = vi.hoisted(() => ({
   storageRead: vi.fn(),

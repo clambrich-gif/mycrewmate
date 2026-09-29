@@ -184,6 +184,6 @@ describe("Mandantenisolation – Planungsteamzugänge", () => {
     expect(database).toContain("Ein Planungsteam-Zugang muss genau einem Verein zugeordnet sein");
     expect(schema).toContain("planning_team_access_email_unique");
     expect(router).toContain("assertPlanningTeamAccessReferencesInScope");
-    expect(router).toContain("list: tenantAccessAdminProcedure.query(() => db.listPlanningTeamAccesses())");
+    expect(router).toContain("list: personalAccessAdminProcedure.query(() => db.listPlanningTeamAccesses())");
   });
 });
