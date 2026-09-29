@@ -47,6 +47,11 @@ describe("direkte Fachbereichsrechte", () => {
     expect(manager).toContain('setModuleLevel("off")');
     expect(manager).toContain('setModuleLevel("read")');
     expect(manager).toContain('setModuleLevel("write")');
+    expect(manager).toContain('data-klemmi-rights-hint');
+    expect(manager).toContain("Klemmi zeigt’s:");
+    expect(manager).toContain("Aus</strong> blendet aus");
+    expect(manager).toContain("Lesen</strong> zeigt ohne Änderungen");
+    expect(manager).toContain("Schreiben</strong> erlaubt die Pflege");
     expect(manager).not.toContain("Freigabestufe auswählen");
     expect(manager).not.toContain("Stufe wiederherstellen");
   });

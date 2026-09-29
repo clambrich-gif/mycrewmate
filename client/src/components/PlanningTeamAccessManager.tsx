@@ -29,6 +29,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { KlemmiTriggerMascot } from "@/components/KlemmiMascot";
 import { downloadBase64File } from "@/lib/download";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -764,13 +765,20 @@ export function PlanningTeamAccessManager() {
             data-planning-access-rights
             className="mt-4 space-y-3 rounded-lg border border-blue-200 bg-blue-50/35 p-3"
           >
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <legend className="text-sm font-medium text-slate-900">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <legend className="pt-1 text-sm font-medium text-slate-900">
                 Fachbereichsrechte direkt festlegen
               </legend>
-              <span className="text-xs text-slate-500">
-                Aus = Modul ausgeblendet · Lesen = nur Ansicht · Schreiben = volle Bearbeitung
-              </span>
+              <aside
+                data-klemmi-rights-hint
+                className="flex max-w-xl items-center gap-2 rounded-md border border-orange-200 bg-orange-50 px-2.5 py-1.5 text-xs leading-4 text-slate-700"
+              >
+                <KlemmiTriggerMascot />
+                <p>
+                  <span className="font-semibold text-orange-800">Klemmi zeigt’s:</span>{" "}
+                  <strong>Aus</strong> blendet aus · <strong>Lesen</strong> zeigt ohne Änderungen · <strong>Schreiben</strong> erlaubt die Pflege.
+                </p>
+              </aside>
             </div>
             <p className="text-xs leading-5 text-slate-600">
               Wähle für jeden Fachbereich nur die Rechte, die diese Person tatsächlich
