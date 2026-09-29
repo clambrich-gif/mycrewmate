@@ -193,6 +193,20 @@ function isDuplicateColumnError(error: unknown) {
   );
 }
 
+function isCantDropFieldError(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    ((error as { code?: unknown }).code === "ER_CANT_DROP_FIELD_OR_KEY" ||
+      (error as { errno?: unknown }).errno === 1091)
+  );
+}
+
+function isDropColumnStatement(statement: string) {
+  return /^ALTER\s+TABLE\s+`?[A-Za-z0-9_]+`?\s+DROP\s+COLUMN\s+/i.test(statement);
+}
+
 function isDuplicateConstraintOrIndexError(error: unknown) {
   if (typeof error !== "object" || error === null || !("code" in error)) return false;
   const code = String((error as { code?: unknown }).code);
@@ -368,6 +382,13 @@ export async function applyProjectMigrations(
           if (isConstraintOrIndexStatement(statement) && isDuplicateConstraintOrIndexError(error)) {
             console.info(
               `[Migration] ${migration.tag}: Constraint/Index bereits vorhanden, sicher übersprungen.`
+            );
+            continue;
+          }
+
+          if (isDropColumnStatement(statement) && isCantDropFieldError(error)) {
+            console.info(
+              `[Migration] ${migration.tag}: Spalte für DROP COLUMN existiert bereits nicht mehr, sicher übersprungen.`
             );
             continue;
           }
