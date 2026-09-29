@@ -3051,6 +3051,7 @@ export const appRouter = router({
         entitlements: entitlement.entitlements,
       };
     }),
+    usage: scopeAdminAuthProcedure.query(() => db.getCurrentTenantProductUsage()),
   }),
 
   platformAdmin: router({

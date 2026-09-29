@@ -269,7 +269,8 @@ export const PRODUCT_PACKAGE_META: Record<ProductPackageId, ProductPackageMeta> 
   enterprise: {
     name: "Enterprise",
     priceLabel: "ab 449 € · Veranstaltungsjahr",
-    shortDescription: "Pro plus individuell vereinbarte Erweiterungen.",
+    shortDescription:
+      "Unbegrenzte Veranstaltungen, Helfer und persönliche Teamzugänge plus individuell vereinbarte Erweiterungen.",
     assignmentStatusLabel: {
       test: "Testzugang",
       active: "Aktiv",

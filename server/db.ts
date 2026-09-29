@@ -122,6 +122,21 @@ export type TenantProductEntitlement = {
   entitlements: (typeof PRODUCT_PACKAGE_ENTITLEMENTS)[ProductPackageId];
 };
 
+export type ProductLimitUsageMetric = {
+  used: number;
+  limit: number | null;
+  percentage: number | null;
+  available: boolean;
+  context: string | null;
+};
+
+export type TenantProductUsage = {
+  packageId: ProductPackageId;
+  eventsPerYear: ProductLimitUsageMetric;
+  helpersPerEvent: ProductLimitUsageMetric;
+  personalPlanningAccesses: ProductLimitUsageMetric;
+};
+
 export async function getDb(): Promise<DBClient | null> {
   const transactionClient = planningWriteClientStorage.getStore();
   if (transactionClient) return transactionClient;
@@ -739,6 +754,149 @@ export async function getCurrentTenantProductEntitlement() {
   return getTenantProductEntitlement(tenant());
 }
 
+function productUsageMetric(input: {
+  used: number;
+  limit: number | null;
+  available?: boolean;
+  context?: string | null;
+}): ProductLimitUsageMetric {
+  const available = input.available ?? true;
+  return {
+    used: input.used,
+    limit: input.limit,
+    percentage:
+      available && input.limit !== null && input.limit > 0
+        ? Math.round((input.used / input.limit) * 100)
+        : null,
+    available,
+    context: input.context ?? null,
+  };
+}
+
+/**
+ * Liefert ausschließlich aggregierte Paketnutzung. Weder Helferdaten noch
+ * E-Mail-Adressen oder Zugangsdaten verlassen diesen Pfad; dadurch eignet er
+ * sich für den geschützten Vereins- und Master-Admin-Überblick.
+ */
+export async function getTenantProductUsage(
+  tenantId = tenant()
+): Promise<TenantProductUsage> {
+  const entitlement = await getTenantProductEntitlement(tenantId);
+  const database = await getDb();
+  const emptyUsage = {
+    packageId: entitlement.packageId,
+    eventsPerYear: productUsageMetric({
+      used: 0,
+      limit: entitlement.entitlements.maxEventsPerYear,
+      context: null,
+    }),
+    helpersPerEvent: productUsageMetric({
+      used: 0,
+      limit: entitlement.entitlements.maxHelpersPerEvent,
+      context: null,
+    }),
+    personalPlanningAccesses: productUsageMetric({
+      used: 0,
+      limit: entitlement.entitlements.maxPersonalPlanningAccesses,
+      available: entitlement.entitlements.capabilities.personal_accesses,
+      context: null,
+    }),
+  };
+  if (!database) return emptyUsage;
+
+  const [tenantEvents, tenantHelpers, personalAccesses] = await Promise.all([
+    database
+      .select({ id: events.id, year: events.year, name: events.name })
+      .from(events)
+      .where(eq(events.tenantId, tenantId)),
+    database
+      .select({
+        eventId: helpers.eventId,
+        eventYear: events.year,
+        eventName: events.name,
+      })
+      .from(helpers)
+      .innerJoin(
+        events,
+        and(eq(events.id, helpers.eventId), eq(events.year, helpers.year))
+      )
+      .where(eq(events.tenantId, tenantId)),
+    database
+      .selectDistinct({ id: planningTeamAccesses.id })
+      .from(planningTeamAccesses)
+      .innerJoin(
+        planningTeamAccessEvents,
+        eq(planningTeamAccessEvents.accessId, planningTeamAccesses.id)
+      )
+      .innerJoin(events, eq(events.id, planningTeamAccessEvents.eventId))
+      .where(
+        and(
+          eq(events.tenantId, tenantId),
+          // Im Pro-Paket zählen Co-Admins zusätzlich zu den 14 persönlichen
+          // Planungsteamzugängen. Diese Logik entspricht der Durchsetzung bei
+          // der Anlage eines neuen Zugangs.
+          entitlement.packageId === "pro"
+            ? eq(planningTeamAccesses.isTenantAdmin, false)
+            : undefined
+        )
+      ),
+  ]);
+
+  const eventsByYear = new Map<number, number>();
+  for (const eventRow of tenantEvents) {
+    eventsByYear.set(eventRow.year, (eventsByYear.get(eventRow.year) ?? 0) + 1);
+  }
+  const busiestEventYear = Array.from(eventsByYear.entries()).sort(
+    ([leftYear, leftCount], [rightYear, rightCount]) =>
+      rightCount - leftCount || rightYear - leftYear
+  )[0];
+
+  const helpersByEvent = new Map<
+    number,
+    { count: number; name: string; year: number }
+  >();
+  for (const helperRow of tenantHelpers) {
+    const current = helpersByEvent.get(helperRow.eventId);
+    helpersByEvent.set(helperRow.eventId, {
+      count: (current?.count ?? 0) + 1,
+      name: helperRow.eventName,
+      year: helperRow.eventYear,
+    });
+  }
+  const busiestHelperEvent = Array.from(helpersByEvent.values()).sort(
+    (left, right) => right.count - left.count || right.year - left.year
+  )[0];
+
+  return {
+    packageId: entitlement.packageId,
+    eventsPerYear: productUsageMetric({
+      used: busiestEventYear?.[1] ?? 0,
+      limit: entitlement.entitlements.maxEventsPerYear,
+      context: busiestEventYear ? `Spitzenjahr ${busiestEventYear[0]}` : null,
+    }),
+    helpersPerEvent: productUsageMetric({
+      used: busiestHelperEvent?.count ?? 0,
+      limit: entitlement.entitlements.maxHelpersPerEvent,
+      context: busiestHelperEvent
+        ? `${busiestHelperEvent.name} ${busiestHelperEvent.year}`
+        : null,
+    }),
+    personalPlanningAccesses: productUsageMetric({
+      used: personalAccesses.length,
+      limit: entitlement.entitlements.maxPersonalPlanningAccesses,
+      available: entitlement.entitlements.capabilities.personal_accesses,
+      context:
+        entitlement.packageId === "pro"
+          ? "Co-Admins zusätzlich"
+          : null,
+    }),
+  };
+}
+
+export async function getCurrentTenantProductUsage() {
+  return getTenantProductUsage(tenant());
+}
+
 export async function currentProductAllowsCapability(capability: ProductCapability) {
   const entitlement = await getCurrentTenantProductEntitlement();
   return productAllowsCapability(entitlement.packageId, capability);
@@ -788,6 +946,12 @@ export async function listTenantOverviewsForPlatformAdmin() {
     assignmentRows.map(assignment => [assignment.tenantId, assignment])
   );
   const today = new Date().toISOString().slice(0, 10);
+  const usageRows = await Promise.all(
+    tenantRows.map(tenantRow => getTenantProductUsage(tenantRow.id))
+  );
+  const usageByTenant = new Map(
+    tenantRows.map((tenantRow, index) => [tenantRow.id, usageRows[index]!])
+  );
   return tenantRows.map(tenantRow => {
     const tenantEvents = eventRows.filter(eventRow => eventRow.tenantId === tenantRow.id);
     const assignment = assignmentByTenant.get(tenantRow.id);
@@ -816,6 +980,7 @@ export async function listTenantOverviewsForPlatformAdmin() {
         internalNote: null,
       },
       eventCount: tenantEvents.length,
+      productUsage: usageByTenant.get(tenantRow.id)!,
       events: tenantEvents.map(eventRow => ({
         id: eventRow.id,
         name: eventRow.name,

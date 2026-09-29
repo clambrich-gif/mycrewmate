@@ -142,6 +142,20 @@ type TenantOverviewItem = {
     eventId: number | null;
     internalNote: string | null;
   };
+  productUsage: {
+    packageId: ProductPackageId;
+    eventsPerYear: ProductLimitUsageMetric;
+    helpersPerEvent: ProductLimitUsageMetric;
+    personalPlanningAccesses: ProductLimitUsageMetric;
+  };
+};
+
+type ProductLimitUsageMetric = {
+  used: number;
+  limit: number | null;
+  percentage: number | null;
+  available: boolean;
+  context: string | null;
 };
 
 type ProductAssignmentForm = {
@@ -192,6 +206,109 @@ const PRODUCT_ASSIGNMENT_STATUS_CLASS: Record<ProductAssignmentStatus, string> =
   paused: "border-amber-200 bg-amber-50 text-amber-800",
   expired: "border-red-200 bg-red-50 text-red-800",
 };
+
+function productUsageTone(metric: ProductLimitUsageMetric) {
+  if (!metric.available) {
+    return { bar: "bg-slate-300", text: "text-slate-500" };
+  }
+  if (metric.limit === null) {
+    return { bar: "bg-violet-500", text: "text-violet-800" };
+  }
+  if ((metric.percentage ?? 0) >= 100) {
+    return { bar: "bg-red-500", text: "text-red-800" };
+  }
+  if ((metric.percentage ?? 0) >= 80) {
+    return { bar: "bg-amber-500", text: "text-amber-800" };
+  }
+  return { bar: "bg-emerald-500", text: "text-emerald-800" };
+}
+
+function TenantProductUsage({ usage }: { usage: TenantOverviewItem["productUsage"] }) {
+  const metrics = [
+    { id: "events", label: "Veranstaltungen/Jahr", metric: usage.eventsPerYear },
+    { id: "helpers", label: "Helfer/Event", metric: usage.helpersPerEvent },
+    {
+      id: "accesses",
+      label: "persönliche Zugänge",
+      metric: usage.personalPlanningAccesses,
+    },
+  ];
+  const enterprise = usage.packageId === "enterprise";
+
+  return (
+    <section
+      data-slot="tenant-product-usage"
+      aria-label="Auslastung der Paketgrenzen"
+      className="mt-3 rounded-xl border border-slate-200 bg-slate-50/80 p-3"
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <p className="text-[11px] font-bold uppercase tracking-wide text-slate-600">
+          Paket-Auslastung
+        </p>
+        <p className="text-[11px] text-slate-500">
+          {enterprise ? "Enterprise · unbegrenzt" : "Höchster Stand je Paketgrenze"}
+        </p>
+      </div>
+      <div className="mt-2.5 grid gap-2 sm:grid-cols-3">
+        {metrics.map(({ id, label, metric }) => {
+          const tone = productUsageTone(metric);
+          const percent = metric.percentage ?? 0;
+          const value = !metric.available
+            ? "Nicht enthalten"
+            : metric.limit === null
+              ? `${metric.used} · unbegrenzt`
+              : `${metric.used}/${metric.limit}`;
+          return (
+            <div key={id} className="min-w-0 rounded-lg border border-slate-200 bg-white px-2.5 py-2">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="truncate text-[11px] font-medium text-slate-600">{label}</span>
+                <span className={`shrink-0 text-[11px] font-bold tabular-nums ${tone.text}`}>{value}</span>
+              </div>
+              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className={`h-full rounded-full transition-[width] duration-300 ${tone.bar}`}
+                  style={{ width: `${metric.limit === null ? 100 : Math.min(percent, 100)}%` }}
+                />
+              </div>
+              <p className="mt-1 truncate text-[10px] text-slate-500">
+                {!metric.available
+                  ? "Im Paket nicht verfügbar"
+                  : metric.context ?? (metric.limit === null ? "Keine Obergrenze" : `${percent}% genutzt`)}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function demoProductUsage(): TenantOverviewItem["productUsage"] {
+  return {
+    packageId: "pro",
+    eventsPerYear: {
+      used: 1,
+      limit: 5,
+      percentage: 20,
+      available: true,
+      context: "Spitzenjahr 2027",
+    },
+    helpersPerEvent: {
+      used: 0,
+      limit: 350,
+      percentage: 0,
+      available: true,
+      context: "MyEifelRide 2027",
+    },
+    personalPlanningAccesses: {
+      used: 0,
+      limit: 14,
+      percentage: 0,
+      available: true,
+      context: "Co-Admins zusätzlich",
+    },
+  };
+}
 
 type PlatformAccessInventoryItem = {
   type: "tenant_admin" | "planning_team";
@@ -710,6 +827,7 @@ export default function MasterAdminPortal() {
               eventId: null,
               internalNote: null,
             },
+            productUsage: demoProductUsage(),
             eventCount: 1,
             events: [{ id: 1, name: "MyEifelRide 2027", year: 2027, startDate: "2027-06-11", endDate: "2027-06-13" }],
             nextEvent: {
@@ -735,6 +853,7 @@ export default function MasterAdminPortal() {
               eventId: null,
               internalNote: null,
             },
+            productUsage: demoProductUsage(),
             eventCount: 1,
             events: [{ id: 2, name: "Lukasmarkt 2027", year: 2027, startDate: "2027-10-15", endDate: "2027-10-17" }],
             nextEvent: {
@@ -760,6 +879,7 @@ export default function MasterAdminPortal() {
               eventId: null,
               internalNote: null,
             },
+            productUsage: demoProductUsage(),
             eventCount: 1,
             events: [{ id: 3, name: "Schützenfest 2027", year: 2027, startDate: "2027-07-02", endDate: "2027-07-04" }],
             nextEvent: {
@@ -1085,6 +1205,7 @@ export default function MasterAdminPortal() {
                         <span className="inline-flex items-center gap-1"><CalendarDays className="size-3.5 text-slate-400" /> {tenant.eventCount} Veranstaltung{tenant.eventCount === 1 ? "" : "en"}</span>
                         <span className="inline-flex items-center gap-1"><Mail className="size-3.5 text-slate-400" /> {tenant.contactEmail}</span>
                       </div>
+                      <TenantProductUsage usage={tenant.productUsage} />
                     </div>
                     <div className="space-y-2 sm:min-w-48">
                       <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-left sm:text-right">

@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { KlemmiProLimitNotice } from "@/components/KlemmiProLimitNotice";
 import { KlemmiSurfaceGuide } from "@/components/KlemmiSurfaceGuide";
 import { LocationMapCard } from "@/components/LocationMapCard";
 import { PageTitle } from "@/components/PageTitle";
@@ -1009,7 +1010,7 @@ function PilotTenantInfoCard({
 export default function Dashboard() {
   const [, navigate] = useLocation();
   const detailsLayout = useDashboardDetailsLayout();
-  const { canReadModule } = useTenantAdministration();
+  const { canReadModule, isTenantAdmin } = useTenantAdministration();
   const canReadLocations = canReadModule("locations");
   const [workloadFilter, setWorkloadFilter] = useState<{
     day: DailyReadiness["day"];
@@ -1023,6 +1024,13 @@ export default function Dashboard() {
   const { data: currentTenant, isLoading: isTenantLoading } =
     trpc.tenants.current.useQuery();
   const tenantProduct = trpc.tenantProduct.current.useQuery();
+  const productUsage = trpc.tenantProduct.usage.useQuery(undefined, {
+    enabled:
+      isTenantAdmin &&
+      tenantProduct.isSuccess &&
+      tenantProduct.data?.packageId === "pro",
+    retry: false,
+  });
   const canUseMapsGpx =
     tenantProduct.isSuccess &&
     productAllowsCapability(tenantProduct.data?.packageId ?? "pro", "maps_gpx");
@@ -1252,6 +1260,13 @@ export default function Dashboard() {
 
       {currentTenant.status === "pilot" && (
         <PilotTenantInfoCard tenant={currentTenant} eventName={currentEvent.name} />
+      )}
+
+      {tenantProduct.data?.packageId === "pro" && productUsage.data && (
+        <KlemmiProLimitNotice
+          helpers={productUsage.data.helpersPerEvent}
+          personalAccesses={productUsage.data.personalPlanningAccesses}
+        />
       )}
 
       <section
