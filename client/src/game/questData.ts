@@ -1,183 +1,82 @@
-import { HelperCard, ShiftSlot, EventCrisis } from "./gameData";
+import type { EventCrisis, HelperCard, PlanningTask, ShiftSlot } from "./gameData";
 
-export const SCHUETZENFEST_HELPERS: HelperCard[] = [
+export const RADSPORT_PLANNING_TASKS: PlanningTask[] = [
   {
-    id: "h1",
-    name: "Jupp Schmitz",
-    role: "Vereinsurgestein",
-    avatarIcon: "👴",
-    availableFrom: "10:00",
-    availableTo: "18:00",
-    skills: ["Zapfer", "Orga"],
-    bringsVehicle: true,
-    notes: "Hat eigenen Anhänger für Biertische."
+    id: "route",
+    area: "Strecke & Behörden",
+    title: "110-km-Strecke genehmigen",
+    deadline: "Noch 168 Tage",
+    duration: "4–6 Wochen Abstimmung",
+    icon: "route",
+    detail: "Straßenverkehrsbehörde, Gemeinden, Polizei und Rettungsdienst brauchen eine abgestimmte Route mit Zeitfenstern.",
+    result: "Genehmigungsmappe angelegt"
   },
   {
-    id: "h2",
-    name: "Lisa Berg",
-    role: "Jugendleiterin",
-    avatarIcon: "👩",
-    availableFrom: "12:00",
-    availableTo: "16:00",
-    skills: ["Kuchen", "Einlass"],
-    bringsCompanion: true,
-    notes: "Bringt Tochter Mia (11) mit, spendet Erdbeertorte."
+    id: "shelter",
+    area: "Orte & Stationen",
+    title: "Schutzhütte am VP 2 sichern",
+    deadline: "Noch 142 Tage",
+    duration: "Reservierung & Schlüssel",
+    icon: "home",
+    detail: "Die Hütte schützt die Verpflegung bei Wetterwechsel und braucht eine feste Ansprechpartnerin vor Ort.",
+    result: "Station VP 2 reserviert"
   },
   {
-    id: "h3",
-    name: "Markus 'Bier-Markus'",
-    role: "Schützenbruder",
-    avatarIcon: "🍺",
-    availableFrom: "14:00",
-    availableTo: "22:00",
-    skills: ["Zapfer"],
-    notes: "Kann zapfen wie kein Zweiter, aber erst ab 14:00 da!"
+    id: "material",
+    area: "Material & Verpflegung",
+    title: "Verpflegung kalkulieren",
+    deadline: "Noch 84 Tage",
+    duration: "Mengen & Lieferanten",
+    icon: "package",
+    detail: "Bananen, Wasser, Riegel, Elektrolyte, Becher und Beschilderung werden aus Teilnehmerzahl und Streckenprofil abgeleitet.",
+    result: "Materialliste freigegeben"
   },
   {
-    id: "h4",
-    name: "Dr. Anna Weber",
-    role: "Vereinsärztin",
-    avatarIcon: "🩺",
-    availableFrom: "10:00",
-    availableTo: "20:00",
-    skills: ["Sanitäter", "Einlass"],
-    notes: "Erste-Hilfe-Ausrüstung im Kofferraum."
-  },
-  {
-    id: "h5",
-    name: "Kevin Müller",
-    role: "Neumitglied",
-    avatarIcon: "🧢",
-    availableFrom: "08:00",
-    availableTo: "14:00",
-    skills: ["Aufbau", "Kuchen"],
-    notes: "Voll motiviert, braucht klare Einweisung."
-  },
-  {
-    id: "h6",
-    name: "Gabi Krämer",
-    role: "Kuchen-Queen",
-    avatarIcon: "🥧",
-    availableFrom: "11:00",
-    availableTo: "17:00",
-    skills: ["Kuchen", "Kasse"],
-    notes: "Bringt 3 Kuchenspenden mit."
-  },
-  {
-    id: "h7",
-    name: "Theo Wagner",
-    role: "Aufbau-Profi",
-    avatarIcon: "🛠️",
-    availableFrom: "07:00",
-    availableTo: "13:00",
-    skills: ["Aufbau", "Material"],
-    bringsVehicle: true,
-    notes: "Hat Werkzeug, Kabeltrommel und einen Transporter dabei."
+    id: "helpers",
+    area: "Helfer & Ansprechpartner",
+    title: "Helferabfrage starten",
+    deadline: "Noch 63 Tage",
+    duration: "Rückmeldungen bündeln",
+    icon: "users",
+    detail: "Ansprechpartner fragen zuerst Verfügbarkeiten ab und machen aus vielen einzelnen Antworten einen belastbaren Helferpool.",
+    result: "Helferpool aktiv"
   }
 ];
 
-export const SCHUETZENFEST_SHIFTS: ShiftSlot[] = [
-  {
-    id: "s1",
-    area: "Logistik & Start",
-    title: "Festzelt & Tische aufbauen",
-    timeWindow: "08:00 – 11:00",
-    requiredHelpers: 2,
-    assignedHelperIds: [],
-    requiredSkill: "Aufbau",
-    isCritical: true,
-    difficultyRating: 1
-  },
-  {
-    id: "s2",
-    area: "Kuchentheke",
-    title: "Kuchenausgabe & Kaffeebar",
-    timeWindow: "12:00 – 16:00",
-    requiredHelpers: 2,
-    assignedHelperIds: [],
-    requiredSkill: "Kuchen",
-    isCritical: false,
-    difficultyRating: 2
-  },
-  {
-    id: "s3",
-    area: "Bierwagen",
-    title: "Getränkeausschank Primetime",
-    timeWindow: "14:00 – 18:00",
-    requiredHelpers: 2,
-    assignedHelperIds: [],
-    requiredSkill: "Zapfer",
-    isCritical: true,
-    difficultyRating: 3
-  },
-  {
-    id: "s4",
-    area: "Sicherheit & Einlass",
-    title: "Einlass & Sanitätswache",
-    timeWindow: "13:00 – 17:00",
-    requiredHelpers: 1,
-    assignedHelperIds: [],
-    requiredSkill: "Sanitäter",
-    isCritical: true,
-    difficultyRating: 2
-  }
+export const RADSPORT_HELPERS: HelperCard[] = [
+  { id: "h1", name: "Maria Engel", initials: "ME", role: "Ansprechpartnerin West", availableFrom: "06:00", availableTo: "14:00", skills: ["Verpflegung", "Material"], notes: "Fährt den Transporter zum VP 1." },
+  { id: "h2", name: "Jonas Berg", initials: "JB", role: "RTF-Team", availableFrom: "07:00", availableTo: "16:00", skills: ["Strecke", "Funk"], notes: "Kennt die Nordschleife und hat Streckenposten-Erfahrung." },
+  { id: "h3", name: "Lea Roth", initials: "LR", role: "Jugendteam", availableFrom: "08:00", availableTo: "15:00", skills: ["Anmeldung", "Einlass"], notes: "Koordiniert die Startunterlagen." },
+  { id: "h4", name: "David Neumann", initials: "DN", role: "Sanitätskontakt", availableFrom: "06:00", availableTo: "18:00", skills: ["Sicherheit", "Funk"], notes: "Ist Schnittstelle zum Sanitätsdienst." },
+  { id: "h5", name: "Nora Klein", initials: "NK", role: "Verpflegungsteam", availableFrom: "06:00", availableTo: "13:00", skills: ["Verpflegung", "Material"], notes: "Bringt Kühlboxen und Obstkisten mit." },
+  { id: "h6", name: "Tobias Jung", initials: "TJ", role: "Streckenposten", availableFrom: "07:00", availableTo: "17:00", skills: ["Strecke", "Sicherheit"], notes: "Motorrad und Warnweste vorhanden." },
+  { id: "h7", name: "Sabine Vogt", initials: "SV", role: "Vereinsbüro", availableFrom: "07:00", availableTo: "14:00", skills: ["Anmeldung", "Verpflegung"], notes: "Übernimmt die Helferkommunikation." }
 ];
 
-export const SCHUETZENFEST_CRISES: EventCrisis[] = [
+export const RADSPORT_SHIFTS: ShiftSlot[] = [
+  { id: "s1", area: "Start & Anmeldung", title: "Startunterlagen und Check-in", timeWindow: "06:30 – 09:30", requiredHelpers: 2, assignedHelperIds: [], requiredSkill: "Anmeldung", isCritical: true },
+  { id: "s2", area: "Verpflegungspunkt 1", title: "Bananen, Wasser und Riegel", timeWindow: "08:00 – 14:00", requiredHelpers: 2, assignedHelperIds: [], requiredSkill: "Verpflegung", isCritical: true },
+  { id: "s3", area: "Streckenposten Nord", title: "Abzweig und Sicherung", timeWindow: "07:30 – 15:30", requiredHelpers: 2, assignedHelperIds: [], requiredSkill: "Strecke", isCritical: true },
+  { id: "s4", area: "Sicherheit & Funk", title: "Einsatzleitung und Sanitätskontakt", timeWindow: "06:30 – 16:30", requiredHelpers: 1, assignedHelperIds: [], requiredSkill: "Sicherheit", isCritical: true }
+];
+
+export const RADSPORT_CRISES: EventCrisis[] = [
   {
     id: "c1",
-    title: "Alarm am Bierwagen: Fass-Druckabfall!",
-    description: "Um 15:30 Uhr bildet sich eine 20-Meter-Schlange. Die Kohlensäureflasche ist leer!",
-    klemmiWarning: "Oje! Jetzt klemmt der Zapfhahn gewaltig! Wenn die Schützenbrüder 10 Minuten kein Bier kriegen, sinkt die Stimmung ins Bodenlose!",
+    title: "Wetterzelle am Verpflegungspunkt",
+    description: "Am Vormittag kündigt sich Starkregen an. Die reservierte Schutzhütte kann jetzt ihre Stärke ausspielen.",
     options: [
-      {
-        label: "Reserveflasche aus dem Sportlerheim holen",
-        actionDescription: "Jupp fährt mit seinem Auto und holt die Notreserve.",
-        impactStress: 10,
-        impactBudget: 0,
-        impactSatisfaction: 5,
-        klemmiFeedback: "Klasse gelöst! Jupps Anhängerkupplung und Einsatzbereitschaft haben die Durstkrise abgewendet."
-      },
-      {
-        label: "Schnellkauf an der Tankstelle",
-        actionDescription: "Kurzerhand zwei Kisten Flaschenbier für 40 € holen.",
-        impactStress: 25,
-        impactBudget: -40,
-        impactSatisfaction: -5,
-        klemmiFeedback: "Teuer und nicht optimal, aber die Kehlen blieben feucht!"
-      },
-      {
-        label: "Ausschank pausieren & Geduld erbitten",
-        actionDescription: "Lautsprecherdurchsage: 'Gleich geht es weiter.'",
-        impactStress: 40,
-        impactBudget: 0,
-        impactSatisfaction: -25,
-        klemmiFeedback: "Aua! Die Laune der Gäste ist im Keller. Das gibt Punktabzug im Festbericht."
-      }
+      { label: "VP 2 in die reservierte Schutzhütte verlegen", actionDescription: "Ansprechpartnerin öffnet die Hütte, Materialteam zieht die Ausgabe um.", impactStress: -6, impactBudget: 0, impactSatisfaction: 8, klemmiFeedback: "Gute Vorbereitung zahlt sich aus: Die Hütte war reserviert, das Team hat einen trockenen Plan B." },
+      { label: "Mit Pavillons am Straßenrand bleiben", actionDescription: "Pavillons sichern und auf besseres Wetter hoffen.", impactStress: 18, impactBudget: -120, impactSatisfaction: -5, klemmiFeedback: "Das funktioniert nur mit viel Hektik. Für das nächste Jahr: Wetterreserven gehören schon in die Stationsplanung." }
     ]
   },
   {
     id: "c2",
-    title: "Spontane Unwetterböe zieht auf!",
-    description: "Windstärke 6 rüttelt an den Sonnenschirmen der Kuchentheke. Gabi ruft um Hilfe!",
-    klemmiWarning: "Windalarm! Wenn die Kuchentheke nass wird, sind 14 Kuchen futsch! Wer packt jetzt an?",
+    title: "Elektrolyte reichen nicht bis zur letzten Gruppe",
+    description: "Die Teilnehmerzahl liegt über der Prognose. An VP 1 werden zusätzliche Getränke benötigt.",
     options: [
-      {
-        label: "Schirme zügig schließen & Kuchen ins Zelt tragen",
-        actionDescription: "Kevin und Lisa packen blitzschnell mit an.",
-        impactStress: 15,
-        impactBudget: 0,
-        impactSatisfaction: 10,
-        klemmiFeedback: "Perfekte Teamarbeit! Nicht ein Krümel nass geworden – die Helfer halten zusammen."
-      },
-      {
-        label: "Plane drüberwerfen und abwarten",
-        actionDescription: "Notdürftige Abdeckung mit Bauplane.",
-        impactStress: 20,
-        impactBudget: 0,
-        impactSatisfaction: -10,
-        klemmiFeedback: "Zwei Torten sind zerquetscht, aber der Rest hat überlebt."
-      }
+      { label: "Materialreserve vom Basislager nachliefern", actionDescription: "Der Logistikfahrer nutzt die vorbereitete Reserve und fährt direkt zur Station.", impactStress: 3, impactBudget: 0, impactSatisfaction: 8, klemmiFeedback: "Sauber gelöst. Die Materialliste hatte eine Reserve vorgesehen – genau dafür." },
+      { label: "Ausgabe sofort rationieren", actionDescription: "Nur noch kleine Portionen ausgeben und Nachlieferung abwarten.", impactStress: 14, impactBudget: 0, impactSatisfaction: -10, klemmiFeedback: "Nicht ideal, aber transparent kommuniziert. Die Nachbereitung sollte die Mengenplanung jetzt konkret verbessern." }
     ]
   }
 ];

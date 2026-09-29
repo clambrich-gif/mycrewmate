@@ -24,12 +24,17 @@ describe("CrewMate Tycoon Spielprototyp", () => {
     expect(app).toContain("<GameRoot />");
   });
 
-  it("enthält die vollständige Spielschleife vom Puzzle bis zum Abschlussbericht", () => {
+  it("enthält die vollständige Planungsschleife von Vorbereitung bis Abschlussbericht", () => {
     const game = read("client/src/pages/GameRoot.tsx");
+    const quests = read("client/src/game/questData.ts");
     expect(game).toContain('"scenario_select"');
+    expect(game).toContain('"preparation"');
+    expect(game).toContain('"helper_outreach"');
     expect(game).toContain('"puzzle"');
     expect(game).toContain('"event_day"');
     expect(game).toContain('"report"');
-    expect(game).toContain("Festival erfolgreich durchgeführt");
+    expect(game).toContain("Festival erfolgreich vorbereitet");
+    expect(quests).toContain("110-km-Strecke genehmigen");
+    expect(game).toContain("Achte auf die Zeitfenster direkt an jeder Station");
   });
 });
