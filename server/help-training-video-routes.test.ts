@@ -115,7 +115,7 @@ describe("Same-Origin-Auslieferung des Helferschulungsvideos", () => {
     expect(response.status).toBe(206);
     expect(response.headers.get("content-type")).toBe("video/mp4");
     expect(response.headers.get("content-disposition")).toContain(
-      "mycrewmate-administrator-schulung-4-stufen.mp4"
+      "mycrewmate-administrator-schulung-fachbereichsrechte.mp4"
     );
     expect(Array.from(new Uint8Array(await response.arrayBuffer()))).toEqual([
       5,
@@ -124,7 +124,7 @@ describe("Same-Origin-Auslieferung des Helferschulungsvideos", () => {
       8,
     ]);
     expect(upstreamFetch).toHaveBeenCalledWith(
-      expect.stringContaining("SBQXEgvLHAANlHMy.mp4"),
+      expect.stringContaining("DmaYpZXymWlvZZOf.mp4"),
       expect.objectContaining({
         headers: { Range: "bytes=0-3" },
         method: "GET",

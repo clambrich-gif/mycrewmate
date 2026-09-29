@@ -45,7 +45,6 @@ import {
   Plus,
   Printer,
   RefreshCw,
-  RotateCcw,
   Send,
   ShieldCheck,
   ShieldAlert,
@@ -60,14 +59,6 @@ import {
   type PlanningModuleAccess,
   type PlanningModuleAccessLevel,
 } from "@shared/tenant-permissions";
-import {
-  PLANNING_ACCESS_STAGES,
-  PLANNING_ACCESS_STAGE_META,
-  isPlanningAccessStageId,
-  planningAccessStageDefaults,
-  planningAccessStageExceptionCount,
-  type PlanningAccessStageId,
-} from "@shared/planning-access-stages";
 
 type FormState = {
   id: number | null;
@@ -76,7 +67,6 @@ type FormState = {
   email: string;
   modulePermissions: PlanningModule[];
   moduleAccess: PlanningModuleAccess;
-  accessStage: PlanningAccessStageId | null;
   isTenantAdmin: boolean;
   eventIds: number[];
   currentAdminPassword: string;
@@ -87,17 +77,14 @@ const DEFAULT_MODULE_ACCESS: PlanningModuleAccess = Object.fromEntries(
 );
 const writePermissionsFromAccess = (access: PlanningModuleAccess) =>
   EDITABLE_PLANNING_MODULES.filter(module => access[module] === "write");
-const DEFAULT_ACCESS_STAGE: PlanningAccessStageId = "stage_1";
-const DEFAULT_STAGE_ACCESS = planningAccessStageDefaults(DEFAULT_ACCESS_STAGE);
 
 const EMPTY_FORM: FormState = {
   id: null,
   contactId: null,
   label: "",
   email: "",
-  modulePermissions: writePermissionsFromAccess(DEFAULT_STAGE_ACCESS),
-  moduleAccess: DEFAULT_STAGE_ACCESS,
-  accessStage: DEFAULT_ACCESS_STAGE,
+  modulePermissions: [],
+  moduleAccess: DEFAULT_MODULE_ACCESS,
   isTenantAdmin: false,
   eventIds: [],
   currentAdminPassword: "",
@@ -118,7 +105,6 @@ type AccessSummary = {
   email?: string | null;
   modulePermissions?: PlanningModule[];
   moduleAccess?: PlanningModuleAccess;
-  accessStage?: PlanningAccessStageId | null;
   isTenantAdmin: boolean;
   eventIds: number[];
   mustChangePassword: boolean;
@@ -241,13 +227,6 @@ export function PlanningTeamAccessManager() {
   const allPrintTargetsSelected =
     filteredAccesses.length > 0 &&
     filteredAccesses.every(access => selectedPrintAccessIds.includes(access.id));
-  const selectedStage = form.accessStage
-    ? PLANNING_ACCESS_STAGE_META[form.accessStage]
-    : null;
-  const stageExceptionCount = form.accessStage
-    ? planningAccessStageExceptionCount(form.moduleAccess, form.accessStage)
-    : 0;
-
   useEffect(() => {
     if (
       filterEventId !== ALL_EVENTS &&
@@ -377,7 +356,6 @@ export function PlanningTeamAccessManager() {
       email: form.email.trim() ? form.email.trim() : undefined,
       modulePermissions: form.modulePermissions,
       moduleAccess: form.moduleAccess,
-      accessStage: form.accessStage,
       isTenantAdmin: form.isTenantAdmin,
       eventIds: effectiveEventIds,
       currentAdminPassword: form.currentAdminPassword,
@@ -395,15 +373,6 @@ export function PlanningTeamAccessManager() {
       eventIds: checked
         ? Array.from(new Set([...current.eventIds, eventId]))
         : current.eventIds.filter(id => id !== eventId),
-    }));
-  };
-  const applyAccessStage = (stage: PlanningAccessStageId) => {
-    const moduleAccess = planningAccessStageDefaults(stage);
-    setForm(current => ({
-      ...current,
-      accessStage: stage,
-      moduleAccess,
-      modulePermissions: writePermissionsFromAccess(moduleAccess),
     }));
   };
   const togglePrintAccess = (accessId: number, checked: boolean) => {
@@ -437,9 +406,6 @@ export function PlanningTeamAccessManager() {
       email: access.email ?? "",
       modulePermissions: existingPermissions,
       moduleAccess: initialAccess,
-      accessStage: isPlanningAccessStageId(access.accessStage)
-        ? access.accessStage
-        : null,
       isTenantAdmin: access.isTenantAdmin,
       eventIds: access.eventIds,
       currentAdminPassword: "",
@@ -607,13 +573,6 @@ export function PlanningTeamAccessManager() {
                         ? "Volle Verwaltungsrechte im eigenen Verein · keine Masterrechte"
                         : "Ansprechpartner-Zugang"}
                     </p>
-                    {!access.isTenantAdmin && isPlanningAccessStageId(access.accessStage) && (
-                      <div className="mt-1">
-                        <span className="rounded border border-orange-200 bg-orange-50 px-1.5 py-0.5 text-[10px] font-semibold text-orange-900">
-                          {PLANNING_ACCESS_STAGE_META[access.accessStage].shortTitle}
-                        </span>
-                      </div>
-                    )}
                     {!access.isTenantAdmin && (!access.modulePermissions || access.modulePermissions.length === 0) && (!access.moduleAccess || Object.values(access.moduleAccess).every(v => v === "off")) ? (
                       <div className="mt-1">
                         <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-700 border border-slate-200">
@@ -801,108 +760,23 @@ export function PlanningTeamAccessManager() {
             </div>
           </div>
 
-          <section
-            data-planning-access-stages
-            className="mt-4 rounded-lg border border-orange-200 bg-orange-50/40 p-3"
+          <fieldset
+            data-planning-access-rights
+            className="mt-4 space-y-3 rounded-lg border border-blue-200 bg-blue-50/35 p-3"
           >
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div>
-                <h4 className="text-sm font-semibold text-slate-900">
-                  Freigabestufe auswählen
-                </h4>
-                <p className="mt-0.5 text-xs leading-5 text-slate-600">
-                  Die Stufe füllt praxistaugliche Rechte vor. Danach können einzelne
-                  Fachbereiche gezielt angepasst werden.
-                </p>
-              </div>
-              {selectedStage && !form.isTenantAdmin && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="border-orange-300 bg-white text-orange-900 hover:bg-orange-100"
-                  disabled={busy}
-                  onClick={() => applyAccessStage(form.accessStage!)}
-                >
-                  <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-                  Stufe wiederherstellen
-                </Button>
-              )}
-            </div>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-              {PLANNING_ACCESS_STAGES.map(stage => {
-                const meta = PLANNING_ACCESS_STAGE_META[stage];
-                const active = form.accessStage === stage;
-                return (
-                  <button
-                    key={stage}
-                    type="button"
-                    disabled={busy || form.isTenantAdmin}
-                    aria-pressed={active}
-                    aria-label={`${meta.title}: ${meta.description}`}
-                    onClick={() => applyAccessStage(stage)}
-                    className={
-                      active
-                        ? "rounded-md border-2 border-orange-500 bg-white p-3 text-left shadow-sm"
-                        : "rounded-md border border-orange-200 bg-white/70 p-3 text-left transition-colors hover:border-orange-400 hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
-                    }
-                  >
-                    <span className="flex items-center justify-between gap-2 text-xs font-bold uppercase tracking-wide text-orange-700">
-                      <span>Stufe {meta.number}</span>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span
-                            className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-orange-200 bg-orange-50 text-orange-700"
-                            aria-hidden="true"
-                          >
-                            <Info className="h-3.5 w-3.5" />
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-64 text-left leading-5">
-                          <p className="font-semibold">{meta.title}</p>
-                          <p className="mt-1 text-xs text-slate-200">{meta.description}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </span>
-                    <span className="mt-1 block text-sm font-semibold text-slate-900">
-                      {meta.shortTitle}
-                    </span>
-                    <span className="mt-1 block text-xs leading-4 text-slate-600">
-                      {meta.focus}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="mt-3 rounded-md border border-orange-200 bg-white/80 px-3 py-2 text-xs leading-5 text-slate-700">
-              {selectedStage ? (
-                <>
-                  <strong>{selectedStage.title}:</strong> {selectedStage.description}
-                  {stageExceptionCount > 0 && (
-                    <span className="ml-1 font-medium text-orange-900">
-                      · {stageExceptionCount} individuelle{stageExceptionCount === 1 ? " Ausnahme" : " Ausnahmen"} aktiv
-                    </span>
-                  )}
-                </>
-              ) : (
-                <>
-                  <strong>Individuelle Freigabe:</strong> Dieser Zugang nutzt keine
-                  gespeicherte Stufenvorlage. Wähle bei Bedarf eine Stufe, um die
-                  Detailrechte wieder auf einen klaren Ausgangspunkt zu setzen.
-                </>
-              )}
-            </div>
-          </section>
-
-          <fieldset className="mt-4 space-y-2.5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <legend className="text-sm font-medium text-slate-900">
-                Zulässige Fachbereiche (Dreistufiger Schalter: Aus / Lesen / Schreiben)
+                Fachbereichsrechte direkt festlegen
               </legend>
               <span className="text-xs text-slate-500">
                 Aus = Modul ausgeblendet · Lesen = nur Ansicht · Schreiben = volle Bearbeitung
               </span>
             </div>
+            <p className="text-xs leading-5 text-slate-600">
+              Wähle für jeden Fachbereich nur die Rechte, die diese Person tatsächlich
+              für ihre Aufgabe braucht. Es gibt keine pauschalen Vorlagen und keine
+              automatische Rechteerweiterung.
+            </p>
             <div className="grid gap-2.5 sm:grid-cols-2">
               {EDITABLE_PLANNING_MODULES.map(module => {
                 const meta = PLANNING_MODULE_META[module];

@@ -4,7 +4,7 @@ import type { Express, Request, Response } from "express";
 const HELPER_TRAINING_VIDEO_URL =
   "https://files.manuscdn.com/user_upload_by_module/session_file/310519663150240576/WZnXHeiEiCYpKqQM.mp4";
 const ADMIN_TRAINING_VIDEO_URL =
-  "https://files.manuscdn.com/user_upload_by_module/session_file/310519663150240576/SBQXEgvLHAANlHMy.mp4";
+  "https://files.manuscdn.com/user_upload_by_module/session_file/310519663150240576/DmaYpZXymWlvZZOf.mp4";
 
 type TrainingVideo = {
   url: string;
@@ -18,7 +18,7 @@ const HELPER_TRAINING_VIDEO: TrainingVideo = {
 
 const ADMIN_TRAINING_VIDEO: TrainingVideo = {
   url: ADMIN_TRAINING_VIDEO_URL,
-  filename: "mycrewmate-administrator-schulung-4-stufen.mp4",
+  filename: "mycrewmate-administrator-schulung-fachbereichsrechte.mp4",
 };
 
 function setVideoHeaders(

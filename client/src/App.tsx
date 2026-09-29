@@ -85,7 +85,6 @@ const Help = lazy(routeLoaders["/hilfe"]);
 const KlemmiFirstLoginPreview = lazy(() => import("@/pages/KlemmiFirstLoginPreview"));
 const KlemmiDashboardPreview = lazy(() => import("@/pages/KlemmiDashboardPreview"));
 const KlemmiPlanLayoutPreview = lazy(() => import("@/pages/KlemmiPlanLayoutPreview"));
-const KlemmiAccessStagesPreview = lazy(() => import("@/pages/KlemmiAccessStagesPreview"));
 const OfferDemo = lazy(() => import("@/pages/OfferDemo"));
 const PublicLegalPage = lazy(() => import("@/pages/PublicLegal"));
 const MasterAdminPortal = lazy(() => import("@/pages/MasterAdminPortal"));
@@ -188,11 +187,6 @@ function Router() {
         <Route path="/_staging/klemmi-einsatzplan">
           <Suspense fallback={<RouteLoading />}>
             <KlemmiPlanLayoutPreview />
-          </Suspense>
-        </Route>
-        <Route path="/_staging/klemmi-access-stages">
-          <Suspense fallback={<RouteLoading />}>
-            <KlemmiAccessStagesPreview />
           </Suspense>
         </Route>
       {/* Nur lokale/Manus-Vorschauen können das Masterportal über diesen Pfad testen.

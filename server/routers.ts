@@ -106,7 +106,6 @@ import {
   type EditablePlanningModule,
   type PlanningModuleAccess,
 } from "@shared/tenant-permissions";
-import { PLANNING_ACCESS_STAGES } from "@shared/planning-access-stages";
 import { MASTER_ADMIN_ORIGIN, isMasterAdminRequestHost } from "@shared/platform-admin";
 import { storagePut, storageRead } from "./storage";
 import { locationLogoUrl } from "./location-logo-routes";
@@ -1073,7 +1072,6 @@ const moduleAccessSchema = z.record(
   z.string(),
   moduleAccessLevelSchema
 );
-const planningAccessStageSchema = z.enum(PLANNING_ACCESS_STAGES).nullable();
 const eventYearInput = z.number().int().min(2020).max(2100);
 const safeExportName = (value: string) =>
   value
@@ -1152,7 +1150,6 @@ async function createContactInitialAccessSheet(input: {
     moduleAccess: (existingAccess?.moduleAccess && typeof existingAccess.moduleAccess === "object"
       ? existingAccess.moduleAccess
       : {}) as import("@shared/tenant-permissions").PlanningModuleAccess,
-    accessStage: existingAccess?.accessStage ?? null,
     isTenantAdmin: existingAccess?.isTenantAdmin ?? false,
     eventIds,
     mustChangePassword: true,
@@ -2386,7 +2383,6 @@ export const appRouter = router({
           email: z.string().email().max(320).optional(),
           modulePermissions: z.array(z.enum(PLANNING_MODULES)).optional(),
           moduleAccess: moduleAccessSchema.optional(),
-          accessStage: planningAccessStageSchema.optional(),
           isTenantAdmin: z.boolean().default(false),
           password: passwordInput,
           eventIds: z.array(z.number().int().positive()).min(1).max(500),
@@ -2410,7 +2406,6 @@ export const appRouter = router({
           moduleAccess: input.isTenantAdmin
             ? Object.fromEntries(EDITABLE_PLANNING_MODULES.map(m => [m, "write"]))
             : input.moduleAccess ?? undefined,
-          accessStage: input.isTenantAdmin ? null : input.accessStage ?? null,
           isTenantAdmin: input.isTenantAdmin,
           passwordHash: await hashPassword(input.password),
           eventIds: input.eventIds,
@@ -2424,7 +2419,6 @@ export const appRouter = router({
           email: z.string().email("Gültige E-Mail-Adresse erforderlich").max(320),
           modulePermissions: z.array(z.enum(PLANNING_MODULES)).optional(),
           moduleAccess: moduleAccessSchema.optional(),
-          accessStage: planningAccessStageSchema.optional(),
           isTenantAdmin: z.boolean().default(false),
           eventIds: z.array(z.number().int().positive()).min(1).max(500),
           sendEmail: z.boolean().default(true),
@@ -2458,7 +2452,6 @@ export const appRouter = router({
           moduleAccess: input.isTenantAdmin
             ? Object.fromEntries(EDITABLE_PLANNING_MODULES.map(m => [m, "write"]))
             : input.moduleAccess ?? undefined,
-          accessStage: input.isTenantAdmin ? null : input.accessStage ?? null,
           isTenantAdmin: input.isTenantAdmin,
           passwordHash: await hashPassword(tempPassword),
           mustChangePassword: true,
@@ -2601,7 +2594,6 @@ export const appRouter = router({
           email: z.string().email().max(320).optional(),
           modulePermissions: z.array(z.enum(PLANNING_MODULES)).optional(),
           moduleAccess: moduleAccessSchema.optional(),
-          accessStage: planningAccessStageSchema.optional(),
           isTenantAdmin: z.boolean().default(false),
           eventIds: z.array(z.number().int().positive()).min(1).max(500),
           currentAdminPassword: z.string().min(1).max(200),
@@ -2637,7 +2629,6 @@ export const appRouter = router({
           moduleAccess: input.isTenantAdmin
             ? Object.fromEntries(EDITABLE_PLANNING_MODULES.map(m => [m, "write"]))
             : input.moduleAccess ?? {},
-          accessStage: input.isTenantAdmin ? null : input.accessStage ?? null,
           isTenantAdmin: input.isTenantAdmin,
           eventIds: input.eventIds,
           mustChangePassword: true,
@@ -2660,7 +2651,6 @@ export const appRouter = router({
           moduleAccess: input.isTenantAdmin
             ? Object.fromEntries(EDITABLE_PLANNING_MODULES.map(m => [m, "write"]))
             : input.moduleAccess ?? undefined,
-          accessStage: input.isTenantAdmin ? null : input.accessStage ?? null,
           isTenantAdmin: input.isTenantAdmin,
           passwordHash: await hashPassword(initialPassword),
           mustChangePassword: true,
@@ -2687,7 +2677,6 @@ export const appRouter = router({
           email: z.string().email().max(320).nullable().optional(),
           modulePermissions: z.array(z.enum(PLANNING_MODULES)).optional(),
           moduleAccess: moduleAccessSchema.optional(),
-          accessStage: planningAccessStageSchema.optional(),
           isTenantAdmin: z.boolean().optional(),
           password: passwordInput.optional(),
           eventIds: z.array(z.number().int().positive()).min(1).max(500),
@@ -2728,7 +2717,6 @@ export const appRouter = router({
             input.isTenantAdmin === true
               ? Object.fromEntries(EDITABLE_PLANNING_MODULES.map(m => [m, "write"]))
               : input.moduleAccess ?? undefined,
-          accessStage: input.isTenantAdmin === true ? null : input.accessStage,
           isTenantAdmin: input.isTenantAdmin,
           passwordHash: input.password ? await hashPassword(input.password) : undefined,
           eventIds: input.eventIds,

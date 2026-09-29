@@ -721,35 +721,35 @@ const HELP_CHAPTERS: HelpChapter[] = [
     number: 9,
     title: "Administrator-Schulung",
     keywords:
-      "administrator schulung freigabestufen rechte zugang ansprechpartner aus lesen schreiben sicherheit",
+      "administrator schulung fachbereichsrechte rechte zugang ansprechpartner aus lesen schreiben sicherheit",
     icon: GraduationCap,
     accent: "border-orange-200 bg-orange-50 text-orange-900",
     topics: [
       {
-        id: "freigabestufen-schulungsvideo",
-        title: "9.1 Schulungsvideo: Vier Freigabestufen sicher anwenden",
+        id: "fachbereichsrechte-schulungsvideo",
+        title: "9.1 Schulungsvideo: Fachbereichsrechte sicher vergeben",
         audience: ["admin"],
         keywords:
-          "video stufe 1 stufe 2 stufe 3 stufe 4 aus lesen schreiben ausnahme wiederherstellen",
+          "video fachbereich aus lesen schreiben rechte zuweisen einsatzplan helfer material vorbereiten",
         summary:
-          "Klemmi zeigt im Schulungsvideo den vollständigen Ablauf: Zugang öffnen, Freigabestufe wählen, individuelle Ausnahmen setzen und bei Bedarf den verlässlichen Stufenstandard wiederherstellen.",
+          "Klemmi zeigt im Schulungsvideo den vollständigen Ablauf: Zugang öffnen, Fachbereiche passend zur Aufgabe auf Aus, Lesen oder Schreiben stellen und die Rechte später gezielt anpassen.",
         steps: [
           "Unter Schutz & Protokoll die Planungsteam-Zugänge öffnen.",
-          "Für den Ansprechpartner die passende Freigabestufe auswählen.",
-          "Nur bei Bedarf einzelne Fachbereiche mit Aus, Lesen oder Schreiben abweichend einstellen.",
-          "Mit „Stufe wiederherstellen“ jederzeit zum Standard der gewählten Stufe zurückkehren.",
+          "Für jeden Fachbereich direkt die Rechte auswählen, die für die konkrete Aufgabe erforderlich sind.",
+          "Nicht benötigte Fachbereiche auf Aus lassen; nur bei Bedarf auf Lesen oder Schreiben schalten.",
+          "Ändern sich Aufgaben, die betreffenden Fachbereiche gezielt auf Aus, Lesen oder Schreiben umstellen.",
         ],
         callout: {
           tone: "security",
           title: "Rechte bleiben nachvollziehbar",
-          text: "Die Stufe ist eine praxistaugliche Vorlage. Maßgeblich bleiben die gespeicherten, serverseitig geprüften Fachbereichsrechte.",
+          text: "Es gibt keine pauschalen Vorlagen und keine automatische Rechteerweiterung. Maßgeblich bleiben die gespeicherten, serverseitig geprüften Fachbereichsrechte.",
         },
         video: {
           src: "/api/help/administrator-training-video",
           ariaLabel:
-            "MyCrewMate Administrator-Schulung zu den vier Freigabestufen und individuellen Ausnahmen",
+            "MyCrewMate Administrator-Schulung zu direkten Fachbereichsrechten",
           caption:
-            "Klemmi erklärt die vier Freigabestufen, einzelne Ausnahmen und das Wiederherstellen des sicheren Standards.",
+            "Klemmi erklärt die direkte Vergabe von Fachbereichsrechten und die sichere Anpassung einzelner Aufgabenbereiche.",
         },
         workspace: {
           href: "/sicherheit",

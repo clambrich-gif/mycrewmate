@@ -1,0 +1,1 @@
+ALTER TABLE `planning_team_accesses` DROP COLUMN `accessStage`;

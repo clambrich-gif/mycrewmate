@@ -1279,7 +1279,6 @@ export type PlanningTeamAccessSummary = {
   email: string | null;
   modulePermissions: import("../shared/tenant-permissions").PlanningModule[];
   moduleAccess: import("../shared/tenant-permissions").PlanningModuleAccess;
-  accessStage: import("../shared/planning-access-stages").PlanningAccessStageId | null;
   isTenantAdmin: boolean;
   eventIds: number[];
   mustChangePassword: boolean;
@@ -1294,7 +1293,6 @@ type PlanningTeamAccessCredential = {
   email: string | null;
   modulePermissions: import("../shared/tenant-permissions").PlanningModule[];
   moduleAccess: import("../shared/tenant-permissions").PlanningModuleAccess;
-  accessStage: import("../shared/planning-access-stages").PlanningAccessStageId | null;
   isTenantAdmin: boolean;
   passwordHash: string;
   mustChangePassword: boolean;
@@ -1387,7 +1385,6 @@ export async function listPlanningTeamAccesses(): Promise<
       email: planningTeamAccesses.email,
       modulePermissions: planningTeamAccesses.modulePermissions,
       moduleAccess: planningTeamAccesses.moduleAccess,
-      accessStage: planningTeamAccesses.accessStage,
       isTenantAdmin: planningTeamAccesses.isTenantAdmin,
       mustChangePassword: planningTeamAccesses.mustChangePassword,
       createdAt: planningTeamAccesses.createdAt,
@@ -1423,7 +1420,6 @@ export async function listPlanningTeamAccesses(): Promise<
             : Object.fromEntries(
                 (Array.isArray(row.modulePermissions) ? row.modulePermissions : []).map(m => [m, "write"])
               ),
-        accessStage: row.accessStage,
         isTenantAdmin: row.isTenantAdmin,
         eventIds: [] as number[],
         mustChangePassword: row.mustChangePassword,
@@ -1460,7 +1456,6 @@ export async function listPlanningTeamAccessCredentials(): Promise<
       email: planningTeamAccesses.email,
       modulePermissions: sql<import("../shared/tenant-permissions").PlanningModule[]>`COALESCE(${planningTeamAccesses.modulePermissions}, JSON_ARRAY())`,
       moduleAccess: planningTeamAccesses.moduleAccess,
-      accessStage: planningTeamAccesses.accessStage,
       isTenantAdmin: planningTeamAccesses.isTenantAdmin,
       passwordHash: planningTeamAccesses.passwordHash,
       mustChangePassword: planningTeamAccesses.mustChangePassword,
@@ -1497,7 +1492,6 @@ export async function listPlanningTeamAccessCredentialsByEmail(email: string): P
       email: planningTeamAccesses.email,
       modulePermissions: sql<import("../shared/tenant-permissions").PlanningModule[]>`COALESCE(${planningTeamAccesses.modulePermissions}, JSON_ARRAY())`,
       moduleAccess: planningTeamAccesses.moduleAccess,
-      accessStage: planningTeamAccesses.accessStage,
       isTenantAdmin: planningTeamAccesses.isTenantAdmin,
       passwordHash: planningTeamAccesses.passwordHash,
       mustChangePassword: planningTeamAccesses.mustChangePassword,
@@ -1558,7 +1552,6 @@ export async function getPlanningTeamAccessCredentialForCurrentTenant(
       email: planningTeamAccesses.email,
       modulePermissions: sql<import("../shared/tenant-permissions").PlanningModule[]>`COALESCE(${planningTeamAccesses.modulePermissions}, JSON_ARRAY())`,
       moduleAccess: planningTeamAccesses.moduleAccess,
-      accessStage: planningTeamAccesses.accessStage,
       isTenantAdmin: planningTeamAccesses.isTenantAdmin,
       passwordHash: planningTeamAccesses.passwordHash,
       mustChangePassword: planningTeamAccesses.mustChangePassword,
@@ -1657,7 +1650,6 @@ export async function createPlanningTeamAccess(input: {
   email?: string | null;
   modulePermissions?: import("../shared/tenant-permissions").PlanningModule[];
   moduleAccess?: import("../shared/tenant-permissions").PlanningModuleAccess;
-  accessStage?: import("../shared/planning-access-stages").PlanningAccessStageId | null;
   isTenantAdmin?: boolean;
   passwordHash: string;
   mustChangePassword?: boolean;
@@ -1679,7 +1671,6 @@ export async function createPlanningTeamAccess(input: {
       email: normalizedEmail,
       modulePermissions: input.modulePermissions ?? [],
       moduleAccess: input.moduleAccess ?? null,
-      accessStage: input.accessStage ?? null,
       isTenantAdmin: input.isTenantAdmin ?? false,
       passwordHash: input.passwordHash,
       mustChangePassword: input.mustChangePassword ?? false,
@@ -1710,7 +1701,6 @@ export async function updatePlanningTeamAccess(input: {
   email?: string | null;
   modulePermissions?: import("../shared/tenant-permissions").PlanningModule[];
   moduleAccess?: import("../shared/tenant-permissions").PlanningModuleAccess;
-  accessStage?: import("../shared/planning-access-stages").PlanningAccessStageId | null;
   isTenantAdmin?: boolean;
   passwordHash?: string;
   mustChangePassword?: boolean;
@@ -1727,7 +1717,6 @@ export async function updatePlanningTeamAccess(input: {
         email: planningTeamAccesses.email,
         modulePermissions: planningTeamAccesses.modulePermissions,
         moduleAccess: planningTeamAccesses.moduleAccess,
-        accessStage: planningTeamAccesses.accessStage,
         isTenantAdmin: planningTeamAccesses.isTenantAdmin,
         sessionVersion: planningTeamAccesses.sessionVersion,
       })
@@ -1753,8 +1742,6 @@ export async function updatePlanningTeamAccess(input: {
       input.moduleAccess === undefined
         ? existing.moduleAccess
         : input.moduleAccess;
-    const nextAccessStage =
-      input.accessStage === undefined ? existing.accessStage : input.accessStage;
     const nextIsTenantAdmin =
       input.isTenantAdmin === undefined
         ? existing.isTenantAdmin
@@ -1770,7 +1757,6 @@ export async function updatePlanningTeamAccess(input: {
         email: nextEmail,
         modulePermissions: nextPermissions ?? [],
         moduleAccess: nextModuleAccess ?? null,
-        accessStage: nextAccessStage,
         isTenantAdmin: nextIsTenantAdmin,
         ...(input.passwordHash ? { passwordHash: input.passwordHash } : {}),
         ...(input.mustChangePassword !== undefined

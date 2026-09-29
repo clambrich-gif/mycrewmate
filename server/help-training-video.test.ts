@@ -31,8 +31,10 @@ describe("Schulungsvideo im Hilfe-Center", () => {
     const guide = source("client/src/components/HelpGuide.tsx");
 
     expect(guide).toContain('title: "Administrator-Schulung"');
-    expect(guide).toContain("Schulungsvideo: Vier Freigabestufen sicher anwenden");
+    expect(guide).toContain("Schulungsvideo: Fachbereichsrechte sicher vergeben");
     expect(guide).toContain('src: "/api/help/administrator-training-video"');
     expect(guide).toContain('aria-label={topic.video.ariaLabel}');
+    expect(guide).not.toContain("freigabestufen-schulungsvideo");
+    expect(guide).not.toContain("Die Stufe ist eine praxistaugliche Vorlage");
   });
 });
