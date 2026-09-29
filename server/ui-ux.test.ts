@@ -689,7 +689,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain("onRequestSnapshotRefresh={refreshChatSnapshot}");
     expect(layout).toContain("unreadNotesCount");
     expect(layout).toContain("hasImportantUnread={hasImportantUnread}");
-    expect(layout).toContain("onOpenChat={openChatWidget}");
+    expect(layout).toContain("onOpenChat={productAllowsChat ? openChatWidget : undefined}");
     expect(layout).toContain("window.setInterval(refreshChatSnapshot, CHAT_SNAPSHOT_POLL_MS)");
     expect(layout).toContain("utils.client.notes.list.query({ limit: 150 })");
     expect(layout).toContain("if (orderedNotes.length === 0)");
@@ -1113,8 +1113,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const css = source("client/src/index.css");
     const app = source("client/src/App.tsx");
 
-    expect(layout).toContain("visibleNavigationSections(effectiveNavigationRole");
-    expect(layout.match(/visibleNavigationSections\(effectiveNavigationRole/g)).toHaveLength(2);
+    expect(layout).toContain("const navigationSections = useMemo");
+    expect(layout).toContain("visibleNavigationSections(\n        effectiveNavigationRole");
+    expect(layout.match(/visibleNavigationSections\(/g)).toHaveLength(1);
     expect(layout).toContain("navigationItemClasses(effectiveNavigationRole, href, active)");
     expect(layout.match(/navigationItemClasses\(effectiveNavigationRole, href, active\)/g)).toHaveLength(2);
     expect(layout).not.toContain("uppercase tracking-wider text-slate-400");

@@ -1921,6 +1921,33 @@ async function assertNoPlanningTeamEmailConflict(
   }
 }
 
+/**
+ * Sperrt neue persönliche Planungsteamzugänge am Datenrand. Der Lock auf den
+ * bereits vorhandenen Zugängen verhindert, dass parallele Browseranfragen das
+ * Paketlimit umgehen können.
+ */
+async function assertCurrentProductPlanningTeamAccessCapacity(database: DBClient) {
+  const entitlement = await getCurrentTenantProductEntitlement();
+  const limit = entitlement.entitlements.maxPersonalPlanningAccesses;
+  if (limit === null) return;
+  const existingAccesses = await database
+    .selectDistinct({ id: planningTeamAccesses.id })
+    .from(planningTeamAccesses)
+    .innerJoin(
+      planningTeamAccessEvents,
+      eq(planningTeamAccessEvents.accessId, planningTeamAccesses.id)
+    )
+    .innerJoin(events, eq(events.id, planningTeamAccessEvents.eventId))
+    .where(eq(events.tenantId, tenant()))
+    .for("update");
+  if (existingAccesses.length >= limit) {
+    const productLabel = entitlement.packageId === "light" ? "Light" : "Event Pass";
+    throw new Error(
+      `${productLabel} erlaubt maximal ${limit} persönliche Teamzugänge. Bitte entfernen Sie einen Zugang oder wechseln Sie das Paket.`
+    );
+  }
+}
+
 export async function createPlanningTeamAccess(input: {
   label: string;
   contactId?: number | null;
@@ -1935,6 +1962,7 @@ export async function createPlanningTeamAccess(input: {
 }) {
   const database = (await getDb()) as DB;
   return database.transaction(async tx => {
+    await assertCurrentProductPlanningTeamAccessCapacity(tx);
     const eventIds = await requireExistingEvents(tx, input.eventIds);
     const contact = input.contactId
       ? await requireExistingContactForPlanningTeamAccess(tx, input.contactId)
@@ -2667,58 +2695,89 @@ export async function updateEventDetails(
   });
 }
 
+/**
+ * Prüft den vertraglichen Veranstaltungsumfang innerhalb eines Jahres. Der
+ * vollständige Zähler läuft in derselben Transaktion wie die Anlage, damit ein
+ * doppelter Klick oder zwei parallele Sitzungen kein zusätzliches Event erzeugen.
+ */
+async function assertCurrentProductEventCapacity(database: DBClient, eventYear: number) {
+  const entitlement = await getCurrentTenantProductEntitlement();
+  const limit = entitlement.entitlements.maxEventsPerYear;
+  if (limit === null) return;
+  const existingEvents = await database
+    .select({ id: events.id })
+    .from(events)
+    .where(and(eq(events.tenantId, tenant()), eq(events.year, eventYear)))
+    .for("update");
+  if (existingEvents.length >= limit) {
+    const productLabel = entitlement.packageId === "light" ? "Light" : "Event Pass";
+    throw new Error(
+      `${productLabel} erlaubt maximal ${limit} Hauptveranstaltung${limit === 1 ? "" : "en"} pro Veranstaltungsjahr. Bitte wählen Sie ein anderes Jahr oder wechseln Sie das Paket.`
+    );
+  }
+}
+
 export async function createEvent(
   name: string,
   eventYear = year(),
   activeDays: Weekday[] = [...WEEKDAYS]
 ) {
-  const db = (await getDb()) as DB;
-  await ensureEventYear(eventYear);
-  const normalizedName = normalizeEventName(name);
-  const selectedTenant = tenant();
-  const [existing] = await db
-    .select()
-    .from(events)
-    .where(
-      and(
-        eq(events.tenantId, selectedTenant),
-        eq(events.year, eventYear),
-        eq(events.name, normalizedName)
+  const database = (await getDb()) as DB;
+  return database.transaction(async tx => {
+    const normalizedName = normalizeEventName(name);
+    const selectedTenant = tenant();
+    await tx
+      .insert(eventYears)
+      .values({ year: eventYear, label: `Veranstaltungsjahr ${eventYear}` })
+      .onDuplicateKeyUpdate({ set: { label: `Veranstaltungsjahr ${eventYear}` } });
+    const [existing] = await tx
+      .select()
+      .from(events)
+      .where(
+        and(
+          eq(events.tenantId, selectedTenant),
+          eq(events.year, eventYear),
+          eq(events.name, normalizedName)
+        )
       )
-    )
-    .limit(1);
-  if (existing)
+      .limit(1)
+      .for("update");
+    if (existing) {
+      return {
+        ...existing,
+        activeDays: eventWeekdays(existing.activeDays),
+        created: false,
+      };
+    }
+
+    await assertCurrentProductEventCapacity(tx, eventYear);
+    const result: any = await tx
+      .insert(events)
+      .values({
+        tenantId: selectedTenant,
+        year: eventYear,
+        name: normalizedName,
+        activeDays,
+      });
+    const id = Number(result?.[0]?.insertId ?? result?.insertId);
     return {
-      ...existing,
-      activeDays: eventWeekdays(existing.activeDays),
-      created: false,
-    };
-  const result: any = await db
-    .insert(events)
-    .values({
+      id,
       tenantId: selectedTenant,
       year: eventYear,
       name: normalizedName,
       activeDays,
-    });
-  const id = Number(result?.[0]?.insertId ?? result?.insertId);
-  return {
-    id,
-    tenantId: selectedTenant,
-    year: eventYear,
-    name: normalizedName,
-    activeDays,
-    pdfLogoKey: null,
-    pdfLogoUrl: null,
-    whatsAppHelperRequestTemplate: null,
-    whatsAppMessageTemplate: null,
-    pdfLogoFallback: "none" as const,
-    donationTargetKuchen: 0,
-    donationTargetSalat: 0,
-    donationTargetSnack: 0,
-    donationTargetSonstiges: 0,
-    created: true,
-  };
+      pdfLogoKey: null,
+      pdfLogoUrl: null,
+      whatsAppHelperRequestTemplate: null,
+      whatsAppMessageTemplate: null,
+      pdfLogoFallback: "none" as const,
+      donationTargetKuchen: 0,
+      donationTargetSalat: 0,
+      donationTargetSnack: 0,
+      donationTargetSonstiges: 0,
+      created: true,
+    };
+  });
 }
 
 export async function deleteEvent(id: number) {
@@ -3302,6 +3361,7 @@ export async function createContact(v: {
       phone: v.phone ?? null,
     });
     if (passwordHash) {
+      await assertCurrentProductPlanningTeamAccessCapacity(tx);
       const accessResult: any = await tx.insert(planningTeamAccesses).values({
         contactId: id,
         label: normalizedName,
@@ -3372,6 +3432,7 @@ export async function updateContact(
         })
         .where(eq(planningTeamAccesses.id, access.id));
     } else if (passwordHash) {
+      await assertCurrentProductPlanningTeamAccessCapacity(tx);
       const accessResult: any = await tx.insert(planningTeamAccesses).values({
         contactId: id,
         label: contact.name,
@@ -3531,8 +3592,9 @@ async function assertCurrentProductHelperCapacity(database: DBClient) {
     .where(planningScope(helpers))
     .for("update");
   if (existingHelpers.length >= limit) {
+    const productLabel = entitlement.packageId === "light" ? "Light" : "Event Pass";
     throw new Error(
-      `Der Event Pass erlaubt maximal ${limit} Helfer pro Veranstaltung. Bitte reduzieren Sie die Helferliste oder wechseln Sie das Paket.`
+      `${productLabel} erlaubt maximal ${limit} Helfer pro Veranstaltung. Bitte reduzieren Sie die Helferliste oder wechseln Sie das Paket.`
     );
   }
 }
@@ -4444,8 +4506,9 @@ export async function createHelperWithDonation(input: {
       const entitlement = await getCurrentTenantProductEntitlement();
       const limit = entitlement.entitlements.maxHelpersPerEvent;
       if (limit !== null && scopedHelpers.length >= limit) {
+        const productLabel = entitlement.packageId === "light" ? "Light" : "Event Pass";
         throw new Error(
-          `Der Event Pass erlaubt maximal ${limit} Helfer pro Veranstaltung. Bitte reduzieren Sie die Helferliste oder wechseln Sie das Paket.`
+          `${productLabel} erlaubt maximal ${limit} Helfer pro Veranstaltung. Bitte reduzieren Sie die Helferliste oder wechseln Sie das Paket.`
         );
       }
       const result: any = await tx.insert(helpers).values({

@@ -62,7 +62,8 @@ describe("Vereinsadministrator-Stellvertretung", () => {
     expect(security).toContain("{isPrimaryTenantAdmin && (");
     expect(layout).toContain("useTenantAdministration");
     expect(layout).toContain("tenantRoleLabel");
-    expect(layout).toContain("visibleNavigationSections(effectiveNavigationRole");
+    expect(layout).toContain("const navigationSections = useMemo");
+    expect(layout).toContain("visibleNavigationSections(\n        effectiveNavigationRole");
     expect(layout).toContain("Passwort erfolgreich gespeichert.");
     expect(layout).toContain("Nutzen Sie dafür Ihre persönliche E-Mail-Adresse");
   });

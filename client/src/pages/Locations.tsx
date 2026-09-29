@@ -1,6 +1,7 @@
 import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
 import { KlemmiActionPanel } from "@/components/KlemmiActionPanel";
 import { KlemmiSurfaceGuide } from "@/components/KlemmiSurfaceGuide";
+import { KlemmiUpgradeDialog } from "@/components/KlemmiUpgradeDialog";
 import { PageTitle } from "@/components/PageTitle";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
+import { productAllowsCapability } from "@shared/product-packages";
 import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import {
   locationLogoMimeType,
@@ -22,7 +24,7 @@ import {
   readFileAsBase64,
   readFileAsDataUrl,
 } from "@/lib/location-logo";
-import { FileImage, FileUp, MapPin, Pencil, Plus, Route, Trash2 } from "lucide-react";
+import { FileImage, FileUp, LockKeyhole, MapPin, Pencil, Plus, Route, Sparkles, Trash2 } from "lucide-react";
 import { ChangeEvent, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -38,8 +40,14 @@ export default function Locations() {
   const { isTenantAdmin: canDelete, canWriteModule } = useTenantAdministration();
   const canManage = canWriteModule("locations");
   const utils = trpc.useUtils();
+  const tenantProduct = trpc.tenantProduct.current.useQuery();
+  const productPackageId = tenantProduct.data?.packageId ?? "pro";
+  const canUseMapsGpx =
+    tenantProduct.isSuccess && productAllowsCapability(productPackageId, "maps_gpx");
   const { data: locations = [], isLoading } = trpc.locations.list.useQuery();
-  const { data: gpxTracks = [], isLoading: tracksLoading } = trpc.gpxTracks.list.useQuery();
+  const { data: gpxTracks = [], isLoading: tracksLoading } = trpc.gpxTracks.list.useQuery(undefined, {
+    enabled: canUseMapsGpx,
+  });
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<LocationForm>(EMPTY_FORM);
@@ -56,6 +64,7 @@ export default function Locations() {
   const [selectedTrackFile, setSelectedTrackFile] = useState<File | null>(null);
   const [editingTrackId, setEditingTrackId] = useState<number | null>(null);
   const [editingTrackName, setEditingTrackName] = useState("");
+  const [gpxUpgradeOpen, setGpxUpgradeOpen] = useState(false);
   const trackInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const invalidate = () => {
@@ -382,7 +391,20 @@ export default function Locations() {
             <p className="text-sm text-slate-600">GPX-Dateien werden als Streckenlinien in der Live-Standortkarte angezeigt. Maximal 6 MB je Datei.</p>
           </div>
         </div>
-        {canManage && (
+        {!canUseMapsGpx ? (
+          <div data-slot="gpx-upgrade-notice" className="rounded-xl border border-orange-200 bg-white p-4 sm:flex sm:items-center sm:justify-between sm:gap-5">
+            <div className="flex gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-800"><LockKeyhole className="size-5" aria-hidden="true" /></span>
+              <div>
+                <p className="font-semibold text-slate-900">Live-Karte und GPX gehören zum Pro-Paket</p>
+                <p className="mt-1 text-sm leading-5 text-slate-600">Deine Orte bleiben im Light-Paket für Schichten, Aufgaben und Material nutzbar. Für Routen, GPS-Punkte und die Live-Standortkarte ist Pro vorgesehen.</p>
+              </div>
+            </div>
+            <Button type="button" variant="outline" className="mt-4 border-orange-300 bg-orange-50 text-orange-950 hover:bg-orange-100 sm:mt-0" onClick={() => setGpxUpgradeOpen(true)}>
+              <Sparkles className="mr-2 size-4" aria-hidden="true" /> Klemmi erklärt Pro
+            </Button>
+          </div>
+        ) : canManage && (
           <div className="grid gap-3 rounded-lg border border-blue-100 bg-white p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
             <Label className="grid gap-1.5 text-sm font-medium">GPX-Datei
               <Input ref={trackInputRef} type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml" onChange={onTrackFileChange} />
@@ -400,7 +422,7 @@ export default function Locations() {
             </Button>
           </div>
         )}
-        <div className="mt-4 divide-y rounded-lg border bg-white">
+        {canUseMapsGpx && <div className="mt-4 divide-y rounded-lg border bg-white">
           {tracksLoading ? <p className="p-3 text-sm text-muted-foreground">Lade Strecken …</p> : gpxTracks.length === 0 ? (
             <p className="p-3 text-sm text-muted-foreground">Noch keine GPX-Strecke hinterlegt.</p>
           ) : gpxTracks.map(track => {
@@ -445,7 +467,7 @@ export default function Locations() {
               </div>
             );
           })}
-        </div>
+        </div>}
       </section>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -533,6 +555,12 @@ export default function Locations() {
         onConfirm={adminPassword => {
           if (trackDeleteTarget) removeTrack.mutate({ id: trackDeleteTarget.id, adminPassword });
         }}
+      />
+      <KlemmiUpgradeDialog
+        open={gpxUpgradeOpen}
+        onOpenChange={setGpxUpgradeOpen}
+        currentPackageId={productPackageId}
+        capability="maps_gpx"
       />
     </div>
   );

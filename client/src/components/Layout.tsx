@@ -3,6 +3,7 @@ import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
 import { ForcePasswordChangeModal } from "@/components/ForcePasswordChangeModal";
 import { FirstLoginOnboarding } from "@/components/FirstLoginOnboarding";
 import { KlemmiLoginGreeting } from "@/components/KlemmiLoginGreeting";
+import { KlemmiUpgradeDialog } from "@/components/KlemmiUpgradeDialog";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -79,7 +80,10 @@ import { COPYRIGHT_NOTICE } from "@shared/branding";
 import { ACTIVE_PILOT_TENANT } from "@shared/tenant";
 import {
   PRODUCT_PACKAGE_META,
+  productCapabilityForAppRoute,
+  productAllowsCapability,
   productAllowsAppRoute,
+  type ProductCapability,
 } from "@shared/product-packages";
 import {
   eventStartSelectionSessionKey,
@@ -98,6 +102,7 @@ import {
   EyeOff,
   FileImage,
   KeyRound,
+  LockKeyhole,
   Loader2,
   LogOut,
   Menu,
@@ -358,6 +363,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     }
   );
   const [impressumOpen, setImpressumOpen] = useState(false);
+  const [upgradeCapability, setUpgradeCapability] = useState<ProductCapability | null>(null);
   const [yearDialogOpen, setYearDialogOpen] = useState(false);
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
   const [eventManagerOpen, setEventManagerOpen] = useState(false);
@@ -647,6 +653,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const selectedEvent = events.data?.find(item => item.id === eventId);
   const productPackageId = tenantProduct.data?.packageId ?? "pro";
   const isEventPass = productPackageId === "event_pass";
+  const productAllowsChat = productAllowsCapability(productPackageId, "chat");
   const eventPassUnavailable = isEventPass && tenantProduct.data?.isUsable === false;
   const productName = PRODUCT_PACKAGE_META[productPackageId].name;
   const productStatusLabel = tenantProduct.data
@@ -660,14 +667,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         effectiveNavigationRole,
         myPermissions.data,
         myModuleAccess.data
-      )
-        .map(section => ({
-          ...section,
-          items: section.items.filter(item =>
-            productAllowsAppRoute(productPackageId, item.href)
-          ),
-        }))
-        .filter(section => section.items.length > 0),
+      ),
     [
       effectiveNavigationRole,
       myModuleAccess.data,
@@ -680,9 +680,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       tenantProduct.isSuccess &&
       !productAllowsAppRoute(productPackageId, location)
     ) {
-      toast.info(
-        "Dieser Bereich ist im Event Pass nicht enthalten. Du bist wieder in der enthaltenen Eventplanung."
-      );
+      setUpgradeCapability(productCapabilityForAppRoute(location));
       setLocation("/");
     }
   }, [location, productPackageId, setLocation, tenantProduct.isSuccess]);
@@ -824,7 +822,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     ) {
       return;
     }
-    if (isEventPass) return;
+    if (!productAllowsChat) return;
     void refreshChatSnapshot();
     const timer = window.setInterval(refreshChatSnapshot, CHAT_SNAPSHOT_POLL_MS);
     return () => {
@@ -837,7 +835,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }, [
     isAuthenticated,
     isCredentialBootstrapPending,
-    isEventPass,
+    productAllowsChat,
     isPlanningTeamEventScopeResolving,
     refreshChatSnapshot,
     year,
@@ -864,11 +862,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    if (!isAuthenticated || isEventPass || !location.startsWith("/dashboard")) return;
+    if (!isAuthenticated || !productAllowsChat || !location.startsWith("/dashboard")) return;
     if (new URLSearchParams(window.location.search).get("chat") === "open") {
       openChatWidget();
     }
-  }, [isAuthenticated, isEventPass, location]);
+  }, [isAuthenticated, productAllowsChat, location]);
 
   useEffect(() => {
     if (!isAuthenticated || !years.data?.length) return;
@@ -1532,7 +1530,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex min-h-10 items-center justify-center border-y border-slate-200 bg-slate-50 px-3 py-1.5">
             <OnlinePresenceBadge
               counts={onlinePresence.counts}
-              onOpenChat={openChatWidget}
+              onOpenChat={productAllowsChat ? openChatWidget : undefined}
               className="min-h-7 max-w-full"
             />
           </div>
@@ -1715,18 +1713,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
             )}
           </div>
           <nav className="flex-1 space-y-1 overflow-y-auto p-2">
-            {visibleNavigationSections(effectiveNavigationRole, myPermissions.data, myModuleAccess.data)
-              .map(section => ({
-                ...section,
-                items: section.items.filter(item =>
-                  productAllowsAppRoute(productPackageId, item.href)
-                ),
-              }))
-              .filter(section => section.items.length > 0)
-              .map(section => (
+            {navigationSections.map(section => (
               <div key={section.id} className="space-y-1">
-                {section.items.map(({ href, label, icon: Icon }) => {
-                  const active = location === href;
+              {section.items.map(({ href, label, icon: Icon }) => {
+                const active = location === href;
+                  const productLocked = !productAllowsAppRoute(productPackageId, href);
+                  const lockedCapability = productCapabilityForAppRoute(href);
                   const access = active
                     ? activeNavigationAccess(
                         effectiveNavigationRole,
@@ -1739,17 +1731,26 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     <Link
                       key={href}
                       href={href}
-                      onClick={() => setMobileMenuOpen(false)}
+                      aria-disabled={productLocked || undefined}
+                      onClick={event => {
+                        if (productLocked) {
+                          event.preventDefault();
+                          setUpgradeCapability(lockedCapability);
+                        }
+                        setMobileMenuOpen(false);
+                      }}
                       onFocus={() => preloadRoute(href)}
                       onMouseEnter={() => preloadRoute(href)}
                       onTouchStart={() => preloadRoute(href)}
                       className={cn(
                         "flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-150",
+                        productLocked && "border border-dashed border-orange-200 bg-orange-50/60 text-orange-950 hover:bg-orange-100",
                         navigationItemClasses(effectiveNavigationRole, href, active)
                       )}
                     >
                       <Icon className="h-5 w-5 shrink-0" />
                       <span className="min-w-0 flex-1">{label}</span>
+                      {productLocked && <LockKeyhole className="size-3.5 text-orange-700" aria-label="Im Paket gesperrt" />}
                       {access && <ActiveNavigationAccessIndicator access={access} />}
                     </Link>
                   );
@@ -1815,7 +1816,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div className="flex min-h-10 items-center justify-center border-y border-slate-200 bg-white/35 px-3 py-1.5">
           <OnlinePresenceBadge
             counts={onlinePresence.counts}
-            onOpenChat={openChatWidget}
+            onOpenChat={productAllowsChat ? openChatWidget : undefined}
             className="min-h-7 max-w-full"
           />
         </div>
@@ -1962,18 +1963,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-2 pb-2 pt-1.5 space-y-0.5">
-          {visibleNavigationSections(effectiveNavigationRole, myPermissions.data, myModuleAccess.data)
-            .map(section => ({
-              ...section,
-              items: section.items.filter(item =>
-                productAllowsAppRoute(productPackageId, item.href)
-              ),
-            }))
-            .filter(section => section.items.length > 0)
-            .map(section => (
+          {navigationSections.map(section => (
             <div key={section.id} className="space-y-0.5">
               {section.items.map(({ href, label, icon: Icon }) => {
                 const active = location === href;
+                  const productLocked = !productAllowsAppRoute(productPackageId, href);
+                  const lockedCapability = productCapabilityForAppRoute(href);
                   const access = active
                     ? activeNavigationAccess(
                         effectiveNavigationRole,
@@ -1986,15 +1981,23 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   <Link
                     key={href}
                     href={href}
+                    aria-disabled={productLocked || undefined}
+                    onClick={event => {
+                      if (!productLocked) return;
+                      event.preventDefault();
+                      setUpgradeCapability(lockedCapability);
+                    }}
                       onFocus={() => preloadRoute(href)}
                       onMouseEnter={() => preloadRoute(href)}
                       className={cn(
                         "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all duration-150",
+                        productLocked && "border border-dashed border-orange-200 bg-orange-50/60 text-orange-950 hover:bg-orange-100",
                         navigationItemClasses(effectiveNavigationRole, href, active)
                       )}
                   >
                     <Icon className="h-4 w-4 shrink-0" />
                     <span className="min-w-0 flex-1">{label}</span>
+                    {productLocked && <LockKeyhole className="size-3.5 text-orange-700" aria-label="Im Paket gesperrt" />}
                     {access && <ActiveNavigationAccessIndicator access={access} />}
                   </Link>
                 );
@@ -2653,7 +2656,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </DialogContent>
       </Dialog>
 
-      {isAuthenticated && !isEventPass && (
+      <KlemmiUpgradeDialog
+        open={upgradeCapability !== null}
+        onOpenChange={open => !open && setUpgradeCapability(null)}
+        currentPackageId={productPackageId}
+        capability={upgradeCapability}
+      />
+      {isAuthenticated && productAllowsChat && (
         <LiveChatWidget
           state={chatState}
         snapshot={chatSnapshot}

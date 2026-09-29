@@ -427,38 +427,50 @@ async function enforceProductEventScope(
 
 async function requireCurrentProductCapability(capability: ProductCapability) {
   const entitlement = await db.getCurrentTenantProductEntitlement();
-  if (entitlement.packageId === "event_pass" && !entitlement.isUsable) {
+  if (
+    (entitlement.packageId === "event_pass" || entitlement.packageId === "light") &&
+    !entitlement.isUsable
+  ) {
+    const productName = entitlement.packageId === "light" ? "Light" : "Event Pass";
     throw new TRPCError({
       code: "FORBIDDEN",
-      message:
-        "Der Event Pass ist aktuell nicht aktiv. Bitte wenden Sie sich an die Plattformverwaltung.",
+      message: `Das Paket ${productName} ist aktuell nicht aktiv. Bitte wenden Sie sich an die Plattformverwaltung.`,
     });
   }
   if (!db.currentProductAllowsCapability) return;
   if (!(await db.currentProductAllowsCapability(capability))) {
+    const message =
+      entitlement.packageId === "light"
+        ? "Diese Funktion ist im Light-Paket nicht enthalten. Light umfasst eine Hauptveranstaltung pro Jahr, bis zu 150 Helfer, fünf persönliche Teamzugänge sowie Ansprechpartner, Orte, Material, Vor- und Nachbereitung. Für mehrere Events, Live-Chat, Spenden, Finanzen oder Karten und GPX-Strecken ist Pro vorgesehen."
+        : "Diese Funktion ist im Event Pass nicht enthalten. Der Event Pass umfasst eine Veranstaltung mit bis zu 50 Helfern, Vorbereitung, Einsatzplan und Standard-PDF-Listen.";
     throw new TRPCError({
       code: "FORBIDDEN",
-      message:
-        "Diese Funktion ist im Event Pass nicht enthalten. Der Event Pass umfasst eine Veranstaltung mit bis zu 50 Helfern, Vorbereitung, Einsatzplan und Standard-PDF-Listen.",
+      message,
     });
   }
 }
 
 async function requireCurrentProductModule(module: EditablePlanningModule) {
   const entitlement = await db.getCurrentTenantProductEntitlement();
-  if (entitlement.packageId === "event_pass" && !entitlement.isUsable) {
+  if (
+    (entitlement.packageId === "event_pass" || entitlement.packageId === "light") &&
+    !entitlement.isUsable
+  ) {
+    const productName = entitlement.packageId === "light" ? "Light" : "Event Pass";
     throw new TRPCError({
       code: "FORBIDDEN",
-      message:
-        "Der Event Pass ist aktuell nicht aktiv. Bitte wenden Sie sich an die Plattformverwaltung.",
+      message: `Das Paket ${productName} ist aktuell nicht aktiv. Bitte wenden Sie sich an die Plattformverwaltung.`,
     });
   }
   if (!db.currentProductAllowsPlanningModule) return;
   if (!(await db.currentProductAllowsPlanningModule(module))) {
+    const message =
+      entitlement.packageId === "light"
+        ? "Dieser Bereich ist im Light-Paket nicht enthalten. Bitte wenden Sie sich für ein Upgrade auf Pro an die Plattformverwaltung."
+        : "Dieser Bereich ist im Event Pass nicht enthalten. Bitte wenden Sie sich bei Bedarf an die Plattformverwaltung.";
     throw new TRPCError({
       code: "FORBIDDEN",
-      message:
-        "Dieser Bereich ist im Event Pass nicht enthalten. Bitte wenden Sie sich bei Bedarf an die Plattformverwaltung.",
+      message,
     });
   }
 }
@@ -3635,8 +3647,8 @@ export const appRouter = router({
   }),
 
   gpxTracks: router({
-    list: moduleReadProcedure("locations").query(() => db.listGpxTracks()),
-    mapData: moduleReadProcedure("locations").query(async () => {
+    list: productModuleReadProcedure("locations", "maps_gpx").query(() => db.listGpxTracks()),
+    mapData: productModuleReadProcedure("locations", "maps_gpx").query(async () => {
       const tracks = await db.listGpxTracks();
       const loaded = await Promise.all(
         tracks.map(async track => {
@@ -3653,7 +3665,7 @@ export const appRouter = router({
       );
       return loaded.filter((track): track is GpxMapTrack => track !== null);
     }),
-    upload: moduleWriteProcedure("locations")
+    upload: productModuleWriteProcedure("locations", "maps_gpx")
       .input(
         z.object({
           name: z.string().trim().min(1).max(200),
@@ -3696,7 +3708,7 @@ export const appRouter = router({
         });
         return { ...result, fileUrl: uploaded.url };
       }),
-    rename: moduleWriteProcedure("locations")
+    rename: productModuleWriteProcedure("locations", "maps_gpx")
       .input(
         z.object({
           id: z.number().int().positive(),
@@ -3704,7 +3716,7 @@ export const appRouter = router({
         })
       )
       .mutation(({ input }) => db.updateGpxTrackName(input.id, input.name)),
-    remove: productCapabilityAdminProcedure("locations")
+    remove: productCapabilityAdminProcedure("maps_gpx")
       .input(
         z.object({
           id: z.number().int().positive(),

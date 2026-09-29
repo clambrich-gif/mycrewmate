@@ -44,6 +44,7 @@ import {
   eventCountdownState,
   type EventCountdownState,
 } from "@shared/event-dates";
+import { productAllowsCapability } from "@shared/product-packages";
 
 type PriorityAction = {
   id: string;
@@ -1021,6 +1022,10 @@ export default function Dashboard() {
     trpc.events.current.useQuery();
   const { data: currentTenant, isLoading: isTenantLoading } =
     trpc.tenants.current.useQuery();
+  const tenantProduct = trpc.tenantProduct.current.useQuery();
+  const canUseMapsGpx =
+    tenantProduct.isSuccess &&
+    productAllowsCapability(tenantProduct.data?.packageId ?? "pro", "maps_gpx");
   const { data: dashboardLocations = [] } = trpc.locations.list.useQuery(undefined, {
     enabled: canReadLocations,
   });
@@ -1538,9 +1543,11 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      <section data-dashboard-level="Live-Standortkarte" className="w-full">
-        <LocationMapCard />
-      </section>
+      {canUseMapsGpx && (
+        <section data-dashboard-level="Live-Standortkarte" className="w-full">
+          <LocationMapCard />
+        </section>
+      )}
     </div>
   );
 }

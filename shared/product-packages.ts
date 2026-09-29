@@ -46,11 +46,15 @@ export const PRODUCT_CAPABILITIES = [
   "project_backup",
   "marketing",
   "approvals",
+  "maps_gpx",
 ] as const;
 
 export type ProductCapability = (typeof PRODUCT_CAPABILITIES)[number];
 
 export type ProductPackageEntitlements = {
+  /** Höchstzahl von Veranstaltungen innerhalb eines Veranstaltungsjahres. */
+  maxEventsPerYear: number | null;
+  /** Historischer Kompatibilitätswert für den einmaligen Event Pass. */
   maxEventsPerTenant: number | null;
   maxHelpersPerEvent: number | null;
   maxPersonalPlanningAccesses: number | null;
@@ -82,6 +86,26 @@ const EVENT_PASS_CAPABILITIES: Readonly<Record<ProductCapability, boolean>> = Ob
   project_backup: false,
   marketing: false,
   approvals: false,
+  maps_gpx: false,
+});
+
+/**
+ * Light ist bewusst kein verkleinertes Pro: Es begleitet eine jährliche
+ * Hauptveranstaltung mit einem kleinen persönlichen Team. Live-Kommunikation,
+ * Spenden/Finanzen sowie Karten- und Streckenplanung bleiben Pro vorbehalten.
+ */
+const LIGHT_CAPABILITIES: Readonly<Record<ProductCapability, boolean>> = Object.freeze({
+  ...UNLIMITED_PRODUCT_CAPABILITIES,
+  additional_events: false,
+  event_deletion: false,
+  donations: false,
+  finances: false,
+  chat: false,
+  excel: false,
+  project_backup: false,
+  marketing: false,
+  approvals: false,
+  maps_gpx: false,
 });
 
 const EVENT_PASS_ROUTE_ALLOWLIST = new Set([
@@ -101,26 +125,28 @@ export const PRODUCT_PACKAGE_ENTITLEMENTS: Readonly<
   Record<ProductPackageId, ProductPackageEntitlements>
 > = Object.freeze({
   event_pass: {
+    maxEventsPerYear: 1,
     maxEventsPerTenant: 1,
     maxHelpersPerEvent: 50,
     maxPersonalPlanningAccesses: 0,
     capabilities: EVENT_PASS_CAPABILITIES,
   },
-  // Paket 2 aktiviert bewusst nur den Event Pass. Light, Pro und Enterprise
-  // behalten bis zu ihren jeweiligen Ausbaupaketen ihren bisherigen Umfang.
   light: {
+    maxEventsPerYear: 1,
     maxEventsPerTenant: null,
-    maxHelpersPerEvent: null,
-    maxPersonalPlanningAccesses: null,
-    capabilities: UNLIMITED_PRODUCT_CAPABILITIES,
+    maxHelpersPerEvent: 150,
+    maxPersonalPlanningAccesses: 5,
+    capabilities: LIGHT_CAPABILITIES,
   },
   pro: {
+    maxEventsPerYear: null,
     maxEventsPerTenant: null,
     maxHelpersPerEvent: null,
     maxPersonalPlanningAccesses: null,
     capabilities: UNLIMITED_PRODUCT_CAPABILITIES,
   },
   enterprise: {
+    maxEventsPerYear: null,
     maxEventsPerTenant: null,
     maxHelpersPerEvent: null,
     maxPersonalPlanningAccesses: null,
@@ -158,7 +184,40 @@ export function productAllowsPlanningModule(
 }
 
 export function productAllowsAppRoute(packageId: ProductPackageId, path: string) {
-  return packageId !== "event_pass" || EVENT_PASS_ROUTE_ALLOWLIST.has(path);
+  if (packageId === "event_pass") return EVENT_PASS_ROUTE_ALLOWLIST.has(path);
+  const capability = productCapabilityForAppRoute(path);
+  return !capability || productAllowsCapability(packageId, capability);
+}
+
+const PRODUCT_ROUTE_CAPABILITY: Readonly<Partial<Record<string, ProductCapability>>> = {
+  "/ansprechpartner": "contacts",
+  "/helfer": "helpers",
+  "/einsatzplan": "schedule",
+  "/vorbereitung": "preparation",
+  "/nachbereitung": "postprocessing",
+  "/material": "materials",
+  "/spenden": "donations",
+  "/kuchen": "donations",
+  "/finanzen": "finances",
+  "/pdf-export": "pdf",
+  "/orte": "locations",
+  "/marketing": "marketing",
+  "/genehmigungen": "approvals",
+};
+
+export function productCapabilityForAppRoute(path: string): ProductCapability | null {
+  return PRODUCT_ROUTE_CAPABILITY[path] ?? null;
+}
+
+/** Ermittelt das kleinste reguläre Paket, das eine gesperrte Funktion enthält. */
+export function requiredUpgradePackageForCapability(
+  currentPackageId: ProductPackageId,
+  capability: ProductCapability
+): ProductPackageId | null {
+  if (productAllowsCapability(currentPackageId, capability)) return null;
+  if (productAllowsCapability("light", capability)) return "light";
+  if (productAllowsCapability("pro", capability)) return "pro";
+  return "enterprise";
 }
 
 export type ProductPackageMeta = {
@@ -169,9 +228,8 @@ export type ProductPackageMeta = {
 };
 
 /**
- * Zentrale, bewusst produktneutrale Grundlage für die Paketsteuerung.
- * Paket 1 zeigt und speichert diese Zuordnung ausschließlich im Master-Admin;
- * fachliche Modul- und Mengenprüfungen folgen schrittweise in den Paketen 2–5.
+ * Zentrale Grundlage für die Paketsteuerung. Paketzuordnung, serverseitige
+ * Entitlements und individuelle Fachbereichsrechte bleiben bewusst getrennt.
  */
 export const PRODUCT_PACKAGE_META: Record<ProductPackageId, ProductPackageMeta> = {
   event_pass: {

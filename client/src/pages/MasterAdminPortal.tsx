@@ -493,6 +493,9 @@ export default function MasterAdminPortal() {
   const [createForm, setCreateForm] = useState<CreateTenantForm>(
     defaultCreateTenantForm
   );
+  const [tenantPackageFilter, setTenantPackageFilter] = useState<
+    "all" | ProductPackageId
+  >("all");
   const [productModalTenant, setProductModalTenant] = useState<TenantOverviewItem | null>(null);
   const [productAssignmentForm, setProductAssignmentForm] = useState<ProductAssignmentForm | null>(null);
   const [adminModalTenant, setAdminModalTenant] = useState<{ id: string; name: string } | null>(null);
@@ -770,6 +773,16 @@ export default function MasterAdminPortal() {
   const allTenants = (tenants.length > 0 ? tenants : displayTenants) as TenantOverviewItem[];
   const activeTenants = allTenants.filter(tenant => tenant.status !== "archived");
   const archivedTenants = allTenants.filter(tenant => tenant.status === "archived");
+  const filteredActiveTenants = activeTenants.filter(
+    tenant =>
+      tenantPackageFilter === "all" ||
+      tenant.productAssignment.packageId === tenantPackageFilter
+  );
+  const filteredArchivedTenants = archivedTenants.filter(
+    tenant =>
+      tenantPackageFilter === "all" ||
+      tenant.productAssignment.packageId === tenantPackageFilter
+  );
   const pilotCount = activeTenants.filter(tenant => tenant.status === "pilot").length;
   const managedEventCount = activeTenants.reduce((sum, tenant) => sum + tenant.eventCount, 0);
   const personalAccesses = (accessInventory.data ?? []) as PlatformAccessInventoryItem[];
@@ -1020,14 +1033,39 @@ export default function MasterAdminPortal() {
         <section className="grid gap-4 lg:grid-cols-[1.7fr_1fr]">
           <Card className="border-slate-200 bg-white/95 py-0 shadow-sm">
             <CardHeader className="border-b border-slate-100 px-5 py-4 sm:px-6">
-              <CardTitle className="flex items-center gap-2 text-base"><Building2 className="size-5 text-blue-700" /> Vereine &amp; Pilotprojekte</CardTitle>
-              <CardDescription>Aktive, pausierte sowie interne Pilot- und Mustervereine sicher verwalten. Archivierte Vereine werden getrennt geführt; eine öffentliche Freischaltung bleibt gesperrt.</CardDescription>
+              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-base"><Building2 className="size-5 text-blue-700" /> Vereine &amp; Pilotprojekte</CardTitle>
+                  <CardDescription className="mt-1">Aktive, pausierte sowie interne Pilot- und Mustervereine sicher verwalten. Archivierte Vereine werden getrennt geführt; eine öffentliche Freischaltung bleibt gesperrt.</CardDescription>
+                </div>
+                <label className="grid min-w-48 gap-1.5 text-xs font-semibold text-slate-700" data-slot="tenant-package-filter">
+                  Produktpaket filtern
+                  <Select
+                    value={tenantPackageFilter}
+                    onValueChange={(value: "all" | ProductPackageId) => setTenantPackageFilter(value)}
+                  >
+                    <SelectTrigger className="h-9 bg-white text-sm font-medium"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Alle Produktpakete</SelectItem>
+                      {PRODUCT_PACKAGE_IDS.map(packageId => (
+                        <SelectItem key={packageId} value={packageId}>
+                          {PRODUCT_PACKAGE_META[packageId].name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </label>
+              </div>
             </CardHeader>
             <CardContent className="divide-y divide-slate-100 px-5 sm:px-6">
-              {activeTenants.length === 0 && (
-                <p className="py-6 text-sm text-slate-500">Aktuell befinden sich keine Vereine in der laufenden Verwaltung.</p>
+              {filteredActiveTenants.length === 0 && (
+                <p className="py-6 text-sm text-slate-500">
+                  {tenantPackageFilter === "all"
+                    ? "Aktuell befinden sich keine Vereine in der laufenden Verwaltung."
+                    : `Keine laufenden Vereine mit ${PRODUCT_PACKAGE_META[tenantPackageFilter].name} gefunden.`}
+                </p>
               )}
-              {activeTenants.map(tenant => {
+              {filteredActiveTenants.map(tenant => {
                 const status = STATUS_META[tenant.status as TenantStatus];
                 return (
                   <article key={tenant.id} className="grid gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
@@ -1188,10 +1226,14 @@ export default function MasterAdminPortal() {
               </CardDescription>
             </CardHeader>
             <CardContent className="divide-y divide-slate-200 px-5 sm:px-6">
-              {archivedTenants.length === 0 ? (
-                <p className="py-5 text-sm text-slate-500">Keine archivierten Vereine vorhanden.</p>
+              {filteredArchivedTenants.length === 0 ? (
+                <p className="py-5 text-sm text-slate-500">
+                  {tenantPackageFilter === "all"
+                    ? "Keine archivierten Vereine vorhanden."
+                    : `Keine archivierten Vereine mit ${PRODUCT_PACKAGE_META[tenantPackageFilter].name} gefunden.`}
+                </p>
               ) : (
-                archivedTenants.map(tenant => (
+                filteredArchivedTenants.map(tenant => (
                   <article key={tenant.id} className="grid gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
@@ -1338,7 +1380,7 @@ export default function MasterAdminPortal() {
               <div className="sm:col-span-2">
                 <p className="text-sm font-semibold text-slate-800">Gebuchtes Produkt</p>
                 <p className="mt-1 text-xs leading-5 text-slate-600">
-                  Diese Zuordnung ist nur im Master-Admin sichtbar. Funktionsgrenzen werden schrittweise in den nächsten Paketen aktiviert.
+                  Die Produktzuordnung steuert die technischen Funktionsgrenzen des Vereins. Persönliche Fachbereichsrechte bleiben davon unabhängig.
                 </p>
               </div>
               <label className="space-y-1.5">
@@ -1561,7 +1603,7 @@ export default function MasterAdminPortal() {
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="text-xs leading-5 text-slate-600">Der Event Pass wird in Paket 2 technisch auf diese einzelne Veranstaltung begrenzt.</p>
+                  <p className="text-xs leading-5 text-slate-600">Der Event Pass wird technisch auf diese einzelne Veranstaltung begrenzt.</p>
                 </label>
               )}
               <div className="grid gap-4 sm:grid-cols-2">

@@ -30,6 +30,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { KlemmiTriggerMascot } from "@/components/KlemmiMascot";
+import { KlemmiUpgradeDialog } from "@/components/KlemmiUpgradeDialog";
 import { downloadBase64File } from "@/lib/download";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -41,6 +42,7 @@ import {
   Info,
   Link2,
   LoaderCircle,
+  LockKeyhole,
   Mail,
   Pencil,
   Plus,
@@ -49,6 +51,7 @@ import {
   Send,
   ShieldCheck,
   ShieldAlert,
+  Sparkles,
   Trash2,
 } from "lucide-react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
@@ -60,6 +63,7 @@ import {
   type PlanningModuleAccess,
   type PlanningModuleAccessLevel,
 } from "@shared/tenant-permissions";
+import { productAllowsCapability } from "@shared/product-packages";
 
 type FormState = {
   id: number | null;
@@ -143,11 +147,24 @@ export function PlanningTeamAccessManager({
 }) {
   const { user } = useAuth();
   const utils = trpc.useUtils();
-  const accesses = trpc.planningTeamAccesses.list.useQuery();
-  const availableContacts = trpc.planningTeamAccesses.availableContacts.useQuery();
-  const availableEvents = trpc.planningTeamAccesses.availableEvents.useQuery();
+  const tenantProduct = trpc.tenantProduct.current.useQuery();
+  const productPackageId = tenantProduct.data?.packageId ?? "pro";
+  const canUsePersonalAccesses =
+    tenantProduct.isSuccess &&
+    productAllowsCapability(productPackageId, "personal_accesses");
+  const accesses = trpc.planningTeamAccesses.list.useQuery(undefined, {
+    enabled: canUsePersonalAccesses,
+  });
+  const availableContacts = trpc.planningTeamAccesses.availableContacts.useQuery(undefined, {
+    enabled: canUsePersonalAccesses,
+  });
+  const availableEvents = trpc.planningTeamAccesses.availableEvents.useQuery(undefined, {
+    enabled: canUsePersonalAccesses,
+  });
   const administrativeContext =
-    trpc.planningTeamAccesses.administrativeContext.useQuery();
+    trpc.planningTeamAccesses.administrativeContext.useQuery(undefined, {
+      enabled: canUsePersonalAccesses,
+    });
   const isPlanningTeamIdentity =
     user?.openId.startsWith("planning-team-access-") === true;
   const isDelegatedTenantAdmin =
@@ -181,6 +198,7 @@ export function PlanningTeamAccessManager({
   } | null>(null);
   const [sendLinkTarget, setSendLinkTarget] = useState<AccessSummary | null>(null);
   const [sendLinkPassword, setSendLinkPassword] = useState("");
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   useEffect(() => {
     if (guideFocus === "existing") {
@@ -439,6 +457,41 @@ export function PlanningTeamAccessManager({
       .join(" · ");
   const busy =
     createAccess.isPending || updateAccess.isPending || resetAndPrint.isPending;
+
+  if (tenantProduct.isSuccess && !canUsePersonalAccesses) {
+    return (
+      <div
+        data-slot="personal-accesses-upgrade-notice"
+        className="rounded-xl border border-orange-200 bg-orange-50/60 p-4"
+      >
+        <div className="flex gap-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-800">
+            <LockKeyhole className="size-5" aria-hidden="true" />
+          </span>
+          <div>
+            <p className="font-semibold text-slate-900">Persönliche Teamzugänge gehören zum Light-Paket</p>
+            <p className="mt-1 text-sm leading-5 text-slate-600">
+              Im Event Pass wird die Planung mit dem Vereinsadmin geführt. Light ergänzt bis zu fünf persönliche Zugänge mit individuellen Fachrechten.
+            </p>
+          </div>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-4 border-orange-300 bg-white text-orange-950 hover:bg-orange-100"
+          onClick={() => setUpgradeOpen(true)}
+        >
+          <Sparkles className="mr-2 size-4" aria-hidden="true" /> Klemmi erklärt Light
+        </Button>
+        <KlemmiUpgradeDialog
+          open={upgradeOpen}
+          onOpenChange={setUpgradeOpen}
+          currentPackageId={productPackageId}
+          capability="personal_accesses"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3" data-planning-team-access-manager>
