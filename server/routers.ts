@@ -109,6 +109,7 @@ import {
 import {
   PRODUCT_ASSIGNMENT_STATUSES,
   PRODUCT_PACKAGE_IDS,
+  PRODUCT_PACKAGE_META,
   type ProductCapability,
 } from "@shared/product-packages";
 import { MASTER_ADMIN_ORIGIN, isMasterAdminRequestHost } from "@shared/platform-admin";
@@ -427,11 +428,8 @@ async function enforceProductEventScope(
 
 async function requireCurrentProductCapability(capability: ProductCapability) {
   const entitlement = await db.getCurrentTenantProductEntitlement();
-  if (
-    (entitlement.packageId === "event_pass" || entitlement.packageId === "light") &&
-    !entitlement.isUsable
-  ) {
-    const productName = entitlement.packageId === "light" ? "Light" : "Event Pass";
+  if (!entitlement.isUsable) {
+    const productName = PRODUCT_PACKAGE_META[entitlement.packageId].name;
     throw new TRPCError({
       code: "FORBIDDEN",
       message: `Das Paket ${productName} ist aktuell nicht aktiv. Bitte wenden Sie sich an die Plattformverwaltung.`,
@@ -452,11 +450,8 @@ async function requireCurrentProductCapability(capability: ProductCapability) {
 
 async function requireCurrentProductModule(module: EditablePlanningModule) {
   const entitlement = await db.getCurrentTenantProductEntitlement();
-  if (
-    (entitlement.packageId === "event_pass" || entitlement.packageId === "light") &&
-    !entitlement.isUsable
-  ) {
-    const productName = entitlement.packageId === "light" ? "Light" : "Event Pass";
+  if (!entitlement.isUsable) {
+    const productName = PRODUCT_PACKAGE_META[entitlement.packageId].name;
     throw new TRPCError({
       code: "FORBIDDEN",
       message: `Das Paket ${productName} ist aktuell nicht aktiv. Bitte wenden Sie sich an die Plattformverwaltung.`,

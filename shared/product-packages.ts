@@ -139,10 +139,10 @@ export const PRODUCT_PACKAGE_ENTITLEMENTS: Readonly<
     capabilities: LIGHT_CAPABILITIES,
   },
   pro: {
-    maxEventsPerYear: null,
+    maxEventsPerYear: 5,
     maxEventsPerTenant: null,
-    maxHelpersPerEvent: null,
-    maxPersonalPlanningAccesses: null,
+    maxHelpersPerEvent: 350,
+    maxPersonalPlanningAccesses: 14,
     capabilities: UNLIMITED_PRODUCT_CAPABILITIES,
   },
   enterprise: {
@@ -257,7 +257,8 @@ export const PRODUCT_PACKAGE_META: Record<ProductPackageId, ProductPackageMeta> 
   pro: {
     name: "Pro",
     priceLabel: "299 € · Veranstaltungsjahr",
-    shortDescription: "Der volle Vereinsumfang für aktive Teams.",
+    shortDescription:
+      "Bis zu 5 Veranstaltungen, 350 Helfer je Event und 14 persönliche Teamzugänge.",
     assignmentStatusLabel: {
       test: "Testzugang",
       active: "Aktiv",

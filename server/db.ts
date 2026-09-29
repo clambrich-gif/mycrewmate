@@ -82,6 +82,7 @@ import {
 import {
   DEFAULT_PRODUCT_ASSIGNMENT_STATUS,
   DEFAULT_PRODUCT_PACKAGE_ID,
+  PRODUCT_PACKAGE_META,
   PRODUCT_PACKAGE_ENTITLEMENTS,
   productAllowsCapability,
   productAllowsPlanningModule,
@@ -1926,10 +1927,16 @@ async function assertNoPlanningTeamEmailConflict(
  * bereits vorhandenen Zugängen verhindert, dass parallele Browseranfragen das
  * Paketlimit umgehen können.
  */
-async function assertCurrentProductPlanningTeamAccessCapacity(database: DBClient) {
+async function assertCurrentProductPlanningTeamAccessCapacity(
+  database: DBClient,
+  options: { isTenantAdmin?: boolean; excludeAccessId?: number } = {}
+) {
   const entitlement = await getCurrentTenantProductEntitlement();
   const limit = entitlement.entitlements.maxPersonalPlanningAccesses;
   if (limit === null) return;
+  // Pro enthält Co-Admins zusätzlich zu den 14 persönlichen Planungsteamzugängen.
+  // In Light und Event Pass zählen sämtliche Zugänge gegen ihr jeweiliges Limit.
+  if (entitlement.packageId === "pro" && options.isTenantAdmin) return;
   const existingAccesses = await database
     .selectDistinct({ id: planningTeamAccesses.id })
     .from(planningTeamAccesses)
@@ -1938,10 +1945,20 @@ async function assertCurrentProductPlanningTeamAccessCapacity(database: DBClient
       eq(planningTeamAccessEvents.accessId, planningTeamAccesses.id)
     )
     .innerJoin(events, eq(events.id, planningTeamAccessEvents.eventId))
-    .where(eq(events.tenantId, tenant()))
+    .where(
+      and(
+        eq(events.tenantId, tenant()),
+        entitlement.packageId === "pro"
+          ? eq(planningTeamAccesses.isTenantAdmin, false)
+          : undefined,
+        options.excludeAccessId !== undefined
+          ? notEq(planningTeamAccesses.id, options.excludeAccessId)
+          : undefined
+      )
+    )
     .for("update");
   if (existingAccesses.length >= limit) {
-    const productLabel = entitlement.packageId === "light" ? "Light" : "Event Pass";
+    const productLabel = PRODUCT_PACKAGE_META[entitlement.packageId].name;
     throw new Error(
       `${productLabel} erlaubt maximal ${limit} persönliche Teamzugänge. Bitte entfernen Sie einen Zugang oder wechseln Sie das Paket.`
     );
@@ -1962,7 +1979,9 @@ export async function createPlanningTeamAccess(input: {
 }) {
   const database = (await getDb()) as DB;
   return database.transaction(async tx => {
-    await assertCurrentProductPlanningTeamAccessCapacity(tx);
+    await assertCurrentProductPlanningTeamAccessCapacity(tx, {
+      isTenantAdmin: input.isTenantAdmin ?? false,
+    });
     const eventIds = await requireExistingEvents(tx, input.eventIds);
     const contact = input.contactId
       ? await requireExistingContactForPlanningTeamAccess(tx, input.contactId)
@@ -2051,6 +2070,12 @@ export async function updatePlanningTeamAccess(input: {
       input.isTenantAdmin === undefined
         ? existing.isTenantAdmin
         : input.isTenantAdmin;
+    if (existing.isTenantAdmin && !nextIsTenantAdmin) {
+      await assertCurrentProductPlanningTeamAccessCapacity(tx, {
+        isTenantAdmin: false,
+        excludeAccessId: existing.id,
+      });
+    }
     await assertNoActiveTenantAdminEmailConflict(tx, nextEmail);
     await assertNoPlanningTeamEmailConflict(tx, nextEmail, input.id);
 
@@ -2710,9 +2735,9 @@ async function assertCurrentProductEventCapacity(database: DBClient, eventYear: 
     .where(and(eq(events.tenantId, tenant()), eq(events.year, eventYear)))
     .for("update");
   if (existingEvents.length >= limit) {
-    const productLabel = entitlement.packageId === "light" ? "Light" : "Event Pass";
+    const productLabel = PRODUCT_PACKAGE_META[entitlement.packageId].name;
     throw new Error(
-      `${productLabel} erlaubt maximal ${limit} Hauptveranstaltung${limit === 1 ? "" : "en"} pro Veranstaltungsjahr. Bitte wählen Sie ein anderes Jahr oder wechseln Sie das Paket.`
+      `${productLabel} erlaubt maximal ${limit} Veranstaltung${limit === 1 ? "" : "en"} pro Veranstaltungsjahr. Bitte wählen Sie ein anderes Jahr oder wechseln Sie das Paket.`
     );
   }
 }
@@ -3592,7 +3617,7 @@ async function assertCurrentProductHelperCapacity(database: DBClient) {
     .where(planningScope(helpers))
     .for("update");
   if (existingHelpers.length >= limit) {
-    const productLabel = entitlement.packageId === "light" ? "Light" : "Event Pass";
+    const productLabel = PRODUCT_PACKAGE_META[entitlement.packageId].name;
     throw new Error(
       `${productLabel} erlaubt maximal ${limit} Helfer pro Veranstaltung. Bitte reduzieren Sie die Helferliste oder wechseln Sie das Paket.`
     );
@@ -4506,7 +4531,7 @@ export async function createHelperWithDonation(input: {
       const entitlement = await getCurrentTenantProductEntitlement();
       const limit = entitlement.entitlements.maxHelpersPerEvent;
       if (limit !== null && scopedHelpers.length >= limit) {
-        const productLabel = entitlement.packageId === "light" ? "Light" : "Event Pass";
+        const productLabel = PRODUCT_PACKAGE_META[entitlement.packageId].name;
         throw new Error(
           `${productLabel} erlaubt maximal ${limit} Helfer pro Veranstaltung. Bitte reduzieren Sie die Helferliste oder wechseln Sie das Paket.`
         );
