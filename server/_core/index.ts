@@ -12,6 +12,7 @@ import { registerPublicHelperPdfRoutes } from "../public-helper-pdf-routes";
 import { registerLocationLogoRoutes } from "../location-logo-routes";
 import { registerMarketingVideoRoutes } from "../marketing-video-routes";
 import { registerTenantLogoRoutes } from "../tenant-logo-routes";
+import { registerGameAssetRoutes } from "../game-asset-routes";
 import { handleTeamNotesCleanupHeartbeat } from "../chat-cleanup-heartbeat";
 import { registerLocalStorageRoutes } from "../storage";
 import { createContext } from "./context";
@@ -55,6 +56,7 @@ async function startServer() {
   registerPublicHelperPdfRoutes(app);
   registerLocationLogoRoutes(app);
   registerTenantLogoRoutes(app);
+  registerGameAssetRoutes(app);
   registerLocalStorageRoutes(app);
   registerMarketingVideoRoutes(app);
   app.post("/api/scheduled/team-notes-cleanup", handleTeamNotesCleanupHeartbeat);
