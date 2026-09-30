@@ -6,6 +6,7 @@ import {
   type ProductPackageId,
 } from "../shared/product-packages";
 import { createDashboardKlemmiSteps } from "../client/src/lib/dashboard-klemmi-tour";
+import { getHelperGuideSteps } from "../client/src/components/KlemmiHelperGuide";
 import {
   getPdfKlemmiSteps,
   getSecurityKlemmiSteps,
@@ -182,6 +183,21 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
     expect(lightDashboardSteps.find(step => step.key === "map-locked")).toMatchObject({
       audioKey: "map-locked-light",
     });
+  });
+
+  it("erklärt Spenden und WhatsApp-Vorlagen im Helferbereich paketgenau", () => {
+    for (const packageId of ["event_pass", "light"] as const) {
+      const steps = getHelperGuideSteps(packageId);
+      expect(steps.find(step => step.key === "donation")).toMatchObject({ title: "Spenden ab Pro verwalten", audioKey: "donation-locked" });
+      expect(steps.find(step => step.key === "action-whatsapp")).toMatchObject({ title: "Direkt schreiben – Vorlagen ab Pro", audioKey: "action-whatsapp-locked" });
+      expect(steps.find(step => step.key === "action-donation")).toMatchObject({ title: "Geschenk: Spenden ab Pro", audioKey: "action-donation-locked" });
+    }
+    const eventPassSteps = getHelperGuideSteps("event_pass");
+    expect(eventPassSteps.find(step => step.key === "contact")).toMatchObject({ title: "Fest dem Hauptadministrator zugeordnet", audioKey: "contact-event-pass" });
+    expect(eventPassSteps.find(step => step.key === "save")).toMatchObject({ title: "Helfer speichern – dann kann das Team planen", audioKey: "save-locked" });
+    const proSteps = getHelperGuideSteps("pro");
+    expect(proSteps.find(step => step.key === "donation")?.title).toBe("Spende direkt mit erfassen");
+    expect(proSteps.find(step => step.key === "action-whatsapp")?.title).toBe("Nach vollständiger Planung per WhatsApp anfragen");
   });
 
   it("ordnet jede registrierte Tourstimme verbindlich dem Achird-Profil zu", () => {

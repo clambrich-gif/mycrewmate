@@ -1375,6 +1375,7 @@ export default function Helpers() {
               helperDialogOpen={newHelperDialogOpen}
               guideHelperId={displayedHelpers[0]?.id ?? null}
               viewMode={viewMode}
+              currentPackageId={currentPackageId}
               onOpenHelperDialog={openNewHelperDialog}
               onCloseHelperDialog={() => setNewHelperDialogOpen(false)}
               onGuideOpenChange={() => undefined}

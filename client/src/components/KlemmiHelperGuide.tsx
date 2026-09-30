@@ -4,7 +4,9 @@ import { KlemmiMascot, KlemmiTriggerMascot } from "@/components/KlemmiMascot";
 import { KlemmiVoiceControl } from "@/components/KlemmiVoiceControl";
 import { useKlemmiVoice } from "@/hooks/useKlemmiVoice";
 import { isKlemmiAudioId } from "@/lib/klemmiAudio";
+import { getKlemmiFeatureContext } from "@/lib/klemmi-feature-context";
 import { cn } from "@/lib/utils";
+import type { ProductPackageId } from "@shared/product-packages";
 import {
   CheckCircle2,
   ChevronLeft,
@@ -52,6 +54,7 @@ type KlemmiHelperGuideProps = {
   helperDialogOpen: boolean;
   guideHelperId: number | null;
   viewMode: "liste" | "kacheln";
+  currentPackageId: ProductPackageId;
   onOpenHelperDialog: () => void;
   onCloseHelperDialog: () => void;
   onGuideOpenChange: (open: boolean) => void;
@@ -67,6 +70,7 @@ type GuideStep = {
   title: string;
   text: string;
   action: string;
+  audioKey?: string;
 };
 
 const guideSteps: GuideStep[] = [
@@ -206,7 +210,60 @@ const guideSteps: GuideStep[] = [
     text: "Der Papierkorb ist nur rot und anklickbar, wenn dieser Helfer gelöscht werden darf. Bei geschützten oder bereits eingeteilten Personen bleibt er grau. So gehen keine wichtigen Planungsdaten versehentlich verloren.",
     action: "Tour abschließen",
   },
+
 ];
+
+/** Paketbewusste Führung: gesperrte Helferfunktionen werden als Pro-Vorteil erklärt. */
+export function getHelperGuideSteps(currentPackageId: ProductPackageId): GuideStep[] {
+  const donationContext = getKlemmiFeatureContext("donations", currentPackageId);
+  const whatsappContext = getKlemmiFeatureContext("whatsapp_templates", currentPackageId);
+  const isEventPass = currentPackageId === "event_pass";
+  if (!donationContext.isLocked && !whatsappContext.isLocked && !isEventPass) return guideSteps;
+
+  return guideSteps.map(step => {
+    if (step.key === "contact" && isEventPass) {
+      return {
+        ...step,
+        title: "Fest dem Hauptadministrator zugeordnet",
+        text: "Im Event Pass wird jeder Helfer automatisch dem Hauptadministrator als fester Ansprechperson zugeordnet. Weitere Ansprechpartner und die freie Zuordnung ergänzen das Light-Paket. Die Telefonnummer bleibt weiterhin optional und kann direkt hier gepflegt werden.",
+        audioKey: "contact-event-pass",
+      };
+    }
+    if (step.key === "donation") {
+      return {
+        ...step,
+        title: "Spenden ab Pro verwalten",
+        text: `Hier kannst du Sach- und Kuchenspenden erfassen. Hinweis: Die Spendenverwaltung ist ab dem Paket ${donationContext.targetPackageName} verfügbar.`,
+        audioKey: "donation-locked",
+      };
+    }
+    if (step.key === "save" && donationContext.isLocked) {
+      return {
+        ...step,
+        title: "Helfer speichern – dann kann das Team planen",
+        text: "Mit Helfer anlegen wird die Person vollständig übernommen. Erst danach steht sie dem Planungsteam im Einsatzplan zur Auswahl. Die gemeinsame Anlage einer Spende ergänzt das Pro-Paket. Für diese Erklärung musst du den Button nicht drücken.",
+        audioKey: "save-locked",
+      };
+    }
+    if (step.key === "action-whatsapp") {
+      return {
+        ...step,
+        title: "Direkt schreiben – Vorlagen ab Pro",
+        text: `Über den WhatsApp-Button kannst du Helfern direkt schreiben. Hinweis: Automatische Textvorlagen stehen ab dem Paket ${whatsappContext.targetPackageName} bereit – in deiner aktuellen Version tippst du die Nachricht einfach selbst ein.`,
+        audioKey: "action-whatsapp-locked",
+      };
+    }
+    if (step.key === "action-donation") {
+      return {
+        ...step,
+        title: "Geschenk: Spenden ab Pro",
+        text: `Das Geschenke-Symbol steht für Spenden, zum Beispiel Kuchen oder Snacks. Das Schloss zeigt: Die Spendenverwaltung wird ab dem Paket ${donationContext.targetPackageName} freigeschaltet. Helfer, Verfügbarkeiten und Einsatzplan bleiben vollständig nutzbar.`,
+        audioKey: "action-donation-locked",
+      };
+    }
+    return step;
+  });
+}
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -232,6 +289,7 @@ export function KlemmiHelperGuide({
   helperDialogOpen,
   guideHelperId,
   viewMode,
+  currentPackageId,
   onOpenHelperDialog,
   onCloseHelperDialog,
   onGuideOpenChange,
@@ -247,7 +305,8 @@ export function KlemmiHelperGuide({
   const dialogOpenedByGuideRef = useRef(false);
   const returnViewModeRef = useRef<"liste" | "kacheln" | null>(null);
   const { muted, isSpeaking, speak, playOpening, toggleMuted, cancel } = useKlemmiVoice();
-  const step = guideSteps[stepIndex];
+  const steps = useMemo(() => getHelperGuideSteps(currentPackageId), [currentPackageId]);
+  const step = steps[stepIndex];
   const Icon = stepIcon(step.key);
   const selector = useMemo(() => {
     if (!step.selector) return null;
@@ -255,7 +314,7 @@ export function KlemmiHelperGuide({
     if (guideHelperId === null) return null;
     return `${step.selector}[data-klemmi-helper-id="${guideHelperId}"]`;
   }, [guideHelperId, step.helperScoped, step.selector]);
-  const audioCandidate = celebrating ? "helpers-complete" : `helpers-${step.key}`;
+  const audioCandidate = celebrating ? "helpers-complete" : `helpers-${step.audioKey ?? step.key}`;
   const audioClipId = isKlemmiAudioId(audioCandidate) ? audioCandidate : undefined;
   const hasReferenceHelper = guideHelperId !== null;
 
@@ -375,11 +434,11 @@ export function KlemmiHelperGuide({
       onOpenHelperDialog();
       return;
     }
-    if (stepIndex === guideSteps.length - 1) {
+    if (stepIndex === steps.length - 1) {
       setCelebrating(true);
       return;
     }
-    setStepIndex(current => Math.min(current + 1, guideSteps.length - 1));
+    setStepIndex(current => Math.min(current + 1, steps.length - 1));
   };
 
   return (
@@ -471,8 +530,8 @@ export function KlemmiHelperGuide({
                   </div>
 
                   <div className="mt-3 border-t border-slate-100 pt-3" data-klemmi-navigation>
-                    <div className="flex items-center gap-1" aria-label={`Schritt ${stepIndex + 1} von ${guideSteps.length}`}>
-                      {guideSteps.map(item => (
+                    <div className="flex items-center gap-1" aria-label={`Schritt ${stepIndex + 1} von ${steps.length}`}>
+                      {steps.map(item => (
                         <span
                           key={item.key}
                           className={cn(
