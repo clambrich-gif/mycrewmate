@@ -15,6 +15,7 @@ import {
   KLEMMI_AUDIO_VOICE_MANIFEST,
   KLEMMI_VOICE_PROFILE,
 } from "../client/src/lib/klemmiAudio";
+import { getKlemmiLocationGuideCopy } from "../client/src/lib/klemmi-location-guide";
 
 const root = process.cwd();
 const source = (relativePath: string) =>
@@ -198,6 +199,25 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
     const proSteps = getHelperGuideSteps("pro");
     expect(proSteps.find(step => step.key === "donation")?.title).toBe("Spende direkt mit erfassen");
     expect(proSteps.find(step => step.key === "action-whatsapp")?.title).toBe("Nach vollständiger Planung per WhatsApp anfragen");
+  });
+
+  it("erklärt Orte in Plan, Vorbereitung und Nachbereitung paketgenau", () => {
+    for (const area of ["plan", "preparation", "postprocessing"] as const) {
+      const eventPass = getKlemmiLocationGuideCopy(area, "event_pass");
+      expect(eventPass.audioKey).toContain("event-pass");
+      expect(eventPass.text).toContain("Event Pass");
+      expect(eventPass.text).toContain("Karte");
+
+      const light = getKlemmiLocationGuideCopy(area, "light");
+      expect(light.audioKey).toContain("light");
+      expect(light.text).toContain("ab Pro");
+
+      for (const packageId of ["pro", "enterprise"] as const) {
+        const premium = getKlemmiLocationGuideCopy(area, packageId);
+        expect(premium.audioKey).toContain("pro");
+        expect(premium.text).toContain("Pro und Enterprise");
+      }
+    }
   });
 
   it("ordnet jede registrierte Tourstimme verbindlich dem Achird-Profil zu", () => {

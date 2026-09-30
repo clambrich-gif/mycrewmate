@@ -114,6 +114,7 @@ import {
   Plus,
   Settings2,
   Share,
+  Sparkles,
   Trash2,
   TriangleAlert,
 } from "lucide-react";
@@ -685,21 +686,28 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const productPackageId = tenantProduct.data?.packageId ?? "pro";
   const isEventPass = productPackageId === "event_pass";
   const isLight = productPackageId === "light";
-  const hasLimitedPackageSummary = isEventPass || isLight;
+  const isPremiumPackage =
+    productPackageId === "pro" || productPackageId === "enterprise";
+  const hasPackageSummary =
+    isEventPass || isLight || tenantProduct.data?.packageId !== undefined;
   const productAllowsChat = productAllowsCapability(productPackageId, "chat");
-  const limitedPackageUnavailable =
-    hasLimitedPackageSummary && tenantProduct.data?.isUsable === false;
+  const packageUnavailable =
+    hasPackageSummary && tenantProduct.data?.isUsable === false;
   const productName = PRODUCT_PACKAGE_META[productPackageId].name;
   const productStatusLabel = tenantProduct.data
     ? PRODUCT_PACKAGE_META[productPackageId].assignmentStatusLabel[
         tenantProduct.data.status
       ]
     : null;
-  const limitedPackageSummary = limitedPackageUnavailable
+  const packageSummary = packageUnavailable
     ? "Der Zugang ist derzeit pausiert oder abgelaufen."
     : isEventPass
       ? "Eine Veranstaltung · bis 50 Helfer"
-      : "Eine Hauptveranstaltung pro Jahr · bis 150 Helfer";
+      : isLight
+        ? "Eine Hauptveranstaltung pro Jahr · bis 150 Helfer"
+        : productPackageId === "pro"
+          ? "Bis 5 Veranstaltungen pro Jahr · bis 350 Helfer je Event"
+          : "Unbegrenzte Veranstaltungen · unbegrenzt Helfer";
   const navigationSections = useMemo(
     () =>
       visibleNavigationSections(
@@ -1748,25 +1756,39 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 ))}
               </SelectContent>
             </Select>
-            {hasLimitedPackageSummary && (
+            {hasPackageSummary && (
               <div
                 className={cn(
-                  "mt-2 rounded-lg border px-2.5 py-2 text-xs leading-4 shadow-sm",
+                  "relative mt-2 rounded-lg border px-2.5 py-2 text-xs leading-4 shadow-sm",
                   isEventPass
                     ? "border-orange-200 bg-orange-50 text-orange-950"
-                    : "border-slate-200 bg-white text-slate-950"
+                    : isLight
+                      ? "border-slate-200 bg-white text-slate-950"
+                      : productPackageId === "pro"
+                        ? "border-sky-200 bg-sky-50 text-sky-950"
+                        : "border-blue-200 bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-50 text-blue-950"
                 )}
                 data-slot={`product-summary-${productPackageId}`}
               >
+                {isPremiumPackage && (
+                  <Sparkles
+                    className="absolute right-2 top-2 h-3.5 w-3.5 animate-pulse text-amber-400 drop-shadow-sm motion-reduce:animate-none"
+                    aria-label="Premium-Paket"
+                  />
+                )}
                 <span className="font-semibold">{productName}</span>
                 {productStatusLabel ? ` · ${productStatusLabel}` : ""}
                 <span
                   className={cn(
                     "block",
-                    isEventPass ? "text-orange-800" : "text-slate-600"
+                    isEventPass
+                      ? "text-orange-800"
+                      : isPremiumPackage
+                        ? "text-blue-800"
+                        : "text-slate-600"
                   )}
                 >
-                  {limitedPackageSummary}
+                  {packageSummary}
                 </span>
               </div>
             )}
@@ -2050,25 +2072,39 @@ export function Layout({ children }: { children: React.ReactNode }) {
               ))}
             </SelectContent>
           </Select>
-          {hasLimitedPackageSummary && (
+          {hasPackageSummary && (
             <div
               className={cn(
-                "mt-2 rounded-lg border px-2.5 py-2 text-xs leading-4 shadow-sm",
+                "relative mt-2 rounded-lg border px-2.5 py-2 text-xs leading-4 shadow-sm",
                 isEventPass
                   ? "border-orange-200 bg-orange-50 text-orange-950"
-                  : "border-slate-200 bg-white text-slate-950"
+                  : isLight
+                    ? "border-slate-200 bg-white text-slate-950"
+                    : productPackageId === "pro"
+                      ? "border-sky-200 bg-sky-50 text-sky-950"
+                      : "border-blue-200 bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-50 text-blue-950"
               )}
               data-slot={`product-summary-${productPackageId}`}
             >
+              {isPremiumPackage && (
+                <Sparkles
+                  className="absolute right-2 top-2 h-3.5 w-3.5 animate-pulse text-amber-400 drop-shadow-sm motion-reduce:animate-none"
+                  aria-label="Premium-Paket"
+                />
+              )}
               <span className="font-semibold">{productName}</span>
               {productStatusLabel ? ` · ${productStatusLabel}` : ""}
               <span
                 className={cn(
                   "block",
-                  isEventPass ? "text-orange-800" : "text-slate-600"
+                  isEventPass
+                    ? "text-orange-800"
+                    : isPremiumPackage
+                      ? "text-blue-800"
+                      : "text-slate-600"
                 )}
               >
-                {limitedPackageSummary}
+                {packageSummary}
               </span>
             </div>
           )}

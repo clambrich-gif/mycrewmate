@@ -60,6 +60,7 @@ import { TaskLogbookHistory } from "@/components/TaskLogbookHistory";
 import { useMyTasksDefault } from "@/hooks/useMyTasksDefault";
 import { useViewMode } from "@/hooks/useViewMode";
 import { LocationMapLink } from "@/components/LocationMapLink";
+import { getKlemmiLocationGuideCopy } from "@/lib/klemmi-location-guide";
 import {
   parseTaskStatusFilter,
   TASK_STATUS_QUERY_KEY,
@@ -734,6 +735,10 @@ export default function Preparation() {
   const pending = create.isPending || update.isPending;
   const klemmiGuideNeedsSample =
     klemmiGuideStartedEmpty ?? (!isLoading && rows.length === 0);
+  const preparationLocationGuide = getKlemmiLocationGuideCopy(
+    "preparation",
+    currentPackageId
+  );
   const preparationGuideSteps = [
     {
       key: "intro",
@@ -746,17 +751,26 @@ export default function Preparation() {
       action: "Aufgabe anlegen",
     },
     {
+      key: "area-location",
+      selector: '[data-klemmi-target="preparation-area-location"]',
+      eyebrow: "Schritt 1 von 6",
+      title: preparationLocationGuide.title,
+      text: preparationLocationGuide.text,
+      audioKey: preparationLocationGuide.audioKey,
+      action: "Aufgabe formulieren",
+    },
+    {
       key: "task",
       selector: '[data-klemmi-target="preparation-task"]',
-      eyebrow: "Schritt 1 von 5",
+      eyebrow: "Schritt 2 von 6",
       title: "Aufgabe klar formulieren",
-      text: "Beschreibe konkret, was erledigt werden soll. Bereich und Ort helfen, die Aufgabe später schnell wiederzufinden.",
+      text: "Beschreibe konkret, was erledigt werden soll. Bereich und Ort hast du gerade festgelegt; so lässt sich die Aufgabe später schnell wiederfinden.",
       action: "Zuständigkeit festlegen",
     },
     {
       key: "details",
       selector: '[data-klemmi-target="preparation-details"]',
-      eyebrow: "Schritt 2 von 5",
+      eyebrow: "Schritt 3 von 6",
       title: "Verantwortung und Frist zuordnen",
       text: "Wähle bei Bedarf eine verantwortliche Person und einen Termin. Beides kann später jederzeit angepasst werden.",
       action: "Stand dokumentieren",
@@ -764,7 +778,7 @@ export default function Preparation() {
     {
       key: "logbook",
       selector: '[data-klemmi-target="preparation-logbook"]',
-      eyebrow: "Schritt 3 von 5",
+      eyebrow: "Schritt 4 von 6",
       title: "Ersten Stand notieren",
       text: "Im Logbuch gehören wichtige Hinweise, Absprachen und nächste Schritte. Der Eintrag bleibt nachvollziehbar gespeichert.",
       action: "Speichern zeigen",
@@ -772,7 +786,7 @@ export default function Preparation() {
     {
       key: "save",
       selector: '[data-klemmi-target="preparation-save"]',
-      eyebrow: "Schritt 4 von 5",
+      eyebrow: "Schritt 5 von 6",
       title: "Aufgabe speichern",
       text: klemmiGuideNeedsSample
         ? "Klicke auf den markierten Speichern-Button. Erst dein Klick legt die Vorbereitungsaufgabe an."
@@ -784,7 +798,7 @@ export default function Preparation() {
     {
       key: "overview",
       selector: '[data-klemmi-target="preparation-overview"]',
-      eyebrow: "Schritt 5 von 5",
+      eyebrow: "Schritt 6 von 6",
       title: "Vorbereitungsübersicht nutzen",
       text: klemmiGuideNeedsSample
         ? "Deine Musteraufgabe ist jetzt sichtbar. Sie darf als echte Aufgabe stehen bleiben oder kann über das rote Löschen-Symbol wieder entfernt werden."
@@ -1408,7 +1422,7 @@ export default function Preparation() {
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-2">
-            <div className="rounded-xl border border-sky-100 bg-sky-50/60 p-4">
+            <div data-klemmi-target="preparation-area-location" className="rounded-xl border border-sky-100 bg-sky-50/60 p-4">
               <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-sky-800">Aufgabe einordnen</p>
               <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">

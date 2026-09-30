@@ -43,6 +43,7 @@ import {
 import { downloadBase64File } from "@/lib/download";
 import { useMyTasksDefault } from "@/hooks/useMyTasksDefault";
 import { useViewMode } from "@/hooks/useViewMode";
+import { getKlemmiLocationGuideCopy } from "@/lib/klemmi-location-guide";
 import {
   latestPreparationLogbookEntry,
   preparationLogbookEntryCount,
@@ -650,6 +651,12 @@ export default function PostProcessing() {
   const pending = create.isPending || update.isPending;
   const klemmiGuideNeedsSample =
     klemmiGuideStartedEmpty ?? (!isLoading && rows.length === 0);
+  const { data: tenantProduct } = trpc.tenantProduct.current.useQuery();
+  const currentPackageId = tenantProduct?.packageId ?? "event_pass";
+  const postprocessingLocationGuide = getKlemmiLocationGuideCopy(
+    "postprocessing",
+    currentPackageId
+  );
   const postprocessingGuideSteps = [
     {
       key: "intro",
@@ -662,9 +669,18 @@ export default function PostProcessing() {
       action: "Aufgabe anlegen",
     },
     {
+      key: "area-location",
+      selector: '[data-klemmi-target="postprocessing-area-location"]',
+      eyebrow: "Schritt 1 von 6",
+      title: postprocessingLocationGuide.title,
+      text: postprocessingLocationGuide.text,
+      audioKey: postprocessingLocationGuide.audioKey,
+      action: "Aufgabe formulieren",
+    },
+    {
       key: "task",
       selector: '[data-klemmi-target="postprocessing-task"]',
-      eyebrow: "Schritt 1 von 5",
+      eyebrow: "Schritt 2 von 6",
       title: "Aufgabe konkret benennen",
       text: "Schreibe kurz und eindeutig, was nach dem Event erledigt werden muss – zum Beispiel Rückgabe, Abbau oder Abrechnung.",
       action: "Zuständigkeit festlegen",
@@ -672,7 +688,7 @@ export default function PostProcessing() {
     {
       key: "details",
       selector: '[data-klemmi-target="postprocessing-details"]',
-      eyebrow: "Schritt 2 von 5",
+      eyebrow: "Schritt 3 von 6",
       title: "Verantwortung und Termin setzen",
       text: "Ordne die Aufgabe bei Bedarf einer Person zu und lege eine Frist fest. Beides darf später angepasst werden.",
       action: "Übergabe notieren",
@@ -680,7 +696,7 @@ export default function PostProcessing() {
     {
       key: "logbook",
       selector: '[data-klemmi-target="postprocessing-logbook"]',
-      eyebrow: "Schritt 3 von 5",
+      eyebrow: "Schritt 4 von 6",
       title: "Übergabe und Hinweise dokumentieren",
       text: "Im Logbuch kommen wichtige Hinweise, Ergebnisse und nächste Schritte. So bleibt der Abschluss nachvollziehbar.",
       action: "Speichern zeigen",
@@ -688,7 +704,7 @@ export default function PostProcessing() {
     {
       key: "save",
       selector: '[data-klemmi-target="postprocessing-save"]',
-      eyebrow: "Schritt 4 von 5",
+      eyebrow: "Schritt 5 von 6",
       title: "Aufgabe speichern",
       text: klemmiGuideNeedsSample
         ? "Klicke auf den markierten Speichern-Button. Erst dein Klick legt die Nachbereitungsaufgabe an."
@@ -700,7 +716,7 @@ export default function PostProcessing() {
     {
       key: "overview",
       selector: '[data-klemmi-target="postprocessing-overview"]',
-      eyebrow: "Schritt 5 von 5",
+      eyebrow: "Schritt 6 von 6",
       title: "Nachbereitungsübersicht nutzen",
       text: klemmiGuideNeedsSample
         ? "Deine Musteraufgabe ist jetzt sichtbar. Sie darf als echte Aufgabe stehen bleiben oder kann über das rote Löschen-Symbol wieder entfernt werden."
@@ -1296,7 +1312,7 @@ export default function PostProcessing() {
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-2">
-            <div className="rounded-xl border border-rose-100 bg-rose-50/60 p-4">
+            <div data-klemmi-target="postprocessing-area-location" className="rounded-xl border border-rose-100 bg-rose-50/60 p-4">
               <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-rose-800">Aufgabe einordnen</p>
               <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">

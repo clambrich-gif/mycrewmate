@@ -105,6 +105,11 @@ describe("Produktgrenzen: Marke, WhatsApp und Event-Sicherung", () => {
     expect(layout).toContain('data-slot={`product-summary-${productPackageId}`}');
     expect(layout).toContain("Eine Hauptveranstaltung pro Jahr · bis 150 Helfer");
     expect(layout).toContain('"border-slate-200 bg-white text-slate-950"');
+    expect(layout).toContain("Bis 5 Veranstaltungen pro Jahr · bis 350 Helfer je Event");
+    expect(layout).toContain("Unbegrenzte Veranstaltungen · unbegrenzt Helfer");
+    expect(layout).toContain("isPremiumPackage");
+    expect(layout).toContain("<Sparkles");
+    expect(layout).toContain('"border-sky-200 bg-sky-50 text-sky-950"');
   });
 
   it("stellt die globale Klemmi-Stummschaltung bereit, ohne Texte auszublenden", () => {

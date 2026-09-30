@@ -108,6 +108,7 @@ import { LocationMapLink } from "@/components/LocationMapLink";
 import { MyTasksDefaultPin } from "@/components/MyTasksDefaultPin";
 import { KlemmiSurfaceGuide } from "@/components/KlemmiSurfaceGuide";
 import { useMyTasksDefault } from "@/hooks/useMyTasksDefault";
+import { getKlemmiLocationGuideCopy } from "@/lib/klemmi-location-guide";
 import { ViewModeToggle, type ViewMode } from "@/components/ViewModeToggle";
 import { useMobileViewMode, useViewMode } from "@/hooks/useViewMode";
 
@@ -662,6 +663,8 @@ export default function Plan() {
   const { data: helpers = [] } = trpc.helpers.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: locations = [] } = trpc.locations.list.useQuery();
+  const { data: tenantProduct } = trpc.tenantProduct.current.useQuery();
+  const currentPackageId = tenantProduct?.packageId ?? "event_pass";
   const { data: currentEvent, isLoading: isEventLoading } =
     trpc.events.current.useQuery();
   const { data: areaContactRows = [] } = trpc.plan.areaContacts.useQuery();
@@ -688,6 +691,10 @@ export default function Plan() {
   const [mobileAreas, setMobileAreas] = useState<string[]>([]);
   const [mobileStatuses, setMobileStatuses] = useState<PlanStatusFilter[]>(() =>
     status === "alle" ? [] : [status]
+  );
+  const planLocationGuide = getKlemmiLocationGuideCopy(
+    "plan",
+    currentPackageId
   );
   const [mobileWarnings, setMobileWarnings] = useState<PlanWarningSelection[]>(() =>
     warningFilter === "alle" ? [] : [warningFilter]
@@ -1029,8 +1036,8 @@ export default function Plan() {
   const planIsEmptyAtGuideStart = klemmiPlanTourStartedEmpty;
   const planGuideEyebrow = (normalStep: number, practiceStep: number) =>
     planIsEmptyAtGuideStart
-      ? `Schritt ${practiceStep} von 13`
-      : `Schritt ${normalStep} von 13`;
+      ? `Schritt ${practiceStep} von 14`
+      : `Schritt ${normalStep} von 14`;
   const contactNameById = useMemo(
     () => new Map(contacts.map(contact => [contact.id, contact.name])),
     [contacts]
@@ -1949,12 +1956,21 @@ export default function Plan() {
                     eyebrow: planGuideEyebrow(2, 2),
                     title: "Bereich und Aufgabe benennen",
                     text: "Ein klarer Bereich und eine konkrete Aufgabe helfen dem Team, die Schicht in der Liste und auf dem Gelände sofort einzuordnen.",
+                    action: "Ort einordnen",
+                  },
+                  {
+                    key: "location",
+                    selector: '[data-slot="shift-dialog-location"]',
+                    eyebrow: planGuideEyebrow(3, 3),
+                    title: planLocationGuide.title,
+                    text: planLocationGuide.text,
+                    audioKey: planLocationGuide.audioKey,
                     action: "Zeit ergänzen",
                   },
                   {
                     key: "time-window",
                     selector: '[data-klemmi-target="plan-time"]',
-                    eyebrow: planGuideEyebrow(3, 3),
+                    eyebrow: planGuideEyebrow(4, 4),
                     title: "Beginn und Ende festlegen ⏱️",
                     text: "Hier legst du fest, wann die Schicht beginnt und endet. Trage beide Uhrzeiten ein, wenn die Aufgabe zu einem festen Zeitraum besetzt werden muss. Für eine ganztägige Schicht lässt du beide Felder einfach leer. So kann das Team die Helfer später passend zu ihren verfügbaren Zeiten einteilen.",
                     action: "Flexible Belegung erklären",
@@ -1962,7 +1978,7 @@ export default function Plan() {
                   {
                     key: "time",
                     selector: '[data-klemmi-target="plan-flexible-assignment"]',
-                    eyebrow: planGuideEyebrow(4, 4),
+                    eyebrow: planGuideEyebrow(5, 5),
                     title: "Flexible Belegung aktivieren ⏱️✨",
                     text: "Mit der ‚Flexiblen Belegung‘ machst du deine Schicht super flexibel! Beispiel: Deine Schicht geht von 8:00 bis 12:00 Uhr, aber ein Helfer kann nur von 9:00 bis 10:00 Uhr? Kein Problem! Ist das Häkchen gesetzt, kannst du den Helfer trotzdem zuweisen. Im Einsatzplan wird die Schicht dann als ‚knapp besetzt‘ markiert. So siehst du auf einen Blick, dass noch nicht die gesamte Schichtzeit abgedeckt ist und noch weitere Helfer fehlen!",
                     action: "Speichern zeigen",
@@ -1970,7 +1986,7 @@ export default function Plan() {
                   {
                     key: "save",
                     selector: '[data-klemmi-target="plan-save"]',
-                    eyebrow: planGuideEyebrow(5, 5),
+                    eyebrow: planGuideEyebrow(6, 6),
                     title: planIsEmptyAtGuideStart ? "Übungsschicht speichern" : "Schicht speichern",
                     text: planIsEmptyAtGuideStart
                       ? "Trag für die Übung einfach Tag, Bereich, Aufgabe und Bedarf ein. Mit Speichern legst du die Schicht wirklich an. Danach erkläre ich sie direkt an deiner eigenen Kachel."
@@ -1983,7 +1999,7 @@ export default function Plan() {
                     key: "overview",
                     selector: '[data-klemmi-target="plan-overview"]',
                     allowMissingTarget: !planIsEmptyAtGuideStart,
-                    eyebrow: planGuideEyebrow(6, 6),
+                    eyebrow: planGuideEyebrow(7, 7),
                     title: "Schichtkachel und Bedarf lesen",
                     text: planIsEmptyAtGuideStart
                       ? "Super, jetzt siehst du deine erste echte Schichtkachel: oben Tag, Bereich und Aufgabe, darunter der Besetzungsbalken. War sie nur zum Üben, kannst du sie später über das rote Löschen-Symbol oben rechts wieder entfernen. Wenn sie schon passt, bleibt sie einfach stehen."
@@ -1995,7 +2011,7 @@ export default function Plan() {
                     key: "coverage",
                     selector: '[data-klemmi-target="plan-coverage"]',
                     allowMissingTarget: true,
-                    eyebrow: planGuideEyebrow(7, 7),
+                    eyebrow: planGuideEyebrow(8, 8),
                     title: "Offene Plätze sofort erkennen",
                     text: "Die Anzeige zum Personalbedarf sagt zum Beispiel zwei von vier Helfern. Erst wenn die erforderliche Zahl erreicht ist, gilt die Schicht als vollständig besetzt. Darum lohnt sich der Blick auf den Balken bei jeder Änderung.",
                     action: "Auswahlbereich zeigen",
@@ -2004,7 +2020,7 @@ export default function Plan() {
                     key: "candidates",
                     selector: '[data-klemmi-target="plan-candidates"]',
                     allowMissingTarget: true,
-                    eyebrow: planGuideEyebrow(8, 8),
+                    eyebrow: planGuideEyebrow(9, 9),
                     title: "Passende Helfer auswählen",
                     text: "Rechts in der Kachel stehen nur Helfer, die für die Schicht grundsätzlich in Frage kommen. Die Kästchen vorne dienen der Mehrfachauswahl – so füllst du mehrere freie Plätze in einem Schritt statt jede Person einzeln anzulegen.",
                     action: "Statuszeichen erklären",
@@ -2013,7 +2029,7 @@ export default function Plan() {
                     key: "signals",
                     selector: '[data-klemmi-status-area]',
                     allowMissingTarget: true,
-                    eyebrow: planGuideEyebrow(9, 9),
+                    eyebrow: planGuideEyebrow(10, 10),
                     title: "Tageszeichen, Zeitfenster und Begleitung lesen",
                     text: "Die orange Umrandung zeigt dir genau die Helferliste. Falls vor einem Namen eine Uhr steht, kann die Person nur in einem bestimmten Zeitfenster helfen – fahre mit der Maus über Uhr oder Namen, dann siehst du die genauen Zeiten. Ein Familiensymbol bedeutet eine zusätzliche Begleitung; auch deren Hinweis siehst du beim Darüberfahren. Über dem Namen erscheinen außerdem Hinweise für die persönliche PDF. Die Tagesfarben zeigen: Grün ist frei, Gelb schon eingeteilt, Rot nicht verfügbar; „Neu“ heißt noch in keiner Schicht eingeteilt.",
                     action: "Sammelzuordnung zeigen",
@@ -2022,7 +2038,7 @@ export default function Plan() {
                     key: "assign",
                     selector: '[data-klemmi-target="plan-batch-assign"]',
                     allowMissingTarget: true,
-                    eyebrow: planGuideEyebrow(10, 10),
+                    eyebrow: planGuideEyebrow(11, 11),
                     title: "Passende Helfer gesammelt zuordnen",
                     text: "Setze vorne bei allen passenden Personen ein Häkchen und übernimm die Auswahl gesammelt. Mit Maus über Name, Uhr oder Familiensymbol siehst du Zeitfenster, Begleitung und PDF-Hinweise sofort; auf dem Smartphone öffnest du die Details über den Namen. Danach kontrollierst du erneut den Besetzungsbalken.",
                     action: "Filter zeigen",
@@ -2030,7 +2046,7 @@ export default function Plan() {
                   {
                     key: "filters",
                     selector: '[data-klemmi-target="plan-filters"]',
-                    eyebrow: planGuideEyebrow(11, 11),
+                    eyebrow: planGuideEyebrow(12, 12),
                     title: "Viele Schichten schnell eingrenzen",
                     text: "Mit Meine Aufgaben, Tagen, Bereichen, Status und Warnungen reduzierst du die Ansicht auf genau den Teil des Plans, den du gerade prüfen willst. So bleiben auch mehrtägige Veranstaltungen übersichtlich.",
                     action: "Suche zeigen",
@@ -2038,7 +2054,7 @@ export default function Plan() {
                   {
                     key: "search",
                     selector: '[data-klemmi-target="plan-search"]',
-                    eyebrow: planGuideEyebrow(12, 12),
+                    eyebrow: planGuideEyebrow(13, 13),
                     title: "Nach Aufgabe, Bereich oder Helfer suchen",
                     text: "Die Suche findet sofort passende Schichten und Namen. Das hilft zum Beispiel bei einer Rückfrage eines Helfers, wenn du nur seinen Namen oder einen Bereich kennst.",
                     action: "Ansicht wählen",
@@ -2046,7 +2062,7 @@ export default function Plan() {
                   {
                     key: "view",
                     selector: '[data-klemmi-target="plan-view-mode"]',
-                    eyebrow: planGuideEyebrow(13, 13),
+                    eyebrow: planGuideEyebrow(14, 14),
                     title: "Liste oder Kacheln passend zur Aufgabe wählen",
                     text: "Die Kachelansicht eignet sich besonders zum Besetzen, weil Helferlisten und Bedarf direkt nebeneinander stehen. Die Liste ist ideal für einen schnellen Gesamtüberblick. Beide Ansichten zeigen dieselben Planungsdaten.",
                     action: "Fertig",

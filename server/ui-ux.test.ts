@@ -218,7 +218,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain('data-klemmi-target="plan-time"');
     expect(plan).toContain('selector: \'[data-klemmi-target="plan-time"]\'');
     expect(plan).toContain("Beginn und Ende festlegen ⏱️");
-    expect(plan).toContain("Schritt ${practiceStep} von 13");
+    expect(plan).toContain("Schritt ${practiceStep} von 14");
+    expect(plan).toContain('data-slot="shift-dialog-location"');
+    expect(plan).toContain("getKlemmiLocationGuideCopy");
     expect(plan).toContain('data-klemmi-target="plan-flexible-assignment"');
     expect(plan).toContain('selector: \'[data-klemmi-target="plan-flexible-assignment"]\'');
     expect(plan).toContain("Flexible Belegung aktivieren ⏱️✨");
@@ -260,11 +262,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
 
     expect(preparation).toContain('<KlemmiSurfaceGuide');
     expect(preparation).toContain('data-klemmi-target="preparation-new"');
+    expect(preparation).toContain('data-klemmi-target="preparation-area-location"');
     expect(preparation).toContain('data-klemmi-target="preparation-save"');
     expect(preparation).toContain("klemmiGuideNeedsSample");
     expect(preparation).toContain('completionAudioKey={klemmiGuideNeedsSample ? "complete" : "overview"}');
     expect(postprocessing).toContain('<KlemmiSurfaceGuide');
     expect(postprocessing).toContain('data-klemmi-target="postprocessing-new"');
+    expect(postprocessing).toContain('data-klemmi-target="postprocessing-area-location"');
     expect(postprocessing).toContain('data-klemmi-target="postprocessing-save"');
     expect(postprocessing).toContain("klemmiGuideNeedsSample");
 
