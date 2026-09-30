@@ -1,0 +1,88 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { describe, expect, it } from "vitest";
+import { buildWhatsAppShareUrl } from "../client/src/lib/whatsappShare";
+import { productAllowsCapability } from "../shared/product-packages";
+
+const source = (relativePath: string) =>
+  readFileSync(path.resolve(process.cwd(), relativePath), "utf8");
+
+describe("Produktgrenzen: Marke, WhatsApp und Event-Sicherung", () => {
+  it("hält individuelles Branding und automatische WhatsApp-Vorlagen bis Pro gesperrt", () => {
+    for (const packageId of ["event_pass", "light"] as const) {
+      expect(productAllowsCapability(packageId, "custom_branding")).toBe(false);
+      expect(productAllowsCapability(packageId, "whatsapp_templates")).toBe(
+        false
+      );
+    }
+    expect(productAllowsCapability("pro", "custom_branding")).toBe(true);
+    expect(productAllowsCapability("pro", "whatsapp_templates")).toBe(true);
+    expect(productAllowsCapability("enterprise", "custom_branding")).toBe(true);
+    expect(productAllowsCapability("enterprise", "whatsapp_templates")).toBe(
+      true
+    );
+  });
+
+  it("öffnet bei einer leeren WhatsApp-Nachricht einen wirklich leeren Zielchat", () => {
+    expect(buildWhatsAppShareUrl("", "0171 1234567")).toBe(
+      "https://wa.me/491711234567"
+    );
+    expect(buildWhatsAppShareUrl("", null)).toBe("https://wa.me/");
+    expect(buildWhatsAppShareUrl("Hallo", "0171 1234567")).toBe(
+      "https://wa.me/491711234567?text=Hallo"
+    );
+  });
+
+  it("erzwingt Marken- und Vorlagengrenzen auf dem Server und im PDF-Renderer", () => {
+    const router = source("server/routers.ts");
+    const pdf = source("server/pdf.ts");
+
+    expect(router).toContain(
+      'productCapabilityAdminProcedure("custom_branding")'
+    );
+    expect(router).toContain(`productAllowsCapability(
+          product.packageId,
+          "whatsapp_templates"`);
+    expect(router).toContain("logoFallback: allowsCustomBranding");
+    expect(pdf).toContain(`productAllowsCapability(
+    product.packageId,
+    "custom_branding"`);
+    expect(pdf).toContain("loadMyCrewMateWordmarkBuffer()");
+  });
+
+  it("zeigt auf der Oberfläche Sperren, ohne den direkten WhatsApp-Kontakt zu sperren", () => {
+    const pdfExport = source("client/src/pages/PdfExport.tsx");
+    const helpers = source("client/src/pages/Helpers.tsx");
+    const dashboard = source("client/src/pages/Dashboard.tsx");
+
+    expect(pdfExport).toContain("Frei konfigurierbares Logo ab Pro verfügbar");
+    expect(pdfExport).toContain("WhatsApp-Vorlagen mit Platzhaltern ab Pro");
+    expect(helpers).toContain(
+      'buildWhatsAppShareUrl("", whatsAppTargetHelper.phone)'
+    );
+    expect(helpers).toContain("WhatsApp-Chat öffnen");
+    expect(dashboard).toContain("Eigenes Eventlogo ab Pro verfügbar");
+  });
+
+  it("bindet die Event-Pass-Sicherung nur an die begrenzte Sicherungsfreigabe", () => {
+    expect(productAllowsCapability("event_pass", "event_backup")).toBe(true);
+    expect(productAllowsCapability("event_pass", "excel")).toBe(false);
+    expect(productAllowsCapability("event_pass", "project_backup")).toBe(false);
+    expect(productAllowsCapability("light", "event_backup")).toBe(false);
+    expect(source("server/routers.ts")).toContain("requireBackupCapability");
+    expect(source("client/src/components/Layout.tsx")).toContain(
+      "<LazySaveLoadControls"
+    );
+  });
+
+  it("stellt die Dashboard-Stummschaltung für Klemmi bereit, ohne Texte auszublenden", () => {
+    const dashboard = source("client/src/pages/Dashboard.tsx");
+    const greeting = source("client/src/components/KlemmiLoginGreeting.tsx");
+    const voice = source("client/src/hooks/useKlemmiVoice.ts");
+
+    expect(dashboard).toContain("Klemmi-Stimme stummschalten");
+    expect(dashboard).toContain("setDashboardKlemmiMuted(next)");
+    expect(greeting).toContain("muted?: boolean");
+    expect(voice).toContain("onMutedChange?: (muted: boolean) => void");
+  });
+});

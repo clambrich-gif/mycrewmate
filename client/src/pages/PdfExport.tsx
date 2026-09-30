@@ -18,7 +18,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { downloadBase64File } from "@/lib/download";
-import { PDF_KLEMMI_STEPS, PDF_KLEMMI_STEPS_READONLY } from "@/lib/klemmi-area-tours";
+import {
+  PDF_KLEMMI_STEPS,
+  PDF_KLEMMI_STEPS_READONLY,
+} from "@/lib/klemmi-area-tours";
 import { trpc } from "@/lib/trpc";
 import {
   DEFAULT_WHATSAPP_HELPER_REQUEST_TEMPLATE,
@@ -107,7 +110,10 @@ function PdfSection({
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <Card data-klemmi-target={klemmiTarget} className="overflow-hidden shadow-sm">
+      <Card
+        data-klemmi-target={klemmiTarget}
+        className="overflow-hidden shadow-sm"
+      >
         <CollapsibleTrigger asChild>
           <button
             type="button"
@@ -144,13 +150,24 @@ export default function PdfExport() {
   const { data: settings, isLoading } = trpc.pdf.settings.useQuery();
   const { data: plan = [] } = trpc.plan.evaluate.useQuery();
   const { data: currentEvent } = trpc.events.current.useQuery();
-  const { data: tenantProduct } = trpc.tenantProduct.current.useQuery(undefined, {
-    staleTime: 60_000,
-  });
+  const { data: tenantProduct } = trpc.tenantProduct.current.useQuery(
+    undefined,
+    {
+      staleTime: 60_000,
+    }
+  );
   // Solange die Produktantwort lädt, bleibt die Ansicht konservativ im
   // Event-Pass-Umfang. Dadurch wird eine gesperrte Ansprechpartner-Abfrage
   // niemals kurzzeitig gestartet und nachträglich mit einem Fehler beendet.
   const currentPackageId = tenantProduct?.packageId ?? "event_pass";
+  const allowsCustomBranding = productAllowsCapability(
+    currentPackageId,
+    "custom_branding"
+  );
+  const allowsWhatsAppTemplates = productAllowsCapability(
+    currentPackageId,
+    "whatsapp_templates"
+  );
   // Die UI leitet Rechte bewusst aus dem statischen Paketkatalog ab. Damit
   // bleibt die PDF-Seite auch während einer Sitzungsaktualisierung stabil,
   // wenn eine ältere Antwort noch keine verschachtelten Entitlements enthält.
@@ -160,7 +177,9 @@ export default function PdfExport() {
   });
   const contacts = contactRows ?? EMPTY_CONTACTS;
   const { data: areaContacts = [] } = trpc.plan.areaContacts.useQuery();
-  const [upgradeCapability, setUpgradeCapability] = useState<"contacts" | null>(null);
+  const [upgradeCapability, setUpgradeCapability] = useState<
+    "contacts" | "custom_branding" | "whatsapp_templates" | null
+  >(null);
   const [form, setForm] = useState<SettingsForm>(EMPTY_FORM);
   const [planMode, setPlanMode] = useState<"blank" | "filled">("blank");
   const activeDays = useMemo(
@@ -180,10 +199,12 @@ export default function PdfExport() {
   const [includeUnassignedContact, setIncludeUnassignedContact] =
     useState(true);
   const [helperContactFilter, setHelperContactFilter] = useState("all");
-  const [selectedContactOverviewIds, setSelectedContactOverviewIds] =
-    useState<number[]>([]);
-  const [contactOverviewExportMode, setContactOverviewExportMode] =
-    useState<"single" | "zip">("zip");
+  const [selectedContactOverviewIds, setSelectedContactOverviewIds] = useState<
+    number[]
+  >([]);
+  const [contactOverviewExportMode, setContactOverviewExportMode] = useState<
+    "single" | "zip"
+  >("zip");
   const [contactOverviewContent, setContactOverviewContent] = useState({
     includeShifts: true,
     includePreparation: true,
@@ -295,6 +316,10 @@ export default function PdfExport() {
   });
 
   const onLogoSelected = (file?: File) => {
+    if (!allowsCustomBranding) {
+      setUpgradeCapability("custom_branding");
+      return;
+    }
     if (!file) return;
     if (!(["image/png", "image/jpeg"] as string[]).includes(file.type)) {
       toast.error("Bitte ein PNG- oder JPEG-Logo auswählen");
@@ -452,51 +477,51 @@ export default function PdfExport() {
           description="Persönliche Aufgaben-PDFs nach Ansprechpartnern herunterladen."
           icon={FileArchive}
         >
-            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
-              <div className="space-y-2">
-                <Label htmlFor="helper-contact-filter">
-                  Ansprechpartner filtern
-                </Label>
-                <Select
-                  value={helperContactFilter}
-                  onValueChange={setHelperContactFilter}
-                >
-                  <SelectTrigger
-                    id="helper-contact-filter"
-                    className="min-h-11 w-full bg-white dark:bg-slate-950"
-                  >
-                    <SelectValue placeholder="Ansprechpartner auswählen" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">
-                      Alle Ansprechpartner (Gesamt-ZIP)
-                    </SelectItem>
-                    {contacts.map(contact => (
-                      <SelectItem key={contact.id} value={String(contact.id)}>
-                        {contact.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  {selectedHelperContact
-                    ? `Erstellt ein ZIP-Archiv nur mit Helfer-PDFs für ${selectedHelperContact.name}.`
-                    : "Erstellt ein Gesamt-ZIP mit allen Helfer-PDFs, sortiert nach Ansprechpartnern."}
-                </p>
-              </div>
-              <Button
-                className="min-h-11 w-full md:w-auto"
-                onClick={downloadAll}
-                disabled={allHelpers.isFetching}
+          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+            <div className="space-y-2">
+              <Label htmlFor="helper-contact-filter">
+                Ansprechpartner filtern
+              </Label>
+              <Select
+                value={helperContactFilter}
+                onValueChange={setHelperContactFilter}
               >
-                <Download className="mr-2 h-4 w-4" />
-                {allHelpers.isFetching
-                  ? "PDFs werden erstellt …"
-                  : selectedHelperContact
-                    ? `PDFs für ${selectedHelperContact.name} herunterladen`
-                    : "Alle PDFs als ZIP"}
-              </Button>
+                <SelectTrigger
+                  id="helper-contact-filter"
+                  className="min-h-11 w-full bg-white dark:bg-slate-950"
+                >
+                  <SelectValue placeholder="Ansprechpartner auswählen" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">
+                    Alle Ansprechpartner (Gesamt-ZIP)
+                  </SelectItem>
+                  {contacts.map(contact => (
+                    <SelectItem key={contact.id} value={String(contact.id)}>
+                      {contact.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {selectedHelperContact
+                  ? `Erstellt ein ZIP-Archiv nur mit Helfer-PDFs für ${selectedHelperContact.name}.`
+                  : "Erstellt ein Gesamt-ZIP mit allen Helfer-PDFs, sortiert nach Ansprechpartnern."}
+              </p>
             </div>
+            <Button
+              className="min-h-11 w-full md:w-auto"
+              onClick={downloadAll}
+              disabled={allHelpers.isFetching}
+            >
+              <Download className="mr-2 h-4 w-4" />
+              {allHelpers.isFetching
+                ? "PDFs werden erstellt …"
+                : selectedHelperContact
+                  ? `PDFs für ${selectedHelperContact.name} herunterladen`
+                  : "Alle PDFs als ZIP"}
+            </Button>
+          </div>
         </PdfSection>
 
         <PdfSection
@@ -522,7 +547,8 @@ export default function PdfExport() {
                     Ansprechpartner-Übersichten ab Light
                   </p>
                   <p className="text-xs text-slate-500">
-                    Der Event Pass umfasst alle Helferübersichten sowie konfigurierbare Einsatzpläne.
+                    Der Event Pass umfasst alle Helferübersichten sowie
+                    konfigurierbare Einsatzpläne.
                   </p>
                 </div>
               </div>
@@ -540,156 +566,159 @@ export default function PdfExport() {
               </Button>
             </div>
           ) : (
-          <div className="grid gap-5 lg:grid-cols-2">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <Label>Ansprechpartner</Label>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() =>
-                    setSelectedContactOverviewIds(
-                      allContactOverviewSelected
-                        ? []
-                        : contacts.map(contact => contact.id)
-                    )
-                  }
-                >
-                  {allContactOverviewSelected
-                    ? "Alle abwählen"
-                    : "Alle auswählen"}
-                </Button>
-              </div>
-              <div className="max-h-52 space-y-1 overflow-y-auto rounded-md border bg-background p-2">
-                {contacts.map(contact => (
-                  <label
-                    key={contact.id}
-                    className="flex items-center gap-2 rounded p-1.5 text-sm hover:bg-muted"
-                  >
-                    <Checkbox
-                      checked={selectedContactOverviewIds.includes(contact.id)}
-                      onCheckedChange={checked =>
-                        setSelectedContactOverviewIds(current =>
-                          toggle(current, contact.id, checked === true)
-                        )
-                      }
-                    />
-                    {contact.name}
-                  </label>
-                ))}
-                {!contacts.length && (
-                  <p className="p-2 text-sm text-muted-foreground">
-                    Noch keine Ansprechpartner angelegt.
-                  </p>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {selectedContactOverviewIds.length === contacts.length
-                  ? "Alle Ansprechpartner sind ausgewählt."
-                  : `${selectedContactOverviewIds.length} Ansprechpartner ausgewählt.`}
-              </p>
-            </div>
-
-            <div className="space-y-4">
+            <div className="grid gap-5 lg:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="contact-overview-export-mode">Ausgabe</Label>
-                <Select
-                  value={contactOverviewExportMode}
-                  onValueChange={value =>
-                    setContactOverviewExportMode(value as "single" | "zip")
-                  }
-                >
-                  <SelectTrigger
-                    id="contact-overview-export-mode"
-                    className="w-full bg-white dark:bg-slate-950"
+                <div className="flex items-center justify-between gap-2">
+                  <Label>Ansprechpartner</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      setSelectedContactOverviewIds(
+                        allContactOverviewSelected
+                          ? []
+                          : contacts.map(contact => contact.id)
+                      )
+                    }
                   >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="single">
-                      Einzelnes Ansprechpartner-PDF
-                    </SelectItem>
-                    <SelectItem value="zip">
-                      Gesamt-ZIP für die Auswahl
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                    {allContactOverviewSelected
+                      ? "Alle abwählen"
+                      : "Alle auswählen"}
+                  </Button>
+                </div>
+                <div className="max-h-52 space-y-1 overflow-y-auto rounded-md border bg-background p-2">
+                  {contacts.map(contact => (
+                    <label
+                      key={contact.id}
+                      className="flex items-center gap-2 rounded p-1.5 text-sm hover:bg-muted"
+                    >
+                      <Checkbox
+                        checked={selectedContactOverviewIds.includes(
+                          contact.id
+                        )}
+                        onCheckedChange={checked =>
+                          setSelectedContactOverviewIds(current =>
+                            toggle(current, contact.id, checked === true)
+                          )
+                        }
+                      />
+                      {contact.name}
+                    </label>
+                  ))}
+                  {!contacts.length && (
+                    <p className="p-2 text-sm text-muted-foreground">
+                      Noch keine Ansprechpartner angelegt.
+                    </p>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  {contactOverviewExportMode === "single"
-                    ? "Für ein Einzel-PDF bitte genau einen Ansprechpartner auswählen."
-                    : "Erstellt für jeden ausgewählten Ansprechpartner eine eigene PDF-Datei im ZIP-Archiv."}
+                  {selectedContactOverviewIds.length === contacts.length
+                    ? "Alle Ansprechpartner sind ausgewählt."
+                    : `${selectedContactOverviewIds.length} Ansprechpartner ausgewählt.`}
                 </p>
               </div>
 
-              <div className="space-y-2">
-                <Label>Inhalte</Label>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {[
-                    [
-                      "includeShifts",
-                      "Einsatzplan & Schichten",
-                      "Bereichsverantwortung und eigene Schichten",
-                    ],
-                    [
-                      "includePreparation",
-                      "Vorbereitung",
-                      "Gedruckte [ ]-Checkliste",
-                    ],
-                    [
-                      "includePostProcessing",
-                      "Nachbereitung",
-                      "Gedruckte [ ]-Checkliste",
-                    ],
-                    [
-                      "includeMaterials",
-                      "Material",
-                      "Gedruckte [ ]-Checkliste",
-                    ],
-                  ].map(([key, label, hint]) => {
-                    const contentKey = key as keyof typeof contactOverviewContent;
-                    return (
-                      <label
-                        key={contentKey}
-                        className="flex items-start gap-2 rounded-md border bg-background p-2 text-sm"
-                      >
-                        <Checkbox
-                          checked={contactOverviewContent[contentKey]}
-                          onCheckedChange={checked =>
-                            setContactOverviewContent(current => ({
-                              ...current,
-                              [contentKey]: checked === true,
-                            }))
-                          }
-                        />
-                        <span>
-                          <span className="block font-medium">{label}</span>
-                          <span className="block text-xs text-muted-foreground">
-                            {hint}
-                          </span>
-                        </span>
-                      </label>
-                    );
-                  })}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="contact-overview-export-mode">Ausgabe</Label>
+                  <Select
+                    value={contactOverviewExportMode}
+                    onValueChange={value =>
+                      setContactOverviewExportMode(value as "single" | "zip")
+                    }
+                  >
+                    <SelectTrigger
+                      id="contact-overview-export-mode"
+                      className="w-full bg-white dark:bg-slate-950"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="single">
+                        Einzelnes Ansprechpartner-PDF
+                      </SelectItem>
+                      <SelectItem value="zip">
+                        Gesamt-ZIP für die Auswahl
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {contactOverviewExportMode === "single"
+                      ? "Für ein Einzel-PDF bitte genau einen Ansprechpartner auswählen."
+                      : "Erstellt für jeden ausgewählten Ansprechpartner eine eigene PDF-Datei im ZIP-Archiv."}
+                  </p>
                 </div>
-              </div>
 
-              <Button
-                className="min-h-11 w-full sm:w-auto"
-                onClick={downloadContactOverviews}
-                disabled={
-                  contactOverviewPdf.isPending || contactOverviewZip.isPending
-                }
-              >
-                <Download className="mr-2 h-4 w-4" />
-                {contactOverviewPdf.isPending || contactOverviewZip.isPending
-                  ? "PDFs werden erstellt …"
-                  : contactOverviewExportMode === "single"
-                    ? "Ansprechpartner-PDF herunterladen"
-                    : "Ansprechpartner-PDFs als ZIP"}
-              </Button>
+                <div className="space-y-2">
+                  <Label>Inhalte</Label>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {[
+                      [
+                        "includeShifts",
+                        "Einsatzplan & Schichten",
+                        "Bereichsverantwortung und eigene Schichten",
+                      ],
+                      [
+                        "includePreparation",
+                        "Vorbereitung",
+                        "Gedruckte [ ]-Checkliste",
+                      ],
+                      [
+                        "includePostProcessing",
+                        "Nachbereitung",
+                        "Gedruckte [ ]-Checkliste",
+                      ],
+                      [
+                        "includeMaterials",
+                        "Material",
+                        "Gedruckte [ ]-Checkliste",
+                      ],
+                    ].map(([key, label, hint]) => {
+                      const contentKey =
+                        key as keyof typeof contactOverviewContent;
+                      return (
+                        <label
+                          key={contentKey}
+                          className="flex items-start gap-2 rounded-md border bg-background p-2 text-sm"
+                        >
+                          <Checkbox
+                            checked={contactOverviewContent[contentKey]}
+                            onCheckedChange={checked =>
+                              setContactOverviewContent(current => ({
+                                ...current,
+                                [contentKey]: checked === true,
+                              }))
+                            }
+                          />
+                          <span>
+                            <span className="block font-medium">{label}</span>
+                            <span className="block text-xs text-muted-foreground">
+                              {hint}
+                            </span>
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <Button
+                  className="min-h-11 w-full sm:w-auto"
+                  onClick={downloadContactOverviews}
+                  disabled={
+                    contactOverviewPdf.isPending || contactOverviewZip.isPending
+                  }
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  {contactOverviewPdf.isPending || contactOverviewZip.isPending
+                    ? "PDFs werden erstellt …"
+                    : contactOverviewExportMode === "single"
+                      ? "Ansprechpartner-PDF herunterladen"
+                      : "Ansprechpartner-PDFs als ZIP"}
+                </Button>
+              </div>
             </div>
-          </div>
           )}
         </PdfSection>
 
@@ -699,42 +728,107 @@ export default function PdfExport() {
           description="Blanko- oder ausgefüllten Einsatzplan nach Tagen, Bereichen und Status filtern."
           icon={ListFilter}
         >
+          <div className="grid gap-5 lg:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Ausgabeart</Label>
+              <Select
+                value={planMode}
+                onValueChange={value =>
+                  setPlanMode(value as "blank" | "filled")
+                }
+              >
+                <SelectTrigger className="w-full bg-white dark:bg-slate-950">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="blank">
+                    Blanko-Einsatzplan zum Ausfüllen
+                  </SelectItem>
+                  <SelectItem value="filled">
+                    Gefüllter Einsatzplan mit Helfern
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-            <div className="grid gap-5 lg:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Ausgabeart</Label>
-                <Select
-                  value={planMode}
-                  onValueChange={value =>
-                    setPlanMode(value as "blank" | "filled")
+            <div className="space-y-2">
+              <Label>Tage</Label>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {activeDays.map(value => (
+                  <label
+                    key={value}
+                    className="flex items-center gap-2 rounded-md border bg-background p-2 text-sm"
+                  >
+                    <Checkbox
+                      checked={selectedDays.includes(value)}
+                      onCheckedChange={checked =>
+                        setSelectedDays(current =>
+                          toggle(current, value, checked === true)
+                        )
+                      }
+                    />
+                    {value}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label>Bereiche</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    setSelectedAreas(
+                      activeAreas.length === areas.length ? [] : areas
+                    )
                   }
                 >
-                  <SelectTrigger className="w-full bg-white dark:bg-slate-950">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="blank">
-                      Blanko-Einsatzplan zum Ausfüllen
-                    </SelectItem>
-                    <SelectItem value="filled">
-                      Gefüllter Einsatzplan mit Helfern
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                  {activeAreas.length === areas.length
+                    ? "Alle abwählen"
+                    : "Alle auswählen"}
+                </Button>
               </div>
+              <div className="max-h-44 space-y-1 overflow-y-auto rounded-md border bg-background p-2">
+                {areas.map(value => (
+                  <label
+                    key={value}
+                    className="flex items-center gap-2 rounded p-1.5 text-sm hover:bg-muted"
+                  >
+                    <Checkbox
+                      checked={activeAreas.includes(value)}
+                      onCheckedChange={checked =>
+                        setSelectedAreas(
+                          toggle(activeAreas, value, checked === true)
+                        )
+                      }
+                    />
+                    {value}
+                  </label>
+                ))}
+                {!areas.length && (
+                  <p className="p-2 text-sm text-muted-foreground">
+                    Noch keine Schichten angelegt.
+                  </p>
+                )}
+              </div>
+            </div>
 
+            <div className="space-y-4">
               <div className="space-y-2">
-                <Label>Tage</Label>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  {activeDays.map(value => (
+                <Label>Status</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {["OFFEN", "KNAPP", "OK"].map(value => (
                     <label
                       key={value}
                       className="flex items-center gap-2 rounded-md border bg-background p-2 text-sm"
                     >
                       <Checkbox
-                        checked={selectedDays.includes(value)}
+                        checked={selectedStatuses.includes(value)}
                         onCheckedChange={checked =>
-                          setSelectedDays(current =>
+                          setSelectedStatuses(current =>
                             toggle(current, value, checked === true)
                           )
                         }
@@ -744,155 +838,89 @@ export default function PdfExport() {
                   ))}
                 </div>
               </div>
-
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <Label>Bereiche</Label>
+                  <Label>Bereichsansprechpartner</Label>
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() =>
-                      setSelectedAreas(
-                        activeAreas.length === areas.length ? [] : areas
-                      )
-                    }
+                    onClick={() => {
+                      setSelectedContacts(
+                        allContactOptionsSelected ? [] : mappedContactIds
+                      );
+                      setIncludeUnassignedContact(
+                        allContactOptionsSelected ? false : hasUnassignedAreas
+                      );
+                    }}
                   >
-                    {activeAreas.length === areas.length
+                    {allContactOptionsSelected
                       ? "Alle abwählen"
                       : "Alle auswählen"}
                   </Button>
                 </div>
-                <div className="max-h-44 space-y-1 overflow-y-auto rounded-md border bg-background p-2">
-                  {areas.map(value => (
-                    <label
-                      key={value}
-                      className="flex items-center gap-2 rounded p-1.5 text-sm hover:bg-muted"
-                    >
+                <div className="max-h-32 space-y-1 overflow-y-auto rounded-md border bg-background p-2">
+                  {contacts
+                    .filter(contact => mappedContactIds.includes(contact.id))
+                    .map(contact => (
+                      <label
+                        key={contact.id}
+                        className="flex items-center gap-2 rounded p-1.5 text-sm hover:bg-muted"
+                      >
+                        <Checkbox
+                          checked={activeContacts.includes(contact.id)}
+                          onCheckedChange={checked =>
+                            setSelectedContacts(
+                              toggle(
+                                activeContacts,
+                                contact.id,
+                                checked === true
+                              )
+                            )
+                          }
+                        />
+                        {contact.name}
+                      </label>
+                    ))}
+                  {hasUnassignedAreas && (
+                    <label className="flex items-center gap-2 rounded p-1.5 text-sm hover:bg-muted">
                       <Checkbox
-                        checked={activeAreas.includes(value)}
+                        checked={includeUnassignedContact}
                         onCheckedChange={checked =>
-                          setSelectedAreas(
-                            toggle(activeAreas, value, checked === true)
-                          )
+                          setIncludeUnassignedContact(checked === true)
                         }
                       />
-                      {value}
+                      Ohne zugeordneten Ansprechpartner
                     </label>
-                  ))}
-                  {!areas.length && (
+                  )}
+                  {!mappedContactIds.length && !hasUnassignedAreas && (
                     <p className="p-2 text-sm text-muted-foreground">
-                      Noch keine Schichten angelegt.
+                      Noch keine Einsatzplanbereiche vorhanden.
                     </p>
                   )}
                 </div>
               </div>
-
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Status</Label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {["OFFEN", "KNAPP", "OK"].map(value => (
-                      <label
-                        key={value}
-                        className="flex items-center gap-2 rounded-md border bg-background p-2 text-sm"
-                      >
-                        <Checkbox
-                          checked={selectedStatuses.includes(value)}
-                          onCheckedChange={checked =>
-                            setSelectedStatuses(current =>
-                              toggle(current, value, checked === true)
-                            )
-                          }
-                        />
-                        {value}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <Label>Bereichsansprechpartner</Label>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedContacts(
-                          allContactOptionsSelected ? [] : mappedContactIds
-                        );
-                        setIncludeUnassignedContact(
-                          allContactOptionsSelected ? false : hasUnassignedAreas
-                        );
-                      }}
-                    >
-                      {allContactOptionsSelected
-                        ? "Alle abwählen"
-                        : "Alle auswählen"}
-                    </Button>
-                  </div>
-                  <div className="max-h-32 space-y-1 overflow-y-auto rounded-md border bg-background p-2">
-                    {contacts
-                      .filter(contact => mappedContactIds.includes(contact.id))
-                      .map(contact => (
-                        <label
-                          key={contact.id}
-                          className="flex items-center gap-2 rounded p-1.5 text-sm hover:bg-muted"
-                        >
-                          <Checkbox
-                            checked={activeContacts.includes(contact.id)}
-                            onCheckedChange={checked =>
-                              setSelectedContacts(
-                                toggle(
-                                  activeContacts,
-                                  contact.id,
-                                  checked === true
-                                )
-                              )
-                            }
-                          />
-                          {contact.name}
-                        </label>
-                      ))}
-                    {hasUnassignedAreas && (
-                      <label className="flex items-center gap-2 rounded p-1.5 text-sm hover:bg-muted">
-                        <Checkbox
-                          checked={includeUnassignedContact}
-                          onCheckedChange={checked =>
-                            setIncludeUnassignedContact(checked === true)
-                          }
-                        />
-                        Ohne zugeordneten Ansprechpartner
-                      </label>
-                    )}
-                    {!mappedContactIds.length && !hasUnassignedAreas && (
-                      <p className="p-2 text-sm text-muted-foreground">
-                        Noch keine Einsatzplanbereiche vorhanden.
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
             </div>
+          </div>
 
-            <Button onClick={downloadPlan} disabled={planPdf.isPending}>
-              <Download className="mr-2 h-4 w-4" />
-              {planPdf.isPending
-                ? "PDF wird erstellt …"
-                : planMode === "blank"
-                  ? "Gefilterten Blanko-Plan erzeugen"
-                  : "Gefüllten Einsatzplan erzeugen"}
-            </Button>
+          <Button onClick={downloadPlan} disabled={planPdf.isPending}>
+            <Download className="mr-2 h-4 w-4" />
+            {planPdf.isPending
+              ? "PDF wird erstellt …"
+              : planMode === "blank"
+                ? "Gefilterten Blanko-Plan erzeugen"
+                : "Gefüllten Einsatzplan erzeugen"}
+          </Button>
         </PdfSection>
       </div>
 
       {canManage && (
-      <PdfSection
-        klemmiTarget="pdf-config"
-        title="Vorlage frei konfigurieren"
-        description="PDF-Titel, Eventlogo, Zusatzspalten und Hinweise für die aktuelle Veranstaltung verwalten."
-        icon={ClipboardCheck}
-      >
+        <PdfSection
+          klemmiTarget="pdf-config"
+          title="Vorlage frei konfigurieren"
+          description="PDF-Titel, Eventlogo, Zusatzspalten und Hinweise für die aktuelle Veranstaltung verwalten."
+          icon={ClipboardCheck}
+        >
           {isLoading ? (
             <p className="text-muted-foreground">
               Konfiguration wird geladen …
@@ -915,29 +943,44 @@ export default function PdfExport() {
                   <div className="min-w-0 flex-1 space-y-2">
                     <div>
                       <Label htmlFor="pdf-logo">
-                        Eventlogo für {currentEvent?.name ?? "diese Veranstaltung"}
+                        {allowsCustomBranding
+                          ? <>
+                              Eventlogo für {currentEvent?.name ?? "diese Veranstaltung"}
+                            </>
+                          : "MyCrewMate-Logo in allen PDF-Ausgaben"}
                       </Label>
                       <p className="text-xs text-muted-foreground">
-                        PNG oder JPEG bis 3 MB. Das Bild erscheint im Dashboard-Zähler
-                        und in den PDF-Ausgaben der aktuell ausgewählten Veranstaltung.
-                        Ohne eigenes Bild wird im Dashboard das Standardlogo verwendet.
+                        {allowsCustomBranding
+                          ? "PNG oder JPEG bis 3 MB. Das Bild erscheint im Dashboard-Zähler und in den PDF-Ausgaben der aktuell ausgewählten Veranstaltung."
+                          : "Im Event Pass und Light wird das MyCrewMate-Logo verbindlich im Dashboard und auf allen erzeugten PDFs verwendet. Ein eigenes Eventlogo ist ab Pro verfügbar."}
                       </p>
                     </div>
-                    {canManage && (
+                    {canManage && allowsCustomBranding ? (
                       <Input
-                      id="pdf-logo"
-                      type="file"
-                      accept="image/png,image/jpeg"
-                      disabled={
-                        uploadLogo.isPending ||
-                        clearLogo.isPending
-                      }
-                      onChange={event => {
-                        onLogoSelected(event.target.files?.[0]);
-                        event.currentTarget.value = "";
-                      }}
-                    />
-                    )}
+                        id="pdf-logo"
+                        type="file"
+                        accept="image/png,image/jpeg"
+                        disabled={uploadLogo.isPending || clearLogo.isPending}
+                        onChange={event => {
+                          onLogoSelected(event.target.files?.[0]);
+                          event.currentTarget.value = "";
+                        }}
+                      />
+                    ) : canManage ? (
+                      <button
+                        type="button"
+                        className="flex w-full items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-left text-sm transition-colors hover:bg-slate-100"
+                        onClick={() => setUpgradeCapability("custom_branding")}
+                      >
+                        <span className="flex items-center gap-2 text-slate-700">
+                          <LockKeyhole className="size-4 shrink-0" />
+                          Frei konfigurierbares Logo ab Pro verfügbar
+                        </span>
+                        <span className="text-xs font-semibold text-blue-700">
+                          Info
+                        </span>
+                      </button>
+                    ) : null}
                     {(uploadLogo.isPending || clearLogo.isPending) && (
                       <p className="text-xs font-medium text-primary">
                         {uploadLogo.isPending
@@ -945,15 +988,12 @@ export default function PdfExport() {
                           : "Bild wird entfernt …"}
                       </p>
                     )}
-                    {canManage && settings?.logoUrl && (
+                    {canManage && allowsCustomBranding && settings?.logoUrl && (
                       <Button
                         type="button"
                         variant="outline"
                         className="border-red-200 bg-white text-red-700 hover:bg-red-50 hover:text-red-800"
-                        disabled={
-                          uploadLogo.isPending ||
-                          clearLogo.isPending
-                        }
+                        disabled={uploadLogo.isPending || clearLogo.isPending}
                         onClick={() => clearLogo.mutate()}
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
@@ -964,17 +1004,31 @@ export default function PdfExport() {
                       <Label htmlFor="pdf-logo-fallback">
                         Verhalten ohne individuelles Bild
                       </Label>
-                      <Select value="none" disabled>
-                        <SelectTrigger
-                          id="pdf-logo-fallback"
-                          className="w-full bg-white dark:bg-slate-950 sm:max-w-sm"
-                        >
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Kein Bild drucken</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      {allowsCustomBranding ? (
+                        <Select value="none" disabled>
+                          <SelectTrigger
+                            id="pdf-logo-fallback"
+                            className="w-full bg-white dark:bg-slate-950 sm:max-w-sm"
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Kein Bild drucken</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Select value="brand" disabled>
+                          <SelectTrigger
+                            id="pdf-logo-fallback"
+                            className="w-full bg-white dark:bg-slate-950 sm:max-w-sm"
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="brand">MyCrewMate-Logo fest eingestellt</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1119,95 +1173,126 @@ export default function PdfExport() {
                     WhatsApp-Vorlagen für Helfer
                   </Label>
                   <p className="text-xs text-muted-foreground">
-                    Beide Vorlagen gelten nur für die aktuell gewählte Veranstaltung und können unabhängig voneinander angepasst werden. Klappen Sie die gewünschte Nachricht auf, um Text und Platzhalter zu bearbeiten.
+                    {allowsWhatsAppTemplates
+                      ? "Beide Vorlagen gelten nur für die aktuell gewählte Veranstaltung und können unabhängig voneinander angepasst werden. Klappen Sie die gewünschte Nachricht auf, um Text und Platzhalter zu bearbeiten."
+                      : "Automatisch befüllte WhatsApp-Vorlagen sind ab Pro verfügbar. Der WhatsApp-Button bei Helfern bleibt nutzbar und öffnet einen leeren Chat zum freien Formulieren."}
                   </p>
                 </div>
 
-                <details className="group rounded-lg border border-slate-200 bg-white p-3.5 shadow-xs open:ring-1 open:ring-blue-100">
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                    <span className="flex items-center gap-2">
-                      <span>Nachricht 1 · Allgemeine Helferanfrage</span>
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
-                        Ohne PDF
-                      </span>
+                {!allowsWhatsAppTemplates ? (
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3.5 py-3 text-left text-sm transition-colors hover:bg-slate-50"
+                    onClick={() => setUpgradeCapability("whatsapp_templates")}
+                  >
+                    <span className="flex items-center gap-2 text-slate-700">
+                      <LockKeyhole className="size-4 shrink-0" />
+                      WhatsApp-Vorlagen mit Platzhaltern ab Pro
                     </span>
-                    <ChevronDown className="h-4 w-4 text-slate-500 transition-transform duration-200 group-open:rotate-180" />
-                  </summary>
-                  <div className="mt-3.5 space-y-2 border-t border-slate-100 pt-3">
-                    <Label htmlFor="whatsapp-helper-request-template">
-                      Nachrichtentext
-                    </Label>
-                    <textarea
-                      id="whatsapp-helper-request-template"
-                      value={form.whatsAppHelperRequestTemplate}
-                      onChange={event =>
-                        updateField(
-                          "whatsAppHelperRequestTemplate",
-                          event.target.value
-                        )
-                      }
-                      className="min-h-52 w-full rounded-md border border-input bg-white px-3 py-2 text-base text-slate-950 shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                      placeholder={DEFAULT_WHATSAPP_HELPER_REQUEST_TEMPLATE}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Verfügbare Platzhalter: <code>{"{EVENT_NAME}"}</code> (Name der Veranstaltung) und <code>{"{EVENT_DAUER}"}</code> (Start- und Enddatum bzw. Einzeltag).
-                    </p>
-                  </div>
-                </details>
+                    <span className="text-xs font-semibold text-blue-700">
+                      Info
+                    </span>
+                  </button>
+                ) : (
+                  <>
+                    <details className="group rounded-lg border border-slate-200 bg-white p-3.5 shadow-xs open:ring-1 open:ring-blue-100">
+                      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                        <span className="flex items-center gap-2">
+                          <span>Nachricht 1 · Allgemeine Helferanfrage</span>
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+                            Ohne PDF
+                          </span>
+                        </span>
+                        <ChevronDown className="h-4 w-4 text-slate-500 transition-transform duration-200 group-open:rotate-180" />
+                      </summary>
+                      <div className="mt-3.5 space-y-2 border-t border-slate-100 pt-3">
+                        <Label htmlFor="whatsapp-helper-request-template">
+                          Nachrichtentext
+                        </Label>
+                        <textarea
+                          id="whatsapp-helper-request-template"
+                          value={form.whatsAppHelperRequestTemplate}
+                          onChange={event =>
+                            updateField(
+                              "whatsAppHelperRequestTemplate",
+                              event.target.value
+                            )
+                          }
+                          className="min-h-52 w-full rounded-md border border-input bg-white px-3 py-2 text-base text-slate-950 shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                          placeholder={DEFAULT_WHATSAPP_HELPER_REQUEST_TEMPLATE}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Verfügbare Platzhalter: <code>{"{EVENT_NAME}"}</code>{" "}
+                          (Name der Veranstaltung) und{" "}
+                          <code>{"{EVENT_DAUER}"}</code> (Start- und Enddatum
+                          bzw. Einzeltag).
+                        </p>
+                      </div>
+                    </details>
 
-                <details className="group rounded-lg border border-slate-200 bg-white p-3.5 shadow-xs open:ring-1 open:ring-blue-100">
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                    <span className="flex items-center gap-2">
-                      <span>Nachricht 2 · Schichtzuteilung / Einsatzplan</span>
-                      <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">
-                        Inkl. PDF-Link
-                      </span>
-                    </span>
-                    <ChevronDown className="h-4 w-4 text-slate-500 transition-transform duration-200 group-open:rotate-180" />
-                  </summary>
-                  <div className="mt-3.5 space-y-2 border-t border-slate-100 pt-3">
-                    <Label htmlFor="whatsapp-message-template">
-                      Nachrichtentext
-                    </Label>
-                    <textarea
-                      id="whatsapp-message-template"
-                      value={form.whatsAppMessageTemplate}
-                      onChange={event =>
-                        updateField("whatsAppMessageTemplate", event.target.value)
-                      }
-                      className="min-h-52 w-full rounded-md border border-input bg-white px-3 py-2 text-base text-slate-950 shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                      placeholder={DEFAULT_WHATSAPP_MESSAGE_TEMPLATE}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Verfügbare Platzhalter: <code>{"{EVENT_NAME}"}</code> und <code>{"{PDF_LINK}"}</code> (persönlicher, 90 Tage gültiger Abruflink für den Einsatzplan).
-                    </p>
-                  </div>
-                </details>
+                    <details className="group rounded-lg border border-slate-200 bg-white p-3.5 shadow-xs open:ring-1 open:ring-blue-100">
+                      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                        <span className="flex items-center gap-2">
+                          <span>
+                            Nachricht 2 · Schichtzuteilung / Einsatzplan
+                          </span>
+                          <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700">
+                            Inkl. PDF-Link
+                          </span>
+                        </span>
+                        <ChevronDown className="h-4 w-4 text-slate-500 transition-transform duration-200 group-open:rotate-180" />
+                      </summary>
+                      <div className="mt-3.5 space-y-2 border-t border-slate-100 pt-3">
+                        <Label htmlFor="whatsapp-message-template">
+                          Nachrichtentext
+                        </Label>
+                        <textarea
+                          id="whatsapp-message-template"
+                          value={form.whatsAppMessageTemplate}
+                          onChange={event =>
+                            updateField(
+                              "whatsAppMessageTemplate",
+                              event.target.value
+                            )
+                          }
+                          className="min-h-52 w-full rounded-md border border-input bg-white px-3 py-2 text-base text-slate-950 shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                          placeholder={DEFAULT_WHATSAPP_MESSAGE_TEMPLATE}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Verfügbare Platzhalter: <code>{"{EVENT_NAME}"}</code>{" "}
+                          und <code>{"{PDF_LINK}"}</code> (persönlicher, 90 Tage
+                          gültiger Abruflink für den Einsatzplan).
+                        </p>
+                      </div>
+                    </details>
+                  </>
+                )}
               </div>
 
               {canManage ? (
                 <Button
-                onClick={() => save.mutate(form)}
-                disabled={
-                  save.isPending ||
-                  !form.eventName.trim() ||
-                  !form.blankPlanTitle.trim() ||
-                  !form.whatsAppHelperRequestTemplate.trim() ||
-                  !form.whatsAppMessageTemplate.trim()
-                }
-              >
-                <Save className="mr-2 h-4 w-4" />
-                {save.isPending ? "Speichert …" : "Konfiguration speichern"}
-              </Button>
+                  onClick={() => save.mutate(form)}
+                  disabled={
+                    save.isPending ||
+                    !form.eventName.trim() ||
+                    !form.blankPlanTitle.trim() ||
+                    (allowsWhatsAppTemplates &&
+                      (!form.whatsAppHelperRequestTemplate.trim() ||
+                        !form.whatsAppMessageTemplate.trim()))
+                  }
+                >
+                  <Save className="mr-2 h-4 w-4" />
+                  {save.isPending ? "Speichert …" : "Konfiguration speichern"}
+                </Button>
               ) : (
                 <p className="text-xs text-muted-foreground italic">
                   Hinweis: Die PDF-Grundeinstellungen können nur von Administratoren geändert werden.
                 </p>
               )}
             </>
-            )}
-          </PdfSection>
-        )}
+          )}
+        </PdfSection>
+      )}
       <KlemmiUpgradeDialog
         open={Boolean(upgradeCapability)}
         onOpenChange={open => {

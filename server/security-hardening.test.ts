@@ -13,18 +13,18 @@ describe("Punkt 3: Sicherheits- und Berechtigungs-Hardening", () => {
   const locationLogoRoutes = source("server/location-logo-routes.ts");
   const nav = source("client/src/lib/nav.ts");
 
-  it("schützt kritische administrative Mutationen mit adminProcedure", () => {
+  it("schützt kritische administrative Mutationen mit Admin- und Produktgates", () => {
     // Schichten, Berechtigungen, Wiederherstellung, Backups, Events
     expect(routers).toContain("moduleWriteProcedure(\"schedule\")");
-    expect(routers).toMatch(/preview:\s*(adminProcedure|productCapabilityAdminProcedure)/);
-    expect(routers).toMatch(/restoreLogs:\s*(adminProcedure|productCapabilityAdminProcedure)/);
-    expect(routers).toMatch(/previewModule:\s*(adminProcedure|productCapabilityAdminProcedure)/);
+    expect(routers).toMatch(/preview:\s*(adminProcedure|productCapabilityAdminProcedure|backupCapabilityAdminProcedure)/);
+    expect(routers).toMatch(/restoreLogs:\s*(adminProcedure|productCapabilityAdminProcedure|backupCapabilityAdminProcedure)/);
+    expect(routers).toMatch(/previewModule:\s*(adminProcedure|productCapabilityAdminProcedure|backupCapabilityAdminProcedure)/);
   });
 
-  it("schützt die PDF-Konfiguration und das individuelle Event-Bild mit adminProcedure", () => {
+  it("schützt die PDF-Konfiguration und das individuelle Event-Bild mit Admin- und Produktgates", () => {
     expect(routers).toContain("updateSettings: adminProcedure");
-    expect(routers).toContain("uploadLogo: adminProcedure");
-    expect(routers).toContain("clearLogo: adminProcedure");
+    expect(routers).toContain('uploadLogo: productCapabilityAdminProcedure("custom_branding")');
+    expect(routers).toContain('clearLogo: productCapabilityAdminProcedure("custom_branding")');
     expect(routers).not.toContain("setLogoFallback: adminProcedure");
   });
 

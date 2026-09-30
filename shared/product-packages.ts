@@ -16,9 +16,11 @@ export const PRODUCT_ASSIGNMENT_STATUSES = [
   "expired",
 ] as const;
 
-export type ProductAssignmentStatus = (typeof PRODUCT_ASSIGNMENT_STATUSES)[number];
+export type ProductAssignmentStatus =
+  (typeof PRODUCT_ASSIGNMENT_STATUSES)[number];
 
-export const DEFAULT_PRODUCT_ASSIGNMENT_STATUS: ProductAssignmentStatus = "test";
+export const DEFAULT_PRODUCT_ASSIGNMENT_STATUS: ProductAssignmentStatus =
+  "test";
 
 /**
  * Produktrechte stehen bewusst neben den persönlichen Fachbereichsrechten.
@@ -47,6 +49,12 @@ export const PRODUCT_CAPABILITIES = [
   "marketing",
   "approvals",
   "maps_gpx",
+  /** Individuelle Event- und PDF-Gestaltung. */
+  "custom_branding",
+  /** Automatisch befüllte WhatsApp-Nachrichtenvorlagen. */
+  "whatsapp_templates",
+  /** Begrenzte JSON-/Excel-Sicherung der einen Event-Pass-Veranstaltung. */
+  "event_backup",
 ] as const;
 
 export type ProductCapability = (typeof PRODUCT_CAPABILITIES)[number];
@@ -61,52 +69,60 @@ export type ProductPackageEntitlements = {
   capabilities: Readonly<Record<ProductCapability, boolean>>;
 };
 
-const UNLIMITED_PRODUCT_CAPABILITIES: Readonly<Record<ProductCapability, boolean>> =
-  Object.freeze(
-    Object.fromEntries(PRODUCT_CAPABILITIES.map(capability => [capability, true])) as Record<
-      ProductCapability,
-      boolean
-    >
-  );
+const UNLIMITED_PRODUCT_CAPABILITIES: Readonly<
+  Record<ProductCapability, boolean>
+> = Object.freeze(
+  Object.fromEntries(
+    PRODUCT_CAPABILITIES.map(capability => [capability, true])
+  ) as Record<ProductCapability, boolean>
+);
 
-const EVENT_PASS_CAPABILITIES: Readonly<Record<ProductCapability, boolean>> = Object.freeze({
-  ...UNLIMITED_PRODUCT_CAPABILITIES,
-  additional_events: false,
-  event_years: false,
-  event_deletion: false,
-  contacts: false,
-  postprocessing: false,
-  materials: false,
-  donations: false,
-  finances: false,
-  locations: false,
-  chat: false,
-  personal_accesses: false,
-  excel: false,
-  project_backup: false,
-  marketing: false,
-  approvals: false,
-  maps_gpx: false,
-});
+const EVENT_PASS_CAPABILITIES: Readonly<Record<ProductCapability, boolean>> =
+  Object.freeze({
+    ...UNLIMITED_PRODUCT_CAPABILITIES,
+    additional_events: false,
+    event_years: false,
+    event_deletion: false,
+    contacts: false,
+    postprocessing: false,
+    materials: false,
+    donations: false,
+    finances: false,
+    locations: false,
+    chat: false,
+    personal_accesses: false,
+    excel: false,
+    project_backup: false,
+    marketing: false,
+    approvals: false,
+    maps_gpx: false,
+    custom_branding: false,
+    whatsapp_templates: false,
+    event_backup: true,
+  });
 
 /**
  * Light ist bewusst kein verkleinertes Pro: Es begleitet eine jährliche
  * Hauptveranstaltung mit einem kleinen persönlichen Team. Live-Kommunikation,
  * Spenden/Finanzen sowie Karten- und Streckenplanung bleiben Pro vorbehalten.
  */
-const LIGHT_CAPABILITIES: Readonly<Record<ProductCapability, boolean>> = Object.freeze({
-  ...UNLIMITED_PRODUCT_CAPABILITIES,
-  additional_events: false,
-  event_deletion: false,
-  donations: false,
-  finances: false,
-  chat: false,
-  excel: false,
-  project_backup: false,
-  marketing: false,
-  approvals: false,
-  maps_gpx: false,
-});
+const LIGHT_CAPABILITIES: Readonly<Record<ProductCapability, boolean>> =
+  Object.freeze({
+    ...UNLIMITED_PRODUCT_CAPABILITIES,
+    additional_events: false,
+    event_deletion: false,
+    donations: false,
+    finances: false,
+    chat: false,
+    excel: false,
+    project_backup: false,
+    marketing: false,
+    approvals: false,
+    maps_gpx: false,
+    custom_branding: false,
+    whatsapp_templates: false,
+    event_backup: false,
+  });
 
 const EVENT_PASS_ROUTE_ALLOWLIST = new Set([
   "/",
@@ -183,13 +199,18 @@ export function productAllowsPlanningModule(
   return productAllowsCapability(packageId, capabilityByModule[module]);
 }
 
-export function productAllowsAppRoute(packageId: ProductPackageId, path: string) {
+export function productAllowsAppRoute(
+  packageId: ProductPackageId,
+  path: string
+) {
   if (packageId === "event_pass") return EVENT_PASS_ROUTE_ALLOWLIST.has(path);
   const capability = productCapabilityForAppRoute(path);
   return !capability || productAllowsCapability(packageId, capability);
 }
 
-const PRODUCT_ROUTE_CAPABILITY: Readonly<Partial<Record<string, ProductCapability>>> = {
+const PRODUCT_ROUTE_CAPABILITY: Readonly<
+  Partial<Record<string, ProductCapability>>
+> = {
   "/ansprechpartner": "contacts",
   "/helfer": "helpers",
   "/einsatzplan": "schedule",
@@ -205,7 +226,9 @@ const PRODUCT_ROUTE_CAPABILITY: Readonly<Partial<Record<string, ProductCapabilit
   "/genehmigungen": "approvals",
 };
 
-export function productCapabilityForAppRoute(path: string): ProductCapability | null {
+export function productCapabilityForAppRoute(
+  path: string
+): ProductCapability | null {
   return PRODUCT_ROUTE_CAPABILITY[path] ?? null;
 }
 
@@ -231,7 +254,10 @@ export type ProductPackageMeta = {
  * Zentrale Grundlage für die Paketsteuerung. Paketzuordnung, serverseitige
  * Entitlements und individuelle Fachbereichsrechte bleiben bewusst getrennt.
  */
-export const PRODUCT_PACKAGE_META: Record<ProductPackageId, ProductPackageMeta> = {
+export const PRODUCT_PACKAGE_META: Record<
+  ProductPackageId,
+  ProductPackageMeta
+> = {
   event_pass: {
     name: "Event Pass",
     priceLabel: "69 € · einmalig",
@@ -281,10 +307,15 @@ export const PRODUCT_PACKAGE_META: Record<ProductPackageId, ProductPackageMeta> 
 };
 
 export function isProductPackageId(value: unknown): value is ProductPackageId {
-  return typeof value === "string" && PRODUCT_PACKAGE_IDS.includes(value as ProductPackageId);
+  return (
+    typeof value === "string" &&
+    PRODUCT_PACKAGE_IDS.includes(value as ProductPackageId)
+  );
 }
 
-export function isProductAssignmentStatus(value: unknown): value is ProductAssignmentStatus {
+export function isProductAssignmentStatus(
+  value: unknown
+): value is ProductAssignmentStatus {
   return (
     typeof value === "string" &&
     PRODUCT_ASSIGNMENT_STATUSES.includes(value as ProductAssignmentStatus)

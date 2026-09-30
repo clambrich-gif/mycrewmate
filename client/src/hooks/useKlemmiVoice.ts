@@ -6,8 +6,13 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 
 function chooseOpeningClip(previousClip: KlemmiAudioId | null) {
-  const candidates = KLEMMI_OPENING_AUDIO_IDS.filter(clipId => clipId !== previousClip);
-  return candidates[Math.floor(Math.random() * candidates.length)] ?? KLEMMI_OPENING_AUDIO_IDS[0];
+  const candidates = KLEMMI_OPENING_AUDIO_IDS.filter(
+    clipId => clipId !== previousClip
+  );
+  return (
+    candidates[Math.floor(Math.random() * candidates.length)] ??
+    KLEMMI_OPENING_AUDIO_IDS[0]
+  );
 }
 
 /**
@@ -15,8 +20,12 @@ function chooseOpeningClip(previousClip: KlemmiAudioId | null) {
  * ab. So bleibt Klemmi überall dieselbe warme, organisatorische Cartoon-Stimme
  * und der Browser weicht nicht auf eine uneinheitliche Systemstimme aus.
  */
-export function useKlemmiVoice() {
-  const [muted, setMuted] = useState(false);
+export function useKlemmiVoice(options?: {
+  muted?: boolean;
+  onMutedChange?: (muted: boolean) => void;
+}) {
+  const externalMuted = options?.muted;
+  const [muted, setMuted] = useState(Boolean(externalMuted));
   const [isSpeaking, setIsSpeaking] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const releaseAudioRef = useRef<(() => void) | null>(null);
@@ -36,7 +45,11 @@ export function useKlemmiVoice() {
 
   const playClip = useCallback(
     (clipId: KlemmiAudioId) => {
-      if (muted || typeof window === "undefined" || typeof Audio === "undefined") {
+      if (
+        muted ||
+        typeof window === "undefined" ||
+        typeof Audio === "undefined"
+      ) {
         return Promise.resolve();
       }
       cancel();
@@ -51,7 +64,8 @@ export function useKlemmiVoice() {
           if (released) return;
           released = true;
           if (audioRef.current === audio) audioRef.current = null;
-          if (releaseAudioRef.current === release) releaseAudioRef.current = null;
+          if (releaseAudioRef.current === release)
+            releaseAudioRef.current = null;
           setIsSpeaking(false);
           resolve();
         };
@@ -59,7 +73,9 @@ export function useKlemmiVoice() {
         audio.onplay = () => setIsSpeaking(true);
         audio.onended = release;
         audio.onerror = () => {
-          console.warn(`[KlemmiVoice] Markenclip „${clipId}“ konnte nicht geladen werden.`);
+          console.warn(
+            `[KlemmiVoice] Markenclip „${clipId}“ konnte nicht geladen werden.`
+          );
           release();
         };
         void audio.play().catch(() => {

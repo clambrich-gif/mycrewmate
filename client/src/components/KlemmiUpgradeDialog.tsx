@@ -38,6 +38,9 @@ const CAPABILITY_LABEL: Record<ProductCapability, string> = {
   marketing: "Marketingplanung",
   approvals: "Genehmigungsplanung",
   maps_gpx: "Live-Karte und GPX-Strecken",
+  custom_branding: "eigene Event- und PDF-Logos",
+  whatsapp_templates: "automatische WhatsApp-Vorlagen",
+  event_backup: "Event-Sicherung",
 };
 
 const UPGRADE_BENEFITS: Record<ProductPackageId, readonly string[]> = {

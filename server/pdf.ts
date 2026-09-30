@@ -23,6 +23,7 @@ import { resolveEventPdfLogoKey } from "./event-pdf-image";
 import { helperAvailabilityWindow } from "../shared/weekdays";
 import { latestPreparationLogbookEntry } from "../shared/preparation-logbook";
 import { COPYRIGHT_NOTICE } from "../shared/branding";
+import { productAllowsCapability } from "../shared/product-packages";
 import { loadBrandAsset } from "./brand-asset-routes";
 
 const require = createRequire(import.meta.url);
@@ -333,12 +334,9 @@ function drawCompactHelperHeader(
   doc.y = top;
   if (logoBuffer) {
     try {
-      doc.image(
-        logoBuffer,
-        doc.page.width - helperPdfMargin - logoSize,
-        top,
-        { fit: [logoSize, logoSize] }
-      );
+      doc.image(logoBuffer, doc.page.width - helperPdfMargin - logoSize, top, {
+        fit: [logoSize, logoSize],
+      });
     } catch {
       // Ein beschädigtes Logo darf den operativen PDF-Export nicht blockieren.
     }
@@ -408,10 +406,7 @@ function drawCompactHelperDayHeading(
   doc.y = y + 21;
 }
 
-function compactShiftInfo(
-  shift: Shift,
-  team: string
-) {
+function compactShiftInfo(shift: Shift, team: string) {
   const area = shift.area?.trim();
   const task = shift.task.trim() || "Aufgabe";
   const taskLine = area && area !== "Allgemein" ? `${task} · ${area}` : task;
@@ -759,11 +754,15 @@ function drawPlanningTeamAccessSheetBox(
       .heightOfString(line.value, { width: valueWidth, lineGap: 2 });
     return Math.max(24, valueHeight + 12);
   });
-  const boxHeight = 42 + rowHeights.reduce((sum, height) => sum + height, 0) + 10;
+  const boxHeight =
+    42 + rowHeights.reduce((sum, height) => sum + height, 0) + 10;
   const y = doc.y;
   doc
     .roundedRect(margin, y, contentWidth, boxHeight, 6)
-    .fillAndStroke(options.highlight ? "#FEF2F2" : "#F8FAFC", options.highlight ? "#FCA5A5" : colors.line);
+    .fillAndStroke(
+      options.highlight ? "#FEF2F2" : "#F8FAFC",
+      options.highlight ? "#FCA5A5" : colors.line
+    );
   doc
     .font("Helvetica-Bold")
     .fontSize(11)
@@ -808,7 +807,9 @@ export function renderPlanningTeamAccessSheetsPdf(
   wordmarkBuffer?: Buffer
 ) {
   if (sheets.length === 0) {
-    throw new Error("Es sind keine Ansprechpartner-Zugänge für den Druck vorhanden");
+    throw new Error(
+      "Es sind keine Ansprechpartner-Zugänge für den Druck vorhanden"
+    );
   }
   return collectPdf(doc => {
     sheets.forEach((sheet, index) => {
@@ -824,7 +825,9 @@ export function renderPlanningTeamAccessSheetsPdf(
         .font("Helvetica")
         .fontSize(10)
         .fillColor(colors.muted)
-        .text("Persönlicher Planungsteam-Zugang · Bitte vertraulich behandeln.");
+        .text(
+          "Persönlicher Planungsteam-Zugang · Bitte vertraulich behandeln."
+        );
       doc.moveDown(1);
 
       drawPlanningTeamAccessSheetBox(doc, "Zugang", [
@@ -857,7 +860,9 @@ export function renderPlanningTeamAccessSheetsPdf(
           label: "Freigaben",
           value:
             sheet.events.length > 0
-              ? sheet.events.map(event => `• ${event.year} · ${event.name}`).join("\n")
+              ? sheet.events
+                  .map(event => `• ${event.year} · ${event.name}`)
+                  .join("\n")
               : "Keine Veranstaltungen freigegeben.",
         },
       ]);
@@ -974,19 +979,21 @@ function drawTableRow(
           .slice(0, Math.max(0, columnValue.lastIndexOf(highlightedTaskNote!)))
           .replace(/\n+$/, "")
       : columnValue;
-    doc
-      .fillColor(colors.ink)
-      .text(primaryTaskText, cursor + 5, y + 6, {
-        width: column.width - 10,
-        height: height - 10,
-        align: column.align ?? "left",
-        lineGap: 1,
-      });
+    doc.fillColor(colors.ink).text(primaryTaskText, cursor + 5, y + 6, {
+      width: column.width - 10,
+      height: height - 10,
+      align: column.align ?? "left",
+      lineGap: 1,
+    });
     if (highlightedTaskNote) {
-      const noteY = y + 6 + doc.heightOfString(primaryTaskText, {
-        width: column.width - 10,
-        lineGap: 1,
-      }) + 4;
+      const noteY =
+        y +
+        6 +
+        doc.heightOfString(primaryTaskText, {
+          width: column.width - 10,
+          lineGap: 1,
+        }) +
+        4;
       const noteHeight = doc.heightOfString(highlightedTaskNote, {
         width: column.width - 14,
         lineGap: 1,
@@ -1326,8 +1333,7 @@ export function selectContactOverviewRows(
   return {
     shifts: data.shifts
       .filter(
-        shift =>
-          responsibleAreas.has(shift.area) || ownShiftIds.has(shift.id)
+        shift => responsibleAreas.has(shift.area) || ownShiftIds.has(shift.id)
       )
       .sort(sortShifts)
       .map(shift => {
@@ -1383,16 +1389,8 @@ function drawContactOverviewSection(
   description: string
 ) {
   ensureSpace(doc, 44);
-  doc
-    .font("Helvetica-Bold")
-    .fontSize(13)
-    .fillColor(colors.accent)
-    .text(title);
-  doc
-    .font("Helvetica")
-    .fontSize(8.5)
-    .fillColor(colors.muted)
-    .text(description);
+  doc.font("Helvetica-Bold").fontSize(13).fillColor(colors.accent).text(title);
+  doc.font("Helvetica").fontSize(8.5).fillColor(colors.muted).text(description);
   doc.moveDown(0.55);
 }
 
@@ -1453,7 +1451,9 @@ export function renderContactOverviewPdf(
         drawTableRow(
           doc,
           columns,
-          { task: "Keine Bereichsverantwortung oder eigenen Schichten vorhanden." },
+          {
+            task: "Keine Bereichsverantwortung oder eigenen Schichten vorhanden.",
+          },
           margin,
           { minimumHeight: 32 }
         );
@@ -1592,7 +1592,9 @@ export function renderContactOverviewPdf(
             location: material.locationId
               ? (locationById.get(material.locationId)?.name ?? "–")
               : "–",
-            due: [material.quantity, material.unit].filter(Boolean).join(" ") || "–",
+            due:
+              [material.quantity, material.unit].filter(Boolean).join(" ") ||
+              "–",
             status: materialStatusText(material.status),
             note: material.note?.trim() || "–",
           },
@@ -1625,8 +1627,12 @@ export function renderMaterialPacklistPdf(
   data: PlanningData,
   materialIds: number[]
 ) {
-  const contactById = new Map(data.contacts.map(contact => [contact.id, contact]));
-  const locationById = new Map((data.locations ?? []).map(location => [location.id, location]));
+  const contactById = new Map(
+    data.contacts.map(contact => [contact.id, contact])
+  );
+  const locationById = new Map(
+    (data.locations ?? []).map(location => [location.id, location])
+  );
   const selectedMaterials = selectMaterialPacklistMaterials(
     data.materials,
     materialIds
@@ -1660,7 +1666,10 @@ export function renderMaterialPacklistPdf(
       drawTableRow(
         doc,
         columns,
-        { article: "Für die aktuelle Filterauswahl sind keine Artikel sichtbar." },
+        {
+          article:
+            "Für die aktuelle Filterauswahl sind keine Artikel sichtbar.",
+        },
         margin,
         { minimumHeight: 34 }
       );
@@ -1701,7 +1710,9 @@ export function renderMaterialPacklistPdf(
       .font("Helvetica")
       .fontSize(9)
       .fillColor(colors.ink)
-      .text("Geprüft von: ______________________________    Datum / Uhrzeit: ______________________________");
+      .text(
+        "Geprüft von: ______________________________    Datum / Uhrzeit: ______________________________"
+      );
   });
 }
 
@@ -1743,9 +1754,11 @@ function donationTraitText(donation: Cake) {
     donation.meat ? "Fleischhaltig" : null,
   ].filter((label): label is string => Boolean(label));
   const note = donation.note?.trim();
-  return [labels.join(", "), note ? `Hinweis: ${note}` : ""]
-    .filter(Boolean)
-    .join("\n") || "–";
+  return (
+    [labels.join(", "), note ? `Hinweis: ${note}` : ""]
+      .filter(Boolean)
+      .join("\n") || "–"
+  );
 }
 
 function donationDropoffText(donation: Cake) {
@@ -1812,7 +1825,10 @@ export function renderDonationOverviewPdf(
       drawTableRow(
         doc,
         columns,
-        { donation: "Für die aktuelle Filterauswahl sind keine Spenden sichtbar." },
+        {
+          donation:
+            "Für die aktuelle Filterauswahl sind keine Spenden sichtbar.",
+        },
         margin,
         { minimumHeight: 34 }
       );
@@ -1872,7 +1888,10 @@ export function selectTaskOverviewRows(
     );
 }
 
-function taskOverviewStatusLabel(task: TaskOverviewRow, kind: TaskOverviewKind) {
+function taskOverviewStatusLabel(
+  task: TaskOverviewRow,
+  kind: TaskOverviewKind
+) {
   if (task.status === "offen") return "Offen";
   if (task.status === "inArbeit") {
     return kind === "prep" && task.statusWording === "genehmigung"
@@ -1896,7 +1915,9 @@ function renderTaskOverviewPdf(
     kind === "prep" ? data.prepTasks : data.postTasks,
     taskIds
   );
-  const contactById = new Map(data.contacts.map(contact => [contact.id, contact]));
+  const contactById = new Map(
+    data.contacts.map(contact => [contact.id, contact])
+  );
   const locationById = new Map(
     (data.locations ?? []).map(location => [location.id, location])
   );
@@ -1940,7 +1961,9 @@ function renderTaskOverviewPdf(
       drawTableRow(
         doc,
         columns,
-        { task: "Für die aktuelle Filterauswahl sind keine Aufgaben sichtbar." },
+        {
+          task: "Für die aktuelle Filterauswahl sind keine Aufgaben sichtbar.",
+        },
         margin,
         { minimumHeight: 34 }
       );
@@ -2015,23 +2038,33 @@ async function loadPlanningData(): Promise<PlanningData> {
     db.getAppSettings(),
     db.getEvent(),
   ]);
+  const product = await db.getCurrentTenantProductEntitlement();
+  const allowsCustomBranding = productAllowsCapability(
+    product.packageId,
+    "custom_branding"
+  );
   const resolvedSettings = {
     ...(settings ?? DEFAULT_PDF_SETTINGS),
     eventName: selectedEvent?.name ?? settings?.eventName ?? "Veranstaltung",
     eventYear: String(currentEventYear()),
-    logoKey: selectedEvent?.pdfLogoKey ?? null,
-    logoUrl: selectedEvent?.pdfLogoUrl ?? null,
+    logoKey: allowsCustomBranding ? (selectedEvent?.pdfLogoKey ?? null) : null,
+    logoUrl: allowsCustomBranding ? (selectedEvent?.pdfLogoUrl ?? null) : null,
   };
   let logoBuffer: Buffer | undefined;
-  const logoStorageKey = selectedEvent
-    ? resolveEventPdfLogoKey(selectedEvent)
-    : null;
+  const logoStorageKey =
+    allowsCustomBranding && selectedEvent
+      ? resolveEventPdfLogoKey(selectedEvent)
+      : null;
   if (logoStorageKey) {
     try {
       logoBuffer = await storageRead(logoStorageKey);
     } catch (error) {
       console.warn("[PDF] Logo konnte nicht geladen werden:", error);
     }
+  } else if (!allowsCustomBranding) {
+    // Event Pass und Light nutzen verbindlich die MyCrewMate-Marke statt eines
+    // individuell hochgeladenen Veranstaltungslogos.
+    logoBuffer = await loadMyCrewMateWordmarkBuffer();
   }
   return {
     helpers,
@@ -2104,19 +2137,13 @@ export async function createPlanningTeamAccessSheetsPdf(
 }
 
 /** Beschränkt Helfer-PDFs bei Bedarf auf einen einzelnen Ansprechpartner. */
-export function selectHelpersForContact(
-  helpers: Helper[],
-  contactId?: number
-) {
+export function selectHelpersForContact(helpers: Helper[], contactId?: number) {
   return contactId === undefined
     ? helpers
     : helpers.filter(helper => helper.contactId === contactId);
 }
 
-export function renderAllHelperTaskZip(
-  data: PlanningData,
-  contactId?: number
-) {
+export function renderAllHelperTaskZip(data: PlanningData, contactId?: number) {
   return new Promise<Buffer>((resolve, reject) => {
     const output: Buffer[] = [];
     const archive = new ZipArchive({ zlib: { level: 9 } });

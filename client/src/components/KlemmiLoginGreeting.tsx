@@ -37,7 +37,9 @@ function chooseClip(
 }
 
 function aDialogIsOpen() {
-  return Boolean(document.querySelector('[data-slot="dialog-content"][data-state="open"]'));
+  return Boolean(
+    document.querySelector('[data-slot="dialog-content"][data-state="open"]')
+  );
 }
 
 /**
@@ -45,8 +47,14 @@ function aDialogIsOpen() {
  * bleibt Klemmi bei langer Ruhe sehr zurückhaltend und reagiert auf zentrale
  * Eingabefehler bzw. erfolgreiche Schichtbesetzungen ohne die Oberfläche zu sperren.
  */
-export function KlemmiLoginGreeting({ enabled }: { enabled: boolean }) {
-  const { isSpeaking, speak, cancel } = useKlemmiVoice();
+export function KlemmiLoginGreeting({
+  enabled,
+  muted = false,
+}: {
+  enabled: boolean;
+  muted?: boolean;
+}) {
+  const { isSpeaking, speak, cancel } = useKlemmiVoice({ muted });
   const claimDailyGreeting = trpc.auth.claimDailyKlemmiGreeting.useMutation();
   const [active, setActive] = useState<ActiveGreeting | null>(null);
   const claimAttemptedRef = useRef(false);
@@ -87,7 +95,8 @@ export function KlemmiLoginGreeting({ enabled }: { enabled: boolean }) {
     claimAttemptedRef.current = true;
     claimDailyGreeting.mutate(undefined, {
       onSuccess: result => {
-        if (!result.show || !result.clipId || !isKlemmiAudioId(result.clipId)) return;
+        if (!result.show || !result.clipId || !isKlemmiAudioId(result.clipId))
+          return;
         lastClipRef.current = result.clipId;
         setActive({ kind: "login", clipId: result.clipId });
       },
@@ -124,13 +133,22 @@ export function KlemmiLoginGreeting({ enabled }: { enabled: boolean }) {
       }, INACTIVITY_DELAY_MS);
     };
     const handleActivity = () => scheduleIdleHint();
-    const events: Array<keyof WindowEventMap> = ["pointerdown", "keydown", "scroll", "focus"];
-    events.forEach(eventName => window.addEventListener(eventName, handleActivity, { passive: true }));
+    const events: Array<keyof WindowEventMap> = [
+      "pointerdown",
+      "keydown",
+      "scroll",
+      "focus",
+    ];
+    events.forEach(eventName =>
+      window.addEventListener(eventName, handleActivity, { passive: true })
+    );
     document.addEventListener("visibilitychange", handleActivity);
     scheduleIdleHint();
     return () => {
       clearIdleTimer();
-      events.forEach(eventName => window.removeEventListener(eventName, handleActivity));
+      events.forEach(eventName =>
+        window.removeEventListener(eventName, handleActivity)
+      );
       document.removeEventListener("visibilitychange", handleActivity);
     };
   }, [active, enabled, showLocalReaction]);
@@ -166,7 +184,10 @@ export function KlemmiLoginGreeting({ enabled }: { enabled: boolean }) {
       <span className="klemmi-login-greeting-copy block rounded-2xl border border-blue-100 bg-white/92 px-3 py-2 pr-16 text-sm font-medium leading-snug text-slate-800 shadow-lg backdrop-blur-sm sm:pr-20">
         {caption}
       </span>
-      <span className="klemmi-login-greeting-mascot absolute -right-1 -top-12 size-20 sm:-top-14 sm:size-24" aria-hidden="true">
+      <span
+        className="klemmi-login-greeting-mascot absolute -right-1 -top-12 size-20 sm:-top-14 sm:size-24"
+        aria-hidden="true"
+      >
         <KlemmiMascot isSpeaking={isSpeaking} decorative />
       </span>
     </button>,

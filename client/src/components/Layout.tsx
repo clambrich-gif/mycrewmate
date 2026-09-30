@@ -3,6 +3,10 @@ import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
 import { ForcePasswordChangeModal } from "@/components/ForcePasswordChangeModal";
 import { FirstLoginOnboarding } from "@/components/FirstLoginOnboarding";
 import { KlemmiLoginGreeting } from "@/components/KlemmiLoginGreeting";
+import {
+  DASHBOARD_KLEMMI_MUTE_EVENT,
+  getDashboardKlemmiMuted,
+} from "@/lib/dashboard-klemmi-muted";
 import { KlemmiUpgradeDialog } from "@/components/KlemmiUpgradeDialog";
 import {
   AlertDialog,
@@ -310,6 +314,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
     typeof window !== "undefined" &&
     new URLSearchParams(window.location.search).get("klemmiIntroPreview") === "1"
   );
+  const [dashboardKlemmiMuted, setDashboardKlemmiMuted] = useState(
+    getDashboardKlemmiMuted
+  );
+  useEffect(() => {
+    const syncMuteState = () => setDashboardKlemmiMuted(getDashboardKlemmiMuted());
+    window.addEventListener(DASHBOARD_KLEMMI_MUTE_EVENT, syncMuteState);
+    window.addEventListener("storage", syncMuteState);
+    return () => {
+      window.removeEventListener(DASHBOARD_KLEMMI_MUTE_EVENT, syncMuteState);
+      window.removeEventListener("storage", syncMuteState);
+    };
+  }, []);
   const myPermissions = trpc.planningTeamAccesses.myPermissions.useQuery(undefined, {
     enabled:
       isAuthenticated &&
@@ -1537,6 +1553,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           firstLoginOnboarding.isSuccess &&
           firstLoginOnboarding.data?.pending !== true
         }
+        muted={dashboardKlemmiMuted}
       />
       <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b bg-white px-3 text-slate-950 shadow-sm lg:hidden">
         <Button
@@ -1734,14 +1751,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 </span>
               </div>
             )}
-            {!isEventPass && (
-              <div className="mt-2 border-t pt-2">
-                <Label className="mb-1 block text-xs text-muted-foreground">
-                  Projektstand
-                </Label>
-                <LazySaveLoadControls onAction={() => setMobileMenuOpen(false)} />
-              </div>
-            )}
+            <div className="mt-2 border-t pt-2">
+              <Label className="mb-1 block text-xs text-muted-foreground">
+                Projektstand
+              </Label>
+              <LazySaveLoadControls onAction={() => setMobileMenuOpen(false)} />
+            </div>
             {!pwaInstalled && (
               deferredInstallPrompt ? (
                 <Button
@@ -2027,14 +2042,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </span>
             </div>
           )}
-          {!isEventPass && (
-            <div className="mt-2 border-t pt-2">
-              <Label className="mb-1 block text-xs text-muted-foreground">
-                Projektstand
-              </Label>
-              <LazySaveLoadControls />
-            </div>
-          )}
+          <div className="mt-2 border-t pt-2">
+            <Label className="mb-1 block text-xs text-muted-foreground">
+              Projektstand
+            </Label>
+            <LazySaveLoadControls />
+          </div>
         </div>
 
         <nav className="flex-1 overflow-y-auto px-2 pb-2 pt-1.5 space-y-0.5">

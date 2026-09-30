@@ -815,7 +815,7 @@ export default function Helpers() {
   const { data: tenantProduct } = trpc.tenantProduct.current.useQuery(undefined, {
     staleTime: 60_000,
   });
-  const currentPackageId = tenantProduct?.packageId ?? "pro";
+  const currentPackageId = tenantProduct?.packageId ?? "event_pass";
   // Rechte nie aus einer optionalen, verschachtelten API-Antwort lesen:
   // während Cache-/Sitzungswechseln könnte sie sonst die gesamte Ansicht
   // unterbrechen. Der Paketkatalog ist die zentrale, sichere Quelle.
@@ -823,6 +823,10 @@ export default function Helpers() {
   const allowsPersonalPdfShare = productAllowsCapability(
     currentPackageId,
     "personal_accesses"
+  );
+  const allowsWhatsAppTemplates = productAllowsCapability(
+    currentPackageId,
+    "whatsapp_templates"
   );
   const [upgradeCapability, setUpgradeCapability] = useState<
     "donations" | "personal_accesses" | null
@@ -1088,6 +1092,11 @@ export default function Helpers() {
 
   const sendWhatsAppMessage = async (templateKind: "general" | "schedule") => {
     if (!whatsAppTargetHelper || isPreparingWhatsApp) return;
+    if (!allowsWhatsAppTemplates) {
+      window.location.assign(buildWhatsAppShareUrl("", whatsAppTargetHelper.phone));
+      setWhatsAppTargetHelper(null);
+      return;
+    }
     if (templateKind === "schedule" && !allowsPersonalPdfShare) {
       setUpgradeCapability("personal_accesses");
       return;
@@ -3164,6 +3173,17 @@ export default function Helpers() {
             </p>
           </DialogHeader>
 
+          {!allowsWhatsAppTemplates ? (
+            <>
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-950">
+                <strong>Leerer WhatsApp-Chat:</strong> Der direkte Kontakt bleibt nutzbar. WhatsApp wird ohne vorbereiteten Text geöffnet, damit Sie die Nachricht frei formulieren können. Automatische Vorlagen sind ab Pro verfügbar.
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                <strong>Freie Nachricht:</strong> Automatisch eingefügte Vorlagen und persönliche PDF-Links stehen ab Pro bereit.
+              </div>
+            </>
+          ) : (
+            <>
           <div className="grid gap-3 py-2 sm:grid-cols-2">
             <button
               type="button"
@@ -3266,6 +3286,8 @@ export default function Helpers() {
               </p>
             )}
           </div>
+            </>
+          )}
 
           <DialogFooter className="gap-2 sm:gap-0">
             <Button
@@ -3283,7 +3305,11 @@ export default function Helpers() {
               onClick={() => sendWhatsAppMessage(selectedWhatsAppTemplateKind)}
             >
               <MessageCircle className="mr-2 h-4 w-4" />
-              {isPreparingWhatsApp ? "Bereite vor …" : "In WhatsApp öffnen"}
+              {isPreparingWhatsApp
+                ? "Bereite vor …"
+                : allowsWhatsAppTemplates
+                  ? "In WhatsApp öffnen"
+                  : "WhatsApp-Chat öffnen"}
             </Button>
           </DialogFooter>
         </DialogContent>

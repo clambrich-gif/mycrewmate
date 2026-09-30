@@ -50,7 +50,8 @@ export function resolveWhatsAppMessageTemplate(
   template: string | null | undefined
 ) {
   const configuredTemplate = template?.trim();
-  return configuredTemplate && !LEGACY_WHATSAPP_MESSAGE_TEMPLATES.has(configuredTemplate)
+  return configuredTemplate &&
+    !LEGACY_WHATSAPP_MESSAGE_TEMPLATES.has(configuredTemplate)
     ? configuredTemplate
     : DEFAULT_WHATSAPP_MESSAGE_TEMPLATE;
 }
@@ -70,7 +71,8 @@ export function renderWhatsAppMessage(
   { eventName, eventDuration, pdfLink }: WhatsAppMessageVariables
 ) {
   const safeEventName = eventName?.trim() || "unser Event";
-  const safeEventDuration = eventDuration?.trim() || "an den Veranstaltungstagen";
+  const safeEventDuration =
+    eventDuration?.trim() || "an den Veranstaltungstagen";
   const configuredTemplate = pdfLink
     ? resolveWhatsAppMessageTemplate(template)
     : resolveWhatsAppHelperRequestTemplate(template);
@@ -94,9 +96,12 @@ export function renderWhatsAppMessage(
 export function normalizeWhatsAppPhone(phone: string | null | undefined) {
   const compact = phone?.trim().replace(/[\s()./-]/g, "") ?? "";
   if (!compact) return null;
-  if (compact.startsWith("00")) return compact.slice(2).replace(/\D/g, "") || null;
-  if (compact.startsWith("+")) return compact.slice(1).replace(/\D/g, "") || null;
-  if (compact.startsWith("0")) return `49${compact.slice(1).replace(/\D/g, "")}` || null;
+  if (compact.startsWith("00"))
+    return compact.slice(2).replace(/\D/g, "") || null;
+  if (compact.startsWith("+"))
+    return compact.slice(1).replace(/\D/g, "") || null;
+  if (compact.startsWith("0"))
+    return `49${compact.slice(1).replace(/\D/g, "")}` || null;
   const digits = compact.replace(/\D/g, "");
   return digits || null;
 }
@@ -110,9 +115,12 @@ export function buildWhatsAppShareUrl(
   message: string,
   helperPhone?: string | null
 ) {
-  const text = encodeURIComponent(message);
   const phone = normalizeWhatsAppPhone(helperPhone);
-  return phone
-    ? `https://wa.me/${phone}?text=${text}`
-    : `https://wa.me/?text=${text}`;
+  const trimmedMessage = message.trim();
+  const baseUrl = phone ? `https://wa.me/${phone}` : "https://wa.me/";
+  // Ohne freigegebene Vorlage wird bewusst kein text-Parameter gesetzt. So
+  // öffnet WhatsApp einen wirklich leeren Chat statt eines versteckten Resttexts.
+  return trimmedMessage
+    ? `${baseUrl}?text=${encodeURIComponent(trimmedMessage)}`
+    : baseUrl;
 }

@@ -110,6 +110,7 @@ import {
   PRODUCT_ASSIGNMENT_STATUSES,
   PRODUCT_PACKAGE_IDS,
   PRODUCT_PACKAGE_META,
+  productAllowsCapability,
   type ProductCapability,
 } from "@shared/product-packages";
 import { MASTER_ADMIN_ORIGIN, isMasterAdminRequestHost } from "@shared/platform-admin";
@@ -1035,6 +1036,51 @@ function productScopeAdminAuthProcedure(capability: ProductCapability) {
 function productScopeAdminProcedure(capability: ProductCapability) {
   return scopeAdminProcedure.use(async ({ ctx, next }) => {
     await requireCurrentProductCapability(capability);
+    return next({ ctx });
+  });
+}
+/**
+ * Der Event Pass erhält eine auf seine eine Veranstaltung begrenzte Sicherung,
+ * ohne dadurch die umfassenden Pro-Excel-Rechte zu erhalten. Für alle anderen
+ * Pakete bleibt die bisherige Einzelprüfung unverändert maßgeblich.
+ */
+async function requireBackupCapability(
+  capability: Extract<ProductCapability, "project_backup" | "excel">
+) {
+  const entitlement = await db.getCurrentTenantProductEntitlement();
+  await requireCurrentProductCapability(
+    entitlement.packageId === "event_pass" ? "event_backup" : capability
+  );
+}
+function backupCapabilityProcedure(
+  capability: Extract<ProductCapability, "project_backup" | "excel">
+) {
+  return protectedProcedure.use(async ({ ctx, next }) => {
+    await requireBackupCapability(capability);
+    return next({ ctx });
+  });
+}
+function backupCapabilityAdminProcedure(
+  capability: Extract<ProductCapability, "project_backup" | "excel">
+) {
+  return adminProcedure.use(async ({ ctx, next }) => {
+    await requireBackupCapability(capability);
+    return next({ ctx });
+  });
+}
+function backupScopeAdminProcedure(
+  capability: Extract<ProductCapability, "project_backup" | "excel">
+) {
+  return scopeAdminProcedure.use(async ({ ctx, next }) => {
+    await requireBackupCapability(capability);
+    return next({ ctx });
+  });
+}
+function backupScopeAdminAuthProcedure(
+  capability: Extract<ProductCapability, "project_backup" | "excel">
+) {
+  return scopeAdminAuthProcedure.use(async ({ ctx, next }) => {
+    await requireBackupCapability(capability);
     return next({ ctx });
   });
 }
@@ -4137,6 +4183,16 @@ export const appRouter = router({
 
   pdf: router({
     settings: protectedProcedure.query(async () => {
+      await requireCurrentProductCapability("pdf");
+      const product = await db.getCurrentTenantProductEntitlement();
+      const allowsCustomBranding = productAllowsCapability(
+        product.packageId,
+        "custom_branding"
+      );
+      const allowsWhatsAppTemplates = productAllowsCapability(
+        product.packageId,
+        "whatsapp_templates"
+      );
       const settings = (await db.getAppSettings()) ?? {
         ...DEFAULT_PDF_SETTINGS,
         eventYear: String(currentEventYear()),
@@ -4153,26 +4209,34 @@ export const appRouter = router({
         ...settings,
         eventYear: String(currentEventYear()),
         eventName: selectedEvent?.name ?? settings.eventName,
-        logoKey: selectedEvent?.pdfLogoKey ?? null,
+        logoKey: allowsCustomBranding ? selectedEvent?.pdfLogoKey ?? null : null,
         logoUrl:
-          selectedEvent && selectedEvent.pdfLogoKey
+          allowsCustomBranding && selectedEvent?.pdfLogoKey
             ? `/api/pdf/event-image/${selectedEvent.year}/${selectedEvent.id}`
-            : null,
-        logoFallback: "none" as const,
-        whatsAppHelperRequestTemplate:
-          selectedEvent?.whatsAppHelperRequestTemplate ??
-          settings.whatsAppHelperRequestTemplate ??
-          null,
-        whatsAppMessageTemplate:
-          selectedEvent?.whatsAppMessageTemplate ??
-          settings.whatsAppMessageTemplate ??
-          null,
+            : "/brand/mycrewmate-wordmark.png",
+        logoFallback: allowsCustomBranding ? ("none" as const) : ("brand" as const),
+        whatsAppHelperRequestTemplate: allowsWhatsAppTemplates
+          ? selectedEvent?.whatsAppHelperRequestTemplate ??
+            settings.whatsAppHelperRequestTemplate ??
+            null
+          : null,
+        whatsAppMessageTemplate: allowsWhatsAppTemplates
+          ? selectedEvent?.whatsAppMessageTemplate ??
+            settings.whatsAppMessageTemplate ??
+            null
+          : null,
         extraColumns,
       };
     }),
     updateSettings: adminProcedure
       .input(pdfSettingsInput)
       .mutation(async ({ input }) => {
+        await requireCurrentProductCapability("pdf");
+        const product = await db.getCurrentTenantProductEntitlement();
+        const allowsWhatsAppTemplates = productAllowsCapability(
+          product.packageId,
+          "whatsapp_templates"
+        );
         const {
           extraColumns,
           whatsAppHelperRequestTemplate,
@@ -4183,13 +4247,15 @@ export const appRouter = router({
           ...rest,
           extraColumns: JSON.stringify(extraColumns),
         });
-        await db.updateCurrentEventWhatsAppTemplates({
-          whatsAppHelperRequestTemplate,
-          whatsAppMessageTemplate,
-        });
+        if (allowsWhatsAppTemplates) {
+          await db.updateCurrentEventWhatsAppTemplates({
+            whatsAppHelperRequestTemplate,
+            whatsAppMessageTemplate,
+          });
+        }
         return { success: true } as const;
       }),
-    uploadLogo: adminProcedure
+    uploadLogo: productCapabilityAdminProcedure("custom_branding")
       .input(
         z.object({
           base64: z.string().max(4_000_000, "Logo ist größer als 3 MB"),
@@ -4239,7 +4305,7 @@ export const appRouter = router({
         });
         return uploaded;
       }),
-    clearLogo: adminProcedure.mutation(async () => {
+    clearLogo: productCapabilityAdminProcedure("custom_branding").mutation(async () => {
       await db.updateCurrentEventPdfImage({
         pdfLogoKey: null,
         pdfLogoUrl: null,
@@ -5125,7 +5191,7 @@ export const appRouter = router({
   }),
 
   projectFile: router({
-    save: productCapabilityProcedure("project_backup").query(async () => {
+    save: backupCapabilityProcedure("project_backup").query(async () => {
       const result = await withExcelOperationLimit(() => exportProjectFile());
       return {
         base64: result.buffer.toString("base64"),
@@ -5133,7 +5199,7 @@ export const appRouter = router({
         eventName: result.eventName,
       };
     }),
-    preview: productCapabilityAdminProcedure("project_backup")
+    preview: backupCapabilityAdminProcedure("project_backup")
       .input(
         z.object({
           base64: z
@@ -5157,7 +5223,7 @@ export const appRouter = router({
           }),
         };
       }),
-    load: productScopeAdminAuthProcedure("project_backup")
+    load: backupScopeAdminAuthProcedure("project_backup")
       .input(
         z.object({
           base64: z
@@ -5207,11 +5273,11 @@ export const appRouter = router({
           });
         }
       }),
-    restoreLogs: productCapabilityAdminProcedure("project_backup").query(() => listBackupRestoreLogs()),
-    restoreLog: productCapabilityAdminProcedure("project_backup")
+    restoreLogs: backupCapabilityAdminProcedure("project_backup").query(() => listBackupRestoreLogs()),
+    restoreLog: backupCapabilityAdminProcedure("project_backup")
       .input(z.object({ id: z.number().int().positive() }))
       .query(({ input }) => getBackupRestoreLog(input.id)),
-    clearRestoreLogs: productScopeAdminAuthProcedure("project_backup")
+    clearRestoreLogs: backupScopeAdminAuthProcedure("project_backup")
       .input(z.object({ adminPassword: z.string().min(1).max(200) }))
       .mutation(async ({ ctx, input }) => {
         await requireAdminPassword(input.adminPassword, ctx);
@@ -5220,7 +5286,7 @@ export const appRouter = router({
   }),
 
   excel: router({
-    exportFile: productCapabilityProcedure("excel").query(async () => {
+    exportFile: backupCapabilityProcedure("excel").query(async () => {
       const result = await withExcelOperationLimit(() => exportProjectExcel());
       return {
         base64: result.buffer.toString("base64"),
@@ -5228,7 +5294,7 @@ export const appRouter = router({
         eventName: result.eventName,
       };
     }),
-    previewModule: productCapabilityAdminProcedure("excel")
+    previewModule: backupCapabilityAdminProcedure("excel")
       .input(
         z.object({
           area: z.enum(MODULE_IMPORT_AREAS),
@@ -5253,7 +5319,7 @@ export const appRouter = router({
           }),
         };
       }),
-    previewFull: productCapabilityAdminProcedure("excel")
+    previewFull: backupCapabilityAdminProcedure("excel")
       .input(
         z.object({
           base64: z
@@ -5277,7 +5343,7 @@ export const appRouter = router({
           }),
         };
       }),
-    applyModule: productScopeAdminProcedure("excel")
+    applyModule: backupScopeAdminProcedure("excel")
       .input(
         z.object({
           area: z.enum(MODULE_IMPORT_AREAS),
@@ -5330,7 +5396,7 @@ export const appRouter = router({
           });
         }
       }),
-    applyFull: productScopeAdminProcedure("excel")
+    applyFull: backupScopeAdminProcedure("excel")
       .input(
         z.object({
           base64: z

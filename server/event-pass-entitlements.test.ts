@@ -23,11 +23,22 @@ describe("Paket 2: Event-Pass-Entitlements", () => {
     expect(productAllowsCapability("event_pass", "preparation")).toBe(true);
     expect(productAllowsCapability("event_pass", "pdf")).toBe(true);
 
-    expect(productAllowsCapability("event_pass", "additional_events")).toBe(false);
-    expect(productAllowsCapability("event_pass", "personal_accesses")).toBe(false);
+    expect(productAllowsCapability("event_pass", "additional_events")).toBe(
+      false
+    );
+    expect(productAllowsCapability("event_pass", "personal_accesses")).toBe(
+      false
+    );
     expect(productAllowsCapability("event_pass", "chat")).toBe(false);
     expect(productAllowsCapability("event_pass", "excel")).toBe(false);
     expect(productAllowsCapability("event_pass", "project_backup")).toBe(false);
+    expect(productAllowsCapability("event_pass", "event_backup")).toBe(true);
+    expect(productAllowsCapability("event_pass", "custom_branding")).toBe(
+      false
+    );
+    expect(productAllowsCapability("event_pass", "whatsapp_templates")).toBe(
+      false
+    );
     expect(productAllowsCapability("event_pass", "locations")).toBe(false);
     expect(productAllowsCapability("event_pass", "finances")).toBe(false);
     expect(productAllowsCapability("event_pass", "donations")).toBe(false);
@@ -40,7 +51,9 @@ describe("Paket 2: Event-Pass-Entitlements", () => {
     expect(productAllowsPlanningModule("event_pass", "pdf")).toBe(true);
 
     expect(productAllowsPlanningModule("event_pass", "contacts")).toBe(false);
-    expect(productAllowsPlanningModule("event_pass", "postprocessing")).toBe(false);
+    expect(productAllowsPlanningModule("event_pass", "postprocessing")).toBe(
+      false
+    );
     expect(productAllowsPlanningModule("event_pass", "materials")).toBe(false);
     expect(productAllowsPlanningModule("event_pass", "donations")).toBe(false);
     expect(productAllowsPlanningModule("event_pass", "finances")).toBe(false);
@@ -59,18 +72,31 @@ describe("Paket 2: Event-Pass-Entitlements", () => {
   });
 
   it("verankert Scopebindung, Mengenlimit und API-Gates serverseitig", () => {
-    const db = readFileSync(path.resolve(process.cwd(), "server/db.ts"), "utf8");
-    const router = readFileSync(path.resolve(process.cwd(), "server/routers.ts"), "utf8");
+    const db = readFileSync(
+      path.resolve(process.cwd(), "server/db.ts"),
+      "utf8"
+    );
+    const router = readFileSync(
+      path.resolve(process.cwd(), "server/routers.ts"),
+      "utf8"
+    );
 
     expect(db).toContain("getTenantProductEntitlement");
     expect(db).toContain("getEventForTenantById");
     expect(db).toContain("assertCurrentProductHelperCapacity");
     expect(db).toContain("maxHelpersPerEvent");
     expect(router).toContain("enforceProductEventScope");
-    expect(router).toContain("requireCurrentProductCapability(\"additional_events\")");
-    expect(router).toContain("requireCurrentProductCapability(\"personal_accesses\")");
-    expect(router).toContain("requireCurrentProductCapability(\"chat\")");
-    expect(router).toContain("productCapabilityProcedure(\"excel\")");
-    expect(router).toContain("productCapabilityProcedure(\"project_backup\")");
+    expect(router).toContain(
+      'requireCurrentProductCapability("additional_events")'
+    );
+    expect(router).toContain(
+      'requireCurrentProductCapability("personal_accesses")'
+    );
+    expect(router).toContain('requireCurrentProductCapability("chat")');
+    expect(router).toContain('backupCapabilityProcedure("excel")');
+    expect(router).toContain('backupCapabilityProcedure("project_backup")');
+    expect(router).toContain(
+      'entitlement.packageId === "event_pass" ? "event_backup" : capability'
+    );
   });
 });

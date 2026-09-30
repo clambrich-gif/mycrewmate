@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { KlemmiEventClosureRecommendation } from "@/components/KlemmiEventClosureRecommendation";
+import { KlemmiUpgradeDialog } from "@/components/KlemmiUpgradeDialog";
 import { KlemmiProLimitNotice } from "@/components/KlemmiProLimitNotice";
 import { KlemmiSurfaceGuide } from "@/components/KlemmiSurfaceGuide";
 import { LocationMapCard } from "@/components/LocationMapCard";
@@ -8,6 +9,10 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import { useDashboardDetailsLayout } from "@/hooks/useDashboardDetailsLayout";
 import { dashboardDailyQuote } from "@/lib/daily-dashboard-quotes";
+import {
+  getDashboardKlemmiMuted,
+  setDashboardKlemmiMuted,
+} from "@/lib/dashboard-klemmi-muted";
 import { createDashboardKlemmiSteps } from "@/lib/dashboard-klemmi-tour";
 import {
   dashboardTargetHref,
@@ -28,12 +33,21 @@ import {
   GitCompareArrows,
   ImageUp,
   ListTodo,
+  LockKeyhole,
   Mail,
   ShieldCheck,
   UsersRound,
+  Volume2,
+  VolumeX,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import {
@@ -46,7 +60,10 @@ import {
   eventCountdownState,
   type EventCountdownState,
 } from "@shared/event-dates";
-import { productAllowsCapability } from "@shared/product-packages";
+import {
+  productAllowsCapability,
+  type ProductPackageId,
+} from "@shared/product-packages";
 import { cn } from "@/lib/utils";
 
 type PriorityAction = {
@@ -134,12 +151,16 @@ function PriorityActionCard({
         className={`h-full min-w-0 border-l-4 text-slate-950 shadow-sm transition-[border-color,box-shadow,transform] duration-150 group-hover:shadow-md group-active:scale-[0.99] group-focus-visible:ring-2 group-focus-visible:ring-offset-2 ${tone.card}`}
       >
         <CardContent className="flex min-h-24 items-center gap-3 p-3 sm:p-4">
-          <span className={`flex size-11 shrink-0 items-center justify-center rounded-full ${tone.icon}`}>
+          <span
+            className={`flex size-11 shrink-0 items-center justify-center rounded-full ${tone.icon}`}
+          >
             <Icon className="size-5" aria-hidden="true" />
           </span>
           <span className="min-w-0 flex-1">
             <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-              <strong className={`text-2xl leading-none ${tone.value}`}>{action.value}</strong>
+              <strong className={`text-2xl leading-none ${tone.value}`}>
+                {action.value}
+              </strong>
               <span className="text-sm font-bold uppercase tracking-wide text-slate-800">
                 {action.label}
               </span>
@@ -148,7 +169,10 @@ function PriorityActionCard({
               {action.detail}
             </span>
           </span>
-          <ArrowRight className={`size-5 shrink-0 transition-transform duration-150 group-hover:translate-x-0.5 ${tone.action}`} aria-hidden="true" />
+          <ArrowRight
+            className={`size-5 shrink-0 transition-transform duration-150 group-hover:translate-x-0.5 ${tone.action}`}
+            aria-hidden="true"
+          />
         </CardContent>
       </Card>
     </button>
@@ -216,7 +240,9 @@ function UpcomingDeadlinesCard({
                 <span
                   className={`flex shrink-0 flex-col rounded-lg border px-2 py-1 text-center ${deadlineToneClass(deadline)}`}
                 >
-                  <span className="text-sm font-bold leading-tight">{deadline.dueText}</span>
+                  <span className="text-sm font-bold leading-tight">
+                    {deadline.dueText}
+                  </span>
                   <span className="text-[11px] leading-tight">
                     {deadlineTimingLabel(deadline.daysUntil)}
                   </span>
@@ -227,7 +253,10 @@ function UpcomingDeadlinesCard({
                 />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block line-clamp-2 text-sm font-semibold leading-5 text-slate-900" title={deadline.task}>
+                <span
+                  className="block line-clamp-2 text-sm font-semibold leading-5 text-slate-900"
+                  title={deadline.task}
+                >
                   {deadline.task}
                 </span>
                 <span className="mt-1 block line-clamp-2 text-xs leading-4 text-slate-600">
@@ -301,7 +330,9 @@ function FeedbackRateCard({
             Rückmeldequote
           </span>
           <span className="mt-1 block text-sm text-slate-700">
-            <strong className="text-lg text-slate-950">{confirmed} / {assigned}</strong>{" "}
+            <strong className="text-lg text-slate-950">
+              {confirmed} / {assigned}
+            </strong>{" "}
             eingeteilte Helfer bestätigt
           </span>
           <span
@@ -310,7 +341,9 @@ function FeedbackRateCard({
             }`}
           >
             {statusText}
-            {isActionable && <ArrowRight className="size-4" aria-hidden="true" />}
+            {isActionable && (
+              <ArrowRight className="size-4" aria-hidden="true" />
+            )}
           </span>
         </span>
       </CardContent>
@@ -381,7 +414,9 @@ function FirstContactRateCard({
             Erstkontakt-Quote
           </span>
           <span className="mt-1 block text-sm text-slate-700">
-            <strong className="text-lg text-slate-950">{contacted} / {total}</strong>{" "}
+            <strong className="text-lg text-slate-950">
+              {contacted} / {total}
+            </strong>{" "}
             Helfer kontaktiert
           </span>
           <span
@@ -390,7 +425,9 @@ function FirstContactRateCard({
             }`}
           >
             {statusText}
-            {isActionable && <ArrowRight className="size-4" aria-hidden="true" />}
+            {isActionable && (
+              <ArrowRight className="size-4" aria-hidden="true" />
+            )}
           </span>
         </span>
       </CardContent>
@@ -461,7 +498,9 @@ function CommunicationRateRow({
     <div className="flex min-h-20 items-center gap-2 rounded-xl border border-slate-200 bg-white/80 p-2">
       <span
         className="relative flex size-12 shrink-0 items-center justify-center rounded-full"
-        style={{ background: `conic-gradient(${accent} ${rate}%, ${track} ${rate}% 100%)` }}
+        style={{
+          background: `conic-gradient(${accent} ${rate}%, ${track} ${rate}% 100%)`,
+        }}
         aria-label={`${rate} Prozent ${title}`}
       >
         <span className="flex size-9 items-center justify-center rounded-full bg-white text-sm font-bold text-slate-950 shadow-sm">
@@ -470,17 +509,30 @@ function CommunicationRateRow({
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1 text-[13px] font-bold text-slate-900">
-          <UsersRound className={`size-3.5 ${tone === "green" ? "text-emerald-700" : "text-blue-700"}`} aria-hidden="true" />
+          <UsersRound
+            className={`size-3.5 ${tone === "green" ? "text-emerald-700" : "text-blue-700"}`}
+            aria-hidden="true"
+          />
           {title}
         </span>
         <span className="mt-0.5 block text-xs text-slate-700">
-          <strong className="text-[13px] text-slate-950">{value} / {total}</strong> Helfer
+          <strong className="text-[13px] text-slate-950">
+            {value} / {total}
+          </strong>{" "}
+          Helfer
         </span>
-        <span className={`mt-0.5 block text-xs font-semibold ${tone === "green" ? "text-emerald-800" : "text-blue-800"}`}>
+        <span
+          className={`mt-0.5 block text-xs font-semibold ${tone === "green" ? "text-emerald-800" : "text-blue-800"}`}
+        >
           {detail}
         </span>
       </span>
-      {actionable && <ArrowRight className={`size-4 shrink-0 ${tone === "green" ? "text-emerald-700" : "text-blue-700"}`} aria-hidden="true" />}
+      {actionable && (
+        <ArrowRight
+          className={`size-4 shrink-0 ${tone === "green" ? "text-emerald-700" : "text-blue-700"}`}
+          aria-hidden="true"
+        />
+      )}
     </div>
   );
   if (!actionable) return content;
@@ -520,7 +572,10 @@ function HelperStatusCommunicationCard({
   openTarget: (target: DashboardTarget) => void;
 }) {
   return (
-    <Card data-dashboard-section="Helfer-Status & Kommunikation" className="h-full gap-2 border-blue-300 bg-blue-50/55 py-2.5 text-slate-950 shadow-sm">
+    <Card
+      data-dashboard-section="Helfer-Status & Kommunikation"
+      className="h-full gap-2 border-blue-300 bg-blue-50/55 py-2.5 text-slate-950 shadow-sm"
+    >
       <CardHeader className="px-3 py-2 sm:px-4 sm:py-2.5">
         <CardTitle className="flex items-center gap-2 text-base text-slate-900">
           <UsersRound className="size-5 text-blue-700" aria-hidden="true" />
@@ -536,7 +591,9 @@ function HelperStatusCommunicationCard({
           rate={feedbackRate}
           tone="green"
           actionLabel="Unbestätigte Helfer anzeigen"
-          onClick={() => openTarget({ path: "/helfer", confirmed: "nein", assigned: true })}
+          onClick={() =>
+            openTarget({ path: "/helfer", confirmed: "nein", assigned: true })
+          }
         />
         <CommunicationRateRow
           title="Erstkontakt-Quote"
@@ -567,14 +624,37 @@ function DonationSummaryCard({
     category => category.id === "sonstiges"
   );
   const traitTags = [
-    ["🌱 Vegan", donations.eigenschaften.vegan, "border-emerald-200 bg-emerald-50 text-emerald-800"],
-    ["🌾 Glutenfrei", donations.eigenschaften.glutenFree, "border-amber-200 bg-amber-50 text-amber-900"],
-    ["🥛 Laktosefrei", donations.eigenschaften.lactoseFree, "border-sky-200 bg-sky-50 text-sky-800"],
-    ["🌰 Nüsse", donations.eigenschaften.containsNuts, "border-orange-200 bg-orange-50 text-orange-900"],
-    ["🥩 Fleischhaltig", donations.eigenschaften.meat, "border-rose-200 bg-rose-50 text-rose-800"],
+    [
+      "🌱 Vegan",
+      donations.eigenschaften.vegan,
+      "border-emerald-200 bg-emerald-50 text-emerald-800",
+    ],
+    [
+      "🌾 Glutenfrei",
+      donations.eigenschaften.glutenFree,
+      "border-amber-200 bg-amber-50 text-amber-900",
+    ],
+    [
+      "🥛 Laktosefrei",
+      donations.eigenschaften.lactoseFree,
+      "border-sky-200 bg-sky-50 text-sky-800",
+    ],
+    [
+      "🌰 Nüsse",
+      donations.eigenschaften.containsNuts,
+      "border-orange-200 bg-orange-50 text-orange-900",
+    ],
+    [
+      "🥩 Fleischhaltig",
+      donations.eigenschaften.meat,
+      "border-rose-200 bg-rose-50 text-rose-800",
+    ],
   ] as const;
   return (
-    <Card data-dashboard-section="Verpflegungsspenden" className="h-full gap-2 border-rose-200 bg-rose-50/45 py-2.5 text-slate-950 shadow-sm">
+    <Card
+      data-dashboard-section="Verpflegungsspenden"
+      className="h-full gap-2 border-rose-200 bg-rose-50/45 py-2.5 text-slate-950 shadow-sm"
+    >
       <CardHeader className="flex flex-row flex-wrap items-baseline justify-between gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5">
         <button
           type="button"
@@ -588,46 +668,94 @@ function DonationSummaryCard({
             <Gift className="size-5 text-rose-700" aria-hidden="true" />
             Verpflegungsspenden
           </CardTitle>
-          <ArrowRight className="size-4 shrink-0 text-rose-700 transition-transform duration-150 group-hover:translate-x-0.5" aria-hidden="true" />
+          <ArrowRight
+            className="size-4 shrink-0 text-rose-700 transition-transform duration-150 group-hover:translate-x-0.5"
+            aria-hidden="true"
+          />
         </button>
-        <span className="text-xs text-slate-600">Gesamt: {donations.gesamt} erfasst</span>
+        <span className="text-xs text-slate-600">
+          Gesamt: {donations.gesamt} erfasst
+        </span>
       </CardHeader>
       <CardContent className="grid gap-3 px-3 pb-3 pt-0 sm:px-4 sm:pb-3 lg:grid-cols-[minmax(0,1fr)_minmax(8.5rem,0.8fr)]">
         <div className="space-y-1.5">
           {targetCategories.map(category => {
-            const completion = category.target > 0 ? (category.ist / category.target) * 100 : 0;
+            const completion =
+              category.target > 0 ? (category.ist / category.target) * 100 : 0;
             const quote = Math.min(100, Math.round(completion));
             const progressTone =
               completion >= 100
-                ? { name: "erreicht", track: "bg-emerald-100", fill: "bg-emerald-500" }
+                ? {
+                    name: "erreicht",
+                    track: "bg-emerald-100",
+                    fill: "bg-emerald-500",
+                  }
                 : completion >= 80
-                  ? { name: "fast-erreicht", track: "bg-amber-100", fill: "bg-amber-400" }
-                  : { name: "offen", track: "bg-rose-100", fill: "bg-rose-500" };
-            const text = category.target > 0 ? `${category.ist} / ${category.target}` : `${category.ist} / –`;
+                  ? {
+                      name: "fast-erreicht",
+                      track: "bg-amber-100",
+                      fill: "bg-amber-400",
+                    }
+                  : {
+                      name: "offen",
+                      track: "bg-rose-100",
+                      fill: "bg-rose-500",
+                    };
+            const text =
+              category.target > 0
+                ? `${category.ist} / ${category.target}`
+                : `${category.ist} / –`;
             return (
               <div key={category.id}>
                 <div className="flex items-baseline justify-between gap-2 text-xs">
-                  <span className="min-w-0 truncate font-medium text-slate-800">{category.label}</span>
-                  <span className="shrink-0 font-bold tabular-nums text-slate-950">{text}</span>
+                  <span className="min-w-0 truncate font-medium text-slate-800">
+                    {category.label}
+                  </span>
+                  <span className="shrink-0 font-bold tabular-nums text-slate-950">
+                    {text}
+                  </span>
                 </div>
-                <div className={`mt-1 h-1.5 overflow-hidden rounded-full ${progressTone.track}`} role="progressbar" aria-label={`${category.label}: ${category.ist} von ${category.target || 0} Spenden erfasst`} aria-valuemin={0} aria-valuemax={Math.max(category.target, 1)} aria-valuenow={Math.min(category.ist, Math.max(category.target, 1))} data-progress-tone={progressTone.name}>
-                  <div className={`h-full rounded-full ${progressTone.fill} transition-[width] duration-200`} style={{ width: `${quote}%` }} />
+                <div
+                  className={`mt-1 h-1.5 overflow-hidden rounded-full ${progressTone.track}`}
+                  role="progressbar"
+                  aria-label={`${category.label}: ${category.ist} von ${category.target || 0} Spenden erfasst`}
+                  aria-valuemin={0}
+                  aria-valuemax={Math.max(category.target, 1)}
+                  aria-valuenow={Math.min(
+                    category.ist,
+                    Math.max(category.target, 1)
+                  )}
+                  data-progress-tone={progressTone.name}
+                >
+                  <div
+                    className={`h-full rounded-full ${progressTone.fill} transition-[width] duration-200`}
+                    style={{ width: `${quote}%` }}
+                  />
                 </div>
               </div>
             );
           })}
           {sonstiges && (
-            <p className="pt-0.5 text-[11px] text-slate-600">📦 Sonstiges: {sonstiges.ist} erfasst</p>
+            <p className="pt-0.5 text-[11px] text-slate-600">
+              📦 Sonstiges: {sonstiges.ist} erfasst
+            </p>
           )}
           {targetCategories.every(category => category.target === 0) && (
-            <p className="text-[11px] text-slate-500">Sollwerte können in der Spendenübersicht festgelegt werden.</p>
+            <p className="text-[11px] text-slate-500">
+              Sollwerte können in der Spendenübersicht festgelegt werden.
+            </p>
           )}
         </div>
         <div className="border-t border-rose-200 pt-2 lg:border-l lg:border-t-0 lg:pl-3 lg:pt-0">
-          <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600">Eigenschaften</p>
+          <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+            Eigenschaften
+          </p>
           <div className="flex flex-wrap gap-1">
             {traitTags.map(([label, value, className]) => (
-              <span key={label} className={`rounded-full border px-1.5 py-0.5 text-[11px] font-medium ${className}`}>
+              <span
+                key={label}
+                className={`rounded-full border px-1.5 py-0.5 text-[11px] font-medium ${className}`}
+              >
                 {label}: {value}
               </span>
             ))}
@@ -674,7 +802,8 @@ function readinessTone(readiness: DailyReadiness) {
 function readinessGridClass(dayCount: number) {
   if (dayCount <= 1) return "grid grid-cols-1 gap-3";
   if (dayCount === 2) return "grid grid-cols-1 gap-3 md:grid-cols-2";
-  if (dayCount === 3) return "grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3";
+  if (dayCount === 3)
+    return "grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3";
   return "grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4";
 }
 
@@ -706,14 +835,22 @@ function DailyReadinessCard({
           onClick={() => openTarget(target)}
         >
           <CardTitle className="flex items-center gap-2 text-base text-slate-900">
-            <UsersRound className="size-5 text-emerald-700" aria-hidden="true" />
+            <UsersRound
+              className="size-5 text-emerald-700"
+              aria-hidden="true"
+            />
             Einsatzbereitschaft je Festivaltag
           </CardTitle>
-          <ArrowRight className="size-4 shrink-0 text-emerald-700 transition-transform duration-150 group-hover:translate-x-0.5" aria-hidden="true" />
+          <ArrowRight
+            className="size-4 shrink-0 text-emerald-700 transition-transform duration-150 group-hover:translate-x-0.5"
+            aria-hidden="true"
+          />
         </button>
         <span className="text-xs text-slate-600">Besetzt / Bedarf</span>
       </CardHeader>
-      <CardContent className={`${readinessGridClass(readiness.length)} px-3 pb-3 pt-0 sm:px-4 sm:pb-3`}>
+      <CardContent
+        className={`${readinessGridClass(readiness.length)} px-3 pb-3 pt-0 sm:px-4 sm:pb-3`}
+      >
         {readiness.map(day => {
           const tone = readinessTone(day);
           return (
@@ -749,7 +886,9 @@ function DailyReadinessCard({
                   onClick={() => onPotentialFilter(day.day, "ungenutzt")}
                 >
                   <span>Komplett ungenutzt</span>
-                  <strong className="tabular-nums">{day.ungenutzteHelfer}</strong>
+                  <strong className="tabular-nums">
+                    {day.ungenutzteHelfer}
+                  </strong>
                 </button>
                 <button
                   type="button"
@@ -759,7 +898,9 @@ function DailyReadinessCard({
                   onClick={() => onPotentialFilter(day.day, "teilzeit")}
                 >
                   <span>Teilzeit-Reserve</span>
-                  <strong className="tabular-nums">{day.teilzeitReserve}</strong>
+                  <strong className="tabular-nums">
+                    {day.teilzeitReserve}
+                  </strong>
                 </button>
               </div>
             </div>
@@ -776,6 +917,7 @@ const MAX_EVENT_LOGO_BYTES = 3_000_000;
 
 function EventCountdownWidget({
   event,
+  packageId,
 }: {
   event: {
     id: number;
@@ -785,8 +927,17 @@ function EventCountdownWidget({
     endDate?: string | null;
     pdfLogoKey?: string | null;
   };
+  packageId: ProductPackageId;
 }) {
   const { isTenantAdmin: canManageLogo } = useTenantAdministration();
+  const allowsCustomBranding = productAllowsCapability(
+    packageId,
+    "custom_branding"
+  );
+  const canManageEventLogo = canManageLogo && allowsCustomBranding;
+  const [upgradeCapability, setUpgradeCapability] = useState<
+    "custom_branding" | null
+  >(null);
   const utils = trpc.useUtils();
   const logoInputRef = useRef<HTMLInputElement>(null);
   const quoteViewportRef = useRef<HTMLDivElement>(null);
@@ -816,7 +967,8 @@ function EventCountdownWidget({
     },
     onError: error => toast.error(error.message),
   });
-  const showEventLogo = Boolean(event.pdfLogoKey) && !logoLoadFailed;
+  const showEventLogo =
+    allowsCustomBranding && Boolean(event.pdfLogoKey) && !logoLoadFailed;
   const logoSrc = showEventLogo
     ? `/api/pdf/event-image/${event.year}/${event.id}`
     : DEFAULT_DASHBOARD_COUNTER_LOGO;
@@ -830,7 +982,7 @@ function EventCountdownWidget({
 
     const updateQuoteMotion = () => {
       const distance = Math.ceil(viewport.clientWidth + text.scrollWidth);
-      setQuoteDistance(current => current === distance ? current : distance);
+      setQuoteDistance(current => (current === distance ? current : distance));
     };
 
     updateQuoteMotion();
@@ -847,9 +999,17 @@ function EventCountdownWidget({
 
   const selectLogo = () => {
     if (!canManageLogo || uploadLogo.isPending) return;
+    if (!allowsCustomBranding) {
+      setUpgradeCapability("custom_branding");
+      return;
+    }
     logoInputRef.current?.click();
   };
   const onLogoSelected = (file?: File) => {
+    if (!allowsCustomBranding) {
+      setUpgradeCapability("custom_branding");
+      return;
+    }
     if (!file) return;
     if (!(file.type === "image/png" || file.type === "image/jpeg")) {
       toast.error("Bitte ein PNG- oder JPEG-Logo auswählen");
@@ -872,7 +1032,8 @@ function EventCountdownWidget({
         mimeType: file.type as "image/png" | "image/jpeg",
       });
     };
-    reader.onerror = () => toast.error("Das Eventlogo konnte nicht gelesen werden");
+    reader.onerror = () =>
+      toast.error("Das Eventlogo konnte nicht gelesen werden");
     reader.readAsDataURL(file);
   };
 
@@ -880,75 +1041,124 @@ function EventCountdownWidget({
     if (state.kind === "upcoming") {
       return (
         <p className="flex items-baseline justify-start gap-1.5 whitespace-nowrap font-black tracking-[-0.055em]">
-          <span className="text-sm font-extrabold tracking-[-0.035em] text-slate-950">nur noch</span>
-          <span className="text-[2.45rem] leading-none tabular-nums text-blue-600 sm:text-[2.55rem]">{state.days}</span>
-          <span className="text-lg font-black text-orange-500">{state.days === 1 ? "Tag" : "Tage"}</span>
+          <span className="text-sm font-extrabold tracking-[-0.035em] text-slate-950">
+            nur noch
+          </span>
+          <span className="text-[2.45rem] leading-none tabular-nums text-blue-600 sm:text-[2.55rem]">
+            {state.days}
+          </span>
+          <span className="text-lg font-black text-orange-500">
+            {state.days === 1 ? "Tag" : "Tage"}
+          </span>
         </p>
       );
     }
     if (state.kind === "live") {
-      return <p className="text-center text-base font-black tracking-[-0.035em] text-emerald-800">Event läuft · Tag {state.day}/{state.totalDays}</p>;
+      return (
+        <p className="text-center text-base font-black tracking-[-0.035em] text-emerald-800">
+          Event läuft · Tag {state.day}/{state.totalDays}
+        </p>
+      );
     }
     if (state.kind === "completed") {
-      return <p className="text-center text-base font-black tracking-[-0.035em] text-slate-600">Event abgeschlossen</p>;
+      return (
+        <p className="text-center text-base font-black tracking-[-0.035em] text-slate-600">
+          Event abgeschlossen
+        </p>
+      );
     }
     return (
       <p className="flex items-center justify-center gap-1.5 text-center text-sm font-bold leading-snug text-slate-600">
-        <Calendar className="size-4 shrink-0 text-slate-400" aria-hidden="true" />
+        <Calendar
+          className="size-4 shrink-0 text-slate-400"
+          aria-hidden="true"
+        />
         Zeitraum im Event einstellen
       </p>
     );
   })();
 
   return (
-    <section
-      data-slot="event-countdown"
-      data-countdown-state={state.kind}
-      data-countdown-urgent={isUrgent ? "true" : "false"}
-      className={`dashboard-event-countdown w-full shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-md shadow-slate-200/70${isUrgent ? " countdown-urgent" : ""}`}
-      aria-label="Event-Zähler mit Tagesimpuls"
-    >
-      <div className="grid min-h-[3.95rem] grid-cols-[3.75rem_minmax(0,1fr)] items-center gap-1 bg-gradient-to-r from-sky-50 via-white to-orange-50 px-2 py-1.5">
-        <input
-          ref={logoInputRef}
-          type="file"
-          accept="image/png,image/jpeg"
-          className="sr-only"
-          onChange={event => {
-            onLogoSelected(event.target.files?.[0]);
-            event.target.value = "";
-          }}
-        />
-        <button
-          type="button"
-          className="group relative mx-auto grid size-[3.4rem] place-items-center overflow-hidden rounded-full border border-black/35 bg-white shadow-sm transition-transform duration-150 hover:scale-[1.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-default disabled:hover:scale-100"
-          onClick={selectLogo}
-          disabled={!canManageLogo || uploadLogo.isPending}
-          title={canManageLogo ? "Eventlogo für Dashboard und PDFs ändern" : "Eventlogo dieser Veranstaltung"}
-          aria-label={canManageLogo ? "Eventlogo für Dashboard und PDFs ändern" : "Eventlogo dieser Veranstaltung"}
-        >
-          <img
-            src={logoSrc}
-            alt="Eventlogo"
-            className="size-[3.05rem] object-contain"
-            onError={() => setLogoLoadFailed(true)}
+    <>
+      <section
+        data-slot="event-countdown"
+        data-countdown-state={state.kind}
+        data-countdown-urgent={isUrgent ? "true" : "false"}
+        className={`dashboard-event-countdown w-full shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-md shadow-slate-200/70${isUrgent ? " countdown-urgent" : ""}`}
+        aria-label="Event-Zähler mit Tagesimpuls"
+      >
+        <div className="grid min-h-[3.95rem] grid-cols-[3.75rem_minmax(0,1fr)] items-center gap-1 bg-gradient-to-r from-sky-50 via-white to-orange-50 px-2 py-1.5">
+          <input
+            ref={logoInputRef}
+            type="file"
+            accept="image/png,image/jpeg"
+            className="sr-only"
+            onChange={event => {
+              onLogoSelected(event.target.files?.[0]);
+              event.target.value = "";
+            }}
           />
-          {canManageLogo && (
-            <span className="absolute inset-0 grid place-items-center bg-blue-950/45 text-white opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100">
-              <ImageUp className="size-4" aria-hidden="true" />
-            </span>
-          )}
-        </button>
-        <div className="min-w-0">{counterContent}</div>
-      </div>
-      <div ref={quoteViewportRef} className="dashboard-daily-quote-viewport relative flex h-8 items-center overflow-hidden border-t border-slate-200 bg-slate-50 text-base text-slate-600">
-        <div style={quoteTrackStyle} className="dashboard-daily-quote-track flex min-w-max items-center whitespace-nowrap font-medium leading-none">
-          <span ref={quoteTextRef} className="dashboard-daily-quote-segment">
-            {quote}
-          </span>
+          <button
+            type="button"
+            className="group relative mx-auto grid size-[3.4rem] place-items-center overflow-hidden rounded-full border border-black/35 bg-white shadow-sm transition-transform duration-150 hover:scale-[1.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-default disabled:hover:scale-100"
+            onClick={selectLogo}
+            disabled={!canManageLogo || uploadLogo.isPending}
+            title={
+              canManageEventLogo
+                ? "Eventlogo für Dashboard und PDFs ändern"
+                : canManageLogo
+                  ? "Eigenes Eventlogo ab Pro verfügbar"
+                  : "Eventlogo dieser Veranstaltung"
+            }
+            aria-label={
+              canManageEventLogo
+                ? "Eventlogo für Dashboard und PDFs ändern"
+                : canManageLogo
+                  ? "Eigenes Eventlogo ab Pro verfügbar"
+                  : "Eventlogo dieser Veranstaltung"
+            }
+          >
+            <img
+              src={logoSrc}
+              alt="Eventlogo"
+              className="size-[3.05rem] object-contain"
+              onError={() => setLogoLoadFailed(true)}
+            />
+            {canManageLogo && (
+              <span className="absolute inset-0 grid place-items-center bg-blue-950/45 text-white opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100">
+                {canManageEventLogo ? (
+                  <ImageUp className="size-4" aria-hidden="true" />
+                ) : (
+                  <LockKeyhole className="size-4" aria-hidden="true" />
+                )}
+              </span>
+            )}
+          </button>
+          <div className="min-w-0">{counterContent}</div>
         </div>
-      </div>
-    </section>
+        <div
+          ref={quoteViewportRef}
+          className="dashboard-daily-quote-viewport relative flex h-8 items-center overflow-hidden border-t border-slate-200 bg-slate-50 text-base text-slate-600"
+        >
+          <div
+            style={quoteTrackStyle}
+            className="dashboard-daily-quote-track flex min-w-max items-center whitespace-nowrap font-medium leading-none"
+          >
+            <span ref={quoteTextRef} className="dashboard-daily-quote-segment">
+              {quote}
+            </span>
+          </div>
+        </div>
+      </section>
+      <KlemmiUpgradeDialog
+        open={Boolean(upgradeCapability)}
+        onOpenChange={open => {
+          if (!open) setUpgradeCapability(null);
+        }}
+        currentPackageId={packageId}
+        capability={upgradeCapability}
+      />
+    </>
   );
 }
 
@@ -979,9 +1189,10 @@ function PilotTenantInfoCard({
             Gemeinsam testen. Sicher weiterentwickeln.
           </h2>
           <p className="mt-1.5 max-w-3xl text-sm leading-6 text-slate-700">
-            {tenant.name} nutzt MyCrewMate als geschlossenen Pilotverein.
-            Die aktuelle Veranstaltung <strong>{eventName}</strong> dient als Test- und Demoplanung;
-            es gibt keine offenen Zugänge, keine Abrechnung und keine öffentliche Buchungsfunktion.
+            {tenant.name} nutzt MyCrewMate als geschlossenen Pilotverein. Die
+            aktuelle Veranstaltung <strong>{eventName}</strong> dient als Test-
+            und Demoplanung; es gibt keine offenen Zugänge, keine Abrechnung und
+            keine öffentliche Buchungsfunktion.
           </p>
         </div>
         <div className="grid gap-2 sm:grid-cols-2 lg:w-[22rem] lg:grid-cols-1">
@@ -989,18 +1200,31 @@ function PilotTenantInfoCard({
             href={`mailto:${tenant.contactEmail}`}
             className="flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 transition-colors hover:border-blue-300 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
-            <Building2 className="size-4 shrink-0 text-blue-700" aria-hidden="true" />
-            <span className="min-w-0 truncate">Pilotkontakt: {tenant.contactEmail}</span>
+            <Building2
+              className="size-4 shrink-0 text-blue-700"
+              aria-hidden="true"
+            />
+            <span className="min-w-0 truncate">
+              Pilotkontakt: {tenant.contactEmail}
+            </span>
           </a>
           <a
             href={`mailto:${tenant.supportEmail}`}
             className="flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 transition-colors hover:border-blue-300 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
-            <Mail className="size-4 shrink-0 text-blue-700" aria-hidden="true" />
-            <span className="min-w-0 truncate">Pilot-Support: {tenant.supportEmail}</span>
+            <Mail
+              className="size-4 shrink-0 text-blue-700"
+              aria-hidden="true"
+            />
+            <span className="min-w-0 truncate">
+              Pilot-Support: {tenant.supportEmail}
+            </span>
           </a>
           <div className="flex min-h-11 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
-            <ShieldCheck className="size-4 shrink-0 text-emerald-700" aria-hidden="true" />
+            <ShieldCheck
+              className="size-4 shrink-0 text-emerald-700"
+              aria-hidden="true"
+            />
             <span>Keine Bezahl- oder Freischaltfunktion aktiv</span>
           </div>
         </div>
@@ -1019,6 +1243,7 @@ export default function Dashboard() {
     day: DailyReadiness["day"];
     kind: "ungenutzt" | "teilzeit";
   } | null>(null);
+  const [klemmiMuted, setKlemmiMuted] = useState(getDashboardKlemmiMuted);
   const { data: s, isLoading } = trpc.dashboard.stats.useQuery();
   const { data: helpers = [], isLoading: areHelpersLoading } =
     trpc.helpers.list.useQuery();
@@ -1026,10 +1251,13 @@ export default function Dashboard() {
     trpc.events.current.useQuery();
   const { data: currentTenant, isLoading: isTenantLoading } =
     trpc.tenants.current.useQuery();
-  const closureRecommendations = trpc.events.closureRecommendations.useQuery(undefined, {
-    enabled: isTenantAdmin,
-    retry: false,
-  });
+  const closureRecommendations = trpc.events.closureRecommendations.useQuery(
+    undefined,
+    {
+      enabled: isTenantAdmin,
+      retry: false,
+    }
+  );
   const closeEvent = trpc.events.close.useMutation({
     onSuccess: async result => {
       await Promise.all([
@@ -1061,9 +1289,12 @@ export default function Dashboard() {
     tenantProduct.data?.packageId ?? "pro",
     "donations"
   );
-  const { data: dashboardLocations = [] } = trpc.locations.list.useQuery(undefined, {
-    enabled: canReadLocations,
-  });
+  const { data: dashboardLocations = [] } = trpc.locations.list.useQuery(
+    undefined,
+    {
+      enabled: canReadLocations,
+    }
+  );
   const activeDays = currentEvent ? eventWeekdays(currentEvent.activeDays) : [];
   const helperByName = new Map(helpers.map(helper => [helper.name, helper]));
   const zeroAvailability = (helperName: string, day: Weekday) => {
@@ -1195,7 +1426,11 @@ export default function Dashboard() {
     s.doppelGesamt === 0 &&
     s.offen === 0 &&
     s.knapp === 0;
-  if (s.schichtenGesamt > 0 && isShiftPlanStable && priorityActions.length < 4) {
+  if (
+    s.schichtenGesamt > 0 &&
+    isShiftPlanStable &&
+    priorityActions.length < 4
+  ) {
     priorityActions.push({
       id: "einsatzplan-stabil",
       label: "Einsatzplan stabil",
@@ -1210,11 +1445,18 @@ export default function Dashboard() {
     });
   }
 
-  const upcomingDeadlines = s.naechsteVorbereitungsfristen as DashboardDeadline[];
+  const upcomingDeadlines =
+    s.naechsteVorbereitungsfristen as DashboardDeadline[];
   const dailyReadiness = s.taeglicheEinsatzbereitschaft as DailyReadiness[];
   const hasMappableLocations = dashboardLocations.some(location => {
-    const candidate = location as { latitude?: number | null; longitude?: number | null };
-    return Number.isFinite(candidate.latitude) && Number.isFinite(candidate.longitude);
+    const candidate = location as {
+      latitude?: number | null;
+      longitude?: number | null;
+    };
+    return (
+      Number.isFinite(candidate.latitude) &&
+      Number.isFinite(candidate.longitude)
+    );
   });
   const dashboardKlemmiSteps = createDashboardKlemmiSteps({
     hasEventPeriod: Boolean(currentEvent.startDate),
@@ -1268,25 +1510,66 @@ export default function Dashboard() {
         <div>
           <PageTitle icon="dashboard">Dashboard</PageTitle>
           <p className="text-muted-foreground">
-            Die wichtigsten nächsten Schritte stehen zuerst; alle Kennzahlen werden automatisch aus den Planungsdaten berechnet.
+            Die wichtigsten nächsten Schritte stehen zuerst; alle Kennzahlen
+            werden automatisch aus den Planungsdaten berechnet.
           </p>
         </div>
         <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:items-end">
-          <KlemmiSurfaceGuide
-            guideId="dashboard"
-            title="Dein Dashboard auf einen Blick"
-            introText="Hier laufen die Informationen aus deiner Planung zusammen. Ich zeige dir jetzt nur die Bereiche, die auf diesem Dashboard wirklich sichtbar sind."
-            steps={dashboardKlemmiSteps}
-            successSignal={null}
-            completionTitle="Alles im Blick!"
-            completionText="Du weißt jetzt, wo das Dashboard den aktuellen Planungsstand zeigt – und welche Eingaben die einzelnen Übersichten füllen."
+          <div className="flex flex-wrap items-center justify-end gap-1.5">
+            <KlemmiSurfaceGuide
+              guideId="dashboard"
+              title="Dein Dashboard auf einen Blick"
+              introText="Hier laufen die Informationen aus deiner Planung zusammen. Ich zeige dir jetzt nur die Bereiche, die auf diesem Dashboard wirklich sichtbar sind."
+              steps={dashboardKlemmiSteps}
+              successSignal={null}
+              completionTitle="Alles im Blick!"
+              completionText="Du weißt jetzt, wo das Dashboard den aktuellen Planungsstand zeigt – und welche Eingaben die einzelnen Übersichten füllen."
+              voiceMuted={klemmiMuted}
+              onVoiceMutedChange={muted => {
+                setKlemmiMuted(muted);
+                setDashboardKlemmiMuted(muted);
+              }}
+            />
+            <button
+              type="button"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              onClick={() => {
+                const next = !klemmiMuted;
+                setKlemmiMuted(next);
+                setDashboardKlemmiMuted(next);
+              }}
+              aria-pressed={klemmiMuted}
+              aria-label={
+                klemmiMuted
+                  ? "Klemmi-Stimme einschalten"
+                  : "Klemmi-Stimme stummschalten"
+              }
+              title={
+                klemmiMuted
+                  ? "Klemmi-Stimme einschalten"
+                  : "Klemmi-Stimme stummschalten"
+              }
+            >
+              {klemmiMuted ? (
+                <VolumeX className="size-4" aria-hidden="true" />
+              ) : (
+                <Volume2 className="size-4" aria-hidden="true" />
+              )}
+              <span>{klemmiMuted ? "Klemmi stumm" : "Klemmi-Stimme"}</span>
+            </button>
+          </div>
+          <EventCountdownWidget
+            event={currentEvent}
+            packageId={tenantProduct.data?.packageId ?? "event_pass"}
           />
-          <EventCountdownWidget event={currentEvent} />
         </div>
       </div>
 
       {currentTenant.status === "pilot" && (
-        <PilotTenantInfoCard tenant={currentTenant} eventName={currentEvent.name} />
+        <PilotTenantInfoCard
+          tenant={currentTenant}
+          eventName={currentEvent.name}
+        />
       )}
 
       {isTenantAdmin && closureRecommendations.data && (
@@ -1350,10 +1633,7 @@ export default function Dashboard() {
       </section>
 
       {upcomingDeadlines.length > 0 && (
-        <section
-          data-dashboard-level="Fristen"
-          className="w-full"
-        >
+        <section data-dashboard-level="Fristen" className="w-full">
           <UpcomingDeadlinesCard
             deadlines={upcomingDeadlines}
             openTarget={target => navigate(dashboardTargetHref(target))}
@@ -1393,7 +1673,10 @@ export default function Dashboard() {
         )}
       </section>
 
-      <div data-dashboard-level="Tabellendetails" className="grid gap-6 lg:grid-cols-2">
+      <div
+        data-dashboard-level="Tabellendetails"
+        className="grid gap-6 lg:grid-cols-2"
+      >
         <Card className="flex h-[250px] flex-col overflow-hidden shadow-sm gap-3 py-4">
           <CardHeader className="shrink-0">
             <CardTitle>
@@ -1426,10 +1709,18 @@ export default function Dashboard() {
                 {s.verantwortlichkeiten.map(v => (
                   <tr key={v.name} className="border-b last:border-0">
                     <td className="break-words py-1 pr-3">{v.name}</td>
-                    <td className="px-1 py-1 text-center tabular-nums">{v.betreuteHelfer}</td>
-                    <td className="px-1 py-1 text-center tabular-nums">{v.vorbereitung}</td>
-                    <td className="px-1 py-1 text-center tabular-nums">{v.nachbereitung}</td>
-                    <td className="px-1 py-1 text-center tabular-nums">{v.material}</td>
+                    <td className="px-1 py-1 text-center tabular-nums">
+                      {v.betreuteHelfer}
+                    </td>
+                    <td className="px-1 py-1 text-center tabular-nums">
+                      {v.vorbereitung}
+                    </td>
+                    <td className="px-1 py-1 text-center tabular-nums">
+                      {v.nachbereitung}
+                    </td>
+                    <td className="px-1 py-1 text-center tabular-nums">
+                      {v.material}
+                    </td>
                     <td className="px-1 py-1 text-center font-semibold tabular-nums">
                       {v.gesamt}
                     </td>
@@ -1509,7 +1800,9 @@ export default function Dashboard() {
                       {WEEKDAY_SHORT_LABELS[day]}
                     </th>
                   ))}
-                  <th className="bg-slate-50 py-1 pl-0.5 text-right sm:pl-1">Gesamt</th>
+                  <th className="bg-slate-50 py-1 pl-0.5 text-right sm:pl-1">
+                    Gesamt
+                  </th>
                 </tr>
               </thead>
               <tbody>
