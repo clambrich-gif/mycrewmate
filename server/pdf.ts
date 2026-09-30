@@ -150,6 +150,13 @@ const helperPdfDesign = {
   box: "#F9FAFB",
 } as const;
 
+const helperPdfLocationStyle = {
+  iconSize: 8,
+  iconTextGap: 3,
+  taskGap: 9,
+  fontSize: 9,
+} as const;
+
 const helperPdfMargin = 36;
 const helperPdfContentWidth = pageWidth - helperPdfMargin * 2;
 const helperPdfBottom = pageHeight - 48;
@@ -462,7 +469,7 @@ export function helperPdfLocationLink(
 
   const coordinates = `${location.latitude},${location.longitude}`;
   return {
-    label: `(${name} · Karte öffnen ↗)`,
+    label: name,
     url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(coordinates)}`,
   };
 }
@@ -495,24 +502,37 @@ function compactShiftTaskLayout(
     .font("Helvetica-Bold")
     .fontSize(helperPdfTypography.task)
     .heightOfString(taskLine, { width: bodyWidth, lineGap: 0.5 });
+  const taskTextWidth = doc
+    .font("Helvetica-Bold")
+    .fontSize(helperPdfTypography.task)
+    .widthOfString(taskLine);
   if (!locationLink) {
     return {
       taskTextHeight,
       taskHeight: taskTextHeight,
       inlineLocation: false,
+      locationTextWidth: 0,
     };
   }
 
+  const locationTextWidth = doc
+    .font("Helvetica-Bold")
+    .fontSize(helperPdfLocationStyle.fontSize)
+    .widthOfString(locationLink.label);
   const taskFitsInline =
-    doc.widthOfString(taskLine) +
-      7 +
-      doc
-        .font("Helvetica-Bold")
-        .fontSize(helperPdfTypography.detail)
-        .widthOfString(locationLink.label) <=
-      bodyWidth && taskTextHeight <= helperPdfTypography.task + 1;
+    taskTextWidth +
+      helperPdfLocationStyle.taskGap +
+      helperPdfLocationStyle.iconSize +
+      helperPdfLocationStyle.iconTextGap +
+      locationTextWidth <=
+      bodyWidth && taskTextWidth <= bodyWidth;
   if (taskFitsInline) {
-    return { taskTextHeight, taskHeight: taskTextHeight, inlineLocation: true };
+    return {
+      taskTextHeight,
+      taskHeight: taskTextHeight,
+      inlineLocation: true,
+      locationTextWidth,
+    };
   }
 
   const locationHeight = doc
@@ -523,7 +543,56 @@ function compactShiftTaskLayout(
     taskTextHeight,
     taskHeight: taskTextHeight + locationHeight + 2,
     inlineLocation: false,
+    locationTextWidth,
   };
+}
+
+function drawCompactHelperLocationPin(
+  doc: PDFKit.PDFDocument,
+  x: number,
+  y: number
+) {
+  const size = helperPdfLocationStyle.iconSize;
+  const centerX = x + size / 2;
+  const centerY = y + size * 0.36;
+  doc
+    .save()
+    .circle(centerX, centerY, size * 0.28)
+    .strokeColor(helperPdfDesign.accent)
+    .lineWidth(0.85)
+    .stroke()
+    .moveTo(centerX - size * 0.2, centerY + size * 0.18)
+    .lineTo(centerX, y + size)
+    .lineTo(centerX + size * 0.2, centerY + size * 0.18)
+    .stroke()
+    .restore();
+}
+
+function drawCompactHelperLocationLink(
+  doc: PDFKit.PDFDocument,
+  locationLink: NonNullable<ReturnType<typeof helperPdfLocationLink>>,
+  x: number,
+  y: number,
+  textWidth: number
+) {
+  const iconSize = helperPdfLocationStyle.iconSize;
+  const textX = x + iconSize + helperPdfLocationStyle.iconTextGap;
+  drawCompactHelperLocationPin(doc, x, y + 2);
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(helperPdfLocationStyle.fontSize)
+    .fillColor(helperPdfDesign.accent)
+    .text(locationLink.label, textX, y, {
+      width: textWidth,
+      lineBreak: false,
+    });
+  doc.link(
+    x,
+    y,
+    iconSize + helperPdfLocationStyle.iconTextGap + textWidth,
+    helperPdfLocationStyle.fontSize + 3,
+    locationLink.url
+  );
 }
 
 function compactShiftBlockHeight(
@@ -613,31 +682,26 @@ function drawCompactHelperShiftBlock(
     .fontSize(helperPdfTypography.task)
     .fillColor(helperPdfDesign.ink);
   if (locationLink && taskLayout.inlineLocation) {
-    doc
-      .text(taskLine, bodyX, y + 5, {
-        width: bodyWidth,
-        continued: true,
-        lineBreak: false,
-      })
-      .font("Helvetica-Bold")
-      .fontSize(helperPdfTypography.detail)
-      .fillColor(helperPdfDesign.accent)
-      .text(`  ${locationLink.label}`, {
-        link: locationLink.url,
-        lineBreak: false,
-      });
+    doc.text(taskLine, bodyX, y + 5, { lineBreak: false });
+    drawCompactHelperLocationLink(
+      doc,
+      locationLink,
+      bodyX +
+        doc.widthOfString(taskLine) +
+        helperPdfLocationStyle.taskGap,
+      y + 6,
+      taskLayout.locationTextWidth
+    );
   } else {
     doc.text(taskLine, bodyX, y + 5, { width: bodyWidth, lineGap: 0.5 });
     if (locationLink) {
-      doc
-        .font("Helvetica-Bold")
-        .fontSize(helperPdfTypography.detail)
-        .fillColor(helperPdfDesign.accent)
-        .text(locationLink.label, bodyX, y + 7 + taskLayout.taskTextHeight, {
-          width: bodyWidth,
-          lineGap: 0.5,
-          link: locationLink.url,
-        });
+      drawCompactHelperLocationLink(
+        doc,
+        locationLink,
+        bodyX,
+        y + 7 + taskLayout.taskTextHeight,
+        taskLayout.locationTextWidth
+      );
     }
   }
   doc

@@ -261,7 +261,7 @@ describe("PDF-Erzeugung", () => {
     expect(pdf.length).toBeGreaterThan(2_000);
   });
 
-  it("zeigt einen zugeordneten Standort blau und als Kartenlink in der persönlichen Aufgabenübersicht", async () => {
+  it("zeigt einen zugeordneten Standort mit kompaktem Kartenpin als Link in der persönlichen Aufgabenübersicht", async () => {
     const location: Location = {
       ...cakeLocations[0],
       name: "Pumptrack",
@@ -269,7 +269,7 @@ describe("PDF-Erzeugung", () => {
       longitude: 6.9458,
     };
     expect(helperPdfLocationLink(location)).toEqual({
-      label: "(Pumptrack · Karte öffnen ↗)",
+      label: "Pumptrack",
       url: "https://www.google.com/maps/search/?api=1&query=50.3569%2C6.9458",
     });
     expect(helperPdfLocationLink(null)).toBeNull();
@@ -284,6 +284,7 @@ describe("PDF-Erzeugung", () => {
     );
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
     expect(pdf.toString("latin1")).toContain("/URI");
+    expect(pdf.toString("latin1")).not.toContain("Karte öffnen");
   });
 
   it("setzt lange Helferhinweise als mehrzeilige Zusammenfassung ohne den Export zu überlagern", async () => {
