@@ -80,6 +80,13 @@ const EMPTY_FORM: SettingsForm = {
   blankRowsPerShift: 0,
 };
 
+/**
+ * Stabile Referenz für die abgesicherte Event-Pass-Ansicht. Ein Arrayliteral
+ * als Query-Fallback würde bei einem absichtlich deaktivierten Ansprechpartner-
+ * Query bei jedem Render neu entstehen und abhängige Effekte erneut auslösen.
+ */
+const EMPTY_CONTACTS: ReadonlyArray<{ id: number; name: string }> = [];
+
 type PdfSectionProps = {
   title: string;
   description: string;
@@ -137,16 +144,22 @@ export default function PdfExport() {
   const { data: settings, isLoading } = trpc.pdf.settings.useQuery();
   const { data: plan = [] } = trpc.plan.evaluate.useQuery();
   const { data: currentEvent } = trpc.events.current.useQuery();
-  const { data: contacts = [] } = trpc.contacts.list.useQuery();
-  const { data: areaContacts = [] } = trpc.plan.areaContacts.useQuery();
   const { data: tenantProduct } = trpc.tenantProduct.current.useQuery(undefined, {
     staleTime: 60_000,
   });
-  const currentPackageId = tenantProduct?.packageId ?? "pro";
+  // Solange die Produktantwort lädt, bleibt die Ansicht konservativ im
+  // Event-Pass-Umfang. Dadurch wird eine gesperrte Ansprechpartner-Abfrage
+  // niemals kurzzeitig gestartet und nachträglich mit einem Fehler beendet.
+  const currentPackageId = tenantProduct?.packageId ?? "event_pass";
   // Die UI leitet Rechte bewusst aus dem statischen Paketkatalog ab. Damit
   // bleibt die PDF-Seite auch während einer Sitzungsaktualisierung stabil,
   // wenn eine ältere Antwort noch keine verschachtelten Entitlements enthält.
   const allowsContacts = productAllowsCapability(currentPackageId, "contacts");
+  const { data: contactRows } = trpc.contacts.list.useQuery(undefined, {
+    enabled: allowsContacts,
+  });
+  const contacts = contactRows ?? EMPTY_CONTACTS;
+  const { data: areaContacts = [] } = trpc.plan.areaContacts.useQuery();
   const [upgradeCapability, setUpgradeCapability] = useState<"contacts" | null>(null);
   const [form, setForm] = useState<SettingsForm>(EMPTY_FORM);
   const [planMode, setPlanMode] = useState<"blank" | "filled">("blank");
@@ -215,15 +228,30 @@ export default function PdfExport() {
   }, [activeDays]);
 
   useEffect(() => {
+    // Ansprechpartner-Arbeitsmappen sind im Event Pass bewusst gesperrt.
+    // Der Zustand wird nur verändert, wenn tatsächlich noch eine alte Auswahl
+    // aus einer vorherigen Sitzung existiert.
+    if (!allowsContacts) {
+      setSelectedContactOverviewIds(current =>
+        current.length === 0 ? current : []
+      );
+      return;
+    }
+
     setSelectedContactOverviewIds(current => {
       const validCurrent = current.filter(id =>
         contacts.some(contact => contact.id === id)
       );
-      return validCurrent.length > 0
-        ? validCurrent
-        : contacts.map(contact => contact.id);
+      const next =
+        validCurrent.length > 0
+          ? validCurrent
+          : contacts.map(contact => contact.id);
+      const unchanged =
+        current.length === next.length &&
+        current.every((id, index) => id === next[index]);
+      return unchanged ? current : next;
     });
-  }, [contacts]);
+  }, [allowsContacts, contacts]);
 
   const save = trpc.pdf.updateSettings.useMutation({
     onSuccess: async () => {
