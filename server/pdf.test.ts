@@ -45,6 +45,7 @@ import {
   selectTaskOverviewRows,
   CONTACT_CHECKLIST_MARKER,
   renderPlanningTeamAccessSheetsPdf,
+  shouldUseMyCrewMateWordmark,
 } from "./pdf";
 import { resolveEventPdfLogoKey } from "./event-pdf-image";
 
@@ -443,6 +444,27 @@ describe("PDF-Erzeugung", () => {
     expect(planPdf.subarray(0, 5).toString()).toBe("%PDF-");
     expect(helperPdf.toString("latin1")).toContain("/Subtype /Image");
     expect(planPdf.toString("latin1")).toContain("/Subtype /Image");
+  });
+
+  it("verwendet die MyCrewMate-Wortmarke auch als Fallback für logo-freie Pro- und Enterprise-PDFs", () => {
+    expect(
+      shouldUseMyCrewMateWordmark({
+        allowsCustomBranding: false,
+        hasCustomEventLogo: false,
+      })
+    ).toBe(true);
+    expect(
+      shouldUseMyCrewMateWordmark({
+        allowsCustomBranding: true,
+        hasCustomEventLogo: false,
+      })
+    ).toBe(true);
+    expect(
+      shouldUseMyCrewMateWordmark({
+        allowsCustomBranding: true,
+        hasCustomEventLogo: true,
+      })
+    ).toBe(false);
   });
 
   it("erzeugt einen gültigen konfigurierbaren Blanko-Plan", async () => {

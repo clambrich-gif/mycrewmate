@@ -546,7 +546,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(startSelection).toContain("event.startDate.startsWith(String(event.year))");
   });
 
-  it("zeigt den zentralen Copyright-Vermerk in Anmeldung, Navigation und PDFs", () => {
+  it("zeigt den zentralen Copyright-Vermerk in Anmeldung und Navigation, aber nicht in PDFs", () => {
     const branding = source("shared/branding.ts");
     const layout = source("client/src/components/Layout.tsx");
     const pdf = source("server/pdf.ts");
@@ -561,9 +561,15 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout.match(/\{SIDEBAR_COPYRIGHT_NOTICE\}/g)).toHaveLength(2);
     expect(layout.match(/<LegalFooterLinks/g)).toHaveLength(3);
     expect(layout.match(/<ImpressumDialog/g)).toHaveLength(2);
-    expect(pdf).toContain('import { COPYRIGHT_NOTICE } from "../shared/branding"');
+    expect(pdf).not.toContain(
+      'import { COPYRIGHT_NOTICE } from "../shared/branding"'
+    );
     expect(pdf).toContain('info: { Creator: "MyCrewMate" }');
-    expect(pdf).toContain("doc.text(COPYRIGHT_NOTICE, 0, doc.page.height - 36");
+    expect(pdf).toContain("const MYCREWMATE_PDF_FOOTER");
+    expect(pdf).toContain(
+      "doc.text(MYCREWMATE_PDF_FOOTER, 0, doc.page.height - 36"
+    );
+    expect(pdf).not.toContain("Christian Lambrich");
     expect(legal).toContain('export const PRIVACY_POLICY_URL = "https://mycrewmate.de/datenschutz"');
     expect(legal).toContain("Angaben gemäß § 5 DDG:");
     expect(legal).toContain("Eichenweg 4");

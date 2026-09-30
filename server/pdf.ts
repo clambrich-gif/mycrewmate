@@ -22,7 +22,6 @@ import { storageRead } from "./storage";
 import { resolveEventPdfLogoKey } from "./event-pdf-image";
 import { helperAvailabilityWindow } from "../shared/weekdays";
 import { latestPreparationLogbookEntry } from "../shared/preparation-logbook";
-import { COPYRIGHT_NOTICE } from "../shared/branding";
 import { productAllowsCapability } from "../shared/product-packages";
 import { loadBrandAsset } from "./brand-asset-routes";
 
@@ -79,6 +78,20 @@ const pageHeight = 841.89;
 const margin = 42;
 const contentWidth = pageWidth - margin * 2;
 const MYCREWMATE_ACCESS_URL = "https://app.mycrewmate.de";
+const MYCREWMATE_PDF_TAGLINE = "Gemeinsam planen. Entspannt veranstalten.";
+const MYCREWMATE_PDF_FOOTER = `MyCrewMate · ${MYCREWMATE_PDF_TAGLINE}`;
+const helperPdfTypography = {
+  title: 18,
+  helperName: 14,
+  event: 10,
+  meta: 8,
+  day: 11,
+  time: 10,
+  task: 11,
+  detail: 9,
+  summaryTitle: 12,
+  summaryEntry: 9,
+} as const;
 
 /** Ein Zugangsblatt enthält nur beim initialen Erstellen bzw. Zurücksetzen einen Klartextcode. */
 export type PlanningTeamAccessSheet = {
@@ -160,8 +173,8 @@ function collectPdf(
       doc.switchToPage(index);
       const current = index - range.start + 1;
       doc.page.margins.bottom = 0;
-      doc.font("Helvetica").fontSize(8).fillColor(colors.muted);
-      doc.text(COPYRIGHT_NOTICE, 0, doc.page.height - 36, {
+      doc.font("Helvetica").fontSize(7).fillColor(colors.muted);
+      doc.text(MYCREWMATE_PDF_FOOTER, 0, doc.page.height - 36, {
         align: "center",
         width: doc.page.width,
         lineBreak: false,
@@ -329,8 +342,8 @@ function drawCompactHelperHeader(
   usesMyCrewMateWordmark = false
 ) {
   const top = helperPdfMargin;
-  const logoWidth = usesMyCrewMateWordmark ? 138 : 42;
-  const logoHeight = usesMyCrewMateWordmark ? 42 : 42;
+  const logoWidth = usesMyCrewMateWordmark ? 172 : 42;
+  const logoHeight = usesMyCrewMateWordmark ? 52 : 42;
   const textWidth = logoBuffer
     ? helperPdfContentWidth - logoWidth - 14
     : helperPdfContentWidth;
@@ -347,23 +360,31 @@ function drawCompactHelperHeader(
   }
   doc
     .font("Helvetica-Bold")
-    .fontSize(17)
+    .fontSize(helperPdfTypography.title)
     .fillColor(helperPdfDesign.ink)
-    .text(`${settings.helperPdfTitle} – ${helperName}`, {
+    .text(settings.helperPdfTitle, {
       width: textWidth,
       lineBreak: false,
     });
   doc
     .font("Helvetica-Bold")
-    .fontSize(9.5)
+    .fontSize(helperPdfTypography.helperName)
     .fillColor(helperPdfDesign.accent)
+    .text(helperName, {
+      width: textWidth,
+      lineBreak: false,
+    });
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(helperPdfTypography.event)
+    .fillColor(helperPdfDesign.ink)
     .text(`${settings.eventName} ${settings.eventYear}`.trim(), {
       width: textWidth,
       lineBreak: false,
     });
   doc
     .font("Helvetica")
-    .fontSize(7.5)
+    .fontSize(helperPdfTypography.meta)
     .fillColor(helperPdfDesign.muted)
     .text(`Stand: ${formatDate()} · Persönliche Helferübersicht`, {
       width: textWidth,
@@ -372,18 +393,18 @@ function drawCompactHelperHeader(
   if (usesMyCrewMateWordmark && logoBuffer) {
     doc
       .font("Helvetica-Bold")
-      .fontSize(6.7)
+      .fontSize(7.4)
       .fillColor(helperPdfDesign.accent)
       .text(
-        "Vereins- & Eventplanung",
+        MYCREWMATE_PDF_TAGLINE,
         doc.page.width - helperPdfMargin - logoWidth,
-        top + 45,
+        top + 43,
         { width: logoWidth, align: "center", lineBreak: false }
       );
   }
-  // Event Pass und Light machen die verbindliche MyCrewMate-Wortmarke bewusst
-  // als sichtbare Absenderzeile lesbar, ohne den eigentlichen Dokumenttitel zu verdrängen.
-  const lineY = Math.max(doc.y + 6, top + (usesMyCrewMateWordmark ? 61 : 50));
+  // Event Pass, Light und logo-freie Pro-/Enterprise-Exporte zeigen die
+  // MyCrewMate-Wortmarke als sichtbare, einheitliche Absenderzeile.
+  const lineY = Math.max(doc.y + 6, top + (usesMyCrewMateWordmark ? 67 : 50));
   doc
     .moveTo(helperPdfMargin, lineY)
     .lineTo(doc.page.width - helperPdfMargin, lineY)
@@ -410,13 +431,13 @@ function drawCompactHelperDayHeading(
     .stroke();
   doc
     .font("Helvetica-Bold")
-    .fontSize(10.5)
+    .fontSize(helperPdfTypography.day)
     .fillColor(helperPdfDesign.accent)
     .text(day, helperPdfMargin, y, { continued: Boolean(availabilityHeading) });
   if (availabilityHeading) {
     doc
       .font("Helvetica")
-      .fontSize(8)
+      .fontSize(helperPdfTypography.detail)
       .fillColor(helperPdfDesign.muted)
       .text(`  ${availabilityHeading}`);
   }
@@ -445,22 +466,22 @@ function compactShiftBlockHeight(
   const bodyWidth = helperPdfContentWidth - timeWidth - 12;
   const taskHeight = doc
     .font("Helvetica-Bold")
-    .fontSize(9.5)
+    .fontSize(helperPdfTypography.task)
     .heightOfString(taskLine, { width: bodyWidth, lineGap: 0.5 });
   const timeHeight = doc
     .font("Helvetica-Bold")
-    .fontSize(9)
+    .fontSize(helperPdfTypography.time)
     .heightOfString(helperPdfTimeLabel(shift), {
       width: timeWidth,
       lineGap: 0.5,
     });
-  const bodyHeight = Math.max(taskHeight, timeHeight, 11);
+  const bodyHeight = Math.max(taskHeight, timeHeight, 13);
   const infoHeight = doc
     .font("Helvetica")
-    .fontSize(8)
+    .fontSize(helperPdfTypography.detail)
     .heightOfString(infoText, { width: bodyWidth - 16, lineGap: 1 });
   void bodyX;
-  return 5 + bodyHeight + 6 + infoHeight + 12;
+  return 6 + bodyHeight + 7 + infoHeight + 14;
 }
 
 function drawCompactHelperShiftBlock(
@@ -477,25 +498,25 @@ function drawCompactHelperShiftBlock(
   const { taskLine, infoText } = compactShiftInfo(shift, team);
   const taskHeight = doc
     .font("Helvetica-Bold")
-    .fontSize(9.5)
+    .fontSize(helperPdfTypography.task)
     .heightOfString(taskLine, { width: bodyWidth, lineGap: 0.5 });
   const timeHeight = doc
     .font("Helvetica-Bold")
-    .fontSize(9)
+    .fontSize(helperPdfTypography.time)
     .heightOfString(helperPdfTimeLabel(shift), {
       width: timeWidth,
       lineGap: 0.5,
     });
-  const bodyHeight = Math.max(taskHeight, timeHeight, 11);
-  const infoY = y + 5 + bodyHeight + 5;
+  const bodyHeight = Math.max(taskHeight, timeHeight, 13);
+  const infoY = y + 6 + bodyHeight + 6;
   const infoHeight = doc
     .font("Helvetica")
-    .fontSize(8)
+    .fontSize(helperPdfTypography.detail)
     .heightOfString(infoText, { width: bodyWidth - 16, lineGap: 1 });
 
   doc
     .font("Helvetica-Bold")
-    .fontSize(9)
+    .fontSize(helperPdfTypography.time)
     .fillColor(helperPdfDesign.ink)
     .text(helperPdfTimeLabel(shift), helperPdfMargin, y + 5, {
       width: timeWidth,
@@ -503,17 +524,17 @@ function drawCompactHelperShiftBlock(
     });
   doc
     .font("Helvetica-Bold")
-    .fontSize(9.5)
+    .fontSize(helperPdfTypography.task)
     .fillColor(helperPdfDesign.ink)
     .text(taskLine, bodyX, y + 5, { width: bodyWidth, lineGap: 0.5 });
   doc
-    .roundedRect(bodyX, infoY, bodyWidth, infoHeight + 9, 3)
+    .roundedRect(bodyX, infoY, bodyWidth, infoHeight + 11, 3)
     .fillAndStroke(helperPdfDesign.box, helperPdfDesign.line);
   doc
     .font("Helvetica")
-    .fontSize(8)
+    .fontSize(helperPdfTypography.detail)
     .fillColor(helperPdfDesign.muted)
-    .text(infoText, bodyX + 8, infoY + 4, {
+    .text(infoText, bodyX + 8, infoY + 5, {
       width: bodyWidth - 16,
       lineGap: 1,
     });
@@ -575,11 +596,11 @@ function compactSummaryHeight(
   const rows = entries.map(entry => {
     const valueHeight = doc
       .font("Helvetica")
-      .fontSize(8.2)
+      .fontSize(helperPdfTypography.summaryEntry)
       .heightOfString(entry.value, { width: valueWidth, lineGap: 1 });
-    return Math.max(12, valueHeight) + 5;
+    return Math.max(13, valueHeight) + 6;
   });
-  return 20 + 13 + rows.reduce((sum, height) => sum + height, 0) + 8;
+  return 23 + 16 + rows.reduce((sum, height) => sum + height, 0) + 10;
 }
 
 function drawCompactHelperSummary(
@@ -595,24 +616,24 @@ function drawCompactHelperSummary(
   const valueWidth = helperPdfContentWidth - labelWidth - 28;
   doc
     .font("Helvetica-Bold")
-    .fontSize(10.5)
+    .fontSize(helperPdfTypography.summaryTitle)
     .fillColor(helperPdfDesign.accent)
     .text("Zusammenfassung", helperPdfMargin, y);
-  const boxY = y + 15;
-  const boxHeight = height - 20;
+  const boxY = y + 18;
+  const boxHeight = height - 23;
   doc
     .roundedRect(helperPdfMargin, boxY, helperPdfContentWidth, boxHeight, 4)
     .fillAndStroke(helperPdfDesign.box, helperPdfDesign.line);
-  let rowY = boxY + 7;
+  let rowY = boxY + 8;
   for (const entry of entries) {
     const valueHeight = doc
       .font("Helvetica")
-      .fontSize(8.2)
+      .fontSize(helperPdfTypography.summaryEntry)
       .heightOfString(entry.value, { width: valueWidth, lineGap: 1 });
-    const rowHeight = Math.max(12, valueHeight) + 5;
+    const rowHeight = Math.max(13, valueHeight) + 6;
     doc
       .font("Helvetica-Bold")
-      .fontSize(8.2)
+      .fontSize(helperPdfTypography.summaryEntry)
       .fillColor(helperPdfDesign.ink)
       .text(`${entry.label}:`, contentX, rowY, {
         width: labelWidth - 8,
@@ -620,7 +641,7 @@ function drawCompactHelperSummary(
       });
     doc
       .font("Helvetica")
-      .fontSize(8.2)
+      .fontSize(helperPdfTypography.summaryEntry)
       .fillColor(helperPdfDesign.ink)
       .text(entry.value, valueX, rowY, { width: valueWidth, lineGap: 1 });
     rowY += rowHeight;
@@ -681,23 +702,23 @@ function drawDocumentHeader(
   }
   doc
     .font("Helvetica-Bold")
-    .fontSize(21)
+    .fontSize(18)
     .fillColor(colors.ink)
     .text(title, {
       width: logoBuffer ? contentWidth - logoTextReserve : contentWidth,
     });
-  doc.moveDown(0.55);
+  doc.moveDown(0.36);
   doc
     .font("Helvetica-Bold")
-    .fontSize(13)
-    .fillColor(colors.accent)
+    .fontSize(10)
+    .fillColor(colors.ink)
     .text(`${settings.eventName} ${settings.eventYear}`.trim(), {
       width: logoBuffer ? contentWidth - logoTextReserve : contentWidth,
     });
-  doc.moveDown(0.25);
+  doc.moveDown(0.18);
   doc
     .font("Helvetica")
-    .fontSize(9)
+    .fontSize(8)
     .fillColor(colors.muted)
     .text(subtitle ?? `Stand: ${formatDate()} (aus Helferplanung)`, {
       width: logoBuffer ? contentWidth - logoTextReserve : contentWidth,
@@ -705,25 +726,25 @@ function drawDocumentHeader(
   if (usesMyCrewMateWordmark && logoBuffer) {
     doc
       .font("Helvetica-Bold")
-      .fontSize(8)
+      .fontSize(7.4)
       .fillColor(colors.accent)
       .text(
-        "Vereins- & Eventplanung",
+        MYCREWMATE_PDF_TAGLINE,
         doc.page.width - doc.page.margins.right - logoWidth,
-        headerTop + 55,
+        headerTop + 43,
         { width: logoWidth, align: "center", lineBreak: false }
       );
   }
   if (logoBuffer)
-    doc.y = Math.max(doc.y, headerTop + (usesMyCrewMateWordmark ? 78 : 68));
-  doc.moveDown(0.7);
+    doc.y = Math.max(doc.y, headerTop + (usesMyCrewMateWordmark ? 67 : 68));
+  doc.moveDown(0.55);
   doc
     .strokeColor(colors.line)
     .lineWidth(0.7)
     .moveTo(doc.page.margins.left, doc.y)
     .lineTo(doc.page.width - doc.page.margins.right, doc.y)
     .stroke();
-  doc.moveDown(1.2);
+  doc.moveDown(1);
 }
 
 function drawPlanningTeamAccessSheetHeader(
@@ -740,6 +761,17 @@ function drawPlanningTeamAccessSheetHeader(
     } catch {
       // Ein fehlendes Markenbild darf die sichere Zugangsausgabe nicht blockieren.
     }
+  }
+  if (wordmarkBuffer) {
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(7.4)
+      .fillColor(colors.accent)
+      .text(MYCREWMATE_PDF_TAGLINE, margin, headerTop + 43, {
+        width: wordmarkWidth,
+        align: "center",
+        lineBreak: false,
+      });
   }
   doc
     .font("Helvetica-Bold")
@@ -946,7 +978,7 @@ function drawTableHeader(
   x: number
 ) {
   const y = doc.y;
-  const height = 24;
+  const height = 26;
   doc
     .rect(
       x,
@@ -956,9 +988,9 @@ function drawTableHeader(
     )
     .fillAndStroke(colors.header, colors.line);
   let cursor = x;
-  doc.font("Helvetica-Bold").fontSize(8.5).fillColor(colors.ink);
+  doc.font("Helvetica-Bold").fontSize(9).fillColor(colors.ink);
   for (const column of columns) {
-    doc.text(column.label, cursor + 5, y + 7, {
+    doc.text(column.label, cursor + 5, y + 8, {
       width: column.width - 10,
       align: column.align ?? "left",
       lineBreak: false,
@@ -984,7 +1016,7 @@ function drawTableRow(
     highlightedTaskNote?: string | null;
   } = {}
 ) {
-  doc.font("Helvetica").fontSize(8.5);
+  doc.font("Helvetica").fontSize(9);
   const heights = columns.map(column =>
     doc.heightOfString(values[column.key] ?? "", {
       width: column.width - 10,
@@ -992,8 +1024,8 @@ function drawTableRow(
     })
   );
   const height = Math.max(
-    options.minimumHeight ?? 25,
-    Math.max(...heights) + 12
+    options.minimumHeight ?? 27,
+    Math.max(...heights) + 14
   );
   ensureSpace(doc, height + 5, () => drawTableHeader(doc, columns, x));
   const y = doc.y;
@@ -1016,7 +1048,7 @@ function drawTableRow(
           .slice(0, Math.max(0, columnValue.lastIndexOf(highlightedTaskNote!)))
           .replace(/\n+$/, "")
       : columnValue;
-    doc.fillColor(colors.ink).text(primaryTaskText, cursor + 5, y + 6, {
+    doc.fillColor(colors.ink).text(primaryTaskText, cursor + 5, y + 7, {
       width: column.width - 10,
       height: height - 10,
       align: column.align ?? "left",
@@ -1025,7 +1057,7 @@ function drawTableRow(
     if (highlightedTaskNote) {
       const noteY =
         y +
-        6 +
+        7 +
         doc.heightOfString(primaryTaskText, {
           width: column.width - 10,
           lineGap: 1,
@@ -1040,9 +1072,9 @@ function drawTableRow(
         .fill(helperPdfPastels.shiftNoteBackground);
       doc
         .font("Helvetica")
-        .fontSize(8.5)
+        .fontSize(9)
         .fillColor(helperPdfPastels.shiftNoteText)
-        .text(highlightedTaskNote, cursor + 5, noteY + 1, {
+        .text(highlightedTaskNote, cursor + 5, noteY + 2, {
           width: column.width - 10,
           height: height - (noteY - y) - 5,
           lineGap: 1,
@@ -1219,8 +1251,8 @@ export function renderPlanPdf(
       { key: "task", label: "Aufgabe", width: 104 },
       { key: "time", label: "Zeit", width: 62 },
       { key: "status", label: "Status", width: 48 },
-      { key: "contact", label: data.settings.contactLabel, width: 82 },
-      { key: "note", label: "Bemerkung", width: 102 },
+      { key: "contact", label: data.settings.contactLabel, width: 92 },
+      { key: "note", label: "Bemerkung", width: 92 },
       { key: "helper", label: "Helfer / Name", width: 104 },
     ];
     const fixedWidth = fixedColumns.reduce(
@@ -2058,6 +2090,18 @@ export function renderPostTaskOverviewPdf(
   return renderTaskOverviewPdf(data, taskIds, "post");
 }
 
+/**
+ * Ohne ein lesbares individuelles Eventlogo bleibt die sichtbare Absendermarke
+ * für jedes Paket einheitlich MyCrewMate. Pro und Enterprise behalten ihr
+ * individuelles Logo ausschließlich dann, wenn es tatsächlich vorhanden ist.
+ */
+export function shouldUseMyCrewMateWordmark(input: {
+  allowsCustomBranding: boolean;
+  hasCustomEventLogo: boolean;
+}) {
+  return !input.allowsCustomBranding || !input.hasCustomEventLogo;
+}
+
 async function loadPlanningData(): Promise<PlanningData> {
   const [
     helpers,
@@ -2109,9 +2153,14 @@ async function loadPlanningData(): Promise<PlanningData> {
     } catch (error) {
       console.warn("[PDF] Logo konnte nicht geladen werden:", error);
     }
-  } else if (!allowsCustomBranding) {
-    // Event Pass und Light nutzen verbindlich die MyCrewMate-Marke statt eines
-    // individuell hochgeladenen Veranstaltungslogos.
+  }
+  const usesMyCrewMateWordmark = shouldUseMyCrewMateWordmark({
+    allowsCustomBranding,
+    hasCustomEventLogo: Boolean(logoBuffer),
+  });
+  if (usesMyCrewMateWordmark) {
+    // Event Pass und Light sowie logo-freie Pro-/Enterprise-Exporte nutzen die
+    // MyCrewMate-Wortmarke als einheitliche, sichtbare Absendermarke.
     logoBuffer = await loadMyCrewMateWordmarkBuffer();
   }
   return {
@@ -2127,7 +2176,7 @@ async function loadPlanningData(): Promise<PlanningData> {
     postTasks,
     settings: resolvedSettings,
     logoBuffer,
-    usesMyCrewMateWordmark: !allowsCustomBranding,
+    usesMyCrewMateWordmark,
   };
 }
 
