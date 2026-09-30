@@ -462,6 +462,7 @@ export function PlanningTeamAccessManager({
     return (
       <div
         data-slot="personal-accesses-upgrade-notice"
+        data-klemmi-target="security-accesses-locked"
         className="rounded-xl border border-orange-200 bg-orange-50/60 p-4"
       >
         <div className="flex gap-3">

@@ -368,13 +368,74 @@ export function getPdfKlemmiSteps({ currentPackageId, canManage }: { currentPack
   });
 }
 
-/** Ergänzt die Sicherheitstour im Event Pass um eine konkrete, passende Alternative. */
-export function getSecurityKlemmiSteps(currentPackageId: import("@shared/product-packages").ProductPackageId): KlemmiSurfaceStep[] {
-  if (currentPackageId !== "event_pass") return SECURITY_KLEMMI_STEPS;
-  return SECURITY_KLEMMI_STEPS.map(step => step.key === "accesses-overview" ? {
-    ...step,
+/**
+ * Im Event Pass existieren keine persönlichen Planungsteam-Zugänge. Alle
+ * Unterpunkte der Zugangsverwaltung zeigen deshalb auf denselben sichtbaren,
+ * ruhigen Upgrade-Hinweis – statt auf Formulare, die absichtlich nicht gerendert
+ * werden. So bleiben Highlight und Klemmi-Audio zuverlässig synchron.
+ */
+const EVENT_PASS_ACCESS_STEP_COPY: Partial<
+  Record<
+    string,
+    Pick<KlemmiSurfaceStep, "title" | "text" | "audioKey">
+  >
+> = {
+  "accesses-overview": {
     title: "Planungsteam-Zugänge ab Light",
     text: "Persönliche Planungsteam-Zugänge verwalten Fachrechte und Veranstaltungsfreigaben für einzelne Personen. Im Event Pass bleibt die Planung sicher beim Hauptadministrator. Mit Light kommen bis zu fünf persönliche Zugänge hinzu. Die übrigen Sicherheits- und Protokollbereiche bleiben weiter verfügbar.",
     audioKey: "accesses-locked",
-  } : step);
+  },
+  "accesses-filter": {
+    title: "Zugangsfilter ab Light",
+    text: "Dieser Filter gehört zu persönlichen Planungsteam-Zugängen und steht deshalb ab Light bereit. Dort findest du Teammitglieder gezielt nach Jahr oder Veranstaltung. Im Event Pass gibt es nur den Hauptadministrator für die eine Veranstaltung, daher ist keine Zugangsliste zu filtern.",
+    audioKey: "accesses-filter-locked",
+  },
+  "accesses-list": {
+    title: "Zugangskarten ab Light",
+    text: "Statuskarten für weitere Teammitglieder gibt es ab Light. Dort erkennst du eingerichtete Passwörter, Rollen und Freigaben pro Person. Im Event Pass bleibt die Verwaltung bewusst schlank: Der Hauptadministrator verantwortet die einzige Veranstaltung direkt.",
+    audioKey: "accesses-list-locked",
+  },
+  "accesses-create": {
+    title: "Neue Teamzugänge ab Light",
+    text: "Eigene Anmeldungen für weitere Personen, Aktivierungslinks und Zugangsblätter stehen ab Light bereit. Das ist sinnvoll, wenn Ansprechpartner oder Einsatzplaner mit eigenen Rechten arbeiten sollen. Im Event Pass bleibt die Planung beim Hauptadministrator.",
+    audioKey: "accesses-create-locked",
+  },
+  "accesses-identity": {
+    title: "Persönliche Anmeldung ab Light",
+    text: "Die Zuordnung eines eigenen Logins zu einem Ansprechpartner ist Teil der persönlichen Teamzugänge ab Light. Sie sorgt dafür, dass Änderungen einer Person zugeordnet bleiben. Im Event Pass ist kein weiterer Login vorgesehen; der Hauptadministrator bleibt die feste Ansprechperson.",
+    audioKey: "accesses-identity-locked",
+  },
+  "accesses-rights": {
+    title: "Fachbereichsrechte ab Light",
+    text: "Die Schalter Aus, Lesen und Schreiben verteilen Rechte an weitere Teammitglieder und stehen ab Light bereit. Im Event Pass gibt es keine zusätzlichen Planungsteam-Zugänge, deshalb müssen dort keine Fachbereichsrechte vergeben werden.",
+    audioKey: "accesses-rights-locked",
+  },
+  "accesses-coadmin": {
+    title: "Co-Admins ab Light",
+    text: "Einen weiteren Co-Admin oder Planungszugang kannst du ab Light einrichten. Light enthält bis zu fünf persönliche Teamzugänge, Pro bis zu vierzehn. Im Event Pass bleibt die Gesamtverantwortung beim Hauptadministrator.",
+    audioKey: "accesses-coadmin-locked",
+  },
+  "accesses-events": {
+    title: "Eventfreigaben ab Light",
+    text: "Veranstaltungen für einzelne Teammitglieder freizugeben, ist Teil der persönlichen Zugänge ab Light. Im Event Pass ist genau eine Veranstaltung enthalten und sie wird vom Hauptadministrator vollständig betreut. Deshalb gibt es hier keine separate Auswahl.",
+    audioKey: "accesses-events-locked",
+  },
+};
+
+/** Ergänzt die Sicherheitstour im Event Pass um konkrete, passende Alternativen. */
+export function getSecurityKlemmiSteps(
+  currentPackageId: import("@shared/product-packages").ProductPackageId
+): KlemmiSurfaceStep[] {
+  if (currentPackageId !== "event_pass") return SECURITY_KLEMMI_STEPS;
+
+  return SECURITY_KLEMMI_STEPS.map(step => {
+    const lockedCopy = EVENT_PASS_ACCESS_STEP_COPY[step.key];
+    if (!lockedCopy) return step;
+    return {
+      ...step,
+      ...lockedCopy,
+      selector: '[data-klemmi-target="security-accesses-locked"]',
+      allowMissingTarget: true,
+    };
+  });
 }

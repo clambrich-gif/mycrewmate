@@ -9,6 +9,8 @@ export type DashboardKlemmiTourState = {
   hasAssignments: boolean;
   hasContacts: boolean;
   hasMappableLocations: boolean;
+  /** Live-Standortkarte und GPS-Strecken sind ausschließlich ab Pro verfügbar. */
+  canUseMapsGpx: boolean;
   detailsLayout: DashboardDetailsLayout;
 };
 
@@ -95,16 +97,29 @@ export function createDashboardKlemmiSteps(
           : "Hier entstehen zwei Übersichten, sobald Ansprechpartner, Helfer und Schichten gepflegt sind: Zuständigkeiten auf der linken Seite und die tägliche Helferauslastung auf der rechten Seite.",
       action: "Weiter zur Standortkarte",
     },
-    {
-      key: state.hasMappableLocations ? "map-active" : "map-empty",
-      selector: '[data-dashboard-level="Live-Standortkarte"]',
-      eyebrow: "6 · Orte und Standorte",
-      title: state.hasMappableLocations ? "Live-Standortkarte nutzen" : "Standortkarte später aktivieren",
-      text: state.hasMappableLocations
-        ? "Diese Karte verbindet Orte mit Vorbereitung, Schichten und Material. Die Farben zeigen den jeweiligen Stand, und ein Klick auf einen Marker filtert den passenden Planungsbereich."
-        : "Sobald du unter Orte und Standorte mindestens einen Standort mit Koordinaten anlegst, wird hier unten automatisch die Live-Standortkarte mit den zugehörigen Planungsinformationen eingeblendet.",
-      action: "Dashboard-Tour abschließen",
-    }
+    !state.canUseMapsGpx
+      ? {
+          key: "map-locked",
+          selector: '[data-dashboard-level="Live-Standortkarte"]',
+          eyebrow: "6 · Orte und Standorte",
+          title: "Live-Standortkarte ab Pro",
+          text: "Die Live-Standortkarte mit GPS-Orten, Strecken und Statusmarkern steht ab Pro bereit. Im Event Pass konzentrierst du dich auf Helfer, Einsatzplan, Vorbereitung und die Standard-PDFs. Deshalb wird hier keine Karte eingeblendet.",
+          audioKey: "map-locked",
+          action: "Dashboard-Tour abschließen",
+          // Im Event Pass gibt es bewusst keine Kartenfläche. Die Tour darf
+          // trotzdem sprechen und erklärt genau diesen Paketunterschied.
+          allowMissingTarget: true,
+        }
+      : {
+          key: state.hasMappableLocations ? "map-active" : "map-empty",
+          selector: '[data-dashboard-level="Live-Standortkarte"]',
+          eyebrow: "6 · Orte und Standorte",
+          title: state.hasMappableLocations ? "Live-Standortkarte nutzen" : "Standortkarte später aktivieren",
+          text: state.hasMappableLocations
+            ? "Diese Karte verbindet Orte mit Vorbereitung, Schichten und Material. Die Farben zeigen den jeweiligen Stand, und ein Klick auf einen Marker filtert den passenden Planungsbereich."
+            : "Sobald du unter Orte und Standorte mindestens einen Standort mit Koordinaten anlegst, wird hier unten automatisch die Live-Standortkarte mit den zugehörigen Planungsinformationen eingeblendet.",
+          action: "Dashboard-Tour abschließen",
+        }
   );
 
   return steps;

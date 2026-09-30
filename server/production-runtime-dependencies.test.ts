@@ -66,6 +66,10 @@ describe("Produktions-Laufzeitabhängigkeiten", () => {
       "help-intro", "help-search", "help-filters", "help-chapters", "help-complete",
       "plan-time-window",
       "pdf-contacts-locked", "pdf-config-locked", "security-accesses-locked",
+      "dashboard-map-locked",
+      "security-accesses-filter-locked", "security-accesses-list-locked", "security-accesses-create-locked",
+      "security-accesses-identity-locked", "security-accesses-rights-locked", "security-accesses-coadmin-locked",
+      "security-accesses-events-locked",
     ];
 
     for (const id of clipIds) {

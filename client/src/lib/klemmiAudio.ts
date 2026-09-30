@@ -103,6 +103,7 @@ export const KLEMMI_AUDIO_SCRIPTS = {
   "dashboard-map-active": "Live-Standortkarte nutzen. Diese Karte verbindet Orte mit Vorbereitung, Schichten und Material. Die Farben zeigen den jeweiligen Stand, und ein Klick auf einen Marker filtert den passenden Planungsbereich.",
   "dashboard-map-empty": "Standortkarte später aktivieren. Sobald du unter Orte und Standorte mindestens einen Standort mit Koordinaten anlegst, wird hier unten automatisch die Live-Standortkarte mit den zugehörigen Planungsinformationen eingeblendet.",
   "dashboard-complete": "Alles im Blick! Du weißt jetzt, wo das Dashboard den aktuellen Planungsstand zeigt – und welche Eingaben die einzelnen Übersichten füllen.",
+  "dashboard-map-locked": "Live-Standortkarte ab Pro. Die Live-Standortkarte mit GPS-Orten, Strecken und Statusmarkern steht ab Pro bereit. Im Event Pass konzentrierst du dich auf Helfer, Einsatzplan, Vorbereitung und die Standard-PDFs. Deshalb wird hier keine Karte eingeblendet.",
 
   "helpers-intro": "Neue Helfer sicher anlegen. Ich führe dich direkt auf der echten Oberfläche durch die Anlage – vom Namen bis zum passenden Zeitfenster.",
   "helpers-overview": "Hier beginnt ein neuer Helfer. Du startest immer in der Helferübersicht. Über den markierten Button Neuer Helfer öffnest du die Anlage für eine neue Person. Ich zeige dir jetzt zuerst den Weg dorthin und öffne anschließend nur eine leere Eingabe – gespeichert wird dabei nichts.",
@@ -201,6 +202,13 @@ export const KLEMMI_AUDIO_SCRIPTS = {
   "pdf-contacts-locked": "Ansprechpartner-Übersichten ab Light. Mit Ansprechpartner-Übersichten erstellst du gegliederte Arbeitsmappen mit Bereichsverantwortung, Schichten und Checklisten. Im Event Pass ist dieser Teil gesperrt. Helfer-PDFs und gefilterte Einsatzpläne bleiben weiter nutzbar.",
   "pdf-config-locked": "PDF-Vorlage mit klaren Paketgrenzen. Titel, Zusatzspalten und Hinweise kannst du hier für die aktuelle Veranstaltung pflegen. Ein eigenes Eventlogo und automatische WhatsApp-Vorlagen stehen ab Pro bereit. Bis dahin bleibt das MyCrewMate-Logo aktiv. WhatsApp öffnet weiter einen leeren Chat für freie Nachrichten.",
   "security-accesses-locked": "Planungsteam-Zugänge ab Light. Persönliche Planungsteam-Zugänge verwalten Fachrechte und Veranstaltungsfreigaben für einzelne Personen. Im Event Pass bleibt die Planung sicher beim Hauptadministrator. Mit Light kommen bis zu fünf persönliche Zugänge hinzu. Die übrigen Sicherheits- und Protokollbereiche bleiben weiter verfügbar.",
+  "security-accesses-filter-locked": "Zugangsfilter ab Light. Dieser Filter gehört zu persönlichen Planungsteam-Zugängen und steht deshalb ab Light bereit. Dort findest du Teammitglieder gezielt nach Jahr oder Veranstaltung. Im Event Pass gibt es nur den Hauptadministrator für die eine Veranstaltung, daher ist keine Zugangsliste zu filtern.",
+  "security-accesses-list-locked": "Zugangskarten ab Light. Statuskarten für weitere Teammitglieder gibt es ab Light. Dort erkennst du eingerichtete Passwörter, Rollen und Freigaben pro Person. Im Event Pass bleibt die Verwaltung bewusst schlank: Der Hauptadministrator verantwortet die einzige Veranstaltung direkt.",
+  "security-accesses-create-locked": "Neue Teamzugänge ab Light. Eigene Anmeldungen für weitere Personen, Aktivierungslinks und Zugangsblätter stehen ab Light bereit. Das ist sinnvoll, wenn Ansprechpartner oder Einsatzplaner mit eigenen Rechten arbeiten sollen. Im Event Pass bleibt die Planung beim Hauptadministrator.",
+  "security-accesses-identity-locked": "Persönliche Anmeldung ab Light. Die Zuordnung eines eigenen Logins zu einem Ansprechpartner ist Teil der persönlichen Teamzugänge ab Light. Sie sorgt dafür, dass Änderungen einer Person zugeordnet bleiben. Im Event Pass ist kein weiterer Login vorgesehen; der Hauptadministrator bleibt die feste Ansprechperson.",
+  "security-accesses-rights-locked": "Fachbereichsrechte ab Light. Die Schalter Aus, Lesen und Schreiben verteilen Rechte an weitere Teammitglieder und stehen ab Light bereit. Im Event Pass gibt es keine zusätzlichen Planungsteam-Zugänge, deshalb müssen dort keine Fachbereichsrechte vergeben werden.",
+  "security-accesses-coadmin-locked": "Co-Admins ab Light. Einen weiteren Co-Admin oder Planungszugang kannst du ab Light einrichten. Light enthält bis zu fünf persönliche Teamzugänge, Pro bis zu vierzehn. Im Event Pass bleibt die Gesamtverantwortung beim Hauptadministrator.",
+  "security-accesses-events-locked": "Eventfreigaben ab Light. Veranstaltungen für einzelne Teammitglieder freizugeben, ist Teil der persönlichen Zugänge ab Light. Im Event Pass ist genau eine Veranstaltung enthalten und sie wird vom Hauptadministrator vollständig betreut. Deshalb gibt es hier keine separate Auswahl.",
 
   "help-intro": "Im Hilfe-Center schnell zurechtfinden. Hier findest du kurze Anleitungen für die gesamte Planung – von der ersten Orientierung bis zu PDFs, Rechten und Sicherungen.",
   "help-search": "Direkt nach einem Begriff suchen. Tippe einfach ein Stichwort wie Helfer, Einsatzplan, Material, PDF oder Passwort ein. Die sichtbaren Kapitel passen sich sofort an.",
@@ -429,6 +437,14 @@ const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
   "pdf-contacts-locked": "20260930-package-context-v1",
   "pdf-config-locked": "20260930-package-context-v1",
   "security-accesses-locked": "20260930-package-context-v1",
+  "dashboard-map-locked": "20260930-dashboard-map-package-v1",
+  "security-accesses-filter-locked": "20260930-security-package-steps-v1",
+  "security-accesses-list-locked": "20260930-security-package-steps-v1",
+  "security-accesses-create-locked": "20260930-security-package-steps-v1",
+  "security-accesses-identity-locked": "20260930-security-package-steps-v1",
+  "security-accesses-rights-locked": "20260930-security-package-steps-v1",
+  "security-accesses-coadmin-locked": "20260930-security-package-steps-v1",
+  "security-accesses-events-locked": "20260930-security-package-steps-v1",
 };
 
 export function isKlemmiAudioId(value: string): value is KlemmiAudioId {

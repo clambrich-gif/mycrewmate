@@ -30,6 +30,7 @@ export default function KlemmiDashboardPreview() {
         hasAssignments: !emptyState,
         hasContacts: !emptyState,
         hasMappableLocations: !emptyState,
+        canUseMapsGpx: true,
         detailsLayout,
       }),
     [detailsLayout, emptyState]

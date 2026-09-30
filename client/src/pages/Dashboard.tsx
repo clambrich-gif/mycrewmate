@@ -1466,6 +1466,7 @@ export default function Dashboard() {
     hasAssignments: s.schichtenGesamt > 0,
     hasContacts: s.verantwortlichkeiten.length > 0,
     hasMappableLocations,
+    canUseMapsGpx,
     detailsLayout,
   });
   const activePotentialDay = workloadFilter
