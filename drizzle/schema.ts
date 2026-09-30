@@ -666,8 +666,10 @@ export const locations = mysqlTable(
     year: int("year").default(2026).notNull(),
     eventId: int("eventId").notNull(),
     name: varchar("name", { length: 200 }).notNull(),
-    latitude: double("latitude").notNull(),
-    longitude: double("longitude").notNull(),
+    // Light verwaltet zentrale Ortsnamen ohne Kartenfunktion. Koordinaten und
+    // Marker bleiben daher optional und werden erst für die Pro-Livekarte genutzt.
+    latitude: double("latitude"),
+    longitude: double("longitude"),
     logoKey: varchar("logoKey", { length: 500 }),
     logoUrl: varchar("logoUrl", { length: 700 }),
     sortOrder: int("sortOrder").default(0).notNull(),

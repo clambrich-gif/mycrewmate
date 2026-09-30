@@ -352,8 +352,8 @@ type HelperRow = {
 type LocationRow = {
   sourceId: number | null;
   name: string;
-  latitude: number;
-  longitude: number;
+  latitude: number | null;
+  longitude: number | null;
   logoKey: string | null;
   logoUrl: string | null;
   sortOrder: number;

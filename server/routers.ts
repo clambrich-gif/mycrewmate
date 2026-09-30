@@ -3683,25 +3683,49 @@ export const appRouter = router({
       .input(
         z.object({
           name: z.string().trim().min(1).max(200),
-          latitude: z.number().finite().min(-90).max(90),
-          longitude: z.number().finite().min(-180).max(180),
+          latitude: z.number().finite().min(-90).max(90).nullable().optional(),
+          longitude: z.number().finite().min(-180).max(180).nullable().optional(),
         })
       )
-      .mutation(({ input }) => db.createLocation(input)),
+      .mutation(async ({ input }) => {
+        const allowsMapsGpx = await db.currentProductAllowsCapability("maps_gpx");
+        // Light verwaltet Orte für Aufgaben, Helfer und Material ohne Live-Karte.
+        // Koordinaten werden erst ab dem Pro-Paket für Kartendarstellungen persistiert.
+        const latitude =
+          allowsMapsGpx && typeof input.latitude === "number"
+            ? input.latitude
+            : null;
+        const longitude =
+          allowsMapsGpx && typeof input.longitude === "number"
+            ? input.longitude
+            : null;
+        return db.createLocation({
+          name: input.name,
+          latitude,
+          longitude,
+        });
+      }),
     update: moduleWriteProcedure("locations")
       .input(
         z.object({
           id: z.number().int().positive(),
           name: z.string().trim().min(1).max(200).optional(),
-          latitude: z.number().finite().min(-90).max(90).optional(),
-          longitude: z.number().finite().min(-180).max(180).optional(),
+          latitude: z.number().finite().min(-90).max(90).nullable().optional(),
+          longitude: z.number().finite().min(-180).max(180).nullable().optional(),
         })
       )
-      .mutation(({ input }) => {
+      .mutation(async ({ input }) => {
+        const allowsMapsGpx = await db.currentProductAllowsCapability("maps_gpx");
         const { id, ...value } = input;
-        return db.updateLocation(id, value);
+        const payload: Parameters<typeof db.updateLocation>[1] = {};
+        if (typeof value.name === "string") payload.name = value.name;
+        if (allowsMapsGpx) {
+          if (value.latitude !== undefined) payload.latitude = value.latitude;
+          if (value.longitude !== undefined) payload.longitude = value.longitude;
+        }
+        return db.updateLocation(id, payload);
       }),
-    uploadLogo: productCapabilityAdminProcedure("locations")
+    uploadLogo: productCapabilityAdminProcedure("maps_gpx")
       .input(
         z.object({
           id: z.number().int().positive(),
@@ -3741,7 +3765,7 @@ export const appRouter = router({
         });
         return uploaded;
       }),
-    clearLogo: productCapabilityAdminProcedure("locations")
+    clearLogo: productCapabilityAdminProcedure("maps_gpx")
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(async ({ input }) => {
         const location = await db.getLocation(input.id);

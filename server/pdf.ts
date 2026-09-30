@@ -465,7 +465,13 @@ export function helperPdfLocationLink(
   location: Pick<Location, "name" | "latitude" | "longitude"> | null | undefined
 ) {
   const name = location?.name.trim();
-  if (!location || !name) return null;
+  if (
+    !location ||
+    !name ||
+    !Number.isFinite(location.latitude) ||
+    !Number.isFinite(location.longitude)
+  )
+    return null;
 
   const coordinates = `${location.latitude},${location.longitude}`;
   return {
