@@ -1953,10 +1953,10 @@ export default function Plan() {
                   },
                   {
                     key: "time",
-                    selector: '[data-klemmi-target="plan-time"]',
+                    selector: '[data-klemmi-target="plan-flexible-assignment"]',
                     eyebrow: planGuideEyebrow(3, 3),
-                    title: "Zeitfenster und Besonderheiten ergänzen",
-                    text: "Trage Beginn und Ende ein, wenn die Schicht zeitgebunden ist. Ort, Hinweise und flexible Belegung kannst du nach Bedarf ergänzen.",
+                    title: "Flexible Belegung aktivieren ⏱️✨",
+                    text: "Mit der ‚Flexiblen Belegung‘ machst du deine Schicht super flexibel! Beispiel: Deine Schicht geht von 8:00 bis 12:00 Uhr, aber ein Helfer kann nur von 9:00 bis 10:00 Uhr? Kein Problem! Ist das Häkchen gesetzt, kannst du den Helfer trotzdem zuweisen. Im Einsatzplan wird die Schicht dann als ‚knapp besetzt‘ markiert. So siehst du auf einen Blick, dass noch nicht die gesamte Schichtzeit abgedeckt ist und noch weitere Helfer fehlen!",
                     action: "Speichern zeigen",
                   },
                   {
@@ -3161,7 +3161,10 @@ export default function Plan() {
             <p className="text-xs text-muted-foreground">
               Für eine ganztägige Schicht beide Uhrzeitfelder leer lassen.
             </p>
-            <div className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
+            <div
+              data-klemmi-target="plan-flexible-assignment"
+              className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5"
+            >
               <Checkbox
                 id="shift-allow-flexible-assignment"
                 checked={form.allowFlexibleAssignment}
