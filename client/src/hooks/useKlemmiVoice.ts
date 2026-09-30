@@ -3,6 +3,11 @@ import {
   klemmiAudioUrl,
   type KlemmiAudioId,
 } from "@/lib/klemmiAudio";
+import {
+  getKlemmiMuted,
+  KLEMMI_MUTE_EVENT,
+  setKlemmiMuted,
+} from "@/lib/dashboard-klemmi-muted";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 function chooseOpeningClip(previousClip: KlemmiAudioId | null) {
@@ -25,7 +30,9 @@ export function useKlemmiVoice(options?: {
   onMutedChange?: (muted: boolean) => void;
 }) {
   const externalMuted = options?.muted;
-  const [muted, setMuted] = useState(Boolean(externalMuted));
+  const onMutedChange = options?.onMutedChange;
+  const [globalMuted, setGlobalMuted] = useState(getKlemmiMuted);
+  const muted = Boolean(externalMuted) || globalMuted;
   const [isSpeaking, setIsSpeaking] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const releaseAudioRef = useRef<(() => void) | null>(null);
@@ -88,6 +95,20 @@ export function useKlemmiVoice(options?: {
     [cancel, muted]
   );
 
+  useEffect(() => {
+    const synchronizeGlobalMute = () => setGlobalMuted(getKlemmiMuted());
+    window.addEventListener(KLEMMI_MUTE_EVENT, synchronizeGlobalMute);
+    window.addEventListener("storage", synchronizeGlobalMute);
+    return () => {
+      window.removeEventListener(KLEMMI_MUTE_EVENT, synchronizeGlobalMute);
+      window.removeEventListener("storage", synchronizeGlobalMute);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (muted) cancel();
+  }, [cancel, muted]);
+
   /**
    * Jeder bewusste Klick auf „Klemmi zeigt's“ erhält einen kurzen, zufällig
    * ausgewählten Einstieg. Der zuletzt verwendete Einstieg wird nie direkt
@@ -109,12 +130,12 @@ export function useKlemmiVoice(options?: {
   );
 
   const toggleMuted = useCallback(() => {
-    setMuted(current => {
-      const next = !current;
-      if (next) cancel();
-      return next;
-    });
-  }, [cancel]);
+    const next = !muted;
+    setKlemmiMuted(next);
+    setGlobalMuted(next);
+    if (next) cancel();
+    onMutedChange?.(next);
+  }, [cancel, muted, onMutedChange]);
 
   useEffect(() => cancel, [cancel]);
 

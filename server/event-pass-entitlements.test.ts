@@ -96,7 +96,7 @@ describe("Paket 2: Event-Pass-Entitlements", () => {
     expect(router).toContain('backupCapabilityProcedure("excel")');
     expect(router).toContain('backupCapabilityProcedure("project_backup")');
     expect(router).toContain(
-      'entitlement.packageId === "event_pass" ? "event_backup" : capability'
+      'capability === "project_backup" ? "event_backup" : "excel"'
     );
   });
 });

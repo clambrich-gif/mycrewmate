@@ -10,8 +10,8 @@ import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import { useDashboardDetailsLayout } from "@/hooks/useDashboardDetailsLayout";
 import { dashboardDailyQuote } from "@/lib/daily-dashboard-quotes";
 import {
-  getDashboardKlemmiMuted,
-  setDashboardKlemmiMuted,
+  getKlemmiMuted,
+  setKlemmiMuted as persistKlemmiMuted,
 } from "@/lib/dashboard-klemmi-muted";
 import { createDashboardKlemmiSteps } from "@/lib/dashboard-klemmi-tour";
 import {
@@ -1243,7 +1243,7 @@ export default function Dashboard() {
     day: DailyReadiness["day"];
     kind: "ungenutzt" | "teilzeit";
   } | null>(null);
-  const [klemmiMuted, setKlemmiMuted] = useState(getDashboardKlemmiMuted);
+  const [klemmiMuted, setKlemmiMuted] = useState(getKlemmiMuted);
   const { data: s, isLoading } = trpc.dashboard.stats.useQuery();
   const { data: helpers = [], isLoading: areHelpersLoading } =
     trpc.helpers.list.useQuery();
@@ -1528,7 +1528,7 @@ export default function Dashboard() {
               voiceMuted={klemmiMuted}
               onVoiceMutedChange={muted => {
                 setKlemmiMuted(muted);
-                setDashboardKlemmiMuted(muted);
+                persistKlemmiMuted(muted);
               }}
             />
             <button
@@ -1537,7 +1537,7 @@ export default function Dashboard() {
               onClick={() => {
                 const next = !klemmiMuted;
                 setKlemmiMuted(next);
-                setDashboardKlemmiMuted(next);
+                persistKlemmiMuted(next);
               }}
               aria-pressed={klemmiMuted}
               aria-label={

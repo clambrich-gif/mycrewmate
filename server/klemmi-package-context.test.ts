@@ -123,6 +123,15 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
         allowMissingTarget: true,
       });
     }
+    expect(accessSteps.find(step => step.key === "audit-files")).toMatchObject({
+      title: "JSON-Sicherung im Event Pass verstehen",
+      audioKey: "audit-files-event-pass",
+    });
+
+    const proAuditStep = getSecurityKlemmiSteps("pro").find(
+      step => step.key === "audit-files"
+    );
+    expect(proAuditStep?.text).toContain("ab Pro – Excel-Module");
   });
 
   it("behält die Einsatzplanung in allen Produktstufen als Kernfunktion frei", async () => {

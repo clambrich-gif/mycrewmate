@@ -30,6 +30,7 @@ import {
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { ACTIVE_EXCEL_IMPORT_AREAS } from "@shared/excel-import-areas";
+import { productAllowsCapability } from "@shared/product-packages";
 
 const IMPORT_AREAS = ACTIVE_EXCEL_IMPORT_AREAS;
 
@@ -120,6 +121,11 @@ export function SaveLoadControls({
 }) {
   const { user } = useAuth();
   const { isTenantAdmin: isAdmin } = useTenantAdministration();
+  const tenantProduct = trpc.tenantProduct.current.useQuery();
+  const canUseExcel = productAllowsCapability(
+    tenantProduct.data?.packageId ?? "event_pass",
+    "excel"
+  );
   const jsonInputRef = useRef<HTMLInputElement>(null);
   const excelInputRef = useRef<HTMLInputElement>(null);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
@@ -355,13 +361,15 @@ export function SaveLoadControls({
         accept=".json,.rscplanung,application/json"
         onChange={event => void jsonFileSelected(event.target.files?.[0])}
       />
-      <input
-        ref={excelInputRef}
-        type="file"
-        className="hidden"
-        accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        onChange={event => void excelFileSelected(event.target.files?.[0])}
-      />
+      {canUseExcel && (
+        <input
+          ref={excelInputRef}
+          type="file"
+          className="hidden"
+          accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          onChange={event => void excelFileSelected(event.target.files?.[0])}
+        />
+      )}
       <div className="grid grid-cols-2 gap-2" aria-label="Projekt speichern und laden">
         <Button
           type="button"
@@ -380,7 +388,13 @@ export function SaveLoadControls({
           variant="outline"
           className="min-w-0 border-emerald-200 bg-emerald-50 px-2 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300"
           disabled={!isAdmin}
-          title={isAdmin ? "Projektstand oder Excel-Daten laden" : "Nur für Administratoren"}
+          title={
+            isAdmin
+              ? canUseExcel
+                ? "Projektstand oder Excel-Daten laden"
+                : "JSON-Projektstand laden"
+              : "Nur für Administratoren"
+          }
           onClick={() => {
             onAction?.();
             setLoadDialogOpen(true);
@@ -396,10 +410,14 @@ export function SaveLoadControls({
           <DialogHeader className="px-6 pb-3 pt-6 text-left">
             <DialogTitle>Projektstand speichern</DialogTitle>
             <DialogDescription>
-              Wähle das Format für die aktuelle Veranstaltung. Beide Dateien werden lokal heruntergeladen.
+              {canUseExcel
+                ? "Wähle das Format für die aktuelle Veranstaltung. Beide Dateien werden lokal heruntergeladen."
+                : "Der Projektstand dieser Veranstaltung wird als JSON-Sicherung heruntergeladen."}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-3 px-6 pb-5 sm:grid-cols-2">
+          <div
+            className={`grid gap-3 px-6 pb-5 ${canUseExcel ? "sm:grid-cols-2" : "sm:grid-cols-1"}`}
+          >
             <ActionCard
               icon={FileJson2}
               title="JSON-Speicherstand herunterladen"
@@ -408,14 +426,16 @@ export function SaveLoadControls({
               pending={jsonSave.isFetching}
               onClick={() => void downloadJson()}
             />
-            <ActionCard
-              icon={FileSpreadsheet}
-              title="Komplette Excel-Projektübersicht exportieren"
-              description="Alle Arbeitsblätter der Planung als Excel-Datei für Übersicht und Dokumentation."
-              tone="emerald"
-              pending={excelSave.isFetching}
-              onClick={() => void downloadExcel()}
-            />
+            {canUseExcel && (
+              <ActionCard
+                icon={FileSpreadsheet}
+                title="Komplette Excel-Projektübersicht exportieren"
+                description="Alle Arbeitsblätter der Planung als Excel-Datei für Übersicht und Dokumentation."
+                tone="emerald"
+                pending={excelSave.isFetching}
+                onClick={() => void downloadExcel()}
+              />
+            )}
           </div>
           <DialogFooter className="border-t border-slate-100 bg-slate-50 px-6 py-4 sm:justify-end">
             <Button variant="outline" className="bg-white" onClick={() => setSaveDialogOpen(false)}>
@@ -430,10 +450,14 @@ export function SaveLoadControls({
           <DialogHeader className="px-6 pb-3 pt-6 text-left">
             <DialogTitle>Projektstand laden</DialogTitle>
             <DialogDescription>
-              Wähle aus, ob eine vollständige Sicherung oder gezielt Excel-Daten eingelesen werden sollen.
+              {canUseExcel
+                ? "Wähle aus, ob eine vollständige Sicherung oder gezielt Excel-Daten eingelesen werden sollen."
+                : "Lade eine JSON-Sicherung, um die Planung dieser Veranstaltung vollständig wiederherzustellen."}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-3 px-6 pb-4 sm:grid-cols-2">
+          <div
+            className={`grid gap-3 px-6 pb-4 ${canUseExcel ? "sm:grid-cols-2" : "sm:grid-cols-1"}`}
+          >
             <ActionCard
               icon={FolderOpen}
               title="JSON-Speicherstand laden"
@@ -442,67 +466,69 @@ export function SaveLoadControls({
               pending={jsonPreview.isPending}
               onClick={chooseJsonFile}
             />
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-950 shadow-sm">
-              <div className="flex items-start gap-3">
-                <FileSpreadsheet className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
-                <div>
-                  <p className="font-semibold leading-5">Excel-Daten importieren</p>
-                  <p className="mt-1 text-sm leading-5 text-amber-950/80">
-                    Einzelne Bereiche gezielt oder die vollständige Excel-Datei kontrolliert übernehmen.
-                  </p>
+            {canUseExcel && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-950 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <FileSpreadsheet className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
+                  <div>
+                    <p className="font-semibold leading-5">Excel-Daten importieren</p>
+                    <p className="mt-1 text-sm leading-5 text-amber-950/80">
+                      Einzelne Bereiche gezielt oder die vollständige Excel-Datei kontrolliert übernehmen.
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <RadioGroup
-                value={selectedImportArea ?? undefined}
-                onValueChange={value =>
-                  setSelectedImportArea(value as ExcelImportSelection)
-                }
-                aria-label="Excel-Importbereich auswählen"
-                className="mt-4 grid gap-2 sm:grid-cols-2"
-              >
-                {IMPORT_AREAS.map(area => {
-                  const selected = selectedImportArea === area.id;
-                  return (
-                    <label
-                      key={area.id}
-                      htmlFor={`central-import-${area.id}`}
-                      className={`flex min-h-10 cursor-pointer items-center gap-2 rounded-md border px-2.5 py-2 text-sm font-medium transition-colors ${selected ? "border-amber-400 bg-amber-100 shadow-sm" : "border-amber-200 bg-white/80 hover:bg-white"}`}
-                    >
-                      <RadioGroupItem
-                        id={`central-import-${area.id}`}
-                        value={area.id}
-                      />
-                      <span>{area.label}</span>
-                    </label>
-                  );
-                })}
-                <label
-                  htmlFor="central-import-full"
-                  title="Alle Bereiche werden nach erfolgreicher Gesamtprüfung automatisch importiert."
-                  className={`flex min-h-10 cursor-pointer items-center gap-2 rounded-md border-2 px-2.5 py-2 text-sm font-semibold transition-colors ${selectedImportArea === "FULL" ? "border-red-600 bg-red-50 text-red-950 shadow-sm" : "border-red-400 bg-white/90 text-red-950 hover:bg-red-50"}`}
+                <RadioGroup
+                  value={selectedImportArea ?? undefined}
+                  onValueChange={value =>
+                    setSelectedImportArea(value as ExcelImportSelection)
+                  }
+                  aria-label="Excel-Importbereich auswählen"
+                  className="mt-4 grid gap-2 sm:grid-cols-2"
                 >
-                  <RadioGroupItem id="central-import-full" value="FULL" />
-                  <span>Vollständig</span>
-                </label>
-              </RadioGroup>
-              <Button
-                type="button"
-                className="mt-4 w-full border border-amber-300 bg-amber-600 text-white shadow-sm hover:bg-amber-700 hover:text-white"
-                disabled={
-                  !selectedImportArea ||
-                  excelPreview.isPending ||
-                  fullExcelPreview.isPending
-                }
-                onClick={chooseExcelFile}
-              >
-                {excelPreview.isPending || fullExcelPreview.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Upload className="mr-2 h-4 w-4" />
-                )}
-                Excel-Datei wählen &amp; prüfen
-              </Button>
-            </div>
+                  {IMPORT_AREAS.map(area => {
+                    const selected = selectedImportArea === area.id;
+                    return (
+                      <label
+                        key={area.id}
+                        htmlFor={`central-import-${area.id}`}
+                        className={`flex min-h-10 cursor-pointer items-center gap-2 rounded-md border px-2.5 py-2 text-sm font-medium transition-colors ${selected ? "border-amber-400 bg-amber-100 shadow-sm" : "border-amber-200 bg-white/80 hover:bg-white"}`}
+                      >
+                        <RadioGroupItem
+                          id={`central-import-${area.id}`}
+                          value={area.id}
+                        />
+                        <span>{area.label}</span>
+                      </label>
+                    );
+                  })}
+                  <label
+                    htmlFor="central-import-full"
+                    title="Alle Bereiche werden nach erfolgreicher Gesamtprüfung automatisch importiert."
+                    className={`flex min-h-10 cursor-pointer items-center gap-2 rounded-md border-2 px-2.5 py-2 text-sm font-semibold transition-colors ${selectedImportArea === "FULL" ? "border-red-600 bg-red-50 text-red-950 shadow-sm" : "border-red-400 bg-white/90 text-red-950 hover:bg-red-50"}`}
+                  >
+                    <RadioGroupItem id="central-import-full" value="FULL" />
+                    <span>Vollständig</span>
+                  </label>
+                </RadioGroup>
+                <Button
+                  type="button"
+                  className="mt-4 w-full border border-amber-300 bg-amber-600 text-white shadow-sm hover:bg-amber-700 hover:text-white"
+                  disabled={
+                    !selectedImportArea ||
+                    excelPreview.isPending ||
+                    fullExcelPreview.isPending
+                  }
+                  onClick={chooseExcelFile}
+                >
+                  {excelPreview.isPending || fullExcelPreview.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="mr-2 h-4 w-4" />
+                  )}
+                  Excel-Datei wählen &amp; prüfen
+                </Button>
+              </div>
+            )}
           </div>
           <DialogFooter className="border-t border-slate-100 bg-slate-50 px-6 py-4 sm:justify-end">
             <Button variant="outline" className="bg-white" onClick={() => setLoadDialogOpen(false)}>

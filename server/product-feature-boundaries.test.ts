@@ -48,6 +48,9 @@ describe("Produktgrenzen: Marke, WhatsApp und Event-Sicherung", () => {
     product.packageId,
     "custom_branding"`);
     expect(pdf).toContain("loadMyCrewMateWordmarkBuffer()");
+    expect(pdf).toContain("usesMyCrewMateWordmark: !allowsCustomBranding");
+    expect(pdf).toContain("const logoWidth = usesMyCrewMateWordmark ? 96 : 64");
+    expect(pdf).toContain("const logoWidth = usesMyCrewMateWordmark ? 78 : 42");
   });
 
   it("zeigt auf der Oberfläche Sperren, ohne den direkten WhatsApp-Kontakt zu sperren", () => {
@@ -69,20 +72,38 @@ describe("Produktgrenzen: Marke, WhatsApp und Event-Sicherung", () => {
     expect(productAllowsCapability("event_pass", "excel")).toBe(false);
     expect(productAllowsCapability("event_pass", "project_backup")).toBe(false);
     expect(productAllowsCapability("light", "event_backup")).toBe(false);
-    expect(source("server/routers.ts")).toContain("requireBackupCapability");
+    const router = source("server/routers.ts");
+    const saveLoad = source("client/src/components/SaveLoadModal.tsx");
+
+    expect(router).toContain("requireBackupCapability");
+    expect(router).toContain(
+      'capability === "project_backup" ? "event_backup" : "excel"'
+    );
+    expect(saveLoad).toContain("const canUseExcel = productAllowsCapability(");
+    expect(saveLoad).toContain("{canUseExcel && (");
     expect(source("client/src/components/Layout.tsx")).toContain(
       "<LazySaveLoadControls"
     );
   });
 
-  it("stellt die Dashboard-Stummschaltung für Klemmi bereit, ohne Texte auszublenden", () => {
+  it("stellt die globale Klemmi-Stummschaltung bereit, ohne Texte auszublenden", () => {
     const dashboard = source("client/src/pages/Dashboard.tsx");
+    const layout = source("client/src/components/Layout.tsx");
     const greeting = source("client/src/components/KlemmiLoginGreeting.tsx");
     const voice = source("client/src/hooks/useKlemmiVoice.ts");
+    const muteState = source("client/src/lib/dashboard-klemmi-muted.ts");
+    const helperGuide = source("client/src/components/KlemmiHelperGuide.tsx");
 
     expect(dashboard).toContain("Klemmi-Stimme stummschalten");
-    expect(dashboard).toContain("setDashboardKlemmiMuted(next)");
+    expect(dashboard).toContain("persistKlemmiMuted(next)");
+    expect(layout).toContain("KLEMMI_MUTE_EVENT");
     expect(greeting).toContain("muted?: boolean");
     expect(voice).toContain("onMutedChange?: (muted: boolean) => void");
+    expect(voice).toContain("getKlemmiMuted");
+    expect(voice).toContain("window.addEventListener(KLEMMI_MUTE_EVENT");
+    expect(voice).toContain("if (muted) cancel();");
+    expect(helperGuide).toContain("useKlemmiVoice()");
+    expect(muteState).toContain('"mycrewmate:klemmi-muted"');
+    expect(muteState).toContain("KLEMMI_MUTE_EVENT");
   });
 });

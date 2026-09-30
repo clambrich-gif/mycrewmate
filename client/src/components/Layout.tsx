@@ -4,8 +4,8 @@ import { ForcePasswordChangeModal } from "@/components/ForcePasswordChangeModal"
 import { FirstLoginOnboarding } from "@/components/FirstLoginOnboarding";
 import { KlemmiLoginGreeting } from "@/components/KlemmiLoginGreeting";
 import {
-  DASHBOARD_KLEMMI_MUTE_EVENT,
-  getDashboardKlemmiMuted,
+  getKlemmiMuted,
+  KLEMMI_MUTE_EVENT,
 } from "@/lib/dashboard-klemmi-muted";
 import { KlemmiUpgradeDialog } from "@/components/KlemmiUpgradeDialog";
 import {
@@ -314,15 +314,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
     typeof window !== "undefined" &&
     new URLSearchParams(window.location.search).get("klemmiIntroPreview") === "1"
   );
-  const [dashboardKlemmiMuted, setDashboardKlemmiMuted] = useState(
-    getDashboardKlemmiMuted
+  const [klemmiMuted, setKlemmiMuted] = useState(
+    getKlemmiMuted
   );
   useEffect(() => {
-    const syncMuteState = () => setDashboardKlemmiMuted(getDashboardKlemmiMuted());
-    window.addEventListener(DASHBOARD_KLEMMI_MUTE_EVENT, syncMuteState);
+    const syncMuteState = () => setKlemmiMuted(getKlemmiMuted());
+    window.addEventListener(KLEMMI_MUTE_EVENT, syncMuteState);
     window.addEventListener("storage", syncMuteState);
     return () => {
-      window.removeEventListener(DASHBOARD_KLEMMI_MUTE_EVENT, syncMuteState);
+      window.removeEventListener(KLEMMI_MUTE_EVENT, syncMuteState);
       window.removeEventListener("storage", syncMuteState);
     };
   }, []);
@@ -1553,7 +1553,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           firstLoginOnboarding.isSuccess &&
           firstLoginOnboarding.data?.pending !== true
         }
-        muted={dashboardKlemmiMuted}
+        muted={klemmiMuted}
       />
       <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b bg-white px-3 text-slate-950 shadow-sm lg:hidden">
         <Button

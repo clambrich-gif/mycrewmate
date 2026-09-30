@@ -287,7 +287,7 @@ export const SECURITY_KLEMMI_STEPS: KlemmiSurfaceStep[] = [
     selector: '[data-klemmi-target="security-audit-files"]',
     eyebrow: "Schritt 13 von 14",
     title: "Datei- und Import-Historie verstehen",
-    text: "Hier stehen erfolgreich übernommene Excel-Module und JSON-Projektstände mit Zeitpunkt, Person sowie Anzahl neuer, geänderter und gelöschter Datensätze. Ein Klick auf einen Eintrag zeigt die konkreten Einzeländerungen. So prüfst du vor allem nach einem Import, was tatsächlich in die Planung übernommen wurde.",
+    text: "Hier stehen erfolgreich übernommene JSON-Projektstände und – ab Pro – Excel-Module mit Zeitpunkt, Person sowie Anzahl neuer, geänderter und gelöschter Datensätze. Ein Klick auf einen Eintrag zeigt die konkreten Einzeländerungen. So prüfst du vor allem nach einem Import, was tatsächlich in die Planung übernommen wurde.",
     action: "Gefahrenbereich einordnen",
   },
   {
@@ -422,20 +422,44 @@ const EVENT_PASS_ACCESS_STEP_COPY: Partial<
   },
 };
 
-/** Ergänzt die Sicherheitstour im Event Pass um konkrete, passende Alternativen. */
+/**
+ * Der Event Pass behält eine schlanke, nachprüfbare JSON-Sicherung. Die
+ * umfangreiche Excel-Dateiverarbeitung gehört bewusst erst zu Pro und
+ * Enterprise.
+ */
+const EVENT_PASS_BACKUP_AUDIT_COPY: Pick<
+  KlemmiSurfaceStep,
+  "title" | "text" | "audioKey"
+> = {
+  title: "JSON-Sicherung im Event Pass verstehen",
+  text: "Hier siehst du erfolgreiche JSON-Sicherungen dieser Veranstaltung mit Zeitpunkt, Person sowie Anzahl neuer, geänderter und gelöschter Datensätze. Im Event Pass stehen Sicherung und Wiederherstellung ausschließlich als JSON zur Verfügung. Excel-Import und -Export beginnen ab Pro. Ein Klick auf einen Eintrag zeigt die konkreten Einzeländerungen.",
+  audioKey: "audit-files-event-pass",
+};
+
+/** Ergänzt die Sicherheitstour mit den für das jeweilige Paket passenden Alternativen. */
 export function getSecurityKlemmiSteps(
   currentPackageId: import("@shared/product-packages").ProductPackageId
 ): KlemmiSurfaceStep[] {
-  if (currentPackageId !== "event_pass") return SECURITY_KLEMMI_STEPS;
+  if (currentPackageId === "pro" || currentPackageId === "enterprise") {
+    return SECURITY_KLEMMI_STEPS;
+  }
 
   return SECURITY_KLEMMI_STEPS.map(step => {
-    const lockedCopy = EVENT_PASS_ACCESS_STEP_COPY[step.key];
-    if (!lockedCopy) return step;
-    return {
-      ...step,
-      ...lockedCopy,
-      selector: '[data-klemmi-target="security-accesses-locked"]',
-      allowMissingTarget: true,
-    };
+    if (currentPackageId === "event_pass" && step.key === "audit-files") {
+      return { ...step, ...EVENT_PASS_BACKUP_AUDIT_COPY };
+    }
+
+    const lockedCopy =
+      currentPackageId === "event_pass"
+        ? EVENT_PASS_ACCESS_STEP_COPY[step.key]
+        : undefined;
+    return lockedCopy
+      ? {
+          ...step,
+          ...lockedCopy,
+          selector: '[data-klemmi-target="security-accesses-locked"]',
+          allowMissingTarget: true,
+        }
+      : step;
   });
 }

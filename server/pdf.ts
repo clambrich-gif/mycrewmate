@@ -63,6 +63,8 @@ type PlanningData = {
   postTasks?: PostTask[];
   settings: AppSettings;
   logoBuffer?: Buffer;
+  /** Event Pass und Light verwenden die breite MyCrewMate-Wortmarke. */
+  usesMyCrewMateWordmark?: boolean;
 };
 
 type PdfColumn = {
@@ -323,19 +325,21 @@ function drawCompactHelperHeader(
   doc: PDFKit.PDFDocument,
   settings: AppSettings,
   helperName: string,
-  logoBuffer?: Buffer
+  logoBuffer?: Buffer,
+  usesMyCrewMateWordmark = false
 ) {
   const top = helperPdfMargin;
-  const logoSize = 42;
+  const logoWidth = usesMyCrewMateWordmark ? 78 : 42;
+  const logoHeight = usesMyCrewMateWordmark ? 28 : 42;
   const textWidth = logoBuffer
-    ? helperPdfContentWidth - logoSize - 14
+    ? helperPdfContentWidth - logoWidth - 14
     : helperPdfContentWidth;
   doc.x = helperPdfMargin;
   doc.y = top;
   if (logoBuffer) {
     try {
-      doc.image(logoBuffer, doc.page.width - helperPdfMargin - logoSize, top, {
-        fit: [logoSize, logoSize],
+      doc.image(logoBuffer, doc.page.width - helperPdfMargin - logoWidth, top, {
+        fit: [logoWidth, logoHeight],
       });
     } catch {
       // Ein beschädigtes Logo darf den operativen PDF-Export nicht blockieren.
@@ -365,7 +369,9 @@ function drawCompactHelperHeader(
       width: textWidth,
       lineBreak: false,
     });
-  const lineY = Math.max(doc.y + 6, top + (logoBuffer ? logoSize + 7 : 50));
+  // Die Kopfzeilenhöhe bleibt unverändert, auch wenn die breite Wortmarke
+  // für Event Pass und Light besser lesbar dargestellt wird.
+  const lineY = Math.max(doc.y + 6, top + 50);
   doc
     .moveTo(helperPdfMargin, lineY)
     .lineTo(doc.page.width - helperPdfMargin, lineY)
@@ -639,17 +645,21 @@ function drawDocumentHeader(
   settings: AppSettings,
   title: string,
   subtitle?: string,
-  logoBuffer?: Buffer
+  logoBuffer?: Buffer,
+  usesMyCrewMateWordmark = false
 ) {
   const headerTop = doc.y;
+  const logoWidth = usesMyCrewMateWordmark ? 96 : 64;
+  const logoHeight = usesMyCrewMateWordmark ? 32 : 64;
+  const logoTextReserve = usesMyCrewMateWordmark ? 116 : 84;
   if (logoBuffer) {
     try {
       doc.image(
         logoBuffer,
-        doc.page.width - doc.page.margins.right - 64,
+        doc.page.width - doc.page.margins.right - logoWidth,
         headerTop,
         {
-          fit: [64, 64],
+          fit: [logoWidth, logoHeight],
           align: "right",
         }
       );
@@ -661,14 +671,14 @@ function drawDocumentHeader(
     .font("Helvetica-Bold")
     .fontSize(21)
     .fillColor(colors.ink)
-    .text(title, { width: logoBuffer ? contentWidth - 84 : contentWidth });
+    .text(title, { width: logoBuffer ? contentWidth - logoTextReserve : contentWidth });
   doc.moveDown(0.55);
   doc
     .font("Helvetica-Bold")
     .fontSize(13)
     .fillColor(colors.accent)
     .text(`${settings.eventName} ${settings.eventYear}`.trim(), {
-      width: logoBuffer ? contentWidth - 84 : contentWidth,
+      width: logoBuffer ? contentWidth - logoTextReserve : contentWidth,
     });
   doc.moveDown(0.25);
   doc
@@ -676,7 +686,7 @@ function drawDocumentHeader(
     .fontSize(9)
     .fillColor(colors.muted)
     .text(subtitle ?? `Stand: ${formatDate()} (aus Helferplanung)`, {
-      width: logoBuffer ? contentWidth - 84 : contentWidth,
+      width: logoBuffer ? contentWidth - logoTextReserve : contentWidth,
     });
   if (logoBuffer) doc.y = Math.max(doc.y, headerTop + 68);
   doc.moveDown(0.7);
@@ -1048,7 +1058,13 @@ export function renderHelperTaskPdf(data: PlanningData, helperId: number) {
   );
 
   return collectPdf(doc => {
-    drawCompactHelperHeader(doc, data.settings, helper.name, data.logoBuffer);
+    drawCompactHelperHeader(
+      doc,
+      data.settings,
+      helper.name,
+      data.logoBuffer,
+      data.usesMyCrewMateWordmark
+    );
 
     if (helperShifts.length === 0) {
       doc
@@ -1167,7 +1183,8 @@ export function renderPlanPdf(
         ? data.settings.blankPlanTitle
         : `${data.settings.eventName} – ausgefüllter Einsatzplan`,
       `Stand: ${formatDate()} · ${options.mode === "blank" ? "frei ausfüllbare Planung" : "aktuelle Helfereinteilung"}`,
-      data.logoBuffer
+      data.logoBuffer,
+      data.usesMyCrewMateWordmark
     );
     const fixedColumns: PdfColumn[] = [
       { key: "day", label: "Tag", width: 48 },
@@ -1424,7 +1441,8 @@ export function renderContactOverviewPdf(
       ]
         .filter((value): value is string => Boolean(value))
         .join(" · "),
-      data.logoBuffer
+      data.logoBuffer,
+      data.usesMyCrewMateWordmark
     );
 
     if (options.includeShifts) {
@@ -1644,7 +1662,8 @@ export function renderMaterialPacklistPdf(
       data.settings,
       "Material-Packliste – Gefilterte Ansicht",
       `Aktuelle Tabellenansicht · Stand: ${formatDate()}`,
-      data.logoBuffer
+      data.logoBuffer,
+      data.usesMyCrewMateWordmark
     );
     doc
       .font("Helvetica")
@@ -1789,7 +1808,8 @@ export function renderDonationOverviewPdf(
       data.settings,
       "Spendenübersicht – Gefilterte Ansicht",
       `Aktuelle Tabellenansicht · Stand: ${formatDate()}`,
-      data.logoBuffer
+      data.logoBuffer,
+      data.usesMyCrewMateWordmark
     );
     doc
       .font("Helvetica")
@@ -1933,7 +1953,8 @@ function renderTaskOverviewPdf(
       data.settings,
       title,
       `Gefilterte Ansicht · Stand: ${formatDate()}`,
-      data.logoBuffer
+      data.logoBuffer,
+      data.usesMyCrewMateWordmark
     );
     const fixedColumns: PdfColumn[] = [
       { key: "category", label: "Bereich", width: 74 },
@@ -2079,6 +2100,7 @@ async function loadPlanningData(): Promise<PlanningData> {
     postTasks,
     settings: resolvedSettings,
     logoBuffer,
+    usesMyCrewMateWordmark: !allowsCustomBranding,
   };
 }
 

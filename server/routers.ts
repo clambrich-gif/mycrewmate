@@ -1048,8 +1048,17 @@ async function requireBackupCapability(
   capability: Extract<ProductCapability, "project_backup" | "excel">
 ) {
   const entitlement = await db.getCurrentTenantProductEntitlement();
+  // Der Event Pass enthält ausschließlich die vollständige JSON-Sicherung der
+  // einen Veranstaltung. Excel bleibt auch serverseitig eine Pro-Funktion;
+  // die UI-Ausblendung allein wäre dafür keine ausreichende Absicherung.
+  if (entitlement.packageId === "event_pass") {
+    await requireCurrentProductCapability(
+      capability === "project_backup" ? "event_backup" : "excel"
+    );
+    return;
+  }
   await requireCurrentProductCapability(
-    entitlement.packageId === "event_pass" ? "event_backup" : capability
+    capability
   );
 }
 function backupCapabilityProcedure(
