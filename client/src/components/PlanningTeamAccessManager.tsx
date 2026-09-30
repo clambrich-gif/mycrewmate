@@ -488,6 +488,7 @@ export function PlanningTeamAccessManager({
           onOpenChange={setUpgradeOpen}
           currentPackageId={productPackageId}
           capability="personal_accesses"
+          contextId="planning_team_accesses"
         />
       </div>
     );

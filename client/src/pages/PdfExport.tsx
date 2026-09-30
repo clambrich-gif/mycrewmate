@@ -18,10 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { downloadBase64File } from "@/lib/download";
-import {
-  PDF_KLEMMI_STEPS,
-  PDF_KLEMMI_STEPS_READONLY,
-} from "@/lib/klemmi-area-tours";
+import { getPdfKlemmiSteps } from "@/lib/klemmi-area-tours";
 import { trpc } from "@/lib/trpc";
 import {
   DEFAULT_WHATSAPP_HELPER_REQUEST_TEMPLATE,
@@ -464,7 +461,7 @@ export default function PdfExport() {
             guideId="pdf"
             title="PDF-Ausgabe verstehen"
             introText="Ich zeige dir, welche PDFs du erzeugen kannst und welche Einstellungen nur für die aktuelle Veranstaltung gelten."
-            steps={canManage ? PDF_KLEMMI_STEPS : PDF_KLEMMI_STEPS_READONLY}
+            steps={getPdfKlemmiSteps({ currentPackageId, canManage })}
             successSignal={null}
           />
         </div>
@@ -525,6 +522,7 @@ export default function PdfExport() {
         </PdfSection>
 
         <PdfSection
+          klemmiTarget="pdf-contact-overviews"
           title="Ansprechpartner-Übersichten"
           description={
             allowsContacts
@@ -1300,6 +1298,11 @@ export default function PdfExport() {
         }}
         currentPackageId={currentPackageId}
         capability={upgradeCapability}
+        contextId={
+          upgradeCapability === "contacts" ? "contact_pdf_overviews" :
+          upgradeCapability === "custom_branding" ? "custom_pdf_branding" :
+          upgradeCapability === "whatsapp_templates" ? "whatsapp_templates" : null
+        }
       />
     </div>
   );

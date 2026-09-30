@@ -1,4 +1,5 @@
 import { KlemmiMascot } from "@/components/KlemmiMascot";
+import { getKlemmiFeatureContext, type KlemmiFeatureContextId } from "@/lib/klemmi-feature-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -66,6 +67,7 @@ type KlemmiUpgradeDialogProps = {
   onOpenChange: (open: boolean) => void;
   currentPackageId: ProductPackageId;
   capability: ProductCapability | null;
+  contextId?: KlemmiFeatureContextId | null;
 };
 
 /**
@@ -77,12 +79,14 @@ export function KlemmiUpgradeDialog({
   onOpenChange,
   currentPackageId,
   capability,
+  contextId = null,
 }: KlemmiUpgradeDialogProps) {
+  const contextualCopy = contextId ? getKlemmiFeatureContext(contextId, currentPackageId) : null;
   const targetPackageId = capability
     ? requiredUpgradePackageForCapability(currentPackageId, capability)
     : null;
   const targetMeta = targetPackageId ? PRODUCT_PACKAGE_META[targetPackageId] : null;
-  const featureLabel = capability ? CAPABILITY_LABEL[capability] : "Diese Funktion";
+  const featureLabel = contextualCopy?.title ?? (capability ? CAPABILITY_LABEL[capability] : "Diese Funktion");
   const benefits = targetPackageId ? UPGRADE_BENEFITS[targetPackageId] : [];
 
   return (
@@ -101,7 +105,16 @@ export function KlemmiUpgradeDialog({
           <DialogHeader className="mt-3 max-w-[calc(100%-5.5rem)] sm:max-w-[calc(100%-7rem)]">
             <DialogTitle className="text-xl leading-tight">Klemmi hat einen Hinweis</DialogTitle>
             <DialogDescription className="text-sm leading-6 text-slate-700">
-              <strong className="font-semibold text-slate-900">{featureLabel}</strong> ist im Paket {PRODUCT_PACKAGE_META[currentPackageId].name} nicht enthalten. Deine bisherigen Planungsdaten bleiben dabei selbstverständlich erhalten.
+              {contextualCopy ? (
+                <>
+                  <strong className="font-semibold text-slate-900">{contextualCopy.explanation}</strong>{" "}
+                  Im Paket {PRODUCT_PACKAGE_META[currentPackageId].name} ist diese Funktion noch nicht enthalten. {contextualCopy.alternative}
+                </>
+              ) : (
+                <>
+                  <strong className="font-semibold text-slate-900">{featureLabel}</strong> ist im Paket {PRODUCT_PACKAGE_META[currentPackageId].name} nicht enthalten. Deine bisherigen Planungsdaten bleiben dabei selbstverständlich erhalten.
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
         </div>

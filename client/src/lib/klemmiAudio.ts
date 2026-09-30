@@ -198,6 +198,9 @@ export const KLEMMI_AUDIO_SCRIPTS = {
   "security-audit-files": "Datei- und Import-Historie verstehen. Hier stehen erfolgreich übernommene Excel-Module und JSON-Projektstände mit Zeitpunkt, Person sowie Anzahl neuer, geänderter und gelöschter Datensätze. Ein Klick auf einen Eintrag zeigt die konkreten Einzeländerungen. So prüfst du vor allem nach einem Import, was tatsächlich in die Planung übernommen wurde.",
   "security-danger": "Gefahrenbereich nur als letzte Option. Dieser Bereich löscht sämtliche Planungsdaten des aktuell gewählten Jahres unwiderruflich. Andere Jahre und Passwörter bleiben erhalten. Er ist für einen vollständigen Neustart gedacht, nicht für einzelne Korrekturen. Prüfe vorher Protokolle, Filter und mögliche Wiederherstellungen.",
   "security-complete": "Sicherheit nachvollziehbar verwaltet. Du weißt jetzt, wie du Zugänge passend begrenzt, Ereignisse prüfst und geschützte Notfallfunktionen bewusst einsetzt.",
+  "pdf-contacts-locked": "Ansprechpartner-Übersichten ab Light. Mit Ansprechpartner-Übersichten erstellst du gegliederte Arbeitsmappen mit Bereichsverantwortung, Schichten und Checklisten. Im Event Pass ist dieser Teil gesperrt. Helfer-PDFs und gefilterte Einsatzpläne bleiben weiter nutzbar.",
+  "pdf-config-locked": "PDF-Vorlage mit klaren Paketgrenzen. Titel, Zusatzspalten und Hinweise kannst du hier für die aktuelle Veranstaltung pflegen. Ein eigenes Eventlogo und automatische WhatsApp-Vorlagen stehen ab Pro bereit. Bis dahin bleibt das MyCrewMate-Logo aktiv. WhatsApp öffnet weiter einen leeren Chat für freie Nachrichten.",
+  "security-accesses-locked": "Planungsteam-Zugänge ab Light. Persönliche Planungsteam-Zugänge verwalten Fachrechte und Veranstaltungsfreigaben für einzelne Personen. Im Event Pass bleibt die Planung sicher beim Hauptadministrator. Mit Light kommen bis zu fünf persönliche Zugänge hinzu. Die übrigen Sicherheits- und Protokollbereiche bleiben weiter verfügbar.",
 
   "help-intro": "Im Hilfe-Center schnell zurechtfinden. Hier findest du kurze Anleitungen für die gesamte Planung – von der ersten Orientierung bis zu PDFs, Rechten und Sicherungen.",
   "help-search": "Direkt nach einem Begriff suchen. Tippe einfach ein Stichwort wie Helfer, Einsatzplan, Material, PDF oder Passwort ein. Die sichtbaren Kapitel passen sich sofort an.",
@@ -423,6 +426,9 @@ const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
   "security-audit-files": "20260929-security-admin-detail-v1",
   "security-danger": "20260929-security-admin-detail-v2",
   "security-complete": "20260929-security-admin-detail-v1",
+  "pdf-contacts-locked": "20260930-package-context-v1",
+  "pdf-config-locked": "20260930-package-context-v1",
+  "security-accesses-locked": "20260930-package-context-v1",
 };
 
 export function isKlemmiAudioId(value: string): value is KlemmiAudioId {

@@ -3338,6 +3338,10 @@ export default function Helpers() {
         }}
         currentPackageId={currentPackageId}
         capability={upgradeCapability}
+        contextId={
+          upgradeCapability === "donations" ? "donations" :
+          upgradeCapability === "personal_accesses" ? "personal_helper_pdf" : null
+        }
       />
     </div>
   );

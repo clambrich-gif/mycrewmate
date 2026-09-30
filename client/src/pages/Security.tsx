@@ -17,7 +17,8 @@ import { useEventYear } from "@/contexts/YearContext";
 import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { SECURITY_KLEMMI_STEPS } from "@/lib/klemmi-area-tours";
+import type { ProductPackageId } from "@shared/product-packages";
+import { getSecurityKlemmiSteps } from "@/lib/klemmi-area-tours";
 import {
   ChevronDown,
   KeyRound,
@@ -186,6 +187,8 @@ function PasswordEditor({
 }
 
 export default function Security() {
+  const { data: tenantProduct } = trpc.tenantProduct.current.useQuery(undefined, { staleTime: 60_000 });
+  const currentPackageId: ProductPackageId = tenantProduct?.packageId ?? "event_pass";
   const { user } = useAuth();
   const { year } = useEventYear();
   const utils = trpc.useUtils();
@@ -313,7 +316,7 @@ export default function Security() {
             guideId="security"
             title="Schutz und Protokoll für Administratoren"
             introText="Ich führe dich jetzt ausführlich und ohne Änderungen durch Passwort, Zugänge, Rechte, Notfall-Stopp und die drei Protokollbereiche."
-            steps={SECURITY_KLEMMI_STEPS}
+            steps={getSecurityKlemmiSteps(currentPackageId)}
             successSignal={null}
             onStepChange={handleSecurityGuideStep}
             onOpenChange={open => !open && setOpenGuidePanels([])}

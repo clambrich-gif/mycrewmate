@@ -334,3 +334,47 @@ export const HELP_KLEMMI_STEPS: KlemmiSurfaceStep[] = [
     action: "Fertig",
   },
 ];
+
+/** Liefert nur dort Paket-Hinweise, wo im aktuellen Produktumfang tatsächlich eine Grenze liegt. */
+export function getPdfKlemmiSteps({ currentPackageId, canManage }: { currentPackageId: import("@shared/product-packages").ProductPackageId; canManage: boolean }): KlemmiSurfaceStep[] {
+  if (currentPackageId !== "event_pass" && currentPackageId !== "light") {
+    return canManage ? PDF_KLEMMI_STEPS : PDF_KLEMMI_STEPS_READONLY;
+  }
+  const steps = canManage ? PDF_KLEMMI_STEPS.map(step => ({ ...step })) : PDF_KLEMMI_STEPS_READONLY.map(step => ({ ...step }));
+  const plan = steps.find(step => step.key === "plan");
+  if (currentPackageId === "event_pass" && plan) {
+    plan.action = "Ansprechpartner-Übersichten erklären";
+    steps.splice(3, 0, {
+      key: "contacts-locked",
+      selector: '[data-klemmi-target="pdf-contact-overviews"]',
+      eyebrow: "",
+      title: "Ansprechpartner-Übersichten ab Light",
+      text: "Mit Ansprechpartner-Übersichten erstellst du gegliederte Arbeitsmappen mit Bereichsverantwortung, Schichten und Checklisten. Im Event Pass ist dieser Teil gesperrt. Helfer-PDFs und gefilterte Einsatzpläne bleiben weiter nutzbar.",
+      audioKey: "contacts-locked",
+      action: canManage ? "Vorlage zeigen" : "Fertig",
+    });
+  }
+  const config = steps.find(step => step.key === "config");
+  if (config) {
+    config.key = "config-locked";
+    config.title = "PDF-Vorlage mit klaren Paketgrenzen";
+    config.text = "Titel, Zusatzspalten und Hinweise kannst du hier für die aktuelle Veranstaltung pflegen. Ein eigenes Eventlogo und automatische WhatsApp-Vorlagen stehen ab Pro bereit. Bis dahin bleibt das MyCrewMate-Logo aktiv. WhatsApp öffnet weiter einen leeren Chat für freie Nachrichten.";
+    config.audioKey = "config-locked";
+  }
+  const numbered = steps.filter(step => step.key !== "intro");
+  return steps.map(step => {
+    const index = numbered.findIndex(candidate => candidate.key === step.key);
+    return index < 0 ? step : { ...step, eyebrow: `Schritt ${index + 1} von ${numbered.length}` };
+  });
+}
+
+/** Ergänzt die Sicherheitstour im Event Pass um eine konkrete, passende Alternative. */
+export function getSecurityKlemmiSteps(currentPackageId: import("@shared/product-packages").ProductPackageId): KlemmiSurfaceStep[] {
+  if (currentPackageId !== "event_pass") return SECURITY_KLEMMI_STEPS;
+  return SECURITY_KLEMMI_STEPS.map(step => step.key === "accesses-overview" ? {
+    ...step,
+    title: "Planungsteam-Zugänge ab Light",
+    text: "Persönliche Planungsteam-Zugänge verwalten Fachrechte und Veranstaltungsfreigaben für einzelne Personen. Im Event Pass bleibt die Planung sicher beim Hauptadministrator. Mit Light kommen bis zu fünf persönliche Zugänge hinzu. Die übrigen Sicherheits- und Protokollbereiche bleiben weiter verfügbar.",
+    audioKey: "accesses-locked",
+  } : step);
+}
