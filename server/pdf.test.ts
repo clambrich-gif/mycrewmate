@@ -260,6 +260,33 @@ describe("PDF-Erzeugung", () => {
     expect(pdf.length).toBeGreaterThan(2_000);
   });
 
+  it("setzt lange Helferhinweise als mehrzeilige Zusammenfassung ohne den Export zu überlagern", async () => {
+    const longNote = [
+      "Bitte zuerst am Materialcontainer melden und die Ausgabe mit der Einsatzleitung abstimmen.",
+      "Die Helferin bringt bei Bedarf eine Kabeltrommel mit und ist telefonisch erreichbar.",
+      "Bei Rückfragen bitte vor der Anreise kurz die aktuelle Treffpunktinformation prüfen.",
+    ].join(" ");
+    const helperData = {
+      ...data,
+      helpers: helpers.map(helper =>
+        helper.id === 1 ? { ...helper, note: longNote } : helper
+      ),
+    };
+
+    expect(
+      buildHelperSummaryEntries({
+        taskCount: 2,
+        daySummary: "Freitag und Samstag",
+        helperNote: longNote,
+        contactLabel: "Ansprechpartner",
+      }).find(entry => entry.label === "Hinweise")?.value
+    ).toBe(longNote);
+
+    const pdf = await renderHelperTaskPdf(helperData, 1);
+    expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+    expect(pdf.length).toBeGreaterThan(2_000);
+  });
+
   it("kennzeichnet zeitlose persönliche Schichten als Ganztags und hält die Zusammenfassung sortiert", () => {
     expect(helperPdfTimeLabel(shifts[0])).toBe("17:00–21:00");
     expect(
@@ -277,7 +304,7 @@ describe("PDF-Erzeugung", () => {
       }).map(entry => entry.label)
     ).toEqual([
       "Einteilung",
-      "Verfügbarkeit / Bemerkungen",
+      "Hinweise",
       "Spende",
       "Ansprechpartner",
       "Rufnummer",

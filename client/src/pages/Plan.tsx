@@ -577,7 +577,7 @@ function AssignedHelperChip({
           )}
         </p>
         <p>
-          <span className="font-medium">Hinweis für PDF:</span> {note || "-"}
+          <span className="font-medium">Hinweise:</span> {note || "-"}
         </p>
         {companion && (
           <p className="rounded-md border border-sky-200 bg-sky-50 px-2 py-1 text-xs text-sky-950">
@@ -1746,7 +1746,7 @@ export default function Plan() {
                       const helperDetailsTitle = [
                         timeRestricted ? `Zeitfenster: ${availabilityLabel}` : "",
                         companion ? `Begleitung: ${companion}` : "",
-                        note ? `Hinweis für PDF: ${note}` : "",
+                        note ? `Hinweise: ${note}` : "",
                         conflictTitle ? `Zeitgleich eingeteilt: ${conflictTitle}` : "",
                       ]
                         .filter(Boolean)
@@ -2975,7 +2975,7 @@ export default function Plan() {
                   )}
                 </p>
                 <p className="whitespace-pre-wrap break-words">
-                  <span className="font-medium">Hinweis für PDF:</span>{" "}
+                  <span className="font-medium">Hinweise:</span>{" "}
                   {mobileHelperDetails.helper.note?.trim() || "–"}
                 </p>
                 {mobileHelperDetails.helper.companion?.trim() && (

@@ -62,7 +62,7 @@ type PlanningData = {
   postTasks?: PostTask[];
   settings: AppSettings;
   logoBuffer?: Buffer;
-  /** Event Pass und Light verwenden die breite MyCrewMate-Wortmarke. */
+  /** Ohne individuelles Eventlogo wird die breite MyCrewMate-Wortmarke verwendet. */
   usesMyCrewMateWordmark?: boolean;
 };
 
@@ -80,6 +80,8 @@ const contentWidth = pageWidth - margin * 2;
 const MYCREWMATE_ACCESS_URL = "https://app.mycrewmate.de";
 const MYCREWMATE_PDF_TAGLINE = "Gemeinsam planen. Entspannt veranstalten.";
 const MYCREWMATE_PDF_FOOTER = `MyCrewMate · ${MYCREWMATE_PDF_TAGLINE}`;
+const CUSTOM_EVENT_LOGO_COMPACT_SIZE = 84;
+const CUSTOM_EVENT_LOGO_STANDARD_SIZE = 128;
 const helperPdfTypography = {
   title: 18,
   helperName: 14,
@@ -342,8 +344,8 @@ function drawCompactHelperHeader(
   usesMyCrewMateWordmark = false
 ) {
   const top = helperPdfMargin;
-  const logoWidth = usesMyCrewMateWordmark ? 172 : 42;
-  const logoHeight = usesMyCrewMateWordmark ? 52 : 42;
+  const logoWidth = usesMyCrewMateWordmark ? 172 : CUSTOM_EVENT_LOGO_COMPACT_SIZE;
+  const logoHeight = usesMyCrewMateWordmark ? 52 : CUSTOM_EVENT_LOGO_COMPACT_SIZE;
   const textWidth = logoBuffer
     ? helperPdfContentWidth - logoWidth - 14
     : helperPdfContentWidth;
@@ -563,7 +565,7 @@ export function buildHelperSummaryEntries(input: {
   ];
   if (input.helperNote?.trim())
     entries.push({
-      label: "Verfügbarkeit / Bemerkungen",
+      label: "Hinweise",
       value: input.helperNote.trim(),
     });
   const cakeLines = input.cakeLines ?? [];
@@ -682,9 +684,9 @@ function drawDocumentHeader(
   usesMyCrewMateWordmark = false
 ) {
   const headerTop = doc.y;
-  const logoWidth = usesMyCrewMateWordmark ? 172 : 64;
-  const logoHeight = usesMyCrewMateWordmark ? 52 : 64;
-  const logoTextReserve = usesMyCrewMateWordmark ? 192 : 84;
+  const logoWidth = usesMyCrewMateWordmark ? 172 : CUSTOM_EVENT_LOGO_STANDARD_SIZE;
+  const logoHeight = usesMyCrewMateWordmark ? 52 : CUSTOM_EVENT_LOGO_STANDARD_SIZE;
+  const logoTextReserve = usesMyCrewMateWordmark ? 192 : 148;
   if (logoBuffer) {
     try {
       doc.image(
@@ -736,7 +738,11 @@ function drawDocumentHeader(
       );
   }
   if (logoBuffer)
-    doc.y = Math.max(doc.y, headerTop + (usesMyCrewMateWordmark ? 67 : 68));
+    doc.y = Math.max(
+      doc.y,
+      headerTop +
+        (usesMyCrewMateWordmark ? 67 : CUSTOM_EVENT_LOGO_STANDARD_SIZE + 14)
+    );
   doc.moveDown(0.55);
   doc
     .strokeColor(colors.line)

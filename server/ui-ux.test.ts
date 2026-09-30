@@ -232,7 +232,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("helperDetailsTitle");
     expect(plan).toContain("Zeitfenster:");
     expect(plan).toContain("Begleitung:");
-    expect(plan).toContain("Hinweis für PDF:");
+    expect(plan).toContain("Hinweise:");
     expect(plan).toContain("<UsersRound");
     expect(plan).toContain('<Clock3 className="size-3.5"');
     expect(plan).toContain("Falls vor einem Namen eine Uhr steht");
@@ -422,14 +422,14 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(preview).toContain("KlemmiSurfaceGuide");
   });
 
-  it("zeigt PDF-Hinweise bearbeitbar per Desktop-Hover und Touch-Popover vollständig an", () => {
+  it("zeigt Helferhinweise bearbeitbar per Desktop-Hover und Touch-Popover vollständig an", () => {
     const helpers = source("client/src/pages/Helpers.tsx");
 
     expect(helpers).toContain("function HelperPdfNoteField");
     expect(helpers).toContain("event.pointerType");
     expect(helpers).toContain("window.setTimeout(() => setOpen(true), 900)");
-    expect(helpers).toContain("Vollständigen PDF-Hinweis für");
-    expect(helpers).toContain("Kein Hinweis hinterlegt.");
+    expect(helpers).toContain("Vollständige Hinweise für");
+    expect(helpers).toContain("Keine Hinweise hinterlegt.");
     expect(helpers).toContain("onBlur={event => {");
     expect(helpers.match(/<HelperPdfNoteField/g)).toHaveLength(2);
     expect(helpers).toContain("collisionPadding={12}");
@@ -2477,9 +2477,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
       desktopHeader.indexOf("Telefon Helfer")
     );
     expect(desktopHeader.indexOf("Telefon Helfer")).toBeLessThan(
-      desktopHeader.indexOf("Hinweis für PDF")
+      desktopHeader.indexOf("Hinweise")
     );
-    expect(desktopHeader.indexOf("Hinweis für PDF")).toBeLessThan(
+    expect(desktopHeader.indexOf("Hinweise")).toBeLessThan(
       desktopHeader.indexOf("zusätzliche Begleitung")
     );
     expect(desktopHeader.indexOf("Bestätigt?")).toBeLessThan(
@@ -2564,7 +2564,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helperDialog).toContain("Name des Helfers");
     expect(helperDialog).toContain("Ansprechpartner");
     expect(helperDialog).toContain("Telefon Helfer");
-    expect(helperDialog).toContain("Hinweis für PDF");
+    expect(helperDialog).toContain("Hinweise");
     expect(helperDialog).toContain("Zusätzliche Begleitung (für Einsatzplan)");
     expect(helperDialog).toContain("Verfügbarkeit jetzt erfassen");
     expect(helperDialog).toContain("Optional – die Angaben stehen dem Einsatzplan sofort zur Verfügung.");
@@ -3025,13 +3025,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const helpers = source("client/src/pages/Helpers.tsx");
     const plan = source("client/src/pages/Plan.tsx");
 
-    expect(helpers).toContain("Hinweis für PDF bearbeiten");
-    expect(helpers).toContain("Hinweis für ${helperName}");
+    expect(helpers).toContain("Hinweise bearbeiten");
+    expect(helpers).toContain("Hinweise für ${helperName}");
     expect(helpers).toContain("mobile-helper-note-${helperId}");
-    expect(helpers).toContain("Verfügbarkeit, Besonderheiten oder Bemerkungen");
+    expect(helpers).toContain("z. B. Besonderheiten, Material oder Absprachen");
     expect(helpers).toContain("rows={7}");
     expect(helpers).toContain("min-h-40 resize-y text-base");
-    expect(helpers).toContain('aria-label={`Hinweis für PDF von ${helperName} mehrzeilig bearbeiten`}');
+    expect(helpers).toContain('aria-label={`Hinweise von ${helperName} mehrzeilig bearbeiten`}');
 
     expect(plan).toContain("function MobileShiftNote");
     expect(plan).toContain("Bemerkung bearbeiten");

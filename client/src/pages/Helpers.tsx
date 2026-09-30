@@ -615,11 +615,11 @@ function HelperPdfNoteField({
         <button
           type="button"
           className="flex h-11 w-full items-center rounded-md border bg-white px-3 text-left text-base shadow-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-          aria-label={`Hinweis für PDF von ${helperName} mehrzeilig bearbeiten`}
+          aria-label={`Hinweise von ${helperName} mehrzeilig bearbeiten`}
           onClick={openMobileEditor}
         >
           <span className={cn("line-clamp-1 min-w-0 flex-1 break-words", !fullNote && "text-muted-foreground")}>
-            {fullNote || "Verfügbarkeit / Bemerkung"}
+            {fullNote || "Hinweise"}
           </span>
           <Pencil className="ml-2 size-4 shrink-0 text-slate-500" aria-hidden="true" />
         </button>
@@ -639,8 +639,8 @@ function HelperPdfNoteField({
                 compactOnDesktop && "xl:h-8 xl:min-w-0"
               )}
               defaultValue={note ?? ""}
-              placeholder="Verfügbarkeit / Bemerkung"
-              aria-label={`Hinweis für PDF von ${helperName} bearbeiten`}
+              placeholder="Hinweise"
+              aria-label={`Hinweise von ${helperName} bearbeiten`}
               onFocus={() => {
                 editing.current = true;
                 clearOpenTimer();
@@ -656,8 +656,8 @@ function HelperPdfNoteField({
               <button
                 type="button"
                 className="absolute inset-y-0 right-0 inline-flex w-11 items-center justify-center rounded-r-md text-slate-500 hover:bg-slate-100 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-blue-600 md:w-8"
-                aria-label={`Vollständigen PDF-Hinweis für ${helperName} anzeigen`}
-                title="Vollständigen Hinweis anzeigen"
+                aria-label={`Vollständige Hinweise für ${helperName} anzeigen`}
+                title="Vollständige Hinweise anzeigen"
               >
                 <Info className="size-4" />
               </button>
@@ -676,9 +676,9 @@ function HelperPdfNoteField({
             onPointerLeave={event => closeAfterLeave(event.pointerType)}
             className="z-50 w-[min(20rem,calc(100vw-1.5rem))] max-w-none space-y-1.5 border border-gray-200 bg-white text-left text-gray-900 opacity-100 shadow-lg duration-200 ease-out data-[state=open]:fade-in-0 motion-reduce:animate-none sm:w-80"
           >
-            <p className="text-xs font-medium text-slate-500">Hinweis für PDF</p>
+            <p className="text-xs font-medium text-slate-500">Hinweise</p>
             <p className="whitespace-pre-wrap break-words text-sm">
-              {fullNote || "Kein Hinweis hinterlegt."}
+              {fullNote || "Keine Hinweise hinterlegt."}
             </p>
           </PopoverContent>
         </Popover>
@@ -687,11 +687,11 @@ function HelperPdfNoteField({
       <Dialog open={mobileEditorOpen} onOpenChange={setMobileEditorOpen}>
         <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] !bg-white !text-slate-950 sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Hinweis für PDF bearbeiten</DialogTitle>
+            <DialogTitle>Hinweise bearbeiten</DialogTitle>
           </DialogHeader>
           <div className="space-y-2 py-2">
             <label htmlFor={`mobile-helper-note-${helperId}`} className="text-sm font-medium">
-              Hinweis für {helperName}
+              Hinweise für {helperName}
             </label>
             <Textarea
               id={`mobile-helper-note-${helperId}`}
@@ -699,7 +699,7 @@ function HelperPdfNoteField({
               rows={7}
               value={mobileNote}
               onChange={event => setMobileNote(event.target.value)}
-              placeholder="Verfügbarkeit, Besonderheiten oder Bemerkungen"
+              placeholder="z. B. Besonderheiten, Material oder Absprachen"
               className="min-h-40 resize-y text-base"
             />
           </div>
@@ -1832,7 +1832,7 @@ export default function Helpers() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium">Hinweis für PDF</label>
+                  <label className="text-xs font-medium">Hinweise</label>
                   <HelperPdfNoteField
                     helperId={helper.id}
                     helperName={helper.name}
@@ -1970,7 +1970,7 @@ export default function Helpers() {
                 <th className="p-2 text-center">Aktionen</th>
                 <th className="p-2">Ansprechpartner</th>
                 <th className="whitespace-nowrap p-2">Telefon Helfer</th>
-                <th className="p-2">Hinweis für PDF</th>
+                <th className="p-2">Hinweise</th>
                 <th className="p-2">zusätzliche Begleitung</th>
                 <th className="p-1 text-center align-middle text-[11px] leading-tight">
                   <span className="flex min-h-8 items-center justify-center">
@@ -2471,7 +2471,7 @@ export default function Helpers() {
 
                     {Boolean(helper.note?.trim()) && (
                       <div className="rounded-lg border border-amber-200 bg-amber-50/70 p-2 text-xs text-amber-950">
-                        <span className="font-semibold">Hinweis für PDF:</span> {helper.note}
+                        <span className="font-semibold">Hinweise:</span> {helper.note}
                       </div>
                     )}
 
@@ -2659,12 +2659,12 @@ export default function Helpers() {
                   data-klemmi-target="new-helper-details"
                   className="space-y-1.5 rounded-xl"
                 >
-                  <label htmlFor="new-helper-dialog-note" className="text-sm font-medium">Hinweis für PDF</label>
+                  <label htmlFor="new-helper-dialog-note" className="text-sm font-medium">Hinweise</label>
                   <Input
                     id="new-helper-dialog-note"
                     value={newHelperNote}
                     onChange={event => setNewHelperNote(event.target.value)}
-                    placeholder="Verfügbarkeit / Bemerkung (optional)"
+                    placeholder="z. B. Besonderheiten oder Absprachen (optional)"
                     className="h-11 bg-white text-base"
                   />
                 </div>
@@ -3107,7 +3107,7 @@ export default function Helpers() {
             </div>
             <div className="space-y-1.5">
               <label htmlFor="mobile-helper-edit-note" className="text-sm font-medium">
-                Hinweis für PDF
+                Hinweise
               </label>
               <Textarea
                 id="mobile-helper-edit-note"
