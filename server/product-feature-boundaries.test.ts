@@ -58,7 +58,9 @@ describe("Produktgrenzen: Marke, WhatsApp und Event-Sicherung", () => {
     expect(pdf).toContain(
       "const logoWidth = usesMyCrewMateWordmark ? 172 : CUSTOM_EVENT_LOGO_COMPACT_SIZE"
     );
-    expect(pdf).toContain("const logoSafeHeaderHeight = usesMyCrewMateWordmark");
+    expect(pdf).toContain(
+      "const logoSafeHeaderHeight = usesMyCrewMateWordmark"
+    );
     expect(pdf).toContain("? logoHeight + 8");
     expect(pdf).toContain("function helperPdfLocationLink(");
     expect(pdf).toContain("https://www.google.com/maps/search/?api=1&query=");
@@ -102,14 +104,39 @@ describe("Produktgrenzen: Marke, WhatsApp und Event-Sicherung", () => {
     expect(saveLoad).toContain("const canUseJsonBackup =");
     expect(saveLoad).toContain("{canUseExcel && (");
     expect(layout).toContain("<LazySaveLoadControls");
-    expect(layout).toContain('data-slot={`product-summary-${productPackageId}`}');
-    expect(layout).toContain("Eine Hauptveranstaltung pro Jahr · bis 150 Helfer");
+    expect(layout).toContain(
+      "data-slot={`product-summary-${productPackageId}`}"
+    );
+    expect(layout).toContain(
+      "Eine Hauptveranstaltung pro Jahr · bis 150 Helfer"
+    );
     expect(layout).toContain('"border-slate-200 bg-white text-slate-950"');
-    expect(layout).toContain("Bis 5 Veranstaltungen pro Jahr · bis 350 Helfer je Event");
+    expect(layout).toContain(
+      "Bis 5 Veranstaltungen pro Jahr · bis 350 Helfer je Event"
+    );
     expect(layout).toContain("Unbegrenzte Veranstaltungen · unbegrenzt Helfer");
     expect(layout).toContain("isPremiumPackage");
     expect(layout).toContain("<Sparkles");
     expect(layout).toContain('"border-sky-200 bg-sky-50 text-sky-950"');
+  });
+
+  it("öffnet über jede Paketkarte die einheitliche Vergleichstabelle und markiert das gebuchte Paket", () => {
+    const layout = source("client/src/components/Layout.tsx");
+    const comparison = source(
+      "client/src/components/PackageComparisonSection.tsx"
+    );
+
+    expect(layout).toContain("import { PackageComparisonSection }");
+    expect(layout).toContain(
+      "const [packageComparisonOpen, setPackageComparisonOpen]"
+    );
+    expect(layout).toContain("onClick={openPackageComparison}");
+    expect(layout).toContain("<PackageComparisonSection");
+    expect(layout).toContain("currentPackageId={productPackageId}");
+    expect(comparison).toContain("currentPackageId === packageId");
+    expect(comparison).toContain("ring-orange-500");
+    expect(comparison).toContain("Chat, individuelle WhatsApp-Vorlagen & PDF");
+    expect(comparison).not.toContain("Individuelle Lösung & Zukunftsmodule");
   });
 
   it("stellt die globale Klemmi-Stummschaltung bereit, ohne Texte auszublenden", () => {

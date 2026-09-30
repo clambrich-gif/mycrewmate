@@ -13,94 +13,139 @@ describe("Vereinsadministrator-Stellvertretung", () => {
     const database = source("server/db.ts");
 
     expect(schema).toContain('isTenantAdmin: boolean("isTenantAdmin")');
-    expect(migration).toContain("ALTER TABLE `planning_team_accesses` ADD `isTenantAdmin`");
+    expect(migration).toContain(
+      "ALTER TABLE `planning_team_accesses` ADD `isTenantAdmin`"
+    );
     expect(database).toContain("requirePlanningTeamAccessForTenant");
-    expect(database).toContain("Der Planungsteam-Zugang gehört nicht zum aktuellen Verein");
+    expect(database).toContain(
+      "Der Planungsteam-Zugang gehört nicht zum aktuellen Verein"
+    );
   });
 
   it("gibt Stellvertretungen volle Vereinsrechte, aber keine Master- oder Weitergaberechte", () => {
     const router = source("server/routers.ts");
 
-    expect(router).toContain("Dieser Planungsteam-Zugang gehört nicht zum aktuell angemeldeten Verein.");
-    expect(router).toContain("if (access.isTenantAdmin) return FULL_PLANNER_PERMISSIONS");
+    expect(router).toContain(
+      "Dieser Planungsteam-Zugang gehört nicht zum aktuell angemeldeten Verein."
+    );
+    expect(router).toContain(
+      "if (access.isTenantAdmin) return FULL_PLANNER_PERMISSIONS"
+    );
     expect(router).toContain("const scopeAdminAuthProcedure");
     expect(router).toContain("if (!(await isTenantAdministrator(ctx.user)))");
     expect(router).toContain("const masterAdminProcedure");
     expect(router).toContain("ctx.user.openId === ADMIN_PASSWORD_OPEN_ID");
-    expect(router).toContain("Nur der Vereinsadministrator darf eine administrative Stellvertretung vergeben oder ändern.");
+    expect(router).toContain(
+      "Nur der Vereinsadministrator darf eine administrative Stellvertretung vergeben oder ändern."
+    );
     expect(router).toContain("isDelegatedTenantAdministratorAccess(existing)");
     expect(router).toContain("requirePrimaryTenantAdministrator(ctx.user)");
     expect(router).toContain("function isPrimaryTenantAdministrator");
     expect(router).toContain("async function isDelegatedTenantAdministrator");
-    expect(router).toContain("user.openId.startsWith(\"tenant-admin:\")");
-    expect(router).toContain("isPrimaryTenantAdmin: isPrimaryTenantAdministrator(ctx.user)");
-    expect(router).toContain("isDelegatedTenantAdmin: await isDelegatedTenantAdministrator(ctx.user)");
+    expect(router).toContain('user.openId.startsWith("tenant-admin:")');
+    expect(router).toContain(
+      "isPrimaryTenantAdmin: isPrimaryTenantAdministrator(ctx.user)"
+    );
+    expect(router).toContain(
+      "isDelegatedTenantAdmin: await isDelegatedTenantAdministrator(ctx.user)"
+    );
   });
 
   it("kennzeichnet die Rolle rot und sperrt ihre Verwaltung für andere Stellvertretungen", () => {
-    const manager = source("client/src/components/PlanningTeamAccessManager.tsx");
+    const manager = source(
+      "client/src/components/PlanningTeamAccessManager.tsx"
+    );
     const security = source("client/src/pages/Security.tsx");
     const layout = source("client/src/components/Layout.tsx");
-    const tenantAdminHook = source("client/src/hooks/useTenantAdministration.ts");
+    const tenantAdminHook = source(
+      "client/src/hooks/useTenantAdministration.ts"
+    );
 
     expect(manager).toContain("Co-Admin");
     expect(manager).toContain("border-2 border-red-500 bg-red-50");
-    expect(manager).toContain('aria-label="Unterschiede zwischen Hauptadministrator und Co-Admin erklären"');
+    expect(manager).toContain(
+      'aria-label="Unterschiede zwischen Hauptadministrator und Co-Admin erklären"'
+    );
     expect(manager).toContain("Rollen im eigenen Verein");
     expect(manager).toContain("Hauptadministrator:");
     expect(manager).toContain("Co-Admin:");
     expect(manager).toContain("keine Verwaltung anderer Co-Admins");
-    expect(manager).toContain("disabled={access.isTenantAdmin && !isPrimaryTenantAdmin}");
+    expect(manager).toContain(
+      "disabled={access.isTenantAdmin && !isPrimaryTenantAdmin}"
+    );
     expect(manager).toContain("Alle Veranstaltungen dieses Vereins");
-    expect(manager).toContain('user?.openId.startsWith("planning-team-access-")');
-    expect(tenantAdminHook).toContain("administrativeContext.data?.isTenantAdmin === true");
+    expect(manager).toContain(
+      'user?.openId.startsWith("planning-team-access-")'
+    );
+    expect(tenantAdminHook).toContain(
+      "administrativeContext.data?.isTenantAdmin === true"
+    );
     expect(tenantAdminHook).toContain(
       "administrativeContext.data?.isPrimaryTenantAdmin === true"
     );
-    expect(tenantAdminHook).toContain("administrativeContext.data?.isDelegatedTenantAdmin === true");
+    expect(tenantAdminHook).toContain(
+      "administrativeContext.data?.isDelegatedTenantAdmin === true"
+    );
     expect(security).toContain("useTenantAdministration");
     expect(security).toContain("{isPrimaryTenantAdmin && (");
     expect(layout).toContain("useTenantAdministration");
     expect(layout).toContain("tenantRoleLabel");
     expect(layout).toContain("const navigationSections = useMemo");
-    expect(layout).toContain("visibleNavigationSections(\n        effectiveNavigationRole");
+    expect(layout).toContain(
+      "visibleNavigationSections(\n        effectiveNavigationRole"
+    );
     expect(layout).toContain("Passwort erfolgreich gespeichert.");
-    expect(layout).toContain("Nutzen Sie dafür Ihre persönliche E-Mail-Adresse");
+    expect(layout).toContain("Nutzen Sie dafür Ihre persönliche");
+    expect(layout).toContain(
+      "E-Mail-Adresse und das gerade vergebene neue Passwort."
+    );
   });
 
   it("zeigt Co-Admins vereinsintern als vollwertige Administration und trennt ihre Präsenz", () => {
-    const manager = source("client/src/components/PlanningTeamAccessManager.tsx");
+    const manager = source(
+      "client/src/components/PlanningTeamAccessManager.tsx"
+    );
     const schema = source("drizzle/schema.ts");
     const presence = source("server/session-presence.ts");
     const router = source("server/routers.ts");
     const layout = source("client/src/components/Layout.tsx");
-    const tenantAdminHook = source("client/src/hooks/useTenantAdministration.ts");
+    const tenantAdminHook = source(
+      "client/src/hooks/useTenantAdministration.ts"
+    );
     const badge = source("client/src/components/OnlinePresenceBadge.tsx");
 
     expect(manager).toContain("Co-Admin");
     expect(schema).toContain('presenceRole: mysqlEnum("presenceRole"');
-    expect(schema).toContain('tenantId: varchar("tenantId", { length: 96 }).notNull()');
-    expect(presence).toContain('eq(sessionPresences.tenantId, tenantId)');
+    expect(schema).toContain(
+      'tenantId: varchar("tenantId", { length: 96 }).notNull()'
+    );
+    expect(presence).toContain("eq(sessionPresences.tenantId, tenantId)");
     expect(presence).toContain('"Hauptadministrator"');
     expect(presence).toContain('"Co-Admin"');
-    expect(router).toContain('presenceRole: isCoAdmin');
-    expect(router).toContain('getOnlinePresenceStatus(scope.tenantId)');
+    expect(router).toContain("presenceRole: isCoAdmin");
+    expect(router).toContain("getOnlinePresenceStatus(scope.tenantId)");
     expect(layout).toContain("tenantRoleLabel");
     expect(tenantAdminHook).toContain('if (input.isCoAdmin) return "Co-Admin"');
-    expect(badge).toContain("Online: <strong>{counts.planningTeam}</strong> Planer");
+    expect(badge).toContain(
+      "Online: <strong>{counts.planningTeam}</strong> Planer"
+    );
     expect(badge).toContain("<strong>{counts.administrators}</strong> Admins");
   });
 
   it("synchronisiert Co-Admins auch in der Mandantenmitgliedschaft nicht als Planer", () => {
     const database = source("server/db.ts");
     const sync = database.slice(
-      database.indexOf("export async function synchronizePlanningTeamTenantMemberships"),
+      database.indexOf(
+        "export async function synchronizePlanningTeamTenantMemberships"
+      ),
       database.indexOf("const year = ()")
     );
 
     expect(sync).toContain("isTenantAdmin: planningTeamAccesses.isTenantAdmin");
-    expect(sync).toContain('const membershipRole = access.isTenantAdmin ? "tenant_admin" : "planner"');
+    expect(sync).toContain(
+      'const membershipRole = access.isTenantAdmin ? "tenant_admin" : "planner"'
+    );
     expect(sync).toContain("role: membershipRole");
-    expect(sync).toContain("set: { role: membershipRole, status: \"active\" }");
+    expect(sync).toContain('set: { role: membershipRole, status: "active" }');
   });
 });

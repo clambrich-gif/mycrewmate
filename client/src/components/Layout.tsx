@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
+import { PackageComparisonSection } from "@/components/PackageComparisonSection";
 import { ForcePasswordChangeModal } from "@/components/ForcePasswordChangeModal";
 import { FirstLoginOnboarding } from "@/components/FirstLoginOnboarding";
 import { KlemmiLoginGreeting } from "@/components/KlemmiLoginGreeting";
@@ -36,6 +37,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -388,6 +390,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [yearDialogOpen, setYearDialogOpen] = useState(false);
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
   const [eventManagerOpen, setEventManagerOpen] = useState(false);
+  const [packageComparisonOpen, setPackageComparisonOpen] = useState(false);
+  const openPackageComparison = () => setPackageComparisonOpen(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(getDesktopSidebarOpenPreference);
   const [newYear, setNewYear] = useState(year + 1);
@@ -1757,9 +1761,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </SelectContent>
             </Select>
             {hasPackageSummary && (
-              <div
+              <button
+                type="button"
+                onClick={openPackageComparison}
                 className={cn(
-                  "relative mt-2 rounded-lg border px-2.5 py-2 text-xs leading-4 shadow-sm",
+                  "relative mt-2 w-full rounded-lg border px-2.5 py-2 text-left text-xs leading-4 shadow-sm transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-px hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400",
                   isEventPass
                     ? "border-orange-200 bg-orange-50 text-orange-950"
                     : isLight
@@ -1790,7 +1796,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 >
                   {packageSummary}
                 </span>
-              </div>
+              </button>
             )}
             <div className="mt-2 border-t pt-2">
               <Label className="mb-1 block text-xs text-muted-foreground">
@@ -2073,9 +2079,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </SelectContent>
           </Select>
           {hasPackageSummary && (
-            <div
+            <button
+              type="button"
+              onClick={openPackageComparison}
               className={cn(
-                "relative mt-2 rounded-lg border px-2.5 py-2 text-xs leading-4 shadow-sm",
+                "relative mt-2 w-full rounded-lg border px-2.5 py-2 text-left text-xs leading-4 shadow-sm transition-[border-color,box-shadow,transform] duration-150 hover:-translate-y-px hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400",
                 isEventPass
                   ? "border-orange-200 bg-orange-50 text-orange-950"
                   : isLight
@@ -2106,7 +2114,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               >
                 {packageSummary}
               </span>
-            </div>
+            </button>
           )}
           <div className="mt-2 border-t pt-2">
             <Label className="mb-1 block text-xs text-muted-foreground">
@@ -2879,6 +2887,25 @@ export function Layout({ children }: { children: React.ReactNode }) {
               Schließen
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={packageComparisonOpen}
+        onOpenChange={setPackageComparisonOpen}
+      >
+        <DialogContent className="max-h-[calc(100dvh-1.5rem)] max-w-[min(96vw,78rem)] overflow-y-auto p-0 sm:max-w-[min(96vw,78rem)]">
+          <DialogHeader className="px-6 pb-0 pt-6 sm:px-8">
+            <DialogTitle>Paketvergleich</DialogTitle>
+            <DialogDescription>
+              Dein gebuchtes Paket ist in MyCrewMate-Orange markiert. So siehst
+              du auf einen Blick, welche Funktionen mit eurem Verein mitwachsen.
+            </DialogDescription>
+          </DialogHeader>
+          <PackageComparisonSection
+            currentPackageId={productPackageId}
+            embedded
+          />
         </DialogContent>
       </Dialog>
 
