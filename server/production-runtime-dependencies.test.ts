@@ -64,6 +64,7 @@ describe("Produktions-Laufzeitabhängigkeiten", () => {
       "security-accesses-create", "security-accesses-identity", "security-accesses-rights", "security-accesses-coadmin", "security-accesses-events",
       "security-emergency", "security-audit-logins", "security-audit-activity", "security-audit-files", "security-danger", "security-complete",
       "help-intro", "help-search", "help-filters", "help-chapters", "help-complete",
+      "plan-time-window",
     ];
 
     for (const id of clipIds) {

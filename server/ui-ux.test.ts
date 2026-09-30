@@ -211,6 +211,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain('data-klemmi-target="plan-new"');
     expect(plan).toContain('data-klemmi-target="plan-basics"');
     expect(plan).toContain('data-klemmi-target="plan-save"');
+    expect(plan).toContain('data-klemmi-target="plan-time"');
+    expect(plan).toContain('selector: \'[data-klemmi-target="plan-time"]\'');
+    expect(plan).toContain("Beginn und Ende festlegen ⏱️");
+    expect(plan).toContain("Schritt ${practiceStep} von 13");
     expect(plan).toContain('data-klemmi-target="plan-flexible-assignment"');
     expect(plan).toContain('selector: \'[data-klemmi-target="plan-flexible-assignment"]\'');
     expect(plan).toContain("Flexible Belegung aktivieren ⏱️✨");
@@ -245,6 +249,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain('data-slot="plan-view-transition"');
     expect(plan).not.toContain("klemmiCreatedShiftId");
     expect(plan).not.toContain("setKlemmiCreationSignal(Date.now())");
+    expect(audio).toContain('"plan-time-window": "Beginn und Ende festlegen.');
+    expect(audio).toContain('"plan-time-window": "20260930-time-window-v1"');
     expect(audio).toContain('"plan-time": "Flexible Belegung aktivieren.');
     expect(audio).toContain('"plan-time": "20260930-flexible-assignment-v1"');
 
