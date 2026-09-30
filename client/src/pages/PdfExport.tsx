@@ -141,6 +141,131 @@ function PdfSection({
   );
 }
 
+const MYCREWMATE_WORDMARK = "/brand/mycrewmate-wordmark.png";
+
+/**
+ * Zeigt den Kopfbereich eines A4-Ausdrucks in denselben relativen Abständen
+ * wie der PDF-Renderer. Damit lässt sich die Wirkung eines Eventlogos vor
+ * dem Export beurteilen, ohne einen Testausdruck erzeugen zu müssen.
+ */
+function PdfLogoA4Preview({
+  eventName,
+  eventYear,
+  title,
+  logoUrl,
+  usesCustomEventLogo,
+}: {
+  eventName: string;
+  eventYear: string;
+  title: string;
+  logoUrl: string | null;
+  usesCustomEventLogo: boolean;
+}) {
+  const previewLogoUrl = usesCustomEventLogo
+    ? logoUrl
+    : MYCREWMATE_WORDMARK;
+
+  return (
+    <section
+      data-slot="pdf-logo-a4-preview"
+      className="mt-5 rounded-xl border border-blue-100 bg-blue-50/50 p-4"
+      aria-labelledby="pdf-logo-a4-preview-title"
+    >
+      <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
+        <div>
+          <p
+            id="pdf-logo-a4-preview-title"
+            className="text-sm font-semibold text-slate-900"
+          >
+            DIN-A4-Vorschau der PDF-Kopfzeile
+          </p>
+          <p className="text-xs text-slate-600">
+            Maßstabsgerechte Position und Wirkung im späteren A4-Ausdruck.
+          </p>
+        </div>
+        <span className="w-fit rounded-full border border-blue-200 bg-white px-2 py-0.5 text-[11px] font-medium text-blue-800">
+          A4 · Hochformat
+        </span>
+      </div>
+
+      <figure className="mx-auto w-full max-w-[22rem]">
+        <div
+          className="overflow-hidden rounded-[3px] border border-slate-300 bg-white p-[6.05%] shadow-md"
+          style={{ aspectRatio: "210 / 297" }}
+        >
+          <div
+            className="grid items-start"
+            style={{
+              gridTemplateColumns: usesCustomEventLogo
+                ? "minmax(0, 1fr) 16%"
+                : "minmax(0, 1fr) 33%",
+              gap: "2.7%",
+            }}
+          >
+            <div className="min-w-0">
+              <p className="text-[clamp(0.85rem,2.3vw,1.1rem)] font-bold leading-tight text-slate-900">
+                {title || "Aufgabenübersicht"}
+              </p>
+              <p className="mt-[3%] text-[clamp(0.55rem,1.45vw,0.68rem)] font-semibold leading-tight text-slate-900">
+                {`${eventName} ${eventYear}`.trim() || "Veranstaltung 2026"}
+              </p>
+              <p className="mt-[2%] text-[clamp(0.47rem,1.2vw,0.58rem)] leading-tight text-slate-500">
+                Stand: 30.09.2026 · Persönliche Helferübersicht
+              </p>
+            </div>
+
+            <div className="min-w-0 text-center">
+              <img
+                src={previewLogoUrl ?? MYCREWMATE_WORDMARK}
+                alt={
+                  usesCustomEventLogo
+                    ? "Vorschau des individuellen Eventlogos im PDF"
+                    : "Vorschau der MyCrewMate-Wortmarke im PDF"
+                }
+                className={
+                  usesCustomEventLogo
+                    ? "aspect-square w-full object-contain"
+                    : "mt-[2%] w-full object-contain"
+                }
+              />
+              {!usesCustomEventLogo && (
+                <p className="mt-[3%] whitespace-nowrap text-[clamp(0.32rem,0.92vw,0.45rem)] font-semibold leading-none text-sky-800">
+                  Gemeinsam planen. Entspannt veranstalten.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-[1.5%] border-t border-slate-200 pt-[5%]">
+            <p className="text-[clamp(0.58rem,1.55vw,0.74rem)] font-bold text-sky-900">
+              Freitag
+            </p>
+            <div className="mt-[3%] grid grid-cols-[28%_1fr] gap-[4%] text-[clamp(0.48rem,1.28vw,0.62rem)] leading-snug text-slate-800">
+              <p className="font-semibold">08:00–10:00</p>
+              <div>
+                <p className="font-bold">Bänke · Aufbau</p>
+                <p className="mt-[3%] rounded-sm border border-slate-100 bg-slate-50 px-[4%] py-[2%] text-slate-500">
+                  Mithelfer: –
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <figcaption className="mt-[8%] border-t border-slate-100 pt-[3%] text-center text-[clamp(0.38rem,1vw,0.48rem)] text-slate-400">
+            MyCrewMate · Gemeinsam planen. Entspannt veranstalten.
+          </figcaption>
+        </div>
+      </figure>
+
+      <p className="mt-3 text-xs leading-relaxed text-slate-600">
+        {usesCustomEventLogo
+          ? "Das hochgeladene Eventlogo erscheint rechts in der Kopfzeile in der aktuellen Druckgröße."
+          : "Ohne individuelles Eventlogo wird diese MyCrewMate-Wortmarke automatisch gedruckt."}
+      </p>
+    </section>
+  );
+}
+
 export default function PdfExport() {
   const { isTenantAdmin: canManage } = useTenantAdministration();
   const utils = trpc.useUtils();
@@ -295,7 +420,10 @@ export default function PdfExport() {
   });
   const uploadLogo = trpc.pdf.uploadLogo.useMutation({
     onSuccess: async () => {
-      await utils.pdf.settings.invalidate();
+      await Promise.all([
+        utils.pdf.settings.invalidate(),
+        utils.events.current.invalidate(),
+      ]);
       toast.success(
         `Eventlogo für ${currentEvent?.name ?? "die Veranstaltung"} gespeichert`
       );
@@ -304,7 +432,10 @@ export default function PdfExport() {
   });
   const clearLogo = trpc.pdf.clearLogo.useMutation({
     onSuccess: async () => {
-      await utils.pdf.settings.invalidate();
+      await Promise.all([
+        utils.pdf.settings.invalidate(),
+        utils.events.current.invalidate(),
+      ]);
       toast.success(
         `Eventlogo für ${currentEvent?.name ?? "die Veranstaltung"} entfernt`
       );
@@ -342,6 +473,8 @@ export default function PdfExport() {
 
   const areas = Array.from(new Set(plan.map(item => item.shift.area))).sort();
   const effectiveLogoUrl = settings?.logoUrl ?? null;
+  const hasCustomEventLogo =
+    allowsCustomBranding && Boolean(currentEvent?.pdfLogoKey);
   const mappedContactIds = Array.from(
     new Set(
       areaContacts
@@ -1031,6 +1164,14 @@ export default function PdfExport() {
                   </div>
                 </div>
               </div>
+
+              <PdfLogoA4Preview
+                eventName={form.eventName}
+                eventYear={form.eventYear}
+                title={form.helperPdfTitle}
+                logoUrl={effectiveLogoUrl}
+                usesCustomEventLogo={hasCustomEventLogo}
+              />
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-1.5">

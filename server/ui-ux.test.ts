@@ -1181,6 +1181,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(pdfExport).toContain("Verhalten ohne individuelles Bild");
     expect(pdfExport).toContain('<Select value="none" disabled>');
     expect(pdfExport).toContain('<SelectItem value="none">Kein Bild drucken</SelectItem>');
+    expect(pdfExport).toContain('data-slot="pdf-logo-a4-preview"');
+    expect(pdfExport).toContain("DIN-A4-Vorschau der PDF-Kopfzeile");
+    expect(pdfExport).toContain('style={{ aspectRatio: "210 / 297" }}');
+    expect(pdfExport).toContain("const hasCustomEventLogo =");
+    expect(pdfExport).toContain("<PdfLogoA4Preview");
+    expect(pdfExport).toContain("Maßstabsgerechte Position und Wirkung im späteren A4-Ausdruck.");
+    expect(pdfExport).toContain("utils.events.current.invalidate()");
     expect(pdfExport).not.toContain("trpc.pdf.setLogoFallback.useMutation");
     expect(pdfExport).not.toContain("RSC-Vereinslogo verwenden");
     expect(pdfExport).not.toContain("Das Logo gilt für alle Veranstaltungen");

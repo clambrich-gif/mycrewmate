@@ -58,6 +58,8 @@ describe("Produktgrenzen: Marke, WhatsApp und Event-Sicherung", () => {
     expect(pdf).toContain(
       "const logoWidth = usesMyCrewMateWordmark ? 172 : CUSTOM_EVENT_LOGO_COMPACT_SIZE"
     );
+    expect(pdf).toContain("const logoSafeHeaderHeight = usesMyCrewMateWordmark");
+    expect(pdf).toContain("? logoHeight + 8");
     expect(pdf).toContain(
       'const MYCREWMATE_PDF_TAGLINE = "Gemeinsam planen. Entspannt veranstalten."'
     );

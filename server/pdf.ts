@@ -404,9 +404,14 @@ function drawCompactHelperHeader(
         { width: logoWidth, align: "center", lineBreak: false }
       );
   }
-  // Event Pass, Light und logo-freie Pro-/Enterprise-Exporte zeigen die
-  // MyCrewMate-Wortmarke als sichtbare, einheitliche Absenderzeile.
-  const lineY = Math.max(doc.y + 6, top + (usesMyCrewMateWordmark ? 67 : 50));
+  // Die Trennlinie beginnt erst unter dem gesamten Logo. Gerade bei einem
+  // größeren individuellen Eventlogo darf keine Linie durch die Marke laufen.
+  const logoSafeHeaderHeight = usesMyCrewMateWordmark
+    ? 67
+    : logoBuffer
+      ? logoHeight + 8
+      : 50;
+  const lineY = Math.max(doc.y + 6, top + logoSafeHeaderHeight);
   doc
     .moveTo(helperPdfMargin, lineY)
     .lineTo(doc.page.width - helperPdfMargin, lineY)
