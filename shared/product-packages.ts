@@ -53,7 +53,7 @@ export const PRODUCT_CAPABILITIES = [
   "custom_branding",
   /** Automatisch befüllte WhatsApp-Nachrichtenvorlagen. */
   "whatsapp_templates",
-  /** Begrenzte JSON-/Excel-Sicherung der einen Event-Pass-Veranstaltung. */
+  /** Paketabhängig begrenzte JSON-Sicherung der jeweiligen Veranstaltung. */
   "event_backup",
 ] as const;
 
@@ -121,7 +121,9 @@ const LIGHT_CAPABILITIES: Readonly<Record<ProductCapability, boolean>> =
     maps_gpx: false,
     custom_branding: false,
     whatsapp_templates: false,
-    event_backup: false,
+    // Light sichert die eine Hauptveranstaltung vollständig als JSON. Der
+    // umfassende Projekt- und Excel-Export bleibt weiterhin Pro vorbehalten.
+    event_backup: true,
   });
 
 const EVENT_PASS_ROUTE_ALLOWLIST = new Set([

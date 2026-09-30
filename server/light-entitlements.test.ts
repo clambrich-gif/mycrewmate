@@ -33,6 +33,7 @@ describe("Paket 3: Light-Entitlements", () => {
       "locations",
       "pdf",
       "event_years",
+      "event_backup",
     ] as const) {
       expect(productAllowsCapability("light", capability)).toBe(true);
     }

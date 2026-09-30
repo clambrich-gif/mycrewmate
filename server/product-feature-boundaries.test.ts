@@ -82,23 +82,29 @@ describe("Produktgrenzen: Marke, WhatsApp und Event-Sicherung", () => {
     expect(dashboard).toContain("Eigenes Eventlogo ab Pro verfügbar");
   });
 
-  it("bindet die Event-Pass-Sicherung nur an die begrenzte Sicherungsfreigabe", () => {
+  it("bindet die begrenzte JSON-Sicherung für Event Pass und Light sicher ein", () => {
     expect(productAllowsCapability("event_pass", "event_backup")).toBe(true);
     expect(productAllowsCapability("event_pass", "excel")).toBe(false);
     expect(productAllowsCapability("event_pass", "project_backup")).toBe(false);
-    expect(productAllowsCapability("light", "event_backup")).toBe(false);
+    expect(productAllowsCapability("light", "event_backup")).toBe(true);
+    expect(productAllowsCapability("light", "excel")).toBe(false);
+    expect(productAllowsCapability("light", "project_backup")).toBe(false);
     const router = source("server/routers.ts");
     const saveLoad = source("client/src/components/SaveLoadModal.tsx");
+    const layout = source("client/src/components/Layout.tsx");
 
     expect(router).toContain("requireBackupCapability");
+    expect(router).toContain('entitlement.packageId === "light"');
     expect(router).toContain(
       'capability === "project_backup" ? "event_backup" : "excel"'
     );
     expect(saveLoad).toContain("const canUseExcel = productAllowsCapability(");
+    expect(saveLoad).toContain("const canUseJsonBackup =");
     expect(saveLoad).toContain("{canUseExcel && (");
-    expect(source("client/src/components/Layout.tsx")).toContain(
-      "<LazySaveLoadControls"
-    );
+    expect(layout).toContain("<LazySaveLoadControls");
+    expect(layout).toContain('data-slot={`product-summary-${productPackageId}`}');
+    expect(layout).toContain("Eine Hauptveranstaltung pro Jahr · bis 150 Helfer");
+    expect(layout).toContain('"border-slate-200 bg-white text-slate-950"');
   });
 
   it("stellt die globale Klemmi-Stummschaltung bereit, ohne Texte auszublenden", () => {

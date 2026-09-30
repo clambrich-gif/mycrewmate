@@ -684,14 +684,22 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const selectedEvent = events.data?.find(item => item.id === eventId);
   const productPackageId = tenantProduct.data?.packageId ?? "pro";
   const isEventPass = productPackageId === "event_pass";
+  const isLight = productPackageId === "light";
+  const hasLimitedPackageSummary = isEventPass || isLight;
   const productAllowsChat = productAllowsCapability(productPackageId, "chat");
-  const eventPassUnavailable = isEventPass && tenantProduct.data?.isUsable === false;
+  const limitedPackageUnavailable =
+    hasLimitedPackageSummary && tenantProduct.data?.isUsable === false;
   const productName = PRODUCT_PACKAGE_META[productPackageId].name;
   const productStatusLabel = tenantProduct.data
     ? PRODUCT_PACKAGE_META[productPackageId].assignmentStatusLabel[
         tenantProduct.data.status
       ]
     : null;
+  const limitedPackageSummary = limitedPackageUnavailable
+    ? "Der Zugang ist derzeit pausiert oder abgelaufen."
+    : isEventPass
+      ? "Eine Veranstaltung · bis 50 Helfer"
+      : "Eine Hauptveranstaltung pro Jahr · bis 150 Helfer";
   const navigationSections = useMemo(
     () =>
       visibleNavigationSections(
@@ -1700,7 +1708,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   >
                     <Settings2 className="h-4 w-4" />
                   </Button>
-                  {!isEventPass && (
+                  {productAllowsCapability(productPackageId, "additional_events") && (
                     <Button
                       variant="ghost"
                       size="icon"
@@ -1740,14 +1748,25 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 ))}
               </SelectContent>
             </Select>
-            {isEventPass && (
-              <div className="mt-2 rounded-lg border border-orange-200 bg-orange-50 px-2.5 py-2 text-xs leading-4 text-orange-950">
+            {hasLimitedPackageSummary && (
+              <div
+                className={cn(
+                  "mt-2 rounded-lg border px-2.5 py-2 text-xs leading-4 shadow-sm",
+                  isEventPass
+                    ? "border-orange-200 bg-orange-50 text-orange-950"
+                    : "border-slate-200 bg-white text-slate-950"
+                )}
+                data-slot={`product-summary-${productPackageId}`}
+              >
                 <span className="font-semibold">{productName}</span>
                 {productStatusLabel ? ` · ${productStatusLabel}` : ""}
-                <span className="block text-orange-800">
-                  {eventPassUnavailable
-                    ? "Der Zugang ist derzeit pausiert oder abgelaufen."
-                    : "Eine Veranstaltung · bis 50 Helfer"}
+                <span
+                  className={cn(
+                    "block",
+                    isEventPass ? "text-orange-800" : "text-slate-600"
+                  )}
+                >
+                  {limitedPackageSummary}
                 </span>
               </div>
             )}
@@ -1995,7 +2014,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 >
                   <Settings2 className="h-4 w-4" />
                 </Button>
-                {!isEventPass && (
+                {productAllowsCapability(productPackageId, "additional_events") && (
                   <>
                     <Button
                       variant="ghost"
@@ -2031,14 +2050,25 @@ export function Layout({ children }: { children: React.ReactNode }) {
               ))}
             </SelectContent>
           </Select>
-          {isEventPass && (
-            <div className="mt-2 rounded-lg border border-orange-200 bg-orange-50 px-2.5 py-2 text-xs leading-4 text-orange-950">
+          {hasLimitedPackageSummary && (
+            <div
+              className={cn(
+                "mt-2 rounded-lg border px-2.5 py-2 text-xs leading-4 shadow-sm",
+                isEventPass
+                  ? "border-orange-200 bg-orange-50 text-orange-950"
+                  : "border-slate-200 bg-white text-slate-950"
+              )}
+              data-slot={`product-summary-${productPackageId}`}
+            >
               <span className="font-semibold">{productName}</span>
               {productStatusLabel ? ` · ${productStatusLabel}` : ""}
-              <span className="block text-orange-800">
-                {eventPassUnavailable
-                  ? "Der Zugang ist derzeit pausiert oder abgelaufen."
-                  : "Eine Veranstaltung · bis 50 Helfer"}
+              <span
+                className={cn(
+                  "block",
+                  isEventPass ? "text-orange-800" : "text-slate-600"
+                )}
+              >
+                {limitedPackageSummary}
               </span>
             </div>
           )}

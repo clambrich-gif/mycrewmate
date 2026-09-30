@@ -1040,18 +1040,22 @@ function productScopeAdminProcedure(capability: ProductCapability) {
   });
 }
 /**
- * Der Event Pass erhält eine auf seine eine Veranstaltung begrenzte Sicherung,
- * ohne dadurch die umfassenden Pro-Excel-Rechte zu erhalten. Für alle anderen
- * Pakete bleibt die bisherige Einzelprüfung unverändert maßgeblich.
+ * Event Pass und Light erhalten eine auf die aktive Veranstaltung begrenzte
+ * JSON-Sicherung, ohne dadurch umfassende Pro-Excel-Rechte zu erhalten.
+ * Für Pro und Enterprise bleibt die bisherige Einzelprüfung maßgeblich.
  */
 async function requireBackupCapability(
   capability: Extract<ProductCapability, "project_backup" | "excel">
 ) {
   const entitlement = await db.getCurrentTenantProductEntitlement();
-  // Der Event Pass enthält ausschließlich die vollständige JSON-Sicherung der
-  // einen Veranstaltung. Excel bleibt auch serverseitig eine Pro-Funktion;
-  // die UI-Ausblendung allein wäre dafür keine ausreichende Absicherung.
-  if (entitlement.packageId === "event_pass") {
+  // Event Pass und Light enthalten ausschließlich die vollständige
+  // JSON-Sicherung der aktiven Veranstaltung. Excel bleibt auch serverseitig
+  // eine Pro-Funktion; die UI-Ausblendung allein wäre dafür keine ausreichende
+  // Absicherung.
+  if (
+    entitlement.packageId === "event_pass" ||
+    entitlement.packageId === "light"
+  ) {
     await requireCurrentProductCapability(
       capability === "project_backup" ? "event_backup" : "excel"
     );
