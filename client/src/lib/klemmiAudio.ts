@@ -281,6 +281,7 @@ export const KLEMMI_AUDIO_SCRIPTS = {
   "locations-intro": "Orte und Standorte sauber anlegen. Ich zeige dir die echte Standortanlage: Namen vergeben, Koordinaten eintragen und den Ort anschließend in Schichten, Material und Vorbereitung verwenden.",
   "locations-name": "Ort eindeutig benennen. Gib dem Standort einen Namen, den das Team auf Anhieb versteht – zum Beispiel VP acht, Pumptrack oder Kuchenstand.",
   "locations-coordinates": "Position auf der Karte festlegen. Breiten- und Längengrad positionieren den Standort auf der Live-Karte. Ein Marker-Logo darunter ist optional.",
+  "locations-light": "Orte ohne Karte nutzen. Im Light-Paket verwaltest du hier zentrale Einsatzorte für Schichten, Vorbereitung und Material. Koordinaten, Strecken und die Live-Standortkarte kommen ab Pro dazu.",
   "locations-save": "Standort speichern. Klicke auf den markierten Button. Erst dein Klick legt den Standort wirklich an.",
   "locations-complete": "Standort angelegt! Der Ort steht jetzt in Schichten, Vorbereitung und Material zur Auswahl und erscheint auf der Live-Standortkarte.",
 } as const;
@@ -439,6 +440,7 @@ const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
   "plan-location-event-pass": "20260930-package-location-tour-v1",
   "plan-location-light": "20260930-package-location-tour-v1",
   "plan-location-pro": "20260930-package-location-tour-v1",
+  "locations-light": "20260930-light-locations-audio-v1",
   "plan-time-window": "20260930-time-window-v1",
   "plan-time": "20260930-flexible-assignment-v1",
   "plan-save": "20260928-information-tour-v1",

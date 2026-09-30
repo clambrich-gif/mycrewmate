@@ -26,6 +26,18 @@ describe("Light-Orte ohne Live-Karte und GPS-Pflicht", () => {
       '{canUseMapsGpx && (\n              <>\n                <div data-klemmi-target="locations-coordinates"'
     );
     expect(locationsSource).toContain(
+      'key: canUseMapsGpx ? "coordinates" : "light"'
+    );
+    expect(locationsSource).toContain(
+      "'[data-klemmi-target=\"locations-package-note\"]'"
+    );
+    expect(locationsSource).toContain(
+      'audioKey: canUseMapsGpx ? "coordinates" : "light"'
+    );
+    expect(locationsSource).toContain(
+      'DialogDescription data-klemmi-target="locations-package-note"'
+    );
+    expect(locationsSource).toContain(
       'className="h-10 min-w-[140px] border-slate-300 bg-white px-4 font-medium text-slate-800 shadow-sm hover:bg-slate-50 hover:text-slate-950 sm:px-5"'
     );
   });

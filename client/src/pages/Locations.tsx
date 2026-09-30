@@ -285,13 +285,18 @@ export default function Locations() {
       action: canUseMapsGpx ? "Koordinaten eintragen" : "Speichern zeigen",
     },
     {
-      key: "coordinates",
-      selector: '[data-klemmi-target="locations-coordinates"]',
+      key: canUseMapsGpx ? "coordinates" : "light",
+      selector: canUseMapsGpx
+        ? '[data-klemmi-target="locations-coordinates"]'
+        : '[data-klemmi-target="locations-package-note"]',
       eyebrow: "Schritt 2 von 4",
-      title: "Position auf der Karte festlegen",
+      title: canUseMapsGpx
+        ? "Position auf der Karte festlegen"
+        : "Orte ohne Karte nutzen",
       text: canUseMapsGpx
         ? "Breiten- und Längengrad positionieren den Standort auf der Live-Karte. Ein Marker-Logo darunter ist optional."
         : "Im Light-Paket verwaltest du reine Einsatzorte für Schichten, Vorbereitung und Material. Koordinaten und die Live-Karte sind Pro vorbehalten.",
+      audioKey: canUseMapsGpx ? "coordinates" : "light",
       action: "Speichern zeigen",
     },
     {
@@ -559,7 +564,7 @@ export default function Locations() {
         >
           <DialogHeader>
             <DialogTitle>{editingId ? "Ort bearbeiten" : "Neuen Ort anlegen"}</DialogTitle>
-            <DialogDescription>
+            <DialogDescription data-klemmi-target="locations-package-note">
               {canUseMapsGpx
                 ? "Koordinaten im Dezimalformat eingeben, zum Beispiel 50.3569 und 6.9458."
                 : "Vergib einen klaren Ortsnamen für Schichten, Material und Vorbereitungsaufgaben."}
