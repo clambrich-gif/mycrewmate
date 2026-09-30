@@ -26,6 +26,7 @@ import {
   helperTimeBadgeLabel,
   helperAvailabilityHeadingLabel,
   helperPdfTimeLabel,
+  helperPdfLocationLink,
   buildHelperSummaryEntries,
   helperPdfPastels,
   helperTaskCellParts,
@@ -258,6 +259,31 @@ describe("PDF-Erzeugung", () => {
     const pdf = await renderHelperTaskPdf(data, 1);
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
     expect(pdf.length).toBeGreaterThan(2_000);
+  });
+
+  it("zeigt einen zugeordneten Standort blau und als Kartenlink in der persönlichen Aufgabenübersicht", async () => {
+    const location: Location = {
+      ...cakeLocations[0],
+      name: "Pumptrack",
+      latitude: 50.3569,
+      longitude: 6.9458,
+    };
+    expect(helperPdfLocationLink(location)).toEqual({
+      label: "(Pumptrack · Karte öffnen ↗)",
+      url: "https://www.google.com/maps/search/?api=1&query=50.3569%2C6.9458",
+    });
+    expect(helperPdfLocationLink(null)).toBeNull();
+
+    const pdf = await renderHelperTaskPdf(
+      {
+        ...data,
+        shifts: [{ ...shifts[0], locationId: location.id }, shifts[1]],
+        locations: [location],
+      },
+      helpers[0].id
+    );
+    expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+    expect(pdf.toString("latin1")).toContain("/URI");
   });
 
   it("setzt lange Helferhinweise als mehrzeilige Zusammenfassung ohne den Export zu überlagern", async () => {

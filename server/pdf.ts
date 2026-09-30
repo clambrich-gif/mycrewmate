@@ -80,7 +80,9 @@ const contentWidth = pageWidth - margin * 2;
 const MYCREWMATE_ACCESS_URL = "https://app.mycrewmate.de";
 const MYCREWMATE_PDF_TAGLINE = "Gemeinsam planen. Entspannt veranstalten.";
 const MYCREWMATE_PDF_FOOTER = `MyCrewMate · ${MYCREWMATE_PDF_TAGLINE}`;
-const CUSTOM_EVENT_LOGO_COMPACT_SIZE = 84;
+// In der persönlichen Aufgabenübersicht etwas kompakter als die allgemeinen
+// PDF-Kopfzeilen: sichtbar, aber mit mehr Raum für die eigentlichen Einsätze.
+const CUSTOM_EVENT_LOGO_COMPACT_SIZE = 78;
 const CUSTOM_EVENT_LOGO_STANDARD_SIZE = 128;
 const helperPdfTypography = {
   title: 18,
@@ -452,29 +454,98 @@ function drawCompactHelperDayHeading(
   doc.y = y + 21;
 }
 
-function compactShiftInfo(shift: Shift, team: string) {
+export function helperPdfLocationLink(
+  location: Pick<Location, "name" | "latitude" | "longitude"> | null | undefined
+) {
+  const name = location?.name.trim();
+  if (!location || !name) return null;
+
+  const coordinates = `${location.latitude},${location.longitude}`;
+  return {
+    label: `(${name} · Karte öffnen ↗)`,
+    url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(coordinates)}`,
+  };
+}
+
+function compactShiftInfo(
+  shift: Shift,
+  team: string,
+  location?: Location | null
+) {
   const area = shift.area?.trim();
   const task = shift.task.trim() || "Aufgabe";
   const taskLine = area && area !== "Allgemein" ? `${task} · ${area}` : task;
   const infoLines = [`Mithelfer: ${team || "–"}`];
   if (shift.note?.trim())
     infoLines.push(`Schicht-Bemerkung: ${shift.note.trim()}`);
-  return { taskLine, infoText: infoLines.join("\n") };
+  return {
+    taskLine,
+    locationLink: helperPdfLocationLink(location),
+    infoText: infoLines.join("\n"),
+  };
+}
+
+function compactShiftTaskLayout(
+  doc: PDFKit.PDFDocument,
+  taskLine: string,
+  locationLink: ReturnType<typeof helperPdfLocationLink>,
+  bodyWidth: number
+) {
+  const taskTextHeight = doc
+    .font("Helvetica-Bold")
+    .fontSize(helperPdfTypography.task)
+    .heightOfString(taskLine, { width: bodyWidth, lineGap: 0.5 });
+  if (!locationLink) {
+    return {
+      taskTextHeight,
+      taskHeight: taskTextHeight,
+      inlineLocation: false,
+    };
+  }
+
+  const taskFitsInline =
+    doc.widthOfString(taskLine) +
+      7 +
+      doc
+        .font("Helvetica-Bold")
+        .fontSize(helperPdfTypography.detail)
+        .widthOfString(locationLink.label) <=
+      bodyWidth && taskTextHeight <= helperPdfTypography.task + 1;
+  if (taskFitsInline) {
+    return { taskTextHeight, taskHeight: taskTextHeight, inlineLocation: true };
+  }
+
+  const locationHeight = doc
+    .font("Helvetica-Bold")
+    .fontSize(helperPdfTypography.detail)
+    .heightOfString(locationLink.label, { width: bodyWidth, lineGap: 0.5 });
+  return {
+    taskTextHeight,
+    taskHeight: taskTextHeight + locationHeight + 2,
+    inlineLocation: false,
+  };
 }
 
 function compactShiftBlockHeight(
   doc: PDFKit.PDFDocument,
   shift: Shift,
-  team: string
+  team: string,
+  location?: Location | null
 ) {
-  const { taskLine, infoText } = compactShiftInfo(shift, team);
+  const { taskLine, locationLink, infoText } = compactShiftInfo(
+    shift,
+    team,
+    location
+  );
   const timeWidth = 76;
   const bodyX = helperPdfMargin + timeWidth + 12;
   const bodyWidth = helperPdfContentWidth - timeWidth - 12;
-  const taskHeight = doc
-    .font("Helvetica-Bold")
-    .fontSize(helperPdfTypography.task)
-    .heightOfString(taskLine, { width: bodyWidth, lineGap: 0.5 });
+  const { taskHeight } = compactShiftTaskLayout(
+    doc,
+    taskLine,
+    locationLink,
+    bodyWidth
+  );
   const timeHeight = doc
     .font("Helvetica-Bold")
     .fontSize(helperPdfTypography.time)
@@ -494,19 +565,27 @@ function compactShiftBlockHeight(
 function drawCompactHelperShiftBlock(
   doc: PDFKit.PDFDocument,
   shift: Shift,
-  team: string
+  team: string,
+  location?: Location | null
 ) {
-  const height = compactShiftBlockHeight(doc, shift, team);
+  const height = compactShiftBlockHeight(doc, shift, team, location);
   ensureHelperPdfSpace(doc, height + 4);
   const y = doc.y;
   const timeWidth = 76;
   const bodyX = helperPdfMargin + timeWidth + 12;
   const bodyWidth = helperPdfContentWidth - timeWidth - 12;
-  const { taskLine, infoText } = compactShiftInfo(shift, team);
-  const taskHeight = doc
-    .font("Helvetica-Bold")
-    .fontSize(helperPdfTypography.task)
-    .heightOfString(taskLine, { width: bodyWidth, lineGap: 0.5 });
+  const { taskLine, locationLink, infoText } = compactShiftInfo(
+    shift,
+    team,
+    location
+  );
+  const taskLayout = compactShiftTaskLayout(
+    doc,
+    taskLine,
+    locationLink,
+    bodyWidth
+  );
+  const { taskHeight } = taskLayout;
   const timeHeight = doc
     .font("Helvetica-Bold")
     .fontSize(helperPdfTypography.time)
@@ -532,8 +611,35 @@ function drawCompactHelperShiftBlock(
   doc
     .font("Helvetica-Bold")
     .fontSize(helperPdfTypography.task)
-    .fillColor(helperPdfDesign.ink)
-    .text(taskLine, bodyX, y + 5, { width: bodyWidth, lineGap: 0.5 });
+    .fillColor(helperPdfDesign.ink);
+  if (locationLink && taskLayout.inlineLocation) {
+    doc
+      .text(taskLine, bodyX, y + 5, {
+        width: bodyWidth,
+        continued: true,
+        lineBreak: false,
+      })
+      .font("Helvetica-Bold")
+      .fontSize(helperPdfTypography.detail)
+      .fillColor(helperPdfDesign.accent)
+      .text(`  ${locationLink.label}`, {
+        link: locationLink.url,
+        lineBreak: false,
+      });
+  } else {
+    doc.text(taskLine, bodyX, y + 5, { width: bodyWidth, lineGap: 0.5 });
+    if (locationLink) {
+      doc
+        .font("Helvetica-Bold")
+        .fontSize(helperPdfTypography.detail)
+        .fillColor(helperPdfDesign.accent)
+        .text(locationLink.label, bodyX, y + 7 + taskLayout.taskTextHeight, {
+          width: bodyWidth,
+          lineGap: 0.5,
+          link: locationLink.url,
+        });
+    }
+  }
   doc
     .roundedRect(bodyX, infoY, bodyWidth, infoHeight + 11, 3)
     .fillAndStroke(helperPdfDesign.box, helperPdfDesign.line);
@@ -1154,7 +1260,14 @@ export function renderHelperTaskPdf(data: PlanningData, helperId: number) {
             .map(assignment => helperById.get(assignment.helperId)?.name)
             .filter((name): name is string => Boolean(name))
             .join(", ");
-          drawCompactHelperShiftBlock(doc, shift, team);
+          drawCompactHelperShiftBlock(
+            doc,
+            shift,
+            team,
+            shift.locationId
+              ? (locationById.get(shift.locationId) ?? null)
+              : null
+          );
         }
       }
     }
