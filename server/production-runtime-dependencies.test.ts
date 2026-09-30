@@ -60,13 +60,15 @@ describe("Produktions-Laufzeitabhängigkeiten", () => {
       "donations-intro", "donations-donor", "donations-item", "donations-traits", "donations-save", "donations-complete",
       "finances-intro", "finances-category", "finances-values", "finances-balance", "finances-complete",
       "pdf-intro", "pdf-helpers", "pdf-plan", "pdf-config", "pdf-complete",
+      "pdf-intro-event-pass", "pdf-plan-event-pass", "pdf-config-light",
       "security-intro", "security-password", "security-accesses-overview", "security-accesses-filter", "security-accesses-list",
       "security-accesses-create", "security-accesses-identity", "security-accesses-rights", "security-accesses-coadmin", "security-accesses-events",
-      "security-emergency", "security-audit-logins", "security-audit-activity", "security-audit-files", "security-audit-files-event-pass", "security-danger", "security-complete",
+      "security-intro-event-pass", "security-emergency", "security-audit-logins", "security-audit-activity", "security-audit-files", "security-audit-files-event-pass", "security-audit-files-light", "security-danger", "security-complete",
       "help-intro", "help-search", "help-filters", "help-chapters", "help-complete",
       "plan-time-window",
       "pdf-contacts-locked", "pdf-config-locked", "security-accesses-locked",
-      "dashboard-map-locked",
+      "dashboard-map-locked", "dashboard-map-locked-light",
+      "dashboard-helpers-active-no-donations", "dashboard-helpers-empty-no-donations",
       "security-accesses-filter-locked", "security-accesses-list-locked", "security-accesses-create-locked",
       "security-accesses-identity-locked", "security-accesses-rights-locked", "security-accesses-coadmin-locked",
       "security-accesses-events-locked",
@@ -74,6 +76,26 @@ describe("Produktions-Laufzeitabhängigkeiten", () => {
 
     for (const id of clipIds) {
       expect(fs.existsSync(path.join(projectRoot, "server", "assets", "klemmi-voice", `${id}.mp3`))).toBe(true);
+    }
+  });
+
+  it("liefert für jeden registrierten Klemmi-Sprechtext eine Achird-Audiodatei aus", () => {
+    const audioCatalog = source("client/src/lib/klemmiAudio.ts");
+    const scriptSection = audioCatalog.split("export type KlemmiAudioId", 1)[0];
+    const ids = [...scriptSection.matchAll(/^\s+"([a-z0-9-]+)":/gm)].map(
+      match => match[1]
+    );
+
+    expect(ids.length).toBeGreaterThan(70);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(audioCatalog).toContain("KLEMMI_AUDIO_VOICE_MANIFEST");
+    expect(audioCatalog).toContain('voice: "Achird"');
+    for (const id of ids) {
+      expect(
+        fs.existsSync(
+          path.join(projectRoot, "server", "assets", "klemmi-voice", `${id}.mp3`)
+        )
+      ).toBe(true);
     }
   });
 });

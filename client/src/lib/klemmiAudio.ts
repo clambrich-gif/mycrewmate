@@ -104,6 +104,9 @@ export const KLEMMI_AUDIO_SCRIPTS = {
   "dashboard-map-empty": "Standortkarte später aktivieren. Sobald du unter Orte und Standorte mindestens einen Standort mit Koordinaten anlegst, wird hier unten automatisch die Live-Standortkarte mit den zugehörigen Planungsinformationen eingeblendet.",
   "dashboard-complete": "Alles im Blick! Du weißt jetzt, wo das Dashboard den aktuellen Planungsstand zeigt – und welche Eingaben die einzelnen Übersichten füllen.",
   "dashboard-map-locked": "Live-Standortkarte ab Pro. Die Live-Standortkarte mit GPS-Orten, Strecken und Statusmarkern steht ab Pro bereit. Im Event Pass konzentrierst du dich auf Helfer, Einsatzplan, Vorbereitung und die Standard-PDFs. Deshalb wird hier keine Karte eingeblendet.",
+  "dashboard-map-locked-light": "Live-Standortkarte ab Pro. Im Light-Paket kannst du Orte und Standorte bereits für Schichten, Vorbereitung und Material nutzen. Die interaktive Karte mit GPS-Punkten, Strecken und Statusmarkern ergänzt Pro. Deshalb wird auf diesem Dashboard noch keine Karte eingeblendet.",
+  "dashboard-helpers-active-no-donations": "Helferstatus je Festivaltag. Hier erkennst du pro Veranstaltungstag Besetzung und Bedarf, Rückmeldungen und Erstkontakte. Klickbare Werte führen in die bereits passend gefilterte Helfer- oder Einsatzplanansicht.",
+  "dashboard-helpers-empty-no-donations": "Helferstatus entsteht mit deiner Planung. Sobald du Helfer anlegst und Schichten mit Bedarf planst, erscheinen hier Besetzung, Rückmeldungen und Erstkontakte. So siehst du frühzeitig, wo noch Rückmeldungen oder Helfer fehlen.",
 
   "helpers-intro": "Neue Helfer sicher anlegen. Ich führe dich direkt auf der echten Oberfläche durch die Anlage – vom Namen bis zum passenden Zeitfenster.",
   "helpers-overview": "Hier beginnt ein neuer Helfer. Du startest immer in der Helferübersicht. Über den markierten Button Neuer Helfer öffnest du die Anlage für eine neue Person. Ich zeige dir jetzt zuerst den Weg dorthin und öffne anschließend nur eine leere Eingabe – gespeichert wird dabei nichts.",
@@ -182,6 +185,9 @@ export const KLEMMI_AUDIO_SCRIPTS = {
   "pdf-plan": "Einsatzplan filtern und drucken. Für den Einsatzplan wählst du Tag, Bereiche, Status und bei Bedarf Ansprechpartner. Das PDF enthält nur die Auswahl, die du wirklich brauchst.",
   "pdf-config": "Vorlage pro Veranstaltung pflegen. Administratoren können hier Logo, Titel, Zusatzspalten, Fußzeilen und WhatsApp-Vorlagen für die aktuell gewählte Veranstaltung konfigurieren. Andere sehen die fertigen PDFs weiterhin unverändert.",
   "pdf-complete": "Fertig! Damit kannst du genau die Unterlagen erzeugen, die dein Team gerade braucht.",
+  "pdf-intro-event-pass": "Passende PDFs gezielt erstellen. Im Event Pass erzeugst du persönliche Helferunterlagen und gefilterte Einsatzpläne aus den realen Planungsdaten. Ansprechpartner-Arbeitsmappen erkläre ich dir gleich als Light-Erweiterung.",
+  "pdf-plan-event-pass": "Einsatzplan filtern und drucken. Für den Einsatzplan wählst du Tag, Bereiche und Status. Das PDF enthält nur die Auswahl, die du wirklich brauchst. Eine Ansprechpartnerauswahl steht ab Light bereit.",
+  "pdf-config-light": "PDF-Vorlage im Light-Paket pflegen. Titel, Zusatzspalten, Hinweise und Fußzeilen kannst du hier für die aktuelle Veranstaltung konfigurieren. Ein eigenes Eventlogo und automatische WhatsApp-Vorlagen ergänzen das Pro-Paket. Bis dahin bleibt das MyCrewMate-Logo aktiv und WhatsApp öffnet einen leeren Chat für freie Nachrichten.",
 
   "security-intro": "Schutz und Protokoll für Administratoren. Hier regelst du die sichersten Einstellungen deines Vereins: Administratorpasswort, persönliche Planungsteam-Zugänge, Notfall-Stopp und nachvollziehbare Protokolle. Die Führung öffnet nur Ansichten – sie ändert nichts.",
   "security-password": "Administratorpasswort sicher neu vergeben. Dieser Bereich ist nur für den Hauptadministrator sichtbar. Zur Neuvergabe bestätigst du zuerst das aktuelle Administratorpasswort, wählst anschließend mindestens zehn Zeichen und wiederholst die Eingabe. So kann niemand mit einer offenen Sitzung das zentrale Passwort heimlich ändern.",
@@ -200,6 +206,8 @@ export const KLEMMI_AUDIO_SCRIPTS = {
   "security-audit-files-event-pass": "JSON-Sicherung im Event Pass verstehen. Hier siehst du erfolgreiche JSON-Sicherungen dieser Veranstaltung mit Zeitpunkt, Person sowie Anzahl neuer, geänderter und gelöschter Datensätze. Im Event Pass stehen Sicherung und Wiederherstellung ausschließlich als JSON zur Verfügung. Excel-Import und -Export beginnen ab Pro. Ein Klick auf einen Eintrag zeigt die konkreten Einzeländerungen.",
   "security-danger": "Gefahrenbereich nur als letzte Option. Dieser Bereich löscht sämtliche Planungsdaten des aktuell gewählten Jahres unwiderruflich. Andere Jahre und Passwörter bleiben erhalten. Er ist für einen vollständigen Neustart gedacht, nicht für einzelne Korrekturen. Prüfe vorher Protokolle, Filter und mögliche Wiederherstellungen.",
   "security-complete": "Sicherheit nachvollziehbar verwaltet. Du weißt jetzt, wie du Zugänge passend begrenzt, Ereignisse prüfst und geschützte Notfallfunktionen bewusst einsetzt.",
+  "security-intro-event-pass": "Schutz und Protokoll im Event Pass. Hier regelst du das Administratorpasswort, prüfst Sicherheits- und Aktivitätsprotokolle und nutzt den Gefahrenbereich nur bewusst. Persönliche Planungsteam-Zugänge und deren Notfall-Stopp ergänzen das Light-Paket. Die Führung öffnet nur Ansichten und ändert nichts.",
+  "security-audit-files-light": "Datei- und Import-Historie ab Pro. Im Light-Paket sind die Kernplanung, Ansprechpartner, Orte, Material und persönliche Teamzugänge verfügbar. Eine vollständige Datei-Sicherung, Excel-Import und die zugehörige Historie ergänzen das Pro-Paket. Sicherheits- und Aktivitätsprotokolle bleiben hier weiterhin nutzbar.",
   "pdf-contacts-locked": "Ansprechpartner-Übersichten ab Light. Mit Ansprechpartner-Übersichten erstellst du gegliederte Arbeitsmappen mit Bereichsverantwortung, Schichten und Checklisten. Im Event Pass ist dieser Teil gesperrt. Helfer-PDFs und gefilterte Einsatzpläne bleiben weiter nutzbar.",
   "pdf-config-locked": "PDF-Vorlage mit klaren Paketgrenzen. Titel, Zusatzspalten und Hinweise kannst du hier für die aktuelle Veranstaltung pflegen. Ein eigenes Eventlogo und automatische WhatsApp-Vorlagen stehen ab Pro bereit. Bis dahin bleibt das MyCrewMate-Logo aktiv. WhatsApp öffnet weiter einen leeren Chat für freie Nachrichten.",
   "security-accesses-locked": "Planungsteam-Zugänge ab Light. Persönliche Planungsteam-Zugänge verwalten Fachrechte und Veranstaltungsfreigaben für einzelne Personen. Im Event Pass bleibt die Planung sicher beim Hauptadministrator. Mit Light kommen bis zu fünf persönliche Zugänge hinzu. Die übrigen Sicherheits- und Protokollbereiche bleiben weiter verfügbar.",
@@ -266,6 +274,22 @@ export const KLEMMI_AUDIO_SCRIPTS = {
 export type KlemmiAudioId = keyof typeof KLEMMI_AUDIO_SCRIPTS;
 
 /**
+ * Jede Tourreferenz gehört verbindlich zur vorproduzierten Klemmi-Stimme.
+ * Dies ist zugleich die maschinenlesbare Auditquelle für alle Tutorialschritte:
+ * keine Browser-Systemstimme und keine zweite Sprecherstimme werden verwendet.
+ */
+export const KLEMMI_AUDIO_VOICE_MANIFEST: Readonly<
+  Record<KlemmiAudioId, { voice: typeof KLEMMI_VOICE_PROFILE.voice }>
+> = Object.freeze(
+  Object.fromEntries(
+    (Object.keys(KLEMMI_AUDIO_SCRIPTS) as KlemmiAudioId[]).map(id => [
+      id,
+      { voice: KLEMMI_VOICE_PROFILE.voice },
+    ])
+  ) as Record<KlemmiAudioId, { voice: typeof KLEMMI_VOICE_PROFILE.voice }>
+);
+
+/**
  * Beim bewussten Öffnen einer Klemmi-Tour wählt der Browser genau einen dieser
  * kurzen Einstiege. Der letzte Clip wird ausgeschlossen, damit sich kein
  * Einstieg unmittelbar wiederholt.
@@ -308,6 +332,22 @@ export const KLEMMI_OPENING_AUDIO_IDS = [
  * trotz langer Cache-Zeit versehentlich eine vorherige Klemmi-Aufnahme spielen.
  */
 const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
+  "dashboard-map-locked": "20260930-achird-audit-v2",
+  "dashboard-map-locked-light": "20260930-achird-audit-v1",
+  "dashboard-helpers-active-no-donations": "20260930-achird-audit-v1",
+  "dashboard-helpers-empty-no-donations": "20260930-achird-audit-v1",
+  "pdf-intro-event-pass": "20260930-achird-audit-v1",
+  "pdf-plan-event-pass": "20260930-achird-audit-v1",
+  "pdf-contacts-locked": "20260930-achird-audit-v2",
+  "pdf-config-light": "20260930-achird-audit-v1",
+  "pdf-plan": "20260930-achird-audit-v2",
+  "pdf-config": "20260930-achird-audit-v2",
+  "security-intro-event-pass": "20260930-achird-audit-v1",
+  "security-accesses-overview": "20260930-achird-audit-v2",
+  "security-accesses-list": "20260930-achird-audit-v2",
+  "security-emergency": "20260930-achird-audit-v2",
+  "security-audit-files": "20260930-achird-audit-v3",
+  "security-audit-files-light": "20260930-achird-audit-v1",
   "helpers-overview": "20260928-helper-overview-v1",
   "helpers-person": "20260928-informational-tour-v1",
   "helpers-contact": "20260928-informational-tour-v1",
@@ -421,25 +461,19 @@ const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
   "plan-complete": "20260928-information-tour-v1",
   "security-intro": "20260929-security-admin-detail-v1",
   "security-password": "20260929-security-admin-detail-v2",
-  "security-accesses-overview": "20260929-security-admin-detail-v1",
   "security-accesses-filter": "20260929-security-admin-detail-v1",
-  "security-accesses-list": "20260929-security-admin-detail-v1",
   "security-accesses-create": "20260929-security-admin-detail-v1",
   "security-accesses-identity": "20260929-security-admin-detail-v1",
   "security-accesses-rights": "20260929-security-admin-detail-v2",
   "security-accesses-coadmin": "20260929-security-admin-detail-v1",
   "security-accesses-events": "20260929-security-admin-detail-v1",
-  "security-emergency": "20260929-security-admin-detail-v1",
   "security-audit-logins": "20260929-security-admin-detail-v1",
   "security-audit-activity": "20260929-security-admin-detail-v1",
-  "security-audit-files": "20260930-excel-pro-v2",
   "security-audit-files-event-pass": "20260930-event-pass-json-v1",
   "security-danger": "20260929-security-admin-detail-v2",
   "security-complete": "20260929-security-admin-detail-v1",
-  "pdf-contacts-locked": "20260930-package-context-v1",
   "pdf-config-locked": "20260930-package-context-v1",
   "security-accesses-locked": "20260930-package-context-v1",
-  "dashboard-map-locked": "20260930-dashboard-map-package-v1",
   "security-accesses-filter-locked": "20260930-security-package-steps-v1",
   "security-accesses-list-locked": "20260930-security-package-steps-v1",
   "security-accesses-create-locked": "20260930-security-package-steps-v1",

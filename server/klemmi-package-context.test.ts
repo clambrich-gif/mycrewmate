@@ -6,7 +6,14 @@ import {
   type ProductPackageId,
 } from "../shared/product-packages";
 import { createDashboardKlemmiSteps } from "../client/src/lib/dashboard-klemmi-tour";
-import { getSecurityKlemmiSteps } from "../client/src/lib/klemmi-area-tours";
+import {
+  getPdfKlemmiSteps,
+  getSecurityKlemmiSteps,
+} from "../client/src/lib/klemmi-area-tours";
+import {
+  KLEMMI_AUDIO_VOICE_MANIFEST,
+  KLEMMI_VOICE_PROFILE,
+} from "../client/src/lib/klemmiAudio";
 
 const root = process.cwd();
 const source = (relativePath: string) =>
@@ -83,7 +90,7 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
 
     expect(dashboardTour).toContain("canUseMapsGpx");
     expect(dashboardTour).toContain('key: "map-locked"');
-    expect(dashboardTour).toContain('audioKey: "map-locked"');
+    expect(dashboardTour).toContain('"map-locked-light" : "map-locked"');
     expect(dashboardTour).toContain("allowMissingTarget: true");
     expect(dashboard).toContain("canUseMapsGpx,");
     expect(audio).toContain('"dashboard-map-locked"');
@@ -99,6 +106,8 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
       hasContacts: true,
       hasMappableLocations: false,
       canUseMapsGpx: false,
+      canUseDonations: false,
+      currentPackageId: "event_pass",
       detailsLayout: "stacked",
     }).at(-1);
     expect(mapStep).toMatchObject({
@@ -132,6 +141,57 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
       step => step.key === "audit-files"
     );
     expect(proAuditStep?.text).toContain("ab Pro – Excel-Module");
+  });
+
+  it("erklärt den Light-Umfang ohne unpassende Light-Upgrades", () => {
+    const lightPdfSteps = getPdfKlemmiSteps({
+      currentPackageId: "light",
+      canManage: true,
+    });
+    expect(lightPdfSteps.some(step => step.key === "contacts-locked")).toBe(false);
+    expect(lightPdfSteps.find(step => step.key === "config-light")).toMatchObject({
+      audioKey: "config-light",
+      title: "PDF-Vorlage im Light-Paket pflegen",
+    });
+
+    const lightSecuritySteps = getSecurityKlemmiSteps("light");
+    expect(lightSecuritySteps.find(step => step.key === "accesses-list")).not.toMatchObject({
+      selector: '[data-klemmi-target="security-accesses-locked"]',
+    });
+    expect(lightSecuritySteps.find(step => step.key === "audit-files")).toMatchObject({
+      title: "Datei- und Import-Historie ab Pro",
+      audioKey: "audit-files-light",
+    });
+
+    const lightDashboardSteps = createDashboardKlemmiSteps({
+      hasEventPeriod: true,
+      hasPriorityActions: true,
+      hasDeadlines: true,
+      hasHelpers: true,
+      hasAssignments: true,
+      hasContacts: true,
+      hasMappableLocations: false,
+      canUseMapsGpx: false,
+      canUseDonations: false,
+      currentPackageId: "light",
+      detailsLayout: "side-by-side",
+    });
+    expect(lightDashboardSteps.find(step => step.key === "helpers-active")?.text).not.toContain(
+      "Verpflegungsspenden"
+    );
+    expect(lightDashboardSteps.find(step => step.key === "map-locked")).toMatchObject({
+      audioKey: "map-locked-light",
+    });
+  });
+
+  it("ordnet jede registrierte Tourstimme verbindlich dem Achird-Profil zu", () => {
+    expect(KLEMMI_VOICE_PROFILE.voice).toBe("Achird");
+    expect(Object.keys(KLEMMI_AUDIO_VOICE_MANIFEST).length).toBeGreaterThan(0);
+    expect(
+      Object.values(KLEMMI_AUDIO_VOICE_MANIFEST).every(
+        entry => entry.voice === "Achird"
+      )
+    ).toBe(true);
   });
 
   it("behält die Einsatzplanung in allen Produktstufen als Kernfunktion frei", async () => {

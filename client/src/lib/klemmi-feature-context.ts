@@ -59,6 +59,14 @@ export const KLEMMI_FEATURE_CONTEXTS = {
     alternative:
       "Die regulären Helferübersichten und Einsatzplan-PDFs bleiben weiterhin verfügbar.",
   },
+  project_backups: {
+    capability: "project_backup",
+    title: "Projektstände sichern und wiederherstellen",
+    explanation:
+      "Damit sicherst du den vollständigen Projektstand und stellst ihn nach einer geprüften Vorschau wieder her.",
+    alternative:
+      "Im Light-Paket bleiben alle Kernbereiche für die laufende Planung direkt verfügbar.",
+  },
 } as const satisfies Record<
   string,
   {

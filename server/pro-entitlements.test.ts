@@ -57,7 +57,9 @@ describe("Paket 4: Pro-Entitlements", () => {
     expect(router).toContain('productModuleWriteProcedure("locations", "maps_gpx")');
     expect(layout).toContain("productAllowsChat");
     expect(locations).toContain('productAllowsCapability(productPackageId, "maps_gpx")');
-    expect(dashboard).toContain('productAllowsCapability(tenantProduct.data?.packageId ?? "pro", "maps_gpx")');
+    expect(dashboard).toContain(
+      'productAllowsCapability(tenantProduct.data?.packageId ?? "event_pass", "maps_gpx")'
+    );
   });
 
   it("sperrt auch pausierte oder abgelaufene Pro-Zuordnungen serverseitig", () => {

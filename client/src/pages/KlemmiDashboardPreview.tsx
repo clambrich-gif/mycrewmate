@@ -31,6 +31,8 @@ export default function KlemmiDashboardPreview() {
         hasContacts: !emptyState,
         hasMappableLocations: !emptyState,
         canUseMapsGpx: true,
+        canUseDonations: true,
+        currentPackageId: "pro",
         detailsLayout,
       }),
     [detailsLayout, emptyState]

@@ -46,13 +46,14 @@ describe("Punkt 2: Zweiter Testzugang mit differenzierten Rechten (Lesen, Schrei
 
     const uniqueSuffix = Date.now();
     const testEmail = `sabine.differenziert.${uniqueSuffix}@example.org`;
+    const testContactName = `Sabine Differenziert Test ${uniqueSuffix}`;
     const testHelperName = `E2E Helfer Testperson ${uniqueSuffix}`;
     let createdHelperId: number | null = null;
     let createdContactId: number | null = null;
     let createdAccessId: number | null = null;
 
     const contact = await adminCaller.contacts.create({
-      name: "Sabine Differenziert Test",
+      name: testContactName,
       role: "Streckenorga",
       email: testEmail,
       phone: "+49 2651 888888",
@@ -67,37 +68,41 @@ describe("Punkt 2: Zweiter Testzugang mit differenzierten Rechten (Lesen, Schrei
     // Helfer: Schreiben
     // Vorbereitung: Lesen
     // Finanzen: Aus
-    const access = await db.createPlanningTeamAccess({
-      label: "Sabine Differenziert",
-      contactId: contact.id,
-      email: testEmail,
-      passwordHash: "$2a$10$abcdefghijklmnopqrstuuNOPASSWORDMATCH",
-      isTenantAdmin: false,
-      moduleAccess: {
-        helpers: "write",
-        preparation: "read",
-        finances: "off",
-      },
-      modulePermissions: ["helpers"],
-      eventIds: [targetEvent!.id],
-    });
-    createdAccessId = access.id;
-
-    expect(access).toBeDefined();
-    expect(access.moduleAccess?.helpers).toBe("write");
-    expect(access.moduleAccess?.preparation).toBe("read");
-    expect(access.moduleAccess?.finances).toBe("off");
-
-    const plannerUser = {
-      id: 8881,
-      openId: planningTeamAccessOpenId(access.id),
-      name: "Sabine Differenziert",
-      role: "user" as const,
-    };
-    const plannerCtx = makeScopedContext(plannerUser, targetEvent!.id, targetEvent!.year);
-    const plannerCaller = appRouter.createCaller(plannerCtx);
-
     try {
+      const access = await db.createPlanningTeamAccess({
+        label: "Sabine Differenziert",
+        contactId: contact.id,
+        email: testEmail,
+        passwordHash: "$2a$10$abcdefghijklmnopqrstuuNOPASSWORDMATCH",
+        isTenantAdmin: false,
+        moduleAccess: {
+          helpers: "write",
+          preparation: "read",
+          finances: "off",
+        },
+        modulePermissions: ["helpers"],
+        eventIds: [targetEvent!.id],
+      });
+      createdAccessId = access.id;
+
+      expect(access).toBeDefined();
+      expect(access.moduleAccess?.helpers).toBe("write");
+      expect(access.moduleAccess?.preparation).toBe("read");
+      expect(access.moduleAccess?.finances).toBe("off");
+
+      const plannerUser = {
+        id: 8881,
+        openId: planningTeamAccessOpenId(access.id),
+        name: "Sabine Differenziert",
+        role: "user" as const,
+      };
+      const plannerCtx = makeScopedContext(
+        plannerUser,
+        targetEvent!.id,
+        targetEvent!.year
+      );
+      const plannerCaller = appRouter.createCaller(plannerCtx);
+
       // 1. Helfer: Schreiben erlaubt
       const createdHelper = await plannerCaller.helpers.create({
         name: testHelperName,

@@ -9,6 +9,9 @@ const populatedDashboard = {
   hasAssignments: true,
   hasContacts: true,
   hasMappableLocations: true,
+  canUseMapsGpx: true,
+  canUseDonations: true,
+  currentPackageId: "pro",
 } as const;
 
 function detailsStep(detailsLayout: "side-by-side" | "stacked") {
@@ -36,5 +39,23 @@ describe("Dashboard-Klemmi-Tour", () => {
     expect(step.text).toContain("Darunter zeigt die Helferauslastung");
     expect(step.text).not.toContain("Links siehst du Verantwortlichkeiten");
     expect(step.text).not.toContain("Rechts zeigt die Helferauslastung");
+  });
+
+  it("lässt im Light-Paket gesperrte Spenden weg und erklärt die Karte als Pro-Erweiterung", () => {
+    const steps = createDashboardKlemmiSteps({
+      ...populatedDashboard,
+      canUseMapsGpx: false,
+      canUseDonations: false,
+      currentPackageId: "light",
+      detailsLayout: "side-by-side",
+    });
+
+    expect(steps.find(step => step.key === "helpers-active")?.text).not.toContain(
+      "Verpflegungsspenden"
+    );
+    expect(steps.find(step => step.key === "map-locked")).toMatchObject({
+      audioKey: "map-locked-light",
+      allowMissingTarget: true,
+    });
   });
 });

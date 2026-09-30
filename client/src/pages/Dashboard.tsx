@@ -1283,10 +1283,10 @@ export default function Dashboard() {
   });
   const canUseMapsGpx =
     tenantProduct.isSuccess &&
-    productAllowsCapability(tenantProduct.data?.packageId ?? "pro", "maps_gpx");
+    productAllowsCapability(tenantProduct.data?.packageId ?? "event_pass", "maps_gpx");
   const isEventPass = tenantProduct.data?.packageId === "event_pass";
   const allowsDonations = productAllowsCapability(
-    tenantProduct.data?.packageId ?? "pro",
+    tenantProduct.data?.packageId ?? "event_pass",
     "donations"
   );
   const { data: dashboardLocations = [] } = trpc.locations.list.useQuery(
@@ -1467,6 +1467,8 @@ export default function Dashboard() {
     hasContacts: s.verantwortlichkeiten.length > 0,
     hasMappableLocations,
     canUseMapsGpx,
+    canUseDonations: allowsDonations,
+    currentPackageId: tenantProduct.data?.packageId ?? "event_pass",
     detailsLayout,
   });
   const activePotentialDay = workloadFilter

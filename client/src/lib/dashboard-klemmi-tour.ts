@@ -1,5 +1,6 @@
 import type { KlemmiSurfaceStep } from "@/components/KlemmiSurfaceGuide";
 import type { DashboardDetailsLayout } from "@/hooks/useDashboardDetailsLayout";
+import type { ProductPackageId } from "@shared/product-packages";
 
 export type DashboardKlemmiTourState = {
   hasEventPeriod: boolean;
@@ -11,6 +12,8 @@ export type DashboardKlemmiTourState = {
   hasMappableLocations: boolean;
   /** Live-Standortkarte und GPS-Strecken sind ausschließlich ab Pro verfügbar. */
   canUseMapsGpx: boolean;
+  canUseDonations: boolean;
+  currentPackageId: ProductPackageId;
   detailsLayout: DashboardDetailsLayout;
 };
 
@@ -23,6 +26,7 @@ export function createDashboardKlemmiSteps(
   state: DashboardKlemmiTourState
 ): KlemmiSurfaceStep[] {
   const detailsAreStacked = state.detailsLayout === "stacked";
+  const showsDonations = state.canUseDonations;
   const steps: KlemmiSurfaceStep[] = [
     {
       key: "intro",
@@ -69,11 +73,20 @@ export function createDashboardKlemmiSteps(
     {
       key: state.hasHelpers || state.hasAssignments ? "helpers-active" : "helpers-empty",
       selector: '[data-dashboard-section="Helfer-Kennzahlen"]',
-      eyebrow: "4 · Helfer, Besetzung und Spenden",
+      eyebrow: showsDonations ? "4 · Helfer, Besetzung und Spenden" : "4 · Helfer und Besetzung",
       title: state.hasHelpers || state.hasAssignments ? "Helferstatus je Festivaltag" : "Helferstatus entsteht mit deiner Planung",
       text: state.hasHelpers || state.hasAssignments
-        ? "Hier erkennst du pro Veranstaltungstag Besetzung und Bedarf, Rückmeldungen, Erstkontakte und Verpflegungsspenden. Klickbare Werte führen in die bereits passend gefilterte Helfer- oder Einsatzplanansicht."
-        : "Sobald du Helfer anlegst und Schichten mit Bedarf planst, erscheinen hier Besetzung, Rückmeldungen und Erstkontakte. Erfasste Kuchen- und Salatspenden werden daneben automatisch zusammengefasst.",
+        ? showsDonations
+          ? "Hier erkennst du pro Veranstaltungstag Besetzung und Bedarf, Rückmeldungen, Erstkontakte und Verpflegungsspenden. Klickbare Werte führen in die bereits passend gefilterte Helfer- oder Einsatzplanansicht."
+          : "Hier erkennst du pro Veranstaltungstag Besetzung und Bedarf, Rückmeldungen und Erstkontakte. Klickbare Werte führen in die bereits passend gefilterte Helfer- oder Einsatzplanansicht."
+        : showsDonations
+          ? "Sobald du Helfer anlegst und Schichten mit Bedarf planst, erscheinen hier Besetzung, Rückmeldungen und Erstkontakte. Erfasste Kuchen- und Salatspenden werden daneben automatisch zusammengefasst."
+          : "Sobald du Helfer anlegst und Schichten mit Bedarf planst, erscheinen hier Besetzung, Rückmeldungen und Erstkontakte. So siehst du frühzeitig, wo noch Rückmeldungen oder Helfer fehlen.",
+      audioKey: showsDonations
+        ? undefined
+        : state.hasHelpers || state.hasAssignments
+          ? "helpers-active-no-donations"
+          : "helpers-empty-no-donations",
       action: "Weiter zu den Details",
     },
     {
@@ -103,8 +116,12 @@ export function createDashboardKlemmiSteps(
           selector: '[data-dashboard-level="Live-Standortkarte"]',
           eyebrow: "6 · Orte und Standorte",
           title: "Live-Standortkarte ab Pro",
-          text: "Die Live-Standortkarte mit GPS-Orten, Strecken und Statusmarkern steht ab Pro bereit. Im Event Pass konzentrierst du dich auf Helfer, Einsatzplan, Vorbereitung und die Standard-PDFs. Deshalb wird hier keine Karte eingeblendet.",
-          audioKey: "map-locked",
+          text:
+            state.currentPackageId === "light"
+              ? "Im Light-Paket kannst du Orte und Standorte bereits für Schichten, Vorbereitung und Material nutzen. Die interaktive Karte mit GPS-Punkten, Strecken und Statusmarkern ergänzt Pro. Deshalb wird auf diesem Dashboard noch keine Karte eingeblendet."
+              : "Die Live-Standortkarte mit GPS-Orten, Strecken und Statusmarkern steht ab Pro bereit. Im Event Pass konzentrierst du dich auf Helfer, Einsatzplan, Vorbereitung und die Standard-PDFs. Deshalb wird hier keine Karte eingeblendet.",
+          audioKey:
+            state.currentPackageId === "light" ? "map-locked-light" : "map-locked",
           action: "Dashboard-Tour abschließen",
           // Im Event Pass gibt es bewusst keine Kartenfläche. Die Tour darf
           // trotzdem sprechen und erklärt genau diesen Paketunterschied.

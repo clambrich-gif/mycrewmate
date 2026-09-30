@@ -1,5 +1,6 @@
 import { useAuth } from "@/_core/hooks/useAuth";
 import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
+import { KlemmiUpgradeDialog } from "@/components/KlemmiUpgradeDialog";
 import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import {
   ChangeFilterBar,
@@ -24,6 +25,7 @@ import {
   FileSpreadsheet,
   FolderOpen,
   Loader2,
+  LockKeyhole,
   Save,
   Upload,
 } from "lucide-react";
@@ -122,10 +124,11 @@ export function SaveLoadControls({
   const { user } = useAuth();
   const { isTenantAdmin: isAdmin } = useTenantAdministration();
   const tenantProduct = trpc.tenantProduct.current.useQuery();
-  const canUseExcel = productAllowsCapability(
-    tenantProduct.data?.packageId ?? "event_pass",
-    "excel"
-  );
+  const currentPackageId = tenantProduct.data?.packageId ?? "event_pass";
+  const canUseJsonBackup =
+    productAllowsCapability(currentPackageId, "event_backup") ||
+    productAllowsCapability(currentPackageId, "project_backup");
+  const canUseExcel = productAllowsCapability(currentPackageId, "excel");
   const jsonInputRef = useRef<HTMLInputElement>(null);
   const excelInputRef = useRef<HTMLInputElement>(null);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
@@ -145,6 +148,7 @@ export function SaveLoadControls({
   const [selectedImportArea, setSelectedImportArea] =
     useState<ExcelImportSelection | null>(null);
   const [filter, setFilter] = useState<ChangeFilter>("all");
+  const [backupUpgradeOpen, setBackupUpgradeOpen] = useState(false);
 
   const jsonSave = trpc.projectFile.save.useQuery(undefined, {
     enabled: false,
@@ -370,7 +374,8 @@ export function SaveLoadControls({
           onChange={event => void excelFileSelected(event.target.files?.[0])}
         />
       )}
-      <div className="grid grid-cols-2 gap-2" aria-label="Projekt speichern und laden">
+      {canUseJsonBackup ? (
+        <div className="grid grid-cols-2 gap-2" aria-label="Projekt speichern und laden">
         <Button
           type="button"
           variant="outline"
@@ -403,7 +408,28 @@ export function SaveLoadControls({
           <Upload className="mr-1.5 h-4 w-4" />
           Laden
         </Button>
-      </div>
+        </div>
+      ) : (
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full min-w-0 border-orange-200 bg-orange-50 px-2 text-orange-900 hover:bg-orange-100"
+            title="Projektstände sichern und wiederherstellen ab Pro"
+            onClick={() => setBackupUpgradeOpen(true)}
+          >
+            <LockKeyhole className="mr-1.5 h-4 w-4" />
+            Projektstand ab Pro
+          </Button>
+          <KlemmiUpgradeDialog
+            open={backupUpgradeOpen}
+            onOpenChange={setBackupUpgradeOpen}
+            currentPackageId={currentPackageId}
+            capability="project_backup"
+            contextId="project_backups"
+          />
+        </>
+      )}
 
       <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
         <DialogContent className="overflow-hidden rounded-xl border border-slate-200 bg-white p-0 text-slate-950 shadow-xl sm:max-w-[620px]">

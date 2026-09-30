@@ -1,4 +1,5 @@
 import type { KlemmiSurfaceStep } from "@/components/KlemmiSurfaceGuide";
+import type { ProductPackageId } from "@shared/product-packages";
 
 export const CONTACTS_KLEMMI_STEPS: KlemmiSurfaceStep[] = [
   {
@@ -336,14 +337,30 @@ export const HELP_KLEMMI_STEPS: KlemmiSurfaceStep[] = [
 ];
 
 /** Liefert nur dort Paket-Hinweise, wo im aktuellen Produktumfang tatsächlich eine Grenze liegt. */
-export function getPdfKlemmiSteps({ currentPackageId, canManage }: { currentPackageId: import("@shared/product-packages").ProductPackageId; canManage: boolean }): KlemmiSurfaceStep[] {
-  if (currentPackageId !== "event_pass" && currentPackageId !== "light") {
-    return canManage ? PDF_KLEMMI_STEPS : PDF_KLEMMI_STEPS_READONLY;
-  }
-  const steps = canManage ? PDF_KLEMMI_STEPS.map(step => ({ ...step })) : PDF_KLEMMI_STEPS_READONLY.map(step => ({ ...step }));
-  const plan = steps.find(step => step.key === "plan");
-  if (currentPackageId === "event_pass" && plan) {
-    plan.action = "Ansprechpartner-Übersichten erklären";
+export function getPdfKlemmiSteps({
+  currentPackageId,
+  canManage,
+}: {
+  currentPackageId: ProductPackageId;
+  canManage: boolean;
+}): KlemmiSurfaceStep[] {
+  const steps = (canManage ? PDF_KLEMMI_STEPS : PDF_KLEMMI_STEPS_READONLY).map(
+    step => ({ ...step })
+  );
+
+  if (currentPackageId === "event_pass") {
+    const intro = steps.find(step => step.key === "intro");
+    if (intro) {
+      intro.title = "Passende PDFs im Event Pass erstellen";
+      intro.text = "Im Event Pass erzeugst du persönliche Helferunterlagen und gefilterte Einsatzpläne aus den realen Planungsdaten. Ansprechpartner-Arbeitsmappen erkläre ich dir gleich als Light-Erweiterung.";
+      intro.audioKey = "intro-event-pass";
+    }
+    const plan = steps.find(step => step.key === "plan");
+    if (plan) {
+      plan.text = "Für den Einsatzplan wählst du Tag, Bereiche und Status. Das PDF enthält nur die Auswahl, die du wirklich brauchst. Eine Ansprechpartnerauswahl steht ab Light bereit.";
+      plan.audioKey = "plan-event-pass";
+      plan.action = "Ansprechpartner-Übersichten erklären";
+    }
     steps.splice(3, 0, {
       key: "contacts-locked",
       selector: '[data-klemmi-target="pdf-contact-overviews"]',
@@ -354,17 +371,27 @@ export function getPdfKlemmiSteps({ currentPackageId, canManage }: { currentPack
       action: canManage ? "Vorlage zeigen" : "Fertig",
     });
   }
+
   const config = steps.find(step => step.key === "config");
-  if (config) {
+  if (config && currentPackageId === "event_pass") {
     config.key = "config-locked";
     config.title = "PDF-Vorlage mit klaren Paketgrenzen";
     config.text = "Titel, Zusatzspalten und Hinweise kannst du hier für die aktuelle Veranstaltung pflegen. Ein eigenes Eventlogo und automatische WhatsApp-Vorlagen stehen ab Pro bereit. Bis dahin bleibt das MyCrewMate-Logo aktiv. WhatsApp öffnet weiter einen leeren Chat für freie Nachrichten.";
     config.audioKey = "config-locked";
   }
+  if (config && currentPackageId === "light") {
+    config.key = "config-light";
+    config.title = "PDF-Vorlage im Light-Paket pflegen";
+    config.text = "Titel, Zusatzspalten, Hinweise und Fußzeilen kannst du hier für die aktuelle Veranstaltung konfigurieren. Ein eigenes Eventlogo und automatische WhatsApp-Vorlagen ergänzen das Pro-Paket. Bis dahin bleibt das MyCrewMate-Logo aktiv und WhatsApp öffnet einen leeren Chat für freie Nachrichten.";
+    config.audioKey = "config-light";
+  }
+
   const numbered = steps.filter(step => step.key !== "intro");
   return steps.map(step => {
     const index = numbered.findIndex(candidate => candidate.key === step.key);
-    return index < 0 ? step : { ...step, eyebrow: `Schritt ${index + 1} von ${numbered.length}` };
+    return index < 0
+      ? step
+      : { ...step, eyebrow: `Schritt ${index + 1} von ${numbered.length}` };
   });
 }
 
@@ -375,10 +402,7 @@ export function getPdfKlemmiSteps({ currentPackageId, canManage }: { currentPack
  * werden. So bleiben Highlight und Klemmi-Audio zuverlässig synchron.
  */
 const EVENT_PASS_ACCESS_STEP_COPY: Partial<
-  Record<
-    string,
-    Pick<KlemmiSurfaceStep, "title" | "text" | "audioKey">
-  >
+  Record<string, Pick<KlemmiSurfaceStep, "title" | "text" | "audioKey">>
 > = {
   "accesses-overview": {
     title: "Planungsteam-Zugänge ab Light",
@@ -422,11 +446,16 @@ const EVENT_PASS_ACCESS_STEP_COPY: Partial<
   },
 };
 
-/**
- * Der Event Pass behält eine schlanke, nachprüfbare JSON-Sicherung. Die
- * umfangreiche Excel-Dateiverarbeitung gehört bewusst erst zu Pro und
- * Enterprise.
- */
+const EVENT_PASS_SECURITY_INTRO: Pick<
+  KlemmiSurfaceStep,
+  "title" | "text" | "audioKey"
+> = {
+  title: "Schutz und Protokoll im Event Pass",
+  text: "Hier regelst du das Administratorpasswort, prüfst Sicherheits- und Aktivitätsprotokolle und nutzt den Gefahrenbereich nur bewusst. Persönliche Planungsteam-Zugänge und deren Notfall-Stopp ergänzen das Light-Paket. Die Führung öffnet nur Ansichten und ändert nichts.",
+  audioKey: "intro-event-pass",
+};
+
+/** Der Event Pass enthält eine begrenzte JSON-Sicherung seiner Einzelveranstaltung. */
 const EVENT_PASS_BACKUP_AUDIT_COPY: Pick<
   KlemmiSurfaceStep,
   "title" | "text" | "audioKey"
@@ -436,17 +465,33 @@ const EVENT_PASS_BACKUP_AUDIT_COPY: Pick<
   audioKey: "audit-files-event-pass",
 };
 
+/** Light enthält keine Dateiübernahme; die sichere Kernplanung bleibt davon unberührt. */
+const LIGHT_BACKUP_AUDIT_COPY: Pick<
+  KlemmiSurfaceStep,
+  "title" | "text" | "audioKey"
+> = {
+  title: "Datei- und Import-Historie ab Pro",
+  text: "Im Light-Paket sind die Kernplanung, Ansprechpartner, Orte, Material und persönliche Teamzugänge verfügbar. Eine vollständige Datei-Sicherung, Excel-Import und die zugehörige Historie ergänzen das Pro-Paket. Sicherheits- und Aktivitätsprotokolle bleiben hier weiterhin nutzbar.",
+  audioKey: "audit-files-light",
+};
+
 /** Ergänzt die Sicherheitstour mit den für das jeweilige Paket passenden Alternativen. */
 export function getSecurityKlemmiSteps(
-  currentPackageId: import("@shared/product-packages").ProductPackageId
+  currentPackageId: ProductPackageId
 ): KlemmiSurfaceStep[] {
   if (currentPackageId === "pro" || currentPackageId === "enterprise") {
     return SECURITY_KLEMMI_STEPS;
   }
 
   return SECURITY_KLEMMI_STEPS.map(step => {
+    if (currentPackageId === "event_pass" && step.key === "intro") {
+      return { ...step, ...EVENT_PASS_SECURITY_INTRO };
+    }
     if (currentPackageId === "event_pass" && step.key === "audit-files") {
       return { ...step, ...EVENT_PASS_BACKUP_AUDIT_COPY };
+    }
+    if (currentPackageId === "light" && step.key === "audit-files") {
+      return { ...step, ...LIGHT_BACKUP_AUDIT_COPY };
     }
 
     const lockedCopy =
