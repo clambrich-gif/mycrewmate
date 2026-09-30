@@ -11,7 +11,8 @@ describe("Vorbereitung & Nachbereitung Verantwortlichen- und Helferzuordnung", (
 
     // Dialog enthält Verantwortlicher und optionalen Helfer
     expect(prepCode).toContain("<Label>Verantwortlicher</Label>");
-    expect(prepCode).toContain("Bitte Verantwortlichen wählen");
+    expect(prepCode).toContain("Hauptadministrator wird automatisch übernommen");
+    expect(prepCode).toContain('<SelectItem value="unassigned">-</SelectItem>');
     // Dialog enthält optionalen Helfer
     expect(prepCode).toContain("Unterstützender Helfer");
     expect(prepCode).toContain("Kein zusätzlicher Helfer");

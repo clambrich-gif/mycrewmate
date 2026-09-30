@@ -3484,6 +3484,28 @@ export async function listContacts() {
 }
 
 /**
+ * Liefert ausschließlich für den Event Pass den automatisch angelegten
+ * Hauptansprechpartner. Damit bleiben Event-Pass-Formulare funktionsfähig,
+ * ohne das ansonsten gesperrte Ansprechpartner-Modul freizugeben.
+ */
+export async function getEventPassPrimaryAdminContact() {
+  const db = await getDb();
+  if (!db) return null;
+
+  const entitlement = await getTenantProductEntitlement(tenant());
+  if (entitlement.packageId !== "event_pass") return null;
+
+  await ensureEventPassPrimaryAdminContact(db);
+  const [primaryContact] = await db
+    .select({ id: contacts.id, name: contacts.name })
+    .from(contacts)
+    .where(planningScope(contacts))
+    .orderBy(contacts.sortOrder, contacts.id)
+    .limit(1);
+  return primaryContact ?? null;
+}
+
+/**
  * Stellt sicher, dass ein Event-Pass-Verein den persönlichen Vereinsadministrator
  * als automatischen Standard-Ansprechpartner besitzt.
  */

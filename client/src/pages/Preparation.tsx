@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "wouter";
 import { trpc } from "@/lib/trpc";
 import {
@@ -71,6 +71,7 @@ import {
   preparationLogbookNeedsDetail,
   prependPreparationLogbookEntry,
 } from "@shared/preparation-logbook";
+import { productAllowsCapability } from "@shared/product-packages";
 
 type PrepStatus = "offen" | "inArbeit" | "erledigt" | "abgelehnt";
 type PrepWording = "aufgabe" | "genehmigung";
@@ -116,13 +117,15 @@ const EMPTY_FORM: PrepForm = {
   category: "",
   task: "",
   locationId: "none",
-  contactId: "none",
+  contactId: "unassigned",
   helperId: "none",
   dueText: "",
   legacyDueText: "",
   preserveLegacyDueText: false,
   logEntry: "",
 };
+
+const EMPTY_CONTACTS: ReadonlyArray<{ id: number; name: string }> = [];
 
 function temporaryId() {
   return -Math.floor(Math.random() * 1_000_000 + 1);
@@ -313,10 +316,32 @@ export default function Preparation() {
   const [klemmiGuideOpen, setKlemmiGuideOpen] = useState(false);
   const [klemmiCreationSignal, setKlemmiCreationSignal] = useState<number | null>(null);
   const [klemmiGuideStartedEmpty, setKlemmiGuideStartedEmpty] = useState<boolean | null>(null);
+  const responsibleSelectionTouched = useRef(false);
 
   const utils = trpc.useUtils();
   const { data: rawRows = [], isLoading } = trpc.prep.list.useQuery();
-  const { data: contacts = [] } = trpc.contacts.list.useQuery();
+  const { data: tenantProduct } = trpc.tenantProduct.current.useQuery(undefined, {
+    staleTime: 60_000,
+  });
+  const currentPackageId = tenantProduct?.packageId ?? "event_pass";
+  const allowsContacts = productAllowsCapability(currentPackageId, "contacts");
+  const { data: contactRows } = trpc.contacts.list.useQuery(undefined, {
+    enabled: allowsContacts,
+  });
+  const { data: eventPassPrimaryContact } = trpc.prep.defaultResponsible.useQuery(
+    undefined,
+    { enabled: !allowsContacts }
+  );
+  const contacts = contactRows ?? EMPTY_CONTACTS;
+  const responsibleContacts = useMemo(
+    () =>
+      allowsContacts
+        ? contacts
+        : eventPassPrimaryContact
+          ? [eventPassPrimaryContact]
+          : EMPTY_CONTACTS,
+    [allowsContacts, contacts, eventPassPrimaryContact]
+  );
   const { data: helpers = [] } = trpc.helpers.list.useQuery();
   const { data: locations = [] } = trpc.locations.list.useQuery();
   const rows = rawRows as PrepTaskRow[];
@@ -444,8 +469,8 @@ export default function Preparation() {
   });
 
   const contactMap = useMemo(
-    () => new Map(contacts.map(contact => [contact.id, contact.name])),
-    [contacts]
+    () => new Map(responsibleContacts.map(contact => [contact.id, contact.name])),
+    [responsibleContacts]
   );
 
   const helperMap = useMemo(
@@ -457,11 +482,11 @@ export default function Preparation() {
   const ownContactIds = useMemo(
     () =>
       new Set(
-        contacts
+        responsibleContacts
           .filter(contact => normalizedPersonName(contact.name) === currentUserName)
           .map(contact => contact.id)
       ),
-    [contacts, currentUserName]
+    [responsibleContacts, currentUserName]
   );
   useEffect(() => {
     if (isDefaultMyTasks && ownContactIds.size > 0) {
@@ -477,6 +502,25 @@ export default function Preparation() {
     () => new Map(locations.map(location => [location.id, location.name])),
     [locations]
   );
+  const defaultResponsibleId = eventPassPrimaryContact
+    ? String(eventPassPrimaryContact.id)
+    : "unassigned";
+
+  useEffect(() => {
+    if (
+      !dialogOpen ||
+      editingTask ||
+      responsibleSelectionTouched.current ||
+      defaultResponsibleId === "unassigned"
+    ) {
+      return;
+    }
+    setForm(current =>
+      current.contactId === "unassigned"
+        ? { ...current, contactId: defaultResponsibleId }
+        : current
+    );
+  }, [defaultResponsibleId, dialogOpen, editingTask]);
 
   const availableCategories = useMemo(() => {
     const categories = new Set<string>();
@@ -609,18 +653,20 @@ export default function Preparation() {
 
   const openCreate = () => {
     setEditingTask(null);
-    setForm(EMPTY_FORM);
+    responsibleSelectionTouched.current = false;
+    setForm({ ...EMPTY_FORM, contactId: defaultResponsibleId });
     setDialogOpen(true);
   };
 
   const openEdit = (task: PrepTaskRow) => {
     const parsedDueDate = parseDueDate(task.dueText);
+    responsibleSelectionTouched.current = true;
     setEditingTask(task);
     setForm({
       category: task.category ?? "",
       task: task.task,
       locationId: task.locationId ? String(task.locationId) : "none",
-      contactId: task.contactId ? String(task.contactId) : "none",
+      contactId: task.contactId ? String(task.contactId) : "unassigned",
       helperId: task.helperId ? String(task.helperId) : "none",
       dueText: parsedDueDate?.iso ?? "",
       legacyDueText: parsedDueDate ? "" : task.dueText ?? "",
@@ -636,6 +682,7 @@ export default function Preparation() {
 
   const closeDialog = () => {
     if (create.isPending || update.isPending) return;
+    responsibleSelectionTouched.current = false;
     setDialogOpen(false);
     setEditingTask(null);
     setForm(EMPTY_FORM);
@@ -648,11 +695,6 @@ export default function Preparation() {
       return;
     }
 
-    if (form.contactId === "none") {
-      toast.error("Bitte einen verantwortlichen Ansprechpartner wählen");
-      return;
-    }
-
     const logEntry = form.logEntry.trim();
     const selectedDueDate = parseDueDate(form.dueText);
     const dueText = selectedDueDate?.display ?? (
@@ -662,7 +704,7 @@ export default function Preparation() {
       category: form.category.trim(),
       task,
       locationId: form.locationId === "none" ? null : Number(form.locationId),
-      contactId: form.contactId === "none" ? null : Number(form.contactId),
+      contactId: form.contactId === "unassigned" ? null : Number(form.contactId),
       helperId: form.helperId === "none" ? null : Number(form.helperId),
       dueText,
     };
@@ -904,7 +946,7 @@ export default function Preparation() {
             <SelectContent>
               <SelectItem value="alle">Alle Verantwortlichen</SelectItem>
               <SelectItem value="ohne">Ohne Zuweisung</SelectItem>
-              {contacts.map(contact => (
+              {responsibleContacts.map(contact => (
                 <SelectItem key={contact.id} value={String(contact.id)}>
                   {contact.name}
                 </SelectItem>
@@ -1421,14 +1463,17 @@ export default function Preparation() {
                 <Label>Verantwortlicher</Label>
                 <Select
                   value={form.contactId}
-                  onValueChange={value => setForm(current => ({ ...current, contactId: value }))}
+                  onValueChange={value => {
+                    responsibleSelectionTouched.current = true;
+                    setForm(current => ({ ...current, contactId: value }));
+                  }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Verantwortlichen wählen" />
+                    <SelectValue placeholder="Hauptadministrator wird automatisch übernommen" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">Bitte Verantwortlichen wählen</SelectItem>
-                    {contacts.map(contact => (
+                    <SelectItem value="unassigned">-</SelectItem>
+                    {responsibleContacts.map(contact => (
                       <SelectItem key={contact.id} value={String(contact.id)}>
                         {contact.name}
                       </SelectItem>

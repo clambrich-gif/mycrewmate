@@ -4542,6 +4542,9 @@ export const appRouter = router({
 
   prep: router({
     list: moduleReadProcedure("preparation").query(() => db.listPrep()),
+    defaultResponsible: moduleReadProcedure("preparation").query(() =>
+      db.getEventPassPrimaryAdminContact()
+    ),
     create: moduleWriteProcedure("preparation")
       .input(
         z.object({
@@ -4549,7 +4552,7 @@ export const appRouter = router({
           category: z.string().trim().max(120).optional(),
           dueText: z.string().max(200).optional(),
           locationId: z.number().int().positive().nullable().optional(),
-          contactId: z.number().nullable().optional(),
+          contactId: z.number().int().positive().nullable().optional(),
           helperId: z.number().int().positive().nullable().optional(),
           note: z.string().max(10_000).optional(),
           logEntry: z.string().max(10_000).optional(),
@@ -4573,7 +4576,7 @@ export const appRouter = router({
           category: z.string().trim().max(120).optional(),
           dueText: z.string().max(200).optional(),
           locationId: z.number().int().positive().nullable().optional(),
-          contactId: z.number().nullable().optional(),
+          contactId: z.number().int().positive().nullable().optional(),
           helperId: z.number().int().positive().nullable().optional(),
           status: statusPrep.optional(),
           statusWording: prepStatusWording.optional(),
@@ -4963,7 +4966,11 @@ export const appRouter = router({
           db.listHelpers(),
           db.listPrep(),
           eventPass ? Promise.resolve([]) : db.listPost(),
-          eventPass ? Promise.resolve([]) : db.listContacts(),
+          eventPass
+            ? db.getEventPassPrimaryAdminContact().then(contact =>
+                contact ? [contact] : []
+              )
+            : db.listContacts(),
           eventPass ? Promise.resolve([]) : db.listCakes(),
           db.getEvent(),
         ]);
@@ -5137,7 +5144,24 @@ export const appRouter = router({
           },
         },
         verantwortlichkeiten: await (async () => {
-          if (eventPass) return [];
+          if (eventPass) {
+            return contacts.map(contact => {
+              const betreuteHelfer = helpers.filter(
+                helper => helper.contactId === contact.id
+              ).length;
+              const vorbereitung = prep.filter(
+                task => task.contactId === contact.id
+              ).length;
+              return {
+                name: contact.name,
+                betreuteHelfer,
+                vorbereitung,
+                nachbereitung: 0,
+                material: 0,
+                gesamt: betreuteHelfer + vorbereitung,
+              };
+            });
+          }
           const [materials, marketing, approvals] = await Promise.all([
             db.listMaterials(),
             db.listMarketing(),
