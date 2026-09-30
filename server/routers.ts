@@ -4490,15 +4490,8 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
-        const { helperId, ...rest } = input;
-        let effectiveContactId = rest.contactId;
-        if (helperId) {
-          const linkedContactId = await db.ensureContactForHelperId(helperId);
-          if (linkedContactId) effectiveContactId = linkedContactId;
-        }
         return db.createPrep({
-          ...rest,
-          contactId: effectiveContactId,
+          ...input,
           status: "offen",
           statusWording: "aufgabe",
           logEntryAuthor: auditActor(ctx.user).name,
@@ -4523,15 +4516,9 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
-        const { id, helperId, ...r } = input;
-        let effectiveContactId = r.contactId;
-        if (helperId) {
-          const linkedContactId = await db.ensureContactForHelperId(helperId);
-          if (linkedContactId) effectiveContactId = linkedContactId;
-        }
+        const { id, ...values } = input;
         return db.updatePrep(id, {
-          ...r,
-          ...(effectiveContactId !== undefined ? { contactId: effectiveContactId } : {}),
+          ...values,
           logEntryAuthor: auditActor(ctx.user).name,
           activityAuthor: auditActor(ctx.user).name,
         });
@@ -4560,15 +4547,8 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
-        const { helperId, ...rest } = input;
-        let effectiveContactId = rest.contactId;
-        if (helperId) {
-          const linkedContactId = await db.ensureContactForHelperId(helperId);
-          if (linkedContactId) effectiveContactId = linkedContactId;
-        }
         return db.createPost({
-          ...rest,
-          contactId: effectiveContactId,
+          ...input,
           status: "offen",
           logEntryAuthor: auditActor(ctx.user).name,
           activityEntry: "Nachbereitungsaufgabe angelegt",
@@ -4591,15 +4571,9 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
-        const { id, helperId, ...r } = input;
-        let effectiveContactId = r.contactId;
-        if (helperId) {
-          const linkedContactId = await db.ensureContactForHelperId(helperId);
-          if (linkedContactId) effectiveContactId = linkedContactId;
-        }
+        const { id, ...values } = input;
         return db.updatePost(id, {
-          ...r,
-          ...(effectiveContactId !== undefined ? { contactId: effectiveContactId } : {}),
+          ...values,
           logEntryAuthor: auditActor(ctx.user).name,
           activityAuthor: auditActor(ctx.user).name,
         });

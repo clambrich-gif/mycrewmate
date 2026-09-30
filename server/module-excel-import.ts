@@ -297,6 +297,8 @@ const OPTIONAL_MODULE_COLUMNS: Record<ModuleImportArea, string[]> = {
     "Zu erledigen bis",
     "Verantwortlich-ID",
     "Verantwortlich",
+    "Helfer-ID",
+    "Helfer",
     "Status",
     "Status-Wortlaut",
     "Bemerkung",
@@ -309,6 +311,8 @@ const OPTIONAL_MODULE_COLUMNS: Record<ModuleImportArea, string[]> = {
     "Ort / Standort",
     "Verantwortlich-ID",
     "Verantwortlich",
+    "Helfer-ID",
+    "Helfer",
     "Status",
     "Bemerkung",
     "Reihenfolge",
@@ -854,6 +858,8 @@ function rowsFromDocument(document: BackupDocument, area: ModuleImportArea) {
         : {}),
       "Verantwortlich-ID": row.contactSourceId ?? "",
       Verantwortlich: row.contactName,
+      "Helfer-ID": row.helperSourceId ?? "",
+      Helfer: row.helperName ?? "",
       Status: row.status,
       ...(isPrep
         ? {

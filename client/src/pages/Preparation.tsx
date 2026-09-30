@@ -89,6 +89,7 @@ type PrepTaskRow = {
   dueText: string;
   locationId: number | null;
   contactId: number | null;
+  helperId: number | null;
   status: PrepStatus;
   statusWording: PrepWording | null;
   note: string | null;
@@ -99,6 +100,7 @@ type PrepForm = {
   task: string;
   locationId: string;
   contactId: string;
+  helperId: string;
   dueText: string;
   legacyDueText: string;
   preserveLegacyDueText: boolean;
@@ -115,6 +117,7 @@ const EMPTY_FORM: PrepForm = {
   task: "",
   locationId: "none",
   contactId: "none",
+  helperId: "none",
   dueText: "",
   legacyDueText: "",
   preserveLegacyDueText: false,
@@ -344,6 +347,7 @@ export default function Preparation() {
           dueText: input.dueText ?? "",
           locationId: input.locationId ?? null,
           contactId: input.contactId ?? null,
+          helperId: input.helperId ?? null,
           status: input.status ?? "offen",
           statusWording: input.statusWording ?? "aufgabe",
           note: input.logEntry
@@ -444,39 +448,11 @@ export default function Preparation() {
     [contacts]
   );
 
-  // Alle Helfer und Ansprechpartner als auswählbare Verantwortliche zusammenführen
-  const responsiblePersons = useMemo(() => {
-    const list: Array<{ id: string; name: string; contactId?: number; helperId?: number; isHelper: boolean }> = [];
-    const seenNames = new Set<string>();
+  const helperMap = useMemo(
+    () => new Map(helpers.map(helper => [helper.id, helper.name])),
+    [helpers]
+  );
 
-    // Zuerst Ansprechpartner (inkl. Admins)
-    for (const c of contacts) {
-      const normalized = c.name.trim().toLowerCase();
-      seenNames.add(normalized);
-      list.push({
-        id: `c-${c.id}`,
-        name: c.name,
-        contactId: c.id,
-        isHelper: false,
-      });
-    }
-
-    // Dann alle weiteren Helfer
-    for (const h of helpers) {
-      const normalized = h.name.trim().toLowerCase();
-      if (!seenNames.has(normalized)) {
-        seenNames.add(normalized);
-        list.push({
-          id: h.contactId ? `c-${h.contactId}` : `h-${h.id}`,
-          name: h.name,
-          contactId: h.contactId ?? undefined,
-          helperId: h.id,
-          isHelper: true,
-        });
-      }
-    }
-    return list.sort((a, b) => a.name.localeCompare(b.name, "de"));
-  }, [contacts, helpers]);
   const currentUserName = normalizedPersonName(user?.name);
   const ownContactIds = useMemo(
     () =>
@@ -645,6 +621,7 @@ export default function Preparation() {
       task: task.task,
       locationId: task.locationId ? String(task.locationId) : "none",
       contactId: task.contactId ? String(task.contactId) : "none",
+      helperId: task.helperId ? String(task.helperId) : "none",
       dueText: parsedDueDate?.iso ?? "",
       legacyDueText: parsedDueDate ? "" : task.dueText ?? "",
       preserveLegacyDueText: !parsedDueDate && Boolean(task.dueText?.trim()),
@@ -671,6 +648,11 @@ export default function Preparation() {
       return;
     }
 
+    if (form.contactId === "none") {
+      toast.error("Bitte einen verantwortlichen Ansprechpartner wählen");
+      return;
+    }
+
     const logEntry = form.logEntry.trim();
     const selectedDueDate = parseDueDate(form.dueText);
     const dueText = selectedDueDate?.display ?? (
@@ -680,14 +662,8 @@ export default function Preparation() {
       category: form.category.trim(),
       task,
       locationId: form.locationId === "none" ? null : Number(form.locationId),
-      ...(form.contactId.startsWith("h-")
-        ? { helperId: Number(form.contactId.slice(2)), contactId: null }
-        : {
-            contactId:
-              form.contactId === "none"
-                ? null
-                : Number(form.contactId.replace(/^c-/, "")),
-          }),
+      contactId: form.contactId === "none" ? null : Number(form.contactId),
+      helperId: form.helperId === "none" ? null : Number(form.helperId),
       dueText,
     };
 
@@ -1081,7 +1057,12 @@ export default function Preparation() {
                         )}
                       </td>
                       <td className="break-words px-4 py-3 align-top text-slate-700">
-                        {task.contactId ? contactMap.get(task.contactId) ?? "—" : "—"}
+                        <p>{task.contactId ? contactMap.get(task.contactId) ?? "—" : "—"}</p>
+                        {task.helperId && (
+                          <p className="mt-1 text-xs text-slate-500">
+                            Helfer: {helperMap.get(task.helperId) ?? "—"}
+                          </p>
+                        )}
                       </td>
                       <td className="break-words px-4 py-3 align-top text-slate-700">
                         {formatDueDate(task.dueText) || <span className="text-slate-400">—</span>}
@@ -1280,31 +1261,15 @@ export default function Preparation() {
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div className="space-y-1.5">
-                        <label className="text-xs font-medium" htmlFor={`mobile-prep-contact-${task.id}`}>
-                          Verantwortlicher
-                        </label>
-                        <Select
-                          value={task.contactId ? String(task.contactId) : "none"}
-                          disabled={update.isPending}
-                          onValueChange={value =>
-                            update.mutate({
-                              id: task.id,
-                              contactId: value === "none" ? null : Number(value),
-                            })
-                          }
-                        >
-                          <SelectTrigger id={`mobile-prep-contact-${task.id}`} className="w-full">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Kein Verantwortlicher</SelectItem>
-                            {contacts.map(contact => (
-                              <SelectItem key={contact.id} value={String(contact.id)}>
-                                {contact.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <p id={`mobile-prep-contact-${task.id}`} className="text-xs font-medium">Verantwortlicher</p>
+                        <p className="text-sm text-slate-800" aria-labelledby={`mobile-prep-contact-${task.id}`}>
+                          {task.contactId ? contactMap.get(task.contactId) ?? "—" : "—"}
+                        </p>
+                        {task.helperId && (
+                          <p className="text-xs text-slate-500">
+                            Helfer: {helperMap.get(task.helperId) ?? "—"}
+                          </p>
+                        )}
                       </div>
                       <div className="space-y-1.5">
                         <label className="text-xs font-medium" htmlFor={`mobile-prep-due-${task.id}`}>
@@ -1455,27 +1420,40 @@ export default function Preparation() {
               <div className="space-y-1.5">
                 <Label>Verantwortlicher</Label>
                 <Select
-                  value={
-                    form.contactId.startsWith("c-") || form.contactId.startsWith("h-")
-                      ? form.contactId
-                      : form.contactId === "none"
-                        ? "none"
-                        : `c-${form.contactId}`
-                  }
+                  value={form.contactId}
                   onValueChange={value => setForm(current => ({ ...current, contactId: value }))}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Verantwortlichen wählen" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">— Keine Zuordnung —</SelectItem>
-                    {responsiblePersons.map(person => (
-                      <SelectItem key={person.id} value={person.id}>
-                        {person.name} {person.isHelper ? "(Helfer)" : ""}
+                    <SelectItem value="none">Bitte Verantwortlichen wählen</SelectItem>
+                    {contacts.map(contact => (
+                      <SelectItem key={contact.id} value={String(contact.id)}>
+                        {contact.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <div className="mt-3 space-y-1.5">
+                  <Label>Unterstützender Helfer <span className="font-normal text-slate-500">(optional)</span></Label>
+                  <Select
+                    value={form.helperId}
+                    onValueChange={value => setForm(current => ({ ...current, helperId: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Keinen Helfer zusätzlich zuordnen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Kein zusätzlicher Helfer</SelectItem>
+                      {helpers.map(helper => (
+                        <SelectItem key={helper.id} value={String(helper.id)}>
+                          {helper.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="prep-due">Frist / Abgabedatum</Label>

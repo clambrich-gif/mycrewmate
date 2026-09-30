@@ -65,6 +65,8 @@ const commonTask = z.object({
   task: short(300).min(1),
   contactSourceId: id,
   contactName: short(200),
+  helperSourceId: id.default(null),
+  helperName: short(200).default(""),
   status: z.enum(["offen", "inArbeit", "erledigt"]),
   note: short(10_000),
   sortOrder: z.number().int().min(0).max(1_000_000),
@@ -929,6 +931,8 @@ export function parseProjectFile(base64: string): {
           ...task,
           locationSourceId: task.locationSourceId ?? null,
           locationName: task.locationName ?? "",
+          helperSourceId: task.helperSourceId ?? null,
+          helperName: task.helperName ?? "",
         }))
       : document.prep;
     document.post = Array.isArray(document.post)
@@ -938,6 +942,8 @@ export function parseProjectFile(base64: string): {
           dueText: task.dueText ?? "",
           locationSourceId: task.locationSourceId ?? null,
           locationName: task.locationName ?? "",
+          helperSourceId: task.helperSourceId ?? null,
+          helperName: task.helperName ?? "",
         }))
       : document.post;
     document.materials = Array.isArray(document.materials)

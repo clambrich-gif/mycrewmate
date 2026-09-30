@@ -42,6 +42,7 @@ describe("moduleAssignmentClearValues", () => {
   it("setzt Vorbereitung nur auf den neutralen Arbeitszustand zurück", () => {
     expect(moduleAssignmentClearValues("prep")).toEqual({
       contactId: null,
+      helperId: null,
       dueText: "",
       status: "offen",
       statusWording: "aufgabe",
@@ -52,6 +53,7 @@ describe("moduleAssignmentClearValues", () => {
   it("setzt Nachbereitung ohne Aufgabenlöschung zurück", () => {
     expect(moduleAssignmentClearValues("post")).toEqual({
       contactId: null,
+      helperId: null,
       dueText: "",
       status: "offen",
       note: null,

@@ -6212,12 +6212,42 @@ async function scopedContactValues(values: Record<string, unknown>) {
   return values;
 }
 
+/**
+ * Validiert eine optionale, rein unterstützende Helferzuordnung. Sie ändert
+ * bewusst keinen Ansprechpartner und hält die Aufgabenverantwortung eindeutig.
+ */
+async function scopedTaskHelperValues(values: Record<string, unknown>) {
+  if (
+    !("helperId" in values) ||
+    values.helperId === null ||
+    values.helperId === undefined ||
+    values.helperId === ""
+  ) {
+    return { ...values, helperId: null };
+  }
+  const helperId = Number(values.helperId);
+  if (!Number.isSafeInteger(helperId) || helperId <= 0) {
+    return { ...values, helperId: null };
+  }
+  const db = (await getDb()) as DB;
+  const [helper] = await db
+    .select({ id: helpers.id })
+    .from(helpers)
+    .where(and(eq(helpers.id, helperId), planningScope(helpers)))
+    .limit(1);
+  if (!helper) {
+    throw new Error("Der Helfer gehört nicht zur ausgewählten Veranstaltung");
+  }
+  return values;
+}
+
 type LogbookTaskRow = {
   task: string;
   category: string;
   dueText: string;
   locationId: number | null;
   contactId: number | null;
+  helperId?: number | null;
   status: string;
   statusWording?: string | null;
 };
@@ -6227,18 +6257,25 @@ async function taskLogbookReferenceLabels(
   previous: LogbookTaskRow,
   values: Record<string, unknown>
 ) {
-  const referenceIds = (field: "contactId" | "locationId") =>
+  const referenceIds = (field: "contactId" | "helperId" | "locationId") =>
     Array.from(new Set([previous[field], values[field]]))
       .map(value => Number(value))
       .filter(value => Number.isSafeInteger(value) && value > 0);
   const contactIds = referenceIds("contactId");
+  const helperIds = referenceIds("helperId");
   const locationIds = referenceIds("locationId");
-  const [contactRows, locationRows] = await Promise.all([
+  const [contactRows, helperRows, locationRows] = await Promise.all([
     contactIds.length
       ? database
           .select({ id: contacts.id, name: contacts.name })
           .from(contacts)
           .where(and(inArray(contacts.id, contactIds), planningScope(contacts)))
+      : Promise.resolve([]),
+    helperIds.length
+      ? database
+          .select({ id: helpers.id, name: helpers.name })
+          .from(helpers)
+          .where(and(inArray(helpers.id, helperIds), planningScope(helpers)))
       : Promise.resolve([]),
     locationIds.length
       ? database
@@ -6249,6 +6286,7 @@ async function taskLogbookReferenceLabels(
   ]);
   return {
     contacts: new Map(contactRows.map(row => [row.id, row.name])),
+    helpers: new Map(helperRows.map(row => [row.id, row.name])),
     locations: new Map(locationRows.map(row => [row.id, row.name])),
   };
 }
@@ -6285,7 +6323,9 @@ export const createPrep = async (v: any) => {
         };
   return createYearRow(
     prepTasks,
-    await scopedContactValues(await scopedLocationValues(valuesWithLogbook))
+    await scopedTaskHelperValues(
+      await scopedContactValues(await scopedLocationValues(valuesWithLogbook))
+    )
   );
 };
 export const updatePrep = async (id: number, v: any) => {
@@ -6299,6 +6339,7 @@ export const updatePrep = async (id: number, v: any) => {
       dueText: prepTasks.dueText,
       locationId: prepTasks.locationId,
       contactId: prepTasks.contactId,
+      helperId: prepTasks.helperId,
       status: prepTasks.status,
       statusWording: prepTasks.statusWording,
     })
@@ -6314,27 +6355,33 @@ export const updatePrep = async (id: number, v: any) => {
   if (logEntry === undefined && !generatedActivityEntry) {
     return database
       .update(prepTasks)
-      .set(await scopedContactValues(await scopedLocationValues(writableValues)))
+      .set(
+        await scopedTaskHelperValues(
+          await scopedContactValues(await scopedLocationValues(writableValues))
+        )
+      )
       .where(and(yearWhere(prepTasks, id), eq(prepTasks.deleted, false)));
   }
 
   return database
     .update(prepTasks)
     .set(
-      await scopedContactValues(await scopedLocationValues({
-        ...writableValues,
-        note: prependPreparationLogbookEntry(
-          generatedActivityEntry,
-          prependPreparationLogbookEntry(
-            logEntry,
-            existing[0].note,
+      await scopedTaskHelperValues(
+        await scopedContactValues(await scopedLocationValues({
+          ...writableValues,
+          note: prependPreparationLogbookEntry(
+            generatedActivityEntry,
+            prependPreparationLogbookEntry(
+              logEntry,
+              existing[0].note,
+              new Date(),
+              logEntryAuthor
+            ),
             new Date(),
-            logEntryAuthor
+            activityAuthor ?? logEntryAuthor
           ),
-          new Date(),
-          activityAuthor ?? logEntryAuthor
-        ),
-      }))
+        }))
+      )
     )
     .where(and(yearWhere(prepTasks, id), eq(prepTasks.deleted, false)));
 };
@@ -6427,6 +6474,7 @@ export function moduleAssignmentClearValues(area: ModuleAssignmentClearArea) {
     case "prep":
       return {
         contactId: null,
+        helperId: null,
         dueText: "",
         status: "offen" as const,
         statusWording: "aufgabe" as const,
@@ -6435,6 +6483,7 @@ export function moduleAssignmentClearValues(area: ModuleAssignmentClearArea) {
     case "post":
       return {
         contactId: null,
+        helperId: null,
         dueText: "",
         status: "offen" as const,
         note: null,
@@ -6585,7 +6634,9 @@ export const createPost = async (v: any) => {
         };
   return createYearRow(
     postTasks,
-    await scopedContactValues(await scopedLocationValues(valuesWithLogbook))
+    await scopedTaskHelperValues(
+      await scopedContactValues(await scopedLocationValues(valuesWithLogbook))
+    )
   );
 };
 export const updatePost = async (id: number, v: any) => {
@@ -6599,6 +6650,7 @@ export const updatePost = async (id: number, v: any) => {
       dueText: postTasks.dueText,
       locationId: postTasks.locationId,
       contactId: postTasks.contactId,
+      helperId: postTasks.helperId,
       status: postTasks.status,
     })
     .from(postTasks)
@@ -6613,27 +6665,33 @@ export const updatePost = async (id: number, v: any) => {
   if (logEntry === undefined && !generatedActivityEntry) {
     return database
       .update(postTasks)
-      .set(await scopedContactValues(await scopedLocationValues(writableValues)))
+      .set(
+        await scopedTaskHelperValues(
+          await scopedContactValues(await scopedLocationValues(writableValues))
+        )
+      )
       .where(and(yearWhere(postTasks, id), eq(postTasks.deleted, false)));
   }
 
   return database
     .update(postTasks)
     .set(
-      await scopedContactValues(await scopedLocationValues({
-        ...writableValues,
-        note: prependPreparationLogbookEntry(
-          generatedActivityEntry,
-          prependPreparationLogbookEntry(
-            logEntry,
-            existing[0].note,
+      await scopedTaskHelperValues(
+        await scopedContactValues(await scopedLocationValues({
+          ...writableValues,
+          note: prependPreparationLogbookEntry(
+            generatedActivityEntry,
+            prependPreparationLogbookEntry(
+              logEntry,
+              existing[0].note,
+              new Date(),
+              logEntryAuthor
+            ),
             new Date(),
-            logEntryAuthor
+            activityAuthor ?? logEntryAuthor
           ),
-          new Date(),
-          activityAuthor ?? logEntryAuthor
-        ),
-      }))
+        }))
+      )
     )
     .where(and(yearWhere(postTasks, id), eq(postTasks.deleted, false)));
 };

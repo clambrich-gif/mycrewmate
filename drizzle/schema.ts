@@ -1138,6 +1138,10 @@ export const prepTasks = mysqlTable("prep_tasks", {
   contactId: int("contactId").references(() => contacts.id, {
     onDelete: "set null",
   }),
+  /** Optionaler Helfer, der den Ansprechpartner bei der Aufgabe unterstützt. */
+  helperId: int("helperId").references(() => helpers.id, {
+    onDelete: "set null",
+  }),
   status: mysqlEnum("status", ["offen", "inArbeit", "erledigt", "abgelehnt"])
     .default("offen")
     .notNull(),
@@ -1170,6 +1174,10 @@ export const postTasks = mysqlTable("post_tasks", {
     onDelete: "set null",
   }),
   contactId: int("contactId").references(() => contacts.id, {
+    onDelete: "set null",
+  }),
+  /** Optionaler Helfer, der den Ansprechpartner bei der Aufgabe unterstützt. */
+  helperId: int("helperId").references(() => helpers.id, {
     onDelete: "set null",
   }),
   status: mysqlEnum("status", ["offen", "inArbeit", "erledigt"])

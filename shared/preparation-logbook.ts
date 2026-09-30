@@ -22,6 +22,7 @@ type TaskLogbookState = {
   dueText: string;
   locationId: number | null;
   contactId: number | null;
+  helperId?: number | null;
   status: string;
   statusWording?: string | null;
 };
@@ -30,6 +31,7 @@ type TaskLogbookPatch = Partial<TaskLogbookState>;
 
 export type TaskLogbookReferenceLabels = {
   contacts?: ReadonlyMap<number, string>;
+  helpers?: ReadonlyMap<number, string>;
   locations?: ReadonlyMap<number, string>;
 };
 
@@ -107,6 +109,12 @@ export function describeTaskLogbookChanges(
   if (hasOwn(patch, "contactId") && patch.contactId !== previous.contactId) {
     changes.push(
       `Verantwortlicher geändert: ${referenceLabel(previous.contactId, labels.contacts, "nicht zugeordnet")} → ${referenceLabel(patch.contactId, labels.contacts, "nicht zugeordnet")}`
+    );
+  }
+
+  if (hasOwn(patch, "helperId") && patch.helperId !== previous.helperId) {
+    changes.push(
+      `Unterstützender Helfer geändert: ${referenceLabel(previous.helperId, labels.helpers, "nicht zugeordnet")} → ${referenceLabel(patch.helperId, labels.helpers, "nicht zugeordnet")}`
     );
   }
 

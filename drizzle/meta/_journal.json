@@ -554,6 +554,13 @@
       "when": 1790716734484,
       "tag": "0078_fixed_the_anarchist",
       "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "5",
+      "when": 1790746032131,
+      "tag": "0079_funny_juggernaut",
+      "breakpoints": true
     }
   ]
 }

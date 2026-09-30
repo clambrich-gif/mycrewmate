@@ -150,6 +150,8 @@ export const PROJECT_EXCEL_HEADERS: Record<string, string[]> = {
     "Ort / Standort",
     "Verantwortlich-ID",
     "Verantwortlich",
+    "Helfer-ID",
+    "Helfer",
     "Status",
     "Status-Wortlaut",
     "Bemerkung",
@@ -164,6 +166,8 @@ export const PROJECT_EXCEL_HEADERS: Record<string, string[]> = {
     "Ort / Standort",
     "Verantwortlich-ID",
     "Verantwortlich",
+    "Helfer-ID",
+    "Helfer",
     "Status",
     "Bemerkung",
     "Reihenfolge",
@@ -386,6 +390,8 @@ type TaskRow = {
   locationName: string;
   contactSourceId: number | null;
   contactName: string;
+  helperSourceId: number | null;
+  helperName: string;
   status: "offen" | "inArbeit" | "erledigt";
   note: string;
   sortOrder: number;
@@ -399,6 +405,8 @@ type PrepRow = {
   locationName: string;
   contactSourceId: number | null;
   contactName: string;
+  helperSourceId: number | null;
+  helperName: string;
   status: "offen" | "inArbeit" | "erledigt" | "abgelehnt";
   statusWording: "aufgabe" | "genehmigung";
   note: string;
@@ -675,6 +683,8 @@ export function migrateLegacyPreparationAreas(document: BackupDocument) {
       locationName: "",
       contactSourceId: row.contactSourceId,
       contactName: row.contactName,
+      helperSourceId: null,
+      helperName: "",
       status: row.status,
       statusWording: "aufgabe" as const,
       note: row.channel
@@ -691,6 +701,8 @@ export function migrateLegacyPreparationAreas(document: BackupDocument) {
       locationName: "",
       contactSourceId: row.contactSourceId,
       contactName: row.contactName,
+      helperSourceId: null,
+      helperName: "",
       status: approvalStatusToPreparationStatus(row.status),
       statusWording: "genehmigung" as const,
       note: row.note,
@@ -1753,6 +1765,16 @@ export function parseBackupWorkbook(
           200,
           `${sheet} Zeile ${index + 2}: Verantwortlich`
         ),
+        helperSourceId: helperRef(
+          row["Helfer-ID"],
+          row.Helfer,
+          `${sheet} Zeile ${index + 2}: Helfer`
+        ),
+        helperName: text(
+          row.Helfer,
+          200,
+          `${sheet} Zeile ${index + 2}: Helfer`
+        ),
         status: enumValue(
           row.Status,
           ["offen", "inArbeit", "erledigt"] as const,
@@ -1811,6 +1833,16 @@ export function parseBackupWorkbook(
         row.Verantwortlich,
         200,
         `VORBEREITUNG Zeile ${index + 2}: Verantwortlich`
+      ),
+      helperSourceId: helperRef(
+        row["Helfer-ID"],
+        row.Helfer,
+        `VORBEREITUNG Zeile ${index + 2}: Helfer`
+      ),
+      helperName: text(
+        row.Helfer,
+        200,
+        `VORBEREITUNG Zeile ${index + 2}: Helfer`
       ),
       status: enumValue(
         row.Status,
@@ -2336,6 +2368,8 @@ function comparableCurrent(snapshot: CurrentSnapshot) {
       sourceId: row.id,
       contactSourceId: row.contactId,
       contactName: row.contactId ? (contactName.get(row.contactId) ?? "") : "",
+      helperSourceId: row.helperId ?? null,
+      helperName: row.helperId ? (helperName.get(row.helperId) ?? "") : "",
       locationSourceId: row.locationId ?? null,
       locationName: row.locationId ? (locationName.get(row.locationId) ?? "") : "",
       ...clean(row, [
@@ -2352,6 +2386,8 @@ function comparableCurrent(snapshot: CurrentSnapshot) {
       sourceId: row.id,
       contactSourceId: row.contactId,
       contactName: row.contactId ? (contactName.get(row.contactId) ?? "") : "",
+      helperSourceId: row.helperId ?? null,
+      helperName: row.helperId ? (helperName.get(row.helperId) ?? "") : "",
       locationSourceId: row.locationId ?? null,
       locationName: row.locationId ? (locationName.get(row.locationId) ?? "") : "",
       ...clean(row, ["category", "task", "dueText", "status", "note", "sortOrder"]),
@@ -3726,6 +3762,7 @@ export async function restoreProjectDocument(
           dueText: row.dueText,
           locationId: resolveLocation(row.locationSourceId, row.locationName),
           contactId: resolveContact(row.contactSourceId, row.contactName),
+          helperId: resolveHelper(row.helperSourceId, row.helperName),
           status: row.status,
           statusWording: row.statusWording ?? "aufgabe",
           note: row.note || null,
@@ -3745,6 +3782,7 @@ export async function restoreProjectDocument(
           dueText: row.dueText,
           locationId: resolveLocation(row.locationSourceId, row.locationName),
           contactId: resolveContact(row.contactSourceId, row.contactName),
+          helperId: resolveHelper(row.helperSourceId, row.helperName),
           status: row.status,
           note: row.note || null,
           sortOrder: row.sortOrder,
@@ -4216,6 +4254,8 @@ export async function exportProjectExcel(): Promise<{
         : {}),
       "Verantwortlich-ID": row.contactSourceId ?? "",
       Verantwortlich: row.contactName,
+      "Helfer-ID": row.helperSourceId ?? "",
+      Helfer: row.helperName ?? "",
       Status: row.status,
       ...(isPrep ? { "Status-Wortlaut": row.statusWording ?? "aufgabe" } : {}),
       Bemerkung: row.note,
