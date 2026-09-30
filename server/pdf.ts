@@ -329,8 +329,8 @@ function drawCompactHelperHeader(
   usesMyCrewMateWordmark = false
 ) {
   const top = helperPdfMargin;
-  const logoWidth = usesMyCrewMateWordmark ? 78 : 42;
-  const logoHeight = usesMyCrewMateWordmark ? 28 : 42;
+  const logoWidth = usesMyCrewMateWordmark ? 138 : 42;
+  const logoHeight = usesMyCrewMateWordmark ? 42 : 42;
   const textWidth = logoBuffer
     ? helperPdfContentWidth - logoWidth - 14
     : helperPdfContentWidth;
@@ -369,9 +369,21 @@ function drawCompactHelperHeader(
       width: textWidth,
       lineBreak: false,
     });
-  // Die Kopfzeilenhöhe bleibt unverändert, auch wenn die breite Wortmarke
-  // für Event Pass und Light besser lesbar dargestellt wird.
-  const lineY = Math.max(doc.y + 6, top + 50);
+  if (usesMyCrewMateWordmark && logoBuffer) {
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(6.7)
+      .fillColor(helperPdfDesign.accent)
+      .text(
+        "Vereins- & Eventplanung",
+        doc.page.width - helperPdfMargin - logoWidth,
+        top + 45,
+        { width: logoWidth, align: "center", lineBreak: false }
+      );
+  }
+  // Event Pass und Light machen die verbindliche MyCrewMate-Wortmarke bewusst
+  // als sichtbare Absenderzeile lesbar, ohne den eigentlichen Dokumenttitel zu verdrängen.
+  const lineY = Math.max(doc.y + 6, top + (usesMyCrewMateWordmark ? 61 : 50));
   doc
     .moveTo(helperPdfMargin, lineY)
     .lineTo(doc.page.width - helperPdfMargin, lineY)
@@ -649,9 +661,9 @@ function drawDocumentHeader(
   usesMyCrewMateWordmark = false
 ) {
   const headerTop = doc.y;
-  const logoWidth = usesMyCrewMateWordmark ? 96 : 64;
-  const logoHeight = usesMyCrewMateWordmark ? 32 : 64;
-  const logoTextReserve = usesMyCrewMateWordmark ? 116 : 84;
+  const logoWidth = usesMyCrewMateWordmark ? 172 : 64;
+  const logoHeight = usesMyCrewMateWordmark ? 52 : 64;
+  const logoTextReserve = usesMyCrewMateWordmark ? 192 : 84;
   if (logoBuffer) {
     try {
       doc.image(
@@ -671,7 +683,9 @@ function drawDocumentHeader(
     .font("Helvetica-Bold")
     .fontSize(21)
     .fillColor(colors.ink)
-    .text(title, { width: logoBuffer ? contentWidth - logoTextReserve : contentWidth });
+    .text(title, {
+      width: logoBuffer ? contentWidth - logoTextReserve : contentWidth,
+    });
   doc.moveDown(0.55);
   doc
     .font("Helvetica-Bold")
@@ -688,7 +702,20 @@ function drawDocumentHeader(
     .text(subtitle ?? `Stand: ${formatDate()} (aus Helferplanung)`, {
       width: logoBuffer ? contentWidth - logoTextReserve : contentWidth,
     });
-  if (logoBuffer) doc.y = Math.max(doc.y, headerTop + 68);
+  if (usesMyCrewMateWordmark && logoBuffer) {
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(8)
+      .fillColor(colors.accent)
+      .text(
+        "Vereins- & Eventplanung",
+        doc.page.width - doc.page.margins.right - logoWidth,
+        headerTop + 55,
+        { width: logoWidth, align: "center", lineBreak: false }
+      );
+  }
+  if (logoBuffer)
+    doc.y = Math.max(doc.y, headerTop + (usesMyCrewMateWordmark ? 78 : 68));
   doc.moveDown(0.7);
   doc
     .strokeColor(colors.line)

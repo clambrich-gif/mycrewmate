@@ -23,7 +23,10 @@ type ActiveGreeting = { kind: GreetingKind; clipId: KlemmiAudioId };
 
 const INACTIVITY_DELAY_MS = 120_000;
 const MAX_IDLE_HINTS_PER_SESSION = 2;
-const GREETING_VISIBLE_MS = 5_000;
+/** Sichtbarer Fallback bei stummgeschalteter oder vom Browser blockierter Audioausgabe. */
+const MIN_GREETING_VISIBLE_MS = 4_500;
+/** Die kurze Ausfahrbewegung beginnt erst nach der vollständigen Ansage. */
+const GREETING_EXIT_DURATION_MS = 360;
 
 function chooseClip(
   ids: readonly string[],
@@ -54,9 +57,15 @@ export function KlemmiLoginGreeting({
   enabled: boolean;
   muted?: boolean;
 }) {
-  const { isSpeaking, speak, cancel } = useKlemmiVoice({ muted });
+  const {
+    muted: voiceMuted,
+    isSpeaking,
+    speak,
+    cancel,
+  } = useKlemmiVoice({ muted });
   const claimDailyGreeting = trpc.auth.claimDailyKlemmiGreeting.useMutation();
   const [active, setActive] = useState<ActiveGreeting | null>(null);
+  const [isLeaving, setIsLeaving] = useState(false);
   const claimAttemptedRef = useRef(false);
   const lastClipRef = useRef<KlemmiAudioId | null>(null);
   const idleHintsRef = useRef(0);
@@ -155,16 +164,40 @@ export function KlemmiLoginGreeting({
 
   useEffect(() => {
     if (!active) return;
+    setIsLeaving(false);
+    let disposed = false;
+    let leaveTimer: number | null = null;
+    let closeTimer: number | null = null;
     const speakTimer = window.setTimeout(() => {
-      void speak(KLEMMI_AUDIO_SCRIPTS[active.clipId], active.clipId);
+      const shownAt = Date.now();
+      void speak(KLEMMI_AUDIO_SCRIPTS[active.clipId], active.clipId).then(
+        completedWithAudio => {
+          if (disposed) return;
+          // Der Markenclip entscheidet über die sichtbare Dauer. Nur ohne Ton
+          // bleibt Klemmi kurz als visueller Hinweis stehen.
+          const fallbackDelay = completedWithAudio
+            ? 0
+            : voiceMuted
+              ? Math.max(0, MIN_GREETING_VISIBLE_MS - (Date.now() - shownAt))
+              : MIN_GREETING_VISIBLE_MS;
+          leaveTimer = window.setTimeout(() => {
+            if (disposed) return;
+            setIsLeaving(true);
+            closeTimer = window.setTimeout(() => {
+              if (!disposed) setActive(null);
+            }, GREETING_EXIT_DURATION_MS);
+          }, fallbackDelay);
+        }
+      );
     }, 180);
-    const dismissTimer = window.setTimeout(dismiss, GREETING_VISIBLE_MS);
     return () => {
+      disposed = true;
       window.clearTimeout(speakTimer);
-      window.clearTimeout(dismissTimer);
+      if (leaveTimer !== null) window.clearTimeout(leaveTimer);
+      if (closeTimer !== null) window.clearTimeout(closeTimer);
       cancel();
     };
-  }, [active, cancel, dismiss, speak]);
+  }, [active, cancel, speak, voiceMuted]);
 
   if (!active || typeof document === "undefined") return null;
   const caption = KLEMMI_AUDIO_SCRIPTS[active.clipId];
@@ -176,7 +209,7 @@ export function KlemmiLoginGreeting({
   return createPortal(
     <button
       type="button"
-      className="klemmi-login-greeting pointer-events-auto fixed bottom-[max(0.8rem,env(safe-area-inset-bottom))] right-3 z-[75] w-[min(22rem,calc(100vw-1.5rem))] cursor-pointer border-0 bg-transparent p-0 text-left focus:outline-none sm:bottom-5 sm:right-5"
+      className={`klemmi-login-greeting ${isLeaving ? "is-leaving" : ""} pointer-events-auto fixed bottom-[max(0.8rem,env(safe-area-inset-bottom))] right-3 z-[75] w-[min(22rem,calc(100vw-1.5rem))] cursor-pointer border-0 bg-transparent p-0 text-left focus:outline-none sm:bottom-5 sm:right-5`}
       aria-label={label}
       data-klemmi-login-greeting={active.kind}
       onClick={dismiss}

@@ -49,8 +49,13 @@ describe("Produktgrenzen: Marke, WhatsApp und Event-Sicherung", () => {
     "custom_branding"`);
     expect(pdf).toContain("loadMyCrewMateWordmarkBuffer()");
     expect(pdf).toContain("usesMyCrewMateWordmark: !allowsCustomBranding");
-    expect(pdf).toContain("const logoWidth = usesMyCrewMateWordmark ? 96 : 64");
-    expect(pdf).toContain("const logoWidth = usesMyCrewMateWordmark ? 78 : 42");
+    expect(pdf).toContain(
+      "const logoWidth = usesMyCrewMateWordmark ? 172 : 64"
+    );
+    expect(pdf).toContain(
+      "const logoWidth = usesMyCrewMateWordmark ? 138 : 42"
+    );
+    expect(pdf).toContain('"Vereins- & Eventplanung"');
   });
 
   it("zeigt auf der Oberfläche Sperren, ohne den direkten WhatsApp-Kontakt zu sperren", () => {

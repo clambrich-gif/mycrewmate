@@ -154,7 +154,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(greeting).toContain("claimDailyKlemmiGreeting");
     expect(greeting).toContain("INACTIVITY_DELAY_MS = 120_000");
     expect(greeting).toContain("MAX_IDLE_HINTS_PER_SESSION = 2");
-    expect(greeting).toContain("GREETING_VISIBLE_MS = 5_000");
+    expect(greeting).toContain("MIN_GREETING_VISIBLE_MS = 4_500");
+    expect(greeting).toContain("GREETING_EXIT_DURATION_MS = 360");
+    expect(greeting).toContain("completedWithAudio");
+    expect(greeting).toContain("setIsLeaving(true)");
     expect(greeting).toContain("data-klemmi-login-greeting");
     expect(greeting).toContain("onClick={dismiss}");
     expect(greeting).toContain("aDialogIsOpen");
@@ -175,6 +178,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain('triggerKlemmiReaction("error")');
     expect(styles).toContain("@keyframes klemmi-login-greeting-enter");
     expect(styles).toContain("@keyframes klemmi-login-greeting-exit");
+    expect(styles).toContain(".klemmi-login-greeting.is-leaving");
   });
 
   it("führt mit Klemmi über Einsatzplan, Aufgaben, Material und Standorte mit echten Speicheraktionen", () => {

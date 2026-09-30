@@ -425,6 +425,26 @@ describe("PDF-Erzeugung", () => {
     expect(pdf.toString("latin1")).toContain("/Subtype /Image");
   });
 
+  it("setzt die größere MyCrewMate-Wortmarke für Event Pass und Light fehlerfrei ein", async () => {
+    const wordmarkBuffer = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+      "base64"
+    );
+    const wordmarkData = {
+      ...data,
+      logoBuffer: wordmarkBuffer,
+      usesMyCrewMateWordmark: true,
+    };
+
+    const helperPdf = await renderHelperTaskPdf(wordmarkData, 1);
+    const planPdf = await renderPlanPdf(wordmarkData, { mode: "filled" });
+
+    expect(helperPdf.subarray(0, 5).toString()).toBe("%PDF-");
+    expect(planPdf.subarray(0, 5).toString()).toBe("%PDF-");
+    expect(helperPdf.toString("latin1")).toContain("/Subtype /Image");
+    expect(planPdf.toString("latin1")).toContain("/Subtype /Image");
+  });
+
   it("erzeugt einen gültigen konfigurierbaren Blanko-Plan", async () => {
     const pdf = await renderBlankPlanPdf(data);
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");

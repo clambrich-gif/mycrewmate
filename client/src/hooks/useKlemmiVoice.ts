@@ -35,7 +35,7 @@ export function useKlemmiVoice(options?: {
   const muted = Boolean(externalMuted) || globalMuted;
   const [isSpeaking, setIsSpeaking] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const releaseAudioRef = useRef<(() => void) | null>(null);
+  const releaseAudioRef = useRef<((completed: boolean) => void) | null>(null);
   const lastOpeningClipRef = useRef<KlemmiAudioId | null>(null);
 
   const cancel = useCallback(() => {
@@ -46,7 +46,7 @@ export function useKlemmiVoice(options?: {
       audioRef.current.currentTime = 0;
       audioRef.current = null;
     }
-    release?.();
+    release?.(false);
     setIsSpeaking(false);
   }, []);
 
@@ -57,38 +57,38 @@ export function useKlemmiVoice(options?: {
         typeof window === "undefined" ||
         typeof Audio === "undefined"
       ) {
-        return Promise.resolve();
+        return Promise.resolve(false);
       }
       cancel();
 
-      return new Promise<void>(resolve => {
+      return new Promise<boolean>(resolve => {
         const audio = new Audio(klemmiAudioUrl(clipId));
         audio.preload = "auto";
         audio.volume = 0.9;
         audioRef.current = audio;
         let released = false;
-        const release = () => {
+        const release = (completed: boolean) => {
           if (released) return;
           released = true;
           if (audioRef.current === audio) audioRef.current = null;
           if (releaseAudioRef.current === release)
             releaseAudioRef.current = null;
           setIsSpeaking(false);
-          resolve();
+          resolve(completed);
         };
         releaseAudioRef.current = release;
         audio.onplay = () => setIsSpeaking(true);
-        audio.onended = release;
+        audio.onended = () => release(true);
         audio.onerror = () => {
           console.warn(
             `[KlemmiVoice] Markenclip „${clipId}“ konnte nicht geladen werden.`
           );
-          release();
+          release(false);
         };
         void audio.play().catch(() => {
           // Browser dürfen Audio ohne direkte Nutzeraktion blockieren. In diesem
           // Fall bleibt Klemmi stumm, statt auf eine fremde Systemstimme zu wechseln.
-          release();
+          release(false);
         });
       });
     },
@@ -115,15 +115,15 @@ export function useKlemmiVoice(options?: {
    * wiederholt; bei Stummschaltung beginnt die eigentliche Anleitung sofort.
    */
   const playOpening = useCallback(async () => {
-    if (muted || !KLEMMI_OPENING_AUDIO_IDS.length) return;
+    if (muted || !KLEMMI_OPENING_AUDIO_IDS.length) return false;
     const clipId = chooseOpeningClip(lastOpeningClipRef.current);
     lastOpeningClipRef.current = clipId;
-    await playClip(clipId);
+    return playClip(clipId);
   }, [muted, playClip]);
 
   const speak = useCallback(
     (text: string, clipId?: KlemmiAudioId) => {
-      if (!text.trim() || !clipId) return Promise.resolve();
+      if (!text.trim() || !clipId) return Promise.resolve(false);
       return playClip(clipId);
     },
     [playClip]
