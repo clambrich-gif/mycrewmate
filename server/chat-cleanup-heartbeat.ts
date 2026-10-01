@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import {
+  cleanupExpiredProtectedHelperPdfShares,
   cleanupExpiredPublicDemoSourceSelections,
   cleanupExpiredTeamNoteTypings,
   cleanupExpiredTeamNotes,
@@ -27,10 +28,12 @@ export async function handleTeamNotesCleanupHeartbeat(
       expiredNotesDeleted,
       expiredTypingDeleted,
       expiredDemoSourceSelectionsDeleted,
+      expiredPdfSharesDeleted,
     ] = await Promise.all([
       cleanupExpiredTeamNotes(now),
       cleanupExpiredTeamNoteTypings(now),
       cleanupExpiredPublicDemoSourceSelections(now),
+      cleanupExpiredProtectedHelperPdfShares(now),
     ]);
 
     res.status(200).json({
@@ -38,6 +41,7 @@ export async function handleTeamNotesCleanupHeartbeat(
       expiredNotesDeleted,
       expiredTypingDeleted,
       expiredDemoSourceSelectionsDeleted,
+      expiredPdfSharesDeleted,
       ranAt: now.toISOString(),
     });
   } catch (error) {

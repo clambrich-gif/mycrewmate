@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import {
   and,
   asc,
@@ -42,6 +42,7 @@ import {
   platformLaunchSettings,
   platformTenantHandoffs,
   postTasks,
+  protectedHelperPdfShares,
   publicDemoSourceSelections,
   prepTasks,
   revokedSessions,
@@ -3039,6 +3040,101 @@ export async function ensureHelperPdfShareCode(helperId: number) {
   throw new Error("PDF-Freigabecode konnte nicht erstellt werden");
 }
 
+const PROTECTED_HELPER_PDF_SHARE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+function helperPdfShareHash(value: string) {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+function createProtectedHelperPdfShareSecret(bytes = 24) {
+  return randomBytes(bytes).toString("base64url");
+}
+
+/**
+ * Erstellt eine einmalige, sieben Tage gültige Freigabe. Linktoken und
+ * Zugangscode werden ausschließlich gehasht abgelegt, damit Datenbankinhalte
+ * keinen direkten Zugriff auf persönliche Helfer-PDFs ermöglichen.
+ */
+export async function createProtectedHelperPdfShare(input: {
+  helperId: number;
+  viewMode: "minimal" | "team";
+}) {
+  const database = (await getDb()) as DB;
+  const helper = await getHelper(input.helperId);
+  if (!helper) throw new Error("Helfer wurde nicht gefunden");
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const token = createProtectedHelperPdfShareSecret();
+    const accessCode = randomBytes(6).toString("hex").toUpperCase();
+    const expiresAt = new Date(Date.now() + PROTECTED_HELPER_PDF_SHARE_TTL_MS);
+    try {
+      await database.insert(protectedHelperPdfShares).values({
+        tokenHash: helperPdfShareHash(token),
+        accessCodeHash: helperPdfShareHash(accessCode),
+        helperId: helper.id,
+        viewMode: input.viewMode,
+        expiresAt,
+      });
+      return { token, accessCode, expiresAt };
+    } catch (error) {
+      if (attempt === 4) throw error;
+    }
+  }
+
+  throw new Error("Geschützte PDF-Freigabe konnte nicht erstellt werden");
+}
+
+/** Prüft Linktoken, Zugangscode und Ablauf vor dem Wechsel in den Event-Scope. */
+export async function findProtectedHelperPdfShare(input: {
+  token: string;
+  accessCode: string;
+}) {
+  const database = await getDb();
+  if (!database) return undefined;
+  const [row] = await database
+    .select({
+      share: protectedHelperPdfShares,
+      helper: helpers,
+      tenantId: events.tenantId,
+    })
+    .from(protectedHelperPdfShares)
+    .innerJoin(helpers, eq(helpers.id, protectedHelperPdfShares.helperId))
+    .innerJoin(
+      events,
+      and(eq(events.id, helpers.eventId), eq(events.year, helpers.year))
+    )
+    .where(
+      and(
+        eq(protectedHelperPdfShares.tokenHash, helperPdfShareHash(input.token)),
+        gt(protectedHelperPdfShares.expiresAt, new Date()),
+        isNull(protectedHelperPdfShares.revokedAt)
+      )
+    )
+    .limit(1);
+  if (!row) return undefined;
+  if (row.share.accessCodeHash !== helperPdfShareHash(input.accessCode.trim())) {
+    return undefined;
+  }
+  return {
+    helperId: row.helper.id,
+    eventId: row.helper.eventId,
+    year: row.helper.year,
+    tenantId: row.tenantId,
+    viewMode: row.share.viewMode,
+    expiresAt: row.share.expiresAt,
+  };
+}
+
+/** Löscht abgelaufene Freigaben mitsamt ihrer gehashten Zugangsdaten. */
+export async function cleanupExpiredProtectedHelperPdfShares(now = new Date()) {
+  const database = await getDb();
+  if (!database) return 0;
+  const result = await database
+    .delete(protectedHelperPdfShares)
+    .where(lt(protectedHelperPdfShares.expiresAt, now));
+  return Number((result as { affectedRows?: number }).affectedRows ?? 0);
+}
+
 export async function getEvent(id = event()) {
   const db = await getDb();
   if (!db) return undefined;
@@ -4073,6 +4169,7 @@ export async function createContact(v: {
   name: string;
   email?: string;
   phone?: string;
+  sharePhoneInHelperPlan?: boolean;
   note?: string;
   passwordHash?: string;
 }) {
@@ -4123,6 +4220,7 @@ export async function updateContact(
     name?: string;
     email?: string | null;
     phone?: string | null;
+    sharePhoneInHelperPlan?: boolean;
     note?: string | null;
     passwordHash?: string;
   }
@@ -4274,6 +4372,7 @@ export async function upsertContactByName(v: {
   name: string;
   email?: string | null;
   phone?: string | null;
+  sharePhoneInHelperPlan?: boolean;
   note?: string | null;
   passwordHash?: string;
 }) {
@@ -4284,6 +4383,9 @@ export async function upsertContactByName(v: {
     const updates = {
       ...(v.email ? { email: v.email.trim().toLocaleLowerCase("de-DE") } : {}),
       ...(v.phone ? { phone: v.phone } : {}),
+      ...(v.sharePhoneInHelperPlan !== undefined
+        ? { sharePhoneInHelperPlan: v.sharePhoneInHelperPlan }
+        : {}),
       ...(v.note ? { note: v.note } : {}),
       ...(v.passwordHash ? { passwordHash: v.passwordHash } : {}),
     };
@@ -4303,6 +4405,7 @@ export async function upsertContactByName(v: {
     name: v.name.trim().replace(/\s+/g, " "),
     email: v.email ?? undefined,
     phone: v.phone ?? undefined,
+    sharePhoneInHelperPlan: v.sharePhoneInHelperPlan,
     note: v.note ?? undefined,
     passwordHash: v.passwordHash,
   });

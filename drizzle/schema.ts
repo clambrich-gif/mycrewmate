@@ -561,6 +561,11 @@ export const contacts = mysqlTable(
     /** Persönliche Kontaktadresse; sie wird beim Anlegen eines Zugangs vorgeschlagen. */
     email: varchar("email", { length: 320 }),
     phone: varchar("phone", { length: 64 }),
+    /**
+     * Nur mit dieser freiwilligen Freigabe wird die Rufnummer in persönlichen
+     * Helfer-Einsatzübersichten angezeigt. Standardmäßig bleibt sie verborgen.
+     */
+    sharePhoneInHelperPlan: boolean("sharePhoneInHelperPlan").default(false).notNull(),
     note: text("note"),
     sortOrder: int("sortOrder").default(0).notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -657,6 +662,36 @@ export const helpers = mysqlTable(
 );
 export type Helper = typeof helpers.$inferSelect;
 export type InsertHelper = typeof helpers.$inferInsert;
+
+/**
+ * Kurzlebige, passwortgeschützte Freigaben für persönliche Helfer-PDFs.
+ * Weder Linktoken noch Zugangscode liegen im Klartext in der Datenbank.
+ */
+export const protectedHelperPdfShares = mysqlTable(
+  "protected_helper_pdf_shares",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    tokenHash: varchar("tokenHash", { length: 64 }).notNull(),
+    accessCodeHash: varchar("accessCodeHash", { length: 64 }).notNull(),
+    helperId: int("helperId").notNull(),
+    viewMode: mysqlEnum("viewMode", ["minimal", "team"]).notNull(),
+    expiresAt: timestamp("expiresAt").notNull(),
+    revokedAt: timestamp("revokedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    foreignKey({
+      name: "protected_helper_pdf_shares_helper_id_fk",
+      columns: [table.helperId],
+      foreignColumns: [helpers.id],
+    }).onDelete("cascade"),
+    uniqueIndex("protected_helper_pdf_shares_token_unique").on(table.tokenHash),
+    index("protected_helper_pdf_shares_expiry_idx").on(table.expiresAt),
+    index("protected_helper_pdf_shares_helper_idx").on(table.helperId, table.expiresAt),
+  ]
+);
+export type ProtectedHelperPdfShare =
+  typeof protectedHelperPdfShares.$inferSelect;
 
 /** Zentral gepflegte, veranstaltungsbezogene Einsatzorte. */
 export const locations = mysqlTable(

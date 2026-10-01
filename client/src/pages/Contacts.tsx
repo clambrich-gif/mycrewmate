@@ -5,6 +5,7 @@ import { PageTitle } from "@/components/PageTitle";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -30,6 +31,7 @@ export default function Contacts() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [sharePhoneInHelperPlan, setSharePhoneInHelperPlan] = useState(false);
   const [editTarget, setEditTarget] = useState<{
     id: number;
     name: string;
@@ -37,6 +39,8 @@ export default function Contacts() {
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editPhone, setEditPhone] = useState("");
+  const [editSharePhoneInHelperPlan, setEditSharePhoneInHelperPlan] =
+    useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{
     id: number;
     name: string;
@@ -96,6 +100,7 @@ export default function Contacts() {
       setName("");
       setEmail("");
       setPhone("");
+      setSharePhoneInHelperPlan(false);
       setKlemmiSuccessSignal(Date.now());
       toast.success("Ansprechpartner angelegt");
     },
@@ -128,6 +133,7 @@ export default function Contacts() {
       name: name.trim(),
       email: email.trim() || undefined,
       phone: phone.trim() || undefined,
+      sharePhoneInHelperPlan,
     });
   };
   const submitNewContact = (event: FormEvent<HTMLFormElement>) => {
@@ -141,6 +147,7 @@ export default function Contacts() {
       name: editName.trim(),
       email: editEmail.trim() || null,
       phone: editPhone.trim() || null,
+      sharePhoneInHelperPlan: editSharePhoneInHelperPlan,
     });
   };
 
@@ -229,6 +236,20 @@ export default function Contacts() {
                   className="h-11 border-slate-300 bg-white text-base shadow-sm placeholder:text-slate-600"
                 />
               </div>
+              <label className="flex max-w-xs items-start gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs leading-relaxed text-slate-700">
+                <Checkbox
+                  checked={sharePhoneInHelperPlan}
+                  onCheckedChange={checked =>
+                    setSharePhoneInHelperPlan(checked === true)
+                  }
+                  aria-label="Rufnummer in persönlichen Helfer-Einsatzplänen zeigen"
+                />
+                <span>
+                  <strong>Rufnummer weitergeben</strong>
+                  <br />
+                  Nur in persönlichen Einsatzplänen dieses Ansprechpartners anzeigen.
+                </span>
+              </label>
               <Button
                 type="submit"
                 data-klemmi-target="contacts-save"
@@ -290,6 +311,9 @@ export default function Contacts() {
                         setEditName(contact.name);
                         setEditEmail(contact.email ?? "");
                         setEditPhone(contact.phone ?? "");
+                        setEditSharePhoneInHelperPlan(
+                          Boolean(contact.sharePhoneInHelperPlan)
+                        );
                       }}
                     >
                       <Pencil className="h-4 w-4" />
@@ -390,6 +414,20 @@ export default function Contacts() {
                 placeholder="z. B. 0170 1234567"
               />
             </div>
+            <label className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm leading-relaxed text-slate-700">
+              <Checkbox
+                checked={editSharePhoneInHelperPlan}
+                onCheckedChange={checked =>
+                  setEditSharePhoneInHelperPlan(checked === true)
+                }
+                aria-label="Rufnummer in persönlichen Helfer-Einsatzplänen zeigen"
+              />
+              <span>
+                <strong>Rufnummer in persönlichen Helfer-Einsatzplänen zeigen</strong>
+                <br />
+                Freiwillige Freigabe: Die Telefonnummer erscheint nur bei den Personen, die diesem Ansprechpartner zugeordnet sind.
+              </span>
+            </label>
             <DialogFooter className="flex flex-row flex-nowrap items-center justify-between gap-3 sm:space-x-0">
               <Button
                 type="button"

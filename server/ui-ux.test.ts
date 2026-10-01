@@ -2331,7 +2331,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(pdfExport).toContain("WhatsApp-Vorlagen für Helfer");
     expect(pdfExport).toContain("{PDF_LINK}");
     expect(helpers).not.toContain("bg-emerald-500 text-white hover:bg-emerald-600");
-    expect(helpers).toContain("trpc.pdf.publicShare.useMutation");
+    expect(helpers).toContain("trpc.pdf.createWhatsAppShare.useMutation");
     expect(helpers).toContain("Aufgabenplan per WhatsApp an Helfer senden");
     expect(helpers).toContain("share.url");
     expect(helpers).not.toContain("window.location.origin");

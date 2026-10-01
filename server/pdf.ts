@@ -763,11 +763,13 @@ export function buildHelperSummaryEntries(input: {
       label: input.contactLabel,
       value: input.contactName?.trim() || "nicht zugeordnet",
     },
-    {
-      label: "Rufnummer",
-      value: input.contactPhone?.trim() || "nicht hinterlegt",
-    }
   );
+  if (input.contactPhone?.trim()) {
+    entries.push({
+      label: "Rufnummer",
+      value: input.contactPhone.trim(),
+    });
+  }
   if (input.footerText?.trim())
     entries.push({ label: "Hinweis", value: input.footerText.trim() });
   return entries;
@@ -1359,7 +1361,7 @@ export function renderHelperTaskPdf(data: PlanningData, helperId: number) {
       cakeLines: helperCakeLines,
       contactLabel: data.settings.contactLabel,
       contactName: contact?.name,
-      contactPhone: contact?.phone,
+      contactPhone: contact?.sharePhoneInHelperPlan ? contact?.phone : null,
       footerText: data.settings.footerText,
     });
     const summaryHeight = compactSummaryHeight(doc, summaryEntries);
@@ -1411,7 +1413,8 @@ export function selectPublicHelperTaskEntries(
 function drawPublicHelperHeader(
   doc: PDFKit.PDFDocument,
   settings: AppSettings,
-  helperName: string
+  helperName: string,
+  contact?: Contact
 ) {
   doc
     .font("Helvetica-Bold")
@@ -1436,9 +1439,12 @@ function drawPublicHelperHeader(
     .font("Helvetica")
     .fontSize(8)
     .fillColor(helperPdfDesign.muted)
-    .text("Nur eigene Einsätze · Stand: " + formatDate(), {
+    .text(
+      `Eigene Einsätze · ${contact?.name?.trim() ? `${settings.contactLabel}: ${contact.name.trim()}` : "bei Fragen an die Einsatzleitung"} · Stand: ${formatDate()}`,
+      {
       width: helperPdfContentWidth,
-    });
+      }
+    );
   const lineY = doc.y + 8;
   doc
     .moveTo(helperPdfMargin, lineY)
@@ -1526,10 +1532,11 @@ export function renderPublicHelperTaskPdf(
 ) {
   const helper = data.helpers.find(item => item.id === helperId);
   if (!helper) throw new Error("Helfer wurde nicht gefunden");
+  const contact = data.contacts.find(item => item.id === helper.contactId);
   const entries = selectPublicHelperTaskEntries(data, helperId);
 
   return collectPdf(doc => {
-    drawPublicHelperHeader(doc, data.settings, helper.name);
+    drawPublicHelperHeader(doc, data.settings, helper.name, contact);
     if (!entries.length) {
       doc
         .font("Helvetica-Oblique")
@@ -1551,7 +1558,9 @@ export function renderPublicHelperTaskPdf(
       .fontSize(9)
       .fillColor(helperPdfDesign.muted)
       .text(
-        "Bei Rückfragen wenden Sie sich bitte an die Einsatzleitung.",
+        contact?.sharePhoneInHelperPlan && contact.phone
+          ? `Bei Rückfragen: ${contact.name} · ${contact.phone}`
+          : "Bei Rückfragen wenden Sie sich bitte an die Einsatzleitung.",
         helperPdfMargin,
         doc.y + 13,
         { width: helperPdfContentWidth }
@@ -2571,9 +2580,19 @@ export async function createHelperTaskPdf(helperId: number) {
   return renderHelperTaskPdf(await loadPlanningData(), helperId);
 }
 
-/** Erzeugt ausschließlich die datensparsame Ansicht für externe Freigabelinks. */
-export async function createPublicHelperTaskPdf(helperId: number) {
-  return renderPublicHelperTaskPdf(await loadPlanningData(), helperId);
+/**
+ * Erzeugt eine persönliche Ansicht für externe Freigabelinks. Die Teamansicht
+ * wird ausschließlich nach erfolgreicher Codeprüfung durch den geschützten
+ * Sieben-Tage-Abruf verwendet.
+ */
+export async function createPublicHelperTaskPdf(
+  helperId: number,
+  viewMode: "minimal" | "team" = "minimal"
+) {
+  const data = await loadPlanningData();
+  return viewMode === "team"
+    ? renderHelperTaskPdf(data, helperId)
+    : renderPublicHelperTaskPdf(data, helperId);
 }
 
 export async function createBlankPlanPdf() {

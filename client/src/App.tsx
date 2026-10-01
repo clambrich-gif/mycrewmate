@@ -90,6 +90,9 @@ const OfferDemo = lazy(() => import("@/pages/OfferDemo"));
 const ClubDemoLanding = lazy(() => import("@/pages/ClubDemoLanding"));
 const PublicLegalPage = lazy(() => import("@/pages/PublicLegal"));
 const AppPrivacy = lazy(() => import("@/pages/AppPrivacy"));
+const ProtectedHelperPdfShare = lazy(
+  () => import("@/pages/ProtectedHelperPdfShare")
+);
 const MasterAdminPortal = lazy(() => import("@/pages/MasterAdminPortal"));
 const GameRoot = lazy(() => import("@/pages/GameRoot"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
@@ -222,6 +225,11 @@ function Router() {
       <Route path="/datenschutz">
         <Suspense fallback={<RouteLoading />}>
           <AppPrivacy />
+        </Suspense>
+      </Route>
+      <Route path="/freigabe/:token">
+        <Suspense fallback={<RouteLoading />}>
+          <ProtectedHelperPdfShare />
         </Suspense>
       </Route>
       <Route>

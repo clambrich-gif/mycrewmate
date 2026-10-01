@@ -84,6 +84,7 @@ import {
   createPostTaskOverviewPdf,
   createPrepTaskOverviewPdf,
   createPlanningTeamAccessSheetsPdf,
+  createPublicHelperTaskPdf,
   DEFAULT_PDF_SETTINGS,
 } from "./pdf";
 import { publicAppUrl } from "./public-app-url";
@@ -3576,6 +3577,7 @@ export const appRouter = router({
           name: z.string().trim().min(1),
           email: z.string().email("Gültige E-Mail-Adresse").max(320).optional(),
           phone: z.string().trim().max(64).optional(),
+          sharePhoneInHelperPlan: z.boolean().optional(),
           note: z.string().optional(),
           password: passwordInput.optional(),
         })
@@ -3585,6 +3587,7 @@ export const appRouter = router({
           name: input.name,
           email: input.email,
           phone: input.phone,
+          sharePhoneInHelperPlan: input.sharePhoneInHelperPlan,
           note: input.note,
           ...(input.password
             ? { passwordHash: await hashPassword(input.password) }
@@ -3597,6 +3600,7 @@ export const appRouter = router({
           name: z.string().trim().min(1).max(160),
           email: z.string().email("Gültige E-Mail-Adresse").max(320).optional(),
           phone: z.string().trim().max(64).optional(),
+          sharePhoneInHelperPlan: z.boolean().optional(),
           note: z.string().optional(),
         })
       )
@@ -3605,6 +3609,7 @@ export const appRouter = router({
           name: input.name,
           email: input.email,
           phone: input.phone,
+          sharePhoneInHelperPlan: input.sharePhoneInHelperPlan,
           note: input.note,
         });
         const contact = (await db.listContacts()).find(
@@ -3629,6 +3634,7 @@ export const appRouter = router({
           name: z.string().min(1),
           email: z.string().email("Gültige E-Mail-Adresse").max(320).nullable().optional(),
           phone: z.string().max(64).nullable().optional(),
+          sharePhoneInHelperPlan: z.boolean().optional(),
           note: z.string().nullable().optional(),
           password: passwordInput.optional(),
         })
@@ -4376,6 +4382,69 @@ export const appRouter = router({
           path,
           url: publicAppUrl(path),
           expiresAt: Date.now() + 90 * 24 * 60 * 60 * 1000,
+        };
+      }),
+    createWhatsAppShare: productCapabilityProcedure("personal_accesses")
+      .input(
+        z.object({
+          helperId: z.number().int().positive(),
+          viewMode: z.enum(["minimal", "team"]),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const helper = await db.getHelper(input.helperId);
+        if (!helper) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message:
+              "Der Helfer gehört nicht zur aktuell ausgewählten Veranstaltung",
+          });
+        }
+        const share = await db.createProtectedHelperPdfShare({
+          helperId: helper.id,
+          viewMode: input.viewMode,
+        });
+        const path = `/freigabe/${share.token}`;
+        return {
+          path,
+          url: publicAppUrl(path),
+          accessCode: share.accessCode,
+          expiresAt: share.expiresAt.getTime(),
+          viewMode: input.viewMode,
+        };
+      }),
+    openWhatsAppShare: publicProcedure
+      .input(
+        z.object({
+          token: z.string().regex(/^[A-Za-z0-9_-]{24,80}$/),
+          accessCode: z.string().trim().regex(/^[A-Za-z0-9]{12}$/),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const share = await db.findProtectedHelperPdfShare(input);
+        if (!share) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message:
+              "Dieser Einsatzplan ist nicht verfügbar oder der Zugangscode ist falsch.",
+          });
+        }
+        const pdf = await withPlanningScope(
+          {
+            tenantId: share.tenantId,
+            year: share.year,
+            eventId: share.eventId,
+          },
+          () => createPublicHelperTaskPdf(share.helperId, share.viewMode)
+        );
+        return {
+          filename:
+            share.viewMode === "team"
+              ? "Persoenlicher_Einsatzplan_mit_Team.pdf"
+              : "Persoenlicher_Einsatzplan.pdf",
+          mimeType: "application/pdf",
+          base64: pdf.toString("base64"),
+          expiresAt: share.expiresAt.getTime(),
         };
       }),
     allHelpers: pdfCapabilityProcedure("helpers")

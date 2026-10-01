@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const authMocks = vi.hoisted(() => ({ authenticateRequest: vi.fn() }));
 const cleanupMocks = vi.hoisted(() => ({
+  cleanupExpiredProtectedHelperPdfShares: vi.fn(),
   cleanupExpiredPublicDemoSourceSelections: vi.fn(),
   cleanupExpiredTeamNotes: vi.fn(),
   cleanupExpiredTeamNoteTypings: vi.fn(),
@@ -34,6 +35,7 @@ describe("Teamnotizen-Cleanup-Heartbeat", () => {
     cleanupMocks.cleanupExpiredTeamNotes.mockResolvedValue(4);
     cleanupMocks.cleanupExpiredTeamNoteTypings.mockResolvedValue(2);
     cleanupMocks.cleanupExpiredPublicDemoSourceSelections.mockResolvedValue(3);
+    cleanupMocks.cleanupExpiredProtectedHelperPdfShares.mockResolvedValue(1);
     const res = response();
 
     await handleTeamNotesCleanupHeartbeat({} as any, res as any);
@@ -43,6 +45,9 @@ describe("Teamnotizen-Cleanup-Heartbeat", () => {
     expect(
       cleanupMocks.cleanupExpiredPublicDemoSourceSelections
     ).toHaveBeenCalledOnce();
+    expect(
+      cleanupMocks.cleanupExpiredProtectedHelperPdfShares
+    ).toHaveBeenCalledOnce();
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -50,6 +55,7 @@ describe("Teamnotizen-Cleanup-Heartbeat", () => {
         expiredNotesDeleted: 4,
         expiredTypingDeleted: 2,
         expiredDemoSourceSelectionsDeleted: 3,
+        expiredPdfSharesDeleted: 1,
       })
     );
   });

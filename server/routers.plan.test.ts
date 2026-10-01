@@ -62,6 +62,8 @@ const dbMocks = vi.hoisted(() => ({
   getContact: vi.fn(),
   getHelper: vi.fn(),
   ensureHelperPdfShareCode: vi.fn(),
+  createProtectedHelperPdfShare: vi.fn(),
+  findProtectedHelperPdfShare: vi.fn(),
   listShiftAreaContacts: vi.fn(),
   listLocations: vi.fn(),
   setShiftAreaContact: vi.fn(),
@@ -979,6 +981,31 @@ describe("Planungs-API", () => {
     await expect(
       appRouter.createCaller(ctx).pdf.publicShare({ helperId: 999_999 })
     ).rejects.toThrow("gehört nicht zur aktuell ausgewählten Veranstaltung");
+  });
+
+  it("erstellt geschützte WhatsApp-Freigaben mit sieben Tagen Gültigkeit und Zugangscode", async () => {
+    dbMocks.getHelper.mockResolvedValue(helper);
+    dbMocks.createProtectedHelperPdfShare.mockResolvedValue({
+      token: "sicheres-token-fuer-whatsapp-freigabe",
+      accessCode: "A1B2C3D4E5F6",
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    });
+
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.pdf.createWhatsAppShare({
+      helperId: helper.id,
+      viewMode: "team",
+    });
+
+    expect(result.url).toBe(
+      "https://app.mycrewmate.de/freigabe/sicheres-token-fuer-whatsapp-freigabe"
+    );
+    expect(result.accessCode).toBe("A1B2C3D4E5F6");
+    expect(result.viewMode).toBe("team");
+    expect(dbMocks.createProtectedHelperPdfShare).toHaveBeenCalledWith({
+      helperId: helper.id,
+      viewMode: "team",
+    });
   });
 
   it("weist Bildinhalte mit unpassender Dateisignatur ab", async () => {

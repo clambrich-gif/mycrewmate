@@ -379,6 +379,15 @@ describe("PDF-Erzeugung", () => {
       "Ansprechpartner",
       "Rufnummer",
     ]);
+    expect(
+      buildHelperSummaryEntries({
+        taskCount: 1,
+        daySummary: "Samstag: Einlass",
+        contactLabel: "Ansprechpartner",
+        contactName: "Martin Reis",
+        contactPhone: null,
+      }).map(entry => entry.label)
+    ).toEqual(["Einteilung", "Ansprechpartner"]);
   });
 
   it("listet Kuchenspenden eines Helfers bedingt und mit Abgabeinformationen", async () => {

@@ -865,6 +865,9 @@ export default function Helpers() {
   const [selectedWhatsAppTemplateKind, setSelectedWhatsAppTemplateKind] = useState<
     "general" | "schedule"
   >("general");
+  const [selectedWhatsAppShareView, setSelectedWhatsAppShareView] = useState<
+    "minimal" | "team"
+  >("minimal");
   const [isPreparingWhatsApp, setIsPreparingWhatsApp] = useState(false);
   const eventDurationLabel = useMemo(
     () =>
@@ -1088,7 +1091,7 @@ export default function Helpers() {
       toast.error(error.message);
     },
   });
-  const requestHelperPdfShare = trpc.pdf.publicShare.useMutation();
+  const createWhatsAppPdfShare = trpc.pdf.createWhatsAppShare.useMutation();
 
   const sendWhatsAppMessage = async (templateKind: "general" | "schedule") => {
     if (!whatsAppTargetHelper || isPreparingWhatsApp) return;
@@ -1121,14 +1124,21 @@ export default function Helpers() {
         return;
       }
 
-      const share = await requestHelperPdfShare.mutateAsync({
+      const share = await createWhatsAppPdfShare.mutateAsync({
         helperId: whatsAppTargetHelper.id,
+        viewMode: selectedWhatsAppShareView,
       });
-      const message = renderWhatsAppMessage(settings.whatsAppMessageTemplate, {
+      const baseMessage = renderWhatsAppMessage(settings.whatsAppMessageTemplate, {
         eventName,
         eventDuration: eventDurationLabel,
         pdfLink: share.url,
       });
+      const expiresAt = new Date(share.expiresAt).toLocaleDateString("de-DE", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+      const message = `${baseMessage}\n\n🔐 Geschützter Abruf (gültig bis ${expiresAt})\nZugangscode: ${share.accessCode}\nBitte Link und Zugangscode nicht weiterleiten.`;
       window.location.assign(
         buildWhatsAppShareUrl(message, whatsAppTargetHelper.phone)
       );
@@ -1151,6 +1161,7 @@ export default function Helpers() {
   }) => {
     setWhatsAppTargetHelper(helper);
     setSelectedWhatsAppTemplateKind("general");
+    setSelectedWhatsAppShareView("minimal");
   };
 
   const assignedHelperIds = useMemo(
@@ -3276,6 +3287,52 @@ export default function Helpers() {
             </button>
           </div>
 
+          {selectedWhatsAppTemplateKind === "schedule" &&
+            allowsPersonalPdfShare && (
+              <div className="space-y-2 rounded-xl border border-blue-200 bg-blue-50/60 p-3">
+                <div>
+                  <p className="text-sm font-semibold text-blue-950">
+                    Inhalt der geschützten Einsatzübersicht
+                  </p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-blue-900/80">
+                    Beide Varianten werden nur sieben Tage lang mit einem separaten Zugangscode freigegeben.
+                  </p>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedWhatsAppShareView("minimal")}
+                    className={cn(
+                      "rounded-lg border p-3 text-left text-xs transition-colors",
+                      selectedWhatsAppShareView === "minimal"
+                        ? "border-blue-500 bg-white ring-2 ring-blue-500/15"
+                        : "border-blue-100 bg-white/70 hover:border-blue-300"
+                    )}
+                  >
+                    <strong className="block text-sm text-slate-950">Basisansicht</strong>
+                    <span className="mt-1 block leading-relaxed text-slate-600">
+                      Eigene Zeiten, Aufgaben, Ort und zugeordneter Ansprechpartner. Die Rufnummer erscheint nur bei dessen freiwilliger Freigabe.
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedWhatsAppShareView("team")}
+                    className={cn(
+                      "rounded-lg border p-3 text-left text-xs transition-colors",
+                      selectedWhatsAppShareView === "team"
+                        ? "border-blue-500 bg-white ring-2 ring-blue-500/15"
+                        : "border-blue-100 bg-white/70 hover:border-blue-300"
+                    )}
+                  >
+                    <strong className="block text-sm text-slate-950">Ansicht mit Mithelfenden</strong>
+                    <span className="mt-1 block leading-relaxed text-slate-600">
+                      Zusätzlich Namen der Mithelfenden, aufgabenrelevante Hinweise und eigene Spendenangaben. Nur verwenden, wenn diese Ansicht für die Schicht benötigt wird.
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
+
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
             {selectedWhatsAppTemplateKind === "general" ? (
               <p>
@@ -3283,7 +3340,7 @@ export default function Helpers() {
               </p>
             ) : (
               <p>
-                <strong>Muster 2 aktiv:</strong> Erzeugt erst bei Klick auf „In WhatsApp öffnen“ den persönlichen PDF-Abruflink für {whatsAppTargetHelper?.name}. Der Link enthält ausschließlich die eigenen Einsätze, Zeiten und Orte.
+                <strong>Muster 2 aktiv:</strong> Erzeugt erst bei Klick auf „In WhatsApp öffnen“ einen geschützten, sieben Tage gültigen Abruflink für {whatsAppTargetHelper?.name}. Der Zugangscode wird separat in die Nachricht eingefügt.
               </p>
             )}
           </div>
