@@ -1,5 +1,9 @@
 import type { Request, Response } from "express";
-import { cleanupExpiredTeamNoteTypings, cleanupExpiredTeamNotes } from "./db";
+import {
+  cleanupExpiredPublicDemoSourceSelections,
+  cleanupExpiredTeamNoteTypings,
+  cleanupExpiredTeamNotes,
+} from "./db";
 import { sdk } from "./_core/sdk";
 
 /**
@@ -19,15 +23,21 @@ export async function handleTeamNotesCleanupHeartbeat(
     }
 
     const now = new Date();
-    const [expiredNotesDeleted, expiredTypingDeleted] = await Promise.all([
+    const [
+      expiredNotesDeleted,
+      expiredTypingDeleted,
+      expiredDemoSourceSelectionsDeleted,
+    ] = await Promise.all([
       cleanupExpiredTeamNotes(now),
       cleanupExpiredTeamNoteTypings(now),
+      cleanupExpiredPublicDemoSourceSelections(now),
     ]);
 
     res.status(200).json({
       ok: true,
       expiredNotesDeleted,
       expiredTypingDeleted,
+      expiredDemoSourceSelectionsDeleted,
       ranAt: now.toISOString(),
     });
   } catch (error) {

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const authMocks = vi.hoisted(() => ({ authenticateRequest: vi.fn() }));
 const cleanupMocks = vi.hoisted(() => ({
+  cleanupExpiredPublicDemoSourceSelections: vi.fn(),
   cleanupExpiredTeamNotes: vi.fn(),
   cleanupExpiredTeamNoteTypings: vi.fn(),
 }));
@@ -26,21 +27,29 @@ describe("Teamnotizen-Cleanup-Heartbeat", () => {
   });
 
   it("akzeptiert ausschließlich Cron-Aufrufe und bereinigt beide abgelaufenen Datenarten", async () => {
-    authMocks.authenticateRequest.mockResolvedValue({ isCron: true, taskUid: "cron_1" });
+    authMocks.authenticateRequest.mockResolvedValue({
+      isCron: true,
+      taskUid: "cron_1",
+    });
     cleanupMocks.cleanupExpiredTeamNotes.mockResolvedValue(4);
     cleanupMocks.cleanupExpiredTeamNoteTypings.mockResolvedValue(2);
+    cleanupMocks.cleanupExpiredPublicDemoSourceSelections.mockResolvedValue(3);
     const res = response();
 
     await handleTeamNotesCleanupHeartbeat({} as any, res as any);
 
     expect(cleanupMocks.cleanupExpiredTeamNotes).toHaveBeenCalledOnce();
     expect(cleanupMocks.cleanupExpiredTeamNoteTypings).toHaveBeenCalledOnce();
+    expect(
+      cleanupMocks.cleanupExpiredPublicDemoSourceSelections
+    ).toHaveBeenCalledOnce();
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
         ok: true,
         expiredNotesDeleted: 4,
         expiredTypingDeleted: 2,
+        expiredDemoSourceSelectionsDeleted: 3,
       })
     );
   });
@@ -52,6 +61,9 @@ describe("Teamnotizen-Cleanup-Heartbeat", () => {
     await handleTeamNotesCleanupHeartbeat({} as any, res as any);
 
     expect(cleanupMocks.cleanupExpiredTeamNotes).not.toHaveBeenCalled();
+    expect(
+      cleanupMocks.cleanupExpiredPublicDemoSourceSelections
+    ).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(403);
   });
 });

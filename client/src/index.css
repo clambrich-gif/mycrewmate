@@ -3,8 +3,20 @@
 /* Dark variants are opt-in via an explicit .dark class, never via the OS theme. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Inter wird mit der Anwendung ausgeliefert. Beim Laden der App entsteht damit
+   keine Verbindung zu einem externen Schriftanbieter. Lizenz: SIL Open Font
+   License 1.1, siehe client/src/fonts/Inter-OFL.txt. */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("./fonts/inter-latin-variable.woff2") format("woff2");
+}
+
 :root {
   color-scheme: light;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --background: oklch(0.985 0.004 240);
   --foreground: oklch(0.22 0.03 250);
   --card: oklch(1 0 0);

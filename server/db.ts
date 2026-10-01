@@ -172,18 +172,33 @@ export async function getDb(): Promise<DBClient | null> {
   return _db;
 }
 
-/** Speichert ausschließlich die freiwillige, nicht personenbezogene QR-Herkunft. */
+/** Freiwillige QR-Herkunft: nur feste Kategorie, kein Freitext und keine Kontaktdaten. */
 export async function recordPublicDemoSourceSelection(input: {
   source: "cycling_event" | "club_event" | "recommendation" | "online" | "other";
-  eventLabel?: string;
 }) {
   const database = await getDb();
   if (!database) return { recorded: false } as const;
+  await cleanupExpiredPublicDemoSourceSelections(undefined, database);
   await database.insert(publicDemoSourceSelections).values({
     source: input.source,
-    eventLabel: input.eventLabel?.trim() || null,
   });
   return { recorded: true } as const;
+}
+
+/** Auslageort-Auswertung ist nur für die kurzfristige Kampagnenauswertung nötig. */
+export const PUBLIC_DEMO_SOURCE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+export async function cleanupExpiredPublicDemoSourceSelections(
+  now = new Date(),
+  databaseOverride?: DBClient
+) {
+  const database = databaseOverride ?? (await getDb());
+  if (!database) return 0;
+  const threshold = new Date(now.getTime() - PUBLIC_DEMO_SOURCE_TTL_MS);
+  const [result]: any = await (database as DB)
+    .delete(publicDemoSourceSelections)
+    .where(lt(publicDemoSourceSelections.createdAt, threshold));
+  return affectedRows(result);
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {

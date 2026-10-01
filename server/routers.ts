@@ -4927,7 +4927,6 @@ export const appRouter = router({
             "online",
             "other",
           ]),
-          eventLabel: z.string().trim().min(1).max(120).optional(),
         })
       )
       .mutation(({ input }) => db.recordPublicDemoSourceSelection(input)),

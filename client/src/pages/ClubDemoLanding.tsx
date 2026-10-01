@@ -20,7 +20,6 @@ import { useMemo, useState } from "react";
 import { Link } from "wouter";
 
 const WORDMARK = "/brand/mycrewmate-wordmark.png";
-const DEMO_SOURCE_STORAGE_KEY = "mycrewmate.club-demo-source-recorded";
 
 type DemoSource =
   | "cycling_event"
@@ -105,36 +104,24 @@ const demoModules = [
   },
 ];
 
-function hasRecordedDemoSource() {
-  if (typeof window === "undefined") return false;
-  return window.sessionStorage.getItem(DEMO_SOURCE_STORAGE_KEY) === "true";
-}
-
 export default function ClubDemoLanding() {
   const [source, setSource] = useState<DemoSource | null>(null);
-  const [eventLabel, setEventLabel] = useState("");
-  const [sourceRecorded, setSourceRecorded] = useState(hasRecordedDemoSource);
+  const [sourceRecorded, setSourceRecorded] = useState(false);
   const recordSource = trpc.publicDemo.recordSource.useMutation();
 
   const selectedSource = useMemo(
     () => sourceOptions.find(option => option.id === source) ?? null,
     [source]
   );
-  const needsEventLabel = source === "cycling_event" || source === "club_event";
-
   const continueToDemo = async () => {
     if (sourceRecorded) return;
     if (!source) return;
     try {
-      await recordSource.mutateAsync({
-        source,
-        eventLabel: eventLabel.trim() || undefined,
-      });
+      await recordSource.mutateAsync({ source });
     } catch {
       // Die Vereinsdemo bleibt erreichbar, auch falls die optionale Auswertung
       // vorübergehend nicht verfügbar ist. Es werden dabei keine Eingaben erneut versucht.
     } finally {
-      window.sessionStorage.setItem(DEMO_SOURCE_STORAGE_KEY, "true");
       setSourceRecorded(true);
     }
   };
@@ -165,7 +152,7 @@ export default function ClubDemoLanding() {
                 Schön, dass ihr euch für gute Vereinsplanung interessiert.
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
-                Damit wir die Auslageorte unserer Checkkarten grob verstehen: Wo habt ihr die Karte entdeckt? Die Angabe ist freiwillig und ohne Namen oder Kontaktdaten.
+                Damit wir die Auslageorte unserer Checkkarten grob verstehen: Wo habt ihr die Karte entdeckt? Die Angabe ist freiwillig. Wir speichern nur die ausgewählte Kategorie für maximal 30 Tage – ohne Namen, Kontaktdaten oder Freitext.
               </p>
               <div className="mt-5 grid gap-2 sm:grid-cols-2">
                 {sourceOptions.map(option => {
@@ -187,18 +174,9 @@ export default function ClubDemoLanding() {
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-sm font-black text-slate-950">{selectedSource ? selectedSource.title : "Auslageort auswählen"}</p>
-              {needsEventLabel && (
-                <label className="mt-4 grid gap-1.5 text-sm font-bold text-slate-700">
-                  Name der Veranstaltung <span className="font-normal text-slate-500">(freiwillig)</span>
-                  <input
-                    value={eventLabel}
-                    onChange={event => setEventLabel(event.target.value)}
-                    maxLength={120}
-                    placeholder="z. B. EifelRide 2027"
-                    className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                  />
-                </label>
-              )}
+              <p className="mt-3 text-xs leading-5 text-slate-500">
+                Details zur Verarbeitung stehen im <a href="/datenschutz" className="font-semibold text-blue-700 underline underline-offset-2">Datenschutzhinweis</a>.
+              </p>
               <Button
                 type="button"
                 disabled={!source || recordSource.isPending}
