@@ -1,7 +1,16 @@
 import * as React from "react";
+import { KlemmiMascot } from "@/components/KlemmiMascot";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { ProductPackageId } from "@shared/product-packages";
-import { Check, CheckCircle2, Gem, Minus } from "lucide-react";
+import {
+  ArrowUpRight,
+  Check,
+  CheckCircle2,
+  Gem,
+  Mail,
+  Minus,
+} from "lucide-react";
 
 type ComparisonState = "included" | "limited" | "notIncluded" | "custom";
 type ComparisonPackageId = "event_pass" | "light" | "pro" | "enterprise";
@@ -30,6 +39,46 @@ const PACKAGES: Array<{
   { id: "pro", name: "Pro", price: "299 €" },
   { id: "enterprise", name: "Enterprise", price: "ab 449 €" },
 ];
+
+const MYCREWMATE_UPGRADE_EMAIL = "info@mycrewmate.de";
+
+const NEXT_PACKAGE_ID: Partial<Record<ProductPackageId, ComparisonPackageId>> =
+  {
+    event_pass: "light",
+    light: "pro",
+    pro: "enterprise",
+  };
+
+const KLEMMI_PACKAGE_TIP: Partial<Record<ProductPackageId, string>> = {
+  event_pass:
+    "Du planst eine einzelne Veranstaltung schlank und klar. Mit Light kommen Ansprechpartner, wiederverwendbare Orte, Material und ein kleines Planungsteam dazu.",
+  light:
+    "Du organisierst bereits gemeinsam im kleinen Team. Mit Pro ergänzt ihr Chat, Spenden, Finanzen, Live-Karten und individuelle WhatsApp-Vorlagen.",
+  pro: "Ihr nutzt die vollständige Vereinsplanung. Enterprise passt Mengen, Abläufe und Erweiterungen an euren individuellen Vereins- oder Verbandsbedarf an.",
+};
+
+function packageById(packageId: ComparisonPackageId) {
+  return PACKAGES.find(packageItem => packageItem.id === packageId);
+}
+
+function buildUpgradeRequestHref(
+  currentPackageId: ProductPackageId,
+  targetPackageId: ComparisonPackageId
+) {
+  const currentPackage = packageById(currentPackageId);
+  const targetPackage = packageById(targetPackageId);
+  const subject = `Unverbindliche Upgrade-Anfrage: ${currentPackage?.name ?? "MyCrewMate-Paket"} zu ${targetPackage?.name ?? "höherem Paket"}`;
+  const body = [
+    "Hallo MyCrewMate-Team,",
+    "",
+    `wir möchten uns unverbindlich über ein Upgrade von ${currentPackage?.name ?? "unserem aktuellen Paket"} auf ${targetPackage?.name ?? "ein höheres Paket"} informieren.`,
+    "Bitte meldet euch bei uns mit den nächsten Schritten.",
+    "",
+    "Viele Grüße",
+  ].join("\n");
+
+  return `mailto:${MYCREWMATE_UPGRADE_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
 
 /**
  * Einzige redaktionelle Quelle für den öffentlichen und den angemeldeten
@@ -180,6 +229,65 @@ function packageCellClass(
   return packageId === "pro" ? "bg-blue-50/35" : "";
 }
 
+function KlemmiPackageTip({
+  currentPackageId,
+}: {
+  currentPackageId: ProductPackageId;
+}) {
+  const targetPackageId = NEXT_PACKAGE_ID[currentPackageId];
+  const targetPackage = targetPackageId ? packageById(targetPackageId) : null;
+  const tip = KLEMMI_PACKAGE_TIP[currentPackageId];
+
+  if (!targetPackageId || !targetPackage || !tip) {
+    return null;
+  }
+
+  return (
+    <aside
+      className="relative mt-8 overflow-hidden rounded-2xl border border-orange-200 bg-[linear-gradient(135deg,#fff7ed,white_55%,#eff6ff)] p-4 pr-5 shadow-sm sm:p-5"
+      data-klemmi-package-tip
+    >
+      <div className="flex items-start gap-3 sm:gap-4">
+        <KlemmiMascot
+          decorative
+          className="mt-0.5 size-12 shrink-0 sm:size-14"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-orange-700">
+            Klemmi sagt
+          </p>
+          <h3 className="mt-1 text-base font-black text-slate-950">
+            Der nächste sinnvolle Schritt: {targetPackage.name}
+          </h3>
+          <p className="mt-1.5 text-sm leading-6 text-slate-700">{tip}</p>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <Button
+              asChild
+              size="sm"
+              className="bg-orange-500 font-bold text-white hover:bg-orange-600"
+            >
+              <a
+                href={buildUpgradeRequestHref(
+                  currentPackageId,
+                  targetPackageId
+                )}
+                data-upgrade-request={targetPackageId}
+              >
+                Upgrade zu {targetPackage.name} anfragen
+                <Mail className="ml-1.5 size-4" aria-hidden="true" />
+              </a>
+            </Button>
+            <span className="inline-flex items-center gap-1 text-xs leading-5 text-slate-500">
+              <ArrowUpRight className="size-3.5" aria-hidden="true" />
+              Öffnet nur eine E-Mail – keine automatische Buchung.
+            </span>
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
 type PackageComparisonSectionProps = {
   /** Markiert das gebuchte Paket innerhalb der Anwendung in MyCrewMate-Orange. */
   currentPackageId?: ProductPackageId;
@@ -316,6 +424,9 @@ export function PackageComparisonSection({
             transparent abgestimmt.
           </p>
         </div>
+        {currentPackageId && (
+          <KlemmiPackageTip currentPackageId={currentPackageId} />
+        )}
       </div>
     </section>
   );

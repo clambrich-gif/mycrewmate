@@ -137,6 +137,13 @@ describe("Produktgrenzen: Marke, WhatsApp und Event-Sicherung", () => {
     expect(comparison).toContain("ring-orange-500");
     expect(comparison).toContain("Chat, individuelle WhatsApp-Vorlagen & PDF");
     expect(comparison).not.toContain("Individuelle Lösung & Zukunftsmodule");
+    expect(comparison).toContain("data-klemmi-package-tip");
+    expect(comparison).toContain("Der nächste sinnvolle Schritt:");
+    expect(comparison).toContain("data-upgrade-request={targetPackageId}");
+    expect(comparison).toContain("Upgrade zu {targetPackage.name} anfragen");
+    expect(comparison).toContain("info@mycrewmate.de");
+    expect(comparison).toContain("keine automatische Buchung");
+    expect(comparison).toContain('pro: "enterprise"');
   });
 
   it("stellt die globale Klemmi-Stummschaltung bereit, ohne Texte auszublenden", () => {
