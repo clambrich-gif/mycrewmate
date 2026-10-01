@@ -21,6 +21,10 @@ describe("Paketvergleich: Upgrade-Anfrage und Klemmi-Tipp", () => {
     expect(markup).toContain("Upgrade zu Pro anfragen");
     expect(markup).toContain("mailto:info@mycrewmate.de");
     expect(markup).toContain("keine automatische Buchung");
+    expect(markup).toContain('data-klemmi-package-tip-audio="light"');
+    expect(markup).toContain("Klemmi vorlesen");
+    expect(markup).toContain("motion-safe:hover:-translate-y-0.5");
+    expect(markup).toContain("motion-safe:group-hover:-translate-y-1");
   });
 
   it("zeigt in der öffentlichen Vergleichsübersicht keine Anfragesektion", () => {

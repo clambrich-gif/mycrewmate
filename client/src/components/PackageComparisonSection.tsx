@@ -1,6 +1,8 @@
 import * as React from "react";
 import { KlemmiMascot } from "@/components/KlemmiMascot";
 import { Button } from "@/components/ui/button";
+import { useKlemmiVoice } from "@/hooks/useKlemmiVoice";
+import { KLEMMI_AUDIO_SCRIPTS, type KlemmiAudioId } from "@/lib/klemmiAudio";
 import { cn } from "@/lib/utils";
 import type { ProductPackageId } from "@shared/product-packages";
 import {
@@ -10,6 +12,9 @@ import {
   Gem,
   Mail,
   Minus,
+  Square,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 
 type ComparisonState = "included" | "limited" | "notIncluded" | "custom";
@@ -50,11 +55,15 @@ const NEXT_PACKAGE_ID: Partial<Record<ProductPackageId, ComparisonPackageId>> =
   };
 
 const KLEMMI_PACKAGE_TIP: Partial<Record<ProductPackageId, string>> = {
-  event_pass:
-    "Du planst eine einzelne Veranstaltung schlank und klar. Mit Light kommen Ansprechpartner, wiederverwendbare Orte, Material und ein kleines Planungsteam dazu.",
-  light:
-    "Du organisierst bereits gemeinsam im kleinen Team. Mit Pro ergänzt ihr Chat, Spenden, Finanzen, Live-Karten und individuelle WhatsApp-Vorlagen.",
-  pro: "Ihr nutzt die vollständige Vereinsplanung. Enterprise passt Mengen, Abläufe und Erweiterungen an euren individuellen Vereins- oder Verbandsbedarf an.",
+  event_pass: KLEMMI_AUDIO_SCRIPTS["package-tip-event-pass"],
+  light: KLEMMI_AUDIO_SCRIPTS["package-tip-light"],
+  pro: KLEMMI_AUDIO_SCRIPTS["package-tip-pro"],
+};
+
+const PACKAGE_TIP_AUDIO_ID: Partial<Record<ProductPackageId, KlemmiAudioId>> = {
+  event_pass: "package-tip-event-pass",
+  light: "package-tip-light",
+  pro: "package-tip-pro",
 };
 
 function packageById(packageId: ComparisonPackageId) {
@@ -234,23 +243,44 @@ function KlemmiPackageTip({
 }: {
   currentPackageId: ProductPackageId;
 }) {
+  const { cancel, isSpeaking, muted, speak } = useKlemmiVoice();
   const targetPackageId = NEXT_PACKAGE_ID[currentPackageId];
   const targetPackage = targetPackageId ? packageById(targetPackageId) : null;
   const tip = KLEMMI_PACKAGE_TIP[currentPackageId];
+  const audioClipId = PACKAGE_TIP_AUDIO_ID[currentPackageId];
 
   if (!targetPackageId || !targetPackage || !tip) {
     return null;
   }
 
+  const handleAudioClick = () => {
+    if (!audioClipId || muted) return;
+    if (isSpeaking) {
+      cancel();
+      return;
+    }
+    void speak(KLEMMI_AUDIO_SCRIPTS[audioClipId], audioClipId);
+  };
+
+  const audioLabel = isSpeaking
+    ? "Vorlesen stoppen"
+    : muted
+      ? "Klemmi ist stumm"
+      : "Klemmi vorlesen";
+
   return (
     <aside
-      className="relative mt-8 overflow-hidden rounded-2xl border border-orange-200 bg-[linear-gradient(135deg,#fff7ed,white_55%,#eff6ff)] p-4 pr-5 shadow-sm sm:p-5"
+      className="group relative mt-8 overflow-hidden rounded-2xl border border-orange-200 bg-[linear-gradient(135deg,#fff7ed,white_55%,#eff6ff)] p-4 pr-5 shadow-sm transition-[border-color,box-shadow,transform] duration-200 ease-out motion-reduce:transition-none motion-safe:hover:-translate-y-0.5 motion-safe:hover:border-orange-300 motion-safe:hover:shadow-md motion-safe:focus-within:-translate-y-0.5 motion-safe:focus-within:border-orange-300 motion-safe:focus-within:shadow-md sm:p-5"
       data-klemmi-package-tip
     >
+      <div
+        className="pointer-events-none absolute -right-10 -top-12 size-32 rounded-full bg-orange-300/20 blur-2xl opacity-0 transition-opacity duration-200 motion-reduce:transition-none motion-safe:group-hover:opacity-100 motion-safe:group-focus-within:opacity-100"
+        aria-hidden="true"
+      />
       <div className="flex items-start gap-3 sm:gap-4">
         <KlemmiMascot
           decorative
-          className="mt-0.5 size-12 shrink-0 sm:size-14"
+          className="mt-0.5 size-12 shrink-0 transition-transform duration-200 ease-out motion-reduce:transition-none motion-safe:group-hover:-translate-y-1 motion-safe:group-hover:rotate-1 motion-safe:group-focus-within:-translate-y-1 motion-safe:group-focus-within:rotate-1 sm:size-14"
         />
         <div className="min-w-0 flex-1">
           <p className="text-xs font-black uppercase tracking-[0.14em] text-orange-700">
@@ -276,6 +306,35 @@ function KlemmiPackageTip({
                 Upgrade zu {targetPackage.name} anfragen
                 <Mail className="ml-1.5 size-4" aria-hidden="true" />
               </a>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="border-orange-200 bg-white/85 font-bold text-orange-800 shadow-sm transition-[background-color,border-color,color,transform] duration-200 hover:border-orange-300 hover:bg-orange-50 hover:text-orange-900 motion-reduce:transition-none motion-safe:hover:-translate-y-0.5"
+              disabled={muted}
+              aria-pressed={isSpeaking}
+              title={
+                muted
+                  ? "Klemmi-Stimme im Menü wieder einschalten"
+                  : isSpeaking
+                    ? "Vorlesen stoppen"
+                    : "Klemmi liest den Paketvorteil vor"
+              }
+              onClick={handleAudioClick}
+              data-klemmi-package-tip-audio={currentPackageId}
+            >
+              {isSpeaking ? (
+                <Square
+                  className="mr-1.5 size-3.5 fill-current"
+                  aria-hidden="true"
+                />
+              ) : muted ? (
+                <VolumeX className="mr-1.5 size-4" aria-hidden="true" />
+              ) : (
+                <Volume2 className="mr-1.5 size-4" aria-hidden="true" />
+              )}
+              {audioLabel}
             </Button>
             <span className="inline-flex items-center gap-1 text-xs leading-5 text-slate-500">
               <ArrowUpRight className="size-3.5" aria-hidden="true" />

@@ -88,6 +88,9 @@ export const KLEMMI_AUDIO_SCRIPTS = {
   "success-passt": "Passt, wackelt und hat Luft. Nächste Schicht?",
   "success-geschmiert": "Läuft wie geschmiert! Ich komme mit dem Mitschreiben kaum nach.",
   "success-arbeitslos": "Wieder ein Häkchen mehr. Du machst mich noch arbeitslos!",
+  "package-tip-event-pass": "Du planst eine einzelne Veranstaltung schlank und klar. Mit Light kommen Ansprechpartner, wiederverwendbare Orte, Material und ein kleines Planungsteam dazu.",
+  "package-tip-light": "Du organisierst bereits gemeinsam im kleinen Team. Mit Pro ergänzt ihr Chat, Spenden, Finanzen, Live-Karten und individuelle WhatsApp-Vorlagen.",
+  "package-tip-pro": "Ihr nutzt die vollständige Vereinsplanung. Enterprise passt Mengen, Abläufe und Erweiterungen an euren individuellen Vereins- oder Verbandsbedarf an.",
   "dashboard-intro": "Dein Dashboard auf einen Blick. Hier laufen die Informationen aus deiner Planung zusammen. Ich zeige dir jetzt nur die Bereiche, die auf diesem Dashboard wirklich sichtbar sind.",
   "dashboard-countdown-dated": "Countdown bis zum Event. Hier siehst du den Zeitraum der aktuellen Veranstaltung und den Countdown. Das Datum kommt direkt aus den Eventdaten und aktualisiert sich automatisch.",
   "dashboard-countdown-empty": "Zeitraum für den Countdown festlegen. Hier erscheint der Countdown, sobald du in den Eventdaten einen Start- und bei mehrtägigen Veranstaltungen auch einen Endtermin speicherst.",
@@ -347,6 +350,9 @@ export const KLEMMI_OPENING_AUDIO_IDS = [
  * trotz langer Cache-Zeit versehentlich eine vorherige Klemmi-Aufnahme spielen.
  */
 const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
+  "package-tip-event-pass": "20261001-package-comparison-v1",
+  "package-tip-light": "20261001-package-comparison-v1",
+  "package-tip-pro": "20261001-package-comparison-v1",
   "dashboard-map-locked": "20260930-achird-audit-v2",
   "dashboard-map-locked-light": "20260930-achird-audit-v1",
   "dashboard-helpers-active-no-donations": "20260930-achird-audit-v1",
