@@ -1,0 +1,1 @@
+ALTER TABLE `protected_helper_pdf_shares` ADD `deliverySecret` varchar(512);

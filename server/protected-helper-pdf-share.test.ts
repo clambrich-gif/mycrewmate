@@ -7,12 +7,16 @@ const dbMocks = vi.hoisted(() => ({
   getHelper: vi.fn(),
   createProtectedHelperPdfShare: vi.fn(),
   findProtectedHelperPdfShare: vi.fn(),
+  listActiveProtectedHelperPdfShares: vi.fn(),
+  revokeProtectedHelperPdfShare: vi.fn(),
+  getProtectedHelperPdfShareDelivery: vi.fn(),
   withPlanningWriteLock: vi.fn(async callback => callback()),
   recordActivityLog: vi.fn(),
 }));
 
 const pdfMocks = vi.hoisted(() => ({
   createPublicHelperTaskPdf: vi.fn(),
+  renderClubPrivacyNoticeTemplatePdf: vi.fn(),
 }));
 
 vi.mock("./db", async importOriginal => {
@@ -23,6 +27,11 @@ vi.mock("./db", async importOriginal => {
     getHelper: dbMocks.getHelper,
     createProtectedHelperPdfShare: dbMocks.createProtectedHelperPdfShare,
     findProtectedHelperPdfShare: dbMocks.findProtectedHelperPdfShare,
+    listActiveProtectedHelperPdfShares:
+      dbMocks.listActiveProtectedHelperPdfShares,
+    revokeProtectedHelperPdfShare: dbMocks.revokeProtectedHelperPdfShare,
+    getProtectedHelperPdfShareDelivery:
+      dbMocks.getProtectedHelperPdfShareDelivery,
     withPlanningWriteLock: dbMocks.withPlanningWriteLock,
     recordActivityLog: dbMocks.recordActivityLog,
   };
@@ -33,6 +42,8 @@ vi.mock("./pdf", async importOriginal => {
   return {
     ...actual,
     createPublicHelperTaskPdf: pdfMocks.createPublicHelperTaskPdf,
+    renderClubPrivacyNoticeTemplatePdf:
+      pdfMocks.renderClubPrivacyNoticeTemplatePdf,
   };
 });
 
@@ -96,6 +107,73 @@ describe("geschützte Helfer-PDF-Freigaben", () => {
       helperId: 12,
       viewMode: "team",
     });
+    expect(dbMocks.recordActivityLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        module: "Helferfreigaben",
+        action: "created",
+      })
+    );
+  });
+
+  it("listet aktive Freigaben, sendet bestehende Links erneut und widerruft sie sofort", async () => {
+    dbMocks.getHelper.mockResolvedValue({
+      id: 12,
+      eventId: 1,
+      year: 2026,
+      name: "Helfer Eins",
+    });
+    dbMocks.listActiveProtectedHelperPdfShares.mockResolvedValue([
+      {
+        id: 7,
+        viewMode: "team",
+        expiresAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+        createdAt: new Date(),
+        canResend: true,
+      },
+    ]);
+    dbMocks.getProtectedHelperPdfShareDelivery.mockResolvedValue({
+      token: "existing-token-1234567890123456",
+      accessCode: "CODE12345678",
+    });
+    dbMocks.revokeProtectedHelperPdfShare.mockResolvedValue(true);
+
+    const caller = appRouter.createCaller(createAuthContext());
+    const list = await caller.pdf.activeWhatsAppShares({ helperId: 12 });
+    expect(list).toHaveLength(1);
+    expect(list[0].canResend).toBe(true);
+
+    const resent = await caller.pdf.resendWhatsAppShare({
+      helperId: 12,
+      shareId: 7,
+    });
+    expect(resent.url).toBe(
+      "https://app.mycrewmate.de/freigabe/existing-token-1234567890123456"
+    );
+    expect(resent.accessCode).toBe("CODE12345678");
+
+    const revoked = await caller.pdf.revokeWhatsAppShare({
+      helperId: 12,
+      shareId: 7,
+    });
+    expect(revoked).toEqual({ success: true });
+    expect(dbMocks.revokeProtectedHelperPdfShare).toHaveBeenCalledWith({
+      id: 7,
+      helperId: 12,
+    });
+  });
+
+  it("erstellt das ausfüllbare Vereinsmuster als PDF", async () => {
+    pdfMocks.renderClubPrivacyNoticeTemplatePdf.mockResolvedValue(
+      Buffer.from("%PDF-1.7\nVereinsmuster")
+    );
+    const caller = appRouter.createCaller(createAuthContext());
+    const result = await caller.pdf.privacyNoticeTemplate();
+
+    expect(result.filename).toBe(
+      "Vereinsmuster_Datenschutzhinweis_Helfer_Ansprechpartner.pdf"
+    );
+    expect(result.mimeType).toBe("application/pdf");
+    expect(pdfMocks.renderClubPrivacyNoticeTemplatePdf).toHaveBeenCalled();
   });
 
   it("liefert den PDF-Download nur bei passendem Token und gültigem Zugangscode", async () => {

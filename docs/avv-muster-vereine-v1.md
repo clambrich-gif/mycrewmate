@@ -1,6 +1,6 @@
 # Muster: Auftragsverarbeitungsvertrag (AVV) für MyCrewMate
 
-> **Arbeitsmuster – Version 1.0, Stand 01.10.2026.** Dieses Muster ist vor dem Einsatz durch die Vertragsparteien und bei Bedarf rechtlich zu prüfen und mit den tatsächlichen Betriebs-, Backup- und Unterauftragsverarbeiterangaben abzugleichen. Es ersetzt keine individuelle Rechtsberatung.
+> **Arbeitsmuster – Version 1.1, Stand 01.10.2026.** Dieses Muster ist vor dem Einsatz durch die Vertragsparteien und bei Bedarf rechtlich zu prüfen und mit den tatsächlichen Betriebs-, Backup- und Unterauftragsverarbeiterangaben abzugleichen. Es ersetzt keine individuelle Rechtsberatung.
 
 ## Vertragsparteien
 
@@ -61,6 +61,7 @@ Die zum Vertragsbeginn geltenden TOM werden als **Anlage 1** beigefügt. Mindest
 - Protokollierung sicherheitsrelevanter Vorgänge,
 - Zugriffsschutz für Uploads und PDF-Dateien,
 - Datenminimierung bei öffentlich freigegebenen Helferübersichten,
+- zeitlich begrenzte, passwortgeschützte Helfer-PDF-Freigaben mit sofortigem Widerruf,
 - Verfahren für Löschung, Support, Datenschutzvorfälle und Wiederherstellung.
 
 MyCrewMate überprüft die TOM bei erheblichen Änderungen und informiert den Verein über relevante Anpassungen.
@@ -84,12 +85,14 @@ Der Verein stimmt der Nutzung der in Anlage 2 aufgeführten Dienste in dem dort 
 
 Die folgenden Funktionen sind nicht zwingend für die Kernplanung. Der Verein aktiviert sie nur, wenn er ihre Nutzung in seiner eigenen Datenschutzinformation und Organisation berücksichtigt.
 
-| Zusatzfunktion         | Zweck / möglicher Datenfluss                                                                                                                | Aktivierung für diesen Verein     |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
-| WhatsApp-Weiterleitung | Nach bewusstem Klick werden Zielrufnummer und optional vorbefüllter Nachrichtentext an WhatsApp übergeben.                                  | [ ] aktiviert [ ] nicht aktiviert |
-| Persönlicher PDF-Link  | Eine öffentliche Minimal-PDF enthält nur Name der empfangenden Person, eigene Einsätze, Zeit, Aufgabe und Ort; keine Daten Dritter.         | [ ] aktiviert [ ] nicht aktiviert |
-| Foto / Bild            | Nur falls der Verein Fotos oder Bilder hochlädt bzw. verarbeitet. Rechtsgrundlage, Informationspflicht und Löschfrist legt der Verein fest. | [ ] aktiviert [ ] nicht aktiviert |
-| Video                  | Im aktuellen MyCrewMate-Kernbetrieb nicht vorgesehen.                                                                                       | [ ] nicht aktiviert               |
+| Zusatzfunktion | Zweck / möglicher Datenfluss | Aktivierung für diesen Verein |
+| --- | --- | --- |
+| WhatsApp-Weiterleitung | Nach bewusstem Klick werden Zielrufnummer und optional vorbefüllter Nachrichtentext an WhatsApp übergeben. Die Nutzung bleibt freiwillig; ein anderer Kontaktweg muss möglich bleiben. | [ ] aktiviert [ ] nicht aktiviert |
+| Persönlicher PDF-Link – Basisansicht | Zeitlich begrenzte, passwortgeschützte Übersicht mit Name der empfangenden Person, eigenen Einsätzen, Ort und Ansprechperson. Die Telefonnummer der Ansprechperson erscheint nur bei deren freiwilliger Freigabe. | [ ] aktiviert [ ] nicht aktiviert |
+| Persönlicher PDF-Link – Teamansicht | Bewusst wählbare Zusatzansicht mit Namen der Mithelfenden derselben Schicht sowie ausschließlich aufgabenrelevanten Hinweisen; eigene Verpflegungsspenden können mit Zutaten- oder Allergenhinweisen erscheinen. | [ ] aktiviert [ ] nicht aktiviert |
+| Linkschutz und Widerruf | Link und Zugangscode werden getrennt geschützt. Jeder Link ist sieben Tage gültig und kann vom Organisationsteam sofort widerrufen werden. Eine serverseitig verschlüsselte Zustellkopie darf nur zur erneuten Zustellung eines aktiven Links verwendet werden. | [ ] geprüft |
+| Foto / Bild | Nur falls der Verein Fotos oder Bilder hochlädt bzw. verarbeitet. Rechtsgrundlage, Informationspflicht und Löschfrist legt der Verein fest. | [ ] aktiviert [ ] nicht aktiviert |
+| Video | Im aktuellen MyCrewMate-Kernbetrieb nicht vorgesehen. | [ ] nicht aktiviert |
 
 ---
 
@@ -131,6 +134,7 @@ Der Verein darf die Einhaltung dieser Vereinbarung nach angemessener Vorankündi
 | Zugangskontrolle        | **[z. B. individuelle Konten, Passwortvorgaben, MFA-Plan]** | **[ ]**                |
 | Zugriffskontrolle       | **[Rollen, Fachbereichsrechte, Mandantentrennung]**         | **[ ]**                |
 | Weitergabekontrolle     | **[HTTPS, SMTP-TLS, PDF-Freigabe]**                         | **[ ]**                |
+| PDF-Freigaben           | **[Sieben-Tage-Laufzeit, Zugangscode, sofortiger Widerruf, Teamansicht nur bei Erforderlichkeit]** | **[ ]** |
 | Verfügbarkeitskontrolle | **[Backup, Restore-Test, Monitoring]**                      | **[ ]**                |
 | Trennung                | **[Tenant-/Event-Scopes, Berechtigungstests]**              | **[ ]**                |
 | Löschkonzept            | **[Fristen, Löschprotokoll, Ausnahmen]**                    | **[ ]**                |

@@ -1092,16 +1092,126 @@ export default function Helpers() {
     },
   });
   const createWhatsAppPdfShare = trpc.pdf.createWhatsAppShare.useMutation();
+  const activeWhatsAppShares = trpc.pdf.activeWhatsAppShares.useQuery(
+    { helperId: whatsAppTargetHelper?.id ?? -1 },
+    {
+      enabled: Boolean(whatsAppTargetHelper && allowsPersonalPdfShare),
+      staleTime: 10_000,
+    }
+  );
+  const revokeWhatsAppPdfShare = trpc.pdf.revokeWhatsAppShare.useMutation();
+  const resendWhatsAppPdfShare = trpc.pdf.resendWhatsAppShare.useMutation();
+  const [isRevokingWhatsAppShare, setIsRevokingWhatsAppShare] = useState(false);
+
+  const createScheduleWhatsAppMessage = async (share: {
+    url: string;
+    accessCode: string;
+    expiresAt: number;
+  }) => {
+    if (!whatsAppTargetHelper) return;
+    const settings = await utils.pdf.settings.fetch();
+    const eventName = currentEvent?.name ?? settings.eventName;
+    const baseMessage = renderWhatsAppMessage(settings.whatsAppMessageTemplate, {
+      eventName,
+      eventDuration: eventDurationLabel,
+      pdfLink: share.url,
+    });
+    const expiresAt = new Date(share.expiresAt).toLocaleDateString("de-DE", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+    return `${baseMessage}\n\n🔐 Geschützter Abruf (gültig bis ${expiresAt})\nZugangscode: ${share.accessCode}\nBitte Link und Zugangscode nicht weiterleiten.`;
+  };
+
+  const createAndOpenScheduleWhatsApp = async (
+    viewMode = selectedWhatsAppShareView
+  ) => {
+    if (!whatsAppTargetHelper || isPreparingWhatsApp) return;
+    setIsPreparingWhatsApp(true);
+    try {
+      const share = await createWhatsAppPdfShare.mutateAsync({
+        helperId: whatsAppTargetHelper.id,
+        viewMode,
+      });
+      const message = await createScheduleWhatsAppMessage(share);
+      if (!message) return;
+      window.location.assign(
+        buildWhatsAppShareUrl(message, whatsAppTargetHelper.phone)
+      );
+      await activeWhatsAppShares.refetch();
+      setWhatsAppTargetHelper(null);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Die WhatsApp-Nachricht konnte nicht vorbereitet werden"
+      );
+    } finally {
+      setIsPreparingWhatsApp(false);
+    }
+  };
+
+  const resendActiveScheduleWhatsApp = async (shareId: number) => {
+    if (!whatsAppTargetHelper || isPreparingWhatsApp) return;
+    setIsPreparingWhatsApp(true);
+    try {
+      const share = await resendWhatsAppPdfShare.mutateAsync({
+        helperId: whatsAppTargetHelper.id,
+        shareId,
+      });
+      const message = await createScheduleWhatsAppMessage(share);
+      if (!message) return;
+      window.location.assign(
+        buildWhatsAppShareUrl(message, whatsAppTargetHelper.phone)
+      );
+      setWhatsAppTargetHelper(null);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Der bestehende Einsatzplan-Link konnte nicht vorbereitet werden"
+      );
+    } finally {
+      setIsPreparingWhatsApp(false);
+    }
+  };
+
+  const revokeActiveScheduleWhatsApp = async (
+    shareId: number,
+    createNew = false,
+    viewMode = selectedWhatsAppShareView
+  ) => {
+    if (!whatsAppTargetHelper || isRevokingWhatsAppShare) return;
+    setIsRevokingWhatsAppShare(true);
+    try {
+      await revokeWhatsAppPdfShare.mutateAsync({
+        helperId: whatsAppTargetHelper.id,
+        shareId,
+      });
+      await activeWhatsAppShares.refetch();
+      toast.success("Der geschützte Einsatzplan-Link wurde sofort widerrufen");
+      if (createNew) await createAndOpenScheduleWhatsApp(viewMode);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Der Einsatzplan-Link konnte nicht widerrufen werden"
+      );
+    } finally {
+      setIsRevokingWhatsAppShare(false);
+    }
+  };
 
   const sendWhatsAppMessage = async (templateKind: "general" | "schedule") => {
     if (!whatsAppTargetHelper || isPreparingWhatsApp) return;
+    if (templateKind === "schedule") {
+      await createAndOpenScheduleWhatsApp();
+      return;
+    }
     if (!allowsWhatsAppTemplates) {
       window.location.assign(buildWhatsAppShareUrl("", whatsAppTargetHelper.phone));
       setWhatsAppTargetHelper(null);
-      return;
-    }
-    if (templateKind === "schedule" && !allowsPersonalPdfShare) {
-      setUpgradeCapability("personal_accesses");
       return;
     }
     setIsPreparingWhatsApp(true);
@@ -1123,26 +1233,6 @@ export default function Helpers() {
         setWhatsAppTargetHelper(null);
         return;
       }
-
-      const share = await createWhatsAppPdfShare.mutateAsync({
-        helperId: whatsAppTargetHelper.id,
-        viewMode: selectedWhatsAppShareView,
-      });
-      const baseMessage = renderWhatsAppMessage(settings.whatsAppMessageTemplate, {
-        eventName,
-        eventDuration: eventDurationLabel,
-        pdfLink: share.url,
-      });
-      const expiresAt = new Date(share.expiresAt).toLocaleDateString("de-DE", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      });
-      const message = `${baseMessage}\n\n🔐 Geschützter Abruf (gültig bis ${expiresAt})\nZugangscode: ${share.accessCode}\nBitte Link und Zugangscode nicht weiterleiten.`;
-      window.location.assign(
-        buildWhatsAppShareUrl(message, whatsAppTargetHelper.phone)
-      );
-      setWhatsAppTargetHelper(null);
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -3329,6 +3419,113 @@ export default function Helpers() {
                       Zusätzlich Namen der Mithelfenden, aufgabenrelevante Hinweise und eigene Spendenangaben. Nur verwenden, wenn diese Ansicht für die Schicht benötigt wird.
                     </span>
                   </button>
+                </div>
+
+                <div
+                  data-whatsapp-share-status
+                  className="rounded-lg border border-blue-200 bg-white/85 p-3 text-xs text-slate-700"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-semibold text-slate-950">
+                      Aktive 7-Tage-Freigaben für {whatsAppTargetHelper?.name}
+                    </p>
+                    <span className="inline-flex items-center gap-1 text-blue-800">
+                      <Clock3 className="h-3.5 w-3.5" aria-hidden="true" />
+                      Link und Zugangscode sind getrennt geschützt
+                    </span>
+                  </div>
+                  {activeWhatsAppShares.isLoading ? (
+                    <p className="mt-2 text-slate-600">Freigabestatus wird geprüft …</p>
+                  ) : activeWhatsAppShares.data?.length ? (
+                    <div className="mt-3 space-y-2">
+                      {activeWhatsAppShares.data.map(share => {
+                        const expiresAt = new Date(share.expiresAt).toLocaleString(
+                          "de-DE",
+                          {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          }
+                        );
+                        const label =
+                          share.viewMode === "team"
+                            ? "Ansicht mit Mithelfenden"
+                            : "Basisansicht";
+                        return (
+                          <div
+                            key={share.id}
+                            className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2"
+                          >
+                            <div className="flex flex-wrap items-start justify-between gap-2">
+                              <p className="font-medium text-slate-900">
+                                Aktiv: {label}
+                              </p>
+                              <span className="text-slate-600">
+                                gültig bis {expiresAt} Uhr
+                              </span>
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {share.canResend && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 border-blue-300 bg-white text-blue-800 hover:bg-blue-50"
+                                  disabled={
+                                    isPreparingWhatsApp || isRevokingWhatsAppShare
+                                  }
+                                  onClick={() => resendActiveScheduleWhatsApp(share.id)}
+                                >
+                                  <Send className="mr-1.5 h-3.5 w-3.5" />
+                                  Bestehenden Link senden
+                                </Button>
+                              )}
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-8 border-red-300 bg-white text-red-800 hover:bg-red-50"
+                                disabled={
+                                  isPreparingWhatsApp || isRevokingWhatsAppShare
+                                }
+                                onClick={() =>
+                                  revokeActiveScheduleWhatsApp(share.id)
+                                }
+                              >
+                                <LockKeyhole className="mr-1.5 h-3.5 w-3.5" />
+                                Link sofort widerrufen
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                className="h-8 bg-blue-800 text-white hover:bg-blue-900"
+                                disabled={
+                                  isPreparingWhatsApp || isRevokingWhatsAppShare
+                                }
+                                onClick={() => {
+                                  setSelectedWhatsAppShareView(share.viewMode);
+                                  void revokeActiveScheduleWhatsApp(
+                                    share.id,
+                                    true,
+                                    share.viewMode
+                                  );
+                                }}
+                              >
+                                Widerrufen und neu senden
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-slate-600">
+                      Noch kein aktiver Link vorhanden. Beim Versand wird eine
+                      neue Freigabe für sieben Tage erstellt.
+                    </p>
+                  )}
                 </div>
               </div>
             )}

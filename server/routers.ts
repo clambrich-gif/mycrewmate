@@ -85,6 +85,7 @@ import {
   createPrepTaskOverviewPdf,
   createPlanningTeamAccessSheetsPdf,
   createPublicHelperTaskPdf,
+  renderClubPrivacyNoticeTemplatePdf,
   DEFAULT_PDF_SETTINGS,
 } from "./pdf";
 import { publicAppUrl } from "./public-app-url";
@@ -4365,6 +4366,14 @@ export const appRouter = router({
           base64: pdf.toString("base64"),
         };
       }),
+    privacyNoticeTemplate: adminProcedure.mutation(async () => {
+      const pdf = await renderClubPrivacyNoticeTemplatePdf();
+      return {
+        filename: "Vereinsmuster_Datenschutzhinweis_Helfer_Ansprechpartner.pdf",
+        mimeType: "application/pdf",
+        base64: pdf.toString("base64"),
+      };
+    }),
     publicShare: productCapabilityProcedure("personal_accesses")
       .input(z.object({ helperId: z.number().int().positive() }))
       .mutation(async ({ input }) => {
@@ -4391,7 +4400,7 @@ export const appRouter = router({
           viewMode: z.enum(["minimal", "team"]),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
         const helper = await db.getHelper(input.helperId);
         if (!helper) {
           throw new TRPCError({
@@ -4404,6 +4413,12 @@ export const appRouter = router({
           helperId: helper.id,
           viewMode: input.viewMode,
         });
+        await db.recordActivityLog({
+          actor: auditActor(ctx.user),
+          module: "Helferfreigaben",
+          action: "created",
+          subject: `Geschützte ${input.viewMode === "team" ? "Teamansicht" : "Basisansicht"} für ${helper.name}`,
+        });
         const path = `/freigabe/${share.token}`;
         return {
           path,
@@ -4411,6 +4426,103 @@ export const appRouter = router({
           accessCode: share.accessCode,
           expiresAt: share.expiresAt.getTime(),
           viewMode: input.viewMode,
+        };
+      }),
+    activeWhatsAppShares: pdfCapabilityProcedure("helpers")
+      .input(z.object({ helperId: z.number().int().positive() }))
+      .query(async ({ input }) => {
+        const helper = await db.getHelper(input.helperId);
+        if (!helper) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message:
+              "Der Helfer gehört nicht zur aktuell ausgewählten Veranstaltung",
+          });
+        }
+        return db.listActiveProtectedHelperPdfShares(helper.id);
+      }),
+    revokeWhatsAppShare: pdfCapabilityProcedure("helpers")
+      .input(
+        z.object({
+          helperId: z.number().int().positive(),
+          shareId: z.number().int().positive(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const helper = await db.getHelper(input.helperId);
+        if (!helper) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message:
+              "Der Helfer gehört nicht zur aktuell ausgewählten Veranstaltung",
+          });
+        }
+        const revoked = await db.revokeProtectedHelperPdfShare({
+          id: input.shareId,
+          helperId: helper.id,
+        });
+        if (!revoked) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Diese Freigabe ist nicht mehr aktiv.",
+          });
+        }
+        await db.recordActivityLog({
+          actor: auditActor(ctx.user),
+          module: "Helferfreigaben",
+          action: "updated",
+          subject: `Geschützte Einsatzplanfreigabe für ${helper.name} widerrufen`,
+        });
+        return { success: true } as const;
+      }),
+    resendWhatsAppShare: pdfCapabilityProcedure("helpers")
+      .input(
+        z.object({
+          helperId: z.number().int().positive(),
+          shareId: z.number().int().positive(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const helper = await db.getHelper(input.helperId);
+        if (!helper) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message:
+              "Der Helfer gehört nicht zur aktuell ausgewählten Veranstaltung",
+          });
+        }
+        const delivery = await db.getProtectedHelperPdfShareDelivery({
+          id: input.shareId,
+          helperId: helper.id,
+        });
+        if (!delivery) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message:
+              "Diese Freigabe kann nicht erneut versendet werden. Bitte widerrufen Sie sie und erzeugen Sie einen neuen Link.",
+          });
+        }
+        const shares = await db.listActiveProtectedHelperPdfShares(helper.id);
+        const activeShare = shares.find(share => share.id === input.shareId);
+        if (!activeShare) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Diese Freigabe ist nicht mehr aktiv.",
+          });
+        }
+        await db.recordActivityLog({
+          actor: auditActor(ctx.user),
+          module: "Helferfreigaben",
+          action: "updated",
+          subject: `Geschützte Einsatzplanfreigabe für ${helper.name} erneut vorbereitet`,
+        });
+        const path = `/freigabe/${delivery.token}`;
+        return {
+          path,
+          url: publicAppUrl(path),
+          accessCode: delivery.accessCode,
+          expiresAt: activeShare.expiresAt.getTime(),
+          viewMode: activeShare.viewMode,
         };
       }),
     openWhatsAppShare: publicProcedure

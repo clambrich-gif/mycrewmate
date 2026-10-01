@@ -15,12 +15,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useEventYear } from "@/contexts/YearContext";
 import { useTenantAdministration } from "@/hooks/useTenantAdministration";
+import { downloadBase64File } from "@/lib/download";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import type { ProductPackageId } from "@shared/product-packages";
 import { getSecurityKlemmiSteps } from "@/lib/klemmi-area-tours";
 import {
   ChevronDown,
+  FileText,
   KeyRound,
   LoaderCircle,
   LockKeyhole,
@@ -74,7 +76,10 @@ function SecurityAccordion({
         onControlledOpenChange?.(nextOpen);
       }}
     >
-      <Card data-klemmi-target={klemmiTarget} className={cn("overflow-hidden shadow-sm", toneClasses)}>
+      <Card
+        data-klemmi-target={klemmiTarget}
+        className={cn("overflow-hidden shadow-sm", toneClasses)}
+      >
         <CollapsibleTrigger asChild>
           <button
             type="button"
@@ -118,7 +123,8 @@ function PasswordEditor({
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const matches = password === confirmation;
-  const valid = Boolean(currentAdminPassword) && password.length >= 10 && matches;
+  const valid =
+    Boolean(currentAdminPassword) && password.length >= 10 && matches;
 
   return (
     <div className="space-y-4">
@@ -167,7 +173,9 @@ function PasswordEditor({
             disabled={!currentAdminPassword || saving}
           />
           {confirmation && !matches && (
-            <p className="text-xs text-destructive">Die Passwörter stimmen nicht überein.</p>
+            <p className="text-xs text-destructive">
+              Die Passwörter stimmen nicht überein.
+            </p>
           )}
         </div>
       </div>
@@ -187,8 +195,12 @@ function PasswordEditor({
 }
 
 export default function Security() {
-  const { data: tenantProduct } = trpc.tenantProduct.current.useQuery(undefined, { staleTime: 60_000 });
-  const currentPackageId: ProductPackageId = tenantProduct?.packageId ?? "event_pass";
+  const { data: tenantProduct } = trpc.tenantProduct.current.useQuery(
+    undefined,
+    { staleTime: 60_000 }
+  );
+  const currentPackageId: ProductPackageId =
+    tenantProduct?.packageId ?? "event_pass";
   const { user } = useAuth();
   const { year } = useEventYear();
   const utils = trpc.useUtils();
@@ -216,7 +228,9 @@ export default function Security() {
         utils.auth.passwordStatus.invalidate(),
         utils.audit.activities.invalidate(),
       ]);
-      toast.success("Globaler Notfall-Stopp für das Planungsteam wurde aufgehoben");
+      toast.success(
+        "Globaler Notfall-Stopp für das Planungsteam wurde aufgehoben"
+      );
     },
     onError: error => toast.error(error.message),
   });
@@ -226,22 +240,42 @@ export default function Security() {
         utils.auth.passwordStatus.invalidate(),
         utils.audit.activities.invalidate(),
       ]);
-      toast.success("Globaler Notfall-Stopp für alle Planungsteam-Zugänge wurde aktiviert");
+      toast.success(
+        "Globaler Notfall-Stopp für alle Planungsteam-Zugänge wurde aktiviert"
+      );
     },
     onError: error => toast.error(error.message),
   });
-  type SecurityGuidePanel = "password" | "accesses" | "emergency" | "audit" | "danger";
-  const [openGuidePanels, setOpenGuidePanels] = useState<SecurityGuidePanel[]>([]);
-  const [accessGuideFocus, setAccessGuideFocus] = useState<"existing" | "create">(
-    "existing"
+  const downloadClubPrivacyNotice = trpc.pdf.privacyNoticeTemplate.useMutation({
+    onSuccess: result => {
+      downloadBase64File(result.base64, result.mimeType, result.filename);
+      toast.success(
+        "Vereinsmuster für Helfer und Ansprechpartner wurde heruntergeladen"
+      );
+    },
+    onError: error => toast.error(error.message),
+  });
+  type SecurityGuidePanel =
+    | "password"
+    | "accesses"
+    | "emergency"
+    | "audit"
+    | "danger";
+  const [openGuidePanels, setOpenGuidePanels] = useState<SecurityGuidePanel[]>(
+    []
   );
-  const [auditGuideFocus, setAuditGuideFocus] = useState<"security" | "activity" | "files">(
-    "security"
-  );
+  const [accessGuideFocus, setAccessGuideFocus] = useState<
+    "existing" | "create"
+  >("existing");
+  const [auditGuideFocus, setAuditGuideFocus] = useState<
+    "security" | "activity" | "files"
+  >("security");
   const setGuidePanelOpen = useCallback(
     (panel: SecurityGuidePanel, open: boolean) => {
       setOpenGuidePanels(current =>
-        open ? Array.from(new Set([...current, panel])) : current.filter(item => item !== panel)
+        open
+          ? Array.from(new Set([...current, panel]))
+          : current.filter(item => item !== panel)
       );
     },
     []
@@ -249,48 +283,55 @@ export default function Security() {
   const focusGuidePanel = useCallback((panel: SecurityGuidePanel) => {
     setOpenGuidePanels([panel]);
   }, []);
-  const handleSecurityGuideStep = useCallback((stepKey: string) => {
-    switch (stepKey) {
-      case "intro":
-      case "password":
-        focusGuidePanel("password");
-        break;
-      case "accesses-overview":
-      case "accesses-filter":
-      case "accesses-list":
-        setAccessGuideFocus("existing");
-        focusGuidePanel("accesses");
-        break;
-      case "accesses-create":
-      case "accesses-identity":
-      case "accesses-rights":
-      case "accesses-coadmin":
-      case "accesses-events":
-        setAccessGuideFocus("create");
-        focusGuidePanel("accesses");
-        break;
-      case "emergency":
-        focusGuidePanel("emergency");
-        break;
-      case "audit-logins":
-        setAuditGuideFocus("security");
-        focusGuidePanel("audit");
-        break;
-      case "audit-activity":
-        setAuditGuideFocus("activity");
-        focusGuidePanel("audit");
-        break;
-      case "audit-files":
-        setAuditGuideFocus("files");
-        focusGuidePanel("audit");
-        break;
-      case "danger":
-        focusGuidePanel("danger");
-        break;
-    }
-  }, [focusGuidePanel]);
+  const handleSecurityGuideStep = useCallback(
+    (stepKey: string) => {
+      switch (stepKey) {
+        case "intro":
+        case "password":
+          focusGuidePanel("password");
+          break;
+        case "accesses-overview":
+        case "accesses-filter":
+        case "accesses-list":
+          setAccessGuideFocus("existing");
+          focusGuidePanel("accesses");
+          break;
+        case "accesses-create":
+        case "accesses-identity":
+        case "accesses-rights":
+        case "accesses-coadmin":
+        case "accesses-events":
+          setAccessGuideFocus("create");
+          focusGuidePanel("accesses");
+          break;
+        case "emergency":
+          focusGuidePanel("emergency");
+          break;
+        case "audit-logins":
+          setAuditGuideFocus("security");
+          focusGuidePanel("audit");
+          break;
+        case "audit-activity":
+          setAuditGuideFocus("activity");
+          focusGuidePanel("audit");
+          break;
+        case "audit-files":
+          setAuditGuideFocus("files");
+          focusGuidePanel("audit");
+          break;
+        case "danger":
+          focusGuidePanel("danger");
+          break;
+      }
+    },
+    [focusGuidePanel]
+  );
   if (administrativeContext.isLoading && user?.role === "user") {
-    return <div className="text-sm text-muted-foreground">Berechtigungen werden geprüft …</div>;
+    return (
+      <div className="text-sm text-muted-foreground">
+        Berechtigungen werden geprüft …
+      </div>
+    );
   }
   if (!isAdmin) {
     return (
@@ -309,7 +350,8 @@ export default function Security() {
       <div>
         <PageTitle icon="security">Schutz &amp; Protokoll</PageTitle>
         <p className="text-muted-foreground">
-          Zugänge, Passwörter, Notfallmaßnahmen und alle Systemprotokolle sicher verwalten.
+          Zugänge, Passwörter, Notfallmaßnahmen und alle Systemprotokolle sicher
+          verwalten.
         </p>
         <div className="mt-3">
           <KlemmiSurfaceGuide
@@ -358,68 +400,70 @@ export default function Security() {
         </SecurityAccordion>
 
         {isPrimaryTenantAdmin && (
-        <SecurityAccordion
-          klemmiTarget="security-emergency"
-          title="Notfall-Sperrstatus Planungsteam (Global)"
-          description="Sperrt bei einem Sicherheitsvorfall sofort alle Planungsteam-Logins und offenen Sitzungen."
-          icon={ShieldAlert}
-          tone="red"
-          open={openGuidePanels.includes("emergency")}
-          onOpenChange={open => setGuidePanelOpen("emergency", open)}
-        >
-          <div className="space-y-4" aria-live="polite">
-            <div
-              className={cn(
-                "rounded-lg border p-3 text-sm",
-                statusLoading
-                  ? "border-slate-200 bg-slate-50 text-slate-700"
-                  : status?.planningTeamLocked
-                    ? "border-red-300 bg-red-50 text-red-900"
-                    : "border-emerald-200 bg-emerald-50 text-emerald-900"
-              )}
-            >
-              <p className="font-semibold">
-                {statusLoading
-                  ? "Sperrstatus wird geladen …"
-                  : status?.planningTeamLocked
-                    ? "Notfall-Stopp ist aktiv: Planungsteam-Zugänge sind global gesperrt."
-                    : "Notfall-Stopp ist inaktiv: Planungsteam-Zugänge sind freigegeben."}
-              </p>
-              <p className="mt-1 text-xs opacity-80">
-                Bei Aktivierung verlieren auch bereits angemeldete Planungsteam-Sitzungen den Zugriff und müssen nach der Freigabe erneut angemeldet werden.
-              </p>
+          <SecurityAccordion
+            klemmiTarget="security-emergency"
+            title="Notfall-Sperrstatus Planungsteam (Global)"
+            description="Sperrt bei einem Sicherheitsvorfall sofort alle Planungsteam-Logins und offenen Sitzungen."
+            icon={ShieldAlert}
+            tone="red"
+            open={openGuidePanels.includes("emergency")}
+            onOpenChange={open => setGuidePanelOpen("emergency", open)}
+          >
+            <div className="space-y-4" aria-live="polite">
+              <div
+                className={cn(
+                  "rounded-lg border p-3 text-sm",
+                  statusLoading
+                    ? "border-slate-200 bg-slate-50 text-slate-700"
+                    : status?.planningTeamLocked
+                      ? "border-red-300 bg-red-50 text-red-900"
+                      : "border-emerald-200 bg-emerald-50 text-emerald-900"
+                )}
+              >
+                <p className="font-semibold">
+                  {statusLoading
+                    ? "Sperrstatus wird geladen …"
+                    : status?.planningTeamLocked
+                      ? "Notfall-Stopp ist aktiv: Planungsteam-Zugänge sind global gesperrt."
+                      : "Notfall-Stopp ist inaktiv: Planungsteam-Zugänge sind freigegeben."}
+                </p>
+                <p className="mt-1 text-xs opacity-80">
+                  Bei Aktivierung verlieren auch bereits angemeldete
+                  Planungsteam-Sitzungen den Zugriff und müssen nach der
+                  Freigabe erneut angemeldet werden.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant={status?.planningTeamLocked ? "destructive" : "outline"}
+                className={cn(
+                  "w-full sm:w-auto",
+                  status?.planningTeamLocked
+                    ? "!bg-emerald-600 !text-white hover:!bg-emerald-700"
+                    : "border-red-300 bg-red-50 text-red-800 hover:bg-red-100 hover:text-red-900"
+                )}
+                disabled={statusLoading || lockBusy}
+                onClick={() => {
+                  if (status?.planningTeamLocked) {
+                    unlockPlanningTeam.mutate();
+                  } else {
+                    lockPlanningTeam.mutate();
+                  }
+                }}
+              >
+                {lockBusy ? (
+                  <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
+                ) : status?.planningTeamLocked ? (
+                  <Unlock className="mr-2 h-4 w-4" />
+                ) : (
+                  <LockKeyhole className="mr-2 h-4 w-4" />
+                )}
+                {status?.planningTeamLocked
+                  ? "Globalen Notfall-Stopp aufheben"
+                  : "Globaler Notfall-Stopp: Alle Planungsteam-Zugänge sperren"}
+              </Button>
             </div>
-            <Button
-              type="button"
-              variant={status?.planningTeamLocked ? "destructive" : "outline"}
-              className={cn(
-                "w-full sm:w-auto",
-                status?.planningTeamLocked
-                  ? "!bg-emerald-600 !text-white hover:!bg-emerald-700"
-                  : "border-red-300 bg-red-50 text-red-800 hover:bg-red-100 hover:text-red-900"
-              )}
-              disabled={statusLoading || lockBusy}
-              onClick={() => {
-                if (status?.planningTeamLocked) {
-                  unlockPlanningTeam.mutate();
-                } else {
-                  lockPlanningTeam.mutate();
-                }
-              }}
-            >
-              {lockBusy ? (
-                <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-              ) : status?.planningTeamLocked ? (
-                <Unlock className="mr-2 h-4 w-4" />
-              ) : (
-                <LockKeyhole className="mr-2 h-4 w-4" />
-              )}
-              {status?.planningTeamLocked
-                ? "Globalen Notfall-Stopp aufheben"
-                : "Globaler Notfall-Stopp: Alle Planungsteam-Zugänge sperren"}
-            </Button>
-          </div>
-        </SecurityAccordion>
+          </SecurityAccordion>
         )}
 
         <SecurityAccordion
@@ -435,6 +479,54 @@ export default function Security() {
         </SecurityAccordion>
 
         <SecurityAccordion
+          title="Datenschutzvorlagen für Vereine"
+          description="Ausfüllbares Vereinsmuster für Helfer und Ansprechpartner sowie direkter Zugriff auf den App-Datenschutzhinweis."
+          icon={FileText}
+          tone="blue"
+        >
+          <div className="space-y-4">
+            <div className="rounded-lg border border-blue-200 bg-blue-50/70 p-3 text-sm text-blue-950">
+              <p className="font-semibold">
+                Datenschutzhinweis für Helferinnen, Helfer und Ansprechpartner
+              </p>
+              <p className="mt-1 text-xs leading-5 text-blue-900/85">
+                Das PDF ist eine ausfüllbare Vereinsvorlage. Es erläutert
+                Helferplanung, freiwillige WhatsApp-Kommunikation, geschützte
+                Einsatzpläne, Basis- und Teamansicht sowie die freiwillige
+                Telefonnummernfreigabe von Ansprechpartnern.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <Button
+                type="button"
+                className="w-full bg-blue-800 text-white hover:bg-blue-900 sm:w-auto"
+                disabled={downloadClubPrivacyNotice.isPending}
+                onClick={() => downloadClubPrivacyNotice.mutate()}
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                {downloadClubPrivacyNotice.isPending
+                  ? "Vereinsmuster wird erstellt …"
+                  : "Vereinsmuster als PDF herunterladen"}
+              </Button>
+              <a
+                href="/datenschutz"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-10 items-center justify-center rounded-md border border-slate-300 bg-white px-4 text-sm font-medium text-slate-800 shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                App-Datenschutzhinweis öffnen
+              </a>
+            </div>
+            <p className="text-xs leading-5 text-muted-foreground">
+              Bitte ergänzt vor Verwendung Vereinsname, Veranstaltung,
+              Datenschutzkontakt, tatsächlich genutzte Kommunikationswege und
+              die individuelle Aufbewahrungsfrist. Die Vorlage unterstützt die
+              Organisation, ersetzt aber keine rechtliche Prüfung des Vereins.
+            </p>
+          </div>
+        </SecurityAccordion>
+
+        <SecurityAccordion
           klemmiTarget="security-danger"
           title={`Gefahrenbereich (Planung ${year})`}
           description="Unwiderrufliche Löschung aller Planungsdaten des aktuell gewählten Jahres."
@@ -444,14 +536,16 @@ export default function Security() {
           onOpenChange={open => setGuidePanelOpen("danger", open)}
         >
           <div className="space-y-4">
-          <div className="flex items-center gap-2 font-semibold text-destructive">
-            <ShieldAlert className="h-5 w-5" /> Gefahrenbereich – Planung {year}
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Löscht alle Ansprechpartner, Helfer, Schichten, Zuordnungen, Aufgaben,
-            Materialien, Kuchen- und Finanzdaten des aktuell gewählten Jahres.
-            Andere Veranstaltungsjahre und die Passwörter bleiben erhalten.
-          </p>
+            <div className="flex items-center gap-2 font-semibold text-destructive">
+              <ShieldAlert className="h-5 w-5" /> Gefahrenbereich – Planung{" "}
+              {year}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Löscht alle Ansprechpartner, Helfer, Schichten, Zuordnungen,
+              Aufgaben, Materialien, Kuchen- und Finanzdaten des aktuell
+              gewählten Jahres. Andere Veranstaltungsjahre und die Passwörter
+              bleiben erhalten.
+            </p>
             <ResetAreaButton area="all" label={`Alle Planungsdaten ${year}`} />
           </div>
         </SecurityAccordion>

@@ -207,17 +207,33 @@ export default function AppPrivacy() {
 
             <Section title="6. Persönliche PDF-Übersichten">
               <p>
-                Eine über einen persönlichen Freigabelink erreichbare
-                Einsatzübersicht enthält nur den Namen der empfangenden Person,
-                ihre eigenen Einsätze mit Tag, Zeit, Aufgabe und Ort sowie einen
-                neutralen Hinweis auf die Einsatzleitung. Namen von
-                Mithelfenden, private Hinweise, Spenden-, Verfügbarkeits- und
-                Kontaktdaten anderer Personen werden in dieser öffentlichen
-                Minimalansicht nicht ausgegeben.
+                Der Verein kann nach bewusster Auswahl eine persönliche
+                Einsatzübersicht als geschützten Link bereitstellen. Jeder Link
+                ist sieben Tage gültig, wird nur zusammen mit einem separaten
+                Zugangscode geöffnet und kann vom berechtigten Organisationsteam
+                jederzeit sofort widerrufen werden. Der Link und der Zugangscode
+                werden technisch getrennt geschützt; für eine erneute Zustellung
+                kann eine serverseitig verschlüsselte Zustellkopie vorgehalten
+                werden.
               </p>
               <p>
-                Ausführlichere PDF-Ansichten bleiben dem angemeldeten
-                Organisationsteam mit den jeweils erteilten Rechten vorbehalten.
+                In der <strong>Basisansicht</strong> enthält die Übersicht nur
+                den Namen der empfangenden Person, deren eigene Einsätze mit
+                Tag, Zeit, Aufgabe und Ort sowie die verantwortliche
+                Ansprechperson. Eine Telefonnummer der Ansprechperson erscheint
+                nur, wenn diese sie freiwillig für Helferpläne freigegeben hat.
+              </p>
+              <p>
+                Die bewusst wählbare <strong>Ansicht mit Mithelfenden</strong>
+                ergänzt Namen der Personen, die derselben Schicht zugeordnet
+                sind, sowie aufgabenbezogene Informationen, die für die
+                Zusammenarbeit erforderlich sind. Eigene Verpflegungsspenden
+                können mit sachlichen Zutaten- oder Allergenhinweisen
+                erscheinen. Verfügbarkeiten anderer Personen, weitere Einsätze
+                anderer Helfer sowie nicht erforderliche private Angaben werden
+                nicht ausgegeben. Der Verein ist dafür verantwortlich, die
+                Beteiligten über die gewählte Ansicht und die Weitergabe ihrer
+                Kontaktdaten zu informieren.
               </p>
             </Section>
 
@@ -272,7 +288,7 @@ export default function AppPrivacy() {
                   className="mt-0.5 size-3.5 shrink-0"
                   aria-hidden="true"
                 />
-                Version 1.0 · Stand: 01.10.2026. Dieser Hinweis beschreibt den
+                Version 1.1 · Stand: 01.10.2026. Dieser Hinweis beschreibt den
                 geschlossenen Pilotbetrieb und wird bei neuen Funktionen,
                 Dienstleistern oder verbindlichen betrieblichen Änderungen
                 aktualisiert.

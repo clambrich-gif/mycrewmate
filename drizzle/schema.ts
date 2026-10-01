@@ -673,6 +673,7 @@ export const protectedHelperPdfShares = mysqlTable(
     id: int("id").autoincrement().primaryKey(),
     tokenHash: varchar("tokenHash", { length: 64 }).notNull(),
     accessCodeHash: varchar("accessCodeHash", { length: 64 }).notNull(),
+    deliverySecret: varchar("deliverySecret", { length: 512 }),
     helperId: int("helperId").notNull(),
     viewMode: mysqlEnum("viewMode", ["minimal", "team"]).notNull(),
     expiresAt: timestamp("expiresAt").notNull(),

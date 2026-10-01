@@ -1,5 +1,10 @@
 import { AsyncLocalStorage } from "node:async_hooks";
-import { createHash, randomBytes } from "node:crypto";
+import {
+  createCipheriv,
+  createDecipheriv,
+  createHash,
+  randomBytes,
+} from "node:crypto";
 import {
   and,
   asc,
@@ -3050,6 +3055,64 @@ function createProtectedHelperPdfShareSecret(bytes = 24) {
   return randomBytes(bytes).toString("base64url");
 }
 
+function protectedHelperPdfShareEncryptionKey() {
+  if (!ENV.cookieSecret) {
+    throw new Error(
+      "Geschützte PDF-Freigaben benötigen einen konfigurierten Serversitzungsschlüssel"
+    );
+  }
+  return createHash("sha256")
+    .update(`mycrewmate:protected-helper-pdf-share:${ENV.cookieSecret}`)
+    .digest();
+}
+
+function encryptProtectedHelperPdfShareDelivery(input: {
+  token: string;
+  accessCode: string;
+}) {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv(
+    "aes-256-gcm",
+    protectedHelperPdfShareEncryptionKey(),
+    iv
+  );
+  const encrypted = Buffer.concat([
+    cipher.update(JSON.stringify(input), "utf8"),
+    cipher.final(),
+  ]);
+  return Buffer.concat([iv, cipher.getAuthTag(), encrypted]).toString("base64url");
+}
+
+function decryptProtectedHelperPdfShareDelivery(value: string | null) {
+  if (!value) return undefined;
+  try {
+    const packed = Buffer.from(value, "base64url");
+    if (packed.length < 29) return undefined;
+    const decipher = createDecipheriv(
+      "aes-256-gcm",
+      protectedHelperPdfShareEncryptionKey(),
+      packed.subarray(0, 12)
+    );
+    decipher.setAuthTag(packed.subarray(12, 28));
+    const decoded = JSON.parse(
+      Buffer.concat([decipher.update(packed.subarray(28)), decipher.final()]).toString(
+        "utf8"
+      )
+    ) as { token?: unknown; accessCode?: unknown };
+    if (
+      typeof decoded.token !== "string" ||
+      !/^[A-Za-z0-9_-]{24,80}$/.test(decoded.token) ||
+      typeof decoded.accessCode !== "string" ||
+      !/^[A-Za-z0-9]{12}$/.test(decoded.accessCode)
+    ) {
+      return undefined;
+    }
+    return { token: decoded.token, accessCode: decoded.accessCode };
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Erstellt eine einmalige, sieben Tage gültige Freigabe. Linktoken und
  * Zugangscode werden ausschließlich gehasht abgelegt, damit Datenbankinhalte
@@ -3068,12 +3131,29 @@ export async function createProtectedHelperPdfShare(input: {
     const accessCode = randomBytes(6).toString("hex").toUpperCase();
     const expiresAt = new Date(Date.now() + PROTECTED_HELPER_PDF_SHARE_TTL_MS);
     try {
-      await database.insert(protectedHelperPdfShares).values({
-        tokenHash: helperPdfShareHash(token),
-        accessCodeHash: helperPdfShareHash(accessCode),
-        helperId: helper.id,
-        viewMode: input.viewMode,
-        expiresAt,
+      await database.transaction(async tx => {
+        await tx
+          .update(protectedHelperPdfShares)
+          .set({ revokedAt: new Date() })
+          .where(
+            and(
+              eq(protectedHelperPdfShares.helperId, helper.id),
+              eq(protectedHelperPdfShares.viewMode, input.viewMode),
+              isNull(protectedHelperPdfShares.revokedAt),
+              gt(protectedHelperPdfShares.expiresAt, new Date())
+            )
+          );
+        await tx.insert(protectedHelperPdfShares).values({
+          tokenHash: helperPdfShareHash(token),
+          accessCodeHash: helperPdfShareHash(accessCode),
+          deliverySecret: encryptProtectedHelperPdfShareDelivery({
+            token,
+            accessCode,
+          }),
+          helperId: helper.id,
+          viewMode: input.viewMode,
+          expiresAt,
+        });
       });
       return { token, accessCode, expiresAt };
     } catch (error) {
@@ -3082,6 +3162,94 @@ export async function createProtectedHelperPdfShare(input: {
   }
 
   throw new Error("Geschützte PDF-Freigabe konnte nicht erstellt werden");
+}
+
+/** Liefert ausschließlich aktive Freigabemetadaten für den ausgewählten Helfer. */
+export async function listActiveProtectedHelperPdfShares(helperId: number) {
+  const database = await getDb();
+  if (!database) return [];
+  const rows = await database
+    .select({
+      id: protectedHelperPdfShares.id,
+      viewMode: protectedHelperPdfShares.viewMode,
+      expiresAt: protectedHelperPdfShares.expiresAt,
+      createdAt: protectedHelperPdfShares.createdAt,
+      deliverySecret: protectedHelperPdfShares.deliverySecret,
+    })
+    .from(protectedHelperPdfShares)
+    .innerJoin(helpers, eq(helpers.id, protectedHelperPdfShares.helperId))
+    .innerJoin(
+      events,
+      and(eq(events.id, helpers.eventId), eq(events.year, helpers.year))
+    )
+    .where(
+      and(
+        eq(protectedHelperPdfShares.helperId, helperId),
+        planningScope(helpers),
+        eq(events.status, "active"),
+        gt(protectedHelperPdfShares.expiresAt, new Date()),
+        isNull(protectedHelperPdfShares.revokedAt)
+      )
+    )
+    .orderBy(protectedHelperPdfShares.expiresAt);
+  return rows.map(row => ({
+    id: row.id,
+    viewMode: row.viewMode,
+    expiresAt: row.expiresAt,
+    createdAt: row.createdAt,
+    canResend: Boolean(decryptProtectedHelperPdfShareDelivery(row.deliverySecret)),
+  }));
+}
+
+/** Widerruft eine aktive Freigabe sofort; Token und Zugangscode bleiben wertlos. */
+export async function revokeProtectedHelperPdfShare(input: {
+  id: number;
+  helperId: number;
+}) {
+  const database = (await getDb()) as DB;
+  const result = await database
+    .update(protectedHelperPdfShares)
+    .set({ revokedAt: new Date(), deliverySecret: null })
+    .where(
+      and(
+        eq(protectedHelperPdfShares.id, input.id),
+        eq(protectedHelperPdfShares.helperId, input.helperId),
+        isNull(protectedHelperPdfShares.revokedAt),
+        gt(protectedHelperPdfShares.expiresAt, new Date())
+      )
+    );
+  return Number((result as { affectedRows?: number }).affectedRows ?? 0) > 0;
+}
+
+/** Stellt die verschlüsselt gespeicherten Zustellwerte nur für aktive Freigaben wieder her. */
+export async function getProtectedHelperPdfShareDelivery(input: {
+  id: number;
+  helperId: number;
+}) {
+  const database = await getDb();
+  if (!database) return undefined;
+  const [row] = await database
+    .select({ deliverySecret: protectedHelperPdfShares.deliverySecret })
+    .from(protectedHelperPdfShares)
+    .innerJoin(helpers, eq(helpers.id, protectedHelperPdfShares.helperId))
+    .innerJoin(
+      events,
+      and(eq(events.id, helpers.eventId), eq(events.year, helpers.year))
+    )
+    .where(
+      and(
+        eq(protectedHelperPdfShares.id, input.id),
+        eq(protectedHelperPdfShares.helperId, input.helperId),
+        planningScope(helpers),
+        eq(events.status, "active"),
+        gt(protectedHelperPdfShares.expiresAt, new Date()),
+        isNull(protectedHelperPdfShares.revokedAt)
+      )
+    )
+    .limit(1);
+  return row
+    ? decryptProtectedHelperPdfShareDelivery(row.deliverySecret)
+    : undefined;
 }
 
 /** Prüft Linktoken, Zugangscode und Ablauf vor dem Wechsel in den Event-Scope. */

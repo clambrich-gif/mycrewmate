@@ -211,6 +211,137 @@ function safeFilename(value: string) {
   );
 }
 
+type ClubPrivacyTemplateSection = {
+  title: string;
+  paragraphs: string[];
+  bullets?: string[];
+};
+
+const CLUB_PRIVACY_TEMPLATE_SECTIONS: ClubPrivacyTemplateSection[] = [
+  {
+    title: "1. Wofür nutzen wir deine Daten?",
+    paragraphs: [
+      "Wir planen, organisieren und begleiten mit den angegebenen Daten unsere Vereins- und Veranstaltungsarbeit. Dazu gehören insbesondere die Helferkoordination, die Besetzung von Schichten, die Abstimmung von Aufgaben sowie die Vorbereitung, Durchführung und Nachbereitung der Veranstaltung.",
+    ],
+  },
+  {
+    title: "2. Welche Daten verarbeiten wir?",
+    paragraphs: [
+      "Je nach Rolle und freiwilliger Angabe verarbeiten wir nur Daten, die für die konkrete Helfer- und Einsatzplanung erforderlich sind.",
+      "Bitte trage keine Angaben zu Gesundheit, Familie, Religion, politischen Ansichten oder anderen besonders sensiblen persönlichen Umständen in Freitextfelder ein, sofern der Verein dafür nicht ausdrücklich einen dokumentierten Grund und Schutzweg bereitstellt.",
+    ],
+    bullets: [
+      "Name und Kontaktmöglichkeiten, Ansprechpartner-Zuordnung, Zuständigkeiten und Schichtzuordnungen",
+      "Rückmeldungen zur Verfügbarkeit sowie aufgabenbezogene Hinweise, zum Beispiel „PKW mit Anhängerkupplung verfügbar“",
+      "bei freiwilligen Verpflegungsspenden: Art, Übergabeort und -zeit sowie Zutaten- oder Allergenhinweise zur sicheren Ausgabe",
+      "technische Angaben zu Zugängen, Berechtigungen und sicherheitsrelevanten Vorgängen",
+    ],
+  },
+  {
+    title: "3. Persönliche Einsatzübersicht als geschützter Link",
+    paragraphs: [
+      "Auf Wunsch kann der Verein einen persönlichen Einsatzplan als geschützten Link senden. Der Link ist sieben Tage gültig und wird nur zusammen mit einem getrennten Zugangscode geöffnet. Der Verein kann den Link jederzeit sofort widerrufen; danach ist er auch mit dem richtigen Zugangscode nicht mehr nutzbar.",
+      "In der Basisansicht stehen nur Name, eigene Einsätze, Tag, Uhrzeit, Aufgabe, Ort und die verantwortliche Ansprechperson. Eine Telefonnummer der Ansprechperson erscheint nur bei deren freiwilliger Freigabe.",
+      "Die bewusst wählbare Ansicht mit Mithelfenden ergänzt die Namen der Personen derselben Schicht und ausschließlich aufgabenrelevante Informationen. Verfügbarkeiten anderer Personen, weitere Einsätze anderer Helfer sowie nicht erforderliche private Angaben werden nicht ausgegeben.",
+    ],
+  },
+  {
+    title: "4. Freiwillige Kommunikation über WhatsApp",
+    paragraphs: [
+      "Der Verein kann nach einem bewussten Klick eine vorbereitete Nachricht in WhatsApp öffnen. Die Nutzung ist freiwillig; eine Kontaktaufnahme über einen anderen Weg bleibt möglich. Bei Nutzung von WhatsApp werden Zielrufnummer und vorbereiteter Nachrichtentext an WhatsApp übergeben.",
+    ],
+  },
+  {
+    title: "5. Freiwillige Telefonnummernfreigabe für Ansprechpartner",
+    paragraphs: [
+      "Ansprechpartner entscheiden selbst, ob ihre Telefonnummer in persönlichen Einsatzübersichten ihrer zugeordneten Helfer angezeigt wird. Ohne Freigabe erscheint nur der Name der Ansprechperson.",
+      "Option: [ ] Telefonnummer in persönlichen Einsatzübersichten anzeigen    [ ] Telefonnummer nicht anzeigen",
+      "Name: ______________________________    Datum / Unterschrift oder dokumentierte Bestätigung: ______________________________",
+    ],
+  },
+  {
+    title: "6. Rechtsgrundlage, Speicherdauer und Rechte",
+    paragraphs: [
+      "Die konkrete Rechtsgrundlage legt der Verein als Verantwortlicher fest, etwa Mitgliedschaft oder Teilnahmevereinbarung, rechtliche Verpflichtung, berechtigtes Interesse an einer geordneten Durchführung oder – bei wirklich freiwilligen Zusatzfunktionen – eine Einwilligung.",
+      "Planungsdaten werden für [FRIST DES VEREINS] aufbewahrt. In MyCrewMate ist für abgeschlossene Veranstaltungen eine reguläre Frist von drei Jahren vorgesehen, soweit keine frühere Löschung erfolgt und keine längere gesetzliche Pflicht besteht.",
+      "Für Auskunft, Berichtigung, Löschung, Einschränkung, Datenübertragbarkeit oder Widerspruch wende dich bitte an den genannten Datenschutzkontakt des Vereins. Außerdem besteht ein Beschwerderecht bei einer Datenschutzaufsichtsbehörde.",
+    ],
+  },
+];
+
+/** Erzeugt ein ausfüllbares Vereinsmuster für die Information von Helfern und Ansprechpartnern. */
+export function renderClubPrivacyNoticeTemplatePdf() {
+  return collectPdf(doc => {
+    doc.fillColor(colors.accent).font("Helvetica-Bold").fontSize(19);
+    doc.text("Datenschutzhinweis für Helferinnen, Helfer und Ansprechpartner", {
+      width: contentWidth,
+    });
+    doc.moveDown(0.5);
+    doc.fillColor(colors.ink).font("Helvetica").fontSize(9.5);
+    doc.text(
+      "Ausfüllbares Vereinsmuster · vor Nutzung mit den tatsächlichen Abläufen, Kontakten und Fristen des Vereins ergänzen · Stand 01.10.2026",
+      { width: contentWidth }
+    );
+    doc.moveDown(1.2);
+    doc.fillColor(colors.ink).font("Helvetica-Bold").fontSize(10.5);
+    doc.text("Verein / Veranstalter: [NAME DES VEREINS]");
+    doc.text("Veranstaltung / Projekt: [NAME DER VERANSTALTUNG]");
+    doc.text("Verantwortliche Person: [NAME, FUNKTION, KONTAKT]");
+    doc.text("Datenschutzkontakt des Vereins: [E-MAIL / POSTANSCHRIFT]");
+    doc.text("Stand: [DATUM]");
+    doc.moveDown(1.1);
+
+    for (const section of CLUB_PRIVACY_TEMPLATE_SECTIONS) {
+      if (doc.y > pageHeight - 150) {
+        doc.addPage();
+        doc.x = margin;
+        doc.y = margin;
+      }
+      doc.fillColor(colors.ink).font("Helvetica-Bold").fontSize(12);
+      doc.text(section.title, { width: contentWidth });
+      doc.moveDown(0.35);
+      doc.fillColor(colors.ink).font("Helvetica").fontSize(9.5);
+      for (const paragraph of section.paragraphs) {
+        doc.text(paragraph, { width: contentWidth, lineGap: 2 });
+        doc.moveDown(0.45);
+      }
+      for (const bullet of section.bullets ?? []) {
+        doc.text(`• ${bullet}`, margin + 8, doc.y, {
+          width: contentWidth - 8,
+          lineGap: 2,
+          indent: 0,
+        });
+        doc.moveDown(0.25);
+      }
+      doc.moveDown(0.65);
+    }
+
+    if (doc.y > pageHeight - 135) {
+      doc.addPage();
+      doc.x = margin;
+      doc.y = margin;
+    }
+    doc.fillColor(colors.accent).font("Helvetica-Bold").fontSize(12);
+    doc.text("Interne Vereins-Checkliste vor dem Einsatz", {
+      width: contentWidth,
+    });
+    doc.moveDown(0.4);
+    doc.fillColor(colors.ink).font("Helvetica").fontSize(9.5);
+    [
+      "Verantwortliche Person und Datenschutzkontakt ausgefüllt",
+      "Tatsächlich genutzte Kommunikationswege beschrieben",
+      "Teamansicht nur eingesetzt, wenn Mithelfende für die Zusammenarbeit erforderlich sind",
+      "Ansprechpartner haben über die freiwillige Telefonnummernfreigabe entschieden",
+      "WhatsApp als freiwilliger Kommunikationsweg kenntlich gemacht",
+      "Lösch- bzw. Aufbewahrungsfrist des Vereins festgelegt",
+      "AVV mit MyCrewMate und Unterauftragsverarbeiteranlage geprüft",
+    ].forEach(item => {
+      doc.text(`[ ]  ${item}`, { width: contentWidth, lineGap: 2 });
+      doc.moveDown(0.25);
+    });
+  });
+}
+
 function formatDate(date = new Date()) {
   return new Intl.DateTimeFormat("de-DE", {
     day: "2-digit",
@@ -353,8 +484,12 @@ function drawCompactHelperHeader(
   usesMyCrewMateWordmark = false
 ) {
   const top = helperPdfMargin;
-  const logoWidth = usesMyCrewMateWordmark ? 172 : CUSTOM_EVENT_LOGO_COMPACT_SIZE;
-  const logoHeight = usesMyCrewMateWordmark ? 52 : CUSTOM_EVENT_LOGO_COMPACT_SIZE;
+  const logoWidth = usesMyCrewMateWordmark
+    ? 172
+    : CUSTOM_EVENT_LOGO_COMPACT_SIZE;
+  const logoHeight = usesMyCrewMateWordmark
+    ? 52
+    : CUSTOM_EVENT_LOGO_COMPACT_SIZE;
   const textWidth = logoBuffer
     ? helperPdfContentWidth - logoWidth - 14
     : helperPdfContentWidth;
@@ -695,9 +830,7 @@ function drawCompactHelperShiftBlock(
     drawCompactHelperLocationLink(
       doc,
       locationLink,
-      bodyX +
-        doc.widthOfString(taskLine) +
-        helperPdfLocationStyle.taskGap,
+      bodyX + doc.widthOfString(taskLine) + helperPdfLocationStyle.taskGap,
       y + 6,
       taskLayout.locationTextWidth
     );
@@ -758,12 +891,10 @@ export function buildHelperSummaryEntries(input: {
       label: cakeLines.length === 1 ? "Spende" : "Spenden",
       value: cakeLines.join(" · "),
     });
-  entries.push(
-    {
-      label: input.contactLabel,
-      value: input.contactName?.trim() || "nicht zugeordnet",
-    },
-  );
+  entries.push({
+    label: input.contactLabel,
+    value: input.contactName?.trim() || "nicht zugeordnet",
+  });
   if (input.contactPhone?.trim()) {
     entries.push({
       label: "Rufnummer",
@@ -870,8 +1001,12 @@ function drawDocumentHeader(
   usesMyCrewMateWordmark = false
 ) {
   const headerTop = doc.y;
-  const logoWidth = usesMyCrewMateWordmark ? 172 : CUSTOM_EVENT_LOGO_STANDARD_SIZE;
-  const logoHeight = usesMyCrewMateWordmark ? 52 : CUSTOM_EVENT_LOGO_STANDARD_SIZE;
+  const logoWidth = usesMyCrewMateWordmark
+    ? 172
+    : CUSTOM_EVENT_LOGO_STANDARD_SIZE;
+  const logoHeight = usesMyCrewMateWordmark
+    ? 52
+    : CUSTOM_EVENT_LOGO_STANDARD_SIZE;
   const logoTextReserve = usesMyCrewMateWordmark ? 192 : 148;
   if (logoBuffer) {
     try {
@@ -1442,7 +1577,7 @@ function drawPublicHelperHeader(
     .text(
       `Eigene Einsätze · ${contact?.name?.trim() ? `${settings.contactLabel}: ${contact.name.trim()}` : "bei Fragen an die Einsatzleitung"} · Stand: ${formatDate()}`,
       {
-      width: helperPdfContentWidth,
+        width: helperPdfContentWidth,
       }
     );
   const lineY = doc.y + 8;
