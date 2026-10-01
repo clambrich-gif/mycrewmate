@@ -162,6 +162,12 @@ type TenantOverviewItem = {
     adminName: string | null;
     adminEmail: string | null;
   };
+  contractAcceptance: {
+    isCurrent: boolean;
+    confirmedDocumentCount: number;
+    requiredDocumentCount: number;
+    acceptedAt: Date | null;
+  };
 };
 
 type ProductLimitUsageMetric = {
@@ -346,6 +352,47 @@ function TenantAdminActivationStatus({
     <div className="mt-3 flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs leading-5 text-blue-950" role="status">
       <Loader2 className="mt-0.5 size-3.5 shrink-0 text-blue-700" aria-hidden="true" />
       <span><strong>Ersteinrichtung offen.</strong> Der Vereinsadministrator muss sich einmal anmelden und das Initialpasswort durch ein eigenes Passwort ersetzen.</span>
+    </div>
+  );
+}
+
+function TenantContractAcceptanceStatus({
+  acceptance,
+}: {
+  acceptance: TenantOverviewItem["contractAcceptance"];
+}) {
+  if (acceptance.isCurrent) {
+    return (
+      <div
+        data-slot="tenant-contract-acceptance"
+        className="mt-3 flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs leading-5 text-emerald-950"
+        role="status"
+      >
+        <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-emerald-700" aria-hidden="true" />
+        <span>
+          <strong>Vertragsunterlagen bestätigt.</strong>{" "}
+          {acceptance.requiredDocumentCount} von {acceptance.requiredDocumentCount} aktuellen
+          Dokumenten sind nachgewiesen
+          {acceptance.acceptedAt
+            ? ` · zuletzt bestätigt am ${formatAccessCreatedAt(acceptance.acceptedAt)}.`
+            : "."}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      data-slot="tenant-contract-acceptance"
+      className="mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950"
+      role="status"
+    >
+      <CircleAlert className="mt-0.5 size-3.5 shrink-0 text-amber-700" aria-hidden="true" />
+      <span>
+        <strong>Vertragsunterlagen noch offen.</strong> {acceptance.confirmedDocumentCount} von{" "}
+        {acceptance.requiredDocumentCount} aktuellen Dokumenten sind bestätigt. Bei der
+        Vereinsaktivierung wird die fehlende Annahme verbindlich abgefragt.
+      </span>
     </div>
   );
 }
@@ -940,6 +987,12 @@ export default function MasterAdminPortal() {
             },
             productUsage: demoProductUsage(),
             adminActivation: { total: 0, passwordConfigured: 0, initialSetupPending: 0, adminName: null, adminEmail: null },
+            contractAcceptance: {
+              isCurrent: true,
+              confirmedDocumentCount: 3,
+              requiredDocumentCount: 3,
+              acceptedAt: new Date("2026-10-01T10:00:00.000Z"),
+            },
             eventCount: 1,
             events: [{ id: 1, name: "MyEifelRide 2027", year: 2027, startDate: "2027-06-11", endDate: "2027-06-13", status: "active", closedAt: null }],
             nextEvent: {
@@ -967,6 +1020,12 @@ export default function MasterAdminPortal() {
             },
             productUsage: demoProductUsage(),
             adminActivation: { total: 0, passwordConfigured: 0, initialSetupPending: 0, adminName: null, adminEmail: null },
+            contractAcceptance: {
+              isCurrent: false,
+              confirmedDocumentCount: 0,
+              requiredDocumentCount: 3,
+              acceptedAt: null,
+            },
             eventCount: 1,
             events: [{ id: 2, name: "Lukasmarkt 2027", year: 2027, startDate: "2027-10-15", endDate: "2027-10-17", status: "active", closedAt: null }],
             nextEvent: {
@@ -994,6 +1053,12 @@ export default function MasterAdminPortal() {
             },
             productUsage: demoProductUsage(),
             adminActivation: { total: 0, passwordConfigured: 0, initialSetupPending: 0, adminName: null, adminEmail: null },
+            contractAcceptance: {
+              isCurrent: false,
+              confirmedDocumentCount: 0,
+              requiredDocumentCount: 3,
+              acceptedAt: null,
+            },
             eventCount: 1,
             events: [{ id: 3, name: "Schützenfest 2027", year: 2027, startDate: "2027-07-02", endDate: "2027-07-04", status: "active", closedAt: null }],
             nextEvent: {
@@ -1329,6 +1394,7 @@ export default function MasterAdminPortal() {
                       </div>
                       <TenantProductUsage usage={tenant.productUsage} events={tenant.events} />
                       <TenantAdminActivationStatus activation={tenant.adminActivation} />
+                      <TenantContractAcceptanceStatus acceptance={tenant.contractAcceptance} />
                     </div>
                     <div className="space-y-2 sm:min-w-48">
                       <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-left sm:text-right">

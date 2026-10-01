@@ -4,7 +4,7 @@ import {
   LEGAL_DOCUMENTS,
   type LegalDocumentId,
 } from "@shared/legal-contract-documents";
-import { ArrowLeft, FileText } from "lucide-react";
+import { ArrowLeft, FileText, Printer } from "lucide-react";
 import { Link } from "wouter";
 
 const WORDMARK = "/brand/mycrewmate-wordmark.png";
@@ -48,24 +48,35 @@ function renderDocumentContent(content: string) {
 export default function LegalDocument({ documentId }: { documentId: LegalDocumentId }) {
   const document = LEGAL_DOCUMENTS[documentId];
   return (
-    <main className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-orange-50/80 text-slate-950">
-      <header className="border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
+    <main className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-orange-50/80 text-slate-950 print:bg-white">
+      <header className="border-b border-slate-200/80 bg-white/90 backdrop-blur-md print:hidden">
         <div className="mx-auto flex min-h-16 max-w-4xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <a href="https://mycrewmate.de" className="shrink-0" aria-label="MyCrewMate – zur Startseite">
             <img src={WORDMARK} alt="MyCrewMate" className="h-8 w-auto sm:h-9" />
           </a>
-          <a href={APP_LOGIN_URL}>
-            <Button type="button" className="rounded-xl bg-blue-600 text-white hover:bg-blue-700">
-              Zum Login
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              data-slot="legal-document-print"
+              className="rounded-xl"
+              onClick={() => window.print()}
+            >
+              <Printer className="size-4" aria-hidden="true" /> Drucken
             </Button>
-          </a>
+            <a href={APP_LOGIN_URL}>
+              <Button type="button" className="rounded-xl bg-blue-600 text-white hover:bg-blue-700">
+                Zum Login
+              </Button>
+            </a>
+          </div>
         </div>
       </header>
-      <section className="mx-auto max-w-3xl px-4 py-12 sm:px-6 sm:py-16">
-        <Link href="/" className="inline-flex items-center gap-2 rounded-lg text-sm font-semibold text-slate-600 transition-colors hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+      <section className="mx-auto max-w-3xl px-4 py-12 sm:px-6 sm:py-16 print:max-w-none print:p-0">
+        <Link href="/" className="inline-flex items-center gap-2 rounded-lg text-sm font-semibold text-slate-600 transition-colors hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 print:hidden">
           <ArrowLeft className="size-4" aria-hidden="true" /> Zurück zur Produktseite
         </Link>
-        <article className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-9">
+        <article className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-9 print:mt-0 print:rounded-none print:border-0 print:p-0 print:shadow-none">
           <div className="mb-7 flex items-center gap-3 text-blue-700">
             <span className="flex size-11 items-center justify-center rounded-2xl bg-blue-50"><FileText className="size-5" aria-hidden="true" /></span>
             <p className="text-sm font-semibold">Verbindliche Dokumentversion: {document.version}</p>

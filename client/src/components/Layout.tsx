@@ -499,6 +499,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
     id: number;
     name: string;
   } | null>(null);
+  const [reopenEventTarget, setReopenEventTarget] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
   const [deferredInstallPrompt, setDeferredInstallPrompt] =
     useState<DeferredInstallPrompt | null>(null);
   const [pwaInstallDialogOpen, setPwaInstallDialogOpen] = useState(false);
@@ -1192,13 +1196,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
   });
   const reopenEvent = trpc.events.reopen.useMutation({
     onSuccess: async result => {
+      setReopenEventTarget(null);
       await Promise.all([
         utils.years.list.invalidate(),
         utils.events.list.invalidate(),
         utils.events.manage.invalidate(),
         utils.events.all.invalidate(),
       ]);
-      toast.success(`„${result.name}“ ist wieder für die aktive Planung geöffnet.`);
+      toast.success(`„${result.name}“ ist wieder für die aktive Planung geöffnet. Zugänge und PDF-Links bleiben aus Sicherheitsgründen widerrufen.`);
       setEventManagerOpen(true);
     },
     onError: error => toast.error(error.message),
@@ -2672,7 +2677,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
                           size="sm"
                           className="w-full border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 sm:w-auto"
                           disabled={reopenEvent.isPending}
-                          onClick={() => reopenEvent.mutate({ id: item.id })}
+                          onClick={() =>
+                            setReopenEventTarget({ id: item.id, name: item.name })
+                          }
                         >
                           <CheckCircle2 className="h-4 w-4" />
                           Wieder öffnen
@@ -2803,6 +2810,46 @@ export function Layout({ children }: { children: React.ReactNode }) {
             >
               <CheckCircle2 className="mr-2 h-4 w-4" />
               Veranstaltung abschließen
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={Boolean(reopenEventTarget)}
+        onOpenChange={open => {
+          if (!open && !reopenEvent.isPending) setReopenEventTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Veranstaltung wieder öffnen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              „{reopenEventTarget?.name ?? ""}“ wird wieder Teil der aktiven Planung und
+              zählt erneut zum Paketkontingent. Aus Sicherheitsgründen werden beim
+              Wiederöffnen keine früheren Planungsteam-Freigaben, Co-Admin-Zugriffe oder
+              sieben-Tage-PDF-Links reaktiviert. Bitte vergeben Sie benötigte Zugänge und
+              persönliche Einsatzpläne anschließend bewusst neu.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={reopenEvent.isPending}
+              onClick={() => setReopenEventTarget(null)}
+            >
+              Abbrechen
+            </Button>
+            <Button
+              type="button"
+              disabled={!reopenEventTarget || reopenEvent.isPending}
+              onClick={() =>
+                reopenEventTarget && reopenEvent.mutate({ id: reopenEventTarget.id })
+              }
+            >
+              <CheckCircle2 className="mr-2 h-4 w-4" />
+              Veranstaltung wieder öffnen
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

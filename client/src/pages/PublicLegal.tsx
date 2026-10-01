@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { APP_LOGIN_URL } from "@/lib/site-host";
-import { ArrowLeft, ExternalLink, Scale, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ExternalLink, Printer, Scale, ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link } from "wouter";
 
@@ -20,25 +20,36 @@ function PublicLegalShell({
   children: ReactNode;
 }) {
   return (
-    <main className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-orange-50/80 text-slate-950">
-      <header className="border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
+    <main className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-orange-50/80 text-slate-950 print:bg-white">
+      <header className="border-b border-slate-200/80 bg-white/90 backdrop-blur-md print:hidden">
         <div className="mx-auto flex min-h-16 max-w-4xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <Link href="/" className="shrink-0" aria-label="MyCrewMate – zur Startseite">
             <img src={WORDMARK} alt="MyCrewMate" className="h-8 w-auto sm:h-9" />
           </Link>
-          <a href={APP_LOGIN_URL}>
-            <Button type="button" className="rounded-xl bg-blue-600 text-white hover:bg-blue-700">
-              Zum Login
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              data-slot="public-legal-print"
+              className="rounded-xl"
+              onClick={() => window.print()}
+            >
+              <Printer className="size-4" aria-hidden="true" /> Drucken
             </Button>
-          </a>
+            <a href={APP_LOGIN_URL}>
+              <Button type="button" className="rounded-xl bg-blue-600 text-white hover:bg-blue-700">
+                Zum Login
+              </Button>
+            </a>
+          </div>
         </div>
       </header>
 
-      <section className="mx-auto max-w-3xl px-4 py-12 sm:px-6 sm:py-16">
-        <Link href="/" className="inline-flex items-center gap-2 rounded-lg text-sm font-semibold text-slate-600 transition-colors hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+      <section className="mx-auto max-w-3xl px-4 py-12 sm:px-6 sm:py-16 print:max-w-none print:p-0">
+        <Link href="/" className="inline-flex items-center gap-2 rounded-lg text-sm font-semibold text-slate-600 transition-colors hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 print:hidden">
           <ArrowLeft className="size-4" aria-hidden="true" /> Zurück zur Produktseite
         </Link>
-        <article className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-9">
+        <article className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-9 print:mt-0 print:rounded-none print:border-0 print:p-0 print:shadow-none">
           <div className="flex items-center gap-3">
             <span className="flex size-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-700"><Icon className="size-5" aria-hidden="true" /></span>
             <h1 className="text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">{title}</h1>

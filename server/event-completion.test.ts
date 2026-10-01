@@ -64,6 +64,16 @@ describe("Veranstaltungsabschluss und Paket-Auslastung", () => {
     expect(layout).toContain('Wieder öffnen');
     expect(masterPortal).toContain('Nur aktive Events zählen');
     expect(masterPortal).toContain('Verein gesamt:');
-    expect(masterPortal).toContain('Co-Admins zusätzlich');
+    expect(masterPortal).toContain("Co-Admins zusätzlich");
+  });
+
+  it("weist vor der Wiedereröffnung auf weiterhin widerrufene Freigaben hin", () => {
+    const layout = source("client/src/components/Layout.tsx").replace(/\s+/g, " ");
+
+    expect(layout).toContain("reopenEventTarget");
+    expect(layout).toContain("Veranstaltung wieder öffnen?");
+    expect(layout).toContain("keine früheren Planungsteam-Freigaben");
+    expect(layout).toContain("sieben-Tage-PDF-Links reaktiviert");
+    expect(layout).toContain("Zugänge und PDF-Links bleiben aus Sicherheitsgründen widerrufen");
   });
 });

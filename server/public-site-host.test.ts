@@ -71,4 +71,17 @@ describe("Trennung von Angebotsseite und geschützter MyCrewMate-Anwendung", () 
       'export const PRIVACY_POLICY_URL = "https://app.mycrewmate.de/datenschutz"'
     );
   });
+
+  it("bietet die öffentlichen Rechtstexte als saubere Druckansicht an", () => {
+    const legal = source("client/src/pages/PublicLegal.tsx");
+    const documents = source("client/src/pages/LegalDocument.tsx");
+    const appPrivacy = source("client/src/pages/AppPrivacy.tsx");
+
+    expect(legal).toContain('data-slot="public-legal-print"');
+    expect(documents).toContain('data-slot="legal-document-print"');
+    expect(appPrivacy).toContain('data-slot="app-privacy-print"');
+    expect(legal).toContain("window.print()");
+    expect(documents).toContain("window.print()");
+    expect(appPrivacy).toContain("window.print()");
+  });
 });

@@ -1221,7 +1221,13 @@ export async function currentProductAllowsPlanningModule(
 export async function listTenantOverviewsForPlatformAdmin() {
   const db = await getDb();
   if (!db) return [];
-  const [tenantRows, eventRows, assignmentRows, adminCredentialRows] = await Promise.all([
+  const [
+    tenantRows,
+    eventRows,
+    assignmentRows,
+    adminCredentialRows,
+    contractAcceptanceRows,
+  ] = await Promise.all([
     db.select().from(tenants).orderBy(tenants.status, tenants.name),
     db
       .select({
@@ -1267,6 +1273,15 @@ export async function listTenantOverviewsForPlatformAdmin() {
           eq(userTenantMemberships.status, "active")
         )
       ),
+    db
+      .select({
+        tenantId: tenantContractAcceptances.tenantId,
+        documentId: tenantContractAcceptances.documentId,
+        documentVersion: tenantContractAcceptances.documentVersion,
+        documentHash: tenantContractAcceptances.documentHash,
+        acceptedAt: tenantContractAcceptances.acceptedAt,
+      })
+      .from(tenantContractAcceptances),
   ]);
 
   const assignmentByTenant = new Map(
@@ -1302,6 +1317,30 @@ export async function listTenantOverviewsForPlatformAdmin() {
     }
     adminActivationByTenant.set(row.tenantId, current);
   }
+  const contractAcceptanceByTenant = new Map<
+    string,
+    { confirmedDocumentIds: Set<LegalDocumentId>; acceptedAt: Date | null }
+  >();
+  for (const row of contractAcceptanceRows) {
+    const documentId = row.documentId as LegalDocumentId;
+    const document = LEGAL_DOCUMENTS[documentId];
+    if (
+      !document ||
+      row.documentVersion !== document.version ||
+      row.documentHash !== legalDocumentHash(documentId)
+    ) {
+      continue;
+    }
+    const current = contractAcceptanceByTenant.get(row.tenantId) ?? {
+      confirmedDocumentIds: new Set<LegalDocumentId>(),
+      acceptedAt: null,
+    };
+    current.confirmedDocumentIds.add(documentId);
+    if (!current.acceptedAt || row.acceptedAt > current.acceptedAt) {
+      current.acceptedAt = row.acceptedAt;
+    }
+    contractAcceptanceByTenant.set(row.tenantId, current);
+  }
   return tenantRows.map(tenantRow => {
     const tenantEvents = eventRows.filter(eventRow => eventRow.tenantId === tenantRow.id);
     const assignment = assignmentByTenant.get(tenantRow.id);
@@ -1313,6 +1352,10 @@ export async function listTenantOverviewsForPlatformAdmin() {
       activeTenantEvents.find(eventRow => eventRow.startDate !== null) ??
       activeTenantEvents[0] ??
       null;
+    const contractAcceptance = contractAcceptanceByTenant.get(tenantRow.id) ?? {
+      confirmedDocumentIds: new Set<LegalDocumentId>(),
+      acceptedAt: null,
+    };
     return {
       id: tenantRow.id,
       name: tenantRow.name,
@@ -1340,6 +1383,14 @@ export async function listTenantOverviewsForPlatformAdmin() {
         initialSetupPending: 0,
         adminName: null,
         adminEmail: null,
+      },
+      contractAcceptance: {
+        isCurrent:
+          contractAcceptance.confirmedDocumentIds.size ===
+          REQUIRED_LEGAL_DOCUMENT_IDS.length,
+        confirmedDocumentCount: contractAcceptance.confirmedDocumentIds.size,
+        requiredDocumentCount: REQUIRED_LEGAL_DOCUMENT_IDS.length,
+        acceptedAt: contractAcceptance.acceptedAt,
       },
       events: tenantEvents.map(eventRow => ({
         id: eventRow.id,

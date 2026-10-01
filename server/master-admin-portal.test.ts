@@ -123,6 +123,18 @@ describe("Master-Admin-Portal", () => {
     expect(page).toContain("Ansprechpartner, Helfer, Aufgaben und Veranstaltungsdaten bleiben unverändert erhalten.");
   });
 
+  it("zeigt den aktuellen digitalen Vertragsstatus je Verein ohne Planungsdaten offenzulegen", () => {
+    const db = source("server/db.ts");
+    const page = source("client/src/pages/MasterAdminPortal.tsx");
+
+    expect(db).toContain("contractAcceptanceRows");
+    expect(db).toContain("tenantContractAcceptances");
+    expect(db).toContain("confirmedDocumentCount");
+    expect(page).toContain("TenantContractAcceptanceStatus");
+    expect(page).toContain("Vertragsunterlagen bestätigt.");
+    expect(page).toContain("Vertragsunterlagen noch offen.");
+  });
+
   it("erstellt neue Vereine mit Startveranstaltung und eindeutiger serverseitiger Kennung", () => {
     const db = source("server/db.ts");
     expect(db).toContain("function tenantSlugFromName");
