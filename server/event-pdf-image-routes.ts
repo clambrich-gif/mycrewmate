@@ -1,32 +1,40 @@
 import type { Express, Request, Response } from "express";
 import { and, eq } from "drizzle-orm";
 import { events } from "../drizzle/schema";
-import { sdk } from "./_core/sdk";
 import { getDb } from "./db";
 import {
   resolveEventPdfLogoKey,
   type EventPdfImageSettings,
 } from "./event-pdf-image";
 import { storageRead } from "./storage";
+import {
+  defaultEventAssetAccessDependencies,
+  type AssetRouteUser,
+} from "./event-asset-access";
 
 const MAX_EVENT_IMAGE_BYTES = 3_000_000;
 
 type EventPdfImageRouteDependencies = {
-  authenticateRequest: (req: Request) => Promise<unknown>;
+  authenticateRequest: (req: Request) => Promise<AssetRouteUser>;
+  mayReadEventAsset: (
+    user: AssetRouteUser,
+    asset: { tenantId: string; year: number; eventId: number },
+    options: { module: "pdf"; capability: "custom_branding" }
+  ) => Promise<boolean>;
   findEvent: (
     year: number,
     eventId: number
-  ) => Promise<EventPdfImageSettings | null>;
+  ) => Promise<(EventPdfImageSettings & { tenantId: string }) | null>;
   readFile: (storageKey: string) => Promise<Buffer>;
 };
 
 const defaultDependencies: EventPdfImageRouteDependencies = {
-  authenticateRequest: req => sdk.authenticateRequest(req),
+  ...defaultEventAssetAccessDependencies,
   findEvent: async (year, eventId) => {
     const db = await getDb();
     if (!db) return null;
     const [event] = await db
-      .select({ pdfLogoKey: events.pdfLogoKey })
+      .select({ pdfLogoKey: events.pdfLogoKey, tenantId: events.tenantId })
       .from(events)
       .where(and(eq(events.id, eventId), eq(events.year, year)))
       .limit(1);
@@ -63,8 +71,9 @@ async function serveEventPdfImage(
   dependencies: EventPdfImageRouteDependencies,
   headOnly: boolean
 ) {
+  let user: AssetRouteUser;
   try {
-    await dependencies.authenticateRequest(req);
+    user = await dependencies.authenticateRequest(req);
   } catch {
     res.status(401).send("Anmeldung erforderlich");
     return;
@@ -79,8 +88,19 @@ async function serveEventPdfImage(
 
   const event = await dependencies.findEvent(year, eventId);
   const storageKey = event ? resolveEventPdfLogoKey(event) : null;
-  if (!storageKey) {
+  if (!event || !storageKey) {
     res.status(404).send("Für diese Veranstaltung ist kein PDF-Bild hinterlegt");
+    return;
+  }
+  if (
+    !(await dependencies.mayReadEventAsset(
+      user,
+      { tenantId: event.tenantId, year, eventId },
+      { module: "pdf", capability: "custom_branding" }
+    ))
+  ) {
+    // Kein Detail zur Existenz eines Bilds oder einer fremden Veranstaltung preisgeben.
+    res.status(404).send("PDF-Bild nicht gefunden");
     return;
   }
 

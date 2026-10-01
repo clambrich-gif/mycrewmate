@@ -1,30 +1,39 @@
 import type { Express, Request, Response } from "express";
 import { and, eq } from "drizzle-orm";
-import { locations } from "../drizzle/schema";
-import { sdk } from "./_core/sdk";
+import { events, locations } from "../drizzle/schema";
 import { getDb } from "./db";
 import { storageRead } from "./storage";
+import {
+  defaultEventAssetAccessDependencies,
+  type AssetRouteUser,
+} from "./event-asset-access";
 
 const MAX_LOCATION_LOGO_BYTES = 3_000_000;
 
 type LocationLogoRouteDependencies = {
-  authenticateRequest: (req: Request) => Promise<unknown>;
+  authenticateRequest: (req: Request) => Promise<AssetRouteUser>;
+  mayReadEventAsset: (
+    user: AssetRouteUser,
+    asset: { tenantId: string; year: number; eventId: number },
+    options: { module: "locations"; capability: "maps_gpx" }
+  ) => Promise<boolean>;
   findLocationLogo: (
     year: number,
     eventId: number,
     locationId: number
-  ) => Promise<{ logoKey: string | null } | null>;
+  ) => Promise<{ logoKey: string | null; tenantId: string } | null>;
   readFile: (storageKey: string) => Promise<Buffer>;
 };
 
 const defaultDependencies: LocationLogoRouteDependencies = {
-  authenticateRequest: req => sdk.authenticateRequest(req),
+  ...defaultEventAssetAccessDependencies,
   findLocationLogo: async (year, eventId, locationId) => {
     const db = await getDb();
     if (!db) return null;
     const [location] = await db
-      .select({ logoKey: locations.logoKey })
+      .select({ logoKey: locations.logoKey, tenantId: events.tenantId })
       .from(locations)
+      .innerJoin(events, eq(events.id, locations.eventId))
       .where(
         and(
           eq(locations.id, locationId),
@@ -77,8 +86,9 @@ async function serveLocationLogo(
   dependencies: LocationLogoRouteDependencies,
   headOnly: boolean
 ) {
+  let user: AssetRouteUser;
   try {
-    await dependencies.authenticateRequest(req);
+    user = await dependencies.authenticateRequest(req);
   } catch {
     res.status(401).send("Anmeldung erforderlich");
     return;
@@ -95,6 +105,17 @@ async function serveLocationLogo(
   const location = await dependencies.findLocationLogo(year, eventId, locationId);
   if (!location?.logoKey) {
     res.status(404).send("Für diesen Standort ist kein Logo hinterlegt");
+    return;
+  }
+  if (
+    !(await dependencies.mayReadEventAsset(
+      user,
+      { tenantId: location.tenantId, year, eventId },
+      { module: "locations", capability: "maps_gpx" }
+    ))
+  ) {
+    // Fremde Standorte und ihre Logos bleiben nicht auflistbar.
+    res.status(404).send("Standortlogo nicht gefunden");
     return;
   }
 

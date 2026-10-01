@@ -9,7 +9,7 @@ describe("Geschützte Vereinslogo-Auslieferung", () => {
     const readFile = vi.fn().mockResolvedValue(fakePng);
 
     registerTenantLogoRoutes(app, {
-      authenticateRequest: vi.fn().mockResolvedValue({ id: 1, role: "admin" }),
+      authenticateRequest: vi.fn().mockResolvedValue({ id: 1, role: "admin", openId: "shared-password-admin" }),
       getTenantLogoKey: vi.fn().mockResolvedValue("tenant-logos/ui/tenant-logo.png"),
       readFile,
     });
@@ -32,7 +32,7 @@ describe("Geschützte Vereinslogo-Auslieferung", () => {
     }
   });
 
-  it("gibt 404 zurück, wenn noch kein Vereinslogo hochgeladen wurde", async () => {
+  it("verbirgt das globale Altlogo für normale Vereinszugänge", async () => {
     const app = express();
     registerTenantLogoRoutes(app, {
       authenticateRequest: vi.fn().mockResolvedValue({ id: 2, role: "user" }),

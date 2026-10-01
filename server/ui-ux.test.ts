@@ -3475,7 +3475,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const localStorage = source("server/storage.ts");
     const locationLogoRoute = source("server/location-logo-routes.ts");
     expect(localStorage).toContain("LOCAL_STORAGE_PATH");
-    expect(localStorage).toContain('app.get("/uploads/*"');
+    expect(localStorage).toContain('app.all("/uploads/*"');
+    expect(localStorage).toContain("keine öffentliche Dateifreigabe");
     expect(locationLogoRoute).toContain('"Content-Disposition": "inline"');
     expect(locationLogoRoute).toContain("locationLogoContentType(storageKey)");
   });

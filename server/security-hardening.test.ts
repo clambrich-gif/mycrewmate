@@ -11,6 +11,9 @@ describe("Punkt 3: Sicherheits- und Berechtigungs-Hardening", () => {
   const passwordAuth = source("server/password-auth.ts");
   const publicPdfRoutes = source("server/public-helper-pdf-routes.ts");
   const locationLogoRoutes = source("server/location-logo-routes.ts");
+  const eventPdfImageRoutes = source("server/event-pdf-image-routes.ts");
+  const eventAssetAccess = source("server/event-asset-access.ts");
+  const storage = source("server/storage.ts");
   const nav = source("client/src/lib/nav.ts");
 
   it("schützt kritische administrative Mutationen mit Admin- und Produktgates", () => {
@@ -42,11 +45,24 @@ describe("Punkt 3: Sicherheits- und Berechtigungs-Hardening", () => {
     expect(publicPdfRoutes).toContain("createPublicHelperTaskPdf");
   });
 
-  it("setzt im Standortlogo-Endpunkt Authentifizierung und Same-Origin-Schutz durch", () => {
+  it("setzt im Standortlogo-Endpunkt Authentifizierung, Scope- und Same-Origin-Schutz durch", () => {
     expect(locationLogoRoutes).toContain("authenticateRequest(req)");
+    expect(locationLogoRoutes).toContain("mayReadEventAsset");
     expect(locationLogoRoutes).toContain('"Cross-Origin-Resource-Policy": "same-origin"');
     expect(locationLogoRoutes).toContain('"X-Content-Type-Options": "nosniff"');
     expect(locationLogoRoutes).toContain('Vary: "Cookie, Authorization"');
+  });
+
+  it("prüft Eventbilder gegen Verein, Veranstaltung, Fachbereich und Paket statt nur gegen Login", () => {
+    expect(eventPdfImageRoutes).toContain("mayReadEventAsset");
+    expect(eventAssetAccess).toContain("isPlanningTeamAccessAllowedForEvent");
+    expect(eventAssetAccess).toContain("mayReadPlanningModule");
+    expect(eventAssetAccess).toContain("productAllowsCapability");
+  });
+
+  it("schließt den generischen Uploadpfad vollständig", () => {
+    expect(storage).toContain('app.all("/uploads/*"');
+    expect(storage).toContain('res.status(404).send("Nicht gefunden")');
   });
 
   it("verhindert DoS-Angriffe auf das Planungsteam durch IP-spezifischen Cooldown", () => {

@@ -2,11 +2,15 @@ import type { Express, Request, Response } from "express";
 import { sdk } from "./_core/sdk";
 import * as db from "./db";
 import { storageRead } from "./storage";
+import { ADMIN_PASSWORD_OPEN_ID } from "./password-auth";
 
 const MAX_TENANT_LOGO_BYTES = 3_000_000;
 
 type TenantLogoRouteDependencies = {
-  authenticateRequest: (req: Request) => Promise<unknown>;
+  authenticateRequest: (req: Request) => Promise<{
+    openId: string;
+    role: "user" | "admin";
+  }>;
   getTenantLogoKey: () => Promise<string | null>;
   readFile: (storageKey: string) => Promise<Buffer>;
 };
@@ -31,7 +35,14 @@ async function serveTenantLogo(
   headOnly: boolean
 ) {
   try {
-    await dependencies.authenticateRequest(req);
+    const user = await dependencies.authenticateRequest(req);
+    // Der ältere globale Logo-Speicher besitzt keine Vereinszuordnung. Er bleibt
+    // daher ausschließlich für die Plattformadministration lesbar, bis er
+    // vollständig durch mandantengebundene Brandingdaten ersetzt ist.
+    if (user.role !== "admin" || user.openId !== ADMIN_PASSWORD_OPEN_ID) {
+      res.status(404).send("Nicht gefunden");
+      return;
+    }
   } catch {
     res.status(401).send("Anmeldung erforderlich");
     return;

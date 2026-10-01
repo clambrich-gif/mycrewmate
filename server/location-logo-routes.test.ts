@@ -10,17 +10,22 @@ const servers: Server[] = [];
 
 async function startTestServer(options?: {
   authenticated?: boolean;
-  location?: { logoKey: string | null } | null;
+  authorized?: boolean;
+  location?: { logoKey: string | null; tenantId?: string } | null;
 }) {
   const app = express();
   const authenticateRequest = vi.fn(async () => {
     if (options?.authenticated === false) throw new Error("unauthorized");
-    return { role: "user" };
+    return { id: 1, openId: "tenant-admin:test", role: "admin" as const };
   });
+  const mayReadEventAsset = vi.fn(async () => options?.authorized !== false);
   const findLocationLogo = vi.fn(async () =>
     options && "location" in options
       ? (options.location ?? null)
-      : { logoKey: "location-logos/events/2027/77/viehmarkt.png" }
+      : {
+          logoKey: "location-logos/events/2027/77/viehmarkt.png",
+          tenantId: "testverein",
+        }
   );
   const image = Buffer.from([
     0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x01,
@@ -29,6 +34,7 @@ async function startTestServer(options?: {
 
   registerLocationLogoRoutes(app, {
     authenticateRequest,
+    mayReadEventAsset,
     findLocationLogo,
     readFile,
   });
@@ -43,6 +49,7 @@ async function startTestServer(options?: {
   return {
     baseUrl: `http://127.0.0.1:${address.port}`,
     authenticateRequest,
+    mayReadEventAsset,
     findLocationLogo,
     readFile,
   };
@@ -60,12 +67,11 @@ afterEach(async () => {
 });
 
 describe("Stabile Standortlogo-Anwendungsroute", () => {
-  it("liefert das Event- und Standort-gebundene Bild aus dem lokalen Volume", async () => {
+  it("liefert das Event- und Standort-gebundene Bild nur nach erfolgreicher Scopeprüfung", async () => {
     const testServer = await startTestServer();
-    const response = await fetch(
-      `${testServer.baseUrl}/api/location-logo/2027/77/12`,
-      { redirect: "manual" }
-    );
+    const response = await fetch(`${testServer.baseUrl}/api/location-logo/2027/77/12`, {
+      redirect: "manual",
+    });
 
     expect(response.status).toBe(200);
     expect(response.headers.get("location")).toBeNull();
@@ -74,6 +80,11 @@ describe("Stabile Standortlogo-Anwendungsroute", () => {
     expect(response.headers.get("vary")).toContain("Cookie");
     expect(response.headers.get("vary")).toContain("Authorization");
     expect(testServer.findLocationLogo).toHaveBeenCalledWith(2027, 77, 12);
+    expect(testServer.mayReadEventAsset).toHaveBeenCalledWith(
+      expect.any(Object),
+      { tenantId: "testverein", year: 2027, eventId: 77 },
+      { module: "locations", capability: "maps_gpx" }
+    );
     expect(testServer.readFile).toHaveBeenCalledWith(
       "location-logos/events/2027/77/viehmarkt.png"
     );
@@ -81,9 +92,7 @@ describe("Stabile Standortlogo-Anwendungsroute", () => {
 
   it("verweigert einen Zugriff ohne Sitzung", async () => {
     const testServer = await startTestServer({ authenticated: false });
-    const response = await fetch(
-      `${testServer.baseUrl}/api/location-logo/2027/77/12`
-    );
+    const response = await fetch(`${testServer.baseUrl}/api/location-logo/2027/77/12`);
 
     expect(response.status).toBe(401);
     expect(testServer.findLocationLogo).not.toHaveBeenCalled();
@@ -91,9 +100,15 @@ describe("Stabile Standortlogo-Anwendungsroute", () => {
 
   it("liefert 404, wenn der Standort kein Logo führt", async () => {
     const testServer = await startTestServer({ location: { logoKey: null } });
-    const response = await fetch(
-      `${testServer.baseUrl}/api/location-logo/2027/77/12`
-    );
+    const response = await fetch(`${testServer.baseUrl}/api/location-logo/2027/77/12`);
+
+    expect(response.status).toBe(404);
+    expect(testServer.readFile).not.toHaveBeenCalled();
+  });
+
+  it("verbirgt Standortlogos ohne passende Vereins- und Fachbereichsfreigabe", async () => {
+    const testServer = await startTestServer({ authorized: false });
+    const response = await fetch(`${testServer.baseUrl}/api/location-logo/2027/77/12`);
 
     expect(response.status).toBe(404);
     expect(testServer.readFile).not.toHaveBeenCalled();

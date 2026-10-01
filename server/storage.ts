@@ -1,11 +1,10 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import type { Express, Response } from "express";
+import type { Express } from "express";
 
 const PROTECTED_STORAGE_KEYS = new Set([
   "Handbuch_RSC_Helferplanung_742fcb04.pdf",
 ]);
-const PROTECTED_STORAGE_PREFIXES = ["pdf-logos/"];
 
 function normalizeKey(relKey: string): string {
   const normalized = relKey.replace(/\\/g, "/").replace(/^\/+/, "");
@@ -43,24 +42,6 @@ function appendHashSuffix(relKey: string): string {
 
 function publicUrlForKey(key: string) {
   return `/uploads/${key.split("/").map(encodeURIComponent).join("/")}`;
-}
-
-function contentTypeForKey(key: string) {
-  const normalized = key.toLowerCase();
-  if (normalized.endsWith(".png")) return "image/png";
-  if (normalized.endsWith(".jpg") || normalized.endsWith(".jpeg")) return "image/jpeg";
-  if (normalized.endsWith(".svg")) return "image/svg+xml";
-  if (normalized.endsWith(".pdf")) return "application/pdf";
-  if (normalized.endsWith(".gpx")) return "application/gpx+xml";
-  if (normalized.endsWith(".mp4")) return "video/mp4";
-  return "application/octet-stream";
-}
-
-function isProtectedStorageKey(key: string) {
-  return (
-    PROTECTED_STORAGE_KEYS.has(key) ||
-    PROTECTED_STORAGE_PREFIXES.some(prefix => key.startsWith(prefix))
-  );
 }
 
 /**
@@ -110,51 +91,17 @@ export async function storageGet(relKey: string): Promise<{ key: string; url: st
   return { key, url: publicUrlForKey(key) };
 }
 
-function setPublicStorageHeaders(res: Response, key: string, size: number) {
-  res.set({
-    "Cache-Control": "private, max-age=300",
-    "Content-Disposition": "inline",
-    "Content-Length": String(size),
-    "Content-Type": contentTypeForKey(key),
-    "Cross-Origin-Resource-Policy": "same-origin",
-    "X-Content-Type-Options": "nosniff",
-  });
-}
-
-/** Öffentliche, aber bewusst auf nicht-sensitive Uploads begrenzte Anwendungsroute. */
+/**
+ * Der persistente Uploadspeicher ist keine öffentliche Dateifreigabe. Jede
+ * nutzerbezogene Datei wird ausschließlich über eine fachlich autorisierte
+ * Anwendungsschnittstelle ausgeliefert (z. B. Standortlogo oder PDF-Eventbild).
+ */
 export function registerLocalStorageRoutes(app: Express) {
-  app.get("/uploads/*", async (req, res) => {
-    const rawKey = (req.params as Record<string, string>)[0];
-    if (!rawKey) {
-      res.status(400).send("Dateischlüssel fehlt");
-      return;
-    }
-
-    let key: string;
-    try {
-      key = normalizeKey(rawKey);
-    } catch {
-      res.status(400).send("Ungültiger Dateischlüssel");
-      return;
-    }
-    if (isProtectedStorageKey(key)) {
-      res.status(404).send("Nicht gefunden");
-      return;
-    }
-
-    try {
-      const bytes = await storageRead(key);
-      setPublicStorageHeaders(res, key, bytes.length);
-      res.status(200).send(bytes);
-    } catch (error: unknown) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-        res.status(404).send("Datei nicht gefunden");
-        return;
-      }
-      console.error("[LocalStorage] Datei konnte nicht ausgeliefert werden:", error);
-      res.status(500).send("Datei konnte nicht ausgeliefert werden");
-    }
+  app.all("/uploads/*", (_req, res) => {
+    // Einheitliche 404-Antwort verhindert sowohl Rohdownloads als auch
+    // Rückschlüsse auf gespeicherte Schlüsselnamen.
+    res.status(404).send("Nicht gefunden");
   });
 }
 
-export { contentTypeForKey, storageRoot };
+export { storageRoot };
