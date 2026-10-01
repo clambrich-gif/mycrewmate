@@ -49,6 +49,7 @@ import { PlanResetDialogButton } from "@/components/PlanResetDialogButton";
 import { KlemmiActionPanel } from "@/components/KlemmiActionPanel";
 import { MyTasksDefaultPin } from "@/components/MyTasksDefaultPin";
 import { KlemmiHelperGuide } from "@/components/KlemmiHelperGuide";
+import { KlemmiMascot } from "@/components/KlemmiMascot";
 import { triggerKlemmiReaction } from "@/lib/klemmi-reactions";
 import { useMyTasksDefault } from "@/hooks/useMyTasksDefault";
 import { useMobileViewMode, useViewMode } from "@/hooks/useViewMode";
@@ -3420,6 +3421,24 @@ export default function Helpers() {
                     </span>
                   </button>
                 </div>
+
+                <aside
+                  data-klemmi-contact-share-tip
+                  className="flex gap-3 rounded-xl border border-orange-200 bg-orange-50/80 p-3 text-slate-800"
+                >
+                  <KlemmiMascot decorative className="size-16 shrink-0 self-end sm:size-20" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold tracking-wide text-[#e86117] uppercase">
+                      Klemmi-Tipp für Ansprechpartner
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-950">
+                      Starte normalerweise mit der Basisansicht.
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-700">
+                      Sie enthält alles, was der Helfer für seinen eigenen Einsatz braucht. Die Ansicht mit Mithelfenden wählst du nur, wenn die Namen in genau dieser Schicht für die gemeinsame Abstimmung erforderlich sind. Bei Änderungen: alten Link widerrufen und danach einen neuen Einsatzplan senden.
+                    </p>
+                  </div>
+                </aside>
 
                 <div
                   data-whatsapp-share-status
