@@ -63,7 +63,7 @@ describe("Produktgrenzen: Marke, WhatsApp und Event-Sicherung", () => {
     );
     expect(pdf).toContain("? logoHeight + 8");
     expect(pdf).toContain("function helperPdfLocationLink(");
-    expect(pdf).toContain("https://www.google.com/maps/search/?api=1&query=");
+    expect(pdf).toContain("https://www.openstreetmap.org/?mlat=");
     expect(pdf).toContain(
       'const MYCREWMATE_PDF_TAGLINE = "Gemeinsam planen. Entspannt veranstalten."'
     );

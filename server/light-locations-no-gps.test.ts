@@ -79,7 +79,7 @@ describe("Light-Orte ohne Live-Karte und GPS-Pflicht", () => {
       })
     ).toEqual({
       label: "Viehmarktplatz Mayen",
-      url: "https://www.google.com/maps/search/?api=1&query=50.3271%2C7.2215",
+      url: "https://www.openstreetmap.org/?mlat=50.3271&mlon=7.2215#map=18/50.3271/7.2215",
     });
   });
 });

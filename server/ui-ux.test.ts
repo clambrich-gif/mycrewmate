@@ -574,7 +574,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
       "doc.text(MYCREWMATE_PDF_FOOTER, 0, doc.page.height - 36"
     );
     expect(pdf).not.toContain("Christian Lambrich");
-    expect(legal).toContain('export const PRIVACY_POLICY_URL = "https://mycrewmate.de/datenschutz"');
+    expect(legal).toContain('export const PRIVACY_POLICY_URL = "https://app.mycrewmate.de/datenschutz"');
     expect(legal).toContain("Angaben gemäß § 5 DDG:");
     expect(legal).toContain("Eichenweg 4");
     expect(legal).toContain("56729 Nachtsheim");

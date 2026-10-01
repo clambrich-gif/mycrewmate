@@ -465,18 +465,21 @@ export function helperPdfLocationLink(
   location: Pick<Location, "name" | "latitude" | "longitude"> | null | undefined
 ) {
   const name = location?.name.trim();
+  const latitude = location?.latitude;
+  const longitude = location?.longitude;
   if (
     !location ||
     !name ||
-    !Number.isFinite(location.latitude) ||
-    !Number.isFinite(location.longitude)
+    typeof latitude !== "number" ||
+    typeof longitude !== "number" ||
+    !Number.isFinite(latitude) ||
+    !Number.isFinite(longitude)
   )
     return null;
 
-  const coordinates = `${location.latitude},${location.longitude}`;
   return {
     label: name,
-    url: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(coordinates)}`,
+    url: `https://www.openstreetmap.org/?mlat=${encodeURIComponent(latitude)}&mlon=${encodeURIComponent(longitude)}#map=18/${latitude}/${longitude}`,
   };
 }
 
@@ -1363,6 +1366,196 @@ export function renderHelperTaskPdf(data: PlanningData, helperId: number) {
     const bottomAnchoredSummaryY = helperPdfBottom - summaryHeight - 10;
     doc.y = Math.max(doc.y + 6, bottomAnchoredSummaryY);
     drawCompactHelperSummary(doc, summaryEntries);
+  });
+}
+
+/**
+ * Reduzierte Datenansicht für persönlich freigegebene Helferlinks. Sie enthält
+ * bewusst keine Mithelfenden, Kontaktpersonen, privaten Hinweise, Spenden,
+ * Verfügbarkeiten oder Schichtbemerkungen. Die ausführliche Übersicht bleibt
+ * ausschließlich für angemeldete, berechtigte Personen bestimmt.
+ */
+export type PublicHelperTaskEntry = {
+  day: Day;
+  time: string;
+  task: string;
+  locationLink: ReturnType<typeof helperPdfLocationLink>;
+};
+
+export function selectPublicHelperTaskEntries(
+  data: PlanningData,
+  helperId: number
+) {
+  const helper = data.helpers.find(item => item.id === helperId);
+  if (!helper) throw new Error("Helfer wurde nicht gefunden");
+  const shiftById = new Map(data.shifts.map(shift => [shift.id, shift]));
+  const locationById = new Map(
+    (data.locations ?? []).map(location => [location.id, location])
+  );
+
+  return data.assignments
+    .filter(assignment => assignment.helperId === helperId)
+    .map(assignment => shiftById.get(assignment.shiftId))
+    .filter((shift): shift is Shift => Boolean(shift))
+    .sort(sortShifts)
+    .map(shift => ({
+      day: shift.day as Day,
+      time: helperPdfTimeLabel(shift),
+      task: shift.task.trim() || "Aufgabe",
+      locationLink: shift.locationId
+        ? helperPdfLocationLink(locationById.get(shift.locationId) ?? null)
+        : null,
+    }));
+}
+
+function drawPublicHelperHeader(
+  doc: PDFKit.PDFDocument,
+  settings: AppSettings,
+  helperName: string
+) {
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(18)
+    .fillColor(helperPdfDesign.ink)
+    .text("Persönliche Einsatzübersicht", helperPdfMargin, helperPdfMargin, {
+      width: helperPdfContentWidth,
+    });
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(14)
+    .fillColor(helperPdfDesign.accent)
+    .text(helperName, { width: helperPdfContentWidth });
+  doc
+    .font("Helvetica")
+    .fontSize(10)
+    .fillColor(helperPdfDesign.ink)
+    .text(`${settings.eventName} ${settings.eventYear}`.trim(), {
+      width: helperPdfContentWidth,
+    });
+  doc
+    .font("Helvetica")
+    .fontSize(8)
+    .fillColor(helperPdfDesign.muted)
+    .text("Nur eigene Einsätze · Stand: " + formatDate(), {
+      width: helperPdfContentWidth,
+    });
+  const lineY = doc.y + 8;
+  doc
+    .moveTo(helperPdfMargin, lineY)
+    .lineTo(doc.page.width - helperPdfMargin, lineY)
+    .strokeColor(helperPdfDesign.line)
+    .lineWidth(0.7)
+    .stroke();
+  doc.x = helperPdfMargin;
+  doc.y = lineY + 14;
+}
+
+function drawPublicHelperTaskEntry(
+  doc: PDFKit.PDFDocument,
+  entry: PublicHelperTaskEntry
+) {
+  const locationLabel = entry.locationLink?.label ?? null;
+  const taskHeight = doc
+    .font("Helvetica-Bold")
+    .fontSize(11)
+    .heightOfString(entry.task, {
+      width: helperPdfContentWidth - 82,
+      lineGap: 1,
+    });
+  const locationHeight = locationLabel
+    ? doc
+        .font("Helvetica")
+        .fontSize(9)
+        .heightOfString(locationLabel, {
+          width: helperPdfContentWidth - 82,
+          lineGap: 1,
+        })
+    : 0;
+  const height = Math.max(50, taskHeight + locationHeight + 28);
+  ensureHelperPdfSpace(doc, height + 10);
+  const top = doc.y;
+  doc
+    .roundedRect(helperPdfMargin, top, helperPdfContentWidth, height, 7)
+    .fillAndStroke("#F8FAFC", helperPdfDesign.line);
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(10)
+    .fillColor(helperPdfDesign.accent)
+    .text(entry.day, helperPdfMargin + 12, top + 11, { width: 64 });
+  doc
+    .font("Helvetica")
+    .fontSize(9)
+    .fillColor(helperPdfDesign.muted)
+    .text(entry.time, helperPdfMargin + 12, top + 27, { width: 64 });
+  const contentX = helperPdfMargin + 86;
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(11)
+    .fillColor(helperPdfDesign.ink)
+    .text(entry.task, contentX, top + 11, {
+      width: helperPdfContentWidth - 98,
+      lineGap: 1,
+    });
+  if (locationLabel) {
+    const locationY = top + 16 + taskHeight;
+    doc
+      .font("Helvetica")
+      .fontSize(9)
+      .fillColor(helperPdfDesign.accent)
+      .text(`⌖ ${locationLabel}`, contentX, locationY, {
+        width: helperPdfContentWidth - 98,
+        lineGap: 1,
+      });
+    if (entry.locationLink) {
+      doc.link(
+        contentX,
+        locationY,
+        helperPdfContentWidth - 98,
+        locationHeight + 12,
+        entry.locationLink.url
+      );
+    }
+  }
+  doc.x = helperPdfMargin;
+  doc.y = top + height + 8;
+}
+
+export function renderPublicHelperTaskPdf(
+  data: PlanningData,
+  helperId: number
+) {
+  const helper = data.helpers.find(item => item.id === helperId);
+  if (!helper) throw new Error("Helfer wurde nicht gefunden");
+  const entries = selectPublicHelperTaskEntries(data, helperId);
+
+  return collectPdf(doc => {
+    drawPublicHelperHeader(doc, data.settings, helper.name);
+    if (!entries.length) {
+      doc
+        .font("Helvetica-Oblique")
+        .fontSize(10)
+        .fillColor(helperPdfDesign.muted)
+        .text("Derzeit sind keine eigenen Einsätze eingetragen.");
+    } else {
+      for (const entry of entries) drawPublicHelperTaskEntry(doc, entry);
+    }
+    ensureHelperPdfSpace(doc, 44);
+    doc
+      .moveTo(helperPdfMargin, doc.y + 4)
+      .lineTo(doc.page.width - helperPdfMargin, doc.y + 4)
+      .strokeColor(helperPdfDesign.line)
+      .lineWidth(0.6)
+      .stroke();
+    doc
+      .font("Helvetica")
+      .fontSize(9)
+      .fillColor(helperPdfDesign.muted)
+      .text(
+        "Bei Rückfragen wenden Sie sich bitte an die Einsatzleitung.",
+        helperPdfMargin,
+        doc.y + 13,
+        { width: helperPdfContentWidth }
+      );
   });
 }
 
@@ -2376,6 +2569,11 @@ async function loadPlanningData(): Promise<PlanningData> {
 
 export async function createHelperTaskPdf(helperId: number) {
   return renderHelperTaskPdf(await loadPlanningData(), helperId);
+}
+
+/** Erzeugt ausschließlich die datensparsame Ansicht für externe Freigabelinks. */
+export async function createPublicHelperTaskPdf(helperId: number) {
+  return renderPublicHelperTaskPdf(await loadPlanningData(), helperId);
 }
 
 export async function createBlankPlanPdf() {

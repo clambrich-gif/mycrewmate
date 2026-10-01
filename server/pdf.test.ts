@@ -19,6 +19,7 @@ import {
   renderContactOverviewZip,
   renderBlankPlanPdf,
   renderHelperTaskPdf,
+  renderPublicHelperTaskPdf,
   renderPlanPdf,
   selectHelpersForContact,
   selectContactOverviewRows,
@@ -46,6 +47,7 @@ import {
   selectTaskOverviewRows,
   CONTACT_CHECKLIST_MARKER,
   renderPlanningTeamAccessSheetsPdf,
+  selectPublicHelperTaskEntries,
   shouldUseMyCrewMateWordmark,
 } from "./pdf";
 import { resolveEventPdfLogoKey } from "./event-pdf-image";
@@ -270,7 +272,7 @@ describe("PDF-Erzeugung", () => {
     };
     expect(helperPdfLocationLink(location)).toEqual({
       label: "Pumptrack",
-      url: "https://www.google.com/maps/search/?api=1&query=50.3569%2C6.9458",
+      url: "https://www.openstreetmap.org/?mlat=50.3569&mlon=6.9458#map=18/50.3569/6.9458",
     });
     expect(helperPdfLocationLink(null)).toBeNull();
 
@@ -285,6 +287,47 @@ describe("PDF-Erzeugung", () => {
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
     expect(pdf.toString("latin1")).toContain("/URI");
     expect(pdf.toString("latin1")).not.toContain("Karte öffnen");
+  });
+
+  it("begrenzt öffentliche Helfer-PDFs auf die eigene Aufgabe, Zeit und den optionalen Ort", async () => {
+    const location: Location = {
+      ...cakeLocations[0],
+      name: "Pumptrack",
+      latitude: 50.3569,
+      longitude: 6.9458,
+    };
+    const publicData = {
+      ...data,
+      locations: [location],
+      shifts: [{ ...shifts[0], locationId: location.id }, shifts[1]],
+      cakes: helperCakes,
+    };
+
+    expect(selectPublicHelperTaskEntries(publicData, helpers[0].id)).toEqual([
+      {
+        day: "Freitag",
+        time: "17:00–21:00",
+        task: "Aufbau Zelte, Verkabelung, Absperrgitter und Banner",
+        locationLink: {
+          label: "Pumptrack",
+          url: "https://www.openstreetmap.org/?mlat=50.3569&mlon=6.9458#map=18/50.3569/6.9458",
+        },
+      },
+      {
+        day: "Samstag",
+        time: "06:30–10:00",
+        task: "Anmeldung Brevets",
+        locationLink: null,
+      },
+    ]);
+
+    const pdf = await renderPublicHelperTaskPdf(publicData, helpers[0].id);
+    expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+    expect(pdf.length).toBeGreaterThan(1_000);
+    expect(pdf.toString("latin1")).not.toContain("Christian Lambrich");
+    expect(pdf.toString("latin1")).not.toContain("Martin Reis");
+    expect(pdf.toString("latin1")).not.toContain("Käsekuchen");
+    expect(pdf.toString("latin1")).not.toContain("Bitte am Freitag pünktlich erscheinen.");
   });
 
   it("setzt lange Helferhinweise als mehrzeilige Zusammenfassung ohne den Export zu überlagern", async () => {

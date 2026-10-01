@@ -36,8 +36,10 @@ describe("Punkt 3: Sicherheits- und Berechtigungs-Hardening", () => {
   it("setzt im öffentlichen Helfer-PDF-Endpunkt strikte Sicherheits-Header", () => {
     expect(publicPdfRoutes).toContain('"X-Content-Type-Options": "nosniff"');
     expect(publicPdfRoutes).toContain('"X-Robots-Tag": "noindex, nofollow, noarchive"');
-    expect(publicPdfRoutes).toContain('"Cross-Origin-Resource-Policy": "cross-origin"');
+    expect(publicPdfRoutes).toContain('"Cross-Origin-Resource-Policy": "same-origin"');
     expect(publicPdfRoutes).toContain('"Cache-Control": "private, no-store, max-age=0"');
+    expect(publicPdfRoutes).not.toContain('"Access-Control-Allow-Origin": "*"');
+    expect(publicPdfRoutes).toContain("createPublicHelperTaskPdf");
   });
 
   it("setzt im Standortlogo-Endpunkt Authentifizierung und Same-Origin-Schutz durch", () => {

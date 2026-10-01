@@ -3,7 +3,8 @@ import { ExternalLink, Scale } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
-export const PRIVACY_POLICY_URL = "https://mycrewmate.de/datenschutz";
+/** Die Anmeldung und die geschützte Anwendung verweisen auf den eigenen App-Hinweis. */
+export const PRIVACY_POLICY_URL = "https://app.mycrewmate.de/datenschutz";
 export const SIDEBAR_COPYRIGHT_NOTICE =
   "© 2026 MyCrewMate.de · Alle Rechte vorbehalten.";
 

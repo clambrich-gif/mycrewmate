@@ -1,6 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { getHelperByPdfShareCode } from "./db";
-import { createHelperTaskPdf } from "./pdf";
+import { createPublicHelperTaskPdf } from "./pdf";
 import {
   verifyPublicHelperPdfToken,
   type PublicHelperPdfScope,
@@ -32,7 +32,7 @@ const defaultDependencies: PublicHelperPdfRouteDependencies = {
         }
       : null;
   },
-  createPdf: createHelperTaskPdf,
+  createPdf: createPublicHelperTaskPdf,
   withScope: (scope, callback) =>
     withPlanningScope(
       {
@@ -44,23 +44,12 @@ const defaultDependencies: PublicHelperPdfRouteDependencies = {
     ),
 };
 
-function setPublicPdfCorsHeaders(res: Response) {
-  res.set({
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Expose-Headers":
-      "Content-Disposition, Content-Length, Content-Type",
-  });
-}
-
 function setPdfHeaders(res: Response, contentLength?: number) {
-  setPublicPdfCorsHeaders(res);
   res.set({
     "Cache-Control": "private, no-store, max-age=0",
-    "Content-Disposition": "inline; filename=Einsatzplan.pdf",
+    "Content-Disposition": "inline; filename=Persoenliche_Einsatzuebersicht.pdf",
     "Content-Type": "application/pdf",
-    "Cross-Origin-Resource-Policy": "cross-origin",
+    "Cross-Origin-Resource-Policy": "same-origin",
     "Referrer-Policy": "no-referrer",
     "X-Content-Type-Options": "nosniff",
     "X-Robots-Tag": "noindex, nofollow, noarchive",
@@ -121,7 +110,6 @@ async function servePublicHelperPdf(
   dependencies: PublicHelperPdfRouteDependencies,
   headOnly: boolean
 ) {
-  setPublicPdfCorsHeaders(res);
   const claims = dependencies.verifyToken(req.params.token ?? "");
   if (!claims) {
     notAvailable(res);
@@ -138,7 +126,6 @@ async function serveShortPublicHelperPdf(
   dependencies: PublicHelperPdfRouteDependencies,
   headOnly: boolean
 ) {
-  setPublicPdfCorsHeaders(res);
   const shortCode = req.params.shortCode ?? "";
   if (!SHORT_PDF_CODE.test(shortCode)) {
     notAvailable(res);
@@ -156,7 +143,8 @@ async function serveShortPublicHelperPdf(
 }
 
 /**
- * Liefert persönliche Helfer-PDFs ohne Anmeldung:
+ * Liefert ausschließlich datensparsame persönliche Helfer-PDFs ohne Anmeldung:
+ * eigene Einsätze, Zeit, Aufgabe und Ort – keine Daten anderer Personen.
  * - /api/public/pdf/:token bleibt für bereits versendete 90-Tage-Freigaben.
  * - /p/:shortCode ist die kompakte Route für neue WhatsApp-Nachrichten.
  */
@@ -165,7 +153,6 @@ export function registerPublicHelperPdfRoutes(
   dependencies: PublicHelperPdfRouteDependencies = defaultDependencies
 ) {
   app.options("/api/public/pdf/:token", (_req, res) => {
-    setPublicPdfCorsHeaders(res);
     res.status(204).end();
   });
   app.head("/api/public/pdf/:token", (req, res) => {
@@ -176,7 +163,6 @@ export function registerPublicHelperPdfRoutes(
   });
 
   app.options("/p/:shortCode", (_req, res) => {
-    setPublicPdfCorsHeaders(res);
     res.status(204).end();
   });
   app.head("/p/:shortCode", (req, res) => {

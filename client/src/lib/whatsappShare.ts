@@ -18,7 +18,7 @@ export const DEFAULT_WHATSAPP_MESSAGE_TEMPLATE = `Hallo! 👋
 Hier ist dein persönlicher Einsatzplan für unser Event {EVENT_NAME} 🚴💨
 📄 Deinen genauen Plan findest du direkt unter folgendem Link:
 {PDF_LINK}
-ℹ️ Deinen persönlichen Ansprechpartner findest du direkt unten auf deinem PDF-Formular.
+ℹ️ Der Link enthält nur deine eigenen Einsätze, Zeiten und Orte. Bei Fragen melde dich bitte bei der Einsatzleitung.
 ⚠️ Bitte gib uns schnellstmöglich Bescheid, damit wir den gesamten Einsatzplan in Absprache mit allen finalisieren können. ⏳👍
 Vielen Dank für deine fantastische Unterstützung! 🥳
 Dein RSC-Orga-Team 🏆`;

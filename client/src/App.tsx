@@ -89,6 +89,7 @@ const KlemmiPlanLayoutPreview = lazy(() => import("@/pages/KlemmiPlanLayoutPrevi
 const OfferDemo = lazy(() => import("@/pages/OfferDemo"));
 const ClubDemoLanding = lazy(() => import("@/pages/ClubDemoLanding"));
 const PublicLegalPage = lazy(() => import("@/pages/PublicLegal"));
+const AppPrivacy = lazy(() => import("@/pages/AppPrivacy"));
 const MasterAdminPortal = lazy(() => import("@/pages/MasterAdminPortal"));
 const GameRoot = lazy(() => import("@/pages/GameRoot"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
@@ -216,6 +217,11 @@ function Router() {
       <Route path="/crewmate-tycoon">
         <Suspense fallback={<RouteLoading />}>
           <GameRoot />
+        </Suspense>
+      </Route>
+      <Route path="/datenschutz">
+        <Suspense fallback={<RouteLoading />}>
+          <AppPrivacy />
         </Suspense>
       </Route>
       <Route>

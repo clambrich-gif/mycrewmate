@@ -52,4 +52,23 @@ describe("Trennung von Angebotsseite und geschützter MyCrewMate-Anwendung", () 
     expect(legal).toContain("Diese öffentliche Musterseite dient ausschließlich der Produktinformation.");
     expect(legal).toContain("keine Zahlungsabwicklung");
   });
+
+  it("stellt für die geschützte App einen eigenen, vollständigen Datenschutzhinweis bereit", () => {
+    const app = source("client/src/App.tsx");
+    const privacy = source("client/src/pages/AppPrivacy.tsx");
+    const legalFooter = source("client/src/components/ImpressumDialog.tsx");
+
+    expect(app).toContain('const AppPrivacy = lazy(() => import("@/pages/AppPrivacy"));');
+    expect(app).toContain("<AppPrivacy />");
+    expect(privacy).toContain("Datenschutz für die MyCrewMate-App");
+    expect(privacy).toContain("info@mycrewmate.de");
+    expect(privacy).toContain("OpenStreetMap");
+    expect(privacy).toContain("OpenTopoMap");
+    expect(privacy).toContain("Der WhatsApp-Button öffnet ausschließlich nach einem bewussten");
+    expect(privacy).toContain("Persönliche PDF-Übersichten");
+    expect(privacy).toContain("Jahren ab Veranstaltungsabschluss");
+    expect(legalFooter).toContain(
+      'export const PRIVACY_POLICY_URL = "https://app.mycrewmate.de/datenschutz"'
+    );
+  });
 });

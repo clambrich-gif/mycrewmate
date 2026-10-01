@@ -3256,7 +3256,7 @@ export default function Helpers() {
                 </h4>
                 <p className="text-xs leading-relaxed text-slate-600">
                   {allowsPersonalPdfShare
-                    ? "Sendet den persönlichen Einsatzplan inklusive 90 Tage gültigem PDF-Link zur Prüfung und Rückmeldung."
+                    ? "Sendet eine persönliche Einsatzübersicht mit den eigenen Einsätzen, Zeiten und Orten zur Prüfung und Rückmeldung."
                     : "Persönliche PDF-Links und die Einsatzplan-Zuweisung stehen ab Light bereit."}
                 </p>
               </div>
@@ -3264,7 +3264,7 @@ export default function Helpers() {
                 {allowsPersonalPdfShare ? (
                   <>
                     <Send className="h-3.5 w-3.5" />
-                    <span>Erzeugt persönlichen PDF-Link</span>
+                    <span>Erzeugt datensparsamen persönlichen PDF-Link</span>
                   </>
                 ) : (
                   <>
@@ -3283,7 +3283,7 @@ export default function Helpers() {
               </p>
             ) : (
               <p>
-                <strong>Muster 2 aktiv:</strong> Erzeugt erst bei Klick auf „In WhatsApp öffnen“ den persönlichen PDF-Abruflink für {whatsAppTargetHelper?.name}.
+                <strong>Muster 2 aktiv:</strong> Erzeugt erst bei Klick auf „In WhatsApp öffnen“ den persönlichen PDF-Abruflink für {whatsAppTargetHelper?.name}. Der Link enthält ausschließlich die eigenen Einsätze, Zeiten und Orte.
               </p>
             )}
           </div>
