@@ -40,6 +40,21 @@ describe("Veranstaltungsabschluss und Paket-Auslastung", () => {
     expect(router).toContain('db.reopenEvent(input.id)');
   });
 
+  it("widerruft beim Abschluss ausschließlich eventbezogene Zugänge und PDF-Freigaben", () => {
+    const db = source("server/db.ts");
+    const layout = source("client/src/components/Layout.tsx").replace(/\s+/g, " ");
+
+    expect(db).toContain('.delete(planningTeamAccessEvents)');
+    expect(db).toContain('eq(planningTeamAccessEvents.eventId, id)');
+    expect(db).toContain('.update(protectedHelperPdfShares)');
+    expect(db).toContain('protectedHelperPdfShares.helperId');
+    expect(db).toContain('eq(helpers.eventId, id)');
+    expect(db).toContain('revokedPdfShares');
+    expect(layout).toContain('Alle eventbezogenen Planungsteam-Freigaben');
+    expect(layout).toContain('sieben-Tage-PDF-Links werden sofort widerrufen');
+    expect(layout).toContain('andere aktive Veranstaltungen des Vereins');
+  });
+
   it("macht Historie und Gesamtansicht im Layout und Master-Admin verständlich", () => {
     const layout = source("client/src/components/Layout.tsx");
     const masterPortal = source("client/src/pages/MasterAdminPortal.tsx");

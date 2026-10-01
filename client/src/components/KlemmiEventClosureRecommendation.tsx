@@ -66,7 +66,9 @@ export function KlemmiEventClosureRecommendation({
         <p className="mt-1 text-sm leading-5 text-blue-950">
           Diese Veranstaltung ist beendet, aber noch aktiv in der Planung. Du kannst
           sie jetzt sicher als Historie abschließen – alle Daten bleiben erhalten und
-          der Platz im aktiven Jahreskontingent wird wieder frei.
+          der Platz im aktiven Jahreskontingent wird wieder frei. Zugeordnete
+          Planungsteam-Freigaben und aktive PDF-Links werden dabei automatisch
+          widerrufen.
         </p>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           {visibleRecommendations.map(recommendation => (
@@ -117,7 +119,9 @@ export function KlemmiEventClosureRecommendation({
               Die Veranstaltung verschwindet aus der aktiven Tagesplanung und zählt
               nicht mehr zum Jahreskontingent. Helfer, Einsatzplan, Aufgaben und alle
               übrigen Daten bleiben vollständig erhalten. Du kannst sie später wieder
-              öffnen.
+              öffnen. Klemmi widerruft dabei sofort alle eventbezogenen
+              Planungsteam-Freigaben und noch aktiven sieben-Tage-PDF-Links. Zugänge
+              bleiben nur für andere aktive Veranstaltungen des Vereins bestehen.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

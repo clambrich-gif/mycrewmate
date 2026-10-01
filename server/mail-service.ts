@@ -169,6 +169,55 @@ Ihr MyCrewMate-Team`;
   return { subject, text, html };
 }
 
+/** Nachweis-Mail nach elektronischer Annahme von AGB, AVV und Datenschutz. */
+export function renderContractAcceptanceEmail(params: {
+  recipientName: string;
+  tenantName: string;
+  packageName: string;
+  acceptedAt: Date;
+  documents: Array<{ title: string; version: string }>;
+}): { subject: string; text: string; html: string } {
+  const acceptedAt = new Intl.DateTimeFormat("de-DE", {
+    timeZone: "Europe/Berlin",
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(params.acceptedAt);
+  const documents = params.documents
+    .map(document => `- ${document.title} (Version ${document.version})`)
+    .join("\n");
+  const subject = `Vertragsunterlagen digital bestätigt · ${params.tenantName} · MyCrewMate`;
+  const text = `Hallo ${params.recipientName},
+
+für ${params.tenantName} wurden am ${acceptedAt} die folgenden Vertragsunterlagen für das Paket ${params.packageName} elektronisch bestätigt:
+
+${documents}
+
+Die Annahme ist für den Verein im MyCrewMate-Vertragsnachweis dokumentiert. Diese E-Mail dient als Zustell- und Informationsnachweis.
+
+Bei Fragen erreichen Sie uns unter info@mycrewmate.de.
+
+Freundliche Grüße
+MyCrewMate`;
+  const documentList = params.documents
+    .map(document => `<li>${document.title} <span style="color:#64748b;">(Version ${document.version})</span></li>`)
+    .join("");
+  const html = `<!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8"><title>${subject}</title></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#1e293b;background:#f8fafc;margin:0;padding:24px;">
+  <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:32px;">
+    <h1 style="font-size:20px;color:#0f172a;margin:0 0 6px;">MyCrewMate</h1>
+    <p style="font-size:13px;color:#64748b;margin:0 0 24px;">Digitaler Vertragsnachweis</p>
+    <p>Hallo <strong>${params.recipientName}</strong>,</p>
+    <p>für <strong>${params.tenantName}</strong> wurden am <strong>${acceptedAt}</strong> die folgenden Unterlagen für das Paket <strong>${params.packageName}</strong> elektronisch bestätigt:</p>
+    <ul style="padding-left:20px;">${documentList}</ul>
+    <p style="font-size:13px;color:#475569;">Die Annahme ist im Vertragsnachweis des Vereins dokumentiert. Diese E-Mail dient als Zustell- und Informationsnachweis.</p>
+    <hr style="border:0;border-top:1px solid #e2e8f0;margin:24px 0;">
+    <p style="font-size:12px;color:#64748b;margin:0;">Fragen? info@mycrewmate.de</p>
+  </div>
+</body></html>`;
+  return { subject, text, html };
+}
+
 /** Inhaltliche, transaktionale Erinnerung an den hinterlegten Vereinskontakt. */
 export function renderProductExpiryReminderEmail(params: {
   tenantName: string;

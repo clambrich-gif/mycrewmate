@@ -362,6 +362,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [forcePasswordChangeOpen, setForcePasswordChangeOpen] = useState(false);
   const [initialPassword, setInitialPassword] = useState("");
   const [initialPasswordConfirmation, setInitialPasswordConfirmation] = useState("");
+  const [contractDocumentsAccepted, setContractDocumentsAccepted] = useState(false);
   const [initialPasswordError, setInitialPasswordError] = useState<string | null>(null);
   const [activationTenantId, setActivationTenantId] = useState(
     storedActivationTenantId
@@ -1094,6 +1095,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         setActivationTenantId(null);
         setInitialPassword("");
         setInitialPasswordConfirmation("");
+        setContractDocumentsAccepted(false);
         setInitialPasswordError(null);
         setForcePasswordChangeOpen(false);
         setPassword("");
@@ -1264,6 +1266,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
       setInitialPasswordError("Die Passwörter stimmen nicht überein.");
       return;
     }
+    const isInitialTenantAdmin =
+      user?.role === "admin" && user.openId.startsWith("tenant-admin:");
+    if (
+      isInitialTenantAdmin &&
+      initialPasswordStatus.data?.requiresContractAcceptance &&
+      !contractDocumentsAccepted
+    ) {
+      setInitialPasswordError(
+        "Bitte bestätigen Sie AGB, AVV und Datenschutzhinweise, um den Vereinszugang einzurichten."
+      );
+      return;
+    }
     const payload = {
       password: initialPassword,
       passwordConfirmation: initialPasswordConfirmation,
@@ -1272,7 +1286,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
       user?.role === "admin" &&
       user.openId.startsWith("tenant-admin:")
     ) {
-      completeTenantAdminInitialPasswordChange.mutate(payload);
+      completeTenantAdminInitialPasswordChange.mutate({
+        ...payload,
+        acceptContractDocuments: true,
+      });
       return;
     }
     completeInitialPasswordChange.mutate(payload);
@@ -1282,6 +1299,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
       open={forcePasswordChangeOpen}
       password={initialPassword}
       passwordConfirmation={initialPasswordConfirmation}
+      requiresContractAcceptance={
+        user?.role === "admin" &&
+        user.openId.startsWith("tenant-admin:") &&
+        initialPasswordStatus.data?.requiresContractAcceptance === true
+      }
+      contractDocumentsAccepted={contractDocumentsAccepted}
       busy={
         completeInitialPasswordChange.isPending ||
         completeTenantAdminInitialPasswordChange.isPending
@@ -1295,6 +1318,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
       }}
       onPasswordConfirmationChange={value => {
         setInitialPasswordConfirmation(value);
+        if (initialPasswordError) setInitialPasswordError(null);
+      }}
+      onContractDocumentsAcceptedChange={accepted => {
+        setContractDocumentsAccepted(accepted);
         if (initialPasswordError) setInitialPasswordError(null);
       }}
       onSubmit={submitInitialPasswordChange}
@@ -2752,6 +2779,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
               „{closeEventTarget?.name ?? ""}“ bleibt mit allen Helfer-, Einsatz- und
               Planungsdaten als Historie erhalten. Sie erscheint danach nicht mehr in
               der täglichen Auswahl und zählt nicht mehr zum aktiven Jahreskontingent.
+              Alle eventbezogenen Planungsteam-Freigaben sowie noch aktive
+              sieben-Tage-PDF-Links werden sofort widerrufen. Persönliche Vereinsadmins
+              und Co-Admins behalten ausschließlich den Zugriff auf andere aktive
+              Veranstaltungen des Vereins.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

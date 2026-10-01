@@ -515,6 +515,54 @@ export const tenantProductAssignments = mysqlTable(
 export type TenantProductAssignment = typeof tenantProductAssignments.$inferSelect;
 
 /**
+ * Revisionssicherer Nachweis der aktiv bestätigten Vertragsunterlagen eines
+ * Vereins. Jede neue Dokumentversion erzeugt einen eigenen Eintrag; dadurch
+ * bleibt auch nach späteren Textänderungen nachvollziehbar, was wann aktiv
+ * bestätigt wurde.
+ */
+export const tenantContractAcceptances = mysqlTable(
+  "tenant_contract_acceptances",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    tenantId: varchar("tenantId", { length: 96 }).notNull(),
+    acceptedByUserId: int("acceptedByUserId").notNull(),
+    documentId: mysqlEnum("documentId", ["terms", "avv", "privacy"]).notNull(),
+    documentVersion: varchar("documentVersion", { length: 64 }).notNull(),
+    /** SHA-256 des zum Zeitpunkt der Annahme geltenden Dokumenttexts. */
+    documentHash: varchar("documentHash", { length: 64 }).notNull(),
+    packageId: mysqlEnum("packageId", PRODUCT_PACKAGE_IDS)
+      .$type<ProductPackageId>()
+      .notNull(),
+    packageStatus: mysqlEnum("packageStatus", PRODUCT_ASSIGNMENT_STATUSES)
+      .$type<ProductAssignmentStatus>()
+      .notNull(),
+    acceptedAt: timestamp("acceptedAt").defaultNow().notNull(),
+  },
+  table => [
+    foreignKey({
+      name: "tenant_contract_acceptances_tenant_id_tenants_id_fk",
+      columns: [table.tenantId],
+      foreignColumns: [tenants.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "tenant_contract_acceptances_user_id_users_id_fk",
+      columns: [table.acceptedByUserId],
+      foreignColumns: [users.id],
+    }).onDelete("restrict"),
+    uniqueIndex("tenant_contract_acceptances_version_unique").on(
+      table.tenantId,
+      table.documentId,
+      table.documentVersion
+    ),
+    index("tenant_contract_acceptances_tenant_accepted_idx").on(
+      table.tenantId,
+      table.acceptedAt
+    ),
+  ]
+);
+export type TenantContractAcceptance = typeof tenantContractAcceptances.$inferSelect;
+
+/**
  * Minimaler, datensparsamer Versandnachweis für automatische Paketablaufhinweise.
  * Der eindeutige Schlüssel je Verein und Ablaufdatum verhindert Doppelversand;
  * es werden ausdrücklich weder Empfängeradresse noch E-Mail-Inhalt gespeichert.

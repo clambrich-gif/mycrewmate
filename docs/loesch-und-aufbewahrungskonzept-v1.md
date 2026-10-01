@@ -2,7 +2,7 @@
 
 > **Version 1.0 · Stand 01.10.2026 · Geltung: geschlossener Pilotbetrieb.**
 >
-> Dieses Dokument beschreibt die beschlossene Regel für die Aufbewahrung von MyCrewMate-Daten. Die Regel ist organisatorisch verbindlich, ersetzt aber keine Steuer- oder Rechtsberatung. Bevor ein breiter Kundenbetrieb startet, sind die markierten manuellen Schritte durch technische Löschläufe, ein Backup-Konzept und Testnachweise zu ergänzen.
+> Dieses Dokument beschreibt die beschlossene Regel für die Aufbewahrung von MyCrewMate-Daten. Die Regel ist organisatorisch verbindlich, ersetzt aber keine Steuer- oder Rechtsberatung. Die täglichen Sicherungen für Datenbank und Upload-Volume sind eingerichtet; technische Löschläufe und dokumentierte Restore-Tests werden vor dem breiten Kundenbetrieb ergänzt.
 
 ## 1. Leitentscheidung
 
@@ -10,7 +10,7 @@
 2. **Frühere Löschung:** Der Verein kann die Löschung unmittelbar nach Abschluss oder zu einem früheren Zeitpunkt anweisen, wenn keine weitere organisatorische, vertragliche oder gesetzliche Notwendigkeit besteht.
 3. **Vorrang gesetzlicher Fristen:** Steuer-, handels- und vertragsrechtlich erforderliche Unterlagen werden nicht allein wegen des Drei-Jahres-Ablaufs gelöscht. Der jeweilige Verein dokumentiert die Ausnahme und prüft sie mit Buchhaltung oder Steuerberatung.
 4. **Keine unbegrenzte Archivierung:** „Abgeschlossen“ oder „archiviert“ ist keine dauerhafte Aufbewahrungsfreigabe.
-5. **Keine automatischen Infrastruktur-Backups aktuell:** Datenbank und Upload-Volume werden derzeit nicht über einen bestätigten automatisierten Offsite-Backup-Prozess gesichert. Bis zur Einführung eines solchen Prozesses dürfen keine anderen Backup-Fristen behauptet werden.
+5. **Tägliche Infrastruktur-Backups:** Datenbank und Upload-Volume werden täglich gesichert und zusätzlich in Hetzner Object Storage abgelegt. Die Rotation ist auf sieben Wiederherstellungspunkte begrenzt; Sicherungen dienen ausschließlich der Wiederherstellung.
 
 ## 2. Datenklassen und Fristen
 
@@ -20,7 +20,7 @@
 | Geschlossene Event-, Helfer-, Ansprechpartner-, Schicht- und Aufgabenplanung |                                 3 Jahre | `closedAt` des Events         | frühere Vereinsweisung; Legal Hold; nachgewiesene gesetzliche Pflicht | vollständige Löschung des Events samt abhängigen Daten    | **monatliche manuelle Prüfung**, technische Automatisierung folgt |
 | Standort-, GPX- und zugehörige Uploaddaten                                   |                                 3 Jahre | `closedAt` des Events         | frühere Vereinsweisung; zwingender Nachweiszweck                      | Datenbankreferenz und physische Datei gemeinsam entfernen | **Orphan-Bereinigung ergänzen**                                   |
 | Freiwillige Spenden- und Übergabeinformationen                               |                                 3 Jahre | `closedAt` des Events         | steuer- oder vertragsrelevante Ausnahme                               | fachliche Löschung mit Event                              | **monatliche manuelle Prüfung**                                   |
-| Persönliche öffentliche PDF-Übersicht                                        |               nur für den Freigabezweck | Linkfreigabe / Eventabschluss | keine                                                                 | Link sperren, generierte PDF nicht dauerhaft speichern    | Minimal-PDF umgesetzt; Widerruf/TTL als R5 ergänzen               |
+| Persönliche öffentliche PDF-Übersicht                                        |               nur für den Freigabezweck | Linkfreigabe / Eventabschluss | keine                                                                 | Link sperren, generierte PDF nicht dauerhaft speichern    | Sieben-Tage-Laufzeit, Zugangscode und Sofortwiderruf umgesetzt     |
 | Einladungs- und Passwort-Reset-Links                                         |         jeweilige technische Gültigkeit | Ausstellung                   | keine                                                                 | Ablauf / Einmalnutzung                                    | technisch vorhanden, regelmäßig testen                            |
 | QR-Demo-Herkunftsauswahl                                                     |                                 90 Tage | Erfassung                     | keine                                                                 | automatisierte Bereinigung                                | technisch umgesetzt                                               |
 | Teamnotizen                                                                  |                              24 Stunden | Erstellung                    | keine                                                                 | automatisierte Bereinigung                                | technisch umgesetzt                                               |
@@ -58,9 +58,9 @@ Bis die technische Löschautomatik eingeführt ist, führt der zuständige Verei
 | Nachweis            | Löschprotokoll, Ticket oder bestätigte App-Aktion                                       |
 | nächster Prüftermin | Datum                                                                                   |
 
-## 5. Anforderungen vor automatisierten Backups
+## 5. Betrieb der automatisierten Backups
 
-Bevor ein automatisches Backup eingerichtet wird, müssen für **Datenbank** und **Upload-Volume** separat festgelegt werden:
+Für **Datenbank** und **Upload-Volume** gelten aktuell folgende Mindestvorgaben:
 
 - Speicherort und Datenregion,
 - Verschlüsselung bei Transport und Ablage,
@@ -68,7 +68,7 @@ Bevor ein automatisches Backup eingerichtet wird, müssen für **Datenbank** und
 - Sicherungsintervall, Rotation und maximale Aufbewahrungsdauer,
 - RPO und RTO,
 - Verfahren für Löschungen in Sicherungen,
-- mindestens ein dokumentierter Restore-Test mit nichtproduktiven Daten.
+- mindestens ein dokumentierter Restore-Test mit nichtproduktiven Daten vor dem breiten Kundenbetrieb.
 
 Ein Backup darf nicht dazu führen, dass bereits zu löschende Planungsdaten unbegrenzt in Sicherungen fortbestehen. Nach Einführung sind die Backup-Frist und die Löschfrist in diesem Dokument und im AVV-Anhang gemeinsam zu aktualisieren.
 
@@ -76,8 +76,8 @@ Ein Backup darf nicht dazu führen, dass bereits zu löschende Planungsdaten unb
 
 | Punkt | Ziel                                                                                       | Priorität |
 | ----- | ------------------------------------------------------------------------------------------ | --------- |
-| R5    | Persönliche PDF-Links zeitlich begrenzen, widerrufbar machen und beim Eventschluss sperren | hoch      |
+| R5    | Persönliche PDF-Links zeitlich begrenzen, widerrufbar machen und beim Eventschluss sperren | erledigt  |
 | R10   | Dreijahresprüfung für geschlossene Events, Logs und Uploads automatisieren                 | hoch      |
-| R11   | Verschlüsseltes Backup für DB und Upload-Volume samt Restore-Test einführen                | hoch      |
+| R11   | Tägliche DB- und Upload-Backups samt dokumentiertem Restore-Test nachweisen                | hoch      |
 | B3    | Physische Datei-Löschung und Orphan-Bereinigung nachweisen                                 | mittel    |
 | B4    | Jährlichen Lösch- und Restore-Test dokumentieren                                           | mittel    |

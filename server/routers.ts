@@ -115,6 +115,10 @@ import {
   productAllowsCapability,
   type ProductCapability,
 } from "@shared/product-packages";
+import {
+  LEGAL_DOCUMENTS,
+  REQUIRED_LEGAL_DOCUMENT_IDS,
+} from "@shared/legal-contract-documents";
 import { MASTER_ADMIN_ORIGIN, isMasterAdminRequestHost } from "@shared/platform-admin";
 import { storagePut, storageRead } from "./storage";
 import { locationLogoUrl } from "./location-logo-routes";
@@ -126,6 +130,7 @@ import {
 } from "./session-presence";
 import { upcomingPreparationDeadlines } from "./dashboard-deadlines";
 import {
+  renderContractAcceptanceEmail,
   renderInvitationEmail,
   renderMasterPasswordResetEmail,
   renderPlanningTeamInvitationEmail,
@@ -881,6 +886,7 @@ const ACTIVITY_MODULE_LABELS: Record<string, string> = {
   gpxTracks: "Strecken",
   events: "Veranstaltungen",
   years: "Veranstaltungsjahre",
+  planningTeamAccesses: "Zugänge & Freigaben",
   reset: "Planung",
   moduleAssignments: "Planung",
   pdf: "PDF-Ausgabe",
@@ -1782,6 +1788,7 @@ export const appRouter = router({
           (await db.isTenantAdminPasswordChangeRequired(ctx.user.id)));
 
       let invitationEmail: string | null = null;
+      let requiresContractAcceptance = false;
       if (isPlanningTeamAccess) {
         const scope = await authorizedPlanningScope(ctx.user, ctx.req);
         const access = await withPlanningScope(scope, () =>
@@ -1792,9 +1799,21 @@ export const appRouter = router({
         invitationEmail =
           (await db.getTenantAdminCredentialsByUserId(ctx.user.id))?.email?.trim() ||
           null;
+        const membership = await db.resolveTenantForUser({
+          userId: ctx.user.id,
+          userOpenId: ctx.user.openId,
+          allowPilotFallback: false,
+        });
+        requiresContractAcceptance = membership
+          ? await db.tenantNeedsCurrentContractAcceptance(membership.tenantId)
+          : false;
       }
 
-      return { mustChangePassword: Boolean(mustChangePassword), invitationEmail } as const;
+      return {
+        mustChangePassword: Boolean(mustChangePassword),
+        invitationEmail,
+        ...(isPersonalTenantAdmin ? { requiresContractAcceptance } : {}),
+      } as const;
     }),
     firstLoginOnboardingStatus: baseProtectedProcedure.query(async ({ ctx }) => {
       const accessId = planningTeamAccessIdForUser(ctx.user);
@@ -2087,6 +2106,9 @@ export const appRouter = router({
           .object({
             password: passwordInput,
             passwordConfirmation: passwordInput,
+            acceptContractDocuments: z.literal(true, {
+              message: "Bitte bestätigen Sie AGB, AVV und Datenschutzhinweise.",
+            }),
           })
           .refine(input => input.password === input.passwordConfirmation, {
             path: ["passwordConfirmation"],
@@ -2104,6 +2126,21 @@ export const appRouter = router({
             message: "Diese Passwortänderung ist nur für persönliche Vereins-Administratoren verfügbar.",
           });
         }
+        const membership = await db.resolveTenantForUser({
+          userId: ctx.user.id,
+          userOpenId: ctx.user.openId,
+          allowPilotFallback: false,
+        });
+        if (!membership) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Für diesen Vereinsadministrator ist kein aktiver Verein hinterlegt.",
+          });
+        }
+        const acceptance = await db.acceptCurrentTenantContractDocuments({
+          tenantId: membership.tenantId,
+          acceptedByUserId: ctx.user.id,
+        });
         const updated = await db.completeTenantAdminInitialPasswordChange({
           userId: ctx.user.id,
           passwordHash: await hashPassword(input.password),
@@ -2115,9 +2152,32 @@ export const appRouter = router({
         ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
         await recordSecurityActivity(
           auditActor(ctx.user),
+          `Digitale Annahme von AGB, AVV und Datenschutzhinweisen für „${membership.tenantName}“ dokumentiert`,
+          "created",
+          membership.tenantId
+        );
+        await recordSecurityActivity(
+          auditActor(ctx.user),
           `Persönliches Passwort für „${updated.userName ?? ctx.user.name ?? "Administrator"}“ festgelegt; erneute Anmeldung erforderlich`,
           "updated"
         );
+        const confirmationEmail = await db.getTenantAdminCredentialsByUserId(ctx.user.id);
+        if (confirmationEmail?.email) {
+          const receipt = renderContractAcceptanceEmail({
+            recipientName: updated.userName ?? ctx.user.name ?? "Vereinsadministration",
+            tenantName: membership.tenantName,
+            packageName: PRODUCT_PACKAGE_META[acceptance.packageId].name,
+            acceptedAt: acceptance.acceptedAt,
+            documents: REQUIRED_LEGAL_DOCUMENT_IDS.map(documentId => ({
+              title: LEGAL_DOCUMENTS[documentId].title,
+              version: LEGAL_DOCUMENTS[documentId].version,
+            })),
+          });
+          await safelySubmitInvitationEmail({
+            to: confirmationEmail.email,
+            ...receipt,
+          });
+        }
         return {
           success: true,
           mustChangePassword: false,

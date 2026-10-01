@@ -61,12 +61,18 @@ import {
   teamNoteTypings,
   tenantAdminCredentials,
   tenantAdminInvitations,
+  tenantContractAcceptances,
   tenantProductExpiryNotifications,
   tenantProductAssignments,
   tenants,
   userTenantMemberships,
   users,
 } from "../drizzle/schema";
+import {
+  LEGAL_DOCUMENTS,
+  REQUIRED_LEGAL_DOCUMENT_IDS,
+  type LegalDocumentId,
+} from "../shared/legal-contract-documents";
 import { ENV } from "./_core/env";
 import {
   eventWeekdays,
@@ -795,6 +801,85 @@ export async function getTenantProductEntitlement(
 
 export async function getCurrentTenantProductEntitlement() {
   return getTenantProductEntitlement(tenant());
+}
+
+function legalDocumentHash(documentId: LegalDocumentId) {
+  return createHash("sha256")
+    .update(LEGAL_DOCUMENTS[documentId].content, "utf8")
+    .digest("hex");
+}
+
+/**
+ * Prüft ausschließlich gegen die aktuell ausgelieferten Dokumentversionen.
+ * Alte Nachweise bleiben erhalten, lösen bei einer neuen Fassung aber bewusst
+ * eine erneute Annahme durch die berechtigte Vereinsadministration aus.
+ */
+export async function tenantNeedsCurrentContractAcceptance(tenantId: string) {
+  const database = await getDb();
+  if (!database) return false;
+  const acceptances = await database
+    .select({
+      documentId: tenantContractAcceptances.documentId,
+      documentVersion: tenantContractAcceptances.documentVersion,
+      documentHash: tenantContractAcceptances.documentHash,
+    })
+    .from(tenantContractAcceptances)
+    .where(eq(tenantContractAcceptances.tenantId, tenantId));
+  return REQUIRED_LEGAL_DOCUMENT_IDS.some(documentId => {
+    const document = LEGAL_DOCUMENTS[documentId];
+    return !acceptances.some(
+      acceptance =>
+        acceptance.documentId === documentId &&
+        acceptance.documentVersion === document.version &&
+        acceptance.documentHash === legalDocumentHash(documentId)
+    );
+  });
+}
+
+/** Speichert den vollständigen Nachweis der elektronischen Annahme. */
+export async function acceptCurrentTenantContractDocuments(input: {
+  tenantId: string;
+  acceptedByUserId: number;
+}) {
+  const database = (await getDb()) as DB;
+  const entitlement = await getTenantProductEntitlement(input.tenantId);
+  const acceptedAt = new Date();
+  await database.transaction(async tx => {
+    for (const documentId of REQUIRED_LEGAL_DOCUMENT_IDS) {
+      const document = LEGAL_DOCUMENTS[documentId];
+      await tx
+        .insert(tenantContractAcceptances)
+        .values({
+          tenantId: input.tenantId,
+          acceptedByUserId: input.acceptedByUserId,
+          documentId,
+          documentVersion: document.version,
+          documentHash: legalDocumentHash(documentId),
+          packageId: entitlement.packageId,
+          packageStatus: entitlement.status,
+          acceptedAt,
+        })
+        .onDuplicateKeyUpdate({
+          set: {
+            acceptedByUserId: input.acceptedByUserId,
+            documentHash: legalDocumentHash(documentId),
+            packageId: entitlement.packageId,
+            packageStatus: entitlement.status,
+            acceptedAt,
+          },
+        });
+    }
+  });
+  return {
+    acceptedAt,
+    packageId: entitlement.packageId,
+    packageStatus: entitlement.status,
+    documents: REQUIRED_LEGAL_DOCUMENT_IDS.map(documentId => ({
+      documentId,
+      version: LEGAL_DOCUMENTS[documentId].version,
+      hash: legalDocumentHash(documentId),
+    })),
+  };
 }
 
 function productUsageMetric(input: {
@@ -3638,11 +3723,36 @@ export async function closeEvent(id: number) {
     if (selected.status === "closed") {
       return { id: selected.id, name: selected.name, status: "closed" as const };
     }
+    const accessRevocation = await tx
+      .delete(planningTeamAccessEvents)
+      .where(eq(planningTeamAccessEvents.eventId, id));
+    const pdfRevocation = await tx
+      .update(protectedHelperPdfShares)
+      .set({ revokedAt: new Date() })
+      .where(
+        and(
+          inArray(
+            protectedHelperPdfShares.helperId,
+            tx.select({ id: helpers.id }).from(helpers).where(eq(helpers.eventId, id))
+          ),
+          isNull(protectedHelperPdfShares.revokedAt)
+        )
+      );
     await tx
       .update(events)
       .set({ status: "closed", closedAt: new Date() })
       .where(eq(events.id, id));
-    return { id: selected.id, name: selected.name, status: "closed" as const };
+    return {
+      id: selected.id,
+      name: selected.name,
+      status: "closed" as const,
+      revokedEventAccesses: Number(
+        (accessRevocation as { affectedRows?: number }).affectedRows ?? 0
+      ),
+      revokedPdfShares: Number(
+        (pdfRevocation as { affectedRows?: number }).affectedRows ?? 0
+      ),
+    };
   });
 }
 

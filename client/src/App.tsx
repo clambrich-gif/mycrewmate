@@ -89,6 +89,7 @@ const KlemmiPlanLayoutPreview = lazy(() => import("@/pages/KlemmiPlanLayoutPrevi
 const OfferDemo = lazy(() => import("@/pages/OfferDemo"));
 const ClubDemoLanding = lazy(() => import("@/pages/ClubDemoLanding"));
 const PublicLegalPage = lazy(() => import("@/pages/PublicLegal"));
+const LegalDocument = lazy(() => import("@/pages/LegalDocument"));
 const AppPrivacy = lazy(() => import("@/pages/AppPrivacy"));
 const ProtectedHelperPdfShare = lazy(
   () => import("@/pages/ProtectedHelperPdfShare")
@@ -162,6 +163,12 @@ function PublicSiteRouter() {
         </Route>
         <Route path="/datenschutz">
           <PublicLegalPage kind="datenschutz" />
+        </Route>
+        <Route path="/agb">
+          <LegalDocument documentId="terms" />
+        </Route>
+        <Route path="/avv">
+          <LegalDocument documentId="avv" />
         </Route>
         <Route component={PublicAppRedirect} />
       </Switch>

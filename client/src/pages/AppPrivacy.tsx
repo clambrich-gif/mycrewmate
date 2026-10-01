@@ -139,22 +139,22 @@ export default function AppPrivacy() {
 
             <Section title="4. Betrieb, E-Mail und Speicherung">
               <p>
-                Die Anwendung wird auf Infrastruktur in Deutschland betrieben.
-                Für den Betrieb werden ein Webserver mit Coolify, eine Datenbank
-                sowie ein geschütztes Upload-Volume für Vereins- und
-                Veranstaltungsdateien genutzt. Der Versand von Einladungen,
+                Die Anwendung wird auf Infrastruktur der Hetzner Online GmbH in
+                Deutschland betrieben. Coolify wird dort als selbst gehostete
+                Betriebsoberfläche für Webserver und MySQL-Datenbank eingesetzt;
+                ein geschütztes Upload-Volume nimmt Vereins- und
+                Veranstaltungsdateien auf. Der Versand von Einladungen,
                 Passwort-Resets und sonstigen transaktionalen E-Mails erfolgt
                 über den Maildienst von Hetzner. Dabei werden insbesondere
                 Empfängeradresse, Name, Betreff, Nachricht und gegebenenfalls
                 ein einmaliger Zugangslink verarbeitet.
               </p>
               <p>
-                Es sind derzeit keine automatisierten externen
-                Infrastruktur-Backups eingerichtet. Manuelle Sicherungen und
-                spätere automatisierte Backups werden erst nach einem
-                gesonderten Backup-, Zugriffs- und Löschkonzept eingesetzt.
-                Diese Datenschutzerklärung wird bei einer Änderung des
-                Backup-Verfahrens aktualisiert.
+                Datenbank und Upload-Volume werden täglich gesichert. Die
+                Sicherungen liegen zusätzlich im Hetzner Object Storage; die
+                Aufbewahrung ist auf sieben Wiederherstellungspunkte begrenzt.
+                Sicherungen dienen ausschließlich der Wiederherstellung nach
+                technischen Störungen und werden nicht für neue Zwecke genutzt.
               </p>
             </Section>
 

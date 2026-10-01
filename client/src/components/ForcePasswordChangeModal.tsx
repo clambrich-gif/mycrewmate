@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { KeyRound, TriangleAlert } from "lucide-react";
 import type { FormEvent } from "react";
 
@@ -18,10 +19,13 @@ type ForcePasswordChangeModalProps = {
   invitationEmail?: string | null;
   password: string;
   passwordConfirmation: string;
+  requiresContractAcceptance?: boolean;
+  contractDocumentsAccepted?: boolean;
   busy: boolean;
   error: string | null;
   onPasswordChange: (value: string) => void;
   onPasswordConfirmationChange: (value: string) => void;
+  onContractDocumentsAcceptedChange?: (accepted: boolean) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 };
 
@@ -36,10 +40,13 @@ export function ForcePasswordChangeModal({
   invitationEmail,
   password,
   passwordConfirmation,
+  requiresContractAcceptance = false,
+  contractDocumentsAccepted = false,
   busy,
   error,
   onPasswordChange,
   onPasswordConfirmationChange,
+  onContractDocumentsAcceptedChange,
   onSubmit,
 }: ForcePasswordChangeModalProps) {
   const passwordsMatch =
@@ -49,6 +56,7 @@ export function ForcePasswordChangeModal({
     password.length >= 10 &&
     passwordConfirmation.length >= 10 &&
     password === passwordConfirmation &&
+    (!requiresContractAcceptance || contractDocumentsAccepted) &&
     !busy;
 
   return (
@@ -126,8 +134,35 @@ export function ForcePasswordChangeModal({
               </p>
             )}
           </div>
+          {requiresContractAcceptance ? (
+            <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-3.5">
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  id="initial-password-contract-acceptance"
+                  checked={contractDocumentsAccepted}
+                  onCheckedChange={checked =>
+                    onContractDocumentsAcceptedChange?.(checked === true)
+                  }
+                  disabled={busy}
+                  className="mt-0.5"
+                />
+                <Label
+                  htmlFor="initial-password-contract-acceptance"
+                  className="cursor-pointer text-xs font-normal leading-5 text-slate-700"
+                >
+                  Ich handle vertretungsberechtigt für meinen Verein und bestätige die{" "}
+                  <a href="https://mycrewmate.de/agb" target="_blank" rel="noreferrer" className="font-semibold text-blue-700 underline underline-offset-2">AGB</a>
+                  {", "}
+                  <a href="https://mycrewmate.de/avv" target="_blank" rel="noreferrer" className="font-semibold text-blue-700 underline underline-offset-2">Vereinbarung zur Auftragsverarbeitung (AVV)</a>
+                  {" und die "}
+                  <a href="https://app.mycrewmate.de/datenschutz" target="_blank" rel="noreferrer" className="font-semibold text-blue-700 underline underline-offset-2">Datenschutzhinweise der App</a>
+                  . Die Annahme wird elektronisch dokumentiert und an die hinterlegte E-Mail-Adresse bestätigt.
+                </Label>
+              </div>
+            </div>
+          ) : null}
           <p className="-mt-1 text-xs leading-5 text-slate-600">
-            Der Button wird aktiv, sobald beide Passwörter mindestens 10 Zeichen lang und identisch sind.
+            Der Button wird aktiv, sobald beide Passwörter mindestens 10 Zeichen lang und identisch sind{requiresContractAcceptance ? " und die Vertragsunterlagen bestätigt wurden" : ""}.
           </p>
           {error && (
             <div

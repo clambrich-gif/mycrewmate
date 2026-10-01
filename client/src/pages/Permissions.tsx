@@ -163,6 +163,7 @@ export function AuditCenter({
   const [yearFilter, setYearFilter] = useState("all");
   const [eventFilter, setEventFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [activityKindFilter, setActivityKindFilter] = useState<"all" | "releases">("all");
   const [activityView, setActivityView] = useState<"activities" | "deletions">(
     "activities"
   );
@@ -257,6 +258,13 @@ export function AuditCenter({
   const operationalActivities = (activities.data ?? []).filter(
     entry => entry.module !== "Zugangsschutz"
   );
+  const releaseActivities = operationalActivities.filter(
+    entry =>
+      entry.module === "Zugänge & Freigaben" ||
+      /whatsapp|freigabe|zugang|berechtigung/i.test(entry.subject)
+  );
+  const visibleOperationalActivities =
+    activityKindFilter === "releases" ? releaseActivities : operationalActivities;
   const selectedEventName =
     eventFilter === "all"
       ? null
@@ -362,7 +370,8 @@ export function AuditCenter({
               </h3>
               <p className="mt-1 text-sm text-muted-foreground">
                 Nachvollziehbarer Verlauf geänderter Planungsdaten und gezielte
-                Wiederherstellung einzelner Löschungen.
+                Wiederherstellung einzelner Löschungen. Der Freigabefilter zeigt
+                Zugänge sowie WhatsApp- und PDF-Freigaben separat.
               </p>
             </div>
             <div className="inline-flex rounded-lg border bg-white p-1 text-xs">
@@ -422,6 +431,22 @@ export function AuditCenter({
                 </SelectContent>
               </Select>
             )}
+            {activityView === "activities" && (
+              <Select
+                value={activityKindFilter}
+                onValueChange={value =>
+                  setActivityKindFilter(value as "all" | "releases")
+                }
+              >
+                <SelectTrigger className="w-56 bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Alle Aktivitäten</SelectItem>
+                  <SelectItem value="releases">Nur Freigaben &amp; Zugänge</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
             <Select value={eventFilter} onValueChange={setEventFilter}>
               <SelectTrigger className="w-52 bg-background">
                 <SelectValue />
@@ -461,7 +486,7 @@ export function AuditCenter({
               <p className="p-5 text-sm text-destructive">
                 {activities.error.message}
               </p>
-            ) : operationalActivities.length ? (
+            ) : visibleOperationalActivities.length ? (
               <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
                 <table className="min-w-[760px] w-full text-sm">
                   <thead className="bg-slate-50 text-left text-xs text-slate-700">
@@ -474,7 +499,7 @@ export function AuditCenter({
                     </tr>
                   </thead>
                   <tbody>
-                    {operationalActivities.map(entry => (
+                    {visibleOperationalActivities.map(entry => (
                       <tr key={entry.id} className="border-t align-top">
                         <td className="p-3 text-xs text-slate-600">
                           {dateTime(entry.createdAt)}
@@ -504,7 +529,9 @@ export function AuditCenter({
               </div>
             ) : (
               <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-                Für die gewählten Filter liegen noch keine operativen Aktivitäten vor.
+                {activityKindFilter === "releases"
+                  ? "Für die gewählten Filter liegen noch keine Freigaben oder Zugangsänderungen vor."
+                  : "Für die gewählten Filter liegen noch keine operativen Aktivitäten vor."}
               </div>
             )
           ) : deletionAudit.isLoading ? (

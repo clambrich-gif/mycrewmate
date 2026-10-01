@@ -150,6 +150,20 @@ describe("Aktivierung persönlicher Vereinsadmins", () => {
       tenantName: "Bunefix",
       tenantStatus: "pilot",
     });
+    const needsAcceptance = vi
+      .spyOn(db, "tenantNeedsCurrentContractAcceptance")
+      .mockResolvedValue(true);
+    const acceptDocuments = vi
+      .spyOn(db, "acceptCurrentTenantContractDocuments")
+      .mockResolvedValue({
+        acceptedAt: new Date("2026-10-01T20:00:00.000Z"),
+        packageId: "pro",
+        packageStatus: "active",
+        documents: [],
+      });
+    vi.spyOn(db, "getTenantAdminCredentialsByUserId").mockResolvedValue({
+      email: null,
+    } as any);
     const clearCookieSpy = vi.fn();
     const caller = appRouter.createCaller({
       user: tenantAdminUser,
@@ -160,12 +174,14 @@ describe("Aktivierung persönlicher Vereinsadmins", () => {
     await expect(caller.auth.initialPasswordChangeStatus()).resolves.toEqual({
       mustChangePassword: true,
       invitationEmail: null,
+      requiresContractAcceptance: true,
     });
 
     await expect(
       caller.auth.completeTenantAdminInitialPasswordChange({
         password: "ein-neues-sicheres-passwort-123",
         passwordConfirmation: "ein-neues-sicheres-passwort-123",
+        acceptContractDocuments: true,
       })
     ).resolves.toEqual({
       success: true,
@@ -174,6 +190,11 @@ describe("Aktivierung persönlicher Vereinsadmins", () => {
     });
 
     expect(requiredSpy).toHaveBeenCalledWith(tenantAdminUser.id);
+    expect(needsAcceptance).toHaveBeenCalledWith("bunefix");
+    expect(acceptDocuments).toHaveBeenCalledWith({
+      tenantId: "bunefix",
+      acceptedByUserId: tenantAdminUser.id,
+    });
     expect(completeSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         userId: tenantAdminUser.id,

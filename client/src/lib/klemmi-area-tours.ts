@@ -280,7 +280,7 @@ export const SECURITY_KLEMMI_STEPS: KlemmiSurfaceStep[] = [
     selector: '[data-klemmi-target="security-audit-activity"]',
     eyebrow: "Schritt 12 von 14",
     title: "Änderungen und Löschungen prüfen",
-    text: "Im Aktivitätsverlauf siehst du, wer wann in welchem Bereich etwas erstellt, geändert oder gelöscht hat. Die Löschansicht trennt gelöschte Einträge von normalen Aktivitäten; einzelne Löschungen können – wenn möglich – gezielt wiederhergestellt werden. Jahr, Veranstaltung und Datentyp helfen beim Eingrenzen.",
+    text: "Im Aktivitätsverlauf siehst du, wer wann in welchem Bereich etwas erstellt, geändert oder gelöscht hat. Der neue Filter ‚Nur Freigaben & Zugänge‘ zeigt dir zusätzlich getrennt, wann Teamzugänge sowie WhatsApp- oder PDF-Freigaben angelegt oder geändert wurden. Die Löschansicht trennt gelöschte Einträge von normalen Aktivitäten; Jahr, Veranstaltung und Datentyp helfen beim Eingrenzen.",
     action: "Import-Historie zeigen",
   },
   {

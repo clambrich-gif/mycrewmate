@@ -1,6 +1,6 @@
-# Muster: Auftragsverarbeitungsvertrag (AVV) für MyCrewMate
+# Vereinbarung zur Auftragsverarbeitung (AVV) für MyCrewMate
 
-> **Arbeitsmuster – Version 1.1, Stand 01.10.2026.** Dieses Muster ist vor dem Einsatz durch die Vertragsparteien und bei Bedarf rechtlich zu prüfen und mit den tatsächlichen Betriebs-, Backup- und Unterauftragsverarbeiterangaben abzugleichen. Es ersetzt keine individuelle Rechtsberatung.
+> **Version 1.2, Stand 01.10.2026.** Diese Vereinbarung wird beim digitalen Vertragsabschluss in elektronischem Format bestätigt. Sie dokumentiert den vereinbarten Auftragsverarbeitungsrahmen und ersetzt keine individuelle Rechtsberatung für Sonderfälle eines Vereins.
 
 ## Vertragsparteien
 
@@ -9,8 +9,8 @@
 | Verantwortlicher gemäß Art. 4 Nr. 7 DSGVO       | **[NAME DES VEREINS]**, vertreten durch **[VERTRETUNGSBERECHTIGTE PERSON]**, **[ANSCHRIFT]** – nachfolgend „Verein“                                    |
 | Auftragsverarbeiter gemäß Art. 4 Nr. 8 DSGVO    | **Christian Lambrich / MyCrewMate**, Eichenweg 4, 56729 Nachtsheim, Deutschland, Datenschutzkontakt: **info@mycrewmate.de** – nachfolgend „MyCrewMate“ |
 | Hauptansprechperson des Vereins für Datenschutz | **[NAME, FUNKTION, E-MAIL]**                                                                                                                           |
-| Vertragsbeginn                                  | **[DATUM]**                                                                                                                                            |
-| Zugehöriger Hauptvertrag / Paket                | **[EVENT PASS / LIGHT / PRO / ENTERPRISE]**                                                                                                            |
+| Vertragsbeginn                                  | Zeitpunkt der elektronischen Annahme im MyCrewMate-Vertragsnachweis                                                                                   |
+| Zugehöriger Hauptvertrag / Paket                | Das bei der elektronischen Annahme dokumentierte Paket                                                                                                 |
 
 ---
 
@@ -74,10 +74,11 @@ Der Verein stimmt der Nutzung der in Anlage 2 aufgeführten Dienste in dem dort 
 
 | Dienst / Kategorie            | Zweck                                                       | Datenarten                                                       | Region / Vertragsstatus                                         | Freigabe des Vereins |
 | ----------------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------- | -------------------- |
-| Hetzner Online GmbH / Hosting | Betrieb der Anwendung, Upload-Volume, transaktionale E-Mail | technische Zugriffs-, Konto- und Planungsdaten; E-Mail-Empfänger | Deutschland · **[AV / Vertragsstand ergänzen]**                 | [ ] ja [ ] nein      |
-| Datenbankbetrieb              | Speicherung der Mandantendaten                              | gemäß Abschnitt 2                                                | **[tatsächlichen Anbieter, Region, Vertrag ergänzen]**          | [ ] ja [ ] nein      |
-| OpenStreetMap                 | optionale Kartenkacheln                                     | technische Browser- und Verbindungsdaten beim Kartenaufruf       | externer Empfänger · **[Freigabe/Datenschutzprüfung ergänzen]** | [ ] ja [ ] nein      |
-| OpenTopoMap                   | optionale topografische Kartenkacheln                       | technische Browser- und Verbindungsdaten beim Kartenaufruf       | externer Empfänger · **[Freigabe/Datenschutzprüfung ergänzen]** | [ ] ja [ ] nein      |
+| Hetzner Online GmbH / Hosting, Mail und Object Storage | Betrieb der Anwendung, Upload-Volume, transaktionale E-Mail, Sicherungen | technische Zugriffs-, Konto- und Planungsdaten; E-Mail-Empfänger; Sicherungen | Deutschland · vertragliche Beziehung des Betreibers zu Hetzner | mit Annahme dieser AVV |
+| MySQL-Datenbank in der Hetzner-Betriebsumgebung | Speicherung der Mandantendaten                              | gemäß Abschnitt 2                                                | Deutschland · durch MyCrewMate mittels selbst gehostetem Coolify betrieben | mit Annahme dieser AVV |
+| Coolify (selbst gehostet)       | Betriebsoberfläche für Container, Datenbank und Sicherungen | Betriebs- und Konfigurationsdaten                                | ausschließlich Hetzner-Infrastruktur in Deutschland             | mit Annahme dieser AVV |
+| OpenStreetMap                  | optionale Kartenkacheln                                     | technische Browser- und Verbindungsdaten beim Kartenaufruf       | externer Empfänger · nur nach bewusstem Kartenaufruf            | optional, siehe Abschnitt 6 |
+| OpenTopoMap                    | optionale topografische Kartenkacheln                       | technische Browser- und Verbindungsdaten beim Kartenaufruf       | externer Empfänger · nur nach bewusstem Kartenaufruf            | optional, siehe Abschnitt 6 |
 
 ---
 
@@ -109,7 +110,7 @@ MyCrewMate informiert den Verein ohne unangemessene Verzögerung über bekannt g
 
 Nach Ende des Hauptvertrags gibt MyCrewMate die Mandantendaten nach Weisung des Vereins zurück oder löscht sie, sofern keine gesetzliche Aufbewahrungspflicht entgegensteht. Für abgeschlossene Veranstaltungen ist im Regelprozess eine dreijährige Aufbewahrung ab Veranstaltungsabschluss vorgesehen; der Verein kann eine frühere Löschung veranlassen, soweit keine rechtliche Pflicht oder dokumentierte Notwendigkeit entgegensteht.
 
-Buchhaltungs-, Steuer- oder vertragsrelevante Unterlagen können längeren gesetzlichen Fristen unterliegen. Der Verein entscheidet und dokumentiert diese Ausnahmen. Art, Frist und Löschweg der Sicherungen werden in Anlage 3 („Backup- und Löschblatt“) verbindlich ergänzt, bevor automatisierte Backups eingesetzt werden.
+Buchhaltungs-, Steuer- oder vertragsrelevante Unterlagen können längeren gesetzlichen Fristen unterliegen. Der Verein entscheidet und dokumentiert diese Ausnahmen. Datenbank und Upload-Volume werden täglich gesichert; die Sicherungen werden zusätzlich in Hetzner Object Storage abgelegt und auf sieben Wiederherstellungspunkte begrenzt. Sicherungen dienen ausschließlich der Wiederherstellung und werden nicht für neue Zwecke verarbeitet.
 
 ---
 
@@ -119,36 +120,34 @@ Der Verein darf die Einhaltung dieser Vereinbarung nach angemessener Vorankündi
 
 ---
 
-## 10. Unterschriften
+## 10. Elektronische Annahme und Nachweis
 
-| Für den Verein                         | Für MyCrewMate                         |
-| -------------------------------------- | -------------------------------------- |
-| Ort, Datum: **[ORT, DATUM]**           | Ort, Datum: **[ORT, DATUM]**           |
-| Name / Funktion: **[NAME]**            | Christian Lambrich                     |
-| Unterschrift: ********\_\_\_\_******** | Unterschrift: ********\_\_\_\_******** |
+Diese Vereinbarung wird gemäß Art. 28 Abs. 9 DSGVO in elektronischem Format geschlossen. Die vertretungsberechtigte Vereinsadministration bestätigt beim ersten Einrichten des Vereinszugangs aktiv diese AVV, die AGB und die Datenschutzhinweise. MyCrewMate speichert hierfür Verein, bestätigende Person, Zeitpunkt, Paket, Dokumentversion und SHA-256-Integritätsnachweis. Eine Bestätigungs-E-Mail dokumentiert die Annahme zusätzlich. Eine handschriftliche Unterschrift oder postalische Rücksendung ist für diesen digitalen Abschluss nicht erforderlich.
 
 ## Anlage 1 – TOM-Checkliste
 
 | Bereich                 | Nachweis / konkrete Ausprägung                              | Stand / Verantwortlich |
 | ----------------------- | ----------------------------------------------------------- | ---------------------- |
-| Zugangskontrolle        | **[z. B. individuelle Konten, Passwortvorgaben, MFA-Plan]** | **[ ]**                |
-| Zugriffskontrolle       | **[Rollen, Fachbereichsrechte, Mandantentrennung]**         | **[ ]**                |
-| Weitergabekontrolle     | **[HTTPS, SMTP-TLS, PDF-Freigabe]**                         | **[ ]**                |
-| PDF-Freigaben           | **[Sieben-Tage-Laufzeit, Zugangscode, sofortiger Widerruf, Teamansicht nur bei Erforderlichkeit]** | **[ ]** |
-| Verfügbarkeitskontrolle | **[Backup, Restore-Test, Monitoring]**                      | **[ ]**                |
-| Trennung                | **[Tenant-/Event-Scopes, Berechtigungstests]**              | **[ ]**                |
-| Löschkonzept            | **[Fristen, Löschprotokoll, Ausnahmen]**                    | **[ ]**                |
-| Incident-Prozess        | **[24-h-Ansprechperson, Vorlage, Register]**                | **[ ]**                |
+| Zugangskontrolle        | Individuelle Konten, Passwortvorgaben, Sitzungswiderruf, temporäre Aktivierungslinks | laufender Betrieb |
+| Zugriffskontrolle       | Rollen, Fachbereichsrechte, Mandanten- und Veranstaltungsprüfungen | laufender Betrieb |
+| Weitergabekontrolle     | HTTPS, TLS-gesicherter SMTP-Versand, getrennt geschützte PDF-Freigaben | laufender Betrieb |
+| PDF-Freigaben           | Sieben-Tage-Laufzeit, Zugangscode, sofortiger Widerruf, Teamansicht nur bei bewusster Auswahl | laufender Betrieb |
+| Verfügbarkeitskontrolle | tägliche Datenbank- und Volume-Sicherungen, Wiederherstellung nach Verfahren | tägliche Sicherung; Restore-Test dokumentieren |
+| Trennung                | Tenant-/Event-Scopes, serverseitige Berechtigungstests | laufender Betrieb |
+| Löschkonzept            | Dreijahresregel, frühere Vereinsweisung, dokumentierte Ausnahmen | Version 1.0 vom 01.10.2026 |
+| Incident-Prozess        | Meldung ohne unangemessene Verzögerung an die vereinbarten Kontakte | info@mycrewmate.de |
 
 ## Anlage 2 – Freigegebene Unterauftragsverarbeiter
 
 | Dienst       | Vertrag / AV   | Datenregion  | Prüfdatum   | Freigabe / Widerspruchsfrist |
 | ------------ | -------------- | ------------ | ----------- | ---------------------------- |
-| **[Dienst]** | **[Nachweis]** | **[Region]** | **[Datum]** | **[Angabe]**                 |
+| Hetzner Online GmbH einschließlich Mail und Object Storage | Betreibervertrag / Datenschutzunterlagen von Hetzner | Deutschland | 01.10.2026 | Annahme dieser AVV |
+| MySQL und Coolify in selbst gehosteter Hetzner-Betriebsumgebung | Betreiberintern dokumentierte technische TOM | Deutschland | 01.10.2026 | Annahme dieser AVV |
+| OpenStreetMap / OpenTopoMap | nur optionale Kartenkacheln, Datenschutzhinweise verlinkt | externer Kartenabruf | 01.10.2026 | nur bei bewusster Funktionsnutzung |
 
 ## Anlage 3 – Backup- und Löschblatt
 
 | Datenbestand  | Speicherort     | Verschlüsselung | Frist / Rotation | Zugriffsberechtigte | letzter Restore-Test |
 | ------------- | --------------- | --------------- | ---------------- | ------------------- | -------------------- |
-| Datenbank     | **[eintragen]** | **[eintragen]** | **[eintragen]**  | **[eintragen]**     | **[eintragen]**      |
-| Upload-Volume | **[eintragen]** | **[eintragen]** | **[eintragen]**  | **[eintragen]**     | **[eintragen]**      |
+| Datenbank     | Hetzner-Betriebsumgebung + Hetzner Object Storage | TLS-Transport; Zugriff über gesicherte Betreiberkonten | täglich, 7 Wiederherstellungspunkte | Betreiber / autorisierte Administration | nach Inbetriebnahme verbindlich dokumentieren |
+| Upload-Volume | Hetzner-Betriebsumgebung + Hetzner Object Storage | TLS-Transport; Zugriff über gesicherte Betreiberkonten | täglich, 7 Wiederherstellungspunkte | Betreiber / autorisierte Administration | nach Inbetriebnahme verbindlich dokumentieren |
