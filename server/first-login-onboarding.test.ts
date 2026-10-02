@@ -114,6 +114,10 @@ describe("Erst-Login-Onboarding", () => {
     expect(preview).toContain("audio.onplay = () => setPreviewSpeaking(true)");
     expect(preview).toContain("externalSpeaking={previewSpeaking}");
     expect(preview).toContain("externalNarrationComplete={previewNarrationComplete}");
+    expect(intro).toContain('className="mt-4 grid w-full grid-cols-[minmax(0,0.62fr)_minmax(0,1.38fr)] gap-2"');
+    expect(intro).toContain("min-h-11 min-w-0 border-blue-200");
+    expect(intro).toContain("Wiederholen");
+    expect(intro).not.toContain("Noch einmal vorlesen");
   });
 
   it("liefert pending true für ein neues Planungsteam-Konto mit ausstehendem Onboarding", async () => {

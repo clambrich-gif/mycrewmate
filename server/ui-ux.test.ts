@@ -3674,12 +3674,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain("completeInitialPasswordChange");
     expect(layout).toContain("forcePasswordChangeModal");
 
-    expect(modal).toContain("Willkommen bei MyCrewMate – Passwort ändern");
+    expect(modal).toContain("Willkommen bei MyCrewMate");
     expect(modal).toContain(
-      "Du hast dich mit einem temporären Zugangs-Code angemeldet. Bitte"
-    );
-    expect(modal).toContain(
-      "vergib jetzt dein persönliches, dauerhaftes Passwort."
+      "Bitte vergeben Sie jetzt ein persönliches, dauerhaftes Passwort."
     );
     expect(modal).toContain("Neues Passwort");
     expect(modal).toContain("Neues Passwort bestätigen");
@@ -3687,6 +3684,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(modal).toContain("showCloseButton={false}");
     expect(modal).toContain("onEscapeKeyDown={event => event.preventDefault()}");
     expect(modal).toContain("onPointerDownOutside={event => event.preventDefault()}");
+    expect(modal).toContain('data-slot="initial-password-change-dialog"');
+    expect(modal).toContain("!overflow-x-hidden");
+    expect(modal).toContain("!w-[calc(100%-1.5rem)]");
+    expect(modal).toContain("min-w-0 flex-1");
+    expect(modal).toContain("className=\"h-12 w-full");
   });
 
   it("hält die einheitliche Loginansicht minimal und zeigt den Cooldown erst nach wiederholten Fehlern", () => {
