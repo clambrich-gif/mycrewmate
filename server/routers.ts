@@ -100,6 +100,7 @@ import {
   renderClubPrivacyNoticeTemplatePdf,
   renderDataSubjectRequestTemplatePdf,
   renderPrivacyIncidentTemplatePdf,
+  renderTenantContractReceiptPdf,
   DEFAULT_PDF_SETTINGS,
 } from "./pdf";
 import { publicAppUrl } from "./public-app-url";
@@ -2410,6 +2411,41 @@ export const appRouter = router({
         );
         return { success: true } as const;
       }),
+    regenerateMfaRecoveryCodes: baseProtectedProcedure
+      .input(z.object({ currentPassword: z.string().min(1).max(200) }))
+      .mutation(async ({ ctx, input }) => {
+        const isMaster = ctx.user.openId === ADMIN_PASSWORD_OPEN_ID;
+        const isPersonalTenantAdmin =
+          ctx.user.role === "admin" && ctx.user.openId.startsWith("tenant-admin:");
+        if (!isMaster && !isPersonalTenantAdmin) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Nicht berechtigt." });
+        }
+        const configuration = isMaster
+          ? await db.getMasterMfaConfiguration()
+          : await db.getTenantAdminMfaConfigurationByUserId(ctx.user.id);
+        if (!configuration?.enabled || !configuration.secret) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Aktivieren Sie zuerst die zweite Anmeldestufe.",
+          });
+        }
+        await requireAdminPassword(input.currentPassword, ctx);
+        const recoveryCodes = createRecoveryCodes();
+        if (isMaster) {
+          await db.replaceMasterMfaRecoveryCodes(recoveryCodes);
+        } else {
+          await db.replaceTenantAdminMfaRecoveryCodes({
+            userId: ctx.user.id,
+            recoveryCodes,
+          });
+        }
+        await recordSecurityActivity(
+          auditActor(ctx.user),
+          "MFA-Notfallcodes neu erzeugt; vorherige Notfallcodes sind ungültig",
+          "updated"
+        );
+        return { recoveryCodes } as const;
+      }),
     completeInitialPasswordChange: baseProtectedProcedure
       .input(
         z
@@ -2539,19 +2575,35 @@ export const appRouter = router({
         );
         const confirmationEmail = await db.getTenantAdminCredentialsByUserId(ctx.user.id);
         if (confirmationEmail?.email) {
+          const receiptDocuments = acceptance.documents.map(document => ({
+            title: LEGAL_DOCUMENTS[document.documentId].title,
+            version: document.version,
+            hash: document.hash,
+          }));
+          const receiptPdf = await renderTenantContractReceiptPdf({
+            tenantName: membership.tenantName,
+            recipientName: updated.userName ?? ctx.user.name ?? "Vereinsadministration",
+            packageName: PRODUCT_PACKAGE_META[acceptance.packageId].name,
+            acceptedAt: acceptance.acceptedAt,
+            documents: receiptDocuments,
+          });
           const receipt = renderContractAcceptanceEmail({
             recipientName: updated.userName ?? ctx.user.name ?? "Vereinsadministration",
             tenantName: membership.tenantName,
             packageName: PRODUCT_PACKAGE_META[acceptance.packageId].name,
             acceptedAt: acceptance.acceptedAt,
-            documents: REQUIRED_LEGAL_DOCUMENT_IDS.map(documentId => ({
-              title: LEGAL_DOCUMENTS[documentId].title,
-              version: LEGAL_DOCUMENTS[documentId].version,
-            })),
+            documents: receiptDocuments,
           });
           await safelySubmitInvitationEmail({
             to: confirmationEmail.email,
             ...receipt,
+            attachments: [
+              {
+                filename: "Digitaler_Vertragsnachweis.pdf",
+                content: receiptPdf,
+                contentType: "application/pdf",
+              },
+            ],
           });
         }
         return {
@@ -2610,23 +2662,83 @@ export const appRouter = router({
         );
         const confirmationEmail = await db.getTenantAdminCredentialsByUserId(ctx.user.id);
         if (confirmationEmail?.email) {
+          const receiptDocuments = acceptance.documents.map(document => ({
+            title: LEGAL_DOCUMENTS[document.documentId].title,
+            version: document.version,
+            hash: document.hash,
+          }));
+          const receiptPdf = await renderTenantContractReceiptPdf({
+            tenantName: membership.tenantName,
+            recipientName: ctx.user.name ?? "Vereinsadministration",
+            packageName: PRODUCT_PACKAGE_META[acceptance.packageId].name,
+            acceptedAt: acceptance.acceptedAt,
+            documents: receiptDocuments,
+          });
           const receipt = renderContractAcceptanceEmail({
             recipientName: ctx.user.name ?? "Vereinsadministration",
             tenantName: membership.tenantName,
             packageName: PRODUCT_PACKAGE_META[acceptance.packageId].name,
             acceptedAt: acceptance.acceptedAt,
-            documents: REQUIRED_LEGAL_DOCUMENT_IDS.map(documentId => ({
-              title: LEGAL_DOCUMENTS[documentId].title,
-              version: LEGAL_DOCUMENTS[documentId].version,
-            })),
+            documents: receiptDocuments,
           });
           await safelySubmitInvitationEmail({
             to: confirmationEmail.email,
             ...receipt,
+            attachments: [
+              {
+                filename: "Digitaler_Vertragsnachweis.pdf",
+                content: receiptPdf,
+                contentType: "application/pdf",
+              },
+            ],
           });
         }
         return { success: true, acceptedAt: acceptance.acceptedAt } as const;
       }),
+    contractAcceptanceReceipt: baseProtectedProcedure.mutation(async ({ ctx }) => {
+      if (
+        ctx.user.role !== "admin" ||
+        !ctx.user.openId.startsWith("tenant-admin:") ||
+        ctx.user.id <= 0
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message:
+            "Der Vertragsnachweis ist ausschließlich für die persönliche Vereinsadministration verfügbar.",
+        });
+      }
+      const membership = await db.resolveTenantForUser({
+        userId: ctx.user.id,
+        userOpenId: ctx.user.openId,
+        allowPilotFallback: false,
+      });
+      if (!membership) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Für diesen Vereinsadministrator ist kein aktiver Verein hinterlegt.",
+        });
+      }
+      const receipt = await db.getCurrentTenantContractReceipt(membership.tenantId);
+      if (!receipt) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message:
+            "Für die aktuellen Vertragsunterlagen liegt noch kein vollständiger digitaler Nachweis vor.",
+        });
+      }
+      const pdf = await renderTenantContractReceiptPdf({
+        tenantName: membership.tenantName,
+        recipientName: receipt.acceptedByName,
+        packageName: PRODUCT_PACKAGE_META[receipt.packageId].name,
+        acceptedAt: receipt.acceptedAt,
+        documents: receipt.documents,
+      });
+      return {
+        filename: "Digitaler_Vertragsnachweis.pdf",
+        mimeType: "application/pdf",
+        base64: pdf.toString("base64"),
+      } as const;
+    }),
     adminPasswordLogin: publicProcedure
       .input(
         z.object({

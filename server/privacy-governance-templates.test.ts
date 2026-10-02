@@ -3,6 +3,7 @@ import {
   renderClubPrivacyNoticeTemplatePdf,
   renderDataSubjectRequestTemplatePdf,
   renderPrivacyIncidentTemplatePdf,
+  renderTenantContractReceiptPdf,
 } from "./pdf";
 
 describe("Datenschutz- und Governance-PDF-Vorlagen", () => {
@@ -22,6 +23,25 @@ describe("Datenschutz- und Governance-PDF-Vorlagen", () => {
 
   it("erzeugt die interne Vorlage für das Erstprotokoll eines Datenschutzvorfalls", async () => {
     const buffer = await renderPrivacyIncidentTemplatePdf();
+    expect(Buffer.isBuffer(buffer)).toBe(true);
+    expect(buffer.length).toBeGreaterThan(1000);
+    expect(buffer.subarray(0, 4).toString()).toBe("%PDF");
+  });
+
+  it("erzeugt einen datensparsamen digitalen Vertragsnachweis", async () => {
+    const buffer = await renderTenantContractReceiptPdf({
+      tenantName: "Musterverein e. V.",
+      recipientName: "Max Muster",
+      packageName: "Pro",
+      acceptedAt: new Date("2026-10-02T18:00:00.000Z"),
+      documents: [
+        {
+          title: "Allgemeine Geschäftsbedingungen",
+          version: "1.0-2026-10-01",
+          hash: "a".repeat(64),
+        },
+      ],
+    });
     expect(Buffer.isBuffer(buffer)).toBe(true);
     expect(buffer.length).toBeGreaterThan(1000);
     expect(buffer.subarray(0, 4).toString()).toBe("%PDF");

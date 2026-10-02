@@ -446,6 +446,81 @@ export function renderPrivacyIncidentTemplatePdf() {
   );
 }
 
+export type TenantContractReceiptPdfInput = {
+  tenantName: string;
+  recipientName: string;
+  packageName: string;
+  acceptedAt: Date;
+  documents: Array<{
+    title: string;
+    version: string;
+    hash: string;
+  }>;
+};
+
+/**
+ * Lesbarer Nachweis über die versioniert gespeicherte elektronische Annahme.
+ * Er enthält bewusst keine Passwörter, Sicherheitscodes oder MFA-Geheimnisse.
+ */
+export function renderTenantContractReceiptPdf(input: TenantContractReceiptPdfInput) {
+  const acceptedAt = new Intl.DateTimeFormat("de-DE", {
+    timeZone: "Europe/Berlin",
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(input.acceptedAt);
+  return collectPdf(doc => {
+    doc.fillColor(colors.accent).font("Helvetica-Bold").fontSize(19);
+    doc.text("Digitaler Vertragsnachweis", { width: contentWidth });
+    doc.moveDown(0.45);
+    doc.fillColor(colors.ink).font("Helvetica").fontSize(9.5);
+    doc.text(
+      "Nachweis über die elektronische Annahme der aktuellen MyCrewMate-Vertragsunterlagen. Bitte zusammen mit dieser Bestätigungs-E-Mail aufbewahren.",
+      { width: contentWidth, lineGap: 2 }
+    );
+    doc.moveDown(1.1);
+
+    const fields = [
+      ["Verein", input.tenantName],
+      ["Bestätigt durch", input.recipientName],
+      ["Zeitpunkt der Annahme", acceptedAt],
+      ["Zugeordnetes Paket", input.packageName],
+    ];
+    for (const [label, value] of fields) {
+      doc.fillColor(colors.muted).font("Helvetica-Bold").fontSize(9);
+      doc.text(label, { width: 160, continued: true });
+      doc.fillColor(colors.ink).font("Helvetica").text(`  ${value}`, {
+        width: contentWidth - 160,
+      });
+      doc.moveDown(0.35);
+    }
+
+    doc.moveDown(0.55);
+    doc.fillColor(colors.accent).font("Helvetica-Bold").fontSize(12);
+    doc.text("Elektronisch bestätigte Unterlagen", { width: contentWidth });
+    doc.moveDown(0.4);
+    for (const document of input.documents) {
+      doc.fillColor(colors.ink).font("Helvetica-Bold").fontSize(10);
+      doc.text(`${document.title} · Version ${document.version}`, { width: contentWidth });
+      doc.fillColor(colors.muted).font("Helvetica").fontSize(8.5);
+      doc.text(`Dokument-Prüfsumme (SHA-256): ${document.hash}`, {
+        width: contentWidth,
+        lineGap: 1,
+      });
+      doc.moveDown(0.65);
+    }
+
+    doc.moveDown(0.35);
+    doc.fillColor(colors.ink).font("Helvetica-Bold").fontSize(11);
+    doc.text("Einordnung", { width: contentWidth });
+    doc.moveDown(0.3);
+    doc.fillColor(colors.ink).font("Helvetica").fontSize(9.5);
+    doc.text(
+      "Die Annahme wurde in MyCrewMate mit Zeitpunkt, Verein, bestätigender Person, Dokumentversion und Prüfsumme gespeichert. Dieser Nachweis enthält keine Passwörter, Sicherheitscodes oder sonstigen Zugangsdaten. Er ersetzt keine Rechtsberatung oder qualifizierte elektronische Signatur.",
+      { width: contentWidth, lineGap: 2 }
+    );
+  });
+}
+
 function formatDate(date = new Date()) {
   return new Intl.DateTimeFormat("de-DE", {
     day: "2-digit",

@@ -78,6 +78,22 @@ describe("Digitale Vertragsannahme, Freigabefilter und Veranstaltungsabschluss",
     expect(page).toContain("LEGAL_DOCUMENTS[documentId]");
   });
 
+  it("stellt bestätigenden Vereinsadmins einen PDF-Vertragsnachweis bereit und hängt ihn der Bestätigungsmail an", () => {
+    const router = source("server/routers.ts");
+    const db = source("server/db.ts");
+    const pdf = source("server/pdf.ts");
+    const security = source("client/src/pages/Security.tsx");
+    const mail = source("server/mail-service.ts");
+
+    expect(router).toContain("contractAcceptanceReceipt: baseProtectedProcedure");
+    expect(router).toContain("Digitaler_Vertragsnachweis.pdf");
+    expect(router).toContain("attachments:");
+    expect(db).toContain("getCurrentTenantContractReceipt");
+    expect(pdf).toContain("renderTenantContractReceiptPdf");
+    expect(security).toContain("Digitalen Vertragsnachweis herunterladen");
+    expect(mail).toContain("als PDF beigefügt");
+  });
+
   it("bietet im Aktivitätsprotokoll einen Filter für Freigaben und Zugänge", () => {
     const permissions = source("client/src/pages/Permissions.tsx");
     const router = source("server/routers.ts");

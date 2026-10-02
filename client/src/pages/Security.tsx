@@ -206,6 +206,10 @@ function MfaManager() {
   const [code, setCode] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
   const [disablePassword, setDisablePassword] = useState("");
+  const [recoveryPassword, setRecoveryPassword] = useState("");
+  const [regeneratedRecoveryCodes, setRegeneratedRecoveryCodes] = useState<string[] | null>(
+    null
+  );
   const begin = trpc.auth.beginMfaEnrollment.useMutation({
     onSuccess: result => {
       setSetup({
@@ -236,6 +240,15 @@ function MfaManager() {
     },
     onError: error => toast.error(error.message),
   });
+  const regenerateRecoveryCodes = trpc.auth.regenerateMfaRecoveryCodes.useMutation({
+    onSuccess: async result => {
+      setRecoveryPassword("");
+      setRegeneratedRecoveryCodes(result.recoveryCodes);
+      await Promise.all([utils.auth.mfaStatus.invalidate(), utils.audit.activities.invalidate()]);
+      toast.success("Neue Notfallcodes wurden einmalig angezeigt. Die bisherigen Codes sind ungültig.");
+    },
+    onError: error => toast.error(error.message),
+  });
 
   if (!status.data?.eligible) {
     return (
@@ -253,6 +266,50 @@ function MfaManager() {
           <p className="mt-1 text-xs leading-5 text-emerald-900">
             Nach dem Passwort wird ein zeitbasierter Code abgefragt. Noch verfügbare Wiederherstellungscodes: {status.data.remainingRecoveryCodes}.
           </p>
+        </div>
+        {regeneratedRecoveryCodes && (
+          <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950" aria-live="polite">
+            <p className="font-semibold">Neue Notfallcodes – jetzt sicher ablegen</p>
+            <p className="mt-1 text-xs leading-5 text-amber-900">
+              Jeder Code funktioniert einmal. Diese Anzeige ist nur für den aktuellen Moment bestimmt; die vorherigen Codes sind sofort ungültig.
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-2 font-mono text-xs text-slate-900 sm:grid-cols-4">
+              {regeneratedRecoveryCodes.map(recoveryCode => (
+                <code key={recoveryCode} className="rounded bg-white px-2 py-1.5 text-center ring-1 ring-amber-200 [font-variant-numeric:slashed-zero]">
+                  {recoveryCode}
+                </code>
+              ))}
+            </div>
+          </div>
+        )}
+        <div className="max-w-md space-y-2 rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+          <p className="text-sm font-semibold text-slate-900">Acht Notfallcodes neu erzeugen</p>
+          <p className="text-xs leading-5 text-slate-600">
+            Nur nötig, wenn die Codes verloren gegangen sind oder ersetzt werden sollen. Die bisherigen Codes werden sofort ungültig.
+          </p>
+          <Label htmlFor="mfa-regenerate-recovery-password">Aktuelles Administratorpasswort</Label>
+          <Input
+            id="mfa-regenerate-recovery-password"
+            type="password"
+            autoComplete="current-password"
+            value={recoveryPassword}
+            onChange={event => setRecoveryPassword(event.target.value)}
+            placeholder="Zur Bestätigung eingeben"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            className="border-amber-300 bg-white text-amber-950 hover:bg-amber-100"
+            disabled={!recoveryPassword || regenerateRecoveryCodes.isPending}
+            onClick={() => {
+              if (window.confirm("Acht neue Notfallcodes erzeugen? Alle bisherigen Notfallcodes werden sofort ungültig.")) {
+                regenerateRecoveryCodes.mutate({ currentPassword: recoveryPassword });
+              }
+            }}
+          >
+            {regenerateRecoveryCodes.isPending ? <LoaderCircle className="size-4 animate-spin" /> : <KeyRound className="size-4" />}
+            Acht neue Notfallcodes erzeugen
+          </Button>
         </div>
         <div className="max-w-md space-y-2">
           <Label htmlFor="mfa-disable-password">Aktuelles Administratorpasswort</Label>
@@ -430,6 +487,14 @@ export default function Security() {
     },
     onError: error => toast.error(error.message),
   });
+  const downloadContractAcceptanceReceipt =
+    trpc.auth.contractAcceptanceReceipt.useMutation({
+      onSuccess: result => {
+        downloadBase64File(result.base64, result.mimeType, result.filename);
+        toast.success("Digitaler Vertragsnachweis wurde heruntergeladen");
+      },
+      onError: error => toast.error(error.message),
+    });
   type SecurityGuidePanel =
     | "password"
     | "accesses"
@@ -664,6 +729,35 @@ export default function Security() {
           <AuditCenter guideFocus={auditGuideFocus} />
         </SecurityAccordion>
 
+        {isPrimaryTenantAdmin && (
+          <SecurityAccordion
+            title="Digitaler Vertragsnachweis"
+            description="PDF-Nachweis der bestätigten AGB, AVV und Datenschutzhinweise für den eigenen Verein."
+            icon={FileText}
+            tone="blue"
+          >
+            <div className="space-y-3">
+              <p className="text-sm leading-6 text-muted-foreground">
+                Hier steht der aktuelle Nachweis über die elektronische Annahme bereit. Er enthält Verein, Zeitpunkt, bestätigende Person, Paket sowie die Versionen und Prüfsummen der Unterlagen – keine Passwörter oder Sicherheitscodes.
+              </p>
+              <p className="text-xs leading-5 text-muted-foreground">
+                Derselbe PDF-Nachweis wird bei jeder neuen oder erneuten Vertragsbestätigung zusätzlich an die hinterlegte Vereinsadmin-E-Mail angehängt.
+              </p>
+              <Button
+                type="button"
+                className="w-full bg-blue-800 text-white hover:bg-blue-900 sm:w-auto"
+                disabled={downloadContractAcceptanceReceipt.isPending}
+                onClick={() => downloadContractAcceptanceReceipt.mutate()}
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                {downloadContractAcceptanceReceipt.isPending
+                  ? "Vertragsnachweis wird erstellt …"
+                  : "Digitalen Vertragsnachweis herunterladen"}
+              </Button>
+            </div>
+          </SecurityAccordion>
+        )}
+
         <SecurityAccordion
           title="Datenschutzvorlagen für Vereine"
           description="Ausfüllbares Vereinsmuster für Helfer und Ansprechpartner sowie direkter Zugriff auf den App-Datenschutzhinweis."
@@ -763,15 +857,6 @@ export default function Security() {
         </SecurityAccordion>
       </div>
 
-      <div className="rounded-lg border bg-muted/40 p-4 text-sm text-muted-foreground">
-        <ShieldCheck className="mr-2 inline h-4 w-4 text-primary" />
-        Administrator- und Planungsteam-Passwörter werden ausschließlich als
-        bcrypt-Hash gespeichert. Jeder Planungsteam-Zugang besitzt eigene
-        Eventfreigaben; Änderungen oder Löschungen beenden dessen bestehende
-        Sitzungen. Nach fünf Fehlversuchen greift für den anfragenden Anschluss
-        eine progressive Abklingzeit gegen DoS-Angriffe. Die Manus-Anmeldung des
-        Hauptadministrators bleibt erhalten.
-      </div>
     </div>
   );
 }

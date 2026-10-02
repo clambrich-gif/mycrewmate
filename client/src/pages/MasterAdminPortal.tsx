@@ -160,6 +160,7 @@ type TenantOverviewItem = {
     total: number;
     passwordConfigured: number;
     initialSetupPending: number;
+    mfaEnabled: number;
     adminName: string | null;
     adminEmail: string | null;
   };
@@ -353,6 +354,37 @@ function TenantAdminActivationStatus({
     <div className="mt-3 flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs leading-5 text-blue-950" role="status">
       <Loader2 className="mt-0.5 size-3.5 shrink-0 text-blue-700" aria-hidden="true" />
       <span><strong>Ersteinrichtung offen.</strong> Der Vereinsadministrator muss sich einmal anmelden und das Initialpasswort durch ein eigenes Passwort ersetzen.</span>
+    </div>
+  );
+}
+
+function TenantMfaStatus({
+  activation,
+}: {
+  activation: TenantOverviewItem["adminActivation"];
+}) {
+  if (activation.total === 0) return null;
+  const fullyProtected = activation.mfaEnabled === activation.total;
+  return (
+    <div
+      data-slot="tenant-mfa-status"
+      className={`mt-3 flex items-start gap-2 rounded-lg border px-3 py-2 text-xs leading-5 ${
+        fullyProtected
+          ? "border-emerald-200 bg-emerald-50 text-emerald-950"
+          : "border-amber-200 bg-amber-50 text-amber-950"
+      }`}
+      role="status"
+    >
+      {fullyProtected ? (
+        <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-emerald-700" aria-hidden="true" />
+      ) : (
+        <CircleAlert className="mt-0.5 size-3.5 shrink-0 text-amber-700" aria-hidden="true" />
+      )}
+      <span>
+        <strong>MFA-Status:</strong> {activation.mfaEnabled} von {activation.total} persönlichem
+        {activation.total === 1 ? " Vereinsadmin" : " Vereinsadmins"} mit Authenticator-App
+        geschützt.
+      </span>
     </div>
   );
 }
@@ -792,6 +824,10 @@ function MasterMfaCard() {
   } | null>(null);
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
+  const [recoveryPassword, setRecoveryPassword] = useState("");
+  const [regeneratedRecoveryCodes, setRegeneratedRecoveryCodes] = useState<string[] | null>(
+    null
+  );
   const begin = trpc.auth.beginMfaEnrollment.useMutation({
     onSuccess: result =>
       setSetup({
@@ -819,21 +855,53 @@ function MasterMfaCard() {
     },
     onError: error => toast.error(error.message),
   });
+  const regenerateRecoveryCodes = trpc.auth.regenerateMfaRecoveryCodes.useMutation({
+    onSuccess: async result => {
+      setRecoveryPassword("");
+      setRegeneratedRecoveryCodes(result.recoveryCodes);
+      await utils.auth.mfaStatus.invalidate();
+      toast.success("Neue Master-Notfallcodes wurden einmalig angezeigt.");
+    },
+    onError: error => toast.error(error.message),
+  });
 
   if (!status.data?.eligible) return null;
   if (status.data.enabled) {
     return (
       <Card className="border-emerald-200 bg-emerald-50/60">
-        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="flex items-center gap-2 font-semibold text-emerald-950"><ShieldCheck className="size-5" /> Master-MFA ist aktiv</p>
-            <p className="mt-1 text-sm text-emerald-900">Authenticator-Code beim Login erforderlich · {status.data.remainingRecoveryCodes} Wiederherstellungscodes verbleibend.</p>
+        <CardContent className="space-y-4 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="flex items-center gap-2 font-semibold text-emerald-950"><ShieldCheck className="size-5" /> Master-MFA ist aktiv</p>
+              <p className="mt-1 text-sm text-emerald-900">Authenticator-Code beim Login erforderlich · {status.data.remainingRecoveryCodes} Wiederherstellungscodes verbleibend.</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Input type="password" autoComplete="current-password" className="h-9 w-52 bg-white" placeholder="Passwort für Deaktivierung" value={password} onChange={event => setPassword(event.target.value)} />
+              <Button type="button" variant="outline" className="border-red-300 bg-white text-red-800 hover:bg-red-50" disabled={!password || disable.isPending} onClick={() => { if (window.confirm("Master-MFA wirklich deaktivieren?")) disable.mutate({ currentPassword: password }); }}>
+                {disable.isPending ? <Loader2 className="size-4 animate-spin" /> : <LockKeyhole className="size-4" />} Deaktivieren
+              </Button>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Input type="password" autoComplete="current-password" className="h-9 w-52 bg-white" placeholder="Passwort für Deaktivierung" value={password} onChange={event => setPassword(event.target.value)} />
-            <Button type="button" variant="outline" className="border-red-300 bg-white text-red-800 hover:bg-red-50" disabled={!password || disable.isPending} onClick={() => { if (window.confirm("Master-MFA wirklich deaktivieren?")) disable.mutate({ currentPassword: password }); }}>
-              {disable.isPending ? <Loader2 className="size-4 animate-spin" /> : <LockKeyhole className="size-4" />} Deaktivieren
-            </Button>
+          {regeneratedRecoveryCodes && (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950" aria-live="polite">
+              <p className="font-semibold">Neue Master-Notfallcodes – jetzt sicher ablegen</p>
+              <p className="mt-1 text-xs leading-5 text-amber-900">Die bisherigen Codes sind sofort ungültig. Jeder neue Code funktioniert genau einmal und wird nach dieser Anzeige nicht erneut eingeblendet.</p>
+              <div className="mt-3 grid grid-cols-2 gap-2 font-mono text-xs text-slate-900 sm:grid-cols-4">
+                {regeneratedRecoveryCodes.map(recoveryCode => (
+                  <code key={recoveryCode} className="rounded bg-white px-2 py-1.5 text-center ring-1 ring-amber-200 [font-variant-numeric:slashed-zero]">{recoveryCode}</code>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="max-w-xl space-y-2 rounded-xl border border-emerald-200 bg-white/75 p-3.5">
+            <p className="text-sm font-semibold text-slate-900">Acht Master-Notfallcodes neu erzeugen</p>
+            <p className="text-xs leading-5 text-slate-600">Nur bei Verlust oder bewusstem Austausch. Als Bestätigung ist das aktuelle Master-Passwort erforderlich.</p>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input type="password" autoComplete="current-password" className="bg-white sm:max-w-xs" placeholder="Aktuelles Master-Passwort" value={recoveryPassword} onChange={event => setRecoveryPassword(event.target.value)} />
+              <Button type="button" variant="outline" className="border-amber-300 bg-white text-amber-950 hover:bg-amber-100" disabled={!recoveryPassword || regenerateRecoveryCodes.isPending} onClick={() => { if (window.confirm("Acht neue Master-Notfallcodes erzeugen? Alle bisherigen Notfallcodes werden sofort ungültig.")) regenerateRecoveryCodes.mutate({ currentPassword: recoveryPassword }); }}>
+                {regenerateRecoveryCodes.isPending ? <Loader2 className="size-4 animate-spin" /> : <KeyRound className="size-4" />} Neue Notfallcodes erzeugen
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -1180,7 +1248,7 @@ export default function MasterAdminPortal() {
               internalNote: null,
             },
             productUsage: demoProductUsage(),
-            adminActivation: { total: 0, passwordConfigured: 0, initialSetupPending: 0, adminName: null, adminEmail: null },
+            adminActivation: { total: 0, passwordConfigured: 0, initialSetupPending: 0, mfaEnabled: 0, adminName: null, adminEmail: null },
             contractAcceptance: {
               isCurrent: true,
               confirmedDocumentCount: 3,
@@ -1213,7 +1281,7 @@ export default function MasterAdminPortal() {
               internalNote: null,
             },
             productUsage: demoProductUsage(),
-            adminActivation: { total: 0, passwordConfigured: 0, initialSetupPending: 0, adminName: null, adminEmail: null },
+            adminActivation: { total: 0, passwordConfigured: 0, initialSetupPending: 0, mfaEnabled: 0, adminName: null, adminEmail: null },
             contractAcceptance: {
               isCurrent: false,
               confirmedDocumentCount: 0,
@@ -1246,7 +1314,7 @@ export default function MasterAdminPortal() {
               internalNote: null,
             },
             productUsage: demoProductUsage(),
-            adminActivation: { total: 0, passwordConfigured: 0, initialSetupPending: 0, adminName: null, adminEmail: null },
+            adminActivation: { total: 0, passwordConfigured: 0, initialSetupPending: 0, mfaEnabled: 0, adminName: null, adminEmail: null },
             contractAcceptance: {
               isCurrent: false,
               confirmedDocumentCount: 0,
@@ -1590,6 +1658,7 @@ export default function MasterAdminPortal() {
                       </div>
                       <TenantProductUsage usage={tenant.productUsage} events={tenant.events} />
                       <TenantAdminActivationStatus activation={tenant.adminActivation} />
+                      <TenantMfaStatus activation={tenant.adminActivation} />
                       <TenantContractAcceptanceStatus acceptance={tenant.contractAcceptance} />
                     </div>
                     <div className="space-y-2 sm:min-w-48">

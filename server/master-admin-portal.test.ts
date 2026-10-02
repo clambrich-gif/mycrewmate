@@ -146,6 +146,29 @@ describe("Master-Admin-Portal", () => {
     expect(page).toContain("Vertragsunterlagen noch offen.");
   });
 
+  it("zeigt je Verein einen aggregierten MFA-Status ohne Sicherheitsgeheimnisse", () => {
+    const db = source("server/db.ts");
+    const page = source("client/src/pages/MasterAdminPortal.tsx");
+
+    expect(db).toContain("mfaEnabled: tenantAdminCredentials.mfaEnabled");
+    expect(db).toContain("mfaEnabled: 0");
+    expect(page).toContain("function TenantMfaStatus");
+    expect(page).toContain('data-slot="tenant-mfa-status"');
+    expect(page).toContain("MFA-Status:");
+  });
+
+  it("ermöglicht eine bewusst bestätigte Neugenerierung der acht Master-Notfallcodes", () => {
+    const page = source("client/src/pages/MasterAdminPortal.tsx");
+    const router = source("server/routers.ts");
+    const db = source("server/db.ts");
+
+    expect(page).toContain("Acht Master-Notfallcodes neu erzeugen");
+    expect(page).toContain("regenerateRecoveryCodes.mutate");
+    expect(router).toContain("regenerateMfaRecoveryCodes: baseProtectedProcedure");
+    expect(page).toContain("Alle bisherigen Notfallcodes werden sofort ungültig");
+    expect(db).toContain("replaceMasterMfaRecoveryCodes");
+  });
+
   it("erstellt neue Vereine mit Startveranstaltung und eindeutiger serverseitiger Kennung", () => {
     const db = source("server/db.ts");
     expect(db).toContain("function tenantSlugFromName");

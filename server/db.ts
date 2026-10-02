@@ -158,6 +158,8 @@ export type TenantAdminActivationSummary = {
   total: number;
   passwordConfigured: number;
   initialSetupPending: number;
+  /** Ausschließlich aggregierter Status, niemals Codes oder Geheimnisse. */
+  mfaEnabled: number;
   adminName: string | null;
   adminEmail: string | null;
 };
@@ -910,6 +912,68 @@ export async function acceptCurrentTenantContractDocuments(input: {
   };
 }
 
+/**
+ * Liefert ausschließlich die für einen eigenen Vertragsnachweis erforderlichen
+ * Daten der aktuell bestätigten Dokumentfassungen. Historische Versionen
+ * bleiben im Audit erhalten, werden hier jedoch bewusst nicht vermischt.
+ */
+export async function getCurrentTenantContractReceipt(tenantId: string) {
+  const database = await getDb();
+  if (!database) return null;
+  const rows = await database
+    .select({
+      documentId: tenantContractAcceptances.documentId,
+      documentVersion: tenantContractAcceptances.documentVersion,
+      documentHash: tenantContractAcceptances.documentHash,
+      packageId: tenantContractAcceptances.packageId,
+      acceptedAt: tenantContractAcceptances.acceptedAt,
+      acceptedByName: users.name,
+    })
+    .from(tenantContractAcceptances)
+    .innerJoin(users, eq(users.id, tenantContractAcceptances.acceptedByUserId))
+    .where(eq(tenantContractAcceptances.tenantId, tenantId));
+  const currentByDocument = new Map<
+    LegalDocumentId,
+    (typeof rows)[number]
+  >();
+  for (const row of rows) {
+    const documentId = row.documentId as LegalDocumentId;
+    const document = LEGAL_DOCUMENTS[documentId];
+    if (
+      !document ||
+      row.documentVersion !== document.version ||
+      row.documentHash !== legalDocumentHash(documentId)
+    ) {
+      continue;
+    }
+    const previous = currentByDocument.get(documentId);
+    if (!previous || row.acceptedAt > previous.acceptedAt) {
+      currentByDocument.set(documentId, row);
+    }
+  }
+  if (currentByDocument.size !== REQUIRED_LEGAL_DOCUMENT_IDS.length) return null;
+  const orderedRows = REQUIRED_LEGAL_DOCUMENT_IDS.map(documentId =>
+    currentByDocument.get(documentId)!
+  );
+  const newest = orderedRows.reduce((latest, row) =>
+    row.acceptedAt > latest.acceptedAt ? row : latest
+  );
+  return {
+    acceptedAt: newest.acceptedAt,
+    packageId: newest.packageId,
+    acceptedByName: newest.acceptedByName?.trim() || "Vereinsadministration",
+    documents: REQUIRED_LEGAL_DOCUMENT_IDS.map(documentId => {
+      const row = currentByDocument.get(documentId)!;
+      return {
+        documentId,
+        title: LEGAL_DOCUMENTS[documentId].title,
+        version: row.documentVersion,
+        hash: row.documentHash,
+      };
+    }),
+  };
+}
+
 function productUsageMetric(input: {
   used: number;
   limit: number | null;
@@ -1285,6 +1349,7 @@ export async function listTenantOverviewsForPlatformAdmin() {
       .select({
         tenantId: userTenantMemberships.tenantId,
         mustChangePassword: tenantAdminCredentials.mustChangePassword,
+        mfaEnabled: tenantAdminCredentials.mfaEnabled,
         adminName: users.name,
         adminEmail: users.email,
       })
@@ -1328,6 +1393,7 @@ export async function listTenantOverviewsForPlatformAdmin() {
       total: 0,
       passwordConfigured: 0,
       initialSetupPending: 0,
+      mfaEnabled: 0,
       adminName: row.adminName?.trim() || null,
       adminEmail: row.adminEmail?.trim() || null,
     };
@@ -1337,6 +1403,7 @@ export async function listTenantOverviewsForPlatformAdmin() {
     } else {
       current.passwordConfigured += 1;
     }
+    if (row.mfaEnabled) current.mfaEnabled += 1;
     if (!current.adminName && row.adminName?.trim()) {
       current.adminName = row.adminName.trim();
     }
@@ -1409,6 +1476,7 @@ export async function listTenantOverviewsForPlatformAdmin() {
         total: 0,
         passwordConfigured: 0,
         initialSetupPending: 0,
+        mfaEnabled: 0,
         adminName: null,
         adminEmail: null,
       },
@@ -6790,6 +6858,35 @@ export async function saveMasterMfaEnrollment(input: {
         adminSessionVersion: sql`${securitySettings.adminSessionVersion} + 1`,
       },
     });
+}
+
+/**
+ * Ersetzt die bisherigen Notfallcodes einer aktivierten Vereins-MFA.
+ * Gespeichert werden ausschließlich irreversible Hashwerte.
+ */
+export async function replaceTenantAdminMfaRecoveryCodes(input: {
+  userId: number;
+  recoveryCodes: string[];
+}) {
+  const database = (await getDb()) as DB;
+  await database
+    .update(tenantAdminCredentials)
+    .set({ mfaRecoveryCodeHashes: input.recoveryCodes.map(hashRecoveryCode) })
+    .where(
+      and(
+        eq(tenantAdminCredentials.userId, input.userId),
+        eq(tenantAdminCredentials.mfaEnabled, true)
+      )
+    );
+}
+
+/** Ersetzt die bisherigen Master-Notfallcodes ausschließlich als Hashwerte. */
+export async function replaceMasterMfaRecoveryCodes(recoveryCodes: string[]) {
+  const database = (await getDb()) as DB;
+  await database
+    .update(securitySettings)
+    .set({ adminMfaRecoveryCodeHashes: recoveryCodes.map(hashRecoveryCode) })
+    .where(and(eq(securitySettings.id, 1), eq(securitySettings.adminMfaEnabled, true)));
 }
 
 export async function disableTenantAdminMfa(userId: number) {

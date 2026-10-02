@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import {
   getSmtpConfig,
   isMailDeliveryConfigured,
+  renderContractAcceptanceEmail,
   renderInvitationEmail,
   renderProductExpiryReminderEmail,
   sendTransactionalEmail,
@@ -77,5 +78,19 @@ describe("Mail-Service (Hetzner SMTP & Transactional)", () => {
     expect(rendered.text).toContain("Planungsdaten bleiben selbstverständlich erhalten");
     expect(rendered.html).toContain("06.10.2026");
     expect(rendered.html).toContain("Testzugang");
+  });
+
+  it("weist bei der Vertragsbestätigung verständlich auf den beigefügten PDF-Nachweis hin", () => {
+    const rendered = renderContractAcceptanceEmail({
+      recipientName: "Max Muster",
+      tenantName: "Musterverein e. V.",
+      packageName: "Pro",
+      acceptedAt: new Date("2026-10-02T18:00:00.000Z"),
+      documents: [{ title: "AGB", version: "1.0-2026-10-01" }],
+    });
+
+    expect(rendered.subject).toContain("Vertragsunterlagen digital bestätigt");
+    expect(rendered.text).toContain("als PDF beigefügt");
+    expect(rendered.html).toContain("als PDF beigefügt");
   });
 });

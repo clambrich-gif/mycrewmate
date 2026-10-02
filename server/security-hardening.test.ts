@@ -112,4 +112,18 @@ describe("Punkt 3: Sicherheits- und Berechtigungs-Hardening", () => {
     expect(securityUi).toContain("QR-Code kann nicht gescannt werden? Schlüssel manuell eingeben");
     expect(securityUi).toContain('maxLength={6}');
   });
+
+  it("ermöglicht die passwortbestätigte Neugenerierung von Notfallcodes und einen eigenen Vertragsnachweis", () => {
+    expect(securityUi).toContain("Acht Notfallcodes neu erzeugen");
+    expect(securityUi).toContain("regenerateRecoveryCodes.mutate");
+    expect(securityUi).toContain("Digitalen Vertragsnachweis herunterladen");
+    expect(securityUi).toContain("downloadContractAcceptanceReceipt.mutate");
+    expect(routers).toContain("contractAcceptanceReceipt: baseProtectedProcedure");
+    expect(db).toContain("getCurrentTenantContractReceipt");
+  });
+
+  it("hält technische Umsetzungsdetails aus der normalen Sicherheitsbedienung heraus", () => {
+    expect(securityUi).not.toContain("Administrator- und Planungsteam-Passwörter werden ausschließlich als");
+    expect(securityUi).not.toContain("progressive Abklingzeit gegen DoS-Angriffe");
+  });
 });

@@ -69,6 +69,11 @@ export interface SendMailOptions {
   subject: string;
   text: string;
   html?: string;
+  attachments?: Array<{
+    filename: string;
+    content: Buffer;
+    contentType: string;
+  }>;
 }
 
 export async function sendTransactionalEmail(options: SendMailOptions): Promise<{
@@ -93,6 +98,7 @@ export async function sendTransactionalEmail(options: SendMailOptions): Promise<
     subject: options.subject,
     text: options.text,
     html: options.html,
+    attachments: options.attachments,
   });
 
   const normalizedRecipient = options.to.trim().toLocaleLowerCase("de-DE");
@@ -192,7 +198,7 @@ für ${params.tenantName} wurden am ${acceptedAt} die folgenden Vertragsunterlag
 
 ${documents}
 
-Die Annahme ist für den Verein im MyCrewMate-Vertragsnachweis dokumentiert. Diese E-Mail dient als Zustell- und Informationsnachweis.
+Der digitale Vertragsnachweis mit Verein, Zeitpunkt, Dokumentversionen und Prüfsummen ist dieser E-Mail als PDF beigefügt. Diese E-Mail dient als Zustell- und Informationsnachweis.
 
 Bei Fragen erreichen Sie uns unter info@mycrewmate.de.
 
@@ -210,7 +216,7 @@ MyCrewMate`;
     <p>Hallo <strong>${params.recipientName}</strong>,</p>
     <p>für <strong>${params.tenantName}</strong> wurden am <strong>${acceptedAt}</strong> die folgenden Unterlagen für das Paket <strong>${params.packageName}</strong> elektronisch bestätigt:</p>
     <ul style="padding-left:20px;">${documentList}</ul>
-    <p style="font-size:13px;color:#475569;">Die Annahme ist im Vertragsnachweis des Vereins dokumentiert. Diese E-Mail dient als Zustell- und Informationsnachweis.</p>
+    <p style="font-size:13px;color:#475569;">Der digitale Vertragsnachweis mit Verein, Zeitpunkt, Dokumentversionen und Prüfsummen ist dieser E-Mail als PDF beigefügt. Diese E-Mail dient als Zustell- und Informationsnachweis.</p>
     <hr style="border:0;border-top:1px solid #e2e8f0;margin:24px 0;">
     <p style="font-size:12px;color:#64748b;margin:0;">Fragen? info@mycrewmate.de</p>
   </div>
