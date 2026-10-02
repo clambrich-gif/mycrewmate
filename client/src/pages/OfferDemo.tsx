@@ -87,7 +87,7 @@ const PACKAGE_VIDEO_COPY: Record<
     title: "Event Pass in 25 Sekunden",
     description:
       "Ein einzelnes Fest übersichtlich planen – ohne Dauerbindung und mit freier Entscheidung im nächsten Jahr.",
-    src: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663150240576/kuBlYlACogOEwONO.mp4",
+    src: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663150240576/PKmsMbELZprppNFR.mp4",
   },
   light: {
     title: "Light in 28 Sekunden",

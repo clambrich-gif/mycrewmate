@@ -109,7 +109,7 @@ describe("lokale MyCrewMate-Angebotsdemo", () => {
     expect(offerDemo).toContain("UNSERE BELIEBTESTE WAHL");
     expect(offerDemo).toContain("Kurzvideo ansehen");
     expect(offerDemo).toContain("const PACKAGE_VIDEO_COPY");
-    expect(offerDemo).toContain("kuBlYlACogOEwONO.mp4");
+    expect(offerDemo).toContain("PKmsMbELZprppNFR.mp4");
     expect(offerDemo).toContain("PQUFaMfISRAHgnwl.mp4");
     expect(offerDemo).toContain("vLWHhFIQuWYvcwZG.mp4");
     expect(offerDemo).toContain("ydXImTPvhUpAuTRC.mp4");
