@@ -80,6 +80,11 @@ import {
   verifyTotpCode,
 } from "./mfa";
 import {
+  createMfaTestSession,
+  isMfaTestLabAllowed,
+  verifyMfaTestSession,
+} from "./mfa-test-lab";
+import {
   createAllHelperTaskZip,
   createBlankPlanPdf,
   createContactOverviewPdf,
@@ -2281,6 +2286,45 @@ export const appRouter = router({
         remainingRecoveryCodes: configuration?.recoveryCodeHashes.length ?? 0,
       } as const;
     }),
+    /**
+     * Ausschließlich in der isolierten Manus-/Local-Vorschau verfügbar.
+     * Dieser Ablauf kann weder MFA für ein Konto aktivieren noch Daten persistieren.
+     */
+    mfaTestBegin: publicProcedure.mutation(({ ctx }) => {
+      if (
+        !isMfaTestLabAllowed({
+          environment: process.env.NODE_ENV,
+          hostname: ctx.req.hostname,
+        })
+      ) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Das MFA-Testlabor ist außerhalb der isolierten Vorschau nicht verfügbar.",
+        });
+      }
+      return createMfaTestSession();
+    }),
+    mfaTestVerify: publicProcedure
+      .input(
+        z.object({
+          testSessionToken: z.string().min(32).max(128),
+          code: z.string().trim().regex(/^\d{6}$/),
+        })
+      )
+      .mutation(({ ctx, input }) => {
+        if (
+          !isMfaTestLabAllowed({
+            environment: process.env.NODE_ENV,
+            hostname: ctx.req.hostname,
+          })
+        ) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Das MFA-Testlabor ist außerhalb der isolierten Vorschau nicht verfügbar.",
+          });
+        }
+        return verifyMfaTestSession(input);
+      }),
     beginMfaEnrollment: baseProtectedProcedure.mutation(async ({ ctx }) => {
       const isMaster = ctx.user.openId === ADMIN_PASSWORD_OPEN_ID;
       const isPersonalTenantAdmin =

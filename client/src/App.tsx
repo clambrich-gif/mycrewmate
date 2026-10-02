@@ -95,6 +95,7 @@ const ProtectedHelperPdfShare = lazy(
   () => import("@/pages/ProtectedHelperPdfShare")
 );
 const MasterAdminPortal = lazy(() => import("@/pages/MasterAdminPortal"));
+const MfaTestLab = lazy(() => import("@/pages/MfaTestLab"));
 const GameRoot = lazy(() => import("@/pages/GameRoot"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
@@ -203,6 +204,11 @@ function Router() {
         <Route path="/_staging/klemmi-einsatzplan">
           <Suspense fallback={<RouteLoading />}>
             <KlemmiPlanLayoutPreview />
+          </Suspense>
+        </Route>
+        <Route path="/_staging/mfa-testlabor">
+          <Suspense fallback={<RouteLoading />}>
+            <MfaTestLab />
           </Suspense>
         </Route>
       {/* Nur lokale/Manus-Vorschauen können das Masterportal über diesen Pfad testen.
