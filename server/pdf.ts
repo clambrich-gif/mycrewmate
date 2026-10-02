@@ -458,16 +458,71 @@ export type TenantContractReceiptPdfInput = {
   }>;
 };
 
+export type TenantAcceptedContractDocumentsPdfInput = Omit<
+  TenantContractReceiptPdfInput,
+  "documents"
+> & {
+  documents: Array<{
+    title: string;
+    version: string;
+    hash: string;
+    /** Unveränderlicher Wortlaut der elektronisch bestätigten Fassung. */
+    content: string;
+  }>;
+};
+
+function contractAcceptedAtLabel(value: Date) {
+  return new Intl.DateTimeFormat("de-DE", {
+    timeZone: "Europe/Berlin",
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(value);
+}
+
+function ensureContractDocumentSpace(doc: PDFKit.PDFDocument, required: number) {
+  if (doc.y + required <= pageHeight - 60) return;
+  doc.addPage();
+  doc.x = margin;
+  doc.y = margin;
+}
+
+function renderAcceptedContractContent(
+  doc: PDFKit.PDFDocument,
+  content: string
+) {
+  for (const rawLine of content.split("\n")) {
+    const line = rawLine.trimEnd();
+    if (!line) {
+      doc.moveDown(0.42);
+      continue;
+    }
+    if (line.startsWith("# ")) {
+      ensureContractDocumentSpace(doc, 48);
+      doc.fillColor(colors.accent).font("Helvetica-Bold").fontSize(16);
+      doc.text(line.slice(2), { width: contentWidth, lineGap: 2 });
+      doc.moveDown(0.55);
+      continue;
+    }
+    if (line.startsWith("## ")) {
+      ensureContractDocumentSpace(doc, 38);
+      doc.fillColor(colors.ink).font("Helvetica-Bold").fontSize(11.5);
+      doc.text(line.slice(3), { width: contentWidth, lineGap: 2 });
+      doc.moveDown(0.28);
+      continue;
+    }
+    ensureContractDocumentSpace(doc, 28);
+    doc.fillColor(colors.ink).font("Helvetica").fontSize(9.4);
+    doc.text(line, { width: contentWidth, lineGap: 2 });
+    doc.moveDown(0.34);
+  }
+}
+
 /**
  * Lesbarer Nachweis über die versioniert gespeicherte elektronische Annahme.
  * Er enthält bewusst keine Passwörter, Sicherheitscodes oder MFA-Geheimnisse.
  */
 export function renderTenantContractReceiptPdf(input: TenantContractReceiptPdfInput) {
-  const acceptedAt = new Intl.DateTimeFormat("de-DE", {
-    timeZone: "Europe/Berlin",
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(input.acceptedAt);
+  const acceptedAt = contractAcceptedAtLabel(input.acceptedAt);
   return collectPdf(doc => {
     doc.fillColor(colors.accent).font("Helvetica-Bold").fontSize(19);
     doc.text("Digitaler Vertragsnachweis", { width: contentWidth });
@@ -518,6 +573,59 @@ export function renderTenantContractReceiptPdf(input: TenantContractReceiptPdfIn
       "Die Annahme wurde in MyCrewMate mit Zeitpunkt, Verein, bestätigender Person, Dokumentversion und Prüfsumme gespeichert. Dieser Nachweis enthält keine Passwörter, Sicherheitscodes oder sonstigen Zugangsdaten. Er ersetzt keine Rechtsberatung oder qualifizierte elektronische Signatur.",
       { width: contentWidth, lineGap: 2 }
     );
+  });
+}
+
+/**
+ * Gibt dem Verein die vollständigen Originalwortlaute seiner elektronisch
+ * bestätigten AGB, AVV und Datenschutzhinweise aus. Die Dokument-Prüfsumme
+ * macht nachvollziehbar, dass der gespeicherte Wortlaut unverändert ist.
+ */
+export function renderTenantAcceptedContractDocumentsPdf(
+  input: TenantAcceptedContractDocumentsPdfInput
+) {
+  const acceptedAt = contractAcceptedAtLabel(input.acceptedAt);
+  return collectPdf(doc => {
+    doc.fillColor(colors.accent).font("Helvetica-Bold").fontSize(19);
+    doc.text("Meine bestätigten Vertragsunterlagen", { width: contentWidth });
+    doc.moveDown(0.45);
+    doc.fillColor(colors.ink).font("Helvetica").fontSize(9.5);
+    doc.text(
+      "Vollständige Wortlaute der genau bei der elektronischen Annahme gültigen MyCrewMate-Unterlagen. Die Prüfsumme je Dokument dient der Integritätskontrolle.",
+      { width: contentWidth, lineGap: 2 }
+    );
+    doc.moveDown(1);
+    for (const [label, value] of [
+      ["Verein", input.tenantName],
+      ["Bestätigt durch", input.recipientName],
+      ["Zeitpunkt der Annahme", acceptedAt],
+      ["Zugeordnetes Paket", input.packageName],
+    ]) {
+      doc.fillColor(colors.muted).font("Helvetica-Bold").fontSize(9);
+      doc.text(label, { width: 160, continued: true });
+      doc.fillColor(colors.ink).font("Helvetica").text(`  ${value}`, {
+        width: contentWidth - 160,
+      });
+      doc.moveDown(0.34);
+    }
+
+    for (const document of input.documents) {
+      doc.addPage();
+      doc.x = margin;
+      doc.y = margin;
+      doc.fillColor(colors.accent).font("Helvetica-Bold").fontSize(13);
+      doc.text(`${document.title} · Version ${document.version}`, {
+        width: contentWidth,
+      });
+      doc.moveDown(0.22);
+      doc.fillColor(colors.muted).font("Helvetica").fontSize(8);
+      doc.text(`Dokument-Prüfsumme (SHA-256): ${document.hash}`, {
+        width: contentWidth,
+        lineGap: 1,
+      });
+      doc.moveDown(0.8);
+      renderAcceptedContractContent(doc, document.content);
+    }
   });
 }
 

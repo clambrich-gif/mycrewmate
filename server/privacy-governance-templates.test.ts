@@ -3,6 +3,7 @@ import {
   renderClubPrivacyNoticeTemplatePdf,
   renderDataSubjectRequestTemplatePdf,
   renderPrivacyIncidentTemplatePdf,
+  renderTenantAcceptedContractDocumentsPdf,
   renderTenantContractReceiptPdf,
 } from "./pdf";
 
@@ -39,6 +40,26 @@ describe("Datenschutz- und Governance-PDF-Vorlagen", () => {
           title: "Allgemeine Geschäftsbedingungen",
           version: "1.0-2026-10-01",
           hash: "a".repeat(64),
+        },
+      ],
+    });
+    expect(Buffer.isBuffer(buffer)).toBe(true);
+    expect(buffer.length).toBeGreaterThan(1000);
+    expect(buffer.subarray(0, 4).toString()).toBe("%PDF");
+  });
+
+  it("erzeugt das vollständige Dokument der bestätigten Vertragsunterlagen mit Originalwortlauten", async () => {
+    const buffer = await renderTenantAcceptedContractDocumentsPdf({
+      tenantName: "Musterverein e. V.",
+      recipientName: "Max Muster",
+      packageName: "Pro",
+      acceptedAt: new Date("2026-10-02T18:00:00.000Z"),
+      documents: [
+        {
+          title: "Allgemeine Geschäftsbedingungen",
+          version: "1.0-2026-10-01",
+          hash: "a".repeat(64),
+          content: "# Allgemeine Geschäftsbedingungen\n\n## 1. Geltung\nBeispieltext für Vertragsinhalte.",
         },
       ],
     });

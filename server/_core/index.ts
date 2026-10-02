@@ -16,6 +16,7 @@ import { registerGameAssetRoutes } from "../game-asset-routes";
 import { handleTeamNotesCleanupHeartbeat } from "../chat-cleanup-heartbeat";
 import { handleProductExpiryReminderHeartbeat } from "../product-expiry-heartbeat";
 import { registerLocalStorageRoutes } from "../storage";
+import { backfillTenantContractAcceptanceSnapshots } from "../db";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 
@@ -34,6 +35,24 @@ function assertProductionConfiguration() {
 
 async function startServer() {
   assertProductionConfiguration();
+
+  // Die Containerstart-Migration ergänzt ältere, bereits hash-gesicherte
+  // Vertragsannahmen einmalig um ihren originalen Wortlaut. Unbekannte
+  // Prüfsummen werden bewusst nicht überschrieben.
+  try {
+    const updatedContractSnapshots =
+      await backfillTenantContractAcceptanceSnapshots();
+    if (updatedContractSnapshots > 0) {
+      console.info(
+        `[Vertragsnachweise] ${updatedContractSnapshots} historische Dokumentschnappschüsse ergänzt.`
+      );
+    }
+  } catch (error) {
+    console.error(
+      "[Vertragsnachweise] Historische Dokumentschnappschüsse konnten beim Start nicht ergänzt werden.",
+      error
+    );
+  }
 
   const app = express();
   // Coolify terminiert HTTPS vor dem Container und übergibt X-Forwarded-Proto.

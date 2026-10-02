@@ -73,6 +73,10 @@ import {
   REQUIRED_LEGAL_DOCUMENT_IDS,
   type LegalDocumentId,
 } from "../shared/legal-contract-documents";
+import {
+  currentLegalDocumentSnapshot,
+  resolveLegalDocumentSnapshot,
+} from "./legal-contract-document-snapshots";
 import { ENV } from "./_core/env";
 import {
   eventWeekdays,
@@ -834,9 +838,7 @@ export async function getCurrentTenantProductEntitlement() {
 }
 
 function legalDocumentHash(documentId: LegalDocumentId) {
-  return createHash("sha256")
-    .update(LEGAL_DOCUMENTS[documentId].content, "utf8")
-    .digest("hex");
+  return currentLegalDocumentSnapshot(documentId).hash;
 }
 
 /**
@@ -876,7 +878,7 @@ export async function acceptCurrentTenantContractDocuments(input: {
   const acceptedAt = new Date();
   await database.transaction(async tx => {
     for (const documentId of REQUIRED_LEGAL_DOCUMENT_IDS) {
-      const document = LEGAL_DOCUMENTS[documentId];
+      const document = currentLegalDocumentSnapshot(documentId);
       await tx
         .insert(tenantContractAcceptances)
         .values({
@@ -884,7 +886,9 @@ export async function acceptCurrentTenantContractDocuments(input: {
           acceptedByUserId: input.acceptedByUserId,
           documentId,
           documentVersion: document.version,
-          documentHash: legalDocumentHash(documentId),
+          documentHash: document.hash,
+          documentTitle: document.title,
+          documentContent: document.content,
           packageId: entitlement.packageId,
           packageStatus: entitlement.status,
           acceptedAt,
@@ -892,7 +896,9 @@ export async function acceptCurrentTenantContractDocuments(input: {
         .onDuplicateKeyUpdate({
           set: {
             acceptedByUserId: input.acceptedByUserId,
-            documentHash: legalDocumentHash(documentId),
+            documentHash: document.hash,
+            documentTitle: document.title,
+            documentContent: document.content,
             packageId: entitlement.packageId,
             packageStatus: entitlement.status,
             acceptedAt,
@@ -906,10 +912,51 @@ export async function acceptCurrentTenantContractDocuments(input: {
     packageStatus: entitlement.status,
     documents: REQUIRED_LEGAL_DOCUMENT_IDS.map(documentId => ({
       documentId,
-      version: LEGAL_DOCUMENTS[documentId].version,
-      hash: legalDocumentHash(documentId),
+      version: currentLegalDocumentSnapshot(documentId).version,
+      hash: currentLegalDocumentSnapshot(documentId).hash,
     })),
   };
+}
+
+/**
+ * Ergänzt die Wortlaute für Nachweise, die vor Einführung der DB-Schnappschüsse
+ * bestätigt wurden. Nur eine bekannte Fassung mit passender Prüfsumme wird
+ * ergänzt; unbekannte Kombinationen bleiben bewusst unverändert.
+ */
+export async function backfillTenantContractAcceptanceSnapshots() {
+  const database = await getDb();
+  if (!database) return 0;
+  const rows = await database
+    .select({
+      id: tenantContractAcceptances.id,
+      documentId: tenantContractAcceptances.documentId,
+      documentVersion: tenantContractAcceptances.documentVersion,
+      documentHash: tenantContractAcceptances.documentHash,
+      documentTitle: tenantContractAcceptances.documentTitle,
+      documentContent: tenantContractAcceptances.documentContent,
+    })
+    .from(tenantContractAcceptances);
+  let updated = 0;
+  for (const row of rows) {
+    if (row.documentTitle && row.documentContent) continue;
+    const snapshot = resolveLegalDocumentSnapshot({
+      documentId: row.documentId as LegalDocumentId,
+      version: row.documentVersion,
+      hash: row.documentHash,
+      storedTitle: row.documentTitle,
+      storedContent: row.documentContent,
+    });
+    if (!snapshot) continue;
+    await database
+      .update(tenantContractAcceptances)
+      .set({
+        documentTitle: snapshot.title,
+        documentContent: snapshot.content,
+      })
+      .where(eq(tenantContractAcceptances.id, row.id));
+    updated += 1;
+  }
+  return updated;
 }
 
 /**
@@ -925,6 +972,8 @@ export async function getCurrentTenantContractReceipt(tenantId: string) {
       documentId: tenantContractAcceptances.documentId,
       documentVersion: tenantContractAcceptances.documentVersion,
       documentHash: tenantContractAcceptances.documentHash,
+      documentTitle: tenantContractAcceptances.documentTitle,
+      documentContent: tenantContractAcceptances.documentContent,
       packageId: tenantContractAcceptances.packageId,
       acceptedAt: tenantContractAcceptances.acceptedAt,
       acceptedByName: users.name,
@@ -938,10 +987,16 @@ export async function getCurrentTenantContractReceipt(tenantId: string) {
   >();
   for (const row of rows) {
     const documentId = row.documentId as LegalDocumentId;
-    const document = LEGAL_DOCUMENTS[documentId];
+    const snapshot = resolveLegalDocumentSnapshot({
+      documentId,
+      version: row.documentVersion,
+      hash: row.documentHash,
+      storedTitle: row.documentTitle,
+      storedContent: row.documentContent,
+    });
     if (
-      !document ||
-      row.documentVersion !== document.version ||
+      !snapshot ||
+      row.documentVersion !== LEGAL_DOCUMENTS[documentId]?.version ||
       row.documentHash !== legalDocumentHash(documentId)
     ) {
       continue;
@@ -964,11 +1019,22 @@ export async function getCurrentTenantContractReceipt(tenantId: string) {
     acceptedByName: newest.acceptedByName?.trim() || "Vereinsadministration",
     documents: REQUIRED_LEGAL_DOCUMENT_IDS.map(documentId => {
       const row = currentByDocument.get(documentId)!;
-      return {
+      const snapshot = resolveLegalDocumentSnapshot({
         documentId,
-        title: LEGAL_DOCUMENTS[documentId].title,
         version: row.documentVersion,
         hash: row.documentHash,
+        storedTitle: row.documentTitle,
+        storedContent: row.documentContent,
+      });
+      if (!snapshot) {
+        throw new Error("Vollständige Vertragsfassung fehlt trotz geprüftem Nachweis.");
+      }
+      return {
+        documentId,
+        title: snapshot.title,
+        version: row.documentVersion,
+        hash: row.documentHash,
+        content: snapshot.content,
       };
     }),
   };

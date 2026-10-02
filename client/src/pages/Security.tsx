@@ -495,6 +495,14 @@ export default function Security() {
       },
       onError: error => toast.error(error.message),
     });
+  const downloadAcceptedContractDocuments =
+    trpc.auth.contractAcceptedDocuments.useMutation({
+      onSuccess: result => {
+        downloadBase64File(result.base64, result.mimeType, result.filename);
+        toast.success("Bestätigte Vertragsunterlagen wurden heruntergeladen");
+      },
+      onError: error => toast.error(error.message),
+    });
   type SecurityGuidePanel =
     | "password"
     | "accesses"
@@ -738,22 +746,36 @@ export default function Security() {
           >
             <div className="space-y-3">
               <p className="text-sm leading-6 text-muted-foreground">
-                Hier steht der aktuelle Nachweis über die elektronische Annahme bereit. Er enthält Verein, Zeitpunkt, bestätigende Person, Paket sowie die Versionen und Prüfsummen der Unterlagen – keine Passwörter oder Sicherheitscodes.
+                Hier stehen sowohl der kurze Annahmenachweis als auch die vollständigen Wortlaute der exakt bestätigten AGB, AVV und Datenschutzhinweise bereit. Beide Dokumente enthalten keine Passwörter oder Sicherheitscodes.
               </p>
               <p className="text-xs leading-5 text-muted-foreground">
-                Derselbe PDF-Nachweis wird bei jeder neuen oder erneuten Vertragsbestätigung zusätzlich an die hinterlegte Vereinsadmin-E-Mail angehängt.
+                Der Annahmenachweis wird bei jeder neuen oder erneuten Vertragsbestätigung zusätzlich an die hinterlegte Vereinsadmin-E-Mail angehängt. Die vollständigen Unterlagen bleiben hier mit Version und Prüfsumme abrufbar.
               </p>
-              <Button
-                type="button"
-                className="w-full bg-blue-800 text-white hover:bg-blue-900 sm:w-auto"
-                disabled={downloadContractAcceptanceReceipt.isPending}
-                onClick={() => downloadContractAcceptanceReceipt.mutate()}
-              >
-                <FileText className="mr-2 h-4 w-4" />
-                {downloadContractAcceptanceReceipt.isPending
-                  ? "Vertragsnachweis wird erstellt …"
-                  : "Digitalen Vertragsnachweis herunterladen"}
-              </Button>
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                <Button
+                  type="button"
+                  className="w-full bg-blue-800 text-white hover:bg-blue-900 sm:w-auto"
+                  disabled={downloadAcceptedContractDocuments.isPending}
+                  onClick={() => downloadAcceptedContractDocuments.mutate()}
+                >
+                  <FileText className="mr-2 h-4 w-4" />
+                  {downloadAcceptedContractDocuments.isPending
+                    ? "Vertragsunterlagen werden erstellt …"
+                    : "Meine bestätigten Vertragsunterlagen herunterladen"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  disabled={downloadContractAcceptanceReceipt.isPending}
+                  onClick={() => downloadContractAcceptanceReceipt.mutate()}
+                >
+                  <FileText className="mr-2 h-4 w-4" />
+                  {downloadContractAcceptanceReceipt.isPending
+                    ? "Nachweis wird erstellt …"
+                    : "Kurzen Vertragsnachweis herunterladen"}
+                </Button>
+              </div>
             </div>
           </SecurityAccordion>
         )}

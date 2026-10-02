@@ -610,6 +610,13 @@
       "when": 1790948416461,
       "tag": "0086_thin_synch",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "5",
+      "when": 1790965820299,
+      "tag": "0087_chemical_thor",
+      "breakpoints": true
     }
   ]
 }

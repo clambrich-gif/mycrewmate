@@ -116,9 +116,12 @@ describe("Punkt 3: Sicherheits- und Berechtigungs-Hardening", () => {
   it("ermöglicht die passwortbestätigte Neugenerierung von Notfallcodes und einen eigenen Vertragsnachweis", () => {
     expect(securityUi).toContain("Acht Notfallcodes neu erzeugen");
     expect(securityUi).toContain("regenerateRecoveryCodes.mutate");
-    expect(securityUi).toContain("Digitalen Vertragsnachweis herunterladen");
+    expect(securityUi).toContain("Meine bestätigten Vertragsunterlagen herunterladen");
+    expect(securityUi).toContain("Kurzen Vertragsnachweis herunterladen");
     expect(securityUi).toContain("downloadContractAcceptanceReceipt.mutate");
+    expect(securityUi).toContain("downloadAcceptedContractDocuments.mutate");
     expect(routers).toContain("contractAcceptanceReceipt: baseProtectedProcedure");
+    expect(routers).toContain("contractAcceptedDocuments: baseProtectedProcedure");
     expect(db).toContain("getCurrentTenantContractReceipt");
   });
 

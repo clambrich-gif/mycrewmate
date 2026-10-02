@@ -86,11 +86,15 @@ describe("Digitale Vertragsannahme, Freigabefilter und Veranstaltungsabschluss",
     const mail = source("server/mail-service.ts");
 
     expect(router).toContain("contractAcceptanceReceipt: baseProtectedProcedure");
+    expect(router).toContain("contractAcceptedDocuments: baseProtectedProcedure");
     expect(router).toContain("Digitaler_Vertragsnachweis.pdf");
+    expect(router).toContain("Meine_bestaetigten_Vertragsunterlagen.pdf");
     expect(router).toContain("attachments:");
     expect(db).toContain("getCurrentTenantContractReceipt");
     expect(pdf).toContain("renderTenantContractReceiptPdf");
-    expect(security).toContain("Digitalen Vertragsnachweis herunterladen");
+    expect(pdf).toContain("renderTenantAcceptedContractDocumentsPdf");
+    expect(security).toContain("Meine bestätigten Vertragsunterlagen herunterladen");
+    expect(security).toContain("Kurzen Vertragsnachweis herunterladen");
     expect(mail).toContain("als PDF beigefügt");
   });
 

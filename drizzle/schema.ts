@@ -571,6 +571,14 @@ export const tenantContractAcceptances = mysqlTable(
     documentVersion: varchar("documentVersion", { length: 64 }).notNull(),
     /** SHA-256 des zum Zeitpunkt der Annahme geltenden Dokumenttexts. */
     documentHash: varchar("documentHash", { length: 64 }).notNull(),
+    /** Originaltitel der bei der Annahme sichtbaren Vertragsfassung. */
+    documentTitle: varchar("documentTitle", { length: 255 }),
+    /**
+     * Unveränderlicher Wortlaut der bestätigten Fassung. Null nur für ältere
+     * Nachweise, die beim nächsten Start aus dem serverseitigen Archiv ergänzt
+     * werden; neue Annahmen speichern ihn immer unmittelbar.
+     */
+    documentContent: mediumtext("documentContent"),
     packageId: mysqlEnum("packageId", PRODUCT_PACKAGE_IDS)
       .$type<ProductPackageId>()
       .notNull(),

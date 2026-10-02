@@ -100,6 +100,7 @@ import {
   renderClubPrivacyNoticeTemplatePdf,
   renderDataSubjectRequestTemplatePdf,
   renderPrivacyIncidentTemplatePdf,
+  renderTenantAcceptedContractDocumentsPdf,
   renderTenantContractReceiptPdf,
   DEFAULT_PDF_SETTINGS,
 } from "./pdf";
@@ -2735,6 +2736,50 @@ export const appRouter = router({
       });
       return {
         filename: "Digitaler_Vertragsnachweis.pdf",
+        mimeType: "application/pdf",
+        base64: pdf.toString("base64"),
+      } as const;
+    }),
+    contractAcceptedDocuments: baseProtectedProcedure.mutation(async ({ ctx }) => {
+      if (
+        ctx.user.role !== "admin" ||
+        !ctx.user.openId.startsWith("tenant-admin:") ||
+        ctx.user.id <= 0
+      ) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message:
+            "Die bestätigten Vertragsunterlagen sind ausschließlich für die persönliche Vereinsadministration verfügbar.",
+        });
+      }
+      const membership = await db.resolveTenantForUser({
+        userId: ctx.user.id,
+        userOpenId: ctx.user.openId,
+        allowPilotFallback: false,
+      });
+      if (!membership) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Für diesen Vereinsadministrator ist kein aktiver Verein hinterlegt.",
+        });
+      }
+      const receipt = await db.getCurrentTenantContractReceipt(membership.tenantId);
+      if (!receipt) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message:
+            "Für die aktuellen Vertragsunterlagen liegt noch kein vollständiger digitaler Nachweis vor.",
+        });
+      }
+      const pdf = await renderTenantAcceptedContractDocumentsPdf({
+        tenantName: membership.tenantName,
+        recipientName: receipt.acceptedByName,
+        packageName: PRODUCT_PACKAGE_META[receipt.packageId].name,
+        acceptedAt: receipt.acceptedAt,
+        documents: receipt.documents,
+      });
+      return {
+        filename: "Meine_bestaetigten_Vertragsunterlagen.pdf",
         mimeType: "application/pdf",
         base64: pdf.toString("base64"),
       } as const;
