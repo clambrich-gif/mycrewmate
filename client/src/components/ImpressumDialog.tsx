@@ -1,5 +1,5 @@
 import { COPYRIGHT_NOTICE } from "@shared/branding";
-import { ExternalLink, Scale } from "lucide-react";
+import { Scale } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
@@ -48,7 +48,7 @@ export function ImpressumDialog({ open, onOpenChange }: ImpressumDialogProps) {
             <h2 className="font-semibold text-slate-950">Kontakt:</h2>
             <p className="mt-1">
               Telefon: <a className="text-blue-700 underline underline-offset-2 hover:text-blue-900" href="tel:+491745111984">0174 5111984</a><br />
-              E-Mail: <a className="text-blue-700 underline underline-offset-2 hover:text-blue-900" href="mailto:clambrich@gmail.com">clambrich@gmail.com</a><br />
+              E-Mail: <a className="text-blue-700 underline underline-offset-2 hover:text-blue-900" href="mailto:info@mycrewmate.de">info@mycrewmate.de</a><br />
               Website: <a className="text-blue-700 underline underline-offset-2 hover:text-blue-900" href="https://mycrewmate.de" target="_blank" rel="noreferrer">https://mycrewmate.de</a>
             </p>
           </section>
@@ -64,17 +64,6 @@ export function ImpressumDialog({ open, onOpenChange }: ImpressumDialogProps) {
               Christian Lambrich<br />
               Eichenweg 4<br />
               56729 Nachtsheim
-            </p>
-          </section>
-
-          <section>
-            <h2 className="font-semibold text-slate-950">EU-Streitschlichtung:</h2>
-            <p className="mt-1">
-              Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS) bereit:{" "}
-              <a className="inline-flex items-center gap-1 text-blue-700 underline underline-offset-2 hover:text-blue-900" href="https://ec.europa.eu/consumers/odr/" target="_blank" rel="noreferrer">
-                https://ec.europa.eu/consumers/odr/
-                <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-              </a>
             </p>
           </section>
 

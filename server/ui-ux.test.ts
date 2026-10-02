@@ -579,9 +579,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(legal).toContain("Eichenweg 4");
     expect(legal).toContain("56729 Nachtsheim");
     expect(legal).toContain("0174 5111984");
-    expect(legal).toContain("clambrich@gmail.com");
+    expect(legal).toContain("info@mycrewmate.de");
     expect(legal).toContain("Gemäß § 19 UStG wird keine Umsatzsteuer berechnet und ausgewiesen");
-    expect(legal).toContain("https://ec.europa.eu/consumers/odr/");
     expect(legal).toContain("Verbraucherstreitbeilegung/Universalschlichtungsstelle:");
     expect(legal).toContain("Wir sind nicht bereit oder verpflichtet");
   });

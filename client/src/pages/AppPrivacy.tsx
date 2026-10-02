@@ -167,6 +167,12 @@ export default function AppPrivacy() {
                 Sicherungen dienen ausschließlich der Wiederherstellung nach
                 technischen Störungen und werden nicht für neue Zwecke genutzt.
               </p>
+              <p>
+                Der reguläre Betrieb von Anwendung, Datenbank, Upload-Volume und
+                Sicherungen erfolgt in Deutschland. Hiervon getrennt sind nur
+                freiwillig ausgelöste externe Dienste wie Kartenkacheln oder ein
+                WhatsApp-Chat; diese werden in Abschnitt 5 erläutert.
+              </p>
             </Section>
 
             <Section title="5. Karten, Standortlinks und externe Kommunikation">
@@ -262,10 +268,13 @@ export default function AppPrivacy() {
                 können buchhaltungs- oder steuerrelevante Unterlagen längere
                 Fristen erfordern. Die konkrete Einordnung und Frist legt der
                 jeweilige Verein mit seiner Buchhaltung oder Steuerberatung
-                fest. Die Drei-Jahres-Frist wird im geschlossenen Pilotbetrieb
-                dokumentiert; eine vollständige automatisierte Löschung aller
-                Datenklassen wird vor dem breiten Regelbetrieb zusätzlich
-                technisch eingeführt und getestet.
+                fest. Geschlossene Veranstaltungen ohne dokumentierte Ausnahme
+                werden einschließlich zugehöriger Planungs- und Uploaddaten
+                automatisiert nach drei Jahren bereinigt. Für operative
+                Sicherheits-, Login- und Aktivitätsprotokolle gilt eine reguläre
+                Frist von zwölf Monaten; abgelaufene Einladungen,
+                Sitzungswiderrufe und vergleichbare kurzlebige
+                Sicherheitsartefakte werden nach 30 Tagen bereinigt.
               </p>
             </Section>
 
@@ -299,7 +308,7 @@ export default function AppPrivacy() {
                   className="mt-0.5 size-3.5 shrink-0"
                   aria-hidden="true"
                 />
-                Version 1.1 · Stand: 01.10.2026. Dieser Hinweis beschreibt den
+                Version 1.2 · Stand: 02.10.2026. Dieser Hinweis beschreibt den
                 geschlossenen Pilotbetrieb und wird bei neuen Funktionen,
                 Dienstleistern oder verbindlichen betrieblichen Änderungen
                 aktualisiert.

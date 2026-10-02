@@ -3,7 +3,6 @@ import {
   cleanupExpiredClosedEvents,
   cleanupExpiredOperationalAuditLogs,
   cleanupExpiredProtectedHelperPdfShares,
-  cleanupExpiredPublicDemoSourceSelections,
   cleanupExpiredTransientSecurityRecords,
   cleanupExpiredTeamNoteTypings,
   cleanupExpiredTeamNotes,
@@ -30,7 +29,6 @@ export async function handleTeamNotesCleanupHeartbeat(
     const [
       expiredNotesDeleted,
       expiredTypingDeleted,
-      expiredDemoSourceSelectionsDeleted,
       expiredPdfSharesDeleted,
       expiredTransientSecurityRecords,
       expiredOperationalAuditLogs,
@@ -38,7 +36,6 @@ export async function handleTeamNotesCleanupHeartbeat(
     ] = await Promise.all([
       cleanupExpiredTeamNotes(now),
       cleanupExpiredTeamNoteTypings(now),
-      cleanupExpiredPublicDemoSourceSelections(now),
       cleanupExpiredProtectedHelperPdfShares(now),
       cleanupExpiredTransientSecurityRecords(now),
       cleanupExpiredOperationalAuditLogs(now),
@@ -49,7 +46,6 @@ export async function handleTeamNotesCleanupHeartbeat(
       ok: true,
       expiredNotesDeleted,
       expiredTypingDeleted,
-      expiredDemoSourceSelectionsDeleted,
       expiredPdfSharesDeleted,
       expiredTransientSecurityRecords,
       expiredOperationalAuditLogs,

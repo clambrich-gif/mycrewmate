@@ -390,10 +390,8 @@ export const platformLaunchSettings = mysqlTable("platform_launch_settings", {
 });
 
 /**
- * Freiwillige, nicht personenbezogene Selbstauskunft auf der QR-Zielseite.
- * Es werden weder Name, E-Mail, Gerätekennung noch IP-Adresse in dieser Tabelle
- * gespeichert; der optionale Veranstaltungsname hilft nur bei der Auswertung
- * physischer Auslageorte.
+ * Historischer Tabelleneintrag zur Datenbanksynchronisierung.
+ * Die Tabelle wird aktiv nicht mehr befüllt (seit 02.10.2026 speicherfreie Musterdemo).
  */
 export const publicDemoSourceSelections = mysqlTable(
   "public_demo_source_selections",

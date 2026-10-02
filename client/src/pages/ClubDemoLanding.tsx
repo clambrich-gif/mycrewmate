@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button";
-import { trpc } from "@/lib/trpc";
 import {
   ArrowRight,
   CalendarDays,
@@ -16,49 +15,9 @@ import {
   ShieldCheck,
   UsersRound,
 } from "lucide-react";
-import { useMemo, useState } from "react";
 import { Link } from "wouter";
 
 const WORDMARK = "/brand/mycrewmate-wordmark.png";
-
-type DemoSource =
-  | "cycling_event"
-  | "club_event"
-  | "recommendation"
-  | "online"
-  | "other";
-
-const sourceOptions: Array<{
-  id: DemoSource;
-  title: string;
-  detail: string;
-}> = [
-  {
-    id: "cycling_event",
-    title: "Radsportveranstaltung",
-    detail: "z. B. RTF, Marathon, Rennen oder Gravel-Event",
-  },
-  {
-    id: "club_event",
-    title: "Vereins- oder Festveranstaltung",
-    detail: "z. B. Kirmes, Schützenfest, Feuerwehr oder Sportfest",
-  },
-  {
-    id: "recommendation",
-    title: "Empfehlung aus dem Verein",
-    detail: "Die Karte wurde mir persönlich weitergegeben",
-  },
-  {
-    id: "online",
-    title: "Online entdeckt",
-    detail: "Website, Social Media oder Suche",
-  },
-  {
-    id: "other",
-    title: "Anderer Ort",
-    detail: "Ich möchte den Auslageort nicht näher angeben",
-  },
-];
 
 const planningPhases = [
   {
@@ -105,27 +64,6 @@ const demoModules = [
 ];
 
 export default function ClubDemoLanding() {
-  const [source, setSource] = useState<DemoSource | null>(null);
-  const [sourceRecorded, setSourceRecorded] = useState(false);
-  const recordSource = trpc.publicDemo.recordSource.useMutation();
-
-  const selectedSource = useMemo(
-    () => sourceOptions.find(option => option.id === source) ?? null,
-    [source]
-  );
-  const continueToDemo = async () => {
-    if (sourceRecorded) return;
-    if (!source) return;
-    try {
-      await recordSource.mutateAsync({ source });
-    } catch {
-      // Die Vereinsdemo bleibt erreichbar, auch falls die optionale Auswertung
-      // vorübergehend nicht verfügbar ist. Es werden dabei keine Eingaben erneut versucht.
-    } finally {
-      setSourceRecorded(true);
-    }
-  };
-
   return (
     <main className="min-h-screen bg-[#f8fafc] text-slate-950">
       <header className="border-b border-slate-200 bg-white/95 backdrop-blur">
@@ -141,62 +79,27 @@ export default function ClubDemoLanding() {
         </div>
       </header>
 
-      {!sourceRecorded && (
-        <section className="border-b border-orange-200 bg-orange-50/70">
-          <div className="mx-auto grid max-w-6xl gap-6 px-4 py-9 sm:px-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end lg:px-8">
-            <div>
-              <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-orange-700">
-                <ScanLine className="size-4" aria-hidden="true" /> Willkommen bei MyCrewMate
-              </p>
-              <h1 className="mt-3 max-w-3xl text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-                Schön, dass ihr euch für gute Vereinsplanung interessiert.
-              </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
-                Damit wir die Auslageorte unserer Checkkarten grob verstehen: Wo habt ihr die Karte entdeckt? Die Angabe ist freiwillig. Wir speichern nur die ausgewählte Kategorie für maximal 30 Tage – ohne Namen, Kontaktdaten oder Freitext.
-              </p>
-              <div className="mt-5 grid gap-2 sm:grid-cols-2">
-                {sourceOptions.map(option => {
-                  const active = source === option.id;
-                  return (
-                    <button
-                      key={option.id}
-                      type="button"
-                      onClick={() => setSource(option.id)}
-                      className={`rounded-xl border p-3 text-left transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-200 ${active ? "border-blue-600 bg-blue-50 shadow-sm" : "border-slate-200 bg-white hover:border-blue-300"}`}
-                      aria-pressed={active}
-                    >
-                      <span className="block text-sm font-black text-slate-950">{option.title}</span>
-                      <span className="mt-0.5 block text-xs leading-5 text-slate-600">{option.detail}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm font-black text-slate-950">{selectedSource ? selectedSource.title : "Auslageort auswählen"}</p>
-              <p className="mt-3 text-xs leading-5 text-slate-500">
-                Details zur Verarbeitung stehen im <a href="/datenschutz" className="font-semibold text-blue-700 underline underline-offset-2">Datenschutzhinweis</a>.
-              </p>
-              <Button
-                type="button"
-                disabled={!source || recordSource.isPending}
-                onClick={() => void continueToDemo()}
-                className="mt-5 h-11 w-full rounded-xl bg-blue-600 font-bold text-white hover:bg-blue-700 disabled:opacity-45"
-              >
-                {recordSource.isPending ? "Öffne Vereinsdemo …" : "Vereinsdemo ansehen"}
-                <ArrowRight className="size-4" aria-hidden="true" />
-              </Button>
-              <button
-                type="button"
-                onClick={() => setSourceRecorded(true)}
-                className="mx-auto mt-3 block text-xs font-semibold text-slate-500 underline-offset-2 hover:text-blue-700 hover:underline"
-              >
-                Ohne Angabe fortfahren
-              </button>
-            </div>
+      <section className="border-b border-orange-200 bg-orange-50/70">
+        <div className="mx-auto grid max-w-6xl gap-6 px-4 py-9 sm:px-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end lg:px-8">
+          <div>
+            <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-orange-700">
+              <ScanLine className="size-4" aria-hidden="true" /> Willkommen bei MyCrewMate
+            </p>
+            <h1 className="mt-3 max-w-3xl text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+              So kann klare Vereinsplanung aussehen.
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+              Diese unverbindliche Musterdemo zeigt ausschließlich fiktive Beispiele. Es gibt hier keine Anmeldung, keine Eingabefelder und keine Auswertung von Besuchenden.
+            </p>
           </div>
-        </section>
-      )}
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-black text-slate-950">Datensparsame Musterdemo</p>
+            <p className="mt-3 text-xs leading-5 text-slate-500">
+              Der Aufruf dieser Seite löst keine zusätzliche Demo-Datenerhebung aus. Details zu technisch erforderlichen Serverprotokollen stehen im <a href="/datenschutz" className="font-semibold text-blue-700 underline underline-offset-2">Datenschutzhinweis</a>.
+            </p>
+          </div>
+        </div>
+      </section>
 
       <section className="relative isolate overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 text-white">
         <div className="absolute -right-24 top-0 h-80 w-80 rounded-full bg-orange-500/20 blur-3xl" aria-hidden="true" />

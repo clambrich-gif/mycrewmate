@@ -1,6 +1,6 @@
 # Vereinbarung zur Auftragsverarbeitung (AVV) für MyCrewMate
 
-> **Version 1.2, Stand 01.10.2026.** Diese Vereinbarung wird beim digitalen Vertragsabschluss in elektronischem Format bestätigt. Sie dokumentiert den vereinbarten Auftragsverarbeitungsrahmen und ersetzt keine individuelle Rechtsberatung für Sonderfälle eines Vereins.
+> **Version 1.3, Stand 02.10.2026.** Diese Vereinbarung wird beim digitalen Vertragsabschluss in elektronischem Format bestätigt. Sie dokumentiert den vereinbarten Auftragsverarbeitungsrahmen und ersetzt keine individuelle Rechtsberatung für Sonderfälle eines Vereins.
 
 ## Vertragsparteien
 
@@ -108,7 +108,7 @@ MyCrewMate informiert den Verein ohne unangemessene Verzögerung über bekannt g
 
 ## 8. Rückgabe, Löschung und Aufbewahrung
 
-Nach Ende des Hauptvertrags gibt MyCrewMate die Mandantendaten nach Weisung des Vereins zurück oder löscht sie, sofern keine gesetzliche Aufbewahrungspflicht entgegensteht. Für abgeschlossene Veranstaltungen ist im Regelprozess eine dreijährige Aufbewahrung ab Veranstaltungsabschluss vorgesehen; der Verein kann eine frühere Löschung veranlassen, soweit keine rechtliche Pflicht oder dokumentierte Notwendigkeit entgegensteht.
+Nach Ende des Hauptvertrags gibt MyCrewMate die Mandantendaten nach Weisung des Vereins zurück oder löscht sie, sofern keine gesetzliche Aufbewahrungspflicht entgegensteht. Für abgeschlossene Veranstaltungen ist im Regelprozess eine dreijährige Aufbewahrung ab Veranstaltungsabschluss vorgesehen; der Verein kann eine frühere Löschung veranlassen, soweit keine rechtliche Pflicht oder dokumentierte Notwendigkeit entgegensteht. Geschlossene Veranstaltungen ohne dokumentierte Ausnahme werden einschließlich zugehöriger Planungs- und Uploaddaten technisch automatisiert bereinigt.
 
 Buchhaltungs-, Steuer- oder vertragsrelevante Unterlagen können längeren gesetzlichen Fristen unterliegen. Der Verein entscheidet und dokumentiert diese Ausnahmen. Datenbank und Upload-Volume werden täglich gesichert; die Sicherungen werden zusätzlich in Hetzner Object Storage abgelegt und auf sieben Wiederherstellungspunkte begrenzt. Sicherungen dienen ausschließlich der Wiederherstellung und werden nicht für neue Zwecke verarbeitet.
 
@@ -134,7 +134,7 @@ Diese Vereinbarung wird gemäß Art. 28 Abs. 9 DSGVO in elektronischem Format ge
 | PDF-Freigaben           | Sieben-Tage-Laufzeit, Zugangscode, sofortiger Widerruf, Teamansicht nur bei bewusster Auswahl | laufender Betrieb |
 | Verfügbarkeitskontrolle | tägliche Datenbank- und Volume-Sicherungen, Wiederherstellung nach Verfahren | tägliche Sicherung; Restore-Test dokumentieren |
 | Trennung                | Tenant-/Event-Scopes, serverseitige Berechtigungstests | laufender Betrieb |
-| Löschkonzept            | Dreijahresregel, frühere Vereinsweisung, dokumentierte Ausnahmen | Version 1.0 vom 01.10.2026 |
+| Löschkonzept            | Dreijahresregel, frühere Vereinsweisung, dokumentierte Ausnahmen; stündliche technische Bereinigung | Version 1.1 vom 02.10.2026 |
 | Incident-Prozess        | Meldung ohne unangemessene Verzögerung an die vereinbarten Kontakte | info@mycrewmate.de |
 
 ## Anlage 2 – Freigegebene Unterauftragsverarbeiter

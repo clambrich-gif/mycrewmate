@@ -43,13 +43,13 @@ Es gilt deutsches Recht. Gesetzliche zwingende Zuständigkeiten bleiben unberüh
   avv: {
     id: "avv",
     title: "Vereinbarung zur Auftragsverarbeitung (AVV)",
-    version: "1.2-2026-10-01",
+    version: "1.3-2026-10-02",
     route: "/avv",
     summary:
       "Regelt die Verarbeitung der Vereins-, Helfer- und Planungsdaten durch MyCrewMate im Auftrag des Vereins.",
     content: `# Vereinbarung zur Auftragsverarbeitung (AVV)
 
-Version 1.2 · Stand 01.10.2026
+Version 1.3 · Stand 02.10.2026
 
 ## 1. Vertragsparteien
 Der bei der Aktivierung benannte Verein ist Verantwortlicher im Sinne von Art. 4 Nr. 7 DSGVO. Christian Lambrich / MyCrewMate, Eichenweg 4, 56729 Nachtsheim, Deutschland, Datenschutzkontakt: info@mycrewmate.de, ist Auftragsverarbeiter im Sinne von Art. 4 Nr. 8 DSGVO.
@@ -81,21 +81,21 @@ Der Verein darf die Einhaltung dieser Vereinbarung nach angemessener Vorankündi
   privacy: {
     id: "privacy",
     title: "Datenschutzhinweise für die MyCrewMate-App",
-    version: "1.2-2026-10-01",
+    version: "1.3-2026-10-02",
     route: "/datenschutz",
     summary:
       "Erläutern Verantwortlichkeiten, Zwecke, Speicherdauer, Karten- und Kommunikationsfunktionen der App.",
     content: `# Datenschutzhinweise für die MyCrewMate-App
 
-Version 1.2 · Stand 01.10.2026
+Version 1.3 · Stand 02.10.2026
 
 Für die Verarbeitung der Vereins-, Helfer- und Veranstaltungsdaten ist regelmäßig der jeweilige Verein verantwortlich. MyCrewMate verarbeitet diese Mandantendaten im Auftrag des Vereins. Für Plattformbetrieb, Vertragsverwaltung, Sicherheit und Abrechnung ist Christian Lambrich, Eichenweg 4, 56729 Nachtsheim, Deutschland verantwortlich. Datenschutzanfragen können an info@mycrewmate.de gerichtet werden.
 
 Die App verarbeitet je nach Nutzung Kontakt- und Zugangsdaten, Planungsdaten, Helfer-, Ansprechpartner- und Schichtdaten, organisatorische Hinweise sowie Sicherheits- und Aktivitätsprotokolle. Die Nutzung dient der Vereins- und Eventplanung. Persönliche Einsatzübersichten werden nur bei bewusster Freigabe erstellt, sind sieben Tage gültig, mit einem getrennten Zugangscode geschützt und können sofort widerrufen werden.
 
-Die Anwendung wird auf Hetzner-Infrastruktur betrieben. Erforderliche transaktionale E-Mails werden über den Hetzner-Maildienst versandt. Datenbank und Upload-Volume werden täglich gesichert; Sicherungen liegen zusätzlich in Hetzner Object Storage. Die optionale Kartenansicht bindet OpenStreetMap und OpenTopoMap erst beim Aufruf der Karte ein. Der WhatsApp-Button öffnet erst nach einem bewussten Klick einen externen Chat.
+Die Anwendung, Datenbank, Upload-Volume und Sicherungen werden in der Hetzner-Betriebsumgebung in Deutschland betrieben. Erforderliche transaktionale E-Mails werden über den Hetzner-Maildienst versandt. Datenbank und Upload-Volume werden täglich gesichert; Sicherungen liegen zusätzlich in Hetzner Object Storage. Die optionale Kartenansicht bindet OpenStreetMap und OpenTopoMap erst beim Aufruf der Karte ein. Der WhatsApp-Button öffnet erst nach einem bewussten Klick einen externen Chat.
 
-Abgeschlossene Veranstaltungen werden regulär drei Jahre ab Abschluss aufbewahrt, sofern keine frühere Löschweisung oder gesetzliche Aufbewahrungspflicht entgegensteht. Betroffene Personen haben nach Maßgabe der DSGVO Rechte auf Auskunft, Berichtigung, Löschung, Einschränkung, Widerspruch und Datenübertragbarkeit sowie ein Beschwerderecht bei einer Datenschutzaufsichtsbehörde.`,
+Abgeschlossene Veranstaltungen werden regulär drei Jahre ab Abschluss aufbewahrt, sofern keine frühere Löschweisung oder gesetzliche Aufbewahrungspflicht entgegensteht. Geschlossene Veranstaltungen ohne dokumentierte Ausnahme werden einschließlich zugehöriger Planungs- und Uploaddaten automatisiert bereinigt. Operative Sicherheits-, Login- und Aktivitätsprotokolle werden regulär zwölf Monate, abgelaufene Einladungen, Sitzungswiderrufe und vergleichbare kurzlebige Sicherheitsartefakte 30 Tage aufbewahrt. Betroffene Personen haben nach Maßgabe der DSGVO Rechte auf Auskunft, Berichtigung, Löschung, Einschränkung, Widerspruch und Datenübertragbarkeit sowie ein Beschwerderecht bei einer Datenschutzaufsichtsbehörde.`,
   },
 } as const;
 

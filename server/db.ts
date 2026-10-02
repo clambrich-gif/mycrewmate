@@ -48,7 +48,6 @@ import {
   platformTenantHandoffs,
   postTasks,
   protectedHelperPdfShares,
-  publicDemoSourceSelections,
   prepTasks,
   revokedSessions,
   securitySettings,
@@ -185,38 +184,10 @@ export async function getDb(): Promise<DBClient | null> {
   return _db;
 }
 
-/** Freiwillige QR-Herkunft: nur feste Kategorie, kein Freitext und keine Kontaktdaten. */
-export async function recordPublicDemoSourceSelection(input: {
-  source: "cycling_event" | "club_event" | "recommendation" | "online" | "other";
-}) {
-  const database = await getDb();
-  if (!database) return { recorded: false } as const;
-  await cleanupExpiredPublicDemoSourceSelections(undefined, database);
-  await database.insert(publicDemoSourceSelections).values({
-    source: input.source,
-  });
-  return { recorded: true } as const;
-}
-
-/** Auslageort-Auswertung ist nur für die kurzfristige Kampagnenauswertung nötig. */
-export const PUBLIC_DEMO_SOURCE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 /** Operative Sicherheits- und Aktivitätsprotokolle bleiben zwölf Monate abrufbar. */
 export const OPERATIONAL_AUDIT_LOG_TTL_MS = 365 * 24 * 60 * 60 * 1000;
 /** Abgelaufene Einladungen, Übergaben und Sitzungswiderrufe sind nach 30 Tagen entbehrlich. */
 export const TRANSIENT_SECURITY_RECORD_TTL_MS = 30 * 24 * 60 * 60 * 1000;
-
-export async function cleanupExpiredPublicDemoSourceSelections(
-  now = new Date(),
-  databaseOverride?: DBClient
-) {
-  const database = databaseOverride ?? (await getDb());
-  if (!database) return 0;
-  const threshold = new Date(now.getTime() - PUBLIC_DEMO_SOURCE_TTL_MS);
-  const [result]: any = await (database as DB)
-    .delete(publicDemoSourceSelections)
-    .where(lt(publicDemoSourceSelections.createdAt, threshold));
-  return affectedRows(result);
-}
 
 /** Entfernt abgelaufene, nicht mehr benötigte Sicherheitsartefakte. */
 export async function cleanupExpiredTransientSecurityRecords(now = new Date()) {

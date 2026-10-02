@@ -78,7 +78,7 @@ export function PublicImpressumPage() {
         <h2 className="text-base font-bold text-slate-950">Kontakt</h2>
         <p className="mt-2">
           Telefon: <a className="text-blue-700 underline underline-offset-2" href="tel:+491745111984">0174 5111984</a><br />
-          E-Mail: <a className="text-blue-700 underline underline-offset-2" href="mailto:clambrich@gmail.com">clambrich@gmail.com</a>
+          E-Mail: <a className="text-blue-700 underline underline-offset-2" href="mailto:info@mycrewmate.de">info@mycrewmate.de</a>
         </p>
       </section>
       <section>
@@ -106,19 +106,19 @@ export function PublicPrivacyPage() {
     <PublicLegalShell icon={ShieldCheck} title="Datenschutz">
       <section>
         <h2 className="text-base font-bold text-slate-950">1. Verantwortlicher</h2>
-        <p className="mt-2">Christian Lambrich, Eichenweg 4, 56729 Nachtsheim, Deutschland. E-Mail: <a className="text-blue-700 underline underline-offset-2" href="mailto:clambrich@gmail.com">clambrich@gmail.com</a></p>
+        <p className="mt-2">Christian Lambrich, Eichenweg 4, 56729 Nachtsheim, Deutschland. Datenschutzkontakt: <a className="text-blue-700 underline underline-offset-2" href="mailto:info@mycrewmate.de">info@mycrewmate.de</a></p>
       </section>
       <section>
         <h2 className="text-base font-bold text-slate-950">2. Zweck und Umfang</h2>
         <p className="mt-2">Diese öffentliche Musterseite dient ausschließlich der Produktinformation. Sie enthält keinen Newsletter, kein Kontaktformular, keine Zahlungsabwicklung und keine Analyse- oder Werbetracker. Der dargestellte Warenkorb und Checkout sind lokal simuliert; eingegebene Musterdaten werden nicht an einen Server übertragen und nicht gespeichert.</p>
       </section>
       <section>
-        <h2 className="text-base font-bold text-slate-950">2.1 Freiwillige Herkunftsangabe auf der Vereinsdemo</h2>
-        <p className="mt-2">Beim Aufruf über eine ausgelegte QR-Checkkarte kann freiwillig ausgewählt werden, ob die Karte bei einer Radsport- oder Vereinsveranstaltung, über eine Empfehlung, online oder an einem anderen Ort entdeckt wurde. Optional kann ein Veranstaltungsname angegeben werden. Für diese Auswertung speichern wir ausschließlich die gewählte Kategorie, den optionalen Veranstaltungsnamen und den Zeitpunkt. Name, E-Mail-Adresse, Gerätekennung oder IP-Adresse werden hierfür nicht in einer MyCrewMate-Auswertung gespeichert. Die Auswahl kann übersprungen werden.</p>
+        <h2 className="text-base font-bold text-slate-950">2.1 Vereinsdemo mit fiktiven Daten</h2>
+        <p className="mt-2">Die über QR-Codes erreichbare Vereinsdemo zeigt ausschließlich fiktive Musterdaten. Sie enthält keine Eingabefelder, keine Anmeldung und keine Herkunfts- oder Nutzungsanalyse. Beim Aufruf wird deshalb keine zusätzliche Demo-Datenerhebung durch MyCrewMate ausgelöst.</p>
       </section>
       <section>
         <h2 className="text-base font-bold text-slate-950">3. Technische Zugriffe</h2>
-        <p className="mt-2">Beim Aufruf einer Website verarbeitet der Hosting-Anbieter technisch erforderliche Verbindungsdaten in Serverprotokollen, insbesondere IP-Adresse, Zeitpunkt, angeforderte Seite und technische Browserinformationen. Die Verarbeitung erfolgt zur Bereitstellung und Sicherheit der Website auf Grundlage von Art. 6 Abs. 1 lit. f DSGVO.</p>
+        <p className="mt-2">Beim Aufruf einer Website verarbeitet der Hosting-Anbieter technisch erforderliche Verbindungsdaten in Serverprotokollen, insbesondere IP-Adresse, Zeitpunkt, angeforderte Seite und technische Browserinformationen. Die Verarbeitung erfolgt zur Bereitstellung und Sicherheit der Website auf Grundlage von Art. 6 Abs. 1 lit. f DSGVO. Die öffentliche Produktseite wird auf Infrastruktur der Hetzner Online GmbH in Deutschland betrieben.</p>
       </section>
       <section>
         <h2 className="text-base font-bold text-slate-950">4. Login zur Vereins- und Eventplanung</h2>
