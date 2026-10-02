@@ -1,4 +1,5 @@
 import { useAuth } from "@/_core/hooks/useAuth";
+import { MfaEnrollmentQr } from "@/components/MfaEnrollmentQr";
 import { PageTitle } from "@/components/PageTitle";
 import { KlemmiSurfaceGuide } from "@/components/KlemmiSurfaceGuide";
 import { PlanningTeamAccessManager } from "@/components/PlanningTeamAccessManager";
@@ -199,6 +200,7 @@ function MfaManager() {
   const status = trpc.auth.mfaStatus.useQuery();
   const [setup, setSetup] = useState<{
     secret: string;
+    otpauthUri: string;
     recoveryCodes: string[];
   } | null>(null);
   const [code, setCode] = useState("");
@@ -206,7 +208,11 @@ function MfaManager() {
   const [disablePassword, setDisablePassword] = useState("");
   const begin = trpc.auth.beginMfaEnrollment.useMutation({
     onSuccess: result => {
-      setSetup({ secret: result.secret, recoveryCodes: result.recoveryCodes });
+      setSetup({
+        secret: result.secret,
+        otpauthUri: result.otpauthUri,
+        recoveryCodes: result.recoveryCodes,
+      });
       setCode("");
       setCurrentPassword("");
     },
@@ -293,29 +299,41 @@ function MfaManager() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
-        <p className="font-semibold">1. MyCrewMate in Ihrer Authenticator-App hinzufügen</p>
+      <section className="rounded-xl border border-blue-200 bg-blue-50/70 p-4 text-sm text-blue-950">
+        <p className="font-semibold">1. QR-Code mit der Authenticator-App scannen</p>
         <p className="mt-1 text-xs leading-5 text-blue-900">
-          Wählen Sie in der App „Schlüssel manuell eingeben“ und tragen Sie diesen einmaligen Schlüssel ein:
+          Öffnen Sie Ihre Authenticator-App, wählen Sie „Konto hinzufügen“ und scannen Sie den QR-Code. Der Schlüssel wird vollständig lokal im Browser erzeugt und nicht an einen externen QR-Dienst übertragen.
         </p>
-        <p className="mt-2 text-xs text-blue-900"><strong>Hinweis:</strong> Der Schlüssel verwendet Base32 (A–Z und 2–7). Das Zeichen <strong>O</strong> ist immer der Buchstabe O (Otto) – eine Ziffer <strong>0 (Null)</strong> existiert im Schlüssel niemals.</p>
-        <code className="mt-3 block select-all break-all rounded-lg bg-white px-3 py-2 font-mono text-xs text-slate-950 ring-1 ring-blue-200">
+        <MfaEnrollmentQr
+          otpauthUri={setup.otpauthUri}
+          alt="QR-Code für die MFA-Einrichtung des Vereinsadministratorzugangs"
+          className="mx-auto mt-4"
+        />
+      </section>
+      <details className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-800">
+        <summary className="cursor-pointer font-semibold text-slate-950">
+          QR-Code kann nicht gescannt werden? Schlüssel manuell eingeben
+        </summary>
+        <p className="mt-2 text-xs leading-5 text-slate-700">
+          Nur als Ausweichweg: Der Schlüssel nutzt Base32 (A–Z und 2–7). Eine Ziffer <strong>0</strong> kommt darin nie vor; ein <strong>O</strong> ist immer ein Buchstabe.
+        </p>
+        <code className="mt-3 block select-all break-all rounded-lg bg-slate-50 px-3 py-2 font-mono text-xs text-slate-950 ring-1 ring-blue-200 [font-variant-numeric:slashed-zero]">
           {setup.secret}
         </code>
-      </div>
+      </details>
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
         <p className="font-semibold">2. Wiederherstellungscodes sicher offline aufbewahren</p>
         <p className="mt-1 text-xs leading-5 text-amber-900">
           Jeder Code funktioniert genau einmal. Speichern Sie sie in einem Passwortmanager oder drucken Sie sie aus; sie werden nach diesem Schritt nicht erneut angezeigt.
         </p>
         <div className="mt-3 grid grid-cols-2 gap-2 font-mono text-xs text-slate-900 sm:grid-cols-4">
-          {setup.recoveryCodes.map(recoveryCode => <code key={recoveryCode} className="rounded bg-white px-2 py-1.5 text-center ring-1 ring-amber-200">{recoveryCode}</code>)}
+          {setup.recoveryCodes.map(recoveryCode => <code key={recoveryCode} className="rounded bg-white px-2 py-1.5 text-center ring-1 ring-amber-200 [font-variant-numeric:slashed-zero]">{recoveryCode}</code>)}
         </div>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="mfa-confirm-code">3. Aktueller App-Code</Label>
-          <Input id="mfa-confirm-code" inputMode="numeric" autoComplete="one-time-code" value={code} onChange={event => setCode(event.target.value)} placeholder="123456" />
+          <Input id="mfa-confirm-code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={event => setCode(event.target.value)} placeholder="123456" />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="mfa-confirm-password">Administratorpasswort</Label>

@@ -281,4 +281,20 @@ describe("Erst-Login-Onboarding", () => {
     });
     expect(completeSpy).toHaveBeenCalledWith(701);
   });
+
+  it("weist neue Vereinsadministratoren nach der Erstanmeldung auf die optionale QR-MFA hin", () => {
+    const onboarding = readFileSync(
+      path.resolve(process.cwd(), "client/src/components/FirstLoginOnboarding.tsx"),
+      "utf8"
+    );
+    const layout = readFileSync(
+      path.resolve(process.cwd(), "client/src/components/Layout.tsx"),
+      "utf8"
+    );
+
+    expect(onboarding).toContain("isPersonalTenantAdmin?: boolean");
+    expect(onboarding).toContain("optionale zweite Anmeldestufe direkt per QR-Code");
+    expect(layout).toContain("isPersonalTenantAdmin={");
+    expect(layout).toContain('user.openId.startsWith("tenant-admin:")');
+  });
 });

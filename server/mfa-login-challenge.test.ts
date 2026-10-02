@@ -32,13 +32,16 @@ afterEach(async () => {
 });
 
 describe("MFA-Login-Challenge", () => {
-  it("akzeptiert eine gültige Challenge exakt einmal und erkennt den MySQL-ResultSetHeader", async () => {
-    const hash = tokenHash();
-    await createMfaLoginChallenge({ tokenHash: hash, subjectType: "master" });
+  it.each(["master", "tenant_admin"] as const)(
+    "akzeptiert eine gültige %s-Challenge exakt einmal und erkennt den MySQL-ResultSetHeader",
+    async subjectType => {
+      const hash = tokenHash();
+      await createMfaLoginChallenge({ tokenHash: hash, subjectType });
 
-    expect(await getMfaLoginChallenge(hash)).not.toBeNull();
-    expect(await consumeMfaLoginChallenge(hash)).toBe(true);
-    expect(await getMfaLoginChallenge(hash)).toBeNull();
-    expect(await consumeMfaLoginChallenge(hash)).toBe(false);
-  });
+      expect(await getMfaLoginChallenge(hash)).not.toBeNull();
+      expect(await consumeMfaLoginChallenge(hash)).toBe(true);
+      expect(await getMfaLoginChallenge(hash)).toBeNull();
+      expect(await consumeMfaLoginChallenge(hash)).toBe(false);
+    }
+  );
 });

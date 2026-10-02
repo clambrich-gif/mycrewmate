@@ -1783,6 +1783,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
         open={isKlemmiIntroPreview || firstLoginOnboarding.data?.pending === true}
         name={firstLoginOnboarding.data?.name ?? user?.name ?? "Planungsteam"}
         isCoAdmin={firstLoginOnboarding.data?.isCoAdmin === true}
+        isPersonalTenantAdmin={
+          user?.role === "admin" && user.openId.startsWith("tenant-admin:")
+        }
         startAtKlemmi={isKlemmiIntroPreview}
         completing={completeFirstLoginOnboarding.isPending}
         onComplete={isKlemmiIntroPreview ? finishKlemmiIntroPreview : finishFirstLoginOnboarding}

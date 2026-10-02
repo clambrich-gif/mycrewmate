@@ -18,6 +18,7 @@ describe("Punkt 3: Sicherheits- und Berechtigungs-Hardening", () => {
   const coreIndex = source("server/_core/index.ts");
   const rateLimit = source("server/public-share-rate-limit.ts");
   const db = source("server/db.ts");
+  const securityUi = source("client/src/pages/Security.tsx");
 
   it("schützt kritische administrative Mutationen mit Admin- und Produktgates", () => {
     // Schichten, Berechtigungen, Wiederherstellung, Backups, Events
@@ -102,5 +103,13 @@ describe("Punkt 3: Sicherheits- und Berechtigungs-Hardening", () => {
     expect(routers).not.toContain("false && Boolean(masterMfa?.enabled");
     expect(coreIndex).not.toContain("emergencyResetAllMfa");
     expect(db).not.toContain("export async function emergencyResetAllMfa");
+  });
+
+  it("bietet Vereinsadministratoren die gleiche QR-gestützte MFA-Einrichtung wie dem Masterzugang", () => {
+    expect(securityUi).toContain('import { MfaEnrollmentQr } from "@/components/MfaEnrollmentQr"');
+    expect(securityUi).toContain("otpauthUri: result.otpauthUri");
+    expect(securityUi).toContain("QR-Code für die MFA-Einrichtung des Vereinsadministratorzugangs");
+    expect(securityUi).toContain("QR-Code kann nicht gescannt werden? Schlüssel manuell eingeben");
+    expect(securityUi).toContain('maxLength={6}');
   });
 });

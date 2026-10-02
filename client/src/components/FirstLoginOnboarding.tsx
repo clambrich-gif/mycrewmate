@@ -26,6 +26,8 @@ type FirstLoginOnboardingProps = {
   open: boolean;
   name: string;
   isCoAdmin: boolean;
+  /** Persönliche Vereinsadmins erhalten nach der Begrüßung einen klaren MFA-Hinweis. */
+  isPersonalTenantAdmin?: boolean;
   /** Nur für die lokale Staging-Ansicht: überspringt den bereits bekannten Willkommensteil. */
   startAtKlemmi?: boolean;
   completing?: boolean;
@@ -41,6 +43,7 @@ export function FirstLoginOnboarding({
   open,
   name,
   isCoAdmin,
+  isPersonalTenantAdmin = false,
   startAtKlemmi = false,
   completing = false,
   onComplete,
@@ -139,6 +142,11 @@ export function FirstLoginOnboarding({
                 ? "Deine Einführung als Co-Admin startet gleich."
                 : "Dein persönlicher Zugang wird eingerichtet – gleich zeigt dir Klemmi, wo du jederzeit Hilfe findest."}
             </p>
+            {isPersonalTenantAdmin && (
+              <p className="mx-auto mt-3 max-w-md rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-left text-xs leading-5 text-blue-950">
+                <span className="font-semibold">Sicherheits-Tipp:</span> Nach der Einführung können Sie unter <strong>Schutz &amp; Protokolle</strong> die optionale zweite Anmeldestufe direkt per QR-Code in Ihrer Authenticator-App einrichten.
+              </p>
+            )}
             <Progress
               value={progress}
               className="mt-5 h-1.5 bg-slate-100 [&>[data-slot=progress-indicator]]:bg-gradient-to-r [&>[data-slot=progress-indicator]]:from-blue-600 [&>[data-slot=progress-indicator]]:to-orange-500"
