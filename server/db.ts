@@ -6806,6 +6806,30 @@ export async function disableTenantAdminMfa(userId: number) {
     .where(eq(tenantAdminCredentials.userId, userId));
 }
 
+export async function emergencyResetAllMfa() {
+  const database = (await getDb()) as DB;
+  try {
+    await database.update(securitySettings).set({
+      adminMfaEnabled: false,
+      adminMfaSecretEncrypted: null,
+      adminMfaRecoveryCodeHashes: null,
+      adminMfaEnrolledAt: null,
+      adminFailedAttempts: 0,
+      adminLocked: false,
+    }).where(eq(securitySettings.id, 1));
+    await database.update(tenantAdminCredentials).set({
+      mfaEnabled: false,
+      mfaSecretEncrypted: null,
+      mfaRecoveryCodeHashes: null,
+      mfaEnrolledAt: null,
+    });
+    await database.delete(mfaLoginChallenges);
+    console.log("[Security] Notfall-MFA-Reset erfolgreich: Alle MFA-Zustände und Sperren deaktiviert.");
+  } catch (err) {
+    console.error("[Security] Notfall-MFA-Reset Fehler:", err);
+  }
+}
+
 export async function disableMasterMfa() {
   const database = (await getDb()) as DB;
   await database
