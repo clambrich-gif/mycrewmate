@@ -73,6 +73,13 @@ import {
   verifyRecoveryKey,
 } from "./password-auth";
 import {
+  buildTotpUri,
+  createRecoveryCodes,
+  createTotpSecret,
+  recoveryCodeMatches,
+  verifyTotpCode,
+} from "./mfa";
+import {
   createAllHelperTaskZip,
   createBlankPlanPdf,
   createContactOverviewPdf,
@@ -152,6 +159,7 @@ const MASTER_RESET_TTL_MINUTES = 30;
 const MASTER_RESET_REQUEST_WINDOW_MS = 15 * 60 * 1000;
 const MASTER_RESET_REQUEST_LIMIT = 3;
 const masterResetRequestAttempts = new Map<string, { count: number; resetAt: number }>();
+const MFA_CHALLENGE_TOKEN_BYTES = 32;
 
 async function safelyRecordPresence(
   req: Parameters<typeof recordSessionPresence>[0],
@@ -178,6 +186,19 @@ async function safelyRecordPresence(
 /** Speichert zufällige Einmal-Token ausschließlich als deterministischen Hash. */
 function hashOpaqueToken(rawToken: string) {
   return createHash("sha256").update(rawToken).digest("hex");
+}
+
+async function issueMfaLoginChallenge(input: {
+  subjectType: "master" | "tenant_admin";
+  userId?: number | null;
+}) {
+  const token = randomBytes(MFA_CHALLENGE_TOKEN_BYTES).toString("base64url");
+  await db.createMfaLoginChallenge({
+    tokenHash: hashOpaqueToken(token),
+    subjectType: input.subjectType,
+    userId: input.userId ?? null,
+  });
+  return token;
 }
 
 /** Übersetzt interne Rechtekennungen für Einladungen in verständliche Bereichsnamen. */
@@ -1925,6 +1946,20 @@ export const appRouter = router({
               message: "E-Mail oder Passwort ist nicht korrekt",
             });
           }
+          const mfa = await db.getTenantAdminMfaConfigurationByUserId(
+            adminCreds.userId
+          );
+          if (mfa?.enabled && mfa.secret) {
+            const mfaChallengeToken = await issueMfaLoginChallenge({
+              subjectType: "tenant_admin",
+              userId: adminCreds.userId,
+            });
+            return {
+              success: false,
+              requiresMfa: true,
+              mfaChallengeToken,
+            } as const;
+          }
           clearPasswordLoginFailures(clientKey);
           const tenantId = await tenantIdForFreshPersonalLogin({
             id: adminCreds.userId,
@@ -2059,6 +2094,277 @@ export const appRouter = router({
           ...(startEvent ? { startEvent } : {}),
           ...(isEmbeddedManusPreview(ctx.req) ? { previewSessionToken: token } : {}),
         } as const;
+      }),
+    verifyMfaLogin: publicProcedure
+      .input(
+        z.object({
+          mfaChallengeToken: z.string().regex(/^[A-Za-z0-9_-]{32,128}$/),
+          code: z.string().trim().min(6).max(32),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const tokenHash = hashOpaqueToken(input.mfaChallengeToken);
+        const challenge = await db.getMfaLoginChallenge(tokenHash);
+        if (!challenge) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Die Sicherheitsabfrage ist abgelaufen oder wurde bereits verwendet. Bitte melden Sie sich erneut an.",
+          });
+        }
+
+        if (challenge.subjectType === "tenant_admin" && challenge.userId) {
+          const [configuration, credentials] = await Promise.all([
+            db.getTenantAdminMfaConfigurationByUserId(challenge.userId),
+            db.getTenantAdminCredentialsByUserId(challenge.userId),
+          ]);
+          const usesAuthenticator = Boolean(
+            configuration?.secret && verifyTotpCode({ secret: configuration.secret, code: input.code })
+          );
+          const usesRecoveryCode =
+            !usesAuthenticator &&
+            Boolean(
+              configuration?.recoveryCodeHashes?.length &&
+                recoveryCodeMatches(input.code, configuration.recoveryCodeHashes)
+            );
+          if (!configuration?.enabled || !credentials || (!usesAuthenticator && !usesRecoveryCode)) {
+            await db.recordMfaLoginChallengeFailure(tokenHash);
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Der Sicherheitscode ist nicht korrekt.",
+            });
+          }
+          if (
+            usesRecoveryCode &&
+            !(await db.consumeTenantAdminMfaRecoveryCode({
+              userId: challenge.userId,
+              providedCode: input.code,
+            }))
+          ) {
+            await db.recordMfaLoginChallengeFailure(tokenHash);
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Der Sicherheitscode ist nicht korrekt.",
+            });
+          }
+          if (!(await db.consumeMfaLoginChallenge(tokenHash))) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message:
+                "Die Sicherheitsabfrage ist abgelaufen oder wurde bereits verwendet. Bitte melden Sie sich erneut an.",
+            });
+          }
+          const tenantId = await tenantIdForFreshPersonalLogin({
+            id: credentials.userId,
+            openId: credentials.userOpenId,
+          });
+          const sessionName = credentials.userName ?? credentials.email;
+          await recordSecurityActivity(
+            {
+              userId: credentials.userId,
+              name: sessionName,
+              role: "admin",
+              loginMethod: "password+mfa",
+            },
+            usesRecoveryCode
+              ? "Vereinsadministrator-Anmeldung mit Einmal-Recovery-Code erfolgreich"
+              : "Vereinsadministrator-Anmeldung mit MFA erfolgreich",
+            "created",
+            tenantId
+          );
+          const token = await sdk.createSessionToken(credentials.userOpenId, {
+            name: sessionName,
+            expiresInMs: PASSWORD_SESSION_MS,
+            sessionVersion: credentials.sessionVersion,
+          });
+          ctx.res.cookie(COOKIE_NAME, token, {
+            ...getSessionCookieOptions(ctx.req),
+            maxAge: PASSWORD_SESSION_MS,
+          });
+          return {
+            success: true,
+            tenantId,
+            mustChangePassword: credentials.mustChangePassword,
+            ...(isEmbeddedManusPreview(ctx.req) ? { previewSessionToken: token } : {}),
+          } as const;
+        }
+
+        if (challenge.subjectType === "master") {
+          const configuration = await db.getMasterMfaConfiguration();
+          const usesAuthenticator = Boolean(
+            configuration?.secret && verifyTotpCode({ secret: configuration.secret, code: input.code })
+          );
+          const usesRecoveryCode =
+            !usesAuthenticator &&
+            Boolean(
+              configuration?.recoveryCodeHashes?.length &&
+                recoveryCodeMatches(input.code, configuration.recoveryCodeHashes)
+            );
+          if (!configuration?.enabled || (!usesAuthenticator && !usesRecoveryCode)) {
+            await db.recordMfaLoginChallengeFailure(tokenHash);
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Der Sicherheitscode ist nicht korrekt.",
+            });
+          }
+          if (usesRecoveryCode && !(await db.consumeMasterMfaRecoveryCode(input.code))) {
+            await db.recordMfaLoginChallengeFailure(tokenHash);
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: "Der Sicherheitscode ist nicht korrekt.",
+            });
+          }
+          if (!(await db.consumeMfaLoginChallenge(tokenHash))) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message:
+                "Die Sicherheitsabfrage ist abgelaufen oder wurde bereits verwendet. Bitte melden Sie sich erneut an.",
+            });
+          }
+          const sessionName = "Plattform-Inhaber";
+          await db.upsertUser({
+            openId: ADMIN_PASSWORD_OPEN_ID,
+            name: sessionName,
+            loginMethod: "admin-password+mfa",
+            role: "admin",
+            lastSignedIn: new Date(),
+          });
+          await ensurePilotMembershipForMasterAdmin();
+          await recordSecurityActivity(
+            {
+              userId: 0,
+              name: sessionName,
+              role: "admin",
+              loginMethod: "admin-password+mfa",
+            },
+            usesRecoveryCode
+              ? "Master-Anmeldung mit Einmal-Recovery-Code erfolgreich"
+              : "Master-Anmeldung mit MFA erfolgreich",
+            "created",
+            null
+          );
+          const token = await sdk.createSessionToken(ADMIN_PASSWORD_OPEN_ID, {
+            name: sessionName,
+            expiresInMs: PASSWORD_SESSION_MS,
+          });
+          ctx.res.cookie(COOKIE_NAME, token, {
+            ...getSessionCookieOptions(ctx.req),
+            maxAge: PASSWORD_SESSION_MS,
+          });
+          return {
+            success: true,
+            ...(isEmbeddedManusPreview(ctx.req) ? { previewSessionToken: token } : {}),
+          } as const;
+        }
+
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Ungültige Sicherheitsabfrage." });
+      }),
+    mfaStatus: baseProtectedProcedure.query(async ({ ctx }) => {
+      const isMaster = ctx.user.openId === ADMIN_PASSWORD_OPEN_ID;
+      const isPersonalTenantAdmin =
+        ctx.user.role === "admin" && ctx.user.openId.startsWith("tenant-admin:");
+      if (!isMaster && !isPersonalTenantAdmin) {
+        return {
+          eligible: false,
+          enabled: false,
+          enrolledAt: null,
+          remainingRecoveryCodes: 0,
+        } as const;
+      }
+      const configuration = isMaster
+        ? await db.getMasterMfaConfiguration()
+        : await db.getTenantAdminMfaConfigurationByUserId(ctx.user.id);
+      return {
+        eligible: true,
+        enabled: configuration?.enabled === true && Boolean(configuration.secret),
+        enrolledAt: configuration?.enrolledAt ?? null,
+        remainingRecoveryCodes: configuration?.recoveryCodeHashes.length ?? 0,
+      } as const;
+    }),
+    beginMfaEnrollment: baseProtectedProcedure.mutation(async ({ ctx }) => {
+      const isMaster = ctx.user.openId === ADMIN_PASSWORD_OPEN_ID;
+      const isPersonalTenantAdmin =
+        ctx.user.role === "admin" && ctx.user.openId.startsWith("tenant-admin:");
+      if (!isMaster && !isPersonalTenantAdmin) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Die zweite Anmeldestufe ist nur für persönliche Administratorzugänge verfügbar.",
+        });
+      }
+      const accountName = isMaster
+        ? "Plattformverwaltung"
+        : (await db.getTenantAdminCredentialsByUserId(ctx.user.id))?.email ?? "Vereinsadministration";
+      const secret = createTotpSecret();
+      const recoveryCodes = createRecoveryCodes();
+      return {
+        secret,
+        otpauthUri: buildTotpUri({ secret, accountName }),
+        recoveryCodes,
+      } as const;
+    }),
+    confirmMfaEnrollment: baseProtectedProcedure
+      .input(
+        z.object({
+          secret: z.string().regex(/^[A-Z2-7]{16,128}$/),
+          code: z.string().trim().regex(/^\d{6}$/),
+          recoveryCodes: z.array(z.string().trim().min(8).max(16)).length(8),
+          currentPassword: z.string().min(1).max(200),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const isMaster = ctx.user.openId === ADMIN_PASSWORD_OPEN_ID;
+        const isPersonalTenantAdmin =
+          ctx.user.role === "admin" && ctx.user.openId.startsWith("tenant-admin:");
+        if (!isMaster && !isPersonalTenantAdmin) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Nicht berechtigt." });
+        }
+        if (!verifyTotpCode({ secret: input.secret, code: input.code })) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Der Code der Authenticator-App ist nicht korrekt. Bitte Zeitabgleich und Eingabe prüfen.",
+          });
+        }
+        await requireAdminPassword(input.currentPassword, ctx);
+        if (isMaster) {
+          await db.saveMasterMfaEnrollment({
+            secret: input.secret,
+            recoveryCodes: input.recoveryCodes,
+          });
+        } else {
+          await db.saveTenantAdminMfaEnrollment({
+            userId: ctx.user.id,
+            secret: input.secret,
+            recoveryCodes: input.recoveryCodes,
+          });
+        }
+        await recordSecurityActivity(
+          auditActor(ctx.user),
+          "Zweite Anmeldestufe (Authenticator-App) eingerichtet; vorhandene Sitzungen wurden sicher erneuert",
+          "updated"
+        );
+        return { success: true } as const;
+      }),
+    disableMfa: baseProtectedProcedure
+      .input(z.object({ currentPassword: z.string().min(1).max(200) }))
+      .mutation(async ({ ctx, input }) => {
+        const isMaster = ctx.user.openId === ADMIN_PASSWORD_OPEN_ID;
+        const isPersonalTenantAdmin =
+          ctx.user.role === "admin" && ctx.user.openId.startsWith("tenant-admin:");
+        if (!isMaster && !isPersonalTenantAdmin) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Nicht berechtigt." });
+        }
+        await requireAdminPassword(input.currentPassword, ctx);
+        if (isMaster) {
+          await db.disableMasterMfa();
+        } else {
+          await db.disableTenantAdminMfa(ctx.user.id);
+        }
+        await recordSecurityActivity(
+          auditActor(ctx.user),
+          "Zweite Anmeldestufe deaktiviert; bestehende Sitzungen wurden ungültig gemacht",
+          "updated"
+        );
+        return { success: true } as const;
       }),
     completeInitialPasswordChange: baseProtectedProcedure
       .input(
@@ -2316,6 +2622,21 @@ export const appRouter = router({
               message: "E-Mail oder Passwort ist nicht korrekt",
             });
           }
+          const mfa = await db.getTenantAdminMfaConfigurationByUserId(
+            adminCreds.userId
+          );
+          if (mfa?.enabled && mfa.secret) {
+            const mfaChallengeToken = await issueMfaLoginChallenge({
+              subjectType: "tenant_admin",
+              userId: adminCreds.userId,
+            });
+            return {
+              success: false,
+              requiresIdentity: false,
+              requiresMfa: true,
+              mfaChallengeToken,
+            } as const;
+          }
           clearPasswordLoginFailures(clientKey);
           const tenantId = await tenantIdForFreshPersonalLogin({
             id: adminCreds.userId,
@@ -2361,6 +2682,17 @@ export const appRouter = router({
               ? "Der Masterzugang ist nach fünf Fehlversuchen gesperrt. Bitte verwenden Sie „Master-Passwort vergessen?“."
               : "Administratorpasswort ist nicht korrekt",
           });
+        }
+        const masterMfa = await db.getMasterMfaConfiguration();
+        if (masterMfa?.enabled && masterMfa.secret) {
+          const mfaChallengeToken = await issueMfaLoginChallenge({
+            subjectType: "master",
+          });
+          return {
+            requiresIdentity: false,
+            requiresMfa: true,
+            mfaChallengeToken,
+          } as const;
         }
         clearPasswordLoginFailures(clientKey);
         await db.clearAdminPasswordLoginFailures();

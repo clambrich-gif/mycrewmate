@@ -537,6 +537,10 @@ export default function OfferDemo() {
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [checkoutComplete, setCheckoutComplete] = useState(false);
+  const [inquiryClubName, setInquiryClubName] = useState("");
+  const [inquiryContactName, setInquiryContactName] = useState("");
+  const [inquiryEmail, setInquiryEmail] = useState("");
+  const [inquiryNote, setInquiryNote] = useState("");
   const [promoVideoOpen, setPromoVideoOpen] = useState(false);
   const [selectedTargetGroup, setSelectedTargetGroup] =
     useState<TargetGroup | null>(null);
@@ -1331,13 +1335,36 @@ export default function OfferDemo() {
                 <CircleCheckBig className="size-7" />
               </span>
               <DialogTitle className="mt-5">
-                Musteranfrage simuliert
+                Anfrage vorbereitet
               </DialogTitle>
               <DialogDescription className="mt-3 block leading-6">
-                In einer echten Angebotsseite würde jetzt eine unverbindliche
-                Anfrage entstehen. In dieser lokalen Demo wurden keine Daten
-                gespeichert oder versendet.
+                Vielen Dank! Ihre Angaben wurden vorstrukturiert. Sie können die Anfrage jetzt direkt per E-Mail an das MyCrewMate-Team senden oder wir melden uns zur Freischaltung.
               </DialogDescription>
+              <div className="mt-5 flex justify-center gap-2">
+                <a
+                  href={`mailto:info@mycrewmate.de?subject=${encodeURIComponent(
+                    `Testzugang/Anfrage: MyCrewMate ${cartOffer?.name ?? "Paket"} für ${inquiryClubName}`
+                  )}&body=${encodeURIComponent(
+                    `Hallo MyCrewMate-Team,\n\nwir interessieren uns unverbindlich für das Paket MyCrewMate ${cartOffer?.name ?? "Interesse"}.\n\nVerein: ${inquiryClubName}\nAnsprechpartner: ${inquiryContactName}\nE-Mail: ${inquiryEmail}\nNotiz: ${inquiryNote || "Keine"}\n\nBitte sendet uns die nächsten Schritte zur Freischaltung zu.\n\nViele Grüße\n${inquiryContactName}`
+                  )}`}
+                >
+                  <Button type="button" className="rounded-xl bg-blue-600 text-white hover:bg-blue-700">
+                    Anfrage per E-Mail absenden
+                  </Button>
+                </a>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="rounded-xl"
+                  onClick={() => {
+                    setCheckoutOpen(false);
+                    setCheckoutComplete(false);
+                    setCartOffer(null);
+                  }}
+                >
+                  Schließen
+                </Button>
+              </div>
             </div>
           ) : (
             <form
@@ -1347,10 +1374,9 @@ export default function OfferDemo() {
               }}
             >
               <DialogHeader>
-                <DialogTitle>Fiktiver Muster-Checkout</DialogTitle>
+                <DialogTitle>Unverbindliche Test- &amp; Paket-Anfrage</DialogTitle>
                 <DialogDescription>
-                  Nur zur Veranschaulichung des späteren Ablaufs. Keine Eingabe
-                  wird übertragen.
+                  Geben Sie Ihren Verein an. Sie erhalten vor jeder Freischaltung die Vertragsunterlagen zur Prüfung.
                 </DialogDescription>
               </DialogHeader>
               <div className="mt-5 grid gap-3">
@@ -1359,6 +1385,8 @@ export default function OfferDemo() {
                   <input
                     required
                     placeholder="z. B. Radsportverein Musterstadt"
+                    value={inquiryClubName}
+                    onChange={event => setInquiryClubName(event.target.value)}
                     className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-slate-950 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
                   />
                 </label>
@@ -1367,6 +1395,8 @@ export default function OfferDemo() {
                   <input
                     required
                     placeholder="Name"
+                    value={inquiryContactName}
+                    onChange={event => setInquiryContactName(event.target.value)}
                     className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-slate-950 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
                   />
                 </label>
@@ -1376,16 +1406,19 @@ export default function OfferDemo() {
                     required
                     type="email"
                     placeholder="verein@beispiel.de"
+                    value={inquiryEmail}
+                    onChange={event => setInquiryEmail(event.target.value)}
                     className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-slate-950 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
                   />
                 </label>
                 <label className="grid gap-1.5 text-sm font-semibold text-slate-700">
-                  Muster-Zahlungsart
-                  <select className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-slate-950 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100">
-                    <option>Rechnung (Muster)</option>
-                    <option>SEPA-Lastschrift (Muster)</option>
-                    <option>PayPal (Muster)</option>
-                  </select>
+                  Hinweis oder Wunschveranstaltung (optional)
+                  <input
+                    placeholder="z. B. Sommerturnier 2027 mit 120 Helfern"
+                    value={inquiryNote}
+                    onChange={event => setInquiryNote(event.target.value)}
+                    className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-slate-950 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                  />
                 </label>
               </div>
               <DialogFooter className="mt-6">
@@ -1393,7 +1426,7 @@ export default function OfferDemo() {
                   type="submit"
                   className="rounded-xl bg-orange-500 text-white hover:bg-orange-600"
                 >
-                  Musteranfrage simulieren <ArrowRight className="size-4" />
+                  Anfrage prüfen &amp; absenden <ArrowRight className="size-4" />
                 </Button>
               </DialogFooter>
             </form>

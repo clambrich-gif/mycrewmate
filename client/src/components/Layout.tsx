@@ -359,6 +359,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [loginNotice, setLoginNotice] = useState<string | null>(null);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginFailureCount, setLoginFailureCount] = useState(0);
+  const [mfaChallengeToken, setMfaChallengeToken] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
   const [forcePasswordChangeOpen, setForcePasswordChangeOpen] = useState(false);
   const [initialPassword, setInitialPassword] = useState("");
   const [initialPasswordConfirmation, setInitialPasswordConfirmation] = useState("");
@@ -1071,6 +1073,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
     onSuccess: result => {
       setLoginFailureCount(0);
       setLoginNotice(null);
+      if ("requiresMfa" in result && result.requiresMfa) {
+        setMfaChallengeToken(result.mfaChallengeToken);
+        setMfaCode("");
+        setPassword("");
+        setLoginError(null);
+        return;
+      }
       storePreviewSessionToken(result.previewSessionToken);
       // Der Loginserver bestimmt den Verein. Dadurch kann ein RSC-Wert aus
       // LocalStorage niemals die frisch angemeldete Vereinsadministration
@@ -1089,6 +1098,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
         await utils.auth.passwordStatus.invalidate();
       }
     },
+  });
+  const verifyMfaLogin = trpc.auth.verifyMfaLogin.useMutation({
+    mutationKey: ["auth", "verifyMfaLogin", "tenant"],
+    onSuccess: result => {
+      setMfaChallengeToken(null);
+      setMfaCode("");
+      setLoginError(null);
+      storePreviewSessionToken(result.previewSessionToken);
+      if ("tenantId" in result && result.tenantId) {
+        selectTenant(result.tenantId, null);
+      }
+    },
+    onError: error => setLoginError(error.message),
   });
   const completeInitialPasswordChange =
     trpc.auth.completeInitialPasswordChange.useMutation({
@@ -1297,8 +1319,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
     if (!password || !loginEmail.trim()) return;
     passwordLogin.mutate({ password, email: loginEmail.trim() });
   };
+  const submitMfaCode = (event: FormEvent) => {
+    event.preventDefault();
+    if (!mfaChallengeToken || !mfaCode.trim()) return;
+    verifyMfaLogin.mutate({ mfaChallengeToken, code: mfaCode.trim() });
+  };
   const planningTeamLocked = Boolean(passwordStatus.data?.planningTeamLocked);
-  const loginPending = passwordLogin.isPending;
+  const loginPending = passwordLogin.isPending || verifyMfaLogin.isPending;
   const submitInitialPasswordChange = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setInitialPasswordError(null);
@@ -1518,6 +1545,62 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </p>
           </div>
 
+          {mfaChallengeToken ? (
+            <form className="space-y-4" onSubmit={submitMfaCode}>
+              <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-left text-sm leading-5 text-blue-950">
+                <p className="font-semibold">Zweite Sicherheitsstufe</p>
+                <p className="mt-1 text-xs leading-5 text-blue-900">
+                  Öffnen Sie Ihre Authenticator-App und geben Sie den sechsstelligen Code ein. Alternativ funktioniert ein unbenutzter Wiederherstellungscode.
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="personal-login-mfa" className="text-sm font-semibold text-slate-800">
+                  Sicherheitscode
+                </Label>
+                <Input
+                  id="personal-login-mfa"
+                  autoComplete="one-time-code"
+                  inputMode="numeric"
+                  placeholder="123456 oder ABC12-34567"
+                  value={mfaCode}
+                  onChange={event => {
+                    setMfaCode(event.target.value);
+                    if (loginError) setLoginError(null);
+                  }}
+                  disabled={loginPending}
+                  required
+                  autoFocus
+                />
+              </div>
+              <Button
+                className="h-12 w-full rounded-lg bg-blue-600 py-2.5 text-base font-semibold text-white shadow-sm hover:bg-blue-700"
+                size="lg"
+                type="submit"
+                disabled={!mfaCode.trim() || loginPending}
+              >
+                {loginPending ? <><Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" /><span>Wird geprüft …</span></> : <><KeyRound className="mr-2 h-4 w-4" />Sicher anmelden</>}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full text-slate-600"
+                disabled={loginPending}
+                onClick={() => {
+                  setMfaChallengeToken(null);
+                  setMfaCode("");
+                  setLoginError(null);
+                }}
+              >
+                Zurück zur Anmeldung
+              </Button>
+              {loginError && (
+                <div className="flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-900" role="alert">
+                  <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-red-700" aria-hidden="true" />
+                  <span>{loginError}</span>
+                </div>
+              )}
+            </form>
+          ) : (
           <form className="space-y-4" onSubmit={submitPassword}>
             <p className="rounded-lg border border-blue-100 bg-blue-50/70 px-3 py-2.5 text-center text-xs leading-5 text-slate-700">
               Melden Sie sich mit Ihrer persönlichen E-Mail-Adresse und Ihrem Passwort an.
@@ -1658,6 +1741,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </p>
             )}
           </form>
+          )}
         </div>
           <div className="absolute inset-x-4 bottom-3 text-center sm:bottom-4">
             <LegalFooterLinks onOpenImpressum={() => setImpressumOpen(true)} />

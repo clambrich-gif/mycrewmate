@@ -194,6 +194,148 @@ function PasswordEditor({
   );
 }
 
+function MfaManager() {
+  const utils = trpc.useUtils();
+  const status = trpc.auth.mfaStatus.useQuery();
+  const [setup, setSetup] = useState<{
+    secret: string;
+    recoveryCodes: string[];
+  } | null>(null);
+  const [code, setCode] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [disablePassword, setDisablePassword] = useState("");
+  const begin = trpc.auth.beginMfaEnrollment.useMutation({
+    onSuccess: result => {
+      setSetup({ secret: result.secret, recoveryCodes: result.recoveryCodes });
+      setCode("");
+      setCurrentPassword("");
+    },
+    onError: error => toast.error(error.message),
+  });
+  const confirm = trpc.auth.confirmMfaEnrollment.useMutation({
+    onSuccess: async () => {
+      setSetup(null);
+      setCode("");
+      setCurrentPassword("");
+      await Promise.all([utils.auth.mfaStatus.invalidate(), utils.audit.activities.invalidate()]);
+      toast.success("Authenticator-App erfolgreich als zweite Sicherheitsstufe eingerichtet");
+    },
+    onError: error => toast.error(error.message),
+  });
+  const disable = trpc.auth.disableMfa.useMutation({
+    onSuccess: async () => {
+      setDisablePassword("");
+      await Promise.all([utils.auth.mfaStatus.invalidate(), utils.audit.activities.invalidate()]);
+      toast.success("Zweite Sicherheitsstufe wurde deaktiviert");
+    },
+    onError: error => toast.error(error.message),
+  });
+
+  if (!status.data?.eligible) {
+    return (
+      <p className="text-sm leading-6 text-muted-foreground">
+        Die zweite Anmeldestufe steht für persönliche Vereinsadministratoren bereit. Planungsteam-Zugänge erhalten keine globale Administratorberechtigung.
+      </p>
+    );
+  }
+
+  if (status.data.enabled) {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
+          <p className="font-semibold">Aktiv: Authenticator-App erforderlich</p>
+          <p className="mt-1 text-xs leading-5 text-emerald-900">
+            Nach dem Passwort wird ein zeitbasierter Code abgefragt. Noch verfügbare Wiederherstellungscodes: {status.data.remainingRecoveryCodes}.
+          </p>
+        </div>
+        <div className="max-w-md space-y-2">
+          <Label htmlFor="mfa-disable-password">Aktuelles Administratorpasswort</Label>
+          <Input
+            id="mfa-disable-password"
+            type="password"
+            autoComplete="current-password"
+            value={disablePassword}
+            onChange={event => setDisablePassword(event.target.value)}
+            placeholder="Nur zur bewussten Deaktivierung"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            className="border-red-300 text-red-800 hover:bg-red-50 hover:text-red-900"
+            disabled={!disablePassword || disable.isPending}
+            onClick={() => {
+              if (window.confirm("Die zweite Anmeldestufe wirklich deaktivieren? Der Zugang wird damit weniger geschützt.")) {
+                disable.mutate({ currentPassword: disablePassword });
+              }
+            }}
+          >
+            {disable.isPending ? <LoaderCircle className="size-4 animate-spin" /> : <Unlock className="size-4" />}
+            Zweite Sicherheitsstufe deaktivieren
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!setup) {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm leading-6 text-muted-foreground">
+          Nach der Einrichtung ist zusätzlich zum Passwort ein sechsstelliger Code aus einer Authenticator-App nötig. Das schützt insbesondere bei einem kompromittierten Passwort.
+        </p>
+        <Button type="button" onClick={() => begin.mutate()} disabled={begin.isPending}>
+          {begin.isPending ? <LoaderCircle className="size-4 animate-spin" /> : <ShieldCheck className="size-4" />}
+          Authenticator-App einrichten
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
+        <p className="font-semibold">1. MyCrewMate in Ihrer Authenticator-App hinzufügen</p>
+        <p className="mt-1 text-xs leading-5 text-blue-900">
+          Wählen Sie in der App „Schlüssel manuell eingeben“ und tragen Sie diesen einmaligen Schlüssel ein:
+        </p>
+        <code className="mt-3 block select-all break-all rounded-lg bg-white px-3 py-2 font-mono text-xs text-slate-950 ring-1 ring-blue-200">
+          {setup.secret}
+        </code>
+      </div>
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+        <p className="font-semibold">2. Wiederherstellungscodes sicher offline aufbewahren</p>
+        <p className="mt-1 text-xs leading-5 text-amber-900">
+          Jeder Code funktioniert genau einmal. Speichern Sie sie in einem Passwortmanager oder drucken Sie sie aus; sie werden nach diesem Schritt nicht erneut angezeigt.
+        </p>
+        <div className="mt-3 grid grid-cols-2 gap-2 font-mono text-xs text-slate-900 sm:grid-cols-4">
+          {setup.recoveryCodes.map(recoveryCode => <code key={recoveryCode} className="rounded bg-white px-2 py-1.5 text-center ring-1 ring-amber-200">{recoveryCode}</code>)}
+        </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label htmlFor="mfa-confirm-code">3. Aktueller App-Code</Label>
+          <Input id="mfa-confirm-code" inputMode="numeric" autoComplete="one-time-code" value={code} onChange={event => setCode(event.target.value)} placeholder="123456" />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="mfa-confirm-password">Administratorpasswort</Label>
+          <Input id="mfa-confirm-password" type="password" autoComplete="current-password" value={currentPassword} onChange={event => setCurrentPassword(event.target.value)} placeholder="Zur Bestätigung" />
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          disabled={!code || !currentPassword || confirm.isPending}
+          onClick={() => confirm.mutate({ secret: setup.secret, code, recoveryCodes: setup.recoveryCodes, currentPassword })}
+        >
+          {confirm.isPending ? <LoaderCircle className="size-4 animate-spin" /> : <ShieldCheck className="size-4" />}
+          Sicherheit aktivieren
+        </Button>
+        <Button type="button" variant="ghost" onClick={() => setSetup(null)} disabled={confirm.isPending}>Abbrechen</Button>
+      </div>
+    </div>
+  );
+}
+
 export default function Security() {
   const { data: tenantProduct } = trpc.tenantProduct.current.useQuery(
     undefined,
@@ -398,6 +540,17 @@ export default function Security() {
               saving={setAdminPassword.isPending}
               onSave={input => setAdminPassword.mutate(input)}
             />
+          </SecurityAccordion>
+        )}
+
+        {isAdmin && (
+          <SecurityAccordion
+            title="Zweite Anmeldestufe (Authenticator-App)"
+            description="Schützt persönliche Administratorzugänge zusätzlich zum Passwort mit einem zeitbasierten Sicherheitscode."
+            icon={ShieldCheck}
+            tone="blue"
+          >
+            <MfaManager />
           </SecurityAccordion>
         )}
 

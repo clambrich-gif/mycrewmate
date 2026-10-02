@@ -297,6 +297,12 @@ export const tenantAdminCredentials = mysqlTable(
     userId: int("userId").primaryKey(),
     email: varchar("email", { length: 320 }).notNull(),
     passwordHash: varchar("passwordHash", { length: 255 }).notNull(),
+    /** AES-GCM-verschlüsselter TOTP-Schlüssel; Klartext wird nie persistiert. */
+    mfaSecretEncrypted: varchar("mfaSecretEncrypted", { length: 512 }),
+    /** Ausschließlich SHA-256-Hashes der einmalig nutzbaren Recovery-Codes. */
+    mfaRecoveryCodeHashes: json("mfaRecoveryCodeHashes").$type<string[]>(),
+    mfaEnabled: boolean("mfaEnabled").default(false).notNull(),
+    mfaEnrolledAt: timestamp("mfaEnrolledAt"),
     mustChangePassword: boolean("mustChangePassword").default(true).notNull(),
     /** Neue persönliche Vereinsadmins erhalten nach der Passwortvergabe einmal die Klemmi-Einführung. */
     onboardingPending: boolean("onboardingPending").default(false).notNull(),
@@ -979,6 +985,11 @@ export const securitySettings = mysqlTable("security_settings", {
   id: int("id").primaryKey().default(1),
   passwordHash: varchar("passwordHash", { length: 255 }),
   adminPasswordHash: varchar("adminPasswordHash", { length: 255 }),
+  /** Separate, verschlüsselte zweite Stufe für den Plattform-Masterzugang. */
+  adminMfaSecretEncrypted: varchar("adminMfaSecretEncrypted", { length: 512 }),
+  adminMfaRecoveryCodeHashes: json("adminMfaRecoveryCodeHashes").$type<string[]>(),
+  adminMfaEnabled: boolean("adminMfaEnabled").default(false).notNull(),
+  adminMfaEnrolledAt: timestamp("adminMfaEnrolledAt"),
   oauthOwnerOpenId: varchar("oauthOwnerOpenId", { length: 64 }),
   /** Globale Sperre für das Masterportal nach fünf Fehlversuchen. */
   adminFailedAttempts: int("adminFailedAttempts").default(0).notNull(),
@@ -999,6 +1010,36 @@ export const securitySettings = mysqlTable("security_settings", {
   adminSessionVersion: int("adminSessionVersion").default(1).notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
+
+/**
+ * Ein Passwort allein erzeugt lediglich eine fünf Minuten gültige MFA-Prüfung.
+ * Das Token liegt nur gehasht vor und kann einmalig eingelöst werden.
+ */
+export const mfaLoginChallenges = mysqlTable(
+  "mfa_login_challenges",
+  {
+    tokenHash: varchar("tokenHash", { length: 64 }).primaryKey(),
+    subjectType: mysqlEnum("subjectType", ["master", "tenant_admin"]).notNull(),
+    userId: int("userId"),
+    expiresAt: timestamp("expiresAt").notNull(),
+    usedAt: timestamp("usedAt"),
+    failedAttempts: int("failedAttempts").default(0).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    foreignKey({
+      name: "mfa_login_challenges_user_id_users_id_fk",
+      columns: [table.userId],
+      foreignColumns: [users.id],
+    }).onDelete("cascade"),
+    index("mfa_login_challenges_expiry_idx").on(table.expiresAt),
+    index("mfa_login_challenges_subject_expiry_idx").on(
+      table.subjectType,
+      table.userId,
+      table.expiresAt
+    ),
+  ]
+);
 
 /**
  * Ein separat verwalteter Planungsteam-Zugang. Das Passwort wird ausschließlich

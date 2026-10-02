@@ -603,6 +603,13 @@
       "when": 1790922511563,
       "tag": "0085_zippy_monster_badoon",
       "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "5",
+      "when": 1790948416461,
+      "tag": "0086_thin_synch",
+      "breakpoints": true
     }
   ]
 }

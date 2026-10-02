@@ -507,9 +507,18 @@ function MasterLogin() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [resetNotice, setResetNotice] = useState<string | null>(null);
+  const [mfaChallengeToken, setMfaChallengeToken] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
   const login = trpc.auth.adminPasswordLogin.useMutation({
     mutationKey: ["auth", "adminPasswordLogin", "master-portal"],
     onSuccess: async result => {
+      if ("requiresMfa" in result && result.requiresMfa) {
+        setMfaChallengeToken(result.mfaChallengeToken);
+        setMfaCode("");
+        setPassword("");
+        setError(null);
+        return;
+      }
       if (result.requiresIdentity) {
         setError("Die Master-Identität konnte nicht bestätigt werden.");
         return;
@@ -517,6 +526,17 @@ function MasterLogin() {
       storePreviewSessionToken(result.previewSessionToken);
       setPassword("");
       setError(null);
+      await utils.auth.me.invalidate();
+    },
+    onError: mutationError => setError(mutationError.message),
+  });
+  const verifyMfaLogin = trpc.auth.verifyMfaLogin.useMutation({
+    mutationKey: ["auth", "verifyMfaLogin", "master-portal"],
+    onSuccess: async result => {
+      setMfaChallengeToken(null);
+      setMfaCode("");
+      setError(null);
+      storePreviewSessionToken(result.previewSessionToken);
       await utils.auth.me.invalidate();
     },
     onError: mutationError => setError(mutationError.message),
@@ -543,6 +563,11 @@ function MasterLogin() {
       administratorName: "Plattform-Inhaber",
     });
   };
+  const submitMfa = (event: FormEvent) => {
+    event.preventDefault();
+    if (!mfaChallengeToken || !mfaCode.trim()) return;
+    verifyMfaLogin.mutate({ mfaChallengeToken, code: mfaCode.trim() });
+  };
 
   return (
     <main className="grid min-h-screen place-items-center bg-[radial-gradient(circle_at_8%_7%,rgba(219,234,254,0.92),transparent_34%),radial-gradient(circle_at_96%_94%,rgba(224,242,254,0.76),transparent_32%),#f8fafc] p-4">
@@ -557,6 +582,39 @@ function MasterLogin() {
           </CardDescription>
         </CardHeader>
         <CardContent className="px-6 py-6 sm:px-8">
+          {mfaChallengeToken ? (
+            <form className="space-y-4" onSubmit={submitMfa}>
+              <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm leading-5 text-blue-950">
+                <p className="font-semibold">Zweite Sicherheitsstufe</p>
+                <p className="mt-1 text-xs text-blue-900">
+                  Geben Sie den sechsstelligen Code Ihrer Authenticator-App oder einen unbenutzten Wiederherstellungscode ein.
+                </p>
+              </div>
+              <label className="block space-y-1.5" htmlFor="master-admin-mfa">
+                <span className="text-sm font-semibold text-slate-800">Sicherheitscode</span>
+                <input
+                  id="master-admin-mfa"
+                  autoComplete="one-time-code"
+                  inputMode="numeric"
+                  value={mfaCode}
+                  onChange={event => setMfaCode(event.target.value)}
+                  disabled={verifyMfaLogin.isPending}
+                  placeholder="123456 oder ABC12-34567"
+                  className="h-11 w-full rounded-lg border border-slate-200 bg-white px-3 text-slate-950 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  required
+                  autoFocus
+                />
+              </label>
+              {error && <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">{error}</p>}
+              <Button className="h-11 w-full" type="submit" disabled={!mfaCode.trim() || verifyMfaLogin.isPending}>
+                {verifyMfaLogin.isPending ? <Loader2 className="size-4 animate-spin" /> : <LockKeyhole className="size-4" />}
+                Sicher anmelden
+              </Button>
+              <Button type="button" variant="ghost" className="w-full text-slate-600" disabled={verifyMfaLogin.isPending} onClick={() => { setMfaChallengeToken(null); setMfaCode(""); setError(null); }}>
+                Zurück zur Anmeldung
+              </Button>
+            </form>
+          ) : (
           <form className="space-y-4" onSubmit={submit}>
             <label className="block space-y-1.5" htmlFor="master-admin-password">
               <span className="text-sm font-semibold text-slate-800">Master-Passwort</span>
@@ -589,6 +647,7 @@ function MasterLogin() {
               Master-Portal öffnen
             </Button>
           </form>
+          )}
           <div className="mt-3 text-center">
             <Button
               type="button"
@@ -719,6 +778,85 @@ function AccessDenied({ onLogout }: { onLogout: () => Promise<void> }) {
         </CardContent>
       </Card>
     </main>
+  );
+}
+
+function MasterMfaCard() {
+  const utils = trpc.useUtils();
+  const status = trpc.auth.mfaStatus.useQuery();
+  const [setup, setSetup] = useState<{ secret: string; recoveryCodes: string[] } | null>(null);
+  const [code, setCode] = useState("");
+  const [password, setPassword] = useState("");
+  const begin = trpc.auth.beginMfaEnrollment.useMutation({
+    onSuccess: result => setSetup({ secret: result.secret, recoveryCodes: result.recoveryCodes }),
+    onError: error => toast.error(error.message),
+  });
+  const confirm = trpc.auth.confirmMfaEnrollment.useMutation({
+    onSuccess: async () => {
+      setSetup(null);
+      setCode("");
+      setPassword("");
+      await utils.auth.mfaStatus.invalidate();
+      toast.success("MFA für das Masterportal ist jetzt aktiv.");
+    },
+    onError: error => toast.error(error.message),
+  });
+  const disable = trpc.auth.disableMfa.useMutation({
+    onSuccess: async () => {
+      setPassword("");
+      await utils.auth.mfaStatus.invalidate();
+      toast.success("MFA für das Masterportal wurde deaktiviert.");
+    },
+    onError: error => toast.error(error.message),
+  });
+
+  if (!status.data?.eligible) return null;
+  if (status.data.enabled) {
+    return (
+      <Card className="border-emerald-200 bg-emerald-50/60">
+        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="flex items-center gap-2 font-semibold text-emerald-950"><ShieldCheck className="size-5" /> Master-MFA ist aktiv</p>
+            <p className="mt-1 text-sm text-emerald-900">Authenticator-Code beim Login erforderlich · {status.data.remainingRecoveryCodes} Wiederherstellungscodes verbleibend.</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input type="password" autoComplete="current-password" className="h-9 w-52 bg-white" placeholder="Passwort für Deaktivierung" value={password} onChange={event => setPassword(event.target.value)} />
+            <Button type="button" variant="outline" className="border-red-300 bg-white text-red-800 hover:bg-red-50" disabled={!password || disable.isPending} onClick={() => { if (window.confirm("Master-MFA wirklich deaktivieren?")) disable.mutate({ currentPassword: password }); }}>
+              {disable.isPending ? <Loader2 className="size-4 animate-spin" /> : <LockKeyhole className="size-4" />} Deaktivieren
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  if (!setup) {
+    return (
+      <Card className="border-amber-200 bg-amber-50/70">
+        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="flex items-center gap-2 font-semibold text-amber-950"><ShieldCheck className="size-5" /> Masterportal zusätzlich absichern</p>
+            <p className="mt-1 text-sm text-amber-900">Authenticator-App als zweite Anmeldestufe aktivieren. Für die Plattformverwaltung dringend empfohlen.</p>
+          </div>
+          <Button type="button" onClick={() => begin.mutate()} disabled={begin.isPending}>
+            {begin.isPending ? <Loader2 className="size-4 animate-spin" /> : <ShieldCheck className="size-4" />} MFA einrichten
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+  return (
+    <Card className="border-blue-200 bg-blue-50/50">
+      <CardHeader className="pb-2"><CardTitle className="text-base">Master-MFA einrichten</CardTitle><CardDescription>Den Schlüssel manuell in eine Authenticator-App übernehmen, Recovery-Codes offline sichern und mit einem aktuellen App-Code aktivieren.</CardDescription></CardHeader>
+      <CardContent className="space-y-3">
+        <code className="block select-all break-all rounded-lg bg-white px-3 py-2 text-xs text-slate-950 ring-1 ring-blue-200">{setup.secret}</code>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{setup.recoveryCodes.map(recoveryCode => <code key={recoveryCode} className="rounded bg-white px-2 py-1.5 text-center text-xs ring-1 ring-amber-200">{recoveryCode}</code>)}</div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Input inputMode="numeric" autoComplete="one-time-code" placeholder="Authenticator-Code" value={code} onChange={event => setCode(event.target.value)} />
+          <Input type="password" autoComplete="current-password" placeholder="Master-Passwort zur Bestätigung" value={password} onChange={event => setPassword(event.target.value)} />
+        </div>
+        <div className="flex gap-2"><Button type="button" disabled={!code || !password || confirm.isPending} onClick={() => confirm.mutate({ secret: setup.secret, code, recoveryCodes: setup.recoveryCodes, currentPassword: password })}>{confirm.isPending ? <Loader2 className="size-4 animate-spin" /> : <ShieldCheck className="size-4" />} MFA aktivieren</Button><Button type="button" variant="ghost" onClick={() => setSetup(null)}>Abbrechen</Button></div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -1141,6 +1279,8 @@ export default function MasterAdminPortal() {
             </Button>
           </div>
         </header>
+
+        <MasterMfaCard />
 
         {overview.error && !isVisualPreview && (
           <section

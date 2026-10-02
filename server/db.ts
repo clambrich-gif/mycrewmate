@@ -40,6 +40,7 @@ import {
   User,
   marketing,
   materials,
+  mfaLoginChallenges,
   locations,
   planningTeamAccesses,
   planningTeamAccessEvents,
@@ -92,6 +93,7 @@ import {
   planningTeamAccessOpenId,
   SHARED_PASSWORD_OPEN_ID,
 } from "./password-auth";
+import { hashRecoveryCode } from "./mfa";
 import {
   DEFAULT_PRODUCT_ASSIGNMENT_STATUS,
   DEFAULT_PRODUCT_PACKAGE_ID,
@@ -198,22 +200,25 @@ export async function cleanupExpiredTransientSecurityRecords(now = new Date()) {
       planningTeamInvitationsDeleted: 0,
       handoffsDeleted: 0,
       revokedSessionsDeleted: 0,
+      mfaLoginChallengesDeleted: 0,
     };
   }
   const sessionThreshold = new Date(now.getTime() - TRANSIENT_SECURITY_RECORD_TTL_MS);
-  const [tenantInvitations, planningInvitations, handoffs, sessions] = await Promise.all([
+  const [tenantInvitations, planningInvitations, handoffs, sessions, mfaChallenges] = await Promise.all([
     database.delete(tenantAdminInvitations).where(lt(tenantAdminInvitations.expiresAt, now)),
     database
       .delete(planningTeamInvitations)
       .where(lt(planningTeamInvitations.expiresAt, now)),
     database.delete(platformTenantHandoffs).where(lt(platformTenantHandoffs.expiresAt, now)),
     database.delete(revokedSessions).where(lt(revokedSessions.revokedAt, sessionThreshold)),
+    database.delete(mfaLoginChallenges).where(lt(mfaLoginChallenges.expiresAt, now)),
   ]);
   return {
     tenantAdminInvitationsDeleted: affectedRows(tenantInvitations),
     planningTeamInvitationsDeleted: affectedRows(planningInvitations),
     handoffsDeleted: affectedRows(handoffs),
     revokedSessionsDeleted: affectedRows(sessions),
+    mfaLoginChallengesDeleted: affectedRows(mfaChallenges),
   };
 }
 
@@ -6676,6 +6681,254 @@ export async function setAdminPasswordHash(adminPasswordHash: string) {
     });
 }
 
+type MfaSubjectType = "master" | "tenant_admin";
+
+function mfaEncryptionKey() {
+  if (!ENV.cookieSecret) {
+    throw new Error("MFA benötigt einen konfigurierten Serversitzungsschlüssel");
+  }
+  return createHash("sha256")
+    .update(`mycrewmate:mfa-secret:v1:${ENV.cookieSecret}`)
+    .digest();
+}
+
+function encryptMfaSecret(secret: string) {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", mfaEncryptionKey(), iv);
+  const encrypted = Buffer.concat([cipher.update(secret, "utf8"), cipher.final()]);
+  return Buffer.concat([iv, cipher.getAuthTag(), encrypted]).toString("base64url");
+}
+
+function decryptMfaSecret(value: string | null | undefined) {
+  if (!value) return null;
+  try {
+    const packed = Buffer.from(value, "base64url");
+    if (packed.length < 29) return null;
+    const decipher = createDecipheriv("aes-256-gcm", mfaEncryptionKey(), packed.subarray(0, 12));
+    decipher.setAuthTag(packed.subarray(12, 28));
+    const secret = Buffer.concat([decipher.update(packed.subarray(28)), decipher.final()]).toString("utf8");
+    return /^[A-Z2-7]{16,128}$/.test(secret) ? secret : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function getTenantAdminMfaConfigurationByUserId(userId: number) {
+  const database = await getDb();
+  if (!database) return null;
+  const [row] = await database
+    .select({
+      email: tenantAdminCredentials.email,
+      enabled: tenantAdminCredentials.mfaEnabled,
+      encryptedSecret: tenantAdminCredentials.mfaSecretEncrypted,
+      recoveryCodeHashes: tenantAdminCredentials.mfaRecoveryCodeHashes,
+      enrolledAt: tenantAdminCredentials.mfaEnrolledAt,
+    })
+    .from(tenantAdminCredentials)
+    .where(eq(tenantAdminCredentials.userId, userId))
+    .limit(1);
+  if (!row) return null;
+  return {
+    email: row.email,
+    enabled: row.enabled,
+    secret: decryptMfaSecret(row.encryptedSecret),
+    recoveryCodeHashes: row.recoveryCodeHashes ?? [],
+    enrolledAt: row.enrolledAt,
+  } as const;
+}
+
+export async function getMasterMfaConfiguration() {
+  const settings = await getSecuritySettings();
+  if (!settings) return null;
+  return {
+    enabled: settings.adminMfaEnabled,
+    secret: decryptMfaSecret(settings.adminMfaSecretEncrypted),
+    recoveryCodeHashes: settings.adminMfaRecoveryCodeHashes ?? [],
+    enrolledAt: settings.adminMfaEnrolledAt,
+  } as const;
+}
+
+export async function saveTenantAdminMfaEnrollment(input: {
+  userId: number;
+  secret: string;
+  recoveryCodes: string[];
+}) {
+  const database = (await getDb()) as DB;
+  await database
+    .update(tenantAdminCredentials)
+    .set({
+      mfaSecretEncrypted: encryptMfaSecret(input.secret),
+      mfaRecoveryCodeHashes: input.recoveryCodes.map(hashRecoveryCode),
+      mfaEnabled: true,
+      mfaEnrolledAt: new Date(),
+      sessionVersion: sql`${tenantAdminCredentials.sessionVersion} + 1`,
+    })
+    .where(eq(tenantAdminCredentials.userId, input.userId));
+}
+
+export async function saveMasterMfaEnrollment(input: {
+  secret: string;
+  recoveryCodes: string[];
+}) {
+  const database = (await getDb()) as DB;
+  await database
+    .insert(securitySettings)
+    .values({
+      id: 1,
+      adminMfaSecretEncrypted: encryptMfaSecret(input.secret),
+      adminMfaRecoveryCodeHashes: input.recoveryCodes.map(hashRecoveryCode),
+      adminMfaEnabled: true,
+      adminMfaEnrolledAt: new Date(),
+      adminSessionVersion: 2,
+    })
+    .onDuplicateKeyUpdate({
+      set: {
+        adminMfaSecretEncrypted: encryptMfaSecret(input.secret),
+        adminMfaRecoveryCodeHashes: input.recoveryCodes.map(hashRecoveryCode),
+        adminMfaEnabled: true,
+        adminMfaEnrolledAt: new Date(),
+        adminSessionVersion: sql`${securitySettings.adminSessionVersion} + 1`,
+      },
+    });
+}
+
+export async function disableTenantAdminMfa(userId: number) {
+  const database = (await getDb()) as DB;
+  await database
+    .update(tenantAdminCredentials)
+    .set({
+      mfaSecretEncrypted: null,
+      mfaRecoveryCodeHashes: null,
+      mfaEnabled: false,
+      mfaEnrolledAt: null,
+      sessionVersion: sql`${tenantAdminCredentials.sessionVersion} + 1`,
+    })
+    .where(eq(tenantAdminCredentials.userId, userId));
+}
+
+export async function disableMasterMfa() {
+  const database = (await getDb()) as DB;
+  await database
+    .insert(securitySettings)
+    .values({ id: 1, adminMfaEnabled: false })
+    .onDuplicateKeyUpdate({
+      set: {
+        adminMfaSecretEncrypted: null,
+        adminMfaRecoveryCodeHashes: null,
+        adminMfaEnabled: false,
+        adminMfaEnrolledAt: null,
+        adminSessionVersion: sql`${securitySettings.adminSessionVersion} + 1`,
+      },
+    });
+}
+
+export async function consumeTenantAdminMfaRecoveryCode(input: {
+  userId: number;
+  providedCode: string;
+}) {
+  const database = (await getDb()) as DB;
+  const wantedHash = hashRecoveryCode(input.providedCode);
+  return database.transaction(async tx => {
+    const [row] = await tx
+      .select({ hashes: tenantAdminCredentials.mfaRecoveryCodeHashes })
+      .from(tenantAdminCredentials)
+      .where(eq(tenantAdminCredentials.userId, input.userId))
+      .limit(1)
+      .for("update");
+    const hashes = row?.hashes ?? [];
+    if (!hashes.includes(wantedHash)) return false;
+    await tx
+      .update(tenantAdminCredentials)
+      .set({ mfaRecoveryCodeHashes: hashes.filter(hash => hash !== wantedHash) })
+      .where(eq(tenantAdminCredentials.userId, input.userId));
+    return true;
+  });
+}
+
+export async function consumeMasterMfaRecoveryCode(providedCode: string) {
+  const database = (await getDb()) as DB;
+  const wantedHash = hashRecoveryCode(providedCode);
+  return database.transaction(async tx => {
+    const [row] = await tx
+      .select({ hashes: securitySettings.adminMfaRecoveryCodeHashes })
+      .from(securitySettings)
+      .where(eq(securitySettings.id, 1))
+      .limit(1)
+      .for("update");
+    const hashes = row?.hashes ?? [];
+    if (!hashes.includes(wantedHash)) return false;
+    await tx
+      .update(securitySettings)
+      .set({ adminMfaRecoveryCodeHashes: hashes.filter(hash => hash !== wantedHash) })
+      .where(eq(securitySettings.id, 1));
+    return true;
+  });
+}
+
+export async function createMfaLoginChallenge(input: {
+  tokenHash: string;
+  subjectType: MfaSubjectType;
+  userId?: number | null;
+}) {
+  const database = (await getDb()) as DB;
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+  await database.insert(mfaLoginChallenges).values({
+    tokenHash: input.tokenHash,
+    subjectType: input.subjectType,
+    userId: input.userId ?? null,
+    expiresAt,
+  });
+  return { expiresAt } as const;
+}
+
+export async function getMfaLoginChallenge(tokenHash: string) {
+  const database = await getDb();
+  if (!database) return null;
+  const [row] = await database
+    .select()
+    .from(mfaLoginChallenges)
+    .where(
+      and(
+        eq(mfaLoginChallenges.tokenHash, tokenHash),
+        isNull(mfaLoginChallenges.usedAt),
+        gt(mfaLoginChallenges.expiresAt, new Date()),
+        lt(mfaLoginChallenges.failedAttempts, 5)
+      )
+    )
+    .limit(1);
+  return row ?? null;
+}
+
+export async function recordMfaLoginChallengeFailure(tokenHash: string) {
+  const database = (await getDb()) as DB;
+  await database
+    .update(mfaLoginChallenges)
+    .set({ failedAttempts: sql`${mfaLoginChallenges.failedAttempts} + 1` })
+    .where(
+      and(
+        eq(mfaLoginChallenges.tokenHash, tokenHash),
+        isNull(mfaLoginChallenges.usedAt),
+        gt(mfaLoginChallenges.expiresAt, new Date())
+      )
+    );
+}
+
+export async function consumeMfaLoginChallenge(tokenHash: string) {
+  const database = (await getDb()) as DB;
+  const result = await database
+    .update(mfaLoginChallenges)
+    .set({ usedAt: new Date() })
+    .where(
+      and(
+        eq(mfaLoginChallenges.tokenHash, tokenHash),
+        isNull(mfaLoginChallenges.usedAt),
+        gt(mfaLoginChallenges.expiresAt, new Date()),
+        lt(mfaLoginChallenges.failedAttempts, 5)
+      )
+    );
+  return Number((result as { affectedRows?: number }).affectedRows ?? 0) === 1;
+}
+
 function yearValues<T extends Record<string, unknown>>(values: T) {
   return { ...values, year: year(), eventId: event() };
 }
@@ -8377,8 +8630,13 @@ export async function getTenantAdminCredentialsByUserId(userId: number) {
       email: tenantAdminCredentials.email,
       passwordHash: tenantAdminCredentials.passwordHash,
       status: tenantAdminCredentials.status,
+      userOpenId: users.openId,
+      userName: users.name,
+      sessionVersion: tenantAdminCredentials.sessionVersion,
+      mustChangePassword: tenantAdminCredentials.mustChangePassword,
     })
     .from(tenantAdminCredentials)
+    .innerJoin(users, eq(users.id, tenantAdminCredentials.userId))
     .where(eq(tenantAdminCredentials.userId, userId))
     .limit(1);
   return row;
