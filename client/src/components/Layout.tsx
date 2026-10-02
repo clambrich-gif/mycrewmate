@@ -363,6 +363,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [initialPassword, setInitialPassword] = useState("");
   const [initialPasswordConfirmation, setInitialPasswordConfirmation] = useState("");
   const [contractDocumentsAccepted, setContractDocumentsAccepted] = useState(false);
+  const [contractAcceptanceOpen, setContractAcceptanceOpen] = useState(false);
+  const [currentContractDocumentsAccepted, setCurrentContractDocumentsAccepted] =
+    useState(false);
   const [initialPasswordError, setInitialPasswordError] = useState<string | null>(null);
   const [activationTenantId, setActivationTenantId] = useState(
     storedActivationTenantId
@@ -374,6 +377,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const isCredentialBootstrapPending =
     isTenantActivationRoute ||
     forcePasswordChangeOpen ||
+    contractAcceptanceOpen ||
     // Eine gespeicherte Aktivierung darf niemals ohne echte Sitzung den
     // Ladebildschirm blockieren, etwa wenn ein Browser ein neues Cookie ablehnt.
     // Mit gültiger Sitzung bleibt die alte Vereinsansicht weiterhin verborgen,
@@ -976,6 +980,25 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }, [initialPasswordStatus.data?.mustChangePassword]);
 
   useEffect(() => {
+    const isPersonalTenantAdmin =
+      user?.role === "admin" && user.openId.startsWith("tenant-admin:");
+    if (
+      !isPersonalTenantAdmin ||
+      initialPasswordStatus.data?.mustChangePassword ||
+      initialPasswordStatus.data?.requiresContractAcceptance !== true
+    ) {
+      return;
+    }
+    setCurrentContractDocumentsAccepted(false);
+    setContractAcceptanceOpen(true);
+  }, [
+    initialPasswordStatus.data?.mustChangePassword,
+    initialPasswordStatus.data?.requiresContractAcceptance,
+    user?.openId,
+    user?.role,
+  ]);
+
+  useEffect(() => {
     if (
       !activationTenantId ||
       loading ||
@@ -1115,6 +1138,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
         toast.success("Passwort gespeichert – bitte jetzt regulär anmelden");
       },
       onError: error => setInitialPasswordError(error.message),
+    });
+  const acceptCurrentTenantContractDocuments =
+    trpc.auth.acceptCurrentTenantContractDocuments.useMutation({
+      onSuccess: async () => {
+        setCurrentContractDocumentsAccepted(false);
+        setContractAcceptanceOpen(false);
+        await utils.auth.initialPasswordChangeStatus.invalidate();
+        toast.success("Vertragsunterlagen wurden elektronisch bestätigt");
+      },
+      onError: error => toast.error(error.message),
     });
   const completeFirstLoginOnboarding =
     trpc.auth.completeFirstLoginOnboarding.useMutation({
@@ -1332,6 +1365,74 @@ export function Layout({ children }: { children: React.ReactNode }) {
       onSubmit={submitInitialPasswordChange}
     />
   );
+  const currentContractAcceptanceDialog = (
+    <Dialog open={contractAcceptanceOpen} onOpenChange={() => undefined}>
+      <DialogContent
+        showCloseButton={false}
+        className="bg-white text-slate-950 sm:max-w-lg"
+        onEscapeKeyDown={event => event.preventDefault()}
+        onPointerDownOutside={event => event.preventDefault()}
+        onInteractOutside={event => event.preventDefault()}
+      >
+        <DialogHeader>
+          <div className="mb-1 flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-700">
+            <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <DialogTitle>Vertragsunterlagen bestätigen</DialogTitle>
+          <DialogDescription className="leading-relaxed text-slate-600">
+            Für die weitere Nutzung muss die vertretungsberechtigte
+            Vereinsadministration die aktuelle Fassung der Unterlagen aktiv
+            bestätigen. Die Annahme wird elektronisch protokolliert und an die
+            hinterlegte E-Mail-Adresse bestätigt.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-3.5">
+          <div className="flex items-start gap-3">
+            <Checkbox
+              id="current-contract-acceptance"
+              checked={currentContractDocumentsAccepted}
+              onCheckedChange={checked =>
+                setCurrentContractDocumentsAccepted(checked === true)
+              }
+              disabled={acceptCurrentTenantContractDocuments.isPending}
+              className="mt-0.5"
+            />
+            <Label
+              htmlFor="current-contract-acceptance"
+              className="cursor-pointer text-xs font-normal leading-5 text-slate-700"
+            >
+              Ich handle vertretungsberechtigt für meinen Verein und bestätige die{" "}
+              <a href="https://mycrewmate.de/agb" target="_blank" rel="noreferrer" className="font-semibold text-blue-700 underline underline-offset-2">AGB</a>
+              {", "}
+              <a href="https://mycrewmate.de/avv" target="_blank" rel="noreferrer" className="font-semibold text-blue-700 underline underline-offset-2">Vereinbarung zur Auftragsverarbeitung (AVV)</a>
+              {" und die "}
+              <a href="https://app.mycrewmate.de/datenschutz" target="_blank" rel="noreferrer" className="font-semibold text-blue-700 underline underline-offset-2">Datenschutzhinweise der App</a>.
+            </Label>
+          </div>
+        </div>
+        <DialogFooter className="pt-2">
+          <Button
+            type="button"
+            className="min-h-11 bg-blue-600 text-white hover:bg-blue-700"
+            disabled={
+              !currentContractDocumentsAccepted ||
+              acceptCurrentTenantContractDocuments.isPending
+            }
+            onClick={() =>
+              acceptCurrentTenantContractDocuments.mutate({
+                acceptContractDocuments: true,
+              })
+            }
+          >
+            <CheckCircle2 className="mr-2 h-4 w-4" aria-hidden="true" />
+            {acceptCurrentTenantContractDocuments.isPending
+              ? "Bestätigung wird gespeichert …"
+              : "Verbindlich bestätigen & fortfahren"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 
   const credentialBootstrapScreen = (
     <div className="login-page-background relative grid min-h-[100dvh] place-items-center bg-[radial-gradient(ellipse_at_center,_#ffffff_20%,_#f0f9ff_66%,_#dbeafe_100%)] px-4 py-5 sm:p-6">
@@ -1351,6 +1452,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
       {forcePasswordChangeModal}
+      {currentContractAcceptanceDialog}
     </div>
   );
 
@@ -1372,6 +1474,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
       {forcePasswordChangeModal}
+      {currentContractAcceptanceDialog}
     </div>
   );
 
@@ -2879,6 +2982,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <ImpressumDialog open={impressumOpen} onOpenChange={setImpressumOpen} />
 
       {forcePasswordChangeModal}
+      {currentContractAcceptanceDialog}
 
       <Dialog open={pwaInstallDialogOpen} onOpenChange={setPwaInstallDialogOpen}>
         <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white text-slate-950 sm:max-w-md">

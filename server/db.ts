@@ -4924,7 +4924,8 @@ export type ActivityLogAction =
   | "deleted"
   | "reset"
   | "imported"
-  | "copied";
+  | "copied"
+  | "exported";
 
 /** Schreibt eine erfolgreiche operative Aktion mit der serverseitigen Sitzungsidentität. */
 export async function recordActivityLog(input: {

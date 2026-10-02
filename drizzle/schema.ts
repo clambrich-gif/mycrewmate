@@ -131,10 +131,7 @@ export const teamNotes = mysqlTable(
       columns: [table.eventId, table.year],
       foreignColumns: [events.id, events.year],
     }).onDelete("cascade"),
-    index("team_notes_event_created_idx").on(
-      table.eventId,
-      table.createdAt
-    ),
+    index("team_notes_event_created_idx").on(table.eventId, table.createdAt),
     index("team_notes_event_id_idx").on(table.eventId, table.id),
     // Globaler 24h-Cleanup filtert nur auf createdAt; Eventindizes würden
     // dafür mit wachsendem Verlauf nicht als führender Index greifen.
@@ -290,7 +287,8 @@ export const userTenantMemberships = mysqlTable(
   ]
 );
 export type UserTenantMembership = typeof userTenantMemberships.$inferSelect;
-export type InsertUserTenantMembership = typeof userTenantMemberships.$inferInsert;
+export type InsertUserTenantMembership =
+  typeof userTenantMemberships.$inferInsert;
 
 /** Persönliche Zugangsdaten für Vereinsadmins; ein Konto kann mehreren Vereinen angehören. */
 export const tenantAdminCredentials = mysqlTable(
@@ -303,12 +301,18 @@ export const tenantAdminCredentials = mysqlTable(
     /** Neue persönliche Vereinsadmins erhalten nach der Passwortvergabe einmal die Klemmi-Einführung. */
     onboardingPending: boolean("onboardingPending").default(false).notNull(),
     sessionVersion: int("sessionVersion").default(1).notNull(),
-    status: mysqlEnum("status", ["active", "suspended"]).default("active").notNull(),
+    status: mysqlEnum("status", ["active", "suspended"])
+      .default("active")
+      .notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
   table => [
-    foreignKey({ name: "tenant_admin_credentials_user_id_users_id_fk", columns: [table.userId], foreignColumns: [users.id] }).onDelete("cascade"),
+    foreignKey({
+      name: "tenant_admin_credentials_user_id_users_id_fk",
+      columns: [table.userId],
+      foreignColumns: [users.id],
+    }).onDelete("cascade"),
     uniqueIndex("tenant_admin_credentials_email_unique").on(table.email),
   ]
 );
@@ -360,7 +364,11 @@ export const platformTenantHandoffs = mysqlTable(
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   table => [
-    foreignKey({ name: "platform_tenant_handoffs_tenant_id_tenants_id_fk", columns: [table.tenantId], foreignColumns: [tenants.id] }).onDelete("cascade"),
+    foreignKey({
+      name: "platform_tenant_handoffs_tenant_id_tenants_id_fk",
+      columns: [table.tenantId],
+      foreignColumns: [tenants.id],
+    }).onDelete("cascade"),
     index("platform_tenant_handoffs_expiry_idx").on(table.expiresAt),
   ]
 );
@@ -369,9 +377,15 @@ export const platformTenantHandoffs = mysqlTable(
 export const platformLaunchSettings = mysqlTable("platform_launch_settings", {
   id: int("id").primaryKey().default(1),
   paymentsEnabled: boolean("paymentsEnabled").default(false).notNull(),
-  publicSelfServiceEnabled: boolean("publicSelfServiceEnabled").default(false).notNull(),
-  paymentProvider: mysqlEnum("paymentProvider", ["none", "stripe"]).default("none").notNull(),
-  invoiceWorkflow: mysqlEnum("invoiceWorkflow", ["manual", "automated"]).default("manual").notNull(),
+  publicSelfServiceEnabled: boolean("publicSelfServiceEnabled")
+    .default(false)
+    .notNull(),
+  paymentProvider: mysqlEnum("paymentProvider", ["none", "stripe"])
+    .default("none")
+    .notNull(),
+  invoiceWorkflow: mysqlEnum("invoiceWorkflow", ["manual", "automated"])
+    .default("manual")
+    .notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
@@ -399,7 +413,8 @@ export const publicDemoSourceSelections = mysqlTable(
     index("public_demo_source_created_idx").on(table.source, table.createdAt),
   ]
 );
-export type PublicDemoSourceSelection = typeof publicDemoSourceSelections.$inferSelect;
+export type PublicDemoSourceSelection =
+  typeof publicDemoSourceSelections.$inferSelect;
 
 export const eventYears = mysqlTable("event_years", {
   year: int("year").primaryKey(),
@@ -425,7 +440,9 @@ export const events = mysqlTable(
      * nicht mehr als aktive Planung oder Paketkontingent gezählt. Sie können
      * ausschließlich durch einen Vereinsadministrator wieder geöffnet werden.
      */
-    status: mysqlEnum("status", ["active", "closed"]).default("active").notNull(),
+    status: mysqlEnum("status", ["active", "closed"])
+      .default("active")
+      .notNull(),
     closedAt: timestamp("closedAt"),
     donationTargetKuchen: int("donationTargetKuchen").notNull().default(0),
     donationTargetSalat: int("donationTargetSalat").notNull().default(0),
@@ -512,7 +529,8 @@ export const tenantProductAssignments = mysqlTable(
     ),
   ]
 );
-export type TenantProductAssignment = typeof tenantProductAssignments.$inferSelect;
+export type TenantProductAssignment =
+  typeof tenantProductAssignments.$inferSelect;
 
 /**
  * Revisionssicherer Nachweis der aktiv bestätigten Vertragsunterlagen eines
@@ -560,7 +578,8 @@ export const tenantContractAcceptances = mysqlTable(
     ),
   ]
 );
-export type TenantContractAcceptance = typeof tenantContractAcceptances.$inferSelect;
+export type TenantContractAcceptance =
+  typeof tenantContractAcceptances.$inferSelect;
 
 /**
  * Minimaler, datensparsamer Versandnachweis für automatische Paketablaufhinweise.
@@ -613,7 +632,9 @@ export const contacts = mysqlTable(
      * Nur mit dieser freiwilligen Freigabe wird die Rufnummer in persönlichen
      * Helfer-Einsatzübersichten angezeigt. Standardmäßig bleibt sie verborgen.
      */
-    sharePhoneInHelperPlan: boolean("sharePhoneInHelperPlan").default(false).notNull(),
+    sharePhoneInHelperPlan: boolean("sharePhoneInHelperPlan")
+      .default(false)
+      .notNull(),
     note: text("note"),
     sortOrder: int("sortOrder").default(0).notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -736,7 +757,10 @@ export const protectedHelperPdfShares = mysqlTable(
     }).onDelete("cascade"),
     uniqueIndex("protected_helper_pdf_shares_token_unique").on(table.tokenHash),
     index("protected_helper_pdf_shares_expiry_idx").on(table.expiresAt),
-    index("protected_helper_pdf_shares_helper_idx").on(table.helperId, table.expiresAt),
+    index("protected_helper_pdf_shares_helper_idx").on(
+      table.helperId,
+      table.expiresAt
+    ),
   ]
 );
 export type ProtectedHelperPdfShare =
@@ -964,54 +988,58 @@ export const securitySettings = mysqlTable("security_settings", {
  * als bcrypt-Hash gespeichert; die zugehörigen Veranstaltungsfreigaben stehen
  * in `planning_team_access_events`.
  */
-export const planningTeamAccesses = mysqlTable("planning_team_accesses", {
-  id: int("id").autoincrement().primaryKey(),
-  /**
-   * Ein Ansprechpartner kann genau einen eigenen Planungsteam-Zugang erhalten.
-   * Ältere, aus der früheren globalen Passwortverwaltung übernommene Zugänge
-   * bleiben bewusst ohne Ansprechpartner-Verknüpfung lesbar und verwaltbar.
-   */
-  contactId: int("contactId"),
-  label: varchar("label", { length: 120 }).notNull(),
-  /** Persönliche E-Mail für den individuellen Login; Altbestände dürfen leer bleiben. */
-  email: varchar("email", { length: 320 }),
-  passwordHash: varchar("passwordHash", { length: 255 }).notNull(),
-  /**
-   * Historisches Schreibrechte-Array. Es bleibt für ältere Zugänge erhalten;
-   * neue und bearbeitete Zugänge verwenden `moduleAccess`.
-   */
-  modulePermissions: json("modulePermissions").$type<PlanningModule[]>(),
-  /**
-   * Explizite Fachbereichsstufe: aus, lesen oder schreiben. NULL bedeutet
-   * Altbestand und wird serverseitig verlustfrei aus modulePermissions abgeleitet.
-   */
-  moduleAccess: json("moduleAccess").$type<PlanningModuleAccess>(),
-  /**
-   * Vereinsinterne Stellvertretung: erhält volle Rechte nur im eigenen Verein,
-   * darf aber keine weiteren Stellvertretungen ernennen oder verwalten.
-   */
-  isTenantAdmin: boolean("isTenantAdmin").default(false).notNull(),
-  /** Ein einmalig ausgegebener Zugangscode muss nach der ersten Anmeldung ersetzt werden. */
-  mustChangePassword: boolean("mustChangePassword").default(false).notNull(),
-  /**
-   * Ausschließlich neu per Aktivierungslink angelegte persönliche Zugänge
-   * erhalten nach der ersten regulären Anmeldung eine einmalige Einführung.
-   * Bestehende Zugänge bleiben dadurch unverändert.
-   */
-  onboardingPending: boolean("onboardingPending").default(false).notNull(),
-  /** Änderungen an Passwort oder Freigaben machen bestehende Sitzungen ungültig. */
-  sessionVersion: int("sessionVersion").default(1).notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, table => [
-  foreignKey({
-    name: "pta_contact_fk",
-    columns: [table.contactId],
-    foreignColumns: [contacts.id],
-  }).onDelete("cascade"),
-  uniqueIndex("planning_team_access_contact_unique").on(table.contactId),
-  uniqueIndex("planning_team_access_email_unique").on(table.email),
-]);
+export const planningTeamAccesses = mysqlTable(
+  "planning_team_accesses",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    /**
+     * Ein Ansprechpartner kann genau einen eigenen Planungsteam-Zugang erhalten.
+     * Ältere, aus der früheren globalen Passwortverwaltung übernommene Zugänge
+     * bleiben bewusst ohne Ansprechpartner-Verknüpfung lesbar und verwaltbar.
+     */
+    contactId: int("contactId"),
+    label: varchar("label", { length: 120 }).notNull(),
+    /** Persönliche E-Mail für den individuellen Login; Altbestände dürfen leer bleiben. */
+    email: varchar("email", { length: 320 }),
+    passwordHash: varchar("passwordHash", { length: 255 }).notNull(),
+    /**
+     * Historisches Schreibrechte-Array. Es bleibt für ältere Zugänge erhalten;
+     * neue und bearbeitete Zugänge verwenden `moduleAccess`.
+     */
+    modulePermissions: json("modulePermissions").$type<PlanningModule[]>(),
+    /**
+     * Explizite Fachbereichsstufe: aus, lesen oder schreiben. NULL bedeutet
+     * Altbestand und wird serverseitig verlustfrei aus modulePermissions abgeleitet.
+     */
+    moduleAccess: json("moduleAccess").$type<PlanningModuleAccess>(),
+    /**
+     * Vereinsinterne Stellvertretung: erhält volle Rechte nur im eigenen Verein,
+     * darf aber keine weiteren Stellvertretungen ernennen oder verwalten.
+     */
+    isTenantAdmin: boolean("isTenantAdmin").default(false).notNull(),
+    /** Ein einmalig ausgegebener Zugangscode muss nach der ersten Anmeldung ersetzt werden. */
+    mustChangePassword: boolean("mustChangePassword").default(false).notNull(),
+    /**
+     * Ausschließlich neu per Aktivierungslink angelegte persönliche Zugänge
+     * erhalten nach der ersten regulären Anmeldung eine einmalige Einführung.
+     * Bestehende Zugänge bleiben dadurch unverändert.
+     */
+    onboardingPending: boolean("onboardingPending").default(false).notNull(),
+    /** Änderungen an Passwort oder Freigaben machen bestehende Sitzungen ungültig. */
+    sessionVersion: int("sessionVersion").default(1).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    foreignKey({
+      name: "pta_contact_fk",
+      columns: [table.contactId],
+      foreignColumns: [contacts.id],
+    }).onDelete("cascade"),
+    uniqueIndex("planning_team_access_contact_unique").on(table.contactId),
+    uniqueIndex("planning_team_access_email_unique").on(table.email),
+  ]
+);
 export type PlanningTeamAccess = typeof planningTeamAccesses.$inferSelect;
 
 /** Die explizite Many-to-many-Freigabe eines Planungsteam-Zugangs für Events. */
@@ -1101,47 +1129,57 @@ export const teamNoteAuditLogs = mysqlTable(
 );
 export type TeamNoteAuditLog = typeof teamNoteAuditLogs.$inferSelect;
 
-export const deletionAuditLogs = mysqlTable("deletion_audit_logs", {
-  id: int("id").autoincrement().primaryKey(),
-  /** Vereinssicht des Protokolleintrags; null kennzeichnet ein reines Plattformereignis. */
-  tenantId: varchar("tenantId", { length: 96 }).references(() => tenants.id, {
-    onDelete: "cascade",
-  }),
-  year: int("year").notNull(),
-  eventId: int("eventId").references(() => events.id, {
-    onDelete: "set null",
-  }),
-  eventName: varchar("eventName", { length: 200 }),
-  entityType: mysqlEnum("entityType", ["helper", "cake", "prep", "post", "material"]).notNull(),
-  entityId: int("entityId").notNull(),
-  entityLabel: varchar("entityLabel", { length: 300 }).notNull(),
-  action: mysqlEnum("action", [
-    "single_delete",
-    "area_reset",
-    "year_reset",
-  ]).notNull(),
-  actorUserId: int("actorUserId").notNull(),
-  actorName: varchar("actorName", { length: 200 }).notNull(),
-  actorRole: mysqlEnum("actorRole", ["user", "admin"]).notNull(),
-  actorLoginMethod: varchar("actorLoginMethod", { length: 64 }),
-  responsibleContactId: int("responsibleContactId"),
-  responsibleContactName: varchar("responsibleContactName", { length: 200 }),
-  details: text("details"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  restoredAt: timestamp("restoredAt"),
-  restoredByUserId: int("restoredByUserId"),
-  restoredByName: varchar("restoredByName", { length: 200 }),
-}, table => [
-  index("deletion_audit_logs_tenant_created_idx").on(
-    table.tenantId,
-    table.createdAt
-  ),
-  index("deletion_audit_logs_tenant_event_created_idx").on(
-    table.tenantId,
-    table.eventId,
-    table.createdAt
-  ),
-]);
+export const deletionAuditLogs = mysqlTable(
+  "deletion_audit_logs",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    /** Vereinssicht des Protokolleintrags; null kennzeichnet ein reines Plattformereignis. */
+    tenantId: varchar("tenantId", { length: 96 }).references(() => tenants.id, {
+      onDelete: "cascade",
+    }),
+    year: int("year").notNull(),
+    eventId: int("eventId").references(() => events.id, {
+      onDelete: "set null",
+    }),
+    eventName: varchar("eventName", { length: 200 }),
+    entityType: mysqlEnum("entityType", [
+      "helper",
+      "cake",
+      "prep",
+      "post",
+      "material",
+    ]).notNull(),
+    entityId: int("entityId").notNull(),
+    entityLabel: varchar("entityLabel", { length: 300 }).notNull(),
+    action: mysqlEnum("action", [
+      "single_delete",
+      "area_reset",
+      "year_reset",
+    ]).notNull(),
+    actorUserId: int("actorUserId").notNull(),
+    actorName: varchar("actorName", { length: 200 }).notNull(),
+    actorRole: mysqlEnum("actorRole", ["user", "admin"]).notNull(),
+    actorLoginMethod: varchar("actorLoginMethod", { length: 64 }),
+    responsibleContactId: int("responsibleContactId"),
+    responsibleContactName: varchar("responsibleContactName", { length: 200 }),
+    details: text("details"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    restoredAt: timestamp("restoredAt"),
+    restoredByUserId: int("restoredByUserId"),
+    restoredByName: varchar("restoredByName", { length: 200 }),
+  },
+  table => [
+    index("deletion_audit_logs_tenant_created_idx").on(
+      table.tenantId,
+      table.createdAt
+    ),
+    index("deletion_audit_logs_tenant_event_created_idx").on(
+      table.tenantId,
+      table.eventId,
+      table.createdAt
+    ),
+  ]
+);
 export type DeletionAuditLog = typeof deletionAuditLogs.$inferSelect;
 
 /** Zentraler, unveränderlicher Verlauf aller operativen Planungsaktionen. */
@@ -1166,6 +1204,7 @@ export const activityLogs = mysqlTable(
       "reset",
       "imported",
       "copied",
+      "exported",
     ]).notNull(),
     subject: varchar("subject", { length: 500 }).notNull(),
     actorUserId: int("actorUserId"),
@@ -1175,7 +1214,10 @@ export const activityLogs = mysqlTable(
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   table => [
-    index("activity_logs_tenant_created_idx").on(table.tenantId, table.createdAt),
+    index("activity_logs_tenant_created_idx").on(
+      table.tenantId,
+      table.createdAt
+    ),
     index("activity_logs_tenant_event_created_idx").on(
       table.tenantId,
       table.eventId,
@@ -1211,215 +1253,264 @@ export const backupRestoreLogs = mysqlTable("backup_restore_logs", {
 });
 export type BackupRestoreLog = typeof backupRestoreLogs.$inferSelect;
 
-export const prepTasks = mysqlTable("prep_tasks", {
-  id: int("id").autoincrement().primaryKey(),
-  year: int("year").default(2026).notNull(),
-  eventId: int("eventId").notNull(),
-  task: varchar("task", { length: 300 }).notNull(),
-  category: varchar("category", { length: 120 }).default("").notNull(),
-  dueText: varchar("dueText", { length: 200 }).default("").notNull(),
-  locationId: int("locationId").references(() => locations.id, {
-    onDelete: "set null",
-  }),
-  contactId: int("contactId").references(() => contacts.id, {
-    onDelete: "set null",
-  }),
-  /** Optionaler Helfer, der den Ansprechpartner bei der Aufgabe unterstützt. */
-  helperId: int("helperId").references(() => helpers.id, {
-    onDelete: "set null",
-  }),
-  status: mysqlEnum("status", ["offen", "inArbeit", "erledigt", "abgelehnt"])
-    .default("offen")
-    .notNull(),
-  statusWording: mysqlEnum("statusWording", ["aufgabe", "genehmigung"])
-    .default("aufgabe")
-    .notNull(),
-  note: text("note"),
-  /** Einzelne Löschungen bleiben für das Administratorprotokoll wiederherstellbar. */
-  deleted: boolean("deleted").default(false).notNull(),
-  sortOrder: int("sortOrder").default(0).notNull(),
-}, table => [
-  foreignKey({
-    name: "prep_tasks_event_year_fk",
-    columns: [table.eventId, table.year],
-    foreignColumns: [events.id, events.year],
-  }).onDelete("cascade"),
-  index("prep_tasks_event_deleted_idx").on(table.eventId, table.year, table.deleted),
-  index("prep_tasks_event_location_idx").on(table.eventId, table.locationId),
-]);
+export const prepTasks = mysqlTable(
+  "prep_tasks",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    year: int("year").default(2026).notNull(),
+    eventId: int("eventId").notNull(),
+    task: varchar("task", { length: 300 }).notNull(),
+    category: varchar("category", { length: 120 }).default("").notNull(),
+    dueText: varchar("dueText", { length: 200 }).default("").notNull(),
+    locationId: int("locationId").references(() => locations.id, {
+      onDelete: "set null",
+    }),
+    contactId: int("contactId").references(() => contacts.id, {
+      onDelete: "set null",
+    }),
+    /** Optionaler Helfer, der den Ansprechpartner bei der Aufgabe unterstützt. */
+    helperId: int("helperId").references(() => helpers.id, {
+      onDelete: "set null",
+    }),
+    status: mysqlEnum("status", ["offen", "inArbeit", "erledigt", "abgelehnt"])
+      .default("offen")
+      .notNull(),
+    statusWording: mysqlEnum("statusWording", ["aufgabe", "genehmigung"])
+      .default("aufgabe")
+      .notNull(),
+    note: text("note"),
+    /** Einzelne Löschungen bleiben für das Administratorprotokoll wiederherstellbar. */
+    deleted: boolean("deleted").default(false).notNull(),
+    sortOrder: int("sortOrder").default(0).notNull(),
+  },
+  table => [
+    foreignKey({
+      name: "prep_tasks_event_year_fk",
+      columns: [table.eventId, table.year],
+      foreignColumns: [events.id, events.year],
+    }).onDelete("cascade"),
+    index("prep_tasks_event_deleted_idx").on(
+      table.eventId,
+      table.year,
+      table.deleted
+    ),
+    index("prep_tasks_event_location_idx").on(table.eventId, table.locationId),
+  ]
+);
 export type PrepTask = typeof prepTasks.$inferSelect;
 
-export const postTasks = mysqlTable("post_tasks", {
-  id: int("id").autoincrement().primaryKey(),
-  year: int("year").default(2026).notNull(),
-  eventId: int("eventId").notNull(),
-  task: varchar("task", { length: 300 }).notNull(),
-  category: varchar("category", { length: 120 }).default("").notNull(),
-  dueText: varchar("dueText", { length: 200 }).default("").notNull(),
-  locationId: int("locationId").references(() => locations.id, {
-    onDelete: "set null",
-  }),
-  contactId: int("contactId").references(() => contacts.id, {
-    onDelete: "set null",
-  }),
-  /** Optionaler Helfer, der den Ansprechpartner bei der Aufgabe unterstützt. */
-  helperId: int("helperId").references(() => helpers.id, {
-    onDelete: "set null",
-  }),
-  status: mysqlEnum("status", ["offen", "inArbeit", "erledigt"])
-    .default("offen")
-    .notNull(),
-  note: text("note"),
-  /** Einzelne Löschungen bleiben für das Administratorprotokoll wiederherstellbar. */
-  deleted: boolean("deleted").default(false).notNull(),
-  sortOrder: int("sortOrder").default(0).notNull(),
-}, table => [
-  foreignKey({
-    name: "post_tasks_event_year_fk",
-    columns: [table.eventId, table.year],
-    foreignColumns: [events.id, events.year],
-  }).onDelete("cascade"),
-  index("post_tasks_event_deleted_idx").on(table.eventId, table.year, table.deleted),
-  index("post_tasks_event_location_idx").on(table.eventId, table.locationId),
-]);
+export const postTasks = mysqlTable(
+  "post_tasks",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    year: int("year").default(2026).notNull(),
+    eventId: int("eventId").notNull(),
+    task: varchar("task", { length: 300 }).notNull(),
+    category: varchar("category", { length: 120 }).default("").notNull(),
+    dueText: varchar("dueText", { length: 200 }).default("").notNull(),
+    locationId: int("locationId").references(() => locations.id, {
+      onDelete: "set null",
+    }),
+    contactId: int("contactId").references(() => contacts.id, {
+      onDelete: "set null",
+    }),
+    /** Optionaler Helfer, der den Ansprechpartner bei der Aufgabe unterstützt. */
+    helperId: int("helperId").references(() => helpers.id, {
+      onDelete: "set null",
+    }),
+    status: mysqlEnum("status", ["offen", "inArbeit", "erledigt"])
+      .default("offen")
+      .notNull(),
+    note: text("note"),
+    /** Einzelne Löschungen bleiben für das Administratorprotokoll wiederherstellbar. */
+    deleted: boolean("deleted").default(false).notNull(),
+    sortOrder: int("sortOrder").default(0).notNull(),
+  },
+  table => [
+    foreignKey({
+      name: "post_tasks_event_year_fk",
+      columns: [table.eventId, table.year],
+      foreignColumns: [events.id, events.year],
+    }).onDelete("cascade"),
+    index("post_tasks_event_deleted_idx").on(
+      table.eventId,
+      table.year,
+      table.deleted
+    ),
+    index("post_tasks_event_location_idx").on(table.eventId, table.locationId),
+  ]
+);
 export type PostTask = typeof postTasks.$inferSelect;
 
-export const materials = mysqlTable("materials", {
-  id: int("id").autoincrement().primaryKey(),
-  year: int("year").default(2026).notNull(),
-  eventId: int("eventId").notNull(),
-  article: varchar("article", { length: 300 }).notNull(),
-  category: varchar("category", { length: 120 }).default("").notNull(),
-  quantity: varchar("quantity", { length: 40 }).default("").notNull(),
-  unit: varchar("unit", { length: 40 }).default("").notNull(),
-  locationId: int("locationId").references(() => locations.id, {
-    onDelete: "set null",
-  }),
-  contactId: int("contactId").references(() => contacts.id, {
-    onDelete: "set null",
-  }),
-  /** Beschaffungsstand: offen, bestellt oder vollständig geliefert. */
-  status: mysqlEnum("status", ["offen", "bestellt", "geliefert"])
-    .default("offen")
-    .notNull(),
-  note: text("note"),
-  /** Einzelne Löschungen bleiben für das Administratorprotokoll wiederherstellbar. */
-  deleted: boolean("deleted").default(false).notNull(),
-  sortOrder: int("sortOrder").default(0).notNull(),
-}, table => [
-  foreignKey({
-    name: "materials_event_year_fk",
-    columns: [table.eventId, table.year],
-    foreignColumns: [events.id, events.year],
-  }).onDelete("cascade"),
-  index("materials_event_deleted_idx").on(table.eventId, table.year, table.deleted),
-  index("materials_event_location_idx").on(table.eventId, table.locationId),
-]);
+export const materials = mysqlTable(
+  "materials",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    year: int("year").default(2026).notNull(),
+    eventId: int("eventId").notNull(),
+    article: varchar("article", { length: 300 }).notNull(),
+    category: varchar("category", { length: 120 }).default("").notNull(),
+    quantity: varchar("quantity", { length: 40 }).default("").notNull(),
+    unit: varchar("unit", { length: 40 }).default("").notNull(),
+    locationId: int("locationId").references(() => locations.id, {
+      onDelete: "set null",
+    }),
+    contactId: int("contactId").references(() => contacts.id, {
+      onDelete: "set null",
+    }),
+    /** Beschaffungsstand: offen, bestellt oder vollständig geliefert. */
+    status: mysqlEnum("status", ["offen", "bestellt", "geliefert"])
+      .default("offen")
+      .notNull(),
+    note: text("note"),
+    /** Einzelne Löschungen bleiben für das Administratorprotokoll wiederherstellbar. */
+    deleted: boolean("deleted").default(false).notNull(),
+    sortOrder: int("sortOrder").default(0).notNull(),
+  },
+  table => [
+    foreignKey({
+      name: "materials_event_year_fk",
+      columns: [table.eventId, table.year],
+      foreignColumns: [events.id, events.year],
+    }).onDelete("cascade"),
+    index("materials_event_deleted_idx").on(
+      table.eventId,
+      table.year,
+      table.deleted
+    ),
+    index("materials_event_location_idx").on(table.eventId, table.locationId),
+  ]
+);
 export type Material = typeof materials.$inferSelect;
 
-export const marketing = mysqlTable("marketing", {
-  id: int("id").autoincrement().primaryKey(),
-  year: int("year").default(2026).notNull(),
-  eventId: int("eventId").notNull(),
-  measure: varchar("measure", { length: 300 }).notNull(),
-  channel: varchar("channel", { length: 160 }).default("").notNull(),
-  contactId: int("contactId").references(() => contacts.id, {
-    onDelete: "set null",
-  }),
-  status: mysqlEnum("status", ["offen", "inArbeit", "erledigt"])
-    .default("offen")
-    .notNull(),
-  note: text("note"),
-  sortOrder: int("sortOrder").default(0).notNull(),
-}, table => [
-  foreignKey({
-    name: "marketing_event_year_fk",
-    columns: [table.eventId, table.year],
-    foreignColumns: [events.id, events.year],
-  }).onDelete("cascade"),
-]);
+export const marketing = mysqlTable(
+  "marketing",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    year: int("year").default(2026).notNull(),
+    eventId: int("eventId").notNull(),
+    measure: varchar("measure", { length: 300 }).notNull(),
+    channel: varchar("channel", { length: 160 }).default("").notNull(),
+    contactId: int("contactId").references(() => contacts.id, {
+      onDelete: "set null",
+    }),
+    status: mysqlEnum("status", ["offen", "inArbeit", "erledigt"])
+      .default("offen")
+      .notNull(),
+    note: text("note"),
+    sortOrder: int("sortOrder").default(0).notNull(),
+  },
+  table => [
+    foreignKey({
+      name: "marketing_event_year_fk",
+      columns: [table.eventId, table.year],
+      foreignColumns: [events.id, events.year],
+    }).onDelete("cascade"),
+  ]
+);
 export type Marketing = typeof marketing.$inferSelect;
 
-export const approvals = mysqlTable("approvals", {
-  id: int("id").autoincrement().primaryKey(),
-  year: int("year").default(2026).notNull(),
-  eventId: int("eventId").notNull(),
-  request: varchar("request", { length: 300 }).notNull(),
-  contactId: int("contactId").references(() => contacts.id, {
-    onDelete: "set null",
-  }),
-  status: mysqlEnum("status", ["offen", "beantragt", "genehmigt", "abgelehnt"])
-    .default("offen")
-    .notNull(),
-  note: text("note"),
-  sortOrder: int("sortOrder").default(0).notNull(),
-}, table => [
-  foreignKey({
-    name: "approvals_event_year_fk",
-    columns: [table.eventId, table.year],
-    foreignColumns: [events.id, events.year],
-  }).onDelete("cascade"),
-]);
+export const approvals = mysqlTable(
+  "approvals",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    year: int("year").default(2026).notNull(),
+    eventId: int("eventId").notNull(),
+    request: varchar("request", { length: 300 }).notNull(),
+    contactId: int("contactId").references(() => contacts.id, {
+      onDelete: "set null",
+    }),
+    status: mysqlEnum("status", [
+      "offen",
+      "beantragt",
+      "genehmigt",
+      "abgelehnt",
+    ])
+      .default("offen")
+      .notNull(),
+    note: text("note"),
+    sortOrder: int("sortOrder").default(0).notNull(),
+  },
+  table => [
+    foreignKey({
+      name: "approvals_event_year_fk",
+      columns: [table.eventId, table.year],
+      foreignColumns: [events.id, events.year],
+    }).onDelete("cascade"),
+  ]
+);
 export type Approval = typeof approvals.$inferSelect;
 
-export const cakes = mysqlTable("cakes", {
-  id: int("id").autoincrement().primaryKey(),
-  year: int("year").default(2026).notNull(),
-  eventId: int("eventId").notNull(),
-  donor: varchar("donor", { length: 200 }).notNull(),
-  /** Neutrale Bezeichnung der Spende; der bestehende Spaltenname bleibt kompatibel. */
-  cake: varchar("cake", { length: 200 }).default("").notNull(),
-  /** Einfache Verpflegungskategorie für Buffet- und Organisationsübersichten. */
-  donationCategory: mysqlEnum("donationCategory", [
-    "kuchen",
-    "salat",
-    "snack",
-    "sonstiges",
-  ])
-    .default("kuchen")
-    .notNull(),
-  /** Optionaler Abgabeort; die Spendenansicht zeigt ihn bewusst ohne Kartenlink. */
-  locationId: int("locationId").references(() => locations.id, {
-    onDelete: "set null",
-  }),
-  /** ISO-Datum für die strukturierte Abgabeplanung. */
-  dropoffDate: varchar("dropoffDate", { length: 10 }).default("").notNull(),
-  /** Strukturierte Uhrzeit im Format HH:MM für native Mobile-Zeitpicker. */
-  dropoffTime: varchar("dropoffTimeStructured", { length: 5 }).default("").notNull(),
-  /** Bisheriger Freitext bleibt für bestehende Kuchenspenden verlustfrei erhalten. */
-  legacyDropoffText: varchar("dropoffTime", { length: 60 }).default("").notNull(),
-  /** Freiwillige Kennzeichnungen für die schnelle Ausgabe am Kuchenbuffet. */
-  vegan: boolean("vegan").default(false).notNull(),
-  glutenFree: boolean("glutenFree").default(false).notNull(),
-  lactoseFree: boolean("lactoseFree").default(false).notNull(),
-  containsNuts: boolean("containsNuts").default(false).notNull(),
-  meat: boolean("meat").default(false).notNull(),
-  /** Freitext für zusätzliche Hinweise wie Alkohol oder konkrete Zutaten. */
-  note: text("note"),
-  sortOrder: int("sortOrder").default(0).notNull(),
-}, table => [
-  foreignKey({
-    name: "cakes_event_year_fk",
-    columns: [table.eventId, table.year],
-    foreignColumns: [events.id, events.year],
-  }).onDelete("cascade"),
-]);
+export const cakes = mysqlTable(
+  "cakes",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    year: int("year").default(2026).notNull(),
+    eventId: int("eventId").notNull(),
+    donor: varchar("donor", { length: 200 }).notNull(),
+    /** Neutrale Bezeichnung der Spende; der bestehende Spaltenname bleibt kompatibel. */
+    cake: varchar("cake", { length: 200 }).default("").notNull(),
+    /** Einfache Verpflegungskategorie für Buffet- und Organisationsübersichten. */
+    donationCategory: mysqlEnum("donationCategory", [
+      "kuchen",
+      "salat",
+      "snack",
+      "sonstiges",
+    ])
+      .default("kuchen")
+      .notNull(),
+    /** Optionaler Abgabeort; die Spendenansicht zeigt ihn bewusst ohne Kartenlink. */
+    locationId: int("locationId").references(() => locations.id, {
+      onDelete: "set null",
+    }),
+    /** ISO-Datum für die strukturierte Abgabeplanung. */
+    dropoffDate: varchar("dropoffDate", { length: 10 }).default("").notNull(),
+    /** Strukturierte Uhrzeit im Format HH:MM für native Mobile-Zeitpicker. */
+    dropoffTime: varchar("dropoffTimeStructured", { length: 5 })
+      .default("")
+      .notNull(),
+    /** Bisheriger Freitext bleibt für bestehende Kuchenspenden verlustfrei erhalten. */
+    legacyDropoffText: varchar("dropoffTime", { length: 60 })
+      .default("")
+      .notNull(),
+    /** Freiwillige Kennzeichnungen für die schnelle Ausgabe am Kuchenbuffet. */
+    vegan: boolean("vegan").default(false).notNull(),
+    glutenFree: boolean("glutenFree").default(false).notNull(),
+    lactoseFree: boolean("lactoseFree").default(false).notNull(),
+    containsNuts: boolean("containsNuts").default(false).notNull(),
+    meat: boolean("meat").default(false).notNull(),
+    /** Freitext für zusätzliche Hinweise wie Alkohol oder konkrete Zutaten. */
+    note: text("note"),
+    sortOrder: int("sortOrder").default(0).notNull(),
+  },
+  table => [
+    foreignKey({
+      name: "cakes_event_year_fk",
+      columns: [table.eventId, table.year],
+      foreignColumns: [events.id, events.year],
+    }).onDelete("cascade"),
+  ]
+);
 export type Cake = typeof cakes.$inferSelect;
 
-export const finances = mysqlTable("finances", {
-  id: int("id").autoincrement().primaryKey(),
-  year: int("year").default(2026).notNull(),
-  eventId: int("eventId").notNull(),
-  category: varchar("category", { length: 160 }).notNull(),
-  income: int("incomeCents").default(0).notNull(),
-  expense: int("expenseCents").default(0).notNull(),
-  note: text("note"),
-  sortOrder: int("sortOrder").default(0).notNull(),
-}, table => [
-  foreignKey({
-    name: "finances_event_year_fk",
-    columns: [table.eventId, table.year],
-    foreignColumns: [events.id, events.year],
-  }).onDelete("cascade"),
-]);
+export const finances = mysqlTable(
+  "finances",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    year: int("year").default(2026).notNull(),
+    eventId: int("eventId").notNull(),
+    category: varchar("category", { length: 160 }).notNull(),
+    income: int("incomeCents").default(0).notNull(),
+    expense: int("expenseCents").default(0).notNull(),
+    note: text("note"),
+    sortOrder: int("sortOrder").default(0).notNull(),
+  },
+  table => [
+    foreignKey({
+      name: "finances_event_year_fk",
+      columns: [table.eventId, table.year],
+      foreignColumns: [events.id, events.year],
+    }).onDelete("cascade"),
+  ]
+);
 export type Finance = typeof finances.$inferSelect;

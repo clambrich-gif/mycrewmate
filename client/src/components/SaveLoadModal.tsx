@@ -463,6 +463,10 @@ export function SaveLoadControls({
               />
             )}
           </div>
+          <p className="border-t border-slate-100 px-6 py-3 text-xs leading-5 text-slate-500">
+            Erfolgreiche JSON- und Excel-Downloads werden ohne Dateikopie im
+            Aktivitätsprotokoll dokumentiert.
+          </p>
           <DialogFooter className="border-t border-slate-100 bg-slate-50 px-6 py-4 sm:justify-end">
             <Button variant="outline" className="bg-white" onClick={() => setSaveDialogOpen(false)}>
               Abbrechen

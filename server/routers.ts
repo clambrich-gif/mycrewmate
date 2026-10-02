@@ -667,6 +667,25 @@ async function requireCompletedPlanningTeamPasswordChange(user: {
         "Bitte vergeben Sie zuerst Ihr persönliches Passwort, um die Planung zu öffnen.",
     });
   }
+
+  if (
+    user.role === "admin" &&
+    user.openId.startsWith("tenant-admin:") &&
+    !(await db.isTenantAdminPasswordChangeRequired(user.id))
+  ) {
+    const membership = await db.resolveTenantForUser({
+      userId: user.id,
+      userOpenId: user.openId,
+      allowPilotFallback: false,
+    });
+    if (membership && (await db.tenantNeedsCurrentContractAcceptance(membership.tenantId))) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message:
+          "Bitte bestätigen Sie zuerst die aktuelle AGB, AVV und Datenschutzerklärung für Ihren Verein.",
+      });
+    }
+  }
 }
 
 type GpxMapTrack = {
@@ -2183,6 +2202,73 @@ export const appRouter = router({
           mustChangePassword: false,
           requiresLogin: true,
         } as const;
+      }),
+    acceptCurrentTenantContractDocuments: baseProtectedProcedure
+      .input(
+        z.object({
+          acceptContractDocuments: z.literal(true, {
+            message: "Bitte bestätigen Sie AGB, AVV und Datenschutzhinweise.",
+          }),
+        })
+      )
+      .mutation(async ({ ctx }) => {
+        if (
+          ctx.user.role !== "admin" ||
+          !ctx.user.openId.startsWith("tenant-admin:") ||
+          ctx.user.id <= 0
+        ) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message:
+              "Die Vertragsannahme ist ausschließlich für die persönliche Vereinsadministration verfügbar.",
+          });
+        }
+        if (await db.isTenantAdminPasswordChangeRequired(ctx.user.id)) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message:
+              "Bitte vergeben Sie zuerst Ihr persönliches Passwort und bestätigen Sie die Unterlagen dabei.",
+          });
+        }
+        const membership = await db.resolveTenantForUser({
+          userId: ctx.user.id,
+          userOpenId: ctx.user.openId,
+          allowPilotFallback: false,
+        });
+        if (!membership) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Für diesen Vereinsadministrator ist kein aktiver Verein hinterlegt.",
+          });
+        }
+        const acceptance = await db.acceptCurrentTenantContractDocuments({
+          tenantId: membership.tenantId,
+          acceptedByUserId: ctx.user.id,
+        });
+        await recordSecurityActivity(
+          auditActor(ctx.user),
+          `Digitale Annahme von AGB, AVV und Datenschutzhinweisen für „${membership.tenantName}“ erneut dokumentiert`,
+          "updated",
+          membership.tenantId
+        );
+        const confirmationEmail = await db.getTenantAdminCredentialsByUserId(ctx.user.id);
+        if (confirmationEmail?.email) {
+          const receipt = renderContractAcceptanceEmail({
+            recipientName: ctx.user.name ?? "Vereinsadministration",
+            tenantName: membership.tenantName,
+            packageName: PRODUCT_PACKAGE_META[acceptance.packageId].name,
+            acceptedAt: acceptance.acceptedAt,
+            documents: REQUIRED_LEGAL_DOCUMENT_IDS.map(documentId => ({
+              title: LEGAL_DOCUMENTS[documentId].title,
+              version: LEGAL_DOCUMENTS[documentId].version,
+            })),
+          });
+          await safelySubmitInvitationEmail({
+            to: confirmationEmail.email,
+            ...receipt,
+          });
+        }
+        return { success: true, acceptedAt: acceptance.acceptedAt } as const;
       }),
     adminPasswordLogin: publicProcedure
       .input(
@@ -5492,8 +5578,14 @@ export const appRouter = router({
   }),
 
   projectFile: router({
-    save: backupCapabilityProcedure("project_backup").query(async () => {
+    save: backupCapabilityProcedure("project_backup").query(async ({ ctx }) => {
       const result = await withExcelOperationLimit(() => exportProjectFile());
+      await db.recordActivityLog({
+        actor: auditActor(ctx.user),
+        module: "Dateiexporte",
+        action: "exported",
+        subject: "JSON-Projektstand heruntergeladen",
+      });
       return {
         base64: result.buffer.toString("base64"),
         exportedAt: result.exportedAt,
@@ -5587,8 +5679,14 @@ export const appRouter = router({
   }),
 
   excel: router({
-    exportFile: backupCapabilityProcedure("excel").query(async () => {
+    exportFile: backupCapabilityProcedure("excel").query(async ({ ctx }) => {
       const result = await withExcelOperationLimit(() => exportProjectExcel());
+      await db.recordActivityLog({
+        actor: auditActor(ctx.user),
+        module: "Dateiexporte",
+        action: "exported",
+        subject: "Excel-Projektübersicht heruntergeladen",
+      });
       return {
         base64: result.buffer.toString("base64"),
         exportedAt: result.exportedAt,

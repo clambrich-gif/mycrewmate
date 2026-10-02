@@ -216,7 +216,9 @@ describe("Planungs-API", () => {
       "preview-binding-test-token"
     );
     previewBindingMocks.uploadedFileDigest.mockReturnValue("b".repeat(64));
-    previewBindingMocks.verifyPreviewBinding.mockImplementation(() => undefined);
+    previewBindingMocks.verifyPreviewBinding.mockImplementation(
+      () => undefined
+    );
     dbMocks.resolveTenantForUser.mockResolvedValue({
       tenantId: "rsc-eifelland-mayen",
       role: "tenant_admin",
@@ -563,13 +565,15 @@ describe("Planungs-API", () => {
 
     const stats = await appRouter.createCaller(ctx).dashboard.stats();
 
-    expect(stats.taeglicheEinsatzbereitschaft.map(day => ({
-      day: day.day,
-      ungenutzteHelfer: day.ungenutzteHelfer,
-      teilzeitReserve: day.teilzeitReserve,
-      ungenutzteHelferIds: day.ungenutzteHelferIds,
-      teilzeitReserveIds: day.teilzeitReserveIds,
-    }))).toEqual([
+    expect(
+      stats.taeglicheEinsatzbereitschaft.map(day => ({
+        day: day.day,
+        ungenutzteHelfer: day.ungenutzteHelfer,
+        teilzeitReserve: day.teilzeitReserve,
+        ungenutzteHelferIds: day.ungenutzteHelferIds,
+        teilzeitReserveIds: day.teilzeitReserveIds,
+      }))
+    ).toEqual([
       {
         day: "Freitag",
         ungenutzteHelfer: 1,
@@ -595,7 +599,9 @@ describe("Planungs-API", () => {
   });
 
   it("fasst Marketing und Genehmigungen als Vorbereitung je Ansprechpartner zusammen", async () => {
-    dbMocks.listContacts.mockResolvedValue([{ id: 7, name: "Alex Organisation" }]);
+    dbMocks.listContacts.mockResolvedValue([
+      { id: 7, name: "Alex Organisation" },
+    ]);
     dbMocks.listHelpers.mockResolvedValue([{ ...helper, contactId: 7 }]);
     dbMocks.listPrep.mockResolvedValue([
       {
@@ -661,8 +667,7 @@ describe("Planungs-API", () => {
       name: "Weihnachtsfeier",
       activeDays: ["Sonntag"],
       pdfLogoKey: "pdf-logos/events/2027/77/weihnachtsbaum.png",
-      pdfLogoUrl:
-        "/manus-storage/pdf-logos/events/2027/77/weihnachtsbaum.png",
+      pdfLogoUrl: "/manus-storage/pdf-logos/events/2027/77/weihnachtsbaum.png",
       pdfLogoFallback: "brand",
       sortOrder: 0,
       createdAt: new Date(),
@@ -704,7 +709,9 @@ describe("Planungs-API", () => {
       tenantLogoUrl: "/api/tenant-logo",
     });
 
-    const samplePng = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 1]).toString("base64");
+    const samplePng = Buffer.from([
+      137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 1,
+    ]).toString("base64");
     await caller.branding.uploadTenantLogo({
       base64: samplePng,
       mimeType: "image/png",
@@ -747,14 +754,18 @@ describe("Planungs-API", () => {
       materialIds: [701],
     });
 
-    expect(result.filename).toBe("Material_Packliste_Gefiltert_MyEifelRide.pdf");
+    expect(result.filename).toBe(
+      "Material_Packliste_Gefiltert_MyEifelRide.pdf"
+    );
     expect(result.mimeType).toBe("application/pdf");
     expect(Buffer.from(result.base64, "base64").subarray(0, 5).toString()).toBe(
       "%PDF-"
     );
 
     await expect(
-      appRouter.createCaller(ctx).pdf.materialPacklist({ materialIds: [999_999] })
+      appRouter
+        .createCaller(ctx)
+        .pdf.materialPacklist({ materialIds: [999_999] })
     ).rejects.toThrow("gehört nicht zur aktuellen Veranstaltung");
   });
 
@@ -784,9 +795,7 @@ describe("Planungs-API", () => {
     const caller = appRouter.createCaller(ctx);
     const result = await caller.pdf.donationOverview({ donationIds: [711] });
 
-    expect(result.filename).toBe(
-      "Spendenuebersicht_Gefiltert_MyEifelRide.pdf"
-    );
+    expect(result.filename).toBe("Spendenuebersicht_Gefiltert_MyEifelRide.pdf");
     expect(result.mimeType).toBe("application/pdf");
     expect(Buffer.from(result.base64, "base64").subarray(0, 5).toString()).toBe(
       "%PDF-"
@@ -833,20 +842,24 @@ describe("Planungs-API", () => {
     const prepResult = await caller.pdf.prepTaskOverview({ taskIds: [801] });
     const postResult = await caller.pdf.postTaskOverview({ taskIds: [901] });
 
-    expect(prepResult.filename).toBe("Vorbereitung_Aufgabenuebersicht_MyEifelRide.pdf");
-    expect(postResult.filename).toBe("Nachbereitung_Aufgabenuebersicht_MyEifelRide.pdf");
-    expect(Buffer.from(prepResult.base64, "base64").subarray(0, 5).toString()).toBe(
-      "%PDF-"
+    expect(prepResult.filename).toBe(
+      "Vorbereitung_Aufgabenuebersicht_MyEifelRide.pdf"
     );
-    expect(Buffer.from(postResult.base64, "base64").subarray(0, 5).toString()).toBe(
-      "%PDF-"
+    expect(postResult.filename).toBe(
+      "Nachbereitung_Aufgabenuebersicht_MyEifelRide.pdf"
     );
-    await expect(caller.pdf.prepTaskOverview({ taskIds: [999_999] })).rejects.toThrow(
-      "gehört nicht zur aktuellen Veranstaltung"
-    );
-    await expect(caller.pdf.postTaskOverview({ taskIds: [999_999] })).rejects.toThrow(
-      "gehört nicht zur aktuellen Veranstaltung"
-    );
+    expect(
+      Buffer.from(prepResult.base64, "base64").subarray(0, 5).toString()
+    ).toBe("%PDF-");
+    expect(
+      Buffer.from(postResult.base64, "base64").subarray(0, 5).toString()
+    ).toBe("%PDF-");
+    await expect(
+      caller.pdf.prepTaskOverview({ taskIds: [999_999] })
+    ).rejects.toThrow("gehört nicht zur aktuellen Veranstaltung");
+    await expect(
+      caller.pdf.postTaskOverview({ taskIds: [999_999] })
+    ).rejects.toThrow("gehört nicht zur aktuellen Veranstaltung");
   });
 
   it("speichert PDF-Bilder im Pfad und Datensatz des aktuellen Events als Administrator", async () => {
@@ -874,8 +887,7 @@ describe("Planungs-API", () => {
     );
     expect(dbMocks.updateCurrentEventPdfImage).toHaveBeenCalledWith({
       pdfLogoKey: "pdf-logos/events/2026/1/pdf-logo_test.png",
-      pdfLogoUrl:
-        "/uploads/pdf-logos/events/2026/1/pdf-logo_test.png",
+      pdfLogoUrl: "/uploads/pdf-logos/events/2026/1/pdf-logo_test.png",
     });
   });
 
@@ -1040,7 +1052,9 @@ describe("Planungs-API", () => {
     const consoleError = vi
       .spyOn(console, "error")
       .mockImplementation(() => undefined);
-    storageMocks.storageRead.mockRejectedValue(new Error("Datei nicht gefunden"));
+    storageMocks.storageRead.mockRejectedValue(
+      new Error("Datei nicht gefunden")
+    );
 
     try {
       await expect(
@@ -1422,6 +1436,20 @@ describe("Planungs-API", () => {
     }
     expect(projectFileMocks.exportProjectFile).toHaveBeenCalledTimes(2);
     expect(backupMocks.exportProjectExcel).toHaveBeenCalledTimes(2);
+    expect(dbMocks.recordActivityLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        module: "Dateiexporte",
+        action: "exported",
+        subject: "JSON-Projektstand heruntergeladen",
+      })
+    );
+    expect(dbMocks.recordActivityLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        module: "Dateiexporte",
+        action: "exported",
+        subject: "Excel-Projektübersicht heruntergeladen",
+      })
+    );
   });
 
   it("beschränkt Prüfung und Protokolle des Projektladens auf Administratoren", async () => {
@@ -1565,7 +1593,9 @@ describe("Planungs-API", () => {
 
   it("prüft und übernimmt den vollständigen Excelimport nur mit gebundener Freigabe", async () => {
     const caller = appRouter.createCaller(ctx);
-    await expect(caller.excel.previewFull({ base64: "eA==" })).resolves.toMatchObject({
+    await expect(
+      caller.excel.previewFull({ base64: "eA==" })
+    ).resolves.toMatchObject({
       totals: { created: 1 },
     });
 
@@ -1596,11 +1626,11 @@ describe("Planungs-API", () => {
 
   it("protokolliert und meldet die konkrete Transaktionsursache eines Modulimports", async () => {
     moduleImportMocks.applyModuleExcelImport.mockRejectedValue(
-      new Error(
-        "HELFER Zeile 7: Fehlende Ansprechpartnerreferenz ID 2190010"
-      )
+      new Error("HELFER Zeile 7: Fehlende Ansprechpartnerreferenz ID 2190010")
     );
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
     const input = {
       area: "HELFER" as const,
       base64: "eA==",
@@ -1748,7 +1778,9 @@ describe("Planungs-API", () => {
     ]);
 
     await expect(
-      appRouter.createCaller(ctx).plan.assign({ shiftId: 10, helperId: 20, slot: 0 })
+      appRouter
+        .createCaller(ctx)
+        .plan.assign({ shiftId: 10, helperId: 20, slot: 0 })
     ).rejects.toThrow("nicht verfügbar");
 
     dbMocks.listShifts.mockResolvedValue([
@@ -1760,7 +1792,9 @@ describe("Planungs-API", () => {
       },
     ]);
     await expect(
-      appRouter.createCaller(ctx).plan.assign({ shiftId: 10, helperId: 20, slot: 0 })
+      appRouter
+        .createCaller(ctx)
+        .plan.assign({ shiftId: 10, helperId: 20, slot: 0 })
     ).resolves.toEqual({
       success: true,
       assignedCount: 1,
@@ -2089,9 +2123,9 @@ describe("Planungs-API", () => {
     dbMocks.deleteCake.mockResolvedValue({ affectedRows: 1 });
     const caller = appRouter.createCaller(planningTeamCtx);
 
-    await expect(
-      caller.helpers.remove({ id: 20 })
-    ).resolves.toEqual({ affectedRows: 1 });
+    await expect(caller.helpers.remove({ id: 20 })).resolves.toEqual({
+      affectedRows: 1,
+    });
     await expect(caller.cakes.remove({ id: 30 })).resolves.toEqual({
       affectedRows: 1,
     });
@@ -2318,7 +2352,8 @@ describe("Planungs-API", () => {
       appRouter.createCaller(ctx).shifts.update({ id: 10, needed: 0 })
     ).rejects.toMatchObject({
       code: "BAD_REQUEST",
-      message: "Der neue Helferbedarf wäre kleiner als bereits belegte Helferplätze",
+      message:
+        "Der neue Helferbedarf wäre kleiner als bereits belegte Helferplätze",
     });
   });
 
@@ -2447,7 +2482,9 @@ describe("Planungs-API", () => {
     dbMocks.updateLocation.mockResolvedValue({ affectedRows: 1 });
 
     const caller = appRouter.createCaller(ctx);
-    await expect(caller.locations.clearLogo({ id: 55 })).resolves.toEqual({ success: true });
+    await expect(caller.locations.clearLogo({ id: 55 })).resolves.toEqual({
+      success: true,
+    });
     expect(dbMocks.updateLocation).toHaveBeenCalledWith(55, {
       logoKey: null,
       logoUrl: null,

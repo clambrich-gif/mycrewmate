@@ -34,7 +34,10 @@ function createConnection(options?: {
     if (query.includes("TABLE_NAME AS tableName")) {
       if (!options?.snapshotCompatible) return [[]];
       const snapshot = JSON.parse(
-        fs.readFileSync(path.resolve(process.cwd(), "drizzle/meta/0052_snapshot.json"), "utf8")
+        fs.readFileSync(
+          path.resolve(process.cwd(), "drizzle/meta/0052_snapshot.json"),
+          "utf8"
+        )
       );
       return [
         Object.values(snapshot.tables).flatMap((table: any) =>
@@ -52,7 +55,12 @@ function createConnection(options?: {
     if (query.includes("information_schema.COLUMNS")) {
       return [
         columnExists.shift()
-          ? [{ columnType: columnTypes.shift() ?? options?.columnType ?? "varchar(500)" }]
+          ? [
+              {
+                columnType:
+                  columnTypes.shift() ?? options?.columnType ?? "varchar(500)",
+              },
+            ]
           : [],
       ];
     }
@@ -60,9 +68,12 @@ function createConnection(options?: {
   });
   const query = vi.fn(async (statement: string) => {
     if (options?.duplicateOnAlter && statement.startsWith("ALTER TABLE")) {
-      const error = Object.assign(new Error("Duplicate column name 'pdfLogoKey'"), {
-        code: "ER_DUP_FIELDNAME",
-      });
+      const error = Object.assign(
+        new Error("Duplicate column name 'pdfLogoKey'"),
+        {
+          code: "ER_DUP_FIELDNAME",
+        }
+      );
       throw error;
     }
     return [[]];
@@ -78,13 +89,12 @@ describe("applyProjectMigrations", () => {
   it("übernimmt eine bereits vorhandene Zielspalte und schreibt die Migration ins Journal", async () => {
     const connection = createConnection({ columnExists: [true] });
 
-    const result = await applyProjectMigrations(
-      connection,
-      [migration([
+    const result = await applyProjectMigrations(connection, [
+      migration([
         "ALTER TABLE `events` ADD `pdfLogoKey` varchar(500);",
         "UPDATE `events` SET `pdfLogoKey` = NULL;",
-      ])]
-    );
+      ]),
+    ]);
 
     expect(result).toEqual({
       appliedMigrations: 1,
@@ -109,10 +119,9 @@ describe("applyProjectMigrations", () => {
       duplicateOnAlter: true,
     });
 
-    const result = await applyProjectMigrations(
-      connection,
-      [migration(["ALTER TABLE `events` ADD `pdfLogoKey` varchar(500);"])]
-    );
+    const result = await applyProjectMigrations(connection, [
+      migration(["ALTER TABLE `events` ADD `pdfLogoKey` varchar(500);"]),
+    ]);
 
     expect(result).toEqual({
       appliedMigrations: 1,
@@ -129,10 +138,9 @@ describe("applyProjectMigrations", () => {
     });
 
     await expect(
-      applyProjectMigrations(
-        connection,
-        [migration(["ALTER TABLE `events` ADD `pdfLogoKey` varchar(500);"])]
-      )
+      applyProjectMigrations(connection, [
+        migration(["ALTER TABLE `events` ADD `pdfLogoKey` varchar(500);"]),
+      ])
     ).rejects.toThrow("Duplicate column name");
   });
 
@@ -143,14 +151,11 @@ describe("applyProjectMigrations", () => {
       columnTypes: ["int", "varchar(300)"],
     });
 
-    const result = await applyProjectMigrations(
-      connection,
-      [
-        migration([
-          "CREATE TABLE `approvals` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `request` varchar(300) NOT NULL,\n  CONSTRAINT `approvals_id` PRIMARY KEY(`id`)\n);",
-        ])
-      ]
-    );
+    const result = await applyProjectMigrations(connection, [
+      migration([
+        "CREATE TABLE `approvals` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `request` varchar(300) NOT NULL,\n  CONSTRAINT `approvals_id` PRIMARY KEY(`id`)\n);",
+      ]),
+    ]);
 
     expect(result).toEqual({
       appliedMigrations: 1,
@@ -175,19 +180,19 @@ describe("applyProjectMigrations", () => {
     connection.query.mockRejectedValue(existingTableError);
 
     await expect(
-      applyProjectMigrations(
-        connection,
-        [
-          migration([
-            "CREATE TABLE `approvals` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `request` varchar(300) NOT NULL,\n  CONSTRAINT `approvals_id` PRIMARY KEY(`id`)\n);",
-          ])
-        ]
-      )
+      applyProjectMigrations(connection, [
+        migration([
+          "CREATE TABLE `approvals` (\n  `id` int AUTO_INCREMENT NOT NULL,\n  `request` varchar(300) NOT NULL,\n  CONSTRAINT `approvals_id` PRIMARY KEY(`id`)\n);",
+        ]),
+      ])
     ).rejects.toThrow("already exists");
   });
 
   it("ergänzt Legacy-Journal-Einträge und führt spätere Mandantenmigrationen regulär aus", async () => {
-    const connection = createConnection({ snapshotCompatible: true, legacyRows: 0 });
+    const connection = createConnection({
+      snapshotCompatible: true,
+      legacyRows: 0,
+    });
     const migrations = readProjectMigrations();
     // Nach dem historischen Stand 0053 folgen regulär die Mandanten- und Rechtemigrationen.
     const expectedNewMigrations = migrations.filter(
@@ -221,7 +226,8 @@ describe("applyProjectMigrations", () => {
         m.tag === "0080_left_baron_zemo" ||
         m.tag === "0081_brainy_echo" ||
         m.tag === "0082_old_skin" ||
-        m.tag === "0083_tough_obadiah_stane"
+        m.tag === "0083_tough_obadiah_stane" ||
+        m.tag === "0084_smooth_scalphunter"
     ).length;
 
     const result = await applyProjectMigrations(connection, migrations);
@@ -242,7 +248,10 @@ describe("applyProjectMigrations", () => {
   });
 
   it("verweigert den Legacy-Bootstrap bei noch nicht übertragenen Altdaten", async () => {
-    const connection = createConnection({ snapshotCompatible: true, legacyRows: 1 });
+    const connection = createConnection({
+      snapshotCompatible: true,
+      legacyRows: 1,
+    });
     connection.query.mockRejectedValue(
       Object.assign(new Error("Table 'users' already exists"), {
         code: "ER_TABLE_EXISTS_ERROR",
@@ -262,22 +271,24 @@ describe("applyProjectMigrations", () => {
   it("blockiert andere Datenbankfehler weiterhin", async () => {
     const connection = createConnection();
     connection.query.mockImplementation(async (statement: string) => {
-      if (statement.startsWith("UPDATE")) throw new Error("Berechtigung verweigert");
+      if (statement.startsWith("UPDATE"))
+        throw new Error("Berechtigung verweigert");
       return [[]];
     });
 
     await expect(
-      applyProjectMigrations(connection, [migration(["UPDATE `events` SET `name` = `name`; "])])
+      applyProjectMigrations(connection, [
+        migration(["UPDATE `events` SET `name` = `name`; "]),
+      ])
     ).rejects.toThrow("Berechtigung verweigert");
   });
 
   it("führt Transaktionsbefehle über das Textprotokoll statt Prepared Statements aus", async () => {
     const connection = createConnection();
 
-    await applyProjectMigrations(
-      connection,
-      [migration(["START TRANSACTION;", "COMMIT;"])]
-    );
+    await applyProjectMigrations(connection, [
+      migration(["START TRANSACTION;", "COMMIT;"]),
+    ]);
 
     expect(connection.query).toHaveBeenCalledWith("START TRANSACTION;");
     expect(connection.query).toHaveBeenCalledWith("COMMIT;");

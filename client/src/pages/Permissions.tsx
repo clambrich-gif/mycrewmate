@@ -163,7 +163,7 @@ export function AuditCenter({
   const [yearFilter, setYearFilter] = useState("all");
   const [eventFilter, setEventFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
-  const [activityKindFilter, setActivityKindFilter] = useState<"all" | "releases">("all");
+  const [activityKindFilter, setActivityKindFilter] = useState<"all" | "releases" | "exports">("all");
   const [activityView, setActivityView] = useState<"activities" | "deletions">(
     "activities"
   );
@@ -263,8 +263,15 @@ export function AuditCenter({
       entry.module === "Zugänge & Freigaben" ||
       /whatsapp|freigabe|zugang|berechtigung/i.test(entry.subject)
   );
+  const exportActivities = operationalActivities.filter(
+    entry => entry.module === "Dateiexporte" || (entry.action as string) === "exported"
+  );
   const visibleOperationalActivities =
-    activityKindFilter === "releases" ? releaseActivities : operationalActivities;
+    activityKindFilter === "releases"
+      ? releaseActivities
+      : activityKindFilter === "exports"
+        ? exportActivities
+        : operationalActivities;
   const selectedEventName =
     eventFilter === "all"
       ? null
@@ -435,7 +442,7 @@ export function AuditCenter({
               <Select
                 value={activityKindFilter}
                 onValueChange={value =>
-                  setActivityKindFilter(value as "all" | "releases")
+                  setActivityKindFilter(value as "all" | "releases" | "exports")
                 }
               >
                 <SelectTrigger className="w-56 bg-background">
@@ -444,6 +451,7 @@ export function AuditCenter({
                 <SelectContent>
                   <SelectItem value="all">Alle Aktivitäten</SelectItem>
                   <SelectItem value="releases">Nur Freigaben &amp; Zugänge</SelectItem>
+                  <SelectItem value="exports">Nur Dateiexporte (JSON/Excel)</SelectItem>
                 </SelectContent>
               </Select>
             )}

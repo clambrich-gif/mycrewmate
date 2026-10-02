@@ -589,6 +589,13 @@
       "when": 1790885900952,
       "tag": "0083_tough_obadiah_stane",
       "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "5",
+      "when": 1790919933685,
+      "tag": "0084_smooth_scalphunter",
+      "breakpoints": true
     }
   ]
 }
