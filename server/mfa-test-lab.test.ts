@@ -1,4 +1,6 @@
 import { createHmac } from "node:crypto";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import QRCode from "qrcode";
 import { describe, expect, it } from "vitest";
 import { buildTotpUri } from "./mfa";
@@ -93,5 +95,16 @@ describe("isoliertes MFA-Testlabor", () => {
     );
 
     expect(image).toMatch(/^data:image\/png;base64,/);
+  });
+
+  it("bietet den direkten Vorschauzugang sichtbar an, ohne ihn in der Produktionsanwendung zu öffnen", () => {
+    const app = readFileSync(path.resolve(__dirname, "../client/src/App.tsx"), "utf8");
+    const layout = readFileSync(path.resolve(__dirname, "../client/src/components/Layout.tsx"), "utf8");
+
+    expect(app).toContain('path="/_staging/mfa-testlabor"');
+    expect(app).toContain('path="/mfa-testlabor"');
+    expect(app).toContain('window.location.hostname.endsWith(".manus.computer")');
+    expect(layout).toContain('href="/_staging/mfa-testlabor"');
+    expect(layout).toContain("MFA-Testlabor öffnen (ohne Login)");
   });
 });
