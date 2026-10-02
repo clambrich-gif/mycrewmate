@@ -848,6 +848,7 @@ function MasterMfaCard() {
     <Card className="border-blue-200 bg-blue-50/50">
       <CardHeader className="pb-2"><CardTitle className="text-base">Master-MFA einrichten</CardTitle><CardDescription>Den Schlüssel manuell in eine Authenticator-App übernehmen, Recovery-Codes offline sichern und mit einem aktuellen App-Code aktivieren.</CardDescription></CardHeader>
       <CardContent className="space-y-3">
+        <p className="text-xs text-slate-700"><strong>Wichtiger Hinweis:</strong> Der Schlüssel nutzt den Standard Base32 (A–Z und 2–7). Das Zeichen <strong>O</strong> ist immer der Buchstabe O (Otto) – die Ziffer <strong>0 (Null)</strong> existiert im Schlüssel niemals.</p>
         <code className="block select-all break-all rounded-lg bg-white px-3 py-2 text-xs text-slate-950 ring-1 ring-blue-200">{setup.secret}</code>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{setup.recoveryCodes.map(recoveryCode => <code key={recoveryCode} className="rounded bg-white px-2 py-1.5 text-center text-xs ring-1 ring-amber-200">{recoveryCode}</code>)}</div>
         <div className="grid gap-3 sm:grid-cols-2">

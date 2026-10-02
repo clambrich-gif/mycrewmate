@@ -298,6 +298,7 @@ function MfaManager() {
         <p className="mt-1 text-xs leading-5 text-blue-900">
           Wählen Sie in der App „Schlüssel manuell eingeben“ und tragen Sie diesen einmaligen Schlüssel ein:
         </p>
+        <p className="mt-2 text-xs text-blue-900"><strong>Hinweis:</strong> Der Schlüssel verwendet Base32 (A–Z und 2–7). Das Zeichen <strong>O</strong> ist immer der Buchstabe O (Otto) – eine Ziffer <strong>0 (Null)</strong> existiert im Schlüssel niemals.</p>
         <code className="mt-3 block select-all break-all rounded-lg bg-white px-3 py-2 font-mono text-xs text-slate-950 ring-1 ring-blue-200">
           {setup.secret}
         </code>
