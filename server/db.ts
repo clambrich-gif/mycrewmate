@@ -6926,7 +6926,12 @@ export async function consumeMfaLoginChallenge(tokenHash: string) {
         lt(mfaLoginChallenges.failedAttempts, 5)
       )
     );
-  return Number((result as { affectedRows?: number }).affectedRows ?? 0) === 1;
+  // Drizzle/MySQL liefert bei Updates ein Tupel [ResultSetHeader, fields].
+  // Die Challenge ist bereits atomar als verwendet markiert; die Auswertung
+  // muss daher denselben Ergebnishelfer wie die übrigen atomaren Updates
+  // verwenden. Andernfalls wird ein erfolgreicher Code fälschlich als
+  // "abgelaufen oder bereits verwendet" zurückgewiesen.
+  return affectedRows(result) === 1;
 }
 
 function yearValues<T extends Record<string, unknown>>(values: T) {
