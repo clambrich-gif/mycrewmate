@@ -84,6 +84,7 @@ describe("Punkt 3: Sicherheits- und Berechtigungs-Hardening", () => {
     expect(coreIndex).toContain("Content-Security-Policy");
     expect(coreIndex).toContain("https://*.tile.openstreetmap.org");
     expect(coreIndex).toContain("https://*.tile.opentopomap.org");
+    expect(coreIndex).toContain("media-src 'self' https://files.manuscdn.com");
   });
 
   it("begrenzt Fehlversuche bei geschützten PDF-Codeabfragen", () => {

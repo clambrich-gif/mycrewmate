@@ -101,4 +101,18 @@ describe("lokale MyCrewMate-Angebotsdemo", () => {
     expect(offerDemo).toContain("playsInline");
     expect(offerDemo).toContain('src="/api/marketing/promo-video"');
   });
+
+  it("kennzeichnet Event Pass und Pro eindeutig und stellt zu jedem Paket ein eigenes Kurzvideo bereit", () => {
+    const offerDemo = source("client/src/pages/OfferDemo.tsx");
+
+    expect(offerDemo).toContain("FLEXIBEL · JEDES JAHR NEU");
+    expect(offerDemo).toContain("UNSERE BELIEBTESTE WAHL");
+    expect(offerDemo).toContain("Kurzvideo ansehen");
+    expect(offerDemo).toContain("const PACKAGE_VIDEO_COPY");
+    expect(offerDemo).toContain("kuBlYlACogOEwONO.mp4");
+    expect(offerDemo).toContain("PQUFaMfISRAHgnwl.mp4");
+    expect(offerDemo).toContain("vLWHhFIQuWYvcwZG.mp4");
+    expect(offerDemo).toContain("ydXImTPvhUpAuTRC.mp4");
+    expect(offerDemo).toContain("setPackageVideoOffer");
+  });
 });

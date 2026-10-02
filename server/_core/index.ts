@@ -83,6 +83,7 @@ async function startServer() {
           "style-src 'self' 'unsafe-inline'",
           "font-src 'self' data:",
           "img-src 'self' data: blob: https://*.tile.openstreetmap.org https://*.tile.opentopomap.org",
+          "media-src 'self' https://files.manuscdn.com",
           "connect-src 'self'",
         ].join("; "),
       });

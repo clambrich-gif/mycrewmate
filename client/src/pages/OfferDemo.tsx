@@ -74,9 +74,39 @@ type Offer = {
   accent: string;
   buttonClass: string;
   icon: LucideIcon;
-  featured?: boolean;
-  featuredLabel?: string;
+  ribbonLabel?: string;
+  ribbonClass?: string;
   futureOptions?: string[];
+};
+
+const PACKAGE_VIDEO_COPY: Record<
+  OfferId,
+  { title: string; description: string; src: string }
+> = {
+  "event-pass": {
+    title: "Event Pass in 25 Sekunden",
+    description:
+      "Ein einzelnes Fest übersichtlich planen – ohne Dauerbindung und mit freier Entscheidung im nächsten Jahr.",
+    src: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663150240576/kuBlYlACogOEwONO.mp4",
+  },
+  light: {
+    title: "Light in 28 Sekunden",
+    description:
+      "Der verlässliche Jahresablauf für das wiederkehrende Vereinsevent und ein kleines festes Planungsteam.",
+    src: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663150240576/PQUFaMfISRAHgnwl.mp4",
+  },
+  pro: {
+    title: "Pro in 32 Sekunden",
+    description:
+      "Die volle Planungstiefe für Vereine mit aktiven Teams, mehreren Veranstaltungen und klaren Abläufen.",
+    src: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663150240576/vLWHhFIQuWYvcwZG.mp4",
+  },
+  enterprise: {
+    title: "Enterprise in 30 Sekunden",
+    description:
+      "Individuelle Organisationsprozesse, mehrere Teams und persönliche Begleitung in einer passenden Lösung.",
+    src: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663150240576/ydXImTPvhUpAuTRC.mp4",
+  },
 };
 
 type TargetGroup = {
@@ -147,8 +177,8 @@ const OFFERS: Offer[] = [
       "border-orange-400 bg-gradient-to-b from-orange-50 via-white to-white shadow-[0_24px_60px_-26px_rgba(249,115,22,0.38)]",
     buttonClass: "bg-orange-500 text-white hover:bg-orange-600",
     icon: CalendarCheck2,
-    featured: true,
-    featuredLabel: "FLEXIBEL · JEDES JAHR NEU",
+    ribbonLabel: "FLEXIBEL · JEDES JAHR NEU",
+    ribbonClass: "bg-orange-500",
   },
   {
     id: "light",
@@ -249,6 +279,8 @@ const OFFERS: Offer[] = [
       "border-blue-500 bg-gradient-to-b from-blue-50 to-white shadow-[0_24px_60px_-26px_rgba(37,99,235,0.45)]",
     buttonClass: "bg-blue-600 text-white hover:bg-blue-700",
     icon: Sparkles,
+    ribbonLabel: "UNSERE BELIEBTESTE WAHL",
+    ribbonClass: "bg-blue-600",
   },
   {
     id: "enterprise",
@@ -440,25 +472,33 @@ function OfferCard({
   offer,
   onDetails,
   onAdd,
+  onVideo,
 }: {
   offer: Offer;
   onDetails: (offer: Offer) => void;
   onAdd: (offer: Offer) => void;
+  onVideo: (offer: Offer) => void;
 }) {
   const Icon = offer.icon;
+  const video = PACKAGE_VIDEO_COPY[offer.id];
 
   return (
     <article
       className={cn(
-        "relative flex min-h-full flex-col rounded-[1.4rem] border p-6 text-slate-950 transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-1 hover:shadow-xl sm:p-7",
+        "relative flex min-h-full flex-col overflow-hidden rounded-[1.4rem] border p-6 text-slate-950 transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-1 hover:shadow-xl sm:p-7",
         offer.accent,
-        offer.featured && "lg:-mt-4 lg:mb-[-1rem]"
+        offer.ribbonLabel && "pt-14 sm:pt-[4.25rem] lg:-mt-4 lg:mb-[-1rem]"
       )}
       data-offer-card={offer.id}
     >
-      {offer.featured && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-orange-500 px-4 py-1 text-xs font-bold tracking-wide text-white shadow-sm">
-          {offer.featuredLabel ?? "EMPFOHLEN"}
+      {offer.ribbonLabel && (
+        <div
+          className={cn(
+            "absolute inset-x-0 top-0 flex min-h-10 items-center justify-center px-4 py-2 text-center text-xs font-bold tracking-[0.14em] text-white shadow-sm",
+            offer.ribbonClass ?? "bg-slate-900"
+          )}
+        >
+          {offer.ribbonLabel}
         </div>
       )}
       <div className="flex items-start justify-between gap-4">
@@ -519,6 +559,15 @@ function OfferCard({
         </Button>
         <Button
           type="button"
+          variant="outline"
+          className="w-full rounded-xl border-slate-300 bg-white/90 text-slate-700 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+          onClick={() => onVideo(offer)}
+          aria-label={`${video.title} ansehen`}
+        >
+          <Play className="size-4" aria-hidden="true" /> Kurzvideo ansehen
+        </Button>
+        <Button
+          type="button"
           variant="ghost"
           className="w-full rounded-xl text-slate-600 hover:bg-white/80 hover:text-blue-700"
           onClick={() => onDetails(offer)}
@@ -542,6 +591,9 @@ export default function OfferDemo() {
   const [inquiryEmail, setInquiryEmail] = useState("");
   const [inquiryNote, setInquiryNote] = useState("");
   const [promoVideoOpen, setPromoVideoOpen] = useState(false);
+  const [packageVideoOffer, setPackageVideoOffer] = useState<Offer | null>(
+    null
+  );
   const [selectedTargetGroup, setSelectedTargetGroup] =
     useState<TargetGroup | null>(null);
   const DetailIcon = detailsOffer?.icon ?? Sparkles;
@@ -883,6 +935,7 @@ export default function OfferDemo() {
                 offer={offer}
                 onDetails={setDetailsOffer}
                 onAdd={addToCart}
+                onVideo={setPackageVideoOffer}
               />
             ))}
           </div>
@@ -1067,6 +1120,49 @@ export default function OfferDemo() {
       </Dialog>
 
       <Dialog
+        open={packageVideoOffer !== null}
+        onOpenChange={open => !open && setPackageVideoOffer(null)}
+      >
+        <DialogContent className="max-w-5xl overflow-hidden border-slate-700 !gap-0 !bg-slate-950 !p-0 !text-white">
+          {packageVideoOffer && (
+            <>
+              <DialogHeader className="sr-only">
+                <DialogTitle>
+                  {PACKAGE_VIDEO_COPY[packageVideoOffer.id].title}
+                </DialogTitle>
+                <DialogDescription>
+                  {PACKAGE_VIDEO_COPY[packageVideoOffer.id].description}
+                </DialogDescription>
+              </DialogHeader>
+              <video
+                key={packageVideoOffer.id}
+                className="aspect-video w-full bg-black"
+                controls
+                autoPlay
+                playsInline
+                preload="metadata"
+                aria-label={PACKAGE_VIDEO_COPY[packageVideoOffer.id].title}
+              >
+                <source
+                  src={PACKAGE_VIDEO_COPY[packageVideoOffer.id].src}
+                  type="video/mp4"
+                />
+                Ihr Browser unterstützt keine HTML5-Videowiedergabe.
+              </video>
+              <div className="border-t border-white/10 bg-slate-950 px-5 py-4 sm:px-6">
+                <p className="text-sm font-bold text-white">
+                  {PACKAGE_VIDEO_COPY[packageVideoOffer.id].title}
+                </p>
+                <p className="mt-1 text-sm leading-6 text-slate-300">
+                  {PACKAGE_VIDEO_COPY[packageVideoOffer.id].description}
+                </p>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
         open={detailsOffer !== null}
         onOpenChange={open => !open && setDetailsOffer(null)}
       >
@@ -1196,6 +1292,14 @@ export default function OfferDemo() {
                 </p>
               </div>
               <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="rounded-xl"
+                  onClick={() => setPackageVideoOffer(detailsOffer)}
+                >
+                  <Play className="size-4" aria-hidden="true" /> Kurzvideo ansehen
+                </Button>
                 <Button
                   type="button"
                   className={cn("rounded-xl", detailsOffer.buttonClass)}
