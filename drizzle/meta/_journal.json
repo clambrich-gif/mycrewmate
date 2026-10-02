@@ -596,6 +596,13 @@
       "when": 1790919933685,
       "tag": "0084_smooth_scalphunter",
       "breakpoints": true
+    },
+    {
+      "idx": 85,
+      "version": "5",
+      "when": 1790922511563,
+      "tag": "0085_zippy_monster_badoon",
+      "breakpoints": true
     }
   ]
 }

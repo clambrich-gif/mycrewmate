@@ -77,7 +77,7 @@ Ein Backup darf nicht dazu führen, dass bereits zu löschende Planungsdaten unb
 | Punkt | Ziel                                                                                       | Priorität |
 | ----- | ------------------------------------------------------------------------------------------ | --------- |
 | R5    | Persönliche PDF-Links zeitlich begrenzen, widerrufbar machen und beim Eventschluss sperren | erledigt  |
-| R10   | Dreijahresprüfung für geschlossene Events, Logs und Uploads automatisieren                 | hoch      |
+| R10   | Dreijahresprüfung für geschlossene Events, Logs und Uploads automatisieren                 | technisch umgesetzt (Heartbeat + Hold-Ausnahme); Frist für Auditlogs noch durch Nutzer bestätigen |
 | R11   | Tägliche DB- und Upload-Backups samt dokumentiertem Restore-Test nachweisen                | hoch      |
-| B3    | Physische Datei-Löschung und Orphan-Bereinigung nachweisen                                 | mittel    |
+| B3    | Physische Datei-Löschung und Orphan-Bereinigung nachweisen                                 | umgesetzt (storageDelete für Event-PDF-Bilder, Standorte & GPX) |
 | B4    | Jährlichen Lösch- und Restore-Test dokumentieren                                           | mittel    |

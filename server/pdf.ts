@@ -342,6 +342,110 @@ export function renderClubPrivacyNoticeTemplatePdf() {
   });
 }
 
+function renderGovernanceTemplatePdf(
+  title: string,
+  subtitle: string,
+  sections: Array<{ title: string; lines: string[] }>
+) {
+  return collectPdf(doc => {
+    doc.fillColor(colors.accent).font("Helvetica-Bold").fontSize(19);
+    doc.text(title, { width: contentWidth });
+    doc.moveDown(0.5);
+    doc.fillColor(colors.ink).font("Helvetica").fontSize(9.5);
+    doc.text(subtitle, { width: contentWidth, lineGap: 2 });
+    doc.moveDown(1.1);
+    for (const section of sections) {
+      if (doc.y > pageHeight - 140) {
+        doc.addPage();
+        doc.x = margin;
+        doc.y = margin;
+      }
+      doc.fillColor(colors.ink).font("Helvetica-Bold").fontSize(11.5);
+      doc.text(section.title, { width: contentWidth });
+      doc.moveDown(0.3);
+      doc.fillColor(colors.ink).font("Helvetica").fontSize(9.5);
+      for (const line of section.lines) {
+        doc.text(`[ ]  ${line}`, { width: contentWidth, lineGap: 2 });
+        doc.moveDown(0.35);
+      }
+      doc.moveDown(0.55);
+    }
+  });
+}
+
+/** Ausfüllbare interne Vorlage für Auskunfts-, Lösch- und Berichtigungsanfragen. */
+export function renderDataSubjectRequestTemplatePdf() {
+  return renderGovernanceTemplatePdf(
+    "Bearbeitung einer Datenschutzanfrage",
+    "Interne Vereins- und MyCrewMate-Vorlage · Erfasst nur die für die Bearbeitung erforderlichen Angaben. Anfragen unverzüglich dokumentieren und innerhalb eines Monats beantworten, soweit keine rechtlich zulässige Verlängerung begründet wird.",
+    [
+      {
+        title: "1. Eingang",
+        lines: [
+          "Anfrage eingegangen am: ____________________",
+          "Anfragende Person / Kontaktweg: ____________________",
+          "Art: [ ] Auskunft  [ ] Berichtigung  [ ] Löschung  [ ] Einschränkung  [ ] Widerspruch  [ ] Datenübertragbarkeit",
+          "Identität angemessen geprüft (ohne unnötige Ausweiskopie): ____________________",
+        ],
+      },
+      {
+        title: "2. Zuständigkeit und Recherche",
+        lines: [
+          "Verantwortlicher Verein / zuständige Person: ____________________",
+          "Betroffene MyCrewMate-Bereiche und Event(s): ____________________",
+          "Auftragsverarbeiter informiert, soweit erforderlich: ____________________",
+          "Gesetzliche Aufbewahrungspflicht oder dokumentierte Ausnahme geprüft: ____________________",
+        ],
+      },
+      {
+        title: "3. Antwort und Abschluss",
+        lines: [
+          "Antwortdatum / gewählter sicherer Übermittlungsweg: ____________________",
+          "Ergebnis bzw. Begründung einer Einschränkung: ____________________",
+          "Frist eingehalten oder Verlängerung begründet: ____________________",
+          "Abschluss geprüft durch: ____________________",
+        ],
+      },
+    ]
+  );
+}
+
+/** Ausfüllbare Erstmaßnahmenvorlage für den Umgang mit Datenschutzvorfällen. */
+export function renderPrivacyIncidentTemplatePdf() {
+  return renderGovernanceTemplatePdf(
+    "Erstprotokoll Datenschutzvorfall",
+    "Interne Vereins- und MyCrewMate-Vorlage · Bei Verdacht zuerst Zugang begrenzen, Beweise sichern und den Vorgang bewerten. Ersetzt keine rechtliche Beratung; Melde- und Benachrichtigungspflichten sind unverzüglich im Einzelfall zu prüfen.",
+    [
+      {
+        title: "1. Sofortmaßnahmen",
+        lines: [
+          "Vorfall festgestellt am / durch: ____________________",
+          "Betroffene Systeme, Links oder Zugänge: ____________________",
+          "Zugriff gesperrt / Link widerrufen / Passwort zurückgesetzt: ____________________",
+          "Keine personenbezogenen Details in ungeschützte Chat- oder E-Mail-Verteiler geschrieben",
+        ],
+      },
+      {
+        title: "2. Bewertung",
+        lines: [
+          "Welche Datenkategorien und ungefähr wie viele Personen könnten betroffen sein? ____________________",
+          "Unbefugter Empfänger oder Verlustweg bekannt? ____________________",
+          "Risiko für die betroffenen Personen bewertet durch: ____________________",
+          "Datenschutzkontakt des Vereins und MyCrewMate informiert, soweit erforderlich",
+        ],
+      },
+      {
+        title: "3. Nachweis und Abschluss",
+        lines: [
+          "Entscheidung zur Meldung an die Aufsichtsbehörde dokumentiert (Frist bei Bedarf prüfen)",
+          "Entscheidung zur Benachrichtigung Betroffener dokumentiert",
+          "Abhilfemaßnahmen, Test und Abschlussdatum: ____________________",
+        ],
+      },
+    ]
+  );
+}
+
 function formatDate(date = new Date()) {
   return new Intl.DateTimeFormat("de-DE", {
     day: "2-digit",

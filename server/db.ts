@@ -118,6 +118,7 @@ import {
   unassignedAssignmentIds,
   validateExistingAssignmentsForShiftUpdate,
 } from "./shift-update-validation";
+import { storageDelete } from "./storage";
 
 type DB = ReturnType<typeof drizzle>;
 type Transaction = Parameters<Parameters<DB["transaction"]>[0]>[0];
@@ -199,6 +200,10 @@ export async function recordPublicDemoSourceSelection(input: {
 
 /** Auslageort-Auswertung ist nur für die kurzfristige Kampagnenauswertung nötig. */
 export const PUBLIC_DEMO_SOURCE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+/** Operative Sicherheits- und Aktivitätsprotokolle bleiben zwölf Monate abrufbar. */
+export const OPERATIONAL_AUDIT_LOG_TTL_MS = 365 * 24 * 60 * 60 * 1000;
+/** Abgelaufene Einladungen, Übergaben und Sitzungswiderrufe sind nach 30 Tagen entbehrlich. */
+export const TRANSIENT_SECURITY_RECORD_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 export async function cleanupExpiredPublicDemoSourceSelections(
   now = new Date(),
@@ -211,6 +216,53 @@ export async function cleanupExpiredPublicDemoSourceSelections(
     .delete(publicDemoSourceSelections)
     .where(lt(publicDemoSourceSelections.createdAt, threshold));
   return affectedRows(result);
+}
+
+/** Entfernt abgelaufene, nicht mehr benötigte Sicherheitsartefakte. */
+export async function cleanupExpiredTransientSecurityRecords(now = new Date()) {
+  const database = await getDb();
+  if (!database) {
+    return {
+      tenantAdminInvitationsDeleted: 0,
+      planningTeamInvitationsDeleted: 0,
+      handoffsDeleted: 0,
+      revokedSessionsDeleted: 0,
+    };
+  }
+  const sessionThreshold = new Date(now.getTime() - TRANSIENT_SECURITY_RECORD_TTL_MS);
+  const [tenantInvitations, planningInvitations, handoffs, sessions] = await Promise.all([
+    database.delete(tenantAdminInvitations).where(lt(tenantAdminInvitations.expiresAt, now)),
+    database
+      .delete(planningTeamInvitations)
+      .where(lt(planningTeamInvitations.expiresAt, now)),
+    database.delete(platformTenantHandoffs).where(lt(platformTenantHandoffs.expiresAt, now)),
+    database.delete(revokedSessions).where(lt(revokedSessions.revokedAt, sessionThreshold)),
+  ]);
+  return {
+    tenantAdminInvitationsDeleted: affectedRows(tenantInvitations),
+    planningTeamInvitationsDeleted: affectedRows(planningInvitations),
+    handoffsDeleted: affectedRows(handoffs),
+    revokedSessionsDeleted: affectedRows(sessions),
+  };
+}
+
+/** Entfernt operative Protokolle nach der beschlossenen Regelfrist von zwölf Monaten. */
+export async function cleanupExpiredOperationalAuditLogs(now = new Date()) {
+  const database = await getDb();
+  if (!database) {
+    return { activityLogsDeleted: 0, deletionLogsDeleted: 0, teamNoteLogsDeleted: 0 };
+  }
+  const threshold = new Date(now.getTime() - OPERATIONAL_AUDIT_LOG_TTL_MS);
+  const [activity, deletion, teamNotes] = await Promise.all([
+    database.delete(activityLogs).where(lt(activityLogs.createdAt, threshold)),
+    database.delete(deletionAuditLogs).where(lt(deletionAuditLogs.createdAt, threshold)),
+    database.delete(teamNoteAuditLogs).where(lt(teamNoteAuditLogs.createdAt, threshold)),
+  ]);
+  return {
+    activityLogsDeleted: affectedRows(activity),
+    deletionLogsDeleted: affectedRows(deletion),
+    teamNoteLogsDeleted: affectedRows(teamNotes),
+  };
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {
@@ -3558,6 +3610,8 @@ export async function updateEventDetails(
     name?: string;
     startDate?: string | null;
     endDate?: string | null;
+    retentionHoldReason?: "tax" | "contract" | "insurance" | "legal" | "other" | null;
+    retentionHoldNote?: string | null;
     donationTargetKuchen?: number;
     donationTargetSalat?: number;
     donationTargetSnack?: number;
@@ -3618,6 +3672,13 @@ export async function updateEventDetails(
       input.donationTargetSnack ?? selected.donationTargetSnack;
     const donationTargetSonstiges =
       input.donationTargetSonstiges ?? selected.donationTargetSonstiges;
+    const retentionHoldReason =
+      input.retentionHoldReason !== undefined
+        ? input.retentionHoldReason
+        : selected.retentionHoldReason;
+    const retentionHoldNote = retentionHoldReason
+      ? (input.retentionHoldNote?.trim() || selected.retentionHoldNote || null)
+      : null;
 
     await tx
       .update(events)
@@ -3629,6 +3690,14 @@ export async function updateEventDetails(
         donationTargetSalat,
         donationTargetSnack,
         donationTargetSonstiges,
+        retentionHoldReason,
+        retentionHoldNote,
+        retentionHoldSetAt:
+          input.retentionHoldReason === undefined
+            ? selected.retentionHoldSetAt
+            : retentionHoldReason
+              ? new Date()
+              : null,
       })
       .where(
         and(
@@ -3647,6 +3716,8 @@ export async function updateEventDetails(
       donationTargetSalat,
       donationTargetSnack,
       donationTargetSonstiges,
+      retentionHoldReason,
+      retentionHoldNote,
     };
   });
 }
@@ -3910,6 +3981,76 @@ export async function deleteEvent(id: number) {
       nextEventId: nextEvent.id,
     };
   });
+}
+
+/** Drei Jahre nach Abschluss werden Events ohne dokumentierte Ausnahme vollständig entfernt. */
+export const CLOSED_EVENT_RETENTION_MS = 3 * 365 * 24 * 60 * 60 * 1000;
+
+export async function cleanupExpiredClosedEvents(now = new Date()) {
+  const database = await getDb();
+  if (!database) return { eventsDeleted: 0, filesDeleted: 0 };
+  const threshold = new Date(now.getTime() - CLOSED_EVENT_RETENTION_MS);
+  const candidates = await database
+    .select({
+      id: events.id,
+      name: events.name,
+      pdfLogoKey: events.pdfLogoKey,
+    })
+    .from(events)
+    .where(
+      and(
+        eq(events.status, "closed"),
+        lt(events.closedAt, threshold),
+        isNull(events.retentionHoldReason)
+      )
+    );
+
+  let eventsDeleted = 0;
+  let filesDeleted = 0;
+  for (const candidate of candidates) {
+    const [locationAssets, gpxAssets] = await Promise.all([
+      database
+        .select({ key: locations.logoKey })
+        .from(locations)
+        .where(eq(locations.eventId, candidate.id)),
+      database
+        .select({ key: gpxTracks.fileKey })
+        .from(gpxTracks)
+        .where(eq(gpxTracks.eventId, candidate.id)),
+    ]);
+    const fileKeys = [
+      candidate.pdfLogoKey,
+      ...locationAssets.map(asset => asset.key),
+      ...gpxAssets.map(asset => asset.key),
+    ].filter((key): key is string => Boolean(key));
+
+    await database.transaction(async tx => {
+      const scope = <T extends { eventId: any }>(table: T) => eq(table.eventId, candidate.id);
+      await tx
+        .delete(assignments)
+        .where(inArray(assignments.shiftId, tx.select({ id: shifts.id }).from(shifts).where(scope(shifts))));
+      await tx.delete(shiftAreaContacts).where(scope(shiftAreaContacts));
+      await tx.delete(shifts).where(scope(shifts));
+      await tx.delete(prepTasks).where(scope(prepTasks));
+      await tx.delete(gpxTracks).where(scope(gpxTracks));
+      await tx.delete(locations).where(scope(locations));
+      await tx.delete(postTasks).where(scope(postTasks));
+      await tx.delete(materials).where(scope(materials));
+      await tx.delete(marketing).where(scope(marketing));
+      await tx.delete(approvals).where(scope(approvals));
+      await tx.delete(cakes).where(scope(cakes));
+      await tx.delete(finances).where(scope(finances));
+      await tx.delete(helpers).where(scope(helpers));
+      await tx.delete(contacts).where(scope(contacts));
+      await tx.delete(events).where(eq(events.id, candidate.id));
+    });
+    eventsDeleted += 1;
+    const results = await Promise.allSettled(fileKeys.map(key => storageDelete(key)));
+    filesDeleted += results.filter(
+      result => result.status === "fulfilled" && result.value
+    ).length;
+  }
+  return { eventsDeleted, filesDeleted };
 }
 
 export async function listContacts() {

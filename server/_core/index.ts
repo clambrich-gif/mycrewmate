@@ -41,6 +41,36 @@ async function startServer() {
   app.set("trust proxy", 1);
   const server = createServer(app);
 
+  // Einheitliche Browser-Schutzvorgaben. Die Kartenkacheln sind die einzigen
+  // bewusst zugelassenen fremden Bildquellen; Anwendungs- und API-Daten bleiben
+  // auf der eigenen Origin.
+  app.use((_req, res, next) => {
+    res.set({
+      "Referrer-Policy": "strict-origin-when-cross-origin",
+      "X-Content-Type-Options": "nosniff",
+      "X-Frame-Options": "SAMEORIGIN",
+      "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    });
+    if (process.env.NODE_ENV === "production") {
+      res.set({
+        "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+        "Content-Security-Policy": [
+          "default-src 'self'",
+          "base-uri 'self'",
+          "form-action 'self'",
+          "frame-ancestors 'self'",
+          "object-src 'none'",
+          "script-src 'self'",
+          "style-src 'self' 'unsafe-inline'",
+          "font-src 'self' data:",
+          "img-src 'self' data: blob: https://*.tile.openstreetmap.org https://*.tile.opentopomap.org",
+          "connect-src 'self'",
+        ].join("; "),
+      });
+    }
+    next();
+  });
+
   // Projekt- und Excel-Dateien plus Base64-/JSON-Overhead; größere Requests werden früh abgewiesen.
   app.use(express.json({ limit: "25mb" }));
   app.use(express.urlencoded({ limit: "25mb", extended: true }));

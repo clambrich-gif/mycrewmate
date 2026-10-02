@@ -15,6 +15,8 @@ describe("Punkt 3: Sicherheits- und Berechtigungs-Hardening", () => {
   const eventAssetAccess = source("server/event-asset-access.ts");
   const storage = source("server/storage.ts");
   const nav = source("client/src/lib/nav.ts");
+  const coreIndex = source("server/_core/index.ts");
+  const rateLimit = source("server/public-share-rate-limit.ts");
 
   it("schützt kritische administrative Mutationen mit Admin- und Produktgates", () => {
     // Schichten, Berechtigungen, Wiederherstellung, Backups, Events
@@ -70,5 +72,25 @@ describe("Punkt 3: Sicherheits- und Berechtigungs-Hardening", () => {
     expect(passwordAuth).toContain("getPlanningTeamCooldownMs");
     expect(passwordAuth).toContain("getPlanningTeamRateLimitStatus");
     expect(passwordAuth).toContain("recordFailedPlanningTeamLogin");
+  });
+
+  it("setzt globale Sicherheits- und Content-Security-Policy-Header", () => {
+    expect(coreIndex).toContain('"X-Content-Type-Options": "nosniff"');
+    expect(coreIndex).toContain('"X-Frame-Options": "SAMEORIGIN"');
+    expect(coreIndex).toContain('"Referrer-Policy": "strict-origin-when-cross-origin"');
+    expect(coreIndex).toContain("Strict-Transport-Security");
+    expect(coreIndex).toContain("Content-Security-Policy");
+    expect(coreIndex).toContain("https://*.tile.openstreetmap.org");
+    expect(coreIndex).toContain("https://*.tile.opentopomap.org");
+  });
+
+  it("begrenzt Fehlversuche bei geschützten PDF-Codeabfragen", () => {
+    expect(rateLimit).toContain("MAX_ATTEMPTS = 5");
+    expect(rateLimit).toContain("assertProtectedPdfShareAttemptAllowed");
+    expect(rateLimit).toContain("recordProtectedPdfShareFailure");
+    expect(rateLimit).toContain("clearProtectedPdfShareFailures");
+    expect(routers).toContain("assertProtectedPdfShareAttemptAllowed");
+    expect(routers).toContain("recordProtectedPdfShareFailure");
+    expect(routers).toContain("TOO_MANY_REQUESTS");
   });
 });

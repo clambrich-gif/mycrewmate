@@ -2,8 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const authMocks = vi.hoisted(() => ({ authenticateRequest: vi.fn() }));
 const cleanupMocks = vi.hoisted(() => ({
+  cleanupExpiredClosedEvents: vi.fn(),
+  cleanupExpiredOperationalAuditLogs: vi.fn(),
   cleanupExpiredProtectedHelperPdfShares: vi.fn(),
   cleanupExpiredPublicDemoSourceSelections: vi.fn(),
+  cleanupExpiredTransientSecurityRecords: vi.fn(),
   cleanupExpiredTeamNotes: vi.fn(),
   cleanupExpiredTeamNoteTypings: vi.fn(),
 }));
@@ -36,6 +39,21 @@ describe("Teamnotizen-Cleanup-Heartbeat", () => {
     cleanupMocks.cleanupExpiredTeamNoteTypings.mockResolvedValue(2);
     cleanupMocks.cleanupExpiredPublicDemoSourceSelections.mockResolvedValue(3);
     cleanupMocks.cleanupExpiredProtectedHelperPdfShares.mockResolvedValue(1);
+    cleanupMocks.cleanupExpiredTransientSecurityRecords.mockResolvedValue({
+      tenantAdminInvitationsDeleted: 1,
+      planningTeamInvitationsDeleted: 0,
+      handoffsDeleted: 1,
+      revokedSessionsDeleted: 2,
+    });
+    cleanupMocks.cleanupExpiredOperationalAuditLogs.mockResolvedValue({
+      activityLogsDeleted: 2,
+      deletionLogsDeleted: 1,
+      teamNoteLogsDeleted: 0,
+    });
+    cleanupMocks.cleanupExpiredClosedEvents.mockResolvedValue({
+      eventsDeleted: 1,
+      filesDeleted: 3,
+    });
     const res = response();
 
     await handleTeamNotesCleanupHeartbeat({} as any, res as any);
@@ -48,6 +66,9 @@ describe("Teamnotizen-Cleanup-Heartbeat", () => {
     expect(
       cleanupMocks.cleanupExpiredProtectedHelperPdfShares
     ).toHaveBeenCalledOnce();
+    expect(cleanupMocks.cleanupExpiredTransientSecurityRecords).toHaveBeenCalledOnce();
+    expect(cleanupMocks.cleanupExpiredOperationalAuditLogs).toHaveBeenCalledOnce();
+    expect(cleanupMocks.cleanupExpiredClosedEvents).toHaveBeenCalledOnce();
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -56,6 +77,7 @@ describe("Teamnotizen-Cleanup-Heartbeat", () => {
         expiredTypingDeleted: 2,
         expiredDemoSourceSelectionsDeleted: 3,
         expiredPdfSharesDeleted: 1,
+        expiredClosedEvents: { eventsDeleted: 1, filesDeleted: 3 },
       })
     );
   });

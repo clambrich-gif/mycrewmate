@@ -86,6 +86,8 @@ import {
   createPlanningTeamAccessSheetsPdf,
   createPublicHelperTaskPdf,
   renderClubPrivacyNoticeTemplatePdf,
+  renderDataSubjectRequestTemplatePdf,
+  renderPrivacyIncidentTemplatePdf,
   DEFAULT_PDF_SETTINGS,
 } from "./pdf";
 import { publicAppUrl } from "./public-app-url";
@@ -128,6 +130,11 @@ import {
   removeSessionPresence,
   sessionPresenceKey,
 } from "./session-presence";
+import {
+  assertProtectedPdfShareAttemptAllowed,
+  clearProtectedPdfShareFailures,
+  recordProtectedPdfShareFailure,
+} from "./public-share-rate-limit";
 import { upcomingPreparationDeadlines } from "./dashboard-deadlines";
 import {
   renderContractAcceptanceEmail,
@@ -3549,6 +3556,11 @@ export const appRouter = router({
               .nullable()
               .optional(),
             clearDateRange: z.boolean().optional(),
+            retentionHoldReason: z
+              .enum(["tax", "contract", "insurance", "legal", "other"])
+              .nullable()
+              .optional(),
+            retentionHoldNote: z.string().trim().max(500).nullable().optional(),
             donationTargetKuchen: z.number().int().min(0).max(10_000).optional(),
             donationTargetSalat: z.number().int().min(0).max(10_000).optional(),
             donationTargetSnack: z.number().int().min(0).max(10_000).optional(),
@@ -4520,6 +4532,22 @@ export const appRouter = router({
         base64: pdf.toString("base64"),
       };
     }),
+    dataSubjectRequestTemplate: adminProcedure.mutation(async () => {
+      const pdf = await renderDataSubjectRequestTemplatePdf();
+      return {
+        filename: "Vorlage_Betroffenenanfrage_Datenschutz.pdf",
+        mimeType: "application/pdf",
+        base64: pdf.toString("base64"),
+      };
+    }),
+    privacyIncidentTemplate: adminProcedure.mutation(async () => {
+      const pdf = await renderPrivacyIncidentTemplatePdf();
+      return {
+        filename: "Vorlage_Datenschutzvorfall_Erstprotokoll.pdf",
+        mimeType: "application/pdf",
+        base64: pdf.toString("base64"),
+      };
+    }),
     publicShare: productCapabilityProcedure("personal_accesses")
       .input(z.object({ helperId: z.number().int().positive() }))
       .mutation(async ({ input }) => {
@@ -4678,15 +4706,26 @@ export const appRouter = router({
           accessCode: z.string().trim().regex(/^[A-Za-z0-9]{12}$/),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        let clientKey: string;
+        try {
+          clientKey = assertProtectedPdfShareAttemptAllowed(ctx.req);
+        } catch (error: any) {
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message: error.message,
+          });
+        }
         const share = await db.findProtectedHelperPdfShare(input);
         if (!share) {
+          recordProtectedPdfShareFailure(clientKey);
           throw new TRPCError({
             code: "NOT_FOUND",
             message:
               "Dieser Einsatzplan ist nicht verfügbar oder der Zugangscode ist falsch.",
           });
         }
+        clearProtectedPdfShareFailures(clientKey);
         const pdf = await withPlanningScope(
           {
             tenantId: share.tenantId,

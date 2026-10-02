@@ -412,6 +412,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [editEventName, setEditEventName] = useState("");
   const [editEventStartDate, setEditEventStartDate] = useState("");
   const [editEventEndDate, setEditEventEndDate] = useState("");
+  const [editRetentionHoldReason, setEditRetentionHoldReason] = useState("");
+  const [editRetentionHoldNote, setEditRetentionHoldNote] = useState("");
   const [clearEventDatesTarget, setClearEventDatesTarget] = useState<{
     id: number;
     name: string;
@@ -2663,6 +2665,34 @@ export function Layout({ children }: { children: React.ReactNode }) {
                         Zum Entfernen des gespeicherten Zeitraums bitte die separate Löschaktion verwenden.
                       </p>
                     )}
+                    {item.status === "closed" && (
+                      <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950">
+                        <Label className="mb-1 block text-xs font-semibold">
+                          Aufbewahrungsausnahme (nur bei dokumentierter Pflicht)
+                        </Label>
+                        <select
+                          className="h-9 w-full rounded-md border border-amber-300 bg-white px-2 text-sm"
+                          value={editRetentionHoldReason}
+                          onChange={event => setEditRetentionHoldReason(event.target.value)}
+                        >
+                          <option value="">Keine – regulär nach drei Jahren löschen</option>
+                          <option value="tax">Steuer / Buchhaltung</option>
+                          <option value="contract">Vertragliche Pflicht</option>
+                          <option value="insurance">Versicherung</option>
+                          <option value="legal">Rechtsanspruch / Verfahren</option>
+                          <option value="other">Anderer dokumentierter Grund</option>
+                        </select>
+                        {editRetentionHoldReason && (
+                          <Input
+                            className="mt-2 h-9 bg-white text-sm"
+                            value={editRetentionHoldNote}
+                            maxLength={500}
+                            placeholder="Kurzer Nachweis- oder Aktenhinweis"
+                            onChange={event => setEditRetentionHoldNote(event.target.value)}
+                          />
+                        )}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="min-w-0 flex-1">
@@ -2736,6 +2766,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
                             name: editEventName,
                             startDate: editEventStartDate || null,
                             endDate: editEventEndDate || null,
+                            retentionHoldReason: (editRetentionHoldReason || null) as
+                              | "tax"
+                              | "contract"
+                              | "insurance"
+                              | "legal"
+                              | "other"
+                              | null,
+                            retentionHoldNote: editRetentionHoldNote || null,
                           })
                         }
                       >
@@ -2754,6 +2792,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
                           setEditEventName(item.name);
                           setEditEventStartDate(item.startDate ?? "");
                           setEditEventEndDate(item.endDate ?? "");
+                          setEditRetentionHoldReason(item.retentionHoldReason ?? "");
+                          setEditRetentionHoldNote(item.retentionHoldNote ?? "");
                         }}
                       >
                         <Pencil className="h-4 w-4" />

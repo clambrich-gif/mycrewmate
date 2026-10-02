@@ -76,4 +76,18 @@ describe("Veranstaltungsabschluss und Paket-Auslastung", () => {
     expect(layout).toContain("sieben-Tage-PDF-Links reaktiviert");
     expect(layout).toContain("Zugänge und PDF-Links bleiben aus Sicherheitsgründen widerrufen");
   });
+
+  it("erlaubt eine dokumentierte Aufbewahrungsausnahme und bereinigt abgelaufene Events", () => {
+    const schema = source("drizzle/schema.ts");
+    const db = source("server/db.ts");
+    const layout = source("client/src/components/Layout.tsx");
+
+    expect(schema).toContain('retentionHoldReason: mysqlEnum("retentionHoldReason"');
+    expect(schema).toContain('retentionHoldNote: varchar("retentionHoldNote"');
+    expect(schema).toContain('retentionHoldSetAt: timestamp("retentionHoldSetAt")');
+    expect(db).toContain("export const CLOSED_EVENT_RETENTION_MS = 3 * 365 * 24 * 60 * 60 * 1000;");
+    expect(db).toContain("export async function cleanupExpiredClosedEvents");
+    expect(db).toContain("isNull(events.retentionHoldReason)");
+    expect(layout).toContain("Aufbewahrungsausnahme (nur bei dokumentierter Pflicht)");
+  });
 });

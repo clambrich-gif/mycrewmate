@@ -255,6 +255,20 @@ export default function Security() {
     },
     onError: error => toast.error(error.message),
   });
+  const downloadDataSubjectRequest = trpc.pdf.dataSubjectRequestTemplate.useMutation({
+    onSuccess: result => {
+      downloadBase64File(result.base64, result.mimeType, result.filename);
+      toast.success("Vorlage für Datenschutzanfragen wurde heruntergeladen");
+    },
+    onError: error => toast.error(error.message),
+  });
+  const downloadPrivacyIncident = trpc.pdf.privacyIncidentTemplate.useMutation({
+    onSuccess: result => {
+      downloadBase64File(result.base64, result.mimeType, result.filename);
+      toast.success("Vorlage für Datenschutzvorfälle wurde heruntergeladen");
+    },
+    onError: error => toast.error(error.message),
+  });
   type SecurityGuidePanel =
     | "password"
     | "accesses"
@@ -516,12 +530,38 @@ export default function Security() {
               >
                 App-Datenschutzhinweis öffnen
               </a>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full sm:w-auto"
+                disabled={downloadDataSubjectRequest.isPending}
+                onClick={() => downloadDataSubjectRequest.mutate()}
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                {downloadDataSubjectRequest.isPending
+                  ? "Vorlage wird erstellt …"
+                  : "Anfragevorlage herunterladen"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full sm:w-auto"
+                disabled={downloadPrivacyIncident.isPending}
+                onClick={() => downloadPrivacyIncident.mutate()}
+              >
+                <ShieldAlert className="mr-2 h-4 w-4" />
+                {downloadPrivacyIncident.isPending
+                  ? "Vorlage wird erstellt …"
+                  : "Vorfallvorlage herunterladen"}
+              </Button>
             </div>
             <p className="text-xs leading-5 text-muted-foreground">
               Bitte ergänzt vor Verwendung Vereinsname, Veranstaltung,
               Datenschutzkontakt, tatsächlich genutzte Kommunikationswege und
               die individuelle Aufbewahrungsfrist. Die Vorlage unterstützt die
               Organisation, ersetzt aber keine rechtliche Prüfung des Vereins.
+              Die beiden internen Vorlagen helfen bei Auskunfts- oder Löschanfragen
+              sowie beim dokumentierten Erstvorgehen bei einem Datenschutzvorfall.
             </p>
           </div>
         </SecurityAccordion>

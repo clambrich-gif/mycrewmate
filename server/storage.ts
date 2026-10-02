@@ -86,6 +86,22 @@ export async function storageRead(relKey: string): Promise<Buffer> {
   }
 }
 
+/**
+ * Löscht eine anwendungsverwaltete Uploaddatei. Nicht mehr vorhandene Dateien
+ * gelten dabei als erfolgreich bereinigt, damit Wiederholungen eines
+ * Retention-Laufs sicher und idempotent bleiben.
+ */
+export async function storageDelete(relKey: string): Promise<boolean> {
+  const { target } = filePathForKey(relKey);
+  try {
+    await fs.unlink(target);
+    return true;
+  } catch (error: unknown) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw error;
+  }
+}
+
 export async function storageGet(relKey: string): Promise<{ key: string; url: string }> {
   const key = normalizeKey(relKey);
   return { key, url: publicUrlForKey(key) };

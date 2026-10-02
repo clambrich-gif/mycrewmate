@@ -444,6 +444,20 @@ export const events = mysqlTable(
       .default("active")
       .notNull(),
     closedAt: timestamp("closedAt"),
+    /**
+     * Dokumentierte Ausnahme von der regulären Dreijahreslöschung, etwa für
+     * steuerliche, versicherungs- oder rechtsbezogene Nachweise. Ohne diesen
+     * Eintrag wird ein geschlossenes Event nach Ablauf der Frist gelöscht.
+     */
+    retentionHoldReason: mysqlEnum("retentionHoldReason", [
+      "tax",
+      "contract",
+      "insurance",
+      "legal",
+      "other",
+    ]),
+    retentionHoldNote: varchar("retentionHoldNote", { length: 500 }),
+    retentionHoldSetAt: timestamp("retentionHoldSetAt"),
     donationTargetKuchen: int("donationTargetKuchen").notNull().default(0),
     donationTargetSalat: int("donationTargetSalat").notNull().default(0),
     donationTargetSnack: int("donationTargetSnack").notNull().default(0),
@@ -482,6 +496,11 @@ export const events = mysqlTable(
       table.name
     ),
     uniqueIndex("events_id_year_unique").on(table.id, table.year),
+    index("events_retention_cleanup_idx").on(
+      table.status,
+      table.closedAt,
+      table.retentionHoldReason
+    ),
   ]
 );
 export type Event = typeof events.$inferSelect;

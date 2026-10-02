@@ -1,7 +1,10 @@
 import type { Request, Response } from "express";
 import {
+  cleanupExpiredClosedEvents,
+  cleanupExpiredOperationalAuditLogs,
   cleanupExpiredProtectedHelperPdfShares,
   cleanupExpiredPublicDemoSourceSelections,
+  cleanupExpiredTransientSecurityRecords,
   cleanupExpiredTeamNoteTypings,
   cleanupExpiredTeamNotes,
 } from "./db";
@@ -29,11 +32,17 @@ export async function handleTeamNotesCleanupHeartbeat(
       expiredTypingDeleted,
       expiredDemoSourceSelectionsDeleted,
       expiredPdfSharesDeleted,
+      expiredTransientSecurityRecords,
+      expiredOperationalAuditLogs,
+      expiredClosedEvents,
     ] = await Promise.all([
       cleanupExpiredTeamNotes(now),
       cleanupExpiredTeamNoteTypings(now),
       cleanupExpiredPublicDemoSourceSelections(now),
       cleanupExpiredProtectedHelperPdfShares(now),
+      cleanupExpiredTransientSecurityRecords(now),
+      cleanupExpiredOperationalAuditLogs(now),
+      cleanupExpiredClosedEvents(now),
     ]);
 
     res.status(200).json({
@@ -42,6 +51,9 @@ export async function handleTeamNotesCleanupHeartbeat(
       expiredTypingDeleted,
       expiredDemoSourceSelectionsDeleted,
       expiredPdfSharesDeleted,
+      expiredTransientSecurityRecords,
+      expiredOperationalAuditLogs,
+      expiredClosedEvents,
       ranAt: now.toISOString(),
     });
   } catch (error) {
