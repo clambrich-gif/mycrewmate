@@ -1954,7 +1954,7 @@ export const appRouter = router({
           const mfa = await db.getTenantAdminMfaConfigurationByUserId(
             adminCreds.userId
           );
-          if (false && Boolean(mfa?.enabled && mfa?.secret)) {
+          if (Boolean(mfa?.enabled && mfa?.secret)) {
             const mfaChallengeToken = await issueMfaLoginChallenge({
               subjectType: "tenant_admin",
               userId: adminCreds?.userId ?? 0,
@@ -2728,7 +2728,7 @@ export const appRouter = router({
           });
         }
         const masterMfa = await db.getMasterMfaConfiguration();
-        if (false && Boolean(masterMfa?.enabled && masterMfa?.secret)) {
+        if (Boolean(masterMfa?.enabled && masterMfa?.secret)) {
           const mfaChallengeToken = await issueMfaLoginChallenge({
             subjectType: "master",
           });

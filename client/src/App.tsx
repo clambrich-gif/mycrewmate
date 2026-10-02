@@ -189,21 +189,8 @@ function MasterAdminRouter() {
 }
 
 function Router() {
-  const isPreviewHost =
-    typeof window !== "undefined" &&
-    (window.location.hostname === "localhost" ||
-      window.location.hostname === "127.0.0.1" ||
-      window.location.hostname.endsWith(".manus.computer"));
-
   return (
     <Switch>
-        {isPreviewHost && (
-          <Route path="/mfa-testlabor">
-            <Suspense fallback={<RouteLoading />}>
-              <MfaTestLab />
-            </Suspense>
-          </Route>
-        )}
         <Route path="/_staging/klemmi-erst-login">
           <Suspense fallback={<RouteLoading />}>
             <KlemmiFirstLoginPreview />
@@ -224,20 +211,6 @@ function Router() {
             <MfaTestLab />
           </Suspense>
         </Route>
-        {isPreviewHost && (
-          <Route path="/mfa">
-            <Suspense fallback={<RouteLoading />}>
-              <MfaTestLab />
-            </Suspense>
-          </Route>
-        )}
-        {isPreviewHost && (
-          <Route path="/test">
-            <Suspense fallback={<RouteLoading />}>
-              <MfaTestLab />
-            </Suspense>
-          </Route>
-        )}
       {/* Nur lokale/Manus-Vorschauen können das Masterportal über diesen Pfad testen.
           Auf admin.mycrewmate.de wird MasterAdminRouter direkt am Root gerendert. */}
       <Route path="/master-admin" component={MasterAdminPortal} />

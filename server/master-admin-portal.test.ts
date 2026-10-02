@@ -51,6 +51,17 @@ describe("Master-Admin-Portal", () => {
     expect(page).toContain("Keine öffentliche Registrierung, kein Checkout und keine Zahlungsanbindung.");
   });
 
+  it("richtet die Master-MFA primär über QR-Scan ein und hält die manuelle Eingabe nur als Ausweichweg bereit", () => {
+    const page = source("client/src/pages/MasterAdminPortal.tsx");
+
+    expect(page).toContain('import { MfaEnrollmentQr } from "@/components/MfaEnrollmentQr"');
+    expect(page).toContain("QR-Code mit dem Smartphone scannen");
+    expect(page).toContain("otpauthUri={setup.otpauthUri}");
+    expect(page).toContain("QR-Code kann nicht gescannt werden? Schlüssel manuell eingeben");
+    expect(page).toContain("[font-variant-numeric:slashed-zero]");
+    expect(page).toContain("Erst nach einem korrekt geprüften App-Code wird die Master-MFA gespeichert");
+  });
+
   it("erhält offene Master-Dialoge bei einem späteren Übersichts-Refetchfehler", () => {
     const page = source("client/src/pages/MasterAdminPortal.tsx");
 

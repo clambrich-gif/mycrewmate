@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { MfaEnrollmentQr } from "@/components/MfaEnrollmentQr";
 import {
   Card,
   CardContent,
@@ -784,11 +785,20 @@ function AccessDenied({ onLogout }: { onLogout: () => Promise<void> }) {
 function MasterMfaCard() {
   const utils = trpc.useUtils();
   const status = trpc.auth.mfaStatus.useQuery();
-  const [setup, setSetup] = useState<{ secret: string; recoveryCodes: string[] } | null>(null);
+  const [setup, setSetup] = useState<{
+    secret: string;
+    otpauthUri: string;
+    recoveryCodes: string[];
+  } | null>(null);
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
   const begin = trpc.auth.beginMfaEnrollment.useMutation({
-    onSuccess: result => setSetup({ secret: result.secret, recoveryCodes: result.recoveryCodes }),
+    onSuccess: result =>
+      setSetup({
+        secret: result.secret,
+        otpauthUri: result.otpauthUri,
+        recoveryCodes: result.recoveryCodes,
+      }),
     onError: error => toast.error(error.message),
   });
   const confirm = trpc.auth.confirmMfaEnrollment.useMutation({
@@ -846,16 +856,61 @@ function MasterMfaCard() {
   }
   return (
     <Card className="border-blue-200 bg-blue-50/50">
-      <CardHeader className="pb-2"><CardTitle className="text-base">Master-MFA einrichten</CardTitle><CardDescription>Den Schlüssel manuell in eine Authenticator-App übernehmen, Recovery-Codes offline sichern und mit einem aktuellen App-Code aktivieren.</CardDescription></CardHeader>
-      <CardContent className="space-y-3">
-        <p className="text-xs text-slate-700"><strong>Wichtiger Hinweis:</strong> Der Schlüssel nutzt den Standard Base32 (A–Z und 2–7). Das Zeichen <strong>O</strong> ist immer der Buchstabe O (Otto) – die Ziffer <strong>0 (Null)</strong> existiert im Schlüssel niemals.</p>
-        <code className="block select-all break-all rounded-lg bg-white px-3 py-2 text-xs text-slate-950 ring-1 ring-blue-200">{setup.secret}</code>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{setup.recoveryCodes.map(recoveryCode => <code key={recoveryCode} className="rounded bg-white px-2 py-1.5 text-center text-xs ring-1 ring-amber-200">{recoveryCode}</code>)}</div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Input inputMode="numeric" autoComplete="one-time-code" placeholder="Authenticator-Code" value={code} onChange={event => setCode(event.target.value)} />
-          <Input type="password" autoComplete="current-password" placeholder="Master-Passwort zur Bestätigung" value={password} onChange={event => setPassword(event.target.value)} />
-        </div>
-        <div className="flex gap-2"><Button type="button" disabled={!code || !password || confirm.isPending} onClick={() => confirm.mutate({ secret: setup.secret, code, recoveryCodes: setup.recoveryCodes, currentPassword: password })}>{confirm.isPending ? <Loader2 className="size-4 animate-spin" /> : <ShieldCheck className="size-4" />} MFA aktivieren</Button><Button type="button" variant="ghost" onClick={() => setSetup(null)}>Abbrechen</Button></div>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">Master-MFA einrichten</CardTitle>
+        <CardDescription>
+          QR-Code mit einer Authenticator-App scannen, Wiederherstellungscodes sicher ablegen und anschließend mit einem aktuellen App-Code bestätigen.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <section className="rounded-xl border border-blue-200 bg-white/90 p-4">
+          <p className="text-sm font-semibold text-slate-950">1. QR-Code mit dem Smartphone scannen</p>
+          <p className="mt-1 text-xs leading-5 text-slate-700">
+            Öffnen Sie Ihre Authenticator-App, wählen Sie <strong>Konto hinzufügen</strong> und scannen Sie diesen QR-Code. Der Schlüssel bleibt dabei in Ihrem Browser und bei MyCrewMate.
+          </p>
+          <MfaEnrollmentQr
+            otpauthUri={setup.otpauthUri}
+            alt="QR-Code für die Master-MFA-Einrichtung von MyCrewMate"
+            className="mx-auto mt-4"
+          />
+        </section>
+
+        <details className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800">
+          <summary className="cursor-pointer font-semibold text-slate-900">QR-Code kann nicht gescannt werden? Schlüssel manuell eingeben</summary>
+          <p className="mt-2 text-xs leading-5 text-slate-700">
+            Nur als Ausweichweg: Der Schlüssel nutzt Base32 (A–Z und 2–7). Eine Ziffer <strong>0</strong> kommt darin nie vor; ein <strong>O</strong> ist also immer ein Buchstabe.
+          </p>
+          <code className="mt-2 block select-all break-all rounded-lg bg-slate-50 px-3 py-2 font-mono text-xs text-slate-950 ring-1 ring-blue-200 [font-variant-numeric:slashed-zero]">{setup.secret}</code>
+        </details>
+
+        <section className="rounded-xl border border-amber-200 bg-amber-50/70 p-4">
+          <p className="text-sm font-semibold text-amber-950">2. Wiederherstellungscodes offline sichern</p>
+          <p className="mt-1 text-xs leading-5 text-amber-900">
+            Speichern Sie jeden Code separat an einem sicheren Ort. Jeder Code funktioniert nur einmal, falls das Smartphone nicht verfügbar ist.
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {setup.recoveryCodes.map(recoveryCode => (
+              <code key={recoveryCode} className="rounded bg-white px-2 py-1.5 text-center font-mono text-xs text-slate-950 ring-1 ring-amber-200 [font-variant-numeric:slashed-zero]">
+                {recoveryCode}
+              </code>
+            ))}
+          </div>
+        </section>
+
+        <section className="space-y-3">
+          <p className="text-sm font-semibold text-slate-950">3. Einrichtung verbindlich aktivieren</p>
+          <p className="text-xs leading-5 text-slate-700">Erst nach einem korrekt geprüften App-Code wird die Master-MFA gespeichert und beim nächsten Login verlangt.</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Input inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="Sechsstelliger App-Code" value={code} onChange={event => setCode(event.target.value)} />
+            <Input type="password" autoComplete="current-password" placeholder="Master-Passwort zur Bestätigung" value={password} onChange={event => setPassword(event.target.value)} />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" disabled={!code || !password || confirm.isPending} onClick={() => confirm.mutate({ secret: setup.secret, code, recoveryCodes: setup.recoveryCodes, currentPassword: password })}>
+              {confirm.isPending ? <Loader2 className="size-4 animate-spin" /> : <ShieldCheck className="size-4" />} MFA aktivieren
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => setSetup(null)}>Abbrechen</Button>
+          </div>
+        </section>
       </CardContent>
     </Card>
   );

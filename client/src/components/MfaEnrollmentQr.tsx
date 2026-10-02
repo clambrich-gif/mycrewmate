@@ -49,7 +49,7 @@ export function MfaEnrollmentQr({
   if (failed) {
     return (
       <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs leading-5 text-red-800">
-        Der QR-Code konnte nicht erzeugt werden. Bitte Testsitzung neu starten.
+        Der QR-Code konnte nicht erzeugt werden. Bitte die Einrichtung neu starten.
       </p>
     );
   }

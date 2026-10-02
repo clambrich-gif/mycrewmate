@@ -116,7 +116,6 @@ import {
   Plus,
   Settings2,
   Share,
-  ShieldCheck,
   Sparkles,
   Trash2,
   TriangleAlert,
@@ -1741,20 +1740,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 Planungsteam-Zugänge sind derzeit gesperrt. Persönliche Vereins-Administratoren können sich weiterhin anmelden.
               </p>
             )}
-            {typeof window !== "undefined" &&
-              (window.location.hostname === "localhost" ||
-                window.location.hostname === "127.0.0.1" ||
-                window.location.hostname.endsWith(".manus.computer")) && (
-                <div className="pt-2 text-center">
-                  <a
-                    href="/_staging/mfa-testlabor"
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50/80 px-3 py-2 text-xs font-semibold text-blue-800 transition-colors hover:bg-blue-100 hover:text-blue-950"
-                  >
-                    <ShieldCheck className="h-4 w-4 text-blue-700" />
-                    MFA-Testlabor öffnen (ohne Login)
-                  </a>
-                </div>
-              )}
           </form>
           )}
         </div>

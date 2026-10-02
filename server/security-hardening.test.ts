@@ -17,6 +17,7 @@ describe("Punkt 3: Sicherheits- und Berechtigungs-Hardening", () => {
   const nav = source("client/src/lib/nav.ts");
   const coreIndex = source("server/_core/index.ts");
   const rateLimit = source("server/public-share-rate-limit.ts");
+  const db = source("server/db.ts");
 
   it("schützt kritische administrative Mutationen mit Admin- und Produktgates", () => {
     // Schichten, Berechtigungen, Wiederherstellung, Backups, Events
@@ -92,5 +93,14 @@ describe("Punkt 3: Sicherheits- und Berechtigungs-Hardening", () => {
     expect(routers).toContain("assertProtectedPdfShareAttemptAllowed");
     expect(routers).toContain("recordProtectedPdfShareFailure");
     expect(routers).toContain("TOO_MANY_REQUESTS");
+  });
+
+  it("aktiviert konfigurierte MFA beim Login und führt beim Serverstart keinen Notfallreset aus", () => {
+    expect(routers).toContain("if (Boolean(mfa?.enabled && mfa?.secret))");
+    expect(routers).toContain("if (Boolean(masterMfa?.enabled && masterMfa?.secret))");
+    expect(routers).not.toContain("false && Boolean(mfa?.enabled");
+    expect(routers).not.toContain("false && Boolean(masterMfa?.enabled");
+    expect(coreIndex).not.toContain("emergencyResetAllMfa");
+    expect(db).not.toContain("export async function emergencyResetAllMfa");
   });
 });

@@ -34,12 +34,6 @@ function assertProductionConfiguration() {
 
 async function startServer() {
   assertProductionConfiguration();
-  try {
-    const { emergencyResetAllMfa } = await import("../db");
-    await emergencyResetAllMfa();
-  } catch (err) {
-    console.error("[Startup] Emergency MFA Reset Error:", err);
-  }
 
   const app = express();
   // Coolify terminiert HTTPS vor dem Container und übergibt X-Forwarded-Proto.
