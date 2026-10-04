@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type {
   AppSettings,
@@ -869,6 +870,11 @@ describe("PDF-Erzeugung", () => {
     expect(donationTraitEntries(allTraitsDonation).map(entry => entry.label)).toEqual(
       expectedTraits
     );
+    const pdfSource = readFileSync(new URL("./pdf.ts", import.meta.url), "utf8");
+    expect(pdfSource).not.toContain("HIER FALTEN");
+    expect(pdfSource).toContain("fit: [31, 31]");
+    expect(pdfSource).toContain("Keine zusätzlichen Hinweise.");
+    expect(pdfSource).toContain("noteText");
 
     const pdf = await renderDonationOverviewPdf(
       {

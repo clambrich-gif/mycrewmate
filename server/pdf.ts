@@ -2951,6 +2951,38 @@ function drawDonationTraitChips(
   return cursorY + lineHeight;
 }
 
+function donationCardTitleSize(name: string, preferred: number, compact: number) {
+  if (name.length <= 22) return preferred;
+  if (name.length <= 36) return compact;
+  return Math.max(12, compact - 2);
+}
+
+/** Zeichnet Hinweise vollständig und reduziert nur bei sehr langem Text behutsam die Schrift. */
+function drawDonationCardNote(
+  doc: PDFKit.PDFDocument,
+  text: string,
+  x: number,
+  y: number,
+  width: number,
+  maxHeight: number
+) {
+  let fontSize = 7.1;
+  while (fontSize > 5.4) {
+    doc.font("Helvetica").fontSize(fontSize);
+    if (doc.heightOfString(text, { width, lineGap: 0.4 }) <= maxHeight) break;
+    fontSize -= 0.35;
+  }
+  doc
+    .font("Helvetica")
+    .fontSize(fontSize)
+    .fillColor(colors.muted)
+    .text(text, x, y, {
+      width,
+      height: maxHeight,
+      lineGap: 0.4,
+    });
+}
+
 function drawDonationTentCard(
   doc: PDFKit.PDFDocument,
   donation: Cake,
@@ -2978,6 +3010,9 @@ function drawDonationTentCard(
   const padding = 13;
   const donationName = donation.cake.trim() || "Spende";
   const traitEntries = donationTraitEntries(donation);
+  const noteText = donation.note?.trim()
+    ? `Hinweis: ${donation.note.trim()}`
+    : "Keine zusätzlichen Hinweise.";
 
   doc.save();
   doc
@@ -3021,9 +3056,9 @@ function drawDonationTentCard(
     try {
       doc.image(
         branding.customEventLogoBuffer,
-        x + cardWidth - padding - 24,
-        y + 8,
-        { fit: [24, 24] }
+        x + cardWidth - padding - 31,
+        y + 5,
+        { fit: [31, 31] }
       );
     } catch {
       // Ein beschädigtes Vereinslogo wird nur ausgelassen.
@@ -3031,73 +3066,43 @@ function drawDonationTentCard(
   }
   doc
     .font("Helvetica-Bold")
-    .fontSize(6.8)
-    .fillColor(colors.muted)
-    .text(donationCategoryLabel(donation.donationCategory).toUpperCase(), x + padding, y + 38, {
-      width: cardWidth - padding * 2,
-      align: "center",
-      characterSpacing: 0.6,
-      lineBreak: false,
-    });
-  doc
-    .font("Helvetica-Bold")
-    .fontSize(donationName.length > 34 ? 13 : 16)
+    .fontSize(donationCardTitleSize(donationName, 21, 17))
     .fillColor(colors.ink)
-    .text(donationName, x + padding, y + 50, {
+    .text(donationName, x + padding, y + 32, {
       width: cardWidth - padding * 2,
       align: "center",
-      height: 34,
-      ellipsis: true,
+      height: 27,
     });
-  drawDonationTraitChips(
+  const upperTraitsEndY = drawDonationTraitChips(
     doc,
     traitEntries,
     x + padding,
-    y + faceHeight - 26,
+    y + 61,
     cardWidth - padding * 2,
-    1
+    3
+  );
+  drawDonationCardNote(
+    doc,
+    noteText,
+    x + padding,
+    upperTraitsEndY + 1,
+    cardWidth - padding * 2,
+    Math.max(10, y + faceHeight - padding - upperTraitsEndY - 2)
   );
   doc.restore();
 
-  const foldLabelWidth = 53;
-  doc
-    .roundedRect(centerX - foldLabelWidth / 2, y + faceHeight - 6, foldLabelWidth, 12, 6)
-    .fillAndStroke("#FFFFFF", "#B7C7D9");
+  const lowerY = y + faceHeight + 10;
   doc
     .font("Helvetica-Bold")
-    .fontSize(5.9)
-    .fillColor(colors.muted)
-    .text("HIER FALTEN", centerX - foldLabelWidth / 2, y + faceHeight - 2.2, {
-      width: foldLabelWidth,
-      align: "center",
-      lineBreak: false,
-      characterSpacing: 0.45,
-    });
-
-  const lowerY = y + faceHeight + 15;
-  doc
-    .font("Helvetica-Bold")
-    .fontSize(donationName.length > 34 ? 12 : 14)
+    .fontSize(donationCardTitleSize(donationName, 19, 16))
     .fillColor(colors.ink)
     .text(donationName, x + padding, lowerY, {
-      width: cardWidth - padding * 2 - 86,
-      height: 20,
-      ellipsis: true,
-      lineBreak: false,
+      width: cardWidth - padding * 2,
+      height: 23,
     });
   doc
-    .font("Helvetica")
-    .fontSize(7.3)
-    .fillColor(colors.muted)
-    .text(
-      donationCategoryLabel(donation.donationCategory),
-      x + cardWidth - padding - 82,
-      lowerY + 3,
-      { width: 82, align: "right", lineBreak: false }
-    );
-  doc
-    .moveTo(x + padding, lowerY + 23)
-    .lineTo(x + cardWidth - padding, lowerY + 23)
+    .moveTo(x + padding, lowerY + 27)
+    .lineTo(x + cardWidth - padding, lowerY + 27)
     .lineWidth(0.6)
     .strokeColor(colors.line)
     .stroke();
@@ -3105,21 +3110,18 @@ function drawDonationTentCard(
     doc,
     traitEntries,
     x + padding,
-    lowerY + 31,
+    lowerY + 35,
     cardWidth - padding * 2,
-    2
+    3
   );
-  const note = donation.note?.trim();
-  doc
-    .font("Helvetica")
-    .fontSize(7.2)
-    .fillColor(colors.muted)
-    .text(note ? `Hinweis: ${note}` : "Keine zusätzlichen Hinweise.", x + padding, traitsEndY + 3, {
-      width: cardWidth - padding * 2,
-      height: faceHeight - (traitsEndY - y) - 13,
-      ellipsis: true,
-      lineGap: 0.5,
-    });
+  drawDonationCardNote(
+    doc,
+    noteText,
+    x + padding,
+    traitsEndY + 3,
+    cardWidth - padding * 2,
+    Math.max(10, y + cardHeight - padding - traitsEndY - 3)
+  );
 }
 
 function drawDonationTentCardPages(
