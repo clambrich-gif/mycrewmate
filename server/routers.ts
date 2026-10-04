@@ -155,7 +155,6 @@ import {
   renderContractAcceptanceEmail,
   renderInvitationEmail,
   renderMasterPasswordResetEmail,
-  renderPlanReleaseCorrectionEmail,
   renderPlanReleaseContactEmail,
   renderPlanningTeamInvitationEmail,
   renderTenantAccessStatusEmail,
@@ -330,6 +329,41 @@ function planningTeamAccessIdForUser(user: {
     });
   }
   return accessId;
+}
+
+/**
+ * Ermittelt die Ansprechpartner einer angemeldeten Person ausschließlich aus
+ * der gespeicherten Teamzugangsverknüpfung oder einem eindeutigen Altbestand.
+ * Gleiche Namen dürfen dabei niemals mehrere Kontakte zusammenführen.
+ */
+async function ownContactIdsForPersonalPlanView(
+  user: {
+    openId: string;
+    name?: string | null;
+    role: "user" | "admin";
+    isCron?: boolean;
+  },
+  contacts: Array<{ id: number; name: string }>
+) {
+  const ownContactIds = new Set<number>();
+  const planningAccessId = planningTeamAccessIdForUser(user);
+  if (planningAccessId !== null) {
+    const access = await db.getPlanningTeamAccessCredentialForCurrentTenant(
+      planningAccessId
+    );
+    if (typeof access?.contactId === "number") {
+      ownContactIds.add(access.contactId);
+    }
+  }
+
+  const normalizedCurrentName = db.normalizePersonName(user.name ?? "");
+  const nameMatchedContacts = normalizedCurrentName
+    ? contacts.filter(contact => db.normalizePersonName(contact.name) === normalizedCurrentName)
+    : [];
+  if (nameMatchedContacts.length === 1) {
+    ownContactIds.add(nameMatchedContacts[0].id);
+  }
+  return ownContactIds;
 }
 
 async function getPlanningTeamPermissionsForUser(user: {
@@ -4912,19 +4946,35 @@ export const appRouter = router({
     releasePreview: moduleReadProcedure("schedule").query(() =>
       db.listCurrentPlanReleaseContacts()
     ),
+    myPendingChangeHelperIds: protectedProcedure.query(async ({ ctx }) => {
+      const entitlement = await db.getCurrentTenantProductEntitlement();
+      const contacts =
+        entitlement.packageId === "event_pass"
+          ? await db.getEventPassPrimaryAdminContact().then(contact =>
+              contact ? [contact] : []
+            )
+          : await db.listContacts();
+      const ownContactIds = await ownContactIdsForPersonalPlanView(
+        ctx.user,
+        contacts
+      );
+      return {
+        helperIds: await db.listPendingPlanChangeHelperIds(
+          Array.from(ownContactIds)
+        ),
+      };
+    }),
     releaseStatus: moduleReadProcedure("schedule").query(async () => {
       const [
         selectedEvent,
         pendingChangeRecipients,
         pendingInitialRecipients,
         initialEmailRecipients,
-        pendingCorrectionRecipients,
       ] = await Promise.all([
         db.getEvent(),
         db.listPlanNotificationRecipients("changed"),
         db.listPlanNotificationRecipients("released"),
         db.listPlanReleaseEmailAudit(),
-        db.listPlanReleaseCorrectionRecipients(),
       ]);
       return {
         releasedAt: selectedEvent?.planReleasedAt ?? null,
@@ -4932,7 +4982,6 @@ export const appRouter = router({
         pendingChangeRecipients: pendingChangeRecipients.length,
         pendingInitialRecipients: pendingInitialRecipients.length,
         initialEmailRecipients,
-        pendingCorrectionRecipients: pendingCorrectionRecipients.length,
       };
     }),
     release: scheduleAdminProcedure
@@ -5023,30 +5072,6 @@ export const appRouter = router({
       }
       return result;
     }),
-    sendReleaseCorrection: scheduleAdminProcedure.mutation(async ({ ctx }) => {
-      const recipients = await db.listPlanReleaseCorrectionRecipients();
-      const email = renderPlanReleaseCorrectionEmail();
-      const deliveries = await Promise.all(
-        recipients.map(async recipient => {
-          if (!recipient.email) return { contactId: recipient.contactId, delivered: false };
-          const delivery = await sendTransactionalEmail({ to: recipient.email, ...email });
-          return { contactId: recipient.contactId, delivered: delivery.success };
-        })
-      );
-      const deliveredIds = deliveries.filter(item => item.delivered).map(item => item.contactId);
-      await db.markPlanReleaseCorrectionEmailsSent(deliveredIds);
-      await db.recordActivityLog({
-        actor: auditActor(ctx.user),
-        module: "Einsatzplan",
-        action: "updated",
-        subject: `Korrekturhinweis für ${deliveredIds.length} vorherige Planempfänger versendet`,
-      });
-      return {
-        recipients: recipients.length,
-        delivered: deliveredIds.length,
-        undeliverable: recipients.length - deliveredIds.length,
-      };
-    }),
     sendChangeReminders: scheduleAdminProcedure.mutation(async ({ ctx }) => {
       const [selectedEvent, recipients] = await Promise.all([
         db.getEvent(),
@@ -5054,7 +5079,7 @@ export const appRouter = router({
       ]);
       if (!selectedEvent) throw new TRPCError({ code: "NOT_FOUND", message: "Veranstaltung nicht gefunden" });
       const helperOverviewUrl = publicAppUrl(
-        `/helfer?meine=1&eingeteilt=1&event=${selectedEvent.id}&jahr=${selectedEvent.year}`
+        `/helfer?meine=1&eingeteilt=1&aenderungen=1&event=${selectedEvent.id}&jahr=${selectedEvent.year}`
       );
       const deliveries = await Promise.all(
         recipients.map(async recipient => {
@@ -6558,27 +6583,11 @@ export const appRouter = router({
           : Promise.resolve([]),
       ]);
 
-      const ownContactIds = new Set<number>();
-      const planningAccessId = planningTeamAccessIdForUser(ctx.user);
-      if (planningAccessId !== null) {
-        const access = await db.getPlanningTeamAccessCredentialForCurrentTenant(
-          planningAccessId
-        );
-        if (typeof access?.contactId === "number") {
-          ownContactIds.add(access.contactId);
-        }
-      }
-
       const normalizedCurrentName = db.normalizePersonName(ctx.user.name ?? "");
-      const nameMatchedContacts = normalizedCurrentName
-        ? contacts.filter(contact => db.normalizePersonName(contact.name) === normalizedCurrentName)
-        : [];
-      // Historische Sammelzugänge haben keine gespeicherte Ansprechpartner-ID.
-      // Ein Namensfallback ist deshalb nur bei genau einem eindeutigen Treffer
-      // zulässig und darf niemals mehrere Ansprechpartner zusammenführen.
-      if (nameMatchedContacts.length === 1) {
-        ownContactIds.add(nameMatchedContacts[0].id);
-      }
+      const ownContactIds = await ownContactIdsForPersonalPlanView(
+        ctx.user,
+        contacts
+      );
 
       const ownHelperIds = new Set(
         normalizedCurrentName
@@ -6639,21 +6648,10 @@ export const appRouter = router({
     }),
     acknowledgePlanInformation: protectedProcedure.mutation(async ({ ctx }) => {
       const contacts = await db.listContacts();
-      const ownContactIds = new Set<number>();
-      const planningAccessId = planningTeamAccessIdForUser(ctx.user);
-      if (planningAccessId !== null) {
-        const access = await db.getPlanningTeamAccessCredentialForCurrentTenant(
-          planningAccessId
-        );
-        if (typeof access?.contactId === "number") ownContactIds.add(access.contactId);
-      }
-      const normalizedCurrentName = db.normalizePersonName(ctx.user.name ?? "");
-      const nameMatchedContacts = normalizedCurrentName
-        ? contacts.filter(contact => db.normalizePersonName(contact.name) === normalizedCurrentName)
-        : [];
-      if (nameMatchedContacts.length === 1) {
-        ownContactIds.add(nameMatchedContacts[0].id);
-      }
+      const ownContactIds = await ownContactIdsForPersonalPlanView(
+        ctx.user,
+        contacts
+      );
       const result = await db.acknowledgePlanInformationForContacts(
         Array.from(ownContactIds)
       );

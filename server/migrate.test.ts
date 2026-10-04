@@ -234,7 +234,8 @@ describe("applyProjectMigrations", () => {
         m.tag === "0088_perfect_boomer" ||
         m.tag === "0089_early_sasquatch" ||
         m.tag === "0090_same_prism" ||
-        m.tag === "0091_foamy_the_hand"
+        m.tag === "0091_foamy_the_hand" ||
+        m.tag === "0092_whole_jack_flag"
     ).length;
 
     const result = await applyProjectMigrations(connection, migrations);

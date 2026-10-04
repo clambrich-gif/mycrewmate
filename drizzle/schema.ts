@@ -731,7 +731,7 @@ export const planContactNotifications = mysqlTable(
     contactId: int("contactId").notNull(),
     initialReleasedAt: timestamp("initialReleasedAt").notNull(),
     initialEmailSentAt: timestamp("initialEmailSentAt"),
-    /** Ein einmaliger, dokumentierter Korrekturhinweis nach einem Testversand. */
+    /** Historische Altinformation; im Live-Betrieb ohne Versandfunktion. */
     releaseCorrectionEmailSentAt: timestamp("releaseCorrectionEmailSentAt"),
     changePendingAt: timestamp("changePendingAt"),
     changeEmailSentAt: timestamp("changeEmailSentAt"),
@@ -763,6 +763,11 @@ export const planContactNotifications = mysqlTable(
 );
 export type PlanContactNotification = typeof planContactNotifications.$inferSelect;
 
+/**
+ * Merkt sich ausschließlich die Helfer, deren Einsatz sich nach einer
+ * Planfreigabe für einen Ansprechpartner geändert hat. Mehrere Änderungen am
+ * selben Helfer werden bewusst zu genau einer Kennzeichnung zusammengefasst.
+ */
 export const helpers = mysqlTable(
   "helpers",
   {
@@ -838,6 +843,51 @@ export const helpers = mysqlTable(
 );
 export type Helper = typeof helpers.$inferSelect;
 export type InsertHelper = typeof helpers.$inferInsert;
+
+/**
+ * Merkt sich ausschließlich die Helfer, deren Einsatz sich nach einer
+ * Planfreigabe für einen Ansprechpartner geändert hat. Mehrere Änderungen am
+ * selben Helfer werden bewusst zu genau einer Kennzeichnung zusammengefasst.
+ */
+export const planContactHelperChanges = mysqlTable(
+  "plan_contact_helper_changes",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    year: int("year").notNull(),
+    eventId: int("eventId").notNull(),
+    contactId: int("contactId").notNull(),
+    helperId: int("helperId").notNull(),
+    changedAt: timestamp("changedAt").defaultNow().notNull(),
+  },
+  table => [
+    foreignKey({
+      name: "plan_contact_helper_changes_event_year_fk",
+      columns: [table.eventId, table.year],
+      foreignColumns: [events.id, events.year],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "plan_contact_helper_changes_contact_event_year_fk",
+      columns: [table.contactId, table.eventId, table.year],
+      foreignColumns: [contacts.id, contacts.eventId, contacts.year],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "plan_contact_helper_changes_helper_event_year_fk",
+      columns: [table.helperId, table.eventId, table.year],
+      foreignColumns: [helpers.id, helpers.eventId, helpers.year],
+    }).onDelete("cascade"),
+    uniqueIndex("plan_contact_helper_changes_unique").on(
+      table.eventId,
+      table.contactId,
+      table.helperId
+    ),
+    index("plan_contact_helper_changes_contact_idx").on(
+      table.eventId,
+      table.contactId,
+      table.changedAt
+    ),
+  ]
+);
+export type PlanContactHelperChange = typeof planContactHelperChanges.$inferSelect;
 
 /**
  * Kurzlebige, passwortgeschützte Freigaben für persönliche Helfer-PDFs.

@@ -808,6 +808,7 @@ export default function Helpers() {
     searchParams.get(HELPER_ASSIGNMENT_QUERY_KEY)
   );
   const personalHelperLinkOnly = searchParams.get("meine") === "1";
+  const changeLinkOnly = searchParams.get("aenderungen") === "1";
   const firstContactFilter = parseHelperFirstContactFilter(
     searchParams.get(HELPER_FIRST_CONTACT_QUERY_KEY)
   );
@@ -850,6 +851,10 @@ export default function Helpers() {
     "donations" | "personal_accesses" | null
   >(null);
   const { data: plan } = trpc.plan.evaluate.useQuery();
+  const pendingPlanChanges = trpc.plan.myPendingChangeHelperIds.useQuery(
+    undefined,
+    { enabled: changeLinkOnly }
+  );
   const activeDays = currentEvent ? eventWeekdays(currentEvent.activeDays) : [];
   const cakeCountByDonor = useMemo(() => {
     const counts = new Map<string, number>();
@@ -1277,6 +1282,10 @@ export default function Helpers() {
       new Set((plan ?? []).flatMap(item => item.assigned.map(a => a.helperId))),
     [plan]
   );
+  const changedHelperIds = useMemo(
+    () => new Set(pendingPlanChanges.data?.helperIds ?? []),
+    [pendingPlanChanges.data?.helperIds]
+  );
   const ownContactIds = useMemo(
     () =>
       new Set(
@@ -1331,7 +1340,9 @@ export default function Helpers() {
               personKey(helper.name) === personKey(user?.name ?? "") ||
               (typeof helper.contactId === "number" &&
                 ownContactIds.has(helper.contactId))) &&
-            (!assignedOnly || assignedHelperIds.has(helper.id)) &&
+            (!assignedOnly ||
+              assignedHelperIds.has(helper.id) ||
+              (changeLinkOnly && changedHelperIds.has(helper.id))) &&
             (!firstContactOnly ||
               isHelperWithoutFirstContact(helper, activeDays)) &&
             (isMobileView
@@ -1374,11 +1385,13 @@ export default function Helpers() {
       mobileTimedAvailabilityOnly,
       myHelperRecordOnly,
       personalHelperLinkOnly,
+      changeLinkOnly,
       ownContactIds,
       user?.name,
       assignedOnly,
       firstContactOnly,
       assignedHelperIds,
+      changedHelperIds,
       apFilter,
       companionFilter,
       timedAvailabilityOnly,
@@ -1433,6 +1446,7 @@ export default function Helpers() {
         next.delete(HELPER_ASSIGNMENT_QUERY_KEY);
         next.delete(HELPER_FIRST_CONTACT_QUERY_KEY);
         next.delete("meine");
+        next.delete("aenderungen");
         return next;
       },
       { replace: true }
@@ -1444,6 +1458,7 @@ export default function Helpers() {
       previous => {
         const next = new URLSearchParams(previous);
         next.delete(HELPER_ASSIGNMENT_QUERY_KEY);
+        next.delete("aenderungen");
         return next;
       },
       { replace: true }
@@ -1459,7 +1474,8 @@ export default function Helpers() {
         mobileWillHelpFilters.length > 0 ||
         mobileTimedAvailabilityOnly ||
         myHelperRecordOnly ||
-        personalHelperLinkOnly
+        personalHelperLinkOnly ||
+        changeLinkOnly
       : apFilter !== "alle" ||
         companionFilter !== "alle" ||
         confirmationFilter !== "alle" ||
@@ -1468,6 +1484,7 @@ export default function Helpers() {
         willHelpFilter !== "alle" ||
         myHelperRecordOnly ||
         personalHelperLinkOnly ||
+        changeLinkOnly ||
         timedAvailabilityOnly);
   const mobileFilterCount =
     mobileContactFilters.length +
@@ -1828,7 +1845,9 @@ export default function Helpers() {
       {assignedOnly && confirmationFilter !== "nein" && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-950">
           <span>
-            Planhinweis: Nur deine im Einsatzplan von {currentEvent?.name ?? "dieser Veranstaltung"} eingeteilten Helfer.
+            {changeLinkOnly
+              ? `Änderungshinweis: Deine eingeteilten oder geänderten Helfer für ${currentEvent?.name ?? "diese Veranstaltung"}.`
+              : `Planhinweis: Nur deine im Einsatzplan von ${currentEvent?.name ?? "dieser Veranstaltung"} eingeteilten Helfer.`}
           </span>
           <Button
             type="button"
@@ -1871,10 +1890,19 @@ export default function Helpers() {
                   <h2 className="break-words text-[26px] leading-[1.05] font-black tracking-tight">
                     {helper.name}
                   </h2>
-                  {assignedHelperIds.has(helper.id) && (
-                    <p className="mt-1 inline-flex rounded-full bg-blue-600 px-2 py-0.5 text-xs font-bold text-white">
-                      Im Einsatzplan eingeteilt – bitte informieren
-                    </p>
+                  {(assignedHelperIds.has(helper.id) || changedHelperIds.has(helper.id)) && (
+                    <div className="mt-1 flex flex-wrap gap-1.5">
+                      {assignedHelperIds.has(helper.id) && (
+                        <span className="inline-flex rounded-full bg-blue-600 px-2 py-0.5 text-xs font-bold text-white">
+                          Eingeteilt
+                        </span>
+                      )}
+                      {changedHelperIds.has(helper.id) && (
+                        <span className="inline-flex rounded-full bg-orange-500 px-2 py-0.5 text-xs font-bold text-white">
+                          Änderungen
+                        </span>
+                      )}
+                    </div>
                   )}
                   {selfHelperIds.has(helper.id) && (
                     <p className="text-xs text-muted-foreground">
@@ -2186,9 +2214,18 @@ export default function Helpers() {
                 >
                   <td className="p-2 font-medium">
                     {helper.name}
-                    {assignedHelperIds.has(helper.id) && (
-                      <div className="mt-1 inline-flex rounded-full bg-blue-600 px-2 py-0.5 text-[11px] font-bold text-white">
-                        Im Einsatzplan eingeteilt – bitte informieren
+                    {(assignedHelperIds.has(helper.id) || changedHelperIds.has(helper.id)) && (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {assignedHelperIds.has(helper.id) && (
+                          <span className="inline-flex rounded-full bg-blue-600 px-2 py-0.5 text-[11px] font-bold text-white">
+                            Eingeteilt
+                          </span>
+                        )}
+                        {changedHelperIds.has(helper.id) && (
+                          <span className="inline-flex rounded-full bg-orange-500 px-2 py-0.5 text-[11px] font-bold text-white">
+                            Änderungen
+                          </span>
+                        )}
                       </div>
                     )}
                     {selfHelperIds.has(helper.id) && (
@@ -2469,10 +2506,20 @@ export default function Helpers() {
                               Eingeteilt
                             </span>
                           )}
+                          {changedHelperIds.has(helper.id) && (
+                            <span className="rounded-full bg-orange-500 px-2 py-0.5 text-[11px] font-bold text-white">
+                              Änderungen
+                            </span>
+                          )}
                         </div>
                         {assignedHelperIds.has(helper.id) && (
                           <p className="mt-1 text-xs font-semibold text-blue-900">
-                            Im Einsatzplan eingeteilt – bitte informieren
+                            Im Einsatzplan eingeteilt
+                          </p>
+                        )}
+                        {changedHelperIds.has(helper.id) && (
+                          <p className="mt-1 text-xs font-semibold text-orange-900">
+                            Bitte die Änderung prüfen und den Helfer erneut informieren
                           </p>
                         )}
                         <p className="mt-0.5 text-xs text-slate-500">

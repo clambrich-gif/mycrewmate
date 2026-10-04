@@ -42,6 +42,7 @@ import {
   materials,
   mfaLoginChallenges,
   locations,
+  planContactHelperChanges,
   planContactNotifications,
   planningTeamAccesses,
   planningTeamAccessEvents,
@@ -3796,20 +3797,49 @@ export async function listPlanContactNotificationsForContacts(contactIds: number
     );
 }
 
+/** Liefert nur die offenen, eigenen Planänderungskennzeichnungen eines Kontakts. */
+export async function listPendingPlanChangeHelperIds(contactIds: number[]) {
+  if (!contactIds.length) return [] as number[];
+  const database = await getDb();
+  if (!database) return [] as number[];
+  const rows = await database
+    .select({ helperId: planContactHelperChanges.helperId })
+    .from(planContactHelperChanges)
+    .where(
+      and(
+        eq(planContactHelperChanges.eventId, event()),
+        eq(planContactHelperChanges.year, year()),
+        inArray(planContactHelperChanges.contactId, contactIds)
+      )
+    );
+  return Array.from(new Set(rows.map(row => row.helperId))).sort((left, right) => left - right);
+}
+
 export async function acknowledgePlanInformationForContacts(contactIds: number[]) {
   if (!contactIds.length) return { acknowledged: 0 };
   const database = (await getDb()) as DB;
-  const result = await database
-    .update(planContactNotifications)
-    .set({ helpersInformedAt: new Date() })
-    .where(
-      and(
-        eq(planContactNotifications.eventId, event()),
-        eq(planContactNotifications.year, year()),
-        inArray(planContactNotifications.contactId, contactIds)
-      )
-    );
-  return { acknowledged: affectedRows(result) };
+  return database.transaction(async tx => {
+    const result = await tx
+      .update(planContactNotifications)
+      .set({ helpersInformedAt: new Date() })
+      .where(
+        and(
+          eq(planContactNotifications.eventId, event()),
+          eq(planContactNotifications.year, year()),
+          inArray(planContactNotifications.contactId, contactIds)
+        )
+      );
+    await tx
+      .delete(planContactHelperChanges)
+      .where(
+        and(
+          eq(planContactHelperChanges.eventId, event()),
+          eq(planContactHelperChanges.year, year()),
+          inArray(planContactHelperChanges.contactId, contactIds)
+        )
+      );
+    return { acknowledged: affectedRows(result) };
+  });
 }
 
 export async function listPlanNotificationRecipients(kind: "released" | "changed") {
@@ -3863,29 +3893,6 @@ export async function listPlanReleaseEmailAudit() {
     .orderBy(desc(planContactNotifications.initialEmailSentAt), asc(contacts.name));
 }
 
-/** Bereits adressierte Erstempfänger, die noch keinen Korrekturhinweis erhalten haben. */
-export async function listPlanReleaseCorrectionRecipients() {
-  const database = await getDb();
-  if (!database) return [];
-  return database
-    .select({
-      contactId: contacts.id,
-      name: contacts.name,
-      email: contacts.email,
-    })
-    .from(planContactNotifications)
-    .innerJoin(contacts, eq(contacts.id, planContactNotifications.contactId))
-    .where(
-      and(
-        eq(planContactNotifications.eventId, event()),
-        eq(planContactNotifications.year, year()),
-        isNotNull(planContactNotifications.initialEmailSentAt),
-        isNull(planContactNotifications.releaseCorrectionEmailSentAt)
-      )
-    )
-    .orderBy(asc(contacts.name));
-}
-
 export async function markPlanNotificationEmailsSent(
   contactIds: number[],
   kind: "released" | "changed"
@@ -3896,22 +3903,6 @@ export async function markPlanNotificationEmailsSent(
   const result = await database
     .update(planContactNotifications)
     .set(kind === "released" ? { initialEmailSentAt: now } : { changeEmailSentAt: now })
-    .where(
-      and(
-        eq(planContactNotifications.eventId, event()),
-        eq(planContactNotifications.year, year()),
-        inArray(planContactNotifications.contactId, contactIds)
-      )
-    );
-  return { marked: affectedRows(result) };
-}
-
-export async function markPlanReleaseCorrectionEmailsSent(contactIds: number[]) {
-  if (!contactIds.length) return { marked: 0 };
-  const database = (await getDb()) as DB;
-  const result = await database
-    .update(planContactNotifications)
-    .set({ releaseCorrectionEmailSentAt: new Date() })
     .where(
       and(
         eq(planContactNotifications.eventId, event()),
@@ -3973,6 +3964,24 @@ async function markPlanContactsChangedForHelpers(
         changePendingAt: now,
       })
       .onDuplicateKeyUpdate({ set: { changePendingAt: now, changeEmailSentAt: null } });
+  }
+  const helperChanges = scopedHelpers
+    .filter(
+      (helper): helper is { id: number; contactId: number } =>
+        typeof helper.contactId === "number" && contactIds.includes(helper.contactId)
+    )
+    .map(helper => ({
+      year: year(),
+      eventId: event(),
+      contactId: helper.contactId,
+      helperId: helper.id,
+      changedAt: now,
+    }));
+  if (helperChanges.length) {
+    await client
+      .insert(planContactHelperChanges)
+      .values(helperChanges)
+      .onDuplicateKeyUpdate({ set: { changedAt: now } });
   }
   return contactIds;
 }
@@ -4053,6 +4062,14 @@ export async function prepareInitialPlanNotificationRecipients() {
           },
         });
     }
+    await tx
+      .delete(planContactHelperChanges)
+      .where(
+        and(
+          eq(planContactHelperChanges.eventId, event()),
+          eq(planContactHelperChanges.year, year())
+        )
+      );
     return {
       eventId: selectedEvent.id,
       eventYear: selectedEvent.year,
@@ -4142,6 +4159,14 @@ export async function releaseCurrentPlan(input: { notifyContacts?: boolean } = {
             },
           });
       }
+      await tx
+        .delete(planContactHelperChanges)
+        .where(
+          and(
+            eq(planContactHelperChanges.eventId, event()),
+            eq(planContactHelperChanges.year, year())
+          )
+        );
     }
     return {
       eventId: selectedEvent.id,

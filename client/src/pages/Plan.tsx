@@ -674,8 +674,6 @@ export default function Plan() {
   const planReleasePreview = trpc.plan.releasePreview.useQuery();
   const initialEmailRecipients =
     planReleaseStatus.data?.initialEmailRecipients ?? [];
-  const pendingCorrectionRecipients =
-    planReleaseStatus.data?.pendingCorrectionRecipients ?? 0;
   const isMobileView = useMobileViewMode();
   const activeDays = useMemo(
     () => (currentEvent ? eventWeekdays(currentEvent.activeDays) : []),
@@ -970,17 +968,6 @@ export default function Plan() {
         result.withdrawn
           ? "Die Einsatzplanfreigabe wurde zurückgenommen. Bereits versandte E-Mails können technisch nicht zurückgerufen werden."
           : "Der Einsatzplan war bereits nicht mehr freigegeben."
-      );
-    },
-    onError: error => toast.error(error.message),
-  });
-  const sendReleaseCorrection = trpc.plan.sendReleaseCorrection.useMutation({
-    onSuccess: async result => {
-      await utils.plan.releaseStatus.invalidate();
-      toast.success(
-        result.delivered > 0
-          ? `Korrekturhinweis an ${result.delivered} Ansprechpartner gesendet.`
-          : "Es wurden keine neuen Korrektur-E-Mails versendet."
       );
     },
     onError: error => toast.error(error.message),
@@ -2203,10 +2190,10 @@ export default function Plan() {
                   </h2>
                   <p className="mt-0.5 max-w-3xl text-sm leading-6 text-slate-700">
                     {planReleaseStatus.data?.releasedAt
-                      ? planReleaseStatus.data.pendingInitialRecipients > 0
-                        ? `${planReleaseStatus.data.pendingInitialRecipients} Ansprechpartner warten noch auf die bewusste E-Mail-Information.`
-                        : planReleaseStatus.data.pendingChangeRecipients > 0
-                          ? `${planReleaseStatus.data.pendingChangeRecipients} betroffene Ansprechpartner warten nach einer Änderung noch auf einen Hinweis.`
+                      ? planReleaseStatus.data.pendingChangeRecipients > 0
+                        ? `${planReleaseStatus.data.pendingChangeRecipients} betroffene Ansprechpartner warten nach einer Änderung noch auf einen Hinweis.`
+                        : planReleaseStatus.data.pendingInitialRecipients > 0
+                          ? `${planReleaseStatus.data.pendingInitialRecipients} Ansprechpartner warten noch auf die bewusste E-Mail-Information.`
                           : "Die Freigabe und der Versandstatus sind unten nachvollziehbar dokumentiert."
                       : "Beim nächsten Schritt entscheidest du ausdrücklich: nur organisatorisch freigeben oder zusätzlich Ansprechpartner per E-Mail informieren."}
                   </p>
@@ -2224,23 +2211,11 @@ export default function Plan() {
                       <Send className="mr-2 size-4" aria-hidden="true" />
                       Planfreigabe vorbereiten
                     </Button>
-                    {pendingCorrectionRecipients > 0 && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => sendReleaseCorrection.mutate()}
-                        disabled={sendReleaseCorrection.isPending}
-                        className="h-11 rounded-xl border-rose-300 bg-white font-bold text-rose-900 hover:bg-rose-50"
-                      >
-                        {sendReleaseCorrection.isPending
-                          ? "Korrekturhinweis wird gesendet …"
-                          : `Korrekturhinweis an ${pendingCorrectionRecipients} senden`}
-                      </Button>
-                    )}
                   </>
                 ) : (
                   <>
-                    {planReleaseStatus.data.pendingInitialRecipients > 0 && (
+                    {planReleaseStatus.data.pendingInitialRecipients > 0 &&
+                      planReleaseStatus.data.pendingChangeRecipients === 0 && (
                       <Button
                         type="button"
                         onClick={() => setInitialNotificationDialogOpen(true)}
@@ -2253,10 +2228,9 @@ export default function Plan() {
                     {planReleaseStatus.data.pendingChangeRecipients > 0 && (
                       <Button
                         type="button"
-                        variant="outline"
                         onClick={() => sendPlanChangeReminders.mutate()}
                         disabled={sendPlanChangeReminders.isPending}
-                        className="h-11 rounded-xl border-amber-300 bg-white font-bold text-amber-950 hover:bg-amber-50"
+                        className="h-11 rounded-xl border-0 bg-gradient-to-r from-amber-500 to-orange-500 px-4 font-bold text-white shadow-md shadow-amber-200 hover:from-amber-600 hover:to-orange-600 active:scale-[0.98]"
                       >
                         <Send className="mr-2 size-4" aria-hidden="true" />
                         {sendPlanChangeReminders.isPending
@@ -2264,26 +2238,13 @@ export default function Plan() {
                           : "Betroffene Ansprechpartner erinnern"}
                       </Button>
                     )}
-                    {pendingCorrectionRecipients > 0 && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => sendReleaseCorrection.mutate()}
-                        disabled={sendReleaseCorrection.isPending}
-                        className="h-11 rounded-xl border-rose-300 bg-white font-bold text-rose-900 hover:bg-rose-50"
-                      >
-                        {sendReleaseCorrection.isPending
-                          ? "Korrekturhinweis wird gesendet …"
-                          : `Korrekturhinweis an ${pendingCorrectionRecipients} senden`}
-                      </Button>
-                    )}
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => setWithdrawReleaseDialogOpen(true)}
-                      className="h-11 rounded-xl border-rose-200 bg-white font-semibold text-rose-800 hover:bg-rose-50"
+                      className="h-11 rounded-xl border-slate-300 bg-white font-medium text-slate-700 hover:bg-slate-50"
                     >
-                      Freigabe zurücknehmen
+                      Freigabe ohne E-Mail zurücknehmen
                     </Button>
                   </>
                 )}
@@ -2391,9 +2352,9 @@ export default function Plan() {
           <AlertDialog open={withdrawReleaseDialogOpen} onOpenChange={setWithdrawReleaseDialogOpen}>
             <AlertDialogContent className="bg-white text-slate-950">
               <AlertDialogHeader>
-                <AlertDialogTitle>Freigabe wirklich zurücknehmen?</AlertDialogTitle>
+                <AlertDialogTitle>Freigabe ohne E-Mail zurücknehmen?</AlertDialogTitle>
                 <AlertDialogDescription className="text-slate-700">
-                  Der Einsatzplan wird wieder als nicht freigegeben behandelt und es werden keine weiteren Hinweise versendet. Bereits zugestellte E-Mails können technisch nicht zurückgerufen werden; die Versandhistorie bleibt deshalb nachvollziehbar erhalten.
+                  Der Einsatzplan wird wieder als nicht freigegeben behandelt. Diese Aktion verschickt keine E-Mail und löst keinen Korrekturhinweis aus. Bereits zugestellte E-Mails können technisch nicht zurückgerufen werden; die Versandhistorie bleibt deshalb nachvollziehbar erhalten.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -2405,7 +2366,7 @@ export default function Plan() {
                   }}
                   className="bg-rose-600 hover:bg-rose-700"
                 >
-                  Freigabe zurücknehmen
+                  Ohne E-Mail zurücknehmen
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

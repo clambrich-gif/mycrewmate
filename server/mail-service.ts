@@ -115,48 +115,6 @@ export async function sendTransactionalEmail(options: SendMailOptions): Promise<
   };
 }
 
-/** Einmalige Entwarnung nach einem versehentlichen Testversand im Einsatzplan. */
-export function renderPlanReleaseCorrectionEmail(): {
-  subject: string;
-  text: string;
-  html: string;
-} {
-  const subject = "Bitte vorherige E-Mail zum Einsatzplan ignorieren";
-  const text = `Hallo zusammen,
-
-bitte ignoriert die vorherige E-Mail mit dem Hinweis, dass der Einsatzplan steht und Helfer informiert werden können. Diese Nachricht ist ungültig und kann gelöscht werden.
-
-Im Rahmen eines Tests habe ich einen simulierten Einsatzplan freigegeben, um eine Software zu prüfen, die wir im Verein derzeit testen. Sie soll uns künftig dabei helfen, weitere Veranstaltungen besser zu planen – zum Beispiel MyEifelRide, die Weihnachtsfeier und sonstige Vereinsveranstaltungen.
-
-Es besteht kein Handlungsbedarf.
-
-Zu gegebener Zeit informieren wir nach Abschluss des Tests über die weitere Nutzung der Planungssoftware MyCrewMate.
-
-Vielen Dank für euer Verständnis.
-
-Viele Grüße
-Christian Lambrich
-
-PS: Falls ihr Rückfragen habt, kommt gerne direkt auf mich zurück.`;
-  const html = `<!doctype html>
-<html lang="de">
-<head><meta charset="utf-8"><title>${subject}</title></head>
-<body style="margin:0;padding:24px;background:#f8fafc;color:#1e293b;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;">
-  <div style="max-width:600px;margin:0 auto;padding:32px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;">
-    <p style="margin-top:0;">Hallo zusammen,</p>
-    <p>bitte ignoriert die vorherige E-Mail mit dem Hinweis, dass der Einsatzplan steht und Helfer informiert werden können. Diese Nachricht ist ungültig und kann gelöscht werden.</p>
-    <p>Im Rahmen eines Tests habe ich einen simulierten Einsatzplan freigegeben, um eine Software zu prüfen, die wir im Verein derzeit testen. Sie soll uns künftig dabei helfen, weitere Veranstaltungen besser zu planen – zum Beispiel MyEifelRide, die Weihnachtsfeier und sonstige Vereinsveranstaltungen.</p>
-    <p><strong>Es besteht kein Handlungsbedarf.</strong></p>
-    <p>Zu gegebener Zeit informieren wir nach Abschluss des Tests über die weitere Nutzung der Planungssoftware <strong>MyCrewMate</strong>.</p>
-    <p>Vielen Dank für euer Verständnis.</p>
-    <p>Viele Grüße<br><strong>Christian Lambrich</strong></p>
-    <p style="margin-bottom:0;border-top:1px solid #e2e8f0;padding-top:18px;color:#475569;">PS: Falls ihr Rückfragen habt, kommt gerne direkt auf mich zurück.</p>
-  </div>
-</body>
-</html>`;
-  return { subject, text, html };
-}
-
 export function renderInvitationEmail(params: {
   recipientName: string;
   tenantName: string;
