@@ -521,24 +521,36 @@
   will-change: transform;
 }
 
-.klemmi-face-mouth {
+.klemmi-face-mouth-mask {
   position: absolute;
-  /* Aus dem Originalmotiv vermessene Mundfläche: Die Ebene liegt genau über
-     dem Lächeln. Das gilt durch Prozentwerte in jeder Klemmi-Größe – auch
-     auf Mobilgeräten – und verhindert sichtbare Ränder des Grundmundes. */
-  top: 36.9%;
-  left: 43.9%;
-  width: 12.2%;
-  height: 8.8%;
-  overflow: hidden;
-  border: 1px solid rgb(20 58 112 / 14%);
-  border-radius: 49% 49% 56% 56%;
-  background: #123d78;
+  /* Die Gesichtsfarbmaske überdeckt beim Sprechen zuerst das feste Lächeln.
+     Dadurch bleiben weder Mundwinkel noch dunkle Punkte des Grundmotivs
+     sichtbar. Prozentwerte halten die Ausrichtung in jeder Klemmi-Größe. */
+  top: 35.8%;
+  left: 42.3%;
+  width: 15.4%;
+  height: 11.2%;
+  border-radius: 50%;
+  background: rgb(252 247 235);
+  box-shadow: 0 0 0 1px rgb(252 247 235 / 94%);
   opacity: 0;
   pointer-events: none;
-  transform: scaleY(0.94) scaleX(0.99);
-  transform-origin: top center;
-  will-change: transform, opacity;
+}
+
+.klemmi-face-mouth {
+  position: absolute;
+  top: 18%;
+  right: 13%;
+  bottom: 16%;
+  left: 13%;
+  overflow: hidden;
+  border: 1px solid rgb(20 58 112 / 19%);
+  border-radius: 48% 48% 56% 56%;
+  background: #123d78;
+  pointer-events: none;
+  transform: scaleY(0.18) scaleX(0.98);
+  transform-origin: center;
+  will-change: transform;
 }
 
 .klemmi-face-tongue {
@@ -565,9 +577,15 @@
 }
 
 @keyframes klemmi-speaking-mouth {
-  /* Ruhiger, sprachähnlicher Impuls: kein hektisches Auf- und Zuklappen. */
-  0%, 100% { opacity: 0.96; transform: scaleY(0.93) scaleX(0.99); }
-  50% { opacity: 1; transform: scaleY(1) scaleX(1); }
+  /* Mehrere unterschiedlich große Öffnungen wirken wie echte Silben statt
+     wie ein pulsierendes Oval. Geschlossen bleibt ein natürlicher Mundstrich. */
+  0%, 100% { transform: scaleY(0.18) scaleX(0.98); }
+  13% { transform: scaleY(0.72) scaleX(1); }
+  27% { transform: scaleY(0.37) scaleX(0.99); }
+  42% { transform: scaleY(0.96) scaleX(1); }
+  58% { transform: scaleY(0.24) scaleX(0.98); }
+  73% { transform: scaleY(0.78) scaleX(1); }
+  87% { transform: scaleY(0.31) scaleX(0.99); }
 }
 
 .klemmi-trigger-mascot {
@@ -588,8 +606,12 @@
     animation: klemmi-speaking-eyes 1.25s cubic-bezier(0.77, 0, 0.175, 1) infinite;
   }
 
+  .klemmi-animated-mascot[data-klemmi-speaking="true"] .klemmi-face-mouth-mask {
+    opacity: 1;
+  }
+
   .klemmi-animated-mascot[data-klemmi-speaking="true"] .klemmi-face-mouth {
-    animation: klemmi-speaking-mouth 620ms cubic-bezier(0.45, 0, 0.2, 1) infinite;
+    animation: klemmi-speaking-mouth 780ms cubic-bezier(0.45, 0, 0.2, 1) infinite;
   }
 }
 

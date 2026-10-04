@@ -41,8 +41,10 @@ export function KlemmiMascot({
       <span className="klemmi-face-eye klemmi-face-eye--right" aria-hidden="true">
         <span className="klemmi-face-pupil" />
       </span>
-      <span className="klemmi-face-mouth" aria-hidden="true">
-        <span className="klemmi-face-tongue" />
+      <span className="klemmi-face-mouth-mask" aria-hidden="true">
+        <span className="klemmi-face-mouth">
+          <span className="klemmi-face-tongue" />
+        </span>
       </span>
     </span>
   );
