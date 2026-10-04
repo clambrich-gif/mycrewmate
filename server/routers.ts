@@ -6344,6 +6344,7 @@ export const appRouter = router({
       const entitlement = await db.getCurrentTenantProductEntitlement();
       const eventPass = entitlement.packageId === "event_pass";
       const [
+        selectedEvent,
         shifts,
         assignments,
         helpers,
@@ -6353,7 +6354,10 @@ export const appRouter = router({
         materials,
         marketing,
         approvals,
+        shiftAreaContacts,
+        locations,
       ] = await Promise.all([
+        db.getEvent(),
         db.listShifts(),
         db.listAssignments(),
         db.listHelpers(),
@@ -6374,6 +6378,10 @@ export const appRouter = router({
           : Promise.resolve([]),
         productAllowsCapability(entitlement.packageId, "approvals")
           ? db.listApprovals()
+          : Promise.resolve([]),
+        db.listShiftAreaContacts(),
+        productAllowsCapability(entitlement.packageId, "maps_gpx")
+          ? db.listLocations()
           : Promise.resolve([]),
       ]);
 
@@ -6412,6 +6420,7 @@ export const appRouter = router({
         displayName: ctx.user.name?.trim() || "Meine Aufgaben",
         ownContactIds,
         ownHelperIds,
+        activeDays: eventWeekdays(selectedEvent?.activeDays),
         prep,
         post,
         materials,
@@ -6419,6 +6428,12 @@ export const appRouter = router({
         approvals,
         assignments,
         shifts,
+        helpers,
+        shiftAreaContacts,
+        locations: locations.map(location => ({
+          ...location,
+          logoUrl: locationLogoUrl(location),
+        })),
       });
     }),
   }),

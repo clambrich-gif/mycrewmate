@@ -91,6 +91,8 @@ interface Props {
   createTriggerLabel?: string;
   createButtonClassName?: string;
   locationField?: boolean;
+  /** Zeigt die Zuständigkeitsauswahl bereits beim Anlegen. */
+  createResponsibleField?: boolean;
   headerActions?:
     | ReactNode
     | ((context: { visibleRows: Array<Record<string, unknown>> }) => ReactNode);
@@ -135,6 +137,7 @@ export default function TaskGeneric({
   createTriggerLabel = `Neu: ${addLabel}`,
   createButtonClassName = CREATION_ACTION_BUTTON_CLASS,
   locationField = false,
+  createResponsibleField = false,
   headerActions,
   headerLayout = "default",
   clearAssignmentsArea,
@@ -451,12 +454,15 @@ export default function TaskGeneric({
 
   const submitCreate = () => {
     if (!name.trim() || create.isPending) return;
-    const { locationId, ...restExtras } = extras;
+    const { locationId, contactId, ...restExtras } = extras;
     create.mutate({
       [nameKey]: name.trim(),
       ...restExtras,
       ...(locationField
         ? { locationId: locationId === "none" || !locationId ? null : Number(locationId) }
+        : {}),
+      ...(createResponsibleField
+        ? { contactId: contactId === "none" || !contactId ? null : Number(contactId) }
         : {}),
     });
   };
@@ -469,6 +475,7 @@ export default function TaskGeneric({
           ? { [extraField.key]: extraField.options[0]?.v ?? "" }
           : {}),
         ...(locationField ? { locationId: "none" } : {}),
+        ...(createResponsibleField ? { contactId: "none" } : {}),
       }
     );
   };
@@ -1549,8 +1556,33 @@ export default function TaskGeneric({
                 </div>
                 </div>
               )}
-              {(locationField || extraField) && (
+              {(locationField || extraField || createResponsibleField) && (
                 <div className="grid gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2">
+              {createResponsibleField && (
+                <div className="space-y-1.5">
+                  <Label htmlFor={`${kind}-create-contact`}>
+                    Zuständig / verantwortlich (optional)
+                  </Label>
+                  <Select
+                    value={extras.contactId ?? "none"}
+                    onValueChange={value =>
+                      setExtras(current => ({ ...current, contactId: value }))
+                    }
+                  >
+                    <SelectTrigger id={`${kind}-create-contact`}>
+                      <SelectValue placeholder="Noch nicht zugewiesen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Noch nicht zugewiesen</SelectItem>
+                      {contacts.map(contact => (
+                        <SelectItem key={contact.id} value={String(contact.id)}>
+                          {contact.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               {locationField && (
                 <div className="space-y-1.5">
                   <Label htmlFor={`${kind}-create-location`}>Ort / Zielstandort (optional)</Label>

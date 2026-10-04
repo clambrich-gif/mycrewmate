@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { KlemmiEventClosureRecommendation } from "@/components/KlemmiEventClosureRecommendation";
 import { KlemmiUpgradeDialog } from "@/components/KlemmiUpgradeDialog";
 import { KlemmiProLimitNotice } from "@/components/KlemmiProLimitNotice";
+import { PersonalLocationMapCard } from "@/components/PersonalLocationMapCard";
 import { KlemmiSurfaceGuide } from "@/components/KlemmiSurfaceGuide";
 import { LocationMapCard } from "@/components/LocationMapCard";
 import { PageTitle } from "@/components/PageTitle";
@@ -139,6 +140,36 @@ type PersonalDashboardData = {
     task: string;
     startTime: string;
     endTime: string;
+  }>;
+  helpers: {
+    total: number;
+    firstContactOpen: number;
+    feedbackOpen: number;
+    assignedShifts: number;
+    rows: Array<{
+      id: number;
+      name: string;
+      assignedShifts: number;
+      firstContactOpen: boolean;
+      feedbackOpen: boolean;
+      status: "first_contact_open" | "feedback_open" | "confirmed";
+    }>;
+  };
+  locations: Array<{
+    id: number;
+    name: string;
+    latitude: number;
+    longitude: number;
+    logoUrl: string | null;
+    entries: Array<{
+      section: "preparation" | "shifts" | "materials";
+      label: string;
+      status: string;
+      critical: boolean;
+      severity: "critical" | "warning" | "complete" | "neutral";
+      href: string;
+      actionLabel: string;
+    }>;
   }>;
 };
 
@@ -1499,6 +1530,82 @@ function PersonalDashboardContent({
             )}
           </CardContent>
         </Card>
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)]">
+        <Card className="border-slate-200 py-4 text-slate-950 shadow-sm">
+          <CardHeader className="flex flex-row flex-wrap items-baseline justify-between gap-2 pb-3">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <UsersRound className="size-5 text-blue-700" aria-hidden="true" />
+              Meine betreuten Helfer
+            </CardTitle>
+            <span className="text-xs text-slate-600">
+              {data.helpers.total} zugeordnet · {data.helpers.assignedShifts} Einsätze
+            </span>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => onOpen("/helfer?meine=1&erstkontakt=1")}
+                className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-left text-amber-950 transition hover:border-amber-300 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600"
+              >
+                <strong className="text-xl tabular-nums">{data.helpers.firstContactOpen}</strong>
+                <span className="mt-0.5 block text-sm font-medium">ohne Erstkontakt</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onOpen("/helfer?meine=1&rueckmeldung=1")}
+                className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-left text-blue-950 transition hover:border-blue-300 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+              >
+                <strong className="text-xl tabular-nums">{data.helpers.feedbackOpen}</strong>
+                <span className="mt-0.5 block text-sm font-medium">ohne Rückmeldung</span>
+              </button>
+            </div>
+            {data.helpers.rows.length === 0 ? (
+              <p className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm leading-6 text-slate-600">
+                Dir sind aktuell noch keine Helfer als Ansprechpartner zugeordnet.
+              </p>
+            ) : (
+              <div className="divide-y rounded-xl border border-slate-200 bg-white">
+                {data.helpers.rows.map(helper => {
+                  const status = helper.firstContactOpen
+                    ? "Erstkontakt offen"
+                    : helper.feedbackOpen
+                      ? "Rückmeldung offen"
+                      : "Rückmeldung vorhanden";
+                  const statusClass = helper.firstContactOpen
+                    ? "bg-amber-50 text-amber-900 border-amber-200"
+                    : helper.feedbackOpen
+                      ? "bg-blue-50 text-blue-900 border-blue-200"
+                      : "bg-emerald-50 text-emerald-900 border-emerald-200";
+                  return (
+                    <button
+                      key={helper.id}
+                      type="button"
+                      onClick={() => onOpen(`/helfer?meine=1&helfer=${helper.id}`)}
+                      className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                    >
+                      <span className="min-w-0 flex-1">
+                        <strong className="block truncate text-sm text-slate-950">{helper.name}</strong>
+                        <span className="mt-0.5 block text-xs text-slate-600">
+                          {helper.assignedShifts === 1
+                            ? "1 Einsatz zugeordnet"
+                            : `${helper.assignedShifts} Einsätze zugeordnet`}
+                        </span>
+                      </span>
+                      <span className={`shrink-0 rounded-full border px-2 py-1 text-xs font-bold ${statusClass}`}>
+                        {status}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <PersonalLocationMapCard locations={data.locations} />
       </section>
     </div>
   );

@@ -51,7 +51,7 @@ export default function Materials() {
             selector: '[data-klemmi-target="materials-details"]',
             eyebrow: "Schritt 2 von 3",
             title: "Menge und Einordnung festhalten",
-            text: "Menge, Einheit und Kategorie machen den Bedarf nachvollziehbar. Ort und Beschaffungsstand kannst du bei Bedarf direkt ergänzen.",
+            text: "Menge, Einheit und Kategorie machen den Bedarf nachvollziehbar. Zuständigkeit, Ort und Beschaffungsstand kannst du direkt bei der Anlage ergänzen.",
             action: "Speichern zeigen",
           },
           {
@@ -81,6 +81,7 @@ export default function Materials() {
       }}
       noStatus
       locationField
+      createResponsibleField
       deletionRequiresContact
       createInDialog
       createDialogTitle="Neuen Artikel anlegen"

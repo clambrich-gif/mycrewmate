@@ -6,6 +6,7 @@ describe("persönliche Dashboard-Auswertung", () => {
     displayName: "Alex Beispiel",
     ownContactIds: new Set([7]),
     ownHelperIds: new Set([11]),
+    activeDays: ["Freitag", "Samstag"] as const,
     prep: [
       {
         id: 1,
@@ -14,6 +15,7 @@ describe("persönliche Dashboard-Auswertung", () => {
         task: "Beschilderung abstimmen",
         category: "Strecke",
         dueText: "10.06.2027",
+        locationId: 31,
         status: "offen" as const,
       },
       {
@@ -23,6 +25,7 @@ describe("persönliche Dashboard-Auswertung", () => {
         task: "Helferbrief prüfen",
         category: "Kommunikation",
         dueText: "12.06.2027",
+        locationId: 31,
         status: "inArbeit" as const,
       },
       {
@@ -32,6 +35,7 @@ describe("persönliche Dashboard-Auswertung", () => {
         task: "Aufgabe eines anderen Bereichs",
         category: "Extern",
         dueText: "",
+        locationId: null,
         status: "offen" as const,
       },
     ],
@@ -43,6 +47,7 @@ describe("persönliche Dashboard-Auswertung", () => {
         task: "Material zurückgeben",
         category: "Abbau",
         dueText: "",
+        locationId: 42,
         status: "erledigt" as const,
       },
     ],
@@ -54,6 +59,7 @@ describe("persönliche Dashboard-Auswertung", () => {
         category: "Sicherheit",
         quantity: "3",
         unit: "Rollen",
+        locationId: 31,
         status: "geliefert" as const,
       },
       {
@@ -63,6 +69,7 @@ describe("persönliche Dashboard-Auswertung", () => {
         category: "",
         quantity: "",
         unit: "",
+        locationId: null,
         status: "offen" as const,
       },
     ],
@@ -80,6 +87,8 @@ describe("persönliche Dashboard-Auswertung", () => {
         task: "Startunterlagen ausgeben",
         startTime: "07:30",
         endTime: "10:30",
+        locationId: 31,
+        needed: 1,
       },
       {
         id: 21,
@@ -88,6 +97,45 @@ describe("persönliche Dashboard-Auswertung", () => {
         task: "Technik prüfen",
         startTime: "16:00",
         endTime: "18:00",
+        locationId: null,
+        needed: 2,
+      },
+    ],
+    helpers: [
+      {
+        id: 11,
+        name: "Alex Beispiel",
+        contactId: 7,
+        willHelp: "ja" as const,
+        confirmed: "ja" as const,
+        availFri: "ja" as const,
+        availSat: "ja" as const,
+      },
+      {
+        id: 12,
+        name: "Berta Betreuung",
+        contactId: 7,
+        willHelp: "ja" as const,
+        confirmed: "nein" as const,
+        availFri: "vielleicht" as const,
+        availSat: "vielleicht" as const,
+      },
+    ],
+    shiftAreaContacts: [{ area: "Start/Ziel", contactId: 7 }],
+    locations: [
+      {
+        id: 31,
+        name: "Start/Ziel",
+        latitude: 50.3,
+        longitude: 7.2,
+        logoUrl: null,
+      },
+      {
+        id: 42,
+        name: "Abbauplatz",
+        latitude: 50.31,
+        longitude: 7.21,
+        logoUrl: null,
       },
     ],
   };
@@ -114,6 +162,27 @@ describe("persönliche Dashboard-Auswertung", () => {
         id: 20,
         helperId: 11,
         task: "Startunterlagen ausgeben",
+      }),
+    ]);
+    expect(result.helpers).toMatchObject({
+      total: 2,
+      firstContactOpen: 1,
+      feedbackOpen: 0,
+      assignedShifts: 1,
+    });
+    expect(result.locations).toEqual([
+      expect.objectContaining({
+        id: 31,
+        entries: expect.arrayContaining([
+          expect.objectContaining({ label: "Vorbereitung: Beschilderung abstimmen" }),
+          expect.objectContaining({ label: "Material: Absperrband" }),
+        ]),
+      }),
+      expect.objectContaining({
+        id: 42,
+        entries: expect.arrayContaining([
+          expect.objectContaining({ label: "Nachbereitung: Material zurückgeben" }),
+        ]),
       }),
     ]);
   });

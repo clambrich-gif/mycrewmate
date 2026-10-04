@@ -26,7 +26,7 @@ describe("persönliche Dashboard-Ansicht", () => {
   });
 
   it("verwendet serverseitige Personenverknüpfungen und persönliche Filterlinks", async () => {
-    const [router, db, app, personalDashboard, preparation, post, genericTasks] = await Promise.all([
+    const [router, db, app, personalDashboard, preparation, post, genericTasks, dashboard, personalMap, materials] = await Promise.all([
       source("server/routers.ts"),
       source("server/db.ts"),
       source("client/src/App.tsx"),
@@ -34,6 +34,9 @@ describe("persönliche Dashboard-Ansicht", () => {
       source("client/src/pages/Preparation.tsx"),
       source("client/src/pages/PostProcessing.tsx"),
       source("client/src/pages/TaskGeneric.tsx"),
+      source("client/src/pages/Dashboard.tsx"),
+      source("client/src/components/PersonalLocationMapCard.tsx"),
+      source("client/src/pages/Materials.tsx"),
     ]);
 
     expect(router).toContain("personal: protectedProcedure.query");
@@ -48,5 +51,13 @@ describe("persönliche Dashboard-Ansicht", () => {
       expect(page).toContain("MY_TASKS_QUERY_KEY");
       expect(page).toContain("parseMyTasksFilter");
     }
+    expect(personalDashboard).toContain("responsibleHelpers");
+    expect(personalDashboard).toContain("entriesByLocation");
+    expect(router).toContain("db.listShiftAreaContacts()");
+    expect(dashboard).toContain("Meine betreuten Helfer");
+    expect(dashboard).toContain("<PersonalLocationMapCard locations={data.locations} />");
+    expect(personalMap).toContain("Nur meine Zuständigkeiten");
+    expect(genericTasks).toContain("createResponsibleField");
+    expect(materials).toContain("createResponsibleField");
   });
 });
