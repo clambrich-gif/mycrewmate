@@ -64,6 +64,10 @@ type PlanningData = {
   logoBuffer?: Buffer;
   /** Ohne individuelles Eventlogo wird die breite MyCrewMate-Wortmarke verwendet. */
   usesMyCrewMateWordmark?: boolean;
+  /** Kleine MyCrewMate-Wortmarke für die Buffet-Faltkärtchen. */
+  myCrewMateWordmarkBuffer?: Buffer;
+  /** Optionales Vereins- bzw. Eventlogo rechts auf den Buffet-Faltkärtchen. */
+  customEventLogoBuffer?: Buffer;
 };
 
 type PdfColumn = {
@@ -2787,23 +2791,107 @@ export function donationCategoryLabel(category: Cake["donationCategory"]) {
   return "Kuchen / Gebäck";
 }
 
+export const DONATION_TENT_CARDS_PER_PAGE = 4;
+
+type DonationTraitKey =
+  | "vegan"
+  | "vegetarian"
+  | "glutenFree"
+  | "lactoseFree"
+  | "containsNuts"
+  | "sugarFree"
+  | "containsAlcohol"
+  | "meat";
+
+type DonationTraitEntry = {
+  key: DonationTraitKey;
+  label: string;
+  color: string;
+};
+
+/** Alle Eigenschaften in derselben Reihenfolge wie in der Spendenmaske. */
+export function donationTraitEntries(donation: Cake): DonationTraitEntry[] {
+  const entries: Array<DonationTraitEntry | null> = [
+    donation.vegan ? { key: "vegan", label: "Vegan", color: "#15803D" } : null,
+    donation.vegetarian
+      ? { key: "vegetarian", label: "Vegetarisch", color: "#2F855A" }
+      : null,
+    donation.glutenFree
+      ? { key: "glutenFree", label: "Glutenfrei", color: "#A16207" }
+      : null,
+    donation.lactoseFree
+      ? { key: "lactoseFree", label: "Laktosefrei", color: "#475569" }
+      : null,
+    donation.containsNuts
+      ? { key: "containsNuts", label: "Enthält Nüsse", color: "#B45309" }
+      : null,
+    donation.sugarFree
+      ? { key: "sugarFree", label: "Zuckerfrei", color: "#C2410C" }
+      : null,
+    donation.containsAlcohol
+      ? { key: "containsAlcohol", label: "Enthält Alkohol", color: "#9D174D" }
+      : null,
+    donation.meat
+      ? { key: "meat", label: "Fleischhaltig", color: "#B91C1C" }
+      : null,
+  ];
+  return entries.filter((entry): entry is DonationTraitEntry => Boolean(entry));
+}
+
 function donationTraitText(donation: Cake) {
-  const labels = [
-    donation.vegan ? "Vegan" : null,
-    donation.vegetarian ? "Vegetarisch" : null,
-    donation.glutenFree ? "Glutenfrei" : null,
-    donation.lactoseFree ? "Laktosefrei" : null,
-    donation.containsNuts ? "Enthält Nüsse" : null,
-    donation.sugarFree ? "Zuckerfrei" : null,
-    donation.containsAlcohol ? "Enthält Alkohol" : null,
-    donation.meat ? "Fleischhaltig" : null,
-  ].filter((label): label is string => Boolean(label));
+  const labels = donationTraitEntries(donation).map(entry => entry.label);
   const note = donation.note?.trim();
   return (
     [labels.join(", "), note ? `Hinweis: ${note}` : ""]
       .filter(Boolean)
       .join("\n") || "–"
   );
+}
+
+function drawDonationTraitIcon(
+  doc: PDFKit.PDFDocument,
+  key: DonationTraitKey,
+  x: number,
+  y: number,
+  color: string,
+  scale = 1
+) {
+  const size = 8 * scale;
+  doc.save().fillColor(color).strokeColor(color).lineWidth(0.7 * scale);
+  if (key === "vegan") {
+    doc.ellipse(x + size * 0.23, y + size * 0.15, size * 0.62, size * 0.42).fill();
+    doc.moveTo(x + size * 0.48, y + size * 0.76).lineTo(x + size * 0.54, y + size * 0.36).stroke();
+  } else if (key === "vegetarian") {
+    doc.circle(x + size * 0.28, y + size * 0.3, size * 0.18).fill();
+    doc.circle(x + size * 0.52, y + size * 0.2, size * 0.22).fill();
+    doc.circle(x + size * 0.72, y + size * 0.36, size * 0.18).fill();
+    doc.rect(x + size * 0.43, y + size * 0.39, size * 0.17, size * 0.42).fill();
+  } else if (key === "glutenFree") {
+    doc.moveTo(x + size * 0.47, y + size * 0.83).lineTo(x + size * 0.47, y + size * 0.1).stroke();
+    for (let index = 0; index < 3; index++) {
+      const branchY = y + size * (0.22 + index * 0.18);
+      doc.moveTo(x + size * 0.47, branchY).lineTo(x + size * 0.2, branchY - size * 0.11).stroke();
+      doc.moveTo(x + size * 0.47, branchY + size * 0.05).lineTo(x + size * 0.73, branchY - size * 0.07).stroke();
+    }
+  } else if (key === "lactoseFree") {
+    doc.roundedRect(x + size * 0.22, y + size * 0.18, size * 0.56, size * 0.66, size * 0.07).stroke();
+    doc.moveTo(x + size * 0.34, y + size * 0.18).lineTo(x + size * 0.43, y + size * 0.03).lineTo(x + size * 0.63, y + size * 0.18).stroke();
+  } else if (key === "containsNuts") {
+    doc.ellipse(x + size * 0.13, y + size * 0.2, size * 0.74, size * 0.54).fill();
+    doc.moveTo(x + size * 0.28, y + size * 0.28).lineTo(x + size * 0.68, y + size * 0.65).strokeColor("#FDE68A").stroke();
+  } else if (key === "sugarFree") {
+    doc.circle(x + size * 0.5, y + size * 0.48, size * 0.27).fill();
+    doc.moveTo(x + size * 0.2, y + size * 0.26).lineTo(x, y + size * 0.08).stroke();
+    doc.moveTo(x + size * 0.8, y + size * 0.26).lineTo(x + size, y + size * 0.08).stroke();
+  } else if (key === "containsAlcohol") {
+    doc.moveTo(x + size * 0.22, y + size * 0.12).lineTo(x + size * 0.78, y + size * 0.12).lineTo(x + size * 0.59, y + size * 0.48).lineTo(x + size * 0.41, y + size * 0.48).closePath().stroke();
+    doc.moveTo(x + size * 0.5, y + size * 0.48).lineTo(x + size * 0.5, y + size * 0.78).stroke();
+    doc.moveTo(x + size * 0.3, y + size * 0.84).lineTo(x + size * 0.7, y + size * 0.84).stroke();
+  } else {
+    doc.ellipse(x + size * 0.08, y + size * 0.2, size * 0.78, size * 0.52).fill();
+    doc.circle(x + size * 0.3, y + size * 0.43, size * 0.08).fillColor("#FEE2E2").fill();
+  }
+  doc.restore();
 }
 
 function donationDropoffText(donation: Cake) {
@@ -2815,6 +2903,258 @@ function donationDropoffText(donation: Cake) {
   }
   if (donation.dropoffTime) return `${donation.dropoffTime} Uhr`;
   return donation.legacyDropoffText.trim() || "–";
+}
+
+function drawDonationTraitChips(
+  doc: PDFKit.PDFDocument,
+  entries: DonationTraitEntry[],
+  x: number,
+  y: number,
+  width: number,
+  maxRows: number
+) {
+  if (entries.length === 0) {
+    doc
+      .font("Helvetica")
+      .fontSize(7.5)
+      .fillColor(colors.muted)
+      .text("Keine besondere Kennzeichnung", x, y, { width });
+    return y + 12;
+  }
+
+  const iconWidth = 10;
+  const lineHeight = 13;
+  let cursorX = x;
+  let cursorY = y;
+  let row = 1;
+  for (const entry of entries) {
+    doc.font("Helvetica-Bold").fontSize(7.6);
+    const labelWidth = doc.widthOfString(entry.label);
+    const entryWidth = iconWidth + 3 + labelWidth + 13;
+    if (cursorX > x && cursorX + entryWidth > x + width) {
+      row += 1;
+      if (row > maxRows) break;
+      cursorX = x;
+      cursorY += lineHeight;
+    }
+    drawDonationTraitIcon(doc, entry.key, cursorX, cursorY - 1, entry.color, 0.9);
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(7.6)
+      .fillColor(entry.color)
+      .text(entry.label, cursorX + iconWidth + 3, cursorY, {
+        width: labelWidth + 1,
+        lineBreak: false,
+      });
+    cursorX += entryWidth;
+  }
+  return cursorY + lineHeight;
+}
+
+function drawDonationTentCard(
+  doc: PDFKit.PDFDocument,
+  donation: Cake,
+  indexOnPage: number,
+  branding: {
+    wordmarkBuffer?: Buffer;
+    customEventLogoBuffer?: Buffer;
+  }
+) {
+  const outerMargin = 34;
+  const headingHeight = 22;
+  const footerReserve = 42;
+  const gapX = 14;
+  const gapY = 12;
+  const cardWidth = (doc.page.width - outerMargin * 2 - gapX) / 2;
+  const cardHeight =
+    (doc.page.height - outerMargin - headingHeight - footerReserve - gapY) / 2;
+  const column = indexOnPage % 2;
+  const row = Math.floor(indexOnPage / 2);
+  const x = outerMargin + column * (cardWidth + gapX);
+  const y = outerMargin + headingHeight + row * (cardHeight + gapY);
+  const faceHeight = cardHeight / 2;
+  const centerX = x + cardWidth / 2;
+  const upperCenterY = y + faceHeight / 2;
+  const padding = 13;
+  const donationName = donation.cake.trim() || "Spende";
+  const traitEntries = donationTraitEntries(donation);
+
+  doc.save();
+  doc
+    .roundedRect(x, y, cardWidth, cardHeight, 4)
+    .fillAndStroke("#FFFFFF", "#8DA6C0");
+  doc
+    .rect(x, y, cardWidth, faceHeight)
+    .fill("#EAF4FF");
+  doc
+    .dash(2.5, { space: 2.5 })
+    .roundedRect(x, y, cardWidth, cardHeight, 4)
+    .lineWidth(0.8)
+    .strokeColor("#8DA6C0")
+    .stroke()
+    .undash();
+  doc
+    .dash(2.5, { space: 2.5 })
+    .moveTo(x, y + faceHeight)
+    .lineTo(x + cardWidth, y + faceHeight)
+    .lineWidth(0.8)
+    .strokeColor("#8DA6C0")
+    .stroke()
+    .undash();
+  doc.restore();
+
+  // Die obere Hälfte wird gedreht gedruckt: Nach dem Falten ist sie auf der
+  // gegenüberliegenden Seite der Aufstellkarte korrekt lesbar.
+  doc.save();
+  doc.rotate(180, { origin: [centerX, upperCenterY] });
+  if (branding.wordmarkBuffer) {
+    try {
+      // Dezent gehalten, damit die Speise klar im Mittelpunkt steht.
+      doc.image(branding.wordmarkBuffer, x + padding, y + 11, {
+        fit: [58, 17],
+      });
+    } catch {
+      // Ein Markenasset darf die operative Ausgabe nicht blockieren.
+    }
+  }
+  if (branding.customEventLogoBuffer) {
+    try {
+      doc.image(
+        branding.customEventLogoBuffer,
+        x + cardWidth - padding - 24,
+        y + 8,
+        { fit: [24, 24] }
+      );
+    } catch {
+      // Ein beschädigtes Vereinslogo wird nur ausgelassen.
+    }
+  }
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(6.8)
+    .fillColor(colors.muted)
+    .text(donationCategoryLabel(donation.donationCategory).toUpperCase(), x + padding, y + 38, {
+      width: cardWidth - padding * 2,
+      align: "center",
+      characterSpacing: 0.6,
+      lineBreak: false,
+    });
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(donationName.length > 34 ? 13 : 16)
+    .fillColor(colors.ink)
+    .text(donationName, x + padding, y + 50, {
+      width: cardWidth - padding * 2,
+      align: "center",
+      height: 34,
+      ellipsis: true,
+    });
+  drawDonationTraitChips(
+    doc,
+    traitEntries,
+    x + padding,
+    y + faceHeight - 26,
+    cardWidth - padding * 2,
+    1
+  );
+  doc.restore();
+
+  const foldLabelWidth = 53;
+  doc
+    .roundedRect(centerX - foldLabelWidth / 2, y + faceHeight - 6, foldLabelWidth, 12, 6)
+    .fillAndStroke("#FFFFFF", "#B7C7D9");
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(5.9)
+    .fillColor(colors.muted)
+    .text("HIER FALTEN", centerX - foldLabelWidth / 2, y + faceHeight - 2.2, {
+      width: foldLabelWidth,
+      align: "center",
+      lineBreak: false,
+      characterSpacing: 0.45,
+    });
+
+  const lowerY = y + faceHeight + 15;
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(donationName.length > 34 ? 12 : 14)
+    .fillColor(colors.ink)
+    .text(donationName, x + padding, lowerY, {
+      width: cardWidth - padding * 2 - 86,
+      height: 20,
+      ellipsis: true,
+      lineBreak: false,
+    });
+  doc
+    .font("Helvetica")
+    .fontSize(7.3)
+    .fillColor(colors.muted)
+    .text(
+      donationCategoryLabel(donation.donationCategory),
+      x + cardWidth - padding - 82,
+      lowerY + 3,
+      { width: 82, align: "right", lineBreak: false }
+    );
+  doc
+    .moveTo(x + padding, lowerY + 23)
+    .lineTo(x + cardWidth - padding, lowerY + 23)
+    .lineWidth(0.6)
+    .strokeColor(colors.line)
+    .stroke();
+  const traitsEndY = drawDonationTraitChips(
+    doc,
+    traitEntries,
+    x + padding,
+    lowerY + 31,
+    cardWidth - padding * 2,
+    2
+  );
+  const note = donation.note?.trim();
+  doc
+    .font("Helvetica")
+    .fontSize(7.2)
+    .fillColor(colors.muted)
+    .text(note ? `Hinweis: ${note}` : "Keine zusätzlichen Hinweise.", x + padding, traitsEndY + 3, {
+      width: cardWidth - padding * 2,
+      height: faceHeight - (traitsEndY - y) - 13,
+      ellipsis: true,
+      lineGap: 0.5,
+    });
+}
+
+function drawDonationTentCardPages(
+  doc: PDFKit.PDFDocument,
+  donations: Cake[],
+  data: PlanningData
+) {
+  const wordmarkBuffer =
+    data.myCrewMateWordmarkBuffer ??
+    (data.usesMyCrewMateWordmark ? data.logoBuffer : undefined);
+  const customEventLogoBuffer =
+    data.customEventLogoBuffer ??
+    (data.usesMyCrewMateWordmark ? undefined : data.logoBuffer);
+
+  for (let offset = 0; offset < donations.length; offset += DONATION_TENT_CARDS_PER_PAGE) {
+    doc.addPage();
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(6.7)
+      .fillColor(colors.muted)
+      .text(
+        "BUFFET-KÄRTCHEN · AN DER AUSSENLINIE AUSSCHNEIDEN · AN DER GESTRICHELTEN MITTELLINIE FALTEN",
+        34,
+        23,
+        { width: doc.page.width - 68, align: "center", characterSpacing: 0.45, lineBreak: false }
+      );
+    donations
+      .slice(offset, offset + DONATION_TENT_CARDS_PER_PAGE)
+      .forEach((donation, index) =>
+        drawDonationTentCard(doc, donation, index, {
+          wordmarkBuffer,
+          customEventLogoBuffer,
+        })
+      );
+  }
 }
 
 /** Erstellt eine operative Übersicht der aktuell gefilterten Verpflegungsspenden. */
@@ -2899,6 +3239,7 @@ export function renderDonationOverviewPdf(
         { minimumHeight: 30 }
       );
     }
+    drawDonationTentCardPages(doc, selectedDonations, data);
   }, "landscape");
 }
 
@@ -3109,26 +3450,28 @@ async function loadPlanningData(): Promise<PlanningData> {
     logoKey: allowsCustomBranding ? (selectedEvent?.pdfLogoKey ?? null) : null,
     logoUrl: allowsCustomBranding ? (selectedEvent?.pdfLogoUrl ?? null) : null,
   };
-  let logoBuffer: Buffer | undefined;
+  let customEventLogoBuffer: Buffer | undefined;
   const logoStorageKey =
     allowsCustomBranding && selectedEvent
       ? resolveEventPdfLogoKey(selectedEvent)
       : null;
   if (logoStorageKey) {
     try {
-      logoBuffer = await storageRead(logoStorageKey);
+      customEventLogoBuffer = await storageRead(logoStorageKey);
     } catch (error) {
       console.warn("[PDF] Logo konnte nicht geladen werden:", error);
     }
   }
+  const myCrewMateWordmarkBuffer = await loadMyCrewMateWordmarkBuffer();
   const usesMyCrewMateWordmark = shouldUseMyCrewMateWordmark({
     allowsCustomBranding,
-    hasCustomEventLogo: Boolean(logoBuffer),
+    hasCustomEventLogo: Boolean(customEventLogoBuffer),
   });
+  let logoBuffer = customEventLogoBuffer;
   if (usesMyCrewMateWordmark) {
     // Event Pass und Light sowie logo-freie Pro-/Enterprise-Exporte nutzen die
     // MyCrewMate-Wortmarke als einheitliche, sichtbare Absendermarke.
-    logoBuffer = await loadMyCrewMateWordmarkBuffer();
+    logoBuffer = myCrewMateWordmarkBuffer;
   }
   return {
     helpers,
@@ -3144,6 +3487,8 @@ async function loadPlanningData(): Promise<PlanningData> {
     settings: resolvedSettings,
     logoBuffer,
     usesMyCrewMateWordmark,
+    myCrewMateWordmarkBuffer,
+    customEventLogoBuffer,
   };
 }
 

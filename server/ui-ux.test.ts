@@ -3131,7 +3131,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(cakes).toContain('type="date"');
     expect(cakes).toContain('type="time"');
     expect(cakes).toContain("trpc.pdf.donationOverview.useMutation");
-    expect(cakes).toContain("Spenden-PDF wurde heruntergeladen");
+    expect(cakes).toContain("Spenden-PDF mit Liste und Faltkärtchen wurde heruntergeladen");
+    expect(cakes).toContain("PDF: Liste & Kärtchen");
     expect(cakes).toContain("downloadDonationOverviewPdf");
     expect(cakes).not.toContain("ModuleExcelImportButton");
     expect(cakes).toContain('<ResetAreaButton\n                area="cakes"');

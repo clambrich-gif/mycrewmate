@@ -49,7 +49,9 @@ describe("Produktgrenzen: Marke, WhatsApp und Event-Sicherung", () => {
     "custom_branding"`);
     expect(pdf).toContain("loadMyCrewMateWordmarkBuffer()");
     expect(pdf).toContain("shouldUseMyCrewMateWordmark");
-    expect(pdf).toContain("hasCustomEventLogo: Boolean(logoBuffer)");
+    expect(pdf).toContain("hasCustomEventLogo: Boolean(customEventLogoBuffer)");
+    expect(pdf).toContain("myCrewMateWordmarkBuffer");
+    expect(pdf).toContain("customEventLogoBuffer");
     expect(pdf).toContain("const CUSTOM_EVENT_LOGO_STANDARD_SIZE = 128");
     expect(pdf).toContain("const CUSTOM_EVENT_LOGO_COMPACT_SIZE = 78");
     expect(pdf).toMatch(/logoWidth\s*=\s*usesMyCrewMateWordmark\s*\?\s*172\s*:\s*CUSTOM_EVENT_LOGO_STANDARD_SIZE/);

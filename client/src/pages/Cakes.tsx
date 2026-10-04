@@ -556,7 +556,7 @@ export default function Cakes() {
   const donationOverviewPdf = trpc.pdf.donationOverview.useMutation({
     onSuccess: result => {
       downloadBase64File(result.base64, result.mimeType, result.filename);
-      toast.success("Spenden-PDF wurde heruntergeladen");
+      toast.success("Spenden-PDF mit Liste und Faltkärtchen wurde heruntergeladen");
     },
     onError: error => toast.error(error.message),
   });
@@ -614,7 +614,9 @@ export default function Cakes() {
                 onClick={downloadDonationOverviewPdf}
               >
                 <Printer className="mr-2 h-4 text-blue-700" />
-                {donationOverviewPdf.isPending ? "PDF wird erstellt …" : "PDF drucken"}
+                {donationOverviewPdf.isPending
+                  ? "PDF wird erstellt …"
+                  : "PDF: Liste & Kärtchen"}
               </Button>
               <ResetAreaButton
                 area="cakes"

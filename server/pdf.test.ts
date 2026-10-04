@@ -43,6 +43,8 @@ import {
   selectHelperCakes,
   selectDonationOverviewRows,
   donationCategoryLabel,
+  donationTraitEntries,
+  DONATION_TENT_CARDS_PER_PAGE,
   selectMaterialPacklistMaterials,
   selectTaskOverviewRows,
   CONTACT_CHECKLIST_MARKER,
@@ -830,6 +832,63 @@ describe("PDF-Erzeugung", () => {
     expect(sonstigesPdf.subarray(0, 5).toString()).toBe("%PDF-");
     expect(emptyPdf.subarray(0, 5).toString()).toBe("%PDF-");
     expect(pdf.length).toBeGreaterThan(1_500);
+  });
+
+  it("ergänzt vier richtig faltbare Buffet-Kärtchen pro A4-Seite", async () => {
+    const allTraitsDonation: Cake = {
+      ...helperCakes[0],
+      id: 91,
+      cake: "Zupfkuchen",
+      vegan: true,
+      vegetarian: true,
+      glutenFree: true,
+      lactoseFree: true,
+      containsNuts: true,
+      sugarFree: true,
+      containsAlcohol: true,
+      meat: true,
+      note: "Bitte gekühlt lagern",
+    };
+    const fifthDonation: Cake = {
+      ...allTraitsDonation,
+      id: 95,
+      cake: "Kartoffelsalat",
+      donor: "Fünfte Spende",
+    };
+    const expectedTraits = [
+      "Vegan",
+      "Vegetarisch",
+      "Glutenfrei",
+      "Laktosefrei",
+      "Enthält Nüsse",
+      "Zuckerfrei",
+      "Enthält Alkohol",
+      "Fleischhaltig",
+    ];
+    expect(DONATION_TENT_CARDS_PER_PAGE).toBe(4);
+    expect(donationTraitEntries(allTraitsDonation).map(entry => entry.label)).toEqual(
+      expectedTraits
+    );
+
+    const pdf = await renderDonationOverviewPdf(
+      {
+        ...data,
+        cakes: [
+          allTraitsDonation,
+          { ...allTraitsDonation, id: 92, cake: "Nudelsalat" },
+          { ...allTraitsDonation, id: 93, cake: "Apfelkuchen" },
+          { ...allTraitsDonation, id: 94, cake: "Chips" },
+          fifthDonation,
+        ],
+      },
+      [91, 92, 93, 94, 95]
+    );
+
+    // Eine Übersichtsseite plus zwei Kärtchenseiten (vier + ein Kärtchen).
+    const pageCount = (pdf.toString("latin1").match(/\/Type\s*\/Page\b/g) ?? [])
+      .length;
+    expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+    expect(pageCount).toBe(3);
   });
 
   it.each(WEEKDAYS)("filtert den PDF-Plan auf %s", day => {
