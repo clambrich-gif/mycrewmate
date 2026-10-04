@@ -759,6 +759,51 @@ const HELP_CHAPTERS: HelpChapter[] = [
       },
     ],
   },
+  {
+    id: "web-based-training",
+    number: 11,
+    title: "Web-Based-Training (WBT-Lernwerkstatt)",
+    keywords:
+      "wbt web based training lernwerkstatt simulation helferkoordination admin schulung zertifikat teilnahmebestaetigung klemmi",
+    icon: BookOpenCheck,
+    accent: "border-cyan-200 bg-cyan-50 text-cyan-900",
+    topics: [
+      {
+        id: "wbt-interaktive-lernwerkstatt",
+        title: "11.1 Interaktive WBT-Simulationen (100% datenfrei)",
+        audience: ["all", "planning", "admin"],
+        keywords:
+          "wbt simulation helfer planungsteam admin lernwerkstatt datenfrei vertonung sprecher klemmi zertifikat",
+        summary:
+          "Die MyCrewMate Lernwerkstatt bietet zwei spezialisierte, interaktive Trainingspfade: Helferkoordination (7 Module) und Planungsteam & Administration (11 Module). Alle Schritte werden realitätsnah simuliert und zweistimmig vertont (neutraler Sprecher + Klemmis Praxisempfehlung), ohne echte Vereinsdaten zu verändern.",
+        steps: [
+          "Lernwerkstatt über den Direktlink oder /wbt öffnen.",
+          "Passenden Trainingspfad wählen (Helferkoordination oder Planungsteam & Admin).",
+          "Simulation Schritt für Schritt durchklicken und Klemmis Empfehlungen anhören.",
+          "Am Ende jedes Moduls Klemmis Kern-Erkenntnis mitnehmen und nach Abschluss eine persönliche Teilnahmebestätigung herunterladen.",
+        ],
+        callout: {
+          tone: "tip",
+          title: "Ideal zur Einarbeitung neuer Mitglieder",
+          text: "WBT-Schulungslinks können auch an Personen ohne bestehenden Programmzugang verschickt werden. Nach Abschluss kann eine offizielle Teilnahmebestätigung als PDF exportiert werden.",
+        },
+        visual: {
+          label: "Lernwerkstatt",
+          title: "Schulen ohne Risiko für Vereinsdaten",
+          icon: GraduationCap,
+          items: [
+            "WBT 1: Helferkoordination (7 Module inkl. 6-Schritte-Ablauf)",
+            "WBT 2: Planungsteam & Admin (11 Module inkl. Schutz & Protokolle)",
+            "Zweistimmige Vertonung & persönliche Teilnahmebestätigung als PDF",
+          ],
+        },
+        workspace: {
+          href: "/wbt",
+          label: "WBT-Lernwerkstatt öffnen",
+        },
+      },
+    ],
+  },
 ];
 
 export const AZ_INDEX: readonly AzIndexEntry[] = [

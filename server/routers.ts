@@ -102,6 +102,7 @@ import {
   renderPrivacyIncidentTemplatePdf,
   renderTenantAcceptedContractDocumentsPdf,
   renderTenantContractReceiptPdf,
+  renderWbtCompletionCertificatePdf,
   DEFAULT_PDF_SETTINGS,
 } from "./pdf";
 import { publicAppUrl } from "./public-app-url";
@@ -4080,6 +4081,53 @@ export const appRouter = router({
           emailSent,
         } as const;
       }),
+    createWbtTrainingLink: masterAdminProcedure
+      .input(
+        z.object({
+          trackId: z.enum(["helper", "admin"]),
+          expiresInDays: z.union([z.literal(7), z.literal(30), z.literal(90)]),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const rawToken = randomBytes(24).toString("base64url");
+        const link = await db.createWbtTrainingLink({
+          tokenHash: hashOpaqueToken(rawToken),
+          trackId: input.trackId,
+          createdByOpenId: ctx.user.openId,
+          expiresInDays: input.expiresInDays,
+        });
+        await recordSecurityActivity(
+          auditActor(ctx.user),
+          `Externer WBT-Link für „${input.trackId === "helper" ? "Helferkoordination" : "Planungsteam & Administration"}“ erstellt (${input.expiresInDays} Tage)`,
+          "created",
+          null
+        );
+        return {
+          ...link,
+          url: publicAppUrl(`/wbt?invite=${encodeURIComponent(rawToken)}`),
+        } as const;
+      }),
+    listWbtTrainingLinks: masterAdminProcedure.query(() =>
+      db.listWbtTrainingLinksForPlatformAdmin()
+    ),
+    revokeWbtTrainingLink: masterAdminProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const revoked = await db.revokeWbtTrainingLinkForPlatformAdmin(input.id);
+        if (!revoked) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Dieser WBT-Link ist bereits abgelaufen, widerrufen oder nicht vorhanden.",
+          });
+        }
+        await recordSecurityActivity(
+          auditActor(ctx.user),
+          `Externer WBT-Link #${input.id} widerrufen`,
+          "updated",
+          null
+        );
+        return { success: true } as const;
+      }),
     launchSettings: masterAdminProcedure.query(() => db.getPlatformLaunchSettings()),
     createHandoffLink: masterAdminProcedure
       .input(z.object({ tenantId: z.string().trim().regex(/^[a-z0-9-]{3,96}$/) }))
@@ -4097,6 +4145,54 @@ export const appRouter = router({
           tenantId: input.tenantId,
           handoffToken: rawToken,
           expiresInSeconds: 300,
+        } as const;
+      }),
+  }),
+
+  /** Öffentliches, vollständig datenfreies Trainingsmodul; kein Vereinslogin erforderlich. */
+  wbt: router({
+    validateTrainingLink: publicProcedure
+      .input(z.object({ token: z.string().trim().min(20).max(200) }))
+      .query(async ({ input }) => {
+        const link = await db.resolveActiveWbtTrainingLink(hashOpaqueToken(input.token));
+        if (!link) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Dieser Schulungslink ist ungültig, abgelaufen oder wurde widerrufen.",
+          });
+        }
+        return {
+          trackId: link.trackId,
+          expiresAt: link.expiresAt,
+        } as const;
+      }),
+    completionCertificate: publicProcedure
+      .input(
+        z.object({
+          participantName: z.string().trim().min(2).max(120),
+          trackId: z.enum(["helper", "admin"]),
+        })
+      )
+      .mutation(async ({ input }) => {
+        const trackTitle =
+          input.trackId === "helper"
+            ? "Web-Based-Training: Helferkoordination"
+            : "Web-Based-Training: Planungsteam & Administration";
+        const pdf = await renderWbtCompletionCertificatePdf({
+          participantName: input.participantName,
+          trackTitle,
+        });
+        const filename = `Teilnahmebestaetigung_${input.participantName
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/ß/g, "ss")
+          .replace(/[^a-zA-Z0-9_-]+/g, "_")
+          .replace(/^_+|_+$/g, "")
+          .slice(0, 80)}.pdf`;
+        return {
+          base64: pdf.toString("base64"),
+          mimeType: "application/pdf",
+          filename,
         } as const;
       }),
   }),

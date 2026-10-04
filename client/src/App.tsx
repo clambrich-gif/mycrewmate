@@ -211,6 +211,11 @@ function Router() {
             <WbtPortal />
           </Suspense>
         </Route>
+        <Route path="/wbt">
+          <Suspense fallback={<RouteLoading />}>
+            <WbtPortal />
+          </Suspense>
+        </Route>
         <Route path="/_staging/klemmi-einsatzplan">
           <Suspense fallback={<RouteLoading />}>
             <KlemmiPlanLayoutPreview />

@@ -211,6 +211,65 @@ function safeFilename(value: string) {
   );
 }
 
+/**
+ * Erzeugt eine persönliche WBT-Teilnahmebestätigung ohne Speicherung der
+ * Teilnehmerangaben. Sie dokumentiert ausschließlich den simulierten
+ * Trainingsdurchlauf und stellt keine amtliche Qualifikation dar.
+ */
+export function renderWbtCompletionCertificatePdf(input: {
+  participantName: string;
+  trackTitle: string;
+  completedAt?: Date;
+}) {
+  const completedAt = input.completedAt ?? new Date();
+  const formattedDate = new Intl.DateTimeFormat("de-DE", {
+    dateStyle: "long",
+  }).format(completedAt);
+
+  return collectPdf(doc => {
+    doc.fillColor("#155e75").font("Helvetica-Bold").fontSize(12);
+    doc.text("MyCrewMate Lernwerkstatt", { align: "center", width: contentWidth });
+    doc.moveDown(2.6);
+    doc.fillColor(colors.ink).font("Helvetica-Bold").fontSize(28);
+    doc.text("Teilnahmebestätigung", { align: "center", width: contentWidth });
+    doc.moveDown(0.8);
+    doc.fillColor(colors.muted).font("Helvetica").fontSize(11);
+    doc.text("für das interaktive Web-Based-Training", {
+      align: "center",
+      width: contentWidth,
+    });
+    doc.moveDown(2.2);
+    doc.fillColor(colors.ink).font("Helvetica").fontSize(12);
+    doc.text("Hiermit wird bestätigt, dass", {
+      align: "center",
+      width: contentWidth,
+    });
+    doc.moveDown(0.7);
+    doc.fillColor("#1d4ed8").font("Helvetica-Bold").fontSize(22);
+    doc.text(input.participantName, { align: "center", width: contentWidth });
+    doc.moveDown(1.3);
+    doc.fillColor(colors.ink).font("Helvetica").fontSize(12);
+    doc.text("den folgenden simulierten Trainingspfad vollständig durchlaufen hat:", {
+      align: "center",
+      width: contentWidth,
+    });
+    doc.moveDown(0.7);
+    doc.fillColor("#155e75").font("Helvetica-Bold").fontSize(16);
+    doc.text(input.trackTitle, { align: "center", width: contentWidth });
+    doc.moveDown(2.3);
+    doc.fillColor(colors.muted).font("Helvetica").fontSize(10);
+    doc.text(`Abgeschlossen am ${formattedDate}`, { align: "center", width: contentWidth });
+    doc.moveDown(2.7);
+    doc.strokeColor("#93c5fd").lineWidth(1.2).moveTo(margin + 72, doc.y).lineTo(pageWidth - margin - 72, doc.y).stroke();
+    doc.moveDown(0.5);
+    doc.fillColor(colors.muted).font("Helvetica").fontSize(8.5);
+    doc.text(
+      "Diese Bestätigung dokumentiert ausschließlich die Teilnahme an einer datenfreien Schulungssimulation. Sie ist kein amtlicher Befähigungs- oder Prüfungsnachweis.",
+      { align: "center", width: contentWidth, lineGap: 2 }
+    );
+  });
+}
+
 type ClubPrivacyTemplateSection = {
   title: string;
   paragraphs: string[];

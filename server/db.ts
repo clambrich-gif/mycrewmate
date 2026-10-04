@@ -67,6 +67,7 @@ import {
   tenants,
   userTenantMemberships,
   users,
+  wbtTrainingLinks,
 } from "../drizzle/schema";
 import {
   LEGAL_DOCUMENTS,
@@ -9256,4 +9257,88 @@ export async function consumePlatformTenantHandoff(tokenHash: string) {
       createdByOpenId: row.createdByOpenId,
     } as const;
   });
+}
+
+export type WbtTrackId = "helper" | "admin";
+
+/** Erstellt einen externen, zeitlich begrenzten Trainingslink ohne Teilnehmerdaten. */
+export async function createWbtTrainingLink(input: {
+  tokenHash: string;
+  trackId: WbtTrackId;
+  createdByOpenId: string;
+  expiresInDays: number;
+}) {
+  const database = (await getDb()) as DB;
+  const expiresAt = new Date(
+    Date.now() + input.expiresInDays * 24 * 60 * 60 * 1000
+  );
+  const result = await database.insert(wbtTrainingLinks).values({
+    tokenHash: input.tokenHash,
+    trackId: input.trackId,
+    createdByOpenId: input.createdByOpenId,
+    expiresAt,
+  });
+  const id = Number(
+    (result as unknown as { insertId?: number })?.insertId ??
+      (Array.isArray(result)
+        ? (result[0] as { insertId?: number } | undefined)?.insertId
+        : undefined)
+  );
+  if (!Number.isInteger(id) || id <= 0) {
+    throw new Error("WBT-Trainingslink konnte nicht erstellt werden");
+  }
+  return { id, trackId: input.trackId, expiresAt } as const;
+}
+
+/** Liefert dem Masterportal ausschließlich Metadaten, nie den geheimen Linkwert. */
+export async function listWbtTrainingLinksForPlatformAdmin() {
+  const database = await getDb();
+  if (!database) return [];
+  return database
+    .select({
+      id: wbtTrainingLinks.id,
+      trackId: wbtTrainingLinks.trackId,
+      expiresAt: wbtTrainingLinks.expiresAt,
+      revokedAt: wbtTrainingLinks.revokedAt,
+      createdAt: wbtTrainingLinks.createdAt,
+    })
+    .from(wbtTrainingLinks)
+    .orderBy(desc(wbtTrainingLinks.createdAt));
+}
+
+/** Widerruft einen Trainingslink sofort, ohne seinen ursprünglichen Wert erneut anzuzeigen. */
+export async function revokeWbtTrainingLinkForPlatformAdmin(id: number) {
+  const database = (await getDb()) as DB;
+  const result = await database
+    .update(wbtTrainingLinks)
+    .set({ revokedAt: new Date() })
+    .where(
+      and(
+        eq(wbtTrainingLinks.id, id),
+        isNull(wbtTrainingLinks.revokedAt),
+        gt(wbtTrainingLinks.expiresAt, new Date())
+      )
+    );
+  return affectedRows(result) > 0;
+}
+
+/** Prüft einen externen Trainingslink anhand seines serverseitigen Hashes. */
+export async function resolveActiveWbtTrainingLink(tokenHash: string) {
+  const database = await getDb();
+  if (!database) return null;
+  const [row] = await database
+    .select({
+      trackId: wbtTrainingLinks.trackId,
+      expiresAt: wbtTrainingLinks.expiresAt,
+    })
+    .from(wbtTrainingLinks)
+    .where(
+      and(
+        eq(wbtTrainingLinks.tokenHash, tokenHash),
+        isNull(wbtTrainingLinks.revokedAt),
+        gt(wbtTrainingLinks.expiresAt, new Date())
+      )
+    )
+    .limit(1);
+  return row ?? null;
 }

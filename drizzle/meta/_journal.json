@@ -617,6 +617,13 @@
       "when": 1790965820299,
       "tag": "0087_chemical_thor",
       "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "5",
+      "when": 1791123829243,
+      "tag": "0088_perfect_boomer",
+      "breakpoints": true
     }
   ]
 }

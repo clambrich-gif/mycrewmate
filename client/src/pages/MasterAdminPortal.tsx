@@ -54,6 +54,8 @@ import {
   CirclePause,
   Copy,
   CreditCard,
+  ExternalLink,
+  GraduationCap,
   KeyRound,
   Loader2,
   LockKeyhole,
@@ -1019,6 +1021,28 @@ export default function MasterAdminPortal() {
   const [accessToDelete, setAccessToDelete] = useState<PlatformAccessInventoryItem | null>(null);
   const resetToken = new URLSearchParams(window.location.search).get("reset");
 
+  const [wbtTrackChoice, setWbtTrackChoice] = useState<"helper" | "admin">("helper");
+  const [wbtExpiryDays, setWbtExpiryDays] = useState<7 | 30 | 90>(30);
+  const [wbtCreatedLink, setWbtCreatedLink] = useState<string | null>(null);
+  const [wbtLinkCopied, setWbtLinkCopied] = useState(false);
+
+  const wbtLinksQuery = trpc.platformAdmin.listWbtTrainingLinks.useQuery();
+  const createWbtLink = trpc.platformAdmin.createWbtTrainingLink.useMutation({
+    onSuccess: result => {
+      setWbtCreatedLink(result.url);
+      wbtLinksQuery.refetch();
+      toast.success("WBT-Schulungslink erstellt");
+    },
+    onError: err => toast.error(err.message),
+  });
+  const revokeWbtLink = trpc.platformAdmin.revokeWbtTrainingLink.useMutation({
+    onSuccess: () => {
+      wbtLinksQuery.refetch();
+      toast.success("WBT-Link wurde widerrufen");
+    },
+    onError: err => toast.error(err.message),
+  });
+
   const createTenantAdmin = trpc.platformAdmin.createTenantAdmin.useMutation({
     onSuccess: async result => {
       if (adminModalTenant) {
@@ -1774,6 +1798,135 @@ export default function MasterAdminPortal() {
           </Card>
 
           <div className="space-y-4">
+            {/* WBT-Schulungslink-Verwaltung */}
+            <Card className="border-cyan-200 bg-cyan-50/70 py-0 shadow-sm">
+              <CardHeader className="px-5 py-4">
+                <CardTitle className="flex items-center gap-2 text-base text-cyan-950">
+                  <GraduationCap className="size-5 text-cyan-700" />
+                  WBT-Schulungslinks erstellen
+                </CardTitle>
+                <CardDescription className="text-cyan-900">
+                  Externe Links zur interaktiven Lernwerkstatt versenden – 100% datenfrei, vorab nutzbar ohne Vereinslogin.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3.5 px-5 pb-5 text-xs text-cyan-950">
+                <div className="space-y-2">
+                  <label className="font-semibold text-slate-800">Trainingspfad:</label>
+                  <Select
+                    value={wbtTrackChoice}
+                    onValueChange={(val: "helper" | "admin") => setWbtTrackChoice(val)}
+                  >
+                    <SelectTrigger className="h-8 bg-white text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="helper">1. WBT: Helferkoordination (7 Module)</SelectItem>
+                      <SelectItem value="admin">2. WBT: Planungsteam &amp; Admin (11 Module)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="font-semibold text-slate-800">Gültigkeit:</label>
+                  <Select
+                    value={String(wbtExpiryDays)}
+                    onValueChange={val => setWbtExpiryDays(Number(val) as 7 | 30 | 90)}
+                  >
+                    <SelectTrigger className="h-8 bg-white text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="7">7 Tage gültig</SelectItem>
+                      <SelectItem value="30">30 Tage gültig</SelectItem>
+                      <SelectItem value="90">90 Tage gültig</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button
+                  size="sm"
+                  onClick={() =>
+                    createWbtLink.mutate({
+                      trackId: wbtTrackChoice,
+                      expiresInDays: wbtExpiryDays,
+                    })
+                  }
+                  disabled={createWbtLink.isPending}
+                  className="w-full bg-cyan-700 text-white hover:bg-cyan-800"
+                >
+                  {createWbtLink.isPending ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : <Plus className="mr-1.5 size-3.5" />}
+                  Schulungslink generieren
+                </Button>
+
+                {wbtCreatedLink && (
+                  <div className="rounded-lg border border-cyan-300 bg-white p-2.5">
+                    <p className="font-semibold text-cyan-950">Generierter Schulungslink:</p>
+                    <p className="mt-1 break-all font-mono text-[11px] text-slate-600">{wbtCreatedLink}</p>
+                    <div className="mt-2 flex gap-1.5">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          navigator.clipboard.writeText(wbtCreatedLink);
+                          setWbtLinkCopied(true);
+                          setTimeout(() => setWbtLinkCopied(false), 2000);
+                        }}
+                        className="h-7 text-xs"
+                      >
+                        <Copy className="mr-1 size-3" />
+                        {wbtLinkCopied ? "Kopiert!" : "Link kopieren"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => window.open(wbtCreatedLink, "_blank")}
+                        className="h-7 text-xs text-cyan-900"
+                      >
+                        <ExternalLink className="mr-1 size-3" />
+                        Öffnen
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {wbtLinksQuery.data && wbtLinksQuery.data.length > 0 && (
+                  <div className="border-t border-cyan-200 pt-3">
+                    <p className="font-semibold text-slate-800">Aktive Schulungslinks ({wbtLinksQuery.data.filter(l => !l.revokedAt).length}):</p>
+                    <div className="mt-2 max-h-36 divide-y divide-cyan-100 overflow-y-auto">
+                      {wbtLinksQuery.data.slice(0, 5).map(link => {
+                        const isExpired = new Date(link.expiresAt).getTime() < Date.now();
+                        const isRevoked = Boolean(link.revokedAt);
+                        return (
+                          <div key={link.id} className="flex items-center justify-between py-1.5 text-[11px]">
+                            <div>
+                              <span className="font-medium text-slate-900">
+                                {link.trackId === "helper" ? "Helfer" : "Admin"}
+                              </span>
+                              <span className="text-slate-500"> · bis {formatDate(new Date(link.expiresAt).toISOString())}</span>
+                              {isRevoked ? (
+                                <Badge variant="outline" className="ml-1.5 border-slate-300 text-[9px] text-slate-500">Widerrufen</Badge>
+                              ) : isExpired ? (
+                                <Badge variant="outline" className="ml-1.5 border-amber-300 text-[9px] text-amber-700">Abgelaufen</Badge>
+                              ) : (
+                                <Badge variant="outline" className="ml-1.5 border-emerald-300 bg-emerald-50 text-[9px] text-emerald-800">Aktiv</Badge>
+                              )}
+                            </div>
+                            {!isRevoked && !isExpired && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => revokeWbtLink.mutate({ id: link.id })}
+                                disabled={revokeWbtLink.isPending}
+                                className="h-6 px-1.5 text-[10px] text-red-700 hover:bg-red-50 hover:text-red-900"
+                              >
+                                Widerrufen
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             <Card className="border-blue-200 bg-blue-50/70 py-0 shadow-sm">
               <CardHeader className="px-5 py-4">
                 <CardTitle className="flex items-center gap-2 text-base text-blue-950"><CheckCircle2 className="size-5 text-blue-700" /> Bereits vorbereitet</CardTitle>

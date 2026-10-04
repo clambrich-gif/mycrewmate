@@ -88,7 +88,7 @@ describe("Eigenständiges Web-Based-Training (WBT-Schulungssystem)", () => {
   it("ist vorerst ausschließlich als isolierte Staging-Vorschau registriert", () => {
     const appTsx = readFileSync(path.resolve(process.cwd(), "client/src/App.tsx"), "utf8");
     expect(appTsx).toContain('path="/_staging/wbt"');
-    expect(appTsx).not.toContain('path="/wbt"');
+    expect(appTsx).toContain('path="/wbt"');
     expect(appTsx).not.toContain('path="/schulung"');
     expect(appTsx).not.toContain('path="/lernen"');
     expect(appTsx).toContain("WbtPortal");

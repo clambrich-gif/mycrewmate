@@ -35,12 +35,14 @@ import {
   CheckCircle2,
   ChevronRight,
   ClipboardCheck,
+  Download,
   ExternalLink,
   Gift,
   GraduationCap,
   Info,
   KeyRound,
   LayoutDashboard,
+  Loader2,
   Lock,
   Mail,
   MapPinned,
@@ -64,6 +66,8 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { trpc } from "@/lib/trpc";
+import { downloadBase64File } from "@/lib/download";
 
 const WBT_INTRO_STEPS = [
   {
@@ -93,15 +97,33 @@ export default function WbtPortal() {
   const audioSequenceRef = React.useRef(0);
 
   // URL-Parameter für direkten Pfadstart (z.B. ?track=helper oder ?track=admin)
-  const initialTrackId = useMemo<WbtTrackId | null>(() => {
-    if (typeof window === "undefined") return null;
+  const { initialTrackId, inviteToken } = useMemo(() => {
+    if (typeof window === "undefined") {
+      return { initialTrackId: null as WbtTrackId | null, inviteToken: null as string | null };
+    }
     const params = new URLSearchParams(window.location.search);
     const t = params.get("track");
-    if (t === "helper" || t === "admin") return t;
-    return null;
+    const invite = params.get("invite");
+    return {
+      initialTrackId: (t === "helper" || t === "admin" ? t : null) as WbtTrackId | null,
+      inviteToken: invite && invite.length >= 20 ? invite : null,
+    };
   }, []);
 
+  const inviteQuery = trpc.wbt.validateTrainingLink.useQuery(
+    { token: inviteToken ?? "" },
+    { enabled: Boolean(inviteToken), retry: false }
+  );
+
   const [activeTrackId, setActiveTrackId] = useState<WbtTrackId | null>(initialTrackId);
+  useEffect(() => {
+    if (inviteQuery.data?.trackId && !activeTrackId) {
+      setActiveTrackId(inviteQuery.data.trackId);
+      setShowingIntroduction(true);
+      void playIntroductionStep(0);
+    }
+  }, [inviteQuery.data, activeTrackId]);
+
   const [currentChapterIndex, setCurrentChapterIndex] = useState<number>(0);
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
   const [completedChapters, setCompletedChapters] = useState<string[]>([]);
@@ -124,6 +146,36 @@ export default function WbtPortal() {
   const [editAvailabilityOpen, setEditAvailabilityOpen] = useState(false);
   const [availText, setAvailText] = useState("Samstag 08:00–14:00 Uhr");
   const [cakeText, setCakeText] = useState("Apfelkuchen (nussfrei)");
+  const [certificateName, setCertificateName] = useState("");
+  const [certificateError, setCertificateError] = useState<string | null>(null);
+  const [certificateSuccess, setCertificateSuccess] = useState<string | null>(null);
+  const [isDownloadingCert, setIsDownloadingCert] = useState(false);
+
+  const createCertificate = trpc.wbt.completionCertificate.useMutation();
+
+  const handleDownloadCertificate = async () => {
+    const trimmed = certificateName.trim();
+    setCertificateError(null);
+    setCertificateSuccess(null);
+    if (!trimmed) {
+      setCertificateError("Bitte trage deinen Namen für die Bestätigung ein.");
+      return;
+    }
+    if (!activeTrackId) return;
+    try {
+      setIsDownloadingCert(true);
+      const result = await createCertificate.mutateAsync({
+        participantName: trimmed,
+        trackId: activeTrackId,
+      });
+      downloadBase64File(result.base64, result.mimeType, result.filename);
+      setCertificateSuccess(`Teilnahmebestätigung für „${trimmed}“ erfolgreich heruntergeladen.`);
+    } catch (err: any) {
+      setCertificateError(err?.message || "Die Teilnahmebestätigung konnte nicht erstellt werden.");
+    } finally {
+      setIsDownloadingCert(false);
+    }
+  };
 
   const currentTrack = activeTrackId ? WBT_TRACKS[activeTrackId] : null;
   const currentChapter = currentTrack ? currentTrack.chapters[currentChapterIndex] : null;
@@ -677,6 +729,48 @@ export default function WbtPortal() {
             </div>
           </div>
 
+          {/* Teilnahmebestätigung als PDF (100% datensparsam) */}
+          <div className="mt-8 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-6 text-left shadow-xs">
+            <div className="flex items-center gap-2.5 text-emerald-950">
+              <Award className="size-5 text-emerald-700 shrink-0" />
+              <h3 className="font-bold text-base sm:text-lg">Persönliche Teilnahmebestätigung herunterladen</h3>
+            </div>
+            <p className="mt-1 text-xs leading-relaxed text-slate-600 sm:text-sm">
+              Dokumentiere deine erfolgreiche Teilnahme am interaktiven Training. Der Name wird ausschließlich für das PDF gerendert und nirgendwo gespeichert.
+            </p>
+            <div className="mt-4 flex flex-col gap-2.5 sm:flex-row">
+              <Input
+                value={certificateName}
+                onChange={e => setCertificateName(e.target.value)}
+                placeholder="Vor- und Nachname eintragen"
+                className="h-10 bg-white text-sm"
+              />
+              <Button
+                onClick={handleDownloadCertificate}
+                disabled={isDownloadingCert || !certificateName.trim()}
+                className="h-10 bg-emerald-700 text-white hover:bg-emerald-800 shrink-0 shadow-xs"
+              >
+                {isDownloadingCert ? (
+                  <>
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                    Wird erstellt …
+                  </>
+                ) : (
+                  <>
+                    <Download className="mr-2 size-4" />
+                    PDF herunterladen
+                  </>
+                )}
+              </Button>
+            </div>
+            {certificateError && (
+              <p className="mt-2 text-xs font-semibold text-red-600">{certificateError}</p>
+            )}
+            {certificateSuccess && (
+              <p className="mt-2 text-xs font-semibold text-emerald-700">{certificateSuccess}</p>
+            )}
+          </div>
+
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
             <Button
               variant="outline"
@@ -1040,96 +1134,132 @@ export default function WbtPortal() {
 
               {/* 2. SIMULATION: HELFER (DER 6-SCHRITTE-ABLAUF) */}
               {currentChapter?.id === "helpers" && (
-                <div className="space-y-4">
-                  {/* Aktionsleiste */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
+                <div className="space-y-5">
+                  {/* Realitätsnahe MyCrewMate-Aktionsleiste */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-slate-900 text-base">Helferliste (Simuliert)</h3>
-                      <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-800 text-xs">
-                        {simHelpers.length} Helfer
-                      </Badge>
+                      <span className="flex size-9 items-center justify-center rounded-xl bg-blue-100 text-blue-700">
+                        <UsersRound className="size-5" />
+                      </span>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-base font-bold text-slate-950 sm:text-lg">Helferkartei &amp; Koordination</h3>
+                          <Badge variant="outline" className="border-blue-200 bg-blue-50 font-bold text-blue-800 text-xs">
+                            {simHelpers.length} Helfer
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-slate-500">Reale Tabellenansicht mit direkten Aktionen, Verfügbarkeit &amp; Status</p>
+                      </div>
                     </div>
 
-                    {/* Button Schritt 1 */}
-                    <div className={currentStep?.id === "step-1-create" ? "ring-4 ring-blue-300 rounded-lg" : ""}>
-                      <Button
-                        size="sm"
-                        onClick={() => setHelperModalOpen(true)}
-                        className="bg-blue-600 text-white hover:bg-blue-700 shadow-xs"
-                      >
-                        <UsersRound className="mr-1.5 size-4" />
-                        + Neuer Helfer anlegen
-                      </Button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-900 text-xs">
+                        <CheckCircle2 className="mr-1 size-3.5 text-emerald-600" />
+                        6-Schritte-Workflow aktiv
+                      </Badge>
+                      {/* Button Schritt 1 */}
+                      <div className={currentStep?.id === "step-1-create" ? "rounded-xl ring-4 ring-blue-400 ring-offset-2 animate-pulse" : ""}>
+                        <Button
+                          onClick={() => setHelperModalOpen(true)}
+                          className="h-10 bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+                        >
+                          <UsersRound className="mr-2 size-4" />
+                          + Neuer Helfer anlegen
+                        </Button>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Helfertabelle */}
-                  <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-xs">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-slate-100/80 text-slate-600 font-semibold border-b">
+                  {/* Helfertabelle: Groß, gut lesbar, ohne horizontales Scrollen */}
+                  <div className="rounded-2xl border-2 border-slate-200 bg-white shadow-sm">
+                    <table className="w-full table-fixed text-left text-xs sm:text-sm">
+                      <colgroup>
+                        <col className="w-[26%]" />
+                        <col className="w-[18%]" />
+                        <col className="w-[18%]" />
+                        <col className="w-[18%]" />
+                        <col className="w-[20%]" />
+                      </colgroup>
+                      <thead className="border-b border-slate-200 bg-slate-100/90 text-xs font-bold uppercase tracking-wider text-slate-600">
                         <tr>
-                          <th className="p-3">Name</th>
-                          <th className="p-3">Verfügbarkeit</th>
-                          <th className="p-3">Spende</th>
-                          <th className="p-3">Station / Schicht</th>
-                          <th className="p-3">Status</th>
-                          <th className="p-3 text-right">Aktionen</th>
+                          <th className="px-4 py-3.5">Helfer &amp; Kontakt</th>
+                          <th className="px-3 py-3.5">Verfügbarkeit</th>
+                          <th className="px-3 py-3.5">Spende / Info</th>
+                          <th className="px-3 py-3.5">Station &amp; Status</th>
+                          <th className="px-4 py-3.5 text-right">Aktionen (6 Schritte)</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100">
+                      <tbody className="divide-y divide-slate-200">
                         {simHelpers.map(helper => {
                           const isTarget = helper.id === "h1";
                           return (
                             <tr
                               key={helper.id}
-                              className={`transition-colors ${
-                                isTarget ? "bg-blue-50/50 font-medium" : "hover:bg-slate-50"
+                              className={`transition-all ${
+                                isTarget
+                                  ? "bg-blue-50/80 font-medium ring-2 ring-inset ring-blue-300"
+                                  : "hover:bg-slate-50/80"
                               }`}
                             >
-                              <td className="p-3">
-                                <div className="font-bold text-slate-900">{helper.name}</div>
-                                <div className="text-[11px] text-slate-500">{helper.phone}</div>
+                              <td className="px-4 py-4">
+                                <div className="flex items-center gap-2">
+                                  <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-slate-200 font-bold text-slate-700 text-xs">
+                                    {helper.name.slice(0, 1)}
+                                  </span>
+                                  <div className="min-w-0">
+                                    <div className="truncate font-bold text-slate-950 text-sm sm:text-base">{helper.name}</div>
+                                    <div className="truncate text-xs text-slate-500">{helper.phone}</div>
+                                  </div>
+                                </div>
                               </td>
-                              <td className="p-3">
-                                <span className="text-slate-700">{helper.availability}</span>
+                              <td className="px-3 py-4">
+                                <span className="inline-flex rounded-lg bg-white px-2.5 py-1 text-xs font-semibold text-slate-800 shadow-2xs border border-slate-200">
+                                  {helper.availability}
+                                </span>
                               </td>
-                              <td className="p-3">
-                                <span className="text-slate-700">{helper.donation || "—"}</span>
+                              <td className="px-3 py-4">
+                                {helper.donation ? (
+                                  <span className="inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900 border border-amber-200">
+                                    🎂 {helper.donation}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-slate-400 italic">keine Spende</span>
+                                )}
                               </td>
-                              <td className="p-3">
+                              <td className="px-3 py-4">
                                 {helper.station ? (
                                   <div>
-                                    <span className="font-semibold text-slate-900">{helper.station}</span>
-                                    <div className="text-[10px] text-slate-500">{helper.timeWindow}</div>
+                                    <div className="font-bold text-slate-900 text-xs sm:text-sm">{helper.station}</div>
+                                    <div className="text-[11px] text-slate-500">{helper.timeWindow}</div>
                                   </div>
                                 ) : (
-                                  <span className="text-slate-400 italic">Noch nicht zugeteilt</span>
+                                  <span className="text-xs text-slate-400 italic">Noch nicht zugeteilt</span>
                                 )}
+                                <div className="mt-1">
+                                  {helper.status === "angelegt" && (
+                                    <Badge variant="outline" className="border-slate-300 bg-white text-slate-600 text-[10px]">Angelegt</Badge>
+                                  )}
+                                  {helper.status === "kontaktiert" && (
+                                    <Badge className="bg-amber-100 text-amber-950 border-amber-200 text-[10px]">Kontaktiert</Badge>
+                                  )}
+                                  {helper.status === "verfuegbar" && (
+                                    <Badge className="bg-blue-100 text-blue-950 border-blue-200 text-[10px]">Verfügbar</Badge>
+                                  )}
+                                  {helper.status === "zugewiesen" && (
+                                    <Badge className="bg-purple-100 text-purple-950 border-purple-200 text-[10px]">Zugewiesen</Badge>
+                                  )}
+                                  {helper.status === "plan_gesendet" && (
+                                    <Badge className="bg-cyan-100 text-cyan-950 border-cyan-200 text-[10px]">Plan versendet</Badge>
+                                  )}
+                                  {helper.status === "bestaetigt" && (
+                                    <Badge className="bg-emerald-100 text-emerald-950 border-emerald-200 text-[10px]">
+                                      <CheckCircle2 className="mr-1 size-3 text-emerald-600" /> Bestätigt
+                                    </Badge>
+                                  )}
+                                </div>
                               </td>
-                              <td className="p-3">
-                                {helper.status === "angelegt" && (
-                                  <Badge variant="outline" className="border-slate-300 text-slate-600">Angelegt</Badge>
-                                )}
-                                {helper.status === "kontaktiert" && (
-                                  <Badge className="bg-amber-100 text-amber-950 border-amber-200">Kontaktiert</Badge>
-                                )}
-                                {helper.status === "verfuegbar" && (
-                                  <Badge className="bg-blue-100 text-blue-950 border-blue-200">Verfügbar</Badge>
-                                )}
-                                {helper.status === "zugewiesen" && (
-                                  <Badge className="bg-purple-100 text-purple-950 border-purple-200">Zugewiesen</Badge>
-                                )}
-                                {helper.status === "plan_gesendet" && (
-                                  <Badge className="bg-cyan-100 text-cyan-950 border-cyan-200">Plan versendet</Badge>
-                                )}
-                                {helper.status === "bestaetigt" && (
-                                  <Badge className="bg-emerald-100 text-emerald-950 border-emerald-200">
-                                    <CheckCircle2 className="mr-1 size-3 text-emerald-600" /> Bestätigt
-                                  </Badge>
-                                )}
-                              </td>
-                              <td className="p-3 text-right">
-                                <div className="flex items-center justify-end gap-1.5">
+                              <td className="px-4 py-4 text-right">
+                                <div className="flex flex-wrap items-center justify-end gap-1.5">
                                   {/* Schritt 2: WhatsApp Erstkontakt */}
                                   <Button
                                     size="sm"
@@ -1138,10 +1268,10 @@ export default function WbtPortal() {
                                       setWhatsAppMode("muster1");
                                       setWhatsAppModalOpen(true);
                                     }}
-                                    className={`h-7 px-2 text-xs ${
+                                    className={`h-8 px-2.5 text-xs font-semibold ${
                                       currentStep?.id === "step-2-contact-first" && isTarget
-                                        ? "ring-2 ring-blue-600 bg-blue-50 text-blue-700"
-                                        : ""
+                                        ? "border-blue-600 bg-blue-600 text-white shadow-xs animate-pulse ring-2 ring-blue-300"
+                                        : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
                                     }`}
                                     title="WhatsApp Erstkontakt"
                                   >
@@ -1154,10 +1284,10 @@ export default function WbtPortal() {
                                     size="sm"
                                     variant="outline"
                                     onClick={() => setEditAvailabilityOpen(true)}
-                                    className={`h-7 px-2 text-xs ${
+                                    className={`h-8 px-2.5 text-xs font-semibold ${
                                       currentStep?.id === "step-3-discuss-availability" && isTarget
-                                        ? "ring-2 ring-blue-600 bg-blue-50 text-blue-700"
-                                        : ""
+                                        ? "border-blue-600 bg-blue-600 text-white shadow-xs animate-pulse ring-2 ring-blue-300"
+                                        : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
                                     }`}
                                     title="Zeiten & Spenden bearbeiten"
                                   >
@@ -1172,10 +1302,10 @@ export default function WbtPortal() {
                                       setWhatsAppMode("muster2");
                                       setWhatsAppModalOpen(true);
                                     }}
-                                    className={`h-7 px-2 text-xs ${
+                                    className={`h-8 px-2.5 text-xs font-semibold ${
                                       currentStep?.id === "step-5-send-plan" && isTarget
-                                        ? "ring-2 ring-blue-600 bg-blue-50 text-blue-700"
-                                        : ""
+                                        ? "border-blue-600 bg-blue-600 text-white shadow-xs animate-pulse ring-2 ring-blue-300"
+                                        : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
                                     }`}
                                     title="Helferplan versenden"
                                   >
@@ -1188,10 +1318,10 @@ export default function WbtPortal() {
                                     size="sm"
                                     variant="outline"
                                     onClick={handleSimConfirmHelper}
-                                    className={`h-7 px-2 text-xs ${
+                                    className={`h-8 px-2.5 text-xs font-semibold ${
                                       currentStep?.id === "step-6-confirm-helper" && isTarget
-                                        ? "ring-2 ring-emerald-600 bg-emerald-50 text-emerald-800"
-                                        : ""
+                                        ? "border-emerald-600 bg-emerald-600 text-white shadow-xs animate-pulse ring-2 ring-emerald-300"
+                                        : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
                                     }`}
                                     title="Helfer bestätigen"
                                   >
@@ -1209,20 +1339,19 @@ export default function WbtPortal() {
 
                   {/* Hilfetext zu Schritt 4 */}
                   {currentStep?.id === "step-4-wait-for-team" && (
-                    <div className="rounded-xl border-2 border-purple-300 bg-purple-50 p-4 text-xs text-purple-950 flex items-center justify-between">
+                    <div className="rounded-2xl border-2 border-purple-300 bg-purple-50 p-4 text-xs text-purple-950 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
                       <div className="flex items-center gap-3">
                         <CalendarDays className="size-6 text-purple-600 shrink-0" />
                         <div>
-                          <strong>Schritt 4 aktiv: Das Planungsteam teilt Sabine ein.</strong>
+                          <strong className="text-sm font-bold">Schritt 4 aktiv: Das Planungsteam teilt Sabine ein.</strong>
                           <p className="mt-0.5 text-purple-900">
                             Klicke auf den Button rechts, um die Schichteinteilung durch das Planungsteam zu simulieren.
                           </p>
                         </div>
                       </div>
                       <Button
-                        size="sm"
                         onClick={handleSimWaitForPlanning}
-                        className="bg-purple-600 text-white hover:bg-purple-700 shrink-0"
+                        className="h-10 bg-purple-600 px-4 text-xs font-semibold text-white hover:bg-purple-700 shrink-0 shadow-sm"
                       >
                         Schichtzuteilung ausführen
                       </Button>
