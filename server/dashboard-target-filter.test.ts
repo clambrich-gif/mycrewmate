@@ -9,6 +9,7 @@ import {
   parsePlanStatusFilter,
   parsePlanWarningFilter,
   planStatusMatchesFilter,
+  parseMyTasksFilter,
   parseTaskStatusFilter,
 } from "../client/src/lib/dashboard-target-filter";
 
@@ -85,6 +86,9 @@ describe("Dashboard-Zielnavigation", () => {
     expect(parseTaskStatusFilter("abgelehnt")).toBe("abgelehnt");
     expect(parseTaskStatusFilter("OFFEN")).toBe("alle");
     expect(parseTaskStatusFilter(null)).toBe("alle");
+    expect(parseMyTasksFilter("1")).toBe(true);
+    expect(parseMyTasksFilter("true")).toBe(false);
+    expect(parseMyTasksFilter(null)).toBe(false);
     expect(parseHelperConfirmationFilter("ja")).toBe("ja");
     expect(parseHelperConfirmationFilter("nein")).toBe("nein");
     expect(parseHelperConfirmationFilter("offen")).toBe("alle");

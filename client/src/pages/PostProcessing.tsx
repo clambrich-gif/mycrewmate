@@ -45,6 +45,10 @@ import { useMyTasksDefault } from "@/hooks/useMyTasksDefault";
 import { useViewMode } from "@/hooks/useViewMode";
 import { getKlemmiLocationGuideCopy } from "@/lib/klemmi-location-guide";
 import {
+  MY_TASKS_QUERY_KEY,
+  parseMyTasksFilter,
+} from "@/lib/dashboard-target-filter";
+import {
   latestPreparationLogbookEntry,
   preparationLogbookEntryCount,
   prependPreparationLogbookEntry,
@@ -256,6 +260,7 @@ export default function PostProcessing() {
   const [searchParams, setSearchParams] = useSearchParams();
   const rawStatusFilter = searchParams.get(POST_STATUS_QUERY_KEY);
   const statusFilter: PostStatusFilter = parsePostStatusFilter(rawStatusFilter);
+  const requestedMyTasks = parseMyTasksFilter(searchParams.get(MY_TASKS_QUERY_KEY));
   const locationFilter = Number(searchParams.get("location")) || null;
 
   const [categoryFilter, setCategoryFilter] = useState<string>("alle");
@@ -291,7 +296,7 @@ export default function PostProcessing() {
   } = useMyTasksDefault(user);
   const logbookAuthor =
     user?.name?.trim() || (isTenantAdmin ? "Administrator" : "Planungsteam");
-  const refreshDashboard = () => void utils.dashboard.stats.invalidate();
+  const refreshDashboard = () => void utils.dashboard.invalidate();
 
   const create = trpc.post.create.useMutation({
     onMutate: async (input: any) => {
@@ -424,15 +429,47 @@ export default function PostProcessing() {
       ),
     [contacts, currentUserName]
   );
+  const ownHelperIds = useMemo(
+    () =>
+      new Set(
+        helpers
+          .filter(
+            helper =>
+              normalizedPersonName(helper.name) === currentUserName ||
+              (typeof helper.contactId === "number" &&
+                ownContactIds.has(helper.contactId))
+          )
+          .map(helper => helper.id)
+      ),
+    [helpers, currentUserName, ownContactIds]
+  );
+  const canShowMyTasks = ownContactIds.size > 0 || ownHelperIds.size > 0;
+  const setMyTasksFilter = (enabled: boolean) => {
+    setMyTasksOnly(enabled);
+    setSearchParams(
+      previous => {
+        const next = new URLSearchParams(previous);
+        if (enabled) next.set(MY_TASKS_QUERY_KEY, "1");
+        else next.delete(MY_TASKS_QUERY_KEY);
+        return next;
+      },
+      { replace: true }
+    );
+  };
   useEffect(() => {
-    if (isDefaultMyTasks && ownContactIds.size > 0) {
+    if (isDefaultMyTasks && canShowMyTasks) {
       setMyTasksOnly(true);
     }
-  }, [isDefaultMyTasks, ownContactIds]);
+  }, [isDefaultMyTasks, canShowMyTasks]);
+  useEffect(() => {
+    if (requestedMyTasks && canShowMyTasks) {
+      setMyTasksOnly(true);
+    }
+  }, [requestedMyTasks, canShowMyTasks]);
   const updateMyTasksDefault = (enabled: boolean) => {
     setDefaultMyTasks(enabled);
-    if (!enabled) setMyTasksOnly(false);
-    else if (ownContactIds.size > 0) setMyTasksOnly(true);
+    if (!enabled) setMyTasksFilter(false);
+    else if (canShowMyTasks) setMyTasksFilter(true);
   };
   const locationMap = useMemo(
     () => new Map(locations.map(location => [location.id, location.name])),
@@ -472,7 +509,13 @@ export default function PostProcessing() {
       ) {
         return false;
       }
-      if (myTasksOnly && (!task.contactId || !ownContactIds.has(task.contactId))) {
+      if (
+        myTasksOnly &&
+        !(
+          (typeof task.contactId === "number" && ownContactIds.has(task.contactId)) ||
+          (typeof task.helperId === "number" && ownHelperIds.has(task.helperId))
+        )
+      ) {
         return false;
       }
       if (openOrUnassignedOnly && task.status !== "offen" && task.contactId) {
@@ -510,6 +553,7 @@ export default function PostProcessing() {
     myTasksOnly,
     openOrUnassignedOnly,
     ownContactIds,
+    ownHelperIds,
     searchTerm,
     contactMap,
     locationMap,
@@ -554,7 +598,7 @@ export default function PostProcessing() {
     setCategoryFilter("alle");
     setContactFilter("alle");
     setSearchTerm("");
-    setMyTasksOnly(false);
+    setMyTasksFilter(false);
     setOpenOrUnassignedOnly(false);
     setSearchParams(
       previous => {
@@ -806,13 +850,13 @@ export default function PostProcessing() {
                   ? "bg-blue-600 text-white hover:bg-blue-700"
                   : "border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100"
               }
-              disabled={ownContactIds.size === 0}
+              disabled={!canShowMyTasks}
               title={
-                ownContactIds.size === 0
-                  ? "Der aktuelle Sitzungsname ist keinem Ansprechpartner zugeordnet."
+                !canShowMyTasks
+                  ? "Der aktuelle Sitzungsname ist keinem Ansprechpartner oder Helfereintrag zugeordnet."
                   : undefined
               }
-              onClick={() => setMyTasksOnly(active => !active)}
+              onClick={() => setMyTasksFilter(!myTasksOnly)}
             >
               👤 Meine Aufgaben
             </Button>

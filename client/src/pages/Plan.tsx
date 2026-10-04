@@ -844,7 +844,7 @@ export default function Plan() {
 
   const invalidate = () => {
     utils.plan.evaluate.invalidate();
-    utils.dashboard.stats.invalidate();
+    utils.dashboard.invalidate();
   };
   const assign = trpc.plan.assign.useMutation({
     onSuccess: result => {

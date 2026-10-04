@@ -96,7 +96,7 @@ export default function Contacts() {
     utils.auth.passwordStatus.invalidate();
     utils.helpers.list.invalidate();
     utils.plan.evaluate.invalidate();
-    utils.dashboard.stats.invalidate();
+    utils.dashboard.invalidate();
     utils.pdf.settings.invalidate();
   };
   const create = trpc.contacts.create.useMutation({

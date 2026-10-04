@@ -20,7 +20,7 @@ export function ClearPlanAssignmentsButton({ onCleared }: { onCleared: () => voi
       onCleared();
       await Promise.all([
         utils.plan.evaluate.invalidate(),
-        utils.dashboard.stats.invalidate(),
+        utils.dashboard.invalidate(),
       ]);
       toast.success(
         result.cleared

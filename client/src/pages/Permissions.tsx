@@ -227,7 +227,7 @@ export function AuditCenter({
         utils.post.list.invalidate(),
         utils.materials.list.invalidate(),
         utils.plan.evaluate.invalidate(),
-        utils.dashboard.stats.invalidate(),
+        utils.dashboard.invalidate(),
       ]);
       const assignmentNote = result.skippedAssignments
         ? ` ${result.skippedAssignments} frühere Einsatzplätze waren inzwischen belegt oder nicht mehr vorhanden.`

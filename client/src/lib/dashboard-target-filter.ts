@@ -5,6 +5,8 @@ export const PLAN_STATUS_QUERY_KEY = "status";
 export const PLAN_HELPER_QUERY_KEY = "helfer";
 export const PLAN_DAY_QUERY_KEY = "tag";
 export const TASK_STATUS_QUERY_KEY = "status";
+/** Schaltet eine Aufgabenansicht auf die zugeordnete persönliche Sicht. */
+export const MY_TASKS_QUERY_KEY = "meine";
 export const HELPER_CONFIRMATION_QUERY_KEY = "bestaetigt";
 export const HELPER_ASSIGNMENT_QUERY_KEY = "eingeteilt";
 export const HELPER_FIRST_CONTACT_QUERY_KEY = "erstkontakt";
@@ -98,6 +100,10 @@ export function parseTaskStatusFilter(value: string | null): TaskStatusFilter {
     value === "abgelehnt"
     ? value
     : "alle";
+}
+
+export function parseMyTasksFilter(value: string | null) {
+  return value === "1";
 }
 
 export function parseHelperConfirmationFilter(

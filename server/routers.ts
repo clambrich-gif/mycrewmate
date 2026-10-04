@@ -159,6 +159,7 @@ import {
   sendTransactionalEmail,
   type SendMailOptions,
 } from "./mail-service";
+import { buildPersonalDashboard } from "./personal-dashboard";
 const GUIDE_PDF_KEY = "Handbuch_RSC_Helferplanung_742fcb04.pdf";
 const GUIDE_PDF_FILENAME = "Handbuch_RSC_Helferplanung.pdf";
 const GUIDE_PDF_MAX_BYTES = 5_000_000;
@@ -6222,6 +6223,94 @@ export const appRouter = router({
           })
           .sort((left, right) => left.name.localeCompare(right.name, "de")),
       };
+    }),
+    /**
+     * Persönliche, serverseitig gefilterte Aufgabenansicht. Sie nutzt die
+     * gespeicherte Ansprechpartner-Verknüpfung eines Teamzugangs und fällt
+     * nur für historische Sammelzugänge auf den eindeutigen Sitzungsnamen
+     * zurück. So werden Vereinsaufgaben anderer Personen nicht erst im Browser
+     * ausgefiltert.
+     */
+    personal: protectedProcedure.query(async ({ ctx }) => {
+      const entitlement = await db.getCurrentTenantProductEntitlement();
+      const eventPass = entitlement.packageId === "event_pass";
+      const [
+        shifts,
+        assignments,
+        helpers,
+        contacts,
+        prep,
+        post,
+        materials,
+        marketing,
+        approvals,
+      ] = await Promise.all([
+        db.listShifts(),
+        db.listAssignments(),
+        db.listHelpers(),
+        eventPass
+          ? db.getEventPassPrimaryAdminContact().then(contact =>
+              contact ? [contact] : []
+            )
+          : db.listContacts(),
+        db.listPrep(),
+        productAllowsCapability(entitlement.packageId, "postprocessing")
+          ? db.listPost()
+          : Promise.resolve([]),
+        productAllowsCapability(entitlement.packageId, "materials")
+          ? db.listMaterials()
+          : Promise.resolve([]),
+        productAllowsCapability(entitlement.packageId, "marketing")
+          ? db.listMarketing()
+          : Promise.resolve([]),
+        productAllowsCapability(entitlement.packageId, "approvals")
+          ? db.listApprovals()
+          : Promise.resolve([]),
+      ]);
+
+      const ownContactIds = new Set<number>();
+      const planningAccessId = planningTeamAccessIdForUser(ctx.user);
+      if (planningAccessId !== null) {
+        const access = await db.getPlanningTeamAccessCredentialForCurrentTenant(
+          planningAccessId
+        );
+        if (typeof access?.contactId === "number") {
+          ownContactIds.add(access.contactId);
+        }
+      }
+
+      const normalizedCurrentName = db.normalizePersonName(ctx.user.name ?? "");
+      if (normalizedCurrentName) {
+        for (const contact of contacts) {
+          if (db.normalizePersonName(contact.name) === normalizedCurrentName) {
+            ownContactIds.add(contact.id);
+          }
+        }
+      }
+
+      const ownHelperIds = new Set(
+        normalizedCurrentName
+          ? helpers
+              .filter(
+                helper =>
+                  db.normalizePersonName(helper.name) === normalizedCurrentName
+              )
+              .map(helper => helper.id)
+          : []
+      );
+
+      return buildPersonalDashboard({
+        displayName: ctx.user.name?.trim() || "Meine Aufgaben",
+        ownContactIds,
+        ownHelperIds,
+        prep,
+        post,
+        materials,
+        marketing,
+        approvals,
+        assignments,
+        shifts,
+      });
     }),
   }),
 

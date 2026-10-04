@@ -28,7 +28,7 @@ export default function Finances() {
   const [klemmiCreationSignal, setKlemmiCreationSignal] = useState<number | null>(null);
   const [klemmiGuideStartedEmpty, setKlemmiGuideStartedEmpty] = useState<boolean | null>(null);
 
-  const refreshDashboard = () => void utils.dashboard.stats.invalidate();
+  const refreshDashboard = () => void utils.dashboard.invalidate();
 
   const create = trpc.finances.create.useMutation({
     onMutate: async input => {

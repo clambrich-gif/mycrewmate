@@ -13,6 +13,8 @@ const expectedRoutes = [
   "/vorbereitung",
   "/nachbereitung",
   "/material",
+  "/marketing",
+  "/genehmigungen",
   "/spenden",
   "/kuchen",
   "/finanzen",
@@ -37,13 +39,14 @@ describe("Lazy Routes", () => {
     );
     expect(appSource).toContain("lazy(routeLoaders");
     expect(appSource).toContain("<Suspense");
-    expect(appSource).toContain('<Redirect to="/vorbereitung" />');
+    expect(appSource).toContain('<Route path="/marketing" component={Marketing} />');
+    expect(appSource).toContain('<Route path="/genehmigungen" component={Approvals} />');
     expect(appSource).toContain("function AdminOnlySecurityRedirect");
     expect(appSource).toContain('if (!isTenantAdmin) return <Redirect to="/" />;');
     expect(appSource).toContain('<Route path="/berechtigungen" component={AdminOnlySecurityRedirect} />');
     expect(appSource).toContain('return <Redirect to="/sicherheit" />;');
-    expect(appSource).not.toContain('routeLoaders["/marketing"]');
-    expect(appSource).not.toContain('routeLoaders["/genehmigungen"]');
+    expect(appSource).toContain('routeLoaders["/marketing"]');
+    expect(appSource).toContain('routeLoaders["/genehmigungen"]');
   });
 
   it("aktualisiert veraltete Lazy-Route-Chunks nach einem Deployment höchstens einmal automatisch", () => {

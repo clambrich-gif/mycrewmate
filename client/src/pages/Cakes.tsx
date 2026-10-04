@@ -354,7 +354,7 @@ export default function Cakes() {
 
   const refresh = () => {
     void utils.cakes.list.invalidate();
-    void utils.dashboard.stats.invalidate();
+    void utils.dashboard.invalidate();
   };
 
   const createDonation = trpc.cakes.create.useMutation({
@@ -393,7 +393,7 @@ export default function Cakes() {
       await Promise.all([
         utils.events.current.invalidate(),
         utils.events.list.invalidate(),
-        utils.dashboard.stats.invalidate(),
+        utils.dashboard.invalidate(),
       ]);
       setDonationTargetsOpen(false);
       toast.success("Spenden-Sollwerte gespeichert");

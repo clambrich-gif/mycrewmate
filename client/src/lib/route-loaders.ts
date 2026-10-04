@@ -18,6 +18,8 @@ export const routeLoaders = {
   "/vorbereitung": preparationLoader,
   "/nachbereitung": postProcessingLoader,
   "/material": () => import("@/pages/Materials"),
+  "/marketing": () => import("@/pages/Marketing"),
+  "/genehmigungen": () => import("@/pages/Approvals"),
   "/spenden": donationsLoader,
   "/kuchen": donationsLoader,
   "/finanzen": () => import("@/pages/Finances"),

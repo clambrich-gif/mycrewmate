@@ -2754,6 +2754,7 @@ export async function getPlanningTeamAccessCredentialForCurrentTenant(
   const [row] = await database
     .select({
       id: planningTeamAccesses.id,
+      contactId: planningTeamAccesses.contactId,
       contactName: contacts.name,
       label: planningTeamAccesses.label,
       email: planningTeamAccesses.email,

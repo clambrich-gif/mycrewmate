@@ -54,7 +54,7 @@ export function ClearModuleAssignmentsButton({
       if (area === "prep") await utils.prep.list.invalidate();
       if (area === "post") await utils.post.list.invalidate();
       if (area === "materials") await utils.materials.list.invalidate();
-      await utils.dashboard.stats.invalidate();
+      await utils.dashboard.invalidate();
       toast.success(
         result.cleared
           ? `${result.cleared} ${details.successNoun} wurden zurückgesetzt. Die Einträge bleiben erhalten.`

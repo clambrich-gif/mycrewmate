@@ -39,6 +39,10 @@ import { useMyTasksDefault } from "@/hooks/useMyTasksDefault";
 import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import { useViewMode } from "@/hooks/useViewMode";
 import {
+  MY_TASKS_QUERY_KEY,
+  parseMyTasksFilter,
+} from "@/lib/dashboard-target-filter";
+import {
   ArrowDownAZ,
   ArrowUpZA,
   FilterX,
@@ -50,6 +54,7 @@ import {
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { LocationMapLink } from "@/components/LocationMapLink";
+import { useSearchParams } from "wouter";
 
 const resetAreaByKind = {
   materials: "materials",
@@ -138,6 +143,8 @@ export default function TaskGeneric({
   klemmiGuide,
 }: Props) {
   const utils = trpc.useUtils();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedMyTasks = parseMyTasksFilter(searchParams.get(MY_TASKS_QUERY_KEY));
   const { user } = useAuth();
   const { isTenantAdmin } = useTenantAdministration();
   const {
@@ -227,15 +234,32 @@ export default function TaskGeneric({
       )?.id ?? null
     );
   }, [contacts, user?.name]);
+  const setMyTasksFilter = (enabled: boolean) => {
+    setMyTasksOnly(enabled);
+    setSearchParams(
+      previous => {
+        const next = new URLSearchParams(previous);
+        if (enabled) next.set(MY_TASKS_QUERY_KEY, "1");
+        else next.delete(MY_TASKS_QUERY_KEY);
+        return next;
+      },
+      { replace: true }
+    );
+  };
   useEffect(() => {
     if (isDefaultMyTasks && ownContactId !== null) {
       setMyTasksOnly(true);
     }
   }, [isDefaultMyTasks, ownContactId]);
+  useEffect(() => {
+    if (requestedMyTasks && ownContactId !== null) {
+      setMyTasksOnly(true);
+    }
+  }, [requestedMyTasks, ownContactId]);
   const updateMyTasksDefault = (enabled: boolean) => {
     setDefaultMyTasks(enabled);
-    if (!enabled) setMyTasksOnly(false);
-    else if (ownContactId !== null) setMyTasksOnly(true);
+    if (!enabled) setMyTasksFilter(false);
+    else if (ownContactId !== null) setMyTasksFilter(true);
   };
   const locationMap = useMemo(
     () => new Map(locations.map((location: any) => [location.id, location.name])),
@@ -341,7 +365,7 @@ export default function TaskGeneric({
     ]
   );
 
-  const refreshDashboard = () => void utils.dashboard.stats.invalidate();
+  const refreshDashboard = () => void utils.dashboard.invalidate();
 
   const create = api.create.useMutation({
     onMutate: async (input: any) => {
@@ -479,7 +503,7 @@ export default function TaskGeneric({
     setLocationFilter("alle");
     setContactFilter("alle");
     setFieldFilter("alle");
-    setMyTasksOnly(false);
+    setMyTasksFilter(false);
     setOpenOrUnassignedOnly(false);
   };
 
@@ -703,7 +727,7 @@ export default function TaskGeneric({
                       ? "Der aktuelle Sitzungsname ist keinem Ansprechpartner zugeordnet."
                       : undefined
                   }
-                  onClick={() => setMyTasksOnly(active => !active)}
+                  onClick={() => setMyTasksFilter(!myTasksOnly)}
                 >
                   👤 Meine Aufgaben
                 </Button>

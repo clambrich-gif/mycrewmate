@@ -917,7 +917,7 @@ export default function Helpers() {
     utils.helpers.list.invalidate();
     utils.cakes.list.invalidate();
     utils.plan.evaluate.invalidate();
-    utils.dashboard.stats.invalidate();
+    utils.dashboard.invalidate();
   };
   const resetNewHelperForm = () => {
     setName("");

@@ -96,7 +96,7 @@ export default function TaskList({
     );
   };
 
-  const refreshDashboard = () => void utils.dashboard.stats.invalidate();
+  const refreshDashboard = () => void utils.dashboard.invalidate();
 
   const create = api.create.useMutation({
     onMutate: async (input: any) => {

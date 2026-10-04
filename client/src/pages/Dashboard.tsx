@@ -5,9 +5,17 @@ import { KlemmiProLimitNotice } from "@/components/KlemmiProLimitNotice";
 import { KlemmiSurfaceGuide } from "@/components/KlemmiSurfaceGuide";
 import { LocationMapCard } from "@/components/LocationMapCard";
 import { PageTitle } from "@/components/PageTitle";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import { useDashboardDetailsLayout } from "@/hooks/useDashboardDetailsLayout";
+import { useMyTasksDefault } from "@/hooks/useMyTasksDefault";
 import { dashboardDailyQuote } from "@/lib/daily-dashboard-quotes";
 import {
   getKlemmiMuted,
@@ -29,12 +37,14 @@ import {
   CheckCircle2,
   ClipboardList,
   CircleX,
+  CircleUserRound,
   Gift,
   GitCompareArrows,
   ImageUp,
   ListTodo,
   LockKeyhole,
   Mail,
+  Pin,
   ShieldCheck,
   UsersRound,
   Volume2,
@@ -97,6 +107,61 @@ type DailyReadiness = {
   teilzeitReserve: number;
   ungenutzteHelferIds: number[];
   teilzeitReserveIds: number[];
+};
+
+type PersonalDashboardTask = {
+  id: number;
+  scope: "Vorbereitung" | "Nachbereitung" | "Material" | "Marketing" | "Genehmigungen";
+  title: string;
+  detail: string | null;
+  status: "open" | "in_progress" | "completed" | "rejected";
+  href: string;
+};
+
+type PersonalDashboardData = {
+  displayName: string;
+  identityLinked: boolean;
+  summary: {
+    total: number;
+    completed: number;
+    open: number;
+    inProgress: number;
+    rejected: number;
+    progress: number;
+    allCompleted: boolean;
+  };
+  nextTasks: PersonalDashboardTask[];
+  shifts: Array<{
+    id: number;
+    helperId: number;
+    day: Weekday;
+    area: string;
+    task: string;
+    startTime: string;
+    endTime: string;
+  }>;
+};
+
+const PERSONAL_TASK_STATUS: Record<
+  PersonalDashboardTask["status"],
+  { label: string; className: string }
+> = {
+  open: {
+    label: "offen",
+    className: "border-amber-200 bg-amber-50 text-amber-900",
+  },
+  in_progress: {
+    label: "in Arbeit",
+    className: "border-blue-200 bg-blue-50 text-blue-900",
+  },
+  completed: {
+    label: "erledigt",
+    className: "border-emerald-200 bg-emerald-50 text-emerald-900",
+  },
+  rejected: {
+    label: "Klärung nötig",
+    className: "border-red-200 bg-red-50 text-red-900",
+  },
 };
 
 const PRIORITY_TONE_CLASSES: Record<
@@ -1233,10 +1298,205 @@ function PilotTenantInfoCard({
   );
 }
 
+function PersonalDashboardContent({
+  data,
+  onOpen,
+}: {
+  data: PersonalDashboardData;
+  onOpen: (href: string) => void;
+}) {
+  if (!data.identityLinked) {
+    return (
+      <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950 shadow-sm sm:p-5">
+        <div className="flex items-start gap-3">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-800">
+            <CircleUserRound className="size-5" aria-hidden="true" />
+          </span>
+          <div>
+            <h2 className="font-bold">Persönliche Ansicht wird vorbereitet</h2>
+            <p className="mt-1 text-sm leading-6 text-amber-900">
+              Dein Zugang ist noch keinem Ansprechpartner oder Helfereintrag
+              zugeordnet. Sobald die Zuordnung in der Planung hinterlegt ist,
+              erscheinen hier automatisch deine Aufgaben und Einsätze.
+            </p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  const { summary } = data;
+  const progressTone = summary.allCompleted
+    ? "border-emerald-300 bg-emerald-50"
+    : summary.rejected > 0
+      ? "border-red-300 bg-red-50"
+      : "border-blue-200 bg-white";
+
+  return (
+    <div className="space-y-6" data-dashboard-mode="personal">
+      <section
+        className={`overflow-hidden rounded-2xl border p-4 shadow-sm sm:p-5 ${progressTone}`}
+      >
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-2.5 py-1 text-xs font-bold text-blue-900">
+                <Pin className="size-3.5" aria-hidden="true" />
+                Meine Ansicht aktiv
+              </span>
+              {summary.allCompleted && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white">
+                  <CheckCircle2 className="size-3.5" aria-hidden="true" />
+                  Alles erledigt
+                </span>
+              )}
+            </div>
+            <h2 className="mt-3 text-xl font-extrabold tracking-tight text-slate-950 sm:text-2xl">
+              Mein Fortschritt
+            </h2>
+            <p className="mt-1 text-sm leading-6 text-slate-700">
+              {summary.total === 0
+                ? "Dir sind aktuell keine persönlichen Aufgaben zugeordnet."
+                : summary.allCompleted
+                  ? "Dein persönlicher Bereich ist aktuell vollständig erledigt."
+                  : `${summary.completed} von ${summary.total} persönlichen Aufgaben sind erledigt.`}
+            </p>
+          </div>
+          <div className="min-w-44 rounded-xl border border-white/90 bg-white/90 p-3 text-center shadow-sm">
+            <strong className="text-3xl font-extrabold tabular-nums text-slate-950">
+              {summary.progress} %
+            </strong>
+            <span className="mt-0.5 block text-xs font-semibold tracking-wide text-slate-600 uppercase">
+              erledigt
+            </span>
+          </div>
+        </div>
+        <div className="mt-4 h-3 overflow-hidden rounded-full bg-slate-200" aria-label={`${summary.progress} Prozent deiner Aufgaben erledigt`}>
+          <div
+            className={`h-full rounded-full transition-[width] duration-300 ${summary.allCompleted ? "bg-emerald-500" : summary.rejected > 0 ? "bg-red-500" : "bg-blue-600"}`}
+            style={{ width: `${summary.progress}%` }}
+          />
+        </div>
+        {summary.total > 0 && !summary.allCompleted && (
+          <div className="mt-4 grid gap-2 text-sm sm:grid-cols-3">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-950">
+              <strong>{summary.open}</strong> offen
+            </div>
+            <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-blue-950">
+              <strong>{summary.inProgress}</strong> in Arbeit
+            </div>
+            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-950">
+              <strong>{summary.rejected}</strong> Klärung nötig
+            </div>
+          </div>
+        )}
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(20rem,0.8fr)]">
+        <Card className="border-slate-200 py-4 text-slate-950 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <ListTodo className="size-5 text-blue-700" aria-hidden="true" />
+              Jetzt für mich wichtig
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {data.nextTasks.length === 0 ? (
+              <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-950">
+                <CheckCircle2 className="size-5 shrink-0 text-emerald-700" aria-hidden="true" />
+                {summary.total === 0
+                  ? "Sobald dir eine Aufgabe zugeordnet wird, erscheint sie hier."
+                  : "Keine offenen persönlichen Aufgaben – sehr gut!"}
+              </div>
+            ) : (
+              data.nextTasks.map(task => {
+                const status = PERSONAL_TASK_STATUS[task.status];
+                return (
+                  <button
+                    key={`${task.scope}-${task.id}`}
+                    type="button"
+                    className="group flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition-[border-color,box-shadow,transform] duration-150 hover:border-blue-300 hover:shadow-sm active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                    onPointerEnter={() => preloadRoute(task.href.split("?", 1)[0] || "/vorbereitung")}
+                    onFocus={() => preloadRoute(task.href.split("?", 1)[0] || "/vorbereitung")}
+                    onClick={() => onOpen(task.href)}
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <strong className="break-words text-sm text-slate-950">{task.title}</strong>
+                        <span className="text-xs font-medium text-slate-500">{task.scope}</span>
+                      </span>
+                      {task.detail && <span className="mt-0.5 block text-sm text-slate-600">{task.detail}</span>}
+                    </span>
+                    <span className={`shrink-0 rounded-full border px-2 py-1 text-xs font-bold ${status.className}`}>
+                      {status.label}
+                    </span>
+                    <ArrowRight className="size-4 shrink-0 text-slate-400 transition-transform duration-150 group-hover:translate-x-0.5" aria-hidden="true" />
+                  </button>
+                );
+              })
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-slate-200 py-4 text-slate-950 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <CalendarClock className="size-5 text-blue-700" aria-hidden="true" />
+              Meine Einsätze
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {data.shifts.length === 0 ? (
+              <p className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm leading-6 text-slate-600">
+                Dir ist aktuell keine Schicht direkt zugeordnet.
+              </p>
+            ) : (
+              data.shifts.map(shift => (
+                <button
+                  key={shift.id}
+                  type="button"
+                  className="group flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 text-left transition-[border-color,box-shadow,transform] duration-150 hover:border-blue-300 hover:shadow-sm active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                  onPointerEnter={() => preloadRoute("/einsatzplan")}
+                  onFocus={() => preloadRoute("/einsatzplan")}
+                  onClick={() => onOpen(`/einsatzplan?helfer=${shift.helperId}`)}
+                >
+                  <span className="flex size-10 shrink-0 flex-col items-center justify-center rounded-lg bg-blue-50 text-blue-800">
+                    <strong className="text-xs leading-none">{WEEKDAY_SHORT_LABELS[shift.day]}</strong>
+                    <Calendar className="mt-1 size-3.5" aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <strong className="block truncate text-sm text-slate-950">{shift.task}</strong>
+                    <span className="mt-0.5 block truncate text-sm text-slate-600">
+                      {shift.area} · {shift.startTime || "Zeit offen"}–{shift.endTime || "Zeit offen"}
+                    </span>
+                  </span>
+                  <ArrowRight className="size-4 shrink-0 text-slate-400 transition-transform duration-150 group-hover:translate-x-0.5" aria-hidden="true" />
+                </button>
+              ))
+            )}
+            {data.shifts.length > 0 && (
+              <p className="pt-1 text-xs leading-5 text-slate-500">
+                Einsätze werden separat angezeigt: Sie erhalten erst nach dem tatsächlichen Einsatz einen persönlichen Abschlussstatus.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [, navigate] = useLocation();
+  const { user } = useAuth();
   const detailsLayout = useDashboardDetailsLayout();
   const { canReadModule, isTenantAdmin } = useTenantAdministration();
+  const {
+    isDefaultMyTasks,
+    setDefaultMyTasks,
+    hasSeenPersonalDashboardExplanation,
+    markPersonalDashboardExplanationSeen,
+  } = useMyTasksDefault(user);
   const utils = trpc.useUtils();
   const canReadLocations = canReadModule("locations");
   const [workloadFilter, setWorkloadFilter] = useState<{
@@ -1244,7 +1504,15 @@ export default function Dashboard() {
     kind: "ungenutzt" | "teilzeit";
   } | null>(null);
   const [klemmiMuted, setKlemmiMuted] = useState(getKlemmiMuted);
+  const [isPersonalDashboard, setIsPersonalDashboard] = useState(
+    () => isDefaultMyTasks
+  );
+  const [showPersonalDashboardExplanation, setShowPersonalDashboardExplanation] =
+    useState(false);
   const { data: s, isLoading } = trpc.dashboard.stats.useQuery();
+  const personalDashboard = trpc.dashboard.personal.useQuery(undefined, {
+    enabled: isPersonalDashboard,
+  });
   const { data: helpers = [], isLoading: areHelpersLoading } =
     trpc.helpers.list.useQuery();
   const { data: currentEvent, isLoading: isEventLoading } =
@@ -1267,7 +1535,7 @@ export default function Dashboard() {
         utils.events.all.invalidate(),
         utils.events.current.invalidate(),
         utils.years.list.invalidate(),
-        utils.dashboard.stats.invalidate(),
+        utils.dashboard.invalidate(),
       ]);
       toast.success(`„${result.name}“ wurde als Historie abgeschlossen.`);
     },
@@ -1298,6 +1566,26 @@ export default function Dashboard() {
       enabled: canReadLocations,
     }
   );
+  useEffect(() => {
+    if (isDefaultMyTasks) {
+      setIsPersonalDashboard(true);
+      if (!hasSeenPersonalDashboardExplanation) {
+        setShowPersonalDashboardExplanation(true);
+      }
+    }
+  }, [isDefaultMyTasks, hasSeenPersonalDashboardExplanation]);
+  const selectDashboardView = (mode: "club" | "personal") => {
+    const personal = mode === "personal";
+    setIsPersonalDashboard(personal);
+    setDefaultMyTasks(personal);
+    if (personal && !hasSeenPersonalDashboardExplanation) {
+      setShowPersonalDashboardExplanation(true);
+    }
+  };
+  const closePersonalDashboardExplanation = () => {
+    markPersonalDashboardExplanationSeen();
+    setShowPersonalDashboardExplanation(false);
+  };
   const activeDays = currentEvent ? eventWeekdays(currentEvent.activeDays) : [];
   const helperByName = new Map(helpers.map(helper => [helper.name, helper]));
   const zeroAvailability = (helperName: string, day: Weekday) => {
@@ -1513,16 +1801,86 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
+      <Dialog
+        open={showPersonalDashboardExplanation}
+        onOpenChange={open => {
+          if (!open) closePersonalDashboardExplanation();
+        }}
+      >
+        <DialogContent
+          showCloseButton={false}
+          onEscapeKeyDown={event => event.preventDefault()}
+          onInteractOutside={event => event.preventDefault()}
+          className="w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] bg-white text-slate-950 sm:max-w-lg"
+        >
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-slate-950">
+              <Pin className="size-5 text-blue-700" aria-hidden="true" />
+              Persönliche Ansicht aktiviert
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm leading-6 text-slate-700">
+            <p>
+              Ab jetzt zeigt dein Dashboard nur noch deine eigenen Aufgaben,
+              Nachbereitungen und direkt zugeordneten Einsätze.
+            </p>
+            <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-blue-950">
+              <strong>Dein Fortschritt wird persönlich bewertet.</strong>
+              <br />
+              Sobald alle dir zugeordneten Aufgaben als erledigt markiert sind,
+              wird dein persönlicher Bereich grün angezeigt.
+            </div>
+            <p>
+              Über <strong>Vereinssicht</strong> wechselst du jederzeit zurück
+              zur gesamten Veranstaltungsplanung.
+            </p>
+          </div>
+          <DialogFooter>
+            <button
+              type="button"
+              className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 sm:w-auto"
+              onClick={closePersonalDashboardExplanation}
+            >
+              Verstanden – meine Ansicht anzeigen
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <PageTitle icon="dashboard">Dashboard</PageTitle>
           <p className="text-muted-foreground">
-            Die wichtigsten nächsten Schritte stehen zuerst; alle Kennzahlen
-            werden automatisch aus den Planungsdaten berechnet.
+            {isPersonalDashboard
+              ? "Deine zugeordneten Aufgaben und Einsätze – klar auf deinen Bereich fokussiert."
+              : "Die wichtigsten nächsten Schritte stehen zuerst; alle Kennzahlen werden automatisch aus den Planungsdaten berechnet."}
           </p>
+          <div
+            className="mt-3 inline-flex rounded-xl border border-slate-200 bg-slate-100 p-1 shadow-sm"
+            role="group"
+            aria-label="Dashboard-Ansicht auswählen"
+          >
+            <button
+              type="button"
+              className={`min-h-9 rounded-lg px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${!isPersonalDashboard ? "bg-white text-slate-950 shadow-sm" : "text-slate-600 hover:text-slate-950"}`}
+              aria-pressed={!isPersonalDashboard}
+              onClick={() => selectDashboardView("club")}
+            >
+              Vereinssicht
+            </button>
+            <button
+              type="button"
+              className={`inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${isPersonalDashboard ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 hover:text-slate-950"}`}
+              aria-pressed={isPersonalDashboard}
+              onClick={() => selectDashboardView("personal")}
+            >
+              <Pin className="size-3.5" aria-hidden="true" />
+              Meine Ansicht
+            </button>
+          </div>
         </div>
-        <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:items-end">
-          <div className="flex flex-wrap items-center justify-end gap-1.5">
+        {!isPersonalDashboard && (
+          <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:items-end">
+            <div className="flex flex-wrap items-center justify-end gap-1.5">
             <KlemmiSurfaceGuide
               guideId="dashboard"
               title="Dein Dashboard auf einen Blick"
@@ -1564,14 +1922,33 @@ export default function Dashboard() {
               )}
               <span>{klemmiMuted ? "Klemmi stumm" : "Klemmi-Stimme"}</span>
             </button>
+            </div>
+            <EventCountdownWidget
+              event={currentEvent}
+              packageId={tenantProduct.data?.packageId ?? "event_pass"}
+            />
           </div>
-          <EventCountdownWidget
-            event={currentEvent}
-            packageId={tenantProduct.data?.packageId ?? "event_pass"}
-          />
-        </div>
+        )}
       </div>
 
+      {isPersonalDashboard ? (
+        personalDashboard.isLoading ? (
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-600 shadow-sm">
+            Meine Aufgaben werden geladen …
+          </div>
+        ) : personalDashboard.data ? (
+          <PersonalDashboardContent
+            data={personalDashboard.data as PersonalDashboardData}
+            onOpen={href => navigate(href)}
+          />
+        ) : (
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-900 shadow-sm">
+            Die persönliche Ansicht konnte gerade nicht geladen werden. Bitte
+            versuche es gleich noch einmal.
+          </div>
+        )
+      ) : (
+        <>
       {currentTenant.status === "pilot" && (
         <PilotTenantInfoCard
           tenant={currentTenant}
@@ -1906,6 +2283,8 @@ export default function Dashboard() {
         <section data-dashboard-level="Live-Standortkarte" className="w-full">
           <LocationMapCard />
         </section>
+      )}
+        </>
       )}
     </div>
   );

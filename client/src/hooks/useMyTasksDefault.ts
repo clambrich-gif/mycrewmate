@@ -9,6 +9,8 @@ type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
 export const MY_TASKS_DEFAULT_STORAGE_PREFIX =
   "mycrewmate:my-tasks-default:v1";
+export const PERSONAL_DASHBOARD_EXPLANATION_STORAGE_PREFIX =
+  "mycrewmate:personal-dashboard-explanation:v1";
 
 function normalizedIdentity(value: string | null | undefined) {
   return String(value ?? "")
@@ -36,6 +38,13 @@ export function myTasksDefaultStorageKey(user: MyTasksPreferenceUser) {
   const role = normalizedIdentity(user?.role);
   if (!name || !role) return null;
   return `${MY_TASKS_DEFAULT_STORAGE_PREFIX}:${role}:${encodeURIComponent(name)}`;
+}
+
+function personalDashboardExplanationStorageKey(user: MyTasksPreferenceUser) {
+  const name = normalizedIdentity(user?.name);
+  const role = normalizedIdentity(user?.role);
+  if (!name || !role) return null;
+  return `${PERSONAL_DASHBOARD_EXPLANATION_STORAGE_PREFIX}:${role}:${encodeURIComponent(name)}`;
 }
 
 export function readMyTasksDefaultPreference(
@@ -67,6 +76,33 @@ export function writeMyTasksDefaultPreference(
   }
 }
 
+function readPersonalDashboardExplanation(
+  user: MyTasksPreferenceUser,
+  storage: StorageLike | null = browserStorage()
+) {
+  const key = personalDashboardExplanationStorageKey(user);
+  if (!key || !storage) return false;
+  try {
+    return storage.getItem(key) === "seen";
+  } catch {
+    return false;
+  }
+}
+
+function writePersonalDashboardExplanation(
+  user: MyTasksPreferenceUser,
+  storage: StorageLike | null = browserStorage()
+) {
+  const key = personalDashboardExplanationStorageKey(user);
+  if (!key || !storage) return false;
+  try {
+    storage.setItem(key, "seen");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Speichert die persönliche Standardansicht lokal und lädt sie bei einem Identitätswechsel neu. */
 export function useMyTasksDefault(user: MyTasksPreferenceUser) {
   const storageKey = useMemo(
@@ -76,9 +112,12 @@ export function useMyTasksDefault(user: MyTasksPreferenceUser) {
   const [isDefaultMyTasks, setIsDefaultMyTasks] = useState(() =>
     readMyTasksDefaultPreference(user)
   );
+  const [hasSeenPersonalDashboardExplanation, setHasSeenPersonalDashboardExplanation] =
+    useState(() => readPersonalDashboardExplanation(user));
 
   useEffect(() => {
     setIsDefaultMyTasks(readMyTasksDefaultPreference(user));
+    setHasSeenPersonalDashboardExplanation(readPersonalDashboardExplanation(user));
   }, [storageKey, user?.name, user?.role]);
 
   const setDefaultMyTasks = useCallback(
@@ -95,10 +134,18 @@ export function useMyTasksDefault(user: MyTasksPreferenceUser) {
     [isDefaultMyTasks, setDefaultMyTasks]
   );
 
+  const markPersonalDashboardExplanationSeen = useCallback(() => {
+    if (!storageKey) return;
+    setHasSeenPersonalDashboardExplanation(true);
+    writePersonalDashboardExplanation(user);
+  }, [storageKey, user]);
+
   return {
     isDefaultMyTasks,
     setDefaultMyTasks,
     toggleDefaultMyTasks,
     canRememberMyTasksDefault: Boolean(storageKey),
+    hasSeenPersonalDashboardExplanation,
+    markPersonalDashboardExplanationSeen,
   };
 }

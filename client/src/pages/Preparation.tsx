@@ -62,6 +62,8 @@ import { useViewMode } from "@/hooks/useViewMode";
 import { LocationMapLink } from "@/components/LocationMapLink";
 import { getKlemmiLocationGuideCopy } from "@/lib/klemmi-location-guide";
 import {
+  MY_TASKS_QUERY_KEY,
+  parseMyTasksFilter,
   parseTaskStatusFilter,
   TASK_STATUS_QUERY_KEY,
   type TaskStatusFilter,
@@ -299,6 +301,7 @@ export default function Preparation() {
   const [searchParams, setSearchParams] = useSearchParams();
   const rawStatusFilter = searchParams.get(TASK_STATUS_QUERY_KEY);
   const statusFilter: TaskStatusFilter = parseTaskStatusFilter(rawStatusFilter);
+  const requestedMyTasks = parseMyTasksFilter(searchParams.get(MY_TASKS_QUERY_KEY));
   const locationFilter = Number(searchParams.get("location")) || null;
 
   const [categoryFilter, setCategoryFilter] = useState<string>("alle");
@@ -355,7 +358,7 @@ export default function Preparation() {
     canRememberMyTasksDefault,
   } = useMyTasksDefault(user);
   const logbookAuthor = user?.name?.trim() || (isTenantAdmin ? "Administrator" : "Planungsteam");
-  const refreshDashboard = () => void utils.dashboard.stats.invalidate();
+  const refreshDashboard = () => void utils.dashboard.invalidate();
 
   const create = trpc.prep.create.useMutation({
     onMutate: async (input: any) => {
@@ -489,15 +492,47 @@ export default function Preparation() {
       ),
     [responsibleContacts, currentUserName]
   );
+  const ownHelperIds = useMemo(
+    () =>
+      new Set(
+        helpers
+          .filter(
+            helper =>
+              normalizedPersonName(helper.name) === currentUserName ||
+              (typeof helper.contactId === "number" &&
+                ownContactIds.has(helper.contactId))
+          )
+          .map(helper => helper.id)
+      ),
+    [helpers, currentUserName, ownContactIds]
+  );
+  const canShowMyTasks = ownContactIds.size > 0 || ownHelperIds.size > 0;
+  const setMyTasksFilter = (enabled: boolean) => {
+    setMyTasksOnly(enabled);
+    setSearchParams(
+      previous => {
+        const next = new URLSearchParams(previous);
+        if (enabled) next.set(MY_TASKS_QUERY_KEY, "1");
+        else next.delete(MY_TASKS_QUERY_KEY);
+        return next;
+      },
+      { replace: true }
+    );
+  };
   useEffect(() => {
-    if (isDefaultMyTasks && ownContactIds.size > 0) {
+    if (isDefaultMyTasks && canShowMyTasks) {
       setMyTasksOnly(true);
     }
-  }, [isDefaultMyTasks, ownContactIds]);
+  }, [isDefaultMyTasks, canShowMyTasks]);
+  useEffect(() => {
+    if (requestedMyTasks && canShowMyTasks) {
+      setMyTasksOnly(true);
+    }
+  }, [requestedMyTasks, canShowMyTasks]);
   const updateMyTasksDefault = (enabled: boolean) => {
     setDefaultMyTasks(enabled);
-    if (!enabled) setMyTasksOnly(false);
-    else if (ownContactIds.size > 0) setMyTasksOnly(true);
+    if (!enabled) setMyTasksFilter(false);
+    else if (canShowMyTasks) setMyTasksFilter(true);
   };
   const locationMap = useMemo(
     () => new Map(locations.map(location => [location.id, location.name])),
@@ -546,7 +581,13 @@ export default function Preparation() {
         if (contactFilter !== "alle" && contactFilter !== "ohne") {
           if (String(row.contactId ?? "") !== contactFilter) return false;
         }
-        if (myTasksOnly && (!row.contactId || !ownContactIds.has(row.contactId))) {
+        if (
+          myTasksOnly &&
+          !(
+            (typeof row.contactId === "number" && ownContactIds.has(row.contactId)) ||
+            (typeof row.helperId === "number" && ownHelperIds.has(row.helperId))
+          )
+        ) {
           return false;
         }
         if (openOrUnassignedOnly && row.status !== "offen" && row.contactId) {
@@ -596,6 +637,7 @@ export default function Preparation() {
     myTasksOnly,
     openOrUnassignedOnly,
     ownContactIds,
+    ownHelperIds,
     searchTerm,
     dueSortDirection,
     contactMap,
@@ -640,7 +682,7 @@ export default function Preparation() {
     setCategoryFilter("alle");
     setContactFilter("alle");
     setSearchTerm("");
-    setMyTasksOnly(false);
+    setMyTasksFilter(false);
     setOpenOrUnassignedOnly(false);
     setSearchParams(
       previous => {
@@ -889,13 +931,13 @@ export default function Preparation() {
                   ? "bg-blue-600 text-white hover:bg-blue-700"
                   : "border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100"
               }
-              disabled={ownContactIds.size === 0}
+              disabled={!canShowMyTasks}
               title={
-                ownContactIds.size === 0
-                  ? "Der aktuelle Sitzungsname ist keinem Ansprechpartner zugeordnet."
+                !canShowMyTasks
+                  ? "Der aktuelle Sitzungsname ist keinem Ansprechpartner oder Helfereintrag zugeordnet."
                   : undefined
               }
-              onClick={() => setMyTasksOnly(active => !active)}
+              onClick={() => setMyTasksFilter(!myTasksOnly)}
             >
               👤 Meine Aufgaben
             </Button>

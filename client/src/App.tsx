@@ -78,6 +78,8 @@ const Plan = lazy(routeLoaders["/einsatzplan"]);
 const Preparation = lazy(routeLoaders["/vorbereitung"]);
 const PostProcessing = lazy(routeLoaders["/nachbereitung"]);
 const Materials = lazy(routeLoaders["/material"]);
+const Marketing = lazy(routeLoaders["/marketing"]);
+const Approvals = lazy(routeLoaders["/genehmigungen"]);
 const Donations = lazy(routeLoaders["/spenden"]);
 const Finances = lazy(routeLoaders["/finanzen"]);
 const PdfExport = lazy(routeLoaders["/pdf-export"]);
@@ -263,12 +265,8 @@ function Router() {
           <Route path="/vorbereitung" component={Preparation} />
           <Route path="/nachbereitung" component={PostProcessing} />
           <Route path="/material" component={Materials} />
-          <Route path="/marketing">
-            <Redirect to="/vorbereitung" />
-          </Route>
-          <Route path="/genehmigungen">
-            <Redirect to="/vorbereitung" />
-          </Route>
+          <Route path="/marketing" component={Marketing} />
+          <Route path="/genehmigungen" component={Approvals} />
           <Route path="/spenden" component={Donations} />
           <Route path="/kuchen">
             <Redirect to="/spenden" />

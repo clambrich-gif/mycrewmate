@@ -73,7 +73,7 @@ export default function Locations() {
     void utils.plan.evaluate.invalidate();
     void utils.prep.list.invalidate();
     void utils.materials.list.invalidate();
-    void utils.dashboard.stats.invalidate();
+    void utils.dashboard.invalidate();
   };
   const create = trpc.locations.create.useMutation();
   const update = trpc.locations.update.useMutation();
