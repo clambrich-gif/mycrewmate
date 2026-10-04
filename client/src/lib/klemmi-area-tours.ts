@@ -73,8 +73,8 @@ export const DONATIONS_KLEMMI_STEPS: KlemmiSurfaceStep[] = [
     key: "traits",
     selector: '[data-klemmi-target="donation-traits"]',
     eyebrow: "Schritt 3 von 7",
-    title: "Allergene, Abgabe und Hinweise",
-    text: "Kennzeichne bei Bedarf vegan, glutenfrei, laktosefrei, Nüsse oder fleischhaltig. Abgabeort, Zeitpunkt und ein freier Hinweis helfen der Verpflegung am Veranstaltungstag.",
+    title: "Eigenschaften, Abgabe und Hinweise",
+    text: "Kennzeichne bei Bedarf vegan, vegetarisch, glutenfrei, laktosefrei, enthält Nüsse, zuckerfrei, enthält Alkohol oder fleischhaltig. Abgabeort, Zeitpunkt und ein freier Hinweis helfen der Verpflegung am Veranstaltungstag.",
     action: "Speichern zeigen",
   },
   {
@@ -105,8 +105,8 @@ export const DONATIONS_KLEMMI_STEPS: KlemmiSurfaceStep[] = [
     key: "outputs",
     selector: '[data-klemmi-target="donations-pdf"]',
     eyebrow: "Schritt 7 von 7",
-    title: "Übersicht drucken oder Ansicht wechseln",
-    text: "Der PDF-Druck erstellt eine kompakte Übersicht der aktuell sichtbaren Spenden. Mit Liste und Kacheln wählst du einfach die Darstellung, die für deine Arbeit gerade am besten passt. In dieser Tour wird nichts gedruckt oder verändert.",
+    title: "Liste und Faltkärtchen drucken",
+    text: "Der PDF-Druck erstellt die Übersicht der aktuell sichtbaren Spenden und zusätzlich vier ausschneidbare Faltkärtchen pro Seite. Jedes Kärtchen zeigt Produktname, alle gewählten Eigenschaften, Hinweise und – falls hinterlegt – das Vereinslogo. Mit Liste und Kacheln wählst du die passende Bildschirmansicht. In dieser Tour wird nichts gedruckt oder verändert.",
     action: "Fertig",
   },
 ];
@@ -321,7 +321,7 @@ export const HELP_KLEMMI_STEPS: KlemmiSurfaceStep[] = [
   {
     key: "search",
     selector: '[data-klemmi-target="help-search"]',
-    eyebrow: "Schritt 1 von 3",
+    eyebrow: "Schritt 1 von 4",
     title: "Direkt nach einem Begriff suchen",
     text: "Tippe einfach ein Stichwort wie Helfer, Einsatzplan, Material, PDF oder Passwort ein. Die sichtbaren Kapitel passen sich sofort an.",
     action: "Rollenfilter zeigen",
@@ -329,7 +329,7 @@ export const HELP_KLEMMI_STEPS: KlemmiSurfaceStep[] = [
   {
     key: "filters",
     selector: '[data-klemmi-target="help-filters"]',
-    eyebrow: "Schritt 2 von 3",
+    eyebrow: "Schritt 2 von 4",
     title: "Hilfe nach Rolle filtern",
     text: "Mit den Rollenfiltern blendest du Inhalte für alle, für das Planungsteam oder für Administratoren ein. So bleibt die Anleitung passend zu deinen Rechten.",
     action: "Kapitel zeigen",
@@ -337,9 +337,17 @@ export const HELP_KLEMMI_STEPS: KlemmiSurfaceStep[] = [
   {
     key: "chapters",
     selector: '[data-klemmi-target="help-chapters"]',
-    eyebrow: "Schritt 3 von 3",
+    eyebrow: "Schritt 3 von 4",
     title: "Kapitel öffnen und direkt weiterarbeiten",
     text: "Öffne das passende Kapitel, lies die kompakten Schritte und nutze die Links direkt zum jeweiligen Arbeitsbereich. Klemmi bleibt auch dort wieder für dich erreichbar.",
+    action: "WBT zeigen",
+  },
+  {
+    key: "wbt",
+    selector: '[data-klemmi-target="help-wbt"]',
+    eyebrow: "Schritt 4 von 4",
+    title: "Mit dem WBT in Ruhe üben",
+    text: "Im Kapitel Web-Based-Training startest du die datenfreie Lernwerkstatt direkt mit dem passenden Trainingspfad: Helferkoordination oder Planungsteam und Administration. Dort übst du die Abläufe ohne etwas in deiner echten Vereinsplanung zu verändern.",
     action: "Fertig",
   },
 ];

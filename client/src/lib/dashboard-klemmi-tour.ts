@@ -159,3 +159,53 @@ export function createDashboardKlemmiSteps(
 
   return steps;
 }
+
+/**
+ * Die persönliche Ansicht hat bewusst eine eigene, kurze Führung: Sie erklärt
+ * ausschließlich die dem angemeldeten Zugang zugeordneten Aufgaben, Helfer und
+ * Orte. Vereinskennzahlen und fremde Planungsbereiche bleiben dabei außen vor.
+ */
+export function createPersonalDashboardKlemmiSteps(): KlemmiSurfaceStep[] {
+  return [
+    {
+      key: "intro",
+      selector: '[data-klemmi-target="personal-dashboard-progress"]',
+      eyebrow: "Klemmi zeigt’s",
+      title: "Deine persönliche Ansicht",
+      text: "Hier siehst du ausschließlich Aufgaben, Einsätze, betreute Helfer und Standorte, die dir persönlich zugeordnet sind. Über den Umschalter oben kannst du jederzeit wieder zur Vereinssicht wechseln.",
+      action: "Fortschritt zeigen",
+    },
+    {
+      key: "progress",
+      selector: '[data-klemmi-target="personal-dashboard-progress"]',
+      eyebrow: "Schritt 1 von 4",
+      title: "Mein Fortschritt",
+      text: "Diese Kachel zählt nur deine persönlichen Aufgaben. Sie wird grün, wenn alle deine zugeordneten Aufgaben erledigt sind. Offene, laufende oder klärungsbedürftige Punkte siehst du darunter getrennt.",
+      action: "Aufgaben und Einsätze zeigen",
+    },
+    {
+      key: "work",
+      selector: '[data-klemmi-target="personal-dashboard-work"]',
+      eyebrow: "Schritt 2 von 4",
+      title: "Eigene Aufgaben und Einsätze öffnen",
+      text: "Hier stehen nur deine nächsten Aufgaben und direkt zugewiesenen Einsätze. Ein Klick öffnet den passenden Planungsbereich bereits mit persönlichem Filter – ohne die übrige Vereinsplanung durchsuchen zu müssen.",
+      action: "Betreute Helfer zeigen",
+    },
+    {
+      key: "helpers",
+      selector: '[data-klemmi-target="personal-dashboard-helpers"]',
+      eyebrow: "Schritt 3 von 4",
+      title: "Betreute Helfer im Blick",
+      text: "Diese Übersicht umfasst nur Helfer, für die du als Ansprechpartner zuständig bist. Du siehst je Person die zugeordneten Einsätze sowie offene Erstkontakte und Rückmeldungen. Mit einem Klick prüfst du den jeweiligen Helfer direkt.",
+      action: "Eigene Standorte zeigen",
+    },
+    {
+      key: "locations",
+      selector: '[data-klemmi-target="personal-dashboard-locations"]',
+      eyebrow: "Schritt 4 von 4",
+      title: "Standorte deiner Zuständigkeiten",
+      text: "Auf der Karte erscheinen nur Orte, an denen du eigene Aufgaben oder Einsätze hast. Ein grüner Marker bedeutet: Alle dort zugeordneten Aufgaben sind erledigt oder die zugehörigen Schichten sind besetzt. Andere Farben zeigen, wo noch etwas offen ist.",
+      action: "Fertig",
+    },
+  ];
+}

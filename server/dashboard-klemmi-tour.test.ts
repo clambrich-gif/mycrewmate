@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { createDashboardKlemmiSteps } from "../client/src/lib/dashboard-klemmi-tour";
+import {
+  createDashboardKlemmiSteps,
+  createPersonalDashboardKlemmiSteps,
+} from "../client/src/lib/dashboard-klemmi-tour";
 
 const populatedDashboard = {
   hasEventPeriod: true,
@@ -81,5 +84,26 @@ describe("Dashboard-Klemmi-Tour", () => {
         detailsLayout: "side-by-side",
       }).find(step => step.key === "map-active")?.action
     ).toBe("Weiter zum Live-Chat");
+  });
+
+  it("führt die persönliche Ansicht durch Fortschritt, eigene Arbeit, Helfer und Standorte", () => {
+    const steps = createPersonalDashboardKlemmiSteps();
+
+    expect(steps.map(step => step.key)).toEqual([
+      "intro",
+      "progress",
+      "work",
+      "helpers",
+      "locations",
+    ]);
+    expect(steps.find(step => step.key === "progress")).toMatchObject({
+      selector: '[data-klemmi-target="personal-dashboard-progress"]',
+    });
+    expect(steps.find(step => step.key === "helpers")?.text).toContain(
+      "offene Erstkontakte und Rückmeldungen"
+    );
+    expect(steps.find(step => step.key === "locations")?.text).toContain(
+      "Ein grüner Marker bedeutet"
+    );
   });
 });

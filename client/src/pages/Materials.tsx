@@ -25,10 +25,10 @@ export default function Materials() {
         guideId: "materials",
         title: "Material schnell und sauber erfassen",
         introText:
-          "Ich zeige dir die echte Materialanlage: Artikel benennen, Menge eintragen und Beschaffung oder Einsatzort eindeutig festhalten.",
+          "Ich zeige dir die echte Materialanlage: Artikel benennen, Menge eintragen, direkt eine zuständige Person auswählen und den Einsatzort eindeutig festhalten.",
         completionTitle: "Materialposition angelegt!",
         completionText:
-          "Der Artikel ist jetzt im Materialplan. Status, Verantwortliche und Ort kannst du später jederzeit ergänzen oder anpassen.",
+          "Der Artikel ist jetzt im Materialplan. Zuständigkeit, Status und Ort können später jederzeit angepasst werden.",
         steps: [
           {
             key: "intro",
@@ -41,7 +41,7 @@ export default function Materials() {
           {
             key: "name",
             selector: '[data-klemmi-target="materials-name"]',
-            eyebrow: "Schritt 1 von 3",
+            eyebrow: "Schritt 1 von 4",
             title: "Artikel klar benennen",
             text: "Trage zuerst ein, was benötigt wird – zum Beispiel Bierzeltgarnitur, Kabeltrommel oder Kaffeebecher.",
             action: "Menge ergänzen",
@@ -49,15 +49,23 @@ export default function Materials() {
           {
             key: "details",
             selector: '[data-klemmi-target="materials-details"]',
-            eyebrow: "Schritt 2 von 3",
+            eyebrow: "Schritt 2 von 4",
             title: "Menge und Einordnung festhalten",
-            text: "Menge, Einheit und Kategorie machen den Bedarf nachvollziehbar. Zuständigkeit, Ort und Beschaffungsstand kannst du direkt bei der Anlage ergänzen.",
+            text: "Menge, Einheit und Kategorie machen den Bedarf nachvollziehbar. Den Beschaffungsstand und Einsatzort ergänzst du direkt bei der Anlage.",
+            action: "Zuständigkeit zeigen",
+          },
+          {
+            key: "responsible",
+            selector: '[data-klemmi-target="materials-responsible"]',
+            eyebrow: "Schritt 3 von 4",
+            title: "Zuständigkeit direkt zuordnen",
+            text: "Wähle bei der Anlage schon die Person, die für Beschaffung, Bereitstellung oder Rückgabe zuständig ist. So erscheint der Artikel sofort in der richtigen persönlichen Ansicht und nichts bleibt ohne Ansprechpartner.",
             action: "Speichern zeigen",
           },
           {
             key: "save",
             selector: '[data-klemmi-target="materials-save"]',
-            eyebrow: "Schritt 3 von 3",
+            eyebrow: "Schritt 4 von 4",
             title: "Materialposition speichern",
             text: "Klicke auf den markierten Speichern-Button. Erst dein Klick legt den Artikel tatsächlich im Materialplan an.",
             waitsForSuccess: true,

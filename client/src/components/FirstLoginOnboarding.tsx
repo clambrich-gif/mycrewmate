@@ -178,7 +178,7 @@ export function FirstLoginOnboarding({
               <button
                 type="button"
                 onClick={() => {
-                  window.open("/wbt", "_blank");
+                  window.open("/wbt?track=helper", "_blank", "noopener,noreferrer");
                   continueAfterWbtChoice();
                 }}
                 className="group flex w-full items-start gap-3 rounded-2xl border-2 border-blue-200 bg-blue-50/60 p-4 text-left transition hover:border-blue-400 hover:bg-blue-50"
@@ -200,7 +200,7 @@ export function FirstLoginOnboarding({
               <button
                 type="button"
                 onClick={() => {
-                  window.open("/wbt", "_blank");
+                  window.open("/wbt?track=admin", "_blank", "noopener,noreferrer");
                   continueAfterWbtChoice();
                 }}
                 className="group flex w-full items-start gap-3 rounded-2xl border-2 border-orange-200 bg-orange-50/60 p-4 text-left transition hover:border-orange-400 hover:bg-orange-50"

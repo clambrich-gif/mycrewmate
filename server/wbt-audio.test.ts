@@ -61,6 +61,23 @@ describe("Zweistimmige WBT-Vertonung", () => {
     expect(gpxStep?.klemmiTip).toContain("Polizei und Rettungsdiensten");
   });
 
+  it("hält Materialzuständigkeit und alle neuen Buffetkennzeichnungen im WBT aktuell", () => {
+    const helperSteps = WBT_HELPER_CHAPTERS.find(chapter => chapter.id === "helpers")?.steps;
+    const availability = helperSteps?.find(step => step.id === "step-3-discuss-availability");
+    const material = WBT_HELPER_CHAPTERS.find(chapter => chapter.id === "material");
+    const materialStart = material?.steps.find(step => step.id === "mat-list");
+    const donations = WBT_HELPER_CHAPTERS.find(chapter => chapter.id === "donations");
+    const traits = donations?.steps.find(step => step.id === "don-allergens");
+
+    expect(availability?.explanation).toContain("enthält Alkohol");
+    expect(availability?.klemmiTip).toContain("Faltkärtchen");
+    expect(materialStart?.explanation).toContain("zuständiger Person");
+    expect(materialStart?.klemmiTip).toContain("zuständigen Person");
+    expect(traits?.explanation).toContain("vegetarisch");
+    expect(traits?.explanation).toContain("zuckerfrei");
+    expect(traits?.explanation).toContain("faltbare Buffet-Kärtchen");
+  });
+
   it("verwendet ausschließlich vorproduzierte lokale Clips für das WBT", async () => {
     const [portal, voiceHook, narratorHook, audioHelper] = await Promise.all([
       readFile(path.resolve(process.cwd(), "client/src/pages/WbtPortal.tsx"), "utf8"),

@@ -32,7 +32,7 @@ export type WbtNarratorAudioClipId =
 export type WbtAudioClipId = WbtKlemmiAudioClipId | WbtNarratorAudioClipId;
 export type WbtAudioSpeaker = "narrator" | "klemmi";
 
-export const WBT_AUDIO_REVISION = "20261004-wbt-two-voices-v2";
+export const WBT_AUDIO_REVISION = "20261004-wbt-two-voices-v3";
 export const WBT_COMPLETION_AUDIO_ID = "wbt-training-complete" as const;
 
 export const WBT_INTRO_AUDIO = {

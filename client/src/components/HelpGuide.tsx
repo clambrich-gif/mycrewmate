@@ -446,12 +446,12 @@ const HELP_CHAPTERS: HelpChapter[] = [
         audience: ["planning", "admin"],
         keywords: "spenden kuchen salat dessert allergene abgabe sollwert",
         summary:
-          "Das Spenden-Modul plant Verpflegungsspenden wie Kuchen, Salate, Desserts und Sonstiges. Kategorie, Allergene, Abgabezeit, Ort und Sollwerte erleichtern die Abstimmung mit Helfern und Sponsoren.",
+          "Das Spenden-Modul plant Verpflegungsspenden wie Kuchen, Salate, Desserts und Sonstiges. Acht Eigenschaften – vegan, vegetarisch, glutenfrei, laktosefrei, enthält Nüsse, zuckerfrei, enthält Alkohol und fleischhaltig – sowie Abgabezeit, Ort und Sollwerte erleichtern die Abstimmung. Der PDF-Druck liefert zusätzlich ausschneidbare Faltkärtchen für das Buffet.",
         visual: {
           label: "Spendenübersicht",
           title: "Verpflegung planbar und transparent sammeln",
           icon: Gift,
-          items: ["Kategorie und Spender wählen", "Allergene und Abgabe notieren", "Sollwerte je Kategorie vergleichen"],
+          items: ["Kategorie und Spender wählen", "Acht Eigenschaften und Abgabe notieren", "Liste und Buffet-Kärtchen als PDF drucken"],
         },
         screenshot: {
           src: "/api/help/images/donations",
@@ -775,7 +775,7 @@ const HELP_CHAPTERS: HelpChapter[] = [
         keywords:
           "wbt simulation helfer planungsteam admin lernwerkstatt datenfrei vertonung sprecher klemmi zertifikat",
         summary:
-          "Die MyCrewMate Lernwerkstatt bietet zwei spezialisierte, interaktive Trainingspfade: Helferkoordination (7 Module) und Planungsteam & Administration (11 Module). Alle Schritte werden realitätsnah simuliert und zweistimmig vertont (neutraler Sprecher + Klemmis Praxisempfehlung), ohne echte Vereinsdaten zu verändern.",
+          "Die MyCrewMate Lernwerkstatt bietet zwei spezialisierte, interaktive Trainingspfade: Helferkoordination (7 Module) und Planungsteam & Administration (11 Module). Alle Schritte werden realitätsnah simuliert und zweistimmig vertont (neutraler Sprecher + Klemmis Praxisempfehlung), ohne echte Vereinsdaten zu verändern. Die WBT-Auswahl öffnet den jeweils gewählten Trainingspfad direkt.",
         steps: [
           "Lernwerkstatt über den Direktlink oder /wbt öffnen.",
           "Passenden Trainingspfad wählen (Helferkoordination oder Planungsteam & Admin).",
@@ -794,7 +794,7 @@ const HELP_CHAPTERS: HelpChapter[] = [
           items: [
             "WBT 1: Helferkoordination (7 Module inkl. 6-Schritte-Ablauf)",
             "WBT 2: Planungsteam & Admin (11 Module inkl. Schutz & Protokolle)",
-            "Zweistimmige Vertonung & persönliche Teilnahmebestätigung als PDF",
+            "Direkter Kursstart, zweistimmige Vertonung & persönliche Teilnahmebestätigung als PDF",
           ],
         },
         workspace: {
@@ -1141,7 +1141,16 @@ export function HelpGuide({
                 <CardContent className="p-0">
                   <Accordion type="multiple" className="divide-y divide-slate-100">
                     {chapter.topics.map(topic => (
-                      <AccordionItem key={topic.id} value={topic.id} className="border-0">
+                      <AccordionItem
+                        key={topic.id}
+                        value={topic.id}
+                        data-klemmi-target={
+                          topic.id === "wbt-interaktive-lernwerkstatt"
+                            ? "help-wbt"
+                            : undefined
+                        }
+                        className="border-0"
+                      >
                         <AccordionTrigger className="px-4 py-4 text-left no-underline hover:bg-slate-50 hover:no-underline sm:px-5">
                           <div className="mr-3 flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                             <span className="text-sm font-semibold leading-6 text-slate-900 sm:text-base">

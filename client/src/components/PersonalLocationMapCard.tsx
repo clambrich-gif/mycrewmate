@@ -24,7 +24,10 @@ export function PersonalLocationMapCard({
   const markTileLoadFailed = useCallback(() => setTileLoadFailed(true), []);
 
   return (
-    <Card className="overflow-hidden border-blue-200 bg-white py-4 text-slate-950 shadow-sm">
+    <Card
+      data-klemmi-target="personal-dashboard-locations"
+      className="overflow-hidden border-blue-200 bg-white py-4 text-slate-950 shadow-sm"
+    >
       <CardHeader className="flex flex-row flex-wrap items-baseline justify-between gap-2 pb-3">
         <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
           <MapPin className="size-5 text-blue-700" aria-hidden="true" />

@@ -13,6 +13,7 @@ describe("WBT-Systemintegration (Erstanmeldung, Hilfe, Masterportal, PDF-Zertifi
     expect(content).toContain("web-based-training");
     expect(content).toContain("Web-Based-Training (WBT-Lernwerkstatt)");
     expect(content).toContain("href: \"/wbt\"");
+    expect(content).toContain('"help-wbt"');
   });
 
   it("Erstanmeldung bietet die Wahl zwischen Helfer- und Admin-WBT", async () => {
@@ -24,7 +25,8 @@ describe("WBT-Systemintegration (Erstanmeldung, Hilfe, Masterportal, PDF-Zertifi
     expect(content).toContain("Möchtest du ein Web-Based-Training (WBT) starten?");
     expect(content).toContain("1. WBT: Helferkoordination");
     expect(content).toContain("2. WBT: Planungsteam &amp; Admin");
-    expect(content).toContain("window.open(\"/wbt\", \"_blank\")");
+    expect(content).toContain('window.open("/wbt?track=helper", "_blank", "noopener,noreferrer")');
+    expect(content).toContain('window.open("/wbt?track=admin", "_blank", "noopener,noreferrer")');
     expect(content).toContain("Jetzt überspringen");
   });
 

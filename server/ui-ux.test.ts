@@ -3083,6 +3083,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(taskGeneric).toContain("sm:grid-cols-2");
 
     expect(materials).toContain("createInDialog");
+    expect(materials).toContain("Zuständigkeit direkt zuordnen");
     expect(materials).toContain('createDialogTitle="Neuen Artikel anlegen"');
     expect(materials).toContain('createTriggerLabel="Neuer Artikel"');
     expect(materials).toContain('label: "Stand"');
@@ -3102,6 +3103,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(materials).not.toContain("sortableAndFilterable");
     expect(taskGeneric).toContain('headerLayout?: "default" | "stacked"');
     expect(taskGeneric).toContain("createButtonClassName?: string");
+    expect(materials).toContain('data-klemmi-target="materials-responsible"');
     expect(taskGeneric).toContain("filterConfig?: {");
     expect(taskGeneric).toContain("Alle {filterConfig.categoryLabel}");
     expect(taskGeneric).toContain("Alle Standorte");
@@ -3226,6 +3228,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain('bg-emerald-500');
     expect(dashboard).toContain('bg-amber-400');
     expect(dashboard).toContain('data-progress-tone={progressTone.name}');
+    expect(dashboard).toContain('data-klemmi-target="personal-dashboard-progress"');
+    expect(dashboard).toContain('data-klemmi-target="personal-dashboard-helpers"');
+    expect(dashboard).toContain('guideId="dashboard-personal"');
   });
 
   it("bietet zentrale Orte, Ortsauswahl und Kartenlinks in Schichten und Vorbereitungen", () => {

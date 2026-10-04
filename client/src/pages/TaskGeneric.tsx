@@ -1559,7 +1559,14 @@ export default function TaskGeneric({
               {(locationField || extraField || createResponsibleField) && (
                 <div className="grid gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-2">
               {createResponsibleField && (
-                <div className="space-y-1.5">
+                <div
+                  data-klemmi-target={
+                    klemmiGuide && isMaterialTable
+                      ? `${klemmiGuide.guideId}-responsible`
+                      : undefined
+                  }
+                  className="space-y-1.5"
+                >
                   <Label htmlFor={`${kind}-create-contact`}>
                     Zuständig / verantwortlich (optional)
                   </Label>

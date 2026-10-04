@@ -22,7 +22,10 @@ import {
   getKlemmiMuted,
   setKlemmiMuted as persistKlemmiMuted,
 } from "@/lib/dashboard-klemmi-muted";
-import { createDashboardKlemmiSteps } from "@/lib/dashboard-klemmi-tour";
+import {
+  createDashboardKlemmiSteps,
+  createPersonalDashboardKlemmiSteps,
+} from "@/lib/dashboard-klemmi-tour";
 import {
   dashboardTargetHref,
   type DashboardTarget,
@@ -1384,6 +1387,7 @@ function PersonalDashboardContent({
   return (
     <div className="space-y-6" data-dashboard-mode="personal">
       <section
+        data-klemmi-target="personal-dashboard-progress"
         className={`overflow-hidden rounded-2xl border p-4 shadow-sm sm:p-5 ${progressTone}`}
       >
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -1441,7 +1445,10 @@ function PersonalDashboardContent({
         )}
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(20rem,0.8fr)]">
+      <section
+        data-klemmi-target="personal-dashboard-work"
+        className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(20rem,0.8fr)]"
+      >
         <Card className="border-slate-200 py-4 text-slate-950 shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
@@ -1533,7 +1540,10 @@ function PersonalDashboardContent({
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)]">
-        <Card className="border-slate-200 py-4 text-slate-950 shadow-sm">
+        <Card
+          data-klemmi-target="personal-dashboard-helpers"
+          className="border-slate-200 py-4 text-slate-950 shadow-sm"
+        >
           <CardHeader className="flex flex-row flex-wrap items-baseline justify-between gap-2 pb-3">
             <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
               <UsersRound className="size-5 text-blue-700" aria-hidden="true" />
@@ -1888,6 +1898,7 @@ export default function Dashboard() {
     currentPackageId: tenantProduct.data?.packageId ?? "event_pass",
     detailsLayout,
   });
+  const personalDashboardKlemmiSteps = createPersonalDashboardKlemmiSteps();
   const activePotentialDay = workloadFilter
     ? dailyReadiness.find(day => day.day === workloadFilter.day)
     : undefined;
@@ -2003,6 +2014,24 @@ export default function Dashboard() {
             </button>
           </div>
         </div>
+        {isPersonalDashboard && (
+          <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:items-end">
+            <KlemmiSurfaceGuide
+              guideId="dashboard-personal"
+              title="Deine persönliche Dashboard-Ansicht"
+              introText="Ich zeige dir, wie du in deiner persönlichen Ansicht Fortschritt, eigene Einsätze, betreute Helfer und zugehörige Standorte im Blick behältst."
+              steps={personalDashboardKlemmiSteps}
+              successSignal={null}
+              completionTitle="Deine Aufgaben im Blick!"
+              completionText="Du weißt jetzt, wo du deinen persönlichen Fortschritt, betreute Helfer und deine Standorte findest. Über den Umschalter kannst du jederzeit wieder zur Vereinssicht wechseln."
+              voiceMuted={klemmiMuted}
+              onVoiceMutedChange={muted => {
+                setKlemmiMuted(muted);
+                persistKlemmiMuted(muted);
+              }}
+            />
+          </div>
+        )}
         {!isPersonalDashboard && (
           <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:items-end">
             <div className="flex flex-wrap items-center justify-end gap-1.5">

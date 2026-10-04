@@ -128,9 +128,9 @@ export const WBT_HELPER_CHAPTERS: WbtChapter[] = [
         totalSteps: 6,
         title: "Schritt 3: Zeiten & Spenden besprechen",
         subtitle: "Verfügbarkeit und Kuchen eintragen",
-        explanation: "Sobald sich der Helfer meldet, klickst du auf den Bearbeiten-Stift: Trage ein, ob er ganztags, nur vormittags (z. B. 08:00–13:00) oder nachmittags kann. Erfasse hier auch direkt Kuchenspenden (z. B. 'Käsekuchen, nussfrei').",
+        explanation: "Sobald sich der Helfer meldet, klickst du auf den Bearbeiten-Stift: Trage ein, ob er ganztags, nur vormittags (z. B. 08:00–13:00) oder nachmittags kann. Erfasse bei einer zugesagten Spende auch Produkt, Abgabe und passende Eigenschaften wie vegan, vegetarisch, glutenfrei, laktosefrei, enthält Nüsse, zuckerfrei, enthält Alkohol oder fleischhaltig.",
         targetFocus: "Verfügbarkeits-Fenster & Spendenfeld",
-        klemmiTip: "Allergie-Hinweise beim Kuchen sind Gold wert für die spätere Kennzeichnung am Buffet!",
+        klemmiTip: "Klare Eigenschaften und Hinweise sind Gold wert: Das Buffet-Team kann die Spende später direkt richtig beschildern – auch auf dem Faltkärtchen.",
         actionPrompt: "Setze Sabines Verfügbarkeit auf 'Samstag 08:00–14:00 Uhr' und Kuchenspende 'Apfelkuchen'."
       },
       {
@@ -261,9 +261,9 @@ export const WBT_HELPER_CHAPTERS: WbtChapter[] = [
         totalSteps: 2,
         title: "Materialbestand & Bedarfe prüfen",
         subtitle: "Was wird gebraucht?",
-        explanation: "Jedes Material wird mit benötigter Stückzahl, aktuellem Status (vorhanden, geliehen, zu kaufen) und Standort gelistet. So weiß die Helferkoordination, was vor Ort bereitsteht.",
+        explanation: "Jedes Material wird mit benötigter Stückzahl, aktuellem Status (vorhanden, geliehen, zu kaufen), Standort und zuständiger Person gelistet. So weiß die Helferkoordination, was vor Ort bereitsteht und wer sich darum kümmert.",
         targetFocus: "Materialliste",
-        klemmiTip: "Ordne jedes Zelt und jeden Verbandskasten einem festen Ort zu – dann sucht am Sonntagmorgen niemand verzweifelt danach!",
+        klemmiTip: "Ordne jedes Zelt und jeden Verbandskasten einem festen Ort und direkt einer zuständigen Person zu – dann sucht am Sonntagmorgen niemand verzweifelt danach!",
         actionPrompt: "Sichte den Eintrag 'Absperrband 500m (Zielbereich)'."
       },
       {
@@ -290,7 +290,7 @@ export const WBT_HELPER_CHAPTERS: WbtChapter[] = [
     subtitle: "Buffet & Verpflegungsspenden steuern",
     iconName: "Gift",
     estimatedMinutes: 3,
-    description: "Kuchen-, Salat- und Verpflegungsspenden übersichtlich sammeln, Allergene kennzeichnen und Abgabezeiten planen.",
+    description: "Kuchen-, Salat- und Verpflegungsspenden übersichtlich sammeln, acht Eigenschaften kennzeichnen, Abgabezeiten planen und Buffet-Kärtchen drucken.",
     steps: [
       {
         id: "don-overview",
@@ -308,17 +308,17 @@ export const WBT_HELPER_CHAPTERS: WbtChapter[] = [
         stepNumber: 2,
         totalSteps: 2,
         title: "Allergene & Eigenschaften",
-        subtitle: "Vegan, nussfrei, glutenfrei",
-        explanation: "Durch die Eigenschaften-Badges (z. B. vegan, nussfrei) kann das Buffet-Team die Kuchen direkt korrekt beschildern. Das sorgt für höchste Sicherheit bei Gästen und Sportlern.",
+        subtitle: "Acht Kennzeichnungen und Buffet-Kärtchen",
+        explanation: "Durch die Eigenschaften-Badges vegan, vegetarisch, glutenfrei, laktosefrei, enthält Nüsse, zuckerfrei, enthält Alkohol und fleischhaltig kann das Buffet-Team jede Spende korrekt beschildern. Der PDF-Druck liefert zusätzlich passende, faltbare Buffet-Kärtchen.",
         targetFocus: "Allergen-Badges",
-        klemmiTip: "Klare Kennzeichnung am Buffet spart Rückfragen und schützt Allergiker!",
+        klemmiTip: "Klare Kennzeichnung am Buffet spart Rückfragen. Druck die Faltkärtchen direkt mit aus, dann steht alles gut lesbar an der richtigen Spende!",
         actionPrompt: "Prüfe den Eintrag 'Kirsch-Streuselkuchen (vegan, nussfrei)'."
       }
     ],
     klemmiSummary: {
       heading: "Klemmis Spenden-Tipp",
-      text: "Kuchenspenden finanzieren oft die gesamte Vereinskasse des Wochenendes! Eine saubere Erfassung mit Tag und Allergenen macht das Buffet-Team glücklich und die Kasse voll.",
-      takeaway: "Spenden mit Abgabetag und Allergen-Hinweisen erfassen."
+      text: "Kuchenspenden finanzieren oft die gesamte Vereinskasse des Wochenendes! Eine saubere Erfassung mit Tag, allen Eigenschaften und den passenden Faltkärtchen macht das Buffet-Team glücklich und die Kasse voll.",
+      takeaway: "Spenden mit Abgabetag, Eigenschaften und Buffet-Kärtchen erfassen."
     }
   },
   {
