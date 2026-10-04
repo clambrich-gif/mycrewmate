@@ -456,9 +456,12 @@ type CakeRow = {
   dropoffTime: string;
   legacyDropoffText: string;
   vegan: boolean;
+  vegetarian: boolean;
   glutenFree: boolean;
   lactoseFree: boolean;
   containsNuts: boolean;
+  sugarFree: boolean;
+  containsAlcohol: boolean;
   meat: boolean;
   note: string;
   sortOrder: number;
@@ -2078,6 +2081,10 @@ export function parseBackupWorkbook(
         `KUCHEN Zeile ${index + 2}: Abgabezeit`
       ),
       vegan: optionalBoolean(row.Vegan, `KUCHEN Zeile ${index + 2}: Vegan`),
+      vegetarian: optionalBoolean(
+        row.Vegetarisch,
+        `KUCHEN Zeile ${index + 2}: Vegetarisch`
+      ),
       glutenFree: optionalBoolean(
         row.Glutenfrei,
         `KUCHEN Zeile ${index + 2}: Glutenfrei`
@@ -2089,6 +2096,14 @@ export function parseBackupWorkbook(
       containsNuts: optionalBoolean(
         row["Enthält Nüsse"],
         `KUCHEN Zeile ${index + 2}: Enthält Nüsse`
+      ),
+      sugarFree: optionalBoolean(
+        row.Zuckerfrei,
+        `KUCHEN Zeile ${index + 2}: Zuckerfrei`
+      ),
+      containsAlcohol: optionalBoolean(
+        row["Enthält Alkohol"],
+        `KUCHEN Zeile ${index + 2}: Enthält Alkohol`
       ),
       meat: optionalBoolean(
         row.Fleischhaltig,
@@ -2432,9 +2447,12 @@ function comparableCurrent(snapshot: CurrentSnapshot) {
         "dropoffTime",
         "legacyDropoffText",
         "vegan",
+        "vegetarian",
         "glutenFree",
         "lactoseFree",
         "containsNuts",
+        "sugarFree",
+        "containsAlcohol",
         "meat",
         "note",
         "sortOrder",
@@ -3862,9 +3880,12 @@ export async function restoreProjectDocument(
           dropoffTime: row.dropoffTime,
           legacyDropoffText: row.legacyDropoffText,
           vegan: row.vegan,
+          vegetarian: row.vegetarian,
           glutenFree: row.glutenFree,
           lactoseFree: row.lactoseFree,
           containsNuts: row.containsNuts,
+          sugarFree: row.sugarFree,
+          containsAlcohol: row.containsAlcohol,
           meat: row.meat,
           note: row.note || null,
           sortOrder: row.sortOrder,
@@ -4292,9 +4313,12 @@ export async function exportProjectExcel(): Promise<{
       "Abgabetag / Datum": row.dropoffDate,
       "Abgabe-Uhrzeit": row.dropoffTime,
       Vegan: row.vegan,
+      Vegetarisch: row.vegetarian,
       Glutenfrei: row.glutenFree,
       Laktosefrei: row.lactoseFree,
       "Enthält Nüsse": row.containsNuts,
+      Zuckerfrei: row.sugarFree,
+      "Enthält Alkohol": row.containsAlcohol,
       Fleischhaltig: row.meat,
       Abgabezeit: row.legacyDropoffText,
       "Hinweise & Allergene": row.note,

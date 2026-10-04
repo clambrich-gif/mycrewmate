@@ -624,6 +624,13 @@
       "when": 1791123829243,
       "tag": "0088_perfect_boomer",
       "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "5",
+      "when": 1791128303175,
+      "tag": "0089_early_sasquatch",
+      "breakpoints": true
     }
   ]
 }

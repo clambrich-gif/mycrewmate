@@ -2790,9 +2790,12 @@ export function donationCategoryLabel(category: Cake["donationCategory"]) {
 function donationTraitText(donation: Cake) {
   const labels = [
     donation.vegan ? "Vegan" : null,
+    donation.vegetarian ? "Vegetarisch" : null,
     donation.glutenFree ? "Glutenfrei" : null,
     donation.lactoseFree ? "Laktosefrei" : null,
     donation.containsNuts ? "Enthält Nüsse" : null,
+    donation.sugarFree ? "Zuckerfrei" : null,
+    donation.containsAlcohol ? "Enthält Alkohol" : null,
     donation.meat ? "Fleischhaltig" : null,
   ].filter((label): label is string => Boolean(label));
   const note = donation.note?.trim();

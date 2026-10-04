@@ -113,9 +113,12 @@ type NewHelperDonation = {
   dropoffDate: string;
   dropoffTime: string;
   vegan: boolean;
+  vegetarian: boolean;
   glutenFree: boolean;
   lactoseFree: boolean;
   containsNuts: boolean;
+  sugarFree: boolean;
+  containsAlcohol: boolean;
   meat: boolean;
   note: string;
 };
@@ -146,9 +149,12 @@ const EMPTY_NEW_HELPER_DONATION: NewHelperDonation = {
   dropoffDate: "",
   dropoffTime: "",
   vegan: false,
+  vegetarian: false,
   glutenFree: false,
   lactoseFree: false,
   containsNuts: false,
+  sugarFree: false,
+  containsAlcohol: false,
   meat: false,
   note: "",
 };
@@ -174,16 +180,26 @@ const newHelperDonationCategories: Array<{
 const newHelperDonationTraits: Array<{
   key: keyof Pick<
     NewHelperDonation,
-    "vegan" | "glutenFree" | "lactoseFree" | "containsNuts" | "meat"
+    | "vegan"
+    | "vegetarian"
+    | "glutenFree"
+    | "lactoseFree"
+    | "containsNuts"
+    | "sugarFree"
+    | "containsAlcohol"
+    | "meat"
   >;
   label: string;
   activeClass: string;
 }> = [
-  { key: "vegan", label: "Vegan", activeClass: "border-emerald-400 bg-emerald-100 text-emerald-950" },
-  { key: "glutenFree", label: "Glutenfrei", activeClass: "border-amber-400 bg-amber-100 text-amber-950" },
-  { key: "lactoseFree", label: "Laktosefrei", activeClass: "border-sky-400 bg-sky-100 text-sky-950" },
-  { key: "containsNuts", label: "Enthält Nüsse", activeClass: "border-orange-400 bg-orange-100 text-orange-950" },
-  { key: "meat", label: "Fleischhaltig", activeClass: "border-rose-400 bg-rose-100 text-rose-950" },
+  { key: "vegan", label: "🌱 Vegan", activeClass: "border-emerald-400 bg-emerald-100 text-emerald-950" },
+  { key: "vegetarian", label: "🥦 Vegetarisch", activeClass: "border-lime-400 bg-lime-100 text-lime-950" },
+  { key: "glutenFree", label: "🌾 Glutenfrei", activeClass: "border-amber-400 bg-amber-100 text-amber-950" },
+  { key: "lactoseFree", label: "🥛 Laktosefrei", activeClass: "border-sky-400 bg-sky-100 text-sky-950" },
+  { key: "containsNuts", label: "🥜 Enthält Nüsse", activeClass: "border-orange-400 bg-orange-100 text-orange-950" },
+  { key: "sugarFree", label: "🍬 Zuckerfrei", activeClass: "border-pink-400 bg-pink-100 text-pink-950" },
+  { key: "containsAlcohol", label: "🍷 Enthält Alkohol", activeClass: "border-fuchsia-400 bg-fuchsia-100 text-fuchsia-950" },
+  { key: "meat", label: "🥩 Fleischhaltig", activeClass: "border-rose-400 bg-rose-100 text-rose-950" },
 ];
 
 function Sel({
@@ -2587,9 +2603,12 @@ export default function Helpers() {
                           {donorCakes.map(cake => {
                             const tags: string[] = [];
                             if (cake.vegan) tags.push("Vegan");
+                            if (cake.vegetarian) tags.push("Vegetarisch");
                             if (cake.glutenFree) tags.push("Glutenfrei");
                             if (cake.lactoseFree) tags.push("Laktosefrei");
                             if (cake.containsNuts) tags.push("Nüsse");
+                            if (cake.sugarFree) tags.push("Zuckerfrei");
+                            if (cake.containsAlcohol) tags.push("Alkohol");
                             if (cake.meat) tags.push("Fleisch");
                             return (
                               <div key={cake.id} className="flex flex-wrap items-center gap-1.5">

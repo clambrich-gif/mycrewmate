@@ -3113,9 +3113,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(cakes).toContain("Spende bearbeiten");
     expect(cakes).toContain("Kategorie");
     expect(cakes).toContain("🌱 Vegan");
+    expect(cakes).toContain("🥦 Vegetarisch");
     expect(cakes).toContain("🌾 Glutenfrei");
     expect(cakes).toContain("🥛 Laktosefrei");
-    expect(cakes).toContain("🌰 Enthält Nüsse");
+    expect(cakes).toContain("🥜 Enthält Nüsse");
+    expect(cakes).toContain("🍬 Zuckerfrei");
+    expect(cakes).toContain("🍷 Enthält Alkohol");
     expect(cakes).toContain("🥩 Fleischhaltig");
     expect(cakes).toContain("Hinweise zur Spende (optional)");
     expect(cakes).toContain("trpc.helpers.list.useQuery()");
@@ -3203,9 +3206,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain("Verpflegungsspenden");
     expect(dashboard).toContain("Spenden erfasst");
     expect(dashboard).toContain("🌱 Vegan");
+    expect(dashboard).toContain("🥦 Vegetarisch");
     expect(dashboard).toContain("🌾 Glutenfrei");
     expect(dashboard).toContain("🥛 Laktosefrei");
-    expect(dashboard).toContain("🌰 Nüsse");
+    expect(dashboard).toContain("🥜 Nüsse");
+    expect(dashboard).toContain("🍬 Zuckerfrei");
+    expect(dashboard).toContain("🍷 Alkohol");
     expect(dashboard).toContain("🥩 Fleischhaltig");
     expect(dashboard).toContain('category.id !== "sonstiges"');
     expect(dashboard).toContain("📦 Sonstiges:");

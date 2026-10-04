@@ -524,9 +524,12 @@ type DonationDashboardStats = {
   }>;
   eigenschaften: {
     vegan: number;
+    vegetarian: number;
     glutenFree: number;
     lactoseFree: number;
     containsNuts: number;
+    sugarFree: number;
+    containsAlcohol: number;
     meat: number;
   };
 };
@@ -695,6 +698,11 @@ function DonationSummaryCard({
       "border-emerald-200 bg-emerald-50 text-emerald-800",
     ],
     [
+      "🥦 Vegetarisch",
+      donations.eigenschaften.vegetarian,
+      "border-lime-200 bg-lime-50 text-lime-900",
+    ],
+    [
       "🌾 Glutenfrei",
       donations.eigenschaften.glutenFree,
       "border-amber-200 bg-amber-50 text-amber-900",
@@ -705,9 +713,19 @@ function DonationSummaryCard({
       "border-sky-200 bg-sky-50 text-sky-800",
     ],
     [
-      "🌰 Nüsse",
+      "🥜 Nüsse",
       donations.eigenschaften.containsNuts,
       "border-orange-200 bg-orange-50 text-orange-900",
+    ],
+    [
+      "🍬 Zuckerfrei",
+      donations.eigenschaften.sugarFree,
+      "border-pink-200 bg-pink-50 text-pink-900",
+    ],
+    [
+      "🍷 Alkohol",
+      donations.eigenschaften.containsAlcohol,
+      "border-fuchsia-200 bg-fuchsia-50 text-fuchsia-900",
     ],
     [
       "🥩 Fleischhaltig",

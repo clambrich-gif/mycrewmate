@@ -49,7 +49,7 @@ describe("Erst-Login-Onboarding", () => {
       "utf8"
     );
 
-    expect(onboarding).toContain('"welcome" | "klemmi" | "co_admin"');
+    expect(onboarding).toContain('"welcome" | "klemmi" | "wbt_choice" | "co_admin"');
     expect(onboarding).toContain('setStep("klemmi")');
     expect(onboarding).toContain("open={open && step === \"klemmi\"}");
     expect(onboarding).toContain("isCoAdmin={isCoAdmin}");

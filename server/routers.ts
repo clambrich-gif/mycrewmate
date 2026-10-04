@@ -4817,9 +4817,12 @@ export const appRouter = router({
               .or(z.literal(""))
               .optional(),
             vegan: z.boolean().default(false),
+            vegetarian: z.boolean().default(false),
             glutenFree: z.boolean().default(false),
             lactoseFree: z.boolean().default(false),
             containsNuts: z.boolean().default(false),
+            sugarFree: z.boolean().default(false),
+            containsAlcohol: z.boolean().default(false),
             meat: z.boolean().default(false),
             note: z.string().trim().max(1000).optional(),
           }),
@@ -5921,17 +5924,20 @@ export const appRouter = router({
             .regex(/^\d{4}-\d{2}-\d{2}$/, "Ungültiges Abgabedatum")
             .or(z.literal(""))
             .optional(),
-          dropoffTime: z
-            .string()
-            .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Ungültige Abgabe-Uhrzeit")
-            .or(z.literal(""))
-            .optional(),
-          vegan: z.boolean().default(false),
-          glutenFree: z.boolean().default(false),
-          lactoseFree: z.boolean().default(false),
-          containsNuts: z.boolean().default(false),
-          meat: z.boolean().default(false),
-          note: z.string().optional(),
+            dropoffTime: z
+              .string()
+              .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Ungültige Abgabe-Uhrzeit")
+              .or(z.literal(""))
+              .optional(),
+            vegan: z.boolean().default(false),
+            vegetarian: z.boolean().default(false),
+            glutenFree: z.boolean().default(false),
+            lactoseFree: z.boolean().default(false),
+            containsNuts: z.boolean().default(false),
+            sugarFree: z.boolean().default(false),
+            containsAlcohol: z.boolean().default(false),
+            meat: z.boolean().default(false),
+            note: z.string().optional(),
         })
       )
       .mutation(({ input }) => db.createCake(input)),
@@ -5950,17 +5956,20 @@ export const appRouter = router({
             .regex(/^\d{4}-\d{2}-\d{2}$/, "Ungültiges Abgabedatum")
             .or(z.literal(""))
             .optional(),
-          dropoffTime: z
-            .string()
-            .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Ungültige Abgabe-Uhrzeit")
-            .or(z.literal(""))
-            .optional(),
-          vegan: z.boolean().optional(),
-          glutenFree: z.boolean().optional(),
-          lactoseFree: z.boolean().optional(),
-          containsNuts: z.boolean().optional(),
-          meat: z.boolean().optional(),
-          note: z.string().nullable().optional(),
+            dropoffTime: z
+              .string()
+              .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Ungültige Abgabe-Uhrzeit")
+              .or(z.literal(""))
+              .optional(),
+            vegan: z.boolean().optional(),
+            vegetarian: z.boolean().optional(),
+            glutenFree: z.boolean().optional(),
+            lactoseFree: z.boolean().optional(),
+            containsNuts: z.boolean().optional(),
+            sugarFree: z.boolean().optional(),
+            containsAlcohol: z.boolean().optional(),
+            meat: z.boolean().optional(),
+            note: z.string().nullable().optional(),
         })
       )
       .mutation(({ input }) => {
@@ -6243,10 +6252,14 @@ export const appRouter = router({
           })),
           eigenschaften: {
             vegan: donations.filter(donation => donation.vegan).length,
+            vegetarian: donations.filter(donation => donation.vegetarian).length,
             glutenFree: donations.filter(donation => donation.glutenFree).length,
             lactoseFree: donations.filter(donation => donation.lactoseFree)
               .length,
             containsNuts: donations.filter(donation => donation.containsNuts)
+              .length,
+            sugarFree: donations.filter(donation => donation.sugarFree).length,
+            containsAlcohol: donations.filter(donation => donation.containsAlcohol)
               .length,
             meat: donations.filter(donation => donation.meat).length,
           },

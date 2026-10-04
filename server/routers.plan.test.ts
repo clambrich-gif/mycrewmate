@@ -2174,9 +2174,12 @@ describe("Planungs-API", () => {
       dropoffDate: "2026-06-20",
       dropoffTime: "11:30",
       vegan: false,
+      vegetarian: false,
       glutenFree: false,
       lactoseFree: true,
       containsNuts: true,
+      sugarFree: false,
+      containsAlcohol: false,
       meat: false,
       note: "Enthält Alkohol / Rum",
     });
@@ -2616,9 +2619,12 @@ describe("Planungs-API", () => {
       ],
       eigenschaften: {
         vegan: 2,
+        vegetarian: 0,
         glutenFree: 2,
         lactoseFree: 2,
         containsNuts: 1,
+        sugarFree: 0,
+        containsAlcohol: 0,
         meat: 2,
       },
     });

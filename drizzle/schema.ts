@@ -1566,11 +1566,14 @@ export const cakes = mysqlTable(
       .notNull(),
     /** Freiwillige Kennzeichnungen für die schnelle Ausgabe am Kuchenbuffet. */
     vegan: boolean("vegan").default(false).notNull(),
+    vegetarian: boolean("vegetarian").default(false).notNull(),
     glutenFree: boolean("glutenFree").default(false).notNull(),
     lactoseFree: boolean("lactoseFree").default(false).notNull(),
     containsNuts: boolean("containsNuts").default(false).notNull(),
+    sugarFree: boolean("sugarFree").default(false).notNull(),
+    containsAlcohol: boolean("containsAlcohol").default(false).notNull(),
     meat: boolean("meat").default(false).notNull(),
-    /** Freitext für zusätzliche Hinweise wie Alkohol oder konkrete Zutaten. */
+    /** Freitext für konkrete Zutaten, Absprachen oder ergänzende Hinweise. */
     note: text("note"),
     sortOrder: int("sortOrder").default(0).notNull(),
   },

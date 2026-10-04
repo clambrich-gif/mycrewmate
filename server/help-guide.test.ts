@@ -10,7 +10,7 @@ describe("Hilfe-Center: Rollenfilter und Live-Suche", () => {
     const chapters = getVisibleHelpChapters("all", "");
     const topicIds = chapters.flatMap(chapter => chapter.topics.map(topic => topic.id));
 
-    expect(chapters).toHaveLength(8);
+    expect(chapters).toHaveLength(9);
     expect(topicIds).toContain("dashboard-uebersicht");
     expect(topicIds).toContain("live-chat");
     expect(topicIds).not.toContain("einsatzplan");

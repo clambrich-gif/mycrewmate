@@ -68,9 +68,12 @@ type DonationRow = {
   dropoffTime: string;
   legacyDropoffText: string;
   vegan: boolean;
+  vegetarian: boolean;
   glutenFree: boolean;
   lactoseFree: boolean;
   containsNuts: boolean;
+  sugarFree: boolean;
+  containsAlcohol: boolean;
   meat: boolean;
   note: string | null;
 };
@@ -90,9 +93,12 @@ const EMPTY_DONATION_FORM: DonationForm = {
   dropoffDate: "",
   dropoffTime: "",
   vegan: false,
+  vegetarian: false,
   glutenFree: false,
   lactoseFree: false,
   containsNuts: false,
+  sugarFree: false,
+  containsAlcohol: false,
   meat: false,
   note: "",
 };
@@ -138,6 +144,12 @@ const traits = [
     activeClass: "border-emerald-400 bg-emerald-100 text-emerald-900",
   },
   {
+    key: "vegetarian",
+    label: "🥦 Vegetarisch",
+    tagClass: "border-lime-200 bg-lime-50 text-lime-900",
+    activeClass: "border-lime-400 bg-lime-100 text-lime-950",
+  },
+  {
     key: "glutenFree",
     label: "🌾 Glutenfrei",
     tagClass: "border-amber-200 bg-amber-50 text-amber-900",
@@ -151,9 +163,21 @@ const traits = [
   },
   {
     key: "containsNuts",
-    label: "🌰 Enthält Nüsse",
+    label: "🥜 Enthält Nüsse",
     tagClass: "border-orange-200 bg-orange-50 text-orange-900",
     activeClass: "border-orange-400 bg-orange-100 text-orange-950",
+  },
+  {
+    key: "sugarFree",
+    label: "🍬 Zuckerfrei",
+    tagClass: "border-pink-200 bg-pink-50 text-pink-900",
+    activeClass: "border-pink-400 bg-pink-100 text-pink-950",
+  },
+  {
+    key: "containsAlcohol",
+    label: "🍷 Enthält Alkohol",
+    tagClass: "border-fuchsia-200 bg-fuchsia-50 text-fuchsia-900",
+    activeClass: "border-fuchsia-400 bg-fuchsia-100 text-fuchsia-950",
   },
   {
     key: "meat",
@@ -417,9 +441,12 @@ export default function Cakes() {
       dropoffDate: row.dropoffDate,
       dropoffTime: row.dropoffTime,
       vegan: row.vegan,
+      vegetarian: row.vegetarian ?? false,
       glutenFree: row.glutenFree,
       lactoseFree: row.lactoseFree,
       containsNuts: row.containsNuts,
+      sugarFree: row.sugarFree ?? false,
+      containsAlcohol: row.containsAlcohol ?? false,
       meat: row.meat ?? false,
       note: row.note ?? "",
     });
@@ -443,9 +470,12 @@ export default function Cakes() {
       dropoffDate: form.dropoffDate,
       dropoffTime: form.dropoffTime.trim(),
       vegan: form.vegan,
+      vegetarian: form.vegetarian,
       glutenFree: form.glutenFree,
       lactoseFree: form.lactoseFree,
       containsNuts: form.containsNuts,
+      sugarFree: form.sugarFree,
+      containsAlcohol: form.containsAlcohol,
       meat: form.meat,
       note: form.note.trim() || null,
     };

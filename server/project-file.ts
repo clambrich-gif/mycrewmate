@@ -21,7 +21,7 @@ import { normalizeMaterialStatus } from "../shared/material-status";
 import { eventDateRangeError } from "../shared/event-dates";
 
 const PROJECT_FORMAT = "RSC-HELFERPLANUNG-PROJEKTDATEI";
-const PROJECT_VERSION = 17;
+const PROJECT_VERSION = 18;
 const MAX_PROJECT_BYTES = 10_000_000;
 const MAX_ROWS = 10_000;
 
@@ -256,9 +256,12 @@ const documentSchema = z
             .or(z.literal("")),
           legacyDropoffText: short(60),
           vegan: z.boolean().default(false),
+          vegetarian: z.boolean().default(false),
           glutenFree: z.boolean().default(false),
           lactoseFree: z.boolean().default(false),
           containsNuts: z.boolean().default(false),
+          sugarFree: z.boolean().default(false),
+          containsAlcohol: z.boolean().default(false),
           meat: z.boolean().default(false),
           note: short(10_000),
           sortOrder: z.number().int().min(0).max(1_000_000),
@@ -820,9 +823,12 @@ export function parseProjectFile(base64: string): {
           dropoffTime: "",
           legacyDropoffText: cake.dropoffTime ?? "",
           vegan: cake.vegan ?? false,
+          vegetarian: cake.vegetarian ?? false,
           glutenFree: cake.glutenFree ?? false,
           lactoseFree: cake.lactoseFree ?? false,
           containsNuts: cake.containsNuts ?? false,
+          sugarFree: cake.sugarFree ?? false,
+          containsAlcohol: cake.containsAlcohol ?? false,
           donationCategory: cake.donationCategory ?? "kuchen",
           meat: cake.meat ?? false,
         }))
@@ -847,6 +853,13 @@ export function parseProjectFile(base64: string): {
           dropoffDate: "",
           dropoffTime: "",
           legacyDropoffText: cake.dropoffTime ?? "",
+          vegan: cake.vegan ?? false,
+          vegetarian: cake.vegetarian ?? false,
+          glutenFree: cake.glutenFree ?? false,
+          lactoseFree: cake.lactoseFree ?? false,
+          containsNuts: cake.containsNuts ?? false,
+          sugarFree: cake.sugarFree ?? false,
+          containsAlcohol: cake.containsAlcohol ?? false,
           donationCategory: cake.donationCategory ?? "kuchen",
           meat: cake.meat ?? false,
         }))
@@ -866,6 +879,13 @@ export function parseProjectFile(base64: string): {
     legacy.cakes = Array.isArray(legacy.cakes)
       ? legacy.cakes.map((cake: Record<string, unknown>) => ({
           ...cake,
+          vegan: cake.vegan ?? false,
+          vegetarian: cake.vegetarian ?? false,
+          glutenFree: cake.glutenFree ?? false,
+          lactoseFree: cake.lactoseFree ?? false,
+          containsNuts: cake.containsNuts ?? false,
+          sugarFree: cake.sugarFree ?? false,
+          containsAlcohol: cake.containsAlcohol ?? false,
           donationCategory: cake.donationCategory ?? "kuchen",
           meat: cake.meat ?? false,
         }))
@@ -889,6 +909,34 @@ export function parseProjectFile(base64: string): {
       donationTargetSnack: 0,
       donationTargetSonstiges: 0,
     };
+    legacy.cakes = Array.isArray(legacy.cakes)
+      ? legacy.cakes.map((cake: Record<string, unknown>) => ({
+          ...cake,
+          vegetarian: cake.vegetarian ?? false,
+          sugarFree: cake.sugarFree ?? false,
+          containsAlcohol: cake.containsAlcohol ?? false,
+        }))
+      : legacy.cakes;
+  }
+  if (
+    raw &&
+    typeof raw === "object" &&
+    "metadata" in raw &&
+    raw.metadata &&
+    typeof raw.metadata === "object" &&
+    "version" in raw.metadata &&
+    raw.metadata.version === 17
+  ) {
+    const legacy = raw as Record<string, any>;
+    legacy.metadata = { ...legacy.metadata, version: PROJECT_VERSION };
+    legacy.cakes = Array.isArray(legacy.cakes)
+      ? legacy.cakes.map((cake: Record<string, unknown>) => ({
+          ...cake,
+          vegetarian: cake.vegetarian ?? false,
+          sugarFree: cake.sugarFree ?? false,
+          containsAlcohol: cake.containsAlcohol ?? false,
+        }))
+      : legacy.cakes;
   }
   if (
     raw &&
@@ -966,9 +1014,12 @@ export function parseProjectFile(base64: string): {
           dropoffTime: cake.dropoffTime ?? "",
           legacyDropoffText: cake.legacyDropoffText ?? "",
           vegan: cake.vegan ?? false,
+          vegetarian: cake.vegetarian ?? false,
           glutenFree: cake.glutenFree ?? false,
           lactoseFree: cake.lactoseFree ?? false,
           containsNuts: cake.containsNuts ?? false,
+          sugarFree: cake.sugarFree ?? false,
+          containsAlcohol: cake.containsAlcohol ?? false,
           donationCategory: cake.donationCategory ?? "kuchen",
           meat: cake.meat ?? false,
         }))
@@ -977,7 +1028,7 @@ export function parseProjectFile(base64: string): {
   const parsed = documentSchema.safeParse(raw);
   if (!parsed.success)
     throw new Error(
-      `Die Speicherdatei ist ungültig: ${parsed.error.issues[0]?.path.join(".") || "Struktur"}`
+      `Die Speicherdatei ist ungültig: ${parsed.error.issues.map(i => `${i.path.join(".")}: ${i.message}`).join(", ") || "Struktur"}`
     );
   const document = parsed.data as BackupDocument;
   document.metadata.activeDays = eventWeekdays(document.metadata.activeDays);
