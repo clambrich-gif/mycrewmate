@@ -674,6 +674,8 @@ export default function Plan() {
   const planReleasePreview = trpc.plan.releasePreview.useQuery();
   const initialEmailRecipients =
     planReleaseStatus.data?.initialEmailRecipients ?? [];
+  const pendingCorrectionRecipients =
+    planReleaseStatus.data?.pendingCorrectionRecipients ?? 0;
   const isMobileView = useMobileViewMode();
   const activeDays = useMemo(
     () => (currentEvent ? eventWeekdays(currentEvent.activeDays) : []),
@@ -2212,15 +2214,30 @@ export default function Plan() {
               </div>
               <div className="flex shrink-0 flex-wrap gap-2">
                 {!planReleaseStatus.data?.releasedAt ? (
-                  <Button
-                    type="button"
-                    onClick={() => setReleaseDialogOpen(true)}
-                    disabled={releasePlan.isPending || evals.length === 0}
-                    className="h-11 rounded-xl border-0 bg-gradient-to-r from-blue-600 to-sky-500 px-4 font-bold text-white shadow-md shadow-blue-200 transition hover:from-blue-700 hover:to-sky-600 active:scale-[0.98]"
-                  >
-                    <Send className="mr-2 size-4" aria-hidden="true" />
-                    Planfreigabe vorbereiten
-                  </Button>
+                  <>
+                    <Button
+                      type="button"
+                      onClick={() => setReleaseDialogOpen(true)}
+                      disabled={releasePlan.isPending || evals.length === 0}
+                      className="h-11 rounded-xl border-0 bg-gradient-to-r from-blue-600 to-sky-500 px-4 font-bold text-white shadow-md shadow-blue-200 transition hover:from-blue-700 hover:to-sky-600 active:scale-[0.98]"
+                    >
+                      <Send className="mr-2 size-4" aria-hidden="true" />
+                      Planfreigabe vorbereiten
+                    </Button>
+                    {pendingCorrectionRecipients > 0 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => sendReleaseCorrection.mutate()}
+                        disabled={sendReleaseCorrection.isPending}
+                        className="h-11 rounded-xl border-rose-300 bg-white font-bold text-rose-900 hover:bg-rose-50"
+                      >
+                        {sendReleaseCorrection.isPending
+                          ? "Korrekturhinweis wird gesendet …"
+                          : `Korrekturhinweis an ${pendingCorrectionRecipients} senden`}
+                      </Button>
+                    )}
+                  </>
                 ) : (
                   <>
                     {planReleaseStatus.data.pendingInitialRecipients > 0 && (
@@ -2247,7 +2264,7 @@ export default function Plan() {
                           : "Betroffene Ansprechpartner erinnern"}
                       </Button>
                     )}
-                    {planReleaseStatus.data.pendingCorrectionRecipients > 0 && (
+                    {pendingCorrectionRecipients > 0 && (
                       <Button
                         type="button"
                         variant="outline"
@@ -2257,7 +2274,7 @@ export default function Plan() {
                       >
                         {sendReleaseCorrection.isPending
                           ? "Korrekturhinweis wird gesendet …"
-                          : `Korrekturhinweis an ${planReleaseStatus.data.pendingCorrectionRecipients} senden`}
+                          : `Korrekturhinweis an ${pendingCorrectionRecipients} senden`}
                       </Button>
                     )}
                     <Button
