@@ -1934,12 +1934,19 @@ export async function updateTenantProductAssignmentForPlatformAdmin(input: {
   return database.transaction(async tx => {
     assertPackageAssignmentDates(input.startsOn, input.endsOn);
     const [tenantRow] = await tx
-      .select({ id: tenants.id })
+      .select({ id: tenants.id, name: tenants.name })
       .from(tenants)
       .where(eq(tenants.id, input.tenantId))
       .limit(1)
       .for("update");
     if (!tenantRow) throw new Error("Verein wurde nicht gefunden");
+
+    const [previousAssignment] = await tx
+      .select({ status: tenantProductAssignments.status })
+      .from(tenantProductAssignments)
+      .where(eq(tenantProductAssignments.tenantId, input.tenantId))
+      .limit(1)
+      .for("update");
 
     const eventId = input.eventId ?? null;
     if (input.packageId === "event_pass" && !eventId) {
@@ -1977,8 +1984,75 @@ export async function updateTenantProductAssignmentForPlatformAdmin(input: {
           internalNote: values.internalNote,
         },
       });
-    return values;
+    return {
+      ...values,
+      tenantName: tenantRow.name,
+      previousStatus: previousAssignment?.status ?? null,
+    };
   });
+}
+
+export type TenantAdministratorNotificationRecipient = {
+  name: string;
+  email: string;
+};
+
+/**
+ * Liefert ausschließlich die hinterlegten persönlichen Vereinsadmins und
+ * Co-Admins eines Vereins für eine transaktionale Statusinformation. Die
+ * Empfängerliste wird vor einer Archivierung gelesen, weil die Zugänge danach
+ * bewusst vollständig widerrufen werden.
+ */
+export async function listTenantAdministratorNotificationRecipients(
+  tenantId: string
+): Promise<TenantAdministratorNotificationRecipient[]> {
+  const database = await getDb();
+  if (!database) return [];
+
+  const [personalAdmins, coAdmins] = await Promise.all([
+    database
+      .select({ name: users.name, email: tenantAdminCredentials.email })
+      .from(tenantAdminCredentials)
+      .innerJoin(users, eq(users.id, tenantAdminCredentials.userId))
+      .innerJoin(
+        userTenantMemberships,
+        eq(userTenantMemberships.userId, tenantAdminCredentials.userId)
+      )
+      .where(
+        and(
+          eq(userTenantMemberships.tenantId, tenantId),
+          eq(userTenantMemberships.role, "tenant_admin"),
+          eq(userTenantMemberships.status, "active"),
+          eq(tenantAdminCredentials.status, "active")
+        )
+      ),
+    database
+      .select({ name: planningTeamAccesses.label, email: planningTeamAccesses.email })
+      .from(planningTeamAccesses)
+      .innerJoin(
+        planningTeamAccessEvents,
+        eq(planningTeamAccessEvents.accessId, planningTeamAccesses.id)
+      )
+      .innerJoin(events, eq(events.id, planningTeamAccessEvents.eventId))
+      .where(
+        and(
+          eq(events.tenantId, tenantId),
+          eq(planningTeamAccesses.isTenantAdmin, true),
+          isNotNull(planningTeamAccesses.email)
+        )
+      ),
+  ]);
+
+  const recipients = new Map<string, TenantAdministratorNotificationRecipient>();
+  for (const person of [...personalAdmins, ...coAdmins]) {
+    const email = person.email?.trim().toLocaleLowerCase("de-DE");
+    if (!email || recipients.has(email)) continue;
+    recipients.set(email, {
+      email,
+      name: person.name?.trim() || "Vereinsadministration",
+    });
+  }
+  return Array.from(recipients.values());
 }
 
 /**
@@ -2141,7 +2215,7 @@ export async function updateTenantLifecycleForPlatformAdmin(input: {
   const database = (await getDb()) as DB;
   return database.transaction(async tx => {
     const [target] = await tx
-      .select({ id: tenants.id })
+      .select({ id: tenants.id, name: tenants.name, status: tenants.status })
       .from(tenants)
       .where(eq(tenants.id, input.tenantId))
       .limit(1)
@@ -2155,7 +2229,12 @@ export async function updateTenantLifecycleForPlatformAdmin(input: {
     if (input.status === "archived") {
       await revokeArchivedTenantAccesses(tx, input.tenantId);
     }
-    return { tenantId: input.tenantId, status: input.status } as const;
+    return {
+      tenantId: input.tenantId,
+      tenantName: target.name,
+      status: input.status,
+      previousStatus: target.status,
+    } as const;
   });
 }
 

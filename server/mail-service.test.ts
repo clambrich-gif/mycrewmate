@@ -5,6 +5,7 @@ import {
   renderContractAcceptanceEmail,
   renderInvitationEmail,
   renderProductExpiryReminderEmail,
+  renderTenantAccessStatusEmail,
   sendTransactionalEmail,
 } from "./mail-service";
 
@@ -92,5 +93,26 @@ describe("Mail-Service (Hetzner SMTP & Transactional)", () => {
     expect(rendered.subject).toContain("Vertragsunterlagen digital bestätigt");
     expect(rendered.text).toContain("als PDF beigefügt");
     expect(rendered.html).toContain("als PDF beigefügt");
+  });
+
+  it("informiert Vereinsadministratoren verständlich über Pausierung und Archivierung", () => {
+    const paused = renderTenantAccessStatusEmail({
+      recipientName: "Max Muster",
+      tenantName: "Musterverein e. V.",
+      packageName: "Pro",
+      status: "paused",
+    });
+    const archived = renderTenantAccessStatusEmail({
+      recipientName: "Max Muster",
+      tenantName: "Musterverein e. V.",
+      status: "archived",
+    });
+
+    expect(paused.subject).toContain("pausiert");
+    expect(paused.text).toContain("Eine neue Anmeldung");
+    expect(paused.html).toContain("Musterverein e. V.");
+    expect(archived.subject).toContain("archiviert");
+    expect(archived.text).toContain("dreijährigen Aufbewahrungsfrist");
+    expect(archived.html).toContain("neue persönliche Zugänge");
   });
 });

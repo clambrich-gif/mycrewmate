@@ -92,6 +92,7 @@ describe("Master-Admin-Portal", () => {
 
   it("trennt archivierte Vereine von der laufenden Verwaltung und erlaubt nur eine bewusste Reaktivierung", () => {
     const db = source("server/db.ts");
+    const routers = source("server/routers.ts");
     const page = source("client/src/pages/MasterAdminPortal.tsx");
 
     expect(db).toContain('notEq(tenants.status, "archived")');
@@ -106,6 +107,23 @@ describe("Master-Admin-Portal", () => {
     expect(page).toContain("Alle Vereinsberechtigungen werden endgültig entfernt");
     expect(page).toContain("müssen sämtliche Zugänge bewusst neu vergeben werden");
     expect(page).toContain("utils.platformAdmin.accessInventory.invalidate()");
+    expect(routers).toContain("listTenantAdministratorNotificationRecipients(input.tenantId)");
+    expect(routers).toContain('status: updated.status === "archived" ? "archived" : "paused"');
+  });
+
+  it("benachrichtigt beim Pausieren nur nach einem erfolgreichen Statuswechsel alle hinterlegten Vereinsadmins", () => {
+    const db = source("server/db.ts");
+    const routers = source("server/routers.ts");
+    const page = source("client/src/pages/MasterAdminPortal.tsx");
+
+    expect(db).toContain("listTenantAdministratorNotificationRecipients");
+    expect(db).toContain("eq(planningTeamAccesses.isTenantAdmin, true)");
+    expect(routers).toContain("notifyTenantAdministratorsAboutAccessStatus");
+    expect(routers).toContain('input.status === "paused"');
+    expect(routers).toContain("updated.previousStatus !== \"paused\"");
+    expect(routers).toContain("assertTenantProductUsableForLogin");
+    expect(routers).toContain("await assertTenantProductUsableForLogin(tenantId)");
+    expect(page).toContain("Administratoren wurden per E-Mail informiert.");
   });
 
   it("trennt laufende Kennzahlen klar von archivierten Vereinen und deren Veranstaltungen", () => {

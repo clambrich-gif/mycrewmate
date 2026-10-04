@@ -523,20 +523,20 @@
 
 .klemmi-face-mouth {
   position: absolute;
-  /* Der bewegte Mund überdeckt das vorhandene Lächeln vollständig statt
-     darunter zu liegen. Dadurch bleibt während der Sprachausgabe genau ein
-     klarer, freundlicher Mund sichtbar. */
+  /* Aus dem Originalmotiv vermessene Mundfläche: Die Ebene liegt genau über
+     dem Lächeln. Das gilt durch Prozentwerte in jeder Klemmi-Größe – auch
+     auf Mobilgeräten – und verhindert sichtbare Ränder des Grundmundes. */
   top: 36.9%;
-  left: 42.8%;
-  width: 14.8%;
-  height: 10.2%;
+  left: 43.9%;
+  width: 12.2%;
+  height: 8.8%;
   overflow: hidden;
-  border: 1px solid rgb(20 58 112 / 18%);
-  border-radius: 48% 48% 58% 58%;
+  border: 1px solid rgb(20 58 112 / 14%);
+  border-radius: 49% 49% 56% 56%;
   background: #123d78;
   opacity: 0;
   pointer-events: none;
-  transform: scaleY(0.18);
+  transform: scaleY(0.94) scaleX(0.99);
   transform-origin: top center;
   will-change: transform, opacity;
 }
@@ -565,8 +565,9 @@
 }
 
 @keyframes klemmi-speaking-mouth {
-  0%, 100% { opacity: 0.88; transform: scaleY(0.42) scaleX(0.92); }
-  50% { opacity: 1; transform: scaleY(1) scaleX(1.04); }
+  /* Ruhiger, sprachähnlicher Impuls: kein hektisches Auf- und Zuklappen. */
+  0%, 100% { opacity: 0.96; transform: scaleY(0.93) scaleX(0.99); }
+  50% { opacity: 1; transform: scaleY(1) scaleX(1); }
 }
 
 .klemmi-trigger-mascot {
@@ -588,7 +589,7 @@
   }
 
   .klemmi-animated-mascot[data-klemmi-speaking="true"] .klemmi-face-mouth {
-    animation: klemmi-speaking-mouth 270ms cubic-bezier(0.77, 0, 0.175, 1) infinite;
+    animation: klemmi-speaking-mouth 620ms cubic-bezier(0.45, 0, 0.2, 1) infinite;
   }
 }
 

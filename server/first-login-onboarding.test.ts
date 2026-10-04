@@ -99,7 +99,10 @@ describe("Erst-Login-Onboarding", () => {
     expect(css).toContain("@keyframes klemmi-first-login-enter");
     expect(css).toContain("@keyframes klemmi-first-login-question-float");
     expect(css).toContain("@keyframes klemmi-speaking-mouth");
-    expect(css).toContain("Der bewegte Mund überdeckt das vorhandene Lächeln vollständig");
+    expect(css).toContain("Die Ebene liegt genau über");
+    expect(css).toContain("dem Lächeln");
+    expect(css).toContain("left: 43.9%");
+    expect(css).toContain("animation: klemmi-speaking-mouth 620ms");
     expect(css).toContain(".klemmi-guide-mascot");
     expect(css).toContain("bottom: calc(100% - 0.65rem)");
     expect(css).toContain("@media (max-width: 639px)");

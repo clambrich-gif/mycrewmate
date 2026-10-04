@@ -1090,7 +1090,10 @@ export default function MasterAdminPortal() {
       await utils.platformAdmin.tenantOverview.invalidate();
       setProductModalTenant(null);
       setProductAssignmentForm(null);
-      toast.success(`${PRODUCT_PACKAGE_META[result.packageId].name} wurde für den Verein gespeichert.`);
+      const notificationHint = result.notification.recipientCount
+        ? ` ${result.notification.deliveredCount}/${result.notification.recipientCount} Administratoren wurden per E-Mail informiert.`
+        : "";
+      toast.success(`${PRODUCT_PACKAGE_META[result.packageId].name} wurde für den Verein gespeichert.${notificationHint}`);
     },
     onError: error => toast.error(error.message),
   });
@@ -1103,7 +1106,10 @@ export default function MasterAdminPortal() {
         utils.platformAdmin.tenantOverview.invalidate(),
         utils.platformAdmin.accessInventory.invalidate(),
       ]);
-      toast.success(`Vereinsstatus wurde auf „${STATUS_META[result.status].label}“ gesetzt.`);
+      const notificationHint = result.notification.recipientCount
+        ? ` ${result.notification.deliveredCount}/${result.notification.recipientCount} Administratoren wurden per E-Mail informiert.`
+        : "";
+      toast.success(`Vereinsstatus wurde auf „${STATUS_META[result.status].label}“ gesetzt.${notificationHint}`);
     },
     onError: error => toast.error(error.message),
   });

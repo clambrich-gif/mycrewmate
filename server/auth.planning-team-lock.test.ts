@@ -14,6 +14,8 @@ const dbMocks = vi.hoisted(() => ({
   getUserByOpenId: vi.fn(),
   resolveTenantForUser: vi.fn(),
   getPlanningTeamAccessTenantId: vi.fn(),
+  getTenantProductEntitlement: vi.fn(),
+  getCurrentTenantProductEntitlement: vi.fn(),
 }));
 const presenceMocks = vi.hoisted(() => ({
   getOnlinePresenceCounts: vi.fn(),
@@ -91,6 +93,8 @@ describe("DoS-Schutz und manuelle Sperre für das Planungsteam", () => {
     dbMocks.recordActivityLog.mockResolvedValue(undefined);
     dbMocks.getTenantAdminCredentialsByEmail.mockResolvedValue(undefined);
     dbMocks.getPlanningTeamAccessTenantId.mockResolvedValue("rsc-eifelland-mayen");
+    dbMocks.getTenantProductEntitlement.mockResolvedValue({ isUsable: true });
+    dbMocks.getCurrentTenantProductEntitlement.mockResolvedValue({ isUsable: true });
     dbMocks.listPlanningTeamAccessCredentialsByEmail.mockResolvedValue([{
       id: 1,
       label: "Team",
@@ -181,6 +185,27 @@ describe("DoS-Schutz und manuelle Sperre für das Planungsteam", () => {
     ).rejects.toMatchObject({
       code: "TOO_MANY_REQUESTS",
       message: expect.stringContaining("durch einen Administrator gesperrt"),
+    });
+    expect(sdkMocks.createSessionToken).not.toHaveBeenCalled();
+  });
+
+  it("stellt bei einem zentral pausierten Paket trotz korrektem Passwort keine neue Planungsteamsitzung aus", async () => {
+    dbMocks.getSecuritySettings.mockResolvedValue({
+      passwordHash,
+      planningTeamFailedAttempts: 0,
+      planningTeamLocked: false,
+    });
+    dbMocks.getTenantProductEntitlement.mockResolvedValue({ isUsable: false });
+
+    const caller = appRouter.createCaller(context(null, "10.0.0.1"));
+    await expect(
+      caller.auth.passwordLogin({
+        email: "team@example.invalid",
+        password: "Richtiges-Planungsteam-Passwort!",
+      })
+    ).rejects.toMatchObject({
+      code: "FORBIDDEN",
+      message: expect.stringContaining("pausiert oder abgelaufen"),
     });
     expect(sdkMocks.createSessionToken).not.toHaveBeenCalled();
   });

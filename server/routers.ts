@@ -155,6 +155,7 @@ import {
   renderInvitationEmail,
   renderMasterPasswordResetEmail,
   renderPlanningTeamInvitationEmail,
+  renderTenantAccessStatusEmail,
   sendTransactionalEmail,
   type SendMailOptions,
 } from "./mail-service";
@@ -240,6 +241,41 @@ async function safelySubmitInvitationEmail(options: SendMailOptions) {
     console.warn("[Mail] Einladung konnte nicht an den SMTP-Server übergeben werden.");
     return false;
   }
+}
+
+/** Informiert alle vor dem Statuswechsel ermittelten Vereinsadministratoren. */
+async function notifyTenantAdministratorsAboutAccessStatus(input: {
+  recipients: Array<{ name: string; email: string }>;
+  tenantName: string;
+  status: "paused" | "archived";
+  packageName?: string;
+}) {
+  const deliveries = await Promise.all(
+    input.recipients.map(async recipient => {
+      const content = renderTenantAccessStatusEmail({
+        recipientName: recipient.name,
+        tenantName: input.tenantName,
+        status: input.status,
+        packageName: input.packageName,
+      });
+      return safelySubmitInvitationEmail({ to: recipient.email, ...content });
+    })
+  );
+  return {
+    recipientCount: input.recipients.length,
+    deliveredCount: deliveries.filter(Boolean).length,
+  };
+}
+
+/** Verhindert neue Sitzungen, wenn das Paket zentral pausiert oder abgelaufen ist. */
+async function assertTenantProductUsableForLogin(tenantId: string) {
+  const entitlement = await db.getTenantProductEntitlement(tenantId);
+  if (entitlement.isUsable) return;
+  throw new TRPCError({
+    code: "FORBIDDEN",
+    message:
+      "Der Vereinszugang ist aktuell pausiert oder abgelaufen. Bitte wenden Sie sich an die Plattformverwaltung.",
+  });
 }
 
 /** Begrenzt anonyme Reset-Anfragen, ohne die Inhaberadresse preiszugeben. */
@@ -1953,6 +1989,11 @@ export const appRouter = router({
               message: "E-Mail oder Passwort ist nicht korrekt",
             });
           }
+          const loginTenantId = await tenantIdForFreshPersonalLogin({
+            id: adminCreds.userId,
+            openId: adminCreds.userOpenId,
+          });
+          await assertTenantProductUsableForLogin(loginTenantId);
           const mfa = await db.getTenantAdminMfaConfigurationByUserId(
             adminCreds.userId
           );
@@ -2070,6 +2111,7 @@ export const appRouter = router({
             message: "Für diesen Planungsteam-Zugang ist keine Veranstaltung freigegeben.",
           });
         }
+        await assertTenantProductUsableForLogin(tenantId);
         const startEvent = await startEventForFreshPlanningTeamLogin(
           matchingAccess.id,
           tenantId
@@ -2141,6 +2183,11 @@ export const appRouter = router({
               message: "Der Sicherheitscode ist nicht korrekt.",
             });
           }
+          const tenantId = await tenantIdForFreshPersonalLogin({
+            id: credentials.userId,
+            openId: credentials.userOpenId,
+          });
+          await assertTenantProductUsableForLogin(tenantId);
           if (
             usesRecoveryCode &&
             !(await db.consumeTenantAdminMfaRecoveryCode({
@@ -2161,10 +2208,6 @@ export const appRouter = router({
                 "Die Sicherheitsabfrage ist abgelaufen oder wurde bereits verwendet. Bitte melden Sie sich erneut an.",
             });
           }
-          const tenantId = await tenantIdForFreshPersonalLogin({
-            id: credentials.userId,
-            openId: credentials.userOpenId,
-          });
           const sessionName = credentials.userName ?? credentials.email;
           await recordSecurityActivity(
             {
@@ -2823,6 +2866,11 @@ export const appRouter = router({
               message: "E-Mail oder Passwort ist nicht korrekt",
             });
           }
+          const loginTenantId = await tenantIdForFreshPersonalLogin({
+            id: adminCreds.userId,
+            openId: adminCreds.userOpenId,
+          });
+          await assertTenantProductUsableForLogin(loginTenantId);
           const mfa = await db.getTenantAdminMfaConfigurationByUserId(
             adminCreds.userId
           );
@@ -3905,7 +3953,29 @@ export const appRouter = router({
           internalNote: z.string().trim().max(2_000).nullable().optional(),
         })
       )
-      .mutation(({ input }) => db.updateTenantProductAssignmentForPlatformAdmin(input)),
+      .mutation(async ({ ctx, input }) => {
+        const recipients =
+          input.status === "paused"
+            ? await db.listTenantAdministratorNotificationRecipients(input.tenantId)
+            : [];
+        const updated = await db.updateTenantProductAssignmentForPlatformAdmin(input);
+        const notification =
+          input.status === "paused" && updated.previousStatus !== "paused"
+            ? await notifyTenantAdministratorsAboutAccessStatus({
+                recipients,
+                tenantName: updated.tenantName,
+                status: "paused",
+                packageName: PRODUCT_PACKAGE_META[updated.packageId].name,
+              })
+            : { recipientCount: 0, deliveredCount: 0 };
+        await recordSecurityActivity(
+          auditActor(ctx.user),
+          `Paketstatus für „${updated.tenantName}“ auf „${updated.status}“ gesetzt${notification.recipientCount ? `; ${notification.deliveredCount}/${notification.recipientCount} Administratoren informiert` : ""}`,
+          "updated",
+          null
+        );
+        return { ...updated, notification };
+      }),
     updateTenantLifecycle: masterAdminProcedure
       .input(
         z.object({
@@ -3914,7 +3984,30 @@ export const appRouter = router({
           status: z.enum(["pilot", "sample", "suspended", "archived"]),
         })
       )
-      .mutation(({ input }) => db.updateTenantLifecycleForPlatformAdmin(input)),
+      .mutation(async ({ ctx, input }) => {
+        const shouldNotify = input.status === "suspended" || input.status === "archived";
+        // Beim Archivieren sind die persönlichen Zugänge nach dem Update bewusst
+        // gelöscht. Deshalb muss die Empfängerliste vor dem Statuswechsel stehen.
+        const recipients = shouldNotify
+          ? await db.listTenantAdministratorNotificationRecipients(input.tenantId)
+          : [];
+        const updated = await db.updateTenantLifecycleForPlatformAdmin(input);
+        const notification =
+          shouldNotify && updated.previousStatus !== updated.status
+            ? await notifyTenantAdministratorsAboutAccessStatus({
+                recipients,
+                tenantName: updated.tenantName,
+                status: updated.status === "archived" ? "archived" : "paused",
+              })
+            : { recipientCount: 0, deliveredCount: 0 };
+        await recordSecurityActivity(
+          auditActor(ctx.user),
+          `Vereinsstatus für „${updated.tenantName}“ auf „${updated.status}“ gesetzt${notification.recipientCount ? `; ${notification.deliveredCount}/${notification.recipientCount} Administratoren informiert` : ""}`,
+          "updated",
+          null
+        );
+        return { ...updated, notification };
+      }),
     deleteInternalTestTenant: masterAdminProcedure
       .input(
         z.object({

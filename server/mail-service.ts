@@ -273,6 +273,59 @@ Ihr MyCrewMate-Team`;
   return { subject, text, html };
 }
 
+/** Verständliche Information an alle hinterlegten Vereinsadministratoren. */
+export function renderTenantAccessStatusEmail(params: {
+  recipientName: string;
+  tenantName: string;
+  status: "paused" | "archived";
+  packageName?: string;
+}): { subject: string; text: string; html: string } {
+  const isArchived = params.status === "archived";
+  const subject = isArchived
+    ? `Vereinszugang archiviert · ${params.tenantName} · MyCrewMate`
+    : `Vereinszugang pausiert · ${params.tenantName} · MyCrewMate`;
+  const action = isArchived ? "archiviert" : "vorübergehend pausiert";
+  const packageHint = params.packageName ? ` für das Paket ${params.packageName}` : "";
+  const body = isArchived
+    ? `Der Vereinszugang für ${params.tenantName} wurde ${action}. Die bisherigen persönlichen Zugänge und Einladungen sind damit deaktiviert.
+
+Die Veranstaltungs- und Planungsdaten bleiben erhalten. Der Verein kann innerhalb der regulären dreijährigen Aufbewahrungsfrist durch die Plattformverwaltung wieder aktiviert werden; anschließend werden neue persönliche Zugänge vergeben und die vorhandenen Daten können weiterverwendet werden.`
+    : `Der Vereinszugang für ${params.tenantName}${packageHint} wurde ${action}. Eine neue Anmeldung und die Nutzung der Planung sind im Moment nicht möglich.
+
+Die Veranstaltungs- und Planungsdaten bleiben unverändert erhalten. Sobald die Plattformverwaltung den Zugang wieder aktiviert, ist die Nutzung wieder möglich.`;
+  const actionTitle = isArchived ? "Zugang archiviert" : "Zugang pausiert";
+  const accent = isArchived ? "#475569" : "#9a3412";
+  const background = isArchived ? "#f1f5f9" : "#fff7ed";
+  const border = isArchived ? "#cbd5e1" : "#fed7aa";
+  const htmlBody = isArchived
+    ? `Der Vereinszugang für <strong>${params.tenantName}</strong> wurde archiviert. Die bisherigen persönlichen Zugänge und Einladungen sind damit deaktiviert.<br><br>Die Veranstaltungs- und Planungsdaten bleiben erhalten. Der Verein kann innerhalb der regulären dreijährigen Aufbewahrungsfrist durch die Plattformverwaltung wieder aktiviert werden; anschließend werden neue persönliche Zugänge vergeben und die vorhandenen Daten können weiterverwendet werden.`
+    : `Der Vereinszugang für <strong>${params.tenantName}</strong>${params.packageName ? ` für das Paket <strong>${params.packageName}</strong>` : ""} wurde vorübergehend pausiert. Eine neue Anmeldung und die Nutzung der Planung sind im Moment nicht möglich.<br><br>Die Veranstaltungs- und Planungsdaten bleiben unverändert erhalten. Sobald die Plattformverwaltung den Zugang wieder aktiviert, ist die Nutzung wieder möglich.`;
+  const text = `Hallo ${params.recipientName},
+
+${body}
+
+Bei Fragen antworten Sie einfach auf diese E-Mail.
+
+Freundliche Grüße
+Ihr MyCrewMate-Team`;
+  const html = `<!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8"><title>${subject}</title></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#1e293b;background:#f8fafc;margin:0;padding:24px;">
+  <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:32px;box-shadow:0 1px 3px rgba(15,23,42,.08);">
+    <h1 style="font-size:20px;color:#0f172a;margin:0 0 6px;">MyCrewMate</h1>
+    <p style="font-size:13px;color:#64748b;margin:0 0 24px;">Vereins- &amp; Eventplanung</p>
+    <p>Hallo <strong>${params.recipientName}</strong>,</p>
+    <div style="margin:24px 0;padding:16px 18px;border-radius:10px;background:${background};border:1px solid ${border};color:${accent};">
+      <strong>${actionTitle}</strong><br>${htmlBody}
+    </div>
+    <p style="font-size:13px;color:#475569;">Bei Fragen antworten Sie einfach auf diese E-Mail.</p>
+    <hr style="border:0;border-top:1px solid #e2e8f0;margin:24px 0;">
+    <p style="font-size:12px;color:#64748b;margin:0;">MyCrewMate · Vereins- &amp; Eventplanung</p>
+  </div>
+</body></html>`;
+  return { subject, text, html };
+}
+
 /** Ein neutraler, nur einmal nutzbarer Link für den Masterzugang. */
 export function renderMasterPasswordResetEmail(params: {
   resetUrl: string;
