@@ -172,8 +172,27 @@ const HELP_CHAPTERS: HelpChapter[] = [
     accent: "border-blue-200 bg-blue-50 text-blue-800",
     topics: [
       {
+        id: "helfer-schnellstart-video",
+        title: "1.1 Schnellstart: Helfer sicher anlegen und koordinieren",
+        audience: ["all"],
+        keywords: "helfer schnellstart koordinieren handy kommunikation verfügbarkeit einsatzplan",
+        summary:
+          "Dieses kurze Einstiegsvideo zeigt den gesamten Grundablauf: Helfer frühzeitig erfassen, Kontakt und Verfügbarkeit klären, den Einsatzplan abwarten und anschließend verbindlich rückmelden lassen. Es eignet sich auch als gemeinsame Orientierung auf dem Smartphone.",
+        steps: [
+          "Video ansehen und den Ablauf für die Helferkoordination kennenlernen.",
+          "Helfer unabhängig vom späteren Einsatzplan frühzeitig kontaktieren und ihre Rückmeldung erfassen.",
+          "Nach der Einsatzplanung den persönlichen Helferplan versenden und Bestätigungen im System dokumentieren.",
+        ],
+        video: {
+          src: "/api/help/training-video",
+          ariaLabel: "MyCrewMate-Schulung zum Anlegen und Koordinieren von Helfern",
+          caption:
+            "Schnellstartvideo: Helfer erfassen, Rückmeldungen einholen und die Koordination nachvollziehbar organisieren.",
+        },
+      },
+      {
         id: "dashboard-uebersicht",
-        title: "1.1 Erste Schritte & Dashboard-Übersicht",
+        title: "1.2 Erste Schritte & Dashboard-Übersicht",
         audience: ["all"],
         keywords: "dashboard veranstaltungsjahr event auswahl kennzahlen prioritaeten",
         summary:
@@ -198,7 +217,7 @@ const HELP_CHAPTERS: HelpChapter[] = [
       },
       {
         id: "vorfreude-widget",
-        title: "1.2 Vorfreude-Widget: Countdown bis zum Eventstart",
+        title: "1.3 Vorfreude-Widget: Countdown bis zum Eventstart",
         audience: ["all"],
         keywords: "countdown widget vorfreude morgen heute eventstart tage",
         summary:
@@ -212,7 +231,7 @@ const HELP_CHAPTERS: HelpChapter[] = [
       },
       {
         id: "pwa-installation",
-        title: "1.3 MyCrewMate auf dem Smartphone speichern",
+        title: "1.4 MyCrewMate auf dem Smartphone speichern",
         audience: ["all"],
         keywords: "pwa ios android iphone ipad chrome safari app handy speichern home bildschirm",
         summary:
@@ -231,7 +250,7 @@ const HELP_CHAPTERS: HelpChapter[] = [
       },
       {
         id: "navigation",
-        title: "1.4 Navigation & Hauptmenü",
+        title: "1.5 Navigation & Hauptmenü",
         audience: ["all"],
         keywords: "navigation seitenleiste mobil menue filter schnellzugriff",
         summary:

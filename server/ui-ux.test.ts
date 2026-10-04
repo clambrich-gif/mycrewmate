@@ -3103,6 +3103,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(materials).not.toContain("sortableAndFilterable");
     expect(taskGeneric).toContain('headerLayout?: "default" | "stacked"');
     expect(taskGeneric).toContain("createButtonClassName?: string");
+    expect(taskGeneric).toContain('w-[148px]');
     expect(materials).toContain('data-klemmi-target="materials-responsible"');
     expect(taskGeneric).toContain("filterConfig?: {");
     expect(taskGeneric).toContain("Alle {filterConfig.categoryLabel}");

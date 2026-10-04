@@ -7291,18 +7291,38 @@ export async function ensureContactForHelperId(helperId: number): Promise<number
   return null;
 }
 
-async function scopedContactValues(values: Record<string, unknown>) {
-  if (
-    !("contactId" in values) ||
-    values.contactId === null ||
-    values.contactId === undefined ||
-    values.contactId === ""
-  ) {
-    return { ...values, contactId: null };
+/**
+ * Unterscheidet bewusst zwischen einer ausgelassenen und einer ausdrücklich
+ * aufgehobenen Zuordnung. Teilupdates wie ein Statuswechsel dürfen eine
+ * bestehende Zuständigkeit niemals stillschweigend löschen.
+ */
+export function normalizeOptionalReferenceValue(
+  values: Record<string, unknown>,
+  key: "contactId" | "helperId"
+) {
+  if (!(key in values)) return values;
+
+  const value = values[key];
+  if (value === null || value === undefined || value === "") {
+    return { ...values, [key]: null };
   }
-  const contactId = Number(values.contactId);
+
+  const id = Number(value);
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    return { ...values, [key]: null };
+  }
+
+  return values;
+}
+
+async function scopedContactValues(values: Record<string, unknown>) {
+  const normalizedValues = normalizeOptionalReferenceValue(values, "contactId");
+  if (!("contactId" in normalizedValues) || normalizedValues.contactId === null) {
+    return normalizedValues;
+  }
+  const contactId = Number(normalizedValues.contactId);
   if (!Number.isSafeInteger(contactId) || contactId <= 0) {
-    return { ...values, contactId: null };
+    return { ...normalizedValues, contactId: null };
   }
   const db = (await getDb()) as DB;
   const [contact] = await db
@@ -7315,7 +7335,7 @@ async function scopedContactValues(values: Record<string, unknown>) {
       "Der Ansprechpartner gehört nicht zur ausgewählten Veranstaltung"
     );
   }
-  return values;
+  return normalizedValues;
 }
 
 /**
@@ -7323,17 +7343,13 @@ async function scopedContactValues(values: Record<string, unknown>) {
  * bewusst keinen Ansprechpartner und hält die Aufgabenverantwortung eindeutig.
  */
 async function scopedTaskHelperValues(values: Record<string, unknown>) {
-  if (
-    !("helperId" in values) ||
-    values.helperId === null ||
-    values.helperId === undefined ||
-    values.helperId === ""
-  ) {
-    return { ...values, helperId: null };
+  const normalizedValues = normalizeOptionalReferenceValue(values, "helperId");
+  if (!("helperId" in normalizedValues) || normalizedValues.helperId === null) {
+    return normalizedValues;
   }
-  const helperId = Number(values.helperId);
+  const helperId = Number(normalizedValues.helperId);
   if (!Number.isSafeInteger(helperId) || helperId <= 0) {
-    return { ...values, helperId: null };
+    return { ...normalizedValues, helperId: null };
   }
   const db = (await getDb()) as DB;
   const [helper] = await db
@@ -7344,7 +7360,7 @@ async function scopedTaskHelperValues(values: Record<string, unknown>) {
   if (!helper) {
     throw new Error("Der Helfer gehört nicht zur ausgewählten Veranstaltung");
   }
-  return values;
+  return normalizedValues;
 }
 
 type LogbookTaskRow = {

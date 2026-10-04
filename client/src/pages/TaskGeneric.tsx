@@ -1246,7 +1246,7 @@ export default function TaskGeneric({
                             })
                           }
                         >
-                          <SelectTrigger className="h-8 w-[110px]">
+                          <SelectTrigger className="h-8 w-[148px]">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -1348,7 +1348,7 @@ export default function TaskGeneric({
                             update.mutate({ id: row.id, [extraField.key]: value })
                           }
                         >
-                          <SelectTrigger className="h-8 w-[116px] border-slate-200 bg-slate-50 text-xs font-medium">
+                          <SelectTrigger className="h-8 w-[148px] border-slate-200 bg-slate-50 text-xs font-medium">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>

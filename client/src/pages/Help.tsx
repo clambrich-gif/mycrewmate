@@ -17,8 +17,6 @@ import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import { ArrowRight, BookOpen, GraduationCap, Play, Search, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 
-const HELPER_TRAINING_VIDEO_URL = "/api/help/training-video";
-
 export default function Help() {
   const { user } = useAuth();
   const { isTenantAdmin } = useTenantAdministration();
@@ -78,27 +76,6 @@ export default function Help() {
           </div>
         </div>
       </header>
-
-      <Card className="overflow-hidden border-blue-200 bg-white shadow-sm">
-        <CardContent className="p-0">
-          <div className="border-b border-blue-100 bg-gradient-to-r from-blue-50 via-white to-orange-50 px-4 py-4 sm:px-5">
-            <h2 className="text-base font-semibold text-slate-950 sm:text-lg">
-              Helfer sicher anlegen und koordinieren
-            </h2>
-          </div>
-          <div className="bg-slate-950 p-2 sm:p-3">
-            <video
-              controls
-              preload="metadata"
-              className="aspect-video w-full rounded-lg bg-slate-950 shadow-sm"
-              aria-label="MyCrewMate-Schulung zum Anlegen und Koordinieren von Helfern"
-            >
-              <source src={HELPER_TRAINING_VIDEO_URL} type="video/mp4" />
-              Ihr Browser unterstützt die Wiedergabe dieses Schulungsvideos nicht.
-            </video>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* WBT-Lernwerkstatt Schnellzugriff */}
       <Card className="overflow-hidden border-2 border-cyan-200 bg-gradient-to-r from-cyan-50 via-white to-blue-50 shadow-sm">

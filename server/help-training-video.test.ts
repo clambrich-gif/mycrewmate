@@ -6,25 +6,28 @@ const source = (relativePath: string) =>
   readFileSync(path.resolve(process.cwd(), relativePath), "utf8");
 
 describe("Schulungsvideo im Hilfe-Center", () => {
-  it("zeigt das Helferschulungsvideo als ersten Inhalt direkt nach dem Hilfe-Einstieg", () => {
+  it("ordnet das Helferschulungsvideo dem ersten Schnellstartthema zu", () => {
     const help = source("client/src/pages/Help.tsx");
-    const headerEnd = help.indexOf("</header>");
-    const videoCard = help.indexOf("Helfer sicher anlegen und koordinieren");
-    const knowledgeCard = help.indexOf("Das passende Wissen direkt finden");
+    const guide = source("client/src/components/HelpGuide.tsx");
+    const quickStart = guide.indexOf('id: "schnellstart"');
+    const videoTopic = guide.indexOf('id: "helfer-schnellstart-video"');
+    const dashboardTopic = guide.indexOf('id: "dashboard-uebersicht"');
 
-    expect(videoCard).toBeGreaterThan(headerEnd);
-    expect(videoCard).toBeLessThan(knowledgeCard);
-    expect(help).toContain("<video");
-    expect(help).toContain("controls");
-    expect(help).toContain('preload="metadata"');
-    expect(help).toContain("MyCrewMate-Schulung zum Anlegen und Koordinieren von Helfern");
+    expect(videoTopic).toBeGreaterThan(quickStart);
+    expect(videoTopic).toBeLessThan(dashboardTopic);
+    expect(guide).toContain("1.1 Schnellstart: Helfer sicher anlegen und koordinieren");
+    expect(guide).toContain("<video");
+    expect(guide).toContain("controls");
+    expect(guide).toContain('preload="metadata"');
+    expect(guide).toContain("MyCrewMate-Schulung zum Anlegen und Koordinieren von Helfern");
+    expect(help).not.toContain("HELPER_TRAINING_VIDEO_URL");
   });
 
   it("verwendet die same-origin Streamingroute als MP4-Quelle", () => {
-    const help = source("client/src/pages/Help.tsx");
+    const guide = source("client/src/components/HelpGuide.tsx");
 
-    expect(help).toContain('"/api/help/training-video"');
-    expect(help).toContain('type="video/mp4"');
+    expect(guide).toContain('"/api/help/training-video"');
+    expect(guide).toContain('type="video/mp4"');
   });
 
   it("führt die Administratorenschulung als eigenen Hilfe-Menüpunkt mit Videostream", () => {
