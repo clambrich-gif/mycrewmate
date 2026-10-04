@@ -671,6 +671,9 @@ export default function Plan() {
     trpc.events.current.useQuery();
   const { data: areaContactRows = [] } = trpc.plan.areaContacts.useQuery();
   const planReleaseStatus = trpc.plan.releaseStatus.useQuery();
+  const planReleasePreview = trpc.plan.releasePreview.useQuery();
+  const initialEmailRecipients =
+    planReleaseStatus.data?.initialEmailRecipients ?? [];
   const isMobileView = useMobileViewMode();
   const activeDays = useMemo(
     () => (currentEvent ? eventWeekdays(currentEvent.activeDays) : []),
@@ -923,8 +926,10 @@ export default function Plan() {
     onSuccess: async result => {
       await Promise.all([
         utils.plan.releaseStatus.invalidate(),
+        utils.plan.releasePreview.invalidate(),
         utils.dashboard.invalidate(),
       ]);
+      setReleaseDialogOpen(false);
       if (result.alreadyReleased) {
         toast.message("Der Einsatzplan ist bereits freigegeben.");
         return;
@@ -932,7 +937,37 @@ export default function Plan() {
       toast.success(
         result.delivered > 0
           ? `Einsatzplan freigegeben · ${result.delivered} Ansprechpartner per E-Mail informiert`
-          : "Einsatzplan freigegeben. Die zuständigen Ansprechpartner sehen den Hinweis im Dashboard."
+          : "Einsatzplan freigegeben – noch keine E-Mail oder Dashboardinformation versendet."
+      );
+    },
+    onError: error => toast.error(error.message),
+  });
+  const sendInitialNotifications = trpc.plan.sendInitialNotifications.useMutation({
+    onSuccess: async result => {
+      await Promise.all([
+        utils.plan.releaseStatus.invalidate(),
+        utils.dashboard.invalidate(),
+      ]);
+      setInitialNotificationDialogOpen(false);
+      toast.success(
+        result.delivered > 0
+          ? `${result.delivered} Ansprechpartner wurden per E-Mail informiert.`
+          : "Es wurde keine E-Mail zugestellt. Die Empfängerliste bleibt zur Prüfung sichtbar."
+      );
+    },
+    onError: error => toast.error(error.message),
+  });
+  const withdrawPlanRelease = trpc.plan.withdrawRelease.useMutation({
+    onSuccess: async result => {
+      await Promise.all([
+        utils.plan.releaseStatus.invalidate(),
+        utils.dashboard.invalidate(),
+      ]);
+      setWithdrawReleaseDialogOpen(false);
+      toast.success(
+        result.withdrawn
+          ? "Die Einsatzplanfreigabe wurde zurückgenommen. Bereits versandte E-Mails können technisch nicht zurückgerufen werden."
+          : "Der Einsatzplan war bereits nicht mehr freigegeben."
       );
     },
     onError: error => toast.error(error.message),
@@ -953,6 +988,10 @@ export default function Plan() {
   });
 
   const [dlgOpen, setDlgOpen] = useState(false);
+  const [releaseDialogOpen, setReleaseDialogOpen] = useState(false);
+  const [initialNotificationDialogOpen, setInitialNotificationDialogOpen] = useState(false);
+  const [withdrawReleaseDialogOpen, setWithdrawReleaseDialogOpen] = useState(false);
+  const [showPlanReleaseRecipients, setShowPlanReleaseRecipients] = useState(false);
   const [editShift, setEditShift] = useState<any | null>(null);
   const [form, setForm] = useState<{
     day: Weekday;
@@ -2135,56 +2174,202 @@ export default function Plan() {
       </div>
 
       {canEditPlan && (
-        <section
-          data-klemmi-target="plan-release"
-          className={`overflow-hidden rounded-2xl border shadow-sm ${planReleaseStatus.data?.releasedAt ? "border-emerald-200 bg-emerald-50/70" : "border-blue-200 bg-gradient-to-r from-blue-50 via-white to-sky-50"}`}
-        >
-          <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-            <div className="flex min-w-0 items-start gap-3">
-              <span className={`mt-0.5 grid size-10 shrink-0 place-items-center rounded-full ${planReleaseStatus.data?.releasedAt ? "bg-emerald-600 text-white" : "bg-blue-600 text-white shadow-lg shadow-blue-200 animate-pulse"}`}>
-                {planReleaseStatus.data?.releasedAt ? <Radio className="size-5" aria-hidden="true" /> : <Send className="size-5" aria-hidden="true" />}
-              </span>
-              <div className="min-w-0">
-                <h2 className="text-base font-extrabold text-slate-950 sm:text-lg">
-                  {planReleaseStatus.data?.releasedAt ? "Einsatzplan freigegeben" : "Einsatzplan steht?"}
-                </h2>
-                <p className="mt-0.5 max-w-3xl text-sm leading-6 text-slate-700">
-                  {planReleaseStatus.data?.releasedAt
-                    ? planReleaseStatus.data.pendingChangeRecipients > 0
-                      ? `${planReleaseStatus.data.pendingChangeRecipients} betroffene Ansprechpartner warten nach einer Änderung noch auf einen Hinweis.`
-                      : "Die zuständigen Ansprechpartner wurden informiert und sehen ihren nächsten Schritt im persönlichen Dashboard."
-                    : "Wenn die Einteilung steht, gib sie hier einmal frei. Zuständige Ansprechpartner erhalten eine E-Mail und einen klaren Hinweis in ihrer persönlichen Ansicht."}
-                </p>
+        <>
+          <section
+            data-klemmi-target="plan-release"
+            className={`overflow-hidden rounded-2xl border shadow-sm ${planReleaseStatus.data?.releasedAt ? "border-emerald-200 bg-emerald-50/70" : "border-blue-200 bg-gradient-to-r from-blue-50 via-white to-sky-50"}`}
+          >
+            <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+              <div className="flex min-w-0 items-start gap-3">
+                <span className={`mt-0.5 grid size-10 shrink-0 place-items-center rounded-full ${planReleaseStatus.data?.releasedAt ? "bg-emerald-600 text-white" : "bg-blue-600 text-white shadow-lg shadow-blue-200 animate-pulse"}`}>
+                  {planReleaseStatus.data?.releasedAt ? <Radio className="size-5" aria-hidden="true" /> : <Send className="size-5" aria-hidden="true" />}
+                </span>
+                <div className="min-w-0">
+                  <h2 className="text-base font-extrabold text-slate-950 sm:text-lg">
+                    {planReleaseStatus.data?.releasedAt ? "Einsatzplan freigegeben" : "Einsatzplan steht?"}
+                  </h2>
+                  <p className="mt-0.5 max-w-3xl text-sm leading-6 text-slate-700">
+                    {planReleaseStatus.data?.releasedAt
+                      ? planReleaseStatus.data.pendingInitialRecipients > 0
+                        ? `${planReleaseStatus.data.pendingInitialRecipients} Ansprechpartner warten noch auf die bewusste E-Mail-Information.`
+                        : planReleaseStatus.data.pendingChangeRecipients > 0
+                          ? `${planReleaseStatus.data.pendingChangeRecipients} betroffene Ansprechpartner warten nach einer Änderung noch auf einen Hinweis.`
+                          : "Die Freigabe und der Versandstatus sind unten nachvollziehbar dokumentiert."
+                      : "Beim nächsten Schritt entscheidest du ausdrücklich: nur organisatorisch freigeben oder zusätzlich Ansprechpartner per E-Mail informieren."}
+                  </p>
+                </div>
+              </div>
+              <div className="flex shrink-0 flex-wrap gap-2">
+                {!planReleaseStatus.data?.releasedAt ? (
+                  <Button
+                    type="button"
+                    onClick={() => setReleaseDialogOpen(true)}
+                    disabled={releasePlan.isPending || evals.length === 0}
+                    className="h-11 rounded-xl border-0 bg-gradient-to-r from-blue-600 to-sky-500 px-4 font-bold text-white shadow-md shadow-blue-200 transition hover:from-blue-700 hover:to-sky-600 active:scale-[0.98]"
+                  >
+                    <Send className="mr-2 size-4" aria-hidden="true" />
+                    Planfreigabe vorbereiten
+                  </Button>
+                ) : (
+                  <>
+                    {planReleaseStatus.data.pendingInitialRecipients > 0 && (
+                      <Button
+                        type="button"
+                        onClick={() => setInitialNotificationDialogOpen(true)}
+                        className="h-11 rounded-xl border-0 bg-blue-600 px-4 font-bold text-white shadow-sm hover:bg-blue-700"
+                      >
+                        <Send className="mr-2 size-4" aria-hidden="true" />
+                        Ansprechpartner per E-Mail informieren
+                      </Button>
+                    )}
+                    {planReleaseStatus.data.pendingChangeRecipients > 0 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => sendPlanChangeReminders.mutate()}
+                        disabled={sendPlanChangeReminders.isPending}
+                        className="h-11 rounded-xl border-amber-300 bg-white font-bold text-amber-950 hover:bg-amber-50"
+                      >
+                        <Send className="mr-2 size-4" aria-hidden="true" />
+                        {sendPlanChangeReminders.isPending
+                          ? "Hinweis wird versendet …"
+                          : "Betroffene Ansprechpartner erinnern"}
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setWithdrawReleaseDialogOpen(true)}
+                      className="h-11 rounded-xl border-rose-200 bg-white font-semibold text-rose-800 hover:bg-rose-50"
+                    >
+                      Freigabe zurücknehmen
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
-            <div className="flex shrink-0 flex-wrap gap-2">
-              {!planReleaseStatus.data?.releasedAt ? (
-                <Button
+            {initialEmailRecipients.length > 0 && (
+              <div className="border-t border-emerald-200 bg-white/70 px-4 py-3 sm:px-5">
+                <button
                   type="button"
-                  onClick={() => releasePlan.mutate()}
-                  disabled={releasePlan.isPending || evals.length === 0}
-                  className="h-11 rounded-xl border-0 bg-gradient-to-r from-blue-600 to-sky-500 px-4 font-bold text-white shadow-md shadow-blue-200 transition hover:from-blue-700 hover:to-sky-600 active:scale-[0.98]"
+                  className="flex w-full items-center justify-between gap-3 text-left text-sm font-semibold text-emerald-950"
+                  onClick={() => setShowPlanReleaseRecipients(open => !open)}
+                  aria-expanded={showPlanReleaseRecipients}
                 >
-                  <Send className="mr-2 size-4" aria-hidden="true" />
-                  {releasePlan.isPending ? "Wird freigegeben …" : "Plan freigeben & Helferinformation starten"}
+                  <span>
+                    Versandhistorie: {initialEmailRecipients.length} Ansprechpartner per E-Mail informiert
+                  </span>
+                  <ChevronDown className={`size-4 transition-transform ${showPlanReleaseRecipients ? "rotate-180" : ""}`} aria-hidden="true" />
+                </button>
+                {showPlanReleaseRecipients && (
+                  <ul className="mt-3 grid gap-1.5 sm:grid-cols-2">
+                    {initialEmailRecipients.map(recipient => (
+                      <li key={recipient.contactId} className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm text-emerald-950">
+                        <strong>{recipient.name}</strong>
+                        <span className="ml-1 text-emerald-800">
+                          · versandt {recipient.sentAt ? new Date(recipient.sentAt).toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" }) : ""}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </section>
+
+          <Dialog open={releaseDialogOpen} onOpenChange={setReleaseDialogOpen}>
+            <DialogContent className="max-w-lg bg-white text-slate-950">
+              <DialogHeader>
+                <DialogTitle>Einsatzplan freigeben – Versand bewusst wählen</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3 text-sm leading-6 text-slate-700">
+                <p>
+                  Betroffen sind aktuell <strong>{planReleasePreview.data?.length ?? 0} Ansprechpartner</strong> mit mindestens einem eingeteilten Helfer.
+                </p>
+                {(planReleasePreview.data?.length ?? 0) > 0 && (
+                  <ul className="max-h-44 space-y-1 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    {planReleasePreview.data?.map(contact => (
+                      <li key={contact.id} className="flex justify-between gap-3">
+                        <span>{contact.name}</span>
+                        <span className="shrink-0 text-slate-500">{contact.email ? "E-Mail hinterlegt" : "keine E-Mail"}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-950">
+                  <strong>Wichtig:</strong> Der E-Mail-Versand kann nach dem Absenden nicht zurückgerufen werden. Die Empfänger werden anschließend dauerhaft in der Versandhistorie dokumentiert.
+                </p>
+              </div>
+              <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
+                <Button type="button" variant="outline" onClick={() => setReleaseDialogOpen(false)}>
+                  Abbrechen
                 </Button>
-              ) : planReleaseStatus.data.pendingChangeRecipients > 0 ? (
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => sendPlanChangeReminders.mutate()}
-                  disabled={sendPlanChangeReminders.isPending}
-                  className="h-11 rounded-xl border-amber-300 bg-white font-bold text-amber-950 hover:bg-amber-50"
+                  onClick={() => releasePlan.mutate({ notifyContacts: false })}
+                  disabled={releasePlan.isPending}
                 >
-                  <Send className="mr-2 size-4" aria-hidden="true" />
-                  {sendPlanChangeReminders.isPending
-                    ? "Hinweis wird versendet …"
-                    : "Betroffene Ansprechpartner erinnern"}
+                  Nur freigeben
                 </Button>
-              ) : null}
-            </div>
-          </div>
-        </section>
+                <Button
+                  type="button"
+                  onClick={() => releasePlan.mutate({ notifyContacts: true })}
+                  disabled={releasePlan.isPending}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {releasePlan.isPending ? "Wird versendet …" : "Freigeben & E-Mail senden"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <AlertDialog open={initialNotificationDialogOpen} onOpenChange={setInitialNotificationDialogOpen}>
+            <AlertDialogContent className="bg-white text-slate-950">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Ansprechpartner jetzt per E-Mail informieren?</AlertDialogTitle>
+                <AlertDialogDescription className="text-slate-700">
+                  Es werden {planReleaseStatus.data?.pendingInitialRecipients ?? 0} Ansprechpartner mit eingeteilten Helfern informiert. Der Versand ist anschließend in der Versandhistorie sichtbar, kann aber nicht zurückgerufen werden.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={event => {
+                    event.preventDefault();
+                    sendInitialNotifications.mutate();
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {sendInitialNotifications.isPending ? "Wird versendet …" : "E-Mails jetzt senden"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <AlertDialog open={withdrawReleaseDialogOpen} onOpenChange={setWithdrawReleaseDialogOpen}>
+            <AlertDialogContent className="bg-white text-slate-950">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Freigabe wirklich zurücknehmen?</AlertDialogTitle>
+                <AlertDialogDescription className="text-slate-700">
+                  Der Einsatzplan wird wieder als nicht freigegeben behandelt und es werden keine weiteren Hinweise versendet. Bereits zugestellte E-Mails können technisch nicht zurückgerufen werden; die Versandhistorie bleibt deshalb nachvollziehbar erhalten.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={event => {
+                    event.preventDefault();
+                    withdrawPlanRelease.mutate();
+                  }}
+                  className="bg-rose-600 hover:bg-rose-700"
+                >
+                  Freigabe zurücknehmen
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </>
       )}
 
       {areas.length > 0 && (

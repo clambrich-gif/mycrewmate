@@ -2152,10 +2152,16 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const plan = source("client/src/pages/Plan.tsx");
     expect(plan).toContain('data-klemmi-target="plan-release"');
     expect(plan).toContain("animate-pulse");
-    expect(plan).toContain("Plan freigeben & Helferinformation starten");
+    expect(plan).toContain("Planfreigabe vorbereiten");
+    expect(plan).toContain("Nur freigeben");
+    expect(plan).toContain("Freigeben & E-Mail senden");
+    expect(plan).toContain("Versandhistorie:");
+    expect(plan).toContain("Freigabe zurücknehmen");
     expect(plan).toContain("Betroffene Ansprechpartner erinnern");
     expect(plan).toContain("trpc.plan.releaseStatus.useQuery");
     expect(plan).toContain("trpc.plan.release.useMutation");
+    expect(plan).toContain("trpc.plan.sendInitialNotifications.useMutation");
+    expect(plan).toContain("trpc.plan.withdrawRelease.useMutation");
     expect(plan).toContain("trpc.plan.sendChangeReminders.useMutation");
   });
 

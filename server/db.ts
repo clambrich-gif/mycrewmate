@@ -3838,6 +3838,31 @@ export async function listPlanNotificationRecipients(kind: "released" | "changed
     .orderBy(asc(contacts.name));
 }
 
+/**
+ * Liefert die bereits tatsächlich versandten Erstmails mit Namen und Zeitpunkt.
+ * Die Adressdaten selbst verbleiben bewusst außerhalb der Planansicht.
+ */
+export async function listPlanReleaseEmailAudit() {
+  const database = await getDb();
+  if (!database) return [];
+  return database
+    .select({
+      contactId: contacts.id,
+      name: contacts.name,
+      sentAt: planContactNotifications.initialEmailSentAt,
+    })
+    .from(planContactNotifications)
+    .innerJoin(contacts, eq(contacts.id, planContactNotifications.contactId))
+    .where(
+      and(
+        eq(planContactNotifications.eventId, event()),
+        eq(planContactNotifications.year, year()),
+        isNotNull(planContactNotifications.initialEmailSentAt)
+      )
+    )
+    .orderBy(desc(planContactNotifications.initialEmailSentAt), asc(contacts.name));
+}
+
 export async function markPlanNotificationEmailsSent(
   contactIds: number[],
   kind: "released" | "changed"
@@ -3913,7 +3938,107 @@ async function markPlanContactsChangedForHelpers(
   return contactIds;
 }
 
-export async function releaseCurrentPlan() {
+async function selectCurrentPlanReleaseContacts(client: DBClient) {
+  const [contactRows, helperRows, assignmentRows] = await Promise.all([
+    client
+      .select({ id: contacts.id, name: contacts.name, email: contacts.email })
+      .from(contacts)
+      .where(planningScope(contacts)),
+    client
+      .select({ id: helpers.id, contactId: helpers.contactId })
+      .from(helpers)
+      .where(planningScope(helpers)),
+    client
+      .select({ helperId: assignments.helperId })
+      .from(assignments)
+      .where(planningScope(assignments)),
+  ]);
+  return selectPlanReleaseContacts({
+    contacts: contactRows,
+    helpers: helperRows,
+    assignments: assignmentRows,
+  });
+}
+
+/** Zeigt vor dem Versand transparent, welche Ansprechpartner aktuell betroffen sind. */
+export async function listCurrentPlanReleaseContacts() {
+  const database = (await getDb()) as DB;
+  return selectCurrentPlanReleaseContacts(database);
+}
+
+/**
+ * Legt ausschließlich für den bewusst bestätigten E-Mail-Versand die persönlichen
+ * Dashboardhinweise an. Eine reine Planfreigabe löst weder Mail noch Dashboardhinweis aus.
+ */
+export async function prepareInitialPlanNotificationRecipients() {
+  const database = (await getDb()) as DB;
+  return database.transaction(async tx => {
+    const [selectedEvent] = await tx
+      .select({
+        name: events.name,
+        planReleasedAt: events.planReleasedAt,
+      })
+      .from(events)
+      .where(
+        and(
+          eq(events.id, event()),
+          eq(events.tenantId, tenant()),
+          eq(events.year, year()),
+          eq(events.status, "active")
+        )
+      )
+      .limit(1)
+      .for("update");
+    if (!selectedEvent?.planReleasedAt) {
+      throw new Error("Der Einsatzplan muss zuerst freigegeben werden");
+    }
+    const releaseContacts = await selectCurrentPlanReleaseContacts(tx);
+    for (const contact of releaseContacts) {
+      await tx
+        .insert(planContactNotifications)
+        .values({
+          year: year(),
+          eventId: event(),
+          contactId: contact.id,
+          initialReleasedAt: selectedEvent.planReleasedAt,
+        })
+        .onDuplicateKeyUpdate({
+          set: {
+            initialReleasedAt: selectedEvent.planReleasedAt,
+            initialEmailSentAt: null,
+            changePendingAt: null,
+            changeEmailSentAt: null,
+            helpersInformedAt: null,
+          },
+        });
+    }
+    return { eventName: selectedEvent.name, contacts: releaseContacts };
+  });
+}
+
+/**
+ * Setzt die organisatorische Freigabe zurück. Bereits versandte E-Mails sind
+ * naturgemäß nicht zurückrufbar, persönliche Dashboardhinweise erscheinen aber
+ * nicht länger, weil die Veranstaltung wieder als nicht freigegeben gilt.
+ */
+export async function withdrawPlanRelease() {
+  const database = (await getDb()) as DB;
+  const result = await database
+    .update(events)
+    .set({ planReleasedAt: null, planLastChangedAt: null })
+    .where(
+      and(
+        eq(events.id, event()),
+        eq(events.tenantId, tenant()),
+        eq(events.year, year()),
+        eq(events.status, "active"),
+        isNotNull(events.planReleasedAt)
+      )
+    );
+  return { withdrawn: affectedRows(result) > 0 };
+}
+
+export async function releaseCurrentPlan(input: { notifyContacts?: boolean } = {}) {
   const database = (await getDb()) as DB;
   return database.transaction(async tx => {
     const [selectedEvent] = await tx
@@ -3933,23 +4058,40 @@ export async function releaseCurrentPlan() {
     if (selectedEvent.planReleasedAt) {
       return { eventName: selectedEvent.name, releasedAt: selectedEvent.planReleasedAt, alreadyReleased: true, contacts: [] } as const;
     }
-    const [contactRows, helperRows, assignmentRows] = await Promise.all([
-      tx.select({ id: contacts.id, name: contacts.name, email: contacts.email }).from(contacts).where(planningScope(contacts)),
-      tx.select({ id: helpers.id, contactId: helpers.contactId }).from(helpers).where(planningScope(helpers)),
-      tx.select({ helperId: assignments.helperId }).from(assignments).where(planningScope(assignments)),
-    ]);
-    const releaseContacts = selectPlanReleaseContacts({ contacts: contactRows, helpers: helperRows, assignments: assignmentRows });
+    const releaseContacts = await selectCurrentPlanReleaseContacts(tx);
     const releasedAt = new Date();
     await tx
       .update(events)
       .set({ planReleasedAt: releasedAt, planLastChangedAt: null })
       .where(eq(events.id, selectedEvent.id));
-    for (const contact of releaseContacts) {
-      await tx.insert(planContactNotifications).values({
-        year: year(), eventId: event(), contactId: contact.id, initialReleasedAt: releasedAt,
-      });
+    if (input.notifyContacts) {
+      for (const contact of releaseContacts) {
+        await tx
+          .insert(planContactNotifications)
+          .values({
+            year: year(),
+            eventId: event(),
+            contactId: contact.id,
+            initialReleasedAt: releasedAt,
+          })
+          .onDuplicateKeyUpdate({
+            set: {
+              initialReleasedAt: releasedAt,
+              initialEmailSentAt: null,
+              changePendingAt: null,
+              changeEmailSentAt: null,
+              helpersInformedAt: null,
+            },
+          });
+      }
     }
-    return { eventName: selectedEvent.name, releasedAt, alreadyReleased: false, contacts: releaseContacts } as const;
+    return {
+      eventName: selectedEvent.name,
+      releasedAt,
+      alreadyReleased: false,
+      contacts: releaseContacts,
+      notificationsPrepared: Boolean(input.notifyContacts),
+    } as const;
   });
 }
 

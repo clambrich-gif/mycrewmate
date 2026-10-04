@@ -68,7 +68,11 @@ const dbMocks = vi.hoisted(() => ({
   listLocations: vi.fn(),
   setShiftAreaContact: vi.fn(),
   releaseCurrentPlan: vi.fn(),
+  listCurrentPlanReleaseContacts: vi.fn(),
+  prepareInitialPlanNotificationRecipients: vi.fn(),
+  withdrawPlanRelease: vi.fn(),
   listPlanNotificationRecipients: vi.fn(),
+  listPlanReleaseEmailAudit: vi.fn(),
   markPlanNotificationEmailsSent: vi.fn(),
   withPlanningWriteLock: vi.fn(),
   getLocation: vi.fn(),
@@ -2652,12 +2656,14 @@ describe("Planungs-API", () => {
       planLastChangedAt: null,
     });
     dbMocks.listPlanNotificationRecipients.mockResolvedValue([]);
+    dbMocks.listPlanReleaseEmailAudit.mockResolvedValue([]);
 
     const status = await caller.plan.releaseStatus();
     expect(status.releasedAt).toEqual(new Date("2026-10-04T10:00:00Z"));
     expect(status.pendingChangeRecipients).toBe(0);
+    expect(status.pendingInitialRecipients).toBe(0);
 
-    await expect(caller.plan.release()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.plan.release({ notifyContacts: false })).rejects.toMatchObject({ code: "FORBIDDEN" });
 
     dbMocks.releaseCurrentPlan.mockResolvedValue({
       eventName: "MyEifelRide",
@@ -2667,9 +2673,10 @@ describe("Planungs-API", () => {
     });
     dbMocks.markPlanNotificationEmailsSent.mockResolvedValue({ marked: 1 });
 
-    const releaseResult = await adminCaller.plan.release();
+    const releaseResult = await adminCaller.plan.release({ notifyContacts: true });
     expect(releaseResult.alreadyReleased).toBe(false);
     expect(releaseResult.contacts).toHaveLength(1);
+    expect(dbMocks.releaseCurrentPlan).toHaveBeenCalledWith({ notifyContacts: true });
     expect(dbMocks.recordActivityLog).toHaveBeenCalledWith(
       expect.objectContaining({
         module: "Einsatzplan",
@@ -2702,5 +2709,40 @@ describe("Planungs-API", () => {
         subject: expect.stringContaining("Änderungshinweis für 1 Ansprechpartner"),
       })
     );
+  });
+
+  it("trennt Freigabe, bewussten Mailversand, Empfängervorschau und Rücknahme", async () => {
+    const caller = appRouter.createCaller(planningTeamCtx);
+    const adminCaller = appRouter.createCaller(ctx);
+    dbMocks.listCurrentPlanReleaseContacts.mockResolvedValue([
+      { id: 3, name: "Claudia Kontakt", email: "claudia@example.com" },
+    ]);
+    dbMocks.releaseCurrentPlan.mockResolvedValue({
+      eventName: "MyEifelRide",
+      releasedAt: new Date("2026-10-04T10:00:00Z"),
+      alreadyReleased: false,
+      contacts: [{ id: 3, name: "Claudia Kontakt", email: "claudia@example.com" }],
+    });
+    dbMocks.prepareInitialPlanNotificationRecipients.mockResolvedValue({
+      eventName: "MyEifelRide",
+      contacts: [{ id: 3, name: "Claudia Kontakt", email: "claudia@example.com" }],
+    });
+    dbMocks.markPlanNotificationEmailsSent.mockResolvedValue({ marked: 1 });
+    dbMocks.withdrawPlanRelease.mockResolvedValue({ withdrawn: true });
+
+    await expect(caller.plan.sendInitialNotifications()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.plan.withdrawRelease()).rejects.toMatchObject({ code: "FORBIDDEN" });
+
+    await expect(caller.plan.releasePreview()).resolves.toEqual([
+      { id: 3, name: "Claudia Kontakt", email: "claudia@example.com" },
+    ]);
+    await expect(adminCaller.plan.release({ notifyContacts: false })).resolves.toMatchObject({
+      delivered: 0,
+    });
+
+    const delivery = await adminCaller.plan.sendInitialNotifications();
+    expect(delivery).toMatchObject({ recipients: 1, delivered: 1 });
+    expect(dbMocks.markPlanNotificationEmailsSent).toHaveBeenCalledWith([3], "released");
+    await expect(adminCaller.plan.withdrawRelease()).resolves.toEqual({ withdrawn: true });
   });
 });

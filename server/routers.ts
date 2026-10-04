@@ -4908,20 +4908,43 @@ export const appRouter = router({
       ]);
       return evaluateShifts(shifts, assignments, helpers);
     }),
+    releasePreview: moduleReadProcedure("schedule").query(() =>
+      db.listCurrentPlanReleaseContacts()
+    ),
     releaseStatus: moduleReadProcedure("schedule").query(async () => {
-      const [selectedEvent, pendingChangeRecipients] = await Promise.all([
+      const [
+        selectedEvent,
+        pendingChangeRecipients,
+        pendingInitialRecipients,
+        initialEmailRecipients,
+      ] = await Promise.all([
         db.getEvent(),
         db.listPlanNotificationRecipients("changed"),
+        db.listPlanNotificationRecipients("released"),
+        db.listPlanReleaseEmailAudit(),
       ]);
       return {
         releasedAt: selectedEvent?.planReleasedAt ?? null,
         changedAt: selectedEvent?.planLastChangedAt ?? null,
         pendingChangeRecipients: pendingChangeRecipients.length,
+        pendingInitialRecipients: pendingInitialRecipients.length,
+        initialEmailRecipients,
       };
     }),
-    release: scheduleAdminProcedure.mutation(async ({ ctx }) => {
-      const result = await db.releaseCurrentPlan();
+    release: scheduleAdminProcedure
+      .input(z.object({ notifyContacts: z.boolean() }))
+      .mutation(async ({ ctx, input }) => {
+      const result = await db.releaseCurrentPlan(input);
       if (result.alreadyReleased) return { ...result, delivered: 0, undeliverable: 0 };
+      if (!input.notifyContacts) {
+        await db.recordActivityLog({
+          actor: auditActor(ctx.user),
+          module: "Einsatzplan",
+          action: "updated",
+          subject: "Einsatzplan freigegeben, ohne E-Mail-Information",
+        });
+        return { ...result, delivered: 0, undeliverable: 0 };
+      }
       const dashboardUrl = publicAppUrl("/");
       const deliveries = await Promise.all(
         result.contacts.map(async contact => {
@@ -4949,6 +4972,48 @@ export const appRouter = router({
         delivered: deliveredIds.length,
         undeliverable: result.contacts.length - deliveredIds.length,
       };
+    }),
+    sendInitialNotifications: scheduleAdminProcedure.mutation(async ({ ctx }) => {
+      const result = await db.prepareInitialPlanNotificationRecipients();
+      const dashboardUrl = publicAppUrl("/");
+      const deliveries = await Promise.all(
+        result.contacts.map(async contact => {
+          if (!contact.email) return { contactId: contact.id, delivered: false };
+          const email = renderPlanReleaseContactEmail({
+            recipientName: contact.name,
+            eventName: result.eventName,
+            dashboardUrl,
+            kind: "released",
+          });
+          const delivery = await sendTransactionalEmail({ to: contact.email, ...email });
+          return { contactId: contact.id, delivered: delivery.success };
+        })
+      );
+      const deliveredIds = deliveries.filter(item => item.delivered).map(item => item.contactId);
+      await db.markPlanNotificationEmailsSent(deliveredIds, "released");
+      await db.recordActivityLog({
+        actor: auditActor(ctx.user),
+        module: "Einsatzplan",
+        action: "updated",
+        subject: `Helferinformation per E-Mail für ${result.contacts.length} Ansprechpartner vorbereitet`,
+      });
+      return {
+        recipients: result.contacts.length,
+        delivered: deliveredIds.length,
+        undeliverable: result.contacts.length - deliveredIds.length,
+      };
+    }),
+    withdrawRelease: scheduleAdminProcedure.mutation(async ({ ctx }) => {
+      const result = await db.withdrawPlanRelease();
+      if (result.withdrawn) {
+        await db.recordActivityLog({
+          actor: auditActor(ctx.user),
+          module: "Einsatzplan",
+          action: "updated",
+          subject: "Einsatzplanfreigabe zurückgenommen",
+        });
+      }
+      return result;
     }),
     sendChangeReminders: scheduleAdminProcedure.mutation(async ({ ctx }) => {
       const [selectedEvent, recipients] = await Promise.all([
