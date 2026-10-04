@@ -99,6 +99,7 @@ const ProtectedHelperPdfShare = lazy(
 const MasterAdminPortal = lazy(() => import("@/pages/MasterAdminPortal"));
 const MfaTestLab = lazy(() => import("@/pages/MfaTestLab"));
 const GameRoot = lazy(() => import("@/pages/GameRoot"));
+const WbtPortal = lazy(() => import("@/pages/WbtPortal"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 function RouteLoading() {
@@ -201,6 +202,13 @@ function Router() {
         <Route path="/_staging/klemmi-dashboard">
           <Suspense fallback={<RouteLoading />}>
             <KlemmiDashboardPreview />
+          </Suspense>
+        </Route>
+        {/* Ausschließlich die isolierte Vorschau des externen WBT-Prototyps.
+            Noch kein Menü-, Login- oder Produktivlink. */}
+        <Route path="/_staging/wbt">
+          <Suspense fallback={<RouteLoading />}>
+            <WbtPortal />
           </Suspense>
         </Route>
         <Route path="/_staging/klemmi-einsatzplan">
