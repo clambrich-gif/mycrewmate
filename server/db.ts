@@ -2173,7 +2173,26 @@ async function revokeArchivedTenantAccesses(tx: DBClient, tenantId: string) {
 
     if (remainingMemberships.length === 0) {
       // Der persönliche Vereinsadmin hat keine andere Vereinszuordnung mehr.
-      // Das Entfernen des Kontos widerruft auch Passwortdaten und Einladungen.
+      // Der Passwortzugang muss immer verschwinden. Ein Benutzer, der einen
+      // digitalen Vertragsnachweis bestätigt hat, darf jedoch nicht gelöscht
+      // werden: Die Fremdschlüsselbindung schützt bewusst die nachweisbare
+      // Annahme von AGB, AVV und Datenschutzhinweisen im Vereinsarchiv.
+      const [contractAcceptance] = await tx
+        .select({ id: tenantContractAcceptances.id })
+        .from(tenantContractAcceptances)
+        .where(eq(tenantContractAcceptances.acceptedByUserId, userId))
+        .limit(1)
+        .for("update");
+      await tx
+        .delete(tenantAdminCredentials)
+        .where(eq(tenantAdminCredentials.userId, userId));
+      if (contractAcceptance) {
+        // Ohne Zugangsdaten und Mitgliedschaft ist dieses Konto nicht mehr
+        // anmeldbar. Der minimale Bezug bleibt ausschließlich im
+        // Vertragsnachweis bis zum Ende der Aufbewahrung erhalten.
+        continue;
+      }
+      // Ohne Vertragsnachweis ist kein personenbezogener Restdatensatz nötig.
       await tx.delete(users).where(eq(users.id, userId));
       continue;
     }

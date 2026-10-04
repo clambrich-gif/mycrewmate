@@ -18,6 +18,9 @@ describe("Archivierte Vereinszugänge geben E-Mail-Adressen frei", () => {
     expect(database).toContain(".delete(userTenantMemberships)");
     expect(database).toContain(".delete(platformTenantHandoffs)");
     expect(database).toContain(".delete(users)");
+    expect(database).toContain("tenantContractAcceptances.acceptedByUserId");
+    expect(database).toContain(".delete(tenantAdminCredentials)");
+    expect(database).toContain("if (contractAcceptance)");
     expect(database).toContain(".insert(revokedSessions)");
     expect(database).toContain(".delete(sessionPresences)");
     expect(database).toContain("archivierter-zugang-${userId}@invalid.local");
@@ -27,6 +30,8 @@ describe("Archivierte Vereinszugänge geben E-Mail-Adressen frei", () => {
 
   it("schützt verbleibende Mitgliedschaften in anderen Vereinen und verlangt Neuanlage nach Reaktivierung", () => {
     expect(database).toContain("remainingMemberships.length === 0");
+    expect(database).toContain("Der Passwortzugang muss immer verschwinden");
+    expect(database).toContain("digitalen Vertragsnachweis");
     expect(database).toContain('membership.role === "tenant_admin"');
     expect(database).toContain('membership.status === "active"');
     expect(database).toContain("async function updateTenantLifecycleForPlatformAdmin");
