@@ -17,7 +17,7 @@ type KlemmiGuideCardProps = {
   children: ReactNode;
   ariaLabel?: string;
   /** Hält die Erklärung sichtbar, wenn ein Ziel am unteren rechten Rand liegt. */
-  position?: "bottom-right" | "top-left";
+  position?: "bottom-right" | "above-chat";
 };
 
 function clamp(value: number, min: number, max: number) {
@@ -98,8 +98,8 @@ export function KlemmiGuideCard({
       data-klemmi-draggable-card
       data-klemmi-dragging={isDragging ? "true" : "false"}
       className={
-        position === "top-left"
-          ? "klemmi-guide-card pointer-events-auto fixed inset-x-3 top-3 bottom-auto overflow-visible rounded-2xl border border-blue-200 bg-white p-3 text-slate-950 shadow-2xl sm:inset-x-auto sm:top-5 sm:right-auto sm:left-5 sm:w-[min(25rem,calc(100vw-2.5rem))] sm:p-4"
+        position === "above-chat"
+          ? "klemmi-guide-card pointer-events-auto fixed inset-x-3 bottom-[max(6rem,calc(env(safe-area-inset-bottom)+5.25rem))] overflow-visible rounded-2xl border border-blue-200 bg-white p-3 text-slate-950 shadow-2xl sm:inset-x-auto sm:right-6 sm:bottom-24 sm:w-[min(25rem,calc(100vw-2.5rem))] sm:p-4 md:right-8 md:bottom-30"
           : "klemmi-guide-card pointer-events-auto fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] overflow-visible rounded-2xl border border-blue-200 bg-white p-3 text-slate-950 shadow-2xl sm:inset-x-auto sm:bottom-5 sm:right-5 sm:w-[min(25rem,calc(100vw-2.5rem))] sm:p-4"
       }
       style={{ transform: `translate3d(${offset.x}px, ${offset.y}px, 0)` }}

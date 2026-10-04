@@ -434,6 +434,7 @@ const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
   "success-arbeitslos": "20260927-daily-greetings-v1",
   "dashboard-intro": "20260927-dashboard-tour-v1",
   "dashboard-complete": "20260927-dashboard-tour-v1",
+  "dashboard-chat": "20261004-live-chat-voice-v1",
   "dashboard-details-active-stacked": "20260928-dashboard-stacked-layout-v1",
   "dashboard-details-empty-stacked": "20260928-dashboard-stacked-layout-v1",
   "donations-intro": "20260928-information-tour-v1",

@@ -364,7 +364,7 @@ export function KlemmiSurfaceGuide({
             <KlemmiGuideCard
               position={
                 step.selector === '[data-klemmi-target="dashboard-live-chat"]'
-                  ? "top-left"
+                  ? "above-chat"
                   : "bottom-right"
               }
             >

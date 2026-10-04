@@ -65,5 +65,9 @@ describe("Kommunikationsanpassungen für Ansprechpartner, Helfer und Dashboard",
     expect(
       await source("client/src/components/KlemmiSurfaceGuide.tsx")
     ).toContain('step.selector === \'[data-klemmi-target="dashboard-live-chat"]\'');
+    expect(
+      await source("client/src/components/KlemmiSurfaceGuide.tsx")
+    ).toContain('? "above-chat"');
+    expect(audio).toContain('"dashboard-chat": "20261004-live-chat-voice-v1"');
   });
 });
