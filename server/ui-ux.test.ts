@@ -2157,6 +2157,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("Freigeben & E-Mail senden");
     expect(plan).toContain("Versandhistorie:");
     expect(plan).toContain("Freigabe zurücknehmen");
+    expect(plan).toContain("trpc.plan.sendReleaseCorrection.useMutation");
     expect(plan).toContain("Betroffene Ansprechpartner erinnern");
     expect(plan).toContain("trpc.plan.releaseStatus.useQuery");
     expect(plan).toContain("trpc.plan.release.useMutation");

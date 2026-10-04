@@ -972,6 +972,17 @@ export default function Plan() {
     },
     onError: error => toast.error(error.message),
   });
+  const sendReleaseCorrection = trpc.plan.sendReleaseCorrection.useMutation({
+    onSuccess: async result => {
+      await utils.plan.releaseStatus.invalidate();
+      toast.success(
+        result.delivered > 0
+          ? `Korrekturhinweis an ${result.delivered} Ansprechpartner gesendet.`
+          : "Es wurden keine neuen Korrektur-E-Mails versendet."
+      );
+    },
+    onError: error => toast.error(error.message),
+  });
   const sendPlanChangeReminders = trpc.plan.sendChangeReminders.useMutation({
     onSuccess: async result => {
       await Promise.all([
@@ -2234,6 +2245,19 @@ export default function Plan() {
                         {sendPlanChangeReminders.isPending
                           ? "Hinweis wird versendet …"
                           : "Betroffene Ansprechpartner erinnern"}
+                      </Button>
+                    )}
+                    {planReleaseStatus.data.pendingCorrectionRecipients > 0 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => sendReleaseCorrection.mutate()}
+                        disabled={sendReleaseCorrection.isPending}
+                        className="h-11 rounded-xl border-rose-300 bg-white font-bold text-rose-900 hover:bg-rose-50"
+                      >
+                        {sendReleaseCorrection.isPending
+                          ? "Korrekturhinweis wird gesendet …"
+                          : `Korrekturhinweis an ${planReleaseStatus.data.pendingCorrectionRecipients} senden`}
                       </Button>
                     )}
                     <Button

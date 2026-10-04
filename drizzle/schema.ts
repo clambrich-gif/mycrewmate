@@ -731,6 +731,8 @@ export const planContactNotifications = mysqlTable(
     contactId: int("contactId").notNull(),
     initialReleasedAt: timestamp("initialReleasedAt").notNull(),
     initialEmailSentAt: timestamp("initialEmailSentAt"),
+    /** Ein einmaliger, dokumentierter Korrekturhinweis nach einem Testversand. */
+    releaseCorrectionEmailSentAt: timestamp("releaseCorrectionEmailSentAt"),
     changePendingAt: timestamp("changePendingAt"),
     changeEmailSentAt: timestamp("changeEmailSentAt"),
     helpersInformedAt: timestamp("helpersInformedAt"),

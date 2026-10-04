@@ -3863,6 +3863,29 @@ export async function listPlanReleaseEmailAudit() {
     .orderBy(desc(planContactNotifications.initialEmailSentAt), asc(contacts.name));
 }
 
+/** Bereits adressierte Erstempfänger, die noch keinen Korrekturhinweis erhalten haben. */
+export async function listPlanReleaseCorrectionRecipients() {
+  const database = await getDb();
+  if (!database) return [];
+  return database
+    .select({
+      contactId: contacts.id,
+      name: contacts.name,
+      email: contacts.email,
+    })
+    .from(planContactNotifications)
+    .innerJoin(contacts, eq(contacts.id, planContactNotifications.contactId))
+    .where(
+      and(
+        eq(planContactNotifications.eventId, event()),
+        eq(planContactNotifications.year, year()),
+        isNotNull(planContactNotifications.initialEmailSentAt),
+        isNull(planContactNotifications.releaseCorrectionEmailSentAt)
+      )
+    )
+    .orderBy(asc(contacts.name));
+}
+
 export async function markPlanNotificationEmailsSent(
   contactIds: number[],
   kind: "released" | "changed"
@@ -3873,6 +3896,22 @@ export async function markPlanNotificationEmailsSent(
   const result = await database
     .update(planContactNotifications)
     .set(kind === "released" ? { initialEmailSentAt: now } : { changeEmailSentAt: now })
+    .where(
+      and(
+        eq(planContactNotifications.eventId, event()),
+        eq(planContactNotifications.year, year()),
+        inArray(planContactNotifications.contactId, contactIds)
+      )
+    );
+  return { marked: affectedRows(result) };
+}
+
+export async function markPlanReleaseCorrectionEmailsSent(contactIds: number[]) {
+  if (!contactIds.length) return { marked: 0 };
+  const database = (await getDb()) as DB;
+  const result = await database
+    .update(planContactNotifications)
+    .set({ releaseCorrectionEmailSentAt: new Date() })
     .where(
       and(
         eq(planContactNotifications.eventId, event()),

@@ -155,6 +155,7 @@ import {
   renderContractAcceptanceEmail,
   renderInvitationEmail,
   renderMasterPasswordResetEmail,
+  renderPlanReleaseCorrectionEmail,
   renderPlanReleaseContactEmail,
   renderPlanningTeamInvitationEmail,
   renderTenantAccessStatusEmail,
@@ -4917,11 +4918,13 @@ export const appRouter = router({
         pendingChangeRecipients,
         pendingInitialRecipients,
         initialEmailRecipients,
+        pendingCorrectionRecipients,
       ] = await Promise.all([
         db.getEvent(),
         db.listPlanNotificationRecipients("changed"),
         db.listPlanNotificationRecipients("released"),
         db.listPlanReleaseEmailAudit(),
+        db.listPlanReleaseCorrectionRecipients(),
       ]);
       return {
         releasedAt: selectedEvent?.planReleasedAt ?? null,
@@ -4929,6 +4932,7 @@ export const appRouter = router({
         pendingChangeRecipients: pendingChangeRecipients.length,
         pendingInitialRecipients: pendingInitialRecipients.length,
         initialEmailRecipients,
+        pendingCorrectionRecipients: pendingCorrectionRecipients.length,
       };
     }),
     release: scheduleAdminProcedure
@@ -5014,6 +5018,30 @@ export const appRouter = router({
         });
       }
       return result;
+    }),
+    sendReleaseCorrection: scheduleAdminProcedure.mutation(async ({ ctx }) => {
+      const recipients = await db.listPlanReleaseCorrectionRecipients();
+      const email = renderPlanReleaseCorrectionEmail();
+      const deliveries = await Promise.all(
+        recipients.map(async recipient => {
+          if (!recipient.email) return { contactId: recipient.contactId, delivered: false };
+          const delivery = await sendTransactionalEmail({ to: recipient.email, ...email });
+          return { contactId: recipient.contactId, delivered: delivery.success };
+        })
+      );
+      const deliveredIds = deliveries.filter(item => item.delivered).map(item => item.contactId);
+      await db.markPlanReleaseCorrectionEmailsSent(deliveredIds);
+      await db.recordActivityLog({
+        actor: auditActor(ctx.user),
+        module: "Einsatzplan",
+        action: "updated",
+        subject: `Korrekturhinweis für ${deliveredIds.length} vorherige Planempfänger versendet`,
+      });
+      return {
+        recipients: recipients.length,
+        delivered: deliveredIds.length,
+        undeliverable: recipients.length - deliveredIds.length,
+      };
     }),
     sendChangeReminders: scheduleAdminProcedure.mutation(async ({ ctx }) => {
       const [selectedEvent, recipients] = await Promise.all([

@@ -73,6 +73,8 @@ const dbMocks = vi.hoisted(() => ({
   withdrawPlanRelease: vi.fn(),
   listPlanNotificationRecipients: vi.fn(),
   listPlanReleaseEmailAudit: vi.fn(),
+  listPlanReleaseCorrectionRecipients: vi.fn(),
+  markPlanReleaseCorrectionEmailsSent: vi.fn(),
   markPlanNotificationEmailsSent: vi.fn(),
   withPlanningWriteLock: vi.fn(),
   getLocation: vi.fn(),
@@ -148,6 +150,11 @@ const previewBindingMocks = vi.hoisted(() => ({
 const mailServiceMocks = vi.hoisted(() => ({
   sendTransactionalEmail: vi.fn(async () => ({ success: true, messageId: "mock-msg-id" })),
   renderPlanReleaseContactEmail: vi.fn(() => ({ subject: "Mock Subject", text: "Mock Text" })),
+  renderPlanReleaseCorrectionEmail: vi.fn(() => ({
+    subject: "Bitte vorherige E-Mail zum Einsatzplan ignorieren",
+    text: "Mock Text",
+    html: "<p>Mock</p>",
+  })),
   renderContractAcceptanceEmail: vi.fn(),
   renderInvitationEmail: vi.fn(),
   renderMasterPasswordResetEmail: vi.fn(),
@@ -2657,11 +2664,13 @@ describe("Planungs-API", () => {
     });
     dbMocks.listPlanNotificationRecipients.mockResolvedValue([]);
     dbMocks.listPlanReleaseEmailAudit.mockResolvedValue([]);
+    dbMocks.listPlanReleaseCorrectionRecipients.mockResolvedValue([]);
 
     const status = await caller.plan.releaseStatus();
     expect(status.releasedAt).toEqual(new Date("2026-10-04T10:00:00Z"));
     expect(status.pendingChangeRecipients).toBe(0);
     expect(status.pendingInitialRecipients).toBe(0);
+    expect(status.pendingCorrectionRecipients).toBe(0);
 
     await expect(caller.plan.release({ notifyContacts: false })).rejects.toMatchObject({ code: "FORBIDDEN" });
 
@@ -2743,6 +2752,16 @@ describe("Planungs-API", () => {
     const delivery = await adminCaller.plan.sendInitialNotifications();
     expect(delivery).toMatchObject({ recipients: 1, delivered: 1 });
     expect(dbMocks.markPlanNotificationEmailsSent).toHaveBeenCalledWith([3], "released");
+
+    dbMocks.listPlanReleaseCorrectionRecipients.mockResolvedValue([
+      { contactId: 3, name: "Claudia Kontakt", email: "claudia@example.com" },
+    ]);
+    dbMocks.markPlanReleaseCorrectionEmailsSent.mockResolvedValue({ marked: 1 });
+    await expect(caller.plan.sendReleaseCorrection()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    const correctionResult = await adminCaller.plan.sendReleaseCorrection();
+    expect(correctionResult).toMatchObject({ recipients: 1, delivered: 1 });
+    expect(dbMocks.markPlanReleaseCorrectionEmailsSent).toHaveBeenCalledWith([3]);
+
     await expect(adminCaller.plan.withdrawRelease()).resolves.toEqual({ withdrawn: true });
   });
 });
