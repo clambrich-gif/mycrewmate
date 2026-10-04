@@ -114,6 +114,12 @@ export function KlemmiSurfaceGuide({
   const [openingPending, setOpeningPending] = useState(false);
   const [narrationComplete, setNarrationComplete] = useState(false);
   const acceptedSuccessSignal = useRef<number | null>(null);
+  /**
+   * Der Live-Chat-Schritt startet seinen Clip direkt im Nutzer-Klick auf
+   * „Weiter“. So kann kein Browser die Wiedergabe wegen eines nachgelagerten
+   * Effekts als automatische Audioausgabe blockieren.
+   */
+  const directlyStartedNarrationStep = useRef<string | null>(null);
   const { muted, isSpeaking, speak, playOpening, toggleMuted, cancel } =
     useKlemmiVoice({
       muted: voiceMuted,
@@ -178,6 +184,19 @@ export function KlemmiSurfaceGuide({
 
   useEffect(() => {
     if (!open || !step || openingPending) return;
+    // Der Live-Chat-Clip wird im Weiter-Klick bewusst schon gestartet. Bis
+    // der neue Schritt sein Ziel gefunden hat, darf kein Zwischen-Render den
+    // gerade laufenden Clip über die Standardbereinigung anhalten.
+    if (directlyStartedNarrationStep.current) {
+      if (
+        directlyStartedNarrationStep.current === step.key &&
+        targetReady
+      ) {
+        directlyStartedNarrationStep.current = null;
+        setNarrationComplete(true);
+      }
+      return;
+    }
     cancel();
     setNarrationComplete(false);
     // Ein Schritt mit echtem Ziel beginnt erst, wenn etwa ein Dialog oder eine
@@ -198,6 +217,10 @@ export function KlemmiSurfaceGuide({
     return () => {
       active = false;
       window.clearTimeout(timeout);
+      // Der Chat-Clip startet bewusst direkt im „Weiter“-Klick. Beim
+      // anschließenden React-Schrittwechsel darf das Cleanup des vorherigen
+      // Schritts genau diesen gerade gestarteten Clip nicht wieder stoppen.
+      if (directlyStartedNarrationStep.current) return;
       cancel();
     };
   }, [
@@ -316,6 +339,20 @@ export function KlemmiSurfaceGuide({
     if (stepIndex === steps.length - 1) {
       setCelebrating(true);
       return;
+    }
+    const nextStep = steps[stepIndex + 1];
+    if (nextStep?.key === "chat") {
+      const chatAudioCandidate = `${guideId}-${nextStep.audioKey ?? nextStep.key}`;
+      if (isKlemmiAudioId(chatAudioCandidate)) {
+        directlyStartedNarrationStep.current = nextStep.key;
+        setNarrationComplete(false);
+        const chatNarration = `${readableKlemmiCopy(nextStep.title)}. ${readableKlemmiCopy(nextStep.text)}`;
+        void speak(chatNarration, chatAudioCandidate).finally(() => {
+          if (directlyStartedNarrationStep.current === nextStep.key) {
+            setNarrationComplete(true);
+          }
+        });
+      }
     }
     setTargetReady(false);
     setStepIndex(current => Math.min(current + 1, steps.length - 1));
