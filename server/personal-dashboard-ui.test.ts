@@ -60,4 +60,18 @@ describe("persönliche Dashboard-Ansicht", () => {
     expect(genericTasks).toContain("createResponsibleField");
     expect(materials).toContain("createResponsibleField");
   });
+
+  it("enthält den prominenten Hinweis zur Helferinformation und die serverseitige Quittierung", async () => {
+    const [dashboard, router] = await Promise.all([
+      source("client/src/pages/Dashboard.tsx"),
+      source("server/routers.ts"),
+    ]);
+
+    expect(dashboard).toContain("data.planInformation.outstanding");
+    expect(dashboard).toContain("Bitte deine zugeordneten Helfer informieren");
+    expect(dashboard).toContain("Helferübersicht öffnen");
+    expect(dashboard).toContain("trpc.dashboard.acknowledgePlanInformation.useMutation");
+    expect(router).toContain("acknowledgePlanInformation: protectedProcedure.mutation");
+    expect(router).toContain("acknowledgePlanInformationForContacts");
+  });
 });

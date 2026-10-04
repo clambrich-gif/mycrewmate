@@ -435,3 +435,36 @@ Dein Planungsteam von ${params.tenantName} über MyCrewMate`;
 
   return { subject, text, html };
 }
+
+/** Benachrichtigt ausschließlich zuständige Ansprechpartner über einen freigegebenen Plan. */
+export function renderPlanReleaseContactEmail(params: {
+  recipientName: string;
+  eventName: string;
+  dashboardUrl: string;
+  kind: "released" | "changed";
+}): { subject: string; text: string; html: string } {
+  const changed = params.kind === "changed";
+  const subject = changed
+    ? `Einsatzplan geändert – bitte Helfer prüfen · ${params.eventName}`
+    : `Einsatzplan steht – bitte Helfer informieren · ${params.eventName}`;
+  const headline = changed ? "Dein Bereich im Einsatzplan wurde geändert" : "Der Einsatzplan steht";
+  const body = changed
+    ? "Bei mindestens einem deiner zugeordneten Helfer hat sich eine Einteilung geändert. Bitte prüfe deine Helferübersicht und informiere nur die betroffenen Personen erneut."
+    : "Für mindestens einen deiner zugeordneten Helfer liegt jetzt eine Einteilung vor. Bitte öffne deine Helferübersicht und informiere deine Helfer über die bestehende zweite WhatsApp-Vorlage oder persönlich.";
+  const text = `Hallo ${params.recipientName},\n\n${headline} für ${params.eventName}.\n\n${body}\n\nÖffne deine persönliche Übersicht:\n${params.dashboardUrl}\n\nFreundliche Grüße\nDein Planungsteam über MyCrewMate`;
+  const html = `<!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8"><title>${subject}</title></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#1e293b;background:#f8fafc;margin:0;padding:24px;">
+  <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:32px;">
+    <h1 style="font-size:20px;color:#0f172a;margin:0 0 6px;">MyCrewMate</h1>
+    <p style="font-size:13px;color:#64748b;margin:0 0 24px;">Helferkoordination</p>
+    <p>Hallo <strong>${params.recipientName}</strong>,</p>
+    <div style="margin:22px 0;padding:16px 18px;border-radius:10px;background:${changed ? "#fff7ed" : "#eff6ff"};border:1px solid ${changed ? "#fed7aa" : "#bfdbfe"};">
+      <strong>${headline}</strong><br>${body}
+    </div>
+    <p style="text-align:center;margin:28px 0;"><a href="${params.dashboardUrl}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:700;">Meine Helferübersicht öffnen</a></p>
+    <p style="font-size:12px;color:#64748b;word-break:break-all;">Falls der Button nicht funktioniert: <a href="${params.dashboardUrl}" style="color:#2563eb;">${params.dashboardUrl}</a></p>
+  </div>
+</body></html>`;
+  return { subject, text, html };
+}

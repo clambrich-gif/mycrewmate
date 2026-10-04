@@ -28,7 +28,9 @@ import {
   Info,
   Pencil,
   Plus,
+  Radio,
   Search,
+  Send,
   SlidersHorizontal,
   Trash2,
   UsersRound,
@@ -668,6 +670,7 @@ export default function Plan() {
   const { data: currentEvent, isLoading: isEventLoading } =
     trpc.events.current.useQuery();
   const { data: areaContactRows = [] } = trpc.plan.areaContacts.useQuery();
+  const planReleaseStatus = trpc.plan.releaseStatus.useQuery();
   const isMobileView = useMobileViewMode();
   const activeDays = useMemo(
     () => (currentEvent ? eventWeekdays(currentEvent.activeDays) : []),
@@ -913,6 +916,38 @@ export default function Plan() {
     onSuccess: async () => {
       await utils.plan.areaContacts.invalidate();
       toast.success("Bereichsansprechpartner gespeichert");
+    },
+    onError: error => toast.error(error.message),
+  });
+  const releasePlan = trpc.plan.release.useMutation({
+    onSuccess: async result => {
+      await Promise.all([
+        utils.plan.releaseStatus.invalidate(),
+        utils.dashboard.invalidate(),
+      ]);
+      if (result.alreadyReleased) {
+        toast.message("Der Einsatzplan ist bereits freigegeben.");
+        return;
+      }
+      toast.success(
+        result.delivered > 0
+          ? `Einsatzplan freigegeben · ${result.delivered} Ansprechpartner per E-Mail informiert`
+          : "Einsatzplan freigegeben. Die zuständigen Ansprechpartner sehen den Hinweis im Dashboard."
+      );
+    },
+    onError: error => toast.error(error.message),
+  });
+  const sendPlanChangeReminders = trpc.plan.sendChangeReminders.useMutation({
+    onSuccess: async result => {
+      await Promise.all([
+        utils.plan.releaseStatus.invalidate(),
+        utils.dashboard.invalidate(),
+      ]);
+      toast.success(
+        result.delivered > 0
+          ? `${result.delivered} betroffene Ansprechpartner wurden per E-Mail erinnert.`
+          : "Die Änderungshinweise sind im persönlichen Dashboard der betroffenen Ansprechpartner sichtbar."
+      );
     },
     onError: error => toast.error(error.message),
   });
@@ -2098,6 +2133,59 @@ export default function Plan() {
           )}
         </div>
       </div>
+
+      {canEditPlan && (
+        <section
+          data-klemmi-target="plan-release"
+          className={`overflow-hidden rounded-2xl border shadow-sm ${planReleaseStatus.data?.releasedAt ? "border-emerald-200 bg-emerald-50/70" : "border-blue-200 bg-gradient-to-r from-blue-50 via-white to-sky-50"}`}
+        >
+          <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+            <div className="flex min-w-0 items-start gap-3">
+              <span className={`mt-0.5 grid size-10 shrink-0 place-items-center rounded-full ${planReleaseStatus.data?.releasedAt ? "bg-emerald-600 text-white" : "bg-blue-600 text-white shadow-lg shadow-blue-200 animate-pulse"}`}>
+                {planReleaseStatus.data?.releasedAt ? <Radio className="size-5" aria-hidden="true" /> : <Send className="size-5" aria-hidden="true" />}
+              </span>
+              <div className="min-w-0">
+                <h2 className="text-base font-extrabold text-slate-950 sm:text-lg">
+                  {planReleaseStatus.data?.releasedAt ? "Einsatzplan freigegeben" : "Einsatzplan steht?"}
+                </h2>
+                <p className="mt-0.5 max-w-3xl text-sm leading-6 text-slate-700">
+                  {planReleaseStatus.data?.releasedAt
+                    ? planReleaseStatus.data.pendingChangeRecipients > 0
+                      ? `${planReleaseStatus.data.pendingChangeRecipients} betroffene Ansprechpartner warten nach einer Änderung noch auf einen Hinweis.`
+                      : "Die zuständigen Ansprechpartner wurden informiert und sehen ihren nächsten Schritt im persönlichen Dashboard."
+                    : "Wenn die Einteilung steht, gib sie hier einmal frei. Zuständige Ansprechpartner erhalten eine E-Mail und einen klaren Hinweis in ihrer persönlichen Ansicht."}
+                </p>
+              </div>
+            </div>
+            <div className="flex shrink-0 flex-wrap gap-2">
+              {!planReleaseStatus.data?.releasedAt ? (
+                <Button
+                  type="button"
+                  onClick={() => releasePlan.mutate()}
+                  disabled={releasePlan.isPending || evals.length === 0}
+                  className="h-11 rounded-xl border-0 bg-gradient-to-r from-blue-600 to-sky-500 px-4 font-bold text-white shadow-md shadow-blue-200 transition hover:from-blue-700 hover:to-sky-600 active:scale-[0.98]"
+                >
+                  <Send className="mr-2 size-4" aria-hidden="true" />
+                  {releasePlan.isPending ? "Wird freigegeben …" : "Plan freigeben & Helferinformation starten"}
+                </Button>
+              ) : planReleaseStatus.data.pendingChangeRecipients > 0 ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => sendPlanChangeReminders.mutate()}
+                  disabled={sendPlanChangeReminders.isPending}
+                  className="h-11 rounded-xl border-amber-300 bg-white font-bold text-amber-950 hover:bg-amber-50"
+                >
+                  <Send className="mr-2 size-4" aria-hidden="true" />
+                  {sendPlanChangeReminders.isPending
+                    ? "Hinweis wird versendet …"
+                    : "Betroffene Ansprechpartner erinnern"}
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        </section>
+      )}
 
       {areas.length > 0 && (
         <Card className="gap-0 border-slate-200 py-0 shadow-sm">

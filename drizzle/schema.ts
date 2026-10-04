@@ -473,6 +473,10 @@ export const events = mysqlTable(
     /** Je Veranstaltung getrennte WhatsApp-Texte; globale Altwerte dienen nur als Rückfall. */
     whatsAppHelperRequestTemplate: mediumtext("whatsAppHelperRequestTemplate"),
     whatsAppMessageTemplate: mediumtext("whatsAppMessageTemplate"),
+    /** Der Einsatzplan wurde bewusst zur Helferinformation freigegeben. */
+    planReleasedAt: timestamp("planReleasedAt"),
+    /** Letzte Änderung nach der Freigabe; nur betroffene Kontakte werden markiert. */
+    planLastChangedAt: timestamp("planLastChangedAt"),
     pdfLogoFallback: mysqlEnum("pdfLogoFallback", ["none", "brand"])
       .default("none")
       .notNull(),
@@ -711,6 +715,51 @@ export const contacts = mysqlTable(
 );
 export type Contact = typeof contacts.$inferSelect;
 export type InsertContact = typeof contacts.$inferInsert;
+
+/**
+ * Schlanker, veranstaltungsbezogener Arbeitsstatus für Ansprechpartner nach
+ * Planfreigabe. Er enthält weder Helfer- noch Schichtinhalte, sondern nur die
+ * Information, ob eine persönliche Helferinformation bzw. eine Nachprüfung
+ * nach einer Änderung noch aussteht.
+ */
+export const planContactNotifications = mysqlTable(
+  "plan_contact_notifications",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    year: int("year").notNull(),
+    eventId: int("eventId").notNull(),
+    contactId: int("contactId").notNull(),
+    initialReleasedAt: timestamp("initialReleasedAt").notNull(),
+    initialEmailSentAt: timestamp("initialEmailSentAt"),
+    changePendingAt: timestamp("changePendingAt"),
+    changeEmailSentAt: timestamp("changeEmailSentAt"),
+    helpersInformedAt: timestamp("helpersInformedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    foreignKey({
+      name: "plan_contact_notifications_event_year_fk",
+      columns: [table.eventId, table.year],
+      foreignColumns: [events.id, events.year],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "plan_contact_notifications_contact_event_year_fk",
+      columns: [table.contactId, table.eventId, table.year],
+      foreignColumns: [contacts.id, contacts.eventId, contacts.year],
+    }).onDelete("cascade"),
+    uniqueIndex("plan_contact_notifications_event_contact_unique").on(
+      table.eventId,
+      table.contactId
+    ),
+    index("plan_contact_notifications_pending_idx").on(
+      table.eventId,
+      table.changePendingAt,
+      table.helpersInformedAt
+    ),
+  ]
+);
+export type PlanContactNotification = typeof planContactNotifications.$inferSelect;
 
 export const helpers = mysqlTable(
   "helpers",

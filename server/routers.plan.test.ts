@@ -67,6 +67,9 @@ const dbMocks = vi.hoisted(() => ({
   listShiftAreaContacts: vi.fn(),
   listLocations: vi.fn(),
   setShiftAreaContact: vi.fn(),
+  releaseCurrentPlan: vi.fn(),
+  listPlanNotificationRecipients: vi.fn(),
+  markPlanNotificationEmailsSent: vi.fn(),
   withPlanningWriteLock: vi.fn(),
   getLocation: vi.fn(),
   createLocation: vi.fn(),
@@ -138,6 +141,15 @@ const previewBindingMocks = vi.hoisted(() => ({
   uploadedFileDigest: vi.fn(() => "b".repeat(64)),
   verifyPreviewBinding: vi.fn(),
 }));
+const mailServiceMocks = vi.hoisted(() => ({
+  sendTransactionalEmail: vi.fn(async () => ({ success: true, messageId: "mock-msg-id" })),
+  renderPlanReleaseContactEmail: vi.fn(() => ({ subject: "Mock Subject", text: "Mock Text" })),
+  renderContractAcceptanceEmail: vi.fn(),
+  renderInvitationEmail: vi.fn(),
+  renderMasterPasswordResetEmail: vi.fn(),
+  renderPlanningTeamInvitationEmail: vi.fn(),
+  renderTenantAccessStatusEmail: vi.fn(),
+}));
 
 vi.mock("./db", () => dbMocks);
 vi.mock("./storage", () => storageMocks);
@@ -145,6 +157,7 @@ vi.mock("./excel-backup", () => backupMocks);
 vi.mock("./project-file", () => projectFileMocks);
 vi.mock("./module-excel-import", () => moduleImportMocks);
 vi.mock("./import-preview-binding", () => previewBindingMocks);
+vi.mock("./mail-service", () => mailServiceMocks);
 
 import { appRouter } from "./routers";
 import { ADMIN_PASSWORD_OPEN_ID, hashPassword } from "./password-auth";
@@ -2628,5 +2641,66 @@ describe("Planungs-API", () => {
         meat: 2,
       },
     });
+  });
+
+  it("liefert den aktuellen Freigabestatus und schützt Freigabe vor Planungsteam", async () => {
+    const caller = appRouter.createCaller(planningTeamCtx);
+    const adminCaller = appRouter.createCaller(ctx);
+    dbMocks.getEvent.mockResolvedValue({
+      id: 1,
+      planReleasedAt: new Date("2026-10-04T10:00:00Z"),
+      planLastChangedAt: null,
+    });
+    dbMocks.listPlanNotificationRecipients.mockResolvedValue([]);
+
+    const status = await caller.plan.releaseStatus();
+    expect(status.releasedAt).toEqual(new Date("2026-10-04T10:00:00Z"));
+    expect(status.pendingChangeRecipients).toBe(0);
+
+    await expect(caller.plan.release()).rejects.toMatchObject({ code: "FORBIDDEN" });
+
+    dbMocks.releaseCurrentPlan.mockResolvedValue({
+      eventName: "MyEifelRide",
+      releasedAt: new Date("2026-10-04T10:00:00Z"),
+      alreadyReleased: false,
+      contacts: [{ id: 1, name: "Anna Admin", email: "anna@example.com" }],
+    });
+    dbMocks.markPlanNotificationEmailsSent.mockResolvedValue({ marked: 1 });
+
+    const releaseResult = await adminCaller.plan.release();
+    expect(releaseResult.alreadyReleased).toBe(false);
+    expect(releaseResult.contacts).toHaveLength(1);
+    expect(dbMocks.recordActivityLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        module: "Einsatzplan",
+        subject: expect.stringContaining("Einsatzplan freigegeben"),
+      })
+    );
+  });
+
+  it("erinnert nur betroffene Ansprechpartner nach Planänderungen und erfordert Adminrechte", async () => {
+    const caller = appRouter.createCaller(planningTeamCtx);
+    const adminCaller = appRouter.createCaller(ctx);
+
+    await expect(caller.plan.sendChangeReminders()).rejects.toMatchObject({ code: "FORBIDDEN" });
+
+    dbMocks.getEvent.mockResolvedValue({
+      id: 1,
+      name: "MyEifelRide",
+    });
+    dbMocks.listPlanNotificationRecipients.mockResolvedValue([
+      { contactId: 2, name: "Bernd Bereich", email: "bernd@example.com" },
+    ]);
+    dbMocks.markPlanNotificationEmailsSent.mockResolvedValue({ marked: 1 });
+
+    const result = await adminCaller.plan.sendChangeReminders();
+    expect(result.recipients).toBe(1);
+    expect(dbMocks.markPlanNotificationEmailsSent).toHaveBeenCalledWith([2], "changed");
+    expect(dbMocks.recordActivityLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        module: "Einsatzplan",
+        subject: expect.stringContaining("Änderungshinweis für 1 Ansprechpartner"),
+      })
+    );
   });
 });

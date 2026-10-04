@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { KlemmiEventClosureRecommendation } from "@/components/KlemmiEventClosureRecommendation";
 import { KlemmiUpgradeDialog } from "@/components/KlemmiUpgradeDialog";
 import { KlemmiProLimitNotice } from "@/components/KlemmiProLimitNotice";
@@ -38,6 +39,7 @@ import {
   Building2,
   Calendar,
   CalendarClock,
+  BellRing,
   CheckCircle2,
   ClipboardList,
   CircleX,
@@ -174,6 +176,12 @@ type PersonalDashboardData = {
       actionLabel: string;
     }>;
   }>;
+  planInformation: {
+    releasedAt: Date | string | null;
+    outstanding: boolean;
+    changed: boolean;
+    assignedHelperCount: number;
+  };
 };
 
 const PERSONAL_TASK_STATUS: Record<
@@ -1353,9 +1361,11 @@ function PilotTenantInfoCard({
 function PersonalDashboardContent({
   data,
   onOpen,
+  onPlanInformationAcknowledged,
 }: {
   data: PersonalDashboardData;
   onOpen: (href: string) => void;
+  onPlanInformationAcknowledged: () => void;
 }) {
   if (!data.identityLinked) {
     return (
@@ -1444,6 +1454,39 @@ function PersonalDashboardContent({
           </div>
         )}
       </section>
+
+      {data.planInformation.outstanding && data.planInformation.assignedHelperCount > 0 && (
+        <section className="overflow-hidden rounded-2xl border border-blue-300 bg-gradient-to-r from-blue-600 to-sky-500 p-4 text-white shadow-lg shadow-blue-200 sm:p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-start gap-3">
+              <span className="grid size-11 shrink-0 place-items-center rounded-full bg-white/20 ring-1 ring-white/35">
+                <BellRing className="size-5" aria-hidden="true" />
+              </span>
+              <div>
+                <p className="text-xs font-bold tracking-[0.14em] text-blue-100 uppercase">
+                  {data.planInformation.changed ? "Änderung im Einsatzplan" : "Einsatzplan steht"}
+                </p>
+                <h2 className="mt-1 text-lg font-extrabold sm:text-xl">
+                  Bitte deine zugeordneten Helfer informieren
+                </h2>
+                <p className="mt-1 max-w-3xl text-sm leading-6 text-blue-50">
+                  {data.planInformation.changed
+                    ? "Mindestens eine Einteilung deiner Helfer wurde geändert. Öffne deine Helferübersicht und informiere nur die betroffenen Personen erneut."
+                    : "Für deine zugeordneten Helfer liegen Einsätze vor. Öffne die Helferübersicht und versende die zweite WhatsApp-Vorlage oder informiere persönlich."}
+                </p>
+              </div>
+            </div>
+            <Button
+              type="button"
+              onClick={onPlanInformationAcknowledged}
+              className="h-11 shrink-0 rounded-xl bg-white px-4 font-bold text-blue-800 shadow-sm hover:bg-blue-50"
+            >
+              Helferübersicht öffnen
+              <ArrowRight className="ml-2 size-4" aria-hidden="true" />
+            </Button>
+          </div>
+        </section>
+      )}
 
       <section
         data-klemmi-target="personal-dashboard-work"
@@ -1647,6 +1690,15 @@ export default function Dashboard() {
   const { data: s, isLoading } = trpc.dashboard.stats.useQuery();
   const personalDashboard = trpc.dashboard.personal.useQuery(undefined, {
     enabled: isPersonalDashboard,
+  });
+  const acknowledgePlanInformation = trpc.dashboard.acknowledgePlanInformation.useMutation({
+    onSuccess: async () => {
+      await utils.dashboard.personal.invalidate();
+      navigate(
+        personalDashboard.data?.planInformation?.changed ? "/helfer?meine=1&eingeteilt=1" : "/helfer?meine=1"
+      );
+    },
+    onError: error => toast.error(error.message),
   });
   const { data: helpers = [], isLoading: areHelpersLoading } =
     trpc.helpers.list.useQuery();
@@ -2094,6 +2146,7 @@ export default function Dashboard() {
           <PersonalDashboardContent
             data={personalDashboard.data as PersonalDashboardData}
             onOpen={href => navigate(href)}
+            onPlanInformationAcknowledged={() => acknowledgePlanInformation.mutate()}
           />
         ) : (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-900 shadow-sm">

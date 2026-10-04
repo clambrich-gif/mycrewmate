@@ -42,6 +42,7 @@ import {
   materials,
   mfaLoginChallenges,
   locations,
+  planContactNotifications,
   planningTeamAccesses,
   planningTeamAccessEvents,
   planningTeamInvitations,
@@ -125,6 +126,11 @@ import {
   validateExistingAssignmentsForShiftUpdate,
 } from "./shift-update-validation";
 import { storageDelete } from "./storage";
+import {
+  isPlanInformationOutstanding,
+  selectAffectedPlanContactIds,
+  selectPlanReleaseContacts,
+} from "./plan-release";
 
 type DB = ReturnType<typeof drizzle>;
 type Transaction = Parameters<Parameters<DB["transaction"]>[0]>[0];
@@ -3774,6 +3780,179 @@ export async function updateCurrentEventWhatsAppTemplates(values: {
   return values;
 }
 
+export async function listPlanContactNotificationsForContacts(contactIds: number[]) {
+  if (!contactIds.length) return [];
+  const database = await getDb();
+  if (!database) return [];
+  return database
+    .select()
+    .from(planContactNotifications)
+    .where(
+      and(
+        eq(planContactNotifications.eventId, event()),
+        eq(planContactNotifications.year, year()),
+        inArray(planContactNotifications.contactId, contactIds)
+      )
+    );
+}
+
+export async function acknowledgePlanInformationForContacts(contactIds: number[]) {
+  if (!contactIds.length) return { acknowledged: 0 };
+  const database = (await getDb()) as DB;
+  const result = await database
+    .update(planContactNotifications)
+    .set({ helpersInformedAt: new Date() })
+    .where(
+      and(
+        eq(planContactNotifications.eventId, event()),
+        eq(planContactNotifications.year, year()),
+        inArray(planContactNotifications.contactId, contactIds)
+      )
+    );
+  return { acknowledged: affectedRows(result) };
+}
+
+export async function listPlanNotificationRecipients(kind: "released" | "changed") {
+  const database = await getDb();
+  if (!database) return [];
+  return database
+    .select({
+      contactId: contacts.id,
+      name: contacts.name,
+      email: contacts.email,
+    })
+    .from(planContactNotifications)
+    .innerJoin(contacts, eq(contacts.id, planContactNotifications.contactId))
+    .where(
+      and(
+        eq(planContactNotifications.eventId, event()),
+        eq(planContactNotifications.year, year()),
+        kind === "released"
+          ? isNull(planContactNotifications.initialEmailSentAt)
+          : and(
+              isNotNull(planContactNotifications.changePendingAt),
+              isNull(planContactNotifications.changeEmailSentAt)
+            )
+      )
+    )
+    .orderBy(asc(contacts.name));
+}
+
+export async function markPlanNotificationEmailsSent(
+  contactIds: number[],
+  kind: "released" | "changed"
+) {
+  if (!contactIds.length) return { marked: 0 };
+  const database = (await getDb()) as DB;
+  const now = new Date();
+  const result = await database
+    .update(planContactNotifications)
+    .set(kind === "released" ? { initialEmailSentAt: now } : { changeEmailSentAt: now })
+    .where(
+      and(
+        eq(planContactNotifications.eventId, event()),
+        eq(planContactNotifications.year, year()),
+        inArray(planContactNotifications.contactId, contactIds)
+      )
+    );
+  return { marked: affectedRows(result) };
+}
+
+async function markPlanContactsChangedForHelpers(
+  client: DBClient,
+  helperIds: number[]
+) {
+  const uniqueHelperIds = Array.from(new Set(helperIds));
+  if (!uniqueHelperIds.length) return [] as number[];
+  const [selectedEvent] = await client
+    .select({ planReleasedAt: events.planReleasedAt })
+    .from(events)
+    .where(
+      and(
+        eq(events.id, event()),
+        eq(events.tenantId, tenant()),
+        eq(events.year, year())
+      )
+    )
+    .limit(1);
+  if (!selectedEvent?.planReleasedAt) return [] as number[];
+
+  const scopedHelpers = await client
+    .select({ id: helpers.id, contactId: helpers.contactId })
+    .from(helpers)
+    .where(and(planningScope(helpers), inArray(helpers.id, uniqueHelperIds)));
+  const contactIds = selectAffectedPlanContactIds({
+    helpers: scopedHelpers,
+    affectedHelperIds: uniqueHelperIds,
+  });
+  if (!contactIds.length) return [] as number[];
+
+  const now = new Date();
+  await client
+    .update(events)
+    .set({ planLastChangedAt: now })
+    .where(
+      and(
+        eq(events.id, event()),
+        eq(events.tenantId, tenant()),
+        eq(events.year, year())
+      )
+    );
+  for (const contactId of contactIds) {
+    await client
+      .insert(planContactNotifications)
+      .values({
+        year: year(),
+        eventId: event(),
+        contactId,
+        initialReleasedAt: selectedEvent.planReleasedAt,
+        changePendingAt: now,
+      })
+      .onDuplicateKeyUpdate({ set: { changePendingAt: now, changeEmailSentAt: null } });
+  }
+  return contactIds;
+}
+
+export async function releaseCurrentPlan() {
+  const database = (await getDb()) as DB;
+  return database.transaction(async tx => {
+    const [selectedEvent] = await tx
+      .select({ id: events.id, name: events.name, planReleasedAt: events.planReleasedAt })
+      .from(events)
+      .where(
+        and(
+          eq(events.id, event()),
+          eq(events.tenantId, tenant()),
+          eq(events.year, year()),
+          eq(events.status, "active")
+        )
+      )
+      .limit(1)
+      .for("update");
+    if (!selectedEvent) throw new Error("Die ausgewählte Veranstaltung wurde nicht gefunden");
+    if (selectedEvent.planReleasedAt) {
+      return { eventName: selectedEvent.name, releasedAt: selectedEvent.planReleasedAt, alreadyReleased: true, contacts: [] } as const;
+    }
+    const [contactRows, helperRows, assignmentRows] = await Promise.all([
+      tx.select({ id: contacts.id, name: contacts.name, email: contacts.email }).from(contacts).where(planningScope(contacts)),
+      tx.select({ id: helpers.id, contactId: helpers.contactId }).from(helpers).where(planningScope(helpers)),
+      tx.select({ helperId: assignments.helperId }).from(assignments).where(planningScope(assignments)),
+    ]);
+    const releaseContacts = selectPlanReleaseContacts({ contacts: contactRows, helpers: helperRows, assignments: assignmentRows });
+    const releasedAt = new Date();
+    await tx
+      .update(events)
+      .set({ planReleasedAt: releasedAt, planLastChangedAt: null })
+      .where(eq(events.id, selectedEvent.id));
+    for (const contact of releaseContacts) {
+      await tx.insert(planContactNotifications).values({
+        year: year(), eventId: event(), contactId: contact.id, initialReleasedAt: releasedAt,
+      });
+    }
+    return { eventName: selectedEvent.name, releasedAt, alreadyReleased: false, contacts: releaseContacts } as const;
+  });
+}
+
 export async function withPlanningWriteLock<T>(callback: () => Promise<T>) {
   const database = (await getDb()) as DB;
   const selectedYear = year();
@@ -5934,6 +6113,9 @@ export async function deleteHelper(
         }))
       ),
     ]);
+    if (helperAssignments.length > 0) {
+      await markPlanContactsChangedForHelpers(tx, [helper.id]);
+    }
     const result = await tx
       .delete(helpers)
       .where(and(eq(helpers.id, id), planningScope(helpers)));
@@ -6344,6 +6526,19 @@ export async function updateShift(
         [existingShift.id]
       );
     }
+    const isOperationalPlanChange = Object.keys(safe).some(
+      key => key !== "manualOkConfirmed" && key !== "manualDoubleConflictAccepted"
+    );
+    if (isOperationalPlanChange) {
+      const affectedAssignments = await tx
+        .select({ helperId: assignments.helperId })
+        .from(assignments)
+        .where(eq(assignments.shiftId, existingShift.id));
+      await markPlanContactsChangedForHelpers(
+        tx,
+        affectedAssignments.map(assignment => assignment.helperId)
+      );
+    }
     if (safe.area !== undefined) await removeOrphanShiftAreaContactsForClient(tx);
     return result;
   });
@@ -6351,6 +6546,14 @@ export async function updateShift(
 export async function deleteShift(id: number) {
   const db = (await getDb()) as DB;
   return db.transaction(async tx => {
+    const affectedAssignments = await tx
+      .select({ helperId: assignments.helperId })
+      .from(assignments)
+      .where(eq(assignments.shiftId, id));
+    await markPlanContactsChangedForHelpers(
+      tx,
+      affectedAssignments.map(assignment => assignment.helperId)
+    );
     const result = await tx
       .delete(shifts)
       .where(and(eq(shifts.id, id), planningScope(shifts)));
@@ -6514,6 +6717,7 @@ export async function assignHelper(v: {
       [v.helperId],
       [shift.id]
     );
+    await markPlanContactsChangedForHelpers(tx, [v.helperId]);
     return {
       success: true,
       assignedCount: 1,
@@ -6583,6 +6787,7 @@ export async function assignHelpersToOpenSlots(v: {
       }))
     );
     await resetManualShiftConfirmationsForHelpers(tx, uniqueHelperIds, [shift.id]);
+    await markPlanContactsChangedForHelpers(tx, uniqueHelperIds);
     return {
       success: true,
       assignedCount: uniqueHelperIds.length,
@@ -6644,6 +6849,10 @@ export async function replaceShiftAssignment(v: {
       [v.helperId, ...current.map(item => item.helperId)],
       [shift.id]
     );
+    await markPlanContactsChangedForHelpers(
+      tx,
+      [v.helperId, ...current.map(item => item.helperId)]
+    );
     return { success: true } as const;
   });
 }
@@ -6678,6 +6887,7 @@ export async function removeShiftAssignment(v: {
       assignment ? [assignment.helperId] : [],
       [shift.id]
     );
+    if (assignment) await markPlanContactsChangedForHelpers(tx, [assignment.helperId]);
     return { success: true } as const;
   });
 }
@@ -6705,6 +6915,7 @@ export async function unassignHelper(id: number) {
       [assignment.helperId],
       [assignment.shiftId]
     );
+    await markPlanContactsChangedForHelpers(tx, [assignment.helperId]);
     return { success: true } as const;
   });
 }
@@ -6722,7 +6933,7 @@ export async function clearAssignments() {
     if (!shiftIds.length) return { cleared: 0 };
 
     const assignedRows = await tx
-      .select({ id: assignments.id })
+      .select({ id: assignments.id, helperId: assignments.helperId })
       .from(assignments)
       .where(
         and(
@@ -6745,6 +6956,10 @@ export async function clearAssignments() {
         )
       );
     requireDeletedRows(result, assignedRows.length);
+    await markPlanContactsChangedForHelpers(
+      tx,
+      assignedRows.map(assignment => assignment.helperId)
+    );
     await tx
       .update(shifts)
       .set({

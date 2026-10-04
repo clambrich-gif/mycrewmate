@@ -155,12 +155,14 @@ import {
   renderContractAcceptanceEmail,
   renderInvitationEmail,
   renderMasterPasswordResetEmail,
+  renderPlanReleaseContactEmail,
   renderPlanningTeamInvitationEmail,
   renderTenantAccessStatusEmail,
   sendTransactionalEmail,
   type SendMailOptions,
 } from "./mail-service";
 import { buildPersonalDashboard } from "./personal-dashboard";
+import { isPlanInformationOutstanding } from "./plan-release";
 const GUIDE_PDF_KEY = "Handbuch_RSC_Helferplanung_742fcb04.pdf";
 const GUIDE_PDF_FILENAME = "Handbuch_RSC_Helferplanung.pdf";
 const GUIDE_PDF_MAX_BYTES = 5_000_000;
@@ -4906,6 +4908,78 @@ export const appRouter = router({
       ]);
       return evaluateShifts(shifts, assignments, helpers);
     }),
+    releaseStatus: moduleReadProcedure("schedule").query(async () => {
+      const [selectedEvent, pendingChangeRecipients] = await Promise.all([
+        db.getEvent(),
+        db.listPlanNotificationRecipients("changed"),
+      ]);
+      return {
+        releasedAt: selectedEvent?.planReleasedAt ?? null,
+        changedAt: selectedEvent?.planLastChangedAt ?? null,
+        pendingChangeRecipients: pendingChangeRecipients.length,
+      };
+    }),
+    release: scheduleAdminProcedure.mutation(async ({ ctx }) => {
+      const result = await db.releaseCurrentPlan();
+      if (result.alreadyReleased) return { ...result, delivered: 0, undeliverable: 0 };
+      const dashboardUrl = publicAppUrl("/");
+      const deliveries = await Promise.all(
+        result.contacts.map(async contact => {
+          if (!contact.email) return { contactId: contact.id, delivered: false };
+          const email = renderPlanReleaseContactEmail({
+            recipientName: contact.name,
+            eventName: result.eventName,
+            dashboardUrl,
+            kind: "released",
+          });
+          const delivery = await sendTransactionalEmail({ to: contact.email, ...email });
+          return { contactId: contact.id, delivered: delivery.success };
+        })
+      );
+      const deliveredIds = deliveries.filter(item => item.delivered).map(item => item.contactId);
+      await db.markPlanNotificationEmailsSent(deliveredIds, "released");
+      await db.recordActivityLog({
+        actor: auditActor(ctx.user),
+        module: "Einsatzplan",
+        action: "updated",
+        subject: `Einsatzplan freigegeben: ${result.contacts.length} zuständige Ansprechpartner`,
+      });
+      return {
+        ...result,
+        delivered: deliveredIds.length,
+        undeliverable: result.contacts.length - deliveredIds.length,
+      };
+    }),
+    sendChangeReminders: scheduleAdminProcedure.mutation(async ({ ctx }) => {
+      const [selectedEvent, recipients] = await Promise.all([
+        db.getEvent(),
+        db.listPlanNotificationRecipients("changed"),
+      ]);
+      if (!selectedEvent) throw new TRPCError({ code: "NOT_FOUND", message: "Veranstaltung nicht gefunden" });
+      const dashboardUrl = publicAppUrl("/");
+      const deliveries = await Promise.all(
+        recipients.map(async recipient => {
+          if (!recipient.email) return { contactId: recipient.contactId, delivered: false };
+          const email = renderPlanReleaseContactEmail({
+            recipientName: recipient.name,
+            eventName: selectedEvent.name,
+            dashboardUrl,
+            kind: "changed",
+          });
+          const delivery = await sendTransactionalEmail({ to: recipient.email, ...email });
+          return { contactId: recipient.contactId, delivered: delivery.success };
+        })
+      );
+      const deliveredIds = deliveries.filter(item => item.delivered).map(item => item.contactId);
+      await db.markPlanNotificationEmailsSent(deliveredIds, "changed");
+      await db.recordActivityLog({
+        actor: auditActor(ctx.user),
+        module: "Einsatzplan",
+        action: "updated",
+        subject: `Änderungshinweis für ${recipients.length} Ansprechpartner vorbereitet`,
+      });
+      return { recipients: recipients.length, delivered: deliveredIds.length };
+    }),
     clearAssignments: moduleWriteProcedure("schedule")
       .input(
         z.object({
@@ -6416,7 +6490,23 @@ export const appRouter = router({
           : []
       );
 
-      return buildPersonalDashboard({
+      const planNotifications = await db.listPlanContactNotificationsForContacts(
+        Array.from(ownContactIds)
+      );
+      const outstandingPlanNotifications = planNotifications.filter(notification =>
+        isPlanInformationOutstanding(notification)
+      );
+      const hasPlanChange = outstandingPlanNotifications.some(
+        notification => notification.changePendingAt !== null
+      );
+      const ownAssignedHelperCount = helpers.filter(
+        helper =>
+          ownContactIds.has(helper.contactId ?? -1) &&
+          assignments.some(assignment => assignment.helperId === helper.id)
+      ).length;
+
+      return {
+        ...buildPersonalDashboard({
         displayName: ctx.user.name?.trim() || "Meine Aufgaben",
         ownContactIds,
         ownHelperIds,
@@ -6434,7 +6524,41 @@ export const appRouter = router({
           ...location,
           logoUrl: locationLogoUrl(location),
         })),
+        }),
+        planInformation: {
+          releasedAt: selectedEvent?.planReleasedAt ?? null,
+          outstanding: outstandingPlanNotifications.length > 0,
+          changed: hasPlanChange,
+          assignedHelperCount: ownAssignedHelperCount,
+        },
+      };
+    }),
+    acknowledgePlanInformation: protectedProcedure.mutation(async ({ ctx }) => {
+      const contacts = await db.listContacts();
+      const ownContactIds = new Set<number>();
+      const planningAccessId = planningTeamAccessIdForUser(ctx.user);
+      if (planningAccessId !== null) {
+        const access = await db.getPlanningTeamAccessCredentialForCurrentTenant(
+          planningAccessId
+        );
+        if (typeof access?.contactId === "number") ownContactIds.add(access.contactId);
+      }
+      const normalizedCurrentName = db.normalizePersonName(ctx.user.name ?? "");
+      if (normalizedCurrentName) {
+        contacts
+          .filter(contact => db.normalizePersonName(contact.name) === normalizedCurrentName)
+          .forEach(contact => ownContactIds.add(contact.id));
+      }
+      const result = await db.acknowledgePlanInformationForContacts(
+        Array.from(ownContactIds)
+      );
+      await db.recordActivityLog({
+        actor: auditActor(ctx.user),
+        module: "Einsatzplan",
+        action: "updated",
+        subject: "Persönliche Helferinformation im Dashboard geöffnet",
       });
+      return result;
     }),
   }),
 

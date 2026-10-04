@@ -2148,6 +2148,17 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(passwordDialog).toContain('autoComplete="off"');
   });
 
+  it("hebt die Einsatzplan-Freigabe als differenzierte Karte mit dezent pulsierendem Button hervor", () => {
+    const plan = source("client/src/pages/Plan.tsx");
+    expect(plan).toContain('data-klemmi-target="plan-release"');
+    expect(plan).toContain("animate-pulse");
+    expect(plan).toContain("Plan freigeben & Helferinformation starten");
+    expect(plan).toContain("Betroffene Ansprechpartner erinnern");
+    expect(plan).toContain("trpc.plan.releaseStatus.useQuery");
+    expect(plan).toContain("trpc.plan.release.useMutation");
+    expect(plan).toContain("trpc.plan.sendChangeReminders.useMutation");
+  });
+
   it("ordnet die bereinigten Modulaktionen und den gemeinsamen Resetdialog für Vorbereitung, Nachbereitung und Material", () => {
     const prep = source("client/src/pages/Preparation.tsx");
     const post = source("client/src/pages/PostProcessing.tsx");
