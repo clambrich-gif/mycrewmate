@@ -5,21 +5,43 @@ import { describe, expect, it } from "vitest";
 import { WBT_AUDIO_CATALOG } from "../client/src/wbt/wbtAudioCatalog";
 import { WBT_ADMIN_CHAPTERS, WBT_HELPER_CHAPTERS } from "../client/src/wbt/wbtData";
 
-describe("WBT-Klemmi-Vertonung", () => {
-  it("stellt für jeden Trainingsschritt, jede Kapitelzusammenfassung und den Abschluss einen festen Clip bereit", () => {
+describe("Zweistimmige WBT-Vertonung", () => {
+  it("stellt Sprecher- und Klemmi-Clip für jeden Trainingsschritt sowie Klemmi-Abschlüsse bereit", () => {
     const uniqueChapters = new Map(
       [...WBT_HELPER_CHAPTERS, ...WBT_ADMIN_CHAPTERS].map(chapter => [chapter.id, chapter])
     );
-    const expectedClips =
-      [...uniqueChapters.values()].reduce(
-        (total, chapter) => total + chapter.steps.length + 1,
-        1
-      );
+    const totalSteps = [...uniqueChapters.values()].reduce(
+      (total, chapter) => total + chapter.steps.length,
+      0
+    );
+    // Drei Einführungsteile, zwei Audioanteile je Fachschritt,
+    // eine Klemmi-Zusammenfassung je Kapitel sowie Klemmi am Ende.
+    const expectedClips = 3 + totalSteps * 2 + uniqueChapters.size + 1;
 
     expect(WBT_AUDIO_CATALOG).toHaveLength(expectedClips);
     expect(WBT_AUDIO_CATALOG.some(entry => entry.id === "wbt-training-complete")).toBe(true);
     expect(WBT_AUDIO_CATALOG.every(entry => entry.id.startsWith("wbt-"))).toBe(true);
     expect(WBT_AUDIO_CATALOG.every(entry => entry.text.length > 20)).toBe(true);
+    expect(WBT_AUDIO_CATALOG.filter(entry => entry.speaker === "narrator")).toHaveLength(
+      totalSteps + 2
+    );
+    expect(WBT_AUDIO_CATALOG.filter(entry => entry.speaker === "klemmi")).toHaveLength(
+      totalSteps + uniqueChapters.size + 2
+    );
+  });
+
+  it("trennt neutrale Erklärungen von Klemmis Empfehlungen und stellt Klemmi vor", () => {
+    const intro = WBT_AUDIO_CATALOG.filter(entry => entry.kind === "introduction");
+    const narratorSteps = WBT_AUDIO_CATALOG.filter(entry => entry.kind === "step-narration");
+    const klemmiTips = WBT_AUDIO_CATALOG.filter(entry => entry.kind === "step-tip");
+
+    expect(intro).toHaveLength(3);
+    expect(intro.map(entry => entry.speaker)).toEqual(["narrator", "klemmi", "narrator"]);
+    expect(intro[0]?.text).toContain("digitaler Begleiter");
+    expect(intro[2]?.text).toContain("echten MyCrewMate-Programm");
+    expect(narratorSteps).toHaveLength(klemmiTips.length);
+    expect(narratorSteps.every(entry => entry.text.endsWith("Klemmi empfiehlt hierzu:"))).toBe(true);
+    expect(klemmiTips.every(entry => !entry.text.includes("Klemmi empfiehlt hierzu"))).toBe(true);
   });
 
   it("vermittelt die frühe, vom späteren Einsatzplan unabhängige Helferansprache", () => {
@@ -40,17 +62,23 @@ describe("WBT-Klemmi-Vertonung", () => {
   });
 
   it("verwendet ausschließlich vorproduzierte lokale Clips für das WBT", async () => {
-    const [portal, voiceHook, audioHelper] = await Promise.all([
+    const [portal, voiceHook, narratorHook, audioHelper] = await Promise.all([
       readFile(path.resolve(process.cwd(), "client/src/pages/WbtPortal.tsx"), "utf8"),
       readFile(path.resolve(process.cwd(), "client/src/hooks/useKlemmiVoice.ts"), "utf8"),
+      readFile(path.resolve(process.cwd(), "client/src/wbt/useWbtNarratorVoice.ts"), "utf8"),
       readFile(path.resolve(process.cwd(), "client/src/wbt/wbtAudio.ts"), "utf8"),
     ]);
 
     expect(portal).toContain("KlemmiVoiceControl");
     expect(portal).toContain("playStepNarration");
     expect(portal).toContain("playChapterSummaryNarration");
+    expect(portal).toContain("showingIntroduction");
+    expect(portal).toContain("Klemmi empfiehlt hierzu:");
+    expect(portal).toContain("isSpeaking={isSpeaking}");
     expect(voiceHook).toContain("const playUrl");
+    expect(narratorHook).toContain("WBT-Sprecher");
     expect(audioHelper).toContain("/api/klemmi/audio/");
+    expect(audioHelper).toContain("wbt-narrator-");
     expect(portal).not.toContain("speechSynthesis");
   });
 

@@ -48,6 +48,19 @@ describe("Eigenständiges Web-Based-Training (WBT-Schulungssystem)", () => {
     }
   });
 
+  it("stellt Klemmi vor dem ersten Schulungskapitel vor und trennt die Sprecherrollen", () => {
+    const portal = readFileSync(
+      path.resolve(process.cwd(), "client/src/pages/WbtPortal.tsx"),
+      "utf8"
+    );
+
+    expect(portal).toContain("showingIntroduction");
+    expect(portal).toContain("Willkommen in der Lernwerkstatt");
+    expect(portal).toContain("Hallo, ich bin Klemmi");
+    expect(portal).toContain("Lernsprecher erklärt");
+    expect(portal).toContain("Klemmi empfiehlt hierzu:");
+  });
+
   it("WBT 2 (Planungsteam & Admin) enthält zusätzlich Einsatzplan, Finanzen, Orte und Schutz & Protokolle", () => {
     const chapterIds = WBT_ADMIN_CHAPTERS.map(c => c.id);
     expect(chapterIds).toContain("plan");

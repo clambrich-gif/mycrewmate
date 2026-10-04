@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { useLocation } from "wouter";
 import {
   WBT_TRACKS,
   type WbtTrackId,
@@ -17,11 +16,15 @@ import {
 import { KlemmiMascot } from "@/components/KlemmiMascot";
 import { KlemmiVoiceControl } from "@/components/KlemmiVoiceControl";
 import { useKlemmiVoice } from "@/hooks/useKlemmiVoice";
+import { useWbtNarratorVoice } from "@/wbt/useWbtNarratorVoice";
 import {
-  getWbtStepAudioId,
+  getWbtKlemmiStepAudioId,
+  getWbtNarratorStepAudioId,
   getWbtSummaryAudioId,
   WBT_COMPLETION_AUDIO_ID,
-  wbtKlemmiAudioUrl,
+  WBT_INTRO_AUDIO,
+  WBT_INTRO_TEXT,
+  wbtAudioUrl,
 } from "@/wbt/wbtAudio";
 import {
   ArrowLeft,
@@ -62,9 +65,32 @@ import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+const WBT_INTRO_STEPS = [
+  {
+    speaker: "Sprecher" as const,
+    role: "narrator" as const,
+    text: WBT_INTRO_TEXT.narratorWelcome,
+  },
+  {
+    speaker: "Klemmi" as const,
+    role: "klemmi" as const,
+    text: WBT_INTRO_TEXT.klemmiGreeting,
+  },
+  {
+    speaker: "Sprecher" as const,
+    role: "narrator" as const,
+    text: WBT_INTRO_TEXT.narratorGuidance,
+  },
+] as const;
+
 export default function WbtPortal() {
-  const [, setLocation] = useLocation();
   const { muted, isSpeaking, playUrl, toggleMuted, cancel } = useKlemmiVoice();
+  const {
+    isSpeaking: isNarratorSpeaking,
+    playUrl: playNarratorUrl,
+    cancel: cancelNarrator,
+  } = useWbtNarratorVoice({ muted });
+  const audioSequenceRef = React.useRef(0);
 
   // URL-Parameter für direkten Pfadstart (z.B. ?track=helper oder ?track=admin)
   const initialTrackId = useMemo<WbtTrackId | null>(() => {
@@ -81,6 +107,8 @@ export default function WbtPortal() {
   const [completedChapters, setCompletedChapters] = useState<string[]>([]);
   const [showingSummary, setShowingSummary] = useState<boolean>(false);
   const [isSimulationCompleted, setIsSimulationCompleted] = useState<boolean>(false);
+  const [showingIntroduction, setShowingIntroduction] = useState<boolean>(Boolean(initialTrackId));
+  const [introStepIndex, setIntroStepIndex] = useState(0);
 
   // Simulierte Zustände für Interaktion
   const [simHelpers, setSimHelpers] = useState<SimulatedHelper[]>(INITIAL_SIMULATED_HELPERS);
@@ -100,25 +128,64 @@ export default function WbtPortal() {
   const currentTrack = activeTrackId ? WBT_TRACKS[activeTrackId] : null;
   const currentChapter = currentTrack ? currentTrack.chapters[currentChapterIndex] : null;
   const currentStep = currentChapter ? currentChapter.steps[currentStepIndex] : null;
+  const currentIntroduction = WBT_INTRO_STEPS[introStepIndex] ?? WBT_INTRO_STEPS[0];
+
+  const cancelAllNarration = React.useCallback(() => {
+    audioSequenceRef.current += 1;
+    cancelNarrator();
+    cancel();
+  }, [cancel, cancelNarrator]);
 
   const playStepNarration = React.useCallback(
-    (chapter: WbtChapter, step: WbtStep) => {
-      return playUrl(
-        wbtKlemmiAudioUrl(getWbtStepAudioId(chapter, step)),
-        getWbtStepAudioId(chapter, step)
+    async (chapter: WbtChapter, step: WbtStep) => {
+      cancelAllNarration();
+      const sequence = audioSequenceRef.current;
+      const narratorId = getWbtNarratorStepAudioId(chapter, step);
+      const klemmiId = getWbtKlemmiStepAudioId(chapter, step);
+      const narratorCompleted = await playNarratorUrl(
+        wbtAudioUrl(narratorId),
+        narratorId
       );
+      if (!narratorCompleted || sequence !== audioSequenceRef.current) return false;
+      return playUrl(wbtAudioUrl(klemmiId), klemmiId);
     },
-    [playUrl]
+    [cancelAllNarration, playNarratorUrl, playUrl]
   );
 
   const playChapterSummaryNarration = React.useCallback(
     (chapter: WbtChapter) => {
+      cancelAllNarration();
       return playUrl(
-        wbtKlemmiAudioUrl(getWbtSummaryAudioId(chapter)),
+        wbtAudioUrl(getWbtSummaryAudioId(chapter)),
         getWbtSummaryAudioId(chapter)
       );
     },
-    [playUrl]
+    [cancelAllNarration, playUrl]
+  );
+
+  const playIntroductionStep = React.useCallback(
+    async (stepIndex: number) => {
+      cancelAllNarration();
+      const sequence = audioSequenceRef.current;
+      if (stepIndex === 0) {
+        return playNarratorUrl(
+          wbtAudioUrl(WBT_INTRO_AUDIO.narratorWelcome),
+          WBT_INTRO_AUDIO.narratorWelcome
+        );
+      }
+      if (stepIndex === 1) {
+        return playUrl(
+          wbtAudioUrl(WBT_INTRO_AUDIO.klemmiGreeting),
+          WBT_INTRO_AUDIO.klemmiGreeting
+        );
+      }
+      const completed = await playNarratorUrl(
+        wbtAudioUrl(WBT_INTRO_AUDIO.narratorGuidance),
+        WBT_INTRO_AUDIO.narratorGuidance
+      );
+      return completed && sequence === audioSequenceRef.current;
+    },
+    [cancelAllNarration, playNarratorUrl, playUrl]
   );
 
   // Fortschritt in Prozent
@@ -130,23 +197,45 @@ export default function WbtPortal() {
 
   // Wechsel des Trainingspfads
   const selectTrack = (trackId: WbtTrackId) => {
-    const firstChapter = WBT_TRACKS[trackId].chapters[0];
-    const firstStep = firstChapter?.steps[0];
     setActiveTrackId(trackId);
     setCurrentChapterIndex(0);
     setCurrentStepIndex(0);
     setCompletedChapters([]);
     setShowingSummary(false);
     setIsSimulationCompleted(false);
+    setShowingIntroduction(true);
+    setIntroStepIndex(0);
     // Reset Sim Data
     setSimHelpers(INITIAL_SIMULATED_HELPERS);
-    if (firstChapter && firstStep) void playStepNarration(firstChapter, firstStep);
+    void playIntroductionStep(0);
   };
 
   const returnToWbtOverview = () => {
-    cancel();
+    cancelAllNarration();
     setShowingSummary(false);
+    setShowingIntroduction(false);
     setActiveTrackId(null);
+  };
+
+  const handleNextIntroductionStep = () => {
+    if (introStepIndex < WBT_INTRO_STEPS.length - 1) {
+      const nextIndex = introStepIndex + 1;
+      setIntroStepIndex(nextIndex);
+      void playIntroductionStep(nextIndex);
+      return;
+    }
+
+    setShowingIntroduction(false);
+    const firstChapter = currentTrack?.chapters[0];
+    const firstStep = firstChapter?.steps[0];
+    if (firstChapter && firstStep) void playStepNarration(firstChapter, firstStep);
+  };
+
+  const handlePreviousIntroductionStep = () => {
+    if (introStepIndex === 0) return;
+    const previousIndex = introStepIndex - 1;
+    setIntroStepIndex(previousIndex);
+    void playIntroductionStep(previousIndex);
   };
 
   const handleNextStep = () => {
@@ -177,8 +266,9 @@ export default function WbtPortal() {
     } else {
       // Gesamtes Training abgeschlossen!
       setIsSimulationCompleted(true);
+      cancelAllNarration();
       void playUrl(
-        wbtKlemmiAudioUrl(WBT_COMPLETION_AUDIO_ID),
+        wbtAudioUrl(WBT_COMPLETION_AUDIO_ID),
         WBT_COMPLETION_AUDIO_ID
       );
     }
@@ -435,7 +525,105 @@ export default function WbtPortal() {
   }
 
   // -------------------------------------------------------------
-  // VIEW 2: GESAMT-ABSCHLUSS DES WBT
+  // VIEW 2: VORSTELLUNG VON KLEMMI VOR DEM TRAININGSSTART
+  // -------------------------------------------------------------
+  if (showingIntroduction && currentTrack) {
+    const introUsesKlemmi = currentIntroduction.role === "klemmi";
+    const introIsSpeaking = introUsesKlemmi ? isSpeaking : isNarratorSpeaking;
+
+    return (
+      <div className="min-h-screen bg-slate-50 px-4 py-10 text-slate-900 sm:py-14">
+        <div className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-white p-6 shadow-xl sm:p-10">
+          <div className="flex items-center justify-between border-b pb-4">
+            <Badge variant="outline" className="border-blue-300 bg-blue-50 text-blue-900">
+              Willkommen in der Lernwerkstatt
+            </Badge>
+            <span className="text-xs font-semibold text-slate-500">
+              Einführung {introStepIndex + 1}/{WBT_INTRO_STEPS.length}
+            </span>
+          </div>
+
+          <div className="mt-8 flex flex-col items-center text-center">
+            {introUsesKlemmi ? (
+              <div className="relative mb-4 size-28">
+                <KlemmiMascot
+                  className="size-28"
+                  isSpeaking={isSpeaking}
+                  decorative
+                />
+              </div>
+            ) : (
+              <div className="mb-4 flex size-24 items-center justify-center rounded-3xl bg-slate-100 text-slate-600 shadow-sm">
+                <Volume2 className="size-10" aria-hidden="true" />
+              </div>
+            )}
+
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
+              {currentIntroduction.speaker}
+            </p>
+            <h2 className="mt-2 text-2xl font-black text-slate-950 sm:text-3xl">
+              {introUsesKlemmi ? "Hallo, ich bin Klemmi" : "Dein WBT beginnt"}
+            </h2>
+            <div className={`mt-5 rounded-2xl border p-5 text-left shadow-sm ${
+              introUsesKlemmi
+                ? "border-blue-200 bg-blue-50/80 text-blue-950"
+                : "border-slate-200 bg-slate-50 text-slate-800"
+            }`}>
+              <p className="text-base leading-relaxed sm:text-lg">
+                „{currentIntroduction.text}“
+              </p>
+            </div>
+
+            <div className="mt-4 flex items-center justify-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void playIntroductionStep(introStepIndex)}
+                className="border-blue-200 bg-white text-blue-800 hover:bg-blue-50"
+              >
+                <Volume2 className="mr-1.5 size-4" />
+                {introIsSpeaking
+                  ? introUsesKlemmi
+                    ? "Klemmi spricht …"
+                    : "Sprecher erklärt …"
+                  : "Noch einmal anhören"}
+              </Button>
+              <KlemmiVoiceControl
+                muted={muted}
+                onToggle={toggleMuted}
+                labelPrefix="WBT-Ton"
+              />
+            </div>
+          </div>
+
+          <div className="mt-8 flex items-center justify-between border-t pt-6">
+            <Button
+              variant="ghost"
+              onClick={handlePreviousIntroductionStep}
+              disabled={introStepIndex === 0}
+              className="text-slate-600"
+            >
+              <ArrowLeft className="mr-2 size-4" />
+              Zurück
+            </Button>
+            <Button
+              onClick={handleNextIntroductionStep}
+              className="bg-blue-600 text-white hover:bg-blue-700 shadow-sm"
+            >
+              {introStepIndex === WBT_INTRO_STEPS.length - 1
+                ? "Training starten"
+                : "Weiter"}
+              <ArrowRight className="ml-2 size-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // -------------------------------------------------------------
+  // VIEW 3: GESAMT-ABSCHLUSS DES WBT
   // -------------------------------------------------------------
   if (isSimulationCompleted) {
     return (
@@ -476,7 +664,7 @@ export default function WbtPortal() {
                   size="sm"
                   onClick={() =>
                     void playUrl(
-                      wbtKlemmiAudioUrl(WBT_COMPLETION_AUDIO_ID),
+                      wbtAudioUrl(WBT_COMPLETION_AUDIO_ID),
                       WBT_COMPLETION_AUDIO_ID
                     )
                   }
@@ -682,9 +870,9 @@ export default function WbtPortal() {
           </div>
         </aside>
 
-        {/* Rechter Hauptbereich: Interaktive Simulation & Klemmi-Erklärung */}
+        {/* Rechter Hauptbereich: Interaktive Simulation, Sprecher & Klemmi */}
         <main className="flex flex-col gap-5">
-          {/* Klemmi Anleitungskarte (Oben) */}
+          {/* WBT-Anleitungskarte */}
           <div className="rounded-2xl border-2 border-blue-200 bg-white p-5 shadow-sm">
             <div className="flex items-start gap-4">
               <div className="size-16 shrink-0">
@@ -699,12 +887,19 @@ export default function WbtPortal() {
                     <span className="text-xs font-bold text-slate-400">
                       Kapitel {currentChapterIndex + 1}/{currentTrack?.chapters.length}
                     </span>
-                    <KlemmiVoiceControl muted={muted} onToggle={toggleMuted} />
+                    <KlemmiVoiceControl
+                      muted={muted}
+                      onToggle={toggleMuted}
+                      labelPrefix="WBT-Ton"
+                    />
                   </div>
                 </div>
                 <h2 className="mt-1 text-lg font-black text-slate-950 sm:text-xl">
                   {currentStep?.title}
                 </h2>
+                <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">
+                  Lernsprecher erklärt
+                </p>
                 <p className="mt-1 text-sm text-slate-700 leading-relaxed">
                   {currentStep?.explanation}
                 </p>
@@ -713,7 +908,8 @@ export default function WbtPortal() {
                 <div className="mt-3 flex items-start gap-2 rounded-xl bg-orange-50 border border-orange-200 p-2.5 text-xs text-orange-950">
                   <Sparkles className="size-4 shrink-0 text-orange-600 mt-0.5" />
                   <div>
-                    <strong className="font-semibold">Klemmi sagt:</strong> {currentStep?.klemmiTip}
+                    <strong className="font-semibold">Klemmi empfiehlt hierzu:</strong>{" "}
+                    {currentStep?.klemmiTip}
                   </div>
                 </div>
 
@@ -729,7 +925,11 @@ export default function WbtPortal() {
                   className="mt-2 h-7 px-2 text-xs text-blue-800 hover:bg-blue-50 hover:text-blue-950"
                 >
                   <Volume2 className="mr-1.5 size-3.5" />
-                  {isSpeaking ? "Klemmi spricht …" : "Klemmi vorlesen"}
+                  {isNarratorSpeaking
+                    ? "Sprecher erklärt …"
+                    : isSpeaking
+                      ? "Klemmi empfiehlt …"
+                      : "Schritt vorlesen"}
                 </Button>
               </div>
             </div>
