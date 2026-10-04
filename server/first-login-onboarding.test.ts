@@ -100,6 +100,9 @@ describe("Erst-Login-Onboarding", () => {
     expect(css).toContain("@keyframes klemmi-first-login-enter");
     expect(css).toContain("@keyframes klemmi-first-login-question-float");
     expect(css).toContain("@keyframes klemmi-speaking-mouth");
+    expect(css).toContain("@keyframes klemmi-eye-blink");
+    expect(css).toContain("klemmi-face-eye::after");
+    expect(css).toContain("animation: klemmi-eye-blink 8.6s");
     expect(css).toContain("das feste Lächeln");
     expect(css).toContain("left: 42.3%");
     expect(css).toContain("transform: scaleY(0.18)");
