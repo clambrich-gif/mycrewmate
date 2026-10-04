@@ -361,7 +361,13 @@ export function KlemmiSurfaceGuide({
                 style={highlightRect}
               />
             )}
-            <KlemmiGuideCard>
+            <KlemmiGuideCard
+              position={
+                step.selector === '[data-klemmi-target="dashboard-live-chat"]'
+                  ? "top-left"
+                  : "bottom-right"
+              }
+            >
               {celebrating ? (
                 <div
                   className="klemmi-celebration text-center"

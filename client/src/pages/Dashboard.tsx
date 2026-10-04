@@ -1284,6 +1284,9 @@ export default function Dashboard() {
   const canUseMapsGpx =
     tenantProduct.isSuccess &&
     productAllowsCapability(tenantProduct.data?.packageId ?? "event_pass", "maps_gpx");
+  const canUseChat =
+    tenantProduct.isSuccess &&
+    productAllowsCapability(tenantProduct.data?.packageId ?? "event_pass", "chat");
   const isEventPass = tenantProduct.data?.packageId === "event_pass";
   const allowsDonations = productAllowsCapability(
     tenantProduct.data?.packageId ?? "event_pass",
@@ -1467,6 +1470,7 @@ export default function Dashboard() {
     hasContacts: s.verantwortlichkeiten.length > 0,
     hasMappableLocations,
     canUseMapsGpx,
+    canUseChat,
     canUseDonations: allowsDonations,
     currentPackageId: tenantProduct.data?.packageId ?? "event_pass",
     detailsLayout,

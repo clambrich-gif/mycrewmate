@@ -81,17 +81,17 @@ Der Verein darf die Einhaltung dieser Vereinbarung nach angemessener Vorankündi
   privacy: {
     id: "privacy",
     title: "Datenschutzhinweise für die MyCrewMate-App",
-    version: "1.3-2026-10-02",
+    version: "1.4-2026-10-04",
     route: "/datenschutz",
     summary:
       "Erläutern Verantwortlichkeiten, Zwecke, Speicherdauer, Karten- und Kommunikationsfunktionen der App.",
     content: `# Datenschutzhinweise für die MyCrewMate-App
 
-Version 1.3 · Stand 02.10.2026
+Version 1.4 · Stand 04.10.2026
 
 Für die Verarbeitung der Vereins-, Helfer- und Veranstaltungsdaten ist regelmäßig der jeweilige Verein verantwortlich. MyCrewMate verarbeitet diese Mandantendaten im Auftrag des Vereins. Für Plattformbetrieb, Vertragsverwaltung, Sicherheit und Abrechnung ist Christian Lambrich, Eichenweg 4, 56729 Nachtsheim, Deutschland verantwortlich. Datenschutzanfragen können an info@mycrewmate.de gerichtet werden.
 
-Die App verarbeitet je nach Nutzung Kontakt- und Zugangsdaten, Planungsdaten, Helfer-, Ansprechpartner- und Schichtdaten, organisatorische Hinweise sowie Sicherheits- und Aktivitätsprotokolle. Die Nutzung dient der Vereins- und Eventplanung. Persönliche Einsatzübersichten werden nur bei bewusster Freigabe erstellt, sind sieben Tage gültig, mit einem getrennten Zugangscode geschützt und können sofort widerrufen werden.
+Die App verarbeitet je nach Nutzung Kontakt- und Zugangsdaten, Planungsdaten, Helfer-, Ansprechpartner- und Schichtdaten, organisatorische Hinweise sowie Sicherheits- und Aktivitätsprotokolle. Die Nutzung dient der Vereins- und Eventplanung. Persönliche Einsatzübersichten werden nur bei bewusster Freigabe erstellt, sind sieben Tage gültig, mit einem getrennten Zugangscode geschützt und können sofort widerrufen werden. Die Basisansicht enthält nur die eigenen Einsätze, den eigenen Namen, Ort, eigene Hinweise und eigene Verpflegungsspenden sowie die verantwortliche Ansprechperson; Daten anderer Helfer erscheinen dort nicht. Eine Telefonnummer der Ansprechperson erscheint nur bei deren freiwilliger Freigabe.
 
 Die Anwendung, Datenbank, Upload-Volume und Sicherungen werden in der Hetzner-Betriebsumgebung in Deutschland betrieben. Erforderliche transaktionale E-Mails werden über den Hetzner-Maildienst versandt. Datenbank und Upload-Volume werden täglich gesichert; Sicherungen liegen zusätzlich in Hetzner Object Storage. Die optionale Kartenansicht bindet OpenStreetMap und OpenTopoMap erst beim Aufruf der Karte ein. Der WhatsApp-Button öffnet erst nach einem bewussten Klick einen externen Chat.
 

@@ -7,6 +7,7 @@ import {
   CalendarClock,
   CheckCircle2,
   MapPin,
+  MessageSquare,
   UsersRound,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -31,6 +32,7 @@ export default function KlemmiDashboardPreview() {
         hasContacts: !emptyState,
         hasMappableLocations: !emptyState,
         canUseMapsGpx: true,
+        canUseChat: true,
         canUseDonations: true,
         currentPackageId: "pro",
         detailsLayout,
@@ -127,6 +129,10 @@ export default function KlemmiDashboardPreview() {
           <section data-dashboard-level="Live-Standortkarte">
             <Card data-dashboard-section="Live-Standortkarte"><CardHeader><CardTitle className="flex items-center gap-2 text-base"><MapPin className="size-5 text-blue-700" />Live-Standortkarte</CardTitle></CardHeader><CardContent><div className="flex min-h-40 items-center justify-center rounded-xl border border-dashed bg-slate-50 p-4 text-center text-sm text-slate-600">{emptyState ? "Noch keine Orte hinterlegt. Orte & Standorte öffnen, um die Karte zu aktivieren." : "Karte mit den Standorten Pumptrack, Kuchenstand und VP 8"}</div></CardContent></Card>
           </section>
+
+          <aside data-klemmi-target="dashboard-live-chat" className="fixed bottom-5 right-5 z-10 flex size-16 items-center justify-center rounded-full bg-blue-600 text-white shadow-xl" aria-label="Live-Chat-Vorschau">
+            <MessageSquare className="size-7" aria-hidden="true" />
+          </aside>
         </div>
       </section>
     </main>

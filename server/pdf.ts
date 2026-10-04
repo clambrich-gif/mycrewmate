@@ -241,7 +241,7 @@ const CLUB_PRIVACY_TEMPLATE_SECTIONS: ClubPrivacyTemplateSection[] = [
     title: "3. Persönliche Einsatzübersicht als geschützter Link",
     paragraphs: [
       "Auf Wunsch kann der Verein einen persönlichen Einsatzplan als geschützten Link senden. Der Link ist sieben Tage gültig und wird nur zusammen mit einem getrennten Zugangscode geöffnet. Der Verein kann den Link jederzeit sofort widerrufen; danach ist er auch mit dem richtigen Zugangscode nicht mehr nutzbar.",
-      "In der Basisansicht stehen nur Name, eigene Einsätze, Tag, Uhrzeit, Aufgabe, Ort und die verantwortliche Ansprechperson. Eine Telefonnummer der Ansprechperson erscheint nur bei deren freiwilliger Freigabe.",
+      "In der Basisansicht stehen nur Name, eigene Einsätze, Tag, Uhrzeit, Aufgabe, Ort, eigene Hinweise, eigene Verpflegungsspenden und die verantwortliche Ansprechperson. Eine Telefonnummer der Ansprechperson erscheint nur bei deren freiwilliger Freigabe.",
       "Die bewusst wählbare Ansicht mit Mithelfenden ergänzt die Namen der Personen derselben Schicht und ausschließlich aufgabenrelevante Informationen. Verfügbarkeiten anderer Personen, weitere Einsätze anderer Helfer sowie nicht erforderliche private Angaben werden nicht ausgegeben.",
     ],
   },
@@ -1795,9 +1795,10 @@ export function renderHelperTaskPdf(data: PlanningData, helperId: number) {
 
 /**
  * Reduzierte Datenansicht für persönlich freigegebene Helferlinks. Sie enthält
- * bewusst keine Mithelfenden, Kontaktpersonen, privaten Hinweise, Spenden,
- * Verfügbarkeiten oder Schichtbemerkungen. Die ausführliche Übersicht bleibt
- * ausschließlich für angemeldete, berechtigte Personen bestimmt.
+ * bewusst keine Mithelfenden, Hinweise oder Spenden anderer Personen,
+ * Verfügbarkeiten oder Schichtbemerkungen. Eigene Hinweise und eigene
+ * Verpflegungsspenden des Empfängers dürfen erscheinen. Die ausführliche
+ * Übersicht bleibt ausschließlich für angemeldete, berechtigte Personen bestimmt.
  */
 export type PublicHelperTaskEntry = {
   day: Day;
@@ -1830,6 +1831,29 @@ export function selectPublicHelperTaskEntries(
         ? helperPdfLocationLink(locationById.get(shift.locationId) ?? null)
         : null,
     }));
+}
+
+export type PublicHelperOwnDetails = {
+  helperNote: string | null;
+  cakeLines: string[];
+};
+
+/** Wählt ausschließlich Angaben, die der Empfänger selbst für seinen Einsatz hinterlegt hat. */
+export function selectPublicHelperOwnDetails(
+  data: PlanningData,
+  helperId: number
+): PublicHelperOwnDetails {
+  const helper = data.helpers.find(item => item.id === helperId);
+  if (!helper) throw new Error("Helfer wurde nicht gefunden");
+  const locationById = new Map(
+    (data.locations ?? []).map(location => [location.id, location])
+  );
+  return {
+    helperNote: helper.note?.trim() || null,
+    cakeLines: selectHelperCakes(data.cakes, helper.name).map(cake =>
+      helperCakeSummaryLine(cake, locationById)
+    ),
+  };
 }
 
 function drawPublicHelperHeader(
@@ -1948,6 +1972,67 @@ function drawPublicHelperTaskEntry(
   doc.y = top + height + 8;
 }
 
+function drawPublicHelperOwnDetails(
+  doc: PDFKit.PDFDocument,
+  details: PublicHelperOwnDetails
+) {
+  const entries: HelperSummaryEntry[] = [];
+  if (details.helperNote) {
+    entries.push({ label: "Eigene Hinweise", value: details.helperNote });
+  }
+  if (details.cakeLines.length > 0) {
+    entries.push({
+      label: details.cakeLines.length === 1 ? "Eigene Spende" : "Eigene Spenden",
+      value: details.cakeLines.join(" · "),
+    });
+  }
+  if (!entries.length) return;
+
+  const labelWidth = 108;
+  const valueWidth = helperPdfContentWidth - labelWidth - 28;
+  const rowHeights = entries.map(entry => {
+    const valueHeight = doc
+      .font("Helvetica")
+      .fontSize(9)
+      .heightOfString(entry.value, { width: valueWidth, lineGap: 1 });
+    return Math.max(14, valueHeight) + 7;
+  });
+  const height = 29 + rowHeights.reduce((sum, rowHeight) => sum + rowHeight, 0) + 8;
+  ensureHelperPdfSpace(doc, height + 8);
+  const top = doc.y;
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(10)
+    .fillColor(helperPdfDesign.accent)
+    .text("Eigene Angaben", helperPdfMargin, top);
+  const boxY = top + 17;
+  doc
+    .roundedRect(helperPdfMargin, boxY, helperPdfContentWidth, height - 17, 5)
+    .fillAndStroke("#F8FAFC", helperPdfDesign.line);
+  let rowY = boxY + 8;
+  for (let index = 0; index < entries.length; index += 1) {
+    const entry = entries[index];
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(9)
+      .fillColor(helperPdfDesign.ink)
+      .text(`${entry.label}:`, helperPdfMargin + 10, rowY, {
+        width: labelWidth - 8,
+      });
+    doc
+      .font("Helvetica")
+      .fontSize(9)
+      .fillColor(helperPdfDesign.ink)
+      .text(entry.value, helperPdfMargin + 10 + labelWidth, rowY, {
+        width: valueWidth,
+        lineGap: 1,
+      });
+    rowY += rowHeights[index];
+  }
+  doc.x = helperPdfMargin;
+  doc.y = top + height + 6;
+}
+
 export function renderPublicHelperTaskPdf(
   data: PlanningData,
   helperId: number
@@ -1956,6 +2041,7 @@ export function renderPublicHelperTaskPdf(
   if (!helper) throw new Error("Helfer wurde nicht gefunden");
   const contact = data.contacts.find(item => item.id === helper.contactId);
   const entries = selectPublicHelperTaskEntries(data, helperId);
+  const ownDetails = selectPublicHelperOwnDetails(data, helperId);
 
   return collectPdf(doc => {
     drawPublicHelperHeader(doc, data.settings, helper.name, contact);
@@ -1968,6 +2054,7 @@ export function renderPublicHelperTaskPdf(
     } else {
       for (const entry of entries) drawPublicHelperTaskEntry(doc, entry);
     }
+    drawPublicHelperOwnDetails(doc, ownDetails);
     ensureHelperPdfSpace(doc, 44);
     doc
       .moveTo(helperPdfMargin, doc.y + 4)

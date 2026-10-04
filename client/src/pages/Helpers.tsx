@@ -3358,7 +3358,7 @@ export default function Helpers() {
                 </h4>
                 <p className="text-xs leading-relaxed text-slate-600">
                   {allowsPersonalPdfShare
-                    ? "Sendet eine persönliche Einsatzübersicht mit den eigenen Einsätzen, Zeiten und Orten zur Prüfung und Rückmeldung."
+                    ? "Sendet eine persönliche Einsatzübersicht mit eigenen Einsätzen, Zeiten, Orten sowie eigenen Hinweisen und Spenden zur Prüfung und Rückmeldung."
                     : "Persönliche PDF-Links und die Einsatzplan-Zuweisung stehen ab Light bereit."}
                 </p>
               </div>
@@ -3402,7 +3402,7 @@ export default function Helpers() {
                   >
                     <strong className="block text-sm text-slate-950">Basisansicht</strong>
                     <span className="mt-1 block leading-relaxed text-slate-600">
-                      Eigene Zeiten, Aufgaben, Ort und zugeordneter Ansprechpartner. Die Rufnummer erscheint nur bei dessen freiwilliger Freigabe.
+                      Eigene Zeiten, Aufgaben, Ort, Hinweise und Spenden sowie der zugeordnete Ansprechpartner. Die Rufnummer erscheint nur bei dessen freiwilliger Freigabe.
                     </span>
                   </button>
                   <button
@@ -3417,7 +3417,7 @@ export default function Helpers() {
                   >
                     <strong className="block text-sm text-slate-950">Ansicht mit Mithelfenden</strong>
                     <span className="mt-1 block leading-relaxed text-slate-600">
-                      Zusätzlich Namen der Mithelfenden, aufgabenrelevante Hinweise und eigene Spendenangaben. Nur verwenden, wenn diese Ansicht für die Schicht benötigt wird.
+                      Zusätzlich die Namen der Mithelfenden und aufgabenrelevante Hinweise der Schicht. Nur verwenden, wenn diese Ansicht für die Schicht benötigt wird.
                     </span>
                   </button>
                 </div>

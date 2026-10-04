@@ -27,7 +27,7 @@ describe("Digitale Vertragsannahme, Freigabefilter und Veranstaltungsabschluss",
     expect(REQUIRED_LEGAL_DOCUMENT_IDS).toEqual(["terms", "avv", "privacy"]);
     expect(LEGAL_DOCUMENTS.terms.version).toBe("1.0-2026-10-01");
     expect(LEGAL_DOCUMENTS.avv.version).toBe("1.3-2026-10-02");
-    expect(LEGAL_DOCUMENTS.privacy.version).toBe("1.3-2026-10-02");
+    expect(LEGAL_DOCUMENTS.privacy.version).toBe("1.4-2026-10-04");
     expect(documentHash("terms")).toMatch(/^[a-f0-9]{64}$/);
     expect(documentHash("avv")).toMatch(/^[a-f0-9]{64}$/);
   });

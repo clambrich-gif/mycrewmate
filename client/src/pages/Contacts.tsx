@@ -15,11 +15,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { CREATION_ACTION_BUTTON_CLASS } from "@/lib/creation-action";
 import { CONTACTS_KLEMMI_STEPS } from "@/lib/klemmi-area-tours";
 import { useTenantAdministration } from "@/hooks/useTenantAdministration";
 import { trpc } from "@/lib/trpc";
-import { Mail, Pencil, Phone, Plus, Trash2 } from "lucide-react";
+import { Info, Mail, Pencil, Phone, Plus, Trash2 } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { toast } from "sonner";
 
@@ -236,20 +241,36 @@ export default function Contacts() {
                   className="h-11 border-slate-300 bg-white text-base shadow-sm placeholder:text-slate-600"
                 />
               </div>
-              <label className="flex max-w-xs items-start gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs leading-relaxed text-slate-700">
+              <div
+                data-klemmi-target="contacts-phone-share"
+                className="flex max-w-xs items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+              >
                 <Checkbox
+                  id="new-contact-phone-share"
                   checked={sharePhoneInHelperPlan}
                   onCheckedChange={checked =>
                     setSharePhoneInHelperPlan(checked === true)
                   }
                   aria-label="Rufnummer in persönlichen Helfer-Einsatzplänen zeigen"
                 />
-                <span>
-                  <strong>Rufnummer weitergeben</strong>
-                  <br />
-                  Nur in persönlichen Einsatzplänen dieses Ansprechpartners anzeigen.
-                </span>
-              </label>
+                <label htmlFor="new-contact-phone-share" className="cursor-pointer font-semibold">
+                  Rufnummer weitergeben
+                </label>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="ml-auto inline-flex size-8 shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-blue-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                      aria-label="Erklärung zur Rufnummernfreigabe anzeigen"
+                    >
+                      <Info className="size-4" aria-hidden="true" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={8} className="max-w-xs text-left text-xs leading-relaxed">
+                    Die Rufnummer erscheint nur in den persönlichen Einsatzplänen von Helfern, die diesem Ansprechpartner zugeordnet sind. Ohne Häkchen bleibt sie intern.
+                  </TooltipContent>
+                </Tooltip>
+              </div>
               <Button
                 type="submit"
                 data-klemmi-target="contacts-save"
@@ -414,20 +435,36 @@ export default function Contacts() {
                 placeholder="z. B. 0170 1234567"
               />
             </div>
-            <label className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm leading-relaxed text-slate-700">
+            <div
+              data-klemmi-target="contacts-phone-share"
+              className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700"
+            >
               <Checkbox
+                id="edit-contact-phone-share"
                 checked={editSharePhoneInHelperPlan}
                 onCheckedChange={checked =>
                   setEditSharePhoneInHelperPlan(checked === true)
                 }
                 aria-label="Rufnummer in persönlichen Helfer-Einsatzplänen zeigen"
               />
-              <span>
-                <strong>Rufnummer in persönlichen Helfer-Einsatzplänen zeigen</strong>
-                <br />
-                Freiwillige Freigabe: Die Telefonnummer erscheint nur bei den Personen, die diesem Ansprechpartner zugeordnet sind.
-              </span>
-            </label>
+              <label htmlFor="edit-contact-phone-share" className="cursor-pointer font-semibold">
+                Rufnummer weitergeben
+              </label>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="ml-auto inline-flex size-8 shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-white hover:text-blue-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                    aria-label="Erklärung zur Rufnummernfreigabe anzeigen"
+                  >
+                    <Info className="size-4" aria-hidden="true" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={8} className="max-w-xs text-left text-xs leading-relaxed">
+                  Die Rufnummer erscheint nur in den persönlichen Einsatzplänen von Helfern, die diesem Ansprechpartner zugeordnet sind. Ohne Häkchen bleibt sie intern.
+                </TooltipContent>
+              </Tooltip>
+            </div>
             <DialogFooter className="flex flex-row flex-nowrap items-center justify-between gap-3 sm:space-x-0">
               <Button
                 type="button"

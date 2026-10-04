@@ -41,7 +41,8 @@ type GuideStepKey =
   | "action-donation"
   | "action-pdf"
   | "action-edit"
-  | "action-delete";
+  | "action-delete"
+  | "action-cancellation";
 
 type HighlightRect = {
   top: number;
@@ -208,7 +209,18 @@ const guideSteps: GuideStep[] = [
     eyebrow: "Weitere Zeichen am Helfer",
     title: "Löschen nur, wenn es wirklich erlaubt ist",
     text: "Der Papierkorb ist nur rot und anklickbar, wenn dieser Helfer gelöscht werden darf. Bei geschützten oder bereits eingeteilten Personen bleibt er grau. So gehen keine wichtigen Planungsdaten versehentlich verloren.",
+    action: "Absagen erklären",
+  },
+  {
+    key: "action-cancellation",
+    selector: '[data-klemmi-target="helper-feedback"]',
+    helperScoped: true,
+    showHelperCard: true,
+    eyebrow: "Wichtig bei Absagen",
+    title: "Bei Absage auf Nein stellen – nicht löschen",
+    text: "Kann ein Helfer doch nicht teilnehmen, wird er nicht gelöscht. Setze bei „Helfen“ den Status auf Nein. Die rote Kennzeichnung zeigt dem Team sofort, dass Ersatz für die betroffenen Schichten gebraucht wird und die bisherige Planung nachvollziehbar bleibt.",
     action: "Tour abschließen",
+    audioKey: "action-cancellation",
   },
 
 ];

@@ -144,7 +144,8 @@ async function serveShortPublicHelperPdf(
 
 /**
  * Liefert ausschließlich datensparsame persönliche Helfer-PDFs ohne Anmeldung:
- * eigene Einsätze, Zeit, Aufgabe und Ort – keine Daten anderer Personen.
+ * eigene Einsätze, Zeit, Aufgabe, Ort sowie eigene Hinweise und Spenden – keine
+ * Daten anderer Personen.
  * - /api/public/pdf/:token bleibt für bereits versendete 90-Tage-Freigaben.
  * - /p/:shortCode ist die kompakte Route für neue WhatsApp-Nachrichten.
  */

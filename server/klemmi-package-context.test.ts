@@ -108,6 +108,7 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
       hasContacts: true,
       hasMappableLocations: false,
       canUseMapsGpx: false,
+      canUseChat: false,
       canUseDonations: false,
       currentPackageId: "event_pass",
       detailsLayout: "stacked",
@@ -174,6 +175,7 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
       hasContacts: true,
       hasMappableLocations: false,
       canUseMapsGpx: false,
+      canUseChat: false,
       canUseDonations: false,
       currentPackageId: "light",
       detailsLayout: "side-by-side",
@@ -199,6 +201,10 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
     const proSteps = getHelperGuideSteps("pro");
     expect(proSteps.find(step => step.key === "donation")?.title).toBe("Spende direkt mit erfassen");
     expect(proSteps.find(step => step.key === "action-whatsapp")?.title).toBe("Nach vollständiger Planung per WhatsApp anfragen");
+    expect(proSteps.find(step => step.key === "action-cancellation")).toMatchObject({
+      title: "Bei Absage auf Nein stellen – nicht löschen",
+      audioKey: "action-cancellation",
+    });
   });
 
   it("erklärt Orte in Plan, Vorbereitung und Nachbereitung paketgenau", () => {

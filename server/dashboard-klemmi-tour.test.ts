@@ -10,6 +10,7 @@ const populatedDashboard = {
   hasContacts: true,
   hasMappableLocations: true,
   canUseMapsGpx: true,
+  canUseChat: true,
   canUseDonations: true,
   currentPackageId: "pro",
 } as const;
@@ -45,6 +46,7 @@ describe("Dashboard-Klemmi-Tour", () => {
     const steps = createDashboardKlemmiSteps({
       ...populatedDashboard,
       canUseMapsGpx: false,
+      canUseChat: false,
       canUseDonations: false,
       currentPackageId: "light",
       detailsLayout: "side-by-side",
@@ -57,5 +59,27 @@ describe("Dashboard-Klemmi-Tour", () => {
       audioKey: "map-locked-light",
       allowMissingTarget: true,
     });
+    expect(steps.some(step => step.key === "chat")).toBe(false);
+  });
+
+  it("erklärt den Live-Chat samt Wirkung wichtiger Nachrichten ab Pro", () => {
+    const chatStep = createDashboardKlemmiSteps({
+      ...populatedDashboard,
+      detailsLayout: "side-by-side",
+    }).find(step => step.key === "chat");
+
+    expect(chatStep).toMatchObject({
+      selector: '[data-klemmi-target="dashboard-live-chat"]',
+      audioKey: "chat",
+    });
+    expect(chatStep?.text).toContain("als wichtig");
+    expect(chatStep?.text).toContain("rot markiert");
+    expect(chatStep?.text).toContain("keine automatische E-Mail oder WhatsApp-Nachricht");
+    expect(
+      createDashboardKlemmiSteps({
+        ...populatedDashboard,
+        detailsLayout: "side-by-side",
+      }).find(step => step.key === "map-active")?.action
+    ).toBe("Weiter zum Live-Chat");
   });
 });

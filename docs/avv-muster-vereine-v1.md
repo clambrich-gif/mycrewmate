@@ -1,6 +1,6 @@
 # Vereinbarung zur Auftragsverarbeitung (AVV) für MyCrewMate
 
-> **Version 1.3, Stand 02.10.2026.** Diese Vereinbarung wird beim digitalen Vertragsabschluss in elektronischem Format bestätigt. Sie dokumentiert den vereinbarten Auftragsverarbeitungsrahmen und ersetzt keine individuelle Rechtsberatung für Sonderfälle eines Vereins.
+> **Version 1.4, Stand 04.10.2026.** Diese Vereinbarung wird beim digitalen Vertragsabschluss in elektronischem Format bestätigt. Sie dokumentiert den vereinbarten Auftragsverarbeitungsrahmen und ersetzt keine individuelle Rechtsberatung für Sonderfälle eines Vereins.
 
 ## Vertragsparteien
 
@@ -89,8 +89,8 @@ Die folgenden Funktionen sind nicht zwingend für die Kernplanung. Der Verein ak
 | Zusatzfunktion | Zweck / möglicher Datenfluss | Aktivierung für diesen Verein |
 | --- | --- | --- |
 | WhatsApp-Weiterleitung | Nach bewusstem Klick werden Zielrufnummer und optional vorbefüllter Nachrichtentext an WhatsApp übergeben. Die Nutzung bleibt freiwillig; ein anderer Kontaktweg muss möglich bleiben. | [ ] aktiviert [ ] nicht aktiviert |
-| Persönlicher PDF-Link – Basisansicht | Zeitlich begrenzte, passwortgeschützte Übersicht mit Name der empfangenden Person, eigenen Einsätzen, Ort und Ansprechperson. Die Telefonnummer der Ansprechperson erscheint nur bei deren freiwilliger Freigabe. | [ ] aktiviert [ ] nicht aktiviert |
-| Persönlicher PDF-Link – Teamansicht | Bewusst wählbare Zusatzansicht mit Namen der Mithelfenden derselben Schicht sowie ausschließlich aufgabenrelevanten Hinweisen; eigene Verpflegungsspenden können mit Zutaten- oder Allergenhinweisen erscheinen. | [ ] aktiviert [ ] nicht aktiviert |
+| Persönlicher PDF-Link – Basisansicht | Zeitlich begrenzte, passwortgeschützte Übersicht mit Name der empfangenden Person, eigenen Einsätzen, Ort, eigenen Hinweisen, eigenen Verpflegungsspenden und Ansprechperson. Die Telefonnummer der Ansprechperson erscheint nur bei deren freiwilliger Freigabe. | [ ] aktiviert [ ] nicht aktiviert |
+| Persönlicher PDF-Link – Teamansicht | Bewusst wählbare Zusatzansicht mit Namen der Mithelfenden derselben Schicht sowie ausschließlich aufgabenrelevanten Hinweisen. | [ ] aktiviert [ ] nicht aktiviert |
 | Linkschutz und Widerruf | Link und Zugangscode werden getrennt geschützt. Jeder Link ist sieben Tage gültig und kann vom Organisationsteam sofort widerrufen werden. Eine serverseitig verschlüsselte Zustellkopie darf nur zur erneuten Zustellung eines aktiven Links verwendet werden. | [ ] geprüft |
 | Foto / Bild | Nur falls der Verein Fotos oder Bilder hochlädt bzw. verarbeitet. Rechtsgrundlage, Informationspflicht und Löschfrist legt der Verein fest. | [ ] aktiviert [ ] nicht aktiviert |
 | Video | Im aktuellen MyCrewMate-Kernbetrieb nicht vorgesehen. | [ ] nicht aktiviert |

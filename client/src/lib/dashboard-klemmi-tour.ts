@@ -12,6 +12,8 @@ export type DashboardKlemmiTourState = {
   hasMappableLocations: boolean;
   /** Live-Standortkarte und GPS-Strecken sind ausschließlich ab Pro verfügbar. */
   canUseMapsGpx: boolean;
+  /** Der gemeinsame Live-Chat steht ausschließlich ab Pro zur Verfügung. */
+  canUseChat: boolean;
   canUseDonations: boolean;
   currentPackageId: ProductPackageId;
   detailsLayout: DashboardDetailsLayout;
@@ -122,7 +124,9 @@ export function createDashboardKlemmiSteps(
               : "Die Live-Standortkarte mit GPS-Orten, Strecken und Statusmarkern steht ab Pro bereit. Im Event Pass konzentrierst du dich auf Helfer, Einsatzplan, Vorbereitung und die Standard-PDFs. Deshalb wird hier keine Karte eingeblendet.",
           audioKey:
             state.currentPackageId === "light" ? "map-locked-light" : "map-locked",
-          action: "Dashboard-Tour abschließen",
+          action: state.canUseChat
+            ? "Weiter zum Live-Chat"
+            : "Dashboard-Tour abschließen",
           // Im Event Pass gibt es bewusst keine Kartenfläche. Die Tour darf
           // trotzdem sprechen und erklärt genau diesen Paketunterschied.
           allowMissingTarget: true,
@@ -135,9 +139,23 @@ export function createDashboardKlemmiSteps(
           text: state.hasMappableLocations
             ? "Diese Karte verbindet Orte mit Vorbereitung, Schichten und Material. Die Farben zeigen den jeweiligen Stand, und ein Klick auf einen Marker filtert den passenden Planungsbereich."
             : "Sobald du unter Orte und Standorte mindestens einen Standort mit Koordinaten anlegst, wird hier unten automatisch die Live-Standortkarte mit den zugehörigen Planungsinformationen eingeblendet.",
-          action: "Dashboard-Tour abschließen",
-        }
+          action: state.canUseChat
+            ? "Weiter zum Live-Chat"
+            : "Dashboard-Tour abschließen",
+      }
   );
+
+  if (state.canUseChat) {
+    steps.push({
+      key: "chat",
+      selector: '[data-klemmi-target="dashboard-live-chat"]',
+      eyebrow: "7 · Live-Chat und Team-Notizen",
+      title: "Wichtige Nachrichten klar an das Team senden",
+      text: "Über die blaue Sprechblase öffnest du die Team-Notizen der aktuell gewählten Veranstaltung. Markiere eine Nachricht als wichtig, wenn sie das Team sofort sehen soll: Sie wird im Chat deutlich hervorgehoben und bei ungelesenen Nachrichten rot markiert. Ein Warnton erfolgt nur, wenn die einzelne Person ihn bewusst eingeschaltet hat. Der Chat versendet keine automatische E-Mail oder WhatsApp-Nachricht.",
+      audioKey: "chat",
+      action: "Dashboard-Tour abschließen",
+    });
+  }
 
   return steps;
 }

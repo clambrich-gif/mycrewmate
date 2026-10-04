@@ -48,6 +48,7 @@ import {
   CONTACT_CHECKLIST_MARKER,
   renderPlanningTeamAccessSheetsPdf,
   selectPublicHelperTaskEntries,
+  selectPublicHelperOwnDetails,
   shouldUseMyCrewMateWordmark,
 } from "./pdf";
 import { resolveEventPdfLogoKey } from "./event-pdf-image";
@@ -289,7 +290,7 @@ describe("PDF-Erzeugung", () => {
     expect(pdf.toString("latin1")).not.toContain("Karte öffnen");
   });
 
-  it("begrenzt öffentliche Helfer-PDFs auf die eigene Aufgabe, Zeit und den optionalen Ort", async () => {
+  it("begrenzt öffentliche Helfer-PDFs auf eigene Angaben und ergänzt eigene Hinweise sowie Spenden", async () => {
     const location: Location = {
       ...cakeLocations[0],
       name: "Pumptrack",
@@ -320,14 +321,14 @@ describe("PDF-Erzeugung", () => {
         locationLink: null,
       },
     ]);
+    expect(selectPublicHelperOwnDetails(publicData, helpers[0].id)).toEqual({
+      helperNote: "Bitte am Freitag pünktlich erscheinen.",
+      cakeLines: ["Käsekuchen (Fr., 09:00 Uhr – Pumptrack)"],
+    });
 
     const pdf = await renderPublicHelperTaskPdf(publicData, helpers[0].id);
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
     expect(pdf.length).toBeGreaterThan(1_000);
-    expect(pdf.toString("latin1")).not.toContain("Christian Lambrich");
-    expect(pdf.toString("latin1")).not.toContain("Martin Reis");
-    expect(pdf.toString("latin1")).not.toContain("Käsekuchen");
-    expect(pdf.toString("latin1")).not.toContain("Bitte am Freitag pünktlich erscheinen.");
   });
 
   it("setzt lange Helferhinweise als mehrzeilige Zusammenfassung ohne den Export zu überlagern", async () => {

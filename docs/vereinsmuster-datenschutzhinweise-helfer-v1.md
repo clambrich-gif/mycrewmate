@@ -1,6 +1,6 @@
 # Muster: Datenschutzhinweis für Helferinnen, Helfer und Ansprechpartner
 
-> **Arbeitsmuster – Version 1.0, Stand 01.10.2026.** Dieses Muster ist vom jeweiligen Verein vor der Nutzung mit seinen tatsächlichen Abläufen, Zuständigkeiten, Kommunikationswegen und Aufbewahrungsfristen zu ergänzen. Es ersetzt keine individuelle Rechtsberatung.
+> **Arbeitsmuster – Version 1.1, Stand 04.10.2026.** Dieses Muster ist vom jeweiligen Verein vor der Nutzung mit seinen tatsächlichen Abläufen, Zuständigkeiten, Kommunikationswegen und Aufbewahrungsfristen zu ergänzen. Es ersetzt keine individuelle Rechtsberatung.
 
 ---
 
@@ -37,8 +37,8 @@ Der Verein kann zwischen zwei Ansichten wählen:
 
 | Ansicht | Enthaltene Informationen |
 | --- | --- |
-| **Basisansicht** | Dein Name, deine eigenen Einsätze, Tag, Uhrzeit, Aufgabe, Ort sowie die verantwortliche Ansprechperson. Eine Telefonnummer wird nur angezeigt, wenn die Ansprechperson dies freiwillig freigegeben hat. |
-| **Ansicht mit Mithelfenden** | Zusätzlich die Namen der Personen, die aktuell in derselben Schicht arbeiten, sowie aufgabenbezogene Informationen, die für die Zusammenarbeit erforderlich sind. Eigene Verpflegungsspenden können mit sachlichen Zutaten- oder Allergenhinweisen erscheinen. |
+| **Basisansicht** | Dein Name, deine eigenen Einsätze, Tag, Uhrzeit, Aufgabe, Ort, deine eigenen Hinweise und deine eigenen Verpflegungsspenden sowie die verantwortliche Ansprechperson. Eine Telefonnummer wird nur angezeigt, wenn die Ansprechperson dies freiwillig freigegeben hat. |
+| **Ansicht mit Mithelfenden** | Zusätzlich die Namen der Personen, die aktuell in derselben Schicht arbeiten, sowie aufgabenbezogene Informationen, die für die Zusammenarbeit erforderlich sind. |
 
 Der Verein kann einen Link sofort widerrufen. Danach ist der Link auch mit dem richtigen Zugangscode nicht mehr nutzbar. Bitte gib Link und Zugangscode nicht an Dritte weiter.
 

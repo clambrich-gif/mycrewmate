@@ -236,17 +236,16 @@ export default function AppPrivacy() {
               <p>
                 In der <strong>Basisansicht</strong> enthält die Übersicht nur
                 den Namen der empfangenden Person, deren eigene Einsätze mit
-                Tag, Zeit, Aufgabe und Ort sowie die verantwortliche
-                Ansprechperson. Eine Telefonnummer der Ansprechperson erscheint
-                nur, wenn diese sie freiwillig für Helferpläne freigegeben hat.
+                Tag, Zeit, Aufgabe und Ort, eigene Hinweise und eigene
+                Verpflegungsspenden sowie die verantwortliche Ansprechperson.
+                Eine Telefonnummer der Ansprechperson erscheint nur, wenn diese
+                sie freiwillig für Helferpläne freigegeben hat.
               </p>
               <p>
                 Die bewusst wählbare <strong>Ansicht mit Mithelfenden</strong>
                 ergänzt Namen der Personen, die derselben Schicht zugeordnet
                 sind, sowie aufgabenbezogene Informationen, die für die
-                Zusammenarbeit erforderlich sind. Eigene Verpflegungsspenden
-                können mit sachlichen Zutaten- oder Allergenhinweisen
-                erscheinen. Verfügbarkeiten anderer Personen, weitere Einsätze
+                Zusammenarbeit erforderlich sind. Verfügbarkeiten anderer Personen, weitere Einsätze
                 anderer Helfer sowie nicht erforderliche private Angaben werden
                 nicht ausgegeben. Der Verein ist dafür verantwortlich, die
                 Beteiligten über die gewählte Ansicht und die Weitergabe ihrer
@@ -308,7 +307,7 @@ export default function AppPrivacy() {
                   className="mt-0.5 size-3.5 shrink-0"
                   aria-hidden="true"
                 />
-                Version 1.2 · Stand: 02.10.2026. Dieser Hinweis beschreibt den
+                Version 1.4 · Stand: 04.10.2026. Dieser Hinweis beschreibt den
                 geschlossenen Pilotbetrieb und wird bei neuen Funktionen,
                 Dienstleistern oder verbindlichen betrieblichen Änderungen
                 aktualisiert.

@@ -501,7 +501,10 @@ export function LiveChatWidget({
   if (state === "closed") {
     const hasUnread = unreadCount > 0;
     return (
-      <aside aria-label="Live-Notizen und Team-Chat">
+      <aside
+        data-klemmi-target="dashboard-live-chat"
+        aria-label="Live-Notizen und Team-Chat"
+      >
         <Button
           ref={chatButtonRef}
           type="button"
@@ -558,6 +561,7 @@ export function LiveChatWidget({
   if (isMinimized) {
     return (
       <aside
+        data-klemmi-target="dashboard-live-chat"
         aria-label="Minimierte Team-Notizen"
         className="fixed bottom-[max(1rem,calc(env(safe-area-inset-bottom)+0.5rem))] right-4 z-40 flex items-center gap-2 rounded-full border border-blue-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-800 shadow-2xl ring-1 ring-black/5 sm:bottom-4"
       >
@@ -612,6 +616,7 @@ export function LiveChatWidget({
   return (
     <>
       <div
+        data-klemmi-target="dashboard-live-chat"
         role="dialog"
         aria-label="Live-Team-Notizen und Chat"
         aria-modal="false"
