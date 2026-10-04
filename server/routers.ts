@@ -4949,14 +4949,16 @@ export const appRouter = router({
         });
         return { ...result, delivered: 0, undeliverable: 0 };
       }
-      const dashboardUrl = publicAppUrl("/");
+      const helperOverviewUrl = publicAppUrl(
+        `/helfer?meine=1&eingeteilt=1&event=${result.eventId}&jahr=${result.eventYear}`
+      );
       const deliveries = await Promise.all(
         result.contacts.map(async contact => {
           if (!contact.email) return { contactId: contact.id, delivered: false };
           const email = renderPlanReleaseContactEmail({
             recipientName: contact.name,
             eventName: result.eventName,
-            dashboardUrl,
+            helperOverviewUrl,
             kind: "released",
           });
           const delivery = await sendTransactionalEmail({ to: contact.email, ...email });
@@ -4979,14 +4981,16 @@ export const appRouter = router({
     }),
     sendInitialNotifications: scheduleAdminProcedure.mutation(async ({ ctx }) => {
       const result = await db.prepareInitialPlanNotificationRecipients();
-      const dashboardUrl = publicAppUrl("/");
+      const helperOverviewUrl = publicAppUrl(
+        `/helfer?meine=1&eingeteilt=1&event=${result.eventId}&jahr=${result.eventYear}`
+      );
       const deliveries = await Promise.all(
         result.contacts.map(async contact => {
           if (!contact.email) return { contactId: contact.id, delivered: false };
           const email = renderPlanReleaseContactEmail({
             recipientName: contact.name,
             eventName: result.eventName,
-            dashboardUrl,
+            helperOverviewUrl,
             kind: "released",
           });
           const delivery = await sendTransactionalEmail({ to: contact.email, ...email });
@@ -5049,14 +5053,16 @@ export const appRouter = router({
         db.listPlanNotificationRecipients("changed"),
       ]);
       if (!selectedEvent) throw new TRPCError({ code: "NOT_FOUND", message: "Veranstaltung nicht gefunden" });
-      const dashboardUrl = publicAppUrl("/");
+      const helperOverviewUrl = publicAppUrl(
+        `/helfer?meine=1&eingeteilt=1&event=${selectedEvent.id}&jahr=${selectedEvent.year}`
+      );
       const deliveries = await Promise.all(
         recipients.map(async recipient => {
           if (!recipient.email) return { contactId: recipient.contactId, delivered: false };
           const email = renderPlanReleaseContactEmail({
             recipientName: recipient.name,
             eventName: selectedEvent.name,
-            dashboardUrl,
+            helperOverviewUrl,
             kind: "changed",
           });
           const delivery = await sendTransactionalEmail({ to: recipient.email, ...email });
@@ -6564,12 +6570,14 @@ export const appRouter = router({
       }
 
       const normalizedCurrentName = db.normalizePersonName(ctx.user.name ?? "");
-      if (normalizedCurrentName) {
-        for (const contact of contacts) {
-          if (db.normalizePersonName(contact.name) === normalizedCurrentName) {
-            ownContactIds.add(contact.id);
-          }
-        }
+      const nameMatchedContacts = normalizedCurrentName
+        ? contacts.filter(contact => db.normalizePersonName(contact.name) === normalizedCurrentName)
+        : [];
+      // Historische Sammelzugänge haben keine gespeicherte Ansprechpartner-ID.
+      // Ein Namensfallback ist deshalb nur bei genau einem eindeutigen Treffer
+      // zulässig und darf niemals mehrere Ansprechpartner zusammenführen.
+      if (nameMatchedContacts.length === 1) {
+        ownContactIds.add(nameMatchedContacts[0].id);
       }
 
       const ownHelperIds = new Set(
@@ -6619,6 +6627,9 @@ export const appRouter = router({
         })),
         }),
         planInformation: {
+          eventId: selectedEvent?.id ?? null,
+          eventName: selectedEvent?.name ?? null,
+          eventYear: selectedEvent?.year ?? null,
           releasedAt: selectedEvent?.planReleasedAt ?? null,
           outstanding: outstandingPlanNotifications.length > 0,
           changed: hasPlanChange,
@@ -6637,10 +6648,11 @@ export const appRouter = router({
         if (typeof access?.contactId === "number") ownContactIds.add(access.contactId);
       }
       const normalizedCurrentName = db.normalizePersonName(ctx.user.name ?? "");
-      if (normalizedCurrentName) {
-        contacts
-          .filter(contact => db.normalizePersonName(contact.name) === normalizedCurrentName)
-          .forEach(contact => ownContactIds.add(contact.id));
+      const nameMatchedContacts = normalizedCurrentName
+        ? contacts.filter(contact => db.normalizePersonName(contact.name) === normalizedCurrentName)
+        : [];
+      if (nameMatchedContacts.length === 1) {
+        ownContactIds.add(nameMatchedContacts[0].id);
       }
       const result = await db.acknowledgePlanInformationForContacts(
         Array.from(ownContactIds)

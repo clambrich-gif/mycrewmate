@@ -2166,6 +2166,18 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("trpc.plan.sendChangeReminders.useMutation");
   });
 
+  it("zeigt aus der Planinformation nur eigene eingeteilte Helfer und markiert sie klar", () => {
+    const helpers = source("client/src/pages/Helpers.tsx");
+    const context = source("client/src/contexts/YearContext.tsx");
+
+    expect(helpers).toContain('searchParams.get("meine") === "1"');
+    expect(helpers).toContain("Planhinweis: Nur deine im Einsatzplan");
+    expect(helpers).toContain("Im Einsatzplan eingeteilt – bitte informieren");
+    expect(helpers).toContain("Alle meine Helfer anzeigen");
+    expect(context).toContain('params.get("event")');
+    expect(context).toContain('params.get("jahr")');
+  });
+
   it("ordnet die bereinigten Modulaktionen und den gemeinsamen Resetdialog für Vorbereitung, Nachbereitung und Material", () => {
     const prep = source("client/src/pages/Preparation.tsx");
     const post = source("client/src/pages/PostProcessing.tsx");

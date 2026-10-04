@@ -56,10 +56,50 @@ export function storedEventId(
   return Number.isInteger(value) && value > 0 ? value : DEFAULT_EVENT_ID;
 }
 
+/**
+ * Ein Link aus der Planfreigabe muss den Empfänger in exakt dieselbe
+ * Veranstaltung führen. Die Auswahl wird nur beim ersten Laden übernommen;
+ * Berechtigungen bleiben serverseitig über die normale Event-Auswahl geprüft.
+ */
+function eventScopeFromLink() {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.search);
+  const eventId = Number(params.get("event"));
+  const year = Number(params.get("jahr"));
+  if (
+    !Number.isInteger(eventId) ||
+    eventId <= 0 ||
+    !Number.isInteger(year) ||
+    year < 2020 ||
+    year > 2100
+  ) {
+    return null;
+  }
+  return { eventId, year };
+}
+
+function initialEventScope() {
+  const scope = eventScopeFromLink();
+  if (!scope || typeof window === "undefined") return scope;
+  const tenantId = storedTenantId();
+  window.localStorage.setItem(YEAR_STORAGE_KEY, String(scope.year));
+  window.localStorage.setItem(
+    `${EVENT_STORAGE_PREFIX}${tenantId}-${scope.year}`,
+    String(scope.eventId)
+  );
+  // Die bewusste Auswahl aus dem E-Mail-Link darf nicht durch die automatische
+  // Wahl der nächststehenden Veranstaltung überschrieben werden.
+  window.sessionStorage.setItem(eventStartSelectionSessionKey(tenantId), "done");
+  return scope;
+}
+
 export function YearProvider({ children }: { children: React.ReactNode }) {
   const [tenantId, setTenantId] = useState(storedTenantId);
-  const [year] = useState(storedEventYear);
-  const [eventId, setEventId] = useState(() => storedEventId(year, tenantId));
+  const [initialScope] = useState(initialEventScope);
+  const [year] = useState(() => initialScope?.year ?? storedEventYear());
+  const [eventId, setEventId] = useState(() =>
+    initialScope?.eventId ?? storedEventId(year, tenantId)
+  );
   const value = useMemo<PlanningScopeContextValue>(
     () => ({
       tenantId,

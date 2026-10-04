@@ -177,6 +177,9 @@ type PersonalDashboardData = {
     }>;
   }>;
   planInformation: {
+    eventId: number | null;
+    eventName: string | null;
+    eventYear: number | null;
     releasedAt: Date | string | null;
     outstanding: boolean;
     changed: boolean;
@@ -1361,12 +1364,17 @@ function PilotTenantInfoCard({
 function PersonalDashboardContent({
   data,
   onOpen,
-  onPlanInformationAcknowledged,
+  onPlanInformationConfirmed,
 }: {
   data: PersonalDashboardData;
   onOpen: (href: string) => void;
-  onPlanInformationAcknowledged: () => void;
+  onPlanInformationConfirmed: () => void;
 }) {
+  const [planInformationConfirmed, setPlanInformationConfirmed] = useState(false);
+  useEffect(() => {
+    setPlanInformationConfirmed(false);
+  }, [data.planInformation.releasedAt, data.planInformation.changed]);
+
   if (!data.identityLinked) {
     return (
       <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950 shadow-sm sm:p-5">
@@ -1456,7 +1464,12 @@ function PersonalDashboardContent({
       </section>
 
       {data.planInformation.outstanding && data.planInformation.assignedHelperCount > 0 && (
-        <section className="overflow-hidden rounded-2xl border border-blue-300 bg-gradient-to-r from-blue-600 to-sky-500 p-4 text-white shadow-lg shadow-blue-200 sm:p-5">
+        <section className={cn(
+          "overflow-hidden rounded-2xl border p-4 text-white shadow-lg sm:p-5",
+          data.planInformation.changed
+            ? "border-amber-300 bg-gradient-to-r from-amber-600 to-orange-500 shadow-amber-200"
+            : "border-blue-300 bg-gradient-to-r from-blue-600 to-sky-500 shadow-blue-200"
+        )}>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-start gap-3">
               <span className="grid size-11 shrink-0 place-items-center rounded-full bg-white/20 ring-1 ring-white/35">
@@ -1467,7 +1480,9 @@ function PersonalDashboardContent({
                   {data.planInformation.changed ? "Änderung im Einsatzplan" : "Einsatzplan steht"}
                 </p>
                 <h2 className="mt-1 text-lg font-extrabold sm:text-xl">
-                  Bitte deine zugeordneten Helfer informieren
+                  {data.planInformation.changed
+                    ? "Einsatzplan geändert – betroffene Helfer prüfen"
+                    : `Helferplan steht – ${data.planInformation.eventName ?? "Veranstaltung"}`}
                 </h2>
                 <p className="mt-1 max-w-3xl text-sm leading-6 text-blue-50">
                   {data.planInformation.changed
@@ -1478,11 +1493,38 @@ function PersonalDashboardContent({
             </div>
             <Button
               type="button"
-              onClick={onPlanInformationAcknowledged}
+              onClick={() => {
+                if (!data.planInformation.eventId || !data.planInformation.eventYear) return;
+                onOpen(
+                  `/helfer?meine=1&eingeteilt=1&event=${data.planInformation.eventId}&jahr=${data.planInformation.eventYear}`
+                );
+              }}
               className="h-11 shrink-0 rounded-xl bg-white px-4 font-bold text-blue-800 shadow-sm hover:bg-blue-50"
             >
-              Helferübersicht öffnen
+              Meine eingeteilten Helfer öffnen
               <ArrowRight className="ml-2 size-4" aria-hidden="true" />
+            </Button>
+          </div>
+          <label className="mt-4 flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border border-white/30 bg-white/10 px-3 py-2.5 text-sm leading-5 text-white">
+            <input
+              type="checkbox"
+              checked={planInformationConfirmed}
+              onChange={event => setPlanInformationConfirmed(event.target.checked)}
+              className="mt-0.5 size-4 rounded border-white/60 accent-white"
+            />
+            <span>
+              Nicht mehr anzeigen – meine zugeordneten Helfer wurden informiert.
+            </span>
+          </label>
+          <div className="mt-3 flex justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!planInformationConfirmed}
+              onClick={onPlanInformationConfirmed}
+              className="h-10 border-white/55 bg-white/15 text-white hover:bg-white/25 hover:text-white disabled:border-white/20 disabled:bg-white/5 disabled:text-white/55"
+            >
+              Hinweis ausblenden
             </Button>
           </div>
         </section>
@@ -1694,9 +1736,7 @@ export default function Dashboard() {
   const acknowledgePlanInformation = trpc.dashboard.acknowledgePlanInformation.useMutation({
     onSuccess: async () => {
       await utils.dashboard.personal.invalidate();
-      navigate(
-        personalDashboard.data?.planInformation?.changed ? "/helfer?meine=1&eingeteilt=1" : "/helfer?meine=1"
-      );
+      toast.success("Der Hinweis wurde ausgeblendet.");
     },
     onError: error => toast.error(error.message),
   });
@@ -2146,7 +2186,7 @@ export default function Dashboard() {
           <PersonalDashboardContent
             data={personalDashboard.data as PersonalDashboardData}
             onOpen={href => navigate(href)}
-            onPlanInformationAcknowledged={() => acknowledgePlanInformation.mutate()}
+            onPlanInformationConfirmed={() => acknowledgePlanInformation.mutate()}
           />
         ) : (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-900 shadow-sm">

@@ -68,10 +68,13 @@ describe("persönliche Dashboard-Ansicht", () => {
     ]);
 
     expect(dashboard).toContain("data.planInformation.outstanding");
-    expect(dashboard).toContain("Bitte deine zugeordneten Helfer informieren");
-    expect(dashboard).toContain("Helferübersicht öffnen");
+    expect(dashboard).toContain("Helferplan steht");
+    expect(dashboard).toContain("Meine eingeteilten Helfer öffnen");
+    expect(dashboard).toContain("Nicht mehr anzeigen – meine zugeordneten Helfer wurden informiert.");
+    expect(dashboard).toContain("event=${data.planInformation.eventId}");
     expect(dashboard).toContain("trpc.dashboard.acknowledgePlanInformation.useMutation");
     expect(router).toContain("acknowledgePlanInformation: protectedProcedure.mutation");
     expect(router).toContain("acknowledgePlanInformationForContacts");
+    expect(router).toContain("eventName: selectedEvent?.name ?? null");
   });
 });

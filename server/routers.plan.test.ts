@@ -2675,6 +2675,8 @@ describe("Planungs-API", () => {
     await expect(caller.plan.release({ notifyContacts: false })).rejects.toMatchObject({ code: "FORBIDDEN" });
 
     dbMocks.releaseCurrentPlan.mockResolvedValue({
+      eventId: 44,
+      eventYear: 2027,
       eventName: "MyEifelRide",
       releasedAt: new Date("2026-10-04T10:00:00Z"),
       alreadyReleased: false,
@@ -2686,6 +2688,14 @@ describe("Planungs-API", () => {
     expect(releaseResult.alreadyReleased).toBe(false);
     expect(releaseResult.contacts).toHaveLength(1);
     expect(dbMocks.releaseCurrentPlan).toHaveBeenCalledWith({ notifyContacts: true });
+    expect(mailServiceMocks.renderPlanReleaseContactEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventName: "MyEifelRide",
+        helperOverviewUrl: expect.stringContaining(
+          "/helfer?meine=1&eingeteilt=1&event=44&jahr=2027"
+        ),
+      })
+    );
     expect(dbMocks.recordActivityLog).toHaveBeenCalledWith(
       expect.objectContaining({
         module: "Einsatzplan",
@@ -2702,6 +2712,7 @@ describe("Planungs-API", () => {
 
     dbMocks.getEvent.mockResolvedValue({
       id: 1,
+      year: 2027,
       name: "MyEifelRide",
     });
     dbMocks.listPlanNotificationRecipients.mockResolvedValue([
@@ -2712,6 +2723,13 @@ describe("Planungs-API", () => {
     const result = await adminCaller.plan.sendChangeReminders();
     expect(result.recipients).toBe(1);
     expect(dbMocks.markPlanNotificationEmailsSent).toHaveBeenCalledWith([2], "changed");
+    expect(mailServiceMocks.renderPlanReleaseContactEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        helperOverviewUrl: expect.stringContaining(
+          "/helfer?meine=1&eingeteilt=1&event=1&jahr=2027"
+        ),
+      })
+    );
     expect(dbMocks.recordActivityLog).toHaveBeenCalledWith(
       expect.objectContaining({
         module: "Einsatzplan",
@@ -2727,12 +2745,16 @@ describe("Planungs-API", () => {
       { id: 3, name: "Claudia Kontakt", email: "claudia@example.com" },
     ]);
     dbMocks.releaseCurrentPlan.mockResolvedValue({
+      eventId: 1,
+      eventYear: 2027,
       eventName: "MyEifelRide",
       releasedAt: new Date("2026-10-04T10:00:00Z"),
       alreadyReleased: false,
       contacts: [{ id: 3, name: "Claudia Kontakt", email: "claudia@example.com" }],
     });
     dbMocks.prepareInitialPlanNotificationRecipients.mockResolvedValue({
+      eventId: 1,
+      eventYear: 2027,
       eventName: "MyEifelRide",
       contacts: [{ id: 3, name: "Claudia Kontakt", email: "claudia@example.com" }],
     });
@@ -2752,6 +2774,13 @@ describe("Planungs-API", () => {
     const delivery = await adminCaller.plan.sendInitialNotifications();
     expect(delivery).toMatchObject({ recipients: 1, delivered: 1 });
     expect(dbMocks.markPlanNotificationEmailsSent).toHaveBeenCalledWith([3], "released");
+    expect(mailServiceMocks.renderPlanReleaseContactEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        helperOverviewUrl: expect.stringContaining(
+          "/helfer?meine=1&eingeteilt=1&event=1&jahr=2027"
+        ),
+      })
+    );
 
     dbMocks.listPlanReleaseCorrectionRecipients.mockResolvedValue([
       { contactId: 3, name: "Claudia Kontakt", email: "claudia@example.com" },

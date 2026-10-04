@@ -807,6 +807,7 @@ export default function Helpers() {
   const assignedOnly = parseHelperAssignmentFilter(
     searchParams.get(HELPER_ASSIGNMENT_QUERY_KEY)
   );
+  const personalHelperLinkOnly = searchParams.get("meine") === "1";
   const firstContactFilter = parseHelperFirstContactFilter(
     searchParams.get(HELPER_FIRST_CONTACT_QUERY_KEY)
   );
@@ -1326,7 +1327,7 @@ export default function Helpers() {
               ? mobileWillHelpFilters.length === 0 ||
                 mobileWillHelpFilters.includes(helper.willHelp)
               : willHelpFilter === "alle" || helper.willHelp === willHelpFilter) &&
-            (!myHelperRecordOnly ||
+            (!(myHelperRecordOnly || personalHelperLinkOnly) ||
               personKey(helper.name) === personKey(user?.name ?? "") ||
               (typeof helper.contactId === "number" &&
                 ownContactIds.has(helper.contactId))) &&
@@ -1372,6 +1373,7 @@ export default function Helpers() {
       mobileWillHelpFilters,
       mobileTimedAvailabilityOnly,
       myHelperRecordOnly,
+      personalHelperLinkOnly,
       ownContactIds,
       user?.name,
       assignedOnly,
@@ -1430,6 +1432,18 @@ export default function Helpers() {
         next.delete(HELPER_CONFIRMATION_QUERY_KEY);
         next.delete(HELPER_ASSIGNMENT_QUERY_KEY);
         next.delete(HELPER_FIRST_CONTACT_QUERY_KEY);
+        next.delete("meine");
+        return next;
+      },
+      { replace: true }
+    );
+  };
+
+  const clearPlanAssignmentFilter = () => {
+    setSearchParams(
+      previous => {
+        const next = new URLSearchParams(previous);
+        next.delete(HELPER_ASSIGNMENT_QUERY_KEY);
         return next;
       },
       { replace: true }
@@ -1444,7 +1458,8 @@ export default function Helpers() {
         mobileFeedbackFilters.length > 0 ||
         mobileWillHelpFilters.length > 0 ||
         mobileTimedAvailabilityOnly ||
-        myHelperRecordOnly
+        myHelperRecordOnly ||
+        personalHelperLinkOnly
       : apFilter !== "alle" ||
         companionFilter !== "alle" ||
         confirmationFilter !== "alle" ||
@@ -1452,6 +1467,7 @@ export default function Helpers() {
         firstContactOnly ||
         willHelpFilter !== "alle" ||
         myHelperRecordOnly ||
+        personalHelperLinkOnly ||
         timedAvailabilityOnly);
   const mobileFilterCount =
     mobileContactFilters.length +
@@ -1809,6 +1825,21 @@ export default function Helpers() {
           </Button>
         </div>
       )}
+      {assignedOnly && confirmationFilter !== "nein" && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-950">
+          <span>
+            Planhinweis: Nur deine im Einsatzplan von {currentEvent?.name ?? "dieser Veranstaltung"} eingeteilten Helfer.
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            className="min-h-9 px-2 text-blue-900 hover:bg-blue-100 hover:text-blue-950"
+            onClick={clearPlanAssignmentFilter}
+          >
+            Alle meine Helfer anzeigen
+          </Button>
+        </div>
+      )}
       {firstContactOnly && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-sm text-orange-950">
           <span>Dashboardfilter: Nur Helfer ohne Erstkontakt.</span>
@@ -1827,13 +1858,24 @@ export default function Helpers() {
         <>
       <div className="space-y-3 md:hidden">
         {displayedHelpers.map(helper => (
-          <Card key={helper.id} className="shadow-sm">
+          <Card
+            key={helper.id}
+            className={cn(
+              "shadow-sm",
+              assignedHelperIds.has(helper.id) && "border-blue-300 bg-blue-50/60 ring-1 ring-blue-100"
+            )}
+          >
             <CardContent className="space-y-4 p-4">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
                   <h2 className="break-words text-[26px] leading-[1.05] font-black tracking-tight">
                     {helper.name}
                   </h2>
+                  {assignedHelperIds.has(helper.id) && (
+                    <p className="mt-1 inline-flex rounded-full bg-blue-600 px-2 py-0.5 text-xs font-bold text-white">
+                      Im Einsatzplan eingeteilt – bitte informieren
+                    </p>
+                  )}
                   {selfHelperIds.has(helper.id) && (
                     <p className="text-xs text-muted-foreground">
                       eigener Ansprechpartner-Eintrag
@@ -2137,10 +2179,18 @@ export default function Helpers() {
                 return (
                   <tr
                   key={helper.id}
-                  className="border-t hover:bg-muted/30 align-top"
+                  className={cn(
+                    "border-t align-top hover:bg-muted/30",
+                    assignedHelperIds.has(helper.id) && "bg-blue-50/70 hover:bg-blue-100/70"
+                  )}
                 >
                   <td className="p-2 font-medium">
                     {helper.name}
+                    {assignedHelperIds.has(helper.id) && (
+                      <div className="mt-1 inline-flex rounded-full bg-blue-600 px-2 py-0.5 text-[11px] font-bold text-white">
+                        Im Einsatzplan eingeteilt – bitte informieren
+                      </div>
+                    )}
                     {selfHelperIds.has(helper.id) && (
                       <div className="text-xs font-normal text-muted-foreground">
                         eigener Ansprechpartner-Eintrag
@@ -2398,7 +2448,8 @@ export default function Helpers() {
                   data-klemmi-helper-id={helper.id}
                   className={cn(
                     "border-slate-200 bg-white shadow-sm transition-all hover:border-slate-300 hover:shadow-md",
-                    helper.confirmed === "ja" && "border-l-4 border-l-emerald-600"
+                    helper.confirmed === "ja" && "border-l-4 border-l-emerald-600",
+                    assignedHelperIds.has(helper.id) && "border-blue-300 bg-blue-50/60 ring-1 ring-blue-100"
                   )}
                 >
                   <CardContent className="space-y-4 px-4 pb-4 pt-3 md:px-5 md:pb-5 md:pt-4">
@@ -2413,7 +2464,17 @@ export default function Helpers() {
                               Du
                             </span>
                           )}
+                          {assignedHelperIds.has(helper.id) && (
+                            <span className="rounded-full bg-blue-600 px-2 py-0.5 text-[11px] font-bold text-white">
+                              Eingeteilt
+                            </span>
+                          )}
                         </div>
+                        {assignedHelperIds.has(helper.id) && (
+                          <p className="mt-1 text-xs font-semibold text-blue-900">
+                            Im Einsatzplan eingeteilt – bitte informieren
+                          </p>
+                        )}
                         <p className="mt-0.5 text-xs text-slate-500">
                           <span>(</span>
                           <span

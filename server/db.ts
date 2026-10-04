@@ -4014,6 +4014,8 @@ export async function prepareInitialPlanNotificationRecipients() {
   return database.transaction(async tx => {
     const [selectedEvent] = await tx
       .select({
+        id: events.id,
+        year: events.year,
         name: events.name,
         planReleasedAt: events.planReleasedAt,
       })
@@ -4051,7 +4053,12 @@ export async function prepareInitialPlanNotificationRecipients() {
           },
         });
     }
-    return { eventName: selectedEvent.name, contacts: releaseContacts };
+    return {
+      eventId: selectedEvent.id,
+      eventYear: selectedEvent.year,
+      eventName: selectedEvent.name,
+      contacts: releaseContacts,
+    };
   });
 }
 
@@ -4081,7 +4088,12 @@ export async function releaseCurrentPlan(input: { notifyContacts?: boolean } = {
   const database = (await getDb()) as DB;
   return database.transaction(async tx => {
     const [selectedEvent] = await tx
-      .select({ id: events.id, name: events.name, planReleasedAt: events.planReleasedAt })
+      .select({
+        id: events.id,
+        year: events.year,
+        name: events.name,
+        planReleasedAt: events.planReleasedAt,
+      })
       .from(events)
       .where(
         and(
@@ -4095,7 +4107,14 @@ export async function releaseCurrentPlan(input: { notifyContacts?: boolean } = {
       .for("update");
     if (!selectedEvent) throw new Error("Die ausgewählte Veranstaltung wurde nicht gefunden");
     if (selectedEvent.planReleasedAt) {
-      return { eventName: selectedEvent.name, releasedAt: selectedEvent.planReleasedAt, alreadyReleased: true, contacts: [] } as const;
+      return {
+        eventId: selectedEvent.id,
+        eventYear: selectedEvent.year,
+        eventName: selectedEvent.name,
+        releasedAt: selectedEvent.planReleasedAt,
+        alreadyReleased: true,
+        contacts: [],
+      } as const;
     }
     const releaseContacts = await selectCurrentPlanReleaseContacts(tx);
     const releasedAt = new Date();
@@ -4125,6 +4144,8 @@ export async function releaseCurrentPlan(input: { notifyContacts?: boolean } = {
       }
     }
     return {
+      eventId: selectedEvent.id,
+      eventYear: selectedEvent.year,
       eventName: selectedEvent.name,
       releasedAt,
       alreadyReleased: false,

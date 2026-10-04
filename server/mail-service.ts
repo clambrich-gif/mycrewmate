@@ -482,18 +482,21 @@ Dein Planungsteam von ${params.tenantName} über MyCrewMate`;
 export function renderPlanReleaseContactEmail(params: {
   recipientName: string;
   eventName: string;
-  dashboardUrl: string;
+  helperOverviewUrl: string;
   kind: "released" | "changed";
 }): { subject: string; text: string; html: string } {
   const changed = params.kind === "changed";
   const subject = changed
-    ? `Einsatzplan geändert – bitte Helfer prüfen · ${params.eventName}`
-    : `Einsatzplan steht – bitte Helfer informieren · ${params.eventName}`;
-  const headline = changed ? "Dein Bereich im Einsatzplan wurde geändert" : "Der Einsatzplan steht";
+    ? `Einsatzplan für die Veranstaltung ${params.eventName} geändert – bitte Helfer prüfen`
+    : `Einsatzplan für die Veranstaltung ${params.eventName} steht – bitte Helfer informieren`;
+  const headline = changed
+    ? `Der Einsatzplan für die Veranstaltung ${params.eventName} wurde geändert`
+    : `Der Einsatzplan für die Veranstaltung ${params.eventName} steht`;
   const body = changed
     ? "Bei mindestens einem deiner zugeordneten Helfer hat sich eine Einteilung geändert. Bitte prüfe deine Helferübersicht und informiere nur die betroffenen Personen erneut."
     : "Für mindestens einen deiner zugeordneten Helfer liegt jetzt eine Einteilung vor. Bitte öffne deine Helferübersicht und informiere deine Helfer über die bestehende zweite WhatsApp-Vorlage oder persönlich.";
-  const text = `Hallo ${params.recipientName},\n\n${headline} für ${params.eventName}.\n\n${body}\n\nÖffne deine persönliche Übersicht:\n${params.dashboardUrl}\n\nFreundliche Grüße\nDein Planungsteam über MyCrewMate`;
+  const helperOverviewUrlHtml = params.helperOverviewUrl.replace(/&/g, "&amp;");
+  const text = `Hallo ${params.recipientName},\n\n${headline}.\n\n${body}\n\nÖffne deine persönliche Helferübersicht:\n${params.helperOverviewUrl}\n\nFreundliche Grüße\nDein Planungsteam über MyCrewMate`;
   const html = `<!DOCTYPE html>
 <html lang="de"><head><meta charset="utf-8"><title>${subject}</title></head>
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#1e293b;background:#f8fafc;margin:0;padding:24px;">
@@ -504,8 +507,8 @@ export function renderPlanReleaseContactEmail(params: {
     <div style="margin:22px 0;padding:16px 18px;border-radius:10px;background:${changed ? "#fff7ed" : "#eff6ff"};border:1px solid ${changed ? "#fed7aa" : "#bfdbfe"};">
       <strong>${headline}</strong><br>${body}
     </div>
-    <p style="text-align:center;margin:28px 0;"><a href="${params.dashboardUrl}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:700;">Meine Helferübersicht öffnen</a></p>
-    <p style="font-size:12px;color:#64748b;word-break:break-all;">Falls der Button nicht funktioniert: <a href="${params.dashboardUrl}" style="color:#2563eb;">${params.dashboardUrl}</a></p>
+    <p style="text-align:center;margin:28px 0;"><a href="${helperOverviewUrlHtml}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:700;">Meine Helferübersicht öffnen</a></p>
+    <p style="font-size:12px;color:#64748b;word-break:break-all;">Falls der Button nicht funktioniert: <a href="${helperOverviewUrlHtml}" style="color:#2563eb;">${helperOverviewUrlHtml}</a></p>
   </div>
 </body></html>`;
   return { subject, text, html };
