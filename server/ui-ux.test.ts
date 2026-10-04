@@ -47,7 +47,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(guide).toContain("KlemmiTriggerMascot");
     expect(guide).toContain("useKlemmiVoice");
     expect(guide).toContain("KlemmiVoiceControl");
-    expect(voice).toContain("new Audio(klemmiAudioUrl(clipId))");
+    expect(voice).toContain("new Audio(url)");
+    expect(voice).toContain("return playUrl(klemmiAudioUrl(clipId), clipId)");
     expect(voice).toContain("Spielt ausschließlich vorproduzierte Klemmi-Clips");
     expect(voice).toContain("bleibt Klemmi stumm, statt auf eine fremde Systemstimme zu wechseln");
     expect(voice).toContain("KLEMMI_OPENING_AUDIO_IDS");

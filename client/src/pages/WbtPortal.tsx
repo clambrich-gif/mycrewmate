@@ -15,6 +15,14 @@ import {
   type SimulatedDonation
 } from "@/wbt/wbtSimData";
 import { KlemmiMascot } from "@/components/KlemmiMascot";
+import { KlemmiVoiceControl } from "@/components/KlemmiVoiceControl";
+import { useKlemmiVoice } from "@/hooks/useKlemmiVoice";
+import {
+  getWbtStepAudioId,
+  getWbtSummaryAudioId,
+  WBT_COMPLETION_AUDIO_ID,
+  wbtKlemmiAudioUrl,
+} from "@/wbt/wbtAudio";
 import {
   ArrowLeft,
   ArrowRight,
@@ -43,6 +51,7 @@ import {
   ShieldCheck,
   Sparkles,
   UsersRound,
+  Volume2,
   WalletCards,
   X
 } from "lucide-react";
@@ -55,6 +64,7 @@ import { Label } from "@/components/ui/label";
 
 export default function WbtPortal() {
   const [, setLocation] = useLocation();
+  const { muted, isSpeaking, playUrl, toggleMuted, cancel } = useKlemmiVoice();
 
   // URL-Parameter für direkten Pfadstart (z.B. ?track=helper oder ?track=admin)
   const initialTrackId = useMemo<WbtTrackId | null>(() => {
@@ -91,6 +101,26 @@ export default function WbtPortal() {
   const currentChapter = currentTrack ? currentTrack.chapters[currentChapterIndex] : null;
   const currentStep = currentChapter ? currentChapter.steps[currentStepIndex] : null;
 
+  const playStepNarration = React.useCallback(
+    (chapter: WbtChapter, step: WbtStep) => {
+      return playUrl(
+        wbtKlemmiAudioUrl(getWbtStepAudioId(chapter, step)),
+        getWbtStepAudioId(chapter, step)
+      );
+    },
+    [playUrl]
+  );
+
+  const playChapterSummaryNarration = React.useCallback(
+    (chapter: WbtChapter) => {
+      return playUrl(
+        wbtKlemmiAudioUrl(getWbtSummaryAudioId(chapter)),
+        getWbtSummaryAudioId(chapter)
+      );
+    },
+    [playUrl]
+  );
+
   // Fortschritt in Prozent
   const progressPercent = useMemo(() => {
     if (!currentTrack) return 0;
@@ -100,6 +130,8 @@ export default function WbtPortal() {
 
   // Wechsel des Trainingspfads
   const selectTrack = (trackId: WbtTrackId) => {
+    const firstChapter = WBT_TRACKS[trackId].chapters[0];
+    const firstStep = firstChapter?.steps[0];
     setActiveTrackId(trackId);
     setCurrentChapterIndex(0);
     setCurrentStepIndex(0);
@@ -108,15 +140,25 @@ export default function WbtPortal() {
     setIsSimulationCompleted(false);
     // Reset Sim Data
     setSimHelpers(INITIAL_SIMULATED_HELPERS);
+    if (firstChapter && firstStep) void playStepNarration(firstChapter, firstStep);
+  };
+
+  const returnToWbtOverview = () => {
+    cancel();
+    setShowingSummary(false);
+    setActiveTrackId(null);
   };
 
   const handleNextStep = () => {
     if (!currentChapter) return;
     if (currentStepIndex < currentChapter.steps.length - 1) {
+      const nextStep = currentChapter.steps[currentStepIndex + 1];
       setCurrentStepIndex(prev => prev + 1);
+      if (nextStep) void playStepNarration(currentChapter, nextStep);
     } else {
       // Kapitel abgeschlossen -> Klemmi-Zusammenfassung zeigen
       setShowingSummary(true);
+      void playChapterSummaryNarration(currentChapter);
       if (!completedChapters.includes(currentChapter.id)) {
         setCompletedChapters(prev => [...prev, currentChapter.id]);
       }
@@ -127,22 +169,33 @@ export default function WbtPortal() {
     if (!currentTrack) return;
     setShowingSummary(false);
     if (currentChapterIndex < currentTrack.chapters.length - 1) {
+      const nextChapter = currentTrack.chapters[currentChapterIndex + 1];
+      const firstStep = nextChapter?.steps[0];
       setCurrentChapterIndex(prev => prev + 1);
       setCurrentStepIndex(0);
+      if (nextChapter && firstStep) void playStepNarration(nextChapter, firstStep);
     } else {
       // Gesamtes Training abgeschlossen!
       setIsSimulationCompleted(true);
+      void playUrl(
+        wbtKlemmiAudioUrl(WBT_COMPLETION_AUDIO_ID),
+        WBT_COMPLETION_AUDIO_ID
+      );
     }
   };
 
   const handlePrevStep = () => {
     if (currentStepIndex > 0) {
+      const previousStep = currentChapter?.steps[currentStepIndex - 1];
       setCurrentStepIndex(prev => prev - 1);
+      if (currentChapter && previousStep) void playStepNarration(currentChapter, previousStep);
     } else if (currentChapterIndex > 0) {
-      setCurrentChapterIndex(prev => prev - 1);
       const prevChapter = currentTrack?.chapters[currentChapterIndex - 1];
+      const previousStep = prevChapter?.steps[prevChapter.steps.length - 1];
+      setCurrentChapterIndex(prev => prev - 1);
       setCurrentStepIndex(prevChapter ? prevChapter.steps.length - 1 : 0);
       setShowingSummary(false);
+      if (prevChapter && previousStep) void playStepNarration(prevChapter, previousStep);
     }
   };
 
@@ -408,7 +461,7 @@ export default function WbtPortal() {
           <div className="mt-8 rounded-2xl border border-blue-200 bg-blue-50/70 p-6 text-left">
             <div className="flex items-start gap-4">
               <div className="size-16 shrink-0">
-                <KlemmiMascot className="size-16" isSpeaking={false} decorative />
+                <KlemmiMascot className="size-16" isSpeaking={isSpeaking} decorative />
               </div>
               <div>
                 <h3 className="font-bold text-blue-950">Klemmis Fazit:</h3>
@@ -417,6 +470,21 @@ export default function WbtPortal() {
                   Schritte klar sind. Egal ob Helferkontakt, Schichten oder Berechtigungen: Du bist bestens vorbereitet.
                   Falls du im echten Event mal eine Frage hast: Klick mich einfach an!“
                 </p>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    void playUrl(
+                      wbtKlemmiAudioUrl(WBT_COMPLETION_AUDIO_ID),
+                      WBT_COMPLETION_AUDIO_ID
+                    )
+                  }
+                  className="mt-2 h-7 px-1 text-xs text-blue-800 hover:bg-blue-100 hover:text-blue-950"
+                >
+                  <Volume2 className="mr-1.5 size-3.5" />
+                  {isSpeaking ? "Klemmi spricht …" : "Klemmi vorlesen"}
+                </Button>
               </div>
             </div>
           </div>
@@ -424,14 +492,14 @@ export default function WbtPortal() {
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
             <Button
               variant="outline"
-              onClick={() => setActiveTrackId(null)}
+              onClick={returnToWbtOverview}
               className="border-slate-300"
             >
               <RotateCcw className="mr-2 size-4" />
               Zurück zur WBT-Übersicht
             </Button>
             <Button
-              onClick={() => setActiveTrackId(null)}
+              onClick={returnToWbtOverview}
               className="bg-blue-600 text-white hover:bg-blue-700"
             >
               Anderen Trainingspfad wählen
@@ -462,7 +530,7 @@ export default function WbtPortal() {
           {/* Klemmi Illustration & Sprechblase */}
           <div className="mt-8 flex flex-col items-center text-center">
             <div className="relative mb-4 size-24 sm:size-28">
-              <KlemmiMascot className="size-24 sm:size-28" isSpeaking={true} decorative />
+              <KlemmiMascot className="size-24 sm:size-28" isSpeaking={isSpeaking} decorative />
             </div>
 
             <h3 className="text-xl font-black text-slate-950 sm:text-2xl">
@@ -477,6 +545,20 @@ export default function WbtPortal() {
                 <CheckCircle2 className="size-4 text-emerald-600" />
                 <span>Kern-Erkenntnis: {currentChapter.klemmiSummary.takeaway}</span>
               </div>
+            </div>
+
+            <div className="mt-4 flex items-center justify-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void playChapterSummaryNarration(currentChapter)}
+                className="border-blue-200 bg-white text-blue-800 hover:bg-blue-100"
+              >
+                <Volume2 className="mr-1.5 size-4" />
+                {isSpeaking ? "Klemmi spricht …" : "Klemmi vorlesen"}
+              </Button>
+              <KlemmiVoiceControl muted={muted} onToggle={toggleMuted} />
             </div>
           </div>
 
@@ -516,7 +598,7 @@ export default function WbtPortal() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setActiveTrackId(null)}
+              onClick={returnToWbtOverview}
               className="h-7 px-2 text-slate-300 hover:bg-slate-800 hover:text-white"
             >
               <ArrowLeft className="mr-1.5 size-3.5" />
@@ -566,9 +648,11 @@ export default function WbtPortal() {
                   <button
                     key={chap.id}
                     onClick={() => {
+                      const firstStep = chap.steps[0];
                       setCurrentChapterIndex(idx);
                       setCurrentStepIndex(0);
                       setShowingSummary(false);
+                      if (firstStep) void playStepNarration(chap, firstStep);
                     }}
                     className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-left text-xs font-semibold transition-all ${
                       isActive
@@ -604,16 +688,19 @@ export default function WbtPortal() {
           <div className="rounded-2xl border-2 border-blue-200 bg-white p-5 shadow-sm">
             <div className="flex items-start gap-4">
               <div className="size-16 shrink-0">
-                <KlemmiMascot className="size-16" isSpeaking={true} decorative />
+                <KlemmiMascot className="size-16" isSpeaking={isSpeaking} decorative />
               </div>
               <div className="flex-1">
                 <div className="flex items-center justify-between">
                   <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-900 text-xs">
                     Schritt {currentStep?.stepNumber} von {currentStep?.totalSteps}: {currentStep?.subtitle}
                   </Badge>
-                  <span className="text-xs font-bold text-slate-400">
-                    Kapitel {currentChapterIndex + 1}/{currentTrack?.chapters.length}
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs font-bold text-slate-400">
+                      Kapitel {currentChapterIndex + 1}/{currentTrack?.chapters.length}
+                    </span>
+                    <KlemmiVoiceControl muted={muted} onToggle={toggleMuted} />
+                  </div>
                 </div>
                 <h2 className="mt-1 text-lg font-black text-slate-950 sm:text-xl">
                   {currentStep?.title}
@@ -629,6 +716,21 @@ export default function WbtPortal() {
                     <strong className="font-semibold">Klemmi sagt:</strong> {currentStep?.klemmiTip}
                   </div>
                 </div>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    if (currentChapter && currentStep) {
+                      void playStepNarration(currentChapter, currentStep);
+                    }
+                  }}
+                  className="mt-2 h-7 px-2 text-xs text-blue-800 hover:bg-blue-50 hover:text-blue-950"
+                >
+                  <Volume2 className="mr-1.5 size-3.5" />
+                  {isSpeaking ? "Klemmi spricht …" : "Klemmi vorlesen"}
+                </Button>
               </div>
             </div>
 

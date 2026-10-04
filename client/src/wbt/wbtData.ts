@@ -50,7 +50,7 @@ export const WBT_HELPER_CHAPTERS: WbtChapter[] = [
     subtitle: "Zentrale Übersicht & Orientierung",
     iconName: "LayoutDashboard",
     estimatedMinutes: 3,
-    description: "Verschaffe dir vor jeder Helferarbeit einen schnellen Überblick über das Event, Fristen und den Gesamtstand.",
+    description: "Verschaffe dir einen schnellen Überblick über Event, Fristen und Gesamtstand – ohne die frühe Ansprache potenzieller Helfer davon abhängig zu machen.",
     steps: [
       {
         id: "dash-event-select",
@@ -80,16 +80,16 @@ export const WBT_HELPER_CHAPTERS: WbtChapter[] = [
         totalSteps: 3,
         title: "Helferstand & Status",
         subtitle: "Wie viele Helfer fehlen noch?",
-        explanation: "Die Kennzahlen zeigen dir auf einen Blick: Wie viele Helfer haben zugesagt, wie viele fehlen noch für eine vollständige Besetzung aller Stationen.",
+        explanation: "Die Kennzahlen zeigen dir auf einen Blick, wie viele Rückmeldungen und Zusagen bereits vorliegen. Sie dienen dem Planungsteam als Orientierung für die spätere Einteilung – die frühe, breite Helferansprache läuft davon unabhängig.",
         targetFocus: "Helferstatus-Kachel",
-        klemmiTip: "Grün bedeutet: Alle Schichten voll besetzt. Gelb oder Rot heißt: Hier braucht das Team noch Unterstützung!",
+        klemmiTip: "Kontaktiere potenzielle Helfer frühzeitig und unabhängig vom späteren Einsatzplan. Erst wenn die Rückmeldungen da sind, ordnet das Planungsteam die verfügbaren Menschen den passenden Aufgaben und Schichten zu.",
         actionPrompt: "Klicke auf den Helfer-Zähler, um in den Helferbereich zu wechseln."
       }
     ],
     klemmiSummary: {
-      heading: "Klemmis Merksatz zum Dashboard",
-      text: "Das Dashboard ist deine Orientierungstafel. Bevor du zum Telefonhörer greifst oder WhatsApps tippst: Schau kurz aufs Event und auf die offenen Lücken – dann weißt du genau, wen du für welche Schicht ansprechen musst!",
-      takeaway: "Erst orientieren, Lücken identifizieren, dann gezielt Helfer ansprechen."
+      heading: "Klemmis Orientierung im Dashboard",
+      text: "Das Dashboard ist deine Orientierungstafel, aber kein Grund, mit Helferanfragen zu warten. Sprich potenzielle Helfer früh und breit an, sammle ihre Rückmeldungen und Verfügbarkeiten. Erst danach plant das Einsatzteam, wer am besten zu welcher Aufgabe oder Schicht passt.",
+      takeaway: "Frühzeitig und breit anfragen – das Planungsteam ordnet später passend zu."
     }
   },
   {
@@ -474,7 +474,7 @@ export const WBT_ADMIN_CHAPTERS: WbtChapter[] = [
         subtitle: "Radsportstrecke auf der Karte visualisieren",
         explanation: "Lade eine GPX-Datei eurer Radstrecke hoch. Auf der interaktiven Karte seht ihr sofort, wo Streckenposten, Gefahrenpunkte und Verpflegungsstationen entlang der Route liegen.",
         targetFocus: "GPX-Kartenansicht",
-        klemmiTip: "Die GPX-Karte ist perfekt für die Abstimmung mit Ordnungsamt, Polizei und Rettungsdienst!",
+        klemmiTip: "Die GPX-Karte ist perfekt für die visuelle Abstimmung und die örtliche Zuordnung. Sie hilft außerdem bei der Abstimmung mit Polizei und Rettungsdiensten!",
         actionPrompt: "Betrachte die GPX-Route auf der Live-Standortkarte."
       }
     ],

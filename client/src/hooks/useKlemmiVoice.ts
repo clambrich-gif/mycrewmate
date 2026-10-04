@@ -50,8 +50,13 @@ export function useKlemmiVoice(options?: {
     setIsSpeaking(false);
   }, []);
 
-  const playClip = useCallback(
-    (clipId: KlemmiAudioId) => {
+  /**
+   * Spielt einen weiteren festen Produktclip ab, etwa aus dem eigenständigen
+   * WBT. Die URL wird ausschließlich im Quellcode aus einer festen Clip-ID
+   * gebildet; sie enthält nie Nutzereingaben oder Planungsdaten.
+   */
+  const playUrl = useCallback(
+    (url: string, clipLabel = "Klemmi") => {
       if (
         muted ||
         typeof window === "undefined" ||
@@ -62,7 +67,7 @@ export function useKlemmiVoice(options?: {
       cancel();
 
       return new Promise<boolean>(resolve => {
-        const audio = new Audio(klemmiAudioUrl(clipId));
+        const audio = new Audio(url);
         audio.preload = "auto";
         audio.volume = 0.9;
         audioRef.current = audio;
@@ -81,7 +86,7 @@ export function useKlemmiVoice(options?: {
         audio.onended = () => release(true);
         audio.onerror = () => {
           console.warn(
-            `[KlemmiVoice] Markenclip „${clipId}“ konnte nicht geladen werden.`
+            `[KlemmiVoice] Markenclip „${clipLabel}“ konnte nicht geladen werden.`
           );
           release(false);
         };
@@ -93,6 +98,13 @@ export function useKlemmiVoice(options?: {
       });
     },
     [cancel, muted]
+  );
+
+  const playClip = useCallback(
+    (clipId: KlemmiAudioId) => {
+      return playUrl(klemmiAudioUrl(clipId), clipId);
+    },
+    [playUrl]
   );
 
   useEffect(() => {
@@ -139,5 +151,5 @@ export function useKlemmiVoice(options?: {
 
   useEffect(() => cancel, [cancel]);
 
-  return { muted, isSpeaking, speak, playOpening, toggleMuted, cancel };
+  return { muted, isSpeaking, speak, playOpening, playUrl, toggleMuted, cancel };
 }
