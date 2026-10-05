@@ -61,6 +61,10 @@ describe("Erst-Login-Onboarding", () => {
       path.resolve(process.cwd(), "client/src/components/FirstLoginKlemmiIntro.tsx"),
       "utf8"
     );
+    const audio = readFileSync(
+      path.resolve(process.cwd(), "client/src/lib/klemmiAudio.ts"),
+      "utf8"
+    );
 
     expect(onboarding).toContain('"welcome" | "klemmi" | "co_admin"');
     expect(onboarding).not.toContain("wbt_choice");
@@ -73,6 +77,11 @@ describe("Erst-Login-Onboarding", () => {
     expect(intro).toContain('"first-login-co-admin"');
     expect(intro).toContain("KLEMMI_CO_ADMIN_TEXT");
     expect(intro).toContain("Und nein – nicht weil ich verklemmt bin");
+    expect(intro).toContain("freiwillige, interaktive Einführung als Web-Based-Training");
+    expect(intro).toContain("ohne Auswirkungen auf eure echte Planung ausprobieren");
+    expect(audio).toContain("freiwillige, interaktive Einführung als Web-Based-Training");
+    expect(audio).toContain('"first-login-intro": "20261005-wbt-help-hint-v1"');
+    expect(audio).toContain('"first-login-co-admin": "20261005-wbt-help-hint-v1"');
     expect(intro).not.toContain("Klemmi lacht über seinen eigenen Witz.");
     expect(intro).toContain("Co-Admin-Tipp:");
     expect(intro).toContain("window.setTimeout(onComplete, 360)");

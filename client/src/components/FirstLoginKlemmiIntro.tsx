@@ -14,7 +14,7 @@ type HighlightRect = {
 } | null;
 
 const KLEMMI_INTRO_TEXT =
-  "Hallo! Ich bin Klemmi. Und nein – nicht weil ich verklemmt bin, sondern weil ich immer genau dann zur Stelle bin, wenn es irgendwo klemmt, oder halt, wenn du das erste Mal hier bist! Egal ob Schichten, Helfer oder Event-Planung: Wenn du mal nicht weiterweißt, klick mich einfach an! Du findest mich ab jetzt auf jeder Seite ganz oben im Menü.";
+  "Hallo! Ich bin Klemmi. Und nein – nicht weil ich verklemmt bin, sondern weil ich genau dann zur Stelle bin, wenn es irgendwo klemmt! Egal ob Schichten, Helfer oder Eventplanung: Wenn du mal nicht weiterweißt, klick mich einfach an. Du findest mich ab jetzt oben im Menü auf jeder Seite. Wenn du dir vor dem Start alles in Ruhe ansehen möchtest, findest du im Hilfe-Center auch eine freiwillige, interaktive Einführung als Web-Based-Training. Dort kannst du die wichtigsten Abläufe ohne Auswirkungen auf eure echte Planung ausprobieren.";
 const KLEMMI_CO_ADMIN_TEXT =
   "Und noch ein Tipp für dich als Co-Admin: Im nächsten Schritt siehst du deine wichtigsten Rechte. Die vollständige Rechte-Matrix findest du später jederzeit im Hilfe-Bereich.";
 
