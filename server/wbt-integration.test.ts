@@ -3,7 +3,7 @@ import { appRouter } from "./routers";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-describe("WBT-Systemintegration (Erstanmeldung, Hilfe, Masterportal, PDF-Zertifikat)", () => {
+describe("WBT-Systemintegration (Hilfe, Masterportal, PDF-Zertifikat)", () => {
   it("WBT-Kapitel ist fest in der Hilfe-Datenbank verankert", async () => {
     const filePath = path.resolve(
       process.cwd(),
@@ -16,18 +16,19 @@ describe("WBT-Systemintegration (Erstanmeldung, Hilfe, Masterportal, PDF-Zertifi
     expect(content).toContain('"help-wbt"');
   });
 
-  it("Erstanmeldung bietet die Wahl zwischen Helfer- und Admin-WBT", async () => {
+  it("Erstanmeldung bietet kein WBT an und führt nach Klemmi direkt weiter", async () => {
     const filePath = path.resolve(
       process.cwd(),
       "client/src/components/FirstLoginOnboarding.tsx"
     );
     const content = await readFile(filePath, "utf-8");
-    expect(content).toContain("Möchtest du ein Web-Based-Training (WBT) starten?");
-    expect(content).toContain("1. WBT: Helferkoordination");
-    expect(content).toContain("2. WBT: Planungsteam &amp; Admin");
-    expect(content).toContain('window.open("/wbt?track=helper&returnTo=/", "_blank", "noopener,noreferrer")');
-    expect(content).toContain('window.open("/wbt?track=admin&returnTo=/", "_blank", "noopener,noreferrer")');
-    expect(content).toContain("Jetzt überspringen");
+    expect(content).not.toContain("Möchtest du ein Web-Based-Training (WBT) starten?");
+    expect(content).not.toContain("1. WBT: Helferkoordination");
+    expect(content).not.toContain("2. WBT: Planungsteam &amp; Admin");
+    expect(content).not.toContain('window.open("/wbt?track=helper');
+    expect(content).not.toContain('window.open("/wbt?track=admin');
+    expect(content).toContain('setStep("co_admin")');
+    expect(content).toContain("completeOnboarding();");
   });
 
   it("Hilfe-Seite besitzt den sichtbaren WBT-Schnellzugriffsbanner", async () => {

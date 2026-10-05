@@ -39,13 +39,13 @@ describe("Erst-Login-Onboarding", () => {
     expect(component).toContain("elapsed >= WELCOME_DURATION_MS");
   });
 
-  it("merkt die laufende Einführung lokal, damit ein iPhone-Wechsel ins WBT nicht wieder bei Schritt eins beginnt", () => {
+  it("merkt die laufende Einführung lokal, damit ein iPhone-Neuladen nicht wieder bei Schritt eins beginnt", () => {
     const component = readFileSync(
       path.resolve(process.cwd(), "client/src/components/FirstLoginOnboarding.tsx"),
       "utf8"
     );
 
-    expect(component).toContain('const FIRST_LOGIN_PROGRESS_KEY = "mycrewmate:first-login-progress:v1"');
+    expect(component).toContain('const FIRST_LOGIN_PROGRESS_KEY = "mycrewmate:first-login-progress:v2"');
     expect(component).toContain("loadSavedOnboardingStep");
     expect(component).toContain("window.sessionStorage.setItem(FIRST_LOGIN_PROGRESS_KEY, step)");
     expect(component).toContain("window.sessionStorage.removeItem(FIRST_LOGIN_PROGRESS_KEY)");
@@ -62,11 +62,14 @@ describe("Erst-Login-Onboarding", () => {
       "utf8"
     );
 
-    expect(onboarding).toContain('"welcome" | "klemmi" | "wbt_choice" | "co_admin"');
+    expect(onboarding).toContain('"welcome" | "klemmi" | "co_admin"');
+    expect(onboarding).not.toContain("wbt_choice");
     expect(onboarding).toContain('setStep("klemmi")');
     expect(onboarding).toContain("open={open && step === \"klemmi\"}");
     expect(onboarding).toContain("isCoAdmin={isCoAdmin}");
     expect(onboarding).toContain("onComplete={finishKlemmiIntro}");
+    expect(onboarding).toContain('setStep("co_admin")');
+    expect(onboarding).toContain("completeOnboarding();");
     expect(intro).toContain('"first-login-co-admin"');
     expect(intro).toContain("KLEMMI_CO_ADMIN_TEXT");
     expect(intro).toContain("Und nein – nicht weil ich verklemmt bin");

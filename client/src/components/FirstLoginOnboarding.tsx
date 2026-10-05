@@ -13,10 +13,7 @@ import {
   CalendarDays,
   CheckCircle2,
   ClipboardList,
-  ExternalLink,
-  GraduationCap,
   ShieldCheck,
-  Sparkles,
   UsersRound,
   X,
 } from "lucide-react";
@@ -24,20 +21,20 @@ import { useCallback, useEffect, useState } from "react";
 
 const MYCREWMATE_WORDMARK = "/brand/mycrewmate-wordmark.png";
 const WELCOME_DURATION_MS = 15_000;
-const FIRST_LOGIN_PROGRESS_KEY = "mycrewmate:first-login-progress:v1";
+const FIRST_LOGIN_PROGRESS_KEY = "mycrewmate:first-login-progress:v2";
 
-type OnboardingStep = "welcome" | "klemmi" | "wbt_choice" | "co_admin";
+type OnboardingStep = "welcome" | "klemmi" | "co_admin";
 
 /**
- * iOS kann eine Hintergrundseite beim Wechsel in das WBT neu laden. Der
- * Fortschritt dieser kurzen Einführung bleibt deshalb nur lokal auf dem Gerät
- * erhalten – ohne Personen- oder Vereinsdaten – bis sie bewusst abgeschlossen
- * wird.
+ * Der Fortschritt dieser kurzen Einführung bleibt lokal auf dem Gerät erhalten
+ * – ohne Personen- oder Vereinsdaten – bis sie bewusst abgeschlossen wird.
+ * Das WBT gehört bewusst nicht zu diesem Ablauf, sondern steht im Hilfe-Center
+ * jederzeit freiwillig bereit.
  */
 function loadSavedOnboardingStep(): OnboardingStep | null {
   if (typeof window === "undefined") return null;
   const saved = window.sessionStorage.getItem(FIRST_LOGIN_PROGRESS_KEY);
-  return saved === "klemmi" || saved === "wbt_choice" || saved === "co_admin"
+  return saved === "klemmi" || saved === "co_admin"
     ? saved
     : null;
 }
@@ -94,10 +91,6 @@ export function FirstLoginOnboarding({
   }, []);
 
   const finishKlemmiIntro = useCallback(() => {
-    setStep("wbt_choice");
-  }, []);
-
-  const continueAfterWbtChoice = useCallback(() => {
     if (isCoAdmin) {
       setStep("co_admin");
       return;
@@ -192,82 +185,6 @@ export function FirstLoginOnboarding({
               className="mt-5 h-1.5 bg-slate-100 [&>[data-slot=progress-indicator]]:bg-gradient-to-r [&>[data-slot=progress-indicator]]:from-blue-600 [&>[data-slot=progress-indicator]]:to-orange-500"
               aria-label="Willkommenshinweis wird abgeschlossen"
             />
-          </div>
-          ) : step === "wbt_choice" ? (
-          <div className="px-6 py-7 sm:px-8 sm:py-8">
-            <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-blue-100 text-blue-700 shadow-sm">
-              <GraduationCap className="size-6" aria-hidden="true" />
-            </div>
-            <DialogHeader className="mt-4 items-center pr-0 text-center">
-              <DialogTitle className="text-xl tracking-tight text-slate-950 sm:text-2xl">
-                Möchtest du ein Web-Based-Training (WBT) starten?
-              </DialogTitle>
-              <DialogDescription className="max-w-md text-center text-sm leading-6 text-slate-600">
-                Lerne MyCrewMate vorab in einer interaktiven Simulation kennen – vollständig datenfrei und ohne Risiko für echte Vereinsdaten.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="mt-6 space-y-3">
-              <button
-                type="button"
-                onClick={() => {
-                  window.open("/wbt?track=helper&returnTo=/", "_blank", "noopener,noreferrer");
-                  continueAfterWbtChoice();
-                }}
-                className="group flex w-full items-start gap-3 rounded-2xl border-2 border-blue-200 bg-blue-50/60 p-4 text-left transition hover:border-blue-400 hover:bg-blue-50"
-              >
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white shadow-xs">
-                  <UsersRound className="size-4" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between">
-                    <p className="font-bold text-blue-950">1. WBT: Helferkoordination</p>
-                    <ExternalLink className="size-3.5 text-blue-700 opacity-70 group-hover:opacity-100" />
-                  </div>
-                  <p className="mt-0.5 text-xs leading-5 text-slate-600">
-                    7 Module · Helfer anlegen, 6-Schritte-Koordination, Vorbereitung, Material und Spenden.
-                  </p>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  window.open("/wbt?track=admin&returnTo=/", "_blank", "noopener,noreferrer");
-                  continueAfterWbtChoice();
-                }}
-                className="group flex w-full items-start gap-3 rounded-2xl border-2 border-orange-200 bg-orange-50/60 p-4 text-left transition hover:border-orange-400 hover:bg-orange-50"
-              >
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-orange-600 text-white shadow-xs">
-                  <ShieldCheck className="size-4" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between">
-                    <p className="font-bold text-orange-950">2. WBT: Planungsteam &amp; Admin</p>
-                    <ExternalLink className="size-3.5 text-orange-700 opacity-70 group-hover:opacity-100" />
-                  </div>
-                  <p className="mt-0.5 text-xs leading-5 text-slate-600">
-                    11 Module · Umfassendes Training inkl. Einsatzplan, Finanzen, GPX-Standorte und Schutz &amp; Protokolle.
-                  </p>
-                </div>
-              </button>
-            </div>
-
-            <div className="mt-6 flex flex-col gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full text-slate-600 hover:text-slate-900"
-                onClick={continueAfterWbtChoice}
-                disabled={completing}
-              >
-                Jetzt überspringen &amp; direkt ins Programm
-                <ArrowRight className="ml-1.5 size-4" />
-              </Button>
-              <p className="text-center text-[11px] text-slate-400">
-                Das WBT steht dir später auch jederzeit im <strong>Hilfe-Center</strong> zur Verfügung.
-              </p>
-            </div>
           </div>
           ) : (
           <div className="px-6 py-7 sm:px-8 sm:py-8">
