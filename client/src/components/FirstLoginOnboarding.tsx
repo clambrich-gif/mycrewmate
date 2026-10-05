@@ -24,6 +24,23 @@ import { useCallback, useEffect, useState } from "react";
 
 const MYCREWMATE_WORDMARK = "/brand/mycrewmate-wordmark.png";
 const WELCOME_DURATION_MS = 15_000;
+const FIRST_LOGIN_PROGRESS_KEY = "mycrewmate:first-login-progress:v1";
+
+type OnboardingStep = "welcome" | "klemmi" | "wbt_choice" | "co_admin";
+
+/**
+ * iOS kann eine Hintergrundseite beim Wechsel in das WBT neu laden. Der
+ * Fortschritt dieser kurzen Einführung bleibt deshalb nur lokal auf dem Gerät
+ * erhalten – ohne Personen- oder Vereinsdaten – bis sie bewusst abgeschlossen
+ * wird.
+ */
+function loadSavedOnboardingStep(): OnboardingStep | null {
+  if (typeof window === "undefined") return null;
+  const saved = window.sessionStorage.getItem(FIRST_LOGIN_PROGRESS_KEY);
+  return saved === "klemmi" || saved === "wbt_choice" || saved === "co_admin"
+    ? saved
+    : null;
+}
 
 type FirstLoginOnboardingProps = {
   open: boolean;
@@ -51,10 +68,26 @@ export function FirstLoginOnboarding({
   completing = false,
   onComplete,
 }: FirstLoginOnboardingProps) {
-  const [step, setStep] = useState<"welcome" | "klemmi" | "wbt_choice" | "co_admin">(
-    startAtKlemmi ? "klemmi" : "welcome"
+  const [step, setStep] = useState<OnboardingStep>(() =>
+    startAtKlemmi ? "klemmi" : loadSavedOnboardingStep() ?? "welcome"
   );
   const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    if (!open || startAtKlemmi || typeof window === "undefined") return;
+    if (step === "welcome") {
+      window.sessionStorage.removeItem(FIRST_LOGIN_PROGRESS_KEY);
+      return;
+    }
+    window.sessionStorage.setItem(FIRST_LOGIN_PROGRESS_KEY, step);
+  }, [open, startAtKlemmi, step]);
+
+  const completeOnboarding = useCallback(() => {
+    if (!startAtKlemmi && typeof window !== "undefined") {
+      window.sessionStorage.removeItem(FIRST_LOGIN_PROGRESS_KEY);
+    }
+    onComplete();
+  }, [onComplete, startAtKlemmi]);
 
   const finishWelcome = useCallback(() => {
     setStep("klemmi");
@@ -69,8 +102,8 @@ export function FirstLoginOnboarding({
       setStep("co_admin");
       return;
     }
-    onComplete();
-  }, [isCoAdmin, onComplete]);
+    completeOnboarding();
+  }, [completeOnboarding, isCoAdmin]);
 
   useEffect(() => {
     if (!open) {
@@ -178,7 +211,7 @@ export function FirstLoginOnboarding({
               <button
                 type="button"
                 onClick={() => {
-                  window.open("/wbt?track=helper", "_blank", "noopener,noreferrer");
+                  window.open("/wbt?track=helper&returnTo=/", "_blank", "noopener,noreferrer");
                   continueAfterWbtChoice();
                 }}
                 className="group flex w-full items-start gap-3 rounded-2xl border-2 border-blue-200 bg-blue-50/60 p-4 text-left transition hover:border-blue-400 hover:bg-blue-50"
@@ -200,7 +233,7 @@ export function FirstLoginOnboarding({
               <button
                 type="button"
                 onClick={() => {
-                  window.open("/wbt?track=admin", "_blank", "noopener,noreferrer");
+                  window.open("/wbt?track=admin&returnTo=/", "_blank", "noopener,noreferrer");
                   continueAfterWbtChoice();
                 }}
                 className="group flex w-full items-start gap-3 rounded-2xl border-2 border-orange-200 bg-orange-50/60 p-4 text-left transition hover:border-orange-400 hover:bg-orange-50"
@@ -290,7 +323,7 @@ export function FirstLoginOnboarding({
             <Button
               type="button"
               className="mt-6 min-h-11 w-full bg-blue-600 text-white hover:bg-blue-700"
-              onClick={onComplete}
+              onClick={completeOnboarding}
               disabled={completing}
             >
               {completing ? "Einführung wird abgeschlossen …" : "Verstanden, zur Übersicht!"}

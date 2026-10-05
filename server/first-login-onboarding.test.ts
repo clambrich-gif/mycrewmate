@@ -39,6 +39,19 @@ describe("Erst-Login-Onboarding", () => {
     expect(component).toContain("elapsed >= WELCOME_DURATION_MS");
   });
 
+  it("merkt die laufende Einführung lokal, damit ein iPhone-Wechsel ins WBT nicht wieder bei Schritt eins beginnt", () => {
+    const component = readFileSync(
+      path.resolve(process.cwd(), "client/src/components/FirstLoginOnboarding.tsx"),
+      "utf8"
+    );
+
+    expect(component).toContain('const FIRST_LOGIN_PROGRESS_KEY = "mycrewmate:first-login-progress:v1"');
+    expect(component).toContain("loadSavedOnboardingStep");
+    expect(component).toContain("window.sessionStorage.setItem(FIRST_LOGIN_PROGRESS_KEY, step)");
+    expect(component).toContain("window.sessionStorage.removeItem(FIRST_LOGIN_PROGRESS_KEY)");
+    expect(component).toContain("const completeOnboarding = useCallback");
+  });
+
   it("zeigt die Klemmi-Begrüßung vor dem dauerhaften Abschluss und behält den Status bis dahin", () => {
     const onboarding = readFileSync(
       path.resolve(process.cwd(), "client/src/components/FirstLoginOnboarding.tsx"),

@@ -87,6 +87,43 @@ const WBT_INTRO_STEPS = [
   },
 ] as const;
 
+const WBT_PROGRESS_KEY = "mycrewmate:wbt-progress:v1";
+
+type WbtProgressSnapshot = {
+  trackId: WbtTrackId;
+  chapterIndex: number;
+  stepIndex: number;
+  completedChapterIds: string[];
+  showingIntroduction: boolean;
+  introStepIndex: number;
+};
+
+function loadWbtProgress(trackId: WbtTrackId | null): WbtProgressSnapshot | null {
+  if (!trackId || typeof window === "undefined") return null;
+  try {
+    const parsed = JSON.parse(window.sessionStorage.getItem(WBT_PROGRESS_KEY) ?? "null");
+    if (
+      parsed?.trackId !== trackId ||
+      !Number.isInteger(parsed?.chapterIndex) ||
+      !Number.isInteger(parsed?.stepIndex) ||
+      !Array.isArray(parsed?.completedChapterIds) ||
+      typeof parsed?.showingIntroduction !== "boolean" ||
+      !Number.isInteger(parsed?.introStepIndex)
+    ) {
+      return null;
+    }
+    return parsed as WbtProgressSnapshot;
+  } catch {
+    return null;
+  }
+}
+
+function clearWbtProgress() {
+  if (typeof window !== "undefined") {
+    window.sessionStorage.removeItem(WBT_PROGRESS_KEY);
+  }
+}
+
 export default function WbtPortal() {
   const { muted, isSpeaking, playUrl, toggleMuted, cancel } = useKlemmiVoice();
   const {
@@ -97,18 +134,34 @@ export default function WbtPortal() {
   const audioSequenceRef = React.useRef(0);
 
   // URL-Parameter für direkten Pfadstart (z.B. ?track=helper oder ?track=admin)
-  const { initialTrackId, inviteToken } = useMemo(() => {
+  const { initialTrackId, inviteToken, returnTo } = useMemo(() => {
     if (typeof window === "undefined") {
-      return { initialTrackId: null as WbtTrackId | null, inviteToken: null as string | null };
+      return {
+        initialTrackId: null as WbtTrackId | null,
+        inviteToken: null as string | null,
+        returnTo: null as string | null,
+      };
     }
     const params = new URLSearchParams(window.location.search);
     const t = params.get("track");
     const invite = params.get("invite");
+    const requestedReturnTo = params.get("returnTo");
     return {
       initialTrackId: (t === "helper" || t === "admin" ? t : null) as WbtTrackId | null,
       inviteToken: invite && invite.length >= 20 ? invite : null,
+      returnTo:
+        requestedReturnTo &&
+        requestedReturnTo.startsWith("/") &&
+        !requestedReturnTo.startsWith("//")
+          ? requestedReturnTo
+          : null,
     };
   }, []);
+
+  const restoredProgress = useMemo(
+    () => loadWbtProgress(initialTrackId),
+    [initialTrackId]
+  );
 
   const inviteQuery = trpc.wbt.validateTrainingLink.useQuery(
     { token: inviteToken ?? "" },
@@ -124,13 +177,21 @@ export default function WbtPortal() {
     }
   }, [inviteQuery.data, activeTrackId]);
 
-  const [currentChapterIndex, setCurrentChapterIndex] = useState<number>(0);
-  const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
-  const [completedChapters, setCompletedChapters] = useState<string[]>([]);
+  const [currentChapterIndex, setCurrentChapterIndex] = useState<number>(
+    restoredProgress?.chapterIndex ?? 0
+  );
+  const [currentStepIndex, setCurrentStepIndex] = useState<number>(
+    restoredProgress?.stepIndex ?? 0
+  );
+  const [completedChapters, setCompletedChapters] = useState<string[]>(
+    restoredProgress?.completedChapterIds ?? []
+  );
   const [showingSummary, setShowingSummary] = useState<boolean>(false);
   const [isSimulationCompleted, setIsSimulationCompleted] = useState<boolean>(false);
-  const [showingIntroduction, setShowingIntroduction] = useState<boolean>(Boolean(initialTrackId));
-  const [introStepIndex, setIntroStepIndex] = useState(0);
+  const [showingIntroduction, setShowingIntroduction] = useState<boolean>(
+    restoredProgress?.showingIntroduction ?? Boolean(initialTrackId)
+  );
+  const [introStepIndex, setIntroStepIndex] = useState(restoredProgress?.introStepIndex ?? 0);
 
   // Simulierte Zustände für Interaktion
   const [simHelpers, setSimHelpers] = useState<SimulatedHelper[]>(INITIAL_SIMULATED_HELPERS);
@@ -181,6 +242,27 @@ export default function WbtPortal() {
   const currentChapter = currentTrack ? currentTrack.chapters[currentChapterIndex] : null;
   const currentStep = currentChapter ? currentChapter.steps[currentStepIndex] : null;
   const currentIntroduction = WBT_INTRO_STEPS[introStepIndex] ?? WBT_INTRO_STEPS[0];
+
+  useEffect(() => {
+    if (!activeTrackId || isSimulationCompleted || typeof window === "undefined") return;
+    const snapshot: WbtProgressSnapshot = {
+      trackId: activeTrackId,
+      chapterIndex: currentChapterIndex,
+      stepIndex: currentStepIndex,
+      completedChapterIds: completedChapters,
+      showingIntroduction,
+      introStepIndex,
+    };
+    window.sessionStorage.setItem(WBT_PROGRESS_KEY, JSON.stringify(snapshot));
+  }, [
+    activeTrackId,
+    completedChapters,
+    currentChapterIndex,
+    currentStepIndex,
+    introStepIndex,
+    isSimulationCompleted,
+    showingIntroduction,
+  ]);
 
   const cancelAllNarration = React.useCallback(() => {
     audioSequenceRef.current += 1;
@@ -249,6 +331,7 @@ export default function WbtPortal() {
 
   // Wechsel des Trainingspfads
   const selectTrack = (trackId: WbtTrackId) => {
+    clearWbtProgress();
     setActiveTrackId(trackId);
     setCurrentChapterIndex(0);
     setCurrentStepIndex(0);
@@ -264,9 +347,18 @@ export default function WbtPortal() {
 
   const returnToWbtOverview = () => {
     cancelAllNarration();
+    clearWbtProgress();
     setShowingSummary(false);
     setShowingIntroduction(false);
     setActiveTrackId(null);
+  };
+
+  const returnToProgram = () => {
+    cancelAllNarration();
+    clearWbtProgress();
+    if (typeof window !== "undefined") {
+      window.location.assign(returnTo ?? "/");
+    }
   };
 
   const handleNextIntroductionStep = () => {
@@ -318,6 +410,7 @@ export default function WbtPortal() {
     } else {
       // Gesamtes Training abgeschlossen!
       setIsSimulationCompleted(true);
+      clearWbtProgress();
       cancelAllNarration();
       void playUrl(
         wbtAudioUrl(WBT_COMPLETION_AUDIO_ID),
@@ -773,6 +866,13 @@ export default function WbtPortal() {
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
             <Button
+              onClick={returnToProgram}
+              className="bg-blue-600 text-white hover:bg-blue-700"
+            >
+              <CheckCircle2 className="mr-2 size-4" />
+              WBT schließen &amp; ins Programm
+            </Button>
+            <Button
               variant="outline"
               onClick={returnToWbtOverview}
               className="border-slate-300"
@@ -780,10 +880,7 @@ export default function WbtPortal() {
               <RotateCcw className="mr-2 size-4" />
               Zurück zur WBT-Übersicht
             </Button>
-            <Button
-              onClick={returnToWbtOverview}
-              className="bg-blue-600 text-white hover:bg-blue-700"
-            >
+            <Button onClick={returnToWbtOverview} variant="outline" className="border-slate-300">
               Anderen Trainingspfad wählen
               <ArrowRight className="ml-2 size-4" />
             </Button>
@@ -887,7 +984,9 @@ export default function WbtPortal() {
               WBT-Übersicht
             </Button>
             <span className="hidden sm:inline text-slate-400">|</span>
-            <span className="font-semibold text-white">{currentTrack?.title}</span>
+            <span className="max-w-[13rem] truncate font-semibold text-white sm:max-w-none">
+              {currentTrack?.title}
+            </span>
           </div>
 
           <div className="flex items-center gap-4">
@@ -901,7 +1000,7 @@ export default function WbtPortal() {
               </div>
               <span className="font-bold text-blue-400">{progressPercent}%</span>
             </div>
-            <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+            <Badge className="hidden bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 sm:inline-flex">
               Simulationsmodus · Keine echten Daten
             </Badge>
           </div>
@@ -909,10 +1008,28 @@ export default function WbtPortal() {
       </div>
 
       {/* Main Container */}
-      <div className="flex-1 mx-auto w-full max-w-7xl p-3 sm:p-6 grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
+      <div className="flex-1 mx-auto w-full max-w-7xl p-3 sm:p-6 grid gap-4 lg:gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
+
+        {/* Auf Mobiltelefonen ersetzt eine kompakte Fortschrittskarte die breite Desktop-Modulleiste. */}
+        <div
+          className="lg:hidden rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
+          data-wbt-mobile-chapter-overview
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Aktuelles Modul</p>
+              <p className="truncate text-sm font-bold text-slate-900">
+                {currentChapterIndex + 1}. {currentChapter?.title}
+              </p>
+            </div>
+            <Badge variant="outline" className="shrink-0 border-blue-200 bg-blue-50 text-blue-900">
+              {currentChapterIndex + 1}/{currentTrack?.chapters.length}
+            </Badge>
+          </div>
+        </div>
 
         {/* Linke Leiste: Kapitel & Module Navigation */}
-        <aside className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm flex flex-col justify-between">
+        <aside className="hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:flex lg:flex-col lg:justify-between">
           <div>
             <div className="border-b pb-3">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
@@ -967,18 +1084,18 @@ export default function WbtPortal() {
         {/* Rechter Hauptbereich: Interaktive Simulation, Sprecher & Klemmi */}
         <main className="flex flex-col gap-5">
           {/* WBT-Anleitungskarte */}
-          <div className="rounded-2xl border-2 border-blue-200 bg-white p-5 shadow-sm">
-            <div className="flex items-start gap-4">
-              <div className="size-16 shrink-0">
+          <div className="rounded-2xl border-2 border-blue-200 bg-white p-3 shadow-sm sm:p-5">
+            <div className="flex items-start gap-3 sm:gap-4">
+              <div className="hidden size-16 shrink-0 sm:block">
                 <KlemmiMascot className="size-16" isSpeaking={isSpeaking} decorative />
               </div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-900 text-xs">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <Badge variant="outline" className="max-w-full whitespace-normal border-blue-200 bg-blue-50 text-blue-900 text-xs">
                     Schritt {currentStep?.stepNumber} von {currentStep?.totalSteps}: {currentStep?.subtitle}
                   </Badge>
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs font-bold text-slate-400">
+                  <div className="flex shrink-0 items-center gap-1">
+                    <span className="hidden text-xs font-bold text-slate-400 sm:inline">
                       Kapitel {currentChapterIndex + 1}/{currentTrack?.chapters.length}
                     </span>
                     <KlemmiVoiceControl
@@ -1029,7 +1146,7 @@ export default function WbtPortal() {
             </div>
 
             {/* Aktionsleiste unter der Anleitung */}
-            <div className="mt-4 flex items-center justify-between border-t pt-3">
+            <div className="mt-4 flex items-center justify-between gap-3 border-t pt-3">
               <Button
                 variant="outline"
                 size="sm"
@@ -1058,25 +1175,25 @@ export default function WbtPortal() {
           </div>
 
           {/* Simulierte MyCrewMate-Oberfläche */}
-          <div className="rounded-2xl border border-slate-300 bg-white shadow-md overflow-hidden">
+          <div className="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-md" data-wbt-simulation>
             {/* Simulierte MyCrewMate Titelleiste */}
-            <div className="bg-slate-900 px-4 py-3 flex items-center justify-between text-white">
-              <div className="flex items-center gap-2.5">
+            <div className="flex items-center justify-between gap-3 bg-slate-900 px-3 py-3 text-white sm:px-4">
+              <div className="min-w-0 flex items-center gap-2.5">
                 <span className="font-black text-sm tracking-wide text-blue-400">MyCrewMate</span>
-                <span className="text-slate-500">|</span>
-                <span className="text-xs font-semibold text-slate-300">
+                <span className="hidden text-slate-500 sm:inline">|</span>
+                <span className="hidden text-xs font-semibold text-slate-300 sm:inline">
                   Radsportverein Musterstadt e.V. · Radsportfestival 2027
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="border-slate-700 text-slate-300 text-[10px]">
+              <div className="flex shrink-0 items-center gap-2">
+                <Badge variant="outline" className="max-w-[11rem] truncate border-slate-700 text-[10px] text-slate-300 sm:max-w-none">
                   Simulierte Ansicht: {currentChapter?.title}
                 </Badge>
               </div>
             </div>
 
             {/* Inhalt der Simulation basierend auf dem aktiven Kapitel */}
-            <div className="p-4 sm:p-6 bg-slate-50/50 min-h-[380px]">
+            <div className="min-h-[320px] bg-slate-50/50 p-3 sm:min-h-[380px] sm:p-6">
 
               {/* 1. SIMULATION: DASHBOARD */}
               {currentChapter?.id === "dashboard" && (
@@ -1171,7 +1288,7 @@ export default function WbtPortal() {
                   </div>
 
                   {/* Helfertabelle: Groß, gut lesbar, ohne horizontales Scrollen */}
-                  <div className="rounded-2xl border-2 border-slate-200 bg-white shadow-sm">
+                  <div className="hidden rounded-2xl border-2 border-slate-200 bg-white shadow-sm sm:block">
                     <table className="w-full table-fixed text-left text-xs sm:text-sm">
                       <colgroup>
                         <col className="w-[26%]" />
@@ -1337,6 +1454,102 @@ export default function WbtPortal() {
                     </table>
                   </div>
 
+                  {/* Auf Smartphones ersetzen lesbare Karten die fünf Desktopspalten. */}
+                  <div className="space-y-3 sm:hidden" data-wbt-mobile-helper-cards>
+                    {simHelpers.map(helper => {
+                      const isTarget = helper.id === "h1";
+                      const statusLabel =
+                        helper.status === "angelegt"
+                          ? "Angelegt"
+                          : helper.status === "kontaktiert"
+                            ? "Kontaktiert"
+                            : helper.status === "verfuegbar"
+                              ? "Verfügbar"
+                              : helper.status === "zugewiesen"
+                                ? "Zugewiesen"
+                                : helper.status === "plan_gesendet"
+                                  ? "Plan versendet"
+                                  : "Bestätigt";
+                      return (
+                        <article
+                          key={helper.id}
+                          className={`rounded-2xl border bg-white p-3 shadow-sm ${
+                            isTarget ? "border-2 border-blue-400 bg-blue-50/70" : "border-slate-200"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <h4 className="truncate text-sm font-bold text-slate-950">{helper.name}</h4>
+                              <p className="truncate text-xs text-slate-500">{helper.phone}</p>
+                            </div>
+                            <Badge
+                              variant="outline"
+                              className="shrink-0 border-blue-200 bg-white text-[10px] text-blue-900"
+                            >
+                              {statusLabel}
+                            </Badge>
+                          </div>
+
+                          <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                            <div className="rounded-lg bg-slate-50 px-2.5 py-2">
+                              <span className="block text-[10px] font-bold uppercase tracking-wide text-slate-400">Verfügbarkeit</span>
+                              <span className="mt-0.5 block font-medium text-slate-800">{helper.availability}</span>
+                            </div>
+                            <div className="rounded-lg bg-slate-50 px-2.5 py-2">
+                              <span className="block text-[10px] font-bold uppercase tracking-wide text-slate-400">Einsatz</span>
+                              <span className="mt-0.5 block font-medium text-slate-800">{helper.station ?? "Noch nicht zugeteilt"}</span>
+                            </div>
+                          </div>
+
+                          {helper.donation && (
+                            <p className="mt-2 text-xs text-amber-900">🎂 Spende / Hinweis: {helper.donation}</p>
+                          )}
+
+                          <div className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setWhatsAppMode("muster1");
+                                setWhatsAppModalOpen(true);
+                              }}
+                              className={currentStep?.id === "step-2-contact-first" && isTarget ? "border-blue-600 bg-blue-600 text-xs text-white hover:bg-blue-700" : "text-xs"}
+                            >
+                              <MessageSquare className="mr-1.5 size-3.5" /> Kontakt
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setEditAvailabilityOpen(true)}
+                              className={currentStep?.id === "step-3-discuss-availability" && isTarget ? "border-blue-600 bg-blue-600 text-xs text-white hover:bg-blue-700" : "text-xs"}
+                            >
+                              Zeiten
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setWhatsAppMode("muster2");
+                                setWhatsAppModalOpen(true);
+                              }}
+                              className={currentStep?.id === "step-5-send-plan" && isTarget ? "border-blue-600 bg-blue-600 text-xs text-white hover:bg-blue-700" : "text-xs"}
+                            >
+                              <Share2 className="mr-1.5 size-3.5" /> Plan senden
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={handleSimConfirmHelper}
+                              className={currentStep?.id === "step-6-confirm-helper" && isTarget ? "border-emerald-600 bg-emerald-600 text-xs text-white hover:bg-emerald-700" : "text-xs"}
+                            >
+                              <CheckCircle2 className="mr-1.5 size-3.5" /> Bestätigen
+                            </Button>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+
                   {/* Hilfetext zu Schritt 4 */}
                   {currentStep?.id === "step-4-wait-for-team" && (
                     <div className="rounded-2xl border-2 border-purple-300 bg-purple-50 p-4 text-xs text-purple-950 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
@@ -1431,8 +1644,8 @@ export default function WbtPortal() {
                     <h3 className="font-bold text-slate-900">Material & Logistik</h3>
                     <Button size="sm" variant="outline">+ Material erfassen</Button>
                   </div>
-                  <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-xs">
-                    <table className="w-full text-left text-xs">
+                  <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-xs" data-wbt-mobile-scroll-table>
+                    <table className="min-w-[560px] w-full text-left text-xs">
                       <thead className="bg-slate-100 text-slate-600 font-semibold border-b">
                         <tr>
                           <th className="p-3">Gegenstand</th>
@@ -1552,8 +1765,8 @@ export default function WbtPortal() {
                     <h3 className="font-bold text-slate-900">Finanzübersicht & Saldo</h3>
                     <Button size="sm" variant="outline">+ Kategorie</Button>
                   </div>
-                  <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-xs">
-                    <table className="w-full text-left text-xs">
+                  <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-xs" data-wbt-mobile-scroll-table>
+                    <table className="min-w-[560px] w-full text-left text-xs">
                       <thead className="bg-slate-100 text-slate-600 font-semibold border-b">
                         <tr>
                           <th className="p-3">Kategorie</th>

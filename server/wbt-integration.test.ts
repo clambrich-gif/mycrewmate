@@ -25,8 +25,8 @@ describe("WBT-Systemintegration (Erstanmeldung, Hilfe, Masterportal, PDF-Zertifi
     expect(content).toContain("Möchtest du ein Web-Based-Training (WBT) starten?");
     expect(content).toContain("1. WBT: Helferkoordination");
     expect(content).toContain("2. WBT: Planungsteam &amp; Admin");
-    expect(content).toContain('window.open("/wbt?track=helper", "_blank", "noopener,noreferrer")');
-    expect(content).toContain('window.open("/wbt?track=admin", "_blank", "noopener,noreferrer")');
+    expect(content).toContain('window.open("/wbt?track=helper&returnTo=/", "_blank", "noopener,noreferrer")');
+    expect(content).toContain('window.open("/wbt?track=admin&returnTo=/", "_blank", "noopener,noreferrer")');
     expect(content).toContain("Jetzt überspringen");
   });
 
@@ -50,13 +50,20 @@ describe("WBT-Systemintegration (Erstanmeldung, Hilfe, Masterportal, PDF-Zertifi
     expect(content).toContain("Aktive Schulungslinks");
   });
 
-  it("WbtPortal enthält die vergrößerte, realitätsnahe Helfertabelle und den PDF-Zertifikat-Download", async () => {
+  it("WbtPortal enthält die mobile Helferkartenansicht, die Fortschrittsfortsetzung und den Rückweg ins Programm", async () => {
     const filePath = path.resolve(process.cwd(), "client/src/pages/WbtPortal.tsx");
     const content = await readFile(filePath, "utf-8");
     expect(content).toContain("Helferkartei &amp; Koordination");
     expect(content).toContain("Reale Tabellenansicht mit direkten Aktionen");
     expect(content).toContain("Persönliche Teilnahmebestätigung herunterladen");
     expect(content).toContain("createCertificate.mutateAsync");
+    expect(content).toContain("WBT_PROGRESS_KEY");
+    expect(content).toContain("loadWbtProgress");
+    expect(content).toContain("data-wbt-mobile-chapter-overview");
+    expect(content).toContain("data-wbt-mobile-helper-cards");
+    expect(content).toContain("data-wbt-mobile-scroll-table");
+    expect(content).toContain("WBT schließen &amp; ins Programm");
+    expect(content).toContain("window.location.assign(returnTo ?? \"/\")");
   });
 
   it("Öffentliche Route /wbt generiert ein echtes PDF-Teilnahmezertifikat ohne Datenspeicherung", async () => {
