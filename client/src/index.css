@@ -972,13 +972,12 @@
     margin-top: 0;
   }
 
-  [data-klemmi-next-control][data-klemmi-narration-complete="false"],
-  [data-klemmi-finish-control][data-klemmi-narration-complete="false"] {
-    display: none;
-  }
-
-  [data-klemmi-next-control][data-klemmi-narration-complete="true"],
-  [data-klemmi-finish-control][data-klemmi-narration-complete="true"] {
+  /* Die Tour ist auf dem Smartphone bewusst jederzeit steuerbar. Wer die
+     Erklärung bereits verstanden hat, kann sofort weitergehen; der laufende
+     Clip wird beim Wechsel ordentlich beendet. Nur echte Speichern-Schritte
+     bleiben weiterhin an die jeweilige Aktion gebunden. */
+  [data-klemmi-next-control],
+  [data-klemmi-finish-control] {
     min-height: 1.9rem;
     padding: 0.28rem 0.55rem;
     border-radius: 0.55rem;

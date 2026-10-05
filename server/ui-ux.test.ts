@@ -319,7 +319,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(styles).toContain("@keyframes plan-view-enter");
     expect(styles).toContain(".plan-view-transition");
     expect(styles).toContain("halbtransparenten Untertitelstreifen");
-    expect(styles).toContain("[data-klemmi-next-control][data-klemmi-narration-complete=\"false\"]");
+    expect(styles).toContain("Die Tour ist auf dem Smartphone bewusst jederzeit steuerbar.");
+    expect(styles).toContain("[data-klemmi-next-control],");
+    expect(styles).not.toContain("[data-klemmi-next-control][data-klemmi-narration-complete=\"false\"]");
     expect(styles).toContain("background: rgb(255 255 255 / 74%)");
     expect(styles).toContain("20s cubic-bezier");
     expect(genericTasks).toContain("<KlemmiActionPanel");

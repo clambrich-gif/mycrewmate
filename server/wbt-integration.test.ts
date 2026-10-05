@@ -62,6 +62,10 @@ describe("WBT-Systemintegration (Erstanmeldung, Hilfe, Masterportal, PDF-Zertifi
     expect(content).toContain("data-wbt-mobile-chapter-overview");
     expect(content).toContain("data-wbt-mobile-helper-cards");
     expect(content).toContain("data-wbt-mobile-scroll-table");
+    expect(content).toContain("data-wbt-chapter-summary");
+    expect(content).toContain("data-wbt-summary-actions");
+    expect(content).toContain("flex-col items-start gap-2 border-b");
+    expect(content).toContain("flex-col-reverse gap-3 border-t");
     expect(content).toContain("WBT schließen &amp; ins Programm");
     expect(content).toContain("window.location.assign(returnTo ?? \"/\")");
   });

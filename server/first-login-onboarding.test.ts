@@ -125,7 +125,9 @@ describe("Erst-Login-Onboarding", () => {
     expect(css).toContain("bottom: calc(100% - 0.65rem)");
     expect(css).toContain("@media (max-width: 639px)");
     expect(css).toContain(".klemmi-first-login-question {\n    display: none;");
-    expect(css).toContain("[data-klemmi-finish-control][data-klemmi-narration-complete=\"false\"]");
+    expect(css).toContain("Die Tour ist auf dem Smartphone bewusst jederzeit steuerbar.");
+    expect(css).toContain("[data-klemmi-finish-control] {");
+    expect(css).not.toContain("[data-klemmi-finish-control][data-klemmi-narration-complete=\"false\"]");
     expect(css).toContain("prefers-reduced-motion: reduce");
     expect(preview).toContain('data-klemmi-trigger="staging-preview"');
     expect(preview).toContain("Standardansicht mit Ton starten");

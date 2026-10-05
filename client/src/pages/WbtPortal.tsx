@@ -895,19 +895,19 @@ export default function WbtPortal() {
   // -------------------------------------------------------------
   if (showingSummary && currentChapter) {
     return (
-      <div className="min-h-screen bg-slate-50 px-4 py-10 text-slate-900">
-        <div className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-white p-6 shadow-xl sm:p-10">
-          <div className="flex items-center justify-between border-b pb-4">
-            <Badge variant="outline" className="border-blue-300 bg-blue-50 text-blue-900">
+      <div className="min-h-screen bg-slate-50 px-3 py-6 text-slate-900 sm:px-4 sm:py-10">
+        <div className="mx-auto w-full max-w-2xl rounded-3xl border border-slate-200 bg-white p-4 shadow-xl sm:p-10" data-wbt-chapter-summary>
+          <div className="flex flex-col items-start gap-2 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
+            <Badge variant="outline" className="max-w-full whitespace-normal border-blue-300 bg-blue-50 text-left text-blue-900">
               Kapitel abgeschlossen: {currentChapter.title}
             </Badge>
-            <span className="text-xs font-semibold text-slate-500">
+            <span className="shrink-0 text-xs font-semibold text-slate-500">
               Kapitel {currentChapterIndex + 1} von {currentTrack?.chapters.length}
             </span>
           </div>
 
           {/* Klemmi Illustration & Sprechblase */}
-          <div className="mt-8 flex flex-col items-center text-center">
+          <div className="mt-7 flex flex-col items-center text-center sm:mt-8">
             <div className="relative mb-4 size-24 sm:size-28">
               <KlemmiMascot className="size-24 sm:size-28" isSpeaking={isSpeaking} decorative />
             </div>
@@ -916,7 +916,7 @@ export default function WbtPortal() {
               {currentChapter.klemmiSummary.heading}
             </h3>
 
-            <div className="mt-4 rounded-2xl border-2 border-blue-200 bg-blue-50/80 p-5 text-left shadow-sm">
+            <div className="mt-4 w-full rounded-2xl border-2 border-blue-200 bg-blue-50/80 p-4 text-left shadow-sm sm:p-5">
               <p className="text-base leading-relaxed text-blue-950 sm:text-lg">
                 „{currentChapter.klemmiSummary.text}“
               </p>
@@ -941,18 +941,18 @@ export default function WbtPortal() {
             </div>
           </div>
 
-          <div className="mt-8 flex items-center justify-between border-t pt-6">
+          <div className="mt-7 flex flex-col-reverse gap-3 border-t pt-5 sm:mt-8 sm:flex-row sm:items-center sm:justify-between sm:pt-6" data-wbt-summary-actions>
             <Button
               variant="ghost"
               onClick={() => setShowingSummary(false)}
-              className="text-slate-600"
+              className="w-full text-slate-600 sm:w-auto"
             >
               <ArrowLeft className="mr-2 size-4" />
               Schritte nochmals ansehen
             </Button>
             <Button
               onClick={handleNextChapter}
-              className="bg-blue-600 text-white hover:bg-blue-700 shadow-sm"
+              className="w-full bg-blue-600 text-white shadow-sm hover:bg-blue-700 sm:w-auto"
             >
               {currentChapterIndex < (currentTrack?.chapters.length ?? 0) - 1
                 ? "Nächstes Kapitel starten"
