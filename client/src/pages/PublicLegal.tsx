@@ -80,6 +80,7 @@ export function PublicImpressumPage() {
           Telefon: <a className="text-blue-700 underline underline-offset-2" href="tel:+491745111984">0174 5111984</a><br />
           E-Mail: <a className="text-blue-700 underline underline-offset-2" href="mailto:info@mycrewmate.de">info@mycrewmate.de</a>
         </p>
+        <p className="mt-3 text-xs leading-5 text-slate-500">MyCrewMate.de ist eine eigenständige Plattform für Vereins- und Eventplanung und steht in keiner Verbindung zu gleichnamigen Angeboten anderer Betreiber.</p>
       </section>
       <section>
         <h2 className="text-base font-bold text-slate-950">Umsatzsteuer</h2>

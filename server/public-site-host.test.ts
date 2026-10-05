@@ -51,6 +51,8 @@ describe("Trennung von Angebotsseite und geschützter MyCrewMate-Anwendung", () 
     expect(offerDemo).toContain('href="/datenschutz"');
     expect(legal).toContain("Diese öffentliche Musterseite dient ausschließlich der Produktinformation.");
     expect(legal).toContain("keine Zahlungsabwicklung");
+    expect(legal).toContain("eigenständige Plattform für Vereins- und Eventplanung");
+    expect(legal).toContain("keiner Verbindung zu gleichnamigen Angeboten anderer Betreiber");
   });
 
   it("stellt für die geschützte App einen eigenen, vollständigen Datenschutzhinweis bereit", () => {
