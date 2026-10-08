@@ -1415,6 +1415,29 @@ function productCapabilityAdminProcedure(capability: ProductCapability) {
 
 const scheduleAdminProcedure = productCapabilityAdminProcedure("schedule");
 
+/**
+ * Der gemeinsame Event-Pass-Zugang darf neue Schichten erfassen, ohne dadurch
+ * bestehende Schichten, Einteilungen oder Freigaben administrieren zu können.
+ * In allen übrigen Paketen bleibt die bisherige Administratorgrenze erhalten.
+ */
+const scheduleCreateProcedure = productCapabilityProcedure("schedule").use(
+  async ({ ctx, next }) => {
+    const entitlement = await db.getCurrentTenantProductEntitlement();
+    if (entitlement.packageId === "event_pass") {
+      const moduleAccess = await getPlanningTeamModuleAccessForUser(ctx.user);
+      requireModuleWritePermission(moduleAccess, "schedule");
+      return next({ ctx });
+    }
+    if (!(await isTenantAdministrator(ctx.user))) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Nur Administratoren dürfen Schichten anlegen.",
+      });
+    }
+    return next({ ctx });
+  }
+);
+
 function moduleReadProcedure(module: Exclude<PlanningModule, "read_all">) {
   return protectedProcedure.use(async ({ ctx, next }) => {
     await requireCurrentProductModule(module);
@@ -5029,7 +5052,7 @@ export const appRouter = router({
 
   shifts: router({
     list: moduleReadProcedure("schedule").query(() => db.listShifts()),
-    create: scheduleAdminProcedure
+    create: scheduleCreateProcedure
       .input(createShiftInput)
       .mutation(async ({ input }) => {
         const selectedEvent = await db.getEvent();

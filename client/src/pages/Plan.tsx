@@ -643,7 +643,10 @@ function AssignedHelperChip({
 export default function Plan() {
   const utils = trpc.useUtils();
   const { user } = useAuth();
-  const { isTenantAdmin: canEditPlan } = useTenantAdministration();
+  const {
+    isTenantAdmin: canEditPlan,
+    canWriteModule,
+  } = useTenantAdministration();
   const {
     isDefaultMyTasks,
     setDefaultMyTasks,
@@ -661,17 +664,29 @@ export default function Plan() {
     searchParams.get(PLAN_DAY_QUERY_KEY)
   );
   const locationFilter = Number(searchParams.get("location")) || null;
-  const { data: evals = [], isLoading } = trpc.plan.evaluate.useQuery();
-  const { data: helpers = [] } = trpc.helpers.list.useQuery();
-  const { data: contacts = [] } = trpc.contacts.list.useQuery();
-  const { data: locations = [] } = trpc.locations.list.useQuery();
   const { data: tenantProduct } = trpc.tenantProduct.current.useQuery();
   const currentPackageId = tenantProduct?.packageId ?? "event_pass";
+  const isEventPass = currentPackageId === "event_pass";
+  const canCreateShift =
+    canEditPlan || (isEventPass && canWriteModule("schedule"));
+  const { data: evals = [], isLoading } = trpc.plan.evaluate.useQuery();
+  const { data: helpers = [] } = trpc.helpers.list.useQuery();
+  const { data: contacts = [] } = trpc.contacts.list.useQuery(undefined, {
+    enabled: !isEventPass,
+  });
+  const { data: locations = [] } = trpc.locations.list.useQuery();
   const { data: currentEvent, isLoading: isEventLoading } =
     trpc.events.current.useQuery();
-  const { data: areaContactRows = [] } = trpc.plan.areaContacts.useQuery();
-  const planReleaseStatus = trpc.plan.releaseStatus.useQuery();
-  const planReleasePreview = trpc.plan.releasePreview.useQuery();
+  const { data: areaContactRows = [] } = trpc.plan.areaContacts.useQuery(
+    undefined,
+    { enabled: !isEventPass }
+  );
+  const planReleaseStatus = trpc.plan.releaseStatus.useQuery(undefined, {
+    enabled: canEditPlan,
+  });
+  const planReleasePreview = trpc.plan.releasePreview.useQuery(undefined, {
+    enabled: canEditPlan,
+  });
   const initialEmailRecipients =
     planReleaseStatus.data?.initialEmailRecipients ?? [];
   const isMobileView = useMobileViewMode();
@@ -815,7 +830,7 @@ export default function Plan() {
         mobileAreas.length > 0 ||
         mobileStatuses.length > 0 ||
         mobileWarnings.length > 0 ||
-        mobileContactIds.length > 0 ||
+        (!isEventPass && mobileContactIds.length > 0) ||
         mobileFlexibleOnly ||
         mobileOpenOrUnassignedOnly ||
         Boolean(locationFilter)
@@ -823,9 +838,9 @@ export default function Plan() {
         area !== "alle" ||
         status !== "alle" ||
         warningFilter !== "alle" ||
-        apFilter !== "alle" ||
+        (!isEventPass && apFilter !== "alle") ||
         flexibleAssignmentFilter !== "alle" ||
-        myTasksOnly ||
+        (!isEventPass && myTasksOnly) ||
         openOrUnassignedOnly ||
         Boolean(locationFilter);
   const mobileFilterCount =
@@ -833,7 +848,7 @@ export default function Plan() {
     mobileAreas.length +
     mobileStatuses.length +
     mobileWarnings.length +
-    mobileContactIds.length +
+    (isEventPass ? 0 : mobileContactIds.length) +
     Number(mobileFlexibleOnly) +
     Number(mobileOpenOrUnassignedOnly);
 
@@ -1019,7 +1034,7 @@ export default function Plan() {
     note: "",
   });
   const openCreate = () => {
-    if (!activeDays.length) return;
+    if (!canCreateShift || !activeDays.length) return;
     setEditShift(null);
     setForm({
       day: activeDays[0],
@@ -1068,7 +1083,7 @@ export default function Plan() {
     });
   };
   const saveShift = () => {
-    if (!canEditPlan) return;
+    if (editShift ? !canEditPlan : !canCreateShift) return;
     if (!form.task.trim() || !form.area.trim()) {
       triggerKlemmiReaction("error");
       toast.error("Bereich und Aufgabe sind Pflicht");
@@ -1151,12 +1166,14 @@ export default function Plan() {
   );
   useEffect(() => {
     if (
+      !isEventPass &&
       isDefaultMyTasks &&
       (ownContactIds.size > 0 || ownHelperIds.size > 0)
     ) {
       setMyTasksOnly(true);
     }
-  }, [isDefaultMyTasks, ownContactIds, ownHelperIds]);
+    if (isEventPass) setMyTasksOnly(false);
+  }, [isDefaultMyTasks, isEventPass, ownContactIds, ownHelperIds]);
   const updateMyTasksDefault = (enabled: boolean) => {
     setDefaultMyTasks(enabled);
     if (!enabled) setMyTasksOnly(false);
@@ -1375,7 +1392,7 @@ export default function Plan() {
                 )
               : apFilter === "alle" ||
                 String(areaContactMap.get(e.shift.area) ?? "") === apFilter) &&
-            (!myTasksOnly ||
+            (isEventPass || !myTasksOnly ||
               matchesMyScheduleAssignment({
                 area: e.shift.area,
                 areaContactMap,
@@ -1419,6 +1436,7 @@ export default function Plan() {
       helperNameById,
       ownContactIds,
       ownHelperIds,
+      isEventPass,
     ]
   );
 
@@ -1957,6 +1975,8 @@ export default function Plan() {
           <p className="text-sm text-muted-foreground">
           {canEditPlan
             ? "Nur verfügbare, aktive Helfer sind auswählbar. „Neu“ bedeutet noch keine Einteilung; die Tagessegmente richten sich nach den Eventtagen (Grün: aktuell frei, Gelb: dort eingeteilt, Rot: nicht verfügbar). Zeitgleich bereits eingeteilte Helfer bleiben gelb markiert und auswählbar. Absagen markieren Ausfälle (rot), Doppelbelegungen werden gewarnt (orange)."
+            : canCreateShift
+              ? "Im gemeinsamen Event Pass kann das Team neue Schichten anlegen. Bestehende Schichten, Einteilungen und Freigaben bleiben geschützt."
             : "Das Planungsteam kann den Einsatzplan vollständig ansehen und filtern. Änderungen und Helferzuweisungen sind Administratoren vorbehalten."}
           </p>
         </div>
@@ -2167,6 +2187,20 @@ export default function Plan() {
                 </Button>
               }
             />
+          ) : canCreateShift ? (
+            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+              <ViewModeToggle mode={viewMode} onChange={changeViewMode} />
+              <Button
+                type="button"
+                data-klemmi-target="plan-new"
+                onClick={openCreate}
+                disabled={isEventLoading || !activeDays.length}
+                className="h-10 bg-blue-600 px-4 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus-visible:ring-blue-500"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Neue Schicht
+              </Button>
+            </div>
           ) : (
             <ViewModeToggle mode={viewMode} onChange={changeViewMode} />
           )}
@@ -2374,7 +2408,7 @@ export default function Plan() {
         </>
       )}
 
-      {areas.length > 0 && (
+      {!isEventPass && areas.length > 0 && (
         <Card className="gap-0 border-slate-200 py-0 shadow-sm">
           <CardContent className="px-2 py-1 sm:px-2.5 sm:py-1">
             <button
@@ -2494,7 +2528,7 @@ export default function Plan() {
       )}
 
       <div data-klemmi-target="plan-filters" className="flex flex-col gap-2.5">
-        <div className="order-1 flex items-center gap-1 md:hidden" aria-label="Persönlicher Einsatzfilter">
+        {!isEventPass && <div className="order-1 flex items-center gap-1 md:hidden" aria-label="Persönlicher Einsatzfilter">
           <Button
             type="button"
             size="sm"
@@ -2519,7 +2553,7 @@ export default function Plan() {
             disabled={!canRememberMyTasksDefault}
             onPressedChange={updateMyTasksDefault}
           />
-        </div>
+        </div>}
 
         <div className="order-2 md:hidden">
           <button
@@ -2614,7 +2648,7 @@ export default function Plan() {
                   ))}
                 </div>
               </fieldset>
-              <fieldset className="space-y-2">
+              {!isEventPass && <fieldset className="space-y-2">
                 <legend className="text-sm font-semibold text-slate-900">Ansprechpartner</legend>
                 <div className="max-h-40 space-y-1 overflow-y-auto pr-1">
                   {contacts.map(contact => (
@@ -2631,7 +2665,7 @@ export default function Plan() {
                     </label>
                   ))}
                 </div>
-              </fieldset>
+              </fieldset>}
               <fieldset className="space-y-2">
                 <legend className="text-sm font-semibold text-slate-900">Weitere Auswahl</legend>
                 <label className="flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-800">
@@ -2667,7 +2701,7 @@ export default function Plan() {
           className="order-1 hidden flex-wrap gap-2 md:flex"
           aria-label="Schnellfilter Einsatzplan"
         >
-          <div className="flex items-center gap-1">
+          {!isEventPass && <div className="flex items-center gap-1">
             <Button
               type="button"
               size="sm"
@@ -2692,7 +2726,7 @@ export default function Plan() {
               disabled={!canRememberMyTasksDefault}
               onPressedChange={updateMyTasksDefault}
             />
-          </div>
+          </div>}
           <Button
             type="button"
             size="sm"
@@ -2769,7 +2803,7 @@ export default function Plan() {
               <SelectItem value="ausfaelle">Nur Ausfälle</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={apFilter} onValueChange={setApFilter}>
+          {!isEventPass && <Select value={apFilter} onValueChange={setApFilter}>
             <SelectTrigger className="w-full lg:w-52">
               <SelectValue placeholder="Ansprechpartner" />
             </SelectTrigger>
@@ -2781,7 +2815,7 @@ export default function Plan() {
                 </SelectItem>
               ))}
             </SelectContent>
-          </Select>
+          </Select>}
           <Select
             value={flexibleAssignmentFilter}
             onValueChange={value =>

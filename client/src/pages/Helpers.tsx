@@ -835,6 +835,7 @@ export default function Helpers() {
     staleTime: 60_000,
   });
   const currentPackageId = tenantProduct?.packageId ?? "event_pass";
+  const isEventPass = currentPackageId === "event_pass";
   // Rechte nie aus einer optionalen, verschachtelten API-Antwort lesen:
   // während Cache-/Sitzungswechseln könnte sie sonst die gesamte Ansicht
   // unterbrechen. Der Paketkatalog ist die zentrale, sichere Quelle.
@@ -944,12 +945,7 @@ export default function Helpers() {
   const resetNewHelperForm = () => {
     setName("");
     setNewHelperCompanion("");
-    // Im Event Pass ist der Admin der einzige feste Ansprechpartner
-    const defaultContactId =
-      currentPackageId === "event_pass" && contacts.length > 0
-        ? String(contacts[0].id)
-        : "none";
-    setNewHelperContactId(defaultContactId);
+    setNewHelperContactId("none");
     setNewHelperPhone("");
     setNewHelperNote("");
     setNewHelperBringsCake(false);
@@ -1296,10 +1292,11 @@ export default function Helpers() {
     [contacts, user?.name]
   );
   useEffect(() => {
-    if (isDefaultMyTasks && user?.name?.trim()) {
+    if (!isEventPass && isDefaultMyTasks && user?.name?.trim()) {
       setMyHelperRecordOnly(true);
     }
-  }, [isDefaultMyTasks, user?.name]);
+    if (isEventPass) setMyHelperRecordOnly(false);
+  }, [isDefaultMyTasks, isEventPass, user?.name]);
   useEffect(() => {
     setMobileFeedbackFilters(feedbackFilter === "alle" ? [] : [feedbackFilter]);
   }, [feedbackFilter]);
@@ -1336,7 +1333,7 @@ export default function Helpers() {
               ? mobileWillHelpFilters.length === 0 ||
                 mobileWillHelpFilters.includes(helper.willHelp)
               : willHelpFilter === "alle" || helper.willHelp === willHelpFilter) &&
-            (!(myHelperRecordOnly || personalHelperLinkOnly) ||
+            (isEventPass || !(myHelperRecordOnly || personalHelperLinkOnly) ||
               personKey(helper.name) === personKey(user?.name ?? "") ||
               (typeof helper.contactId === "number" &&
                 ownContactIds.has(helper.contactId))) &&
@@ -1345,7 +1342,7 @@ export default function Helpers() {
               (changeLinkOnly && changedHelperIds.has(helper.id))) &&
             (!firstContactOnly ||
               isHelperWithoutFirstContact(helper, activeDays)) &&
-            (isMobileView
+            (isEventPass || (isMobileView
               ? mobileContactFilters.length === 0 ||
                 mobileContactFilters.includes(
                   helper.contactId ? String(helper.contactId) : "ohne"
@@ -1353,7 +1350,7 @@ export default function Helpers() {
               : apFilter === "alle" ||
                 (apFilter === "ohne"
                   ? !helper.contactId
-                  : String(helper.contactId ?? "") === apFilter)) &&
+                  : String(helper.contactId ?? "") === apFilter))) &&
             (isMobileView
               ? mobileCompanionFilters.length === 0 ||
                 mobileCompanionFilters.some(
@@ -1397,6 +1394,7 @@ export default function Helpers() {
       timedAvailabilityOnly,
       sortAsc,
       activeDays,
+      isEventPass,
     ]
   );
   // Ein gerade von Klemmi angelegter Helfer bleibt für den letzten
@@ -1468,7 +1466,7 @@ export default function Helpers() {
   const hasActiveHelperFilters =
     Boolean(filter.trim()) ||
     (isMobileView
-      ? mobileContactFilters.length > 0 ||
+      ? (!isEventPass && mobileContactFilters.length > 0) ||
         mobileCompanionFilters.length > 0 ||
         mobileFeedbackFilters.length > 0 ||
         mobileWillHelpFilters.length > 0 ||
@@ -1476,7 +1474,7 @@ export default function Helpers() {
         myHelperRecordOnly ||
         personalHelperLinkOnly ||
         changeLinkOnly
-      : apFilter !== "alle" ||
+      : (!isEventPass && apFilter !== "alle") ||
         companionFilter !== "alle" ||
         confirmationFilter !== "alle" ||
         assignedOnly ||
@@ -1487,7 +1485,7 @@ export default function Helpers() {
         changeLinkOnly ||
         timedAvailabilityOnly);
   const mobileFilterCount =
-    mobileContactFilters.length +
+    (isEventPass ? 0 : mobileContactFilters.length) +
     mobileCompanionFilters.length +
     mobileFeedbackFilters.length +
     mobileWillHelpFilters.length +
@@ -1556,7 +1554,7 @@ export default function Helpers() {
       </div>
 
       <div className="flex flex-col gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-        <div className="order-1 flex flex-wrap gap-2" aria-label="Schnellfilter Helfer">
+        {!isEventPass && <div className="order-1 flex flex-wrap gap-2" aria-label="Schnellfilter Helfer">
           <div className="flex items-center gap-1">
             <Button
               type="button"
@@ -1579,8 +1577,8 @@ export default function Helpers() {
               onPressedChange={updateMyTasksDefault}
             />
           </div>
-        </div>
-        <div className="order-2 md:hidden">
+        </div>}
+        {!isEventPass && <div className="order-2 md:hidden">
           <button
             type="button"
             data-slot="mobile-helper-filter-toggle"
@@ -1612,7 +1610,7 @@ export default function Helpers() {
               data-slot="mobile-helper-filter-panel"
               className="mt-2 space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-3"
             >
-              <fieldset className="space-y-2">
+              {!isEventPass && <fieldset className="space-y-2">
                 <legend className="text-sm font-semibold text-slate-900">Ansprechpartner</legend>
                 <div className="max-h-44 space-y-1 overflow-y-auto pr-1">
                   <label className="flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-800">
@@ -1638,7 +1636,7 @@ export default function Helpers() {
                     </label>
                   ))}
                 </div>
-              </fieldset>
+              </fieldset>}
               <fieldset className="space-y-2">
                 <legend className="text-sm font-semibold text-slate-900">Begleitung</legend>
                 <div className="grid grid-cols-2 gap-2">
@@ -1717,9 +1715,9 @@ export default function Helpers() {
               )}
             </div>
           )}
-        </div>
-        <div className="order-2 hidden gap-2 md:flex md:flex-wrap">
-          <Select value={apFilter} onValueChange={setApFilter}>
+        </div>}
+        {!isEventPass && <div className="order-2 hidden gap-2 md:flex md:flex-wrap">
+          {!isEventPass && <Select value={apFilter} onValueChange={setApFilter}>
             <SelectTrigger className="!h-10 w-full items-center border-slate-200 bg-white text-base md:w-[190px] md:text-sm">
               <SelectValue placeholder="Ansprechpartner" />
             </SelectTrigger>
@@ -1737,7 +1735,7 @@ export default function Helpers() {
                 </SelectItem>
               ))}
             </SelectContent>
-          </Select>
+          </Select>}
           <Select
             value={companionFilter}
             onValueChange={value =>
@@ -1816,7 +1814,7 @@ export default function Helpers() {
               Filter zurücksetzen
             </Button>
           )}
-        </div>
+        </div>}
         <div className="order-3 relative w-full md:max-w-[551px]">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
           <Input
@@ -1971,10 +1969,10 @@ export default function Helpers() {
                   </Button>
                 </div>
               </div>
-              <div className="space-y-1.5">
+              {!isEventPass && <div className="space-y-1.5">
                 <label className="text-xs font-medium">Ansprechpartner</label>
                 <Select
-                  disabled={selfHelperIds.has(helper.id) || currentPackageId === "event_pass"}
+                  disabled={selfHelperIds.has(helper.id)}
                   value={helper.contactId ? String(helper.contactId) : "none"}
                   onValueChange={value =>
                     update.mutate({
@@ -2001,7 +1999,7 @@ export default function Helpers() {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+              </div>}
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium">Telefon Helfer</label>
@@ -2137,7 +2135,7 @@ export default function Helpers() {
             <colgroup>
               <col className="w-[140px]" />
               <col className="w-[176px]" />
-              <col className="w-[150px]" />
+              {!isEventPass && <col className="w-[150px]" />}
               <col className="w-[180px]" />
               <col className="w-[230px]" />
               <col className="w-[220px]" />
@@ -2157,7 +2155,7 @@ export default function Helpers() {
                   Name {sortAsc ? "▲" : "▼"}
                 </th>
                 <th className="p-2 text-center">Aktionen</th>
-                <th className="p-2">Ansprechpartner</th>
+                {!isEventPass && <th className="p-2">Ansprechpartner</th>}
                 <th className="whitespace-nowrap p-2">Telefon Helfer</th>
                 <th className="p-2">Hinweise</th>
                 <th className="p-2">zusätzliche Begleitung</th>
@@ -2269,9 +2267,9 @@ export default function Helpers() {
                       </Button>
                     </div>
                   </td>
-                  <td className="p-2">
+                  {!isEventPass && <td className="p-2">
                     <Select
-                      disabled={selfHelperIds.has(helper.id) || currentPackageId === "event_pass"}
+                      disabled={selfHelperIds.has(helper.id)}
                       value={
                         helper.contactId ? String(helper.contactId) : "none"
                       }
@@ -2308,7 +2306,7 @@ export default function Helpers() {
                         ))}
                       </SelectContent>
                     </Select>
-                  </td>
+                  </td>}
                   <td className="p-2 whitespace-nowrap">
                     <Input
                       key={`${helper.id}-phone-${helper.phone ?? ""}`}
@@ -2522,7 +2520,7 @@ export default function Helpers() {
                             Bitte die Änderung prüfen und den Helfer erneut informieren
                           </p>
                         )}
-                        <p className="mt-0.5 text-xs text-slate-500">
+                        {!isEventPass && <p className="mt-0.5 text-xs text-slate-500">
                           <span>(</span>
                           <span
                             className={cn(
@@ -2533,7 +2531,7 @@ export default function Helpers() {
                             {contactName ?? "Kein Ansprechpartner"}
                           </span>
                           <span>)</span>
-                        </p>
+                        </p>}
                         <div
                           data-slot="helper-card-actions"
                           className="mt-2 flex min-h-11 items-center gap-2 sm:gap-3"
@@ -2852,25 +2850,30 @@ export default function Helpers() {
                 >
                   <div className="space-y-1.5">
                     <label htmlFor="new-helper-dialog-contact" className="text-sm font-medium">Ansprechpartner</label>
-                    <Select
-                      disabled={currentPackageId === "event_pass" && contacts.length > 0}
-                      value={newHelperContactId}
-                      onValueChange={setNewHelperContactId}
-                    >
-                      <SelectTrigger id="new-helper-dialog-contact" className="h-11 w-full bg-white text-base">
-                        <SelectValue placeholder="Ansprechpartner auswählen" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Kein Ansprechpartner</SelectItem>
-                        {contacts.map(contact => (
-                          <SelectItem key={contact.id} value={String(contact.id)}>{contact.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {currentPackageId === "event_pass" && (
-                      <p className="text-[11px] text-slate-500">
-                        Im Event Pass fest dem Vereinsadministrator zugeordnet (weitere Ansprechpartner ab Light).
-                      </p>
+                    {isEventPass ? (
+                      <>
+                        <div
+                          id="new-helper-dialog-contact"
+                          className="flex h-11 items-center rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 text-base text-slate-600"
+                        >
+                          —
+                        </div>
+                        <p className="text-[11px] text-slate-500">
+                          Im Event Pass gibt es keine Ansprechpartner. Helfer werden direkt gemeinsam organisiert.
+                        </p>
+                      </>
+                    ) : (
+                      <Select value={newHelperContactId} onValueChange={setNewHelperContactId}>
+                        <SelectTrigger id="new-helper-dialog-contact" className="h-11 w-full bg-white text-base">
+                          <SelectValue placeholder="Ansprechpartner auswählen" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Kein Ansprechpartner</SelectItem>
+                          {contacts.map(contact => (
+                            <SelectItem key={contact.id} value={String(contact.id)}>{contact.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     )}
                   </div>
                   <div className="space-y-1.5">
@@ -3294,7 +3297,7 @@ export default function Helpers() {
                 autoFocus
               />
             </div>
-            <div className="space-y-1.5">
+            {!isEventPass && <div className="space-y-1.5">
               <label htmlFor="mobile-helper-edit-contact" className="text-sm font-medium">
                 Ansprechpartner
               </label>
@@ -3316,7 +3319,7 @@ export default function Helpers() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
+            </div>}
             <div className="space-y-1.5">
               <label htmlFor="mobile-helper-edit-phone" className="text-sm font-medium">
                 Telefon Helfer

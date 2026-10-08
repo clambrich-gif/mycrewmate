@@ -1718,6 +1718,8 @@ export default function Dashboard() {
     markPersonalDashboardExplanationSeen,
   } = useMyTasksDefault(user);
   const utils = trpc.useUtils();
+  const tenantProduct = trpc.tenantProduct.current.useQuery();
+  const isEventPass = tenantProduct.data?.packageId === "event_pass";
   const canReadLocations = canReadModule("locations");
   const [workloadFilter, setWorkloadFilter] = useState<{
     day: DailyReadiness["day"];
@@ -1725,13 +1727,13 @@ export default function Dashboard() {
   } | null>(null);
   const [klemmiMuted, setKlemmiMuted] = useState(getKlemmiMuted);
   const [isPersonalDashboard, setIsPersonalDashboard] = useState(
-    () => isDefaultMyTasks
+    () => !isEventPass && isDefaultMyTasks
   );
   const [showPersonalDashboardExplanation, setShowPersonalDashboardExplanation] =
     useState(false);
   const { data: s, isLoading } = trpc.dashboard.stats.useQuery();
   const personalDashboard = trpc.dashboard.personal.useQuery(undefined, {
-    enabled: isPersonalDashboard,
+    enabled: isPersonalDashboard && !isEventPass,
   });
   const acknowledgePlanInformation = trpc.dashboard.acknowledgePlanInformation.useMutation({
     onSuccess: async () => {
@@ -1768,7 +1770,6 @@ export default function Dashboard() {
     },
     onError: error => toast.error(error.message),
   });
-  const tenantProduct = trpc.tenantProduct.current.useQuery();
   const productUsage = trpc.tenantProduct.usage.useQuery(undefined, {
     enabled:
       isTenantAdmin &&
@@ -1782,7 +1783,6 @@ export default function Dashboard() {
   const canUseChat =
     tenantProduct.isSuccess &&
     productAllowsCapability(tenantProduct.data?.packageId ?? "event_pass", "chat");
-  const isEventPass = tenantProduct.data?.packageId === "event_pass";
   const allowsDonations = productAllowsCapability(
     tenantProduct.data?.packageId ?? "event_pass",
     "donations"
@@ -1794,15 +1794,20 @@ export default function Dashboard() {
     }
   );
   useEffect(() => {
+    if (isEventPass) {
+      setIsPersonalDashboard(false);
+      return;
+    }
     if (isDefaultMyTasks) {
       setIsPersonalDashboard(true);
       if (!hasSeenPersonalDashboardExplanation) {
         setShowPersonalDashboardExplanation(true);
       }
     }
-  }, [isDefaultMyTasks, hasSeenPersonalDashboardExplanation]);
+  }, [isDefaultMyTasks, hasSeenPersonalDashboardExplanation, isEventPass]);
   const selectDashboardView = (mode: "club" | "personal") => {
     const personal = mode === "personal";
+    if (isEventPass && personal) return;
     setIsPersonalDashboard(personal);
     setDefaultMyTasks(personal);
     if (personal && !hasSeenPersonalDashboardExplanation) {
@@ -2082,7 +2087,7 @@ export default function Dashboard() {
               ? "Deine zugeordneten Aufgaben und Einsätze – klar auf deinen Bereich fokussiert."
               : "Die wichtigsten nächsten Schritte stehen zuerst; alle Kennzahlen werden automatisch aus den Planungsdaten berechnet."}
           </p>
-          <div
+          {!isEventPass && <div
             className="mt-3 inline-flex rounded-xl border border-slate-200 bg-slate-100 p-1 shadow-sm"
             role="group"
             aria-label="Dashboard-Ansicht auswählen"
@@ -2104,7 +2109,7 @@ export default function Dashboard() {
               <Pin className="size-3.5" aria-hidden="true" />
               Meine Ansicht
             </button>
-          </div>
+          </div>}
         </div>
         {isPersonalDashboard && (
           <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:items-end">

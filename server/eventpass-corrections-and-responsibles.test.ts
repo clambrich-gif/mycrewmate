@@ -27,12 +27,13 @@ describe("Event-Pass Korrekturen und Verantwortlichkeiten", () => {
     expect(helpers).toContain("disabled={!allowsDonations}");
   });
 
-  it("Punkt 3: Vereinsadmin ist Standard-Ansprechpartner im Event Pass", () => {
-    const db = source("server/db.ts");
+  it("Punkt 3: Event Pass legt Helfer ohne Ansprechpartner an", () => {
     const helpers = source("client/src/pages/Helpers.tsx");
 
-    expect(db).toContain("ensureEventPassPrimaryAdminContact");
-    expect(helpers).toContain("defaultContactId");
+    expect(helpers).toContain('const isEventPass = currentPackageId === "event_pass"');
+    expect(helpers).toContain('setNewHelperContactId("none")');
+    expect(helpers).toContain("Im Event Pass gibt es keine Ansprechpartner. Helfer werden direkt gemeinsam organisiert.");
+    expect(helpers).not.toContain("const defaultContactId");
   });
 
   it("Punkt 4: PDF-Ausgabe im Event Pass ohne Fehler & freundlicher Upgrade-Hinweis bei Ansprechpartnern", () => {

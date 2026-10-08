@@ -7,15 +7,15 @@ function source(relativePath: string) {
 }
 
 describe("Event-Pass Vorbereitungsaufgaben", () => {
-  it("legt den Hauptadministrator als zuständige Person vor, ohne das Ansprechpartner-Modul zu öffnen", () => {
+  it("nutzt im Event Pass ausschließlich angelegte Helfer als Verantwortliche", () => {
     const preparation = source("client/src/pages/Preparation.tsx");
 
     expect(preparation).toContain('const currentPackageId = tenantProduct?.packageId ?? "event_pass"');
     expect(preparation).toContain('const allowsContacts = productAllowsCapability(currentPackageId, "contacts")');
-    expect(preparation).toContain("trpc.prep.defaultResponsible.useQuery");
-    expect(preparation).toContain('enabled: !allowsContacts');
-    expect(preparation).toContain("const defaultResponsibleId = eventPassPrimaryContact");
-    expect(preparation).toContain("setForm({ ...EMPTY_FORM, contactId: defaultResponsibleId })");
+    expect(preparation).toContain('const isEventPass = currentPackageId === "event_pass"');
+    expect(preparation).toContain('<Label>Verantwortlicher Helfer</Label>');
+    expect(preparation).toContain("Im Event Pass wird die Aufgabe direkt einem angelegten Helfer zugeordnet.");
+    expect(preparation).not.toContain("trpc.prep.defaultResponsible.useQuery");
   });
 
   it("erlaubt einen neutralen Bindestrich und speichert ihn als null statt die Aufgabe zu blockieren", () => {
@@ -26,14 +26,10 @@ describe("Event-Pass Vorbereitungsaufgaben", () => {
     expect(preparation).not.toContain('toast.error("Bitte einen verantwortlichen Ansprechpartner wählen")');
   });
 
-  it("liefert den Event-Pass-Hauptansprechpartner serverseitig und hält die API-Eingabe strikt", () => {
-    const db = source("server/db.ts");
+  it("hält die API-Eingabe weiterhin auf gültige Personen-IDs begrenzt", () => {
     const routers = source("server/routers.ts");
 
-    expect(db).toContain("export async function getEventPassPrimaryAdminContact()");
-    expect(db).toContain("await ensureEventPassPrimaryAdminContact(db)");
-    expect(routers).toContain("defaultResponsible: moduleReadProcedure(\"preparation\")");
     expect(routers).toContain('contactId: z.number().int().positive().nullable().optional()');
-    expect(routers).toContain("db.getEventPassPrimaryAdminContact().then");
+    expect(routers).toContain('helperId: z.number().int().positive().nullable().optional()');
   });
 });

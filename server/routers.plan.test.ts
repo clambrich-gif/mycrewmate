@@ -2363,6 +2363,42 @@ describe("Planungs-API", () => {
     });
   });
 
+  it("erlaubt dem gemeinsamen Event-Pass-Zugang nur das Anlegen neuer Schichten", async () => {
+    const eventPassEntitlement = {
+      tenantId: "default",
+      packageId: "event_pass",
+      status: "active",
+      startsOn: null,
+      endsOn: null,
+      eventId: 1,
+      isUsable: true,
+      entitlements: { includedCapabilities: [], includedPlanningModules: [] },
+    };
+    // Die tRPC-Middleware prüft das Paket mehrfach entlang des abgesicherten
+    // Request-Pfads; für diesen einen Aufruf muss jede Prüfung Event Pass sehen.
+    for (let call = 0; call < 6; call += 1) {
+      dbMocks.getCurrentTenantProductEntitlement.mockResolvedValueOnce(
+        eventPassEntitlement
+      );
+    }
+    dbMocks.createShift.mockResolvedValue({ insertId: 88 });
+    const caller = appRouter.createCaller(planningTeamCtx);
+
+    await expect(
+      caller.shifts.create({
+        day: "Freitag",
+        area: "Start",
+        task: "Anmeldung",
+        startTime: "08:00",
+        endTime: "10:00",
+        needed: 1,
+      })
+    ).resolves.toEqual({ insertId: 88 });
+    await expect(
+      caller.shifts.update({ id: 10, task: "Nicht erlaubt" })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
   it("gibt fachlich ungültige Schichtänderungen als verständlichen Eingabefehler zurück", async () => {
     dbMocks.updateShift.mockRejectedValueOnce(
       new ShiftUpdateValidationError(

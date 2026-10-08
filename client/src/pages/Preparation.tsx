@@ -328,23 +328,15 @@ export default function Preparation() {
     staleTime: 60_000,
   });
   const currentPackageId = tenantProduct?.packageId ?? "event_pass";
+  const isEventPass = currentPackageId === "event_pass";
   const allowsContacts = productAllowsCapability(currentPackageId, "contacts");
   const { data: contactRows } = trpc.contacts.list.useQuery(undefined, {
     enabled: allowsContacts,
   });
-  const { data: eventPassPrimaryContact } = trpc.prep.defaultResponsible.useQuery(
-    undefined,
-    { enabled: !allowsContacts }
-  );
   const contacts = contactRows ?? EMPTY_CONTACTS;
   const responsibleContacts = useMemo(
-    () =>
-      allowsContacts
-        ? contacts
-        : eventPassPrimaryContact
-          ? [eventPassPrimaryContact]
-          : EMPTY_CONTACTS,
-    [allowsContacts, contacts, eventPassPrimaryContact]
+    () => (allowsContacts ? contacts : EMPTY_CONTACTS),
+    [allowsContacts, contacts]
   );
   const { data: helpers = [] } = trpc.helpers.list.useQuery();
   const { data: locations = [] } = trpc.locations.list.useQuery();
@@ -506,7 +498,8 @@ export default function Preparation() {
       ),
     [helpers, currentUserName, ownContactIds]
   );
-  const canShowMyTasks = ownContactIds.size > 0 || ownHelperIds.size > 0;
+  const canShowMyTasks =
+    !isEventPass && (ownContactIds.size > 0 || ownHelperIds.size > 0);
   const setMyTasksFilter = (enabled: boolean) => {
     setMyTasksOnly(enabled);
     setSearchParams(
@@ -523,7 +516,8 @@ export default function Preparation() {
     if (isDefaultMyTasks && canShowMyTasks) {
       setMyTasksOnly(true);
     }
-  }, [isDefaultMyTasks, canShowMyTasks]);
+    if (isEventPass) setMyTasksOnly(false);
+  }, [isDefaultMyTasks, canShowMyTasks, isEventPass]);
   useEffect(() => {
     if (requestedMyTasks && canShowMyTasks) {
       setMyTasksOnly(true);
@@ -538,14 +532,13 @@ export default function Preparation() {
     () => new Map(locations.map(location => [location.id, location.name])),
     [locations]
   );
-  const defaultResponsibleId = eventPassPrimaryContact
-    ? String(eventPassPrimaryContact.id)
-    : "unassigned";
+  const defaultResponsibleId = "unassigned";
 
   useEffect(() => {
     if (
       !dialogOpen ||
       editingTask ||
+      isEventPass ||
       responsibleSelectionTouched.current ||
       defaultResponsibleId === "unassigned"
     ) {
@@ -556,7 +549,7 @@ export default function Preparation() {
         ? { ...current, contactId: defaultResponsibleId }
         : current
     );
-  }, [defaultResponsibleId, dialogOpen, editingTask]);
+  }, [defaultResponsibleId, dialogOpen, editingTask, isEventPass]);
 
   const availableCategories = useMemo(() => {
     const categories = new Set<string>();
@@ -577,11 +570,12 @@ export default function Preparation() {
         if (categoryFilter !== "alle" && categoryFilter !== "ohne") {
           if (row.category?.trim() !== categoryFilter) return false;
         }
-        if (contactFilter === "ohne" && row.contactId) return false;
-        if (contactFilter !== "alle" && contactFilter !== "ohne") {
+        if (!isEventPass && contactFilter === "ohne" && row.contactId) return false;
+        if (!isEventPass && contactFilter !== "alle" && contactFilter !== "ohne") {
           if (String(row.contactId ?? "") !== contactFilter) return false;
         }
         if (
+          !isEventPass &&
           myTasksOnly &&
           !(
             (typeof row.contactId === "number" && ownContactIds.has(row.contactId)) ||
@@ -590,7 +584,11 @@ export default function Preparation() {
         ) {
           return false;
         }
-        if (openOrUnassignedOnly && row.status !== "offen" && row.contactId) {
+        if (
+          openOrUnassignedOnly &&
+          row.status !== "offen" &&
+          (isEventPass ? row.helperId : row.contactId)
+        ) {
           return false;
         }
         if (!normalizedQuery) return true;
@@ -601,6 +599,7 @@ export default function Preparation() {
           row.dueText,
           row.note ?? "",
           row.contactId ? contactMap.get(row.contactId) ?? "" : "",
+          row.helperId ? helperMap.get(row.helperId) ?? "" : "",
           row.locationId ? locationMap.get(row.locationId) ?? "" : "",
         ]
           .join(" ")
@@ -641,15 +640,17 @@ export default function Preparation() {
     searchTerm,
     dueSortDirection,
     contactMap,
+    helperMap,
     locationMap,
+    isEventPass,
   ]);
 
   const hasActiveFilters =
     statusFilter !== "alle" ||
     locationFilter !== null ||
     categoryFilter !== "alle" ||
-    contactFilter !== "alle" ||
-    myTasksOnly ||
+    (!isEventPass && contactFilter !== "alle") ||
+    (!isEventPass && myTasksOnly) ||
     openOrUnassignedOnly ||
     Boolean(searchTerm.trim());
 
@@ -697,7 +698,7 @@ export default function Preparation() {
   const openCreate = () => {
     setEditingTask(null);
     responsibleSelectionTouched.current = false;
-    setForm({ ...EMPTY_FORM, contactId: defaultResponsibleId });
+    setForm({ ...EMPTY_FORM, contactId: "unassigned" });
     setDialogOpen(true);
   };
 
@@ -921,7 +922,7 @@ export default function Preparation() {
 
       <div data-klemmi-target="preparation-overview" className="space-y-3 rounded-xl border border-sky-200/80 bg-white/90 p-3 shadow-sm sm:p-4">
         <div className="flex flex-wrap gap-2" aria-label="Schnellfilter Vorbereitung">
-          <div className="flex items-center gap-1">
+          {!isEventPass && <div className="flex items-center gap-1">
             <Button
               type="button"
               size="sm"
@@ -946,7 +947,7 @@ export default function Preparation() {
               disabled={!canRememberMyTasksDefault}
               onPressedChange={updateMyTasksDefault}
             />
-          </div>
+          </div>}
           <Button
             type="button"
             size="sm"
@@ -995,7 +996,7 @@ export default function Preparation() {
             </SelectContent>
           </Select>
 
-          <Select value={contactFilter} onValueChange={setContactFilter}>
+          {!isEventPass && <Select value={contactFilter} onValueChange={setContactFilter}>
             <SelectTrigger className="h-11 w-full border-sky-200 bg-white text-base md:h-10 md:w-[220px] md:text-sm">
               <SelectValue placeholder="Verantwortlicher" />
             </SelectTrigger>
@@ -1008,7 +1009,7 @@ export default function Preparation() {
                 </SelectItem>
               ))}
             </SelectContent>
-          </Select>
+          </Select>}
 
           <Select
             value={statusFilter}
@@ -1155,8 +1156,16 @@ export default function Preparation() {
                         )}
                       </td>
                       <td className="break-words px-4 py-3 align-top text-slate-700">
-                        <p>{task.contactId ? contactMap.get(task.contactId) ?? "—" : "—"}</p>
-                        {task.helperId && (
+                        <p>
+                          {isEventPass
+                            ? task.helperId
+                              ? helperMap.get(task.helperId) ?? "—"
+                              : "—"
+                            : task.contactId
+                              ? contactMap.get(task.contactId) ?? "—"
+                              : "—"}
+                        </p>
+                        {!isEventPass && task.helperId && (
                           <p className="mt-1 text-xs text-slate-500">
                             Helfer: {helperMap.get(task.helperId) ?? "—"}
                           </p>
@@ -1361,9 +1370,15 @@ export default function Preparation() {
                       <div className="space-y-1.5">
                         <p id={`mobile-prep-contact-${task.id}`} className="text-xs font-medium">Verantwortlicher</p>
                         <p className="text-sm text-slate-800" aria-labelledby={`mobile-prep-contact-${task.id}`}>
-                          {task.contactId ? contactMap.get(task.contactId) ?? "—" : "—"}
+                          {isEventPass
+                            ? task.helperId
+                              ? helperMap.get(task.helperId) ?? "—"
+                              : "—"
+                            : task.contactId
+                              ? contactMap.get(task.contactId) ?? "—"
+                              : "—"}
                         </p>
-                        {task.helperId && (
+                        {!isEventPass && task.helperId && (
                           <p className="text-xs text-slate-500">
                             Helfer: {helperMap.get(task.helperId) ?? "—"}
                           </p>
@@ -1516,28 +1531,55 @@ export default function Preparation() {
               <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-600">Verantwortung & Termin</p>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label>Verantwortlicher</Label>
-                <Select
-                  value={form.contactId}
-                  onValueChange={value => {
-                    responsibleSelectionTouched.current = true;
-                    setForm(current => ({ ...current, contactId: value }));
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Hauptadministrator wird automatisch übernommen" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="unassigned">-</SelectItem>
-                    {responsibleContacts.map(contact => (
-                      <SelectItem key={contact.id} value={String(contact.id)}>
-                        {contact.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <div className="mt-3 space-y-1.5">
-                  <Label>Unterstützender Helfer <span className="font-normal text-slate-500">(optional)</span></Label>
+                {isEventPass ? (
+                  <>
+                    <Label>Verantwortlicher Helfer</Label>
+                    <Select
+                      value={form.helperId}
+                      onValueChange={value =>
+                        setForm(current => ({ ...current, helperId: value }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Helfer auswählen" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">- Noch nicht zugewiesen</SelectItem>
+                        {helpers.map(helper => (
+                          <SelectItem key={helper.id} value={String(helper.id)}>
+                            {helper.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-slate-500">
+                      Im Event Pass wird die Aufgabe direkt einem angelegten Helfer zugeordnet.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <Label>Verantwortlicher</Label>
+                    <Select
+                      value={form.contactId}
+                      onValueChange={value => {
+                        responsibleSelectionTouched.current = true;
+                        setForm(current => ({ ...current, contactId: value }));
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Hauptadministrator wird automatisch übernommen" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">-</SelectItem>
+                        {responsibleContacts.map(contact => (
+                          <SelectItem key={contact.id} value={String(contact.id)}>
+                            {contact.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="mt-3 space-y-1.5">
+                      <Label>Unterstützender Helfer <span className="font-normal text-slate-500">(optional)</span></Label>
                   <Select
                     value={form.helperId}
                     onValueChange={value => setForm(current => ({ ...current, helperId: value }))}
@@ -1554,7 +1596,9 @@ export default function Preparation() {
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
+                    </div>
+                  </>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="prep-due">Frist / Abgabedatum</Label>
