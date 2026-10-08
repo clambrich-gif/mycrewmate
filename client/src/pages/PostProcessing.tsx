@@ -1052,6 +1052,7 @@ export default function PostProcessing() {
                           <LocationMapLink
                             locationId={task.locationId}
                             locations={locations}
+                            productPackageId={currentPackageId}
                           />
                         ) : (
                           <span className="text-slate-400">—</span>
@@ -1227,6 +1228,7 @@ export default function PostProcessing() {
                           <LocationMapLink
                             locationId={task.locationId}
                             locations={locations}
+                            productPackageId={currentPackageId}
                           />
                         </div>
                       </div>

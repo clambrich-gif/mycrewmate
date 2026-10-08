@@ -40,7 +40,12 @@ import {
 } from "../shared/excel-import-areas";
 import { overlaps, toMinutes } from "./logic";
 import { currentEventId, currentEventYear } from "./year-context";
-import { getDb, type AuditActor } from "./db";
+import {
+  getCurrentTenantProductEntitlement,
+  getDb,
+  type AuditActor,
+} from "./db";
+import { PRODUCT_PACKAGE_META } from "../shared/product-packages";
 import { planningTeamAccessOpenId } from "./password-auth";
 
 const BACKUP_FORMAT = "RSC-HELFERPLANUNG-SICHERUNG";
@@ -3649,6 +3654,7 @@ export async function restoreProjectDocument(
       allChanges,
       selectedChangeKeys
     );
+    await assertBackupDocumentCurrentProductCapacity(desired);
     resetInvalidatedManualConfirmations(current, desired);
     const changes = [
       ...eventDaysChange(snapshot.activeDays, desired.metadata.activeDays),
@@ -4171,6 +4177,41 @@ export async function restoreProjectDocument(
     await pruneBackupRestoreLogs(tx, { year, eventId });
     return { ...totals, warnings: protectedImported.warnings, afterDigest };
   });
+}
+
+/**
+ * Vollständige Sicherungen und Excel-Importe durchlaufen dieselbe Wiederherstellung.
+ * Dadurch gelten die Paketobergrenzen auch dann, wenn Daten nicht einzeln in der
+ * Oberfläche angelegt werden.
+ */
+async function assertBackupDocumentCurrentProductCapacity(document: BackupDocument) {
+  const entitlement = await getCurrentTenantProductEntitlement();
+  const productLabel = PRODUCT_PACKAGE_META[entitlement.packageId].name;
+  const checks = [
+    {
+      count: document.contacts.length,
+      limit: entitlement.entitlements.maxContactsPerEvent,
+      label: "Ansprechpartner",
+    },
+    {
+      count: document.locations.length,
+      limit: entitlement.entitlements.maxLocationsPerEvent,
+      label: "Orte",
+    },
+    {
+      count: document.helpers.length,
+      limit: entitlement.entitlements.maxHelpersPerEvent,
+      label: "Helfer",
+    },
+  ];
+  const exceeded = checks.find(
+    check => check.limit !== null && check.count > check.limit
+  );
+  if (exceeded) {
+    throw new Error(
+      `${productLabel} erlaubt maximal ${exceeded.limit} ${exceeded.label} pro Veranstaltung. Die ausgewählte Datei enthält ${exceeded.count}.`
+    );
+  }
 }
 
 type BackupRestoreLogScope = { year: number; eventId: number };

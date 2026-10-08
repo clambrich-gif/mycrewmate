@@ -65,6 +65,10 @@ export type ProductPackageEntitlements = {
   /** Historischer Kompatibilitätswert für den einmaligen Event Pass. */
   maxEventsPerTenant: number | null;
   maxHelpersPerEvent: number | null;
+  /** Höchstzahl organisatorischer Ansprechpartner je Veranstaltung. */
+  maxContactsPerEvent: number | null;
+  /** Höchstzahl von Orten bzw. Standorten je Veranstaltung. */
+  maxLocationsPerEvent: number | null;
   maxPersonalPlanningAccesses: number | null;
   capabilities: Readonly<Record<ProductCapability, boolean>>;
 };
@@ -146,6 +150,8 @@ export const PRODUCT_PACKAGE_ENTITLEMENTS: Readonly<
     maxEventsPerYear: 1,
     maxEventsPerTenant: 1,
     maxHelpersPerEvent: 50,
+    maxContactsPerEvent: null,
+    maxLocationsPerEvent: null,
     maxPersonalPlanningAccesses: 0,
     capabilities: EVENT_PASS_CAPABILITIES,
   },
@@ -153,6 +159,8 @@ export const PRODUCT_PACKAGE_ENTITLEMENTS: Readonly<
     maxEventsPerYear: 1,
     maxEventsPerTenant: null,
     maxHelpersPerEvent: 150,
+    maxContactsPerEvent: 50,
+    maxLocationsPerEvent: 25,
     maxPersonalPlanningAccesses: 5,
     capabilities: LIGHT_CAPABILITIES,
   },
@@ -160,6 +168,8 @@ export const PRODUCT_PACKAGE_ENTITLEMENTS: Readonly<
     maxEventsPerYear: 5,
     maxEventsPerTenant: null,
     maxHelpersPerEvent: 350,
+    maxContactsPerEvent: null,
+    maxLocationsPerEvent: null,
     maxPersonalPlanningAccesses: 14,
     capabilities: UNLIMITED_PRODUCT_CAPABILITIES,
   },
@@ -167,6 +177,8 @@ export const PRODUCT_PACKAGE_ENTITLEMENTS: Readonly<
     maxEventsPerYear: null,
     maxEventsPerTenant: null,
     maxHelpersPerEvent: null,
+    maxContactsPerEvent: null,
+    maxLocationsPerEvent: null,
     maxPersonalPlanningAccesses: null,
     capabilities: UNLIMITED_PRODUCT_CAPABILITIES,
   },

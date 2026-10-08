@@ -42,10 +42,11 @@ describe("Trennung von Angebotsseite und geschützter MyCrewMate-Anwendung", () 
     expect(app).toContain("marketingSite ? (");
   });
 
-  it("kennzeichnet die öffentliche Musterdemo klar und verlinkt ihren Login auf die App", () => {
+  it("kennzeichnet die öffentliche Preisübersicht klar und verlinkt ihren Login auf die App", () => {
     const offerDemo = source("client/src/pages/OfferDemo.tsx");
     const legal = source("client/src/pages/PublicLegal.tsx");
-    expect(offerDemo).toContain("Musterdemo · Preise, Warenkorb und Checkout sind fiktiv");
+    expect(offerDemo).toContain("Preis- und Paketübersicht · Auf dieser Seite wird keine Bestellung ausgelöst.");
+    expect(offerDemo).toContain("Fiktive Preisdarstellung dieser Musterdemo");
     expect(offerDemo).toContain("href={APP_LOGIN_URL}");
     expect(offerDemo).toContain('href="/impressum"');
     expect(offerDemo).toContain('href="/datenschutz"');

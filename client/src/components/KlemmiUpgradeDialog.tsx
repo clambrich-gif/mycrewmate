@@ -48,7 +48,8 @@ const UPGRADE_BENEFITS: Record<ProductPackageId, readonly string[]> = {
   event_pass: ["Eine klar abgegrenzte Einzelveranstaltung"],
   light: [
     "Bis zu 150 Helfer und fünf persönliche Teamzugänge",
-    "Ansprechpartner, Orte, Material sowie Vor- und Nachbereitung",
+    "Bis zu 50 Ansprechpartner und 25 organisatorische Orte",
+    "Material sowie Vor- und Nachbereitung",
     "Persönliche Helfer-PDFs und WhatsApp-Standardaktion",
   ],
   pro: [

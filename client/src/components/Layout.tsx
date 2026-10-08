@@ -743,7 +743,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     : isEventPass
       ? "Eine Veranstaltung · bis 50 Helfer"
       : isLight
-        ? "Eine Hauptveranstaltung pro Jahr · bis 150 Helfer"
+        ? "Eine Hauptveranstaltung · 150 Helfer · 50 Ansprechpartner · 25 Orte"
         : productPackageId === "pro"
           ? "Bis 5 Veranstaltungen pro Jahr · bis 350 Helfer je Event"
           : "Unbegrenzte Veranstaltungen · unbegrenzt Helfer";

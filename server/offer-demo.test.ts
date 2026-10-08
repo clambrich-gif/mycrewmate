@@ -5,7 +5,7 @@ const source = (relativePath: string) =>
   readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
 describe("lokale MyCrewMate-Angebotsdemo", () => {
-  it("stellt den wieder wählbaren Event Pass und drei frei entscheidbare Jahresmodelle mit sicher markiertem Musterwarenkorb bereit", () => {
+  it("stellt den wieder wählbaren Event Pass und drei frei entscheidbare Jahresmodelle mit klar markierter Preisübersicht bereit", () => {
     const offerDemo = source("client/src/pages/OfferDemo.tsx");
 
     expect(offerDemo).toContain('id: "event-pass"');
@@ -26,8 +26,9 @@ describe("lokale MyCrewMate-Angebotsdemo", () => {
     expect(offerDemo).toContain("Kein Live-Chat");
     expect(offerDemo).toContain('priceUnit: "einmalig pro Veranstaltung*"');
     expect(offerDemo).toContain(
-      "Musterdemo · Preise, Warenkorb und Checkout sind fiktiv – es wird keine"
+      "Preis- und Paketübersicht · Auf dieser Seite wird keine Bestellung ausgelöst."
     );
+    expect(offerDemo).toContain("Fiktive Preisdarstellung dieser Musterdemo");
     expect(offerDemo).toContain("Simuliert in den Warenkorb");
     expect(offerDemo).toContain("Muster-Checkout öffnen");
     expect(offerDemo).toContain("Es wird keine Bestellung gespeichert oder");
@@ -77,7 +78,7 @@ describe("lokale MyCrewMate-Angebotsdemo", () => {
   it("ordnet MyCrewMate auf der öffentlichen Startseite eindeutig als Vereins- und Helferplanungssoftware ein", () => {
     const offerDemo = source("client/src/pages/OfferDemo.tsx");
 
-    expect(offerDemo).toContain("Vereins- und Eventplanung, die");
+    expect(offerDemo).toContain("Euer Vereinsfest klar organisieren");
     expect(offerDemo).toContain("Software für Vereins- und Eventplanung");
     expect(offerDemo).toContain("Helferplanung, Aufgaben, Schichten und Einsatzpläne");
     expect(offerDemo).toContain("Helferplanung und Einsatzpläne – ohne Excel-Chaos");

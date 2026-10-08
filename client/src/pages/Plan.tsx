@@ -1720,6 +1720,7 @@ export default function Plan() {
               <LocationMapLink
                 locationId={shift.locationId}
                 locations={locations}
+                productPackageId={currentPackageId}
                 className="mt-1"
               />
             </div>
@@ -2937,6 +2938,7 @@ export default function Plan() {
                     <LocationMapLink
                       locationId={shift.locationId}
                       locations={locations}
+                      productPackageId={currentPackageId}
                       className="mt-1"
                     />
                   </div>
@@ -3055,6 +3057,7 @@ export default function Plan() {
                       <LocationMapLink
                         locationId={s.locationId}
                         locations={locations}
+                        productPackageId={currentPackageId}
                         className="mt-0.5"
                       />
                     </td>

@@ -631,7 +631,7 @@ async function requireCurrentProductCapability(capability: ProductCapability) {
   if (!(await db.currentProductAllowsCapability(capability))) {
     const message =
       entitlement.packageId === "light"
-        ? "Diese Funktion ist im Light-Paket nicht enthalten. Light umfasst eine Hauptveranstaltung pro Jahr, bis zu 150 Helfer, fünf persönliche Teamzugänge sowie Ansprechpartner, Orte, Material, Vor- und Nachbereitung. Für mehrere Events, Live-Chat, Spenden, Finanzen oder Karten und GPX-Strecken ist Pro vorgesehen."
+        ? "Diese Funktion ist im Light-Paket nicht enthalten. Light umfasst eine Hauptveranstaltung pro Jahr, bis zu 150 Helfer, 50 Ansprechpartner, 25 Orte und fünf persönliche Teamzugänge sowie Material, Vor- und Nachbereitung. Für mehrere Events, Live-Chat, Spenden, Finanzen oder Karten und GPX-Strecken ist Pro vorgesehen."
         : "Diese Funktion ist im Event Pass nicht enthalten. Der Event Pass umfasst eine Veranstaltung mit bis zu 50 Helfern, Vorbereitung, Einsatzplan und Standard-PDF-Listen.";
     throw new TRPCError({
       code: "FORBIDDEN",

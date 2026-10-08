@@ -129,7 +129,15 @@ export const PACKAGE_COMPARISON_ROWS: ComparisonRow[] = [
   },
   {
     group: "Planung",
-    capability: "Ansprechpartner, Orte & Material",
+    capability: "Ansprechpartner & Orte",
+    event_pass: { state: "notIncluded" },
+    light: { state: "limited", label: "50 Ansprechpartner · 25 Orte" },
+    pro: { state: "included", label: "unbegrenzt" },
+    enterprise: { state: "custom", label: "erweiterbar" },
+  },
+  {
+    group: "Planung",
+    capability: "Materialplanung",
     event_pass: { state: "notIncluded" },
     light: { state: "included" },
     pro: { state: "included" },

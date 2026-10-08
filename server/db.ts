@@ -1928,6 +1928,55 @@ export function assertPackageAssignmentDates(startsOn?: string | null, endsOn?: 
   }
 }
 
+/**
+ * Ein Paketwechsel darf bestehende Planungsdaten nie löschen. Würde ein Verein
+ * beim Wechsel in Light jedoch eine Mengenobergrenze überschreiten, wird der
+ * Wechsel klar abgelehnt, bis die betroffenen Daten bewusst bereinigt wurden.
+ */
+async function assertTenantFitsProductCapacity(
+  database: DBClient,
+  tenantId: string,
+  packageId: ProductPackageId
+) {
+  const limits = PRODUCT_PACKAGE_ENTITLEMENTS[packageId];
+  if (
+    limits.maxHelpersPerEvent === null &&
+    limits.maxContactsPerEvent === null &&
+    limits.maxLocationsPerEvent === null
+  ) {
+    return;
+  }
+  const tenantEvents = await database
+    .select({ id: events.id, name: events.name })
+    .from(events)
+    .where(eq(events.tenantId, tenantId))
+    .for("update");
+  for (const tenantEvent of tenantEvents) {
+    const [counts] = await database
+      .select({
+        helpers: sql<number>`(select count(*) from ${helpers} where ${helpers.eventId} = ${tenantEvent.id})`,
+        contacts: sql<number>`(select count(*) from ${contacts} where ${contacts.eventId} = ${tenantEvent.id})`,
+        locations: sql<number>`(select count(*) from ${locations} where ${locations.eventId} = ${tenantEvent.id})`,
+      })
+      .from(events)
+      .where(eq(events.id, tenantEvent.id))
+      .limit(1);
+    const checks = [
+      { count: Number(counts?.helpers ?? 0), limit: limits.maxHelpersPerEvent, label: "Helfer" },
+      { count: Number(counts?.contacts ?? 0), limit: limits.maxContactsPerEvent, label: "Ansprechpartner" },
+      { count: Number(counts?.locations ?? 0), limit: limits.maxLocationsPerEvent, label: "Orte" },
+    ];
+    const exceeded = checks.find(
+      check => check.limit !== null && check.count > check.limit
+    );
+    if (exceeded) {
+      throw new Error(
+        `Der Wechsel zu ${PRODUCT_PACKAGE_META[packageId].name} ist noch nicht möglich: Die Veranstaltung „${tenantEvent.name}“ enthält ${exceeded.count} ${exceeded.label}, erlaubt sind maximal ${exceeded.limit}. Bitte Daten reduzieren oder Pro beibehalten.`
+      );
+    }
+  }
+}
+
 /** Speichert ausschließlich die produktseitige Einordnung eines Vereins. */
 export async function updateTenantProductAssignmentForPlatformAdmin(input: {
   tenantId: string;
@@ -1948,6 +1997,7 @@ export async function updateTenantProductAssignmentForPlatformAdmin(input: {
       .limit(1)
       .for("update");
     if (!tenantRow) throw new Error("Verein wurde nicht gefunden");
+    await assertTenantFitsProductCapacity(tx, input.tenantId, input.packageId);
 
     const [previousAssignment] = await tx
       .select({
@@ -4854,16 +4904,25 @@ export async function createLocation(
     "name" | "latitude" | "longitude" | "logoKey" | "logoUrl"
   >
 ) {
-  const db = (await getDb()) as DB;
-  const result: any = await db.insert(locations).values({
-    ...value,
-    year: year(),
-    eventId: event(),
+  const database = (await getDb()) as DB;
+  return database.transaction(async tx => {
+    await assertCurrentProductLocationCapacity(tx);
+    const result: any = await tx.insert(locations).values({
+      ...value,
+      year: year(),
+      eventId: event(),
+    });
+    const id = Number(result?.[0]?.insertId ?? result?.insertId);
+    const [created] = Number.isSafeInteger(id)
+      ? await tx
+          .select()
+          .from(locations)
+          .where(and(eq(locations.id, id), planningScope(locations)))
+          .limit(1)
+      : [];
+    if (!created) throw new Error("Der neue Standort konnte nicht geladen werden");
+    return created;
   });
-  const id = Number(result?.[0]?.insertId ?? result?.insertId);
-  const created = Number.isSafeInteger(id) ? await getLocation(id) : undefined;
-  if (!created) throw new Error("Der neue Standort konnte nicht geladen werden");
-  return created;
 }
 export async function updateLocation(
   id: number,
@@ -5306,6 +5365,7 @@ export async function createContact(v: {
   return db.transaction(async tx => {
     const { passwordHash, ...contactValues } = v;
     const normalizedName = v.name.trim().replace(/\s+/g, " ");
+    await assertCurrentProductContactCapacity(tx);
     const result: any = await tx.insert(contacts).values({
       ...contactValues,
       name: normalizedName,
@@ -5559,6 +5619,48 @@ async function assertCurrentProductHelperCapacity(database: DBClient) {
     const productLabel = PRODUCT_PACKAGE_META[entitlement.packageId].name;
     throw new Error(
       `${productLabel} erlaubt maximal ${limit} Helfer pro Veranstaltung. Bitte reduzieren Sie die Helferliste oder wechseln Sie das Paket.`
+    );
+  }
+}
+
+async function assertCurrentProductContactCapacity(
+  database: DBClient,
+  selectedYear = year(),
+  selectedEventId = event()
+) {
+  const entitlement = await getCurrentTenantProductEntitlement();
+  const limit = entitlement.entitlements.maxContactsPerEvent;
+  if (limit === null) return;
+  const existingContacts = await database
+    .select({ id: contacts.id })
+    .from(contacts)
+    .where(and(eq(contacts.year, selectedYear), eq(contacts.eventId, selectedEventId)))
+    .for("update");
+  if (existingContacts.length >= limit) {
+    const productLabel = PRODUCT_PACKAGE_META[entitlement.packageId].name;
+    throw new Error(
+      `${productLabel} erlaubt maximal ${limit} Ansprechpartner pro Veranstaltung. Bitte reduzieren Sie die Ansprechpartnerliste oder wechseln Sie das Paket.`
+    );
+  }
+}
+
+async function assertCurrentProductLocationCapacity(
+  database: DBClient,
+  selectedYear = year(),
+  selectedEventId = event()
+) {
+  const entitlement = await getCurrentTenantProductEntitlement();
+  const limit = entitlement.entitlements.maxLocationsPerEvent;
+  if (limit === null) return;
+  const existingLocations = await database
+    .select({ id: locations.id })
+    .from(locations)
+    .where(and(eq(locations.year, selectedYear), eq(locations.eventId, selectedEventId)))
+    .for("update");
+  if (existingLocations.length >= limit) {
+    const productLabel = PRODUCT_PACKAGE_META[entitlement.packageId].name;
+    throw new Error(
+      `${productLabel} erlaubt maximal ${limit} Orte pro Veranstaltung. Bitte reduzieren Sie die Ortsliste oder wechseln Sie das Paket.`
     );
   }
 }
@@ -7758,6 +7860,7 @@ export async function ensureContactForHelperId(helperId: number): Promise<number
   }
 
   // Neuen Ansprechpartner für diesen Helfer anlegen
+  await assertCurrentProductContactCapacity(db, helper.year, helper.eventId);
   const insertResult: any = await db.insert(contacts).values({
     name: helper.name,
     phone: helper.phone,

@@ -192,9 +192,9 @@ const OFFERS: Offer[] = [
       "Der klare digitale Ablauf für euer jährliches Event und ein kleines festes Planungsteam.",
     highlights: [
       "Bis 150 Helfer & 5 persönliche Zugänge",
+      "Bis 50 Ansprechpartner & 25 Orte",
       "Helfer, Schichten, Vor- & Nachbereitung",
-      "Ansprechpartner, Orte, Material & PDF",
-      "Jedes Jahr frei neu entscheiden",
+      "Material, PDF & jedes Jahr frei entscheiden",
     ],
     detailTitle: "Weniger Abstimmung. Mehr Überblick.",
     detailText:
@@ -219,8 +219,9 @@ const OFFERS: Offer[] = [
     included: [
       "Eine jährliche Hauptveranstaltung mit Vorbereitung, Eventtag und Nachbereitung",
       "Bis zu 150 Helfer-Datensätze und bis zu fünf persönliche Teamzugänge",
-      "Ansprechpartner, Helfer-, Verfügbarkeits- und Schichtplanung",
-      "Vorbereitung, Nachbereitung, einfache Orte und Materialplanung",
+      "Bis zu 50 Ansprechpartner und 25 organisatorische Orte",
+      "Ansprechpartner-, Helfer-, Verfügbarkeits- und Schichtplanung",
+      "Vorbereitung, Nachbereitung und Materialplanung",
       "Standard-PDFs, persönliche Helfer-PDFs und eine WhatsApp-Standardaktion",
       "Sichere Aktivierungslinks, Rollen- und Sicherheitsprotokolle",
     ],
@@ -908,9 +909,18 @@ export default function OfferDemo() {
           </h2>
           <p className="mt-4 text-base leading-7 text-slate-600">
             Für Vereinsfeste, Sportveranstaltungen und ehrenamtliche Teams:
-            Genau die Klarheit, die ein Verein vor, während und nach dem Event
-            braucht – ohne verstreute Listen, alte Screenshots und Zurufe.
+            MyCrewMate ist die Software für Vereins- und Eventplanung mit
+            Helferplanung, Aufgaben, Schichten und Einsatzplänen – ohne
+            verstreute Listen, alte Screenshots und Zurufe.
           </p>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-6 rounded-xl border-slate-300 bg-white text-slate-800 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
+            onClick={() => setPromoVideoOpen(true)}
+          >
+            <Play className="size-4" aria-hidden="true" /> So einfach funktioniert&apos;s
+          </Button>
         </div>
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {PRODUCT_POINTS.map(point => {

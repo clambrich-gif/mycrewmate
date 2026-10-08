@@ -158,6 +158,8 @@ export default function TaskGeneric({
   const api = (trpc as any)[kind];
   const listUtils = (utils as any)[kind].list;
   const { data: rows = [], isLoading } = api.list.useQuery();
+  const { data: tenantProduct } = trpc.tenantProduct.current.useQuery();
+  const currentPackageId = tenantProduct?.packageId ?? "event_pass";
   const { data: contacts = [] } = trpc.contacts.list.useQuery();
   const { data: locations = [] } = trpc.locations.list.useQuery();
   const [viewMode, setViewMode] = useViewMode(viewModeStorageKey ?? kind, "liste");
@@ -993,6 +995,7 @@ export default function TaskGeneric({
                   <LocationMapLink
                     locationId={row.locationId}
                     locations={locations}
+                    productPackageId={currentPackageId}
                   />
                 </div>
               )}
@@ -1204,6 +1207,7 @@ export default function TaskGeneric({
                         <LocationMapLink
                           locationId={row.locationId}
                           locations={locations}
+                          productPackageId={currentPackageId}
                           className="shrink-0"
                         />
                       </div>
@@ -1424,7 +1428,12 @@ export default function TaskGeneric({
                                 ))}
                               </SelectContent>
                             </Select>
-                            <LocationMapLink locationId={row.locationId} locations={locations} className="shrink-0" />
+                            <LocationMapLink
+                              locationId={row.locationId}
+                              locations={locations}
+                              productPackageId={currentPackageId}
+                              className="shrink-0"
+                            />
                           </div>
                         </div>
                       )}

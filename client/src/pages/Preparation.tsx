@@ -1151,7 +1151,11 @@ export default function Preparation() {
                       <td className="break-words px-4 py-3 align-top font-medium text-slate-950">{task.task}</td>
                       <td className="px-4 py-3 align-top text-slate-600">
                         {task.locationId ? (
-                          <LocationMapLink locationId={task.locationId} locations={locations} />
+                          <LocationMapLink
+                            locationId={task.locationId}
+                            locations={locations}
+                            productPackageId={currentPackageId}
+                          />
                         ) : (
                           <span className="text-slate-400">—</span>
                         )}
@@ -1343,6 +1347,7 @@ export default function Preparation() {
                           <LocationMapLink
                             locationId={task.locationId}
                             locations={locations}
+                            productPackageId={currentPackageId}
                           />
                         </div>
                       </div>

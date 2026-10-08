@@ -106,7 +106,7 @@ describe("Produktgrenzen: Marke, WhatsApp und Event-Sicherung", () => {
       "data-slot={`product-summary-${productPackageId}`}"
     );
     expect(layout).toContain(
-      "Eine Hauptveranstaltung pro Jahr · bis 150 Helfer"
+      "Eine Hauptveranstaltung · 150 Helfer · 50 Ansprechpartner · 25 Orte"
     );
     expect(layout).toContain('"border-slate-200 bg-white text-slate-950"');
     expect(layout).toContain(
