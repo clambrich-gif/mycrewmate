@@ -1293,9 +1293,11 @@ function EventCountdownWidget({
 function PilotTenantInfoCard({
   tenant,
   eventName,
+  showSupport,
 }: {
   tenant: { name: string; contactEmail: string; supportEmail: string };
   eventName: string;
+  showSupport: boolean;
 }) {
   return (
     <section
@@ -1336,7 +1338,7 @@ function PilotTenantInfoCard({
               Pilotkontakt: {tenant.contactEmail}
             </span>
           </a>
-          <a
+          {showSupport && <a
             href={`mailto:${tenant.supportEmail}`}
             className="flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 transition-colors hover:border-blue-300 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
@@ -1347,7 +1349,7 @@ function PilotTenantInfoCard({
             <span className="min-w-0 truncate">
               Pilot-Support: {tenant.supportEmail}
             </span>
-          </a>
+          </a>}
           <div className="flex min-h-11 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
             <ShieldCheck
               className="size-4 shrink-0 text-emerald-700"
@@ -1710,7 +1712,8 @@ export default function Dashboard() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const detailsLayout = useDashboardDetailsLayout();
-  const { canReadModule, isTenantAdmin } = useTenantAdministration();
+  const { canReadModule, isTenantAdmin, isPrimaryTenantAdmin } =
+    useTenantAdministration();
   const {
     isDefaultMyTasks,
     setDefaultMyTasks,
@@ -2205,6 +2208,7 @@ export default function Dashboard() {
         <PilotTenantInfoCard
           tenant={currentTenant}
           eventName={currentEvent.name}
+          showSupport={!isEventPass || isPrimaryTenantAdmin}
         />
       )}
 

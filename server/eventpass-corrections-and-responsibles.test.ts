@@ -71,4 +71,32 @@ describe("Event-Pass Korrekturen und Verantwortlichkeiten", () => {
     expect(post).toContain("Unterstützender Helfer");
     expect(post).toContain("Kein zusätzlicher Helfer");
   });
+
+  it("Punkt 8: Event Pass blendet Planfreigabe aus und sperrt Benachrichtigungen zusätzlich serverseitig", () => {
+    const plan = source("client/src/pages/Plan.tsx");
+    const routers = source("server/routers.ts");
+
+    expect(plan).toContain("const canManagePlanRelease = canEditPlan && !isEventPass");
+    expect(plan).toContain("enabled: canManagePlanRelease");
+    expect(plan).toContain("{canManagePlanRelease && (");
+    expect(routers).toContain("const planReleaseAdminProcedure = scheduleAdminProcedure.use");
+    expect(routers).toContain("Planfreigaben und Ansprechpartner-Benachrichtigungen sind im Event Pass nicht vorgesehen.");
+  });
+
+  it("Punkt 9: Pilot-Support bleibt im Event Pass dem Hauptadministrator vorbehalten", () => {
+    const dashboard = source("client/src/pages/Dashboard.tsx");
+
+    expect(dashboard).toContain("showSupport={!isEventPass || isPrimaryTenantAdmin}");
+    expect(dashboard).toContain("{showSupport && <a");
+    expect(dashboard).toContain("Pilotkontakt: {tenant.contactEmail}");
+  });
+
+  it("Punkt 10: Nicht berechtigte Zugänge erhalten beim Laden einen verständlichen Hinweis", () => {
+    const saveLoad = source("client/src/components/SaveLoadModal.tsx");
+
+    expect(saveLoad).toContain("Projektstände können nur von Administratoren geladen werden.");
+    expect(saveLoad).toContain("const openLoadDialog = () => {");
+    expect(saveLoad).toContain("aria-disabled={!isAdmin}");
+    expect(saveLoad).not.toMatch(/\n\s+disabled=\{!isAdmin\}/);
+  });
 });

@@ -301,6 +301,15 @@ export function SaveLoadControls({
     excelInputRef.current?.click();
   };
 
+  const openLoadDialog = () => {
+    onAction?.();
+    if (!isAdmin) {
+      toast.info("Projektstände können nur von Administratoren geladen werden.");
+      return;
+    }
+    setLoadDialogOpen(true);
+  };
+
   const jsonFileSelected = async (selected: File | undefined) => {
     if (!selected) return;
     if (
@@ -391,19 +400,16 @@ export function SaveLoadControls({
         <Button
           type="button"
           variant="outline"
-          className="min-w-0 border-emerald-200 bg-emerald-50 px-2 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300"
-          disabled={!isAdmin}
+          className={`min-w-0 border-emerald-200 bg-emerald-50 px-2 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-300 ${!isAdmin ? "opacity-55" : ""}`}
+          aria-disabled={!isAdmin}
           title={
             isAdmin
               ? canUseExcel
                 ? "Projektstand oder Excel-Daten laden"
                 : "JSON-Projektstand laden"
-              : "Nur für Administratoren"
+              : "Projektstände können nur von Administratoren geladen werden"
           }
-          onClick={() => {
-            onAction?.();
-            setLoadDialogOpen(true);
-          }}
+          onClick={openLoadDialog}
         >
           <Upload className="mr-1.5 h-4 w-4" />
           Laden

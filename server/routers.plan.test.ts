@@ -2818,4 +2818,37 @@ describe("Planungs-API", () => {
 
     await expect(adminCaller.plan.withdrawRelease()).resolves.toEqual({ withdrawn: true });
   });
+
+  it("unterbindet Planfreigabe und Ansprechpartner-Benachrichtigungen im Event Pass", async () => {
+    dbMocks.getCurrentTenantProductEntitlement.mockResolvedValue({
+      tenantId: "event-pass-verein",
+      packageId: "event_pass",
+      status: "test",
+      startsOn: null,
+      endsOn: null,
+      eventId: 1,
+      isUsable: true,
+      entitlements: { includedCapabilities: [], includedPlanningModules: [] },
+    });
+    const adminCaller = appRouter.createCaller(ctx);
+
+    await expect(
+      adminCaller.plan.release({ notifyContacts: true })
+    ).rejects.toMatchObject({
+      code: "FORBIDDEN",
+      message: "Planfreigaben und Ansprechpartner-Benachrichtigungen sind im Event Pass nicht vorgesehen.",
+    });
+    await expect(adminCaller.plan.sendInitialNotifications()).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+    await expect(adminCaller.plan.sendChangeReminders()).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+    await expect(adminCaller.plan.withdrawRelease()).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+    expect(dbMocks.releaseCurrentPlan).not.toHaveBeenCalled();
+    expect(dbMocks.prepareInitialPlanNotificationRecipients).not.toHaveBeenCalled();
+    expect(dbMocks.withdrawPlanRelease).not.toHaveBeenCalled();
+  });
 });

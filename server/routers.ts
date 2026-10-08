@@ -1416,6 +1416,22 @@ function productCapabilityAdminProcedure(capability: ProductCapability) {
 const scheduleAdminProcedure = productCapabilityAdminProcedure("schedule");
 
 /**
+ * Der Event Pass arbeitet ohne Ansprechpartner und ohne Planfreigabe per
+ * E-Mail. Die Sperre gilt nicht nur für die Oberfläche, sondern auch für
+ * direkte Aufrufe der entsprechenden Routen.
+ */
+const planReleaseAdminProcedure = scheduleAdminProcedure.use(async ({ next }) => {
+  const entitlement = await db.getCurrentTenantProductEntitlement();
+  if (entitlement.packageId === "event_pass") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Planfreigaben und Ansprechpartner-Benachrichtigungen sind im Event Pass nicht vorgesehen.",
+    });
+  }
+  return next();
+});
+
+/**
  * Der gemeinsame Event-Pass-Zugang darf neue Schichten erfassen, ohne dadurch
  * bestehende Schichten, Einteilungen oder Freigaben administrieren zu können.
  * In allen übrigen Paketen bleibt die bisherige Administratorgrenze erhalten.
@@ -5139,7 +5155,7 @@ export const appRouter = router({
         initialEmailRecipients,
       };
     }),
-    release: scheduleAdminProcedure
+    release: planReleaseAdminProcedure
       .input(z.object({ notifyContacts: z.boolean() }))
       .mutation(async ({ ctx, input }) => {
       const result = await db.releaseCurrentPlan(input);
@@ -5183,7 +5199,7 @@ export const appRouter = router({
         undeliverable: result.contacts.length - deliveredIds.length,
       };
     }),
-    sendInitialNotifications: scheduleAdminProcedure.mutation(async ({ ctx }) => {
+    sendInitialNotifications: planReleaseAdminProcedure.mutation(async ({ ctx }) => {
       const result = await db.prepareInitialPlanNotificationRecipients();
       const helperOverviewUrl = publicAppUrl(
         `/helfer?meine=1&eingeteilt=1&event=${result.eventId}&jahr=${result.eventYear}`
@@ -5215,7 +5231,7 @@ export const appRouter = router({
         undeliverable: result.contacts.length - deliveredIds.length,
       };
     }),
-    withdrawRelease: scheduleAdminProcedure.mutation(async ({ ctx }) => {
+    withdrawRelease: planReleaseAdminProcedure.mutation(async ({ ctx }) => {
       const result = await db.withdrawPlanRelease();
       if (result.withdrawn) {
         await db.recordActivityLog({
@@ -5227,7 +5243,7 @@ export const appRouter = router({
       }
       return result;
     }),
-    sendChangeReminders: scheduleAdminProcedure.mutation(async ({ ctx }) => {
+    sendChangeReminders: planReleaseAdminProcedure.mutation(async ({ ctx }) => {
       const [selectedEvent, recipients] = await Promise.all([
         db.getEvent(),
         db.listPlanNotificationRecipients("changed"),

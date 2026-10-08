@@ -669,6 +669,7 @@ export default function Plan() {
   const isEventPass = currentPackageId === "event_pass";
   const canCreateShift =
     canEditPlan || (isEventPass && canWriteModule("schedule"));
+  const canManagePlanRelease = canEditPlan && !isEventPass;
   const { data: evals = [], isLoading } = trpc.plan.evaluate.useQuery();
   const { data: helpers = [] } = trpc.helpers.list.useQuery();
   const { data: contacts = [] } = trpc.contacts.list.useQuery(undefined, {
@@ -682,10 +683,10 @@ export default function Plan() {
     { enabled: !isEventPass }
   );
   const planReleaseStatus = trpc.plan.releaseStatus.useQuery(undefined, {
-    enabled: canEditPlan,
+    enabled: canManagePlanRelease,
   });
   const planReleasePreview = trpc.plan.releasePreview.useQuery(undefined, {
-    enabled: canEditPlan,
+    enabled: canManagePlanRelease,
   });
   const initialEmailRecipients =
     planReleaseStatus.data?.initialEmailRecipients ?? [];
@@ -2207,7 +2208,7 @@ export default function Plan() {
         </div>
       </div>
 
-      {canEditPlan && (
+      {canManagePlanRelease && (
         <>
           <section
             data-klemmi-target="plan-release"
