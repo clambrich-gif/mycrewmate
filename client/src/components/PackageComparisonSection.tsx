@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import type { ProductPackageId } from "@shared/product-packages";
 import {
   ArrowUpRight,
+  ArrowLeftRight,
   Check,
   CheckCircle2,
   Gem,
@@ -206,7 +207,7 @@ function ComparisonCell({ cell }: { cell: ComparisonCell }) {
   return (
     <span
       className={cn(
-        "inline-flex max-w-[12.5rem] items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-center text-[11px] font-bold leading-4 ring-1",
+        "inline-flex max-w-[12.5rem] items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-center text-sm font-bold leading-5 ring-1",
         config.className
       )}
     >
@@ -417,7 +418,12 @@ export function PackageComparisonSection({
         </div>
 
         <div className="mt-10 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_20px_55px_-36px_rgba(15,23,42,0.35)]">
-          <div className="overflow-x-auto" data-offer-comparison>
+          <div className="relative">
+            <div
+              className="overflow-x-auto"
+              data-offer-comparison
+              aria-describedby="comparison-swipe-hint"
+            >
             <table className="min-w-[940px] w-full border-collapse text-left">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/80">
@@ -436,7 +442,7 @@ export function PackageComparisonSection({
                       <span className="block text-base font-black text-slate-950">
                         {packageItem.name}
                       </span>
-                      <span className="mt-1 block text-[11px] font-bold text-slate-500">
+                      <span className="mt-1 block text-xs font-bold text-slate-600">
                         {packageItem.price}
                       </span>
                     </th>
@@ -453,7 +459,7 @@ export function PackageComparisonSection({
                     )}
                   >
                     <th className="px-5 py-4 align-middle">
-                      <span className="block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                      <span className="block text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
                         {row.group}
                       </span>
                       <span className="mt-1 block text-sm font-bold text-slate-700">
@@ -476,11 +482,26 @@ export function PackageComparisonSection({
                 ))}
               </tbody>
             </table>
+            </div>
+            <div
+              className="pointer-events-none absolute inset-y-0 right-0 flex w-12 items-center justify-end bg-gradient-to-l from-white via-white/80 to-transparent pr-2 text-blue-700 sm:hidden"
+              aria-hidden="true"
+            >
+              <span className="grid size-8 place-items-center rounded-full border border-blue-100 bg-white/95 shadow-sm">
+                <ArrowLeftRight className="size-4" />
+              </span>
+            </div>
           </div>
-          <p className="border-t border-slate-100 px-5 py-3 text-xs leading-5 text-slate-500">
-            Hinweis: Auf dem Smartphone kann die Vergleichsübersicht horizontal
-            gewischt werden. Enterprise-Erweiterungen werden individuell und
-            transparent abgestimmt.
+          <p
+            id="comparison-swipe-hint"
+            className="flex items-center gap-2 border-t border-slate-100 px-5 py-3 text-sm leading-5 text-slate-600"
+          >
+            <ArrowLeftRight className="size-4 shrink-0 text-blue-700" aria-hidden="true" />
+            <span>
+              Auf dem Smartphone nach links und rechts wischen, um alle Pakete
+              zu vergleichen. Enterprise-Erweiterungen werden individuell und
+              transparent abgestimmt.
+            </span>
           </p>
         </div>
         {currentPackageId && (

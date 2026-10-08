@@ -659,7 +659,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(html).toContain('<link rel="manifest" href="/manifest.json" />');
     expect(html).toContain('name="apple-mobile-web-app-capable" content="yes"');
     expect(html).toContain('name="apple-mobile-web-app-title" content="MyCrewMate"');
-    expect(html).toContain("<title>MyCrewMate</title>");
+    expect(html).toContain(
+      "<title>MyCrewMate · Die Software für Vereins- und Eventplanung</title>"
+    );
     expect(html).toContain('<link rel="icon" type="image/png" href="/icons/mycrewmate-pwa-192.png" />');
     expect(html).toContain('sizes="180x180" href="/icons/mycrewmate-pwa-192.png"');
     expect(readFileSync(new URL("../client/public/favicon.ico", import.meta.url)).subarray(0, 4).toString("hex")).toBe("00000100");

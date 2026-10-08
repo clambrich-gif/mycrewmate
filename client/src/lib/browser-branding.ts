@@ -31,7 +31,7 @@ export function browserBrandingForHostname(hostname: string | undefined | null):
 
   if (isMarketingHost(normalizedHostname)) {
     return {
-      title: "MyCrewMate",
+      title: "MyCrewMate · Die Software für Vereins- und Eventplanung",
       faviconHref: NORMAL_ICON,
       appleTouchIconHref: NORMAL_ICON,
       appleWebAppTitle: "MyCrewMate",
@@ -63,7 +63,12 @@ export function applyBrowserBranding() {
   if (typeof window === "undefined" || typeof document === "undefined") return;
 
   const branding = browserBrandingForHostname(window.location.hostname);
-  document.title = branding.title;
+  // Die öffentliche Website erhält ihren pfadgenauen Seitentitel bereits
+  // serverseitig (z. B. Impressum). Die generische Browserkennung darf diesen
+  // Titel beim React-Start nicht wieder überschreiben.
+  if (!isMarketingHost(window.location.hostname)) {
+    document.title = branding.title;
+  }
   replaceIconLink("icon", branding.faviconHref, "image/png");
   replaceIconLink("apple-touch-icon", branding.appleTouchIconHref, "image/png");
 

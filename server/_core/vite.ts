@@ -3,6 +3,7 @@ import fs from "fs";
 import { type Server } from "http";
 import { nanoid } from "nanoid";
 import path from "path";
+import { applyPublicSiteMetadata } from "../public-site-metadata";
 
 export async function setupVite(app: Express, server: Server) {
   // Vite gehört ausschließlich zur Entwicklung. Dynamische Imports verhindern,
@@ -42,7 +43,12 @@ export async function setupVite(app: Express, server: Server) {
         `src="/src/main.tsx"`,
         `src="/src/main.tsx?v=${nanoid()}"`
       );
-      const page = await vite.transformIndexHtml(url, template);
+      const transformedPage = await vite.transformIndexHtml(url, template);
+      const page = applyPublicSiteMetadata(
+        transformedPage,
+        req.hostname,
+        req.path
+      );
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);
@@ -62,10 +68,23 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  app.use(express.static(distPath, { index: false }));
 
-  // fall through to index.html if the file doesn't exist
-  app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
+  // Der öffentliche Einstieg erhält auch im Produktionsartefakt pro Host und
+  // Pfad die korrekten Metadaten. Alle sonstigen Dateien wurden bereits durch
+  // express.static ausgeliefert.
+  app.use("*", async (req, res, next) => {
+    try {
+      const indexHtml = await fs.promises.readFile(
+        path.resolve(distPath, "index.html"),
+        "utf8"
+      );
+      res
+        .status(200)
+        .type("html")
+        .send(applyPublicSiteMetadata(indexHtml, req.hostname, req.path));
+    } catch (error) {
+      next(error);
+    }
   });
 }

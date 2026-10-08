@@ -19,6 +19,7 @@ import {
   canonicalMarketingRedirectUrl,
   shouldRedirectProtectiveMarketingDomain,
 } from "../marketing-domain-redirect";
+import { registerPublicSearchRoutes } from "../public-site-metadata";
 import { registerLocalStorageRoutes } from "../storage";
 import { backfillTenantContractAcceptanceSnapshots } from "../db";
 import { createContext } from "./context";
@@ -120,6 +121,11 @@ async function startServer() {
   app.get("/healthz", (_req, res) => {
     res.status(200).json({ status: "ok" });
   });
+
+  // Öffentliche Marketingseiten erhalten ihre Canonical-, Linkvorschau- und
+  // Crawlerregeln bereits in der HTTP-Antwort. Geschützte Hosts bleiben dabei
+  // ausdrücklich außerhalb der Suchmaschinenindexierung.
+  registerPublicSearchRoutes(app);
 
   registerBrandAssetRoutes(app);
   registerKlemmiAssetRoutes(app);

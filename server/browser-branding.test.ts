@@ -13,12 +13,14 @@ describe("Browserkennung für Homepage, Vereins-App und Master-Portal", () => {
     });
   });
 
-  it("kennzeichnet die öffentliche Homepage ohne Funktionszusatz", () => {
+  it("kennzeichnet die öffentliche Homepage mit einem erklärenden Seitentitel", () => {
     expect(browserBrandingForHostname("www.mycrewmate.de")).toMatchObject({
-      title: "MyCrewMate",
+      title: "MyCrewMate · Die Software für Vereins- und Eventplanung",
       faviconHref: "/icons/mycrewmate-pwa-192.png",
     });
-    expect(browserBrandingForHostname("mycrewmate.de").title).toBe("MyCrewMate");
+    expect(browserBrandingForHostname("mycrewmate.de").title).toBe(
+      "MyCrewMate · Die Software für Vereins- und Eventplanung"
+    );
   });
 
   it("kennzeichnet die Vereins-App mit Helferplanung und dem normalen Markenicon", () => {
@@ -39,7 +41,9 @@ describe("Browserkennung für Homepage, Vereins-App und Master-Portal", () => {
     );
 
     expect(app).toContain("applyBrowserBranding()");
-    expect(html).toContain("<title>MyCrewMate</title>");
+    expect(html).toContain(
+      "<title>MyCrewMate · Die Software für Vereins- und Eventplanung</title>"
+    );
     expect(html).toContain('href="/icons/mycrewmate-pwa-192.png"');
     expect(serviceWorker).toContain('"/icons/mycrewmate-admin-192.png"');
     expect(existsSync(path.resolve(__dirname, "../client/public/icons/mycrewmate-admin-192.png"))).toBe(true);

@@ -503,7 +503,7 @@ function OfferCard({
       )}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+          <p className="text-sm font-bold uppercase tracking-[0.12em] text-slate-600">
             {offer.eyebrow}
           </p>
           <h3 className="mt-2 text-3xl font-black tracking-tight text-slate-950">
@@ -540,10 +540,10 @@ function OfferCard({
       </ul>
       {offer.notIncluded && (
         <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50/80 p-3">
-          <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
+          <p className="text-sm font-bold uppercase tracking-[0.1em] text-slate-600">
             Bewusst schlank
           </p>
-          <p className="mt-1.5 text-xs leading-5 text-slate-600">
+          <p className="mt-1.5 text-sm leading-5 text-slate-700">
             {offer.notIncluded.join(" · ")}
           </p>
         </div>
@@ -612,8 +612,15 @@ export default function OfferDemo() {
   };
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#fbfcff] text-slate-950">
-      <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-xs font-semibold text-amber-900">
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="min-h-screen overflow-x-hidden bg-[#fbfcff] text-slate-950"
+    >
+      <a className="skip-to-content" href="#start">
+        Zum Inhalt springen
+      </a>
+      <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-sm font-semibold text-amber-950">
         Musterdemo · Preise, Warenkorb und Checkout sind fiktiv – es wird keine
         Bestellung ausgelöst.
       </div>
@@ -622,7 +629,7 @@ export default function OfferDemo() {
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <a
             href="#start"
-            className="shrink-0"
+            className="shrink-0 rounded-md focus-visible:outline-none"
             aria-label="MyCrewMate Angebotsdemo – zum Anfang"
           >
             <img
@@ -636,22 +643,25 @@ export default function OfferDemo() {
             aria-label="Seitennavigation"
           >
             <a
-              className="transition-colors hover:text-blue-700"
+              className="rounded-md transition-colors hover:text-blue-700 focus-visible:outline-none"
               href="#so-einfach"
             >
               Vorteile
             </a>
-            <a className="transition-colors hover:text-blue-700" href="#pakete">
+            <a
+              className="rounded-md transition-colors hover:text-blue-700 focus-visible:outline-none"
+              href="#pakete"
+            >
               Pakete
             </a>
             <a
-              className="transition-colors hover:text-blue-700"
+              className="rounded-md transition-colors hover:text-blue-700 focus-visible:outline-none"
               href="#vergleich"
             >
               Vergleichen
             </a>
             <a
-              className="transition-colors hover:text-blue-700"
+              className="rounded-md transition-colors hover:text-blue-700 focus-visible:outline-none"
               href="#zielgruppen"
             >
               Für wen?
@@ -779,7 +789,7 @@ export default function OfferDemo() {
                   <div className="mt-4 grid grid-cols-2 gap-2">
                     <div className="rounded-xl border border-red-100 bg-red-50 p-3">
                       <span className="text-xl font-black text-red-700">3</span>
-                      <p className="mt-1 text-[11px] font-bold leading-4 text-slate-700">
+                      <p className="mt-1 text-sm font-bold leading-5 text-slate-800">
                         offene Schichten
                       </p>
                     </div>
@@ -787,7 +797,7 @@ export default function OfferDemo() {
                       <span className="text-xl font-black text-blue-700">
                         12
                       </span>
-                      <p className="mt-1 text-[11px] font-bold leading-4 text-slate-700">
+                      <p className="mt-1 text-sm font-bold leading-5 text-slate-800">
                         Helfer bereit
                       </p>
                     </div>
@@ -939,7 +949,7 @@ export default function OfferDemo() {
               />
             ))}
           </div>
-          <p className="mt-7 text-center text-xs text-slate-500">
+          <p className="mt-7 text-center text-sm text-slate-600">
             * Fiktive Preisdarstellung dieser Musterdemo. Die Nutzung wird nicht
             automatisch verlängert; Umfang, Kontingente, Preis und Bedingungen
             werden für jedes Veranstaltungsjahr transparent abgestimmt.
@@ -990,7 +1000,7 @@ export default function OfferDemo() {
                     </span>
                   </div>
                   <div className="p-5">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-orange-600">
+                    <p className="text-sm font-bold uppercase tracking-[0.1em] text-orange-700">
                       {group.eyebrow}
                     </p>
                     <h3 className="mt-2 text-xl font-black tracking-tight text-slate-950">
@@ -1008,7 +1018,7 @@ export default function OfferDemo() {
               );
             })}
           </div>
-          <p className="mt-6 text-center text-xs leading-5 text-slate-500">
+          <p className="mt-6 text-center text-sm leading-6 text-slate-600">
             Die Bilder in diesem Bereich sind eigens für MyCrewMate erzeugte,
             illustrative Website-Motive. Sie zeigen keine realen Vereine,
             Veranstaltungen oder Marken.
@@ -1039,14 +1049,14 @@ export default function OfferDemo() {
               <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
                 <LayoutDashboard className="size-5 text-blue-300" />
                 <p className="mt-3 text-sm font-bold">Klarer Überblick</p>
-                <p className="mt-1 text-xs leading-5 text-slate-300">
+                <p className="mt-1 text-sm leading-5 text-slate-200">
                   Schritte, Kennzahlen und Zuständigkeiten auf einen Blick.
                 </p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
                 <LifeBuoy className="size-5 text-orange-300" />
                 <p className="mt-3 text-sm font-bold">Passend begleitet</p>
-                <p className="mt-1 text-xs leading-5 text-slate-300">
+                <p className="mt-1 text-sm leading-5 text-slate-200">
                   Vom selbstständigen Event Pass bis zur individuellen
                   Enterprise-Lösung.
                 </p>
@@ -1057,24 +1067,24 @@ export default function OfferDemo() {
       </section>
 
       <footer className="border-t border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-7 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-7 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
             <img src={WORDMARK} alt="MyCrewMate" className="h-6 w-auto" />
             <span>© 2026 MyCrewMate · Angebotsdemo</span>
           </div>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs leading-5 sm:justify-end">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm leading-5 sm:justify-end">
             <p className="max-w-xl">
               Öffentliche Musterdemo: kein Live-Angebot, keine
               Zahlungsabwicklung und keine Datenübertragung.
             </p>
             <a
-              className="font-semibold text-slate-600 underline-offset-2 hover:text-blue-700 hover:underline"
+              className="rounded-sm font-semibold text-slate-700 underline-offset-2 hover:text-blue-700 hover:underline focus-visible:outline-none"
               href="/impressum"
             >
               Impressum
             </a>
             <a
-              className="font-semibold text-slate-600 underline-offset-2 hover:text-blue-700 hover:underline"
+              className="rounded-sm font-semibold text-slate-700 underline-offset-2 hover:text-blue-700 hover:underline focus-visible:outline-none"
               href="/datenschutz"
             >
               Datenschutz

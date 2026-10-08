@@ -55,6 +55,23 @@ describe("Trennung von Angebotsseite und geschützter MyCrewMate-Anwendung", () 
     expect(legal).toContain("keiner Verbindung zu gleichnamigen Angeboten anderer Betreiber");
   });
 
+  it("liefert die öffentliche Website suchmaschinenklar und tastaturfreundlich aus", () => {
+    const html = source("client/index.html");
+    const offerDemo = source("client/src/pages/OfferDemo.tsx");
+    const styles = source("client/src/index.css");
+    const comparison = source("client/src/components/PackageComparisonSection.tsx");
+
+    expect(html).toContain('<!-- public-metadata:start -->');
+    expect(html).toContain('property="og:image"');
+    expect(html).toContain('rel="canonical" href="https://www.mycrewmate.de/"');
+    expect(offerDemo).toContain('id="main-content"');
+    expect(offerDemo).toContain("Zum Inhalt springen");
+    expect(styles).toContain(".skip-to-content");
+    expect(styles).toContain("a:focus-visible");
+    expect(comparison).toContain("comparison-swipe-hint");
+    expect(comparison).toContain("Auf dem Smartphone nach links und rechts wischen");
+  });
+
   it("stellt für die geschützte App einen eigenen, vollständigen Datenschutzhinweis bereit", () => {
     const app = source("client/src/App.tsx");
     const privacy = source("client/src/pages/AppPrivacy.tsx");

@@ -51,6 +51,8 @@ describe("lokale MyCrewMate-Angebotsdemo", () => {
     );
     expect(comparison).toContain("So wächst MyCrewMate mit eurem Verein.");
     expect(comparison).toContain("data-offer-comparison");
+    expect(comparison).toContain("comparison-swipe-hint");
+    expect(comparison).toContain("Auf dem Smartphone nach links und rechts wischen");
     expect(comparison).toContain("Chat, WhatsApp-Vorlagen & PDF");
     expect(comparison).toContain("individuelle WhatsApp-Vorlagen");
     expect(comparison).not.toContain("Individuelle Lösung & Zukunftsmodule");
