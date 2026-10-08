@@ -23,6 +23,7 @@ import {
   exportProjectExcel,
   migrateLegacyPreparationAreas,
   normalizeImportedTime,
+  planContactSynchronization,
   parseBackupWorkbook,
   previewBackupRestore,
   reconcileContactSelfHelpers,
@@ -155,6 +156,35 @@ describe("Excel-Datensicherung", () => {
     data.prep_tasks.splice(0, data.prep_tasks.length);
     data.cakes.splice(0, data.cakes.length);
     dbMocks.getDb.mockResolvedValue(fakeDb());
+  });
+
+  it("erhält die technische Kontakt-ID eines unveränderten Ansprechpartners für seinen Planungsteamzugang", () => {
+    const synchronization = planContactSynchronization(
+      [
+        { id: 10, name: "Chris Leitung" },
+        { id: 11, name: "Dana Entfernt" },
+      ],
+      [
+        // Ein Vollimport aus einer fremden Projektdatei enthält absichtlich
+        // keine technische Ziel-ID. Der sichere Namensabgleich muss trotzdem
+        // den bestehenden Zugangskontakt erkennen.
+        { sourceId: null, name: "Chris Leitung" },
+        { sourceId: null, name: "Erika Neu" },
+      ]
+    );
+
+    expect(synchronization.existingIdsByImportIndex).toEqual([10, null]);
+    expect(synchronization.removedContactIds).toEqual([11]);
+  });
+
+  it("ordnet eine Umbenennung mit vorhandener ID weiterhin eindeutig dem bestehenden Zugangskontakt zu", () => {
+    const synchronization = planContactSynchronization(
+      [{ id: 10, name: "Chris Leitung" }],
+      [{ sourceId: 10, name: "Christian Leitung" }]
+    );
+
+    expect(synchronization.existingIdsByImportIndex).toEqual([10]);
+    expect(synchronization.removedContactIds).toEqual([]);
   });
 
   it("exportiert alle Pflichtblätter einschließlich leerer Tabellen mit Kopfzeilen", async () => {

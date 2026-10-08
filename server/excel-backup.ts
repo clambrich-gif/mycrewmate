@@ -16,9 +16,11 @@ import {
   marketing,
   materials,
   postTasks,
+  planningTeamAccesses,
   prepTasks,
   shiftAreaContacts,
   shifts,
+  users,
 } from "../drizzle/schema";
 import {
   eventWeekdays,
@@ -39,6 +41,7 @@ import {
 import { overlaps, toMinutes } from "./logic";
 import { currentEventId, currentEventYear } from "./year-context";
 import { getDb, type AuditActor } from "./db";
+import { planningTeamAccessOpenId } from "./password-auth";
 
 const BACKUP_FORMAT = "RSC-HELFERPLANUNG-SICHERUNG";
 const BACKUP_VERSION = 1;
@@ -3435,6 +3438,49 @@ async function insertRows(client: any, table: any, rows: any[]) {
     if (part.length) await client.insert(table).values(part);
 }
 
+type ContactSynchronizationRow = {
+  id: number;
+  name: string;
+};
+
+type ImportedContactSynchronizationRow = {
+  sourceId: number | null;
+  name: string;
+};
+
+/**
+ * Ordnet importierte Ansprechpartner einem vorhandenen Datensatz zu, bevor
+ * Daten geschrieben werden. So bleiben technische IDs und die daran
+ * gebundenen Planungsteamzugänge bei einem normalen Kontaktimport erhalten.
+ * Nur tatsächlich aus der Importdatei entfernte Ansprechpartner werden als
+ * Entfernung behandelt – genau wie beim bewussten Löschen in der Oberfläche.
+ */
+export function planContactSynchronization(
+  currentContacts: ContactSynchronizationRow[],
+  importedContacts: ImportedContactSynchronizationRow[]
+) {
+  const currentById = new Map(currentContacts.map(row => [row.id, row]));
+  const currentByName = new Map(
+    currentContacts.map(row => [personKey(row.name), row])
+  );
+  const matchedIds = new Set<number>();
+  const existingIdsByImportIndex = importedContacts.map((row, index) => {
+    const candidate =
+      (row.sourceId ? currentById.get(row.sourceId) : undefined) ??
+      currentByName.get(personKey(row.name));
+    if (!candidate || matchedIds.has(candidate.id)) return null;
+    matchedIds.add(candidate.id);
+    return candidate.id;
+  });
+
+  return {
+    existingIdsByImportIndex,
+    removedContactIds: currentContacts
+      .filter(row => !matchedIds.has(row.id))
+      .map(row => row.id),
+  };
+}
+
 export async function restoreBackup(
   base64: string,
   sourceFilename: string,
@@ -3593,18 +3639,75 @@ export async function restoreProjectDocument(
       await tx.delete(marketing).where(scope(marketing));
       await tx.delete(approvals).where(scope(approvals));
       await tx.delete(helpers).where(scope(helpers));
+
+      const contactSynchronization = planContactSynchronization(
+        snapshot.contacts.map(row => ({ id: row.id, name: row.name })),
+        desired.contacts.map(row => ({
+          sourceId: row.sourceId,
+          name: row.name,
+        }))
+      );
+      const preservedContactIds = Array.from(
+        new Set(
+          contactSynchronization.existingIdsByImportIndex.filter(
+            (id): id is number => id !== null
+          )
+        )
+      );
+      const removedContactIds = contactSynchronization.removedContactIds;
+      const preservedAccesses = preservedContactIds.length
+        ? await tx
+            .select({
+              id: planningTeamAccesses.id,
+              contactId: planningTeamAccesses.contactId,
+            })
+            .from(planningTeamAccesses)
+            .where(inArray(planningTeamAccesses.contactId, preservedContactIds))
+            .for("update")
+        : [];
+      const removedAccesses = removedContactIds.length
+        ? await tx
+            .select({ id: planningTeamAccesses.id })
+            .from(planningTeamAccesses)
+            .where(inArray(planningTeamAccesses.contactId, removedContactIds))
+            .for("update")
+        : [];
+
+      // Der vollständige Import ersetzt Kontaktzeilen. Vor diesem technischen
+      // Schritt werden Zugänge von weiterhin vorhandenen Ansprechpartnern
+      // vorübergehend entkoppelt, damit die FK-Kaskade sie nicht löscht.
+      if (preservedAccesses.length) {
+        await tx
+          .update(planningTeamAccesses)
+          .set({ contactId: null })
+          .where(
+            inArray(
+              planningTeamAccesses.id,
+              preservedAccesses.map(access => access.id)
+            )
+          );
+      }
+      // Das bewusste Entfernen eines Ansprechpartners bleibt eine echte
+      // Zugangsrücknahme – wie beim manuellen Löschen in der Anwendung.
+      if (removedAccesses.length) {
+        await tx.delete(users).where(
+          inArray(
+            users.openId,
+            removedAccesses.map(access => planningTeamAccessOpenId(access.id))
+          )
+        );
+      }
       await tx.delete(contacts).where(scope(contacts));
       await tx.delete(cakes).where(scope(cakes));
       await tx.delete(finances).where(scope(finances));
 
-      const currentContactIds = new Set(snapshot.contacts.map(row => row.id));
       const contactIdBySource = new Map<number, number>();
       const contactIdByName = new Map<string, number>();
-      for (const row of desired.contacts) {
+      const contactIdByPreviousId = new Map<number, number>();
+      for (let index = 0; index < desired.contacts.length; index++) {
+        const row = desired.contacts[index];
         const preservedId =
-          row.sourceId && currentContactIds.has(row.sourceId)
-            ? row.sourceId
-            : undefined;
+          contactSynchronization.existingIdsByImportIndex[index] ?? undefined;
         const result: any = await tx.insert(contacts).values({
           ...(preservedId ? { id: preservedId } : {}),
           year,
@@ -3619,6 +3722,17 @@ export async function restoreProjectDocument(
           preservedId ?? Number(result?.[0]?.insertId ?? result?.insertId);
         if (row.sourceId) contactIdBySource.set(row.sourceId, actualId);
         contactIdByName.set(personKey(row.name), actualId);
+        if (preservedId) contactIdByPreviousId.set(preservedId, actualId);
+      }
+      for (const access of preservedAccesses) {
+        const nextContactId = access.contactId
+          ? contactIdByPreviousId.get(access.contactId)
+          : undefined;
+        if (!nextContactId) continue;
+        await tx
+          .update(planningTeamAccesses)
+          .set({ contactId: nextContactId })
+          .where(eq(planningTeamAccesses.id, access.id));
       }
       const resolveContact = (sourceId: number | null, name: string) =>
         (sourceId ? contactIdBySource.get(sourceId) : undefined) ??
