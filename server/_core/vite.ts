@@ -47,7 +47,7 @@ export async function setupVite(app: Express, server: Server) {
       const page = applyPublicSiteMetadata(
         transformedPage,
         req.hostname,
-        req.path
+        req.originalUrl
       );
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
     } catch (e) {
@@ -82,7 +82,7 @@ export function serveStatic(app: Express) {
       res
         .status(200)
         .type("html")
-        .send(applyPublicSiteMetadata(indexHtml, req.hostname, req.path));
+        .send(applyPublicSiteMetadata(indexHtml, req.hostname, req.originalUrl));
     } catch (error) {
       next(error);
     }
