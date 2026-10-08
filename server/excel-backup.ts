@@ -2538,9 +2538,11 @@ export function comparableProjectContent(
     prep: withoutIds(document.prep as Array<Record<string, unknown>>, [
       "contactSourceId",
       "locationSourceId",
+      "helperSourceId",
     ]),
     post: withoutIds(document.post as Array<Record<string, unknown>>, [
       "contactSourceId",
+      "helperSourceId",
     ]),
     materials: withoutIds(
       document.materials as Array<Record<string, unknown>>,
@@ -2670,6 +2672,12 @@ const diffFieldEqual = (
     return before.locationSourceId && after.locationSourceId
       ? before.locationSourceId === after.locationSourceId
       : personKey(before.locationName) === personKey(after.locationName);
+  }
+  if (field === "helperSourceId") {
+    // Die technische Helfer-ID kann sich nach einem isolierten Helferimport
+    // ändern. Für Aufgaben ist deshalb ausschließlich der gespeicherte Name
+    // die fachliche Referenz.
+    return personKey(before.helperName) === personKey(after.helperName);
   }
   return (
     JSON.stringify(before[field] ?? null) ===
@@ -3405,20 +3413,25 @@ export async function previewProjectDocument(
       `Die Sicherung gehört zu „${desired.metadata.eventName}“ (${desired.metadata.year}), ausgewählt ist „${snapshot.eventName}“ (${currentEventYear()}).`
     );
   const current = comparableCurrent(snapshot);
-  resetInvalidatedManualConfirmations(current, desired);
+  const protectedDesired = await preserveAccessLinkedContactsForRestore(
+    (await getDb()) as Client,
+    current,
+    desired
+  );
+  resetInvalidatedManualConfirmations(current, protectedDesired);
   const changes = [
-    ...eventDaysChange(snapshot.activeDays, desired.metadata.activeDays),
-    ...eventDatesChange(snapshot, desired.metadata),
-    ...donationTargetsChange(snapshot, desired.metadata),
-    ...eventPdfImageChanges(snapshot, desired.metadata),
-    ...diffDocuments(current, desired),
+    ...eventDaysChange(snapshot.activeDays, protectedDesired.metadata.activeDays),
+    ...eventDatesChange(snapshot, protectedDesired.metadata),
+    ...donationTargetsChange(snapshot, protectedDesired.metadata),
+    ...eventPdfImageChanges(snapshot, protectedDesired.metadata),
+    ...diffDocuments(current, protectedDesired),
   ];
-  serializeChangeDetails(changes, desired.warnings);
+  serializeChangeDetails(changes, protectedDesired.warnings);
   return {
-    metadata: desired.metadata,
+    metadata: protectedDesired.metadata,
     currentDigest: snapshotDigest(snapshot, current),
     workbookDigest: sourceDigest,
-    warnings: desired.warnings,
+    warnings: protectedDesired.warnings,
     changes,
     totals: summary(changes),
   };
@@ -3479,6 +3492,78 @@ export function planContactSynchronization(
       .filter(row => !matchedIds.has(row.id))
       .map(row => row.id),
   };
+}
+
+/**
+ * Projektdateien enthalten bewusst keine Passwörter oder Berechtigungen.
+ * Damit ein vollständiges Laden dennoch nie einen bestehenden Zugang verliert,
+ * bleiben Ansprechpartner mit einem Planungsteam-Zugang unverändert im
+ * Projektbestand. Ihre fachlichen Kontaktdaten werden ebenfalls nicht durch
+ * eine ältere JSON-Datei überschrieben.
+ */
+export function preserveAccessLinkedContacts(
+  current: ReturnType<typeof comparableCurrent>,
+  imported: BackupDocument,
+  protectedContactIds: number[]
+) {
+  if (!protectedContactIds.length) return imported;
+
+  const desired = structuredClone(imported);
+  const currentContactsById = new Map<number, ContactRow>();
+  for (const contact of current.contacts as unknown as ContactRow[])
+    if (contact.sourceId !== null)
+      currentContactsById.set(contact.sourceId, contact);
+  let preservedCount = 0;
+
+  for (const contactId of Array.from(new Set(protectedContactIds))) {
+    const currentContact = currentContactsById.get(contactId);
+    if (!currentContact) continue;
+    const existingIndex = desired.contacts.findIndex(
+      contact =>
+        contact.sourceId === contactId ||
+        personKey(contact.name) === personKey(currentContact.name)
+    );
+    if (existingIndex >= 0) desired.contacts[existingIndex] = currentContact;
+    else desired.contacts.push(currentContact);
+    preservedCount++;
+  }
+
+  if (preservedCount) {
+    desired.warnings = Array.from(
+      new Set([
+        ...desired.warnings,
+        `${preservedCount} Ansprechpartner ${preservedCount === 1 ? "mit Planungsteam-Zugang bleibt" : "mit Planungsteam-Zugängen bleiben"} aus Sicherheitsgründen unverändert erhalten.`,
+      ])
+    );
+    repairImportedDocumentRelations(desired);
+  }
+  return desired;
+}
+
+async function preserveAccessLinkedContactsForRestore(
+  client: any,
+  current: ReturnType<typeof comparableCurrent>,
+  imported: BackupDocument,
+  lockRows = false
+) {
+  const contactIds = current.contacts
+    .map(contact => contact.sourceId)
+    .filter((id): id is number => id !== null);
+  if (!contactIds.length) return imported;
+
+  let query: any = client
+    .select({ contactId: planningTeamAccesses.contactId })
+    .from(planningTeamAccesses)
+    .where(inArray(planningTeamAccesses.contactId, contactIds));
+  if (lockRows) query = query.for("update");
+  const protectedAccesses = await query;
+  return preserveAccessLinkedContacts(
+    current,
+    imported,
+    protectedAccesses
+      .map((access: { contactId: number | null }) => access.contactId)
+      .filter((id: number | null): id is number => id !== null)
+  );
 }
 
 export async function restoreBackup(
@@ -3546,15 +3631,21 @@ export async function restoreProjectDocument(
       throw new Error(
         "Die Planung wurde seit der Vorschau geändert. Bitte die Datei erneut prüfen."
       );
+    const protectedImported = await preserveAccessLinkedContactsForRestore(
+      tx,
+      current,
+      imported,
+      true
+    );
     const allChanges = [
-      ...eventDaysChange(snapshot.activeDays, imported.metadata.activeDays),
-      ...donationTargetsChange(snapshot, imported.metadata),
-      ...eventPdfImageChanges(snapshot, imported.metadata),
-      ...diffDocuments(current, imported),
+      ...eventDaysChange(snapshot.activeDays, protectedImported.metadata.activeDays),
+      ...donationTargetsChange(snapshot, protectedImported.metadata),
+      ...eventPdfImageChanges(snapshot, protectedImported.metadata),
+      ...diffDocuments(current, protectedImported),
     ];
     const desired = buildSelectedDocument(
       current,
-      imported,
+      protectedImported,
       allChanges,
       selectedChangeKeys
     );
@@ -3604,7 +3695,7 @@ export async function restoreProjectDocument(
           "Die Auswahl ist nicht vollständig: Eine gewählte Änderung benötigt weitere markierte Bezugsänderungen (zum Beispiel Helferzuordnungen oder Ansprechpartner). Bitte markieren Sie die zusammengehörigen Änderungen oder wählen Sie „Alle Änderungen übernehmen“."
         );
     }
-    const auditDetails = serializeChangeDetails(changes, imported.warnings);
+    const auditDetails = serializeChangeDetails(changes, protectedImported.warnings);
 
     if (changes.length) {
       await tx
@@ -4064,7 +4155,7 @@ export async function restoreProjectDocument(
       eventId,
       eventName: snapshot.eventName,
       sourceFilename: sourceFilename.slice(0, 255),
-      backupExportedAt: imported.metadata.exportedAt,
+      backupExportedAt: protectedImported.metadata.exportedAt,
       actorUserId: actor.userId,
       actorName: actor.name,
       actorRole: actor.role,
@@ -4078,7 +4169,7 @@ export async function restoreProjectDocument(
       details: auditDetails,
     });
     await pruneBackupRestoreLogs(tx, { year, eventId });
-    return { ...totals, warnings: imported.warnings, afterDigest };
+    return { ...totals, warnings: protectedImported.warnings, afterDigest };
   });
 }
 

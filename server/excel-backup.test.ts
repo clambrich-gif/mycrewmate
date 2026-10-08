@@ -25,6 +25,7 @@ import {
   normalizeImportedTime,
   planContactSynchronization,
   parseBackupWorkbook,
+  preserveAccessLinkedContacts,
   previewBackupRestore,
   reconcileContactSelfHelpers,
   resetInvalidatedManualConfirmations,
@@ -185,6 +186,83 @@ describe("Excel-Datensicherung", () => {
 
     expect(synchronization.existingIdsByImportIndex).toEqual([10]);
     expect(synchronization.removedContactIds).toEqual([]);
+  });
+
+  it("behält zugangsgebundene Ansprechpartner unverändert, auch wenn eine JSON sie nicht enthält", () => {
+    const current: any = {
+      contacts: [
+        {
+          sourceId: 10,
+          name: "Chris Leitung",
+          email: "chris.leitung@example.test",
+          phone: "0123",
+          note: "Zugang bleibt geschützt",
+          sortOrder: 0,
+        },
+      ],
+    };
+    const imported: any = {
+      metadata: { activeDays: ["Freitag"] },
+      contacts: [],
+      helpers: [],
+      locations: [],
+      shifts: [],
+      prep: [],
+      post: [],
+      materials: [],
+      marketing: [],
+      approvals: [],
+      cakes: [],
+      finances: [],
+      warnings: [],
+    };
+
+    const protectedDocument = preserveAccessLinkedContacts(
+      current,
+      imported,
+      [10]
+    );
+
+    expect(protectedDocument.contacts).toEqual(current.contacts);
+    expect(protectedDocument.helpers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "Chris Leitung",
+          contactSourceId: 10,
+        }),
+      ])
+    );
+    expect(protectedDocument.warnings).toContain(
+      "1 Ansprechpartner mit Planungsteam-Zugang bleibt aus Sicherheitsgründen unverändert erhalten."
+    );
+  });
+
+  it("vergleicht Vor- und Nachbereitung über den Helfernamen statt über eine flüchtige technische ID", async () => {
+    const exported = await exportBackupExcel();
+    const current: any = parseBackupWorkbook(exported.buffer.toString("base64"));
+    current.prep.push({
+      sourceId: 70,
+      category: "Aufbau",
+      task: "Tische stellen",
+      dueText: "Freitag",
+      locationSourceId: null,
+      locationName: "",
+      contactSourceId: 10,
+      contactName: "Chris Leitung",
+      helperSourceId: 21,
+      helperName: "Alex Beispiel",
+      status: "offen",
+      statusWording: "aufgabe",
+      note: "",
+      sortOrder: 0,
+    });
+    const restored = structuredClone(current);
+    restored.prep[0].helperSourceId = 999;
+
+    expect(comparableProjectContent(restored)).toEqual(
+      comparableProjectContent(current)
+    );
+    expect(diffDocuments(current, restored)).toEqual([]);
   });
 
   it("exportiert alle Pflichtblätter einschließlich leerer Tabellen mit Kopfzeilen", async () => {

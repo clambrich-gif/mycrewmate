@@ -491,7 +491,7 @@ export function SaveLoadControls({
             <ActionCard
               icon={FolderOpen}
               title="JSON-Speicherstand laden"
-              description="Ersetzt nach Prüfung die gesamte Planung der ausgewählten Veranstaltung."
+              description="Ersetzt nach Prüfung die gesamte Planung der ausgewählten Veranstaltung. Bestehende Zugänge und Berechtigungen bleiben geschützt."
               tone="blue"
               pending={jsonPreview.isPending}
               onClick={chooseJsonFile}
@@ -640,7 +640,7 @@ export function SaveLoadControls({
         open={jsonPasswordOpen}
         onOpenChange={setJsonPasswordOpen}
         title="Projektstand laden"
-        description={`Speicherstand vom ${formatBackupTimestamp(jsonPreview.data?.metadata.exportedAt)}. Achtung: Durch das Laden werden alle Änderungen und Online-Eingaben überschrieben, die seit dieser Speicherung vorgenommen wurden.`}
+        description={`Speicherstand vom ${formatBackupTimestamp(jsonPreview.data?.metadata.exportedAt)}. Achtung: Durch das Laden wird die Planung dieser Veranstaltung vollständig auf diesen Stand zurückgesetzt. Bestehende Zugänge, Passwörter und Berechtigungen bleiben dabei geschützt.`}
         confirmLabel="Laden"
         destructive={false}
         busy={jsonLoad.isPending}

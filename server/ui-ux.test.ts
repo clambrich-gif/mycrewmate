@@ -1258,7 +1258,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     );
     expect(storage).toContain("Speicherstand vom ${formatBackupTimestamp");
     expect(storage).toContain(
-      "alle Änderungen und Online-Eingaben überschrieben"
+      "Planung dieser Veranstaltung vollständig auf diesen Stand zurückgesetzt"
+    );
+    expect(storage).toContain(
+      "Bestehende Zugänge, Passwörter und Berechtigungen bleiben dabei geschützt"
     );
     expect(storage).toContain('confirmLabel="Laden"');
     expect(storage).not.toContain(
