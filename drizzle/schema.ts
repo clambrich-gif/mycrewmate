@@ -1464,6 +1464,15 @@ export const prepTasks = mysqlTable(
     helperId: int("helperId").references(() => helpers.id, {
       onDelete: "set null",
     }),
+    /**
+     * Merkt bei einem Upgrade vom Event Pass, welcher Helfer dort als
+     * Verantwortlicher gewählt war. Nach dem Upgrade bleibt die Aufgabe so
+     * sichtbar, bis ein Ansprechpartner zugeordnet wurde.
+     */
+    eventPassResponsibleHelperId: int("eventPassResponsibleHelperId").references(
+      () => helpers.id,
+      { onDelete: "set null" }
+    ),
     status: mysqlEnum("status", ["offen", "inArbeit", "erledigt", "abgelehnt"])
       .default("offen")
       .notNull(),

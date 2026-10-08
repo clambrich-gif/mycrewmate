@@ -2394,6 +2394,12 @@ export default function MasterAdminPortal() {
                 {PRODUCT_PACKAGE_META[productAssignmentForm.packageId].shortDescription}
                 <span className="ml-1 text-violet-800">({PRODUCT_PACKAGE_META[productAssignmentForm.packageId].priceLabel})</span>
               </div>
+              {productModalTenant.productAssignment.packageId === "event_pass" &&
+                productAssignmentForm.packageId !== "event_pass" && (
+                  <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2.5 text-sm leading-5 text-sky-950">
+                    <strong>Sichere Überleitung aus dem Event Pass:</strong> Die bisher als verantwortlich gewählten Helfer bleiben bei ihren Vorbereitungsaufgaben sichtbar. Nach dem Paketwechsel kann der Verein ihnen in Ruhe einen Ansprechpartner zuordnen; es wird nichts gelöscht oder automatisch umgedeutet. Der gemeinsame Event-Pass-Zugang wird beim ersten Anmelden eines persönlichen Zugangs nicht weiter verwendet.
+                  </div>
+                )}
               {productAssignmentForm.packageId === "event_pass" && (
                 <label className="space-y-1.5">
                   <span className="text-sm font-semibold text-slate-800">Zugeordnete Einzelveranstaltung</span>

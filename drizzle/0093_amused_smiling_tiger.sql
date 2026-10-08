@@ -1,0 +1,2 @@
+ALTER TABLE `prep_tasks` ADD `eventPassResponsibleHelperId` int;--> statement-breakpoint
+ALTER TABLE `prep_tasks` ADD CONSTRAINT `prep_tasks_eventPassResponsibleHelperId_helpers_id_fk` FOREIGN KEY (`eventPassResponsibleHelperId`) REFERENCES `helpers`(`id`) ON DELETE set null ON UPDATE no action;

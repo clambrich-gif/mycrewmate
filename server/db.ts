@@ -1950,7 +1950,11 @@ export async function updateTenantProductAssignmentForPlatformAdmin(input: {
     if (!tenantRow) throw new Error("Verein wurde nicht gefunden");
 
     const [previousAssignment] = await tx
-      .select({ status: tenantProductAssignments.status })
+      .select({
+        status: tenantProductAssignments.status,
+        packageId: tenantProductAssignments.packageId,
+        eventId: tenantProductAssignments.eventId,
+      })
       .from(tenantProductAssignments)
       .where(eq(tenantProductAssignments.tenantId, input.tenantId))
       .limit(1)
@@ -1992,10 +1996,35 @@ export async function updateTenantProductAssignmentForPlatformAdmin(input: {
           internalNote: values.internalNote,
         },
       });
+
+    const previousEventId = Number(previousAssignment?.eventId ?? 0);
+    const upgradesFromEventPass =
+      previousAssignment?.packageId === "event_pass" &&
+      input.packageId !== "event_pass" &&
+      Number.isSafeInteger(previousEventId) &&
+      previousEventId > 0;
+    if (upgradesFromEventPass) {
+      // Im Event Pass ist helperId die Verantwortlichkeit. Beim Wechsel in ein
+      // Paket mit Ansprechpartnern wird nichts umgedeutet oder gelöscht:
+      // Die ursprüngliche Person bleibt als Übernahmehinweis erhalten, bis
+      // der Verein bewusst einen Ansprechpartner auswählt.
+      await tx
+        .update(prepTasks)
+        .set({ eventPassResponsibleHelperId: sql`${prepTasks.helperId}` })
+        .where(
+          and(
+            eq(prepTasks.eventId, previousEventId),
+            isNull(prepTasks.contactId),
+            isNotNull(prepTasks.helperId),
+            eq(prepTasks.deleted, false)
+          )
+        );
+    }
     return {
       ...values,
       tenantName: tenantRow.name,
       previousStatus: previousAssignment?.status ?? null,
+      upgradedFromEventPass: Boolean(upgradesFromEventPass),
     };
   });
 }
@@ -7929,7 +7958,14 @@ export const updatePrep = async (id: number, v: any) => {
   const generatedActivityEntry =
     activityEntry ??
     (await taskLogbookChangeEntry("preparation", database, existing[0], values));
-  const { note: _ignoredNote, ...writableValues } = values;
+  // Sobald nach einem Upgrade bewusst ein Ansprechpartner ausgewählt wird,
+  // ist die Event-Pass-Überleitung erledigt. Die Markierung wird erst dann
+  // entfernt – nicht durch einen bloßen Status- oder Textwechsel.
+  const valuesWithResponsibilityTransition =
+    typeof values.contactId === "number" && values.contactId > 0
+      ? { ...values, eventPassResponsibleHelperId: null }
+      : values;
+  const { note: _ignoredNote, ...writableValues } = valuesWithResponsibilityTransition;
   if (logEntry === undefined && !generatedActivityEntry) {
     return database
       .update(prepTasks)

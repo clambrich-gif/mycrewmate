@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Input } from "@/components/ui/input";
@@ -3447,22 +3448,31 @@ export default function Plan() {
               </datalist>
             </div>
             <div data-slot="shift-dialog-location" className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm">
-              <Label htmlFor="shift-location">Ort / Standort</Label>
-              <Select
-                value={form.locationId ? String(form.locationId) : "none"}
-                onValueChange={value =>
-                  setForm({
-                    ...form,
-                    locationId: value === "none" ? null : Number(value),
-                  })
-                }
-              >
-                <SelectTrigger id="shift-location"><SelectValue placeholder="Kein Ort" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Kein Ort</SelectItem>
-                  {locations.map(location => <SelectItem key={location.id} value={String(location.id)}>{location.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Label htmlFor="shift-location">Ort / Standort</Label>
+                {isEventPass && <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-600">Ab Pro verfügbar</Badge>}
+              </div>
+              {isEventPass ? (
+                <p className="mt-2 rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                  Im Event Pass werden Standorte nicht verwaltet. Die Schicht kann ohne Ortsangabe angelegt werden.
+                </p>
+              ) : (
+                <Select
+                  value={form.locationId ? String(form.locationId) : "none"}
+                  onValueChange={value =>
+                    setForm({
+                      ...form,
+                      locationId: value === "none" ? null : Number(value),
+                    })
+                  }
+                >
+                  <SelectTrigger id="shift-location"><SelectValue placeholder="Kein Ort" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Kein Ort</SelectItem>
+                    {locations.map(location => <SelectItem key={location.id} value={String(location.id)}>{location.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <div data-slot="shift-dialog-task" className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm">
               <Label>Aufgabe / Schicht</Label>

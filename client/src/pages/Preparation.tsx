@@ -94,6 +94,7 @@ type PrepTaskRow = {
   locationId: number | null;
   contactId: number | null;
   helperId: number | null;
+  eventPassResponsibleHelperId: number | null;
   status: PrepStatus;
   statusWording: PrepWording | null;
   note: string | null;
@@ -565,7 +566,7 @@ export default function Preparation() {
     return rows
       .filter(row => {
         if (statusFilter !== "alle" && row.status !== statusFilter) return false;
-        if (locationFilter && row.locationId !== locationFilter) return false;
+        if (!isEventPass && locationFilter && row.locationId !== locationFilter) return false;
         if (categoryFilter === "ohne" && row.category?.trim()) return false;
         if (categoryFilter !== "alle" && categoryFilter !== "ohne") {
           if (row.category?.trim() !== categoryFilter) return false;
@@ -647,7 +648,7 @@ export default function Preparation() {
 
   const hasActiveFilters =
     statusFilter !== "alle" ||
-    locationFilter !== null ||
+    (!isEventPass && locationFilter !== null) ||
     categoryFilter !== "alle" ||
     (!isEventPass && contactFilter !== "alle") ||
     (!isEventPass && myTasksOnly) ||
@@ -979,7 +980,7 @@ export default function Preparation() {
             </SelectContent>
           </Select>
 
-          <Select
+          {!isEventPass && <Select
             value={locationFilter ? String(locationFilter) : "alle"}
             onValueChange={updateLocationFilter}
           >
@@ -994,7 +995,7 @@ export default function Preparation() {
                 </SelectItem>
               ))}
             </SelectContent>
-          </Select>
+          </Select>}
 
           {!isEventPass && <Select value={contactFilter} onValueChange={setContactFilter}>
             <SelectTrigger className="h-11 w-full border-sky-200 bg-white text-base md:h-10 md:w-[220px] md:text-sm">
@@ -1165,7 +1166,11 @@ export default function Preparation() {
                               ? contactMap.get(task.contactId) ?? "—"
                               : "—"}
                         </p>
-                        {!isEventPass && task.helperId && (
+                        {!isEventPass && task.eventPassResponsibleHelperId && !task.contactId ? (
+                          <p className="mt-1 text-xs font-medium text-amber-800">
+                            Aus Event Pass übernommen: {helperMap.get(task.eventPassResponsibleHelperId) ?? "—"} · Ansprechpartner noch wählen
+                          </p>
+                        ) : !isEventPass && task.helperId && (
                           <p className="mt-1 text-xs text-slate-500">
                             Helfer: {helperMap.get(task.helperId) ?? "—"}
                           </p>
@@ -1378,7 +1383,11 @@ export default function Preparation() {
                               ? contactMap.get(task.contactId) ?? "—"
                               : "—"}
                         </p>
-                        {!isEventPass && task.helperId && (
+                        {!isEventPass && task.eventPassResponsibleHelperId && !task.contactId ? (
+                          <p className="text-xs font-medium text-amber-800">
+                            Aus Event Pass übernommen: {helperMap.get(task.eventPassResponsibleHelperId) ?? "—"} · Ansprechpartner noch wählen
+                          </p>
+                        ) : !isEventPass && task.helperId && (
                           <p className="text-xs text-slate-500">
                             Helfer: {helperMap.get(task.helperId) ?? "—"}
                           </p>
@@ -1498,17 +1507,26 @@ export default function Preparation() {
               </datalist>
             </div>
             <div className="space-y-1.5">
-              <Label>Ort / Standort</Label>
-              <Select
-                value={form.locationId}
-                onValueChange={value => setForm(current => ({ ...current, locationId: value }))}
-              >
-                <SelectTrigger><SelectValue placeholder="Kein Ort" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Kein Ort</SelectItem>
-                  {locations.map(location => <SelectItem key={location.id} value={String(location.id)}>{location.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Label>Ort / Standort</Label>
+                {isEventPass && <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-600">Ab Pro verfügbar</Badge>}
+              </div>
+              {isEventPass ? (
+                <p className="rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                  Im Event Pass werden Standorte nicht verwaltet. Die Aufgabe wird ohne Ortsangabe angelegt.
+                </p>
+              ) : (
+                <Select
+                  value={form.locationId}
+                  onValueChange={value => setForm(current => ({ ...current, locationId: value }))}
+                >
+                  <SelectTrigger><SelectValue placeholder="Kein Ort" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Kein Ort</SelectItem>
+                    {locations.map(location => <SelectItem key={location.id} value={String(location.id)}>{location.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
               </div>
             </div>
@@ -1597,6 +1615,11 @@ export default function Preparation() {
                     </SelectContent>
                   </Select>
                     </div>
+                    {editingTask?.eventPassResponsibleHelperId && form.contactId === "unassigned" && (
+                      <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950">
+                        <strong>Aus Event Pass übernommen:</strong> {helperMap.get(editingTask.eventPassResponsibleHelperId) ?? "Der ursprünglich gewählte Helfer"} war dort verantwortlich. Bitte bei Bedarf einen Ansprechpartner auswählen; bis dahin bleibt der Helfer sichtbar erhalten.
+                      </p>
+                    )}
                   </>
                 )}
               </div>
