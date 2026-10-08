@@ -29,11 +29,12 @@ describe("Vereinsadmin-Verwaltung, Marktstart-Sperre & Handoff", () => {
     expect(routersSource).toContain("consumeHandoffToken: publicProcedure");
   });
 
-  it("erlaubt Vereinsadmins die Anmeldung per E-Mail und Passwort", () => {
-    expect(routersSource).toContain('email: z.string().trim().email("Bitte E-Mail-Adresse eingeben").max(320)');
+  it("erlaubt Vereinsadmins die Anmeldung per E-Mail und Event-Pass-Teams per neutraler Kennung", () => {
+    expect(routersSource).toContain('min(3, "Bitte E-Mail-Adresse oder Teamkennung eingeben")');
     expect(routersSource).toContain("getTenantAdminCredentialsByEmail(input.email)");
     expect(routersSource).toContain("listPlanningTeamAccessCredentialsByEmail(");
     expect(layoutSource).toContain("loginEmail");
+    expect(layoutSource).toContain("E-Mail-Adresse oder Teamkennung");
     expect(layoutSource).toContain("Ihre Berechtigungen erkennt MyCrewMate automatisch.");
   });
 

@@ -544,6 +544,54 @@ async function enforceProductEventScope(
   });
 }
 
+/**
+ * Der Event-Pass-Zugang ist absichtlich keine Mailadresse: Er vermeidet
+ * die Weitergabe der privaten Adresse des buchenden Vereinskontakts. Die
+ * Kennung ist nicht geheim; Sicherheit entsteht ausschließlich durch das
+ * starke Passwort, das nur als Hash gespeichert wird.
+ */
+function eventPassSharedAccessIdentifier(tenantId: string) {
+  return `eventpass-${tenantId}`.toLocaleLowerCase("de-DE");
+}
+
+const EVENT_PASS_SHARED_MODULE_ACCESS: PlanningModuleAccess = Object.freeze({
+  contacts: "off",
+  helpers: "write",
+  donations: "off",
+  schedule: "write",
+  preparation: "write",
+  postprocessing: "off",
+  materials: "off",
+  finances: "off",
+  pdf: "write",
+  locations: "off",
+});
+
+async function requireEventPassSharedAccessContext() {
+  const entitlement = await db.getCurrentTenantProductEntitlement();
+  if (entitlement.packageId !== "event_pass") {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Der gemeinsame Teamzugang steht ausschließlich im Event Pass bereit.",
+    });
+  }
+  if (!entitlement.isUsable || !entitlement.eventId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Für den Event Pass ist derzeit keine aktive Veranstaltung hinterlegt.",
+    });
+  }
+  const tenant = await db.getTenant();
+  if (!tenant) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Vereinszugang nicht gefunden." });
+  }
+  return {
+    tenantId: tenant.id,
+    eventId: entitlement.eventId,
+    identifier: eventPassSharedAccessIdentifier(tenant.id),
+  };
+}
+
 async function requireCurrentProductCapability(capability: ProductCapability) {
   const entitlement = await db.getCurrentTenantProductEntitlement();
   if (!entitlement.isUsable) {
@@ -611,13 +659,6 @@ async function authorizedPlanningScope(
     const entitlement = await withPlanningScope(requestedScope, () =>
       db.getCurrentTenantProductEntitlement()
     );
-    if (entitlement.packageId === "event_pass") {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message:
-          "Persönliche Planungsteamzugänge sind im Event Pass nicht enthalten. Bitte nutzen Sie den Vereinsadministrator-Zugang.",
-      });
-    }
     const requestedEventIsAllowed = await db.isPlanningTeamAccessAllowedForEvent(
       planningAccessId,
       requestedScope.eventId,
@@ -2006,7 +2047,9 @@ export const appRouter = router({
       .input(
         z.object({
           password: z.string().min(1).max(200),
-          email: z.string().trim().email("Bitte E-Mail-Adresse eingeben").max(320),
+          // Persönliche Zugänge verwenden eine E-Mail-Adresse. Der Event Pass
+          // verwendet bewusst eine neutrale Teamkennung ohne Privatadresse.
+          email: z.string().trim().min(3, "Bitte E-Mail-Adresse oder Teamkennung eingeben").max(320),
         })
       )
       .mutation(async ({ ctx, input }) => {
@@ -2112,7 +2155,8 @@ export const appRouter = router({
           recordFailedPasswordLogin(clientKey);
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: "E-Mail oder Passwort ist nicht korrekt",
+            message:
+              "E-Mail-Adresse bzw. Teamkennung oder Passwort ist nicht korrekt",
           });
         }
 
@@ -3885,6 +3929,94 @@ export const appRouter = router({
   tenants: router({
     list: masterAdminProcedure.query(() => db.listTenants()),
     current: scopedProtectedProcedure.query(() => db.getTenant()),
+  }),
+
+  /**
+   * Ein absichtlich gemeinsamer und auf ein Event begrenzter Zugang für den
+   * Event Pass. Er wird getrennt von persönlichen Planungsteamzugängen
+   * verwaltet, damit weder die private Mailadresse noch das Adminpasswort des
+   * buchenden Vereinskontakts geteilt werden müssen.
+   */
+  eventPassSharedAccess: router({
+    status: tenantAccessAdminProcedure.query(async () => {
+      const context = await requireEventPassSharedAccessContext();
+      const existing = (await db.listPlanningTeamAccesses()).find(
+        access => access.email === context.identifier
+      );
+      return {
+        configured: Boolean(existing),
+        identifier: context.identifier,
+        eventId: context.eventId,
+        updatedAt: existing?.updatedAt ?? null,
+      };
+    }),
+    save: tenantAccessAdminProcedure
+      .input(
+        z.object({
+          password: passwordInput,
+          passwordConfirmation: passwordInput,
+          currentAdminPassword: z.string().min(1).max(200),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        if (input.password !== input.passwordConfirmation) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Die beiden Passwörter stimmen nicht überein.",
+          });
+        }
+        await requireAdminPassword(input.currentAdminPassword, ctx);
+        const context = await requireEventPassSharedAccessContext();
+        const existing = (await db.listPlanningTeamAccesses()).find(
+          access => access.email === context.identifier
+        );
+        const passwordHash = await hashPassword(input.password);
+        if (existing) {
+          await db.updatePlanningTeamAccess({
+            id: existing.id,
+            label: "Gemeinsamer Event-Pass-Zugang",
+            contactId: null,
+            email: context.identifier,
+            modulePermissions: EDITABLE_PLANNING_MODULES.filter(
+              module => EVENT_PASS_SHARED_MODULE_ACCESS[module] === "write"
+            ),
+            moduleAccess: EVENT_PASS_SHARED_MODULE_ACCESS,
+            isTenantAdmin: false,
+            passwordHash,
+            mustChangePassword: false,
+            eventIds: [context.eventId],
+          });
+        } else {
+          await db.createPlanningTeamAccess({
+            label: "Gemeinsamer Event-Pass-Zugang",
+            contactId: null,
+            email: context.identifier,
+            modulePermissions: EDITABLE_PLANNING_MODULES.filter(
+              module => EVENT_PASS_SHARED_MODULE_ACCESS[module] === "write"
+            ),
+            moduleAccess: EVENT_PASS_SHARED_MODULE_ACCESS,
+            isTenantAdmin: false,
+            passwordHash,
+            mustChangePassword: false,
+            onboardingPending: false,
+            isSharedEventPassAccess: true,
+            eventIds: [context.eventId],
+          });
+        }
+        await recordSecurityActivity(
+          auditActor(ctx.user),
+          existing
+            ? "Gemeinsames Event-Pass-Teamkennwort geändert; alle bisherigen Team-Sitzungen abgemeldet"
+            : "Gemeinsamen Event-Pass-Teamzugang eingerichtet",
+          existing ? "updated" : "created",
+          context.tenantId
+        );
+        return {
+          success: true,
+          identifier: context.identifier,
+          replacedExistingAccess: Boolean(existing),
+        } as const;
+      }),
   }),
 
   tenantProduct: router({

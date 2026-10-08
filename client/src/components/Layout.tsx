@@ -1603,7 +1603,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
           ) : (
           <form className="space-y-4" onSubmit={submitPassword}>
             <p className="rounded-lg border border-blue-100 bg-blue-50/70 px-3 py-2.5 text-center text-xs leading-5 text-slate-700">
-              Melden Sie sich mit Ihrer persönlichen E-Mail-Adresse und Ihrem Passwort an.
+              Melden Sie sich mit Ihrer persönlichen E-Mail-Adresse oder einer
+              gemeinsamen Event-Pass-Teamkennung und dem passenden Passwort an.
               Ihre Berechtigungen erkennt MyCrewMate automatisch.
             </p>
             {loginNotice && (
@@ -1625,13 +1626,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
             )}
             <div className="space-y-1.5">
               <Label htmlFor="personal-login-email" className="text-sm font-semibold text-slate-800">
-                E-Mail-Adresse
+                E-Mail-Adresse oder Teamkennung
               </Label>
               <Input
                 id="personal-login-email"
-                type="email"
+                type="text"
                 autoComplete="username"
-                placeholder="beispiel@verein.de"
+                placeholder="beispiel@verein.de oder eventpass-verein"
                 value={loginEmail}
                 onChange={event => {
                   setLoginEmail(event.target.value);

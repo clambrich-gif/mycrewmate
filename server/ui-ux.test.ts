@@ -1981,12 +1981,13 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(help).toContain('document.getElementById("help-results")');
   });
 
-  it("stellt eine rollenunabhängige persönliche E-Mail-Anmeldung dar", () => {
+  it("stellt eine rollenunabhängige Anmeldung per E-Mail oder Teamkennung dar", () => {
     const layout = source("client/src/components/Layout.tsx");
 
     expect(layout).toContain('const [loginEmail, setLoginEmail] = useState("")');
     expect(layout).toContain('id="personal-login-email"');
-    expect(layout).toContain('type="email"');
+    expect(layout).toContain('type="text"');
+    expect(layout).toContain("E-Mail-Adresse oder Teamkennung");
     expect(layout).toContain("Ihre Berechtigungen erkennt MyCrewMate automatisch.");
     expect(layout).not.toContain('aria-pressed={loginMode === "user"}');
     expect(layout).not.toContain('aria-pressed={loginMode === "admin"}');

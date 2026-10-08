@@ -2867,9 +2867,21 @@ async function assertNoPlanningTeamEmailConflict(
  */
 async function assertCurrentProductPlanningTeamAccessCapacity(
   database: DBClient,
-  options: { isTenantAdmin?: boolean; excludeAccessId?: number } = {}
+  options: {
+    isTenantAdmin?: boolean;
+    excludeAccessId?: number;
+    /**
+     * Der Event Pass hat keinen persönlichen Teamzugang. Sein ausdrücklich
+     * gekennzeichneter gemeinsamer Veranstaltungszugang ist deshalb genau eine
+     * getrennte Ausnahme und zählt nicht gegen das persönliche Kontingent.
+     */
+    isSharedEventPassAccess?: boolean;
+  } = {}
 ) {
   const entitlement = await getCurrentTenantProductEntitlement();
+  if (entitlement.packageId === "event_pass" && options.isSharedEventPassAccess) {
+    return;
+  }
   const limit = entitlement.entitlements.maxPersonalPlanningAccesses;
   if (limit === null) return;
   // Pro enthält Co-Admins zusätzlich zu den 14 persönlichen Planungsteamzugängen.
@@ -2913,12 +2925,14 @@ export async function createPlanningTeamAccess(input: {
   passwordHash: string;
   mustChangePassword?: boolean;
   onboardingPending?: boolean;
+  isSharedEventPassAccess?: boolean;
   eventIds: number[];
 }) {
   const database = (await getDb()) as DB;
   return database.transaction(async tx => {
     await assertCurrentProductPlanningTeamAccessCapacity(tx, {
       isTenantAdmin: input.isTenantAdmin ?? false,
+      isSharedEventPassAccess: input.isSharedEventPassAccess ?? false,
     });
     const eventIds = await requireExistingEvents(tx, input.eventIds);
     const contact = input.contactId

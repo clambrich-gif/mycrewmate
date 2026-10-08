@@ -195,6 +195,149 @@ function PasswordEditor({
   );
 }
 
+/**
+ * Der Event Pass verzichtet bewusst auf persönliche Teamkonten. Stattdessen
+ * richtet die verantwortliche Vereinsadministration genau eine neutrale
+ * Teamkennung für die zugehörige Veranstaltung ein. Das Kennwort kann hier
+ * jederzeit ersetzt werden; durch die Session-Version verlieren alle bisher
+ * angemeldeten Geräte dann sofort ihren Zugriff.
+ */
+function EventPassSharedAccessManager() {
+  const utils = trpc.useUtils();
+  const status = trpc.eventPassSharedAccess.status.useQuery(undefined, {
+    staleTime: 15_000,
+  });
+  const [currentAdminPassword, setCurrentAdminPassword] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const save = trpc.eventPassSharedAccess.save.useMutation({
+    onSuccess: async result => {
+      setCurrentAdminPassword("");
+      setPassword("");
+      setConfirmation("");
+      await Promise.all([
+        utils.eventPassSharedAccess.status.invalidate(),
+        utils.audit.activities.invalidate(),
+      ]);
+      toast.success(
+        result.replacedExistingAccess
+          ? "Teamkennwort geändert. Alle bisher angemeldeten Teamgeräte wurden abgemeldet."
+          : "Gemeinsamer Event-Pass-Zugang wurde eingerichtet."
+      );
+    },
+    onError: error => toast.error(error.message),
+  });
+  const canSave =
+    currentAdminPassword.length > 0 &&
+    password.length >= 10 &&
+    password === confirmation &&
+    !save.isPending;
+  const copyIdentifier = async () => {
+    if (!status.data?.identifier) return;
+    try {
+      await navigator.clipboard.writeText(status.data.identifier);
+      toast.success("Teamkennung wurde kopiert");
+    } catch {
+      toast.error("Teamkennung konnte nicht kopiert werden. Bitte manuell übernehmen.");
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-4 text-sm text-blue-950">
+        <p className="font-semibold">Ein gemeinsamer Zugang – nur für diese Veranstaltung</p>
+        <p className="mt-1 text-xs leading-5 text-blue-900">
+          Die Teamkennung ist keine private E-Mail-Adresse und darf zusammen mit dem
+          Passwort nur an die Personen weitergegeben werden, die die Veranstaltung
+          tatsächlich planen. Änderungen am Kennwort melden alle offenen Team-Sitzungen ab.
+        </p>
+      </div>
+      <div className="rounded-lg border border-slate-200 bg-white p-3">
+        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Teamkennung</p>
+        <div className="mt-1 flex flex-wrap items-center gap-2">
+          <code className="rounded bg-slate-100 px-2 py-1 font-mono text-sm font-semibold text-slate-900">
+            {status.data?.identifier ?? "Wird geladen …"}
+          </code>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void copyIdentifier()}
+            disabled={!status.data?.identifier}
+          >
+            Kennung kopieren
+          </Button>
+        </div>
+        <p className="mt-2 text-xs leading-5 text-slate-600">
+          Diese Kennung wird auf der Anmeldeseite anstelle einer E-Mail-Adresse eingegeben.
+          Sie ist nur eine Bezeichnung; geschützt wird der Zugang durch das Kennwort.
+        </p>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label htmlFor="event-pass-shared-password">
+            {status.data?.configured ? "Neues Teamkennwort" : "Teamkennwort festlegen"}
+          </Label>
+          <Input
+            id="event-pass-shared-password"
+            type="password"
+            autoComplete="new-password"
+            value={password}
+            onChange={event => setPassword(event.target.value)}
+            placeholder="Mindestens 10 Zeichen"
+            disabled={save.isPending}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="event-pass-shared-password-confirmation">Teamkennwort wiederholen</Label>
+          <Input
+            id="event-pass-shared-password-confirmation"
+            type="password"
+            autoComplete="new-password"
+            value={confirmation}
+            onChange={event => setConfirmation(event.target.value)}
+            placeholder="Kennwort wiederholen"
+            disabled={save.isPending}
+          />
+          {confirmation && password !== confirmation && (
+            <p className="text-xs text-destructive">Die beiden Kennwörter stimmen nicht überein.</p>
+          )}
+        </div>
+      </div>
+      <div className="max-w-md space-y-1.5">
+        <Label htmlFor="event-pass-shared-admin-password">Eigenes Administratorpasswort</Label>
+        <Input
+          id="event-pass-shared-admin-password"
+          type="password"
+          autoComplete="current-password"
+          value={currentAdminPassword}
+          onChange={event => setCurrentAdminPassword(event.target.value)}
+          placeholder="Zur bewussten Freigabe eingeben"
+          disabled={save.isPending}
+        />
+      </div>
+      <Button
+        type="button"
+        disabled={!canSave}
+        className="bg-blue-600 text-white hover:bg-blue-700"
+        onClick={() =>
+          save.mutate({
+            password,
+            passwordConfirmation: confirmation,
+            currentAdminPassword,
+          })
+        }
+      >
+        {save.isPending
+          ? "Wird sicher gespeichert …"
+          : status.data?.configured
+            ? "Teamkennwort ändern & alle Geräte abmelden"
+            : "Gemeinsamen Teamzugang einrichten"}
+      </Button>
+    </div>
+  );
+}
+
 function MfaManager() {
   const utils = trpc.useUtils();
   const status = trpc.auth.mfaStatus.useQuery();
@@ -646,17 +789,31 @@ export default function Security() {
           </SecurityAccordion>
         )}
 
-        <SecurityAccordion
-          klemmiTarget="security-accesses"
-          title="Planungsteam-Zugänge verwalten"
-          description="Ansprechpartnerzugänge, Eventfreigaben, Initialcodes und Zugangsblätter verwalten."
-          icon={UsersRound}
-          tone="blue"
-          open={openGuidePanels.includes("accesses")}
-          onOpenChange={open => setGuidePanelOpen("accesses", open)}
-        >
-          <PlanningTeamAccessManager guideFocus={accessGuideFocus} />
-        </SecurityAccordion>
+        {currentPackageId === "event_pass" ? (
+          <SecurityAccordion
+            klemmiTarget="security-accesses"
+            title="Gemeinsamer Event-Pass-Teamzugang"
+            description="Neutrale Teamkennung für die eine Event-Pass-Veranstaltung einrichten oder sicher ändern."
+            icon={UsersRound}
+            tone="blue"
+            open={openGuidePanels.includes("accesses")}
+            onOpenChange={open => setGuidePanelOpen("accesses", open)}
+          >
+            <EventPassSharedAccessManager />
+          </SecurityAccordion>
+        ) : (
+          <SecurityAccordion
+            klemmiTarget="security-accesses"
+            title="Planungsteam-Zugänge verwalten"
+            description="Ansprechpartnerzugänge, Eventfreigaben, Initialcodes und Zugangsblätter verwalten."
+            icon={UsersRound}
+            tone="blue"
+            open={openGuidePanels.includes("accesses")}
+            onOpenChange={open => setGuidePanelOpen("accesses", open)}
+          >
+            <PlanningTeamAccessManager guideFocus={accessGuideFocus} />
+          </SecurityAccordion>
+        )}
 
         {isPrimaryTenantAdmin && (
           <SecurityAccordion
