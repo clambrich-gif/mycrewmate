@@ -74,6 +74,16 @@ describe("lokale MyCrewMate-Angebotsdemo", () => {
     expect(offerDemo).toContain("illustrative Website-Motive");
   });
 
+  it("ordnet MyCrewMate auf der öffentlichen Startseite eindeutig als Vereins- und Helferplanungssoftware ein", () => {
+    const offerDemo = source("client/src/pages/OfferDemo.tsx");
+
+    expect(offerDemo).toContain("Vereins- und Eventplanung, die");
+    expect(offerDemo).toContain("Software für Vereins- und Eventplanung");
+    expect(offerDemo).toContain("Helferplanung, Aufgaben, Schichten und Einsatzpläne");
+    expect(offerDemo).toContain("Helferplanung und Einsatzpläne – ohne Excel-Chaos");
+    expect(offerDemo).toContain("Radsportveranstaltungsplanung");
+  });
+
   it("hängt die Demo isoliert außerhalb des geschützten Arbeitslayouts ein", () => {
     const app = source("client/src/App.tsx");
 

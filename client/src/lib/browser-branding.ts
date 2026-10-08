@@ -31,7 +31,7 @@ export function browserBrandingForHostname(hostname: string | undefined | null):
 
   if (isMarketingHost(normalizedHostname)) {
     return {
-      title: "MyCrewMate · Die Software für Vereins- und Eventplanung",
+      title: "MyCrewMate · Vereins- und Eventplanung mit Helferplanung",
       faviconHref: NORMAL_ICON,
       appleTouchIconHref: NORMAL_ICON,
       appleWebAppTitle: "MyCrewMate",

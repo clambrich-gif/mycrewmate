@@ -15,11 +15,11 @@ describe("Browserkennung für Homepage, Vereins-App und Master-Portal", () => {
 
   it("kennzeichnet die öffentliche Homepage mit einem erklärenden Seitentitel", () => {
     expect(browserBrandingForHostname("www.mycrewmate.de")).toMatchObject({
-      title: "MyCrewMate · Die Software für Vereins- und Eventplanung",
+      title: "MyCrewMate · Vereins- und Eventplanung mit Helferplanung",
       faviconHref: "/icons/mycrewmate-pwa-192.png",
     });
     expect(browserBrandingForHostname("mycrewmate.de").title).toBe(
-      "MyCrewMate · Die Software für Vereins- und Eventplanung"
+      "MyCrewMate · Vereins- und Eventplanung mit Helferplanung"
     );
   });
 
@@ -42,7 +42,7 @@ describe("Browserkennung für Homepage, Vereins-App und Master-Portal", () => {
 
     expect(app).toContain("applyBrowserBranding()");
     expect(html).toContain(
-      "<title>MyCrewMate · Die Software für Vereins- und Eventplanung</title>"
+      "<title>MyCrewMate · Vereins- und Eventplanung mit Helferplanung</title>"
     );
     expect(html).toContain('href="/icons/mycrewmate-pwa-192.png"');
     expect(serviceWorker).toContain('"/icons/mycrewmate-admin-192.png"');

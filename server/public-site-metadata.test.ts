@@ -21,6 +21,14 @@ const htmlShell = `<!doctype html>
 </html>`;
 
 describe("öffentliche MyCrewMate-Metadaten", () => {
+  it("beschreibt die Startseite eindeutig als Vereins- und Helferplanungssoftware", () => {
+    expect(MARKETING_PAGE_TITLE).toContain("Vereins- und Eventplanung");
+    expect(MARKETING_PAGE_TITLE).toContain("Helferplanung");
+    expect(MARKETING_PAGE_DESCRIPTION).toContain("Einsatzpläne");
+    expect(MARKETING_PAGE_DESCRIPTION).toContain("Vereinsfeste");
+    expect(MARKETING_PAGE_DESCRIPTION).toContain("Sportveranstaltungen");
+  });
+
   it("liefert für die kanonische Startseite eindeutige, indexierbare Metadaten", () => {
     const metadata = publicSiteMetadataFor("www.mycrewmate.de", "/?quelle=mail");
 

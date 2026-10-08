@@ -376,7 +376,7 @@ const TARGET_GROUPS: TargetGroup[] = [
     detailTitle:
       "Für Radsportveranstaltungen, bei denen draußen alles zusammenkommen muss.",
     detailText:
-      "Ob RTF, Gravelrunde, Marathon, Jedermannrennen oder Vereinsausfahrt: MyCrewMate verbindet Helfer, Schichten, GPS-/GPX-Strecken, Stationen, Material und Rückkehrbereich in einer klaren Planung.",
+      "Ob RTF, Gravelrunde, Marathon, Jedermannrennen oder Vereinsausfahrt: MyCrewMate verbindet Helferplanung, Einsatzpläne, GPS-/GPX-Strecken, Stationen, Material und Rückkehrbereich in einer klaren Radsportveranstaltungsplanung.",
     highlights: [
       "GPX-Strecken und Stationen im Blick",
       "Verpflegungspunkte und Streckenposten organisieren",
@@ -703,11 +703,12 @@ export default function OfferDemo() {
               Für Vereine, die mehr vorhaben
             </div>
             <h1 className="mt-6 max-w-3xl text-4xl font-black leading-[1.02] tracking-[-0.045em] text-slate-950 sm:text-5xl lg:text-6xl">
-              Planen, das <span className="text-blue-600">Freude</span> macht.
+              Vereins- und Eventplanung, die <span className="text-blue-600">Freude</span> macht.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600 sm:text-xl">
-              MyCrewMate macht aus vielen Einzelabsprachen einen klaren
-              gemeinsamen Ablauf – vom ersten Helfer bis zum letzten Abbau.
+              MyCrewMate ist die Software für Vereins- und Eventplanung:
+              Helferplanung, Aufgaben, Schichten und Einsatzpläne an einem Ort –
+              vom ersten Helfer bis zum letzten Abbau.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button
@@ -890,11 +891,12 @@ export default function OfferDemo() {
             Weniger Reibung. Mehr Teamgeist.
           </p>
           <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-            Eine Oberfläche, die mitdenkt.
+            Helferplanung und Einsatzpläne – ohne Excel-Chaos.
           </h2>
           <p className="mt-4 text-base leading-7 text-slate-600">
-            Nicht mehr Funktionen um ihrer selbst willen. Sondern genau die
-            Klarheit, die ein Verein vor, während und nach dem Event braucht.
+            Für Vereinsfeste, Sportveranstaltungen und ehrenamtliche Teams:
+            Genau die Klarheit, die ein Verein vor, während und nach dem Event
+            braucht – ohne verstreute Listen, alte Screenshots und Zurufe.
           </p>
         </div>
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -969,11 +971,12 @@ export default function OfferDemo() {
               Für wen ist MyCrewMate?
             </p>
             <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-              Für Vereine, die Menschen zusammenbringen.
+              Für Vereine, die Veranstaltungen organisieren und Menschen zusammenbringen.
             </h2>
             <p className="mt-4 text-base leading-7 text-slate-600">
-              Klickt auf eure Veranstaltungswelt und seht, wie MyCrewMate euren
-              Ablauf einfacher machen kann.
+              Ob Radsportverein, Musikverein, Feuerwehr oder Sportverein:
+              MyCrewMate bringt Helfer, Aufgaben und den Einsatzplan in einen
+              verständlichen Ablauf.
             </p>
           </div>
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
