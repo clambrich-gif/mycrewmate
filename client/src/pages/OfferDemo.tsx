@@ -1,4 +1,5 @@
 import { PackageComparisonSection } from "@/components/PackageComparisonSection";
+import { KlemmiMascot } from "@/components/KlemmiMascot";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -621,8 +622,7 @@ export default function OfferDemo() {
         Zum Inhalt springen
       </a>
       <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-sm font-semibold text-amber-950">
-        Musterdemo · Preise, Warenkorb und Checkout sind fiktiv – es wird keine
-        Bestellung ausgelöst.
+        Preis- und Paketübersicht · Auf dieser Seite wird keine Bestellung ausgelöst.
       </div>
 
       <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
@@ -647,6 +647,12 @@ export default function OfferDemo() {
               href="#so-einfach"
             >
               Vorteile
+            </a>
+            <a
+              className="rounded-md transition-colors hover:text-blue-700 focus-visible:outline-none"
+              href="/vereinsdemo"
+            >
+              Vereinsdemo
             </a>
             <a
               className="rounded-md transition-colors hover:text-blue-700 focus-visible:outline-none"
@@ -677,14 +683,15 @@ export default function OfferDemo() {
                 Zum Login
               </Button>
             </a>
-            <Button
-              type="button"
-              className="hidden rounded-xl bg-blue-600 px-4 text-white hover:bg-blue-700 sm:inline-flex"
-              onClick={scrollToPackages}
-            >
-              Pakete ansehen{" "}
-              <ArrowRight className="size-4" aria-hidden="true" />
-            </Button>
+            <a href="/vereinsdemo" className="hidden sm:block">
+              <Button
+                type="button"
+                className="rounded-xl bg-blue-600 px-4 text-white hover:bg-blue-700"
+              >
+                Vereinsdemo öffnen{" "}
+                <ArrowRight className="size-4" aria-hidden="true" />
+              </Button>
+            </a>
           </div>
         </div>
       </header>
@@ -700,44 +707,44 @@ export default function OfferDemo() {
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white/85 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-blue-800 shadow-sm">
               <HeartHandshake className="size-3.5" aria-hidden="true" />
-              Für Vereine, die mehr vorhaben
+              Für Vereine mit vielen helfenden Händen
             </div>
             <h1 className="mt-6 max-w-3xl text-4xl font-black leading-[1.02] tracking-[-0.045em] text-slate-950 sm:text-5xl lg:text-6xl">
-              Vereins- und Eventplanung, die <span className="text-blue-600">Freude</span> macht.
+              Euer Vereinsfest klar organisieren – <span className="text-blue-600">auch wenn alle ehrenamtlich helfen.</span>
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600 sm:text-xl">
-              MyCrewMate ist die Software für Vereins- und Eventplanung:
-              Helferplanung, Aufgaben, Schichten und Einsatzpläne an einem Ort –
-              vom ersten Helfer bis zum letzten Abbau.
+              Wer macht was? Welche Schicht ist noch offen? Wo liegen Material,
+              Kontakte und wichtige Fristen? MyCrewMate bringt alles in einen
+              gemeinsamen, verständlichen Ablauf – vom ersten To-do bis zum Abbau.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Button
-                type="button"
-                size="lg"
-                className="rounded-xl bg-orange-500 px-6 text-white shadow-lg shadow-orange-200 hover:bg-orange-600"
-                onClick={scrollToPackages}
-              >
-                Angebot entdecken{" "}
-                <ArrowRight className="size-4" aria-hidden="true" />
-              </Button>
+              <a href="/vereinsdemo">
+                <Button
+                  type="button"
+                  size="lg"
+                  className="rounded-xl bg-orange-500 px-6 text-white shadow-lg shadow-orange-200 hover:bg-orange-600"
+                >
+                  Vereinsdemo ausprobieren{" "}
+                  <ArrowRight className="size-4" aria-hidden="true" />
+                </Button>
+              </a>
               <Button
                 type="button"
                 variant="outline"
                 className="min-h-11 rounded-xl border-slate-300 bg-white/80 px-5 text-slate-700 hover:border-blue-300 hover:bg-white hover:text-blue-700"
-                onClick={() => setPromoVideoOpen(true)}
+                onClick={scrollToPackages}
               >
-                <Play className="size-4" aria-hidden="true" />
-                So einfach funktioniert&apos;s
+                Passendes Paket finden
               </Button>
             </div>
             <div className="mt-9 flex flex-wrap gap-x-6 gap-y-3 text-sm font-semibold text-slate-600">
               <span className="inline-flex items-center gap-2">
-                <CircleCheckBig className="size-4 text-emerald-600" /> Sofort im
-                Browser
+                <CircleCheckBig className="size-4 text-emerald-600" /> Ohne lange
+                Einarbeitung
               </span>
               <span className="inline-flex items-center gap-2">
-                <CircleCheckBig className="size-4 text-emerald-600" /> Für
-                Handy, Tablet & PC
+                <CircleCheckBig className="size-4 text-emerald-600" /> Für Team,
+                Helfer und Vorstand
               </span>
               <span className="inline-flex items-center gap-2">
                 <CircleCheckBig className="size-4 text-emerald-600" /> Klar
@@ -780,7 +787,7 @@ export default function OfferDemo() {
                         Heute priorisieren
                       </p>
                       <h2 className="mt-1 text-xl font-black tracking-tight text-slate-950">
-                        Alles im Griff.
+                        Heute wichtig.
                       </h2>
                     </div>
                     <span className="rounded-lg bg-orange-50 px-2 py-1 text-xs font-bold text-orange-700">
@@ -811,6 +818,12 @@ export default function OfferDemo() {
                     <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
                       <div className="h-full w-[78%] rounded-full bg-gradient-to-r from-blue-500 to-orange-400" />
                     </div>
+                  </div>
+                  <div className="mt-3 flex items-center gap-2 rounded-xl border border-orange-100 bg-orange-50 p-2.5">
+                    <KlemmiMascot className="size-10 shrink-0" decorative />
+                    <span className="text-xs font-semibold leading-4 text-orange-950">
+                      Ich zeige euch, was als Nächstes wichtig ist.
+                    </span>
                   </div>
                   <div className="mt-3 flex items-center gap-2 rounded-xl bg-slate-950 p-3 text-white">
                     <Route className="size-4 text-orange-300" />
