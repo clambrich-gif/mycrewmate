@@ -115,7 +115,7 @@ export function PublicPrivacyPage() {
       </section>
       <section>
         <h2 className="text-base font-bold text-slate-950">2.1 Vereinsdemo mit fiktiven Daten</h2>
-        <p className="mt-2">Die über QR-Codes erreichbare Vereinsdemo zeigt ausschließlich fiktive Musterdaten. Sie enthält keine Eingabefelder, keine Anmeldung und keine Herkunfts- oder Nutzungsanalyse. Beim Aufruf wird deshalb keine zusätzliche Demo-Datenerhebung durch MyCrewMate ausgelöst.</p>
+        <p className="mt-2">Die Vereinsdemo öffnet eine zeitlich begrenzte, eigene Testumgebung der MyCrewMate-Anwendung mit fiktiven Vereins-, Helfer-, Kontakt-, Standort- und Streckendaten. Tester können darin beispielhaft Helfer, Aufgaben oder Schichten ändern. Die Testumgebung wird beim Beenden der Demo sowie spätestens nach kurzer Zeit automatisch gelöscht. Bitte verwenden Sie ausschließlich erfundene Namen und Kontaktdaten. Es findet keine Herkunfts- oder Nutzungsanalyse statt.</p>
       </section>
       <section>
         <h2 className="text-base font-bold text-slate-950">3. Technische Zugriffe</h2>

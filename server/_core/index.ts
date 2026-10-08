@@ -16,6 +16,11 @@ import { registerGameAssetRoutes } from "../game-asset-routes";
 import { handleTeamNotesCleanupHeartbeat } from "../chat-cleanup-heartbeat";
 import { handleProductExpiryReminderHeartbeat } from "../product-expiry-heartbeat";
 import {
+  handlePublicDemoAccess,
+  handlePublicDemoCleanupHeartbeat,
+  handlePublicDemoEnd,
+} from "../public-demo-cleanup";
+import {
   canonicalMarketingRedirectUrl,
   shouldRedirectProtectiveMarketingDomain,
 } from "../marketing-domain-redirect";
@@ -140,6 +145,9 @@ async function startServer() {
   registerMarketingVideoRoutes(app);
   app.post("/api/scheduled/team-notes-cleanup", handleTeamNotesCleanupHeartbeat);
   app.post("/api/scheduled/product-expiry-reminders", handleProductExpiryReminderHeartbeat);
+  app.post("/api/scheduled/public-demo-cleanup", handlePublicDemoCleanupHeartbeat);
+  app.get("/api/public-demo/access", handlePublicDemoAccess);
+  app.post("/api/public-demo/end", handlePublicDemoEnd);
 
   // tRPC API
   app.use(

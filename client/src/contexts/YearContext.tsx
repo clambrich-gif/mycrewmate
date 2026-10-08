@@ -37,6 +37,20 @@ export function storedEventYear() {
 
 export function storedTenantId() {
   if (typeof window === "undefined") return DEFAULT_TENANT_ID;
+  // Der Wert wird ausschließlich durch den serverseitig bestätigten
+  // Vereinsdemo-Einmalzugang gesetzt. Die tatsächliche Zugehörigkeit bleibt
+  // anschließend bei jeder API-Anfrage serverseitig geprüft.
+  const demoTenant = new URLSearchParams(window.location.search)
+    .get("demotenant")
+    ?.trim();
+  if (demoTenant && /^mycrewmate-demo-[a-z0-9-]{3,80}$/.test(demoTenant)) {
+    try {
+      window.localStorage.setItem(TENANT_STORAGE_KEY, demoTenant);
+    } catch {
+      // Ohne Speicher bleibt die serverseitige Zugehörigkeitsprüfung maßgeblich.
+    }
+    return demoTenant;
+  }
   const value = window.localStorage.getItem(TENANT_STORAGE_KEY)?.trim();
   return value && /^[a-z0-9-]{3,96}$/.test(value)
     ? value

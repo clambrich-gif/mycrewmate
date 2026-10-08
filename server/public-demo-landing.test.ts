@@ -7,23 +7,32 @@ const read = (relative: string) =>
   fs.readFileSync(path.join(root, relative), "utf8");
 
 describe("öffentliche Vereinsdemo", () => {
-  it("stellt die zentrale QR-Zielseite mit freiwilliger Herkunftsauswahl bereit", () => {
+  it("führt von der schlanken Auswahl in einen echten temporären App-Zugang", () => {
     const app = read("client/src/App.tsx");
     const landing = read("client/src/pages/ClubDemoLanding.tsx");
+    const entry = read("client/src/pages/PublicDemoEntry.tsx");
+    const server = read("server/_core/index.ts");
 
     expect(app).toContain('path="/vereinsdemo"');
-    expect(landing).toContain("Datensparsame Musterdemo");
-    expect(landing).toContain("ausschließlich fiktive Beispiele");
-    expect(landing).toContain("Unverbindliche Demo anfragen");
+    expect(app).toContain('path="/demozugang"');
+    expect(landing).toContain("Die echte App testen");
+    expect(landing).toContain("trpc.publicDemo.start.useMutation");
+    expect(landing).toContain("/api/public-demo/access");
+    expect(entry).toContain("window.location.replace");
+    expect(server).toContain('app.get("/api/public-demo/access", handlePublicDemoAccess)');
   });
 
-  it("erhebt auf der Musterdemo keine Nutzungs- oder Herkunftsdaten mehr", () => {
+  it("isoliert und löscht die fiktiven Daten wieder", () => {
     const router = read("server/routers.ts");
-    const landing = read("client/src/pages/ClubDemoLanding.tsx");
+    const demo = read("server/public-demo.ts");
+    const cleanup = read("server/public-demo-cleanup.ts");
 
-    expect(landing).not.toContain("recordSource");
-    expect(landing).not.toContain("sessionStorage");
-    expect(landing).not.toContain("eventLabel");
-    expect(router).not.toContain("publicDemo: router");
+    expect(router).toContain("publicDemo: router");
+    expect(demo).toContain("createPublicDemoSession");
+    expect(demo).toContain("deletePublicDemoTenant");
+    expect(demo).toContain("acceptCurrentTenantContractDocuments");
+    expect(cleanup).toContain("handlePublicDemoAccess");
+    expect(cleanup).toContain("handlePublicDemoEnd");
+    expect(cleanup).toContain("handlePublicDemoCleanupHeartbeat");
   });
 });

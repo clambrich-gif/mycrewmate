@@ -296,6 +296,7 @@ function focusCurrentPageSearch() {
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { user, loading, isAuthenticated, logout } = useAuth();
+  const isPublicDemoSession = user?.openId.startsWith("tenant-admin:demo-session-") === true;
   const onlinePresence = useOnlinePresence();
   const {
     isCoAdmin,
@@ -320,6 +321,27 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [klemmiMuted, setKlemmiMuted] = useState(
     getKlemmiMuted
   );
+  const finishPublicDemo = useCallback(() => {
+    void fetch("/api/public-demo/end", {
+      method: "POST",
+      credentials: "same-origin",
+      keepalive: true,
+    }).finally(() => {
+      window.location.assign("/vereinsdemo");
+    });
+  }, []);
+  useEffect(() => {
+    if (!isAuthenticated || !isPublicDemoSession) return;
+    const endOnPageHide = () => {
+      void fetch("/api/public-demo/end", {
+        method: "POST",
+        credentials: "same-origin",
+        keepalive: true,
+      });
+    };
+    window.addEventListener("pagehide", endOnPageHide);
+    return () => window.removeEventListener("pagehide", endOnPageHide);
+  }, [isAuthenticated, isPublicDemoSession]);
   useEffect(() => {
     const syncMuteState = () => setKlemmiMuted(getKlemmiMuted());
     window.addEventListener(KLEMMI_MUTE_EVENT, syncMuteState);
@@ -2471,6 +2493,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </div>
             )}
           </div>
+          {isPublicDemoSession && (
+            <aside className="mb-5 flex flex-col gap-3 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-950 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-black">Vereinsdemo · temporäre fiktive Daten</p>
+                <p className="mt-0.5 text-xs leading-5 text-orange-900">Du arbeitest in der echten App. Alle Demo-Eingaben werden beim Verlassen dieser Testumgebung automatisch gelöscht.</p>
+              </div>
+              <Button type="button" variant="outline" size="sm" className="shrink-0 border-orange-300 bg-white text-orange-950 hover:bg-orange-100" onClick={finishPublicDemo}>
+                Demo beenden
+              </Button>
+            </aside>
+          )}
           {isReadOnlyPlanningAccess && (
             <aside
               data-slot="readonly-access-notice"

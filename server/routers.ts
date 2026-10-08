@@ -150,6 +150,13 @@ import {
   clearProtectedPdfShareFailures,
   recordProtectedPdfShareFailure,
 } from "./public-share-rate-limit";
+import {
+  createPublicDemoSession,
+  getPublicDemoLoginDetails,
+  isPublicDemoOpenId,
+  PUBLIC_DEMO_SESSION_MS,
+  type PublicDemoPackage,
+} from "./public-demo";
 import { upcomingPreparationDeadlines } from "./dashboard-deadlines";
 import {
   renderContractAcceptanceEmail,
@@ -172,6 +179,25 @@ const MASTER_RESET_REQUEST_WINDOW_MS = 15 * 60 * 1000;
 const MASTER_RESET_REQUEST_LIMIT = 3;
 const masterResetRequestAttempts = new Map<string, { count: number; resetAt: number }>();
 const MFA_CHALLENGE_TOKEN_BYTES = 32;
+const PUBLIC_DEMO_START_WINDOW_MS = 30 * 60 * 1000;
+// Begrenzt die Kosten der kurzlebigen, datenbankgestützten Testumgebungen.
+const PUBLIC_DEMO_START_LIMIT = 5;
+const publicDemoStartAttempts = new Map<string, { count: number; resetAt: number }>();
+
+function allowPublicDemoStart(clientKey: string) {
+  const now = Date.now();
+  const current = publicDemoStartAttempts.get(clientKey);
+  if (!current || current.resetAt <= now) {
+    publicDemoStartAttempts.set(clientKey, {
+      count: 1,
+      resetAt: now + PUBLIC_DEMO_START_WINDOW_MS,
+    });
+    return true;
+  }
+  if (current.count >= PUBLIC_DEMO_START_LIMIT) return false;
+  current.count += 1;
+  return true;
+}
 
 async function safelyRecordPresence(
   req: Parameters<typeof recordSessionPresence>[0],
@@ -796,6 +822,10 @@ async function requireCompletedPlanningTeamPasswordChange(user: {
   role: "user" | "admin";
   isCron?: boolean;
 }) {
+  // Öffentliche Vereinsdemos erhalten eine isolierte technische Sitzung ohne
+  // Vertrags- oder Passwortdialog. Sie sind nie einem echten Verein zugeordnet
+  // und werden beim Verlassen beziehungsweise spätestens nach kurzer Zeit gelöscht.
+  if (isPublicDemoOpenId(user.openId)) return;
   const accessId = planningTeamAccessIdForUser(user);
   if (
     accessId !== null &&
@@ -1973,6 +2003,21 @@ function teamNoteReadIdentity(user: {
 
 export const appRouter = router({
   system: systemRouter,
+  publicDemo: router({
+    start: publicProcedure
+      .input(z.object({ packageId: z.enum(["event_pass", "light", "pro"]) }))
+      .mutation(async ({ ctx, input }) => {
+        const clientKey = `public-demo:${getClientKey(ctx.req)}`;
+        if (!allowPublicDemoStart(clientKey)) {
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message:
+              "Es wurden bereits mehrere Demos gestartet. Bitte warten Sie kurz und versuchen Sie es dann erneut.",
+          });
+        }
+        return createPublicDemoSession(input.packageId as PublicDemoPackage);
+      }),
+  }),
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     passwordStatus: publicProcedure.query(async () => {
@@ -3249,6 +3294,29 @@ export const appRouter = router({
             code: "BAD_REQUEST",
             message: "Der Einmal-Wechsel-Link ist ungültig oder abgelaufen.",
           });
+        }
+        const demoLogin = await getPublicDemoLoginDetails({
+          tenantId: handoff.tenantId,
+          openId: handoff.createdByOpenId,
+        });
+        if (demoLogin) {
+          const token = await sdk.createSessionToken(demoLogin.user.openId, {
+            name: "Demo-Planung",
+            expiresInMs: PUBLIC_DEMO_SESSION_MS,
+            sessionVersion: demoLogin.sessionVersion,
+          });
+          ctx.res.cookie(COOKIE_NAME, token, {
+            ...getSessionCookieOptions(ctx.req),
+            maxAge: PUBLIC_DEMO_SESSION_MS,
+          });
+          return {
+            success: true,
+            tenantId: handoff.tenantId,
+            startEvent: { year: demoLogin.year, eventId: demoLogin.eventId },
+            publicDemo: true,
+            packageId: demoLogin.packageId,
+            ...(isEmbeddedManusPreview(ctx.req) ? { previewSessionToken: token } : {}),
+          } as const;
         }
         const token = await sdk.createSessionToken(ADMIN_PASSWORD_OPEN_ID, {
           name: "Plattform-Administrator",
