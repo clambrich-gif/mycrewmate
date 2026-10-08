@@ -15,6 +15,10 @@ import { registerTenantLogoRoutes } from "../tenant-logo-routes";
 import { registerGameAssetRoutes } from "../game-asset-routes";
 import { handleTeamNotesCleanupHeartbeat } from "../chat-cleanup-heartbeat";
 import { handleProductExpiryReminderHeartbeat } from "../product-expiry-heartbeat";
+import {
+  canonicalMarketingRedirectUrl,
+  shouldRedirectProtectiveMarketingDomain,
+} from "../marketing-domain-redirect";
 import { registerLocalStorageRoutes } from "../storage";
 import { backfillTenantContractAcceptanceSnapshots } from "../db";
 import { createContext } from "./context";
@@ -59,6 +63,24 @@ async function startServer() {
   // Das Vertrauen in genau einen vorgeschalteten Proxy ist für sichere Cookies nötig.
   app.set("trust proxy", 1);
   const server = createServer(app);
+
+  // Die reservierten Landesdomains sind ausschließlich Schutzdomains. Sie
+  // liefern daher nie eine eigene Kopie der Website aus, sondern führen mit
+  // Pfad und Query dauerhaft auf die deutsche Hauptdomain zurück.
+  app.use((req, res, next) => {
+    if (!shouldRedirectProtectiveMarketingDomain(req.method, req.hostname)) {
+      next();
+      return;
+    }
+
+    const destination = canonicalMarketingRedirectUrl(req.hostname, req.originalUrl);
+    if (!destination) {
+      next();
+      return;
+    }
+
+    res.redirect(308, destination);
+  });
 
   // Einheitliche Browser-Schutzvorgaben. Die Kartenkacheln sind die einzigen
   // bewusst zugelassenen fremden Bildquellen; Anwendungs- und API-Daten bleiben
