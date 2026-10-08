@@ -153,8 +153,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(layout).toContain("KlemmiLoginGreeting");
     expect(layout).toContain("firstLoginOnboarding.isSuccess");
     expect(greeting).toContain("claimDailyKlemmiGreeting");
-    expect(greeting).toContain("INACTIVITY_DELAY_MS = 120_000");
-    expect(greeting).toContain("MAX_IDLE_HINTS_PER_SESSION = 2");
+    expect(greeting).toContain("IDLE_HINTS_SESSION_KEY");
+    expect(greeting).toContain("sessionStorage.setItem");
+    expect(greeting).toContain("IDLE_RECHECK_MS = 15_000");
+    expect(greeting).toContain("idleHintDelayMs");
     expect(greeting).toContain("MIN_GREETING_VISIBLE_MS = 4_500");
     expect(greeting).toContain("GREETING_EXIT_DURATION_MS = 360");
     expect(greeting).toContain("completedWithAudio");
@@ -169,6 +171,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(reactionCatalog).toContain("KLEMMI_SHIFT_SUCCESS_AUDIO_IDS");
     expect(audio).toContain('"login-warmgelaufen"');
     expect(audio).toContain('"idle-vorstehhund"');
+    expect(audio).toContain("Das schützt die Planungsdaten und ist gut für den Datenschutz.");
     expect(audio).toContain('"error-halt-stopp"');
     expect(audio).toContain('"success-zack"');
     expect(plan).toContain('triggerKlemmiReaction("shift-success")');

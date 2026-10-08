@@ -9,6 +9,10 @@ import {
   KLEMMI_AUDIO_SCRIPTS,
   type KlemmiAudioId,
 } from "@/lib/klemmiAudio";
+import {
+  idleHintDelayMs,
+  MAX_IDLE_HINTS_PER_SESSION,
+} from "@/lib/klemmi-inactivity";
 import { trpc } from "@/lib/trpc";
 import {
   KLEMMI_ERROR_AUDIO_IDS,
@@ -21,8 +25,8 @@ import { createPortal } from "react-dom";
 type GreetingKind = "login" | "idle" | "error" | "shift-success";
 type ActiveGreeting = { kind: GreetingKind; clipId: KlemmiAudioId };
 
-const INACTIVITY_DELAY_MS = 120_000;
-const MAX_IDLE_HINTS_PER_SESSION = 2;
+const IDLE_HINTS_SESSION_KEY = "mycrewmate:klemmi-idle-hints";
+const IDLE_RECHECK_MS = 15_000;
 /** Sichtbarer Fallback bei stummgeschalteter oder vom Browser blockierter Audioausgabe. */
 const MIN_GREETING_VISIBLE_MS = 4_500;
 /** Die kurze Ausfahrbewegung beginnt erst nach der vollständigen Ansage. */
@@ -70,6 +74,7 @@ export function KlemmiLoginGreeting({
   const lastClipRef = useRef<KlemmiAudioId | null>(null);
   const idleHintsRef = useRef(0);
   const idleTimerRef = useRef<number | null>(null);
+  const lastActivityAtRef = useRef(Date.now());
 
   const dismiss = useCallback(() => {
     cancel();
@@ -97,9 +102,18 @@ export function KlemmiLoginGreeting({
     if (!enabled) {
       claimAttemptedRef.current = false;
       idleHintsRef.current = 0;
+      lastActivityAtRef.current = Date.now();
+      sessionStorage.removeItem(IDLE_HINTS_SESSION_KEY);
       dismiss();
       return;
     }
+    const rememberedHints = Number.parseInt(
+      sessionStorage.getItem(IDLE_HINTS_SESSION_KEY) ?? "0",
+      10
+    );
+    idleHintsRef.current = Number.isFinite(rememberedHints)
+      ? Math.min(Math.max(rememberedHints, 0), MAX_IDLE_HINTS_PER_SESSION)
+      : 0;
     if (claimAttemptedRef.current) return;
     claimAttemptedRef.current = true;
     claimDailyGreeting.mutate(undefined, {
@@ -133,15 +147,36 @@ export function KlemmiLoginGreeting({
     };
     const scheduleIdleHint = () => {
       clearIdleTimer();
-      if (idleHintsRef.current >= MAX_IDLE_HINTS_PER_SESSION) return;
+      const idleForMs = Date.now() - lastActivityAtRef.current;
+      const delay = idleHintDelayMs(idleHintsRef.current, idleForMs);
+      if (delay === null) return;
       idleTimerRef.current = window.setTimeout(() => {
-        if (!aDialogIsOpen() && !document.hidden && !active) {
-          idleHintsRef.current += 1;
-          showLocalReaction("idle");
+        if (aDialogIsOpen() || document.hidden || active) {
+          idleTimerRef.current = window.setTimeout(scheduleIdleHint, IDLE_RECHECK_MS);
+          return;
         }
-      }, INACTIVITY_DELAY_MS);
+        const currentIdleForMs = Date.now() - lastActivityAtRef.current;
+        const currentDelay = idleHintDelayMs(
+          idleHintsRef.current,
+          currentIdleForMs
+        );
+        if (currentDelay === null) return;
+        if (currentDelay > 0) {
+          idleTimerRef.current = window.setTimeout(scheduleIdleHint, currentDelay);
+          return;
+        }
+        idleHintsRef.current += 1;
+        sessionStorage.setItem(
+          IDLE_HINTS_SESSION_KEY,
+          String(idleHintsRef.current)
+        );
+        showLocalReaction("idle");
+      }, delay);
     };
-    const handleActivity = () => scheduleIdleHint();
+    const handleActivity = () => {
+      lastActivityAtRef.current = Date.now();
+      scheduleIdleHint();
+    };
     const events: Array<keyof WindowEventMap> = [
       "pointerdown",
       "keydown",
@@ -151,14 +186,17 @@ export function KlemmiLoginGreeting({
     events.forEach(eventName =>
       window.addEventListener(eventName, handleActivity, { passive: true })
     );
-    document.addEventListener("visibilitychange", handleActivity);
+    const handleVisibilityChange = () => {
+      if (!document.hidden) handleActivity();
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     scheduleIdleHint();
     return () => {
       clearIdleTimer();
       events.forEach(eventName =>
         window.removeEventListener(eventName, handleActivity)
       );
-      document.removeEventListener("visibilitychange", handleActivity);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [active, enabled, showLocalReaction]);
 
