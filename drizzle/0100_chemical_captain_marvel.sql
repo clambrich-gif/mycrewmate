@@ -1,1 +1,1 @@
-DROP TABLE `wbt_training_links`;
+DROP TABLE IF EXISTS `wbt_training_links`;

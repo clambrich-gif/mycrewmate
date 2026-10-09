@@ -234,6 +234,7 @@ describe("Master-Admin-Bereinigung", () => {
     const page = source("client/src/pages/MasterAdminPortal.tsx");
     const router = source("server/routers.ts");
     const schema = source("drizzle/schema.ts");
+    const migration = source("drizzle/0100_chemical_captain_marvel.sql");
     const help = source("client/src/pages/Help.tsx");
     expect(app).not.toContain('path="/wbt"');
     expect(app).not.toContain("WbtPortal");
@@ -241,6 +242,7 @@ describe("Master-Admin-Bereinigung", () => {
     expect(router).not.toContain("createWbtTrainingLink");
     expect(router).not.toContain("wbt: router");
     expect(schema).not.toContain("wbt_training_links");
+    expect(migration).toContain("DROP TABLE IF EXISTS `wbt_training_links`");
     expect(help).not.toContain("Web-Based-Training (WBT)");
   });
 
