@@ -762,6 +762,48 @@ export const pilotInquiries = mysqlTable(
 );
 export type PilotInquiry = typeof pilotInquiries.$inferSelect;
 
+/**
+ * Schlanke, ausschließlich im Master-Portal sichtbare Dokumentation einer
+ * individuell abgestimmten Pilotvereinbarung. Der Eintrag ist bewusst von
+ * öffentlichen Pilotanfragen und von den AGB-/AVV-Annahmen getrennt.
+ */
+export const pilotContracts = mysqlTable(
+  "pilot_contracts",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    contractNumber: varchar("contractNumber", { length: 40 }).notNull(),
+    /** Optionaler Bezug zu einem später angelegten Pilotverein. */
+    tenantId: varchar("tenantId", { length: 96 }).references(() => tenants.id, {
+      onDelete: "set null",
+    }),
+    clubName: varchar("clubName", { length: 200 }).notNull(),
+    legalName: varchar("legalName", { length: 240 }).notNull(),
+    contactName: varchar("contactName", { length: 120 }).notNull(),
+    contactEmail: varchar("contactEmail", { length: 320 }).notNull(),
+    packageId: mysqlEnum("packageId", PRODUCT_PACKAGE_IDS)
+      .$type<ProductPackageId>()
+      .notNull(),
+    startsOn: date("startsOn", { mode: "string" }).notNull(),
+    endsOn: date("endsOn", { mode: "string" }).notNull(),
+    /** Der kurze Pilotablauf braucht nur Entwurf, manuell dokumentierte Vereinbarung und Archiv. */
+    status: mysqlEnum("status", ["draft", "agreed", "archived"])
+      .default("draft")
+      .notNull(),
+    /** Ausschließlich interne Klarstellung oder individuelle Absprache, nie Vereinsansicht. */
+    internalNote: text("internalNote"),
+    agreedAt: timestamp("agreedAt"),
+    archivedAt: timestamp("archivedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    uniqueIndex("pilot_contracts_number_unique").on(table.contractNumber),
+    index("pilot_contracts_status_created_idx").on(table.status, table.createdAt),
+    index("pilot_contracts_tenant_idx").on(table.tenantId),
+  ]
+);
+export type PilotContract = typeof pilotContracts.$inferSelect;
+
 export const contacts = mysqlTable(
   "contacts",
   {

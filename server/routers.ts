@@ -100,6 +100,7 @@ import {
   createPublicHelperTaskPdf,
   renderClubPrivacyNoticeTemplatePdf,
   renderDataSubjectRequestTemplatePdf,
+  renderPilotContractDraftPdf,
   renderPrivacyIncidentTemplatePdf,
   renderTenantAcceptedContractDocumentsPdf,
   renderTenantContractReceiptPdf,
@@ -4375,6 +4376,9 @@ export const appRouter = router({
     pilotInquiries: masterAdminProcedure.query(() =>
       db.listPilotInquiriesForPlatformAdmin()
     ),
+    pilotContracts: masterAdminProcedure.query(() =>
+      db.listPilotContractsForPlatformAdmin()
+    ),
     completePilotInquiry: masterAdminProcedure
       .input(
         z.object({
@@ -4403,6 +4407,120 @@ export const appRouter = router({
           null
         );
         return deleted;
+      }),
+    createPilotContract: masterAdminProcedure
+      .input(
+        z
+          .object({
+            tenantId: z.string().trim().regex(/^[a-z0-9-]{3,96}$/).nullable().optional(),
+            clubName: z.string().trim().min(2).max(200),
+            legalName: z.string().trim().min(2).max(240),
+            contactName: z.string().trim().min(2).max(120),
+            contactEmail: z.string().trim().email().max(320),
+            packageId: z.enum(PRODUCT_PACKAGE_IDS),
+            startsOn: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/),
+            endsOn: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/),
+            internalNote: z.string().trim().max(2_000).nullable().optional(),
+          })
+          .refine(value => value.endsOn >= value.startsOn, {
+            path: ["endsOn"],
+            message: "Das Pilotende darf nicht vor dem Pilotbeginn liegen.",
+          })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const created = await db.createPilotContractForPlatformAdmin(input);
+        await recordSecurityActivity(
+          auditActor(ctx.user),
+          `Pilotvertragsentwurf ${created.contractNumber} für „${created.clubName}“ angelegt`,
+          "created",
+          null
+        );
+        return created;
+      }),
+    updatePilotContract: masterAdminProcedure
+      .input(
+        z
+          .object({
+            id: z.number().int().positive(),
+            tenantId: z.string().trim().regex(/^[a-z0-9-]{3,96}$/).nullable().optional(),
+            clubName: z.string().trim().min(2).max(200),
+            legalName: z.string().trim().min(2).max(240),
+            contactName: z.string().trim().min(2).max(120),
+            contactEmail: z.string().trim().email().max(320),
+            packageId: z.enum(PRODUCT_PACKAGE_IDS),
+            startsOn: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/),
+            endsOn: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/),
+            internalNote: z.string().trim().max(2_000).nullable().optional(),
+            status: z.enum(["draft", "agreed"]),
+          })
+          .refine(value => value.endsOn >= value.startsOn, {
+            path: ["endsOn"],
+            message: "Das Pilotende darf nicht vor dem Pilotbeginn liegen.",
+          })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const updated = await db.updatePilotContractForPlatformAdmin(input);
+        await recordSecurityActivity(
+          auditActor(ctx.user),
+          `Pilotvertrag ${updated.contractNumber} für „${updated.clubName}“ gespeichert (${updated.status})`,
+          "updated",
+          null
+        );
+        return updated;
+      }),
+    archivePilotContract: masterAdminProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const archived = await db.archivePilotContractForPlatformAdmin(input.id);
+        await recordSecurityActivity(
+          auditActor(ctx.user),
+          `Pilotvertrag #${archived.id} archiviert`,
+          "updated",
+          null
+        );
+        return archived;
+      }),
+    deletePilotContract: masterAdminProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const deleted = await db.deletePilotContractForPlatformAdmin(input.id);
+        await recordSecurityActivity(
+          auditActor(ctx.user),
+          `Pilotvertrag #${deleted.id} endgültig gelöscht`,
+          "deleted",
+          null
+        );
+        return deleted;
+      }),
+    pilotContractPdf: masterAdminProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ input }) => {
+        const contract = await db.getPilotContractForPlatformAdmin(input.id);
+        if (!contract) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Der Pilotvertrag wurde nicht gefunden.",
+          });
+        }
+        const pdf = await renderPilotContractDraftPdf({
+          contractNumber: contract.contractNumber,
+          clubName: contract.clubName,
+          legalName: contract.legalName,
+          contactName: contract.contactName,
+          contactEmail: contract.contactEmail,
+          packageName: PRODUCT_PACKAGE_META[contract.packageId].name,
+          startsOn: contract.startsOn,
+          endsOn: contract.endsOn,
+          status: contract.status,
+          createdAt: contract.createdAt,
+          agreedAt: contract.agreedAt,
+          internalNote: contract.internalNote,
+        });
+        return {
+          filename: `Pilotvereinbarung_${safeExportName(contract.clubName)}_${contract.contractNumber}.pdf`,
+          mimeType: "application/pdf",
+          base64: pdf.toString("base64"),
+        } as const;
       }),
     deleteTestAccess: masterAdminProcedure
       .input(
