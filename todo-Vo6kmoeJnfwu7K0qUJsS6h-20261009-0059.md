@@ -72,6 +72,7 @@
 - [x] Master-Portal sprachlich präzisiert: „Pilotzugang“ statt Testzugang, „Zustimmungen für den Vereinszugang“ statt Vertragsunterlagen, „Admin-Zugang einrichten“ sowie eine eindeutige endgültige Vereinslöschung. Paketzuordnungen und der noch deaktivierte Marktstart sind klar benannt.
 - [x] Typecheck, 46 gezielte Regressionstests und Produktionsbuild für die Master-Portal-Bereinigung erfolgreich ausgeführt; Laufzeitcode und Domains zusätzlich ohne WBT- bzw. `micromate`-Treffer geprüft.
 - [x] Vereinsanlage im Master-Portal vereinfacht: ein Name statt doppelter Bezeichnung, kein sichtbarer interner Status, kein separater Supportkontakt und eine klare Auswahl aus Pilotzugang, Testzugang, Aktiv, Pausiert oder Abgelaufen. Bestehende Vereine – insbesondere RSC Eifelland Mayen – wurden dabei nicht verändert; keine Datenmigration.
+- [x] Aktivierungs-E-Mails für neue Planungs- und Vereinszugänge gegen falsche Vorbelegungen abgesichert: Empfänger starten leer, Versandhaken starten aus, Vereinswechsel und Formularneustart löschen alte Auswahlwerte; auf dem Server ist der Versand ohne ausdrückliche Bestätigung ebenfalls aus. Mandantentrennung, Typprüfung, Build und 53 gezielte Regressionstests erfolgreich geprüft.
 - [ ] Vor dem geplanten Kaufstart am 01.01.2027 Checkout, Steuerstatus und eine etwaige BFSG-/Barrierefreiheitsinformation für den dann verbindlich bestätigten Vertriebspfad freigeben.
 
 ## Später prüfen

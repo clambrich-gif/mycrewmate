@@ -37,12 +37,27 @@ describe("Planungsteam-Einladungen und Ansprechpartner-E-Mails", () => {
     expect(contactsPage).toContain("contact.email");
   });
 
-  it("übernimmt in PlanningTeamAccessManager.tsx bei Kontaktauswahl automatisch die hinterlegte E-Mail", () => {
+  it("übernimmt bei Kontaktauswahl nur die E-Mail dieser Person und versendet nie automatisch", () => {
     const manager = readFileSync(
       path.resolve(__dirname, "../client/src/components/PlanningTeamAccessManager.tsx"),
       "utf8"
     );
-    expect(manager).toContain("email: contact.email ? contact.email : current.email");
+    const router = readFileSync(path.resolve(__dirname, "routers.ts"), "utf8");
+    const masterPortal = readFileSync(
+      path.resolve(__dirname, "../client/src/pages/MasterAdminPortal.tsx"),
+      "utf8"
+    );
+
+    expect(manager).toContain("const [sendEmailInvite, setSendEmailInvite] = useState(false)");
+    expect(manager).toContain('email: contact.email ?? ""');
+    expect(manager).not.toContain("email: contact.email ? contact.email : current.email");
+    expect(manager).toContain("form.contactId !== null && form.email.trim()");
+    expect(manager).toContain("setSendEmailInvite(false);");
+    expect(router).toContain("sendEmail: z.boolean().default(false)");
+    expect(router).not.toContain("sendEmail: z.boolean().default(true)");
+    expect(masterPortal).toContain("const [sendInvitationEmail, setSendInvitationEmail] = useState(false)");
+    expect(masterPortal).toContain('setAdminEmail("");');
+    expect(masterPortal).toContain("Erst Name und E-Mail der Person eintragen");
     expect(manager).toContain("createWithInvitationLink");
     expect(manager).toContain("sendInvitationLink");
     expect(manager).toContain("Aktivierungslink senden");

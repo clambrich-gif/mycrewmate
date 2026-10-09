@@ -189,7 +189,9 @@ export function PlanningTeamAccessManager({
     label: string;
   } | null>(null);
   const [resetPassword, setResetPassword] = useState("");
-  const [sendEmailInvite, setSendEmailInvite] = useState(true);
+  // Ein Mailversand darf nie aus einem vorherigen Verein oder einer vorherigen
+  // Auswahl übernommen werden. Er wird daher immer bewusst bestätigt.
+  const [sendEmailInvite, setSendEmailInvite] = useState(false);
   const [issuedInvitation, setIssuedInvitation] = useState<{
     label: string;
     email: string;
@@ -200,13 +202,35 @@ export function PlanningTeamAccessManager({
   const [sendLinkPassword, setSendLinkPassword] = useState("");
   const [upgradeOpen, setUpgradeOpen] = useState(false);
 
+  const resetNewAccessDraft = () => {
+    setForm(EMPTY_FORM);
+    setSendEmailInvite(false);
+  };
+
   useEffect(() => {
     if (guideFocus === "existing") {
       setOpenSections(["existing-accesses"]);
     } else if (guideFocus === "create") {
+      resetNewAccessDraft();
       setOpenSections(["create-access"]);
     }
   }, [guideFocus]);
+
+  // Bei einem Vereinswechsel oder einer entfernten Kontaktperson darf weder
+  // eine alte E-Mail-Adresse noch ein aktivierter Versand im neuen Verein
+  // weiterverwendet werden.
+  useEffect(() => {
+    if (
+      form.id !== null ||
+      form.contactId === null ||
+      !availableContacts.isSuccess
+    ) {
+      return;
+    }
+    if (!(availableContacts.data ?? []).some(contact => contact.id === form.contactId)) {
+      resetNewAccessDraft();
+    }
+  }, [availableContacts.data, availableContacts.isSuccess, form.contactId, form.id]);
 
   const eventById = useMemo(
     () => new Map((availableEvents.data ?? []).map(event => [event.id, event])),
@@ -280,7 +304,7 @@ export function PlanningTeamAccessManager({
   const createWithInvitationLink = trpc.planningTeamAccesses.createWithInvitationLink.useMutation({
     onSuccess: async result => {
       await invalidate();
-      setForm(EMPTY_FORM);
+      resetNewAccessDraft();
       setIssuedInvitation({
         label: result.label,
         email: result.email,
@@ -318,7 +342,7 @@ export function PlanningTeamAccessManager({
     onSuccess: async result => {
       downloadBase64File(result.base64, result.mimeType, result.filename);
       await invalidate();
-      setForm(EMPTY_FORM);
+      resetNewAccessDraft();
       toast.success("Planungsteam-Zugang angelegt; Einmal-Zugangsblatt wird heruntergeladen");
     },
     onError: error => toast.error(error.message),
@@ -326,7 +350,7 @@ export function PlanningTeamAccessManager({
   const updateAccess = trpc.planningTeamAccesses.update.useMutation({
     onSuccess: async () => {
       await invalidate();
-      setForm(EMPTY_FORM);
+      resetNewAccessDraft();
       toast.success("Planungsteam-Zugang aktualisiert; bestehende Sitzungen wurden abgemeldet");
     },
     onError: error => toast.error(error.message),
@@ -433,6 +457,7 @@ export function PlanningTeamAccessManager({
               existingPermissions.includes(m) ? "write" : "off",
             ])
           );
+    setSendEmailInvite(false);
     setForm({
       id: access.id,
       contactId: access.contactId,
@@ -505,7 +530,12 @@ export function PlanningTeamAccessManager({
       <Accordion
         type="multiple"
         value={openSections}
-        onValueChange={setOpenSections}
+        onValueChange={sections => {
+          const opensNewAccess =
+            sections.includes("create-access") && !openSections.includes("create-access");
+          if (opensNewAccess && form.id === null) resetNewAccessDraft();
+          setOpenSections(sections);
+        }}
         className="space-y-3"
       >
         <AccordionItem
@@ -776,16 +806,18 @@ export function PlanningTeamAccessManager({
                 disabled={busy || availableContacts.isLoading}
                 onValueChange={value => {
                   if (value === "unlinked") {
-                    setForm(current => ({ ...current, contactId: null }));
+                    setSendEmailInvite(false);
+                    setForm(current => ({ ...current, contactId: null, email: "" }));
                     return;
                   }
                   const contact = contactChoices.find(item => item.id === Number(value));
                   if (!contact) return;
+                  setSendEmailInvite(false);
                   setForm(current => ({
                     ...current,
                     contactId: contact.id,
                     label: contact.name,
-                    email: contact.email ? contact.email : current.email,
+                    email: contact.email ?? "",
                   }));
                 }}
               >
@@ -824,7 +856,10 @@ export function PlanningTeamAccessManager({
                 placeholder="z. B. vorname.nachname@verein.de"
                 value={form.email}
                 disabled={busy}
-                onChange={e => setForm(curr => ({ ...curr, email: e.target.value }))}
+                onChange={e => {
+                  setSendEmailInvite(false);
+                  setForm(curr => ({ ...curr, email: e.target.value }));
+                }}
                 className="bg-white"
               />
               <p className="text-xs text-slate-600">
@@ -1068,10 +1103,11 @@ export function PlanningTeamAccessManager({
               onChange={event => setForm(current => ({ ...current, currentAdminPassword: event.target.value }))}
             />
           </div>
-          {form.id === null && form.email.trim() && (
+          {form.id === null && form.contactId !== null && form.email.trim() && (
             <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-slate-700">
               <Checkbox
                 checked={sendEmailInvite}
+                disabled={busy}
                 onCheckedChange={checked => setSendEmailInvite(checked === true)}
               />
               <span>Aktivierungs-E-Mail direkt automatisch an <strong>{form.email.trim()}</strong> senden</span>

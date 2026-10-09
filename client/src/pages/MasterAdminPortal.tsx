@@ -1105,7 +1105,7 @@ export default function MasterAdminPortal() {
   const [adminModalTenant, setAdminModalTenant] = useState<{ id: string; name: string } | null>(null);
   const [adminName, setAdminName] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
-  const [sendInvitationEmail, setSendInvitationEmail] = useState(true);
+  const [sendInvitationEmail, setSendInvitationEmail] = useState(false);
   const [issuedAdminSheet, setIssuedAdminSheet] = useState<{
     tenantName: string;
     adminName: string;
@@ -1141,6 +1141,7 @@ export default function MasterAdminPortal() {
       setAdminModalTenant(null);
       setAdminName("");
       setAdminEmail("");
+      setSendInvitationEmail(false);
       await Promise.all([
         utils.platformAdmin.tenantOverview.invalidate(),
         utils.platformAdmin.accessInventory.invalidate(),
@@ -1854,7 +1855,8 @@ export default function MasterAdminPortal() {
                             onClick={() => {
                               setAdminModalTenant({ id: tenant.id, name: tenant.name });
                               setAdminName("");
-                              setAdminEmail(tenant.contactEmail);
+                              setAdminEmail("");
+                              setSendInvitationEmail(false);
                             }}
                           >
                             <KeyRound className="size-3.5" /> Admin-Zugang einrichten
@@ -2393,7 +2395,16 @@ export default function MasterAdminPortal() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={Boolean(adminModalTenant)} onOpenChange={open => !open && setAdminModalTenant(null)}>
+      <Dialog
+        open={Boolean(adminModalTenant)}
+        onOpenChange={open => {
+          if (open) return;
+          setAdminModalTenant(null);
+          setAdminName("");
+          setAdminEmail("");
+          setSendInvitationEmail(false);
+        }}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Vereins-Administrator anlegen</DialogTitle>
@@ -2429,21 +2440,30 @@ export default function MasterAdminPortal() {
                 type="email"
                 placeholder="admin@verein.de"
                 value={adminEmail}
-                onChange={e => setAdminEmail(e.target.value)}
+                onChange={e => {
+                  setAdminEmail(e.target.value);
+                  setSendInvitationEmail(false);
+                }}
                 required
               />
             </div>
-            <label className="flex items-center gap-2 cursor-pointer pt-1">
-              <input
-                type="checkbox"
-                checked={sendInvitationEmail}
-                onChange={e => setSendInvitationEmail(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span className="text-xs text-slate-700">
-                Einladungs-E-Mail direkt per SMTP versenden
-              </span>
-            </label>
+            {adminName.trim() && adminEmail.trim() ? (
+              <label className="flex items-center gap-2 cursor-pointer pt-1">
+                <input
+                  type="checkbox"
+                  checked={sendInvitationEmail}
+                  onChange={e => setSendInvitationEmail(e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-xs text-slate-700">
+                  Einladungs-E-Mail direkt per SMTP versenden
+                </span>
+              </label>
+            ) : (
+              <p className="text-xs text-slate-500">
+                Erst Name und E-Mail der Person eintragen, dann kann der Versand bewusst gewählt werden.
+              </p>
+            )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setAdminModalTenant(null)}>
                 Abbrechen

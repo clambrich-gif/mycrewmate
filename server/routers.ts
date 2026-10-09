@@ -3807,7 +3807,10 @@ export const appRouter = router({
           moduleAccess: moduleAccessSchema.optional(),
           isTenantAdmin: z.boolean().default(false),
           eventIds: z.array(z.number().int().positive()).min(1).max(500),
-          sendEmail: z.boolean().default(true),
+          // Ein Aktivierungslink wird nur dann per E-Mail versendet, wenn die
+          // Oberfläche oder eine andere aufrufende Stelle dies ausdrücklich
+          // bestätigt. Ohne Angabe wird ausschließlich ein Link erzeugt.
+          sendEmail: z.boolean().default(false),
           currentAdminPassword: z.string().min(1).max(200),
         })
       )
@@ -3900,7 +3903,7 @@ export const appRouter = router({
         z.object({
           id: z.number().int().positive(),
           currentAdminPassword: z.string().min(1).max(200),
-          sendEmail: z.boolean().default(true),
+          sendEmail: z.boolean().default(false),
         })
       )
       .mutation(async ({ ctx, input }) => {
