@@ -711,12 +711,12 @@ export default function OfferDemo() {
               Für Vereine mit vielen helfenden Händen
             </div>
             <h1 className="mt-6 max-w-3xl text-4xl font-black leading-[1.02] tracking-[-0.045em] text-slate-950 sm:text-5xl lg:text-6xl">
-              Euer Vereinsfest klar organisieren – <span className="text-blue-600">auch wenn alle ehrenamtlich helfen.</span>
+              Vereins- und Eventplanung, die <span className="text-blue-600">Freude</span> macht.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600 sm:text-xl">
-              Wer macht was? Welche Schicht ist noch offen? Wo liegen Material,
-              Kontakte und wichtige Fristen? MyCrewMate bringt alles in einen
-              gemeinsamen, verständlichen Ablauf – vom ersten To-do bis zum Abbau.
+              MyCrewMate ist die Software für Vereins- und Eventplanung:
+              Helferplanung, Aufgaben, Schichten und Einsatzpläne an einem Ort –
+              vom ersten Helfer bis zum letzten Abbau.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <a href="/vereinsdemo">

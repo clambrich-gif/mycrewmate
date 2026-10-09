@@ -31,6 +31,7 @@
 - [x] Typecheck, 205 relevante Server-/UI-/Demo-Tests und Produktionsbuild nach der Einsatzplanoptimierung erfolgreich ausgeführt.
 - [x] Zweite Zuweisungsoptimierung umgesetzt: Auswahl wird beim Speicherklick unmittelbar quittiert, Klemmi reagiert vor der aufwendigen Plan-Neubewertung und ein nicht blockierender Hinweis zeigt die Hintergrundaktualisierung an.
 - [x] Live-Domain geprüft: `app.mycrewmate.de` liefert noch den alten Produktionsbuild (u. a. mit Demo-Chat, Speichern/Laden und PDF-Ausgabe). Für die Veröffentlichung ist der im Projekt dokumentierte GitHub-/Coolify-Deploy-Schritt erforderlich; in dieser Sitzung ist kein Coolify- oder GitHub-Deploy-Connector verbunden.
+- [x] Den bestätigten Hero-Einstieg der Hauptseite wiederhergestellt: „Vereins- und Eventplanung, die Freude macht.“ sowie den früheren beschreibenden Absatz aus dem Stand `ed906d40`.
 
 ## Später prüfen
 
