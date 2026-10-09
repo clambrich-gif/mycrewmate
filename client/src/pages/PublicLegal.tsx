@@ -119,7 +119,11 @@ export function PublicPrivacyPage() {
         <p className="mt-2">Die Anfrage wird in der MyCrewMate-Datenbank gespeichert. Die strukturierte Benachrichtigung an das Pilotteam und die automatische Eingangsbestätigung werden über das bei Hetzner Online GmbH geführte Mailpostfach versandt. Die Datenbankanfrage bleibt bis zur dokumentierten Entscheidung aktiv und wird anschließend drei Jahre aufbewahrt; danach wird sie technisch gelöscht. Einen vorzeitigen Löschwunsch können Sie jederzeit an <a className="text-blue-700 underline underline-offset-2" href="mailto:info@mycrewmate.de">info@mycrewmate.de</a> richten. Erforderliche E-Mail-Korrespondenz wird im Mailpostfach nach derselben Frist organisatorisch bereinigt, soweit keine rechtliche Pflicht entgegensteht.</p>
       </section>
       <section>
-        <h2 className="text-base font-bold text-slate-950">2.2 Vereinsdemo mit fiktiven Daten</h2>
+        <h2 className="text-base font-bold text-slate-950">2.2 Vereinbarter Pilotzugang</h2>
+        <p className="mt-2">Kommt ein Pilotzugang zustande, werden die für die vereinbarte Vereins- und Eventplanung erforderlichen Daten in der Anwendung verarbeitet. Nach dem vereinbarten Pilotende wird der Zugang archiviert; die Daten bleiben für drei Jahre reaktivierbar und werden danach technisch gelöscht. Einen vorzeitigen Löschwunsch können Sie jederzeit an <a className="text-blue-700 underline underline-offset-2" href="mailto:info@mycrewmate.de">info@mycrewmate.de</a> richten. Für die Verarbeitung von Helfer- und weiteren Vereinsdaten im Pilotzugang werden die konkreten Rollen, Vereinbarungen und Datenschutzhinweise vor der Freischaltung mit dem Verein abgestimmt.</p>
+      </section>
+      <section>
+        <h2 className="text-base font-bold text-slate-950">2.3 Vereinsdemo mit fiktiven Daten</h2>
         <p className="mt-2">Die Vereinsdemo öffnet eine zeitlich begrenzte, eigene Testumgebung der MyCrewMate-Anwendung mit fiktiven Vereins-, Helfer-, Kontakt-, Standort- und Streckendaten. Tester können darin beispielhaft Helfer, Aufgaben oder Schichten ändern. Die Testumgebung wird beim Beenden der Demo sowie spätestens nach kurzer Zeit automatisch gelöscht. Bitte verwenden Sie ausschließlich erfundene Namen und Kontaktdaten. Es findet keine Herkunfts- oder Nutzungsanalyse statt.</p>
       </section>
       <section>
@@ -135,7 +139,7 @@ export function PublicPrivacyPage() {
         <p className="mt-2">Sie haben nach Maßgabe der DSGVO insbesondere das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Widerspruch und Datenübertragbarkeit sowie das Recht auf Beschwerde bei einer Datenschutzaufsichtsbehörde.</p>
       </section>
       <section className="border-t border-slate-200 pt-6">
-        <p className="flex items-start gap-2 text-xs leading-5 text-slate-500"><ExternalLink className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />Diese Datenschutzerklärung beschreibt den bewusst tracker- und formularfreien Startauftritt. Sie ist vor einer späteren Ergänzung um Kontaktformular, Newsletter, Analyse oder Zahlungsdienste entsprechend anzupassen.</p>
+        <p className="flex items-start gap-2 text-xs leading-5 text-slate-500"><ExternalLink className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />Diese Datenschutzerklärung beschreibt die aktuelle öffentliche Website mit Pilotanfrage und fiktiver Vereinsdemo. Für Newsletter, Analyse, Zahlungsdienste oder weitere Formulare wird sie vor deren Einsatz entsprechend ergänzt.</p>
       </section>
     </PublicLegalShell>
   );
