@@ -1754,7 +1754,7 @@ export default function MasterAdminPortal() {
           </Card>
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-[1.7fr_1fr]">
+        <section>
           <Card className="border-slate-200 bg-white/95 py-0 shadow-sm">
             <CardHeader className="border-b border-slate-100 px-5 py-4 sm:px-6">
               <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
@@ -1930,17 +1930,6 @@ export default function MasterAdminPortal() {
             </CardContent>
           </Card>
 
-          <div className="space-y-4">
-            <Card className="border-amber-200 bg-amber-50/70 py-0 shadow-sm">
-              <CardHeader className="px-5 py-4">
-                <CardTitle className="flex items-center gap-2 text-base text-amber-950"><CreditCard className="size-5 text-amber-700" /> Marktstart noch nicht aktiv</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 px-5 pb-5 text-sm leading-5 text-amber-900">
-                <p>Keine öffentliche Registrierung, kein Checkout und keine Zahlungsanbindung.</p>
-                <p>Diese Funktionen werden als deaktivierter Live-Schaltungsbaustein vorbereitet und erst auf Ihren ausdrücklichen Startbefehl verbunden.</p>
-              </CardContent>
-            </Card>
-          </div>
         </section>
 
         <section aria-labelledby="archivierte-vereine">

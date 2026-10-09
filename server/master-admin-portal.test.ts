@@ -48,7 +48,6 @@ describe("Master-Admin-Portal", () => {
     expect(app).toContain('path="/master-admin"');
     expect(page).toContain("platformAdmin.tenantOverview.useQuery");
     expect(page).toContain("Verein anlegen");
-    expect(page).toContain("Keine öffentliche Registrierung, kein Checkout und keine Zahlungsanbindung.");
   });
 
   it("richtet die Master-MFA primär über QR-Scan ein und hält die manuelle Eingabe nur als Ausweichweg bereit", () => {
@@ -251,6 +250,7 @@ describe("Master-Admin-Bereinigung", () => {
 
     expect(page).toContain('return status === "test"\n    ? "Pilotzugang"');
     expect(page).toContain("Zustimmungen für den Vereinszugang vollständig.");
-    expect(page).toContain("Marktstart noch nicht aktiv");
+    expect(page).not.toContain("Marktstart noch nicht aktiv");
+    expect(page).not.toContain("Keine öffentliche Registrierung, kein Checkout und keine Zahlungsanbindung.");
   });
 });
