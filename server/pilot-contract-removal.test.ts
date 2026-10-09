@@ -31,6 +31,6 @@ describe("Schlanker Pilotablauf ohne Vertragsmodul", () => {
     expect(router).toContain("pilotInquiries: masterAdminProcedure");
     expect(portal).toContain("Pilotanfragen");
     expect(db).toContain("tenantContractAcceptances");
-    expect(portal).toContain("Vertragsunterlagen bestätigt.");
+    expect(portal).toContain("Zustimmungen für den Vereinszugang vollständig.");
   });
 });

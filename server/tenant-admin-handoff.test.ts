@@ -46,7 +46,7 @@ describe("Vereinsadmin-Verwaltung, Marktstart-Sperre & Handoff", () => {
 
   it("stellt im Master-Portal Bedienelemente für Handoff und Vereinsadmin-Erstellung bereit", () => {
     expect(portalSource).toContain("In Vereinsansicht wechseln");
-    expect(portalSource).toContain("Admin-Zugang anlegen");
+    expect(portalSource).toContain("Admin-Zugang einrichten");
     expect(portalSource).toContain("createTenantAdmin.mutate");
     expect(portalSource).toContain("createHandoff.mutate");
   });

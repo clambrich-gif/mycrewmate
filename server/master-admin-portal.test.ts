@@ -163,8 +163,8 @@ describe("Master-Admin-Portal", () => {
     expect(db).toContain("tenantContractAcceptances");
     expect(db).toContain("confirmedDocumentCount");
     expect(page).toContain("TenantContractAcceptanceStatus");
-    expect(page).toContain("Vertragsunterlagen bestätigt.");
-    expect(page).toContain("Vertragsunterlagen noch offen.");
+    expect(page).toContain("Zustimmungen für den Vereinszugang vollständig.");
+    expect(page).toContain("Zustimmungen für den Vereinszugang noch offen.");
   });
 
   it("zeigt je Verein einen aggregierten MFA-Status ohne Sicherheitsgeheimnisse", () => {
@@ -210,7 +210,8 @@ describe("Master-Admin-Portal", () => {
     expect(db).not.toContain("DEFAULT_TENANT_ID");
     expect(db).toContain("Es gibt keine vereinsbezogene technische Löschsperre");
     expect(db).toContain("await tx.delete(events).where(eq(events.tenantId, tenantId))");
-    expect(page).toContain("Testverein endgültig entfernen");
+    expect(page).toContain("Verein mit allen Daten endgültig löschen?");
+    expect(page).toContain("Verein endgültig löschen");
     expect(page).toContain("kann nicht rückgängig gemacht werden");
     expect(page).toContain('tenant.status !== "active"');
     expect(page).toContain("filteredArchivedTenants.map(tenant => (");
@@ -232,12 +233,24 @@ describe("Master-Admin-Bereinigung", () => {
     const app = source("client/src/App.tsx");
     const page = source("client/src/pages/MasterAdminPortal.tsx");
     const router = source("server/routers.ts");
+    const schema = source("drizzle/schema.ts");
+    const migration = source("drizzle/0100_chemical_captain_marvel.sql");
     const help = source("client/src/pages/Help.tsx");
     expect(app).not.toContain('path="/wbt"');
     expect(app).not.toContain("WbtPortal");
     expect(page).not.toContain("WBT-Schulungslinks erstellen");
     expect(router).not.toContain("createWbtTrainingLink");
     expect(router).not.toContain("wbt: router");
+    expect(schema).not.toContain("wbt_training_links");
+    expect(migration).toContain("DROP TABLE IF EXISTS `wbt_training_links`");
     expect(help).not.toContain("Web-Based-Training (WBT)");
+  });
+
+  it("trennt Pilotzugänge sprachlich von der öffentlichen Vereinsdemo", () => {
+    const page = source("client/src/pages/MasterAdminPortal.tsx");
+
+    expect(page).toContain('return status === "test"\n    ? "Pilotzugang"');
+    expect(page).toContain("Zustimmungen für den Vereinszugang vollständig.");
+    expect(page).toContain("Marktstart noch nicht aktiv");
   });
 });

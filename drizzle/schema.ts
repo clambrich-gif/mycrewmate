@@ -622,33 +622,7 @@ export const tenantContractAcceptances = mysqlTable(
     ),
   ]
 );
-export type TenantContractAcceptance =
-  typeof tenantContractAcceptances.$inferSelect;
-
-/**
- * Historische, nicht mehr erreichbare WBT-Linkdaten aus einem früheren Schulungsmodul.
- * Die Tabelle bleibt während des Vorab-Betriebs unverändert bestehen, damit keine
- * unnötige Datenbanklöschung oder Migration ausgelöst wird. Es gibt keine aktive
- * Oberfläche, Route oder API mehr, die diese Daten verwenden kann.
- */
-export const wbtTrainingLinks = mysqlTable(
-  "wbt_training_links",
-  {
-    id: int("id").autoincrement().primaryKey(),
-    tokenHash: varchar("tokenHash", { length: 64 }).notNull(),
-    trackId: mysqlEnum("trackId", ["helper", "admin"]).notNull(),
-    createdByOpenId: varchar("createdByOpenId", { length: 64 }).notNull(),
-    expiresAt: timestamp("expiresAt").notNull(),
-    revokedAt: timestamp("revokedAt"),
-    createdAt: timestamp("createdAt").defaultNow().notNull(),
-  },
-  table => [
-    uniqueIndex("wbt_training_links_token_unique").on(table.tokenHash),
-    index("wbt_training_links_expiry_idx").on(table.expiresAt),
-    index("wbt_training_links_creator_idx").on(table.createdByOpenId, table.createdAt),
-  ]
-);
-export type WbtTrainingLink = typeof wbtTrainingLinks.$inferSelect;
+export type TenantContractAcceptance = typeof tenantContractAcceptances.$inferSelect;
 
 /**
  * Minimaler, datensparsamer Versandnachweis für automatische Paketablaufhinweise.
