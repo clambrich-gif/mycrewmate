@@ -3,7 +3,7 @@
 ## Abgeschlossen
 
 - [x] Öffentliche Seite `/vereinsdemo` als schlanke Auswahlseite für Event Pass, Light und Pro umgesetzt.
-- [x] Ultimate als reine Erläuterung für Verbände und große Mehrspartenvereine positioniert.
+- [x] Enterprise als individuelle Lösung für Verbände und große Mehrspartenvereine positioniert.
 - [x] Für jeden Start einen eigenen, fiktiven und temporären Demo-Mandanten mit Musterdaten erzeugt.
 - [x] Echte MyCrewMate-App statt einer separaten Dashboard-Kopie geöffnet.
 - [x] Musterhelfer, Ansprechpartner, Aufgaben, Schichten, Material, Orte und für Pro GPX-Dateien angelegt.
@@ -32,8 +32,13 @@
 - [x] Zweite Zuweisungsoptimierung umgesetzt: Auswahl wird beim Speicherklick unmittelbar quittiert, Klemmi reagiert vor der aufwendigen Plan-Neubewertung und ein nicht blockierender Hinweis zeigt die Hintergrundaktualisierung an.
 - [x] Live-Domain geprüft: `app.mycrewmate.de` liefert noch den alten Produktionsbuild (u. a. mit Demo-Chat, Speichern/Laden und PDF-Ausgabe). Für die Veröffentlichung ist der im Projekt dokumentierte GitHub-/Coolify-Deploy-Schritt erforderlich; in dieser Sitzung ist kein Coolify- oder GitHub-Deploy-Connector verbunden.
 - [x] Den bestätigten Hero-Einstieg der Hauptseite wiederhergestellt: „Vereins- und Eventplanung, die Freude macht.“ sowie den früheren beschreibenden Absatz aus dem Stand `ed906d40`.
+- [x] Hauptseite als transparente Produkt- und Preisseite weiterentwickelt: reguläre Endpreise ab 01.01.2027, Vergleichstabelle und Enterprise bleiben sichtbar; Warenkorb- und Checkout-Simulation sind entfernt.
+- [x] Pilotprogramm als eigenständige Zweitseite `/pilot` integriert: kostenloser, individuell abgestimmter Test bis 31.12.2026, keine automatische Verlängerung, 50%-Pilotvorteil und noch nicht sendendes Anfrageformular.
+- [x] Hauptseite und Pilotseite klar verknüpft: Pilot-Anfrage als Hauptweg, Vereinsdemo als separater Zweitweg, Preisrücklink auf `/pilot` sowie Enterprise statt Ultimate in der Pilotumgebung.
+- [x] Steuerkennzeichnung bewusst bis zur Rücksprache mit dem Steuerberater offen gelassen; die Website zeigt bis dahin ausschließlich bestätigte Endpreise ohne MwSt.-/USt.-Aussage.
 
 ## Später prüfen
 
-- [ ] Öffentliche Startseite erst in einem separaten Schritt inhaltlich und visuell überarbeiten.
+- [ ] Nach Steuerberatung die rechtlich korrekte Umsatzsteuer-/Mehrwertsteuerkennzeichnung vor dem Buchungsstart ergänzen.
+- [ ] Pilot-Anfrageformular datenschutzkonform an einen persönlichen Empfangsprozess anbinden.
 - [ ] Nach Veröffentlichung die Vereinsdemo auf der echten Marketing- und App-Domain einmal end-to-end testen.

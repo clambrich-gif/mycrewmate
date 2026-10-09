@@ -37,7 +37,6 @@ import {
   Play,
   Route,
   ShieldCheck,
-  ShoppingBag,
   Sparkles,
   Target,
   UsersRound,
@@ -129,7 +128,7 @@ const OFFERS: Offer[] = [
     name: "Event Pass",
     eyebrow: "Die flexible Einzelveranstaltung",
     price: 69,
-    priceUnit: "einmalig pro Veranstaltung*",
+    priceUnit: "einmalig pro Veranstaltung",
     audience: "Für ein konkretes Fest, Rennen oder Vereinswochenende",
     description:
       "Ein klarer Plan für eine Veranstaltung – einmalig, unkompliziert und ohne Dauerbindung.",
@@ -186,7 +185,7 @@ const OFFERS: Offer[] = [
     name: "Light",
     eyebrow: "Der feste Jahresablauf",
     price: 149,
-    priceUnit: "für ein Veranstaltungsjahr*",
+    priceUnit: "für ein Veranstaltungsjahr",
     audience: "Für Vereine mit einer regelmäßigen Hauptveranstaltung",
     description:
       "Der klare digitale Ablauf für euer jährliches Event und ein kleines festes Planungsteam.",
@@ -237,7 +236,7 @@ const OFFERS: Offer[] = [
     name: "Pro",
     eyebrow: "Die beliebteste Wahl",
     price: 299,
-    priceUnit: "für ein Veranstaltungsjahr*",
+    priceUnit: "für ein Veranstaltungsjahr",
     audience: "Für Vereine mit regelmäßigen Veranstaltungen und aktiven Teams",
     description:
       "Die volle Planungstiefe für Teams, bei denen Übersicht, Kommunikation und Sicherheit zählen.",
@@ -290,7 +289,7 @@ const OFFERS: Offer[] = [
     eyebrow: "Für eure eigene Lösung",
     price: 449,
     pricePrefix: "ab",
-    priceUnit: "für ein Veranstaltungsjahr*",
+    priceUnit: "für ein Veranstaltungsjahr",
     audience: "Für Großevents, Verbände & individuelle Abläufe",
     description:
       "Der Rahmen für Teams, die MyCrewMate an ihren echten Ablauf anpassen lassen möchten.",
@@ -464,21 +463,13 @@ const TARGET_GROUPS: TargetGroup[] = [
   },
 ];
 
-function scrollToPackages() {
-  document
-    .getElementById("pakete")
-    ?.scrollIntoView({ behavior: "smooth", block: "start" });
-}
-
 function OfferCard({
   offer,
   onDetails,
-  onAdd,
   onVideo,
 }: {
   offer: Offer;
   onDetails: (offer: Offer) => void;
-  onAdd: (offer: Offer) => void;
   onVideo: (offer: Offer) => void;
 }) {
   const Icon = offer.icon;
@@ -528,6 +519,9 @@ function OfferCard({
         <span className="ml-2 text-sm font-semibold text-slate-500">
           {offer.priceUnit}
         </span>
+        <p className="mt-2 text-xs font-bold uppercase tracking-[0.1em] text-blue-700">
+          Buchbar ab 01.01.2027
+        </p>
       </div>
       <ul className="mt-5 space-y-3 text-sm text-slate-700">
         {offer.highlights.map(highlight => (
@@ -551,14 +545,12 @@ function OfferCard({
         </div>
       )}
       <div className="mt-auto grid gap-2 pt-7">
-        <Button
-          type="button"
-          className={cn("w-full rounded-xl", offer.buttonClass)}
-          onClick={() => onAdd(offer)}
-        >
-          <ShoppingBag className="size-4" aria-hidden="true" />
-          Simuliert in den Warenkorb
-        </Button>
+        <a href="/pilot">
+          <Button type="button" className={cn("w-full rounded-xl", offer.buttonClass)}>
+            <HeartHandshake className="size-4" aria-hidden="true" />
+            Im Pilot testen
+          </Button>
+        </a>
         <Button
           type="button"
           variant="outline"
@@ -584,14 +576,6 @@ function OfferCard({
 
 export default function OfferDemo() {
   const [detailsOffer, setDetailsOffer] = useState<Offer | null>(null);
-  const [cartOffer, setCartOffer] = useState<Offer | null>(null);
-  const [cartOpen, setCartOpen] = useState(false);
-  const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [checkoutComplete, setCheckoutComplete] = useState(false);
-  const [inquiryClubName, setInquiryClubName] = useState("");
-  const [inquiryContactName, setInquiryContactName] = useState("");
-  const [inquiryEmail, setInquiryEmail] = useState("");
-  const [inquiryNote, setInquiryNote] = useState("");
   const [promoVideoOpen, setPromoVideoOpen] = useState(false);
   const [packageVideoOffer, setPackageVideoOffer] = useState<Offer | null>(
     null
@@ -600,18 +584,6 @@ export default function OfferDemo() {
     useState<TargetGroup | null>(null);
   const DetailIcon = detailsOffer?.icon ?? Sparkles;
   const TargetGroupIcon = selectedTargetGroup?.icon ?? UsersRound;
-
-  const addToCart = (offer: Offer) => {
-    setCartOffer(offer);
-    setCheckoutComplete(false);
-    setCartOpen(true);
-  };
-
-  const openCheckout = () => {
-    setCartOpen(false);
-    setCheckoutComplete(false);
-    setCheckoutOpen(true);
-  };
 
   return (
     <main
@@ -623,7 +595,13 @@ export default function OfferDemo() {
         Zum Inhalt springen
       </a>
       <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-sm font-semibold text-amber-950">
-        Preis- und Paketübersicht · Auf dieser Seite wird keine Bestellung ausgelöst.
+        <a
+          href="/pilot"
+          className="inline-flex items-center gap-1.5 rounded-md underline-offset-2 hover:text-orange-800 hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-200"
+        >
+          Pilotprogramm bis 31.12.2026 · Kostenlos am eigenen Event testen
+          <ArrowRight className="size-4" aria-hidden="true" />
+        </a>
       </div>
 
       <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
@@ -651,9 +629,9 @@ export default function OfferDemo() {
             </a>
             <a
               className="rounded-md transition-colors hover:text-blue-700 focus-visible:outline-none"
-              href="/vereinsdemo"
+              href="/pilot"
             >
-              Vereinsdemo
+              Pilotprogramm
             </a>
             <a
               className="rounded-md transition-colors hover:text-blue-700 focus-visible:outline-none"
@@ -684,12 +662,12 @@ export default function OfferDemo() {
                 Zum Login
               </Button>
             </a>
-            <a href="/vereinsdemo" className="hidden sm:block">
+            <a href="/pilot" className="hidden sm:block">
               <Button
                 type="button"
-                className="rounded-xl bg-blue-600 px-4 text-white hover:bg-blue-700"
+                className="rounded-xl bg-orange-500 px-4 text-white hover:bg-orange-600"
               >
-                Vereinsdemo öffnen{" "}
+                Pilot anfragen{" "}
                 <ArrowRight className="size-4" aria-hidden="true" />
               </Button>
             </a>
@@ -719,29 +697,30 @@ export default function OfferDemo() {
               vom ersten Helfer bis zum letzten Abbau.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <a href="/vereinsdemo">
+              <a href="/pilot">
                 <Button
                   type="button"
                   size="lg"
                   className="rounded-xl bg-orange-500 px-6 text-white shadow-lg shadow-orange-200 hover:bg-orange-600"
                 >
-                  Vereinsdemo ausprobieren{" "}
+                  Pilot kostenlos anfragen{" "}
                   <ArrowRight className="size-4" aria-hidden="true" />
                 </Button>
               </a>
-              <Button
-                type="button"
-                variant="outline"
-                className="min-h-11 rounded-xl border-slate-300 bg-white/80 px-5 text-slate-700 hover:border-blue-300 hover:bg-white hover:text-blue-700"
-                onClick={scrollToPackages}
-              >
-                Passendes Paket finden
-              </Button>
+              <a href="/vereinsdemo">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-11 rounded-xl border-slate-300 bg-white/80 px-5 text-slate-700 hover:border-blue-300 hover:bg-white hover:text-blue-700"
+                >
+                  Vereinsdemo ausprobieren
+                </Button>
+              </a>
             </div>
             <div className="mt-9 flex flex-wrap gap-x-6 gap-y-3 text-sm font-semibold text-slate-600">
               <span className="inline-flex items-center gap-2">
-                <CircleCheckBig className="size-4 text-emerald-600" /> Ohne lange
-                Einarbeitung
+                <CircleCheckBig className="size-4 text-emerald-600" /> Reguläre
+                Preise ab 01.01.2027
               </span>
               <span className="inline-flex items-center gap-2">
                 <CircleCheckBig className="size-4 text-emerald-600" /> Für Team,
@@ -881,17 +860,17 @@ export default function OfferDemo() {
               69 €
             </p>
             <p className="mt-2 text-sm leading-5 text-slate-500">
-              Für Helfer, Schichten, Vorbereitung und klare Listen – jederzeit
-              erneut wählbar.
+              Regulärer Endpreis ab 01.01.2027 für Helfer, Schichten,
+              Vorbereitung und klare Listen.
             </p>
-            <Button
-              type="button"
-              className="mt-5 w-full rounded-xl bg-orange-500 text-white hover:bg-orange-600"
-              onClick={() => setDetailsOffer(OFFERS[0])}
-            >
-              Einmalpaket ansehen{" "}
-              <ArrowRight className="size-4" aria-hidden="true" />
-            </Button>
+            <a href="/pilot" className="mt-5 block">
+              <Button
+                type="button"
+                className="w-full rounded-xl bg-orange-500 text-white hover:bg-orange-600"
+              >
+                Im Pilot testen <ArrowRight className="size-4" aria-hidden="true" />
+              </Button>
+            </a>
           </div>
         </div>
       </section>
@@ -952,7 +931,7 @@ export default function OfferDemo() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-3xl text-center">
             <p className="text-sm font-bold uppercase tracking-[0.16em] text-blue-700">
-              Fiktive Musterangebote
+              Reguläre Preise ab 01.01.2027
             </p>
             <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
               Wählt, was zu eurem Team passt.
@@ -960,7 +939,8 @@ export default function OfferDemo() {
             <p className="mt-4 text-base leading-7 text-slate-600">
               Einfach starten, gemeinsam organisieren, vollständig steuern oder
               individuell wachsen: Jedes Paket schafft den passenden nächsten
-              Schritt – ohne automatische Verlängerung.
+              Schritt. Bis 31.12.2026 könnt ihr die passende Umgebung im
+              kostenlosen Pilotprogramm am eigenen Anlass testen.
             </p>
           </div>
           <div className="mx-auto mt-12 grid max-w-7xl gap-5 lg:grid-cols-4 lg:items-stretch">
@@ -969,20 +949,21 @@ export default function OfferDemo() {
                 key={offer.id}
                 offer={offer}
                 onDetails={setDetailsOffer}
-                onAdd={addToCart}
                 onVideo={setPackageVideoOffer}
               />
             ))}
           </div>
           <p className="mt-7 text-center text-sm text-slate-600">
-            * Fiktive Preisdarstellung dieser Musterdemo. Die Nutzung wird nicht
-            automatisch verlängert; Umfang, Kontingente, Preis und Bedingungen
-            werden für jedes Veranstaltungsjahr transparent abgestimmt.
+            * Alle genannten Preise sind Endpreise. Buchung und Zahlung starten
+            ab 01.01.2027. Eine automatische Verlängerung erfolgt nicht.
           </p>
         </div>
       </section>
 
-      <PackageComparisonSection sectionId="vergleich" />
+      <PackageComparisonSection
+        sectionId="vergleich"
+        priceNote="Reguläre Endpreise ab 01.01.2027 · Bis dahin ist keine Bestellung auf dieser Seite möglich."
+      />
 
       <section
         id="zielgruppen"
@@ -1096,12 +1077,12 @@ export default function OfferDemo() {
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-7 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
             <img src={WORDMARK} alt="MyCrewMate" className="h-6 w-auto" />
-            <span>© 2026 MyCrewMate · Angebotsdemo</span>
+            <span>© 2026 MyCrewMate · Vereins- und Eventplanung</span>
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm leading-5 sm:justify-end">
             <p className="max-w-xl">
-              Öffentliche Musterdemo: kein Live-Angebot, keine
-              Zahlungsabwicklung und keine Datenübertragung.
+              Reguläre Preise ab 01.01.2027 · Pilotprogramm bis 31.12.2026 ·
+              keine Bestellung auf dieser Seite.
             </p>
             <a
               className="rounded-sm font-semibold text-slate-700 underline-offset-2 hover:text-blue-700 hover:underline focus-visible:outline-none"
@@ -1118,20 +1099,6 @@ export default function OfferDemo() {
           </div>
         </div>
       </footer>
-
-      <button
-        type="button"
-        className="fixed bottom-5 right-5 z-30 inline-flex min-h-12 items-center gap-2 rounded-full bg-slate-950 px-5 text-sm font-bold text-white shadow-xl shadow-slate-900/25 transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-200"
-        onClick={() => setCartOpen(true)}
-        aria-label={
-          cartOffer
-            ? `${cartOffer.name} im simulierten Warenkorb ansehen`
-            : "Simulierten Warenkorb öffnen"
-        }
-      >
-        <ShoppingBag className="size-4" aria-hidden="true" />
-        Warenkorb {cartOffer ? "· 1" : "· 0"}
-      </button>
 
       <Dialog open={promoVideoOpen} onOpenChange={setPromoVideoOpen}>
         <DialogContent className="max-w-5xl overflow-hidden border-slate-700 !gap-0 !bg-slate-950 !p-0 !text-white">
@@ -1324,7 +1291,8 @@ export default function OfferDemo() {
                   {detailsOffer.price} € {detailsOffer.priceUnit}
                 </p>
                 <p className="mt-1 text-xs leading-5 text-slate-500">
-                  Fiktiver Musterpreis dieser lokalen Demo.
+                  Regulärer Endpreis ab 01.01.2027. Buchung und Zahlung starten
+                  ab diesem Termin.
                 </p>
               </div>
               <DialogFooter>
@@ -1336,17 +1304,12 @@ export default function OfferDemo() {
                 >
                   <Play className="size-4" aria-hidden="true" /> Kurzvideo ansehen
                 </Button>
-                <Button
-                  type="button"
-                  className={cn("rounded-xl", detailsOffer.buttonClass)}
-                  onClick={() => {
-                    addToCart(detailsOffer);
-                    setDetailsOffer(null);
-                  }}
-                >
-                  <ShoppingBag className="size-4" aria-hidden="true" />{" "}
-                  Simuliert in den Warenkorb
-                </Button>
+                <a href="/pilot">
+                  <Button type="button" className={cn("rounded-xl", detailsOffer.buttonClass)}>
+                    <HeartHandshake className="size-4" aria-hidden="true" />
+                    Im Pilot testen
+                  </Button>
+                </a>
               </DialogFooter>
             </>
           )}
@@ -1403,176 +1366,6 @@ export default function OfferDemo() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={cartOpen} onOpenChange={setCartOpen}>
-        <DialogContent className="max-w-lg rounded-2xl">
-          <DialogHeader>
-            <DialogTitle>Simulierter Warenkorb</DialogTitle>
-            <DialogDescription>
-              Dies ist eine Demo. Es wird keine Bestellung gespeichert oder
-              übertragen.
-            </DialogDescription>
-          </DialogHeader>
-          {cartOffer ? (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="font-black text-slate-950">
-                    MyCrewMate {cartOffer.name}
-                  </p>
-                  <p className="mt-1 text-sm text-slate-600">
-                    {cartOffer.audience}
-                  </p>
-                </div>
-                <strong className="text-xl text-slate-950">
-                  {cartOffer.price} €
-                </strong>
-              </div>
-              <p className="mt-3 text-xs text-slate-500">
-                Fiktiver {cartOffer.priceUnit.replace("*", "")} · kein
-                Zahlungsprozess
-              </p>
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
-              <ShoppingBag className="mx-auto size-6 text-slate-400" />
-              <p className="mt-3 font-bold text-slate-700">
-                Noch kein Paket ausgewählt.
-              </p>
-              <p className="mt-1 text-sm text-slate-500">
-                Wähle eines der vier Musterangebote aus.
-              </p>
-            </div>
-          )}
-          <DialogFooter className="sm:justify-between">
-            {cartOffer && (
-              <Button
-                type="button"
-                variant="ghost"
-                className="text-slate-600"
-                onClick={() => setCartOffer(null)}
-              >
-                Warenkorb leeren
-              </Button>
-            )}
-            {cartOffer && (
-              <Button
-                type="button"
-                className="rounded-xl bg-blue-600 text-white hover:bg-blue-700"
-                onClick={openCheckout}
-              >
-                Muster-Checkout öffnen <ArrowRight className="size-4" />
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={checkoutOpen} onOpenChange={setCheckoutOpen}>
-        <DialogContent className="max-w-lg rounded-2xl">
-          {checkoutComplete ? (
-            <div className="py-6 text-center">
-              <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-                <CircleCheckBig className="size-7" />
-              </span>
-              <DialogTitle className="mt-5">
-                Anfrage vorbereitet
-              </DialogTitle>
-              <DialogDescription className="mt-3 block leading-6">
-                Vielen Dank! Ihre Angaben wurden vorstrukturiert. Sie können die Anfrage jetzt direkt per E-Mail an das MyCrewMate-Team senden oder wir melden uns zur Freischaltung.
-              </DialogDescription>
-              <div className="mt-5 flex justify-center gap-2">
-                <a
-                  href={`mailto:info@mycrewmate.de?subject=${encodeURIComponent(
-                    `Testzugang/Anfrage: MyCrewMate ${cartOffer?.name ?? "Paket"} für ${inquiryClubName}`
-                  )}&body=${encodeURIComponent(
-                    `Hallo MyCrewMate-Team,\n\nwir interessieren uns unverbindlich für das Paket MyCrewMate ${cartOffer?.name ?? "Interesse"}.\n\nVerein: ${inquiryClubName}\nAnsprechpartner: ${inquiryContactName}\nE-Mail: ${inquiryEmail}\nNotiz: ${inquiryNote || "Keine"}\n\nBitte sendet uns die nächsten Schritte zur Freischaltung zu.\n\nViele Grüße\n${inquiryContactName}`
-                  )}`}
-                >
-                  <Button type="button" className="rounded-xl bg-blue-600 text-white hover:bg-blue-700">
-                    Anfrage per E-Mail absenden
-                  </Button>
-                </a>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="rounded-xl"
-                  onClick={() => {
-                    setCheckoutOpen(false);
-                    setCheckoutComplete(false);
-                    setCartOffer(null);
-                  }}
-                >
-                  Schließen
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <form
-              onSubmit={event => {
-                event.preventDefault();
-                setCheckoutComplete(true);
-              }}
-            >
-              <DialogHeader>
-                <DialogTitle>Unverbindliche Test- &amp; Paket-Anfrage</DialogTitle>
-                <DialogDescription>
-                  Geben Sie Ihren Verein an. Sie erhalten vor jeder Freischaltung die Vertragsunterlagen zur Prüfung.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="mt-5 grid gap-3">
-                <label className="grid gap-1.5 text-sm font-semibold text-slate-700">
-                  Vereinsname
-                  <input
-                    required
-                    placeholder="z. B. Radsportverein Musterstadt"
-                    value={inquiryClubName}
-                    onChange={event => setInquiryClubName(event.target.value)}
-                    className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-slate-950 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                  />
-                </label>
-                <label className="grid gap-1.5 text-sm font-semibold text-slate-700">
-                  Ansprechpartner
-                  <input
-                    required
-                    placeholder="Name"
-                    value={inquiryContactName}
-                    onChange={event => setInquiryContactName(event.target.value)}
-                    className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-slate-950 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                  />
-                </label>
-                <label className="grid gap-1.5 text-sm font-semibold text-slate-700">
-                  E-Mail
-                  <input
-                    required
-                    type="email"
-                    placeholder="verein@beispiel.de"
-                    value={inquiryEmail}
-                    onChange={event => setInquiryEmail(event.target.value)}
-                    className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-slate-950 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                  />
-                </label>
-                <label className="grid gap-1.5 text-sm font-semibold text-slate-700">
-                  Hinweis oder Wunschveranstaltung (optional)
-                  <input
-                    placeholder="z. B. Sommerturnier 2027 mit 120 Helfern"
-                    value={inquiryNote}
-                    onChange={event => setInquiryNote(event.target.value)}
-                    className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-slate-950 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                  />
-                </label>
-              </div>
-              <DialogFooter className="mt-6">
-                <Button
-                  type="submit"
-                  className="rounded-xl bg-orange-500 text-white hover:bg-orange-600"
-                >
-                  Anfrage prüfen &amp; absenden <ArrowRight className="size-4" />
-                </Button>
-              </DialogFooter>
-            </form>
-          )}
-        </DialogContent>
-      </Dialog>
     </main>
   );
 }

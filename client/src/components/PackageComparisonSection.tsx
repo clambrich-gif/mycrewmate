@@ -361,6 +361,8 @@ type PackageComparisonSectionProps = {
   currentPackageId?: ProductPackageId;
   /** Ermöglicht der öffentlichen Angebotsseite den Navigationsanker „Vergleichen“. */
   sectionId?: string;
+  /** Ordnet die Preisübersicht auf der öffentlichen Angebotsseite zeitlich ein. */
+  priceNote?: string;
   /** Entfernt die Seitenaußenabstände für die Verwendung in einem Dialog. */
   embedded?: boolean;
   className?: string;
@@ -369,6 +371,7 @@ type PackageComparisonSectionProps = {
 export function PackageComparisonSection({
   currentPackageId,
   sectionId,
+  priceNote,
   embedded = false,
   className,
 }: PackageComparisonSectionProps) {
@@ -400,6 +403,11 @@ export function PackageComparisonSection({
               Die Übersicht zeigt nicht nur Funktionen. Sie zeigt, wie aus einem
               einzelnen Plan ein gemeinsamer, professioneller Ablauf wird.
             </p>
+            {priceNote && (
+              <p className="mt-4 inline-flex rounded-lg bg-amber-50 px-3 py-2 text-sm font-bold leading-6 text-amber-900 ring-1 ring-amber-200">
+                {priceNote}
+              </p>
+            )}
           </div>
           <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-orange-50 p-5 shadow-sm">
             <p className="text-xs font-bold uppercase tracking-[0.14em] text-blue-700">

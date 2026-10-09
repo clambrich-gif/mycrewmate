@@ -1,5 +1,6 @@
 import { KlemmiMascot } from "@/components/KlemmiMascot";
 import { Button } from "@/components/ui/button";
+import { isMarketingSite } from "@/lib/site-host";
 import {
   ArrowRight,
   CalendarDays,
@@ -19,7 +20,7 @@ import {
 import { useState, type FormEvent } from "react";
 
 /**
- * NICHT AKTIV / NICHT GEROUTET
+ * NICHT ALS HAUPTSEITE AKTIV / NUR UNTER /pilot VORSCHAUFÄHIG
  *
  * Entwurf für die öffentliche MyCrewMate-Startseite während der Pilotphase.
  * Erst nach inhaltlicher Freigabe, juristischer Prüfung der Pilotbedingungen
@@ -74,7 +75,7 @@ const PILOT_PACKAGES: PilotPackage[] = [
     iconClass: "bg-blue-100 text-blue-700",
   },
   {
-    name: "Ultimate",
+    name: "Enterprise",
     eyebrow: "Verbände und Untervereine",
     title: "Für gemeinsame Strukturen mit eigenen Teams.",
     description:
@@ -255,6 +256,8 @@ function PilotRequestForm() {
 }
 
 export default function PilotHomepageDraft() {
+  const priceOverviewHref = isMarketingSite() ? "/#pakete" : "/angebot-demo#pakete";
+
   return (
     <main className="min-h-screen bg-white text-slate-950">
       <a
@@ -445,9 +448,16 @@ export default function PilotHomepageDraft() {
               Wir wählen die Umgebung nicht nach einem Verkaufsgespräch, sondern danach, was euren Verein im nächsten Event wirklich entlastet.
             </p>
           </div>
-          <p className="max-w-xs text-sm leading-6 text-slate-500">
-            Im Pilot klären wir Umfang, Laufzeit und Zugang gemeinsam. Preise oder ein Kauf werden auf dieser Seite nicht ausgelöst.
-          </p>
+          <div className="max-w-xs text-sm leading-6 text-slate-500">
+            <p>Im Pilot klären wir Umfang, Laufzeit und Zugang gemeinsam. Preise oder ein Kauf werden auf dieser Seite nicht ausgelöst.</p>
+            <a
+              href={priceOverviewHref}
+              className="mt-3 inline-flex items-center gap-1 font-bold text-blue-700 hover:text-blue-900 hover:underline"
+            >
+              Reguläre Preise ab 01.01.2027 ansehen
+              <ArrowRight className="size-4" aria-hidden="true" />
+            </a>
+          </div>
         </div>
 
         <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
