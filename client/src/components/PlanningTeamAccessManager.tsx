@@ -83,17 +83,19 @@ const DEFAULT_MODULE_ACCESS: PlanningModuleAccess = Object.fromEntries(
 const writePermissionsFromAccess = (access: PlanningModuleAccess) =>
   EDITABLE_PLANNING_MODULES.filter(module => access[module] === "write");
 
-const EMPTY_FORM: FormState = {
+const createEmptyForm = (): FormState => ({
   id: null,
   contactId: null,
   label: "",
   email: "",
   modulePermissions: [],
-  moduleAccess: DEFAULT_MODULE_ACCESS,
+  // Jede neue Formularansicht erhält eigene Arrays und Objekte. So können
+  // Browser-Autofill oder alte React-Referenzen keine Werte weitertragen.
+  moduleAccess: { ...DEFAULT_MODULE_ACCESS },
   isTenantAdmin: false,
   eventIds: [],
   currentAdminPassword: "",
-};
+});
 const ALL_YEARS = "all-years";
 const ALL_EVENTS = "all-events";
 
@@ -173,7 +175,7 @@ export function PlanningTeamAccessManager({
   const isPrimaryTenantAdmin =
     administrativeContext.data?.isPrimaryTenantAdmin === true &&
     !isDelegatedTenantAdmin;
-  const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [form, setForm] = useState<FormState>(createEmptyForm);
   const [filterYear, setFilterYear] = useState(ALL_YEARS);
   const [filterEventId, setFilterEventId] = useState(ALL_EVENTS);
   const [openSections, setOpenSections] = useState<string[]>([]);
@@ -203,7 +205,7 @@ export function PlanningTeamAccessManager({
   const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   const resetNewAccessDraft = () => {
-    setForm(EMPTY_FORM);
+    setForm(createEmptyForm());
     setSendEmailInvite(false);
   };
 
@@ -360,7 +362,7 @@ export function PlanningTeamAccessManager({
       await invalidate();
       setDeleteTarget(null);
       setDeletePassword("");
-      if (form.id === deleteTarget?.id) setForm(EMPTY_FORM);
+      if (form.id === deleteTarget?.id) setForm(createEmptyForm());
       toast.success("Planungsteam-Zugang gelöscht und zugehörige Sitzungen gesperrt");
     },
     onError: error => toast.error(error.message),
@@ -792,7 +794,7 @@ export function PlanningTeamAccessManager({
               </p>
             </div>
             {form.id !== null && (
-              <Button type="button" variant="ghost" size="sm" onClick={() => setForm(EMPTY_FORM)} disabled={busy}>
+              <Button type="button" variant="ghost" size="sm" onClick={resetNewAccessDraft} disabled={busy}>
                 Abbrechen
               </Button>
             )}
@@ -853,9 +855,14 @@ export function PlanningTeamAccessManager({
               <Input
                 id="planning-access-email"
                 type="email"
-                placeholder="z. B. vorname.nachname@verein.de"
+                autoComplete="off"
+                placeholder={
+                  form.contactId === null
+                    ? "Zuerst Ansprechpartner auswählen"
+                    : "z. B. vorname.nachname@verein.de"
+                }
                 value={form.email}
-                disabled={busy}
+                disabled={busy || form.contactId === null}
                 onChange={e => {
                   setSendEmailInvite(false);
                   setForm(curr => ({ ...curr, email: e.target.value }));

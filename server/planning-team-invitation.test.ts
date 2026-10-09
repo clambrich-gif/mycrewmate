@@ -49,8 +49,13 @@ describe("Planungsteam-Einladungen und Ansprechpartner-E-Mails", () => {
     );
 
     expect(manager).toContain("const [sendEmailInvite, setSendEmailInvite] = useState(false)");
+    expect(manager).toContain("const createEmptyForm = (): FormState =>");
+    expect(manager).toContain("useState<FormState>(createEmptyForm)");
+    expect(manager).toContain("setForm(createEmptyForm())");
     expect(manager).toContain('email: contact.email ?? ""');
     expect(manager).not.toContain("email: contact.email ? contact.email : current.email");
+    expect(manager).toContain('autoComplete="off"');
+    expect(manager).toContain("disabled={busy || form.contactId === null}");
     expect(manager).toContain("form.contactId !== null && form.email.trim()");
     expect(manager).toContain("setSendEmailInvite(false);");
     expect(router).toContain("sendEmail: z.boolean().default(false)");
