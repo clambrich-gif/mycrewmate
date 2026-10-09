@@ -29,6 +29,8 @@
 - [x] Auswahlzustand je Schicht lokal isoliert: Ein Haken rendert nicht mehr den gesamten Einsatzplan neu. Messung in der Pro-Demo: Auswahlreaktion ca. 15–25 ms bei 150 Musterhelfern.
 - [x] Mehrfachzuweisung serverseitig beschleunigt: Redundante vollständige Listenabfragen entfernt; die bestehende atomare Datenbankprüfung bleibt allein maßgeblich für Verfügbarkeit, Doppelzuweisungen und freie Plätze. Manuelle Messung: Schreibvorgang ca. 386 ms.
 - [x] Typecheck, 205 relevante Server-/UI-/Demo-Tests und Produktionsbuild nach der Einsatzplanoptimierung erfolgreich ausgeführt.
+- [x] Zweite Zuweisungsoptimierung umgesetzt: Auswahl wird beim Speicherklick unmittelbar quittiert, Klemmi reagiert vor der aufwendigen Plan-Neubewertung und ein nicht blockierender Hinweis zeigt die Hintergrundaktualisierung an.
+- [x] Live-Domain geprüft: `app.mycrewmate.de` liefert noch den alten Produktionsbuild (u. a. mit Demo-Chat, Speichern/Laden und PDF-Ausgabe). Für die Veröffentlichung ist der im Projekt dokumentierte GitHub-/Coolify-Deploy-Schritt erforderlich; in dieser Sitzung ist kein Coolify- oder GitHub-Deploy-Connector verbunden.
 
 ## Später prüfen
 

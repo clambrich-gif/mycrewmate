@@ -27,6 +27,7 @@ import {
   Clock3,
   FilterX,
   Info,
+  Loader2,
   Pencil,
   Plus,
   Radio,
@@ -565,13 +566,19 @@ const ShiftCardHelperCandidateList = memo(function ShiftCardHelperCandidateList(
 
   const submitSelection = async () => {
     if (!selectedHelperIds.length || disabled || isSubmitting) return;
+    const selectedBeforeSubmit = selectedHelperIds;
+    // Der Klick erhält sofort sichtbares Feedback. Bei einem seltenen
+    // serverseitigen Konflikt wird die Auswahl anschließend wiederhergestellt.
+    setSelectedHelperIds([]);
     setIsSubmitting(true);
     try {
-      await onAssign(shift.id, selectedHelperIds);
-      setSelectedHelperIds([]);
+      await onAssign(shift.id, selectedBeforeSubmit);
     } catch {
       // Die Mutation zeigt die servergeprüfte Fehlermeldung bereits per Toast.
       // Die Auswahl bleibt bewusst stehen, damit sie korrigiert werden kann.
+      setSelectedHelperIds(previous =>
+        Array.from(new Set([...selectedBeforeSubmit, ...previous]))
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -994,6 +1001,7 @@ export default function Plan() {
   const [mobileContactIds, setMobileContactIds] = useState<string[]>([]);
   const [mobileFlexibleOnly, setMobileFlexibleOnly] = useState(false);
   const [mobileOpenOrUnassignedOnly, setMobileOpenOrUnassignedOnly] = useState(false);
+  const [isPlanRefreshPending, setIsPlanRefreshPending] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [areaContactsExpanded, setAreaContactsExpanded] = useState(false);
   const [deleteCandidate, setDeleteCandidate] = useState<DropdownShift | null>(
@@ -1135,24 +1143,41 @@ export default function Plan() {
     utils.plan.evaluate.invalidate();
     utils.dashboard.invalidate();
   };
+  const refreshPlanInBackground = useCallback(() => {
+    // Die Zuweisung wurde bereits sicher gespeichert. Die aufwendigere
+    // Neubewertung darf daher sichtbar im Hintergrund laufen, statt Klemmi
+    // oder die Bedienung auszubremsen.
+    void Promise.all([
+      utils.plan.evaluate.invalidate(),
+      utils.dashboard.invalidate(),
+    ]).finally(() => setIsPlanRefreshPending(false));
+  }, [utils]);
   const assign = trpc.plan.assign.useMutation({
+    onMutate: () => setIsPlanRefreshPending(true),
     onSuccess: result => {
-      invalidate();
       if (result.shiftJustCompleted) triggerKlemmiReaction("shift-success");
+      refreshPlanInBackground();
     },
-    onError: e => toast.error(e.message),
+    onError: e => {
+      setIsPlanRefreshPending(false);
+      toast.error(e.message);
+    },
   });
   const assignMany = trpc.plan.assignMany.useMutation({
+    onMutate: () => setIsPlanRefreshPending(true),
     onSuccess: result => {
-      invalidate();
       if (result.shiftJustCompleted) triggerKlemmiReaction("shift-success");
       toast.success(
         result.assignedCount === 1
           ? "Helfer zugeordnet"
           : `${result.assignedCount} Helfer zugeordnet`
       );
+      refreshPlanInBackground();
     },
-    onError: e => toast.error(e.message),
+    onError: e => {
+      setIsPlanRefreshPending(false);
+      toast.error(e.message);
+    },
   });
   const assignSelectedHelpers = useCallback(
     (shiftId: number, helperIds: number[]) =>
@@ -2201,6 +2226,18 @@ export default function Plan() {
               ? "Im gemeinsamen Event Pass kann das Team neue Schichten anlegen. Bestehende Schichten, Einteilungen und Freigaben bleiben geschützt."
             : "Das Planungsteam kann den Einsatzplan vollständig ansehen und filtern. Änderungen und Helferzuweisungen sind Administratoren vorbehalten."}
           </p>
+          {isPlanRefreshPending && (
+            <div
+              data-slot="plan-background-refresh"
+              className="mt-3 inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-900"
+              role="status"
+              aria-live="polite"
+            >
+              <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+              <span>Plan wird im Hintergrund aktualisiert …</span>
+              <span className="font-normal text-blue-800">Du kannst weiterarbeiten.</span>
+            </div>
+          )}
         </div>
         <div className="w-full lg:w-auto lg:shrink-0">
           {canEditPlan ? (

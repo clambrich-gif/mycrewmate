@@ -176,6 +176,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(audio).toContain('"success-zack"');
     expect(plan).toContain('triggerKlemmiReaction("shift-success")');
     expect(plan).toContain("if (result.shiftJustCompleted) triggerKlemmiReaction");
+    expect(plan).toContain('triggerKlemmiReaction("shift-success");\n      refreshPlanInBackground();');
+    expect(plan).toContain("onMutate: () => setIsPlanRefreshPending(true)");
+    expect(plan).toContain('data-slot="plan-background-refresh"');
+    expect(plan).toContain("Plan wird im Hintergrund aktualisiert …");
     expect(plan).not.toContain("if (result.assignedCount > 0) triggerKlemmiReaction");
     expect(plan).not.toContain('setKlemmiCreationSignal(Date.now());\n      triggerKlemmiReaction("shift-success")');
     expect(plan).toContain('triggerKlemmiReaction("error")');
