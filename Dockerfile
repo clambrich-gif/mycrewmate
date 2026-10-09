@@ -1,6 +1,7 @@
-# syntax=docker/dockerfile:1
 # Der öffentliche AWS-ECR-Spiegel liefert das unveränderte offizielle Node-Image
-# ohne die anonyme Docker-Hub-Abrufgrenze des GitHub-Buildrunners.
+# ohne die anonyme Docker-Hub-Abrufgrenze des GitHub-Buildrunners. Die
+# Standard-Dockerfile-Syntax des bereitgestellten BuildKit genügt für diesen
+# Dockerfile-Inhalt und vermeidet einen zusätzlichen externen Syntax-Abruf.
 ARG NODE_BASE_IMAGE=public.ecr.aws/docker/library/node:22-bookworm-slim
 FROM ${NODE_BASE_IMAGE} AS build
 

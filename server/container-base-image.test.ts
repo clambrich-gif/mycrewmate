@@ -11,6 +11,7 @@ describe("Container-Grundbild", () => {
     );
     expect(dockerfile.match(/FROM \$\{NODE_BASE_IMAGE\}/g)).toHaveLength(2);
     expect(dockerfile).not.toContain("FROM node:22-bookworm-slim");
+    expect(dockerfile).not.toContain("# syntax=docker/dockerfile:");
   });
 
   it("bezieht auch das BuildKit-Bauwerkzeug ohne Docker-Hub-Abhängigkeit", () => {
