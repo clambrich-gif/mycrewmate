@@ -12,4 +12,17 @@ describe("Container-Grundbild", () => {
     expect(dockerfile.match(/FROM \$\{NODE_BASE_IMAGE\}/g)).toHaveLength(2);
     expect(dockerfile).not.toContain("FROM node:22-bookworm-slim");
   });
+
+  it("bezieht auch das BuildKit-Bauwerkzeug ohne Docker-Hub-Abhängigkeit", () => {
+    const workflow = readFileSync(
+      path.resolve(process.cwd(), ".github/workflows/publish-container.yml"),
+      "utf8"
+    );
+
+    expect(workflow).toContain("uses: docker/setup-buildx-action@v3");
+    expect(workflow).toContain("driver-opts:");
+    expect(workflow).toContain(
+      "image=public.ecr.aws/vend/moby/buildkit:buildx-stable-1"
+    );
+  });
 });
