@@ -15,6 +15,7 @@ describe("öffentliche Preis- und Pilotseiten", () => {
     expect(app).toContain('path="/pilot"');
     expect(offer).toContain("Pilotanfragen bis 31.12.2026");
     expect(offer).toContain('href="/pilot#pilot-anfrage"');
+    expect((offer.match(/href="\/pilot#pilot-anfrage"/g) ?? []).length).toBeGreaterThanOrEqual(4);
     expect(offer).toContain("Pilot kostenlos anfragen");
     expect(offer).toContain('href="/vereinsdemo"');
     expect(offer).toContain("Fiktive Vereinsdemo ausprobieren");

@@ -545,7 +545,7 @@ function OfferCard({
         </div>
       )}
       <div className="mt-auto grid gap-2 pt-7">
-        <a href="/pilot">
+        <a href="/pilot#pilot-anfrage">
           <Button type="button" className={cn("w-full rounded-xl", offer.buttonClass)}>
             <HeartHandshake className="size-4" aria-hidden="true" />
             Im Pilot testen
@@ -863,7 +863,7 @@ export default function OfferDemo() {
               Regulärer Endpreis ab 01.01.2027 für Helfer, Schichten,
               Vorbereitung und klare Listen.
             </p>
-            <a href="/pilot" className="mt-5 block">
+            <a href="/pilot#pilot-anfrage" className="mt-5 block">
               <Button
                 type="button"
                 className="w-full rounded-xl bg-orange-500 text-white hover:bg-orange-600"
@@ -1304,7 +1304,7 @@ export default function OfferDemo() {
                 >
                   <Play className="size-4" aria-hidden="true" /> Kurzvideo ansehen
                 </Button>
-                <a href="/pilot">
+                <a href="/pilot#pilot-anfrage">
                   <Button type="button" className={cn("rounded-xl", detailsOffer.buttonClass)}>
                     <HeartHandshake className="size-4" aria-hidden="true" />
                     Im Pilot testen
