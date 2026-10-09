@@ -23,6 +23,13 @@ describe("öffentliche Preis- und Pilotseiten", () => {
     expect(offer).toContain("Alle genannten Preise sind Endpreise");
     expect(offer).toContain("Buchung und Zahlung starten");
     expect(offer).toContain("Im Pilot testen");
+    expect(offer).toContain('data-pilot-benefit');
+    expect(offer).toContain("50 % für das erste kostenpflichtige Veranstaltungsjahr");
+    expect(offer).toContain("Pilotvorteil: 74,50 €");
+    expect(offer).toContain("Pilotvorteil: 149,50 €");
+    expect(offer).toContain("Event Pass und Enterprise sind ausgeschlossen");
+    expect(offer).toContain("Kombination mit anderen Rabatten ist nicht möglich");
+    expect(offer).toContain("vor Pilotende in Textform");
     expect(offer).not.toContain("Simuliert in den Warenkorb");
     expect(offer).not.toContain("Simulierter Warenkorb");
     expect(offer).not.toContain("Muster-Checkout");

@@ -957,6 +957,52 @@ export default function OfferDemo() {
             * Alle genannten Preise sind Endpreise. Buchung und Zahlung starten
             ab 01.01.2027. Eine automatische Verlängerung erfolgt nicht.
           </p>
+          <aside
+            data-pilot-benefit
+            className="mx-auto mt-8 max-w-5xl rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 via-white to-orange-50 p-5 text-left shadow-sm sm:p-6"
+            aria-labelledby="pilotvorteil-preisuebersicht"
+          >
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+              <div className="max-w-2xl">
+                <p className="text-sm font-bold uppercase tracking-[0.14em] text-blue-700">
+                  Pilotvorteil
+                </p>
+                <h3
+                  id="pilotvorteil-preisuebersicht"
+                  className="mt-2 text-2xl font-black tracking-tight text-slate-950"
+                >
+                  50 % für das erste kostenpflichtige Veranstaltungsjahr.
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-slate-700">
+                  Der Pilotvorteil gilt für <strong>Light</strong> oder <strong>Pro</strong>, wenn ihr euch nach dem vereinbarten Pilotzeitraum aktiv für die weitere Nutzung entscheidet.
+                </p>
+              </div>
+              <a href="/pilot#pilot-anfrage" className="shrink-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full rounded-xl border-blue-300 bg-white text-blue-800 hover:border-blue-400 hover:bg-blue-50 sm:w-auto"
+                >
+                  Pilot anfragen <ArrowRight className="size-4" aria-hidden="true" />
+                </Button>
+              </a>
+            </div>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-xl border border-sky-200 bg-white p-4">
+                <p className="text-sm font-black text-slate-950">Light</p>
+                <p className="mt-1 text-sm text-slate-600">Regulärer Endpreis: 149 €</p>
+                <p className="mt-2 text-lg font-black text-blue-800">Pilotvorteil: 74,50 €</p>
+              </div>
+              <div className="rounded-xl border border-blue-200 bg-white p-4">
+                <p className="text-sm font-black text-slate-950">Pro</p>
+                <p className="mt-1 text-sm text-slate-600">Regulärer Endpreis: 299 €</p>
+                <p className="mt-2 text-lg font-black text-blue-800">Pilotvorteil: 149,50 €</p>
+              </div>
+            </div>
+            <p className="mt-5 text-xs leading-5 text-slate-600">
+              Der Vorteil gilt einmalig je teilnehmendem Verein für einen unmittelbar an den vereinbarten Piloten anschließenden, kostenpflichtigen Jahreszugang. <strong>Event Pass und Enterprise sind ausgeschlossen.</strong> Eine Kombination mit anderen Rabatten ist nicht möglich. Paket, Zeitraum und Vorteil werden vor Pilotende in Textform, zum Beispiel per E-Mail, bestätigt. Es gibt keine automatische Verlängerung.
+            </p>
+          </aside>
         </div>
       </section>
 

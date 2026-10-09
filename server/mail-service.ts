@@ -255,12 +255,14 @@ export function renderPilotInquiryConfirmationEmail(params: {
 
 vielen Dank, dass ${clubName} MyCrewMate im Pilotprogramm ausprobieren möchte.
 
-Wir haben eure unverbindliche Anfrage erhalten und melden uns in Kürze persönlich bei euch. Gemeinsam stimmen wir Anlass, passende Umgebung und den gewünschten Startzeitpunkt ab.
+	Wir haben eure unverbindliche Anfrage erhalten und melden uns in Kürze persönlich bei euch. Gemeinsam stimmen wir Anlass, passende Umgebung und den gewünschten Startzeitpunkt ab.
 
-Bis dahin müsst ihr nichts weiter vorbereiten. Es entsteht kein Vertrag und keine automatische Verlängerung.
+	Bis dahin müsst ihr nichts weiter vorbereiten. Es entsteht kein Vertrag und keine automatische Verlängerung.
 
-Viele Grüße
-Euer MyCrewMate-Team
+	Hinweis zum Pilotvorteil: Wenn wir für euren Anlass Light oder Pro als Pilotumgebung vereinbaren und ihr euch nach dem vereinbarten Pilotzeitraum aktiv für die weitere Nutzung entscheidet, gilt einmalig für das erste kostenpflichtige Veranstaltungsjahr ein Preisvorteil von 50 %: Light 149 € → 74,50 € und Pro 299 € → 149,50 €. Der Vorteil gilt nur für einen unmittelbar anschließenden Jahreszugang, ist nicht mit anderen Rabatten kombinierbar und gilt nicht für Event Pass oder Enterprise. Paket, Zeitraum und Vorteil bestätigen wir vor Pilotende in Textform.
+
+	Viele Grüße
+	Euer MyCrewMate-Team
 
 Fragen? support@mycrewmate.de`;
   const html = `<!DOCTYPE html>
@@ -271,11 +273,14 @@ Fragen? support@mycrewmate.de`;
     <p style="font-size:13px;color:#64748b;margin:0 0 24px;">MyCrewMate · Vereins- &amp; Eventplanung</p>
     <p>Hallo <strong>${escapeEmailHtml(contactName)}</strong>,</p>
     <p>vielen Dank, dass <strong>${escapeEmailHtml(clubName)}</strong> MyCrewMate im Pilotprogramm ausprobieren möchte.</p>
-    <div style="margin:24px 0;padding:16px 18px;border-radius:10px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;">
-      <strong>Wie geht es weiter?</strong><br>Wir melden uns in Kürze persönlich bei euch. Gemeinsam stimmen wir Anlass, passende Umgebung und den gewünschten Startzeitpunkt ab.
-    </div>
-    <p>Bis dahin müsst ihr nichts weiter vorbereiten. Es entsteht kein Vertrag und keine automatische Verlängerung.</p>
-    <p>Viele Grüße<br><strong>Euer MyCrewMate-Team</strong></p>
+	    <div style="margin:24px 0;padding:16px 18px;border-radius:10px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;">
+	      <strong>Wie geht es weiter?</strong><br>Wir melden uns in Kürze persönlich bei euch. Gemeinsam stimmen wir Anlass, passende Umgebung und den gewünschten Startzeitpunkt ab.
+	    </div>
+	    <p>Bis dahin müsst ihr nichts weiter vorbereiten. Es entsteht kein Vertrag und keine automatische Verlängerung.</p>
+	    <div style="margin:24px 0;padding:16px 18px;border-radius:10px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;">
+	      <strong>Hinweis zum Pilotvorteil für Light und Pro</strong><br>Wenn wir für euren Anlass Light oder Pro als Pilotumgebung vereinbaren und ihr euch nach dem vereinbarten Pilotzeitraum aktiv für die weitere Nutzung entscheidet, gilt einmalig für das erste kostenpflichtige Veranstaltungsjahr ein Preisvorteil von 50 %: Light 149 € → 74,50 € und Pro 299 € → 149,50 €.<br><br>Der Vorteil gilt nur für einen unmittelbar anschließenden Jahreszugang, ist nicht mit anderen Rabatten kombinierbar und gilt nicht für Event Pass oder Enterprise. Paket, Zeitraum und Vorteil bestätigen wir vor Pilotende in Textform.
+	    </div>
+	    <p>Viele Grüße<br><strong>Euer MyCrewMate-Team</strong></p>
     <hr style="border:0;border-top:1px solid #e2e8f0;margin:24px 0;">
     <p style="font-size:12px;color:#64748b;margin:0;">Fragen? Antworte einfach auf diese E-Mail oder schreibe an <a href="mailto:support@mycrewmate.de" style="color:#2563eb;">support@mycrewmate.de</a>.</p>
   </div>

@@ -49,6 +49,7 @@
 - [x] Dringende Transparenzkorrekturen umgesetzt: Pflicht-/Freiwilligkeits- und Aufbewahrungshinweis direkt im Pilotformular, eindeutige 50%-Regel für Light/Pro, präzise Demo-Lösch- und Sicherungsinformation.
 - [x] Dringende Zugänglichkeitskorrekturen umgesetzt: kontraststarke orange Aktionsflächen (mindestens 4,5:1) sowie Tastaturnavigation und Screenreader-Text im Tarifvergleich.
 - [x] Öffentliche Demosicherheit verstärkt: Bereinigungs-Heartbeat `public-demo-cleanup` alle zehn Minuten registriert; technische Höchstalterung bleibt 35 Minuten.
+- [x] 50%-Pilotvorteil als einheitlicher Regelblock ergänzt: sichtbar bei der Preisübersicht, auf der Pilotseite und in der automatischen Eingangsbestätigung; nur Light/Pro, einmalig, unmittelbar anschließend, ohne Rabattkombination und ohne automatische Verlängerung.
 
 ## In Umsetzung
 

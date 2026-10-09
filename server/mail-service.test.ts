@@ -105,6 +105,10 @@ describe("Mail-Service (Hetzner SMTP & Transactional)", () => {
     expect(notification.html).toContain("RSC &lt;Muster&gt; e. V.");
     expect(confirmation.subject).toContain("Pilot-Anfrage ist eingegangen");
     expect(confirmation.text).toContain("keine automatische Verlängerung");
+    expect(confirmation.text).toContain("Light 149 € → 74,50 € und Pro 299 € → 149,50 €");
+    expect(confirmation.text).toContain("gilt nicht für Event Pass oder Enterprise");
+    expect(confirmation.text).toContain("nicht mit anderen Rabatten kombinierbar");
+    expect(confirmation.html).toContain("Hinweis zum Pilotvorteil für Light und Pro");
     expect(confirmation.html).toContain("support@mycrewmate.de");
   });
 
