@@ -687,6 +687,13 @@
       "when": 1791564355299,
       "tag": "0097_perfect_celestials",
       "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "5",
+      "when": 1791571699890,
+      "tag": "0098_easy_glorian",
+      "breakpoints": true
     }
   ]
 }

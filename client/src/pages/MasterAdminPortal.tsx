@@ -28,7 +28,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { downloadBase64File } from "@/lib/download";
 import { pilotInquiryPhoneLink } from "@/lib/pilot-inquiry-phone";
 import {
   Select,
@@ -215,42 +214,6 @@ type PilotInquiryItem = {
   createdAt: Date;
 };
 
-type PilotContractStatus = "draft" | "agreed" | "archived";
-
-type PilotContractItem = {
-  id: number;
-  contractNumber: string;
-  tenantId: string | null;
-  tenantName: string | null;
-  clubName: string;
-  legalName: string;
-  contactName: string;
-  contactEmail: string;
-  packageId: ProductPackageId;
-  startsOn: string;
-  endsOn: string;
-  status: PilotContractStatus;
-  internalNote: string | null;
-  agreedAt: Date | null;
-  archivedAt: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
-};
-
-type PilotContractForm = {
-  id: number | null;
-  tenantId: string;
-  clubName: string;
-  legalName: string;
-  contactName: string;
-  contactEmail: string;
-  packageId: ProductPackageId;
-  startsOn: string;
-  endsOn: string;
-  status: "draft" | "agreed";
-  internalNote: string;
-};
-
 const PRODUCT_BADGE_CLASS: Record<ProductPackageId, string> = {
   event_pass: "border-orange-200 bg-orange-50 text-orange-900",
   light: "border-slate-200 bg-slate-50 text-slate-800",
@@ -289,15 +252,6 @@ const PRODUCT_ASSIGNMENT_STATUS_CLASS: Record<ProductAssignmentStatus, string> =
   active: "border-emerald-200 bg-emerald-50 text-emerald-800",
   paused: "border-amber-200 bg-amber-50 text-amber-800",
   expired: "border-red-200 bg-red-50 text-red-800",
-};
-
-const PILOT_CONTRACT_STATUS_META: Record<
-  PilotContractStatus,
-  { label: string; className: string }
-> = {
-  draft: { label: "Entwurf", className: "border-amber-200 bg-amber-50 text-amber-900" },
-  agreed: { label: "Vereinbart", className: "border-emerald-200 bg-emerald-50 text-emerald-800" },
-  archived: { label: "Archiv", className: "border-slate-200 bg-slate-100 text-slate-700" },
 };
 
 function productUsageTone(metric: ProductLimitUsageMetric) {
@@ -560,38 +514,6 @@ function defaultCreateTenantForm(): CreateTenantForm {
     initialAdminEmail: "",
     initialAdminPassword: "",
     initialAdminPasswordConfirmation: "",
-  };
-}
-
-function defaultPilotContractForm(tenant?: TenantOverviewItem): PilotContractForm {
-  return {
-    id: null,
-    tenantId: tenant?.id ?? "",
-    clubName: tenant?.name ?? "",
-    legalName: tenant?.legalName ?? "",
-    contactName: "",
-    contactEmail: tenant?.contactEmail ?? "",
-    packageId: tenant?.productAssignment.packageId ?? "pro",
-    startsOn: tenant?.productAssignment.startsOn ?? "",
-    endsOn: tenant?.productAssignment.endsOn ?? "",
-    status: "draft",
-    internalNote: "",
-  };
-}
-
-function pilotContractFormFromItem(contract: PilotContractItem): PilotContractForm {
-  return {
-    id: contract.id,
-    tenantId: contract.tenantId ?? "",
-    clubName: contract.clubName,
-    legalName: contract.legalName,
-    contactName: contract.contactName,
-    contactEmail: contract.contactEmail,
-    packageId: contract.packageId,
-    startsOn: contract.startsOn,
-    endsOn: contract.endsOn,
-    status: contract.status === "agreed" ? "agreed" : "draft",
-    internalNote: contract.internalNote ?? "",
   };
 }
 
@@ -1121,8 +1043,6 @@ export default function MasterAdminPortal() {
   } | null>(null);
   const [accessToDelete, setAccessToDelete] = useState<PlatformAccessInventoryItem | null>(null);
   const [pilotInquiryToDelete, setPilotInquiryToDelete] = useState<PilotInquiryItem | null>(null);
-  const [pilotContractForm, setPilotContractForm] = useState<PilotContractForm | null>(null);
-  const [pilotContractToDelete, setPilotContractToDelete] = useState<PilotContractItem | null>(null);
   const resetToken = new URLSearchParams(window.location.search).get("reset");
 
   const [wbtTrackChoice, setWbtTrackChoice] = useState<"helper" | "admin">("helper");
@@ -1197,11 +1117,6 @@ export default function MasterAdminPortal() {
     retry: false,
     refetchOnWindowFocus: true,
   });
-  const pilotContracts = trpc.platformAdmin.pilotContracts.useQuery(undefined, {
-    enabled: isAuthenticated && user?.role === "admin",
-    retry: false,
-    refetchOnWindowFocus: true,
-  });
   const completePilotInquiry = trpc.platformAdmin.completePilotInquiry.useMutation({
     onSuccess: async result => {
       await pilotInquiries.refetch();
@@ -1218,48 +1133,6 @@ export default function MasterAdminPortal() {
       await pilotInquiries.refetch();
       setPilotInquiryToDelete(null);
       toast.success("Pilotanfrage vollständig gelöscht.");
-    },
-    onError: error => toast.error(error.message),
-  });
-  const createPilotContract = trpc.platformAdmin.createPilotContract.useMutation({
-    onSuccess: async () => {
-      await pilotContracts.refetch();
-      setPilotContractForm(null);
-      toast.success("Pilotvertragsentwurf angelegt.");
-    },
-    onError: error => toast.error(error.message),
-  });
-  const updatePilotContract = trpc.platformAdmin.updatePilotContract.useMutation({
-    onSuccess: async result => {
-      await pilotContracts.refetch();
-      setPilotContractForm(null);
-      toast.success(
-        result.status === "agreed"
-          ? "Pilotvereinbarung als vereinbart dokumentiert."
-          : "Pilotvertragsentwurf gespeichert."
-      );
-    },
-    onError: error => toast.error(error.message),
-  });
-  const archivePilotContract = trpc.platformAdmin.archivePilotContract.useMutation({
-    onSuccess: async () => {
-      await pilotContracts.refetch();
-      toast.success("Pilotvertrag archiviert.");
-    },
-    onError: error => toast.error(error.message),
-  });
-  const deletePilotContract = trpc.platformAdmin.deletePilotContract.useMutation({
-    onSuccess: async () => {
-      await pilotContracts.refetch();
-      setPilotContractToDelete(null);
-      toast.success("Pilotvertrag vollständig gelöscht.");
-    },
-    onError: error => toast.error(error.message),
-  });
-  const downloadPilotContract = trpc.platformAdmin.pilotContractPdf.useMutation({
-    onSuccess: result => {
-      downloadBase64File(result.base64, result.mimeType, result.filename);
-      toast.success("Pilotvereinbarung als PDF erstellt.");
     },
     onError: error => toast.error(error.message),
   });
@@ -1384,35 +1257,6 @@ export default function MasterAdminPortal() {
         "Montag" | "Dienstag" | "Mittwoch" | "Donnerstag" | "Freitag" | "Samstag" | "Sonntag"
       >,
     });
-  };
-
-  const submitPilotContract = (event: FormEvent) => {
-    event.preventDefault();
-    if (!pilotContractForm) return;
-    if (pilotContractForm.endsOn < pilotContractForm.startsOn) {
-      toast.error("Das Pilotende darf nicht vor dem Pilotbeginn liegen.");
-      return;
-    }
-    const input = {
-      tenantId: pilotContractForm.tenantId || null,
-      clubName: pilotContractForm.clubName,
-      legalName: pilotContractForm.legalName,
-      contactName: pilotContractForm.contactName,
-      contactEmail: pilotContractForm.contactEmail,
-      packageId: pilotContractForm.packageId,
-      startsOn: pilotContractForm.startsOn,
-      endsOn: pilotContractForm.endsOn,
-      internalNote: pilotContractForm.internalNote || null,
-    };
-    if (pilotContractForm.id) {
-      updatePilotContract.mutate({
-        id: pilotContractForm.id,
-        ...input,
-        status: pilotContractForm.status,
-      });
-      return;
-    }
-    createPilotContract.mutate(input);
   };
 
   const isVisualPreview =
@@ -1584,10 +1428,6 @@ export default function MasterAdminPortal() {
   const duplicateEmailCount = personalAccesses.filter(access => access.hasDuplicateEmail).length;
   const pilotInquiryItems = (pilotInquiries.data ?? []) as PilotInquiryItem[];
   const openPilotInquiryCount = pilotInquiryItems.filter(inquiry => inquiry.status === "open").length;
-  const pilotContractItems = (pilotContracts.data ?? []) as PilotContractItem[];
-  const activePilotContracts = pilotContractItems.filter(contract => contract.status !== "archived");
-  const archivedPilotContracts = pilotContractItems.filter(contract => contract.status === "archived");
-  const pilotTenants = activeTenants.filter(tenant => tenant.status === "pilot");
   const packageDistribution = PRODUCT_PACKAGE_IDS.map(packageId => {
     const assignedTenants = activeTenants.filter(
       tenant => tenant.productAssignment.packageId === packageId
@@ -1915,121 +1755,6 @@ export default function MasterAdminPortal() {
                   })}
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </section>
-
-        <section aria-labelledby="pilotvertraege">
-          <Card className="border-blue-200 bg-white/95 py-0 shadow-sm">
-            <CardHeader className="border-b border-blue-100 px-5 py-4 sm:px-6">
-              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-                <div>
-                  <CardTitle id="pilotvertraege" className="flex items-center gap-2 text-base">
-                    <FileText className="size-5 text-blue-700" /> Pilotvereine &amp; Pilotverträge
-                  </CardTitle>
-                  <CardDescription className="mt-1 max-w-3xl">
-                    Nur für die Plattformverwaltung: Pilotvereine werden getrennt von öffentlichen Anfragen gezeigt. Verträge sind kurze PDF-Entwürfe zur individuellen Abstimmung, keine digitale Unterschrift.
-                  </CardDescription>
-                </div>
-                <Button size="sm" onClick={() => setPilotContractForm(defaultPilotContractForm())}>
-                  <Plus className="size-3.5" /> Pilotvertrag anlegen
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="grid gap-5 px-5 py-4 sm:px-6 lg:grid-cols-[0.78fr_1.22fr]">
-              <section aria-labelledby="pilotvereine" className="rounded-xl border border-sky-100 bg-sky-50/50 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <h2 id="pilotvereine" className="text-sm font-semibold text-slate-900">Pilotvereine</h2>
-                  <Badge variant="outline" className="border-sky-200 bg-white text-sky-800">{pilotTenants.length}</Badge>
-                </div>
-                <p className="mt-1 text-xs leading-5 text-slate-600">Bereits angelegte Vereine mit Pilotstatus. Ein Klick übernimmt die Grunddaten in einen Vertragsentwurf.</p>
-                <div className="mt-3 space-y-2">
-                  {pilotTenants.length === 0 ? (
-                    <p className="rounded-lg border border-dashed border-sky-200 bg-white px-3 py-3 text-sm text-slate-600">Noch kein Pilotverein angelegt.</p>
-                  ) : (
-                    pilotTenants.map(tenant => {
-                      const contractCount = activePilotContracts.filter(contract => contract.tenantId === tenant.id).length;
-                      return (
-                        <article key={tenant.id} className="rounded-lg border border-slate-200 bg-white p-3">
-                          <div className="flex flex-wrap items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-semibold text-slate-900">{tenant.name}</p>
-                              <p className="mt-0.5 text-xs text-slate-600">{PRODUCT_PACKAGE_META[tenant.productAssignment.packageId].name} · {tenant.productAssignment.startsOn ? formatDate(tenant.productAssignment.startsOn) : "Beginn offen"}</p>
-                            </div>
-                            {contractCount > 0 ? <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-800">{contractCount} Vertrag{contractCount === 1 ? "" : "e"}</Badge> : null}
-                          </div>
-                          <Button size="sm" variant="outline" className="mt-3 w-full border-blue-200 bg-white text-blue-800 hover:bg-blue-50" onClick={() => setPilotContractForm(defaultPilotContractForm(tenant))}>
-                            <FileText className="size-3.5" /> Vertrag vorbereiten
-                          </Button>
-                        </article>
-                      );
-                    })
-                  )}
-                </div>
-              </section>
-
-              <section aria-labelledby="vertragsliste">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h2 id="vertragsliste" className="text-sm font-semibold text-slate-900">Laufende Vertragsentwürfe</h2>
-                  <span className="text-xs text-slate-500">{activePilotContracts.length} laufend</span>
-                </div>
-                <div className="mt-3 space-y-3">
-                  {pilotContracts.isLoading ? (
-                    <p className="text-sm text-slate-500">Pilotverträge werden geladen …</p>
-                  ) : activePilotContracts.length === 0 ? (
-                    <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-600">Noch kein Pilotvertragsentwurf angelegt.</p>
-                  ) : (
-                    activePilotContracts.map(contract => {
-                      const status = PILOT_CONTRACT_STATUS_META[contract.status];
-                      return (
-                        <article key={contract.id} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
-                          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-                            <div className="min-w-0">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <p className="truncate font-semibold text-slate-950">{contract.clubName}</p>
-                                <Badge variant="outline" className={status.className}>{status.label}</Badge>
-                              </div>
-                              <p className="mt-1 text-sm text-slate-700">{contract.contractNumber} · {PRODUCT_PACKAGE_META[contract.packageId].name}</p>
-                              <p className="mt-1 text-xs text-slate-500">{formatDate(contract.startsOn)} bis {formatDate(contract.endsOn)}{contract.tenantName ? ` · verknüpft mit ${contract.tenantName}` : " · noch keinem Pilotverein zugeordnet"}</p>
-                              {contract.agreedAt ? <p className="mt-1 text-xs text-emerald-700">Vereinbarung dokumentiert am {formatAccessCreatedAt(contract.agreedAt)}</p> : null}
-                            </div>
-                            <div className="flex flex-wrap gap-2 sm:justify-end">
-                              <Button size="sm" variant="outline" disabled={downloadPilotContract.isPending} onClick={() => downloadPilotContract.mutate({ id: contract.id })}>
-                                {downloadPilotContract.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <FileText className="size-3.5" />} PDF
-                              </Button>
-                              <Button size="sm" variant="outline" onClick={() => setPilotContractForm(pilotContractFormFromItem(contract))}>
-                                Bearbeiten
-                              </Button>
-                              <Button size="sm" variant="outline" className="border-slate-300 bg-white text-slate-700 hover:bg-slate-100" disabled={archivePilotContract.isPending} onClick={() => archivePilotContract.mutate({ id: contract.id })}>
-                                <Archive className="size-3.5" /> Archivieren
-                              </Button>
-                              <Button size="sm" variant="outline" className="border-red-200 bg-white text-red-700 hover:bg-red-50 hover:text-red-800" onClick={() => setPilotContractToDelete(contract)}>
-                                <Trash2 className="size-3.5" /> Löschen
-                              </Button>
-                            </div>
-                          </div>
-                        </article>
-                      );
-                    })
-                  )}
-                </div>
-                {archivedPilotContracts.length > 0 && (
-                  <details className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                    <summary className="cursor-pointer text-sm font-semibold text-slate-700">{archivedPilotContracts.length} archivierte Pilotvertrag{archivedPilotContracts.length === 1 ? "" : "e"} anzeigen</summary>
-                    <div className="mt-3 space-y-2">
-                      {archivedPilotContracts.map(contract => (
-                        <div key={contract.id} className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
-                          <p className="text-sm text-slate-700"><strong>{contract.clubName}</strong> · {contract.contractNumber}</p>
-                          <div className="flex flex-wrap gap-2">
-                            <Button size="sm" variant="outline" disabled={downloadPilotContract.isPending} onClick={() => downloadPilotContract.mutate({ id: contract.id })}><FileText className="size-3.5" /> PDF</Button>
-                            <Button size="sm" variant="outline" className="border-red-200 bg-white text-red-700 hover:bg-red-50 hover:text-red-800" onClick={() => setPilotContractToDelete(contract)}><Trash2 className="size-3.5" /> Löschen</Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </details>
-                )}
-              </section>
             </CardContent>
           </Card>
         </section>
@@ -2423,122 +2148,6 @@ export default function MasterAdminPortal() {
           </Card>
         </section>
       </div>
-
-      <Dialog
-        open={Boolean(pilotContractForm)}
-        onOpenChange={open => {
-          if (!open && !createPilotContract.isPending && !updatePilotContract.isPending) {
-            setPilotContractForm(null);
-          }
-        }}
-      >
-        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white text-slate-950 sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="size-5 text-blue-700" /> {pilotContractForm?.id ? "Pilotvertrag bearbeiten" : "Pilotvertrag vorbereiten"}
-            </DialogTitle>
-            <DialogDescription>
-              Kurzer PDF-Entwurf für die einmalige Pilotphase. Es wird keine digitale Unterschrift ausgelöst und kein Vereinsbereich verändert.
-            </DialogDescription>
-          </DialogHeader>
-          {pilotContractForm && (
-            <form className="space-y-5" onSubmit={submitPilotContract}>
-              <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm leading-5 text-blue-950">
-                <strong>Einfacher Ablauf:</strong> Daten eintragen, Entwurf speichern, PDF herunterladen und bei Bedarf außerhalb von MyCrewMate abstimmen. „Vereinbart“ dokumentiert nur Ihre manuelle Entscheidung.
-              </div>
-              <fieldset className="grid gap-4 sm:grid-cols-2">
-                <legend className="sr-only">Verein und Kontakt</legend>
-                <label className="space-y-1.5 sm:col-span-2">
-                  <span className="text-sm font-semibold text-slate-800">Bestehenden Pilotverein zuordnen (optional)</span>
-                  <Select
-                    value={pilotContractForm.tenantId || "unassigned"}
-                    onValueChange={value => {
-                      const tenant = pilotTenants.find(item => item.id === value);
-                      setPilotContractForm(current => current && ({
-                        ...current,
-                        tenantId: value === "unassigned" ? "" : value,
-                        clubName: tenant ? tenant.name : current.clubName,
-                        legalName: tenant ? tenant.legalName : current.legalName,
-                        contactEmail: tenant ? tenant.contactEmail : current.contactEmail,
-                        packageId: tenant ? tenant.productAssignment.packageId : current.packageId,
-                        startsOn: tenant?.productAssignment.startsOn ?? current.startsOn,
-                        endsOn: tenant?.productAssignment.endsOn ?? current.endsOn,
-                      }));
-                    }}
-                  >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unassigned">Noch keinem Pilotverein zuordnen</SelectItem>
-                      {pilotTenants.map(tenant => <SelectItem key={tenant.id} value={tenant.id}>{tenant.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </label>
-                <label className="space-y-1.5">
-                  <span className="text-sm font-semibold text-slate-800">Vereinsname</span>
-                  <Input value={pilotContractForm.clubName} onChange={event => setPilotContractForm(current => current && ({ ...current, clubName: event.target.value }))} required maxLength={200} />
-                </label>
-                <label className="space-y-1.5">
-                  <span className="text-sm font-semibold text-slate-800">Rechtliche Bezeichnung</span>
-                  <Input value={pilotContractForm.legalName} onChange={event => setPilotContractForm(current => current && ({ ...current, legalName: event.target.value }))} required maxLength={240} />
-                </label>
-                <label className="space-y-1.5">
-                  <span className="text-sm font-semibold text-slate-800">Ansprechperson</span>
-                  <Input value={pilotContractForm.contactName} onChange={event => setPilotContractForm(current => current && ({ ...current, contactName: event.target.value }))} required maxLength={120} />
-                </label>
-                <label className="space-y-1.5">
-                  <span className="text-sm font-semibold text-slate-800">Kontakt-E-Mail</span>
-                  <Input type="email" value={pilotContractForm.contactEmail} onChange={event => setPilotContractForm(current => current && ({ ...current, contactEmail: event.target.value }))} required maxLength={320} />
-                </label>
-              </fieldset>
-
-              <fieldset className="grid gap-4 rounded-xl border border-violet-200 bg-violet-50/40 p-4 sm:grid-cols-2">
-                <legend className="sr-only">Pilotzeitraum und Paket</legend>
-                <label className="space-y-1.5">
-                  <span className="text-sm font-semibold text-slate-800">Pilotpaket</span>
-                  <Select value={pilotContractForm.packageId} onValueChange={(packageId: ProductPackageId) => setPilotContractForm(current => current && ({ ...current, packageId }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {PRODUCT_PACKAGE_IDS.map(packageId => <SelectItem key={packageId} value={packageId}>{PRODUCT_PACKAGE_META[packageId].name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </label>
-                <label className="space-y-1.5">
-                  <span className="text-sm font-semibold text-slate-800">Interner Stand</span>
-                  {pilotContractForm.id ? (
-                    <Select value={pilotContractForm.status} onValueChange={(status: "draft" | "agreed") => setPilotContractForm(current => current && ({ ...current, status }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="draft">Entwurf zur Abstimmung</SelectItem>
-                        <SelectItem value="agreed">Manuell als vereinbart dokumentiert</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : <p className="rounded-md border border-violet-100 bg-white px-3 py-2 text-sm text-slate-600">Neue Einträge starten immer als Entwurf.</p>}
-                </label>
-                <label className="space-y-1.5">
-                  <span className="text-sm font-semibold text-slate-800">Pilotbeginn</span>
-                  <Input type="date" value={pilotContractForm.startsOn} onChange={event => setPilotContractForm(current => current && ({ ...current, startsOn: event.target.value }))} required />
-                </label>
-                <label className="space-y-1.5">
-                  <span className="text-sm font-semibold text-slate-800">Pilotende</span>
-                  <Input type="date" value={pilotContractForm.endsOn} onChange={event => setPilotContractForm(current => current && ({ ...current, endsOn: event.target.value }))} required />
-                </label>
-              </fieldset>
-
-              <label className="block space-y-1.5">
-                <span className="text-sm font-semibold text-slate-800">Individuelle Absprache (optional)</span>
-                <textarea value={pilotContractForm.internalNote} onChange={event => setPilotContractForm(current => current && ({ ...current, internalNote: event.target.value }))} maxLength={2000} rows={4} placeholder="Nur Punkte eintragen, die zusätzlich in die PDF-Vorlage gehören." className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-950 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
-              </label>
-              <DialogFooter className="gap-2 sm:gap-0">
-                <Button type="button" variant="outline" disabled={createPilotContract.isPending || updatePilotContract.isPending} onClick={() => setPilotContractForm(null)}>Abbrechen</Button>
-                <Button type="submit" disabled={createPilotContract.isPending || updatePilotContract.isPending}>
-                  {createPilotContract.isPending || updatePilotContract.isPending ? <Loader2 className="size-4 animate-spin" /> : <FileText className="size-4" />}
-                  {pilotContractForm.id ? "Pilotvertrag speichern" : "Pilotvertragsentwurf anlegen"}
-                </Button>
-              </DialogFooter>
-            </form>
-          )}
-        </DialogContent>
-      </Dialog>
 
       <Dialog
         open={createOpen}
@@ -3155,41 +2764,6 @@ export default function MasterAdminPortal() {
             >
               {deleteTestAccess.isPending ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
               Zugang endgültig entfernen
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog
-        open={Boolean(pilotContractToDelete)}
-        onOpenChange={open => {
-          if (!open && !deletePilotContract.isPending) setPilotContractToDelete(null);
-        }}
-      >
-        <AlertDialogContent className="border-red-200 bg-white text-slate-950">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-red-900">
-              <Trash2 className="size-5 text-red-700" /> Pilotvertrag endgültig löschen?
-            </AlertDialogTitle>
-            <AlertDialogDescription className="leading-5 text-slate-600">
-              Der Eintrag <strong className="font-semibold text-slate-800">{pilotContractToDelete?.contractNumber}</strong> für <strong className="font-semibold text-slate-800">{pilotContractToDelete?.clubName}</strong> wird vollständig aus der MyCrewMate-Datenbank entfernt.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-5 text-amber-950">
-            Bereits außerhalb von MyCrewMate gespeicherte oder versandte PDF-Kopien werden dadurch nicht zurückgerufen. Löschen Sie diese gegebenenfalls separat.
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deletePilotContract.isPending}>Abbrechen</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={!pilotContractToDelete || deletePilotContract.isPending}
-              className="bg-red-700 text-white hover:bg-red-800"
-              onClick={() => {
-                if (!pilotContractToDelete) return;
-                deletePilotContract.mutate({ id: pilotContractToDelete.id });
-              }}
-            >
-              {deletePilotContract.isPending ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
-              Pilotvertrag endgültig löschen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
