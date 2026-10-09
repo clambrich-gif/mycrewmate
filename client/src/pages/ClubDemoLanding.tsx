@@ -107,7 +107,7 @@ export default function ClubDemoLanding() {
     <main className="min-h-screen bg-[#f7f8fb] text-slate-950">
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex min-h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-          <a href="/" className="shrink-0" aria-label="MyCrewMate – zur Startseite">
+          <a href="https://mycrewmate.de/" className="shrink-0" aria-label="MyCrewMate – zur Hauptwebsite">
             <img src={WORDMARK} alt="MyCrewMate" className="h-7 w-auto sm:h-8" />
           </a>
           <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800 ring-1 ring-emerald-200">

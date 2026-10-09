@@ -1855,7 +1855,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
           {isPublicDemoSession ? (
             <a
-              href="https://mycrewmate.de"
+              href="https://mycrewmate.de/"
               className="min-w-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
               aria-label="Zur MyCrewMate-Website"
             >
@@ -1902,7 +1902,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <SheetHeader className="items-center bg-white px-4 py-3 text-center">
             <SheetTitle className="flex justify-center">
               {isPublicDemoSession ? (
-                <a href="https://mycrewmate.de" aria-label="Zur MyCrewMate-Website">
+                <a href="https://mycrewmate.de/" aria-label="Zur MyCrewMate-Website">
                   <img
                     {...logoLoading}
                     src={MYCREWMATE_WORDMARK}
@@ -2231,7 +2231,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         >
         <div className="flex min-h-24 flex-col items-center px-4 py-3 text-slate-950">
           {isPublicDemoSession ? (
-            <a href="https://mycrewmate.de" aria-label="Zur MyCrewMate-Website">
+            <a href="https://mycrewmate.de/" aria-label="Zur MyCrewMate-Website">
               <img
                 {...logoLoading}
                 src={MYCREWMATE_WORDMARK}

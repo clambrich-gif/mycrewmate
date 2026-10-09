@@ -51,7 +51,7 @@ export default function LegalDocument({ documentId }: { documentId: LegalDocumen
     <main className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-orange-50/80 text-slate-950 print:bg-white">
       <header className="border-b border-slate-200/80 bg-white/90 backdrop-blur-md print:hidden">
         <div className="mx-auto flex min-h-16 max-w-4xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-          <a href="https://mycrewmate.de" className="shrink-0" aria-label="MyCrewMate – zur Startseite">
+          <a href="https://mycrewmate.de/" className="shrink-0" aria-label="MyCrewMate – zur Hauptwebsite">
             <img src={WORDMARK} alt="MyCrewMate" className="h-8 w-auto sm:h-9" />
           </a>
           <div className="flex items-center gap-2">

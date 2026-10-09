@@ -26,9 +26,9 @@ export default function AppPrivacy() {
       <header className="border-b border-slate-200/80 bg-white/90 backdrop-blur-md print:hidden">
         <div className="mx-auto flex min-h-16 max-w-4xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <a
-            href="https://mycrewmate.de"
+            href="https://mycrewmate.de/"
             className="shrink-0"
-            aria-label="MyCrewMate – zur Startseite"
+            aria-label="MyCrewMate – zur Hauptwebsite"
           >
             <img
               src={WORDMARK}

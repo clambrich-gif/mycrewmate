@@ -38,6 +38,7 @@
 - [x] Öffentliche Vereinsdemo sprachlich eindeutig abgegrenzt: reine Übungsumgebung mit fiktiven Daten; Pilotprogramm als einziger Weg für eigene Vereine, echte Anlässe und reale Daten. Enterprise ersetzt dort die frühere sichtbare Bezeichnung Ultimate.
 - [x] Steuerkennzeichnung bewusst bis zur Rücksprache mit dem Steuerberater offen gelassen; die Website zeigt bis dahin ausschließlich bestätigte Endpreise ohne MwSt.-/USt.-Aussage.
 - [x] Pilot-Anfrageformular als echten, SMTP-basierten Versand an `support@mycrewmate.de` fertiggestellt: vertikale Felder, Pflicht-Telefonnummer, serverseitige Validierung, Spam-Schutz und automatische Eingangsbestätigung.
+- [x] Öffentliche MyCrewMate-Logos auf Hauptseite, Pilotseite, Vereinsdemo und Rechtstexten einheitlich mit `https://mycrewmate.de/` verlinkt.
 
 ## Später prüfen
 

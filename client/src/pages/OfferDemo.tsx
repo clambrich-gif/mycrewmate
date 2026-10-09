@@ -607,9 +607,9 @@ export default function OfferDemo() {
       <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <a
-            href="#start"
+            href="https://mycrewmate.de/"
             className="shrink-0 rounded-md focus-visible:outline-none"
-            aria-label="MyCrewMate Angebotsdemo – zum Anfang"
+            aria-label="MyCrewMate – zur Hauptwebsite"
           >
             <img
               src={WORDMARK}

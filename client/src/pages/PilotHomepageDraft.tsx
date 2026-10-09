@@ -347,7 +347,7 @@ export default function PilotHomepageDraft() {
 
       <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur">
         <div className="mx-auto flex h-18 max-w-7xl items-center justify-between gap-5 px-4 sm:px-6 lg:px-8">
-          <a href="#start" className="shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-200">
+          <a href="https://mycrewmate.de/" className="shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-200" aria-label="MyCrewMate – zur Hauptwebsite">
             <img src={WORDMARK} alt="MyCrewMate" className="h-auto w-36 sm:w-40" />
           </a>
           <nav className="hidden items-center gap-5 text-sm font-bold text-slate-600 lg:flex" aria-label="Seitennavigation">

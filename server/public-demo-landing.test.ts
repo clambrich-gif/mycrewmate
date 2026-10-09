@@ -66,7 +66,7 @@ describe("öffentliche Vereinsdemo", () => {
     const demo = read("server/public-demo.ts");
 
     expect(app).toContain("if (!isAuthenticated || isPublicDemoSession) return;");
-    expect(layout).toContain('href="https://mycrewmate.de"');
+    expect(layout).toContain('href="https://mycrewmate.de/"');
     expect(layout).toContain('item.href !== "/pdf-export"');
     expect(layout).toContain("useOnlinePresence(!isPublicDemoSession)");
     expect(security).toContain("<AuditCenter readOnly showFileHistory={false} />");
