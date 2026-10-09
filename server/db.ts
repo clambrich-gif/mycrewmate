@@ -2186,7 +2186,7 @@ export async function deletePlatformAccessForMasterAdmin(input: {
   });
 }
 
-export type PlatformTenantSetupStatus = "pilot" | "sample";
+export type PlatformTenantSetupStatus = "pilot" | "sample" | "active";
 export type PlatformTenantLifecycleStatus =
   | "pilot"
   | "sample"
@@ -2221,9 +2221,10 @@ async function nextAvailableTenantId(tx: DBClient, name: string) {
 }
 
 /**
- * Legt ausschließlich einen internen Pilot- oder Musterverein an. Ein Status
- * "active" ist absichtlich nicht möglich: öffentliche Freischaltung bleibt ein
- * späterer, gesondert abgesicherter Marktstartschritt.
+ * Legt einen Verein ausschließlich über das geschützte Master-Portal an.
+ * Ein Status "active" bedeutet eine bewusste manuelle Freischaltung durch die
+ * Plattformverwaltung; eine öffentliche Registrierung bleibt davon unabhängig
+ * weiterhin ausgeschlossen.
  */
 export async function createTenantForPlatformAdmin(input: {
   name: string;

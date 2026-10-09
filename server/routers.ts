@@ -132,6 +132,11 @@ import {
   type ProductCapability,
 } from "@shared/product-packages";
 import {
+  MYCREWMATE_SUPPORT_EMAIL,
+  TENANT_ACCESS_MODES,
+  tenantCreationSetupForAccessMode,
+} from "@shared/tenant-access-mode";
+import {
   LEGAL_DOCUMENTS,
   REQUIRED_LEGAL_DOCUMENT_IDS,
 } from "@shared/legal-contract-documents";
@@ -4389,16 +4394,11 @@ export const appRouter = router({
       .input(
         z.object({
           name: z.string().trim().min(3).max(200),
-          legalName: z.string().trim().min(3).max(240),
           contactEmail: z.string().trim().email().max(320),
-          supportEmail: z.string().trim().email().max(320),
-          status: z.enum(["pilot", "sample"]),
-          planName: z.string().trim().min(3).max(120),
+          accessMode: z.enum(TENANT_ACCESS_MODES),
           packageId: z.enum(PRODUCT_PACKAGE_IDS),
-          packageStatus: z.enum(PRODUCT_ASSIGNMENT_STATUSES).default("test"),
           packageStartsOn: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
           packageEndsOn: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
-          packageInternalNote: z.string().trim().max(2_000).nullable().optional(),
           initialEventName: z.string().trim().min(2).max(200),
           initialEventYear: eventYearInput,
           activeDays: activeDaysInput,
@@ -4418,8 +4418,14 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         const initialAdmin = input.initialAdmin;
+        const accessSetup = tenantCreationSetupForAccessMode(input.accessMode);
         const created = await db.createTenantForPlatformAdmin({
           ...input,
+          legalName: input.name,
+          supportEmail: MYCREWMATE_SUPPORT_EMAIL,
+          status: accessSetup.tenantStatus,
+          planName: accessSetup.planName,
+          packageStatus: accessSetup.packageStatus,
           initialAdmin: initialAdmin
             ? {
                 name: initialAdmin.name,

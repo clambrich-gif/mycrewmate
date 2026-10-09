@@ -74,19 +74,25 @@ describe("Master-Admin-Portal", () => {
     expect(page).toContain("overviewNeedsRenewedLogin ? void logout() : void overview.refetch()");
   });
 
-  it("erlaubt Masteraktionen nur für interne Pilot- und Mustervereine", () => {
+  it("legt Vereine über einen verständlichen Zugangsstatus an", () => {
     const routers = source("server/routers.ts");
     const db = source("server/db.ts");
     const page = source("client/src/pages/MasterAdminPortal.tsx");
 
     expect(routers).toContain("createTenant: masterAdminProcedure");
-    expect(routers).toContain('status: z.enum(["pilot", "sample"])');
+    expect(routers).toContain("accessMode: z.enum(TENANT_ACCESS_MODES)");
+    expect(routers).toContain("tenantCreationSetupForAccessMode(input.accessMode)");
+    expect(routers).toContain("legalName: input.name");
     expect(routers).toContain("updateTenantLifecycle: masterAdminProcedure");
     expect(routers).toContain('z.enum(["pilot", "sample", "suspended", "archived"])');
     expect(db).toContain("export async function createTenantForPlatformAdmin");
     expect(db).toContain("export async function updateTenantLifecycleForPlatformAdmin");
-    expect(db).toContain('"active" ist absichtlich nicht möglich');
-    expect(page).toContain("Der Status <strong>Aktiv</strong> ist vor dem Marktstart bewusst nicht verfügbar.");
+    expect(db).toContain('export type PlatformTenantSetupStatus = "pilot" | "sample" | "active"');
+    expect(page).toContain("Vereinsname / offizielle Bezeichnung");
+    expect(page).toContain("Paket &amp; Zugangsstatus");
+    expect(page).not.toContain("Rechtliche Bezeichnung");
+    expect(page).not.toContain("Interner Status");
+    expect(page).not.toContain("Planbezeichnung");
   });
 
   it("trennt archivierte Vereine von der laufenden Verwaltung und erlaubt nur eine bewusste Reaktivierung", () => {
@@ -248,7 +254,8 @@ describe("Master-Admin-Bereinigung", () => {
   it("trennt Pilotzugänge sprachlich von der öffentlichen Vereinsdemo", () => {
     const page = source("client/src/pages/MasterAdminPortal.tsx");
 
-    expect(page).toContain('return status === "test"\n    ? "Pilotzugang"');
+    expect(page).toContain("tenantAccessModeFromState");
+    expect(page).toContain("TENANT_ACCESS_MODE_META[accessMode].label");
     expect(page).toContain("Zustimmungen für den Vereinszugang vollständig.");
     expect(page).not.toContain("Marktstart noch nicht aktiv");
     expect(page).not.toContain("Keine öffentliche Registrierung, kein Checkout und keine Zahlungsanbindung.");

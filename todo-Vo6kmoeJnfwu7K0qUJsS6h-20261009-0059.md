@@ -71,6 +71,7 @@
 - [x] Frühere WBT-Schulungsfunktion vollständig entfernt: keine Master-Aktion, keine Hilfe-/Klemmi-Verlinkung, keine öffentliche oder geschützte Route, keine PDF-Erzeugung und keine Schulungsdateien. Die historische Tabelle `wbt_training_links` wurde nach bestätigter Löschentscheidung aus Schema und Entwicklungsdatenbank entfernt; die Produktionsmigration `0100_chemical_captain_marvel` ist vorbereitet.
 - [x] Master-Portal sprachlich präzisiert: „Pilotzugang“ statt Testzugang, „Zustimmungen für den Vereinszugang“ statt Vertragsunterlagen, „Admin-Zugang einrichten“ sowie eine eindeutige endgültige Vereinslöschung. Paketzuordnungen und der noch deaktivierte Marktstart sind klar benannt.
 - [x] Typecheck, 46 gezielte Regressionstests und Produktionsbuild für die Master-Portal-Bereinigung erfolgreich ausgeführt; Laufzeitcode und Domains zusätzlich ohne WBT- bzw. `micromate`-Treffer geprüft.
+- [x] Vereinsanlage im Master-Portal vereinfacht: ein Name statt doppelter Bezeichnung, kein sichtbarer interner Status, kein separater Supportkontakt und eine klare Auswahl aus Pilotzugang, Testzugang, Aktiv, Pausiert oder Abgelaufen. Bestehende Vereine – insbesondere RSC Eifelland Mayen – wurden dabei nicht verändert; keine Datenmigration.
 - [ ] Vor dem geplanten Kaufstart am 01.01.2027 Checkout, Steuerstatus und eine etwaige BFSG-/Barrierefreiheitsinformation für den dann verbindlich bestätigten Vertriebspfad freigeben.
 
 ## Später prüfen

@@ -48,12 +48,17 @@ import {
   type ProductPackageId,
 } from "@shared/product-packages";
 import {
+  TENANT_ACCESS_MODES,
+  TENANT_ACCESS_MODE_META,
+  tenantAccessModeFromState,
+  type TenantAccessMode,
+} from "@shared/tenant-access-mode";
+import {
   Archive,
   Building2,
   CalendarDays,
   CheckCircle2,
   CircleAlert,
-  CirclePause,
   ChevronDown,
   Copy,
   CreditCard,
@@ -100,16 +105,11 @@ const EVENT_DAYS = [
 
 type CreateTenantForm = {
   name: string;
-  legalName: string;
   contactEmail: string;
-  supportEmail: string;
-  status: "pilot" | "sample";
-  planName: string;
+  accessMode: TenantAccessMode;
   packageId: ProductPackageId;
-  packageStatus: ProductAssignmentStatus;
   packageStartsOn: string;
   packageEndsOn: string;
-  packageInternalNote: string;
   initialEventName: string;
   initialEventYear: string;
   activeDays: string[];
@@ -255,12 +255,12 @@ const PRODUCT_ASSIGNMENT_STATUS_CLASS: Record<ProductAssignmentStatus, string> =
 };
 
 function masterAssignmentStatusLabel(
-  packageId: ProductPackageId,
-  status: ProductAssignmentStatus
+  status: ProductAssignmentStatus,
+  tenantStatus: TenantStatus = "sample"
 ) {
-  return status === "test"
-    ? "Pilotzugang"
-    : PRODUCT_PACKAGE_META[packageId].assignmentStatusLabel[status];
+  return TENANT_ACCESS_MODE_META[
+    tenantAccessModeFromState({ tenantStatus, packageStatus: status })
+  ].label;
 }
 
 function productUsageTone(metric: ProductLimitUsageMetric) {
@@ -507,16 +507,11 @@ type PlatformAccessInventoryItem = {
 function defaultCreateTenantForm(): CreateTenantForm {
   return {
     name: "",
-    legalName: "",
     contactEmail: "",
-    supportEmail: "support@mycrewmate.de",
-    status: "pilot",
-    planName: "Pilotbetrieb",
+    accessMode: "pilot",
     packageId: "pro",
-    packageStatus: "test",
     packageStartsOn: "",
     packageEndsOn: "",
-    packageInternalNote: "",
     initialEventName: "",
     initialEventYear: "2027",
     activeDays: [...INITIAL_EVENT_DAYS],
@@ -1297,18 +1292,13 @@ export default function MasterAdminPortal() {
     }
     createTenant.mutate({
       name: createForm.name,
-      legalName: createForm.legalName,
       contactEmail: createForm.contactEmail,
-      supportEmail: createForm.supportEmail,
-      status: createForm.status,
-      planName: createForm.planName,
+      accessMode: createForm.accessMode,
       packageId: createForm.packageId,
-      packageStatus: createForm.packageStatus,
       initialEventName: createForm.initialEventName,
       initialEventYear,
       packageStartsOn: createForm.packageStartsOn || null,
       packageEndsOn: createForm.packageEndsOn || null,
-      packageInternalNote: createForm.packageInternalNote || null,
       initialAdmin: createForm.createInitialAdmin
         ? {
             name: createForm.initialAdminName.trim(),
@@ -1790,19 +1780,21 @@ export default function MasterAdminPortal() {
                 </p>
               )}
               {filteredActiveTenants.map(tenant => {
-                const status = STATUS_META[tenant.status as TenantStatus];
                 const tenantAccesses = personalAccesses.filter(access => access.tenantIds.includes(tenant.id));
+                const accessMode = tenantAccessModeFromState({
+                  tenantStatus: tenant.status as TenantStatus,
+                  packageStatus: tenant.productAssignment.status,
+                });
                 return (
                   <article key={tenant.id} className="grid gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <h2 className="truncate font-semibold text-slate-900">{tenant.name}</h2>
-                        <Badge variant="outline" className={status.className}>{status.label}</Badge>
                         <Badge variant="outline" className={PRODUCT_BADGE_CLASS[tenant.productAssignment.packageId]}>
                           {PRODUCT_PACKAGE_META[tenant.productAssignment.packageId].name}
                         </Badge>
                         <Badge variant="outline" className={PRODUCT_ASSIGNMENT_STATUS_CLASS[tenant.productAssignment.status]}>
-                          {masterAssignmentStatusLabel(tenant.productAssignment.packageId, tenant.productAssignment.status)}
+                          {TENANT_ACCESS_MODE_META[accessMode].label}
                         </Badge>
                       </div>
                       <p className="mt-1 truncate text-sm text-slate-500">{tenant.legalName}</p>
@@ -2008,33 +2000,24 @@ export default function MasterAdminPortal() {
               <Building2 className="size-5 text-blue-700" /> Neuen internen Verein anlegen
             </DialogTitle>
             <DialogDescription>
-              Der Verein wird nur als Pilot- oder Musterverein angelegt. Es entstehen weder ein öffentlicher Zugang noch eine Zahlungs- oder Buchungsfunktion.
+              Der Verein wird ausschließlich über dieses geschützte Master-Portal angelegt. Eine öffentliche Registrierung, Buchung oder Zahlung wird dadurch nicht ausgelöst.
             </DialogDescription>
           </DialogHeader>
           <form className="space-y-5" onSubmit={submitCreateTenant}>
             <fieldset className="grid gap-4 sm:grid-cols-2">
               <legend className="sr-only">Vereinsangaben</legend>
-              <label className="space-y-1.5">
-                <span className="text-sm font-semibold text-slate-800">Vereinsname</span>
+              <label className="space-y-1.5 sm:col-span-2">
+                <span className="text-sm font-semibold text-slate-800">Vereinsname / offizielle Bezeichnung</span>
                 <Input
                   value={createForm.name}
                   onChange={event => setCreateForm(current => ({ ...current, name: event.target.value }))}
                   placeholder="z. B. SV Musterstadt e. V."
                   required
-                  maxLength={200}
-                />
-              </label>
-              <label className="space-y-1.5">
-                <span className="text-sm font-semibold text-slate-800">Rechtliche Bezeichnung</span>
-                <Input
-                  value={createForm.legalName}
-                  onChange={event => setCreateForm(current => ({ ...current, legalName: event.target.value }))}
-                  placeholder="Vollständiger Vereinsname"
-                  required
                   maxLength={240}
                 />
+                <p className="text-xs leading-5 text-slate-600">Dieser Name wird auch als offizielle Bezeichnung gespeichert.</p>
               </label>
-              <label className="space-y-1.5">
+              <label className="space-y-1.5 sm:col-span-2">
                 <span className="text-sm font-semibold text-slate-800">Vereinskontakt</span>
                 <Input
                   type="email"
@@ -2045,60 +2028,14 @@ export default function MasterAdminPortal() {
                   maxLength={320}
                 />
               </label>
-              <label className="space-y-1.5">
-                <span className="text-sm font-semibold text-slate-800">Supportkontakt</span>
-                <Input
-                  type="email"
-                  value={createForm.supportEmail}
-                  onChange={event => setCreateForm(current => ({ ...current, supportEmail: event.target.value }))}
-                  required
-                  maxLength={320}
-                />
-              </label>
-            </fieldset>
-
-            <fieldset className="grid gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2">
-              <legend className="sr-only">Interner Status und Plan</legend>
-              <label className="space-y-1.5">
-                <span className="text-sm font-semibold text-slate-800">Interner Status</span>
-                <Select
-                  value={createForm.status}
-                  onValueChange={(status: "pilot" | "sample") =>
-                    setCreateForm(current => ({
-                      ...current,
-                      status,
-                      planName: status === "pilot" ? "Pilotbetrieb" : "Musterverein",
-                    }))
-                  }
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pilot">Pilotverein – geschlossener Test</SelectItem>
-                    <SelectItem value="sample">Musterverein – interne Demo</SelectItem>
-                  </SelectContent>
-                </Select>
-              </label>
-              <label className="space-y-1.5">
-                <span className="text-sm font-semibold text-slate-800">Planbezeichnung</span>
-                <Input
-                  value={createForm.planName}
-                  onChange={event => setCreateForm(current => ({ ...current, planName: event.target.value }))}
-                  required
-                  maxLength={120}
-                />
-              </label>
-              <p className="sm:col-span-2 text-xs leading-5 text-slate-600">
-                <CirclePause className="mr-1 inline size-3.5 text-amber-700" />
-                Der Status <strong>Aktiv</strong> ist vor dem Marktstart bewusst nicht verfügbar.
-              </p>
             </fieldset>
 
             <fieldset className="grid gap-4 rounded-xl border border-violet-200 bg-violet-50/40 p-4 sm:grid-cols-2">
-              <legend className="sr-only">Produktzuordnung</legend>
+              <legend className="sr-only">Paket und Zugangsstatus</legend>
               <div className="sm:col-span-2">
-                <p className="text-sm font-semibold text-slate-800">Zugeordnetes Produkt</p>
+                <p className="text-sm font-semibold text-slate-800">Paket &amp; Zugangsstatus</p>
                 <p className="mt-1 text-xs leading-5 text-slate-600">
-                  Die Produktzuordnung steuert die technischen Funktionsgrenzen des Vereins. Persönliche Fachbereichsrechte bleiben davon unabhängig.
+                  Mit diesen beiden Angaben legen Sie fest, welche Funktionen der Verein erhält und ob er sich anmelden darf.
                 </p>
               </div>
               <label className="space-y-1.5">
@@ -2121,22 +2058,23 @@ export default function MasterAdminPortal() {
                 <p className="text-xs text-slate-600">{PRODUCT_PACKAGE_META[createForm.packageId].shortDescription}</p>
               </label>
               <label className="space-y-1.5">
-                <span className="text-sm font-medium text-slate-800">Paketstatus</span>
+                <span className="text-sm font-medium text-slate-800">Zugangsstatus</span>
                 <Select
-                  value={createForm.packageStatus}
-                  onValueChange={(packageStatus: ProductAssignmentStatus) =>
-                    setCreateForm(current => ({ ...current, packageStatus }))
-                }
+                  value={createForm.accessMode}
+                  onValueChange={(accessMode: TenantAccessMode) =>
+                    setCreateForm(current => ({ ...current, accessMode }))
+                  }
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {PRODUCT_ASSIGNMENT_STATUSES.map(status => (
-                      <SelectItem key={status} value={status}>
-                        {masterAssignmentStatusLabel(createForm.packageId, status)}
+                    {TENANT_ACCESS_MODES.map(accessMode => (
+                      <SelectItem key={accessMode} value={accessMode}>
+                        {TENANT_ACCESS_MODE_META[accessMode].label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs leading-5 text-slate-600">{TENANT_ACCESS_MODE_META[createForm.accessMode].description}</p>
               </label>
               <label className="space-y-1.5">
                 <span className="text-sm font-medium text-slate-800">Beginn (optional)</span>
@@ -2366,7 +2304,10 @@ export default function MasterAdminPortal() {
                     <SelectContent>
                       {PRODUCT_ASSIGNMENT_STATUSES.map(status => (
                         <SelectItem key={status} value={status}>
-                          {masterAssignmentStatusLabel(productAssignmentForm.packageId, status)}
+                          {masterAssignmentStatusLabel(
+                            status,
+                            productModalTenant.status
+                          )}
                         </SelectItem>
                       ))}
                     </SelectContent>
