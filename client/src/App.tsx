@@ -94,6 +94,7 @@ const KlemmiFirstLoginPreview = lazy(() => import("@/pages/KlemmiFirstLoginPrevi
 const KlemmiDashboardPreview = lazy(() => import("@/pages/KlemmiDashboardPreview"));
 const KlemmiPlanLayoutPreview = lazy(() => import("@/pages/KlemmiPlanLayoutPreview"));
 const OfferDemo = lazy(() => import("@/pages/OfferDemo"));
+const PilotHomepageDraft = lazy(() => import("@/pages/PilotHomepageDraft"));
 const ClubDemoLanding = lazy(() => import("@/pages/ClubDemoLanding"));
 const PublicDemoEntry = lazy(() => import("@/pages/PublicDemoEntry"));
 const PublicLegalPage = lazy(() => import("@/pages/PublicLegal"));
@@ -166,6 +167,8 @@ function PublicSiteRouter() {
     <Suspense fallback={<RouteLoading />}>
       <Switch>
         <Route path="/" component={OfferDemo} />
+        {/* Isolierte, nicht verlinkte Designvorschau. Die produktive Startseite bleibt OfferDemo. */}
+        <Route path="/pilot" component={PilotHomepageDraft} />
         <Route path="/vereinsdemo" component={ClubDemoLanding} />
         <Route path="/game" component={GameRoot} />
         <Route path="/impressum">
@@ -238,6 +241,12 @@ function Router() {
       <Route path="/angebot-demo">
         <Suspense fallback={<RouteLoading />}>
           <OfferDemo />
+        </Suspense>
+      </Route>
+      {/* Testansicht des neuen Pilot-Homepage-Entwurfs, bewusst ohne Verlinkung aus der Navigation. */}
+      <Route path="/pilot">
+        <Suspense fallback={<RouteLoading />}>
+          <PilotHomepageDraft />
         </Suspense>
       </Route>
       <Route path="/vereinsdemo">
