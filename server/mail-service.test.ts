@@ -4,6 +4,8 @@ import {
   isMailDeliveryConfigured,
   renderContractAcceptanceEmail,
   renderInvitationEmail,
+  renderPilotInquiryConfirmationEmail,
+  renderPilotInquiryNotificationEmail,
   renderProductExpiryReminderEmail,
   renderTenantAccessStatusEmail,
   sendTransactionalEmail,
@@ -79,6 +81,30 @@ describe("Mail-Service (Hetzner SMTP & Transactional)", () => {
     expect(rendered.text).toContain("Planungsdaten bleiben selbstverständlich erhalten");
     expect(rendered.html).toContain("06.10.2026");
     expect(rendered.html).toContain("Testzugang");
+  });
+
+  it("rendert Pilotanfrage und Eingangsbestätigung mit allen Rückrufdaten", () => {
+    const notification = renderPilotInquiryNotificationEmail({
+      clubName: "RSC <Muster> e. V.",
+      contactName: "Max Muster",
+      email: "max@verein.de",
+      phone: "+49 171 1234567",
+      occasion: "Turnier, Rennen oder Sportevent",
+      desiredStart: "2027-05",
+      note: "Radsportfestival mit 120 Helfern.",
+    });
+    const confirmation = renderPilotInquiryConfirmationEmail({
+      clubName: "RSC Muster e. V.",
+      contactName: "Max Muster",
+    });
+
+    expect(notification.subject).toContain("Neue Pilot-Anfrage");
+    expect(notification.text).toContain("+49 171 1234567");
+    expect(notification.text).toContain("Mai 2027");
+    expect(notification.html).toContain("RSC &lt;Muster&gt; e. V.");
+    expect(confirmation.subject).toContain("Pilot-Anfrage ist eingegangen");
+    expect(confirmation.text).toContain("keine automatische Verlängerung");
+    expect(confirmation.html).toContain("support@mycrewmate.de");
   });
 
   it("weist bei der Vertragsbestätigung verständlich auf den beigefügten PDF-Nachweis hin", () => {

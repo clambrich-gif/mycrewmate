@@ -1,6 +1,7 @@
 import { KlemmiMascot } from "@/components/KlemmiMascot";
 import { Button } from "@/components/ui/button";
 import { isMarketingSite } from "@/lib/site-host";
+import { trpc } from "@/lib/trpc";
 import {
   ArrowRight,
   CalendarDays,
@@ -10,6 +11,7 @@ import {
   Clock3,
   Handshake,
   HeartHandshake,
+  LoaderCircle,
   Mail,
   MapPinned,
   ShieldCheck,
@@ -125,10 +127,36 @@ const PILOT_FAQS = [
 
 function PilotRequestForm() {
   const [submitted, setSubmitted] = useState(false);
+  const [confirmationSent, setConfirmationSent] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const submitInquiry = trpc.pilotInquiry.submit.useMutation({
+    onSuccess: result => {
+      setConfirmationSent(result.confirmationSent);
+      setSubmitted(true);
+    },
+    onError: error => setFormError(error.message),
+  });
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSubmitted(true);
+    if (submitInquiry.isPending) return;
+    setFormError(null);
+    const values = new FormData(event.currentTarget);
+    if (values.get("privacy") !== "on") {
+      setFormError("Bitte bestätige die Datenschutzhinweise.");
+      return;
+    }
+    submitInquiry.mutate({
+      club: String(values.get("club") ?? "").trim(),
+      contact: String(values.get("contact") ?? "").trim(),
+      email: String(values.get("email") ?? "").trim(),
+      phone: String(values.get("phone") ?? "").trim(),
+      occasion: String(values.get("occasion") ?? "").trim(),
+      start: String(values.get("start") ?? ""),
+      note: String(values.get("note") ?? "").trim(),
+      privacy: true,
+      website: String(values.get("website") ?? ""),
+    });
   }
 
   if (submitted) {
@@ -140,13 +168,22 @@ function PilotRequestForm() {
       >
         <CheckCircle2 className="size-7 text-emerald-700" aria-hidden="true" />
         <h3 className="mt-4 text-xl font-black tracking-tight text-slate-950">
-          Formular-Entwurf bestätigt
+          Pilot-Anfrage eingegangen
         </h3>
         <p className="mt-2 text-sm leading-6 text-slate-700">
-          In der späteren Umsetzung geht diese Anfrage verschlüsselt an das
-          MyCrewMate-Pilotteam. In diesem Quellcode-Entwurf werden keine Daten
-          gespeichert oder versendet.
+          Wir melden uns persönlich bei euch, um Anlass, passende Umgebung und
+          Startzeitpunkt abzustimmen.
         </p>
+        {confirmationSent ? (
+          <p className="mt-2 text-sm font-semibold leading-6 text-emerald-800">
+            Eine Bestätigung wurde an eure angegebene E-Mail-Adresse gesendet.
+          </p>
+        ) : (
+          <p className="mt-2 text-sm leading-6 text-slate-700">
+            Die Anfrage ist bei uns eingegangen. Falls keine Bestätigung in eurem
+            Postfach erscheint, melden wir uns telefonisch oder per E-Mail.
+          </p>
+        )}
         <Button
           type="button"
           variant="outline"
@@ -161,26 +198,29 @@ function PilotRequestForm() {
 
   return (
     <form className="grid gap-4" onSubmit={handleSubmit} noValidate>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="grid gap-1.5 text-sm font-bold text-slate-800">
-          Verein oder Organisation
-          <input
-            required
-            name="club"
-            placeholder="z. B. Radsportverein Musterstadt e. V."
-            className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-base font-normal text-slate-950 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-          />
-        </label>
-        <label className="grid gap-1.5 text-sm font-bold text-slate-800">
-          Ansprechperson
-          <input
-            required
-            name="contact"
-            placeholder="Vor- und Nachname"
-            className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-base font-normal text-slate-950 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-          />
-        </label>
-      </div>
+      <label className="grid gap-1.5 text-sm font-bold text-slate-800">
+        Verein oder Organisation
+        <input
+          required
+          name="club"
+          autoComplete="organization"
+          maxLength={160}
+          placeholder="z. B. Radsportverein Musterstadt e. V."
+          className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-base font-normal text-slate-950 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+        />
+      </label>
+
+      <label className="grid gap-1.5 text-sm font-bold text-slate-800">
+        Ansprechperson
+        <input
+          required
+          name="contact"
+          autoComplete="name"
+          maxLength={120}
+          placeholder="Vor- und Nachname"
+          className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-base font-normal text-slate-950 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+        />
+      </label>
 
       <label className="grid gap-1.5 text-sm font-bold text-slate-800">
         E-Mail-Adresse
@@ -188,46 +228,64 @@ function PilotRequestForm() {
           required
           name="email"
           type="email"
+          autoComplete="email"
+          maxLength={320}
           placeholder="vorstand@verein.de"
           className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-base font-normal text-slate-950 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
         />
       </label>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="grid gap-1.5 text-sm font-bold text-slate-800">
-          Wofür möchtet ihr testen?
-          <select
-            required
-            name="occasion"
-            defaultValue=""
-            className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-base font-normal text-slate-950 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-          >
-            <option value="" disabled>
-              Anlass auswählen
-            </option>
-            <option>Einzelnes Fest oder Weihnachtsfeier</option>
-            <option>Turnier, Rennen oder Sportevent</option>
-            <option>Wiederkehrende Jahresveranstaltung</option>
-            <option>Mehrtagesveranstaltung</option>
-            <option>Verband oder mehrere Untervereine</option>
-          </select>
-        </label>
-        <label className="grid gap-1.5 text-sm font-bold text-slate-800">
-          Gewünschter Start
-          <input
-            required
-            name="start"
-            type="month"
-            className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-base font-normal text-slate-950 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-          />
-        </label>
-      </div>
+      <label className="grid gap-1.5 text-sm font-bold text-slate-800">
+        Telefonnummer für eine persönliche Rückfrage
+        <input
+          required
+          name="phone"
+          type="tel"
+          autoComplete="tel"
+          inputMode="tel"
+          minLength={6}
+          maxLength={60}
+          pattern="[0-9+()\-./\s]{6,}"
+          placeholder="z. B. 02651 123456 oder +49 171 1234567"
+          className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-base font-normal text-slate-950 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+        />
+      </label>
+
+      <label className="grid gap-1.5 text-sm font-bold text-slate-800">
+        Wofür möchtet ihr testen?
+        <select
+          required
+          name="occasion"
+          defaultValue=""
+          className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-base font-normal text-slate-950 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+        >
+          <option value="" disabled>
+            Anlass auswählen
+          </option>
+          <option>Einzelnes Fest oder Weihnachtsfeier</option>
+          <option>Turnier, Rennen oder Sportevent</option>
+          <option>Wiederkehrende Jahresveranstaltung</option>
+          <option>Mehrtagesveranstaltung</option>
+          <option>Verband oder mehrere Untervereine</option>
+        </select>
+      </label>
+
+      <label className="grid gap-1.5 text-sm font-bold text-slate-800">
+        Gewünschter Start
+        <input
+          required
+          name="start"
+          type="month"
+          className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-base font-normal text-slate-950 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+        />
+      </label>
 
       <label className="grid gap-1.5 text-sm font-bold text-slate-800">
         Was möchtet ihr organisieren? <span className="font-normal text-slate-500">(optional)</span>
         <textarea
           name="note"
           rows={3}
+          maxLength={2000}
           placeholder="Zum Beispiel: RTF-Wochenende mit 120 Helfern, Start/Ziel und drei Strecken."
           className="resize-y rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-base font-normal text-slate-950 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
         />
@@ -236,20 +294,36 @@ function PilotRequestForm() {
       <label className="flex items-start gap-3 rounded-xl bg-slate-50 p-3 text-sm leading-5 text-slate-600">
         <input required type="checkbox" name="privacy" className="mt-0.5 size-4 accent-blue-600" />
         <span>
-          Ich habe die Datenschutzhinweise gelesen. Meine Angaben dürfen
+          Ich habe die <a className="font-semibold text-blue-700 underline underline-offset-2 hover:text-blue-900" href="/datenschutz" target="_blank" rel="noreferrer">Datenschutzhinweise</a> gelesen. Meine Angaben dürfen
           ausschließlich zur Bearbeitung dieser Pilot-Anfrage verwendet werden.
         </span>
       </label>
 
+      <label className="absolute -left-[9999px] top-auto h-px w-px overflow-hidden" aria-hidden="true">
+        Bitte dieses Feld leer lassen
+        <input name="website" type="text" tabIndex={-1} autoComplete="off" />
+      </label>
+
+      {formError ? (
+        <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium leading-6 text-red-800" role="alert">
+          {formError}
+        </p>
+      ) : null}
+
       <Button
         type="submit"
         size="lg"
-        className="w-full rounded-xl bg-orange-500 text-white shadow-lg shadow-orange-200 hover:bg-orange-600 sm:w-auto"
+        disabled={submitInquiry.isPending}
+        className="w-full rounded-xl bg-orange-500 text-white shadow-lg shadow-orange-200 hover:bg-orange-600 disabled:cursor-wait disabled:opacity-80"
       >
-        Pilot kostenlos anfragen <ArrowRight className="size-4" aria-hidden="true" />
+        {submitInquiry.isPending ? (
+          <><LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> Anfrage wird gesendet …</>
+        ) : (
+          <>Pilot kostenlos anfragen <ArrowRight className="size-4" aria-hidden="true" /></>
+        )}
       </Button>
       <p className="text-xs leading-5 text-slate-500">
-        Entwurf: Das Formular löst noch keine Anfrage aus und speichert keine Daten.
+        Eure Anfrage geht direkt an das MyCrewMate-Pilotteam. Wir bestätigen den Eingang zusätzlich per E-Mail.
       </p>
     </form>
   );

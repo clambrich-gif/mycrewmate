@@ -151,6 +151,7 @@ import {
   clearProtectedPdfShareFailures,
   recordProtectedPdfShareFailure,
 } from "./public-share-rate-limit";
+import { allowPublicPilotInquiryAttempt } from "./pilot-inquiry-rate-limit";
 import {
   createPublicDemoSession,
   getActivePublicDemoCount,
@@ -162,11 +163,14 @@ import {
 } from "./public-demo";
 import { upcomingPreparationDeadlines } from "./dashboard-deadlines";
 import {
+  isMailDeliveryConfigured,
   renderContractAcceptanceEmail,
   renderInvitationEmail,
   renderMasterPasswordResetEmail,
   renderPlanReleaseContactEmail,
   renderPlanningTeamInvitationEmail,
+  renderPilotInquiryConfirmationEmail,
+  renderPilotInquiryNotificationEmail,
   renderTenantAccessStatusEmail,
   sendTransactionalEmail,
   type SendMailOptions,
@@ -181,6 +185,7 @@ const MASTER_RESET_TTL_MINUTES = 30;
 const MASTER_RESET_REQUEST_WINDOW_MS = 15 * 60 * 1000;
 const MASTER_RESET_REQUEST_LIMIT = 3;
 const masterResetRequestAttempts = new Map<string, { count: number; resetAt: number }>();
+const PILOT_INQUIRY_RECIPIENT = process.env.PILOT_INQUIRY_EMAIL || "support@mycrewmate.de";
 const MFA_CHALLENGE_TOKEN_BYTES = 32;
 const PUBLIC_DEMO_VISITOR_COOKIE = "mycrewmate_demo_visitor";
 const PUBLIC_DEMO_VISITOR_COOKIE_MS = 24 * 60 * 60 * 1000;
@@ -2085,6 +2090,92 @@ function teamNoteReadIdentity(user: {
 
 export const appRouter = router({
   system: systemRouter,
+  pilotInquiry: router({
+    submit: publicProcedure
+      .input(
+        z.object({
+          club: z.string().trim().min(2, "Bitte Verein oder Organisation angeben.").max(160),
+          contact: z.string().trim().min(2, "Bitte Ansprechperson angeben.").max(120),
+          email: z.string().trim().email("Bitte eine gültige E-Mail-Adresse eingeben.").max(320),
+          phone: z
+            .string()
+            .trim()
+            .regex(/^[0-9+()\-./\s]{6,60}$/, "Bitte eine gültige Telefonnummer eingeben."),
+          occasion: z.string().trim().min(2, "Bitte den Testanlass auswählen.").max(120),
+          start: z
+            .string()
+            .regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Bitte einen gültigen Wunschmonat auswählen."),
+          note: z.string().trim().max(2_000).optional().default(""),
+          privacy: z.literal(true, "Bitte die Datenschutzhinweise bestätigen."),
+          // Unsichtbares Feld gegen einfache Formularbots. Ausgefüllte Anfragen
+          // erhalten absichtlich eine neutrale Erfolgsmeldung, aber keinen Versand.
+          website: z.string().max(500).optional().default(""),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        if (input.website) return { accepted: true, confirmationSent: false } as const;
+
+        if (!allowPublicPilotInquiryAttempt(`pilot-inquiry:${getClientKey(ctx.req)}`)) {
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message:
+              "Es wurden gerade mehrere Anfragen gesendet. Bitte warten Sie einige Minuten und versuchen Sie es dann erneut.",
+          });
+        }
+
+        if (!isMailDeliveryConfigured()) {
+          console.error("[PilotInquiry] Versand nicht möglich: SMTP ist nicht konfiguriert.");
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message:
+              "Die Pilotanfrage ist gerade nicht verfügbar. Bitte versuchen Sie es später erneut oder schreiben Sie an support@mycrewmate.de.",
+          });
+        }
+
+        const notification = renderPilotInquiryNotificationEmail({
+          clubName: input.club,
+          contactName: input.contact,
+          email: input.email,
+          phone: input.phone,
+          occasion: input.occasion,
+          desiredStart: input.start,
+          note: input.note,
+        });
+        const confirmation = renderPilotInquiryConfirmationEmail({
+          contactName: input.contact,
+          clubName: input.club,
+        });
+
+        try {
+          const notificationDelivery = await sendTransactionalEmail({
+            to: PILOT_INQUIRY_RECIPIENT,
+            ...notification,
+          });
+          if (!notificationDelivery.success) {
+            throw new Error("Die Pilot-Anfrage wurde vom SMTP-Server nicht angenommen.");
+          }
+
+          const confirmationDelivery = await sendTransactionalEmail({
+            to: input.email,
+            ...confirmation,
+          });
+          return {
+            accepted: true,
+            confirmationSent: confirmationDelivery.success,
+          } as const;
+        } catch (error) {
+          console.error(
+            "[PilotInquiry] Versand fehlgeschlagen:",
+            error instanceof Error ? error.message : "unbekannter Fehler"
+          );
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message:
+              "Die Anfrage konnte gerade nicht übermittelt werden. Bitte versuchen Sie es später erneut oder schreiben Sie an support@mycrewmate.de.",
+          });
+        }
+      }),
+  }),
   publicDemo: router({
     start: publicProcedure
       .input(z.object({ packageId: z.enum(["event_pass", "light", "pro"]) }))

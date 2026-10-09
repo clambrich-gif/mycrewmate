@@ -175,6 +175,114 @@ Ihr MyCrewMate-Team`;
   return { subject, text, html };
 }
 
+function escapeEmailHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function emailSubjectLine(value: string) {
+  return value.replace(/[\r\n]+/g, " ").trim();
+}
+
+function pilotStartLabel(value: string) {
+  const match = /^(\d{4})-(\d{2})$/.exec(value);
+  if (!match) return value;
+  return new Intl.DateTimeFormat("de-DE", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${match[1]}-${match[2]}-01T12:00:00.000Z`));
+}
+
+export function renderPilotInquiryNotificationEmail(params: {
+  clubName: string;
+  contactName: string;
+  email: string;
+  phone: string;
+  occasion: string;
+  desiredStart: string;
+  note?: string;
+}): { subject: string; text: string; html: string } {
+  const subject = `Neue Pilot-Anfrage · ${emailSubjectLine(params.clubName)}`;
+  const desiredStart = pilotStartLabel(params.desiredStart);
+  const note = params.note?.trim() || "Keine weiteren Angaben.";
+  const rows = [
+    ["Verein oder Organisation", params.clubName],
+    ["Ansprechperson", params.contactName],
+    ["E-Mail", params.email],
+    ["Telefon", params.phone],
+    ["Testanlass", params.occasion],
+    ["Gewünschter Start", desiredStart],
+    ["Weitere Angaben", note],
+  ] as const;
+  const text = `Neue unverbindliche Pilot-Anfrage\n\n${rows
+    .map(([label, value]) => `${label}: ${value}`)
+    .join("\n")}\n\nBitte den Verein persönlich kontaktieren und Paket, Zeitraum und nächsten Schritt abstimmen.`;
+  const htmlRows = rows
+    .map(
+      ([label, value]) =>
+        `<tr><th align="left" style="padding:8px 12px 8px 0;color:#475569;font-size:13px;vertical-align:top;">${escapeEmailHtml(label)}</th><td style="padding:8px 0;color:#0f172a;font-size:14px;white-space:pre-wrap;">${escapeEmailHtml(value)}</td></tr>`
+    )
+    .join("");
+  const html = `<!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8"><title>${escapeEmailHtml(subject)}</title></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#1e293b;background:#f8fafc;margin:0;padding:24px;">
+  <div style="max-width:600px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:32px;">
+    <h1 style="font-size:20px;color:#0f172a;margin:0 0 6px;">Neue Pilot-Anfrage</h1>
+    <p style="font-size:13px;color:#64748b;margin:0 0 24px;">MyCrewMate · persönliche Pilotbegleitung</p>
+    <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border-collapse:collapse;">${htmlRows}</table>
+    <hr style="border:0;border-top:1px solid #e2e8f0;margin:24px 0;">
+    <p style="font-size:13px;color:#475569;margin:0;">Bitte den Verein persönlich kontaktieren und Paket, Zeitraum und nächsten Schritt abstimmen.</p>
+  </div>
+</body></html>`;
+
+  return { subject, text, html };
+}
+
+export function renderPilotInquiryConfirmationEmail(params: {
+  contactName: string;
+  clubName: string;
+}): { subject: string; text: string; html: string } {
+  const subject = "Ihre Pilot-Anfrage ist eingegangen · MyCrewMate";
+  const contactName = params.contactName.trim();
+  const clubName = params.clubName.trim();
+  const text = `Hallo ${contactName},
+
+vielen Dank, dass ${clubName} MyCrewMate im Pilotprogramm ausprobieren möchte.
+
+Wir haben eure unverbindliche Anfrage erhalten und melden uns in Kürze persönlich bei euch. Gemeinsam stimmen wir Anlass, passende Umgebung und den gewünschten Startzeitpunkt ab.
+
+Bis dahin müsst ihr nichts weiter vorbereiten. Es entsteht kein Vertrag und keine automatische Verlängerung.
+
+Viele Grüße
+Euer MyCrewMate-Team
+
+Fragen? support@mycrewmate.de`;
+  const html = `<!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8"><title>${subject}</title></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#1e293b;background:#f8fafc;margin:0;padding:24px;">
+  <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:32px;box-shadow:0 1px 3px rgba(15,23,42,.08);">
+    <h1 style="font-size:20px;color:#0f172a;margin:0 0 6px;">Vielen Dank für eure Pilot-Anfrage.</h1>
+    <p style="font-size:13px;color:#64748b;margin:0 0 24px;">MyCrewMate · Vereins- &amp; Eventplanung</p>
+    <p>Hallo <strong>${escapeEmailHtml(contactName)}</strong>,</p>
+    <p>vielen Dank, dass <strong>${escapeEmailHtml(clubName)}</strong> MyCrewMate im Pilotprogramm ausprobieren möchte.</p>
+    <div style="margin:24px 0;padding:16px 18px;border-radius:10px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;">
+      <strong>Wie geht es weiter?</strong><br>Wir melden uns in Kürze persönlich bei euch. Gemeinsam stimmen wir Anlass, passende Umgebung und den gewünschten Startzeitpunkt ab.
+    </div>
+    <p>Bis dahin müsst ihr nichts weiter vorbereiten. Es entsteht kein Vertrag und keine automatische Verlängerung.</p>
+    <p>Viele Grüße<br><strong>Euer MyCrewMate-Team</strong></p>
+    <hr style="border:0;border-top:1px solid #e2e8f0;margin:24px 0;">
+    <p style="font-size:12px;color:#64748b;margin:0;">Fragen? Antworte einfach auf diese E-Mail oder schreibe an <a href="mailto:support@mycrewmate.de" style="color:#2563eb;">support@mycrewmate.de</a>.</p>
+  </div>
+</body></html>`;
+
+  return { subject, text, html };
+}
+
 /** Nachweis-Mail nach elektronischer Annahme von AGB, AVV und Datenschutz. */
 export function renderContractAcceptanceEmail(params: {
   recipientName: string;

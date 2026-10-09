@@ -51,10 +51,19 @@ Die lokale Alternative bleibt möglich: Legen Sie eine Anwendung aus dem GitHub-
 | `PUBLIC_APP_ORIGIN`  | Empfohlen | `https://mycrewmate.de`; erzeugt öffentliche PDF-Freigabelinks für WhatsApp und andere Messenger immer auf der Live-Domain.  |
 | `MYCREWMATE_APP_ID`  |      Nein | Optionaler stabiler Kennzeichner für signierte Sitzungen. Standard: `mycrewmate-selfhosted`.                                    |
 | `ADMIN_RECOVERY_KEY` |      Nein | Separater langer Geheimwert für die Administrator-Recovery, falls verwendet.                                                    |
+| `SMTP_HOST`          | Pilotversand | SMTP-Host des Versandpostfachs, z. B. `mail.your-server.de`.                                                                    |
+| `SMTP_PORT`          | Pilotversand | Meist `587` für STARTTLS oder `465` für TLS.                                                                                    |
+| `SMTP_USER`          | Pilotversand | Benutzername des Versandpostfachs, z. B. `info@mycrewmate.de`.                                                                 |
+| `SMTP_PASS`          | Pilotversand | Passwort des Versandpostfachs; ausschließlich als geschütztes Coolify-Secret hinterlegen.                                      |
+| `SMTP_FROM_EMAIL`    | Nein | Sichtbare Absenderadresse, Standard: `info@mycrewmate.de`.                                                                      |
+| `SMTP_REPLY_TO_EMAIL` | Nein | Antwortadresse der automatischen Bestätigung, Standard: `support@mycrewmate.de`.                                                |
+| `PILOT_INQUIRY_EMAIL` | Nein | Empfangsadresse für neue Pilotanfragen, Standard: `support@mycrewmate.de`.                                                      |
 
 Nicht erforderlich sind `VITE_APP_ID`, `OAUTH_SERVER_URL`, `VITE_OAUTH_PORTAL_URL`, `BUILT_IN_FORGE_API_URL`, `BUILT_IN_FORGE_API_KEY` und Manus-Storage-Variablen.
 
 > `PUBLIC_APP_ORIGIN` enthält ausschließlich die externe HTTPS-Basisadresse ohne Pfad oder abschließenden Slash. Ohne diese Einstellung verwendet MyCrewMate ebenfalls `https://mycrewmate.de` als sicheren Standard. Die Variable empfiehlt sich dennoch, damit ein späterer Domainwechsel bewusst und nachvollziehbar konfiguriert wird.
+
+> Für das öffentliche Pilotformular müssen mindestens `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER` und `SMTP_PASS` gesetzt sein. Nach jeder erfolgreichen Pilotanfrage erhält das Pilotteam eine strukturierte Nachricht an `PILOT_INQUIRY_EMAIL`; die anfragende Person erhält eine automatische Eingangsbestätigung. Ohne SMTP-Konfiguration nimmt das Formular aus Datenschutzgründen keine Anfrage an.
 
 ### 3. Datenbank und Migrationen
 

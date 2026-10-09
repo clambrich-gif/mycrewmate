@@ -29,6 +29,10 @@ describe("öffentliche Preis- und Pilotseiten", () => {
     expect(pilot).not.toContain('name: "Ultimate"');
     expect(pilot).toContain("Fiktive Vereinsdemo ausprobieren");
     expect(pilot).toContain("Reguläre Preise ab 01.01.2027 ansehen");
+    expect(pilot).toContain('name="phone"');
+    expect(pilot).toContain("Telefonnummer für eine persönliche Rückfrage");
+    expect(pilot).toContain("trpc.pilotInquiry.submit.useMutation");
+    expect(pilot).toContain("Wir bestätigen den Eingang zusätzlich per E-Mail.");
   });
 
   it("ordnet die Vergleichstabelle zeitlich ein, ohne die App-Ansicht zu verändern", () => {

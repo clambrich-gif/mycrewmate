@@ -37,9 +37,10 @@
 - [x] Hauptseite und Pilotseite klar verknüpft: Pilot-Anfrage als Hauptweg, Vereinsdemo als separater Zweitweg, Preisrücklink auf `/pilot` sowie Enterprise statt Ultimate in der Pilotumgebung.
 - [x] Öffentliche Vereinsdemo sprachlich eindeutig abgegrenzt: reine Übungsumgebung mit fiktiven Daten; Pilotprogramm als einziger Weg für eigene Vereine, echte Anlässe und reale Daten. Enterprise ersetzt dort die frühere sichtbare Bezeichnung Ultimate.
 - [x] Steuerkennzeichnung bewusst bis zur Rücksprache mit dem Steuerberater offen gelassen; die Website zeigt bis dahin ausschließlich bestätigte Endpreise ohne MwSt.-/USt.-Aussage.
+- [x] Pilot-Anfrageformular als echten, SMTP-basierten Versand an `support@mycrewmate.de` fertiggestellt: vertikale Felder, Pflicht-Telefonnummer, serverseitige Validierung, Spam-Schutz und automatische Eingangsbestätigung.
 
 ## Später prüfen
 
 - [ ] Nach Steuerberatung die rechtlich korrekte Umsatzsteuer-/Mehrwertsteuerkennzeichnung vor dem Buchungsstart ergänzen.
-- [ ] Pilot-Anfrageformular datenschutzkonform an einen persönlichen Empfangsprozess anbinden.
+- [ ] In Coolify die SMTP-Zugangsdaten und optional `PILOT_INQUIRY_EMAIL` als Secrets setzen; danach den Liveversand mit einer echten Testanfrage prüfen.
 - [ ] Nach Veröffentlichung die Vereinsdemo auf der echten Marketing- und App-Domain einmal end-to-end testen.
