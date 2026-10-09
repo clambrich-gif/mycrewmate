@@ -5,7 +5,7 @@ import {
   verifyPublicHelperPdfToken,
   type PublicHelperPdfScope,
 } from "./public-helper-pdf-token";
-import { DEFAULT_TENANT_ID, withPlanningScope } from "./year-context";
+import { withPlanningScope } from "./year-context";
 
 const MAX_PUBLIC_HELPER_PDF_BYTES = 5_000_000;
 const SHORT_PDF_CODE = /^[A-Za-z0-9_-]{8,12}$/;
@@ -33,15 +33,19 @@ const defaultDependencies: PublicHelperPdfRouteDependencies = {
       : null;
   },
   createPdf: createPublicHelperTaskPdf,
-  withScope: (scope, callback) =>
-    withPlanningScope(
+  withScope: (scope, callback) => {
+    if (!scope.tenantId) {
+      return Promise.reject(new Error("PDF-Freigabe ohne Vereinskennung"));
+    }
+    return withPlanningScope(
       {
-        tenantId: scope.tenantId ?? DEFAULT_TENANT_ID,
+        tenantId: scope.tenantId,
         year: scope.year,
         eventId: scope.eventId,
       },
       callback
-    ),
+    );
+  },
 };
 
 function setPdfHeaders(res: Response, contentLength?: number) {

@@ -2,15 +2,13 @@ import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 
-describe("RSC-Pilot-Grundlage", () => {
-  it("definiert den Pilotmandanten RSC Eifelland Mayen e. V. mit Status pilot", () => {
+describe("Dynamische Vereinsgrundlage", () => {
+  it("hält nur fiktive Mustervereine statisch und legt echte Pilotvereine dynamisch an", () => {
     const tenantSource = fs.readFileSync(
       path.resolve(__dirname, "../shared/tenant.ts"),
       "utf-8"
     );
-    expect(tenantSource).toContain("RSC Eifelland Mayen e. V.");
-    expect(tenantSource).toContain('"pilot"');
-    expect(tenantSource).toContain("MyEifelRide 2027");
+    expect(tenantSource).not.toContain("RSC Eifelland Mayen e. V.");
     expect(tenantSource).toContain("Kirmesverein Musterstadt e. V.");
     expect(tenantSource).toContain("Schützenverein Musterhausen e. V.");
     expect(tenantSource).toContain("TENANT_CATALOG");
@@ -72,12 +70,13 @@ describe("RSC-Pilot-Grundlage", () => {
     expect(layoutSource).not.toContain('hostname.endsWith(".mycrewmate.de")');
   });
 
-  it("zeigt das Pilot-Badge im Anwendungs-Layout an", () => {
+  it("zeigt den Paketstatus dynamisch an, ohne einen echten Verein als Fallback zu verwenden", () => {
     const layoutSource = fs.readFileSync(
       path.resolve(__dirname, "../client/src/components/Layout.tsx"),
       "utf-8"
     );
-    expect(layoutSource).toContain("ACTIVE_PILOT_TENANT");
+    expect(layoutSource).not.toContain("ACTIVE_PILOT_TENANT");
+    expect(layoutSource).toContain('"Vereinsbereich"');
     expect(layoutSource).toContain("Pilot");
   });
 

@@ -5,8 +5,10 @@ import {
   currentEventYear,
   DEFAULT_EVENT_ID,
   DEFAULT_EVENT_YEAR,
+  UNASSIGNED_TENANT_ID,
   normalizeEventId,
   normalizeEventYear,
+  normalizeTenantId,
   withEventScope,
   withEventYear,
 } from "./year-context";
@@ -17,6 +19,12 @@ describe("Mehrjahresplanung", () => {
     expect(normalizeEventYear(2031)).toBe(2031);
     expect(normalizeEventYear("abc")).toBe(DEFAULT_EVENT_YEAR);
     expect(normalizeEventYear(1900)).toBe(DEFAULT_EVENT_YEAR);
+  });
+
+  it("verwendet ohne bestätigten Vereinskontext niemals einen echten Verein", () => {
+    expect(normalizeTenantId("pilotverein-123")).toBe("pilotverein-123");
+    expect(normalizeTenantId(undefined)).toBe(UNASSIGNED_TENANT_ID);
+    expect(normalizeTenantId("ungültig mit leerzeichen")).toBe(UNASSIGNED_TENANT_ID);
   });
 
   it("isoliert das aktive Jahr im asynchronen Kontext", async () => {

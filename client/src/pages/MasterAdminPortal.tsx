@@ -1310,10 +1310,10 @@ export default function MasterAdminPortal() {
       ? tenants
       : [
           {
-            id: "rsc-eifelland-mayen",
-            name: "RSC Eifelland Mayen e. V.",
-            legalName: "Radsportclub Eifelland Mayen e. V.",
-            contactEmail: "kontakt@rsc-mayen.de",
+            id: "admin-vorschau-verein",
+            name: "Vereinsvorschau e. V.",
+            legalName: "Vereinsvorschau e. V.",
+            contactEmail: "kontakt@vereinsvorschau.de",
             supportEmail: "support@mycrewmate.de",
             status: "pilot",
             planName: "Pilotbetrieb",
@@ -1334,10 +1334,10 @@ export default function MasterAdminPortal() {
               acceptedAt: new Date("2026-10-01T10:00:00.000Z"),
             },
             eventCount: 1,
-            events: [{ id: 1, name: "MyEifelRide 2027", year: 2027, startDate: "2027-06-11", endDate: "2027-06-13", status: "active", closedAt: null }],
+            events: [{ id: 1, name: "Musterveranstaltung 2027", year: 2027, startDate: "2027-06-11", endDate: "2027-06-13", status: "active", closedAt: null }],
             nextEvent: {
               id: 1,
-              name: "MyEifelRide 2027",
+              name: "Musterveranstaltung 2027",
               startDate: "2027-06-11",
               endDate: "2027-06-13",
             },
@@ -1914,7 +1914,7 @@ export default function MasterAdminPortal() {
                           </Button>
                         </div>
                       )}
-                      {tenant.id !== "rsc-eifelland-mayen" && tenant.status !== "active" && (
+                      {tenant.status !== "active" && (
                         <Button
                           size="sm"
                           variant="outline"
@@ -2128,7 +2128,7 @@ export default function MasterAdminPortal() {
                         {updateLifecycle.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />}
                         Als Pilot reaktivieren
                       </Button>
-                      {tenant.id !== "rsc-eifelland-mayen" && !tenant.retentionEndsAt && (
+                      {!tenant.retentionEndsAt && (
                         <Button
                           size="sm"
                           variant="outline"
@@ -2856,7 +2856,7 @@ export default function MasterAdminPortal() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-5 text-amber-900">
-            Für tatsächliche Vertrags- oder Pilotverläufe verwenden Sie bitte weiterhin die Archivierung. Der geschützte RSC-Pilotverein kann über diese Funktion nicht entfernt werden.
+            Für reguläre Pilot- oder Vertragsenden verwenden Sie bitte weiterhin die Archivierung. Diese dauerhafte Entfernung bleibt ausschließlich für bewusst angelegte interne Test- oder Pilotvereine bestimmt.
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleteInternalTestTenant.isPending}>Abbrechen</AlertDialogCancel>

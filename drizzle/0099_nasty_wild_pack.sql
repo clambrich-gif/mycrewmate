@@ -1,0 +1,1 @@
+ALTER TABLE `events` MODIFY COLUMN `tenantId` varchar(96) NOT NULL;

@@ -7,7 +7,10 @@ const EVENT_STORAGE_PREFIX = "rsc-helper-event-id-";
 const TENANT_STORAGE_KEY = "mycrewmate:tenant-id";
 const DEFAULT_YEAR = 2026;
 const DEFAULT_EVENT_ID = 1;
-const DEFAULT_TENANT_ID = "rsc-eifelland-mayen";
+const UNASSIGNED_TENANT_ID = "unassigned-tenant";
+// Einmalige Bereinigung für Browser, die noch den alten Archivverein aus
+// früheren Produktständen gespeichert haben. Der Wert wird nie mehr verwendet.
+const LEGACY_ARCHIVED_TENANT_ID = "rsc-eifelland-mayen";
 
 type PlanningScopeContextValue = {
   tenantId: string;
@@ -36,7 +39,7 @@ export function storedEventYear() {
 }
 
 export function storedTenantId() {
-  if (typeof window === "undefined") return DEFAULT_TENANT_ID;
+  if (typeof window === "undefined") return UNASSIGNED_TENANT_ID;
   // Der Wert wird ausschließlich durch den serverseitig bestätigten
   // Vereinsdemo-Einmalzugang gesetzt. Die tatsächliche Zugehörigkeit bleibt
   // anschließend bei jeder API-Anfrage serverseitig geprüft.
@@ -52,9 +55,17 @@ export function storedTenantId() {
     return demoTenant;
   }
   const value = window.localStorage.getItem(TENANT_STORAGE_KEY)?.trim();
+  if (value === LEGACY_ARCHIVED_TENANT_ID) {
+    try {
+      window.localStorage.removeItem(TENANT_STORAGE_KEY);
+    } catch {
+      // Ohne lokalen Speicher bleibt der neutrale, serverseitig geprüfte Startwert aktiv.
+    }
+    return UNASSIGNED_TENANT_ID;
+  }
   return value && /^[a-z0-9-]{3,96}$/.test(value)
     ? value
-    : DEFAULT_TENANT_ID;
+    : UNASSIGNED_TENANT_ID;
 }
 
 export function storedEventId(

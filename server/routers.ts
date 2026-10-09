@@ -108,7 +108,6 @@ import {
 } from "./pdf";
 import { publicAppUrl } from "./public-app-url";
 import {
-  DEFAULT_TENANT_ID,
   currentEventId,
   currentEventYear,
   requestedPlanningScope,
@@ -774,17 +773,6 @@ async function authorizedPlanningScope(
     // Mock-Fallback für isolierte Testumgebungen
   }
   if (!membership) {
-    // Fallback auf Standard-Pilotmandant für Unit-Test-Mocks ohne DB
-    membership = {
-      tenantId: DEFAULT_TENANT_ID,
-      role: "planner",
-      isDefault: true,
-      tenantName: "RSC Eifelland Mayen e. V.",
-      tenantStatus: "pilot",
-      updatedAt: new Date(0),
-    };
-  }
-  if (!membership) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "Für dieses Konto ist kein aktiver Verein freigegeben.",
@@ -801,7 +789,6 @@ async function tenantIdForFreshPersonalLogin(user: {
   const membership = await db.resolveTenantForUser({
     userId: user.id,
     userOpenId: user.openId,
-    allowPilotFallback: false,
   });
   if (!membership) {
     throw new TRPCError({
@@ -840,25 +827,6 @@ async function startEventForFreshPlanningTeamLogin(
     // sicheren Startansicht und ermittelt über events.all ausschließlich die
     // tatsächlich freigegebenen Veranstaltungen.
     return null;
-  }
-}
-
-/** Der bisherige globale Administrator bleibt während des Pilotbetriebs RSC-Administrator. */
-async function ensurePilotMembershipForMasterAdmin() {
-  try {
-    if ("getUserByOpenId" in db && "ensureTenantMembership" in db) {
-      const user = await (db as any).getUserByOpenId(ADMIN_PASSWORD_OPEN_ID);
-      if (user) {
-        await (db as any).ensureTenantMembership({
-          userId: user.id,
-          tenantId: DEFAULT_TENANT_ID,
-          role: "tenant_admin",
-          makeDefault: true,
-        });
-      }
-    }
-  } catch {
-    // Mocks oder Test-Sandboxen ohne Mitgliedschaftstabellen dürfen den Login nicht blockieren.
   }
 }
 
@@ -2669,7 +2637,6 @@ export const appRouter = router({
             role: "admin",
             lastSignedIn: new Date(),
           });
-          await ensurePilotMembershipForMasterAdmin();
           await recordSecurityActivity(
             {
               userId: 0,
@@ -3348,7 +3315,6 @@ export const appRouter = router({
           role: "admin",
           lastSignedIn: new Date(),
         });
-        await ensurePilotMembershipForMasterAdmin();
         await recordSecurityActivity(
           {
             userId: 0,
@@ -3493,7 +3459,6 @@ export const appRouter = router({
           role: "admin",
           lastSignedIn: new Date(),
         });
-        await ensurePilotMembershipForMasterAdmin();
         const token = await sdk.createSessionToken(ADMIN_PASSWORD_OPEN_ID, {
           name: "Administrator",
           expiresInMs: PASSWORD_SESSION_MS,

@@ -442,9 +442,7 @@ export const events = mysqlTable(
   "events",
   {
     id: int("id").autoincrement().primaryKey(),
-    tenantId: varchar("tenantId", { length: 96 })
-      .default("rsc-eifelland-mayen")
-      .notNull(),
+    tenantId: varchar("tenantId", { length: 96 }).notNull(),
     year: int("year").notNull(),
     name: varchar("name", { length: 200 }).notNull(),
     activeDays: json("activeDays").$type<Weekday[]>().notNull(),

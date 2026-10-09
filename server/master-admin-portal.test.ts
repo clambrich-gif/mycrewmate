@@ -197,20 +197,20 @@ describe("Master-Admin-Portal", () => {
     expect(db).toContain("initialEventYear");
   });
 
-  it("entfernt ausschließlich interne Testvereine kontrolliert und schützt den echten Pilotverein", () => {
+  it("entfernt interne Pilot- und Testvereine kontrolliert ohne vereinsbezogene Sonderlöschsperre", () => {
     const routers = source("server/routers.ts");
     const db = source("server/db.ts");
     const page = source("client/src/pages/MasterAdminPortal.tsx");
 
     expect(routers).toContain("deleteInternalTestTenant: masterAdminProcedure");
     expect(db).toContain("export async function deleteInternalTestTenantForPlatformAdmin");
-    expect(db).toContain("tenantId === DEFAULT_TENANT_ID");
-    expect(db).toContain("Der geschützte Pilotverein kann nicht endgültig entfernt werden");
+    expect(db).not.toContain("DEFAULT_TENANT_ID");
+    expect(db).toContain("Es gibt keine vereinsbezogene technische Löschsperre");
     expect(db).toContain("await tx.delete(events).where(eq(events.tenantId, tenantId))");
     expect(page).toContain("Testverein endgültig entfernen");
     expect(page).toContain("kann nicht rückgängig gemacht werden");
-    expect(page).toContain("Der geschützte RSC-Pilotverein kann über diese Funktion nicht entfernt werden");
+    expect(page).toContain('tenant.status !== "active"');
     expect(page).toContain("filteredArchivedTenants.map(tenant => (");
-    expect(page).toContain("tenant.id !== \"rsc-eifelland-mayen\"");
+    expect(page).not.toContain('tenant.id !== "rsc-eifelland-mayen"');
   });
 });
