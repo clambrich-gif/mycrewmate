@@ -1,0 +1,1 @@
+DROP TABLE `wbt_training_links`;

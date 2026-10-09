@@ -68,8 +68,9 @@
 - [x] Master-Portal übersichtlicher aufgebaut: aktive Master-MFA zeigt nur noch eine kompakte Leiste; sicherheitsrelevante Bedienung öffnet sich erst über „Sicherheitsdetails“.
 - [x] Persönliche Vereinszugänge werden je Verein in einer eigenen einklappbaren Liste verwaltet; mehrere Vereine eines Zugangs werden gegen versehentliche Löschung geschützt.
 - [x] Abgelaufene Master-Sitzungen werden klar als erneute Anmeldung erklärt, statt eine technische Fehlermeldung anzuzeigen.
-- [x] Frühere WBT-Schulungsfunktion vollständig aus erreichbarem Laufzeitcode entfernt: keine Master-Aktion, keine Hilfe-/Klemmi-Verlinkung, keine öffentliche oder geschützte Route, keine PDF-Erzeugung und keine Schulungsdateien. Die historische Datenbanktabelle wird bewusst nicht ohne eine gesonderte Datenlöschentscheidung verändert, ist jedoch nicht mehr über Oberfläche oder API erreichbar.
-- [x] Typecheck, 36 gezielte Regressionstests und Produktionsbuild für die Master-Portal-Bereinigung erfolgreich ausgeführt; Laufzeitcode und Domains zusätzlich ohne WBT- bzw. `micromate`-Treffer geprüft.
+- [x] Frühere WBT-Schulungsfunktion vollständig entfernt: keine Master-Aktion, keine Hilfe-/Klemmi-Verlinkung, keine öffentliche oder geschützte Route, keine PDF-Erzeugung und keine Schulungsdateien. Die historische Tabelle `wbt_training_links` wurde nach bestätigter Löschentscheidung aus Schema und Entwicklungsdatenbank entfernt; die Produktionsmigration `0100_chemical_captain_marvel` ist vorbereitet.
+- [x] Master-Portal sprachlich präzisiert: „Pilotzugang“ statt Testzugang, „Zustimmungen für den Vereinszugang“ statt Vertragsunterlagen, „Admin-Zugang einrichten“ sowie eine eindeutige endgültige Vereinslöschung. Paketzuordnungen und der noch deaktivierte Marktstart sind klar benannt.
+- [x] Typecheck, 46 gezielte Regressionstests und Produktionsbuild für die Master-Portal-Bereinigung erfolgreich ausgeführt; Laufzeitcode und Domains zusätzlich ohne WBT- bzw. `micromate`-Treffer geprüft.
 - [ ] Vor dem geplanten Kaufstart am 01.01.2027 Checkout, Steuerstatus und eine etwaige BFSG-/Barrierefreiheitsinformation für den dann verbindlich bestätigten Vertriebspfad freigeben.
 
 ## Später prüfen
@@ -79,3 +80,4 @@
 - [ ] Hetzner-Mailpostfach monatlich nach dem dokumentierten Dreijahresprozess bereinigen; SMTP kann eingegangene oder gesendete Mailkopien nicht automatisch aus der Mailbox löschen.
 - [ ] Nach Veröffentlichung die Vereinsdemo auf der echten Marketing- und App-Domain einmal end-to-end testen.
 - [ ] Falls nach der kurzen Pilotphase später wieder schriftliche Vereinbarungen in MyCrewMate verwaltet werden sollen, Bedarf, Rechtsprüfung, Unterschrift und sichere Ablage zuerst gemeinsam neu festlegen.
+- [ ] Bei Gelegenheit die 20 verbleibenden, fachlich überholten Volltests auf die vereinsneutrale Architektur und die aktuellen öffentlichen Texte umstellen. Sie betreffen derzeit nur alte Testannahmen, nicht den hier geprüften Master-Portal- oder WBT-Laufzeitcode.

@@ -254,6 +254,15 @@ const PRODUCT_ASSIGNMENT_STATUS_CLASS: Record<ProductAssignmentStatus, string> =
   expired: "border-red-200 bg-red-50 text-red-800",
 };
 
+function masterAssignmentStatusLabel(
+  packageId: ProductPackageId,
+  status: ProductAssignmentStatus
+) {
+  return status === "test"
+    ? "Pilotzugang"
+    : PRODUCT_PACKAGE_META[packageId].assignmentStatusLabel[status];
+}
+
 function productUsageTone(metric: ProductLimitUsageMetric) {
   if (!metric.available) {
     return { bar: "bg-slate-300", text: "text-slate-500" };
@@ -352,7 +361,7 @@ function TenantAdminActivationStatus({
     return (
       <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950">
         <KeyRound className="mt-0.5 size-3.5 shrink-0 text-amber-700" aria-hidden="true" />
-        <span><strong>Admin-Zugang noch nicht angelegt.</strong> Über „Admin-Zugang anlegen“ wird ein persönlicher Zugang eingerichtet.</span>
+        <span><strong>Admin-Zugang noch nicht eingerichtet.</strong> Über „Admin-Zugang einrichten“ wird ein persönlicher Zugang vorbereitet.</span>
       </div>
     );
   }
@@ -428,9 +437,9 @@ function TenantContractAcceptanceStatus({
       >
         <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-emerald-700" aria-hidden="true" />
         <span>
-          <strong>Vertragsunterlagen bestätigt.</strong>{" "}
+          <strong>Zustimmungen für den Vereinszugang vollständig.</strong>{" "}
           {acceptance.requiredDocumentCount} von {acceptance.requiredDocumentCount} aktuellen
-          Dokumenten sind nachgewiesen
+          Zugangsdokumenten sind bestätigt
           {acceptance.acceptedAt
             ? ` · zuletzt bestätigt am ${formatAccessCreatedAt(acceptance.acceptedAt)}.`
             : "."}
@@ -444,12 +453,13 @@ function TenantContractAcceptanceStatus({
       data-slot="tenant-contract-acceptance"
       className="mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950"
       role="status"
-    >
-      <CircleAlert className="mt-0.5 size-3.5 shrink-0 text-amber-700" aria-hidden="true" />
-      <span>
-        <strong>Vertragsunterlagen noch offen.</strong> {acceptance.confirmedDocumentCount} von{" "}
-        {acceptance.requiredDocumentCount} aktuellen Dokumenten sind bestätigt. Bei der
-        Vereinsaktivierung wird die fehlende Annahme verbindlich abgefragt.
+      >
+        <CircleAlert className="mt-0.5 size-3.5 shrink-0 text-amber-700" aria-hidden="true" />
+        <span>
+          <strong>Zustimmungen für den Vereinszugang noch offen.</strong>{" "}
+          {acceptance.confirmedDocumentCount} von {acceptance.requiredDocumentCount} aktuellen
+          Zugangsdokumenten sind bestätigt. Fehlende Zustimmungen werden vor der Freigabe des
+          Vereinszugangs verbindlich abgefragt.
       </span>
     </div>
   );
@@ -1194,7 +1204,7 @@ export default function MasterAdminPortal() {
     onSuccess: async result => {
       await accessInventory.refetch();
       setAccessToDelete(null);
-      toast.success(`Testzugang „${result.name}“ wurde entfernt.`);
+      toast.success(`Persönlicher Zugang „${result.name}“ wurde entfernt.`);
     },
     onError: error => toast.error(error.message),
   });
@@ -1602,10 +1612,10 @@ export default function MasterAdminPortal() {
               <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
                 <div>
                   <CardTitle id="paketverteilung" className="flex items-center gap-2 text-base">
-                    <CreditCard className="size-5 text-blue-700" /> Produktpakete im Überblick
+                    <CreditCard className="size-5 text-blue-700" /> Paketzuordnungen im Überblick
                   </CardTitle>
                   <CardDescription className="mt-1 max-w-3xl">
-                    Aktuelle Zuordnung der gebuchten Pakete für Vereine in Verwaltung. Testzugänge bleiben bewusst in der Verteilung sichtbar.
+                    Aktuelle Paketzuordnung für alle Vereine in Verwaltung. Pilotzugänge bleiben bewusst in der Verteilung sichtbar.
                   </CardDescription>
                 </div>
                 <Badge variant="outline" className="w-fit border-slate-200 bg-slate-50 text-slate-700">
@@ -1616,7 +1626,7 @@ export default function MasterAdminPortal() {
             <CardContent className="space-y-4 px-5 py-5 sm:px-6">
               <div
                 className="flex h-3 overflow-hidden rounded-full bg-slate-100"
-                aria-label="Verteilung der gebuchten Produktpakete"
+                aria-label="Verteilung der Paketzuordnungen"
               >
                 {packageDistribution.map(item =>
                   item.count > 0 ? (
@@ -1645,7 +1655,7 @@ export default function MasterAdminPortal() {
                       <p className="mt-0.5 text-xs text-slate-500">{meta.priceLabel}</p>
                       <p className="mt-2 text-xs text-slate-600">
                         {item.share}% der aktiven Zuordnungen
-                        {item.testCount > 0 ? ` · ${item.testCount} Test` : ""}
+                        {item.testCount > 0 ? ` · ${item.testCount} Pilotzugang${item.testCount === 1 ? "" : "e"}` : ""}
                         {item.pausedOrExpiredCount > 0
                           ? ` · ${item.pausedOrExpiredCount} pausiert/abgelaufen`
                           : ""}
@@ -1792,7 +1802,7 @@ export default function MasterAdminPortal() {
                           {PRODUCT_PACKAGE_META[tenant.productAssignment.packageId].name}
                         </Badge>
                         <Badge variant="outline" className={PRODUCT_ASSIGNMENT_STATUS_CLASS[tenant.productAssignment.status]}>
-                          {PRODUCT_PACKAGE_META[tenant.productAssignment.packageId].assignmentStatusLabel[tenant.productAssignment.status]}
+                          {masterAssignmentStatusLabel(tenant.productAssignment.packageId, tenant.productAssignment.status)}
                         </Badge>
                       </div>
                       <p className="mt-1 truncate text-sm text-slate-500">{tenant.legalName}</p>
@@ -1855,7 +1865,7 @@ export default function MasterAdminPortal() {
                               setAdminEmail(tenant.contactEmail);
                             }}
                           >
-                            <KeyRound className="size-3.5" /> Admin-Zugang anlegen
+                            <KeyRound className="size-3.5" /> Admin-Zugang einrichten
                           </Button>
                           <Button
                             size="sm"
@@ -1910,7 +1920,7 @@ export default function MasterAdminPortal() {
                           onClick={() => setTestTenantToDelete({ id: tenant.id, name: tenant.name })}
                         >
                           {deleteInternalTestTenant.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
-                          Testverein endgültig entfernen
+                          Verein endgültig löschen
                         </Button>
                       )}
                     </div>
@@ -1923,7 +1933,7 @@ export default function MasterAdminPortal() {
           <div className="space-y-4">
             <Card className="border-amber-200 bg-amber-50/70 py-0 shadow-sm">
               <CardHeader className="px-5 py-4">
-                <CardTitle className="flex items-center gap-2 text-base text-amber-950"><CreditCard className="size-5 text-amber-700" /> Bewusst noch nicht aktiv</CardTitle>
+                <CardTitle className="flex items-center gap-2 text-base text-amber-950"><CreditCard className="size-5 text-amber-700" /> Marktstart noch nicht aktiv</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 px-5 pb-5 text-sm leading-5 text-amber-900">
                 <p>Keine öffentliche Registrierung, kein Checkout und keine Zahlungsanbindung.</p>
@@ -1985,7 +1995,7 @@ export default function MasterAdminPortal() {
                           onClick={() => setTestTenantToDelete({ id: tenant.id, name: tenant.name })}
                         >
                           {deleteInternalTestTenant.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
-                          Testverein endgültig entfernen
+                          Verein endgültig löschen
                         </Button>
                       )}
                     </div>
@@ -2097,7 +2107,7 @@ export default function MasterAdminPortal() {
             <fieldset className="grid gap-4 rounded-xl border border-violet-200 bg-violet-50/40 p-4 sm:grid-cols-2">
               <legend className="sr-only">Produktzuordnung</legend>
               <div className="sm:col-span-2">
-                <p className="text-sm font-semibold text-slate-800">Gebuchtes Produkt</p>
+                <p className="text-sm font-semibold text-slate-800">Zugeordnetes Produkt</p>
                 <p className="mt-1 text-xs leading-5 text-slate-600">
                   Die Produktzuordnung steuert die technischen Funktionsgrenzen des Vereins. Persönliche Fachbereichsrechte bleiben davon unabhängig.
                 </p>
@@ -2133,7 +2143,7 @@ export default function MasterAdminPortal() {
                   <SelectContent>
                     {PRODUCT_ASSIGNMENT_STATUSES.map(status => (
                       <SelectItem key={status} value={status}>
-                        {PRODUCT_PACKAGE_META[createForm.packageId].assignmentStatusLabel[status]}
+                        {masterAssignmentStatusLabel(createForm.packageId, status)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -2367,7 +2377,7 @@ export default function MasterAdminPortal() {
                     <SelectContent>
                       {PRODUCT_ASSIGNMENT_STATUSES.map(status => (
                         <SelectItem key={status} value={status}>
-                          {PRODUCT_PACKAGE_META[productAssignmentForm.packageId].assignmentStatusLabel[status]}
+                          {masterAssignmentStatusLabel(productAssignmentForm.packageId, status)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -2697,14 +2707,14 @@ export default function MasterAdminPortal() {
         <AlertDialogContent className="border-red-200 bg-white text-slate-950">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-red-800">
-              <Trash2 className="size-5" /> Testverein endgültig entfernen?
+              <Trash2 className="size-5" /> Verein mit allen Daten endgültig löschen?
             </AlertDialogTitle>
             <AlertDialogDescription className="leading-5 text-slate-600">
-              <strong className="font-semibold text-slate-800">{testTenantToDelete?.name}</strong> wird mit seinen Veranstaltungen, Planungsdaten und zugehörigen Testzugängen dauerhaft entfernt. Dieser Weg ist ausschließlich für interne Testvereine bestimmt und kann nicht rückgängig gemacht werden.
+              <strong className="font-semibold text-slate-800">{testTenantToDelete?.name}</strong> wird mit allen Veranstaltungen, Planungsdaten und persönlichen Zugängen dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-5 text-amber-900">
-            Für reguläre Pilot- oder Vertragsenden verwenden Sie bitte weiterhin die Archivierung. Diese dauerhafte Entfernung bleibt ausschließlich für bewusst angelegte interne Test- oder Pilotvereine bestimmt.
+            Für ein reguläres Ende eines Pilotzugangs verwenden Sie bitte weiterhin die Archivierung. Die endgültige Löschung ist nur für Pilot- und Mustervereine vorgesehen; aktive Vereine bleiben geschützt.
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleteInternalTestTenant.isPending}>Abbrechen</AlertDialogCancel>
@@ -2717,7 +2727,7 @@ export default function MasterAdminPortal() {
               }}
             >
               {deleteInternalTestTenant.isPending ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
-              Testverein endgültig entfernen
+              Verein endgültig löschen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
