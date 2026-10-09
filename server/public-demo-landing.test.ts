@@ -32,6 +32,7 @@ describe("öffentliche Vereinsdemo", () => {
     const router = read("server/routers.ts");
     const demo = read("server/public-demo.ts");
     const cleanup = read("server/public-demo-cleanup.ts");
+    const landing = read("client/src/pages/ClubDemoLanding.tsx");
 
     expect(router).toContain("publicDemo: router");
     expect(demo).toContain("createPublicDemoSession");
@@ -40,6 +41,10 @@ describe("öffentliche Vereinsdemo", () => {
     expect(cleanup).toContain("handlePublicDemoAccess");
     expect(cleanup).toContain("handlePublicDemoEnd");
     expect(cleanup).toContain("handlePublicDemoCleanupHeartbeat");
+    expect(demo).toContain("PUBLIC_DEMO_MAX_AGE_MS = 35 * 60 * 1000");
+    expect(landing).toContain("spätestens innerhalb von rund 45 Minuten");
+    expect(landing).toContain("höchstens sieben täglichen Wiederherstellungspunkten");
+    expect(landing).toContain("werden nie genutzt, um eine Vereinsdemo erneut zu öffnen");
   });
 
   it("liefert die Pro-Demo mit Eventlogo und detaillierten Radsportstrecken", () => {

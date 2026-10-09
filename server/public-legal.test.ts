@@ -14,6 +14,8 @@ describe("öffentliche Pilot- und Datenschutzhinweise", () => {
     expect(legal).toContain("2.2 Vereinbarter Pilotzugang");
     expect(legal).toContain("drei Jahre reaktivierbar");
     expect(legal).toContain("Hetzner Online GmbH");
+    expect(legal).toContain("Diese Angaben sind erforderlich");
+    expect(legal).toContain("Die Telefonnummer sowie weitere Angaben zum Vorhaben sind freiwillig");
     expect(legal).toContain("aktuelle öffentliche Website mit Pilotanfrage und fiktiver Vereinsdemo");
     expect(legal).not.toContain("tracker- und formularfreien Startauftritt");
   });

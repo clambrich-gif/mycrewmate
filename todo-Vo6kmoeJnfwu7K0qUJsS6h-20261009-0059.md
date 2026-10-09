@@ -37,7 +37,7 @@
 - [x] Hauptseite und Pilotseite klar verknüpft: Pilot-Anfrage als Hauptweg, Vereinsdemo als separater Zweitweg, Preisrücklink auf `/pilot` sowie Enterprise statt Ultimate in der Pilotumgebung.
 - [x] Öffentliche Vereinsdemo sprachlich eindeutig abgegrenzt: reine Übungsumgebung mit fiktiven Daten; Pilotprogramm als einziger Weg für eigene Vereine, echte Anlässe und reale Daten. Enterprise ersetzt dort die frühere sichtbare Bezeichnung Ultimate.
 - [x] Steuerkennzeichnung bewusst bis zur Rücksprache mit dem Steuerberater offen gelassen; die Website zeigt bis dahin ausschließlich bestätigte Endpreise ohne MwSt.-/USt.-Aussage.
-- [x] Pilot-Anfrageformular als echten, SMTP-basierten Versand an `support@mycrewmate.de` fertiggestellt: vertikale Felder, Pflicht-Telefonnummer, serverseitige Validierung, Spam-Schutz und automatische Eingangsbestätigung.
+- [x] Pilot-Anfrageformular als echten, SMTP-basierten Versand an `support@mycrewmate.de` fertiggestellt: vertikale Felder, freiwillige Rückrufnummer, serverseitige Validierung, Spam-Schutz und automatische Eingangsbestätigung.
 - [x] Öffentliche MyCrewMate-Logos auf Hauptseite, Pilotseite, Vereinsdemo und Rechtstexten einheitlich mit `https://mycrewmate.de/` verlinkt.
 - [x] Pilotanfragen als geschützte Vorgänge mit Entscheidung, Löschwunsch und dreijähriger Aufbewahrungsfrist im Master-Portal dokumentiert.
 - [x] Ablaufende Pilotzugänge werden im bestehenden täglichen Produktablauf archiviert, Zugänge widerrufen und per E-Mail über Reaktivierung bis zur festen Dreijahresfrist informiert.
@@ -46,10 +46,14 @@
 - [x] Pilotvorteil verständlich begrenzt: 50 % nur für Light (149 € → 74,50 €) und Pro (299 € → 149,50 €) im ersten kostenpflichtigen Veranstaltungsjahr; Event Pass und Enterprise sind ausgenommen.
 - [x] Primäre Werbe-CTAs auf der Hauptseite führen unmittelbar zur Pilotanfrage; „Plätze“ wurde durch die klare Antragsfrist bis 31.12.2026 ersetzt.
 - [x] Sichtprüfung bei 360 px: Pilotseite und Vereinsdemo sind ohne abgeschnittene Primär-CTAs oder sichtbaren Horizontalüberlauf nutzbar.
+- [x] Dringende Transparenzkorrekturen umgesetzt: Pflicht-/Freiwilligkeits- und Aufbewahrungshinweis direkt im Pilotformular, eindeutige 50%-Regel für Light/Pro, präzise Demo-Lösch- und Sicherungsinformation.
+- [x] Dringende Zugänglichkeitskorrekturen umgesetzt: kontraststarke orange Aktionsflächen (mindestens 4,5:1) sowie Tastaturnavigation und Screenreader-Text im Tarifvergleich.
+- [x] Öffentliche Demosicherheit verstärkt: Bereinigungs-Heartbeat `public-demo-cleanup` alle zehn Minuten registriert; technische Höchstalterung bleibt 35 Minuten.
 
 ## In Umsetzung
 
 - [ ] Geprüften Pilotaufbewahrungsstand veröffentlichen; der vorhandene Heartbeat `product-expiry-reminders` läuft täglich um 08:00 UTC und führt nach dem Deploy automatisch die neue Pilotlogik aus.
+- [ ] Betreiberfreigaben für die verbleibenden dringenden Rechts-Release-Gates einholen: Hetzner-AVV/Anlagen, W-IdNr./USt-IdNr.-Status, technische Logfristen sowie B2B/B2C- und BFSG-Entscheidung vor dem Kaufstart.
 
 ## Später prüfen
 

@@ -1392,7 +1392,7 @@ export async function createPublicPilotInquiry(input: {
   clubName: string;
   contactName: string;
   email: string;
-  phone: string;
+  phone?: string;
   occasion: string;
   desiredStart: string;
   note?: string;
@@ -1405,7 +1405,7 @@ export async function createPublicPilotInquiry(input: {
     clubName: input.clubName,
     contactName: input.contactName,
     email: input.email,
-    phone: input.phone,
+    phone: input.phone?.trim() || null,
     occasion: input.occasion,
     desiredStart: input.desiredStart,
     note: input.note?.trim() || null,

@@ -33,11 +33,16 @@ describe("öffentliche Preis- und Pilotseiten", () => {
     expect(pilot).toContain("Reguläre Preise ab 01.01.2027 ansehen");
     expect(pilot).toContain('name="phone"');
     expect(pilot).toContain("Telefonnummer für eine persönliche Rückfrage");
+    expect(pilot).toContain("Nur wenn ihr einen persönlichen Rückruf wünscht.");
+    expect(pilot).toContain("Kurz zum Umgang mit euren Angaben");
+    expect(pilot).toContain("Die Checkbox unten bestätigt nur");
     expect(pilot).toContain("trpc.pilotInquiry.submit.useMutation");
     expect(pilot).toContain("Wir bestätigen den Eingang zusätzlich per E-Mail.");
     expect(pilot).toContain("Pilotanfragen bis 31.12.2026");
     expect(pilot).toContain("Light 149 € → 74,50 € und Pro 299 € → 149,50 €");
-    expect(pilot).toContain("Der Event Pass ist ein Einzelereignis-Paket und nicht rabattiert");
+    expect(pilot).toContain("Event Pass und Enterprise sind ausgeschlossen");
+    expect(pilot).toContain("Kombination mit anderen Rabatten ist nicht möglich");
+    expect(pilot).toContain("in Textform, zum Beispiel per E-Mail");
   });
 
   it("ordnet die Vergleichstabelle zeitlich ein, ohne die App-Ansicht zu verändern", () => {
@@ -46,6 +51,10 @@ describe("öffentliche Preis- und Pilotseiten", () => {
 
     expect(comparison).toContain("priceNote?: string");
     expect(comparison).toContain("{priceNote && (");
+    expect(comparison).toContain('tabIndex={0}');
+    expect(comparison).toContain('onKeyDown={handleComparisonKeyDown}');
+    expect(comparison).toContain('event.key !== "ArrowLeft" && event.key !== "ArrowRight"');
+    expect(comparison).toContain("Nicht enthalten</span>");
     expect(offer).toContain("Reguläre Endpreise ab 01.01.2027");
   });
 });

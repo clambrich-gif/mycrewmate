@@ -183,11 +183,9 @@ export const PACKAGE_COMPARISON_ROWS: ComparisonRow[] = [
 function ComparisonCell({ cell }: { cell: ComparisonCell }) {
   if (cell.state === "notIncluded") {
     return (
-      <span
-        className="inline-flex items-center justify-center text-slate-300"
-        aria-label="Nicht enthalten"
-      >
+      <span className="inline-flex items-center justify-center text-slate-300">
         <Minus className="size-4" aria-hidden="true" />
+        <span className="sr-only">Nicht enthalten</span>
       </span>
     );
   }
@@ -303,7 +301,7 @@ function KlemmiPackageTip({
             <Button
               asChild
               size="sm"
-              className="bg-orange-500 font-bold text-white hover:bg-orange-600"
+              className="bg-orange-700 font-bold text-white hover:bg-orange-800"
             >
               <a
                 href={buildUpgradeRequestHref(
@@ -375,6 +373,20 @@ export function PackageComparisonSection({
   embedded = false,
   className,
 }: PackageComparisonSectionProps) {
+  const comparisonScrollRef = React.useRef<HTMLDivElement>(null);
+
+  function handleComparisonKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    const container = comparisonScrollRef.current;
+    if (!container) return;
+    event.preventDefault();
+    const amount = Math.max(240, Math.round(container.clientWidth * 0.75));
+    container.scrollBy({
+      left: event.key === "ArrowRight" ? amount : -amount,
+      behavior: "smooth",
+    });
+  }
+
   return (
     <section
       id={sectionId}
@@ -393,7 +405,7 @@ export function PackageComparisonSection({
       >
         <div className="grid gap-8 lg:grid-cols-[minmax(0,0.72fr)_minmax(22rem,1fr)] lg:items-end">
           <div>
-            <p className="text-sm font-bold uppercase tracking-[0.16em] text-orange-600">
+            <p className="text-sm font-bold uppercase tracking-[0.16em] text-orange-700">
               Auf einen Blick vergleichen
             </p>
             <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
@@ -436,9 +448,14 @@ export function PackageComparisonSection({
         <div className="mt-10 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_20px_55px_-36px_rgba(15,23,42,0.35)]">
           <div className="relative">
             <div
-              className="overflow-x-auto"
+              ref={comparisonScrollRef}
+              className="overflow-x-auto rounded-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-300"
               data-offer-comparison
+              role="region"
+              tabIndex={0}
+              aria-label="Tarifvergleich: mit den Pfeiltasten horizontal durch die Pakete navigieren"
               aria-describedby="comparison-swipe-hint"
+              onKeyDown={handleComparisonKeyDown}
             >
             <table className="min-w-[940px] w-full border-collapse text-left">
               <thead>
@@ -515,8 +532,9 @@ export function PackageComparisonSection({
             <ArrowLeftRight className="size-4 shrink-0 text-blue-700" aria-hidden="true" />
             <span>
               Auf dem Smartphone nach links und rechts wischen, um alle Pakete
-              zu vergleichen. Enterprise-Erweiterungen werden individuell und
-              transparent abgestimmt.
+              zu vergleichen. Mit der Tastatur zuerst in die Tabelle springen
+              und dann die Pfeiltasten verwenden. Enterprise-Erweiterungen
+              werden individuell und transparent abgestimmt.
             </span>
           </p>
         </div>

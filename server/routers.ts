@@ -2100,7 +2100,11 @@ export const appRouter = router({
           phone: z
             .string()
             .trim()
-            .regex(/^[0-9+()\-./\s]{6,60}$/, "Bitte eine gültige Telefonnummer eingeben."),
+            .max(60)
+            .refine(
+              value => value.length === 0 || /^[0-9+()\-./\s]{6,60}$/.test(value),
+              "Bitte eine gültige Telefonnummer eingeben."
+            ),
           occasion: z.string().trim().min(2, "Bitte den Testanlass auswählen.").max(120),
           start: z
             .string()

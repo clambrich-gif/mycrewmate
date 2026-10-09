@@ -202,7 +202,7 @@ export function renderPilotInquiryNotificationEmail(params: {
   clubName: string;
   contactName: string;
   email: string;
-  phone: string;
+  phone?: string;
   occasion: string;
   desiredStart: string;
   note?: string;
@@ -210,11 +210,12 @@ export function renderPilotInquiryNotificationEmail(params: {
   const subject = `Neue Pilot-Anfrage · ${emailSubjectLine(params.clubName)}`;
   const desiredStart = pilotStartLabel(params.desiredStart);
   const note = params.note?.trim() || "Keine weiteren Angaben.";
+  const phone = params.phone?.trim() || "Nicht angegeben";
   const rows = [
     ["Verein oder Organisation", params.clubName],
     ["Ansprechperson", params.contactName],
     ["E-Mail", params.email],
-    ["Telefon", params.phone],
+    ["Telefon", phone],
     ["Testanlass", params.occasion],
     ["Gewünschter Start", desiredStart],
     ["Weitere Angaben", note],

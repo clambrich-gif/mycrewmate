@@ -128,7 +128,7 @@ export default function ClubDemoLanding() {
               Wähle eine bereits gefüllte Musterumgebung. Danach öffnet sich die normale MyCrewMate-App: Du kannst erfundene Helfer anlegen, Schichten ändern, Aufgaben abhaken und – bei Pro – Karte und GPX-Strecken ansehen.
             </p>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-500">
-              Das ist eine Übungsdemo, kein Testzugang für euren eigenen Verein. Alle Personen, Vereine, Kontakte und Strecken sind erfunden. Deine Eingaben liegen nur in einem eigenen, temporären Demo-Bereich und werden beim Verlassen der Demo sowie spätestens nach kurzer Zeit gelöscht.
+              Das ist eine Übungsdemo, kein Testzugang für euren eigenen Verein. Alle Personen, Vereine, Kontakte und Strecken sind erfunden. Deine Eingaben liegen nur in einem eigenen, temporären Demo-Bereich und werden beim Verlassen der Demo sowie spätestens innerhalb von rund 45 Minuten gelöscht. Technische Sicherungskopien rotieren nach höchstens sieben täglichen Wiederherstellungspunkten und werden nie genutzt, um eine Vereinsdemo erneut zu öffnen.
             </p>
           </div>
           <div className="flex items-center gap-3 rounded-2xl border border-orange-200 bg-orange-50 p-4 shadow-sm">
@@ -157,7 +157,7 @@ export default function ClubDemoLanding() {
               Im Pilotprogramm richtet MyCrewMate nach persönlicher Abstimmung einen kostenlosen, zeitlich vereinbarten Zugang für euren Verein ein. Erst dort plant ihr mit eurem eigenen Team und euren echten Daten – ohne automatische Verlängerung.
             </p>
             <a href="/pilot" className="mt-5 inline-block">
-              <Button type="button" className="rounded-xl bg-orange-500 text-white hover:bg-orange-600">
+              <Button type="button" className="rounded-xl bg-orange-700 text-white hover:bg-orange-800">
                 Eigenen Verein im Pilotprogramm testen <ArrowRight className="size-4" aria-hidden="true" />
               </Button>
             </a>
@@ -239,7 +239,7 @@ export default function ClubDemoLanding() {
 
       <footer className="border-t border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-6 text-xs leading-5 text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <p>Die Vereinsdemo enthält ausschließlich fiktive Musterdaten. Temporäre Demo-Eingaben werden automatisch entfernt.</p>
+          <p>Die Vereinsdemo enthält ausschließlich fiktive Musterdaten. Temporäre Demo-Eingaben werden beim Verlassen, spätestens innerhalb von rund 45 Minuten, automatisch entfernt. Technische Sicherungskopien rotieren höchstens sieben Tage und reaktivieren keine Demo.</p>
           <div className="flex shrink-0 gap-4 font-semibold"><a className="hover:text-blue-700" href="/impressum">Impressum</a><a className="hover:text-blue-700" href="/datenschutz">Datenschutz</a></div>
         </div>
       </footer>

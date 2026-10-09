@@ -84,6 +84,18 @@ describe("öffentliche Pilotanfrage", () => {
     );
   });
 
+  it("akzeptiert eine Anfrage ohne freiwillige Rückrufnummer", async () => {
+    const caller = appRouter.createCaller(context("198.51.100.13"));
+
+    await expect(caller.pilotInquiry.submit({ ...validInquiry, phone: "" })).resolves.toEqual({
+      accepted: true,
+      confirmationSent: true,
+    });
+    expect(mailMocks.renderPilotInquiryNotificationEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ phone: "" })
+    );
+  });
+
   it("nimmt keine Bot-Anfrage aus dem versteckten Feld in den Versand", async () => {
     const caller = appRouter.createCaller(context("198.51.100.11"));
 

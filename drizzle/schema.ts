@@ -735,7 +735,8 @@ export const pilotInquiries = mysqlTable(
     clubName: varchar("clubName", { length: 160 }).notNull(),
     contactName: varchar("contactName", { length: 120 }).notNull(),
     email: varchar("email", { length: 320 }).notNull(),
-    phone: varchar("phone", { length: 60 }).notNull(),
+    /** Freiwillige Rückrufnummer für die persönliche Pilotabstimmung. */
+    phone: varchar("phone", { length: 60 }),
     occasion: varchar("occasion", { length: 120 }).notNull(),
     desiredStart: varchar("desiredStart", { length: 7 }).notNull(),
     note: text("note"),

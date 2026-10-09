@@ -198,6 +198,28 @@ function PilotRequestForm() {
 
   return (
     <form className="grid gap-4" onSubmit={handleSubmit} noValidate>
+      <section
+        aria-labelledby="pilot-datenhinweis"
+        className="rounded-xl border border-blue-100 bg-blue-50/70 p-4 text-sm leading-5 text-slate-700"
+      >
+        <h3 id="pilot-datenhinweis" className="font-black text-slate-950">
+          Kurz zum Umgang mit euren Angaben
+        </h3>
+        <dl className="mt-3 grid gap-2 text-xs leading-5 sm:grid-cols-[8rem_1fr]">
+          <dt className="font-bold text-slate-800">Pflichtangaben</dt>
+          <dd>Verein, Ansprechperson, E-Mail, Anlass und Wunschmonat – ohne diese Angaben können wir die Anfrage nicht bearbeiten.</dd>
+          <dt className="font-bold text-slate-800">Freiwillig</dt>
+          <dd>Telefonnummer für einen Rückruf sowie weitere Angaben zum Vorhaben.</dd>
+          <dt className="font-bold text-slate-800">Zweck</dt>
+          <dd>Persönliche Antwort, Abstimmung eines möglichen Pilotzeitraums und nachvollziehbare Bearbeitung der Anfrage.</dd>
+          <dt className="font-bold text-slate-800">Speicherdauer</dt>
+          <dd>Bis zur dokumentierten Entscheidung; danach drei Jahre. Ein vorzeitiger Löschwunsch ist jederzeit möglich.</dd>
+        </dl>
+        <p className="mt-3 text-xs leading-5 text-slate-600">
+          Die Checkbox unten bestätigt nur, dass ihr die Datenschutzhinweise gelesen habt. Sie ist keine Werbeeinwilligung.
+        </p>
+      </section>
+
       <label className="grid gap-1.5 text-sm font-bold text-slate-800">
         Verein oder Organisation
         <input
@@ -236,19 +258,20 @@ function PilotRequestForm() {
       </label>
 
       <label className="grid gap-1.5 text-sm font-bold text-slate-800">
-        Telefonnummer für eine persönliche Rückfrage
+        Telefonnummer für eine persönliche Rückfrage <span className="font-normal text-slate-500">(optional)</span>
         <input
-          required
           name="phone"
           type="tel"
           autoComplete="tel"
           inputMode="tel"
-          minLength={6}
           maxLength={60}
           pattern="[0-9+()\-./\s]{6,}"
           placeholder="z. B. 02651 123456 oder +49 171 1234567"
           className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-base font-normal text-slate-950 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
         />
+        <span className="text-xs font-normal leading-5 text-slate-500">
+          Nur wenn ihr einen persönlichen Rückruf wünscht.
+        </span>
       </label>
 
       <label className="grid gap-1.5 text-sm font-bold text-slate-800">
@@ -297,7 +320,7 @@ function PilotRequestForm() {
       <label className="flex items-start gap-3 rounded-xl bg-slate-50 p-3 text-sm leading-5 text-slate-600">
         <input required type="checkbox" name="privacy" className="mt-0.5 size-4 accent-blue-600" />
         <span>
-          Ich habe die <a className="font-semibold text-blue-700 underline underline-offset-2 hover:text-blue-900" href="/datenschutz" target="_blank" rel="noreferrer">Datenschutzhinweise zur Pilot-Anfrage</a> gelesen.
+          Die Pflichtangaben verwenden wir ausschließlich, um diese Pilot-Anfrage zu beantworten. Ich habe die <a className="font-semibold text-blue-700 underline underline-offset-2 hover:text-blue-900" href="/datenschutz" target="_blank" rel="noreferrer">Datenschutzhinweise zur Pilot-Anfrage</a> gelesen.
         </span>
       </label>
 
@@ -316,7 +339,7 @@ function PilotRequestForm() {
         type="submit"
         size="lg"
         disabled={submitInquiry.isPending}
-        className="w-full rounded-xl bg-orange-500 text-white shadow-lg shadow-orange-200 hover:bg-orange-600 disabled:cursor-wait disabled:opacity-80"
+        className="w-full rounded-xl bg-orange-700 text-white shadow-lg shadow-orange-200 hover:bg-orange-800 disabled:cursor-wait disabled:opacity-80"
       >
         {submitInquiry.isPending ? (
           <><LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> Anfrage wird gesendet …</>
@@ -367,7 +390,7 @@ export default function PilotHomepageDraft() {
             </a>
           </nav>
           <a href="#pilot-anfrage" className="shrink-0">
-            <Button className="rounded-xl bg-orange-500 px-4 text-white hover:bg-orange-600">
+            <Button className="rounded-xl bg-orange-700 px-4 text-white hover:bg-orange-800">
               Pilot anfragen <ArrowRight className="size-4" aria-hidden="true" />
             </Button>
           </a>
@@ -398,7 +421,7 @@ export default function PilotHomepageDraft() {
                 <Button
                   type="button"
                   size="lg"
-                  className="rounded-xl bg-orange-500 px-6 text-white shadow-lg shadow-orange-200 hover:bg-orange-600"
+                  className="rounded-xl bg-orange-700 px-6 text-white shadow-lg shadow-orange-200 hover:bg-orange-800"
                 >
                   Pilot kostenlos anfragen <ArrowRight className="size-4" aria-hidden="true" />
                 </Button>
@@ -443,9 +466,9 @@ export default function PilotHomepageDraft() {
                 </div>
               </div>
               <div className="mt-6 grid gap-3 border-t border-slate-100 pt-5 text-sm leading-6 text-slate-600">
-                <p className="flex gap-2"><Handshake className="mt-1 size-4 shrink-0 text-orange-600" aria-hidden="true" />Wir stimmen Paket und Zeitraum gemeinsam ab.</p>
-                <p className="flex gap-2"><Clock3 className="mt-1 size-4 shrink-0 text-orange-600" aria-hidden="true" />Ihr testet so lange, wie es zu eurem Anlass passt.</p>
-                <p className="flex gap-2"><ShieldCheck className="mt-1 size-4 shrink-0 text-orange-600" aria-hidden="true" />Danach entscheidet ihr in Ruhe, ob ihr weitermachen möchtet.</p>
+                <p className="flex gap-2"><Handshake className="mt-1 size-4 shrink-0 text-orange-700" aria-hidden="true" />Wir stimmen Paket und Zeitraum gemeinsam ab.</p>
+                <p className="flex gap-2"><Clock3 className="mt-1 size-4 shrink-0 text-orange-700" aria-hidden="true" />Ihr testet so lange, wie es zu eurem Anlass passt.</p>
+                <p className="flex gap-2"><ShieldCheck className="mt-1 size-4 shrink-0 text-orange-700" aria-hidden="true" />Danach entscheidet ihr in Ruhe, ob ihr weitermachen möchtet.</p>
               </div>
             </div>
           </aside>
@@ -573,7 +596,7 @@ export default function PilotHomepageDraft() {
               Wenn ihr MyCrewMate nach dem vereinbarten Pilotzeitraum weiter nutzen möchtet, gilt der Pilotvorteil von <strong>50 %</strong> für das erste kostenpflichtige Veranstaltungsjahr von <strong>Light</strong> oder <strong>Pro</strong>.
             </p>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-              Das entspricht bei den regulären Endpreisen ab 01.01.2027: Light 149 € → 74,50 € und Pro 299 € → 149,50 €. Der Event Pass ist ein Einzelereignis-Paket und nicht rabattiert; Enterprise wird individuell vereinbart. Der genaue Paketumfang, Zeitraum und die Bedingungen werden vor Ende des Piloten schriftlich bestätigt. Es gibt keine automatische Verlängerung.
+              Das entspricht bei den regulären Endpreisen ab 01.01.2027: Light 149 € → 74,50 € und Pro 299 € → 149,50 €. Der Vorteil gilt einmalig je teilnehmendem Verein für einen unmittelbar an den vereinbarten Piloten anschließenden, kostenpflichtigen Jahreszugang. Event Pass und Enterprise sind ausgeschlossen; eine Kombination mit anderen Rabatten ist nicht möglich. Paket, Zeitraum und Vorteil werden vor Pilotende in Textform, zum Beispiel per E-Mail, bestätigt. Es gibt keine automatische Verlängerung.
             </p>
           </div>
           <div className="rounded-2xl border border-blue-200 bg-white p-6 shadow-sm">

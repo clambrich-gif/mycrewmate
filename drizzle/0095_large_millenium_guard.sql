@@ -1,0 +1,1 @@
+ALTER TABLE `pilot_inquiries` MODIFY COLUMN `phone` varchar(60);

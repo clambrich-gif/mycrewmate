@@ -175,7 +175,7 @@ const OFFERS: Offer[] = [
       "Wenn persönliche Zugänge, Materialplanung oder weitere Teamarbeit nötig werden, bleiben die angelegten Daten beim Wechsel zu Light oder Pro erhalten.",
     accent:
       "border-orange-400 bg-gradient-to-b from-orange-50 via-white to-white shadow-[0_24px_60px_-26px_rgba(249,115,22,0.38)]",
-    buttonClass: "bg-orange-500 text-white hover:bg-orange-600",
+    buttonClass: "bg-orange-700 text-white hover:bg-orange-800",
     icon: CalendarCheck2,
     ribbonLabel: "FLEXIBEL · JEDES JAHR NEU",
     ribbonClass: "bg-orange-500",
@@ -335,7 +335,7 @@ const OFFERS: Offer[] = [
     ],
     accent:
       "border-orange-200 bg-gradient-to-b from-orange-50 to-white shadow-[0_24px_60px_-30px_rgba(249,115,22,0.30)]",
-    buttonClass: "bg-orange-500 text-white hover:bg-orange-600",
+    buttonClass: "bg-orange-700 text-white hover:bg-orange-800",
     icon: Gem,
   },
 ];
@@ -665,7 +665,7 @@ export default function OfferDemo() {
             <a href="/pilot#pilot-anfrage" className="hidden sm:block">
               <Button
                 type="button"
-                className="rounded-xl bg-orange-500 px-4 text-white hover:bg-orange-600"
+                className="rounded-xl bg-orange-700 px-4 text-white hover:bg-orange-800"
               >
                 Pilot anfragen{" "}
                 <ArrowRight className="size-4" aria-hidden="true" />
@@ -701,7 +701,7 @@ export default function OfferDemo() {
                 <Button
                   type="button"
                   size="lg"
-                  className="rounded-xl bg-orange-500 px-6 text-white shadow-lg shadow-orange-200 hover:bg-orange-600"
+                  className="rounded-xl bg-orange-700 px-6 text-white shadow-lg shadow-orange-200 hover:bg-orange-800"
                 >
                   Pilot kostenlos anfragen{" "}
                   <ArrowRight className="size-4" aria-hidden="true" />
@@ -830,7 +830,7 @@ export default function OfferDemo() {
             </div>
             <h2 className="mt-4 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
               Ein Event. Ein Preis.{" "}
-              <span className="text-orange-600">Frei entscheiden.</span>
+              <span className="text-orange-700">Frei entscheiden.</span>
             </h2>
             <p className="mt-3 max-w-3xl text-base leading-7 text-slate-600 sm:text-lg">
               Der Event Pass ist für Vereine, die eine einzelne Veranstaltung
@@ -866,7 +866,7 @@ export default function OfferDemo() {
             <a href="/pilot#pilot-anfrage" className="mt-5 block">
               <Button
                 type="button"
-                className="w-full rounded-xl bg-orange-500 text-white hover:bg-orange-600"
+                className="w-full rounded-xl bg-orange-700 text-white hover:bg-orange-800"
               >
                 Im Pilot testen <ArrowRight className="size-4" aria-hidden="true" />
               </Button>
@@ -880,7 +880,7 @@ export default function OfferDemo() {
         className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20"
       >
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-sm font-bold uppercase tracking-[0.16em] text-orange-600">
+          <p className="text-sm font-bold uppercase tracking-[0.16em] text-orange-700">
             Weniger Reibung. Mehr Teamgeist.
           </p>
           <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
@@ -1264,7 +1264,7 @@ export default function OfferDemo() {
                     {detailsOffer.futureOptions.map(option => (
                       <li key={option} className="flex gap-2">
                         <Sparkles
-                          className="mt-1 size-4 shrink-0 text-orange-600"
+                          className="mt-1 size-4 shrink-0 text-orange-700"
                           aria-hidden="true"
                         />
                         {option}
