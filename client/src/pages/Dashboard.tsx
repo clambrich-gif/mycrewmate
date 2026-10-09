@@ -1057,12 +1057,17 @@ function EventCountdownWidget({
   };
   packageId: ProductPackageId;
 }) {
+  const { user } = useAuth();
+  const isPublicDemoSession =
+    user?.openId.startsWith("tenant-admin:demo-session-") === true;
   const { isTenantAdmin: canManageLogo } = useTenantAdministration();
   const allowsCustomBranding = productAllowsCapability(
     packageId,
     "custom_branding"
   );
-  const canManageEventLogo = canManageLogo && allowsCustomBranding;
+  const canManageEventLogo =
+    !isPublicDemoSession && canManageLogo && allowsCustomBranding;
+  const canInteractWithEventLogo = !isPublicDemoSession && canManageLogo;
   const [upgradeCapability, setUpgradeCapability] = useState<
     "custom_branding" | null
   >(null);
@@ -1126,7 +1131,7 @@ function EventCountdownWidget({
   } as CSSProperties;
 
   const selectLogo = () => {
-    if (!canManageLogo || uploadLogo.isPending) return;
+    if (!canInteractWithEventLogo || uploadLogo.isPending) return;
     if (!allowsCustomBranding) {
       setUpgradeCapability("custom_branding");
       return;
@@ -1216,7 +1221,7 @@ function EventCountdownWidget({
         aria-label="Event-Zähler mit Tagesimpuls"
       >
         <div className="grid min-h-[3.95rem] grid-cols-[3.75rem_minmax(0,1fr)] items-center gap-1 bg-gradient-to-r from-sky-50 via-white to-orange-50 px-2 py-1.5">
-          <input
+          {!isPublicDemoSession && <input
             ref={logoInputRef}
             type="file"
             accept="image/png,image/jpeg"
@@ -1225,25 +1230,29 @@ function EventCountdownWidget({
               onLogoSelected(event.target.files?.[0]);
               event.target.value = "";
             }}
-          />
+          />}
           <button
             type="button"
             className="group relative mx-auto grid size-[3.4rem] place-items-center overflow-hidden rounded-full border border-black/35 bg-white shadow-sm transition-transform duration-150 hover:scale-[1.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-default disabled:hover:scale-100"
             onClick={selectLogo}
-            disabled={!canManageLogo || uploadLogo.isPending}
+            disabled={!canInteractWithEventLogo || uploadLogo.isPending}
             title={
-              canManageEventLogo
+              isPublicDemoSession
+                ? "Eventlogo der Testdemo – Upload deaktiviert"
+                : canManageEventLogo
                 ? "Eventlogo für Dashboard und PDFs ändern"
                 : canManageLogo
-                  ? "Eigenes Eventlogo ab Pro verfügbar"
-                  : "Eventlogo dieser Veranstaltung"
+                    ? "Eigenes Eventlogo ab Pro verfügbar"
+                    : "Eventlogo dieser Veranstaltung"
             }
             aria-label={
-              canManageEventLogo
+              isPublicDemoSession
+                ? "Eventlogo der Testdemo – Upload deaktiviert"
+                : canManageEventLogo
                 ? "Eventlogo für Dashboard und PDFs ändern"
                 : canManageLogo
-                  ? "Eigenes Eventlogo ab Pro verfügbar"
-                  : "Eventlogo dieser Veranstaltung"
+                    ? "Eigenes Eventlogo ab Pro verfügbar"
+                    : "Eventlogo dieser Veranstaltung"
             }
           >
             <img
@@ -1252,7 +1261,7 @@ function EventCountdownWidget({
               className="size-[3.05rem] object-contain"
               onError={() => setLogoLoadFailed(true)}
             />
-            {canManageLogo && (
+            {canInteractWithEventLogo && (
               <span className="absolute inset-0 grid place-items-center bg-blue-950/45 text-white opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100">
                 {canManageEventLogo ? (
                   <ImageUp className="size-4" aria-hidden="true" />

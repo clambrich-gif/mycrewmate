@@ -57,6 +57,7 @@ export type GpxMapTrack = {
   id: number;
   name: string;
   color: string;
+  summary: string | null;
   points: Array<[number, number]>;
 };
 
@@ -567,6 +568,12 @@ export default function LocationMapClient({
               <strong>{track.name}</strong>
               <br />
               <span className="text-xs">GPX-Strecke · {track.points.length.toLocaleString("de-DE")} Punkte</span>
+              {track.summary ? (
+                <>
+                  <br />
+                  <span className="text-xs text-slate-700">{track.summary}</span>
+                </>
+              ) : null}
             </Popup>
           </Polyline>
         ))}
@@ -693,15 +700,18 @@ export default function LocationMapClient({
           {trackControlOpen && (
             <div className="space-y-1 border-t border-slate-200 p-2">
               {gpxTracks.map(track => (
-                <label key={track.id} className="flex min-h-8 cursor-pointer items-center gap-2 rounded px-1 text-xs text-slate-800 hover:bg-slate-100">
+                <label key={track.id} className="flex min-h-8 cursor-pointer items-start gap-2 rounded px-1 py-1 text-xs text-slate-800 hover:bg-slate-100">
                   <input
                     type="checkbox"
                     checked={visibleTrackIds.has(track.id)}
                     onChange={() => toggleTrack(track.id)}
-                    className="size-4 accent-blue-700"
+                    className="mt-0.5 size-4 accent-blue-700"
                   />
-                  <span className="size-2.5 shrink-0 rounded-full border border-white shadow-sm" style={{ backgroundColor: track.color }} aria-hidden="true" />
-                  <span className="truncate">{track.name}</span>
+                  <span className="mt-1 size-2.5 shrink-0 rounded-full border border-white shadow-sm" style={{ backgroundColor: track.color }} aria-hidden="true" />
+                  <span className="min-w-0">
+                    <span className="block truncate font-semibold">{track.name}</span>
+                    {track.summary ? <span className="mt-0.5 block text-[11px] leading-4 text-slate-600">{track.summary}</span> : null}
+                  </span>
                 </label>
               ))}
             </div>

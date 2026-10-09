@@ -1,4 +1,5 @@
 import { AdminPasswordDialog } from "@/components/AdminPasswordDialog";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { KlemmiActionPanel } from "@/components/KlemmiActionPanel";
 import { KlemmiSurfaceGuide } from "@/components/KlemmiSurfaceGuide";
 import { KlemmiUpgradeDialog } from "@/components/KlemmiUpgradeDialog";
@@ -37,6 +38,9 @@ function baseName(filename: string) {
 }
 
 export default function Locations() {
+  const { user } = useAuth();
+  const isPublicDemoSession =
+    user?.openId.startsWith("tenant-admin:demo-session-") === true;
   const { isTenantAdmin: canDelete, canWriteModule } = useTenantAdministration();
   const canManage = canWriteModule("locations");
   const utils = trpc.useUtils();
@@ -483,7 +487,7 @@ export default function Locations() {
               <Sparkles className="mr-2 size-4" aria-hidden="true" /> Klemmi erklärt Pro
             </Button>
           </div>
-        ) : canManage && (
+        ) : canManage && !isPublicDemoSession && (
           <div className="grid gap-3 rounded-lg border border-blue-100 bg-white p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
             <Label className="grid gap-1.5 text-sm font-medium">GPX-Datei
               <Input ref={trackInputRef} type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml" onChange={onTrackFileChange} />
@@ -584,7 +588,7 @@ export default function Locations() {
                     <Input inputMode="decimal" value={form.longitude} placeholder="6.9458" onChange={event => setForm(current => ({ ...current, longitude: event.target.value }))} />
                   </label>
                 </div>
-                <div className="grid gap-2 rounded-lg border border-slate-200 bg-slate-50/70 p-3">
+                {!isPublicDemoSession && <div className="grid gap-2 rounded-lg border border-slate-200 bg-slate-50/70 p-3">
                   <Label htmlFor="location-logo-upload" className="flex items-center gap-2 text-sm font-medium">
                     <FileImage className="size-4 text-blue-700" aria-hidden="true" />
                     Standort-Logo / Marker-Icon hochladen (PNG/SVG/JPG)
@@ -609,7 +613,7 @@ export default function Locations() {
                       </Button>
                     </div>
                   ) : null}
-                </div>
+                </div>}
               </>
             )}
           </div>

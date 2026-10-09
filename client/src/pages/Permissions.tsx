@@ -155,9 +155,15 @@ export type AuditGuideFocus = "security" | "activity" | "files";
 
 export function AuditCenter({
   guideFocus,
+  readOnly = false,
+  showFileHistory = true,
 }: {
   /** Klemmi wechselt nur die sichtbare Protokollansicht, ohne Daten zu verändern. */
   guideFocus?: AuditGuideFocus;
+  /** Öffentliche Vereinsdemos zeigen Protokolle ohne Verwaltungsaktionen. */
+  readOnly?: boolean;
+  /** Datei- und Importverlauf bleibt ausgeblendet, wenn Dateiaktionen gesperrt sind. */
+  showFileHistory?: boolean;
 }) {
   const { isTenantAdmin: isAdmin } = useTenantAdministration();
   const [yearFilter, setYearFilter] = useState("all");
@@ -202,11 +208,11 @@ export function AuditCenter({
     enabled: isAdmin,
   });
   const fileHistory = trpc.projectFile.restoreLogs.useQuery(undefined, {
-    enabled: isAdmin,
+    enabled: isAdmin && showFileHistory,
   });
   const fileLogDetail = trpc.projectFile.restoreLog.useQuery(
     { id: selectedFileLogId ?? 0 },
-    { enabled: isAdmin && selectedFileLogId !== null }
+    { enabled: isAdmin && showFileHistory && selectedFileLogId !== null }
   );
 
   const clearDeletionAudit = trpc.audit.clear.useMutation({
@@ -292,7 +298,13 @@ export function AuditCenter({
   return (
     <>
       <Tabs value={activeTab} onValueChange={value => setActiveTab(value as AuditGuideFocus)} className="space-y-4">
-        <TabsList data-klemmi-target="security-audit-tabs" className="grid h-auto w-full grid-cols-1 gap-1 rounded-xl p-1 sm:grid-cols-3">
+        <TabsList
+          data-klemmi-target="security-audit-tabs"
+          className={cn(
+            "grid h-auto w-full grid-cols-1 gap-1 rounded-xl p-1",
+            showFileHistory ? "sm:grid-cols-3" : "sm:grid-cols-2"
+          )}
+        >
           <TabsTrigger
             value="security"
             data-klemmi-target="security-audit-logins-tab"
@@ -307,13 +319,15 @@ export function AuditCenter({
           >
             🗑️ Aktivitäts- &amp; Löschverlauf
           </TabsTrigger>
-          <TabsTrigger
-            value="files"
-            data-klemmi-target="security-audit-files-tab"
-            className="h-10 whitespace-normal px-3 text-left leading-tight"
-          >
-            📁 Datei- &amp; Import-Historie
-          </TabsTrigger>
+          {showFileHistory && (
+            <TabsTrigger
+              value="files"
+              data-klemmi-target="security-audit-files-tab"
+              className="h-10 whitespace-normal px-3 text-left leading-tight"
+            >
+              📁 Datei- &amp; Import-Historie
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="security" data-klemmi-target="security-audit-logins" className="space-y-4">
@@ -473,7 +487,7 @@ export function AuditCenter({
                   ))}
               </SelectContent>
             </Select>
-            {activityView === "deletions" && (
+            {activityView === "deletions" && !readOnly && (
               <Button
                 type="button"
                 variant="outline"
@@ -579,7 +593,7 @@ export function AuditCenter({
                       <Badge className="bg-emerald-100 text-emerald-800">
                         Wiederhergestellt durch {entry.restoredByName ?? "Administrator"}
                       </Badge>
-                    ) : entry.action === "single_delete" ? (
+                    ) : entry.action === "single_delete" && !readOnly ? (
                       <Button
                         type="button"
                         size="sm"
@@ -631,7 +645,7 @@ export function AuditCenter({
                             <Badge className="bg-emerald-100 text-emerald-800">
                               Wiederhergestellt
                             </Badge>
-                          ) : entry.action === "single_delete" ? (
+                          ) : entry.action === "single_delete" && !readOnly ? (
                             <Button
                               type="button"
                               size="sm"

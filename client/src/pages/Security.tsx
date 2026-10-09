@@ -734,6 +734,35 @@ export default function Security() {
     );
   }
 
+  const isPublicDemoSession =
+    user?.openId.startsWith("tenant-admin:demo-session-") === true;
+
+  if (isPublicDemoSession) {
+    return (
+      <div className="max-w-4xl space-y-6">
+        <div>
+          <PageTitle icon="security">Schutz &amp; Protokoll</PageTitle>
+          <p className="text-muted-foreground">
+            Sicherheits- und Aktivitätsverläufe der fiktiven Testumgebung ansehen.
+          </p>
+        </div>
+        <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
+          <p className="font-semibold">Reine Ansicht in der Vereinsdemo</p>
+          <p className="mt-1 text-xs leading-5 text-blue-900">
+            Zugangsdaten, Kennwörter, Notfallfunktionen, Wiederherstellungen und
+            Protokollbereinigungen sind in der Demo nicht verfügbar. Die Ansicht
+            zeigt ausschließlich fiktive Verlaufsdaten.
+          </p>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <AuditCenter readOnly showFileHistory={false} />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   const lockBusy = lockPlanningTeam.isPending || unlockPlanningTeam.isPending;
 
   return (

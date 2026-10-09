@@ -235,7 +235,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("data-klemmi-status-area");
     expect(plan).toContain("selector: '[data-klemmi-status-area]'");
     expect(plan).toContain('data-slot="shift-card-helper-candidate"');
-    expect(plan).toContain("helperDetailsTitle");
+    expect(plan).toContain("detailsTitle");
     expect(plan).toContain("Zeitfenster:");
     expect(plan).toContain("Begleitung:");
     expect(plan).toContain("Hinweise:");
@@ -484,7 +484,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const layout = source("client/src/components/Layout.tsx");
     const presence = source("client/src/components/OnlinePresenceBadge.tsx");
 
-    expect(layout).toContain("const onlinePresence = useOnlinePresence()");
+    expect(layout).toContain("const onlinePresence = useOnlinePresence(!isPublicDemoSession)");
     expect(layout.match(/<OnlinePresenceBadge/g)).toHaveLength(2);
     expect(presence).toContain("const PRESENCE_POLL_MS = 60_000");
     expect(presence).toContain("refetchInterval: PRESENCE_POLL_MS");
@@ -1794,9 +1794,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     // Zusätzlich zur Anmeldung, Sidebar und mobilen Kopfzeile verwenden die
     // Passwort-Aktivierung und die sichere Eventstartansicht die Wortmarke auf
     // neutralem Hintergrund.
-    expect(layout.match(/src=\{MYCREWMATE_WORDMARK\}/g)).toHaveLength(5);
+    expect(layout.match(/src=\{MYCREWMATE_WORDMARK\}/g)).toHaveLength(7);
     expect(layout.match(/src=\{MYCREWMATE_ICON\}/g)).toHaveLength(2);
-    expect(layout.match(/alt="MyCrewMate"/g)).toHaveLength(5);
+    expect(layout.match(/alt="MyCrewMate"/g)).toHaveLength(7);
   });
 
   it("trennt Markenbereich und Online-Status in kompakte Sidebar-Panels", () => {
@@ -1820,7 +1820,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(legalFooter).toContain("gap-0.5 whitespace-nowrap text-[9px] leading-none");
     expect(layout).toContain("SIDEBAR_COPYRIGHT_NOTICE");
     expect(layout).toContain("whitespace-nowrap");
-    expect(layout).toContain('<OnlinePresenceBadge\n            counts={onlinePresence.counts}');
+    expect(layout).toContain("<OnlinePresenceBadge");
+    expect(layout).toContain("counts={onlinePresence.counts}");
     expect(layout).not.toContain("ClubStatusLogoButton");
     expect(layout).not.toContain("ClubLogoModal");
     expect(layout).not.toContain("trpc.branding.current.useQuery");
@@ -2288,12 +2289,18 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain('data-slot="shift-dialog-task"');
     expect(plan).toContain('data-slot="shift-dialog-time"');
     expect(plan).toContain('displayLabel={helper.name}');
-    expect(plan).toContain('title={helperDetailsTitle || label(helper)}');
     expect(plan).toContain('<HighlightedText text={displayLabel} query={searchQuery} />');
     expect(plan).toContain('compact = false');
     expect(plan).toContain('<HelperDropdownFeedbackBadge');
-    expect(plan).toContain('assignments={assignmentDisplayByHelper.get(helper.id) ?? []}');
     expect(plan).toContain('compact');
+    expect(plan).toContain('const candidateHelpersByShift = useMemo');
+    expect(plan).toContain('const ShiftCardHelperCandidateRow = memo');
+    expect(plan).toContain('const ShiftCardHelperCandidateList = memo');
+    expect(plan).toContain('CANDIDATE_LIST_VIRTUALIZATION_THRESHOLD = 40');
+    expect(plan).toContain('CANDIDATE_LIST_OVERSCAN = 3');
+    expect(plan).toContain('onAssign={assignSelectedHelpers}');
+    expect(plan).toContain('const [selectedHelperIds, setSelectedHelperIds] = useState<number[]>([])');
+    expect(plan).toContain('const submitSelection = async () =>');
   });
 
   it("fixiert die Haupttabellen mit deckend weißen, kompakten Kopfzeilen im jeweiligen Scrollrahmen", () => {

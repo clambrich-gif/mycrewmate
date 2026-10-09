@@ -12,6 +12,23 @@
 - [x] Vertragsdialog für rein technische, fiktive Demozugänge unterdrückt.
 - [x] Manuell geprüft: Demo starten, Dashboard laden, Helfer anlegen und Demo beenden.
 - [x] Typecheck, Demo-Tests und Produktionsbuild erfolgreich ausgeführt.
+- [x] Pro-Demo um ein fiktives EifelRide-Eventlogo ergänzt.
+- [x] Drei realistischere GPX-Teststrecken mit Distanz, Höhenmetern, Streckenprofil, Verpflegungs- und Zeitnahmeinformationen ergänzt.
+- [x] GPX-Metadaten in Karten-Popups und der Streckensteuerung sichtbar gemacht.
+- [x] Zusätzliche Pro-Standorte für Verpflegung, Zeitnahme und Technik auf der Live-Karte angelegt.
+- [x] Globale 8-Sekunden-Synchronisierung, Präsenz-Heartbeat und Chat-Polling für Demozugänge abgeschaltet.
+- [x] Pro-Logo und GPX-Dateien als wiederverwendete, rein fiktive Demo-Assets gecacht statt pro Start neu anzulegen.
+- [x] Speichern/Laden, Import/Export, PDF-Downloads, Freigabelinks, WhatsApp und Datei-Uploads in der Demo in Oberfläche und Serverlogik gesperrt.
+- [x] „Schutz & Protokoll“ als reine Audit-Ansicht ohne Verwaltungs- und Wiederherstellungsaktionen umgesetzt.
+- [x] MyCrewMate-Logo in der Demo an `https://mycrewmate.de` gebunden.
+- [x] Manuell geprüft: Pro-Demo, Eventlogo und GPX-Karte, schreibgeschütztes Schutzprotokoll, ausgeblendete PDF-/WhatsApp-Aktionen, gesperrte GPX-Uploads und vollständige Bereinigung beim Demoende.
+- [x] IP-basierte Startgrenze durch eine anonyme, browserbezogene Kennung ersetzt: bis zu neun Starts je Browser in fünf Minuten, ohne Sperren für andere Besucher derselben Internetverbindung.
+- [x] Zusätzliche globale Parallelkapazität von 20 temporären Demos ergänzt und die Tab-Schließ-Bereinigung mit `sendBeacon` abgesichert.
+- [x] Manuell geprüft: Nach Rücksetzen des alten Startzählers startet die Pro-Demo wieder; der Klick auf das App-Logo führt zu `https://mycrewmate.de/`.
+- [x] Einsatzplan-Kachelansicht für große Helferzahlen optimiert: Kandidatendaten werden nur nach bestätigten Planänderungen berechnet, einzelne Helferzeilen memoisiert und lange Listen virtualisiert.
+- [x] Auswahlzustand je Schicht lokal isoliert: Ein Haken rendert nicht mehr den gesamten Einsatzplan neu. Messung in der Pro-Demo: Auswahlreaktion ca. 15–25 ms bei 150 Musterhelfern.
+- [x] Mehrfachzuweisung serverseitig beschleunigt: Redundante vollständige Listenabfragen entfernt; die bestehende atomare Datenbankprüfung bleibt allein maßgeblich für Verfügbarkeit, Doppelzuweisungen und freie Plätze. Manuelle Messung: Schreibvorgang ca. 386 ms.
+- [x] Typecheck, 205 relevante Server-/UI-/Demo-Tests und Produktionsbuild nach der Einsatzplanoptimierung erfolgreich ausgeführt.
 
 ## Später prüfen
 

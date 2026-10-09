@@ -1,5 +1,7 @@
-import { and, eq, like, lt } from "drizzle-orm";
+import { and, count, eq, like, lt } from "drizzle-orm";
 import { createHash, randomBytes } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import {
   approvals,
   assignments,
@@ -28,6 +30,9 @@ export const PUBLIC_DEMO_OPEN_ID_PREFIX = "tenant-admin:demo-session-";
 export const PUBLIC_DEMO_TENANT_ID_PREFIX = "mycrewmate-demo-";
 export const PUBLIC_DEMO_SESSION_MS = 30 * 60 * 1000;
 export const PUBLIC_DEMO_MAX_AGE_MS = 35 * 60 * 1000;
+/** Parallel nutzbare, vollständig isolierte Musterdemos. */
+export const PUBLIC_DEMO_CONCURRENT_LIMIT = 20;
+const PUBLIC_DEMO_STATIC_ASSET_PREFIX = "public-demo-static/v1";
 
 export type PublicDemoPackage = Extract<
   ProductPackageId,
@@ -145,60 +150,132 @@ function demoHelperName(index: number) {
   return `${first} ${last}`;
 }
 
-function gpxDocument(name: string, points: Array<[number, number]>) {
-  const trackPoints = points
-    .map(([lat, lon]) => `      <trkpt lat="${lat}" lon="${lon}"></trkpt>`)
+type DemoRouteAnchor = readonly [latitude: number, longitude: number, elevation: number];
+
+type DemoGpxRoute = {
+  fileName: string;
+  name: string;
+  description: string;
+  color: string;
+  anchors: readonly DemoRouteAnchor[];
+};
+
+const PRO_DEMO_ROUTES: readonly DemoGpxRoute[] = [
+  {
+    fileName: "gravel-challenge",
+    name: "Gravel Challenge · 72 km · 1.240 hm",
+    description: "Fiktive Teststrecke · 72 km · 1.240 Höhenmeter · 68 % Schotter · 3 Verpflegungsstellen · Startfenster 08:00–09:00 Uhr",
+    color: "#ea580c",
+    anchors: [
+      [50.3296, 7.2232, 148], [50.3405, 7.2354, 202], [50.3557, 7.2598, 318],
+      [50.3661, 7.2864, 438], [50.3582, 7.3091, 372], [50.3436, 7.3225, 286],
+      [50.3278, 7.3144, 224], [50.3147, 7.2915, 294], [50.3088, 7.2661, 358],
+      [50.3162, 7.2432, 236], [50.3296, 7.2232, 148],
+    ],
+  },
+  {
+    fileName: "eifel-marathon",
+    name: "Eifel Marathon · 128 km · 2.340 hm",
+    description: "Fiktive Teststrecke · 128 km · 2.340 Höhenmeter · 4 Verpflegungsstellen · 2 Zeitnahmepunkte · Zielschluss 17:30 Uhr",
+    color: "#2563eb",
+    anchors: [
+      [50.3296, 7.2232, 148], [50.3517, 7.2369, 254], [50.3804, 7.2241, 426],
+      [50.4012, 7.2468, 568], [50.4179, 7.2844, 642], [50.4055, 7.3262, 514],
+      [50.3828, 7.3535, 478], [50.3496, 7.3458, 334], [50.3266, 7.3281, 268],
+      [50.3038, 7.3045, 391], [50.2921, 7.2719, 462], [50.3032, 7.2406, 298],
+      [50.3296, 7.2232, 148],
+    ],
+  },
+  {
+    fileName: "familien-tour",
+    name: "Familien-Tour · 21 km · 260 hm",
+    description: "Fiktive Teststrecke · 21 km · 260 Höhenmeter · familienfreundlich · 1 Mitmachstation · Rückkehr bis 13:00 Uhr",
+    color: "#16a34a",
+    anchors: [
+      [50.3296, 7.2232, 148], [50.3368, 7.2334, 172], [50.3454, 7.2456, 205],
+      [50.3491, 7.2607, 244], [50.3417, 7.2743, 228], [50.3304, 7.2692, 196],
+      [50.3219, 7.2531, 176], [50.3246, 7.2369, 158], [50.3296, 7.2232, 148],
+    ],
+  },
+];
+
+function densifyRoute(anchors: readonly DemoRouteAnchor[], stepsPerSegment = 5) {
+  return anchors.flatMap((anchor, index) => {
+    if (index === anchors.length - 1) return [anchor];
+    const next = anchors[index + 1];
+    return Array.from({ length: stepsPerSegment }, (_, step) => {
+      const progress = step / stepsPerSegment;
+      return [
+        anchor[0] + (next[0] - anchor[0]) * progress,
+        anchor[1] + (next[1] - anchor[1]) * progress,
+        Math.round(anchor[2] + (next[2] - anchor[2]) * progress),
+      ] as [number, number, number];
+    });
+  });
+}
+
+function gpxDocument(route: DemoGpxRoute) {
+  const trackPoints = densifyRoute(route.anchors)
+    .map(([lat, lon, elevation]) => `      <trkpt lat="${lat.toFixed(6)}" lon="${lon.toFixed(6)}"><ele>${elevation}</ele></trkpt>`)
     .join("\n");
   return `<?xml version="1.0" encoding="UTF-8"?>
 <gpx version="1.1" creator="MyCrewMate Vereinsdemo" xmlns="http://www.topografix.com/GPX/1/1">
-  <trk><name>${name}</name><trkseg>
+  <metadata><name>${route.name}</name><desc>${route.description}</desc></metadata>
+  <trk><name>${route.name}</name><desc>${route.description}</desc><type>cycling</type><trkseg>
 ${trackPoints}
   </trkseg></trk>
 </gpx>`;
 }
 
-async function createDemoGpxFiles(tenantId: string) {
-  const routeBase = `public-demo/${tenantId}/strecken`;
-  return Promise.all([
-    storagePut(
-      `${routeBase}/gravel-runde.gpx`,
-      gpxDocument("Gravel-Runde 68 km", [
-        [50.3296, 7.2232],
-        [50.3421, 7.2463],
-        [50.3574, 7.2824],
-        [50.3467, 7.3039],
-        [50.3234, 7.2875],
-        [50.3142, 7.2561],
-        [50.3296, 7.2232],
-      ]),
-      "application/gpx+xml"
-    ),
-    storagePut(
-      `${routeBase}/marathon-runde.gpx`,
-      gpxDocument("Marathon-Runde 121 km", [
-        [50.3296, 7.2232],
-        [50.3672, 7.2286],
-        [50.3901, 7.2718],
-        [50.3798, 7.3229],
-        [50.3417, 7.3398],
-        [50.3113, 7.3031],
-        [50.3296, 7.2232],
-      ]),
-      "application/gpx+xml"
-    ),
-    storagePut(
-      `${routeBase}/familien-tour.gpx`,
-      gpxDocument("Familien-Tour 18 km", [
-        [50.3296, 7.2232],
-        [50.3364, 7.2373],
-        [50.3413, 7.2507],
-        [50.3339, 7.2595],
-        [50.3245, 7.2447],
-        [50.3296, 7.2232],
-      ]),
-      "application/gpx+xml"
-    ),
-  ]);
+async function createDemoGpxFiles() {
+  const routeBase = `${PUBLIC_DEMO_STATIC_ASSET_PREFIX}/strecken`;
+  return Promise.all(
+    PRO_DEMO_ROUTES.map(async route => ({
+      route,
+      ...(await storagePut(
+        `${routeBase}/${route.fileName}.gpx`,
+        gpxDocument(route),
+        "application/gpx+xml"
+      )),
+    }))
+  );
+}
+
+async function createDemoEventLogo() {
+  const assetPath = path.resolve(process.cwd(), "server", "assets", "eifelride-demo-logo.webp");
+  const image = await readFile(assetPath);
+  return storagePut(
+    `${PUBLIC_DEMO_STATIC_ASSET_PREFIX}/eventlogo/eifelride-demo-logo.webp`,
+    image,
+    "image/webp"
+  );
+}
+
+type ProDemoAssets = {
+  gpxFiles: Array<{
+    route: DemoGpxRoute;
+    key: string;
+    url: string;
+  }>;
+  eventLogo: { key: string; url: string };
+};
+
+let proDemoAssetsPromise: Promise<ProDemoAssets> | null = null;
+
+/**
+ * Die gleichen, rein fiktiven Strecken und das gleiche Eventlogo werden von
+ * allen Pro-Demos geteilt. Dadurch fallen die Dateischreibvorgänge höchstens
+ * einmal je laufendem App-Prozess an, nicht bei jedem Demostart.
+ */
+function getProDemoAssets() {
+  if (!proDemoAssetsPromise) {
+    proDemoAssetsPromise = Promise.all([createDemoGpxFiles(), createDemoEventLogo()])
+      .then(([gpxFiles, eventLogo]) => ({ gpxFiles, eventLogo }));
+    void proDemoAssetsPromise.catch(() => {
+      proDemoAssetsPromise = null;
+    });
+  }
+  return proDemoAssetsPromise;
 }
 
 async function seedPublicDemoData(input: {
@@ -209,21 +286,31 @@ async function seedPublicDemoData(input: {
   const database = await db.getDb();
   if (!database) throw new Error("Die Datenbank ist für die Vereinsdemo nicht verfügbar.");
 
-  const gpxFiles =
-    input.definition.packageId === "pro"
-      ? await createDemoGpxFiles(input.tenantId)
-      : [];
+  const proDemoAssets =
+    input.definition.packageId === "pro" ? await getProDemoAssets() : null;
+  const gpxFiles = proDemoAssets?.gpxFiles ?? [];
+  const eventLogo = proDemoAssets?.eventLogo ?? null;
 
   try {
     await database.transaction(async tx => {
       const year = 2027;
-      const locationSeed = [
+      const proLocationSeed: Array<[string, number, number]> = [
+        ["VP 1 · Kottenheimer Wald", 50.3582, 7.3091],
+        ["VP 2 · Hochstein", 50.4012, 7.2468],
+        ["Zeitnahme · Eifelhöhen", 50.4179, 7.2844],
+        ["VP 3 · Nitzbach", 50.3828, 7.3535],
+        ["Technikpunkt · Riedener Tal", 50.3038, 7.3045],
+      ];
+      const locationSeed: Array<[string, number, number]> = [
         ["Festplatz · Start & Ziel", 50.3296, 7.2232],
         ["Sporthalle · Anmeldung", 50.3319, 7.2188],
         ["Bürgerhaus · Helfertreff", 50.3251, 7.2281],
         ["Waldparkplatz Nord · Verpflegung", 50.3574, 7.2824],
         ["Expo-Fläche · Partnerstände", 50.3272, 7.2201],
-      ] as const;
+        ...(input.definition.packageId === "pro"
+          ? proLocationSeed
+          : []),
+      ];
 
       await tx
         .update(events)
@@ -234,6 +321,8 @@ async function seedPublicDemoData(input: {
           donationTargetSalat: 16,
           donationTargetSnack: 40,
           donationTargetSonstiges: 18,
+          pdfLogoKey: eventLogo?.key ?? null,
+          pdfLogoUrl: eventLogo?.url ?? null,
         })
         .where(eq(events.id, input.eventId));
 
@@ -404,15 +493,23 @@ async function seedPublicDemoData(input: {
       ]);
 
       if (gpxFiles.length) {
-        await tx.insert(gpxTracks).values([
-          { eventId: input.eventId, year, name: "Gravel-Runde · 68 km", fileKey: gpxFiles[0].key, fileUrl: gpxFiles[0].url, color: "#ea580c" },
-          { eventId: input.eventId, year, name: "Marathon-Runde · 121 km", fileKey: gpxFiles[1].key, fileUrl: gpxFiles[1].url, color: "#2563eb" },
-          { eventId: input.eventId, year, name: "Familien-Tour · 18 km", fileKey: gpxFiles[2].key, fileUrl: gpxFiles[2].url, color: "#16a34a" },
-        ]);
+        await tx.insert(gpxTracks).values(
+          gpxFiles.map(file => ({
+            eventId: input.eventId,
+            year,
+            name: file.route.name,
+            fileKey: file.key,
+            fileUrl: file.url,
+            color: file.route.color,
+          }))
+        );
       }
     });
   } catch (error) {
-    await Promise.all(gpxFiles.map(file => storageDelete(file.key).catch(() => false)));
+    await Promise.all([
+      ...gpxFiles.map(file => storageDelete(file.key).catch(() => false)),
+      ...(eventLogo ? [storageDelete(eventLogo.key).catch(() => false)] : []),
+    ]);
     throw error;
   }
 }
@@ -495,11 +592,17 @@ export async function deletePublicDemoTenant(tenantId: string) {
   const database = await db.getDb();
   if (!database) return { removed: false } as const;
 
-  const tracks = await database
-    .select({ fileKey: gpxTracks.fileKey })
-    .from(gpxTracks)
-    .innerJoin(events, eq(events.id, gpxTracks.eventId))
-    .where(eq(events.tenantId, tenantId));
+  const [tracks, eventAssets] = await Promise.all([
+    database
+      .select({ fileKey: gpxTracks.fileKey })
+      .from(gpxTracks)
+      .innerJoin(events, eq(events.id, gpxTracks.eventId))
+      .where(eq(events.tenantId, tenantId)),
+    database
+      .select({ fileKey: events.pdfLogoKey })
+      .from(events)
+      .where(eq(events.tenantId, tenantId)),
+  ]);
 
   try {
     await db.deleteInternalTestTenantForPlatformAdmin(tenantId);
@@ -510,7 +613,15 @@ export async function deletePublicDemoTenant(tenantId: string) {
     throw error;
   }
 
-  await Promise.all(tracks.map(track => storageDelete(track.fileKey).catch(() => false)));
+  await Promise.all(
+    [...tracks.map(track => track.fileKey), ...eventAssets.map(asset => asset.fileKey)]
+      .filter(
+        (fileKey): fileKey is string =>
+          typeof fileKey === "string" &&
+          !fileKey.startsWith(PUBLIC_DEMO_STATIC_ASSET_PREFIX)
+      )
+      .map(fileKey => storageDelete(fileKey).catch(() => false))
+  );
   return { removed: true } as const;
 }
 
@@ -589,4 +700,20 @@ export async function cleanupExpiredPublicDemoTenants() {
     if (result.removed) removed += 1;
   }
   return { removed } as const;
+}
+
+/**
+ * Zählt ausschließlich noch vorhandene, temporäre Mustermandanten. Die
+ * Bereinigung läuft vor jeder Abfrage, damit abgelaufene Browser-Sitzungen die
+ * verfügbare Parallelkapazität nicht blockieren.
+ */
+export async function getActivePublicDemoCount() {
+  const database = await db.getDb();
+  if (!database) return 0;
+  await cleanupExpiredPublicDemoTenants();
+  const [result] = await database
+    .select({ active: count() })
+    .from(tenants)
+    .where(like(tenants.id, `${PUBLIC_DEMO_TENANT_ID_PREFIX}%`));
+  return Number(result?.active ?? 0);
 }

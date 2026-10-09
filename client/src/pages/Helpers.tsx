@@ -818,6 +818,8 @@ export default function Helpers() {
     : confirmationFilter;
   const utils = trpc.useUtils();
   const { user } = useAuth();
+  const isPublicDemoSession =
+    user?.openId.startsWith("tenant-admin:demo-session-") === true;
   const { isTenantAdmin } = useTenantAdministration();
   const isMobileView = useMobileViewMode();
   const [viewMode, setViewMode] = useViewMode("helpers", "liste");
@@ -1916,37 +1918,39 @@ export default function Helpers() {
                     disabled={!allowsDonations}
                     onClick={() => openCakeDonation(helper.name)}
                   />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    title="Persönliche Aufgaben-PDF herunterladen"
-                    aria-label={`Persönliche Aufgaben-PDF von ${helper.name} herunterladen`}
-                    className={cn(
-                      HELPER_ACTION_ICON_BUTTON_CLASS,
-                      "h-11 min-h-11 w-11 min-w-11"
-                    )}
-                    disabled={exportingId === helper.id}
-                    onClick={() => {
-                      setExportingId(helper.id);
-                      exportPdf.mutate({ helperId: helper.id });
-                    }}
-                  >
-                    <FileDown className="size-5 text-blue-600" aria-hidden="true" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    title="Aufgabenplan per WhatsApp an Helfer senden"
-                    aria-label={`Aufgabenplan von ${helper.name} per WhatsApp senden`}
-                    className={cn(
-                      HELPER_ACTION_ICON_BUTTON_CLASS,
-                      "h-11 min-h-11 w-11 min-w-11"
-                    )}
-                    disabled={isPreparingWhatsApp}
-                    onClick={() => openWhatsAppDialog(helper)}
-                  >
-                    <MessageCircle className="size-5 text-[#25D366]" aria-hidden="true" />
-                  </Button>
+                  {!isPublicDemoSession && <>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Persönliche Aufgaben-PDF herunterladen"
+                      aria-label={`Persönliche Aufgaben-PDF von ${helper.name} herunterladen`}
+                      className={cn(
+                        HELPER_ACTION_ICON_BUTTON_CLASS,
+                        "h-11 min-h-11 w-11 min-w-11"
+                      )}
+                      disabled={exportingId === helper.id}
+                      onClick={() => {
+                        setExportingId(helper.id);
+                        exportPdf.mutate({ helperId: helper.id });
+                      }}
+                    >
+                      <FileDown className="size-5 text-blue-600" aria-hidden="true" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Aufgabenplan per WhatsApp an Helfer senden"
+                      aria-label={`Aufgabenplan von ${helper.name} per WhatsApp senden`}
+                      className={cn(
+                        HELPER_ACTION_ICON_BUTTON_CLASS,
+                        "h-11 min-h-11 w-11 min-w-11"
+                      )}
+                      disabled={isPreparingWhatsApp}
+                      onClick={() => openWhatsAppDialog(helper)}
+                    >
+                      <MessageCircle className="size-5 text-[#25D366]" aria-hidden="true" />
+                    </Button>
+                  </>}
                   <Button
                     variant="ghost"
                     size="icon"
@@ -2240,31 +2244,33 @@ export default function Helpers() {
                         disabled={!allowsDonations}
                         onClick={() => openCakeDonation(helper.name)}
                       />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title="Persönliche Aufgaben-PDF herunterladen"
-                        aria-label={`Persönliche Aufgaben-PDF von ${helper.name} herunterladen`}
-                        className={HELPER_ACTION_ICON_BUTTON_CLASS}
-                        disabled={exportingId === helper.id}
-                        onClick={() => {
-                          setExportingId(helper.id);
-                          exportPdf.mutate({ helperId: helper.id });
-                        }}
-                      >
-                        <FileDown className="size-5 text-blue-600" aria-hidden="true" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title="Aufgabenplan per WhatsApp an Helfer senden"
-                        aria-label={`Aufgabenplan von ${helper.name} per WhatsApp senden`}
-                        className={HELPER_ACTION_ICON_BUTTON_CLASS}
-                        disabled={isPreparingWhatsApp}
-                        onClick={() => openWhatsAppDialog(helper)}
-                      >
-                        <MessageCircle className="size-5 text-[#25D366]" aria-hidden="true" />
-                      </Button>
+                      {!isPublicDemoSession && <>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Persönliche Aufgaben-PDF herunterladen"
+                          aria-label={`Persönliche Aufgaben-PDF von ${helper.name} herunterladen`}
+                          className={HELPER_ACTION_ICON_BUTTON_CLASS}
+                          disabled={exportingId === helper.id}
+                          onClick={() => {
+                            setExportingId(helper.id);
+                            exportPdf.mutate({ helperId: helper.id });
+                          }}
+                        >
+                          <FileDown className="size-5 text-blue-600" aria-hidden="true" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Aufgabenplan per WhatsApp an Helfer senden"
+                          aria-label={`Aufgabenplan von ${helper.name} per WhatsApp senden`}
+                          className={HELPER_ACTION_ICON_BUTTON_CLASS}
+                          disabled={isPreparingWhatsApp}
+                          onClick={() => openWhatsAppDialog(helper)}
+                        >
+                          <MessageCircle className="size-5 text-[#25D366]" aria-hidden="true" />
+                        </Button>
+                      </>}
                     </div>
                   </td>
                   {!isEventPass && <td className="p-2">
@@ -2545,37 +2551,39 @@ export default function Helpers() {
                             klemmiHelperId={helper.id}
                             onClick={() => openCakeDonation(helper.name)}
                           />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-9 w-9 text-slate-600 hover:text-green-700"
-                            data-klemmi-target="helper-action-whatsapp"
-                            data-klemmi-helper-id={helper.id}
-                            title="Aufgabenplan per WhatsApp an Helfer senden"
-                            aria-label={`Aufgabenplan von ${helper.name} per WhatsApp senden`}
-                            disabled={isPreparingWhatsApp}
-                            onClick={() => openWhatsAppDialog(helper)}
-                          >
-                            <MessageCircle className="size-4 text-[#25D366]" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-9 w-9 text-slate-600 hover:text-blue-700"
-                            data-klemmi-target="helper-action-pdf"
-                            data-klemmi-helper-id={helper.id}
-                            title="Einsatz-PDF herunterladen"
-                            aria-label={`Einsatz-PDF von ${helper.name} herunterladen`}
-                            disabled={exportingId === helper.id}
-                            onClick={() => {
-                              setExportingId(helper.id);
-                              exportPdf.mutate({ helperId: helper.id });
-                            }}
-                          >
-                            <FileDown className="size-4 text-blue-600" />
-                          </Button>
+                          {!isPublicDemoSession && <>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 w-9 text-slate-600 hover:text-green-700"
+                              data-klemmi-target="helper-action-whatsapp"
+                              data-klemmi-helper-id={helper.id}
+                              title="Aufgabenplan per WhatsApp an Helfer senden"
+                              aria-label={`Aufgabenplan von ${helper.name} per WhatsApp senden`}
+                              disabled={isPreparingWhatsApp}
+                              onClick={() => openWhatsAppDialog(helper)}
+                            >
+                              <MessageCircle className="size-4 text-[#25D366]" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 w-9 text-slate-600 hover:text-blue-700"
+                              data-klemmi-target="helper-action-pdf"
+                              data-klemmi-helper-id={helper.id}
+                              title="Einsatz-PDF herunterladen"
+                              aria-label={`Einsatz-PDF von ${helper.name} herunterladen`}
+                              disabled={exportingId === helper.id}
+                              onClick={() => {
+                                setExportingId(helper.id);
+                                exportPdf.mutate({ helperId: helper.id });
+                              }}
+                            >
+                              <FileDown className="size-4 text-blue-600" />
+                            </Button>
+                          </>}
                           <Button
                             type="button"
                             variant="ghost"

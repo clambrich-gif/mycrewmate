@@ -1840,8 +1840,6 @@ describe("Planungs-API", () => {
   });
 
   it("speichert eine gültige Mehrfachzuweisung als zusammenhängende Auswahl", async () => {
-    const secondHelper = { ...helper, id: 21, name: "Bea" };
-    dbMocks.listHelpers.mockResolvedValue([helper, secondHelper]);
     dbMocks.assignHelpersToOpenSlots.mockResolvedValue({
       success: true,
       assignedCount: 2,
@@ -1862,14 +1860,15 @@ describe("Planungs-API", () => {
       shiftId: 10,
       helperIds: [20, 21],
     });
+    expect(dbMocks.listShifts).not.toHaveBeenCalled();
+    expect(dbMocks.listHelpers).not.toHaveBeenCalled();
+    expect(dbMocks.listAssignments).not.toHaveBeenCalled();
   });
 
   it("lehnt eine Mehrfachauswahl ab, die nicht in die freien Plätze passt", async () => {
-    dbMocks.listHelpers.mockResolvedValue([
-      helper,
-      { ...helper, id: 21, name: "Bea" },
-      { ...helper, id: 22, name: "Chris" },
-    ]);
+    dbMocks.assignHelpersToOpenSlots.mockRejectedValue(
+      new Error("Für die Auswahl sind nicht genügend freie Helferplätze vorhanden")
+    );
 
     await expect(
       appRouter.createCaller(ctx).plan.assignMany({
@@ -1877,7 +1876,10 @@ describe("Planungs-API", () => {
         helperIds: [20, 21, 22],
       })
     ).rejects.toThrow("nicht genügend freie Helferplätze");
-    expect(dbMocks.assignHelpersToOpenSlots).not.toHaveBeenCalled();
+    expect(dbMocks.assignHelpersToOpenSlots).toHaveBeenCalledWith({
+      shiftId: 10,
+      helperIds: [20, 21, 22],
+    });
   });
 
   it("initialisiert neue Vorbereitungsaufgaben serverseitig immer mit Offen", async () => {

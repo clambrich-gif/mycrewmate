@@ -4,7 +4,7 @@ import {
   STICKY_TABLE_HEADER_CLASS,
   STICKY_TABLE_HEADER_CELL_CLASS,
 } from "@/lib/sticky-table";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PageTitle } from "@/components/PageTitle";
 import { Button } from "@/components/ui/button";
 import {
@@ -394,6 +394,275 @@ function HelperDropdownFeedbackBadge({
   );
 }
 
+type ShiftCardHelperCandidate = {
+  helper: HelperTooltipData & { contactId?: number | null };
+  label: string;
+  conflicts: DropdownShift[];
+  assignmentFeedback: ReturnType<typeof helperDropdownAssignmentFeedback>;
+  assignments: Array<{ day: string; label?: string; time?: string }>;
+  timeRestricted: boolean;
+  availabilityLabel: string;
+  companion: string;
+  detailsTitle: string;
+};
+
+/**
+ * Die Kandidatenliste einer Kachel enthält bei Pro schnell 150 Personen.
+ * Die Zeile wird daher nur neu gerendert, wenn sich ihre eigene Auswahl oder
+ * ihre Sperre tatsächlich ändert – nicht bei jedem Haken in einer anderen
+ * Schicht oder bei jeder Neubewertung des Elterncontainers.
+ */
+const ShiftCardHelperCandidateRow = memo(function ShiftCardHelperCandidateRow({
+  candidate,
+  shift,
+  selected,
+  selectionFull,
+  disabled,
+  isMobileView,
+  onToggle,
+  onShowMobileDetails,
+}: {
+  candidate: ShiftCardHelperCandidate;
+  shift: DropdownShift;
+  selected: boolean;
+  selectionFull: boolean;
+  disabled: boolean;
+  isMobileView: boolean;
+  onToggle: (shiftId: number, helperId: number) => void;
+  onShowMobileDetails: (helper: HelperTooltipData, shift: DropdownShift) => void;
+}) {
+  const { helper } = candidate;
+  const selectionDisabled = disabled || selectionFull;
+  const toggle = () => {
+    if (!selectionDisabled) onToggle(shift.id, helper.id);
+  };
+
+  return (
+    <div
+      data-slot="shift-card-helper-candidate"
+      className={`flex items-center gap-2 rounded-lg border px-2 py-1.5 text-[13px] leading-4 transition-colors ${selected ? "border-blue-300 bg-white shadow-sm" : "border-transparent hover:border-blue-200 hover:bg-white/80"} ${selectionFull ? "cursor-not-allowed opacity-50" : "md:cursor-pointer"}`}
+      title={candidate.detailsTitle || undefined}
+      onClick={() => {
+        if (!isMobileView) toggle();
+      }}
+    >
+      <Checkbox
+        checked={selected}
+        disabled={selectionDisabled}
+        onClick={event => event.stopPropagation()}
+        onCheckedChange={toggle}
+        aria-label={`${candidate.label} auswählen`}
+      />
+      <span
+        className="min-w-0 flex-1 truncate font-medium text-slate-800"
+        title={candidate.detailsTitle || candidate.label}
+      >
+        <span className="inline-flex max-w-full items-center gap-1 truncate">
+          {candidate.timeRestricted && (
+            <span
+              className="shrink-0 text-slate-700"
+              title={`Zeitfenster: ${candidate.availabilityLabel}`}
+              aria-label={`Zeitfenster: ${candidate.availabilityLabel}`}
+            >
+              <Clock3 className="size-3.5" aria-hidden="true" />
+            </span>
+          )}
+          {candidate.companion && (
+            <span
+              className="shrink-0 text-slate-700"
+              title={`Begleitung: ${candidate.companion}`}
+              aria-label={`Begleitung: ${candidate.companion}`}
+            >
+              <UsersRound className="size-3.5" aria-hidden="true" />
+            </span>
+          )}
+          <button
+            type="button"
+            data-slot="mobile-helper-details-trigger"
+            className="max-w-full truncate text-left font-medium text-slate-800 underline decoration-slate-200 underline-offset-2 md:pointer-events-none md:no-underline"
+            aria-label={candidate.detailsTitle || `Hinweise und Einsatzdetails von ${helper.name} anzeigen`}
+            title={candidate.detailsTitle || undefined}
+            onClick={event => {
+              event.stopPropagation();
+              if (isMobileView) onShowMobileDetails(helper, shift);
+            }}
+          >
+            {helper.name}
+          </button>
+        </span>
+      </span>
+      <HelperDropdownFeedbackBadge
+        feedback={candidate.assignmentFeedback}
+        assignments={candidate.assignments}
+        compact
+        interactive={isMobileView}
+        guideTarget
+      />
+    </div>
+  );
+});
+
+const CANDIDATE_LIST_VIRTUALIZATION_THRESHOLD = 40;
+const CANDIDATE_LIST_ROW_HEIGHT_PX = 38;
+const CANDIDATE_LIST_MAX_HEIGHT_PX = 208;
+const CANDIDATE_LIST_OVERSCAN = 3;
+
+/**
+ * Große Events zeigen je Schicht mehrere hundert mögliche Helfer. Außerhalb
+ * des Scrollbereichs werden die Zeilen deshalb nicht in das DOM geschrieben.
+ * Die vollständige Liste bleibt per Scrollen erreichbar; Auswahl und
+ * serverseitige Konfliktprüfung ändern sich dadurch nicht.
+ */
+const ShiftCardHelperCandidateList = memo(function ShiftCardHelperCandidateList({
+  candidates,
+  shift,
+  freeSlots,
+  disabled,
+  isMobileView,
+  onAssign,
+  onShowMobileDetails,
+}: {
+  candidates: ShiftCardHelperCandidate[];
+  shift: DropdownShift;
+  freeSlots: number;
+  disabled: boolean;
+  isMobileView: boolean;
+  onAssign: (shiftId: number, helperIds: number[]) => Promise<unknown>;
+  onShowMobileDetails: (helper: HelperTooltipData, shift: DropdownShift) => void;
+}) {
+  const [scrollTop, setScrollTop] = useState(0);
+  const [selectedHelperIds, setSelectedHelperIds] = useState<number[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const virtualized = candidates.length > CANDIDATE_LIST_VIRTUALIZATION_THRESHOLD;
+  const visibleRowCount = Math.ceil(
+    CANDIDATE_LIST_MAX_HEIGHT_PX / CANDIDATE_LIST_ROW_HEIGHT_PX
+  );
+  const firstVisibleIndex = virtualized
+    ? Math.max(
+        0,
+        Math.floor(scrollTop / CANDIDATE_LIST_ROW_HEIGHT_PX) -
+          CANDIDATE_LIST_OVERSCAN
+      )
+    : 0;
+  const lastVisibleIndex = virtualized
+    ? Math.min(
+        candidates.length,
+        firstVisibleIndex + visibleRowCount + CANDIDATE_LIST_OVERSCAN * 2
+      )
+    : candidates.length;
+  const visibleCandidates = candidates.slice(firstVisibleIndex, lastVisibleIndex);
+
+  const toggleSelectedHelper = useCallback(
+    (_shiftId: number, helperId: number) => {
+      setSelectedHelperIds(previous =>
+        previous.includes(helperId)
+          ? previous.filter(id => id !== helperId)
+          : [...previous, helperId]
+      );
+    },
+    []
+  );
+
+  const submitSelection = async () => {
+    if (!selectedHelperIds.length || disabled || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await onAssign(shift.id, selectedHelperIds);
+      setSelectedHelperIds([]);
+    } catch {
+      // Die Mutation zeigt die servergeprüfte Fehlermeldung bereits per Toast.
+      // Die Auswahl bleibt bewusst stehen, damit sie korrigiert werden kann.
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const renderCandidate = (candidate: ShiftCardHelperCandidate) => {
+    const selected = selectedHelperIds.includes(candidate.helper.id);
+    const selectionFull = !selected && selectedHelperIds.length >= freeSlots;
+    return (
+      <ShiftCardHelperCandidateRow
+        key={candidate.helper.id}
+        candidate={candidate}
+        shift={shift}
+        selected={selected}
+        selectionFull={selectionFull}
+        disabled={disabled || isSubmitting}
+        isMobileView={isMobileView}
+        onToggle={toggleSelectedHelper}
+        onShowMobileDetails={onShowMobileDetails}
+      />
+    );
+  };
+
+  if (!candidates.length) {
+    return <p className="py-2 text-sm text-muted-foreground">Keine weiteren verfügbaren Helfer.</p>;
+  }
+
+  return (
+    <>
+      <div
+        className="max-h-52 overflow-y-auto pr-1"
+        role="group"
+        aria-label={`Helfer für ${shift.task} auswählen`}
+        style={
+          virtualized
+            ? { height: Math.min(CANDIDATE_LIST_MAX_HEIGHT_PX, candidates.length * CANDIDATE_LIST_ROW_HEIGHT_PX) }
+            : undefined
+        }
+        onScroll={event => {
+          if (!virtualized) return;
+          const nextScrollTop = event.currentTarget.scrollTop;
+          setScrollTop(previous =>
+            Math.abs(previous - nextScrollTop) < 2 ? previous : nextScrollTop
+          );
+        }}
+      >
+        {virtualized ? (
+          <div
+            style={{
+              height: candidates.length * CANDIDATE_LIST_ROW_HEIGHT_PX,
+              position: "relative",
+            }}
+          >
+            {visibleCandidates.map((candidate, visibleIndex) => (
+              <div
+                key={candidate.helper.id}
+                style={{
+                  position: "absolute",
+                  top:
+                    (firstVisibleIndex + visibleIndex) *
+                    CANDIDATE_LIST_ROW_HEIGHT_PX,
+                  left: 0,
+                  right: 0,
+                }}
+              >
+                {renderCandidate(candidate)}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-1">{visibleCandidates.map(renderCandidate)}</div>
+        )}
+      </div>
+      <Button
+        type="button"
+        size="sm"
+        data-klemmi-target="plan-batch-assign"
+        className="mt-3 w-full bg-blue-600 text-white hover:bg-blue-700"
+        disabled={!selectedHelperIds.length || disabled || isSubmitting}
+        onClick={submitSelection}
+      >
+        {disabled || isSubmitting
+          ? "Zuordnung wird gespeichert …"
+          : selectedHelperIds.length === 1
+            ? "1 Helfer zuordnen"
+            : `${selectedHelperIds.length} Helfer zuordnen`}
+      </Button>
+    </>
+  );
+});
+
 function toggleMultiSelection<T>(values: T[], value: T) {
   return values.includes(value)
     ? values.filter(item => item !== value)
@@ -725,9 +994,6 @@ export default function Plan() {
   const [mobileContactIds, setMobileContactIds] = useState<string[]>([]);
   const [mobileFlexibleOnly, setMobileFlexibleOnly] = useState(false);
   const [mobileOpenOrUnassignedOnly, setMobileOpenOrUnassignedOnly] = useState(false);
-  const [selectedHelperIdsByShift, setSelectedHelperIdsByShift] = useState<
-    Record<number, number[]>
-  >({});
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [areaContactsExpanded, setAreaContactsExpanded] = useState(false);
   const [deleteCandidate, setDeleteCandidate] = useState<DropdownShift | null>(
@@ -878,7 +1144,6 @@ export default function Plan() {
   });
   const assignMany = trpc.plan.assignMany.useMutation({
     onSuccess: result => {
-      setSelectedHelperIdsByShift({});
       invalidate();
       if (result.shiftJustCompleted) triggerKlemmiReaction("shift-success");
       toast.success(
@@ -889,6 +1154,11 @@ export default function Plan() {
     },
     onError: e => toast.error(e.message),
   });
+  const assignSelectedHelpers = useCallback(
+    (shiftId: number, helperIds: number[]) =>
+      assignMany.mutateAsync({ shiftId, helperIds }),
+    [assignMany]
+  );
   const unassign = trpc.plan.unassign.useMutation({
     onSuccess: invalidate,
     onError: e => toast.error(e.message),
@@ -1243,6 +1513,86 @@ export default function Plan() {
       ),
     [assignedShiftsByHelper]
   );
+  /**
+   * Konflikte, Tagessegmente, Zeitfenster und Sortierung hängen ausschließlich
+   * vom serverbestätigten Planstand ab. Sie dürfen deshalb nicht bei einem
+   * lokalen Auswahlhaken erneut für jede sichtbare Schicht berechnet werden.
+   */
+  const candidateHelpersByShift = useMemo(() => {
+    const result = new Map<number, ShiftCardHelperCandidate[]>();
+
+    for (const evaluation of evals) {
+      const shift = evaluation.shift as DropdownShift;
+      const assignedHelperIds = new Set<number>(
+        (evaluation.assigned as AssignmentT[]).map(assignment => assignment.helperId)
+      );
+      const candidates = (eligibleHelpersByShift.get(shift.id) ?? [])
+        .filter(helper => !assignedHelperIds.has(helper.id))
+        .map(helper => {
+          const conflicts = (assignedShiftsByHelper.get(helper.id) ?? []).filter(
+            other => other.id !== shift.id && shiftsOverlap(other, shift)
+          );
+          const assignmentFeedback = helperDropdownAssignmentFeedback({
+            assignments: assignedDaysByHelper.get(helper.id) ?? [],
+            activeDays,
+            availabilityByDay: activeDays.map(day => ({
+              day,
+              available: helperDayAvailability(helper, day).available,
+            })),
+            currentDay: shift.day as Weekday,
+            hasTimeConflict: conflicts.length > 0,
+          });
+          const timeRestricted = helperHasTimedAvailability(
+            helper,
+            shift.day as Weekday
+          );
+          const availabilityLabel = timeRestricted
+            ? helperAvailabilityWindowLabel(helper, shift.day as Weekday)
+            : "";
+          const companion = helper.companion?.trim() ?? "";
+          const note = helper.note?.trim() ?? "";
+          const conflictTitle = conflicts
+            .map(other => `${other.area}: ${other.task} (${formatTimeLabel(other)})`)
+            .join(", ");
+
+          return {
+            helper,
+            label: label(helper),
+            conflicts,
+            assignmentFeedback,
+            assignments: assignmentDisplayByHelper.get(helper.id) ?? [],
+            timeRestricted,
+            availabilityLabel,
+            companion,
+            detailsTitle: [
+              timeRestricted ? `Zeitfenster: ${availabilityLabel}` : "",
+              companion ? `Begleitung: ${companion}` : "",
+              note ? `Hinweise: ${note}` : "",
+              conflictTitle ? `Zeitgleich eingeteilt: ${conflictTitle}` : "",
+            ]
+              .filter(Boolean)
+              .join("\n"),
+          } satisfies ShiftCardHelperCandidate;
+        })
+        .sort(
+          (left, right) =>
+            helperDropdownPriority(left.assignmentFeedback) -
+              helperDropdownPriority(right.assignmentFeedback) ||
+            left.helper.name.localeCompare(right.helper.name, "de")
+        );
+      result.set(shift.id, candidates);
+    }
+
+    return result;
+  }, [
+    activeDays,
+    assignedDaysByHelper,
+    assignedShiftsByHelper,
+    assignmentDisplayByHelper,
+    eligibleHelpersByShift,
+    evals,
+    label,
+  ]);
 
   /**
    * Warnt bereits im Dialog, bevor eine bestehende Zuweisung durch eine
@@ -1641,45 +1991,18 @@ export default function Plan() {
     );
   };
 
-  const toggleSelectedHelper = (shiftId: number, helperId: number) => {
-    setSelectedHelperIdsByShift(previous => {
-      const selected = previous[shiftId] ?? [];
-      return {
-        ...previous,
-        [shiftId]: selected.includes(helperId)
-          ? selected.filter(id => id !== helperId)
-          : [...selected, helperId],
-      };
-    });
-  };
+  const showMobileHelperDetails = useCallback(
+    (helper: HelperTooltipData, shift: DropdownShift) => {
+      setMobileHelperDetails({ helper, shift });
+    },
+    []
+  );
 
   const renderShiftCard = (evalE: any) => {
     const shift = evalE.shift as DropdownShift & { needed: number; note?: string | null };
     const assigned = evalE.assigned as AssignmentT[];
     const freeSlots = Math.max(shift.needed - assigned.length, 0);
-    const selectedHelperIds = selectedHelperIdsByShift[shift.id] ?? [];
-    const candidateHelpers = activeHelpers(shift)
-      .filter(helper => !assigned.some(assignment => assignment.helperId === helper.id))
-      .map(helper => {
-        const conflicts = overlappingAssignments(helper.id, shift);
-        const assignmentFeedback = helperDropdownAssignmentFeedback({
-          assignments: assignedDaysByHelper.get(helper.id) ?? [],
-          activeDays,
-          availabilityByDay: activeDays.map(day => ({
-            day,
-            available: helperDayAvailability(helper, day).available,
-          })),
-          currentDay: shift.day as Weekday,
-          hasTimeConflict: conflicts.length > 0,
-        });
-        return { helper, conflicts, assignmentFeedback };
-      })
-      .sort(
-        (left, right) =>
-          helperDropdownPriority(left.assignmentFeedback) -
-            helperDropdownPriority(right.assignmentFeedback) ||
-          left.helper.name.localeCompare(right.helper.name, "de")
-      );
+    const candidateHelpers = candidateHelpersByShift.get(shift.id) ?? [];
     const percent = shift.needed > 0 ? Math.min(100, Math.round((assigned.length / shift.needed) * 100)) : 100;
     const progressClass =
       evalE.status === "OK"
@@ -1829,119 +2152,15 @@ export default function Plan() {
               </div>
               {canEditPlan ? (
                 <>
-                  <div className="max-h-52 space-y-1 overflow-y-auto pr-1" role="group" aria-label={`Helfer für ${shift.task} auswählen`}>
-                    {candidateHelpers.map(({ helper, conflicts, assignmentFeedback }) => {
-                      const selected = selectedHelperIds.includes(helper.id);
-                      const selectionFull = !selected && selectedHelperIds.length >= freeSlots;
-                      const timeRestricted = helperHasTimedAvailability(
-                        helper,
-                        shift.day as Weekday
-                      );
-                      const availabilityLabel = timeRestricted
-                        ? helperAvailabilityWindowLabel(helper, shift.day as Weekday)
-                        : "";
-                      const conflictTitle = conflicts
-                        .map(other => `${other.area}: ${other.task} (${formatTimeLabel(other)})`)
-                        .join(", ");
-                      const companion = helper.companion?.trim() ?? "";
-                      const note = helper.note?.trim() ?? "";
-                      const helperDetailsTitle = [
-                        timeRestricted ? `Zeitfenster: ${availabilityLabel}` : "",
-                        companion ? `Begleitung: ${companion}` : "",
-                        note ? `Hinweise: ${note}` : "",
-                        conflictTitle ? `Zeitgleich eingeteilt: ${conflictTitle}` : "",
-                      ]
-                        .filter(Boolean)
-                        .join("\n");
-                      return (
-                        <div
-                          key={helper.id}
-                          data-slot="shift-card-helper-candidate"
-                          className={`flex items-center gap-2 rounded-lg border px-2 py-1.5 text-[13px] leading-4 transition-colors ${selected ? "border-blue-300 bg-white shadow-sm" : "border-transparent hover:border-blue-200 hover:bg-white/80"} ${selectionFull ? "cursor-not-allowed opacity-50" : "md:cursor-pointer"}`}
-                          title={helperDetailsTitle || undefined}
-                          onClick={() => {
-                            if (!isMobileView && !selectionFull && !assignMany.isPending) {
-                              toggleSelectedHelper(shift.id, helper.id);
-                            }
-                          }}
-                        >
-                          <Checkbox
-                            checked={selected}
-                            disabled={assignMany.isPending || selectionFull}
-                            onClick={event => event.stopPropagation()}
-                            onCheckedChange={() => toggleSelectedHelper(shift.id, helper.id)}
-                            aria-label={`${label(helper)} auswählen`}
-                          />
-                          <span
-                            className="min-w-0 flex-1 truncate font-medium text-slate-800"
-                            title={helperDetailsTitle || label(helper)}
-                          >
-                            <span className="inline-flex max-w-full items-center gap-1 truncate">
-                              {timeRestricted && (
-                                <span
-                                  className="shrink-0 text-slate-700"
-                                  title={`Zeitfenster: ${availabilityLabel}`}
-                                  aria-label={`Zeitfenster: ${availabilityLabel}`}
-                                >
-                                  <Clock3 className="size-3.5" aria-hidden="true" />
-                                </span>
-                              )}
-                              {companion && (
-                                <span
-                                  className="shrink-0 text-slate-700"
-                                  title={`Begleitung: ${companion}`}
-                                  aria-label={`Begleitung: ${companion}`}
-                                >
-                                  <UsersRound className="size-3.5" aria-hidden="true" />
-                                </span>
-                              )}
-                              <button
-                                type="button"
-                                data-slot="mobile-helper-details-trigger"
-                                className="max-w-full truncate text-left font-medium text-slate-800 underline decoration-slate-200 underline-offset-2 md:pointer-events-none md:no-underline"
-                                aria-label={helperDetailsTitle || `Hinweise und Einsatzdetails von ${helper.name} anzeigen`}
-                                title={helperDetailsTitle || undefined}
-                                onClick={event => {
-                                  event.stopPropagation();
-                                  if (isMobileView) {
-                                    setMobileHelperDetails({ helper, shift });
-                                  }
-                                }}
-                              >
-                                {helper.name}
-                              </button>
-                            </span>
-                          </span>
-                          <HelperDropdownFeedbackBadge
-                            feedback={assignmentFeedback}
-                            assignments={assignmentDisplayByHelper.get(helper.id) ?? []}
-                            compact
-                            interactive={isMobileView}
-                            guideTarget
-                          />
-                        </div>
-                      );
-                    })}
-                    {!candidateHelpers.length && (
-                      <p className="py-2 text-sm text-muted-foreground">
-                        Keine weiteren verfügbaren Helfer.
-                      </p>
-                    )}
-                  </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    data-klemmi-target="plan-batch-assign"
-                    className="mt-3 w-full bg-blue-600 text-white hover:bg-blue-700"
-                    disabled={!selectedHelperIds.length || assignMany.isPending}
-                    onClick={() => assignMany.mutate({ shiftId: shift.id, helperIds: selectedHelperIds })}
-                  >
-                    {assignMany.isPending
-                      ? "Zuordnung wird gespeichert …"
-                      : selectedHelperIds.length === 1
-                        ? "1 Helfer zuordnen"
-                        : `${selectedHelperIds.length} Helfer zuordnen`}
-                  </Button>
+                  <ShiftCardHelperCandidateList
+                    candidates={candidateHelpers}
+                    shift={shift}
+                    freeSlots={freeSlots}
+                    disabled={assignMany.isPending}
+                    isMobileView={isMobileView}
+                    onAssign={assignSelectedHelpers}
+                    onShowMobileDetails={showMobileHelperDetails}
+                  />
                 </>
               ) : (
                 <p className="text-sm text-muted-foreground">

@@ -30,13 +30,18 @@ import { useEventYear } from "./contexts/YearContext";
 export const PLANNING_DATA_SYNC_INTERVAL_MS = 8_000;
 
 function PlanningDataSynchronizer({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { tenantId, year, eventId } = useEventYear();
   const queryClient = useQueryClient();
   const syncInFlightRef = useRef(false);
+  const isPublicDemoSession =
+    user?.openId.startsWith("tenant-admin:demo-session-") === true;
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    // Eine Vereinsdemo läuft absichtlich in einer einzelnen, kurzlebigen
+    // Test-Sitzung. Dort erzeugt eine globale Aktualisierung aller aktiven
+    // Abfragen keinen Mehrwert, aber unnötige Last bei vielen Musterdaten.
+    if (!isAuthenticated || isPublicDemoSession) return;
 
     const refreshVisiblePlanningData = async () => {
       if (syncInFlightRef.current) return;
@@ -65,7 +70,7 @@ function PlanningDataSynchronizer({ children }: { children: React.ReactNode }) {
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", refreshOnReturn);
     };
-  }, [eventId, isAuthenticated, queryClient, tenantId, year]);
+  }, [eventId, isAuthenticated, isPublicDemoSession, queryClient, tenantId, year]);
 
   return <>{children}</>;
 }

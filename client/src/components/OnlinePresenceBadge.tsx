@@ -20,13 +20,13 @@ type OnlinePresenceCounts = {
   administratorNames: string[];
 };
 
-export function useOnlinePresence() {
+export function useOnlinePresence(enabled = true) {
   const { isAuthenticated } = useAuth();
   const lastHeartbeatAt = useRef(0);
   const heartbeatPending = useRef(false);
 
   const status = trpc.presence.status.useQuery(undefined, {
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && enabled,
     refetchInterval: PRESENCE_POLL_MS,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
@@ -45,7 +45,7 @@ export function useOnlinePresence() {
   heartbeatRef.current = heartbeat.mutate;
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !enabled) return;
     const sendHeartbeat = (force = false) => {
       if (heartbeatPending.current) return;
       const now = Date.now();
@@ -79,7 +79,7 @@ export function useOnlinePresence() {
       document.removeEventListener("scroll", recordActivity, true);
       document.removeEventListener("visibilitychange", recordVisibility);
     };
-  }, [isAuthenticated]);
+  }, [enabled, isAuthenticated]);
 
   return {
     isAuthenticated,

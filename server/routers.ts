@@ -1,6 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import { KLEMMI_LOGIN_AUDIO_IDS } from "@shared/klemmi-reactions";
 import { createHash, randomBytes } from "node:crypto";
+import type { Request, Response } from "express";
 import {
   eventWeekdays,
   helperEligibleForShift,
@@ -152,8 +153,10 @@ import {
 } from "./public-share-rate-limit";
 import {
   createPublicDemoSession,
+  getActivePublicDemoCount,
   getPublicDemoLoginDetails,
   isPublicDemoOpenId,
+  PUBLIC_DEMO_CONCURRENT_LIMIT,
   PUBLIC_DEMO_SESSION_MS,
   type PublicDemoPackage,
 } from "./public-demo";
@@ -179,13 +182,47 @@ const MASTER_RESET_REQUEST_WINDOW_MS = 15 * 60 * 1000;
 const MASTER_RESET_REQUEST_LIMIT = 3;
 const masterResetRequestAttempts = new Map<string, { count: number; resetAt: number }>();
 const MFA_CHALLENGE_TOKEN_BYTES = 32;
-const PUBLIC_DEMO_START_WINDOW_MS = 30 * 60 * 1000;
-// Begrenzt die Kosten der kurzlebigen, datenbankgestützten Testumgebungen.
-const PUBLIC_DEMO_START_LIMIT = 5;
+const PUBLIC_DEMO_VISITOR_COOKIE = "mycrewmate_demo_visitor";
+const PUBLIC_DEMO_VISITOR_COOKIE_MS = 24 * 60 * 60 * 1000;
+const PUBLIC_DEMO_START_WINDOW_MS = 5 * 60 * 1000;
+// Pro Browser ist genug Raum für Event Pass, Light und Pro sowie Wiederholungen.
+// Anders als ein IP-Limit blockiert dies keine Besucher hinter demselben Router.
+const PUBLIC_DEMO_START_LIMIT = 9;
 const publicDemoStartAttempts = new Map<string, { count: number; resetAt: number }>();
+
+function readRequestCookie(req: Request, name: string) {
+  const prefix = `${name}=`;
+  const raw = req.headers.cookie ?? "";
+  return raw
+    .split(";")
+    .map(part => part.trim())
+    .find(part => part.startsWith(prefix))
+    ?.slice(prefix.length);
+}
+
+function getPublicDemoVisitorKey(req: Request, res: Response) {
+  const existing = readRequestCookie(req, PUBLIC_DEMO_VISITOR_COOKIE);
+  if (existing && /^[A-Za-z0-9_-]{16,96}$/.test(existing)) {
+    return `public-demo:${existing}`;
+  }
+
+  const visitorId = randomBytes(18).toString("base64url");
+  res.cookie(PUBLIC_DEMO_VISITOR_COOKIE, visitorId, {
+    ...getSessionCookieOptions(req),
+    maxAge: PUBLIC_DEMO_VISITOR_COOKIE_MS,
+  });
+  return `public-demo:${visitorId}`;
+}
 
 function allowPublicDemoStart(clientKey: string) {
   const now = Date.now();
+  // Die In-Memory-Tabelle ist nur ein Komfortschutz pro Browser. Abgelaufene
+  // Einträge werden dabei opportunistisch entfernt und wachsen nicht weiter.
+  if (publicDemoStartAttempts.size > 1_000) {
+    publicDemoStartAttempts.forEach((value, key) => {
+      if (value.resetAt <= now) publicDemoStartAttempts.delete(key);
+    });
+  }
   const current = publicDemoStartAttempts.get(clientKey);
   if (!current || current.resetAt <= now) {
     publicDemoStartAttempts.set(clientKey, {
@@ -873,6 +910,7 @@ type GpxMapTrack = {
   id: number;
   name: string;
   color: string;
+  summary: string | null;
   points: Array<[number, number]>;
 };
 
@@ -945,6 +983,26 @@ function parseGpxMapPoints(xml: string): Array<[number, number]> {
   return reduced;
 }
 
+function parseGpxSummary(xml: string): string | null {
+  const metadataDescription = xml.match(
+    /<metadata\b[^>]*>[\s\S]*?<desc\b[^>]*>([\s\S]*?)<\/desc>/i
+  )?.[1];
+  const trackDescription = xml.match(
+    /<trk\b[^>]*>[\s\S]*?<desc\b[^>]*>([\s\S]*?)<\/desc>/i
+  )?.[1];
+  const raw = metadataDescription ?? trackDescription;
+  if (!raw) return null;
+  const text = raw
+    .replace(/^\s*<!\[CDATA\[|\]\]>\s*$/g, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\s+/g, " ")
+    .trim();
+  return text ? text.slice(0, 280) : null;
+}
+
 async function loadGpxMapTrack(track: {
   id: number;
   name: string;
@@ -960,13 +1018,19 @@ async function loadGpxMapTrack(track: {
     id: track.id,
     name: track.name,
     color: track.color,
+    summary: parseGpxSummary(xml),
     points: parseGpxMapPoints(xml),
   };
 }
 
 const activeSessionProcedure = baseProtectedProcedure.use(
   async ({ ctx, next }) => {
-    await safelyRecordPresence(ctx.req, ctx.user);
+    // Demos sind absichtlich isoliert und kurzlebig. Präsenzschreibvorgänge
+    // bieten dort keinen Mehrwert und können nach einer parallelen Bereinigung
+    // unnötige Fremdschlüsselwarnungen auslösen.
+    if (!isPublicDemoOpenId(ctx.user.openId)) {
+      await safelyRecordPresence(ctx.req, ctx.user);
+    }
     return next();
   }
 );
@@ -1273,10 +1337,22 @@ async function requireBackupCapability(
     capability
   );
 }
+
+/** Öffentliche Demos dürfen keine Dateien, Freigabelinks oder Exporte erzeugen. */
+function rejectPublicDemoExternalAction(user: { openId: string }) {
+  if (!isPublicDemoOpenId(user.openId)) return;
+  throw new TRPCError({
+    code: "FORBIDDEN",
+    message:
+      "In der Vereinsdemo sind Speichern, Laden, Exporte, Freigaben und Dateiaktionen deaktiviert.",
+  });
+}
+
 function backupCapabilityProcedure(
   capability: Extract<ProductCapability, "project_backup" | "excel">
 ) {
   return protectedProcedure.use(async ({ ctx, next }) => {
+    rejectPublicDemoExternalAction(ctx.user);
     await requireBackupCapability(capability);
     return next({ ctx });
   });
@@ -1285,6 +1361,7 @@ function backupCapabilityAdminProcedure(
   capability: Extract<ProductCapability, "project_backup" | "excel">
 ) {
   return adminProcedure.use(async ({ ctx, next }) => {
+    rejectPublicDemoExternalAction(ctx.user);
     await requireBackupCapability(capability);
     return next({ ctx });
   });
@@ -1293,6 +1370,7 @@ function backupScopeAdminProcedure(
   capability: Extract<ProductCapability, "project_backup" | "excel">
 ) {
   return scopeAdminProcedure.use(async ({ ctx, next }) => {
+    rejectPublicDemoExternalAction(ctx.user);
     await requireBackupCapability(capability);
     return next({ ctx });
   });
@@ -1301,6 +1379,7 @@ function backupScopeAdminAuthProcedure(
   capability: Extract<ProductCapability, "project_backup" | "excel">
 ) {
   return scopeAdminAuthProcedure.use(async ({ ctx, next }) => {
+    rejectPublicDemoExternalAction(ctx.user);
     await requireBackupCapability(capability);
     return next({ ctx });
   });
@@ -1502,7 +1581,10 @@ function moduleWriteProcedure(module: Exclude<PlanningModule, "read_all">) {
   });
 }
 
-const pdfReadProcedure = moduleReadProcedure("pdf");
+const pdfReadProcedure = moduleReadProcedure("pdf").use(async ({ ctx, next }) => {
+  rejectPublicDemoExternalAction(ctx.user);
+  return next({ ctx });
+});
 
 function pdfCapabilityProcedure(capability: ProductCapability) {
   return pdfReadProcedure.use(async ({ ctx, next }) => {
@@ -2007,12 +2089,20 @@ export const appRouter = router({
     start: publicProcedure
       .input(z.object({ packageId: z.enum(["event_pass", "light", "pro"]) }))
       .mutation(async ({ ctx, input }) => {
-        const clientKey = `public-demo:${getClientKey(ctx.req)}`;
+        const clientKey = getPublicDemoVisitorKey(ctx.req, ctx.res);
         if (!allowPublicDemoStart(clientKey)) {
           throw new TRPCError({
             code: "TOO_MANY_REQUESTS",
             message:
-              "Es wurden bereits mehrere Demos gestartet. Bitte warten Sie kurz und versuchen Sie es dann erneut.",
+              "In diesem Browser wurden gerade mehrere Demos gestartet. Bitte warten Sie kurz und versuchen Sie es dann erneut.",
+          });
+        }
+        const activeDemos = await getActivePublicDemoCount();
+        if (activeDemos >= PUBLIC_DEMO_CONCURRENT_LIMIT) {
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message:
+              "Die Vereinsdemo ist gerade stark gefragt. Bitte versuchen Sie es in wenigen Minuten erneut.",
           });
         }
         return createPublicDemoSession(input.packageId as PublicDemoPackage);
@@ -4663,7 +4753,8 @@ export const appRouter = router({
           mimeType: z.enum(["image/png", "image/jpeg"]),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        rejectPublicDemoExternalAction(ctx.user);
         const buffer = Buffer.from(input.base64, "base64");
         if (!buffer.length || buffer.length > 3_000_000) {
           throw new TRPCError({
@@ -4897,7 +4988,8 @@ export const appRouter = router({
           mimeType: locationLogoMimeType,
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        rejectPublicDemoExternalAction(ctx.user);
         const location = await db.getLocation(input.id);
         if (!location) {
           throw new TRPCError({
@@ -4982,7 +5074,8 @@ export const appRouter = router({
           color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Ungültige Streckenfarbe").default("#2563eb"),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        rejectPublicDemoExternalAction(ctx.user);
         const buffer = Buffer.from(input.base64, "base64");
         if (!buffer.length || buffer.length > 6_000_000) {
           throw new TRPCError({
@@ -5455,55 +5548,22 @@ export const appRouter = router({
       )
       .mutation(async ({ input }) => {
         const helperIds = Array.from(new Set(input.helperIds));
-        const [shifts, helpers, assignments] = await Promise.all([
-          db.listShifts(),
-          db.listHelpers(),
-          db.listAssignments(),
-        ]);
-        const shift = shifts.find(item => item.id === input.shiftId);
-        if (!shift)
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Schicht wurde nicht gefunden",
-          });
-        const selectedHelpers = helperIds.map(helperId =>
-          helpers.find(helper => helper.id === helperId)
-        );
-        if (selectedHelpers.some(helper => !helper)) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Mindestens ein ausgewählter Helfer wurde nicht gefunden",
-          });
-        }
-        const invalidHelper = selectedHelpers.find(
-          helper => helper && !helperEligibleForShift(helper, shift)
-        );
-        if (invalidHelper) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: `${invalidHelper.name} ist für diese Schichtzeit nicht verfügbar`,
-          });
-        }
-        const currentAssignments = assignments.filter(
-          assignment => assignment.shiftId === shift.id
-        );
-        if (currentAssignments.some(assignment => helperIds.includes(assignment.helperId))) {
-          throw new TRPCError({
-            code: "CONFLICT",
-            message: "Mindestens ein Helfer ist dieser Schicht bereits zugewiesen",
-          });
-        }
-        if (shift.needed - currentAssignments.length < helperIds.length) {
-          throw new TRPCError({
-            code: "CONFLICT",
-            message: "Für die Auswahl sind nicht genügend freie Helferplätze vorhanden",
-          });
-        }
         try {
-          return await db.assignHelpersToOpenSlots({ shiftId: shift.id, helperIds });
+          // Die Datenbankfunktion sperrt die Schicht und prüft Verfügbarkeit,
+          // Doppelzuweisungen und freie Plätze atomar. Die früheren drei
+          // vollständigen Listenabfragen waren doppelt und bremsten große
+          // Veranstaltungen bei jeder Mehrfachzuweisung aus.
+          return await db.assignHelpersToOpenSlots({ shiftId: input.shiftId, helperIds });
         } catch (error) {
-          if (error instanceof Error && error.message.includes("nicht verfügbar")) {
-            throw new TRPCError({ code: "BAD_REQUEST", message: error.message });
+          const message = error instanceof Error ? error.message : "";
+          if (message === "Schicht wurde nicht gefunden" || message.includes("Helfer wurde nicht gefunden")) {
+            throw new TRPCError({ code: "NOT_FOUND", message });
+          }
+          if (message.includes("nicht verfügbar")) {
+            throw new TRPCError({ code: "BAD_REQUEST", message });
+          }
+          if (message.includes("bereits zugewiesen") || message.includes("nicht genügend freie Helferplätze")) {
+            throw new TRPCError({ code: "CONFLICT", message });
           }
           throw new TRPCError({
             code: "CONFLICT",
@@ -5595,7 +5655,8 @@ export const appRouter = router({
     }),
     updateSettings: adminProcedure
       .input(pdfSettingsInput)
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        rejectPublicDemoExternalAction(ctx.user);
         await requireCurrentProductCapability("pdf");
         const product = await db.getCurrentTenantProductEntitlement();
         const allowsWhatsAppTemplates = productAllowsCapability(
@@ -5627,7 +5688,8 @@ export const appRouter = router({
           mimeType: z.enum(["image/png", "image/jpeg"]),
         })
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        rejectPublicDemoExternalAction(ctx.user);
         const buffer = Buffer.from(input.base64, "base64");
         if (!buffer.length || buffer.length > 3_000_000) {
           throw new TRPCError({
@@ -5670,7 +5732,8 @@ export const appRouter = router({
         });
         return uploaded;
       }),
-    clearLogo: productCapabilityAdminProcedure("custom_branding").mutation(async () => {
+    clearLogo: productCapabilityAdminProcedure("custom_branding").mutation(async ({ ctx }) => {
+      rejectPublicDemoExternalAction(ctx.user);
       await db.updateCurrentEventPdfImage({
         pdfLogoKey: null,
         pdfLogoUrl: null,
@@ -5687,7 +5750,8 @@ export const appRouter = router({
           base64: pdf.toString("base64"),
         };
       }),
-    privacyNoticeTemplate: adminProcedure.mutation(async () => {
+    privacyNoticeTemplate: adminProcedure.mutation(async ({ ctx }) => {
+      rejectPublicDemoExternalAction(ctx.user);
       const pdf = await renderClubPrivacyNoticeTemplatePdf();
       return {
         filename: "Vereinsmuster_Datenschutzhinweis_Helfer_Ansprechpartner.pdf",
@@ -5695,7 +5759,8 @@ export const appRouter = router({
         base64: pdf.toString("base64"),
       };
     }),
-    dataSubjectRequestTemplate: adminProcedure.mutation(async () => {
+    dataSubjectRequestTemplate: adminProcedure.mutation(async ({ ctx }) => {
+      rejectPublicDemoExternalAction(ctx.user);
       const pdf = await renderDataSubjectRequestTemplatePdf();
       return {
         filename: "Vorlage_Betroffenenanfrage_Datenschutz.pdf",
@@ -5703,7 +5768,8 @@ export const appRouter = router({
         base64: pdf.toString("base64"),
       };
     }),
-    privacyIncidentTemplate: adminProcedure.mutation(async () => {
+    privacyIncidentTemplate: adminProcedure.mutation(async ({ ctx }) => {
+      rejectPublicDemoExternalAction(ctx.user);
       const pdf = await renderPrivacyIncidentTemplatePdf();
       return {
         filename: "Vorlage_Datenschutzvorfall_Erstprotokoll.pdf",
@@ -5713,7 +5779,8 @@ export const appRouter = router({
     }),
     publicShare: productCapabilityProcedure("personal_accesses")
       .input(z.object({ helperId: z.number().int().positive() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        rejectPublicDemoExternalAction(ctx.user);
         const helper = await db.getHelper(input.helperId);
         if (!helper) {
           throw new TRPCError({
@@ -5738,6 +5805,7 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
+        rejectPublicDemoExternalAction(ctx.user);
         const helper = await db.getHelper(input.helperId);
         if (!helper) {
           throw new TRPCError({
@@ -6483,6 +6551,7 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
+        rejectPublicDemoExternalAction(ctx.user);
         await requireAdminPassword(input.adminPassword, ctx);
         await db.clearDeletionAuditLogs({
           eventYear: input.eventYear,
@@ -6492,12 +6561,13 @@ export const appRouter = router({
       }),
     restore: productCapabilityAdminProcedure("postprocessing")
       .input(z.object({ id: z.number().int().positive() }))
-      .mutation(({ ctx, input }) =>
-        db.restoreDeletionAuditLog(input.id, {
+      .mutation(({ ctx, input }) => {
+        rejectPublicDemoExternalAction(ctx.user);
+        return db.restoreDeletionAuditLog(input.id, {
           userId: ctx.user.id,
           name: ctx.user.name ?? "Administrator",
-        })
-      ),
+        });
+      }),
   }),
 
   dashboard: router({
