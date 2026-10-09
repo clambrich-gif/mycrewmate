@@ -50,11 +50,12 @@
 - [x] Dringende Zugänglichkeitskorrekturen umgesetzt: kontraststarke orange Aktionsflächen (mindestens 4,5:1) sowie Tastaturnavigation und Screenreader-Text im Tarifvergleich.
 - [x] Öffentliche Demosicherheit verstärkt: Bereinigungs-Heartbeat `public-demo-cleanup` alle zehn Minuten registriert; technische Höchstalterung bleibt 35 Minuten.
 - [x] 50%-Pilotvorteil als einheitlicher Regelblock ergänzt: sichtbar bei der Preisübersicht, auf der Pilotseite und in der automatischen Eingangsbestätigung; nur Light/Pro, einmalig, unmittelbar anschließend, ohne Rabattkombination und ohne automatische Verlängerung.
+- [x] Bestätigte Wirtschafts-Identifikationsnummer `DE428034222` im Impressum ergänzt; die interne Steuernummer wird nicht veröffentlicht.
 
 ## In Umsetzung
 
 - [ ] Geprüften Pilotaufbewahrungsstand veröffentlichen; der vorhandene Heartbeat `product-expiry-reminders` läuft täglich um 08:00 UTC und führt nach dem Deploy automatisch die neue Pilotlogik aus.
-- [ ] Betreiberfreigaben für die verbleibenden dringenden Rechts-Release-Gates einholen: Hetzner-AVV/Anlagen, W-IdNr./USt-IdNr.-Status, technische Logfristen sowie B2B/B2C- und BFSG-Entscheidung vor dem Kaufstart.
+- [ ] Betreiberfreigaben für die verbleibenden dringenden Rechts-Release-Gates einholen: Hetzner-AVV/Anlagen, technische Logfristen sowie B2B/B2C- und BFSG-Entscheidung vor dem Kaufstart.
 
 ## Später prüfen
 

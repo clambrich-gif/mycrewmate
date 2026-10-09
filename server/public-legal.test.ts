@@ -18,5 +18,6 @@ describe("öffentliche Pilot- und Datenschutzhinweise", () => {
     expect(legal).toContain("Die Telefonnummer sowie weitere Angaben zum Vorhaben sind freiwillig");
     expect(legal).toContain("aktuelle öffentliche Website mit Pilotanfrage und fiktiver Vereinsdemo");
     expect(legal).not.toContain("tracker- und formularfreien Startauftritt");
+    expect(legal).toContain("Wirtschafts-Identifikationsnummer gemäß § 139c AO: DE428034222");
   });
 });

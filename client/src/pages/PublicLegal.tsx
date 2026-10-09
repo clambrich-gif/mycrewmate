@@ -87,6 +87,10 @@ export function PublicImpressumPage() {
         <p className="mt-2">Gemäß § 19 UStG wird keine Umsatzsteuer berechnet und ausgewiesen (Kleinunternehmerregelung).</p>
       </section>
       <section>
+        <h2 className="text-base font-bold text-slate-950">Wirtschafts-Identifikationsnummer</h2>
+        <p className="mt-2">Wirtschafts-Identifikationsnummer gemäß § 139c AO: DE428034222</p>
+      </section>
+      <section>
         <h2 className="text-base font-bold text-slate-950">Redaktionell verantwortlich</h2>
         <p className="mt-2">Christian Lambrich, Eichenweg 4, 56729 Nachtsheim</p>
       </section>
