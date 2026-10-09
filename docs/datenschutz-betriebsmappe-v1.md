@@ -1,6 +1,6 @@
 # MyCrewMate – Datenschutz-Betriebsmappe und Verzeichnis der Verarbeitungstätigkeiten
 
-**Version 1.0 · Stand 02.10.2026 · Geltung: geschlossener Pilotbetrieb**
+**Version 1.1 · Stand 09.10.2026 · Geltung: Pilotbetrieb mit öffentlicher Pilotanfrage**
 
 > Dieses Dokument dient der Rechenschaftspflicht nach Art. 5 Abs. 2 und Art. 30 DSGVO. Es ist eine Betriebsdokumentation und keine Rechtsberatung. Vor öffentlichem Zahlungsbetrieb sind die Rechtstexte, Lieferantenunterlagen und die tatsächlichen Betriebsnachweise durch eine qualifizierte Datenschutz-/Rechtsberatung abschließend zu prüfen.
 
@@ -20,6 +20,7 @@ Nicht verwenden: „vollständig DSGVO-zertifiziert“, „garantiert DSGVO-konf
 | Upload-Volume | Eventbilder, Standortlogos, GPX und zugehörige geschützte Dateien | Auftragsverarbeiter | Deutschland, Hetzner-Betriebsumgebung | Uploads und technische Metadaten | Geschützte Asset-Routen, Löschtests, Storage-/Backupnachweis |
 | Object Storage / Sicherungen | Wiederherstellung von Datenbank und Upload-Volume | Auftragsverarbeiter | Deutschland, Hetzner Object Storage | Sicherungskopien der vorgenannten Daten | Tägliche Sicherung, maximal sieben Wiederherstellungspunkte, halbjährlicher Restore-Test |
 | SMTP-Maildienst | Einladungen, Passwort-Resets, Vertrags- und Sicherheitskommunikation | Auftragsverarbeiter bzw. eigener Verantwortlicher je Mailzweck | Deutschland, Hetzner-Maildienst | Empfängeradresse, Name, Betreff, Nachricht, Einmal-Link | Maildienstkonfiguration, TLS-Prüfung, jährliche Lieferantenprüfung |
+| Öffentliche Pilotanfrage | persönliche Abstimmung eines unverbindlichen Testzeitraums und Eingangsbestätigung | MyCrewMate als eigener Verantwortlicher | Deutschland, MySQL und Hetzner-Mailpostfach | Verein, Ansprechperson, E-Mail, Telefon, Anlass, Wunschstart, freiwillige Notiz | Master-Portal, Versandnachweis, täglicher Pilot-Lifecycle, Mailbox-Löschregister |
 | OpenStreetMap / OpenTopoMap | Optionale Kartenkacheln bei bewusstem Kartenaufruf | Externer Empfänger; Rolle je Dienst prüfen | Externer Abruf; nicht Teil der Deutschlandzusage | technisch notwendige Browser-/Verbindungsdaten, Kachelabruf, Referrer | Datenschutzhinweis, sichtbare Attribution, jährlicher Nutzungs-/Lieferantencheck |
 | WhatsApp | Ausschließlich nach bewusstem Klick durch den Verein | Externer Kommunikationsdienst; nicht Teil der Kernplanung | nach Dienstbedingungen; nicht Teil der Deutschlandzusage | Zielrufnummer und optional vorbereiteter Nachrichtentext | Freiwillige Aktivierung, Vereinsinformation, jährlicher Check |
 
@@ -32,10 +33,10 @@ Nicht verwenden: „vollständig DSGVO-zertifiziert“, „garantiert DSGVO-konf
 | Verantwortlicher | Christian Lambrich / MyCrewMate, Eichenweg 4, 56729 Nachtsheim, Deutschland; Datenschutzkontakt: info@mycrewmate.de |
 | Zweck | Bereitstellung und Absicherung der Plattform, Vertragsverwaltung, Kontaktaufnahme, Versand transaktionaler E-Mails, Missbrauchsschutz, Nachweis digitaler Vertragsannahmen |
 | Betroffene Personen | Vereinsadministratoren, Planungsteam, Interessierte bei direkter Kontaktaufnahme |
-| Datenkategorien | Name, E-Mail-Adresse, Passwort-Hash, Rollen/Rechte, Sitzungsversion, Sicherheits-, Vertragsannahme- und Kommunikationsdaten |
+| Datenkategorien | Name, E-Mail-Adresse, Telefonnummer bei Pilotanfragen, Verein/Organisation, Anlass, Wunschzeitraum, Passwort-Hash, Rollen/Rechte, Sitzungsversion, Sicherheits-, Vertragsannahme- und Kommunikationsdaten |
 | Rechtsgrundlage | Art. 6 Abs. 1 lit. b DSGVO für Vertrag/Anbahnung; Art. 6 Abs. 1 lit. c DSGVO bei gesetzlichen Pflichten; Art. 6 Abs. 1 lit. f DSGVO für Sicherheit und Missbrauchsschutz |
 | Empfänger | Hetzner für Hosting, Mail und Sicherungen; keine Analyse-/Werbetracker |
-| Löschfristen | Sicherheits-, Login- und Aktivitätsprotokolle 12 Monate; abgelaufene Einladungen, Sitzungswiderrufe und vergleichbare kurzlebige Sicherheitsdaten 30 Tage; Vertragsunterlagen gemäß jeweiliger gesetzlicher/vertraglicher Pflicht |
+| Löschfristen | Sicherheits-, Login- und Aktivitätsprotokolle 12 Monate; abgelaufene Einladungen, Sitzungswiderrufe und vergleichbare kurzlebige Sicherheitsdaten 30 Tage; Pilotanfragen bis Entscheidung, danach 3 Jahre; archivierte Pilotvereine 3 Jahre ab Pilotende und bis dahin reaktivierbar; Vertragsunterlagen gemäß jeweiliger gesetzlicher/vertraglicher Pflicht |
 | TOM | HTTPS, sichere Passwort-Hashes, rollenbasierte Rechte, 12-Stunden-Sitzungen, Sitzungswiderruf, Fehlversuchsschutz, HSTS/CSP/NoSniff/Referrer-Policy, Auditierung |
 
 ## 4. Verarbeitungstätigkeit B – Vereins- und Eventplanung im Auftrag
@@ -68,7 +69,7 @@ Nicht verwenden: „vollständig DSGVO-zertifiziert“, „garantiert DSGVO-konf
 | Intervall | Pflicht | Verantwortlich | Nachweis |
 | --- | --- | --- | --- |
 | Bei jedem Release | Datenschutz-/TDDDG-/Lieferantencheck für neue externe Dienste, Endgerätezugriffe oder Datenkategorien | Plattformbetreiber | Release-Checkliste |
-| Monatlich | Heartbeat-Ausführung, Löschprotokoll und offene Aufbewahrungsausnahmen prüfen | Plattformbetreiber | Heartbeat-Log / Löschregister |
+| Monatlich | Heartbeat-Ausführung, Pilotende-Mails, Löschprotokoll, Hetzner-Mailbox-Bereinigung und offene Aufbewahrungsausnahmen prüfen | Plattformbetreiber | Heartbeat-Log / Löschregister / Mailbox-Check |
 | Quartalsweise | Berechtigungen, aktive Admins, Freigaben und Security-Headers prüfen | Plattformbetreiber | Reviewprotokoll |
 | Halbjährlich | Restore-Test mit nichtproduktiven Daten durchführen | Plattformbetreiber | Restoreprotokoll |
 | Jährlich | VVT, TOM, Lieferantenregister, DSFA-Vorprüfung und Rechtstexte aktualisieren | Plattformbetreiber | Aktualisierte Betriebsmappe |
@@ -79,3 +80,4 @@ Nicht verwenden: „vollständig DSGVO-zertifiziert“, „garantiert DSGVO-konf
 2. **Vertretung für Datenschutzvorfälle** schriftlich benennen.
 3. **Ersten Restore-Test** mit nichtproduktiven Daten und Ergebnis dokumentieren.
 4. **Rechtsprüfung** der finalen AGB, AVV und Datenschutzhinweise veranlassen; danach freigegebene Versionen einfrieren.
+5. **Mailbox-Routine** für abgeschlossene Pilotanfragen im Hetzner-Postfach als nachweisbaren Monatsprozess einrichten.

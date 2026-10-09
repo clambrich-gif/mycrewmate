@@ -289,13 +289,15 @@ function PilotRequestForm() {
           placeholder="Zum Beispiel: RTF-Wochenende mit 120 Helfern, Start/Ziel und drei Strecken."
           className="resize-y rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-base font-normal text-slate-950 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
         />
+        <span className="text-xs font-normal leading-5 text-slate-500">
+          Bitte keine Gesundheitsdaten, personenbezogenen Daten Dritter oder anderen vertraulichen Angaben eintragen.
+        </span>
       </label>
 
       <label className="flex items-start gap-3 rounded-xl bg-slate-50 p-3 text-sm leading-5 text-slate-600">
         <input required type="checkbox" name="privacy" className="mt-0.5 size-4 accent-blue-600" />
         <span>
-          Ich habe die <a className="font-semibold text-blue-700 underline underline-offset-2 hover:text-blue-900" href="/datenschutz" target="_blank" rel="noreferrer">Datenschutzhinweise</a> gelesen. Meine Angaben dürfen
-          ausschließlich zur Bearbeitung dieser Pilot-Anfrage verwendet werden.
+          Ich habe die <a className="font-semibold text-blue-700 underline underline-offset-2 hover:text-blue-900" href="/datenschutz" target="_blank" rel="noreferrer">Datenschutzhinweise zur Pilot-Anfrage</a> gelesen.
         </span>
       </label>
 
@@ -342,7 +344,7 @@ export default function PilotHomepageDraft() {
       </a>
 
       <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-sm font-semibold text-amber-950">
-        Pilotprogramm: Plätze bis 31.12.2026 anfragen · Auf dieser Seite wird keine Bestellung ausgelöst.
+        Pilotanfragen bis 31.12.2026 · Auf dieser Seite wird keine Bestellung ausgelöst.
       </div>
 
       <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur">
@@ -380,7 +382,7 @@ export default function PilotHomepageDraft() {
           <div id="inhalt">
             <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white/85 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.14em] text-blue-800 shadow-sm">
               <Sparkles className="size-3.5" aria-hidden="true" />
-              Pilotprogramm bis 31.12.2026
+              Pilotanfragen bis 31.12.2026
             </div>
             <h1 className="mt-6 max-w-3xl text-4xl font-black leading-[1.02] tracking-[-0.045em] text-slate-950 sm:text-5xl lg:text-6xl">
               Vereins- und Eventplanung, die <span className="text-blue-600">Freude</span> macht.
@@ -552,7 +554,7 @@ export default function PilotHomepageDraft() {
                   ))}
                 </ul>
                 <a href="#pilot-anfrage" className="mt-7 inline-flex items-center gap-1 text-sm font-black text-blue-700 hover:text-blue-900">
-                  Passenden Pilotplatz anfragen <ArrowRight className="size-4" aria-hidden="true" />
+                  Passenden Pilotzugang anfragen <ArrowRight className="size-4" aria-hidden="true" />
                 </a>
               </article>
             );
@@ -568,10 +570,10 @@ export default function PilotHomepageDraft() {
               Gute Tests sollen sich für den Verein lohnen.
             </h2>
             <p className="mt-4 max-w-2xl text-lg leading-8 text-slate-700">
-              Wenn ihr MyCrewMate nach dem vereinbarten Pilotzeitraum weiter nutzen möchtet, gilt für das erste kostenpflichtige Nutzungsjahr des vereinbarten Pakets ein Pilotvorteil von <strong>50 %</strong> auf den bei Vertragsabschluss veröffentlichten regulären Jahrespreis.
+              Wenn ihr MyCrewMate nach dem vereinbarten Pilotzeitraum weiter nutzen möchtet, gilt der Pilotvorteil von <strong>50 %</strong> für das erste kostenpflichtige Veranstaltungsjahr von <strong>Light</strong> oder <strong>Pro</strong>.
             </p>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-              Der genaue Paketumfang, Preis, Geltungszeitraum und die Bedingungen werden vor Ende des Piloten schriftlich transparent vereinbart. Es gibt keine automatische Verlängerung.
+              Das entspricht bei den regulären Endpreisen ab 01.01.2027: Light 149 € → 74,50 € und Pro 299 € → 149,50 €. Der Event Pass ist ein Einzelereignis-Paket und nicht rabattiert; Enterprise wird individuell vereinbart. Der genaue Paketumfang, Zeitraum und die Bedingungen werden vor Ende des Piloten schriftlich bestätigt. Es gibt keine automatische Verlängerung.
             </p>
           </div>
           <div className="rounded-2xl border border-blue-200 bg-white p-6 shadow-sm">
@@ -617,7 +619,7 @@ export default function PilotHomepageDraft() {
               Erzählt uns von eurem nächsten Anlass.
             </h2>
             <p className="mt-4 text-lg leading-8 text-slate-600">
-              Ihr braucht noch nicht alles vorbereitet zu haben. Ein Anlass, eine grobe Teamgröße und ein Wunschzeitraum reichen für den ersten Schritt.
+              Ihr braucht noch nicht alles vorbereitet zu haben. Verein, Ansprechperson, Kontaktmöglichkeit, Anlass und ein Wunschzeitraum reichen für den ersten Schritt.
             </p>
             <p className="mt-6 flex gap-2 text-sm leading-6 text-slate-600"><Mail className="mt-1 size-4 shrink-0 text-blue-700" aria-hidden="true" />Die Anfrage wird persönlich beantwortet. Es gibt keinen automatisierten Verkaufsabschluss.</p>
           </div>

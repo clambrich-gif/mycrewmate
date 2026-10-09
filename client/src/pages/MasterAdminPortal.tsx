@@ -127,6 +127,9 @@ type TenantOverviewItem = {
   contactEmail: string;
   supportEmail: string;
   createdAt?: Date;
+  archivedAt?: Date | null;
+  retentionEndsAt?: Date | null;
+  archiveReason?: "pilot_expired" | "manual" | null;
   eventCount: number;
   events: Array<{
     id: number;
@@ -189,6 +192,22 @@ type ProductAssignmentForm = {
   endsOn: string;
   eventId: string;
   internalNote: string;
+};
+
+type PilotInquiryItem = {
+  id: number;
+  clubName: string;
+  contactName: string;
+  email: string;
+  phone: string;
+  occasion: string;
+  desiredStart: string;
+  note: string | null;
+  status: "open" | "accepted" | "declined";
+  privacyAcceptedAt: Date;
+  closedAt: Date | null;
+  retentionEndsAt: Date | null;
+  createdAt: Date;
 };
 
 const PRODUCT_BADGE_CLASS: Record<ProductPackageId, string> = {
@@ -1019,6 +1038,7 @@ export default function MasterAdminPortal() {
     name: string;
   } | null>(null);
   const [accessToDelete, setAccessToDelete] = useState<PlatformAccessInventoryItem | null>(null);
+  const [pilotInquiryToDelete, setPilotInquiryToDelete] = useState<PilotInquiryItem | null>(null);
   const resetToken = new URLSearchParams(window.location.search).get("reset");
 
   const [wbtTrackChoice, setWbtTrackChoice] = useState<"helper" | "admin">("helper");
@@ -1087,6 +1107,30 @@ export default function MasterAdminPortal() {
     enabled: isAuthenticated && user?.role === "admin",
     retry: false,
     refetchOnWindowFocus: false,
+  });
+  const pilotInquiries = trpc.platformAdmin.pilotInquiries.useQuery(undefined, {
+    enabled: isAuthenticated && user?.role === "admin",
+    retry: false,
+    refetchOnWindowFocus: true,
+  });
+  const completePilotInquiry = trpc.platformAdmin.completePilotInquiry.useMutation({
+    onSuccess: async result => {
+      await pilotInquiries.refetch();
+      toast.success(
+        result.status === "accepted"
+          ? "Pilotanfrage als übernommen dokumentiert."
+          : "Pilotanfrage als nicht weiterverfolgt dokumentiert."
+      );
+    },
+    onError: error => toast.error(error.message),
+  });
+  const deletePilotInquiry = trpc.platformAdmin.deletePilotInquiry.useMutation({
+    onSuccess: async () => {
+      await pilotInquiries.refetch();
+      setPilotInquiryToDelete(null);
+      toast.success("Pilotanfrage vollständig gelöscht.");
+    },
+    onError: error => toast.error(error.message),
   });
   const deleteTestAccess = trpc.platformAdmin.deleteTestAccess.useMutation({
     onSuccess: async result => {
@@ -1378,6 +1422,8 @@ export default function MasterAdminPortal() {
   const managedEventCount = activeTenants.reduce((sum, tenant) => sum + tenant.eventCount, 0);
   const personalAccesses = (accessInventory.data ?? []) as PlatformAccessInventoryItem[];
   const duplicateEmailCount = personalAccesses.filter(access => access.hasDuplicateEmail).length;
+  const pilotInquiryItems = (pilotInquiries.data ?? []) as PilotInquiryItem[];
+  const openPilotInquiryCount = pilotInquiryItems.filter(inquiry => inquiry.status === "open").length;
   const packageDistribution = PRODUCT_PACKAGE_IDS.map(packageId => {
     const assignedTenants = activeTenants.filter(
       tenant => tenant.productAssignment.packageId === packageId
@@ -1617,6 +1663,89 @@ export default function MasterAdminPortal() {
                       </Button>
                     </article>
                   ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </section>
+
+        <section aria-labelledby="pilotanfragen">
+          <Card className="border-slate-200 bg-white/95 py-0 shadow-sm">
+            <CardHeader className="border-b border-slate-100 px-5 py-4 sm:px-6">
+              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+                <div>
+                  <CardTitle id="pilotanfragen" className="flex items-center gap-2 text-base">
+                    <Mail className="size-5 text-orange-600" /> Pilotanfragen
+                  </CardTitle>
+                  <CardDescription className="mt-1 max-w-3xl">
+                    Öffentliche Anfragen werden persönlich abgestimmt. Mit der Entscheidung beginnt die dreijährige Aufbewahrungsfrist; ein Löschwunsch entfernt die Anfrage sofort.
+                  </CardDescription>
+                </div>
+                <Badge
+                  variant="outline"
+                  className={openPilotInquiryCount > 0 ? "border-orange-200 bg-orange-50 text-orange-900" : "border-slate-200 bg-slate-50 text-slate-700"}
+                >
+                  {openPilotInquiryCount} offene
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="px-5 py-4 sm:px-6">
+              {pilotInquiries.isLoading ? (
+                <p className="text-sm text-slate-500">Pilotanfragen werden geladen …</p>
+              ) : pilotInquiryItems.length === 0 ? (
+                <p className="text-sm text-slate-500">Noch keine Pilotanfrage eingegangen.</p>
+              ) : (
+                <div className="grid gap-3 lg:grid-cols-2">
+                  {pilotInquiryItems.map(inquiry => {
+                    const isOpen = inquiry.status === "open";
+                    const statusLabel = isOpen
+                      ? "Offen"
+                      : inquiry.status === "accepted"
+                        ? "Als Pilot übernommen"
+                        : "Nicht weiterverfolgt";
+                    const statusClass = isOpen
+                      ? "border-orange-200 bg-orange-50 text-orange-900"
+                      : inquiry.status === "accepted"
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                        : "border-slate-200 bg-slate-50 text-slate-700";
+                    return (
+                      <article key={inquiry.id} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="truncate font-semibold text-slate-950">{inquiry.clubName}</p>
+                            <p className="mt-0.5 text-sm text-slate-700">{inquiry.contactName}</p>
+                          </div>
+                          <Badge variant="outline" className={statusClass}>{statusLabel}</Badge>
+                        </div>
+                        <dl className="mt-3 grid gap-1.5 text-sm text-slate-700 sm:grid-cols-2">
+                          <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">E-Mail</dt><dd><a className="text-blue-700 underline underline-offset-2" href={`mailto:${inquiry.email}`}>{inquiry.email}</a></dd></div>
+                          <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Telefon</dt><dd><a className="text-blue-700 underline underline-offset-2" href={`tel:${inquiry.phone.replace(/[^+0-9]/g, "")}`}>{inquiry.phone}</a></dd></div>
+                          <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Anlass</dt><dd>{inquiry.occasion}</dd></div>
+                          <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Wunschstart</dt><dd>{inquiry.desiredStart}</dd></div>
+                        </dl>
+                        {inquiry.note ? <p className="mt-3 rounded-lg bg-white px-3 py-2 text-sm leading-5 text-slate-700">{inquiry.note}</p> : null}
+                        <p className="mt-3 text-xs text-slate-500">
+                          Eingegangen am {formatAccessCreatedAt(inquiry.createdAt)}
+                          {inquiry.retentionEndsAt ? ` · automatische Löschung nach ${formatAccessCreatedAt(inquiry.retentionEndsAt)}` : ""}
+                        </p>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {isOpen ? (
+                            <>
+                              <Button size="sm" className="bg-emerald-600 text-white hover:bg-emerald-700" disabled={completePilotInquiry.isPending} onClick={() => completePilotInquiry.mutate({ id: inquiry.id, status: "accepted" })}>
+                                <CheckCircle2 className="size-3.5" /> Als Pilot übernehmen
+                              </Button>
+                              <Button size="sm" variant="outline" disabled={completePilotInquiry.isPending} onClick={() => completePilotInquiry.mutate({ id: inquiry.id, status: "declined" })}>
+                                Nicht weiterverfolgen
+                              </Button>
+                            </>
+                          ) : null}
+                          <Button size="sm" variant="outline" className="border-red-200 bg-white text-red-700 hover:bg-red-50 hover:text-red-800" disabled={deletePilotInquiry.isPending} onClick={() => setPilotInquiryToDelete(inquiry)}>
+                            <Trash2 className="size-3.5" /> Löschen
+                          </Button>
+                        </div>
+                      </article>
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
@@ -1956,7 +2085,7 @@ export default function MasterAdminPortal() {
                 <Archive className="size-5 text-slate-600" /> Archivierte Vereine
               </CardTitle>
               <CardDescription>
-                Archivierte Vereine sind vollständig vom Vereinszugang ausgeschlossen. Alle Vereins-, Veranstaltungs- und Zugangsdaten bleiben für den historischen Nachweis erhalten und werden nicht gelöscht.
+                Archivierte Vereine sind vollständig vom Vereinszugang ausgeschlossen. Beendete Pilotvereine bleiben bis zur angezeigten Frist reaktivierbar und werden anschließend technisch vollständig gelöscht.
               </CardDescription>
             </CardHeader>
             <CardContent className="divide-y divide-slate-200 px-5 sm:px-6">
@@ -1978,6 +2107,7 @@ export default function MasterAdminPortal() {
                       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
                         <span className="inline-flex items-center gap-1"><CalendarDays className="size-3.5 text-slate-400" /> {tenant.eventCount} Veranstaltung{tenant.eventCount === 1 ? "" : "en"}</span>
                         <span className="inline-flex items-center gap-1"><Mail className="size-3.5 text-slate-400" /> {tenant.contactEmail}</span>
+                        {tenant.retentionEndsAt ? <span className="inline-flex items-center gap-1 text-amber-800"><Archive className="size-3.5" /> Löschung nach {formatAccessCreatedAt(tenant.retentionEndsAt)}</span> : null}
                       </div>
                     </div>
                     <div className="space-y-2 sm:min-w-48">
@@ -1991,7 +2121,7 @@ export default function MasterAdminPortal() {
                         {updateLifecycle.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />}
                         Als Pilot reaktivieren
                       </Button>
-                      {tenant.id !== "rsc-eifelland-mayen" && (
+                      {tenant.id !== "rsc-eifelland-mayen" && !tenant.retentionEndsAt && (
                         <Button
                           size="sm"
                           variant="outline"
@@ -2627,6 +2757,41 @@ export default function MasterAdminPortal() {
             >
               {deleteTestAccess.isPending ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
               Zugang endgültig entfernen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={Boolean(pilotInquiryToDelete)}
+        onOpenChange={open => {
+          if (!open && !deletePilotInquiry.isPending) setPilotInquiryToDelete(null);
+        }}
+      >
+        <AlertDialogContent className="border-red-200 bg-white text-slate-950">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-900">
+              <Trash2 className="size-5 text-red-700" /> Pilotanfrage vollständig löschen?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="leading-5 text-slate-600">
+              Die Anfrage von <strong className="font-semibold text-slate-800">{pilotInquiryToDelete?.clubName}</strong> wird sofort aus der MyCrewMate-Datenbank entfernt. Nutzen Sie diese Aktion für einen dokumentierten Löschwunsch.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-5 text-amber-950">
+            Bereits eingegangene E-Mail-Korrespondenz im betrieblichen Postfach ist separat nach derselben Vorgabe zu bereinigen.
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletePilotInquiry.isPending}>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!pilotInquiryToDelete || deletePilotInquiry.isPending}
+              className="bg-red-700 text-white hover:bg-red-800"
+              onClick={() => {
+                if (!pilotInquiryToDelete) return;
+                deletePilotInquiry.mutate({ id: pilotInquiryToDelete.id });
+              }}
+            >
+              {deletePilotInquiry.isPending ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+              Anfrage endgültig löschen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

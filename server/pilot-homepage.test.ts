@@ -13,7 +13,8 @@ describe("öffentliche Preis- und Pilotseiten", () => {
     const pilot = read("client/src/pages/PilotHomepageDraft.tsx");
 
     expect(app).toContain('path="/pilot"');
-    expect(offer).toContain("Pilotprogramm bis 31.12.2026");
+    expect(offer).toContain("Pilotanfragen bis 31.12.2026");
+    expect(offer).toContain('href="/pilot#pilot-anfrage"');
     expect(offer).toContain("Pilot kostenlos anfragen");
     expect(offer).toContain('href="/vereinsdemo"');
     expect(offer).toContain("Fiktive Vereinsdemo ausprobieren");
@@ -33,6 +34,9 @@ describe("öffentliche Preis- und Pilotseiten", () => {
     expect(pilot).toContain("Telefonnummer für eine persönliche Rückfrage");
     expect(pilot).toContain("trpc.pilotInquiry.submit.useMutation");
     expect(pilot).toContain("Wir bestätigen den Eingang zusätzlich per E-Mail.");
+    expect(pilot).toContain("Pilotanfragen bis 31.12.2026");
+    expect(pilot).toContain("Light 149 € → 74,50 € und Pro 299 € → 149,50 €");
+    expect(pilot).toContain("Der Event Pass ist ein Einzelereignis-Paket und nicht rabattiert");
   });
 
   it("ordnet die Vergleichstabelle zeitlich ein, ohne die App-Ansicht zu verändern", () => {

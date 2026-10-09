@@ -42,6 +42,7 @@ import {
   materials,
   mfaLoginChallenges,
   locations,
+  pilotInquiries,
   planContactHelperChanges,
   planContactNotifications,
   planningTeamAccesses,
@@ -64,6 +65,7 @@ import {
   tenantAdminCredentials,
   tenantAdminInvitations,
   tenantContractAcceptances,
+  tenantPilotEndNotifications,
   tenantProductExpiryNotifications,
   tenantProductAssignments,
   tenants,
@@ -185,6 +187,17 @@ export type TenantProductExpiryReminderCandidate = {
   endsOn: string;
   daysRemaining: number;
 };
+export type PilotEndNotificationCandidate = {
+  notificationId: number;
+  tenantId: string;
+  tenantName: string;
+  contactEmail: string;
+  packageId: ProductPackageId;
+  endsOn: string;
+  archivedAt: Date;
+  retentionEndsAt: Date;
+};
+export type PilotInquiryLifecycleStatus = "accepted" | "declined";
 
 export async function getDb(): Promise<DBClient | null> {
   const transactionClient = planningWriteClientStorage.getStore();
@@ -1223,6 +1236,12 @@ function addCalendarDays(value: Date, days: number) {
   return result;
 }
 
+function addCalendarYears(value: Date, years: number) {
+  const result = new Date(value);
+  result.setUTCFullYear(result.getUTCFullYear() + years);
+  return result;
+}
+
 /**
  * Liefert nur aktive oder testweise Produktzuordnungen, die innerhalb des
  * Kalendertagesfensters auslaufen und noch keinen bestätigten Hinweis erhalten
@@ -1366,6 +1385,409 @@ export async function releaseTenantProductExpiryReminderClaim(input: {
         isNull(tenantProductExpiryNotifications.sentAt)
       )
     );
+}
+
+/** Speichert eine echte Pilotanfrage datensparsam vor dem transaktionalen Versand. */
+export async function createPublicPilotInquiry(input: {
+  clubName: string;
+  contactName: string;
+  email: string;
+  phone: string;
+  occasion: string;
+  desiredStart: string;
+  note?: string;
+  privacyAcceptedAt?: Date;
+}) {
+  const database = await getDb();
+  if (!database) return null;
+  const privacyAcceptedAt = input.privacyAcceptedAt ?? new Date();
+  const result = await database.insert(pilotInquiries).values({
+    clubName: input.clubName,
+    contactName: input.contactName,
+    email: input.email,
+    phone: input.phone,
+    occasion: input.occasion,
+    desiredStart: input.desiredStart,
+    note: input.note?.trim() || null,
+    privacyAcceptedAt,
+  });
+  const insertId =
+    (result as unknown as { insertId?: number }).insertId ??
+    (Array.isArray(result)
+      ? (result[0] as { insertId?: number } | undefined)?.insertId
+      : undefined);
+  return {
+    id: Number(insertId),
+    privacyAcceptedAt,
+  };
+}
+
+/** Entfernt einen unvollständigen öffentlichen Vorgang, falls dessen Erstversand fehlschlägt. */
+export async function deletePublicPilotInquiryAfterFailedDelivery(id: number) {
+  const database = await getDb();
+  if (!database || !Number.isInteger(id) || id < 1) return false;
+  const result = await database
+    .delete(pilotInquiries)
+    .where(and(eq(pilotInquiries.id, id), eq(pilotInquiries.status, "open")));
+  return affectedRows(result) === 1;
+}
+
+/** Geschützte Übersicht für die persönliche Bearbeitung eingegangener Pilotanfragen. */
+export async function listPilotInquiriesForPlatformAdmin() {
+  const database = await getDb();
+  if (!database) return [];
+  return database
+    .select({
+      id: pilotInquiries.id,
+      clubName: pilotInquiries.clubName,
+      contactName: pilotInquiries.contactName,
+      email: pilotInquiries.email,
+      phone: pilotInquiries.phone,
+      occasion: pilotInquiries.occasion,
+      desiredStart: pilotInquiries.desiredStart,
+      note: pilotInquiries.note,
+      status: pilotInquiries.status,
+      privacyAcceptedAt: pilotInquiries.privacyAcceptedAt,
+      closedAt: pilotInquiries.closedAt,
+      retentionEndsAt: pilotInquiries.retentionEndsAt,
+      createdAt: pilotInquiries.createdAt,
+    })
+    .from(pilotInquiries)
+    .orderBy(asc(pilotInquiries.status), desc(pilotInquiries.createdAt));
+}
+
+/**
+ * Mit der dokumentierten Entscheidung beginnt die dreijährige Aufbewahrung
+ * einer Pilotanfrage. Offene Vorgänge werden nie versehentlich zeitgesteuert gelöscht.
+ */
+export async function completePilotInquiryForPlatformAdmin(input: {
+  id: number;
+  status: PilotInquiryLifecycleStatus;
+  now?: Date;
+}) {
+  const database = (await getDb()) as DB;
+  const closedAt = input.now ?? new Date();
+  const retentionEndsAt = addCalendarYears(closedAt, 3);
+  const result = await database
+    .update(pilotInquiries)
+    .set({ status: input.status, closedAt, retentionEndsAt })
+    .where(and(eq(pilotInquiries.id, input.id), eq(pilotInquiries.status, "open")));
+  if (affectedRows(result) !== 1) {
+    throw new Error("Die Pilotanfrage wurde nicht gefunden oder bereits abgeschlossen");
+  }
+  return { id: input.id, status: input.status, closedAt, retentionEndsAt } as const;
+}
+
+/** Bearbeitet einen bestätigten Löschwunsch für eine noch vorhandene Pilotanfrage. */
+export async function deletePilotInquiryForPlatformAdmin(id: number) {
+  const database = (await getDb()) as DB;
+  const result = await database.delete(pilotInquiries).where(eq(pilotInquiries.id, id));
+  if (affectedRows(result) !== 1) throw new Error("Die Pilotanfrage wurde nicht gefunden");
+  return { id } as const;
+}
+
+/** Löscht nur bereits abgeschlossene Pilotanfragen nach Ablauf der vereinbarten Dreijahresfrist. */
+export async function cleanupExpiredPilotInquiries(now = new Date()) {
+  const database = await getDb();
+  if (!database) return { inquiriesDeleted: 0 };
+  const result = await database
+    .delete(pilotInquiries)
+    .where(and(isNotNull(pilotInquiries.retentionEndsAt), lt(pilotInquiries.retentionEndsAt, now)));
+  return { inquiriesDeleted: affectedRows(result) };
+}
+
+/**
+ * Findet abgelaufene Pilotzugänge, archiviert sie atomar und erzeugt genau
+ * einen versandretry-fähigen Abschlussnachweis. Der eigentliche Mailversand
+ * erfolgt danach außerhalb der Transaktion.
+ */
+export async function archiveExpiredPilotTenants(now = new Date()) {
+  const database = await getDb();
+  if (!database) return [];
+  const today = calendarDate(now);
+  const candidates = await database
+    .select({ tenantId: tenants.id })
+    .from(tenants)
+    .innerJoin(tenantProductAssignments, eq(tenantProductAssignments.tenantId, tenants.id))
+    .where(
+      and(
+        eq(tenants.status, "pilot"),
+        inArray(tenantProductAssignments.status, ["test", "active"]),
+        isNotNull(tenantProductAssignments.endsOn),
+        lt(tenantProductAssignments.endsOn, today)
+      )
+    );
+
+  const archived: Array<{
+    tenantId: string;
+    tenantName: string;
+    contactEmail: string;
+    packageId: ProductPackageId;
+    endsOn: string;
+    archivedAt: Date;
+    retentionEndsAt: Date;
+  }> = [];
+  for (const candidate of candidates) {
+    const outcome = await database.transaction(async tx => {
+      const [target] = await tx
+        .select({
+          id: tenants.id,
+          name: tenants.name,
+          contactEmail: tenants.contactEmail,
+          status: tenants.status,
+        })
+        .from(tenants)
+        .where(and(eq(tenants.id, candidate.tenantId), eq(tenants.status, "pilot")))
+        .limit(1)
+        .for("update");
+      if (!target) return null;
+
+      const [assignment] = await tx
+        .select({
+          packageId: tenantProductAssignments.packageId,
+          endsOn: tenantProductAssignments.endsOn,
+          status: tenantProductAssignments.status,
+        })
+        .from(tenantProductAssignments)
+        .where(
+          and(
+            eq(tenantProductAssignments.tenantId, target.id),
+            inArray(tenantProductAssignments.status, ["test", "active"]),
+            isNotNull(tenantProductAssignments.endsOn),
+            lt(tenantProductAssignments.endsOn, today)
+          )
+        )
+        .limit(1)
+        .for("update");
+      if (!assignment?.endsOn) return null;
+
+      const archivedAt = now;
+      const retentionEndsAt = addCalendarYears(archivedAt, 3);
+      await tx
+        .update(tenants)
+        .set({
+          status: "archived",
+          archivedAt,
+          retentionEndsAt,
+          archiveReason: "pilot_expired",
+        })
+        .where(eq(tenants.id, target.id));
+      await tx
+        .insert(tenantPilotEndNotifications)
+        .values({ tenantId: target.id, archivedAt })
+        .onDuplicateKeyUpdate({ set: { archivedAt } });
+      await revokeArchivedTenantAccesses(tx, target.id);
+
+      return {
+        tenantId: target.id,
+        tenantName: target.name,
+        contactEmail: target.contactEmail,
+        packageId: assignment.packageId as ProductPackageId,
+        endsOn: assignment.endsOn,
+        archivedAt,
+        retentionEndsAt,
+      };
+    });
+    if (outcome) archived.push(outcome);
+  }
+  return archived;
+}
+
+/** Liefert ausschließlich nicht bestätigte Abschlussmails automatisch beendeter Piloten. */
+export async function listPendingPilotEndNotifications(): Promise<
+  PilotEndNotificationCandidate[]
+> {
+  const database = await getDb();
+  if (!database) return [];
+  const rows = await database
+    .select({
+      notificationId: tenantPilotEndNotifications.id,
+      tenantId: tenants.id,
+      tenantName: tenants.name,
+      contactEmail: tenants.contactEmail,
+      packageId: tenantProductAssignments.packageId,
+      endsOn: tenantProductAssignments.endsOn,
+      archivedAt: tenantPilotEndNotifications.archivedAt,
+      retentionEndsAt: tenants.retentionEndsAt,
+    })
+    .from(tenantPilotEndNotifications)
+    .innerJoin(tenants, eq(tenants.id, tenantPilotEndNotifications.tenantId))
+    .innerJoin(tenantProductAssignments, eq(tenantProductAssignments.tenantId, tenants.id))
+    .where(
+      and(
+        eq(tenants.status, "archived"),
+        eq(tenants.archiveReason, "pilot_expired"),
+        eq(tenantPilotEndNotifications.archivedAt, tenants.archivedAt),
+        isNull(tenantPilotEndNotifications.sentAt),
+        isNotNull(tenantProductAssignments.endsOn),
+        isNotNull(tenants.retentionEndsAt)
+      )
+    )
+    .orderBy(asc(tenantPilotEndNotifications.archivedAt));
+  return rows.flatMap(row =>
+    row.endsOn && row.retentionEndsAt
+      ? [
+          {
+            notificationId: row.notificationId,
+            tenantId: row.tenantId,
+            tenantName: row.tenantName,
+            contactEmail: row.contactEmail,
+            packageId: row.packageId as ProductPackageId,
+            endsOn: row.endsOn,
+            archivedAt: row.archivedAt,
+            retentionEndsAt: row.retentionEndsAt,
+          },
+        ]
+      : []
+  );
+}
+
+/** Reserviert eine Abschlussmail für maximal 15 Minuten gegen parallele Tagesläufe. */
+export async function claimPilotEndNotification(input: {
+  notificationId: number;
+  now?: Date;
+}) {
+  const database = await getDb();
+  if (!database) return false;
+  const now = input.now ?? new Date();
+  const result = await database
+    .update(tenantPilotEndNotifications)
+    .set({ lastAttemptedAt: now, leaseUntil: new Date(now.getTime() + 15 * 60 * 1000) })
+    .where(
+      and(
+        eq(tenantPilotEndNotifications.id, input.notificationId),
+        isNull(tenantPilotEndNotifications.sentAt),
+        or(
+          isNull(tenantPilotEndNotifications.leaseUntil),
+          lt(tenantPilotEndNotifications.leaseUntil, now)
+        )
+      )
+    );
+  return affectedRows(result) === 1;
+}
+
+export async function markPilotEndNotificationSent(input: {
+  notificationId: number;
+  sentAt?: Date;
+}) {
+  const database = await getDb();
+  if (!database) return false;
+  const result = await database
+    .update(tenantPilotEndNotifications)
+    .set({ sentAt: input.sentAt ?? new Date(), leaseUntil: null })
+    .where(
+      and(
+        eq(tenantPilotEndNotifications.id, input.notificationId),
+        isNull(tenantPilotEndNotifications.sentAt)
+      )
+    );
+  return affectedRows(result) === 1;
+}
+
+export async function releasePilotEndNotificationClaim(notificationId: number) {
+  const database = await getDb();
+  if (!database) return;
+  await database
+    .update(tenantPilotEndNotifications)
+    .set({ leaseUntil: null })
+    .where(
+      and(
+        eq(tenantPilotEndNotifications.id, notificationId),
+        isNull(tenantPilotEndNotifications.sentAt)
+      )
+    );
+}
+
+/**
+ * Entfernt nach Ablauf der Pilotaufbewahrung den gesamten archivierten Mandanten
+ * einschließlich Planungsdaten und zugehöriger Uploads. Reaktivierung ist bis
+ * exakt zu diesem Zeitpunkt möglich; danach werden keinerlei Restdaten behalten.
+ */
+export async function cleanupExpiredArchivedPilotTenants(now = new Date()) {
+  const database = await getDb();
+  if (!database) return { tenantsDeleted: 0, filesDeleted: 0 };
+  const candidates = await database
+    .select({ id: tenants.id, logoKey: tenants.logoKey })
+    .from(tenants)
+    .where(
+      and(
+        eq(tenants.status, "archived"),
+        isNotNull(tenants.retentionEndsAt),
+        lt(tenants.retentionEndsAt, now)
+      )
+    );
+
+  let tenantsDeleted = 0;
+  let filesDeleted = 0;
+  for (const candidate of candidates) {
+    const [eventRows, locationAssets, gpxAssets] = await Promise.all([
+      database
+        .select({ id: events.id, pdfLogoKey: events.pdfLogoKey })
+        .from(events)
+        .where(eq(events.tenantId, candidate.id)),
+      database
+        .select({ key: locations.logoKey })
+        .from(locations)
+        .innerJoin(events, eq(events.id, locations.eventId))
+        .where(eq(events.tenantId, candidate.id)),
+      database
+        .select({ key: gpxTracks.fileKey })
+        .from(gpxTracks)
+        .innerJoin(events, eq(events.id, gpxTracks.eventId))
+        .where(eq(events.tenantId, candidate.id)),
+    ]);
+    const fileKeys = [
+      candidate.logoKey,
+      ...eventRows.map(event => event.pdfLogoKey),
+      ...locationAssets.map(asset => asset.key),
+      ...gpxAssets.map(asset => asset.key),
+    ].filter((key): key is string => Boolean(key));
+
+    const removed = await database.transaction(async tx => {
+      const [target] = await tx
+        .select({ id: tenants.id })
+        .from(tenants)
+        .where(
+          and(
+            eq(tenants.id, candidate.id),
+            eq(tenants.status, "archived"),
+            isNotNull(tenants.retentionEndsAt),
+            lt(tenants.retentionEndsAt, now)
+          )
+        )
+        .limit(1)
+        .for("update");
+      if (!target) return false;
+
+      const contractUsers = await tx
+        .selectDistinct({ userId: tenantContractAcceptances.acceptedByUserId })
+        .from(tenantContractAcceptances)
+        .where(eq(tenantContractAcceptances.tenantId, target.id))
+        .for("update");
+      await tx.delete(events).where(eq(events.tenantId, target.id));
+      await tx.delete(tenants).where(eq(tenants.id, target.id));
+      for (const { userId } of contractUsers) {
+        const [remainingMembership] = await tx
+          .select({ id: userTenantMemberships.id })
+          .from(userTenantMemberships)
+          .where(eq(userTenantMemberships.userId, userId))
+          .limit(1)
+          .for("update");
+        if (!remainingMembership) {
+          await tx.delete(tenantAdminCredentials).where(eq(tenantAdminCredentials.userId, userId));
+          await tx.delete(users).where(eq(users.id, userId));
+        }
+      }
+      return true;
+    });
+    if (!removed) continue;
+    tenantsDeleted += 1;
+    const deletionResults = await Promise.allSettled(fileKeys.map(key => storageDelete(key)));
+    filesDeleted += deletionResults.filter(
+      result => result.status === "fulfilled" && result.value
+    ).length;
+  }
+  return { tenantsDeleted, filesDeleted };
 }
 
 export async function currentProductAllowsCapability(capability: ProductCapability) {
@@ -1534,6 +1956,9 @@ export async function listTenantOverviewsForPlatformAdmin() {
       contactEmail: tenantRow.contactEmail,
       supportEmail: tenantRow.supportEmail,
       createdAt: tenantRow.createdAt,
+      archivedAt: tenantRow.archivedAt,
+      retentionEndsAt: tenantRow.retentionEndsAt,
+      archiveReason: tenantRow.archiveReason,
       productAssignment: assignment ?? {
         // Rückfall für Datenstände vor der Migration: bestehende Vereine
         // behalten sicher ihren bisherigen vollständigen Umfang als Pro-Testzugang.
@@ -2328,10 +2753,36 @@ export async function updateTenantLifecycleForPlatformAdmin(input: {
       .for("update");
     if (!target) throw new Error("Der Verein wurde nicht gefunden");
 
+    const now = new Date();
+    const isPilotArchive = input.status === "archived" && target.status === "pilot";
     await tx
       .update(tenants)
-      .set({ status: input.status })
+      .set(
+        input.status === "archived"
+          ? {
+              status: input.status,
+              archivedAt: now,
+              retentionEndsAt: isPilotArchive ? addCalendarYears(now, 3) : null,
+              archiveReason: "manual",
+            }
+          : {
+              status: input.status,
+              archivedAt: null,
+              retentionEndsAt: null,
+              archiveReason: null,
+            }
+      )
       .where(eq(tenants.id, input.tenantId));
+
+    // Eine Reaktivierung muss auch den abgelaufenen Testzeitraum wieder
+    // nutzbar machen. Persönliche Zugänge werden weiterhin bewusst separat
+    // und nachvollziehbar neu vergeben.
+    if (input.status === "pilot" && target.status === "archived") {
+      await tx
+        .update(tenantProductAssignments)
+        .set({ status: "test", endsOn: null })
+        .where(eq(tenantProductAssignments.tenantId, input.tenantId));
+    }
     if (input.status === "archived") {
       await revokeArchivedTenantAccesses(tx, input.tenantId);
     }

@@ -1,6 +1,6 @@
 # MyCrewMate – Lösch- und Aufbewahrungskonzept
 
-> **Version 1.1 · Stand 02.10.2026 · Geltung: geschlossener Pilotbetrieb.**
+> **Version 1.2 · Stand 09.10.2026 · Geltung: Pilotbetrieb mit öffentlicher Pilotanfrage.**
 >
 > Dieses Dokument beschreibt die beschlossene Regel für die Aufbewahrung von MyCrewMate-Daten. Die Regel ist organisatorisch verbindlich, ersetzt aber keine Steuer- oder Rechtsberatung. Ein plattformverwalteter, stündlicher Bereinigungsjob führt die beschriebenen technischen Löschungen idempotent aus. Der dokumentierte Restore-Test bleibt vor breitem Kundenbetrieb offen.
 
@@ -17,6 +17,8 @@
 | Datenklasse                                                                  |                             Regel-Frist | Startpunkt                    | Ausnahme / Vorrang                                                    | Löschweg                                                  | Umsetzung im Pilot                                                |
 | ---------------------------------------------------------------------------- | --------------------------------------: | ----------------------------- | --------------------------------------------------------------------- | --------------------------------------------------------- | ----------------------------------------------------------------- |
 | Aktive Planungsdaten                                                         |             bis Veranstaltungsabschluss | Ende der Nutzung              | laufende Planung oder dokumentierter Zweck                            | fachliche Löschung durch Verein                           | in App verfügbar                                                  |
+| Öffentliche Pilotanfrage                                                     |           bis zur dokumentierten Entscheidung | Anfrageabschluss (`closedAt`) | dokumentierter Löschwunsch; gesetzliche Ausnahme                      | sofortiger Löschbefehl oder automatische DB-Bereinigung   | **Master-Portal + täglicher Pilot-Lifecycle**                     |
+| Archivierter Pilotverein samt Planungs- und Zugangsdaten                     |                                 3 Jahre | Ende der Pilotlaufzeit / Archivierung | vorzeitiger Löschwunsch; dokumentierte gesetzliche Ausnahme | vollständige Mandanten- und Assetlöschung                 | **täglicher Pilot-Lifecycle; bis Fristende reaktivierbar**        |
 | Geschlossene Event-, Helfer-, Ansprechpartner-, Schicht- und Aufgabenplanung |                                 3 Jahre | `closedAt` des Events         | frühere Vereinsweisung; Legal Hold; nachgewiesene gesetzliche Pflicht | vollständige Löschung des Events samt abhängigen Daten    | **stündliche technische Automatisierung**                         |
 | Standort-, GPX- und zugehörige Uploaddaten                                   |                                 3 Jahre | `closedAt` des Events         | frühere Vereinsweisung; zwingender Nachweiszweck                      | Datenbankreferenz und physische Datei gemeinsam entfernen | **stündliche Eventbereinigung inklusive physischer Löschung**     |
 | Freiwillige Spenden- und Übergabeinformationen                               |                                 3 Jahre | `closedAt` des Events         | steuer- oder vertragsrelevante Ausnahme                               | fachliche Löschung mit Event                              | **stündliche technische Automatisierung**                         |
@@ -30,6 +32,8 @@
 | Buchungsbelege und Rechnungen                                                |        grundsätzlich mindestens 8 Jahre | Schluss des Kalenderjahres    | abweichende Spezialpflichten                                          | getrennt und fristgerecht löschen                         | durch Verein / Buchhaltung festlegen                              |
 | Bücher, Inventare, Jahresabschlüsse und bestimmte Organisationsunterlagen    |       grundsätzlich mindestens 10 Jahre | Schluss des Kalenderjahres    | abweichende Spezialpflichten                                          | getrennt und fristgerecht löschen                         | durch Verein / Buchhaltung festlegen                              |
 | Handels- und Geschäftsbriefe                                                 |                      regelmäßig 6 Jahre | Schluss des Kalenderjahres    | abweichende Spezialpflichten                                          | getrennt und fristgerecht löschen                         | durch Verein / Buchhaltung festlegen                              |
+
+> **E-Mail-Korrespondenz:** Die Datenbankbereinigung löscht die strukturierte Pilotanfrage und die zugehörigen Planungsdaten automatisch. Empfangene und versendete E-Mails liegen zusätzlich im Hetzner-Mailpostfach. Sie sind nach derselben dokumentierten Dreijahresfrist organisatorisch zu löschen, soweit keine gesetzliche Aufbewahrungspflicht entgegensteht. Das Mailpostfach ist kein Ersatz für das Löschregister.
 
 > Die gesetzlichen Fristen sind nur als operative Orientierung aufgeführt. Welche konkreten Daten eines Vereins tatsächlich aufbewahrungspflichtig sind, entscheidet der Verein mit seiner Buchhaltung oder Steuerberatung.
 
@@ -81,3 +85,4 @@ Ein Backup darf nicht dazu führen, dass bereits zu löschende Planungsdaten unb
 | R11   | Tägliche DB- und Upload-Backups samt dokumentiertem Restore-Test nachweisen                | hoch      |
 | B3    | Physische Datei-Löschung und Orphan-Bereinigung nachweisen                                 | umgesetzt (storageDelete für Event-PDF-Bilder, Standorte & GPX) |
 | B4    | Jährlichen Lösch- und Restore-Test dokumentieren                                           | mittel    |
+| P1    | Pilotanfrage- und Pilotende-Mails im Hetzner-Mailpostfach nach Frist organisatorisch bereinigen | hoch      |

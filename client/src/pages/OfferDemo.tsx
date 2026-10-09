@@ -596,10 +596,10 @@ export default function OfferDemo() {
       </a>
       <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-sm font-semibold text-amber-950">
         <a
-          href="/pilot"
+          href="/pilot#pilot-anfrage"
           className="inline-flex items-center gap-1.5 rounded-md underline-offset-2 hover:text-orange-800 hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-200"
         >
-          Pilotprogramm bis 31.12.2026 · Kostenlos am eigenen Event testen
+          Pilotanfragen bis 31.12.2026 · Kostenlos am eigenen Event testen
           <ArrowRight className="size-4" aria-hidden="true" />
         </a>
       </div>
@@ -662,7 +662,7 @@ export default function OfferDemo() {
                 Zum Login
               </Button>
             </a>
-            <a href="/pilot" className="hidden sm:block">
+            <a href="/pilot#pilot-anfrage" className="hidden sm:block">
               <Button
                 type="button"
                 className="rounded-xl bg-orange-500 px-4 text-white hover:bg-orange-600"
@@ -697,7 +697,7 @@ export default function OfferDemo() {
               vom ersten Helfer bis zum letzten Abbau.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <a href="/pilot">
+              <a href="/pilot#pilot-anfrage">
                 <Button
                   type="button"
                   size="lg"

@@ -2146,12 +2146,25 @@ export const appRouter = router({
           clubName: input.club,
         });
 
+        const storedInquiry = await db.createPublicPilotInquiry({
+          clubName: input.club,
+          contactName: input.contact,
+          email: input.email,
+          phone: input.phone,
+          occasion: input.occasion,
+          desiredStart: input.start,
+          note: input.note,
+        });
+
         try {
           const notificationDelivery = await sendTransactionalEmail({
             to: PILOT_INQUIRY_RECIPIENT,
             ...notification,
           });
           if (!notificationDelivery.success) {
+            if (storedInquiry?.id) {
+              await db.deletePublicPilotInquiryAfterFailedDelivery(storedInquiry.id);
+            }
             throw new Error("Die Pilot-Anfrage wurde vom SMTP-Server nicht angenommen.");
           }
 
@@ -2168,6 +2181,9 @@ export const appRouter = router({
             "[PilotInquiry] Versand fehlgeschlagen:",
             error instanceof Error ? error.message : "unbekannter Fehler"
           );
+          if (storedInquiry?.id) {
+            await db.deletePublicPilotInquiryAfterFailedDelivery(storedInquiry.id);
+          }
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
             message:
@@ -4330,6 +4346,38 @@ export const appRouter = router({
     accessInventory: masterAdminProcedure.query(() =>
       db.listPlatformAccessInventoryForPlatformAdmin()
     ),
+    pilotInquiries: masterAdminProcedure.query(() =>
+      db.listPilotInquiriesForPlatformAdmin()
+    ),
+    completePilotInquiry: masterAdminProcedure
+      .input(
+        z.object({
+          id: z.number().int().positive(),
+          status: z.enum(["accepted", "declined"]),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const completed = await db.completePilotInquiryForPlatformAdmin(input);
+        await recordSecurityActivity(
+          auditActor(ctx.user),
+          `Pilotanfrage #${completed.id} dokumentiert abgeschlossen (${completed.status})`,
+          "updated",
+          null
+        );
+        return completed;
+      }),
+    deletePilotInquiry: masterAdminProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(async ({ ctx, input }) => {
+        const deleted = await db.deletePilotInquiryForPlatformAdmin(input.id);
+        await recordSecurityActivity(
+          auditActor(ctx.user),
+          `Pilotanfrage #${deleted.id} auf dokumentierten Löschwunsch entfernt`,
+          "deleted",
+          null
+        );
+        return deleted;
+      }),
     deleteTestAccess: masterAdminProcedure
       .input(
         z.object({

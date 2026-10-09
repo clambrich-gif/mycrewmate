@@ -228,11 +228,22 @@ export const tenants = mysqlTable(
     supportEmail: varchar("supportEmail", { length: 320 }).notNull(),
     logoKey: varchar("logoKey", { length: 500 }),
     logoUrl: varchar("logoUrl", { length: 700 }),
+    /** Zeitpunkt der Archivierung; bei einem regulären Pilotende als Start der Reaktivierungsfrist. */
+    archivedAt: timestamp("archivedAt"),
+    /** Nach diesem Zeitpunkt wird ein beendeter Pilotverein technisch vollständig bereinigt. */
+    retentionEndsAt: timestamp("retentionEndsAt"),
+    /** Trennt automatische Pilotenden von bewusst manuellen Archivierungen. */
+    archiveReason: mysqlEnum("archiveReason", ["pilot_expired", "manual"]),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
   table => [
     index("tenants_status_idx").on(table.status),
+    index("tenants_pilot_retention_idx").on(
+      table.status,
+      table.archiveReason,
+      table.retentionEndsAt
+    ),
     uniqueIndex("tenants_name_unique").on(table.name),
   ]
 );
@@ -677,6 +688,75 @@ export const tenantProductExpiryNotifications = mysqlTable(
 );
 export type TenantProductExpiryNotification =
   typeof tenantProductExpiryNotifications.$inferSelect;
+
+/**
+ * Versandnachweis für die Abschlussmail eines automatisch beendeten Pilotzugangs.
+ * Die Lease verhindert Doppelversand bei parallelen oder wiederholten Heartbeats.
+ */
+export const tenantPilotEndNotifications = mysqlTable(
+  "tenant_pilot_end_notifications",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    tenantId: varchar("tenantId", { length: 96 }).notNull(),
+    archivedAt: timestamp("archivedAt").notNull(),
+    leaseUntil: timestamp("leaseUntil"),
+    lastAttemptedAt: timestamp("lastAttemptedAt"),
+    sentAt: timestamp("sentAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    foreignKey({
+      name: "tenant_pilot_end_notifications_tenant_id_tenants_id_fk",
+      columns: [table.tenantId],
+      foreignColumns: [tenants.id],
+    }).onDelete("cascade"),
+    uniqueIndex("tenant_pilot_end_notifications_tenant_archive_unique").on(
+      table.tenantId,
+      table.archivedAt
+    ),
+    index("tenant_pilot_end_notifications_delivery_idx").on(
+      table.sentAt,
+      table.leaseUntil
+    ),
+  ]
+);
+export type TenantPilotEndNotification =
+  typeof tenantPilotEndNotifications.$inferSelect;
+
+/**
+ * Öffentliche Pilotanfragen bleiben bis zur Entscheidung aktiv. Erst mit dem
+ * dokumentierten Abschluss startet die vereinbarte dreijährige Regelfrist.
+ */
+export const pilotInquiries = mysqlTable(
+  "pilot_inquiries",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    clubName: varchar("clubName", { length: 160 }).notNull(),
+    contactName: varchar("contactName", { length: 120 }).notNull(),
+    email: varchar("email", { length: 320 }).notNull(),
+    phone: varchar("phone", { length: 60 }).notNull(),
+    occasion: varchar("occasion", { length: 120 }).notNull(),
+    desiredStart: varchar("desiredStart", { length: 7 }).notNull(),
+    note: text("note"),
+    status: mysqlEnum("status", ["open", "accepted", "declined"])
+      .default("open")
+      .notNull(),
+    privacyAcceptedAt: timestamp("privacyAcceptedAt").notNull(),
+    closedAt: timestamp("closedAt"),
+    retentionEndsAt: timestamp("retentionEndsAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    index("pilot_inquiries_status_created_idx").on(table.status, table.createdAt),
+    index("pilot_inquiries_retention_cleanup_idx").on(
+      table.retentionEndsAt,
+      table.closedAt
+    ),
+  ]
+);
+export type PilotInquiry = typeof pilotInquiries.$inferSelect;
 
 export const contacts = mysqlTable(
   "contacts",

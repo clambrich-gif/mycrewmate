@@ -381,6 +381,53 @@ Ihr MyCrewMate-Team`;
   return { subject, text, html };
 }
 
+/** Abschlussinformation für einen automatisch beendeten, unverbindlichen Pilotzugang. */
+export function renderPilotEndEmail(params: {
+  tenantName: string;
+  packageName: string;
+  endsOn: string;
+  retentionEndsAt: Date;
+}): { subject: string; text: string; html: string } {
+  const formatDate = (value: Date | string) =>
+    new Intl.DateTimeFormat("de-DE", {
+      timeZone: "Europe/Berlin",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }).format(typeof value === "string" ? new Date(`${value}T12:00:00Z`) : value);
+  const endDate = formatDate(params.endsOn);
+  const retentionEnd = formatDate(params.retentionEndsAt);
+  const subject = `Pilotlaufzeit beendet · ${params.tenantName} · MyCrewMate`;
+  const text = `Hallo,
+
+die vereinbarte Pilotlaufzeit für ${params.tenantName} (${params.packageName}) ist am ${endDate} beendet worden. Der Zugang wurde daher archiviert. Es entsteht keine automatische Verlängerung und keine Berechnung.
+
+Ihre Planungsdaten bleiben bis zum ${retentionEnd} gesichert und können in diesem Zeitraum auf Wunsch reaktiviert werden. Für eine Reaktivierung oder eine weitere Nutzung melden Sie sich bitte bei uns.
+
+Wenn Ihr Verein die vollständige Löschung der Planungsdaten vor diesem Termin wünscht, antworten Sie bitte auf diese E-Mail oder schreiben Sie an info@mycrewmate.de. Nach dem ${retentionEnd} werden die archivierten Pilotdaten automatisch gelöscht.
+
+Viele Grüße
+Ihr MyCrewMate-Team`;
+  const html = `<!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8"><title>${escapeEmailHtml(subject)}</title></head>
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#1e293b;background:#f8fafc;margin:0;padding:24px;">
+  <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:32px;box-shadow:0 1px 3px rgba(15,23,42,.08);">
+    <h1 style="font-size:20px;color:#0f172a;margin:0 0 6px;">Ihre Pilotlaufzeit ist beendet.</h1>
+    <p style="font-size:13px;color:#64748b;margin:0 0 24px;">MyCrewMate · Vereins- &amp; Eventplanung</p>
+    <p>Hallo,</p>
+    <p>die vereinbarte Pilotlaufzeit für <strong>${escapeEmailHtml(params.tenantName)}</strong> (${escapeEmailHtml(params.packageName)}) ist am <strong>${endDate}</strong> beendet worden. Der Zugang wurde archiviert.</p>
+    <div style="margin:24px 0;padding:16px 18px;border-radius:10px;background:#f1f5f9;border:1px solid #cbd5e1;color:#334155;">
+      <strong>Keine automatische Verlängerung</strong><br>Es entsteht keine automatische Verlängerung und keine Berechnung.
+    </div>
+    <p>Ihre Planungsdaten bleiben bis zum <strong>${retentionEnd}</strong> gesichert und können in diesem Zeitraum auf Wunsch reaktiviert werden. Für eine Reaktivierung oder eine weitere Nutzung melden Sie sich bitte bei uns.</p>
+    <p>Wenn Ihr Verein die vollständige Löschung der Planungsdaten vor diesem Termin wünscht, antworten Sie bitte auf diese E-Mail oder schreiben Sie an <a href="mailto:info@mycrewmate.de" style="color:#2563eb;">info@mycrewmate.de</a>. Nach dem ${retentionEnd} werden die archivierten Pilotdaten automatisch gelöscht.</p>
+    <hr style="border:0;border-top:1px solid #e2e8f0;margin:24px 0;">
+    <p style="font-size:12px;color:#64748b;margin:0;">MyCrewMate · Vereins- &amp; Eventplanung</p>
+  </div>
+</body></html>`;
+  return { subject, text, html };
+}
+
 /** Verständliche Information an alle hinterlegten Vereinsadministratoren. */
 export function renderTenantAccessStatusEmail(params: {
   recipientName: string;

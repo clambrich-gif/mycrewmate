@@ -3,11 +3,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const authMocks = vi.hoisted(() => ({ authenticateRequest: vi.fn() }));
 const mailMocks = vi.hoisted(() => ({
   sendTransactionalEmail: vi.fn(),
+  renderPilotEndEmail: vi.fn(),
   renderProductExpiryReminderEmail: vi.fn(),
 }));
 const dbMocks = vi.hoisted(() => ({
+  archiveExpiredPilotTenants: vi.fn(),
+  claimPilotEndNotification: vi.fn(),
+  cleanupExpiredArchivedPilotTenants: vi.fn(),
+  cleanupExpiredPilotInquiries: vi.fn(),
   listTenantProductExpiryReminderCandidates: vi.fn(),
+  listPendingPilotEndNotifications: vi.fn(),
+  markPilotEndNotificationSent: vi.fn(),
   claimTenantProductExpiryReminder: vi.fn(),
+  releasePilotEndNotificationClaim: vi.fn(),
   markTenantProductExpiryReminderSent: vi.fn(),
   releaseTenantProductExpiryReminderClaim: vi.fn(),
 }));
@@ -18,6 +26,7 @@ vi.mock("./db", () => dbMocks);
 
 import {
   handleProductExpiryReminderHeartbeat,
+  runPilotLifecycle,
   sendUpcomingProductExpiryReminders,
 } from "./product-expiry-heartbeat";
 
@@ -33,6 +42,10 @@ function response() {
 describe("Automatische Paketablauf-Benachrichtigung (7-Tage-Fenster)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    dbMocks.archiveExpiredPilotTenants.mockResolvedValue([]);
+    dbMocks.listPendingPilotEndNotifications.mockResolvedValue([]);
+    dbMocks.cleanupExpiredPilotInquiries.mockResolvedValue({ inquiriesDeleted: 0 });
+    dbMocks.cleanupExpiredArchivedPilotTenants.mockResolvedValue({ tenantsDeleted: 0, filesDeleted: 0 });
   });
 
   it("sendet Erinnerungen für fällige Test- und Aktivzugänge und markiert sie atomar als versendet", async () => {
@@ -139,6 +152,44 @@ describe("Automatische Paketablauf-Benachrichtigung (7-Tage-Fenster)", () => {
       failed: 0,
     });
     expect(mailMocks.sendTransactionalEmail).not.toHaveBeenCalled();
+  });
+
+  it("archiviert einen abgelaufenen Piloten, bestätigt die Aufbewahrungsfrist per E-Mail und bereinigt fällige Daten", async () => {
+    dbMocks.archiveExpiredPilotTenants.mockResolvedValue([{ tenantId: "rsc-mayen" }]);
+    dbMocks.listPendingPilotEndNotifications.mockResolvedValue([
+      {
+        notificationId: 7,
+        tenantId: "rsc-mayen",
+        tenantName: "RSC Eifelland Mayen e. V.",
+        contactEmail: "vorstand@rsc-mayen.de",
+        packageId: "pro",
+        endsOn: "2026-10-01",
+        archivedAt: new Date("2026-10-02T08:00:00Z"),
+        retentionEndsAt: new Date("2029-10-02T08:00:00Z"),
+      },
+    ]);
+    dbMocks.claimPilotEndNotification.mockResolvedValue(true);
+    dbMocks.cleanupExpiredPilotInquiries.mockResolvedValue({ inquiriesDeleted: 2 });
+    dbMocks.cleanupExpiredArchivedPilotTenants.mockResolvedValue({ tenantsDeleted: 1, filesDeleted: 3 });
+    mailMocks.renderPilotEndEmail.mockReturnValue({ subject: "Ende", text: "Text", html: "<p>Ende</p>" });
+    mailMocks.sendTransactionalEmail.mockResolvedValue({ success: true, simulated: false });
+
+    const result = await runPilotLifecycle(new Date("2026-10-02T08:00:00Z"));
+
+    expect(result).toEqual({
+      archived: 1,
+      endNoticeCandidates: 1,
+      endNoticeClaimed: 1,
+      endNoticesSent: 1,
+      endNoticesSkipped: 0,
+      failed: 0,
+      inquiriesDeleted: 2,
+      tenantsDeleted: 1,
+      filesDeleted: 3,
+    });
+    expect(dbMocks.markPilotEndNotificationSent).toHaveBeenCalledWith(
+      expect.objectContaining({ notificationId: 7 })
+    );
   });
 
   it("blockiert nicht-autorisierte Webaufrufe und akzeptiert nur Cron-Aufrufe", async () => {

@@ -65,6 +65,8 @@ Nicht erforderlich sind `VITE_APP_ID`, `OAUTH_SERVER_URL`, `VITE_OAUTH_PORTAL_UR
 
 > Für das öffentliche Pilotformular müssen mindestens `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER` und `SMTP_PASS` gesetzt sein. Nach jeder erfolgreichen Pilotanfrage erhält das Pilotteam eine strukturierte Nachricht an `PILOT_INQUIRY_EMAIL`; die anfragende Person erhält eine automatische Eingangsbestätigung. Ohne SMTP-Konfiguration nimmt das Formular aus Datenschutzgründen keine Anfrage an.
 
+> Der tägliche Produktablauf archiviert endende Pilotzugänge, versendet eine Abschlussmail ohne automatische Verlängerung und hält die Daten anschließend drei Jahre zur Reaktivierung vor. Nach Fristende entfernt er Mandant und Uploads technisch. Die Kopien der transaktionalen Mails im Hetzner-Postfach sind davon getrennt: Sie werden im monatlichen Betreiberprozess nach derselben dokumentierten Frist bereinigt; SMTP allein erlaubt keine sichere Fernlöschung von Mailbox-Inhalten.
+
 ### 3. Datenbank und Migrationen
 
 Der Container führt vor dem Webstart den integrierten Migrationsrunner aus. Dadurch werden die eingecheckten Dateien unter `drizzle/` in ihrer Journal-Reihenfolge angewendet und im Standardjournal `__drizzle_migrations` vermerkt. Der Vorgang ist wiederholbar: bereits angewendete Migrationen werden übersprungen.

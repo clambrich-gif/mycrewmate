@@ -39,9 +39,21 @@
 - [x] Steuerkennzeichnung bewusst bis zur Rücksprache mit dem Steuerberater offen gelassen; die Website zeigt bis dahin ausschließlich bestätigte Endpreise ohne MwSt.-/USt.-Aussage.
 - [x] Pilot-Anfrageformular als echten, SMTP-basierten Versand an `support@mycrewmate.de` fertiggestellt: vertikale Felder, Pflicht-Telefonnummer, serverseitige Validierung, Spam-Schutz und automatische Eingangsbestätigung.
 - [x] Öffentliche MyCrewMate-Logos auf Hauptseite, Pilotseite, Vereinsdemo und Rechtstexten einheitlich mit `https://mycrewmate.de/` verlinkt.
+- [x] Pilotanfragen als geschützte Vorgänge mit Entscheidung, Löschwunsch und dreijähriger Aufbewahrungsfrist im Master-Portal dokumentiert.
+- [x] Ablaufende Pilotzugänge werden im bestehenden täglichen Produktablauf archiviert, Zugänge widerrufen und per E-Mail über Reaktivierung bis zur festen Dreijahresfrist informiert.
+- [x] Archivierte Pilotmandanten werden nach Ablauf der Frist einschließlich Planungsdaten, Zugängen und zugehörigen Uploads technisch bereinigt.
+- [x] Öffentliche Datenschutzhinweise, Löschkonzept, Betriebsmappe und Produktionshandbuch um Pilotanfragen, Hetzner-Mailpostfächer, Reaktivierung und Löschwünsche ergänzt.
+- [x] Pilotvorteil verständlich begrenzt: 50 % nur für Light (149 € → 74,50 €) und Pro (299 € → 149,50 €) im ersten kostenpflichtigen Veranstaltungsjahr; Event Pass und Enterprise sind ausgenommen.
+- [x] Primäre Werbe-CTAs auf der Hauptseite führen unmittelbar zur Pilotanfrage; „Plätze“ wurde durch die klare Antragsfrist bis 31.12.2026 ersetzt.
+- [x] Sichtprüfung bei 360 px: Pilotseite und Vereinsdemo sind ohne abgeschnittene Primär-CTAs oder sichtbaren Horizontalüberlauf nutzbar.
+
+## In Umsetzung
+
+- [ ] Geprüften Pilotaufbewahrungsstand veröffentlichen; der vorhandene Heartbeat `product-expiry-reminders` läuft täglich um 08:00 UTC und führt nach dem Deploy automatisch die neue Pilotlogik aus.
 
 ## Später prüfen
 
 - [ ] Nach Steuerberatung die rechtlich korrekte Umsatzsteuer-/Mehrwertsteuerkennzeichnung vor dem Buchungsstart ergänzen.
 - [ ] In Coolify die SMTP-Zugangsdaten und optional `PILOT_INQUIRY_EMAIL` als Secrets setzen; danach den Liveversand mit einer echten Testanfrage prüfen.
+- [ ] Hetzner-Mailpostfach monatlich nach dem dokumentierten Dreijahresprozess bereinigen; SMTP kann eingegangene oder gesendete Mailkopien nicht automatisch aus der Mailbox löschen.
 - [ ] Nach Veröffentlichung die Vereinsdemo auf der echten Marketing- und App-Domain einmal end-to-end testen.

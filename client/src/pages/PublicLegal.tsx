@@ -91,8 +91,8 @@ export function PublicImpressumPage() {
         <p className="mt-2">Christian Lambrich, Eichenweg 4, 56729 Nachtsheim</p>
       </section>
       <section className="border-t border-slate-200 pt-6">
-        <h2 className="text-base font-bold text-slate-950">Hinweis zur Musterseite</h2>
-        <p className="mt-2">Diese Produktseite zeigt eine unverbindliche Musterdemo. Die dargestellten Preise, Warenkorb- und Checkout-Schritte dienen ausschließlich der Veranschaulichung. Es entsteht kein Vertrag; es werden keine Bestellungen oder Zahlungen entgegengenommen.</p>
+        <h2 className="text-base font-bold text-slate-950">Hinweis zum Pilotprogramm</h2>
+        <p className="mt-2">Die öffentliche Seite informiert über MyCrewMate, das unverbindliche Pilotprogramm und die künftigen Paketpreise. Eine Pilotanfrage ist keine Bestellung: Es entsteht kein Vertrag, keine Zahlungspflicht und keine automatische Verlängerung. Paket, Laufzeit und ein möglicher weiterer Einsatz werden ausschließlich persönlich vereinbart.</p>
       </section>
       <section className="border-t border-slate-200 pt-6">
         <h2 className="text-base font-bold text-slate-950">Urheberrecht</h2>
@@ -111,10 +111,15 @@ export function PublicPrivacyPage() {
       </section>
       <section>
         <h2 className="text-base font-bold text-slate-950">2. Zweck und Umfang</h2>
-        <p className="mt-2">Diese öffentliche Musterseite dient ausschließlich der Produktinformation. Sie enthält keinen Newsletter, kein Kontaktformular, keine Zahlungsabwicklung und keine Analyse- oder Werbetracker. Der dargestellte Warenkorb und Checkout sind lokal simuliert; eingegebene Musterdaten werden nicht an einen Server übertragen und nicht gespeichert.</p>
+        <p className="mt-2">Die öffentliche Website dient der Produktinformation, der unverbindlichen Pilotanfrage und der fiktiven Vereinsdemo. Sie enthält keinen Newsletter, keine Zahlungsabwicklung und keine Analyse- oder Werbetracker.</p>
       </section>
       <section>
-        <h2 className="text-base font-bold text-slate-950">2.1 Vereinsdemo mit fiktiven Daten</h2>
+        <h2 className="text-base font-bold text-slate-950">2.1 Unverbindliche Pilotanfrage</h2>
+        <p className="mt-2">Wenn Sie eine Pilotanfrage absenden, verarbeiten wir Vereins- oder Organisationsname, Name der Ansprechperson, E-Mail-Adresse, Telefonnummer, Testanlass, gewünschten Startmonat sowie freiwillige Angaben zum Vorhaben. Die Angaben dienen ausschließlich dazu, Ihre Anfrage zu beantworten, einen möglichen Pilotzeitraum abzustimmen und den Verlauf nachvollziehbar zu bearbeiten. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO für vorvertragliche Kommunikation sowie Art. 6 Abs. 1 lit. f DSGVO für die geordnete Bearbeitung und Missbrauchsabwehr.</p>
+        <p className="mt-2">Die Anfrage wird in der MyCrewMate-Datenbank gespeichert. Die strukturierte Benachrichtigung an das Pilotteam und die automatische Eingangsbestätigung werden über das bei Hetzner Online GmbH geführte Mailpostfach versandt. Die Datenbankanfrage bleibt bis zur dokumentierten Entscheidung aktiv und wird anschließend drei Jahre aufbewahrt; danach wird sie technisch gelöscht. Einen vorzeitigen Löschwunsch können Sie jederzeit an <a className="text-blue-700 underline underline-offset-2" href="mailto:info@mycrewmate.de">info@mycrewmate.de</a> richten. Erforderliche E-Mail-Korrespondenz wird im Mailpostfach nach derselben Frist organisatorisch bereinigt, soweit keine rechtliche Pflicht entgegensteht.</p>
+      </section>
+      <section>
+        <h2 className="text-base font-bold text-slate-950">2.2 Vereinsdemo mit fiktiven Daten</h2>
         <p className="mt-2">Die Vereinsdemo öffnet eine zeitlich begrenzte, eigene Testumgebung der MyCrewMate-Anwendung mit fiktiven Vereins-, Helfer-, Kontakt-, Standort- und Streckendaten. Tester können darin beispielhaft Helfer, Aufgaben oder Schichten ändern. Die Testumgebung wird beim Beenden der Demo sowie spätestens nach kurzer Zeit automatisch gelöscht. Bitte verwenden Sie ausschließlich erfundene Namen und Kontaktdaten. Es findet keine Herkunfts- oder Nutzungsanalyse statt.</p>
       </section>
       <section>

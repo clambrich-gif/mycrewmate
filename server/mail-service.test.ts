@@ -6,6 +6,7 @@ import {
   renderInvitationEmail,
   renderPilotInquiryConfirmationEmail,
   renderPilotInquiryNotificationEmail,
+  renderPilotEndEmail,
   renderProductExpiryReminderEmail,
   renderTenantAccessStatusEmail,
   sendTransactionalEmail,
@@ -105,6 +106,21 @@ describe("Mail-Service (Hetzner SMTP & Transactional)", () => {
     expect(confirmation.subject).toContain("Pilot-Anfrage ist eingegangen");
     expect(confirmation.text).toContain("keine automatische Verlängerung");
     expect(confirmation.html).toContain("support@mycrewmate.de");
+  });
+
+  it("rendert die Abschlussmail für einen Pilotzugang mit Reaktivierung und Löschwunsch", () => {
+    const rendered = renderPilotEndEmail({
+      tenantName: "RSC Eifelland Mayen e. V.",
+      packageName: "Pro",
+      endsOn: "2026-12-31",
+      retentionEndsAt: new Date("2029-12-31T12:00:00.000Z"),
+    });
+
+    expect(rendered.subject).toContain("Pilotlaufzeit beendet");
+    expect(rendered.text).toContain("31.12.2026");
+    expect(rendered.text).toContain("31.12.2029");
+    expect(rendered.text).toContain("keine automatische Verlängerung");
+    expect(rendered.html).toContain("info@mycrewmate.de");
   });
 
   it("weist bei der Vertragsbestätigung verständlich auf den beigefügten PDF-Nachweis hin", () => {

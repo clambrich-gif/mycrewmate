@@ -1,11 +1,22 @@
 import type { Request, Response } from "express";
 import {
+  archiveExpiredPilotTenants,
+  claimPilotEndNotification,
+  cleanupExpiredArchivedPilotTenants,
+  cleanupExpiredPilotInquiries,
   claimTenantProductExpiryReminder,
+  listPendingPilotEndNotifications,
   listTenantProductExpiryReminderCandidates,
+  markPilotEndNotificationSent,
   markTenantProductExpiryReminderSent,
+  releasePilotEndNotificationClaim,
   releaseTenantProductExpiryReminderClaim,
 } from "./db";
-import { renderProductExpiryReminderEmail, sendTransactionalEmail } from "./mail-service";
+import {
+  renderPilotEndEmail,
+  renderProductExpiryReminderEmail,
+  sendTransactionalEmail,
+} from "./mail-service";
 import { PRODUCT_PACKAGE_META } from "../shared/product-packages";
 import { sdk } from "./_core/sdk";
 
@@ -15,6 +26,18 @@ type ExpiryReminderRun = {
   sent: number;
   skipped: number;
   failed: number;
+};
+
+type PilotLifecycleRun = {
+  archived: number;
+  endNoticeCandidates: number;
+  endNoticeClaimed: number;
+  endNoticesSent: number;
+  endNoticesSkipped: number;
+  failed: number;
+  inquiriesDeleted: number;
+  tenantsDeleted: number;
+  filesDeleted: number;
 };
 
 /**
@@ -81,6 +104,69 @@ export async function sendUpcomingProductExpiryReminders(
   return result;
 }
 
+/**
+ * Archiviert abgelaufene Pilotzugänge, versendet die Abschlussinformation mit
+ * Retry-Lease und entfernt ausschließlich Daten hinter der Dreijahresfrist.
+ */
+export async function runPilotLifecycle(now = new Date()): Promise<PilotLifecycleRun> {
+  const archived = await archiveExpiredPilotTenants(now);
+  const candidates = await listPendingPilotEndNotifications();
+  const result: PilotLifecycleRun = {
+    archived: archived.length,
+    endNoticeCandidates: candidates.length,
+    endNoticeClaimed: 0,
+    endNoticesSent: 0,
+    endNoticesSkipped: 0,
+    failed: 0,
+    inquiriesDeleted: 0,
+    tenantsDeleted: 0,
+    filesDeleted: 0,
+  };
+
+  for (const candidate of candidates) {
+    const claimed = await claimPilotEndNotification({ notificationId: candidate.notificationId, now });
+    if (!claimed) {
+      result.endNoticesSkipped += 1;
+      continue;
+    }
+    result.endNoticeClaimed += 1;
+    try {
+      const content = renderPilotEndEmail({
+        tenantName: candidate.tenantName,
+        packageName: PRODUCT_PACKAGE_META[candidate.packageId].name,
+        endsOn: candidate.endsOn,
+        retentionEndsAt: candidate.retentionEndsAt,
+      });
+      const delivery = await sendTransactionalEmail({
+        to: candidate.contactEmail,
+        subject: content.subject,
+        text: content.text,
+        html: content.html,
+      });
+      if (!delivery.success) {
+        result.failed += 1;
+        await releasePilotEndNotificationClaim(candidate.notificationId);
+        continue;
+      }
+      await markPilotEndNotificationSent({ notificationId: candidate.notificationId, sentAt: now });
+      result.endNoticesSent += 1;
+    } catch (error) {
+      console.error("[PilotLifecycle] Abschlussmail fehlgeschlagen", error);
+      result.failed += 1;
+      await releasePilotEndNotificationClaim(candidate.notificationId);
+    }
+  }
+
+  const [inquiryCleanup, tenantCleanup] = await Promise.all([
+    cleanupExpiredPilotInquiries(now),
+    cleanupExpiredArchivedPilotTenants(now),
+  ]);
+  result.inquiriesDeleted = inquiryCleanup.inquiriesDeleted;
+  result.tenantsDeleted = tenantCleanup.tenantsDeleted;
+  result.filesDeleted = tenantCleanup.filesDeleted;
+  return result;
+}
+
 /** Ausschließlich durch den Plattform-Heartbeat aufrufbare Tagesroutine. */
 export async function handleProductExpiryReminderHeartbeat(
   req: Request,
@@ -93,17 +179,26 @@ export async function handleProductExpiryReminderHeartbeat(
       return;
     }
 
-    const result = await sendUpcomingProductExpiryReminders();
-    if (result.failed > 0) {
+    const [result, pilotLifecycle] = await Promise.all([
+      sendUpcomingProductExpiryReminders(),
+      runPilotLifecycle(),
+    ]);
+    if (result.failed > 0 || pilotLifecycle.failed > 0) {
       res.status(500).json({
         ok: false,
         error: "product-expiry-reminder-delivery-failed",
         ...result,
+        pilotLifecycle,
         ranAt: new Date().toISOString(),
       });
       return;
     }
-    res.status(200).json({ ok: true, ...result, ranAt: new Date().toISOString() });
+    res.status(200).json({
+      ok: true,
+      ...result,
+      pilotLifecycle,
+      ranAt: new Date().toISOString(),
+    });
   } catch (error) {
     console.error("[ProductExpiryReminder] Heartbeat failed", error);
     res.status(500).json({
