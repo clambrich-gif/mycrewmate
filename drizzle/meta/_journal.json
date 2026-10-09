@@ -694,6 +694,13 @@
       "when": 1791571699890,
       "tag": "0098_easy_glorian",
       "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "5",
+      "when": 1791572568527,
+      "tag": "0099_nasty_wild_pack",
+      "breakpoints": true
     }
   ]
 }

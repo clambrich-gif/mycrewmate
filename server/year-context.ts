@@ -3,7 +3,14 @@ import type { Request } from "express";
 
 export const DEFAULT_EVENT_YEAR = 2026;
 export const DEFAULT_EVENT_ID = 1;
-export const DEFAULT_TENANT_ID = "rsc-eifelland-mayen";
+
+/**
+ * Neutraler Startwert für einen noch nicht aufgelösten Browserkontext.
+ * Diese Kennung gehört zu keinem Verein und kann daher nie Vereinsdaten
+ * anzeigen. Geschützte Verfahren ersetzen sie immer durch die serverseitig
+ * bestätigte Mitgliedschaft oder verweigern den Zugriff.
+ */
+export const UNASSIGNED_TENANT_ID = "unassigned-tenant";
 
 export type PlanningScope = {
   tenantId: string;
@@ -29,7 +36,7 @@ export function normalizeTenantId(value: unknown) {
   const tenantId = String(value ?? "").trim();
   return /^[a-z0-9-]{3,96}$/.test(tenantId)
     ? tenantId
-    : DEFAULT_TENANT_ID;
+    : UNASSIGNED_TENANT_ID;
 }
 
 export function requestedPlanningScope(req: Request): PlanningScope {
@@ -55,7 +62,7 @@ export function withPlanningScope<T>(scope: PlanningScope, callback: () => T) {
 export function withEventYear<T>(year: number, callback: () => T) {
   return withPlanningScope(
     {
-      tenantId: DEFAULT_TENANT_ID,
+      tenantId: UNASSIGNED_TENANT_ID,
       year: normalizeEventYear(year),
       eventId: DEFAULT_EVENT_ID,
     },
@@ -70,7 +77,7 @@ export function withEventScope<T>(
 ) {
   return withPlanningScope(
     {
-      tenantId: DEFAULT_TENANT_ID,
+      tenantId: UNASSIGNED_TENANT_ID,
       year: normalizeEventYear(year),
       eventId: normalizeEventId(eventId),
     },
@@ -83,7 +90,7 @@ export function currentEventYear() {
 }
 
 export function currentTenantId() {
-  return planningScopeStorage.getStore()?.tenantId ?? DEFAULT_TENANT_ID;
+  return planningScopeStorage.getStore()?.tenantId ?? UNASSIGNED_TENANT_ID;
 }
 
 export function currentEventId() {

@@ -83,7 +83,6 @@ import {
 } from "@/lib/preview-session";
 import { WEEKDAYS, type Weekday } from "@shared/weekdays";
 import { COPYRIGHT_NOTICE } from "@shared/branding";
-import { ACTIVE_PILOT_TENANT } from "@shared/tenant";
 import {
   PRODUCT_PACKAGE_META,
   productCapabilityForAppRoute,
@@ -795,7 +794,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const activeTenantName =
     selectedTenantRecord?.name ??
     currentTenant.data?.name ??
-    ACTIVE_PILOT_TENANT.name;
+    "Vereinsbereich";
   const activeTenantStatus =
     selectedTenantRecord?.status ?? currentTenant.data?.status ?? "pilot";
   const activeTenantBadge =

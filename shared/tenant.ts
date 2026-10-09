@@ -26,25 +26,7 @@ export interface TenantConfig {
   branding: TenantBranding;
 }
 
-export const RSC_MAYEN_PILOT_TENANT: TenantConfig = {
-  id: "rsc-eifelland-mayen",
-  slug: "rsc-mayen",
-  name: "RSC Eifelland Mayen e. V.",
-  legalName: "Radsportclub Eifelland Mayen e. V.",
-  status: "pilot",
-  planName: "Pilotbetrieb",
-  defaultEventName: "MyEifelRide 2027",
-  supportEmail: "support@mycrewmate.de",
-  contactEmail: "info@mycrewmate.de",
-  branding: {
-    platformName: "MyCrewMate",
-    organizationName: "RSC Eifelland Mayen e. V.",
-    organizationSubtitle: "VEREINS- & EVENTPLANUNG",
-    badgeLabel: "Pilotverein",
-    logoUrl: null,
-  },
-};
-
+/** Ausschließlich fiktive, lokale Mustervereine für Vorschau- und Testzwecke. */
 export const KIRMESVEREIN_SAMPLE_TENANT: TenantConfig = {
   id: "kirmesverein-musterstadt",
   slug: "kirmesverein-musterstadt",
@@ -84,9 +66,6 @@ export const SCHUETZENVEREIN_SAMPLE_TENANT: TenantConfig = {
 };
 
 export const TENANT_CATALOG: readonly TenantConfig[] = [
-  RSC_MAYEN_PILOT_TENANT,
   KIRMESVEREIN_SAMPLE_TENANT,
   SCHUETZENVEREIN_SAMPLE_TENANT,
 ];
-
-export const ACTIVE_PILOT_TENANT = RSC_MAYEN_PILOT_TENANT;

@@ -116,7 +116,6 @@ import {
 } from "../shared/product-packages";
 import type { EditablePlanningModule } from "../shared/tenant-permissions";
 import {
-  DEFAULT_TENANT_ID,
   currentEventId,
   currentEventYear,
   currentTenantId,
@@ -512,6 +511,10 @@ export async function resolveTenantForUser(input: {
   userId: number;
   userOpenId?: string | null;
   preferredTenantId?: string | null;
+  /**
+   * Kompatibilitätsfeld für bestehende Aufrufer. Es hat absichtlich keine
+   * Wirkung mehr: Ohne aktive Mitgliedschaft wird kein Vereinskontext erzeugt.
+   */
   allowPilotFallback?: boolean;
 }): Promise<ActiveTenantMembership | undefined> {
   const preferredTenantId = input.preferredTenantId?.trim();
@@ -552,30 +555,6 @@ export async function resolveTenantForUser(input: {
   }
 
   const memberships = await listActiveTenantMembershipsForUser(input.userId);
-  if (!memberships.length && input.allowPilotFallback !== false) {
-    // Solange während der Pilotphase noch Altsitzungen oder Mock-Benutzer ohne
-    // explizite Mitgliedschaft existieren, greift der sichere Pilotmandant
-    // als Fallback, damit bestehende Abläufe nicht unvermittelt abbrechen.
-    const [pilotRecord] = await (await getDb())!
-      .select({
-        id: tenants.id,
-        name: tenants.name,
-        status: tenants.status,
-      })
-      .from(tenants)
-      .where(eq(tenants.id, DEFAULT_TENANT_ID))
-      .limit(1);
-    return pilotRecord
-      ? {
-          tenantId: pilotRecord.id,
-          role: "planner",
-          isDefault: true,
-          tenantName: pilotRecord.name,
-          tenantStatus: pilotRecord.status,
-          updatedAt: new Date(0),
-        }
-      : undefined;
-  }
   return (
     memberships.find(
       membership => membership.tenantId === input.preferredTenantId
@@ -2805,13 +2784,10 @@ export async function updateTenantLifecycleForPlatformAdmin(input: {
 /**
  * Entfernt ausschließlich einen internen Testverein inklusive seiner
  * Veranstaltungen und der daran gekoppelten Planungs- und Testzugangsdaten.
- * Der echte Pilotmandant ist absichtlich nicht löschbar. Für reguläre
- * Vertragsenden bleibt der reversible Archivstatus der vorgesehene Weg.
+ * Für reguläre Vertragsenden bleibt der reversible Archivstatus der
+ * vorgesehene Weg. Es gibt keine vereinsbezogene technische Löschsperre.
  */
 export async function deleteInternalTestTenantForPlatformAdmin(tenantId: string) {
-  if (tenantId === DEFAULT_TENANT_ID) {
-    throw new Error("Der geschützte Pilotverein kann nicht endgültig entfernt werden");
-  }
   const database = (await getDb()) as DB;
   return database.transaction(async tx => {
     const [target] = await tx
