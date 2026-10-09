@@ -61,11 +61,14 @@
 - [x] Hetzner-AVV mit den tatsächlichen Verarbeitungskategorien verbindlich angelegt.
 - [x] B2B-Ausrichtung für die aktuelle Website festgelegt: ausschließlich Vereine/Verbände, ehrenamtliche Organisationsteams oder Initiativen sowie Gemeinden/kommunale Veranstalter; keine Privatpersonen, Firmenveranstaltungen oder gewerblichen Eventdienstleistungen.
 - [x] Technische Logfristen auf Produktionsserver und Reverse Proxy aktiviert und live geprüft: Docker-Standardtreiber `journald`, `MaxRetentionSec=14day`, Speichergrenzen, neu erzeugte MyCrewMate- und Coolify-Proxy-Container mit `journald` sowie öffentlicher Health Check `200`. Der Nachweis steht in `docs/server-log-retention-v1.md`.
+- [x] Echte Pilot-Testanfrage über das Live-Formular durchgeführt: sichtbare Erfolgsmeldung, interne Benachrichtigung und automatische Eingangsbestätigung sind im verbundenen Mailpostfach eingegangen. Den klar markierten Testeintrag anschließend im Master-Portal vollständig gelöscht.
+- [x] Master-Portal gegen freiwillig fehlende Rückrufnummern abgesichert: Anzeige „Nicht angegeben“ statt Fehler; Regressionstest, Typecheck und Produktionsbuild erfolgreich, live veröffentlicht.
 - [ ] Vor dem geplanten Kaufstart am 01.01.2027 Checkout, Steuerstatus und eine etwaige BFSG-/Barrierefreiheitsinformation für den dann verbindlich bestätigten Vertriebspfad freigeben.
 
 ## Später prüfen
 
 - [ ] Nach Steuerberatung die rechtlich korrekte Umsatzsteuer-/Mehrwertsteuerkennzeichnung vor dem Buchungsstart ergänzen.
-- [ ] In Coolify die SMTP-Zugangsdaten und optional `PILOT_INQUIRY_EMAIL` als Secrets setzen; danach den Liveversand mit einer echten Testanfrage prüfen.
+- [x] Tatsächlichen SMTP-Liveversand mit einer eindeutig markierten Testanfrage geprüft: Nachricht an `support@mycrewmate.de` und automatische Bestätigung wurden zugestellt.
 - [ ] Hetzner-Mailpostfach monatlich nach dem dokumentierten Dreijahresprozess bereinigen; SMTP kann eingegangene oder gesendete Mailkopien nicht automatisch aus der Mailbox löschen.
 - [ ] Nach Veröffentlichung die Vereinsdemo auf der echten Marketing- und App-Domain einmal end-to-end testen.
+- [ ] Pilotvertragsverwaltung als zunächst privaten Master-Admin-Bereich konzipieren und umsetzen: Vertrag manuell anlegen, PDF-Version ablegen, archivieren und nach bestätigtem Löschwunsch entfernen. Vorher die abweichende Adresse `admin@micromate.de` gegenüber `admin@mycrewmate.de`, die Sichtbarkeit für Vereinsadmins sowie den verbindlichen Vertragstext klären.
