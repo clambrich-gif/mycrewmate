@@ -165,12 +165,26 @@ describe("Master-Admin-Portal", () => {
     expect(db).toContain("Passworthashes\n * sowie Einladungs-Token bleiben dabei konsequent außerhalb der Antwort");
     expect(db).toContain("Dieser Zugang ist kein löschbarer persönlicher Vereinsadmin-Testzugang");
     expect(page).toContain('data-slot="tenant-access-panel"');
-    expect(page).toContain("Zugänge ({accesses.length})");
+    expect(page).toContain("Zugänge &amp; Administration ({accesses.length})");
     expect(page).toContain("tenantIds.includes(tenant.id)");
     expect(page).toContain("E-Mail-Dublette");
     expect(page).toContain("Zugang endgültig entfernen?");
     expect(page).not.toContain("Zugänge &amp; Testbereinigung");
     expect(page).toContain("Ansprechpartner, Helfer, Aufgaben und Veranstaltungsdaten bleiben unverändert erhalten.");
+  });
+
+  it("zeigt aktive Vereine mit Laufzeit und sicheren Verwaltungswegen", () => {
+    const page = source("client/src/pages/MasterAdminPortal.tsx");
+    const router = source("server/routers.ts");
+
+    expect(page).toContain("function TenantProductTerm");
+    expect(page).toContain("Tariflaufzeit");
+    expect(page).toContain("Keine automatische Verlängerung");
+    expect(page).toContain("const canManageTenant");
+    expect(page).toContain("Admin-Zugang hinzufügen");
+    expect(page).toContain("In Vereinsansicht wechseln");
+    expect(page).toContain("Adminzugang für diesen Verein entziehen?");
+    expect(router).toContain("revokeTenantAdmin: masterAdminProcedure");
   });
 
   it("zeigt den aktuellen digitalen Vertragsstatus je Verein ohne Planungsdaten offenzulegen", () => {
@@ -231,8 +245,8 @@ describe("Master-Admin-Portal", () => {
     expect(page).toContain("Verein mit allen Daten endgültig löschen?");
     expect(page).toContain("Verein endgültig löschen");
     expect(page).toContain("kann nicht rückgängig gemacht werden");
-    expect(page).toContain('tenant.status !== "active"');
     expect(page).toContain("filteredArchivedTenants.map(tenant => (");
+    expect(page).toContain("Erst im Archiv kann ein Verein bewusst und endgültig gelöscht werden.");
     expect(page).not.toContain('tenant.id !== "rsc-eifelland-mayen"');
   });
 });

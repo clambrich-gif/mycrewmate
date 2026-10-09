@@ -78,6 +78,8 @@
 - [x] GitHub-Containerbuild zusätzlich gegen Docker-Hub-Ausfälle beim BuildKit-Start abgesichert: `docker/setup-buildx-action` verwendet den öffentlichen ECR-Spiegel `public.ecr.aws/vend/moby/buildkit:buildx-stable-1` statt `moby/buildkit` von Docker Hub.
 - [x] Verbliebene Docker-Hub-Abhängigkeit im Dockerfile entfernt: Die externe Syntaxzeile `docker/dockerfile:1` wurde nicht benötigt und hätte Docker Hub erneut kontaktiert. Der Build nutzt nun die Standard-Dockerfile-Syntax des gespiegelt gestarteten BuildKit.
 - [x] Wechsel von Pilot zu einem aktiven regulären Paket abgesichert: Bei Light, Pro oder Enterprise mit Status „Aktiv“ wird der Verein einmalig als regulärer Zugang übernommen. Daten und Zugänge bleiben bestehen; die automatische Pilotarchivierung greift nicht mehr. Der Master-Dialog, Sicherheitsprotokoll, Ablaufhinweise und Regressionstests dokumentieren diesen Schritt.
+- [x] Aktive Vereinsverwaltung im Master-Portal vervollständigt: Tarifbeginn/-ende und Ablaufhinweis sind direkt auf der Vereinskarte sichtbar; Produktverwaltung, Vereinsansicht, Adminzugang und Archivierung stehen auch aktiven Vereinen zur Verfügung. Endgültige Löschung ist nur nach bewusster Archivierung möglich.
+- [x] Sicheren Adminwechsel ergänzt: Ein alter Vereinsadmin kann nur nach Anlegen mindestens eines weiteren aktiven Admins und nur für den betreffenden Verein entzogen werden. Andere Vereinsmitgliedschaften, Planungsdaten und Ansprechpartner bleiben unverändert; ein Verein kann nie ohne aktiven Admin zurückbleiben.
 - [ ] Vor dem geplanten Kaufstart am 01.01.2027 Checkout, Steuerstatus und eine etwaige BFSG-/Barrierefreiheitsinformation für den dann verbindlich bestätigten Vertriebspfad freigeben.
 
 ## Später prüfen

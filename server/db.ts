@@ -2189,6 +2189,124 @@ export async function deletePlatformAccessForMasterAdmin(input: {
   });
 }
 
+export function assertTenantAdministratorCanBeRevoked(activeAdministratorCount: number) {
+  if (activeAdministratorCount <= 1) {
+    throw new Error("Der letzte aktive Vereinsadmin kann nicht entfernt werden. Legen Sie zuerst einen weiteren Adminzugang an.");
+  }
+}
+
+/**
+ * Entzieht einen persönlichen Vereinsadminzugang ausschließlich im angegebenen
+ * Verein. Andere Vereinsmitgliedschaften desselben Kontos bleiben erhalten.
+ */
+export async function revokeTenantAdministratorForPlatformAdmin(input: {
+  tenantId: string;
+  userId: number;
+}) {
+  const database = (await getDb()) as DB;
+  return database.transaction(async tx => {
+    const [tenantRecord] = await tx
+      .select({ id: tenants.id, name: tenants.name, status: tenants.status })
+      .from(tenants)
+      .where(eq(tenants.id, input.tenantId))
+      .limit(1)
+      .for("update");
+    if (!tenantRecord) throw new Error("Der Verein wurde nicht gefunden");
+    if (tenantRecord.status === "archived") {
+      throw new Error("Archivierte Vereine haben keine aktiven Adminzugänge. Reaktivieren Sie den Verein zuerst.");
+    }
+
+    const [targetMembership] = await tx
+      .select({
+        membershipId: userTenantMemberships.id,
+        userId: users.id,
+        name: users.name,
+        email: tenantAdminCredentials.email,
+      })
+      .from(userTenantMemberships)
+      .innerJoin(users, eq(users.id, userTenantMemberships.userId))
+      .innerJoin(tenantAdminCredentials, eq(tenantAdminCredentials.userId, users.id))
+      .where(
+        and(
+          eq(userTenantMemberships.tenantId, input.tenantId),
+          eq(userTenantMemberships.userId, input.userId),
+          eq(userTenantMemberships.role, "tenant_admin"),
+          eq(userTenantMemberships.status, "active"),
+          eq(tenantAdminCredentials.status, "active")
+        )
+      )
+      .limit(1)
+      .for("update");
+    if (!targetMembership) throw new Error("Der aktive Vereinsadmin wurde nicht gefunden");
+
+    const activeAdministrators = await tx
+      .select({ userId: userTenantMemberships.userId })
+      .from(userTenantMemberships)
+      .innerJoin(tenantAdminCredentials, eq(tenantAdminCredentials.userId, userTenantMemberships.userId))
+      .where(
+        and(
+          eq(userTenantMemberships.tenantId, input.tenantId),
+          eq(userTenantMemberships.role, "tenant_admin"),
+          eq(userTenantMemberships.status, "active"),
+          eq(tenantAdminCredentials.status, "active")
+        )
+      )
+      .for("update");
+    assertTenantAdministratorCanBeRevoked(activeAdministrators.length);
+
+    await tx
+      .delete(tenantAdminInvitations)
+      .where(
+        and(
+          eq(tenantAdminInvitations.tenantId, input.tenantId),
+          eq(tenantAdminInvitations.userId, input.userId)
+        )
+      );
+    await tx.delete(sessionPresences).where(
+      and(eq(sessionPresences.tenantId, input.tenantId), eq(sessionPresences.userId, input.userId))
+    );
+    await tx
+      .delete(userTenantMemberships)
+      .where(eq(userTenantMemberships.id, targetMembership.membershipId));
+
+    const remainingMemberships = await tx
+      .select({ tenantId: userTenantMemberships.tenantId, isDefault: userTenantMemberships.isDefault })
+      .from(userTenantMemberships)
+      .where(eq(userTenantMemberships.userId, input.userId))
+      .for("update");
+    const remainingAdminMemberships = await tx
+      .select({ id: userTenantMemberships.id })
+      .from(userTenantMemberships)
+      .where(
+        and(
+          eq(userTenantMemberships.userId, input.userId),
+          eq(userTenantMemberships.role, "tenant_admin"),
+          eq(userTenantMemberships.status, "active")
+        )
+      )
+      .limit(1);
+
+    if (!remainingAdminMemberships.length) {
+      await tx
+        .update(tenantAdminCredentials)
+        .set({
+          status: "suspended",
+          sessionVersion: sql`${tenantAdminCredentials.sessionVersion} + 1`,
+        })
+        .where(eq(tenantAdminCredentials.userId, input.userId));
+    } else if (remainingMemberships.length && !remainingMemberships.some(membership => membership.isDefault)) {
+      await makeTenantMembershipDefault(tx, input.userId, remainingMemberships[0].tenantId);
+    }
+
+    return {
+      tenantId: tenantRecord.id,
+      tenantName: tenantRecord.name,
+      adminName: targetMembership.name?.trim() || targetMembership.email,
+      adminEmail: targetMembership.email,
+    } as const;
+  });
+}
+
 export type PlatformTenantSetupStatus = "pilot" | "sample" | "active";
 export type PlatformTenantLifecycleStatus =
   | "pilot"
@@ -2821,8 +2939,8 @@ export async function updateTenantLifecycleForPlatformAdmin(input: {
 }
 
 /**
- * Entfernt ausschließlich einen internen Testverein inklusive seiner
- * Veranstaltungen und der daran gekoppelten Planungs- und Testzugangsdaten.
+ * Entfernt ausschließlich einen bewusst bereits archivierten Verein inklusive
+ * seiner Veranstaltungen und der daran gekoppelten Planungs- und Zugangsdaten.
  * Für reguläre Vertragsenden bleibt der reversible Archivstatus der
  * vorgesehene Weg. Es gibt keine vereinsbezogene technische Löschsperre.
  */

@@ -352,6 +352,50 @@ function TenantProductUsage({
   );
 }
 
+function TenantProductTerm({
+  assignment,
+}: {
+  assignment: TenantOverviewItem["productAssignment"];
+}) {
+  const today = new Date().toISOString().slice(0, 10);
+  const daysUntilEnd = assignment.endsOn
+    ? Math.round(
+        (Date.parse(`${assignment.endsOn}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) /
+          (24 * 60 * 60 * 1000)
+      )
+    : null;
+  const tone =
+    daysUntilEnd === null || daysUntilEnd > 30
+      ? "border-slate-200 bg-slate-50 text-slate-800"
+      : daysUntilEnd >= 0
+        ? "border-amber-200 bg-amber-50 text-amber-950"
+        : "border-red-200 bg-red-50 text-red-950";
+  const term = assignment.endsOn
+    ? `${assignment.startsOn ? `Beginn ${formatDate(assignment.startsOn)} · ` : ""}Ende ${formatDate(assignment.endsOn)}`
+    : assignment.startsOn
+      ? `Beginn ${formatDate(assignment.startsOn)} · kein Ende hinterlegt`
+      : "Kein Beginn und kein Ende hinterlegt";
+  const hint =
+    daysUntilEnd === null
+      ? "Es gibt keine automatische Verlängerung. Ein Ende kann über „Produkt verwalten“ eingetragen werden."
+      : daysUntilEnd < 0
+        ? `Tarif abgelaufen seit ${Math.abs(daysUntilEnd)} ${Math.abs(daysUntilEnd) === 1 ? "Tag" : "Tagen"}.`
+        : daysUntilEnd === 0
+          ? "Tarif läuft heute ab. Keine automatische Verlängerung."
+          : `Läuft ab in ${daysUntilEnd} ${daysUntilEnd === 1 ? "Tag" : "Tagen"}. Keine automatische Verlängerung.`;
+
+  return (
+    <section
+      data-slot="tenant-product-term"
+      className={`mt-3 rounded-xl border px-3 py-2.5 text-xs leading-5 ${tone}`}
+    >
+      <p className="font-semibold">Tariflaufzeit</p>
+      <p className="mt-0.5">{term}</p>
+      <p className="mt-0.5 opacity-85">{hint}</p>
+    </section>
+  );
+}
+
 function TenantAdminActivationStatus({
   activation,
 }: {
@@ -525,14 +569,23 @@ function defaultCreateTenantForm(): CreateTenantForm {
 
 function TenantAccessPanel({
   accesses,
+  tenantStatus,
   deleting,
+  revokingAdmin,
   onRequestDelete,
+  onRequestRevokeAdmin,
 }: {
   accesses: PlatformAccessInventoryItem[];
+  tenantStatus: TenantStatus;
   deleting: boolean;
+  revokingAdmin: boolean;
   onRequestDelete: (access: PlatformAccessInventoryItem) => void;
+  onRequestRevokeAdmin: (access: PlatformAccessInventoryItem) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const activeTenantAdminCount = accesses.filter(
+    access => access.type === "tenant_admin" && access.status === "active"
+  ).length;
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
@@ -542,7 +595,7 @@ function TenantAccessPanel({
             type="button"
             className="flex w-full items-center justify-between gap-3 px-3.5 py-3 text-left text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset"
           >
-            <span className="flex min-w-0 items-center gap-2"><UsersRound className="size-4 shrink-0 text-blue-700" /> Zugänge ({accesses.length})</span>
+            <span className="flex min-w-0 items-center gap-2"><UsersRound className="size-4 shrink-0 text-blue-700" /> Zugänge &amp; Administration ({accesses.length})</span>
             <ChevronDown className={`size-4 shrink-0 text-slate-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`} aria-hidden="true" />
           </button>
         </CollapsibleTrigger>
@@ -562,13 +615,21 @@ function TenantAccessPanel({
                       {access.status === "legacy" && <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-600">ohne E-Mail</Badge>}
                     </div>
                     <p className="mt-1 text-xs text-slate-600">{access.email ?? "Keine persönliche E-Mail hinterlegt"} · angelegt am {formatAccessCreatedAt(access.createdAt)}</p>
-                    {sharedAcrossTenants && <p className="mt-1 text-xs leading-5 text-amber-800">Dieser Zugang ist mehreren Vereinen zugeordnet. Eine Löschung wird hier vorsichtshalber nicht angeboten.</p>}
+                    {sharedAcrossTenants && <p className="mt-1 text-xs leading-5 text-amber-800">{access.type === "tenant_admin" ? "Dieser Admin ist mehreren Vereinen zugeordnet. Das Entziehen wirkt ausschließlich für diesen Verein." : "Dieser Zugang ist mehreren Vereinen zugeordnet. Eine Löschung wird hier vorsichtshalber nicht angeboten."}</p>}
                   </div>
-                  {!sharedAcrossTenants && (
+                  {access.type === "tenant_admin" ? (
+                    activeTenantAdminCount > 1 ? (
+                      <Button size="sm" variant="outline" className="shrink-0 border-red-200 bg-white text-red-700 hover:bg-red-50 hover:text-red-800" disabled={revokingAdmin} onClick={() => onRequestRevokeAdmin(access)}>
+                        <UserRoundX className="size-3.5" /> Admin für diesen Verein entziehen
+                      </Button>
+                    ) : (
+                      <p className="max-w-44 text-xs leading-5 text-slate-500">Mindestens ein aktiver Vereinsadmin muss erhalten bleiben.</p>
+                    )
+                  ) : tenantStatus !== "active" && !sharedAcrossTenants ? (
                     <Button size="sm" variant="outline" className="shrink-0 border-red-200 bg-white text-red-700 hover:bg-red-50 hover:text-red-800" disabled={deleting} onClick={() => onRequestDelete(access)}>
-                      <Trash2 className="size-3.5" /> Zugang entfernen
+                      <Trash2 className="size-3.5" /> Testzugang entfernen
                     </Button>
-                  )}
+                  ) : null}
                 </article>
               );
             })}
@@ -1122,6 +1183,13 @@ export default function MasterAdminPortal() {
     id: string;
     name: string;
   } | null>(null);
+  const [tenantAdminToRevoke, setTenantAdminToRevoke] = useState<{
+    tenantId: string;
+    tenantName: string;
+    userId: number;
+    adminName: string;
+    adminEmail: string | null;
+  } | null>(null);
   const [accessToDelete, setAccessToDelete] = useState<PlatformAccessInventoryItem | null>(null);
   const [pilotInquiryToDelete, setPilotInquiryToDelete] = useState<PilotInquiryItem | null>(null);
   const resetToken = new URLSearchParams(window.location.search).get("reset");
@@ -1204,6 +1272,17 @@ export default function MasterAdminPortal() {
     },
     onError: error => toast.error(error.message),
   });
+  const revokeTenantAdmin = trpc.platformAdmin.revokeTenantAdmin.useMutation({
+    onSuccess: async result => {
+      await Promise.all([
+        utils.platformAdmin.tenantOverview.invalidate(),
+        utils.platformAdmin.accessInventory.invalidate(),
+      ]);
+      setTenantAdminToRevoke(null);
+      toast.success(`Adminzugang von „${result.adminName}“ wurde nur für „${result.tenantName}“ entzogen.`);
+    },
+    onError: error => toast.error(error.message),
+  });
   const createTenant = trpc.platformAdmin.createTenant.useMutation({
     onSuccess: async result => {
       await utils.platformAdmin.tenantOverview.invalidate();
@@ -1255,7 +1334,7 @@ export default function MasterAdminPortal() {
         utils.platformAdmin.accessInventory.invalidate(),
       ]);
       setTestTenantToDelete(null);
-      toast.success(`Testverein „${result.tenantName}“ wurde einschließlich seiner Testdaten entfernt.`);
+      toast.success(`Verein „${result.tenantName}“ wurde einschließlich seiner Daten entfernt.`);
     },
     onError: error => toast.error(error.message),
   });
@@ -1789,6 +1868,7 @@ export default function MasterAdminPortal() {
                   tenantStatus: tenant.status as TenantStatus,
                   packageStatus: tenant.productAssignment.status,
                 });
+                const canManageTenant = tenant.status === "pilot" || tenant.status === "sample" || tenant.status === "active";
                 return (
                   <article key={tenant.id} className="grid gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                     <div className="min-w-0">
@@ -1815,9 +1895,23 @@ export default function MasterAdminPortal() {
                         )}
                       </div>
                       <TenantProductUsage usage={tenant.productUsage} events={tenant.events} />
+                      <TenantProductTerm assignment={tenant.productAssignment} />
                       <TenantAdminActivationStatus activation={tenant.adminActivation} />
                       <TenantMfaStatus activation={tenant.adminActivation} />
-                      <TenantAccessPanel accesses={tenantAccesses} deleting={deleteTestAccess.isPending} onRequestDelete={setAccessToDelete} />
+                      <TenantAccessPanel
+                        accesses={tenantAccesses}
+                        tenantStatus={tenant.status}
+                        deleting={deleteTestAccess.isPending}
+                        revokingAdmin={revokeTenantAdmin.isPending}
+                        onRequestDelete={setAccessToDelete}
+                        onRequestRevokeAdmin={access => setTenantAdminToRevoke({
+                          tenantId: tenant.id,
+                          tenantName: tenant.name,
+                          userId: access.accessId,
+                          adminName: access.name,
+                          adminEmail: access.email,
+                        })}
+                      />
                       <TenantContractAcceptanceStatus acceptance={tenant.contractAcceptance} />
                     </div>
                     <div className="space-y-2 sm:min-w-48">
@@ -1826,7 +1920,7 @@ export default function MasterAdminPortal() {
                         <p className="mt-0.5 text-sm font-semibold text-slate-800">{tenant.nextEvent?.name ?? "Noch nicht angelegt"}</p>
                         <p className="mt-0.5 text-xs text-slate-500">{tenant.nextEvent ? formatDate(tenant.nextEvent.startDate) : "Termin offen"}</p>
                       </div>
-                      {(tenant.status === "pilot" || tenant.status === "sample") && (
+                      {canManageTenant && (
                         <div className="flex flex-col gap-1.5">
                           <Button
                             size="sm"
@@ -1862,18 +1956,20 @@ export default function MasterAdminPortal() {
                               setSendInvitationEmail(false);
                             }}
                           >
-                            <KeyRound className="size-3.5" /> Admin-Zugang einrichten
+                            <KeyRound className="size-3.5" /> Admin-Zugang hinzufügen
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="w-full border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100"
-                            disabled={updateLifecycle.isPending}
-                            onClick={() => updateLifecycle.mutate({ tenantId: tenant.id, status: "suspended" })}
-                          >
-                            {updateLifecycle.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <PauseCircle className="size-3.5" />}
-                            Pilot pausieren
-                          </Button>
+                          {(tenant.status === "pilot" || tenant.status === "sample") && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="w-full border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100"
+                              disabled={updateLifecycle.isPending}
+                              onClick={() => updateLifecycle.mutate({ tenantId: tenant.id, status: "suspended" })}
+                            >
+                              {updateLifecycle.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <PauseCircle className="size-3.5" />}
+                              Pilot pausieren
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             variant="outline"
@@ -1907,18 +2003,6 @@ export default function MasterAdminPortal() {
                             <Archive className="size-3.5" /> Verein archivieren
                           </Button>
                         </div>
-                      )}
-                      {tenant.status !== "active" && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="w-full border-red-200 bg-white text-red-700 hover:bg-red-50 hover:text-red-800"
-                          disabled={deleteInternalTestTenant.isPending}
-                          onClick={() => setTestTenantToDelete({ id: tenant.id, name: tenant.name })}
-                        >
-                          {deleteInternalTestTenant.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
-                          Verein endgültig löschen
-                        </Button>
                       )}
                     </div>
                   </article>
@@ -2586,6 +2670,46 @@ export default function MasterAdminPortal() {
       </AlertDialog>
 
       <AlertDialog
+        open={Boolean(tenantAdminToRevoke)}
+        onOpenChange={open => {
+          if (!open && !revokeTenantAdmin.isPending) setTenantAdminToRevoke(null);
+        }}
+      >
+        <AlertDialogContent className="border-red-200 bg-white text-slate-950">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-900">
+              <UserRoundX className="size-5 text-red-700" /> Adminzugang für diesen Verein entziehen?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="leading-5 text-slate-600">
+              <strong className="font-semibold text-slate-800">{tenantAdminToRevoke?.adminName}</strong>
+              {tenantAdminToRevoke?.adminEmail ? ` (${tenantAdminToRevoke.adminEmail})` : ""} kann danach nicht mehr auf
+              <strong className="font-semibold text-slate-800"> {tenantAdminToRevoke?.tenantName}</strong> zugreifen.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-5 text-amber-950">
+            Planungsdaten, Ansprechpartner und andere Vereinszugänge bleiben unverändert. Ist diese Person noch bei einem anderen Verein Admin, bleibt dieser andere Zugang bestehen. Mindestens ein Vereinsadmin bleibt immer erhalten.
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={revokeTenantAdmin.isPending}>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!tenantAdminToRevoke || revokeTenantAdmin.isPending}
+              className="bg-red-700 text-white hover:bg-red-800"
+              onClick={() => {
+                if (!tenantAdminToRevoke) return;
+                revokeTenantAdmin.mutate({
+                  tenantId: tenantAdminToRevoke.tenantId,
+                  userId: tenantAdminToRevoke.userId,
+                });
+              }}
+            >
+              {revokeTenantAdmin.isPending ? <Loader2 className="size-4 animate-spin" /> : <UserRoundX className="size-4" />}
+              Adminzugang entziehen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
         open={Boolean(pilotInquiryToDelete)}
         onOpenChange={open => {
           if (!open && !deletePilotInquiry.isPending) setPilotInquiryToDelete(null);
@@ -2672,7 +2796,7 @@ export default function MasterAdminPortal() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-5 text-amber-900">
-            Für ein reguläres Ende eines Pilotzugangs verwenden Sie bitte weiterhin die Archivierung. Die endgültige Löschung ist nur für Pilot- und Mustervereine vorgesehen; aktive Vereine bleiben geschützt.
+            Aktive Vereine sind durch den Zwischenschritt „Archivieren“ geschützt. Erst im Archiv kann ein Verein bewusst und endgültig gelöscht werden.
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleteInternalTestTenant.isPending}>Abbrechen</AlertDialogCancel>

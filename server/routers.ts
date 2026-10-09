@@ -4393,6 +4393,23 @@ export const appRouter = router({
         );
         return { success: true, ...deleted } as const;
       }),
+    revokeTenantAdmin: masterAdminProcedure
+      .input(
+        z.object({
+          tenantId: z.string().trim().regex(/^[a-z0-9-]{3,96}$/),
+          userId: z.number().int().positive(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const revoked = await db.revokeTenantAdministratorForPlatformAdmin(input);
+        await recordSecurityActivity(
+          auditActor(ctx.user),
+          `Vereinsadmin „${revoked.adminName}“ aus Verein „${revoked.tenantName}“ entfernt`,
+          "deleted",
+          null
+        );
+        return { success: true, ...revoked } as const;
+      }),
     createTenant: masterAdminProcedure
       .input(
         z.object({
