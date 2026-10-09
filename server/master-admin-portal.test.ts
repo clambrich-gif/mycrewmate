@@ -71,8 +71,8 @@ describe("Master-Admin-Portal", () => {
     expect(page).toContain("if (overview.error && !overview.data && !isVisualPreview)");
     expect(page).toContain('data-slot="master-overview-refresh-error"');
     expect(page).toContain("Bereits geladene Daten und offene Eingaben bleiben erhalten.");
-    expect(page).toContain("disabled={overview.isFetching}");
-    expect(page).toContain("onClick={() => void overview.refetch()}");
+    expect(page).toContain("overviewNeedsRenewedLogin ? false : overview.isFetching");
+    expect(page).toContain("overviewNeedsRenewedLogin ? void logout() : void overview.refetch()");
   });
 
   it("erlaubt Masteraktionen nur für interne Pilot- und Mustervereine", () => {
@@ -146,9 +146,12 @@ describe("Master-Admin-Portal", () => {
     expect(db).toContain("export async function deletePlatformAccessForMasterAdmin");
     expect(db).toContain("Passworthashes\n * sowie Einladungs-Token bleiben dabei konsequent außerhalb der Antwort");
     expect(db).toContain("Dieser Zugang ist kein löschbarer persönlicher Vereinsadmin-Testzugang");
-    expect(page).toContain("Zugänge &amp; Testbereinigung");
+    expect(page).toContain('data-slot="tenant-access-panel"');
+    expect(page).toContain("Zugänge ({accesses.length})");
+    expect(page).toContain("tenantIds.includes(tenant.id)");
     expect(page).toContain("E-Mail-Dublette");
-    expect(page).toContain("Testzugang endgültig entfernen?");
+    expect(page).toContain("Zugang endgültig entfernen?");
+    expect(page).not.toContain("Zugänge &amp; Testbereinigung");
     expect(page).toContain("Ansprechpartner, Helfer, Aufgaben und Veranstaltungsdaten bleiben unverändert erhalten.");
   });
 
@@ -212,5 +215,29 @@ describe("Master-Admin-Portal", () => {
     expect(page).toContain('tenant.status !== "active"');
     expect(page).toContain("filteredArchivedTenants.map(tenant => (");
     expect(page).not.toContain('tenant.id !== "rsc-eifelland-mayen"');
+  });
+});
+
+
+describe("Master-Admin-Bereinigung", () => {
+  it("hält aktive MFA-Details eingeklappt und erklärt eine abgelaufene Sitzung klar", () => {
+    const page = source("client/src/pages/MasterAdminPortal.tsx");
+    expect(page).toContain("Sicherheitsdetails");
+    expect(page).toContain("<Collapsible open={detailsOpen}");
+    expect(page).toContain("Sitzung abgelaufen.");
+    expect(page).toContain("Abmelden und neu anmelden");
+  });
+
+  it("entfernt die frühere Schulungsfunktion aus erreichbaren Oberflächen und Routen", () => {
+    const app = source("client/src/App.tsx");
+    const page = source("client/src/pages/MasterAdminPortal.tsx");
+    const router = source("server/routers.ts");
+    const help = source("client/src/pages/Help.tsx");
+    expect(app).not.toContain('path="/wbt"');
+    expect(app).not.toContain("WbtPortal");
+    expect(page).not.toContain("WBT-Schulungslinks erstellen");
+    expect(router).not.toContain("createWbtTrainingLink");
+    expect(router).not.toContain("wbt: router");
+    expect(help).not.toContain("Web-Based-Training (WBT)");
   });
 });

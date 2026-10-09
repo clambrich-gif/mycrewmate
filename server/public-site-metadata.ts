@@ -180,7 +180,6 @@ export function robotsTxtFor(hostname: string | undefined | null) {
     "User-agent: *",
     "Allow: /",
     "Disallow: /_staging/",
-    "Disallow: /wbt",
     `Sitemap: ${CANONICAL_MARKETING_ORIGIN}/sitemap.xml`,
     "",
   ].join("\n");

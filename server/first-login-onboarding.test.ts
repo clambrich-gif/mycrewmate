@@ -77,11 +77,11 @@ describe("Erst-Login-Onboarding", () => {
     expect(intro).toContain('"first-login-co-admin"');
     expect(intro).toContain("KLEMMI_CO_ADMIN_TEXT");
     expect(intro).toContain("Und nein – nicht weil ich verklemmt bin");
-    expect(intro).toContain("freiwillige, interaktive Einführung als Web-Based-Training");
-    expect(intro).toContain("ohne Auswirkungen auf eure echte Planung ausprobieren");
-    expect(audio).toContain("freiwillige, interaktive Einführung als Web-Based-Training");
-    expect(audio).toContain('"first-login-intro": "20261005-wbt-help-hint-v1"');
-    expect(audio).toContain('"first-login-co-admin": "20261005-wbt-help-hint-v1"');
+    expect(intro).toContain("fiktive Vereinsdemo auf mycrewmate.de");
+    expect(intro).toContain("ohne Auswirkungen auf eure echte Planung durchklicken");
+    expect(audio).toContain("fiktive Vereinsdemo auf mycrewmate.de");
+    expect(audio).toContain('"first-login-intro": "20261009-demo-hint-v1"');
+    expect(audio).toContain('"first-login-co-admin": "20261009-demo-hint-v1"');
     expect(intro).not.toContain("Klemmi lacht über seinen eigenen Witz.");
     expect(intro).toContain("Co-Admin-Tipp:");
     expect(intro).toContain("window.setTimeout(onComplete, 360)");

@@ -65,6 +65,11 @@
 - [x] Master-Portal gegen freiwillig fehlende Rückrufnummern abgesichert: Anzeige „Nicht angegeben“ statt Fehler; Regressionstest, Typecheck und Produktionsbuild erfolgreich, live veröffentlicht.
 - [x] Nicht benötigte Pilotvertragsfunktion vollständig entfernt: keine separaten Entwürfe, PDFs oder Vertragsdaten mehr. Der kurze Pilotablauf bleibt bei Pilotanfrage, persönlicher Abstimmung sowie Vereins- und Paketverwaltung im Master-Portal.
 - [x] Aktuellen Projektstand erneut ohne falsche Domainverweise geprüft; die Master-Portal-Domain bleibt `admin.mycrewmate.de`.
+- [x] Master-Portal übersichtlicher aufgebaut: aktive Master-MFA zeigt nur noch eine kompakte Leiste; sicherheitsrelevante Bedienung öffnet sich erst über „Sicherheitsdetails“.
+- [x] Persönliche Vereinszugänge werden je Verein in einer eigenen einklappbaren Liste verwaltet; mehrere Vereine eines Zugangs werden gegen versehentliche Löschung geschützt.
+- [x] Abgelaufene Master-Sitzungen werden klar als erneute Anmeldung erklärt, statt eine technische Fehlermeldung anzuzeigen.
+- [x] Frühere WBT-Schulungsfunktion vollständig aus erreichbarem Laufzeitcode entfernt: keine Master-Aktion, keine Hilfe-/Klemmi-Verlinkung, keine öffentliche oder geschützte Route, keine PDF-Erzeugung und keine Schulungsdateien. Die historische Datenbanktabelle wird bewusst nicht ohne eine gesonderte Datenlöschentscheidung verändert, ist jedoch nicht mehr über Oberfläche oder API erreichbar.
+- [x] Typecheck, 36 gezielte Regressionstests und Produktionsbuild für die Master-Portal-Bereinigung erfolgreich ausgeführt; Laufzeitcode und Domains zusätzlich ohne WBT- bzw. `micromate`-Treffer geprüft.
 - [ ] Vor dem geplanten Kaufstart am 01.01.2027 Checkout, Steuerstatus und eine etwaige BFSG-/Barrierefreiheitsinformation für den dann verbindlich bestätigten Vertriebspfad freigeben.
 
 ## Später prüfen

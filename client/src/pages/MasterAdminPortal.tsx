@@ -28,6 +28,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { pilotInquiryPhoneLink } from "@/lib/pilot-inquiry-phone";
 import {
   Select,
@@ -53,11 +54,10 @@ import {
   CheckCircle2,
   CircleAlert,
   CirclePause,
+  ChevronDown,
   Copy,
   CreditCard,
-  ExternalLink,
   FileText,
-  GraduationCap,
   KeyRound,
   Loader2,
   LockKeyhole,
@@ -489,6 +489,7 @@ type PlatformAccessInventoryItem = {
   email: string | null;
   status: "active" | "suspended" | "legacy";
   tenantNames: string[];
+  tenantIds: string[];
   createdAt: Date;
   hasDuplicateEmail: boolean;
 };
@@ -515,6 +516,62 @@ function defaultCreateTenantForm(): CreateTenantForm {
     initialAdminPassword: "",
     initialAdminPasswordConfirmation: "",
   };
+}
+
+function TenantAccessPanel({
+  accesses,
+  deleting,
+  onRequestDelete,
+}: {
+  accesses: PlatformAccessInventoryItem[];
+  deleting: boolean;
+  onRequestDelete: (access: PlatformAccessInventoryItem) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <div data-slot="tenant-access-panel" className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-slate-50/70">
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="flex w-full items-center justify-between gap-3 px-3.5 py-3 text-left text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset"
+          >
+            <span className="flex min-w-0 items-center gap-2"><UsersRound className="size-4 shrink-0 text-blue-700" /> Zugänge ({accesses.length})</span>
+            <ChevronDown className={`size-4 shrink-0 text-slate-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`} aria-hidden="true" />
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="border-t border-slate-200">
+          <div className="space-y-2 p-3">
+            {accesses.length === 0 ? (
+              <p className="text-xs leading-5 text-slate-600">Für diesen Verein sind noch keine persönlichen Zugänge angelegt.</p>
+            ) : accesses.map(access => {
+              const sharedAcrossTenants = access.tenantIds.length > 1;
+              return (
+                <article key={`${access.type}-${access.accessId}`} className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <p className="font-semibold text-slate-900">{access.name}</p>
+                      <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-800">{access.type === "tenant_admin" ? "Vereinsadmin" : "Planungsteam"}</Badge>
+                      {access.hasDuplicateEmail && <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-900">E-Mail-Dublette</Badge>}
+                      {access.status === "legacy" && <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-600">ohne E-Mail</Badge>}
+                    </div>
+                    <p className="mt-1 text-xs text-slate-600">{access.email ?? "Keine persönliche E-Mail hinterlegt"} · angelegt am {formatAccessCreatedAt(access.createdAt)}</p>
+                    {sharedAcrossTenants && <p className="mt-1 text-xs leading-5 text-amber-800">Dieser Zugang ist mehreren Vereinen zugeordnet. Eine Löschung wird hier vorsichtshalber nicht angeboten.</p>}
+                  </div>
+                  {!sharedAcrossTenants && (
+                    <Button size="sm" variant="outline" className="shrink-0 border-red-200 bg-white text-red-700 hover:bg-red-50 hover:text-red-800" disabled={deleting} onClick={() => onRequestDelete(access)}>
+                      <Trash2 className="size-3.5" /> Zugang entfernen
+                    </Button>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        </CollapsibleContent>
+      </div>
+    </Collapsible>
+  );
 }
 
 function formatDate(value: string | null) {
@@ -853,6 +910,7 @@ function MasterMfaCard() {
   const [regeneratedRecoveryCodes, setRegeneratedRecoveryCodes] = useState<string[] | null>(
     null
   );
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const begin = trpc.auth.beginMfaEnrollment.useMutation({
     onSuccess: result =>
       setSetup({
@@ -894,41 +952,59 @@ function MasterMfaCard() {
   if (status.data.enabled) {
     return (
       <Card className="border-emerald-200 bg-emerald-50/60">
-        <CardContent className="space-y-4 p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="flex items-center gap-2 font-semibold text-emerald-950"><ShieldCheck className="size-5" /> Master-MFA ist aktiv</p>
-              <p className="mt-1 text-sm text-emerald-900">Authenticator-Code beim Login erforderlich · {status.data.remainingRecoveryCodes} Wiederherstellungscodes verbleibend.</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Input type="password" autoComplete="current-password" className="h-9 w-52 bg-white" placeholder="Passwort für Deaktivierung" value={password} onChange={event => setPassword(event.target.value)} />
-              <Button type="button" variant="outline" className="border-red-300 bg-white text-red-800 hover:bg-red-50" disabled={!password || disable.isPending} onClick={() => { if (window.confirm("Master-MFA wirklich deaktivieren?")) disable.mutate({ currentPassword: password }); }}>
-                {disable.isPending ? <Loader2 className="size-4 animate-spin" /> : <LockKeyhole className="size-4" />} Deaktivieren
-              </Button>
-            </div>
-          </div>
-          {regeneratedRecoveryCodes && (
-            <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950" aria-live="polite">
-              <p className="font-semibold">Neue Master-Notfallcodes – jetzt sicher ablegen</p>
-              <p className="mt-1 text-xs leading-5 text-amber-900">Die bisherigen Codes sind sofort ungültig. Jeder neue Code funktioniert genau einmal und wird nach dieser Anzeige nicht erneut eingeblendet.</p>
-              <div className="mt-3 grid grid-cols-2 gap-2 font-mono text-xs text-slate-900 sm:grid-cols-4">
-                {regeneratedRecoveryCodes.map(recoveryCode => (
-                  <code key={recoveryCode} className="rounded bg-white px-2 py-1.5 text-center ring-1 ring-amber-200 [font-variant-numeric:slashed-zero]">{recoveryCode}</code>
-                ))}
+        <Collapsible open={detailsOpen} onOpenChange={setDetailsOpen}>
+          <CardContent className="p-0">
+            <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="flex items-center gap-2 font-semibold text-emerald-950"><ShieldCheck className="size-5" /> Master-MFA ist aktiv</p>
+                <p className="mt-1 text-sm text-emerald-900">Authenticator-Code beim Login erforderlich · {status.data.remainingRecoveryCodes} Wiederherstellungscodes verbleibend.</p>
               </div>
+              <CollapsibleTrigger asChild>
+                <Button type="button" size="sm" variant="outline" className="w-fit border-emerald-300 bg-white text-emerald-950 hover:bg-emerald-100">
+                  Sicherheitsdetails
+                  <ChevronDown className={`size-4 transition-transform duration-200 ${detailsOpen ? "rotate-180" : ""}`} />
+                </Button>
+              </CollapsibleTrigger>
             </div>
-          )}
-          <div className="max-w-xl space-y-2 rounded-xl border border-emerald-200 bg-white/75 p-3.5">
-            <p className="text-sm font-semibold text-slate-900">Acht Master-Notfallcodes neu erzeugen</p>
-            <p className="text-xs leading-5 text-slate-600">Nur bei Verlust oder bewusstem Austausch. Als Bestätigung ist das aktuelle Master-Passwort erforderlich.</p>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Input type="password" autoComplete="current-password" className="bg-white sm:max-w-xs" placeholder="Aktuelles Master-Passwort" value={recoveryPassword} onChange={event => setRecoveryPassword(event.target.value)} />
-              <Button type="button" variant="outline" className="border-amber-300 bg-white text-amber-950 hover:bg-amber-100" disabled={!recoveryPassword || regenerateRecoveryCodes.isPending} onClick={() => { if (window.confirm("Acht neue Master-Notfallcodes erzeugen? Alle bisherigen Notfallcodes werden sofort ungültig.")) regenerateRecoveryCodes.mutate({ currentPassword: recoveryPassword }); }}>
-                {regenerateRecoveryCodes.isPending ? <Loader2 className="size-4 animate-spin" /> : <KeyRound className="size-4" />} Neue Notfallcodes erzeugen
-              </Button>
-            </div>
-          </div>
-        </CardContent>
+            <CollapsibleContent className="border-t border-emerald-200">
+              <div className="space-y-4 p-4">
+                <div className="flex flex-col gap-3 rounded-xl border border-red-100 bg-white/80 p-3.5 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">Master-MFA deaktivieren</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-600">Nur bewusst und mit dem aktuellen Master-Passwort.</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Input type="password" autoComplete="current-password" className="h-9 w-52 bg-white" placeholder="Passwort für Deaktivierung" value={password} onChange={event => setPassword(event.target.value)} />
+                    <Button type="button" variant="outline" className="border-red-300 bg-white text-red-800 hover:bg-red-50" disabled={!password || disable.isPending} onClick={() => { if (window.confirm("Master-MFA wirklich deaktivieren?")) disable.mutate({ currentPassword: password }); }}>
+                      {disable.isPending ? <Loader2 className="size-4 animate-spin" /> : <LockKeyhole className="size-4" />} Deaktivieren
+                    </Button>
+                  </div>
+                </div>
+                {regeneratedRecoveryCodes && (
+                  <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950" aria-live="polite">
+                    <p className="font-semibold">Neue Master-Notfallcodes – jetzt sicher ablegen</p>
+                    <p className="mt-1 text-xs leading-5 text-amber-900">Die bisherigen Codes sind sofort ungültig. Jeder neue Code funktioniert genau einmal und wird nach dieser Anzeige nicht erneut eingeblendet.</p>
+                    <div className="mt-3 grid grid-cols-2 gap-2 font-mono text-xs text-slate-900 sm:grid-cols-4">
+                      {regeneratedRecoveryCodes.map(recoveryCode => (
+                        <code key={recoveryCode} className="rounded bg-white px-2 py-1.5 text-center ring-1 ring-amber-200 [font-variant-numeric:slashed-zero]">{recoveryCode}</code>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div className="max-w-xl space-y-2 rounded-xl border border-emerald-200 bg-white/75 p-3.5">
+                  <p className="text-sm font-semibold text-slate-900">Acht Master-Notfallcodes neu erzeugen</p>
+                  <p className="text-xs leading-5 text-slate-600">Nur bei Verlust oder bewusstem Austausch. Als Bestätigung ist das aktuelle Master-Passwort erforderlich.</p>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Input type="password" autoComplete="current-password" className="bg-white sm:max-w-xs" placeholder="Aktuelles Master-Passwort" value={recoveryPassword} onChange={event => setRecoveryPassword(event.target.value)} />
+                    <Button type="button" variant="outline" className="border-amber-300 bg-white text-amber-950 hover:bg-amber-100" disabled={!recoveryPassword || regenerateRecoveryCodes.isPending} onClick={() => { if (window.confirm("Acht neue Master-Notfallcodes erzeugen? Alle bisherigen Notfallcodes werden sofort ungültig.")) regenerateRecoveryCodes.mutate({ currentPassword: recoveryPassword }); }}>
+                      {regenerateRecoveryCodes.isPending ? <Loader2 className="size-4 animate-spin" /> : <KeyRound className="size-4" />} Neue Notfallcodes erzeugen
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </CollapsibleContent>
+          </CardContent>
+        </Collapsible>
       </Card>
     );
   }
@@ -1044,28 +1120,6 @@ export default function MasterAdminPortal() {
   const [accessToDelete, setAccessToDelete] = useState<PlatformAccessInventoryItem | null>(null);
   const [pilotInquiryToDelete, setPilotInquiryToDelete] = useState<PilotInquiryItem | null>(null);
   const resetToken = new URLSearchParams(window.location.search).get("reset");
-
-  const [wbtTrackChoice, setWbtTrackChoice] = useState<"helper" | "admin">("helper");
-  const [wbtExpiryDays, setWbtExpiryDays] = useState<7 | 30 | 90>(30);
-  const [wbtCreatedLink, setWbtCreatedLink] = useState<string | null>(null);
-  const [wbtLinkCopied, setWbtLinkCopied] = useState(false);
-
-  const wbtLinksQuery = trpc.platformAdmin.listWbtTrainingLinks.useQuery();
-  const createWbtLink = trpc.platformAdmin.createWbtTrainingLink.useMutation({
-    onSuccess: result => {
-      setWbtCreatedLink(result.url);
-      wbtLinksQuery.refetch();
-      toast.success("WBT-Schulungslink erstellt");
-    },
-    onError: err => toast.error(err.message),
-  });
-  const revokeWbtLink = trpc.platformAdmin.revokeWbtTrainingLink.useMutation({
-    onSuccess: () => {
-      wbtLinksQuery.refetch();
-      toast.success("WBT-Link wurde widerrufen");
-    },
-    onError: err => toast.error(err.message),
-  });
 
   const createTenantAdmin = trpc.platformAdmin.createTenantAdmin.useMutation({
     onSuccess: async result => {
@@ -1425,9 +1479,9 @@ export default function MasterAdminPortal() {
   const pilotCount = activeTenants.filter(tenant => tenant.status === "pilot").length;
   const managedEventCount = activeTenants.reduce((sum, tenant) => sum + tenant.eventCount, 0);
   const personalAccesses = (accessInventory.data ?? []) as PlatformAccessInventoryItem[];
-  const duplicateEmailCount = personalAccesses.filter(access => access.hasDuplicateEmail).length;
   const pilotInquiryItems = (pilotInquiries.data ?? []) as PilotInquiryItem[];
   const openPilotInquiryCount = pilotInquiryItems.filter(inquiry => inquiry.status === "open").length;
+  const overviewNeedsRenewedLogin = /please login|unauthorized|10001/i.test(overview.error?.message ?? "");
   const packageDistribution = PRODUCT_PACKAGE_IDS.map(packageId => {
     const assignedTenants = activeTenants.filter(
       tenant => tenant.productAssignment.packageId === packageId
@@ -1496,19 +1550,21 @@ export default function MasterAdminPortal() {
             <div className="flex min-w-0 items-start gap-2">
               <CircleAlert className="mt-0.5 size-4 shrink-0 text-amber-700" aria-hidden="true" />
               <p className="leading-5">
-                <strong>Übersicht vorübergehend nicht aktualisiert.</strong>{" "}
-                Bereits geladene Daten und offene Eingaben bleiben erhalten. {overview.error.message}
+                <strong>{overviewNeedsRenewedLogin ? "Sitzung abgelaufen." : "Übersicht vorübergehend nicht aktualisiert."}</strong>{" "}
+                {overviewNeedsRenewedLogin
+                  ? "Bitte melde dich zum Schutz der Vereinsdaten erneut an."
+                  : <>Bereits geladene Daten und offene Eingaben bleiben erhalten. {overview.error.message}</>}
               </p>
             </div>
             <Button
               size="sm"
               variant="outline"
               className="shrink-0 border-amber-300 bg-white text-amber-950 hover:bg-amber-100"
-              disabled={overview.isFetching}
-              onClick={() => void overview.refetch()}
+              disabled={overviewNeedsRenewedLogin ? false : overview.isFetching}
+              onClick={() => overviewNeedsRenewedLogin ? void logout() : void overview.refetch()}
             >
-              {overview.isFetching ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />}
-              Erneut versuchen
+              {overviewNeedsRenewedLogin ? <LogOut className="size-3.5" /> : overview.isFetching ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />}
+              {overviewNeedsRenewedLogin ? "Abmelden und neu anmelden" : "Erneut versuchen"}
             </Button>
           </section>
         )}
@@ -1598,77 +1654,6 @@ export default function MasterAdminPortal() {
                   );
                 })}
               </div>
-            </CardContent>
-          </Card>
-        </section>
-
-        <section aria-labelledby="zugangsinventar">
-          <Card className="border-slate-200 bg-white/95 py-0 shadow-sm">
-            <CardHeader className="border-b border-slate-100 px-5 py-4 sm:px-6">
-              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-                <div>
-                  <CardTitle id="zugangsinventar" className="flex items-center gap-2 text-base">
-                    <UserRoundX className="size-5 text-blue-700" /> Zugänge &amp; Testbereinigung
-                  </CardTitle>
-                  <CardDescription className="mt-1 max-w-3xl">
-                    Persönliche Vereinsadmin- und Planungsteamzugänge werden mandantenübergreifend geprüft. Das Entfernen beendet Anmeldungen und offene Einladungen; Ansprechpartner- und Planungsdaten bleiben erhalten.
-                  </CardDescription>
-                </div>
-                <div className="flex flex-wrap gap-2 text-xs">
-                  <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-700">
-                    {personalAccesses.length} persönliche Zugänge
-                  </Badge>
-                  {duplicateEmailCount > 0 && (
-                    <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-900">
-                      {duplicateEmailCount} E-Mail-Dublette{duplicateEmailCount === 1 ? "" : "n"}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="px-5 py-4 sm:px-6">
-              {accessInventory.isLoading ? (
-                <p className="text-sm text-slate-500">Zugangsinventar wird geprüft …</p>
-              ) : personalAccesses.length === 0 ? (
-                <p className="text-sm text-slate-500">Keine persönlichen Vereins- oder Planungsteamzugänge vorhanden.</p>
-              ) : (
-                <div className="grid gap-3 lg:grid-cols-2">
-                  {personalAccesses.map(access => (
-                    <article
-                      key={`${access.type}-${access.accessId}`}
-                      className="flex min-w-0 flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50/70 p-4 sm:flex-row sm:items-center sm:justify-between"
-                    >
-                      <div className="min-w-0 space-y-1.5">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="truncate font-semibold text-slate-900">{access.name}</p>
-                          <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-800">
-                            {access.type === "tenant_admin" ? "Vereinsadmin" : "Planungsteam"}
-                          </Badge>
-                          {access.hasDuplicateEmail && (
-                            <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-900">E-Mail-Dublette</Badge>
-                          )}
-                          {access.status === "legacy" && (
-                            <Badge variant="outline" className="border-slate-200 bg-white text-slate-600">ohne E-Mail</Badge>
-                          )}
-                        </div>
-                        <p className="truncate text-sm text-slate-700">{access.email ?? "Keine persönliche E-Mail hinterlegt"}</p>
-                        <p className="text-xs leading-5 text-slate-500">
-                          {access.tenantNames.length ? access.tenantNames.join(" · ") : "Keinem Verein zugeordnet"} · angelegt am {formatAccessCreatedAt(access.createdAt)}
-                        </p>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="shrink-0 border-red-200 bg-white text-red-700 hover:bg-red-50 hover:text-red-800"
-                        disabled={deleteTestAccess.isPending}
-                        onClick={() => setAccessToDelete(access)}
-                      >
-                        <Trash2 className="size-3.5" /> Testzugang entfernen
-                      </Button>
-                    </article>
-                  ))}
-                </div>
-              )}
             </CardContent>
           </Card>
         </section>
@@ -1796,6 +1781,7 @@ export default function MasterAdminPortal() {
               )}
               {filteredActiveTenants.map(tenant => {
                 const status = STATUS_META[tenant.status as TenantStatus];
+                const tenantAccesses = personalAccesses.filter(access => access.tenantIds.includes(tenant.id));
                 return (
                   <article key={tenant.id} className="grid gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                     <div className="min-w-0">
@@ -1825,6 +1811,7 @@ export default function MasterAdminPortal() {
                       <TenantProductUsage usage={tenant.productUsage} events={tenant.events} />
                       <TenantAdminActivationStatus activation={tenant.adminActivation} />
                       <TenantMfaStatus activation={tenant.adminActivation} />
+                      <TenantAccessPanel accesses={tenantAccesses} deleting={deleteTestAccess.isPending} onRequestDelete={setAccessToDelete} />
                       <TenantContractAcceptanceStatus acceptance={tenant.contractAcceptance} />
                     </div>
                     <div className="space-y-2 sm:min-w-48">
@@ -1934,145 +1921,6 @@ export default function MasterAdminPortal() {
           </Card>
 
           <div className="space-y-4">
-            {/* WBT-Schulungslink-Verwaltung */}
-            <Card className="border-cyan-200 bg-cyan-50/70 py-0 shadow-sm">
-              <CardHeader className="px-5 py-4">
-                <CardTitle className="flex items-center gap-2 text-base text-cyan-950">
-                  <GraduationCap className="size-5 text-cyan-700" />
-                  WBT-Schulungslinks erstellen
-                </CardTitle>
-                <CardDescription className="text-cyan-900">
-                  Externe Links zur interaktiven Lernwerkstatt versenden – 100% datenfrei, vorab nutzbar ohne Vereinslogin.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3.5 px-5 pb-5 text-xs text-cyan-950">
-                <div className="space-y-2">
-                  <label className="font-semibold text-slate-800">Trainingspfad:</label>
-                  <Select
-                    value={wbtTrackChoice}
-                    onValueChange={(val: "helper" | "admin") => setWbtTrackChoice(val)}
-                  >
-                    <SelectTrigger className="h-8 bg-white text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="helper">1. WBT: Helferkoordination (7 Module)</SelectItem>
-                      <SelectItem value="admin">2. WBT: Planungsteam &amp; Admin (11 Module)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="font-semibold text-slate-800">Gültigkeit:</label>
-                  <Select
-                    value={String(wbtExpiryDays)}
-                    onValueChange={val => setWbtExpiryDays(Number(val) as 7 | 30 | 90)}
-                  >
-                    <SelectTrigger className="h-8 bg-white text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="7">7 Tage gültig</SelectItem>
-                      <SelectItem value="30">30 Tage gültig</SelectItem>
-                      <SelectItem value="90">90 Tage gültig</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Button
-                  size="sm"
-                  onClick={() =>
-                    createWbtLink.mutate({
-                      trackId: wbtTrackChoice,
-                      expiresInDays: wbtExpiryDays,
-                    })
-                  }
-                  disabled={createWbtLink.isPending}
-                  className="w-full bg-cyan-700 text-white hover:bg-cyan-800"
-                >
-                  {createWbtLink.isPending ? <Loader2 className="mr-1.5 size-3.5 animate-spin" /> : <Plus className="mr-1.5 size-3.5" />}
-                  Schulungslink generieren
-                </Button>
-
-                {wbtCreatedLink && (
-                  <div className="rounded-lg border border-cyan-300 bg-white p-2.5">
-                    <p className="font-semibold text-cyan-950">Generierter Schulungslink:</p>
-                    <p className="mt-1 break-all font-mono text-[11px] text-slate-600">{wbtCreatedLink}</p>
-                    <div className="mt-2 flex gap-1.5">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          navigator.clipboard.writeText(wbtCreatedLink);
-                          setWbtLinkCopied(true);
-                          setTimeout(() => setWbtLinkCopied(false), 2000);
-                        }}
-                        className="h-7 text-xs"
-                      >
-                        <Copy className="mr-1 size-3" />
-                        {wbtLinkCopied ? "Kopiert!" : "Link kopieren"}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => window.open(wbtCreatedLink, "_blank")}
-                        className="h-7 text-xs text-cyan-900"
-                      >
-                        <ExternalLink className="mr-1 size-3" />
-                        Öffnen
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {wbtLinksQuery.data && wbtLinksQuery.data.length > 0 && (
-                  <div className="border-t border-cyan-200 pt-3">
-                    <p className="font-semibold text-slate-800">Aktive Schulungslinks ({wbtLinksQuery.data.filter(l => !l.revokedAt).length}):</p>
-                    <div className="mt-2 max-h-36 divide-y divide-cyan-100 overflow-y-auto">
-                      {wbtLinksQuery.data.slice(0, 5).map(link => {
-                        const isExpired = new Date(link.expiresAt).getTime() < Date.now();
-                        const isRevoked = Boolean(link.revokedAt);
-                        return (
-                          <div key={link.id} className="flex items-center justify-between py-1.5 text-[11px]">
-                            <div>
-                              <span className="font-medium text-slate-900">
-                                {link.trackId === "helper" ? "Helfer" : "Admin"}
-                              </span>
-                              <span className="text-slate-500"> · bis {formatDate(new Date(link.expiresAt).toISOString())}</span>
-                              {isRevoked ? (
-                                <Badge variant="outline" className="ml-1.5 border-slate-300 text-[9px] text-slate-500">Widerrufen</Badge>
-                              ) : isExpired ? (
-                                <Badge variant="outline" className="ml-1.5 border-amber-300 text-[9px] text-amber-700">Abgelaufen</Badge>
-                              ) : (
-                                <Badge variant="outline" className="ml-1.5 border-emerald-300 bg-emerald-50 text-[9px] text-emerald-800">Aktiv</Badge>
-                              )}
-                            </div>
-                            {!isRevoked && !isExpired && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => revokeWbtLink.mutate({ id: link.id })}
-                                disabled={revokeWbtLink.isPending}
-                                className="h-6 px-1.5 text-[10px] text-red-700 hover:bg-red-50 hover:text-red-900"
-                              >
-                                Widerrufen
-                              </Button>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="border-blue-200 bg-blue-50/70 py-0 shadow-sm">
-              <CardHeader className="px-5 py-4">
-                <CardTitle className="flex items-center gap-2 text-base text-blue-950"><CheckCircle2 className="size-5 text-blue-700" /> Bereits vorbereitet</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 px-5 pb-5 text-sm leading-5 text-blue-900">
-                <p>Mandanten, Veranstaltungen und Planungsdaten sind serverseitig getrennt.</p>
-                <p>Die Vereinsansicht enthält keine Vereinsauswahl und bleibt auf den eigenen Mandanten beschränkt.</p>
-                <p>Neue Vereine starten ausschließlich intern als Pilot oder Musterverein – mit einer ersten Veranstaltung, aber ohne öffentliche Kundenfunktion.</p>
-              </CardContent>
-            </Card>
             <Card className="border-amber-200 bg-amber-50/70 py-0 shadow-sm">
               <CardHeader className="px-5 py-4">
                 <CardTitle className="flex items-center gap-2 text-base text-amber-950"><CreditCard className="size-5 text-amber-700" /> Bewusst noch nicht aktiv</CardTitle>
@@ -2739,7 +2587,7 @@ export default function MasterAdminPortal() {
         <AlertDialogContent className="border-red-200 bg-white text-slate-950">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-red-900">
-              <UserRoundX className="size-5 text-red-700" /> Testzugang endgültig entfernen?
+              <UserRoundX className="size-5 text-red-700" /> Zugang endgültig entfernen?
             </AlertDialogTitle>
             <AlertDialogDescription className="leading-5 text-slate-600">
               Der persönliche Zugang von <strong className="font-semibold text-slate-800">{accessToDelete?.name}</strong>{" "}

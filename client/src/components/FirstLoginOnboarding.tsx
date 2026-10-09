@@ -28,8 +28,8 @@ type OnboardingStep = "welcome" | "klemmi" | "co_admin";
 /**
  * Der Fortschritt dieser kurzen Einführung bleibt lokal auf dem Gerät erhalten
  * – ohne Personen- oder Vereinsdaten – bis sie bewusst abgeschlossen wird.
- * Das WBT gehört bewusst nicht zu diesem Ablauf, sondern steht im Hilfe-Center
- * jederzeit freiwillig bereit.
+ * Die fiktive Vereinsdemo steht unabhängig vom Onboarding auf mycrewmate.de
+ * für ein risikofreies Ausprobieren bereit.
  */
 function loadSavedOnboardingStep(): OnboardingStep | null {
   if (typeof window === "undefined") return null;
