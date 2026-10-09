@@ -57,10 +57,10 @@
 
 ## In Umsetzung
 
-- [ ] Geprüften Pilotaufbewahrungsstand veröffentlichen; der vorhandene Heartbeat `product-expiry-reminders` läuft täglich um 08:00 UTC und führt nach dem Deploy automatisch die neue Pilotlogik aus.
+- [x] Geprüften Pilotaufbewahrungsstand veröffentlicht; der vorhandene Heartbeat `product-expiry-reminders` läuft täglich um 08:00 UTC und führt nach dem Deploy automatisch die neue Pilotlogik aus.
 - [x] Hetzner-AVV mit den tatsächlichen Verarbeitungskategorien verbindlich angelegt.
 - [x] B2B-Ausrichtung für die aktuelle Website festgelegt: ausschließlich Vereine/Verbände, ehrenamtliche Organisationsteams oder Initiativen sowie Gemeinden/kommunale Veranstalter; keine Privatpersonen, Firmenveranstaltungen oder gewerblichen Eventdienstleistungen.
-- [ ] Technische Logfristen auf Produktionsserver und Reverse Proxy verifizieren und konfigurieren; Coolify-Terminal ist im aktuellen Browserzugang nicht interaktiv, daher bleibt die öffentliche Formulierung bewusst ohne erfundene Frist.
+- [x] Technische Logfristen auf Produktionsserver und Reverse Proxy aktiviert und live geprüft: Docker-Standardtreiber `journald`, `MaxRetentionSec=14day`, Speichergrenzen, neu erzeugte MyCrewMate- und Coolify-Proxy-Container mit `journald` sowie öffentlicher Health Check `200`. Der Nachweis steht in `docs/server-log-retention-v1.md`.
 - [ ] Vor dem geplanten Kaufstart am 01.01.2027 Checkout, Steuerstatus und eine etwaige BFSG-/Barrierefreiheitsinformation für den dann verbindlich bestätigten Vertriebspfad freigeben.
 
 ## Später prüfen

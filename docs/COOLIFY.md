@@ -67,6 +67,12 @@ Nicht erforderlich sind `VITE_APP_ID`, `OAUTH_SERVER_URL`, `VITE_OAUTH_PORTAL_UR
 
 > Der tägliche Produktablauf archiviert endende Pilotzugänge, versendet eine Abschlussmail ohne automatische Verlängerung und hält die Daten anschließend drei Jahre zur Reaktivierung vor. Nach Fristende entfernt er Mandant und Uploads technisch. Die Kopien der transaktionalen Mails im Hetzner-Postfach sind davon getrennt: Sie werden im monatlichen Betreiberprozess nach derselben dokumentierten Frist bereinigt; SMTP allein erlaubt keine sichere Fernlöschung von Mailbox-Inhalten.
 
+### 2.4 Technische Server- und Proxyprotokolle
+
+Die Anwendung nutzt Docker auf dem Hetzner-Produktionsserver. Der Docker-Standardtreiber `json-file` darf dort nicht unlimitiert betrieben werden, weil er ohne zusätzliche Rotation die Systemplatte füllen kann. Die verbindliche technische Zielkonfiguration verwendet deshalb den Docker-Treiber `journald` und eine zeitliche Journalfrist von **14 Tagen**.
+
+Die vollständige, überprüfbare Serverkonfiguration einschließlich Dateien, Kontrollschritten, Redeploy-Hinweis und Rollback-Vorbereitung steht in [`server-log-retention-v1.md`](server-log-retention-v1.md). Das Einspielen startet Docker neu und unterbricht die laufenden Container kurz. Es wird daher nur in einem abgestimmten Wartungsfenster mit anschließendem Health Check ausgeführt. Der öffentliche Datenschutztext wird erst nach erfolgreicher Prüfung von Docker-Treiber, Journalfrist, neu erzeugtem MyCrewMate-Container und Health Check auf die konkrete 14-Tage-Frist umgestellt.
+
 ### 3. Datenbank und Migrationen
 
 Der Container führt vor dem Webstart den integrierten Migrationsrunner aus. Dadurch werden die eingecheckten Dateien unter `drizzle/` in ihrer Journal-Reihenfolge angewendet und im Standardjournal `__drizzle_migrations` vermerkt. Der Vorgang ist wiederholbar: bereits angewendete Migrationen werden übersprungen.

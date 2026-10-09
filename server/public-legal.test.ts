@@ -21,6 +21,8 @@ describe("öffentliche Pilot- und Datenschutzhinweise", () => {
     expect(legal).toContain("Wirtschafts-Identifikationsnummer gemäß § 139c AO: DE428034222");
     expect(legal).toContain("spätestens innerhalb von 45 Minuten nach ihrer Anlage automatisch gelöscht");
     expect(legal).toContain("höchstens sieben täglichen Wiederherstellungspunkten");
+    expect(legal).toContain("höchstens 14 Tage aufbewahrt");
+    expect(legal).toContain("Access-Log-Funktion des Reverse Proxys ist nicht aktiviert");
     expect(legal).toContain("Sicherheits-, Login- und Aktivitätsprotokolle innerhalb der MyCrewMate-Anwendung werden höchstens zwölf Monate gespeichert");
   });
 });
