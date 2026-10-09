@@ -128,11 +128,13 @@ export function PublicPrivacyPage() {
       </section>
       <section>
         <h2 className="text-base font-bold text-slate-950">2.3 Vereinsdemo mit fiktiven Daten</h2>
-        <p className="mt-2">Die Vereinsdemo öffnet eine zeitlich begrenzte, eigene Testumgebung der MyCrewMate-Anwendung mit fiktiven Vereins-, Helfer-, Kontakt-, Standort- und Streckendaten. Tester können darin beispielhaft Helfer, Aufgaben oder Schichten ändern. Die Testumgebung wird beim Beenden der Demo sowie spätestens nach kurzer Zeit automatisch gelöscht. Bitte verwenden Sie ausschließlich erfundene Namen und Kontaktdaten. Es findet keine Herkunfts- oder Nutzungsanalyse statt.</p>
+        <p className="mt-2">Die Vereinsdemo öffnet eine zeitlich begrenzte, eigene Testumgebung der MyCrewMate-Anwendung mit fiktiven Vereins-, Helfer-, Kontakt-, Standort- und Streckendaten. Tester können darin beispielhaft Helfer, Aufgaben oder Schichten ändern. Die Testumgebung wird beim Beenden der Demo und, falls das technisch nicht übermittelt werden kann, spätestens innerhalb von 45 Minuten nach ihrer Anlage automatisch gelöscht. Bitte verwenden Sie ausschließlich erfundene Namen und Kontaktdaten. Es findet keine Herkunfts- oder Nutzungsanalyse statt.</p>
+        <p className="mt-2">Kurzzeitig in technische Sicherungskopien gelangte fiktive Demodaten werden nicht zur Wiederherstellung oder erneuten Öffnung einer Vereinsdemo verwendet. Die Sicherungskopien rotieren mit höchstens sieben täglichen Wiederherstellungspunkten.</p>
       </section>
       <section>
         <h2 className="text-base font-bold text-slate-950">3. Technische Zugriffe</h2>
         <p className="mt-2">Beim Aufruf einer Website verarbeitet der Hosting-Anbieter technisch erforderliche Verbindungsdaten in Serverprotokollen, insbesondere IP-Adresse, Zeitpunkt, angeforderte Seite und technische Browserinformationen. Die Verarbeitung erfolgt zur Bereitstellung und Sicherheit der Website auf Grundlage von Art. 6 Abs. 1 lit. f DSGVO. Die öffentliche Produktseite wird auf Infrastruktur der Hetzner Online GmbH in Deutschland betrieben.</p>
+        <p className="mt-2">Sicherheits-, Login- und Aktivitätsprotokolle innerhalb der MyCrewMate-Anwendung werden höchstens zwölf Monate gespeichert und anschließend automatisch bereinigt. Kurzlebige Sicherheitsdaten wie abgelaufene Einladungen, Übergaben und Sitzungswiderrufe werden spätestens nach 30 Tagen entfernt. Für die technische Aufbewahrungsdauer der Server- und Reverse-Proxy-Protokolle gilt eine gesonderte, im Betriebsumfeld konfigurierte Frist; sie wird nach der technischen Freigabe in diesen Hinweisen konkret ergänzt.</p>
       </section>
       <section>
         <h2 className="text-base font-bold text-slate-950">4. Login zur Vereins- und Eventplanung</h2>

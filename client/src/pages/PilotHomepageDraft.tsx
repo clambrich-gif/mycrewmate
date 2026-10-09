@@ -234,7 +234,7 @@ function PilotRequestForm() {
           Für wen ist der Pilot gedacht?
         </h3>
         <p className="mt-2">
-          Für Vereine und Verbände, ehrenamtliche Initiativen oder Organisationsteams sowie Gemeinden und kommunale Veranstalter mit ehrenamtlich getragenen Veranstaltungen.
+          Für Vereine und Verbände, ehrenamtliche Initiativen oder Organisationsteams sowie Gemeinden und kommunale Veranstalter mit ehrenamtlich getragenen Veranstaltungen. Ein möglicher Pilotzugang wird ausschließlich mit einer benannten Organisation abgestimmt – nicht mit Privatpersonen.
         </p>
         <p className="mt-2 font-semibold text-slate-800">
           Nicht vorgesehen sind private Feiern, Firmenveranstaltungen und gewerbliche Eventdienstleistungen.
@@ -361,7 +361,7 @@ function PilotRequestForm() {
       <label className="flex items-start gap-3 rounded-xl border border-emerald-100 bg-emerald-50/60 p-3 text-sm leading-5 text-slate-700">
         <input required type="checkbox" name="eligibility" className="mt-0.5 size-4 accent-emerald-700" />
         <span>
-          Ich frage im Namen der genannten Organisation für eine ehrenamtlich getragene Veranstaltung an. Mir ist bekannt, dass MyCrewMate nicht für private Feiern, Firmenveranstaltungen oder gewerbliche Eventdienstleistungen vorgesehen ist.
+          Ich frage im Namen der genannten Organisation für eine ehrenamtlich getragene Veranstaltung an. Mir ist bekannt, dass MyCrewMate nicht für private Feiern, Firmenveranstaltungen oder gewerbliche Eventdienstleistungen vorgesehen ist und ein möglicher Pilotzugang nur mit der genannten Organisation vereinbart wird.
         </span>
       </label>
 

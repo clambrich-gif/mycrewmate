@@ -1033,7 +1033,7 @@ export default function OfferDemo() {
               <h3 className="mt-2 text-xl font-black tracking-tight text-slate-950">Organisation mit Ehrenamt im Mittelpunkt.</h3>
             </div>
             <div className="text-sm leading-6 text-slate-700">
-              <p>MyCrewMate richtet sich an Vereine und Verbände, ehrenamtliche Initiativen oder Organisationsteams sowie Gemeinden und kommunale Veranstalter mit freiwillig Helfenden.</p>
+              <p>MyCrewMate richtet sich an Vereine und Verbände, ehrenamtliche Initiativen oder Organisationsteams sowie Gemeinden und kommunale Veranstalter mit freiwillig Helfenden. Eine Nutzung wird ausschließlich mit einer benannten Organisation vereinbart – nicht mit Privatpersonen.</p>
               <p className="mt-2 font-semibold text-slate-900">Nicht vorgesehen ist MyCrewMate für private Feiern, Firmenveranstaltungen oder gewerbliche Eventdienstleistungen.</p>
               <p className="mt-2 text-slate-600">Pilotanfragen werden persönlich geprüft; sie begründen keinen Anspruch auf Annahme, Freischaltung oder ein bestimmtes Paket.</p>
             </div>

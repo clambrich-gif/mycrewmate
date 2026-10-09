@@ -18,6 +18,7 @@ describe("öffentliche Preis- und Pilotseiten", () => {
     expect((offer.match(/href="\/pilot#pilot-anfrage"/g) ?? []).length).toBeGreaterThanOrEqual(4);
     expect(offer).toContain("Pilot kostenlos anfragen");
     expect(offer).toContain("ehrenamtlich getragenen Veranstaltungen");
+    expect(offer).toContain("ausschließlich mit einer benannten Organisation vereinbart");
     expect(offer).toContain("private Feiern, Firmenveranstaltungen oder gewerbliche Eventdienstleistungen");
     expect(offer).toContain("keinen Anspruch auf Annahme, Freischaltung oder ein bestimmtes Paket");
     expect(offer).toContain('href="/vereinsdemo"');
@@ -48,6 +49,8 @@ describe("öffentliche Preis- und Pilotseiten", () => {
     expect(pilot).toContain("Ehrenamtliches Organisationsteam oder Initiative");
     expect(pilot).toContain("Gemeinde oder kommunaler Veranstalter");
     expect(pilot).toContain("private Feiern, Firmenveranstaltungen und gewerbliche Eventdienstleistungen");
+    expect(pilot).toContain("ausschließlich mit einer benannten Organisation abgestimmt");
+    expect(pilot).toContain("ein möglicher Pilotzugang nur mit der genannten Organisation vereinbart wird");
     expect(pilot).toContain("keinen Anspruch auf Teilnahme, Freischaltung oder ein bestimmtes Paket");
     expect(pilot).toContain("Telefonnummer für eine persönliche Rückfrage");
     expect(pilot).toContain("Nur wenn ihr einen persönlichen Rückruf wünscht.");

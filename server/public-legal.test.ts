@@ -19,5 +19,8 @@ describe("öffentliche Pilot- und Datenschutzhinweise", () => {
     expect(legal).toContain("aktuelle öffentliche Website mit Pilotanfrage und fiktiver Vereinsdemo");
     expect(legal).not.toContain("tracker- und formularfreien Startauftritt");
     expect(legal).toContain("Wirtschafts-Identifikationsnummer gemäß § 139c AO: DE428034222");
+    expect(legal).toContain("spätestens innerhalb von 45 Minuten nach ihrer Anlage automatisch gelöscht");
+    expect(legal).toContain("höchstens sieben täglichen Wiederherstellungspunkten");
+    expect(legal).toContain("Sicherheits-, Login- und Aktivitätsprotokolle innerhalb der MyCrewMate-Anwendung werden höchstens zwölf Monate gespeichert");
   });
 });

@@ -53,11 +53,15 @@
 - [x] Bestätigte Wirtschafts-Identifikationsnummer `DE428034222` im Impressum ergänzt; die interne Steuernummer wird nicht veröffentlicht.
 - [x] Zielgruppen- und Annahmeregel auf Start- und Pilotseite umgesetzt: ausschließlich Vereine/Verbände, ehrenamtliche Organisationsteams oder Initiativen sowie Gemeinden/kommunale Veranstalter mit ehrenamtlich getragenem Anlass; private Feiern, Firmenveranstaltungen und gewerbliche Eventdienstleistungen sind ausgeschlossen.
 - [x] Pilotformular um Organisationsform und bestätigten Ehrenamtsbezug ergänzt, serverseitig validiert, in Anfrage-E-Mail und geschütztem Pilotportal angezeigt sowie revisionsfähig gespeichert.
+- [x] Organisation statt Privatperson zusätzlich im öffentlichen Zielgruppenblock und im Pilotformular klargestellt: Ein Pilotzugang wird nur mit einer benannten Organisation abgestimmt.
 
 ## In Umsetzung
 
 - [ ] Geprüften Pilotaufbewahrungsstand veröffentlichen; der vorhandene Heartbeat `product-expiry-reminders` läuft täglich um 08:00 UTC und führt nach dem Deploy automatisch die neue Pilotlogik aus.
-- [ ] Betreiberfreigaben für die verbleibenden dringenden Rechts-Release-Gates einholen: Hetzner-AVV/Anlagen, technische Logfristen sowie B2B/B2C- und BFSG-Entscheidung vor dem Kaufstart.
+- [x] Hetzner-AVV mit den tatsächlichen Verarbeitungskategorien verbindlich angelegt.
+- [x] B2B-Ausrichtung für die aktuelle Website festgelegt: ausschließlich Vereine/Verbände, ehrenamtliche Organisationsteams oder Initiativen sowie Gemeinden/kommunale Veranstalter; keine Privatpersonen, Firmenveranstaltungen oder gewerblichen Eventdienstleistungen.
+- [ ] Technische Logfristen auf Produktionsserver und Reverse Proxy verifizieren und konfigurieren; Coolify-Terminal ist im aktuellen Browserzugang nicht interaktiv, daher bleibt die öffentliche Formulierung bewusst ohne erfundene Frist.
+- [ ] Vor dem geplanten Kaufstart am 01.01.2027 Checkout, Steuerstatus und eine etwaige BFSG-/Barrierefreiheitsinformation für den dann verbindlich bestätigten Vertriebspfad freigeben.
 
 ## Später prüfen
 
