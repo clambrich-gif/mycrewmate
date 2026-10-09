@@ -71,7 +71,6 @@ import {
   tenants,
   userTenantMemberships,
   users,
-  wbtTrainingLinks,
 } from "../drizzle/schema";
 import {
   LEGAL_DOCUMENTS,
@@ -2007,6 +2006,7 @@ export type PlatformAccessInventoryItem = {
   email: string | null;
   status: "active" | "suspended" | "legacy";
   tenantNames: string[];
+  tenantIds: string[];
   createdAt: Date;
   hasDuplicateEmail: boolean;
 };
@@ -2033,6 +2033,7 @@ export async function listPlatformAccessInventoryForPlatformAdmin(): Promise<
       database
         .select({
           userId: userTenantMemberships.userId,
+          tenantId: userTenantMemberships.tenantId,
           tenantName: tenants.name,
         })
         .from(userTenantMemberships)
@@ -2050,6 +2051,7 @@ export async function listPlatformAccessInventoryForPlatformAdmin(): Promise<
       database
         .select({
           accessId: planningTeamAccessEvents.accessId,
+          tenantId: tenants.id,
           tenantName: tenants.name,
         })
         .from(planningTeamAccessEvents)
@@ -2058,16 +2060,24 @@ export async function listPlatformAccessInventoryForPlatformAdmin(): Promise<
     ]);
 
   const tenantNamesByUser = new Map<number, string[]>();
+  const tenantIdsByUser = new Map<number, string[]>();
   for (const row of membershipRows) {
-    const current = tenantNamesByUser.get(row.userId) ?? [];
-    if (!current.includes(row.tenantName)) current.push(row.tenantName);
-    tenantNamesByUser.set(row.userId, current);
+    const names = tenantNamesByUser.get(row.userId) ?? [];
+    const ids = tenantIdsByUser.get(row.userId) ?? [];
+    if (!names.includes(row.tenantName)) names.push(row.tenantName);
+    if (!ids.includes(row.tenantId)) ids.push(row.tenantId);
+    tenantNamesByUser.set(row.userId, names);
+    tenantIdsByUser.set(row.userId, ids);
   }
   const tenantNamesByPlanningAccess = new Map<number, string[]>();
+  const tenantIdsByPlanningAccess = new Map<number, string[]>();
   for (const row of planningEventRows) {
-    const current = tenantNamesByPlanningAccess.get(row.accessId) ?? [];
-    if (!current.includes(row.tenantName)) current.push(row.tenantName);
-    tenantNamesByPlanningAccess.set(row.accessId, current);
+    const names = tenantNamesByPlanningAccess.get(row.accessId) ?? [];
+    const ids = tenantIdsByPlanningAccess.get(row.accessId) ?? [];
+    if (!names.includes(row.tenantName)) names.push(row.tenantName);
+    if (!ids.includes(row.tenantId)) ids.push(row.tenantId);
+    tenantNamesByPlanningAccess.set(row.accessId, names);
+    tenantIdsByPlanningAccess.set(row.accessId, ids);
   }
 
   const items: PlatformAccessInventoryItem[] = [
@@ -2078,6 +2088,7 @@ export async function listPlatformAccessInventoryForPlatformAdmin(): Promise<
       email: row.email,
       status: row.status,
       tenantNames: tenantNamesByUser.get(row.accessId) ?? [],
+      tenantIds: tenantIdsByUser.get(row.accessId) ?? [],
       createdAt: row.createdAt,
       hasDuplicateEmail: false,
     })),
@@ -2088,6 +2099,7 @@ export async function listPlatformAccessInventoryForPlatformAdmin(): Promise<
       email: row.email,
       status: row.email ? ("active" as const) : ("legacy" as const),
       tenantNames: tenantNamesByPlanningAccess.get(row.accessId) ?? [],
+      tenantIds: tenantIdsByPlanningAccess.get(row.accessId) ?? [],
       createdAt: row.createdAt,
       hasDuplicateEmail: false,
     })),
@@ -10305,88 +10317,4 @@ export async function consumePlatformTenantHandoff(tokenHash: string) {
       createdByOpenId: row.createdByOpenId,
     } as const;
   });
-}
-
-export type WbtTrackId = "helper" | "admin";
-
-/** Erstellt einen externen, zeitlich begrenzten Trainingslink ohne Teilnehmerdaten. */
-export async function createWbtTrainingLink(input: {
-  tokenHash: string;
-  trackId: WbtTrackId;
-  createdByOpenId: string;
-  expiresInDays: number;
-}) {
-  const database = (await getDb()) as DB;
-  const expiresAt = new Date(
-    Date.now() + input.expiresInDays * 24 * 60 * 60 * 1000
-  );
-  const result = await database.insert(wbtTrainingLinks).values({
-    tokenHash: input.tokenHash,
-    trackId: input.trackId,
-    createdByOpenId: input.createdByOpenId,
-    expiresAt,
-  });
-  const id = Number(
-    (result as unknown as { insertId?: number })?.insertId ??
-      (Array.isArray(result)
-        ? (result[0] as { insertId?: number } | undefined)?.insertId
-        : undefined)
-  );
-  if (!Number.isInteger(id) || id <= 0) {
-    throw new Error("WBT-Trainingslink konnte nicht erstellt werden");
-  }
-  return { id, trackId: input.trackId, expiresAt } as const;
-}
-
-/** Liefert dem Masterportal ausschließlich Metadaten, nie den geheimen Linkwert. */
-export async function listWbtTrainingLinksForPlatformAdmin() {
-  const database = await getDb();
-  if (!database) return [];
-  return database
-    .select({
-      id: wbtTrainingLinks.id,
-      trackId: wbtTrainingLinks.trackId,
-      expiresAt: wbtTrainingLinks.expiresAt,
-      revokedAt: wbtTrainingLinks.revokedAt,
-      createdAt: wbtTrainingLinks.createdAt,
-    })
-    .from(wbtTrainingLinks)
-    .orderBy(desc(wbtTrainingLinks.createdAt));
-}
-
-/** Widerruft einen Trainingslink sofort, ohne seinen ursprünglichen Wert erneut anzuzeigen. */
-export async function revokeWbtTrainingLinkForPlatformAdmin(id: number) {
-  const database = (await getDb()) as DB;
-  const result = await database
-    .update(wbtTrainingLinks)
-    .set({ revokedAt: new Date() })
-    .where(
-      and(
-        eq(wbtTrainingLinks.id, id),
-        isNull(wbtTrainingLinks.revokedAt),
-        gt(wbtTrainingLinks.expiresAt, new Date())
-      )
-    );
-  return affectedRows(result) > 0;
-}
-
-/** Prüft einen externen Trainingslink anhand seines serverseitigen Hashes. */
-export async function resolveActiveWbtTrainingLink(tokenHash: string) {
-  const database = await getDb();
-  if (!database) return null;
-  const [row] = await database
-    .select({
-      trackId: wbtTrainingLinks.trackId,
-      expiresAt: wbtTrainingLinks.expiresAt,
-    })
-    .from(wbtTrainingLinks)
-    .where(
-      and(
-        eq(wbtTrainingLinks.tokenHash, tokenHash),
-        isNull(wbtTrainingLinks.revokedAt),
-        gt(wbtTrainingLinks.expiresAt, new Date())
-      )
-    )
-    .limit(1);
-  return row ?? null;
 }

@@ -46,8 +46,8 @@ export const KLEMMI_AUDIO_SCRIPTS = {
   "opening-ganz-entspannt": "Ganz entspannt, wir gehen das zusammen an!",
   "opening-wunderbar": "Wunderbar, dann starten wir!",
 
-  "first-login-intro": "Hallo! Ich bin Klemmi. Und nein – nicht weil ich verklemmt bin, sondern weil ich genau dann zur Stelle bin, wenn es irgendwo klemmt! Egal ob Schichten, Helfer oder Eventplanung: Wenn du mal nicht weiterweißt, klick mich einfach an. Du findest mich ab jetzt oben im Menü auf jeder Seite. Wenn du dir vor dem Start alles in Ruhe ansehen möchtest, findest du im Hilfe-Center auch eine freiwillige, interaktive Einführung als Web-Based-Training. Dort kannst du die wichtigsten Abläufe ohne Auswirkungen auf eure echte Planung ausprobieren.",
-  "first-login-co-admin": "Hallo! Ich bin Klemmi. Und nein – nicht weil ich verklemmt bin, sondern weil ich genau dann zur Stelle bin, wenn es irgendwo klemmt! Egal ob Schichten, Helfer oder Eventplanung: Wenn du mal nicht weiterweißt, klick mich einfach an. Du findest mich ab jetzt oben im Menü auf jeder Seite. Wenn du dir vor dem Start alles in Ruhe ansehen möchtest, findest du im Hilfe-Center auch eine freiwillige, interaktive Einführung als Web-Based-Training. Dort kannst du die wichtigsten Abläufe ohne Auswirkungen auf eure echte Planung ausprobieren. Und noch ein Tipp für dich als Co-Admin: Im nächsten Schritt siehst du deine wichtigsten Rechte. Die vollständige Rechte-Matrix findest du später jederzeit im Hilfe-Bereich.",
+  "first-login-intro": "Hallo! Ich bin Klemmi. Und nein – nicht weil ich verklemmt bin, sondern weil ich genau dann zur Stelle bin, wenn es irgendwo klemmt! Egal ob Schichten, Helfer oder Eventplanung: Wenn du mal nicht weiterweißt, klick mich einfach an. Du findest mich ab jetzt oben im Menü auf jeder Seite. Wenn du die Oberfläche erst einmal ohne eigene Daten kennenlernen möchtest, probiere die fiktive Vereinsdemo auf mycrewmate.de aus. Dort kannst du alles ohne Auswirkungen auf eure echte Planung durchklicken.",
+  "first-login-co-admin": "Hallo! Ich bin Klemmi. Und nein – nicht weil ich verklemmt bin, sondern weil ich genau dann zur Stelle bin, wenn es irgendwo klemmt! Egal ob Schichten, Helfer oder Eventplanung: Wenn du mal nicht weiterweißt, klick mich einfach an. Du findest mich ab jetzt oben im Menü auf jeder Seite. Wenn du die Oberfläche erst einmal ohne eigene Daten kennenlernen möchtest, probiere die fiktive Vereinsdemo auf mycrewmate.de aus. Dort kannst du alles ohne Auswirkungen auf eure echte Planung durchklicken. Und noch ein Tipp für dich als Co-Admin: Im nächsten Schritt siehst du deine wichtigsten Rechte. Die vollständige Rechte-Matrix findest du später jederzeit im Hilfe-Bereich.",
   "login-warmgelaufen": "Da bist du ja wieder! Ich hab die Tabellen schon mal warmgelaufen. Wo legen wir los?",
   "login-chaos": "Servus! Bereit, das Chaos in geordnete Bahnen zu lenken? Ich wär's jedenfalls!",
   "login-ehrenamt": "Eingeloggt und startklar! Lass uns das Ehrenamt mal wieder ein bisschen einfacher machen.",
@@ -241,7 +241,6 @@ export const KLEMMI_AUDIO_SCRIPTS = {
   "help-search": "Direkt nach einem Begriff suchen. Tippe einfach ein Stichwort wie Helfer, Einsatzplan, Material, PDF oder Passwort ein. Die sichtbaren Kapitel passen sich sofort an.",
   "help-filters": "Hilfe nach Rolle filtern. Mit den Rollenfiltern blendest du Inhalte für alle, für das Planungsteam oder für Administratoren ein. So bleibt die Anleitung passend zu deinen Rechten.",
   "help-chapters": "Kapitel öffnen und direkt weiterarbeiten. Öffne das passende Kapitel, lies die kompakten Schritte und nutze die Links direkt zum jeweiligen Arbeitsbereich. Klemmi bleibt auch dort wieder für dich erreichbar.",
-  "help-wbt": "Mit dem WBT in Ruhe üben. Im Kapitel Web-Based-Training startest du die datenfreie Lernwerkstatt direkt mit dem passenden Trainingspfad: Helferkoordination oder Planungsteam und Administration. Dort übst du die Abläufe ohne etwas in deiner echten Vereinsplanung zu verändern.",
   "help-complete": "Geschafft! Jetzt weißt du, wie du in der Hilfe schnell zur passenden Antwort und direkt weiter zur Arbeit kommst.",
 
   "plan-intro": "Ich zeige dir den Einsatzplan von Anfang bis Ende. Gibt es schon Schichten, erklären wir sie direkt. Ist die Planung noch leer, legen wir gemeinsam eine erste Übungsschicht an. So siehst du alles an echten Daten.",
@@ -401,8 +400,8 @@ const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
   "helpers-action-edit": "20260928-informational-tour-v1",
   "helpers-action-delete": "20260928-informational-tour-v1",
   "helpers-complete": "20260928-informational-tour-v1",
-  "first-login-intro": "20261005-wbt-help-hint-v1",
-  "first-login-co-admin": "20261005-wbt-help-hint-v1",
+  "first-login-intro": "20261009-demo-hint-v1",
+  "first-login-co-admin": "20261009-demo-hint-v1",
   "login-warmgelaufen": "20260927-daily-greetings-v1",
   "login-chaos": "20260927-daily-greetings-v1",
   "login-ehrenamt": "20260927-daily-greetings-v1",
@@ -537,7 +536,6 @@ const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
   "security-accesses-rights-locked": "20260930-security-package-steps-v1",
   "security-accesses-coadmin-locked": "20260930-security-package-steps-v1",
   "security-accesses-events-locked": "20260930-security-package-steps-v1",
-  "help-wbt": "20261004-help-wbt-v1",
 };
 
 export function isKlemmiAudioId(value: string): value is KlemmiAudioId {

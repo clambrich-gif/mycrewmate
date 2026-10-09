@@ -337,19 +337,12 @@ export const HELP_KLEMMI_STEPS: KlemmiSurfaceStep[] = [
   {
     key: "chapters",
     selector: '[data-klemmi-target="help-chapters"]',
-    eyebrow: "Schritt 3 von 4",
+    eyebrow: "Schritt 3 von 3",
     title: "Kapitel öffnen und direkt weiterarbeiten",
     text: "Öffne das passende Kapitel, lies die kompakten Schritte und nutze die Links direkt zum jeweiligen Arbeitsbereich. Klemmi bleibt auch dort wieder für dich erreichbar.",
-    action: "WBT zeigen",
-  },
-  {
-    key: "wbt",
-    selector: '[data-klemmi-target="help-wbt"]',
-    eyebrow: "Schritt 4 von 4",
-    title: "Mit dem WBT in Ruhe üben",
-    text: "Im Kapitel Web-Based-Training startest du die datenfreie Lernwerkstatt direkt mit dem passenden Trainingspfad: Helferkoordination oder Planungsteam und Administration. Dort übst du die Abläufe ohne etwas in deiner echten Vereinsplanung zu verändern.",
     action: "Fertig",
   },
+
 ];
 
 /** Liefert nur dort Paket-Hinweise, wo im aktuellen Produktumfang tatsächlich eine Grenze liegt. */

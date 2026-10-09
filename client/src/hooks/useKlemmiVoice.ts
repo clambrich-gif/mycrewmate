@@ -51,8 +51,8 @@ export function useKlemmiVoice(options?: {
   }, []);
 
   /**
-   * Spielt einen weiteren festen Produktclip ab, etwa aus dem eigenständigen
-   * WBT. Die URL wird ausschließlich im Quellcode aus einer festen Clip-ID
+   * Spielt einen weiteren festen Produktclip ab. Die URL wird ausschließlich
+   * im Quellcode aus einer festen Clip-ID
    * gebildet; sie enthält nie Nutzereingaben oder Planungsdaten.
    */
   const playUrl = useCallback(

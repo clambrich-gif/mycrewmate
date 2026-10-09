@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { HELP_KLEMMI_STEPS } from "@/lib/klemmi-area-tours";
 import { useTenantAdministration } from "@/hooks/useTenantAdministration";
-import { ArrowRight, BookOpen, GraduationCap, Play, Search, Sparkles } from "lucide-react";
+import { BookOpen, Search, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export default function Help() {
@@ -76,39 +76,6 @@ export default function Help() {
           </div>
         </div>
       </header>
-
-      {/* WBT-Lernwerkstatt Schnellzugriff */}
-      <Card className="overflow-hidden border-2 border-cyan-200 bg-gradient-to-r from-cyan-50 via-white to-blue-50 shadow-sm">
-        <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3.5">
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-cyan-600 text-white shadow-sm shadow-cyan-200">
-              <GraduationCap className="size-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-cyan-800">Interaktive Lernwerkstatt</span>
-                <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">100% datenfrei</span>
-              </div>
-              <h3 className="text-base font-bold text-slate-950 sm:text-lg">
-                Web-Based-Training (WBT): Helfer &amp; Planung interaktiv lernen
-              </h3>
-              <p className="mt-1 text-xs leading-relaxed text-slate-600 sm:text-sm">
-                Zwei spezialisierte Kurse mit zweistimmiger Vertonung (Lernsprecher + Klemmi) und offizieller Teilnahmebestätigung.
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              onClick={() => window.open("/wbt", "_blank")}
-              className="bg-cyan-700 text-white hover:bg-cyan-800 shadow-sm"
-            >
-              <Play className="mr-1.5 size-4" />
-              WBT jetzt öffnen
-              <ArrowRight className="ml-1.5 size-4" />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
 
       <Card className="border-blue-200 bg-gradient-to-br from-blue-50 via-white to-slate-50 shadow-sm">
         <CardContent className="space-y-4 p-4 sm:p-5">

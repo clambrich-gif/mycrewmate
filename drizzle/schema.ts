@@ -626,10 +626,10 @@ export type TenantContractAcceptance =
   typeof tenantContractAcceptances.$inferSelect;
 
 /**
- * Zeitlich begrenzte, externe Zugänge zur vollständig datenfreien WBT-Simulation.
- * Der Link selbst wird ausschließlich gehasht gespeichert. Es gibt bewusst weder
- * Teilnehmername noch Vereins- oder Veranstaltungsbezug: Das Training lässt sich
- * sicher vor einer Produktanmeldung weitergeben.
+ * Historische, nicht mehr erreichbare WBT-Linkdaten aus einem früheren Schulungsmodul.
+ * Die Tabelle bleibt während des Vorab-Betriebs unverändert bestehen, damit keine
+ * unnötige Datenbanklöschung oder Migration ausgelöst wird. Es gibt keine aktive
+ * Oberfläche, Route oder API mehr, die diese Daten verwenden kann.
  */
 export const wbtTrainingLinks = mysqlTable(
   "wbt_training_links",

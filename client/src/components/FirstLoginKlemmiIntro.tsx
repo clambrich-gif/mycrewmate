@@ -14,7 +14,7 @@ type HighlightRect = {
 } | null;
 
 const KLEMMI_INTRO_TEXT =
-  "Hallo! Ich bin Klemmi. Und nein – nicht weil ich verklemmt bin, sondern weil ich genau dann zur Stelle bin, wenn es irgendwo klemmt! Egal ob Schichten, Helfer oder Eventplanung: Wenn du mal nicht weiterweißt, klick mich einfach an. Du findest mich ab jetzt oben im Menü auf jeder Seite. Wenn du dir vor dem Start alles in Ruhe ansehen möchtest, findest du im Hilfe-Center auch eine freiwillige, interaktive Einführung als Web-Based-Training. Dort kannst du die wichtigsten Abläufe ohne Auswirkungen auf eure echte Planung ausprobieren.";
+  "Hallo! Ich bin Klemmi. Und nein – nicht weil ich verklemmt bin, sondern weil ich genau dann zur Stelle bin, wenn es irgendwo klemmt! Egal ob Schichten, Helfer oder Eventplanung: Wenn du mal nicht weiterweißt, klick mich einfach an. Du findest mich ab jetzt oben im Menü auf jeder Seite. Wenn du die Oberfläche erst einmal ohne eigene Daten kennenlernen möchtest, probiere die fiktive Vereinsdemo auf mycrewmate.de aus. Dort kannst du alles ohne Auswirkungen auf eure echte Planung durchklicken.";
 const KLEMMI_CO_ADMIN_TEXT =
   "Und noch ein Tipp für dich als Co-Admin: Im nächsten Schritt siehst du deine wichtigsten Rechte. Die vollständige Rechte-Matrix findest du später jederzeit im Hilfe-Bereich.";
 
