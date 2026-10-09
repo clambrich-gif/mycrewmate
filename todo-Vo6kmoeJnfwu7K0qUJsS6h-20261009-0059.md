@@ -53,7 +53,7 @@
 - [x] Bestätigte Wirtschafts-Identifikationsnummer `DE428034222` im Impressum ergänzt; die interne Steuernummer wird nicht veröffentlicht.
 - [x] Zielgruppen- und Annahmeregel auf Start- und Pilotseite umgesetzt: ausschließlich Vereine/Verbände, ehrenamtliche Organisationsteams oder Initiativen sowie Gemeinden/kommunale Veranstalter mit ehrenamtlich getragenem Anlass; private Feiern, Firmenveranstaltungen und gewerbliche Eventdienstleistungen sind ausgeschlossen.
 - [x] Pilotformular um Organisationsform und bestätigten Ehrenamtsbezug ergänzt, serverseitig validiert, in Anfrage-E-Mail und geschütztem Pilotportal angezeigt sowie revisionsfähig gespeichert.
-- [x] Organisation statt Privatperson zusätzlich im öffentlichen Zielgruppenblock und im Pilotformular klargestellt: Ein Pilotzugang wird nur mit einer benannten Organisation abgestimmt.
+- [x] Organisation als Nutzungsinhaber im öffentlichen Zielgruppenblock und Pilotformular klargestellt: Eine Person aus dem Verein, der Initiative oder der Gemeinde kann anfragen; ein Pilotzugang ist ausschließlich für die genannte Organisation möglich.
 
 ## In Umsetzung
 
@@ -80,6 +80,7 @@
 - [x] Wechsel von Pilot zu einem aktiven regulären Paket abgesichert: Bei Light, Pro oder Enterprise mit Status „Aktiv“ wird der Verein einmalig als regulärer Zugang übernommen. Daten und Zugänge bleiben bestehen; die automatische Pilotarchivierung greift nicht mehr. Der Master-Dialog, Sicherheitsprotokoll, Ablaufhinweise und Regressionstests dokumentieren diesen Schritt.
 - [x] Aktive Vereinsverwaltung im Master-Portal vervollständigt: Tarifbeginn/-ende und Ablaufhinweis sind direkt auf der Vereinskarte sichtbar; Produktverwaltung, Vereinsansicht, Adminzugang und Archivierung stehen auch aktiven Vereinen zur Verfügung. Endgültige Löschung ist nur nach bewusster Archivierung möglich.
 - [x] Sicheren Adminwechsel ergänzt: Ein alter Vereinsadmin kann nur nach Anlegen mindestens eines weiteren aktiven Admins und nur für den betreffenden Verein entzogen werden. Andere Vereinsmitgliedschaften, Planungsdaten und Ansprechpartner bleiben unverändert; ein Verein kann nie ohne aktiven Admin zurückbleiben.
+- [x] Pilotformular ohne doppelte Hinweiskästen vereinfacht: Der große Datenhinweis entfällt; Zielgruppe ist allgemein für MyCrewMate und verständlicher formuliert; die Ehrenamtsbestätigung ist kurz. Datenschutz bleibt über den Link und einen knappen Hinweis direkt an der Checkbox transparent.
 - [ ] Vor dem geplanten Kaufstart am 01.01.2027 Checkout, Steuerstatus und eine etwaige BFSG-/Barrierefreiheitsinformation für den dann verbindlich bestätigten Vertriebspfad freigeben.
 
 ## Später prüfen

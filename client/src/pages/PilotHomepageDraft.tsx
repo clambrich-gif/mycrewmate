@@ -205,36 +205,14 @@ function PilotRequestForm() {
   return (
     <form className="grid gap-4" onSubmit={handleSubmit} noValidate>
       <section
-        aria-labelledby="pilot-datenhinweis"
-        className="rounded-xl border border-blue-100 bg-blue-50/70 p-4 text-sm leading-5 text-slate-700"
-      >
-        <h3 id="pilot-datenhinweis" className="font-black text-slate-950">
-          Kurz zum Umgang mit euren Angaben
-        </h3>
-        <dl className="mt-3 grid gap-2 text-xs leading-5 sm:grid-cols-[8rem_1fr]">
-          <dt className="font-bold text-slate-800">Pflichtangaben</dt>
-          <dd>Name der Organisation, Organisationsform, Ansprechperson, E-Mail, Anlass und Wunschmonat – ohne diese Angaben können wir die Anfrage nicht bearbeiten.</dd>
-          <dt className="font-bold text-slate-800">Freiwillig</dt>
-          <dd>Telefonnummer für einen Rückruf sowie weitere Angaben zum Vorhaben.</dd>
-          <dt className="font-bold text-slate-800">Zweck</dt>
-          <dd>Persönliche Antwort, Abstimmung eines möglichen Pilotzeitraums und nachvollziehbare Bearbeitung der Anfrage.</dd>
-          <dt className="font-bold text-slate-800">Speicherdauer</dt>
-          <dd>Bis zur dokumentierten Entscheidung; danach drei Jahre. Ein vorzeitiger Löschwunsch ist jederzeit möglich.</dd>
-        </dl>
-        <p className="mt-3 text-xs leading-5 text-slate-600">
-          Die Checkbox unten bestätigt nur, dass ihr die Datenschutzhinweise gelesen habt. Sie ist keine Werbeeinwilligung.
-        </p>
-      </section>
-
-      <section
         aria-labelledby="pilot-zielgruppe"
         className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 text-sm leading-6 text-slate-700"
       >
         <h3 id="pilot-zielgruppe" className="font-black text-slate-950">
-          Für wen ist der Pilot gedacht?
+          Für welche Organisationen ist MyCrewMate gedacht?
         </h3>
         <p className="mt-2">
-          Für Vereine und Verbände, ehrenamtliche Initiativen oder Organisationsteams sowie Gemeinden und kommunale Veranstalter mit ehrenamtlich getragenen Veranstaltungen. Ein möglicher Pilotzugang wird ausschließlich mit einer benannten Organisation abgestimmt – nicht mit Privatpersonen.
+          MyCrewMate ist für Vereine und Verbände, ehrenamtliche Initiativen und Organisationsteams sowie Gemeinden und kommunale Veranstalter mit ehrenamtlich getragenen Veranstaltungen gemacht. Eine Person aus einer dieser Organisationen kann die Anfrage stellen. Ein Pilotzugang ist ausschließlich für die genannte Organisation möglich.
         </p>
         <p className="mt-2 font-semibold text-slate-800">
           Nicht vorgesehen sind private Feiern, Firmenveranstaltungen und gewerbliche Eventdienstleistungen.
@@ -361,14 +339,17 @@ function PilotRequestForm() {
       <label className="flex items-start gap-3 rounded-xl border border-emerald-100 bg-emerald-50/60 p-3 text-sm leading-5 text-slate-700">
         <input required type="checkbox" name="eligibility" className="mt-0.5 size-4 accent-emerald-700" />
         <span>
-          Ich frage im Namen der genannten Organisation für eine ehrenamtlich getragene Veranstaltung an. Mir ist bekannt, dass MyCrewMate nicht für private Feiern, Firmenveranstaltungen oder gewerbliche Eventdienstleistungen vorgesehen ist und ein möglicher Pilotzugang nur mit der genannten Organisation vereinbart wird.
+          Ich frage für die oben genannte Organisation und eine ehrenamtlich getragene Veranstaltung an.
         </span>
       </label>
 
       <label className="flex items-start gap-3 rounded-xl bg-slate-50 p-3 text-sm leading-5 text-slate-600">
         <input required type="checkbox" name="privacy" className="mt-0.5 size-4 accent-blue-600" />
         <span>
-          Die Pflichtangaben verwenden wir ausschließlich, um diese Pilot-Anfrage zu beantworten. Ich habe die <a className="font-semibold text-blue-700 underline underline-offset-2 hover:text-blue-900" href="/datenschutz" target="_blank" rel="noreferrer">Datenschutzhinweise zur Pilot-Anfrage</a> gelesen.
+          Ich habe die <a className="font-semibold text-blue-700 underline underline-offset-2 hover:text-blue-900" href="/datenschutz" target="_blank" rel="noreferrer">Datenschutzhinweise zur Pilot-Anfrage</a> gelesen.
+          <span className="mt-1 block text-xs leading-5 text-slate-500">
+            Wir verwenden eure Angaben nur, um diese Anfrage zu prüfen und zu beantworten. Details zur Speicherung, zu euren Rechten und zu einem Löschwunsch stehen in den Datenschutzhinweisen.
+          </span>
         </span>
       </label>
 

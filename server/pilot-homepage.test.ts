@@ -49,13 +49,14 @@ describe("öffentliche Preis- und Pilotseiten", () => {
     expect(pilot).toContain("Ehrenamtliches Organisationsteam oder Initiative");
     expect(pilot).toContain("Gemeinde oder kommunaler Veranstalter");
     expect(pilot).toContain("private Feiern, Firmenveranstaltungen und gewerbliche Eventdienstleistungen");
-    expect(pilot).toContain("ausschließlich mit einer benannten Organisation abgestimmt");
-    expect(pilot).toContain("ein möglicher Pilotzugang nur mit der genannten Organisation vereinbart wird");
+    expect(pilot).toContain("Für welche Organisationen ist MyCrewMate gedacht?");
+    expect(pilot).toContain("Ein Pilotzugang ist ausschließlich für die genannte Organisation möglich.");
     expect(pilot).toContain("keinen Anspruch auf Teilnahme, Freischaltung oder ein bestimmtes Paket");
     expect(pilot).toContain("Telefonnummer für eine persönliche Rückfrage");
     expect(pilot).toContain("Nur wenn ihr einen persönlichen Rückruf wünscht.");
-    expect(pilot).toContain("Kurz zum Umgang mit euren Angaben");
-    expect(pilot).toContain("Die Checkbox unten bestätigt nur");
+    expect(pilot).not.toContain("Kurz zum Umgang mit euren Angaben");
+    expect(pilot).toContain("Ich frage für die oben genannte Organisation und eine ehrenamtlich getragene Veranstaltung an.");
+    expect(pilot).toContain("Details zur Speicherung, zu euren Rechten und zu einem Löschwunsch");
     expect(pilot).toContain("trpc.pilotInquiry.submit.useMutation");
     expect(pilot).toContain("Wir bestätigen den Eingang zusätzlich per E-Mail.");
     expect(pilot).toContain("Pilotanfragen bis 31.12.2026");
