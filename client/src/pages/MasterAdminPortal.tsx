@@ -28,6 +28,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { pilotInquiryPhoneLink } from "@/lib/pilot-inquiry-phone";
 import {
   Select,
   SelectContent,
@@ -199,7 +200,7 @@ type PilotInquiryItem = {
   clubName: string;
   contactName: string;
   email: string;
-  phone: string;
+  phone: string | null;
   organizationType: string;
   occasion: string;
   desiredStart: string;
@@ -1700,6 +1701,7 @@ export default function MasterAdminPortal() {
                 <div className="grid gap-3 lg:grid-cols-2">
                   {pilotInquiryItems.map(inquiry => {
                     const isOpen = inquiry.status === "open";
+                    const phoneLink = pilotInquiryPhoneLink(inquiry.phone);
                     const statusLabel = isOpen
                       ? "Offen"
                       : inquiry.status === "accepted"
@@ -1721,7 +1723,7 @@ export default function MasterAdminPortal() {
                         </div>
                         <dl className="mt-3 grid gap-1.5 text-sm text-slate-700 sm:grid-cols-2">
                           <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">E-Mail</dt><dd><a className="text-blue-700 underline underline-offset-2" href={`mailto:${inquiry.email}`}>{inquiry.email}</a></dd></div>
-                          <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Telefon</dt><dd><a className="text-blue-700 underline underline-offset-2" href={`tel:${inquiry.phone.replace(/[^+0-9]/g, "")}`}>{inquiry.phone}</a></dd></div>
+                          <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Telefon</dt><dd>{phoneLink ? <a className="text-blue-700 underline underline-offset-2" href={phoneLink.telHref}>{phoneLink.label}</a> : <span className="text-slate-500">Nicht angegeben</span>}</dd></div>
                           <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Organisationsform</dt><dd>{inquiry.organizationType}</dd></div>
                           <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Anlass</dt><dd>{inquiry.occasion}</dd></div>
                           <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Wunschstart</dt><dd>{inquiry.desiredStart}</dd></div>
