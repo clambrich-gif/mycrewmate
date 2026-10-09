@@ -65,7 +65,7 @@ Nicht erforderlich sind `VITE_APP_ID`, `OAUTH_SERVER_URL`, `VITE_OAUTH_PORTAL_UR
 
 > Für das öffentliche Pilotformular müssen mindestens `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER` und `SMTP_PASS` gesetzt sein. Nach jeder erfolgreichen Pilotanfrage erhält das Pilotteam eine strukturierte Nachricht an `PILOT_INQUIRY_EMAIL`; die anfragende Person erhält eine automatische Eingangsbestätigung. Ohne SMTP-Konfiguration nimmt das Formular aus Datenschutzgründen keine Anfrage an.
 
-> Der tägliche Produktablauf archiviert endende Pilotzugänge, versendet eine Abschlussmail ohne automatische Verlängerung und hält die Daten anschließend drei Jahre zur Reaktivierung vor. Nach Fristende entfernt er Mandant und Uploads technisch. Die Kopien der transaktionalen Mails im Hetzner-Postfach sind davon getrennt: Sie werden im monatlichen Betreiberprozess nach derselben dokumentierten Frist bereinigt; SMTP allein erlaubt keine sichere Fernlöschung von Mailbox-Inhalten.
+> Der tägliche Produktablauf archiviert endende Pilotzugänge, versendet eine Abschlussmail ohne automatische Verlängerung und hält die Daten anschließend drei Jahre zur Reaktivierung vor. Nach Fristende entfernt er Mandant und Uploads technisch. Wird ein Pilotverein vorher im Master-Portal bewusst auf ein aktives reguläres Paket (z. B. Light, Pro oder Enterprise) umgestellt, bleibt er als regulärer Verein erhalten und wird nicht als Pilot archiviert. Die Kopien der transaktionalen Mails im Hetzner-Postfach sind davon getrennt: Sie werden im monatlichen Betreiberprozess nach derselben dokumentierten Frist bereinigt; SMTP allein erlaubt keine sichere Fernlöschung von Mailbox-Inhalten.
 
 ### 2.4 Technische Server- und Proxyprotokolle
 

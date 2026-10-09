@@ -131,6 +131,19 @@ describe("Master-Admin-Portal", () => {
     expect(page).toContain("Administratoren wurden per E-Mail informiert.");
   });
 
+  it("übernimmt einen Pilotverein bei aktivem regulären Paket aus der automatischen Pilotarchivierung", () => {
+    const db = source("server/db.ts");
+    const router = source("server/routers.ts");
+    const page = source("client/src/pages/MasterAdminPortal.tsx");
+
+    expect(db).toContain("tenantStatusAfterProductAssignment");
+    expect(db).toContain('inArray(tenants.status, ["pilot", "sample", "active"])');
+    expect(db).toContain("convertedFromPilot");
+    expect(router).toContain("Pilotzugang als regulären Zugang übernommen");
+    expect(page).toContain("Übernahme aus dem Pilot:");
+    expect(page).toContain("wird nicht mehr automatisch als Pilot archiviert");
+  });
+
   it("trennt laufende Kennzahlen klar von archivierten Vereinen und deren Veranstaltungen", () => {
     const page = source("client/src/pages/MasterAdminPortal.tsx");
     expect(page).toContain("const managedEventCount = activeTenants.reduce");

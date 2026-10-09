@@ -110,3 +110,18 @@ export function tenantAccessModeFromState(input: {
   }
   return input.tenantStatus === "pilot" ? "pilot" : "test";
 }
+
+/**
+ * Ein bestätigter regulärer Paketstatus beendet den Pilotzugang bewusst.
+ * Dadurch bleibt der Verein samt Planungsdaten erhalten, wird aber nicht mehr
+ * durch die automatische Pilotende-Routine archiviert.
+ */
+export function tenantStatusAfterProductAssignment(input: {
+  tenantStatus: TenantLifecycleStatus;
+  packageStatus: ProductAssignmentStatus;
+}): TenantLifecycleStatus {
+  if (input.tenantStatus === "pilot" && input.packageStatus === "active") {
+    return "active";
+  }
+  return input.tenantStatus;
+}

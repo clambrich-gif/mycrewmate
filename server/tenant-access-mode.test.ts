@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   tenantAccessModeFromState,
   tenantCreationSetupForAccessMode,
+  tenantStatusAfterProductAssignment,
 } from "../shared/tenant-access-mode";
 
 describe("vereinfachte Vereinszugänge", () => {
@@ -49,5 +50,17 @@ describe("vereinfachte Vereinszugänge", () => {
     expect(
       tenantAccessModeFromState({ tenantStatus: "active", packageStatus: "expired" })
     ).toBe("expired");
+  });
+
+  it("überführt einen Pilotverein bei einem aktiven Paket einmalig in den regulären Status", () => {
+    expect(
+      tenantStatusAfterProductAssignment({ tenantStatus: "pilot", packageStatus: "active" })
+    ).toBe("active");
+    expect(
+      tenantStatusAfterProductAssignment({ tenantStatus: "pilot", packageStatus: "test" })
+    ).toBe("pilot");
+    expect(
+      tenantStatusAfterProductAssignment({ tenantStatus: "active", packageStatus: "active" })
+    ).toBe("active");
   });
 });

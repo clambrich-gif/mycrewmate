@@ -4476,7 +4476,7 @@ export const appRouter = router({
             : { recipientCount: 0, deliveredCount: 0 };
         await recordSecurityActivity(
           auditActor(ctx.user),
-          `Paketstatus für „${updated.tenantName}“ auf „${updated.status}“ gesetzt${notification.recipientCount ? `; ${notification.deliveredCount}/${notification.recipientCount} Administratoren informiert` : ""}`,
+          `Paketstatus für „${updated.tenantName}“ auf „${updated.status}“ gesetzt${updated.convertedFromPilot ? "; Pilotzugang als regulären Zugang übernommen" : ""}${notification.recipientCount ? `; ${notification.deliveredCount}/${notification.recipientCount} Administratoren informiert` : ""}`,
           "updated",
           null
         );

@@ -113,6 +113,7 @@ import {
   type ProductCapability,
   type ProductPackageId,
 } from "../shared/product-packages";
+import { tenantStatusAfterProductAssignment } from "../shared/tenant-access-mode";
 import type { EditablePlanningModule } from "../shared/tenant-permissions";
 import {
   currentEventId,
@@ -1224,6 +1225,8 @@ function addCalendarYears(value: Date, years: number) {
  * Liefert nur aktive oder testweise Produktzuordnungen, die innerhalb des
  * Kalendertagesfensters auslaufen und noch keinen bestätigten Hinweis erhalten
  * haben. Archivierte und gesperrte Vereine bleiben bewusst ausgeschlossen.
+ * Reguläre Vereine werden einbezogen, damit auch sie rechtzeitig Hinweise auf
+ * einen bewusst gesetzten Paketablauf erhalten können.
  */
 export async function listTenantProductExpiryReminderCandidates(input: {
   now?: Date;
@@ -1250,7 +1253,7 @@ export async function listTenantProductExpiryReminderCandidates(input: {
       .where(
         and(
           inArray(tenantProductAssignments.status, ["test", "active"]),
-          inArray(tenants.status, ["pilot", "sample"]),
+          inArray(tenants.status, ["pilot", "sample", "active"]),
           gte(tenantProductAssignments.endsOn, today),
           sql`${tenantProductAssignments.endsOn} <= ${lastEligibleDay}`
         )
@@ -2401,7 +2404,11 @@ async function assertTenantFitsProductCapacity(
   }
 }
 
-/** Speichert ausschließlich die produktseitige Einordnung eines Vereins. */
+/**
+ * Speichert die Produktzuordnung eines Vereins. Ein Pilotverein wird beim
+ * bewussten Speichern eines aktiven regulären Pakets einmalig als regulärer
+ * Verein übernommen; Planungsdaten, Mitglieder und Zugänge bleiben erhalten.
+ */
 export async function updateTenantProductAssignmentForPlatformAdmin(input: {
   tenantId: string;
   packageId: ProductPackageId;
@@ -2415,7 +2422,7 @@ export async function updateTenantProductAssignmentForPlatformAdmin(input: {
   return database.transaction(async tx => {
     assertPackageAssignmentDates(input.startsOn, input.endsOn);
     const [tenantRow] = await tx
-      .select({ id: tenants.id, name: tenants.name })
+      .select({ id: tenants.id, name: tenants.name, status: tenants.status })
       .from(tenants)
       .where(eq(tenants.id, input.tenantId))
       .limit(1)
@@ -2471,6 +2478,24 @@ export async function updateTenantProductAssignmentForPlatformAdmin(input: {
         },
       });
 
+    const nextTenantStatus = tenantStatusAfterProductAssignment({
+      tenantStatus: tenantRow.status,
+      packageStatus: input.status,
+    });
+    const convertedFromPilot = tenantRow.status === "pilot" && nextTenantStatus === "active";
+    if (convertedFromPilot) {
+      await tx
+        .update(tenants)
+        .set({
+          status: "active",
+          planName: "Regulärer Zugang",
+          archivedAt: null,
+          retentionEndsAt: null,
+          archiveReason: null,
+        })
+        .where(eq(tenants.id, input.tenantId));
+    }
+
     const previousEventId = Number(previousAssignment?.eventId ?? 0);
     const upgradesFromEventPass =
       previousAssignment?.packageId === "event_pass" &&
@@ -2499,6 +2524,7 @@ export async function updateTenantProductAssignmentForPlatformAdmin(input: {
       tenantName: tenantRow.name,
       previousStatus: previousAssignment?.status ?? null,
       upgradedFromEventPass: Boolean(upgradesFromEventPass),
+      convertedFromPilot,
     };
   });
 }
