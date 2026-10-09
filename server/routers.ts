@@ -186,6 +186,11 @@ const MASTER_RESET_REQUEST_WINDOW_MS = 15 * 60 * 1000;
 const MASTER_RESET_REQUEST_LIMIT = 3;
 const masterResetRequestAttempts = new Map<string, { count: number; resetAt: number }>();
 const PILOT_INQUIRY_RECIPIENT = process.env.PILOT_INQUIRY_EMAIL || "support@mycrewmate.de";
+const PILOT_ORGANIZATION_TYPES = [
+  "Verein oder Verband",
+  "Ehrenamtliches Organisationsteam oder Initiative",
+  "Gemeinde oder kommunaler Veranstalter",
+] as const;
 const MFA_CHALLENGE_TOKEN_BYTES = 32;
 const PUBLIC_DEMO_VISITOR_COOKIE = "mycrewmate_demo_visitor";
 const PUBLIC_DEMO_VISITOR_COOKIE_MS = 24 * 60 * 60 * 1000;
@@ -2105,11 +2110,25 @@ export const appRouter = router({
               value => value.length === 0 || /^[0-9+()\-./\s]{6,60}$/.test(value),
               "Bitte eine gültige Telefonnummer eingeben."
             ),
+          organizationType: z
+            .string()
+            .trim()
+            .refine(
+              value =>
+                PILOT_ORGANIZATION_TYPES.includes(
+                  value as (typeof PILOT_ORGANIZATION_TYPES)[number]
+                ),
+              "Bitte die Art der anfragenden Organisation auswählen."
+            ),
           occasion: z.string().trim().min(2, "Bitte den Testanlass auswählen.").max(120),
           start: z
             .string()
             .regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Bitte einen gültigen Wunschmonat auswählen."),
           note: z.string().trim().max(2_000).optional().default(""),
+          eligibility: z.literal(
+            true,
+            "Bitte bestätige den ehrenamtlichen Bezug eurer Veranstaltung."
+          ),
           privacy: z.literal(true, "Bitte die Datenschutzhinweise bestätigen."),
           // Unsichtbares Feld gegen einfache Formularbots. Ausgefüllte Anfragen
           // erhalten absichtlich eine neutrale Erfolgsmeldung, aber keinen Versand.
@@ -2141,6 +2160,7 @@ export const appRouter = router({
           contactName: input.contact,
           email: input.email,
           phone: input.phone,
+          organizationType: input.organizationType,
           occasion: input.occasion,
           desiredStart: input.start,
           note: input.note,
@@ -2155,9 +2175,11 @@ export const appRouter = router({
           contactName: input.contact,
           email: input.email,
           phone: input.phone,
+          organizationType: input.organizationType,
           occasion: input.occasion,
           desiredStart: input.start,
           note: input.note,
+          eligibilityConfirmedAt: new Date(),
         });
 
         try {

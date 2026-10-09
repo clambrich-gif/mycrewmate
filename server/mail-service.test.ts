@@ -90,6 +90,7 @@ describe("Mail-Service (Hetzner SMTP & Transactional)", () => {
       contactName: "Max Muster",
       email: "max@verein.de",
       phone: "+49 171 1234567",
+      organizationType: "Verein oder Verband",
       occasion: "Turnier, Rennen oder Sportevent",
       desiredStart: "2027-05",
       note: "Radsportfestival mit 120 Helfern.",
@@ -101,6 +102,7 @@ describe("Mail-Service (Hetzner SMTP & Transactional)", () => {
 
     expect(notification.subject).toContain("Neue Pilot-Anfrage");
     expect(notification.text).toContain("+49 171 1234567");
+    expect(notification.text).toContain("Verein oder Verband");
     expect(notification.text).toContain("Mai 2027");
     expect(notification.html).toContain("RSC &lt;Muster&gt; e. V.");
     expect(confirmation.subject).toContain("Pilot-Anfrage ist eingegangen");

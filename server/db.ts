@@ -1393,23 +1393,28 @@ export async function createPublicPilotInquiry(input: {
   contactName: string;
   email: string;
   phone?: string;
+  organizationType: string;
   occasion: string;
   desiredStart: string;
   note?: string;
   privacyAcceptedAt?: Date;
+  eligibilityConfirmedAt?: Date;
 }) {
   const database = await getDb();
   if (!database) return null;
   const privacyAcceptedAt = input.privacyAcceptedAt ?? new Date();
+  const eligibilityConfirmedAt = input.eligibilityConfirmedAt ?? privacyAcceptedAt;
   const result = await database.insert(pilotInquiries).values({
     clubName: input.clubName,
     contactName: input.contactName,
     email: input.email,
     phone: input.phone?.trim() || null,
+    organizationType: input.organizationType,
     occasion: input.occasion,
     desiredStart: input.desiredStart,
     note: input.note?.trim() || null,
     privacyAcceptedAt,
+    eligibilityConfirmedAt,
   });
   const insertId =
     (result as unknown as { insertId?: number }).insertId ??
@@ -1443,11 +1448,13 @@ export async function listPilotInquiriesForPlatformAdmin() {
       contactName: pilotInquiries.contactName,
       email: pilotInquiries.email,
       phone: pilotInquiries.phone,
+      organizationType: pilotInquiries.organizationType,
       occasion: pilotInquiries.occasion,
       desiredStart: pilotInquiries.desiredStart,
       note: pilotInquiries.note,
       status: pilotInquiries.status,
       privacyAcceptedAt: pilotInquiries.privacyAcceptedAt,
+      eligibilityConfirmedAt: pilotInquiries.eligibilityConfirmedAt,
       closedAt: pilotInquiries.closedAt,
       retentionEndsAt: pilotInquiries.retentionEndsAt,
       createdAt: pilotInquiries.createdAt,

@@ -17,6 +17,9 @@ describe("öffentliche Preis- und Pilotseiten", () => {
     expect(offer).toContain('href="/pilot#pilot-anfrage"');
     expect((offer.match(/href="\/pilot#pilot-anfrage"/g) ?? []).length).toBeGreaterThanOrEqual(4);
     expect(offer).toContain("Pilot kostenlos anfragen");
+    expect(offer).toContain("ehrenamtlich getragenen Veranstaltungen");
+    expect(offer).toContain("private Feiern, Firmenveranstaltungen oder gewerbliche Eventdienstleistungen");
+    expect(offer).toContain("keinen Anspruch auf Annahme, Freischaltung oder ein bestimmtes Paket");
     expect(offer).toContain('href="/vereinsdemo"');
     expect(offer).toContain("Fiktive Vereinsdemo ausprobieren");
     expect(offer).toContain("Reguläre Preise ab 01.01.2027");
@@ -39,6 +42,13 @@ describe("öffentliche Preis- und Pilotseiten", () => {
     expect(pilot).toContain("Fiktive Vereinsdemo ausprobieren");
     expect(pilot).toContain("Reguläre Preise ab 01.01.2027 ansehen");
     expect(pilot).toContain('name="phone"');
+    expect(pilot).toContain('name="organizationType"');
+    expect(pilot).toContain('name="eligibility"');
+    expect(pilot).toContain("Verein oder Verband");
+    expect(pilot).toContain("Ehrenamtliches Organisationsteam oder Initiative");
+    expect(pilot).toContain("Gemeinde oder kommunaler Veranstalter");
+    expect(pilot).toContain("private Feiern, Firmenveranstaltungen und gewerbliche Eventdienstleistungen");
+    expect(pilot).toContain("keinen Anspruch auf Teilnahme, Freischaltung oder ein bestimmtes Paket");
     expect(pilot).toContain("Telefonnummer für eine persönliche Rückfrage");
     expect(pilot).toContain("Nur wenn ihr einen persönlichen Rückruf wünscht.");
     expect(pilot).toContain("Kurz zum Umgang mit euren Angaben");

@@ -203,6 +203,7 @@ export function renderPilotInquiryNotificationEmail(params: {
   contactName: string;
   email: string;
   phone?: string;
+  organizationType: string;
   occasion: string;
   desiredStart: string;
   note?: string;
@@ -213,6 +214,7 @@ export function renderPilotInquiryNotificationEmail(params: {
   const phone = params.phone?.trim() || "Nicht angegeben";
   const rows = [
     ["Verein oder Organisation", params.clubName],
+    ["Organisationsform", params.organizationType],
     ["Ansprechperson", params.contactName],
     ["E-Mail", params.email],
     ["Telefon", phone],
@@ -222,7 +224,7 @@ export function renderPilotInquiryNotificationEmail(params: {
   ] as const;
   const text = `Neue unverbindliche Pilot-Anfrage\n\n${rows
     .map(([label, value]) => `${label}: ${value}`)
-    .join("\n")}\n\nBitte den Verein persönlich kontaktieren und Paket, Zeitraum und nächsten Schritt abstimmen.`;
+    .join("\n")}\n\nBitte den ehrenamtlichen Bezug prüfen und die Organisation persönlich zu Paket, Zeitraum und nächstem Schritt kontaktieren.`;
   const htmlRows = rows
     .map(
       ([label, value]) =>
@@ -237,7 +239,7 @@ export function renderPilotInquiryNotificationEmail(params: {
     <p style="font-size:13px;color:#64748b;margin:0 0 24px;">MyCrewMate · persönliche Pilotbegleitung</p>
     <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;border-collapse:collapse;">${htmlRows}</table>
     <hr style="border:0;border-top:1px solid #e2e8f0;margin:24px 0;">
-    <p style="font-size:13px;color:#475569;margin:0;">Bitte den Verein persönlich kontaktieren und Paket, Zeitraum und nächsten Schritt abstimmen.</p>
+    <p style="font-size:13px;color:#475569;margin:0;">Bitte den ehrenamtlichen Bezug prüfen und die Organisation persönlich zu Paket, Zeitraum und nächstem Schritt kontaktieren.</p>
   </div>
 </body></html>`;
 

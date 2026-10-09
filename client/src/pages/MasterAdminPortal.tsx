@@ -200,11 +200,13 @@ type PilotInquiryItem = {
   contactName: string;
   email: string;
   phone: string;
+  organizationType: string;
   occasion: string;
   desiredStart: string;
   note: string | null;
   status: "open" | "accepted" | "declined";
   privacyAcceptedAt: Date;
+  eligibilityConfirmedAt: Date;
   closedAt: Date | null;
   retentionEndsAt: Date | null;
   createdAt: Date;
@@ -1720,8 +1722,10 @@ export default function MasterAdminPortal() {
                         <dl className="mt-3 grid gap-1.5 text-sm text-slate-700 sm:grid-cols-2">
                           <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">E-Mail</dt><dd><a className="text-blue-700 underline underline-offset-2" href={`mailto:${inquiry.email}`}>{inquiry.email}</a></dd></div>
                           <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Telefon</dt><dd><a className="text-blue-700 underline underline-offset-2" href={`tel:${inquiry.phone.replace(/[^+0-9]/g, "")}`}>{inquiry.phone}</a></dd></div>
+                          <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Organisationsform</dt><dd>{inquiry.organizationType}</dd></div>
                           <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Anlass</dt><dd>{inquiry.occasion}</dd></div>
                           <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Wunschstart</dt><dd>{inquiry.desiredStart}</dd></div>
+                          <div><dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Ehrenamtlicher Bezug</dt><dd>Bestätigt am {formatAccessCreatedAt(inquiry.eligibilityConfirmedAt)}</dd></div>
                         </dl>
                         {inquiry.note ? <p className="mt-3 rounded-lg bg-white px-3 py-2 text-sm leading-5 text-slate-700">{inquiry.note}</p> : null}
                         <p className="mt-3 text-xs text-slate-500">

@@ -142,6 +142,10 @@ function PilotRequestForm() {
     if (submitInquiry.isPending) return;
     setFormError(null);
     const values = new FormData(event.currentTarget);
+    if (values.get("eligibility") !== "on") {
+      setFormError("Bitte bestätige den ehrenamtlichen Bezug eurer Veranstaltung.");
+      return;
+    }
     if (values.get("privacy") !== "on") {
       setFormError("Bitte bestätige die Datenschutzhinweise.");
       return;
@@ -151,9 +155,11 @@ function PilotRequestForm() {
       contact: String(values.get("contact") ?? "").trim(),
       email: String(values.get("email") ?? "").trim(),
       phone: String(values.get("phone") ?? "").trim(),
+      organizationType: String(values.get("organizationType") ?? "").trim(),
       occasion: String(values.get("occasion") ?? "").trim(),
       start: String(values.get("start") ?? ""),
       note: String(values.get("note") ?? "").trim(),
+      eligibility: true,
       privacy: true,
       website: String(values.get("website") ?? ""),
     });
@@ -171,8 +177,8 @@ function PilotRequestForm() {
           Pilot-Anfrage eingegangen
         </h3>
         <p className="mt-2 text-sm leading-6 text-slate-700">
-          Wir melden uns persönlich bei euch, um Anlass, passende Umgebung und
-          Startzeitpunkt abzustimmen.
+          Wir prüfen eure Anfrage persönlich und melden uns, wenn Anlass,
+          Organisation und ehrenamtlicher Bezug zum Pilotprogramm passen.
         </p>
         {confirmationSent ? (
           <p className="mt-2 text-sm font-semibold leading-6 text-emerald-800">
@@ -207,7 +213,7 @@ function PilotRequestForm() {
         </h3>
         <dl className="mt-3 grid gap-2 text-xs leading-5 sm:grid-cols-[8rem_1fr]">
           <dt className="font-bold text-slate-800">Pflichtangaben</dt>
-          <dd>Verein, Ansprechperson, E-Mail, Anlass und Wunschmonat – ohne diese Angaben können wir die Anfrage nicht bearbeiten.</dd>
+          <dd>Name der Organisation, Organisationsform, Ansprechperson, E-Mail, Anlass und Wunschmonat – ohne diese Angaben können wir die Anfrage nicht bearbeiten.</dd>
           <dt className="font-bold text-slate-800">Freiwillig</dt>
           <dd>Telefonnummer für einen Rückruf sowie weitere Angaben zum Vorhaben.</dd>
           <dt className="font-bold text-slate-800">Zweck</dt>
@@ -220,8 +226,43 @@ function PilotRequestForm() {
         </p>
       </section>
 
+      <section
+        aria-labelledby="pilot-zielgruppe"
+        className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 text-sm leading-6 text-slate-700"
+      >
+        <h3 id="pilot-zielgruppe" className="font-black text-slate-950">
+          Für wen ist der Pilot gedacht?
+        </h3>
+        <p className="mt-2">
+          Für Vereine und Verbände, ehrenamtliche Initiativen oder Organisationsteams sowie Gemeinden und kommunale Veranstalter mit ehrenamtlich getragenen Veranstaltungen.
+        </p>
+        <p className="mt-2 font-semibold text-slate-800">
+          Nicht vorgesehen sind private Feiern, Firmenveranstaltungen und gewerbliche Eventdienstleistungen.
+        </p>
+        <p className="mt-2 text-xs leading-5 text-slate-600">
+          Jede Anfrage wird einzeln geprüft. Eine Anfrage begründet keinen Anspruch auf Teilnahme, Freischaltung oder ein bestimmtes Paket.
+        </p>
+      </section>
+
       <label className="grid gap-1.5 text-sm font-bold text-slate-800">
-        Verein oder Organisation
+        Art der anfragenden Organisation
+        <select
+          required
+          name="organizationType"
+          defaultValue=""
+          className="h-11 rounded-xl border border-slate-300 bg-white px-3 text-base font-normal text-slate-950 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+        >
+          <option value="" disabled>
+            Organisationsform auswählen
+          </option>
+          <option>Verein oder Verband</option>
+          <option>Ehrenamtliches Organisationsteam oder Initiative</option>
+          <option>Gemeinde oder kommunaler Veranstalter</option>
+        </select>
+      </label>
+
+      <label className="grid gap-1.5 text-sm font-bold text-slate-800">
+        Name des Vereins, der Initiative oder der Gemeinde
         <input
           required
           name="club"
@@ -314,6 +355,13 @@ function PilotRequestForm() {
         />
         <span className="text-xs font-normal leading-5 text-slate-500">
           Bitte keine Gesundheitsdaten, personenbezogenen Daten Dritter oder anderen vertraulichen Angaben eintragen.
+        </span>
+      </label>
+
+      <label className="flex items-start gap-3 rounded-xl border border-emerald-100 bg-emerald-50/60 p-3 text-sm leading-5 text-slate-700">
+        <input required type="checkbox" name="eligibility" className="mt-0.5 size-4 accent-emerald-700" />
+        <span>
+          Ich frage im Namen der genannten Organisation für eine ehrenamtlich getragene Veranstaltung an. Mir ist bekannt, dass MyCrewMate nicht für private Feiern, Firmenveranstaltungen oder gewerbliche Eventdienstleistungen vorgesehen ist.
         </span>
       </label>
 
@@ -412,9 +460,9 @@ export default function PilotHomepageDraft() {
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-700 sm:text-xl">
               Bis zum regulären Produktstart am 01.01.2027 suchen wir Vereine,
-              die MyCrewMate an einem echten Anlass testen möchten. Ob
-              Weihnachtsfeier, Turnier, Radsportevent oder Vereinsjahr: Wir
-              richten die passende Pilotumgebung gemeinsam ein.
+              Verbände, ehrenamtliche Initiativen und Gemeinden mit einem
+              ehrenamtlich getragenen Anlass. Gemeinsam prüfen wir, ob
+              MyCrewMate und eine passende Pilotumgebung zu eurem Vorhaben passen.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <a href="#pilot-anfrage">
@@ -514,7 +562,7 @@ export default function PilotHomepageDraft() {
                 Ein echter Test. Kein verstecktes Abo.
               </h2>
               <p className="mt-4 max-w-md text-lg leading-8 text-slate-300">
-                Wir suchen keine Klicks, sondern Vereine, die MyCrewMate im Alltag ausprobieren und mitgestalten möchten.
+                Wir suchen keine Klicks, sondern ehrenamtlich getragene Organisationen, die MyCrewMate im Alltag ausprobieren und mitgestalten möchten.
               </p>
             </div>
             <ol className="grid gap-4 md:grid-cols-3">
@@ -528,7 +576,7 @@ export default function PilotHomepageDraft() {
             </ol>
           </div>
           <div className="mt-8 rounded-2xl border border-emerald-300/25 bg-emerald-400/10 px-5 py-4 text-sm leading-6 text-emerald-50 sm:flex sm:items-center sm:justify-between sm:gap-6">
-            <p><strong>Verbindliche Zusage für den Pilotzeitraum:</strong> Keine Lizenzkosten, keine Zahlungsdaten, keine Rechnung und keine automatische Verlängerung.</p>
+            <p><strong>Bei Annahme für den Pilotzeitraum:</strong> Keine Lizenzkosten, keine Zahlungsdaten, keine Rechnung und keine automatische Verlängerung.</p>
             <a href="#pilot-anfrage" className="mt-3 inline-flex shrink-0 items-center gap-1 font-bold text-white underline underline-offset-4 sm:mt-0">
               Pilot anfragen <ChevronRight className="size-4" aria-hidden="true" />
             </a>
@@ -642,9 +690,9 @@ export default function PilotHomepageDraft() {
               Erzählt uns von eurem nächsten Anlass.
             </h2>
             <p className="mt-4 text-lg leading-8 text-slate-600">
-              Ihr braucht noch nicht alles vorbereitet zu haben. Verein, Ansprechperson, Kontaktmöglichkeit, Anlass und ein Wunschzeitraum reichen für den ersten Schritt.
+              Ihr braucht noch nicht alles vorbereitet zu haben. Organisation, Ansprechperson, Kontaktmöglichkeit, Anlass und ein Wunschzeitraum reichen für den ersten Schritt.
             </p>
-            <p className="mt-6 flex gap-2 text-sm leading-6 text-slate-600"><Mail className="mt-1 size-4 shrink-0 text-blue-700" aria-hidden="true" />Die Anfrage wird persönlich beantwortet. Es gibt keinen automatisierten Verkaufsabschluss.</p>
+            <p className="mt-6 flex gap-2 text-sm leading-6 text-slate-600"><Mail className="mt-1 size-4 shrink-0 text-blue-700" aria-hidden="true" />Die Anfrage wird persönlich geprüft und beantwortet. Es gibt keinen automatisierten Verkaufsabschluss und keinen Anspruch auf einen Pilotzugang.</p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_20px_55px_-35px_rgba(15,23,42,0.35)] sm:p-7">
             <PilotRequestForm />
@@ -654,7 +702,7 @@ export default function PilotHomepageDraft() {
 
       <footer className="border-t border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-8 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-          <p>© 2026 MyCrewMate.de · Pilotprogramm für Vereine und Veranstaltungsorganisation.</p>
+          <p>© 2026 MyCrewMate.de · Pilotprogramm für ehrenamtlich getragene Veranstaltungen.</p>
           <div className="flex gap-4 font-semibold"><a className="hover:text-blue-700" href="/impressum">Impressum</a><a className="hover:text-blue-700" href="/datenschutz">Datenschutz</a></div>
         </div>
       </footer>

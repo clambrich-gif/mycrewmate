@@ -1021,14 +1021,23 @@ export default function OfferDemo() {
               Für wen ist MyCrewMate?
             </p>
             <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-              Für Vereine, die Veranstaltungen organisieren und Menschen zusammenbringen.
+              Für Vereine, Verbände, Ehrenamtsinitiativen und Gemeinden mit ehrenamtlich getragenen Veranstaltungen.
             </h2>
             <p className="mt-4 text-base leading-7 text-slate-600">
-              Ob Radsportverein, Musikverein, Feuerwehr oder Sportverein:
-              MyCrewMate bringt Helfer, Aufgaben und den Einsatzplan in einen
-              verständlichen Ablauf.
+              Ob Radsportverein, Musikverein, Feuerwehr, Sportverein oder kommunales Stadtfest mit vielen freiwillig Helfenden: MyCrewMate bringt Helfer, Aufgaben und den Einsatzplan in einen verständlichen Ablauf.
             </p>
           </div>
+          <aside className="mx-auto mt-8 grid max-w-4xl gap-4 rounded-2xl border border-blue-100 bg-white p-5 text-left shadow-sm sm:grid-cols-[0.9fr_1.1fr] sm:p-6">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-blue-700">Klare Ausrichtung</p>
+              <h3 className="mt-2 text-xl font-black tracking-tight text-slate-950">Organisation mit Ehrenamt im Mittelpunkt.</h3>
+            </div>
+            <div className="text-sm leading-6 text-slate-700">
+              <p>MyCrewMate richtet sich an Vereine und Verbände, ehrenamtliche Initiativen oder Organisationsteams sowie Gemeinden und kommunale Veranstalter mit freiwillig Helfenden.</p>
+              <p className="mt-2 font-semibold text-slate-900">Nicht vorgesehen ist MyCrewMate für private Feiern, Firmenveranstaltungen oder gewerbliche Eventdienstleistungen.</p>
+              <p className="mt-2 text-slate-600">Pilotanfragen werden persönlich geprüft; sie begründen keinen Anspruch auf Annahme, Freischaltung oder ein bestimmtes Paket.</p>
+            </div>
+          </aside>
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {TARGET_GROUPS.map(group => {
               const Icon = group.icon;

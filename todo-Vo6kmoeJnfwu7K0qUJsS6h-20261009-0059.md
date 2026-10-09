@@ -51,6 +51,8 @@
 - [x] Öffentliche Demosicherheit verstärkt: Bereinigungs-Heartbeat `public-demo-cleanup` alle zehn Minuten registriert; technische Höchstalterung bleibt 35 Minuten.
 - [x] 50%-Pilotvorteil als einheitlicher Regelblock ergänzt: sichtbar bei der Preisübersicht, auf der Pilotseite und in der automatischen Eingangsbestätigung; nur Light/Pro, einmalig, unmittelbar anschließend, ohne Rabattkombination und ohne automatische Verlängerung.
 - [x] Bestätigte Wirtschafts-Identifikationsnummer `DE428034222` im Impressum ergänzt; die interne Steuernummer wird nicht veröffentlicht.
+- [x] Zielgruppen- und Annahmeregel auf Start- und Pilotseite umgesetzt: ausschließlich Vereine/Verbände, ehrenamtliche Organisationsteams oder Initiativen sowie Gemeinden/kommunale Veranstalter mit ehrenamtlich getragenem Anlass; private Feiern, Firmenveranstaltungen und gewerbliche Eventdienstleistungen sind ausgeschlossen.
+- [x] Pilotformular um Organisationsform und bestätigten Ehrenamtsbezug ergänzt, serverseitig validiert, in Anfrage-E-Mail und geschütztem Pilotportal angezeigt sowie revisionsfähig gespeichert.
 
 ## In Umsetzung
 

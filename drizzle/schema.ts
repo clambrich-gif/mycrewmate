@@ -737,6 +737,8 @@ export const pilotInquiries = mysqlTable(
     email: varchar("email", { length: 320 }).notNull(),
     /** Freiwillige Rückrufnummer für die persönliche Pilotabstimmung. */
     phone: varchar("phone", { length: 60 }),
+    /** Selbstgewählte Kategorie der anfragenden, ehrenamtlich getragenen Organisation. */
+    organizationType: varchar("organizationType", { length: 120 }).notNull(),
     occasion: varchar("occasion", { length: 120 }).notNull(),
     desiredStart: varchar("desiredStart", { length: 7 }).notNull(),
     note: text("note"),
@@ -744,6 +746,7 @@ export const pilotInquiries = mysqlTable(
       .default("open")
       .notNull(),
     privacyAcceptedAt: timestamp("privacyAcceptedAt").notNull(),
+    eligibilityConfirmedAt: timestamp("eligibilityConfirmedAt").notNull(),
     closedAt: timestamp("closedAt"),
     retentionEndsAt: timestamp("retentionEndsAt"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),

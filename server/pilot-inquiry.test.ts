@@ -38,9 +38,11 @@ const validInquiry = {
   contact: "Max Muster",
   email: "max@verein.de",
   phone: "+49 171 1234567",
+  organizationType: "Verein oder Verband",
   occasion: "Turnier, Rennen oder Sportevent",
   start: "2027-05",
   note: "Radsportfestival mit 120 Helfern.",
+  eligibility: true as const,
   privacy: true as const,
   website: "",
 };
@@ -72,7 +74,11 @@ describe("öffentliche Pilotanfrage", () => {
     });
 
     expect(mailMocks.renderPilotInquiryNotificationEmail).toHaveBeenCalledWith(
-      expect.objectContaining({ phone: "+49 171 1234567", desiredStart: "2027-05" })
+      expect.objectContaining({
+        phone: "+49 171 1234567",
+        organizationType: "Verein oder Verband",
+        desiredStart: "2027-05",
+      })
     );
     expect(mailMocks.sendTransactionalEmail).toHaveBeenNthCalledWith(
       1,
@@ -94,6 +100,15 @@ describe("öffentliche Pilotanfrage", () => {
     expect(mailMocks.renderPilotInquiryNotificationEmail).toHaveBeenCalledWith(
       expect.objectContaining({ phone: "" })
     );
+  });
+
+  it("lehnt Anfragen ohne bestätigten ehrenamtlichen Bezug ab", async () => {
+    const caller = appRouter.createCaller(context("198.51.100.14"));
+
+    await expect(
+      caller.pilotInquiry.submit({ ...validInquiry, eligibility: false } as never)
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(mailMocks.sendTransactionalEmail).not.toHaveBeenCalled();
   });
 
   it("nimmt keine Bot-Anfrage aus dem versteckten Feld in den Versand", async () => {
