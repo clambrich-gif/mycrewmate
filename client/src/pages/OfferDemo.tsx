@@ -713,7 +713,7 @@ export default function OfferDemo() {
                   variant="outline"
                   className="min-h-11 rounded-xl border-slate-300 bg-white/80 px-5 text-slate-700 hover:border-blue-300 hover:bg-white hover:text-blue-700"
                 >
-                  Vereinsdemo ausprobieren
+                  Fiktive Vereinsdemo ausprobieren
                 </Button>
               </a>
             </div>

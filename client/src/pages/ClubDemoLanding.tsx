@@ -112,7 +112,7 @@ export default function ClubDemoLanding() {
           </a>
           <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800 ring-1 ring-emerald-200">
             <span className="size-2 rounded-full bg-emerald-500" aria-hidden="true" />
-            Vereinsdemo · fiktive Daten
+            Vereinsdemo · nur fiktive Daten
           </span>
         </div>
       </header>
@@ -122,13 +122,13 @@ export default function ClubDemoLanding() {
           <div>
             <p className="text-xs font-black uppercase tracking-[0.16em] text-blue-700">MyCrewMate Vereinsdemo</p>
             <h1 className="mt-3 max-w-3xl text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-              Die echte App testen – mit Daten, die nur für deine Demo da sind.
+              Die echte App fiktiv durchklicken – ohne Zugang für euren Verein.
             </h1>
             <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600">
-              Wähle eine Musterumgebung. Danach öffnet sich die normale MyCrewMate-App: Du kannst Helfer anlegen, Schichten ändern, Aufgaben abhaken und – bei Pro – Karte und GPX-Strecken ansehen.
+              Wähle eine bereits gefüllte Musterumgebung. Danach öffnet sich die normale MyCrewMate-App: Du kannst erfundene Helfer anlegen, Schichten ändern, Aufgaben abhaken und – bei Pro – Karte und GPX-Strecken ansehen.
             </p>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-500">
-              Alle Personen, Vereine, Kontakte und Strecken sind erfunden. Deine Eingaben liegen nur in einem eigenen, temporären Demo-Bereich und werden beim Verlassen der Demo sowie spätestens nach kurzer Zeit gelöscht.
+              Das ist eine Übungsdemo, kein Testzugang für euren eigenen Verein. Alle Personen, Vereine, Kontakte und Strecken sind erfunden. Deine Eingaben liegen nur in einem eigenen, temporären Demo-Bereich und werden beim Verlassen der Demo sowie spätestens nach kurzer Zeit gelöscht.
             </p>
           </div>
           <div className="flex items-center gap-3 rounded-2xl border border-orange-200 bg-orange-50 p-4 shadow-sm">
@@ -138,6 +138,30 @@ export default function ClubDemoLanding() {
               <br />In der App zeige ich dir den nächsten sinnvollen Schritt.
             </p>
           </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 pt-8 sm:px-6 sm:pt-10">
+        <div className="grid gap-4 lg:grid-cols-2">
+          <article className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-600">Vereinsdemo · fiktiv üben</p>
+            <h2 className="mt-3 text-xl font-black tracking-tight text-slate-950">So sieht MyCrewMate mit Beispieldaten aus.</h2>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              Du klickst dich sofort durch ein erfundenes Event. Die Demo ist ideal, um Dashboard, Helferlisten, Einsatzplan, Karte und GPX-Strecken kennenzulernen – ohne eigene Daten einzutragen oder zu speichern.
+            </p>
+          </article>
+          <article className="rounded-3xl border border-orange-200 bg-orange-50/70 p-6 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-orange-800">Pilotprogramm · eigener Verein</p>
+            <h2 className="mt-3 text-xl font-black tracking-tight text-slate-950">Mit eurem echten Anlass wirklich planen.</h2>
+            <p className="mt-3 text-sm leading-6 text-slate-700">
+              Im Pilotprogramm richtet MyCrewMate nach persönlicher Abstimmung einen kostenlosen, zeitlich vereinbarten Zugang für euren Verein ein. Erst dort plant ihr mit eurem eigenen Team und euren echten Daten – ohne automatische Verlängerung.
+            </p>
+            <a href="/pilot" className="mt-5 inline-block">
+              <Button type="button" className="rounded-xl bg-orange-500 text-white hover:bg-orange-600">
+                Eigenen Verein im Pilotprogramm testen <ArrowRight className="size-4" aria-hidden="true" />
+              </Button>
+            </a>
+          </article>
         </div>
       </section>
 
@@ -179,10 +203,10 @@ export default function ClubDemoLanding() {
         <article className="rounded-3xl border border-violet-200 bg-white p-6 shadow-[0_18px_44px_-34px_rgba(76,29,149,0.45)] sm:p-8">
           <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-violet-700">Ultimate · für Verbände und große Vereine</p>
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-violet-700">Enterprise · für Verbände und große Vereine</p>
               <h2 className="mt-3 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">Mehrere Untervereine. Eigene Planungen. Ein gemeinsamer Rahmen.</h2>
               <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600">
-                Ultimate ist die passende Lösung, wenn ein Verband, ein Dachverein oder ein großer Mehrspartenverein mehrere eigenständig planende Vereine zusammenbringt. Jeder Bereich behält seine eigenen Helfer, Veranstaltungen und Zugänge – der Verband erhält eine passende, abgestimmte Gesamtlösung.
+                Enterprise ist die passende Lösung, wenn ein Verband, ein Dachverein oder ein großer Mehrspartenverein mehrere eigenständig planende Vereine zusammenbringt. Jeder Bereich behält seine eigenen Helfer, Veranstaltungen und Zugänge – der Verband erhält eine passende, abgestimmte Gesamtlösung.
               </p>
             </div>
             <div className="rounded-2xl border border-violet-100 bg-violet-50 p-5 text-sm leading-6 text-violet-950">

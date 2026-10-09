@@ -15,7 +15,13 @@ describe("öffentliche Vereinsdemo", () => {
 
     expect(app).toContain('path="/vereinsdemo"');
     expect(app).toContain('path="/demozugang"');
-    expect(landing).toContain("Die echte App testen");
+    expect(landing).toContain("Die echte App fiktiv durchklicken");
+    expect(landing).toContain("Vereinsdemo · fiktiv üben");
+    expect(landing).toContain("Pilotprogramm · eigener Verein");
+    expect(landing).toContain("Eigenen Verein im Pilotprogramm testen");
+    expect(landing).toContain('href="/pilot"');
+    expect(landing).toContain("Enterprise · für Verbände und große Vereine");
+    expect(landing).not.toContain("Ultimate · für Verbände und große Vereine");
     expect(landing).toContain("trpc.publicDemo.start.useMutation");
     expect(landing).toContain("/api/public-demo/access");
     expect(entry).toContain("window.location.replace");

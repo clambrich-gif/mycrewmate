@@ -35,6 +35,7 @@
 - [x] Hauptseite als transparente Produkt- und Preisseite weiterentwickelt: reguläre Endpreise ab 01.01.2027, Vergleichstabelle und Enterprise bleiben sichtbar; Warenkorb- und Checkout-Simulation sind entfernt.
 - [x] Pilotprogramm als eigenständige Zweitseite `/pilot` integriert: kostenloser, individuell abgestimmter Test bis 31.12.2026, keine automatische Verlängerung, 50%-Pilotvorteil und noch nicht sendendes Anfrageformular.
 - [x] Hauptseite und Pilotseite klar verknüpft: Pilot-Anfrage als Hauptweg, Vereinsdemo als separater Zweitweg, Preisrücklink auf `/pilot` sowie Enterprise statt Ultimate in der Pilotumgebung.
+- [x] Öffentliche Vereinsdemo sprachlich eindeutig abgegrenzt: reine Übungsumgebung mit fiktiven Daten; Pilotprogramm als einziger Weg für eigene Vereine, echte Anlässe und reale Daten. Enterprise ersetzt dort die frühere sichtbare Bezeichnung Ultimate.
 - [x] Steuerkennzeichnung bewusst bis zur Rücksprache mit dem Steuerberater offen gelassen; die Website zeigt bis dahin ausschließlich bestätigte Endpreise ohne MwSt.-/USt.-Aussage.
 
 ## Später prüfen

@@ -16,6 +16,7 @@ describe("öffentliche Preis- und Pilotseiten", () => {
     expect(offer).toContain("Pilotprogramm bis 31.12.2026");
     expect(offer).toContain("Pilot kostenlos anfragen");
     expect(offer).toContain('href="/vereinsdemo"');
+    expect(offer).toContain("Fiktive Vereinsdemo ausprobieren");
     expect(offer).toContain("Reguläre Preise ab 01.01.2027");
     expect(offer).toContain("Alle genannten Preise sind Endpreise");
     expect(offer).toContain("Buchung und Zahlung starten");
@@ -26,6 +27,7 @@ describe("öffentliche Preis- und Pilotseiten", () => {
 
     expect(pilot).toContain('name: "Enterprise"');
     expect(pilot).not.toContain('name: "Ultimate"');
+    expect(pilot).toContain("Fiktive Vereinsdemo ausprobieren");
     expect(pilot).toContain("Reguläre Preise ab 01.01.2027 ansehen");
   });
 
