@@ -63,7 +63,7 @@
 - [x] Technische Logfristen auf Produktionsserver und Reverse Proxy aktiviert und live geprüft: Docker-Standardtreiber `journald`, `MaxRetentionSec=14day`, Speichergrenzen, neu erzeugte MyCrewMate- und Coolify-Proxy-Container mit `journald` sowie öffentlicher Health Check `200`. Der Nachweis steht in `docs/server-log-retention-v1.md`.
 - [x] Echte Pilot-Testanfrage über das Live-Formular durchgeführt: sichtbare Erfolgsmeldung, interne Benachrichtigung und automatische Eingangsbestätigung sind im verbundenen Mailpostfach eingegangen. Den klar markierten Testeintrag anschließend im Master-Portal vollständig gelöscht.
 - [x] Master-Portal gegen freiwillig fehlende Rückrufnummern abgesichert: Anzeige „Nicht angegeben“ statt Fehler; Regressionstest, Typecheck und Produktionsbuild erfolgreich, live veröffentlicht.
-- [x] Schlanke, ausschließlich im Master-Admin-Portal sichtbare Pilotvertragsverwaltung umgesetzt: Pilotvereine und Verträge getrennt sichtbar, manuell anlegen/bearbeiten, als kurze PDF-Vorlage herunterladen, als vereinbart dokumentieren, archivieren und nach bestätigtem Löschwunsch endgültig löschen. Keine Vereinsansicht und keine nachgebildete digitale Unterschrift.
+- [x] Nicht benötigte Pilotvertragsfunktion vollständig entfernt: keine separaten Entwürfe, PDFs oder Vertragsdaten mehr. Der kurze Pilotablauf bleibt bei Pilotanfrage, persönlicher Abstimmung sowie Vereins- und Paketverwaltung im Master-Portal.
 - [x] Aktuellen Projektstand erneut ohne falsche Domainverweise geprüft; die Master-Portal-Domain bleibt `admin.mycrewmate.de`.
 - [ ] Vor dem geplanten Kaufstart am 01.01.2027 Checkout, Steuerstatus und eine etwaige BFSG-/Barrierefreiheitsinformation für den dann verbindlich bestätigten Vertriebspfad freigeben.
 
@@ -73,4 +73,4 @@
 - [x] Tatsächlichen SMTP-Liveversand mit einer eindeutig markierten Testanfrage geprüft: Nachricht an `support@mycrewmate.de` und automatische Bestätigung wurden zugestellt.
 - [ ] Hetzner-Mailpostfach monatlich nach dem dokumentierten Dreijahresprozess bereinigen; SMTP kann eingegangene oder gesendete Mailkopien nicht automatisch aus der Mailbox löschen.
 - [ ] Nach Veröffentlichung die Vereinsdemo auf der echten Marketing- und App-Domain einmal end-to-end testen.
-- [ ] Vor einer verbindlichen externen Unterzeichnung den endgültigen Pilotvertragstext fachlich/rechtlich prüfen lassen; die jetzt umgesetzte PDF ist bewusst eine kurze operative Vorlage ohne qualifizierte digitale Unterschrift.
+- [ ] Falls nach der kurzen Pilotphase später wieder schriftliche Vereinbarungen in MyCrewMate verwaltet werden sollen, Bedarf, Rechtsprüfung, Unterschrift und sichere Ablage zuerst gemeinsam neu festlegen.
