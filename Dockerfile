@@ -1,5 +1,8 @@
 # syntax=docker/dockerfile:1
-FROM node:22-bookworm-slim AS build
+# Der öffentliche AWS-ECR-Spiegel liefert das unveränderte offizielle Node-Image
+# ohne die anonyme Docker-Hub-Abrufgrenze des GitHub-Buildrunners.
+ARG NODE_BASE_IMAGE=public.ecr.aws/docker/library/node:22-bookworm-slim
+FROM ${NODE_BASE_IMAGE} AS build
 
 WORKDIR /app
 # Begrenzt Speicherspitzen beim lokalen Build auf einem kleinen Coolify-Host.
@@ -17,7 +20,7 @@ RUN pnpm install --frozen-lockfile --reporter=append-only
 COPY . .
 RUN pnpm build && pnpm prune --prod --reporter=append-only
 
-FROM node:22-bookworm-slim AS runtime
+FROM ${NODE_BASE_IMAGE} AS runtime
 
 WORKDIR /app
 ENV NODE_ENV=production \
