@@ -73,6 +73,10 @@ const trpcClient = trpc.createClient({
         return globalThis.fetch(input, {
           ...(init ?? {}),
           credentials: "include",
+          // Der Veranstaltungs-Kontext steckt bewusst in geschützten
+          // Request-Headern. Eine zwischengespeicherte GET-Antwort darf daher
+          // nie für eine andere Veranstaltung wiederverwendet werden.
+          cache: "no-store",
         });
       },
     }),

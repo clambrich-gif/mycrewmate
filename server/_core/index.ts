@@ -152,6 +152,16 @@ async function startServer() {
   // tRPC API
   app.use(
     "/api/trpc",
+    (_req, res, next) => {
+      // Planungsdaten hängen von Sitzung und Veranstaltungs-Headern ab. Sie
+      // dürfen weder im Browser noch von einem vorgeschalteten Cache als
+      // Antwort einer anderen Veranstaltung wiederverwendet werden.
+      res.set({
+        "Cache-Control": "private, no-store, max-age=0",
+        Vary: "Cookie, Authorization, X-Tenant-Id, X-Planning-Tenant-Id, X-Event-Year, X-Event-Id",
+      });
+      next();
+    },
     createExpressMiddleware({
       router: appRouter,
       createContext,
