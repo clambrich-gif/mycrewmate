@@ -136,6 +136,7 @@ import {
   TENANT_ACCESS_MODES,
   tenantCreationSetupForAccessMode,
 } from "@shared/tenant-access-mode";
+import { PUBLIC_REACH_METRIC_KEYS } from "@shared/public-reach-metrics";
 import {
   LEGAL_DOCUMENTS,
   REQUIRED_LEGAL_DOCUMENT_IDS,
@@ -2053,6 +2054,24 @@ function teamNoteReadIdentity(user: {
 
 export const appRouter = router({
   system: systemRouter,
+  /**
+   * Ausschließlich anonyme Tagesaggregate der öffentlichen Reichweite. Diese
+   * Route akzeptiert keine Besucher- oder Gerätekennung und soll nie einen
+   * öffentlichen Seitenaufruf wegen eines Statistikfehlers beeinträchtigen.
+   */
+  publicReach: router({
+    record: publicProcedure
+      .input(z.object({ metric: z.enum(PUBLIC_REACH_METRIC_KEYS) }))
+      .mutation(async ({ input }) => {
+        try {
+          const recorded = await db.recordAnonymousPublicReachMetric(input.metric);
+          return { recorded } as const;
+        } catch (error) {
+          console.warn("[PublicReach] Anonymer Tageszähler konnte nicht aktualisiert werden.", error);
+          return { recorded: false } as const;
+        }
+      }),
+  }),
   pilotInquiry: router({
     submit: publicProcedure
       .input(
@@ -2196,7 +2215,15 @@ export const appRouter = router({
               "Die Vereinsdemo ist gerade stark gefragt. Bitte versuchen Sie es in wenigen Minuten erneut.",
           });
         }
-        return createPublicDemoSession(input.packageId as PublicDemoPackage);
+        const session = await createPublicDemoSession(input.packageId as PublicDemoPackage);
+        // Der erfolgreiche Start ist aussagekräftiger als ein bloßer Aufruf der
+        // Demoauswahl. Ein Fehler beim optionalen Zähler darf die Demo nie sperren.
+        try {
+          await db.recordAnonymousPublicReachMetric("club_demo_started");
+        } catch (error) {
+          console.warn("[PublicReach] Demo-Start konnte nicht gezählt werden.", error);
+        }
+        return session;
       }),
   }),
   auth: router({
@@ -4326,6 +4353,9 @@ export const appRouter = router({
   platformAdmin: router({
     tenantOverview: masterAdminProcedure.query(() =>
       db.listTenantOverviewsForPlatformAdmin()
+    ),
+    publicReach: masterAdminProcedure.query(() =>
+      db.getAnonymousPublicReachSummary()
     ),
     // Der Status bleibt ausschließlich in der Plattformverwaltung. Der
     // serverseitige Abruf gibt weder Token noch Coolify-Rohdaten an den Browser.

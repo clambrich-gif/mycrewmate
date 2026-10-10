@@ -10,6 +10,7 @@ const dbMocks = vi.hoisted(() => ({
   archiveExpiredPilotTenants: vi.fn(),
   claimPilotEndNotification: vi.fn(),
   cleanupExpiredArchivedPilotTenants: vi.fn(),
+  cleanupExpiredAnonymousPublicReachMetrics: vi.fn(),
   cleanupExpiredPilotInquiries: vi.fn(),
   listTenantProductExpiryReminderCandidates: vi.fn(),
   listPendingPilotEndNotifications: vi.fn(),
@@ -46,6 +47,7 @@ describe("Automatische Paketablauf-Benachrichtigung (7-Tage-Fenster)", () => {
     dbMocks.listPendingPilotEndNotifications.mockResolvedValue([]);
     dbMocks.cleanupExpiredPilotInquiries.mockResolvedValue({ inquiriesDeleted: 0 });
     dbMocks.cleanupExpiredArchivedPilotTenants.mockResolvedValue({ tenantsDeleted: 0, filesDeleted: 0 });
+    dbMocks.cleanupExpiredAnonymousPublicReachMetrics.mockResolvedValue({ metricsDeleted: 0 });
   });
 
   it("sendet Erinnerungen für fällige Test- und Aktivzugänge und markiert sie atomar als versendet", async () => {
@@ -171,6 +173,7 @@ describe("Automatische Paketablauf-Benachrichtigung (7-Tage-Fenster)", () => {
     dbMocks.claimPilotEndNotification.mockResolvedValue(true);
     dbMocks.cleanupExpiredPilotInquiries.mockResolvedValue({ inquiriesDeleted: 2 });
     dbMocks.cleanupExpiredArchivedPilotTenants.mockResolvedValue({ tenantsDeleted: 1, filesDeleted: 3 });
+    dbMocks.cleanupExpiredAnonymousPublicReachMetrics.mockResolvedValue({ metricsDeleted: 4 });
     mailMocks.renderPilotEndEmail.mockReturnValue({ subject: "Ende", text: "Text", html: "<p>Ende</p>" });
     mailMocks.sendTransactionalEmail.mockResolvedValue({ success: true, simulated: false });
 
@@ -186,7 +189,11 @@ describe("Automatische Paketablauf-Benachrichtigung (7-Tage-Fenster)", () => {
       inquiriesDeleted: 2,
       tenantsDeleted: 1,
       filesDeleted: 3,
+      publicReachMetricsDeleted: 4,
     });
+    expect(dbMocks.cleanupExpiredAnonymousPublicReachMetrics).toHaveBeenCalledWith(
+      new Date("2026-10-02T08:00:00Z")
+    );
     expect(dbMocks.markPilotEndNotificationSent).toHaveBeenCalledWith(
       expect.objectContaining({ notificationId: 7 })
     );

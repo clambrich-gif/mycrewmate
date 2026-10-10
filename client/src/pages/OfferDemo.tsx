@@ -1,5 +1,6 @@
 import { PackageComparisonSection } from "@/components/PackageComparisonSection";
 import { KlemmiMascot } from "@/components/KlemmiMascot";
+import { PublicReachPageView } from "@/components/PublicReachMetric";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -545,7 +546,7 @@ function OfferCard({
         </div>
       )}
       <div className="mt-auto grid gap-2 pt-7">
-        <a href="/pilot#pilot-anfrage">
+        <a href="/pilot#pilot-video">
           <Button type="button" className={cn("w-full rounded-xl", offer.buttonClass)}>
             <HeartHandshake className="size-4" aria-hidden="true" />
             Im Pilot testen
@@ -591,12 +592,13 @@ export default function OfferDemo() {
       tabIndex={-1}
       className="min-h-screen overflow-x-hidden bg-[#fbfcff] text-slate-950"
     >
+      <PublicReachPageView metric="home_page_view" />
       <a className="skip-to-content" href="#start">
         Zum Inhalt springen
       </a>
       <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-sm font-semibold text-amber-950">
         <a
-          href="/pilot#pilot-anfrage"
+          href="/pilot#pilot-video"
           className="inline-flex items-center gap-1.5 rounded-md underline-offset-2 hover:text-orange-800 hover:underline focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-amber-200"
         >
           Pilotanfragen bis 31.12.2026 · Kostenlos am eigenen Event testen
@@ -662,7 +664,7 @@ export default function OfferDemo() {
                 Zum Login
               </Button>
             </a>
-            <a href="/pilot#pilot-anfrage" className="hidden sm:block">
+            <a href="/pilot#pilot-video" className="hidden sm:block">
               <Button
                 type="button"
                 className="rounded-xl bg-orange-700 px-4 text-white hover:bg-orange-800"
@@ -697,7 +699,7 @@ export default function OfferDemo() {
               vom ersten Helfer bis zum letzten Abbau.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <a href="/pilot#pilot-anfrage">
+              <a href="/pilot#pilot-video">
                 <Button
                   type="button"
                   size="lg"
@@ -863,7 +865,7 @@ export default function OfferDemo() {
               Regulärer Endpreis ab 01.01.2027 für Helfer, Schichten,
               Vorbereitung und klare Listen.
             </p>
-            <a href="/pilot#pilot-anfrage" className="mt-5 block">
+            <a href="/pilot#pilot-video" className="mt-5 block">
               <Button
                 type="button"
                 className="w-full rounded-xl bg-orange-700 text-white hover:bg-orange-800"
@@ -977,7 +979,7 @@ export default function OfferDemo() {
                   Der Pilotvorteil gilt für <strong>Light</strong> oder <strong>Pro</strong>, wenn ihr euch nach dem vereinbarten Pilotzeitraum aktiv für die weitere Nutzung entscheidet.
                 </p>
               </div>
-              <a href="/pilot#pilot-anfrage" className="shrink-0">
+              <a href="/pilot#pilot-video" className="shrink-0">
                 <Button
                   type="button"
                   variant="outline"
@@ -1359,7 +1361,7 @@ export default function OfferDemo() {
                 >
                   <Play className="size-4" aria-hidden="true" /> Kurzvideo ansehen
                 </Button>
-                <a href="/pilot#pilot-anfrage">
+                <a href="/pilot#pilot-video">
                   <Button type="button" className={cn("rounded-xl", detailsOffer.buttonClass)}>
                     <HeartHandshake className="size-4" aria-hidden="true" />
                     Im Pilot testen

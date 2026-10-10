@@ -54,8 +54,10 @@ import {
   tenantAccessModeFromState,
   type TenantAccessMode,
 } from "@shared/tenant-access-mode";
+import type { PublicReachMetricKey } from "@shared/public-reach-metrics";
 import {
   Archive,
+  BarChart3,
   Building2,
   CalendarDays,
   CheckCircle2,
@@ -69,7 +71,9 @@ import {
   LockKeyhole,
   LogOut,
   Mail,
+  MousePointerClick,
   PauseCircle,
+  Play,
   Plus,
   RotateCcw,
   ShieldCheck,
@@ -254,6 +258,57 @@ const PRODUCT_ASSIGNMENT_STATUS_CLASS: Record<ProductAssignmentStatus, string> =
   paused: "border-amber-200 bg-amber-50 text-amber-800",
   expired: "border-red-200 bg-red-50 text-red-800",
 };
+
+const PUBLIC_REACH_METRIC_META: Array<{
+  metric: PublicReachMetricKey;
+  label: string;
+  description: string;
+  icon: typeof BarChart3;
+  accent: string;
+}> = [
+  {
+    metric: "home_page_view",
+    label: "Startseite",
+    description: "mycrewmate.de geöffnet",
+    icon: BarChart3,
+    accent: "border-blue-200 bg-blue-50/60 text-blue-800",
+  },
+  {
+    metric: "pilot_page_view",
+    label: "Pilotseite",
+    description: "Pilotprogramm geöffnet",
+    icon: BarChart3,
+    accent: "border-sky-200 bg-sky-50/60 text-sky-800",
+  },
+  {
+    metric: "pilot_inquiry_view",
+    label: "Pilotanfrage",
+    description: "Formular sichtbar geöffnet",
+    icon: MousePointerClick,
+    accent: "border-orange-200 bg-orange-50/60 text-orange-800",
+  },
+  {
+    metric: "club_demo_page_view",
+    label: "Vereinsdemo",
+    description: "Demoauswahl geöffnet",
+    icon: BarChart3,
+    accent: "border-violet-200 bg-violet-50/60 text-violet-800",
+  },
+  {
+    metric: "club_demo_started",
+    label: "Demo gestartet",
+    description: "Temporäre Demo erfolgreich erstellt",
+    icon: Play,
+    accent: "border-indigo-200 bg-indigo-50/60 text-indigo-800",
+  },
+  {
+    metric: "pilot_video_started",
+    label: "Pilotvideo",
+    description: "Erklärfilm bewusst gestartet",
+    icon: Play,
+    accent: "border-emerald-200 bg-emerald-50/60 text-emerald-800",
+  },
+];
 
 function masterAssignmentStatusLabel(
   status: ProductAssignmentStatus,
@@ -1253,6 +1308,13 @@ export default function MasterAdminPortal() {
     staleTime: 60_000,
     refetchInterval: 120_000,
   });
+  const publicReach = trpc.platformAdmin.publicReach.useQuery(undefined, {
+    enabled: isAuthenticated && user?.role === "admin",
+    retry: false,
+    refetchOnWindowFocus: false,
+    staleTime: 60_000,
+    refetchInterval: 120_000,
+  });
   const accessInventory = trpc.platformAdmin.accessInventory.useQuery(undefined, {
     enabled: isAuthenticated && user?.role === "admin",
     retry: false,
@@ -2122,6 +2184,54 @@ export default function MasterAdminPortal() {
                   </article>
                 ))
               )}
+            </CardContent>
+          </Card>
+        </section>
+        <section aria-labelledby="oeffentliche-reichweite">
+          <Card className="border-slate-200 bg-white/95 shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle id="oeffentliche-reichweite" className="flex items-center gap-2 text-lg text-slate-900">
+                <BarChart3 className="size-5 text-blue-700" aria-hidden="true" />
+                Öffentliche Reichweite
+              </CardTitle>
+              <CardDescription>
+                Anonyme Aufrufzahlen für Startseite, Pilot und Vereinsdemo.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {publicReach.error ? (
+                <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950" role="status">
+                  Die Reichweitenwerte können gerade nicht abgerufen werden. Die öffentliche Website bleibt davon unberührt.
+                </p>
+              ) : (
+                <div data-slot="master-public-reach" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {PUBLIC_REACH_METRIC_META.map(item => {
+                    const summary = publicReach.data?.metrics.find(metric => metric.metric === item.metric);
+                    const Icon = item.icon;
+                    return (
+                      <article key={item.metric} className={`rounded-xl border p-3 ${item.accent}`}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <h3 className="font-semibold text-slate-900">{item.label}</h3>
+                            <p className="mt-0.5 text-xs leading-5 text-slate-600">{item.description}</p>
+                          </div>
+                          <Icon className="size-4 shrink-0" aria-hidden="true" />
+                        </div>
+                        <p className="mt-3 text-2xl font-bold tabular-nums text-slate-950">
+                          {publicReach.isLoading ? "…" : new Intl.NumberFormat("de-DE").format(summary?.last30Days ?? 0)}
+                        </p>
+                        <p className="text-xs font-medium text-slate-600">letzte 30 Tage</p>
+                        <p className="mt-2 text-xs text-slate-600">
+                          Gesamt seit Einführung: <span className="font-semibold text-slate-800">{new Intl.NumberFormat("de-DE").format(summary?.total ?? 0)}</span>
+                        </p>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+              <p className="text-xs leading-5 text-slate-500">
+                Die Zähler messen Aufrufe, nicht einzelne Personen. Es werden keine Cookies, IP-Adressen, Gerätekennungen oder Besucherprofile gespeichert; die Tageswerte werden nach zwei Jahren automatisch gelöscht.
+              </p>
             </CardContent>
           </Card>
         </section>

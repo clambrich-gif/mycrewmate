@@ -10,8 +10,11 @@ describe("öffentliche Pilot- und Datenschutzhinweise", () => {
   it("beschreibt die aktive Pilotanfrage, Pilotzugänge und die Dreijahresfrist widerspruchsfrei", () => {
     const legal = read("client/src/pages/PublicLegal.tsx");
 
-    expect(legal).toContain("2.1 Unverbindliche Pilotanfrage");
-    expect(legal).toContain("2.2 Vereinbarter Pilotzugang");
+    expect(legal).toContain("2.1 Anonyme Reichweitenmessung");
+    expect(legal).toContain("2.2 Unverbindliche Pilotanfrage");
+    expect(legal).toContain("2.3 Vereinbarter Pilotzugang");
+    expect(legal).toContain("keine IP-Adressen, Cookies, Gerätekennungen, Browsermerkmale oder Besucherprofile");
+    expect(legal).toContain("höchstens zwei Jahre aufbewahrt und anschließend automatisch gelöscht");
     expect(legal).toContain("drei Jahre reaktivierbar");
     expect(legal).toContain("Hetzner Online GmbH");
     expect(legal).toContain("Diese Angaben sind erforderlich");

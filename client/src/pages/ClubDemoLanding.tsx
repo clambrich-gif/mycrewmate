@@ -1,4 +1,5 @@
 import { KlemmiMascot } from "@/components/KlemmiMascot";
+import { PublicReachPageView } from "@/components/PublicReachMetric";
 import { Button } from "@/components/ui/button";
 import { appUrl } from "@/lib/site-host";
 import { trpc } from "@/lib/trpc";
@@ -105,6 +106,7 @@ function StartDemoButton({ item }: { item: DemoPackage }) {
 export default function ClubDemoLanding() {
   return (
     <main className="min-h-screen bg-[#f7f8fb] text-slate-950">
+      <PublicReachPageView metric="club_demo_page_view" />
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex min-h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
           <a href="https://mycrewmate.de/" className="shrink-0" aria-label="MyCrewMate – zur Hauptwebsite">

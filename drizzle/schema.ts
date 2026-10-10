@@ -25,6 +25,7 @@ import {
   type ProductAssignmentStatus,
   type ProductPackageId,
 } from "../shared/product-packages";
+import { PUBLIC_REACH_METRIC_KEYS } from "../shared/public-reach-metrics";
 
 /**
  * Core user table backing auth flow.
@@ -693,8 +694,33 @@ export const tenantPilotEndNotifications = mysqlTable(
     ),
   ]
 );
-export type TenantPilotEndNotification =
-  typeof tenantPilotEndNotifications.$inferSelect;
+export type TenantPilotEndNotification = typeof tenantPilotEndNotifications.$inferSelect;
+
+/**
+ * Datenschutzfreundliche öffentliche Reichweite: genau ein aggregierter Wert
+ * je Tag und Inhalt. Es gibt bewusst keine IP-, Cookie-, Geräte- oder
+ * Besucherkennung und damit keine individuelle Nutzungsanalyse.
+ */
+export const publicReachMetrics = mysqlTable(
+  "public_reach_metrics",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    metric: mysqlEnum("metric", PUBLIC_REACH_METRIC_KEYS).notNull(),
+    /** Deutscher Kalendertag, nicht der Zeitpunkt eines einzelnen Aufrufs. */
+    metricDay: date("metricDay", { mode: "string" }).notNull(),
+    count: int("count").default(0).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  table => [
+    uniqueIndex("public_reach_metrics_metric_day_unique").on(
+      table.metric,
+      table.metricDay
+    ),
+    index("public_reach_metrics_day_idx").on(table.metricDay),
+  ]
+);
+export type PublicReachMetric = typeof publicReachMetrics.$inferSelect;
 
 /**
  * Öffentliche Pilotanfragen bleiben bis zur Entscheidung aktiv. Erst mit dem

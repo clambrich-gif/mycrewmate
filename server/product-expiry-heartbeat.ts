@@ -3,6 +3,7 @@ import {
   archiveExpiredPilotTenants,
   claimPilotEndNotification,
   cleanupExpiredArchivedPilotTenants,
+  cleanupExpiredAnonymousPublicReachMetrics,
   cleanupExpiredPilotInquiries,
   claimTenantProductExpiryReminder,
   listPendingPilotEndNotifications,
@@ -38,6 +39,7 @@ type PilotLifecycleRun = {
   inquiriesDeleted: number;
   tenantsDeleted: number;
   filesDeleted: number;
+  publicReachMetricsDeleted: number;
 };
 
 /**
@@ -121,6 +123,7 @@ export async function runPilotLifecycle(now = new Date()): Promise<PilotLifecycl
     inquiriesDeleted: 0,
     tenantsDeleted: 0,
     filesDeleted: 0,
+    publicReachMetricsDeleted: 0,
   };
 
   for (const candidate of candidates) {
@@ -157,13 +160,15 @@ export async function runPilotLifecycle(now = new Date()): Promise<PilotLifecycl
     }
   }
 
-  const [inquiryCleanup, tenantCleanup] = await Promise.all([
+  const [inquiryCleanup, tenantCleanup, publicReachCleanup] = await Promise.all([
     cleanupExpiredPilotInquiries(now),
     cleanupExpiredArchivedPilotTenants(now),
+    cleanupExpiredAnonymousPublicReachMetrics(now),
   ]);
   result.inquiriesDeleted = inquiryCleanup.inquiriesDeleted;
   result.tenantsDeleted = tenantCleanup.tenantsDeleted;
   result.filesDeleted = tenantCleanup.filesDeleted;
+  result.publicReachMetricsDeleted = publicReachCleanup.metricsDeleted;
   return result;
 }
 

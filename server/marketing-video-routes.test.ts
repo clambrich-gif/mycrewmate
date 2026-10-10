@@ -97,4 +97,31 @@ describe("Same-Origin-Auslieferung des öffentlichen Werbefilms", () => {
       expect.objectContaining({ method: "HEAD" })
     );
   });
+
+  it("liefert den Pilotfilm über dieselbe eigene, rangefähige Videoauslieferung", async () => {
+    const upstreamFetch = vi.fn().mockResolvedValue(
+      new Response(new Uint8Array([5, 6]), {
+        status: 206,
+        headers: {
+          "content-length": "2",
+          "content-range": "bytes 0-1/200",
+          "content-type": "video/mp4",
+        },
+      })
+    );
+    vi.stubGlobal("fetch", upstreamFetch);
+    const baseUrl = await startTestServer();
+
+    const response = await nativeFetch(`${baseUrl}/api/marketing/pilot-video`, {
+      headers: { Range: "bytes=0-1" },
+    });
+
+    expect(response.status).toBe(206);
+    expect(response.headers.get("content-disposition")).toContain("MyCrewMate-Pilotfilm.mp4");
+    expect(response.headers.get("accept-ranges")).toBe("bytes");
+    expect(upstreamFetch).toHaveBeenCalledWith(
+      expect.stringContaining("ivXEhtTdNKmHIaik.mp4"),
+      expect.objectContaining({ headers: { Range: "bytes=0-1" }, method: "GET" })
+    );
+  });
 });

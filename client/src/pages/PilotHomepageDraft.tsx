@@ -1,4 +1,9 @@
 import { KlemmiMascot } from "@/components/KlemmiMascot";
+import {
+  PublicReachMetricOnVisible,
+  PublicReachPageView,
+  usePublicReachMetric,
+} from "@/components/PublicReachMetric";
 import { Button } from "@/components/ui/button";
 import { isMarketingSite } from "@/lib/site-host";
 import { trpc } from "@/lib/trpc";
@@ -14,6 +19,7 @@ import {
   LoaderCircle,
   Mail,
   MapPinned,
+  Play,
   ShieldCheck,
   Sparkles,
   UsersRound,
@@ -30,6 +36,9 @@ import { useState, type FormEvent } from "react";
  */
 
 const WORDMARK = "/brand/mycrewmate-wordmark.png";
+/** Über die eigene Website ausgeliefert; die Quelldatei liegt im Dateispeicher. */
+const PILOT_VIDEO_SRC = "/api/marketing/pilot-video";
+const PILOT_VIDEO_POSTER = "/pilot/mycrewmate-pilot-2026-poster.jpg";
 
 type PilotPackage = {
   name: string;
@@ -124,6 +133,62 @@ const PILOT_FAQS = [
       "Nein. Die Pilotnutzung endet zum vereinbarten Termin. Eine kostenpflichtige Nutzung entsteht nur, wenn ihr euch danach aktiv dafür entscheidet.",
   },
 ];
+
+function PilotExplainerVideo() {
+  const recordVideoStart = usePublicReachMetric("pilot_video_started");
+
+  return (
+    <section
+      id="pilot-video"
+      aria-labelledby="pilot-video-title"
+      className="scroll-mt-24 border-b border-slate-200 bg-sky-50/70 py-12 sm:py-14"
+    >
+      <div className="mx-auto grid max-w-7xl gap-7 px-4 sm:px-6 lg:grid-cols-[0.8fr_1.2fr] lg:items-center lg:px-8">
+        <div className="max-w-xl">
+          <p className="text-sm font-bold uppercase tracking-[0.14em] text-blue-700">
+            Pilot kurz erklärt
+          </p>
+          <h2
+            id="pilot-video-title"
+            className="mt-3 text-3xl font-black tracking-[-0.035em] text-slate-950 sm:text-4xl"
+          >
+            In 43 Sekunden sehen, wie der kostenlose Pilot abläuft.
+          </h2>
+          <p className="mt-4 text-lg leading-8 text-slate-600">
+            Ein kurzer Zeichentrickfilm zeigt, wie aus einer unverbindlichen
+            Anfrage ein gemeinsam abgestimmter Test für euren echten Anlass wird.
+          </p>
+          <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-semibold text-slate-700">
+            <span className="inline-flex items-center gap-2">
+              <Play className="size-4 text-orange-700" aria-hidden="true" />
+              Startet nur auf Klick
+            </span>
+            <span>Mit Ton · 43 Sekunden</span>
+          </div>
+          <a
+            href="#pilot-anfrage"
+            className="mt-6 inline-flex items-center gap-1 text-sm font-black text-blue-700 hover:text-blue-900 hover:underline"
+          >
+            Direkt zur Pilotanfrage <ArrowRight className="size-4" aria-hidden="true" />
+          </a>
+        </div>
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 shadow-[0_22px_50px_-32px_rgba(15,23,42,0.55)]">
+          <video
+            controls
+            preload="metadata"
+            poster={PILOT_VIDEO_POSTER}
+            onPlay={recordVideoStart}
+            className="block aspect-video w-full bg-slate-950"
+            aria-label="Zeichentrickfilm zum kostenlosen MyCrewMate-Pilotprogramm"
+          >
+            <source src={PILOT_VIDEO_SRC} type="video/mp4" />
+            Dein Browser kann dieses Video leider nicht abspielen.
+          </video>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 function PilotRequestForm() {
   const [submitted, setSubmitted] = useState(false);
@@ -388,6 +453,7 @@ export default function PilotHomepageDraft() {
 
   return (
     <main className="min-h-screen bg-white text-slate-950">
+      <PublicReachPageView metric="pilot_page_view" />
       <a
         href="#inhalt"
         className="sr-only z-50 rounded-md bg-slate-950 px-4 py-2 text-sm font-bold text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
@@ -503,6 +569,8 @@ export default function PilotHomepageDraft() {
           </aside>
         </div>
       </section>
+
+      <PilotExplainerVideo />
 
       <section id="so-hilft-es" className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
         <div className="max-w-3xl">
@@ -676,7 +744,9 @@ export default function PilotHomepageDraft() {
             <p className="mt-6 flex gap-2 text-sm leading-6 text-slate-600"><Mail className="mt-1 size-4 shrink-0 text-blue-700" aria-hidden="true" />Die Anfrage wird persönlich geprüft und beantwortet. Es gibt keinen automatisierten Verkaufsabschluss und keinen Anspruch auf einen Pilotzugang.</p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_20px_55px_-35px_rgba(15,23,42,0.35)] sm:p-7">
-            <PilotRequestForm />
+            <PublicReachMetricOnVisible metric="pilot_inquiry_view">
+              <PilotRequestForm />
+            </PublicReachMetricOnVisible>
           </div>
         </div>
       </section>

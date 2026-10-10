@@ -53,6 +53,7 @@ import {
   postTasks,
   protectedHelperPdfShares,
   prepTasks,
+  publicReachMetrics,
   revokedSessions,
   securitySettings,
   sessionPresences,
@@ -114,6 +115,11 @@ import {
   type ProductPackageId,
 } from "../shared/product-packages";
 import { tenantStatusAfterProductAssignment } from "../shared/tenant-access-mode";
+import {
+  PUBLIC_REACH_METRIC_KEYS,
+  type PublicReachMetricKey,
+  type PublicReachMetricSummary,
+} from "../shared/public-reach-metrics";
 import type { EditablePlanningModule } from "../shared/tenant-permissions";
 import {
   currentEventId,
@@ -265,6 +271,107 @@ export async function cleanupExpiredOperationalAuditLogs(now = new Date()) {
     deletionLogsDeleted: affectedRows(deletion),
     teamNoteLogsDeleted: affectedRows(teamNotes),
   };
+}
+
+/** Anonyme Reichweitenwerte bleiben maximal zwei Jahre als Tagesaggregate erhalten. */
+export const PUBLIC_REACH_METRIC_RETENTION_YEARS = 2;
+
+/**
+ * Liefert den deutschen Kalendertag unabhängig von Serverzeitzone oder
+ * Sommerzeit. Der Wert wird nur als Aggregationsschlüssel verwendet.
+ */
+export function germanCalendarDay(now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Berlin",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const value = (kind: Intl.DateTimeFormatPartTypes) =>
+    parts.find(part => part.type === kind)?.value ?? "";
+  return `${value("year")}-${value("month")}-${value("day")}`;
+}
+
+function calendarDayOffset(day: string, offsetDays: number) {
+  const date = new Date(`${day}T12:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + offsetDays);
+  return date.toISOString().slice(0, 10);
+}
+
+/**
+ * Erhöht einen öffentlichen Zähler atomar. Die Tabelle enthält bewusst nur
+ * Aufrufart, Kalendertag und Anzahl – keine IP-Adresse, Cookies, Browserdaten
+ * oder sonstige Besucherkennung.
+ */
+export async function recordAnonymousPublicReachMetric(
+  metric: PublicReachMetricKey,
+  now = new Date()
+) {
+  const database = await getDb();
+  if (!database) return false;
+  const metricDay = germanCalendarDay(now);
+  await database
+    .insert(publicReachMetrics)
+    .values({ metric, metricDay, count: 1 })
+    .onDuplicateKeyUpdate({
+      set: { count: sql`${publicReachMetrics.count} + 1` },
+    });
+  return true;
+}
+
+/** Ausschließlich Master-Admin: zusammengefasste Aufrufe ohne Personenbezug. */
+export async function getAnonymousPublicReachSummary(
+  now = new Date()
+): Promise<{ metrics: PublicReachMetricSummary[] }> {
+  const database = await getDb();
+  const empty = () =>
+    PUBLIC_REACH_METRIC_KEYS.map(metric => ({
+      metric,
+      total: 0,
+      last30Days: 0,
+      firstRecordedOn: null,
+      lastRecordedOn: null,
+    }));
+  if (!database) return { metrics: empty() };
+
+  const today = germanCalendarDay(now);
+  const last30DaysStart = calendarDayOffset(today, -29);
+  const rows = await database
+    .select({
+      metric: publicReachMetrics.metric,
+      total: sql<number>`COALESCE(SUM(${publicReachMetrics.count}), 0)`,
+      last30Days: sql<number>`COALESCE(SUM(CASE WHEN ${publicReachMetrics.metricDay} >= ${last30DaysStart} THEN ${publicReachMetrics.count} ELSE 0 END), 0)`,
+      firstRecordedOn: sql<string | null>`MIN(${publicReachMetrics.metricDay})`,
+      lastRecordedOn: sql<string | null>`MAX(${publicReachMetrics.metricDay})`,
+    })
+    .from(publicReachMetrics)
+    .groupBy(publicReachMetrics.metric);
+  const byMetric = new Map(rows.map(row => [row.metric as PublicReachMetricKey, row]));
+
+  return {
+    metrics: PUBLIC_REACH_METRIC_KEYS.map(metric => {
+      const row = byMetric.get(metric);
+      return {
+        metric,
+        total: Number(row?.total ?? 0),
+        last30Days: Number(row?.last30Days ?? 0),
+        firstRecordedOn: row?.firstRecordedOn ?? null,
+        lastRecordedOn: row?.lastRecordedOn ?? null,
+      };
+    }),
+  };
+}
+
+/** Entfernt auch aggregierte Tageswerte nach dem transparent genannten Zeitraum. */
+export async function cleanupExpiredAnonymousPublicReachMetrics(now = new Date()) {
+  const database = await getDb();
+  if (!database) return { metricsDeleted: 0 };
+  const cutoff = new Date(now);
+  cutoff.setUTCFullYear(cutoff.getUTCFullYear() - PUBLIC_REACH_METRIC_RETENTION_YEARS);
+  const result = await database
+    .delete(publicReachMetrics)
+    .where(lt(publicReachMetrics.metricDay, germanCalendarDay(cutoff)));
+  return { metricsDeleted: affectedRows(result) };
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {

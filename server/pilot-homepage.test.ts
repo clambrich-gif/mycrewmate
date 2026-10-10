@@ -14,8 +14,8 @@ describe("öffentliche Preis- und Pilotseiten", () => {
 
     expect(app).toContain('path="/pilot"');
     expect(offer).toContain("Pilotanfragen bis 31.12.2026");
-    expect(offer).toContain('href="/pilot#pilot-anfrage"');
-    expect((offer.match(/href="\/pilot#pilot-anfrage"/g) ?? []).length).toBeGreaterThanOrEqual(4);
+    expect(offer).toContain('href="/pilot#pilot-video"');
+    expect((offer.match(/href="\/pilot#pilot-video"/g) ?? []).length).toBeGreaterThanOrEqual(4);
     expect(offer).toContain("Pilot kostenlos anfragen");
     expect(offer).toContain("ehrenamtlich getragenen Veranstaltungen");
     expect(offer).toContain("ausschließlich mit einer benannten Organisation vereinbart");
@@ -64,6 +64,13 @@ describe("öffentliche Preis- und Pilotseiten", () => {
     expect(pilot).toContain("Event Pass und Enterprise sind ausgeschlossen");
     expect(pilot).toContain("Kombination mit anderen Rabatten ist nicht möglich");
     expect(pilot).toContain("in Textform, zum Beispiel per E-Mail");
+    expect(pilot).toContain('id="pilot-video"');
+    expect(pilot).toContain("In 43 Sekunden sehen, wie der kostenlose Pilot abläuft.");
+    expect(pilot).toContain('preload="metadata"');
+    expect(pilot).toContain('onPlay={recordVideoStart}');
+    expect(pilot).toContain('src={PILOT_VIDEO_SRC}');
+    expect(pilot).toContain('metric="pilot_page_view"');
+    expect(pilot).toContain('metric="pilot_inquiry_view"');
   });
 
   it("ordnet die Vergleichstabelle zeitlich ein, ohne die App-Ansicht zu verändern", () => {

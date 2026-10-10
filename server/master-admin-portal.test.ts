@@ -307,6 +307,21 @@ describe("Master-Admin-Bereinigung", () => {
     expect(router).toContain("getPlatformBackupStatus");
   });
 
+  it("zeigt anonyme öffentliche Reichweite nur im Masterportal", () => {
+    const page = source("client/src/pages/MasterAdminPortal.tsx");
+    const router = source("server/routers.ts");
+    const schema = source("drizzle/schema.ts");
+
+    expect(page).toContain("Öffentliche Reichweite");
+    expect(page).toContain('data-slot="master-public-reach"');
+    expect(page).toContain("trpc.platformAdmin.publicReach.useQuery");
+    expect(page).toContain("Die Zähler messen Aufrufe, nicht einzelne Personen.");
+    expect(page).toContain("keine Cookies, IP-Adressen, Gerätekennungen oder Besucherprofile");
+    expect(router).toContain("publicReach: masterAdminProcedure.query");
+    expect(router).toContain("getAnonymousPublicReachSummary");
+    expect(schema).toContain('"public_reach_metrics"');
+  });
+
   it("entfernt die frühere Schulungsfunktion aus erreichbaren Oberflächen und Routen", () => {
     const app = source("client/src/App.tsx");
     const page = source("client/src/pages/MasterAdminPortal.tsx");
