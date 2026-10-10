@@ -139,6 +139,7 @@ const CHAT_SNAPSHOT_POLL_MS = 5_000;
 const DESKTOP_SIDEBAR_OPEN_STORAGE_KEY = "mycrewmate:desktop-sidebar-open";
 const ACTIVATION_TENANT_STORAGE_KEY = "mycrewmate:activation-tenant";
 const CURRENT_TERMS_LABEL = `AGB ${LEGAL_DOCUMENTS.terms.version.split("-")[0]}`;
+const TERMS_UPDATE_NOTICE_STORAGE_PREFIX = "mycrewmate:terms-update-notice";
 // Der Wechsler dient nur der lokalen Entwicklungs- und Isolationserprobung.
 // Für Vereinszugänge und die veröffentlichte App wird der Mandant später
 // ausschließlich serverseitig aus der Konto-Zuordnung bestimmt.
@@ -400,9 +401,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [initialPassword, setInitialPassword] = useState("");
   const [initialPasswordConfirmation, setInitialPasswordConfirmation] = useState("");
   const [contractDocumentsAccepted, setContractDocumentsAccepted] = useState(false);
-  const [contractAcceptanceOpen, setContractAcceptanceOpen] = useState(false);
-  const [currentContractDocumentsAccepted, setCurrentContractDocumentsAccepted] =
-    useState(false);
+  const [termsUpdateNoticeOpen, setTermsUpdateNoticeOpen] = useState(false);
   const [initialPasswordError, setInitialPasswordError] = useState<string | null>(null);
   const [activationTenantId, setActivationTenantId] = useState(
     storedActivationTenantId
@@ -414,7 +413,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const isCredentialBootstrapPending =
     isTenantActivationRoute ||
     forcePasswordChangeOpen ||
-    contractAcceptanceOpen ||
     // Eine gespeicherte Aktivierung darf niemals ohne echte Sitzung den
     // Ladebildschirm blockieren, etwa wenn ein Browser ein neues Cookie ablehnt.
     // Mit gültiger Sitzung bleibt die alte Vereinsansicht weiterhin verborgen,
@@ -1037,8 +1035,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
     ) {
       return;
     }
-    setCurrentContractDocumentsAccepted(false);
-    setContractAcceptanceOpen(true);
+    const storageKey = `${TERMS_UPDATE_NOTICE_STORAGE_PREFIX}:${LEGAL_DOCUMENTS.terms.version}:${user.openId}`;
+    try {
+      if (window.localStorage.getItem(storageKey)) return;
+    } catch {
+      // Falls ein Browser den lokalen Speicher sperrt, bleibt der Hinweis
+      // einmalig pro geladener Sitzung sichtbar und blockiert nie die App.
+    }
+    setTermsUpdateNoticeOpen(true);
   }, [
     initialPasswordStatus.data?.mustChangePassword,
     initialPasswordStatus.data?.requiresContractAcceptance,
@@ -1207,16 +1211,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
       },
       onError: error => setInitialPasswordError(error.message),
     });
-  const acceptCurrentTenantContractDocuments =
-    trpc.auth.acceptCurrentTenantContractDocuments.useMutation({
-      onSuccess: async () => {
-        setCurrentContractDocumentsAccepted(false);
-        setContractAcceptanceOpen(false);
-        await utils.auth.initialPasswordChangeStatus.invalidate();
-        toast.success("Vertragsunterlagen wurden elektronisch bestätigt");
-      },
-      onError: error => toast.error(error.message),
-    });
+  const dismissTermsUpdateNotice = useCallback(() => {
+    if (user?.openId) {
+      try {
+        window.localStorage.setItem(
+          `${TERMS_UPDATE_NOTICE_STORAGE_PREFIX}:${LEGAL_DOCUMENTS.terms.version}:${user.openId}`,
+          "seen"
+        );
+      } catch {
+        // Die Schließen-Aktion bleibt auch ohne lokalen Browser-Speicher möglich.
+      }
+    }
+    setTermsUpdateNoticeOpen(false);
+  }, [user?.openId]);
   const completeFirstLoginOnboarding =
     trpc.auth.completeFirstLoginOnboarding.useMutation({
       onSuccess: async () => {
@@ -1439,68 +1446,42 @@ export function Layout({ children }: { children: React.ReactNode }) {
     />
   );
   const currentContractAcceptanceDialog = (
-    <Dialog open={contractAcceptanceOpen} onOpenChange={() => undefined}>
-      <DialogContent
-        showCloseButton={false}
-        className="bg-white text-slate-950 sm:max-w-lg"
-        onEscapeKeyDown={event => event.preventDefault()}
-        onPointerDownOutside={event => event.preventDefault()}
-        onInteractOutside={event => event.preventDefault()}
-      >
+    <Dialog
+      open={termsUpdateNoticeOpen}
+      onOpenChange={open => {
+        if (!open) dismissTermsUpdateNotice();
+      }}
+    >
+      <DialogContent className="w-[calc(100%-2rem)] max-w-md bg-white text-slate-950">
         <DialogHeader>
           <div className="mb-1 flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-700">
             <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
           </div>
-          <DialogTitle>Aktualisierte {CURRENT_TERMS_LABEL} bestätigen</DialogTitle>
+          <DialogTitle>AGB aktualisiert</DialogTitle>
           <DialogDescription className="leading-relaxed text-slate-600">
-            Die aktualisierten {CURRENT_TERMS_LABEL} enthalten klarere Hinweise
-            zu eigener Datensicherung, Exporten und technischer Verfügbarkeit.
-            Ihre bisherige Annahme bleibt als Nachweis erhalten. Für die weitere
-            Nutzung gilt die neue Fassung erst nach Ihrer aktiven Bestätigung.
+            Der neue Stand ist {CURRENT_TERMS_LABEL}. Ihre bisherige vertragliche
+            Zustimmung bleibt bestehen. Bitte nehmen Sie die aktualisierte Fassung
+            bei Gelegenheit zur Kenntnis.
           </DialogDescription>
         </DialogHeader>
-        <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-3.5">
-          <div className="flex items-start gap-3">
-            <Checkbox
-              id="current-contract-acceptance"
-              checked={currentContractDocumentsAccepted}
-              onCheckedChange={checked =>
-                setCurrentContractDocumentsAccepted(checked === true)
-              }
-              disabled={acceptCurrentTenantContractDocuments.isPending}
-              className="mt-0.5"
-            />
-            <Label
-              htmlFor="current-contract-acceptance"
-              className="cursor-pointer text-xs font-normal leading-5 text-slate-700"
-            >
-              Ich handle vertretungsberechtigt für meinen Verein, habe die aktualisierten {CURRENT_TERMS_LABEL} gelesen und stimme ihnen für die weitere Nutzung zu. Ich bestätige außerdem die{" "}
-              <a href="https://mycrewmate.de/agb" target="_blank" rel="noreferrer" className="font-semibold text-blue-700 underline underline-offset-2">AGB</a>
-              {", "}
-              <a href="https://mycrewmate.de/avv" target="_blank" rel="noreferrer" className="font-semibold text-blue-700 underline underline-offset-2">Vereinbarung zur Auftragsverarbeitung (AVV)</a>
-              {" und die "}
-              <a href="https://app.mycrewmate.de/datenschutz" target="_blank" rel="noreferrer" className="font-semibold text-blue-700 underline underline-offset-2">Datenschutzhinweise der App</a>.
-            </Label>
-          </div>
+        <div className="rounded-xl border border-blue-200 bg-blue-50/70 px-3.5 py-3 text-sm text-blue-950">
+          <a
+            href="https://mycrewmate.de/agb"
+            target="_blank"
+            rel="noreferrer"
+            className="font-semibold text-blue-700 underline underline-offset-2"
+          >
+            Aktuelle AGB öffnen
+          </a>
         </div>
         <DialogFooter className="pt-2">
           <Button
             type="button"
             className="min-h-11 bg-blue-600 text-white hover:bg-blue-700"
-            disabled={
-              !currentContractDocumentsAccepted ||
-              acceptCurrentTenantContractDocuments.isPending
-            }
-            onClick={() =>
-              acceptCurrentTenantContractDocuments.mutate({
-                acceptContractDocuments: true,
-              })
-            }
+            onClick={dismissTermsUpdateNotice}
           >
             <CheckCircle2 className="mr-2 h-4 w-4" aria-hidden="true" />
-            {acceptCurrentTenantContractDocuments.isPending
-              ? "Bestätigung wird gespeichert …"
-              : "Verbindlich bestätigen & fortfahren"}
+            Zur Kenntnis genommen
           </Button>
         </DialogFooter>
       </DialogContent>

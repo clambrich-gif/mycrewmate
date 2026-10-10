@@ -286,6 +286,18 @@ describe("Master-Admin-Bereinigung", () => {
     expect(page).toContain("Abmelden und neu anmelden");
   });
 
+  it("zeigt die geprüfte Sicherungsroutine als einklappbare Master-Auskunft", () => {
+    const page = source("client/src/pages/MasterAdminPortal.tsx");
+
+    expect(page).toContain("Sicherung &amp; Wiederherstellung");
+    expect(page).toContain("backupInformationOpen");
+    expect(page).toContain("täglich getrennt gesichert");
+    expect(page).toContain("Hetzner Object Storage");
+    expect(page).toContain("letzten sieben Stände");
+    expect(page).toContain("Coolify-Betriebskonfiguration");
+    expect(page).toContain("Offline-Quellcodesicherung");
+  });
+
   it("entfernt die frühere Schulungsfunktion aus erreichbaren Oberflächen und Routen", () => {
     const app = source("client/src/App.tsx");
     const page = source("client/src/pages/MasterAdminPortal.tsx");

@@ -868,24 +868,9 @@ async function requireCompletedPlanningTeamPasswordChange(user: {
     });
   }
 
-  if (
-    user.role === "admin" &&
-    user.openId.startsWith("tenant-admin:") &&
-    !(await db.isTenantAdminPasswordChangeRequired(user.id))
-  ) {
-    const membership = await db.resolveTenantForUser({
-      userId: user.id,
-      userOpenId: user.openId,
-      allowPilotFallback: false,
-    });
-    if (membership && (await db.tenantNeedsCurrentContractAcceptance(membership.tenantId))) {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message:
-          "Bitte bestätigen Sie zuerst die aktuelle AGB, AVV und Datenschutzerklärung für Ihren Verein.",
-      });
-    }
-  }
+  // Die verbindliche Annahme der Vertragsunterlagen erfolgt bei der ersten
+  // Einrichtung eines Vereinsadmin-Zugangs. Spätere AGB-Fassungen erscheinen
+  // bestehenden Vereinen nur als nicht blockierender Hinweis.
 }
 
 type GpxMapTrack = {

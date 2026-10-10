@@ -1156,6 +1156,7 @@ export default function MasterAdminPortal() {
   const { user, loading, isAuthenticated, logout } = useAuth();
   const utils = trpc.useUtils();
   const [createOpen, setCreateOpen] = useState(false);
+  const [backupInformationOpen, setBackupInformationOpen] = useState(false);
   const [createForm, setCreateForm] = useState<CreateTenantForm>(
     defaultCreateTenantForm
   );
@@ -2107,6 +2108,40 @@ export default function MasterAdminPortal() {
                 ))
               )}
             </CardContent>
+          </Card>
+        </section>
+        <section aria-labelledby="sicherung-wiederherstellung">
+          <Card className="border-slate-200 bg-white/95 py-0 shadow-sm">
+            <Collapsible open={backupInformationOpen} onOpenChange={setBackupInformationOpen}>
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition-colors hover:bg-slate-50 sm:px-6"
+                  aria-label="Sicherung und Wiederherstellung anzeigen"
+                >
+                  <span className="flex min-w-0 items-center gap-3">
+                    <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-emerald-100 text-emerald-700">
+                      <ShieldCheck className="size-4.5" aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0">
+                      <span id="sicherung-wiederherstellung" className="block font-semibold text-slate-900">Sicherung &amp; Wiederherstellung</span>
+                      <span className="mt-0.5 block text-sm text-slate-600">Kurzinfo für Rückfragen zur aktuellen Datensicherung</span>
+                    </span>
+                  </span>
+                  <ChevronDown className={`size-5 shrink-0 text-slate-500 transition-transform ${backupInformationOpen ? "rotate-180" : ""}`} aria-hidden="true" />
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="border-t border-slate-100">
+                <CardContent className="space-y-3 px-5 py-4 text-sm leading-6 text-slate-700 sm:px-6">
+                  <p>
+                    <strong className="text-slate-900">Aktueller Sicherungsstand:</strong> Vereinsdaten in der Datenbank und hochgeladene Dateien werden täglich getrennt gesichert – jeweils gegen 00:00&nbsp;Uhr UTC, lokal auf dem Server und zusätzlich im Hetzner Object Storage. Je Sicherungsziel bleiben die letzten sieben Stände erhalten.
+                  </p>
+                  <p>
+                    Die Coolify-Betriebskonfiguration wird ebenfalls täglich extern gesichert. Der Programmcode bleibt zusätzlich versioniert in GitHub; eine manuelle Offline-Quellcodesicherung kann bei Bedarf erstellt werden. Die automatischen Sicherungen ergänzen den eigenen Export wichtiger Vereinsdaten, ersetzen ihn aber nicht.
+                  </p>
+                </CardContent>
+              </CollapsibleContent>
+            </Collapsible>
           </Card>
         </section>
       </div>

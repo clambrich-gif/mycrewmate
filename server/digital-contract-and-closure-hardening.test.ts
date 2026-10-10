@@ -68,30 +68,29 @@ describe("Digitale Vertragsannahme, Freigabefilter und Veranstaltungsabschluss",
     expect(layout).toContain("acceptContractDocuments: true");
     expect(router).toContain("acceptContractDocuments: z.literal(true");
     expect(router).toContain("acceptCurrentTenantContractDocuments");
-    expect(router).toContain(
-      "Bitte bestätigen Sie zuerst die aktuelle AGB, AVV und Datenschutzerklärung"
-    );
+    expect(router).not.toContain("Bitte bestätigen Sie zuerst die aktuelle AGB");
     expect(db).toContain("tenantContractAcceptances");
     expect(db).toContain("tenantNeedsCurrentContractAcceptance");
   });
 
-  it("sperrt eine bestehende Vereinsadminsitzung bis zur erneuten Annahme", () => {
+  it("zeigt bestehenden Vereinsadmins AGB-Änderungen nur als schließbaren Hinweis", () => {
     const layout = normalizedSource("client/src/components/Layout.tsx");
     const router = source("server/routers.ts");
     const db = source("server/db.ts");
 
     expect(layout).toContain("currentContractAcceptanceDialog");
-    expect(layout).toContain("Aktualisierte {CURRENT_TERMS_LABEL} bestätigen");
-    expect(layout).toContain("Ihre bisherige Annahme bleibt als Nachweis erhalten.");
-    expect(layout).toContain("Für die weitere Nutzung gilt die neue Fassung erst nach Ihrer aktiven Bestätigung.");
-    expect(layout).toContain("Verbindlich bestätigen & fortfahren");
-    expect(layout).toContain("acceptCurrentTenantContractDocuments.mutate");
+    expect(layout).toContain("TERMS_UPDATE_NOTICE_STORAGE_PREFIX");
+    expect(layout).toContain("AGB aktualisiert");
+    expect(layout).toContain("Ihre bisherige vertragliche Zustimmung bleibt bestehen.");
+    expect(layout).toContain("Aktuelle AGB öffnen");
+    expect(layout).toContain("Zur Kenntnis genommen");
+    expect(layout).toContain("dismissTermsUpdateNotice");
+    expect(layout).not.toContain("Verbindlich bestätigen & fortfahren");
+    expect(layout).not.toContain("acceptCurrentTenantContractDocuments.mutate");
     expect(router).toContain(
       "acceptCurrentTenantContractDocuments: baseProtectedProcedure"
     );
-    expect(router).toContain(
-      "tenantNeedsCurrentContractAcceptance(membership.tenantId)"
-    );
+    expect(router).not.toContain("Bitte bestätigen Sie zuerst die aktuelle AGB");
     expect(db).toContain("documentVersion === document.version");
     expect(db).toContain("documentHash === legalDocumentHash(documentId)");
   });
