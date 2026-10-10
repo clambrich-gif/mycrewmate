@@ -1245,10 +1245,11 @@ export default function MasterAdminPortal() {
     id: string;
     name: string;
   } | null>(null);
-  const [testTenantToDelete, setTestTenantToDelete] = useState<{
+  const [archivedTenantToDelete, setArchivedTenantToDelete] = useState<{
     id: string;
     name: string;
   } | null>(null);
+  const [permanentDeletionConfirmation, setPermanentDeletionConfirmation] = useState("");
   const [tenantAdminToRevoke, setTenantAdminToRevoke] = useState<{
     tenantId: string;
     tenantName: string;
@@ -1407,14 +1408,18 @@ export default function MasterAdminPortal() {
     },
     onError: error => toast.error(error.message),
   });
-  const deleteInternalTestTenant = trpc.platformAdmin.deleteInternalTestTenant.useMutation({
+  const permanentlyDeleteArchivedTenant = trpc.platformAdmin.permanentlyDeleteArchivedTenant.useMutation({
     onSuccess: async result => {
       await Promise.all([
         utils.platformAdmin.tenantOverview.invalidate(),
         utils.platformAdmin.accessInventory.invalidate(),
       ]);
-      setTestTenantToDelete(null);
-      toast.success(`Verein „${result.tenantName}“ wurde einschließlich seiner Daten entfernt.`);
+      setArchivedTenantToDelete(null);
+      setPermanentDeletionConfirmation("");
+      const fileHint = result.removedFileCount
+        ? ` ${result.removedFileCount} zugehörige Datei${result.removedFileCount === 1 ? "" : "en"} wurde${result.removedFileCount === 1 ? "" : "n"} bereinigt.`
+        : "";
+      toast.success(`Verein „${result.tenantName}“ wurde mit allen Daten entfernt.${fileHint}`);
     },
     onError: error => toast.error(error.message),
   });
@@ -2131,9 +2136,9 @@ export default function MasterAdminPortal() {
               <CardTitle id="archivierte-vereine" className="flex items-center gap-2 text-base text-slate-800">
                 <Archive className="size-5 text-slate-600" /> Archivierte Vereine
               </CardTitle>
-              <CardDescription>
-                Archivierte Vereine sind vollständig vom Vereinszugang ausgeschlossen. Beendete Pilotvereine bleiben bis zur angezeigten Frist reaktivierbar und werden anschließend technisch vollständig gelöscht.
-              </CardDescription>
+            <CardDescription>
+                Archivierte Vereine sind vollständig vom Vereinszugang ausgeschlossen. Beendete Pilotvereine bleiben bis zur angezeigten Frist reaktivierbar und werden anschließend technisch vollständig gelöscht. Bei einem dokumentierten Löschwunsch kann die endgültige Löschung hier bewusst vorgezogen werden.
+            </CardDescription>
             </CardHeader>
             <CardContent className="divide-y divide-slate-200 px-5 sm:px-6">
               {filteredArchivedTenants.length === 0 ? (
@@ -2168,18 +2173,19 @@ export default function MasterAdminPortal() {
                         {updateLifecycle.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />}
                         Als Pilot reaktivieren
                       </Button>
-                      {!tenant.retentionEndsAt && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="w-full border-red-200 bg-white text-red-700 hover:bg-red-50 hover:text-red-800"
-                          disabled={deleteInternalTestTenant.isPending}
-                          onClick={() => setTestTenantToDelete({ id: tenant.id, name: tenant.name })}
-                        >
-                          {deleteInternalTestTenant.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
-                          Verein endgültig löschen
-                        </Button>
-                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full border-red-200 bg-white text-red-700 hover:bg-red-50 hover:text-red-800"
+                        disabled={permanentlyDeleteArchivedTenant.isPending}
+                        onClick={() => {
+                          setPermanentDeletionConfirmation("");
+                          setArchivedTenantToDelete({ id: tenant.id, name: tenant.name });
+                        }}
+                      >
+                        {permanentlyDeleteArchivedTenant.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+                        Verein endgültig löschen
+                      </Button>
                     </div>
                   </article>
                 ))
@@ -3034,9 +3040,12 @@ export default function MasterAdminPortal() {
       </AlertDialog>
 
       <AlertDialog
-        open={Boolean(testTenantToDelete)}
+        open={Boolean(archivedTenantToDelete)}
         onOpenChange={open => {
-          if (!open && !deleteInternalTestTenant.isPending) setTestTenantToDelete(null);
+          if (!open && !permanentlyDeleteArchivedTenant.isPending) {
+            setArchivedTenantToDelete(null);
+            setPermanentDeletionConfirmation("");
+          }
         }}
       >
         <AlertDialogContent className="border-red-200 bg-white text-slate-950">
@@ -3045,23 +3054,41 @@ export default function MasterAdminPortal() {
               <Trash2 className="size-5" /> Verein mit allen Daten endgültig löschen?
             </AlertDialogTitle>
             <AlertDialogDescription className="leading-5 text-slate-600">
-              <strong className="font-semibold text-slate-800">{testTenantToDelete?.name}</strong> wird mit allen Veranstaltungen, Planungsdaten und persönlichen Zugängen dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.
+              <strong className="font-semibold text-slate-800">{archivedTenantToDelete?.name}</strong> wird mit allen Veranstaltungen, Planungsdaten, Uploads und persönlichen Zugängen dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-5 text-amber-900">
-            Aktive Vereine sind durch den Zwischenschritt „Archivieren“ geschützt. Erst im Archiv kann ein Verein bewusst und endgültig gelöscht werden.
+            Aktive Vereine sind durch den Zwischenschritt „Archivieren“ geschützt. Erst im Archiv kann ein Verein bewusst und endgültig gelöscht werden. Bereits vorhandene technische Datenbanksicherungen werden regulär nach sieben Sicherungsständen überschrieben.
+          </div>
+          <div className="space-y-2">
+            <label htmlFor="permanent-tenant-deletion-confirmation" className="text-sm font-medium text-slate-800">
+              Zum Schutz vor Fehlklicks bitte <strong>ENDGÜLTIG LÖSCHEN</strong> eingeben:
+            </label>
+            <Input
+              id="permanent-tenant-deletion-confirmation"
+              value={permanentDeletionConfirmation}
+              onChange={event => setPermanentDeletionConfirmation(event.target.value)}
+              autoComplete="off"
+              spellCheck={false}
+              placeholder="ENDGÜLTIG LÖSCHEN"
+              disabled={permanentlyDeleteArchivedTenant.isPending}
+            />
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteInternalTestTenant.isPending}>Abbrechen</AlertDialogCancel>
+            <AlertDialogCancel disabled={permanentlyDeleteArchivedTenant.isPending}>Abbrechen</AlertDialogCancel>
             <AlertDialogAction
-              disabled={!testTenantToDelete || deleteInternalTestTenant.isPending}
+              disabled={
+                !archivedTenantToDelete ||
+                permanentlyDeleteArchivedTenant.isPending ||
+                permanentDeletionConfirmation.trim() !== "ENDGÜLTIG LÖSCHEN"
+              }
               className="bg-red-700 text-white hover:bg-red-800"
               onClick={() => {
-                if (!testTenantToDelete) return;
-                deleteInternalTestTenant.mutate({ tenantId: testTenantToDelete.id });
+                if (!archivedTenantToDelete) return;
+                permanentlyDeleteArchivedTenant.mutate({ tenantId: archivedTenantToDelete.id });
               }}
             >
-              {deleteInternalTestTenant.isPending ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+              {permanentlyDeleteArchivedTenant.isPending ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
               Verein endgültig löschen
             </AlertDialogAction>
           </AlertDialogFooter>

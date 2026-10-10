@@ -605,7 +605,7 @@ export async function deletePublicDemoTenant(tenantId: string) {
   ]);
 
   try {
-    await db.deleteInternalTestTenantForPlatformAdmin(tenantId);
+    await db.deletePublicDemoTenantForCleanup(tenantId);
   } catch (error) {
     if (error instanceof Error && error.message.includes("wurde nicht gefunden")) {
       return { removed: false } as const;

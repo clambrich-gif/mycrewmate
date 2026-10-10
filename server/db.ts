@@ -1793,6 +1793,83 @@ export async function releasePilotEndNotificationClaim(notificationId: number) {
     );
 }
 
+function uniqueTenantStorageKeys(keys: Array<string | null | undefined>) {
+  return Array.from(
+    new Set(
+      keys.filter(
+        (key): key is string => typeof key === "string" && key.trim().length > 0
+      )
+    )
+  );
+}
+
+/** Liest ausschließlich die vom Verein selbst verwalteten Uploads aus. */
+async function collectTenantStorageKeys(
+  client: DBClient,
+  target: { id: string; logoKey: string | null }
+) {
+  const [eventRows, locationAssets, gpxAssets] = await Promise.all([
+    client
+      .select({ id: events.id, pdfLogoKey: events.pdfLogoKey })
+      .from(events)
+      .where(eq(events.tenantId, target.id)),
+    client
+      .select({ key: locations.logoKey })
+      .from(locations)
+      .innerJoin(events, eq(events.id, locations.eventId))
+      .where(eq(events.tenantId, target.id)),
+    client
+      .select({ key: gpxTracks.fileKey })
+      .from(gpxTracks)
+      .innerJoin(events, eq(events.id, gpxTracks.eventId))
+      .where(eq(events.tenantId, target.id)),
+  ]);
+  return {
+    eventIds: eventRows.map(event => event.id),
+    fileKeys: uniqueTenantStorageKeys([
+      target.logoKey,
+      ...eventRows.map(event => event.pdfLogoKey),
+      ...locationAssets.map(asset => asset.key),
+      ...gpxAssets.map(asset => asset.key),
+    ]),
+  };
+}
+
+/**
+ * Die Uploads werden vor dem Datenbanklöschen entfernt. Schlägt die
+ * Dateibereinigung fehl, bleibt der archivierte Verein unverändert erhalten und
+ * der Vorgang kann später sicher wiederholt werden.
+ */
+async function deleteTenantStorageKeysBeforeDataPurge(fileKeys: readonly string[]) {
+  const results = await Promise.allSettled(fileKeys.map(key => storageDelete(key)));
+  if (results.some(result => result.status === "rejected")) {
+    throw new Error(
+      "Die zugehörigen Uploads konnten nicht vollständig gelöscht werden. Der Verein bleibt unverändert im Archiv."
+    );
+  }
+  return results.filter(
+    (result): result is PromiseFulfilledResult<boolean> => result.status === "fulfilled"
+  ).filter(result => result.value).length;
+}
+
+/** Entfernt Protokolle, deren Fremdschlüssel beim Eventlöschen nur auf leer gesetzt würde. */
+async function deleteEventScopedOperationalRecords(
+  tx: DBClient,
+  eventIds: readonly number[]
+) {
+  if (!eventIds.length) return;
+  await tx.delete(activityLogs).where(inArray(activityLogs.eventId, [...eventIds]));
+  await tx
+    .delete(backupRestoreLogs)
+    .where(inArray(backupRestoreLogs.eventId, [...eventIds]));
+  await tx
+    .delete(deletionAuditLogs)
+    .where(inArray(deletionAuditLogs.eventId, [...eventIds]));
+  await tx
+    .delete(teamNoteAuditLogs)
+    .where(inArray(teamNoteAuditLogs.eventId, [...eventIds]));
+}
+
 /**
  * Entfernt nach Ablauf der Pilotaufbewahrung den gesamten archivierten Mandanten
  * einschließlich Planungsdaten und zugehöriger Uploads. Reaktivierung ist bis
@@ -1802,7 +1879,7 @@ export async function cleanupExpiredArchivedPilotTenants(now = new Date()) {
   const database = await getDb();
   if (!database) return { tenantsDeleted: 0, filesDeleted: 0 };
   const candidates = await database
-    .select({ id: tenants.id, logoKey: tenants.logoKey })
+    .select({ id: tenants.id })
     .from(tenants)
     .where(
       and(
@@ -1815,72 +1892,56 @@ export async function cleanupExpiredArchivedPilotTenants(now = new Date()) {
   let tenantsDeleted = 0;
   let filesDeleted = 0;
   for (const candidate of candidates) {
-    const [eventRows, locationAssets, gpxAssets] = await Promise.all([
-      database
-        .select({ id: events.id, pdfLogoKey: events.pdfLogoKey })
-        .from(events)
-        .where(eq(events.tenantId, candidate.id)),
-      database
-        .select({ key: locations.logoKey })
-        .from(locations)
-        .innerJoin(events, eq(events.id, locations.eventId))
-        .where(eq(events.tenantId, candidate.id)),
-      database
-        .select({ key: gpxTracks.fileKey })
-        .from(gpxTracks)
-        .innerJoin(events, eq(events.id, gpxTracks.eventId))
-        .where(eq(events.tenantId, candidate.id)),
-    ]);
-    const fileKeys = [
-      candidate.logoKey,
-      ...eventRows.map(event => event.pdfLogoKey),
-      ...locationAssets.map(asset => asset.key),
-      ...gpxAssets.map(asset => asset.key),
-    ].filter((key): key is string => Boolean(key));
-
-    const removed = await database.transaction(async tx => {
-      const [target] = await tx
-        .select({ id: tenants.id })
-        .from(tenants)
-        .where(
-          and(
-            eq(tenants.id, candidate.id),
-            eq(tenants.status, "archived"),
-            isNotNull(tenants.retentionEndsAt),
-            lt(tenants.retentionEndsAt, now)
+    try {
+      const removed = await database.transaction(async tx => {
+        const [target] = await tx
+          .select({ id: tenants.id, logoKey: tenants.logoKey })
+          .from(tenants)
+          .where(
+            and(
+              eq(tenants.id, candidate.id),
+              eq(tenants.status, "archived"),
+              isNotNull(tenants.retentionEndsAt),
+              lt(tenants.retentionEndsAt, now)
+            )
           )
-        )
-        .limit(1)
-        .for("update");
-      if (!target) return false;
-
-      const contractUsers = await tx
-        .selectDistinct({ userId: tenantContractAcceptances.acceptedByUserId })
-        .from(tenantContractAcceptances)
-        .where(eq(tenantContractAcceptances.tenantId, target.id))
-        .for("update");
-      await tx.delete(events).where(eq(events.tenantId, target.id));
-      await tx.delete(tenants).where(eq(tenants.id, target.id));
-      for (const { userId } of contractUsers) {
-        const [remainingMembership] = await tx
-          .select({ id: userTenantMemberships.id })
-          .from(userTenantMemberships)
-          .where(eq(userTenantMemberships.userId, userId))
           .limit(1)
           .for("update");
-        if (!remainingMembership) {
-          await tx.delete(tenantAdminCredentials).where(eq(tenantAdminCredentials.userId, userId));
-          await tx.delete(users).where(eq(users.id, userId));
+        if (!target) return null;
+
+        const { eventIds, fileKeys } = await collectTenantStorageKeys(tx, target);
+        const deletedFileCount = await deleteTenantStorageKeysBeforeDataPurge(fileKeys);
+        const contractUsers = await tx
+          .selectDistinct({ userId: tenantContractAcceptances.acceptedByUserId })
+          .from(tenantContractAcceptances)
+          .where(eq(tenantContractAcceptances.tenantId, target.id))
+          .for("update");
+        await deleteEventScopedOperationalRecords(tx, eventIds);
+        await tx.delete(events).where(eq(events.tenantId, target.id));
+        await tx.delete(tenants).where(eq(tenants.id, target.id));
+        for (const { userId } of contractUsers) {
+          const [remainingMembership] = await tx
+            .select({ id: userTenantMemberships.id })
+            .from(userTenantMemberships)
+            .where(eq(userTenantMemberships.userId, userId))
+            .limit(1)
+            .for("update");
+          if (!remainingMembership) {
+            await tx.delete(tenantAdminCredentials).where(eq(tenantAdminCredentials.userId, userId));
+            await tx.delete(users).where(eq(users.id, userId));
+          }
         }
-      }
-      return true;
-    });
-    if (!removed) continue;
-    tenantsDeleted += 1;
-    const deletionResults = await Promise.allSettled(fileKeys.map(key => storageDelete(key)));
-    filesDeleted += deletionResults.filter(
-      result => result.status === "fulfilled" && result.value
-    ).length;
+        return { deletedFileCount };
+      });
+      if (!removed) continue;
+      tenantsDeleted += 1;
+      filesDeleted += removed.deletedFileCount;
+    } catch (error) {
+      console.warn("[Tenant retention] Archivierter Verein bleibt wegen Bereinigungsfehler erhalten", {
+        tenantId: candidate.id,
+        error: error instanceof Error ? error.message : "unbekannter Fehler",
+      });
+    }
   }
   return { tenantsDeleted, filesDeleted };
 }
@@ -3047,30 +3108,38 @@ export async function updateTenantLifecycleForPlatformAdmin(input: {
 
 /**
  * Entfernt ausschließlich einen bewusst bereits archivierten Verein inklusive
- * seiner Veranstaltungen und der daran gekoppelten Planungs- und Zugangsdaten.
- * Für reguläre Vertragsenden bleibt der reversible Archivstatus der
- * vorgesehene Weg. Es gibt keine vereinsbezogene technische Löschsperre.
+ * aller Veranstaltungen, Planungsdaten, Uploads und zugehöriger Zugänge.
+ * Aktive, pausierte oder Pilotvereine können niemals direkt gelöscht werden;
+ * sie müssen zuerst bewusst archiviert werden.
  */
-export async function deleteInternalTestTenantForPlatformAdmin(tenantId: string) {
+async function permanentlyDeleteTenantData(
+  tenantId: string,
+  requiredStatus: "archived" | "sample"
+) {
   const database = (await getDb()) as DB;
   return database.transaction(async tx => {
     const [target] = await tx
-      .select({ id: tenants.id, name: tenants.name, status: tenants.status })
+      .select({
+        id: tenants.id,
+        name: tenants.name,
+        status: tenants.status,
+        logoKey: tenants.logoKey,
+      })
       .from(tenants)
       .where(eq(tenants.id, tenantId))
       .limit(1)
       .for("update");
     if (!target) throw new Error("Der Verein wurde nicht gefunden");
-    if (target.status === "active") {
-      throw new Error("Aktive Vereine dürfen nicht über die Testbereinigung entfernt werden");
+    if (target.status !== requiredStatus) {
+      throw new Error(
+        requiredStatus === "archived"
+          ? "Nur bereits archivierte Vereine können endgültig gelöscht werden"
+          : "Nur eine temporäre Musterdemo kann über diese Bereinigung entfernt werden"
+      );
     }
 
-    const [eventRows, adminRows, planningAccessRows] = await Promise.all([
-      tx
-        .select({ id: events.id })
-        .from(events)
-        .where(eq(events.tenantId, tenantId))
-        .for("update"),
+    const [{ eventIds, fileKeys }, adminRows, planningAccessRows] = await Promise.all([
+      collectTenantStorageKeys(tx, target),
       tx
         .selectDistinct({ userId: userTenantMemberships.userId })
         .from(userTenantMemberships)
@@ -3089,6 +3158,9 @@ export async function deleteInternalTestTenantForPlatformAdmin(tenantId: string)
         .for("update"),
     ]);
 
+    // Uploads werden vor den Daten entfernt. Misslingt dies, wird die
+    // Datenbanktransaktion zurückgerollt und der Verein bleibt im Archiv.
+    const removedFileCount = await deleteTenantStorageKeysBeforeDataPurge(fileKeys);
     const planningAccessIds = planningAccessRows.map(row => row.accessId);
     if (planningAccessIds.length) {
       await tx
@@ -3104,9 +3176,10 @@ export async function deleteInternalTestTenantForPlatformAdmin(tenantId: string)
         );
     }
 
-    // Alle fachlichen Tabellen referenzieren die Veranstaltung mit Kaskaden.
-    // Das explizite Löschen der Events stellt daher sicher, dass keine
-    // Planungsdaten des entfernten Testvereins zurückbleiben.
+    // Für die meisten Planungsdaten greifen Datenbank-Kaskaden. Die wenigen
+    // operativen Protokolle mit "SET NULL" werden hier ausdrücklich entfernt,
+    // damit nach der endgültigen Vereinslöschung keine Restdaten verbleiben.
+    await deleteEventScopedOperationalRecords(tx, eventIds);
     await tx.delete(events).where(eq(events.tenantId, tenantId));
     await tx.delete(tenants).where(eq(tenants.id, tenantId));
 
@@ -3128,11 +3201,25 @@ export async function deleteInternalTestTenantForPlatformAdmin(tenantId: string)
     return {
       tenantId,
       tenantName: target.name,
-      removedEventCount: eventRows.length,
+      removedEventCount: eventIds.length,
       removedPlanningAccessCount: planningAccessIds.length,
       removedAdminAccountCount: removedAdminAccounts,
+      removedFileCount,
     } as const;
   });
+}
+
+/** Ausschließlich das Master-Portal darf einen zuvor archivierten Verein endgültig löschen. */
+export async function permanentlyDeleteArchivedTenantForPlatformAdmin(tenantId: string) {
+  return permanentlyDeleteTenantData(tenantId, "archived");
+}
+
+/** Interne Bereinigung der isolierten, kurzlebigen öffentlichen Musterdemos. */
+export async function deletePublicDemoTenantForCleanup(tenantId: string) {
+  if (!tenantId.startsWith("mycrewmate-demo-")) {
+    throw new Error("Nur eine öffentliche Musterdemo kann über diese Bereinigung entfernt werden");
+  }
+  return permanentlyDeleteTenantData(tenantId, "sample");
 }
 
 export async function getTenant(id = tenant()) {

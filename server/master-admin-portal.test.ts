@@ -257,22 +257,33 @@ describe("Master-Admin-Portal", () => {
     expect(db).toContain("initialEventYear");
   });
 
-  it("entfernt interne Pilot- und Testvereine kontrolliert ohne vereinsbezogene Sonderlöschsperre", () => {
+  it("löscht ausschließlich archivierte Vereine nach bewusster Bestätigung vollständig", () => {
     const routers = source("server/routers.ts");
     const db = source("server/db.ts");
     const page = source("client/src/pages/MasterAdminPortal.tsx");
 
-    expect(routers).toContain("deleteInternalTestTenant: masterAdminProcedure");
-    expect(db).toContain("export async function deleteInternalTestTenantForPlatformAdmin");
+    expect(routers).toContain("permanentlyDeleteArchivedTenant: masterAdminProcedure");
+    expect(db).toContain("export async function permanentlyDeleteArchivedTenantForPlatformAdmin");
+    expect(db).toContain('requiredStatus === "archived"');
+    expect(db).toContain("Nur bereits archivierte Vereine können endgültig gelöscht werden");
     expect(db).not.toContain("DEFAULT_TENANT_ID");
-    expect(db).toContain("Es gibt keine vereinsbezogene technische Löschsperre");
     expect(db).toContain("await tx.delete(events).where(eq(events.tenantId, tenantId))");
+    expect(db).toContain("deleteEventScopedOperationalRecords(tx, eventIds)");
+    expect(db).toContain("deleteTenantStorageKeysBeforeDataPurge(fileKeys)");
+    expect(db).toContain("await tx.delete(activityLogs)");
+    expect(db).toContain(".delete(backupRestoreLogs)");
+    expect(db).toContain(".delete(deletionAuditLogs)");
+    expect(db).toContain(".delete(teamNoteAuditLogs)");
     expect(page).toContain("Verein mit allen Daten endgültig löschen?");
     expect(page).toContain("Verein endgültig löschen");
     expect(page).toContain("kann nicht rückgängig gemacht werden");
+    expect(page).toContain("ENDGÜLTIG LÖSCHEN");
+    expect(page).toContain("permanentDeletionConfirmation.trim()");
+    expect(page).toContain("Bereits vorhandene technische Datenbanksicherungen");
     expect(page).toContain("filteredArchivedTenants.map(tenant => (");
     expect(page).toContain("Erst im Archiv kann ein Verein bewusst und endgültig gelöscht werden.");
     expect(page).not.toContain('tenant.id !== "rsc-eifelland-mayen"');
+    expect(page).not.toContain("deleteInternalTestTenant");
   });
 });
 

@@ -4550,17 +4550,17 @@ export const appRouter = router({
         );
         return { ...updated, notification };
       }),
-    deleteInternalTestTenant: masterAdminProcedure
+    permanentlyDeleteArchivedTenant: masterAdminProcedure
       .input(
         z.object({
           tenantId: z.string().trim().regex(/^[a-z0-9-]{3,96}$/),
         })
       )
       .mutation(async ({ ctx, input }) => {
-        const deleted = await db.deleteInternalTestTenantForPlatformAdmin(input.tenantId);
+        const deleted = await db.permanentlyDeleteArchivedTenantForPlatformAdmin(input.tenantId);
         await recordSecurityActivity(
           auditActor(ctx.user),
-          `Interner Testverein „${deleted.tenantName}“ einschließlich ${deleted.removedEventCount} Veranstaltung(en) endgültig entfernt`,
+          `Archivierter Verein „${deleted.tenantName}“ einschließlich ${deleted.removedEventCount} Veranstaltung(en), Uploads und Zugängen endgültig entfernt`,
           "deleted",
           null
         );
