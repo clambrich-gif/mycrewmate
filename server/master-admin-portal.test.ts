@@ -201,6 +201,17 @@ describe("Master-Admin-Portal", () => {
     expect(page).toContain("Admin-Zugang hinzufügen");
   });
 
+  it("hält Verwaltungsaktionen in einer ausreichend breiten einzeiligen Aktionsleiste", () => {
+    const page = source("client/src/pages/MasterAdminPortal.tsx");
+
+    expect(page).toContain('data-slot="tenant-action-column"');
+    expect(page).toContain('data-slot="tenant-action-buttons"');
+    expect(page).toContain("lg:min-w-[14.5rem]");
+    expect(page).toContain("whitespace-nowrap px-3 text-[13px]");
+    expect(page).toContain("In Vereinsansicht wechseln");
+    expect(page).toContain("Admin-Zugang hinzufügen");
+  });
+
   it("zeigt den aktuellen digitalen Vertragsstatus je Verein ohne Planungsdaten offenzulegen", () => {
     const db = source("server/db.ts");
     const page = source("client/src/pages/MasterAdminPortal.tsx");

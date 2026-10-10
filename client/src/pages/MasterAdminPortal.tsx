@@ -1922,7 +1922,7 @@ export default function MasterAdminPortal() {
                           <p className="mt-1 break-words text-base font-semibold">{tenant.name}</p>
                           {tenant.legalName !== tenant.name ? <p className="mt-0.5 break-words text-xs text-blue-900">{tenant.legalName}</p> : null}
                         </div>
-                        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_12rem] lg:items-start">
+                        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(14.5rem,15.5rem)] lg:items-start">
                           <div className="min-w-0">
                             <TenantProductUsage usage={tenant.productUsage} events={tenant.events} />
                             <TenantProductTerm assignment={tenant.productAssignment} />
@@ -1944,18 +1944,18 @@ export default function MasterAdminPortal() {
                             />
                             <TenantContractAcceptanceStatus acceptance={tenant.contractAcceptance} />
                           </div>
-                          <div className="space-y-2">
+                          <div className="min-w-0 space-y-2 lg:min-w-[14.5rem]" data-slot="tenant-action-column">
                             <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-left">
                               <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Nächste Veranstaltung</p>
                               <p className="mt-0.5 break-words text-sm font-semibold text-slate-800">{tenant.nextEvent?.name ?? "Noch nicht angelegt"}</p>
                               <p className="mt-0.5 text-xs text-slate-500">{tenant.nextEvent ? formatDate(tenant.nextEvent.startDate) : "Termin offen"}</p>
                             </div>
                             {canManageTenant && (
-                              <div className="flex flex-col gap-1.5">
+                              <div className="flex flex-col gap-1.5" data-slot="tenant-action-buttons">
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="w-full border-violet-200 bg-violet-50 text-violet-900 hover:bg-violet-100"
+                                  className="h-9 w-full whitespace-nowrap px-3 text-[13px] leading-none border-violet-200 bg-violet-50 text-violet-900 hover:bg-violet-100"
                                   onClick={() => {
                                     setProductModalTenant(tenant);
                                     setProductAssignmentForm(
@@ -1968,7 +1968,7 @@ export default function MasterAdminPortal() {
                                 <Button
                                   size="sm"
                                   variant="default"
-                                  className="w-full bg-blue-600 text-white hover:bg-blue-700"
+                                  className="h-9 w-full whitespace-nowrap px-3 text-[13px] leading-none bg-blue-600 text-white hover:bg-blue-700"
                                   disabled={createHandoff.isPending}
                                   onClick={() => createHandoff.mutate({ tenantId: tenant.id })}
                                 >
@@ -1978,7 +1978,7 @@ export default function MasterAdminPortal() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="w-full"
+                                  className="h-9 w-full whitespace-nowrap px-3 text-[13px] leading-none"
                                   onClick={() => {
                                     setAdminModalTenant({ id: tenant.id, name: tenant.name });
                                     setAdminName("");
@@ -1992,7 +1992,7 @@ export default function MasterAdminPortal() {
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    className="w-full border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100"
+                                    className="h-9 w-full whitespace-nowrap px-3 text-[13px] leading-none border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100"
                                     disabled={updateLifecycle.isPending}
                                     onClick={() => updateLifecycle.mutate({ tenantId: tenant.id, status: "suspended" })}
                                   >
@@ -2003,7 +2003,7 @@ export default function MasterAdminPortal() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="w-full border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+                                  className="h-9 w-full whitespace-nowrap px-3 text-[13px] leading-none border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
                                   disabled={updateLifecycle.isPending}
                                   onClick={() => setArchiveModalTenant({ id: tenant.id, name: tenant.name })}
                                 >
@@ -2012,11 +2012,11 @@ export default function MasterAdminPortal() {
                               </div>
                             )}
                             {tenant.status === "suspended" && (
-                              <div className="flex flex-col gap-1.5">
+                              <div className="flex flex-col gap-1.5" data-slot="tenant-suspended-action-buttons">
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="w-full border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100"
+                                  className="h-9 w-full whitespace-nowrap px-3 text-[13px] leading-none border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100"
                                   disabled={updateLifecycle.isPending}
                                   onClick={() => updateLifecycle.mutate({ tenantId: tenant.id, status: "pilot" })}
                                 >
@@ -2026,7 +2026,7 @@ export default function MasterAdminPortal() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="w-full border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+                                  className="h-9 w-full whitespace-nowrap px-3 text-[13px] leading-none border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
                                   disabled={updateLifecycle.isPending}
                                   onClick={() => setArchiveModalTenant({ id: tenant.id, name: tenant.name })}
                                 >

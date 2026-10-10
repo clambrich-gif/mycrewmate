@@ -87,6 +87,7 @@
 - [x] Aktive AGB-1.1-Annahme für bestehende Vereinsadmins transparent erklärt: Der Dialog nennt die aktualisierte Fassung sowie die Inhalte Datensicherung, Exporte und technische Verfügbarkeit, bewahrt den alten Nachweis und übernimmt die neue Fassung ausschließlich nach bewusstem Ankreuzen und Bestätigen.
 - [x] Deutlichen Sicherungshinweis direkt vor der Planfreigabe ergänzt: Nur freigabeberechtigte Personen sehen vor dem Versand einen Link zu „Schutz & Protokolle“ sowie den Hinweis auf JSON-Speicherstand und – ab Pro – vollständige Excel-Projektübersicht.
 - [x] Vereinsverwaltung im Master-Portal als Akkordeon getrennt: Es ist immer nur ein Verein geöffnet; die Kopfzeile zeigt Paket, Zugangsstatus, Laufzeit und Adminanzahl. Im geöffneten Bereich sowie im Dialog zum Anlegen eines Adminzugangs ist der ausgewählte Verein auffällig sichtbar. Schaltflächen bleiben kurz und brechen bei langen Vereinsnamen nicht auf.
+- [x] Aktionsleiste im geöffneten Verein verbreitert und typografisch verdichtet: Alle Verwaltungsaktionen bleiben einzeilig und vollständig lesbar. Geprüft bei 1440, 1024, 768 und 390 Pixeln – ohne horizontalen Überlauf; unterhalb der Desktopbreite wandert die Leiste unter den Vereinsinhalt.
 - [ ] Vor dem geplanten Kaufstart am 01.01.2027 Checkout, Steuerstatus und eine etwaige BFSG-/Barrierefreiheitsinformation für den dann verbindlich bestätigten Vertriebspfad freigeben.
 
 ## Später prüfen
