@@ -267,8 +267,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(audio).toContain('"plan-time-window": "20260930-time-window-v1"');
     expect(audio).toContain('"plan-time": "Flexible Belegung aktivieren.');
     expect(audio).toContain('"plan-time": "20260930-flexible-assignment-v1"');
+    expect(audio).toContain('"plan-overview": "20261010-achird-v3"');
     expect(audio).toContain('"plan-release": "Den fertigen Einsatzplan bewusst freigeben.');
-    expect(audio).toContain('"plan-release": "20261010-plan-release-v1"');
+    expect(audio).toContain('"plan-release": "20261010-achird-v2"');
 
     expect(preparation).toContain('<KlemmiSurfaceGuide');
     expect(preparation).toContain('data-klemmi-target="preparation-new"');
