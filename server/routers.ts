@@ -798,14 +798,25 @@ async function authorizedPlanningScope(
   if (requestedEvent) return enforceProductEventScope(requestedScope);
 
   // Ausschließlich aktive Veranstaltungen desselben, serverseitig bestätigten
-  // Vereins kommen als Ersatz infrage. Die Auswahl übernimmt die gemeinsame
-  // Regel "nächster gültiger Termin, sonst erste aktive Veranstaltung".
+  // Vereins kommen als Ersatz infrage. Wenn das bisher gewählte Jahr noch
+  // aktive Veranstaltungen enthält, bleibt der Benutzer zunächst in diesem
+  // Jahr. Das ist besonders nach dem Löschen eines alten MyEifelRide-Entwurfs
+  // wichtig: Die Auswahl soll nicht unerwartet zur Weihnachtsfeier wechseln.
+  // Gibt es im gewählten Jahr nichts mehr, greift die gemeinsame Regel
+  // "nächster gültiger Termin, sonst erste aktive Veranstaltung".
   const fallbackEvent = await withPlanningScope(requestedScope, async () => {
     const years = await db.listEventYears();
     const grouped = await Promise.all(
       years.map(item => db.listEvents(item.year))
     );
-    return initialAccessibleEvent(grouped.flat());
+    const availableEvents = grouped.flat();
+    const sameYearEvents = availableEvents.filter(
+      item => item.year === requestedScope.year
+    );
+    return (
+      initialAccessibleEvent(sameYearEvents) ??
+      initialAccessibleEvent(availableEvents)
+    );
   });
   if (fallbackEvent) {
     return enforceProductEventScope({
