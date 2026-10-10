@@ -6,6 +6,12 @@ export const MARKETING_PAGE_TITLE =
 export const MARKETING_PAGE_DESCRIPTION =
   "MyCrewMate ist die Software für Vereins- und Eventplanung: Helferplanung, Einsatzpläne, Aufgaben, Schichten und Kommunikation für Vereinsfeste, Sportveranstaltungen und ehrenamtliche Teams.";
 export const MARKETING_OG_IMAGE = `${CANONICAL_MARKETING_ORIGIN}/landing/festival.jpg`;
+/**
+ * Nur bei wesentlichen öffentlichen Inhalts- oder Metadatenänderungen anpassen.
+ * Suchmaschinen können damit erkennen, wann die kanonische Startseite zuletzt
+ * substanziell aktualisiert wurde.
+ */
+export const MARKETING_SITEMAP_LAST_MODIFIED = "2026-10-10";
 
 const MARKETING_HOSTS = new Set(["mycrewmate.de", "www.mycrewmate.de"]);
 
@@ -119,6 +125,42 @@ function escapeHtml(value: string) {
     .replace(/>/g, "&gt;");
 }
 
+function marketingStructuredDataBlock(metadata: PublicSiteMetadata) {
+  if (!metadata.isMarketingPage || metadata.canonicalPath !== "/") return null;
+
+  // Die Angaben beschreiben ausschließlich die sichtbar angebotene Plattform.
+  // Keine Bewertungen, Preise oder Eigenschaften werden für Suchergebnisse
+  // behauptet, die auf der Startseite nicht klar erklärt sind.
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": `${CANONICAL_MARKETING_ORIGIN}/#organization`,
+        name: "MyCrewMate",
+        url: `${CANONICAL_MARKETING_ORIGIN}/`,
+        logo: `${CANONICAL_MARKETING_ORIGIN}/icons/mycrewmate-pwa-192.png`,
+        description: MARKETING_PAGE_DESCRIPTION,
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": `${CANONICAL_MARKETING_ORIGIN}/#software`,
+        name: "MyCrewMate",
+        url: `${CANONICAL_MARKETING_ORIGIN}/`,
+        applicationCategory: "Event management application",
+        operatingSystem: "Web browser",
+        description: MARKETING_PAGE_DESCRIPTION,
+        provider: { "@id": `${CANONICAL_MARKETING_ORIGIN}/#organization` },
+      },
+    ],
+  };
+
+  // JSON-LD wird als Text in den HTML-Kopf eingefügt. Das Escaping verhindert,
+  // dass ein künftiger Textwert ein Script-Tag vorzeitig schließen könnte.
+  const safeJson = JSON.stringify(structuredData).replace(/</g, "\\u003c");
+  return `<script type="application/ld+json">${safeJson}</script>`;
+}
+
 export function renderPublicMetadataBlock(metadata: PublicSiteMetadata) {
   const tags = [
     `<meta name="description" content="${escapeHtml(metadata.description)}" />`,
@@ -145,6 +187,9 @@ export function renderPublicMetadataBlock(metadata: PublicSiteMetadata) {
       `<meta name="twitter:image" content="${MARKETING_OG_IMAGE}" />`
     );
   }
+
+  const structuredData = marketingStructuredDataBlock(metadata);
+  if (structuredData) tags.push(structuredData);
 
   return [
     "<!-- public-metadata:start -->",
@@ -191,16 +236,23 @@ export function sitemapXml() {
     '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
     "  <url>",
     `    <loc>${CANONICAL_MARKETING_ORIGIN}/</loc>`,
+    `    <lastmod>${MARKETING_SITEMAP_LAST_MODIFIED}</lastmod>`,
     "  </url>",
     "</urlset>",
     "",
   ].join("\n");
 }
 
+/** Technische Crawler-Dateien sind selbst keine indexierbaren Inhaltsseiten. */
+export function shouldApplySearchRobotsHeader(pathname: string | undefined | null) {
+  const normalizedPath = normalizePathname(pathname);
+  return normalizedPath !== "/robots.txt" && normalizedPath !== "/sitemap.xml";
+}
+
 export function registerPublicSearchRoutes(app: Express) {
   app.use((req: Request, res: Response, next: NextFunction) => {
     const metadata = publicSiteMetadataFor(req.hostname, req.path);
-    if (metadata.robots.startsWith("noindex")) {
+    if (shouldApplySearchRobotsHeader(req.path) && metadata.robots.startsWith("noindex")) {
       res.set("X-Robots-Tag", metadata.robots);
     }
     next();

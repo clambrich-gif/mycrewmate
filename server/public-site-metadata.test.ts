@@ -3,9 +3,11 @@ import {
   CANONICAL_MARKETING_ORIGIN,
   MARKETING_PAGE_DESCRIPTION,
   MARKETING_PAGE_TITLE,
+  MARKETING_SITEMAP_LAST_MODIFIED,
   applyPublicSiteMetadata,
   publicSiteMetadataFor,
   robotsTxtFor,
+  shouldApplySearchRobotsHeader,
   sitemapXml,
 } from "./public-site-metadata";
 
@@ -74,6 +76,9 @@ describe("öffentliche MyCrewMate-Metadaten", () => {
     expect(html).toContain('property="og:title"');
     expect(html).toContain('property="og:image"');
     expect(html).toContain('name="twitter:card" content="summary_large_image"');
+    expect(html).toContain('type="application/ld+json"');
+    expect(html).toContain('"@type":"Organization"');
+    expect(html).toContain('"@type":"SoftwareApplication"');
     expect(html).not.toContain("Ausgangstext");
   });
 
@@ -83,6 +88,14 @@ describe("öffentliche MyCrewMate-Metadaten", () => {
     );
     expect(robotsTxtFor("app.mycrewmate.de")).toBe("User-agent: *\nDisallow: /\n");
     expect(sitemapXml()).toContain(`<loc>${CANONICAL_MARKETING_ORIGIN}/</loc>`);
+    expect(sitemapXml()).toContain(`<lastmod>${MARKETING_SITEMAP_LAST_MODIFIED}</lastmod>`);
     expect(sitemapXml()).not.toContain("mycrewmate.at");
+  });
+
+  it("hält robots.txt und Sitemap frei von einem widersprüchlichen Noindex-Header", () => {
+    expect(shouldApplySearchRobotsHeader("/robots.txt")).toBe(false);
+    expect(shouldApplySearchRobotsHeader("/sitemap.xml")).toBe(false);
+    expect(shouldApplySearchRobotsHeader("/")).toBe(true);
+    expect(shouldApplySearchRobotsHeader("/helfer")).toBe(true);
   });
 });

@@ -1,4 +1,7 @@
 export const PROTECTIVE_MARKETING_DOMAINS = new Set([
+  // Die Variante ohne www liefert nie eine zweite Kopie der Marketingseite.
+  // Sie führt dauerhaft auf die festgelegte Hauptadresse mit www.
+  "mycrewmate.de",
   "mycrewmate.at",
   "www.mycrewmate.at",
   "mycrewmate.eu",
@@ -14,9 +17,9 @@ function normalizedHost(hostname: string | undefined | null) {
 }
 
 /**
- * Liefert ausschließlich für die reservierten Landesdomains eine feste,
- * pfaderhaltende Zieladresse auf der deutschen Hauptdomain. Die Zieladresse
- * wird nie aus einem Request-Host zusammengesetzt.
+ * Liefert für die Variante ohne www sowie die reservierten Landesdomains eine
+ * feste, pfaderhaltende Zieladresse auf der deutschen Hauptdomain. Die
+ * Zieladresse wird nie aus einem Request-Host zusammengesetzt.
  */
 export function canonicalMarketingRedirectUrl(
   hostname: string | undefined | null,

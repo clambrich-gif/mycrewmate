@@ -6,8 +6,9 @@ import {
 } from "./marketing-domain-redirect";
 
 describe("Schutzdomains für MyCrewMate", () => {
-  it("leitet alle reservierten Landesdomains dauerhaft auf die deutsche Hauptseite", () => {
+  it("leitet die Variante ohne www und reservierte Landesdomains dauerhaft auf die deutsche Hauptseite", () => {
     for (const host of [
+      "mycrewmate.de",
       "mycrewmate.at",
       "www.mycrewmate.at",
       "mycrewmate.eu",
@@ -22,7 +23,7 @@ describe("Schutzdomains für MyCrewMate", () => {
     }
   });
 
-  it("lässt die deutsche Hauptdomain und die geschützte App unverändert", () => {
+  it("lässt ausschließlich die Hauptadresse mit www und die geschützte App unverändert", () => {
     expect(canonicalMarketingRedirectUrl("www.mycrewmate.de", "/")).toBeNull();
     expect(canonicalMarketingRedirectUrl("app.mycrewmate.de", "/helfer")).toBeNull();
     expect(shouldRedirectProtectiveMarketingDomain("POST", "mycrewmate.at")).toBe(false);
