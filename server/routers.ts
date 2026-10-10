@@ -784,7 +784,40 @@ async function authorizedPlanningScope(
       message: "Für dieses Konto ist kein aktiver Verein freigegeben.",
     });
   }
-  return enforceProductEventScope({ ...requested, tenantId: membership.tenantId });
+  const requestedScope = { ...requested, tenantId: membership.tenantId };
+
+  // Auch persönliche Vereinsadministratoren können nach der endgültigen
+  // Löschung einer alten Veranstaltung noch eine inzwischen ungültige
+  // Event-ID im Browser gespeichert haben. Ohne diese Prüfung würde die
+  // Anfrage zwar zum richtigen Verein, aber in eine leere Veranstaltung
+  // führen. Dadurch könnten beispielsweise Datumsanzeige und Countdown wie
+  // ein noch nicht eingerichtetes Event aussehen.
+  const requestedEvent = await withPlanningScope(requestedScope, () =>
+    db.getEvent()
+  );
+  if (requestedEvent) return enforceProductEventScope(requestedScope);
+
+  // Ausschließlich aktive Veranstaltungen desselben, serverseitig bestätigten
+  // Vereins kommen als Ersatz infrage. Die Auswahl übernimmt die gemeinsame
+  // Regel "nächster gültiger Termin, sonst erste aktive Veranstaltung".
+  const fallbackEvent = await withPlanningScope(requestedScope, async () => {
+    const years = await db.listEventYears();
+    const grouped = await Promise.all(
+      years.map(item => db.listEvents(item.year))
+    );
+    return initialAccessibleEvent(grouped.flat());
+  });
+  if (fallbackEvent) {
+    return enforceProductEventScope({
+      tenantId: membership.tenantId,
+      year: fallbackEvent.year,
+      eventId: fallbackEvent.id,
+    });
+  }
+
+  // Ohne aktive Veranstaltung wird der normale nachfolgende Zugriffsschutz
+  // die passende, verständliche Fehlermeldung ausgeben.
+  return enforceProductEventScope(requestedScope);
 }
 
 /** Eine frische persönliche Anmeldung darf nie einen alten Browsermandanten übernehmen. */
