@@ -81,6 +81,7 @@
 - [x] Aktive Vereinsverwaltung im Master-Portal vervollständigt: Tarifbeginn/-ende und Ablaufhinweis sind direkt auf der Vereinskarte sichtbar; Produktverwaltung, Vereinsansicht, Adminzugang und Archivierung stehen auch aktiven Vereinen zur Verfügung. Endgültige Löschung ist nur nach bewusster Archivierung möglich.
 - [x] Sicheren Adminwechsel ergänzt: Ein alter Vereinsadmin kann nur nach Anlegen mindestens eines weiteren aktiven Admins und nur für den betreffenden Verein entzogen werden. Andere Vereinsmitgliedschaften, Planungsdaten und Ansprechpartner bleiben unverändert; ein Verein kann nie ohne aktiven Admin zurückbleiben.
 - [x] Pilotformular ohne doppelte Hinweiskästen vereinfacht: Der große Datenhinweis entfällt; Zielgruppe ist allgemein für MyCrewMate und verständlicher formuliert; die Ehrenamtsbestätigung ist kurz. Datenschutz bleibt über den Link und einen knappen Hinweis direkt an der Checkbox transparent.
+- [x] Hilfe und Klemmi-Führung zur Planfreigabe ergänzt: Suche nach „Einsatzplan“ oder „Planfreigabe“ erklärt die bewusste Freigabe, den optionalen Ansprechpartner-Versand, die Versandhistorie und Hinweise nach späteren Änderungen. Klemmi zeigt diesen zusätzlichen Schritt nur bei vorhandenem Planfreigaberecht und führt niemals selbst eine Freigabe oder E-Mail aus.
 - [ ] Vor dem geplanten Kaufstart am 01.01.2027 Checkout, Steuerstatus und eine etwaige BFSG-/Barrierefreiheitsinformation für den dann verbindlich bestätigten Vertriebspfad freigeben.
 
 ## Später prüfen

@@ -390,8 +390,30 @@ const HELP_CHAPTERS: HelpChapter[] = [
         workspace: { href: "/einsatzplan", label: "Zum Einsatzplan", adminOnly: true },
       },
       {
+        id: "planfreigabe",
+        title: "3.4 Einsatzplan freigeben & Ansprechpartner informieren",
+        audience: ["admin"],
+        keywords:
+          "einsatzplan steht planfreigabe plan freigeben freigegeben ansprechpartner informieren e-mail mail versandstatus helfer",
+        summary:
+          "Die Planfreigabe schließt die interne Einteilung ab: Der Einsatzplan erhält den Status „freigegeben“. Helfer erhalten dadurch nicht automatisch eine E-Mail. Das Admin-Team entscheidet bewusst, ob die zuständigen Ansprechpartner sofort informiert werden oder erst später.",
+        steps: [
+          "Vor der Freigabe Besetzung, offene Plätze, Ausfälle und Doppelbelegungen prüfen.",
+          "„Planfreigabe vorbereiten“ wählen. Das System zeigt die Ansprechpartner mit mindestens einem eingeteilten Helfer und den jeweiligen E-Mail-Status.",
+          "„Nur freigeben“ setzt den Plan auf freigegeben, ohne eine E-Mail oder einen Dashboardhinweis zu versenden. Die Ansprechpartner können später gezielt informiert werden.",
+          "„Freigeben & E-Mail senden“ informiert die passenden Ansprechpartner. Sie können anschließend ihre eigenen Helfer nach dem Vereinsablauf informieren; MyCrewMate versendet dabei keine automatische E-Mail an alle Helfer.",
+          "Nach späteren Planänderungen bei Bedarf „Betroffene Ansprechpartner erinnern“ wählen. Versandstatus und bereits versandte E-Mails bleiben nachvollziehbar.",
+        ],
+        callout: {
+          tone: "warning",
+          title: "E-Mails bewusst auslösen",
+          text: "Bereits versandte E-Mails lassen sich technisch nicht zurückholen. Eine Freigabe ohne E-Mail kann zurückgenommen werden; bereits informierte Ansprechpartner bleiben dennoch in der Versandhistorie dokumentiert.",
+        },
+        workspace: { href: "/einsatzplan", label: "Zur Planfreigabe", adminOnly: true },
+      },
+      {
         id: "schnellfilter",
-        title: "3.4 Schnellfilter & Ansichten",
+        title: "3.5 Schnellfilter & Ansichten",
         audience: ["all", "planning", "admin"],
         keywords: "meine aufgaben offen unzugewiesen pin filter standardansicht",
         summary:
@@ -792,7 +814,7 @@ export const AZ_INDEX: readonly AzIndexEntry[] = [
   ["I", [{ label: "Import", audience: "admin" }, { label: "Inhaltsverzeichnis" }, { label: "Istwert", audience: "planning" }]],
   ["M", [{ label: "Material", audience: "planning" }, { label: "Meine Aufgaben" }, { label: "Mitteilung" }]],
   ["N", [{ label: "Nachbereitung", audience: "planning" }, { label: "Notfall-Sperre", audience: "admin" }, { label: "Notizen" }]],
-  ["P", [{ label: "Passwort", audience: "admin" }, { label: "PDF" }, { label: "Planungsteam" }, { label: "PWA" }]],
+  ["P", [{ label: "Passwort", audience: "admin" }, { label: "PDF" }, { label: "Planfreigabe", audience: "admin" }, { label: "Planungsteam" }, { label: "PWA" }]],
   ["S", [{ label: "Schicht", audience: "admin" }, { label: "Sicherheit", audience: "admin" }, { label: "Spenden", audience: "planning" }, { label: "Standort", audience: "admin" }]],
   ["V", [{ label: "Verfügbarkeit", audience: "planning" }, { label: "Veranstaltung" }, { label: "Vorbereitung", audience: "planning" }]],
   ["Z", [{ label: "Zugang", audience: "admin" }, { label: "Zurücksetzen", audience: "admin" }, { label: "Zuweisung", audience: "admin" }]],

@@ -10,7 +10,7 @@ describe("Hilfe-Center: Rollenfilter und Live-Suche", () => {
     const chapters = getVisibleHelpChapters("all", "");
     const topicIds = chapters.flatMap(chapter => chapter.topics.map(topic => topic.id));
 
-    expect(chapters).toHaveLength(9);
+    expect(chapters).toHaveLength(8);
     expect(topicIds).toContain("dashboard-uebersicht");
     expect(topicIds).toContain("live-chat");
     expect(topicIds).not.toContain("einsatzplan");
@@ -49,6 +49,19 @@ describe("Hilfe-Center: Rollenfilter und Live-Suche", () => {
     expect(topicIds).not.toContain("live-chat");
   });
 
+  it("erklärt die Planfreigabe nur im Adminfilter und findet sie über beide Schlagwörter", () => {
+    const byPlan = getVisibleHelpChapters("admin", "Einsatzplan")
+      .flatMap(chapter => chapter.topics.map(topic => topic.id));
+    const byRelease = getVisibleHelpChapters("admin", "Planfreigabe")
+      .flatMap(chapter => chapter.topics.map(topic => topic.id));
+    const planningTeam = getVisibleHelpChapters("planning", "Planfreigabe")
+      .flatMap(chapter => chapter.topics.map(topic => topic.id));
+
+    expect(byPlan).toContain("planfreigabe");
+    expect(byRelease).toContain("planfreigabe");
+    expect(planningTeam).not.toContain("planfreigabe");
+  });
+
   it("wählt den passenden Rollenfilter für die aktuelle Anmeldung vor", () => {
     expect(getHelpAudienceForRole("user")).toBe("planning");
     expect(getHelpAudienceForRole("admin")).toBe("admin");
@@ -62,6 +75,8 @@ describe("Hilfe-Center: Rollenfilter und Live-Suche", () => {
 
     expect(eTerms.map(term => term.label)).toContain("Einsatzplan");
     expect(eTerms.find(term => term.label === "Einsatzplan")?.audience).toBe("admin");
+    const pTerms = AZ_INDEX.find(([letter]) => letter === "P")?.[1] ?? [];
+    expect(pTerms.find(term => term.label === "Planfreigabe")?.audience).toBe("admin");
     expect(material?.audience).toBe("planning");
   });
 });

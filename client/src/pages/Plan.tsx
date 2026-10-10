@@ -1420,10 +1420,11 @@ export default function Plan() {
     [areas]
   );
   const planIsEmptyAtGuideStart = klemmiPlanTourStartedEmpty;
+  const planGuideStepCount = canManagePlanRelease ? 15 : 14;
   const planGuideEyebrow = (normalStep: number, practiceStep: number) =>
     planIsEmptyAtGuideStart
-      ? `Schritt ${practiceStep} von 14`
-      : `Schritt ${normalStep} von 14`;
+      ? `Schritt ${practiceStep} von ${planGuideStepCount}`
+      : `Schritt ${normalStep} von ${planGuideStepCount}`;
   const contactNameById = useMemo(
     () => new Map(contacts.map(contact => [contact.id, contact.name])),
     [contacts]
@@ -2282,7 +2283,11 @@ export default function Plan() {
                   }
                 }}
                 completionTitle="Einsatzplan im Griff!"
-                completionText="Du kennst jetzt den Ablauf: Schichten sauber anlegen, Bedarf erkennen, passende Helfer anhand ihrer Verfügbarkeit auswählen, die Besetzung prüfen und anschließend die Zusagen zuverlässig nachhalten."
+                completionText={
+                  canManagePlanRelease
+                    ? "Du kennst jetzt den Ablauf: Schichten sauber anlegen, Bedarf erkennen, passende Helfer anhand ihrer Verfügbarkeit auswählen, die Besetzung prüfen und den fertigen Plan anschließend bewusst freigeben."
+                    : "Du kennst jetzt den Ablauf: Schichten sauber anlegen, Bedarf erkennen, passende Helfer anhand ihrer Verfügbarkeit auswählen, die Besetzung prüfen und anschließend die Zusagen zuverlässig nachhalten."
+                }
                 steps={[
                   {
                     key: "intro",
@@ -2418,8 +2423,21 @@ export default function Plan() {
                     eyebrow: planGuideEyebrow(14, 14),
                     title: "Liste oder Kacheln passend zur Aufgabe wählen",
                     text: "Die Kachelansicht eignet sich besonders zum Besetzen, weil Helferlisten und Bedarf direkt nebeneinander stehen. Die Liste ist ideal für einen schnellen Gesamtüberblick. Beide Ansichten zeigen dieselben Planungsdaten.",
-                    action: "Fertig",
+                    action: canManagePlanRelease ? "Planfreigabe erklären" : "Fertig",
                   },
+                  ...(canManagePlanRelease
+                    ? [
+                        {
+                          key: "release",
+                          selector: '[data-klemmi-target="plan-release"]',
+                          eyebrow: planGuideEyebrow(15, 15),
+                          title: "Den fertigen Einsatzplan bewusst freigeben",
+                          text: "Wenn Besetzung und Hinweise passen, bereitest du hier die Planfreigabe vor. Du entscheidest dann bewusst: nur organisatorisch freigeben oder zusätzlich die zuständigen Ansprechpartner per E-Mail informieren. Die Helfer selbst erhalten dadurch nicht automatisch eine E-Mail. Klemmi erklärt den Schritt nur und löst keine Freigabe oder Nachricht aus.",
+                          audioKey: "release",
+                          action: "Fertig",
+                        },
+                      ]
+                    : []),
                 ]}
                 />
               }

@@ -263,6 +263,7 @@ export const KLEMMI_AUDIO_SCRIPTS = {
   "plan-filters": "Viele Schichten schnell eingrenzen. Mit Meine Aufgaben, Tagen, Bereichen, Status und Warnungen reduzierst du die Ansicht auf genau den Teil des Plans, den du gerade prüfen willst. So bleiben auch mehrtägige Veranstaltungen übersichtlich.",
   "plan-search": "Nach Aufgabe, Bereich oder Helfer suchen. Die Suche findet sofort passende Schichten und Namen. Das hilft zum Beispiel bei einer Rückfrage eines Helfers, wenn du nur seinen Namen oder einen Bereich kennst.",
   "plan-view": "Liste oder Kacheln passend zur Aufgabe wählen. Die Kachelansicht eignet sich besonders zum Besetzen, weil Helferlisten und Bedarf direkt nebeneinander stehen. Die Liste ist ideal für einen schnellen Gesamtüberblick. Beide Ansichten zeigen dieselben Planungsdaten.",
+  "plan-release": "Den fertigen Einsatzplan bewusst freigeben. Wenn Besetzung und Hinweise passen, bereitest du hier die Planfreigabe vor. Du entscheidest dann bewusst: nur organisatorisch freigeben oder zusätzlich die zuständigen Ansprechpartner per E-Mail informieren. Die Helfer selbst erhalten dadurch nicht automatisch eine E-Mail. Ich erkläre den Schritt nur und löse keine Freigabe oder Nachricht aus.",
   "plan-complete": "Einsatzplan im Griff! Du kennst jetzt den Ablauf. Schichten sauber anlegen, Bedarf erkennen, passende Helfer anhand ihrer Verfügbarkeit auswählen, die Besetzung prüfen und anschließend die Zusagen zuverlässig nachhalten.",
 
   "preparation-intro": "Vorbereitungsaufgaben sicher planen. Ich zeige dir die echte Aufgabenanlage: Aufgabe formulieren, Zuständigkeit und Termin festlegen und den ersten Stand sauber festhalten.",
@@ -513,6 +514,7 @@ const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
   "finances-overview": "20260928-adaptive-area-tour-v1",
   "plan-search": "20260928-information-tour-v1",
   "plan-view": "20260928-information-tour-v1",
+  "plan-release": "20261010-plan-release-v1",
   "plan-complete": "20260928-information-tour-v1",
   "security-intro": "20260929-security-admin-detail-v1",
   "security-password": "20260929-security-admin-detail-v2",

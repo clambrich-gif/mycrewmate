@@ -226,7 +226,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain('data-klemmi-target="plan-time"');
     expect(plan).toContain('selector: \'[data-klemmi-target="plan-time"]\'');
     expect(plan).toContain("Beginn und Ende festlegen ⏱️");
-    expect(plan).toContain("Schritt ${practiceStep} von 14");
+    expect(plan).toContain("Schritt ${practiceStep} von ${planGuideStepCount}");
     expect(plan).toContain('data-slot="shift-dialog-location"');
     expect(plan).toContain("getKlemmiLocationGuideCopy");
     expect(plan).toContain('data-klemmi-target="plan-flexible-assignment"');
@@ -267,6 +267,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(audio).toContain('"plan-time-window": "20260930-time-window-v1"');
     expect(audio).toContain('"plan-time": "Flexible Belegung aktivieren.');
     expect(audio).toContain('"plan-time": "20260930-flexible-assignment-v1"');
+    expect(audio).toContain('"plan-release": "Den fertigen Einsatzplan bewusst freigeben.');
+    expect(audio).toContain('"plan-release": "20261010-plan-release-v1"');
 
     expect(preparation).toContain('<KlemmiSurfaceGuide');
     expect(preparation).toContain('data-klemmi-target="preparation-new"');
@@ -2180,6 +2182,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("trpc.plan.sendInitialNotifications.useMutation");
     expect(plan).toContain("trpc.plan.withdrawRelease.useMutation");
     expect(plan).toContain("trpc.plan.sendChangeReminders.useMutation");
+    expect(plan).toContain("...(canManagePlanRelease");
+    expect(plan).toContain('key: "release"');
+    expect(plan).toContain('audioKey: "release"');
+    expect(plan).toContain("Klemmi erklärt den Schritt nur und löst keine Freigabe oder Nachricht aus.");
+    expect(source("client/src/lib/klemmiAudio.ts")).toContain('"plan-release"');
   });
 
   it("zeigt aus der Planinformation nur eigene eingeteilte Helfer und markiert sie klar", () => {
