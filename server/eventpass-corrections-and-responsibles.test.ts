@@ -51,13 +51,15 @@ describe("Event-Pass Korrekturen und Verantwortlichkeiten", () => {
     expect(dashboard).toContain("Hauptansprechpartner");
   });
 
-  it("Punkt 6: Admin-Name wird in der Master-Admin-Übersicht namentlich angezeigt", () => {
+  it("Punkt 6: Adminzugänge sind im geöffneten Verein namentlich sichtbar", () => {
     const db = source("server/db.ts");
     const masterPortal = source("client/src/pages/MasterAdminPortal.tsx");
 
     expect(db).toContain("adminName");
     expect(db).toContain("adminEmail");
-    expect(masterPortal).toContain("Admin: {tenant.adminActivation.adminName}");
+    expect(masterPortal).toContain("function TenantAccessPanel");
+    expect(masterPortal).toContain("{access.name}");
+    expect(masterPortal).toContain('"Vereinsadmin"');
   });
 
   it("Punkt 7: Fester Verantwortlicher und optionaler Helfer in Vor- und Nachbereitung", () => {

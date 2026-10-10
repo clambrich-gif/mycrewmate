@@ -10,6 +10,8 @@ const dbMocks = vi.hoisted(() => ({
   listActiveProtectedHelperPdfShares: vi.fn(),
   revokeProtectedHelperPdfShare: vi.fn(),
   getProtectedHelperPdfShareDelivery: vi.fn(),
+  resolveTenantForUser: vi.fn(),
+  getCurrentTenantProductEntitlement: vi.fn(),
   withPlanningWriteLock: vi.fn(async callback => callback()),
   recordActivityLog: vi.fn(),
 }));
@@ -32,6 +34,9 @@ vi.mock("./db", async importOriginal => {
     revokeProtectedHelperPdfShare: dbMocks.revokeProtectedHelperPdfShare,
     getProtectedHelperPdfShareDelivery:
       dbMocks.getProtectedHelperPdfShareDelivery,
+    resolveTenantForUser: dbMocks.resolveTenantForUser,
+    getCurrentTenantProductEntitlement:
+      dbMocks.getCurrentTenantProductEntitlement,
     withPlanningWriteLock: dbMocks.withPlanningWriteLock,
     recordActivityLog: dbMocks.recordActivityLog,
   };
@@ -71,6 +76,29 @@ function createAuthContext(): TrpcContext {
 describe("geschützte Helfer-PDF-Freigaben", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    dbMocks.resolveTenantForUser.mockResolvedValue({
+      tenantId: "testverein-pdf",
+      tenantName: "Testverein PDF",
+      tenantStatus: "pilot",
+      role: "tenant_admin",
+      isDefault: true,
+    });
+    dbMocks.getCurrentTenantProductEntitlement.mockResolvedValue({
+      tenantId: "testverein-pdf",
+      packageId: "pro",
+      status: "pilot",
+      startsOn: null,
+      endsOn: null,
+      eventId: null,
+      isUsable: true,
+      entitlements: { includedCapabilities: [], includedPlanningModules: [] },
+    });
+    dbMocks.getEvent.mockResolvedValue({
+      id: 1,
+      year: 2026,
+      name: "Testveranstaltung",
+      status: "active",
+    });
   });
 
   it("erstellt eine geschützte WhatsApp-Freigabe mit Token und separatem Zugangscode", async () => {

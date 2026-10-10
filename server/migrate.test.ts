@@ -194,49 +194,10 @@ describe("applyProjectMigrations", () => {
       legacyRows: 0,
     });
     const migrations = readProjectMigrations();
-    // Nach dem historischen Stand 0053 folgen regulär die Mandanten- und Rechtemigrationen.
+    // Nach dem historischen Stand 0053 werden alle späteren Migrationen regulär
+    // ausgeführt. Die Zählung bleibt dadurch auch bei künftigen Migrationen korrekt.
     const expectedNewMigrations = migrations.filter(
-      m =>
-        m.tag === "0054_quiet_white_tiger" ||
-        m.tag === "0055_outstanding_silver_fox" ||
-        m.tag === "0056_broken_captain_america" ||
-        m.tag === "0057_glossy_the_captain" ||
-        m.tag === "0058_open_chat" ||
-        m.tag === "0059_puzzling_swordsman" ||
-        m.tag === "0060_powerful_mister_sinister" ||
-        m.tag === "0061_tenant_scoped_audit_logs" ||
-        m.tag === "0062_release_archived_access_emails" ||
-        m.tag === "0063_tenant_scoped_coadmin_presence" ||
-        m.tag === "0064_first_login_onboarding" ||
-        m.tag === "0065_remove_archived_tenant_accesses" ||
-        m.tag === "0066_military_scarlet_witch" ||
-        m.tag === "0067_broad_infant_terrible" ||
-        m.tag === "0068_sharp_marvel_boy" ||
-        m.tag === "0069_common_arachne" ||
-        m.tag === "0070_motionless_giant_girl" ||
-        m.tag === "0071_grey_scream" ||
-        m.tag === "0072_material_rachel_grey" ||
-        m.tag === "0073_nice_moonstone" ||
-        m.tag === "0074_medical_lord_hawal" ||
-        m.tag === "0075_tiny_mole_man" ||
-        m.tag === "0076_moaning_songbird" ||
-        m.tag === "0077_slimy_mole_man" ||
-        m.tag === "0078_fixed_the_anarchist" ||
-        m.tag === "0079_funny_juggernaut" ||
-        m.tag === "0080_left_baron_zemo" ||
-        m.tag === "0081_brainy_echo" ||
-        m.tag === "0082_old_skin" ||
-        m.tag === "0083_tough_obadiah_stane" ||
-        m.tag === "0084_smooth_scalphunter" ||
-        m.tag === "0085_zippy_monster_badoon" ||
-        m.tag === "0086_thin_synch" ||
-        m.tag === "0087_chemical_thor" ||
-        m.tag === "0088_perfect_boomer" ||
-        m.tag === "0089_early_sasquatch" ||
-        m.tag === "0090_same_prism" ||
-        m.tag === "0091_foamy_the_hand" ||
-        m.tag === "0092_whole_jack_flag" ||
-        m.tag === "0093_amused_smiling_tiger"
+      migration => Number(migration.tag.slice(0, 4)) >= 54
     ).length;
 
     const result = await applyProjectMigrations(connection, migrations);

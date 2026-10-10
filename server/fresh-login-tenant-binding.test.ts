@@ -55,7 +55,6 @@ describe("Frische persönliche Anmeldung bindet den richtigen Verein", () => {
     expect(resolveTenant).toHaveBeenCalledWith({
       userId: 818,
       userOpenId: "tenant-admin:bunefix.admin@example.invalid",
-      allowPilotFallback: false,
     });
   });
 });

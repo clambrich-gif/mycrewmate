@@ -1,9 +1,39 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { appRouter } from "./routers";
 import * as db from "./db";
 import * as presence from "./session-presence";
 
+const testMembership = {
+  tenantId: "testverein-teamnotizen",
+  tenantName: "Testverein Teamnotizen",
+  tenantStatus: "pilot",
+  role: "tenant_admin",
+  isDefault: true,
+} as any;
+
+const usableProEntitlement = {
+  tenantId: testMembership.tenantId,
+  packageId: "pro",
+  status: "pilot",
+  startsOn: null,
+  endsOn: null,
+  eventId: null,
+  isUsable: true,
+  entitlements: { includedCapabilities: [], includedPlanningModules: [] },
+} as any;
+
 describe("Live-Teamnotizen Backend & Ephemeral Storage", () => {
+  beforeEach(() => {
+    vi.spyOn(db, "resolveTenantForUser").mockResolvedValue(testMembership);
+    vi.spyOn(db, "getCurrentTenantProductEntitlement").mockResolvedValue(
+      usableProEntitlement
+    );
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("aktualisiert durch das reine Chat-Polling keine Online-Präsenz", async () => {
     const presenceSpy = vi
       .spyOn(presence, "recordSessionPresence")
@@ -93,7 +123,7 @@ describe("Live-Teamnotizen Backend & Ephemeral Storage", () => {
       },
     });
 
-    vi.spyOn(db, "getEvent").mockResolvedValueOnce({
+    vi.spyOn(db, "getEvent").mockResolvedValue({
       id: 1,
       year: 2026,
       name: "MyEifelRide",
@@ -133,7 +163,7 @@ describe("Live-Teamnotizen Backend & Ephemeral Storage", () => {
       },
     });
 
-    vi.spyOn(db, "getEvent").mockResolvedValueOnce({
+    vi.spyOn(db, "getEvent").mockResolvedValue({
       id: 1,
       year: 2026,
       name: "MyEifelRide",
@@ -171,7 +201,7 @@ describe("Live-Teamnotizen Backend & Ephemeral Storage", () => {
       createdAt: new Date(),
     } as any);
 
-    vi.spyOn(db, "getEvent").mockResolvedValueOnce({
+    vi.spyOn(db, "getEvent").mockResolvedValue({
       id: 1,
       year: 2026,
       name: "MyEifelRide",

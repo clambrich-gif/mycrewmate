@@ -6,6 +6,7 @@ import { withPlanningScope } from "./year-context";
 import type { TrpcContext } from "./_core/context";
 
 const TEST_TENANT_ID = "rsc-eifelland-mayen";
+const RUN_DATABASE_E2E = process.env.RUN_DATABASE_E2E === "1";
 
 function makeScopedContext(user: any, eventId: number, eventYear: number): TrpcContext {
   return {
@@ -26,7 +27,9 @@ function makeScopedContext(user: any, eventId: number, eventYear: number): TrpcC
   };
 }
 
-describe("Punkt 3: Zwei parallele Sitzungen im Teamchat mit Echtzeitabgleich", () => {
+// Dieser Ablauf erstellt Kontakte, Zugänge und Teamnotizen. Er darf nur mit
+// ausdrücklicher Freigabe gegen eine separate Testdatenbank laufen.
+describe.runIf(RUN_DATABASE_E2E)("Punkt 3: Zwei parallele Sitzungen im Teamchat mit Echtzeitabgleich", () => {
   it("synchronisiert Nachrichten verzögerungsfrei zwischen Planer und Administrator ohne Ladeblockade", async () => {
     const adminUser = {
       id: 0,

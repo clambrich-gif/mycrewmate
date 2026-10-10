@@ -6,6 +6,7 @@ import { appRouter } from "./routers";
 
 const EVENT_YEAR = 2027;
 const EVENT_ID = 1020001;
+const RUN_DATABASE_E2E = process.env.RUN_DATABASE_E2E === "1";
 const TEST_ADMIN = {
   // Kennwort-Administratoren haben bewusst keine users-Zeile. Die Chatroute
   // übermittelt daher null als senderUserId und speichert ausschließlich die
@@ -36,7 +37,9 @@ function createContext() {
   } as any;
 }
 
-describe("E2E Ansprechpartner- und Teamchat-Workflow", () => {
+// Dieser Ablauf schreibt Ansprechpartner, Helfer und Chatnachrichten. Deshalb
+// läuft er ausschließlich nach ausdrücklicher Freigabe gegen eine Testdatenbank.
+describe.runIf(RUN_DATABASE_E2E)("E2E Ansprechpartner- und Teamchat-Workflow", () => {
   it("legt einen Ansprechpartner an, hält ihn im Eventscope sichtbar und übermittelt eine Chatnachricht ohne Restdaten", async () => {
     const database = await getDb();
     if (!database) throw new Error("Keine Datenbankverbindung");

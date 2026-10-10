@@ -9,6 +9,8 @@ import { activityLogs, prepTasks, deletionAuditLogs } from "../drizzle/schema";
 import { and, eq } from "drizzle-orm";
 import { hashPassword, planningTeamAccessOpenId } from "./password-auth";
 
+const RUN_DATABASE_E2E = process.env.RUN_DATABASE_E2E === "1";
+
 const TEAM_USER = {
   id: 240001,
   openId: "shared-password-user",
@@ -49,7 +51,10 @@ function createContext(user: any) {
   } as any;
 }
 
-describe("E2E Planungsteam-Rechte & Löschprotokoll-Workflow", () => {
+// Der Ablauf legt echte Aufgaben und Zugänge an. Deshalb läuft er nur mit
+// expliziter Freigabe gegen eine separate Testdatenbank und nie automatisch
+// gegen die produktive Vereinsplanung.
+describe.runIf(RUN_DATABASE_E2E)("E2E Planungsteam-Rechte & Löschprotokoll-Workflow", () => {
   it("erlaubt dem Planungsteam vollständige Bearbeitung und Löschung, und dem Administrator die Wiederherstellung", async () => {
     const db = await getDb();
     if (!db) throw new Error("Keine Datenbankverbindung");

@@ -45,12 +45,13 @@ describe("Trennung von Angebotsseite und geschützter MyCrewMate-Anwendung", () 
   it("kennzeichnet die öffentliche Preisübersicht klar und verlinkt ihren Login auf die App", () => {
     const offerDemo = source("client/src/pages/OfferDemo.tsx");
     const legal = source("client/src/pages/PublicLegal.tsx");
-    expect(offerDemo).toContain("Preis- und Paketübersicht · Auf dieser Seite wird keine Bestellung ausgelöst.");
-    expect(offerDemo).toContain("Fiktive Preisdarstellung dieser Musterdemo");
+    expect(offerDemo).toContain("Reguläre Endpreise ab 01.01.2027");
+    expect(offerDemo).toContain("keine Bestellung auf dieser Seite");
+    expect(offerDemo).toContain('href="/pilot#pilot-video"');
     expect(offerDemo).toContain("href={APP_LOGIN_URL}");
     expect(offerDemo).toContain('href="/impressum"');
     expect(offerDemo).toContain('href="/datenschutz"');
-    expect(legal).toContain("Diese öffentliche Musterseite dient ausschließlich der Produktinformation.");
+    expect(legal).toContain("Die öffentliche Website dient der Produktinformation");
     expect(legal).toContain("keine Zahlungsabwicklung");
     expect(legal).toContain("eigenständige Plattform für Vereins- und Eventplanung");
     expect(legal).toContain("keiner Verbindung zu gleichnamigen Angeboten anderer Betreiber");

@@ -4,8 +4,8 @@ import { describe, expect, it } from "vitest";
 const source = (relativePath: string) =>
   readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8");
 
-describe("lokale MyCrewMate-Angebotsdemo", () => {
-  it("stellt den wieder wählbaren Event Pass und drei frei entscheidbare Jahresmodelle mit klar markierter Preisübersicht bereit", () => {
+describe("öffentliche MyCrewMate-Angebotsseite", () => {
+  it("stellt Event Pass und drei Jahresmodelle mit klarer, unverbindlicher Preisübersicht bereit", () => {
     const offerDemo = source("client/src/pages/OfferDemo.tsx");
 
     expect(offerDemo).toContain('id: "event-pass"');
@@ -18,21 +18,16 @@ describe("lokale MyCrewMate-Angebotsdemo", () => {
     expect(offerDemo).toContain("price: 449");
     expect(offerDemo).toContain("Ein Event. Ein Preis. Frei entscheiden.");
     expect(offerDemo).toContain("Jedes Jahr frei neu entscheiden");
-    expect(offerDemo).toContain("ohne automatische Verlängerung");
+    expect(offerDemo).toContain("Eine automatische Verlängerung erfolgt nicht.");
     expect(offerDemo).toContain("regelmäßigen Veranstaltungen");
     expect(offerDemo).toContain("1 gemeinsamer Orga- und Massenzugang");
     expect(offerDemo).toContain("Bis 50 Helfer, Vorbereitung und Schichten");
     expect(offerDemo).toContain("Keine persönlichen Zugänge");
     expect(offerDemo).toContain("Kein Live-Chat");
-    expect(offerDemo).toContain('priceUnit: "einmalig pro Veranstaltung*"');
-    expect(offerDemo).toContain(
-      "Preis- und Paketübersicht · Auf dieser Seite wird keine Bestellung ausgelöst."
-    );
-    expect(offerDemo).toContain("Fiktive Preisdarstellung dieser Musterdemo");
-    expect(offerDemo).toContain("Simuliert in den Warenkorb");
-    expect(offerDemo).toContain("Muster-Checkout öffnen");
-    expect(offerDemo).toContain("Es wird keine Bestellung gespeichert oder");
-    expect(offerDemo).toContain("übertragen");
+    expect(offerDemo).toContain('priceUnit: "einmalig pro Veranstaltung"');
+    expect(offerDemo).toContain("Reguläre Endpreise ab 01.01.2027");
+    expect(offerDemo).toContain("keine Bestellung auf dieser Seite");
+    expect(offerDemo).toContain('href="/pilot#pilot-video"');
     expect(offerDemo).not.toContain("Abo");
     expect(offerDemo).not.toContain("Abo-Falle");
     expect(offerDemo).not.toContain("trpc.");
@@ -47,8 +42,10 @@ describe("lokale MyCrewMate-Angebotsdemo", () => {
     expect(offerDemo).toContain("detailBenefits");
     expect(offerDemo).toContain("Das ist enthalten");
     expect(offerDemo).toContain("Der nächste sinnvolle Schritt");
+    expect(offerDemo).toContain("<PackageComparisonSection");
+    expect(offerDemo).toContain('sectionId="vergleich"');
     expect(offerDemo).toContain(
-      '<PackageComparisonSection sectionId="vergleich" />'
+      'priceNote="Reguläre Endpreise ab 01.01.2027 · Bis dahin ist keine Bestellung auf dieser Seite möglich."'
     );
     expect(comparison).toContain("So wächst MyCrewMate mit eurem Verein.");
     expect(comparison).toContain("data-offer-comparison");
@@ -78,7 +75,8 @@ describe("lokale MyCrewMate-Angebotsdemo", () => {
   it("ordnet MyCrewMate auf der öffentlichen Startseite eindeutig als Vereins- und Helferplanungssoftware ein", () => {
     const offerDemo = source("client/src/pages/OfferDemo.tsx");
 
-    expect(offerDemo).toContain("Euer Vereinsfest klar organisieren");
+    expect(offerDemo).toContain("Vereins- und Eventplanung, die");
+    expect(offerDemo).toContain("Freude");
     expect(offerDemo).toContain("Software für Vereins- und Eventplanung");
     expect(offerDemo).toContain("Helferplanung, Aufgaben, Schichten und Einsatzpläne");
     expect(offerDemo).toContain("Helferplanung und Einsatzpläne – ohne Excel-Chaos");

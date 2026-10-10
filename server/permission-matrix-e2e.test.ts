@@ -7,6 +7,7 @@ import type { TrpcContext } from "./_core/context";
 
 const TEST_TENANT_ID = "rsc-eifelland-mayen";
 const TEST_EVENT_YEAR = 2027;
+const RUN_DATABASE_E2E = process.env.RUN_DATABASE_E2E === "1";
 
 function makeScopedContext(user: any, eventId: number, eventYear = TEST_EVENT_YEAR): TrpcContext {
   return {
@@ -27,7 +28,10 @@ function makeScopedContext(user: any, eventId: number, eventYear = TEST_EVENT_YE
   };
 }
 
-describe("Punkt 2: Zweiter Testzugang mit differenzierten Rechten (Lesen, Schreiben, Aus)", () => {
+// Dieser Test legt Kontakte, Helfer und Zugänge an. Er darf nur gegen eine
+// ausdrücklich bereitgestellte Testdatenbank laufen, nie versehentlich gegen
+// die laufende Vereinsplanung.
+describe.runIf(RUN_DATABASE_E2E)("Punkt 2: Zweiter Testzugang mit differenzierten Rechten (Lesen, Schreiben, Aus)", () => {
   it("gewährt nur dem Schreibzugang Änderungen, erlaubt Lesezugriff schreibgeschützt und sperrt ausgeschaltete Module", async () => {
     const adminUser = {
       id: 9991,
