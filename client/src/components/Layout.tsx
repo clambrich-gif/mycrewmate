@@ -991,6 +991,23 @@ export function Layout({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    // Eine früher gespeicherte Auswahl kann nach einer Bereinigungs- oder
+    // Rechteänderung ungültig sein. Sie wird sofort auf eine tatsächlich
+    // erreichbare Veranstaltung korrigiert, auch wenn die Startauswahl in
+    // diesem Tab bereits einmal erfolgt ist.
+    const currentSelectionIsValid = accessibleEvents.data.some(
+      event => event.id === eventId && event.year === year
+    );
+    const initialEvent = initialAccessibleEvent(accessibleEvents.data);
+    if (!currentSelectionIsValid && initialEvent) {
+      if (initialEvent.year !== year) {
+        selectYear(initialEvent.year, initialEvent.id);
+        return;
+      }
+      selectEvent(initialEvent.id);
+      return;
+    }
+
     // Nach einem App-Start wird genau einmal die nächste bevorstehende,
     // für diesen Zugang erlaubte Veranstaltung gewählt. Das Merkmal bleibt
     // bis zum Schließen des Tabs bestehen, damit eine danach manuell gewählte
@@ -998,7 +1015,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
     const selectionKey = eventStartSelectionSessionKey(tenantId);
     if (window.sessionStorage.getItem(selectionKey)) return;
 
-    const initialEvent = initialAccessibleEvent(accessibleEvents.data);
     if (!initialEvent) return;
     window.sessionStorage.setItem(selectionKey, "done");
     if (initialEvent.year !== year) {

@@ -35,16 +35,20 @@ describe("Entkopplung historischer Standardvereine", () => {
     expect(publicPdf).toContain("PDF-Freigabe ohne Vereinskennung");
   });
 
-  it("entfernt die statische Bindung an den Archivverein, bereinigt aber alte Browserwerte sicher", () => {
+  it("entfernt jede Browser-Sonderbehandlung für einen früheren Archivverein", () => {
     const schema = source("drizzle/schema.ts");
     const sharedTenants = source("shared/tenant.ts");
     const clientContext = source("client/src/contexts/YearContext.tsx");
+    const layout = source("client/src/components/Layout.tsx");
     const portal = source("client/src/pages/MasterAdminPortal.tsx");
 
     expect(schema).not.toContain('.default("rsc-eifelland-mayen")');
     expect(sharedTenants).not.toContain("RSC Eifelland Mayen e. V.");
-    expect(clientContext).toContain("LEGACY_ARCHIVED_TENANT_ID");
-    expect(clientContext).toContain("window.localStorage.removeItem(TENANT_STORAGE_KEY)");
+    expect(clientContext).not.toContain("LEGACY_ARCHIVED_TENANT_ID");
+    expect(clientContext).not.toContain('value === "rsc-eifelland-mayen"');
+    expect(clientContext).toContain("mycrewmate:tenant-id");
+    expect(layout).toContain("currentSelectionIsValid");
+    expect(layout).toContain("event.id === eventId && event.year === year");
     expect(portal).not.toContain('tenant.id !== "rsc-eifelland-mayen"');
     expect(portal).not.toContain("Der geschützte RSC-Pilotverein");
   });
