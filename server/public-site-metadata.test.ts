@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  BING_WEBMASTER_VERIFICATION_CONTENT,
   CANONICAL_MARKETING_ORIGIN,
   MARKETING_PAGE_DESCRIPTION,
   MARKETING_PAGE_TITLE,
@@ -79,7 +80,16 @@ describe("öffentliche MyCrewMate-Metadaten", () => {
     expect(html).toContain('type="application/ld+json"');
     expect(html).toContain('"@type":"Organization"');
     expect(html).toContain('"@type":"SoftwareApplication"');
+    expect(html).toContain(
+      `<meta name="msvalidate.01" content="${BING_WEBMASTER_VERIFICATION_CONTENT}" />`
+    );
     expect(html).not.toContain("Ausgangstext");
+  });
+
+  it("legt den Bing-Bestätigungstag nicht auf geschützten oder nicht indexierbaren Seiten ab", () => {
+    const html = applyPublicSiteMetadata(htmlShell, "www.mycrewmate.de", "/pilot");
+
+    expect(html).not.toContain('name="msvalidate.01"');
   });
 
   it("stellt nur auf der Marketingdomain einen öffentlichen Crawler-Einstieg bereit", () => {

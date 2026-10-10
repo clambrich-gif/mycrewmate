@@ -12,6 +12,8 @@ export const MARKETING_OG_IMAGE = `${CANONICAL_MARKETING_ORIGIN}/landing/festiva
  * substanziell aktualisiert wurde.
  */
 export const MARKETING_SITEMAP_LAST_MODIFIED = "2026-10-10";
+/** Öffentlicher Eigentumsnachweis von Bing; kein Besucherdaten- oder Trackingtag. */
+export const BING_WEBMASTER_VERIFICATION_CONTENT = "84ECCF4B66C434F1AD1130AFD84681C6";
 
 const MARKETING_HOSTS = new Set(["mycrewmate.de", "www.mycrewmate.de"]);
 
@@ -161,6 +163,16 @@ function marketingStructuredDataBlock(metadata: PublicSiteMetadata) {
   return `<script type="application/ld+json">${safeJson}</script>`;
 }
 
+function marketingVerificationTags(metadata: PublicSiteMetadata) {
+  if (!metadata.isMarketingPage || metadata.canonicalPath !== "/") return [];
+
+  // Diese Tags beweisen ausschließlich die Inhaberschaft der öffentlichen
+  // Startseite. Sie laden keine Fremdskripte und erfassen keine Besucher.
+  return [
+    `<meta name="msvalidate.01" content="${escapeHtml(BING_WEBMASTER_VERIFICATION_CONTENT)}" />`,
+  ];
+}
+
 export function renderPublicMetadataBlock(metadata: PublicSiteMetadata) {
   const tags = [
     `<meta name="description" content="${escapeHtml(metadata.description)}" />`,
@@ -190,6 +202,7 @@ export function renderPublicMetadataBlock(metadata: PublicSiteMetadata) {
 
   const structuredData = marketingStructuredDataBlock(metadata);
   if (structuredData) tags.push(structuredData);
+  tags.push(...marketingVerificationTags(metadata));
 
   return [
     "<!-- public-metadata:start -->",
