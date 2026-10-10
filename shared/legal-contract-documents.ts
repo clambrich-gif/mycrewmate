@@ -2,42 +2,57 @@ export const LEGAL_DOCUMENTS = {
   terms: {
     id: "terms",
     title: "Allgemeine Geschäftsbedingungen für MyCrewMate",
-    version: "1.0-2026-10-01",
+    version: "1.1-2026-10-10",
     route: "/agb",
     summary:
       "Regeln die Nutzung der MyCrewMate-Software, das jeweils gewählte Paket sowie Rechte und Pflichten zwischen Verein und MyCrewMate.",
     content: `# Allgemeine Geschäftsbedingungen für MyCrewMate
 
-Version 1.0 · Stand 01.10.2026
+Version 1.1 · Stand 10.10.2026
 
 ## 1. Anbieter und Geltungsbereich
-MyCrewMate ist ein Angebot von Christian Lambrich, Eichenweg 4, 56729 Nachtsheim, Deutschland. Diese Bedingungen gelten gegenüber Vereinen, Verbänden und sonstigen Organisationen, die MyCrewMate für ihre Vereins- und Eventplanung nutzen.
+MyCrewMate ist ein Angebot von Christian Lambrich, Eichenweg 4, 56729 Nachtsheim, Deutschland. Diese Bedingungen gelten gegenüber Vereinen, Verbänden, ehrenamtlichen Initiativen sowie kommunalen Organisationen mit ehrenamtlich getragenen Veranstaltungen, die MyCrewMate für ihre Vereins- und Eventplanung nutzen. MyCrewMate ist nicht für private Feiern, Firmenveranstaltungen oder gewerbliche Eventdienstleistungen vorgesehen.
 
 ## 2. Leistungsgegenstand
 MyCrewMate stellt eine mandantengetrennte Software zur Planung von Veranstaltungen, Aufgaben, Helfern, Schichten, Ansprechpartnern, Material und zugehöriger Kommunikation bereit. Maßgeblich ist der Funktionsumfang des bei Vertragsbeginn oder später ausgewählten Pakets.
+
+MyCrewMate ist ein Planungswerkzeug und übernimmt nicht die Rolle des Veranstalters. Der Verein bleibt insbesondere für die sichere Durchführung seiner Veranstaltung, erforderliche Genehmigungen, Versicherungen, Verkehrssicherung, die Auswahl und Einweisung von Helfenden sowie die Prüfung seiner Planungen verantwortlich. Hinweise, Vorlagen und Auswertungen in MyCrewMate ersetzen keine fachliche, rechtliche oder behördliche Prüfung im Einzelfall.
 
 ## 3. Vertragsschluss und digitale Unterlagen
 Ein Vertrag kann digital geschlossen werden. Die vertretungsberechtigte Person des Vereins bestätigt vor der erstmaligen Nutzung die AGB, die Vereinbarung zur Auftragsverarbeitung und die Datenschutzhinweise durch aktive Auswahl. MyCrewMate speichert dafür Verein, bestätigende Person, Zeitpunkt, Paket, Dokumentversion und Integritätsnachweis. Die Bestätigung wird dem Verein per E-Mail dokumentiert.
 
 ## 4. Pflichten des Vereins
-Der Verein bleibt für seine Planungsdaten, die Rechtmäßigkeit der Datenerhebung, die Information betroffener Personen und die Vergabe interner Rechte verantwortlich. Zugangsdaten sind persönlich zu behandeln. Der Verein hinterlegt keine besonderen Kategorien personenbezogener Daten in Freitextfeldern, sofern keine dokumentierte Rechtsgrundlage und geeignete Schutzmaßnahme besteht.
+Der Verein bleibt für seine Planungsdaten, die Rechtmäßigkeit der Datenerhebung, die Information betroffener Personen und die Vergabe interner Rechte verantwortlich. Er richtet Zugänge nur für berechtigte Personen ein und entzieht nicht mehr benötigte Rechte zeitnah. Zugangsdaten sind persönlich zu behandeln.
+
+Damit der Verein auch bei einer vorübergehenden technischen Störung, Wartung oder Fehlbedienung arbeitsfähig bleibt, erstellt und verwahrt er in angemessenen Abständen einen eigenen Stand seiner für die Veranstaltung wesentlichen Planungsdaten. Hierfür nutzt der Verein – soweit für die jeweilige Funktion verfügbar – die angebotenen Speicher- und Exportmöglichkeiten, insbesondere Excel- oder vergleichbare Exportdateien. Vor wichtigen Planfreigaben und während einer laufenden heißen Veranstaltungsphase erstellt der Verein einen zusätzlichen Export. Diese Dateien sind außerhalb von MyCrewMate geschützt aufzubewahren und nur berechtigten Personen zugänglich zu machen.
+
+Die technischen Sicherungen von MyCrewMate dienen der Wiederherstellung der Plattform und ergänzen, ersetzen aber nicht den eigenen Arbeitsstand des Vereins. Der Verein hinterlegt keine besonderen Kategorien personenbezogener Daten in Freitextfeldern, sofern keine dokumentierte Rechtsgrundlage und geeignete Schutzmaßnahme besteht.
 
 ## 5. Pakete, Entgelte und Laufzeit
-Paketumfang, Preis und Laufzeit ergeben sich aus der bei Vertragsschluss angezeigten Auswahl oder einer individuellen Vereinbarung. Testzugänge sind zeitlich begrenzt und unverbindlich, sofern nicht ausdrücklich etwas anderes vereinbart ist. Entgeltliche Pakete werden erst nach der dokumentierten Bestellung und dem dort ausgewiesenen Zahlungsweg aktiviert.
+Paketumfang, Preis und Laufzeit ergeben sich aus der bei Vertragsschluss angezeigten Auswahl oder einer individuellen Vereinbarung. Testzugänge sind zeitlich begrenzt und unverbindlich, sofern nicht ausdrücklich etwas anderes vereinbart ist. Entgeltliche Pakete werden erst nach der dokumentierten Bestellung und dem dort ausgewiesenen Zahlungsweg aktiviert. Eine automatische Verlängerung erfolgt nur, wenn sie ausdrücklich und gesondert vereinbart wurde.
 
 ## 6. Verfügbarkeit und Support
-MyCrewMate wird mit angemessener Sorgfalt betrieben. Wartung, Sicherheitsmaßnahmen und technische Weiterentwicklungen können zeitweise zu Einschränkungen führen. Der Anbieter informiert über erhebliche planbare Einschränkungen in angemessener Weise.
+MyCrewMate wird mit angemessener Sorgfalt betrieben. Eine ununterbrochene, jederzeit und fehlerfrei verfügbare Nutzung kann technisch jedoch nicht zugesagt werden. Vorübergehende Einschränkungen können insbesondere durch Wartung, Sicherheitsmaßnahmen, technische Weiterentwicklungen, Störungen von Telekommunikationsnetzen, Stromversorgung oder sonstigen Diensten Dritter sowie durch Ereignisse außerhalb des Einflussbereichs von MyCrewMate entstehen.
 
-## 7. Datenschutz
+Erhebliche planbare Einschränkungen kündigt MyCrewMate, soweit dies unter Berücksichtigung des Anlasses und der Sicherheitslage möglich ist, in angemessener Weise an. MyCrewMate hält technische Sicherungen für die Wiederherstellung der Plattform vor. Ein Anspruch auf einen bestimmten einzelnen Speicherstand oder auf eine Wiederherstellung innerhalb einer bestimmten Zeit besteht nur, wenn dies ausdrücklich individuell vereinbart wurde.
+
+## 7. Haftung
+MyCrewMate haftet unbeschränkt bei Vorsatz, grober Fahrlässigkeit sowie bei Schäden aus der Verletzung des Lebens, des Körpers oder der Gesundheit. Die Haftung nach dem Produkthaftungsgesetz bleibt unberührt.
+
+Bei leicht fahrlässiger Verletzung wesentlicher Vertragspflichten haftet MyCrewMate nur für den vertragstypischen, bei Vertragsschluss vorhersehbaren Schaden. Wesentliche Vertragspflichten sind Pflichten, deren Erfüllung die ordnungsgemäße Nutzung von MyCrewMate überhaupt erst ermöglicht und auf deren Einhaltung der Verein regelmäßig vertrauen darf. Im Übrigen ist die Haftung bei leichter Fahrlässigkeit ausgeschlossen.
+
+Bei einem Datenverlust ist eine Haftung bei leichter Fahrlässigkeit auf den Aufwand begrenzt, der für die Wiederherstellung der Daten bei einer nach Abschnitt 4 ordnungsgemäßen, regelmäßigen eigenen Sicherung des Vereins erforderlich gewesen wäre. Die vorstehenden Regelungen gelten nicht, soweit zwingendes Recht entgegensteht.
+
+## 8. Datenschutz
 Soweit MyCrewMate personenbezogene Planungsdaten für den Verein verarbeitet, handelt MyCrewMate auf Grundlage der gesondert bestätigten Vereinbarung zur Auftragsverarbeitung. Eigene Vertrags-, Sicherheits- und Abrechnungsdaten verarbeitet MyCrewMate in eigener Verantwortlichkeit nach den Datenschutzhinweisen der App.
 
-## 8. Laufzeit, Beendigung und Daten
-Nach Vertragsende erhält der Verein nach Weisung eine Rückgabe oder Löschung seiner Mandantendaten, soweit keine gesetzlichen Aufbewahrungspflichten entgegenstehen. Die in der App dokumentierten Lösch- und Aufbewahrungsregeln bleiben anwendbar.
+## 9. Laufzeit, Beendigung und Daten
+Nach Vertragsende erhält der Verein nach Weisung eine Rückgabe oder Löschung seiner Mandantendaten, soweit keine gesetzlichen Aufbewahrungspflichten entgegenstehen. Vor einer angewiesenen Löschung sichert der Verein die für seine weitere Arbeit benötigten Daten über die verfügbaren Exportmöglichkeiten. Die in der App dokumentierten Lösch- und Aufbewahrungsregeln bleiben anwendbar.
 
-## 9. Änderungen dieser Unterlagen
+## 10. Änderungen dieser Unterlagen
 Wesentliche Änderungen dieser Bedingungen, der Auftragsverarbeitung oder eingesetzter Unterauftragsverarbeiter werden vor ihrer Geltung nachvollziehbar dokumentiert. Erfordern sie eine erneute Annahme, wird diese vor der weiteren Nutzung aktiv eingeholt.
 
-## 10. Schlussbestimmungen
+## 11. Schlussbestimmungen
 Es gilt deutsches Recht. Gesetzliche zwingende Zuständigkeiten bleiben unberührt.`,
   },
   avv: {

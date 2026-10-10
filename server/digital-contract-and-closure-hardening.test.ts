@@ -25,11 +25,32 @@ function documentHash(documentId: LegalDocumentId) {
 describe("Digitale Vertragsannahme, Freigabefilter und Veranstaltungsabschluss", () => {
   it("definiert AGB und AVV mit festen Versionen und Hashwerten", () => {
     expect(REQUIRED_LEGAL_DOCUMENT_IDS).toEqual(["terms", "avv", "privacy"]);
-    expect(LEGAL_DOCUMENTS.terms.version).toBe("1.0-2026-10-01");
+    expect(LEGAL_DOCUMENTS.terms.version).toBe("1.1-2026-10-10");
     expect(LEGAL_DOCUMENTS.avv.version).toBe("1.3-2026-10-02");
     expect(LEGAL_DOCUMENTS.privacy.version).toBe("1.4-2026-10-04");
     expect(documentHash("terms")).toMatch(/^[a-f0-9]{64}$/);
     expect(documentHash("avv")).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it("erläutert Eigenverantwortung, eigene Sicherung und zulässige Haftungsgrenzen", () => {
+    const terms = LEGAL_DOCUMENTS.terms.content;
+
+    expect(terms).toContain("ehrenamtlichen Initiativen sowie kommunalen Organisationen");
+    expect(terms).toContain("nicht für private Feiern, Firmenveranstaltungen oder gewerbliche Eventdienstleistungen vorgesehen");
+    expect(terms).toContain("MyCrewMate ist ein Planungswerkzeug und übernimmt nicht die Rolle des Veranstalters");
+    expect(terms).toContain("sichere Durchführung seiner Veranstaltung, erforderliche Genehmigungen, Versicherungen");
+    expect(terms).toContain("## 4. Pflichten des Vereins");
+    expect(terms).toContain("Er richtet Zugänge nur für berechtigte Personen ein");
+    expect(terms).toContain("einen eigenen Stand seiner für die Veranstaltung wesentlichen Planungsdaten");
+    expect(terms).toContain("Excel- oder vergleichbare Exportdateien");
+    expect(terms).toContain("ergänzen, ersetzen aber nicht den eigenen Arbeitsstand des Vereins");
+    expect(terms).toContain("Eine automatische Verlängerung erfolgt nur");
+    expect(terms).toContain("Eine ununterbrochene, jederzeit und fehlerfrei verfügbare Nutzung kann technisch jedoch nicht zugesagt werden");
+    expect(terms).toContain("## 7. Haftung");
+    expect(terms).toContain("haftet unbeschränkt bei Vorsatz, grober Fahrlässigkeit");
+    expect(terms).toContain("vertragstypischen, bei Vertragsschluss vorhersehbaren Schaden");
+    expect(terms).toContain("bei einer nach Abschnitt 4 ordnungsgemäßen, regelmäßigen eigenen Sicherung");
+    expect(terms).toContain("Vor einer angewiesenen Löschung sichert der Verein");
   });
 
   it("bindet die Vertragsannahme an das Initialpasswort-Modal und den Server-Router", () => {
