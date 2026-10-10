@@ -112,7 +112,10 @@ import {
   requestedPlanningScope,
   withPlanningScope,
 } from "./year-context";
-import { initialAccessibleEvent } from "@shared/event-start-selection";
+import {
+  initialAccessibleEvent,
+  initialAccessibleEventForYear,
+} from "@shared/event-start-selection";
 import {
   FULL_PLANNER_PERMISSIONS,
   PLANNING_MODULE_META,
@@ -751,7 +754,10 @@ async function authorizedPlanningScope(
     const allowedEvents = await withPlanningScope(requestedScope, () =>
       db.listAllEventsForPlanningTeamAccess(planningAccessId)
     );
-    const fallbackEvent = initialAccessibleEvent(allowedEvents);
+    const fallbackEvent = initialAccessibleEventForYear(
+      allowedEvents,
+      requestedScope.year
+    );
     if (!fallbackEvent) return enforceProductEventScope(requestedScope);
 
     return enforceProductEventScope({
@@ -809,14 +815,7 @@ async function authorizedPlanningScope(
     const grouped = await Promise.all(
       years.map(item => db.listEvents(item.year))
     );
-    const availableEvents = grouped.flat();
-    const sameYearEvents = availableEvents.filter(
-      item => item.year === requestedScope.year
-    );
-    return (
-      initialAccessibleEvent(sameYearEvents) ??
-      initialAccessibleEvent(availableEvents)
-    );
+    return initialAccessibleEventForYear(grouped.flat(), requestedScope.year);
   });
   if (fallbackEvent) {
     return enforceProductEventScope({

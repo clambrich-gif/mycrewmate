@@ -542,7 +542,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const router = source("server/routers.ts");
 
     expect(layout).toContain("trpc.events.all.useQuery");
-    expect(layout).toContain("initialAccessibleEvent(accessibleEvents.data)");
+    expect(layout).toContain("initialAccessibleEventForYear(accessibleEvents.data, year)");
     expect(layout).toContain("eventStartSelectionSessionKey(tenantId)");
     expect(layout).toContain("window.sessionStorage.setItem(selectionKey, \"done\")");
     expect(layout).toContain("selectYear(initialEvent.year, initialEvent.id)");

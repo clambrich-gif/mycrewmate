@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   eventStartSelectionSessionKey,
   initialAccessibleEvent,
+  initialAccessibleEventForYear,
   nearestUpcomingEvent,
 } from "../shared/event-start-selection";
 
@@ -89,5 +90,11 @@ describe("Startauswahl der nächsten Veranstaltung", () => {
         { id: 32, year: 2027, name: "Helferfest", startDate: null },
       ])
     ).toMatchObject({ id: 32, name: "Helferfest" });
+  });
+
+  it("bleibt bei einer ungültigen Auswahl vorrangig im bisher gewählten Veranstaltungsjahr", () => {
+    expect(
+      initialAccessibleEventForYear(events, 2027, new Date("2026-10-10T10:00:00"))
+    ).toMatchObject({ id: 13, year: 2027, name: "Radsportfestival" });
   });
 });

@@ -69,3 +69,22 @@ export function initialAccessibleEvent<T extends StartSelectableEvent>(
       left.id - right.id
   )[0];
 }
+
+/**
+ * Repariert eine ungültig gewordene Auswahl möglichst nahe an der Absicht des
+ * Benutzers: Gibt es im bisher gewählten Jahr noch eine erreichbare
+ * Veranstaltung, bleibt die Auswahl in diesem Jahr. Erst wenn das gesamte
+ * Jahr nicht mehr verfügbar ist, wird wie beim App-Start die nächste
+ * bevorstehende Veranstaltung über alle Jahre gewählt.
+ */
+export function initialAccessibleEventForYear<T extends StartSelectableEvent>(
+  events: readonly T[],
+  preferredYear: number,
+  today = new Date()
+): T | null {
+  const eventsInPreferredYear = events.filter(event => event.year === preferredYear);
+  return (
+    initialAccessibleEvent(eventsInPreferredYear, today) ??
+    initialAccessibleEvent(events, today)
+  );
+}

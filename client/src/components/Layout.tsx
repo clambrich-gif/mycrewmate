@@ -92,7 +92,7 @@ import {
 } from "@shared/product-packages";
 import {
   eventStartSelectionSessionKey,
-  initialAccessibleEvent,
+  initialAccessibleEventForYear,
 } from "@shared/event-start-selection";
 import { LEGAL_DOCUMENTS } from "@shared/legal-contract-documents";
 import {
@@ -998,7 +998,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
     const currentSelectionIsValid = accessibleEvents.data.some(
       event => event.id === eventId && event.year === year
     );
-    const initialEvent = initialAccessibleEvent(accessibleEvents.data);
+    const initialEvent = initialAccessibleEventForYear(
+      accessibleEvents.data,
+      year
+    );
     if (!currentSelectionIsValid && initialEvent) {
       if (initialEvent.year !== year) {
         selectYear(initialEvent.year, initialEvent.id);
@@ -1112,7 +1115,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
       e => e.id === eventId
     );
     if (!hasValidEventSelected) {
-      const targetEvent = initialAccessibleEvent(accessibleEvents.data) ?? accessibleEvents.data[0];
+      const targetEvent =
+        initialAccessibleEventForYear(accessibleEvents.data, year) ??
+        accessibleEvents.data[0];
       if (targetEvent) {
         if (targetEvent.year !== year) {
           selectYear(targetEvent.year, targetEvent.id);
