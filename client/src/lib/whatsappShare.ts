@@ -107,16 +107,43 @@ export function normalizeWhatsAppPhone(phone: string | null | undefined) {
 }
 
 /**
+ * Auf Smartphones öffnet wa.me die WhatsApp-App direkt. Auf einigen Desktop-
+ * Browsern beschädigt die nachgeschaltete wa.me-Weiterleitung jedoch Emoji-
+ * Zeichen in einer vorbereiteten Nachricht. Der direkte Web-Pfad umgeht diese
+ * Zwischenstation, ohne die bewährte mobile Übergabe zu verändern.
+ */
+export function isWhatsAppMobileUserAgent(userAgent?: string | null) {
+  const effectiveUserAgent =
+    userAgent ??
+    (typeof navigator !== "undefined" ? navigator.userAgent : "");
+  return /Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(
+    effectiveUserAgent
+  );
+}
+
+/**
  * Öffnet einen WhatsApp-Chat mit einem vollständig vorbereiteten Text.
  * Mit Helfernummer wird der Zielchat direkt adressiert; ohne Nummer ist der
  * allgemeine WhatsApp-Teilen-Dialog ein bewusster, transparenter Fallback.
  */
 export function buildWhatsAppShareUrl(
   message: string,
-  helperPhone?: string | null
+  helperPhone?: string | null,
+  userAgent?: string | null
 ) {
   const phone = normalizeWhatsAppPhone(helperPhone);
   const trimmedMessage = message.trim();
+
+  // Die offizielle wa.me-Route wird auf Mobilgeräten beibehalten. Auf dem
+  // Desktop führt sie derzeit über eine WhatsApp-Weiterleitung, die UTF-8-
+  // Emojis in manchen Browsern in schwarze Rauten mit Fragezeichen verwandelt.
+  // Der Web-Chat erhält den unverändert URL-kodierten Text direkt.
+  if (phone && !isWhatsAppMobileUserAgent(userAgent)) {
+    const parameters = new URLSearchParams({ phone });
+    if (trimmedMessage) parameters.set("text", trimmedMessage);
+    return `https://web.whatsapp.com/send/?${parameters.toString()}`;
+  }
+
   const baseUrl = phone ? `https://wa.me/${phone}` : "https://wa.me/";
   // Ohne freigegebene Vorlage wird bewusst kein text-Parameter gesetzt. So
   // öffnet WhatsApp einen wirklich leeren Chat statt eines versteckten Resttexts.

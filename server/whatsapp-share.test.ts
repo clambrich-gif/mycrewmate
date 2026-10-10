@@ -3,6 +3,7 @@ import {
   DEFAULT_WHATSAPP_HELPER_REQUEST_TEMPLATE,
   DEFAULT_WHATSAPP_MESSAGE_TEMPLATE,
   buildWhatsAppShareUrl,
+  isWhatsAppMobileUserAgent,
   normalizeWhatsAppPhone,
   renderWhatsAppMessage,
   resolveWhatsAppHelperRequestTemplate,
@@ -20,11 +21,43 @@ describe("WhatsApp-Freigabe und Vorlagen", () => {
     );
 
     const url = new URL(
-      buildWhatsAppShareUrl("Hallo Anna", "0171 123 45 67")
+      buildWhatsAppShareUrl(
+        "Hallo Anna",
+        "0171 123 45 67",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/141.0"
+      )
     );
-    expect(url.origin).toBe("https://wa.me");
-    expect(url.pathname).toBe("/491711234567");
+    expect(url.origin).toBe("https://web.whatsapp.com");
+    expect(url.pathname).toBe("/send/");
+    expect(url.searchParams.get("phone")).toBe("491711234567");
     expect(url.searchParams.get("text")).toBe("Hallo Anna");
+  });
+
+  it("umgeht auf dem Desktop die fehlerhafte wa.me-Weiterleitung für Emojis", () => {
+    const message = "Hallo! 👋 🚴💨 📅 🥳🙌 ⚠️ ⏳👍 🏆";
+    const desktopUrl = new URL(
+      buildWhatsAppShareUrl(
+        message,
+        "0171 123 45 67",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/141.0"
+      )
+    );
+    const mobileUrl = new URL(
+      buildWhatsAppShareUrl(
+        message,
+        "0171 123 45 67",
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)"
+      )
+    );
+
+    expect(isWhatsAppMobileUserAgent("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)")).toBe(true);
+    expect(isWhatsAppMobileUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/141.0")).toBe(false);
+    expect(desktopUrl.origin).toBe("https://web.whatsapp.com");
+    expect(desktopUrl.pathname).toBe("/send/");
+    expect(desktopUrl.searchParams.get("text")).toBe(message);
+    expect(desktopUrl.href).not.toContain("%25F0");
+    expect(mobileUrl.origin).toBe("https://wa.me");
+    expect(mobileUrl.searchParams.get("text")).toBe(message);
   });
 
   it("fällt ohne gespeicherte Helfernummer transparent auf den WhatsApp-Teilen-Dialog zurück", () => {

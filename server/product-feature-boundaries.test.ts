@@ -25,11 +25,11 @@ describe("Produktgrenzen: Marke, WhatsApp und Event-Sicherung", () => {
 
   it("öffnet bei einer leeren WhatsApp-Nachricht einen wirklich leeren Zielchat", () => {
     expect(buildWhatsAppShareUrl("", "0171 1234567")).toBe(
-      "https://wa.me/491711234567"
+      "https://web.whatsapp.com/send/?phone=491711234567"
     );
     expect(buildWhatsAppShareUrl("", null)).toBe("https://wa.me/");
     expect(buildWhatsAppShareUrl("Hallo", "0171 1234567")).toBe(
-      "https://wa.me/491711234567?text=Hallo"
+      "https://web.whatsapp.com/send/?phone=491711234567&text=Hallo"
     );
   });
 
