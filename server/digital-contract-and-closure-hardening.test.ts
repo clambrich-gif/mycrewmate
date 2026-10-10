@@ -76,10 +76,14 @@ describe("Digitale Vertragsannahme, Freigabefilter und Veranstaltungsabschluss",
   });
 
   it("sperrt eine bestehende Vereinsadminsitzung bis zur erneuten Annahme", () => {
-    const layout = source("client/src/components/Layout.tsx");
+    const layout = normalizedSource("client/src/components/Layout.tsx");
     const router = source("server/routers.ts");
+    const db = source("server/db.ts");
 
     expect(layout).toContain("currentContractAcceptanceDialog");
+    expect(layout).toContain("Aktualisierte {CURRENT_TERMS_LABEL} bestätigen");
+    expect(layout).toContain("Ihre bisherige Annahme bleibt als Nachweis erhalten.");
+    expect(layout).toContain("Für die weitere Nutzung gilt die neue Fassung erst nach Ihrer aktiven Bestätigung.");
     expect(layout).toContain("Verbindlich bestätigen & fortfahren");
     expect(layout).toContain("acceptCurrentTenantContractDocuments.mutate");
     expect(router).toContain(
@@ -88,6 +92,8 @@ describe("Digitale Vertragsannahme, Freigabefilter und Veranstaltungsabschluss",
     expect(router).toContain(
       "tenantNeedsCurrentContractAcceptance(membership.tenantId)"
     );
+    expect(db).toContain("documentVersion === document.version");
+    expect(db).toContain("documentHash === legalDocumentHash(documentId)");
   });
 
   it("stellt AGB und AVV über eigene öffentliche Seiten bereit", () => {

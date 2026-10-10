@@ -2178,6 +2178,14 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain("Freigabe ohne E-Mail zurücknehmen");
     expect(plan).not.toContain("trpc.plan.sendReleaseCorrection.useMutation");
     expect(plan).toContain("Betroffene Ansprechpartner erinnern");
+    expect(plan).toContain('data-slot="plan-release-backup-reminder"');
+    expect(plan).toContain("Vor der Freigabe: eigenen Planungsstand sichern.");
+    expect(plan).toContain("JSON-Speicherstand");
+    expect(plan).toContain("Excel-Projektübersicht");
+    expect(plan).toContain('<a href="/sicherheit">Sicherung öffnen</a>');
+    expect(plan.indexOf("Vor der Freigabe: eigenen Planungsstand sichern.")).toBeLessThan(
+      plan.indexOf("Planfreigabe vorbereiten")
+    );
     expect(plan).toContain("trpc.plan.releaseStatus.useQuery");
     expect(plan).toContain("trpc.plan.release.useMutation");
     expect(plan).toContain("trpc.plan.sendInitialNotifications.useMutation");

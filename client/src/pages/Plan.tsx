@@ -25,6 +25,7 @@ import {
   AlertTriangle,
   ChevronDown,
   Clock3,
+  FileSpreadsheet,
   FilterX,
   Info,
   Loader2,
@@ -2508,6 +2509,23 @@ export default function Plan() {
                           : "Die Freigabe und der Versandstatus sind unten nachvollziehbar dokumentiert."
                       : "Beim nächsten Schritt entscheidest du ausdrücklich: nur organisatorisch freigeben oder zusätzlich Ansprechpartner per E-Mail informieren."}
                   </p>
+                  {!planReleaseStatus.data?.releasedAt && (
+                    <div
+                      data-slot="plan-release-backup-reminder"
+                      className="mt-3 flex max-w-3xl flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-950 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="flex min-w-0 items-start gap-2">
+                        <FileSpreadsheet className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                        <p className="leading-5">
+                          <span className="font-bold">Vor der Freigabe: eigenen Planungsstand sichern.</span>{" "}
+                          Lade unter „Schutz &amp; Protokolle“ zuerst den JSON-Speicherstand herunter – ab Pro zusätzlich die vollständige Excel-Projektübersicht. So bleibt dein Arbeitsstand auch unabhängig von der laufenden Planung verfügbar.
+                        </p>
+                      </div>
+                      <Button asChild variant="outline" className="shrink-0 border-amber-300 bg-white text-amber-950 hover:bg-amber-100">
+                        <a href="/sicherheit">Sicherung öffnen</a>
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="flex shrink-0 flex-wrap gap-2">

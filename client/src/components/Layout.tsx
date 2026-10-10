@@ -94,6 +94,7 @@ import {
   eventStartSelectionSessionKey,
   initialAccessibleEvent,
 } from "@shared/event-start-selection";
+import { LEGAL_DOCUMENTS } from "@shared/legal-contract-documents";
 import {
   Bike,
   Building2,
@@ -137,6 +138,7 @@ const MYCREWMATE_ICON = "/icons/mycrewmate-pwa-512.png";
 const CHAT_SNAPSHOT_POLL_MS = 5_000;
 const DESKTOP_SIDEBAR_OPEN_STORAGE_KEY = "mycrewmate:desktop-sidebar-open";
 const ACTIVATION_TENANT_STORAGE_KEY = "mycrewmate:activation-tenant";
+const CURRENT_TERMS_LABEL = `AGB ${LEGAL_DOCUMENTS.terms.version.split("-")[0]}`;
 // Der Wechsler dient nur der lokalen Entwicklungs- und Isolationserprobung.
 // Für Vereinszugänge und die veröffentlichte App wird der Mandant später
 // ausschließlich serverseitig aus der Konto-Zuordnung bestimmt.
@@ -1449,12 +1451,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="mb-1 flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-700">
             <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
           </div>
-          <DialogTitle>Vertragsunterlagen bestätigen</DialogTitle>
+          <DialogTitle>Aktualisierte {CURRENT_TERMS_LABEL} bestätigen</DialogTitle>
           <DialogDescription className="leading-relaxed text-slate-600">
-            Für die weitere Nutzung muss die vertretungsberechtigte
-            Vereinsadministration die aktuelle Fassung der Unterlagen aktiv
-            bestätigen. Die Annahme wird elektronisch protokolliert und an die
-            hinterlegte E-Mail-Adresse bestätigt.
+            Die aktualisierten {CURRENT_TERMS_LABEL} enthalten klarere Hinweise
+            zu eigener Datensicherung, Exporten und technischer Verfügbarkeit.
+            Ihre bisherige Annahme bleibt als Nachweis erhalten. Für die weitere
+            Nutzung gilt die neue Fassung erst nach Ihrer aktiven Bestätigung.
           </DialogDescription>
         </DialogHeader>
         <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-3.5">
@@ -1472,7 +1474,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               htmlFor="current-contract-acceptance"
               className="cursor-pointer text-xs font-normal leading-5 text-slate-700"
             >
-              Ich handle vertretungsberechtigt für meinen Verein und bestätige die{" "}
+              Ich handle vertretungsberechtigt für meinen Verein, habe die aktualisierten {CURRENT_TERMS_LABEL} gelesen und stimme ihnen für die weitere Nutzung zu. Ich bestätige außerdem die{" "}
               <a href="https://mycrewmate.de/agb" target="_blank" rel="noreferrer" className="font-semibold text-blue-700 underline underline-offset-2">AGB</a>
               {", "}
               <a href="https://mycrewmate.de/avv" target="_blank" rel="noreferrer" className="font-semibold text-blue-700 underline underline-offset-2">Vereinbarung zur Auftragsverarbeitung (AVV)</a>
