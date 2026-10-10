@@ -669,6 +669,14 @@ function formatAccessCreatedAt(value: Date) {
   );
 }
 
+function formatBackupTimestamp(value: string | null) {
+  if (!value || Number.isNaN(Date.parse(value))) return null;
+  return `${new Intl.DateTimeFormat("de-DE", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value))} Uhr`;
+}
+
 function PortalLoading() {
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_6%_6%,rgba(219,234,254,0.9),transparent_33%),radial-gradient(circle_at_95%_95%,rgba(224,242,254,0.75),transparent_30%),#f8fafc] px-4 py-8 sm:px-6 lg:px-10">
@@ -1237,6 +1245,13 @@ export default function MasterAdminPortal() {
     retry: false,
     refetchOnWindowFocus: true,
     refetchInterval: 30_000,
+  });
+  const backupStatus = trpc.platformAdmin.backupStatus.useQuery(undefined, {
+    enabled: isAuthenticated && user?.role === "admin",
+    retry: false,
+    refetchOnWindowFocus: false,
+    staleTime: 60_000,
+    refetchInterval: 120_000,
   });
   const accessInventory = trpc.platformAdmin.accessInventory.useQuery(undefined, {
     enabled: isAuthenticated && user?.role === "admin",
@@ -2133,11 +2148,63 @@ export default function MasterAdminPortal() {
               </CollapsibleTrigger>
               <CollapsibleContent className="border-t border-slate-100">
                 <CardContent className="space-y-3 px-5 py-4 text-sm leading-6 text-slate-700 sm:px-6">
-                  <p>
-                    <strong className="text-slate-900">Aktueller Sicherungsstand:</strong> Vereinsdaten in der Datenbank und hochgeladene Dateien werden täglich getrennt gesichert – jeweils gegen 00:00&nbsp;Uhr UTC, lokal auf dem Server und zusätzlich im Hetzner Object Storage. Je Sicherungsziel bleiben die letzten sieben Stände erhalten.
+                  <p className="text-slate-600">
+                    Zwei getrennte Sicherungsbereiche: Der Datenbankzeitpunkt wird live aus der
+                    erfolgreichen Sicherungsausführung gelesen. Der Programmstand ist davon bewusst
+                    getrennt dargestellt.
                   </p>
-                  <p>
-                    Die Coolify-Betriebskonfiguration wird ebenfalls täglich extern gesichert. Der Programmcode bleibt zusätzlich versioniert in GitHub; eine manuelle Offline-Quellcodesicherung kann bei Bedarf erstellt werden. Die automatischen Sicherungen ergänzen den eigenen Export wichtiger Vereinsdaten, ersetzen ihn aber nicht.
+                  <div data-slot="master-backup-status" className="grid gap-3 lg:grid-cols-2">
+                    <article className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4">
+                      <div className="flex items-start gap-3">
+                        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-emerald-600 text-xs font-bold text-white">1</span>
+                        <div className="min-w-0">
+                          <h3 className="font-semibold text-slate-900">Datenbank · Vereins- und Nutzerdaten</h3>
+                          <p className="mt-1 text-xs leading-5 text-slate-700">
+                            Tägliche Sicherung, lokal und zusätzlich im Hetzner Object Storage. Die
+                            letzten sieben Stände bleiben erhalten.
+                          </p>
+                          {backupStatus.isLoading ? (
+                            <p className="mt-3 flex items-center gap-2 text-xs font-medium text-emerald-900" role="status">
+                              <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                              Letzter erfolgreicher Sicherungszeitpunkt wird abgerufen …
+                            </p>
+                          ) : backupStatus.data?.database.status === "ok" ? (
+                            <p className="mt-3 rounded-lg border border-emerald-200 bg-white/90 px-3 py-2 text-xs font-semibold text-emerald-950" role="status">
+                              Zuletzt erfolgreich gesichert: {formatBackupTimestamp(backupStatus.data.database.lastSuccessfulAt)}
+                            </p>
+                          ) : backupStatus.data?.database.status === "not_configured" ? (
+                            <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950" role="status">
+                              Der Liveabruf ist noch nicht eingerichtet. Die tägliche Sicherungsroutine
+                              bleibt davon getrennt bestehen.
+                            </p>
+                          ) : (
+                            <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950" role="status">
+                              Der letzte Zeitpunkt kann gerade nicht abgerufen werden. Die
+                              Sicherungsroutine bleibt eingerichtet; bitte die Ausführung in Coolify prüfen.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </article>
+                    <article className="rounded-xl border border-blue-200 bg-blue-50/70 p-4">
+                      <div className="flex items-start gap-3">
+                        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-blue-600 text-xs font-bold text-white">2</span>
+                        <div className="min-w-0">
+                          <h3 className="font-semibold text-slate-900">Programmstand · MyCrewMate-Software</h3>
+                          <p className="mt-1 text-xs leading-5 text-slate-700">
+                            Der Programmcode wird versioniert in GitHub geführt. Zusätzlich liegen ein
+                            geprüfter Offline-Quellcodestand und Wiederherstellungsunterlagen vor.
+                          </p>
+                          <p className="mt-3 rounded-lg border border-blue-200 bg-white/90 px-3 py-2 text-xs text-blue-950">
+                            Dieser Programmstand hat bewusst keinen gemeinsamen Zeitpunkt mit der
+                            Datenbanksicherung. Beide Bereiche können getrennt wiederhergestellt werden.
+                          </p>
+                        </div>
+                      </div>
+                    </article>
+                  </div>
+                  <p className="text-xs leading-5 text-slate-500">
+                    Eigene Exporte wichtiger Vereinsdaten bleiben als zusätzliche Vorsorge sinnvoll.
                   </p>
                 </CardContent>
               </CollapsibleContent>

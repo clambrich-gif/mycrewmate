@@ -286,16 +286,25 @@ describe("Master-Admin-Bereinigung", () => {
     expect(page).toContain("Abmelden und neu anmelden");
   });
 
-  it("zeigt die geprüfte Sicherungsroutine als einklappbare Master-Auskunft", () => {
+  it("zeigt die zweigeteilte Sicherungsauskunft mit geschütztem Livezeitpunkt", () => {
     const page = source("client/src/pages/MasterAdminPortal.tsx");
+    const router = source("server/routers.ts");
 
     expect(page).toContain("Sicherung &amp; Wiederherstellung");
     expect(page).toContain("backupInformationOpen");
-    expect(page).toContain("täglich getrennt gesichert");
+    expect(page).toContain('data-slot="master-backup-status"');
+    expect(page).toContain("Datenbank · Vereins- und Nutzerdaten");
+    expect(page).toContain("Programmstand · MyCrewMate-Software");
+    expect(page).toContain("Zuletzt erfolgreich gesichert:");
+    expect(page).toContain("Sicherungsroutine bleibt eingerichtet");
     expect(page).toContain("Hetzner Object Storage");
     expect(page).toContain("letzten sieben Stände");
-    expect(page).toContain("Coolify-Betriebskonfiguration");
-    expect(page).toContain("Offline-Quellcodesicherung");
+    expect(page).toContain("GitHub geführt");
+    expect(page).toContain("trpc.platformAdmin.backupStatus.useQuery");
+    expect(page).not.toContain("COOLIFY_BACKUP_STATUS_API_TOKEN");
+    expect(page).not.toContain("coolify.mycrewmate.de");
+    expect(router).toContain("backupStatus: masterAdminProcedure.query");
+    expect(router).toContain("getPlatformBackupStatus");
   });
 
   it("entfernt die frühere Schulungsfunktion aus erreichbaren Oberflächen und Routen", () => {

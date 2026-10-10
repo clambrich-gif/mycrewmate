@@ -1,6 +1,6 @@
 # MyCrewMate – Wiederherstellungs- und Backup-Betriebshandbuch (Runbook)
 
-**Stand:** 02. Oktober 2026  
+**Stand:** 10. Oktober 2026
 **Geltungsbereich:** Plattform- und Vereinsdaten (Coolify, Hetzner Cloud Deutschland, TiDB/MySQL-Datenbank, persistente Dateispeicher)  
 **Verantwortlich:** Plattform-Inhaber (`info@mycrewmate.de`)
 
@@ -13,6 +13,19 @@
 | **Relationaler Datenbestand (MySQL/TiDB)** | Hetzner Rechenzentrum Deutschland | Täglich automatisiert in Coolify (konfiguriert) | Nach Coolify-Retention | Gemäß Hetzner/Coolify-Konfiguration |
 | **Persistente Uploads (PDF-Logos, Standortbilder, GPX)** | Getrenntes Docker-Volume auf dem Host | **Vor Marktöffnung zu bestätigen** | **Vor Marktöffnung festzulegen** | Infrastrukturkonfiguration dokumentieren |
 | **Vertragsnachweise & Audit-Protokolle** | Datenbank (`tenant_contract_acceptances`, `activity_logs`) | Im täglichen Datenbank-Dump enthalten | 12 Monate aktiv, Archiv nach gesetzlichen Fristen | Revisionsfähige SHA-256-Hashes |
+
+---
+
+## 1.1 Geschützte Statusanzeige im Master-Portal
+
+Im Bereich **„Sicherung & Wiederherstellung“** des Master-Portals werden zwei Bereiche bewusst getrennt angezeigt:
+
+1. **Datenbank · Vereins- und Nutzerdaten:** Der letzte erfolgreiche Sicherungszeitpunkt wird ausschließlich serverseitig aus der Ausführungshistorie der MySQL-Sicherung gelesen. Der Abruf verwendet einen dedizierten, rein lesenden Zugang und wird höchstens etwa einmal pro Minute neu abgefragt. Zugangsdaten, Rohantworten und Infrastrukturkennungen werden nie an den Browser ausgegeben.
+2. **Programmstand · MyCrewMate-Software:** Der Programmcode wird versioniert in GitHub geführt. Zusätzlich gibt es einen geprüften Offline-Quellcodestand sowie dieses Wiederherstellungshandbuch. Dieser Bereich erhält absichtlich keinen gemeinsamen Zeitpunkt mit der Datenbanksicherung.
+
+Wenn der Liveabruf zeitweise nicht erreichbar ist, lautet die Anzeige nur **„letzter Zeitpunkt kann gerade nicht abgerufen werden“**. Das ist kein Urteil über den Erfolg oder Misserfolg einer Sicherung. Die Sicherungsroutine ist anschließend direkt in der Coolify-Verwaltung zu prüfen.
+
+Der rein lesende Abrufzugang ist bei einem begründeten Sicherheitsverdacht unverzüglich in Coolify zu widerrufen und zu ersetzen. Eine regelmäßige Überprüfung der minimalen Berechtigung bleibt Teil des Betriebs.
 
 ---
 

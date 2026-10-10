@@ -164,6 +164,7 @@ import {
   PUBLIC_DEMO_SESSION_MS,
   type PublicDemoPackage,
 } from "./public-demo";
+import { getPlatformBackupStatus } from "./coolify-backup-status";
 import { upcomingPreparationDeadlines } from "./dashboard-deadlines";
 import {
   isMailDeliveryConfigured,
@@ -4326,6 +4327,9 @@ export const appRouter = router({
     tenantOverview: masterAdminProcedure.query(() =>
       db.listTenantOverviewsForPlatformAdmin()
     ),
+    // Der Status bleibt ausschließlich in der Plattformverwaltung. Der
+    // serverseitige Abruf gibt weder Token noch Coolify-Rohdaten an den Browser.
+    backupStatus: masterAdminProcedure.query(() => getPlatformBackupStatus()),
     accessInventory: masterAdminProcedure.query(() =>
       db.listPlatformAccessInventoryForPlatformAdmin()
     ),
