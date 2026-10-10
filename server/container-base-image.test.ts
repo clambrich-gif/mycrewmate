@@ -14,16 +14,16 @@ describe("Container-Grundbild", () => {
     expect(dockerfile).not.toContain("# syntax=docker/dockerfile:");
   });
 
-  it("bezieht auch das BuildKit-Bauwerkzeug ohne Docker-Hub-Abhängigkeit", () => {
+  it("nutzt den integrierten Docker-Builder ohne externes BuildKit-Containerimage", () => {
     const workflow = readFileSync(
       path.resolve(process.cwd(), ".github/workflows/publish-container.yml"),
       "utf8"
     );
 
-    expect(workflow).toContain("uses: docker/setup-buildx-action@v3");
-    expect(workflow).toContain("driver-opts:");
-    expect(workflow).toContain(
-      "image=public.ecr.aws/vend/moby/buildkit:buildx-stable-1"
-    );
+    expect(workflow).not.toContain("docker/setup-buildx-action");
+    expect(workflow).not.toContain("moby/buildkit");
+    expect(workflow).toContain("docker build --pull=false");
+    expect(workflow).toContain("docker push");
+    expect(workflow).toContain("IMAGE_TAGS: ${{ steps.meta.outputs.tags }}");
   });
 });
