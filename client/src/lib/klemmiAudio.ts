@@ -8,6 +8,14 @@ export const KLEMMI_VOICE_PROFILE = {
     "Freundliche männliche Cartoon-Stimme: warm, klar, leicht verspielt und strukturiert.",
 } as const;
 
+/** Die gesamte Einsatzplanführung nutzt bewusst dieselbe lebhafte Klemmi-Charakterstimme. */
+export const KLEMMI_PLAN_VOICE_PROFILE = {
+  voice: "Puck",
+  label: "Klemmi im Einsatzplan – freundlich und comicartig",
+  description:
+    "Freundliche männliche Charakterstimme: hell, leicht verspielt, gut verständlich und durchgehend einheitlich.",
+} as const;
+
 /**
  * Feste, vorproduzierte Klemmi-Texte. Die Dateien liegen ausschließlich im
  * Produkt-Container und werden erst ausgeliefert, wenn eine Tour bewusst
@@ -302,20 +310,35 @@ export const KLEMMI_AUDIO_SCRIPTS = {
 
 export type KlemmiAudioId = keyof typeof KLEMMI_AUDIO_SCRIPTS;
 
+export const KLEMMI_PLAN_AUDIO_IDS = Object.freeze(
+  (Object.keys(KLEMMI_AUDIO_SCRIPTS) as KlemmiAudioId[]).filter(id =>
+    id.startsWith("plan-")
+  )
+);
+
+type KlemmiVoiceName =
+  | typeof KLEMMI_VOICE_PROFILE.voice
+  | typeof KLEMMI_PLAN_VOICE_PROFILE.voice;
+
 /**
- * Jede Tourreferenz gehört verbindlich zur vorproduzierten Klemmi-Stimme.
- * Dies ist zugleich die maschinenlesbare Auditquelle für alle Tutorialschritte:
- * keine Browser-Systemstimme und keine zweite Sprecherstimme werden verwendet.
+ * Jede Tourreferenz gehört verbindlich zu einer vorproduzierten Klemmi-Stimme.
+ * Die gesamte Einsatzplanführung verweist geschlossen auf das Puck-Profil; alle
+ * anderen Bereiche verwenden weiterhin das Achird-Profil. Browser-Systemstimmen
+ * werden nie verwendet.
  */
 export const KLEMMI_AUDIO_VOICE_MANIFEST: Readonly<
-  Record<KlemmiAudioId, { voice: typeof KLEMMI_VOICE_PROFILE.voice }>
+  Record<KlemmiAudioId, { voice: KlemmiVoiceName }>
 > = Object.freeze(
   Object.fromEntries(
     (Object.keys(KLEMMI_AUDIO_SCRIPTS) as KlemmiAudioId[]).map(id => [
       id,
-      { voice: KLEMMI_VOICE_PROFILE.voice },
+      {
+        voice: KLEMMI_PLAN_AUDIO_IDS.includes(id)
+          ? KLEMMI_PLAN_VOICE_PROFILE.voice
+          : KLEMMI_VOICE_PROFILE.voice,
+      },
     ])
-  ) as Record<KlemmiAudioId, { voice: typeof KLEMMI_VOICE_PROFILE.voice }>
+  ) as Record<KlemmiAudioId, { voice: KlemmiVoiceName }>
 );
 
 /**
@@ -458,25 +481,25 @@ const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
   "donations-traits": "20261004-donation-traits-v2",
   "donations-outputs": "20261004-donation-cards-v2",
   "donations-complete": "20260928-information-tour-v1",
-  "plan-intro": "20260928-empty-plan-tour-v2",
-  "plan-empty": "20260928-empty-plan-tour-v1",
-  "plan-basics": "20260928-information-tour-v1",
-  "plan-task": "20260928-information-tour-v1",
-  "plan-location-event-pass": "20260930-package-location-tour-v1",
-  "plan-location-light": "20260930-package-location-tour-v1",
-  "plan-location-pro": "20260930-package-location-tour-v1",
+  "plan-intro": "20261010-puck-plan-v1",
+  "plan-empty": "20261010-puck-plan-v1",
+  "plan-basics": "20261010-puck-plan-v1",
+  "plan-task": "20261010-puck-plan-v1",
+  "plan-location-event-pass": "20261010-puck-plan-v1",
+  "plan-location-light": "20261010-puck-plan-v1",
+  "plan-location-pro": "20261010-puck-plan-v1",
   "locations-light": "20260930-light-locations-audio-v1",
-  "plan-time-window": "20260930-time-window-v1",
-  "plan-time": "20260930-flexible-assignment-v1",
-  "plan-save": "20260928-information-tour-v1",
-  "plan-practice-save": "20260928-empty-plan-tour-v1",
-  "plan-overview": "20261010-achird-v3",
-  "plan-practice-cleanup": "20260928-empty-plan-tour-v1",
-  "plan-coverage": "20260928-information-tour-v1",
-  "plan-candidates": "20260928-information-tour-v1",
-  "plan-signals": "20260928-plan-tooltip-v3",
-  "plan-assign": "20260928-plan-tooltip-v3",
-  "plan-filters": "20260928-information-tour-v1",
+  "plan-time-window": "20261010-puck-plan-v1",
+  "plan-time": "20261010-puck-plan-v1",
+  "plan-save": "20261010-puck-plan-v1",
+  "plan-practice-save": "20261010-puck-plan-v1",
+  "plan-overview": "20261010-puck-plan-v1",
+  "plan-practice-cleanup": "20261010-puck-plan-v1",
+  "plan-coverage": "20261010-puck-plan-v1",
+  "plan-candidates": "20261010-puck-plan-v1",
+  "plan-signals": "20261010-puck-plan-v1",
+  "plan-assign": "20261010-puck-plan-v1",
+  "plan-filters": "20261010-puck-plan-v1",
   "finances-save": "20260928-adaptive-area-tour-v1",
   "marketing-intro": "20260928-adaptive-area-tour-v1",
   "marketing-name": "20260928-adaptive-area-tour-v1",
@@ -512,10 +535,10 @@ const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
   "donations-overview-summary": "20260928-adaptive-area-tour-v1",
   "finances-overview-save": "20260928-adaptive-area-tour-v1",
   "finances-overview": "20260928-adaptive-area-tour-v1",
-  "plan-search": "20260928-information-tour-v1",
-  "plan-view": "20260928-information-tour-v1",
-  "plan-release": "20261010-achird-v2",
-  "plan-complete": "20260928-information-tour-v1",
+  "plan-search": "20261010-puck-plan-v1",
+  "plan-view": "20261010-puck-plan-v1",
+  "plan-release": "20261010-puck-plan-v1",
+  "plan-complete": "20261010-puck-plan-v1",
   "security-intro": "20260929-security-admin-detail-v1",
   "security-password": "20260929-security-admin-detail-v2",
   "security-accesses-filter": "20260929-security-admin-detail-v1",

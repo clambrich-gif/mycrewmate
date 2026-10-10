@@ -12,6 +12,8 @@ import {
   getSecurityKlemmiSteps,
 } from "../client/src/lib/klemmi-area-tours";
 import {
+  KLEMMI_PLAN_AUDIO_IDS,
+  KLEMMI_PLAN_VOICE_PROFILE,
   KLEMMI_AUDIO_VOICE_MANIFEST,
   KLEMMI_VOICE_PROFILE,
 } from "../client/src/lib/klemmiAudio";
@@ -226,13 +228,20 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
     }
   });
 
-  it("ordnet jede registrierte Tourstimme verbindlich dem Achird-Profil zu", () => {
+  it("ordnet die gesamte Einsatzplanführung verbindlich der einheitlichen Puck-Stimme zu", () => {
     expect(KLEMMI_VOICE_PROFILE.voice).toBe("Achird");
+    expect(KLEMMI_PLAN_VOICE_PROFILE.voice).toBe("Puck");
     expect(Object.keys(KLEMMI_AUDIO_VOICE_MANIFEST).length).toBeGreaterThan(0);
+    expect(KLEMMI_PLAN_AUDIO_IDS.length).toBeGreaterThan(0);
     expect(
-      Object.values(KLEMMI_AUDIO_VOICE_MANIFEST).every(
-        entry => entry.voice === "Achird"
+      KLEMMI_PLAN_AUDIO_IDS.every(
+        id => KLEMMI_AUDIO_VOICE_MANIFEST[id].voice === "Puck"
       )
+    ).toBe(true);
+    expect(
+      Object.entries(KLEMMI_AUDIO_VOICE_MANIFEST)
+        .filter(([id]) => !id.startsWith("plan-"))
+        .every(([, entry]) => entry.voice === "Achird")
     ).toBe(true);
   });
 
