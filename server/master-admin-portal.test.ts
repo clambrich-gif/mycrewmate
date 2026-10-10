@@ -187,6 +187,20 @@ describe("Master-Admin-Portal", () => {
     expect(router).toContain("revokeTenantAdmin: masterAdminProcedure");
   });
 
+  it("trennt die Vereinsverwaltung als eindeutige Akkordeons mit sichtbarem Zielverein", () => {
+    const page = source("client/src/pages/MasterAdminPortal.tsx");
+
+    expect(page).toContain('from "@/components/ui/accordion"');
+    expect(page).toContain('data-slot="tenant-management-accordion"');
+    expect(page).toContain('type="single"');
+    expect(page).toContain("openTenantId");
+    expect(page).toContain("Verein öffnen");
+    expect(page).toContain("Sie verwalten gerade");
+    expect(page).toContain('data-slot="admin-modal-selected-tenant"');
+    expect(page).toContain("Ausgewählter Verein");
+    expect(page).toContain("Admin-Zugang hinzufügen");
+  });
+
   it("zeigt den aktuellen digitalen Vertragsstatus je Verein ohne Planungsdaten offenzulegen", () => {
     const db = source("server/db.ts");
     const page = source("client/src/pages/MasterAdminPortal.tsx");

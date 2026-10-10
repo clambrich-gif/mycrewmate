@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { pilotInquiryPhoneLink } from "@/lib/pilot-inquiry-phone";
 import {
   Select,
@@ -1161,6 +1162,7 @@ export default function MasterAdminPortal() {
   const [tenantPackageFilter, setTenantPackageFilter] = useState<
     "all" | ProductPackageId
   >("all");
+  const [openTenantId, setOpenTenantId] = useState<string | null>(null);
   const [productModalTenant, setProductModalTenant] = useState<TenantOverviewItem | null>(null);
   const [productAssignmentForm, setProductAssignmentForm] = useState<ProductAssignmentForm | null>(null);
   const [adminModalTenant, setAdminModalTenant] = useState<{ id: string; name: string } | null>(null);
@@ -1854,14 +1856,22 @@ export default function MasterAdminPortal() {
                 </label>
               </div>
             </CardHeader>
-            <CardContent className="divide-y divide-slate-100 px-5 sm:px-6">
+            <CardContent className="px-5 py-4 sm:px-6">
               {filteredActiveTenants.length === 0 && (
-                <p className="py-6 text-sm text-slate-500">
+                <p className="py-2 text-sm text-slate-500">
                   {tenantPackageFilter === "all"
                     ? "Aktuell befinden sich keine Vereine in der laufenden Verwaltung."
                     : `Keine laufenden Vereine mit ${PRODUCT_PACKAGE_META[tenantPackageFilter].name} gefunden.`}
                 </p>
               )}
+              <Accordion
+                type="single"
+                collapsible
+                value={openTenantId ?? ""}
+                onValueChange={value => setOpenTenantId(value || null)}
+                className="space-y-3"
+                data-slot="tenant-management-accordion"
+              >
               {filteredActiveTenants.map(tenant => {
                 const tenantAccesses = personalAccesses.filter(access => access.tenantIds.includes(tenant.id));
                 const accessMode = tenantAccessModeFromState({
@@ -1869,145 +1879,169 @@ export default function MasterAdminPortal() {
                   packageStatus: tenant.productAssignment.status,
                 });
                 const canManageTenant = tenant.status === "pilot" || tenant.status === "sample" || tenant.status === "active";
+                const isOpen = openTenantId === tenant.id;
+                const termSummary = tenant.productAssignment.endsOn
+                  ? `Ende ${formatDate(tenant.productAssignment.endsOn)}`
+                  : tenant.productAssignment.startsOn
+                    ? `Beginn ${formatDate(tenant.productAssignment.startsOn)} · kein Ende`
+                    : "Laufzeit offen";
                 return (
-                  <article key={tenant.id} className="grid gap-3 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="truncate font-semibold text-slate-900">{tenant.name}</h2>
-                        <Badge variant="outline" className={PRODUCT_BADGE_CLASS[tenant.productAssignment.packageId]}>
-                          {PRODUCT_PACKAGE_META[tenant.productAssignment.packageId].name}
-                        </Badge>
-                        <Badge variant="outline" className={PRODUCT_ASSIGNMENT_STATUS_CLASS[tenant.productAssignment.status]}>
-                          {TENANT_ACCESS_MODE_META[accessMode].label}
-                        </Badge>
+                  <AccordionItem
+                    key={tenant.id}
+                    value={tenant.id}
+                    className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+                    data-slot="tenant-management-item"
+                  >
+                    <AccordionTrigger className="items-center px-4 py-4 hover:bg-slate-50 hover:no-underline sm:px-5">
+                      <div className="min-w-0 flex-1 text-left">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h2 className="min-w-0 truncate font-semibold text-slate-900" title={tenant.name}>{tenant.name}</h2>
+                          <Badge variant="outline" className={PRODUCT_BADGE_CLASS[tenant.productAssignment.packageId]}>
+                            {PRODUCT_PACKAGE_META[tenant.productAssignment.packageId].name}
+                          </Badge>
+                          <Badge variant="outline" className={PRODUCT_ASSIGNMENT_STATUS_CLASS[tenant.productAssignment.status]}>
+                            {TENANT_ACCESS_MODE_META[accessMode].label}
+                          </Badge>
+                        </div>
+                        <p className="mt-1 truncate text-sm text-slate-500" title={tenant.legalName}>{tenant.legalName}</p>
+                        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
+                          <span className="inline-flex items-center gap-1"><CalendarDays className="size-3.5 text-slate-400" /> {tenant.eventCount} Veranstaltung{tenant.eventCount === 1 ? "" : "en"}</span>
+                          <span className="inline-flex min-w-0 items-center gap-1"><Mail className="size-3.5 shrink-0 text-slate-400" /> <span className="truncate">{tenant.contactEmail}</span></span>
+                          <span className="inline-flex items-center gap-1"><CreditCard className="size-3.5 text-slate-400" /> {termSummary}</span>
+                          <span className="inline-flex items-center gap-1"><UsersRound className="size-3.5 text-slate-400" /> {tenant.adminActivation.total} Admin{tenant.adminActivation.total === 1 ? "" : "s"}</span>
+                        </div>
                       </div>
-                      <p className="mt-1 truncate text-sm text-slate-500">{tenant.legalName}</p>
-                      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
-                        <span className="inline-flex items-center gap-1"><CalendarDays className="size-3.5 text-slate-400" /> {tenant.eventCount} Veranstaltung{tenant.eventCount === 1 ? "" : "en"}</span>
-                        <span className="inline-flex items-center gap-1"><Mail className="size-3.5 text-slate-400" /> {tenant.contactEmail}</span>
-                        {tenant.adminActivation.adminName && (
-                          <span className="inline-flex items-center gap-1 font-medium text-slate-700">
-                            <UsersRound className="size-3.5 text-slate-400" /> Admin: {tenant.adminActivation.adminName}
-                            {tenant.adminActivation.adminEmail && tenant.adminActivation.adminEmail !== tenant.contactEmail && (
-                              <span className="text-slate-400 font-normal">({tenant.adminActivation.adminEmail})</span>
+                      <span className="shrink-0 text-xs font-semibold text-blue-700">
+                        {isOpen ? "Verein schließen" : "Verein öffnen"}
+                      </span>
+                    </AccordionTrigger>
+                    <AccordionContent className="border-t border-slate-200 bg-slate-50/40 pb-0">
+                      <div className="space-y-4 p-4 sm:p-5">
+                        <div className="rounded-xl border border-blue-200 bg-blue-50 px-3.5 py-3 text-blue-950" data-slot="selected-tenant-context">
+                          <p className="text-[11px] font-bold uppercase tracking-wide text-blue-700">Sie verwalten gerade</p>
+                          <p className="mt-1 break-words text-base font-semibold">{tenant.name}</p>
+                          {tenant.legalName !== tenant.name ? <p className="mt-0.5 break-words text-xs text-blue-900">{tenant.legalName}</p> : null}
+                        </div>
+                        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_12rem] lg:items-start">
+                          <div className="min-w-0">
+                            <TenantProductUsage usage={tenant.productUsage} events={tenant.events} />
+                            <TenantProductTerm assignment={tenant.productAssignment} />
+                            <TenantAdminActivationStatus activation={tenant.adminActivation} />
+                            <TenantMfaStatus activation={tenant.adminActivation} />
+                            <TenantAccessPanel
+                              accesses={tenantAccesses}
+                              tenantStatus={tenant.status}
+                              deleting={deleteTestAccess.isPending}
+                              revokingAdmin={revokeTenantAdmin.isPending}
+                              onRequestDelete={setAccessToDelete}
+                              onRequestRevokeAdmin={access => setTenantAdminToRevoke({
+                                tenantId: tenant.id,
+                                tenantName: tenant.name,
+                                userId: access.accessId,
+                                adminName: access.name,
+                                adminEmail: access.email,
+                              })}
+                            />
+                            <TenantContractAcceptanceStatus acceptance={tenant.contractAcceptance} />
+                          </div>
+                          <div className="space-y-2">
+                            <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-left">
+                              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Nächste Veranstaltung</p>
+                              <p className="mt-0.5 break-words text-sm font-semibold text-slate-800">{tenant.nextEvent?.name ?? "Noch nicht angelegt"}</p>
+                              <p className="mt-0.5 text-xs text-slate-500">{tenant.nextEvent ? formatDate(tenant.nextEvent.startDate) : "Termin offen"}</p>
+                            </div>
+                            {canManageTenant && (
+                              <div className="flex flex-col gap-1.5">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="w-full border-violet-200 bg-violet-50 text-violet-900 hover:bg-violet-100"
+                                  onClick={() => {
+                                    setProductModalTenant(tenant);
+                                    setProductAssignmentForm(
+                                      defaultProductAssignmentForm(tenant.productAssignment, tenant.events)
+                                    );
+                                  }}
+                                >
+                                  <CreditCard className="size-3.5" /> Produkt verwalten
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  className="w-full bg-blue-600 text-white hover:bg-blue-700"
+                                  disabled={createHandoff.isPending}
+                                  onClick={() => createHandoff.mutate({ tenantId: tenant.id })}
+                                >
+                                  {createHandoff.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <UsersRound className="size-3.5" />}
+                                  In Vereinsansicht wechseln
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="w-full"
+                                  onClick={() => {
+                                    setAdminModalTenant({ id: tenant.id, name: tenant.name });
+                                    setAdminName("");
+                                    setAdminEmail("");
+                                    setSendInvitationEmail(false);
+                                  }}
+                                >
+                                  <KeyRound className="size-3.5" /> Admin-Zugang hinzufügen
+                                </Button>
+                                {(tenant.status === "pilot" || tenant.status === "sample") && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="w-full border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100"
+                                    disabled={updateLifecycle.isPending}
+                                    onClick={() => updateLifecycle.mutate({ tenantId: tenant.id, status: "suspended" })}
+                                  >
+                                    {updateLifecycle.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <PauseCircle className="size-3.5" />}
+                                    Pilot pausieren
+                                  </Button>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="w-full border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+                                  disabled={updateLifecycle.isPending}
+                                  onClick={() => setArchiveModalTenant({ id: tenant.id, name: tenant.name })}
+                                >
+                                  <Archive className="size-3.5" /> Verein archivieren
+                                </Button>
+                              </div>
                             )}
-                          </span>
-                        )}
-                      </div>
-                      <TenantProductUsage usage={tenant.productUsage} events={tenant.events} />
-                      <TenantProductTerm assignment={tenant.productAssignment} />
-                      <TenantAdminActivationStatus activation={tenant.adminActivation} />
-                      <TenantMfaStatus activation={tenant.adminActivation} />
-                      <TenantAccessPanel
-                        accesses={tenantAccesses}
-                        tenantStatus={tenant.status}
-                        deleting={deleteTestAccess.isPending}
-                        revokingAdmin={revokeTenantAdmin.isPending}
-                        onRequestDelete={setAccessToDelete}
-                        onRequestRevokeAdmin={access => setTenantAdminToRevoke({
-                          tenantId: tenant.id,
-                          tenantName: tenant.name,
-                          userId: access.accessId,
-                          adminName: access.name,
-                          adminEmail: access.email,
-                        })}
-                      />
-                      <TenantContractAcceptanceStatus acceptance={tenant.contractAcceptance} />
-                    </div>
-                    <div className="space-y-2 sm:min-w-48">
-                      <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-left sm:text-right">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Nächste Veranstaltung</p>
-                        <p className="mt-0.5 text-sm font-semibold text-slate-800">{tenant.nextEvent?.name ?? "Noch nicht angelegt"}</p>
-                        <p className="mt-0.5 text-xs text-slate-500">{tenant.nextEvent ? formatDate(tenant.nextEvent.startDate) : "Termin offen"}</p>
-                      </div>
-                      {canManageTenant && (
-                        <div className="flex flex-col gap-1.5">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="w-full border-violet-200 bg-violet-50 text-violet-900 hover:bg-violet-100"
-                            onClick={() => {
-                              setProductModalTenant(tenant);
-                              setProductAssignmentForm(
-                                defaultProductAssignmentForm(tenant.productAssignment, tenant.events)
-                              );
-                            }}
-                          >
-                            <CreditCard className="size-3.5" /> Produkt verwalten
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="default"
-                            className="w-full bg-blue-600 text-white hover:bg-blue-700"
-                            disabled={createHandoff.isPending}
-                            onClick={() => createHandoff.mutate({ tenantId: tenant.id })}
-                          >
-                            {createHandoff.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <UsersRound className="size-3.5" />}
-                            In Vereinsansicht wechseln
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="w-full"
-                            onClick={() => {
-                              setAdminModalTenant({ id: tenant.id, name: tenant.name });
-                              setAdminName("");
-                              setAdminEmail("");
-                              setSendInvitationEmail(false);
-                            }}
-                          >
-                            <KeyRound className="size-3.5" /> Admin-Zugang hinzufügen
-                          </Button>
-                          {(tenant.status === "pilot" || tenant.status === "sample") && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="w-full border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100"
-                              disabled={updateLifecycle.isPending}
-                              onClick={() => updateLifecycle.mutate({ tenantId: tenant.id, status: "suspended" })}
-                            >
-                              {updateLifecycle.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <PauseCircle className="size-3.5" />}
-                              Pilot pausieren
-                            </Button>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="w-full border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
-                            disabled={updateLifecycle.isPending}
-                            onClick={() => setArchiveModalTenant({ id: tenant.id, name: tenant.name })}
-                          >
-                            <Archive className="size-3.5" /> Verein archivieren
-                          </Button>
+                            {tenant.status === "suspended" && (
+                              <div className="flex flex-col gap-1.5">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="w-full border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100"
+                                  disabled={updateLifecycle.isPending}
+                                  onClick={() => updateLifecycle.mutate({ tenantId: tenant.id, status: "pilot" })}
+                                >
+                                  {updateLifecycle.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />}
+                                  Als Pilot reaktivieren
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="w-full border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+                                  disabled={updateLifecycle.isPending}
+                                  onClick={() => setArchiveModalTenant({ id: tenant.id, name: tenant.name })}
+                                >
+                                  <Archive className="size-3.5" /> Verein archivieren
+                                </Button>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      )}
-                      {tenant.status === "suspended" && (
-                        <div className="flex flex-col gap-1.5">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="w-full border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100"
-                            disabled={updateLifecycle.isPending}
-                            onClick={() => updateLifecycle.mutate({ tenantId: tenant.id, status: "pilot" })}
-                          >
-                            {updateLifecycle.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />}
-                            Als Pilot reaktivieren
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="w-full border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
-                            disabled={updateLifecycle.isPending}
-                            onClick={() => setArchiveModalTenant({ id: tenant.id, name: tenant.name })}
-                          >
-                            <Archive className="size-3.5" /> Verein archivieren
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </article>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
                 );
               })}
+              </Accordion>
             </CardContent>
           </Card>
 
@@ -2501,9 +2535,16 @@ export default function MasterAdminPortal() {
           <DialogHeader>
             <DialogTitle>Vereins-Administrator anlegen</DialogTitle>
             <DialogDescription>
-              Erstellt einen persönlichen Zugang für {adminModalTenant?.name}. Der Administrator setzt sein Passwort über einen einmaligen Aktivierungslink selbst.
+              Der Administrator setzt sein Passwort über einen einmaligen Aktivierungslink selbst.
             </DialogDescription>
           </DialogHeader>
+          <div
+            className="rounded-xl border border-blue-200 bg-blue-50 px-3.5 py-3 text-blue-950"
+            data-slot="admin-modal-selected-tenant"
+          >
+            <p className="text-[11px] font-bold uppercase tracking-wide text-blue-700">Ausgewählter Verein</p>
+            <p className="mt-1 break-words text-base font-semibold">{adminModalTenant?.name}</p>
+          </div>
           <form
             className="space-y-4"
             onSubmit={e => {
