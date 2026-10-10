@@ -65,7 +65,8 @@ describe("öffentliche Preis- und Pilotseiten", () => {
     expect(pilot).toContain("Kombination mit anderen Rabatten ist nicht möglich");
     expect(pilot).toContain("in Textform, zum Beispiel per E-Mail");
     expect(pilot).toContain('id="pilot-video"');
-    expect(pilot).toContain("In 43 Sekunden sehen, wie der kostenlose Pilot abläuft.");
+    expect(pilot).toContain("Weniger Papierchaos. Mehr Freude am Vereinsfest.");
+    expect(pilot).toContain("Der Zeichentrickfilm zeigt den Planungsstress hinter einem");
     expect(pilot).toContain('preload="metadata"');
     expect(pilot).toContain('onPlay={recordVideoStart}');
     expect(pilot).toContain('src={PILOT_VIDEO_SRC}');

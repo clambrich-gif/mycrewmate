@@ -146,24 +146,25 @@ function PilotExplainerVideo() {
       <div className="mx-auto grid max-w-7xl gap-7 px-4 sm:px-6 lg:grid-cols-[0.8fr_1.2fr] lg:items-center lg:px-8">
         <div className="max-w-xl">
           <p className="text-sm font-bold uppercase tracking-[0.14em] text-blue-700">
-            Pilot kurz erklärt
+            Unser Pilotfilm
           </p>
           <h2
             id="pilot-video-title"
             className="mt-3 text-3xl font-black tracking-[-0.035em] text-slate-950 sm:text-4xl"
           >
-            In 43 Sekunden sehen, wie der kostenlose Pilot abläuft.
+            Weniger Papierchaos. Mehr Freude am Vereinsfest.
           </h2>
           <p className="mt-4 text-lg leading-8 text-slate-600">
-            Ein kurzer Zeichentrickfilm zeigt, wie aus einer unverbindlichen
-            Anfrage ein gemeinsam abgestimmter Test für euren echten Anlass wird.
+            Der Zeichentrickfilm zeigt den Planungsstress hinter einem
+            ehrenamtlichen Fest – und warum MyCrewMate jetzt Vereine für einen
+            kostenlosen Pilotzeitraum sucht.
           </p>
           <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-semibold text-slate-700">
             <span className="inline-flex items-center gap-2">
               <Play className="size-4 text-orange-700" aria-hidden="true" />
               Startet nur auf Klick
             </span>
-            <span>Mit Ton · 43 Sekunden</span>
+            <span>Mit Ton · 43 Sekunden · Pilotanmeldung bis 31.12.2026</span>
           </div>
           <a
             href="#pilot-anfrage"
