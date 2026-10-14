@@ -50,6 +50,11 @@ describe("öffentliche Vereinsdemo", () => {
     expect(dashboard).toContain('guideId={isPublicDemoSession ? "demo-dashboard" : "dashboard"}');
     expect(dashboard).toContain("autoStart={isPublicDemoSession && demoGuideRequested}");
     expect(dashboard).toContain("Klemmi zeigt dir die Vereinsdemo");
+    expect(dashboard).toContain(
+      "const isShowingPersonalDashboard =\n    !isPublicDemoSession && isPersonalDashboard;"
+    );
+    expect(dashboard).toContain("if (isPublicDemoSession || isEventPass)");
+    expect(dashboard).toContain("!isEventPass && !isPublicDemoSession");
     expect(tour).toContain("createPublicDemoDashboardKlemmiSteps");
     expect(guide).toContain("autoStart?: boolean");
     expect(guide).toContain("autoStartHandled");

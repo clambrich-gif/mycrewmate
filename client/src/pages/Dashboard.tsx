@@ -1751,11 +1751,17 @@ export default function Dashboard() {
   const [isPersonalDashboard, setIsPersonalDashboard] = useState(
     () => !isEventPass && isDefaultMyTasks
   );
+  // Öffentliche Demos starten immer in der Vereinssicht. Die persönliche
+  // Ansicht ist eine lokale Komforteinstellung und darf einen bewusst
+  // gewählten Demo-Rundgang weder verdecken noch dessen Klemmi-Fenster
+  // verhindern – auch nicht, wenn jemand dieselbe Demo zuvor ausprobiert hat.
+  const isShowingPersonalDashboard =
+    !isPublicDemoSession && isPersonalDashboard;
   const [showPersonalDashboardExplanation, setShowPersonalDashboardExplanation] =
     useState(false);
   const { data: s, isLoading } = trpc.dashboard.stats.useQuery();
   const personalDashboard = trpc.dashboard.personal.useQuery(undefined, {
-    enabled: isPersonalDashboard && !isEventPass,
+    enabled: isShowingPersonalDashboard && !isEventPass,
   });
   const acknowledgePlanInformation = trpc.dashboard.acknowledgePlanInformation.useMutation({
     onSuccess: async () => {
@@ -1816,8 +1822,9 @@ export default function Dashboard() {
     }
   );
   useEffect(() => {
-    if (isEventPass) {
+    if (isPublicDemoSession || isEventPass) {
       setIsPersonalDashboard(false);
+      setShowPersonalDashboardExplanation(false);
       return;
     }
     if (isDefaultMyTasks) {
@@ -1826,10 +1833,15 @@ export default function Dashboard() {
         setShowPersonalDashboardExplanation(true);
       }
     }
-  }, [isDefaultMyTasks, hasSeenPersonalDashboardExplanation, isEventPass]);
+  }, [
+    isDefaultMyTasks,
+    hasSeenPersonalDashboardExplanation,
+    isEventPass,
+    isPublicDemoSession,
+  ]);
   const selectDashboardView = (mode: "club" | "personal") => {
     const personal = mode === "personal";
-    if (isEventPass && personal) return;
+    if ((isEventPass || isPublicDemoSession) && personal) return;
     setIsPersonalDashboard(personal);
     setDefaultMyTasks(personal);
     if (personal && !hasSeenPersonalDashboardExplanation) {
@@ -2063,7 +2075,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-8">
       <Dialog
-        open={showPersonalDashboardExplanation}
+        open={showPersonalDashboardExplanation && !isPublicDemoSession}
         onOpenChange={open => {
           if (!open) closePersonalDashboardExplanation();
         }}
@@ -2111,27 +2123,27 @@ export default function Dashboard() {
         <div>
           <PageTitle icon="dashboard">Dashboard</PageTitle>
           <p className="text-muted-foreground">
-            {isPersonalDashboard
+            {isShowingPersonalDashboard
               ? "Deine zugeordneten Aufgaben und Einsätze – klar auf deinen Bereich fokussiert."
               : "Die wichtigsten nächsten Schritte stehen zuerst; alle Kennzahlen werden automatisch aus den Planungsdaten berechnet."}
           </p>
-          {!isEventPass && <div
+          {!isEventPass && !isPublicDemoSession && <div
             className="mt-3 inline-flex rounded-xl border border-slate-200 bg-slate-100 p-1 shadow-sm"
             role="group"
             aria-label="Dashboard-Ansicht auswählen"
           >
             <button
               type="button"
-              className={`min-h-9 rounded-lg px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${!isPersonalDashboard ? "bg-white text-slate-950 shadow-sm" : "text-slate-600 hover:text-slate-950"}`}
-              aria-pressed={!isPersonalDashboard}
+              className={`min-h-9 rounded-lg px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${!isShowingPersonalDashboard ? "bg-white text-slate-950 shadow-sm" : "text-slate-600 hover:text-slate-950"}`}
+              aria-pressed={!isShowingPersonalDashboard}
               onClick={() => selectDashboardView("club")}
             >
               Vereinssicht
             </button>
             <button
               type="button"
-              className={`inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${isPersonalDashboard ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 hover:text-slate-950"}`}
-              aria-pressed={isPersonalDashboard}
+              className={`inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${isShowingPersonalDashboard ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 hover:text-slate-950"}`}
+              aria-pressed={isShowingPersonalDashboard}
               onClick={() => selectDashboardView("personal")}
             >
               <Pin className="size-3.5" aria-hidden="true" />
@@ -2139,7 +2151,7 @@ export default function Dashboard() {
             </button>
           </div>}
         </div>
-        {isPersonalDashboard && (
+        {isShowingPersonalDashboard && (
           <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:items-end">
             <KlemmiSurfaceGuide
               guideId="dashboard-personal"
@@ -2157,7 +2169,7 @@ export default function Dashboard() {
             />
           </div>
         )}
-        {!isPersonalDashboard && (
+        {!isShowingPersonalDashboard && (
           <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:items-end">
             {isPublicDemoSession && (
               <p className="max-w-xs text-right text-xs leading-5 text-slate-600">
@@ -2216,7 +2228,7 @@ export default function Dashboard() {
         )}
       </div>
 
-      {isPersonalDashboard ? (
+      {isShowingPersonalDashboard ? (
         personalDashboard.isLoading ? (
           <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-600 shadow-sm">
             Meine Aufgaben werden geladen …
