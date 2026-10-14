@@ -20,6 +20,61 @@ export type DashboardKlemmiTourState = {
 };
 
 /**
+ * Kurzer Einstieg für die öffentliche Vereinsdemo. Er zeigt nur echte,
+ * bereits sichtbare Dashboard-Bereiche und verweist danach bewusst auf die
+ * Navigation. Er speichert und verändert keinerlei Beispieldaten.
+ */
+export function createPublicDemoDashboardKlemmiSteps(
+  state: Pick<
+    DashboardKlemmiTourState,
+    "hasEventPeriod" | "hasPriorityActions" | "hasHelpers" | "canUseMapsGpx"
+  >
+): KlemmiSurfaceStep[] {
+  return [
+    {
+      key: "intro",
+      selector: '[data-klemmi-trigger="demo-dashboard"]',
+      eyebrow: "Vereinsdemo",
+      title: "Willkommen in der Musterplanung",
+      text: "Alle Namen, Aufgaben und Strecken hier sind erfunden. Du kannst frei schauen und ausprobieren – beim Verlassen wird diese Demo wieder gelöscht.",
+      action: "Dashboard entdecken",
+    },
+    {
+      key: "event",
+      selector: '[data-slot="event-countdown"]',
+      eyebrow: "1 · Dashboard",
+      title: state.hasEventPeriod ? "Hier beginnt der Überblick" : "Hier erscheint später dein Eventzeitraum",
+      text: state.hasEventPeriod
+        ? "Diese Kachel zeigt Zeitraum und Countdown der gewählten Musterveranstaltung. Darunter werden offene Punkte, Helferstand und Zuständigkeiten zusammengefasst."
+        : "Für echte Vereinsveranstaltungen erscheint hier nach dem Eintragen des Datums der Zeitraum und Countdown. In dieser Musterumgebung kannst du die übrigen Übersichten schon direkt ansehen.",
+      action: "Weiter zu den offenen Punkten",
+    },
+    {
+      key: "helpers",
+      selector: '[data-dashboard-section="Helfer-Kennzahlen"]',
+      eyebrow: "2 · Helfer und Einsatzplan",
+      title: state.hasHelpers ? "Sieh sofort, wo Hilfe gebraucht wird" : "So wächst der Helferüberblick",
+      text: state.hasHelpers
+        ? "Die Kennzahlen zeigen, wie viele Helfer eingeteilt sind und wo noch etwas fehlt. Öffne danach links den Einsatzplan: Dort siehst du die einzelnen Schichten und darfst die Musterzuordnung ausprobieren."
+        : "Sobald Helfer und Schichten angelegt sind, zeigt diese Kachel Besetzung und offenen Bedarf. Öffne danach links den Einsatzplan, um die Schichten kennenzulernen.",
+      action: "Weiter zu Orten und Material",
+      allowMissingTarget: true,
+    },
+    {
+      key: "locations",
+      selector: '[data-dashboard-level="Live-Standortkarte"]',
+      eyebrow: "3 · Orte, Material und Aufgaben",
+      title: state.canUseMapsGpx ? "Orte und Strecken gehören mit zur Planung" : "Orte und Material findest du in der Navigation",
+      text: state.canUseMapsGpx
+        ? "In dieser Pro-Demo siehst du unten zusätzlich Karte und GPX-Strecken. Über die linke Navigation kannst du außerdem Aufgaben, Material, Helfer und Einsatzplan nacheinander öffnen."
+        : "Über die linke Navigation öffnest du jetzt Einsatzplan, Helfer, Vorbereitung, Material und Orte. So lernst du die Musterplanung Schritt für Schritt kennen.",
+      action: "Rundgang abschließen",
+      allowMissingTarget: !state.canUseMapsGpx,
+    },
+  ];
+}
+
+/**
  * Erklärt ausschließlich echte, auf dem aktuellen Dashboard sichtbare Bereiche.
  * Leere Zustände werden dabei als klare Anleitung formuliert: Sie zeigen, welche
  * Eingaben nötig sind, damit die jeweilige Übersicht später mit Daten erscheint.

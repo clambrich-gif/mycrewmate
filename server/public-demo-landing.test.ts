@@ -28,6 +28,33 @@ describe("öffentliche Vereinsdemo", () => {
     expect(server).toContain('app.get("/api/public-demo/access", handlePublicDemoAccess)');
   });
 
+  it("erklärt jedes Demo-Paket vor dem Start und bietet einen freiwilligen Klemmi-Rundgang", () => {
+    const landing = read("client/src/pages/ClubDemoLanding.tsx");
+    const cleanup = read("server/public-demo-cleanup.ts");
+    const dashboard = read("client/src/pages/Dashboard.tsx");
+    const tour = read("client/src/lib/dashboard-klemmi-tour.ts");
+    const guide = read("client/src/components/KlemmiSurfaceGuide.tsx");
+
+    expect(landing).toContain("Willkommen in der Vereinsdemo");
+    expect(landing).toContain("Was dich erwartet");
+    expect(landing).toContain("Was kann ich hier testen?");
+    expect(landing).toContain("Kurz erklärt starten");
+    expect(landing).toContain("Direkt ausprobieren");
+    expect(landing).toContain("Für ein einzelnes Fest");
+    expect(landing).toContain("Für Vereine, die eine größere Veranstaltung");
+    expect(landing).toContain("Für große Veranstaltungen mit vielen Helfern");
+    expect(landing).toContain("&guide=1");
+    expect(cleanup).toContain('req.query.guide === "1"');
+    expect(cleanup).toContain('params.set("demoGuide", "1")');
+    expect(dashboard).toContain('get("demoGuide") !== "1"');
+    expect(dashboard).toContain('guideId={isPublicDemoSession ? "demo-dashboard" : "dashboard"}');
+    expect(dashboard).toContain("autoStart={isPublicDemoSession && demoGuideRequested}");
+    expect(dashboard).toContain("Klemmi zeigt dir die Vereinsdemo");
+    expect(tour).toContain("createPublicDemoDashboardKlemmiSteps");
+    expect(guide).toContain("autoStart?: boolean");
+    expect(guide).toContain("autoStartHandled");
+  });
+
   it("isoliert und löscht die fiktiven Daten wieder", () => {
     const router = read("server/routers.ts");
     const demo = read("server/public-demo.ts");

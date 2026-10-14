@@ -24,6 +24,10 @@ function hashToken(value: string) {
 export async function handlePublicDemoAccess(req: Request, res: Response): Promise<void> {
   try {
     const rawToken = typeof req.query.token === "string" ? req.query.token.trim() : "";
+    // Der Rundgang wird ausschließlich nach bewusster Auswahl auf der
+    // Vereinsdemo-Startseite gesetzt. Er enthält keine Daten und steuert nur
+    // die optionale Klemmi-Einführung im gerade angelegten Demo-Tab.
+    const startGuide = req.query.guide === "1";
     if (!rawToken || rawToken.length < 20 || rawToken.length > 200) {
       res.redirect(303, "/vereinsdemo");
       return;
@@ -55,6 +59,7 @@ export async function handlePublicDemoAccess(req: Request, res: Response): Promi
       event: String(demo.eventId),
       jahr: String(demo.year),
     });
+    if (startGuide) params.set("demoGuide", "1");
     res.redirect(303, `/?${params.toString()}`);
   } catch (error) {
     console.error("[PublicDemoAccess] Einmalzugang fehlgeschlagen", error);

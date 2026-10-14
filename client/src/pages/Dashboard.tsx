@@ -26,6 +26,7 @@ import {
 import {
   createDashboardKlemmiSteps,
   createPersonalDashboardKlemmiSteps,
+  createPublicDemoDashboardKlemmiSteps,
 } from "@/lib/dashboard-klemmi-tour";
 import {
   dashboardTargetHref,
@@ -1720,6 +1721,15 @@ function PersonalDashboardContent({
 export default function Dashboard() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
+  const isPublicDemoSession =
+    user?.openId.startsWith("tenant-admin:demo-session-") === true;
+  const [demoGuideRequested] = useState(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("demoGuide") !== "1") return false;
+    url.searchParams.delete("demoGuide");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+    return true;
+  });
   const detailsLayout = useDashboardDetailsLayout();
   const { canReadModule, isTenantAdmin, isPrimaryTenantAdmin } =
     useTenantAdministration();
@@ -2007,6 +2017,12 @@ export default function Dashboard() {
     currentPackageId: tenantProduct.data?.packageId ?? "event_pass",
     detailsLayout,
   });
+  const publicDemoKlemmiSteps = createPublicDemoDashboardKlemmiSteps({
+    hasEventPeriod: Boolean(currentEvent.startDate),
+    hasPriorityActions: priorityActions.length > 0,
+    hasHelpers: helpers.length > 0,
+    canUseMapsGpx,
+  });
   const personalDashboardKlemmiSteps = createPersonalDashboardKlemmiSteps();
   const activePotentialDay = workloadFilter
     ? dailyReadiness.find(day => day.day === workloadFilter.day)
@@ -2143,15 +2159,21 @@ export default function Dashboard() {
         )}
         {!isPersonalDashboard && (
           <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:items-end">
+            {isPublicDemoSession && (
+              <p className="max-w-xs text-right text-xs leading-5 text-slate-600">
+                Neu in der Demo? Klemmi zeigt dir Dashboard, Einsatzplan und die wichtigsten Bereiche in weniger als einer Minute.
+              </p>
+            )}
             <div className="flex flex-wrap items-center justify-end gap-1.5">
             <KlemmiSurfaceGuide
-              guideId="dashboard"
-              title="Dein Dashboard auf einen Blick"
-              introText="Hier laufen die Informationen aus deiner Planung zusammen. Ich zeige dir jetzt nur die Bereiche, die auf diesem Dashboard wirklich sichtbar sind."
-              steps={dashboardKlemmiSteps}
+              guideId={isPublicDemoSession ? "demo-dashboard" : "dashboard"}
+              title={isPublicDemoSession ? "Klemmi zeigt dir die Vereinsdemo" : "Dein Dashboard auf einen Blick"}
+              introText={isPublicDemoSession ? "Ich zeige dir kurz die wichtigsten Bereiche mit unseren fiktiven Beispieldaten. Danach kannst du in deinem Tempo weiterklicken." : "Hier laufen die Informationen aus deiner Planung zusammen. Ich zeige dir jetzt nur die Bereiche, die auf diesem Dashboard wirklich sichtbar sind."}
+              steps={isPublicDemoSession ? publicDemoKlemmiSteps : dashboardKlemmiSteps}
               successSignal={null}
-              completionTitle="Alles im Blick!"
-              completionText="Du weißt jetzt, wo das Dashboard den aktuellen Planungsstand zeigt – und welche Eingaben die einzelnen Übersichten füllen."
+              completionTitle={isPublicDemoSession ? "Jetzt kann es losgehen!" : "Alles im Blick!"}
+              completionText={isPublicDemoSession ? "Öffne als Nächstes links den Einsatzplan, die Helferliste oder – in der Pro-Demo – Orte und Standorte. Die Musterdaten bleiben nur für diese Übungsdemo da." : "Du weißt jetzt, wo das Dashboard den aktuellen Planungsstand zeigt – und welche Eingaben die einzelnen Übersichten füllen."}
+              autoStart={isPublicDemoSession && demoGuideRequested}
               voiceMuted={klemmiMuted}
               onVoiceMutedChange={muted => {
                 setKlemmiMuted(muted);

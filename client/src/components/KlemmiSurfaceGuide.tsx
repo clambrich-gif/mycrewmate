@@ -58,6 +58,8 @@ type KlemmiSurfaceGuideProps = {
   /** Externe Stummschaltung, etwa über den Dashboard-Schalter. */
   voiceMuted?: boolean;
   onVoiceMutedChange?: (muted: boolean) => void;
+  /** Öffnet die Führung einmalig, wenn der Nutzer den Rundgang bewusst gewählt hat. */
+  autoStart?: boolean;
 };
 
 function clamp(value: number, min: number, max: number) {
@@ -105,6 +107,7 @@ export function KlemmiSurfaceGuide({
   completionAudioKey = "complete",
   voiceMuted,
   onVoiceMutedChange,
+  autoStart = false,
 }: KlemmiSurfaceGuideProps) {
   const [open, setOpen] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
@@ -114,6 +117,7 @@ export function KlemmiSurfaceGuide({
   const [openingPending, setOpeningPending] = useState(false);
   const [narrationComplete, setNarrationComplete] = useState(false);
   const acceptedSuccessSignal = useRef<number | null>(null);
+  const autoStartHandled = useRef(false);
   /**
    * Der Live-Chat-Schritt startet seinen Clip direkt im Nutzer-Klick auf
    * „Weiter“. So kann kein Browser die Wiedergabe wegen eines nachgelagerten
@@ -156,6 +160,26 @@ export function KlemmiSurfaceGuide({
     setTargetReady(false);
     onOpenChange?.(false);
   };
+
+  const openGuide = () => {
+    acceptedSuccessSignal.current = successSignal;
+    setStepIndex(0);
+    setCelebrating(false);
+    setTargetReady(false);
+    setOpeningPending(true);
+    setOpen(true);
+    onOpenChange?.(true);
+    void playOpening().finally(() => setOpeningPending(false));
+  };
+
+  useEffect(() => {
+    if (!autoStart || autoStartHandled.current) return;
+    autoStartHandled.current = true;
+    // Ein kurzer Moment stellt sicher, dass die echten Zielbereiche bereits
+    // gerendert sind, bevor Klemmi sie hervorhebt.
+    const timer = window.setTimeout(openGuide, 260);
+    return () => window.clearTimeout(timer);
+  }, [autoStart]);
 
   useEffect(() => {
     if (!open || !step?.waitsForSuccess || successSignal === null) return;
@@ -368,14 +392,7 @@ export function KlemmiSurfaceGuide({
         data-klemmi-trigger={guideId}
         className="min-h-11 min-w-0 gap-2 border-blue-200 bg-blue-50 px-3 text-blue-950 shadow-sm hover:border-blue-300 hover:bg-blue-100 max-sm:gap-1 max-sm:px-1.5 max-sm:text-xs max-sm:[&_.klemmi-trigger-mascot]:size-5 max-sm:[&_.klemmi-trigger-mascot_img]:size-5 max-sm:[&>svg]:size-3"
         onClick={() => {
-          acceptedSuccessSignal.current = successSignal;
-          setStepIndex(0);
-          setCelebrating(false);
-          setTargetReady(false);
-          setOpeningPending(true);
-          setOpen(true);
-          onOpenChange?.(true);
-          void playOpening().finally(() => setOpeningPending(false));
+          openGuide();
         }}
       >
         <KlemmiTriggerMascot />

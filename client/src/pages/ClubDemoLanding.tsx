@@ -1,6 +1,14 @@
 import { KlemmiMascot } from "@/components/KlemmiMascot";
 import { PublicReachPageView } from "@/components/PublicReachMetric";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { appUrl } from "@/lib/site-host";
 import { trpc } from "@/lib/trpc";
 import {
@@ -11,15 +19,19 @@ import {
   DatabaseZap,
   Layers3,
   Map,
+  PlayCircle,
   ShieldCheck,
+  Sparkles,
   UsersRound,
+  X,
 } from "lucide-react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 const WORDMARK = "/brand/mycrewmate-wordmark.png";
 
-function demoEntryUrl(token: string) {
-  const query = `?token=${encodeURIComponent(token)}`;
+function demoEntryUrl(token: string, startGuide = false) {
+  const query = `?token=${encodeURIComponent(token)}${startGuide ? "&guide=1" : ""}`;
   const host = window.location.hostname;
   const isProjectPreview =
     host === "localhost" ||
@@ -38,8 +50,10 @@ type DemoPackage = {
   name: string;
   eyebrow: string;
   title: string;
+  purpose: string;
   description: string;
   stats: string[];
+  guideHighlights: string[];
   accent: string;
   icon: typeof Bike;
 };
@@ -50,9 +64,16 @@ const DEMO_PACKAGES: DemoPackage[] = [
     name: "Event Pass",
     eyebrow: "Ein einzelner Tag",
     title: "Eine kompakte Veranstaltung ausprobieren",
+    purpose:
+      "Für ein einzelnes Fest, einen Arbeitseinsatz, ein Turnier oder eine Feier mit einem überschaubaren Helferteam.",
     description:
       "Starte direkt in die echte App mit einem fiktiven Sommerfest, 30 Helfern, offenen Schichten und einer klaren To-do-Liste.",
     stats: ["30 Musterhelfer", "1 Veranstaltungstag", "Einsatzplan & Vorbereitung"],
+    guideHighlights: [
+      "Das Dashboard mit den wichtigsten offenen Punkten ansehen.",
+      "Im Einsatzplan erkennen, welche Schichten noch Helfer brauchen.",
+      "Einen Musterhelfer oder eine Aufgabe testweise verändern.",
+    ],
     accent: "border-orange-200 bg-orange-50/70 text-orange-950",
     icon: Clock3,
   },
@@ -61,9 +82,16 @@ const DEMO_PACKAGES: DemoPackage[] = [
     name: "Light",
     eyebrow: "Ein Vereinswochenende",
     title: "Eine vollständige Vereinsplanung erleben",
+    purpose:
+      "Für Vereine, die eine größere Veranstaltung oder ein mehrtägiges Fest mit mehreren Bereichen planen.",
     description:
       "Eine echte Musterumgebung mit einem dreitägigen Familienfest, 50 Helfern, fünf Ansprechpartnern, Material und Aufgaben.",
     stats: ["50 Musterhelfer", "5 Ansprechpartner", "Aufgaben, Material & Orte"],
+    guideHighlights: [
+      "Das Dashboard als gemeinsamen Überblick für das Vereinswochenende ansehen.",
+      "Helfer, Aufgaben, Material und Verantwortlichkeiten zusammen entdecken.",
+      "Im Einsatzplan nach offenen oder knapp besetzten Schichten filtern.",
+    ],
     accent: "border-sky-200 bg-sky-50/70 text-sky-950",
     icon: UsersRound,
   },
@@ -72,41 +100,154 @@ const DEMO_PACKAGES: DemoPackage[] = [
     name: "Pro",
     eyebrow: "Radsportfestival",
     title: "Die große Mehrtagesplanung durchspielen",
+    purpose:
+      "Für große Veranstaltungen mit vielen Helfern, mehreren Standorten, Strecken, Material und vielen Ansprechpartnern.",
     description:
       "Die fiktive EifelRide-Demo zeigt die echte App mit 150 Helfern, zehn Ansprechpartnern, Logistik, Standorten und GPX-Strecken.",
     stats: ["150 Musterhelfer", "10 Ansprechpartner", "Karte, Standorte & GPX"],
+    guideHighlights: [
+      "Die wichtigsten offenen Punkte im Dashboard des Radsportfestivals prüfen.",
+      "Mehrere Tage, Schichten und Helferzuordnungen im Einsatzplan kennenlernen.",
+      "Unter Orte & Standorte die Karte und die hinterlegte GPX-Strecke ansehen.",
+    ],
     accent: "border-blue-200 bg-blue-50/70 text-blue-950",
     icon: Bike,
   },
 ];
 
-function StartDemoButton({ item }: { item: DemoPackage }) {
+function DemoStartDialog({
+  item,
+  onOpenChange,
+}: {
+  item: DemoPackage | null;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const [showTestIdeas, setShowTestIdeas] = useState(false);
+  const startGuideRef = useRef(false);
   const startDemo = trpc.publicDemo.start.useMutation({
     onSuccess: result => {
-      window.location.assign(demoEntryUrl(result.handoffToken));
+      window.location.assign(demoEntryUrl(result.handoffToken, startGuideRef.current));
     },
     onError: error => {
       toast.error(error.message || "Die Demo konnte gerade nicht vorbereitet werden.");
     },
   });
 
+  const close = () => {
+    if (startDemo.isPending) return;
+    setShowTestIdeas(false);
+    onOpenChange(false);
+  };
+
+  const start = (startGuide: boolean) => {
+    if (!item) return;
+    startGuideRef.current = startGuide;
+    startDemo.mutate({ packageId: item.id });
+  };
+
   return (
-    <Button
-      type="button"
-      className="mt-6 w-full rounded-xl bg-slate-950 text-white hover:bg-blue-700"
-      onClick={() => startDemo.mutate({ packageId: item.id })}
-      disabled={startDemo.isPending}
-    >
-      {startDemo.isPending ? "Demo wird vorbereitet …" : `${item.name} öffnen`}
-      {!startDemo.isPending && <ArrowRight className="size-4" aria-hidden="true" />}
-    </Button>
+    <Dialog open={Boolean(item)} onOpenChange={open => !open && close()}>
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-xl bg-white text-slate-950 sm:max-w-xl">
+        {item && (
+          <>
+            <DialogHeader>
+              <div className="mb-2 flex items-center gap-3">
+                <span className="grid size-11 place-items-center rounded-2xl bg-blue-50 text-blue-700">
+                  <Sparkles className="size-5" aria-hidden="true" />
+                </span>
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-blue-700">Vereinsdemo · {item.name}</p>
+                  <DialogTitle className="mt-1 text-xl">Willkommen in der Vereinsdemo</DialogTitle>
+                </div>
+              </div>
+              <DialogDescription className="text-sm leading-6 text-slate-600">
+                {item.purpose}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-1 text-sm leading-6 text-slate-700">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="font-bold text-slate-950">Was dich erwartet</p>
+                <p className="mt-1.5">
+                  Du öffnest die normale MyCrewMate-App mit vollständig fiktiven Beispieldaten. Du darfst dich frei umsehen und Dinge ausprobieren. Beim Verlassen wird alles wieder zurückgesetzt.
+                </p>
+              </div>
+
+              {showTestIdeas && (
+                <div className="rounded-2xl border border-blue-200 bg-blue-50/70 p-4">
+                  <p className="font-bold text-blue-950">Das kannst du in dieser Demo ausprobieren</p>
+                  <ul className="mt-2.5 space-y-2 text-blue-950">
+                    {item.guideHighlights.map(highlight => (
+                      <li key={highlight} className="flex gap-2">
+                        <CheckCircle2 className="mt-1 size-4 shrink-0 text-blue-700" aria-hidden="true" />
+                        <span>{highlight}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter className="flex-col gap-2 sm:items-stretch">
+              <div className="grid w-full gap-2 sm:grid-cols-2">
+                <Button
+                  type="button"
+                  className="min-h-11 bg-blue-700 text-white hover:bg-blue-800"
+                  onClick={() => start(true)}
+                  disabled={startDemo.isPending}
+                >
+                  <Sparkles className="size-4" aria-hidden="true" />
+                  {startDemo.isPending ? "Demo wird vorbereitet …" : "Kurz erklärt starten"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-11 border-slate-300 bg-white text-slate-900 hover:bg-slate-50"
+                  onClick={() => start(false)}
+                  disabled={startDemo.isPending}
+                >
+                  <PlayCircle className="size-4" aria-hidden="true" />
+                  Direkt ausprobieren
+                </Button>
+              </div>
+              <div className="flex w-full flex-wrap items-center justify-between gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-slate-700 hover:bg-slate-100"
+                  onClick={() => setShowTestIdeas(current => !current)}
+                  disabled={startDemo.isPending}
+                >
+                  {showTestIdeas ? "Testideen ausblenden" : "Was kann ich hier testen?"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-slate-600 hover:bg-slate-100"
+                  onClick={close}
+                  disabled={startDemo.isPending}
+                >
+                  <X className="size-4" aria-hidden="true" />
+                  Noch nicht öffnen
+                </Button>
+              </div>
+            </DialogFooter>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
 export default function ClubDemoLanding() {
+  const [selectedDemo, setSelectedDemo] = useState<DemoPackage | null>(null);
+
   return (
     <main className="min-h-screen bg-[#f7f8fb] text-slate-950">
       <PublicReachPageView metric="club_demo_page_view" />
+      <DemoStartDialog item={selectedDemo} onOpenChange={open => !open && setSelectedDemo(null)} />
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex min-h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
           <a href="https://mycrewmate.de/" className="shrink-0" aria-label="MyCrewMate – zur Hauptwebsite">
@@ -127,7 +268,7 @@ export default function ClubDemoLanding() {
               Die echte App fiktiv durchklicken – ohne Zugang für euren Verein.
             </h1>
             <p className="mt-4 max-w-3xl text-base leading-7 text-slate-600">
-              Wähle eine bereits gefüllte Musterumgebung. Danach öffnet sich die normale MyCrewMate-App: Du kannst erfundene Helfer anlegen, Schichten ändern, Aufgaben abhaken und – bei Pro – Karte und GPX-Strecken ansehen.
+              Wähle eine bereits gefüllte Musterumgebung. Vor dem Öffnen erklären wir dir in wenigen Sätzen, welches Beispiel zu eurem Anlass passt und was du dort ausprobieren kannst.
             </p>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-500">
               Das ist eine Übungsdemo, kein Testzugang für euren eigenen Verein. Alle Personen, Vereine, Kontakte und Strecken sind erfunden. Deine Eingaben liegen nur in einem eigenen, temporären Demo-Bereich und werden beim Verlassen der Demo sowie spätestens innerhalb von rund 45 Minuten gelöscht. Technische Sicherungskopien rotieren nach höchstens sieben täglichen Wiederherstellungspunkten und werden nie genutzt, um eine Vereinsdemo erneut zu öffnen.
@@ -137,7 +278,7 @@ export default function ClubDemoLanding() {
             <KlemmiMascot className="size-16 shrink-0" imageClassName="object-contain" decorative />
             <p className="text-sm leading-5 text-orange-950">
               <strong>Hallo, ich bin Klemmi.</strong>
-              <br />In der App zeige ich dir den nächsten sinnvollen Schritt.
+              <br />Wenn du „Kurz erklärt“ wählst, zeige ich dir nach dem Start die wichtigsten Bereiche direkt in der App.
             </p>
           </div>
         </div>
@@ -183,7 +324,8 @@ export default function ClubDemoLanding() {
                   </span>
                 </div>
                 <h3 className="mt-6 text-lg font-black leading-6">{item.title}</h3>
-                <p className="mt-3 text-sm leading-6 opacity-80">{item.description}</p>
+                <p className="mt-3 text-sm font-semibold leading-6 opacity-90">{item.purpose}</p>
+                <p className="mt-2 text-sm leading-6 opacity-80">{item.description}</p>
                 <ul className="mt-5 space-y-2 text-sm font-semibold">
                   {item.stats.map(stat => (
                     <li key={stat} className="flex items-center gap-2">
@@ -192,8 +334,16 @@ export default function ClubDemoLanding() {
                     </li>
                   ))}
                 </ul>
-                <div className="mt-auto">
-                  <StartDemoButton item={item} />
+                <div className="mt-auto pt-6">
+                  <Button
+                    type="button"
+                    className="w-full rounded-xl bg-slate-950 text-white hover:bg-blue-700"
+                    onClick={() => setSelectedDemo(item)}
+                  >
+                    {item.name} auswählen
+                    <ArrowRight className="size-4" aria-hidden="true" />
+                  </Button>
+                  <p className="mt-2 text-center text-xs font-medium opacity-75">Erst kurz orientieren, dann die Demo öffnen.</p>
                 </div>
               </article>
             );

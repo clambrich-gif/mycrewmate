@@ -412,7 +412,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain("createDashboardKlemmiSteps");
     expect(dashboard).toContain("hasMappableLocations");
     expect(dashboard).toContain("trpc.locations.list.useQuery");
-    expect(dashboard).toContain("steps={dashboardKlemmiSteps}");
+    expect(dashboard).toContain("steps={isPublicDemoSession ? publicDemoKlemmiSteps : dashboardKlemmiSteps}");
+    expect(dashboard).toContain("createPublicDemoDashboardKlemmiSteps");
     expect(tour).toContain("hasMappableLocations");
     expect(tour).toContain("hasEventPeriod");
     expect(tour).toContain("hasPriorityActions");
