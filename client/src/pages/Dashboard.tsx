@@ -1043,6 +1043,23 @@ function DailyReadinessCard({
 const DEFAULT_DASHBOARD_COUNTER_LOGO =
   "/brand/dashboard-counter-default-logo.png";
 const MAX_EVENT_LOGO_BYTES = 3_000_000;
+const PUBLIC_DEMO_GUIDE_SESSION_KEY = "mycrewmate:public-demo-guide";
+const PUBLIC_DEMO_GUIDE_COOKIE = "mycrewmate_public_demo_guide";
+
+function hasPublicDemoGuideCookie() {
+  return document.cookie
+    .split(";")
+    .some(cookie => cookie.trim() === `${PUBLIC_DEMO_GUIDE_COOKIE}=1`);
+}
+
+function clearPublicDemoGuideMarker() {
+  try {
+    window.sessionStorage.removeItem(PUBLIC_DEMO_GUIDE_SESSION_KEY);
+  } catch {
+    // Der Cookie-Merker bleibt unabhängig von Webspeicherfehlern löschbar.
+  }
+  document.cookie = `${PUBLIC_DEMO_GUIDE_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
+}
 
 function EventCountdownWidget({
   event,
@@ -1725,10 +1742,24 @@ export default function Dashboard() {
     user?.openId.startsWith("tenant-admin:demo-session-") === true;
   const [demoGuideRequested] = useState(() => {
     const url = new URL(window.location.href);
-    if (url.searchParams.get("demoGuide") !== "1") return false;
-    url.searchParams.delete("demoGuide");
-    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
-    return true;
+    const requestedByUrl = url.searchParams.get("demoGuide") === "1";
+    try {
+      if (requestedByUrl) {
+        // React prüft Zustandsinitialisierer im Entwicklungsmodus absichtlich
+        // mehrfach. Der kurze Merker verhindert, dass der erste Durchlauf den
+        // URL-Parameter entfernt und der zweite daraus fälschlich „nein“ macht.
+        window.sessionStorage.setItem(PUBLIC_DEMO_GUIDE_SESSION_KEY, "1");
+        url.searchParams.delete("demoGuide");
+        window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+      }
+      return (
+        requestedByUrl ||
+        hasPublicDemoGuideCookie() ||
+        window.sessionStorage.getItem(PUBLIC_DEMO_GUIDE_SESSION_KEY) === "1"
+      );
+    } catch {
+      return requestedByUrl;
+    }
   });
   const detailsLayout = useDashboardDetailsLayout();
   const { canReadModule, isTenantAdmin, isPrimaryTenantAdmin } =
@@ -2034,6 +2065,8 @@ export default function Dashboard() {
     hasPriorityActions: priorityActions.length > 0,
     hasHelpers: helpers.length > 0,
     canUseMapsGpx,
+    canUseDonations: allowsDonations,
+    currentPackageId: tenantProduct.data?.packageId ?? "event_pass",
   });
   const personalDashboardKlemmiSteps = createPersonalDashboardKlemmiSteps();
   const activePotentialDay = workloadFilter
@@ -2179,14 +2212,51 @@ export default function Dashboard() {
             <div className="flex flex-wrap items-center justify-end gap-1.5">
             <KlemmiSurfaceGuide
               guideId={isPublicDemoSession ? "demo-dashboard" : "dashboard"}
-              title={isPublicDemoSession ? "Klemmi zeigt dir die Vereinsdemo" : "Dein Dashboard auf einen Blick"}
-              introText={isPublicDemoSession ? "Ich zeige dir kurz die wichtigsten Bereiche mit unseren fiktiven Beispieldaten. Danach kannst du in deinem Tempo weiterklicken." : "Hier laufen die Informationen aus deiner Planung zusammen. Ich zeige dir jetzt nur die Bereiche, die auf diesem Dashboard wirklich sichtbar sind."}
+              audioGuideId={isPublicDemoSession ? "dashboard" : undefined}
+              title="Dein Dashboard auf einen Blick"
+              introText="Hier laufen die Informationen aus deiner Planung zusammen. Ich zeige dir jetzt nur die Bereiche, die auf diesem Dashboard wirklich sichtbar sind."
               steps={isPublicDemoSession ? publicDemoKlemmiSteps : dashboardKlemmiSteps}
               successSignal={null}
               completionTitle={isPublicDemoSession ? "Jetzt kann es losgehen!" : "Alles im Blick!"}
               completionText={isPublicDemoSession ? "Öffne als Nächstes links den Einsatzplan, die Helferliste oder – in der Pro-Demo – Orte und Standorte. Die Musterdaten bleiben nur für diese Übungsdemo da." : "Du weißt jetzt, wo das Dashboard den aktuellen Planungsstand zeigt – und welche Eingaben die einzelnen Übersichten füllen."}
-              autoStart={isPublicDemoSession && demoGuideRequested}
-              voiceMuted={klemmiMuted}
+              completionActionLabel={isPublicDemoSession ? "Jetzt selbst ausprobieren" : undefined}
+              manualStartPrompt={
+                isPublicDemoSession && demoGuideRequested
+                  ? {
+                      eyebrow: "Willkommen in der Vereinsdemo",
+                      title: "Klemmi zeigt dir diese Demo in 4 kurzen Schritten",
+                      text: "Du siehst zuerst den Überblick, dann Helfer und Einsatzplan sowie Orte, Material und Aufgaben. Danach kannst du alles in deinem Tempo selbst ausprobieren.",
+                      steps: [
+                        "Willkommen in der Musterplanung",
+                        "Dashboard und Veranstaltungsüberblick",
+                        "Helfer und Einsatzplan",
+                        "Orte, Material und Aufgaben",
+                      ],
+                      startLabel: "Rundgang mit Ton beginnen",
+                      mutedStartLabel: "Rundgang ohne Ton beginnen",
+                      skipLabel: "Ohne Erklärung selbst ausprobieren",
+                      mutedText: "Du kannst den Rundgang ohne Ton beginnen oder die Stimme erst einschalten.",
+                      unmuteLabel: "Klemmi-Stimme einschalten",
+                    }
+                  : undefined
+              }
+               manualStartAudioKey={
+                 isPublicDemoSession && demoGuideRequested
+                   ? "dashboard-intro"
+                   : undefined
+               }
+               onManualStartPromptDismiss={
+                 isPublicDemoSession && demoGuideRequested
+                   ? () => {
+                       try {
+                         clearPublicDemoGuideMarker();
+                       } catch {
+                         // Die URL-Übergabe funktioniert unabhängig vom Webspeicher.
+                       }
+                     }
+                   : undefined
+               }
+               voiceMuted={klemmiMuted}
               onVoiceMutedChange={muted => {
                 setKlemmiMuted(muted);
                 persistKlemmiMuted(muted);

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createDashboardKlemmiSteps,
   createPersonalDashboardKlemmiSteps,
+  createPublicDemoDashboardKlemmiSteps,
 } from "../client/src/lib/dashboard-klemmi-tour";
 
 const populatedDashboard = {
@@ -84,6 +85,30 @@ describe("Dashboard-Klemmi-Tour", () => {
         detailsLayout: "side-by-side",
       }).find(step => step.key === "map-active")?.action
     ).toBe("Weiter zum Live-Chat");
+  });
+
+  it("verwendet für die öffentliche Demo ausschließlich vorhandene Dashboard-Audioclips", () => {
+    const steps = createPublicDemoDashboardKlemmiSteps({
+      hasEventPeriod: true,
+      hasPriorityActions: true,
+      hasHelpers: true,
+      canUseMapsGpx: true,
+      canUseDonations: true,
+      currentPackageId: "pro",
+    });
+
+    expect(steps.map(step => step.key)).toEqual([
+      "intro",
+      "event",
+      "helpers",
+      "locations",
+    ]);
+    expect(steps.map(step => step.audioKey)).toEqual([
+      "intro",
+      "countdown-dated",
+      "helpers-active",
+      "map-active",
+    ]);
   });
 
   it("führt die persönliche Ansicht durch Fortschritt, eigene Arbeit, Helfer und Standorte", () => {

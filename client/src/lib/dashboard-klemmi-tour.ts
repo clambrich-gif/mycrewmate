@@ -27,7 +27,12 @@ export type DashboardKlemmiTourState = {
 export function createPublicDemoDashboardKlemmiSteps(
   state: Pick<
     DashboardKlemmiTourState,
-    "hasEventPeriod" | "hasPriorityActions" | "hasHelpers" | "canUseMapsGpx"
+    | "hasEventPeriod"
+    | "hasPriorityActions"
+    | "hasHelpers"
+    | "canUseMapsGpx"
+    | "canUseDonations"
+    | "currentPackageId"
   >
 ): KlemmiSurfaceStep[] {
   return [
@@ -37,6 +42,7 @@ export function createPublicDemoDashboardKlemmiSteps(
       eyebrow: "Vereinsdemo",
       title: "Willkommen in der Musterplanung",
       text: "Alle Namen, Aufgaben und Strecken hier sind erfunden. Du kannst frei schauen und ausprobieren – beim Verlassen wird diese Demo wieder gelöscht.",
+      audioKey: "intro",
       action: "Dashboard entdecken",
     },
     {
@@ -47,6 +53,9 @@ export function createPublicDemoDashboardKlemmiSteps(
       text: state.hasEventPeriod
         ? "Diese Kachel zeigt Zeitraum und Countdown der gewählten Musterveranstaltung. Darunter werden offene Punkte, Helferstand und Zuständigkeiten zusammengefasst."
         : "Für echte Vereinsveranstaltungen erscheint hier nach dem Eintragen des Datums der Zeitraum und Countdown. In dieser Musterumgebung kannst du die übrigen Übersichten schon direkt ansehen.",
+      audioKey: state.hasEventPeriod
+        ? "countdown-dated"
+        : "countdown-empty",
       action: "Weiter zu den offenen Punkten",
     },
     {
@@ -57,6 +66,13 @@ export function createPublicDemoDashboardKlemmiSteps(
       text: state.hasHelpers
         ? "Die Kennzahlen zeigen, wie viele Helfer eingeteilt sind und wo noch etwas fehlt. Öffne danach links den Einsatzplan: Dort siehst du die einzelnen Schichten und darfst die Musterzuordnung ausprobieren."
         : "Sobald Helfer und Schichten angelegt sind, zeigt diese Kachel Besetzung und offenen Bedarf. Öffne danach links den Einsatzplan, um die Schichten kennenzulernen.",
+      audioKey: state.hasHelpers
+        ? state.canUseDonations
+          ? "helpers-active"
+          : "helpers-active-no-donations"
+        : state.canUseDonations
+          ? "helpers-empty"
+          : "helpers-empty-no-donations",
       action: "Weiter zu Orten und Material",
       allowMissingTarget: true,
     },
@@ -68,6 +84,11 @@ export function createPublicDemoDashboardKlemmiSteps(
       text: state.canUseMapsGpx
         ? "In dieser Pro-Demo siehst du unten zusätzlich Karte und GPX-Strecken. Über die linke Navigation kannst du außerdem Aufgaben, Material, Helfer und Einsatzplan nacheinander öffnen."
         : "Über die linke Navigation öffnest du jetzt Einsatzplan, Helfer, Vorbereitung, Material und Orte. So lernst du die Musterplanung Schritt für Schritt kennen.",
+      audioKey: state.canUseMapsGpx
+        ? "map-active"
+        : state.currentPackageId === "light"
+          ? "map-locked-light"
+          : "map-locked",
       action: "Rundgang abschließen",
       allowMissingTarget: !state.canUseMapsGpx,
     },

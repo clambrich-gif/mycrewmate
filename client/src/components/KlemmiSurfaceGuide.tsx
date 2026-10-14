@@ -3,8 +3,15 @@ import { KlemmiGuideCard } from "@/components/KlemmiGuideCard";
 import { KlemmiMascot, KlemmiTriggerMascot } from "@/components/KlemmiMascot";
 import { KlemmiVoiceControl } from "@/components/KlemmiVoiceControl";
 import { useKlemmiVoice } from "@/hooks/useKlemmiVoice";
-import { isKlemmiAudioId } from "@/lib/klemmiAudio";
+import { isKlemmiAudioId, type KlemmiAudioId } from "@/lib/klemmiAudio";
 import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   CheckCircle2,
   ChevronLeft,
@@ -43,6 +50,8 @@ export type KlemmiSurfaceStep = {
 
 type KlemmiSurfaceGuideProps = {
   guideId: string;
+  /** Optionaler Audio-Namensraum, wenn Führungsanker und Sprachclips getrennt sind. */
+  audioGuideId?: string;
   title: string;
   introText: string;
   steps: KlemmiSurfaceStep[];
@@ -55,11 +64,29 @@ type KlemmiSurfaceGuideProps = {
   completionText?: string;
   /** Optionaler eigener Abschlussclip für reine Übersichtstouren. */
   completionAudioKey?: string;
+  /** Beschriftung des Abschlussbuttons; für Demos bewusst aktiver formuliert. */
+  completionActionLabel?: string;
   /** Externe Stummschaltung, etwa über den Dashboard-Schalter. */
   voiceMuted?: boolean;
   onVoiceMutedChange?: (muted: boolean) => void;
   /** Öffnet die Führung einmalig, wenn der Nutzer den Rundgang bewusst gewählt hat. */
   autoStart?: boolean;
+  /** Optionaler, großer und zentrierter Einstieg vor einer Führung. */
+  manualStartPrompt?: {
+    eyebrow: string;
+    title: string;
+    text: string;
+    steps: string[];
+    startLabel: string;
+    mutedStartLabel: string;
+    skipLabel: string;
+    mutedText: string;
+    unmuteLabel: string;
+  };
+  /** Fester Markenclip, der direkt im bewussten Start-Klick abgespielt wird. */
+  manualStartAudioKey?: KlemmiAudioId;
+  /** Informiert den Aufrufer erst nach Starten oder Überspringen des sichtbaren Einstiegs. */
+  onManualStartPromptDismiss?: () => void;
 };
 
 function clamp(value: number, min: number, max: number) {
@@ -95,6 +122,7 @@ function readableKlemmiCopy(value: string) {
  */
 export function KlemmiSurfaceGuide({
   guideId,
+  audioGuideId = guideId,
   title,
   introText,
   steps,
@@ -105,9 +133,13 @@ export function KlemmiSurfaceGuide({
   completionTitle = "Geschafft!",
   completionText = "Du kennst jetzt die wichtigsten Schritte. Klemmi bleibt jederzeit über „Klemmi zeigt’s“ für dich da.",
   completionAudioKey = "complete",
+  completionActionLabel = "Fertig",
   voiceMuted,
   onVoiceMutedChange,
   autoStart = false,
+  manualStartPrompt,
+  manualStartAudioKey,
+  onManualStartPromptDismiss,
 }: KlemmiSurfaceGuideProps) {
   const [open, setOpen] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
@@ -116,8 +148,11 @@ export function KlemmiSurfaceGuide({
   const [celebrating, setCelebrating] = useState(false);
   const [openingPending, setOpeningPending] = useState(false);
   const [narrationComplete, setNarrationComplete] = useState(false);
+  const [manualStartPromptDismissed, setManualStartPromptDismissed] =
+    useState(false);
   const acceptedSuccessSignal = useRef<number | null>(null);
   const autoStartHandled = useRef(false);
+  const manualStartPromptHandled = useRef(false);
   /**
    * Der Live-Chat-Schritt startet seinen Clip direkt im Nutzer-Klick auf
    * „Weiter“. So kann kein Browser die Wiedergabe wegen eines nachgelagerten
@@ -138,8 +173,8 @@ export function KlemmiSurfaceGuide({
   const audioSuffix =
     step?.audioKey ?? (isIntro ? "intro" : (step?.key ?? "intro"));
   const audioCandidate = celebrating
-    ? `${guideId}-${completionAudioKey}`
-    : `${guideId}-${audioSuffix}`;
+    ? `${audioGuideId}-${completionAudioKey}`
+    : `${audioGuideId}-${audioSuffix}`;
   const audioClipId = isKlemmiAudioId(audioCandidate)
     ? audioCandidate
     : undefined;
@@ -150,6 +185,9 @@ export function KlemmiSurfaceGuide({
   const displayStepEyebrow = readableKlemmiCopy(step?.eyebrow ?? "");
   const displayStepTitle = readableKlemmiCopy(step?.title ?? "");
   const displayStepText = readableKlemmiCopy(step?.text ?? "");
+  const isManualStartPromptOpen = Boolean(
+    manualStartPrompt && !manualStartPromptDismissed && !open
+  );
 
   const closeGuide = () => {
     cancel();
@@ -161,7 +199,7 @@ export function KlemmiSurfaceGuide({
     onOpenChange?.(false);
   };
 
-  const openGuide = () => {
+  const prepareGuide = () => {
     acceptedSuccessSignal.current = successSignal;
     setStepIndex(0);
     setCelebrating(false);
@@ -169,17 +207,50 @@ export function KlemmiSurfaceGuide({
     setOpeningPending(true);
     setOpen(true);
     onOpenChange?.(true);
+  };
+
+  const openGuide = () => {
+    prepareGuide();
     void playOpening().finally(() => setOpeningPending(false));
   };
 
+  const dismissManualStartPrompt = () => {
+    setManualStartPromptDismissed(true);
+    if (manualStartPromptHandled.current) return;
+    manualStartPromptHandled.current = true;
+    onManualStartPromptDismiss?.();
+  };
+
+  /**
+   * Dieser Pfad wird ausschließlich durch den sichtbaren Startbutton ausgelöst.
+   * Damit startet der feste Markenclip im selben iPhone-/Safari-Klick und nicht
+   * erst in einem nachgelagerten Effekt nach dem Seitenwechsel.
+   */
+  const openGuideFromManualPrompt = () => {
+    dismissManualStartPrompt();
+    directlyStartedNarrationStep.current = step?.key ?? "intro";
+    prepareGuide();
+    const directAudioClip = manualStartAudioKey ?? audioClipId;
+    if (!directAudioClip) {
+      setOpeningPending(false);
+      setNarrationComplete(true);
+      return;
+    }
+    const directNarration = `${displayTitle}. ${displayIntroText}`;
+    void speak(directNarration, directAudioClip).finally(() => {
+      setOpeningPending(false);
+      setNarrationComplete(true);
+    });
+  };
+
   useEffect(() => {
-    if (!autoStart || autoStartHandled.current) return;
+    if (!autoStart || manualStartPrompt || autoStartHandled.current) return;
     autoStartHandled.current = true;
     // Ein kurzer Moment stellt sicher, dass die echten Zielbereiche bereits
     // gerendert sind, bevor Klemmi sie hervorhebt.
     const timer = window.setTimeout(openGuide, 260);
     return () => window.clearTimeout(timer);
-  }, [autoStart]);
+  }, [autoStart, manualStartPrompt]);
 
   useEffect(() => {
     if (!open || !step?.waitsForSuccess || successSignal === null) return;
@@ -353,12 +424,14 @@ export function KlemmiSurfaceGuide({
 
   const showPrevious = () => {
     if (stepIndex === 0) return;
+    directlyStartedNarrationStep.current = null;
     setTargetReady(false);
     setStepIndex(current => Math.max(0, current - 1));
   };
 
   const showNext = () => {
     if (!step || step.waitsForSuccess) return;
+    directlyStartedNarrationStep.current = null;
     onStepAction?.(step.key);
     if (stepIndex === steps.length - 1) {
       setCelebrating(true);
@@ -366,7 +439,7 @@ export function KlemmiSurfaceGuide({
     }
     const nextStep = steps[stepIndex + 1];
     if (nextStep?.key === "chat") {
-      const chatAudioCandidate = `${guideId}-${nextStep.audioKey ?? nextStep.key}`;
+        const chatAudioCandidate = `${audioGuideId}-${nextStep.audioKey ?? nextStep.key}`;
       if (isKlemmiAudioId(chatAudioCandidate)) {
         directlyStartedNarrationStep.current = nextStep.key;
         setNarrationComplete(false);
@@ -386,6 +459,91 @@ export function KlemmiSurfaceGuide({
 
   return (
     <>
+      <Dialog
+        open={isManualStartPromptOpen}
+        onOpenChange={nextOpen => {
+          if (!nextOpen) dismissManualStartPrompt();
+        }}
+      >
+        <DialogContent className="max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] overflow-y-auto border-blue-200 bg-white text-slate-950 sm:max-w-lg">
+          {manualStartPrompt && (
+            <>
+              <DialogHeader className="text-left">
+                <div className="flex items-center gap-4">
+                  <KlemmiMascot
+                    className="size-20 shrink-0 sm:size-24"
+                    isSpeaking={isSpeaking}
+                    decorative
+                  />
+                  <div className="min-w-0">
+                    <p className="text-xs font-black tracking-[0.14em] text-[#e86117] uppercase">
+                      {manualStartPrompt.eyebrow}
+                    </p>
+                    <DialogTitle className="mt-1 text-xl leading-tight text-slate-950 sm:text-2xl">
+                      {manualStartPrompt.title}
+                    </DialogTitle>
+                  </div>
+                </div>
+                <DialogDescription className="pt-2 text-sm leading-6 text-slate-600">
+                  {manualStartPrompt.text}
+                </DialogDescription>
+              </DialogHeader>
+
+              <ol className="grid gap-2 py-2 text-sm text-slate-800 sm:grid-cols-2">
+                {manualStartPrompt.steps.map((item, index) => (
+                  <li
+                    key={item}
+                    className="flex min-h-11 items-center gap-2 rounded-xl border border-blue-100 bg-blue-50/70 px-3 py-2"
+                  >
+                    <span className="grid size-6 shrink-0 place-items-center rounded-full bg-blue-700 text-xs font-black text-white">
+                      {index + 1}
+                    </span>
+                    <span className="font-semibold">{item}</span>
+                  </li>
+                ))}
+              </ol>
+
+              {muted && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-5 text-amber-950">
+                  <strong>Klemmi ist gerade stumm.</strong> {manualStartPrompt.mutedText}
+                </div>
+              )}
+
+              <div className="grid gap-2 pt-1">
+                <Button
+                  type="button"
+                  className="min-h-12 w-full bg-[#ff7a2f] text-base font-bold text-white hover:bg-[#e86117] focus-visible:ring-[#ff7a2f]"
+                  onClick={openGuideFromManualPrompt}
+                >
+                  <Sparkles className="size-5" aria-hidden="true" />
+                  {muted
+                    ? manualStartPrompt.mutedStartLabel
+                    : manualStartPrompt.startLabel}
+                </Button>
+                {muted && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="min-h-11 w-full border-blue-200 bg-white text-blue-800 hover:bg-blue-50"
+                    onClick={toggleMuted}
+                  >
+                    {manualStartPrompt.unmuteLabel}
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="min-h-11 w-full text-slate-700 hover:bg-slate-100"
+                  onClick={dismissManualStartPrompt}
+                >
+                  {manualStartPrompt.skipLabel}
+                </Button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <Button
         type="button"
         variant="outline"
@@ -458,7 +616,7 @@ export function KlemmiSurfaceGuide({
                       className="mr-1.5 size-4"
                       aria-hidden="true"
                     />
-                    Fertig
+                    {completionActionLabel}
                   </Button>
                 </div>
               ) : (

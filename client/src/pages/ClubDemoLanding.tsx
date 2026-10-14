@@ -29,6 +29,8 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 const WORDMARK = "/brand/mycrewmate-wordmark.png";
+const PUBLIC_DEMO_GUIDE_SESSION_KEY = "mycrewmate:public-demo-guide";
+const PUBLIC_DEMO_GUIDE_COOKIE = "mycrewmate_public_demo_guide";
 
 function demoEntryUrl(token: string, startGuide = false) {
   const query = `?token=${encodeURIComponent(token)}${startGuide ? "&guide=1" : ""}`;
@@ -141,6 +143,25 @@ function DemoStartDialog({
 
   const start = (startGuide: boolean) => {
     if (!item) return;
+    try {
+      // In lokalen Vorschauen liegen Startseite und App auf demselben Host.
+      // Der kurze Cookie-Merker überbrückt dort einen vollständigen Seitenwechsel,
+      // während der Server für die echte App-Domain weiterhin guide=1 übergibt.
+      document.cookie = startGuide
+        ? `${PUBLIC_DEMO_GUIDE_COOKIE}=1; Path=/; Max-Age=300; SameSite=Lax`
+        : `${PUBLIC_DEMO_GUIDE_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
+    } catch {
+      // Die URL-Übergabe bleibt auch bei gesperrten Cookies funktionsfähig.
+    }
+    try {
+      if (startGuide) {
+        window.sessionStorage.setItem(PUBLIC_DEMO_GUIDE_SESSION_KEY, "1");
+      } else {
+        window.sessionStorage.removeItem(PUBLIC_DEMO_GUIDE_SESSION_KEY);
+      }
+    } catch {
+      // Der Cookie- und URL-Weg bleibt auch bei gesperrtem Webspeicher nutzbar.
+    }
     startGuideRef.current = startGuide;
     startDemo.mutate({ packageId: item.id });
   };
@@ -188,7 +209,10 @@ function DemoStartDialog({
               )}
             </div>
 
-            <DialogFooter className="flex-col gap-2 sm:items-stretch">
+            <DialogFooter className="flex flex-col items-stretch gap-2 sm:flex-col sm:items-stretch sm:space-x-0">
+              <p className="w-full text-center text-xs leading-5 text-slate-600">
+                Mit dem Klemmi-Rundgang öffnet sich nach dem Laden zuerst eine große Einführung. Dort startest du die Stimme bewusst selbst.
+              </p>
               <div className="grid w-full gap-2 sm:grid-cols-2">
                 <Button
                   type="button"
@@ -197,7 +221,7 @@ function DemoStartDialog({
                   disabled={startDemo.isPending}
                 >
                   <Sparkles className="size-4" aria-hidden="true" />
-                  {startDemo.isPending ? "Demo wird vorbereitet …" : "Kurz erklärt starten"}
+                  {startDemo.isPending ? "Demo wird vorbereitet …" : "Mit Klemmi-Rundgang starten"}
                 </Button>
                 <Button
                   type="button"
@@ -207,7 +231,7 @@ function DemoStartDialog({
                   disabled={startDemo.isPending}
                 >
                   <PlayCircle className="size-4" aria-hidden="true" />
-                  Direkt ausprobieren
+                  Ohne Erklärung selbst ausprobieren
                 </Button>
               </div>
               <div className="flex w-full flex-wrap items-center justify-between gap-2">
@@ -278,7 +302,7 @@ export default function ClubDemoLanding() {
             <KlemmiMascot className="size-16 shrink-0" imageClassName="object-contain" decorative />
             <p className="text-sm leading-5 text-orange-950">
               <strong>Hallo, ich bin Klemmi.</strong>
-              <br />Wenn du „Kurz erklärt“ wählst, zeige ich dir nach dem Start die wichtigsten Bereiche direkt in der App.
+              <br />Wähle „Mit Klemmi-Rundgang starten“. Nach dem Laden siehst du zuerst eine große Einführung und entscheidest bewusst, ob ich mit Ton loslegen soll.
             </p>
           </div>
         </div>
