@@ -102,9 +102,12 @@ describe("öffentliche MyCrewMate-Metadaten", () => {
     expect(sitemapXml()).not.toContain("mycrewmate.at");
   });
 
-  it("hält robots.txt und Sitemap frei von einem widersprüchlichen Noindex-Header", () => {
+  it("hält technische Crawler-Dateien und das Website-Symbol frei von einem widersprüchlichen Noindex-Header", () => {
     expect(shouldApplySearchRobotsHeader("/robots.txt")).toBe(false);
     expect(shouldApplySearchRobotsHeader("/sitemap.xml")).toBe(false);
+    expect(shouldApplySearchRobotsHeader("/manifest.json")).toBe(false);
+    expect(shouldApplySearchRobotsHeader("/favicon.ico")).toBe(false);
+    expect(shouldApplySearchRobotsHeader("/icons/mycrewmate-pwa-192.png")).toBe(false);
     expect(shouldApplySearchRobotsHeader("/")).toBe(true);
     expect(shouldApplySearchRobotsHeader("/helfer")).toBe(true);
   });

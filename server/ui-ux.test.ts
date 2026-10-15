@@ -670,7 +670,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(html).toContain(
       "<title>MyCrewMate · Vereins- und Eventplanung mit Helferplanung</title>"
     );
-    expect(html).toContain('<link rel="icon" type="image/png" href="/icons/mycrewmate-pwa-192.png" />');
+    expect(html).toContain(
+      '<link rel="icon" type="image/x-icon" sizes="48x48" href="/favicon.ico" />'
+    );
+    expect(html).toContain(
+      '<link rel="icon" type="image/png" sizes="192x192" href="/icons/mycrewmate-pwa-192.png" />'
+    );
     expect(html).toContain('sizes="180x180" href="/icons/mycrewmate-pwa-192.png"');
     expect(readFileSync(new URL("../client/public/favicon.ico", import.meta.url)).subarray(0, 4).toString("hex")).toBe("00000100");
     expect(main).toContain('navigator.serviceWorker.register("/service-worker.js")');

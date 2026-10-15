@@ -11,7 +11,7 @@ export const MARKETING_OG_IMAGE = `${CANONICAL_MARKETING_ORIGIN}/landing/festiva
  * Suchmaschinen können damit erkennen, wann die kanonische Startseite zuletzt
  * substanziell aktualisiert wurde.
  */
-export const MARKETING_SITEMAP_LAST_MODIFIED = "2026-10-10";
+export const MARKETING_SITEMAP_LAST_MODIFIED = "2026-10-15";
 /** Öffentlicher Eigentumsnachweis von Bing; kein Besucherdaten- oder Trackingtag. */
 export const BING_WEBMASTER_VERIFICATION_CONTENT = "84ECCF4B66C434F1AD1130AFD84681C6";
 
@@ -256,10 +256,21 @@ export function sitemapXml() {
   ].join("\n");
 }
 
-/** Technische Crawler-Dateien sind selbst keine indexierbaren Inhaltsseiten. */
+/**
+ * Suchmaschinen müssen robots.txt, Sitemap und das sichtbare Website-Symbol
+ * ohne eine noindex-Anweisung abrufen können. Das Symbol selbst wird nicht
+ * als Suchtreffer gezeigt, aber Googlebot-Image benötigt es für das Favicon
+ * neben dem organischen Treffer der öffentlichen Startseite.
+ */
 export function shouldApplySearchRobotsHeader(pathname: string | undefined | null) {
   const normalizedPath = normalizePathname(pathname);
-  return normalizedPath !== "/robots.txt" && normalizedPath !== "/sitemap.xml";
+  return !(
+    normalizedPath === "/robots.txt" ||
+    normalizedPath === "/sitemap.xml" ||
+    normalizedPath === "/manifest.json" ||
+    normalizedPath === "/favicon.ico" ||
+    normalizedPath.startsWith("/icons/")
+  );
 }
 
 export function registerPublicSearchRoutes(app: Express) {
