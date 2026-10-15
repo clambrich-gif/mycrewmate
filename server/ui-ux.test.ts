@@ -668,7 +668,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(html).toContain('name="apple-mobile-web-app-capable" content="yes"');
     expect(html).toContain('name="apple-mobile-web-app-title" content="MyCrewMate"');
     expect(html).toContain(
-      "<title>MyCrewMate · Vereins- und Eventplanung mit Helferplanung</title>"
+      "<title>MyCrewMate – Helferplanung für Vereine & Events</title>"
     );
     expect(html).toContain(
       '<link rel="icon" type="image/x-icon" sizes="48x48" href="/favicon.ico" />'

@@ -2,9 +2,9 @@ import type { Express, NextFunction, Request, Response } from "express";
 
 export const CANONICAL_MARKETING_ORIGIN = "https://www.mycrewmate.de";
 export const MARKETING_PAGE_TITLE =
-  "MyCrewMate · Vereins- und Eventplanung mit Helferplanung";
+  "MyCrewMate – Helferplanung für Vereine & Events";
 export const MARKETING_PAGE_DESCRIPTION =
-  "MyCrewMate ist die Software für Vereins- und Eventplanung: Helferplanung, Einsatzpläne, Aufgaben, Schichten und Kommunikation für Vereinsfeste, Sportveranstaltungen und ehrenamtliche Teams.";
+  "Planen Sie Vereinsfeste, Sportveranstaltungen und Helfereinsätze einfach: MyCrewMate bündelt Helfer, Schichten, Aufgaben und Einsatzpläne an einem Ort.";
 export const MARKETING_OG_IMAGE = `${CANONICAL_MARKETING_ORIGIN}/landing/festival.jpg`;
 /**
  * Nur bei wesentlichen öffentlichen Inhalts- oder Metadatenänderungen anpassen.

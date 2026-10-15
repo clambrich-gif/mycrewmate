@@ -24,12 +24,13 @@ const htmlShell = `<!doctype html>
 </html>`;
 
 describe("öffentliche MyCrewMate-Metadaten", () => {
-  it("beschreibt die Startseite eindeutig als Vereins- und Helferplanungssoftware", () => {
-    expect(MARKETING_PAGE_TITLE).toContain("Vereins- und Eventplanung");
-    expect(MARKETING_PAGE_TITLE).toContain("Helferplanung");
-    expect(MARKETING_PAGE_DESCRIPTION).toContain("Einsatzpläne");
-    expect(MARKETING_PAGE_DESCRIPTION).toContain("Vereinsfeste");
-    expect(MARKETING_PAGE_DESCRIPTION).toContain("Sportveranstaltungen");
+  it("beschreibt die Startseite klar für Suchende nach Helferplanung im Verein", () => {
+    expect(MARKETING_PAGE_TITLE).toBe(
+      "MyCrewMate – Helferplanung für Vereine & Events"
+    );
+    expect(MARKETING_PAGE_DESCRIPTION).toBe(
+      "Planen Sie Vereinsfeste, Sportveranstaltungen und Helfereinsätze einfach: MyCrewMate bündelt Helfer, Schichten, Aufgaben und Einsatzpläne an einem Ort."
+    );
   });
 
   it("liefert für die kanonische Startseite eindeutige, indexierbare Metadaten", () => {
@@ -70,7 +71,9 @@ describe("öffentliche MyCrewMate-Metadaten", () => {
   it("setzt Linkvorschau, Canonical und Titel bereits im ausgelieferten HTML", () => {
     const html = applyPublicSiteMetadata(htmlShell, "mycrewmate.de", "/");
 
-    expect(html).toContain(`<title>${MARKETING_PAGE_TITLE}</title>`);
+    expect(html).toContain(
+      '<title>MyCrewMate – Helferplanung für Vereine &amp; Events</title>'
+    );
     expect(html).toContain(
       `<link rel="canonical" href="${CANONICAL_MARKETING_ORIGIN}/" />`
     );
