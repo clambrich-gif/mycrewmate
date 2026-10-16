@@ -1534,6 +1534,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain("dashboard-event-countdown");
     expect(dashboard).toContain("grid-cols-[3.75rem_minmax(0,1fr)]");
     expect(dashboard).toContain("justify-start");
+    expect(dashboard).toContain("flex flex-wrap items-baseline justify-start");
+    expect(dashboard).toContain("inline-flex items-baseline gap-1.5 whitespace-nowrap");
+    expect(dashboard).toContain("lg:flex-row lg:items-start lg:justify-between");
+    expect(dashboard).toContain("lg:w-[21rem]");
     expect(dashboard).toContain("border-black/35");
     expect(dashboard).not.toContain("border-dashed");
     expect(dashboard).toContain("nur noch");
@@ -1578,7 +1582,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(styles).toContain(".dashboard-daily-quote-segment");
     expect(styles).toContain("flex: 0 0 auto");
     expect(styles).toContain(".dashboard-event-countdown");
-    expect(styles).toContain("width: 16rem !important");
+    expect(styles).toContain("@media (min-width: 1024px)");
+    expect(styles).toContain("width: 21rem !important");
+    expect(styles).not.toContain("width: 16rem !important");
     expect(styles).toContain("@keyframes dashboard-daily-quote-marquee");
     expect(styles).toContain("left: 100%");
     expect(styles).toContain("--dashboard-daily-quote-duration");

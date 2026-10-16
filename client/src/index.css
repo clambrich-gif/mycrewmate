@@ -377,9 +377,12 @@
   flex: 0 0 auto;
 }
 
-@media (min-width: 640px) {
+/* Bis zum Laptopformat wird der Kopfbereich gestapelt. Der Countdown nutzt dann
+   die ganze verfügbare Breite. Erst danach erhält er eine feste, ausreichend
+   breite Spalte; Zahl und Einheit werden dadurch nie rechts abgeschnitten. */
+@media (min-width: 1024px) {
   .dashboard-event-countdown {
-    width: 16rem !important;
+    width: 21rem !important;
   }
 }
 
