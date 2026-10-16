@@ -1,8 +1,9 @@
-# Der öffentliche AWS-ECR-Spiegel liefert das unveränderte offizielle Node-Image
-# ohne die anonyme Docker-Hub-Abrufgrenze des GitHub-Buildrunners. Die
-# Standard-Dockerfile-Syntax des bereitgestellten BuildKit genügt für diesen
-# Dockerfile-Inhalt und vermeidet einen zusätzlichen externen Syntax-Abruf.
-ARG NODE_BASE_IMAGE=public.ecr.aws/docker/library/node:22-bookworm-slim
+# Der öffentliche Google-Container-Registry-Spiegel liefert das unveränderte
+# offizielle Node-Image. Sein Manifest entspricht dem offiziellen Docker-Hub-
+# Digest und vermeidet die aktuell erreichte Abrufgrenze des AWS-ECR-Spiegels.
+# Die Standard-Dockerfile-Syntax des bereitgestellten BuildKit genügt und lädt
+# kein zusätzliches Syntax-Image aus einer externen Registry.
+ARG NODE_BASE_IMAGE=mirror.gcr.io/library/node:22-bookworm-slim
 FROM ${NODE_BASE_IMAGE} AS build
 
 WORKDIR /app
