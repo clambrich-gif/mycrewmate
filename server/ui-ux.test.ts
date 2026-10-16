@@ -1532,9 +1532,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(dashboard).toContain('accept="image/png,image/jpeg"');
     expect(dashboard).toContain("Eventlogo für Dashboard und PDFs ändern");
     expect(dashboard).toContain("dashboard-event-countdown");
-    expect(dashboard).toContain("grid-cols-[3.75rem_minmax(0,1fr)]");
-    expect(dashboard).toContain("justify-start");
-    expect(dashboard).toContain("flex flex-wrap items-baseline justify-start");
+    expect(dashboard).toContain("flex min-h-[4.25rem] items-center justify-center gap-2");
+    expect(dashboard).toContain('data-slot="event-countdown-summary"');
+    expect(dashboard).toContain("flex flex-wrap items-baseline justify-center");
     expect(dashboard).toContain("inline-flex items-baseline gap-1.5 whitespace-nowrap");
     expect(dashboard).toContain("lg:flex-row lg:items-start lg:justify-between");
     expect(dashboard).toContain("lg:w-[21rem]");

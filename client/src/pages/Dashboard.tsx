@@ -1191,7 +1191,7 @@ function EventCountdownWidget({
   const counterContent = (() => {
     if (state.kind === "upcoming") {
       return (
-        <p className="flex flex-wrap items-baseline justify-start gap-x-1.5 gap-y-0.5 font-black tracking-[-0.055em]">
+        <p className="flex flex-wrap items-baseline justify-center gap-x-1.5 gap-y-0.5 text-center font-black tracking-[-0.055em]">
           <span className="whitespace-nowrap text-sm font-extrabold tracking-[-0.035em] text-slate-950">
             nur noch
           </span>
@@ -1240,7 +1240,7 @@ function EventCountdownWidget({
         className={`dashboard-event-countdown w-full shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-md shadow-slate-200/70${isUrgent ? " countdown-urgent" : ""}`}
         aria-label="Event-Zähler mit Tagesimpuls"
       >
-        <div className="grid min-h-[4.25rem] grid-cols-[3.75rem_minmax(0,1fr)] items-center gap-1 bg-gradient-to-r from-sky-50 via-white to-orange-50 px-2 py-1.5 sm:min-h-[3.95rem]">
+        <div className="flex min-h-[4.25rem] items-center justify-center gap-2 bg-gradient-to-r from-sky-50 via-white to-orange-50 px-2 py-1.5 sm:min-h-[3.95rem]">
           {!isPublicDemoSession && <input
             ref={logoInputRef}
             type="file"
@@ -1291,7 +1291,9 @@ function EventCountdownWidget({
               </span>
             )}
           </button>
-          <div className="min-w-0">{counterContent}</div>
+          <div data-slot="event-countdown-summary" className="min-w-0">
+            {counterContent}
+          </div>
         </div>
         <div
           ref={quoteViewportRef}
