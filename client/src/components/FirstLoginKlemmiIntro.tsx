@@ -191,12 +191,12 @@ export function FirstLoginKlemmiIntro({
         <p data-klemmi-desktop-copy className="mt-2 text-xs leading-5 text-slate-500">
           Der orange Rahmen zeigt dir den echten Hilfeauslöser auf dieser Seite.
         </p>
-        <div className="mt-4 grid w-full grid-cols-[minmax(0,0.62fr)_minmax(0,1.38fr)] gap-2" data-klemmi-navigation>
+        <div className="mt-4 grid w-full grid-cols-1 gap-2 sm:grid-cols-[minmax(0,0.62fr)_minmax(0,1.38fr)]" data-klemmi-navigation>
           <Button
             type="button"
             variant="outline"
             data-klemmi-repeat-control
-            className="min-h-11 min-w-0 border-blue-200 px-2.5 text-blue-900 hover:bg-blue-50"
+            className="min-h-11 min-w-0 w-full whitespace-normal border-blue-200 px-2.5 text-blue-900 hover:bg-blue-50 sm:whitespace-nowrap"
             onClick={() =>
               speak(
                 isCoAdmin ? `${KLEMMI_INTRO_TEXT} ${KLEMMI_CO_ADMIN_TEXT}` : KLEMMI_INTRO_TEXT,
@@ -212,7 +212,7 @@ export function FirstLoginKlemmiIntro({
             type="button"
             data-klemmi-finish-control
             data-klemmi-narration-complete={narrationComplete ? "true" : "false"}
-            className="min-h-11 min-w-0 px-2.5 text-sm bg-[#ff7a2f] text-white hover:bg-[#e86117] focus-visible:ring-[#ff7a2f]"
+            className="min-h-11 min-w-0 w-full whitespace-normal bg-[#ff7a2f] px-2.5 text-center text-sm leading-snug text-white hover:bg-[#e86117] focus-visible:ring-[#ff7a2f] sm:whitespace-nowrap"
             onClick={finish}
             disabled={completing || leaving}
           >

@@ -1111,21 +1111,22 @@ export function PlanningTeamAccessManager({
             />
           </div>
           {form.id === null && form.contactId !== null && form.email.trim() && (
-            <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+            <label className="mt-3 flex cursor-pointer items-start gap-2 text-sm leading-6 text-slate-700">
               <Checkbox
+                className="mt-1 shrink-0"
                 checked={sendEmailInvite}
                 disabled={busy}
                 onCheckedChange={checked => setSendEmailInvite(checked === true)}
               />
-              <span>Aktivierungs-E-Mail direkt automatisch an <strong>{form.email.trim()}</strong> senden</span>
+              <span className="min-w-0 break-words">Aktivierungs-E-Mail direkt automatisch an <strong>{form.email.trim()}</strong> senden</span>
             </label>
           )}
-          <div className="mt-4 flex flex-wrap items-center gap-2">
+          <div className="mt-4 grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
             {form.id === null ? (
               <>
                 <Button
                   type="button"
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  className="h-auto min-h-11 w-full min-w-0 whitespace-normal bg-blue-600 px-3 py-2 text-center leading-snug text-white hover:bg-blue-700 sm:w-auto sm:whitespace-nowrap"
                   disabled={!valid || !form.email.trim() || busy || createWithInvitationLink.isPending}
                   onClick={() => {
                     if (!valid || !form.contactId || !form.email.trim()) return;
@@ -1152,6 +1153,7 @@ export function PlanningTeamAccessManager({
                 <Button
                   type="button"
                   variant="outline"
+                  className="h-auto min-h-11 w-full min-w-0 whitespace-normal px-3 py-2 text-center leading-snug sm:w-auto sm:whitespace-nowrap"
                   disabled={!valid || busy}
                   onClick={save}
                 >
@@ -1164,7 +1166,7 @@ export function PlanningTeamAccessManager({
                 </Button>
               </>
             ) : (
-              <Button type="button" disabled={!valid || busy} onClick={save}>
+              <Button type="button" className="h-auto min-h-11 w-full min-w-0 whitespace-normal px-3 py-2 text-center leading-snug sm:w-auto sm:whitespace-nowrap" disabled={!valid || busy} onClick={save}>
                 {busy ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
                 Zugang speichern
               </Button>
@@ -1297,11 +1299,11 @@ export function PlanningTeamAccessManager({
           }
         }}
       >
-        <DialogContent className="w-[calc(100%-2rem)] max-w-md">
-          <form className="space-y-4" onSubmit={submitReset}>
+        <DialogContent className="max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md !overflow-x-hidden overflow-y-auto bg-white">
+          <form className="min-w-0 space-y-4" onSubmit={submitReset}>
             <DialogHeader>
-              <DialogTitle>Passwort zurücksetzen &amp; Zugangsblatt drucken</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="min-w-0 break-words pr-8">Passwort zurücksetzen &amp; Zugangsblatt drucken</DialogTitle>
+              <DialogDescription className="break-words">
                 Für „{resetTarget?.label}“ wird ein neuer Zugangscode erzeugt. Bestehende Sitzungen verlieren sofort ihren Zugriff. Der Klartextcode erscheint nur im direkt heruntergeladenen PDF.
               </DialogDescription>
             </DialogHeader>
@@ -1312,14 +1314,16 @@ export function PlanningTeamAccessManager({
                 type="password"
                 autoComplete="current-password"
                 value={resetPassword}
+                className="w-full max-w-full"
                 disabled={resetAndPrint.isPending}
                 onChange={event => setResetPassword(event.target.value)}
               />
             </div>
-            <DialogFooter className="flex flex-row flex-nowrap items-center justify-end gap-3 sm:space-x-0">
+            <DialogFooter className="!mt-4 !flex !flex-col-reverse !gap-3 sm:!flex-row sm:!items-center sm:!justify-end sm:space-x-0">
               <Button
                 type="button"
                 variant="outline"
+                className="w-full min-w-0 whitespace-normal border-slate-300 bg-white text-center leading-snug text-slate-900 shadow-sm sm:w-auto sm:whitespace-nowrap"
                 disabled={resetAndPrint.isPending}
                 onClick={() => setResetTarget(null)}
               >
@@ -1327,7 +1331,7 @@ export function PlanningTeamAccessManager({
               </Button>
               <Button
                 type="submit"
-                className="shrink-0 whitespace-nowrap bg-amber-600 text-white hover:bg-amber-700"
+                className="h-auto min-h-11 w-full min-w-0 whitespace-normal bg-amber-600 px-3 py-2 text-center leading-snug text-white hover:bg-amber-700 sm:w-auto sm:whitespace-nowrap"
                 disabled={!resetTarget || !resetPassword || resetAndPrint.isPending}
               >
                 {resetAndPrint.isPending ? <LoaderCircle className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}

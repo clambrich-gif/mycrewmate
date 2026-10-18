@@ -1035,6 +1035,32 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(widget).toContain("ungelesene Notizen");
   });
 
+  it("hält Klemmi- und Zugangsaktionen auf schmalen Bildschirmen vollständig im Container", () => {
+    const firstLogin = source("client/src/components/FirstLoginKlemmiIntro.tsx");
+    const accesses = source("client/src/components/PlanningTeamAccessManager.tsx");
+
+    expect(firstLogin).toContain(
+      'grid-cols-1 gap-2 sm:grid-cols-[minmax(0,0.62fr)_minmax(0,1.38fr)]'
+    );
+    expect(firstLogin).toContain(
+      'w-full whitespace-normal bg-[#ff7a2f] px-2.5 text-center text-sm leading-snug'
+    );
+    expect(accesses).toContain(
+      'items-start gap-2 text-sm leading-6 text-slate-700'
+    );
+    expect(accesses).toContain('className="mt-1 shrink-0"');
+    expect(accesses).toContain('className="min-w-0 break-words"');
+    expect(accesses).toContain(
+      'grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center'
+    );
+    expect(accesses).toContain(
+      'h-auto min-h-11 w-full min-w-0 whitespace-normal bg-blue-600 px-3 py-2 text-center leading-snug'
+    );
+    expect(accesses).toContain(
+      '!flex !flex-col-reverse !gap-3 sm:!flex-row sm:!items-center sm:!justify-end'
+    );
+  });
+
   it("zeigt Helfernamen nur in Mobilkarten als dominanten, flexibel umbrechenden Titel", () => {
     const helpers = source("client/src/pages/Helpers.tsx");
     const mobileCards = helpers.slice(
