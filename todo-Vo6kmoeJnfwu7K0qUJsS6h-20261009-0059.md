@@ -2,6 +2,8 @@
 
 ## Abgeschlossen
 
+- [x] Vorbereitung und Nachbereitung können neben dem festen Verantwortlichen jetzt bis zu fünf unterstützende Helfer haben. Gewählte Helfer erscheinen platzsparend als entfernbare Namenschips; persönliche Aufgabenansichten berücksichtigen jeden zugeordneten Helfer. Die Datenbankrelation ist veranstaltungsbezogen, sichert Reihenfolge und verhindert doppelte Auswahl.
+
 - [x] Öffentliche Seite `/vereinsdemo` als schlanke Auswahlseite für Event Pass, Light und Pro umgesetzt.
 - [x] Enterprise als individuelle Lösung für Verbände und große Mehrspartenvereine positioniert.
 - [x] Für jeden Start einen eigenen, fiktiven und temporären Demo-Mandanten mit Musterdaten erzeugt.

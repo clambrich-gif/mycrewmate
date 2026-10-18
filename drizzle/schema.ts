@@ -1572,6 +1572,11 @@ export const prepTasks = mysqlTable(
       columns: [table.eventId, table.year],
       foreignColumns: [events.id, events.year],
     }).onDelete("cascade"),
+    uniqueIndex("prep_tasks_id_event_year_unique").on(
+      table.id,
+      table.eventId,
+      table.year
+    ),
     index("prep_tasks_event_deleted_idx").on(
       table.eventId,
       table.year,
@@ -1581,6 +1586,43 @@ export const prepTasks = mysqlTable(
   ]
 );
 export type PrepTask = typeof prepTasks.$inferSelect;
+
+/**
+ * Die unterstützenden Helfer bleiben getrennt vom einzelnen Verantwortlichen
+ * der Aufgabe. Der Slot hält die bewusst gewählte, stabile Reihenfolge fest.
+ */
+export const prepTaskHelpers = mysqlTable(
+  "prep_task_helpers",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    prepTaskId: int("prepTaskId").notNull(),
+    helperId: int("helperId").notNull(),
+    year: int("year").notNull(),
+    eventId: int("eventId").notNull(),
+    slot: int("slot").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    foreignKey({
+      name: "prep_task_helpers_task_event_year_fk",
+      columns: [table.prepTaskId, table.eventId, table.year],
+      foreignColumns: [prepTasks.id, prepTasks.eventId, prepTasks.year],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "prep_task_helpers_helper_event_year_fk",
+      columns: [table.helperId, table.eventId, table.year],
+      foreignColumns: [helpers.id, helpers.eventId, helpers.year],
+    }).onDelete("cascade"),
+    uniqueIndex("prep_task_helpers_task_slot_unique").on(table.prepTaskId, table.slot),
+    uniqueIndex("prep_task_helpers_task_helper_unique").on(table.prepTaskId, table.helperId),
+    index("prep_task_helpers_event_year_helper_idx").on(
+      table.eventId,
+      table.year,
+      table.helperId
+    ),
+  ]
+);
+export type PrepTaskHelper = typeof prepTaskHelpers.$inferSelect;
 
 export const postTasks = mysqlTable(
   "post_tasks",
@@ -1615,6 +1657,11 @@ export const postTasks = mysqlTable(
       columns: [table.eventId, table.year],
       foreignColumns: [events.id, events.year],
     }).onDelete("cascade"),
+    uniqueIndex("post_tasks_id_event_year_unique").on(
+      table.id,
+      table.eventId,
+      table.year
+    ),
     index("post_tasks_event_deleted_idx").on(
       table.eventId,
       table.year,
@@ -1624,6 +1671,40 @@ export const postTasks = mysqlTable(
   ]
 );
 export type PostTask = typeof postTasks.$inferSelect;
+
+/** Siehe prepTaskHelpers: maximal fünf getrennte Unterstützer je Aufgabe. */
+export const postTaskHelpers = mysqlTable(
+  "post_task_helpers",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    postTaskId: int("postTaskId").notNull(),
+    helperId: int("helperId").notNull(),
+    year: int("year").notNull(),
+    eventId: int("eventId").notNull(),
+    slot: int("slot").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  table => [
+    foreignKey({
+      name: "post_task_helpers_task_event_year_fk",
+      columns: [table.postTaskId, table.eventId, table.year],
+      foreignColumns: [postTasks.id, postTasks.eventId, postTasks.year],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "post_task_helpers_helper_event_year_fk",
+      columns: [table.helperId, table.eventId, table.year],
+      foreignColumns: [helpers.id, helpers.eventId, helpers.year],
+    }).onDelete("cascade"),
+    uniqueIndex("post_task_helpers_task_slot_unique").on(table.postTaskId, table.slot),
+    uniqueIndex("post_task_helpers_task_helper_unique").on(table.postTaskId, table.helperId),
+    index("post_task_helpers_event_year_helper_idx").on(
+      table.eventId,
+      table.year,
+      table.helperId
+    ),
+  ]
+);
+export type PostTaskHelper = typeof postTaskHelpers.$inferSelect;
 
 export const materials = mysqlTable(
   "materials",

@@ -6310,6 +6310,7 @@ export const appRouter = router({
           locationId: z.number().int().positive().nullable().optional(),
           contactId: z.number().int().positive().nullable().optional(),
           helperId: z.number().int().positive().nullable().optional(),
+          helperIds: z.array(z.number().int().positive()).max(5).optional(),
           note: z.string().max(10_000).optional(),
           logEntry: z.string().max(10_000).optional(),
         })
@@ -6334,6 +6335,7 @@ export const appRouter = router({
           locationId: z.number().int().positive().nullable().optional(),
           contactId: z.number().int().positive().nullable().optional(),
           helperId: z.number().int().positive().nullable().optional(),
+          helperIds: z.array(z.number().int().positive()).max(5).optional(),
           status: statusPrep.optional(),
           statusWording: prepStatusWording.optional(),
           note: z.string().max(10_000).nullable().optional(),
@@ -6367,6 +6369,7 @@ export const appRouter = router({
           locationId: z.number().int().positive().nullable().optional(),
           contactId: z.number().nullable().optional(),
           helperId: z.number().int().positive().nullable().optional(),
+          helperIds: z.array(z.number().int().positive()).max(5).optional(),
           note: z.string().optional(),
           logEntry: z.string().max(10_000).optional(),
         })
@@ -6390,6 +6393,7 @@ export const appRouter = router({
           locationId: z.number().int().positive().nullable().optional(),
           contactId: z.number().nullable().optional(),
           helperId: z.number().int().positive().nullable().optional(),
+          helperIds: z.array(z.number().int().positive()).max(5).optional(),
           status: statusTask.optional(),
           note: z.string().nullable().optional(),
           logEntry: z.string().max(10_000).optional(),

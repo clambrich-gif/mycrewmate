@@ -204,6 +204,17 @@ describe("persönliche Dashboard-Auswertung", () => {
     expect(result.nextTasks).toEqual([]);
   });
 
+  it("zeigt eine Aufgabe auch einem zweiten unterstützenden Helfer persönlich an", () => {
+    const result = buildPersonalDashboard({
+      ...baseInput,
+      prep: baseInput.prep.map(task =>
+        task.id === 3 ? { ...task, helperIds: [45, 11] } : task
+      ),
+    });
+
+    expect(result.nextTasks.map(task => task.title)).toContain("Aufgabe eines anderen Bereichs");
+  });
+
   it("behandelt eine abgelehnte Aufgabe nie als persönlichen Abschluss", () => {
     const result = buildPersonalDashboard({
       ...baseInput,

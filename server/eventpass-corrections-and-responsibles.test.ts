@@ -62,16 +62,17 @@ describe("Event-Pass Korrekturen und Verantwortlichkeiten", () => {
     expect(masterPortal).toContain('"Vereinsadmin"');
   });
 
-  it("Punkt 7: Fester Verantwortlicher und optionaler Helfer in Vor- und Nachbereitung", () => {
+  it("Punkt 7: Fester Verantwortlicher und bis zu fünf optionale Helfer in Vor- und Nachbereitung", () => {
     const routers = source("server/routers.ts");
     const prep = source("client/src/pages/Preparation.tsx");
     const post = source("client/src/pages/PostProcessing.tsx");
 
     expect(routers).toContain("helperId");
-    expect(prep).toContain("Unterstützender Helfer");
-    expect(prep).toContain("Kein zusätzlicher Helfer");
-    expect(post).toContain("Unterstützender Helfer");
-    expect(post).toContain("Kein zusätzlicher Helfer");
+    expect(routers).toContain("helperIds");
+    expect(prep).toContain("Unterstützende Helfer");
+    expect(prep).toContain("bis zu 5");
+    expect(post).toContain("Unterstützende Helfer");
+    expect(post).toContain("bis zu 5");
   });
 
   it("Punkt 8: Event Pass blendet Planfreigabe aus und sperrt Benachrichtigungen zusätzlich serverseitig", () => {

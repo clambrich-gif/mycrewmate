@@ -73,6 +73,7 @@ type ContactTask = {
 
 type HelperTask = ContactTask & {
   helperId: number | null;
+  helperIds?: readonly number[];
 };
 
 type PreparationTask = HelperTask & {
@@ -162,7 +163,8 @@ function belongsToCurrentPerson(
 ) {
   return (
     (typeof task.contactId === "number" && ownContactIds.has(task.contactId)) ||
-    (typeof task.helperId === "number" && ownHelperIds.has(task.helperId))
+    (typeof task.helperId === "number" && ownHelperIds.has(task.helperId)) ||
+    (task.helperIds ?? []).some(helperId => ownHelperIds.has(helperId))
   );
 }
 

@@ -23,6 +23,7 @@ type TaskLogbookState = {
   locationId: number | null;
   contactId: number | null;
   helperId?: number | null;
+  helperIds?: number[];
   status: string;
   statusWording?: string | null;
 };
@@ -112,10 +113,22 @@ export function describeTaskLogbookChanges(
     );
   }
 
-  if (hasOwn(patch, "helperId") && patch.helperId !== previous.helperId) {
+  if (!hasOwn(patch, "helperIds") && hasOwn(patch, "helperId") && patch.helperId !== previous.helperId) {
     changes.push(
       `Unterstützender Helfer geändert: ${referenceLabel(previous.helperId, labels.helpers, "nicht zugeordnet")} → ${referenceLabel(patch.helperId, labels.helpers, "nicht zugeordnet")}`
     );
+  }
+
+  if (hasOwn(patch, "helperIds")) {
+    const before = Array.from(new Set(previous.helperIds ?? (previous.helperId ? [previous.helperId] : [])));
+    const after = Array.from(new Set(Array.isArray(patch.helperIds) ? patch.helperIds : []));
+    if (before.join(",") !== after.join(",")) {
+      const list = (ids: number[]) =>
+        ids.length
+          ? ids.map(id => referenceLabel(id, labels.helpers, "unbekannter Helfer")).join(", ")
+          : "nicht zugeordnet";
+      changes.push(`Unterstützende Helfer geändert: ${list(before)} → ${list(after)}`);
+    }
   }
 
   if (hasOwn(patch, "locationId") && patch.locationId !== previous.locationId) {

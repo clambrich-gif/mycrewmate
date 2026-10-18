@@ -83,6 +83,7 @@ type PostTaskRow = {
   locationId: number | null;
   contactId: number | null;
   helperId: number | null;
+  helperIds?: number[];
   status: PostStatus;
   note: string | null;
   sortOrder: number;
@@ -94,6 +95,7 @@ type PostForm = {
   locationId: string;
   contactId: string;
   helperId: string;
+  helperIds: string[];
   dueText: string;
   legacyDueText: string;
   preserveLegacyDueText: boolean;
@@ -117,6 +119,7 @@ const EMPTY_FORM: PostForm = {
   locationId: "none",
   contactId: "none",
   helperId: "none",
+  helperIds: [],
   dueText: "",
   legacyDueText: "",
   preserveLegacyDueText: false,
@@ -315,6 +318,7 @@ export default function PostProcessing() {
           locationId: input.locationId ?? null,
           contactId: input.contactId ?? null,
           helperId: input.helperId ?? null,
+          helperIds: input.helperIds ?? (input.helperId ? [input.helperId] : []),
           status: "offen",
           note: input.logEntry
             ? prependPreparationLogbookEntry(input.logEntry, null, new Date(), logbookAuthor)
@@ -513,7 +517,8 @@ export default function PostProcessing() {
         myTasksOnly &&
         !(
           (typeof task.contactId === "number" && ownContactIds.has(task.contactId)) ||
-          (typeof task.helperId === "number" && ownHelperIds.has(task.helperId))
+          (typeof task.helperId === "number" && ownHelperIds.has(task.helperId)) ||
+          (task.helperIds ?? []).some(helperId => ownHelperIds.has(helperId))
         )
       ) {
         return false;
@@ -625,6 +630,7 @@ export default function PostProcessing() {
       locationId: task.locationId ? String(task.locationId) : "none",
       contactId: task.contactId ? String(task.contactId) : "none",
       helperId: task.helperId ? String(task.helperId) : "none",
+      helperIds: (task.helperIds ?? (task.helperId ? [task.helperId] : [])).map(String),
       dueText: parsedDueDate?.iso ?? "",
       legacyDueText: parsedDueDate ? "" : task.dueText ?? "",
       preserveLegacyDueText: !parsedDueDate && Boolean(task.dueText?.trim()),
@@ -667,6 +673,7 @@ export default function PostProcessing() {
       locationId: form.locationId === "none" ? null : Number(form.locationId),
       contactId: form.contactId === "none" ? null : Number(form.contactId),
       helperId: form.helperId === "none" ? null : Number(form.helperId),
+      helperIds: form.helperIds.map(Number),
       dueText,
     };
 
@@ -1070,9 +1077,9 @@ export default function PostProcessing() {
                             <span className="text-slate-400">—</span>
                           )}
                         </p>
-                        {task.helperId && (
+                        {(task.helperIds?.length || task.helperId) && (
                           <p className="mt-1 text-xs text-slate-500">
-                            Helfer: {helperMap.get(task.helperId) ?? "—"}
+                            Helfer: {(task.helperIds ?? (task.helperId ? [task.helperId] : [])).map(id => helperMap.get(id) ?? "—").join(", ")}
                           </p>
                         )}
                       </td>
@@ -1264,9 +1271,9 @@ export default function PostProcessing() {
                         <p className="text-sm text-slate-800">
                           {task.contactId ? contactMap.get(task.contactId) ?? "—" : "—"}
                         </p>
-                        {task.helperId && (
+                        {(task.helperIds?.length || task.helperId) && (
                           <p className="text-xs text-slate-500">
-                            Helfer: {helperMap.get(task.helperId) ?? "—"}
+                            Helfer: {(task.helperIds ?? (task.helperId ? [task.helperId] : [])).map(id => helperMap.get(id) ?? "—").join(", ")}
                           </p>
                         )}
                       </div>
@@ -1432,17 +1439,32 @@ export default function PostProcessing() {
                   </SelectContent>
                 </Select>
                 <div className="mt-3 space-y-1.5">
-                  <Label>Unterstützender Helfer <span className="font-normal text-slate-500">(optional)</span></Label>
+                  <Label>Unterstützende Helfer <span className="font-normal text-slate-500">(optional, bis zu 5)</span></Label>
+                  {form.helperIds.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {form.helperIds.map(id => (
+                        <Badge key={id} variant="secondary" className="gap-1 py-1 pr-1">
+                          {helperMap.get(Number(id)) ?? "Helfer"}
+                          <button type="button" className="rounded p-0.5 hover:bg-slate-200" aria-label="Helfer entfernen" onClick={() => setForm(current => ({ ...current, helperIds: current.helperIds.filter(item => item !== id) }))}>
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                   <Select
-                    value={form.helperId}
-                    onValueChange={value => setForm(current => ({ ...current, helperId: value }))}
+                    value="none"
+                    disabled={form.helperIds.length >= 5}
+                    onValueChange={value => {
+                      if (value !== "none" && !form.helperIds.includes(value)) setForm(current => ({ ...current, helperIds: [...current.helperIds, value] }));
+                    }}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Keinen Helfer zusätzlich zuordnen" />
+                      <SelectValue placeholder={form.helperIds.length >= 5 ? "Maximal fünf Helfer gewählt" : "Helfer hinzufügen"} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">Kein zusätzlicher Helfer</SelectItem>
-                      {helpers.map(helper => (
+                      <SelectItem value="none">Helfer auswählen</SelectItem>
+                      {helpers.filter(helper => !form.helperIds.includes(String(helper.id))).map(helper => (
                         <SelectItem key={helper.id} value={String(helper.id)}>
                           {helper.name}
                         </SelectItem>
