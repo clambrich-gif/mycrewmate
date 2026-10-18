@@ -15,9 +15,11 @@ import {
   locations,
   marketing,
   materials,
+  postTaskHelpers,
   postTasks,
   planningTeamAccesses,
   prepTasks,
+  prepTaskHelpers,
   shiftAreaContacts,
   shifts,
   users,
@@ -160,6 +162,10 @@ export const PROJECT_EXCEL_HEADERS: Record<string, string[]> = {
     "Verantwortlich",
     "Helfer-ID",
     "Helfer",
+    ...Array.from({ length: 5 }, (_, index) => [
+      `Mithelfer ${index + 1} ID`,
+      `Mithelfer ${index + 1}`,
+    ]).flat(),
     "Status",
     "Status-Wortlaut",
     "Bemerkung",
@@ -176,6 +182,10 @@ export const PROJECT_EXCEL_HEADERS: Record<string, string[]> = {
     "Verantwortlich",
     "Helfer-ID",
     "Helfer",
+    ...Array.from({ length: 5 }, (_, index) => [
+      `Mithelfer ${index + 1} ID`,
+      `Mithelfer ${index + 1}`,
+    ]).flat(),
     "Status",
     "Bemerkung",
     "Reihenfolge",
@@ -400,6 +410,10 @@ type TaskRow = {
   contactName: string;
   helperSourceId: number | null;
   helperName: string;
+  helperSlots: Array<{
+    helperSourceId: number | null;
+    helperName: string;
+  }>;
   status: "offen" | "inArbeit" | "erledigt";
   note: string;
   sortOrder: number;
@@ -415,6 +429,10 @@ type PrepRow = {
   contactName: string;
   helperSourceId: number | null;
   helperName: string;
+  helperSlots: Array<{
+    helperSourceId: number | null;
+    helperName: string;
+  }>;
   status: "offen" | "inArbeit" | "erledigt" | "abgelehnt";
   statusWording: "aufgabe" | "genehmigung";
   note: string;
@@ -535,7 +553,9 @@ type CurrentSnapshot = {
   areaContacts: any[];
   assignments: any[];
   prep: any[];
+  prepHelperLinks: any[];
   post: any[];
+  postHelperLinks: any[];
   materials: any[];
   marketing: any[];
   approvals: any[];
@@ -696,6 +716,7 @@ export function migrateLegacyPreparationAreas(document: BackupDocument) {
       contactName: row.contactName,
       helperSourceId: null,
       helperName: "",
+      helperSlots: [],
       status: row.status,
       statusWording: "aufgabe" as const,
       note: row.channel
@@ -714,6 +735,7 @@ export function migrateLegacyPreparationAreas(document: BackupDocument) {
       contactName: row.contactName,
       helperSourceId: null,
       helperName: "",
+      helperSlots: [],
       status: approvalStatusToPreparationStatus(row.status),
       statusWording: "genehmigung" as const,
       note: row.note,
@@ -1735,10 +1757,59 @@ export function parseBackupWorkbook(
         : undefined) ?? parsedContactByName.get(personKey(row.areaContactName))
     );
 
+  const taskHelperSlots = (
+    row: Record<string, unknown>,
+    sheet: "VORBEREITUNG" | "NACHBEREITUNG",
+    rowNumber: number
+  ) => {
+    const values = Array.from({ length: 5 }, (_, index) => {
+      const position = index + 1;
+      const helperName = text(
+        row[`Mithelfer ${position}`],
+        200,
+        `${sheet} Zeile ${rowNumber}: Mithelfer ${position}`
+      );
+      const helperSourceId = helperRef(
+        row[`Mithelfer ${position} ID`],
+        helperName,
+        `${sheet} Zeile ${rowNumber}: Mithelfer ${position}`
+      );
+      return helperName && (helperSourceId || helperNames.has(personKey(helperName)))
+        ? { helperSourceId, helperName }
+        : null;
+    }).filter((item): item is { helperSourceId: number | null; helperName: string } => item !== null);
+    if (values.length) {
+      const seen = new Set<string>();
+      for (const helper of values) {
+        const key = helper.helperSourceId
+          ? `id:${helper.helperSourceId}`
+          : `name:${personKey(helper.helperName)}`;
+        if (seen.has(key))
+          throw new Error(
+            `${sheet} Zeile ${rowNumber}: Derselbe Mithelfer darf nur einmal ausgewählt werden.`
+          );
+        seen.add(key);
+      }
+      return values;
+    }
+
+    const helperName = text(row.Helfer, 200, `${sheet} Zeile ${rowNumber}: Helfer`);
+    const helperSourceId = helperRef(
+      row["Helfer-ID"],
+      helperName,
+      `${sheet} Zeile ${rowNumber}: Helfer`
+    );
+    return helperName && (helperSourceId || helperNames.has(personKey(helperName)))
+      ? [{ helperSourceId, helperName }]
+      : [];
+  };
+
   const parseTaskRows = (sheet: "NACHBEREITUNG") =>
     sheetRows(workbook, sheet)
       .filter(row => normalize(row.Aufgabe))
-      .map((row, index) => ({
+      .map((row, index) => {
+        const helperSlots = taskHelperSlots(row, sheet, index + 2);
+        return {
         sourceId: nullableId(row.ID, `${sheet} Zeile ${index + 2}`),
         category: text(
           row.Kategorie ?? row.Bereich,
@@ -1776,16 +1847,9 @@ export function parseBackupWorkbook(
           200,
           `${sheet} Zeile ${index + 2}: Verantwortlich`
         ),
-        helperSourceId: helperRef(
-          row["Helfer-ID"],
-          row.Helfer,
-          `${sheet} Zeile ${index + 2}: Helfer`
-        ),
-        helperName: text(
-          row.Helfer,
-          200,
-          `${sheet} Zeile ${index + 2}: Helfer`
-        ),
+        helperSourceId: helperSlots[0]?.helperSourceId ?? null,
+        helperName: helperSlots[0]?.helperName ?? "",
+        helperSlots,
         status: enumValue(
           row.Status,
           ["offen", "inArbeit", "erledigt"] as const,
@@ -1803,11 +1867,14 @@ export function parseBackupWorkbook(
           0,
           1_000_000
         ),
-      }));
+      };
+      });
   const parsedPrep: PrepRow[] = shouldParse("VORBEREITUNG")
     ? sheetRows(workbook, "VORBEREITUNG")
     .filter(row => normalize(row.Aufgabe))
-    .map((row, index) => ({
+    .map((row, index) => {
+      const helperSlots = taskHelperSlots(row, "VORBEREITUNG", index + 2);
+      return {
       sourceId: nullableId(row.ID, `VORBEREITUNG Zeile ${index + 2}`),
       category: text(
         row.Kategorie ?? row.Bereich,
@@ -1845,16 +1912,9 @@ export function parseBackupWorkbook(
         200,
         `VORBEREITUNG Zeile ${index + 2}: Verantwortlich`
       ),
-      helperSourceId: helperRef(
-        row["Helfer-ID"],
-        row.Helfer,
-        `VORBEREITUNG Zeile ${index + 2}: Helfer`
-      ),
-      helperName: text(
-        row.Helfer,
-        200,
-        `VORBEREITUNG Zeile ${index + 2}: Helfer`
-      ),
+      helperSourceId: helperSlots[0]?.helperSourceId ?? null,
+      helperName: helperSlots[0]?.helperName ?? "",
+      helperSlots,
       status: enumValue(
         row.Status,
         ["offen", "inArbeit", "erledigt", "abgelehnt"] as const,
@@ -1878,7 +1938,8 @@ export function parseBackupWorkbook(
         0,
         1_000_000
       ),
-      }))
+      };
+      })
     : fallback!.prep;
   const parsedPost: TaskRow[] = shouldParse("NACHBEREITUNG")
     ? (parseTaskRows("NACHBEREITUNG") as TaskRow[])
@@ -2223,7 +2284,9 @@ async function loadSnapshot(
     areaRows,
     assignmentRows,
     prepRows,
+    prepHelperRows,
     postRows,
+    postHelperRows,
     materialRows,
     marketingRows,
     approvalRows,
@@ -2244,7 +2307,9 @@ async function loadSnapshot(
       )
     ),
     selectRows(prepTasks, and(scope(prepTasks), eq(prepTasks.deleted, false))),
+    selectRows(prepTaskHelpers, scope(prepTaskHelpers)),
     selectRows(postTasks, and(scope(postTasks), eq(postTasks.deleted, false))),
+    selectRows(postTaskHelpers, scope(postTaskHelpers)),
     selectRows(materials, and(scope(materials), eq(materials.deleted, false))),
     selectRows(marketing, scope(marketing)),
     selectRows(approvals, scope(approvals)),
@@ -2271,7 +2336,9 @@ async function loadSnapshot(
     areaContacts: areaRows,
     assignments: assignmentRows,
     prep: prepRows,
+    prepHelperLinks: prepHelperRows,
     post: postRows,
+    postHelperLinks: postHelperRows,
     materials: materialRows,
     marketing: marketingRows,
     approvals: approvalRows,
@@ -2307,6 +2374,24 @@ function comparableCurrent(snapshot: CurrentSnapshot) {
     list.push(assignment);
     assignmentMap.set(assignment.shiftId, list);
   }
+  const taskHelpers = (
+    links: any[],
+    taskId: number,
+    taskIdField: "prepTaskId" | "postTaskId",
+    fallbackHelperId: number | null
+  ) => {
+    const selected = links
+      .filter(link => link[taskIdField] === taskId)
+      .sort((left, right) => left.position - right.position)
+      .map(link => ({
+        helperSourceId: link.helperId,
+        helperName: helperName.get(link.helperId) ?? "",
+      }));
+    if (selected.length) return selected;
+    return fallbackHelperId
+      ? [{ helperSourceId: fallbackHelperId, helperName: helperName.get(fallbackHelperId) ?? "" }]
+      : [];
+  };
   const byId = (left: any, right: any) => left.id - right.id;
   return {
     contacts: [...snapshot.contacts].sort(byId).map(row => ({
@@ -2387,34 +2472,46 @@ function comparableCurrent(snapshot: CurrentSnapshot) {
           helperName: helperName.get(item.helperId) ?? "",
         })),
     })),
-    prep: [...snapshot.prep].sort(byId).map(row => ({
-      sourceId: row.id,
-      contactSourceId: row.contactId,
-      contactName: row.contactId ? (contactName.get(row.contactId) ?? "") : "",
-      helperSourceId: row.helperId ?? null,
-      helperName: row.helperId ? (helperName.get(row.helperId) ?? "") : "",
-      locationSourceId: row.locationId ?? null,
-      locationName: row.locationId ? (locationName.get(row.locationId) ?? "") : "",
-      ...clean(row, [
-        "category",
-        "task",
-        "dueText",
-        "status",
-        "statusWording",
-        "note",
-        "sortOrder",
-      ]),
-    })),
-    post: [...snapshot.post].sort(byId).map(row => ({
-      sourceId: row.id,
-      contactSourceId: row.contactId,
-      contactName: row.contactId ? (contactName.get(row.contactId) ?? "") : "",
-      helperSourceId: row.helperId ?? null,
-      helperName: row.helperId ? (helperName.get(row.helperId) ?? "") : "",
-      locationSourceId: row.locationId ?? null,
-      locationName: row.locationId ? (locationName.get(row.locationId) ?? "") : "",
-      ...clean(row, ["category", "task", "dueText", "status", "note", "sortOrder"]),
-    })),
+    prep: [...snapshot.prep].sort(byId).map(row => {
+      const helperSlots = taskHelpers(
+        snapshot.prepHelperLinks,
+        row.id,
+        "prepTaskId",
+        row.helperId ?? null
+      );
+      return {
+        sourceId: row.id,
+        contactSourceId: row.contactId,
+        contactName: row.contactId ? (contactName.get(row.contactId) ?? "") : "",
+        helperSourceId: helperSlots[0]?.helperSourceId ?? null,
+        helperName: helperSlots[0]?.helperName ?? "",
+        helperSlots,
+        locationSourceId: row.locationId ?? null,
+        locationName: row.locationId ? (locationName.get(row.locationId) ?? "") : "",
+        ...clean(row, [
+          "category", "task", "dueText", "status", "statusWording", "note", "sortOrder",
+        ]),
+      };
+    }),
+    post: [...snapshot.post].sort(byId).map(row => {
+      const helperSlots = taskHelpers(
+        snapshot.postHelperLinks,
+        row.id,
+        "postTaskId",
+        row.helperId ?? null
+      );
+      return {
+        sourceId: row.id,
+        contactSourceId: row.contactId,
+        contactName: row.contactId ? (contactName.get(row.contactId) ?? "") : "",
+        helperSourceId: helperSlots[0]?.helperSourceId ?? null,
+        helperName: helperSlots[0]?.helperName ?? "",
+        helperSlots,
+        locationSourceId: row.locationId ?? null,
+        locationName: row.locationId ? (locationName.get(row.locationId) ?? "") : "",
+        ...clean(row, ["category", "task", "dueText", "status", "note", "sortOrder"]),
+      };
+    }),
     materials: [...snapshot.materials].sort(byId).map(row => ({
       sourceId: row.id,
       contactSourceId: row.contactId,
@@ -3998,6 +4095,26 @@ export async function restoreProjectDocument(
           sortOrder: row.sortOrder,
         }))
       );
+      const restoredPrepTasks = await tx
+        .select({ id: prepTasks.id, task: prepTasks.task })
+        .from(prepTasks)
+        .where(and(scope(prepTasks), eq(prepTasks.deleted, false)));
+      const prepTaskIdByName = new Map(restoredPrepTasks.map(row => [row.task, row.id]));
+      await insertRows(
+        tx,
+        prepTaskHelpers,
+        desired.prep.flatMap(row => {
+          const prepTaskId = prepTaskIdByName.get(row.task);
+          return prepTaskId
+            ? row.helperSlots.flatMap((helper, slot) => {
+                const helperId = resolveHelper(helper.helperSourceId, helper.helperName);
+                return helperId
+                  ? [{ prepTaskId, helperId, year, eventId, slot }]
+                  : [];
+              })
+            : [];
+        })
+      );
       const simpleTasks = (wanted: TaskRow[], currentRows: any[]) =>
         wanted.map(row => ({
           ...preserveId(
@@ -4017,6 +4134,26 @@ export async function restoreProjectDocument(
           sortOrder: row.sortOrder,
         }));
       await insertRows(tx, postTasks, simpleTasks(desired.post, snapshot.post));
+      const restoredPostTasks = await tx
+        .select({ id: postTasks.id, task: postTasks.task })
+        .from(postTasks)
+        .where(and(scope(postTasks), eq(postTasks.deleted, false)));
+      const postTaskIdByName = new Map(restoredPostTasks.map(row => [row.task, row.id]));
+      await insertRows(
+        tx,
+        postTaskHelpers,
+        desired.post.flatMap(row => {
+          const postTaskId = postTaskIdByName.get(row.task);
+          return postTaskId
+            ? row.helperSlots.flatMap((helper, slot) => {
+                const helperId = resolveHelper(helper.helperSourceId, helper.helperName);
+                return helperId
+                  ? [{ postTaskId, helperId, year, eventId, slot }]
+                  : [];
+              })
+            : [];
+        })
+      );
       await insertRows(
         tx,
         materials,
@@ -4523,6 +4660,15 @@ export async function exportProjectExcel(): Promise<{
       Verantwortlich: row.contactName,
       "Helfer-ID": row.helperSourceId ?? "",
       Helfer: row.helperName ?? "",
+      ...Object.fromEntries(
+        Array.from({ length: 5 }, (_, index) => {
+          const helper = row.helperSlots?.[index];
+          return [
+            [`Mithelfer ${index + 1} ID`, helper?.helperSourceId ?? ""],
+            [`Mithelfer ${index + 1}`, helper?.helperName ?? ""],
+          ];
+        }).flat()
+      ),
       Status: row.status,
       ...(isPrep ? { "Status-Wortlaut": row.statusWording ?? "aufgabe" } : {}),
       Bemerkung: row.note,

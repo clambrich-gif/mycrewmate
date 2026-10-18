@@ -2,6 +2,7 @@
 
 ## Abgeschlossen
 
+- [x] Excel-Sicherung und -Wiederherstellung für Vorbereitung und Nachbereitung um fünf Mithelfer-Paare (je ID und Name) ergänzt. Ein vollständiger Export/Import stellt alle zugeordneten Helfer und ihre Reihenfolge wieder her; alte Excel-Dateien mit der bisherigen einzelnen Helferspalte bleiben weiter lesbar.
 - [x] Vorbereitung und Nachbereitung können neben dem festen Verantwortlichen jetzt bis zu fünf unterstützende Helfer haben. Gewählte Helfer erscheinen platzsparend als entfernbare Namenschips; persönliche Aufgabenansichten berücksichtigen jeden zugeordneten Helfer. Die Datenbankrelation ist veranstaltungsbezogen, sichert Reihenfolge und verhindert doppelte Auswahl.
 
 - [x] Öffentliche Seite `/vereinsdemo` als schlanke Auswahlseite für Event Pass, Light und Pro umgesetzt.

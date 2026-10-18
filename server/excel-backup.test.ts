@@ -109,7 +109,9 @@ const data = {
   ],
   assignments: [{ id: 50, shiftId: 30, helperId: 21, slot: 0 }],
   prep_tasks: [],
+  prep_task_helpers: [],
   post_tasks: [],
+  post_task_helpers: [],
   materials: [],
   marketing: [],
   approvals: [],
@@ -153,8 +155,12 @@ function replaceSheet(workbook: XLSX.WorkBook, name: string, rows: any[]) {
 describe("Excel-Datensicherung", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    data.helpers.splice(2, data.helpers.length - 2);
     data.finances.splice(0, data.finances.length);
     data.prep_tasks.splice(0, data.prep_tasks.length);
+    data.prep_task_helpers.splice(0, data.prep_task_helpers.length);
+    data.post_tasks.splice(0, data.post_tasks.length);
+    data.post_task_helpers.splice(0, data.post_task_helpers.length);
     data.cakes.splice(0, data.cakes.length);
     dbMocks.getDb.mockResolvedValue(fakeDb());
   });
@@ -263,6 +269,54 @@ describe("Excel-Datensicherung", () => {
       comparableProjectContent(current)
     );
     expect(diffDocuments(current, restored)).toEqual([]);
+  });
+
+  it("exportiert und importiert bis zu fünf Mithelfer mit IDs und Namen vollständig", async () => {
+    data.helpers.push(
+      { id: 22, year: 2026, eventId: 1, contactId: null, name: "Bea Beispiel", email: null, phone: null, note: null, willHelp: "ja", availFri: "ja", availSat: "ja", availSun: "ja", confirmed: "ja" },
+      { id: 23, year: 2026, eventId: 1, contactId: null, name: "Cem Beispiel", email: null, phone: null, note: null, willHelp: "ja", availFri: "ja", availSat: "ja", availSun: "ja", confirmed: "ja" }
+    );
+    data.prep_tasks.push({ id: 70, year: 2026, eventId: 1, category: "Aufbau", task: "Tische stellen", dueText: "Freitag", locationId: null, contactId: 10, helperId: null, status: "offen", statusWording: "aufgabe", note: null, sortOrder: 0, deleted: false });
+    data.prep_task_helpers.push(
+      { id: 1, prepTaskId: 70, helperId: 21, year: 2026, eventId: 1, slot: 0 },
+      { id: 2, prepTaskId: 70, helperId: 22, year: 2026, eventId: 1, slot: 1 },
+      { id: 3, prepTaskId: 70, helperId: 23, year: 2026, eventId: 1, slot: 2 }
+    );
+    data.post_tasks.push({ id: 71, year: 2026, eventId: 1, category: "Abbau", task: "Material einlagern", dueText: "Sonntag", locationId: null, contactId: 10, helperId: null, status: "offen", note: null, sortOrder: 1, deleted: false });
+    data.post_task_helpers.push(
+      { id: 4, postTaskId: 71, helperId: 22, year: 2026, eventId: 1, slot: 0 },
+      { id: 5, postTaskId: 71, helperId: 23, year: 2026, eventId: 1, slot: 1 }
+    );
+
+    const exported = await exportBackupExcel();
+    const workbook = XLSX.read(exported.buffer, { type: "buffer" });
+    const [taskRow] = XLSX.utils.sheet_to_json<any>(workbook.Sheets.VORBEREITUNG);
+    expect(taskRow).toMatchObject({
+      "Mithelfer 1 ID": 21,
+      "Mithelfer 1": "Alex Beispiel",
+      "Mithelfer 2 ID": 22,
+      "Mithelfer 2": "Bea Beispiel",
+      "Mithelfer 3 ID": 23,
+      "Mithelfer 3": "Cem Beispiel",
+    });
+    const [postRow] = XLSX.utils.sheet_to_json<any>(workbook.Sheets.NACHBEREITUNG);
+    expect(postRow).toMatchObject({
+      "Mithelfer 1 ID": 22,
+      "Mithelfer 1": "Bea Beispiel",
+      "Mithelfer 2 ID": 23,
+      "Mithelfer 2": "Cem Beispiel",
+    });
+
+    const imported = parseBackupWorkbook(exported.buffer.toString("base64"));
+    expect(imported.prep[0]?.helperSlots).toEqual([
+      { helperSourceId: 21, helperName: "Alex Beispiel" },
+      { helperSourceId: 22, helperName: "Bea Beispiel" },
+      { helperSourceId: 23, helperName: "Cem Beispiel" },
+    ]);
+    expect(imported.post[0]?.helperSlots).toEqual([
+      { helperSourceId: 22, helperName: "Bea Beispiel" },
+      { helperSourceId: 23, helperName: "Cem Beispiel" },
+    ]);
   });
 
   it("exportiert alle Pflichtblätter einschließlich leerer Tabellen mit Kopfzeilen", async () => {
