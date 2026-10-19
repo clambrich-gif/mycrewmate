@@ -151,5 +151,14 @@ export function useKlemmiVoice(options?: {
 
   useEffect(() => cancel, [cancel]);
 
-  return { muted, isSpeaking, speak, playOpening, playUrl, toggleMuted, cancel };
+  return {
+    muted,
+    isSpeaking,
+    speak,
+    playClip,
+    playOpening,
+    playUrl,
+    toggleMuted,
+    cancel,
+  };
 }

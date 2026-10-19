@@ -5,7 +5,10 @@ import {
   requiredUpgradePackageForCapability,
   type ProductPackageId,
 } from "../shared/product-packages";
-import { createDashboardKlemmiSteps } from "../client/src/lib/dashboard-klemmi-tour";
+import {
+  createDashboardKlemmiSteps,
+  createPublicDemoDashboardKlemmiSteps,
+} from "../client/src/lib/dashboard-klemmi-tour";
 import { getHelperGuideSteps } from "../client/src/components/KlemmiHelperGuide";
 import {
   getPdfKlemmiSteps,
@@ -14,6 +17,8 @@ import {
 import {
   KLEMMI_PLAN_AUDIO_IDS,
   KLEMMI_PLAN_VOICE_PROFILE,
+  KLEMMI_PUBLIC_DEMO_AUDIO_IDS,
+  KLEMMI_PUBLIC_DEMO_VOICE_PROFILE,
   KLEMMI_AUDIO_VOICE_MANIFEST,
   KLEMMI_VOICE_PROFILE,
 } from "../client/src/lib/klemmiAudio";
@@ -237,26 +242,61 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
     }
   });
 
-  it("ordnet die gesamte Einsatzplanführung verbindlich der einheitlichen Puck-Stimme zu", () => {
+  it("ordnet Einsatzplan und die gesamte öffentliche Demoführung verbindlich der Puck-Stimme zu", async () => {
     expect(KLEMMI_VOICE_PROFILE.voice).toBe("Achird");
     expect(KLEMMI_PLAN_VOICE_PROFILE.voice).toBe("Puck");
+    expect(KLEMMI_PUBLIC_DEMO_VOICE_PROFILE.voice).toBe("Puck");
     expect(Object.keys(KLEMMI_AUDIO_VOICE_MANIFEST).length).toBeGreaterThan(0);
     expect(KLEMMI_PLAN_AUDIO_IDS.length).toBeGreaterThan(0);
+    expect(KLEMMI_PUBLIC_DEMO_AUDIO_IDS.length).toBeGreaterThan(20);
     expect(
       KLEMMI_PLAN_AUDIO_IDS.every(
         id => KLEMMI_AUDIO_VOICE_MANIFEST[id].voice === "Puck"
       )
     ).toBe(true);
     expect(
+      KLEMMI_PUBLIC_DEMO_AUDIO_IDS.every(
+        id => KLEMMI_AUDIO_VOICE_MANIFEST[id].voice === "Puck"
+      )
+    ).toBe(true);
+    for (const id of KLEMMI_PUBLIC_DEMO_AUDIO_IDS) {
+      const asset = await readFile(
+        path.join(root, "server/assets/klemmi-voice", `${id}.mp3`)
+      );
+      expect(asset.byteLength).toBeGreaterThan(0);
+    }
+
+    const publicDemoAudioIds = new Set<string>();
+    const publicDemoAudioIdSet = new Set<string>(KLEMMI_PUBLIC_DEMO_AUDIO_IDS);
+    for (const packageId of ["event_pass", "light", "pro"] as const) {
+      for (const step of createPublicDemoDashboardKlemmiSteps({
+        hasEventPeriod: true,
+        hasPriorityActions: true,
+        hasHelpers: true,
+        canUseMapsGpx: packageId === "pro",
+        canUseDonations: packageId === "pro",
+        currentPackageId: packageId,
+      })) {
+        publicDemoAudioIds.add(`dashboard-${step.audioKey ?? step.key}`);
+      }
+      for (const step of getHelperGuideSteps(packageId, true)) {
+        publicDemoAudioIds.add(`helpers-${step.audioKey ?? step.key}`);
+      }
+    }
+    publicDemoAudioIds.add("public-demo-opening");
+    expect(
+      [...publicDemoAudioIds].every(id => publicDemoAudioIdSet.has(id))
+    ).toBe(true);
+
+    expect(
       Object.entries(KLEMMI_AUDIO_VOICE_MANIFEST)
-        .filter(([id]) => !id.startsWith("plan-"))
+        .filter(
+          ([id]) =>
+            !id.startsWith("plan-") &&
+            !publicDemoAudioIdSet.has(id)
+        )
         .every(([, entry]) => entry.voice === "Achird")
     ).toBe(true);
-    for (const id of ["helpers-action-whatsapp-demo", "helpers-action-pdf-demo"] as const) {
-      expect(KLEMMI_AUDIO_VOICE_MANIFEST[id].voice).toBe(
-        KLEMMI_VOICE_PROFILE.voice
-      );
-    }
   });
 
   it("behält die Einsatzplanung in allen Produktstufen als Kernfunktion frei", async () => {

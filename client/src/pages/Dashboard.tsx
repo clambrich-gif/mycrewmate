@@ -2244,10 +2244,13 @@ export default function Dashboard() {
                     }
                   : undefined
               }
-               manualStartAudioKey={
+              manualStartAudioKey={
                  isPublicDemoSession && demoGuideRequested
                    ? "dashboard-intro"
                    : undefined
+               }
+               openingAudioKey={
+                 isPublicDemoSession ? "public-demo-opening" : undefined
                }
                onManualStartPromptDismiss={
                  isPublicDemoSession && demoGuideRequested

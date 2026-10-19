@@ -16,6 +16,14 @@ export const KLEMMI_PLAN_VOICE_PROFILE = {
     "Freundliche männliche Charakterstimme: hell, leicht verspielt, gut verständlich und durchgehend einheitlich.",
 } as const;
 
+/** Öffentliche Musterplanungen verwenden dieselbe quirlige Puck-Stimme wie der Einsatzplan. */
+export const KLEMMI_PUBLIC_DEMO_VOICE_PROFILE = {
+  voice: "Puck",
+  label: "Klemmi in der Vereinsdemo – freundlich und comicartig",
+  description:
+    "Freundliche männliche Charakterstimme: hell, leicht verspielt, gut verständlich und durchgehend einheitlich.",
+} as const;
+
 /**
  * Feste, vorproduzierte Klemmi-Texte. Die Dateien liegen ausschließlich im
  * Produkt-Container und werden erst ausgeliefert, wenn eine Tour bewusst
@@ -23,6 +31,7 @@ export const KLEMMI_PLAN_VOICE_PROFILE = {
  * einen Sprachdienst übertragen.
  */
 export const KLEMMI_AUDIO_SCRIPTS = {
+  "public-demo-opening": "Hallo! Ich bin Klemmi. Lass uns gemeinsam loslegen.",
   "opening-clears-throat": "[clears throat] So, los geht's!",
   "opening-cough": "[cough] Hups, kurz sortiert. Jetzt aber!",
   "opening-sniff": "[sniffs] Alles klar, ich bin bereit!",
@@ -318,15 +327,57 @@ export const KLEMMI_PLAN_AUDIO_IDS = Object.freeze(
   )
 );
 
+/**
+ * Diese Clips sind in der öffentlichen, fiktiven Vereinsdemo erreichbar.
+ * Sie werden geschlossen mit der quirligen Puck-Stimme ausgeliefert, damit
+ * kein Schritt in der Demo versehentlich auf eine andere Klemmi-Stimme fällt.
+ */
+export const KLEMMI_PUBLIC_DEMO_AUDIO_IDS: readonly KlemmiAudioId[] =
+  Object.freeze([
+    "public-demo-opening",
+    "dashboard-intro",
+    "dashboard-countdown-dated",
+    "dashboard-countdown-empty",
+    "dashboard-helpers-active",
+    "dashboard-helpers-active-no-donations",
+    "dashboard-helpers-empty",
+    "dashboard-helpers-empty-no-donations",
+    "dashboard-map-active",
+    "dashboard-map-empty",
+    "dashboard-map-locked",
+    "dashboard-map-locked-light",
+    "dashboard-complete",
+    "helpers-overview",
+    "helpers-person",
+    "helpers-contact",
+    "helpers-contact-event-pass",
+    "helpers-details",
+    "helpers-availability-entry",
+    "helpers-donation-locked",
+    "helpers-save",
+    "helpers-save-locked",
+    "helpers-availability",
+    "helpers-plan-fill",
+    "helpers-action-whatsapp-demo",
+    "helpers-feedback",
+    "helpers-action-donation-locked",
+    "helpers-action-pdf-demo",
+    "helpers-action-edit",
+    "helpers-action-delete",
+    "helpers-action-cancellation",
+    "helpers-complete",
+  ]);
+
 type KlemmiVoiceName =
   | typeof KLEMMI_VOICE_PROFILE.voice
-  | typeof KLEMMI_PLAN_VOICE_PROFILE.voice;
+  | typeof KLEMMI_PLAN_VOICE_PROFILE.voice
+  | typeof KLEMMI_PUBLIC_DEMO_VOICE_PROFILE.voice;
 
 /**
  * Jede Tourreferenz gehört verbindlich zu einer vorproduzierten Klemmi-Stimme.
- * Die gesamte Einsatzplanführung verweist geschlossen auf das Puck-Profil; alle
- * anderen Bereiche verwenden weiterhin das Achird-Profil. Browser-Systemstimmen
- * werden nie verwendet.
+ * Einsatzplan und öffentliche Vereinsdemo verweisen geschlossen auf das
+ * quirlige Puck-Profil; die übrigen Bereiche verwenden Achird.
+ * Browser-Systemstimmen werden nie verwendet.
  */
 export const KLEMMI_AUDIO_VOICE_MANIFEST: Readonly<
   Record<KlemmiAudioId, { voice: KlemmiVoiceName }>
@@ -335,9 +386,12 @@ export const KLEMMI_AUDIO_VOICE_MANIFEST: Readonly<
     (Object.keys(KLEMMI_AUDIO_SCRIPTS) as KlemmiAudioId[]).map(id => [
       id,
       {
-        voice: KLEMMI_PLAN_AUDIO_IDS.includes(id)
-          ? KLEMMI_PLAN_VOICE_PROFILE.voice
-          : KLEMMI_VOICE_PROFILE.voice,
+        voice:
+          KLEMMI_PLAN_AUDIO_IDS.includes(id)
+            ? KLEMMI_PLAN_VOICE_PROFILE.voice
+            : KLEMMI_PUBLIC_DEMO_AUDIO_IDS.includes(id)
+              ? KLEMMI_PUBLIC_DEMO_VOICE_PROFILE.voice
+              : KLEMMI_VOICE_PROFILE.voice,
       },
     ])
   ) as Record<KlemmiAudioId, { voice: KlemmiVoiceName }>
@@ -565,6 +619,12 @@ const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
   "security-accesses-rights-locked": "20260930-security-package-steps-v1",
   "security-accesses-coadmin-locked": "20260930-security-package-steps-v1",
   "security-accesses-events-locked": "20260930-security-package-steps-v1",
+  ...Object.fromEntries(
+    KLEMMI_PUBLIC_DEMO_AUDIO_IDS.map(id => [
+      id,
+      "20261019-puck-public-demo-v1",
+    ])
+  ),
 };
 
 export function isKlemmiAudioId(value: string): value is KlemmiAudioId {

@@ -71,6 +71,8 @@ describe("öffentliche Vereinsdemo", () => {
     expect(dashboard).toContain("Ohne Erklärung selbst ausprobieren");
     expect(dashboard).toContain('completionActionLabel={isPublicDemoSession ? "Jetzt selbst ausprobieren" : undefined}');
     expect(dashboard).toContain('audioGuideId={isPublicDemoSession ? "dashboard" : undefined}');
+    expect(dashboard).toContain('openingAudioKey={');
+    expect(dashboard).toContain('isPublicDemoSession ? "public-demo-opening" : undefined');
     expect(dashboard).not.toContain("autoStart={isPublicDemoSession && demoGuideRequested}");
     expect(dashboard).toContain(
       "const isShowingPersonalDashboard =\n    !isPublicDemoSession && isPersonalDashboard;"
@@ -81,6 +83,8 @@ describe("öffentliche Vereinsdemo", () => {
     expect(tour).toContain('audioKey: "intro"');
     expect(tour).toContain('audioKey: state.hasEventPeriod');
     expect(guide).toContain("manualStartPrompt?:");
+    expect(guide).toContain("openingAudioKey?: KlemmiAudioId;");
+    expect(guide).toContain("openingAudioKey ? playClip(openingAudioKey) : playOpening()");
     expect(guide).toContain("openGuideFromManualPrompt");
     expect(guide).toContain("dismissManualStartPrompt");
     expect(guide).toContain("onManualStartPromptDismiss?.()");

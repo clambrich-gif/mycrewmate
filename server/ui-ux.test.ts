@@ -80,7 +80,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(voiceControl).toContain("Klemmi-Stimme stummschalten");
     expect(guide).toContain('data-klemmi-trigger');
     expect(guide).toContain("setOpeningPending(true)");
-    expect(guide).toContain("playOpening().finally");
+    expect(guide).toContain('playClip("public-demo-opening")');
+    expect(guide).toContain(": playOpening()");
     expect(guide).toContain('data-klemmi-guide');
     expect(guide).toContain('pointer-events-none fixed inset-0');
     expect(guide).toContain("KlemmiGuideCard");
@@ -212,7 +213,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(surfaceGuide).toContain("useKlemmiVoice");
     expect(surfaceGuide).toContain("KlemmiVoiceControl");
     expect(surfaceGuide).toContain("setOpeningPending(true)");
-    expect(surfaceGuide).toContain("playOpening().finally");
+    expect(surfaceGuide).toContain("openingAudioKey ? playClip(openingAudioKey) : playOpening()");
     expect(surfaceGuide).toContain("waitsForSuccess");
     expect(surfaceGuide).toContain("data-klemmi-success");
     expect(surfaceGuide).toContain("data-klemmi-mobile-caption");

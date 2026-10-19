@@ -85,6 +85,8 @@ type KlemmiSurfaceGuideProps = {
   };
   /** Fester Markenclip, der direkt im bewussten Start-Klick abgespielt wird. */
   manualStartAudioKey?: KlemmiAudioId;
+  /** Optionaler fester Einstieg statt der zufälligen allgemeinen Klemmi-Begrüßung. */
+  openingAudioKey?: KlemmiAudioId;
   /** Informiert den Aufrufer erst nach Starten oder Überspringen des sichtbaren Einstiegs. */
   onManualStartPromptDismiss?: () => void;
 };
@@ -139,6 +141,7 @@ export function KlemmiSurfaceGuide({
   autoStart = false,
   manualStartPrompt,
   manualStartAudioKey,
+  openingAudioKey,
   onManualStartPromptDismiss,
 }: KlemmiSurfaceGuideProps) {
   const [open, setOpen] = useState(false);
@@ -159,7 +162,7 @@ export function KlemmiSurfaceGuide({
    * Effekts als automatische Audioausgabe blockieren.
    */
   const directlyStartedNarrationStep = useRef<string | null>(null);
-  const { muted, isSpeaking, speak, playOpening, toggleMuted, cancel } =
+  const { muted, isSpeaking, speak, playClip, playOpening, toggleMuted, cancel } =
     useKlemmiVoice({
       muted: voiceMuted,
       onMutedChange: onVoiceMutedChange,
@@ -211,7 +214,8 @@ export function KlemmiSurfaceGuide({
 
   const openGuide = () => {
     prepareGuide();
-    void playOpening().finally(() => setOpeningPending(false));
+    const opening = openingAudioKey ? playClip(openingAudioKey) : playOpening();
+    void opening.finally(() => setOpeningPending(false));
   };
 
   const dismissManualStartPrompt = () => {
