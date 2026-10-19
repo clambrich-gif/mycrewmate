@@ -344,7 +344,7 @@ export function KlemmiHelperGuide({
   const [narrationComplete, setNarrationComplete] = useState(false);
   const dialogOpenedByGuideRef = useRef(false);
   const returnViewModeRef = useRef<"liste" | "kacheln" | null>(null);
-  const { muted, isSpeaking, speak, playClip, playOpening, toggleMuted, cancel } = useKlemmiVoice();
+  const { muted, isSpeaking, speak, playClip, toggleMuted, cancel } = useKlemmiVoice();
   const steps = useMemo(
     () => getHelperGuideSteps(currentPackageId, isPublicDemoSession),
     [currentPackageId, isPublicDemoSession]
@@ -502,7 +502,7 @@ export function KlemmiHelperGuide({
           onGuideOpenChange(true);
           const opening = isPublicDemoSession
             ? playClip("public-demo-opening")
-            : playOpening();
+            : playClip("helpers-opening");
           void opening.finally(() => setOpeningPending(false));
         }}
       >

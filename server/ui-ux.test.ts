@@ -81,7 +81,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(guide).toContain('data-klemmi-trigger');
     expect(guide).toContain("setOpeningPending(true)");
     expect(guide).toContain('playClip("public-demo-opening")');
-    expect(guide).toContain(": playOpening()");
+    expect(guide).toContain('playClip("helpers-opening")');
     expect(guide).toContain('data-klemmi-guide');
     expect(guide).toContain('pointer-events-none fixed inset-0');
     expect(guide).toContain("KlemmiGuideCard");

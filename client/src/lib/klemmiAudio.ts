@@ -40,6 +40,16 @@ export const KLEMMI_CONTACTS_VOICE_PROFILE = {
     "Freundliche Klemmi-Charakterstimme: hell, lebhaft, gut verständlich und gezielt gegen die echte Dashboard-Stimme geprüft.",
 } as const;
 
+/** Die echte Helfer-Führung nutzt denselben festen Klemmi-Charakterstandard. */
+export const KLEMMI_HELPERS_VOICE_PROFILE = {
+  voice: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.voiceName,
+  generationStyle: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.style,
+  generationProfileVersion: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.profileVersion,
+  label: "Klemmi bei Helfern – freundlich und comicartig",
+  description:
+    "Freundliche Klemmi-Charakterstimme: hell, lebhaft, gut verständlich und gezielt gegen die echte Dashboard-Stimme geprüft.",
+} as const;
+
 /**
  * Feste, vorproduzierte Klemmi-Texte. Die Dateien liegen ausschließlich im
  * Produkt-Container und werden erst ausgeliefert, wenn eine Tour bewusst
@@ -48,6 +58,7 @@ export const KLEMMI_CONTACTS_VOICE_PROFILE = {
  */
 export const KLEMMI_AUDIO_SCRIPTS = {
   "public-demo-opening": "Hallo! Ich bin Klemmi. Lass uns gemeinsam loslegen.",
+  "helpers-opening": "Hallo! Ich bin Klemmi. Lass uns gemeinsam loslegen.",
   "opening-clears-throat": "[clears throat] So, los geht's!",
   "opening-cough": "[cough] Hups, kurz sortiert. Jetzt aber!",
   "opening-sniff": "[sniffs] Alles klar, ich bin bereit!",
@@ -358,6 +369,34 @@ export const KLEMMI_CONTACTS_AUDIO_IDS: readonly KlemmiAudioId[] =
     "contacts-overview",
   ]);
 
+/** Alle festen Aufnahmen der echten Helfer-Führung, ohne Demo-Sonderfälle. */
+export const KLEMMI_HELPERS_AUDIO_IDS: readonly KlemmiAudioId[] =
+  Object.freeze([
+    "helpers-opening",
+    "helpers-overview",
+    "helpers-person",
+    "helpers-contact",
+    "helpers-contact-event-pass",
+    "helpers-details",
+    "helpers-availability-entry",
+    "helpers-donation",
+    "helpers-donation-locked",
+    "helpers-save",
+    "helpers-save-locked",
+    "helpers-availability",
+    "helpers-plan-fill",
+    "helpers-feedback",
+    "helpers-action-donation",
+    "helpers-action-donation-locked",
+    "helpers-action-whatsapp",
+    "helpers-action-whatsapp-locked",
+    "helpers-action-pdf",
+    "helpers-action-edit",
+    "helpers-action-delete",
+    "helpers-action-cancellation",
+    "helpers-complete",
+  ]);
+
 /**
  * Diese Clips sind in der öffentlichen, fiktiven Vereinsdemo erreichbar.
  * Sie werden geschlossen mit der quirligen Puck-Stimme ausgeliefert, damit
@@ -403,12 +442,14 @@ type KlemmiVoiceName =
   | typeof KLEMMI_VOICE_PROFILE.voice
   | typeof KLEMMI_PLAN_VOICE_PROFILE.voice
   | typeof KLEMMI_PUBLIC_DEMO_VOICE_PROFILE.voice
-  | typeof KLEMMI_CONTACTS_VOICE_PROFILE.voice;
+  | typeof KLEMMI_CONTACTS_VOICE_PROFILE.voice
+  | typeof KLEMMI_HELPERS_VOICE_PROFILE.voice;
 
 /**
  * Jede Tourreferenz gehört verbindlich zu einer vorproduzierten Klemmi-Stimme.
- * Einsatzplan, öffentliche Vereinsdemo und Ansprechpartner-Führung verweisen
- * geschlossen auf das quirlige Puck-Profil; die übrigen Bereiche verwenden Achird.
+ * Einsatzplan, echte Helferführung, öffentliche Vereinsdemo und Ansprechpartner-
+ * Führung verweisen geschlossen auf das quirlige Puck-Profil; die übrigen Bereiche
+ * verwenden Achird.
  * Browser-Systemstimmen werden nie verwendet.
  */
 export const KLEMMI_AUDIO_VOICE_MANIFEST: Readonly<
@@ -421,7 +462,9 @@ export const KLEMMI_AUDIO_VOICE_MANIFEST: Readonly<
         voice:
           KLEMMI_PLAN_AUDIO_IDS.includes(id)
             ? KLEMMI_PLAN_VOICE_PROFILE.voice
-            : KLEMMI_PUBLIC_DEMO_AUDIO_IDS.includes(id)
+            : KLEMMI_HELPERS_AUDIO_IDS.includes(id)
+              ? KLEMMI_HELPERS_VOICE_PROFILE.voice
+              : KLEMMI_PUBLIC_DEMO_AUDIO_IDS.includes(id)
               ? KLEMMI_PUBLIC_DEMO_VOICE_PROFILE.voice
               : KLEMMI_CONTACTS_AUDIO_IDS.includes(id)
                 ? KLEMMI_CONTACTS_VOICE_PROFILE.voice
@@ -659,6 +702,9 @@ const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
       id,
       "20261019-puck-public-demo-v1",
     ])
+  ),
+  ...Object.fromEntries(
+    KLEMMI_HELPERS_AUDIO_IDS.map(id => [id, "20261019-puck-helpers-v1"])
   ),
 };
 

@@ -17,6 +17,8 @@ import {
 import {
   KLEMMI_CONTACTS_AUDIO_IDS,
   KLEMMI_CONTACTS_VOICE_PROFILE,
+  KLEMMI_HELPERS_AUDIO_IDS,
+  KLEMMI_HELPERS_VOICE_PROFILE,
   KLEMMI_PLAN_AUDIO_IDS,
   KLEMMI_PLAN_VOICE_PROFILE,
   KLEMMI_PUBLIC_DEMO_AUDIO_IDS,
@@ -248,7 +250,7 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
     }
   });
 
-  it("ordnet Einsatzplan, Vereinsdemo und Ansprechpartner-Führung verbindlich der Puck-Stimme zu", async () => {
+  it("ordnet Einsatzplan, Helfer-, Vereinsdemo- und Ansprechpartner-Führung verbindlich der Puck-Stimme zu", async () => {
     expect(KLEMMI_VOICE_PROFILE.voice).toBe("Achird");
     expect(KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG).toMatchObject({
       profileVersion: "1.0",
@@ -266,6 +268,9 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
     expect(KLEMMI_CONTACTS_VOICE_PROFILE.voice).toBe(
       KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.voiceName
     );
+    expect(KLEMMI_HELPERS_VOICE_PROFILE.voice).toBe(
+      KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.voiceName
+    );
     expect(KLEMMI_PLAN_VOICE_PROFILE.generationStyle).toBe(
       KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.style
     );
@@ -275,10 +280,14 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
     expect(KLEMMI_CONTACTS_VOICE_PROFILE.generationStyle).toBe(
       KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.style
     );
+    expect(KLEMMI_HELPERS_VOICE_PROFILE.generationStyle).toBe(
+      KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.style
+    );
     expect(Object.keys(KLEMMI_AUDIO_VOICE_MANIFEST).length).toBeGreaterThan(0);
     expect(KLEMMI_PLAN_AUDIO_IDS.length).toBeGreaterThan(0);
     expect(KLEMMI_PUBLIC_DEMO_AUDIO_IDS.length).toBeGreaterThan(20);
     expect(KLEMMI_CONTACTS_AUDIO_IDS).toHaveLength(9);
+    expect(KLEMMI_HELPERS_AUDIO_IDS).toHaveLength(23);
     expect(
       KLEMMI_PLAN_AUDIO_IDS.every(
         id => KLEMMI_AUDIO_VOICE_MANIFEST[id].voice === "Puck"
@@ -294,6 +303,11 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
         id => KLEMMI_AUDIO_VOICE_MANIFEST[id].voice === "Puck"
       )
     ).toBe(true);
+    expect(
+      KLEMMI_HELPERS_AUDIO_IDS.every(
+        id => KLEMMI_AUDIO_VOICE_MANIFEST[id].voice === "Puck"
+      )
+    ).toBe(true);
     for (const id of KLEMMI_PUBLIC_DEMO_AUDIO_IDS) {
       const asset = await readFile(
         path.join(root, "server/assets/klemmi-voice", `${id}.mp3`)
@@ -306,10 +320,17 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
       );
       expect(asset.byteLength).toBeGreaterThan(0);
     }
+    for (const id of KLEMMI_HELPERS_AUDIO_IDS) {
+      const asset = await readFile(
+        path.join(root, "server/assets/klemmi-voice", `${id}.mp3`)
+      );
+      expect(asset.byteLength).toBeGreaterThan(0);
+    }
 
     const publicDemoAudioIds = new Set<string>();
     const publicDemoAudioIdSet = new Set<string>(KLEMMI_PUBLIC_DEMO_AUDIO_IDS);
     const contactsAudioIdSet = new Set<string>(KLEMMI_CONTACTS_AUDIO_IDS);
+    const helpersAudioIdSet = new Set<string>(KLEMMI_HELPERS_AUDIO_IDS);
     for (const packageId of ["event_pass", "light", "pro"] as const) {
       for (const step of createPublicDemoDashboardKlemmiSteps({
         hasEventPeriod: true,
@@ -330,13 +351,29 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
       [...publicDemoAudioIds].every(id => publicDemoAudioIdSet.has(id))
     ).toBe(true);
 
+    const realHelpersAudioIds = new Set<string>(["helpers-opening"]);
+    for (const packageId of ["event_pass", "light", "pro", "enterprise"] as const) {
+      for (const step of getHelperGuideSteps(packageId)) {
+        realHelpersAudioIds.add(`helpers-${step.audioKey ?? step.key}`);
+      }
+    }
+    expect(
+      [...realHelpersAudioIds].every(id => helpersAudioIdSet.has(id))
+    ).toBe(true);
+    expect(
+      [...realHelpersAudioIds].every(
+        id => KLEMMI_AUDIO_VOICE_MANIFEST[id as keyof typeof KLEMMI_AUDIO_VOICE_MANIFEST].voice === "Puck"
+      )
+    ).toBe(true);
+
     expect(
       Object.entries(KLEMMI_AUDIO_VOICE_MANIFEST)
         .filter(
           ([id]) =>
             !id.startsWith("plan-") &&
             !publicDemoAudioIdSet.has(id) &&
-            !contactsAudioIdSet.has(id)
+            !contactsAudioIdSet.has(id) &&
+            !helpersAudioIdSet.has(id)
         )
         .every(([, entry]) => entry.voice === "Achird")
     ).toBe(true);
