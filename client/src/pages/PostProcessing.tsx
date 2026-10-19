@@ -794,6 +794,7 @@ export default function PostProcessing() {
           guide={
             <KlemmiSurfaceGuide
             guideId="postprocessing"
+            openingAudioKey="postprocessing-opening"
             title="Nachbereitung verbindlich festhalten"
             introText="Ich zeige dir die echte Nachbereitungsanlage: Aufgabe benennen, Verantwortliche und Termin einordnen und Übergaben dokumentieren."
             successSignal={klemmiCreationSignal}

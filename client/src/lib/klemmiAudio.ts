@@ -50,6 +50,25 @@ export const KLEMMI_HELPERS_VOICE_PROFILE = {
     "Freundliche Klemmi-Charakterstimme: hell, lebhaft, gut verständlich und gezielt gegen die echte Dashboard-Stimme geprüft.",
 } as const;
 
+/** Vorbereitung und Nachbereitung verwenden dieselbe feste Klemmi-Charakterstimme. */
+export const KLEMMI_PREPARATION_VOICE_PROFILE = {
+  voice: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.voiceName,
+  generationStyle: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.style,
+  generationProfileVersion: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.profileVersion,
+  label: "Klemmi in der Vorbereitung – freundlich und comicartig",
+  description:
+    "Freundliche Klemmi-Charakterstimme: hell, lebhaft, gut verständlich und gegen Wetterbericht- sowie Dashboard-Referenz geprüft.",
+} as const;
+
+export const KLEMMI_POSTPROCESSING_VOICE_PROFILE = {
+  voice: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.voiceName,
+  generationStyle: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.style,
+  generationProfileVersion: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.profileVersion,
+  label: "Klemmi in der Nachbereitung – freundlich und comicartig",
+  description:
+    "Freundliche Klemmi-Charakterstimme: hell, lebhaft, gut verständlich und gegen Wetterbericht- sowie Dashboard-Referenz geprüft.",
+} as const;
+
 /**
  * Feste, vorproduzierte Klemmi-Texte. Die Dateien liegen ausschließlich im
  * Produkt-Container und werden erst ausgeliefert, wenn eine Tour bewusst
@@ -60,6 +79,8 @@ export const KLEMMI_AUDIO_SCRIPTS = {
   "public-demo-opening": "Hallo! Ich bin Klemmi. Lass uns gemeinsam loslegen.",
   "helpers-opening": "Hallo! Ich bin Klemmi. Lass uns gemeinsam loslegen.",
   "plan-opening": "Hallo! Klemmi ist bereit. Lass uns euren Einsatzplan gemeinsam richtig gut sortieren!",
+  "preparation-opening": "Hallo! Ich bin Klemmi. Lass uns gemeinsam loslegen.",
+  "postprocessing-opening": "Hallo! Ich bin Klemmi. Lass uns gemeinsam loslegen.",
   "plan-shift-success": "Juhu! Diese Schicht ist jetzt vollständig besetzt. Weiter so, ihr seid ein tolles Team!",
   "opening-clears-throat": "[clears throat] So, los geht's!",
   "opening-cough": "[cough] Hups, kurz sortiert. Jetzt aber!",
@@ -399,6 +420,40 @@ export const KLEMMI_HELPERS_AUDIO_IDS: readonly KlemmiAudioId[] =
     "helpers-complete",
   ]);
 
+/** Alle festen Aufnahmen der echten Vorbereitungs-Führung. */
+export const KLEMMI_PREPARATION_AUDIO_IDS: readonly KlemmiAudioId[] =
+  Object.freeze([
+    "preparation-opening",
+    "preparation-intro",
+    "preparation-area-location-event-pass",
+    "preparation-area-location-light",
+    "preparation-area-location-pro",
+    "preparation-task",
+    "preparation-details",
+    "preparation-logbook",
+    "preparation-save",
+    "preparation-complete",
+    "preparation-overview-save",
+    "preparation-overview",
+  ]);
+
+/** Alle festen Aufnahmen der echten Nachbereitungs-Führung. */
+export const KLEMMI_POSTPROCESSING_AUDIO_IDS: readonly KlemmiAudioId[] =
+  Object.freeze([
+    "postprocessing-opening",
+    "postprocessing-intro",
+    "postprocessing-area-location-event-pass",
+    "postprocessing-area-location-light",
+    "postprocessing-area-location-pro",
+    "postprocessing-task",
+    "postprocessing-details",
+    "postprocessing-logbook",
+    "postprocessing-save",
+    "postprocessing-complete",
+    "postprocessing-overview-save",
+    "postprocessing-overview",
+  ]);
+
 /**
  * Diese Clips sind in der öffentlichen, fiktiven Vereinsdemo erreichbar.
  * Sie werden geschlossen mit der quirligen Puck-Stimme ausgeliefert, damit
@@ -445,13 +500,15 @@ type KlemmiVoiceName =
   | typeof KLEMMI_PLAN_VOICE_PROFILE.voice
   | typeof KLEMMI_PUBLIC_DEMO_VOICE_PROFILE.voice
   | typeof KLEMMI_CONTACTS_VOICE_PROFILE.voice
-  | typeof KLEMMI_HELPERS_VOICE_PROFILE.voice;
+  | typeof KLEMMI_HELPERS_VOICE_PROFILE.voice
+  | typeof KLEMMI_PREPARATION_VOICE_PROFILE.voice
+  | typeof KLEMMI_POSTPROCESSING_VOICE_PROFILE.voice;
 
 /**
  * Jede Tourreferenz gehört verbindlich zu einer vorproduzierten Klemmi-Stimme.
- * Einsatzplan, echte Helferführung, öffentliche Vereinsdemo und Ansprechpartner-
- * Führung verweisen geschlossen auf das quirlige Puck-Profil; die übrigen Bereiche
- * verwenden Achird.
+ * Einsatzplan, Helferführung, öffentliche Vereinsdemo, Ansprechpartner, Vor- und
+ * Nachbereitung verweisen geschlossen auf das quirlige Puck-Profil; die übrigen
+ * Bereiche verwenden Achird.
  * Browser-Systemstimmen werden nie verwendet.
  */
 export const KLEMMI_AUDIO_VOICE_MANIFEST: Readonly<
@@ -464,6 +521,10 @@ export const KLEMMI_AUDIO_VOICE_MANIFEST: Readonly<
         voice:
           KLEMMI_PLAN_AUDIO_IDS.includes(id)
             ? KLEMMI_PLAN_VOICE_PROFILE.voice
+            : KLEMMI_PREPARATION_AUDIO_IDS.includes(id)
+              ? KLEMMI_PREPARATION_VOICE_PROFILE.voice
+              : KLEMMI_POSTPROCESSING_AUDIO_IDS.includes(id)
+                ? KLEMMI_POSTPROCESSING_VOICE_PROFILE.voice
             : KLEMMI_HELPERS_AUDIO_IDS.includes(id)
               ? KLEMMI_HELPERS_VOICE_PROFILE.voice
               : KLEMMI_PUBLIC_DEMO_AUDIO_IDS.includes(id)
@@ -670,6 +731,12 @@ const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
   "locations-overview": "20260928-adaptive-area-tour-v1",
   ...Object.fromEntries(
     KLEMMI_CONTACTS_AUDIO_IDS.map(id => [id, "20261019-puck-contacts-v1"])
+  ),
+  ...Object.fromEntries(
+    KLEMMI_PREPARATION_AUDIO_IDS.map(id => [id, "20261019-puck-prep-post-v1"])
+  ),
+  ...Object.fromEntries(
+    KLEMMI_POSTPROCESSING_AUDIO_IDS.map(id => [id, "20261019-puck-prep-post-v1"])
   ),
   "donations-overview-save": "20260928-adaptive-area-tour-v1",
   "donations-overview-summary": "20260928-adaptive-area-tour-v1",

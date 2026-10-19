@@ -286,12 +286,14 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(preparation).toContain('data-klemmi-target="preparation-new"');
     expect(preparation).toContain('data-klemmi-target="preparation-area-location"');
     expect(preparation).toContain('data-klemmi-target="preparation-save"');
+    expect(preparation).toContain('openingAudioKey="preparation-opening"');
     expect(preparation).toContain("klemmiGuideNeedsSample");
     expect(preparation).toContain('completionAudioKey={klemmiGuideNeedsSample ? "complete" : "overview"}');
     expect(postprocessing).toContain('<KlemmiSurfaceGuide');
     expect(postprocessing).toContain('data-klemmi-target="postprocessing-new"');
     expect(postprocessing).toContain('data-klemmi-target="postprocessing-area-location"');
     expect(postprocessing).toContain('data-klemmi-target="postprocessing-save"');
+    expect(postprocessing).toContain('openingAudioKey="postprocessing-opening"');
     expect(postprocessing).toContain("klemmiGuideNeedsSample");
 
     expect(materials).toContain("klemmiGuide={{");
@@ -323,6 +325,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(actionPanel).toContain("const guideFirst = layout === \"guide-first\"");
     expect(actionPanel).toContain('data-klemmi-view-control');
     expect(audio).toContain('"materials-overview-save"');
+    expect(audio).toContain('KLEMMI_PREPARATION_AUDIO_IDS.map(id => [id, "20261019-puck-prep-post-v1"])');
+    expect(audio).toContain('KLEMMI_POSTPROCESSING_AUDIO_IDS.map(id => [id, "20261019-puck-prep-post-v1"])');
     expect(audio).toContain('"marketing-overview-save"');
     expect(audio).toContain('"approvals-overview-save"');
     expect(audio).toContain('"contacts-overview-save"');

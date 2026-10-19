@@ -877,6 +877,7 @@ export default function Preparation() {
           guide={
             <KlemmiSurfaceGuide
             guideId="preparation"
+            openingAudioKey="preparation-opening"
             title="Vorbereitungsaufgaben sicher planen"
             introText="Ich zeige dir die echte Aufgabenanlage: Aufgabe formulieren, Zuständigkeit und Termin festlegen und den ersten Stand sauber festhalten."
             successSignal={klemmiCreationSignal}
