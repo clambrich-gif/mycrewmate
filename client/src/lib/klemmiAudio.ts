@@ -1,3 +1,5 @@
+import { KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG } from "@shared/klemmi-voice-production";
+
 export const KLEMMI_AUDIO_ROUTE = "/api/klemmi/audio";
 
 /** Einheitliche Markenstimme für alle bestehenden und zukünftigen Klemmi-Touren. */
@@ -10,7 +12,9 @@ export const KLEMMI_VOICE_PROFILE = {
 
 /** Die gesamte Einsatzplanführung nutzt bewusst dieselbe lebhafte Klemmi-Charakterstimme. */
 export const KLEMMI_PLAN_VOICE_PROFILE = {
-  voice: "Puck",
+  voice: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.voiceName,
+  generationStyle: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.style,
+  generationProfileVersion: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.profileVersion,
   label: "Klemmi im Einsatzplan – freundlich und comicartig",
   description:
     "Freundliche männliche Charakterstimme: hell, leicht verspielt, gut verständlich und durchgehend einheitlich.",
@@ -18,7 +22,9 @@ export const KLEMMI_PLAN_VOICE_PROFILE = {
 
 /** Öffentliche Musterplanungen verwenden dieselbe quirlige Puck-Stimme wie der Einsatzplan. */
 export const KLEMMI_PUBLIC_DEMO_VOICE_PROFILE = {
-  voice: "Puck",
+  voice: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.voiceName,
+  generationStyle: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.style,
+  generationProfileVersion: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.profileVersion,
   label: "Klemmi in der Vereinsdemo – freundlich und comicartig",
   description:
     "Freundliche männliche Charakterstimme: hell, leicht verspielt, gut verständlich und durchgehend einheitlich.",

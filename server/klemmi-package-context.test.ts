@@ -22,6 +22,10 @@ import {
   KLEMMI_AUDIO_VOICE_MANIFEST,
   KLEMMI_VOICE_PROFILE,
 } from "../client/src/lib/klemmiAudio";
+import {
+  createKlemmiPuckSpeechRequest,
+  KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG,
+} from "../shared/klemmi-voice-production";
 import { getKlemmiLocationGuideCopy } from "../client/src/lib/klemmi-location-guide";
 
 const root = process.cwd();
@@ -244,8 +248,25 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
 
   it("ordnet Einsatzplan und die gesamte öffentliche Demoführung verbindlich der Puck-Stimme zu", async () => {
     expect(KLEMMI_VOICE_PROFILE.voice).toBe("Achird");
-    expect(KLEMMI_PLAN_VOICE_PROFILE.voice).toBe("Puck");
-    expect(KLEMMI_PUBLIC_DEMO_VOICE_PROFILE.voice).toBe("Puck");
+    expect(KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG).toMatchObject({
+      profileVersion: "1.0",
+      voiceName: "Puck",
+      languageCode: "de-DE",
+      style: "high pitch, bright, playful, animated",
+      candidateCount: 3,
+    });
+    expect(KLEMMI_PLAN_VOICE_PROFILE.voice).toBe(
+      KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.voiceName
+    );
+    expect(KLEMMI_PUBLIC_DEMO_VOICE_PROFILE.voice).toBe(
+      KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.voiceName
+    );
+    expect(KLEMMI_PLAN_VOICE_PROFILE.generationStyle).toBe(
+      KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.style
+    );
+    expect(KLEMMI_PUBLIC_DEMO_VOICE_PROFILE.generationStyle).toBe(
+      KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.style
+    );
     expect(Object.keys(KLEMMI_AUDIO_VOICE_MANIFEST).length).toBeGreaterThan(0);
     expect(KLEMMI_PLAN_AUDIO_IDS.length).toBeGreaterThan(0);
     expect(KLEMMI_PUBLIC_DEMO_AUDIO_IDS.length).toBeGreaterThan(20);
@@ -297,6 +318,22 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
         )
         .every(([, entry]) => entry.voice === "Achird")
     ).toBe(true);
+  });
+
+  it("baut künftige Puck-Aufträge stets mit der verbindlichen hellen Stilvorgabe", () => {
+    expect(createKlemmiPuckSpeechRequest("  Hallo, ich bin Klemmi.  ")).toEqual({
+      voice_name: "Puck",
+      language_code: "de-DE",
+      turns: [
+        {
+          text: "Hallo, ich bin Klemmi.",
+          style: "high pitch, bright, playful, animated",
+        },
+      ],
+    });
+    expect(() => createKlemmiPuckSpeechRequest(" ")).toThrow(
+      "Klemmi-Sprechtext darf nicht leer sein."
+    );
   });
 
   it("behält die Einsatzplanung in allen Produktstufen als Kernfunktion frei", async () => {
