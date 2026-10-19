@@ -30,6 +30,10 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(helpers).toContain('klemmiTarget="helper-action-donation"');
     expect(helpers).toContain('data-klemmi-target="helper-action-whatsapp"');
     expect(helpers).toContain('data-klemmi-target="helper-action-pdf"');
+    expect(helpers).toContain("DemoLockedHelperAction");
+    expect(helpers).toContain("isPublicDemoSession ? <>");
+    expect(helpers).toContain("In dieser fiktiven Vereinsdemo wird kein WhatsApp-Versand vorbereitet oder versendet.");
+    expect(helpers).toContain("In dieser fiktiven Vereinsdemo wird keine persönliche PDF erstellt oder heruntergeladen.");
     expect(helpers).toContain('data-klemmi-target="helper-action-edit"');
     expect(helpers).toContain('data-klemmi-target="helper-action-delete"');
     expect(helpers).toContain('guideHelperId={displayedHelpers[0]?.id ?? null}');
@@ -122,6 +126,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(audio).toContain('"helpers-availability-entry"');
     expect(audio).toContain('"helpers-feedback"');
     expect(audio).toContain('"helpers-action-whatsapp"');
+    expect(audio).toContain('"helpers-action-whatsapp-demo"');
+    expect(audio).toContain('"helpers-action-pdf-demo"');
     expect(audio).toContain('"helpers-action-delete"');
     expect(guide).toContain("data-klemmi-mobile-caption");
     expect(guide).toContain("data-klemmi-next-control");

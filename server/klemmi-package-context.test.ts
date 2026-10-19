@@ -203,6 +203,15 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
     const proSteps = getHelperGuideSteps("pro");
     expect(proSteps.find(step => step.key === "donation")?.title).toBe("Spende direkt mit erfassen");
     expect(proSteps.find(step => step.key === "action-whatsapp")?.title).toBe("Nach vollständiger Planung per WhatsApp anfragen");
+    const publicDemoSteps = getHelperGuideSteps("pro", true);
+    expect(publicDemoSteps.find(step => step.key === "action-whatsapp")).toMatchObject({
+      title: "WhatsApp in der Demo sichtbar, aber gesperrt",
+      audioKey: "action-whatsapp-demo",
+    });
+    expect(publicDemoSteps.find(step => step.key === "action-pdf")).toMatchObject({
+      title: "Persönliche PDF in der Demo sichtbar, aber gesperrt",
+      audioKey: "action-pdf-demo",
+    });
     expect(proSteps.find(step => step.key === "action-cancellation")).toMatchObject({
       title: "Bei Absage auf Nein stellen – nicht löschen",
       audioKey: "action-cancellation",

@@ -798,6 +798,75 @@ function CakeDonationAction({
   );
 }
 
+type DemoLockedHelperActionKind = "whatsapp" | "pdf";
+
+/**
+ * Öffentliche Vereinsdemos zeigen die späteren Helferaktionen bewusst mit
+ * Schloss. So können Klemmi und die Oberfläche den Ablauf erklären, ohne dass
+ * aus einer fiktiven Planung eine echte Nachricht oder PDF entstehen kann.
+ */
+function DemoLockedHelperAction({
+  kind,
+  helperName,
+  mobile = false,
+  compact = false,
+  klemmiTarget,
+  klemmiHelperId,
+}: {
+  kind: DemoLockedHelperActionKind;
+  helperName: string;
+  mobile?: boolean;
+  compact?: boolean;
+  klemmiTarget?: string;
+  klemmiHelperId?: number;
+}) {
+  const isWhatsApp = kind === "whatsapp";
+  const label = isWhatsApp
+    ? "Aufgabenplan per WhatsApp an Helfer senden"
+    : "Persönliche Aufgaben-PDF herunterladen";
+  const unavailableHint = isWhatsApp
+    ? "In dieser fiktiven Vereinsdemo wird kein WhatsApp-Versand vorbereitet oder versendet."
+    : "In dieser fiktiven Vereinsdemo wird keine persönliche PDF erstellt oder heruntergeladen.";
+
+  return (
+    <button
+      type="button"
+      data-klemmi-target={klemmiTarget}
+      data-klemmi-helper-id={klemmiHelperId}
+      aria-disabled="true"
+      title={`${label} – in dieser Demo nicht verfügbar (Klick für Hinweis)`}
+      aria-label={`${label} für ${helperName} – in dieser Demo nicht verfügbar`}
+      onClick={() => toast.info(unavailableHint)}
+      className={cn(
+        "relative inline-flex shrink-0 items-center justify-center rounded-md bg-transparent p-1 text-slate-500 opacity-55 transition-transform duration-150 ease-out hover:bg-slate-100 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 active:scale-95",
+        mobile
+          ? "h-11 min-h-11 w-11 min-w-11"
+          : compact
+            ? "h-9 w-9"
+            : HELPER_ACTION_ICON_BUTTON_CLASS
+      )}
+    >
+      {isWhatsApp ? (
+        <MessageCircle
+          className={cn(mobile ? "size-5" : compact ? "size-4" : "size-5", "text-[#25D366] grayscale")}
+          aria-hidden="true"
+        />
+      ) : (
+        <FileDown
+          className={cn(mobile ? "size-5" : compact ? "size-4" : "size-5", "text-blue-600 grayscale")}
+          aria-hidden="true"
+        />
+      )}
+      <span
+        className="absolute -bottom-0.5 -right-0.5 inline-flex size-3.5 items-center justify-center rounded-full bg-slate-700 text-white shadow-sm"
+        aria-hidden="true"
+      >
+        <LockKeyhole className="size-2.5" />
+      </span>
+    </button>
+  );
+}
+
 export default function Helpers() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [, setLocation] = useLocation();
@@ -1527,6 +1596,7 @@ export default function Helpers() {
               guideHelperId={displayedHelpers[0]?.id ?? null}
               viewMode={viewMode}
               currentPackageId={currentPackageId}
+              isPublicDemoSession={isPublicDemoSession}
               onOpenHelperDialog={openNewHelperDialog}
               onCloseHelperDialog={() => setNewHelperDialogOpen(false)}
               onGuideOpenChange={() => undefined}
@@ -1918,7 +1988,10 @@ export default function Helpers() {
                     disabled={!allowsDonations}
                     onClick={() => openCakeDonation(helper.name)}
                   />
-                  {!isPublicDemoSession && <>
+                  {isPublicDemoSession ? <>
+                    <DemoLockedHelperAction kind="pdf" helperName={helper.name} mobile />
+                    <DemoLockedHelperAction kind="whatsapp" helperName={helper.name} mobile />
+                  </> : <>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -2244,7 +2317,10 @@ export default function Helpers() {
                         disabled={!allowsDonations}
                         onClick={() => openCakeDonation(helper.name)}
                       />
-                      {!isPublicDemoSession && <>
+                      {isPublicDemoSession ? <>
+                        <DemoLockedHelperAction kind="pdf" helperName={helper.name} />
+                        <DemoLockedHelperAction kind="whatsapp" helperName={helper.name} />
+                      </> : <>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -2551,7 +2627,22 @@ export default function Helpers() {
                             klemmiHelperId={helper.id}
                             onClick={() => openCakeDonation(helper.name)}
                           />
-                          {!isPublicDemoSession && <>
+                          {isPublicDemoSession ? <>
+                            <DemoLockedHelperAction
+                              kind="whatsapp"
+                              helperName={helper.name}
+                              compact
+                              klemmiTarget="helper-action-whatsapp"
+                              klemmiHelperId={helper.id}
+                            />
+                            <DemoLockedHelperAction
+                              kind="pdf"
+                              helperName={helper.name}
+                              compact
+                              klemmiTarget="helper-action-pdf"
+                              klemmiHelperId={helper.id}
+                            />
+                          </> : <>
                             <Button
                               type="button"
                               variant="ghost"
