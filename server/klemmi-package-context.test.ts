@@ -252,6 +252,11 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
         .filter(([id]) => !id.startsWith("plan-"))
         .every(([, entry]) => entry.voice === "Achird")
     ).toBe(true);
+    for (const id of ["helpers-action-whatsapp-demo", "helpers-action-pdf-demo"] as const) {
+      expect(KLEMMI_AUDIO_VOICE_MANIFEST[id].voice).toBe(
+        KLEMMI_VOICE_PROFILE.voice
+      );
+    }
   });
 
   it("behält die Einsatzplanung in allen Produktstufen als Kernfunktion frei", async () => {
