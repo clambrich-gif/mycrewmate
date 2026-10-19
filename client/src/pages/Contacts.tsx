@@ -171,6 +171,7 @@ export default function Contacts() {
             guideId="contacts"
             title="Ansprechpartner anlegen"
             introText="Ich zeige dir die echten Stammdatenfelder – vom Namen bis zur sicheren Anlage ohne versehentlichen Zugang."
+            openingAudioKey="contacts-opening"
             steps={contactGuideSteps}
             successSignal={klemmiSuccessSignal}
             completionAudioKey={klemmiGuideNeedsSample ? "complete" : "overview"}

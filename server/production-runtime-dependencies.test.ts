@@ -56,7 +56,7 @@ describe("Produktions-Laufzeitabhängigkeiten", () => {
   it("liefert die festen Clips der ausführlichen Klemmi-Führungen aus dem Produktimage aus", () => {
     const clipIds = [
       "helpers-contact", "helpers-details",
-      "contacts-intro", "contacts-name", "contacts-details", "contacts-save", "contacts-complete",
+      "contacts-opening", "contacts-intro", "contacts-name", "contacts-details", "contacts-phone-share", "contacts-save", "contacts-complete", "contacts-overview-save", "contacts-overview",
       "donations-intro", "donations-donor", "donations-item", "donations-traits", "donations-save", "donations-complete",
       "finances-intro", "finances-category", "finances-values", "finances-balance", "finances-complete",
       "pdf-intro", "pdf-helpers", "pdf-plan", "pdf-config", "pdf-complete",
@@ -79,7 +79,7 @@ describe("Produktions-Laufzeitabhängigkeiten", () => {
     }
   });
 
-  it("liefert für jeden registrierten Klemmi-Sprechtext eine Achird-Audiodatei aus", () => {
+  it("liefert für jeden registrierten Klemmi-Sprechtext eine Audiodatei aus", () => {
     const audioCatalog = source("client/src/lib/klemmiAudio.ts");
     const scriptSection = audioCatalog.split("export type KlemmiAudioId", 1)[0];
     const ids = [...scriptSection.matchAll(/^\s+"([a-z0-9-]+)":/gm)].map(
@@ -89,7 +89,7 @@ describe("Produktions-Laufzeitabhängigkeiten", () => {
     expect(ids.length).toBeGreaterThan(70);
     expect(new Set(ids).size).toBe(ids.length);
     expect(audioCatalog).toContain("KLEMMI_AUDIO_VOICE_MANIFEST");
-    expect(audioCatalog).toContain('voice: "Achird"');
+    expect(audioCatalog).toContain("KLEMMI_CONTACTS_VOICE_PROFILE");
     for (const id of ids) {
       expect(
         fs.existsSync(

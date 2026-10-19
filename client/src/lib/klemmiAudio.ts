@@ -2,7 +2,7 @@ import { KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG } from "@shared/klemmi-voice-produc
 
 export const KLEMMI_AUDIO_ROUTE = "/api/klemmi/audio";
 
-/** Einheitliche Markenstimme für alle bestehenden und zukünftigen Klemmi-Touren. */
+/** Grundprofil für Bereiche, die noch nicht bewusst auf die Klemmi-Charakterstimme umgestellt wurden. */
 export const KLEMMI_VOICE_PROFILE = {
   voice: "Achird",
   label: "Klemmi – warm und organisatorisch",
@@ -28,6 +28,16 @@ export const KLEMMI_PUBLIC_DEMO_VOICE_PROFILE = {
   label: "Klemmi in der Vereinsdemo – freundlich und comicartig",
   description:
     "Freundliche männliche Charakterstimme: hell, leicht verspielt, gut verständlich und durchgehend einheitlich.",
+} as const;
+
+/** Die Ansprechpartner-Führung nutzt dieselbe helle Klemmi-Charakterstimme wie der echte Dashboard-Countdown. */
+export const KLEMMI_CONTACTS_VOICE_PROFILE = {
+  voice: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.voiceName,
+  generationStyle: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.style,
+  generationProfileVersion: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.profileVersion,
+  label: "Klemmi bei Ansprechpartnern – freundlich und comicartig",
+  description:
+    "Freundliche Klemmi-Charakterstimme: hell, lebhaft, gut verständlich und gezielt gegen die echte Dashboard-Stimme geprüft.",
 } as const;
 
 /**
@@ -168,6 +178,7 @@ export const KLEMMI_AUDIO_SCRIPTS = {
   "helpers-action-cancellation": "Bei Absage auf Nein stellen, nicht löschen. Kann ein Helfer doch nicht teilnehmen, wird er nicht gelöscht. Setze bei Helfen den Status auf Nein. Die rote Kennzeichnung zeigt dem Team sofort, dass Ersatz für die betroffenen Schichten gebraucht wird und die bisherige Planung nachvollziehbar bleibt.",
   "helpers-complete": "Der Ablauf ist klar: Helfer speichern, Verfügbarkeiten pflegen, Schichten passend füllen, den persönlichen Plan senden und die Antwort verbindlich eintragen – so bleibt der Einsatzplan zuverlässig.",
 
+  "contacts-opening": "Hallo! Ich bin Klemmi. Lass uns gemeinsam loslegen.",
   "contacts-intro": "Ansprechpartner von Anfang an pflegen. Ansprechpartner sind deine verlässlichen Kontaktpersonen für Teams, Helfer und PDFs. Ich führe dich kurz durch die Stammdatenanlage.",
   "contacts-name": "Name eindeutig eintragen. Trage zuerst den Namen ein. Diese Angabe ist erforderlich und erscheint später bei Zuordnungen, in Listen und in persönlichen Unterlagen.",
   "contacts-details": "E-Mail und Rufnummer ergänzen. E-Mail-Adresse und Rufnummer sind optional, aber für Rückfragen besonders hilfreich. Ein persönlicher Zugang wird bewusst getrennt unter Schutz und Protokoll eingerichtet.",
@@ -333,6 +344,20 @@ export const KLEMMI_PLAN_AUDIO_IDS = Object.freeze(
   )
 );
 
+/** Alle festen Aufnahmen der normalen Ansprechpartner-Führung. */
+export const KLEMMI_CONTACTS_AUDIO_IDS: readonly KlemmiAudioId[] =
+  Object.freeze([
+    "contacts-opening",
+    "contacts-intro",
+    "contacts-name",
+    "contacts-details",
+    "contacts-phone-share",
+    "contacts-save",
+    "contacts-complete",
+    "contacts-overview-save",
+    "contacts-overview",
+  ]);
+
 /**
  * Diese Clips sind in der öffentlichen, fiktiven Vereinsdemo erreichbar.
  * Sie werden geschlossen mit der quirligen Puck-Stimme ausgeliefert, damit
@@ -377,12 +402,13 @@ export const KLEMMI_PUBLIC_DEMO_AUDIO_IDS: readonly KlemmiAudioId[] =
 type KlemmiVoiceName =
   | typeof KLEMMI_VOICE_PROFILE.voice
   | typeof KLEMMI_PLAN_VOICE_PROFILE.voice
-  | typeof KLEMMI_PUBLIC_DEMO_VOICE_PROFILE.voice;
+  | typeof KLEMMI_PUBLIC_DEMO_VOICE_PROFILE.voice
+  | typeof KLEMMI_CONTACTS_VOICE_PROFILE.voice;
 
 /**
  * Jede Tourreferenz gehört verbindlich zu einer vorproduzierten Klemmi-Stimme.
- * Einsatzplan und öffentliche Vereinsdemo verweisen geschlossen auf das
- * quirlige Puck-Profil; die übrigen Bereiche verwenden Achird.
+ * Einsatzplan, öffentliche Vereinsdemo und Ansprechpartner-Führung verweisen
+ * geschlossen auf das quirlige Puck-Profil; die übrigen Bereiche verwenden Achird.
  * Browser-Systemstimmen werden nie verwendet.
  */
 export const KLEMMI_AUDIO_VOICE_MANIFEST: Readonly<
@@ -397,7 +423,9 @@ export const KLEMMI_AUDIO_VOICE_MANIFEST: Readonly<
             ? KLEMMI_PLAN_VOICE_PROFILE.voice
             : KLEMMI_PUBLIC_DEMO_AUDIO_IDS.includes(id)
               ? KLEMMI_PUBLIC_DEMO_VOICE_PROFILE.voice
-              : KLEMMI_VOICE_PROFILE.voice,
+              : KLEMMI_CONTACTS_AUDIO_IDS.includes(id)
+                ? KLEMMI_CONTACTS_VOICE_PROFILE.voice
+                : KLEMMI_VOICE_PROFILE.voice,
       },
     ])
   ) as Record<KlemmiAudioId, { voice: KlemmiVoiceName }>
@@ -593,8 +621,9 @@ const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
   "approvals-overview": "20260928-adaptive-area-tour-v1",
   "locations-overview-save": "20260928-adaptive-area-tour-v1",
   "locations-overview": "20260928-adaptive-area-tour-v1",
-  "contacts-overview-save": "20260928-adaptive-area-tour-v1",
-  "contacts-overview": "20260928-adaptive-area-tour-v1",
+  ...Object.fromEntries(
+    KLEMMI_CONTACTS_AUDIO_IDS.map(id => [id, "20261019-puck-contacts-v1"])
+  ),
   "donations-overview-save": "20260928-adaptive-area-tour-v1",
   "donations-overview-summary": "20260928-adaptive-area-tour-v1",
   "finances-overview-save": "20260928-adaptive-area-tour-v1",

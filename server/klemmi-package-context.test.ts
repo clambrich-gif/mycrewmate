@@ -15,6 +15,8 @@ import {
   getSecurityKlemmiSteps,
 } from "../client/src/lib/klemmi-area-tours";
 import {
+  KLEMMI_CONTACTS_AUDIO_IDS,
+  KLEMMI_CONTACTS_VOICE_PROFILE,
   KLEMMI_PLAN_AUDIO_IDS,
   KLEMMI_PLAN_VOICE_PROFILE,
   KLEMMI_PUBLIC_DEMO_AUDIO_IDS,
@@ -246,7 +248,7 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
     }
   });
 
-  it("ordnet Einsatzplan und die gesamte öffentliche Demoführung verbindlich der Puck-Stimme zu", async () => {
+  it("ordnet Einsatzplan, Vereinsdemo und Ansprechpartner-Führung verbindlich der Puck-Stimme zu", async () => {
     expect(KLEMMI_VOICE_PROFILE.voice).toBe("Achird");
     expect(KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG).toMatchObject({
       profileVersion: "1.0",
@@ -261,15 +263,22 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
     expect(KLEMMI_PUBLIC_DEMO_VOICE_PROFILE.voice).toBe(
       KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.voiceName
     );
+    expect(KLEMMI_CONTACTS_VOICE_PROFILE.voice).toBe(
+      KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.voiceName
+    );
     expect(KLEMMI_PLAN_VOICE_PROFILE.generationStyle).toBe(
       KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.style
     );
     expect(KLEMMI_PUBLIC_DEMO_VOICE_PROFILE.generationStyle).toBe(
       KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.style
     );
+    expect(KLEMMI_CONTACTS_VOICE_PROFILE.generationStyle).toBe(
+      KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.style
+    );
     expect(Object.keys(KLEMMI_AUDIO_VOICE_MANIFEST).length).toBeGreaterThan(0);
     expect(KLEMMI_PLAN_AUDIO_IDS.length).toBeGreaterThan(0);
     expect(KLEMMI_PUBLIC_DEMO_AUDIO_IDS.length).toBeGreaterThan(20);
+    expect(KLEMMI_CONTACTS_AUDIO_IDS).toHaveLength(9);
     expect(
       KLEMMI_PLAN_AUDIO_IDS.every(
         id => KLEMMI_AUDIO_VOICE_MANIFEST[id].voice === "Puck"
@@ -280,7 +289,18 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
         id => KLEMMI_AUDIO_VOICE_MANIFEST[id].voice === "Puck"
       )
     ).toBe(true);
+    expect(
+      KLEMMI_CONTACTS_AUDIO_IDS.every(
+        id => KLEMMI_AUDIO_VOICE_MANIFEST[id].voice === "Puck"
+      )
+    ).toBe(true);
     for (const id of KLEMMI_PUBLIC_DEMO_AUDIO_IDS) {
+      const asset = await readFile(
+        path.join(root, "server/assets/klemmi-voice", `${id}.mp3`)
+      );
+      expect(asset.byteLength).toBeGreaterThan(0);
+    }
+    for (const id of KLEMMI_CONTACTS_AUDIO_IDS) {
       const asset = await readFile(
         path.join(root, "server/assets/klemmi-voice", `${id}.mp3`)
       );
@@ -289,6 +309,7 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
 
     const publicDemoAudioIds = new Set<string>();
     const publicDemoAudioIdSet = new Set<string>(KLEMMI_PUBLIC_DEMO_AUDIO_IDS);
+    const contactsAudioIdSet = new Set<string>(KLEMMI_CONTACTS_AUDIO_IDS);
     for (const packageId of ["event_pass", "light", "pro"] as const) {
       for (const step of createPublicDemoDashboardKlemmiSteps({
         hasEventPeriod: true,
@@ -314,7 +335,8 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
         .filter(
           ([id]) =>
             !id.startsWith("plan-") &&
-            !publicDemoAudioIdSet.has(id)
+            !publicDemoAudioIdSet.has(id) &&
+            !contactsAudioIdSet.has(id)
         )
         .every(([, entry]) => entry.voice === "Achird")
     ).toBe(true);
