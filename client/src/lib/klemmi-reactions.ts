@@ -1,6 +1,9 @@
 export const KLEMMI_REACTION_EVENT = "mycrewmate:klemmi-reaction";
 
-export type KlemmiReactionKind = "error" | "shift-success";
+export type KlemmiReactionKind =
+  | "error"
+  | "shift-success"
+  | "plan-shift-success";
 
 /**
  * Meldet eine kurze, nicht blockierende Klemmi-Reaktion an die globale

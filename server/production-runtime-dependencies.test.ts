@@ -65,7 +65,7 @@ describe("Produktions-Laufzeitabhängigkeiten", () => {
       "security-accesses-create", "security-accesses-identity", "security-accesses-rights", "security-accesses-coadmin", "security-accesses-events",
       "security-intro-event-pass", "security-emergency", "security-audit-logins", "security-audit-activity", "security-audit-files", "security-audit-files-event-pass", "security-audit-files-light", "security-danger", "security-complete",
       "help-intro", "help-search", "help-filters", "help-chapters", "help-complete",
-      "plan-time-window",
+      "plan-time-window", "plan-opening", "plan-shift-success",
       "pdf-contacts-locked", "pdf-config-locked", "security-accesses-locked",
       "dashboard-map-locked", "dashboard-map-locked-light",
       "dashboard-helpers-active-no-donations", "dashboard-helpers-empty-no-donations",

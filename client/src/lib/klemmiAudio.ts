@@ -59,6 +59,8 @@ export const KLEMMI_HELPERS_VOICE_PROFILE = {
 export const KLEMMI_AUDIO_SCRIPTS = {
   "public-demo-opening": "Hallo! Ich bin Klemmi. Lass uns gemeinsam loslegen.",
   "helpers-opening": "Hallo! Ich bin Klemmi. Lass uns gemeinsam loslegen.",
+  "plan-opening": "Hallo! Klemmi ist bereit. Lass uns euren Einsatzplan gemeinsam richtig gut sortieren!",
+  "plan-shift-success": "Juhu! Diese Schicht ist jetzt vollständig besetzt. Weiter so, ihr seid ein tolles Team!",
   "opening-clears-throat": "[clears throat] So, los geht's!",
   "opening-cough": "[cough] Hups, kurz sortiert. Jetzt aber!",
   "opening-sniff": "[sniffs] Alles klar, ich bin bereit!",
@@ -617,6 +619,8 @@ const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
   "donations-outputs": "20261004-donation-cards-v2",
   "donations-complete": "20260928-information-tour-v1",
   "plan-intro": "20261010-puck-plan-v1",
+  "plan-opening": "20261019-puck-plan-opening-v1",
+  "plan-shift-success": "20261019-puck-plan-success-v1",
   "plan-empty": "20261010-puck-plan-v1",
   "plan-basics": "20261010-puck-plan-v1",
   "plan-task": "20261010-puck-plan-v1",

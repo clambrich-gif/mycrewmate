@@ -181,14 +181,15 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(audio).toContain("Das schützt die Planungsdaten und ist gut für den Datenschutz.");
     expect(audio).toContain('"error-halt-stopp"');
     expect(audio).toContain('"success-zack"');
-    expect(plan).toContain('triggerKlemmiReaction("shift-success")');
+    expect(audio).toContain('"plan-shift-success"');
+    expect(plan).toContain('triggerKlemmiReaction("plan-shift-success")');
     expect(plan).toContain("if (result.shiftJustCompleted) triggerKlemmiReaction");
-    expect(plan).toContain('triggerKlemmiReaction("shift-success");\n      refreshPlanInBackground();');
+    expect(plan).toContain('triggerKlemmiReaction("plan-shift-success");\n      refreshPlanInBackground();');
     expect(plan).toContain("onMutate: () => setIsPlanRefreshPending(true)");
     expect(plan).toContain('data-slot="plan-background-refresh"');
     expect(plan).toContain("Plan wird im Hintergrund aktualisiert …");
     expect(plan).not.toContain("if (result.assignedCount > 0) triggerKlemmiReaction");
-    expect(plan).not.toContain('setKlemmiCreationSignal(Date.now());\n      triggerKlemmiReaction("shift-success")');
+    expect(plan).not.toContain('setKlemmiCreationSignal(Date.now());\n      triggerKlemmiReaction("plan-shift-success")');
     expect(plan).toContain('triggerKlemmiReaction("error")');
     expect(helpers).toContain('triggerKlemmiReaction("error")');
     expect(styles).toContain("@keyframes klemmi-login-greeting-enter");
@@ -227,6 +228,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(surfaceGuide).toContain("cancel();");
 
     expect(plan).toContain('<KlemmiSurfaceGuide');
+    expect(plan).toContain('openingAudioKey="plan-opening"');
     expect(plan).toContain('data-klemmi-target="plan-new"');
     expect(plan).toContain('data-klemmi-target="plan-basics"');
     expect(plan).toContain('data-klemmi-target="plan-save"');
@@ -272,6 +274,8 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).not.toContain("setKlemmiCreationSignal(Date.now())");
     expect(audio).toContain('"plan-time-window": "Beginn und Ende festlegen.');
     expect(audio).toContain('"plan-time-window": "20261010-puck-plan-v1"');
+    expect(audio).toContain('"plan-opening": "20261019-puck-plan-opening-v1"');
+    expect(audio).toContain('"plan-shift-success": "20261019-puck-plan-success-v1"');
     expect(audio).toContain('"plan-time": "Flexible Belegung aktivieren.');
     expect(audio).toContain('"plan-time": "20261010-puck-plan-v1"');
     expect(audio).toContain('"plan-overview": "20261010-puck-plan-v1"');

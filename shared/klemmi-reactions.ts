@@ -51,3 +51,12 @@ export const KLEMMI_SHIFT_SUCCESS_AUDIO_IDS = [
   "success-geschmiert",
   "success-arbeitslos",
 ] as const;
+
+/**
+ * Eine vollständig besetzte Schicht gehört zum Einsatzplan-Rundgang. Der
+ * eigene Clip hält diese positive Rückmeldung in derselben Puck-Stimme wie
+ * die übrige Einsatzplan-Erklärung, ohne globale Erfolgsansagen umzubauen.
+ */
+export const KLEMMI_PLAN_SHIFT_SUCCESS_AUDIO_IDS = [
+  "plan-shift-success",
+] as const;

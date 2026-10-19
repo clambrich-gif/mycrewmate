@@ -1155,7 +1155,7 @@ export default function Plan() {
   const assign = trpc.plan.assign.useMutation({
     onMutate: () => setIsPlanRefreshPending(true),
     onSuccess: result => {
-      if (result.shiftJustCompleted) triggerKlemmiReaction("shift-success");
+      if (result.shiftJustCompleted) triggerKlemmiReaction("plan-shift-success");
       refreshPlanInBackground();
     },
     onError: e => {
@@ -1166,7 +1166,7 @@ export default function Plan() {
   const assignMany = trpc.plan.assignMany.useMutation({
     onMutate: () => setIsPlanRefreshPending(true),
     onSuccess: result => {
-      if (result.shiftJustCompleted) triggerKlemmiReaction("shift-success");
+      if (result.shiftJustCompleted) triggerKlemmiReaction("plan-shift-success");
       toast.success(
         result.assignedCount === 1
           ? "Helfer zugeordnet"
@@ -2252,6 +2252,7 @@ export default function Plan() {
               guide={
                 <KlemmiSurfaceGuide
                 guideId="plan"
+                openingAudioKey="plan-opening"
                 title="Den Einsatzplan von Anfang bis Ende verstehen"
                 introText={
                   evals.length === 0

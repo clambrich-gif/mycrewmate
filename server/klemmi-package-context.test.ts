@@ -285,6 +285,9 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
     );
     expect(Object.keys(KLEMMI_AUDIO_VOICE_MANIFEST).length).toBeGreaterThan(0);
     expect(KLEMMI_PLAN_AUDIO_IDS.length).toBeGreaterThan(0);
+    expect(KLEMMI_PLAN_AUDIO_IDS).toEqual(
+      expect.arrayContaining(["plan-opening", "plan-shift-success"])
+    );
     expect(KLEMMI_PUBLIC_DEMO_AUDIO_IDS.length).toBeGreaterThan(20);
     expect(KLEMMI_CONTACTS_AUDIO_IDS).toHaveLength(9);
     expect(KLEMMI_HELPERS_AUDIO_IDS).toHaveLength(23);
@@ -293,6 +296,12 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
         id => KLEMMI_AUDIO_VOICE_MANIFEST[id].voice === "Puck"
       )
     ).toBe(true);
+    for (const id of KLEMMI_PLAN_AUDIO_IDS) {
+      const asset = await readFile(
+        path.join(root, "server/assets/klemmi-voice", `${id}.mp3`)
+      );
+      expect(asset.byteLength).toBeGreaterThan(0);
+    }
     expect(
       KLEMMI_PUBLIC_DEMO_AUDIO_IDS.every(
         id => KLEMMI_AUDIO_VOICE_MANIFEST[id].voice === "Puck"

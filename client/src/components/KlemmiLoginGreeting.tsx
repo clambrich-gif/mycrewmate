@@ -17,6 +17,7 @@ import { trpc } from "@/lib/trpc";
 import {
   KLEMMI_ERROR_AUDIO_IDS,
   KLEMMI_IDLE_AUDIO_IDS,
+  KLEMMI_PLAN_SHIFT_SUCCESS_AUDIO_IDS,
   KLEMMI_SHIFT_SUCCESS_AUDIO_IDS,
 } from "@shared/klemmi-reactions";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -24,6 +25,7 @@ import { createPortal } from "react-dom";
 
 type GreetingKind = "login" | "idle" | "error" | "shift-success";
 type ActiveGreeting = { kind: GreetingKind; clipId: KlemmiAudioId };
+type LocalReactionKind = Exclude<GreetingKind, "login"> | "plan-shift-success";
 
 const IDLE_HINTS_SESSION_KEY = "mycrewmate:klemmi-idle-hints";
 const IDLE_RECHECK_MS = 15_000;
@@ -82,18 +84,20 @@ export function KlemmiLoginGreeting({
   }, [cancel]);
 
   const showLocalReaction = useCallback(
-    (kind: Exclude<GreetingKind, "login">) => {
+    (kind: LocalReactionKind) => {
       if (!enabled || active || aDialogIsOpen()) return;
       const ids =
         kind === "idle"
           ? KLEMMI_IDLE_AUDIO_IDS
           : kind === "error"
             ? KLEMMI_ERROR_AUDIO_IDS
-            : KLEMMI_SHIFT_SUCCESS_AUDIO_IDS;
+            : kind === "plan-shift-success"
+              ? KLEMMI_PLAN_SHIFT_SUCCESS_AUDIO_IDS
+              : KLEMMI_SHIFT_SUCCESS_AUDIO_IDS;
       const clipId = chooseClip(ids, lastClipRef.current);
       if (!clipId) return;
       lastClipRef.current = clipId;
-      setActive({ kind, clipId });
+      setActive({ kind: kind === "plan-shift-success" ? "shift-success" : kind, clipId });
     },
     [active, enabled]
   );
@@ -132,6 +136,7 @@ export function KlemmiLoginGreeting({
       const kind = (event as CustomEvent<KlemmiReactionKind>).detail;
       if (kind === "error") showLocalReaction("error");
       if (kind === "shift-success") showLocalReaction("shift-success");
+      if (kind === "plan-shift-success") showLocalReaction("plan-shift-success");
     };
     window.addEventListener(KLEMMI_REACTION_EVENT, onReaction);
     return () => window.removeEventListener(KLEMMI_REACTION_EVENT, onReaction);
