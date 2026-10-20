@@ -19,6 +19,8 @@ import {
   KLEMMI_CONTACTS_VOICE_PROFILE,
   KLEMMI_HELPERS_AUDIO_IDS,
   KLEMMI_HELPERS_VOICE_PROFILE,
+  KLEMMI_MATERIALS_AUDIO_IDS,
+  KLEMMI_MATERIALS_VOICE_PROFILE,
   KLEMMI_POSTPROCESSING_AUDIO_IDS,
   KLEMMI_POSTPROCESSING_VOICE_PROFILE,
   KLEMMI_PLAN_AUDIO_IDS,
@@ -29,6 +31,7 @@ import {
   KLEMMI_PUBLIC_DEMO_VOICE_PROFILE,
   KLEMMI_AUDIO_VOICE_MANIFEST,
   KLEMMI_VOICE_PROFILE,
+  klemmiAudioUrl,
 } from "../client/src/lib/klemmiAudio";
 import {
   createKlemmiSpeechRequest,
@@ -254,7 +257,7 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
     }
   });
 
-  it("ordnet Einsatzplan, Helfer-, Vereinsdemo-, Ansprechpartner-, Vor- und Nachbereitungsführung verbindlich der Klemmi-Stimme zu", async () => {
+  it("ordnet Einsatzplan, Helfer-, Vereinsdemo-, Ansprechpartner-, Vor-, Nachbereitungs- und freigegebene Materialführung verbindlich der Klemmi-Stimme zu", async () => {
     expect(KLEMMI_VOICE_PROFILE.voice).toBe("Achird");
     expect(KLEMMI_VOICE_PRODUCTION_CONFIG).toMatchObject({
       profileVersion: "2.0",
@@ -285,6 +288,9 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
     expect(KLEMMI_POSTPROCESSING_VOICE_PROFILE.voice).toBe(
       KLEMMI_VOICE_PRODUCTION_CONFIG.voiceName
     );
+    expect(KLEMMI_MATERIALS_VOICE_PROFILE.voice).toBe(
+      KLEMMI_VOICE_PRODUCTION_CONFIG.voiceName
+    );
     expect(KLEMMI_PLAN_VOICE_PROFILE.generationStyle).toBe(
       KLEMMI_VOICE_PRODUCTION_CONFIG.style
     );
@@ -303,6 +309,9 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
     expect(KLEMMI_POSTPROCESSING_VOICE_PROFILE.generationStyle).toBe(
       KLEMMI_VOICE_PRODUCTION_CONFIG.style
     );
+    expect(KLEMMI_MATERIALS_VOICE_PROFILE.generationStyle).toBe(
+      KLEMMI_VOICE_PRODUCTION_CONFIG.style
+    );
     expect(Object.keys(KLEMMI_AUDIO_VOICE_MANIFEST).length).toBeGreaterThan(0);
     expect(KLEMMI_PLAN_AUDIO_IDS.length).toBeGreaterThan(0);
     expect(KLEMMI_PLAN_AUDIO_IDS).toEqual(
@@ -313,6 +322,10 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
     expect(KLEMMI_HELPERS_AUDIO_IDS).toHaveLength(23);
     expect(KLEMMI_PREPARATION_AUDIO_IDS).toHaveLength(12);
     expect(KLEMMI_POSTPROCESSING_AUDIO_IDS).toHaveLength(12);
+    expect(KLEMMI_MATERIALS_AUDIO_IDS).toEqual(["materials-intro"]);
+    expect(klemmiAudioUrl("materials-intro")).toBe(
+      "/api/klemmi/audio/materials-intro?v=20261020-klemmi-stimme-v2-material-intro-a-v1"
+    );
     expect(
       KLEMMI_PLAN_AUDIO_IDS.every(
         id => KLEMMI_AUDIO_VOICE_MANIFEST[id].voice === "Klemmi-Stimme"
@@ -349,6 +362,11 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
         id => KLEMMI_AUDIO_VOICE_MANIFEST[id].voice === "Klemmi-Stimme"
       )
     ).toBe(true);
+    expect(
+      KLEMMI_MATERIALS_AUDIO_IDS.every(
+        id => KLEMMI_AUDIO_VOICE_MANIFEST[id].voice === "Klemmi-Stimme"
+      )
+    ).toBe(true);
     for (const id of KLEMMI_PUBLIC_DEMO_AUDIO_IDS) {
       const asset = await readFile(
         path.join(root, "server/assets/klemmi-voice", `${id}.mp3`)
@@ -370,6 +388,7 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
     for (const id of [
       ...KLEMMI_PREPARATION_AUDIO_IDS,
       ...KLEMMI_POSTPROCESSING_AUDIO_IDS,
+      ...KLEMMI_MATERIALS_AUDIO_IDS,
     ]) {
       const asset = await readFile(
         path.join(root, "server/assets/klemmi-voice", `${id}.mp3`)
@@ -425,7 +444,8 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
             !contactsAudioIdSet.has(id) &&
             !helpersAudioIdSet.has(id) &&
             !KLEMMI_PREPARATION_AUDIO_IDS.includes(id as keyof typeof KLEMMI_AUDIO_VOICE_MANIFEST) &&
-            !KLEMMI_POSTPROCESSING_AUDIO_IDS.includes(id as keyof typeof KLEMMI_AUDIO_VOICE_MANIFEST)
+            !KLEMMI_POSTPROCESSING_AUDIO_IDS.includes(id as keyof typeof KLEMMI_AUDIO_VOICE_MANIFEST) &&
+            !KLEMMI_MATERIALS_AUDIO_IDS.includes(id as keyof typeof KLEMMI_AUDIO_VOICE_MANIFEST)
         )
         .every(([, entry]) => entry.voice === "Achird")
     ).toBe(true);

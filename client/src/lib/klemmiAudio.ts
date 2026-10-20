@@ -70,6 +70,19 @@ export const KLEMMI_POSTPROCESSING_VOICE_PROFILE = {
 } as const;
 
 /**
+ * Ausschließlich die einzeln geprüften und ausdrücklich freigegebenen
+ * Materialaufnahmen verwenden bereits die Klemmi-Stimme 2.0.
+ */
+export const KLEMMI_MATERIALS_VOICE_PROFILE = {
+  voice: KLEMMI_VOICE_PRODUCTION_CONFIG.voiceName,
+  generationStyle: KLEMMI_VOICE_PRODUCTION_CONFIG.style,
+  generationProfileVersion: KLEMMI_VOICE_PRODUCTION_CONFIG.profileVersion,
+  label: "Klemmi bei Material – freundlich und comicartig",
+  description:
+    "Freigegebene Klemmi-Stimme-2.0-Aufnahme für die Materialführung; weitere Materialclips folgen erst nach Einzelprüfung.",
+} as const;
+
+/**
  * Feste, vorproduzierte Klemmi-Texte. Die Dateien liegen ausschließlich im
  * Produkt-Container und werden erst ausgeliefert, wenn eine Tour bewusst
  * geöffnet wurde. Es werden keine Eingaben oder personenbezogenen Daten an
@@ -378,6 +391,13 @@ export const KLEMMI_PLAN_AUDIO_IDS = Object.freeze(
   )
 );
 
+/**
+ * Bereits einzeln geprüft und ausdrücklich freigegeben für Klemmi-Stimme 2.0.
+ * Weitere Materialansagen werden erst nach demselben Kandidatenvergleich ergänzt.
+ */
+export const KLEMMI_MATERIALS_AUDIO_IDS: readonly KlemmiAudioId[] =
+  Object.freeze(["materials-intro"]);
+
 /** Alle festen Aufnahmen der normalen Ansprechpartner-Führung. */
 export const KLEMMI_CONTACTS_AUDIO_IDS: readonly KlemmiAudioId[] =
   Object.freeze([
@@ -498,6 +518,7 @@ export const KLEMMI_PUBLIC_DEMO_AUDIO_IDS: readonly KlemmiAudioId[] =
 type KlemmiVoiceName =
   | typeof KLEMMI_VOICE_PROFILE.voice
   | typeof KLEMMI_PLAN_VOICE_PROFILE.voice
+  | typeof KLEMMI_MATERIALS_VOICE_PROFILE.voice
   | typeof KLEMMI_PUBLIC_DEMO_VOICE_PROFILE.voice
   | typeof KLEMMI_CONTACTS_VOICE_PROFILE.voice
   | typeof KLEMMI_HELPERS_VOICE_PROFILE.voice
@@ -507,8 +528,8 @@ type KlemmiVoiceName =
 /**
  * Jede Tourreferenz gehört verbindlich zu einer vorproduzierten Klemmi-Stimme.
  * Einsatzplan, Helferführung, öffentliche Vereinsdemo, Ansprechpartner, Vor- und
- * Nachbereitung verweisen geschlossen auf das quirlige Klemmi-Stimmenprofil; die übrigen
- * Bereiche verwenden Achird.
+ * Nachbereitung sowie einzeln freigegebene Materialclips verweisen auf das quirlige
+ * Klemmi-Stimmenprofil; die übrigen Bereiche verwenden Achird.
  * Browser-Systemstimmen werden nie verwendet.
  */
 export const KLEMMI_AUDIO_VOICE_MANIFEST: Readonly<
@@ -525,13 +546,15 @@ export const KLEMMI_AUDIO_VOICE_MANIFEST: Readonly<
               ? KLEMMI_PREPARATION_VOICE_PROFILE.voice
               : KLEMMI_POSTPROCESSING_AUDIO_IDS.includes(id)
                 ? KLEMMI_POSTPROCESSING_VOICE_PROFILE.voice
-            : KLEMMI_HELPERS_AUDIO_IDS.includes(id)
-              ? KLEMMI_HELPERS_VOICE_PROFILE.voice
-              : KLEMMI_PUBLIC_DEMO_AUDIO_IDS.includes(id)
-              ? KLEMMI_PUBLIC_DEMO_VOICE_PROFILE.voice
-              : KLEMMI_CONTACTS_AUDIO_IDS.includes(id)
-                ? KLEMMI_CONTACTS_VOICE_PROFILE.voice
-                : KLEMMI_VOICE_PROFILE.voice,
+                : KLEMMI_MATERIALS_AUDIO_IDS.includes(id)
+                  ? KLEMMI_MATERIALS_VOICE_PROFILE.voice
+                  : KLEMMI_HELPERS_AUDIO_IDS.includes(id)
+                    ? KLEMMI_HELPERS_VOICE_PROFILE.voice
+                    : KLEMMI_PUBLIC_DEMO_AUDIO_IDS.includes(id)
+                      ? KLEMMI_PUBLIC_DEMO_VOICE_PROFILE.voice
+                      : KLEMMI_CONTACTS_AUDIO_IDS.includes(id)
+                        ? KLEMMI_CONTACTS_VOICE_PROFILE.voice
+                        : KLEMMI_VOICE_PROFILE.voice,
       },
     ])
   ) as Record<KlemmiAudioId, { voice: KlemmiVoiceName }>
@@ -723,6 +746,7 @@ const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
   "materials-overview-save": "20260928-adaptive-area-tour-v1",
   "materials-overview": "20260928-adaptive-area-tour-v1",
   "materials-responsible": "20261004-material-owner-v1",
+  "materials-intro": "20261020-klemmi-stimme-v2-material-intro-a-v1",
   "marketing-overview-save": "20260928-adaptive-area-tour-v1",
   "marketing-overview": "20260928-adaptive-area-tour-v1",
   "approvals-overview-save": "20260928-adaptive-area-tour-v1",
