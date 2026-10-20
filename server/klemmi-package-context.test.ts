@@ -372,7 +372,7 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
     );
     for (const [id, candidate] of [
       ["donations-opening", "c"],
-      ["donations-intro", "a"],
+      ["donations-intro", "b"],
       ["donations-donor", "c"],
       ["donations-item", "b"],
       ["donations-traits", "b"],
