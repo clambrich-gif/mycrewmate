@@ -1,4 +1,4 @@
-import { KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG } from "@shared/klemmi-voice-production";
+import { KLEMMI_VOICE_PRODUCTION_CONFIG } from "@shared/klemmi-voice-production";
 
 export const KLEMMI_AUDIO_ROUTE = "/api/klemmi/audio";
 
@@ -12,19 +12,19 @@ export const KLEMMI_VOICE_PROFILE = {
 
 /** Die gesamte Einsatzplanführung nutzt bewusst dieselbe lebhafte Klemmi-Charakterstimme. */
 export const KLEMMI_PLAN_VOICE_PROFILE = {
-  voice: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.voiceName,
-  generationStyle: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.style,
-  generationProfileVersion: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.profileVersion,
+  voice: KLEMMI_VOICE_PRODUCTION_CONFIG.voiceName,
+  generationStyle: KLEMMI_VOICE_PRODUCTION_CONFIG.style,
+  generationProfileVersion: KLEMMI_VOICE_PRODUCTION_CONFIG.profileVersion,
   label: "Klemmi im Einsatzplan – freundlich und comicartig",
   description:
     "Freundliche männliche Charakterstimme: hell, leicht verspielt, gut verständlich und durchgehend einheitlich.",
 } as const;
 
-/** Öffentliche Musterplanungen verwenden dieselbe quirlige Puck-Stimme wie der Einsatzplan. */
+/** Öffentliche Musterplanungen verwenden dieselbe quirlige Klemmi-Stimme wie der Einsatzplan. */
 export const KLEMMI_PUBLIC_DEMO_VOICE_PROFILE = {
-  voice: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.voiceName,
-  generationStyle: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.style,
-  generationProfileVersion: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.profileVersion,
+  voice: KLEMMI_VOICE_PRODUCTION_CONFIG.voiceName,
+  generationStyle: KLEMMI_VOICE_PRODUCTION_CONFIG.style,
+  generationProfileVersion: KLEMMI_VOICE_PRODUCTION_CONFIG.profileVersion,
   label: "Klemmi in der Vereinsdemo – freundlich und comicartig",
   description:
     "Freundliche männliche Charakterstimme: hell, leicht verspielt, gut verständlich und durchgehend einheitlich.",
@@ -32,9 +32,9 @@ export const KLEMMI_PUBLIC_DEMO_VOICE_PROFILE = {
 
 /** Die Ansprechpartner-Führung nutzt dieselbe helle Klemmi-Charakterstimme wie der echte Dashboard-Countdown. */
 export const KLEMMI_CONTACTS_VOICE_PROFILE = {
-  voice: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.voiceName,
-  generationStyle: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.style,
-  generationProfileVersion: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.profileVersion,
+  voice: KLEMMI_VOICE_PRODUCTION_CONFIG.voiceName,
+  generationStyle: KLEMMI_VOICE_PRODUCTION_CONFIG.style,
+  generationProfileVersion: KLEMMI_VOICE_PRODUCTION_CONFIG.profileVersion,
   label: "Klemmi bei Ansprechpartnern – freundlich und comicartig",
   description:
     "Freundliche Klemmi-Charakterstimme: hell, lebhaft, gut verständlich und gezielt gegen die echte Dashboard-Stimme geprüft.",
@@ -42,9 +42,9 @@ export const KLEMMI_CONTACTS_VOICE_PROFILE = {
 
 /** Die echte Helfer-Führung nutzt denselben festen Klemmi-Charakterstandard. */
 export const KLEMMI_HELPERS_VOICE_PROFILE = {
-  voice: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.voiceName,
-  generationStyle: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.style,
-  generationProfileVersion: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.profileVersion,
+  voice: KLEMMI_VOICE_PRODUCTION_CONFIG.voiceName,
+  generationStyle: KLEMMI_VOICE_PRODUCTION_CONFIG.style,
+  generationProfileVersion: KLEMMI_VOICE_PRODUCTION_CONFIG.profileVersion,
   label: "Klemmi bei Helfern – freundlich und comicartig",
   description:
     "Freundliche Klemmi-Charakterstimme: hell, lebhaft, gut verständlich und gezielt gegen die echte Dashboard-Stimme geprüft.",
@@ -52,18 +52,18 @@ export const KLEMMI_HELPERS_VOICE_PROFILE = {
 
 /** Vorbereitung und Nachbereitung verwenden dieselbe feste Klemmi-Charakterstimme. */
 export const KLEMMI_PREPARATION_VOICE_PROFILE = {
-  voice: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.voiceName,
-  generationStyle: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.style,
-  generationProfileVersion: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.profileVersion,
+  voice: KLEMMI_VOICE_PRODUCTION_CONFIG.voiceName,
+  generationStyle: KLEMMI_VOICE_PRODUCTION_CONFIG.style,
+  generationProfileVersion: KLEMMI_VOICE_PRODUCTION_CONFIG.profileVersion,
   label: "Klemmi in der Vorbereitung – freundlich und comicartig",
   description:
     "Freundliche Klemmi-Charakterstimme: hell, lebhaft, gut verständlich und gegen Wetterbericht- sowie Dashboard-Referenz geprüft.",
 } as const;
 
 export const KLEMMI_POSTPROCESSING_VOICE_PROFILE = {
-  voice: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.voiceName,
-  generationStyle: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.style,
-  generationProfileVersion: KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.profileVersion,
+  voice: KLEMMI_VOICE_PRODUCTION_CONFIG.voiceName,
+  generationStyle: KLEMMI_VOICE_PRODUCTION_CONFIG.style,
+  generationProfileVersion: KLEMMI_VOICE_PRODUCTION_CONFIG.profileVersion,
   label: "Klemmi in der Nachbereitung – freundlich und comicartig",
   description:
     "Freundliche Klemmi-Charakterstimme: hell, lebhaft, gut verständlich und gegen Wetterbericht- sowie Dashboard-Referenz geprüft.",
@@ -456,7 +456,7 @@ export const KLEMMI_POSTPROCESSING_AUDIO_IDS: readonly KlemmiAudioId[] =
 
 /**
  * Diese Clips sind in der öffentlichen, fiktiven Vereinsdemo erreichbar.
- * Sie werden geschlossen mit der quirligen Puck-Stimme ausgeliefert, damit
+ * Sie werden geschlossen mit der quirligen Klemmi-Stimme ausgeliefert, damit
  * kein Schritt in der Demo versehentlich auf eine andere Klemmi-Stimme fällt.
  */
 export const KLEMMI_PUBLIC_DEMO_AUDIO_IDS: readonly KlemmiAudioId[] =
@@ -507,7 +507,7 @@ type KlemmiVoiceName =
 /**
  * Jede Tourreferenz gehört verbindlich zu einer vorproduzierten Klemmi-Stimme.
  * Einsatzplan, Helferführung, öffentliche Vereinsdemo, Ansprechpartner, Vor- und
- * Nachbereitung verweisen geschlossen auf das quirlige Puck-Profil; die übrigen
+ * Nachbereitung verweisen geschlossen auf das quirlige Klemmi-Stimmenprofil; die übrigen
  * Bereiche verwenden Achird.
  * Browser-Systemstimmen werden nie verwendet.
  */

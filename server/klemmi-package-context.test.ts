@@ -31,8 +31,8 @@ import {
   KLEMMI_VOICE_PROFILE,
 } from "../client/src/lib/klemmiAudio";
 import {
-  createKlemmiPuckSpeechRequest,
-  KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG,
+  createKlemmiSpeechRequest,
+  KLEMMI_VOICE_PRODUCTION_CONFIG,
 } from "../shared/klemmi-voice-production";
 import { getKlemmiLocationGuideCopy } from "../client/src/lib/klemmi-location-guide";
 
@@ -254,50 +254,54 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
     }
   });
 
-  it("ordnet Einsatzplan, Helfer-, Vereinsdemo-, Ansprechpartner-, Vor- und Nachbereitungsführung verbindlich der Puck-Stimme zu", async () => {
+  it("ordnet Einsatzplan, Helfer-, Vereinsdemo-, Ansprechpartner-, Vor- und Nachbereitungsführung verbindlich der Klemmi-Stimme zu", async () => {
     expect(KLEMMI_VOICE_PROFILE.voice).toBe("Achird");
-    expect(KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG).toMatchObject({
-      profileVersion: "1.0",
-      voiceName: "Puck",
+    expect(KLEMMI_VOICE_PRODUCTION_CONFIG).toMatchObject({
+      profileVersion: "2.0",
+      voiceName: "Klemmi-Stimme",
       languageCode: "de-DE",
       style: "high pitch, bright, playful, animated",
       candidateCount: 3,
+      primaryReference: {
+        id: "klemmi-wetterbericht-referenz-b-plus-extrem-v1",
+        fileName: "klemmi-wetterbericht-referenz-b-plus-extrem.wav",
+      },
     });
     expect(KLEMMI_PLAN_VOICE_PROFILE.voice).toBe(
-      KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.voiceName
+      KLEMMI_VOICE_PRODUCTION_CONFIG.voiceName
     );
     expect(KLEMMI_PUBLIC_DEMO_VOICE_PROFILE.voice).toBe(
-      KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.voiceName
+      KLEMMI_VOICE_PRODUCTION_CONFIG.voiceName
     );
     expect(KLEMMI_CONTACTS_VOICE_PROFILE.voice).toBe(
-      KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.voiceName
+      KLEMMI_VOICE_PRODUCTION_CONFIG.voiceName
     );
     expect(KLEMMI_HELPERS_VOICE_PROFILE.voice).toBe(
-      KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.voiceName
+      KLEMMI_VOICE_PRODUCTION_CONFIG.voiceName
     );
     expect(KLEMMI_PREPARATION_VOICE_PROFILE.voice).toBe(
-      KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.voiceName
+      KLEMMI_VOICE_PRODUCTION_CONFIG.voiceName
     );
     expect(KLEMMI_POSTPROCESSING_VOICE_PROFILE.voice).toBe(
-      KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.voiceName
+      KLEMMI_VOICE_PRODUCTION_CONFIG.voiceName
     );
     expect(KLEMMI_PLAN_VOICE_PROFILE.generationStyle).toBe(
-      KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.style
+      KLEMMI_VOICE_PRODUCTION_CONFIG.style
     );
     expect(KLEMMI_PUBLIC_DEMO_VOICE_PROFILE.generationStyle).toBe(
-      KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.style
+      KLEMMI_VOICE_PRODUCTION_CONFIG.style
     );
     expect(KLEMMI_CONTACTS_VOICE_PROFILE.generationStyle).toBe(
-      KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.style
+      KLEMMI_VOICE_PRODUCTION_CONFIG.style
     );
     expect(KLEMMI_HELPERS_VOICE_PROFILE.generationStyle).toBe(
-      KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.style
+      KLEMMI_VOICE_PRODUCTION_CONFIG.style
     );
     expect(KLEMMI_PREPARATION_VOICE_PROFILE.generationStyle).toBe(
-      KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.style
+      KLEMMI_VOICE_PRODUCTION_CONFIG.style
     );
     expect(KLEMMI_POSTPROCESSING_VOICE_PROFILE.generationStyle).toBe(
-      KLEMMI_PUCK_AUDIO_PRODUCTION_CONFIG.style
+      KLEMMI_VOICE_PRODUCTION_CONFIG.style
     );
     expect(Object.keys(KLEMMI_AUDIO_VOICE_MANIFEST).length).toBeGreaterThan(0);
     expect(KLEMMI_PLAN_AUDIO_IDS.length).toBeGreaterThan(0);
@@ -311,7 +315,7 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
     expect(KLEMMI_POSTPROCESSING_AUDIO_IDS).toHaveLength(12);
     expect(
       KLEMMI_PLAN_AUDIO_IDS.every(
-        id => KLEMMI_AUDIO_VOICE_MANIFEST[id].voice === "Puck"
+        id => KLEMMI_AUDIO_VOICE_MANIFEST[id].voice === "Klemmi-Stimme"
       )
     ).toBe(true);
     for (const id of KLEMMI_PLAN_AUDIO_IDS) {
@@ -322,27 +326,27 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
     }
     expect(
       KLEMMI_PUBLIC_DEMO_AUDIO_IDS.every(
-        id => KLEMMI_AUDIO_VOICE_MANIFEST[id].voice === "Puck"
+        id => KLEMMI_AUDIO_VOICE_MANIFEST[id].voice === "Klemmi-Stimme"
       )
     ).toBe(true);
     expect(
       KLEMMI_CONTACTS_AUDIO_IDS.every(
-        id => KLEMMI_AUDIO_VOICE_MANIFEST[id].voice === "Puck"
+        id => KLEMMI_AUDIO_VOICE_MANIFEST[id].voice === "Klemmi-Stimme"
       )
     ).toBe(true);
     expect(
       KLEMMI_HELPERS_AUDIO_IDS.every(
-        id => KLEMMI_AUDIO_VOICE_MANIFEST[id].voice === "Puck"
+        id => KLEMMI_AUDIO_VOICE_MANIFEST[id].voice === "Klemmi-Stimme"
       )
     ).toBe(true);
     expect(
       KLEMMI_PREPARATION_AUDIO_IDS.every(
-        id => KLEMMI_AUDIO_VOICE_MANIFEST[id].voice === "Puck"
+        id => KLEMMI_AUDIO_VOICE_MANIFEST[id].voice === "Klemmi-Stimme"
       )
     ).toBe(true);
     expect(
       KLEMMI_POSTPROCESSING_AUDIO_IDS.every(
-        id => KLEMMI_AUDIO_VOICE_MANIFEST[id].voice === "Puck"
+        id => KLEMMI_AUDIO_VOICE_MANIFEST[id].voice === "Klemmi-Stimme"
       )
     ).toBe(true);
     for (const id of KLEMMI_PUBLIC_DEMO_AUDIO_IDS) {
@@ -408,7 +412,7 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
     ).toBe(true);
     expect(
       [...realHelpersAudioIds].every(
-        id => KLEMMI_AUDIO_VOICE_MANIFEST[id as keyof typeof KLEMMI_AUDIO_VOICE_MANIFEST].voice === "Puck"
+        id => KLEMMI_AUDIO_VOICE_MANIFEST[id as keyof typeof KLEMMI_AUDIO_VOICE_MANIFEST].voice === "Klemmi-Stimme"
       )
     ).toBe(true);
 
@@ -427,9 +431,9 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
     ).toBe(true);
   });
 
-  it("baut künftige Puck-Aufträge stets mit der verbindlichen hellen Stilvorgabe", () => {
-    expect(createKlemmiPuckSpeechRequest("  Hallo, ich bin Klemmi.  ")).toEqual({
-      voice_name: "Puck",
+  it("baut künftige Klemmi-Stimmen-Aufträge stets mit der verbindlichen hellen Stilvorgabe", () => {
+    expect(createKlemmiSpeechRequest("  Hallo, ich bin Klemmi.  ")).toEqual({
+      voice_name: KLEMMI_VOICE_PRODUCTION_CONFIG.providerVoiceName,
       language_code: "de-DE",
       turns: [
         {
@@ -438,7 +442,7 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
         },
       ],
     });
-    expect(() => createKlemmiPuckSpeechRequest(" ")).toThrow(
+    expect(() => createKlemmiSpeechRequest(" ")).toThrow(
       "Klemmi-Sprechtext darf nicht leer sein."
     );
   });
