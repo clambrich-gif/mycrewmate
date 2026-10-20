@@ -587,9 +587,10 @@ export default function Cakes() {
               guideId="donations"
               title="Spenden erfassen"
               introText="Ich führe dich durch die echte Spendenanlage – vom Spender bis zu Allergenen, Abgabe und Speichern."
-               steps={donationGuideSteps}
-               successSignal={klemmiSuccessSignal}
-               completionAudioKey={klemmiGuideNeedsSample ? "complete" : "overview-summary"}
+              openingAudioKey="donations-opening"
+              steps={donationGuideSteps}
+              successSignal={klemmiSuccessSignal}
+              completionAudioKey={klemmiGuideNeedsSample ? "complete" : "overview-summary"}
                onOpenChange={open => {
                 if (open) setKlemmiGuideStartedEmpty(!isLoading && rows.length === 0);
                 else {

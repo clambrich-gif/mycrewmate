@@ -316,6 +316,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(cakes).toContain('data-klemmi-target="donations-filters"');
     expect(cakes).toContain('data-klemmi-target="donations-pdf"');
     expect(cakes).toContain("klemmiGuideNeedsSample");
+    expect(cakes).toContain('openingAudioKey="donations-opening"');
     expect(cakes).toContain('if (stepKey === "save" && !klemmiGuideNeedsSample) closeDialog();');
     expect(cakes).toContain("waitsForSuccess: klemmiGuideNeedsSample");
     expect(cakes).toContain('completionAudioKey={klemmiGuideNeedsSample ? "complete" : "overview-summary"}');

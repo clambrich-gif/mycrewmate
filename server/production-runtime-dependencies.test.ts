@@ -57,7 +57,7 @@ describe("Produktions-Laufzeitabhängigkeiten", () => {
     const clipIds = [
       "helpers-contact", "helpers-details",
       "contacts-opening", "contacts-intro", "contacts-name", "contacts-details", "contacts-phone-share", "contacts-save", "contacts-complete", "contacts-overview-save", "contacts-overview",
-      "donations-intro", "donations-donor", "donations-item", "donations-traits", "donations-save", "donations-complete",
+      "donations-opening", "donations-intro", "donations-donor", "donations-item", "donations-traits", "donations-save", "donations-overview", "donations-filters", "donations-outputs", "donations-complete", "donations-overview-save", "donations-overview-summary",
       "finances-intro", "finances-category", "finances-values", "finances-balance", "finances-complete",
       "pdf-intro", "pdf-helpers", "pdf-plan", "pdf-config", "pdf-complete",
       "pdf-intro-event-pass", "pdf-plan-event-pass", "pdf-config-light",

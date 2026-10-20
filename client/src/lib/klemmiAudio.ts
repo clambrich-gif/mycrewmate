@@ -82,6 +82,16 @@ export const KLEMMI_MATERIALS_VOICE_PROFILE = {
     "Freigegebene Klemmi-Stimme-2.0-Aufnahme für die Materialführung; weitere Materialclips folgen erst nach Einzelprüfung.",
 } as const;
 
+/** Die gesamte Spendenführung nutzt denselben geprüften Klemmi-Stimme-2.0-Standard. */
+export const KLEMMI_DONATIONS_VOICE_PROFILE = {
+  voice: KLEMMI_VOICE_PRODUCTION_CONFIG.voiceName,
+  generationStyle: KLEMMI_VOICE_PRODUCTION_CONFIG.style,
+  generationProfileVersion: KLEMMI_VOICE_PRODUCTION_CONFIG.profileVersion,
+  label: "Klemmi bei Spenden – freundlich und comicartig",
+  description:
+    "Geprüfte Klemmi-Stimme-2.0-Aufnahmen für die gesamte Spendenführung – von der Erfassung bis zur Übersicht und Ausgabe.",
+} as const;
+
 /**
  * Feste, vorproduzierte Klemmi-Texte. Die Dateien liegen ausschließlich im
  * Produkt-Container und werden erst ausgeliefert, wenn eine Tour bewusst
@@ -94,6 +104,7 @@ export const KLEMMI_AUDIO_SCRIPTS = {
   "plan-opening": "Hallo! Klemmi ist bereit. Lass uns euren Einsatzplan gemeinsam richtig gut sortieren!",
   "preparation-opening": "Hallo! Ich bin Klemmi. Lass uns gemeinsam loslegen.",
   "postprocessing-opening": "Hallo! Ich bin Klemmi. Lass uns gemeinsam loslegen.",
+  "donations-opening": "Hallo! Ich bin Klemmi. Lass uns eure Spenden gemeinsam gut organisieren!",
   "plan-shift-success": "Juhu! Diese Schicht ist jetzt vollständig besetzt. Weiter so, ihr seid ein tolles Team!",
   "opening-clears-throat": "[clears throat] So, los geht's!",
   "opening-cough": "[cough] Hups, kurz sortiert. Jetzt aber!",
@@ -406,6 +417,23 @@ export const KLEMMI_MATERIALS_AUDIO_IDS: readonly KlemmiAudioId[] =
     "materials-complete",
   ]);
 
+/** Alle festen Aufnahmen der vollständigen Spendenführung. */
+export const KLEMMI_DONATIONS_AUDIO_IDS: readonly KlemmiAudioId[] =
+  Object.freeze([
+    "donations-opening",
+    "donations-intro",
+    "donations-donor",
+    "donations-item",
+    "donations-traits",
+    "donations-save",
+    "donations-overview",
+    "donations-filters",
+    "donations-outputs",
+    "donations-complete",
+    "donations-overview-save",
+    "donations-overview-summary",
+  ]);
+
 /** Alle festen Aufnahmen der normalen Ansprechpartner-Führung. */
 export const KLEMMI_CONTACTS_AUDIO_IDS: readonly KlemmiAudioId[] =
   Object.freeze([
@@ -527,6 +555,7 @@ type KlemmiVoiceName =
   | typeof KLEMMI_VOICE_PROFILE.voice
   | typeof KLEMMI_PLAN_VOICE_PROFILE.voice
   | typeof KLEMMI_MATERIALS_VOICE_PROFILE.voice
+  | typeof KLEMMI_DONATIONS_VOICE_PROFILE.voice
   | typeof KLEMMI_PUBLIC_DEMO_VOICE_PROFILE.voice
   | typeof KLEMMI_CONTACTS_VOICE_PROFILE.voice
   | typeof KLEMMI_HELPERS_VOICE_PROFILE.voice
@@ -536,8 +565,8 @@ type KlemmiVoiceName =
 /**
  * Jede Tourreferenz gehört verbindlich zu einer vorproduzierten Klemmi-Stimme.
  * Einsatzplan, Helferführung, öffentliche Vereinsdemo, Ansprechpartner, Vor- und
- * Nachbereitung sowie einzeln freigegebene Materialclips verweisen auf das quirlige
- * Klemmi-Stimmenprofil; die übrigen Bereiche verwenden Achird.
+ * Nachbereitung, Material und Spenden verweisen auf das quirlige Klemmi-Stimmenprofil;
+ * die übrigen Bereiche verwenden Achird.
  * Browser-Systemstimmen werden nie verwendet.
  */
 export const KLEMMI_AUDIO_VOICE_MANIFEST: Readonly<
@@ -556,13 +585,15 @@ export const KLEMMI_AUDIO_VOICE_MANIFEST: Readonly<
                 ? KLEMMI_POSTPROCESSING_VOICE_PROFILE.voice
                 : KLEMMI_MATERIALS_AUDIO_IDS.includes(id)
                   ? KLEMMI_MATERIALS_VOICE_PROFILE.voice
-                  : KLEMMI_HELPERS_AUDIO_IDS.includes(id)
-                    ? KLEMMI_HELPERS_VOICE_PROFILE.voice
-                    : KLEMMI_PUBLIC_DEMO_AUDIO_IDS.includes(id)
-                      ? KLEMMI_PUBLIC_DEMO_VOICE_PROFILE.voice
-                      : KLEMMI_CONTACTS_AUDIO_IDS.includes(id)
-                        ? KLEMMI_CONTACTS_VOICE_PROFILE.voice
-                        : KLEMMI_VOICE_PROFILE.voice,
+                  : KLEMMI_DONATIONS_AUDIO_IDS.includes(id)
+                    ? KLEMMI_DONATIONS_VOICE_PROFILE.voice
+                    : KLEMMI_HELPERS_AUDIO_IDS.includes(id)
+                      ? KLEMMI_HELPERS_VOICE_PROFILE.voice
+                      : KLEMMI_PUBLIC_DEMO_AUDIO_IDS.includes(id)
+                        ? KLEMMI_PUBLIC_DEMO_VOICE_PROFILE.voice
+                        : KLEMMI_CONTACTS_AUDIO_IDS.includes(id)
+                          ? KLEMMI_CONTACTS_VOICE_PROFILE.voice
+                          : KLEMMI_VOICE_PROFILE.voice,
       },
     ])
   ) as Record<KlemmiAudioId, { voice: KlemmiVoiceName }>
@@ -703,13 +734,16 @@ const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
   "dashboard-personal-complete": "20261004-personal-dashboard-v1",
   "dashboard-details-active-stacked": "20260928-dashboard-stacked-layout-v1",
   "dashboard-details-empty-stacked": "20260928-dashboard-stacked-layout-v1",
-  "donations-intro": "20260928-information-tour-v1",
-  "donations-save": "20260928-information-tour-v1",
-  "donations-overview": "20260928-information-tour-v1",
-  "donations-filters": "20260928-information-tour-v1",
-  "donations-traits": "20261004-donation-traits-v2",
-  "donations-outputs": "20261004-donation-cards-v2",
-  "donations-complete": "20260928-information-tour-v1",
+  "donations-opening": "20261020-klemmi-stimme-v2-donations-opening-c-v1",
+  "donations-intro": "20261020-klemmi-stimme-v2-donations-intro-c-v1",
+  "donations-donor": "20261020-klemmi-stimme-v2-donations-donor-c-v1",
+  "donations-item": "20261020-klemmi-stimme-v2-donations-item-b-v1",
+  "donations-traits": "20261020-klemmi-stimme-v2-donations-traits-b-v1",
+  "donations-save": "20261020-klemmi-stimme-v2-donations-save-a-v1",
+  "donations-overview": "20261020-klemmi-stimme-v2-donations-overview-a-v1",
+  "donations-filters": "20261020-klemmi-stimme-v2-donations-filters-a-v1",
+  "donations-outputs": "20261020-klemmi-stimme-v2-donations-outputs-b-v1",
+  "donations-complete": "20261020-klemmi-stimme-v2-donations-complete-b-v1",
   "plan-intro": "20261010-puck-plan-v1",
   "plan-opening": "20261019-puck-plan-opening-v1",
   "plan-shift-success": "20261019-puck-plan-success-v1",
@@ -774,8 +808,8 @@ const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
   ...Object.fromEntries(
     KLEMMI_POSTPROCESSING_AUDIO_IDS.map(id => [id, "20261019-puck-prep-post-v1"])
   ),
-  "donations-overview-save": "20260928-adaptive-area-tour-v1",
-  "donations-overview-summary": "20260928-adaptive-area-tour-v1",
+  "donations-overview-save": "20261020-klemmi-stimme-v2-donations-overview-save-c-v1",
+  "donations-overview-summary": "20261020-klemmi-stimme-v2-donations-overview-summary-b-v1",
   "finances-overview-save": "20260928-adaptive-area-tour-v1",
   "finances-overview": "20260928-adaptive-area-tour-v1",
   "plan-search": "20261010-puck-plan-v1",
