@@ -322,9 +322,31 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
     expect(KLEMMI_HELPERS_AUDIO_IDS).toHaveLength(23);
     expect(KLEMMI_PREPARATION_AUDIO_IDS).toHaveLength(12);
     expect(KLEMMI_POSTPROCESSING_AUDIO_IDS).toHaveLength(12);
-    expect(KLEMMI_MATERIALS_AUDIO_IDS).toEqual(["materials-intro"]);
+    expect(KLEMMI_MATERIALS_AUDIO_IDS).toEqual([
+      "materials-intro",
+      "materials-name",
+      "materials-details",
+      "materials-responsible",
+      "materials-save",
+      "materials-complete",
+    ]);
     expect(klemmiAudioUrl("materials-intro")).toBe(
       "/api/klemmi/audio/materials-intro?v=20261020-klemmi-stimme-v2-material-intro-a-v1"
+    );
+    expect(klemmiAudioUrl("materials-name")).toBe(
+      "/api/klemmi/audio/materials-name?v=20261020-klemmi-stimme-v2-material-name-c-v1"
+    );
+    expect(klemmiAudioUrl("materials-details")).toBe(
+      "/api/klemmi/audio/materials-details?v=20261020-klemmi-stimme-v2-material-details-c-v1"
+    );
+    expect(klemmiAudioUrl("materials-responsible")).toBe(
+      "/api/klemmi/audio/materials-responsible?v=20261020-klemmi-stimme-v2-material-responsible-c-v1"
+    );
+    expect(klemmiAudioUrl("materials-save")).toBe(
+      "/api/klemmi/audio/materials-save?v=20261020-klemmi-stimme-v2-material-save-c-v1"
+    );
+    expect(klemmiAudioUrl("materials-complete")).toBe(
+      "/api/klemmi/audio/materials-complete?v=20261020-klemmi-stimme-v2-material-complete-a-v1"
     );
     expect(
       KLEMMI_PLAN_AUDIO_IDS.every(

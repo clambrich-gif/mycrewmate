@@ -393,10 +393,18 @@ export const KLEMMI_PLAN_AUDIO_IDS = Object.freeze(
 
 /**
  * Bereits einzeln geprüft und ausdrücklich freigegeben für Klemmi-Stimme 2.0.
- * Weitere Materialansagen werden erst nach demselben Kandidatenvergleich ergänzt.
+ * Der Material-Einstieg sowie die vier sichtbaren Führungsschritte und der
+ * Erfolgsabschluss verwenden ausschließlich diese feste Charakterstimme.
  */
 export const KLEMMI_MATERIALS_AUDIO_IDS: readonly KlemmiAudioId[] =
-  Object.freeze(["materials-intro"]);
+  Object.freeze([
+    "materials-intro",
+    "materials-name",
+    "materials-details",
+    "materials-responsible",
+    "materials-save",
+    "materials-complete",
+  ]);
 
 /** Alle festen Aufnahmen der normalen Ansprechpartner-Führung. */
 export const KLEMMI_CONTACTS_AUDIO_IDS: readonly KlemmiAudioId[] =
@@ -745,8 +753,12 @@ const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
   "postprocessing-overview": "20260928-adaptive-area-tour-v1",
   "materials-overview-save": "20260928-adaptive-area-tour-v1",
   "materials-overview": "20260928-adaptive-area-tour-v1",
-  "materials-responsible": "20261004-material-owner-v1",
   "materials-intro": "20261020-klemmi-stimme-v2-material-intro-a-v1",
+  "materials-name": "20261020-klemmi-stimme-v2-material-name-c-v1",
+  "materials-details": "20261020-klemmi-stimme-v2-material-details-c-v1",
+  "materials-responsible": "20261020-klemmi-stimme-v2-material-responsible-c-v1",
+  "materials-save": "20261020-klemmi-stimme-v2-material-save-c-v1",
+  "materials-complete": "20261020-klemmi-stimme-v2-material-complete-a-v1",
   "marketing-overview-save": "20260928-adaptive-area-tour-v1",
   "marketing-overview": "20260928-adaptive-area-tour-v1",
   "approvals-overview-save": "20260928-adaptive-area-tour-v1",
