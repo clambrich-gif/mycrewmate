@@ -736,7 +736,7 @@ const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
   "dashboard-details-empty-stacked": "20260928-dashboard-stacked-layout-v1",
   "donations-opening": "20261020-klemmi-stimme-v2-donations-opening-c-v1",
   "donations-intro": "20261020-klemmi-stimme-v2-donations-intro-b-v1",
-  "donations-donor": "20261020-klemmi-stimme-v2-donations-donor-c-v1",
+  "donations-donor": "20261020-klemmi-stimme-v2-donations-donor-b-dynamik-v1",
   "donations-item": "20261020-klemmi-stimme-v2-donations-item-b-v1",
   "donations-traits": "20261020-klemmi-stimme-v2-donations-traits-b-v1",
   "donations-save": "20261020-klemmi-stimme-v2-donations-save-a-v1",
