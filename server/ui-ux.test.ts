@@ -147,6 +147,22 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(areaTours).toContain("HELP_KLEMMI_STEPS");
   });
 
+  it("zeigt bei Helfern nur das optionale berechnete Alter an und erklärt die private Eingabe", () => {
+    const helpers = source("client/src/pages/Helpers.tsx");
+    const router = source("server/routers.ts");
+    const backup = source("server/excel-backup.ts");
+
+    expect(helpers).toContain("function helperNameWithAge");
+    expect(helpers).toContain("Geburtsdatum");
+    expect(helpers).toContain("Dient nur dazu, in der Helferübersicht das aktuelle Alter in Klammern anzuzeigen.");
+    expect(helpers).toContain("Das Geburtsdatum selbst erscheint nicht in Übersichten, PDFs, WhatsApp oder Excel-Exporten.");
+    expect(router).toContain("birthDate: moduleWriteProcedure(\"helpers\")");
+    expect(router).toContain("function publicHelperWithAge");
+    expect(router).toContain("return helpers.map(publicHelperWithAge)");
+    expect(router).toContain(".map(publicHelperWithAge)");
+    expect(backup).not.toContain('"birthDate",\n        "willHelp"');
+  });
+
   it("begrüßt jeden Zugang täglich mit einem kurzen Klemmi-Satz und bleibt bei Ruhe oder Fehlern zurückhaltend", () => {
     const layout = source("client/src/components/Layout.tsx");
     const greeting = source("client/src/components/KlemmiLoginGreeting.tsx");
@@ -1094,7 +1110,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(mobileCards).toContain(
       'className="break-words text-[26px] leading-[1.05] font-black tracking-tight"'
     );
-    expect(mobileCards.match(/size="icon"/g)).toHaveLength(3);
+    expect(mobileCards.match(/size="icon"/g)).toHaveLength(4);
     expect(desktopTable).not.toContain("text-[26px]");
     expect(desktopTable).toContain('className="p-2 font-medium"');
   });

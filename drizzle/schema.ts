@@ -862,6 +862,8 @@ export const helpers = mysqlTable(
     phone: varchar("phone", { length: 64 }),
     note: text("note"),
     companion: varchar("companion", { length: 500 }),
+    /** Optional und ausschließlich zur Berechnung der Altersanzeige. */
+    birthDate: date("birthDate", { mode: "string" }),
     // Kurzer, nicht erratbarer Freigabecode für persönliche PDF-Links (/p/:code).
     pdfShareCode: varchar("pdfShareCode", { length: 12 }),
     willHelp: mysqlEnum("willHelp", ["ja", "nein"]).default("ja").notNull(),

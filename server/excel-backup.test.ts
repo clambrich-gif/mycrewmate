@@ -81,6 +81,7 @@ const data = {
       phone: "0456",
       note: "Bitte anrufen",
       companion: "+ Kind Beispiel",
+      birthDate: "2008-10-27",
       willHelp: "ja",
       availFri: "ja",
       availSat: "ja",
@@ -347,6 +348,9 @@ describe("Excel-Datensicherung", () => {
     expect(helperRows.find(row => row.Name === "Alex Beispiel")).toMatchObject({
       "Zusätzliche Begleitung": "+ Kind Beispiel",
     });
+    expect(helperRows.find(row => row.Name === "Alex Beispiel")).not.toHaveProperty(
+      "Geburtsdatum"
+    );
 
     const parsed = parseBackupWorkbook(result.buffer.toString("base64"));
     expect(parsed.metadata).toMatchObject({
@@ -356,6 +360,9 @@ describe("Excel-Datensicherung", () => {
     expect(parsed.helpers.find(row => row.name === "Alex Beispiel")).toMatchObject({
       companion: "+ Kind Beispiel",
     });
+    expect(parsed.helpers.find(row => row.name === "Alex Beispiel")).not.toHaveProperty(
+      "birthDate"
+    );
     expect(parsed.shifts.find(row => row.task === "Anmeldung")).toMatchObject({
       allowFlexibleAssignment: true,
     });

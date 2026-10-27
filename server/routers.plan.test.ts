@@ -61,6 +61,7 @@ const dbMocks = vi.hoisted(() => ({
   deleteContact: vi.fn(),
   getContact: vi.fn(),
   getHelper: vi.fn(),
+  getHelperBirthDate: vi.fn(),
   ensureHelperPdfShareCode: vi.fn(),
   createProtectedHelperPdfShare: vi.fn(),
   findProtectedHelperPdfShare: vi.fn(),
@@ -2025,6 +2026,48 @@ describe("Planungs-API", () => {
 
     expect(dbMocks.updateHelper).toHaveBeenCalledWith(42, {
       companion: "+ Frau Muster, + Kind",
+    });
+  });
+
+  it("speichert das optionale Geburtsdatum, liefert in Listen aber nur das abgeleitete Alter", async () => {
+    dbMocks.updateHelper.mockResolvedValue({ affectedRows: 1 });
+    dbMocks.listHelpers.mockResolvedValue([
+      {
+        id: 42,
+        name: "Alex Beispiel",
+        birthDate: "2008-10-27",
+        eventId: 1,
+        year: 2027,
+        willHelp: "ja",
+        availFri: "ja",
+      },
+    ]);
+    dbMocks.getHelperBirthDate.mockResolvedValue({
+      id: 42,
+      birthDate: "2008-10-27",
+    });
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.helpers.update({ id: 42, birthDate: "2008-10-27" })
+    ).resolves.toEqual({ affectedRows: 1 });
+    expect(dbMocks.updateHelper).toHaveBeenCalledWith(42, {
+      birthDate: "2008-10-27",
+    });
+
+    const listed = await caller.helpers.list();
+    expect(listed[0]).toEqual(
+      expect.objectContaining({ id: 42, name: "Alex Beispiel", age: expect.any(Number) })
+    );
+    expect(listed[0]).not.toHaveProperty("birthDate");
+    const available = await caller.plan.available({ day: "Freitag" });
+    expect(available[0]).toEqual(
+      expect.objectContaining({ id: 42, name: "Alex Beispiel", age: expect.any(Number) })
+    );
+    expect(available[0]).not.toHaveProperty("birthDate");
+    await expect(caller.helpers.birthDate({ id: 42 })).resolves.toEqual({
+      id: 42,
+      birthDate: "2008-10-27",
     });
   });
 

@@ -5789,6 +5789,21 @@ export async function listHelpers() {
     .where(planningScope(helpers))
     .orderBy(helpers.name);
 }
+
+/**
+ * Das Geburtsdatum bleibt aus normalen Listen, PDFs und Exporten heraus.
+ * Diese gezielte Abfrage dient ausschließlich dem geschützten Bearbeitungsdialog.
+ */
+export async function getHelperBirthDate(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const [helper] = await db
+    .select({ id: helpers.id, birthDate: helpers.birthDate })
+    .from(helpers)
+    .where(and(eq(helpers.id, id), planningScope(helpers)))
+    .limit(1);
+  return helper;
+}
 export async function listShifts() {
   const db = await getDb();
   if (!db) return [];

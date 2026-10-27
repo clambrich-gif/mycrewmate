@@ -1,0 +1,1 @@
+ALTER TABLE `helpers` ADD `birthDate` date;
