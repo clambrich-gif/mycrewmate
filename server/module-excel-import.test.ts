@@ -6,6 +6,7 @@ import {
   findContactSelfHelperRow,
   normalizeModuleSheetRange,
   normalizeModuleImportedShiftTimes,
+  preserveCurrentEventDatesForExcelImport,
   preserveMissingOptionalModuleColumns,
   preserveRequiredContactSelfHelpers,
   readNormalizedModuleImportRows,
@@ -79,6 +80,35 @@ describe("vollständiger Excel-Import", () => {
       helperSourceId: null,
       helperName: "Hugo Helfer",
     });
+  });
+
+  it("übernimmt aus einer vollständigen Excel-Datei niemals einen fremden oder leeren Veranstaltungszeitraum", () => {
+    const current = {
+      metadata: {
+        startDate: "2027-06-11",
+        endDate: "2027-06-13",
+      },
+    } as any;
+    const imported = {
+      metadata: {
+        startDate: "2026-12-04",
+        endDate: "2026-12-06",
+      },
+      warnings: [],
+    } as any;
+
+    const protectedImport = preserveCurrentEventDatesForExcelImport(
+      current,
+      imported
+    );
+
+    expect(protectedImport.metadata).toMatchObject({
+      startDate: "2027-06-11",
+      endDate: "2027-06-13",
+    });
+    expect(protectedImport.warnings).toContain(
+      "Der Veranstaltungszeitraum bleibt beim Excel-Import immer beim aktuell ausgewählten Event unverändert."
+    );
   });
 });
 

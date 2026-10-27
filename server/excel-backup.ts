@@ -3557,6 +3557,34 @@ export function resetInvalidatedManualConfirmations(
   return resetShiftIds;
 }
 
+/**
+ * Projektdateien aus der Zeit vor der Veranstaltungszeitraum-Funktion enthalten
+ * keine Datumswerte. Beim Laden darf diese fehlende Angabe einen inzwischen
+ * gepflegten Zeitraum niemals nebenbei entfernen. Ein ausdrücklich gefüllter
+ * Zeitraum bleibt dagegen eine sichtbare, auswählbare Wiederherstellungsänderung.
+ */
+export function preserveExistingEventDatesWhenMissing(
+  current: Pick<CurrentSnapshot, "startDate" | "endDate">,
+  imported: BackupDocument
+) {
+  if (imported.metadata.startDate !== null || imported.metadata.endDate !== null)
+    return imported;
+  const startDate = current.startDate ?? null;
+  const endDate = current.endDate ?? null;
+  if (startDate === null && endDate === null) return imported;
+
+  const protectedImport = structuredClone(imported);
+  protectedImport.metadata.startDate = startDate;
+  protectedImport.metadata.endDate = endDate;
+  protectedImport.warnings = Array.from(
+    new Set([
+      ...protectedImport.warnings,
+      "Die Projektdatei enthält keinen Veranstaltungszeitraum. Der im aktuellen Event hinterlegte Zeitraum bleibt unverändert erhalten.",
+    ])
+  );
+  return protectedImport;
+}
+
 export async function previewProjectDocument(
   desired: BackupDocument,
   sourceDigest: string
@@ -3571,10 +3599,14 @@ export async function previewProjectDocument(
       `Die Sicherung gehört zu „${desired.metadata.eventName}“ (${desired.metadata.year}), ausgewählt ist „${snapshot.eventName}“ (${currentEventYear()}).`
     );
   const current = comparableCurrent(snapshot);
+  const datesProtectedDesired = preserveExistingEventDatesWhenMissing(
+    snapshot,
+    desired
+  );
   const protectedDesired = await preserveAccessLinkedContactsForRestore(
     (await getDb()) as Client,
     current,
-    desired
+    datesProtectedDesired
   );
   resetInvalidatedManualConfirmations(current, protectedDesired);
   const changes = [
@@ -3789,28 +3821,47 @@ export async function restoreProjectDocument(
       throw new Error(
         "Die Planung wurde seit der Vorschau geändert. Bitte die Datei erneut prüfen."
       );
+    const datesProtectedImported = preserveExistingEventDatesWhenMissing(
+      snapshot,
+      imported
+    );
     const protectedImported = await preserveAccessLinkedContactsForRestore(
       tx,
       current,
-      imported,
+      datesProtectedImported,
       true
     );
     const allChanges = [
       ...eventDaysChange(snapshot.activeDays, protectedImported.metadata.activeDays),
+      ...eventDatesChange(snapshot, protectedImported.metadata),
       ...donationTargetsChange(snapshot, protectedImported.metadata),
       ...eventPdfImageChanges(snapshot, protectedImported.metadata),
       ...diffDocuments(current, protectedImported),
     ];
-    const desired = buildSelectedDocument(
+    let desired = buildSelectedDocument(
       current,
       protectedImported,
       allChanges,
       selectedChangeKeys
     );
+    if (
+      selectedChangeKeys !== undefined &&
+      !selectedChangeKeys.includes("VERANSTALTUNG:update:dates")
+    ) {
+      desired = {
+        ...desired,
+        metadata: {
+          ...desired.metadata,
+          startDate: snapshot.startDate ?? null,
+          endDate: snapshot.endDate ?? null,
+        },
+      };
+    }
     await assertBackupDocumentCurrentProductCapacity(desired);
     resetInvalidatedManualConfirmations(current, desired);
     const changes = [
       ...eventDaysChange(snapshot.activeDays, desired.metadata.activeDays),
+      ...eventDatesChange(snapshot, desired.metadata),
       ...donationTargetsChange(snapshot, desired.metadata),
       ...eventPdfImageChanges(snapshot, desired.metadata),
       ...diffDocuments(current, desired),

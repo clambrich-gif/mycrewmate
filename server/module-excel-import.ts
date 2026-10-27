@@ -821,6 +821,31 @@ export function clearForeignFullImportIds(document: BackupDocument): BackupDocum
   return copy;
 }
 
+/**
+ * Excel ist für den übertragbaren Fachbestand gedacht. Der Termin gehört
+ * dagegen immer zum aktuell ausgewählten Event und darf daher auch bei einer
+ * Datei aus einem Vorjahr weder überschrieben noch geleert werden.
+ */
+export function preserveCurrentEventDatesForExcelImport(
+  current: BackupDocument,
+  imported: BackupDocument
+): BackupDocument {
+  return {
+    ...imported,
+    metadata: {
+      ...imported.metadata,
+      startDate: current.metadata.startDate,
+      endDate: current.metadata.endDate,
+    },
+    warnings: Array.from(
+      new Set([
+        ...imported.warnings,
+        "Der Veranstaltungszeitraum bleibt beim Excel-Import immer beim aktuell ausgewählten Event unverändert.",
+      ])
+    ),
+  };
+}
+
 async function buildFullExcelTarget(
   base64: string,
   options: HelperBirthDateImportOptions = {}
@@ -831,12 +856,15 @@ async function buildFullExcelTarget(
     allowHelperBirthDates: options.allowHelperBirthDates ?? true,
   });
   rejectUnresolvedFullImportReferences(parsed.warnings);
-  const imported = clearForeignFullImportIds({
-    ...parsed,
-    // Nicht sichtbare historische Fachbereiche werden nicht verändert.
-    marketing: current.marketing,
-    approvals: current.approvals,
-  });
+  const imported = preserveCurrentEventDatesForExcelImport(
+    current,
+    clearForeignFullImportIds({
+      ...parsed,
+      // Nicht sichtbare historische Fachbereiche werden nicht verändert.
+      marketing: current.marketing,
+      approvals: current.approvals,
+    })
+  );
   const changes = diffDocuments(current, imported);
   return { current, imported, changes };
 }

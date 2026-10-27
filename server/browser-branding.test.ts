@@ -42,7 +42,7 @@ describe("Browserkennung für Homepage, Vereins-App und Master-Portal", () => {
 
     expect(app).toContain("applyBrowserBranding()");
     expect(html).toContain(
-      "<title>MyCrewMate · Vereins- und Eventplanung mit Helferplanung</title>"
+      "<title>MyCrewMate – Helferplanung für Vereine & Events</title>"
     );
     expect(html).toContain('href="/icons/mycrewmate-pwa-192.png"');
     expect(serviceWorker).toContain('"/icons/mycrewmate-admin-192.png"');

@@ -13,11 +13,12 @@ describe("Vorbereitung & Nachbereitung Verantwortlichen- und Helferzuordnung", (
     expect(prepCode).toContain("<Label>Verantwortlicher</Label>");
     expect(prepCode).toContain("Hauptadministrator wird automatisch übernommen");
     expect(prepCode).toContain('<SelectItem value="unassigned">-</SelectItem>');
-    // Dialog enthält optionalen Helfer
-    expect(prepCode).toContain("Unterstützender Helfer");
-    expect(prepCode).toContain("Kein zusätzlicher Helfer");
-    // Kachelansicht zeigt optionalen Helfer
-    expect(prepCode).toContain("Helfer: {helperMap.get(task.helperId) ?? \"—\"}");
+    // Dialog enthält bis zu fünf optionale Helfer
+    expect(prepCode).toContain("Unterstützende Helfer");
+    expect(prepCode).toContain("Helfer hinzufügen");
+    expect(prepCode).toContain("Maximal fünf Helfer gewählt");
+    // Kachelansicht zeigt alle zugeordneten Helfer
+    expect(prepCode).toContain("Helfer: {(task.helperIds ?? (task.helperId ? [task.helperId] : [])).map");
   });
 
   it("bietet in PostProcessing.tsx zwei getrennte Auswahlfelder und zeigt den Helfer in der Kachel an", () => {
@@ -29,11 +30,12 @@ describe("Vorbereitung & Nachbereitung Verantwortlichen- und Helferzuordnung", (
     // Dialog enthält Verantwortlicher und optionalen Helfer
     expect(postCode).toContain("<Label>Verantwortlicher</Label>");
     expect(postCode).toContain("Bitte Verantwortlichen wählen");
-    // Dialog enthält optionalen Helfer
-    expect(postCode).toContain("Unterstützender Helfer");
-    expect(postCode).toContain("Kein zusätzlicher Helfer");
-    // Kachelansicht zeigt optionalen Helfer
-    expect(postCode).toContain("Helfer: {helperMap.get(task.helperId) ?? \"—\"}");
+    // Dialog enthält bis zu fünf optionale Helfer
+    expect(postCode).toContain("Unterstützende Helfer");
+    expect(postCode).toContain("Helfer hinzufügen");
+    expect(postCode).toContain("Maximal fünf Helfer gewählt");
+    // Kachelansicht zeigt alle zugeordneten Helfer
+    expect(postCode).toContain("Helfer: {(task.helperIds ?? (task.helperId ? [task.helperId] : [])).map");
   });
 
   it("akzeptiert im Router helperId getrennt von contactId", () => {

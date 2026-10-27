@@ -44,8 +44,8 @@ describe("Event-Pass: Ortshinweise und Upgrade-Überleitung", () => {
     expect(preparation).toContain("Aus Event Pass übernommen:");
     expect(preparation).toContain("Ansprechpartner noch wählen");
     expect(preparation).toContain("Der ursprünglich gewählte Helfer");
-    expect(db).toContain('typeof values.contactId === "number" && values.contactId > 0');
-    expect(db).toContain("{ ...values, eventPassResponsibleHelperId: null }");
+    expect(db).toContain('typeof valuesWithLegacyHelper.contactId === "number" && valuesWithLegacyHelper.contactId > 0');
+    expect(db).toContain("{ ...valuesWithLegacyHelper, eventPassResponsibleHelperId: null }");
   });
 
   it("erklärt die sichere Überleitung transparent im Master-Admin-Produktwechseldialog", () => {

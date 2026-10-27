@@ -251,6 +251,57 @@ describe("Projektdatei und modularer Excel-Import", () => {
     });
   });
 
+  it("behält den vorhandenen Zeitraum bei, wenn eine alte JSON-Projektdatei keine Datumsangaben enthält", async () => {
+    const exported = await exportProjectFile();
+    const legacyDocument = JSON.parse(exported.buffer.toString("utf8"));
+    legacyDocument.metadata.startDate = null;
+    legacyDocument.metadata.endDate = null;
+
+    const preview = await previewProjectFile(
+      Buffer.from(JSON.stringify(legacyDocument)).toString("base64")
+    );
+
+    expect(preview.metadata).toMatchObject({
+      startDate: "2026-06-19",
+      endDate: "2026-06-21",
+    });
+    expect(
+      preview.changes.some(change => change.key === "VERANSTALTUNG:update:dates")
+    ).toBe(false);
+    expect(preview.warnings).toContain(
+      "Die Projektdatei enthält keinen Veranstaltungszeitraum. Der im aktuellen Event hinterlegte Zeitraum bleibt unverändert erhalten."
+    );
+  });
+
+  it("zeigt einen ausdrücklich gefüllten JSON-Zeitraum als eigene Wiederherstellungsänderung", async () => {
+    const exported = await exportProjectFile();
+    const document = JSON.parse(exported.buffer.toString("utf8"));
+    document.metadata.startDate = "2026-07-10";
+    document.metadata.endDate = "2026-07-12";
+
+    const preview = await previewProjectFile(
+      Buffer.from(JSON.stringify(document)).toString("base64")
+    );
+
+    expect(preview.changes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "VERANSTALTUNG:update:dates",
+          area: "VERANSTALTUNG",
+          label: "Veranstaltungszeitraum",
+          before: {
+            startDate: "2026-06-19",
+            endDate: "2026-06-21",
+          },
+          after: {
+            startDate: "2026-07-10",
+            endDate: "2026-07-12",
+          },
+        }),
+      ])
+    );
+  });
+
   it("spart Geburtsdaten ohne Pro-Berechtigung aus und weist eine geschützte Projektdatei zurück", async () => {
     const protectedExport = await exportProjectFile({
       includeHelperBirthDates: true,
