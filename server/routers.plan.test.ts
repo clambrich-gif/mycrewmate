@@ -2046,13 +2046,20 @@ describe("Planungs-API", () => {
     expect(dbMocks.createMaterial).toHaveBeenCalledWith({
       article: "Kabelbinder",
       status: "offen",
+      logEntryAuthor: "Organisation",
     });
 
     await expect(
-      caller.materials.update({ id: 71, status: "bestellt" })
+      caller.materials.update({
+        id: 71,
+        status: "bestellt",
+        logEntry: "Im Vereinsheim vorhanden",
+      })
     ).resolves.toEqual({ affectedRows: 1 });
     expect(dbMocks.updateMaterial).toHaveBeenCalledWith(71, {
       status: "bestellt",
+      logEntry: "Im Vereinsheim vorhanden",
+      logEntryAuthor: "Organisation",
     });
   });
 

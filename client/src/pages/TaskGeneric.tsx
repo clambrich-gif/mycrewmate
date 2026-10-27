@@ -4,6 +4,7 @@ import { KlemmiActionPanel } from "@/components/KlemmiActionPanel";
 import { PlanResetDialogButton } from "@/components/PlanResetDialogButton";
 import { ResetAreaButton } from "@/components/ResetAreaButton";
 import { MyTasksDefaultPin } from "@/components/MyTasksDefaultPin";
+import { TaskLogbookHistory } from "@/components/TaskLogbookHistory";
 import {
   KlemmiSurfaceGuide,
   type KlemmiSurfaceStep,
@@ -21,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -42,6 +44,10 @@ import {
   MY_TASKS_QUERY_KEY,
   parseMyTasksFilter,
 } from "@/lib/dashboard-target-filter";
+import {
+  preparationLogbookEntryCount,
+  prependPreparationLogbookEntry,
+} from "@shared/preparation-logbook";
 import {
   ArrowDownAZ,
   ArrowUpZA,
@@ -118,6 +124,12 @@ interface Props {
 
 const temporaryId = () => -Date.now() - Math.floor(Math.random() * 1_000);
 
+const materialNoteLabel = (note: string | null | undefined) => {
+  const entries = preparationLogbookEntryCount(note);
+  if (entries === 0) return "Notiz hinzufügen";
+  return `${entries} ${entries === 1 ? "Eintrag" : "Einträge"}`;
+};
+
 export default function TaskGeneric({
   kind,
   title,
@@ -181,6 +193,8 @@ export default function TaskGeneric({
     id: number;
     name: string;
   } | null>(null);
+  const [materialNoteTarget, setMaterialNoteTarget] = useState<any | null>(null);
+  const [materialNoteEntry, setMaterialNoteEntry] = useState("");
 
   const defaultStatus = statusOptions ?? [
     { v: "offen", l: "offen" },
@@ -239,6 +253,7 @@ export default function TaskGeneric({
       )?.id ?? null
     );
   }, [contacts, user?.name]);
+  const logbookAuthor = user?.name?.trim() || "Organisation";
   const setMyTasksFilter = (enabled: boolean) => {
     setMyTasksOnly(enabled);
     setSearchParams(
@@ -423,7 +438,24 @@ export default function TaskGeneric({
       await listUtils.cancel();
       const previous = listUtils.getData();
       listUtils.setData(undefined, (current: any[] = []) =>
-        current.map(row => (row.id === input.id ? { ...row, ...input } : row))
+        current.map(row => {
+          if (row.id !== input.id) return row;
+          const { logEntry, ...changes } = input;
+          const optimisticNote =
+            isMaterialTable && typeof logEntry === "string"
+              ? prependPreparationLogbookEntry(
+                  logEntry,
+                  row.note,
+                  new Date(),
+                  logbookAuthor
+                )
+              : undefined;
+          return {
+            ...row,
+            ...changes,
+            ...(optimisticNote !== undefined ? { note: optimisticNote } : {}),
+          };
+        })
       );
       return { previous };
     },
@@ -433,6 +465,40 @@ export default function TaskGeneric({
     },
     onSettled: refreshDashboard,
   });
+
+  const openMaterialNotebook = (row: any) => {
+    setMaterialNoteTarget(row);
+    setMaterialNoteEntry("");
+  };
+
+  const saveMaterialNotebookEntry = () => {
+    if (!materialNoteTarget || update.isPending) return;
+    try {
+      const note = prependPreparationLogbookEntry(
+        materialNoteEntry,
+        materialNoteTarget.note,
+        new Date(),
+        logbookAuthor
+      );
+      if (note === materialNoteTarget.note) return;
+
+      update.mutate({
+        id: materialNoteTarget.id,
+        logEntry: materialNoteEntry.trim(),
+      });
+      setMaterialNoteTarget((current: any) =>
+        current ? { ...current, note } : current
+      );
+      setMaterialNoteEntry("");
+      toast.success("Notizbuch-Eintrag gespeichert");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Der Notizbuch-Eintrag konnte nicht gespeichert werden."
+      );
+    }
+  };
 
   const remove = api.remove.useMutation({
     onMutate: async (input: { id: number }) => {
@@ -493,7 +559,8 @@ export default function TaskGeneric({
     (noContact ? 0 : 1) +
     (locationField ? 1 : 0) +
     (noStatus ? 0 : 1) +
-    (extraField ? 1 : 0);
+    (extraField ? 1 : 0) +
+    (isMaterialTable ? 1 : 0);
   const renderedHeaderActions =
     typeof headerActions === "function"
       ? headerActions({ visibleRows: visibleRows as Array<Record<string, unknown>> })
@@ -1054,6 +1121,22 @@ export default function TaskGeneric({
                   </div>
                 )}
               </div>
+              {isMaterialTable && (
+                <div className="space-y-1">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Notizbuch
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-11 w-full justify-between border-slate-200 bg-slate-50 text-left text-slate-800 hover:bg-slate-100 md:h-10"
+                    onClick={() => openMaterialNotebook(row)}
+                  >
+                    <span>{materialNoteLabel(row.note)}</span>
+                    <span className="text-xs text-slate-500">Öffnen</span>
+                  </Button>
+                </div>
+              )}
               {(isTenantAdmin || teamCanDelete) && row.id > 0 && (
                 <Button
                   variant="outline"
@@ -1107,6 +1190,11 @@ export default function TaskGeneric({
                 {!noStatus && <th className={isMaterialTable ? `${STICKY_TABLE_HEADER_CELL_CLASS} text-center` : "p-3 text-center"}>Status</th>}
                 {extraField && (
                   <th className={isMaterialTable ? `${STICKY_TABLE_HEADER_CELL_CLASS} text-center` : "p-3 text-center"}>{extraField.label}</th>
+                )}
+                {isMaterialTable && (
+                  <th className={`${STICKY_TABLE_HEADER_CELL_CLASS} text-center`}>
+                    Notizbuch
+                  </th>
                 )}
                 <th className={isMaterialTable ? `w-10 ${STICKY_TABLE_HEADER_CELL_CLASS}` : "w-10 p-3"}></th>
               </tr>
@@ -1262,6 +1350,19 @@ export default function TaskGeneric({
                           </SelectContent>
                         </Select>
                       </div>
+                    </td>
+                  )}
+                  {isMaterialTable && (
+                    <td className="p-2 text-center align-middle">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 min-w-[112px] border-slate-200 bg-slate-50 text-xs text-slate-800 hover:bg-slate-100"
+                        onClick={() => openMaterialNotebook(row)}
+                      >
+                        {materialNoteLabel(row.note)}
+                      </Button>
                     </td>
                   )}
                   <td className="p-2">
@@ -1439,6 +1540,21 @@ export default function TaskGeneric({
                       )}
                     </div>
 
+                    {isMaterialTable && (
+                      <div className="space-y-1.5 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                        <p className="text-xs font-medium text-slate-500">Notizbuch</p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-9 w-full justify-between border-slate-200 bg-white text-sm text-slate-800 hover:bg-slate-100"
+                          onClick={() => openMaterialNotebook(row)}
+                        >
+                          <span>{materialNoteLabel(row.note)}</span>
+                          <span className="text-xs text-slate-500">Öffnen</span>
+                        </Button>
+                      </div>
+                    )}
+
                     {(isTenantAdmin || teamCanDelete) && row.id > 0 && (
                       <Button
                         type="button"
@@ -1478,6 +1594,70 @@ export default function TaskGeneric({
             remove.mutate({ id: deleteTarget.id });
           }}
         />
+      )}
+      {isMaterialTable && (
+        <Dialog
+          open={Boolean(materialNoteTarget)}
+          onOpenChange={open => {
+            if (!open && !update.isPending) {
+              setMaterialNoteTarget(null);
+              setMaterialNoteEntry("");
+            }
+          }}
+        >
+          <DialogContent className="w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] !bg-white !text-slate-950 sm:max-w-xl">
+            <DialogHeader>
+              <DialogTitle>
+                Notizbuch: {materialNoteTarget?.[nameKey] ?? "Materialartikel"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="material-notebook-entry">Neuen Eintrag ergänzen</Label>
+                <Textarea
+                  id="material-notebook-entry"
+                  value={materialNoteEntry}
+                  onChange={event => setMaterialNoteEntry(event.target.value)}
+                  placeholder="z. B. Vorhanden im Vereinsheim, im Nebenraum links neben der Küche."
+                  className="min-h-28 resize-y text-base"
+                  disabled={update.isPending}
+                />
+                <p className="text-xs leading-5 text-slate-500">
+                  Der Eintrag wird beim Speichern mit Datum, Uhrzeit und deinem Namen oben im Verlauf ergänzt.
+                </p>
+              </div>
+              <div className="space-y-2 border-t border-slate-200 pt-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Bisherige Notizen
+                </p>
+                <TaskLogbookHistory
+                  logbook={materialNoteTarget?.note}
+                  emptyMessage="Noch keine Notiz zu diesem Materialartikel vorhanden."
+                />
+              </div>
+            </div>
+            <DialogFooter className="gap-2 sm:justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={update.isPending}
+                onClick={() => {
+                  setMaterialNoteTarget(null);
+                  setMaterialNoteEntry("");
+                }}
+              >
+                Schließen
+              </Button>
+              <Button
+                type="button"
+                disabled={!materialNoteEntry.trim() || update.isPending}
+                onClick={saveMaterialNotebookEntry}
+              >
+                {update.isPending ? "Speichert …" : "Eintrag speichern"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
       {createInDialog && (
         <Dialog

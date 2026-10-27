@@ -6534,34 +6534,44 @@ export const appRouter = router({
     create: moduleWriteProcedure("materials")
       .input(
         z.object({
-          article: z.string().min(1),
-          category: z.string().optional(),
-          quantity: z.string().optional(),
-          unit: z.string().optional(),
+          article: z.string().trim().min(1).max(300),
+          category: z.string().trim().max(120).optional(),
+          quantity: z.string().max(40).optional(),
+          unit: z.string().max(40).optional(),
           locationId: z.number().nullable().optional(),
           contactId: z.number().nullable().optional(),
           status: materialStatus.default("offen"),
-          note: z.string().optional(),
+          note: z.string().max(10_000).optional(),
+          logEntry: z.string().trim().max(10_000).optional(),
         })
       )
-      .mutation(({ input }) => db.createMaterial(input)),
+      .mutation(({ ctx, input }) =>
+        db.createMaterial({
+          ...input,
+          logEntryAuthor: auditActor(ctx.user).name,
+        })
+      ),
     update: moduleWriteProcedure("materials")
       .input(
         z.object({
           id: z.number(),
-          article: z.string().optional(),
-          category: z.string().optional(),
-          quantity: z.string().optional(),
-          unit: z.string().optional(),
+          article: z.string().trim().min(1).max(300).optional(),
+          category: z.string().trim().max(120).optional(),
+          quantity: z.string().max(40).optional(),
+          unit: z.string().max(40).optional(),
           locationId: z.number().nullable().optional(),
           contactId: z.number().nullable().optional(),
           status: materialStatus.optional(),
-          note: z.string().nullable().optional(),
+          note: z.string().max(10_000).nullable().optional(),
+          logEntry: z.string().trim().max(10_000).optional(),
         })
       )
-      .mutation(({ input }) => {
+      .mutation(({ ctx, input }) => {
         const { id, ...r } = input;
-        return db.updateMaterial(id, r);
+        return db.updateMaterial(id, {
+          ...r,
+          logEntryAuthor: auditActor(ctx.user).name,
+        });
       }),
     remove: moduleWriteProcedure("materials")
       .input(z.object({ id: z.number().int().positive() }))

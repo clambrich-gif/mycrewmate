@@ -9569,16 +9569,61 @@ export async function deletePost(
     return result;
   });
 }
-export const createMaterial = async (v: any) =>
-  createYearRow(
+export const createMaterial = async (v: any) => {
+  const { logEntry, logEntryAuthor, ...values } = v;
+  const valuesWithLogbook =
+    logEntry === undefined
+      ? values
+      : {
+          ...values,
+          note: prependPreparationLogbookEntry(
+            logEntry,
+            values.note,
+            new Date(),
+            logEntryAuthor
+          ),
+        };
+  return createYearRow(
     materials,
-    await scopedContactValues(await scopedLocationValues(v))
+    await scopedContactValues(await scopedLocationValues(valuesWithLogbook))
   );
-export const updateMaterial = async (id: number, v: any) =>
-  ((await getDb()) as DB)
-    .update(materials)
-    .set(await scopedContactValues(await scopedLocationValues(v)))
-    .where(and(yearWhere(materials, id), eq(materials.deleted, false)));
+};
+export const updateMaterial = async (id: number, v: any) => {
+  const { logEntry, logEntryAuthor, ...values } = v;
+  const database = (await getDb()) as DB;
+  return database.transaction(async tx => {
+    const [existing] = await tx
+      .select({ id: materials.id, note: materials.note })
+      .from(materials)
+      .where(
+        and(
+          yearWhere(materials, id),
+          eq(materials.deleted, false)
+        )
+      )
+      .limit(1)
+      .for("update");
+    if (!existing) throw new Error("Materialartikel wurde nicht gefunden");
+
+    const { note: legacyNote, ...writableValues } = values;
+    const valuesWithLogbook =
+      logEntry === undefined
+        ? { ...writableValues, ...(legacyNote !== undefined ? { note: legacyNote } : {}) }
+        : {
+            ...writableValues,
+            note: prependPreparationLogbookEntry(
+              logEntry,
+              existing.note,
+              new Date(),
+              logEntryAuthor
+            ),
+          };
+    return tx
+      .update(materials)
+      .set(await scopedContactValues(await scopedLocationValues(valuesWithLogbook)))
+      .where(and(yearWhere(materials, id), eq(materials.deleted, false)));
+  });
+};
 export async function deleteMaterial(id: number, options: { actor: AuditActor }) {
   const db = (await getDb()) as DB;
   return db.transaction(async tx => {

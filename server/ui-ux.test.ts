@@ -3244,6 +3244,11 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(materials).toContain("createInDialog");
     expect(materials).toContain("Zuständigkeit direkt zuordnen");
     expect(materials).toContain('createDialogTitle="Neuen Artikel anlegen"');
+    expect(taskGeneric).toContain("materialNoteTarget");
+    expect(taskGeneric).toContain("Notizbuch: {materialNoteTarget?.[nameKey]");
+    expect(taskGeneric).toContain('id="material-notebook-entry"');
+    expect(taskGeneric).toContain("logEntry: materialNoteEntry.trim()");
+    expect(taskGeneric).toContain("TaskLogbookHistory");
     expect(materials).toContain('createTriggerLabel="Neuer Artikel"');
     expect(materials).toContain('label: "Stand"');
     expect(materials).toContain('{ v: "offen", l: "🔴 Offen" }');
