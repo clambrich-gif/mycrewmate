@@ -2071,6 +2071,42 @@ describe("Planungs-API", () => {
     });
   });
 
+  it("sperrt Altersdaten unterhalb von Pro vollständig und gibt auch kein abgeleitetes Alter aus", async () => {
+    dbMocks.getCurrentTenantProductEntitlement.mockResolvedValue({
+      tenantId: "rsc-eifelland-mayen",
+      packageId: "light",
+      status: "active",
+      startsOn: null,
+      endsOn: null,
+      eventId: null,
+      isUsable: true,
+      entitlements: {},
+    });
+    dbMocks.listHelpers.mockResolvedValue([
+      {
+        id: 42,
+        name: "Alex Beispiel",
+        birthDate: "2008-10-27",
+        eventId: 1,
+        year: 2027,
+        willHelp: "ja",
+        availFri: "ja",
+      },
+    ]);
+    const caller = appRouter.createCaller(ctx);
+
+    const listed = await caller.helpers.list();
+    expect(listed[0]).not.toHaveProperty("birthDate");
+    expect(listed[0]).not.toHaveProperty("age");
+    await expect(caller.helpers.birthDate({ id: 42 })).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
+    await expect(
+      caller.helpers.update({ id: 42, birthDate: "2008-10-27" })
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(dbMocks.updateHelper).not.toHaveBeenCalled();
+  });
+
   it("legt Helfer mit Stammdaten an und setzt Status sowie Tagesverfügbarkeiten auf die sicheren Standardwerte", async () => {
     dbMocks.upsertHelperByName.mockResolvedValue({ id: 44, created: true });
     const caller = appRouter.createCaller(ctx);

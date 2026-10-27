@@ -143,8 +143,13 @@ type MobileHelperEditForm = {
   birthDate: string;
 };
 
-function helperNameWithAge(helper: { name: string; age?: number | null }) {
-  return typeof helper.age === "number" ? `${helper.name} (${helper.age})` : helper.name;
+function helperNameWithAge(
+  helper: { name: string; age?: number | null },
+  showAge: boolean
+) {
+  return showAge && typeof helper.age === "number"
+    ? `${helper.name} (${helper.age})`
+    : helper.name;
 }
 
 const EMPTY_NEW_HELPER_DONATION: NewHelperDonation = {
@@ -924,6 +929,7 @@ export default function Helpers() {
     currentPackageId,
     "whatsapp_templates"
   );
+  const allowsHelperAge = productAllowsCapability(currentPackageId, "helper_age");
   const [upgradeCapability, setUpgradeCapability] = useState<
     "donations" | "personal_accesses" | null
   >(null);
@@ -1015,7 +1021,7 @@ export default function Helpers() {
   });
   const helperBirthDateQuery = trpc.helpers.birthDate.useQuery(
     { id: mobileHelperEditTarget?.id ?? 0 },
-    { enabled: Boolean(mobileHelperEditTarget) }
+    { enabled: Boolean(mobileHelperEditTarget && allowsHelperAge) }
   );
 
   const invalidate = () => {
@@ -1113,7 +1119,9 @@ export default function Helpers() {
         phone: mobileHelperEditForm.phone.trim() || null,
         note: mobileHelperEditForm.note.trim() || null,
         companion: mobileHelperEditForm.companion.trim() || null,
-        birthDate: mobileHelperEditForm.birthDate || null,
+        ...(allowsHelperAge
+          ? { birthDate: mobileHelperEditForm.birthDate || null }
+          : {}),
       },
       {
         onSuccess: () => {
@@ -1169,7 +1177,7 @@ export default function Helpers() {
       phone: newHelperPhone.trim() || undefined,
       note: newHelperNote.trim() || undefined,
       companion: newHelperCompanion.trim() || undefined,
-      birthDate: newHelperBirthDate || undefined,
+      ...(allowsHelperAge ? { birthDate: newHelperBirthDate || undefined } : {}),
       ...availabilityInput,
     };
     if (newHelperBringsCake) {
@@ -1985,7 +1993,7 @@ export default function Helpers() {
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
                   <h2 className="break-words text-[26px] leading-[1.05] font-black tracking-tight">
-                    {helperNameWithAge(helper)}
+                    {helperNameWithAge(helper, allowsHelperAge)}
                   </h2>
                   {(assignedHelperIds.has(helper.id) || changedHelperIds.has(helper.id)) && (
                     <div className="mt-1 flex flex-wrap gap-1.5">
@@ -2329,7 +2337,7 @@ export default function Helpers() {
                   )}
                 >
                   <td className="p-2 font-medium">
-                    {helperNameWithAge(helper)}
+                    {helperNameWithAge(helper, allowsHelperAge)}
                     {(assignedHelperIds.has(helper.id) || changedHelperIds.has(helper.id)) && (
                       <div className="mt-1 flex flex-wrap gap-1">
                         {assignedHelperIds.has(helper.id) && (
@@ -2626,7 +2634,7 @@ export default function Helpers() {
                       <div className="min-w-0 flex-1 pt-0.5">
                         <div className="flex items-center gap-2">
                           <h3 className="break-words text-base font-bold leading-5 text-slate-950 md:truncate">
-                            {helperNameWithAge(helper)}
+                            {helperNameWithAge(helper, allowsHelperAge)}
                           </h3>
                           {selfHelperIds.has(helper.id) && (
                             <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-900">
@@ -3039,7 +3047,7 @@ export default function Helpers() {
                     />
                   </div>
                 </div>
-                <div className="space-y-1.5">
+                {allowsHelperAge && <div className="space-y-1.5">
                   <label htmlFor="new-helper-dialog-birth-date" className="text-sm font-medium">
                     Geburtsdatum <span className="font-normal text-slate-500">(optional)</span>
                   </label>
@@ -3053,7 +3061,7 @@ export default function Helpers() {
                   <p className="text-xs leading-relaxed text-slate-500">
                     Dient nur dazu, in der Helferübersicht das aktuelle Alter in Klammern anzuzeigen. Das Geburtsdatum selbst erscheint nicht in Übersichten, PDFs, WhatsApp oder Excel-Exporten.
                   </p>
-                </div>
+                </div>}
                 <div
                   data-klemmi-target="new-helper-details"
                   className="space-y-1.5 rounded-xl"
@@ -3463,7 +3471,7 @@ export default function Helpers() {
                 autoFocus
               />
             </div>
-            <div className="space-y-1.5">
+            {allowsHelperAge && <div className="space-y-1.5">
               <label htmlFor="mobile-helper-edit-birth-date" className="text-sm font-medium">
                 Geburtsdatum <span className="font-normal text-slate-500">(optional)</span>
               </label>
@@ -3482,7 +3490,7 @@ export default function Helpers() {
               <p className="text-xs leading-relaxed text-slate-500">
                 Nur zur Anzeige des aktuellen Alters in Klammern. Das Geburtsdatum wird nicht in Übersichten, PDFs, WhatsApp oder Excel-Exporten ausgegeben. Leer lassen entfernt die Altersanzeige.
               </p>
-            </div>
+            </div>}
             {!isEventPass && <div className="space-y-1.5">
               <label htmlFor="mobile-helper-edit-contact" className="text-sm font-medium">
                 Ansprechpartner

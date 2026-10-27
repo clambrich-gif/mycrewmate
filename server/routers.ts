@@ -1867,14 +1867,36 @@ const optionalBirthDate = z
   .nullable()
   .optional();
 
-function publicHelperWithAge<T extends { birthDate: string | null }>(helper: T) {
+function publicHelperWithAge<T extends { birthDate: string | null }>(
+  helper: T,
+  includeAge: boolean
+): Omit<T, "birthDate"> & { age?: number | null } {
   const { birthDate, ...publicHelper } = helper;
-  return {
-    ...publicHelper,
-    // Nur das abgeleitete Alter verlässt reguläre Helferlisten. Das vollständige
-    // Geburtsdatum ist ausschließlich im geschützten Bearbeitungsdialog verfügbar.
-    age: birthDate ? ageInYears(birthDate) : null,
-  };
+  return includeAge
+    ? {
+        ...publicHelper,
+        // Nur das abgeleitete Alter verlässt reguläre Helferlisten. Das vollständige
+        // Geburtsdatum ist ausschließlich im geschützten Bearbeitungsdialog verfügbar.
+        age: birthDate ? ageInYears(birthDate) : null,
+      }
+    : publicHelper;
+}
+
+async function requireHelperAgeCapability() {
+  const entitlement = await db.getCurrentTenantProductEntitlement();
+  if (!productAllowsCapability(entitlement.packageId, "helper_age")) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Die optionale Altersanzeige ist ab dem Paket Pro verfügbar.",
+    });
+  }
+  return entitlement;
+}
+
+async function assertHelperBirthDateInputAllowed(
+  birthDate: string | null | undefined
+) {
+  if (birthDate !== undefined) await requireHelperAgeCapability();
 }
 
 const HELPER_TIME_WINDOW_FIELDS = [
@@ -5276,12 +5298,17 @@ export const appRouter = router({
 
   helpers: router({
     list: moduleReadProcedure("helpers").query(async () => {
-      const helpers = await db.listHelpers();
-      return helpers.map(publicHelperWithAge);
+      const [helpers, entitlement] = await Promise.all([
+        db.listHelpers(),
+        db.getCurrentTenantProductEntitlement(),
+      ]);
+      const includeAge = productAllowsCapability(entitlement.packageId, "helper_age");
+      return helpers.map(helper => publicHelperWithAge(helper, includeAge));
     }),
     birthDate: moduleWriteProcedure("helpers")
       .input(z.object({ id: z.number().int().positive() }))
       .query(async ({ input }) => {
+        await requireHelperAgeCapability();
         const helper = await db.getHelperBirthDate(input.id);
         if (!helper)
           throw new TRPCError({ code: "NOT_FOUND", message: "Helfer wurde nicht gefunden" });
@@ -5301,7 +5328,10 @@ export const appRouter = router({
           companion: z.string().trim().max(500).optional(),
         }).superRefine(validateHelperTimeWindows)
       )
-      .mutation(({ input }) => db.upsertHelperByName(input)),
+      .mutation(async ({ input }) => {
+        await assertHelperBirthDateInputAllowed(input.birthDate);
+        return db.upsertHelperByName(input);
+      }),
     createWithDonation: protectedProcedure
       .use(async ({ ctx, next }) => {
         await requireCurrentProductCapability("donations");
@@ -5353,7 +5383,10 @@ export const appRouter = router({
           }),
         })
       )
-      .mutation(({ input }) => db.createHelperWithDonation(input)),
+      .mutation(async ({ input }) => {
+        await assertHelperBirthDateInputAllowed(input.helper.birthDate);
+        return db.createHelperWithDonation(input);
+      }),
     update: moduleWriteProcedure("helpers")
       .input(
         z.object({
@@ -5370,7 +5403,8 @@ export const appRouter = router({
           confirmed: yn.optional(),
         }).superRefine(validateHelperTimeWindows)
       )
-      .mutation(({ input }) => {
+      .mutation(async ({ input }) => {
+        await assertHelperBirthDateInputAllowed(input.birthDate);
         const { id, ...rest } = input;
         return db.updateHelper(id, rest);
       }),
@@ -5425,12 +5459,22 @@ export const appRouter = router({
 
   plan: router({
     evaluate: moduleReadProcedure("schedule").query(async () => {
-      const [shifts, assignments, helpers] = await Promise.all([
+      const [shifts, assignments, helpers, entitlement] = await Promise.all([
         db.listShifts(),
         db.listAssignments(),
         db.listHelpers(),
+        db.getCurrentTenantProductEntitlement(),
       ]);
-      return evaluateShifts(shifts, assignments, helpers);
+      const includeAge = productAllowsCapability(entitlement.packageId, "helper_age");
+      return evaluateShifts(shifts, assignments, helpers).map(evaluation => ({
+        ...evaluation,
+        validHelpers: evaluation.validHelpers.map(helper =>
+          publicHelperWithAge(helper, includeAge)
+        ),
+        ausfallHelpers: evaluation.ausfallHelpers.map(helper =>
+          publicHelperWithAge(helper, includeAge)
+        ),
+      }));
     }),
     releasePreview: moduleReadProcedure("schedule").query(() =>
       db.listCurrentPlanReleaseContacts()
@@ -5624,7 +5668,11 @@ export const appRouter = router({
         }).superRefine(validateShiftTimes)
       )
       .query(async ({ input }) => {
-        const hs = await db.listHelpers();
+        const [hs, entitlement] = await Promise.all([
+          db.listHelpers(),
+          db.getCurrentTenantProductEntitlement(),
+        ]);
+        const includeAge = productAllowsCapability(entitlement.packageId, "helper_age");
         return hs
           .filter(h =>
             helperEligibleForShift(h, {
@@ -5634,7 +5682,7 @@ export const appRouter = router({
               allowFlexibleAssignment: input.allowFlexibleAssignment,
             })
           )
-          .map(publicHelperWithAge);
+          .map(helper => publicHelperWithAge(helper, includeAge));
       }),
     assign: scheduleAdminProcedure
       .input(

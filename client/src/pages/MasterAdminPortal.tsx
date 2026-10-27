@@ -45,6 +45,7 @@ import {
   PRODUCT_ASSIGNMENT_STATUSES,
   PRODUCT_PACKAGE_IDS,
   PRODUCT_PACKAGE_META,
+  productAllowsCapability,
   type ProductAssignmentStatus,
   type ProductPackageId,
 } from "@shared/product-packages";
@@ -1388,7 +1389,10 @@ export default function MasterAdminPortal() {
       const conversionHint = result.convertedFromPilot
         ? " Der Pilotverein wurde als regulärer Verein übernommen und wird nicht mehr automatisch als Pilot archiviert."
         : "";
-      toast.success(`${PRODUCT_PACKAGE_META[result.packageId].name} wurde für den Verein gespeichert.${conversionHint}${notificationHint}`);
+      const ageDataHint = result.clearedHelperBirthDates
+        ? " Hinterlegte Geburtsdaten wurden beim Downgrade endgültig gelöscht."
+        : "";
+      toast.success(`${PRODUCT_PACKAGE_META[result.packageId].name} wurde für den Verein gespeichert.${conversionHint}${ageDataHint}${notificationHint}`);
     },
     onError: error => toast.error(error.message),
   });
@@ -2660,6 +2664,12 @@ export default function MasterAdminPortal() {
                 {PRODUCT_PACKAGE_META[productAssignmentForm.packageId].shortDescription}
                 <span className="ml-1 text-violet-800">({PRODUCT_PACKAGE_META[productAssignmentForm.packageId].priceLabel})</span>
               </div>
+              {productAllowsCapability(productModalTenant.productAssignment.packageId, "helper_age") &&
+                !productAllowsCapability(productAssignmentForm.packageId, "helper_age") && (
+                  <div className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm leading-5 text-amber-950">
+                    <strong>Datenschutz beim Downgrade:</strong> Beim Speichern werden alle optional gespeicherten Geburtsdaten dieses Vereins endgültig gelöscht. In Event Pass und Light werden weder Geburtsdatum noch Alter erfasst oder angezeigt.
+                  </div>
+                )}
               {productModalTenant.status === "pilot" && productAssignmentForm.status === "active" && (
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm leading-5 text-emerald-950">
                   <strong>Übernahme aus dem Pilot:</strong> Beim Speichern wird dieser Verein zum regulären Vereinszugang. Alle vorhandenen Daten und Zugänge bleiben bestehen. Die automatische Pilot-Archivierung greift dann nicht mehr; nur ein hier bewusst eingetragenes Paketende kann den Zugang später sperren.

@@ -6,6 +6,7 @@ import {
   PRODUCT_PACKAGE_META,
   isProductPackageId,
   isProductAssignmentStatus,
+  productAllowsCapability,
 } from "../shared/product-packages";
 import {
   assertPackageAssignmentDates,
@@ -38,6 +39,13 @@ describe("Paket 1: Produktkatalog & Master-Admin-Grundlagen", () => {
     expect(PRODUCT_PACKAGE_META.light.priceLabel).toBe("149 € · Veranstaltungsjahr");
     expect(PRODUCT_PACKAGE_META.pro.priceLabel).toBe("299 € · Veranstaltungsjahr");
     expect(PRODUCT_PACKAGE_META.enterprise.priceLabel).toBe("ab 449 € · Veranstaltungsjahr");
+  });
+
+  it("schaltet die optionale Altersfunktion erst ab Pro frei", () => {
+    expect(productAllowsCapability("event_pass", "helper_age")).toBe(false);
+    expect(productAllowsCapability("light", "helper_age")).toBe(false);
+    expect(productAllowsCapability("pro", "helper_age")).toBe(true);
+    expect(productAllowsCapability("enterprise", "helper_age")).toBe(true);
   });
 
   it("formatiert und validiert optionale Datumsangaben für die Datenbank", () => {

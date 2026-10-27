@@ -24,6 +24,7 @@ const CAPABILITY_LABEL: Record<ProductCapability, string> = {
   event_deletion: "Veranstaltungen verwalten",
   contacts: "Ansprechpartner",
   helpers: "Helferplanung",
+  helper_age: "optionale Altersanzeige",
   schedule: "Einsatzplanung",
   preparation: "Vorbereitung",
   postprocessing: "Nachbereitung",
@@ -55,6 +56,7 @@ const UPGRADE_BENEFITS: Record<ProductPackageId, readonly string[]> = {
   pro: [
     "Bis zu fünf Veranstaltungen pro Jahr",
     "Live-Chat, Spenden, Finanzen sowie vollständige Vereinsplanung",
+    "Optionale Altersanzeige für die verantwortliche Einsatzplanung",
     "Live-Standortkarte, GPS-Punkte und GPX-Strecken",
   ],
   enterprise: [

@@ -334,6 +334,7 @@ export default function Preparation() {
   const currentPackageId = tenantProduct?.packageId ?? "event_pass";
   const isEventPass = currentPackageId === "event_pass";
   const allowsContacts = productAllowsCapability(currentPackageId, "contacts");
+  const allowsHelperAge = productAllowsCapability(currentPackageId, "helper_age");
   const { data: contactRows } = trpc.contacts.list.useQuery(undefined, {
     enabled: allowsContacts,
   });
@@ -475,8 +476,16 @@ export default function Preparation() {
   );
 
   const helperMap = useMemo(
-    () => new Map(helpers.map(helper => [helper.id, helper.name])),
-    [helpers]
+    () =>
+      new Map(
+        helpers.map(helper => [
+          helper.id,
+          allowsHelperAge && typeof helper.age === "number"
+            ? `${helper.name} (${helper.age})`
+            : helper.name,
+        ])
+      ),
+    [allowsHelperAge, helpers]
   );
 
   const currentUserName = normalizedPersonName(user?.name);
@@ -1578,7 +1587,7 @@ export default function Preparation() {
                         <SelectItem value="none">- Noch nicht zugewiesen</SelectItem>
                         {helpers.map(helper => (
                           <SelectItem key={helper.id} value={String(helper.id)}>
-                            {helper.name}
+                            {helperMap.get(helper.id) ?? helper.name}
                           </SelectItem>
                         ))}
                       </SelectContent>

@@ -2729,6 +2729,11 @@ export async function updateTenantProductAssignmentForPlatformAdmin(input: {
       .limit(1)
       .for("update");
 
+    const clearsHelperBirthDates =
+      productAllowsCapability(
+        previousAssignment?.packageId ?? DEFAULT_PRODUCT_PACKAGE_ID,
+        "helper_age"
+      ) && !productAllowsCapability(input.packageId, "helper_age");
     const eventId = input.eventId ?? null;
     if (input.packageId === "event_pass" && !eventId) {
       throw new Error("Für den Event Pass muss eine konkrete Veranstaltung gewählt werden");
@@ -2741,6 +2746,28 @@ export async function updateTenantProductAssignmentForPlatformAdmin(input: {
         .limit(1)
         .for("update");
       if (!event) throw new Error("Die gewählte Veranstaltung gehört nicht zu diesem Verein");
+    }
+
+    if (clearsHelperBirthDates) {
+      // Das Geburtsdatum ist eine freiwillige Pro-/Enterprise-Angabe. Beim
+      // Downgrade wird es innerhalb derselben Transaktion endgültig gelöscht.
+      const tenantEventRows = await tx
+        .select({ id: events.id })
+        .from(events)
+        .where(eq(events.tenantId, input.tenantId))
+        .for("update");
+      const tenantEventIds = tenantEventRows.map(event => event.id);
+      if (tenantEventIds.length) {
+        await tx
+          .update(helpers)
+          .set({ birthDate: null })
+          .where(
+            and(
+              inArray(helpers.eventId, tenantEventIds),
+              isNotNull(helpers.birthDate)
+            )
+          );
+      }
     }
 
     const values = {
@@ -2813,6 +2840,7 @@ export async function updateTenantProductAssignmentForPlatformAdmin(input: {
       previousStatus: previousAssignment?.status ?? null,
       upgradedFromEventPass: Boolean(upgradesFromEventPass),
       convertedFromPilot,
+      clearedHelperBirthDates: clearsHelperBirthDates,
     };
   });
 }
