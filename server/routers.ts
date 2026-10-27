@@ -9,6 +9,7 @@ import {
   isHelperWithoutFirstContact,
   WEEKDAYS,
 } from "@shared/weekdays";
+import { ageInYears, isValidBirthDate } from "@shared/helper-age";
 import {
   getSessionCookieOptions,
   isEmbeddedManusPreview,
@@ -1855,6 +1856,26 @@ const availabilityClockTime = z
   })
   .nullable()
   .optional();
+
+const optionalBirthDate = z
+  .string()
+  .trim()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Geburtsdatum muss im Format JJJJ-MM-TT vorliegen")
+  .refine(value => isValidBirthDate(value), {
+    message: "Bitte ein echtes Geburtsdatum angeben, das nicht in der Zukunft liegt",
+  })
+  .nullable()
+  .optional();
+
+function publicHelperWithAge<T extends { birthDate: string | null }>(helper: T) {
+  const { birthDate, ...publicHelper } = helper;
+  return {
+    ...publicHelper,
+    // Nur das abgeleitete Alter verlässt reguläre Helferlisten. Das vollständige
+    // Geburtsdatum ist ausschließlich im geschützten Bearbeitungsdialog verfügbar.
+    age: birthDate ? ageInYears(birthDate) : null,
+  };
+}
 
 const HELPER_TIME_WINDOW_FIELDS = [
   ["availMon", "availMonStart", "availMonEnd", "Montag"],
@@ -5254,7 +5275,18 @@ export const appRouter = router({
   }),
 
   helpers: router({
-    list: moduleReadProcedure("helpers").query(() => db.listHelpers()),
+    list: moduleReadProcedure("helpers").query(async () => {
+      const helpers = await db.listHelpers();
+      return helpers.map(publicHelperWithAge);
+    }),
+    birthDate: moduleWriteProcedure("helpers")
+      .input(z.object({ id: z.number().int().positive() }))
+      .query(async ({ input }) => {
+        const helper = await db.getHelperBirthDate(input.id);
+        if (!helper)
+          throw new TRPCError({ code: "NOT_FOUND", message: "Helfer wurde nicht gefunden" });
+        return { id: helper.id, birthDate: helper.birthDate };
+      }),
     create: moduleWriteProcedure("helpers")
       .input(
         z.object({
@@ -5262,6 +5294,7 @@ export const appRouter = router({
           contactId: z.number().nullable().optional(),
           phone: z.string().trim().max(64).optional(),
           note: z.string().trim().max(500).optional(),
+          birthDate: optionalBirthDate,
           willHelp: yn.default("ja"),
           ...helperCreationAvailabilityInput,
           confirmed: yn.default("nein"),
@@ -5285,6 +5318,7 @@ export const appRouter = router({
               contactId: z.number().nullable().optional(),
               phone: z.string().trim().max(64).optional(),
               note: z.string().trim().max(500).optional(),
+              birthDate: optionalBirthDate,
               willHelp: yn.default("ja"),
               ...helperCreationAvailabilityInput,
               confirmed: yn.default("nein"),
@@ -5330,6 +5364,7 @@ export const appRouter = router({
           phone: z.string().max(64).nullable().optional(),
           note: z.string().nullable().optional(),
           companion: z.string().trim().max(500).nullable().optional(),
+          birthDate: optionalBirthDate,
           willHelp: yn.optional(),
           ...helperUpdateAvailabilityInput,
           confirmed: yn.optional(),
@@ -5590,14 +5625,16 @@ export const appRouter = router({
       )
       .query(async ({ input }) => {
         const hs = await db.listHelpers();
-        return hs.filter(h =>
-          helperEligibleForShift(h, {
-            day: input.day,
-            startTime: input.startTime,
-            endTime: input.endTime,
-            allowFlexibleAssignment: input.allowFlexibleAssignment,
-          })
-        );
+        return hs
+          .filter(h =>
+            helperEligibleForShift(h, {
+              day: input.day,
+              startTime: input.startTime,
+              endTime: input.endTime,
+              allowFlexibleAssignment: input.allowFlexibleAssignment,
+            })
+          )
+          .map(publicHelperWithAge);
       }),
     assign: scheduleAdminProcedure
       .input(

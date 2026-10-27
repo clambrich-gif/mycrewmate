@@ -140,7 +140,12 @@ type MobileHelperEditForm = {
   phone: string;
   note: string;
   companion: string;
+  birthDate: string;
 };
+
+function helperNameWithAge(helper: { name: string; age?: number | null }) {
+  return typeof helper.age === "number" ? `${helper.name} (${helper.age})` : helper.name;
+}
 
 const EMPTY_NEW_HELPER_DONATION: NewHelperDonation = {
   cake: "",
@@ -942,6 +947,7 @@ export default function Helpers() {
   const [newHelperContactId, setNewHelperContactId] = useState("none");
   const [newHelperPhone, setNewHelperPhone] = useState("");
   const [newHelperNote, setNewHelperNote] = useState("");
+  const [newHelperBirthDate, setNewHelperBirthDate] = useState("");
   const [newHelperBringsCake, setNewHelperBringsCake] = useState(false);
   const [newHelperAvailabilityEnabled, setNewHelperAvailabilityEnabled] = useState(false);
   const [newHelperAvailability, setNewHelperAvailability] = useState<NewHelperAvailability>(
@@ -1005,7 +1011,12 @@ export default function Helpers() {
     phone: "",
     note: "",
     companion: "",
+    birthDate: "",
   });
+  const helperBirthDateQuery = trpc.helpers.birthDate.useQuery(
+    { id: mobileHelperEditTarget?.id ?? 0 },
+    { enabled: Boolean(mobileHelperEditTarget) }
+  );
 
   const invalidate = () => {
     utils.helpers.list.invalidate();
@@ -1019,6 +1030,7 @@ export default function Helpers() {
     setNewHelperContactId("none");
     setNewHelperPhone("");
     setNewHelperNote("");
+    setNewHelperBirthDate("");
     setNewHelperBringsCake(false);
     setNewHelperAvailabilityEnabled(false);
     setNewHelperAvailability(createEmptyNewHelperAvailability());
@@ -1051,8 +1063,21 @@ export default function Helpers() {
       phone: helper.phone ?? "",
       note: helper.note ?? "",
       companion: helper.companion ?? "",
+      birthDate: "",
     });
   };
+  useEffect(() => {
+    if (
+      !mobileHelperEditTarget ||
+      !helperBirthDateQuery.data ||
+      helperBirthDateQuery.data.id !== mobileHelperEditTarget.id
+    )
+      return;
+    setMobileHelperEditForm(current => ({
+      ...current,
+      birthDate: helperBirthDateQuery.data.birthDate ?? "",
+    }));
+  }, [helperBirthDateQuery.data, mobileHelperEditTarget]);
   const create = trpc.helpers.create.useMutation({
     onSuccess: () => {
       finishNewHelperCreation("Helfer hinzugefügt");
@@ -1088,6 +1113,7 @@ export default function Helpers() {
         phone: mobileHelperEditForm.phone.trim() || null,
         note: mobileHelperEditForm.note.trim() || null,
         companion: mobileHelperEditForm.companion.trim() || null,
+        birthDate: mobileHelperEditForm.birthDate || null,
       },
       {
         onSuccess: () => {
@@ -1143,6 +1169,7 @@ export default function Helpers() {
       phone: newHelperPhone.trim() || undefined,
       note: newHelperNote.trim() || undefined,
       companion: newHelperCompanion.trim() || undefined,
+      birthDate: newHelperBirthDate || undefined,
       ...availabilityInput,
     };
     if (newHelperBringsCake) {
@@ -1958,7 +1985,7 @@ export default function Helpers() {
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
                   <h2 className="break-words text-[26px] leading-[1.05] font-black tracking-tight">
-                    {helper.name}
+                    {helperNameWithAge(helper)}
                   </h2>
                   {(assignedHelperIds.has(helper.id) || changedHelperIds.has(helper.id)) && (
                     <div className="mt-1 flex flex-wrap gap-1.5">
@@ -2024,6 +2051,20 @@ export default function Helpers() {
                       <MessageCircle className="size-5 text-[#25D366]" aria-hidden="true" />
                     </Button>
                   </>}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title="Helfer bearbeiten"
+                    aria-label={`Helfer ${helper.name} bearbeiten`}
+                    className={cn(
+                      HELPER_ACTION_ICON_BUTTON_CLASS,
+                      "h-11 min-h-11 w-11 min-w-11"
+                    )}
+                    disabled={update.isPending}
+                    onClick={() => openMobileHelperEdit(helper)}
+                  >
+                    <Pencil className="size-5 text-slate-600" aria-hidden="true" />
+                  </Button>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -2288,7 +2329,7 @@ export default function Helpers() {
                   )}
                 >
                   <td className="p-2 font-medium">
-                    {helper.name}
+                    {helperNameWithAge(helper)}
                     {(assignedHelperIds.has(helper.id) || changedHelperIds.has(helper.id)) && (
                       <div className="mt-1 flex flex-wrap gap-1">
                         {assignedHelperIds.has(helper.id) && (
@@ -2347,6 +2388,17 @@ export default function Helpers() {
                           <MessageCircle className="size-5 text-[#25D366]" aria-hidden="true" />
                         </Button>
                       </>}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Helfer bearbeiten"
+                        aria-label={`Helfer ${helper.name} bearbeiten`}
+                        className={HELPER_ACTION_ICON_BUTTON_CLASS}
+                        disabled={update.isPending}
+                        onClick={() => openMobileHelperEdit(helper)}
+                      >
+                        <Pencil className="size-5 text-slate-600" aria-hidden="true" />
+                      </Button>
                     </div>
                   </td>
                   {!isEventPass && <td className="p-2">
@@ -2574,7 +2626,7 @@ export default function Helpers() {
                       <div className="min-w-0 flex-1 pt-0.5">
                         <div className="flex items-center gap-2">
                           <h3 className="break-words text-base font-bold leading-5 text-slate-950 md:truncate">
-                            {helper.name}
+                            {helperNameWithAge(helper)}
                           </h3>
                           {selfHelperIds.has(helper.id) && (
                             <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-900">
@@ -2987,6 +3039,21 @@ export default function Helpers() {
                     />
                   </div>
                 </div>
+                <div className="space-y-1.5">
+                  <label htmlFor="new-helper-dialog-birth-date" className="text-sm font-medium">
+                    Geburtsdatum <span className="font-normal text-slate-500">(optional)</span>
+                  </label>
+                  <Input
+                    id="new-helper-dialog-birth-date"
+                    type="date"
+                    value={newHelperBirthDate}
+                    onChange={event => setNewHelperBirthDate(event.target.value)}
+                    className="h-11 bg-white text-base"
+                  />
+                  <p className="text-xs leading-relaxed text-slate-500">
+                    Dient nur dazu, in der Helferübersicht das aktuelle Alter in Klammern anzuzeigen. Das Geburtsdatum selbst erscheint nicht in Übersichten, PDFs, WhatsApp oder Excel-Exporten.
+                  </p>
+                </div>
                 <div
                   data-klemmi-target="new-helper-details"
                   className="space-y-1.5 rounded-xl"
@@ -3395,6 +3462,26 @@ export default function Helpers() {
                 className="h-11 text-base"
                 autoFocus
               />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="mobile-helper-edit-birth-date" className="text-sm font-medium">
+                Geburtsdatum <span className="font-normal text-slate-500">(optional)</span>
+              </label>
+              <Input
+                id="mobile-helper-edit-birth-date"
+                type="date"
+                value={mobileHelperEditForm.birthDate}
+                onChange={event =>
+                  setMobileHelperEditForm(current => ({
+                    ...current,
+                    birthDate: event.target.value,
+                  }))
+                }
+                className="h-11 text-base"
+              />
+              <p className="text-xs leading-relaxed text-slate-500">
+                Nur zur Anzeige des aktuellen Alters in Klammern. Das Geburtsdatum wird nicht in Übersichten, PDFs, WhatsApp oder Excel-Exporten ausgegeben. Leer lassen entfernt die Altersanzeige.
+              </p>
             </div>
             {!isEventPass && <div className="space-y-1.5">
               <label htmlFor="mobile-helper-edit-contact" className="text-sm font-medium">
