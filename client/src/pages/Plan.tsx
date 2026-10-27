@@ -115,6 +115,7 @@ import { useMyTasksDefault } from "@/hooks/useMyTasksDefault";
 import { getKlemmiLocationGuideCopy } from "@/lib/klemmi-location-guide";
 import { ViewModeToggle, type ViewMode } from "@/components/ViewModeToggle";
 import { useMobileViewMode, useViewMode } from "@/hooks/useViewMode";
+import { productAllowsCapability } from "@shared/product-packages";
 
 const formatTimeLabel = (shift: { startTime: string; endTime: string }) =>
   shift.startTime && shift.endTime
@@ -158,6 +159,7 @@ type AvailabilityField = (typeof WEEKDAY_AVAILABILITY_FIELDS)[Weekday];
 type HelperTooltipData = {
   id: number;
   name: string;
+  age?: number | null;
   phone: string | null;
   note: string | null;
   companion?: string | null;
@@ -165,6 +167,15 @@ type HelperTooltipData = {
 } &
   Record<AvailabilityField, AvailabilityValue> &
   Partial<Record<AvailabilityTimeField, string | null>>;
+
+function helperNameWithAge(
+  helper: { name: string; age?: number | null },
+  showAge: boolean
+) {
+  return showAge && typeof helper.age === "number"
+    ? `${helper.name} (${helper.age})`
+    : helper.name;
+}
 
 const AVAILABILITY_PILL_CLASS: Record<AvailabilityValue, string> = {
   ja: "border-emerald-200 bg-emerald-50 text-emerald-800",
@@ -481,14 +492,14 @@ const ShiftCardHelperCandidateRow = memo(function ShiftCardHelperCandidateRow({
             type="button"
             data-slot="mobile-helper-details-trigger"
             className="max-w-full truncate text-left font-medium text-slate-800 underline decoration-slate-200 underline-offset-2 md:pointer-events-none md:no-underline"
-            aria-label={candidate.detailsTitle || `Hinweise und Einsatzdetails von ${helper.name} anzeigen`}
+            aria-label={candidate.detailsTitle || `Hinweise und Einsatzdetails von ${candidate.label} anzeigen`}
             title={candidate.detailsTitle || undefined}
             onClick={event => {
               event.stopPropagation();
               if (isMobileView) onShowMobileDetails(helper, shift);
             }}
           >
-            {helper.name}
+            {candidate.label}
           </button>
         </span>
       </span>
@@ -944,6 +955,7 @@ export default function Plan() {
   const { data: tenantProduct } = trpc.tenantProduct.current.useQuery();
   const currentPackageId = tenantProduct?.packageId ?? "event_pass";
   const isEventPass = currentPackageId === "event_pass";
+  const allowsHelperAge = productAllowsCapability(currentPackageId, "helper_age");
   const canCreateShift =
     canEditPlan || (isEventPass && canWriteModule("schedule"));
   const canManagePlanRelease = canEditPlan && !isEventPass;
@@ -1438,8 +1450,14 @@ export default function Plan() {
     [areaContactRows]
   );
   const helperNameById = useMemo(
-    () => new Map(helpers.map(helper => [helper.id, helper.name])),
-    [helpers]
+    () =>
+      new Map(
+        helpers.map(helper => [
+          helper.id,
+          helperNameWithAge(helper, allowsHelperAge),
+        ])
+      ),
+    [allowsHelperAge, helpers]
   );
   const helperById = useMemo(
     () => new Map(helpers.map(helper => [helper.id, helper])),
@@ -1483,9 +1501,9 @@ export default function Plan() {
     ? helperById.get(dashboardHelperId)
     : null;
   const label = useCallback(
-    (helper: { name: string; contactId?: number | null }) =>
-      `${helper.name}${helper.contactId ? ` (${contactName(helper.contactId)})` : ""}`,
-    [contactName]
+    (helper: { name: string; age?: number | null; contactId?: number | null }) =>
+      `${helperNameWithAge(helper, allowsHelperAge)}${helper.contactId ? ` (${contactName(helper.contactId)})` : ""}`,
+    [allowsHelperAge, contactName]
   );
 
   const assignedShiftsByHelper = useMemo(() => {
@@ -2145,7 +2163,7 @@ export default function Plan() {
                       <AssignedHelperChip
                         key={assignment.id}
                         helper={helper}
-                        displayLabel={helper.name}
+                        displayLabel={helperNameWithAge(helper, allowsHelperAge)}
                         searchQuery={q}
                         className={isAusfall ? "slot-ausfall" : isDoppel ? "slot-doppel" : "slot-ok"}
                         activeDays={activeDays}
@@ -3558,7 +3576,11 @@ export default function Plan() {
           className="max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] overflow-y-auto bg-white text-slate-950 sm:max-w-lg"
         >
           <DialogHeader>
-            <DialogTitle>{mobileHelperDetails?.helper.name ?? "Helfer"}</DialogTitle>
+            <DialogTitle>
+              {mobileHelperDetails
+                ? helperNameWithAge(mobileHelperDetails.helper, allowsHelperAge)
+                : "Helfer"}
+            </DialogTitle>
             <p className="text-sm text-slate-500">
               Hinweise, Verfügbarkeit und Einsätze im Überblick.
             </p>

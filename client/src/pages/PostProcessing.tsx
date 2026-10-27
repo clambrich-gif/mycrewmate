@@ -69,6 +69,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "wouter";
 import { toast } from "sonner";
+import { productAllowsCapability } from "@shared/product-packages";
 
 type PostStatus = "offen" | "inArbeit" | "erledigt";
 type PostStatusFilter = "alle" | PostStatus;
@@ -417,10 +418,21 @@ export default function PostProcessing() {
     () => new Map(contacts.map(contact => [contact.id, contact.name])),
     [contacts]
   );
+  const { data: tenantProduct } = trpc.tenantProduct.current.useQuery();
+  const currentPackageId = tenantProduct?.packageId ?? "event_pass";
+  const allowsHelperAge = productAllowsCapability(currentPackageId, "helper_age");
 
   const helperMap = useMemo(
-    () => new Map(helpers.map(helper => [helper.id, helper.name])),
-    [helpers]
+    () =>
+      new Map(
+        helpers.map(helper => [
+          helper.id,
+          allowsHelperAge && typeof helper.age === "number"
+            ? `${helper.name} (${helper.age})`
+            : helper.name,
+        ])
+      ),
+    [allowsHelperAge, helpers]
   );
 
   const currentUserName = normalizedPersonName(user?.name);
@@ -702,8 +714,6 @@ export default function PostProcessing() {
   const pending = create.isPending || update.isPending;
   const klemmiGuideNeedsSample =
     klemmiGuideStartedEmpty ?? (!isLoading && rows.length === 0);
-  const { data: tenantProduct } = trpc.tenantProduct.current.useQuery();
-  const currentPackageId = tenantProduct?.packageId ?? "event_pass";
   const postprocessingLocationGuide = getKlemmiLocationGuideCopy(
     "postprocessing",
     currentPackageId

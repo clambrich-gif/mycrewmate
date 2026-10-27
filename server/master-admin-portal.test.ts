@@ -144,6 +144,19 @@ describe("Master-Admin-Portal", () => {
     expect(page).toContain("wird nicht mehr automatisch als Pilot archiviert");
   });
 
+  it("löscht optionale Geburtsdaten datenschutzsicher beim Downgrade unter Pro", () => {
+    const db = source("server/db.ts");
+    const page = source("client/src/pages/MasterAdminPortal.tsx");
+
+    expect(db).toContain("clearsHelperBirthDates");
+    expect(db).toContain('productAllowsCapability(input.packageId, "helper_age")');
+    expect(db).toContain("set({ birthDate: null })");
+    expect(db).toContain("clearedHelperBirthDates: clearsHelperBirthDates");
+    expect(page).toContain("Datenschutz beim Downgrade:");
+    expect(page).toContain("Geburtsdaten dieses Vereins endgültig gelöscht");
+    expect(page).toContain("Hinterlegte Geburtsdaten wurden beim Downgrade endgültig gelöscht.");
+  });
+
   it("trennt laufende Kennzahlen klar von archivierten Vereinen und deren Veranstaltungen", () => {
     const page = source("client/src/pages/MasterAdminPortal.tsx");
     expect(page).toContain("const managedEventCount = activeTenants.reduce");

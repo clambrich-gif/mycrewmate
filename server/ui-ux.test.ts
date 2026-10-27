@@ -151,15 +151,26 @@ describe("UI- und Mobile-UX-Regeln", () => {
     const helpers = source("client/src/pages/Helpers.tsx");
     const router = source("server/routers.ts");
     const backup = source("server/excel-backup.ts");
+    const plan = source("client/src/pages/Plan.tsx");
+    const preparation = source("client/src/pages/Preparation.tsx");
+    const postprocessing = source("client/src/pages/PostProcessing.tsx");
 
     expect(helpers).toContain("function helperNameWithAge");
+    expect(helpers).toContain('productAllowsCapability(currentPackageId, "helper_age")');
+    expect(helpers).toContain("allowsHelperAge && <div");
+    expect(helpers).toContain("mobileHelperEditTarget && allowsHelperAge");
     expect(helpers).toContain("Geburtsdatum");
     expect(helpers).toContain("Dient nur dazu, in der Helferübersicht das aktuelle Alter in Klammern anzuzeigen.");
     expect(helpers).toContain("Das Geburtsdatum selbst erscheint nicht in Übersichten, PDFs, WhatsApp oder Excel-Exporten.");
     expect(router).toContain("birthDate: moduleWriteProcedure(\"helpers\")");
     expect(router).toContain("function publicHelperWithAge");
-    expect(router).toContain("return helpers.map(publicHelperWithAge)");
-    expect(router).toContain(".map(publicHelperWithAge)");
+    expect(router).toContain("return helpers.map(helper => publicHelperWithAge(helper, includeAge))");
+    expect(router).toContain('requireHelperAgeCapability');
+    expect(router).toContain('productAllowsCapability(entitlement.packageId, "helper_age")');
+    expect(plan).toContain('productAllowsCapability(currentPackageId, "helper_age")');
+    expect(plan).toContain("helperNameWithAge(helper, allowsHelperAge)");
+    expect(preparation).toContain('productAllowsCapability(currentPackageId, "helper_age")');
+    expect(postprocessing).toContain('productAllowsCapability(currentPackageId, "helper_age")');
     expect(backup).not.toContain('"birthDate",\n        "willHelp"');
   });
 
@@ -2374,7 +2385,7 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(plan).toContain('data-slot="shift-dialog-location"');
     expect(plan).toContain('data-slot="shift-dialog-task"');
     expect(plan).toContain('data-slot="shift-dialog-time"');
-    expect(plan).toContain('displayLabel={helper.name}');
+    expect(plan).toContain('displayLabel={helperNameWithAge(helper, allowsHelperAge)}');
     expect(plan).toContain('<HighlightedText text={displayLabel} query={searchQuery} />');
     expect(plan).toContain('compact = false');
     expect(plan).toContain('<HelperDropdownFeedbackBadge');
