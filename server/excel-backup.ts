@@ -35,6 +35,7 @@ import {
 } from "../shared/weekdays";
 import { normalizeMaterialStatus } from "../shared/material-status";
 import { eventDateRangeError } from "../shared/event-dates";
+import { isValidBirthDate } from "../shared/helper-age";
 import {
   ACTIVE_EXCEL_IMPORT_AREAS,
   ACTIVE_EXCEL_SHEET_NAME,
@@ -128,6 +129,7 @@ export const PROJECT_EXCEL_HEADERS: Record<string, string[]> = {
     "So von",
     "So bis",
     "Bestätigt?",
+    "Geburtsdatum",
   ],
   EINSATZPLAN: [
     "ID",
@@ -366,6 +368,8 @@ type HelperRow = {
   availSunStart: string;
   availSunEnd: string;
   confirmed: "ja" | "nein";
+  /** Internes Datumsfeld; reguläre Helferlisten erhalten ausschließlich das Alter. */
+  birthDate: string | null;
 };
 type LocationRow = {
   sourceId: number | null;
@@ -682,6 +686,7 @@ export function reconcileContactSelfHelpers(
       availSunStart: "",
       availSunEnd: "",
       confirmed: "nein",
+      birthDate: null,
     });
     created++;
   }
@@ -997,6 +1002,12 @@ const optionalIsoDate = (value: unknown, label: string) => {
   if (result && !/^\d{4}-\d{2}-\d{2}$/.test(result))
     throw new Error(`${label} muss im Format JJJJ-MM-TT angegeben werden`);
   return result;
+};
+const optionalBirthDate = (value: unknown, label: string) => {
+  const result = optionalIsoDate(value, label);
+  if (result && !isValidBirthDate(result))
+    throw new Error(`${label} muss ein echtes Geburtsdatum sein und darf nicht in der Zukunft liegen`);
+  return result || null;
 };
 const optionalClockTime = (value: unknown, label: string) => {
   const result = text(value, 5, label);
@@ -1351,6 +1362,8 @@ type ParseBackupWorkbookOptions = {
    */
   isolatedAreas?: readonly (typeof SHEETS)[number][];
   fallbackDocument?: BackupDocument;
+  /** In Event Pass und Light dürfen Sicherungen keine Geburtsdaten zurückschreiben. */
+  allowHelperBirthDates?: boolean;
 };
 
 export function parseBackupWorkbook(
@@ -1360,6 +1373,7 @@ export function parseBackupWorkbook(
   const workbook = readUploadedExcelWorkbook(base64);
   const meta = metadata(workbook);
   const isolatedAreas = new Set(options.isolatedAreas ?? []);
+  const allowHelperBirthDates = options.allowHelperBirthDates ?? true;
   const requiredSheets = isolatedAreas.size
     ? (["SICHERUNG_INFO", ...Array.from(isolatedAreas)] as const)
     : (["SICHERUNG_INFO", ...SHEETS] as const);
@@ -1490,7 +1504,16 @@ export function parseBackupWorkbook(
     );
   const helperRows = rawHelperRows.filter(row => normalize(row.Name));
   const parsedHelpers: HelperRow[] = shouldParse("HELFER")
-    ? helperRows.map((row, index) => ({
+    ? helperRows.map((row, index) => {
+      const birthDate = optionalBirthDate(
+        row.Geburtsdatum,
+        `HELFER Zeile ${index + 2}: Geburtsdatum`
+      );
+      if (birthDate && !allowHelperBirthDates)
+        throw new Error(
+          "Diese Excel-Datei enthält Geburtsdaten. Die optionale Altersfunktion ist ab dem Paket Pro verfügbar."
+        );
+      return {
     sourceId: nullableId(row.ID, `HELFER Zeile ${index + 2}`),
     contactSourceId: contactRef(
       row["Ansprechpartner-ID"],
@@ -1579,7 +1602,9 @@ export function parseBackupWorkbook(
       `HELFER Zeile ${index + 2}: Bestätigt?`,
       "nein"
     ),
-      }))
+    birthDate,
+      };
+      })
     : fallback!.helpers;
   if (shouldParse("HELFER"))
     ensureUnique(
@@ -2432,6 +2457,7 @@ function comparableCurrent(snapshot: CurrentSnapshot) {
         "availSunEnd",
         "confirmed",
       ]),
+      birthDate: row.birthDate ?? null,
       availMon: row.availMon ?? "ja",
       availTue: row.availTue ?? "ja",
       availWed: row.availWed ?? "ja",
@@ -3106,8 +3132,31 @@ function summary(changes: BackupChange[]) {
   return result;
 }
 
+/**
+ * Das Geburtsdatum ist nur für die Wiederherstellung nötig. Vorschauen und
+ * Protokolle zeigen deshalb ausschließlich, ob eine vertrauliche Angabe
+ * hinterlegt ist – nie das Datum selbst.
+ */
+export function redactSensitiveBackupChanges(changes: BackupChange[]) {
+  const redactRow = (row: Record<string, unknown> | null) => {
+    if (!row || !("birthDate" in row)) return row;
+    return {
+      ...row,
+      birthDate: row.birthDate ? "vertraulich hinterlegt" : null,
+    };
+  };
+  return changes.map(change => ({
+    ...change,
+    before: redactRow(change.before),
+    after: redactRow(change.after),
+  }));
+}
+
 function serializeChangeDetails(changes: BackupChange[], warnings: string[]) {
-  const details = JSON.stringify({ changes, warnings });
+  const details = JSON.stringify({
+    changes: redactSensitiveBackupChanges(changes),
+    warnings,
+  });
   if (Buffer.byteLength(details, "utf8") > MAX_CHANGE_PAYLOAD_BYTES)
     throw new Error(
       "Die Änderungsvorschau ist zu umfangreich. Bitte teilen Sie die Bearbeitung auf mehrere Sicherungen auf."
@@ -3534,7 +3583,7 @@ export async function previewProjectDocument(
     currentDigest: snapshotDigest(snapshot, current),
     workbookDigest: sourceDigest,
     warnings: protectedDesired.warnings,
-    changes,
+    changes: redactSensitiveBackupChanges(changes),
     totals: summary(changes),
   };
 }
@@ -3974,6 +4023,7 @@ export async function restoreProjectDocument(
           availSunStart: row.availSunStart || null,
           availSunEnd: row.availSunEnd || null,
           confirmed: row.confirmed,
+          birthDate: row.birthDate,
         });
         const actualId =
           preservedId ?? Number(result?.[0]?.insertId ?? result?.insertId);
@@ -4473,11 +4523,19 @@ export async function getBackupRestoreLog(id: number) {
   return { ...entry, details: undefined, ...parsed };
 }
 
-export async function exportProjectExcel(): Promise<{
+export type ProjectExportOptions = {
+  /** Geburtsdaten gehören ausschließlich in Pro-/Enterprise-Sicherungsdateien. */
+  includeHelperBirthDates?: boolean;
+};
+
+export async function exportProjectExcel(
+  options: ProjectExportOptions = {}
+): Promise<{
   buffer: Buffer;
   exportedAt: string;
   eventName: string;
 }> {
+  const includeHelperBirthDates = options.includeHelperBirthDates ?? true;
   const current = await createCurrentProjectDocument();
   const exportedAt = current.metadata.exportedAt;
   const workbook = XLSX.utils.book_new();
@@ -4487,8 +4545,12 @@ export async function exportProjectExcel(): Promise<{
     widths?: number[],
     headerKey = name
   ) => {
-    const headers =
+    const defaultHeaders =
       PROJECT_EXCEL_HEADERS[headerKey] ?? Object.keys(rows[0] ?? {});
+    const headers =
+      headerKey === "HELFER" && !includeHelperBirthDates
+        ? defaultHeaders.filter(header => header !== "Geburtsdatum")
+        : defaultHeaders;
     const sheet = rows.length
       ? XLSX.utils.json_to_sheet(rows, { header: headers })
       : XLSX.utils.aoa_to_sheet([headers]);
@@ -4504,7 +4566,9 @@ export async function exportProjectExcel(): Promise<{
       typeof wch === "number"
         ? {
             wch: headers[index]?.endsWith("ID") ? 12 : wch,
-            ...(headers[index]?.endsWith("ID") ? { hidden: true } : {}),
+            ...(headers[index]?.endsWith("ID") || headers[index] === "Geburtsdatum"
+              ? { hidden: true }
+              : {}),
           }
         : (wch as any)
     );
@@ -4610,6 +4674,9 @@ export async function exportProjectExcel(): Promise<{
       "So von": row.availSunStart,
       "So bis": row.availSunEnd,
       "Bestätigt?": row.confirmed,
+      ...(includeHelperBirthDates
+        ? { Geburtsdatum: row.birthDate ?? "" }
+        : {}),
     }))
   );
   appendActive(
@@ -4757,7 +4824,7 @@ export async function exportProjectExcel(): Promise<{
 /** @deprecated Nur für bestehende Parser-Regressionsprüfungen; produktiv ist Excel kein Speicherformat mehr. */
 export async function exportBackupExcel() {
   const document = await createCurrentProjectDocument();
-  const result = await exportProjectExcel();
+  const result = await exportProjectExcel({ includeHelperBirthDates: true });
   const workbook = XLSX.read(result.buffer, {
     type: "buffer",
     cellStyles: true,

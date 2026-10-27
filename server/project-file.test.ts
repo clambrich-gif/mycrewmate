@@ -201,8 +201,10 @@ describe("Projektdatei und modularer Excel-Import", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     data.prep_tasks.splice(0, data.prep_tasks.length);
-    (data.helpers.find(helper => helper.name === "Alex Beispiel") as any).availFri =
-      "ja";
+    const alex = data.helpers.find(helper => helper.name === "Alex Beispiel") as any;
+    alex.availFri = "ja";
+    alex.birthDate = "2008-10-27";
+    (data as any).post_task_helpers = [];
     dbMocks.getDb.mockResolvedValue(fakeDb());
   });
 
@@ -214,7 +216,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsed = parseProjectFile(exported.buffer.toString("base64"));
     expect(parsed.document.metadata).toMatchObject({
       format: "RSC-HELFERPLANUNG-PROJEKTDATEI",
-      version: 18,
+      version: 19,
       eventId: 1,
       eventName: "MyEifelRide",
       year: 2026,
@@ -229,6 +231,9 @@ describe("Projektdatei und modularer Excel-Import", () => {
       pdfLogoUrl: "/uploads/pdf-logos/events/2026/1/logo.png",
       pdfLogoFallback: "none",
     });
+    expect(
+      parsed.document.helpers.find(helper => helper.name === "Alex Beispiel")
+    ).toMatchObject({ birthDate: "2008-10-27" });
     expect(parsed.document.helpers).toHaveLength(2);
     expect(parsed.document.helpers.find(helper => helper.name === "Alex Beispiel")).toMatchObject({
       companion: "+ Kind Beispiel",
@@ -244,6 +249,25 @@ describe("Projektdatei und modularer Excel-Import", () => {
       locationSourceId: null,
       locationName: "",
     });
+  });
+
+  it("spart Geburtsdaten ohne Pro-Berechtigung aus und weist eine geschützte Projektdatei zurück", async () => {
+    const protectedExport = await exportProjectFile({
+      includeHelperBirthDates: true,
+    });
+    await expect(
+      previewProjectFile(protectedExport.buffer.toString("base64"), {
+        allowHelperBirthDates: false,
+      })
+    ).rejects.toThrow("Geburtsdaten");
+
+    const limitedExport = await exportProjectFile({
+      includeHelperBirthDates: false,
+    });
+    const saved = JSON.parse(limitedExport.buffer.toString("utf8"));
+    expect(
+      saved.helpers.find((helper: { name: string }) => helper.name === "Alex Beispiel")
+    ).not.toHaveProperty("birthDate");
   });
 
   it("akzeptiert denselben Materialartikel an unterschiedlichen Ständen im JSON-Snapshot", async () => {
@@ -561,7 +585,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsed = parseProjectFile(
       Buffer.from(JSON.stringify(document)).toString("base64")
     );
-    expect(parsed.document.metadata.version).toBe(18);
+    expect(parsed.document.metadata.version).toBe(19);
     expect(parsed.document.metadata.activeDays).toEqual([...WEEKDAYS]);
     expect(parsed.document.metadata).toMatchObject({
       pdfLogoKey: null,
@@ -1016,7 +1040,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsedV5 = parseProjectFile(
       Buffer.from(JSON.stringify(legacyV5)).toString("base64")
     ).document;
-    expect(parsedV5.metadata.version).toBe(18);
+    expect(parsedV5.metadata.version).toBe(19);
     expect(parsedV5.shifts[0].manualOkConfirmed).toBe(false);
   });
 
@@ -1031,7 +1055,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsedV6 = parseProjectFile(
       Buffer.from(JSON.stringify(legacyV6)).toString("base64")
     ).document;
-    expect(parsedV6.metadata.version).toBe(18);
+    expect(parsedV6.metadata.version).toBe(19);
     expect(parsedV6.shifts[0].manualDoubleConflictAccepted).toBe(false);
   });
 
@@ -1047,7 +1071,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsedV7 = parseProjectFile(
       Buffer.from(JSON.stringify(legacyV7)).toString("base64")
     ).document;
-    expect(parsedV7.metadata.version).toBe(18);
+    expect(parsedV7.metadata.version).toBe(19);
     expect(parsedV7.locations).toEqual([]);
     expect(parsedV7.shifts[0].locationName).toBe("");
   });
@@ -1079,7 +1103,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsedV8 = parseProjectFile(
       Buffer.from(JSON.stringify(legacyV8)).toString("base64")
     ).document;
-    expect(parsedV8.metadata.version).toBe(18);
+    expect(parsedV8.metadata.version).toBe(19);
     expect(parsedV8.materials[0].locationName).toBe("");
   });
   it("erhaelt Standort-Logos und migriert v9-Dateien sauber auf Version 10", async () => {
@@ -1107,7 +1131,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     delete (legacyV9.locations[0] as any).logoKey;
     delete (legacyV9.locations[0] as any).logoUrl;
     const parsedV9 = parseProjectFile(Buffer.from(JSON.stringify(legacyV9)).toString("base64")).document;
-    expect(parsedV9.metadata.version).toBe(18);
+    expect(parsedV9.metadata.version).toBe(19);
     expect(parsedV9.locations[0].logoKey).toBeNull();
     expect(parsedV9.locations[0].logoUrl).toBeNull();
   });
@@ -1125,7 +1149,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
       Buffer.from(JSON.stringify(legacyV10)).toString("base64")
     ).document;
 
-    expect(parsed.metadata.version).toBe(18);
+    expect(parsed.metadata.version).toBe(19);
     expect(parsed.post[0]).toMatchObject({
       category: "",
       dueText: "",
@@ -1158,7 +1182,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsed = parseProjectFile(
       Buffer.from(JSON.stringify(legacyV11)).toString("base64")
     ).document;
-    expect(parsed.metadata.version).toBe(18);
+    expect(parsed.metadata.version).toBe(19);
     expect(parsed.materials[0].status).toBe("geliefert");
   });
 
@@ -1172,7 +1196,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsed = parseProjectFile(
       Buffer.from(JSON.stringify(legacyV12)).toString("base64")
     ).document;
-    expect(parsed.metadata.version).toBe(18);
+    expect(parsed.metadata.version).toBe(19);
     expect(parsed.metadata.startDate).toBeNull();
     expect(parsed.metadata.endDate).toBeNull();
   });
@@ -1195,7 +1219,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsed = parseProjectFile(
       Buffer.from(JSON.stringify(legacyV13)).toString("base64")
     ).document;
-    expect(parsed.metadata.version).toBe(18);
+    expect(parsed.metadata.version).toBe(19);
     expect(parsed.cakes[0]).toMatchObject({
       donor: "Josi Volli",
       cake: "Käsekuchen",
@@ -1231,7 +1255,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsed = parseProjectFile(
       Buffer.from(JSON.stringify(legacyV14)).toString("base64")
     ).document;
-    expect(parsed.metadata.version).toBe(18);
+    expect(parsed.metadata.version).toBe(19);
     expect(parsed.cakes[0]).toMatchObject({
       donor: "Rosi Müller",
       cake: "Käsekuchen",
@@ -1273,7 +1297,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsed = parseProjectFile(
       Buffer.from(JSON.stringify(legacyV15)).toString("base64")
     ).document;
-    expect(parsed.metadata.version).toBe(18);
+    expect(parsed.metadata.version).toBe(19);
     expect(parsed.cakes[0]).toMatchObject({
       donor: "Christoph Link",
       cake: "Nudelsalat",
@@ -1294,13 +1318,13 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsed = parseProjectFile(
       Buffer.from(JSON.stringify(legacyV16)).toString("base64")
     ).document;
-    expect(parsed.metadata.version).toBe(18);
+    expect(parsed.metadata.version).toBe(19);
     expect(parsed.metadata.donationTargetKuchen).toBe(0);
     expect(parsed.metadata.donationTargetSalat).toBe(0);
     expect(parsed.metadata.donationTargetSnack).toBe(0);
     expect(parsed.metadata.donationTargetSonstiges).toBe(0);
   });
-  it("migriert v17-Dateien ohne die neuen Kennzeichnungen sauber auf Version 18", async () => {
+  it("migriert v17-Dateien ohne die neuen Kennzeichnungen sauber auf Version 19", async () => {
     const exported = await exportProjectFile();
     const legacyV17 = parseProjectFile(exported.buffer.toString("base64")).document;
     legacyV17.metadata.version = 17;
@@ -1308,6 +1332,6 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const parsed = parseProjectFile(
       Buffer.from(JSON.stringify(legacyV17)).toString("base64")
     ).document;
-    expect(parsed.metadata.version).toBe(18);
+    expect(parsed.metadata.version).toBe(19);
   });
 });

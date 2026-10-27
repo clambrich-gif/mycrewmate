@@ -19,9 +19,10 @@ import {
 } from "../shared/weekdays";
 import { normalizeMaterialStatus } from "../shared/material-status";
 import { eventDateRangeError } from "../shared/event-dates";
+import { isValidBirthDate } from "../shared/helper-age";
 
 const PROJECT_FORMAT = "RSC-HELFERPLANUNG-PROJEKTDATEI";
-const PROJECT_VERSION = 18;
+const PROJECT_VERSION = 19;
 const MAX_PROJECT_BYTES = 10_000_000;
 const MAX_ROWS = 10_000;
 
@@ -67,6 +68,15 @@ const commonTask = z.object({
   contactName: short(200),
   helperSourceId: id.default(null),
   helperName: short(200).default(""),
+  helperSlots: z
+    .array(
+      z.object({
+        helperSourceId: id.default(null),
+        helperName: short(200).default(""),
+      })
+    )
+    .max(5)
+    .default([]),
   status: z.enum(["offen", "inArbeit", "erledigt"]),
   note: short(10_000),
   sortOrder: z.number().int().min(0).max(1_000_000),
@@ -122,6 +132,15 @@ const documentSchema = z
           availSunStart: short(5).default(""),
           availSunEnd: short(5).default(""),
           confirmed: z.enum(["ja", "nein"]),
+          birthDate: z
+            .string()
+            .regex(/^\d{4}-\d{2}-\d{2}$/)
+            .refine(value => isValidBirthDate(value), {
+              message:
+                "Geburtsdatum muss ein echter Kalendertag sein und darf nicht in der Zukunft liegen",
+            })
+            .nullable()
+            .default(null),
         })
       )
       .max(MAX_ROWS),
@@ -945,6 +964,24 @@ export function parseProjectFile(base64: string): {
     raw.metadata &&
     typeof raw.metadata === "object" &&
     "version" in raw.metadata &&
+    raw.metadata.version === 18
+  ) {
+    const legacy = raw as Record<string, any>;
+    legacy.metadata = { ...legacy.metadata, version: PROJECT_VERSION };
+    legacy.helpers = Array.isArray(legacy.helpers)
+      ? legacy.helpers.map((helper: Record<string, unknown>) => ({
+          ...helper,
+          birthDate: helper.birthDate ?? null,
+        }))
+      : legacy.helpers;
+  }
+  if (
+    raw &&
+    typeof raw === "object" &&
+    "metadata" in raw &&
+    raw.metadata &&
+    typeof raw.metadata === "object" &&
+    "version" in raw.metadata &&
     raw.metadata.version === PROJECT_VERSION
   ) {
     const document = raw as Record<string, any>;
@@ -967,6 +1004,12 @@ export function parseProjectFile(base64: string): {
           logoUrl: location.logoUrl ?? null,
         }))
       : [];
+    document.helpers = Array.isArray(document.helpers)
+      ? document.helpers.map((helper: Record<string, unknown>) => ({
+          ...helper,
+          birthDate: helper.birthDate ?? null,
+        }))
+      : document.helpers;
     document.shifts = Array.isArray(document.shifts)
       ? document.shifts.map((shift: Record<string, unknown>) => ({
           ...shift,
@@ -1037,11 +1080,34 @@ export function parseProjectFile(base64: string): {
   return { document, sourceDigest: digest(bytes) };
 }
 
-export async function exportProjectFile() {
+export type ProjectFileOptions = {
+  /** Geburtsdaten werden ausschließlich in Pro-/Enterprise-Projektdateien gespeichert. */
+  includeHelperBirthDates?: boolean;
+  /** In Event Pass und Light werden Dateien mit Geburtsdaten nicht übernommen. */
+  allowHelperBirthDates?: boolean;
+};
+
+function assertProjectFileBirthDatesAllowed(
+  document: BackupDocument,
+  allowHelperBirthDates: boolean
+) {
+  if (!allowHelperBirthDates && document.helpers.some(helper => helper.birthDate))
+    throw new Error(
+      "Diese Projektdatei enthält Geburtsdaten. Die optionale Altersfunktion ist ab dem Paket Pro verfügbar."
+    );
+}
+
+export async function exportProjectFile(options: ProjectFileOptions = {}) {
   const document = await createCurrentProjectDocument();
   document.metadata.format = PROJECT_FORMAT;
   document.metadata.version = PROJECT_VERSION;
-  const buffer = Buffer.from(JSON.stringify(document), "utf8");
+  const serialized = (options.includeHelperBirthDates ?? true)
+    ? document
+    : {
+        ...document,
+        helpers: document.helpers.map(({ birthDate: _birthDate, ...helper }) => helper),
+      };
+  const buffer = Buffer.from(JSON.stringify(serialized), "utf8");
   if (buffer.length > MAX_PROJECT_BYTES)
     throw new Error("Der Projektstand ist größer als 10 MB");
   return {
@@ -1051,8 +1117,15 @@ export async function exportProjectFile() {
   };
 }
 
-export async function previewProjectFile(base64: string) {
+export async function previewProjectFile(
+  base64: string,
+  options: ProjectFileOptions = {}
+) {
   const parsed = parseProjectFile(base64);
+  assertProjectFileBirthDatesAllowed(
+    parsed.document,
+    options.allowHelperBirthDates ?? true
+  );
   return previewProjectDocument(parsed.document, parsed.sourceDigest);
 }
 
@@ -1060,9 +1133,14 @@ export async function loadProjectFile(
   base64: string,
   filename: string,
   expectedCurrentDigest: string,
-  actor: AuditActor
+  actor: AuditActor,
+  options: ProjectFileOptions = {}
 ) {
   const parsed = parseProjectFile(base64);
+  assertProjectFileBirthDatesAllowed(
+    parsed.document,
+    options.allowHelperBirthDates ?? true
+  );
   return restoreProjectDocument(
     parsed.document,
     parsed.sourceDigest,

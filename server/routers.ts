@@ -1899,6 +1899,15 @@ async function assertHelperBirthDateInputAllowed(
   if (birthDate !== undefined) await requireHelperAgeCapability();
 }
 
+async function helperAgeBackupOptions() {
+  const entitlement = await db.getCurrentTenantProductEntitlement();
+  const allowed = productAllowsCapability(entitlement.packageId, "helper_age");
+  return {
+    includeHelperBirthDates: allowed,
+    allowHelperBirthDates: allowed,
+  };
+}
+
 const HELPER_TIME_WINDOW_FIELDS = [
   ["availMon", "availMonStart", "availMonEnd", "Montag"],
   ["availTue", "availTueStart", "availTueEnd", "Dienstag"],
@@ -7187,7 +7196,9 @@ export const appRouter = router({
 
   projectFile: router({
     save: backupCapabilityProcedure("project_backup").query(async ({ ctx }) => {
-      const result = await withExcelOperationLimit(() => exportProjectFile());
+      const result = await withExcelOperationLimit(async () =>
+        exportProjectFile(await helperAgeBackupOptions())
+      );
       await db.recordActivityLog({
         actor: auditActor(ctx.user),
         module: "Dateiexporte",
@@ -7210,7 +7221,9 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         const result = await withExcelOperationLimit(() =>
-          previewProjectFile(input.base64)
+          helperAgeBackupOptions().then(options =>
+            previewProjectFile(input.base64, options)
+          )
         );
         return {
           ...result,
@@ -7248,11 +7261,14 @@ export const appRouter = router({
         });
         try {
           return await withExcelOperationLimit(() =>
-            loadProjectFile(
-              input.base64,
-              input.filename,
-              input.currentDigest,
-              auditActor(ctx.user)
+            helperAgeBackupOptions().then(options =>
+              loadProjectFile(
+                input.base64,
+                input.filename,
+                input.currentDigest,
+                auditActor(ctx.user),
+                options
+              )
             )
           );
         } catch (error) {
@@ -7288,7 +7304,9 @@ export const appRouter = router({
 
   excel: router({
     exportFile: backupCapabilityProcedure("excel").query(async ({ ctx }) => {
-      const result = await withExcelOperationLimit(() => exportProjectExcel());
+      const result = await withExcelOperationLimit(async () =>
+        exportProjectExcel(await helperAgeBackupOptions())
+      );
       await db.recordActivityLog({
         actor: auditActor(ctx.user),
         module: "Dateiexporte",
@@ -7312,7 +7330,9 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         const result = await withExcelOperationLimit(() =>
-          previewModuleExcelImport(input.base64, input.area)
+          helperAgeBackupOptions().then(options =>
+            previewModuleExcelImport(input.base64, input.area, options)
+          )
         );
         return {
           ...result,
@@ -7336,7 +7356,9 @@ export const appRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         const result = await withExcelOperationLimit(() =>
-          previewFullExcelImport(input.base64)
+          helperAgeBackupOptions().then(options =>
+            previewFullExcelImport(input.base64, options)
+          )
         );
         return {
           ...result,
@@ -7375,12 +7397,15 @@ export const appRouter = router({
         });
         try {
           return await withExcelOperationLimit(() =>
-            applyModuleExcelImport(
-              input.base64,
-              input.area,
-              input.filename,
-              input.currentDigest,
-              auditActor(ctx.user)
+            helperAgeBackupOptions().then(options =>
+              applyModuleExcelImport(
+                input.base64,
+                input.area,
+                input.filename,
+                input.currentDigest,
+                auditActor(ctx.user),
+                options
+              )
             )
           );
         } catch (error) {
@@ -7427,11 +7452,14 @@ export const appRouter = router({
         });
         try {
           return await withExcelOperationLimit(() =>
-            applyFullExcelImport(
-              input.base64,
-              input.filename,
-              input.currentDigest,
-              auditActor(ctx.user)
+            helperAgeBackupOptions().then(options =>
+              applyFullExcelImport(
+                input.base64,
+                input.filename,
+                input.currentDigest,
+                auditActor(ctx.user),
+                options
+              )
             )
           );
         } catch (error) {

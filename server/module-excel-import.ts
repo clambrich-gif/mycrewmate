@@ -29,6 +29,11 @@ export const MODULE_IMPORT_AREAS = ACTIVE_EXCEL_IMPORT_AREAS.map(
 ];
 export type ModuleImportArea = ActiveExcelImportArea;
 
+export type HelperBirthDateImportOptions = {
+  /** Event Pass und Light dürfen keine Geburtsdaten aus Dateien übernehmen. */
+  allowHelperBirthDates?: boolean;
+};
+
 /**
  * Fachliche Vollimport-Reihenfolge. Die Daten werden in einem einzigen
  * Datenbankvorgang übernommen, damit ein Fehler keinen Teilstand hinterlässt.
@@ -276,6 +281,7 @@ const OPTIONAL_MODULE_COLUMNS: Record<ModuleImportArea, string[]> = {
     "So von",
     "So bis",
     "Bestätigt?",
+    "Geburtsdatum",
   ],
   EINSATZPLAN: [
     "Beginn",
@@ -749,10 +755,15 @@ export function clearForeignFullImportIds(document: BackupDocument): BackupDocum
   return copy;
 }
 
-async function buildFullExcelTarget(base64: string) {
+async function buildFullExcelTarget(
+  base64: string,
+  options: HelperBirthDateImportOptions = {}
+) {
   const current = await createCurrentProjectDocument();
   const canonicalBase64 = canonicalFullImportWorkbook(base64, current);
-  const parsed = parseBackupWorkbook(canonicalBase64);
+  const parsed = parseBackupWorkbook(canonicalBase64, {
+    allowHelperBirthDates: options.allowHelperBirthDates ?? true,
+  });
   rejectUnresolvedFullImportReferences(parsed.warnings);
   const imported = clearForeignFullImportIds({
     ...parsed,
@@ -816,6 +827,7 @@ function rowsFromDocument(document: BackupDocument, area: ModuleImportArea) {
       "So von": row.availSunStart,
       "So bis": row.availSunEnd,
       "Bestätigt?": row.confirmed,
+      Geburtsdatum: row.birthDate ?? "",
     }));
   if (area === "EINSATZPLAN")
     return document.shifts.map(row => ({
@@ -924,7 +936,8 @@ function rowsFromDocument(document: BackupDocument, area: ModuleImportArea) {
 async function buildModuleTarget(
   base64: string,
   area: ModuleImportArea,
-  baseDocument?: BackupDocument
+  baseDocument?: BackupDocument,
+  options: HelperBirthDateImportOptions = {}
 ) {
   const current = baseDocument ?? (await createCurrentProjectDocument());
   const uploaded = readUploadedExcelWorkbook(base64);
@@ -1088,6 +1101,7 @@ async function buildModuleTarget(
   const imported = parseBackupWorkbook(mergedBase64, {
     isolatedAreas,
     fallbackDocument: current,
+    allowHelperBirthDates: options.allowHelperBirthDates ?? true,
   });
   const allChanges = diffDocuments(current, imported);
   const allowedAreas = new Set<BackupArea>(
@@ -1151,9 +1165,15 @@ const summarize = (changes: BackupChange[]) => ({
 
 export async function previewModuleExcelImport(
   base64: string,
-  area: ModuleImportArea
+  area: ModuleImportArea,
+  options: HelperBirthDateImportOptions = {}
 ) {
-  const { target, changes, rowsChecked } = await buildModuleTarget(base64, area);
+  const { target, changes, rowsChecked } = await buildModuleTarget(
+    base64,
+    area,
+    undefined,
+    options
+  );
   const preview = await previewProjectDocument(target, digest(base64));
   return {
     area,
@@ -1176,9 +1196,15 @@ export async function applyModuleExcelImport(
   area: ModuleImportArea,
   filename: string,
   expectedCurrentDigest: string,
-  actor: AuditActor
+  actor: AuditActor,
+  options: HelperBirthDateImportOptions = {}
 ) {
-  const { target, changes } = await buildModuleTarget(base64, area);
+  const { target, changes } = await buildModuleTarget(
+    base64,
+    area,
+    undefined,
+    options
+  );
   if (!changes.length)
     throw new Error("Die Excel-Datei enthält keine Änderungen");
   return restoreProjectDocument(
@@ -1206,8 +1232,11 @@ const summarizeFullImportSteps = (changes: BackupChange[]) =>
  * Reihenfolge wird an die Oberfläche zurückgegeben und die Daten bleiben bis
  * zur einmaligen Passwortbestätigung vollständig unverändert.
  */
-export async function previewFullExcelImport(base64: string) {
-  const { imported, changes } = await buildFullExcelTarget(base64);
+export async function previewFullExcelImport(
+  base64: string,
+  options: HelperBirthDateImportOptions = {}
+) {
+  const { imported, changes } = await buildFullExcelTarget(base64, options);
   const preview = await previewProjectDocument(imported, digest(base64));
   return {
     currentDigest: preview.currentDigest,
@@ -1233,9 +1262,10 @@ export async function applyFullExcelImport(
   base64: string,
   filename: string,
   expectedCurrentDigest: string,
-  actor: AuditActor
+  actor: AuditActor,
+  options: HelperBirthDateImportOptions = {}
 ) {
-  const { imported, changes } = await buildFullExcelTarget(base64);
+  const { imported, changes } = await buildFullExcelTarget(base64, options);
   if (!changes.length)
     throw new Error("Die Excel-Datei enthält keine übernehmbaren Änderungen");
   return restoreProjectDocument(

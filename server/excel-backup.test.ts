@@ -347,10 +347,8 @@ describe("Excel-Datensicherung", () => {
     const helperRows = XLSX.utils.sheet_to_json<any>(workbook.Sheets.HELFER);
     expect(helperRows.find(row => row.Name === "Alex Beispiel")).toMatchObject({
       "Zusätzliche Begleitung": "+ Kind Beispiel",
+      Geburtsdatum: "2008-10-27",
     });
-    expect(helperRows.find(row => row.Name === "Alex Beispiel")).not.toHaveProperty(
-      "Geburtsdatum"
-    );
 
     const parsed = parseBackupWorkbook(result.buffer.toString("base64"));
     expect(parsed.metadata).toMatchObject({
@@ -359,10 +357,8 @@ describe("Excel-Datensicherung", () => {
     });
     expect(parsed.helpers.find(row => row.name === "Alex Beispiel")).toMatchObject({
       companion: "+ Kind Beispiel",
+      birthDate: "2008-10-27",
     });
-    expect(parsed.helpers.find(row => row.name === "Alex Beispiel")).not.toHaveProperty(
-      "birthDate"
-    );
     expect(parsed.shifts.find(row => row.task === "Anmeldung")).toMatchObject({
       allowFlexibleAssignment: true,
     });
@@ -383,6 +379,26 @@ describe("Excel-Datensicherung", () => {
         { Schlüssel: "Enddatum", Wert: "2026-06-21" },
       ])
     );
+  });
+
+  it("spart Geburtsdaten ohne Pro-Berechtigung aus und weist ihre Wiederherstellung zurück", async () => {
+    const protectedExport = await exportBackupExcel();
+    expect(() =>
+      parseBackupWorkbook(protectedExport.buffer.toString("base64"), {
+        allowHelperBirthDates: false,
+      })
+    ).toThrow("Geburtsdaten");
+
+    const limitedExport = await exportProjectExcel({
+      includeHelperBirthDates: false,
+    });
+    const workbook = XLSX.read(limitedExport.buffer, { type: "buffer" });
+    const helperSheet = workbook.Sheets.HELFER ?? workbook.Sheets.Helfer;
+    expect(helperSheet).toBeDefined();
+    const headers = XLSX.utils.sheet_to_json<unknown[]>(helperSheet!, {
+      header: 1,
+    })[0] as unknown[];
+    expect(headers).not.toContain("Geburtsdatum");
   });
 
   it("übernimmt Ansprechpartner-E-Mail-Adressen vollständig in Excel-Sicherung und Wiederherstellung", async () => {

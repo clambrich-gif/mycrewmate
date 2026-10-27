@@ -1472,6 +1472,43 @@ describe("Planungs-API", () => {
     );
   });
 
+  it("reicht in Light für Speichern und Import keine Geburtsdatenberechtigung weiter", async () => {
+    const originalImplementation =
+      dbMocks.getCurrentTenantProductEntitlement.getMockImplementation();
+    dbMocks.getCurrentTenantProductEntitlement.mockResolvedValue({
+      tenantId: "default",
+      packageId: "light",
+      isUsable: true,
+    });
+    try {
+      const caller = appRouter.createCaller(ctx);
+      await caller.projectFile.save();
+      await caller.excel.exportFile();
+      await caller.projectFile.preview({ base64: "eA==" });
+      await caller.excel.previewModule({ area: "HELFER", base64: "eA==" });
+
+      const denied = {
+        includeHelperBirthDates: false,
+        allowHelperBirthDates: false,
+      };
+      expect(projectFileMocks.exportProjectFile).toHaveBeenCalledWith(denied);
+      expect(backupMocks.exportProjectExcel).toHaveBeenCalledWith(denied);
+      expect(projectFileMocks.previewProjectFile).toHaveBeenCalledWith(
+        "eA==",
+        denied
+      );
+      expect(moduleImportMocks.previewModuleExcelImport).toHaveBeenCalledWith(
+        "eA==",
+        "HELFER",
+        denied
+      );
+    } finally {
+      dbMocks.getCurrentTenantProductEntitlement.mockImplementation(
+        originalImplementation
+      );
+    }
+  });
+
   it("beschränkt Prüfung und Protokolle des Projektladens auf Administratoren", async () => {
     await expect(
       appRouter
@@ -1485,7 +1522,10 @@ describe("Planungs-API", () => {
     await expect(
       appRouter.createCaller(ctx).projectFile.preview({ base64: "eA==" })
     ).resolves.toMatchObject({ currentDigest: "a".repeat(64) });
-    expect(projectFileMocks.previewProjectFile).toHaveBeenCalledWith("eA==");
+    expect(projectFileMocks.previewProjectFile).toHaveBeenCalledWith("eA==", {
+      includeHelperBirthDates: true,
+      allowHelperBirthDates: true,
+    });
   });
 
   it("leert Importprotokolle nur nach erneuter Administratorbestätigung", async () => {
@@ -1532,7 +1572,8 @@ describe("Planungs-API", () => {
       "eA==",
       "Projekt.rscplanung.json",
       "a".repeat(64),
-      expect.objectContaining({ userId: 1, role: "admin" })
+      expect.objectContaining({ userId: 1, role: "admin" }),
+      { includeHelperBirthDates: true, allowHelperBirthDates: true }
     );
     expect(previewBindingMocks.verifyPreviewBinding).toHaveBeenCalledWith(
       "preview-binding-test-token",
@@ -1598,7 +1639,8 @@ describe("Planungs-API", () => {
       "HELFER",
       "Helfer.xlsx",
       "a".repeat(64),
-      expect.objectContaining({ userId: 1, role: "admin" })
+      expect.objectContaining({ userId: 1, role: "admin" }),
+      { allowHelperBirthDates: true, includeHelperBirthDates: true }
     );
     expect(previewBindingMocks.verifyPreviewBinding).toHaveBeenCalledWith(
       "preview-binding-test-token",
@@ -1636,7 +1678,8 @@ describe("Planungs-API", () => {
       "eA==",
       "Fremde-Veranstaltung.xlsx",
       "a".repeat(64),
-      expect.objectContaining({ userId: 1, role: "admin" })
+      expect.objectContaining({ userId: 1, role: "admin" }),
+      { allowHelperBirthDates: true, includeHelperBirthDates: true }
     );
     expect(previewBindingMocks.verifyPreviewBinding).toHaveBeenCalledWith(
       "preview-binding-test-token",
