@@ -336,6 +336,7 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
       "materials-details",
       "materials-responsible",
       "materials-save",
+      "materials-notebook",
       "materials-complete",
     ]);
     expect(KLEMMI_DONATIONS_AUDIO_IDS).toEqual([
@@ -366,6 +367,9 @@ describe("kontextabhängige Klemmi-Paketgrenzen", () => {
     );
     expect(klemmiAudioUrl("materials-save")).toBe(
       "/api/klemmi/audio/materials-save?v=20261020-klemmi-stimme-v2-material-save-c-v1"
+    );
+    expect(klemmiAudioUrl("materials-notebook")).toBe(
+      "/api/klemmi/audio/materials-notebook?v=20261027-klemmi-stimme-v2-material-notebook-c-v1"
     );
     expect(klemmiAudioUrl("materials-complete")).toBe(
       "/api/klemmi/audio/materials-complete?v=20261020-klemmi-stimme-v2-material-complete-a-v1"

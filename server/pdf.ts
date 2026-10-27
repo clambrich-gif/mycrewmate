@@ -2612,8 +2612,10 @@ export function selectMaterialPacklistMaterials(
 /** Erstellt eine operative Packliste für die aktuell sichtbare Materialauswahl. */
 export function renderMaterialPacklistPdf(
   data: PlanningData,
-  materialIds: number[]
+  materialIds: number[],
+  options: { includeNotes?: boolean } = {}
 ) {
+  const includeNotes = options.includeNotes ?? true;
   const contactById = new Map(
     data.contacts.map(contact => [contact.id, contact])
   );
@@ -2670,7 +2672,7 @@ export function renderMaterialPacklistPdf(
           doc,
           columns,
           {
-            article: material.note?.trim()
+            article: includeNotes && material.note?.trim()
               ? `${material.article}\nNotiz: ${material.note.trim()}`
               : material.article,
             category: material.category || "–",
@@ -3470,8 +3472,11 @@ export async function createContactOverviewPdf(
   return renderContactOverviewPdf(await loadPlanningData(), contactId, options);
 }
 
-export async function createMaterialPacklistPdf(materialIds: number[]) {
-  return renderMaterialPacklistPdf(await loadPlanningData(), materialIds);
+export async function createMaterialPacklistPdf(
+  materialIds: number[],
+  options: { includeNotes?: boolean } = {}
+) {
+  return renderMaterialPacklistPdf(await loadPlanningData(), materialIds, options);
 }
 
 export async function createDonationOverviewPdf(donationIds: number[]) {

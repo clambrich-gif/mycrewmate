@@ -6293,6 +6293,7 @@ export const appRouter = router({
       .input(
         z.object({
           materialIds: z.array(z.number().int().positive()).max(2_000),
+          includeNotes: z.boolean().default(true),
         })
       )
       .mutation(async ({ input }) => {
@@ -6305,7 +6306,9 @@ export const appRouter = router({
             message: "Mindestens ein Materialartikel gehört nicht zur aktuellen Veranstaltung",
           });
         }
-        const pdf = await createMaterialPacklistPdf(input.materialIds);
+        const pdf = await createMaterialPacklistPdf(input.materialIds, {
+          includeNotes: input.includeNotes,
+        });
         const selectedEvent = await db.getEvent();
         return {
           filename: `Material_Packliste_Gefiltert_${safeExportName(selectedEvent?.name ?? "Veranstaltung")}.pdf`,

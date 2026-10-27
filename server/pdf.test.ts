@@ -702,9 +702,21 @@ describe("PDF-Erzeugung", () => {
       },
       [1, 2]
     );
+    const compactPdf = await renderMaterialPacklistPdf(
+      {
+        ...data,
+        locations: [sampleLocation],
+        materials: sampleMaterials,
+      },
+      [1, 2],
+      { includeNotes: false }
+    );
 
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
     expect(pdf.length).toBeGreaterThan(1_500);
+    expect(compactPdf.subarray(0, 5).toString()).toBe("%PDF-");
+    expect(compactPdf.length).toBeGreaterThan(1_500);
+    expect(Buffer.compare(pdf, compactPdf)).not.toBe(0);
   });
 
   it("erzeugt Vor- und Nachbereitungs-PDFs ausschließlich aus der sichtbaren Aufgabenwahl", async () => {

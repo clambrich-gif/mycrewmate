@@ -782,6 +782,14 @@ describe("Planungs-API", () => {
       "%PDF-"
     );
 
+    const compactResult = await appRouter.createCaller(ctx).pdf.materialPacklist({
+      materialIds: [701],
+      includeNotes: false,
+    });
+    expect(Buffer.from(compactResult.base64, "base64").subarray(0, 5).toString()).toBe(
+      "%PDF-"
+    );
+
     await expect(
       appRouter
         .createCaller(ctx)
@@ -2035,17 +2043,21 @@ describe("Planungs-API", () => {
     });
   });
 
-  it("legt Material standardmäßig als Offen an und akzeptiert den dreistufigen Stand", async () => {
+  it("legt Material mit optionaler Startnotiz standardmäßig als Offen an und akzeptiert den dreistufigen Stand", async () => {
     const caller = appRouter.createCaller(ctx);
     dbMocks.createMaterial.mockResolvedValue({ insertId: 71 });
     dbMocks.updateMaterial.mockResolvedValue({ affectedRows: 1 });
 
     await expect(
-      caller.materials.create({ article: "Kabelbinder" })
+      caller.materials.create({
+        article: "Kabelbinder",
+        logEntry: "Bereits im Vereinsheim vorhanden",
+      })
     ).resolves.toEqual({ insertId: 71 });
     expect(dbMocks.createMaterial).toHaveBeenCalledWith({
       article: "Kabelbinder",
       status: "offen",
+      logEntry: "Bereits im Vereinsheim vorhanden",
       logEntryAuthor: "Organisation",
     });
 

@@ -3249,6 +3249,9 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(taskGeneric).toContain('id="material-notebook-entry"');
     expect(taskGeneric).toContain("logEntry: materialNoteEntry.trim()");
     expect(taskGeneric).toContain("TaskLogbookHistory");
+    expect(taskGeneric).toContain("materialInitialNote");
+    expect(taskGeneric).toContain('id="materials-create-initial-note"');
+    expect(taskGeneric).toContain('data-klemmi-target="materials-notebook"');
     expect(materials).toContain('createTriggerLabel="Neuer Artikel"');
     expect(materials).toContain('label: "Stand"');
     expect(materials).toContain('{ v: "offen", l: "🔴 Offen" }');
@@ -3261,9 +3264,14 @@ describe("UI- und Mobile-UX-Regeln", () => {
     expect(materials).toContain('searchPlaceholder: "Suchen (Artikel/Kategorie/Verantwortlicher/Ort) …"');
     expect(materials).toContain('"PDF drucken"');
     expect(materials).toContain("headerActions={({ visibleRows }) =>");
-    expect(materials).toContain("materialIds: visibleRows");
+    expect(materials).toContain("setPacklistMaterialIds(materialIds)");
     expect(materials).not.toContain("Standort für Material-Packliste auswählen");
     expect(materials).not.toContain("Packliste PDF");
+    expect(materials).toContain("Material-Packliste erstellen");
+    expect(materials).toContain("Mit Notizen");
+    expect(materials).toContain("Ohne Notizen");
+    expect(materials).toContain("includeNotes: packlistIncludesNotes");
+    expect(materials).toContain('key: "notebook"');
     expect(materials).not.toContain("sortableAndFilterable");
     expect(taskGeneric).toContain('headerLayout?: "default" | "stacked"');
     expect(taskGeneric).toContain("createButtonClassName?: string");

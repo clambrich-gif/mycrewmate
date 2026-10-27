@@ -384,6 +384,7 @@ export const KLEMMI_AUDIO_SCRIPTS = {
   "materials-name": "Artikel klar benennen. Trage zuerst ein, was benötigt wird – zum Beispiel Bierzeltgarnitur, Kabeltrommel oder Kaffeebecher.",
   "materials-details": "Menge und Einordnung festhalten. Menge, Einheit und Kategorie machen den Bedarf nachvollziehbar. Ort und Beschaffungsstand kannst du bei Bedarf direkt ergänzen.",
   "materials-save": "Materialposition speichern. Klicke auf den markierten Speichern-Button. Erst dein Klick legt den Artikel tatsächlich im Materialplan an.",
+  "materials-notebook": "Notiz direkt festhalten. Hier kannst du zum Artikel kurze Hinweise sammeln, zum Beispiel bereits vorhanden im Vereinsheim oder nach dem Einsatz bitte zurück ins Lager. Jeder Eintrag bleibt mit Datum und Autor nachvollziehbar.",
   "materials-complete": "Materialposition angelegt! Der Artikel ist jetzt im Materialplan. Status, Verantwortliche und Ort kannst du später jederzeit ergänzen oder anpassen.",
 
   "locations-intro": "Orte und Standorte sauber anlegen. Ich zeige dir die echte Standortanlage: Namen vergeben, Koordinaten eintragen und den Ort anschließend in Schichten, Material und Vorbereitung verwenden.",
@@ -414,6 +415,7 @@ export const KLEMMI_MATERIALS_AUDIO_IDS: readonly KlemmiAudioId[] =
     "materials-details",
     "materials-responsible",
     "materials-save",
+    "materials-notebook",
     "materials-complete",
   ]);
 
@@ -792,6 +794,7 @@ const KLEMMI_AUDIO_REVISIONS: Partial<Record<KlemmiAudioId, string>> = {
   "materials-details": "20261020-klemmi-stimme-v2-material-details-c-v1",
   "materials-responsible": "20261020-klemmi-stimme-v2-material-responsible-c-v1",
   "materials-save": "20261020-klemmi-stimme-v2-material-save-c-v1",
+  "materials-notebook": "20261027-klemmi-stimme-v2-material-notebook-c-v1",
   "materials-complete": "20261020-klemmi-stimme-v2-material-complete-a-v1",
   "marketing-overview-save": "20260928-adaptive-area-tour-v1",
   "marketing-overview": "20260928-adaptive-area-tour-v1",

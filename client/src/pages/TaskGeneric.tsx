@@ -195,6 +195,7 @@ export default function TaskGeneric({
   } | null>(null);
   const [materialNoteTarget, setMaterialNoteTarget] = useState<any | null>(null);
   const [materialNoteEntry, setMaterialNoteEntry] = useState("");
+  const [materialInitialNote, setMaterialInitialNote] = useState("");
 
   const defaultStatus = statusOptions ?? [
     { v: "offen", l: "offen" },
@@ -410,7 +411,15 @@ export default function TaskGeneric({
                   input[extraField.key] ?? extraField.options[0]?.v ?? "",
               }
             : {}),
-          note: input.note ?? null,
+          note:
+            isMaterialTable && typeof input.logEntry === "string"
+              ? prependPreparationLogbookEntry(
+                  input.logEntry,
+                  input.note,
+                  new Date(),
+                  logbookAuthor
+                )
+              : input.note ?? null,
           sortOrder: 0,
         },
       ]);
@@ -422,6 +431,7 @@ export default function TaskGeneric({
       );
       setName("");
       setExtras({});
+      setMaterialInitialNote("");
       setCreateDialogOpen(false);
       if (klemmiGuide) setKlemmiCreationSignal(Date.now());
       toast.success("Hinzugefügt");
@@ -532,11 +542,15 @@ export default function TaskGeneric({
       ...(createResponsibleField
         ? { contactId: contactId === "none" || !contactId ? null : Number(contactId) }
         : {}),
+      ...(isMaterialTable && materialInitialNote.trim()
+        ? { logEntry: materialInitialNote.trim() }
+        : {}),
     });
   };
 
   const resetCreateForm = () => {
     setName("");
+    setMaterialInitialNote("");
     setExtras(
       {
         ...(extraField
@@ -1130,6 +1144,7 @@ export default function TaskGeneric({
                     type="button"
                     variant="outline"
                     className="h-11 w-full justify-between border-slate-200 bg-slate-50 text-left text-slate-800 hover:bg-slate-100 md:h-10"
+                    data-klemmi-target={isMaterialTable ? "materials-notebook" : undefined}
                     onClick={() => openMaterialNotebook(row)}
                   >
                     <span>{materialNoteLabel(row.note)}</span>
@@ -1359,6 +1374,7 @@ export default function TaskGeneric({
                         variant="outline"
                         size="sm"
                         className="h-8 min-w-[112px] border-slate-200 bg-slate-50 text-xs text-slate-800 hover:bg-slate-100"
+                        data-klemmi-target="materials-notebook"
                         onClick={() => openMaterialNotebook(row)}
                       >
                         {materialNoteLabel(row.note)}
@@ -1547,6 +1563,7 @@ export default function TaskGeneric({
                           type="button"
                           variant="outline"
                           className="h-9 w-full justify-between border-slate-200 bg-white text-sm text-slate-800 hover:bg-slate-100"
+                          data-klemmi-target="materials-notebook"
                           onClick={() => openMaterialNotebook(row)}
                         >
                           <span>{materialNoteLabel(row.note)}</span>
@@ -1831,6 +1848,27 @@ export default function TaskGeneric({
                   </Select>
                 </div>
               )}
+                </div>
+              )}
+              {isMaterialTable && (
+                <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                    Notizbuch (optional)
+                  </p>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="materials-create-initial-note">Erste Notiz</Label>
+                    <Textarea
+                      id="materials-create-initial-note"
+                      value={materialInitialNote}
+                      maxLength={10_000}
+                      rows={3}
+                      placeholder="z. B. bereits vorhanden im Vereinsheim"
+                      onChange={event => setMaterialInitialNote(event.target.value)}
+                    />
+                    <p className="text-xs leading-5 text-slate-600">
+                      Wird beim Speichern mit Datum, Uhrzeit und deinem Namen im Notizbuch abgelegt.
+                    </p>
+                  </div>
                 </div>
               )}
               <DialogFooter className="mt-1 w-full min-w-0 flex-col gap-3 border-t pt-3 sm:flex-col sm:items-stretch">
