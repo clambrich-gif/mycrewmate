@@ -847,6 +847,37 @@ export function normalizePersonName(value: string) {
     .toLocaleLowerCase("de-DE");
 }
 
+/**
+ * Ein Ansprechpartner hat immer genau seinen gleichnamigen, verknüpften
+ * Helferdatensatz. Beim vollständigen Helfer-Reset bleibt nur dieser
+ * Grunddatensatz erhalten; alle übrigen Helfer werden gelöscht.
+ */
+export function partitionHelpersForCompleteReset(
+  helperRows: Array<{ id: number; name: string; contactId: number | null }>,
+  contactRows: Array<{ id: number; name: string }>
+) {
+  const contactsById = new Map(contactRows.map(contact => [contact.id, contact]));
+  const retainedContactHelperIds = helperRows
+    .filter(helper => {
+      const contact = helper.contactId
+        ? contactsById.get(helper.contactId)
+        : undefined;
+      return Boolean(
+        contact &&
+          normalizePersonName(helper.name) === normalizePersonName(contact.name)
+      );
+    })
+    .map(helper => helper.id);
+  const retainedIds = new Set(retainedContactHelperIds);
+
+  return {
+    retainedContactHelperIds,
+    deletedHelperIds: helperRows
+      .filter(helper => !retainedIds.has(helper.id))
+      .map(helper => helper.id),
+  };
+}
+
 export async function listEventYears() {
   const db = await getDb();
   if (!db) return [];
@@ -9865,30 +9896,110 @@ export async function resetArea(area: ResetArea, actor: AuditActor) {
   if (area === "helpers" || area === "cakes") {
     await db.transaction(async tx => {
       if (area === "helpers") {
-        const rows = await tx
+        const [rows, contactRows] = await Promise.all([
+          tx
           .select()
           .from(helpers)
           .where(planningScopeFor(helpers, selectedYear, selectedEventId))
-          .for("update");
+          .for("update"),
+          tx
+            .select({ id: contacts.id, name: contacts.name })
+            .from(contacts)
+            .where(planningScopeFor(contacts, selectedYear, selectedEventId))
+            .for("update"),
+        ]);
+        const { deletedHelperIds } = partitionHelpersForCompleteReset(
+          rows,
+          contactRows
+        );
+        const allHelperIds = rows.map(item => item.id);
+
+        // Ein vollständiger Helfer-Reset entfernt sämtliche operativen
+        // Helferbezüge. Die automatisch angelegten Helferdatensätze der
+        // Ansprechpartner bleiben jedoch als notwendige Grunddaten erhalten.
+        if (allHelperIds.length) {
+          await tx
+            .delete(assignments)
+            .where(
+              and(
+                planningScopeFor(assignments, selectedYear, selectedEventId),
+                inArray(assignments.helperId, allHelperIds)
+              )
+            );
+          await tx
+            .update(prepTasks)
+            .set({ helperId: null, eventPassResponsibleHelperId: null })
+            .where(
+              and(
+                planningScopeFor(prepTasks, selectedYear, selectedEventId),
+                or(
+                  inArray(prepTasks.helperId, allHelperIds),
+                  inArray(
+                    prepTasks.eventPassResponsibleHelperId,
+                    allHelperIds
+                  )
+                )
+              )
+            );
+          await tx
+            .delete(prepTaskHelpers)
+            .where(
+              and(
+                planningScopeFor(prepTaskHelpers, selectedYear, selectedEventId),
+                inArray(prepTaskHelpers.helperId, allHelperIds)
+              )
+            );
+          await tx
+            .update(postTasks)
+            .set({ helperId: null })
+            .where(
+              and(
+                planningScopeFor(postTasks, selectedYear, selectedEventId),
+                inArray(postTasks.helperId, allHelperIds)
+              )
+            );
+          await tx
+            .delete(postTaskHelpers)
+            .where(
+              and(
+                planningScopeFor(postTaskHelpers, selectedYear, selectedEventId),
+                inArray(postTaskHelpers.helperId, allHelperIds)
+              )
+            );
+          await tx
+            .delete(planContactHelperChanges)
+            .where(
+              and(
+                planningScopeFor(
+                  planContactHelperChanges,
+                  selectedYear,
+                  selectedEventId
+                ),
+                inArray(planContactHelperChanges.helperId, allHelperIds)
+              )
+            );
+          await tx
+            .delete(protectedHelperPdfShares)
+            .where(inArray(protectedHelperPdfShares.helperId, allHelperIds));
+        }
         await recordDeletionAudit(
           tx,
           actor,
           "area_reset",
-          rows.map(item => helperAuditEntity(item)),
+          rows
+            .filter(item => deletedHelperIds.includes(item.id))
+            .map(item => helperAuditEntity(item)),
           selectedYear,
           selectedEventId
         );
-        if (rows.length) {
+        if (deletedHelperIds.length) {
           const result = await tx.delete(helpers).where(
             and(
               planningScopeFor(helpers, selectedYear, selectedEventId),
-              inArray(
-                helpers.id,
-                rows.map(item => item.id)
-              )
+              inArray(helpers.id, deletedHelperIds)
             )
           );
-          requireDeletedRows(result, rows.length);
+          requireDeletedRows(result, deletedHelperIds.length);
         }
       } else {
         const rows = await tx
