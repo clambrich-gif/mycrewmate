@@ -37,6 +37,7 @@ import {
   planPdfTimeLabel,
   MATERIAL_PACKLIST_PORTRAIT_COLUMNS,
   MATERIAL_PACKLIST_PORTRAIT_WIDTH,
+  materialPacklistNoteText,
   renderDonationOverviewPdf,
   renderMaterialPacklistPdf,
   renderPostTaskOverviewPdf,
@@ -629,11 +630,23 @@ describe("PDF-Erzeugung", () => {
 
   it("erzeugt eine aus der Tabellenansicht gefilterte Material-Packliste als PDF", async () => {
     expect(MATERIAL_PACKLIST_PORTRAIT_WIDTH).toBe(511.28);
-    expect(MATERIAL_PACKLIST_PORTRAIT_COLUMNS).toHaveLength(6);
-    expect(
-      MATERIAL_PACKLIST_PORTRAIT_COLUMNS.find(column => column.key === "contact")
-        ?.width
-    ).toBeGreaterThanOrEqual(130);
+    expect(MATERIAL_PACKLIST_PORTRAIT_COLUMNS.map(column => column.key)).toEqual([
+      "checked",
+      "article",
+      "quantity",
+      "category",
+      "location",
+      "status",
+      "contact",
+    ]);
+    expect(MATERIAL_PACKLIST_PORTRAIT_COLUMNS[0]).toMatchObject({
+      label: "OK",
+      width: 28,
+    });
+    expect(materialPacklistNoteText("Notiz: Liegt im Vereinsheim")).toBe(
+      "Notiz: (Liegt im Vereinsheim)"
+    );
+    expect(materialPacklistNoteText("Liegt im Vereinsheim", false)).toBe("");
     const sampleLocation = {
       id: 99,
       year: 2026,

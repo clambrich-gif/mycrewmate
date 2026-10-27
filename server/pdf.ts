@@ -114,19 +114,29 @@ export type PlanningTeamAccessSheet = {
  * der A4-Hochformatseite. Die Summe muss immer genau contentWidth ergeben.
  */
 export const MATERIAL_PACKLIST_PORTRAIT_COLUMNS = [
-  { key: "article", label: "Artikel", width: 120 },
-  { key: "category", label: "Kategorie", width: 78 },
+  { key: "checked", label: "OK", width: 28, align: "center" },
+  { key: "article", label: "Artikel", width: 135 },
   { key: "quantity", label: "Menge", width: 55, align: "center" },
-  { key: "location", label: "Ort", width: 65 },
+  { key: "category", label: "Kategorie", width: 72 },
+  { key: "location", label: "Ort", width: 64 },
   { key: "status", label: "Stand", width: 55, align: "center" },
-  { key: "contact", label: "Ansprechpartner", width: 138.28 },
+  { key: "contact", label: "Ansprechpartner", width: 102.28 },
 ] as const satisfies readonly PdfColumn[];
-
 export const MATERIAL_PACKLIST_PORTRAIT_WIDTH =
   MATERIAL_PACKLIST_PORTRAIT_COLUMNS.reduce(
     (sum, column) => sum + column.width,
     0
   );
+
+/** Die Notiz bleibt sichtbar als klar untergeordneter, druckfreundlicher Hinweis. */
+export function materialPacklistNoteText(
+  note: string | null | undefined,
+  includeNotes = true
+) {
+  const trimmed = note?.trim();
+  const normalized = trimmed?.replace(/^Notiz:\s*/i, "");
+  return includeNotes && normalized ? `Notiz: (${normalized})` : "";
+}
 const colors = {
   ink: "#172033",
   muted: "#5f6877",
@@ -1710,6 +1720,112 @@ function drawTableRow(
   doc.y = y + height;
 }
 
+/**
+ * Materialpositionen benötigen auf dem Klemmbrett eine eigene Abhakbox und
+ * eine klar von der Artikelbezeichnung getrennte, kleinere Notizebene.
+ */
+function drawMaterialPacklistRow(
+  doc: PDFKit.PDFDocument,
+  columns: PdfColumn[],
+  values: Record<string, string>,
+  x: number
+) {
+  const articleColumn = columns.find(column => column.key === "article");
+  if (!articleColumn) return;
+
+  const articleWidth = articleColumn.width - 10;
+  doc.font("Helvetica-Bold").fontSize(9.5);
+  const articleHeight = doc.heightOfString(values.article ?? "", {
+    width: articleWidth,
+    lineGap: 1,
+  });
+  const note = values.note ?? "";
+  doc.font("Helvetica-Oblique").fontSize(7.2);
+  const noteHeight = note
+    ? doc.heightOfString(note, { width: articleWidth, lineGap: 0.5 })
+    : 0;
+  doc.font("Helvetica").fontSize(9);
+  const otherCellHeight = Math.max(
+    ...columns
+      .filter(column => column.key !== "article" && column.key !== "checked")
+      .map(column =>
+        doc.heightOfString(values[column.key] ?? "", {
+          width: column.width - 10,
+          lineGap: 1,
+        })
+      )
+  );
+  const height = Math.max(
+    30,
+    otherCellHeight + 14,
+    articleHeight + (note ? noteHeight + 4 : 0) + 14
+  );
+  ensureSpace(doc, height + 5, () => drawTableHeader(doc, columns, x));
+  const y = doc.y;
+  const width = columns.reduce((sum, column) => sum + column.width, 0);
+  doc
+    .rect(x, y, width, height)
+    .strokeColor(colors.line)
+    .lineWidth(0.6)
+    .stroke();
+
+  let cursor = x;
+  for (const column of columns) {
+    if (column.key === "checked") {
+      const checkboxSize = 11;
+      doc
+        .rect(
+          cursor + (column.width - checkboxSize) / 2,
+          y + (height - checkboxSize) / 2,
+          checkboxSize,
+          checkboxSize
+        )
+        .strokeColor(colors.ink)
+        .lineWidth(0.8)
+        .stroke();
+    } else if (column.key === "article") {
+      doc
+        .font("Helvetica-Bold")
+        .fontSize(9.5)
+        .fillColor(colors.ink)
+        .text(values.article ?? "", cursor + 5, y + 7, {
+          width: articleWidth,
+          lineGap: 1,
+        });
+      if (note) {
+        doc
+          .font("Helvetica-Oblique")
+          .fontSize(7.2)
+          .fillColor(colors.muted)
+          .text(note, cursor + 5, y + 7 + articleHeight + 3, {
+            width: articleWidth,
+            lineGap: 0.5,
+          });
+      }
+    } else {
+      doc
+        .font("Helvetica")
+        .fontSize(9)
+        .fillColor(colors.ink)
+        .text(values[column.key] ?? "", cursor + 5, y + 7, {
+          width: column.width - 10,
+          height: height - 10,
+          align: column.align ?? "left",
+          lineGap: 1,
+        });
+    }
+    cursor += column.width;
+    doc
+      .moveTo(cursor, y)
+      .lineTo(cursor, y + height)
+      .strokeColor(colors.line)
+      .lineWidth(0.6)
+      .stroke();
+  }
+  doc.x = x;
+  doc.y = y + height;
+}
+
 export function renderHelperTaskPdf(data: PlanningData, helperId: number) {
   const helper = data.helpers.find(item => item.id === helperId);
   if (!helper) throw new Error("Helfer wurde nicht gefunden");
@@ -2668,15 +2784,14 @@ export function renderMaterialPacklistPdf(
         const quantity = [material.quantity, material.unit]
           .filter(Boolean)
           .join(" ");
-        drawTableRow(
+        drawMaterialPacklistRow(
           doc,
           columns,
           {
-            article: includeNotes && material.note?.trim()
-              ? `${material.article}\nNotiz: ${material.note.trim()}`
-              : material.article,
-            category: material.category || "–",
+            checked: "",
+            article: material.article,
             quantity: quantity || "–",
+            category: material.category || "–",
             location: material.locationId
               ? (locationById.get(material.locationId)?.name ?? "–")
               : "–",
@@ -2684,6 +2799,7 @@ export function renderMaterialPacklistPdf(
             contact: material.contactId
               ? (contactById.get(material.contactId)?.name ?? "–")
               : "–",
+            note: materialPacklistNoteText(material.note, includeNotes),
           },
           margin
         );

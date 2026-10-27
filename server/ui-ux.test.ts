@@ -3481,8 +3481,12 @@ describe("UI- und Mobile-UX-Regeln", () => {
 
     expect(materials).toContain("trpc.pdf.materialPacklist.useMutation");
     expect(materials).toContain('"PDF drucken"');
-    expect(source("server/pdf.ts")).toContain("MATERIAL_PACKLIST_PORTRAIT_WIDTH");
-    expect(source("server/pdf.ts")).toContain("width: 138");
+    const pdf = source("server/pdf.ts");
+    expect(pdf).toContain("MATERIAL_PACKLIST_PORTRAIT_WIDTH");
+    expect(pdf).toContain('key: "checked"');
+    expect(pdf).toContain('key: "quantity"');
+    expect(pdf).toContain("drawMaterialPacklistRow");
+    expect(pdf).toContain("Notiz: (${normalized})");
     expect(locations).toContain("GPX-Streckenoverlays");
     expect(locations).toContain("GPX hochladen");
     expect(locations).toContain("trpc.gpxTracks.rename.useMutation");
