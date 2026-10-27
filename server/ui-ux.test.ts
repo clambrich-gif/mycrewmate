@@ -3097,6 +3097,18 @@ describe("UI- und Mobile-UX-Regeln", () => {
     );
   });
 
+  it("zeigt in der Helferlegende die Anzahl der aktuell gefilterten Helfer", () => {
+    const helpers = source("client/src/pages/Helpers.tsx");
+
+    expect(helpers).toContain("const displayedHelpers = filtered;");
+    expect(helpers).toContain('data-slot="helper-filtered-count"');
+    expect(helpers).toContain("Angezeigt: {displayedHelpers.length} Helfer");
+    expect(helpers).toContain('aria-live="polite"');
+    expect(helpers.indexOf('data-slot="helper-filtered-count"')).toBeLessThan(
+      helpers.indexOf("Legende:")
+    );
+  });
+
   it("kennzeichnet Hauptseiten mit ruhigen einfarbigen Titelicons", () => {
     const pageTitle = source("client/src/components/PageTitle.tsx");
     const pages: Array<[string, string]> = [

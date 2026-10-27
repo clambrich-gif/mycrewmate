@@ -2595,8 +2595,16 @@ export default function Helpers() {
           </table>
         </CardContent>
       </Card>
-      <p className="text-xs text-muted-foreground">
-        Legende: <StatusBadge status="ja" /> verfügbar ·{" "}
+      <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground">
+        <span
+          data-slot="helper-filtered-count"
+          aria-live="polite"
+          className="font-medium text-foreground"
+        >
+          Angezeigt: {displayedHelpers.length} Helfer
+        </span>
+        <span aria-hidden="true">·</span>
+        <span>Legende:</span> <StatusBadge status="ja" /> verfügbar ·{" "}
         <StatusBadge status="vielleicht" /> unsicher ·{" "}
         <StatusBadge status="nein" />
         abgesagt/nicht verfügbar
