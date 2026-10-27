@@ -576,10 +576,9 @@ const personKey = (value: unknown) =>
   normalize(value).toLocaleLowerCase("de-DE");
 
 /**
- * Material darf an mehreren Ständen oder bei unterschiedlichen Verantwortlichen
- * parallel geführt werden. Der Artikelname allein ist daher keine eindeutige
- * Kennung – nur dieselbe Kombination darf innerhalb eines Projekts nicht
- * doppelt vorkommen.
+ * Hilfsschlüssel für frühere Material-Abgleiche. Materialpositionen sind
+ * fachlich jedoch nie eindeutig über Artikel, Ort oder Verantwortlichkeit:
+ * Gleichartige Positionen dürfen bewusst mehrfach vorkommen.
  */
 export function materialIdentity(
   row: Pick<
@@ -1187,7 +1186,8 @@ function ensureUnique<T>(
   getId: (row: T) => number | null,
   getLabel: (row: T) => string,
   sheet: string,
-  getErrorLabel: (row: T) => string = getLabel
+  getErrorLabel: (row: T) => string = getLabel,
+  allowDuplicateLabels = false
 ) {
   const ids = new Set<number>();
   const labels = new Set<string>();
@@ -1196,6 +1196,7 @@ function ensureUnique<T>(
     if (id !== null && ids.has(id))
       throw new Error(`${sheet}: technische ID ${id} ist doppelt vorhanden`);
     if (id !== null) ids.add(id);
+    if (allowDuplicateLabels) continue;
     const label = personKey(getLabel(row));
     if (labels.has(label))
       throw new Error(`${sheet}: „${getErrorLabel(row)}“ ist doppelt vorhanden`);
@@ -2042,7 +2043,8 @@ export function parseBackupWorkbook(
       row => row.sourceId,
       row => materialIdentity(row),
       "MATERIAL",
-      row => row.article
+      row => row.article,
+      true
     );
 
   const parsedMarketing: MarketingRow[] = shouldParse("MARKETING")
@@ -2822,14 +2824,19 @@ export function diffDocuments(
     const afterRows = ((desired as any)[key] ?? []) as any[];
     const beforeById = new Map(beforeRows.map(row => [row.sourceId, row]));
     const beforeByIdentity = new Map(
-      beforeRows.map(row => [documentRowIdentity(area, row, labelField), row])
+      (area === "MATERIAL" ? [] : beforeRows).map(row => [
+        documentRowIdentity(area, row, labelField),
+        row,
+      ])
     );
     const matched = new Set<number>();
     for (let index = 0; index < afterRows.length; index++) {
       const after = afterRows[index];
       const candidate =
         (after.sourceId ? beforeById.get(after.sourceId) : undefined) ??
-        beforeByIdentity.get(documentRowIdentity(area, after, labelField));
+        (area === "MATERIAL"
+          ? undefined
+          : beforeByIdentity.get(documentRowIdentity(area, after, labelField)));
       const before =
         candidate && !matched.has(candidate.sourceId) ? candidate : undefined;
       if (!before) {

@@ -313,7 +313,8 @@ const key = (value: unknown) =>
 function assertUnique(
   rows: Array<{ sourceId: number | null }>,
   label: (row: any) => string,
-  section: string
+  section: string,
+  allowDuplicateLabels = false
 ) {
   const ids = new Set<number>();
   const labels = new Set<string>();
@@ -323,6 +324,7 @@ function assertUnique(
         throw new Error(`${section}: ID ${row.sourceId} ist doppelt vorhanden`);
       ids.add(row.sourceId);
     }
+    if (allowDuplicateLabels) continue;
     const normalized = key(label(row));
     if (labels.has(normalized))
       throw new Error(`${section}: „${label(row)}“ ist doppelt vorhanden`);
@@ -339,10 +341,15 @@ function validateRelations(document: BackupDocument) {
     row => `${row.day}|${row.area}|${row.task}|${row.startTime}|${row.endTime}`,
     "Einsatzplan"
   );
+  assertUnique(
+    document.materials,
+    row => materialIdentity(row),
+    "Material",
+    true
+  );
   for (const [rows, label, name] of [
     [document.prep, "Vorbereitung", (row: any) => row.task],
     [document.post, "Nachbereitung", (row: any) => row.task],
-    [document.materials, "Material", (row: any) => materialIdentity(row)],
     [document.marketing, "Marketing", (row: any) => row.measure],
     [document.approvals, "Genehmigungen", (row: any) => row.request],
     [document.cakes, "Kuchen", (row: any) => `${row.donor}|${row.cake}`],

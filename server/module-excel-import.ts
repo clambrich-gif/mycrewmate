@@ -231,11 +231,54 @@ function rowIdentity(area: ModuleImportArea, row: Record<string, unknown>) {
   return normalized(`${row.Kategorie}|${row.Bemerkung || row.Reihenfolge}`);
 }
 
+/**
+ * Material darf mehrfach dieselbe fachliche Beschreibung haben. Fehlende IDs
+ * werden deshalb nur positionsweise gegen noch freie Bestandszeilen abgeglichen
+ * und nie über eine einzelne, zusammenfallende Materialidentität aufgelöst.
+ */
+function matchingMaterialRows(
+  importedRows: Record<string, unknown>[],
+  currentRows: Record<string, unknown>[]
+) {
+  const currentById = new Map(
+    currentRows.map(row => [String(row.ID ?? "").trim(), row])
+  );
+  const reservedCurrentIds = new Set(
+    importedRows
+      .map(row => String(row.ID ?? "").trim())
+      .filter(id => id && currentById.has(id))
+  );
+  const availableByIdentity = new Map<string, Record<string, unknown>[]>();
+  for (const row of currentRows) {
+    const id = String(row.ID ?? "").trim();
+    if (!id || reservedCurrentIds.has(id)) continue;
+    const identity = rowIdentity("MATERIAL", row);
+    const rows = availableByIdentity.get(identity) ?? [];
+    rows.push(row);
+    availableByIdentity.set(identity, rows);
+  }
+  return importedRows.map(row => {
+    const id = String(row.ID ?? "").trim();
+    if (id) return currentById.get(id);
+    return availableByIdentity.get(rowIdentity("MATERIAL", row))?.shift();
+  });
+}
+
 function hydrateExistingIds(
   area: ModuleImportArea,
   importedRows: Record<string, unknown>[],
   currentRows: Record<string, unknown>[]
 ): Record<string, unknown>[] {
+  if (area === "MATERIAL") {
+    const matches = matchingMaterialRows(importedRows, currentRows);
+    return importedRows.map(
+      (row, index) =>
+        ({
+          ...row,
+          ID: row.ID || matches[index]?.ID || "",
+        }) as Record<string, unknown>
+    );
+  }
   const currentByIdentity = new Map(
     currentRows.map(row => [rowIdentity(area, row), row.ID])
   );
@@ -379,12 +422,19 @@ export function preserveMissingOptionalModuleColumns(
   const currentByIdentity = new Map(
     currentRows.map(row => [rowIdentity(area, row), row])
   );
+  const materialMatches =
+    area === "MATERIAL"
+      ? matchingMaterialRows(importedRows, currentRows)
+      : undefined;
   let preserved = 0;
-  for (const row of importedRows) {
+  for (let index = 0; index < importedRows.length; index++) {
+    const row = importedRows[index]!;
     const id = String(row.ID ?? "").trim();
     const current =
-      (id ? currentById.get(id) : undefined) ??
-      currentByIdentity.get(rowIdentity(area, row));
+      area === "MATERIAL"
+        ? materialMatches?.[index]
+        : (id ? currentById.get(id) : undefined) ??
+          currentByIdentity.get(rowIdentity(area, row));
     if (!current) continue;
     for (const column of missingColumns) {
       row[column] = current[column] ?? "";
@@ -413,6 +463,14 @@ export function removeCopiedModuleIds(
   const currentByIdentity = new Map(
     currentRows.map(row => [rowIdentity(area, row), row])
   );
+  const materialRowsByIdentity = new Map<string, Record<string, unknown>[]>();
+  if (area === "MATERIAL")
+    for (const row of currentRows) {
+      const identity = rowIdentity(area, row);
+      const rows = materialRowsByIdentity.get(identity) ?? [];
+      rows.push(row);
+      materialRowsByIdentity.set(identity, rows);
+    }
   let corrected = 0;
 
   // Eine ID darf nur aus dem aktuell gewählten Event/Jahr stammen. Kommt sie
@@ -433,7 +491,15 @@ export function removeCopiedModuleIds(
     // Echte Umbenennungen bleiben möglich: Gibt es keine andere passende
     // Bestandszeile, darf die eindeutige ID der Zeile erhalten bleiben.
     const sameIdentity = currentByIdentity.get(rowIdentity(area, row));
-    if (sameIdentity && String(sameIdentity.ID ?? "").trim() !== id) {
+    const materialIdentityRows = materialRowsByIdentity.get(
+      rowIdentity(area, row)
+    );
+    const pointsToAnotherRow =
+      area === "MATERIAL"
+        ? materialIdentityRows?.length === 1 &&
+          String(materialIdentityRows[0]?.ID ?? "").trim() !== id
+        : sameIdentity && String(sameIdentity.ID ?? "").trim() !== id;
+    if (pointsToAnotherRow) {
       row.ID = "";
       corrected++;
     }

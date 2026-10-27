@@ -270,7 +270,7 @@ describe("Projektdatei und modularer Excel-Import", () => {
     ).not.toHaveProperty("birthDate");
   });
 
-  it("akzeptiert denselben Materialartikel an unterschiedlichen Ständen im JSON-Snapshot", async () => {
+  it("akzeptiert gleichnamige Materialpositionen im JSON-Snapshot und schützt technische IDs", async () => {
     const exported = await exportProjectFile();
     const document = JSON.parse(exported.buffer.toString("utf8"));
     document.locations.push(
@@ -342,11 +342,18 @@ describe("Projektdatei und modularer Excel-Import", () => {
     const duplicateAtSameStand = structuredClone(document);
     duplicateAtSameStand.materials[1].locationSourceId = 101;
     duplicateAtSameStand.materials[1].locationName = "Stand A";
+    const parsedAtSameStand = parseProjectFile(
+      Buffer.from(JSON.stringify(duplicateAtSameStand)).toString("base64")
+    ).document;
+    expect(parsedAtSameStand.materials).toHaveLength(2);
+
+    const duplicateTechnicalId = structuredClone(duplicateAtSameStand);
+    duplicateTechnicalId.materials[1].sourceId = 201;
     expect(() =>
       parseProjectFile(
-        Buffer.from(JSON.stringify(duplicateAtSameStand)).toString("base64")
+        Buffer.from(JSON.stringify(duplicateTechnicalId)).toString("base64")
       )
-    ).toThrow("Material");
+    ).toThrow("Material: ID 201 ist doppelt vorhanden");
   });
 
   it("prüft einen JSON-Speicherstand unabhängig von gleichnamigem Altmaterial als vollständigen Ersatz", async () => {
@@ -991,6 +998,23 @@ describe("Projektdatei und modularer Excel-Import", () => {
       data.locations.splice(data.locations.indexOf(standNord as never), 1);
       data.locations.splice(data.locations.indexOf(standSued as never), 1);
     }
+  });
+
+  it("importiert identische Materialzeilen ohne IDs als getrennte Positionen", async () => {
+    const preview = await previewModuleExcelImport(
+      moduleSheet("MATERIAL", [
+        { Artikel: "Bananen", Menge: "4" },
+        { Artikel: "Bananen", Menge: "8" },
+      ]),
+      "MATERIAL"
+    );
+
+    expect(preview.rowsChecked).toBe(2);
+    expect(
+      preview.changes.filter(
+        change => change.area === "MATERIAL" && change.action === "create"
+      )
+    ).toHaveLength(2);
   });
 
   it("erhält neue Vorbereitungsfelder und ergänzt Defaults für alte Projektdateien", async () => {

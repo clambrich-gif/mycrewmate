@@ -492,7 +492,7 @@ describe("Excel-Datensicherung", () => {
     );
   });
 
-  it("ignoriert beim isolierten Ansprechpartnerimport Dubletten aus einem fremden Materialblatt", async () => {
+  it("akzeptiert gleichnamige Materialpositionen beim vollständigen und isolierten Excel-Import", async () => {
     const exported = await exportBackupExcel();
     const fallbackDocument = parseBackupWorkbook(exported.buffer.toString("base64"));
     const mixedWorkbook = mutateWorkbook(exported.buffer, workbook => {
@@ -513,9 +513,12 @@ describe("Excel-Datensicherung", () => {
     });
     const base64 = mixedWorkbook.toString("base64");
 
-    expect(() => parseBackupWorkbook(base64)).toThrow(
-      "MATERIAL: „Bananen“ ist doppelt vorhanden"
-    );
+    const parsed = parseBackupWorkbook(base64);
+    expect(parsed.materials).toHaveLength(2);
+    expect(parsed.materials.map(row => row.article)).toEqual([
+      "Bananen",
+      "Bananen",
+    ]);
 
     const isolated = parseBackupWorkbook(base64, {
       isolatedAreas: ["ANSPRECHPARTNER", "HELFER"],
@@ -526,12 +529,25 @@ describe("Excel-Datensicherung", () => {
     expect(isolated.helpers.map(row => row.name)).toContain("Dana Neu");
     expect(isolated.materials).toEqual(fallbackDocument.materials);
 
-    expect(() =>
-      parseBackupWorkbook(base64, {
-        isolatedAreas: ["MATERIAL"],
-        fallbackDocument,
-      })
-    ).toThrow("MATERIAL: „Bananen“ ist doppelt vorhanden");
+    const isolatedMaterials = parseBackupWorkbook(base64, {
+      isolatedAreas: ["MATERIAL"],
+      fallbackDocument,
+    });
+    expect(isolatedMaterials.materials).toHaveLength(2);
+  });
+
+  it("weist weiterhin nur doppelte technische IDs im Materialimport zurück", async () => {
+    const exported = await exportBackupExcel();
+    const duplicateIds = mutateWorkbook(exported.buffer, workbook => {
+      replaceSheet(workbook, "MATERIAL", [
+        { ID: 77, Artikel: "Bananen", Menge: "4" },
+        { ID: 77, Artikel: "Bananen", Menge: "8" },
+      ]);
+    });
+
+    expect(() => parseBackupWorkbook(duplicateIds.toString("base64"))).toThrow(
+      "MATERIAL: technische ID 77 ist doppelt vorhanden"
+    );
   });
 
   it("weist unvollständige oder kalenderungültige Veranstaltungszeiträume in Sicherungen zurück", async () => {
@@ -768,6 +784,47 @@ describe("Excel-Datensicherung", () => {
     expect(new Set(shiftChanges.map(change => change.key)).size).toBe(
       shiftChanges.length
     );
+  });
+
+  it("führt gleichnamige Materialpositionen ohne IDs in der Vorschau nicht zusammen", () => {
+    const material = (sourceId: number | null, quantity: string) => ({
+      sourceId,
+      article: "Bananen",
+      category: "Catering",
+      quantity,
+      unit: "Stück",
+      locationSourceId: null,
+      locationName: "",
+      contactSourceId: null,
+      contactName: "",
+      status: "offen",
+      note: "",
+      sortOrder: 0,
+    });
+    const current: any = {
+      contacts: [],
+      helpers: [],
+      shifts: [],
+      prep: [],
+      post: [],
+      materials: [material(71, "4"), material(72, "8")],
+      marketing: [],
+      approvals: [],
+      cakes: [],
+      finances: [],
+    };
+    const desired: any = {
+      ...structuredClone(current),
+      materials: [material(null, "4"), material(null, "8")],
+    };
+
+    const materialChanges = diffDocuments(current, desired).filter(
+      change => change.area === "MATERIAL"
+    );
+
+    expect(materialChanges.filter(change => change.action === "create")).toHaveLength(2);
+    expect(materialChanges.filter(change => change.action === "delete")).toHaveLength(2);
+    expect(materialChanges.filter(change => change.action === "update")).toHaveLength(0);
   });
 
   it("erhält bei alten Helferblättern ohne Mo-bis-Do-Spalten die bisherige Werktagsverfügbarkeit", async () => {
